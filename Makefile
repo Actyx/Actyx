@@ -74,7 +74,9 @@ ${DOCKER_BUILD}: debug clean
 	--build-arg GIT_COMMIT=$(git_hash) --build-arg GIT_BRANCH=$(GIT_BRANCH) --build-arg BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
  	--build-arg BUILD_SCCACHE_VERSION=$(BUILD_SCCACHE_VERSION) \
 	-f $(build_dir)/Dockerfile .
+	echo 'Cleaning up $(build_dir)'
+	rm -rf $(build_dir)
 
 # Dependencies
-docker-build-hammerite: docker-build-adacli
+docker-build-hammerite: docker-build-adaclir
 
