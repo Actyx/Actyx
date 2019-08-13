@@ -23,6 +23,7 @@ BUILD_SCCACHE_VERSION=0.2.8
 build_dir=dist
 DOCKER_DIR=ops/docker/images
 DOCKER_BUILD = $(shell arr=(`ls ${DOCKER_DIR}`); printf "docker-build-%s\n " "$${arr[@]}")
+DOCKER_BUILD_SBT = docker-build-bagsapconnector docker-build-flexishttpconnector docker-build-flexisftpconnector docker-build-opcuaconnector docker-build-iafisconnector docker-build-batchcenterconnector
 
 # Debug helpers
 print-%  : ; @echo $* = $($*)
@@ -50,8 +51,15 @@ docker-push-%: docker-build-% docker-login
 		docker push $(LATEST_IMAGE_TAG); \
 	fi
 
+$(DOCKER_BUILD_SBT): debug clean
+	$(eval DOCKER_IMAGE_NAME:=$(subst docker-build-,,$@))
+	$(eval IMAGE_NAME:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
+	echo "Using sbt-native-packager to generate the docker image..";
+	pushd $(SRC_PATH); \
+	IMAGE_NAME=$(IMAGE_NAME) sbt docker:publishLocal; \
+	popd
 
-# Build and tag a single image
+
 ${DOCKER_BUILD}: debug clean
 	# must not use `component` here because of dependencies
 	$(eval DOCKER_IMAGE_NAME:=$(subst docker-build-,,$@))
