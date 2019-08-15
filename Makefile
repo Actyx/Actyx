@@ -27,7 +27,7 @@ DOCKER_BUILD_SBT = docker-build-bagsapconnector docker-build-flexishttpconnector
 
 # Debug helpers
 print-%  : ; @echo $* = $($*)
-debug: print-GIT_BRANCH print-git_hash print-LATEST_IMAGE_TAG print-component print-arch print-build_dir 
+debug: print-GIT_BRANCH print-git_hash print-component print-arch print-build_dir
 
 .PHONY: all ${DOCKER_BUILD} clean
 
@@ -45,7 +45,7 @@ docker-push-%: docker-build-% docker-login
 	$(eval DOCKER_IMAGE_NAME:=$(subst docker-push-,,$@))
 	$(eval IMAGE_NAME:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
 	docker push $(IMAGE_NAME)
-	$(eval LATEST_IMAGE_TAG:=$(subst $(git_hash),latest,$(IMAGENAME)))
+	$(eval LATEST_IMAGE_TAG:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(arch),latest))
 	if [ $(GIT_BRANCH) == "master" ]; then \
 	  docker tag $(IMAGE_NAME) $(LATEST_IMAGE_TAG); \
 		docker push $(LATEST_IMAGE_TAG); \
