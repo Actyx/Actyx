@@ -110,6 +110,7 @@ android-app: debug
 	pushd android-shell-app; \
 	./gradlew clean ktlint build assemble; \
 	popd
+	echo 'APK: ./android-shell-app/app/build/outputs/apk/release/app-release.apk'
 
 android: debug android-store-lib android-app
 
