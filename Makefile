@@ -16,8 +16,8 @@ endif
 component=$(shell echo $${DOCKER_TAG:-unknown-x64}|cut -f1 -d-)
 arch=$(shell echo $${DOCKER_TAG:-unknown-x64}|cut -f2 -d-)
 # These should be moved to the global azure pipelines build
-BUILD_RUST_TOOLCHAIN=1.36.0
-BUILD_SCCACHE_VERSION=0.2.8
+BUILD_RUST_TOOLCHAIN=1.38.0
+BUILD_SCCACHE_VERSION=0.2.12
 
 # Build specific
 build_dir=dist
@@ -36,19 +36,31 @@ all: clean ${DOCKER_BUILD}
 clean:
 	rm -rf $(build_dir)
 
-docker-login:
+docker-login-dockerhub:
 	docker login -u $(DOCKERHUB_USER) -p $(DOCKERHUB_PASS)
 
+docker-login-github:
+	docker login docker.pkg.github.com -u $(GITHUB_PKG_USER) -p $(GITHUB_PKG_PASS)
+
+docker-login: docker-login-dockerhub docker-login-github
+
 getImageName = actyx/cosmos:$(1)-$(2)-$(3)
+getImageNameGithub = docker.pkg.github.com/actyx/cosmos/$(1):$(2)-$(3)
 
 docker-push-%: docker-build-% docker-login
 	$(eval DOCKER_IMAGE_NAME:=$(subst docker-push-,,$@))
 	$(eval IMAGE_NAME:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
+	$(eval IMAGE_NAME_GH:=$(call getImageNameGithub,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
 	docker push $(IMAGE_NAME)
+	docker tag $(IMAGE_NAME) $(IMAGE_NAME_GH)
+	docker push $(IMAGE_NAME_GH)
 	$(eval LATEST_IMAGE_TAG:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(arch),latest))
+	$(eval LATEST_IMAGE_TAG_GH:=$(call getImageNameGithub,$(DOCKER_IMAGE_NAME),$(arch),latest))
 	if [ $(GIT_BRANCH) == "master" ]; then \
 	  docker tag $(IMAGE_NAME) $(LATEST_IMAGE_TAG); \
 		docker push $(LATEST_IMAGE_TAG); \
+	  docker tag $(IMAGE_NAME) $(LATEST_IMAGE_TAG_GH); \
+		docker push $(LATEST_IMAGE_TAG_GH); \
 	fi
 
 $(DOCKER_BUILD_SBT): debug clean
