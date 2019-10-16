@@ -103,13 +103,15 @@ android-store-lib: debug
 	docker run -v `pwd`/rt-master:/root/src -it actyx/cosmos:build-android-rs-x64-latest cargo build -p store-lib --release --target i686-linux-android
 
 # 32 bit
-android-main: debug android-store-lib
+android-app: debug
 	mkdir -p ./android-shell-app/app/src/main/jniLibs/x86
 	cp ./rt-master/target/i686-linux-android/release/libaxstore.so ./android-shell-app/app/src/main/jniLibs/x86/libaxstore.so
+	./android-shell-app/bin/prepare-gradle-build.sh
 	pushd android-shell-app; \
-	./bin/prepare-gradle-build.sh; \
-	./gradlew clean ktlint build assembleRelease; \
+	./gradlew clean ktlint build assemble; \
 	popd
+
+android: debug android-store-lib android-app
 
 
 # Docker build dependencies
