@@ -29,7 +29,7 @@ DOCKER_BUILD_SBT = docker-build-bagsapconnector docker-build-flexishttpconnector
 print-%  : ; @echo $* = $($*)
 debug: print-GIT_BRANCH print-git_hash print-component print-arch print-build_dir
 
-.PHONY: all ${DOCKER_BUILD} clean
+.PHONY: all
 
 all: clean ${DOCKER_BUILD}
 
@@ -113,6 +113,9 @@ android-app: debug
 	echo 'APK: ./android-shell-app/app/build/outputs/apk/release/app-release.apk'
 
 android: debug android-store-lib android-app
+android-install: debug
+	adb uninstall io.actyx.shell
+	adb install ./android-shell-app/app/build/outputs/apk/release/app-release.apk
 
 
 # Docker build dependencies
