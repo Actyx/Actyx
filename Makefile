@@ -29,7 +29,7 @@ DOCKER_BUILD_SBT = docker-build-bagsapconnector docker-build-flexishttpconnector
 print-%  : ; @echo $* = $($*)
 debug: print-GIT_BRANCH print-git_hash print-component print-arch print-build_dir
 
-.PHONY: all ${DOCKER_BUILD} clean
+.PHONY: all
 
 all: clean ${DOCKER_BUILD}
 
@@ -97,6 +97,27 @@ ${DOCKER_BUILD}: debug clean
 	echo 'Cleaning up $(build_dir)'
 	rm -rf $(build_dir)
 
-# Dependencies
+
+# 32 bit
+android-store-lib: debug
+	docker run -v `pwd`/rt-master:/root/src -it actyx/cosmos:build-android-rs-x64-latest cargo build -p store-lib --release --target i686-linux-android
+
+# 32 bit
+android-app: debug
+	mkdir -p ./android-shell-app/app/src/main/jniLibs/x86
+	cp ./rt-master/target/i686-linux-android/release/libaxstore.so ./android-shell-app/app/src/main/jniLibs/x86/libaxstore.so
+	./android-shell-app/bin/prepare-gradle-build.sh
+	pushd android-shell-app; \
+	./gradlew clean ktlint build assemble; \
+	popd
+	echo 'APK: ./android-shell-app/app/build/outputs/apk/release/app-release.apk'
+
+android: debug android-store-lib android-app
+android-install: debug
+	adb uninstall io.actyx.shell
+	adb install ./android-shell-app/app/build/outputs/apk/release/app-release.apk
+
+
+# Docker build dependencies
 docker-build-hammerite: docker-build-adaclir
 
