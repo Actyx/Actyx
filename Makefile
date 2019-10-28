@@ -44,23 +44,27 @@ docker-login-github:
 
 docker-login: docker-login-dockerhub docker-login-github
 
-getImageName = actyx/cosmos:$(1)-$(2)-$(3)
-getImageNameGithub = docker.pkg.github.com/actyx/cosmos/$(1):$(2)-$(3)
+getImageName = docker.pkg.github.com/actyx/cosmos/$(1):$(2)-$(3)
+getRustTarget = $(if $(filter $(1),armv7hf),armv7-unknown-linux-gnueabihf,$(if $(filter $(1),win64),x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu))
+
+ifdef RETRY
+	RETRY_ONCE = false
+else
+	RETRY_ONCE = echo && echo "--> RETRYING target $@"; \
+               $(MAKE) $(MFLAGS) RETRY=1 $@ || \
+               (echo "--> RETRY target $@ FAILED. Continuing..."; true)
+endif
 
 docker-push-%: docker-build-% docker-login
 	$(eval DOCKER_IMAGE_NAME:=$(subst docker-push-,,$@))
 	$(eval IMAGE_NAME:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
-	$(eval IMAGE_NAME_GH:=$(call getImageNameGithub,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
-	docker push $(IMAGE_NAME)
-	docker tag $(IMAGE_NAME) $(IMAGE_NAME_GH)
-	docker push $(IMAGE_NAME_GH)
+	# docker push sometimes fails because of the remote registry
+	# this started to happen more often as we switched to GitHub Package Registry
+	docker push $(IMAGE_NAME) || $(RETRY_ONCE)
 	$(eval LATEST_IMAGE_TAG:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(arch),latest))
-	$(eval LATEST_IMAGE_TAG_GH:=$(call getImageNameGithub,$(DOCKER_IMAGE_NAME),$(arch),latest))
 	if [ $(GIT_BRANCH) == "master" ]; then \
 	  docker tag $(IMAGE_NAME) $(LATEST_IMAGE_TAG); \
 		docker push $(LATEST_IMAGE_TAG); \
-	  docker tag $(IMAGE_NAME) $(LATEST_IMAGE_TAG_GH); \
-		docker push $(LATEST_IMAGE_TAG_GH); \
 	fi
 
 $(DOCKER_BUILD_SBT): debug clean
@@ -71,14 +75,13 @@ $(DOCKER_BUILD_SBT): debug clean
 	IMAGE_NAME=$(IMAGE_NAME) sbt docker:publishLocal; \
 	popd
 
-
 ${DOCKER_BUILD}: debug clean
 	# must not use `component` here because of dependencies
 	$(eval DOCKER_IMAGE_NAME:=$(subst docker-build-,,$@))
 	$(eval IMAGE_NAME:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
 	mkdir -p $(build_dir)
 	cp -RPp $(DOCKER_DIR)/$(DOCKER_IMAGE_NAME)/* $(build_dir)
-	if [ "$(arch)" == 'arm' ]; then \
+	if [ "$(arch)" == 'armv7hf' ] && [ "$(DOCKER_IMAGE_NAME)" != "build-rs" ]; then \
 		cd $(build_dir); \
 		echo "arch is $(arch) - generating Dockerfile using gen-$(arch).sh"; \
 		mv Dockerfile Dockerfile-x64; \
@@ -89,14 +92,26 @@ ${DOCKER_BUILD}: debug clean
 		echo 'Running prepare script'; \
 		./prepare-image.sh ..; \
 	fi
+	$(eval TARGET:=$(call getRustTarget,$(arch)))
 	DOCKER_BUILDKIT=1 docker build -t $(IMAGE_NAME) \
-	--build-arg BUILD_DIR=$(build_dir) --build-arg ARCH_AND_GIT_TAG=$(arch)-$(git_hash) --build-arg IMAGE_NAME=actyx/cosmos \
-	--build-arg GIT_COMMIT=$(git_hash) --build-arg GIT_BRANCH=$(GIT_BRANCH) --build-arg BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
+	--build-arg BUILD_DIR=$(build_dir) \
+	--build-arg ARCH_AND_GIT_TAG=$(arch)-$(git_hash) \
+	--build-arg IMAGE_NAME=actyx/cosmos \
+	--build-arg GIT_COMMIT=$(git_hash) \
+	--build-arg GIT_BRANCH=$(GIT_BRANCH) \
+	--build-arg BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
  	--build-arg BUILD_SCCACHE_VERSION=$(BUILD_SCCACHE_VERSION) \
+	--build-arg TARGET=$(TARGET) \
 	-f $(build_dir)/Dockerfile .
-	echo 'Cleaning up $(build_dir)'
-	rm -rf $(build_dir)
 
+actyxos-binaries: debug clean docker-build-build-rs
+	test -n "$(DOCKER_TAG)"
+	mkdir -p $(build_dir)/binaries
+	docker build \
+	-t actyxos-binaries:latest \
+	--build-arg ARCH_AND_GIT_TAG=$(arch)-$(git_hash) \
+	-f $(DOCKER_DIR)/actyxos-binaries/Dockerfile .
+	docker run -v `pwd`/$(build_dir)/binaries:/binaries --user `id -u`:`id -g` --rm actyxos-binaries:latest
 
 # 32 bit
 android-store-lib: debug
@@ -112,7 +127,7 @@ android-app: debug
 	popd
 	echo 'APK: ./android-shell-app/app/build/outputs/apk/release/app-release.apk'
 
-android: debug android-store-lib android-app
+android: debug clean android-store-lib android-app
 android-install: debug
 	adb uninstall io.actyx.shell
 	adb install ./android-shell-app/app/build/outputs/apk/release/app-release.apk
@@ -120,4 +135,5 @@ android-install: debug
 
 # Docker build dependencies
 docker-build-hammerite: docker-build-adaclir
-
+docker-build-adaclir: docker-build-build-rs
+docker-build-storecli: docker-build-build-rs

@@ -1,0 +1,39 @@
+steps:
+  - script: |
+      export VAULT_ADDR=https://vault.actyx.net
+      export PATH=$HOME/bin:$PATH
+      vault login -method aws role=ops-travis-ci 2>&1
+      android-shell-app/bin/prepare-gradle-build.sh
+    displayName: 'Prepare Android build'
+    condition: contains(variables['BUILD_STRING'],'[build-android]')
+    env:
+      # Map secrets to env vars
+      AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+      AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+      PATH: $(PATH):$(HOME)/bin
+
+  - script: |
+      cargo build -p store-lib --release --target i686-linux-android
+      mkdir -p ../android-shell-app/app/src/main/jniLibs/x86/
+      cp ./target/i686-linux-android/release/libaxstore.so ../android-shell-app/app/src/main/jniLibs/x86/libaxstore.so
+    displayName: 'Build & copy store lib (x86)'
+    workingDirectory: 'rt-master'
+    condition: contains(variables['BUILD_STRING'],'[build-android]')
+
+  - task: Gradle@2
+    inputs:
+      workingDirectory: 'android-shell-app'
+      gradleWrapperFile: 'android-shell-app/gradlew'
+      jdkVersionOption: 1.8
+      javaHomeOption: 'JDKVersion'
+      tasks: 'clean ktlint build assembleRelease'
+    displayName: 'Compile Android App (x86)'
+    env:
+      JAVA_HOME_8_X64: /usr/lib/jvm/java-8-openjdk-amd64
+    condition: contains(variables['BUILD_STRING'],'[build-android]')
+
+  - task: ShellScript@2
+    inputs:
+      scriptPath: android-shell-app/bin/upload-ipfs.sh
+    displayName: 'Upload to IPFS'
+    condition: contains(variables['BUILD_STRING'],'[build-android]')
