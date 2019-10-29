@@ -20,7 +20,7 @@ BUILD_RUST_TOOLCHAIN=1.38.0
 BUILD_SCCACHE_VERSION=0.2.12
 
 # Build specific
-build_dir=dist
+build_dir=dist/build
 DOCKER_DIR=ops/docker/images
 DOCKER_BUILD = $(shell arr=(`ls ${DOCKER_DIR}`); printf "docker-build-%s\n " "$${arr[@]}")
 DOCKER_BUILD_SBT = docker-build-bagsapconnector docker-build-flexishttpconnector docker-build-flexisftpconnector docker-build-opcuaconnector docker-build-iafisconnector docker-build-batchcenterconnector
@@ -36,16 +36,12 @@ all: clean ${DOCKER_BUILD}
 clean:
 	rm -rf $(build_dir)
 
-docker-login-dockerhub:
-	docker login -u $(DOCKERHUB_USER) -p $(DOCKERHUB_PASS)
-
 docker-login-github:
 	docker login docker.pkg.github.com -u $(GITHUB_PKG_USER) -p $(GITHUB_PKG_PASS)
 
-docker-login: docker-login-dockerhub docker-login-github
+docker-login: docker-login-github
 
 getImageName = docker.pkg.github.com/actyx/cosmos/$(1):$(2)-$(3)
-getRustTarget = $(if $(filter $(1),armv7hf),armv7-unknown-linux-gnueabihf,$(if $(filter $(1),win64),x86_64-pc-windows-gnu,x86_64-unknown-linux-gnu))
 
 ifdef RETRY
 	RETRY_ONCE = false
@@ -81,20 +77,21 @@ ${DOCKER_BUILD}: debug clean
 	$(eval IMAGE_NAME:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
 	mkdir -p $(build_dir)
 	cp -RPp $(DOCKER_DIR)/$(DOCKER_IMAGE_NAME)/* $(build_dir)
-	if [ "$(arch)" == 'armv7hf' ] && [ "$(DOCKER_IMAGE_NAME)" != "build-rs" ]; then \
+	if [ "$(arch)" == 'armv7hf' ]; then \
 		cd $(build_dir); \
 		echo "arch is $(arch) - generating Dockerfile using gen-$(arch).sh"; \
 		mv Dockerfile Dockerfile-x64; \
-		../ops/docker/gen-$(arch).sh ./Dockerfile-x64 ./Dockerfile; \
+		../../ops/docker/gen-$(arch).sh ./Dockerfile-x64 ./Dockerfile; \
 	fi
 	if [ -f $(build_dir)/prepare-image.sh ]; then \
+	 	export ARCH=$(arch); \
 		cd $(build_dir); \
 		echo 'Running prepare script'; \
 		./prepare-image.sh ..; \
 	fi
-	$(eval TARGET:=$(call getRustTarget,$(arch)))
 	DOCKER_BUILDKIT=1 docker build -t $(IMAGE_NAME) \
 	--build-arg BUILD_DIR=$(build_dir) \
+	--build-arg ARCH=$(arch) \
 	--build-arg ARCH_AND_GIT_TAG=$(arch)-$(git_hash) \
 	--build-arg IMAGE_NAME=actyx/cosmos \
 	--build-arg GIT_COMMIT=$(git_hash) \
@@ -103,19 +100,49 @@ ${DOCKER_BUILD}: debug clean
  	--build-arg BUILD_SCCACHE_VERSION=$(BUILD_SCCACHE_VERSION) \
 	--build-arg TARGET=$(TARGET) \
 	-f $(build_dir)/Dockerfile .
+	echo "Cleaning up $(build_dir)"
+	rm -rf $(build_dir)
 
-actyxos-binaries: debug clean docker-build-build-rs
-	test -n "$(DOCKER_TAG)"
-	mkdir -p $(build_dir)/binaries
-	docker build \
-	-t actyxos-binaries:latest \
-	--build-arg ARCH_AND_GIT_TAG=$(arch)-$(git_hash) \
-	-f $(DOCKER_DIR)/actyxos-binaries/Dockerfile .
-	docker run -v `pwd`/$(build_dir)/binaries:/binaries --user `id -u`:`id -g` --rm actyxos-binaries:latest
+
+define build_bins_and_move
+	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
+	mkdir -p $(1)
+	docker run -v `pwd`/rt-master:/src \
+	-u builder \
+	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-it docker.pkg.github.com/actyx/cosmos/buildrs:x64-latest \
+	cargo build --release --target $(2) --bins
+	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -executable  \
+		-exec cp {} $(1) \;
+	echo "Please find your build artifacts in $(1)."
+endef
+
+actyxos-bin-win64: debug clean
+	$(eval ARCH?=win64)
+	$(eval TARGET:=x86_64-pc-windows-gnu)
+	$(eval OUTPUT:=./dist/bin/$(ARCH))
+	$(call build_bins_and_move,$(OUTPUT),$(TARGET))
+
+actyxos-bin-x64: debug clean
+	$(eval ARCH?=x64)
+	$(eval TARGET:=x86_64-unknown-linux-gnu)
+	$(eval OUTPUT:=./dist/bin/$(ARCH))
+	$(call build_bins_and_move,$(OUTPUT),$(TARGET))
+
+actyxos-bin-armv7hf:
+	$(eval ARCH?=armv7hf)
+	$(eval TARGET:=armv7-unknown-linux-gnueabihf)
+	$(eval OUTPUT:=./dist/bin/$(ARCH))
+	$(call build_bins_and_move,$(OUTPUT),$(TARGET))
 
 # 32 bit
 android-store-lib: debug
-	docker run -v `pwd`/rt-master:/root/src -it actyx/cosmos:build-android-rs-x64-latest cargo build -p store-lib --release --target i686-linux-android
+	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
+	docker run -v `pwd`/rt-master:/src \
+	-u builder \
+	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-it docker.pkg.github.com/actyx/cosmos/buildrs:x64-latest \
+	cargo build -p store-lib --release --target i686-linux-android
 
 # 32 bit
 android-app: debug
@@ -132,8 +159,3 @@ android-install: debug
 	adb uninstall io.actyx.shell
 	adb install ./android-shell-app/app/build/outputs/apk/release/app-release.apk
 
-
-# Docker build dependencies
-docker-build-hammerite: docker-build-adaclir
-docker-build-adaclir: docker-build-build-rs
-docker-build-storecli: docker-build-build-rs

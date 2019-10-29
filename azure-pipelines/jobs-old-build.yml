@@ -1,0 +1,168 @@
+jobs:
+  - job: defineBuildStructure
+    displayName: Check skip/build tags
+    steps:
+    # Consider not sourcing but just executing, later
+    - script: source build/bin/decide-build-structure.sh
+      name: setBuildVars
+    - script: |
+        BUILD_LINK=https://dev.azure.com/ax-ci/Cosmos/_build/results?buildId=$BUILD_BUILDID
+        build/bin/post-to-slack.sh -u "Actyx Build Notification" -m "Build $BUILD_BUILDID (triggered by $BUILD_SOURCEVERSIONAUTHOR) *failed* in the main build stage, module *$MODULE*. Click link for details => $BUILD_LINK" -a "danger"
+      condition: failed()
+      displayName: "Ping Slack on failing job"
+
+  - job: mainbuild
+    variables:
+      BUILD_STRING: $[ dependencies.defineBuildStructure.outputs['setBuildVars.BUILD_STRING'] ]
+    dependsOn: defineBuildStructure
+    displayName: Build
+    pool:
+      name: Default
+    strategy:
+      matrix:
+        pond:
+          MODULE: 'pond'
+        ops:
+          MODULE: 'ops'
+        node-red:
+          MODULE: 'node-red'
+        docs:
+          MODULE: 'docs'
+        build:
+          MODULE: 'build'
+        sdks:
+          MODULE: 'sdks'
+        connectors:
+          MODULE: 'connectors'
+          LANGUAGE: 'rust'
+    workspace:
+      clean: all
+    steps:
+    - script: |
+        printf "Checking if $BUILD_STRING contains [build-$MODULE], and setting CURRENT_MODULE_BUILD_TAG accordingly.\nSee Azure dashboard for for skip/build decision.\n"
+        echo "##vso[task.setvariable variable=CURRENT_MODULE_BUILD_TAG][build-$MODULE]"
+      displayName: Decide whether to build to skip job (modules)
+
+    - script: |
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
+        export NVM_DIR="$HOME/.nvm"
+        source "$NVM_DIR/nvm.sh"
+        nvm install
+        echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee /etc/apt/sources.list.d/sbt.list
+        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
+        sudo apt-get update && sudo apt-get install sbt -y
+      displayName: 'Install nvm & sbt'
+      condition: contains(variables['BUILD_STRING'],variables['CURRENT_MODULE_BUILD_TAG'])
+
+    - template: steps-bootstrap.yml
+
+    - script: |
+        if [ "$LANGUAGE" == 'rust' ]
+        then
+            curl https://sh.rustup.rs -sSf | sh -s -- -y
+            # Use a fixed rust toolchain
+            rustup default 1.38.0
+            rustc --version
+            rustup component add rustfmt
+            rustup component add clippy
+        fi
+        source "$NVM_DIR/nvm.sh"
+        nvm use
+        build/bin/build-module.sh $(MODULE)
+      displayName: 'Build $(MODULE)'
+      env:
+        # Map secrets to env vars
+        DOCKERHUB_PASS: $(SECRET_DOCKERHUB_PASS)
+        GITHUB_PKG_PASS: $(SECRET_GITHUB_PKG_PASS)
+        PATH: $(HOME)/.cargo/bin:$(PATH):$(HOME)/bin
+        NVM_DIR: $(HOME)/.nvm
+        # produce large dumps when rust tests fail
+        RUST_BACKTRACE: full
+      condition: contains(variables['BUILD_STRING'],variables['CURRENT_MODULE_BUILD_TAG'])
+
+    - script: |
+        BUILD_LINK=https://dev.azure.com/ax-ci/Cosmos/_build/results?buildId=$BUILD_BUILDID
+        build/bin/post-to-slack.sh -u "Actyx Build Notification" -m "Build $BUILD_BUILDID (triggered by $BUILD_SOURCEVERSIONAUTHOR) *failed* in the main build stage, module *$MODULE*. Click link for details => $BUILD_LINK" -a "danger"
+      condition: failed()
+      displayName: "Ping Slack on failing job"
+
+  # Build the docker containers
+  - job: docker
+    dependsOn: defineBuildStructure
+    variables:
+      BUILD_STRING: $[ dependencies.defineBuildStructure.outputs['setBuildVars.BUILD_STRING'] ]
+    displayName: Docker
+    pool:
+      name: Default
+    timeoutInMinutes: 0
+    strategy:
+      matrix:
+        headless-x64:
+          DOCKER_TAG: 'headless-x64'
+        nodered-x64:
+          DOCKER_TAG: 'nodered-x64'
+        ipfs-x64:
+          DOCKER_TAG: 'ipfs-x64'
+        logscraper-x64:
+          DOCKER_TAG: 'logscraper-x64'
+        headless-armv7hf:
+          DOCKER_TAG: 'headless-armv7hf'
+        nodered-armv7hf:
+          DOCKER_TAG: 'nodered-armv7hf'
+        ipfs-armv7hf:
+          DOCKER_TAG: 'ipfs-armv7hf'
+        bagsapconnector-x64:
+          DOCKER_TAG: 'bagsapconnector-x64'
+          SRC_PATH: './connectors/bag-sap'
+        flexishttpconnector-x64:
+          DOCKER_TAG: 'flexishttpconnector-x64'
+          SRC_PATH: './connectors/flexis/http'
+        flexisftpconnector-x64:
+          DOCKER_TAG: 'flexisftpconnector-x64'
+          SRC_PATH: './connectors/flexis/ftp'
+        opcuaconnector-x64:
+          DOCKER_TAG: 'opcuaconnector-x64'
+          SRC_PATH: './connectors/opc-ua'
+        iafisconnector-x64:
+          DOCKER_TAG: 'iafisconnector-x64'
+          SRC_PATH: './connectors/iafis'
+        batchcenterconnector-x64:
+          DOCKER_TAG: 'batchcenterconnector-x64'
+          SRC_PATH: './connectors/batchcenter'
+        logscraper-armv7hf:
+          DOCKER_TAG: 'logscraper-armv7hf'
+        buildrs:
+          DOCKER_TAG: 'buildrs-x64'
+    steps:
+    - script: |
+        printf "Checking if $BUILD_STRING contains [build-$DOCKER_TAG], and setting CURRENT_CONTAINER_BUILD_TAG accordingly:\nSee Azure dashboard for for skip/build decision\n"
+        echo "##vso[task.setvariable variable=CURRENT_CONTAINER_BUILD_TAG][build-$DOCKER_TAG]"
+      displayName: Decide whether to build to skip job (docker)
+
+    - script: |
+        build/bin/install-vault.sh
+      env:
+        # Map secrets to env vars
+        AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+        AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+      condition: contains(variables['BUILD_STRING'],variables['CURRENT_CONTAINER_BUILD_TAG'])
+      displayName: 'Setup Vault'
+
+    - script: |
+        set -e
+        make docker-push-`echo $DOCKER_TAG|cut -f1 -d-`
+        export VAULT_ADDR=https://vault.actyx.net
+        $HOME/bin/vault login -method aws role=ops-travis-ci 2>&1 > /dev/null
+      env:
+          DOCKERHUB_PASS: $(SECRET_DOCKERHUB_PASS)
+          GITHUB_PKG_PASS: $(SECRET_GITHUB_PKG_PASS)
+          AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+          AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+      condition: contains(variables['BUILD_STRING'],variables['CURRENT_CONTAINER_BUILD_TAG'])
+      displayName: build $(DOCKER_TAG)
+
+    - script: |
+        BUILD_LINK=https://dev.azure.com/ax-ci/Cosmos/_build/results?buildId=$BUILD_BUILDID
+        build/bin/post-to-slack.sh -u "Actyx Build Notification" -m "Build $BUILD_BUILDID (triggered by $BUILD_SOURCEVERSIONAUTHOR) *failed* in the docker container build stage, specifically on *$DOCKER_TAG*. Click link for details => $BUILD_LINK" -a "danger"
+      condition: failed()
+      displayName: "Ping Slack on failing job"
