@@ -44,7 +44,7 @@ docker-login-dockerhub:
 
 docker-login: docker-login-dockerhub docker-login-github
 
-getImageName = actyx/cosmos:$(1)-$(2)-$(3)
+getImageNameDockerhub = actyx/cosmos:$(1)-$(2)-$(3)
 getImageNameGithub = docker.pkg.github.com/actyx/cosmos/$(1):$(2)-$(3)
 
 ifdef RETRY
@@ -60,13 +60,14 @@ endif
 # 2nd arg: tag before the trailing `-<git>` / `-latest`
 define fn_docker_push
 	$(eval DOCKER_IMAGE_NAME:=$(1))
-	$(eval IMAGE_NAME:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(2),$(git_hash)))
+	$(eval IMAGE_NAME:=$(call getImageNameDockerhub,$(DOCKER_IMAGE_NAME),$(2),$(git_hash)))
+	$(eval IMAGE_NAME_GH:=$(call getImageNameGithub,$(DOCKER_IMAGE_NAME),$(2),$(git_hash)))
+	docker tag $(IMAGE_NAME_GH) $(IMAGE_NAME)
 	docker push $(IMAGE_NAME)
-	docker tag $(IMAGE_NAME) $(IMAGE_NAME_GH)
 	# docker push sometimes fails because of the remote registry
 	# this started to happen more often as we switched to GitHub Package Registry
 	docker push $(IMAGE_NAME_GH) || $(RETRY_ONCE)
-	$(eval LATEST_IMAGE_TAG:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(2),latest))
+	$(eval LATEST_IMAGE_TAG:=$(call getImageNameDockerhub,$(DOCKER_IMAGE_NAME),$(2),latest))
 	$(eval LATEST_IMAGE_TAG_GH:=$(call getImageNameGithub,$(DOCKER_IMAGE_NAME),$(2),latest))
 	if [ $(GIT_BRANCH) == "master" ]; then \
 		docker tag $(IMAGE_NAME) $(LATEST_IMAGE_TAG); \
@@ -86,7 +87,7 @@ docker-push-%: docker-build-% docker-login
 
 $(DOCKER_BUILD_SBT): debug clean
 	$(eval DOCKER_IMAGE_NAME:=$(subst docker-build-,,$@))
-	$(eval IMAGE_NAME:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
+	$(eval IMAGE_NAME:=$(call getImageNameGithub,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
 	echo "Using sbt-native-packager to generate the docker image..";
 	pushd $(SRC_PATH); \
 	IMAGE_NAME=$(IMAGE_NAME) sbt docker:publishLocal; \
@@ -97,7 +98,7 @@ $(DOCKER_BUILD_SBT): debug clean
 # 1st arg: Target toolchain
 define fn_docker_build_musl
 	$(eval TARGET:=$(1))
-	$(eval IMAGE_NAME:=$(call getImageName,musl,$(TARGET),$(git_hash)))
+	$(eval IMAGE_NAME:=$(call getImageNameGithub,musl,$(TARGET),$(git_hash)))
 	pushd $(DOCKER_DIR)/musl; \
 	DOCKER_BUILDKIT=1 docker build -t $(IMAGE_NAME)  \
 	--build-arg BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
@@ -109,7 +110,7 @@ endef
 ${DOCKER_BUILD}: debug clean
 	# must not use `component` here because of dependencies
 	$(eval DOCKER_IMAGE_NAME:=$(subst docker-build-,,$@))
-	$(eval IMAGE_NAME:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
+	$(eval IMAGE_NAME:=$(call getImageNameGithub,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
 	mkdir -p $(build_dir)
 	cp -RPp $(DOCKER_DIR)/$(DOCKER_IMAGE_NAME)/* $(build_dir)
 	if [ "$(arch)" == 'armv7hf' ]; then \
