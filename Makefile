@@ -39,9 +39,13 @@ clean:
 docker-login-github:
 	docker login docker.pkg.github.com -u $(GITHUB_PKG_USER) -p $(GITHUB_PKG_PASS)
 
-docker-login: docker-login-github
+docker-login-dockerhub:
+￼	docker login -u $(DOCKERHUB_USER) -p $(DOCKERHUB_PASS)
 
-getImageName = docker.pkg.github.com/actyx/cosmos/$(1):$(2)-$(3)
+docker-login: docker-login-dockerhub docker-login-github
+
+getImageName = actyx/cosmos:$(1)-$(2)-$(3)
+getImageNameGithub = docker.pkg.github.com/actyx/cosmos/$(1):$(2)-$(3)
 
 ifdef RETRY
 	RETRY_ONCE = false
@@ -51,16 +55,24 @@ else
                (echo "--> RETRY target $@ FAILED. Continuing..."; true)
 endif
 
+# Push to both DockerHub and GitHub Package Registry
+# 1st arg: Name of the docker image
+# 2nd arg: tag before the trailing `-<git>` / `-latest`
 define fn_docker_push
 	$(eval DOCKER_IMAGE_NAME:=$(1))
 	$(eval IMAGE_NAME:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(2),$(git_hash)))
+	docker push $(IMAGE_NAME)
+	docker tag $(IMAGE_NAME) $(IMAGE_NAME_GH)
 	# docker push sometimes fails because of the remote registry
 	# this started to happen more often as we switched to GitHub Package Registry
-	docker push $(IMAGE_NAME) || $(RETRY_ONCE)
+	docker push $(IMAGE_NAME_GH) || $(RETRY_ONCE)
 	$(eval LATEST_IMAGE_TAG:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(2),latest))
+	$(eval LATEST_IMAGE_TAG_GH:=$(call getImageNameGithub,$(DOCKER_IMAGE_NAME),$(2),latest))
 	if [ $(GIT_BRANCH) == "master" ]; then \
-	  docker tag $(IMAGE_NAME) $(LATEST_IMAGE_TAG); \
+		docker tag $(IMAGE_NAME) $(LATEST_IMAGE_TAG); \
 		docker push $(LATEST_IMAGE_TAG); \
+		docker tag $(IMAGE_NAME) $(LATEST_IMAGE_TAG_GH); \
+		docker push $(LATEST_IMAGE_TAG_GH); \
 	fi
 endef
 
@@ -70,15 +82,7 @@ docker-push-musl: docker-build-musl docker-login
 
 docker-push-%: docker-build-% docker-login
 	$(eval DOCKER_IMAGE_NAME:=$(subst docker-push-,,$@))
-	$(eval IMAGE_NAME:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
-	# docker push sometimes fails because of the remote registry
-	# this started to happen more often as we switched to GitHub Package Registry
-	docker push $(IMAGE_NAME) || $(RETRY_ONCE)
-	$(eval LATEST_IMAGE_TAG:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(arch),latest))
-	if [ $(GIT_BRANCH) == "master" ]; then \
-	  docker tag $(IMAGE_NAME) $(LATEST_IMAGE_TAG); \
-		docker push $(LATEST_IMAGE_TAG); \
-	fi
+	$(call fn_docker_push,$(DOCKER_IMAGE_NAME),$(arch))
 
 $(DOCKER_BUILD_SBT): debug clean
 	$(eval DOCKER_IMAGE_NAME:=$(subst docker-build-,,$@))
@@ -88,6 +92,9 @@ $(DOCKER_BUILD_SBT): debug clean
 	IMAGE_NAME=$(IMAGE_NAME) sbt docker:publishLocal; \
 	popd
 
+# Build the Dockerfile located at `ops/docker/images/musl` for
+# the specified $TARGET toolchain.
+# 1st arg: Target toolchain
 define fn_docker_build_musl
 	$(eval TARGET:=$(1))
 	$(eval IMAGE_NAME:=$(call getImageName,musl,$(TARGET),$(git_hash)))
@@ -133,8 +140,11 @@ ${DOCKER_BUILD}: debug clean
 docker-build-musl:
 	$(call fn_docker_build_musl,x86_64-unknown-linux-musl)
 	$(call fn_docker_build_musl,armv7-unknown-linux-musleabihf)
-	
 
+# Build ActyxOS binaries with the `musl` Docker image for the
+# specified toolchain.
+# 1st arg: output dir (will be created) of the final artifacts
+# 2nd arg: target toolchain
 define build_bins_and_move
 	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
 	mkdir -p $(1)
