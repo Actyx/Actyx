@@ -28,7 +28,7 @@ steps:
       gradleWrapperFile: 'android-shell-app/gradlew'
       jdkVersionOption: 1.8
       javaHomeOption: 'JDKVersion'
-      tasks: 'clean ktlint build assembleRelease'
+      tasks: 'clean ktlint build assembleRelease androidGitVersion'
     displayName: 'Compile Android App (x86)'
     env:
       JAVA_HOME_8_X64: /usr/lib/jvm/java-8-openjdk-amd64
