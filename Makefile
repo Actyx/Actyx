@@ -40,7 +40,7 @@ docker-login-github:
 	docker login docker.pkg.github.com -u $(GITHUB_PKG_USER) -p $(GITHUB_PKG_PASS)
 
 docker-login-dockerhub:
-￼	docker login -u $(DOCKERHUB_USER) -p $(DOCKERHUB_PASS)
+	docker login -u $(DOCKERHUB_USER) -p $(DOCKERHUB_PASS)
 
 docker-login: docker-login-dockerhub docker-login-github
 
