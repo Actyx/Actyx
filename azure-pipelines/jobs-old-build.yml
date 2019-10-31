@@ -133,6 +133,8 @@ jobs:
           DOCKER_TAG: 'logscraper-armv7hf'
         buildrs:
           DOCKER_TAG: 'buildrs-x64'
+        musl:
+          DOCKER_TAG: 'musl-x64'
     steps:
     - script: |
         printf "Checking if $BUILD_STRING contains [build-$DOCKER_TAG], and setting CURRENT_CONTAINER_BUILD_TAG accordingly:\nSee Azure dashboard for for skip/build decision\n"

@@ -51,6 +51,23 @@ else
                (echo "--> RETRY target $@ FAILED. Continuing..."; true)
 endif
 
+define fn_docker_push
+	$(eval DOCKER_IMAGE_NAME:=$(1))
+	$(eval IMAGE_NAME:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(2),$(git_hash)))
+	# docker push sometimes fails because of the remote registry
+	# this started to happen more often as we switched to GitHub Package Registry
+	docker push $(IMAGE_NAME) || $(RETRY_ONCE)
+	$(eval LATEST_IMAGE_TAG:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(2),latest))
+	if [ $(GIT_BRANCH) == "master" ]; then \
+	  docker tag $(IMAGE_NAME) $(LATEST_IMAGE_TAG); \
+		docker push $(LATEST_IMAGE_TAG); \
+	fi
+endef
+
+docker-push-musl: docker-build-musl docker-login
+	$(call fn_docker_push,musl,x86_64-unknown-linux-musl)
+	$(call fn_docker_push,musl,armv7-unknown-linux-musleabihf)
+
 docker-push-%: docker-build-% docker-login
 	$(eval DOCKER_IMAGE_NAME:=$(subst docker-push-,,$@))
 	$(eval IMAGE_NAME:=$(call getImageName,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
@@ -70,6 +87,17 @@ $(DOCKER_BUILD_SBT): debug clean
 	pushd $(SRC_PATH); \
 	IMAGE_NAME=$(IMAGE_NAME) sbt docker:publishLocal; \
 	popd
+
+define fn_docker_build_musl
+	$(eval TARGET:=$(1))
+	$(eval IMAGE_NAME:=$(call getImageName,musl,$(TARGET),$(git_hash)))
+	pushd $(DOCKER_DIR)/musl; \
+	DOCKER_BUILDKIT=1 docker build -t $(IMAGE_NAME)  \
+	--build-arg BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
+ 	--build-arg BUILD_SCCACHE_VERSION=$(BUILD_SCCACHE_VERSION) \
+	--build-arg TARGET=$(TARGET) \
+	-f Dockerfile .
+endef
 
 ${DOCKER_BUILD}: debug clean
 	# must not use `component` here because of dependencies
@@ -98,11 +126,14 @@ ${DOCKER_BUILD}: debug clean
 	--build-arg GIT_BRANCH=$(GIT_BRANCH) \
 	--build-arg BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
  	--build-arg BUILD_SCCACHE_VERSION=$(BUILD_SCCACHE_VERSION) \
-	--build-arg TARGET=$(TARGET) \
 	-f $(build_dir)/Dockerfile .
 	echo "Cleaning up $(build_dir)"
 	rm -rf $(build_dir)
 
+docker-build-musl:
+	$(call fn_docker_build_musl,x86_64-unknown-linux-musl)
+	$(call fn_docker_build_musl,armv7-unknown-linux-musleabihf)
+	
 
 define build_bins_and_move
 	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
@@ -110,7 +141,7 @@ define build_bins_and_move
 	docker run -v `pwd`/rt-master:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
-	-it docker.pkg.github.com/actyx/cosmos/buildrs:x64-latest \
+	-it docker.pkg.github.com/actyx/cosmos/musl:$(2)-latest \
 	cargo build --release --target $(2) --bins
 	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -executable  \
 		-exec cp {} $(1) \;
@@ -119,19 +150,19 @@ endef
 
 actyxos-bin-win64: debug clean
 	$(eval ARCH?=win64)
-	$(eval TARGET:=x86_64-pc-windows-gnu)
+	$(eval TARGET:=x86_64-pc-windows-musl)
 	$(eval OUTPUT:=./dist/bin/$(ARCH))
 	$(call build_bins_and_move,$(OUTPUT),$(TARGET))
 
 actyxos-bin-x64: debug clean
 	$(eval ARCH?=x64)
-	$(eval TARGET:=x86_64-unknown-linux-gnu)
+	$(eval TARGET:=x86_64-unknown-linux-musl)
 	$(eval OUTPUT:=./dist/bin/$(ARCH))
 	$(call build_bins_and_move,$(OUTPUT),$(TARGET))
 
 actyxos-bin-armv7hf:
 	$(eval ARCH?=armv7hf)
-	$(eval TARGET:=armv7-unknown-linux-gnueabihf)
+	$(eval TARGET:=armv7-unknown-linux-musleabihf)
 	$(eval OUTPUT:=./dist/bin/$(ARCH))
 	$(call build_bins_and_move,$(OUTPUT),$(TARGET))
 
@@ -158,4 +189,3 @@ android: debug clean android-store-lib android-app
 android-install: debug
 	adb uninstall io.actyx.shell
 	adb install ./android-shell-app/app/build/outputs/apk/release/app-release.apk
-
