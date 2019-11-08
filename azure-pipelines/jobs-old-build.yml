@@ -1,20 +1,9 @@
 jobs:
-  - job: defineBuildStructure
-    displayName: Check skip/build tags
-    steps:
-    # Consider not sourcing but just executing, later
-    - script: source build/bin/decide-build-structure.sh
-      name: setBuildVars
-    - script: |
-        BUILD_LINK=https://dev.azure.com/ax-ci/Cosmos/_build/results?buildId=$BUILD_BUILDID
-        build/bin/post-to-slack.sh -u "Actyx Build Notification" -m "Build $BUILD_BUILDID (triggered by $BUILD_SOURCEVERSIONAUTHOR) *failed* in the main build stage, module *$MODULE*. Click link for details => $BUILD_LINK" -a "danger"
-      condition: failed()
-      displayName: "Ping Slack on failing job"
 
   - job: mainbuild
+    dependsOn: getBuildString
     variables:
-      BUILD_STRING: $[ dependencies.defineBuildStructure.outputs['setBuildVars.BUILD_STRING'] ]
-    dependsOn: defineBuildStructure
+      BUILD_STRING: $[ dependencies.getBuildString.outputs['setBuildString.BUILD_STRING'] ]
     displayName: Build
     pool:
       name: Default
@@ -39,7 +28,7 @@ jobs:
       clean: all
     steps:
     - script: |
-        printf "Checking if $BUILD_STRING contains [build-$MODULE], and setting CURRENT_MODULE_BUILD_TAG accordingly.\nSee Azure dashboard for for skip/build decision.\n"
+        printf "Setting CURRENT_MODULE_BUILD_TAG to [build-$MODULE].\n"
         echo "##vso[task.setvariable variable=CURRENT_MODULE_BUILD_TAG][build-$MODULE]"
       displayName: Decide whether to build to skip job (modules)
 
@@ -88,9 +77,9 @@ jobs:
 
   # Build the docker containers
   - job: docker
-    dependsOn: defineBuildStructure
+    dependsOn: getBuildString
     variables:
-      BUILD_STRING: $[ dependencies.defineBuildStructure.outputs['setBuildVars.BUILD_STRING'] ]
+      BUILD_STRING: $[ dependencies.getBuildString.outputs['setBuildString.BUILD_STRING'] ]
     displayName: Docker
     pool:
       name: Default
@@ -137,7 +126,7 @@ jobs:
           DOCKER_TAG: 'musl-x64'
     steps:
     - script: |
-        printf "Checking if $BUILD_STRING contains [build-$DOCKER_TAG], and setting CURRENT_CONTAINER_BUILD_TAG accordingly:\nSee Azure dashboard for for skip/build decision\n"
+        printf "Setting CURRENT_CONTAINER_BUILD_TAG to [build-$DOCKER_TAG]\n"
         echo "##vso[task.setvariable variable=CURRENT_CONTAINER_BUILD_TAG][build-$DOCKER_TAG]"
       displayName: Decide whether to build to skip job (docker)
 
