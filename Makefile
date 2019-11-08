@@ -153,7 +153,7 @@ define build_bins_and_move
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it docker.pkg.github.com/actyx/cosmos/musl:$(2)-latest \
-	cargo build --release --target $(2) --bins
+	cargo --locked build --release --target $(2) --bins
 	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -executable  \
 		-exec cp {} $(1) \;
 	echo "Please find your build artifacts in $(1)."
@@ -184,7 +184,7 @@ android-store-lib: debug
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it docker.pkg.github.com/actyx/cosmos/buildrs:x64-latest \
-	cargo build -p store-lib --release --target i686-linux-android
+	cargo --locked build -p store-lib --release --target i686-linux-android
 
 # 32 bit
 android-app: debug

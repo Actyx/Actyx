@@ -14,7 +14,7 @@ steps:
       PATH: $(PATH):$(HOME)/bin
 
   - script: |
-      cargo build -p store-lib --release --target i686-linux-android
+      cargo --locked build -p store-lib --release --target i686-linux-android
       mkdir -p ../android-shell-app/app/src/main/jniLibs/x86/
       cp ./target/i686-linux-android/release/libaxstore.so ../android-shell-app/app/src/main/jniLibs/x86/libaxstore.so
     displayName: 'Build & copy store lib (x86)'
