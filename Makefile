@@ -16,7 +16,7 @@ endif
 component=$(shell echo $${DOCKER_TAG:-unknown-x64}|cut -f1 -d-)
 arch=$(shell echo $${DOCKER_TAG:-unknown-x64}|cut -f2 -d-)
 # These should be moved to the global azure pipelines build
-BUILD_RUST_TOOLCHAIN=1.38.0
+BUILD_RUST_TOOLCHAIN=1.39.0
 BUILD_SCCACHE_VERSION=0.2.12
 
 # Build specific
