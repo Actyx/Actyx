@@ -37,9 +37,25 @@ jobs:
         export NVM_DIR="$HOME/.nvm"
         source "$NVM_DIR/nvm.sh"
         nvm install
-        echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee /etc/apt/sources.list.d/sbt.list
-        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
-        sudo apt-get update && sudo apt-get install sbt -y
+        # Get SBT via sdkman instead of through the original repo 
+        # Comment this and uncomment the version below if the repo stop mysteriously dying / getting hash mismatches
+        # https://www.scala-sbt.org/1.x/docs/Installing-sbt-on-Linux.html
+        if ! [ -x "$(command -v sbt)" ]; then
+          echo "Attempting to install SBT using SDKMAN"
+          curl -s "https://get.sdkman.io" | bash
+          source "$HOME/.sdkman/bin/sdkman-init.sh" && sdk version
+          sdk list java
+          # Recommended version was 11.0.4.hs-adpt but it's gone from SDKMAN by now, so using one above
+          sdk install java 11.0.5.hs-adpt
+          sdk install sbt
+        else
+          echo "SBT already installed, skipping install."
+        fi
+        # UnComment this and comment the above sdkman version if repo stops mysteriosuly dying / getting hash mismatches
+        # echo "Attempting to install SBT using the Debian SBT APT repo (bintray)"
+        # echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee /etc/apt/sources.list.d/sbt.list
+        # sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
+        # sudo apt-get update && sudo apt-get install sbt -y
       displayName: 'Install nvm & sbt'
       condition: contains(variables['BUILD_STRING'],variables['CURRENT_MODULE_BUILD_TAG'])
 
