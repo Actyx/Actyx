@@ -86,8 +86,7 @@ jobs:
       condition: contains(variables['BUILD_STRING'],variables['CURRENT_MODULE_BUILD_TAG'])
 
     - script: |
-        BUILD_LINK=https://dev.azure.com/ax-ci/Cosmos/_build/results?buildId=$BUILD_BUILDID
-        build/bin/post-to-slack.sh -u "Actyx Build Notification" -m "Build $BUILD_BUILDID (triggered by $BUILD_SOURCEVERSIONAUTHOR) *failed* in the main build stage, module *$MODULE*. Click link for details => $BUILD_LINK" -a "danger"
+        build/bin/post-to-slack.sh -s "main build - $MODULE" -a "danger"
       condition: failed()
       displayName: "Ping Slack on failing job"
 
@@ -169,7 +168,6 @@ jobs:
       displayName: build $(DOCKER_TAG)
 
     - script: |
-        BUILD_LINK=https://dev.azure.com/ax-ci/Cosmos/_build/results?buildId=$BUILD_BUILDID
-        build/bin/post-to-slack.sh -u "Actyx Build Notification" -m "Build $BUILD_BUILDID (triggered by $BUILD_SOURCEVERSIONAUTHOR) *failed* in the docker container build stage, specifically on *$DOCKER_TAG*. Click link for details => $BUILD_LINK" -a "danger"
+        build/bin/post-to-slack.sh -s "container build - $DOCKER_TAG" -a "danger"
       condition: failed()
       displayName: "Ping Slack on failing job"
