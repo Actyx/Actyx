@@ -138,7 +138,7 @@ define build_bins_and_move
 	docker run -v `pwd`/rt-master:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
-	-it actyx/cosmos:binaries-musl-$(2)-latest \
+	-it actyx/cosmos:musl-$(2)-latest \
 	cargo --locked build --release --target $(2) --bins
 	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -executable  \
 		-exec cp {} $(1) \;
