@@ -36,16 +36,12 @@ all: clean ${DOCKER_BUILD}
 clean:
 	rm -rf $(build_dir)
 
-docker-login-github:
-	docker login docker.pkg.github.com -u $(GITHUB_PKG_USER) -p $(GITHUB_PKG_PASS)
-
 docker-login-dockerhub:
 	docker login -u $(DOCKERHUB_USER) -p $(DOCKERHUB_PASS)
 
-docker-login: docker-login-dockerhub docker-login-github
+docker-login: docker-login-dockerhub
 
 getImageNameDockerhub = actyx/cosmos:$(1)-$(2)-$(3)
-getImageNameGithub = docker.pkg.github.com/actyx/cosmos/$(1):$(2)-$(3)
 
 ifdef RETRY
 	RETRY_ONCE = false
@@ -55,25 +51,17 @@ else
                (echo "--> RETRY target $@ FAILED. Continuing..."; true)
 endif
 
-# Push to both DockerHub and GitHub Package Registry
+# Push to DockerHub
 # 1st arg: Name of the docker image
 # 2nd arg: tag before the trailing `-<git>` / `-latest`
 define fn_docker_push
 	$(eval DOCKER_IMAGE_NAME:=$(1))
 	$(eval IMAGE_NAME:=$(call getImageNameDockerhub,$(DOCKER_IMAGE_NAME),$(2),$(git_hash)))
-	$(eval IMAGE_NAME_GH:=$(call getImageNameGithub,$(DOCKER_IMAGE_NAME),$(2),$(git_hash)))
-	docker tag $(IMAGE_NAME_GH) $(IMAGE_NAME)
 	docker push $(IMAGE_NAME)
-	# docker push sometimes fails because of the remote registry
-	# this started to happen more often as we switched to GitHub Package Registry
-	docker push $(IMAGE_NAME_GH) || $(RETRY_ONCE)
 	$(eval LATEST_IMAGE_TAG:=$(call getImageNameDockerhub,$(DOCKER_IMAGE_NAME),$(2),latest))
-	$(eval LATEST_IMAGE_TAG_GH:=$(call getImageNameGithub,$(DOCKER_IMAGE_NAME),$(2),latest))
 	if [ $(GIT_BRANCH) == "master" ]; then \
 		docker tag $(IMAGE_NAME) $(LATEST_IMAGE_TAG); \
 		docker push $(LATEST_IMAGE_TAG); \
-		docker tag $(IMAGE_NAME) $(LATEST_IMAGE_TAG_GH); \
-		docker push $(LATEST_IMAGE_TAG_GH); \
 	fi
 endef
 
@@ -86,11 +74,9 @@ docker-push-%: docker-build-% docker-login
 	$(call fn_docker_push,$(DOCKER_IMAGE_NAME),$(arch))
 
 $(DOCKER_BUILD_SBT): debug clean
-	$(eval DOCKER_IMAGE_NAME:=$(subst docker-build-,,$@))
-	$(eval IMAGE_NAME:=$(call getImageNameGithub,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
 	echo "Using sbt-native-packager to generate the docker image..";
 	pushd $(SRC_PATH); \
-	IMAGE_NAME=$(IMAGE_NAME) sbt docker:publishLocal; \
+	IMAGE_NAME=$(call getImageNameDockerhub,$(subst docker-build-,,$@),$(arch),$(git_hash)) sbt docker:publishLocal; \
 	popd
 
 # Build the Dockerfile located at `ops/docker/images/musl` for
@@ -98,7 +84,7 @@ $(DOCKER_BUILD_SBT): debug clean
 # 1st arg: Target toolchain
 define fn_docker_build_musl
 	$(eval TARGET:=$(1))
-	$(eval IMAGE_NAME:=$(call getImageNameGithub,musl,$(TARGET),$(git_hash)))
+	$(eval IMAGE_NAME:=$(call getImageNameDockerhub,musl,$(TARGET),$(git_hash)))
 	pushd $(DOCKER_DIR)/musl; \
 	DOCKER_BUILDKIT=1 docker build -t $(IMAGE_NAME)  \
 	--build-arg BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
@@ -110,9 +96,9 @@ endef
 ${DOCKER_BUILD}: debug clean
 	# must not use `component` here because of dependencies
 	$(eval DOCKER_IMAGE_NAME:=$(subst docker-build-,,$@))
-	$(eval IMAGE_NAME:=$(call getImageNameGithub,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
 	mkdir -p $(build_dir)
 	cp -RPp $(DOCKER_DIR)/$(DOCKER_IMAGE_NAME)/* $(build_dir)
+	$(eval IMAGE_NAME:=$(call getImageNameDockerhub,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
 	if [ "$(arch)" == 'armv7hf' ]; then \
 		cd $(build_dir); \
 		echo "arch is $(arch) - generating Dockerfile using gen-$(arch).sh"; \
@@ -152,7 +138,7 @@ define build_bins_and_move
 	docker run -v `pwd`/rt-master:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
-	-it docker.pkg.github.com/actyx/cosmos/musl:$(2)-latest \
+	-it actyx/cosmos:binaries-musl-$(2)-latest \
 	cargo --locked build --release --target $(2) --bins
 	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -executable  \
 		-exec cp {} $(1) \;
@@ -183,7 +169,7 @@ android-store-lib: debug
 	docker run -v `pwd`/rt-master:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
-	-it docker.pkg.github.com/actyx/cosmos/buildrs:x64-latest \
+	-it actyx/cosmos:buildrs-x64-latest \
 	cargo --locked build -p store-lib --release --target i686-linux-android
 
 # 32 bit
