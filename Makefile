@@ -128,18 +128,42 @@ docker-build-musl:
 	$(call fn_docker_build_musl,x86_64-unknown-linux-musl)
 	$(call fn_docker_build_musl,armv7-unknown-linux-musleabihf)
 
-# Build ActyxOS binaries with the `musl` Docker image for the
+# Build ActyxOS binaries image for the
 # specified toolchain.
 # 1st arg: output dir (will be created) of the final artifacts
 # 2nd arg: target toolchain
+# 3rd arg: docker base image
 define build_bins_and_move
 	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
 	mkdir -p $(1)
 	docker run -v `pwd`/rt-master:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
-	-it actyx/cosmos:musl-$(2)-latest \
+	-it $(3) \
 	cargo --locked build --release --target $(2) --bins
+	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -executable  \
+		-exec cp {} $(1) \;
+	echo "Please find your build artifacts in $(1)."
+endef
+
+# Build ActyxOS binaries for Win64
+# NOTE: This will only build `ada-cli` and `store-cli`.
+# 1st arg: output dir (will be created) of the final artifacts
+# 2nd arg: target toolchain
+# 3rd arg: docker base image
+define build_bins_and_move_win64
+	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
+	mkdir -p $(1)
+	docker run -v `pwd`/rt-master:/src \
+	-u builder \
+	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-it $(3) \
+	cargo --locked build --release --target $(2) --bin ada-cli
+	docker run -v `pwd`/rt-master:/src \
+	-u builder \
+	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-it $(3) \
+	cargo --locked build --release --target $(2) --bin store-cli
 	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -executable  \
 		-exec cp {} $(1) \;
 	echo "Please find your build artifacts in $(1)."
@@ -147,21 +171,24 @@ endef
 
 actyxos-bin-win64: debug clean
 	$(eval ARCH?=win64)
-	$(eval TARGET:=x86_64-pc-windows-musl)
+	$(eval TARGET:=x86_64-pc-windows-gnu)
 	$(eval OUTPUT:=./dist/bin/$(ARCH))
-	$(call build_bins_and_move,$(OUTPUT),$(TARGET))
+	$(eval IMG:=actyx/cosmos:buildrs-x64-latest)
+	$(call build_bins_and_move_win64,$(OUTPUT),$(TARGET),$(IMG))
 
 actyxos-bin-x64: debug clean
 	$(eval ARCH?=x64)
 	$(eval TARGET:=x86_64-unknown-linux-musl)
 	$(eval OUTPUT:=./dist/bin/$(ARCH))
-	$(call build_bins_and_move,$(OUTPUT),$(TARGET))
+	$(eval IMG:=actyx/cosmos:musl-$(TARGET)-latest)
+	$(call build_bins_and_move,$(OUTPUT),$(TARGET),$(IMG))
 
 actyxos-bin-armv7hf:
 	$(eval ARCH?=armv7hf)
 	$(eval TARGET:=armv7-unknown-linux-musleabihf)
 	$(eval OUTPUT:=./dist/bin/$(ARCH))
-	$(call build_bins_and_move,$(OUTPUT),$(TARGET))
+	$(eval IMG:=actyx/cosmos:musl-$(TARGET)-latest)
+	$(call build_bins_and_move,$(OUTPUT),$(TARGET),$(IMG))
 
 # 32 bit
 android-store-lib: debug
