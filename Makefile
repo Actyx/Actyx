@@ -68,6 +68,7 @@ endef
 docker-push-musl: docker-build-musl docker-login
 	$(call fn_docker_push,musl,x86_64-unknown-linux-musl)
 	$(call fn_docker_push,musl,armv7-unknown-linux-musleabihf)
+	$(call fn_docker_push,musl,arm-unknown-linux-musleabi)
 
 docker-push-%: docker-build-% docker-login
 	$(eval DOCKER_IMAGE_NAME:=$(subst docker-push-,,$@))
@@ -127,6 +128,7 @@ ${DOCKER_BUILD}: debug clean
 docker-build-musl:
 	$(call fn_docker_build_musl,x86_64-unknown-linux-musl)
 	$(call fn_docker_build_musl,armv7-unknown-linux-musleabihf)
+	$(call fn_docker_build_musl,arm-unknown-linux-musleabi)
 
 # Build ActyxOS binaries image for the
 # specified toolchain.
@@ -186,6 +188,13 @@ actyxos-bin-x64: debug clean
 actyxos-bin-armv7hf:
 	$(eval ARCH?=armv7hf)
 	$(eval TARGET:=armv7-unknown-linux-musleabihf)
+	$(eval OUTPUT:=./dist/bin/$(ARCH))
+	$(eval IMG:=actyx/cosmos:musl-$(TARGET)-latest)
+	$(call build_bins_and_move,$(OUTPUT),$(TARGET),$(IMG))
+
+actyxos-bin-arm:
+	$(eval ARCH?=arm)
+	$(eval TARGET:=arm-unknown-linux-musleabi)
 	$(eval OUTPUT:=./dist/bin/$(ARCH))
 	$(eval IMG:=actyx/cosmos:musl-$(TARGET)-latest)
 	$(call build_bins_and_move,$(OUTPUT),$(TARGET),$(IMG))
