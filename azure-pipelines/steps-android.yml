@@ -12,9 +12,13 @@ steps:
       PATH: $(PATH):$(HOME)/bin
     condition: contains(variables['BUILD_STRING'],'[build-android]')
 
-  - script: |
-      cargo --locked build -p store-lib --release --target i686-linux-android
-      mkdir -p ../android-shell-app/app/src/main/jniLibs/x86/
+    # Since this build doesn't depend on rt-master, we can at least do the checks before we build the release
+  - bash: |
+      cargo fmt --all -- --check && \
+      cargo --locked clippy -- -D warnings && \
+      cargo --locked clippy --tests -- -D warnings && \
+      cargo --locked build -p store-lib --release --target i686-linux-android && \
+      mkdir -p ../android-shell-app/app/src/main/jniLibs/x86/ && \
       cp ./target/i686-linux-android/release/libaxstore.so ../android-shell-app/app/src/main/jniLibs/x86/libaxstore.so
     displayName: 'Build & copy store lib (x86)'
     workingDirectory: 'rt-master'
@@ -30,14 +34,14 @@ steps:
     displayName: 'Compile Android App (x86)'
     env:
       JAVA_HOME_8_X64: /usr/lib/jvm/java-8-openjdk-amd64
-    condition: contains(variables['BUILD_STRING'],'[build-android]')
+    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-android]'))
 
   - task: ShellScript@2
     inputs:
       scriptPath: android-shell-app/bin/upload-ipfs.sh
     displayName: 'Upload to IPFS'
-    condition: contains(variables['BUILD_STRING'],'[build-android]')
+    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-android]'))
 
   - publish: $(System.DefaultWorkingDirectory)/android-shell-app/app/build/outputs/assembly/Actyx/actyx-android-app/
     artifact: actyx-apk
-    condition: contains(variables['BUILD_STRING'],'[build-android]')
+    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-android]'))
