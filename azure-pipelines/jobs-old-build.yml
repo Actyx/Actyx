@@ -11,6 +11,8 @@ jobs:
       matrix:
         pond:
           MODULE: 'pond'
+        ops:
+          MODULE: 'ops'
         node-red:
           MODULE: 'node-red'
         docs:
