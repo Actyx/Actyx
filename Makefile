@@ -222,3 +222,27 @@ android: debug clean android-store-lib android-app
 android-install: debug
 	adb uninstall io.actyx.shell
 	adb install ./android-shell-app/app/build/outputs/apk/release/app-release.apk
+
+# 32 bit
+android-logsvcd-lib: debug
+	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
+	docker run -v `pwd`/rt-master:/src \
+	-u builder \
+	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-it actyx/cosmos:buildrs-x64-latest \
+	cargo --locked build -p logsvcd --lib --release --target i686-linux-android
+
+axosandroid-libs: debug android-store-lib android-logsvcd-lib
+
+# 32 bit
+axosandroid-app: debug
+	mkdir -p ./android-actyxos-app/app/src/main/jniLibs/x86
+	cp ./rt-master/target/i686-linux-android/release/libaxstore.so ./android-actyxos-app/app/src/main/jniLibs/x86/libaxstore.so
+	cp ./rt-master/target/i686-linux-android/release/libaxstore.so ./android-actyxos-app/app/src/main/jniLibs/x86/libaxstore.so
+	./android-actyxos-app/bin/get-keystore.sh
+	pushd android-actyoxs-app; \
+	./gradlew clean ktlintCheck build assembleRelease; \
+	popd
+	echo 'APK: ./android-actyxos-app/app/build/outputs/apk/release/app-release.apk'
+
+axosandroid: debug clean axosandroid-libs axosandroid-app
