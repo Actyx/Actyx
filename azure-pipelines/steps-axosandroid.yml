@@ -9,17 +9,15 @@ steps:
       mkdir -p ../android-actyxos-app/app/src/main/jniLibs/x86/ && \
       cp ./target/i686-linux-android/release/libaxstore.so ../android-actyxos-app/app/src/main/jniLibs/x86/libaxstore.so && \
       cp ./target/i686-linux-android/release/liblogsvcd.so ../android-actyxos-app/app/src/main/jniLibs/x86/liblogsvcd.so
-    displayName: 'Build store & logsvcd (x86')
+    displayName: 'Build store & logsvcd (x86)'
     workingDirectory: 'rt-master'
-    condition: contains(variables['BUILD_STRING'],'[build-axandroid]')
-
-
-  - script: |
+    condition: contains(variables['BUILD_STRING'],'[build-axosandroid]')
+  - bash: |
       android-actyxos-app/bin/get-keystore.sh
     displayName: 'Get keystore'
     env:
       PATH: $(PATH):$(HOME)/bin
-    condition: contains(variables['BUILD_STRING'],'[build-axandroid]')
+    condition: contains(variables['BUILD_STRING'],'[build-axosandroid]')
   - task: Gradle@2
     inputs:
       workingDirectory: 'android-actyxos-app'
@@ -30,14 +28,14 @@ steps:
     displayName: 'Compile ActyxOS on Android (x86)'
     env:
       JAVA_HOME_8_X64: /usr/lib/jvm/java-8-openjdk-amd64
-    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axandroid]'))
+    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axosandroid]'))
 
   - task: ShellScript@2
     inputs:
       scriptPath: android-actyxos-app/bin/upload-ipfs.sh
     displayName: 'Upload to IPFS'
-    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axandroid]'))
+    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axosandroid]'))
 
   - publish: $(System.DefaultWorkingDirectory)/android-actyxos-app/app/build/outputs/assembly/Actyx/axosandroid/
-    artifact: axandroid-apk
-    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axandroid]'))
+    artifact: axosandroid-apk
+    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axosandroid]'))
