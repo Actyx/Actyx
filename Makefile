@@ -240,7 +240,7 @@ axosandroid-app: debug
 	cp ./rt-master/target/i686-linux-android/release/libaxstore.so ./android-actyxos-app/app/src/main/jniLibs/x86/libaxstore.so
 	cp ./rt-master/target/i686-linux-android/release/libaxstore.so ./android-actyxos-app/app/src/main/jniLibs/x86/libaxstore.so
 	./android-actyxos-app/bin/get-keystore.sh
-	pushd android-actyoxs-app; \
+	pushd android-actyxos-app; \
 	./gradlew clean ktlintCheck build assembleRelease; \
 	popd
 	echo 'APK: ./android-actyxos-app/app/build/outputs/apk/release/app-release.apk'
