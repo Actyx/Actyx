@@ -238,11 +238,15 @@ axosandroid-libs: debug android-store-lib android-logsvcd-lib
 axosandroid-app: debug
 	mkdir -p ./android-actyxos-app/app/src/main/jniLibs/x86
 	cp ./rt-master/target/i686-linux-android/release/libaxstore.so ./android-actyxos-app/app/src/main/jniLibs/x86/libaxstore.so
-	cp ./rt-master/target/i686-linux-android/release/libaxstore.so ./android-actyxos-app/app/src/main/jniLibs/x86/libaxstore.so
+	cp ./rt-master/target/i686-linux-android/release/liblogsvcd.so ./android-actyxos-app/app/src/main/jniLibs/x86/liblogsvcd.so
 	./android-actyxos-app/bin/get-keystore.sh
 	pushd android-actyxos-app; \
 	./gradlew clean ktlintCheck build assembleRelease; \
 	popd
 	echo 'APK: ./android-actyxos-app/app/build/outputs/apk/release/app-release.apk'
+
+axosandroid-install: debug
+	adb uninstall com.actyx.os.android
+	adb install ./android-actyxos-app/app/build/outputs/apk/release/app-release.apk
 
 axosandroid: debug clean axosandroid-libs axosandroid-app
