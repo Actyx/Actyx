@@ -143,7 +143,7 @@ define build_bins_and_move
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it $(3) \
 	cargo --locked build --release --target $(2) --bins
-	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -executable  \
+	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -perm -u=x  \
 		-exec cp {} $(1) \;
 	echo "Please find your build artifacts in $(1)."
 endef
@@ -166,7 +166,7 @@ define build_bins_and_move_win64
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it $(3) \
 	cargo --locked build --release --target $(2) --bin store-cli
-	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -executable  \
+	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -perm -u=x  \
 		-exec cp {} $(1) \;
 	echo "Please find your build artifacts in $(1)."
 endef
