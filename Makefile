@@ -22,8 +22,12 @@ BUILD_SCCACHE_VERSION=0.2.12
 # Build specific
 build_dir=dist/build
 DOCKER_DIR=ops/docker/images
-DOCKER_BUILD = $(shell arr=(`ls ${DOCKER_DIR}`); printf "docker-build-%s\n " "$${arr[@]}")
+# The musl images have a separate target so remove them to avoid warnings
+DOCKER_BUILD = $(shell arr=(`ls -1 ${DOCKER_DIR} | grep -v -e "^musl\\$$"`); printf "docker-build-%s\n " "$${arr[@]}")
 DOCKER_BUILD_SBT = docker-build-bagsapconnector docker-build-flexishttpconnector docker-build-flexisftpconnector docker-build-opcuaconnector docker-build-iafisconnector docker-build-batchcenterconnector
+
+# Helper to try out local builds of Docker images
+IMAGE_VERSION:=$(or $(LOCAL_IMAGE_VERSION),latest)
 
 # Debug helpers
 print-%  : ; @echo $* = $($*)
@@ -130,6 +134,10 @@ docker-build-musl:
 	$(call fn_docker_build_musl,armv7-unknown-linux-musleabihf)
 	$(call fn_docker_build_musl,arm-unknown-linux-musleabi)
 
+docker-build-musl-%:
+	$(eval TARGET:=$(subst docker-build-musl-,,$@))
+	$(call fn_docker_build_musl,$(TARGET))
+
 # Build ActyxOS binaries image for the
 # specified toolchain.
 # 1st arg: output dir (will be created) of the final artifacts
@@ -175,28 +183,28 @@ actyxos-bin-win64: debug clean
 	$(eval ARCH?=win64)
 	$(eval TARGET:=x86_64-pc-windows-gnu)
 	$(eval OUTPUT:=./dist/bin/$(ARCH))
-	$(eval IMG:=actyx/cosmos:buildrs-x64-latest)
+	$(eval IMG:=actyx/cosmos:buildrs-x64-$(IMAGE_VERSION))
 	$(call build_bins_and_move_win64,$(OUTPUT),$(TARGET),$(IMG))
 
 actyxos-bin-x64: debug clean
 	$(eval ARCH?=x64)
 	$(eval TARGET:=x86_64-unknown-linux-musl)
 	$(eval OUTPUT:=./dist/bin/$(ARCH))
-	$(eval IMG:=actyx/cosmos:musl-$(TARGET)-latest)
+	$(eval IMG:=actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION))
 	$(call build_bins_and_move,$(OUTPUT),$(TARGET),$(IMG))
 
 actyxos-bin-armv7hf:
 	$(eval ARCH?=armv7hf)
 	$(eval TARGET:=armv7-unknown-linux-musleabihf)
 	$(eval OUTPUT:=./dist/bin/$(ARCH))
-	$(eval IMG:=actyx/cosmos:musl-$(TARGET)-latest)
+	$(eval IMG:=actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION))
 	$(call build_bins_and_move,$(OUTPUT),$(TARGET),$(IMG))
 
 actyxos-bin-arm:
 	$(eval ARCH?=arm)
 	$(eval TARGET:=arm-unknown-linux-musleabi)
 	$(eval OUTPUT:=./dist/bin/$(ARCH))
-	$(eval IMG:=actyx/cosmos:musl-$(TARGET)-latest)
+	$(eval IMG:=actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION))
 	$(call build_bins_and_move,$(OUTPUT),$(TARGET),$(IMG))
 
 # 32 bit
@@ -205,7 +213,7 @@ android-store-lib: debug
 	docker run -v `pwd`/rt-master:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
-	-it actyx/cosmos:buildrs-x64-latest \
+	-it actyx/cosmos:buildrs-x64-$(IMAGE_VERSION) \
 	cargo --locked build -p store-lib --release --target i686-linux-android
 
 # 32 bit
