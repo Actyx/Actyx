@@ -80,8 +80,9 @@ docker-push-%: docker-build-% docker-login
 
 $(DOCKER_BUILD_SBT): debug clean
 	echo "Using sbt-native-packager to generate the docker image..";
-	pushd $(SRC_PATH); \
-	IMAGE_NAME=$(call getImageNameDockerhub,$(subst docker-build-,,$@),$(arch),$(git_hash)) sbt docker:publishLocal; \
+	pushd $(SRC_PATH) && \
+	sbt validate && \
+	IMAGE_NAME=$(call getImageNameDockerhub,$(subst docker-build-,,$@),$(arch),$(git_hash)) sbt docker:publishLocal && \
 	popd
 
 # Build the Dockerfile located at `ops/docker/images/musl` for
