@@ -137,6 +137,8 @@ jobs:
           DOCKER_TAG: 'logscraper-armv7hf'
         buildrs:
           DOCKER_TAG: 'buildrs-x64'
+        balenaremoteforward:
+          DOCKER_TAG: 'balenaremoteforward-x64'
         musl:
           DOCKER_TAG: 'musl-x64'
         mssqlpoller-x64:
