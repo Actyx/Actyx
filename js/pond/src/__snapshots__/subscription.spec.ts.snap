@@ -1,0 +1,37 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`SubscriptionSet.parse should parse subscription sets 1`] = `
+Object {
+  "subscriptions": Array [
+    Object {
+      "name": "b",
+      "semantics": "a",
+      "sourceId": "c",
+    },
+    Object {
+      "name": "e",
+      "semantics": "d",
+      "sourceId": "f",
+    },
+  ],
+  "type": "or",
+}
+`;
+
+exports[`SubscriptionSet.parse should parse subscription sets 2`] = `
+Object {
+  "subscriptions": Array [
+    Object {
+      "name": undefined,
+      "semantics": "a",
+      "sourceId": undefined,
+    },
+    Object {
+      "name": undefined,
+      "semantics": "b",
+      "sourceId": undefined,
+    },
+  ],
+  "type": "or",
+}
+`;
