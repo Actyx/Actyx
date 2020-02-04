@@ -5,7 +5,6 @@ import { MultiplexedWebsocket, validateOrThrow } from './eventstore/multiplexedW
 import { RequestTypes } from './eventstore/websocketEventStore'
 import { NodeInfoEntry, SwarmInfo, SwarmSummary } from './store/swarmState'
 import { takeWhileInclusive } from './util'
-import { DurationMap, runStats } from './util/runStats'
 
 type FullConfig = Readonly<{
   /**
@@ -47,8 +46,6 @@ export type Config = Partial<FullConfig>
 export const Config = {
   defaults,
 }
-
-type PondStats = Readonly<{ pond?: DurationMap }>
 
 export type Progress = Readonly<{ min: number; current: number; max: number }>
 
@@ -112,9 +109,8 @@ const synced = (state: SplashState): boolean => {
 export const getSplashStateImpl = (
   config: Config,
   swarmInfo: Observable<SwarmInfo>,
-  pondStats: () => DurationMap,
 ): Observable<SplashState> => {
-  const { waitForSwarmMs, waitForSyncMs, statsPeriodMs, minSources, allowSkip, enabled } = {
+  const { waitForSwarmMs, waitForSyncMs, minSources, allowSkip, enabled } = {
     ...defaults,
     ...config,
   }
@@ -128,14 +124,10 @@ export const getSplashStateImpl = (
       ? Observable.timer(waitForSwarmMs + waitForSyncMs)
       : Observable.never(),
   )
-  const pondActivity: Observable<PondStats> = Observable.timer(0, statsPeriodMs).map(() => ({
-    pond: pondStats(),
-  }))
   const initial: SplashState = {
     mode: 'discovery',
     skip: allowSkip ? () => userSkip.next(undefined) : undefined,
     current: SwarmSummary.empty,
-    pond: {},
   }
   return Observable.defer(() => {
     const t0 = Date.now()
@@ -162,16 +154,14 @@ export const getSplashStateImpl = (
       .map(SwarmSummary.fromSwarmInfo)
       .startWith(SwarmSummary.empty)
       .scan<SwarmSummary, SplashState>(scanner, initial)
+      .pipe(takeWhileInclusive(x => !synced(x)))
+      .takeUntil(skip)
   })
-    .combineLatest(pondActivity, (a, b) => ({ ...a, ...b }))
-    .pipe(takeWhileInclusive(x => !synced(x)))
-    .takeUntil(skip)
 }
 
 type SplashStateDiscovery = Readonly<{
   mode: 'discovery'
   current: SwarmSummary
-  pond: DurationMap
   skip?: () => void
 }>
 
@@ -180,7 +170,6 @@ type SplashStateSync = Readonly<{
   reference: SwarmSummary
   progress: SyncProgress
   current: SwarmSummary
-  pond: DurationMap
   skip?: () => void
 }>
 
@@ -238,6 +227,6 @@ export const SplashState = {
 
     const swarmInfo$ = Observable.combineLatest(highestSeenRoots$, present$).map(toSwarmInfo)
 
-    return getSplashStateImpl(config, swarmInfo$, () => runStats.durations.getAndClear())
+    return getSplashStateImpl(config, swarmInfo$)
   },
 }
