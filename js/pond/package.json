@@ -16,7 +16,9 @@
   "homepage": "http://actyx.com/os",
   "scripts": {
     "clean": "rimraf ./lib ./coverage",
-    "build": "npm run clean && npm run lint && npm run test && tsc -p ./tsconfig.prod.json",
+    "build": "tsc -p ./tsconfig.prod.json",
+    "build:watch": "npm run build -- --watch --pretty",
+    "build:prod": "npm run clean && npm run lint && npm run test && npm run build",
     "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "npm run lint -- --fix",
     "format:configs": "prettier --write .prettierrc.json jest.config.js .vscode/settings.json tsconfig.prod.json tsconfig.json .eslintrc.json",
