@@ -4,6 +4,7 @@ import * as R from 'ramda'
 import { Observable, ReplaySubject, Scheduler, Subject, Subscription as RxSubscription } from 'rxjs'
 import { catchError, tap } from 'rxjs/operators'
 import {
+  CommandApi,
   CommandResult,
   FishName,
   FishType,
@@ -139,6 +140,25 @@ const createFishJar = <S, C, E, P>(
     }
   }
 
+  // executes effects and returns a promise of the produced events
+  const handleAsyncCommandResult = (command: C) => (ar: CommandApi<ReadonlyArray<E>>) =>
+    Observable.fromPromise(commandExecutor(ar))
+      .concatMap(events => {
+        // do not process events if undefined, log only
+        if (events === undefined) {
+          log.pond.error('undefined commandResult', command, 'ar', ar)
+          // TODO: distress
+          return Observable.of([])
+        } else {
+          return sendToStore(source, events)
+        }
+      })
+      .catch(e => {
+        // TODO: distress?
+        log.pond.error(e)
+        return Observable.of([])
+      })
+
   const processEvents = (events: ReadonlyArray<EnvelopeFromStore<E>>): void => eventsIn.next(events)
 
   // Accumulator function for the mergeScanPipeline, our Master Control Program
@@ -153,6 +173,8 @@ const createFishJar = <S, C, E, P>(
           source.semantics,
           source.name,
         )
+        const unblock = () =>
+          pondStateTracker.commandProcessingFinished(pondStateTrackerCommandProcessingToken)
 
         const result = current.eventStore.currentState().concatMap(s => {
           const onCommandResult = fish.onCommand(s, command)
@@ -160,25 +182,7 @@ const createFishJar = <S, C, E, P>(
             onCommandResult,
           )({
             sync: events => sendToStore(source, events),
-            async: ar =>
-              // executes effects and returns a promise of the produced events
-              Observable.fromPromise(commandExecutor(ar))
-                .concatMap(events => {
-                  // do not process events if undefined, log only
-
-                  if (events === undefined) {
-                    log.pond.error('undefined commandResult', command, 'ar', ar)
-                    // TODO: distress
-                    return Observable.of([])
-                  } else {
-                    return sendToStore(source, events)
-                  }
-                })
-                .catch(e => {
-                  // TODO: distress?
-                  log.pond.error(e)
-                  return Observable.of([])
-                }),
+            async: handleAsyncCommandResult(command),
             none: () => Observable.of([]),
           })
 
@@ -217,12 +221,13 @@ const createFishJar = <S, C, E, P>(
 
         return result.pipe(
           catchError(x => {
+            unblock()
             onError(x)
             return Observable.throw(x)
           }),
           tap(() => {
+            unblock()
             onComplete()
-            pondStateTracker.commandProcessingFinished(pondStateTrackerCommandProcessingToken)
           }),
         )
       }
@@ -234,29 +239,40 @@ const createFishJar = <S, C, E, P>(
           source.semantics,
           source.name,
         )
-        const profile = `inject-events/${fish.semantics}`
+        const unblock = () =>
+          pondStateTracker.eventsFromOtherSourcesProcessingFinished(
+            pondStateTrackerEventProcessingToken,
+          )
 
-        runStats.durations.start(profile, start)
-        const needsState = current.eventStore.processEvents(input.events)
-        runStats.durations.end(profile, start, Timestamp.now())
+        try {
+          const profile = `inject-events/${fish.semantics}`
 
-        const result = needsState
-          ? current.eventStore
-              .currentState()
-              .pipe(runStats.profile.profileObservable(`inject-compute/${fish.semantics}`))
-              .map(s => ({
-                ...current,
-                emit: [s],
-              }))
-          : Observable.of({ ...current, emit: [] })
+          runStats.durations.start(profile, start)
+          const needsState = current.eventStore.processEvents(input.events)
+          runStats.durations.end(profile, start, Timestamp.now())
 
-        return result.pipe(
-          tap(() => {
-            pondStateTracker.eventsFromOtherSourcesProcessingFinished(
-              pondStateTrackerEventProcessingToken,
-            )
-          }),
-        )
+          const result = needsState
+            ? current.eventStore
+                .currentState()
+                .pipe(runStats.profile.profileObservable(`inject-compute/${fish.semantics}`))
+                .map(s => ({
+                  ...current,
+                  emit: [s],
+                }))
+            : Observable.of({ ...current, emit: [] })
+
+          return result.pipe(
+            tap(
+              unblock,
+              // On errors, also update the tracker
+              unblock,
+            ),
+          )
+        } catch (e) {
+          // Synchronous error, for example from onEvent
+          unblock()
+          throw e
+        }
       }
     }
   }

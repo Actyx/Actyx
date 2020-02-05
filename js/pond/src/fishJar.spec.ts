@@ -1,21 +1,30 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Observable } from 'rxjs'
+import { CommandApi, UnsafeAsync } from './commandApi'
 import { EventStore } from './eventstore'
 import { Event } from './eventstore/types'
 import { CommandExecutor } from './executors/commandExecutor'
 import { hydrate } from './fishJar'
+import log from './loggers'
 import { defaultTimeInjector, makeEventChunk, SendToStore } from './pond'
-import { mkNoopPondStateTracker } from './pond-state'
+import {
+  mkNoopPondStateTracker,
+  mkPondStateTracker,
+  PondState,
+  PondStateTracker,
+} from './pond-state'
 import { SnapshotStore } from './snapshotStore'
 import { EnvelopeFromStore } from './store/util'
 import { Subscription } from './subscription'
 import { eventStressFish, eventStressFishBuilder, State } from './testkit/eventStressFish'
 import {
+  Envelope,
   FishName,
   FishType,
   FishTypeImpl,
   InitialState,
   Lamport,
+  OnCommand,
   OnStateChange,
   Psn,
   Semantics,
@@ -211,6 +220,142 @@ describe('FishJar', () => {
     // the command-events have actual timestamps and should be sorted last
     expect(state).toEqual(livePayloads.slice().concat([1, 2, 3, 4, 5, 6]))
   })
+
+  describe('error handling', () => {
+    const mkBorked = (
+      onCommand: OnCommand<number, number, number> = (_: number, c: number) => [c],
+      onEvent = (s: number, e: Envelope<number>) => s + e.payload,
+    ) =>
+      FishType.of<number, number, number, number>({
+        initialState: () => ({ state: 0 }),
+        semantics: Semantics.of('ax.borked'),
+        onCommand,
+        onEvent,
+        onStateChange: OnStateChange.publishPrivateState(),
+      })
+
+    const getJar = async (fish: FishType<number, number, number>, tracker: PondStateTracker) => {
+      const store = EventStore.test(sourceId)
+      const sendToStore: SendToStore = (src, events) => {
+        const chunk = makeEventChunk(defaultTimeInjector, src, events)
+        return store.persistEvents(chunk).map(c => c.map(ev => Event.toEnvelopeFromStore(ev)))
+      }
+
+      return hydrate(
+        FishTypeImpl.downcast(fish),
+        fishName2,
+        store,
+        SnapshotStore.noop,
+        sendToStore,
+        fakeObserve,
+        commandExecutor,
+        tracker,
+      ).toPromise()
+    }
+
+    const assertUnblocked = async (tracker: PondStateTracker) => {
+      const pondState = await tracker
+        .observe()
+        .take(1)
+        .toPromise()
+
+      expect(PondState.isBusy(pondState)).toBeFalsy()
+    }
+
+    it('should update the state tracker even when command application has an error', async () => {
+      const onCommand = (_: number, c: number) => {
+        if (c === 5) {
+          throw new Error('that was my internal wrong number')
+        }
+
+        return [c]
+      }
+
+      const borkedFish = mkBorked(onCommand)
+      const tracker = mkPondStateTracker(log.pond)
+
+      const jar = await getJar(borkedFish, tracker)
+
+      jar.enqueueCommand(4, noop, noop)
+      jar.enqueueCommand(5, noop, noop)
+      jar.enqueueCommand(6, noop, noop)
+
+      try {
+        await jar.publicSubject.take(1).toPromise()
+      } catch (_) {
+        // Jar is dead now, will only throw errors when trying to interact with it.
+      }
+
+      // ...but at least we are not blocking the UI.
+      await assertUnblocked(tracker)
+    })
+
+    it('should update the state tracker even when command application has an async error', async () => {
+      const onCommand = (_: number, c: number) => {
+        if (c === 5) {
+          // return CommandApi.http.get('this is not a url').chain(() => CommandApi.of([c]))
+          return UnsafeAsync(
+            Observable.timer(10).map(() => {
+              throw new Error('hello')
+            }),
+          ).chain(() => CommandApi.of([c]))
+        }
+
+        return [c]
+      }
+
+      const borkedFish = mkBorked(onCommand)
+      const tracker = mkPondStateTracker(log.pond)
+
+      const jar = await getJar(borkedFish, tracker)
+
+      jar.enqueueCommand(4, noop, noop)
+      jar.enqueueCommand(5, noop, noop)
+      jar.enqueueCommand(6, noop, noop)
+
+      // Async errors kindly leave the jar alive
+      const q = await jar.publicSubject
+        .filter(s => s === 10)
+        .take(1)
+        .toPromise()
+      expect(q).toEqual(10)
+
+      // ...and also do not block the UI indefinitely.
+      await assertUnblocked(tracker)
+    })
+
+    it('should update the state tracker even when event application has an error', async () => {
+      const onEvent = (s: number, e: Envelope<number>) => {
+        if (e.payload === 5) {
+          throw new Error('this is my internal wrong number')
+        }
+
+        return s + e.payload
+      }
+
+      const borkedFish = mkBorked(undefined, onEvent)
+      const tracker = mkPondStateTracker(log.pond)
+
+      const jar = await getJar(borkedFish, tracker)
+
+      jar.enqueueCommand(4, noop, noop)
+      jar.enqueueCommand(5, noop, noop)
+      jar.enqueueCommand(6, noop, noop)
+
+      try {
+        await jar.publicSubject.skipWhile(s => s < 10).toPromise()
+      } catch (_) {
+        // Jar is broken now if we try to read up to the final state which should be 10.
+      }
+
+      // But we can still retrieve the previous state...
+      const nextState = await jar.publicSubject.take(1).toPromise()
+      expect(nextState).toEqual(4)
+
+      // ...and also do not block the UI indefinitely.
+      await assertUnblocked(tracker)
+    })
+  })
 })
 
 describe('SubscriptionLessFishJar', () => {
@@ -224,6 +369,7 @@ describe('SubscriptionLessFishJar', () => {
 
   const name = FishName.of('subscriptionLess')
   const sendPassThrough = () => {
+    // tslint:disable-next-line no-let
     let psn = 0
     return <E>(src: Source, events: ReadonlyArray<E>) =>
       Observable.from(events)
