@@ -212,6 +212,8 @@ const snapshotCheck = async <C, E, P>(
 
     states.push(state1)
     states.push(state2)
+
+    await pond.dispose()
   }
   return states
 }

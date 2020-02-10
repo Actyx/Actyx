@@ -1,4 +1,3 @@
-import { Observable, ReplaySubject } from 'rxjs'
 import { CommandApi } from '.'
 import {
   ArticleConfig,
@@ -81,7 +80,18 @@ const _sleep = (ms: number) => {
 
 describe(`Pond ('the usual')`, () => {
   const withPond = <T>(op: (pond: Pond) => T | Promise<T>): Promise<T> =>
-    Pond.mock().then(pond => op(pond))
+    Pond.mock().then(async pond => {
+      const r = op(pond)
+      if (r instanceof Promise) {
+        return r.then(async q => {
+          await pond.dispose()
+          return q
+        })
+      } else {
+        await pond.dispose()
+        return r
+      }
+    })
   it('should run fish interactions', () =>
     withPond(pond => {
       const sourceId = pond.info().sourceId
@@ -149,74 +159,50 @@ describe(`Pond ('the usual')`, () => {
       log.pond.info('slept')
       return 'done'
     })
-    return Promise.all([commands, events, awaitPendingDBOperations]).then(([c, e, db]) => {
+    await Promise.all([commands, events, awaitPendingDBOperations]).then(([c, e, db]) => {
       expect(c).toEqual(expectedCommands)
       expect(e).toEqual(expectedEvents)
       expect(db).toEqual('done')
     })
+    return pond.dispose()
   })
-
-  it('should call onStateChange', () =>
-    withPond(pond => {
-      // we start listening to events when this function is invoked, but can consume later
-      const events = () => {
-        // using ReplaySubject as a buffer
-        const s = new ReplaySubject()
-        const sub = pond
-          // tslint:disable-next-line:deprecation
-          ._events()
-          .map(ev => ev.payload.type as string)
-          .subscribe(s)
-        // this will clean up the ReplaySubject once this stream is canceled
-        return s.finally(() => sub.unsubscribe())
-      }
-      return Observable.of(
-        events()
-          .take(5)
-          .toArray(),
-      )
-        .concatMap(evs =>
-          pond
-            .feed(timerFishType, FishName.of('bruce'))({ type: 'enable' })
-            .mapTo(evs),
-        )
-        .concatMap(evs => evs)
-        .concatMap(evs => {
-          expect(evs).toEqual(['enabled', 'pinged', 'pinged', 'pinged', 'pinged'])
-          const allGood = Observable.of('all good now').delay(500)
-          const nextEvs = events()
-            .merge(allGood)
-            .take(3)
-            .toArray()
-          return pond
-            .feed(timerFishType, FishName.of('bruce'))({ type: 'disable' })
-            .mapTo(nextEvs)
-        })
-        .concatMap(evs => evs)
-        .filter(x => x instanceof Array)
-        .do(evs => {
-          expect(evs).toEqual(['disabled', 'reset', 'enabled'])
-        })
-        .toPromise()
-    }))
 
   it('should allow listening to state changes of other fishes', () =>
     withPond(async pond => {
-      // observe state changes of the listener
-      const result = pond.observe(timerFishListenerFishType, 'dory')
-      // switch on the listener
-      pond
-        .feed(timerFishListenerFishType, FishName.of('dory'))({ type: 'enable' })
-        .subscribe({ error: err => log.pond.error(err) })
-      // switch on the timer fish
-      pond
-        .feed(timerFishType, FishName.of('nemo'))({ type: 'enable' })
-        .subscribe({ error: err => log.pond.error(err) })
-      const states = await result
-        .take(3)
+      const setup = pond
+        .observe(timerFishListenerFishType, 'dory')
+        .take(2)
         .toArray()
         .toPromise()
-      expect(states[1]).toEqual({ count: 2, type: 'enabled' })
+
+      // switch on the listener
+      await pond
+        .feed(timerFishListenerFishType, FishName.of('dory'))({ type: 'enable' })
+        .toPromise()
+
+      expect(await setup).toEqual([{ type: 'disabled' }, { count: 0, type: 'enabled' }])
+
+      // observe state changes of the listener
+      const result = pond
+        .observe(timerFishListenerFishType, 'dory')
+        .take(4)
+        .toArray()
+        .toPromise()
+
+      // switch on the timer fish
+      // must wait for the command to complete before we start observing the listener,
+      // due to race condition reasons.
+      await pond
+        .feed(timerFishType, FishName.of('nemo'))({ type: 'enable' })
+        .toPromise()
+
+      const states = await result
+      expect(states).toEqual([
+        { count: 0, type: 'enabled' },
+        { count: 1, type: 'enabled' },
+        { count: 2, type: 'enabled' },
+        { count: 3, type: 'enabled' },
+      ])
     }))
 
   it('should use semantics of first fish in onCommand', () =>
@@ -253,7 +239,7 @@ describe(`Pond ('the usual')`, () => {
 
   it('should dispose event store subscription', () =>
     withPond(async pond => {
-      await pond.dispose().toPromise()
+      await pond.dispose()
       // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
       // @ts-ignore implementation detail, how to test it without exposing private details?
       expect(Object.keys(pond.jars).length).toEqual(0)

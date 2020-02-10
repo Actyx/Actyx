@@ -143,7 +143,7 @@ export type Pond = {
    * Dispose subscription to IpfsStore
    * Store subscription needs to be unsubscribed for HMR
    */
-  dispose(): Observable<void>
+  dispose(): Promise<void>
 
   /**
    * Information about the current pond
@@ -213,6 +213,7 @@ export class PondImpl implements Pond {
     readonly eventStore: EventStore,
     readonly snapshotStore: SnapshotStore,
     readonly pondStateTracker: PondStateTracker,
+    readonly monitoring: Monitoring,
     opts: PondOptions,
   ) {
     this.eventTap = opts.eventTap || Tap.none
@@ -332,12 +333,14 @@ export class PondImpl implements Pond {
   }
 
   dispose = () => {
+    this.monitoring.dispose()
     return this.allFishJars()
       .do(jar => jar.dispose())
       .defaultIfEmpty(undefined)
       .last()
       .do(() => (this.jars = {}))
       .mapTo(undefined)
+      .toPromise()
   }
 }
 
@@ -394,12 +397,12 @@ const mkTestPond = async (opts?: PondOptions): Promise<TestPond> => {
 const pondFromServices = (services: Services, opts: PondOptions): Pond => {
   const { eventStore, snapshotStore, commandInterface } = services
 
-  Monitoring.of(commandInterface, 10000)
+  const monitoring = Monitoring.of(commandInterface, 10000)
 
   log.pond.debug('start pond with SourceID %s from store', eventStore.sourceId)
 
   const pondStateTracker = mkPondStateTracker(log.pond)
-  const pond: PondImpl = new PondImpl(eventStore, snapshotStore, pondStateTracker, opts)
+  const pond: PondImpl = new PondImpl(eventStore, snapshotStore, pondStateTracker, monitoring, opts)
   // execute commands by calling feed
   pond.commandsSubject
     .pipe(opts.commandTap || Tap.none)
