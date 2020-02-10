@@ -2,6 +2,24 @@
   "name": "@actyx/pond",
   "version": "1.0.0-alpha.0",
   "description": "Actyx Pond",
+  "keywords": [
+    "actyx",
+    "pond",
+    "distributed-systems",
+    "distributed apps",
+    "distributed",
+    "industry 4.0",
+    "smart-factory",
+    "event-sourcing",
+    "iot",
+    "serverless",
+    "p2p",
+    "peer-to-peer",
+    "synchronization",
+    "decentralized",
+    "datastore",
+    "offline-first"
+  ],
   "main": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "repository": {
@@ -13,7 +31,7 @@
   "bugs": {
     "url": "https://support.actyx.io"
   },
-  "homepage": "http://actyx.com/os",
+  "homepage": "https://www.actyx.com/pond/",
   "scripts": {
     "clean": "rimraf ./lib ./coverage",
     "build": "tsc -p ./tsconfig.prod.json",
