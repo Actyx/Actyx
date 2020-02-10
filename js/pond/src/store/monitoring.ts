@@ -12,7 +12,7 @@ import {
   LogLevel,
   RunStatsRequest,
 } from '../commandInterface'
-import { getMemoryUsage, isNode, Loggers } from '../util'
+import { getMemoryUsage, isNode, Loggers, noop } from '../util'
 import { runStats } from '../util/runStats'
 import { log } from './loggers'
 
@@ -163,7 +163,7 @@ const mkMonitoring = (
     sendRunStats(commandInterface.runStats)
   })
 
-  Observable.merge(heartbeat, commands, statsLoop).subscribe({
+  const sub = Observable.merge(heartbeat, commands, statsLoop).subscribe({
     error: e => {
       const msg = 'Fatal error. terminating pond loops!'
       log.monitoring.debug(msg, e)
@@ -176,6 +176,7 @@ const mkMonitoring = (
     meta: sendMeta(commandInterface),
     sendMessage: dissectAndSend(commandInterface),
     distress: sendDistressCall(commandInterface),
+    dispose: () => sub.unsubscribe(),
   }
 }
 // #endregion
@@ -184,7 +185,17 @@ export interface Monitoring {
   meta: (message: string) => void
   sendMessage: (message?: any, ...args: any[]) => void
   distress: (message: string, ...args: any[]) => void
+  dispose: () => void
 }
+
+const mockMonitoring: Monitoring = {
+  meta: noop,
+  sendMessage: noop,
+  distress: noop,
+  dispose: noop,
+}
+
 export const Monitoring = {
   of: mkMonitoring,
+  mock: () => mockMonitoring,
 }

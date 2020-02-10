@@ -22,9 +22,11 @@ describe('Pond', () => {
         type: 'broken',
       })
       .toPromise()
-    return resP.then(() => {
-      return expect(statesP).resolves.toEqual({ hashes: {} })
-    })
+    return resP
+      .then(() => {
+        return expect(statesP).resolves.toEqual({ hashes: {} })
+      })
+      .then(pond.dispose)
   })
 
   // FIXME: ipfs is not a thing at all
@@ -69,7 +71,8 @@ describe('Pond', () => {
       .observe(commandProbe, FishName.of('probe'))
       .take(2)
       .toPromise()
-    return expect(resP.then(() => navP)).resolves.toEqual('BOO')
+    await expect(resP.then(() => navP)).resolves.toEqual('BOO')
+    await pond.dispose()
   })
 
   // FIXME: ipfs is not a thing anymore
@@ -127,6 +130,8 @@ describe('Pond', () => {
         'starting 2',
         'ending 2',
       ])
+
+      return pond.dispose()
     },
     15000,
   )

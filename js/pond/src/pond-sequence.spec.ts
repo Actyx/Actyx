@@ -99,6 +99,7 @@ async function testSlow(): Promise<void> {
     cumulativeFeedTimeLast10 / 10000,
     ' ms',
   )
+  await pond.dispose()
 }
 
 describe('application of commands in the pond', () => {
