@@ -6,11 +6,9 @@ import {
   Envelope,
   FishType,
   InitialState,
-  LegacyStateChange,
   OnCommand,
   OnEvent,
   OnStateChange,
-  publishState,
   Semantics,
   StateEffect,
 } from './types'
@@ -52,18 +50,16 @@ export const gen: Generators = {
 }
 
 function mkTimer(): Observable<StateEffect<Command, State>> {
-  return Observable.timer(0, 100).map<number, StateEffect<Command, State>>(() => ({
-    type: 'sendSelfCommand',
-    command: { type: 'ping' },
-  }))
+  return Observable.defer(() =>
+    Observable.timer(100).map<number, StateEffect<Command, State>>(() =>
+      StateEffect.sendSelf({ type: 'ping' }),
+    ),
+  )
 }
 
 // crucial: needs both commands, see pond.spec.js
 function mkReset(): Observable<StateEffect<Command, State>> {
-  return Observable.of<StateEffect<Command, State>>(
-    { type: 'sendSelfCommand', command: { type: 'reset' } },
-    { type: 'sendSelfCommand', command: { type: 'enable' } },
-  )
+  return Observable.of<Command>({ type: 'reset' }, { type: 'enable' }).map(StateEffect.sendSelf)
 }
 
 const onEvent: OnEvent<State, Event> = (state: State, event: Envelope<Event>) => {
@@ -96,16 +92,24 @@ const onCommand: OnCommand<State, Command, Event> = (state, command) => {
   }
 }
 
-const onStateChange: LegacyStateChange<State, Command, State> = state => {
-  switch (state.type) {
-    case 'initial':
-      return [publishState(x => x)]
+const getCommandEffect = (t: string) => {
+  switch (t) {
     case 'enabled':
-      return [publishState(x => x), { name: 'timer', create: mkTimer }]
+      return mkTimer()
     case 'disabled':
-      return [publishState(x => x), { name: 'reset', create: mkReset }]
+      return mkReset()
+    default:
+      return Observable.empty<StateEffect<Command, State>>()
   }
 }
+
+const onStateChange: OnStateChange<State, Command, State> = pond =>
+  pond.observeSelf().switchMap(state => {
+    return Observable.concat(
+      Observable.of(StateEffect.publish(state)),
+      getCommandEffect(state.type),
+    )
+  })
 
 const initialState: InitialState<State> = () => ({ state: { type: 'initial' } })
 
@@ -119,7 +123,7 @@ export const timerFishType: FishType<Command, Event, State> = FishType.of<
   initialState,
   onEvent,
   onCommand,
-  onStateChange: OnStateChange.legacy(onStateChange),
+  onStateChange,
 })
 
 export const brokenTimerFishType: FishType<Command, Event, State> = FishType.of<
@@ -134,5 +138,5 @@ export const brokenTimerFishType: FishType<Command, Event, State> = FishType.of<
   onCommand: () => {
     throw new Error('I am broken!')
   },
-  onStateChange: OnStateChange.legacy(onStateChange),
+  onStateChange,
 })

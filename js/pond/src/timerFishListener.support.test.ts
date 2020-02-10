@@ -1,12 +1,10 @@
 // a timer listener fish to test pond infrastructure
 import { Observable } from 'rxjs'
-import { StateSubscription } from '.'
 import { timerFishType } from './timerFish.support.test'
 import {
   FishName,
   FishType,
   InitialState,
-  LegacyStateChange,
   OnCommand,
   OnEvent,
   OnStateChange,
@@ -76,18 +74,28 @@ const onCommand: OnCommand<State, Command, Event> = (state, command) => {
   }
 }
 
-const onStateChange: LegacyStateChange<State, Command, State> = (state: State) => {
-  switch (state.type) {
-    case 'enabled':
-      return [
-        StateSubscription.publishState(x => x),
-        { name: 'listener', create: mkTimerFishListener },
-      ]
-    case 'disabled':
-      return [StateSubscription.publishState(x => x)]
-    default:
-      return unreachable(state)
-  }
+const onStateChange: OnStateChange<State, Command, State> = pond => {
+
+  const timerFishUpdates: Observable<StateEffect<Command, State>> = mkTimerFishListener(
+    pond,
+  ).mergeMap(effect =>
+    pond
+      .observeSelf()
+      .take(1)
+      .concatMap(state => {
+        if (state.type === 'enabled') {
+          return [effect]
+        } else {
+          return []
+        }
+      }),
+  )
+
+  const publishState: Observable<StateEffect<Command, State>> = pond
+    .observeSelf()
+    .map(state => StateEffect.publish(state))
+
+  return Observable.merge(timerFishUpdates, publishState)
 }
 
 const initialState: InitialState<State> = () => ({ state: { type: 'disabled' } })
@@ -102,5 +110,5 @@ export const timerFishListenerFishType: FishType<Command, Event, State> = FishTy
   initialState,
   onEvent,
   onCommand,
-  onStateChange: OnStateChange.legacy(onStateChange),
+  onStateChange,
 })
