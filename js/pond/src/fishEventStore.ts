@@ -85,7 +85,7 @@ export interface FishEventStore<S, E> {
    * the function is only asynchronous due to piping the newly computed states through the
    * local snapshot storage logic.
    */
-  readonly currentState: () => Observable<S>
+  readonly currentState: () => Observable<StateWithProvenance<S>>
   /**
    * The present for all events relevant to this store.
    *
@@ -182,6 +182,7 @@ export function mergeSortedInto<K>(
           ro++
           ri++
         } else {
+          log.pond.error('Got the same event twice:', l[li])
           // getting a duplicate
           if (i === li) {
             // everything still fine
@@ -639,7 +640,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
   // log how much function execution takes
   // show loading mask while it is working
   // for later eventually chunk `k` or by time
-  applyEvents(statesToStore: ReadonlyArray<TaggedIndex>): S {
+  applyEvents(statesToStore: ReadonlyArray<TaggedIndex>): StateWithProvenance<S> {
     const startingPoint = this.statePointers.latestStored()
 
     const cachedStateWithProvenance = startingPoint.foldL(() => this.baseState(), x => x.state)
@@ -694,13 +695,15 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     // so we may need to apply some more.
     while (i < this.events.length) {
       state = this.fish.onEvent(state, this.events[i])
+      psnMap = includeEvent(psnMap, ev)
       i += 1
     }
 
-    return state
+    // No need to copy the final returned psnMap, since we made a copy initially.
+    return { state, psnMap }
   }
 
-  currentState(): Observable<S> {
+  currentState(): Observable<StateWithProvenance<S>> {
     const { snapshotFormat } = this.fish
 
     if (log.pond.debug.enabled) {
@@ -714,7 +717,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     }
   }
 
-  private currentStateNoSnapshotting(): Observable<S> {
+  private currentStateNoSnapshotting(): Observable<StateWithProvenance<S>> {
     const levels = this.statePointers.getStatesToCache(1, this.events)
 
     const state = this.applyEvents(levels)
@@ -722,7 +725,9 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     return Observable.of(state)
   }
 
-  private currentStateWithLocalSnapshots(snapshotFormat: SnapshotFormat<S, any>): Observable<S> {
+  private currentStateWithLocalSnapshots(
+    snapshotFormat: SnapshotFormat<S, any>,
+  ): Observable<StateWithProvenance<S>> {
     const { semantics, fishName } = this.fish
 
     if (this.shatterAsap.isSome()) {
@@ -779,7 +784,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     return Observable.from(storeSnapshots).mapTo(state)
   }
 
-  private shatterAndRehydrate(shatter: ShatterAsap): Observable<S> {
+  private shatterAndRehydrate(shatter: ShatterAsap): Observable<StateWithProvenance<S>> {
     const { semantics, fishName } = this.fish
 
     const latestLocalSnapshot = shatter.snapshotToShatter

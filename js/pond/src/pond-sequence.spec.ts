@@ -5,10 +5,9 @@ import {
   FishName,
   FishType,
   InitialState,
-  LegacyStateChange,
   OnCommand,
   OnEvent,
-  OnStateChange,
+  PondObservables,
   Semantics,
   StateEffect,
   Timestamp,
@@ -45,38 +44,38 @@ const onCommand: OnCommand<State, Command, Event> = (state, command) => {
   }
 }
 
-const checkTimer = (n: number): Observable<StateEffect<Command, State>> => {
-  return Observable.timer(0, 10).map<number, StateEffect<Command, State>>(() =>
-    StateEffect.sendSelf<Command>({ type: 'check', n }),
+const checkStateAfter10ms = (pond: PondObservables<State>) =>
+  pond.observeSelf().concatMap(state =>
+    // First state will be immediately updated, so we must not check that one.
+    (state.n > 0 ? Observable.timer(10) : Observable.empty()).mapTo(
+      StateEffect.sendSelf<Command>({ type: 'check', n: state.n }),
+    ),
   )
-}
-
-const onStateChange: LegacyStateChange<State, Command, State> = state => {
-  const name = `pipeline${state.n}`
-  return [{ name, create: () => checkTimer(state.n) }]
-}
 
 const initialState: InitialState<State> = () => ({ state: { n: 0 } })
 
+const fishConfig = {
+  semantics: Semantics.of('sequenceTestFish'),
+  initialState,
+  onEvent,
+  onCommand,
+  onStateChange: checkStateAfter10ms,
+}
 export const sequenceTestFish: FishType<Command, Event, State> = FishType.of<
   State,
   Command,
   Event,
   State
->({
-  semantics: Semantics.of('sequenceTestFish'),
-  initialState,
-  onEvent,
-  onCommand,
-  onStateChange: OnStateChange.legacy(onStateChange),
-})
+>(fishConfig)
 
 async function testSlow(): Promise<void> {
   const N = 30
-  const pond = await Pond.mock()
+  const pond = await Pond.test()
   let cumulativeFeedTime = 0
   let cumulativeFeedTimeLast10 = 0
   let prevTime = Timestamp.now()
+  // We need to observe the fish in the pond for the onStateChange pipeline to do anything.
+  pond.observe(sequenceTestFish, FishName.of('test')).subscribe()
   for (let i = 0; i < N; i++) {
     await pond
       .feed(sequenceTestFish, FishName.of('test'))({ type: 'set', n: i + 1 })
@@ -103,19 +102,9 @@ async function testSlow(): Promise<void> {
 }
 
 describe('application of commands in the pond', () => {
-  // FIXME
-  it.skip('should be processing events interleaved with commands (fast)', async () => {
-    const N = 100
-    const pond = await Pond.mock()
-    for (let i = 0; i < N; i++) {
-      pond
-        .feed(sequenceTestFish, FishName.of('test'))({ type: 'set', n: i + 1 })
-        .subscribe()
-    }
-    return pond
-
+  const expectNEvents = (pond: Pond, N: number) =>
+    pond
       ._events()
-      .do(console.info)
       .take(N)
       .toArray()
       .toPromise()
@@ -126,34 +115,44 @@ describe('application of commands in the pond', () => {
           }
         }
       })
+      .then(() => pond.dispose())
+
+  it('should be processing events interleaved with commands (fast)', async () => {
+    const N = 100
+    const pond = await Pond.test()
+
+    // _events is not a ReplaySubject, so we must start listening before everything else.
+    const res = expectNEvents(pond, 50)
+
+    // We need to observe the fish in the pond for the onStateChange pipeline to do anything.
+    pond.observe(sequenceTestFish, FishName.of('test')).subscribe()
+    for (let i = 0; i < N; i++) {
+      pond
+        .feed(sequenceTestFish, FishName.of('test'))({ type: 'set', n: i + 1 })
+        .subscribe()
+      await Observable.timer(20).toPromise()
+    }
+
+    return res
   })
-  // FIXME
-  it.skip(
+
+  it(
     'should be processing events interleaved with commands (fast2)',
     async () => {
       const N = 1000
-      const pond = await Pond.mock()
-      for (let i = 0; i < N; i++) {
-        pond
-          .feed(sequenceTestFish, FishName.of('test'))({ type: 'set', n: i + 1 })
-          .subscribe()
-        pond
-          .feed(sequenceTestFish, FishName.of('test'))({ type: 'check', n: i + 1 })
-          .subscribe()
-      }
-      return pond
+      const pond = await Pond.test()
 
-        ._events()
-        .take(N)
-        .toArray()
-        .toPromise()
-        .then(events => {
-          for (let i = 1; i < events.length; i++) {
-            if (events[i - 1].payload.n !== events[i].payload.n - 1) {
-              throw new Error()
-            }
-          }
-        })
+      // _events is not a ReplaySubject, so we must start listening before everything else.
+      const res = expectNEvents(pond, 100)
+
+      const dofeed = pond.feed(sequenceTestFish, FishName.of('test'))
+      // Since we are not subscribed to the fish, its onStateChange is not triggered.
+      // Otherwise, it would throw Errors, since we have no delay between the set-commands.
+      for (let i = 0; i < N; i++) {
+        dofeed({ type: 'set', n: i + 1 }).subscribe()
+        dofeed({ type: 'check', n: i + 1 }).subscribe()
+      }
+      return res
     },
     10000,
   )

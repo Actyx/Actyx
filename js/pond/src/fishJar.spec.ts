@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Observable } from 'rxjs'
+import { Observable, Subject } from 'rxjs'
 import { CommandApi, UnsafeAsync } from './commandApi'
 import { EventStore } from './eventstore'
 import { Event } from './eventstore/types'
@@ -39,6 +39,7 @@ const fakeObserve: <C, E, P>(fish: FishType<C, E, P>, name: string) => Observabl
 
 const commandExecutor = CommandExecutor()
 const pondStateTracker = mkNoopPondStateTracker()
+
 describe('FishJar', () => {
   const NUM_EVENTS = 1000
   const NUM_REALTIME_EVENTS = 100
@@ -56,7 +57,8 @@ describe('FishJar', () => {
   const fishName2 = FishName.of('eventStress2')
   const source2 = Source.of(eventStress2, fishName2, sourceId)
 
-  const sendPassThrough = () => {
+  const sendPassThroughSwallow = () => {
+    // tslint:disable-next-line no-let
     let psn = 0
     return <E>(src: Source, events: ReadonlyArray<E>) =>
       Observable.from(events)
@@ -69,6 +71,26 @@ describe('FishJar', () => {
           payload: e,
         }))
         .toArray()
+  }
+
+  const sendPassThrough = (mockInternalStore: Subject<EnvelopeFromStore<any>[]>) => {
+    // tslint:disable-next-line no-let
+    let psn = 0
+    return <E>(src: Source, events: ReadonlyArray<E>) =>
+      Observable.from(events)
+        .map<E, EnvelopeFromStore<E>>(e => ({
+          source: src,
+          timestamp: Timestamp.of(0),
+          lamport: Lamport.of(0),
+          id: [fishSemantics, fishName, sourceId],
+          semantics: fishSemantics,
+          name: fishName,
+          sourceId: src.sourceId,
+          psn: Psn.of(psn++),
+          payload: e,
+        }))
+        .toArray()
+        .do(resultArray => mockInternalStore.next(resultArray))
   }
 
   const storedEvents = new Array(NUM_EVENTS).fill(0).map<Event>((_, n) => ({
@@ -96,8 +118,7 @@ describe('FishJar', () => {
     psn: Psn.of(NUM_EVENTS + n + 1), // accomodate previous events and one generated command, however currently psns are not checked
   }))
   const livePayloads: ReadonlyArray<number> = liveEvents.map(ev => ev.payload as number)
-  const genRealtimeEvents = () =>
-    Observable.concat(Observable.of(liveEvents), Observable.never<ReadonlyArray<Event>>())
+  const genRealtimeEvents = () => Observable.of(liveEvents)
 
   const sourceA: Source = {
     semantics: Semantics.of('a'),
@@ -122,17 +143,23 @@ describe('FishJar', () => {
   const multiSourceEventStress = eventStressFishBuilder(fishSemantics, multiSourceInitialState)
 
   it('should hydrate the single source fishJar and then push some realtime events', async () => {
+    const mockInternalStore = new Subject<EnvelopeFromStore<any>[]>()
+
     const eventStore: EventStore = {
       ...EventStore.noop,
       persistedEvents: genEvents,
-      allEvents: genRealtimeEvents,
+      allEvents: () =>
+        Observable.concat(
+          genRealtimeEvents(),
+          mockInternalStore.map(evs => evs.map(Event.fromEnvelopeFromStore)),
+        ),
     }
     const jar = await hydrate(
       FishTypeImpl.downcast(eventStress),
       fishName,
       eventStore,
       SnapshotStore.noop,
-      sendPassThrough(),
+      sendPassThrough(mockInternalStore),
       fakeObserve,
       commandExecutor,
       pondStateTracker,
@@ -161,7 +188,7 @@ describe('FishJar', () => {
       fishName,
       eventStore,
       SnapshotStore.noop,
-      sendPassThrough(),
+      sendPassThroughSwallow(),
       fakeObserve,
       commandExecutor,
       pondStateTracker,
@@ -277,17 +304,20 @@ describe('FishJar', () => {
       const jar = await getJar(borkedFish, tracker)
 
       jar.enqueueCommand(4, noop, noop)
-      jar.enqueueCommand(5, noop, noop)
-      jar.enqueueCommand(6, noop, noop)
 
       try {
-        await jar.publicSubject.take(1).toPromise()
+        jar.enqueueCommand(5, noop, noop)
       } catch (_) {
-        // Jar is dead now, will only throw errors when trying to interact with it.
+        // We get an immediate error.
       }
 
-      // ...but at least we are not blocking the UI.
+      // ...but UI is not blocked,
       await assertUnblocked(tracker)
+
+      // and we can also still interact with the jar.
+      const s = jar.publicSubject.take(2).toPromise()
+      jar.enqueueCommand(6, noop, noop)
+      return expect(s).resolves.toEqual(10)
     })
 
     it('should update the state tracker even when command application has an async error', async () => {

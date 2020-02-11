@@ -63,24 +63,45 @@ const filterEvents = (
     .filter(subscriptionsToEventPredicate(subs))
 }
 
-export const testEventStore: (sourceId: SourceId, eventChunkSize?: number) => TestEventStore = (
-  sourceId,
-  eventChunkSize,
+const persistence = () => {
+  let sorted = true
+  const persisted: Event[] = []
+
+  const persist = (evs: Events) => {
+    persisted.push(...evs)
+    sorted = false
+  }
+  const getPersisted = () => {
+    if (!sorted) {
+      persisted.sort(EventKey.ord.compare)
+      sorted = true
+    }
+
+    return persisted
+  }
+
+  return {
+    persist,
+    getPersisted,
+  }
+}
+
+export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => TestEventStore = (
+  sourceId = SourceId.of('TEST'),
+  eventChunkSize = 4,
 ) => {
-  const storedSorted: Event[] = []
+  const { persist, getPersisted } = persistence()
 
   const present = new ReplaySubject<OffsetMap>(1)
   const live = new Subject<Events>()
 
   const persistedEvents: RequestPersistedEvents = (from, to, subs, sortOrder, min) => {
-    const ret =
-      sortOrder === PersistedEventsSortOrders.ReverseEventKey
-        ? [...storedSorted].reverse()
-        : storedSorted
+    const events = getPersisted()
 
-    return Observable.from(chunksOf(ret, eventChunkSize || 4)).map(
-      filterEvents(from, to, subs, min),
-    )
+    const ret =
+      sortOrder === PersistedEventsSortOrders.ReverseEventKey ? [...events].reverse() : events
+
+    return Observable.from(chunksOf(ret, eventChunkSize)).map(filterEvents(from, to, subs, min))
   }
 
   const liveStream: RequestAllEvents = (from, to, subs, sortOrder, min) => {
@@ -127,8 +148,7 @@ export const testEventStore: (sourceId: SourceId, eventChunkSize?: number) => Te
     }
     offsets = b
 
-    storedSorted.push(...newEvents)
-    storedSorted.sort(EventKey.ord.compare)
+    persist(newEvents)
     live.next(newEvents)
     present.next(offsets)
   }
@@ -146,6 +166,6 @@ export const testEventStore: (sourceId: SourceId, eventChunkSize?: number) => Te
     allEvents,
     persistEvents,
     directlyPushEvents,
-    storedEvents: () => storedSorted,
+    storedEvents: () => getPersisted(),
   }
 }
