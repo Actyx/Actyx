@@ -132,7 +132,10 @@ const hydrate: Run = fish => async (sourceId, events, snapshotScheduler) => {
         snapshotScheduler,
         offsetMap1,
       ).toPromise()
-      const state1 = await store.currentState().toPromise()
+      const state1 = await store
+        .currentState()
+        .toPromise()
+        .then(sp => sp.state)
       return { state: state1, offsetMap: offsetMap1, eventStore, snapshotStore }
     },
     Promise.resolve({
@@ -187,7 +190,12 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
     }
 
     const isLast = i === events.length - 1
-    return (n && intermediates) || isLast ? store.currentState().toPromise() : acc
+    return (n && intermediates) || isLast
+      ? store
+          .currentState()
+          .toPromise()
+          .then(sp => sp.state)
+      : acc
   }, Promise.resolve(fish.initialState))
 }
 

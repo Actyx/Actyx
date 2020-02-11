@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
 import * as R from 'ramda'
 import { Observable, ReplaySubject, Scheduler, Subject, Subscription as RxSubscription } from 'rxjs'
 import { catchError, tap } from 'rxjs/operators'
@@ -25,8 +24,8 @@ import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
 import { EnvelopeFromStore } from './store/util'
 import { Subscription, SubscriptionSet, subscriptionsToEnvelopePredicate } from './subscription'
-import { ObserveMethod, Semantics, Timestamp } from './types'
-import { noop } from './util'
+import { ObserveMethod, Psn, Semantics, StateWithProvenance, Timestamp } from './types'
+import { lookup, noop } from './util'
 import { runStats } from './util/runStats'
 
 export const mkSubscriptionSet = (source: Source, subscriptions?: ReadonlyArray<Subscription>) => {
@@ -52,28 +51,24 @@ export type FishJar<C, E, P> = Readonly<{
   dump: () => string
 }>
 
-type EventInput<E> = Readonly<{
-  type: 'events'
-  events: ReadonlyArray<EnvelopeFromStore<E>>
-}>
 type CommandInput<C> = Readonly<{
   type: 'command'
   command: C
   onComplete: () => void
   onError: (err: any) => void
 }>
-type ScanInput<E, C> = EventInput<E> | CommandInput<C>
 
-type MergeScanState<S, E> = Readonly<{
+type EventScanState<S, E> = Readonly<{
   eventStore: FishEventStore<S, E>
   /**
    * Sometimes we do not have to emit a new state. E.g. when a command
    * does not result in events.
    */
-  emit: ReadonlyArray<S>
-  // this can be used to async get current state
-  // contains all events from the beginning of time for this fish (SIGH!)
-  // also contains the initial state
+  emit: ReadonlyArray<StateWithProvenance<S>>
+}>
+
+type CommandScanState = Readonly<{
+  waitFor: Psn
 }>
 
 const createFishJar = <S, C, E, P>(
@@ -81,7 +76,7 @@ const createFishJar = <S, C, E, P>(
   subscriptions: SubscriptionSet,
   fish: FishTypeImpl<S, C, E, P>,
   store: FishEventStore<S, E>,
-  storeState: S,
+  storeState: StateWithProvenance<S>,
   observe: ObserveMethod, // observe other fishes
   sendToStore: SendToStore, // send chunk to store
   realtimeEvents: (
@@ -93,28 +88,20 @@ const createFishJar = <S, C, E, P>(
   pondStateTracker: PondStateTracker,
 ): FishJar<C, E, P> => {
   // does this even have to be a subject?
-  const eventsIn: Subject<ReadonlyArray<EnvelopeFromStore<E>>> = new Subject()
+  const eventsIn = realtimeEvents(subscriptions, offsetMap)
   const commandIn: Subject<CommandInput<C>> = new Subject()
   const publicSubject: Subject<P> = new ReplaySubject<P>(1)
-  const stateSubject = new ReplaySubject<S>(1)
+  const stateSubject = new ReplaySubject<StateWithProvenance<S>>(1)
+  const privateStateOut = stateSubject.map(sp => sp.state)
   const pondObservables: PondObservables<S> = {
     observe,
-    observeSelf: () => stateSubject,
+    observeSelf: () => privateStateOut,
   }
-  const in1: Observable<ScanInput<E, C>> = eventsIn
-    // must not filter out own events (even though we’ll apply them directly) because other Ponds on the
-    // same store may also contribute events here, with the same sourceId
-    .map<ReadonlyArray<EnvelopeFromStore<E>>, ScanInput<E, C>>(events => ({
-      type: 'events',
-      events,
-    }))
-  const in2: Observable<ScanInput<E, C>> = commandIn
-  const mergeScanInput: Observable<ScanInput<E, C>> = Observable.merge(in1, in2)
 
   const eventFilter = subscriptionsToEnvelopePredicate(subscriptions)
 
   // Initial state for the mergeScan pipeline - this is the state of the Jar right after replay from FishEventStore
-  const mergeScanSeed: MergeScanState<S, E> = {
+  const mergeScanSeed: EventScanState<S, E> = {
     eventStore: store,
     emit: [storeState],
   }
@@ -140,6 +127,54 @@ const createFishJar = <S, C, E, P>(
     }
   }
 
+  // Aggregate incoming events into ever-new states.
+  // We reveal the Provenance too, so that downstream consumers can implement specialized logic.
+  const evScanAcc = (
+    current: EventScanState<S, E>,
+    events: ReadonlyArray<EnvelopeFromStore<E>>,
+  ): Observable<EventScanState<S, E>> => {
+    const start = Timestamp.now()
+    const pondStateTrackerEventProcessingToken = pondStateTracker.eventsFromOtherSourcesProcessingStarted(
+      source.semantics,
+      source.name,
+    )
+
+    const unblock = () =>
+      pondStateTracker.eventsFromOtherSourcesProcessingFinished(
+        pondStateTrackerEventProcessingToken,
+      )
+
+    try {
+      const profile = `inject-events/${fish.semantics}`
+
+      runStats.durations.start(profile, start)
+      const needsState = current.eventStore.processEvents(events)
+      runStats.durations.end(profile, start, Timestamp.now())
+
+      const result = needsState
+        ? current.eventStore
+            .currentState()
+            .pipe(runStats.profile.profileObservable(`inject-compute/${fish.semantics}`))
+            .map(s => ({
+              ...current,
+              emit: [s],
+            }))
+        : Observable.of({ ...current, emit: [] })
+
+      return result.pipe(
+        tap(
+          unblock,
+          // On errors, also update the tracker
+          unblock,
+        ),
+      )
+    } catch (e) {
+      // Synchronous error, for example from onEvent
+      unblock()
+      throw e
+    }
+  }
+
   // executes effects and returns a promise of the produced events
   const handleAsyncCommandResult = (command: C) => (ar: CommandApi<ReadonlyArray<E>>) =>
     Observable.fromPromise(commandExecutor(ar))
@@ -159,166 +194,108 @@ const createFishJar = <S, C, E, P>(
         return Observable.of([])
       })
 
-  const processEvents = (events: ReadonlyArray<EnvelopeFromStore<E>>): void => eventsIn.next(events)
+  // Command handling pipeline. After each command, if it emitted any events that we are subscribed to,
+  // the handling of the following command is delayed until upstream (event aggregation) has seen and
+  // integrated the event into our state.
+  // In this way, we arrive at our core command guarantee: Every command sees all local effects of all
+  // preceding commands.
+  const cmdScanAcc = (
+    current: CommandScanState,
+    input: CommandInput<C>,
+  ): Observable<CommandScanState> => {
+    const { command, onComplete, onError } = input
+    const pondStateTrackerCommandProcessingToken = pondStateTracker.commandProcessingStarted(
+      source.semantics,
+      source.name,
+    )
+    const unblock = () =>
+      pondStateTracker.commandProcessingFinished(pondStateTrackerCommandProcessingToken)
 
-  // Accumulator function for the mergeScanPipeline, our Master Control Program
-  const mergeScanAccumulator = (
-    current: MergeScanState<S, E>,
-    input: ScanInput<E, C>,
-  ): Observable<MergeScanState<S, E>> => {
-    switch (input.type) {
-      case 'command': {
-        const { command, onComplete, onError } = input
-        const pondStateTrackerCommandProcessingToken = pondStateTracker.commandProcessingStarted(
-          source.semantics,
-          source.name,
-        )
-        const unblock = () =>
-          pondStateTracker.commandProcessingFinished(pondStateTrackerCommandProcessingToken)
+    const result = stateSubject
+      .filter(stateWithProvenance => {
+        if (current.waitFor < Psn.zero) {
+          return true
+        }
 
-        const result = current.eventStore.currentState().concatMap(s => {
-          const onCommandResult = fish.onCommand(s, command)
-          const stored = CommandResult.fold<E, Observable<ReadonlyArray<EnvelopeFromStore<E>>>>(
-            onCommandResult,
-          )({
-            sync: events => sendToStore(source, events),
-            async: handleAsyncCommandResult(command),
-            none: () => Observable.of([]),
-          })
+        const latestSeen = lookup(stateWithProvenance.psnMap, source.sourceId)
+        const pass = latestSeen !== undefined && latestSeen >= current.waitFor
 
-          return stored.concatMap(envelopes => {
-            if (envelopes.length === 0) {
-              return Observable.of({ ...current, emit: [] })
-            }
-
-            const filtered = envelopes.filter(eventFilter)
-            if (filtered.length === 0) {
-              return Observable.of({ ...current, emit: [] })
-            }
-
-            const start = Timestamp.now()
-            const profile = `command-events/${fish.semantics}`
-
-            runStats.durations.start(profile, start)
-
-            // Here we put our own events into the store, we’ll get them again as live events!
-            // This mechanism is necessary so that we can guarantee to wait with processing the
-            // next command until this command has had its proper effect on the fish state.
-            const needsState = current.eventStore.processEvents(filtered)
-            runStats.durations.end(profile, start, Timestamp.now())
-
-            return needsState
-              ? current.eventStore
-                  .currentState()
-                  .pipe(runStats.profile.profileObservable(`command-compute/${fish.semantics}`))
-                  .map(state1 => ({
-                    eventStore: current.eventStore,
-                    emit: [state1],
-                  }))
-              : Observable.of({ ...current, emit: [] })
-          })
+        if (!pass) {
+          log.pond.debug(
+            Source.format(source),
+            'waiting for',
+            current.waitFor,
+            '; currently at:',
+            latestSeen,
+          )
+        }
+        return pass
+      })
+      .map(sp => sp.state)
+      .take(1)
+      .concatMap(s => {
+        const onCommandResult = fish.onCommand(s, command)
+        const stored = CommandResult.fold<E, Observable<ReadonlyArray<EnvelopeFromStore<E>>>>(
+          onCommandResult,
+        )({
+          sync: events => sendToStore(source, events),
+          async: handleAsyncCommandResult(command),
+          none: () => Observable.of([]),
         })
 
-        return result.pipe(
-          catchError(x => {
-            unblock()
-            onError(x)
-            return Observable.throw(x)
-          }),
-          tap(() => {
-            unblock()
-            onComplete()
-          }),
-        )
-      }
+        return stored.concatMap(envelopes => {
+          if (envelopes.length === 0) {
+            return Observable.of({ ...current })
+          }
 
-      case 'events': {
-        // we assume that we are not getting our own events here!
-        const start = Timestamp.now()
-        const pondStateTrackerEventProcessingToken = pondStateTracker.eventsFromOtherSourcesProcessingStarted(
-          source.semantics,
-          source.name,
-        )
-        const unblock = () =>
-          pondStateTracker.eventsFromOtherSourcesProcessingFinished(
-            pondStateTrackerEventProcessingToken,
-          )
+          // We only care about events we ourselves are actually subscribed to.
+          const filtered = envelopes.filter(eventFilter)
+          if (filtered.length === 0) {
+            return Observable.of({ ...current })
+          }
 
-        try {
-          const profile = `inject-events/${fish.semantics}`
+          // We must wait for the final psn of our generated events
+          // to be applied to the state, before we may apply the next command.
+          const finalPsn = filtered[filtered.length - 1].psn
 
-          runStats.durations.start(profile, start)
-          const needsState = current.eventStore.processEvents(input.events)
-          runStats.durations.end(profile, start, Timestamp.now())
+          return Observable.of({ waitFor: finalPsn })
+        })
+      })
 
-          const result = needsState
-            ? current.eventStore
-                .currentState()
-                .pipe(runStats.profile.profileObservable(`inject-compute/${fish.semantics}`))
-                .map(s => ({
-                  ...current,
-                  emit: [s],
-                }))
-            : Observable.of({ ...current, emit: [] })
-
-          return result.pipe(
-            tap(
-              unblock,
-              // On errors, also update the tracker
-              unblock,
-            ),
-          )
-        } catch (e) {
-          // Synchronous error, for example from onEvent
-          unblock()
-          throw e
-        }
-      }
-    }
+    return result.pipe(
+      catchError(x => {
+        unblock()
+        onError(x)
+        return Observable.of(current)
+      }),
+      tap(() => {
+        unblock()
+        onComplete()
+      }),
+    )
   }
-  // we need to explicitly emit the mergeScanSeed, since the mergeScan will not emit
-  // the seed for a non-terminating stream:
-  //
-  // Rx.Observable.never().mergeScan(x => x, 'seed', 1).do(x => console.log(x)).subscribe() // never prints seed
-  //
-  // however, for a terminating stream the seed is emitted:
-  //
-  // Rx.Observable.empty().mergeScan(x => x, 'seed', 1).do(x => console.log(x)).subscribe() // does print seed (on complete, I guess)
-  //
-  // Here and in some other places (notably fishEventStore2.ts, pond.ts and unsubscribeOn.ts) you will see reference to Scheduler.queue
-  // Its purpose is avoidance of stack overflows in the rxjs pipelines, especially ones containing sources emitting large numbers
-  // of elements. The root cause of those stack overflows is the move of rxjs to more aggresive behaviour with respect to observable emissions
-  // with version change from 4 to 5. This was supposed to be some 'performance optimisation'. It results (especially for inner observables
-  // in concatMap) in eager generation of code thunks for the whole pipeline for each new upcoming element even when the previous ones have
-  // not been consumed, finally causing the pipeline to exceed the stack limit. The recommended workaround is to use a non-immediate Scheduler,
-  // like Scheduler.queue (previously known as 'trampoline scheduler') that puts an intermittent queue which causes the thunks to be produced
-  // only for the elements that are being de-queued.
-  // unsubscribeOn is a bit more involved example, which battles stack-overflow on eager unsubscription, which without non-immediate Scheduler
-  // would result in generating code for unsubscription from each generated element.
 
   const rxSubs: RxSubscription[] = []
   rxSubs.push(
     Observable.concat(
       Observable.of(mergeScanSeed),
-      mergeScanInput.mergeScan(mergeScanAccumulator, mergeScanSeed, 1),
+      eventsIn.filter(evs => evs.length > 0).mergeScan(evScanAcc, mergeScanSeed, 1),
     )
       .concatMap(x => x.emit)
+      .subscribeOn(Scheduler.queue)
       .subscribe(stateSubject),
   )
+
+  // Must wire the commandIn topic before starting the onStateChange pipeline,
+  // since it may immediately emit self-commands.
+  rxSubs.push(commandIn.mergeScan(cmdScanAcc, { waitFor: Psn.min }, 1).subscribe())
 
   rxSubs.push(
     fish
       .onStateChange(pondObservables)
-      .observeOn(Scheduler.queue)
+      .subscribeOn(Scheduler.queue)
       .concatMap(runStateEffect)
       .subscribe(publicSubject),
-  )
-
-  rxSubs.push(
-    // this includes all our subscriptions, also our own emitted events
-    realtimeEvents(subscriptions, offsetMap)
-      .do(processEvents)
-      .subscribe(),
   )
 
   const dispose = (): void => {

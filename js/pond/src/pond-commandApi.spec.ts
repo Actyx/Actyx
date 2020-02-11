@@ -106,19 +106,19 @@ describe('Pond', () => {
           .toPromise(),
       )
       const target = Target.of(commandProbe, FishName.of('probe'))
-      const pond = await Pond.mock()
+      const pond = await Pond.test()
       const probeP = pond
         .observe(commandProbe, FishName.of('probe'))
         .take(7)
         .toArray()
         .toPromise()
+
       const feed = (id: number) =>
         pond
           .feed(asyncTestFish, fooFishName)({ type: 'slow', id, target })
-          .toPromise()
 
       await Observable.range(0, 3)
-        .concatMap(i => feed(i))
+        .mergeMap(i => feed(i))
         .toPromise()
       const result = await probeP
       expect(result).toEqual([
