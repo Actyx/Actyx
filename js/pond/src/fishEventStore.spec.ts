@@ -141,9 +141,9 @@ describe('FishEventStore', () => {
     expect(impl(store).events.map(x => x.payload)).toEqual(events)
 
     const state = await store.currentState().toPromise()
-    expect(state).toBe(15)
+    expect(state.state).toBe(15)
 
     const state2 = await store.currentState().toPromise()
-    expect(state2).toBe(15)
+    expect(state2.state).toBe(15)
   })
 })
