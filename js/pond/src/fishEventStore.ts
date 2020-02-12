@@ -239,10 +239,12 @@ export const addAndInvalidateState = <E>(
   const highestUnmoved = mergeSortedInto(events0, newEvents, events, eventOrder)
 
   const change = highestUnmoved + 1 !== events.length
+  const timeTravel = highestUnmoved + 1 !== events0.length
 
-  if (change) {
+  if (timeTravel) {
     // invalidate states
     invalidateHigherThan(highestUnmoved)
+    log.pond.info('time travel to index', highestUnmoved, 'of', events.length)
   }
 
   return change
@@ -538,6 +540,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
    * @returns true if it leaves events without corresponding states behind
    */
   private mergeInsertEvents(newEvents: ReadonlyArray<EnvelopeFromStore<E>>): boolean {
+    // log.pond.info('mergeInsertEvents', this.fish.fishName, 'current buffer size', this.events.length)
     return addAndInvalidateState(
       this.events,
       i => this.statePointers.invalidateDownTo(i),

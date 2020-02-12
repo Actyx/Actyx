@@ -75,7 +75,6 @@ const onCommand: OnCommand<State, Command, Event> = (state, command) => {
 }
 
 const onStateChange: OnStateChange<State, Command, State> = pond => {
-
   const timerFishUpdates: Observable<StateEffect<Command, State>> = mkTimerFishListener(
     pond,
   ).mergeMap(effect =>
