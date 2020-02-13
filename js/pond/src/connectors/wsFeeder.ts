@@ -43,10 +43,16 @@ export const DataMatrixCodeMessage = t.type({
 })
 export type DataMatrixCodeMessage = t.TypeOf<typeof DataMatrixCodeMessage>
 
+const BatteryStateMessage = t.type({
+  type: t.literal('batterystate'),
+  level: t.number,
+})
+
 export const WebSocketMessage = t.taggedUnion('type', [
   PondMessage,
   NfcReadingMessage,
   DataMatrixCodeMessage,
+  BatteryStateMessage,
 ])
 export type WebSocketMessage = t.TypeOf<typeof WebSocketMessage>
 
@@ -173,6 +179,9 @@ const toFishCommands = (subs: WebSocketSubscriptions) => {
             return dmcSubs.map(({ fish, fishName, mapToCommand }) =>
               SendCommand.of(fish, fishName, mapToCommand(msg)),
             )
+          }
+          case 'batterystate': {
+            return []
           }
           default: {
             return unreachableOrElse(msg, [])
