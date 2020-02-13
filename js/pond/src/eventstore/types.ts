@@ -138,29 +138,36 @@ export type AllEventsSortOrder = t.TypeOf<typeof AllEventsSortOrder>
 /**
  * Connectivity status
  */
-const statusWith = (name: string, fields?: t.Props) =>
-  t.readonly(
-    t.type({
-      status: t.literal(name),
-      inCurrentStatusForMs: t.number,
-      ...fields,
-    }),
-  )
-
-const FullyConnected = statusWith('FullyConnected')
-
-const notCaughtUp = {
-  eventsToRead: t.number,
-  eventsToSend: t.number,
+export enum ConnectivityStatusType {
+  FullyConnected = 'FullyConnected',
+  PartiallyConnected = 'PartiallyConnected',
+  NotConnected = 'NotConnected',
 }
 
-const PartiallyConnected = statusWith('PartiallyConnected', {
-  specialsDisconnected: t.readonlyArray(SourceId.FromString),
-  swarmConnectivityLevel: t.number, // Percent*100, e.g. 50% would be 50, not 0.5
-  ...notCaughtUp,
-})
+const FullyConnected = t.readonly(
+  t.type({
+    status: t.literal(ConnectivityStatusType.FullyConnected),
+  }),
+)
 
-const NotConnected = statusWith('NotConnected', notCaughtUp)
+const PartiallyConnected = t.readonly(
+  t.type({
+    status: t.literal(ConnectivityStatusType.PartiallyConnected),
+
+    specialsDisconnected: t.readonlyArray(SourceId.FromString),
+    swarmConnectivityLevel: t.number, // Percent*100, e.g. 50% would be 50, not 0.5
+    eventsToRead: t.number,
+    eventsToSend: t.number,
+  }),
+)
+
+const NotConnected = t.readonly(
+  t.type({
+    status: t.literal(ConnectivityStatusType.NotConnected),
+    eventsToRead: t.number,
+    eventsToSend: t.number,
+  }),
+)
 
 export const ConnectivityStatus = t.union([FullyConnected, PartiallyConnected, NotConnected])
 export type ConnectivityStatus = t.TypeOf<typeof ConnectivityStatus>
