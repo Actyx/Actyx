@@ -147,13 +147,14 @@ export enum ConnectivityStatusType {
 const FullyConnected = t.readonly(
   t.type({
     status: t.literal(ConnectivityStatusType.FullyConnected),
+    inCurrentStatusForMs: t.number,
   }),
 )
 
 const PartiallyConnected = t.readonly(
   t.type({
     status: t.literal(ConnectivityStatusType.PartiallyConnected),
-
+    inCurrentStatusForMs: t.number,
     specialsDisconnected: t.readonlyArray(SourceId.FromString),
     swarmConnectivityLevel: t.number, // Percent*100, e.g. 50% would be 50, not 0.5
     eventsToRead: t.number,
@@ -164,6 +165,7 @@ const PartiallyConnected = t.readonly(
 const NotConnected = t.readonly(
   t.type({
     status: t.literal(ConnectivityStatusType.NotConnected),
+    inCurrentStatusForMs: t.number,
     eventsToRead: t.number,
     eventsToSend: t.number,
   }),
