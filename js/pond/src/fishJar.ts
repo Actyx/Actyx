@@ -153,12 +153,12 @@ const createFishJar = <S, C, E, P>(
 
       const result = needsState
         ? current.eventStore
-          .currentState()
-          .pipe(runStats.profile.profileObservable(`inject-compute/${fish.semantics}`))
-          .map(s => ({
-            ...current,
-            emit: [s],
-          }))
+            .currentState()
+            .pipe(runStats.profile.profileObservable(`inject-compute/${fish.semantics}`))
+            .map(s => ({
+              ...current,
+              emit: [s],
+            }))
         : Observable.of({ ...current, emit: [] })
 
       return result.pipe(

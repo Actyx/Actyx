@@ -110,10 +110,14 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
       throw new Error('The test event store only supports Unsorted ordering')
     }
 
-    return live.asObservable().map(filterEvents(from, to, subs, min))
-      // Delivering live events may trigger new events (via onStateChange) and again new events,
-      // until we exhaust the call stack. The prod store shouldn’t have that problem due to obvious reasons.
-      .observeOn(Scheduler.queue)
+    return (
+      live
+        .asObservable()
+        .map(filterEvents(from, to, subs, min))
+        // Delivering live events may trigger new events (via onStateChange) and again new events,
+        // until we exhaust the call stack. The prod store shouldn’t have that problem due to obvious reasons.
+        .observeOn(Scheduler.queue)
+    )
   }
 
   const allEvents: RequestAllEvents = (fromPsn, toPsn, subs, sortOrder, min) => {
@@ -180,15 +184,12 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
         .asObservable()
         .map(toIo)
         .do(() => log.ws.debug('present')),
-    highestSeen: () =>
-      present
-        .asObservable()
-        .map(toIo),
+    highestSeen: () => present.asObservable().map(toIo),
     persistedEvents,
     allEvents,
     persistEvents,
     directlyPushEvents,
     storedEvents: () => getPersisted(),
-    connectivityStatus: () => Observable.empty<ConnectivityStatus>()
+    connectivityStatus: () => Observable.empty<ConnectivityStatus>(),
   }
 }
