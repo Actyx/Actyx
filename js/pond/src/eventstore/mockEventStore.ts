@@ -8,7 +8,7 @@ import {
   RequestPersistedEvents,
   RequestPersistEvents,
 } from './eventStore'
-import { Events, OffsetMapWithDefault } from './types'
+import { Events, OffsetMapWithDefault, ConnectivityStatus } from './types'
 
 export const mockEventStore: () => EventStore = () => {
   const sourceId = SourceId.of('MOCK')
@@ -55,8 +55,10 @@ export const mockEventStore: () => EventStore = () => {
   return {
     sourceId,
     present: () => present.asObservable().do(() => log.ws.debug('present')),
+    highestSeen: () => present.asObservable(),
     persistedEvents,
     allEvents,
     persistEvents,
+    connectivityStatus: () => Observable.empty<ConnectivityStatus>(),
   }
 }

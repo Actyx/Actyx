@@ -7,6 +7,8 @@ import { EventKey, EventKeyIO, Lamport, Psn, Semantics, SourceId } from '../type
 import {
   EventStore,
   RequestAllEvents,
+  RequestConnectivity,
+  RequestHighestSeen,
   RequestPersistedEvents,
   RequestPersistEvents,
   RequestPresent,
@@ -14,6 +16,7 @@ import {
 import { MultiplexedWebsocket, validateOrThrow } from './multiplexedWebsocket'
 import {
   AllEventsSortOrder,
+  ConnectivityStatus,
   Event,
   Events,
   OffsetMapWithDefault,
@@ -27,6 +30,8 @@ export const enum RequestTypes {
   PersistedEvents = '/ax/events/requestPersistedEvents',
   AllEvents = '/ax/events/requestAllEvents',
   PersistEvents = '/ax/events/persistEvents',
+  HighestSeen = '/ax/events/highestSeenOffsets',
+  Connectivity = '/ax/events/requestConnectivity',
 }
 const EventKeyOrNull = t.union([t.null, EventKeyIO])
 const ValueOrLimit = t.union([t.number, t.literal('min'), t.literal('max')])
@@ -65,17 +70,53 @@ export const getSourceId = (multiplexedWebsocket: MultiplexedWebsocket): Promise
     .first()
     .toPromise()
 
+export const ConnectivityRequest = t.readonly(
+  t.type({
+    special: t.readonlyArray(SourceId.FromString),
+    hbHistDelay: t.number,
+    reportEveryMs: t.number, // how frequently the connectivity service should report, recommended around 10_000
+    currentPsnHistoryDelay: t.number, // this is u8 size! -- how many report_every_ms spans back we go for the our_psn value? recommended 6 to give 60s
+  }),
+)
+export type ConnectivityRequest = t.TypeOf<typeof ConnectivityRequest>
+
 export class WebsocketEventStore implements EventStore {
   /* Regarding jelly fish, cf. https://github.com/Actyx/Cosmos/issues/2797 */
   jellyPsn = Psn.zero
+
   private _present: Observable<OffsetMapWithDefault>
+  private _highestSeen: Observable<OffsetMapWithDefault>
+
   constructor(private readonly multiplexer: MultiplexedWebsocket, readonly sourceId: SourceId) {
     this._present = Observable.defer(() =>
       this.multiplexer.request(RequestTypes.Present).map(validateOrThrow(OffsetMapWithDefault)),
     ).shareReplay(1)
+
+    this._highestSeen = Observable.defer(() =>
+      this.multiplexer.request(RequestTypes.HighestSeen).map(validateOrThrow(OffsetMapWithDefault)),
+    ).shareReplay(1)
   }
 
   present: RequestPresent = () => this._present
+
+  highestSeen: RequestHighestSeen = () => this._highestSeen
+
+  connectivityStatus: RequestConnectivity = (
+    specialSources,
+    hbHistDelayMicros,
+    reportEvery,
+    currentPsnHistoryDelay,
+  ) => {
+    const params = ConnectivityRequest.encode({
+      special: specialSources,
+      hbHistDelay: hbHistDelayMicros,
+      reportEveryMs: reportEvery,
+      currentPsnHistoryDelay,
+    })
+    return this.multiplexer
+      .request(RequestTypes.Connectivity, params)
+      .map(validateOrThrow(ConnectivityStatus))
+  }
 
   persistedEvents: RequestPersistedEvents = (
     fromPsnsExcluding,

@@ -19,6 +19,7 @@ import {
   OffsetMapWithDefault,
   PersistedEventsSortOrder,
   PersistedEventsSortOrders,
+  ConnectivityStatus,
 } from './types'
 
 export type TestEventStore = EventStore & {
@@ -179,10 +180,15 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
         .asObservable()
         .map(toIo)
         .do(() => log.ws.debug('present')),
+    highestSeen: () =>
+      present
+        .asObservable()
+        .map(toIo),
     persistedEvents,
     allEvents,
     persistEvents,
     directlyPushEvents,
     storedEvents: () => getPersisted(),
+    connectivityStatus: () => Observable.empty<ConnectivityStatus>()
   }
 }

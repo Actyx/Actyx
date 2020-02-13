@@ -6,7 +6,7 @@ import { CommandInterface } from './commandInterface'
 import { EventStore } from './eventstore'
 import { MultiplexedWebsocket } from './eventstore/multiplexedWebsocket'
 import { TestEventStore } from './eventstore/testEventStore'
-import { Event, Events, UnstoredEvents } from './eventstore/types'
+import { ConnectivityStatus, Event, Events, UnstoredEvents } from './eventstore/types'
 import { mkMultiplexer } from './eventstore/utils'
 import { getSourceId } from './eventstore/websocketEventStore'
 import { CommandExecutor } from './executors/commandExecutor'
@@ -22,6 +22,7 @@ import {
   FishType,
   FishTypeImpl,
   Lamport,
+  Milliseconds,
   ObserveMethod,
   Psn,
   SendCommand,
@@ -154,6 +155,11 @@ export type Pond = {
    * Obtain an observable state of the pond.
    */
   getPondState(): Observable<PondState>
+
+  /**
+   * Obtain an observable describing connectivity status of this node.
+   */
+  getNodeConnectivity(...specialSources: ReadonlyArray<SourceId>): Observable<ConnectivityStatus>
 }
 
 const logPondError = { error: (x: any) => log.pond.error(JSON.stringify(x)) }
@@ -233,6 +239,11 @@ export class PondImpl implements Pond {
   }
 
   getPondState = (): Observable<PondState> => this.pondStateTracker.observe()
+
+  getNodeConnectivity = (
+    ...specialSources: ReadonlyArray<SourceId>
+  ): Observable<ConnectivityStatus> =>
+    this.eventStore.connectivityStatus(specialSources, 100e9, Milliseconds.of(10_000), 6)
 
   commands = () => {
     return this.commandsSubject.asObservable()
@@ -360,7 +371,7 @@ const mockSetup = (): Services => {
   return { eventStore, snapshotStore, commandInterface }
 }
 
-const setup = async (multiplexer: MultiplexedWebsocket): Promise<Services> => {
+const createServices = async (multiplexer: MultiplexedWebsocket): Promise<Services> => {
   const sourceId = await getSourceId(multiplexer)
   const eventStore = EventStore.ws(multiplexer, sourceId)
   const snapshotStore = SnapshotStore.ws(multiplexer)
@@ -369,7 +380,7 @@ const setup = async (multiplexer: MultiplexedWebsocket): Promise<Services> => {
 }
 
 const mkPond = async (multiplexer: MultiplexedWebsocket, opts: PondOptions = {}): Promise<Pond> => {
-  const services = await setup(multiplexer || mkMultiplexer())
+  const services = await createServices(multiplexer || mkMultiplexer())
   return pondFromServices(services, opts)
 }
 

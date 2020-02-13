@@ -135,6 +135,37 @@ export const AllEventsSortOrder = createEnumType<AllEventsSortOrders>(
 )
 export type AllEventsSortOrder = t.TypeOf<typeof AllEventsSortOrder>
 
+/**
+ * Connectivity status
+ */
+const statusWith = (name: string, fields?: t.Props) =>
+  t.readonly(
+    t.type({
+      status: t.literal(name),
+      inCurrentStatusForMs: t.number,
+      ...fields,
+    }),
+  )
+
+const FullyConnected = statusWith('FullyConnected')
+
+const notCaughtUp = {
+  eventsToRead: t.number,
+  eventsToSend: t.number,
+}
+
+const PartiallyConnected = statusWith('PartiallyConnected', {
+  specialsDisconnected: t.readonlyArray(SourceId.FromString),
+  swarmConnectivityLevel: t.number, // Percent*100, e.g. 50% would be 50, not 0.5
+  ...notCaughtUp,
+})
+
+const NotConnected = statusWith('NotConnected', notCaughtUp)
+
+export const ConnectivityStatus = t.union([FullyConnected, PartiallyConnected, NotConnected])
+export type ConnectivityStatus = t.TypeOf<typeof ConnectivityStatus>
+
+/* Other things */
 function unsafeDecode<T>(value: unknown, decoder: t.Decoder<unknown, T>): T {
   if (process.env.NODE_ENV !== 'production') {
     return decoder.decode(value).fold(errors => {
