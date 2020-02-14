@@ -180,6 +180,10 @@ export type PondOptions = {
   timeInjector?: TimeInjector
   commandTap?: CommandTap
   eventTap?: EventTap
+
+  hbHistDelay?: number
+  currentPsnHistoryDelay?: number
+  updateConnectivityEvery?: Milliseconds
 }
 
 const defaultPondOptions = {
@@ -220,7 +224,7 @@ export class PondImpl implements Pond {
     readonly snapshotStore: SnapshotStore,
     readonly pondStateTracker: PondStateTracker,
     readonly monitoring: Monitoring,
-    opts: PondOptions,
+    readonly opts: PondOptions,
   ) {
     this.eventTap = opts.eventTap || Tap.none
     this.timeInjector = opts.timeInjector ? opts.timeInjector : defaultPondOptions.timeInjector
@@ -243,7 +247,12 @@ export class PondImpl implements Pond {
   getNodeConnectivity = (
     ...specialSources: ReadonlyArray<SourceId>
   ): Observable<ConnectivityStatus> =>
-    this.eventStore.connectivityStatus(specialSources, 100e9, Milliseconds.of(10_000), 6)
+    this.eventStore.connectivityStatus(
+      specialSources,
+      this.opts.hbHistDelay || 1e12,
+      this.opts.updateConnectivityEvery || Milliseconds.of(10_000),
+      this.opts.currentPsnHistoryDelay || 6,
+    )
 
   commands = () => {
     return this.commandsSubject.asObservable()
