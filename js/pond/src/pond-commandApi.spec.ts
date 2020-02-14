@@ -114,8 +114,7 @@ describe('Pond', () => {
         .toPromise()
 
       const feed = (id: number) =>
-        pond
-          .feed(asyncTestFish, fooFishName)({ type: 'slow', id, target })
+        pond.feed(asyncTestFish, fooFishName)({ type: 'slow', id, target })
 
       await Observable.range(0, 3)
         .mergeMap(i => feed(i))

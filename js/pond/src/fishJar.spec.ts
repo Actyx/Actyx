@@ -419,6 +419,7 @@ describe('SubscriptionLessFishJar', () => {
     const persistedEventsSpy = jest.fn()
     const presentSpy = jest.fn()
     const eventStore: EventStore = {
+      ...EventStore.noop,
       sourceId,
       allEvents: allEventsSpy,
       persistEvents: persistEventsSpy,
@@ -448,6 +449,7 @@ describe('SubscriptionLessFishJar', () => {
     const persistedEventsSpy = jest.fn()
     const presentSpy = jest.fn()
     const eventStore: EventStore = {
+      ...EventStore.noop,
       sourceId,
       allEvents: allEventsSpy,
       persistEvents: persistEventsSpy,

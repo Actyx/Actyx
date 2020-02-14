@@ -276,6 +276,10 @@ const createFishJar = <S, C, E, P>(
   }
 
   const rxSubs: RxSubscription[] = []
+
+  // Must subscribe to events BEFORE starting OnStateChange pipeline,
+  // since in OnStateChange we may immediately trigger effects in OTHER fish,
+  // which we must see via the realtime stream.
   rxSubs.push(
     Observable.concat(
       Observable.of(mergeScanSeed),
@@ -490,6 +494,7 @@ export const hydrate = <S, C, E, P>(
     return store
       .currentState()
       .pipe(stats(`initial-compute/${fish.semantics}`))
+      .do(() => pondStateTracker.hydrationFinished(token))
       .map(storeState =>
         createFishJar(
           source,
@@ -506,9 +511,8 @@ export const hydrate = <S, C, E, P>(
         ),
       )
       .do(jar => {
-        pondStateTracker.hydrationFinished(token)
         log.pond.debug(
-          'finished hydrating',
+          'finished initializing fish jar',
           fish.semantics,
           `"${fishName}"`,
           'in',

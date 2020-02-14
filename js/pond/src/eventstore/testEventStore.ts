@@ -1,9 +1,9 @@
 import { chunksOf } from 'fp-ts/lib/Array'
 import { fromNullable } from 'fp-ts/lib/Option'
-import { Observable, ReplaySubject, Subject } from 'rxjs'
+import { Observable, ReplaySubject, Subject, Scheduler } from 'rxjs'
 import log from '../store/loggers'
 import { SubscriptionSet, subscriptionsToEventPredicate } from '../subscription'
-import { EventKey, Lamport, Psn, SourceId, Timestamp } from '../types'
+import { EventKey, Lamport, Psn, SourceId } from '../types'
 import {
   EventStore,
   RequestAllEvents,
@@ -19,6 +19,7 @@ import {
   OffsetMapWithDefault,
   PersistedEventsSortOrder,
   PersistedEventsSortOrders,
+  ConnectivityStatus,
 } from './types'
 
 export type TestEventStore = EventStore & {
@@ -109,26 +110,43 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
       throw new Error('The test event store only supports Unsorted ordering')
     }
 
-    return live.asObservable().map(filterEvents(from, to, subs, min))
+    return (
+      live
+        .asObservable()
+        .map(filterEvents(from, to, subs, min))
+        // Delivering live events may trigger new events (via onStateChange) and again new events,
+        // until we exhaust the call stack. The prod store shouldn’t have that problem due to obvious reasons.
+        .observeOn(Scheduler.queue)
+    )
   }
 
   const allEvents: RequestAllEvents = (fromPsn, toPsn, subs, sortOrder, min) => {
-    return Observable.concat(
-      persistedEvents(fromPsn, toPsn, subs, (sortOrder as string) as PersistedEventsSortOrder, min),
-      liveStream(fromPsn, toPsn, subs, sortOrder, min),
-    )
+    const k = () => {
+      return Observable.concat(
+        persistedEvents(
+          fromPsn,
+          toPsn,
+          subs,
+          (sortOrder as string) as PersistedEventsSortOrder,
+          min,
+        ),
+        liveStream(fromPsn, toPsn, subs, sortOrder, min),
+      )
+    }
+
+    return Observable.defer(k)
   }
 
   let psn = 0
 
-  let lamport = Lamport.of(Timestamp.now())
+  let lamport = Lamport.of(99999)
 
   let offsets = {}
   present.next(offsets)
 
   const persistEvents: RequestPersistEvents = x => {
     const newEvents = x.map(unstoredEvent => {
-      lamport = Lamport.of(Math.max(Timestamp.now(), lamport + 1))
+      lamport = Lamport.of(lamport + 1)
       return {
         ...unstoredEvent,
         sourceId,
@@ -148,6 +166,10 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
     }
     offsets = b
 
+    if (newEvents.length > 0) {
+      lamport = Lamport.of(Math.max(newEvents[newEvents.length - 1].lamport + 1, lamport))
+    }
+
     persist(newEvents)
     live.next(newEvents)
     present.next(offsets)
@@ -162,10 +184,12 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
         .asObservable()
         .map(toIo)
         .do(() => log.ws.debug('present')),
+    highestSeen: () => present.asObservable().map(toIo),
     persistedEvents,
     allEvents,
     persistEvents,
     directlyPushEvents,
     storedEvents: () => getPersisted(),
+    connectivityStatus: () => Observable.empty<ConnectivityStatus>(),
   }
 }

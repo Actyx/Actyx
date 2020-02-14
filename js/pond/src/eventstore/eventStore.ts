@@ -1,11 +1,12 @@
 import { Observable } from 'rxjs'
 import { SubscriptionSet } from '../subscription'
-import { EventKey, SourceId } from '../types'
+import { EventKey, SourceId, Milliseconds } from '../types'
 import { mockEventStore } from './mockEventStore'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import { testEventStore } from './testEventStore'
 import {
   AllEventsSortOrder,
+  ConnectivityStatus,
   Events,
   OffsetMapWithDefault,
   PersistedEventsSortOrder,
@@ -13,18 +14,30 @@ import {
 } from './types'
 import { WebsocketEventStore } from './websocketEventStore'
 
-// TODO: responsCount - do we need it? (probably yes. might make sense to add that to the multiplex protocol)
-
 /**
  * Get the store's source id.
  */
 export type RequestSourceId = () => Observable<SourceId>
 
 /**
+ * Get the store's connectivity status
+ */
+export type RequestConnectivity = (
+  specialSources: ReadonlyArray<SourceId>,
+  hbHistDelayMicros: number,
+  reportEvery: Milliseconds,
+  currentPsnHistoryDelay: number,
+) => Observable<ConnectivityStatus>
+
+/**
  * Request the full present of the store, so the maximum psn for each source that the store has seen and ingested.
  */
-export type RequestPresent = () => // count: ResponseCount
-Observable<OffsetMapWithDefault>
+export type RequestPresent = () => Observable<OffsetMapWithDefault>
+
+/**
+ * Request the highest seen offsets from the store, not all of which may be available (gapless) yet.
+ */
+export type RequestHighestSeen = () => Observable<OffsetMapWithDefault>
 
 /**
  * This method is only concerned with already persisted events, so it will always return a finite (but possibly large)
@@ -89,17 +102,21 @@ export type RequestPersistEvents = (events: UnstoredEvents) => Observable<Events
 export type EventStore = {
   readonly sourceId: SourceId
   readonly present: RequestPresent
+  readonly highestSeen: RequestHighestSeen
   readonly persistedEvents: RequestPersistedEvents
   readonly allEvents: RequestAllEvents
   readonly persistEvents: RequestPersistEvents
+  readonly connectivityStatus: RequestConnectivity
 }
 
 const noopEventStore: EventStore = {
   allEvents: () => Observable.empty(),
   persistedEvents: () => Observable.empty(),
   present: () => Observable.of({ psns: {}, default: 'max' as 'max' }),
+  highestSeen: () => Observable.of({ psns: {}, default: 'max' as 'max' }),
   persistEvents: () => Observable.empty(),
   sourceId: SourceId.of('NoopSourceId'),
+  connectivityStatus: () => Observable.empty(),
 }
 
 export const EventStore = {
