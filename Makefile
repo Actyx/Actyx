@@ -241,13 +241,21 @@ android-logsvcd-lib: debug
 	-it actyx/cosmos:buildrs-x64-latest \
 	cargo --locked build -p logsvcd --lib --release --target i686-linux-android
 
-axosandroid-libs: debug android-store-lib android-logsvcd-lib
+# 32 bit
+android-axosconfig-lib: debug
+	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
+	docker run -v `pwd`/rt-master:/src \
+	-u builder \
+	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-it actyx/cosmos:buildrs-x64-latest \
+	cargo --locked build -p axosconfig --lib --release --target i686-linux-android
+
+axosandroid-libs: debug android-store-lib android-logsvcd-lib android-axosconfig-lib
 
 # 32 bit
 axosandroid-app: debug
 	mkdir -p ./android-actyxos-app/app/src/main/jniLibs/x86
-	cp ./rt-master/target/i686-linux-android/release/libaxstore.so ./android-actyxos-app/app/src/main/jniLibs/x86/libaxstore.so
-	cp ./rt-master/target/i686-linux-android/release/liblogsvcd.so ./android-actyxos-app/app/src/main/jniLibs/x86/liblogsvcd.so
+	cp ./rt-master/target/i686-linux-android/release/lib*.so ./android-actyxos-app/app/src/main/jniLibs/x86/
 	./android-actyxos-app/bin/get-keystore.sh
 	pushd android-actyxos-app; \
 	./gradlew clean ktlintCheck build assembleRelease; \
