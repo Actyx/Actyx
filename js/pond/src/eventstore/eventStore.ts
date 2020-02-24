@@ -20,7 +20,8 @@ import { WebsocketEventStore } from './websocketEventStore'
 export type RequestSourceId = () => Observable<SourceId>
 
 /**
- * Get the store's connectivity status
+ * Get the store's swarm connectivity status.
+ * That is: Do we know about other nodes receiving the events we create?
  */
 export type RequestConnectivity = (
   specialSources: ReadonlyArray<SourceId>,
@@ -30,24 +31,29 @@ export type RequestConnectivity = (
 ) => Observable<ConnectivityStatus>
 
 /**
- * Request the full present of the store, so the maximum psn for each source that the store has seen and ingested.
+ * Request the full present of the store, so the maximum CONTIGUOUS psn for each source that the store has seen and ingested.
+ * The store will NEVER deliver events across PSN gaps. So the 'present' signifies that which the store is willing to deliver to us.
+ * If PSN=2 of some source never reaches our store, that source’s present will never progress beyond PSN=1 for our store.
+ * Nor will it expose us to those events that lie after the gap.
  */
 export type RequestPresent = () => Observable<OffsetMapWithDefault>
 
 /**
  * Request the highest seen offsets from the store, not all of which may be available (gapless) yet.
+ * Note that this is purely for diagnostical purposes combined with the 'present'.
+ * 'Highest seen' cannot be used to drive logic which queries events, because the store does not deliver
+ * across PSN gaps, while 'highest seen' reports highest seen irregardless of gaps.
  */
 export type RequestHighestSeen = () => Observable<OffsetMapWithDefault>
 
 /**
  * This method is only concerned with already persisted events, so it will always return a finite (but possibly large)
- * stream. It does not make sense to have a toPsn that is in the future, however it might be convenient to provide
- * a toPsn that is unlimited and get back all events up to the present at the time of invocation without needing an
- * additional call to present.
+ * stream.
+ * It is an ERROR to request reverse order with unbounded or future PSN.
+ * It is probably a user error to ask for an unbounded set of sources or for events with higher PSN than in the 'present'.
  *
  * The returned event chunks can contain events from multiple sources. If the sort order is unsorted, we guarantee
- * that chunks will be sorted by ascending psn for each source. If the sort order is by event key, we guarantee(*)
- * the same except if the timestamps are non-monotonic for a source, which should not happen usually.
+ * that chunks will be sorted by ascending psn for each source.
  *
  * Looking for a semantic snapshot can be accomplished by getting events in reverse event key order and aborting the
  * iteration as soon as a semantic snapshot is found.
@@ -57,7 +63,7 @@ export type RequestHighestSeen = () => Observable<OffsetMapWithDefault>
  * to needing a way of sending a javascript predicate to the store.
  */
 export type RequestPersistedEvents = (
-  fromPsnsExcluding: OffsetMapWithDefault, // FIXME what does from/to mean when we reverse? would min/max be better?
+  fromPsnsExcluding: OffsetMapWithDefault, // 'from' is the lower bound, regardless of requested sort order.
   toPsnsIncluding: OffsetMapWithDefault,
   subscriptionSet: SubscriptionSet,
   sortOrder: PersistedEventsSortOrder,
@@ -69,21 +75,21 @@ export type RequestPersistedEvents = (
  * is in the future.
  *
  * The returned event chunks can contain events from multiple sources. If the sort order is unsorted, we guarantee
- * that chunks will be sorted by ascending psn for each source. If the sort order is by event key, we guarantee(*)
- * the same except if the timestamps are non-monotonic for a source, which should not happen usually.
+ * that chunks will be sorted by ascending psn for each source: any individual source will not time-travel.
  *
- * A sort order of anything else but unsorted only makes sense if either fromPsnsExcluding or toPsnsIncluding
+ * A sort order of anything else but unsorted mostly makes sense if either fromPsnsExcluding or toPsnsIncluding
  * constrains the set of sources to a finite set. When asking for sorted events for an infinite set of sources,
- * the returned observable will immediately error out. (Error NOT YET IMPLEMENTED, works with infinite sources.)
+ * new sources will be included as they become known, but in a manner that the overall stream still remains sorted.
+ * That is, for a new source, all its events older than the latest event emitted by this stream will NOT BE INCLUDED.
  *
  * When having a finite set of sources, sorting by event key can be used to get events in such a way that there
- * will be no time travel. (NOT YET IMPLEMENTED)
+ * will be no time travel. Progress of the stream will be blocked as long as at least 1 source is disconnected.
  *
  * Getting events up to a maximum event key can be achieved for a finite set of sources by specifying sort by
  * event key and aborting as soon as the desired event key is reached.
  */
 export type RequestAllEvents = (
-  fromPsnsExcluding: OffsetMapWithDefault, // FIXME what does from/to mean when we reverse? would min/max be better?
+  fromPsnsExcluding: OffsetMapWithDefault, // 'from' is the lower bound, regardless of requested sort order.
   toPsnsIncluding: OffsetMapWithDefault,
   subscriptionSet: SubscriptionSet,
   sortOrder: AllEventsSortOrder,

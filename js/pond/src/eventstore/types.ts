@@ -53,8 +53,8 @@ const eventsEqual = (a: Event, b: Event): boolean =>
 /**
  * Order for events
  *
- * Order is [timestamp, sourceId, psn]
- * Events  are considered equal when timestamp, sourceId, psn are equal without considering
+ * Order is [lamport, sourceId]
+ * Events are considered equal when lamport, sourceId, psn are equal without considering
  * the content of the payload. Having two events that have these fields equal yet a different
  * payload would be a grave bug in our system.
  */

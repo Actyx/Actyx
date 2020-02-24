@@ -1,11 +1,10 @@
 import { ConnectivityStatus } from './types'
 
 describe('connectivity status codes', () => {
-
   it('should decode FullyConnected', () => {
     const v = {
       status: 'FullyConnected',
-      inCurrentStatusForMs: 100
+      inCurrentStatusForMs: 100,
     }
 
     expect(ConnectivityStatus.decode(v).value).toEqual(v)
@@ -36,7 +35,6 @@ describe('connectivity status codes', () => {
 
     expect(ConnectivityStatus.decode(v).value).toEqual(v)
   })
-
 
   it('should decode NotConnected', () => {
     const v = {
