@@ -14,6 +14,7 @@ import { FishJar } from './fishJar'
 import log from './loggers'
 import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
 import { SnapshotStore } from './snapshotStore'
+import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { EnvelopeFromStore } from './store/util'
 import {
@@ -160,6 +161,14 @@ export type Pond = {
    * Obtain an observable describing connectivity status of this node.
    */
   getNodeConnectivity(...specialSources: ReadonlyArray<SourceId>): Observable<ConnectivityStatus>
+
+  /**
+   * Obtain an observable that completes when we are mostly in sync with the swarm.
+   * It is recommended to wait for this on application startup, before interacting with any fish,
+   * i.e. `await pond.waitForSwarmSync().toPromise()`. The intermediate states emitted
+   * by the Observable can be used to display render a progress bar, for example.
+   */
+  waitForSwarmSync(config?: WaitForSwarmConfig): Observable<SplashState>
 }
 
 const logPondError = { error: (x: any) => log.pond.error(JSON.stringify(x)) }
@@ -253,6 +262,9 @@ export class PondImpl implements Pond {
       this.opts.updateConnectivityEvery || Milliseconds.of(10_000),
       this.opts.currentPsnHistoryDelay || 6,
     )
+
+  waitForSwarmSync = (config?: WaitForSwarmConfig): Observable<SplashState> =>
+    SplashState.of(this.eventStore, config || {})
 
   commands = () => {
     return this.commandsSubject.asObservable()

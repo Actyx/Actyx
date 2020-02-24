@@ -1,8 +1,6 @@
 import * as immutable from 'immutable'
 import { Observable, Subject } from 'rxjs'
-import { OffsetMap, OffsetMapWithDefault } from './eventstore'
-import { MultiplexedWebsocket, validateOrThrow } from './eventstore/multiplexedWebsocket'
-import { RequestTypes } from './eventstore/websocketEventStore'
+import { EventStore, OffsetMap } from './eventstore'
 import { NodeInfoEntry, SwarmInfo, SwarmSummary } from './store/swarmState'
 import { takeWhileInclusive } from './util'
 
@@ -27,10 +25,6 @@ type FullConfig = Readonly<{
    * True if we allow the user to skip the splash screen
    */
   allowSkip: boolean
-  /**
-   * Period in which the pond stats are requested
-   */
-  statsPeriodMs: number
 }>
 
 const defaults: FullConfig = {
@@ -38,7 +32,6 @@ const defaults: FullConfig = {
   waitForSwarmMs: 10000,
   minSources: 0,
   allowSkip: true,
-  statsPeriodMs: 1000,
 }
 
 export type Config = Partial<FullConfig>
@@ -175,18 +168,6 @@ type SplashStateSync = Readonly<{
 
 export type SplashState = SplashStateDiscovery | SplashStateSync
 
-const mkHighestSeenOffsetMap = (mws: MultiplexedWebsocket): Observable<OffsetMap> =>
-  mws
-    .request('/ax/events/highestSeenOffsets')
-    .map(validateOrThrow(OffsetMapWithDefault))
-    .map(x => x.psns)
-
-const mkPresentOffsetMap = (mws: MultiplexedWebsocket): Observable<OffsetMap> =>
-  mws
-    .request(RequestTypes.Present)
-    .map(validateOrThrow(OffsetMapWithDefault))
-    .map(x => x.psns)
-
 const toSwarmInfo = ([seen, own]: [OffsetMap, OffsetMap]): SwarmInfo => {
   const allSources = [...Object.keys(seen), ...Object.keys(own)]
   const records: {
@@ -208,12 +189,13 @@ const toSwarmInfo = ([seen, own]: [OffsetMap, OffsetMap]): SwarmInfo => {
 }
 
 export const SplashState = {
-  of: (multiplexer: MultiplexedWebsocket, config: Config): Observable<SplashState> => {
+  of: (eventStore: EventStore, config: Config): Observable<SplashState> => {
     const waitForSwarmMs = config.waitForSwarmMs || defaults.waitForSwarmMs
 
     const highestSeenRoots$ = Observable.interval(500)
-      .concatMapTo(mkHighestSeenOffsetMap(multiplexer))
+      .concatMapTo(eventStore.highestSeen())
       .takeUntil(Observable.timer(waitForSwarmMs))
+      .map(x => x.psns)
 
     /**
      * Start with one call to present, then guarantee that at least one additional present
@@ -221,9 +203,9 @@ export const SplashState = {
      * into a `sync` one.
      */
     const present$ = Observable.merge(
-      mkPresentOffsetMap(multiplexer).take(1),
-      Observable.timer(waitForSwarmMs).switchMapTo(mkPresentOffsetMap(multiplexer)),
-    )
+      eventStore.present().take(1),
+      Observable.timer(waitForSwarmMs).switchMapTo(Observable.defer(eventStore.present)),
+    ).map(x => x.psns)
 
     const swarmInfo$ = Observable.combineLatest(highestSeenRoots$, present$).map(toSwarmInfo)
 
