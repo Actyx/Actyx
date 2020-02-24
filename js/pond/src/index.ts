@@ -4,7 +4,6 @@ export {
   HttpResponse,
   OnCommand,
   OnEvent,
-  LegacyStateChange,
   SourceId,
   StateSubscription,
   Target,

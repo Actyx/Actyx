@@ -2,12 +2,11 @@ import { Either } from 'fp-ts/lib/Either'
 import { contramap, Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
-import { Observable, Scheduler } from 'rxjs'
+import { Observable } from 'rxjs'
 import { CommandApi } from './commandApi'
 import { Event, OffsetMap } from './eventstore/types'
 import { EnvelopeFromStore } from './store/util'
 import { Subscription } from './subscription'
-import { SubscriptionManager } from './subscriptionManager'
 import { Opaque } from './util/opaqueTag'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -357,28 +356,17 @@ export const publishState = <S, C, P>(f: (state: S) => P): StateSubscription<S, 
   create: pond => pond.observeSelf().map(s => mkPublish(f(s))),
 })
 
-const mkLegacyOnStateChange = <S, C, P>(
-  onStateChange: LegacyStateChange<S, C, P>,
-): OnStateChange<S, C, P> => pond => {
-  const subscriptionManager = SubscriptionManager.of(pond, onStateChange)
-  return subscriptionManager.manage(pond.observeSelf()).observeOn(Scheduler.queue)
-}
-
-export type LegacyStateChange<S, C, P> = (state: S) => ReadonlyArray<StateSubscription<S, C, P>>
-
 export type OnStateChange<S, C, P> = (pond: PondObservables<S>) => Observable<StateEffect<C, P>>
 export type OnStateChangeCompanion = {
   publishState: <S, P>(f: (state: S) => P) => OnStateChange<S, never, P>
   publishPrivateState: <S>() => OnStateChange<S, never, S>
   noPublish: <S>() => OnStateChange<S, never, never>
-  legacy: <S, C, P>(oss: LegacyStateChange<S, C, P>) => OnStateChange<S, C, P>
 }
 export const OnStateChange: OnStateChangeCompanion = {
   publishState: <S, P>(f: (state: S) => P) => (pond: PondObservables<S>) =>
     pond.observeSelf().map(s => mkPublish(f(s))),
   publishPrivateState: <S>() => (pond: PondObservables<S>) => pond.observeSelf().map(mkPublish),
   noPublish: () => () => Observable.never(),
-  legacy: mkLegacyOnStateChange,
 }
 
 export type SemanticSnapshot<E> = (
