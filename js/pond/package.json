@@ -1,6 +1,6 @@
 {
   "name": "@actyx/pond",
-  "version": "1.0.0-alpha.6",
+  "version": "1.0.0-alpha.7",
   "description": "Actyx Pond",
   "keywords": [
     "actyx",
@@ -47,6 +47,7 @@
     "madge": "madge --circular --extensions ts,tsx ./"
   },
   "dependencies": {
+    "bufferutil": "4.0.1",
     "cron": "1.5.0",
     "debug": "3.2.6",
     "format-util": "1.0.3",
