@@ -21,6 +21,8 @@ jobs:
           MODULE: 'build'
         sdks:
           MODULE: 'sdks'
+        klk-opc-ua:
+          MODULE: 'klk-opc-ua'
         connectors:
           MODULE: 'connectors'
           LANGUAGE: 'rust'
@@ -105,6 +107,8 @@ jobs:
           DOCKER_TAG: 'headless-x64'
         nodered-x64:
           DOCKER_TAG: 'nodered-x64'
+        node-x64:
+          DOCKER_TAG: 'node-x64'
         ipfs-x64:
           DOCKER_TAG: 'ipfs-x64'
         logscraper-x64:
@@ -113,6 +117,8 @@ jobs:
           DOCKER_TAG: 'headless-armv7hf'
         nodered-armv7hf:
           DOCKER_TAG: 'nodered-armv7hf'
+        node-armv7hf:
+          DOCKER_TAG: 'node-armv7hf'
         ipfs-armv7hf:
           DOCKER_TAG: 'ipfs-armv7hf'
         bagsapconnector-x64:
