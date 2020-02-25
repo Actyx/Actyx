@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { fromNullable } from 'fp-ts/lib/Option'
-import { literal, union } from 'io-ts'
 
 /**
  * Base type for a tagged union with type as the tag field
@@ -108,13 +107,4 @@ export const PartialRecord = {
       .mapNullable(m1 => m1[k2])
       .toUndefined()
   },
-}
-
-// Not sure if this should go here
-// This function will fail horribly if the enum keys are not equal to it's values
-export const enumToUnion = <T>(_enum: T) => {
-  const [first, second, ...rest] = Object.keys(_enum).map(v =>
-    literal<Extract<keyof T, string>>(v as Extract<keyof T, string>),
-  )
-  return union([first, second, ...rest]) // The type system wants at least two union parameters
 }

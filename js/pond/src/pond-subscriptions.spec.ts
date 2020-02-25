@@ -2,15 +2,15 @@ import * as R from 'ramda'
 import { Observable } from 'rxjs'
 import * as seedrandom from 'seedrandom'
 import { Subscription } from './'
+import { Event as EventStoreEvent, Events } from './eventstore/types'
 import log from './loggers'
 import { Pond } from './pond'
-import { StoredIpfsEnvelope } from './store/ipfsTypes'
-import { Config as MockIpfsClientConfig, MockIpfsClient } from './testkit/mockIpfsClient'
 import {
   Envelope,
   FishName,
   FishType,
   InitialState,
+  Lamport,
   OnEvent,
   OnStateChange,
   Psn,
@@ -20,25 +20,6 @@ import {
   Timestamp,
 } from './types'
 import { Opaque } from './util/opaqueTag'
-/**
- * Types for messages of the pubsub protocol
- */
-/**
- * Publish events
- */
-export type PublishEvents = Readonly<{
-  type: 'events'
-  source: SourceId
-  /**
-   * a contiguous (w.r.t. PSNs) block of events
-   */
-  events: ReadonlyArray<StoredIpfsEnvelope>
-}>
-
-/**
- * Protocol for messages on the pubsub channel
- */
-export type PubSubMessage = PublishEvents
 
 //#region test fish definition
 export type State = number
@@ -145,14 +126,14 @@ type GeneratorState = {
 const GeneratorState = {
   create: (): GeneratorState => ({ psns: {}, fsns: {} }),
 }
-const createPubSubMessage = (
+const createEventStoreEvent = (
   generatorState: GeneratorState,
   semantics: Semantics,
   fishName: FishName,
   source: SourceId,
   event: Event,
   timestamp: Timestamp,
-): PubSubMessage => {
+): EventStoreEvent => {
   const { psns, fsns } = generatorState
   const psn = psns[source] || 0
 
@@ -161,29 +142,25 @@ const createPubSubMessage = (
 
   generatorState.fsns = R.assocPath([source, semantics, fishName], sequence + 1, fsns)
   return {
-    type: 'events',
-    source,
-    events: [
-      {
-        psn: Psn.of(psn),
-        semantics,
-        name: fishName,
-        payload: event,
-        timestamp,
-      },
-    ],
+    sourceId: source,
+    psn: Psn.of(psn),
+    semantics,
+    name: fishName,
+    payload: event,
+    timestamp,
+    lamport: Lamport.of(timestamp),
   }
 }
 
 const createEvents = (
   sources: ReadonlyArray<Readonly<{ semantics: Semantics; name: FishName; sourceId: SourceId }>>,
   events: number,
-): PubSubMessage[] => {
+): Events => {
   const state = GeneratorState.create()
-  const result: PubSubMessage[] = Array(events)
+  return Array(events)
     .fill(undefined)
     .map((_value, index) =>
-      createPubSubMessage(
+      createEventStoreEvent(
         state,
         sources[index % sources.length].semantics,
         sources[index % sources.length].name,
@@ -192,8 +169,6 @@ const createEvents = (
         Timestamp.of(index * 3600 * 24 * 1_000_000),
       ),
     )
-
-  return result
 }
 //#endregion
 //#region util
@@ -220,24 +195,20 @@ const snapshotCheck = async <C, E, P>(
   nShuffles: number,
 ): Promise<P[]> => {
   const rand = seedrandom(seed)
-  const topic = 'test'
   const events = R.flatten(createEvents(allSources, nEvents))
   const fishName = 'ignore'
   const states: P[] = []
   for (let i = 0; i < nShuffles; i += 1) {
     // todo: shuffle will not usually lead to interesting time travel behaviour
     const shuffled = shuffle(events, rand)
-    const ipfsClient = MockIpfsClient.of(MockIpfsClientConfig.default)
-    const pond = await Pond.mock()
+    const pond = await Pond.test()
     // wake up the fish named fishName
     await pond
       .observe(type, fishName)
       .take(1)
       .toPromise()
     // send the shuffled events
-    for (const ev of shuffled) {
-      await ipfsClient.pubsub.pub(topic, ev).toPromise()
-    }
+    pond.directlyPushEvents(shuffled)
     // wait some time until the events are pushed through
     await Observable.timer(50, 10)
       .take(1)
@@ -248,6 +219,8 @@ const snapshotCheck = async <C, E, P>(
       .toArray()
       .toPromise()
     states.push(state1[0])
+
+    await pond.dispose()
   }
   return states
 }
@@ -260,13 +233,14 @@ const sameStateCheck = async <C, E, P>(
   stateEqualTo: string,
 ): Promise<void> => {
   const states = await snapshotCheck(seed, type, nEvents, nShuffles)
-  const expected = new Array(nShuffles).fill(states[0])
+  const state = states[0]
+  expect(state).not.toEqual(0)
+  const expected = new Array(nShuffles).fill(state)
   expect(states).toEqual(expected)
   expect(JSON.stringify(states[0])).toEqual(stateEqualTo)
 }
 
-// FIXME
-describe.skip('applying events in random order', () => {
+describe('applying events in random order', () => {
   const nEvents = 1000
   const nShuffles = 2
   it(

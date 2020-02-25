@@ -38,7 +38,6 @@ export {
   enableAllLoggersExcept,
   deepFreeze,
   isNode,
-  Link,
 } from './util'
 export { Subscription, SubscriptionSet } from './subscription'
 export { CommandApi } from './commandApi'
@@ -46,7 +45,6 @@ export { CommandApi as CommandAsync } from './commandApi'
 export { Pond } from './pond'
 export { default as mkWebSocket } from './connectors/websocket'
 export { enableWsFeeder } from './connectors'
-export * from './store'
 export { ConnectivityStatus } from './eventstore/types'
 export { runStats } from './util/runStats'
 export { Config as StoreConfig } from './store/config'

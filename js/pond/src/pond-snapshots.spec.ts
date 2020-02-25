@@ -1,15 +1,15 @@
 import * as R from 'ramda'
 import { Observable } from 'rxjs'
 import * as seedrandom from 'seedrandom'
+import { Event as EventStoreEvent, Events } from './eventstore/types'
 import log from './loggers'
 import { Pond } from './pond'
-import { StoredIpfsEnvelope } from './store/ipfsTypes'
 import { Subscription } from './subscription'
-import { Config as MockIpfsClientConfig, MockIpfsClient } from './testkit/mockIpfsClient'
 import {
   Envelope,
   FishName,
   FishType,
+  Lamport,
   OnEvent,
   OnStateChange,
   Psn,
@@ -19,26 +19,6 @@ import {
   SourceId,
   Timestamp,
 } from './types'
-
-/**
- * Types for messages of the pubsub protocol
- */
-/**
- * Publish events
- */
-export type PublishEvents = Readonly<{
-  type: 'events'
-  source: SourceId
-  /**
-   * a contiguous (w.r.t. PSNs) block of events
-   */
-  events: ReadonlyArray<StoredIpfsEnvelope>
-}>
-
-/**
- * Protocol for messages on the pubsub channel
- */
-export type PubSubMessage = PublishEvents
 
 //#region test fish definition
 export type State = number
@@ -96,14 +76,14 @@ type GeneratorState = {
 const GeneratorState = {
   create: (): GeneratorState => ({ psns: {}, fsns: {} }),
 }
-const createPubSubMessage = (
+const createEventStoreEvent = (
   generatorState: GeneratorState,
   semantics: Semantics,
   fishName: FishName,
   source: SourceId,
   event: Event,
   timestamp: Timestamp,
-): PubSubMessage => {
+): EventStoreEvent => {
   const { psns, fsns } = generatorState
   const psn = psns[source] || 0
 
@@ -112,17 +92,13 @@ const createPubSubMessage = (
 
   generatorState.fsns = R.assocPath([source, semantics, fishName], sequence + 1, fsns)
   return {
-    type: 'events',
-    source,
-    events: [
-      {
-        psn: Psn.of(psn),
-        semantics,
-        name: fishName,
-        payload: event,
-        timestamp,
-      },
-    ],
+    sourceId: source,
+    psn: Psn.of(psn),
+    semantics,
+    name: fishName,
+    payload: event,
+    timestamp,
+    lamport: Lamport.of(timestamp),
   }
 }
 
@@ -132,13 +108,13 @@ const createEvents = (
   fishName: FishName,
   sources: SourceId[],
   events: number,
-): PubSubMessage[][] => {
+): Events[] => {
   const state = GeneratorState.create()
-  const result: PubSubMessage[][] = sources.map(source =>
+  const result: Events[] = sources.map(source =>
     Array(events)
       .fill(undefined)
       .map((_value, index) =>
-        createPubSubMessage(
+        createEventStoreEvent(
           state,
           semantics,
           fishName,
@@ -166,6 +142,7 @@ const shuffle = <T>(a: ReadonlyArray<T>, r: seedrandom.prng): ReadonlyArray<T> =
   }
   return aa
 }
+
 //#endregion
 
 const snapshotCheck = async <C, E, P>(
@@ -175,7 +152,6 @@ const snapshotCheck = async <C, E, P>(
   nShuffles: number,
 ): Promise<P[]> => {
   const rand = seedrandom(seed)
-  const topic = 'test'
   const fishName = FishName.of('a')
   const fishName2 = FishName.of('b')
   const sources = [SourceId.of('s1'), SourceId.of('s2'), SourceId.of('s3')]
@@ -184,17 +160,14 @@ const snapshotCheck = async <C, E, P>(
   for (let i = 0; i < nShuffles; i += 1) {
     // todo: shuffle will not usually lead to interesting time travel behaviour
     const shuffled = shuffle(events, rand)
-    const ipfsClient = MockIpfsClient.of(MockIpfsClientConfig.default)
-    const pond = await Pond.mock()
+    const pond = await Pond.test()
     // wake up the fish named fishName
     await pond
       .observe(type, fishName)
       .take(1)
       .toPromise()
     // send the shuffled events
-    for (const ev of shuffled) {
-      await ipfsClient.pubsub.pub(topic, ev).toPromise()
-    }
+    pond.directlyPushEvents(shuffled)
     // wait some time until the events are pushed through
     await Observable.timer(10, 10)
       .take(1)
@@ -225,7 +198,9 @@ const sameStateCheck = async <C, E, P>(
   nShuffles: number,
 ): Promise<void> => {
   const states = await snapshotCheck(seed, type, nEvents, nShuffles)
-  const expected = new Array(nShuffles * 2).fill(states[0])
+  const state = states[0]
+  expect(state).not.toEqual(0)
+  const expected = new Array(nShuffles * 2).fill(state)
   expect(states).toEqual(expected)
 }
 

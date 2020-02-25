@@ -47,15 +47,11 @@
     "madge": "madge --circular --extensions ts,tsx ./"
   },
   "dependencies": {
-    "borc": "2.0.4",
-    "bufferutil": "4.0.1",
     "cron": "1.5.0",
     "debug": "3.2.6",
     "format-util": "1.0.3",
     "immutable": "4.0.0-rc.12",
-    "ipld-dag-cbor": "0.12.1",
     "ramda": "0.25.0",
-    "sha.js": "2.4.11",
     "utf-8-validate": "5.0.2",
     "ws": "7.2.1"
   },

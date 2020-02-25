@@ -1,57 +1,6 @@
 import { Observable, Scheduler } from 'rxjs'
 import { marbles } from 'rxjs-marbles'
-import { AdtTransform, concatHot, takeWhileInclusive } from './observable'
-
-describe('concatHot', () => {
-  const values = { a: 1, b: 2, c: 3, d: 4, e: 5, f: 6, g: 7 }
-  it(
-    'should concatenate hot observables without losing elements',
-    marbles(m => {
-      const a = m.hot('^-a-b-|', values)
-      const b = m.hot('^-c-d-e-----f-g', values)
-      const e = m.hot('^-a-b-(cde)-f-g', values)
-      const c = concatHot(a, b)
-      m.expect(c).toBeObservable(e)
-    }),
-  )
-
-  it(
-    'should unsubscribe from the second arg when the first arg fails',
-    marbles(m => {
-      const a = m.hot('^-a-b-#', values)
-      const b = m.hot('^-c-d-e-----f-g', values)
-      const e = m.hot('^-a-b-#', values)
-      const bsubs = '^-----!'
-
-      const c = concatHot(a, b)
-      m.expect(c).toBeObservable(e)
-      m.expect(b).toHaveSubscriptions(bsubs)
-    }),
-  )
-})
-
-type A = { readonly type: 'a' }
-type B = { readonly type: 'b' }
-type ADT = A | B
-
-describe('AdtTransform.combine', () => {
-  it('should allow transforming adts', async () => {
-    const a = (x: Observable<A>): Observable<string> => x.map(() => 'a')
-    const b = (x: Observable<B>): Observable<string> => x.map(() => 'b')
-    const transform = AdtTransform.combine<ADT, string>({
-      a,
-      b,
-    })
-    const ax: A = { type: 'a' }
-    const bx: B = { type: 'b' }
-    const t = Observable.from<ADT>([ax, bx, ax, bx])
-    const result = await t
-      .pipe(transform)
-      .toArray()
-      .toPromise()
-    expect(result).toEqual(['a', 'b', 'a', 'b'])
-  })
-})
+import { takeWhileInclusive } from './observable'
 
 describe('takeWhileInclusive', () => {
   it('should takeWhile predicate and then emit one more', async () => {

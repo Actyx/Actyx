@@ -1,1 +1,0 @@
-export { IpfsClient } from './ipfsClient'

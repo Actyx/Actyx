@@ -3,11 +3,6 @@
 // true if we are probably running on nodejs
 export const isNode: boolean = process && process.toString() === '[object process]'
 
-// best way to trampoline depends on the runtime
-export function trampoline(cb: () => void): void {
-  setTimeout(cb, 0)
-}
-
 // getting memory usage in bytes
 export function getMemoryUsage(): { [key: string]: number } {
   try {

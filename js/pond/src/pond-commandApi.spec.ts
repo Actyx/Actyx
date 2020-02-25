@@ -29,35 +29,6 @@ describe('Pond', () => {
       .then(pond.dispose)
   })
 
-  // FIXME: ipfs is not a thing at all
-  it.skip('should allow async fishes', async () => {
-    // // uncomment this and comment out the mocking to do a real request
-    // // (requires locally running ipfs node)
-    // // const x: any = global
-    // // x.fetch = require('node-fetch')
-    // fetchMock.get('http://localhost:8080/ipfs/QmP1q9NDoYaV5p7EfbELK6FS9DYx629jFD14KWF65RQSmQ', {
-    //   a: 1,
-    // })
-    // const pond = await Pond.mock()
-    // const name = FishName.of('foo')
-    // const statesP = pond
-    //   .observe(asyncTestFish, name)
-    //   .take(2)
-    //   .toArray()
-    //   .toPromise()
-    // return resP.then(() => {
-    //   return expect(statesP).resolves.toEqual([
-    //     { hashes: {} },
-    //     {
-    //       hashes: {
-    //         'http://localhost:8080/ipfs/QmP1q9NDoYaV5p7EfbELK6FS9DYx629jFD14KWF65RQSmQ':
-    //           '015abd7f5cc57a2dd94b7590f04ad8084273905ee33ec5cebeae62276a97f862',
-    //       },
-    //     },
-    //   ])
-    // })
-  })
-
   it('should allow async fishes to send commands', async () => {
     const pond = await Pond.mock()
     const resP = pond
@@ -73,26 +44,6 @@ describe('Pond', () => {
       .toPromise()
     await expect(resP.then(() => navP)).resolves.toEqual('BOO')
     await pond.dispose()
-  })
-
-  // FIXME: ipfs is not a thing anymore
-  it.skip('should allow testing async fishes using snapshot tests', () => {
-    // const httpGet = {
-    //   'http://localhost:8080/ipfs/QmP1q9NDoYaV5p7EfbELK6FS9DYx629jFD14KWF65RQSmQ': {
-    //     a: 1,
-    //   },
-    // }
-    // const executor = TestCommandExecution({ httpGet, httpPost: {} })
-    // const { onCommand, initialState } = asyncTestFish
-    // const state0 = initialState(FishName.of('test'), SourceId.of('X')).state
-    // expect(
-    //   executor(
-    //     onCommand(state0, {
-    //       type: 'import',
-    //       url: 'http://localhost:8080/ipfs/QmP1q9NDoYaV5p7EfbELK6FS9DYx629jFD14KWF65RQSmQ',
-    //     }),
-    //   ),
-    // ).toMatchSnapshot()
   })
 
   it(
