@@ -242,15 +242,15 @@ android-logsvcd-lib: debug
 	cargo --locked build -p logsvcd --lib --release --target i686-linux-android
 
 # 32 bit
-android-axosconfig-lib: debug
+android-axossettings-lib: debug
 	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
 	docker run -v `pwd`/rt-master:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it actyx/cosmos:buildrs-x64-latest \
-	cargo --locked build -p axosconfig --lib --release --target i686-linux-android
+	cargo --locked build -p axossettings --lib --release --target i686-linux-android
 
-axosandroid-libs: debug android-store-lib android-logsvcd-lib android-axosconfig-lib
+axosandroid-libs: debug android-store-lib android-logsvcd-lib android-axossettings-lib
 
 # 32 bit
 axosandroid-app: debug
