@@ -248,7 +248,7 @@ android-axossettings-lib: debug
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it actyx/cosmos:buildrs-x64-latest \
-	cargo --locked build -p axossettings --lib --release --target i686-linux-android
+	cargo --locked build -p ax-os-settings-ffi --lib --release --target i686-linux-android
 
 axosandroid-libs: debug android-store-lib android-logsvcd-lib android-axossettings-lib
 
