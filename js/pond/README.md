@@ -1,7 +1,7 @@
-<img src="asset/actyx_pond_logo_small.png" alt="Actyx Pond Logo" width="80" height="80"> Actyx Pond
+<img src="./asset/actyx_pond_logo_small.png" alt="Actyx Pond Logo" width="80" height="80"> Actyx Pond
 ===
 
-# Actyx Pond (1.0.0-alpha.0)
+# Actyx Pond
 
 A TypeScript framework for writing distributed apps that need to always work. More information at [Actyx Pond](https://www.actyx.com/pond/).
 
@@ -22,7 +22,7 @@ Software only for evaluation and demonstration purposes.
 
 For licensing or support, please contact us at:\
 E-mail: contact@actyx.io\
-Phone: +49 (0)89 9439 740.
+Phone: +49 (0)89 9439 740
 
 ## Installation
 
