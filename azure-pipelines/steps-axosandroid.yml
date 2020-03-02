@@ -6,9 +6,11 @@ steps:
       cargo --locked clippy --tests -- -D warnings && \
       cargo --locked build -p store-lib --release --target i686-linux-android && \
       cargo --locked build -p logsvcd --lib --release --target i686-linux-android && \
+      cargo --locked build -p ax-os-settings-ffi --lib --release --target i686-linux-android && \
       mkdir -p ../android-actyxos-app/app/src/main/jniLibs/x86/ && \
-      cp ./target/i686-linux-android/release/libaxstore.so ../android-actyxos-app/app/src/main/jniLibs/x86/libaxstore.so && \
-      cp ./target/i686-linux-android/release/liblogsvcd.so ../android-actyxos-app/app/src/main/jniLibs/x86/liblogsvcd.so
+      cp ./target/i686-linux-android/release/libaxstore.so ../android-actyxos-app/app/src/main/jniLibs/x86/ && \
+      cp ./target/i686-linux-android/release/liblogsvcd.so ../android-actyxos-app/app/src/main/jniLibs/x86/ && \
+      cp ./target/i686-linux-android/release/libaxossettingsffi.so ../android-actyxos-app/app/src/main/jniLibs/x86/
     displayName: 'Build store & logsvcd (x86)'
     workingDirectory: 'rt-master'
     condition: contains(variables['BUILD_STRING'],'[build-axosandroid]')
