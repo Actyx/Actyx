@@ -208,14 +208,6 @@ actyxos-bin-arm:
 	$(eval IMG:=actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION))
 	$(call build_bins_and_move,$(OUTPUT),$(TARGET),$(IMG))
 
-# 32 bit
-android-store-lib: debug
-	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
-	docker run -v `pwd`/rt-master:/src \
-	-u builder \
-	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
-	-it actyx/cosmos:buildrs-x64-$(IMAGE_VERSION) \
-	cargo --locked build -p store-lib --release --target i686-linux-android
 
 # 32 bit
 android-app: debug
@@ -232,38 +224,46 @@ android-install: debug
 	adb uninstall io.actyx.shell
 	adb install ./android-shell-app/app/build/outputs/apk/release/app-release.apk
 
-# 32 bit
-android-logsvcd-lib: debug
+
+define fn-android-rust-lib
+	$(eval CRATE:=$(1))
+	$(eval ARCH:=$(2))
 	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
 	docker run -v `pwd`/rt-master:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it actyx/cosmos:buildrs-x64-latest \
-	cargo --locked build -p logsvcd --lib --release --target i686-linux-android
+	cargo --locked build -p $(CRATE) --lib --release --target $(ARCH)-linux-android
+endef
 
-# 32 bit
-android-axossettings-lib: debug
-	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
-	docker run -v `pwd`/rt-master:/src \
-	-u builder \
-	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
-	-it actyx/cosmos:buildrs-x64-latest \
-	cargo --locked build -p ax-os-settings-ffi --lib --release --target i686-linux-android
+define fn-android-libs
+	$(eval ARCH:=$(1))
+	$(call fn-android-rust-lib,store-lib,$(ARCH))
+	$(call fn-android-rust-lib,logsvcd,$(ARCH))
+	$(call fn-android-rust-lib,ax-os-settings-ffi,$(ARCH))
+endef
 
-axosandroid-libs: debug android-store-lib android-logsvcd-lib android-axossettings-lib
+axosandroid-libs: debug
+	$(call fn-android-libs,i686)
 
-# 32 bit
+axosandroid-libs-aarch64: debug
+	$(call fn-android-libs,aarch64)
+
 axosandroid-app: debug
 	mkdir -p ./android-actyxos-app/app/src/main/jniLibs/x86
 	cp ./rt-master/target/i686-linux-android/release/lib*.so ./android-actyxos-app/app/src/main/jniLibs/x86/
+	mkdir -p ./android-actyxos-app/app/src/main/jniLibs/arm64-v8a
+	cp ./rt-master/target/aarch64-linux-android/release/lib*.so ./android-actyxos-app/app/src/main/jniLibs/arm64-v8a
 	./android-actyxos-app/bin/get-keystore.sh
-	pushd android-actyxos-app; \
-	./gradlew clean ktlintCheck build assembleRelease; \
-	popd
+	docker run -v `pwd`/android-actyxos-app:/src \
+	-u builder \
+	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-it actyx/cosmos:buildrs-x64-latest \
+	./gradlew clean ktlintCheck build assembleRelease
 	echo 'APK: ./android-actyxos-app/app/build/outputs/apk/release/app-release.apk'
 
 axosandroid-install: debug
 	adb uninstall com.actyx.os.android
 	adb install ./android-actyxos-app/app/build/outputs/apk/release/app-release.apk
 
-axosandroid: debug clean axosandroid-libs axosandroid-app
+axosandroid: debug clean axosandroid-libs axosandroid-libs-aarch64 axosandroid-app
