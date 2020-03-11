@@ -1,3 +1,9 @@
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { TestScheduler } from 'rxjs'

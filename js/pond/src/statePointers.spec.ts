@@ -1,3 +1,9 @@
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
 import { getRecentPointers, StatePointers } from './statePointers'
 import { SnapshotScheduler } from './store/snapshotScheduler'
 import { EnvelopeFromStore } from './store/util'

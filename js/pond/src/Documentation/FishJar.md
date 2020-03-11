@@ -1,3 +1,9 @@
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
 # FishJar
 
 The fishJar is the state container for the fish logic of a hydrated fish. It computes the current state and handles state subscriptions.

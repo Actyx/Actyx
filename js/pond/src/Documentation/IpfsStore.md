@@ -1,3 +1,9 @@
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
 # IPFS store
 
 The ipfs based event store uses ipfs to store the bulk of the events in a very simple format. A small number of events are

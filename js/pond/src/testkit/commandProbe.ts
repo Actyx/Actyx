@@ -1,3 +1,9 @@
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
 // a command probe fish
 import { CommandApi, FishType, InitialState, OnCommand, OnEvent, Semantics } from '..'
 import { OnStateChange } from '../types'

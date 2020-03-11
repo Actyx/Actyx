@@ -1,13 +1,9 @@
 *.json
+*.tgz
+.*
 yarn.lock
-src
 coverage
-.prettierrc.json
-.travis.yml
-.vscode
-.nvmrc
 bin
-.idea
 *.iml
-tsconfig.json
 jest.config.js
+add-license-*
