@@ -139,6 +139,8 @@ docker-build-musl-%:
 	$(eval TARGET:=$(subst docker-build-musl-,,$@))
 	$(call fn_docker_build_musl,$(TARGET))
 
+docker-build-actyxos: docker-build-docker-logging-plugin
+
 # Build ActyxOS binaries image for the
 # specified toolchain.
 # 1st arg: output dir (will be created) of the final artifacts
