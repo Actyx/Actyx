@@ -1,3 +1,9 @@
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
 import * as t from 'io-ts'
 import { Observable } from 'rxjs'
 import { MultiplexedWebsocket } from '../eventstore/multiplexedWebsocket'

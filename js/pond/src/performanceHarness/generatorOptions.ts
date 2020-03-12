@@ -1,3 +1,9 @@
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
 // TODO: change to commandpost, then `npm remove commander`
 import * as commander from 'commander'
 import * as moment from 'moment'
