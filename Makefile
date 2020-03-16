@@ -211,7 +211,7 @@ actyxos-bin-arm:
 	$(call build_bins_and_move,$(OUTPUT),$(TARGET),$(IMG))
 
 
-# 32 bit
+# Android Shell App, i686 32 bit
 android-app: debug
 	mkdir -p ./android-shell-app/app/src/main/jniLibs/x86
 	cp ./rt-master/target/i686-linux-android/release/libaxstore.so ./android-shell-app/app/src/main/jniLibs/x86/libaxstore.so
@@ -222,10 +222,13 @@ android-app: debug
 	echo 'APK: ./android-shell-app/app/build/outputs/apk/release/app-release.apk'
 
 android: debug clean android-store-lib android-app
+
 android-install: debug
 	adb uninstall io.actyx.shell
 	adb install ./android-shell-app/app/build/outputs/apk/release/app-release.apk
 
+android-store-lib: debug
+	$(call fn-android-rust-lib,store-lib,i686)
 
 define fn-android-rust-lib
 	$(eval CRATE:=$(1))
@@ -245,6 +248,7 @@ define fn-android-libs
 	$(call fn-android-rust-lib,ax-os-settings-ffi,$(ARCH))
 endef
 
+# ActyxOS on Android
 axosandroid-libs: debug
 	$(call fn-android-libs,i686)
 
