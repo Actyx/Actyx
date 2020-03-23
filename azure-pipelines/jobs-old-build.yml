@@ -68,7 +68,7 @@ jobs:
         then
             curl https://sh.rustup.rs -sSf | sh -s -- -y
             # Use a fixed rust toolchain
-            rustup default 1.41.0
+            rustup default 1.42.0
             rustc --version
             rustup component add rustfmt
             rustup component add clippy
