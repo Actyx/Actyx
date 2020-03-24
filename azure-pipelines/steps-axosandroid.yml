@@ -53,3 +53,22 @@ steps:
   - publish: $(System.DefaultWorkingDirectory)/android-actyxos-app/app/build/outputs/assembly/Actyx/axosandroid/
     artifact: axosandroid-apk
     condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axosandroid]'))
+
+  - task: AzureCLI@2
+    # No, there would be the nicely looking AzureFileCopy@4 task, which would use the `azcopy` cli (yes, it's not
+    # included in `az`), to upload a bunch of files:
+    # https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/deploy/azure-file-copy?view=azure-devops.
+    #
+    # Now, that task currently only works under Windows.
+    # Next up: Directly use `azcopy`. No built-in authentication via azure pipelines, bummer.
+    # Luckily, the `az` cli offers a legacy command `storage  blob upload-batch`, which doesn't work recursively, but that's not that an
+    # issue for our current use-case. So we use that.
+    displayName: Copy artifacts to az blob store
+    inputs:
+      azureSubscription: azure-ax-ci
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        az --version
+        az account show
+        az storage blob upload-batch -s $(System.DefaultWorkingDirectory)/android-actyxos-app/app/build/outputs/assembly/Actyx/axosandroid/$(Build.SourceVersion) -d https://axartifacts.blob.core.windows.net/artifacts/ --destination-path $(Build.SourceVersion)/android/
