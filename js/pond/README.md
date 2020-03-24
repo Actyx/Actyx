@@ -19,7 +19,7 @@ The recommended IDE for developing Actyx Pond is [Visual Studio Code](https://co
 - ...
 
 ### Recommended settings
-See [`settings-sample.json`](/js/pond/.vscode/settings-sample.json`).
+See [`settings-sample.json`](/js/pond/.vscode/settings-sample.json).
 
 
 ## License and Support
