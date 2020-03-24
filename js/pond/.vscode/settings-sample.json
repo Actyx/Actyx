@@ -1,9 +1,8 @@
 {
   "editor.minimap.enabled": false,
   "editor.renderWhitespace": "none",
-  "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll.tslint": true
+    "source.fixAll": true
   },
   "files.autoSave": "onFocusChange",
   "telemetry.enableTelemetry": false,
@@ -12,7 +11,5 @@
     "**/.tsx.html": true,
     "**/.storyshot": true
   },
-  "tslint.alwaysShowRuleFailuresAsWarnings": true,
-  "tslint.configFile": "config/tslint.json",
   "typescript.tsdk": "./node_modules/typescript/lib"
 }

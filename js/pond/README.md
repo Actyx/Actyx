@@ -15,7 +15,7 @@ A TypeScript framework for writing distributed apps deployed on peer-to-peer net
 The recommended IDE for developing Actyx Pond is [Visual Studio Code](https://code.visualstudio.com/).
 
 ### Recommended plugins
-- [TSLint](https://marketplace.visualstudio.com/items?itemName=ms-vscode.vscode-typescript-tslint-plugin)
+- [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
 - ...
 
 ### Recommended settings
