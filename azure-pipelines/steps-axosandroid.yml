@@ -72,3 +72,4 @@ steps:
         az --version
         az account show
         az storage blob upload-batch -s $(System.DefaultWorkingDirectory)/android-actyxos-app/app/build/outputs/assembly/Actyx/axosandroid/$(Build.SourceVersion) -d https://axartifacts.blob.core.windows.net/artifacts/ --destination-path $(Build.SourceVersion)/android/
+    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axosandroid]'))
