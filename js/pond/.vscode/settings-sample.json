@@ -7,9 +7,4 @@
   "files.autoSave": "onFocusChange",
   "telemetry.enableTelemetry": false,
   "telemetry.enableCrashReporter": false,
-  "search.exclude": {
-    "**/.tsx.html": true,
-    "**/.storyshot": true
-  },
-  "typescript.tsdk": "./node_modules/typescript/lib"
 }
