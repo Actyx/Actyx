@@ -1,7 +1,3 @@
-
-const osDoc = (path) => `os/${path}`
-const pondDoc = (path) => `pond/${path}`
-const faqDoc = (path) => `faq/${path}`
 module.exports = {
   osSidebar: {
     'ActyxOS': [
