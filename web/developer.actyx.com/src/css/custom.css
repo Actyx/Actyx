@@ -17,6 +17,10 @@
   --ifm-code-font-size: 95%;
 }
 
+p, li, a, code, span {
+  font-size: 15px !important;
+}
+
 .navbar__items.navbar__items--right {
   flex: 0 0 0;
 

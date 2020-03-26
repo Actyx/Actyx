@@ -5,7 +5,7 @@ sidebar_label: Supported device OSes
 
 ActyxOS has been tested to work on multiple Linux OSs, Android, macOS and Windows.
 
-**Compatibility matrix** (September 2019)
+**Compatibility matrix**
 
 | Operating system | Minimum version           | Support maturity       |
 |------------------|---------------------------|------------------------|
