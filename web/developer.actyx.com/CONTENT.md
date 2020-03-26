@@ -75,8 +75,6 @@ Actyx Pond
   Quick Start
    - git clone http://github.com/actyx/quickstart
    - docker run actyx/os
-   - npm run actyx:os:start:windows (sh ./scripts/actyxos-start-windows)
-   - npm run ax:os:start:linux (sh ./scripts/actyxos-start-linux)
    - npm run ax:apps:sample:start firstInstance
    - npm run ax:apps:sample:start secondInstance
    - Download Actyx CLI

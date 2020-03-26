@@ -71,6 +71,11 @@ module.exports = {
       style: 'light',
       copyright: `Copyright © ${new Date().getFullYear()} Actyx AG`,
     },
+    prism: {
+      theme: require('prism-react-renderer/themes/github'),
+      darkTheme: require('prism-react-renderer/themes/dracula'),
+
+    }
   },
   presets: [
     [
