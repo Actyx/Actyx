@@ -45,6 +45,11 @@ module.exports = {
           position: 'left',
         },
         {
+          to: 'https://challenges.actyx.com',
+          label: 'Challenges',
+          position: 'right',
+        },
+        {
           to: 'https://downloads.actyx.com',
           label: 'Downloads',
           position: 'right',
