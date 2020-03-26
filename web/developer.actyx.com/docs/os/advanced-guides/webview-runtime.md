@@ -1,29 +1,14 @@
 ---
-id: webview-runtime
 title: WebView Runtime
-permalink: os/docs/webview-runtime.html
-next: docker-runtime.html
 ---
 
 The **WebView Runtime** allows you to easily run web apps.
 
-> Private beta
-> 
-> The WebView Runtime is currently in private beta with select users. It is planned for **public release in Q4 2019** (see the [Q4/19 Roadmap Update](/blog/2019/09/18/Q4-19-roadmap-update.html) for more information). To stay up to date about upcoming releases please check out our [blog](/blog), where we post release notes and roadmap updates.
+:::info Beta
+The WebView Runtime is currently in **beta**.
+:::
 
-## Contents
-
-- [Overview](#overview)
-- [Basics](#basics)
-    - [Web apps](#web-apps)
-    - [Multi-tasking by end-users](#multi-tasking-by-end-users)
-- [Usage](#usage)
-    - [Building web apps](#building-web-apps)
-    - [Packaging web apps](#packaging-web-apps)
-    - [Deploying web apps](#deploying-web-apps)
-    - [Monitoring web apps](#monitoring-web-apps)
-
-## Overview {#overview}
+## Overview
 
 The WebView runtime is a service that reliably runs [single-page applications (SPAs)](#single-page-applications)&mdash;we call them _web&thinsp;apps_&mdash;built on HTML, JavaScript, and CSS on edge devices. It is the basis for developing interactive UI-based apps for end-users.
 
@@ -32,19 +17,19 @@ Key capabilities:
 - Reliably serve web apps and assets in platform-specific webview container
 - Provide access to auxiliary ActyxOS services (e.g. [Event Service](/docs/os/event-service.html))
 
-## Basics {#basics}
+## Basics
 
-### Web apps {#web-apps}
+### Web apps
 
 ActyxOS web apps are [single-page applications (SPAs)](https://en.wikipedia.org/wiki/Single-page_application) in which pages are dynamically generated on the client-side depending on user interactions. They are traditionally built as a combination of HTML, JavaScript, and CSS.
 
-### Multi-tasking by end-users {#multi-tasking-by-end-users}
+### Multi-tasking by end-users
 
 The WebView runtime supports multi-tasking. This means that end-users can have multiple apps running simultaneously and can switch between them. Please refer to the specific host platform for more information about how this works. For Android, for example, refer to the [Android Documentation](https://support.google.com/android/answer/9079646?hl=en).
 
-## Usage {#usage}
+## Usage
 
-### Building web apps {#building-web-apps}
+### Building web apps
 
 You can build your web app from scratch or use any of the common JavaScript frameworks or libraries. The most popular frameworks/libraries are:
 
@@ -55,11 +40,11 @@ You can build your web app from scratch or use any of the common JavaScript fram
 - [Sencha Ext JS](https://www.sencha.com/products/extjs/); and,
 - [Knockout](https://knockoutjs.com).
 
-> Recommendation: ReactJS
->
-> Unless you are very proficient in another framework, we recommend starting with [ReactJS](https://reactjs.org) using the [`create-react-app`](https://github.com/facebook/create-react-app) command.
+:::note Recommendation: ReactJS
+Unless you are very proficient in another framework, we recommend starting with [ReactJS](https://reactjs.org) using the [`create-react-app`](https://github.com/facebook/create-react-app) command.
+:::
 
-### Packaging web apps {#packaging-web-apps}
+### Packaging web apps
 
 The [Actyx CLI](/os/docs/actyx-cli.html) provides the `ax apps package` command for packaging ActyxOS apps for deployment. Based on the app's manifest (a YAML file), the CLI will automatically validate app properties and assets, and, finally, generate a tarball for deployment.
 
@@ -96,9 +81,9 @@ app1/
             app-icon.png
 ```
 
-> Note
->
-> The `dist` directory is usually created automatically by your build process. It is rarely the same as your `src` directory. Please refer to your environment's or framework's instructions for building your app for distribution.
+:::note
+The `dist` directory is usually created automatically by your build process. It is rarely the same as your `src` directory. Please refer to your environment's or framework's instructions for building your app for distribution.
+:::
 
 With the above manifest and the given directory structure, you can package your app using the `ax apps package` command. The [Actyx CLI](/os/docs/actyx-cli.html) will automatically validate and analyze the manifest, package necessary files and create a tarball for deployment.
 
@@ -111,13 +96,13 @@ $ ax apps package ax-manifest.yml
 > com.example.app1 (1.0.3) successfully packaged: com.example.app1-1.0.3.tar.gz
 ```
 
-### Deploying web apps {#deploying-web-apps}
+### Deploying web apps
 
 The [Actyx CLI](/os/docs/actyx-cli.html) provides the `ax apps deploy` command for deploying apps to edge devices. The CLI will automatically read the manifest file and deploy the built package to the edge device.
 
-> Local deployments only
->
-> Currently, the [Actyx CLI](/os/docs/actyx-cli.html) only supports local interaction with devices (using the `--local` flag). We plan to release remote deployment functionality in 2020. Please check out our [blog](/blog) for release updates.
+:::info Local mode only
+Currently, the [Actyx CLI](/os/docs/actyx-cli.html) only supports local interaction with devices (using the `--local` flag). We plan to release remote deployment functionality in 2020. Please check out our [blog](https://www.actyx.com/news) for release updates.
+:::
 
 The following example shows how you can deploy an app to a node accessible in the local area network:
 
@@ -130,9 +115,13 @@ $ ax apps deploy --local com.example.app1-1.0.3.tar.gz 10.7.0.32
 > com.example.app1 (1.0.3) (com.example.app1-1.0.3.tar.gz) successfully deployed to node at 10.7.0.32.
 ```
 
-### Monitoring web apps {#monitoring-web-apps}
+### Monitoring web apps
 
 A web app may generate logs using the global [console](https://developer.mozilla.org/en-US/docs/Web/API/console) object. These log messages are automatically captured by ActyxOS and made available to you for monitoring and debugging.
+
+:::info Local mode only
+Currently, the [Actyx CLI](/os/docs/actyx-cli.html) only supports local interaction with devices (using the `--local` flag). We plan to release remote deployment functionality in 2020. Please check out our [blog](https://www.actyx.com/news) for release updates.
+:::
 
 You can access or tail (use the `--tail` flag) these logs using the [Actyx CLI](/os/docs/actyx-cli.html) as shown in the following example.
 
@@ -146,9 +135,13 @@ $ ax logs tail --local 10.7.0.32
 > com.example.app1-1.0.3::console | 2019-09-11T21:46:12.114Z [debug] Setting route '/preferences'
 ```
 
-### Undeploying web apps {#undeploying-web-apps}
+### Undeploying web apps
 
 Undeploying an app means deleting it from the device. This can be done with the `ax apps undeploy` command.
+
+:::info Local mode only
+Currently, the [Actyx CLI](/os/docs/actyx-cli.html) only supports local interaction with devices (using the `--local` flag). We plan to release remote deployment functionality in 2020. Please check out our [blog](https://www.actyx.com/news) for release updates.
+:::
 
 Example:
 

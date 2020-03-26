@@ -1,28 +1,14 @@
 ---
-id: console-service
 title: Console Service
-permalink: os/docs/console-service.html
-prev: blob-service.html
 ---
 
 With the **Console Service** you generate logs from your app for monitoring and debugging.
 
-> Private beta
-> 
-> The Console Service is currently in private beta with select users. It is planned for **public release in Q4 2019** (see the [Q4/19 Roadmap Update](/blog/2019/09/18/Q4-19-roadmap-update.html) for more information). To stay up to date about upcoming releases please check out our [blog](/blog), where we post release notes and roadmap updates.
+:::info Beta
+The Console Service is currently in **beta**.
+:::
 
-## Contents
-
-- [Overview](#overview)
-- [Basics](#basics)
-    - [Structured vs. unstructured logs](#structured-vs-unstructured-logs)
-    - [Log lifecycle and persistence](#log-lifecycle-and-persistence)
-- [Usage](#usage)
-    - [Unstructured logging](#unstructured-logging)
-    - [Structured logging](#structured-logging)
-    - [Accessing log messages](#accessing-log-messages)
-
-## Overview {#overview}
+## Overview
 
 Being able to access app logs is a key requirement of any developer building, monitoring or debugging an app, and of any administrator running an app in production. The Console Service provides you&mdash;as an app developer&mdash;with the tools necessary to create and access your app's logs.
 
@@ -33,13 +19,13 @@ Key capabilities:
 - Automatically capture and log `window.console` output (only WebView Runtime)
 - Enable local or remote access to historical or real-time logs
 
-> Local access only (until 2020)
->
-> The Console Service currently only supports local access to logs, i.e. when you are in the same network as the edge device. As noted in our [Q4/19 Roadmap Update](/blog/2019/09/18/Q4-19-roadmap-update.html), remote logging will be introduced in 2020. Stay tuned for more.
+:::warning Local mode only
+The Console Service currently only supports local access to logs, i.e. when you are in the same network as the edge device. Remote access will be introduced in 2020. Stay tuned for more.
+:::
 
-## Basics {#basics}
+## Basics
 
-### Structured vs. unstructured logs {#structured-vs-unstructured-logs}
+### Structured vs. unstructured logs
 
 Traditionally, logs were produced, persisted, and consumed as lines of text. This way of logging is referred to as _unstructured logging_. A traditional log file might look like this:
 
@@ -76,37 +62,37 @@ Whilst ActyxOS supports this type of logging, we favor _structured logging_, whe
 }
 ```
 
-> Reserved namespaces `ax.*` and `actyx.*`
->
-> Both `ax.*` and `actyx.*` are reserved namespaces and aliases for `com.actyx.*`. This is done to save valuable bytes going through the network.
+:::info Reserved namespaces `ax.*` and `actyx.*`
+Both `ax.*` and `actyx.*` are reserved namespaces and aliases for `com.actyx.*`. This is done to save valuable bytes going through the network.
+:::
 
 
 This structured log provides significantly more information than could be contained in a single line in any readable fashion. Given its JSON-format, it is also easy to programmatically parse for automated analysis or interactive investigation.
 
-> You can generate unstructured logs with ActyxOS
->
-> Whilst not recommended, the Console Service supports unstructured logging. Refer to the usage examples below for more information about how that works.
+:::note You can generate unstructured logs with ActyxOS
+Whilst not recommended, the Console Service supports unstructured logging. Refer to the usage examples below for more information about how that works.
+:::
 
 
-### Log lifecycle and persistence {#log-lifecycle-and-persistence}
+### Log lifecycle and persistence
 
 Logs are generated when your app runs. As you may not always be available to immediately capture ephemeral logs, the Console Service automatically persists logs for you. This persistence means that you can access logs at a later point in time.
 
 Given disk constraints and configuration options, ActyxOS may at some point delete logs from the edge device. The deletion happens in a FIFO fashion, with the oldest logs being deleted first, irrespective of level.
 
-> Long-term persistence with the upcoming Actyx Console
-> 
-> The Actyx Console is planned for release in 2020 (see the [Q4/19 Roadmap Update](/blog/2019/09/18/Q4-19-roadmap-update.html)). It will allow for logs to automatically be sent from the edge device to the scalable, cloud-based Console. Then you will be able to access logs long after they have been deleted from the edge device. Stay tuned for release updates.
+:::info Long-term persistence with the upcoming Actyx Console
+The Actyx Console is planned for release in 2020. It will allow for logs to automatically be sent from the edge device to the scalable, cloud-based Console. Then you will be able to access logs long after they have been deleted from the edge device. Stay tuned for release updates.
+:::
 
-## Usage {#usage}
+## Usage
 
 Creating high-quality applications and providing associated support means you must be able to see what is going on with your apps. The Console Service gives you the tools to do so.
 
-### Unstructured logging {#unstructured-logging}
+### Unstructured logging
 
 Unstructured logging is supported for both [docker apps](/os/docs/docker-runtime.html) and [single-page web applications](/os/docs/webview-runtime.html).
 
-#### Docker apps {#unstructured-logging-in-docker-apps}
+#### Docker apps
 
 The business logic running in a docker container can output to [stdout](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)) or [stderr](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)). The ActyxOS [Docker Runtime](/os/docs/docker-runtime.html) automatically captures these outputs and transforms them into structured log messages of the following standard shape:
 
@@ -127,11 +113,11 @@ The business logic running in a docker container can output to [stdout](https://
 }
 ```
 
-> Note
->
-> All data streamed to `stdout` or `stderr` will have the same `info` log level, the property `logName` will be accordingly populated automatically with value `ax.os.docker.stdout` or `ax.os.docker.stderr`.
+:::note
+All data streamed to `stdout` or `stderr` will have the same `info` log level, the property `logName` will be accordingly populated automatically with value `ax.os.docker.stdout` or `ax.os.docker.stderr`.
+:::
 
-#### Single-page apps {#unstructured-logging-in-single-page-apps}
+#### Single-page apps
 
 Single-page applications have&mdash;via JavaScript&mdash;access to the `console` object (see also the [WebView Runtime](/os/docs/webview-runtime.html#monitoring-spas) guide). The Console Service captures messages logged with the following functions:
 
@@ -143,13 +129,13 @@ Single-page applications have&mdash;via JavaScript&mdash;access to the `console`
 
 The logged string is transformed in a similar fashion as shown in the [previous section](#unstructured-logging-in-docker-apps).
 
-### Structured logging {#structured-logging}
+### Structured logging
 
 Structured logging&mdash;the preferred method&mdash;is possible using the Console Service's local HTTP API. You publish logs by submitting `POST` requests to the `http://localhost:4457/api/v1/logs` endpoint.
 
-> Important
->
-> The API can only be accessed locally, i.e. at `localhost`. It is not meant to be accessed from other devices. The Console Service automatically distributes published logs in the background. As a developer, you only need to interact with the local service and API. 
+:::info
+The API can only be accessed locally, i.e. at `localhost`. It is not meant to be accessed from other devices. The Console Service automatically distributes published logs in the background. As a developer, you only need to interact with the local service and API. 
+:::
 
 The following code example shows how you can do this from a Node.js-based docker app.
 
@@ -204,17 +190,17 @@ echo '
     http://localhost:4457/api/v1/logs
 ```
 
-> Note
-> 
-> If "logTimestamp" is omitted the Console Service will add it automatically for you.
+:::note
+If "logTimestamp" is omitted the Console Service will add it automatically for you.
+:::
 
-### Accessing log messages {#accessing-log-messages}
+### Accessing log messages
 
 Until the release of the Actyx Console in 2020, logs can only be accessed using the [Actyx CLI](/os/docs/actyx-cli.html) with the `ax logs` command. You can either retrieve all logs on the edge device or tail all logs generated from the time you execute the command.
 
-> Note
->
-> Until the release of the Actyx Console, logs can only be accessed locally. In order for this to work, you must use the `--local` flag when calling Actyx CLI commands.
+:::note
+Until the release of the Actyx Console, logs can only be accessed locally. In order for this to work, you must use the `--local` flag when calling Actyx CLI commands.
+:::
 
 Example:
 

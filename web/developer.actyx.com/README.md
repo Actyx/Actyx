@@ -84,7 +84,7 @@ Here comes an image:
 ![](/images/my-img.png)
 ```
 
-Note that the path does not include `static`. The fact that there is a difference between the path in the source and in the build, unfortunatly means that preview doesn't show the images. You can solve this by creating a symlink in the root directory of the site as follows:
+Note that the path does not include `static`. The fact that there is a difference between the path in the source and in the build, unfortunately means that preview doesn't show the images. You can solve this by creating a symlink in the root directory of the site as follows:
 
 ```
 $ ln -s /static/images /images

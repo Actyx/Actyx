@@ -13,9 +13,9 @@ The Event Service HTTP API provides local access to the [Event Service](/os/docs
 
 It is reachable at the following base URI: `http://localhost:4454/api/v1/events`.
 
-> Pretty printed JSON
->
-> JSON used in the examples below is pretty-printed. This is only to make it more readable here. In reality, the Event Service API does not return pretty-printed JSON.
+:::info Pretty printed JSON
+JSON used in the examples below is pretty-printed. This is only to make it more readable here. In reality, the Event Service API does not return pretty-printed JSON.
+:::
 
 ## Get information about known offsets
 

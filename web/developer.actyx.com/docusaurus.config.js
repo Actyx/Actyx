@@ -32,12 +32,12 @@ module.exports = {
           label: 'Actyx CLI',
           position: 'left',
         },
-        //{
-        //  to: 'docs/tutorials/doc1',
-        //  activeBasePath: 'docs/tutorials',
-        //  label: 'Tutorials',
-        //  position: 'left',
-        //},
+        {
+          to: 'docs/tutorials/doc1',
+          activeBasePath: 'docs/tutorials',
+          label: 'Tutorials',
+          position: 'left',
+        },
         {
           to: 'docs/faq/supported-programming-languages',
           activeBasePath: 'docs/faq/',

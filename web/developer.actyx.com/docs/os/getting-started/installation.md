@@ -1,7 +1,26 @@
 ---
 title: Installation
-sidebar_label: Installation
 ---
+
+- Getting Started
+  - Installation
+    - Install ActyxOS
+    - Download the CLI
+    - Start the node
+    - Deploy an app
+      - Clone from Github
+      - ax apps package
+      - ax apps deploy
+      - ax apps ls
+  - Configuration
+- Guides
+  - Using the CLI
+  - Creating swarms
+  - Joining swarms
+  - Building apps
+  - Running apps
+- Advanced guides
+  - 
 
 You can write content using [GitHub-flavored Markdown syntax](https://github.github.com/gfm/).
 

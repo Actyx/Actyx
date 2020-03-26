@@ -7,18 +7,6 @@ next: distributed-systems.html
 
 Configuring the behavior of ActyxOS nodes and apps.
 
-## Contents
-
-- [Overview](#overview)
-- [Basics](#basics)
-    - [Settings and schemas](#settings-and-schemas)
-    - [Node settings](#node-settings)
-    - [App settings](#app-settings)
-- [Usage](#usage)
-    - [Configuring nodes](#configuring-nodes)
-    - [Developing apps](#developing-apps)
-    - [Configuring apps](#configuring-apps)
-
 Throughout their lifecycle you may want to configure the behavior of nodes and apps. ActyxOS allows you to do this with the concept of _settings_.
 
 Key capabilities:
@@ -27,9 +15,9 @@ Key capabilities:
 - Safe and granular deployment of node and app settings
 - Simple method for defining app settings schemas and defaults
 
-## Basics {#basics}
+## Basics
 
-### Settings and schemas {#settings-and-schemas}
+### Settings and schemas
 
 Settings are a means to configure the behavior of systems. Depending on the settings, the system will behave differently. Which parts of a system are configurable and in which fashion is defined by the developer of the system. Throughout the development phase she may choose to make certain behaviors configurable by defining settings that a user of the system can later _set_ to arbitrary or well-defined values.
 
@@ -96,7 +84,7 @@ The settings object and, more importantly, the settings schemas are a very power
 
 This was just a short introduction and touched only on the basics of settings and schemas. We will dive into more depth in the concrete usage cases.
 
-### Node settings {#node-settings}
+### Node settings
 
 We have defined exactly how the behavior of ActyxOS nodes can be configured in our ActyxOS [_Node Settings Schema_](/os/docs/node-settings-schema.html) which you can download anytime from [here](/schemas/os/node-settings.schema.json).
 
@@ -110,7 +98,7 @@ Here are a couple of the most important ActyxOS nodes settings:
 
 To check out the complete set of settings, download the _Node Settings Schema_ linked to above.
 
-### App settings {#app-settings}
+### App settings
 
 As an app developer it is completely up to you what you want users of your app to be able to configure. As you will see below, you will do so by defining your own _App Settings Schema_ using [JSON Schema](https://json-schema.org/).
 
@@ -122,7 +110,7 @@ In this section we will go through the three main areas where node and app setti
 1. when [developing apps](#developing-apps)
 1. when [configuring apps](#configuring-apps)
 
-### Configuring nodes {#configuring-nodes}
+### Configuring nodes
 
 ActyxOS provides a number of settings that you can set. Some of those are required for the node to work, whereas others are optional. You can download the full ActyxOS [_Node Settings Schema_](/os/docs/node-settings-schema.html) [here](/schemas/os/node-settings.schema.json). In this section we will show you how you can configure a node.
 
@@ -182,7 +170,7 @@ $ ax settings set --local ax.os/Services/EventService/Topic "New Topic" 10.2.3.2
 
 The Actyx CLI allows you to not only set settings at top-level scopes such as `ax.os`, but rather allows you to change leafs or even sub-trees in the node's settings object.
 
-### Developing apps {#developing-apps}
+### Developing apps
 
 As an app developer you can precisely define what system administrators deploying and operating your app may configure. You can also, of course, access the settings that have been set for your app from within your app.
 
@@ -270,7 +258,7 @@ def on_start_app():
   # Do something with timeUnit and backgroundColor
 ```
 
-### Configuring apps {#configuring-apps}
+### Configuring apps
 
 Now that we have gone through how you, as an app developer, can define what people can configure using settings, we come to the last part of this page: configuring apps. As shown next, this is completely analogous to [configuring nodes](#configuring-nodes):
 

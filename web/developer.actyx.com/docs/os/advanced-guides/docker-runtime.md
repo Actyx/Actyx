@@ -1,30 +1,14 @@
 ---
-id: docker-runtime
 title: Docker Runtime
-permalink: os/docs/docker-runtime.html
-prev: webview-runtime.html
-next: event-service.html
 ---
 
 With the **Docker Runtime** you can run arbitrary apps packaged as docker images.
 
-> Private beta
-> 
-> The Docker Runtime is currently in private beta with select users. It is planned for **public release in Q4 2019** (see the [Q4/19 Roadmap Update](/blog/2019/09/18/Q4-19-roadmap-update.html) for more information). To stay up to date about upcoming releases please check out our [blog](/blog), where we post release notes and roadmap updates.
+:::info Beta
+The Docker Runtime is currently in **beta**.
+:::
 
-## Contents
-
-- [Overview](#overview)
-- [Basics](#basics)
-    - [Docker apps](#docker-apps)
-- [Usage](#usage)
-    - [Building docker apps](#building-docker-apps)
-    - [Packaging docker apps](#packaging-docker-apps)
-    - [Deploying docker apps](#deploying-docker-apps)
-    - [Monitoring docker apps](#monitoring-docker-apps)
-    - [Undeploying docker apps](#undeploying-docker-apps)
-
-### Docker apps {#docker-apps}
+### Docker apps
 
 A docker app is a type of ActyxOS app where the business logic is implemented in one or more docker images. At runtime, ActyxOS launches a docker container for each image, thus running your logic.
 
@@ -36,17 +20,17 @@ Technically, and as shown in the above image, a docker app is composed of
 1. a `docker-compose.yml` file specifying how to run your containers; and,
 1. one or more docker images (identified by their tag).
 
-## Usage {#usage}
+## Usage
 
-### Building docker apps {#building-docker-apps}
+### Building docker apps
 
 Through the development process of your app, you may use any tools you would like to implement your business logic and build your docker images. You can also use any existing images you want to build on.
 
-> Docker documentation
->
-> Please refer to the [Docker Documentation](https://docs.docker.com/) for more information about how to build and compose docker images.
+:::info Docker documentation
+Please refer to the [Docker Documentation](https://docs.docker.com/) for more information about how to build and compose docker images.
+:::
 
-### Packaging docker apps {#packaging-docker-apps}
+### Packaging docker apps
 
 Once you are finished with the development, you can use the Actyx CLI to package your app for deployment to an edge device running ActyxOS.
 
@@ -65,9 +49,9 @@ docker-compose: ./docker-compose.yml # Path to the docker-compose file
 settings-schema: ./settings-schema.json # Path to the app's settings schema
 ```
 
-> Note
-> 
-> There is no need to specify necessary images in the manifest since the Actyx CLI will automatically analyze the docker-compose file to figure out which images need to be deployed.
+:::note
+There is no need to specify necessary images in the manifest since the Actyx CLI will automatically analyze the docker-compose file to figure out which images need to be deployed.
+:::
 
 How this works is shown in the following short example.
 
@@ -80,13 +64,13 @@ $ ax apps package ax-manifest.yml
 > com.example.app1 (1.0.3) successfully packaged: com.example.app1-1.0.3.tar.gz
 ```
 
-### Deploying docker apps {#deploying-docker-apps}
+### Deploying docker apps
 
 The Actyx CLI provides the `ax apps deploy` command for deploying apps to nodes. In the background, the CLI will automatically read the mainfest file, inform the node about the deployment and perform any necessary data transfers.
 
-> Local deployments only
->
-> Currently, the [Actyx CLI](/os/docs/actyx-cli.html) only supports local interaction with devices (using the `--local` flag). We plan to release remote deployment functionality in 2020. Please check out our [blog](/blog) for release updates.
+:::info Local mode only
+Currently, the [Actyx CLI](/os/docs/actyx-cli.html) only supports local interaction with devices (using the `--local` flag). We plan to release remote deployment functionality in 2020. Please check out our [blog](https://www.actyx.com/news) for release updates.
+:::
 
 See this example for how to use the `ax apps deploy` command: 
 
@@ -101,15 +85,16 @@ $ ax apps deploy --local com.example.app1-1.0.3.tar.gz 10.7.0.32
 
 Once an app has been deployed to a node, the ActyxOS Docker Runtime will automatically start and run it. Unless your app's containers stop themselves, they will run indefinitely. If the node is restarted, your app will also automatically be restarted.
 
-### Monitoring docker apps {#monitoring-docker-apps}
+### Monitoring docker apps
 
 Since you cannot access your app's containers directly, monitoring means accessing logs they generate. The AcytxOS Docker Runtime automatically persists any text sent to any containers stdout or stderr. Preferably, your app generates logs using the [Console Service](/os/docs/console-service.html).
 
 You can access and tail these logs using the `ax logs tail` command.
 
-> Only local mode until 2020
-> 
-> The Actyx Console will be released in 2020. Until then only local access to edge devices is possible (using the `--local` flag). Please check out the [blog](/blog) for future release updates.
+:::info Local mode only
+Currently, the [Actyx CLI](/os/docs/actyx-cli.html) only supports local interaction with devices (using the `--local` flag). We plan to release remote deployment functionality in 2020. Please check out our [blog](https://www.actyx.com/news) for release updates.
+:::
+
 
 See the following example for how this currently works.
 
@@ -125,9 +110,13 @@ $ ax logs tail --local 10.7.0.32
 > com.example.app1-1.0.3::cassandra1::stdout | 2019-09-11T21:46:13.009Z [info] Cassandra listening on 0.0.0.0:3919
 ```
 
-### Undeploying docker apps {#undeploying-docker-apps}
+### Undeploying docker apps
 
 Undeploying an app means deleting it from the device. This can be done with the `ax apps undeploy` command.
+
+:::info Local mode only
+Currently, the [Actyx CLI](/os/docs/actyx-cli.html) only supports local interaction with devices (using the `--local` flag). We plan to release remote deployment functionality in 2020. Please check out our [blog](https://www.actyx.com/news) for release updates.
+:::
 
 Example:
 
