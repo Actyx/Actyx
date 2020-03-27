@@ -1,5 +1,5 @@
 ---
-title: Node Lifecycle
+title: Running Apps
 ---
 
 :::info COMING SOON

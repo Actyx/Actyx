@@ -12,7 +12,7 @@ module.exports = {
     'Guides': [
       'os/guides/swarms',
       'os/guides/building-apps',
-      'os/guides/managing-apps',
+      'os/guides/running-apps',
       'os/guides/event-streams',
       'os/guides/logging',
     ],

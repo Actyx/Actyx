@@ -23,12 +23,15 @@ Here is a video that Alex, one of our engineers, made explaining Actyx in 10 min
 
 import YouTube from 'react-youtube';
 
+<div className="embedded-yt-wrapper">
 <YouTube
   videoId="T36Gsae9woo"
+  className="embedded-yt-iframe"
   opts={{
-    playerVars: { autoplay: 0 }
+    playerVars: { autoplay: 0 },
   }}
 />
+</div>
 
 
 
@@ -43,10 +46,10 @@ Want to jump right in? Check out the [Quickstart](../quickstart.md). Alternative
 
 ## Staying informed
 
-- Twitter
-- Github
-- Facebook
-- LinkedIn
+- [Twitter](https://twitter.com/actyx)
+- [Github](https://github.com/actyx)
+- [Facebook](https://www.facebook.com/actyx/)
+- [LinkedIn](https://www.linkedin.com/company/actyx/)
 
 ## Something missing?
 

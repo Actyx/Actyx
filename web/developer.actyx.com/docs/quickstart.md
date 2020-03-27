@@ -2,6 +2,10 @@
 title: Quickstart
 ---
 
+:::warning Work in Process
+This guide is a work in process. Please be patient and [let us know](http://localhost:3000/docs/os/introduction#something-missing) if you have any issues.
+:::
+
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
