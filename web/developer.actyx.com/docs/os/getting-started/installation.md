@@ -11,16 +11,10 @@ In order to install ActyxOS on an Android device you need:
 - a device running Android 6.0 or above with at least 4GB of RAM
 - [`adb`](https://developer.android.com/studio/command-line/adb) running on your machine (see [this installation guide](https://www.xda-developers.com/install-adb-windows-macos-linux/))
 
-Download the latest version of the ActyxOS APK from https://downloads.actyx.com:
+Download the latest version of the ActyxOS APK from https://downloads.actyx.com and install the APK on your Android device using [`adb`](https://developer.android.com/studio/command-line/adb):
 
 ```
-curl -O https://downloads.actyx.com/actyxos-android-latest.apk
-```
-
-Install the app on the Android device using [`adb`](https://developer.android.com/studio/command-line/adb):
-
-```
-adb install actyxos-android-latest.apk
+adb install axos.apk
 ```
 
 ActyxOS should now be installed and running on your Android device.
@@ -41,7 +35,7 @@ ActyxOS should now be running in your Docker environment.
 
 ## Communicate with the node
 
-In order to check on its status and interact with the node, you need to download the Actyx CLI (`ax`) from https://downloads.actyx.com and add it to your path.
+In order to check on its status and interact with the node, you need to download the Actyx CLI (`ax` or `ax.exe`) from https://downloads.actyx.com and add it to your path.
 
 You can then check on your ActyxOS node:
 

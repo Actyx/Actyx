@@ -2,14 +2,14 @@
 title: Quickstart
 ---
 
-:::warning Work in Process
-This guide is a work in process. Please be patient and [let us know](http://localhost:3000/docs/os/introduction#something-missing) if you have any issues.
-:::
-
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
 Let's jump right in and get a first distributed application up and running.
+
+:::warning Work in Process
+This guide is a work in process. We appreciate your feedback, so please [let us know](http://localhost:3000/docs/os/introduction#something-missing) if you have any issues.
+:::
 
 ## Requirements
 
@@ -36,8 +36,6 @@ quickstart/
 |--- sample-webview-app/
 |--- sample-docker-app/
 |--- misc/
-|--- sample-node-settings.yml
-|--- package.json
 ```
 
 ## The business logic
@@ -145,24 +143,24 @@ Now, start ActyxOS as a Docker container on your local machine. Since ActyxOS is
 <TabItem value="windows">
 
 ```powershell
-docker run -it --rm -e AX_DEV_MODE -v actyxos-data:/data  -p 4001:4001 -p 4457:4457 actyx/os
+docker run -it --rm -e AX_DEV_MODE=1 -v actyxos_data:/data --privileged -p 4001:4001 -p 4457:4457 -p 4243:4243 -p 4454:4454 actyx/os
 ```
 
 </TabItem>
 <TabItem value="unix">
 
 ```bash
-docker run -it --rm -e AX_DEV_MODE -v actyxos-data:/data --privileged --network=host actyx/os
+docker run -it --rm -e AX_DEV_MODE=1 -v actyxos_data:/data --privileged -p 4001:4001 -p 4457:4457 -p 4243:4243 -p 4454:4454 actyx/os
 ```
 
 </TabItem>
 </Tabs>
 
 :::note
-As you can see, you need to provide a persistent volume and setup some port forwarding. For more information about running ActyxOS on Docker or other hosts, please refer to the [ActyxOS documentation](./os/getting-started/installation.md).
+As you can see, you need to provide a persistent volume and setup some port forwarding. For more information about running ActyxOS on Docker or other hosts, please refer to the [ActyxOS documentation](os/getting-started/installation.md).
 :::
 
-Now that it is running, we need to provide the ActyxOS node with a couple of settings. These allow the node to function correctly. For now, we will just use the sample settings defined in `sample-node-settings.yml`. Run the following command:
+Now that it is running, we need to provide the ActyxOS node with a couple of settings. These allow the node to function correctly. For now, we will just use the sample settings defined in `misc/local-sample-node-settings.yml`. Run the following command:
 
 <Tabs
   defaultValue="windows"
@@ -174,14 +172,14 @@ Now that it is running, we need to provide the ActyxOS node with a couple of set
 <TabItem value="windows">
 
 ```powershell
-ax.exe settings set --local @quickstart\sample-node-settings.yml 0.0.0.0
+ax.exe settings set --local com.actyx.os @misc\local-sample-node-settings.yml 0.0.0.0
 ```
 
 </TabItem>
 <TabItem value="unix">
 
 ```bash
-ax settings set --local @quickstart/sample-node-settings.yml 0.0.0.0
+ax settings set --local com.actyx.os @misc/local-sample-node-settings.yml 0.0.0.0
 ```
 
 </TabItem>
@@ -191,38 +189,41 @@ ax settings set --local @quickstart/sample-node-settings.yml 0.0.0.0
 
 ## Start the sample app
 
-Let's now run one of the sample apps you downloaded as part of the quickstart repository. We will start with a web-app defined in `webview-app/`. That directory should contain the following files:
+Let's now run one of the sample apps you downloaded as part of the quickstart repository. We will start with a web-app defined in `sample-webview-app/`. That directory should contain the following files:
 
 ```
 sample-webview-app/
-|--- app.ts
+|--- assets/
 |--- index.html
+|--- index.ts
+|--- manifest.yml
+|--- package-lock.json
 |--- package.json
+|--- settings.schema.json
+|--- tsconfig.json
 ```
 
 We will now build and start the app. The app will run locally on your computer and automatically connect to your ActyxOS node. Staying in the `quickstart` directory, now run the following command:
 
 ```bash
-npm run sample-webview-app:start
+cd sample-webview-app/ && npm run start
 ```
 
-Using your browser, you should now be able to access the app at http://localhost:8000.
+After the app has finished building, you should now be able to access the app at http://localhost:1234.
 
 ## Let's decentralize
 
 In order to experience the power of the Actyx Pond programming model, we will now start another instance of the app and see how these two instance will magically synchronize.
 
-Start another instance, giving it a dedicated name and a dedicated port to bind to:
+Start another instance which will have a different port and a different name:
 
 ```bash
-npm run sample-webview-app:start --name secondInstance --port 9000
+cd sample-webview-app/ && npm run start:second
 ```
 
-You should now be able to access this instance at http://localhost:9000.
+You should now be able to access this instance at http://localhost:4321.
 
-:::danger TODO
-We probably need to explain what is happening here. I am not quite sure where that special code block (the aha block) goes.
-:::
+When you now now sends pings, you should be able to see those pings being shared between the two applications.
 
 ## Adding a second node
 
