@@ -18,9 +18,8 @@ module.exports = {
     ],
     'Advanced Guides': [
       'os/advanced-guides/app-runtimes',
-      'os/advanced-guides/app-settings',
       'os/advanced-guides/node-lifecycle',
-      'os/advanced-guides/node-settings',
+      'os/advanced-guides/node-and-app-settings',
       'os/advanced-guides/actyxos-on-android',
       'os/advanced-guides/actyxos-on-docker',
       'os/advanced-guides/using-workspace-one',
