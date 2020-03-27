@@ -22,10 +22,10 @@ Let's jump right in and get a first distributed application up and running.
 
 ## Prepare
 
-All the files you need for this quickstart guide can be found in a [Github repository](https://github.com/actyx/quickstart). Go ahead and clone it:
+All the files you need for this quickstart guide can be found in a [Github repository](https://github.com/Actyx/quickstart). Go ahead and clone it:
 
 ```
-git clone https://github.com/actyx/quickstart
+git clone https://github.com/Actyx/quickstart
 ```
 
 Inside the newly created `quickstart` directory you should now find the following files and directories:
@@ -40,15 +40,63 @@ quickstart/
 |--- package.json
 ```
 
-In order to setup the project, move into the directory and run:
+## The business logic
 
-```
-npm install
+ActyxOS is all about distributed apps communicating with one another, so let’s write an app that sends
+events around and displays events sent around in this way by other apps. The easiest approach is to use
+the Actyx Pond library and write the app in the Typescript language. The distributable pieces of app
+logic are called _fishes_:
+
+```typescript
+import { Pond, Semantics, OnStateChange, Subscription, FishTypeImpl } from '@actyx/pond'
+
+// Each fish keeps some local state it remembers from all the events it has seen
+type State = { time: string, name: string, msg: string, } | undefined
+
+const ForgetfulChatFish: FishTypeImpl<State, string, string, State> = FishTypeImpl.of({
+    // The kind of fish is identified by the meaning of its event stream, the semantics
+    semantics: Semantics.of('ForgetfulChatFish'),
+
+    // When the fish first wakes up, it computes its initial state and event subscriptions
+    initialState: (_name, _sourceId) => ({
+        state: undefined, // start without information about previous event
+        subscriptions: [Subscription.of(ForgetfulChatFish)] // subscribe across all names
+    }),
+
+    // Upon each new event, keep some details of that event in the state
+    onEvent: (_state, event) => ({
+        time: new Date(event.timestamp / 1000).toISOString(),
+        name: event.source.name,
+        msg: event.payload
+    }),
+
+    // Show the state computed above to the outside world (see Pond.observe below)
+    onStateChange: OnStateChange.publishPrivateState(),
+
+    // Upon each received command message generate one event
+    onCommand: (_state, msg) => [msg],
+})
 ```
 
-:::tip Having trouble?
-Check out the [troubleshooting section](#troubleshooting) below or let us know.
-:::
+This piece of logic can be run on multiple edge devices, each running an ActyxOS node, and we’ll do so in the following.
+But before we can do that we need to add some code that takes the type of fish defined above and wakes up one specific
+instance, identified by its name.
+
+```typescript
+(async () => {
+    // get started with a Pond
+    const pond = await Pond.default()
+    // figure out the name of the fish we want to wake up
+    const myName = process.argv[2] || pond.info().sourceId
+    // wake up fish of kind ForgetfulChatFish with name myName and log its published states
+    pond.observe(ForgetfulChatFish, myName).subscribe(console.log)
+    // send a message every 5sec to generate a new event
+    setInterval(() => pond.feed(ForgetfulChatFish, myName)('ping').subscribe(), 5000)
+})()
+```
+
+This example shows how to start this fish and have it emit one event every five minutes.
+Now we want to see this in action, so let’s install the necessary ingredients.
 
 ## Install the Actyx CLI
 
@@ -79,7 +127,9 @@ ax --version
 </TabItem>
 </Tabs>
 
-
+:::tip Having trouble?
+Check out the [troubleshooting section](#troubleshooting) below or let us know.
+:::
 
 ## Start ActyxOS
 
