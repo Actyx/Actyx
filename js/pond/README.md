@@ -10,6 +10,18 @@ A TypeScript framework for writing distributed apps deployed on peer-to-peer net
 
 - **Eventual Consistency made easy** by using an innovative time-travel algorithm integrated with performance optimizations like snapshots for swift recovery after restart
 
+## IDE setup
+
+The recommended IDE for developing Actyx Pond is [Visual Studio Code](https://code.visualstudio.com/).
+
+### Recommended plugins
+- [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) for live source code linting
+- [Actyx Pond](https://marketplace.visualstudio.com/items?itemName=Actyx.actyx-pond) for efficienly working with fishes
+
+### Recommended settings
+See [`settings-sample.json`](/js/pond/.vscode/settings-sample.json).
+
+
 ## License and Support
 
 For commercial licenses and support please email contact@actyx.io.
