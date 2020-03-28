@@ -7,8 +7,8 @@ import TabItem from '@theme/TabItem';
 
 Let's jump right in and get a first distributed application up and running.
 
-:::warning Work in Process
-This guide is a work in process. We appreciate your feedback, so please [let us know](http://localhost:3000/docs/os/introduction#something-missing) if you have any issues.
+:::warning Work in Progress
+This guide is a work in progress. We appreciate your feedback, so please [let us know](os/introduction#something-missing) if you have any issues.
 :::
 
 ## Requirements
@@ -17,7 +17,7 @@ This guide is a work in process. We appreciate your feedback, so please [let us 
 - **Docker**, which you can [install from here](https://docs.docker.com/install/)
 - **Node.js** and **npm**, which you can [install from here](https://nodejs.org/en/)
 - A second device in your network that is running either Android or Docker
-- `adb`, which can be installed according to [this guide](https://www.xda-developers.com/install-adb-windows-macos-linux/)
+- `adb` (if you’ll use Android devices), which can be installed according to [this guide](https://www.xda-developers.com/install-adb-windows-macos-linux/)
 
 
 ## Prepare
@@ -41,37 +41,39 @@ quickstart/
 ## The business logic
 
 ActyxOS is all about distributed apps communicating with one another, so let’s write an app that sends
-events around and displays events sent around in this way by other apps. The easiest approach is to use
-the Actyx Pond library and write the app in the Typescript language. The distributable pieces of app
-logic are called _fishes_:
+events around and displays events from other apps. The easiest approach is to use
+the [Actyx Pond](pond/introduction.md) library and write the app in the [Typescript](https://www.typescriptlang.org/) language. The distributable pieces of app
+logic are called _fishes:_
 
 ```typescript
 import { Pond, Semantics, OnStateChange, Subscription, FishTypeImpl } from '@actyx/pond'
 
-// Each fish keeps some local state it remembers from all the events it has seen
+// Each fish keeps some local state it remembers from the events it has seen.
+// In this case, we’ll just remember some details of the latest event.
 type State = { time: string, name: string, msg: string, } | undefined
 
 const ForgetfulChatFish: FishTypeImpl<State, string, string, State> = FishTypeImpl.of({
     // The kind of fish is identified by the meaning of its event stream, the semantics
     semantics: Semantics.of('ForgetfulChatFish'),
 
-    // When the fish first wakes up, it computes its initial state and event subscriptions
+    // When the fish first wakes up, it computes its initial state and declares which
+    // event streams to listen to. Most fishes subscribe to their own event stream.
     initialState: (_name, _sourceId) => ({
         state: undefined, // start without information about previous event
-        subscriptions: [Subscription.of(ForgetfulChatFish)] // subscribe across all names
+        subscriptions: [Subscription.of(ForgetfulChatFish)] // all fish of this kind
     }),
 
-    // Upon each new event, keep some details of that event in the state
+    // Upon each new event, keep some details of that event in the state.
     onEvent: (_state, event) => ({
         time: new Date(event.timestamp / 1000).toISOString(),
         name: event.source.name,
         msg: event.payload
     }),
 
-    // Show the state computed above to the outside world (see Pond.observe below)
+    // Show the state computed above to the outside world (see Pond.observe below).
     onStateChange: OnStateChange.publishPrivateState(),
 
-    // Upon each received command message generate one event
+    // Upon each received command message generate a single event.
     onCommand: (_state, msg) => [msg],
 })
 ```
@@ -86,9 +88,9 @@ instance, identified by its name.
     const pond = await Pond.default()
     // figure out the name of the fish we want to wake up
     const myName = process.argv[2] || pond.info().sourceId
-    // wake up fish of kind ForgetfulChatFish with name myName and log its published states
+    // wake up fish with the given name and log its published states
     pond.observe(ForgetfulChatFish, myName).subscribe(console.log)
-    // send a message every 5sec to generate a new event
+    // send 'ping' a message every 5sec to generate a new event
     setInterval(() => pond.feed(ForgetfulChatFish, myName)('ping').subscribe(), 5000)
 })()
 ```
@@ -98,32 +100,13 @@ Now we want to see this in action, so let’s install the necessary ingredients.
 
 ## Install the Actyx CLI
 
-Download and install the latest version of the Actyx CLI (`ax`). You can find different builds for your operating system at https://downloads.actyx.com.
+Download and install the latest version of the Actyx CLI (`ax`). You can find builds for several operating systems at https://downloads.actyx.com.
 
 Once installed you can check that everything works as follows:
 
-<Tabs
-  defaultValue="windows"
-  values={[
-    { label: 'Windows', value: 'windows', },
-    { label: 'Linux/MacOS', value: 'unix', },
-  ]
-}>
-<TabItem value="windows">
-
-```powershell
-ax.exe --version
 ```
-
-</TabItem>
-<TabItem value="unix">
-
-```bash
 ax --version
 ```
-
-</TabItem>
-</Tabs>
 
 :::tip Having trouble?
 Check out the [troubleshooting section](#troubleshooting) below or let us know.
@@ -133,31 +116,12 @@ Check out the [troubleshooting section](#troubleshooting) below or let us know.
 
 Now, start ActyxOS as a Docker container on your local machine. Since ActyxOS is published on DockerHub, you can start it using the following command:
 
-<Tabs
-  defaultValue="windows"
-  values={[
-    { label: 'Windows', value: 'windows', },
-    { label: 'Linux/MacOS', value: 'unix', },
-  ]
-}>
-<TabItem value="windows">
-
-```powershell
+```
 docker run -it --rm -e AX_DEV_MODE=1 -v actyxos_data:/data --privileged -p 4001:4001 -p 4457:4457 -p 4243:4243 -p 4454:4454 actyx/os
 ```
-
-</TabItem>
-<TabItem value="unix">
-
-```bash
-docker run -it --rm -e AX_DEV_MODE=1 -v actyxos_data:/data --privileged -p 4001:4001 -p 4457:4457 -p 4243:4243 -p 4454:4454 actyx/os
-```
-
-</TabItem>
-</Tabs>
 
 :::note
-As you can see, you need to provide a persistent volume and setup some port forwarding. For more information about running ActyxOS on Docker or other hosts, please refer to the [ActyxOS documentation](os/getting-started/installation.md).
+As you can see, you need to provide a persistent volume and set up some port forwarding. For more information about running ActyxOS on Docker or other hosts, please refer to the [ActyxOS documentation](os/getting-started/installation.md).
 :::
 
 Now that it is running, we need to provide the ActyxOS node with a couple of settings. These allow the node to function correctly. For now, we will just use the sample settings defined in `misc/local-sample-node-settings.yml`. Run the following command:
@@ -172,140 +136,118 @@ Now that it is running, we need to provide the ActyxOS node with a couple of set
 <TabItem value="windows">
 
 ```powershell
-ax.exe settings set --local com.actyx.os @misc\local-sample-node-settings.yml 0.0.0.0
+ax.exe settings set --local com.actyx.os @misc\local-sample-node-settings.yml localhost
 ```
 
 </TabItem>
 <TabItem value="unix">
 
 ```bash
-ax settings set --local com.actyx.os @misc/local-sample-node-settings.yml 0.0.0.0
+ax settings set --local com.actyx.os @misc/local-sample-node-settings.yml localhost
 ```
 
 </TabItem>
 </Tabs>
 
-😊 Congrats! Your computer is now running a fully configured ActyxOS node.
-
-## Start the sample app
-
-Let's now run one of the sample apps you downloaded as part of the quickstart repository. We will start with a web-app defined in `sample-webview-app/`. That directory should contain the following files:
+😊 Congrats! Your computer is now running a fully configured ActyxOS node. You can check this by running
 
 ```
-sample-webview-app/
-|--- assets/
-|--- index.html
-|--- index.ts
-|--- manifest.yml
-|--- package-lock.json
-|--- package.json
-|--- settings.schema.json
-|--- tsconfig.json
+ax nodes ls --local localhost
 ```
 
-We will now build and start the app. The app will run locally on your computer and automatically connect to your ActyxOS node. Staying in the `quickstart` directory, now run the following command:
+## Run the app in Dev Mode
 
-```bash
-cd sample-webview-app/ && npm run start
+### Docker app
+
+You’ll find the app prepared in the folder `sample-docker-app`. Inside this folder, run the following to install the dependencies:
+
+```
+npm install
 ```
 
-After the app has finished building, you should now be able to access the app at http://localhost:1234.
+Now you can start the app by saying
 
-## Let's decentralize
-
-In order to experience the power of the Actyx Pond programming model, we will now start another instance of the app and see how these two instance will magically synchronize.
-
-Start another instance which will have a different port and a different name:
-
-```bash
-cd sample-webview-app/ && npm run start:second
+```
+npm start Dori
 ```
 
-You should now be able to access this instance at http://localhost:4321.
+This will connect to ActyxOS and then start printing out lines after a few seconds, corresponding to state updates from the ForgetfulChatFish named “Dori”.
 
-When you now now sends pings, you should be able to see those pings being shared between the two applications.
+### WebView app
 
-## Adding a second node
+The WebView app is prepared in the folder `sample-webview-app`. As for the docker app, first install the dependencies:
 
-So far the two app instances have been communicating via the same local ActyxOS node you started on your computer. Let's now add another participant so you can see how ActyxOS allows these nodes to communicate peer-to-peer in your local network.
+```
+npm install
+```
 
-You can use either an Android device or a device running Docker (e.g. a RaspberryPi). Follow one of the two instructions sets below accordingly.
+Then start the build-in webserver by saying
 
-<Tabs
-  defaultValue="android"
-  values={[
-    { label: 'Android device', value: 'android', },
-    { label: 'Docker device', value: 'docker', },
-  ]
-}>
-<TabItem value="android">
+```
+npm start
+```
 
-1. Download the latest ActyxOS APK from https://downloads.actyx.com
-2. Install the APK using `abd` (see [this installation guide](https://www.xda-developers.com/install-adb-windows-macos-linux/))
+The app itself will only start once you open it in your web browser, you should find it at http://localhost:1234 (or check the output of the above command).
+If you kept the docker app running in your terminal, you should see its messages appear between the ones you can create by clicking the “send message” button.
 
-<Tabs
-  defaultValue="windows"
-  values={[
-    { label: 'Windows', value: 'windows', },
-    { label: 'Linux/MacOS', value: 'unix', },
-  ]
-}>
-<TabItem value="windows">
+## Deploy the app
 
-```bash
+### ActyxOS on Docker
+
+First, we need to build a docker image containing the app. This is done inside the `sample-docker-app` folder by running
+
+```
+npm run build:image
+```
+
+The resulting image is packaged into an Actyx App using the Actyx CLI:
+
+```
+ax apps package manifest.yml
+```
+
+After a few moments you’ll find an app package in your folder. This is deployed into the local ActyxOS node by saying
+
+```
+ax apps deploy --local com.actyx.sample-docker-app-1.0.0.tar.gz localhost
+```
+
+You can check the state of this app using
+
+```
+ax apps ls --local localhost
+```
+
+Before you can start the app, you’ll need to supply valid settings — in this example the empty object is enough:
+
+```
+ax settings set --local com.actyx.sample-docker-app '{}' localhost
+```
+
+Now the app is started with
+
+```
+ax apps start --local com.actyx.sample-docker-app localhost
+```
+
+If you still have the webview app open running in dev mode in your browser, you should see the ping messages appear in there. The two apps are so far served by the same ActyxOS node.
+In order to make this sample fully distributed you can either start another ActyxOS node on a different computer (by repeating the ActyxOS steps above), or you can continue with an Android device.
+
+### ActyxOS on Android
+
+First, download the latest ActyxOS APK from https://downloads.actyx.com and install it using `adb`:
+
+```
 adb install actyxos-1.0.0.apk
 ```
 
-</TabItem>
-<TabItem value="unix">
-
-```powershell
-adb.exe install actyxos-1.0.0.apk
-```
-
-</TabItem>
-</Tabs>
-
-3. Start ActyxOS by clicking on the ActyxOS app in Android
-
-</TabItem>
-<TabItem value="docker">
-
-1. Start the ActyxOS container on the device
-
-<Tabs
-  defaultValue="windows"
-  values={[
-    { label: 'Windows', value: 'windows', },
-    { label: 'Linux/MacOS', value: 'unix', },
-  ]
-}>
-<TabItem value="windows">
-
-```powershell
-docker run -it --rm -e AX_DEV_MODE -v actyxos-data:/data  -p 4001:4001 -p 4457:4457 actyx/os
-```
-
-</TabItem>
-<TabItem value="unix">
-
-```bash
-docker run -it --rm -e AX_DEV_MODE -v actyxos-data:/data --privileged --network=host actyx/os
-```
-
-</TabItem>
-</Tabs>
-
-</TabItem>
-</Tabs>
-
-<br />
+Start ActyxOS by clicking on the ActyxOS app in Android.
 
 :::tip Having trouble installing?
 Check out the [troubleshooting tips](#troubleshooting) below and the [ActyxOS installation guide](./os/getting-started/installation.md).
 :::
 
-Now that you have installed ActyxOS on the second device, let's configure the node and then package and deploy one of the sample apps. Configure the node using the provided second node settings file (`misc/second-node-settings.yml`):
+Now that you have installed ActyxOS on the second device, let's configure the node and then package and deploy one of the sample apps. From the `quickstart` folder, run the following command:
 
 <Tabs
   defaultValue="windows"
@@ -317,61 +259,60 @@ Now that you have installed ActyxOS on the second device, let's configure the no
 <TabItem value="windows">
 
 ```powershell
-ax.exe settings set --local @quickstart\mist\second-node-settings.yml <DEVICE_IP>
+ax.exe settings set --local com.actyx.os @misc\remote-sample-node-settings.yml <DEVICE_IP>
 ```
 
 </TabItem>
 <TabItem value="unix">
 
 ```bash
-ax settings set --local @quickstart/misc/second-node-settings.yml <DEVICE_IP>
+ax settings set --local com.actyx.os @misc/remote-sample-node-settings.yml <DEVICE_IP>
 ```
 
 </TabItem>
 </Tabs>
 
 :::note
-Replace `<DEVICE_IP>` with the IP of the second device.
+Replace `<DEVICE_IP>` with the IP of your Android device.
 :::
 
 The ActyxOS node on the second device should now be fully functional 😊!
 
-Now, let's package and install one of our sample apps. If you installed ActyxOS on Android use the `sample-webview-app`, if you installed on Docker use the `sample-docker-app`.
+Now go back to the `sample-webview-app` folder and create the production build for this web app:
 
-<Tabs
-  defaultValue="windows"
-  values={[
-    { label: 'Windows', value: 'windows', },
-    { label: 'Linux/MacOS', value: 'unix', },
-  ]
-}>
-<TabItem value="windows">
-
-```powershell
-# Package the app
-ax.exe apps package sample-webview-app\manifest.yml
-# Deploy the app
-ax.exe apps deploy --local com.actyx.sample-webview-1.0.0.tar.gz <DEVICE_IP>
+```
+npm run build
 ```
 
-</TabItem>
-<TabItem value="unix">
+The resulting files in the `dist` folder are now packaged into an Actyx App bundle using
 
-```bash
-# Package the app
-ax apps package sample-webview-app/manifest.yml
-# Deploy the app
-ax apps deploy --local com.actyx.sample-webview-1.0.0.tar.gz <DEVICE_IP>
+```
+ax apps package manifest.yml
 ```
 
-</TabItem>
-</Tabs>
+The resulting bundle is then deployed to the Android device by saying
 
-Congratulations, you have just packaged and deployed an ActyxOS app to a remote ActyxOS node! On Docker, the app should now be running; on Android you should be able to start it from the ActyxOS app.
+```
+ax apps deploy --local com.actyx.sample-webview-app-1.0.0.tar.gz <DEVICE_IP>
+```
+
+As for the docker app, you need to supply valid settings:
+
+```
+ax settings set --local com.actyx.sample-docker-app '{}' <DEVICE_IP>
+```
+
+Then the app can be started, either by selecting it from the ActyxOS app on Android or by using the CLI:
+
+```
+ax apps start --local com.actyx.sample-webview-app <DEVICE_IP>
+```
+
+Congratulations, you have just packaged and deployed an ActyxOS app to a remote ActyxOS node!
 
 You should now see two apps running locally on you computer and the app running on the device communicating with each other without any central servers or databases.
 
-This brings us to a close of this quickstart guide.
+This brings us to the close of this quickstart guide.
 
 ## Further reading
 
