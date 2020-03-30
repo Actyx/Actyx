@@ -120,18 +120,22 @@ The primary tool for setting settings, both at the node and the app level, is th
 Let's jump into an example, where we want to configure a brand-new ActyxOS node. First we create a new file&mdash;let's call it `node-settings.yml` and set all the settings to the values we want:
 
 ```yml
-General:
-  DisplayName: My Test Node
-  SwarmKey: 4245c0e542a4f89985a92de178d2169dc7f3596a382828aa8381bc13370e9880
-  BootstrapNodes:
-    - /tcp/10.2.3.1/
-  LogLevels:
-    OS: DEBUG
-    Apps: INFO
-Services:
-  EventService:
-    Topic: My Topic
-```
+general:
+  displayName: My Test Node
+  swarmKey: L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCmQ3YjBmNDFjY2ZlYTEyM2FkYTJhYWI0MmY2NjRjOWUyNWUwZWYyZThmNGJjNjJlOTg3NmE3NDU1MTc3ZWQzOGIK
+  bootstrapNodes:
+    - /dns4/demo-bootstrap.actyx.net/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH
+licensing:
+  os: development
+  apps: {}
+services:
+  consoleService: {}
+  eventService:
+    readOnly: false
+    topic: SampleTopic
+  dockerRuntime: {}
+  webViewRuntime: {}
+  ```
 
 Now we need to set these settings on the node (which, in this example, is reachable at 10.2.3.23) using the Actyx CLI's `ax settings set` command:
 
@@ -211,16 +215,16 @@ Following association of this schema with your app, ActyxOS will now ensure that
 In order for ActyxOS to know that this schema defines the settings for your app, you provide the path to in your app manifest (which also [has a schema](../api/app-manifest-schema.md)):
 
 ```yml
-manifest-version: "1.0"
+manifestVersion: "1.0"
 type: web
 id: com.example.app1
 version: 1.0.3
-display-name: App 1
+displayName: App 1
 description: "A great first app"
 icon: ./build/assets/app-icon.png
 dist: ./build/
 main: ./build/index.html
-settings-schema: ./settings-schema.json # <------------- Path to your settings schema
+settingsSchema: ./settings-schema.json # <------------- Path to your settings schema
 ```
 
 When you package your app, the Actyx CLI will automatically include the settings schema so that it will be available to ActyxOS when your app is deployed.

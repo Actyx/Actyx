@@ -15,24 +15,24 @@ ActyxOS needs a number of settings to be defined in order to work, and provides 
 Here is an example of schema-compliant node settings:
 
 ```yaml
-General:
-  DisplayName: My Node
-  SwarmKey: 4904199ec5e74cc5871cad1ddad4b9e636c9dfcc55269d954dd4048e336b5433
-  BootstrapNodes:
+general:
+  displayName: My Node
+  swarmKey: 4904199ec5e74cc5871cad1ddad4b9e636c9dfcc55269d954dd4048e336b5433
+  bootstrapNodes:
     - /ip4/10.2.3.10/tcp/9090
     - /ip4/10.2.3.11/tcp/9090
-  LogLevels:
+  logLevels:
     OS: WARN
     Apps: INFO
-Licensing:
-  OS: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-  Apps:
+licensing:
+  os: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  apps:
     com.example.app1: development
     com.example.app2: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-Services:
-  EventService:
-    Topic: My Topic
-    ReadOnly: false
+services:
+  eventService:
+    topic: My Topic
+    readOnly: false
 ```
 
 If this were stored in a file named `settings.yml`, you could now use the [Actyx CLI](/os/docs/actyx-cli.html) to set these setting as follows:

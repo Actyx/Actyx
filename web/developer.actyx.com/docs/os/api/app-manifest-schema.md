@@ -9,29 +9,29 @@ In order to run them, the runtimes provided by ActyxOS need some information abo
 As an example, here is a manifest for a **docker app** for the [Docker Runtime](/os/docs/docker-runtime.html):
 
 ```yaml
-manifest-version: "1.0"
+manifestVersion: "1.0"
 type: docker
 id: com.example.app1
 version: 1.0.3
-display-name: App 1
+displayName: App 1
 description: "A great first app"
-docker-compose: ./docker-compose.yml
-settings-schema: ./settings-schema.json
+dockerCompose: ./docker-compose.yml
+settingsSchema: ./settings-schema.json
 ```
 
 Here is an example for a **web app** for the [WebView Runtime](/os/docs/webview-runtime.html):
 
 ```yaml
-manifest-version: "1.0"
+manifestVersion: "1.0"
 type: web
 id: com.example.app1
 version: 1.0.3
-display-name: App 1
+displayName: App 1
 description: "A great first app"
 icon: ./build/assets/app-icon.png
 dist: ./build/
 main: index.html # this is relative to dist
-settings-schema: ./settings-schema.json
+settingsSchema: ./settings-schema.json
 ```
 
 
