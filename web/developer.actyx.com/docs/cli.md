@@ -6,6 +6,9 @@ The **Actyx Command Line Interface (CLI)** is a unified tool to manage your Acty
 
 Both app developers and system administrators need tools to package, deploy, monitor and undeploy ActyxOS apps. The _Actyx CLI_ is a command-line tool that provides these capabilities through a number of commands.
 
+**Interact with your nodes**
+- List specified nodes with [`ax nodes ls`](#ax-nodes-ls)
+
 **Build, validate, package, deploy, start and stop apps**
 - List apps installed on a node with [`ax apps ls`](#ax-apps-ls)
 - Validate the app you are building with [`ax apps validate`](#ax-apps-validate)
@@ -32,32 +35,164 @@ Both app developers and system administrators need tools to package, deploy, mon
 >
 > As you will see in the examples below, the Actyx CLI currently only supports local communication with nodes, i.e. in the local-area network. Please use the `--local` flag until we release the [Actyx Console](/os/docs/actyx-console.html) and enable remote interactions between the Actyx CLI and ActyxOS nodes mediated by the Actyx Console.
 
-# Apps
+# Nodes
 
-### Find out which apps are installed on a node
+### List your nodes and their status
 
-```bash
-$ ax apps ls --help
-USAGE: ax apps ls [FLAGS] <NODE>...
+```
+$ ax nodes ls --help
+USAGE: ax nodes ls [FLAGS] [OPTIONS] <NODE>...
 
 FLAGS:
-    -v, -vv, -vvv    Increase verbosity
-    -h, --help       Prints help information
-    --local          Process over local network
+    -v, -vv, -vvv        Increase verbosity
+    -h, --help           Prints help information
+    --local              Process over local network
+    --pretty             Prints a header in the text output 
+    -j                   Shortcut for '--format json'
+
+OPTIONS:
+    --format FORMAT      Output list in the defined FORMAT (either `json` or 
+                         `text`) [default: text]. The last occurrence of the 
+                         format command or the shortcut wins.  
 
 ARGS:
-    <NODE>...        Node IDs or, if using `--local`, the IP addresses, of the
-                     node(s) to perform the operation on. You may also pass in a
-                     file with a value on each line using the syntax `@file.txt`
-                     or have the command read one value per line from stdin
-                     using `@-`.
+    <NODE>...            Node IDs or, if using `--local`, the IP addresses, of
+                         the node(s) to perform the operation on. You may also
+                         pass in a file with a value on each line using the syntax
+                         `@file.txt` or have the command read one value per line
+                         from stdin using `@-`.
 ```
+
+> Output of `ax nodes ls`
+>
+> If the node is reachable, the output of `ax nodes ls` will show you its status. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
+> - Host unreachable
+> - ActyxOS unreachable (this means the host was reachable but the TCP connection reset) 
+
+See the following examples of using the `ax nodes ls` command:
+```bash
+# get the status of all specified nodes in the local network
+$ ax nodes ls --pretty --local 10.2.3.23 10.2.3.24 10.2.3.25
+NODE ID    DISPLAY NAME  STATE   SETTINGS LICENSE  APPS DEPLOYED APPS RUNNING  STARTED                    VERSION
+10.2.3.23  MY NODE       running    valid   valid             23           17  2020-03-18T06:17:00+01:00  1.0.0
+10.2.3.24  ActyxOS unreachable
+10.2.3.25  Host unreachable
+
+# get the status of all nodes in the local network as a json object
+$ ax nodes ls --local --format json 10.2.3.23 10.2.3.24
+{
+    "reachable": [
+        {
+            "id": "10.2.3.23",
+            "name": "MY NODE",
+            "state": "running",
+            "settings": "valid",
+            "license": "valid", 
+            "apps_deployed": 23,
+            "apps_running": 17,
+            "started_iso": "2020-03-18T06:17:00+01:00"
+            "started_unix": 1584512220
+            "version": "1.0.0"
+        }
+    ],
+    "actyxos_unreachable": [
+        {
+            "id": "10.2.3.24"
+        }
+    ],
+    "host_unreachable": [
+        {
+            "id": "10.2.3.25"
+        }
+    ]
+
+}
+
+```
+
+> `ax nodes ls` only returns the state of the node
+>
+> Please keep in mind that `state`, `settings` and `license` in the  `ax nodes ls` command **only** refer to the node itself. If you want more detailed information about the state of the apps on a node, you need to use [`ax apps ls`](#ax-apps-ls).
+
+
+
+# Apps
+
+### Find out which apps are installed on your nodes
+
+```
+$ ax apps ls --help
+USAGE: ax apps ls [FLAGS] [OPTIONS] <NODE>...
+
+FLAGS:
+    -v, -vv, -vvv        Increase verbosity
+    -h, --help           Prints help information
+    --local              Process over local network
+    -j                   Shortcut for '--format json'
+
+OPTIONS:
+    --format FORMAT      Output list in the defined FORMAT (either `json` or 
+                         `text`) [default: text]. The last occurrence of the 
+                         format command or the shortcut wins.  
+
+
+ARGS:
+    <NODE>...            Node IDs or, if using `--local`, the IP addresses, of
+                         the node(s) to perform the operation on. You may also
+                         pass in a file with a value on each line using the syntax
+                         `@file.txt` or have the command read one value per line
+                         from stdin using `@-`.
+```
+
+> Output of `ax apps ls`
+>
+> If a node is reachable, the output of `ax apps ls` will list the status of all apps deployed on that node. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
+> - Host unreachable
+> - ActyxOS unreachable (this means the host was reachable but the TCP connection reset) 
+
 
 See the following examples of using the `ax apps ls` command:
 
 ```bash
-# List the apps on a single node
-$ ax apps ls --local 10.2.3.23
+# List the apps on two nodes in your local network
+$ ax apps ls --pretty --local 10.2.3.23 10.2.3.24 10.2.3.25
+
+NODE ID    APP ID         STATE    SETTINGS LICENSE  MODE      STARTED                    VERSION
+10.2.3.23  com.actyx.mwl  running     valid   valid  enabled   2020-03-18T06:17:00+01:00  1.0.0
+10.2.3.24  ActyxOS unreachable
+10.2.3.25  Host unreachable
+
+# get the status of apps on two nodes in the local network as a json object
+$ ax apps ls --local --format 'json' 10.2.3.23 10.2.3.24
+{
+    "reachable": [
+        {
+            "nodeid": "10.2.3.23",
+            "appid": "com.actyx.mwl"
+            "state": "running",
+            "settings": "valid",
+            "license": "valid",
+            "mode": "enabled",
+            "started_iso": "2020-03-18T06:17:00+01:00"
+            "started_unix": 1584512220
+            "version": "1.0.0"
+        }
+    ],
+    "actyxos_unreachable": [
+        {
+            "id": "10.2.3.24"
+        }
+    ],
+    "host_unreachable": [
+        {
+            "id": "10.2.3.25"
+        }
+    ]
+}
+
+> `ax apps ls` only returns the state of the apps
+>
+> Please keep in mind that `state`, `settings` and `license` in the  `ax apps ls` command **only** refer to the apps deployed on a node. If you want more detailed information about the state of the node itself, you need to use [`ax nodes ls`](#ax-nodes-ls).
 
 # Use an address in a file
 $ ax apps ls --local @address.txt
@@ -256,10 +391,15 @@ Here are a couple of example of using the `ax apps start` command:
 ```bash
 # Start a single app on a single node
 $ ax apps start --local com.example.app 10.2.3.23
+com.example.app successfully started on 10.2.3.23
 
 # Start multiple apps using stdin
 $ echo "com.example.myapp1
 com.example.myapp2" | ax apps start --local @- 10.2.3.23
+
+# Start a single app that is already running
+$ ax apps start --local com.example.app 10.2.3.23
+com.example.app is already running on 10.2.3.23
 ```
 
 ### Stop apps on nodes
