@@ -17,7 +17,7 @@ What are disributed system and why are they relevant with ActyxOS?
 
 A _distributed system_ is a system composed of multiple software components, running on different networked computers, that communicate and collaborate by passing messages to each other.
 
-![](../images/distributed-system.png)
+![](/images/images/distributed-system.png)
 
 - **Node**: an individual computer, and the software components running on it, of a distributed system
 - **Network**: the underlying data communication technology and protocols over which nodes communication
@@ -65,9 +65,9 @@ _Decentralized_ systems are a special form of a distributed system where there i
 
 ## Relevance to ActyxOS
 
-By building and running apps on ActyxOS you are building a _decentralized_, and thus also a _distributed_, system. Edge devices provide the computing power and access to the underlying network. Apps run on nodes and communicate by passing messages (see [Event Streams](/os/docs/event-streams.html)). Blobs can be published by any node and accessed from any other node (see [Blob Storage](/os/docs/blob-storage.html)).
+By building and running apps on ActyxOS you are building a _decentralized_, and thus also a _distributed_, system. Edge devices provide the computing power and access to the underlying network. Apps run on nodes and communicate by passing messages (see [Event Streams](../api/event-service.md)). Blobs can be published by any node and accessed from any other node (see [Blob Storage](../api/blob-service.md)).
 
-With ActyxOS you get all the benefits of distributed systems: **scalability**, **reliability**, and **performance**. ActyxOS also tries to reduce the challenges associated with a distributed system to a minimum. If you build apps using the [Actyx Pond](/pond/)&mdash;a framework for building always-available apps&mdash;many of the challenges are completely taken care of for you.
+With ActyxOS you get all the benefits of distributed systems: **scalability**, **reliability**, and **performance**. ActyxOS also tries to reduce the challenges associated with a distributed system to a minimum. If you build apps using the [Actyx Pond](../../pond/introduction)&mdash;a framework for building always-available apps&mdash;many of the challenges are completely taken care of for you.
 
 ## Learn more
 

@@ -20,7 +20,7 @@ them _fishes_.
 - [Fishes writing events](#fishes-writing-events)
 - [Availability vs. Consistency](#availability-vs-consistency)
 
-## Fish Identities {#fish-identities}
+## Fish Identities
 
 Each fish has a unique identity in the whole swarm (linguistic note: fish form schools, not swarms; the
 use of the term “swarm” stems from peer-to-peer systems like the underlying IPFS technology that
@@ -34,21 +34,21 @@ apparently views individual devices like flying insects). The full identifier of
 3. the _source_ denotes the device on which this instance of the fish is currently being run; the
    source is assigned automatically by the ActyxOS runtime
 
-![devices](./images/fishes-on-devices.png)
+![devices](/images/pond/fishes-on-devices.png)
 
 The fish identifier is at the same time the name of the event stream emitted by this fish. It is important
 to note that the “same” fish—identified by semantics & name—can run on different devices, each
 having its own identity and producing its own distinct event stream. This is the reason for
 including the source identifier in the full fish identity.
 
-## How fishes communicate {#how-fishes-communicate}
+## How fishes communicate
 
 Fishes communicate with other fishes by way of event subscriptions, i.e. a fish can declare interest
 in the events emitted by another fish. This is done by supplying the name of the target fish as a
 triplet of semantics, name, and source and forming a _subscription_ from that; the usage of this
 concept will be discussed in the next section.
 
-![subscription](../images/subscriptions.png)
+![subscription](/images/pond/subscriptions.png)
 
 If a fish on one source is interested in all fishes of a given semantics and name on all devices in
 the swarm, it declares the subscription without specifying the source. It will then receive the
@@ -62,7 +62,7 @@ this fish is interested in all events or the given semantics. An example of this
 connector that transfers all time bookings by all users into some external system like Azure SQL for
 BI purposes.
 
-## Fishes reading events {#fishes-reading-events}
+## Fishes reading events
 
 Fishes do not act on their own accord, they only react when something happens: either a command comes in (discussed in the next section) or a new event becomes available.
 The primary function of a fish is to accumulate local knowledge — state — from the incoming events it has subscribed to.
@@ -70,7 +70,7 @@ One **very important note** is that events become available at each edge device 
 Therefore, if you run the same fish logic with the same subscriptions on different devices, they will receive events at different times or in different order; consequently, the current state computed at each device may temporarily be different.
 But Actyx Pond will ensure that eventually — when the device has had the chance to catch up with the latest information — all fishes will have seen the same events and will have computed the same state.
 
-![reading](../images/fish-reading-events.png)
+![reading](/images/pond/fish-reading-events.png)
 
 The illustration shows that besides the events there is one more input, namely the initial state from which the fish will start before it has seen any events.
 The `onEvent` handler is a function that takes the current state and the next event and computes the next state from that.
@@ -84,12 +84,12 @@ In contrast to a database system that only stores the current state, a fish can 
 >
 > Fishes compute their current state by deterministically applying the subscribed event streams.
 
-## Fishes writing events {#fishes-writing-events}
+## Fishes writing events
 
 The second trigger for a fish’s activity is when it receives a command.
 These commands can come from other fishes (sent from their `onCommand` handler), from an external system (e.g. via an HTTP call), or from a human operator of the app.
 
-![emitting](../images/fish-emitting-events.png)
+![emitting](/images/pond/fish-emitting-events.png)
 
 Every incoming command is interpreted in the context of the current state as derived from all locally known events.
 The result of the `onCommand` function is a list of events to be appended to the fish’s event stream.
@@ -103,11 +103,11 @@ This is done in order to make all state changes reliably repeatable after a cras
 >
 > Fishes record facts (including environmental observation as well as decisions) by emitting events; fact generation is not deterministic and depends on the currently known and possibly incomplete state.
 
-## Availability vs. Consistency {#availability-vs-consistency}
+## Availability vs. Consistency
 
 As we have discussed above, the current state of a fish on an edge device may still be missing information that is available elsewhere in the swarm.
 The most distinctive characteristic of the Actyx Pond framework is that it allows this fish to still make progress — process commands and emit events — even though this might lead to inconsistencies for a human looking at the whole system.
-This trade-off of favoring availability over consistency is a fundamental one, it is impossible to have both, as is also explained at [ActyxOS and CAP](/os/docs/actyxos-and-cap).
+This trade-off of favoring availability over consistency is a fundamental one, it is impossible to have both, as is also explained at [ActyxOS and CAP](../os/theoretical-foundation/actyxos-and-cap).
 
 We made this choice because a mission-critical environment like a factory shop-floor is built around this same choice already:
 groups of persons are working with machines and material to deliver the required products, independent of other processes ongoing on the shop-floor around them.

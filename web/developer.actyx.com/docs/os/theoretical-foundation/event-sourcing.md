@@ -35,7 +35,7 @@ Because you always know what has happened in the past, you can&mdash;from the fu
 
 ### Performance
 
-As the size of the event store increases, the amount of time it takes to compute a state may increase if you don't remember the previous state you computed. _Snapshots_ (see the Actyx Pond [documentation](/pond/docs/snapshots.html)) can help mitigate this.
+As the size of the event store increases, the amount of time it takes to compute a state may increase if you don't remember the previous state you computed. _Snapshots_ (see the Actyx Pond [documentation](../../pond/guides/snapshots.md)) can help mitigate this.
 
 ### Reasoning
 
@@ -45,15 +45,15 @@ Because of the separation of events and state, reasoning about the system can be
 
 Event schema migrations can pose serious challenges, especially if you want to migrate without deleting past events&mdash;which you can't do if they affect your state.
 
-_Check out [how the Actyx Pond deals with this](/pond/docs/types.html)_.
+_Check out [how the Actyx Pond deals with this](../../pond/guides/types.md)_.
 
 ## Relevance to ActyxOS
 
-ActyxOS provides you with the basic tools you need to build a decentralized event sourcing system. The Event Service's [persistent event streams](/os/docs/event-streams.html) allow you to model a distributed _append-only_ log&mdash;indeed, that is what they were designed for. The [WebView Runtime](/os/docs/webview-runtime.html) and [Docker Runtime](/os/docs/docker-runtime.html) allow you to run apps that consume these event streams, thus allowing you to compute state.
+ActyxOS provides you with the basic tools you need to build a decentralized event sourcing system. The Event Service's [persistent event streams](../guides/event-streams.md) allow you to model a distributed _append-only_ log&mdash;indeed, that is what they were designed for. The [WebView Runtime of ActyxOS on Android](../advanced-guides/actyxos-on-android.md) and [Docker Runtime of ActyxOS on Docker](../advanced-guides/actyxos-on-docker.md) allow you to run apps that consume these event streams, thus allowing you to compute state.
 
 > Actyx Pond
 >
-> Check out the [Actyx Pond](/pond/)&mdash;an axuliary product to ActyxOS&mdash;which provides you with an always-available, partition-tolerant, event-sourcing system out of the box. It also tries to mitigate some of the key associated challenges.
+> Check out the [Actyx Pond](../../pond/introduction)&mdash;an auxiliary product to ActyxOS&mdash;which provides you with an always-available, partition-tolerant, event-sourcing system out of the box. It also tries to mitigate some of the key associated challenges.
 
 ## Example
 

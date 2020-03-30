@@ -18,7 +18,7 @@ const chatRoomFish: FishTypeImpl<string[], ChatRoomCommand, ChatRoomEvent, strin
 ```
 
 This allows interactions with fishes via `Pond.feed` and `Pond.observe` to be checked for correctness by the TypeScript compiler.
-Unfortunately, this type-checking does not extend to the subscription set of a fish since the subscribed event streams do not necessarily have typescript declarations — they may come from ActyxOS apps that are implemented directly on top of the [Event Service](/os/docs/event-service).
+Unfortunately, this type-checking does not extend to the subscription set of a fish since the subscribed event streams do not necessarily have typescript declarations — they may come from ActyxOS apps that are implemented directly on top of the [Event Service](../../os/api/event-service.md).
 
 > Note
 >

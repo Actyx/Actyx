@@ -4,7 +4,7 @@ title: Hello World
 
 Your first Actyx Pond program.
 
-As discussed in the [introduction](introduction), the main programming unit in Actyx Pond is a _Fish_; more precisely, the code representation is wrapped up in a data type called `FishType` from which differently named fish of the same kind can be created.
+As discussed in the [design principles section](../design-principles.md), the main programming unit in Actyx Pond is a _Fish_; more precisely, the code representation is wrapped up in a data type called `FishType` from which differently named fish of the same kind can be created.
 A very simple fish we can write is one that just offers a friendly greeting to whoever observes it:
 
 ```typescript

@@ -8,7 +8,7 @@ import TabItem from '@theme/TabItem';
 Let's jump right in and get a first distributed application up and running.
 
 :::warning Work in Progress
-This guide is a work in progress. We appreciate your feedback, so please [let us know](os/introduction#something-missing) if you have any issues.
+This guide is a work in progress. We appreciate your feedback, so please [let us know](../os/introduction#something-missing) if you have any issues.
 :::
 
 ## Requirements
@@ -157,6 +157,10 @@ ax nodes ls --local localhost
 
 ## Run the app in Dev Mode
 
+:::note
+In the following we assume that you have cloned the [github repository with the sample apps](https://github.com/Actyx/quickstart) and opened a shell inside that folder.
+:::
+
 ### Docker app
 
 You’ll find the app prepared in the folder `sample-docker-app`. Inside this folder, run the following to install the dependencies:
@@ -189,6 +193,11 @@ npm start
 
 The app itself will only start once you open it in your web browser, you should find it at http://localhost:1234 (or check the output of the above command).
 If you kept the docker app running in your terminal, you should see its messages appear between the ones you can create by clicking the “send message” button.
+
+:::tip
+The fish we used here is called ForgetfulChatFish because it only remembers some details from the most recent event it has seen.
+Why don’t you try your hand at keeping the last ten messages in its state and render that as a list in the UI?
+:::
 
 ## Deploy the app
 
