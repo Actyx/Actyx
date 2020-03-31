@@ -36,6 +36,7 @@ export {
   isNumber,
   isString,
   Milliseconds,
+  SnapshotFormat,
 } from './types'
 export {
   unreachableOrElse,
