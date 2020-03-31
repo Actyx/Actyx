@@ -23,6 +23,7 @@ For a list of supported devices, please refer to [Supported edge devices](/docs/
 
 :::tip Running ActyxOS on Android with a fleet management service
 For running ActyxOS on Android in production, most users set up a fleet management service like [Workspace One](https://www.vmware.com/products/workspace-one.html). Please refer to our guide for [Using Workspace One](/docs/os/advanced-guides/using-workspace-one) for more information.
+:::
 
 ### Install ActyxOS on your edge device
 
