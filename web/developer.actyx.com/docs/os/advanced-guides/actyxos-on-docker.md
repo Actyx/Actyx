@@ -113,11 +113,7 @@ If you want to get help or file issues, please write an e-mail to support@actyx.
 
 ### ActyxOS node not responding
 
-If you ActyxOS node is not responding, first check that your container is running:
+First, check that you entered the right IP in the `ax` command. If you still cannot connect, the output of `ax nodes ls` returns one of the two possible reasons:
+- **ActyxOS is not reachable.** This means that ActyxOS is not running correctly on your node. Try `docker container ls` to check all your running containers. You can start ActyxOS with the `docker run` command. The command is dependent on your host operating system and described in the installation section above for Windows, Mac and Linux.
 
-```
-# Show all running docker images
-$ docker container ls
-```
-
-If your container is not running, you need to start it with the `docker run` command. The command is dependent on your host operating system and described in the installation section above for Windows, Mac and Linux.
+- **Host is not reachable.** This means that your development machine cannot connect to your node. Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port 4457.
