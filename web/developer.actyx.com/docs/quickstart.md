@@ -8,7 +8,7 @@ import TabItem from '@theme/TabItem';
 Let's jump right in and get a first distributed application up and running.
 
 :::warning Work in Progress
-This guide is a work in progress. We appreciate your feedback, so please [let us know](../os/introduction#something-missing) if you have any issues.
+This guide is a work in progress. We appreciate your feedback, so please [let us know](#troubleshooting) if you have any issues.
 :::
 
 ## Requirements
