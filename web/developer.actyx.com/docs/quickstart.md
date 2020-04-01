@@ -325,8 +325,8 @@ This brings us to the close of this quickstart guide.
 
 ## Further reading
 
-- Learn more about ActyxOS and how to use it in the [ActyxOS docs](/docs/os/getting-started/installation.md)
-- Dive into the Actyx Pond and its fishes in the [Actyx Pond docs](/docs/pond/getting-started/installation.md)
+- Learn more about ActyxOS and how to use it in the [ActyxOS docs](/docs/os/getting-started/installation)
+- Dive into the Actyx Pond and its fishes in the [Actyx Pond docs](/docs/pond/getting-started/installation)
 
 ## Troubleshooting
 
