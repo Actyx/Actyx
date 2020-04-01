@@ -332,4 +332,4 @@ This brings us to the close of this quickstart guide.
 
 ### I can't get it to work
 
-Please get in touch with us at developer@actyx.com and we will get back to you as soon as possible.
+Please get in touch with us at developers@actyx.com and we will get back to you as soon as possible.
