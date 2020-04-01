@@ -103,7 +103,7 @@ Congratulations, you have successfully installed <em>ActyxOS on Docker</em>! Ple
 ### Where to go next
 - [Quickstart](/docs/quickstart) is a tutorial about ActyxOS with ready-to-use apps and configurations.
 - [Troubleshooting](#troubleshooting) describes common problems, workarounds and how to get help and submit issues.
-- [FAQs](/docs/faq) provides answers to frequently asked questions.
+- [FAQs](/docs/faq/supported-programming-languages) provides answers to frequently asked questions.
 
 ## Troubleshooting
 
