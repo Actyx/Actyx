@@ -15,6 +15,7 @@
   --ifm-color-primary-lighter: #43abff;
   --ifm-color-primary-lightest: #6dbeff;
   --ifm-code-font-size: 95%;
+  --ifm-pre-padding: 0.2rem;
 }
 
 p, li, a, code, span {

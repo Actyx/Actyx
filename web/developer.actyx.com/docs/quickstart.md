@@ -17,7 +17,7 @@ This guide is a work in progress. We appreciate your feedback, so please [let us
 - **Docker**, which you can [install from here](https://docs.docker.com/install/)
 - **Node.js** and **npm**, which you can [install from here](https://nodejs.org/en/)
 - A second device in your network that is running either Android or Docker
-- `adb` (if you’ll use Android devices), which can be installed according to [this guide](https://www.xda-developers.com/install-adb-windows-macos-linux/)
+- **ADB** (if you’ll use Android devices), which can be installed according to [this guide](https://www.xda-developers.com/install-adb-windows-macos-linux/)
 
 
 ## Prepare
@@ -90,12 +90,12 @@ instance, identified by its name.
     const myName = process.argv[2] || pond.info().sourceId
     // wake up fish with the given name and log its published states
     pond.observe(ForgetfulChatFish, myName).subscribe(console.log)
-    // send 'ping' a message every 5sec to generate a new event
+    // send a 'ping' message every 5 seconds to generate a new event
     setInterval(() => pond.feed(ForgetfulChatFish, myName)('ping').subscribe(), 5000)
 })()
 ```
 
-This example shows how to start this fish and have it emit one event every five minutes.
+This example shows how to start this fish and have it emit one event every five seconds.
 Now we want to see this in action, so let’s install the necessary ingredients.
 
 ## Install the Actyx CLI
@@ -114,7 +114,7 @@ Check out the [troubleshooting section](#troubleshooting) below or let us know.
 
 ## Start ActyxOS
 
-Now, start ActyxOS as a Docker container on your local machine. Since ActyxOS is published on DockerHub, you can start it using the following command:
+Now, start ActyxOS as a Docker container on your local machine. Since ActyxOS is published on [DockerHub](https://hub.docker.com/), you can start it using the following command:
 
 ```
 docker run -it --rm -e AX_DEV_MODE=1 -v actyxos_data:/data --privileged -p 4001:4001 -p 4457:4457 -p 4243:4243 -p 4454:4454 actyx/os
@@ -169,7 +169,7 @@ You’ll find the app prepared in the folder `sample-docker-app`. Inside this fo
 npm install
 ```
 
-Now you can start the app by saying
+Now you can start the app by running
 
 ```
 npm start Dori
@@ -185,14 +185,14 @@ The WebView app is prepared in the folder `sample-webview-app`. As for the docke
 npm install
 ```
 
-Then start the build-in webserver by saying
+Then start the build-in webserver by running
 
 ```
 npm start
 ```
 
 The app itself will only start once you open it in your web browser, you should find it at http://localhost:1234 (or check the output of the above command).
-If you kept the docker app running in your terminal, you should see its messages appear between the ones you can create by clicking the “send message” button.
+If you kept the docker app running in your terminal, you should see its messages appear after clicking the “send message” button.
 
 :::tip
 The fish we used here is called ForgetfulChatFish because it only remembers some details from the most recent event it has seen.
@@ -212,10 +212,10 @@ npm run build:image
 The resulting image is packaged into an Actyx App using the Actyx CLI:
 
 ```
-ax apps package manifest.yml
+ax apps package
 ```
 
-After a few moments you’ll find an app package in your folder. This is deployed into the local ActyxOS node by saying
+After a few moments you’ll find an app package in your folder. This is deployed into the local ActyxOS node by running
 
 ```
 ax apps deploy --local com.actyx.sample-docker-app-1.0.0.tar.gz localhost
@@ -285,7 +285,7 @@ ax settings set --local com.actyx.os @misc/remote-sample-node-settings.yml <DEVI
 Replace `<DEVICE_IP>` with the IP of your Android device.
 :::
 
-The ActyxOS node on the second device should now be fully functional 😊!
+The ActyxOS node on the second device should now be fully functional! 😊
 
 Now go back to the `sample-webview-app` folder and create the production build for this web app:
 
@@ -296,10 +296,10 @@ npm run build
 The resulting files in the `dist` folder are now packaged into an Actyx App bundle using
 
 ```
-ax apps package manifest.yml
+ax apps package
 ```
 
-The resulting bundle is then deployed to the Android device by saying
+The resulting bundle is then deployed to the Android device by running
 
 ```
 ax apps deploy --local com.actyx.sample-webview-app-1.0.0.tar.gz <DEVICE_IP>
@@ -319,14 +319,14 @@ ax apps start --local com.actyx.sample-webview-app <DEVICE_IP>
 
 Congratulations, you have just packaged and deployed an ActyxOS app to a remote ActyxOS node!
 
-You should now see two apps running locally on you computer and the app running on the device communicating with each other without any central servers or databases.
+You should now see two apps running locally on you computer and the app running on the device communicating with each other without any central server or database.
 
 This brings us to the close of this quickstart guide.
 
 ## Further reading
 
-- Learn more about ActyxOS and how to use it in the [ActyxOS docs](/docs/os/getting-started/installation.md)
-- Dive into the Actyx Pond and its fishes in the [Actyx Pond docs](/docs/pond/getting-started/installation.md)
+- Learn more about ActyxOS and how to use it in the [ActyxOS docs](/docs/os/getting-started/installation)
+- Dive into the Actyx Pond and its fishes in the [Actyx Pond docs](/docs/pond/getting-started/installation)
 
 ## Troubleshooting
 
