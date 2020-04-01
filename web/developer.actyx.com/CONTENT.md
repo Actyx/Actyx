@@ -40,6 +40,7 @@ ActyxOS
     - Troubleshooting
   - Using WorkspaceOne
   - Using Balena
+  - Using VSCode for Schema Validation
 - API reference
   - Event Service API
   - Console Service API

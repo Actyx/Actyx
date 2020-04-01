@@ -24,6 +24,7 @@ module.exports = {
       'os/advanced-guides/actyxos-on-docker',
       'os/advanced-guides/using-workspace-one',
       'os/advanced-guides/using-balena',
+      'os/advanced-guides/using-vscode-for-schema-validation',
     ],
     'Theoretical Foundation': [
       'os/theoretical-foundation/distributed-systems',

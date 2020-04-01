@@ -2,19 +2,9 @@
 title: Node and App Settings
 ---
 
-Configuring the behavior of ActyxOS nodes and apps.
-
-Throughout their lifecycle you may want to configure the behavior of nodes and apps. ActyxOS allows you to do this with the concept of _settings_.
-
-Key capabilities:
-
-- Efficient definition of node and app settings
-- Safe and granular deployment of node and app settings
-- Simple method for defining app settings schemas and defaults
+Throughout their lifecycle you may want to configure the behavior of nodes and apps. ActyxOS allows you to do this with the concept of _settings_. This page will walk you through the concept of settings, how to define available settings with schemas, and the concrete usage of settings in ActyxOS.
 
 ## Basics
-
-### Settings and schemas
 
 Settings are a means to configure the behavior of systems. Depending on the settings, the system will behave differently. Which parts of a system are configurable and in which fashion is defined by the developer of the system. Throughout the development phase she may choose to make certain behaviors configurable by defining settings that a user of the system can later _set_ to arbitrary or well-defined values.
 
@@ -24,7 +14,17 @@ Consider, as a simple example, the language shown in a user-interface. The devel
 |------------------|----------|---------------------------------------|---------------|
 | Language         | `string` | `"english"`, `"french"` or `"german"` | `"english"`   |
 
-How you can configure the behavior of ActyxOS nodes&mdash;node settings&mdash;has been defined by us. How you can configure an app running on ActyxOS has been defined by the app developer. This definition is done in the form of _settings schemas_ and in the case of ActyxOS, specifically using [JSON Schema](https://json-schema.org/). Taking the example above, the developer would have defined a settings schema for the app as follows:
+The definition of a list of available settings, as well as their type, permitted values is called a **schema**. In the next section you will get a detailed overview of the workings of setting schemas in ActyxOS.
+
+## Setting schemas for ActyxOS nodes and apps
+
+How you can configure the behavior of ActyxOS nodes &mdash;node settings&mdash; has been defined by us. How you can configure an app running on ActyxOS has been defined by the app developer. This definition is done in the form of _settings schemas_ and in the case of ActyxOS, specifically using [JSON Schema](https://json-schema.org/).
+
+:::tip JSON SCHEMA
+Not only will a well-defined schema allow you to learn what settings are available, it will more importantly allow you to validate your actual settings file against this schema. Please refer to the [JSON schema documentation](https://json-schema.org/) for more information.
+:::
+
+Taking the example above, the developer would have defined a settings schema for the app as follows:
 
 ```json
 {
@@ -57,13 +57,57 @@ com.example.sap_connector: # Root of the settings tree
 # etc...
 ```
 
-Now when you combine the settings of this app, with the settings of the first example app and the node settings we have defined, you come to the so-called _settings object_ of any ActyxOS node. It has the following structure:
+:::note Why use setting schemas?
+ Settings schemas are a very powerful construct because they
+
+- specify _exactly_ what can be configured and how,
+- allow ActyxOS to verify the correctness of settings,
+- provide the app developer with valuable guarantees; and, thus,
+- help avoid critical failures in production systems.
+:::
+
+### Node settings schema
+
+We have defined exactly how the behavior of ActyxOS nodes can be configured in our ActyxOS [_Node Settings Schema_](../api/node-settings-schema.md) which you can download anytime from [here](/schemas/os/node-settings.schema.json).
+
+Here are a couple of examples for ActyxOS nodes settings:
+
+| Setting             | Type     | Permitted values                      | Default value |
+|------------------   |----------|---------------------------------------|---------------|
+| Display name        | `string` | _any string_                          | ""            |
+| Swarm key           | `string` | _a string with exactly 64 characters_ | ""            |
+| Event service topic | `string` | _any string_                          | ""            |
+
+To check out the complete set of settings, go to the API reference for the the [Node Settings Schema](../api/node-settings-schema.md) or download the actual JSON schema linked to above.
+
+### App settings schema
+
+As an app developer it is completely up to you what you want users of your app to be able to configure. As you will see below, you will do so by defining your own _App Settings Schema_ using [JSON Schema](https://json-schema.org/).
+
+:::tip Setup VSCode for automatic schema validation
+You can automatically validate your settings in Visual Studio Code while you write them. Check out our guide to [using ActyxOS setting schemas in Visual Studio Code](/docs/faq/vscode-setup-schema).
+:::
+
+This was just a short introduction and touched only the basics of setting and schemas in ActyxOS. We will dive into more depth in the concrete usage cases in the next section.
+
+## Usage
+
+In this section we will take a look at how an ActyxOS node actually stores its settings and go through the three main areas where node and app settings are used:
+
+1. [Node settings object](#node-settings-object)
+1. [Node configuration](#configuring-nodes)
+1. [App development](#developing-apps)
+1. [App configuration](#configuring-apps)
+
+### Node settings object
+
+Every node has its own _settings object_ that combines its node settings, as well as app settings for all apps that are deployed on this node. It has the following structure:
 
 ```
 com.actyx.os:
   # ActyxOS node settings
   # ...
-com.example.app1:
+com.example.app1: <------- This is the id of the deployed app.
   # Settings for App 1
   # ...
 com.example.app2:
@@ -72,52 +116,22 @@ com.example.app2:
 # etc...
 ```
 
-The settings object and, more importantly, the settings schemas are a very powerful construct because they
-
-- specify _exactly_ what can be configured and how,
-- allow ActyxOS to verify the correctness of settings,
-- provide the app developer with valuable guarantees; and, thus,
-- help avoid critical failures in production systems.
-
-This was just a short introduction and touched only on the basics of settings and schemas. We will dive into more depth in the concrete usage cases.
-
-### Node settings
-
-We have defined exactly how the behavior of ActyxOS nodes can be configured in our ActyxOS [_Node Settings Schema_](../api/node-settings-schema.md) which you can download anytime from [here](/schemas/os/node-settings.schema.json).
-
-Here are a couple of the most important ActyxOS nodes settings:
-
-| Setting          | Type     | Permitted values                      | Default value |
-|------------------|----------|---------------------------------------|---------------|
-| Display name     | `string` | _any string_                          | ""            |
-| Swarm key        | `string` | _a string with exactly 64 characters_ | ""            |
-| Swarm topic      | `string` | _any string_                          | ""            |
-
-To check out the complete set of settings, download the _Node Settings Schema_ linked to above.
-
-### App settings
-
-As an app developer it is completely up to you what you want users of your app to be able to configure. As you will see below, you will do so by defining your own _App Settings Schema_ using [JSON Schema](https://json-schema.org/).
-
-## Usage
-
-In this section we will go through the three main areas where node and app settings are used:
-
-1. when [configuring nodes](#configuring-nodes)
-1. when [developing apps](#developing-apps)
-1. when [configuring apps](#configuring-apps)
+The structure of this settings objects allows you to initially set, retrieve, or change settings at different levels. You could e.g. just interact with the DisplayName setting of a node, or with the whole settings object of a deployed app. You will learn to interact with this _node settings object_ in the following sections.
 
 ### Configuring nodes
 
 ActyxOS provides a number of settings that you can set. Some of those are required for the node to work, whereas others are optional. You can download the full ActyxOS [_Node Settings Schema_](../api/node-settings-schema.md) [here](/schemas/os/node-settings.schema.json). In this section we will show you how you can configure a node.
 
+:::info
 The primary tool for setting settings, both at the node and the app level, is the [Actyx CLI](../../cli.md). The Actyx CLI provides three important commands for doing so:
 
 - `ax settings scopes` for figuring out what the top-level _scopes_ of the _settings object_ on the node are,
 - `ax settings get` to get settings from a node; and,
 - `ax settings set` to set settings on a node.
+- `ax settings schema` to get the schema for your node or app settings
+:::
 
-Let's jump into an example, where we want to configure a brand-new ActyxOS node. First we create a new file&mdash;let's call it `node-settings.yml` and set all the settings to the values we want:
+Let's jump into an example, where we want to configure a brand-new ActyxOS node. First we create a new file &mdash; let's call it `node-settings.yml` and set all the settings to the values we want:
 
 ```yml
 general:
@@ -160,7 +174,7 @@ What if you want to change a single one of the settings? You could, of course, e
 
 ```bash
 # Change a setting in the tree
-$ ax settings set --local com.actyx.os/Services/EventService/Topic "New Topic" 10.2.3.23
+$ ax settings set --local com.actyx.os/services/eventService/topic "New Topic" 10.2.3.23
 #                         ^    ^                            ^
 #                         |    |                            | value to set the setting to
 #                         |    |
@@ -206,9 +220,10 @@ You could do so by writing the following settings schema:
 
 Following association of this schema with your app, ActyxOS will now ensure that only settings meeting this schema will ever be provided to your app.
 
-> What if the settings are invalid?
->
-> ActyxOS will only ever start an app if the settings on the node have been validated against the revelant app settings schema. Otherwise the app will be in a special state called _stopped (misconfigured)_.
+:::info What if the settings are invalid?
+
+ActyxOS will only ever start an app if the settings on the node have been validated against the revelant app settings schema. Otherwise the app will be in a special state called _stopped (misconfigured)_.
+:::
 
 #### Associating the schema to your app
 
@@ -235,12 +250,12 @@ The last important part is accessing settings from within your app&mdash;happily
 
 **Accessing settings in web apps (WebView Runtime)**
 
-Your app's settings are available in the runtime using an injected global function named `ax.app_config`. To continue with our example, you could access them as follows:
+Your app's settings are available in the runtime using an injected global function named `ax.appSettings`. To continue with our example, you could access them as follows:
 
 ```javascript
 
 function onStartApp() {
-  const { timeUnit, backgroundColor } = ax.app_config()
+  const { timeUnit, backgroundColor } = ax.appSettings()
   // Do something with the timeUnit and backgroundColor...
 }
 ```

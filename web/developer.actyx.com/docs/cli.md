@@ -31,9 +31,10 @@ Both app developers and system administrators need tools to package, deploy, mon
 **Create, configure and manage your swarms**
 - Create a brand-new swarm key with [`ax swarms keygen`](#ax-swarms-keygen)
 
-> Local-only for now
->
-> As you will see in the examples below, the Actyx CLI currently only supports local communication with nodes, i.e. in the local-area network. Please use the `--local` flag until we release the [Actyx Console](/docs/cli) and enable remote interactions between the Actyx CLI and ActyxOS nodes mediated by the Actyx Console.
+:::info Local-only for now
+
+As you will see in the examples below, the Actyx CLI currently only supports local communication with nodes, i.e. in the local-area network. Please use the `--local` flag until we release the [Actyx Console](/docs/cli) and enable remote interactions between the Actyx CLI and ActyxOS nodes mediated by the Actyx Console.
+:::
 
 # Nodes
 
@@ -63,11 +64,12 @@ ARGS:
                          from stdin using `@-`.
 ```
 
-> Output of `ax nodes ls`
->
-> If the node is reachable, the output of `ax nodes ls` will show you its status. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
-> - Host unreachable
-> - ActyxOS unreachable (this means the host was reachable but the TCP connection reset) 
+:::tip Output of `ax nodes ls`
+
+If the node is reachable, the output of `ax nodes ls` will show you its status. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
+- Host unreachable
+- ActyxOS unreachable (this means the host was reachable but the TCP connection reset) 
+:::
 
 See the following examples of using the `ax nodes ls` command:
 ```bash
@@ -110,10 +112,10 @@ $ ax nodes ls --local --format json 10.2.3.23 10.2.3.24
 
 ```
 
-> `ax nodes ls` only returns the state of the node
->
-> Please keep in mind that `state`, `settings` and `license` in the  `ax nodes ls` command **only** refer to the node itself. If you want more detailed information about the state of the apps on a node, you need to use [`ax apps ls`](#ax-apps-ls).
+:::info `ax nodes ls` only returns the state of the node
 
+Please keep in mind that `state`, `settings` and `license` in the  `ax nodes ls` command **only** refer to the node itself. If you want more detailed information about the state of the apps on a node, you need to use [`ax apps ls`](#ax-apps-ls).
+:::
 
 
 # Apps
@@ -144,11 +146,11 @@ ARGS:
                          from stdin using `@-`.
 ```
 
-> Output of `ax apps ls`
->
-> If a node is reachable, the output of `ax apps ls` will list the status of all apps deployed on that node. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
-> - Host unreachable
-> - ActyxOS unreachable (this means the host was reachable but the TCP connection reset) 
+:::tip Output of `ax apps ls`
+If a node is reachable, the output of `ax apps ls` will list the status of all apps deployed on that node. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
+- Host unreachable
+- ActyxOS unreachable (this means the host was reachable but the TCP connection reset) 
+:::
 
 
 See the following examples of using the `ax apps ls` command:
@@ -190,16 +192,18 @@ $ ax apps ls --local --format 'json' 10.2.3.23 10.2.3.24
     ]
 }
 
-> `ax apps ls` only returns the state of the apps
->
-> Please keep in mind that `state`, `settings` and `license` in the  `ax apps ls` command **only** refer to the apps deployed on a node. If you want more detailed information about the state of the node itself, you need to use [`ax nodes ls`](#ax-nodes-ls).
-
 # Use an address in a file
 $ ax apps ls --local @address.txt
 
 # Pass the address from stdin
 $ echo "10.2.3.23" | ax apps ls --local @-
-```
+
+````
+
+:::info`ax apps ls` only returns the state of the apps
+
+Please keep in mind that `state`, `settings` and `license` in the  `ax apps ls` command **only** refer to the apps deployed on a node. If you want more detailed information about the state of the node itself, you need to use [`ax nodes ls`](#ax-nodes-ls).
+:::
 
 ### Validate apps and app manifests
 
@@ -382,10 +386,6 @@ ARGS:
                      using `@-`.
 ```
 
-> Some runtimes may not allow remote starting of apps
->
-> Because of constraints imposed by the host platform, some runtimes may not be able to start apps automatically. In such cases, the host platform may require an end-user to start the app using platform-defined means such as a graphical user-interface control.
-
 Here are a couple of example of using the `ax apps start` command:
 
 ```bash
@@ -486,7 +486,7 @@ Here is a simple example of using the `ax settings schema` command:
 
 ```bash
 # Get the ActyxOS nodes settings schema from a node
-$ ax settings schema --local ax.os 10.2.3.23
+$ ax settings schema --local com.actyx.os 10.2.3.23
 
 # Get the settings schema for a specific app from a node
 $ ax settings schema --local com.example.app 10.2.3.23
@@ -521,16 +521,16 @@ Here are a couple of examples of using the `ax settings get` command:
 
 ```bash
 # Get the ActyxOS settings from a node:
-$ ax settings get --local ax.os 10.2.3.23
+$ ax settings get --local com.actyx.os 10.2.3.23
 
 # Get the display name set for a node
-$ ax settings get --local ax.os/General/DisplayName 10.2.3.23
+$ ax settings get --local com.actyx.os/general/displayName 10.2.3.23
 
 # Get the settings of a specific app
 $ ax settings get --local com.example.app1 10.2.3.23
 
 #Get a specific setting from an app
-$ ax settings get --local com.example.app1/Setting1 10.2.3.23
+$ ax settings get --local com.example.app1/setting1 10.2.3.23
 ```
 
 ## Set settings on one or more nodes
@@ -557,34 +557,33 @@ ARGS:
                      using `@-`.
 ```
 
-> App must be stopped in order to set settings for it
->
-> Nodes will only accept new settings if the relevant app is not running. For example: setting settings for the scope `com.example.app` will only work if the app with ID `com.example.app` is not running on the node(s).
+:::cautionApp must be stopped in order to set settings for it
+Nodes will only accept new settings if the relevant app is not running. For example: setting settings for the scope `com.example.app` will only work if the app with ID `com.example.app` is not running on the node(s).
+:::
 
-> All app must be stopped in order to set node settings
->
-> Nodes will only accept new settings for the `ax.os` scope if all apps on the node(s) are not running.
-
+:::cautionAll app must be stopped in order to set node settings
+Nodes will only accept new settings for the `com.actyx.os` scope if all apps on the node(s) are not running.
 Please see the following usage examples for the `ax settings set` command:
+:::
 
 ```bash
 # Setting for a node from a file
-$ ax settings set --local ax.os @Node1.settings.yml 10.2.3.23
+$ ax settings set --local com.actyx.os @Node1.settings.yml 10.2.3.23
 
 # Setting a single specific ActyxOS node setting
-$ ax settings set --local ax.os/General/DisplayName "Node 1" 10.2.3.23
+$ ax settings set --local com.actyx.os/general/displayName "Node 1" 10.2.3.23
 
 # Setting settings for multiple nodes at the same time
-$ ax settings set --local ax.os/General/SwarmKey @swarm.key 10.2.3.23 10.2.3.24
+$ ax settings set --local com.actyx.os/general/swarmKey @swarm.key 10.2.3.23 10.2.3.24
 
 # Setting ActyxOS settings for a node using stdin
 $ echo "
-General:
-  SwarmKey: 4245c0e542a4f89985a92de178d2169dc7f3596a382828aa8381bc13370e9880
-  DisplayName: My Node
-  BootstrapNodes:
+general:
+  swarmKey: 4245c0e542a4f89985a92de178d2169dc7f3596a382828aa8381bc13370e9880
+  displayName: My Node
+  bootstrapNodes:
     - /ipfs/10.24.24.2
-    - /ipfs/10.24.24.3" | ax settings set --local ax.os @- 10.2.3.23
+    - /ipfs/10.24.24.3" | ax settings set --local com.actyx.os @- 10.2.3.23
 ```
 
 ## Unset settings on one or more nodes
@@ -607,19 +606,19 @@ ARGS:
                      using `@-`.
 ```
 
-> App must be stopped in order to unset settings for it
->
-> Nodes will only unset an app's settings if the relevant app is not running. For example: unsetting settings for the scope `com.example.app` will only work if the app with ID `com.example.app` is not running on the node(s).
+:::cautionApp must be stopped in order to unset settings for it
+Nodes will only unset an app's settings if the relevant app is not running. For example: unsetting settings for the scope `com.example.app` will only work if the app with ID `com.example.app` is not running on the node(s).
+:::
 
-> All app must be stopped in order to unset node settings
->
-> Nodes will only unset settings for the `ax.os` scope if all apps on the node(s) are not running.
+:::cautionAll app must be stopped in order to unset node settings
+Nodes will only unset settings for the `com.actyx.os` scope if all apps on the node(s) are not running.
+:::
 
 Please see the following usage examples for the `ax settings unset` command:
 
 ```bash
 # Unset ActyxOS settings from a node
-$ ax settings unset --local ax.os 10.2.3.23
+$ ax settings unset --local com.actyx.os 10.2.3.23
 
 # Unset a specific app's settings from a node
 $ ax settings unset --local com.example.app 10.2.3.23
@@ -692,5 +691,5 @@ This command is extremely simple; see for yourself:
 $ ax swarms keygen
 
 # Create a swarm key, save it and set it on a node
-$ ax swarms keygen | tee swarm.key | ax settings set --local ax.os.General.SwarmKey @- 10.2.3.23
+$ ax swarms keygen | tee swarm.key | ax settings set --local com.actyx.os/general/swarmKey @- 10.2.3.23
 ```
