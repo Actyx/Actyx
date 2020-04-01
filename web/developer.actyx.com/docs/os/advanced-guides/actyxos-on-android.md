@@ -68,7 +68,7 @@ Congratulations, you have successfully installed <em>ActyxOS on Android</em>! Pl
 - [Quickstart](/docs/quickstart) is a tutorial about ActyxOS with ready-to-use apps and configurations.
 - [Get started](#get-started-with-actyx-on-android) for a detailed guide on how <em>ActyxOS on Android works</em>.
 - [Troubleshooting](#troubleshooting) describes common problems, workarounds and how to get help and submit issues.
-- [FAQs](/docs/faq) provides answers to frequently asked questions.
+- [FAQs](/docs/faq/supported-programming-languages) provides answers to frequently asked questions.
 ///
 ## Get started with ActyxOS on Android
 
