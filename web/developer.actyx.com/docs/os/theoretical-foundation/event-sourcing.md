@@ -49,7 +49,7 @@ _Check out [how the Actyx Pond deals with this](../../pond/guides/types.md)_.
 
 ## Relevance to ActyxOS
 
-ActyxOS provides you with the basic tools you need to build a decentralized event sourcing system. The Event Service's [persistent event streams](../guides/event-streams.md) allow you to model a distributed _append-only_ log&mdash;indeed, that is what they were designed for. The [WebView Runtime of ActyxOS on Android](../advanced-guides/actyxos-on-android.md) and [Docker Runtime of ActyxOS on Docker](../advanced-guides/actyxos-on-docker.md) allow you to run apps that consume these event streams, thus allowing you to compute state.
+ActyxOS provides you with the basic tools you need to build a decentralized event sourcing system. The Event Service's [persistent event streams](../guides/event-streams.md) allow you to model a distributed _append-only_ log&mdash;indeed, that is what they were designed for. The [WebView Runtime of ActyxOS on Android](../advanced-guides/actyxos-on-android) and [Docker Runtime of ActyxOS on Docker](../advanced-guides/actyxos-on-docker.md) allow you to run apps that consume these event streams, thus allowing you to compute state.
 
 > Actyx Pond
 >
