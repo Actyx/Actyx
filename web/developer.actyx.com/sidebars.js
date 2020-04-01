@@ -22,6 +22,7 @@ module.exports = {
       'os/advanced-guides/node-and-app-settings',
       'os/advanced-guides/actyxos-on-android',
       'os/advanced-guides/actyxos-on-docker',
+      'os/advanced-guides/actyxos-bootstrap-node',
       'os/advanced-guides/using-workspace-one',
       'os/advanced-guides/using-balena',
       'os/advanced-guides/using-vscode-for-schema-validation',
