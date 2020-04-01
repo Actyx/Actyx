@@ -33,7 +33,7 @@ Both app developers and system administrators need tools to package, deploy, mon
 
 > Local-only for now
 >
-> As you will see in the examples below, the Actyx CLI currently only supports local communication with nodes, i.e. in the local-area network. Please use the `--local` flag until we release the [Actyx Console](/os/docs/actyx-console.html) and enable remote interactions between the Actyx CLI and ActyxOS nodes mediated by the Actyx Console.
+> As you will see in the examples below, the Actyx CLI currently only supports local communication with nodes, i.e. in the local-area network. Please use the `--local` flag until we release the [Actyx Console](/docs/cli) and enable remote interactions between the Actyx CLI and ActyxOS nodes mediated by the Actyx Console.
 
 # Nodes
 

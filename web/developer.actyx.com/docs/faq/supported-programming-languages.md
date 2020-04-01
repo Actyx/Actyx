@@ -16,4 +16,4 @@ For the WebView Runtime, you can use any language that transcompiles to Javascri
 - C# with [JSIL](http://jsil.org/) or [Bridge.NET](https://www.scala-js.org)
 - Java with [JSweet](http://www.jsweet.org) or [J2CL](https://github.com/google/j2cl)
 
-Interacting with the [Event Service](.../os/api/event-service.md) and the [Console Service](.../os/api/console-service.md) happens via their respective HTTP APIs. This means you can use any HTTP request library for interacting with the services from your language of choice.
+Interacting with the [Event Service](/docs/os/api/event-service) and the [Console Service](/docs/os/api/console-service) happens via their respective HTTP APIs. This means you can use any HTTP request library for interacting with the services from your language of choice.
