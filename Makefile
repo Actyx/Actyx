@@ -245,7 +245,6 @@ define fn-android-libs
 	$(eval ARCH:=$(1))
 	$(call fn-android-rust-lib,store-lib,$(ARCH))
 	$(call fn-android-rust-lib,logsvcd,$(ARCH))
-	$(call fn-android-rust-lib,ax-os-settings-ffi,$(ARCH))
 endef
 
 # ActyxOS on Android
