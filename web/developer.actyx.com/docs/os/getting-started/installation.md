@@ -12,7 +12,7 @@ ActyxOS can be installed on either Docker or Android.
 In order to install ActyxOS on an Android device you need:
 
 - a device running Android 6.0 or above with at least 2GB of RAM
-- [`adb`](https://developer.android.com/studio/command-line/adb) running on your machine (see [this installation guide](https://www.xda-developers.com/install-adb-windows-macos-linux/))
+- [**ADB**](https://developer.android.com/studio/command-line/adb) installed on your machine (see [this installation guide](https://www.xda-developers.com/install-adb-windows-macos-linux/))
 
 Download the latest version of the ActyxOS APK from https://downloads.actyx.com and install the APK on your Android device using [`adb`](https://developer.android.com/studio/command-line/adb):
 
@@ -26,7 +26,7 @@ ActyxOS should now be installed and running on your Android device.
 
 In order to install ActyxOS on a Docker host you will need to have a working installation of Docker (see [the installation documentation](https://docs.docker.com/install/)).
 
-ActyxOS is published on DockerHub, so start the image as follows:
+ActyxOS is published on [DockerHub](https://hub.docker.com/), so start the image as follows:
 
 <Tabs
   defaultValue="windows"
@@ -38,7 +38,6 @@ ActyxOS is published on DockerHub, so start the image as follows:
 <TabItem value="windows">
 
 ```
-docker pull actyx/os
 docker run -it --rm -v actyxos-data:/data --privileged -p 4001:4001 -p 4457:4457 actyx/os
 ```
 
@@ -51,7 +50,6 @@ This is also true of any ports your apps may want to expose, you’d need to add
 <TabItem value="unix">
 
 ```
-docker pull actyx/os
 docker run -it --rm -v actyxos-data:/data --privileged --network=host actyx/os
 ```
 
@@ -59,7 +57,6 @@ docker run -it --rm -v actyxos-data:/data --privileged --network=host actyx/os
 </Tabs>
 
 ActyxOS should now be running in your Docker environment.
-
 
 ## Communicate with the node
 
