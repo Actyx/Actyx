@@ -51,6 +51,6 @@ Want to jump right in? Check out the [Quickstart](../quickstart.md). Alternative
 - [Facebook](https://www.facebook.com/actyx/)
 - [LinkedIn](https://www.linkedin.com/company/actyx/)
 
-## Something missing?
+## Contact us / Something missing?
 
 If you find issues with the documentation or have suggestions on how to improve the documentation or the project in general, please email us at developers@actyx.io or send a tweet mentioning the @Actyx Twitter account.

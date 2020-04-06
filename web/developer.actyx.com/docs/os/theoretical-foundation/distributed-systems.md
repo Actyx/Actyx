@@ -4,15 +4,6 @@ title: Distributed Systems
 
 What are disributed system and why are they relevant with ActyxOS?
 
-## Contents
-
-- [Definition](#definition)
-- [Benefits](#benfits)
-- [Challenges](#challenges)
-- [Distributed vs. decentralized](#distributed)
-- [Relevance to ActyxOS](#relevance-to-actyxos)
-- [Learn more](#learn-more)
-
 ## Definition
 
 A _distributed system_ is a system composed of multiple software components, running on different networked computers, that communicate and collaborate by passing messages to each other.
