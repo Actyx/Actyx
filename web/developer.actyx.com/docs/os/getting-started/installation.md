@@ -9,18 +9,11 @@ ActyxOS can be installed on either Docker or Android.
 
 ## Installing on Android
 
-In order to install ActyxOS on an Android device you need:
+_ActyxOS on Android_ is [publicly available in the Google Play store](https://play.google.com/store/apps/details?id=com.actyx.os.android). Just open the Google Play store on your device, search for ActyxOS and install it.
 
-- a device running Android 6.0 or above with at least 2GB of RAM
-- [**ADB**](https://developer.android.com/studio/command-line/adb) installed on your machine (see [this installation guide](https://www.xda-developers.com/install-adb-windows-macos-linux/))
-
-Download the latest version of the ActyxOS APK from https://downloads.actyx.com and install the APK on your Android device using [`adb`](https://developer.android.com/studio/command-line/adb):
-
-```
-adb install axos.apk
-```
-
-ActyxOS should now be installed and running on your Android device.
+In order to run ActyxOS on your Android device, it must:
+- run Android 6.0 or above 
+- have at least 2GB of RAM
 
 ## Installing on Docker
 

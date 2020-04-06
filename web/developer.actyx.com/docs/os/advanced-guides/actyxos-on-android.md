@@ -27,20 +27,11 @@ For running ActyxOS on Android in production, most users set up a fleet manageme
 
 ### Install ActyxOS on your edge device
 
-<em>ActyxOS on Android</em> is publicly available as an [APK](https://en.wikipedia.org/wiki/Android_application_package). You can download it from https://downloads.actyx.com/.
+_ActyxOS on Android_ is [publicly available in the Google Play store](https://play.google.com/store/apps/details?id=com.actyx.os.android). Just open the Google Play store on your device, search for ActyxOS and install it.
 
-After you downloaded the APK, you can install it on your Android device via [`adb`](https://developer.android.com/studio/command-line/adb) (If you don't have adb, check [this installation guide](https://www.xda-developers.com/install-adb-windows-macos-linux/)). 
+After clicking on the ActyxOS icon on your home screen, ActyxOS starts. While ActyxOS is running, you can also see ActyxOS in your notifications overview.
 
-Before you connect your edge device to your development machine, make sure that USB debugging is enabled in the developer options. When you connect both devices for the first time, a popup will appear on your edge device and ask you allow the connection. After you established a connection, run:
-
-```
-$ adb install actyxos.apk
-axosandroid.apk: 1 file pushed. 24.7 MB/s (89486267 bytes in 3.456s)
-pkg: /data/local/tmp/axosandroid.apk
-Success
-```
-
-You should now see <em>ActyxOS on Android</em> on the home screen of your Android device. After clicking on the app, ActyxOS starts. While ActyxOS is running, you can also see ActyxOS in your notifications overview.
+If you do not have access to the Google Play store, please have a look at [our guide in the Troubleshooting section](/docs/os/advanced-guides/actyxos-on-android#installing-actyxos-without-access-to-the-google-play-store).
 
 ### Check the status of your node
 
@@ -77,16 +68,34 @@ After you click on the ActyxOS icon on your home screen, ActyxOS will start. In 
 
 If you would like to know more about hot to configure nodes, please go to the section [**Configuring nodes** in our guide on Node and App Settings](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes) 
 
-### Starting and Stopping Apps
-Apart from starting and stopping apps via the [Actyx CLI](/docs/cli), you can click on their icons and close them in the app switcher just as with every other Android app.
-
 :::infoNode and App lifecycles
 Depending on the lifecycle stage that your ActyxOS nodes or apps is in, your interaction with it might be limited to certain commands. Please check our guide on [Node and App Lifecycles](docs/os/advanced-guides/node-and-app-lifecycles) to find out more.
 :::
 
+### Starting and Stopping Apps
+Apart from starting and stopping apps via the [Actyx CLI](/docs/cli), you can click on their icons and close them in the app switcher just as with every other Android app.
+
+## Troubleshooting
+
 ### Getting help and filing issues
 
 If you want to get help or file issues, please write an e-mail to support@actyx.io
+
+### Installing ActyxOS without access to the Google Play store
+For everyone who does not have access to the Google Play store, ActyxOS is also publicly available as an [APK](https://en.wikipedia.org/wiki/Android_application_package). You can download it from https://downloads.actyx.com/.
+
+After you downloaded the APK, you can install it on your Android device via [`adb`](https://developer.android.com/studio/command-line/adb) (If you don't have adb, check [this installation guide](https://www.xda-developers.com/install-adb-windows-macos-linux/)). 
+
+Before you connect your edge device to your development machine, make sure that USB debugging is enabled in the developer options. When you connect both devices for the first time, a popup will appear on your edge device and ask you allow the connection. After you established a connection, run:
+
+```
+$ adb install actyxos.apk
+axosandroid.apk: 1 file pushed. 24.7 MB/s (89486267 bytes in 3.456s)
+pkg: /data/local/tmp/axosandroid.apk
+Success
+```
+
+You should now see <em>ActyxOS on Android</em> on the home screen of your Android device. After clicking on the app, ActyxOS starts. While ActyxOS is running, you can also see ActyxOS in your notifications overview.
 
 ### ActyxOS node not responding
 
@@ -94,17 +103,3 @@ First, check that you entered the right IP in the `ax` command. If you still can
 - **ActyxOS is not reachable.**
 This means that ActyxOS is not running on your node. Please click on the ActyxOS icon on your home screen. If ActyxOS is running, you can see it in the notifications overview of your Android device.
 - **Host is not reachable.** This means that your development machine cannot connect to your node. Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port 4457.
-
-### You cannot install ActyxOS on your Android device via adb
-
-Assuming that you correctly installed `adb`, this issue can most likely be solved by enabling USB debugging on your Android device. First, check if your development machine and your Android device are connected by running `adb devices`.
-```
-$ adb devices
-List of devices attached
-BR90000000
-```
-
-The serial number of your device should be shown in the ouput of `adb devices`. If the serial number is not shown, make sure that your Android device allows the connection:
-
-1. **Enable USB debugging** on your Android device (check [this guide on how to enable USB debugging](https://developer.android.com/studio/debug/dev-options#enable))
-1. **Approve** the popup on your Android device that asks for permission to connect to your development machine

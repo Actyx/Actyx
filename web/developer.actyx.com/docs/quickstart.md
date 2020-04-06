@@ -244,16 +244,10 @@ In order to make this sample fully distributed you can either start another Acty
 
 ### ActyxOS on Android
 
-First, download the latest ActyxOS APK from https://downloads.actyx.com and install it using `adb`:
-
-```
-adb install actyxos-1.0.0.apk
-```
-
-Start ActyxOS by clicking on the ActyxOS app in Android.
+After installing [ActyxOS from the Google Play store](https://play.google.com/store/apps/details?id=com.actyx.os.android), start ActyxOS by clicking on the ActyxOS app in Android.
 
 :::tip Having trouble installing?
-Check out the [troubleshooting tips](#troubleshooting) below and the [ActyxOS installation guide](./os/getting-started/installation.md).
+Check out the [ActyxOS on Android guide](./os/advanced-guides/actyxos-on-android).
 :::
 
 Now that you have installed ActyxOS on the second device, let's configure the node and then package and deploy one of the sample apps. From the `quickstart` folder, run the following command:
@@ -308,7 +302,7 @@ ax apps deploy --local com.actyx.sample-webview-app-1.0.0.tar.gz <DEVICE_IP>
 As for the docker app, you need to supply valid settings:
 
 ```
-ax settings set --local com.actyx.sample-docker-app '{}' <DEVICE_IP>
+ax settings set --local com.actyx.sample-webview-app '{}' <DEVICE_IP>
 ```
 
 Then the app can be started, either by selecting it from the ActyxOS app on Android or by using the CLI:
@@ -332,4 +326,4 @@ This brings us to the close of this quickstart guide.
 
 ### I can't get it to work
 
-Please get in touch with us at developers@actyx.com and we will get back to you as soon as possible.
+Please get in touch with us at contact@actyx.io and we will get back to you as soon as possible.
