@@ -17,7 +17,6 @@ This guide is a work in progress. We appreciate your feedback, so please [let us
 - **Docker**, which you can [install from here](https://docs.docker.com/install/)
 - **Node.js** and **npm**, which you can [install from here](https://nodejs.org/en/)
 - A second device in your network that is running either Android or Docker
-- **ADB** (if you’ll use Android devices), which can be installed according to [this guide](https://www.xda-developers.com/install-adb-windows-macos-linux/)
 
 
 ## Prepare
