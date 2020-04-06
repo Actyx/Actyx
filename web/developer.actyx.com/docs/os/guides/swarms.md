@@ -1,5 +1,5 @@
 ---
-title: Swarms
+title: Creating Swarms
 ---
 
 import Tabs from '@theme/Tabs';

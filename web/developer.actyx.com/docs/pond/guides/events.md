@@ -34,9 +34,9 @@ const chatRoomOnCommand: OnCommand<{}, ChatRoomCommand, ChatRoomEvent> = (_state
 }
 ```
 
-> Note
->
-> All necessary imports (like `OnCommand`) are available from the `ada` module.
+:::note
+All necessary imports (like `OnCommand`) are available from the `@actyx/pond` module.
+:::
 
 The definition of an `onCommand` handler starts by declaring the types of state, commands, and events that this handler will process.
 The state is passed in as first function argument, but we don’t need it in this example and use the empty object — this will become important in the section on [command validation](commands) later on.

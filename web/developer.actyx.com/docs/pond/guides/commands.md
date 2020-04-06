@@ -4,7 +4,9 @@ title: Command validation
 
 Fishes can record not only facts from sensors, they can also create facts by recording decisions.
 
-> If you only read one thing, read the note further down on eventual consistency!
+:::note
+If you only read one thing, read the note further down on eventual consistency!
+:::
 
 In fact, what we have done so far in the chat room example was just that: the chat room fish has recorded the decisions we made before sending the respective commands.
 This is a common theme in that a fish’s observable state may be used to drive a UI from which a human operator selects possible actions.
@@ -61,10 +63,9 @@ const chatRoomOnEvent: OnEvent<string[], ChatRoomEvent> = (state, event) => {
 
 Instead of showing the data differently, we might just as easily observe the duplication in the state and send a text message to alert the operator of the chat room — this would not make much sense in this example use-case, but in different cases where for example a logistics robot discovers that it is delivering material to a factory workstation that already received that delivery from another robot, it would make sense to alert a human to resolve the conflict.
 
-> Important note
->
-> The fact that command validation in Actyx Pond is not strictly consistent is the price that needs to be paid for having a system that is 100% available, where all devices can always make progress independent from each other.
-> Distributed systems research shows that it is impossible to make this consistent without having to stop the system during certain network partitions or hardware outages.
+:::warning Important note
+The fact that command validation in Actyx Pond is not strictly consistent is the price that needs to be paid for having a system that is 100% available, where all devices can always make progress independent from each other.
+Distributed systems research shows that it is impossible to make this consistent without having to stop the system during certain network partitions or hardware outages.
 
 With this, we have discussed all concepts that are needed to master the distributed side of apps on ActyxOS with Actyx Pond.
 When creating multiple communicating fishes or evolving an existing app, the event schema needs to be kept compatible, thus we take a closer look at the type parameters of FishType in the next section.

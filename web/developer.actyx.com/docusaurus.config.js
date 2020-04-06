@@ -6,6 +6,7 @@ module.exports = {
   favicon: 'img/favicon.ico',
   organizationName: 'Actyx',
   projectName: 'Actyx',
+  plugins: ['@docusaurus/plugin-google-analytics'],
   themeConfig: {
     navbar: {
       title: 'Actyx Developers',
@@ -75,7 +76,13 @@ module.exports = {
       theme: require('prism-react-renderer/themes/github'),
       darkTheme: require('prism-react-renderer/themes/dracula'),
 
-    }
+    },
+    googleAnalytics: {
+      trackingID: 'UA-102758359-7',
+      // Optional fields.
+      anonymizeIP: true, // Should IPs be anonymized?
+    },
+
   },
   presets: [
     [

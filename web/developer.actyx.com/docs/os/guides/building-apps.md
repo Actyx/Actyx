@@ -19,7 +19,7 @@ Create a new directory called `my-app` on your computer and create a file called
 
 ```yml
 manifestVersion: "1.0"
-id: com.example.myApp
+id: com.example.myapp
 version: 1.0.0
 displayName: Example App
 description: "An example app"

@@ -17,9 +17,9 @@ const helloWorldFish = FishType.of({
 })
 ```
 
-> Note
->
-> All necessary imports (like `FishType`) are available from the `ada` module.
+:::note
+All necessary imports (like `FishType`) are available from the `@actyx/pond` module.
+:::
 
 This code snippet defines a type of fish that goes by the semantics of `ax.example.HelloWorld` — this label identifies what kind of things this fish does.
 Every fish has some internal — or “private” — state that it starts out with, here we provide just the friendly greeting as a string.

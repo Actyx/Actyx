@@ -72,7 +72,7 @@ The answer is that the `onEvent` handler may be invoked multiple times for the s
 We recall that the current state of the fish is computed by applying one event after the other, through the `onEvent` handler.
 This can be visualized like the grey zigzag line zipping together the events and their resulting states on the left-hand side of the following diagram.
 
-![](../images/time-travel.png)
+![](/images/pond/time-travel.png)
 
 When a new event arrives, that belongs somewhere in the middle of the previously known log of events, then it is inserted in its rightful spot and the current state is recomputed by applying all events again, now including the inserted event.
 This is shown on the right-hand side of the diagram above; in practice the state computation starts from the state right before the inserted event in most cases, as a cache of states is kept in memory.
@@ -86,8 +86,8 @@ The answer is that each event carries metadata including physical and logical ti
 This allows all Ponds to sort the full event log in exactly the same order regardless of the order in which they received the events from their peers.
 With this technique, it is the log itself that is eventually consistent and any business logic that deterministically computes state from such a log will be eventually consistent as well.
 
-> Note
->
-> This explains why it is imperative that `onEvent` be fully deterministic and only depends on its inputs: the state and the event. If for example a random number generator bound to each specific edge device were used in the computation, then the same fish would compute different states on difference devices, making the system no longer eventually consistent.
+:::note
+This explains why it is imperative that `onEvent` be fully deterministic and only depends on its inputs: the state and the event. If for example a random number generator bound to each specific edge device were used in the computation, then the same fish would compute different states on difference devices, making the system no longer eventually consistent.
+:::
 
 Equipped with this knowledge we are now ready to tackle local decision-making as explained in the next section on command validation.

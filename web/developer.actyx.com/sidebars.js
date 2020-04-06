@@ -14,7 +14,6 @@ module.exports = {
       'os/guides/building-apps',
       'os/guides/running-apps',
       'os/guides/event-streams',
-      'os/guides/logging',
     ],
     'Advanced Guides': [
       'os/advanced-guides/app-runtimes',
