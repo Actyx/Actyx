@@ -21,7 +21,7 @@ This allows interactions with fishes via `Pond.feed` and `Pond.observe` to be ch
 Unfortunately, this type-checking does not extend to the subscription set of a fish since the subscribed event streams do not necessarily have typescript declarations — they may come from ActyxOS apps that are implemented directly on top of the [Event Service](../../os/api/event-service.md).
 
 :::note
-In a future version ActyxOS will support the registration of event schemata for event streams, allowing types to be checked across devices and apps. This will include compile-time declarations for TypeScript as well as runtime checks for all events passed into the Event Service API.
+In a future version ActyxOS will support the registration of event schemata for event streams, allowing types to be checked across nodes and apps. This will include compile-time declarations for TypeScript as well as runtime checks for all events passed into the Event Service API.
 :::
 
 Static type information also gives you some measure of control over the evolution of your event types:

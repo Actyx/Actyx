@@ -1,24 +1,13 @@
 ---
-title: Design Principles
+title: Programming Model
 ---
 
 The **Actyx Pond** is an opinionated TypeScript framework for writing distributed apps preferring availability over consistency.
 
 At the core of the Actyx Pond lies an innovative programming model: business logic is
-written such that it reacts to the reception of new facts—called events—without needing to care
-where these facts are generated or how they are transported to the piece of logic that needs them.
-The logic entities swim in the datalake and breathe events according to their needs.  Hence, we call
+written such that it reacts to the reception of new facts—called events—without needing to care where these facts are generated or how they are transported to the piece of logic that needs them. The logic entities swim in the datalake and breathe events according to their needs.  Hence, we call
 them _fishes_.
 
-![actyx pond logo](/images/pond/actyx-pond-logo.png)
-
-### Contents
-
-- [Fish Identities](#fish-identities)
-- [How fishes communicate](#how-fishes-communicate)
-- [Fishes reading events](#fishes-reading-events)
-- [Fishes writing events](#fishes-writing-events)
-- [Availability vs. Consistency](#availability-vs-consistency)
 
 ## Fish Identities
 
@@ -80,9 +69,9 @@ One very important consequence of this computational model is that the computed 
 The state is not the most important part, it is not persisted.
 In contrast to a database system that only stores the current state, a fish can be fixed retroactively by removing a bug in the business logic and reprocessing all events again.
 
-> Remember
->
-> Fishes compute their current state by deterministically applying the subscribed event streams.
+:::info Remember
+Fishes compute their current state by deterministically applying the subscribed event streams.
+:::
 
 ## Fishes writing events
 
@@ -99,9 +88,9 @@ It is important to note that the fish cannot change its state in response to a c
 it needs to emit an event, which is written to the event stream and then passed into the `onEvent` handler as usual, where the state can be changed.
 This is done in order to make all state changes reliably repeatable after a crash or restart of the app — only events are persistent, commands are not recorded and thus also not replayed.
 
-> Remember
->
-> Fishes record facts (including environmental observation as well as decisions) by emitting events; fact generation is not deterministic and depends on the currently known and possibly incomplete state.
+:::info Remember
+Fishes record facts (including environmental observation as well as decisions) by emitting events; fact generation is not deterministic and depends on the currently known and possibly incomplete state.
+:::
 
 ## Availability vs. Consistency
 

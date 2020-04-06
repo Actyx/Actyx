@@ -28,7 +28,7 @@ module.exports = {
           position: 'left',
         },
         {
-          to: 'docs/pond/introduction',
+          to: 'docs/pond/getting-started',
           activeBasePath: 'docs/pond/',
           label: 'Actyx Pond',
           position: 'left',

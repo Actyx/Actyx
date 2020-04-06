@@ -5,11 +5,6 @@ title: ActyxOS on Docker
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-<em>ActyxOS on Docker</em> enables you to run ActyxOS as a Docker container. This page contains the following sections:
-
-- [Install ActyxOS on Docker](#install-actyxos-on-docker)
-- [Troubleshooting](#troubleshooting)
-
 ## Install ActyxOS on Docker
 
 ### Edge device requirements

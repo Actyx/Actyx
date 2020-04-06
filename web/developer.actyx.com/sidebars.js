@@ -41,11 +41,8 @@ module.exports = {
   },
   pondSidebar: {
     'Actyx Pond': [
-      'pond/introduction',
-      'pond/design-principles',
-    ],
-    'Getting Started': [
-      'pond/getting-started/installation',
+      'pond/getting-started',
+      'pond/programming-model',
     ],
     'Guides': [
       'pond/guides/hello-world',

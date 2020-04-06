@@ -5,12 +5,6 @@ title: ActyxOS on Android
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-<em>ActyxOS on Android</em> enables you to run ActyxOS on your Android device. This page contains the following sections:
-
-- [Install ActyxOS on Android](#install-actyxos-on-android)
-- [Get started with ActyxOS on Android](#get-started-with-actyx-on-android)
-- [Troubleshooting](#troubleshooting)
-
 ## Install ActyxOS on Android
 
 ### Edge device requirements

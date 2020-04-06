@@ -1,0 +1,87 @@
+---
+title: Getting Started
+---
+
+![actyx pond logo](/images/pond/actyx-pond-logo.png)
+
+Writing distributed apps is difficult. The **Actyx Pond** framework makes it simple.
+
+The Actyx Pond is a highly opinionated framework for building always-available distributed apps on [ActyxOS](../os/introduction.md). It provides a programming model and system guarantees ideally suitable for use-cases requiring 100% availability. With this focus, the Actyx Pond can take care of concerns like eventual consistency, allowing you to concentrate on your business logic.
+
+
+The Actyx Pond is available on [npm](http://npmjs.com/package/@actyx/pond). To install in your project run:
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+<Tabs
+  defaultValue="npm"
+  values={[
+    { label: 'npm', value: 'npm', },
+    { label: 'yarn', value: 'yarn', },
+  ]
+}>
+<TabItem value="npm">
+
+```bash
+npm install @actyx/pond
+```
+
+</TabItem>
+<TabItem value="unix">
+
+```bash
+yarn add @actyx/pond
+```
+
+</TabItem>
+</Tabs>
+
+To use the Actyx Pond features, then import as follows:
+
+<Tabs
+  defaultValue="ts"
+  values={[
+    { label: 'Typescript', value: 'ts', },
+    { label: 'Javascript', value: 'js', },
+  ]
+}>
+<TabItem value="ts">
+
+```typescript
+import { Pond } from '@actyx/pond'
+```
+
+</TabItem>
+<TabItem value="js">
+
+```javascript
+var pond = require("@actyx/pond");
+```
+
+</TabItem>
+</Tabs>
+
+## ActyxOS and Actyx Pond in 10 minutes
+
+Here is a video that Alex, one of our engineers, made explaining Actyx in 10 minutes.
+
+import YouTube from 'react-youtube';
+
+<div className="embedded-yt-wrapper">
+<YouTube
+  videoId="T36Gsae9woo"
+  className="embedded-yt-iframe"
+  opts={{
+    playerVars: { autoplay: 0 },
+  }}
+/>
+</div>
+
+## Problems?
+
+Ask for help on on [our GitHub repository](https://github.com/actyx/quickstart) or [Twitter](https://twitter.com/actyx) or email contact@actyx.io.
+
+## Learn more
+
+Jump to the different _Guides_ to learn more about the different aspects of the Actyx Pond.

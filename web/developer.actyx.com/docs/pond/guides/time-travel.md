@@ -45,12 +45,12 @@ export const main4 = (pond: Pond) =>
     .subscribe()
 ```
 
-Running the observer on one device and the sender on two different devices we should see the list of messages updating as we send new messages to the fish.
-The sequence of these messages corresponds to the sequence in which we send them from the two devices.
-Now, if we detach one of the sender devices from the network for a bit and send some messages from it, let’s say `msgA1` to `msgA3`, while also sending `msgB1` to `msgB3` from the still connected device, we will see only `msgB1` to `msgB3` showing up at our observer.
+Running the observer on one node and the sender on two different nodes we should see the list of messages updating as we send new messages to the fish.
+The sequence of these messages corresponds to the sequence in which we send them from the two nodes.
+Now, if we detach one of the sender nodes from the network for a bit and send some messages from it, let’s say `msgA1` to `msgA3`, while also sending `msgB1` to `msgB3` from the still connected node, we will see only `msgB1` to `msgB3` showing up at our observer.
 This is because the other messages cannot be transferred right now.
 
-When reconnecting the previously disconnected sending device, its messages `msgA1` to `msgA3` will show up at the observer after a short while.
+When reconnecting the previously disconnected sending node, its messages `msgA1` to `msgA3` will show up at the observer after a short while.
 But we notice that the messages show up not at the end of the log but interleaves with the others, for example like
 
     msgB1
@@ -87,7 +87,7 @@ This allows all Ponds to sort the full event log in exactly the same order regar
 With this technique, it is the log itself that is eventually consistent and any business logic that deterministically computes state from such a log will be eventually consistent as well.
 
 :::note
-This explains why it is imperative that `onEvent` be fully deterministic and only depends on its inputs: the state and the event. If for example a random number generator bound to each specific edge device were used in the computation, then the same fish would compute different states on difference devices, making the system no longer eventually consistent.
+This explains why it is imperative that `onEvent` be fully deterministic and only depends on its inputs: the state and the event. If for example a random number generator bound to each specific edge node were used in the computation, then the same fish would compute different states on difference nodes, making the system no longer eventually consistent.
 :::
 
 Equipped with this knowledge we are now ready to tackle local decision-making as explained in the next section on command validation.

@@ -4,7 +4,7 @@ title: Events
 
 A Fish is a source of events, so let’s emit some events!
 
-Each fish — identified by its FishType (i.e. semantics) and name — emits exactly one event stream on each device that it runs on; that event stream has the very same name as the fish plus the device’s source ID.
+Each fish — identified by its FishType (i.e. semantics) and name — emits exactly one event stream on each node that it runs on; that event stream has the very same name as the fish plus the node’s source ID.
 This means that a fish cannot emit events into another fish’s stream, each fish has its own event stream.
 
 Another important point is that a fish does not act on its own, the fish code only runs when external triggers kick it into action.
