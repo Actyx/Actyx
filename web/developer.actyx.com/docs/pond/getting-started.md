@@ -9,6 +9,8 @@ Writing distributed apps is difficult. The **Actyx Pond** framework makes it sim
 The Actyx Pond is a highly opinionated framework for building always-available distributed apps on [ActyxOS](../os/introduction.md). It provides a programming model and system guarantees ideally suitable for use-cases requiring 100% availability. With this focus, the Actyx Pond can take care of concerns like eventual consistency, allowing you to concentrate on your business logic.
 
 
+## Installation 
+
 The Actyx Pond is available on [npm](http://npmjs.com/package/@actyx/pond). To install in your project run:
 
 import Tabs from '@theme/Tabs';
@@ -84,4 +86,4 @@ Ask for help on on [our GitHub repository](https://github.com/actyx/quickstart) 
 
 ## Learn more
 
-Jump to the different _Guides_ to learn more about the different aspects of the Actyx Pond.
+Read up on the Actyx Pond's innovative [Programming Model](programming-model.md) or jump to the different [_Guides_](guides/hello-world.md) to learn more about the different aspects of the Actyx Pond.
