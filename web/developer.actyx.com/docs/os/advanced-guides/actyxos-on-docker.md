@@ -43,7 +43,7 @@ You used a couple of common flags here:
 - `-it` for running interactive processes.
 - `--rm` to automatically clean up the container and remove the file system when the container exits.
 - `-v /tmp/actyxdata/:/data` specifies the volumes that are **not** removed and therefore used for persistent storage. These volumes are used for keeping data safe across container restart. Specifically, it stores Installed apps, app's data, and important ActyxOS data such as your license.
--  `-p 4457:4457 4001:4001` to publish the ports that the ActyxOS on Docker container to communicate to the outside.
+-  `-p 4457:4457 4001:4001` to publish the ports that the ActyxOS on Docker container uses to communicate to the outside.
 - `--privileged` as <em>ActyxOS on Docker</em> entails running a Docker daemon inside a Docker container. This enables <em>ActyxOS on Docker</em> to create a self-contained environment.
 
 :::info Publishing docker ports
