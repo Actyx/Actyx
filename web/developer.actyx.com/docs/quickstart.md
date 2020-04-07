@@ -214,6 +214,10 @@ The resulting image is packaged into an Actyx App using the Actyx CLI:
 ax apps package
 ```
 
+:::warning This can take a couple of minutes
+Packaging Docker apps can take quite a bit of time. Please give it a couple of minutes. Unfortunately the Actyx CLI does not provide any feedback during packaging yet (we are working on that).
+:::
+
 After a few moments you’ll find an app package in your folder. This is deployed into the local ActyxOS node by running
 
 ```
