@@ -1,5 +1,5 @@
 ---
-title: Getting Started
+title: Introduction
 ---
 
 Writing distributed apps is difficult. The **Actyx Pond** framework makes it simple.

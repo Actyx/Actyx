@@ -1,0 +1,10 @@
+{
+  "editor.minimap.enabled": false,
+  "editor.renderWhitespace": "none",
+  "editor.codeActionsOnSave": {
+    "source.fixAll": true
+  },
+  "files.autoSave": "onFocusChange",
+  "telemetry.enableTelemetry": false,
+  "telemetry.enableCrashReporter": false
+}
