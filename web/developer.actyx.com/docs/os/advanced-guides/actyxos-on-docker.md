@@ -102,6 +102,18 @@ Congratulations, you have successfully installed <em>ActyxOS on Docker</em>! Ple
 
 ## Troubleshooting
 
+### Starting and Stopping ActyxOS
+After you start ActyxOS with the appropriate `docker run`command, ActyxOS will start. After running `ax nodes ls --local <DEVICE_IP>`, you should be able to see your ActyxOS node. If you want to stop ActyxOS on your node, you need to either stop the ActyxOS docker container, or stop docker.
+
+If you would like to know more about how to configure nodes, please go to the section [**Configuring nodes** in our guide on Node and App Settings](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes) 
+
+:::infoNode and App lifecycles
+Depending on the lifecycle stage that your ActyxOS nodes or apps is in, your interaction with it might be limited to certain commands. Please check our guide on [Node and App Lifecycles](/docs/os/advanced-guides/node-and-app-lifecycle) to find out more.
+:::
+
+### Starting and Stopping Apps
+You can start and stop apps via the [Actyx CLI](/docs/cli)
+
 ### Getting help and filing issues
 
 If you want to get help or file issues, please write an e-mail to support@actyx.io
