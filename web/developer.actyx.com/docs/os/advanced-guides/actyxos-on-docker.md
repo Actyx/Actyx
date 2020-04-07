@@ -47,8 +47,8 @@ You used a couple of common flags here:
 - `--privileged` as <em>ActyxOS on Docker</em> entails running a Docker daemon inside a Docker container. This enables <em>ActyxOS on Docker</em> to create a self-contained environment.
 
 :::info Publishing docker ports
-Since `--network=host` is not supported on Windows or Mac we have to explicitly expose the needed network ports.
-This is also true of any ports your apps may want to expose, you’d need to add them to this list.
+Since `--network=host` is not supported on Windows or Mac you have to explicitly expose the needed network ports.
+This is also true for any ports your apps may want to expose, so you’d need to add them to this list.
 Please refer to the [Docker Documentation](https://docs.docker.com/) for more information on how to run Docker containers.
 :::
 
