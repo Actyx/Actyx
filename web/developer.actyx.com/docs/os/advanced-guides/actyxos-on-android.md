@@ -47,7 +47,7 @@ You should see something like:
 ```
 
 
-Congratulations, you have successfully installed <em>ActyxOS on Android</em>! Please note that ActyxOS is **not** operational, as you did not configure it yet. If you want to find out more about configuring ActyxOS node, please check our guide about [swarms](/docs/os/guides/swarms).
+Congratulations, you have successfully installed <em>ActyxOS on Android</em>! Please note that ActyxOS is **not** operational, as you did not configure it yet. If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
 
 ### Where to go next
 - [Quickstart](/docs/quickstart) is a tutorial about ActyxOS with ready-to-use apps and configurations.
