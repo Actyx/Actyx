@@ -97,6 +97,7 @@ export class MultiplexedWebsocket {
   private requestCounter: RequestId = 0
 
   constructor({ url, protocol, onStoreConnectionClosed, reconnectTimeout }: WsStoreConfig) {
+    log.ws.info('establishing Pond API WS', url)
     this.wsSubject = WebSocketSubject.create(
       url,
       protocol,
