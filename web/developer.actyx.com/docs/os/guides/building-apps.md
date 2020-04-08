@@ -30,7 +30,7 @@ This content of the manifest file is what you will need irrespective of what kin
 
 ```
 my-app/
-|--- manifest.yml
+|--- ax-manifest.yml
 ```
 
 ## App type

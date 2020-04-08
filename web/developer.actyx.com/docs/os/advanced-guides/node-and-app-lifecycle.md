@@ -9,7 +9,7 @@ As you interact with an ActyxOS node or app, it transitions through different st
 
 ## States
 
-The states of nodes and apps are combination of three and four boolean variables, respectively. Note that not all theoretically possible combinations of these variables can actually be achieved, this will become clear in the second section of this page. The state of your node or app can depend on the following variables:
+The states of nodes and apps are a combination of three and four boolean variables, respectively. Note that not all theoretically possible combinations of these variables can actually be achieved, this will become clear in the second section of this page. The state of your node or app can depend on the following variables:
 
 - [Status](#status)
 - [Mode](#mode)
@@ -20,7 +20,7 @@ The tables in the following sub-sections will explain the meaning of each variab
 
 ### Status
 
-The variable Status describes if a ActyxOS or an app is running on your node:
+The variable _Status_ describes if ActyxOS or an app is running on your node:
 
 Value     | Nodes                               | Apps                            |
 ----------|-------------------------------------|---------------------------------|
@@ -31,20 +31,20 @@ Note that closing the ActyxOS window on Android will not actually stop ActyxOS â
 
 ### Mode (only apps)
 
-The variable Mode is only available for apps. While the variable Status (see above) describes the actual state of an app, Mode describes the target state from a user's point of view. This might, for example, lead to an app being started on your device if it is in the state `Enabled` and `Stopped`.
+The variable _Mode_ is only available for apps. While the variable _Status_ (see above) describes the actual state of an app, _Mode_ describes the target state from a user's point of view. This might, for example, lead to an app being started on your device if it is in the state `Enabled` and `Stopped`.
 
 Value      | Apps                    | 
 -----------|-------------------------|
- `Enabled` | App should be `Running` |
- `Disabled`| App should be `stopped` |
+ `Enabled` | App should be running |
+ `Disabled`| App should be stopped |
 
 :::tip Use fleet management services to control this behaviour for your nodes 
-ActyxOS does not control the Host system of your nodes, therefore this is only available for apps. You can use fleet management services such as [Balena for ActyxOS](using-balena) on Docker or [Workspace one for ActyxOS on Android](using-workspace-one) to control e.g. restarts of ActyxOS.
+ActyxOS does not control the Host system of your nodes, therefore this is only available for apps. You can use fleet management services such as [Balena for ActyxOS on Docker](using-balena) or [Workspace one for ActyxOS on Android](using-workspace-one) to control e.g. restarts of ActyxOS.
 :::
 
 ### Settings
 
-Nodes and apps can have valid or invalid settings. The validity of your settings depends on whether the settings object that you configured comply with the underlying settings schema:
+Nodes and apps can have valid or invalid settings. The validity of your settings depends on whether the settings object that you configured complies with the underlying settings schema:
 
 Value     | Nodes                               | Apps                            |
 ----------|-------------------------------------|---------------------------------|
@@ -64,7 +64,7 @@ Value     | Nodes                       | Apps                       |
 
  ## Events and state transitions
 
- Events define when a node or an app changes one or more of its states. A simple example would be that starting the ActyxOS app on your Android device (if ActyxOS was `Stopped` before) leads to your node transitioning from `Stopped` to `Running`. This state state transition would then be caused by the `NodeStarted` event. As you can see in the next section, not all events necessarily trigger always state transitions.
+ Events define when a node or an app changes one or more of its states. A simple example would be that starting the ActyxOS app on your Android device (if ActyxOS was `Stopped` before) leads to your node transitioning from `Stopped` to `Running`. This state transition would then be caused by the `NodeStarted` event. As you can see in the next section, not all events necessarily trigger always state transitions.
 
 We refer to each combination of node or app states as **lifecycle stages**. Referring to the below illustration of the node lifecycle, a node in the lifecycle stage **Operational** has the states **Running**, **LicenseValid** and **SettingsValid**.
 
@@ -84,11 +84,11 @@ The following illustration shows the lifecycle stages, states and events of an A
 }>
 <TabItem value="installed">
 
-A node starts its lifecycle once it is installed on its Host system. At that point its states are **Stopped**, **LicenseInvalid**, **SettingsInvalid**. 
+A node starts its lifecycle once it is installed on its host system. At that point its states are **Stopped**, **LicenseInvalid**, **SettingsInvalid**. 
 
 From this point only one event leading to a transition is possible:
 
-- **NodeStarted**: leads to the next lifecycle stage: Misconfigured.
+- **NodeStarted**: leads to the next lifecycle stage: **Misconfigured**.
 
 </TabItem>
 <TabItem value="misconfigured">
@@ -101,7 +101,7 @@ In this lifecycle stage, three events can lead to state transitions:
 - **NodeSettingsValidated**: (by configuring valid node settings) leads to the lifecycle stage **Operational**. As your licenses are part of the node settings, validated settings always entail a valid license.
 
 One event could happen that will not change the nodes lifecycle stage:
-- **NodeSettingsInvalidated**: only happens if [unset](/docs/cli#unset-settings-on-one-or-more-nodes) one or more node settings while the node already has invalid settings.
+- **NodeSettingsInvalidated**: only happens if one or more node settings are [unset](/docs/cli#unset-settings-on-one-or-more-nodes) while the node already has invalid settings.
 
 :::tip
 Please note that you can already deploy apps and/or set app settings at this point. You cannot start the apps though, as starting apps requires an operational node.
@@ -115,7 +115,7 @@ You now have an operational node. Its states are **Running**, **LicenseValid** a
 In this lifecycle stage, three events can lead to state transitions:
 - **NodeStopped**: leads to the lifecycle stage **Installed** (e.g. by stopping the ActyxOS docker container)
 - **NodeKilled**: leads to the lifecycle stage **Installed** (e.g. the Android host system kills ActyxOS)
-- **NodeSettingsInvalidated**: happens if you [unset](/docs/cli#unset-settings-on-one-or-more-nodes) one or more node settings or ActyxOS was updated with a non-backwards-compatible node settings schema change. Note that you cannot `ax settings set` invalid settings, as the command automatically validates against the node settings schema.
+- **NodeSettingsInvalidated**: only happens if one or more node settings are [unset](/docs/cli#unset-settings-on-one-or-more-nodes) or ActyxOS was updated with a non-backwards-compatible node settings schema change. Note that you cannot `ax settings set` invalid settings, as the command automatically validates against the node settings schema.
 
 One event could happen that will not change the nodes lifecycle stage:
 - **NodeSettingsValidated**: caused by every successful `ax settings set` command. You could e.g. just change the display name of your node.
@@ -153,7 +153,7 @@ A node starts its lifecycle once it is installed on a node via `ax apps deploy`.
 
 From this point only one event leading to a transition is possible:
 
-- **AppSettingsValidated**: leading to the next lifecycle stage: Configured.
+- **AppSettingsValidated**: leading to the next lifecycle stage: **Configured**.
 
 :::info Why can you not start the app?
 In order to be able to start an app, your node must fulfill the following prerequisites:
@@ -169,7 +169,7 @@ In this lifecycle stage the app is still **Stopped** and **Disabled**, but has v
 
 In this lifecycle stage, three events can lead to state transitions:
 - **AppStarted**: leads to the lifecycle stage **Operational**. Please note that depending on your host system, there are multiple ways to start an app as indicated in the illustration. As this is an intentional start of the app, the apps mode will also switch from **Disabled** to **Enabled**.
-- **AppSettingsInvalidated**: happens if you [unset](/docs/cli#unset-settings-on-one-or-more-nodes) one or more app settings or your app was updated with a non-backwards-compatible app settings schema change. Note that you cannot `ax settings set` invalid settings, as the command automatically validates against the app settings schema.
+- **AppSettingsInvalidated**: happens if one or more app settings are [unset](/docs/cli#unset-settings-on-one-or-more-nodes) or your app was updated with a non-backwards-compatible app settings schema change. Note that you cannot `ax settings set` invalid settings, as the command automatically validates against the app settings schema.
 
 One event could happen that will not change the nodes lifecycle stage:
 - **AppSettingsValidated**: caused by every successful `ax settings set` command.
@@ -196,16 +196,16 @@ Note that the above events reflect an intentional stop of the app.
 
 An unintentional stop of the app, only leading to a state transition to **Stopped**, is caused by the following events:
 - **NodeStopped**: if your node is stopped, all apps running on your node will automatically be stopped
-- **NodeKilled**: if your node is killed by the Host system, all apps running on your node will automatically be stopped
-- **AppKilled**: happens if your app is killed by the Host system
-- **AppStoppedByHost**: happens if your app is stopped by the Host system
+- **NodeKilled**: if your node is killed by the host system, all apps running on your node will automatically be stopped
+- **AppKilled**: happens if your app is killed by the host system
+- **AppStoppedByHost**: happens if your app is stopped by the host system
 - **AppStoppedByNode**: happens if your app is stopped by ActyxOS
 
 </TabItem>
 <TabItem value="waiting">
 
 :::tip Corresponding node status
-Please note, that at this point your node could be both **Running** or **Stopped**. It depends on the event that caused your app to transition in this state.
+Please note, that at this point your node could be both **Running** or **Stopped**. It depends on the event that caused your app to transition into this state.
 :::
 
 In this lifecycle stage your app is **Stopped**, but waiting to be started again as its mode is still **Enabled**. Your app will transition back into the lifecycle stage **Operational** if one of the following events happen:

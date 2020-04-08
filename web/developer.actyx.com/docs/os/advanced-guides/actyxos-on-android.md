@@ -63,7 +63,7 @@ After you click on the ActyxOS icon on your home screen, ActyxOS will start. In 
 If you would like to know more about hot to configure nodes, please go to the section [**Configuring nodes** in our guide on Node and App Settings](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes) 
 
 :::infoNode and App lifecycles
-Depending on the lifecycle stage that your ActyxOS nodes or apps is in, your interaction with it might be limited to certain commands. Please check our guide on [Node and App Lifecycles](/docs/os/advanced-guides/node-and-app-lifecycle) to find out more.
+Depending on the lifecycle stage that your ActyxOS nodes or apps are in, your interaction with it might be limited to certain commands. Please check our guide on [Node and App Lifecycles](/docs/os/advanced-guides/node-and-app-lifecycle) to find out more.
 :::
 
 ### Starting and Stopping Apps

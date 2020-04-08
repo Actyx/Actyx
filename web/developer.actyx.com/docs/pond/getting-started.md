@@ -82,7 +82,7 @@ import YouTube from 'react-youtube';
 
 ## Problems?
 
-Ask for help on on [our GitHub repository](https://github.com/actyx/quickstart) or [Twitter](https://twitter.com/actyx) or email contact@actyx.io.
+Ask for help on [our GitHub repository](https://github.com/actyx/quickstart) or [Twitter](https://twitter.com/actyx) or email contact@actyx.io.
 
 ## Learn more
 
