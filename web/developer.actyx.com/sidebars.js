@@ -17,7 +17,7 @@ module.exports = {
     ],
     'Advanced Guides': [
       'os/advanced-guides/app-runtimes',
-      'os/advanced-guides/node-lifecycle',
+      'os/advanced-guides/node-and-app-lifecycle',
       'os/advanced-guides/node-and-app-settings',
       'os/advanced-guides/actyxos-on-android',
       'os/advanced-guides/actyxos-on-docker',

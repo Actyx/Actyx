@@ -42,13 +42,13 @@ docker run -it --rm -v actyx-data:/data --privileged -p 4001:4001 -p 4457:4457 a
 You used a couple of common flags here:
 - `-it` for running interactive processes.
 - `--rm` to automatically clean up the container and remove the file system when the container exits.
-- `-v /tmp/actyxdata/:/data` specifies the volumes that are **not** removed and therefore used for persistens storage. These volumes are used for keeping data safe across container restart. Specifically, it stores Installed apps, app's data, and important ActyxOS data such as your license.
--  `-p 4457:4457 4001:4001` to publish the ports that the ActyxOS on Docker container to communicate to the outside.
+- `-v /tmp/actyxdata/:/data` specifies the volumes that are **not** removed and therefore used for persistent storage. These volumes are used for keeping data safe across container restart. Specifically, it stores Installed apps, app's data, and important ActyxOS data such as your license.
+-  `-p 4457:4457 4001:4001` to publish the ports that the ActyxOS on Docker container uses to communicate to the outside.
 - `--privileged` as <em>ActyxOS on Docker</em> entails running a Docker daemon inside a Docker container. This enables <em>ActyxOS on Docker</em> to create a self-contained environment.
 
 :::info Publishing docker ports
-Since `--network=host` is not supported on Windows or Mac we have to explicitly expose the needed network ports.
-This is also true of any ports your apps may want to expose, you’d need to add them to this list.
+Since `--network=host` is not supported on Windows or Mac you have to explicitly expose the needed network ports.
+This is also true for any ports your apps may want to expose, so you’d need to add them to this list.
 Please refer to the [Docker Documentation](https://docs.docker.com/) for more information on how to run Docker containers.
 :::
 
@@ -62,7 +62,7 @@ docker run -it --rm -v actyx-data:/data --privileged --network=host actyx/os
 You used a couple of common flags here:
 - `-it` for running interactive processes
 - `--rm` to automatically clean up the container and remove the file system when the container exits
-- `-v /tmp/actyxdata/:/data` specifies the volumes that are **not** removed and therefore used for persistens storage. These volumes are used for keeping data safe across container restart. Specifically, it stores Installed apps, app's data, and important ActyxOS data such as your license.
+- `-v /tmp/actyxdata/:/data` specifies the volumes that are **not** removed and therefore used for persistent storage. These volumes are used for keeping data safe across container restart. Specifically, it stores Installed apps, app's data, and important ActyxOS data such as your license.
 -  `--network=host` for the host's network stack inside the container.
 - `--privileged` as <em>ActyxOS on Docker</em> entails running a Docker daemon inside a Docker container. This enables <em>ActyxOS on Docker</em> to create a self-contained environment.
 
@@ -93,7 +93,7 @@ You should see something like:
 ```
 
 
-Congratulations, you have successfully installed <em>ActyxOS on Docker</em>! Please note that ActyxOS is **not** operational, as you did not configure it yet. If you want to find out more about configuring ActyxOS node, please check our guide about [swarms](/docs/os/guides/swarms).
+Congratulations, you have successfully installed <em>ActyxOS on Docker</em>! Please note that ActyxOS is **not** operational, as you did not configure it yet. If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
 
 ### Where to go next
 - [Quickstart](/docs/quickstart) is a tutorial about ActyxOS with ready-to-use apps and configurations.
@@ -101,6 +101,18 @@ Congratulations, you have successfully installed <em>ActyxOS on Docker</em>! Ple
 - [FAQs](/docs/faq/supported-programming-languages) provides answers to frequently asked questions.
 
 ## Troubleshooting
+
+### Starting and Stopping ActyxOS
+After you start ActyxOS with the appropriate `docker run`command, ActyxOS will start. After running `ax nodes ls --local <DEVICE_IP>`, you should be able to see your ActyxOS node. If you want to stop ActyxOS on your node, you need to either stop the ActyxOS docker container, or stop docker.
+
+If you would like to know more about how to configure nodes, please go to the section [**Configuring nodes** in our guide on Node and App Settings](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes) 
+
+:::infoNode and App lifecycles
+Depending on the lifecycle stage that your ActyxOS nodes or apps is in, your interaction with it might be limited to certain commands. Please check our guide on [Node and App Lifecycles](/docs/os/advanced-guides/node-and-app-lifecycle) to find out more.
+:::
+
+### Starting and Stopping Apps
+You can start and stop apps via the [Actyx CLI](/docs/cli)
 
 ### Getting help and filing issues
 
