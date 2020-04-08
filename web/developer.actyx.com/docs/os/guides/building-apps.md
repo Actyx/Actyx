@@ -120,7 +120,7 @@ Your directory structure should now look as follows:
 
 ```
 my-app/
-|--- manifest.yml
+|--- ax-manifest.yml
 |--- settings.schema.json
 ```
 
