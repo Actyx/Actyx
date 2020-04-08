@@ -69,10 +69,9 @@ If you want to try out ActyxOS by deploying some sample apps, please take a look
 
 ## Problems?
 
-Ask for help on on [our GitHub repository](https://github.com/actyx/quickstart) or [Twitter](https://twitter.com/actyx) or email contact@actyx.io.
+Ask for help on [our GitHub repository](https://github.com/actyx/quickstart) or [Twitter](https://twitter.com/actyx) or email contact@actyx.io.
 
 ## Learn more
 
 Jump to the different _Guides_ to learn more about the different aspects of ActyxOS.
-
 
