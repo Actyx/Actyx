@@ -195,7 +195,7 @@ You have now created a docker image on your machine and a docker compose file ex
 
 ```
 my-app/
-|--- manifest.yml
+|--- ax-manifest.yml
 |--- settings.schema.json
 |--- Dockerfile
 |--- docker-compose.yml
