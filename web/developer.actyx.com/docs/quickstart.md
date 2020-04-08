@@ -7,8 +7,8 @@ import TabItem from '@theme/TabItem';
 
 Let's jump right in and get a first distributed application up and running.
 
-:::warning Work in Progress
-This guide is a work in progress. We appreciate your feedback, so please [let us know](#troubleshooting) if you have any issues.
+:::info Need help?
+If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to contact@actyx.io .
 :::
 
 ## Requirements
@@ -337,6 +337,6 @@ This brings us to the close of this quickstart guide.
 
 ## Troubleshooting
 
-### I can't get it to work
+### Where to get help and file issues
 
-Please get in touch with us at contact@actyx.io and we will get back to you as soon as possible.
+If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to contact@actyx.io .
