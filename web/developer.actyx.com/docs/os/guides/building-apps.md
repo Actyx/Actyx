@@ -76,7 +76,7 @@ displayName: Example App
 description: "An example app"
 settingsSchema: ./settings-schema.json
 
-# Here we have define the app type
+# Here we define the app type
 type: docker
 
 # This one property is specific to apps of type `docker`
