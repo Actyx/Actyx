@@ -34,8 +34,8 @@ module.exports = {
           position: 'left',
         },
         {
-          to: 'docs/cli',
-          activeBasePath: 'docs/cli',
+          to: 'docs/cli/getting-started',
+          activeBasePath: 'docs/cli/',
           label: 'Actyx CLI',
           position: 'left',
         },
