@@ -15,7 +15,7 @@ A swarm is defined by a single property, the so-called **swarm key**. In order t
 
 ## Generate a swarm key
 
-You can use the [Actyx CLI](../../cli.md#create-a-swarm-key) to generate swarm keys:
+You can use the [Actyx CLI](/docs/cli/ax-swarms/keygen) to generate swarm keys:
 
 ```bash
 $ ax swarms keygen

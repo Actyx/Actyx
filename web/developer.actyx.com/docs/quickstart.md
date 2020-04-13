@@ -99,7 +99,7 @@ Now we want to see this in action, so let’s install the necessary ingredients.
 
 ## Install the Actyx CLI
 
-Download and install the latest version of the Actyx CLI (`ax`). You can find builds for several operating systems at https://downloads.actyx.com.
+Download and install the latest version of the Actyx CLI (`ax`). You can find builds for several operating systems at https://downloads.actyx.com. You can find detailed installation instructions for the Actyx CLI [here](/docs/cli/getting-started).
 
 Once installed you can check that everything works as follows:
 

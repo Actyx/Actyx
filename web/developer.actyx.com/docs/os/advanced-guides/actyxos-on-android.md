@@ -29,7 +29,7 @@ If you do not have access to the Google Play store, please have a look at [our g
 
 ### Check the status of your node
 
-In order to check on its status and interact with the node, you need to download the Actyx CLI (`ax` or `ax.exe`) from https://downloads.actyx.com and add it to your path.
+In order to check on its status and interact with the node, you need to download the Actyx CLI (`ax` or `ax.exe`) from https://downloads.actyx.com and add it to your path (for detailed insallation instructions of the Actyx CLI, go [here](/docs/cli/getting-started)).
 
 You can then check on your ActyxOS node:
 
@@ -67,7 +67,7 @@ Depending on the lifecycle stage that your ActyxOS nodes or apps are in, your in
 :::
 
 ### Starting and Stopping Apps
-Apart from starting and stopping apps via the [Actyx CLI](/docs/cli), you can click on their icons and close them in the app switcher just as with every other Android app.
+Apart from starting and stopping apps via the [Actyx CLI](/docs/cli/getting-started), you can click on their icons and close them in the app switcher just as with every other Android app.
 
 ## Troubleshooting
 

@@ -75,7 +75,7 @@ Please refer to the [Docker Documentation](https://docs.docker.com/) for more in
 
 ### Check the status of your node
 
-In order to check on its status and interact with the node, you need to download the Actyx CLI (`ax` or `ax.exe`) from https://downloads.actyx.com and add it to your path.
+In order to check on its status and interact with the node, you need to download the Actyx CLI (`ax` or `ax.exe`) from https://downloads.actyx.com and add it to your path (for detailed insallation instructions of the Actyx CLI, go [here](/docs/cli/getting-started)).
 
 You can then check on your ActyxOS node:
 
@@ -112,7 +112,7 @@ Depending on the lifecycle stage that your ActyxOS nodes or apps are in, your in
 :::
 
 ### Starting and Stopping Apps
-You can start and stop apps via the [Actyx CLI](/docs/cli)
+You can start and stop apps via the [Actyx CLI](/docs/cli/getting-started)
 
 ### Getting help and filing issues
 

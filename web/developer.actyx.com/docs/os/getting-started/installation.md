@@ -61,7 +61,7 @@ You can then check on your ActyxOS node:
 ax nodes ls --local <DEVICE_IP>
 ```
 
-Please refer to the [Actyx CLI documentation](/docs/cli) to learn more about using the Actyx CLI.
+Please refer to the [Actyx CLI documentation](/docs/cli/getting-started) for installation instructions or to learn more about using the Actyx CLI.
 
 :::info
 If you want to try out ActyxOS by deploying some sample apps, please take a look at [the Quickstart Guide](../../quickstart.md#run-the-app-in-dev-mode).
