@@ -203,7 +203,7 @@ my-app/
 
 ## Packaging your app
 
-In order to run your web or docker app on ActyxOS, you need to package it using the [Actyx CLI](../../cli.md). Run the following command from within the `my-app` directory:
+In order to run your web or docker app on ActyxOS, you need to package it using the [Actyx CLI](../../cli/getting-started). Run the following command from within the `my-app` directory:
 
 ```
 ax apps package .

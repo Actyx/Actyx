@@ -69,5 +69,41 @@ module.exports = {
       'faq/number-of-devices',
       'faq/running-out-of-disk-space',
     ],
+  },
+  cliSidebar: {
+    'Actyx CLI': [
+      'cli/getting-started',
+      'cli/ax',
+    ],
+    'ax nodes': [
+      'cli/ax-nodes/nodes',
+      'cli/ax-nodes/ls',
+    ],
+    'ax apps': [
+      'cli/ax-apps/apps',
+      'cli/ax-apps/ls',
+      'cli/ax-apps/validate',
+      'cli/ax-apps/package',
+      'cli/ax-apps/deploy',
+      'cli/ax-apps/undeploy',
+      'cli/ax-apps/start',
+      'cli/ax-apps/stop',
+    ],
+    'ax settings': [
+      'cli/ax-settings/settings',
+      'cli/ax-settings/scopes',
+      'cli/ax-settings/schema',
+      'cli/ax-settings/get',
+      'cli/ax-settings/set',
+      'cli/ax-settings/unset',
+    ],
+    'ax logs': [
+      'cli/ax-logs/logs',
+      'cli/ax-logs/tail',
+    ],
+    'ax swarms': [
+      'cli/ax-swarms/swarms',
+      'cli/ax-swarms/keygen',
+    ],
   }
 };
