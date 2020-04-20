@@ -172,7 +172,15 @@ define build_bins_and_move_win64
 	docker run -v `pwd`/rt-master:/src \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it $(3) \
-	bash -c "cd /tmp/ && wget -q https://www.winpcap.org/install/bin/WpdPack_4_1_2.zip && unzip -p WpdPack_4_1_2.zip WpdPack/Lib/x64/Packet.lib > /usr/x86_64-w64-mingw32/lib/Packet.lib && rm WpdPack_4_1_2.zip && cd - && cd actyx-cli && cargo --locked build --release --target $(2) --bin ax --no-default-features && chown -R builder:builder ../target"
+	bash -c "\
+		cd /tmp/ &&
+		wget -q https://www.winpcap.org/install/bin/WpdPack_4_1_2.zip && \
+		unzip -p WpdPack_4_1_2.zip WpdPack/Lib/x64/Packet.lib > /usr/x86_64-w64-mingw32/lib/Packet.lib && \
+		rm WpdPack_4_1_2.zip && \
+		cd - && \
+		cd actyx-cli && \
+		cargo --locked build --release --target $(2) --bin ax --no-default-features && \
+		chown -R builder:builder ../target"
 	docker run -v `pwd`/rt-master:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
