@@ -21,7 +21,7 @@ use std::fmt::Debug;
 use std::ops::{AddAssign, Sub};
 
 /// Each ActyxOS node marks the events it publishes with its source ID and assigns
-/// a unique (consecutive) number to it: the Offset. The first event occupies offset zero.
+/// a unique (consecutive) number to it: the `Offset`. The first event occupies offset zero.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct Offset(pub i64);
@@ -32,7 +32,7 @@ impl Default for Offset {
     }
 }
 
-/// Multi-dimensional cursor for event streams: an OffsetMap describes the set of events
+/// Multi-dimensional cursor for event streams: an `OffsetMap` describes the set of events
 /// given by the event streams of each included source up to the associated [`Offset`](struct.Offset.html).
 ///
 /// All stream delivery modes supported by the Event Service respect the order of offsets
@@ -41,24 +41,24 @@ impl Default for Offset {
 /// monotonically increasing fashion, i.e. greater Offset implies greater Lamport timestamp
 /// and vice versa.
 ///
-/// > Note that if the OffsetMap contains Offset 42 for SourceID `"abc"` it denotes that
-/// events with offsets 0 through 42 (inclusive) are included within the OffsetMap.
+/// > Note that if the `OffsetMap` contains offset 42 for SourceID `"abc"` it denotes that
+/// events with offsets 0 through 42 (inclusive) are included within the `OffsetMap`.
 ///
-/// A common usage pattern is to store the OffsetMap describing the events already consumed
+/// A common usage pattern is to store the `OffsetMap` describing the events already consumed
 /// from an event stream together with the computation results from processing those events
 /// (preferably within the same database transaction, if applicable). When restarting the
-/// process, this OffsetMap can be read and the stream can be resumed from where the process
+/// process, this `OffsetMap` can be read and the stream can be resumed from where the process
 /// left off previously.
 ///
 /// ## Arithmetics
 ///
-/// OffsetMaps have a partial order: when the set of events described by one is a strict
+/// `OffsetMap` has a partial order: when the set of events described by one is a strict
 /// subset of the set of events described by another, then one is said to be _smaller_ than
-/// the other. It may be that one OffsetMap contains events that the other does not and vice
+/// the other. It may be that one `OffsetMap` contains events that the other does not and vice
 /// versa, in which case they are incomparable (`partial_cmp` will return `None`).
 ///
-/// An event may be added into an OffsetMap to denote that from the event’s source all events
-/// up to this one shall be included in the OffsetMap.
+/// An event may be added into an `OffsetMap` to denote that from the event’s source all events
+/// up to this one shall be included in the `OffsetMap`.
 ///
 /// ```rust
 /// # use actyxos_sdk::event::{Event, OffsetMap, Payload};
@@ -70,19 +70,19 @@ impl Default for Offset {
 /// assert!(offsets.contains(&event));
 /// ```
 ///
-/// The difference of two OffsetMaps yields the number of events contained within the first
+/// The difference of two offset maps yields the number of events contained within the first
 /// but not within the second one (i.e. it counts the size of the difference set).
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub struct OffsetMap(HashMap<SourceId, Offset>);
 
 impl OffsetMap {
-    /// The empty OffsetMap is equivalent to the beginning of time, it does not contain any
+    /// The empty `OffsetMap` is equivalent to the beginning of time, it does not contain any
     /// event.
     pub fn empty() -> Self {
         Default::default()
     }
 
-    /// Check whether the given Event’s offset and source ID are contained within this OffsetMap.
+    /// Check whether the given Event’s offset and source ID are contained within this `OffsetMap`.
     pub fn contains<T>(&self, event: &Event<T>) -> bool {
         self.0
             .get(&event.stream.source)
