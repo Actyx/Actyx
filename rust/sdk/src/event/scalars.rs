@@ -35,9 +35,6 @@ impl Semantics {
     pub fn new(value: String) -> Self {
         Self(value.as_str().into())
     }
-    pub fn is_wildcard(&self) -> bool {
-        self.0.is_empty()
-    }
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -74,9 +71,6 @@ pub struct FishName(ArcVal<str>);
 impl FishName {
     pub fn new(value: String) -> Self {
         Self(value.into())
-    }
-    pub fn is_wildcard(&self) -> bool {
-        self.0.is_empty()
     }
     pub fn as_str(&self) -> &str {
         &self.0

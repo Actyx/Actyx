@@ -90,6 +90,10 @@ impl OffsetMap {
             .unwrap_or_default()
             >= event.offset
     }
+
+    pub fn into_inner(self) -> HashMap<SourceId, Offset> {
+        self.0
+    }
 }
 
 impl PartialOrd for OffsetMap {
