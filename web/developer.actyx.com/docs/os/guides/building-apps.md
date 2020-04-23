@@ -125,7 +125,7 @@ my-app/
 ```
 
 :::warning You have no settings?
-You must still provide a settings schema. Simply put `true` into the file, ensuring that any settings, including the empty object `{}` will pass validation.
+You must still provide a settings schema. [This section](/docs/os/advanced-guides/node-and-app-settings#deploying-an-app-without-settings) provides you with a settings schema that does require you to configure settings after deployment.
 :::
 
 ## App logic

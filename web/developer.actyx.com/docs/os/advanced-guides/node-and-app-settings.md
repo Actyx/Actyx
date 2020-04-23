@@ -225,6 +225,22 @@ Following association of this schema with your app, ActyxOS will now ensure that
 ActyxOS will only ever start an app if the settings on the node have been validated against the revelant app settings schema. Otherwise the app will be in a special state called _stopped (misconfigured)_.
 :::
 
+#### Deploying an app without settings
+
+If your app has no settings, you must still provide a settings schema. In this case you need to define a settings schema that does not require you to actually configure the app:
+
+```json
+{
+  "default":{}
+}
+```
+
+The above settings schema will configure `{}` as your default settings, and ActyxOS will therefore automatically validate your app settings. After deploying your app, you will not be required to set any settings as they are already valid.
+
+:::warning
+As configuring apps with the ActyxOS settings management entails many advantages, we advise to only use the above settings schema if your app actually has no configuration options.
+:::
+
 #### Associating the schema to your app
 
 In order for ActyxOS to know that this schema defines the settings for your app, you provide the path to in your app manifest (which also [has a schema](../api/app-manifest-schema.md)):
