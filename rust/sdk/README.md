@@ -1,5 +1,5 @@
 [![Latest Version](https://img.shields.io/crates/v/actyxos_sdk.svg)](https://crates.io/crates/actyxos_sdk)
-[![Rust Documentation](https://docs.rs/actyxos_sdk.svg)](https://docs.rs/actyxos_sdk)
+[![Rust Documentation](https://docs.rs/actyxos_sdk/badge.svg)](https://docs.rs/actyxos_sdk)
 
 # <img src="https://developer.actyx.com/img/logo.svg" height="32px"> ActyxOS SDK
 
@@ -20,32 +20,32 @@ in order to see output.
 > _Note: (this example needs the `client` feature to compile)_
 
 ```rust
-use actyxos_sdk::event_service::{EventService, EventServiceError, Order, Subscription};
+use actyxos_sdk::event_service::{EventService,
+        EventServiceError, Order, Subscription};
 use futures::stream::StreamExt;
 
 #[tokio::main]
 pub async fn main() -> Result<(), EventServiceError> {
-    // create a client to the locally running ActyxOS Event Service
+    // client for locally running ActyxOS Event Service
     let service = EventService::default();
 
     // retrieve largest currently known event stream cursor
     let offsets = service.get_offsets().await?;
 
-    // ask for all events matching the given subscription from now backwards
+    // all events matching the given subscription
+    // sorted backwards, i.e. youngest to oldest
+    let sub = vec![Subscription::semantics("MyFish")];
     let mut events = service
-        .query_upto(
-            offsets,
-            vec![Subscription::semantics("edge.ax.sf.Terminal".into())],
-            Order::LamportReverse,
-        )
+        .query_upto(offsets, sub, Order::LamportReverse)
         .await?;
 
-    // print out the payload of each event (cf. Payload::extract for more options)
+    // print out the payload of each event
+    // (cf. Payload::extract for more options)
     while let Some(event) = events.next().await {
         println!("{}", event.payload.json_value());
     }
     Ok(())
-}
+ }
 ```
 
 ## Feature flags
