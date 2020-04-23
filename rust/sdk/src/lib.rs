@@ -70,6 +70,7 @@
 //!   like [`Differential Dataflow`](https://docs.rs/differential-dataflow)
 #![doc(html_logo_url = "https://developer.actyx.com/img/logo.svg")]
 #![doc(html_favicon_url = "https://developer.actyx.com/img/favicon.ico")]
+#![allow(clippy::unreadable_literal)]
 
 #[macro_use]
 #[cfg(feature = "dataflow")]
