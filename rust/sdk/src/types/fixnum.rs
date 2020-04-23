@@ -164,6 +164,7 @@ mod tests {
 
     #[test]
     pub fn must_serde() {
+        #[allow(clippy::approx_constant)]
         let js = json!({"x": 6213412, "y": 3.1415926});
         let s = serde_json::from_value::<S>(js).unwrap();
         assert_eq!(*s.x, 6213412);
