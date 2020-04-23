@@ -89,9 +89,9 @@ impl Subscription {
 
     /// Subscribe to all events of the given semantics, regardless of which fish
     /// instance produced them or where.
-    pub fn semantics(semantics: Semantics) -> Self {
+    pub fn semantics(semantics: impl Into<Semantics>) -> Self {
         Self {
-            semantics: Some(semantics),
+            semantics: Some(semantics.into()),
             name: None,
             source: None,
         }
@@ -99,19 +99,23 @@ impl Subscription {
 
     /// Subscribe to all events of a distributed fish, identified by its semantics
     /// and name.
-    pub fn distributed(semantics: Semantics, name: FishName) -> Self {
+    pub fn distributed(semantics: impl Into<Semantics>, name: impl Into<FishName>) -> Self {
         Self {
-            semantics: Some(semantics),
-            name: Some(name),
+            semantics: Some(semantics.into()),
+            name: Some(name.into()),
             source: None,
         }
     }
 
     /// Subscribe to precisely a single fish on the given ActyxOS node.
-    pub fn local(semantics: Semantics, name: FishName, source: SourceId) -> Self {
+    pub fn local(
+        semantics: impl Into<Semantics>,
+        name: impl Into<FishName>,
+        source: SourceId,
+    ) -> Self {
         Self {
-            semantics: Some(semantics),
-            name: Some(name),
+            semantics: Some(semantics.into()),
+            name: Some(name.into()),
             source: Some(source),
         }
     }
@@ -191,4 +195,20 @@ pub struct NodeIdResponse {
 pub struct EventServiceError {
     pub error: String,
     pub error_code: u16,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn must_pick_up_subscription() {
+        let sub = Subscription::local("semantics", "name", SourceId::from_str("source").unwrap());
+        let bytes = serde_json::to_string(&sub).unwrap();
+        assert_eq!(
+            bytes,
+            r#"{"semantics":"semantics","name":"name","source":"source"}"#.to_owned()
+        );
+    }
 }

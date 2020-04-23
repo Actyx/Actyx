@@ -3,16 +3,21 @@ use futures::stream::StreamExt;
 
 #[tokio::main]
 pub async fn main() -> Result<(), EventServiceError> {
+    // client for locally running ActyxOS Event Service
     let service = EventService::default();
-    println!("source ID is {}", service.node_id().await?);
+
+    // retrieve largest currently known event stream cursor
     let offsets = service.get_offsets().await?;
+
+    // all events matching the given subscription
+    // sorted backwards, i.e. youngest to oldest
+    let sub = vec![Subscription::semantics("MyFish")];
     let mut events = service
-        .query_upto(
-            offsets,
-            vec![Subscription::semantics("edge.ax.sf.Terminal".into())],
-            Order::LamportReverse,
-        )
+        .query_upto(offsets, sub, Order::LamportReverse)
         .await?;
+
+    // print out the payload of each event
+    // (cf. Payload::extract for more options)
     while let Some(event) = events.next().await {
         println!("{}", event.payload.json_value());
     }
