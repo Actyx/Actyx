@@ -70,7 +70,26 @@ pub enum Order {
 ///  - source ID (i.e. the originating ActyxOS node)
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+#[serde(from = "SubscriptionOnWire")]
 pub struct Subscription {
+    semantics: Option<Semantics>,
+    name: Option<FishName>,
+    source: Option<SourceId>,
+}
+
+// canonicalize: empty string is the same as absent
+impl From<SubscriptionOnWire> for Subscription {
+    fn from(other: SubscriptionOnWire) -> Self {
+        Self {
+            semantics: other.semantics.filter(|s| !s.is_empty()),
+            name: other.name.filter(|s| !s.is_empty()),
+            source: other.source.filter(|s| !s.is_empty()),
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct SubscriptionOnWire {
     pub semantics: Option<Semantics>,
     pub name: Option<FishName>,
     pub source: Option<SourceId>,
@@ -118,6 +137,10 @@ impl Subscription {
             name: Some(name.into()),
             source: Some(source),
         }
+    }
+
+    pub fn as_tuple(&self) -> (Option<Semantics>, Option<FishName>, Option<SourceId>) {
+        (self.semantics.clone(), self.name.clone(), self.source)
     }
 }
 
@@ -209,6 +232,28 @@ mod tests {
         assert_eq!(
             bytes,
             r#"{"semantics":"semantics","name":"name","source":"source"}"#.to_owned()
+        );
+    }
+
+    #[test]
+    fn must_pick_up_subscription_set() {
+        let bytes = r#"{"source":""}"#;
+        let subs: Subscription = serde_json::from_str(bytes).unwrap();
+        assert_eq!(subs.as_tuple(), (None, None, None));
+
+        let bytes = r#"{"name":""}"#;
+        let subs: Subscription = serde_json::from_str(bytes).unwrap();
+        assert_eq!(subs.as_tuple(), (None, None, None));
+
+        let bytes = r#"{"name":"name"}"#;
+        let subs: Subscription = serde_json::from_str(bytes).unwrap();
+        assert_eq!(subs.as_tuple(), (None, Some("name".into()), None));
+
+        let bytes = r#"{"source":"name"}"#;
+        let subs: Subscription = serde_json::from_str(bytes).unwrap();
+        assert_eq!(
+            subs.as_tuple(),
+            (None, None, Some(SourceId::from_str("name").unwrap()))
         );
     }
 }
