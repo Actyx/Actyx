@@ -175,10 +175,10 @@ What if you want to change a single one of the settings? You could, of course, e
 ```bash
 # Change a setting in the tree
 $ ax settings set --local com.actyx.os/services/eventService/topic "New Topic" 10.2.3.23
-#                         ^    ^                            ^
-#                         |    |                            | value to set the setting to
-#                         |    |
-#                         |    | path into the settings object
+#                         ^           ^                            ^
+#                         |           |                            | value to set the setting to
+#                         |           |
+#                         |           | path into the settings object
 #                         |
 #                         | top-level scope as the entry point
 ```
