@@ -128,7 +128,7 @@ The primary tool for setting settings, both at the node and the app level, is th
 - `ax settings scopes` for figuring out what the top-level _scopes_ of the _settings object_ on the node are,
 - `ax settings get` to get settings from a node; and,
 - `ax settings set` to set settings on a node.
-- `ax settings schema` to get the schema for your node or app settings
+- `ax settings schema` to get the settings schema for a particular scope
 :::
 
 Let's jump into an example, where we want to configure a brand-new ActyxOS node. First we create a new file &mdash; let's call it `node-settings.yml` and set all the settings to the values we want:
