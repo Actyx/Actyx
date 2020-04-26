@@ -116,7 +116,7 @@ com.example.app2:
 # etc...
 ```
 
-The structure of this settings objects allows you to initially set, retrieve, or change settings at different levels. You could e.g. just interact with the DisplayName setting of a node, or with the whole settings object of a deployed app. You will learn to interact with this _node settings object_ in the following sections.
+The structure of this settings objects allows you to initially set, retrieve, or change settings at different levels. You could e.g. just interact with the `displayName` setting of a node, or with the whole settings object of a deployed app. You will learn to interact with this _node settings object_ in the following sections.
 
 ### Configuring nodes
 
