@@ -20,11 +20,11 @@ export const chatRoomFish = FishType.of({
 })
 ```
 
-A fish with this definition asks for exactly the event stream that it emits itself: the own semantics and name as well as the sourceId of the local device.
-The `name` and `sourceId` are passed as arguments to the `initialState` function because a FishType is not a single fish but a template that can be instantiated on different devices and with different fish names, e.g. for keeping different chat rooms separate.
+A fish with this definition asks for exactly the event stream that it emits itself: the own semantics and name as well as the sourceId of the local node.
+The `name` and `sourceId` are passed as arguments to the `initialState` function because a FishType is not a single fish but a template that can be instantiated on different nodes and with different fish names, e.g. for keeping different chat rooms separate.
 The resulting fish will use the same handlers for commands, events, and state everywhere, but the set of events it gets may be different for each instance.
 
-In order to make our chat room fish distributed and enable multiple devices to participate in the chat, we need to change the subscription to say that we want events from the chat room fish of the given chat room name, but from all devices.
+In order to make our chat room fish distributed and enable multiple nodes to participate in the chat, we need to change the subscription to say that we want events from the chat room fish of the given chat room name, but from all nodes.
 This is achieved by leaving off the `sourceId` property in the subscription definition:
 
 ```typescript
@@ -37,5 +37,5 @@ This is achieved by leaving off the `sourceId` property in the subscription defi
 If we left off the name as well, then the fish would get all chat room events, for all rooms.
 Such a fish might make sense for keeping track of some property across all rooms, e.g. seeing how often people use swear words in the chat.
 
-With this modification we are ready to see what happens when we run two instances of the chat room fish on different devices — our first distributed app.
+With this modification we are ready to see what happens when we run two instances of the chat room fish on different nodes — our first distributed app.
 Doing so exhibits one of the core features of Actyx Pond: time travel.

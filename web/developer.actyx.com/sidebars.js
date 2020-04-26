@@ -1,7 +1,3 @@
-
-const osDoc = (path) => `os/${path}`
-const pondDoc = (path) => `pond/${path}`
-const faqDoc = (path) => `faq/${path}`
 module.exports = {
   osSidebar: {
     'ActyxOS': [
@@ -11,22 +7,24 @@ module.exports = {
     ],
     'Getting Started': [
       'os/getting-started/installation',
-      'os/getting-started/configuration',
+      'os/getting-started/licensing',
     ],
     'Guides': [
-      'os/guides/hello-world',
+      'os/guides/swarms',
+      'os/guides/building-apps',
+      'os/guides/running-apps',
       'os/guides/event-streams',
-      'os/guides/blob-storage',
-      'os/guides/user-interfaces',
-      'os/guides/logging',
     ],
     'Advanced Guides': [
-      'os/advanced-guides/webview-runtime',
-      'os/advanced-guides/docker-runtime',
-      'os/advanced-guides/event-service',
-      'os/advanced-guides/blob-service',
-      'os/advanced-guides/console-service',
+      'os/advanced-guides/app-runtimes',
+      'os/advanced-guides/node-and-app-lifecycle',
       'os/advanced-guides/node-and-app-settings',
+      'os/advanced-guides/actyxos-on-android',
+      'os/advanced-guides/actyxos-on-docker',
+      'os/advanced-guides/actyxos-bootstrap-node',
+      'os/advanced-guides/using-workspace-one',
+      'os/advanced-guides/using-balena',
+      'os/advanced-guides/using-vscode-for-schema-validation',
     ],
     'Theoretical Foundation': [
       'os/theoretical-foundation/distributed-systems',
@@ -43,11 +41,8 @@ module.exports = {
   },
   pondSidebar: {
     'Actyx Pond': [
-      'pond/introduction',
-      'pond/design-principles',
-    ],
-    'Getting Started': [
-      'pond/getting-started/installation',
+      'pond/getting-started',
+      'pond/programming-model',
     ],
     'Guides': [
       'pond/guides/hello-world',
@@ -73,6 +68,42 @@ module.exports = {
       'faq/latency-and-performance',
       'faq/number-of-devices',
       'faq/running-out-of-disk-space',
+    ],
+  },
+  cliSidebar: {
+    'Actyx CLI': [
+      'cli/getting-started',
+      'cli/ax',
+    ],
+    'ax nodes': [
+      'cli/ax-nodes/nodes',
+      'cli/ax-nodes/ls',
+    ],
+    'ax apps': [
+      'cli/ax-apps/apps',
+      'cli/ax-apps/ls',
+      'cli/ax-apps/validate',
+      'cli/ax-apps/package',
+      'cli/ax-apps/deploy',
+      'cli/ax-apps/undeploy',
+      'cli/ax-apps/start',
+      'cli/ax-apps/stop',
+    ],
+    'ax settings': [
+      'cli/ax-settings/settings',
+      'cli/ax-settings/scopes',
+      'cli/ax-settings/schema',
+      'cli/ax-settings/get',
+      'cli/ax-settings/set',
+      'cli/ax-settings/unset',
+    ],
+    'ax logs': [
+      'cli/ax-logs/logs',
+      'cli/ax-logs/tail',
+    ],
+    'ax swarms': [
+      'cli/ax-swarms/swarms',
+      'cli/ax-swarms/keygen',
     ],
   }
 };

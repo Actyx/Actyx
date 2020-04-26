@@ -25,9 +25,9 @@ const chatRoomOnEvent: OnEvent<string[], ChatRoomEvent> = (state, event) => {
 }
 ```
 
-> Note
->
-> All necessary imports (like `OnEvent`) are available from the `@actyx/pond` module.
+:::note
+All necessary imports (like `OnEvent`) are available from the `@actyx/pond` module.
+:::
 
 The only event our chat room fish knows is of type `messageAdded`, so we need to handle that.
 The type of the `event` parameter to our function is not the bare event, though, it is an `Envelope<ChatRoomEvent>` that contains some metadata on the event in addition to the event payload (like where and when the event was recorded).

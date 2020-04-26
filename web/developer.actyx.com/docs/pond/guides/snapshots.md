@@ -8,10 +8,10 @@ Actyx Pond supports two types of snapshots to avoid processing all known events 
 
 ## State snapshots
 
-> Note
->
-> State snapshots are currently called “local snapshots” since in contrast to semantic snapshots they are bound to a device.
-> This restriction will be lifted in a future version of Actyx Pond for distributed fishes that consume identical subscription sets when instantiated on different devices.
+:::note
+
+State snapshots are currently called “local snapshots” since in contrast to semantic snapshots they are bound to a node. This restriction will be lifted in a future version of Actyx Pond for distributed fishes that consume identical subscription sets when instantiated on different node.
+:::
 
 The chat room fish in our example keeps a list of messages in its state.
 In order to keep its wakeup time constant, we can write this list into a snapshot from time to time, so that not the full log needs to be replayed when the app starts.
@@ -38,7 +38,7 @@ When that happens, all old snapshots are invalidated and the newly written ones 
 With this configuration Actyx Pond will take snapshots about every 1000 events consumed by the fish.
 
 Why is it necessary to keep multiple snapshots?
-It may happen that a device that still has event stored for this fish lies disconnected in a drawer for a month, and when it comes back online it will synchronize these events, leading the fish to time travel to a state before those events.
+It may happen that a node that still has event stored for this fish lies disconnected in a drawer for a month, and when it comes back online it will synchronize these events, leading the fish to time travel to a state before those events.
 The state from a month ago will probably no longer be cached in memory, so a full replay is started, taking advantage of any snapshot that is older than the event that caused the time travel.
 
 ## Semantic snapshots
@@ -62,12 +62,12 @@ export const chatRoomFish = FishType.of({
 })
 ```
 
-The supplied function computes an event predicate from the fish name and device source ID.
+The supplied function computes an event predicate from the fish name and node source ID.
 Actyx Pond will during a replay search backwards through the event log, from youngest event to oldest, until an event is found that matches the predicate. This event will then be applied to the initial state of the fish, followed by all succeeding events from the log.
 
-> Note
->
-> Whether an event constitutes a semantic snapshot lies in the eye of the beholder: the chat room fish may consider the `messagesCleared` of its event stream as such an event, but another fish listening to the same event stream may not (e.g. if it shall count all messages ever posted to the chat room). Therefore, the semanticSnapshot property is defined by the fish type and not by the event type.
+:::note
+Whether an event constitutes a semantic snapshot lies in the eye of the beholder: the chat room fish may consider the `messagesCleared` of its event stream as such an event, but another fish listening to the same event stream may not (e.g. if it shall count all messages ever posted to the chat room). Therefore, the semanticSnapshot property is defined by the fish type and not by the event type.
+:::
 
 Both kinds of snapshots can be combined within the same fish as well.
 

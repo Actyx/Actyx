@@ -4,7 +4,7 @@ title: Hello World
 
 Your first Actyx Pond program.
 
-As discussed in the [introduction](introduction), the main programming unit in Actyx Pond is a _Fish_; more precisely, the code representation is wrapped up in a data type called `FishType` from which differently named fish of the same kind can be created.
+As discussed in the [programming model section](../programming-model.md), the main programming unit in Actyx Pond is a _Fish_; more precisely, the code representation is wrapped up in a data type called `FishType` from which differently named fish of the same kind can be created.
 A very simple fish we can write is one that just offers a friendly greeting to whoever observes it:
 
 ```typescript
@@ -17,9 +17,9 @@ const helloWorldFish = FishType.of({
 })
 ```
 
-> Note
->
-> All necessary imports (like `FishType`) are available from the `ada` module.
+:::note
+All necessary imports (like `FishType`) are available from the `@actyx/pond` module.
+:::
 
 This code snippet defines a type of fish that goes by the semantics of `ax.example.HelloWorld` — this label identifies what kind of things this fish does.
 Every fish has some internal — or “private” — state that it starts out with, here we provide just the friendly greeting as a string.
