@@ -18,7 +18,7 @@ The definition of a list of available settings, as well as their type, permitted
 
 ## Setting schemas for ActyxOS nodes and apps
 
-How you can configure the behavior of ActyxOS nodes &mdash;node settings&mdash; has been defined by us. How you can configure an app running on ActyxOS has been defined by the app developer. This definition is done in the form of _settings schemas_ and in the case of ActyxOS, specifically using [JSON Schema](https://json-schema.org/).
+How you can configure the behavior of ActyxOS nodes &mdash;node settings&mdash; has been defined by us. How an app running on ActyxOS can be configured has to be defined by the app developer. This definition is done in the form of _settings schemas_ and in the case of ActyxOS, specifically using [JSON Schema](https://json-schema.org/).
 
 :::tip JSON SCHEMA
 Not only will a well-defined schema allow you to learn what settings are available, it will more importantly allow you to validate your actual settings file against this schema. Please refer to the [JSON schema documentation](https://json-schema.org/) for more information.
