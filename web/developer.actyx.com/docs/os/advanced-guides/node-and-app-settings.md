@@ -84,7 +84,7 @@ To check out the complete set of settings, go to the API reference for the the [
 
 As an app developer it is completely up to you what you want users of your app to be able to configure. As you will see below, you will do so by defining your own _App Settings Schema_ using [JSON Schema](https://json-schema.org/).
 
-:::tip Setup VSCode for automatic schema validation
+:::tip Setup Visual Studio Code for automatic schema validation
 You can automatically validate your settings in Visual Studio Code while you write them. Check out our guide to [using ActyxOS setting schemas in Visual Studio Code](/docs/faq/vscode-setup-schema).
 :::
 
