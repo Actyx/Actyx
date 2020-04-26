@@ -63,7 +63,7 @@ com.example.sap_connector: # Root of the settings tree
 Now when you combine the settings of this app, with the settings of the first example app and the node settings we have defined, you come to the so-called _settings object_ of any ActyxOS node. It has the following structure:
 
 ```
-ax.os:
+com.actyx.os:
   # ActyxOS node settings
   # ...
 com.example.app1:
@@ -140,26 +140,26 @@ Now we need to set these settings on the node (which, in this example, is reacha
 
 ```bash
 # Set the settings defined in `node-settings.yml` on the node
-$ ax settings set --local ax.os @node-settings.yml 10.2.3.23
+$ ax settings set --local com.actyx.os @node-settings.yml 10.2.3.23
 #             ^           ^      ^                 
 #             | set       |      | read from the given file
 #                         |
-#                         | set the settings at the `ax.os` scope
+#                         | set the settings at the `com.actyx.os` scope
 ```
 
-If we wanted to find out if there are any top-level settings scopes other than `ax.os`, the pre-defined scope at which you configure the node itself, we could use the Actyx CLI's `ax settings scopes` command:
+If we wanted to find out if there are any top-level settings scopes other than `com.actyx.os`, the pre-defined scope at which you configure the node itself, we could use the Actyx CLI's `ax settings scopes` command:
 
 ```bash
 # Get top-level scopes on the node
 $ ax settings scopes --local 10.2.3.23
-ax.os
+com.actyx.os
 ```
 
 What if you want to change a single one of the settings? You could, of course, edit the file and run through the same process again. The Actyx CLI offers a much simpler way of doing this though. Check out how we could, for example, just change the ActyxOS [_Event Service_](/os/docs/event-service.html) topic:
 
 ```bash
 # Change a setting in the tree
-$ ax settings set --local ax.os/Services/EventService/Topic "New Topic" 10.2.3.23
+$ ax settings set --local com.actyx.os/Services/EventService/Topic "New Topic" 10.2.3.23
 #                         ^    ^                            ^
 #                         |    |                            | value to set the setting to
 #                         |    |
@@ -168,7 +168,7 @@ $ ax settings set --local ax.os/Services/EventService/Topic "New Topic" 10.2.3.2
 #                         | top-level scope as the entry point
 ```
 
-The Actyx CLI allows you to not only set settings at top-level scopes such as `ax.os`, but rather allows you to change leafs or even sub-trees in the node's settings object.
+The Actyx CLI allows you to not only set settings at top-level scopes such as `com.actyx.os`, but rather allows you to change leafs or even sub-trees in the node's settings object.
 
 ### Developing apps
 
@@ -234,26 +234,26 @@ The last important part is accessing settings from within your app&mdash;happily
 
 **Accessing settings in web apps (WebView Runtime)**
 
-Your app's settings are available in the runtime using an injected global function named `ax.app_config`. To continue with our example, you could access them as follows:
+Your app's settings are available in the runtime using an injected global function named `ax.appSettings`. To continue with our example, you could access them as follows:
 
 ```javascript
 
 function onStartApp() {
-  const { timeUnit, backgroundColor } = ax.app_config()
+  const { timeUnit, backgroundColor } = ax.appSettings()
   // Do something with the timeUnit and backgroundColor...
 }
 ```
 
 **Accessing settings in docker apps (Docker Runtime)**
 
-With docker apps, the method is slightly different. In that case, we make your app's settings available as a JSON string in an environment variable called `AX_APP_CONFIG`. Using the same example but with a docker app written in Python we would access this as follows:
+With docker apps, the method is slightly different. In that case, we make your app's settings available as a JSON string in an environment variable called `AX_APP_SETTINGS`. Using the same example but with a docker app written in Python we would access this as follows:
 
 ```python
 import os
 import json
 
 def on_start_app():
-  config = json.loads(os.environ['AX_APP_CONFIG'])
+  config = json.loads(os.environ['AX_APP_SETTINGS'])
   timeUnit, backgroundColor = config['timeUnit'], config['backgroundColor']
   # Do something with timeUnit and backgroundColor
 ```
