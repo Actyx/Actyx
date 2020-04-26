@@ -39,7 +39,7 @@ See the following examples of using the `ax apps ls` command:
 
 ```bash
 # List the apps on two nodes in your local network
-$ ax apps ls --pretty --local 10.2.3.23 10.2.3.24 10.2.3.25
+$ ax apps ls --local 10.2.3.23 10.2.3.24 10.2.3.25
 
 NODE ID    APP ID         STATE    SETTINGS LICENSE  MODE      STARTED                    VERSION
 10.2.3.23  com.actyx.mwl  running     valid   valid  enabled   2020-03-18T06:17:00+01:00  1.0.0
