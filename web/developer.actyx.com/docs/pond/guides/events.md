@@ -4,7 +4,7 @@ title: Events
 
 A Fish is a source of events, so let’s emit some events!
 
-Each fish — identified by its FishType (i.e. semantics) and name — emits exactly one event stream on each device that it runs on; that event stream has the very same name as the fish plus the device’s source ID.
+Each fish — identified by its FishType (i.e. semantics) and name — emits exactly one event stream on each node that it runs on; that event stream has the very same name as the fish plus the node’s source ID.
 This means that a fish cannot emit events into another fish’s stream, each fish has its own event stream.
 
 Another important point is that a fish does not act on its own, the fish code only runs when external triggers kick it into action.
@@ -34,9 +34,9 @@ const chatRoomOnCommand: OnCommand<{}, ChatRoomCommand, ChatRoomEvent> = (_state
 }
 ```
 
-> Note
->
-> All necessary imports (like `OnCommand`) are available from the `ada` module.
+:::note
+All necessary imports (like `OnCommand`) are available from the `@actyx/pond` module.
+:::
 
 The definition of an `onCommand` handler starts by declaring the types of state, commands, and events that this handler will process.
 The state is passed in as first function argument, but we don’t need it in this example and use the empty object — this will become important in the section on [command validation](commands) later on.

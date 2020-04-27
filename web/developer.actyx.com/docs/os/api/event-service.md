@@ -4,7 +4,7 @@ title: Event Service
 
 This is a reference page for the ActyxOS **Event API**.
 
-The Event Service HTTP API provides local access to the [Event Service](/os/docs/event-service.html), allowing you to
+The Event Service HTTP API provides local access to the Event Service, allowing you to
 
 - [get information about known offsets](#get-information-about-known-offsets),
 - [query event streams](#query-event-streams),

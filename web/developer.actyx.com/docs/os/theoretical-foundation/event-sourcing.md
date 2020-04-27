@@ -4,15 +4,6 @@ title: Event Sourcing
 
 What is event sourcing and why is it relevant in decentralized computing?
 
-## Contents
-
-- [Definition](#definition)
-- [Benefits](#benfits)
-- [Challenges](#challenges)
-- [Relevance to ActyxOS](#relevance-to-actyxos)
-- [Example](#example)
-- [Learn more](#learn-more)
-
 ## Definition
 
 _Event sourcing_ is an architectural pattern in which state is not stored directly, but rather computed _as-needed_ from events stored in an event log.
@@ -35,7 +26,7 @@ Because you always know what has happened in the past, you can&mdash;from the fu
 
 ### Performance
 
-As the size of the event store increases, the amount of time it takes to compute a state may increase if you don't remember the previous state you computed. _Snapshots_ (see the Actyx Pond [documentation](/pond/docs/snapshots.html)) can help mitigate this.
+As the size of the event store increases, the amount of time it takes to compute a state may increase if you don't remember the previous state you computed. _Snapshots_ (see the Actyx Pond [documentation](../../pond/introduction.md)) can help mitigate this.
 
 ### Reasoning
 
@@ -45,15 +36,15 @@ Because of the separation of events and state, reasoning about the system can be
 
 Event schema migrations can pose serious challenges, especially if you want to migrate without deleting past events&mdash;which you can't do if they affect your state.
 
-_Check out [how the Actyx Pond deals with this](/pond/docs/types.html)_.
+_Check out [how the Actyx Pond deals with this](../../pond/guides/types.md)_.
 
 ## Relevance to ActyxOS
 
-ActyxOS provides you with the basic tools you need to build a decentralized event sourcing system. The Event Service's [persistent event streams](/os/docs/event-streams.html) allow you to model a distributed _append-only_ log&mdash;indeed, that is what they were designed for. The [WebView Runtime](/os/docs/webview-runtime.html) and [Docker Runtime](/os/docs/docker-runtime.html) allow you to run apps that consume these event streams, thus allowing you to compute state.
+ActyxOS provides you with the basic tools you need to build a decentralized event sourcing system. The Event Service's [persistent event streams](../guides/event-streams.md) allow you to model a distributed _append-only_ log&mdash;indeed, that is what they were designed for. The [WebView Runtime of ActyxOS on Android](../advanced-guides/actyxos-on-android) and [Docker Runtime of ActyxOS on Docker](../advanced-guides/actyxos-on-docker.md) allow you to run apps that consume these event streams, thus allowing you to compute state.
 
-> Actyx Pond
->
-> Check out the [Actyx Pond](/pond/)&mdash;an axuliary product to ActyxOS&mdash;which provides you with an always-available, partition-tolerant, event-sourcing system out of the box. It also tries to mitigate some of the key associated challenges.
+:::info Actyx Pond
+Check out the [Actyx Pond](../../pond/introduction)&mdash;an auxiliary product to ActyxOS&mdash;which provides you with an always available, partition-tolerant event sourcing system out of the box. It also tries to mitigate some of the key associated challenges.
+:::
 
 ## Example
 
@@ -91,9 +82,9 @@ loadingState = {
 
 With this approach, we are continuously keeping track of the state and updating it as things change.
 
-> Note
->
-> This is how most software systems are built, with the state being held in large databases and [CRUD operations](https://en.wikipedia.org/wiki/Create,_read,_update_and_delete) leading to state changes.
+:::note
+This is how most software systems are built, with the state being held in large databases and [CRUD operations](https://en.wikipedia.org/wiki/Create,_read,_update_and_delete) leading to state changes.
+:::
 
 Using an **event sourcing architecture** we would take a different approach. Let's have a look.
 
@@ -131,9 +122,9 @@ eventLog.concat(secondEvent);
 // Etc...
 ```
 
-> Append-only!
->
-> Unless you have very good reasons for doing so, you should never remove an event from an append-only event log. If you want to undo something, in most cases, the right approach is to define a compensating event that undoes what a previous event may have done.
+:::warning Append-only!
+Unless you have very good reasons for doing so, you should never remove an event from an append-only event log. If you want to undo something, in most cases, the right approach is to define a compensating event that undoes what a previous event may have done.
+:::
 
 What if we now want to find out the current loading state of our truck? We need two things for this work. Firstly, an initial state, i.e. what was the loading state when the truck came off the production line. Secondly, a function that computes a state from events. Let's build both:
 
@@ -172,9 +163,9 @@ function computeState(events) {
 
 Now, if we want to know the current loading state of the truck we must simply call the `computeState` function and pass it to our current event log.
 
-> More idiomatic implementation
->
-> In reality, you would not implement your system this way. You would, rather, define an `onEvent` function that takes a current state and a _single_ event and computes a new state. Then you would repeatedly call that function for each event.
+:::note More idiomatic implementation
+In reality, you would not implement your system this way. You would, rather, define an `onEvent` function that takes a current state and a _single_ event and computes a new state. Then you would repeatedly call that function for each event.
+:::
 
 ## Learn more
 - Martin Flowler's [introducton to event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html)

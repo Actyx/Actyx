@@ -8,13 +8,32 @@
 /* You can override the default Infima variables here. */
 :root {
   --ifm-color-primary: #1998ff;
-  --ifm-color-primary-dark: #1998ff;
-  --ifm-color-primary-darker: #1998ff;
-  --ifm-color-primary-darkest: #1998ff;
-  --ifm-color-primary-light: #1998ff;
-  --ifm-color-primary-lighter: #1998ff;
-  --ifm-color-primary-lightest: #1998ff;
+  --ifm-color-primary-dark: #008bfc;
+  --ifm-color-primary-darker: #0083ee;
+  --ifm-color-primary-darkest: #006cc4;
+  --ifm-color-primary-light: #35a5ff;
+  --ifm-color-primary-lighter: #43abff;
+  --ifm-color-primary-lightest: #6dbeff;
   --ifm-code-font-size: 95%;
+  --ifm-pre-padding: 0.2rem;
+}
+
+p, li, a, code, span {
+  font-size: 15px !important;
+}
+
+.embedded-yt-wrapper {
+    position: relative;
+    width: 100%;
+    height: 0;
+    padding-bottom: 56.25%;
+}
+.embedded-yt-iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
 }
 
 .navbar__items.navbar__items--right {
@@ -22,9 +41,22 @@
 
 }
 
+/* The following two make the tabs of nested tabs less strong */
+.tabs ~ div .tabs {
+  font-weight: unset;
+}
+.tabs ~ div .tabs .tab-item {
+  border-width: 2px;
+}
+
+
+.tabs > .tab-item.tab-item--active .tabs > .tab-item.tab-item--active {
+  color: green;
+}
+
 .docusaurus-highlight-code-line {
-  background-color: rgb(72, 77, 91);
-  display: block;
-  margin: 0 calc(-1 * var(--ifm-pre-padding));
-  padding: 0 var(--ifm-pre-padding);
+  background-color: rgb(227, 227, 227);
+}
+html[data-theme='dark'] .docusaurus-highlight-code-line {
+  background-color: rgb(62, 62, 69);
 }

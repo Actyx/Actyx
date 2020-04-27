@@ -19,6 +19,6 @@ The point at which you will run out of disk space because of events depends on t
 
 Currently, the only solution to running out of disk space because of events, is either clearing events from your swarm or increasing the disk space of your edge devices.
 
-> Heuristic distribution coming in 2020
->
-> We are working on heuristic distribution, whereby not all events are distributed to everyone. This will seriously reduce the amount of necessary disk space. Stay tuned to our [blog](/blog) for updates regarding this.
+:::info Heuristic distribution is on our roadmap
+We are working on heuristic distribution, whereby not all events are distributed to everyone. This will seriously reduce the amount of necessary disk space. Stay tuned to our [blog](https://www.actyx.com/news) for updates regarding this.
+:::

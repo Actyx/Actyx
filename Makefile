@@ -172,7 +172,15 @@ define build_bins_and_move_win64
 	docker run -v `pwd`/rt-master:/src \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it $(3) \
-	bash -c "cd /tmp/ && wget -q https://www.winpcap.org/install/bin/WpdPack_4_1_2.zip && unzip -p WpdPack_4_1_2.zip WpdPack/Lib/x64/Packet.lib > /usr/x86_64-w64-mingw32/lib/Packet.lib && rm WpdPack_4_1_2.zip && cd - && cd actyx-cli && cargo --locked build --release --target $(2) --bin ax --no-default-features && chown -R builder:builder ../target"
+	bash -c "\
+		cd /tmp/ &&
+		wget -q https://www.winpcap.org/install/bin/WpdPack_4_1_2.zip && \
+		unzip -p WpdPack_4_1_2.zip WpdPack/Lib/x64/Packet.lib > /usr/x86_64-w64-mingw32/lib/Packet.lib && \
+		rm WpdPack_4_1_2.zip && \
+		cd - && \
+		cd actyx-cli && \
+		cargo --locked build --release --target $(2) --bin ax --no-default-features && \
+		chown -R builder:builder ../target"
 	docker run -v `pwd`/rt-master:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
@@ -221,6 +229,8 @@ actyxos-bin-arm:
 android-app: debug
 	mkdir -p ./android-shell-app/app/src/main/jniLibs/x86
 	cp ./rt-master/target/i686-linux-android/release/libaxstore.so ./android-shell-app/app/src/main/jniLibs/x86/libaxstore.so
+	mkdir -p ./android-actyxos-app/app/src/main/jniLibs/arm64-v8a
+	cp ./rt-master/target/aarch64-linux-android/release/libaxstore.so ./android-shell-app/app/src/main/jniLibs/arm64-v8a/libaxstore.so
 	./android-shell-app/bin/prepare-gradle-build.sh
 	pushd android-shell-app; \
 	./gradlew clean ktlint build assemble; \
@@ -235,14 +245,16 @@ android-install: debug
 
 android-store-lib: debug
 	$(call fn-android-rust-lib,store-lib,i686)
+	$(call fn-android-rust-lib,store-lib,aarch64)
 
 define fn-android-rust-lib
 	$(eval CRATE:=$(1))
 	$(eval ARCH:=$(2))
 	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
-	docker run -v `pwd`/rt-master:/src \
+	docker run -v `pwd`:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-w /src/rt-master \
 	-it actyx/cosmos:buildrs-x64-latest \
 	cargo --locked build -p $(CRATE) --lib --release --target $(ARCH)-linux-android
 endef
