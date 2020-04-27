@@ -164,9 +164,23 @@ endef
 # 1st arg: output dir (will be created) of the final artifacts
 # 2nd arg: target toolchain
 # 3rd arg: docker base image
+# actyx-cli depends on fastping-rs depends on libpnet, which needs
+# a dependency from winpcap to link against
 define build_bins_and_move_win64
 	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
 	mkdir -p $(1)
+	docker run -v `pwd`/rt-master:/src \
+	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-it $(3) \
+	bash -c "\
+		cd /tmp/ &&
+		wget -q https://www.winpcap.org/install/bin/WpdPack_4_1_2.zip && \
+		unzip -p WpdPack_4_1_2.zip WpdPack/Lib/x64/Packet.lib > /usr/x86_64-w64-mingw32/lib/Packet.lib && \
+		rm WpdPack_4_1_2.zip && \
+		cd - && \
+		cd actyx-cli && \
+		cargo --locked build --release --target $(2) --bin ax --no-default-features && \
+		chown -R builder:builder ../target"
 	docker run -v `pwd`/rt-master:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
@@ -247,8 +261,7 @@ endef
 
 define fn-android-libs
 	$(eval ARCH:=$(1))
-	$(call fn-android-rust-lib,store-lib,$(ARCH))
-	$(call fn-android-rust-lib,logsvcd,$(ARCH))
+	$(call fn-android-rust-lib,ax-os-node,$(ARCH))
 endef
 
 # ActyxOS on Android
@@ -259,11 +272,11 @@ axosandroid-libs-aarch64: debug
 	$(call fn-android-libs,aarch64)
 
 axosandroid-app: debug
+	./android-actyxos-app/bin/get-keystore.sh
 	mkdir -p ./android-actyxos-app/app/src/main/jniLibs/x86
 	cp ./rt-master/target/i686-linux-android/release/lib*.so ./android-actyxos-app/app/src/main/jniLibs/x86/
 	mkdir -p ./android-actyxos-app/app/src/main/jniLibs/arm64-v8a
 	cp ./rt-master/target/aarch64-linux-android/release/lib*.so ./android-actyxos-app/app/src/main/jniLibs/arm64-v8a
-	./android-actyxos-app/bin/get-keystore.sh
 	docker run -v `pwd`/android-actyxos-app:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \

@@ -259,6 +259,7 @@ def on_start_app():
 ```
 
 ### Configuring apps
+> Note: Because `AX_APP_SETTINGS` is an environment variable, the settings object can be max. 128 KiB.
 
 Now that we have gone through how you, as an app developer, can define what people can configure using settings, we come to the last part of this page: configuring apps. As shown next, this is completely analogous to [configuring nodes](#configuring-nodes):
 
