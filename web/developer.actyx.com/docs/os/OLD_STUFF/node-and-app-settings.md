@@ -23,9 +23,9 @@ Settings are a means to configure the behavior of systems. Depending on the sett
 
 Consider, as a simple example, the language shown in a user-interface. The developer of said interface can decide to only and always show UI element in English, or she can make it configurable through a _language_ setting. The setting may be defined as follows:
 
-| Setting          | Type     | Permitted values                      | Default value |
-|------------------|----------|---------------------------------------|---------------|
-| Language         | `string` | `"english"`, `"french"` or `"german"` | `"english"`   |
+| Setting  | Type     | Permitted values                      | Default value |
+| -------- | -------- | ------------------------------------- | ------------- |
+| Language | `string` | `"english"`, `"french"` or `"german"` | `"english"`   |
 
 How you can configure the behavior of ActyxOS nodes&mdash;node settings&mdash;has been defined by us. How you can configure an app running on ActyxOS has been defined by the app developer. This definition is done in the form of _settings schemas_ and in the case of ActyxOS, specifically using [JSON Schema](https://json-schema.org/). Taking the example above, the developer would have defined a settings schema for the app as follows:
 
@@ -46,15 +46,15 @@ How you can configure the behavior of ActyxOS nodes&mdash;node settings&mdash;ha
 For most apps, the settings schemas will be a lot more involved than this simple example. Indeed, settings are often not even flat lists of key-value pairs, but rather complete trees. An SAP Connector app might for example actually have a structure as follows:
 
 ```yaml
-com.example.sap_connector: # Root of the settings tree
+com.example.sapconnector: # Root of the settings tree
   ui:
     language: string # ("english", "french" or "german")
     fontSize: number
   connectivity:
-    sap_endpoint:
-      ip_address: string
+    sapEndpoint:
+      ipAddress: string
       port: number
-    sap_authentication:
+    sapAuthentication:
       username: string
       password: string
 # etc...
@@ -90,11 +90,11 @@ We have defined exactly how the behavior of ActyxOS nodes can be configured in o
 
 Here are a couple of the most important ActyxOS nodes settings:
 
-| Setting          | Type     | Permitted values                      | Default value |
-|------------------|----------|---------------------------------------|---------------|
-| Display name     | `string` | _any string_                          | ""            |
-| Swarm key        | `string` | _a string with exactly 64 characters_ | ""            |
-| Swarm topic      | `string` | _any string_                          | ""            |
+| Setting      | Type     | Permitted values                      | Default value |
+| ------------ | -------- | ------------------------------------- | ------------- |
+| Display name | `string` | _any string_                          | ""            |
+| Swarm key    | `string` | _a string with exactly 64 characters_ | ""            |
+| Swarm topic  | `string` | _any string_                          | ""            |
 
 To check out the complete set of settings, download the _Node Settings Schema_ linked to above.
 
@@ -123,17 +123,17 @@ The primary tool for setting settings, both at the node and the app level, is th
 Let's jump into an example, where we want to configure a brand-new ActyxOS node. First we create a new file&mdash;let's call it `node-settings.yml` and set all the settings to the values we want:
 
 ```yml
-General:
-  DisplayName: My Test Node
-  SwarmKey: 4245c0e542a4f89985a92de178d2169dc7f3596a382828aa8381bc13370e9880
-  BootstrapNodes:
+general:
+  displayName: My Test Node
+  swarmKey: 4245c0e542a4f89985a92de178d2169dc7f3596a382828aa8381bc13370e9880
+  bootstrapNodes:
     - /tcp/10.2.3.1/
-  LogLevels:
-    OS: DEBUG
-    Apps: INFO
-Services:
-  EventService:
-    Topic: My Topic
+  logLevels:
+    os: DEBUG
+    apps: INFO
+services:
+  eventService:
+    topic: My Topic
 ```
 
 Now we need to set these settings on the node (which, in this example, is reachable at 10.2.3.23) using the Actyx CLI's `ax settings set` command:
@@ -141,8 +141,8 @@ Now we need to set these settings on the node (which, in this example, is reacha
 ```bash
 # Set the settings defined in `node-settings.yml` on the node
 $ ax settings set --local com.actyx.os @node-settings.yml 10.2.3.23
-#             ^           ^      ^                 
-#             | set       |      | read from the given file
+#             ^           ^            ^                 
+#             | set       |            | read from the given file
 #                         |
 #                         | set the settings at the `com.actyx.os` scope
 ```
@@ -160,10 +160,10 @@ What if you want to change a single one of the settings? You could, of course, e
 ```bash
 # Change a setting in the tree
 $ ax settings set --local com.actyx.os/Services/EventService/Topic "New Topic" 10.2.3.23
-#                         ^    ^                            ^
-#                         |    |                            | value to set the setting to
-#                         |    |
-#                         |    | path into the settings object
+#                         ^           ^                            ^
+#                         |           |                            | value to set the setting to
+#                         |           |
+#                         |           | path into the settings object
 #                         |
 #                         | top-level scope as the entry point
 ```
@@ -214,16 +214,16 @@ Following association of this schema with your app, ActyxOS will now ensure that
 In order for ActyxOS to know that this schema defines the settings for your app, you provide the path to in your app manifest (which also [has a schema](/os/docs/app-manifest-schema.html)):
 
 ```yml
-manifest-version: "1.0"
+manifestVersion: "1.0"
 type: web
 id: com.example.app1
 version: 1.0.3
-display-name: App 1
+displayName: App 1
 description: "A great first app"
 icon: ./build/assets/app-icon.png
 dist: ./build/
 main: ./build/index.html
-settings-schema: ./settings-schema.json # <------------- Path to your settings schema
+settingsSchema: ./settings-schema.json # <------------- Path to your settings schema
 ```
 
 When you package your app, the Actyx CLI will automatically include the settings schema so that it will be available to ActyxOS when your app is deployed.
@@ -237,7 +237,6 @@ The last important part is accessing settings from within your app&mdash;happily
 Your app's settings are available in the runtime using an injected global function named `ax.appSettings`. To continue with our example, you could access them as follows:
 
 ```javascript
-
 function onStartApp() {
   const { timeUnit, backgroundColor } = ax.appSettings()
   // Do something with the timeUnit and backgroundColor...
