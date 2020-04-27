@@ -45,7 +45,7 @@ steps:
     condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axosandroid]'))
 
   - publish: $(System.DefaultWorkingDirectory)/android-actyxos-app/app/build/outputs/assembly/Actyx/axosandroid/
-    artifact: axos-apk
+    artifact: actyxos-apk
     condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axosandroid]'))
 
   - task: AzureCLI@2
