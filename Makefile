@@ -229,6 +229,8 @@ actyxos-bin-arm:
 android-app: debug
 	mkdir -p ./android-shell-app/app/src/main/jniLibs/x86
 	cp ./rt-master/target/i686-linux-android/release/libaxstore.so ./android-shell-app/app/src/main/jniLibs/x86/libaxstore.so
+	mkdir -p ./android-actyxos-app/app/src/main/jniLibs/arm64-v8a
+	cp ./rt-master/target/aarch64-linux-android/release/libaxstore.so ./android-shell-app/app/src/main/jniLibs/arm64-v8a/libaxstore.so
 	./android-shell-app/bin/prepare-gradle-build.sh
 	pushd android-shell-app; \
 	./gradlew clean ktlint build assemble; \
@@ -243,14 +245,16 @@ android-install: debug
 
 android-store-lib: debug
 	$(call fn-android-rust-lib,store-lib,i686)
+	$(call fn-android-rust-lib,store-lib,aarch64)
 
 define fn-android-rust-lib
 	$(eval CRATE:=$(1))
 	$(eval ARCH:=$(2))
 	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
-	docker run -v `pwd`/rt-master:/src \
+	docker run -v `pwd`:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-w /src/rt-master \
 	-it actyx/cosmos:buildrs-x64-latest \
 	cargo --locked build -p $(CRATE) --lib --release --target $(ARCH)-linux-android
 endef

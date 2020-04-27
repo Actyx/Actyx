@@ -32,8 +32,7 @@
 //! > _Note: this example needs the `client` feature to compile_
 //!
 //! ```no_run
-//! use actyxos_sdk::event_service::{EventService,
-//!         EventServiceError, Order, Subscription};
+//! use actyxos_sdk::event_service::{EventService, EventServiceError, Order, Subscription};
 //! use futures::stream::StreamExt;
 //!
 //! #[tokio::main]
