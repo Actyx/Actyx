@@ -212,7 +212,7 @@ The WebView app is prepared in the folder `sample-webview-app`. As for the docke
 npm install
 ```
 
-Then start the build-in webserver by running
+Then start the built-in webserver by running
 
 ```
 npm start
