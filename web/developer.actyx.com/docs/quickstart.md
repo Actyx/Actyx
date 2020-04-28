@@ -314,19 +314,19 @@ Now go back to the `sample-webview-app` folder and create the production build f
 npm run build
 ```
 
-The resulting files in the `dist` folder are now packaged into an Actyx App bundle using
+The resulting files in the `dist` folder can now be packaged into an Actyx app using
 
 ```
 ax apps package
 ```
 
-The resulting bundle is then deployed to the Android device by running
+The resulting app is then deployed to the Android device by running
 
 ```
 ax apps deploy --local com.actyx.sample-webview-app-1.0.0.tar.gz <DEVICE_IP>
 ```
 
-As for the Docker app, you don’t need to configure the webview app. You can start the app either by selecting it from the ActyxOS app on Android or by using the Actyx CLI:
+Now that the app is deployed, you can start it either by selecting it from the ActyxOS app on Android or by using the Actyx CLI:
 
 ```
 ax apps start --local com.actyx.sample-webview-app <DEVICE_IP>
