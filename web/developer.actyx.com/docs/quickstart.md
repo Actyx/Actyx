@@ -149,7 +149,7 @@ You will see lots of output on the screen, including a bunch of error messages t
 ![](/images/actyxos-on-docker-first-startup.gif)
 
 :::note
-As you can see, you need to provide a persistent volume and set up some port forwarding. For more information about running ActyxOS on Docker or other hosts, please refer to the [ActyxOS documentation](os/advanced-guides/actyxos-on-docker.md).
+As you can see, you need to provide a persistent volume and set up some port forwarding. For more information about running ActyxOS on Docker, refer to the [ActyxOS documentation](os/advanced-guides/actyxos-on-docker.md).
 :::
 
 Now that it is running, we need to provide the ActyxOS node with a couple of settings. These allow the node to function correctly. For now, we will just use the sample settings defined in `misc/local-sample-node-settings.yml`. Run the following command:
