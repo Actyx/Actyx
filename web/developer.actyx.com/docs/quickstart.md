@@ -118,7 +118,7 @@ Now, start ActyxOS as a Docker container on your local machine. Since ActyxOS is
 <Tabs
   defaultValue="windows/macos"
   values={[
-    { label: 'Windows/macOS', value: 'windows/macos', },
+    { label: 'Windows/MacOS', value: 'windows/macos', },
     { label: 'Linux', value: 'linux', },
   ]
 }>
