@@ -2,8 +2,6 @@
 title: Quickstart
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 Let's jump right in and get a first distributed application up and running.
 
@@ -11,13 +9,15 @@ Let's jump right in and get a first distributed application up and running.
 If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to contact@actyx.io .
 :::
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 ## Requirements
 
 - **Git**, which you can [install from here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 - **Docker**, which you can [install from here](https://docs.docker.com/install/)
 - **Node.js** and **npm**, which you can [install from here](https://nodejs.org/en/)
 - A second device in your network that is running either Android or Docker
-
 
 ## Prepare
 
@@ -115,9 +115,28 @@ Check out the [troubleshooting section](#troubleshooting) below or let us know.
 
 Now, start ActyxOS as a Docker container on your local machine. Since ActyxOS is published on [DockerHub](https://hub.docker.com/), you can start it using the following command:
 
+<Tabs
+  defaultValue="windows/macos"
+  values={[
+    { label: 'Windows/MacOS', value: 'windows/macos', },
+    { label: 'Linux', value: 'linux', },
+  ]
+}>
+<TabItem value="windows/macos">
+
+```powershell
+docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyxos_data:/data --privileged -p 4001:4001 -p 4457:4457 -p 4243:4243 -p 4454:4454 actyx/os
 ```
-docker run -it --rm -e AX_DEV_MODE=1 -v actyxos_data:/data --privileged -p 4001:4001 -p 4457:4457 -p 4243:4243 -p 4454:4454 actyx/os
+
+</TabItem>
+<TabItem value="linux">
+
+```bash
+docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyxos_data:/data --privileged --network=host actyx/os
 ```
+
+</TabItem>
+</Tabs>
 
 You will see lots of output on the screen, including a bunch of error messages that are normal at this point. ActyxOS will be up-and-running as soon as you see something like
 
@@ -130,7 +149,7 @@ You will see lots of output on the screen, including a bunch of error messages t
 ![](/images/actyxos-on-docker-first-startup.gif)
 
 :::note
-As you can see, you need to provide a persistent volume and set up some port forwarding. For more information about running ActyxOS on Docker or other hosts, please refer to the [ActyxOS documentation](os/getting-started/installation.md).
+As you can see, you need to provide a persistent volume and set up some port forwarding. For more information about running ActyxOS on Docker, refer to the [ActyxOS documentation](os/advanced-guides/actyxos-on-docker.md).
 :::
 
 Now that it is running, we need to provide the ActyxOS node with a couple of settings. These allow the node to function correctly. For now, we will just use the sample settings defined in `misc/local-sample-node-settings.yml`. Run the following command:
@@ -145,7 +164,7 @@ Now that it is running, we need to provide the ActyxOS node with a couple of set
 <TabItem value="windows">
 
 ```powershell
-ax.exe settings set --local com.actyx.os @misc\local-sample-node-settings.yml localhost
+ax settings set --local com.actyx.os @misc\local-sample-node-settings.yml localhost
 ```
 
 </TabItem>
@@ -194,7 +213,7 @@ The WebView app is prepared in the folder `sample-webview-app`. As for the docke
 npm install
 ```
 
-Then start the build-in webserver by running
+Then start the built-in webserver by running
 
 ```
 npm start
@@ -228,7 +247,7 @@ ax apps package
 Packaging Docker apps can take quite a bit of time. Please give it a couple of minutes. Unfortunately the Actyx CLI does not provide any feedback during packaging yet (we are working on that).
 :::
 
-After a few moments you’ll find an app package in your folder. This is deployed into the local ActyxOS node by running
+After a few moments you’ll find an app package in your folder. This can be deployed to the ActyxOS node by running
 
 ```
 ax apps deploy --local com.actyx.sample-docker-app-1.0.0.tar.gz localhost
@@ -240,20 +259,15 @@ You can check the state of this app using
 ax apps ls --local localhost
 ```
 
-Before you can start the app, you’ll need to supply valid settings — in this example the empty object is enough:
-
-```
-ax settings set --local com.actyx.sample-docker-app '{}' localhost
-```
-
-Now the app is started with
+As you will see the app is deployed, but `stopped`, so let's start it with this command:
 
 ```
 ax apps start --local com.actyx.sample-docker-app localhost
 ```
 
 If you still have the webview app open running in dev mode in your browser, you should see the ping messages appear in there. The two apps are so far served by the same ActyxOS node.
-In order to make this sample fully distributed you can either start another ActyxOS node on a different computer (by repeating the ActyxOS steps above), or you can continue with an Android device.
+
+In order to make this sample fully distributed you can either start another ActyxOS node on a different computer (by repeating the ActyxOS steps above), or you can continue with an Android device as we will do here.
 
 ### ActyxOS on Android
 
@@ -275,7 +289,7 @@ Now that you have installed ActyxOS on the second device, let's configure the no
 <TabItem value="windows">
 
 ```powershell
-ax.exe settings set --local com.actyx.os @misc\remote-sample-node-settings.yml <DEVICE_IP>
+ax settings set --local com.actyx.os @misc\remote-sample-node-settings.yml <DEVICE_IP>
 ```
 
 </TabItem>
@@ -300,25 +314,19 @@ Now go back to the `sample-webview-app` folder and create the production build f
 npm run build
 ```
 
-The resulting files in the `dist` folder are now packaged into an Actyx App bundle using
+The resulting files in the `dist` folder can now be packaged into an Actyx app using
 
 ```
 ax apps package
 ```
 
-The resulting bundle is then deployed to the Android device by running
+The resulting app is then deployed to the Android device by running
 
 ```
 ax apps deploy --local com.actyx.sample-webview-app-1.0.0.tar.gz <DEVICE_IP>
 ```
 
-As for the docker app, you need to supply valid settings:
-
-```
-ax settings set --local com.actyx.sample-webview-app '{}' <DEVICE_IP>
-```
-
-Then the app can be started, either by selecting it from the ActyxOS app on Android or by using the CLI:
+Now that the app is deployed, you can start it either by selecting it from the ActyxOS app on Android or by using the Actyx CLI:
 
 ```
 ax apps start --local com.actyx.sample-webview-app <DEVICE_IP>

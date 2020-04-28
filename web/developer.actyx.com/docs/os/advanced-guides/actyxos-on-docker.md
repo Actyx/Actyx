@@ -37,7 +37,7 @@ ActyxOS is [publicly available on Docker Hub](https://hub.docker.com/repository/
 <TabItem value="windows">
 
 ```
-docker run -it --rm -v actyx-data:/data --privileged -p 4001:4001 -p 4457:4457 actyx/os
+docker run --name actyxos -it --rm -v actyx-data:/data --privileged -p 4001:4001 -p 4457:4457 actyx/os
 ```
 You used a couple of common flags here:
 - `-it` for running interactive processes.
@@ -56,7 +56,7 @@ Please refer to the [Docker Documentation](https://docs.docker.com/) for more in
 <TabItem value="unix">
 
 ```
-docker run -it --rm -v actyx-data:/data --privileged --network=host actyx/os
+docker run --name actyxos -it --rm -v actyx-data:/data --privileged --network=host actyx/os
 ```
 
 You used a couple of common flags here:
