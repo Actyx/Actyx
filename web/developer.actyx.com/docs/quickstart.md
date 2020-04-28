@@ -2,14 +2,15 @@
 title: Quickstart
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 Let's jump right in and get a first distributed application up and running.
 
 :::info Need help?
 If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to contact@actyx.io .
 :::
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 ## Requirements
 
