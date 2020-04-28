@@ -247,7 +247,7 @@ ax apps package
 Packaging Docker apps can take quite a bit of time. Please give it a couple of minutes. Unfortunately the Actyx CLI does not provide any feedback during packaging yet (we are working on that).
 :::
 
-After a few moments you’ll find an app package in your folder. This is deployed into the local ActyxOS node by running
+After a few moments you’ll find an app package in your folder. This can be deployed to the ActyxOS node by running
 
 ```
 ax apps deploy --local com.actyx.sample-docker-app-1.0.0.tar.gz localhost
@@ -259,14 +259,15 @@ You can check the state of this app using
 ax apps ls --local localhost
 ```
 
-As you don’t need to configure this app, you can directly start it
+As you will see the app is deployed, but `stopped`, so let's start it with this command:
 
 ```
 ax apps start --local com.actyx.sample-docker-app localhost
 ```
 
 If you still have the webview app open running in dev mode in your browser, you should see the ping messages appear in there. The two apps are so far served by the same ActyxOS node.
-In order to make this sample fully distributed you can either start another ActyxOS node on a different computer (by repeating the ActyxOS steps above), or you can continue with an Android device.
+
+In order to make this sample fully distributed you can either start another ActyxOS node on a different computer (by repeating the ActyxOS steps above), or you can continue with an Android device as we will do here.
 
 ### ActyxOS on Android
 
