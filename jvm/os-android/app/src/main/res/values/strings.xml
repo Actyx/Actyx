@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">ActyxOS</string>
+    <string name="app_icon_description">ActyxOS App Icon</string>
+    <string name="action_settings">Settings</string>
+    <string name="background_services_name">ActyxOS</string>
+    <string name="background_services_operational_text">ActyxOS is operational.</string>
+    <string name="background_services_misconfigured_text">ActyxOS is misconfigured.</string>
+    <string name="background_services_channel_name">ActyxOS</string>
+    <string name="background_services_channel_description">TODO</string>
+    <string name="warning_icon_description">Warning</string>
+    <string name="placeholder">placeholder</string>
+    <string name="initializing">Initializing</string>
+    <string name="invalid_settings_msg">Unfortunately, this app can not be started as it does not have valid settings. Please contact your administrator.</string>
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="apps">Apps</string>
+    <string name="system_info">System Info</string>
+    <string name="actyx_contact_email">info@actyx.com</string>
+    <string name="create_home_screen_icon">Create home screen icon</string>
+    <string name="open">Open</string>
+    <string name="app_details">App details</string>
+    <string name="console">Console</string>
+    <string name="connected_peers">Connected peers</string>
+    <string name="bandwidth_usage">Bandwidth usage</string>
+    <string name="ipfs_storage">IPFS storage</string>
+    <string name="please_select_an_app_from_the_list_or_deploy_one">Please select an app from the list or deploy one.</string>
+</resources>

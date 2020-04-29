@@ -1,0 +1,53 @@
+<RelativeLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:id="@+id/two_line_item"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:background="?android:attr/selectableItemBackground"
+  android:minHeight="72dp"
+  android:paddingEnd="?android:attr/listPreferredItemPaddingRight"
+  android:paddingLeft="?android:attr/listPreferredItemPaddingLeft"
+  android:paddingRight="?android:attr/listPreferredItemPaddingRight"
+  android:paddingStart="?android:attr/listPreferredItemPaddingLeft">
+
+  <ImageView
+    android:id="@+id/icon"
+    android:layout_width="40dp"
+    android:layout_height="40dp"
+    android:layout_marginTop="16dp"
+    android:scaleType="centerInside"
+    app:srcCompat="@drawable/ic_launcher"
+    android:contentDescription="@string/app_icon_description"/>
+
+  <LinearLayout
+    android:id="@+id/lines_container"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_alignParentEnd="true"
+    android:layout_alignWithParentIfMissing="true"
+    android:layout_centerVertical="true"
+    android:layout_marginLeft="16dp"
+    android:layout_marginRight="16dp"
+    android:layout_toEndOf="@id/icon"
+    android:orientation="vertical"
+    android:paddingBottom="16dp"
+    android:paddingTop="16dp">
+
+    <TextView
+      android:id="@+id/firstLine"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:singleLine="true"
+      android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
+    />
+
+    <TextView
+      android:id="@+id/secondLine"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:singleLine="true"
+      android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+    />
+  </LinearLayout>
+</RelativeLayout>
