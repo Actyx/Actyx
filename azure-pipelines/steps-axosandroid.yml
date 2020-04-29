@@ -5,15 +5,12 @@ steps:
       cargo --locked clippy -- -D warnings && \
       cargo --locked clippy --tests -- -D warnings && \
       for i in i686 aarch64; do \
-        cargo --locked build -p store-lib --release --target $i-linux-android && \
-        cargo --locked build -p logsvcd --lib --release --target $i-linux-android && \
+        cargo --locked build -p ax-os-node --lib --release --target $i-linux-android; \
       done && \
       mkdir -p ../android-actyxos-app/app/src/main/jniLibs/x86/ && \
-      cp ./target/i686-linux-android/release/libaxstore.so ../android-actyxos-app/app/src/main/jniLibs/x86/ && \
-      cp ./target/i686-linux-android/release/liblogsvcd.so ../android-actyxos-app/app/src/main/jniLibs/x86/ && \
+      cp ./target/i686-linux-android/release/libaxosnode.so ../android-actyxos-app/app/src/main/jniLibs/x86/ && \
       mkdir -p ../android-actyxos-app/app/src/main/jniLibs/arm64-v8a/ && \
-      cp ./target/aarch64-linux-android/release/libaxstore.so ../android-actyxos-app/app/src/main/jniLibs/arm64-v8a/ && \
-      cp ./target/aarch64-linux-android/release/liblogsvcd.so ../android-actyxos-app/app/src/main/jniLibs/arm64-v8a/ && \
+      cp ./target/aarch64-linux-android/release/libaxosnode.so ../android-actyxos-app/app/src/main/jniLibs/arm64-v8a/
     displayName: 'Build rust libs (x86, aarch64)'
     workingDirectory: 'rt-master'
     condition: contains(variables['BUILD_STRING'],'[build-axosandroid]')
@@ -48,7 +45,7 @@ steps:
     condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axosandroid]'))
 
   - publish: $(System.DefaultWorkingDirectory)/android-actyxos-app/app/build/outputs/assembly/Actyx/axosandroid/
-    artifact: axosandroid-apk
+    artifact: actyxos-apk
     condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axosandroid]'))
 
   - task: AzureCLI@2
