@@ -16,7 +16,6 @@
 use crate::types::ArcVal;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_transcode;
 use std::sync::Arc;
 
 /// A ref-counted slice of memory holding a compact binary representation of an event payload
