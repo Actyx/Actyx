@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "docusaurus start",
+    "prebuild": "mkdir -p static/schemas/os && cp ../../protocols/json-schema/os/* static/schemas/os/",
+    "start": "npm run prebuild && docusaurus start",
     "build": "docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy"
