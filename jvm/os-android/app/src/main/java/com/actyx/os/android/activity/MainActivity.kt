@@ -64,7 +64,7 @@ class MainActivity : BaseActivity() {
   private fun setTaskDescription() {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
       val name = resources.getString(R.string.app_name)
-      val icon = BitmapFactory.decodeResource(resources, R.mipmap.ic_launcher_white)
+      val icon = BitmapFactory.decodeResource(resources, R.drawable.ic_launcher_white)
       val color = resources.getColor(R.color.colorPrimary, theme)
       //noinspection deprecation
       setTaskDescription(ActivityManager.TaskDescription(name, icon, color))

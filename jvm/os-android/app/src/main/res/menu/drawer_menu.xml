@@ -10,7 +10,7 @@
             android:title="@string/apps" />
         <item
             android:id="@+id/nav_system_info"
-            android:icon="@drawable/ic_launcher_white"
+            android:icon="@android:drawable/ic_dialog_info"
             android:title="@string/system_info" />
     </group>
 

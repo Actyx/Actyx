@@ -9,9 +9,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
+        android:layout_margin="60dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:layout_margin="60dp"
         tools:context=".fragment.MessageFragment">
 
         <ImageView

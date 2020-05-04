@@ -6,4 +6,11 @@
     <color name="colorActyxosBackground">#FFFFFF</color>
     <color name="black_overlay">#66000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="font_grey">#727272</color>
+    <color name="font_grey_label">#6D6D6D</color>
+    <color name="font_black">#222222</color>
+    <color name="font_blue">#0686FF</color>
+    <color name="button_red">#FF3434</color>
+    <color name="navigation_next">#757575</color>
+
 </resources>

@@ -9,7 +9,6 @@ apply from: './ipfs.gradle'
 apply from: '../actyx-local/actyx.properties'
 apply plugin: 'com.google.protobuf'
 
-
 androidGitVersion {
   prefix 'axos-android-'
   codeFormat 'MNNPPPBBB'
@@ -27,7 +26,7 @@ android {
   kotlinOptions {
     jvmTarget = "1.8"
   }
-  buildToolsVersion '29.0.0'
+  buildToolsVersion '29.0.2'
   defaultConfig {
     applicationId 'com.actyx.os.android'
     minSdkVersion 23
@@ -35,7 +34,7 @@ android {
     versionCode 1
     versionName '0.1'
     testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
-    vectorDrawables.useSupportLibrary = true
+    buildConfigField "int", "MIN_SDK_API_LEVEL", "$minSdkVersion.apiLevel"
   }
   signingConfigs {
     release {
@@ -88,7 +87,7 @@ protobuf {
 }
 
 def arrow_version = "0.10.4"
-def nav_version = "2.2.1"
+def nav_version = "2.2.2"
 dependencies {
   implementation fileTree(dir: 'libs', include: ['*.jar'])
   implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
@@ -100,7 +99,6 @@ dependencies {
   implementation "androidx.navigation:navigation-fragment-ktx:$nav_version"
   implementation "androidx.navigation:navigation-ui-ktx:$nav_version"
   implementation 'com.google.android.material:material:1.1.0'
-  implementation 'androidx.legacy:legacy-support-v4:1.0.0'
   implementation 'org.yaml:snakeyaml:1.23'
   implementation 'com.koushikdutta.async:androidasync:2.2.1'
   implementation 'org.apache.commons:commons-compress:1.19'
