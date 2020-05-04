@@ -126,8 +126,7 @@ dependencies {
   implementation 'com.github.felHR85:UsbSerial:6.1.0'
 }
 
-// FIXME
-def archs = ["x86"] // , "arm64-v8a"]
+def archs = ["x86", "arm64-v8a"]
 def nativeLibs = ["axosnode"]
 task checkExternalLibsExist() {
   [archs, nativeLibs].eachCombination { arch, lib ->
