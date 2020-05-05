@@ -5,14 +5,15 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.viewModels
+import androidx.core.content.ContextCompat
 
 import com.actyx.os.android.R
 import com.actyx.os.android.service.BackgroundServices.Companion.ACTION_APP_LIST_UPDATED
 import com.actyx.os.android.service.IBackgroundServices
+import com.actyx.os.android.util.toBitmap
 import com.actyx.os.android.viewmodel.AppInfosViewModel
 
 class MainActivity : BaseActivity() {
@@ -64,7 +65,7 @@ class MainActivity : BaseActivity() {
   private fun setTaskDescription() {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
       val name = resources.getString(R.string.app_name)
-      val icon = BitmapFactory.decodeResource(resources, R.drawable.ic_launcher_white)
+      val icon = ContextCompat.getDrawable(this, R.drawable.ic_actyxos_circle)?.toBitmap()
       val color = resources.getColor(R.color.colorPrimary, theme)
       //noinspection deprecation
       setTaskDescription(ActivityManager.TaskDescription(name, icon, color))
