@@ -1,5 +1,6 @@
 package com.actyx.os.android.util
 
+import arrow.core.some
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -26,7 +27,7 @@ settingsSchema: "./assets/schema.json"
         "Manual Work Logging",
         "A great first app",
         "1.0.1",
-        "./assets/app-icon.png",
+        "./assets/app-icon.png".some(),
         "index.html",
         "./build",
         "./assets/schema.json"

@@ -32,7 +32,7 @@ class AppInfoFragment : Fragment(), View.OnClickListener {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     // TODO: use gradle plugin
-    appInfo = arguments!!.getParcelable("appInfo")!!
+    appInfo = requireArguments().getParcelable("appInfo")!!
   }
 
   override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
