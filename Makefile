@@ -229,7 +229,7 @@ actyxos-bin-arm:
 android-app: debug
 	mkdir -p ./android-shell-app/app/src/main/jniLibs/x86
 	cp ./rt-master/target/i686-linux-android/release/libaxstore.so ./android-shell-app/app/src/main/jniLibs/x86/libaxstore.so
-	mkdir -p ./jvm/os-android/app/src/main/jniLibs/arm64-v8a
+	mkdir -p ./android-shell-app/app/src/main/jniLibs/arm64-v8a
 	cp ./rt-master/target/aarch64-linux-android/release/libaxstore.so ./android-shell-app/app/src/main/jniLibs/arm64-v8a/libaxstore.so
 	./android-shell-app/bin/prepare-gradle-build.sh
 	pushd android-shell-app; \
