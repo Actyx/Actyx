@@ -105,7 +105,6 @@
         "type": "object",
         "required": [
           "type",
-          "icon",
           "dist",
           "main"
         ],
