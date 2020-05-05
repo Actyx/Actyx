@@ -17,7 +17,7 @@ import com.actyx.os.android.legacy.metrics.MetricService
 import com.actyx.os.android.legacy.usb.BaltechReaderService
 import com.actyx.os.android.model.ActyxOsSettings
 import com.actyx.os.android.osnode.AxNode
-import com.actyx.os.android.osnode.model.PlatformProtocol.ToAndroid
+import com.actyx.os.android.osnode.model.NodeFfi.ToAndroid
 import com.actyx.os.android.util.Logger
 import com.actyx.os.android.util.lens
 import com.actyx.os.android.util.retryAlways

@@ -4,8 +4,8 @@ import android.content.Context
 import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
-import com.actyx.os.android.osnode.model.PlatformProtocol.ToAndroid
-import com.actyx.os.android.osnode.model.PlatformProtocol.ToNative
+import com.actyx.os.android.osnode.model.NodeFfi.ToAndroid
+import com.actyx.os.android.osnode.model.NodeFfi.ToNative
 import com.actyx.os.android.util.Logger
 import com.sun.jna.Callback
 import com.sun.jna.CallbackThreadInitializer
