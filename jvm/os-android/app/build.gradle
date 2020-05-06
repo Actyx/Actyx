@@ -10,7 +10,7 @@ apply from: '../actyx-local/actyx.properties'
 apply plugin: 'com.google.protobuf'
 
 androidGitVersion {
-  prefix 'axos-android-'
+  prefix 'os-android-'
   codeFormat 'MNNPPPBBB'
   format '%tag%%-count%%commit%%-branch%%-dirty%'
   hideBranches = ['master']
