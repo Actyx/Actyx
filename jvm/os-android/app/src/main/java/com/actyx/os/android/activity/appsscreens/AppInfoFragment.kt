@@ -3,19 +3,21 @@ package com.actyx.os.android.activity.appsscreens
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
+import androidx.fragment.app.Fragment
 import com.actyx.os.android.AppInfo
-
 import com.actyx.os.android.R
 import com.actyx.os.android.activity.MainActivity
 import com.actyx.os.android.activity.WebappActivity
+import com.actyx.os.android.util.toBitmap
 import kotlinx.android.synthetic.main.fragment_app_info.*
 
 class AppInfoFragment : Fragment(), View.OnClickListener {
@@ -61,13 +63,17 @@ class AppInfoFragment : Fragment(), View.OnClickListener {
 
 private fun addShortcut(app: AppInfo, ctx: Context) {
   // TODO: deduplicate shortcuts
+  val icon = app.iconPath?.let { BitmapFactory.decodeFile(it) } ?: ContextCompat.getDrawable(
+    ctx,
+    R.drawable.ic_actyxos_circle_gray
+  )?.toBitmap()
   val shortcutInfo =
     // TODO revisit ID
     ShortcutInfoCompat.Builder(ctx, "${app.name}::${app.uri}")
       .setShortLabel(app.name)
       .setLongLabel(app.name)
       // only the bitmap and resource types are supported
-      .setIcon(IconCompat.createWithBitmap(app.icon))
+      .setIcon(IconCompat.createWithBitmap(icon))
       .setIntent(mkWebappIntent(app, ctx))
       .build()
 

@@ -1,5 +1,6 @@
 package com.actyx.os.android.activity.appsscreens
 
+import android.graphics.BitmapFactory
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -33,7 +34,7 @@ class AppListAdapter(
       with(app) {
         containerView.firstLine.text = name
         containerView.secondLine.text = "$id v$version"
-        containerView.icon.setImageBitmap(app.icon)
+        app.iconPath?.let { containerView.icon.setImageBitmap(BitmapFactory.decodeFile(it)) }
         containerView.setOnClickListener { onItemClick(this) }
       }
     }

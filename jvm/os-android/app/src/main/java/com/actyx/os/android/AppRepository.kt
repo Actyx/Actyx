@@ -3,11 +3,9 @@ package com.actyx.os.android
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-import android.graphics.BitmapFactory
 import android.net.Uri
 import arrow.core.Either
 import arrow.core.Option
-import arrow.core.getOrElse
 import com.actyx.os.android.activity.MainActivity
 import com.actyx.os.android.activity.WebappActivity
 import com.actyx.os.android.api.RestServer
@@ -43,21 +41,15 @@ class AppRepository(extFilesDir: File, val ctx: Context) {
     appsSubject.onNext(appInfoList())
   }
 
-  private fun appInfo(manifest: Manifest.ManifestDetails): AppInfo {
-    val icon = manifest.appIconPath.map {
-      File(currentAppDir(manifest.id), it)
-    }.map { BitmapFactory.decodeFile(it.absolutePath) }.getOrElse {
-      BitmapFactory.decodeResource(ctx.resources, R.mipmap.ic_app_default_icon)
-    }
-    return AppInfo(
+  private fun appInfo(manifest: Manifest.ManifestDetails): AppInfo =
+    AppInfo(
       manifest.id,
       manifest.version,
       manifest.name,
-      icon,
+      iconFile(manifest).map { it.absolutePath }.orNull(),
       appUrl(manifest),
       loadSettingsSchema(manifest)
     )
-  }
 
   fun appInfo(appId: String): AppInfo? =
     currentAppDir(appId)?.let { current ->
@@ -90,6 +82,12 @@ class AppRepository(extFilesDir: File, val ctx: Context) {
           )
       }
     } ?: throw ResourceNotFoundException("App not found: \"$appId\"")
+
+  /**
+   * gets the app icon path referenced in the manifest within the repo
+   */
+  private fun iconFile(manifest: Manifest.ManifestDetails): Option<File> =
+    manifest.appIconPath.map { File(currentAppDir(manifest.id), it) }
 
   /**
    * creates the url under which the app is served
