@@ -17,7 +17,7 @@
     android:layout_height="40dp"
     android:layout_marginTop="16dp"
     android:scaleType="centerInside"
-    app:srcCompat="@drawable/ic_actyxos"
+    app:srcCompat="@drawable/ic_actyxos_circle_gray"
     android:contentDescription="@string/app_icon_description"/>
 
   <LinearLayout
