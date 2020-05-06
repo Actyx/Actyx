@@ -100,7 +100,8 @@ class AppRepository(extFilesDir: File, val ctx: Context) {
         .scheme("http")
         .encodedAuthority("localhost:${RestServer.Port}")
         // .path("apps/${manifest.id}/${manifest.main}
-        // FIXME: Remove, once we rewrite the build manifest properly
+        // TODO: Remove, once we rewrite the build manifest properly
+        // https://github.com/Actyx/Cosmos/issues/3222
         .path("apps/${manifest.id}/${manifest.main.split("/").last()}")
         .build()
 
