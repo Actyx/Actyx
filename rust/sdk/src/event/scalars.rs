@@ -25,77 +25,97 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-/// The semantics denotes a certain kind of fish and usually implies a certain type
-/// of payloads. For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started)
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
-pub struct Semantics(ArcVal<str>);
+macro_rules! mk_scalar {
+    ($(#[$attr:meta])* struct $id:ident) => {
 
-impl Semantics {
-    pub fn new(value: String) -> Self {
-        Self(value.as_str().into())
-    }
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-    pub fn as_arc(&self) -> &Arc<str> {
-        &self.0.as_arc()
+	$(#[$attr])*
+        #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+        #[cfg_attr(feature = "dataflow", derive(Abomonation))]
+        pub struct $id(ArcVal<str>);
+
+        impl $id {
+            pub fn new(value: String) -> Self {
+                Self(value.as_str().into())
+            }
+            pub fn as_str(&self) -> &str {
+                &self.0
+            }
+            pub fn as_arc(&self) -> &Arc<str> {
+                &self.0.as_arc()
+            }
+        }
+
+        impl From<&str> for $id {
+            fn from(value: &str) -> Self {
+                Self(value.into())
+            }
+        }
+
+        impl From<Arc<str>> for $id {
+            fn from(value: Arc<str>) -> Self {
+                Self(value.into())
+            }
+        }
+
+        impl Deref for $id {
+            type Target = str;
+            fn deref(&self) -> &Self::Target {
+                self.0.as_ref()
+            }
+        }
+    };
+}
+
+mk_scalar!(
+    /// The semantics denotes a certain kind of fish and usually implies a certain type
+    /// of payloads. For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started)
+    struct Semantics
+);
+
+mk_scalar!(
+    /// The name identifies a particular instance of a Fish, i.e. one of a given kind as identified by
+    /// its semantics. For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started)
+    struct FishName
+);
+
+mk_scalar!(
+    /// Arbitrary metadata-string for an Event. Website documentation pending.
+    struct Tag
+);
+
+/// Shorthand for creating a set of tags from `&str`s.
+#[macro_export]
+macro_rules! tags {
+    ($($x:expr),*) => ({
+        let mut _temp = std::collections::BTreeSet::<actyxos_sdk::event::Tag>::new();
+
+        $(_temp.insert(actyxos_sdk::event::Tag::from($x));)*
+
+	_temp
+    });
+}
+
+impl From<&Semantics> for Tag {
+    fn from(value: &Semantics) -> Self {
+        Tag::new(format!("semantics:{}", value.as_str()))
     }
 }
 
-impl From<&str> for Semantics {
-    fn from(value: &str) -> Self {
-        Self(value.into())
+impl From<Semantics> for Tag {
+    fn from(value: Semantics) -> Self {
+        Tag::from(&value)
     }
 }
 
-impl From<Arc<str>> for Semantics {
-    fn from(value: Arc<str>) -> Self {
-        Self(value.into())
+impl From<&FishName> for Tag {
+    fn from(value: &FishName) -> Self {
+        Tag::new(format!("fish_name:{}", value.as_str()))
     }
 }
 
-impl Deref for Semantics {
-    type Target = str;
-    fn deref(&self) -> &Self::Target {
-        self.0.as_ref()
-    }
-}
-
-/// The name identifies a particular instance of a Fish, i.e. one of a given kind as identified by
-/// its semantics. For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started)
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
-pub struct FishName(ArcVal<str>);
-
-impl FishName {
-    pub fn new(value: String) -> Self {
-        Self(value.into())
-    }
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-    pub fn as_arc(&self) -> &Arc<str> {
-        &self.0.as_arc()
-    }
-}
-
-impl From<&str> for FishName {
-    fn from(value: &str) -> Self {
-        Self(value.into())
-    }
-}
-
-impl From<Arc<str>> for FishName {
-    fn from(value: Arc<str>) -> Self {
-        Self(value.into())
-    }
-}
-
-impl Deref for FishName {
-    type Target = str;
-    fn deref(&self) -> &Self::Target {
-        self.0.as_ref()
+impl From<FishName> for Tag {
+    fn from(value: FishName) -> Self {
+        Tag::from(&value)
     }
 }
 
@@ -212,6 +232,8 @@ impl SourceId {
     }
 }
 
+impl std::error::Error for SourceIdReadError {}
+
 impl Debug for SourceId {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), std::fmt::Error> {
         write!(f, "SourceId({})", self.as_str())
@@ -272,5 +294,26 @@ impl<'de> Deserialize<'de> for SourceId {
 impl Serialize for SourceId {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(self.as_str())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn semantics_to_tag() {
+        let semantics = Semantics::from("test");
+
+        assert_eq!("semantics:test", Tag::from(&semantics).as_str());
+        assert_eq!("semantics:test", Tag::from(semantics).as_str());
+    }
+
+    #[test]
+    fn fish_name_to_tag() {
+        let fish_name = FishName::from("test");
+
+        assert_eq!("fish_name:test", Tag::from(&fish_name).as_str());
+        assert_eq!("fish_name:test", Tag::from(fish_name).as_str());
     }
 }
