@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.actyx.os.android">
+
+    <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <!--  LEGACY METRICS-->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!--  LEGACY NFC-->
+    <uses-permission android:name="android.permission.NFC" />
+
+    <!--  LEGACY USB-->
+    <uses-feature
+        android:name="android.hardware.usb.host"
+        android:required="false" />
+    <!--  LEGACY NFC-->
+    <uses-feature
+        android:name="android.hardware.nfc"
+        android:required="true" />
+
+    <application
+        android:name=".Application"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme"
+        android:usesCleartextTraffic="true"
+        tools:ignore="GoogleAppIndexingWarning">
+        <activity
+            android:name=".activity.WebappActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:documentLaunchMode="intoExisting"
+            android:theme="@style/AppTheme.Fullscreen">
+            <!--
+            documentLaunchMode="intoExisting" will run this in a dedicated task
+            depending on what's set in setDataAndType() on the starting intent.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.CREATE_SHORTCUT" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".activity.MainActivity"
+            android:label="@string/app_name"
+            android:theme="@style/AppTheme.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!--  LEGACY USB-->
+        <activity
+            android:name="com.actyx.os.android.legacy.usb.BaltechEventReceiverActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:label="ActyxOS"
+            android:noHistory="true"
+            android:theme="@style/Theme.Transparent">
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/usb_device_filter_baltech" />
+        </activity>
+        <!--  LEGACY NFC-->
+        <activity
+            android:name="com.actyx.os.android.legacy.nfc.NfcIntentReceiverActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:label="ActyxOS"
+            android:noHistory="true"
+            android:theme="@style/Theme.Transparent">
+            <intent-filter>
+                <action android:name="android.nfc.action.TECH_DISCOVERED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.nfc.action.TECH_DISCOVERED"
+                android:resource="@xml/nfc_tech_filter" />
+        </activity>
+        <service
+            android:name=".service.BackgroundServices"
+            android:exported="false"
+            android:process=":background_services"
+            android:stopWithTask="false" />
+        <receiver android:name=".Autostart">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

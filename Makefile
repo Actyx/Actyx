@@ -273,20 +273,20 @@ axosandroid-libs-aarch64: debug
 	$(call fn-android-libs,aarch64)
 
 axosandroid-app: debug
-	./android-actyxos-app/bin/get-keystore.sh
-	mkdir -p ./android-actyxos-app/app/src/main/jniLibs/x86
-	cp ./rt-master/target/i686-linux-android/release/lib*.so ./android-actyxos-app/app/src/main/jniLibs/x86/
-	mkdir -p ./android-actyxos-app/app/src/main/jniLibs/arm64-v8a
-	cp ./rt-master/target/aarch64-linux-android/release/lib*.so ./android-actyxos-app/app/src/main/jniLibs/arm64-v8a
-	docker run -v `pwd`/android-actyxos-app:/src \
+	./jvm/os-android/bin/get-keystore.sh
+	mkdir -p ./jvm/os-android/app/src/main/jniLibs/x86
+	cp ./rt-master/target/i686-linux-android/release/lib*.so ./jvm/os-android/app/src/main/jniLibs/x86/
+	mkdir -p ./jvm/os-android/app/src/main/jniLibs/arm64-v8a
+	cp ./rt-master/target/aarch64-linux-android/release/lib*.so ./jvm/os-android/app/src/main/jniLibs/arm64-v8a
+	docker run -v `pwd`/jvm/os-android:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it actyx/util:buildrs-x64-latest \
 	./gradlew clean ktlintCheck build assembleRelease
-	echo 'APK: ./android-actyxos-app/app/build/outputs/apk/release/app-release.apk'
+	echo 'APK: ./jvm/os-android/app/build/outputs/apk/release/app-release.apk'
 
 axosandroid-install: debug
 	adb uninstall com.actyx.os.android
-	adb install ./android-actyxos-app/app/build/outputs/apk/release/app-release.apk
+	adb install ./jvm/os-android/app/build/outputs/apk/release/app-release.apk
 
 axosandroid: debug clean axosandroid-libs axosandroid-libs-aarch64 axosandroid-app

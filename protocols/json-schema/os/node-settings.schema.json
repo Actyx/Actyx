@@ -3,31 +3,31 @@
   "$id": "http://www.actyx.com/schemas/os/node-settings.schema.json",
   "type": "object",
   "required": [
-    "General",
-    "Licensing",
-    "Services"
+    "general",
+    "licensing",
+    "services"
   ],
   "properties": {
-    "General": {
+    "general": {
       "$ref": "#/definitions/General"
     },
-    "Licensing": {
+    "licensing": {
       "$ref": "#/definitions/Licensing"
     },
-    "Services": {
+    "services": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "EventService": {
+        "eventService": {
           "$ref": "#/definitions/Services/EventService"
         },
-        "ConsoleService": {
+        "consoleService": {
           "$ref": "#/definitions/Services/ConsoleService"
         },
-        "DockerRuntime": {
+        "dockerRuntime": {
           "$ref": "#/definitions/Services/DockerRuntime"
         },
-        "WebViewRuntime": {
+        "webViewRuntime": {
           "$ref": "#/definitions/Services/WebViewRuntime"
         }
       }
@@ -67,39 +67,46 @@
       },
       "License": {
         "oneOf": [
-          { "$ref": "#/definitions/Basic/LicenseKey" },
-          { "type": "string", "const": "development" }
+          {
+            "$ref": "#/definitions/Basic/LicenseKey"
+          },
+          {
+            "type": "string",
+            "const": "development"
+          }
         ]
       }
     },
     "General": {
       "type": "object",
       "required": [
-        "SwarmKey",
-        "BootstrapNodes",
-        "DisplayName"
+        "swarmKey",
+        "bootstrapNodes",
+        "displayName"
       ],
       "additionalProperties": false,
       "properties": {
-        "SwarmKey": {
+        "swarmKey": {
           "$ref": "#/definitions/Basic/Key"
         },
-        "BootstrapNodes": {
+        "bootstrapNodes": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": {
+            "type": "string"
+          },
           "minItems": 1,
           "uniqueItems": true
         },
-        "DisplayName": {
+        "displayName": {
           "$ref": "#/definitions/Basic/NonEmptyString"
         },
-        "LogLevels": {
+        "logLevels": {
           "type": "object",
           "properties": {
-            "OS": {
+            "os": {
               "$ref": "#/definitions/Composite/LogLevel"
             },
-            "Apps": {
+            "apps": {
               "$ref": "#/definitions/Composite/LogLevel"
             }
           }
@@ -109,20 +116,22 @@
     "Licensing": {
       "type": "object",
       "required": [
-        "OS",
-        "Apps"
+        "os",
+        "apps"
       ],
       "additionalProperties": false,
       "properties": {
-        "OS": {
+        "os": {
           "$ref": "#/definitions/Composite/License"
         },
-        "Apps": {
+        "apps": {
           "type": "object",
           "propertyNames": {
             "pattern": "^(\\d|\\w|-|_)+(\\.(\\d|\\w|-|_)+)*$"
           },
-          "additionalProperties": { "$ref": "#/definitions/Composite/License" },
+          "additionalProperties": {
+            "$ref": "#/definitions/Composite/License"
+          },
           "description": "Key-value pairs where the key is an app's ID."
         }
       }
@@ -131,14 +140,14 @@
       "EventService": {
         "type": "object",
         "required": [
-          "Topic"
+          "topic"
         ],
         "additionalProperties": false,
         "properties": {
-          "Topic": {
+          "topic": {
             "$ref": "#/definitions/Basic/NonEmptyString"
           },
-          "ReadOnly": {
+          "readOnly": {
             "type": "boolean",
             "default": false
           },
@@ -153,25 +162,25 @@
         "type": "object",
         "required": [],
         "additionalProperties": false,
-        "properties": { }
+        "properties": {}
       },
       "ConsoleService": {
         "type": "object",
         "required": [],
         "additionalProperties": false,
-        "properties": { }
+        "properties": {}
       },
       "DockerRuntime": {
         "type": "object",
         "required": [],
         "additionalProperties": false,
-        "properties": { }
+        "properties": {}
       },
       "WebViewRuntime": {
         "type": "object",
         "required": [],
         "additionalProperties": false,
-        "properties": { }
+        "properties": {}
       }
     }
   }
