@@ -127,6 +127,13 @@ class WebappActivity : BaseActivity() {
     tracker.close()
   }
 
+  override fun onBackPressed() {
+    // The default impl destroys the association between the start intent data and this instance of
+    // the activity so that a new (possibly duplicated) instance of the activity is created
+    // whenever a new start intent is sent.
+    moveTaskToBack(true)
+  }
+
   override fun onBackgroundServicesConnected(backgroundServices: IBackgroundServices) {
     this.backgroundServices = backgroundServices
     val appInfo = backgroundServices.getAppInfo(appId)
