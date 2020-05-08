@@ -60,15 +60,26 @@
       "SemanticVersion": {
         "type": "string",
         "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$"
+      },
+      "SettingsSchema": {
+        "anyOf": [
+          {
+            "$ref": "#/definitions/Basic/PathToJsonFile"
+          },
+          {
+            "$ref": "http://json-schema.org/draft-06/schema#"
+          }
+        ]
       }
     },
     "Enum": {
       "ManifestVersion": {
         "type": "string",
         "enum": [
-          "1.0"
+          "1.0",
+          "1.1"
         ],
-        "default": "1.0"
+        "default": "1.1"
       }
     },
     "Composite": {
@@ -97,7 +108,7 @@
             "$ref": "#/definitions/Basic/NonEmptyString"
           },
           "settingsSchema": {
-            "$ref": "#/definitions/Basic/PathToJsonFile"
+            "$ref": "#/definitions/Basic/SettingsSchema"
           }
         }
       },
