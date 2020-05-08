@@ -35,11 +35,11 @@
         <activity
             android:name=".activity.WebappActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
-            android:documentLaunchMode="intoExisting"
-            android:theme="@style/AppTheme.Fullscreen">
+            android:theme="@style/AppTheme.Fullscreen"
+            android:documentLaunchMode="intoExisting">
             <!--
-            documentLaunchMode="intoExisting" will run this in a dedicated task
-            depending on what's set in setDataAndType() on the starting intent.
+            documentLaunchMode="intoExisting" will run this in a dedicated task or reuse a possibly
+            existing one with with equal starting intent's `dataAndType`.
             -->
             <intent-filter>
                 <action android:name="android.intent.action.CREATE_SHORTCUT" />
