@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 use fixed::types::extra::*;
-use fixed::{traits::ToFixed, FixedI128};
+use fixed::{
+    traits::{FromFixed, ToFixed},
+    FixedI128,
+};
 use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
@@ -187,15 +190,15 @@ impl<'a, T: 'a + LeEqU128> Product<&'a FixNum<T>> for FixNum<T> {
     }
 }
 
-impl<T: LeEqU128> FixNum<T> {
-    fn from_num<S: ToFixed>(src: S) -> Self {
-        Self(FixedI128::saturating_from_num(src))
-    }
-}
-
 impl<T: LeEqU128> From<FixedI128<T>> for FixNum<T> {
     fn from(x: FixedI128<T>) -> Self {
         Self(x)
+    }
+}
+
+impl<T: LeEqU128> Into<FixedI128<T>> for FixNum<T> {
+    fn into(self) -> FixedI128<T> {
+        self.0
     }
 }
 
@@ -205,19 +208,141 @@ impl<T: LeEqU128> Display for FixNum<T> {
     }
 }
 
-/// Construct a FixNum from a numeric input (like an `f64` or `u64`).
-///
-/// Will panic when called with `NaN` (because that is _not a number_ and you
-/// shouldn’t be passing that around).
-///
-/// ```rust
-/// # use actyxos_sdk::types::{FixNum, fixnum, fixnum_types::*};
-/// let a: FixNum<U12> = fixnum::<U12, _>(5);
-/// let b: FixNum<U12> = a + fixnum(12);
-/// assert_eq!(b, fixnum::<U12, _>(17));
-/// ```
-pub fn fixnum<T: LeEqU128, Src: ToFixed>(src: Src) -> FixNum<T> {
-    FixNum::from_num(src)
+impl<T: LeEqU128> FixNum<T> {
+    /// Construct a FixNum from a numeric input (like an `f64` or `u64`), possibly panicking.
+    ///
+    /// Will panic when called with `NaN` (because that is _not a number_ and you
+    /// shouldn’t be passing that around).
+    ///
+    /// Will panic when the converted number does not fit into FixNum.
+    ///
+    /// ```rust
+    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// let a: FixNum<U12> = FixNum::<U12>::panicking(5);
+    /// let b: FixNum<U12> = a + 12;
+    /// assert_eq!(b, FixNum::panicking(17));
+    /// ```
+    pub fn panicking<Src: ToFixed>(src: Src) -> FixNum<T> {
+        FixNum(src.to_fixed())
+    }
+
+    /// Construct a FixNum from a numeric input (like an `f64` or `u64`), returning an option.
+    ///
+    /// Will panic when called with `NaN` (because that is _not a number_ and you
+    /// shouldn’t be passing that around).
+    ///
+    /// ```rust
+    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// let a = FixNum::<U32>::checked(5);
+    /// assert_eq!(a, Some(FixNum::panicking(5)));
+    /// ```
+    pub fn checked<Src: ToFixed>(src: Src) -> Option<FixNum<T>> {
+        src.checked_to_fixed().map(FixNum)
+    }
+
+    /// Construct a FixNum from a numeric input (like an `f64` or `u64`), saturating on overflow.
+    ///
+    /// Will panic when called with `NaN` (because that is _not a number_ and you
+    /// shouldn’t be passing that around).
+    ///
+    /// ```rust
+    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// let a: FixNum<U127> = FixNum::<U127>::saturating(5);
+    /// assert_eq!(a, FixNum::saturating(1));
+    /// ```
+    pub fn saturating<Src: ToFixed>(src: Src) -> FixNum<T> {
+        FixNum(src.saturating_to_fixed())
+    }
+
+    /// Construct a FixNum from a numeric input (like an `f64` or `u64`).
+    ///
+    /// Will panic when called with `NaN` (because that is _not a number_ and you
+    /// shouldn’t be passing that around).
+    ///
+    /// ```rust
+    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// let a: FixNum<U127> = FixNum::<U127>::wrapping(1.3);
+    /// assert_eq!(a, FixNum::panicking(-0.7));
+    /// ```
+    pub fn wrapping<Src: ToFixed>(src: Src) -> FixNum<T> {
+        FixNum(src.wrapping_to_fixed())
+    }
+
+    /// Construct a FixNum from a numeric input (like an `f64` or `u64`) and returns
+    /// also a flag whether an overflow occurred.
+    ///
+    /// Will panic when called with `NaN` (because that is _not a number_ and you
+    /// shouldn’t be passing that around).
+    ///
+    /// ```rust
+    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// let (a, overflow) = FixNum::<U127>::overflowing(5);
+    /// assert_eq!(a, FixNum::panicking(-1));
+    /// assert!(overflow);
+    /// ```
+    pub fn overflowing<Src: ToFixed>(src: Src) -> (FixNum<T>, bool) {
+        let (f, b) = src.overflowing_to_fixed();
+        (FixNum(f), b)
+    }
+
+    /// Convert to a primitive number type, panicking on overflow if debug assertions are on.
+    ///
+    /// ```rust
+    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// let f: i8 = FixNum::<U100>::panicking(5).to_num_panicking();
+    /// assert_eq!(f, 5);
+    /// ```
+    pub fn to_num_panicking<Dst: FromFixed>(self) -> Dst {
+        Dst::from_fixed(self.0)
+    }
+
+    /// Convert to a primitive number type, returning an option.
+    ///
+    /// ```rust
+    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// let f: Option<i8> = FixNum::<U100>::panicking(5).to_num_checked();
+    /// assert_eq!(f, Some(5));
+    ///
+    /// let f: Option<i8> = FixNum::<U100>::panicking(1000).to_num_checked();
+    /// assert_eq!(f, None);
+    /// ```
+    pub fn to_num_checked<Dst: FromFixed>(self) -> Option<Dst> {
+        Dst::checked_from_fixed(self.0)
+    }
+
+    /// Convert to a primitive number type, saturating on overflow.
+    ///
+    /// ```rust
+    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// let f: i8 = FixNum::<U100>::panicking(130).to_num_saturating();
+    /// assert_eq!(f, 127);
+    /// ```
+    pub fn to_num_saturating<Dst: FromFixed>(self) -> Dst {
+        Dst::saturating_from_fixed(self.0)
+    }
+
+    /// Convert to a primitive number type, wrapping on overflow.
+    ///
+    /// ```rust
+    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// let f: i8 = FixNum::<U100>::panicking(130).to_num_wrapping();
+    /// assert_eq!(f, -126);
+    /// ```
+    pub fn to_num_wrapping<Dst: FromFixed>(self) -> Dst {
+        Dst::wrapping_from_fixed(self.0)
+    }
+
+    /// Convert to a primitive number type, wrapping on overflow and returning a flag.
+    ///
+    /// ```rust
+    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// let (f, overflow) = FixNum::<U100>::panicking(130).to_num_overflowing::<i8>();
+    /// assert_eq!(f, -126);
+    /// assert!(overflow);
+    /// ```
+    pub fn to_num_overflowing<Dst: FromFixed>(self) -> (Dst, bool) {
+        Dst::overflowing_from_fixed(self.0)
+    }
 }
 
 impl<T: LeEqU128> Serialize for FixNum<T> {
@@ -237,16 +362,16 @@ impl<'de, T: LeEqU128> Deserialize<'de> for FixNum<T> {
                 formatter.write_str("number")
             }
             fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
-                Ok(fixnum(v))
+                Ok(FixNum::saturating(v))
             }
             fn visit_u64<E: de::Error>(self, v: u64) -> Result<Self::Value, E> {
-                Ok(fixnum(v))
+                Ok(FixNum::saturating(v))
             }
             fn visit_f64<E: de::Error>(self, v: f64) -> Result<Self::Value, E> {
                 if v.is_nan() {
                     Err(E::custom("FixNum cannot parse NaN"))
                 } else {
-                    Ok(fixnum(v))
+                    Ok(FixNum::saturating(v))
                 }
             }
         }
@@ -274,7 +399,7 @@ mod tests {
         #[allow(clippy::approx_constant)]
         let js = json!({"x": 6213412, "y": 3.1415926});
         let s = serde_json::from_value::<S>(js).unwrap();
-        assert_eq!(s.x, fixnum(6213412));
+        assert_eq!(s.x, FixNum::panicking(6213412));
         assert_eq!(
             s.y.unwrap(),
             FixedI128::<U10>::from_bits(0b11__00100_10001).into()
@@ -338,11 +463,11 @@ mod tests {
     #[test]
     pub fn must_handle_edge_cases() {
         assert_eq!(get_error(json!({})), "invalid type: map, expected number");
-        let max = fixnum::<U110, _>(262144);
-        assert!(max > fixnum::<U110, _>(131071.9999999));
+        let max = FixNum::<U110>::saturating(262144);
+        assert!(max > FixNum::<U110>::panicking(131071.9999999));
         assert_eq!(get_value(json!(1000000)), max);
-        let min = fixnum::<U110, _>(-262144);
-        assert!(min < fixnum::<U110, _>(-131071.9999999));
+        let min = FixNum::<U110>::saturating(-262144);
+        assert!(min < FixNum::<U110>::panicking(-131071.9999999));
         assert_eq!(get_value(json!(-1000000)), min);
     }
 
@@ -351,39 +476,49 @@ mod tests {
     pub fn must_compute() {
         use crate::types::fixnum_types::*;
 
-        let mut x = fixnum::<U30, _>(12);
-        assert_eq!(x + 3, fixnum(15));
-        assert_eq!(x + x, fixnum(24));
-        assert_eq!(x - 3, fixnum(9));
-        assert_eq!(x - x, fixnum(0));
-        assert_eq!(x * 3, fixnum(36));
-        assert_eq!(x * x, fixnum(144));
-        assert_eq!(x / 4, fixnum(3));
-        assert_eq!(x / x, fixnum(1));
-        assert_eq!(x >> 3, fixnum(1.5));
-        assert_eq!(x << 1, fixnum(24));
-        assert_eq!(x % 5, fixnum(2));
-        assert_eq!(x % fixnum(7), fixnum(5));
+        let mut x = FixNum::<U30>::panicking(12);
+        assert_eq!(x + 3, FixNum::panicking(15));
+        assert_eq!(x + x, FixNum::panicking(24));
+        assert_eq!(x - 3, FixNum::panicking(9));
+        assert_eq!(x - x, FixNum::panicking(0));
+        assert_eq!(x * 3, FixNum::panicking(36));
+        assert_eq!(x * x, FixNum::panicking(144));
+        assert_eq!(x / 4, FixNum::panicking(3));
+        assert_eq!(x / x, FixNum::panicking(1));
+        assert_eq!(x >> 3, FixNum::panicking(1.5));
+        assert_eq!(x << 1, FixNum::panicking(24));
+        assert_eq!(x % 5, FixNum::panicking(2));
+        assert_eq!(x % FixNum::panicking(7), FixNum::panicking(5));
 
         x += -5.5;
-        x -= fixnum(2);
+        x -= FixNum::panicking(2);
         x /= 8;
-        x *= fixnum(1.75);
-        x %= fixnum(3);
+        x *= FixNum::panicking(1.75);
+        x %= FixNum::panicking(3);
         x >>= 5;
         x <<= 8;
 
-        assert_eq!(x, fixnum(63) / fixnum(8));
-        assert_eq!(!x, fixnum(-7.875000001));
-        assert_eq!(-x, fixnum(-63) >> 3);
+        assert_eq!(x, FixNum::panicking(63) / FixNum::panicking(8));
+        assert_eq!(!x, FixNum::panicking(-7.875000001));
+        assert_eq!(-x, FixNum::panicking(-63) >> 3);
 
-        let v: Vec<FixNum<U10>> = vec![fixnum(1), fixnum(2), fixnum(3)];
-        assert_eq!(v.iter().sum::<FixNum<U10>>(), fixnum(6));
-        assert_eq!(v.clone().into_iter().sum::<FixNum<U10>>(), fixnum(6));
-        assert_eq!(v.iter().product::<FixNum<U10>>(), fixnum(6));
-        assert_eq!(v.clone().into_iter().product::<FixNum<U10>>(), fixnum(6));
+        let v: Vec<FixNum<U10>> = vec![
+            FixNum::panicking(1),
+            FixNum::panicking(2),
+            FixNum::panicking(3),
+        ];
+        assert_eq!(v.iter().sum::<FixNum<U10>>(), FixNum::panicking(6));
+        assert_eq!(
+            v.clone().into_iter().sum::<FixNum<U10>>(),
+            FixNum::panicking(6)
+        );
+        assert_eq!(v.iter().product::<FixNum<U10>>(), FixNum::panicking(6));
+        assert_eq!(
+            v.clone().into_iter().product::<FixNum<U10>>(),
+            FixNum::panicking(6)
+        );
 
         let v = v.iter().map(|x| x + 3).collect::<Vec<_>>();
-        assert_eq!(v.into_iter().sum::<FixNum<U10>>(), fixnum(15));
+        assert_eq!(v.into_iter().sum::<FixNum<U10>>(), FixNum::panicking(15));
     }
 }
