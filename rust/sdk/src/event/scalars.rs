@@ -138,6 +138,52 @@ macro_rules! source_id {
     }};
 }
 
+/// Macro for constructing a set of [`Tag`](event/struct.Tag.html) values.
+///
+/// The values accepted are either
+///  - non-empty string literals
+///  - normal expressions (enclosed in parens if multiple tokens)
+///
+/// ```rust
+/// use actyxos_sdk::{tag, tags, semantics, event::{Semantics, Tag}};
+/// use std::collections::BTreeSet;
+///
+/// let sem: Semantics = semantics!("b");
+/// let tags: BTreeSet<Tag> = tags!("a", sem);
+///
+/// let mut expected = BTreeSet::new();
+/// expected.insert(tag!("a"));
+/// expected.insert(tag!("semantics:b"));
+/// assert_eq!(tags, expected);
+/// ```
+#[macro_export]
+macro_rules! tags {
+    ($($expr:tt),*) => {{
+        let mut _tags = ::std::collections::BTreeSet::new();
+        $(
+            {
+                mod y {
+                    $crate::assert_len! { $expr, 1..,
+                        pub fn x(z: &str) -> $crate::event::Tag {
+                            use ::std::convert::TryFrom;
+                            $crate::event::Tag::try_from(z).unwrap()
+                        },
+                        pub fn x(z: impl Into<$crate::event::Tag>) -> $crate::event::Tag {
+                            z.into()
+                        }
+                    }
+                }
+                #[allow(unused_parens)]
+                _tags.insert(y::x($expr));
+            }
+        )*
+        _tags
+    }};
+    ($($x:tt)*) => {
+        compile_error!("This macro supports only string literals or expressions in parens.")
+    }
+}
+
 // DO NOT FORGET TO UPDATE THE VALUE IN THE MACRO ABOVE!
 const MAX_SOURCEID_LENGTH: usize = 15;
 
@@ -427,6 +473,7 @@ impl Serialize for SourceId {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeSet;
 
     #[test]
     fn semantics_to_tag() {
@@ -452,5 +499,15 @@ mod tests {
         );
         let res = serde_json::from_str::<Semantics>("\"\"").unwrap_err();
         assert_eq!(res.to_string(), "expected non-empty string");
+    }
+
+    #[test]
+    fn make_tags() {
+        let sem_b = semantics!("b");
+        let mut tags = BTreeSet::new();
+        tags.insert(tag!("a"));
+        tags.insert(tag!("semantics:b"));
+        // parens are there on purpose to make sure that clippy is silenced
+        assert_eq!(tags!("a", (sem_b)), tags);
     }
 }
