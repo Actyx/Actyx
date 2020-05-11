@@ -78,6 +78,9 @@ extern crate abomonation_derive;
 #[macro_use]
 #[cfg(test)]
 extern crate serde_json;
+#[allow(unused_imports)]
+#[macro_use]
+extern crate actyxos_sdk_macros;
 
 pub mod event;
 pub mod event_service;

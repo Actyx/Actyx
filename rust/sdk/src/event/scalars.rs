@@ -17,25 +17,89 @@ use crate::types::ArcVal;
 use derive_more::Display;
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt::{self, Debug, Display, Formatter};
-use std::str::FromStr;
-use std::sync::Arc;
 use std::{
+    convert::TryFrom,
+    fmt::{self, Debug, Display, Formatter},
     ops::{Add, Deref, Sub},
+    str::FromStr,
+    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
-macro_rules! mk_scalar {
-    ($(#[$attr:meta])* struct $id:ident) => {
+#[derive(Debug, Display, PartialEq)]
+pub enum ParseError {
+    #[display(fmt = "SourceId was longer than maximum")]
+    SourceIdTooLong,
+    #[display(fmt = "Empty string is not permissible for SourceId")]
+    EmptySourceId,
+    #[display(fmt = "Empty string is not permissible for Semantics")]
+    EmptySemantics,
+    #[display(fmt = "Empty string is not permissible for FishName")]
+    EmptyFishName,
+    #[display(fmt = "Empty string is not permissible for Tag")]
+    EmptyTag,
+}
+impl std::error::Error for ParseError {}
 
-	$(#[$attr])*
+#[macro_export]
+macro_rules! semantics {
+    ($lit:tt) => {{
+        #[allow(dead_code)]
+        type X = assert_minlen!(1($lit));
+        use ::std::convert::TryFrom;
+        $crate::event::Semantics::try_from($lit).unwrap()
+    }};
+}
+
+#[macro_export]
+macro_rules! fish_name {
+    ($lit:tt) => {{
+        #[allow(dead_code)]
+        type X = assert_minlen!(1($lit));
+        use ::std::convert::TryFrom;
+        $crate::event::FishName::try_from($lit).unwrap()
+    }};
+}
+
+#[macro_export]
+macro_rules! tag {
+    ($lit:tt) => {{
+        #[allow(dead_code)]
+        type X = assert_minlen!(1($lit));
+        use ::std::convert::TryFrom;
+        $crate::event::Tag::try_from($lit).unwrap()
+    }};
+}
+
+#[macro_export]
+macro_rules! source_id {
+    ($lit:tt) => {{
+        #[allow(dead_code)]
+        type X = (assert_maxlen!(15($lit)), assert_minlen!(1($lit)));
+        use ::std::convert::TryFrom;
+        $crate::event::SourceId::try_from($lit).unwrap()
+    }};
+}
+
+// DO NOT FORGET TO UPDATE THE VALUE IN THE MACRO ABOVE!
+const MAX_SOURCEID_LENGTH: usize = 15;
+
+macro_rules! mk_scalar {
+    ($(#[$attr:meta])* struct $id:ident, $err:ident) => {
+
+        $(#[$attr])*
+        // FIXME plug empty string hole in Deserialize
         #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
         #[cfg_attr(feature = "dataflow", derive(Abomonation))]
         pub struct $id(ArcVal<str>);
 
         impl $id {
-            pub fn new(value: String) -> Self {
-                Self(value.as_str().into())
+            pub fn new(value: String) -> Result<Self, ParseError> {
+                if value.is_empty() {
+                    Err(ParseError::$err)
+                } else {
+                    Ok(Self(value.as_str().into()))
+                }
             }
             pub fn as_str(&self) -> &str {
                 &self.0
@@ -45,15 +109,25 @@ macro_rules! mk_scalar {
             }
         }
 
-        impl From<&str> for $id {
-            fn from(value: &str) -> Self {
-                Self(value.into())
+        impl TryFrom<&str> for $id {
+            type Error = ParseError;
+            fn try_from(value: &str) -> Result<Self, ParseError> {
+                if value.is_empty() {
+                    Err(ParseError::$err)
+                } else {
+                    Ok(Self(value.into()))
+                }
             }
         }
 
-        impl From<Arc<str>> for $id {
-            fn from(value: Arc<str>) -> Self {
-                Self(value.into())
+        impl TryFrom<Arc<str>> for $id {
+            type Error = ParseError;
+            fn try_from(value: Arc<str>) -> Result<Self, ParseError> {
+                if value.is_empty() {
+                    Err(ParseError::$err)
+                } else {
+                    Ok(Self(value.into()))
+                }
             }
         }
 
@@ -69,18 +143,18 @@ macro_rules! mk_scalar {
 mk_scalar!(
     /// The semantics denotes a certain kind of fish and usually implies a certain type
     /// of payloads. For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started)
-    struct Semantics
+    struct Semantics, EmptySemantics
 );
 
 mk_scalar!(
     /// The name identifies a particular instance of a Fish, i.e. one of a given kind as identified by
     /// its semantics. For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started)
-    struct FishName
+    struct FishName, EmptyFishName
 );
 
 mk_scalar!(
     /// Arbitrary metadata-string for an Event. Website documentation pending.
-    struct Tag
+    struct Tag, EmptyTag
 );
 
 /// Shorthand for creating a set of tags from `&str`s.
@@ -97,7 +171,7 @@ macro_rules! tags {
 
 impl From<&Semantics> for Tag {
     fn from(value: &Semantics) -> Self {
-        Tag::new(format!("semantics:{}", value.as_str()))
+        Tag::new(format!("semantics:{}", value.as_str())).unwrap()
     }
 }
 
@@ -109,7 +183,7 @@ impl From<Semantics> for Tag {
 
 impl From<&FishName> for Tag {
     fn from(value: &FishName) -> Self {
-        Tag::new(format!("fish_name:{}", value.as_str()))
+        Tag::new(format!("fish_name:{}", value.as_str())).unwrap()
     }
 }
 
@@ -193,8 +267,6 @@ impl LamportTimestamp {
     }
 }
 
-const MAX_SOURCEID_LENGTH: usize = 15;
-
 /// A source ID uniquely identifies one ActyxOS node
 ///
 /// You can obtain the node’s source ID using [`EventService::node_id`](../event_service/struct.EventService.html#method.node_id).
@@ -209,12 +281,6 @@ const MAX_SOURCEID_LENGTH: usize = 15;
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct SourceId([u8; MAX_SOURCEID_LENGTH + 1]);
-
-#[derive(Debug, Display, PartialEq)]
-pub enum SourceIdReadError {
-    #[display(fmt = "SourceId was longer than maximum")]
-    IdTooLong,
-}
 
 impl SourceId {
     pub fn as_str(&self) -> &str {
@@ -232,21 +298,27 @@ impl SourceId {
     }
 }
 
-impl std::error::Error for SourceIdReadError {}
-
 impl Debug for SourceId {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), std::fmt::Error> {
         write!(f, "SourceId({})", self.as_str())
     }
 }
 
-impl FromStr for SourceId {
-    type Err = SourceIdReadError;
+impl TryFrom<&str> for SourceId {
+    type Error = ParseError;
 
-    fn from_str(text: &str) -> Result<SourceId, SourceIdReadError> {
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Self::from_str(value)
+    }
+}
+
+impl FromStr for SourceId {
+    type Err = ParseError;
+
+    fn from_str(text: &str) -> Result<SourceId, ParseError> {
         let bytes = text.as_bytes();
         if bytes.len() > MAX_SOURCEID_LENGTH {
-            return Result::Err(SourceIdReadError::IdTooLong);
+            return Result::Err(ParseError::SourceIdTooLong);
         }
         let mut buf = [0; MAX_SOURCEID_LENGTH + 1];
         buf[MAX_SOURCEID_LENGTH] = bytes.len() as u8;
@@ -303,7 +375,7 @@ mod tests {
 
     #[test]
     fn semantics_to_tag() {
-        let semantics = Semantics::from("test");
+        let semantics = semantics!("test");
 
         assert_eq!("semantics:test", Tag::from(&semantics).as_str());
         assert_eq!("semantics:test", Tag::from(semantics).as_str());
@@ -311,7 +383,7 @@ mod tests {
 
     #[test]
     fn fish_name_to_tag() {
-        let fish_name = FishName::from("test");
+        let fish_name = fish_name!("test");
 
         assert_eq!("fish_name:test", Tag::from(&fish_name).as_str());
         assert_eq!("fish_name:test", Tag::from(fish_name).as_str());

@@ -223,11 +223,16 @@ pub struct EventServiceError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
+    use crate::{fish_name, semantics, source_id};
+    use std::{convert::TryInto, str::FromStr};
 
     #[test]
     fn must_pick_up_subscription() {
-        let sub = Subscription::local("semantics", "name", SourceId::from_str("source").unwrap());
+        let sub = Subscription::local(
+            semantics!("semantics"),
+            fish_name!("name"),
+            source_id!("source"),
+        );
         let bytes = serde_json::to_string(&sub).unwrap();
         assert_eq!(
             bytes,
@@ -247,7 +252,7 @@ mod tests {
 
         let bytes = r#"{"name":"name"}"#;
         let subs: Subscription = serde_json::from_str(bytes).unwrap();
-        assert_eq!(subs.as_tuple(), (None, Some("name".into()), None));
+        assert_eq!(subs.as_tuple(), (None, Some(fish_name!("name")), None));
 
         let bytes = r#"{"source":"name"}"#;
         let subs: Subscription = serde_json::from_str(bytes).unwrap();
