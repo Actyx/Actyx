@@ -45,7 +45,8 @@ docker-login-dockerhub:
 
 docker-login: docker-login-dockerhub
 
-getImageNameDockerhub = actyx/cosmos:$(1)-$(2)-$(3)
+DOCKER_REPO ?= actyx/cosmos
+getImageNameDockerhub = $(DOCKER_REPO):$(1)-$(2)-$(3)
 
 ifdef RETRY
 	RETRY_ONCE = false
@@ -200,7 +201,7 @@ actyxos-bin-win64: debug clean
 	$(eval ARCH?=win64)
 	$(eval TARGET:=x86_64-pc-windows-gnu)
 	$(eval OUTPUT:=./dist/bin/$(ARCH))
-	$(eval IMG:=actyx/cosmos:buildrs-x64-$(IMAGE_VERSION))
+	$(eval IMG:=actyx/util:buildrs-x64-$(IMAGE_VERSION))
 	$(call build_bins_and_move_win64,$(OUTPUT),$(TARGET),$(IMG))
 
 actyxos-bin-x64: debug clean
@@ -255,7 +256,7 @@ define fn-android-rust-lib
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-w /src/rt-master \
-	-it actyx/cosmos:buildrs-x64-latest \
+	-it actyx/util:buildrs-x64-latest \
 	cargo --locked build -p $(CRATE) --lib --release --target $(ARCH)-linux-android
 endef
 
@@ -280,7 +281,7 @@ axosandroid-app: debug
 	docker run -v `pwd`/jvm/os-android:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
-	-it actyx/cosmos:buildrs-x64-latest \
+	-it actyx/util:buildrs-x64-latest \
 	./gradlew clean ktlintCheck build assembleRelease
 	echo 'APK: ./jvm/os-android/app/build/outputs/apk/release/app-release.apk'
 
