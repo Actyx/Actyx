@@ -38,6 +38,9 @@ module.exports = {
       'os/api/node-settings-schema',
       'os/api/app-manifest-schema',
     ],
+    'SDKs': [
+      'os/sdks/rust',
+    ],
   },
   pondSidebar: {
     'Actyx Pond': [
