@@ -9,8 +9,8 @@ endif
 ifeq ($(GIT_BRANCH),master)
 	git_hash=$(shell git log -1 --pretty=%H)
 else
-  # Remove the Azure merge commit to get the actual latest commit in the PR branch
-  # TODO This will remove all the merge commits, so if the last commit before the merge is also a merge it will get the next-to-last one
+	# Remove the Azure merge commit to get the actual latest commit in the PR branch
+	# TODO This will remove all the merge commits, so if the last commit before the merge is also a merge it will get the next-to-last one
 	git_hash=$(shell git log -1 --no-merges --pretty=%H)
 endif
 component=$(shell echo $${DOCKER_TAG:-unknown-x64}|cut -f1 -d-)
@@ -30,7 +30,7 @@ DOCKER_BUILD_SBT = docker-build-bagsapconnector docker-build-flexishttpconnector
 IMAGE_VERSION:=$(or $(LOCAL_IMAGE_VERSION),latest)
 
 # Debug helpers
-print-%  : ; @echo $* = $($*)
+print-%	: ; @echo $* = $($*)
 debug: print-GIT_BRANCH print-git_hash print-component print-arch print-build_dir
 
 .PHONY: all
@@ -93,7 +93,7 @@ define fn_docker_build_musl
 	$(eval TARGET:=$(1))
 	$(eval IMAGE_NAME:=$(call getImageNameDockerhub,musl,$(TARGET),$(git_hash)))
 	pushd $(DOCKER_DIR)/musl; \
-	DOCKER_BUILDKIT=1 docker build -t $(IMAGE_NAME)  \
+	DOCKER_BUILDKIT=1 docker build -t $(IMAGE_NAME) \
 	--build-arg BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
  	--build-arg BUILD_SCCACHE_VERSION=$(BUILD_SCCACHE_VERSION) \
 	--build-arg TARGET=$(TARGET) \
@@ -156,7 +156,7 @@ define build_bins_and_move
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it $(3) \
 	cargo --locked build --release --target $(2) --bins
-	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -perm -u=x  \
+	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -perm -u=x \
 		-exec cp {} $(1) \;
 	echo "Please find your build artifacts in $(1)."
 endef
@@ -193,7 +193,7 @@ define build_bins_and_move_win64
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it $(3) \
 	cargo --locked build --release --target $(2) --bin store-cli
-	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -perm -u=x  \
+	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -perm -u=x \
 		-exec cp {} $(1) \;
 	echo "Please find your build artifacts in $(1)."
 endef
@@ -246,39 +246,66 @@ android-install: debug
 	adb install ./android-shell-app/app/build/outputs/apk/release/app-release.apk
 
 android-store-lib: debug
-	$(call fn-android-rust-lib,store-lib,i686)
-	$(call fn-android-rust-lib,store-lib,aarch64)
+	$(call fn-build-android-rust-lib-i686,store-lib)
+	$(call fn-build-android-rust-lib-arm64,store-lib)
 
-define fn-android-rust-lib
-	$(eval CRATE:=$(1))
+define fn-build-android-rust-lib
+	$(eval TARGET:=$(1))
 	$(eval ARCH:=$(2))
+	$(eval CRATE:=$(3))
 	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
 	docker run -v `pwd`:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-e RUST_BACKTRACE=1 \
 	-w /src/rt-master \
 	-it actyx/util:buildrs-x64-latest \
-	cargo --locked build -p $(CRATE) --lib --release --target $(ARCH)-linux-android
+	cargo --locked build -p $(CRATE) --lib --release --target $(TARGET)
 endef
 
-define fn-android-libs
-	$(eval ARCH:=$(1))
-	$(call fn-android-rust-lib,ax-os-node,$(ARCH))
+define fn-build-android-rust-lib-i686
+	$(call fn-build-android-rust-lib,i686-linux-android,x86,$(1))
+endef
+
+define fn-build-android-rust-lib-arm64
+	$(call fn-build-android-rust-lib,aarch64-linux-android,arm64-v8a,$(1))
+endef
+
+define fn-build-android-rust-lib-arm
+	$(call fn-build-android-rust-lib,armv7-linux-androideabi,armeabi,$(1))
+endef
+
+define fn-copy-axosandroid-lib
+	$(eval TARGET:=$(1))
+	$(eval ARCH:=$(2))
+	$(eval LIB:=$(3))
+	mkdir -p ./jvm/os-android/app/src/main/jniLibs/$(ARCH)/ && \
+		cp ./rt-master/target/$(TARGET)/release/$(LIB).so ./jvm/os-android/app/src/main/jniLibs/$(ARCH)/
+endef
+
+define fn-copy-axosandroid-lib-i686
+	$(call fn-copy-axosandroid-lib,i686-linux-android,x86,$(1))
+endef
+
+define fn-copy-axosandroid-lib-arm64
+	$(call fn-copy-axosandroid-lib,aarch64-linux-android,arm64-v8a,$(1))
+endef
+
+define fn-copy-axosandroid-lib-arm
+	$(call fn-copy-axosandroid-lib,armv7-linux-androideabi,armeabi-v7a,$(1))
 endef
 
 # ActyxOS on Android
 axosandroid-libs: debug
-	$(call fn-android-libs,i686)
+	$(call fn-build-android-rust-lib-i686,ax-os-node)
+	$(call fn-copy-axosandroid-lib-i686,libaxosnode)
+	$(call fn-build-android-rust-lib-arm64,ax-os-node)
+	$(call fn-copy-axosandroid-lib-arm64,libaxosnode)
+	$(call fn-build-android-rust-lib-arm,ax-os-node)
+	$(call fn-copy-axosandroid-lib-arm,libaxosnode)
 
-axosandroid-libs-aarch64: debug
-	$(call fn-android-libs,aarch64)
-
-axosandroid-app: debug
+axosandroid-app: debug axosandroid-libs
 	./jvm/os-android/bin/get-keystore.sh
-	mkdir -p ./jvm/os-android/app/src/main/jniLibs/x86
-	cp ./rt-master/target/i686-linux-android/release/lib*.so ./jvm/os-android/app/src/main/jniLibs/x86/
-	mkdir -p ./jvm/os-android/app/src/main/jniLibs/arm64-v8a
-	cp ./rt-master/target/aarch64-linux-android/release/lib*.so ./jvm/os-android/app/src/main/jniLibs/arm64-v8a
 	docker run -v `pwd`/jvm/os-android:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
@@ -290,4 +317,4 @@ axosandroid-install: debug
 	adb uninstall com.actyx.os.android
 	adb install ./jvm/os-android/app/build/outputs/apk/release/app-release.apk
 
-axosandroid: debug clean axosandroid-libs axosandroid-libs-aarch64 axosandroid-app
+axosandroid: debug clean axosandroid-libs axosandroid-app

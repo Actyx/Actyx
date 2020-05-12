@@ -4,14 +4,17 @@ steps:
       cargo fmt --all -- --check && \
       cargo --locked clippy -- -D warnings && \
       cargo --locked clippy --tests -- -D warnings && \
-      for i in i686 aarch64; do \
-        cargo --locked build -p ax-os-node --lib --release --target $i-linux-android; \
+
+      for i in "i686-linux-android" "aarch64-linux-android" "armv7-linux-androideabi"; do \
+        cargo --locked build -p ax-os-node --lib --release --target $i; \
       done && \
       mkdir -p ../jvm/os-android/app/src/main/jniLibs/x86/ && \
       cp ./target/i686-linux-android/release/libaxosnode.so ../jvm/os-android/app/src/main/jniLibs/x86/ && \
       mkdir -p ../jvm/os-android/app/src/main/jniLibs/arm64-v8a/ && \
       cp ./target/aarch64-linux-android/release/libaxosnode.so ../jvm/os-android/app/src/main/jniLibs/arm64-v8a/
-    displayName: 'Build rust libs (x86, aarch64)'
+      mkdir -p ../jvm/os-android/app/src/main/jniLibs/armeabi-v7a/ && \
+      cp ./target/armv7-linux-androideabi/release/libaxosnode.so ../jvm/os-android/app/src/main/jniLibs/armeabi-v7a/
+    displayName: 'Build rust libs (x86, aarch64, armv7a)'
     workingDirectory: 'rt-master'
     condition: contains(variables['BUILD_STRING'],'[build-axosandroid]')
   - script: |
