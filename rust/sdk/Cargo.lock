@@ -19,7 +19,7 @@ dependencies = [
 
 [[package]]
 name = "actyxos_sdk"
-version = "0.1.3"
+version = "0.2.0"
 dependencies = [
  "abomonation",
  "abomonation_derive",
