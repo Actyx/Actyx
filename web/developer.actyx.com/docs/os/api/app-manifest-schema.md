@@ -16,7 +16,7 @@ version: 1.0.3
 displayName: App 1
 description: "A great first app"
 dockerCompose: ./docker-compose.yml
-settingsSchema: ./settings-schema.json
+settingsSchema: ./settings-schema.json # <---- you could also inline the settings schema
 ```
 
 Here is an example for a **web app** for the [WebView Runtime](/docs/os/advanced-guides/app-runtimes):
@@ -31,7 +31,7 @@ description: "A great first app"
 icon: ./build/assets/app-icon.png
 dist: ./build/
 main: index.html # this is relative to dist
-settingsSchema: ./settings-schema.json
+settingsSchema: ./settings-schema.json # <---- you could also inline the settings schema
 ```
 
 
