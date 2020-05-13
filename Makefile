@@ -150,8 +150,9 @@ docker-build-actyxos: docker-build-docker-logging-plugin
 define build_bins_and_move
 	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
 	mkdir -p $(1)
-	docker run -v `pwd`/rt-master:/src \
+	docker run -v `pwd`:/src \
 	-u builder \
+	-w /src/rt-master \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it $(3) \
 	cargo --locked build --release --target $(2) --bins
@@ -174,7 +175,7 @@ define build_bins_and_move_win64
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it $(3) \
 	bash -c "\
-		cd /tmp/ &&
+		cd /tmp/ && \
 		wget -q https://www.winpcap.org/install/bin/WpdPack_4_1_2.zip && \
 		unzip -p WpdPack_4_1_2.zip WpdPack/Lib/x64/Packet.lib > /usr/x86_64-w64-mingw32/lib/Packet.lib && \
 		rm WpdPack_4_1_2.zip && \
