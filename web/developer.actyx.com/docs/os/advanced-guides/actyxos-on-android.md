@@ -14,6 +14,7 @@ For a list of supported devices, please refer to [Supported edge devices](/docs/
 - Android 6.0+
 - [Android System Webview](https://play.google.com/store/apps/details?id=com.google.android.webview) Version 70+
 - 2GB Ram
+- `x86` or `arm64-v8a` [ABI](https://developer.android.com/ndk/guides/abis.html#sa)
 
 :::tip Running ActyxOS on Android with a fleet management service
 For running ActyxOS on Android in production, most users set up a fleet management service like [Workspace One](https://www.vmware.com/products/workspace-one.html). Please refer to our guide for [Using Workspace One](/docs/os/advanced-guides/using-workspace-one) for more information.

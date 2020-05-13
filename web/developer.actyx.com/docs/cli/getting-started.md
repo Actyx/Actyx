@@ -35,7 +35,7 @@ This section describes how to install the Actyx CLI. Just choose your operating 
 </TabItem>
 <TabItem value="unix">
 
-- macOS
+- 64-bit version of macOS
 
 or Linux based on one of the following architectures:
 
