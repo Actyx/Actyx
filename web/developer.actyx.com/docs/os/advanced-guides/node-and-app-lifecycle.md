@@ -101,7 +101,7 @@ In this lifecycle stage, three events can lead to state transitions:
 - **NodeSettingsValidated**: (by configuring valid node settings) leads to the lifecycle stage **Operational**. As your licenses are part of the node settings, validated settings always entail a valid license.
 
 One event could happen that will not change the nodes lifecycle stage:
-- **NodeSettingsInvalidated**: only happens if one or more node settings are [unset](/docs/cli/ax-settings/unset) while the node already has invalid settings.
+- **NodeSettingsInvalidated**: only happens if one or more node settings are [unset](/docs/cli/settings/unset) while the node already has invalid settings.
 
 :::tip
 Please note that you can already deploy apps and/or set app settings at this point. You cannot start the apps though, as starting apps requires an operational node.
@@ -115,7 +115,7 @@ You now have an operational node. Its states are **Running**, **LicenseValid** a
 In this lifecycle stage, three events can lead to state transitions:
 - **NodeStopped**: leads to the lifecycle stage **Installed** (e.g. by stopping the ActyxOS docker container)
 - **NodeKilled**: leads to the lifecycle stage **Installed** (e.g. the Android host system kills ActyxOS)
-- **NodeSettingsInvalidated**: only happens if one or more node settings are [unset](/docs/cli/ax-settings/unset) or ActyxOS was updated with a non-backwards-compatible node settings schema change. Note that you cannot `ax settings set` invalid settings, as the command automatically validates against the node settings schema.
+- **NodeSettingsInvalidated**: only happens if one or more node settings are [unset](/docs/cli/settings/unset) or ActyxOS was updated with a non-backwards-compatible node settings schema change. Note that you cannot `ax settings set` invalid settings, as the command automatically validates against the node settings schema.
 
 One event could happen that will not change the nodes lifecycle stage:
 - **NodeSettingsValidated**: caused by every successful `ax settings set` command. You could e.g. just change the display name of your node.
@@ -169,7 +169,7 @@ In this lifecycle stage the app is still **Stopped** and **Disabled**, but has v
 
 In this lifecycle stage, three events can lead to state transitions:
 - **AppStarted**: leads to the lifecycle stage **Operational**. Please note that depending on your host system, there are multiple ways to start an app as indicated in the illustration. As this is an intentional start of the app, the apps mode will also switch from **Disabled** to **Enabled**.
-- **AppSettingsInvalidated**: happens if one or more app settings are [unset](/docs/cli/ax-settings/unset) or your app was updated with a non-backwards-compatible app settings schema change. Note that you cannot `ax settings set` invalid settings, as the command automatically validates against the app settings schema.
+- **AppSettingsInvalidated**: happens if one or more app settings are [unset](/docs/cli/settings/unset) or your app was updated with a non-backwards-compatible app settings schema change. Note that you cannot `ax settings set` invalid settings, as the command automatically validates against the app settings schema.
 
 One event could happen that will not change the nodes lifecycle stage:
 - **AppSettingsValidated**: caused by every successful `ax settings set` command.

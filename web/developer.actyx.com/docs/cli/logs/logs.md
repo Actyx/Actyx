@@ -7,4 +7,4 @@ title: ax logs
 ### Child commands
 Command                      | description|
 -----------------------------|------------|
-[ax logs tail](tail)             | Access logs generated on a node |
+[ax logs tail](tail.md)             | Access logs generated on a node |

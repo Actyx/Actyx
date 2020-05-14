@@ -78,6 +78,6 @@ $ ax nodes ls --local --format json 10.2.3.23 10.2.3.24
 
 :::info `ax nodes ls` only returns the state of the node
 
-Please keep in mind that **state**, **settings** and **license** in the  `ax nodes ls` command **only** refer to the node itself. If you want more detailed information about the state of the apps on a node, you need to use [`ax apps ls`](#ax-apps-ls).
+Please keep in mind that **state**, **settings** and **license** in the  `ax nodes ls` command **only** refer to the node itself. If you want more detailed information about the state of the apps on a node, you need to use [`ax apps ls`](#apps-ls).
 :::
 

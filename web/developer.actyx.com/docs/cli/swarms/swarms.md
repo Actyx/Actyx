@@ -7,4 +7,4 @@ title: ax swarms
 ### Child commands
 Command                      | description|
 -----------------------------|------------|
-[ax swarms keygen](keygen)     | Create a swarm key |
+[ax swarms keygen](keygen.md)     | Create a swarm key |
