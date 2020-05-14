@@ -10,9 +10,9 @@ Settings are a means to configure the behavior of systems. Depending on the sett
 
 Consider, as a simple example, the language shown in a user-interface. The developer of said interface can decide to only and always show UI element in English, or she can make it configurable through a _language_ setting. The setting may be defined as follows:
 
-| Setting          | Type     | Permitted values                      | Default value |
-|------------------|----------|---------------------------------------|---------------|
-| Language         | `string` | `"english"`, `"french"` or `"german"` | `"english"`   |
+| Setting  | Type     | Permitted values                      | Default value |
+| -------- | -------- | ------------------------------------- | ------------- |
+| Language | `string` | `"english"`, `"french"` or `"german"` | `"english"`   |
 
 The definition of a list of available settings, as well as their type, permitted values is called a **schema**. In the next section you will get a detailed overview of the workings of setting schemas in ActyxOS.
 
@@ -73,7 +73,7 @@ We have defined exactly how the behavior of ActyxOS nodes can be configured in o
 Here are a couple of examples for ActyxOS nodes settings:
 
 | Setting             | Type     | Permitted values                      | Default value |
-|------------------   |----------|---------------------------------------|---------------|
+| ------------------- | -------- | ------------------------------------- | ------------- |
 | Display name        | `string` | _any string_                          | ""            |
 | Swarm key           | `string` | _a string with exactly 64 characters_ | ""            |
 | Event service topic | `string` | _any string_                          | ""            |
@@ -231,7 +231,7 @@ If your app has no settings, you must still provide a settings schema. In this c
 
 ```json
 {
-  "default":{}
+  "default": {}
 }
 ```
 
@@ -256,6 +256,12 @@ icon: ./build/assets/app-icon.png
 dist: ./build/
 main: ./build/index.html
 settingsSchema: ./settings-schema.json # <------------- Path to your settings schema
+```
+
+Alternatively the settings schema can be inlined into the manifest:
+
+```yml
+settingsSchema: { "default": {} } # <------------- inlined settings schema
 ```
 
 When you package your app, the Actyx CLI will automatically include the settings schema so that it will be available to ActyxOS when your app is deployed.
