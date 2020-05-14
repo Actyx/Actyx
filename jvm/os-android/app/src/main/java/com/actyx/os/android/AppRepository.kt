@@ -162,6 +162,12 @@ class AppRepository(extFilesDir: File, val ctx: Context) {
           putExtra(WebappActivity.EXTRA_SHORTCUT_APP_ID, app.id)
         }
         ctx.startActivity(intent)
+
+        // Short-circuit the activity to load the WebApp directly
+        val startWebAppIntent = Intent(BackgroundServices.ACTION_APP_START_REQUESTED).apply {
+          putExtra(BackgroundServices.EXTRA_APP_ID, app.id)
+        }
+        ctx.sendBroadcast(startWebAppIntent)
       }
 
   fun stopApp(appId: String): Either<String, Unit> =

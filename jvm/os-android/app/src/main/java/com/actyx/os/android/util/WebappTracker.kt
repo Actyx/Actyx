@@ -33,7 +33,7 @@ class WebappTracker(
     val backgroundServices = IBackgroundServices.Stub.asInterface(service)
     if (lifecycle.currentState.isAtLeast(Lifecycle.State.CREATED)) {
       // Lifecycle.Event.ON_CREATE was triggered before the services were available
-      backgroundServices.onAppStarted(appId)
+      backgroundServices.onAppEnabled(appId)
     }
     this.backgroundServices = backgroundServices
   }
@@ -45,11 +45,12 @@ class WebappTracker(
   @OnLifecycleEvent(Lifecycle.Event.ON_CREATE)
   fun onStarted() {
     // when backgroundServices == null this will be done in onServiceConnected
-    backgroundServices?.onAppStarted(appId)
+    backgroundServices?.onAppEnabled(appId)
   }
 
   @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
   fun onStopped() {
+    backgroundServices?.onAppDisabled(appId)
     backgroundServices?.onAppStopped(appId)
   }
 

@@ -58,6 +58,10 @@ fun <T> Observable<T>.retryDelayed(
 ): Observable<T> =
   this.retryWhen { t -> t.doOnNext(onError).delay(delay, unit) }
 
+fun <T, R> Observable<T>.collectNonNull(f: (T) -> R?): Observable<R> = flatMap {
+  f(it)?.let { x -> Observable.just(x) } ?: Observable.empty()
+}
+
 object Rx {
   val log = Logger()
 

@@ -25,4 +25,6 @@ interface IBackgroundServices {
   String getSettings(String scope);
   void onAppStarted(String appId);
   void onAppStopped(String appId);
+  void onAppEnabled(String appId);
+  void onAppDisabled(String appId);
 }

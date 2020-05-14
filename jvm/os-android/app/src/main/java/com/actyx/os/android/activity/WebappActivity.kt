@@ -20,15 +20,23 @@ import com.actyx.os.android.legacy.usb.BaltechReaderService
 import com.actyx.os.android.service.BackgroundServices
 import com.actyx.os.android.service.IBackgroundServices
 import com.actyx.os.android.util.WebappTracker
+import com.actyx.os.android.util.collectNonNull
+import io.reactivex.Observable
+import io.reactivex.ObservableSource
+import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
+import io.reactivex.functions.Function
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.BehaviorSubject
+import java.util.concurrent.TimeUnit
 
-sealed class AppSettings {
-  object Initializing : AppSettings()
-  object MissingOrInvalid : AppSettings()
-  class Valid(val settings: String, val appInfo: AppInfo) : AppSettings()
+sealed class AppState {
+  object WaitingForStartCommand : AppState()
+  object MissingOrInvalidSettings : AppState()
+  class Running(val settings: String, val appInfo: AppInfo) : AppState()
 }
+
+object StartAppCommand
 
 /**
  * An example full-screen activity that shows and hides the system UI (i.e.
@@ -38,22 +46,11 @@ class WebappActivity : BaseActivity() {
 
   private var backgroundServices: IBackgroundServices? = null
   private lateinit var appId: String
-  private val settingsSubject = BehaviorSubject.create<AppSettings>()
-  private lateinit var settingsDisposable: Disposable
   private lateinit var webView: WebViewFragment
   private lateinit var message: MessageFragment
   private lateinit var tracker: WebappTracker
-
-  private val settingsUpdatedReceiver = object : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-      backgroundServices?.let {
-        val scope = intent.getStringExtra(BackgroundServices.EXTRA_SETTINGS_SCOPE)
-        if (scope?.startsWith(appId) == true || scope == BackgroundServices.ROOT_SCOPE) {
-          settingsSubject.onNext(getAppSettings(appId, it))
-        }
-      }
-    }
-  }
+  private val state = BehaviorSubject.create<StartAppCommand>()
+  private lateinit var stateDisposable: Disposable
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -62,11 +59,28 @@ class WebappActivity : BaseActivity() {
     message = MessageFragment()
 
     appId = intent.getStringExtra(EXTRA_SHORTCUT_APP_ID)!!
-    settingsDisposable =
-      settingsSubject
-        .startWith(AppSettings.Initializing)
+    stateDisposable =
+      state
+        .collectNonNull { backgroundServices?.let { getAppSettings(appId, it) } }
+        // If we don't get a StartAppCommand from the node, indicate an error:
+        .timeout(
+          // Timeout only for first item
+          Observable.timer(3, TimeUnit.SECONDS).observeOn(AndroidSchedulers.mainThread()),
+          Function<AppState, ObservableSource<AppState>> { Observable.never() }
+        )
+        // Timeout above throws a TimeoutException, which we catch here
+        .onErrorReturn { AppState.MissingOrInvalidSettings }
+        .startWith(AppState.WaitingForStartCommand)
         .distinctUntilChanged()
+        .doOnNext {
+          when (it) {
+            is AppState.Running ->
+              backgroundServices?.onAppStarted(appId)
+            else -> {} // ignore
+          }
+        }
         .subscribeOn(Schedulers.io())
+        .observeOn(AndroidSchedulers.mainThread())
         .subscribe(::renderUi)
     tracker = WebappTracker(this, lifecycle, appId)
   }
@@ -80,15 +94,24 @@ class WebappActivity : BaseActivity() {
     }
   }
 
+  private val startReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+      val appId = intent.getStringExtra(BackgroundServices.EXTRA_APP_ID)
+      if (appId == this@WebappActivity.appId) {
+        state.onNext(StartAppCommand)
+      }
+    }
+  }
+
   override fun onStart() {
     super.onStart()
     registerReceiver(
-      settingsUpdatedReceiver,
-      IntentFilter(BackgroundServices.ACTION_SETTINGS_UPDATED)
-    )
-    registerReceiver(
       stopReceiver,
       IntentFilter(BackgroundServices.ACTION_APP_STOP_REQUESTED)
+    )
+    registerReceiver(
+      startReceiver,
+      IntentFilter(BackgroundServices.ACTION_APP_START_REQUESTED)
     )
     registerReceiver(
       cardScannedReceiver,
@@ -115,7 +138,7 @@ class WebappActivity : BaseActivity() {
 
   override fun onStop() {
     super.onStop()
-    unregisterReceiver(settingsUpdatedReceiver)
+    unregisterReceiver(startReceiver)
     unregisterReceiver(stopReceiver)
     unregisterReceiver(cardScannedReceiver)
     unregisterReceiver(nfcCardScannedReceiver)
@@ -123,7 +146,7 @@ class WebappActivity : BaseActivity() {
 
   override fun onDestroy() {
     super.onDestroy()
-    settingsDisposable.dispose()
+    stateDisposable.dispose()
     tracker.close()
   }
 
@@ -143,8 +166,6 @@ class WebappActivity : BaseActivity() {
         BitmapFactory.decodeFile(appInfo.iconPath)
       )
     )
-
-    settingsSubject.onNext(getAppSettings(appId, backgroundServices))
   }
 
   override fun onBackgroundServicesDisconnected() {
@@ -173,19 +194,21 @@ class WebappActivity : BaseActivity() {
     Toast.makeText(applicationContext, msg, Toast.LENGTH_SHORT).show()
   }
 
-  private fun renderUi(appSettings: AppSettings) {
-    log.debug("renderUi: {}", appSettings)
-    val fragment: Fragment = when (appSettings) {
-      is AppSettings.Initializing -> {
+  private fun renderUi(appState: AppState) {
+    log.debug("renderUi: {}", appState)
+    val fragment: Fragment = when (appState) {
+      is AppState.WaitingForStartCommand -> {
         message.update(R.string.initializing)
         message
       }
-      is AppSettings.MissingOrInvalid -> {
+      // FIXME: How to determine this? E.g. user wants to start a currently misconfigured app
+      // --> startApp command will never come.. Maybe timeout here?
+      is AppState.MissingOrInvalidSettings -> {
         message.update(R.string.invalid_settings_msg)
         message
       }
-      is AppSettings.Valid -> {
-        webView.loadWebappWithSettings(appSettings.appInfo.uri.toString(), appSettings.settings)
+      is AppState.Running -> {
+        webView.loadWebappWithSettings(appState.appInfo.uri.toString(), appState.settings)
         webView
       }
     }
@@ -202,16 +225,16 @@ class WebappActivity : BaseActivity() {
     private fun getAppSettings(
       appId: String,
       backgroundServices: IBackgroundServices
-    ): AppSettings {
+    ): AppState {
       /**
        * This is nullable. Null indicates an error. This can be interpreted here as a missing or
        * invalid configuration.
        */
       return backgroundServices.getSettings(appId)?.let {
         val appInfo = backgroundServices.getAppInfo(appId)
-        AppSettings.Valid(it, appInfo)
+        AppState.Running(it, appInfo)
       }
-        ?: AppSettings.MissingOrInvalid
+        ?: AppState.MissingOrInvalidSettings
     }
   }
 }

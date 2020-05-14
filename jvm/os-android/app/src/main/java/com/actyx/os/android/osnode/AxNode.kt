@@ -69,6 +69,20 @@ class AxNode(ctx: Context, handler: (ToAndroid) -> Unit) {
     sendMessage(msg).mapLeft { log.error("Error sending message: {}", it) }
   }
 
+  fun notifyAppEnabled(appId: String) {
+    val msg = ToNative.newBuilder().setAppEnabled(
+      ToNative.AppEnabled.newBuilder().setAppId(appId).build()
+    ).build()
+    sendMessage(msg).mapLeft { log.error("Error sending message: {}", it) }
+  }
+
+  fun notifyAppDisabled(appId: String) {
+    val msg = ToNative.newBuilder().setAppDisabled(
+      ToNative.AppDisabled.newBuilder().setAppId(appId).build()
+    ).build()
+    sendMessage(msg).mapLeft { log.error("Error sending message: {}", it) }
+  }
+
   fun sendMessage(msg: ToNative): Either<String, Unit> {
     log.debug("Sending to native lib: {}", msg)
     val (nioBuf, len) = msg.toNioDirectBuffer()

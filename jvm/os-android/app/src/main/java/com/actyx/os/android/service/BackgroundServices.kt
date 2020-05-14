@@ -52,6 +52,10 @@ class BackgroundServices : Service() {
     override fun onAppStarted(appId: String) = axNode.notifyAppStarted(appId)
 
     override fun onAppStopped(appId: String) = axNode.notifyAppStopped(appId)
+
+    override fun onAppEnabled(appId: String) = axNode.notifyAppEnabled(appId)
+
+    override fun onAppDisabled(appId: String) = axNode.notifyAppDisabled(appId)
   }
 
   private fun handler(msg: ToAndroid) {
@@ -273,7 +277,9 @@ class BackgroundServices : Service() {
     const val ACTION_APP_LIST_UPDATED = "com.actyx.os.apps.APP_LIST_UPDATED"
     const val ACTION_SETTINGS_UPDATED = "com.actyx.os.settings.SETTINGS_UPDATED"
     const val EXTRA_SETTINGS_SCOPE = "com.actyx.intent.extra.settings.SCOPE"
+    // Intent to start the actual WebApp inside WebAppActivity
     const val ACTION_APP_STOP_REQUESTED = "com.actyx.os.apps.APP_STOP_REQUESTED"
+    const val ACTION_APP_START_REQUESTED = "com.actyx.os.apps.APP_START_REQUESTED"
     const val EXTRA_APP_ID = "com.actyx.os.intent.extra.app.APP_ID"
 
     private fun toSettings(json: JsonElement): ActyxOsSettings =

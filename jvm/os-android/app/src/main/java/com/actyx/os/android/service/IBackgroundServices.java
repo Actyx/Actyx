@@ -9,6 +9,16 @@ package com.actyx.os.android.service;
 // see https://issuetracker.google.com/issues/150151300
 // If you need to update the aidl files, rename the `aidlx` folder to `aidl`, run the
 // `compileReleaseAidl` task and replace the existing `IBackgroundServices.java` file
+// Also make sure to apply this diff (https://youtrack.jetbrains.com/issue/KT-25807):
+// @@ -156,7 +183,7 @@ public interface IBackgroundServices extends android.os.IInterface
+//           }
+//           _reply.readException();
+//           if ((0!=_reply.readInt())) {
+//-            _result = (com.actyx.os.android.AppInfo)com.actyx.os.android.AppInfo.CREATOR.createFromParcel(_reply);
+//+            _result = com.actyx.os.android.AppInfo.CREATOR.createFromParcel(_reply);
+//           }
+//           else {
+//             _result = null;
 
 public interface IBackgroundServices extends android.os.IInterface
 {
@@ -31,6 +41,12 @@ public interface IBackgroundServices extends android.os.IInterface
     {
     }
     @Override public void onAppStopped(java.lang.String appId) throws android.os.RemoteException
+    {
+    }
+    @Override public void onAppEnabled(java.lang.String appId) throws android.os.RemoteException
+    {
+    }
+    @Override public void onAppDisabled(java.lang.String appId) throws android.os.RemoteException
     {
     }
     @Override
@@ -125,6 +141,24 @@ public interface IBackgroundServices extends android.os.IInterface
           java.lang.String _arg0;
           _arg0 = data.readString();
           this.onAppStopped(_arg0);
+          reply.writeNoException();
+          return true;
+        }
+        case TRANSACTION_onAppEnabled:
+        {
+          data.enforceInterface(descriptor);
+          java.lang.String _arg0;
+          _arg0 = data.readString();
+          this.onAppEnabled(_arg0);
+          reply.writeNoException();
+          return true;
+        }
+        case TRANSACTION_onAppDisabled:
+        {
+          data.enforceInterface(descriptor);
+          java.lang.String _arg0;
+          _arg0 = data.readString();
+          this.onAppDisabled(_arg0);
           reply.writeNoException();
           return true;
         }
@@ -254,6 +288,44 @@ public interface IBackgroundServices extends android.os.IInterface
           _data.recycle();
         }
       }
+      @Override public void onAppEnabled(java.lang.String appId) throws android.os.RemoteException
+      {
+        android.os.Parcel _data = android.os.Parcel.obtain();
+        android.os.Parcel _reply = android.os.Parcel.obtain();
+        try {
+          _data.writeInterfaceToken(DESCRIPTOR);
+          _data.writeString(appId);
+          boolean _status = mRemote.transact(Stub.TRANSACTION_onAppEnabled, _data, _reply, 0);
+          if (!_status && getDefaultImpl() != null) {
+            getDefaultImpl().onAppEnabled(appId);
+            return;
+          }
+          _reply.readException();
+        }
+        finally {
+          _reply.recycle();
+          _data.recycle();
+        }
+      }
+      @Override public void onAppDisabled(java.lang.String appId) throws android.os.RemoteException
+      {
+        android.os.Parcel _data = android.os.Parcel.obtain();
+        android.os.Parcel _reply = android.os.Parcel.obtain();
+        try {
+          _data.writeInterfaceToken(DESCRIPTOR);
+          _data.writeString(appId);
+          boolean _status = mRemote.transact(Stub.TRANSACTION_onAppDisabled, _data, _reply, 0);
+          if (!_status && getDefaultImpl() != null) {
+            getDefaultImpl().onAppDisabled(appId);
+            return;
+          }
+          _reply.readException();
+        }
+        finally {
+          _reply.recycle();
+          _data.recycle();
+        }
+      }
       public static com.actyx.os.android.service.IBackgroundServices sDefaultImpl;
     }
     static final int TRANSACTION_getApps = (android.os.IBinder.FIRST_CALL_TRANSACTION + 0);
@@ -261,6 +333,8 @@ public interface IBackgroundServices extends android.os.IInterface
     static final int TRANSACTION_getSettings = (android.os.IBinder.FIRST_CALL_TRANSACTION + 2);
     static final int TRANSACTION_onAppStarted = (android.os.IBinder.FIRST_CALL_TRANSACTION + 3);
     static final int TRANSACTION_onAppStopped = (android.os.IBinder.FIRST_CALL_TRANSACTION + 4);
+    static final int TRANSACTION_onAppEnabled = (android.os.IBinder.FIRST_CALL_TRANSACTION + 5);
+    static final int TRANSACTION_onAppDisabled = (android.os.IBinder.FIRST_CALL_TRANSACTION + 6);
     public static boolean setDefaultImpl(com.actyx.os.android.service.IBackgroundServices impl) {
       if (Stub.Proxy.sDefaultImpl == null && impl != null) {
         Stub.Proxy.sDefaultImpl = impl;
@@ -277,4 +351,6 @@ public interface IBackgroundServices extends android.os.IInterface
   public java.lang.String getSettings(java.lang.String scope) throws android.os.RemoteException;
   public void onAppStarted(java.lang.String appId) throws android.os.RemoteException;
   public void onAppStopped(java.lang.String appId) throws android.os.RemoteException;
+  public void onAppEnabled(java.lang.String appId) throws android.os.RemoteException;
+  public void onAppDisabled(java.lang.String appId) throws android.os.RemoteException;
 }
