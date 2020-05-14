@@ -2,6 +2,7 @@ package com.actyx.os.android.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 @Serializable
@@ -23,7 +24,7 @@ data class EventService(
   val topic: String,
   val readOnly: Boolean,
   @SerialName("_internal")
-  val storeConfig: Map<String, String>? = null
+  val storeConfig: Map<String, JsonElement>? = null
 )
 
 @Serializable
