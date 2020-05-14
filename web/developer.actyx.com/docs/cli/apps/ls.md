@@ -84,7 +84,7 @@ $ echo "10.2.3.23" | ax apps ls --local @-
 
 :::info`ax apps ls` only returns the state of the apps
 
-Please keep in mind that **state**, **settings** and **license** in the  `ax apps ls` command **only** refer to the apps deployed on a node. If you want more detailed information about the node itself, you need to use [`ax nodes ls`](../ax-nodes/ls).
+Please keep in mind that **state**, **settings** and **license** in the  `ax apps ls` command **only** refer to the apps deployed on a node. If you want more detailed information about the node itself, you need to use [`ax nodes ls`](../nodes/ls).
 :::
 
 ### Validate apps and app manifests
