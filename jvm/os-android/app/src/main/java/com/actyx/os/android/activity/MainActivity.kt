@@ -66,7 +66,7 @@ class MainActivity : BaseActivity() {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
       val name = resources.getString(R.string.app_name)
       val icon = ContextCompat.getDrawable(this, R.drawable.ic_actyxos_circle)?.toBitmap()
-      val color = resources.getColor(R.color.colorPrimary, theme)
+      val color = ContextCompat.getColor(this, R.color.colorPrimary)
       //noinspection deprecation
       setTaskDescription(ActivityManager.TaskDescription(name, icon, color))
     }
