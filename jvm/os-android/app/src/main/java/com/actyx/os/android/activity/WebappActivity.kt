@@ -22,10 +22,8 @@ import com.actyx.os.android.service.IBackgroundServices
 import com.actyx.os.android.util.WebappTracker
 import com.actyx.os.android.util.collectNonNull
 import io.reactivex.Observable
-import io.reactivex.ObservableSource
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
-import io.reactivex.functions.Function
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.BehaviorSubject
 import java.util.concurrent.TimeUnit
@@ -60,25 +58,28 @@ class WebappActivity : BaseActivity() {
 
     appId = intent.getStringExtra(EXTRA_SHORTCUT_APP_ID)!!
     stateDisposable =
-      state
-        .collectNonNull { backgroundServices?.let { getAppSettings(appId, it) } }
-        // If we don't get a StartAppCommand from the node, indicate an error:
-        .timeout(
-          // Timeout only for first item
-          Observable.timer(3, TimeUnit.SECONDS).observeOn(AndroidSchedulers.mainThread()),
-          Function<AppState, ObservableSource<AppState>> { Observable.never() }
-        )
-        // Timeout above throws a TimeoutException, which we catch here
-        .onErrorReturn { AppState.MissingOrInvalidSettings }
-        .startWith(AppState.WaitingForStartCommand)
-        .distinctUntilChanged()
-        .doOnNext {
-          when (it) {
-            is AppState.Running ->
-              backgroundServices?.onAppStarted(appId)
-            else -> {} // ignore
+      Observable.merge(
+        // If we don't get a StartAppCommand from the node, indicate an error
+        Observable.timer(3, TimeUnit.SECONDS)
+          .observeOn(AndroidSchedulers.mainThread())
+          .map { AppState.MissingOrInvalidSettings }
+          // Ignore timeout if `webView` exists and is shown (this relies on the fact, that the
+          // error fragment itself is not a webview stored inside `webView`)
+          .takeWhile { !webView.isVisible },
+        state
+          .collectNonNull { backgroundServices?.let { getAppSettings(appId, it) } }
+          .startWith(AppState.WaitingForStartCommand)
+          .distinctUntilChanged()
+          .doOnNext {
+            when (it) {
+              is AppState.Running ->
+                backgroundServices?.onAppStarted(appId)
+              // ignore
+              else -> {
+              }
+            }
           }
-        }
+      )
         .subscribeOn(Schedulers.io())
         .observeOn(AndroidSchedulers.mainThread())
         .subscribe(::renderUi)

@@ -7,6 +7,7 @@ import com.actyx.os.android.model.ActyxOsSettings
 import com.actyx.os.android.util.*
 import io.reactivex.Single
 import io.reactivex.schedulers.Schedulers
+import kotlinx.serialization.json.booleanOrNull
 import java.io.File
 import java.io.InputStream
 import java.util.Base64
@@ -110,6 +111,14 @@ class IpfsService(private val ctx: Context) : Service {
     }, log)
 
   override fun invoke(settings: ActyxOsSettings): Single<Unit> {
+    // Temporary feature flag to use the experimental internal ipfs node
+    val usesInternalNode =
+      settings.services.eventService.storeConfig?.get("ipfs_node")?.booleanOrNull ?: false
+    if (usesInternalNode) {
+      log.info("go-ipfs disabled")
+      return Single.never()
+    }
+    log.info("go-ipfs enabled")
     val cfg = IpfsDetailedConfig(
       String(android.util.Base64.decode(settings.general.swarmKey, 0)),
       listOf(
