@@ -5,7 +5,5 @@
       <solid android:color="@color/colorActyxosBackground"/>
     </shape>
   </item>
-  <item android:drawable="@drawable/ic_actyxos"
-        android:width="24dp"
-        android:height="24dp"/>
+  <item android:drawable="@drawable/ic_actyxos"/>
 </layer-list>
