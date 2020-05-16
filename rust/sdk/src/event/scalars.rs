@@ -66,7 +66,7 @@ fn nonempty_string<'de, D: Deserializer<'de>>(d: D) -> Result<ArcVal<str>, D::Er
 macro_rules! semantics {
     ($lit:tt) => {{
         #[allow(dead_code)]
-        type X = $crate::assert_len!(($lit, 1..));
+        type X = $crate::assert_len!($lit, 1..);
         use ::std::convert::TryFrom;
         $crate::event::Semantics::try_from($lit).unwrap()
     }};
@@ -88,7 +88,7 @@ macro_rules! semantics {
 macro_rules! fish_name {
     ($lit:tt) => {{
         #[allow(dead_code)]
-        type X = $crate::assert_len!(($lit, 1..));
+        type X = $crate::assert_len!($lit, 1..);
         use ::std::convert::TryFrom;
         $crate::event::FishName::try_from($lit).unwrap()
     }};
@@ -110,7 +110,7 @@ macro_rules! fish_name {
 macro_rules! tag {
     ($lit:tt) => {{
         #[allow(dead_code)]
-        type X = $crate::assert_len!(($lit, 1..));
+        type X = $crate::assert_len!($lit, 1..);
         use ::std::convert::TryFrom;
         $crate::event::Tag::try_from($lit).unwrap()
     }};
@@ -132,7 +132,7 @@ macro_rules! tag {
 macro_rules! source_id {
     ($lit:tt) => {{
         #[allow(dead_code)]
-        type X = $crate::assert_len!(($lit, 1..=15));
+        type X = $crate::assert_len!($lit, 1..=15);
         use ::std::convert::TryFrom;
         $crate::event::SourceId::try_from($lit).unwrap()
     }};

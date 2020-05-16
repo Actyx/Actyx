@@ -24,7 +24,7 @@ dataflow = ["abomonation", "abomonation_derive"]
 [dependencies]
 abomonation = { version = "~0.7", optional = true }
 abomonation_derive = { version = "~0.5", optional = true }
-actyxos_sdk_macros = { path = "../sdk_macros" }
+actyxos_sdk_macros = "~0.1"
 bytes = { version = "~0.5", optional = true }
 chrono = { version = "~0.4" }
 derive_more = "~0.99"

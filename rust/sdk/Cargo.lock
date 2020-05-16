@@ -42,6 +42,8 @@ dependencies = [
 [[package]]
 name = "actyxos_sdk_macros"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "231abf4a9f5f41c910b416ac2ce59aaa750ff7dd3d3ef9fefafe7d228eedf8a6"
 dependencies = [
  "proc-macro-error",
  "syn",
