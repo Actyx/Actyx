@@ -162,7 +162,7 @@ class IpfsService(private val ctx: Context) : Service {
     val resourceId = when (arch) {
       "x86" -> R.raw.ipfs_x86
 //      "x86_64" -> R.raw.ipfs_x86_64
-//      "armeabi-v7a" -> R.raw.ipfs_arm
+      "armeabi-v7a" -> R.raw.ipfs_arm
       "arm64-v8a" -> R.raw.ipfs_arm64
       else -> 0
     }

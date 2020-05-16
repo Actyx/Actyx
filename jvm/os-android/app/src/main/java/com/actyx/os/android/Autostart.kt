@@ -6,6 +6,6 @@ import android.content.Intent
 
 class Autostart : BroadcastReceiver() {
   override fun onReceive(ctx: Context, intent: Intent?) {
-    // Just a dummy receiver. Application.onCreate take care of starting the services.
+    // Just a dummy receiver. Application.onCreate takes care of starting the services.
   }
 }

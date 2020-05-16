@@ -36,5 +36,5 @@ archs.each { ipfsArch, androidArch ->
 }
 
 task unpackIpfs {
-    dependsOn unpackIpfs_386, unpackIpfs_arm64, unpackIpfs_arm // unpackIpfs_amd64, unpackIpfs_arm, unpackIpfs_arm64
+    dependsOn unpackIpfs_386, unpackIpfs_arm64, unpackIpfs_arm // unpackIpfs_amd64
 }
