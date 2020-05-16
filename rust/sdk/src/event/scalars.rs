@@ -145,7 +145,6 @@ macro_rules! mk_scalar {
     ($(#[$attr:meta])* struct $id:ident, $err:ident) => {
 
         $(#[$attr])*
-        // FIXME plug empty string hole in Deserialize
         #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
         #[cfg_attr(feature = "dataflow", derive(Abomonation))]
         pub struct $id(
