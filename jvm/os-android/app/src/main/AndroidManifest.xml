@@ -13,6 +13,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!--  LEGACY NFC-->
     <uses-permission android:name="android.permission.NFC" />
+    <!--  LEGACY Zebra Scanner-->
+    <uses-permission android:name="com.symbol.emdk.permission.EMDK" />
 
     <!--  LEGACY USB-->
     <uses-feature
@@ -70,7 +72,7 @@
                 android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
                 android:resource="@xml/usb_device_filter_baltech" />
         </activity>
-        <!--  LEGACY NFC-->
+        <!--  LEGACY NFC -->
         <activity
             android:name="com.actyx.os.android.legacy.nfc.NfcIntentReceiverActivity"
             android:excludeFromRecents="true"
@@ -95,6 +97,11 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!--  LEGACY Zebra Scanner-->
+        <uses-library
+            android:name="com.symbol.emdk"
+            android:required="false" />
     </application>
 
 </manifest>

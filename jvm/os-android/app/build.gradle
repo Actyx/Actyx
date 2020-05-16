@@ -88,7 +88,7 @@ protobuf {
 def arrow_version = "0.10.4"
 def nav_version = "2.2.2"
 dependencies {
-  implementation fileTree(dir: 'libs', include: ['*.jar'])
+  provided files('./libs/com.symbol.emdk.jar')
   implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
   implementation "org.jetbrains.kotlinx:kotlinx-serialization-runtime:0.14.0"
   implementation 'androidx.appcompat:appcompat:1.1.0'

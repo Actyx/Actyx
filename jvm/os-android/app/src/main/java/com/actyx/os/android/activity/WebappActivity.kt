@@ -14,10 +14,12 @@ import androidx.fragment.app.Fragment
 import com.actyx.os.android.AppInfo
 import com.actyx.os.android.R
 import com.actyx.os.android.fragment.MessageFragment
+import com.actyx.os.android.fragment.ScannedCodeData
 import com.actyx.os.android.fragment.SwipedCardData
 import com.actyx.os.android.fragment.WebViewFragment
 import com.actyx.os.android.legacy.nfc.NfcIntentReceiverActivity
 import com.actyx.os.android.legacy.usb.BaltechReaderService
+import com.actyx.os.android.legacy.zebrascanner.ZebraScannerService
 import com.actyx.os.android.service.BackgroundServices
 import com.actyx.os.android.service.IBackgroundServices
 import com.actyx.os.android.util.WebappTracker
@@ -124,6 +126,10 @@ class WebappActivity : BaseActivity() {
       nfcCardScannedReceiver,
       IntentFilter(NfcIntentReceiverActivity.NFCA_TAG_ID_SCANNED)
     )
+    registerReceiver(
+      codeScannedReceiver,
+      IntentFilter(ZebraScannerService.ACTION_CODE_SCANNED)
+    )
   }
 
   override fun onResume() {
@@ -145,6 +151,7 @@ class WebappActivity : BaseActivity() {
     unregisterReceiver(stopReceiver)
     unregisterReceiver(cardScannedReceiver)
     unregisterReceiver(nfcCardScannedReceiver)
+    unregisterReceiver(codeScannedReceiver)
   }
 
   override fun onDestroy() {
@@ -194,6 +201,15 @@ class WebappActivity : BaseActivity() {
       intent.getStringExtra(NfcIntentReceiverActivity.EXTRA_TAG_ID)?.let {
         toast("Scanned card (internal) $it")
         webView.dispatchCardSwipedCustomEvent(SwipedCardData(it, "internal nfc"))
+      }
+    }
+  }
+
+  private val codeScannedReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+      intent.getStringExtra(ZebraScannerService.EXTRA_CODE)?.let {
+        toast("Scanned code $it")
+        webView.dispatchCodeScannedCustomEvent(ScannedCodeData(it, "zebra scanner"))
       }
     }
   }
