@@ -9,6 +9,7 @@ import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.actyx.os.android.AppInfo
 import com.actyx.os.android.R
@@ -21,6 +22,7 @@ import com.actyx.os.android.service.BackgroundServices
 import com.actyx.os.android.service.IBackgroundServices
 import com.actyx.os.android.util.WebappTracker
 import com.actyx.os.android.util.collectNonNull
+import com.actyx.os.android.util.toBitmap
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
@@ -161,10 +163,15 @@ class WebappActivity : BaseActivity() {
   override fun onBackgroundServicesConnected(backgroundServices: IBackgroundServices) {
     this.backgroundServices = backgroundServices
     val appInfo = backgroundServices.getAppInfo(appId)
+    val icon = appInfo.iconPath?.let { BitmapFactory.decodeFile(it) }
+      ?: ContextCompat.getDrawable(
+        this,
+        R.drawable.ic_actyxos_circle_gray
+      )?.toBitmap()
     setTaskDescription(
       ActivityManager.TaskDescription(
         appInfo.name,
-        BitmapFactory.decodeFile(appInfo.iconPath)
+        icon
       )
     )
   }
