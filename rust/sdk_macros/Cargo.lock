@@ -5,6 +5,7 @@ name = "actyxos_sdk_macros"
 version = "0.1.0"
 dependencies = [
  "proc-macro-error",
+ "syn",
 ]
 
 [[package]]

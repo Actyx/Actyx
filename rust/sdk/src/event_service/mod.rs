@@ -19,7 +19,7 @@
 
 use crate::event::{FishName, OffsetMap, Payload, Semantics, SourceId};
 use serde::{Deserialize, Serialize};
-use std::fmt::Debug;
+use std::{convert::TryInto, fmt::Debug};
 
 #[cfg(feature = "client")]
 mod client;
@@ -78,21 +78,39 @@ pub struct Subscription {
 }
 
 // canonicalize: empty string is the same as absent
-impl From<SubscriptionOnWire> for Subscription {
-    fn from(other: SubscriptionOnWire) -> Self {
+impl<'a> From<SubscriptionOnWire<'a>> for Subscription {
+    fn from(other: SubscriptionOnWire<'a>) -> Self {
         Self {
-            semantics: other.semantics.filter(|s| !s.is_empty()),
-            name: other.name.filter(|s| !s.is_empty()),
-            source: other.source.filter(|s| !s.is_empty()),
+            semantics: other.semantics.and_then(|s| {
+                if s.is_empty() {
+                    None
+                } else {
+                    Some(s.try_into().unwrap())
+                }
+            }),
+            name: other.name.and_then(|s| {
+                if s.is_empty() {
+                    None
+                } else {
+                    Some(s.try_into().unwrap())
+                }
+            }),
+            source: other.source.and_then(|s| {
+                if s.is_empty() {
+                    None
+                } else {
+                    Some(s.try_into().unwrap())
+                }
+            }),
         }
     }
 }
 
 #[derive(Deserialize)]
-struct SubscriptionOnWire {
-    pub semantics: Option<Semantics>,
-    pub name: Option<FishName>,
-    pub source: Option<SourceId>,
+struct SubscriptionOnWire<'a> {
+    pub semantics: Option<&'a str>,
+    pub name: Option<&'a str>,
+    pub source: Option<&'a str>,
 }
 
 impl Subscription {
@@ -108,9 +126,9 @@ impl Subscription {
 
     /// Subscribe to all events of the given semantics, regardless of which fish
     /// instance produced them or where.
-    pub fn semantics(semantics: impl Into<Semantics>) -> Self {
+    pub fn wildcard(semantics: Semantics) -> Self {
         Self {
-            semantics: Some(semantics.into()),
+            semantics: Some(semantics),
             name: None,
             source: None,
         }
@@ -118,23 +136,19 @@ impl Subscription {
 
     /// Subscribe to all events of a distributed fish, identified by its semantics
     /// and name.
-    pub fn distributed(semantics: impl Into<Semantics>, name: impl Into<FishName>) -> Self {
+    pub fn distributed(semantics: Semantics, name: FishName) -> Self {
         Self {
-            semantics: Some(semantics.into()),
-            name: Some(name.into()),
+            semantics: Some(semantics),
+            name: Some(name),
             source: None,
         }
     }
 
     /// Subscribe to precisely a single fish on the given ActyxOS node.
-    pub fn local(
-        semantics: impl Into<Semantics>,
-        name: impl Into<FishName>,
-        source: SourceId,
-    ) -> Self {
+    pub fn local(semantics: Semantics, name: FishName, source: SourceId) -> Self {
         Self {
-            semantics: Some(semantics.into()),
-            name: Some(name.into()),
+            semantics: Some(semantics),
+            name: Some(name),
             source: Some(source),
         }
     }
@@ -224,7 +238,7 @@ pub struct EventServiceError {
 mod tests {
     use super::*;
     use crate::{fish_name, semantics, source_id};
-    use std::{convert::TryInto, str::FromStr};
+    use std::str::FromStr;
 
     #[test]
     fn must_pick_up_subscription() {

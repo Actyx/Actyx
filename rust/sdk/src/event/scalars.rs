@@ -15,7 +15,7 @@
  */
 use crate::types::ArcVal;
 use derive_more::Display;
-use serde::de::Visitor;
+use serde::de::{Error, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     convert::TryFrom,
@@ -41,41 +41,98 @@ pub enum ParseError {
 }
 impl std::error::Error for ParseError {}
 
+fn nonempty_string<'de, D: Deserializer<'de>>(d: D) -> Result<ArcVal<str>, D::Error> {
+    let s = <&str>::deserialize(d)?;
+    if s.is_empty() {
+        Err(D::Error::custom("expected non-empty string"))
+    } else {
+        Ok(s.into())
+    }
+}
+
+/// Macro for constructing a [`Semantics`](event/struct.Semantics.html) literal.
+///
+/// This is how it works:
+/// ```no_run
+/// use actyxos_sdk::{semantics, event::Semantics};
+/// let semantics: Semantics = semantics!("abc");
+/// ```
+/// This does not compile:
+/// ```compile_fail
+/// use actyxos_sdk::{semantics, event::Semantics};
+/// let semantics: Semantics = semantics!("");
+/// ```
 #[macro_export]
 macro_rules! semantics {
     ($lit:tt) => {{
         #[allow(dead_code)]
-        type X = assert_minlen!(1($lit));
+        type X = $crate::assert_len!(($lit, 1..));
         use ::std::convert::TryFrom;
         $crate::event::Semantics::try_from($lit).unwrap()
     }};
 }
 
+/// Macro for constructing a [`FishName`](event/struct.FishName.html) literal.
+///
+/// This is how it works:
+/// ```no_run
+/// use actyxos_sdk::{fish_name, event::FishName};
+/// let fish_name: FishName = fish_name!("abc");
+/// ```
+/// This does not compile:
+/// ```compile_fail
+/// use actyxos_sdk::{fish_name, event::FishName};
+/// let fish_name: FishName = fish_name!("");
+/// ```
 #[macro_export]
 macro_rules! fish_name {
     ($lit:tt) => {{
         #[allow(dead_code)]
-        type X = assert_minlen!(1($lit));
+        type X = $crate::assert_len!(($lit, 1..));
         use ::std::convert::TryFrom;
         $crate::event::FishName::try_from($lit).unwrap()
     }};
 }
 
+/// Macro for constructing a [`Tag`](event/struct.Tag.html) literal.
+///
+/// This is how it works:
+/// ```no_run
+/// use actyxos_sdk::{tag, event::Tag};
+/// let tag: Tag = tag!("abc");
+/// ```
+/// This does not compile:
+/// ```compile_fail
+/// use actyxos_sdk::{tag, event::Tag};
+/// let tag: Tag = tag!("");
+/// ```
 #[macro_export]
 macro_rules! tag {
     ($lit:tt) => {{
         #[allow(dead_code)]
-        type X = assert_minlen!(1($lit));
+        type X = $crate::assert_len!(($lit, 1..));
         use ::std::convert::TryFrom;
         $crate::event::Tag::try_from($lit).unwrap()
     }};
 }
 
+/// Macro for constructing a [`SourceId`](event/struct.SourceId.html) literal.
+///
+/// This is how it works:
+/// ```no_run
+/// use actyxos_sdk::{source_id, event::SourceId};
+/// let source_id: SourceId = source_id!("abc");
+/// ```
+/// This does not compile:
+/// ```compile_fail
+/// use actyxos_sdk::{source_id, event::SourceId};
+/// let source_id: SourceId = source_id!("");
+/// ```
 #[macro_export]
 macro_rules! source_id {
     ($lit:tt) => {{
         #[allow(dead_code)]
-        type X = (assert_maxlen!(15($lit)), assert_minlen!(1($lit)));
+        type X = $crate::assert_len!(($lit, 1..=15));
         use ::std::convert::TryFrom;
         $crate::event::SourceId::try_from($lit).unwrap()
     }};
@@ -91,7 +148,10 @@ macro_rules! mk_scalar {
         // FIXME plug empty string hole in Deserialize
         #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
         #[cfg_attr(feature = "dataflow", derive(Abomonation))]
-        pub struct $id(ArcVal<str>);
+        pub struct $id(
+            #[serde(deserialize_with = "nonempty_string")]
+            ArcVal<str>
+        );
 
         impl $id {
             pub fn new(value: String) -> Result<Self, ParseError> {
@@ -142,32 +202,28 @@ macro_rules! mk_scalar {
 
 mk_scalar!(
     /// The semantics denotes a certain kind of fish and usually implies a certain type
-    /// of payloads. For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started)
+    /// of payloads.
+    ///
+    /// For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started).
+    /// You may most conveniently construct values of this type with the [`semantics!`](../macro.semantics.html) macro.
     struct Semantics, EmptySemantics
 );
 
 mk_scalar!(
     /// The name identifies a particular instance of a Fish, i.e. one of a given kind as identified by
-    /// its semantics. For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started)
+    /// its semantics.
+    ///
+    /// For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started).
+    /// You may most conveniently construct values of this type with the [`fish_name!`](../macro.fish_name.html) macro.
     struct FishName, EmptyFishName
 );
 
 mk_scalar!(
     /// Arbitrary metadata-string for an Event. Website documentation pending.
+    ///
+    /// You may most conveniently construct values of this type with the [`tag!`](../macro.tag.html) macro.
     struct Tag, EmptyTag
 );
-
-/// Shorthand for creating a set of tags from `&str`s.
-#[macro_export]
-macro_rules! tags {
-    ($($x:expr),*) => ({
-        let mut _temp = std::collections::BTreeSet::<actyxos_sdk::event::Tag>::new();
-
-        $(_temp.insert(actyxos_sdk::event::Tag::from($x));)*
-
-	_temp
-    });
-}
 
 impl From<&Semantics> for Tag {
     fn from(value: &Semantics) -> Self {
@@ -387,5 +443,15 @@ mod tests {
 
         assert_eq!("fish_name:test", Tag::from(&fish_name).as_str());
         assert_eq!("fish_name:test", Tag::from(fish_name).as_str());
+    }
+
+    #[test]
+    fn deserialize() {
+        assert_eq!(
+            serde_json::from_str::<Semantics>(r#""abc""#).unwrap(),
+            semantics!("abc")
+        );
+        let res = serde_json::from_str::<Semantics>("\"\"").unwrap_err();
+        assert_eq!(res.to_string(), "expected non-empty string");
     }
 }
