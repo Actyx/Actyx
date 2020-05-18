@@ -100,6 +100,12 @@ define fn_docker_build_musl
 	-f Dockerfile .
 endef
 
+ifeq ($(arch), aarch64)
+DOCKER_BUILD_COMMAND:=buildx build --platform linux/arm64 --load
+else
+DOCKER_BUILD_COMMAND:=build
+endif
+
 ${DOCKER_BUILD}: debug clean
 	# must not use `component` here because of dependencies
 	$(eval DOCKER_IMAGE_NAME:=$(subst docker-build-,,$@))
@@ -118,7 +124,8 @@ ${DOCKER_BUILD}: debug clean
 		echo 'Running prepare script'; \
 		./prepare-image.sh ..; \
 	fi
-	DOCKER_BUILDKIT=1 docker build -t $(IMAGE_NAME) \
+
+	DOCKER_BUILDKIT=1 docker $(DOCKER_BUILD_COMMAND) -t $(IMAGE_NAME) \
 	--build-arg BUILD_DIR=$(build_dir) \
 	--build-arg ARCH=$(arch) \
 	--build-arg ARCH_AND_GIT_TAG=$(arch)-$(git_hash) \
@@ -126,7 +133,7 @@ ${DOCKER_BUILD}: debug clean
 	--build-arg GIT_COMMIT=$(git_hash) \
 	--build-arg GIT_BRANCH=$(GIT_BRANCH) \
 	--build-arg BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
- 	--build-arg BUILD_SCCACHE_VERSION=$(BUILD_SCCACHE_VERSION) \
+	--build-arg BUILD_SCCACHE_VERSION=$(BUILD_SCCACHE_VERSION) \
 	-f $(build_dir)/Dockerfile .
 	echo "Cleaning up $(build_dir)"
 	rm -rf $(build_dir)
@@ -208,6 +215,13 @@ actyxos-bin-win64: debug clean
 actyxos-bin-x64: debug clean
 	$(eval ARCH?=x64)
 	$(eval TARGET:=x86_64-unknown-linux-musl)
+	$(eval OUTPUT:=./dist/bin/$(ARCH))
+	$(eval IMG:=actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION))
+	$(call build_bins_and_move,$(OUTPUT),$(TARGET),$(IMG))
+
+actyxos-bin-aarch64:
+	$(eval ARCH?=aarch64)
+	$(eval TARGET:=aarch64-unknown-linux-musl)
 	$(eval OUTPUT:=./dist/bin/$(ARCH))
 	$(eval IMG:=actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION))
 	$(call build_bins_and_move,$(OUTPUT),$(TARGET),$(IMG))

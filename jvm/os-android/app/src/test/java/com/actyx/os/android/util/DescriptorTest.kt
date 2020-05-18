@@ -4,7 +4,7 @@ import arrow.core.some
 import org.junit.Assert.*
 import org.junit.Test
 
-class ManifestTest {
+class DescriptorTest {
   @Test
   fun deserialize() {
     val input = """
@@ -20,9 +20,9 @@ main: "index.html"
 settingsSchema: "./assets/schema.json"
 """
 
-    val result = Manifest.load(input)
-    val expected = Manifest(
-      "1.0", Manifest.ManifestDetails(
+    val result = Descriptor.load(input)
+    val expected = Descriptor(
+      "1.0", Descriptor.DescriptorDetails(
         "com.actyx.mwl",
         "Manual Work Logging",
         "A great first app",
