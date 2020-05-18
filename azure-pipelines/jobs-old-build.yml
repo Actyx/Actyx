@@ -63,25 +63,17 @@ jobs:
     - template: steps-bootstrap.yml
 
     - script: |
-        if [ "$LANGUAGE" == 'rust' ]
-        then
-            curl https://sh.rustup.rs -sSf | sh -s -- -y
-            # Use a fixed rust toolchain
-            rustup default 1.43.1
-            rustc --version
-            rustup component add rustfmt
-            rustup component add clippy
-        fi
         source "$NVM_DIR/nvm.sh"
         nvm use
+        export PATH=$PATH:/home/builder/bin
         build/bin/build-module.sh $(MODULE)
       displayName: 'Build $(MODULE)'
       env:
         # Map secrets to env vars
         DOCKERHUB_PASS: $(SECRET_DOCKERHUB_PASS)
         GITHUB_PKG_PASS: $(SECRET_GITHUB_PKG_PASS)
-        PATH: $(HOME)/.cargo/bin:$(PATH):$(HOME)/bin
-        NVM_DIR: $(HOME)/.nvm
+        # $(HOME) is resolved to the outer agents $HOME
+        NVM_DIR: /home/builder/.nvm
         # produce large dumps when rust tests fail
         RUST_BACKTRACE: full
       condition: contains(variables['BUILD_STRING'],variables['CURRENT_MODULE_BUILD_TAG'])
