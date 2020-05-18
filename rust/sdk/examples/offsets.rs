@@ -1,4 +1,11 @@
-use actyxos_sdk::event_service::{EventService, EventServiceError, Order, Subscription};
+#[allow(unused_imports)]
+#[macro_use]
+extern crate actyxos_sdk_macros;
+
+use actyxos_sdk::{
+    event_service::{EventService, EventServiceError, Order, Subscription},
+    semantics,
+};
 use futures::stream::StreamExt;
 
 #[tokio::main]
@@ -11,7 +18,7 @@ pub async fn main() -> Result<(), EventServiceError> {
 
     // all events matching the given subscription
     // sorted backwards, i.e. youngest to oldest
-    let sub = vec![Subscription::semantics("MyFish")];
+    let sub = vec![Subscription::wildcard(semantics!("MyFish"))];
     let mut events = service
         .query_upto(offsets, sub, Order::LamportReverse)
         .await?;

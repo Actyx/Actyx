@@ -183,8 +183,9 @@ impl Sub<&OffsetMap> for &OffsetMap {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::event::{
-        FishName, LamportTimestamp, Payload, Semantics, SourceId, StreamInfo, TimeStamp,
+    use crate::{
+        event::{LamportTimestamp, Payload, StreamInfo, TimeStamp},
+        fish_name, semantics,
     };
     use std::str::FromStr;
 
@@ -192,8 +193,8 @@ mod tests {
         Event {
             lamport: LamportTimestamp::new(1),
             stream: StreamInfo {
-                semantics: Semantics::from("dummy"),
-                name: FishName::from("dummy"),
+                semantics: semantics!("dummy"),
+                name: fish_name!("dummy"),
                 source: SourceId::from_str(source).unwrap(),
             },
             offset: Offset(offset),
