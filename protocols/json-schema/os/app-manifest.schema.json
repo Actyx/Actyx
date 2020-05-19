@@ -76,9 +76,9 @@
       "ManifestVersion": {
         "type": "string",
         "enum": [
-          "2.0"
+          "1.0"
         ],
-        "default": "2.0"
+        "default": "1.0"
       }
     },
     "Composite": {
