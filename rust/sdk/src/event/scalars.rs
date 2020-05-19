@@ -15,7 +15,7 @@
  */
 use crate::types::ArcVal;
 use derive_more::Display;
-use serde::de::{Error, Visitor};
+use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     convert::TryFrom,
@@ -42,7 +42,7 @@ pub enum ParseError {
 impl std::error::Error for ParseError {}
 
 fn nonempty_string<'de, D: Deserializer<'de>>(d: D) -> Result<ArcVal<str>, D::Error> {
-    let s = <&str>::deserialize(d)?;
+    let s = <String>::deserialize(d)?;
     if s.is_empty() {
         Err(D::Error::custom("expected non-empty string"))
     } else {
@@ -136,6 +136,53 @@ macro_rules! source_id {
         use ::std::convert::TryFrom;
         $crate::event::SourceId::try_from($lit).unwrap()
     }};
+}
+
+/// Macro for constructing a set of [`Tag`](event/struct.Tag.html) values.
+///
+/// The values accepted are either
+///  - non-empty string literals
+///  - normal expressions (enclosed in parens if multiple tokens)
+///
+/// ```rust
+/// use actyxos_sdk::{tag, tags, semantics, event::{Semantics, Tag}};
+/// use std::collections::BTreeSet;
+///
+/// let sem: Semantics = semantics!("b");
+/// let tags: BTreeSet<Tag> = tags!("a", sem);
+///
+/// let mut expected = BTreeSet::new();
+/// expected.insert(tag!("a"));
+/// expected.insert(tag!("semantics:b"));
+/// assert_eq!(tags, expected);
+/// ```
+#[macro_export]
+macro_rules! tags {
+    ($($expr:expr),*) => {{
+        let mut _tags = ::std::collections::BTreeSet::new();
+        $(
+            {
+                mod y {
+                    $crate::assert_len! { $expr, 1..,
+                        // if it is a string literal, then we know it is not empty
+                        pub fn x(z: &str) -> $crate::event::Tag {
+                            use ::std::convert::TryFrom;
+                            $crate::event::Tag::try_from(z).unwrap()
+                        },
+                        // if it is not a string literal, require an infallible conversion
+                        pub fn x(z: impl Into<$crate::event::Tag>) -> $crate::event::Tag {
+                            z.into()
+                        }
+                    }
+                }
+                _tags.insert(y::x($expr));
+            }
+        )*
+        _tags
+    }};
+    ($($x:tt)*) => {
+        compile_error!("This macro supports only string literals or expressions in parens.")
+    }
 }
 
 // DO NOT FORGET TO UPDATE THE VALUE IN THE MACRO ABOVE!
@@ -338,6 +385,10 @@ impl LamportTimestamp {
 pub struct SourceId([u8; MAX_SOURCEID_LENGTH + 1]);
 
 impl SourceId {
+    pub fn new(s: String) -> Result<Self, ParseError> {
+        Self::from_str(s.as_ref())
+    }
+
     pub fn as_str(&self) -> &str {
         let length = self.0[MAX_SOURCEID_LENGTH] as usize;
         std::str::from_utf8(&self.0[0..length]).expect("content must be valid utf8 string")
@@ -390,31 +441,8 @@ impl Display for SourceId {
 
 impl<'de> Deserialize<'de> for SourceId {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<SourceId, D::Error> {
-        struct SourceIdVisitor;
-
-        impl<'de> Visitor<'de> for SourceIdVisitor {
-            type Value = SourceId;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("A valid SourceId")
-            }
-
-            // JSON variant
-            fn visit_str<E>(self, string: &str) -> Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                Result::Ok(SourceId::from_str(string).map_err(serde::de::Error::custom)?)
-            }
-
-            fn visit_string<E>(self, string: String) -> Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                Result::Ok(SourceId::from_str(&*string).map_err(serde::de::Error::custom)?)
-            }
-        }
-        deserializer.deserialize_str(SourceIdVisitor)
+        nonempty_string(deserializer)
+            .and_then(|arc| SourceId::try_from(&*arc).map_err(D::Error::custom))
     }
 }
 
@@ -427,6 +455,7 @@ impl Serialize for SourceId {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeSet;
 
     #[test]
     fn semantics_to_tag() {
@@ -452,5 +481,29 @@ mod tests {
         );
         let res = serde_json::from_str::<Semantics>("\"\"").unwrap_err();
         assert_eq!(res.to_string(), "expected non-empty string");
+    }
+
+    #[test]
+    fn deserialize_owned() {
+        assert_eq!(
+            serde_json::from_reader::<_, Semantics>(br#""abc""#.as_ref()).unwrap(),
+            semantics!("abc")
+        );
+        let res = serde_json::from_reader::<_, Semantics>(b"\"\"".as_ref()).unwrap_err();
+        assert_eq!(res.to_string(), "expected non-empty string");
+        assert_eq!(
+            serde_json::from_reader::<_, SourceId>(br#""abc""#.as_ref()).unwrap(),
+            source_id!("abc")
+        );
+        let res = serde_json::from_reader::<_, SourceId>(b"\"\"".as_ref()).unwrap_err();
+        assert_eq!(res.to_string(), "expected non-empty string");
+    }
+
+    #[test]
+    fn make_tags() {
+        let mut tags = BTreeSet::new();
+        tags.insert(tag!("a"));
+        tags.insert(tag!("semantics:b"));
+        assert_eq!(tags!("a", semantics!("b")), tags);
     }
 }
