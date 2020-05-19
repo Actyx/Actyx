@@ -15,7 +15,7 @@
  */
 use crate::types::ArcVal;
 use derive_more::Display;
-use serde::de::{Error, Visitor};
+use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     convert::TryFrom,
@@ -42,7 +42,7 @@ pub enum ParseError {
 impl std::error::Error for ParseError {}
 
 fn nonempty_string<'de, D: Deserializer<'de>>(d: D) -> Result<ArcVal<str>, D::Error> {
-    let s = <&str>::deserialize(d)?;
+    let s = <String>::deserialize(d)?;
     if s.is_empty() {
         Err(D::Error::custom("expected non-empty string"))
     } else {
@@ -158,22 +158,23 @@ macro_rules! source_id {
 /// ```
 #[macro_export]
 macro_rules! tags {
-    ($($expr:tt),*) => {{
+    ($($expr:expr),*) => {{
         let mut _tags = ::std::collections::BTreeSet::new();
         $(
             {
                 mod y {
                     $crate::assert_len! { $expr, 1..,
+                        // if it is a string literal, then we know it is not empty
                         pub fn x(z: &str) -> $crate::event::Tag {
                             use ::std::convert::TryFrom;
                             $crate::event::Tag::try_from(z).unwrap()
                         },
+                        // if it is not a string literal, require an infallible conversion
                         pub fn x(z: impl Into<$crate::event::Tag>) -> $crate::event::Tag {
                             z.into()
                         }
                     }
                 }
-                #[allow(unused_parens)]
                 _tags.insert(y::x($expr));
             }
         )*
@@ -384,6 +385,10 @@ impl LamportTimestamp {
 pub struct SourceId([u8; MAX_SOURCEID_LENGTH + 1]);
 
 impl SourceId {
+    pub fn new(s: String) -> Result<Self, ParseError> {
+        Self::from_str(s.as_ref())
+    }
+
     pub fn as_str(&self) -> &str {
         let length = self.0[MAX_SOURCEID_LENGTH] as usize;
         std::str::from_utf8(&self.0[0..length]).expect("content must be valid utf8 string")
@@ -436,31 +441,8 @@ impl Display for SourceId {
 
 impl<'de> Deserialize<'de> for SourceId {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<SourceId, D::Error> {
-        struct SourceIdVisitor;
-
-        impl<'de> Visitor<'de> for SourceIdVisitor {
-            type Value = SourceId;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("A valid SourceId")
-            }
-
-            // JSON variant
-            fn visit_str<E>(self, string: &str) -> Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                Result::Ok(SourceId::from_str(string).map_err(serde::de::Error::custom)?)
-            }
-
-            fn visit_string<E>(self, string: String) -> Result<Self::Value, E>
-            where
-                E: serde::de::Error,
-            {
-                Result::Ok(SourceId::from_str(&*string).map_err(serde::de::Error::custom)?)
-            }
-        }
-        deserializer.deserialize_str(SourceIdVisitor)
+        nonempty_string(deserializer)
+            .and_then(|arc| SourceId::try_from(&*arc).map_err(D::Error::custom))
     }
 }
 
@@ -502,12 +484,26 @@ mod tests {
     }
 
     #[test]
+    fn deserialize_owned() {
+        assert_eq!(
+            serde_json::from_reader::<_, Semantics>(br#""abc""#.as_ref()).unwrap(),
+            semantics!("abc")
+        );
+        let res = serde_json::from_reader::<_, Semantics>(b"\"\"".as_ref()).unwrap_err();
+        assert_eq!(res.to_string(), "expected non-empty string");
+        assert_eq!(
+            serde_json::from_reader::<_, SourceId>(br#""abc""#.as_ref()).unwrap(),
+            source_id!("abc")
+        );
+        let res = serde_json::from_reader::<_, SourceId>(b"\"\"".as_ref()).unwrap_err();
+        assert_eq!(res.to_string(), "expected non-empty string");
+    }
+
+    #[test]
     fn make_tags() {
-        let sem_b = semantics!("b");
         let mut tags = BTreeSet::new();
         tags.insert(tag!("a"));
         tags.insert(tag!("semantics:b"));
-        // parens are there on purpose to make sure that clippy is silenced
-        assert_eq!(tags!("a", (sem_b)), tags);
+        assert_eq!(tags!("a", semantics!("b")), tags);
     }
 }

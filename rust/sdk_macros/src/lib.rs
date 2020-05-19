@@ -23,11 +23,10 @@ extern crate proc_macro;
 
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use std::str::FromStr;
 use syn::{
     export::Span,
     parse::{Parse, ParseStream},
-    Error, Expr, ExprLit, ExprRange, Item, Lit, LitByteStr, LitStr, RangeLimits, Token,
+    Error, Expr, ExprGroup, ExprLit, ExprRange, Item, Lit, LitByteStr, LitStr, RangeLimits, Token,
 };
 
 enum Str {
@@ -136,12 +135,12 @@ macro_rules! range {
 ///
 /// ```rust
 /// macro_rules! transform {
-///     ($expr:tt) => {{
+///     ($expr:expr) => {{
 ///         mod y {
 ///             actyxos_sdk_macros::assert_len! {
 ///                 $expr,
 ///                 1..5,
-///                 pub fn x() -> usize { $expr.len() }, // it was a string literal
+///                 pub fn x() -> usize { ($expr).len() }, // it was a string literal
 ///                 pub fn x() -> String { format!("{}", $expr) } // it was something else
 ///             }
 ///         }
@@ -150,13 +149,8 @@ macro_rules! range {
 /// }
 ///
 /// assert_eq!(transform!("helo"), 4);
-/// assert_eq!(transform!(("hello")), "hello");
+/// assert_eq!(transform!("hello".to_string()), "hello");
 /// ```
-///
-/// One drawback of this approach is that we need to match a TokenTree (tt) in the
-/// pattern because otherwise `assert_len!` won’t see the actual string literals,
-/// which implies that any expression that consists of more than one token will need
-/// to be wrapped in parentheses.
 #[proc_macro]
 pub fn assert_len(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     match assert_len_impl(input) {
@@ -172,11 +166,25 @@ struct Inputs {
     second: Option<Item>,
 }
 
+/// when this macro’s input comes from another macro, expressions may be invisibly
+/// wrapped, so strip that away
+fn strip_invisible_group(expr: Expr) -> Expr {
+    match expr {
+        Expr::Group(ExprGroup { expr, .. }) => *expr,
+        e => e,
+    }
+}
+
 impl Parse for Inputs {
     fn parse(input: ParseStream) -> Result<Self, Error> {
-        let literal: Expr = input.parse()?;
+        let literal: Expr = strip_invisible_group(input.parse()?);
         input.parse::<Token![,]>()?;
-        let range: ExprRange = input.parse()?;
+
+        let range: ExprRange = match strip_invisible_group(input.parse()?) {
+            Expr::Range(e) => e,
+            other => return Err(Error::new_spanned(other, "expected range here")),
+        };
+
         let mut first: Option<Item> = None;
         let mut second: Option<Item> = None;
         if input.parse::<Token![,]>().is_err() {
@@ -187,6 +195,7 @@ impl Parse for Inputs {
                 second,
             });
         }
+
         first = Some(input.parse()?);
         input.parse::<Token![,]>()?;
         second = Some(input.parse()?);
@@ -270,7 +279,8 @@ fn assert_len_impl(input: proc_macro::TokenStream) -> Result<TokenStream, Error>
     Ok(first
         .map(|f| {
             let first = f.into_token_stream();
-            // must emit compile_error! macro invocation before the item to avoid warnings in case of errors
+            // must emit compile_error! macro invocation together with the item to
+            // avoid irrelevant warnings in case of errors
             quote!(#error #first)
         })
         .unwrap_or_else(|| if error.is_empty() { quote!(()) } else { error }))
