@@ -31,8 +31,8 @@ android {
     applicationId 'com.actyx.os.android'
     minSdkVersion 23
     targetSdkVersion 29
-    versionCode 1
-    versionName '0.1'
+    versionCode androidGitVersion.code()
+    versionName androidGitVersion.name()
     testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     buildConfigField "int", "MIN_SDK_API_LEVEL", "$minSdkVersion.apiLevel"
   }
