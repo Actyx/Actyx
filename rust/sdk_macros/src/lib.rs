@@ -253,7 +253,7 @@ fn assert_len_impl(input: proc_macro::TokenStream) -> Result<TokenStream, Error>
             Error::new(
                 lit.span(),
                 format!(
-                    "{} of length {} not allowed here, neet at least {}",
+                    "{} of length {} not allowed here, need at least {}",
                     lit.kind(),
                     len,
                     min
