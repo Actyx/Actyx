@@ -271,12 +271,14 @@ impl Default for EventService {
     /// This will configure a connection to the local Event Service, either an ActyxOS node in development
     /// mode or the production ActyxOS node where the app is deployed (in particular, it will
     /// inspect the `AX_EVENT_SERVICE_URI` environment variable and fall back to
-    /// `http://localhost:4454/api/v1/events/`).
+    /// `http://localhost:4454`).
     fn default() -> Self {
         let client = Client::new();
         let url = env::var("AX_EVENT_SERVICE_URI")
             .and_then(|uri| Url::parse(&*uri).map_err(|_| env::VarError::NotPresent))
-            .unwrap_or_else(|_| Url::parse("http://localhost:4454/api/v1/events/").unwrap());
+            .unwrap_or_else(|_| Url::parse("http://localhost:4454/api").unwrap())
+            .join("/v1/events/")
+            .unwrap();
         EventService { client, url }
     }
 }
