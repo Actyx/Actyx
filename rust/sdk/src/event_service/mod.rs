@@ -19,7 +19,7 @@
 
 use crate::event::{FishName, OffsetMap, Payload, Semantics, SourceId};
 use serde::{Deserialize, Serialize};
-use std::{convert::TryInto, fmt::Debug};
+use std::fmt::Debug;
 
 #[cfg(feature = "client")]
 mod client;
@@ -78,28 +78,28 @@ pub struct Subscription {
 }
 
 // canonicalize: empty string is the same as absent
-impl<'a> From<SubscriptionOnWire<'a>> for Subscription {
-    fn from(other: SubscriptionOnWire<'a>) -> Self {
+impl From<SubscriptionOnWire> for Subscription {
+    fn from(other: SubscriptionOnWire) -> Self {
         Self {
             semantics: other.semantics.and_then(|s| {
                 if s.is_empty() {
                     None
                 } else {
-                    Some(s.try_into().unwrap())
+                    Some(Semantics::new(s).unwrap())
                 }
             }),
             name: other.name.and_then(|s| {
                 if s.is_empty() {
                     None
                 } else {
-                    Some(s.try_into().unwrap())
+                    Some(FishName::new(s).unwrap())
                 }
             }),
             source: other.source.and_then(|s| {
                 if s.is_empty() {
                     None
                 } else {
-                    Some(s.try_into().unwrap())
+                    Some(SourceId::new(s).unwrap())
                 }
             }),
         }
@@ -107,10 +107,10 @@ impl<'a> From<SubscriptionOnWire<'a>> for Subscription {
 }
 
 #[derive(Deserialize)]
-struct SubscriptionOnWire<'a> {
-    pub semantics: Option<&'a str>,
-    pub name: Option<&'a str>,
-    pub source: Option<&'a str>,
+struct SubscriptionOnWire {
+    pub semantics: Option<String>,
+    pub name: Option<String>,
+    pub source: Option<String>,
 }
 
 impl Subscription {
@@ -238,7 +238,6 @@ pub struct EventServiceError {
 mod tests {
     use super::*;
     use crate::{fish_name, semantics, source_id};
-    use std::str::FromStr;
 
     #[test]
     fn must_pick_up_subscription() {
@@ -270,9 +269,25 @@ mod tests {
 
         let bytes = r#"{"source":"name"}"#;
         let subs: Subscription = serde_json::from_str(bytes).unwrap();
-        assert_eq!(
-            subs.as_tuple(),
-            (None, None, Some(SourceId::from_str("name").unwrap()))
-        );
+        assert_eq!(subs.as_tuple(), (None, None, Some(source_id!("name"))));
+    }
+
+    #[test]
+    fn must_pick_up_subscription_set_owned() {
+        let bytes = br#"{"source":""}"#.as_ref();
+        let subs: Subscription = serde_json::from_reader(bytes).unwrap();
+        assert_eq!(subs.as_tuple(), (None, None, None));
+
+        let bytes = br#"{"name":""}"#.as_ref();
+        let subs: Subscription = serde_json::from_reader(bytes).unwrap();
+        assert_eq!(subs.as_tuple(), (None, None, None));
+
+        let bytes = br#"{"name":"name"}"#.as_ref();
+        let subs: Subscription = serde_json::from_reader(bytes).unwrap();
+        assert_eq!(subs.as_tuple(), (None, Some(fish_name!("name")), None));
+
+        let bytes = br#"{"source":"name"}"#.as_ref();
+        let subs: Subscription = serde_json::from_reader(bytes).unwrap();
+        assert_eq!(subs.as_tuple(), (None, None, Some(source_id!("name"))));
     }
 }
