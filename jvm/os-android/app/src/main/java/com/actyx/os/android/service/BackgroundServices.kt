@@ -92,6 +92,25 @@ class BackgroundServices : Service() {
   override fun onBind(intent: Intent): IBinder? {
     log.debug("onBind, intent: $intent")
 
+    return binder
+  }
+
+  override fun onUnbind(intent: Intent?): Boolean {
+    log.debug("onUnbind, intent: $intent")
+    return super.onUnbind(intent)
+  }
+
+  override fun onCreate() {
+    log.debug("onCreate")
+
+    super.onCreate()
+    setupNotificationAndService(ToAndroid.NodeStateChanged.State.MISCONFIGURED)
+    axNode = AxNode(this, ::handler)
+
+    val extFilesDir = applicationContext.getExternalFilesDir(null)!!
+    // TODO check if null
+    appRepository = AppRepository(extFilesDir, this)
+
     // FIXME remove
     val initialSettings =
       axNode.getSettings(SYSTEM_SETTINGS_SCOPE)
@@ -159,25 +178,6 @@ class BackgroundServices : Service() {
       settingsUpdatesDisposable,
       restServiceDesposible
     )
-
-    return binder
-  }
-
-  override fun onUnbind(intent: Intent?): Boolean {
-    log.debug("onUnbind, intent: $intent")
-    disposables.dispose()
-    return super.onUnbind(intent)
-  }
-
-  override fun onCreate() {
-    log.debug("onCreate")
-    super.onCreate()
-    setupNotificationAndService(ToAndroid.NodeStateChanged.State.MISCONFIGURED)
-    axNode = AxNode(this, ::handler)
-
-    val extFilesDir = applicationContext.getExternalFilesDir(null)!!
-    // TODO check if null
-    appRepository = AppRepository(extFilesDir, this)
   }
 
   private fun setupNotification(nodeState: ToAndroid.NodeStateChanged.State): Notification {
@@ -248,6 +248,7 @@ class BackgroundServices : Service() {
 
   override fun onDestroy() {
     log.debug("onDestroy")
+    disposables.dispose()
     super.onDestroy()
   }
 

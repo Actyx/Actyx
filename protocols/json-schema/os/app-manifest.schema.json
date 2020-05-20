@@ -146,8 +146,15 @@
             "const": "docker"
           },
           "dockerCompose": {
-            "$ref": "#/definitions/Basic/PathToYamlFile",
-            "default": "docker-compose.yml"
+            "type": "object",
+            "properties": {
+              "x86_64": {
+                "$ref": "#/definitions/Basic/PathToYamlFile"
+              },
+              "aarch64": {
+                "$ref": "#/definitions/Basic/PathToYamlFile"
+              }
+            }
           }
         }
       }

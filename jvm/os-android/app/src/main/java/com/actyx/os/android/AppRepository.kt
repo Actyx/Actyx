@@ -10,7 +10,7 @@ import com.actyx.os.android.activity.MainActivity
 import com.actyx.os.android.activity.WebappActivity
 import com.actyx.os.android.api.RestServer
 import com.actyx.os.android.service.BackgroundServices
-import com.actyx.os.android.util.Manifest
+import com.actyx.os.android.util.Descriptor
 import io.reactivex.Observable
 import io.reactivex.subjects.BehaviorSubject
 import java.io.File
@@ -25,7 +25,7 @@ import java.io.InputStream
  *    └─ {appId}
  *       ├─ current // text file that contains the latest version
  *       └─ {version}
- *          ├─ ax-manifest.yml
+ *          ├─ ax-descriptor.yml
  *          └─ {extracted app archive content}
  */
 class AppRepository(extFilesDir: File, val ctx: Context) {
@@ -41,19 +41,19 @@ class AppRepository(extFilesDir: File, val ctx: Context) {
     appsSubject.onNext(appInfoList())
   }
 
-  private fun appInfo(manifest: Manifest.ManifestDetails): AppInfo =
+  private fun appInfo(descriptor: Descriptor.DescriptorDetails): AppInfo =
     AppInfo(
-      manifest.id,
-      manifest.version,
-      manifest.name,
-      iconFile(manifest).map { it.absolutePath }.orNull(),
-      appUrl(manifest),
-      loadSettingsSchema(manifest)
+      descriptor.id,
+      descriptor.version,
+      descriptor.name,
+      iconFile(descriptor).map { it.absolutePath }.orNull(),
+      appUrl(descriptor),
+      loadSettingsSchema(descriptor)
     )
 
   fun appInfo(appId: String): AppInfo? =
     currentAppDir(appId)?.let { current ->
-      appInfo(manifest(current).manifest)
+      appInfo(descriptor(current).descriptor)
     }
 
   /**
@@ -84,29 +84,29 @@ class AppRepository(extFilesDir: File, val ctx: Context) {
     } ?: throw ResourceNotFoundException("App not found: \"$appId\"")
 
   /**
-   * gets the app icon path referenced in the manifest within the repo
+   * gets the app icon path referenced in the descriptor within the repo
    */
-  private fun iconFile(manifest: Manifest.ManifestDetails): Option<File> =
-    manifest.appIconPath.map { File(currentAppDir(manifest.id), it) }
+  private fun iconFile(descriptor: Descriptor.DescriptorDetails): Option<File> =
+    descriptor.appIconPath.map { File(currentAppDir(descriptor.id), it) }
 
   /**
    * creates the url under which the app is served
    */
-  private fun appUrl(manifest: Manifest.ManifestDetails): Uri =
-    if (manifest.main.startsWith("http"))
-      Uri.parse(manifest.main) // FIXME rm
+  private fun appUrl(descriptor: Descriptor.DescriptorDetails): Uri =
+    if (descriptor.main.startsWith("http"))
+      Uri.parse(descriptor.main) // FIXME rm
     else
       Uri.Builder()
         .scheme("http")
         .encodedAuthority("localhost:${RestServer.Port}")
-        // .path("apps/${manifest.id}/${manifest.main}
-        // TODO: Remove, once we rewrite the build manifest properly
+        // .path("apps/${descriptor.id}/${descriptor.main}
+        // TODO: Remove, once we rewrite the build descriptor properly
         // https://github.com/Actyx/Cosmos/issues/3222
-        .path("apps/${manifest.id}/${manifest.main.split("/").last()}")
+        .path("apps/${descriptor.id}/${descriptor.main.split("/").last()}")
         .build()
 
-  private fun loadSettingsSchema(manifest: Manifest.ManifestDetails): String {
-    val schemaFile = File(currentAppDir(manifest.id), manifest.settingsSchema)
+  private fun loadSettingsSchema(descriptor: Descriptor.DescriptorDetails): String {
+    val schemaFile = File(currentAppDir(descriptor.id), descriptor.settingsSchema)
     return schemaFile.readText()
   }
 
@@ -138,17 +138,17 @@ class AppRepository(extFilesDir: File, val ctx: Context) {
     File(appBaseDir(appId), "current")
 
   /**
-   * loads the version-specific app manifest
+   * loads the version-specific app descriptor
    */
-  private fun manifest(appVersionDir: File): Manifest =
-    Manifest.load(File(appVersionDir, "ax-manifest.yml").readText())
+  private fun descriptor(appVersionDir: File): Descriptor =
+    Descriptor.load(File(appVersionDir, "ax-descriptor.yml").readText())
 
   /**
-   * directory referenced from the manifest that contains the distributed resources
+   * directory referenced from the descriptor that contains the distributed resources
    */
   private fun currentDistDir(appId: String): File? =
     currentAppDir(appId)?.let { current ->
-      manifest(current).manifest.dist.let { File(current, it) }
+      descriptor(current).descriptor.dist.let { File(current, it) }
     }
 
   fun startApp(appId: String): Either<String, Unit> =

@@ -35,8 +35,9 @@
 //! deserializing to a type that supports equality and total ordering.
 
 use chrono::{Local, SecondsFormat, TimeZone};
-use serde::{Deserialize, Serialize};
+use serde::{de::Error, Deserialize, Serialize};
 use std::cmp::Ordering;
+use std::convert::TryFrom;
 use std::fmt::{self, Debug, Display, Formatter};
 use std::str::FromStr;
 
@@ -46,9 +47,7 @@ mod scalars;
 
 pub use offsets::{Offset, OffsetMap};
 pub use opaque::Opaque;
-pub use scalars::{
-    FishName, LamportTimestamp, Semantics, SourceId, SourceIdReadError, Tag, TimeStamp,
-};
+pub use scalars::{FishName, LamportTimestamp, ParseError, Semantics, SourceId, Tag, TimeStamp};
 
 /// Events are delivered in this envelope together with their metadata
 ///
@@ -140,8 +139,8 @@ impl Event<Payload> {
             timestamp: Default::default(),
             offset: Offset(0),
             stream: StreamInfo {
-                semantics: Semantics::from(semantics),
-                name: FishName::from(name),
+                semantics: Semantics::try_from(semantics).map_err(serde_json::Error::custom)?,
+                name: FishName::try_from(name).map_err(serde_json::Error::custom)?,
                 source: SourceId::from_str("dummy").unwrap(),
             },
             payload: serde_json::from_str(payload)?,

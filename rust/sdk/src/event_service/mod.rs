@@ -81,18 +81,36 @@ pub struct Subscription {
 impl From<SubscriptionOnWire> for Subscription {
     fn from(other: SubscriptionOnWire) -> Self {
         Self {
-            semantics: other.semantics.filter(|s| !s.is_empty()),
-            name: other.name.filter(|s| !s.is_empty()),
-            source: other.source.filter(|s| !s.is_empty()),
+            semantics: other.semantics.and_then(|s| {
+                if s.is_empty() {
+                    None
+                } else {
+                    Some(Semantics::new(s).unwrap())
+                }
+            }),
+            name: other.name.and_then(|s| {
+                if s.is_empty() {
+                    None
+                } else {
+                    Some(FishName::new(s).unwrap())
+                }
+            }),
+            source: other.source.and_then(|s| {
+                if s.is_empty() {
+                    None
+                } else {
+                    Some(SourceId::new(s).unwrap())
+                }
+            }),
         }
     }
 }
 
 #[derive(Deserialize)]
 struct SubscriptionOnWire {
-    pub semantics: Option<Semantics>,
-    pub name: Option<FishName>,
-    pub source: Option<SourceId>,
+    pub semantics: Option<String>,
+    pub name: Option<String>,
+    pub source: Option<String>,
 }
 
 impl Subscription {
@@ -108,9 +126,9 @@ impl Subscription {
 
     /// Subscribe to all events of the given semantics, regardless of which fish
     /// instance produced them or where.
-    pub fn semantics(semantics: impl Into<Semantics>) -> Self {
+    pub fn wildcard(semantics: Semantics) -> Self {
         Self {
-            semantics: Some(semantics.into()),
+            semantics: Some(semantics),
             name: None,
             source: None,
         }
@@ -118,23 +136,19 @@ impl Subscription {
 
     /// Subscribe to all events of a distributed fish, identified by its semantics
     /// and name.
-    pub fn distributed(semantics: impl Into<Semantics>, name: impl Into<FishName>) -> Self {
+    pub fn distributed(semantics: Semantics, name: FishName) -> Self {
         Self {
-            semantics: Some(semantics.into()),
-            name: Some(name.into()),
+            semantics: Some(semantics),
+            name: Some(name),
             source: None,
         }
     }
 
     /// Subscribe to precisely a single fish on the given ActyxOS node.
-    pub fn local(
-        semantics: impl Into<Semantics>,
-        name: impl Into<FishName>,
-        source: SourceId,
-    ) -> Self {
+    pub fn local(semantics: Semantics, name: FishName, source: SourceId) -> Self {
         Self {
-            semantics: Some(semantics.into()),
-            name: Some(name.into()),
+            semantics: Some(semantics),
+            name: Some(name),
             source: Some(source),
         }
     }
@@ -223,11 +237,15 @@ pub struct EventServiceError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
+    use crate::{fish_name, semantics, source_id};
 
     #[test]
     fn must_pick_up_subscription() {
-        let sub = Subscription::local("semantics", "name", SourceId::from_str("source").unwrap());
+        let sub = Subscription::local(
+            semantics!("semantics"),
+            fish_name!("name"),
+            source_id!("source"),
+        );
         let bytes = serde_json::to_string(&sub).unwrap();
         assert_eq!(
             bytes,
@@ -247,13 +265,29 @@ mod tests {
 
         let bytes = r#"{"name":"name"}"#;
         let subs: Subscription = serde_json::from_str(bytes).unwrap();
-        assert_eq!(subs.as_tuple(), (None, Some("name".into()), None));
+        assert_eq!(subs.as_tuple(), (None, Some(fish_name!("name")), None));
 
         let bytes = r#"{"source":"name"}"#;
         let subs: Subscription = serde_json::from_str(bytes).unwrap();
-        assert_eq!(
-            subs.as_tuple(),
-            (None, None, Some(SourceId::from_str("name").unwrap()))
-        );
+        assert_eq!(subs.as_tuple(), (None, None, Some(source_id!("name"))));
+    }
+
+    #[test]
+    fn must_pick_up_subscription_set_owned() {
+        let bytes = br#"{"source":""}"#.as_ref();
+        let subs: Subscription = serde_json::from_reader(bytes).unwrap();
+        assert_eq!(subs.as_tuple(), (None, None, None));
+
+        let bytes = br#"{"name":""}"#.as_ref();
+        let subs: Subscription = serde_json::from_reader(bytes).unwrap();
+        assert_eq!(subs.as_tuple(), (None, None, None));
+
+        let bytes = br#"{"name":"name"}"#.as_ref();
+        let subs: Subscription = serde_json::from_reader(bytes).unwrap();
+        assert_eq!(subs.as_tuple(), (None, Some(fish_name!("name")), None));
+
+        let bytes = br#"{"source":"name"}"#.as_ref();
+        let subs: Subscription = serde_json::from_reader(bytes).unwrap();
+        assert_eq!(subs.as_tuple(), (None, None, Some(source_id!("name"))));
     }
 }
