@@ -175,9 +175,9 @@ impl<T> Display for Event<T> {
         let time = Local.timestamp_millis(self.timestamp.as_i64() / 1000);
         write!(
             f,
-            "Event at {} (lamport {}, source ID {})",
+            "Event at {} ({}, source ID {})",
             time.to_rfc3339_opts(SecondsFormat::Millis, false),
-            self.lamport.as_u64(),
+            self.lamport,
             self.stream.source,
         )
     }

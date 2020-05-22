@@ -14,17 +14,28 @@
  * limitations under the License.
  */
 use super::{Event, SourceId};
+use derive_more::{From, Into};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::ops::{AddAssign, Sub};
+use std::ops::{AddAssign, Sub, SubAssign};
 
 /// Each ActyxOS node marks the events it publishes with its source ID and assigns
 /// a unique (consecutive) number to it: the `Offset`. The first event occupies offset zero.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(
+    Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, From, Into,
+)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct Offset(pub i64);
+
+impl Offset {
+    pub const ZERO: Offset = Offset(0);
+
+    pub fn decr(self) -> Self {
+        Self(self.0 - 1)
+    }
+}
 
 impl Default for Offset {
     fn default() -> Self {
@@ -91,6 +102,11 @@ impl OffsetMap {
             >= event.offset
     }
 
+    /// Counts the number of offsets spanned by this OffsetMap.
+    pub fn size(&self) -> u64 {
+        self - &OffsetMap::empty()
+    }
+
     pub fn into_inner(self) -> HashMap<SourceId, Offset> {
         self.0
     }
@@ -155,6 +171,20 @@ impl<T> AddAssign<&Event<T>> for OffsetMap {
         let off = self.0.entry(other.stream.source).or_default();
         if *off < other.offset {
             *off = other.offset;
+        }
+    }
+}
+
+impl<T> SubAssign<&Event<T>> for OffsetMap {
+    /// Ensure that the given event is no longer contained within this OffsetMap.
+    fn sub_assign(&mut self, other: &Event<T>) {
+        let off = self.0.entry(other.stream.source).or_default();
+        if *off >= other.offset {
+            if other.offset == Offset::ZERO {
+                self.0.remove(&other.stream.source);
+            } else {
+                *off = other.offset.decr();
+            }
         }
     }
 }

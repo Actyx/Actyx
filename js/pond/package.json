@@ -52,6 +52,7 @@
     "cron": "1.5.0",
     "debug": "3.2.6",
     "format-util": "1.0.3",
+    "immer": "^6.0.5",
     "immutable": "4.0.0-rc.12",
     "ramda": "0.25.0",
     "utf-8-validate": "5.0.2",

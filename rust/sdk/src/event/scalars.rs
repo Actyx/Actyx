@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 use crate::types::ArcVal;
-use derive_more::Display;
+use chrono::{DateTime, TimeZone, Utc};
+use derive_more::{Display, From, Into};
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
@@ -296,8 +297,32 @@ impl From<FishName> for Tag {
 }
 
 /// Microseconds since the UNIX epoch, without leap seconds and in UTC
+///
+/// ```
+/// use actyxos_sdk::event::TimeStamp;
+/// use chrono::{DateTime, Utc, TimeZone};
+///
+/// let timestamp = TimeStamp::now();
+/// let micros_since_epoch: u64 = timestamp.into();
+/// let date_time: DateTime<Utc> = timestamp.into();
+///
+/// assert_eq!(timestamp.as_i64() * 1000, date_time.timestamp_nanos());
+/// assert_eq!(TimeStamp::from(date_time), timestamp);
+/// ```
 #[derive(
-    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default,
+    Copy,
+    Clone,
+    Debug,
+    Default,
+    From,
+    Into,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
 )]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct TimeStamp(u64);
@@ -313,11 +338,27 @@ impl TimeStamp {
             .expect("Time went waaaay backwards");
         TimeStamp::new(duration.as_micros() as u64)
     }
+    #[deprecated(since = "0.2.1", note = "use .into()")]
     pub fn as_u64(self) -> u64 {
         self.0
     }
     pub fn as_i64(self) -> i64 {
         self.0 as i64
+    }
+}
+
+impl Into<DateTime<Utc>> for TimeStamp {
+    fn into(self) -> DateTime<Utc> {
+        Utc.timestamp(
+            (self.0 / 1_000_000) as i64,
+            (self.0 % 1_000_000) as u32 * 1000,
+        )
+    }
+}
+
+impl From<DateTime<Utc>> for TimeStamp {
+    fn from(dt: DateTime<Utc>) -> Self {
+        Self(dt.timestamp_nanos() as u64 / 1000)
     }
 }
 
@@ -349,7 +390,19 @@ impl Add<u64> for TimeStamp {
 /// - an event is emitted
 /// - a heartbeat is received
 #[derive(
-    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default,
+    Copy,
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    Default,
+    From,
+    Into,
 )]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct LamportTimestamp(u64);
@@ -361,11 +414,18 @@ impl LamportTimestamp {
     pub fn incr(self) -> Self {
         LamportTimestamp::new(self.0 + 1)
     }
+    #[deprecated(since = "0.2.1", note = "use .into()")]
     pub fn as_u64(self) -> u64 {
         self.0
     }
     pub fn as_i64(self) -> i64 {
         self.0 as i64
+    }
+}
+
+impl Display for LamportTimestamp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "LT({})", Into::<u64>::into(*self))
     }
 }
 
