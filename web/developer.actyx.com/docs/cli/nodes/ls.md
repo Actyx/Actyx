@@ -12,20 +12,13 @@ FLAGS:
     -v, -vv, -vvv        Increase verbosity
     -h, --help           Prints help information
     --local              Process over local network
-    --pretty             Prints a header in the text output 
-    -j                   Shortcut for '--format json'
-
-OPTIONS:
-    --format FORMAT      Output list in the defined FORMAT (either `json` or 
-                         `text`) [default: text]. The last occurrence of the 
-                         format command or the shortcut wins.  
+    -j or --json         Format output as JSON
 
 ARGS:
-    <NODE>...            Node IDs or, if using `--local`, the IP addresses, of
-                         the node(s) to perform the operation on. You may also
-                         pass in a file with a value on each line using the syntax
-                         `@file.txt` or have the command read one value per line
-                         from stdin using `@-`.
+    <NODE>               Node ID or, if using `--local`, the IP address, of the
+                         node to perform the operation on. You may also pass in a
+                         file with a value using the syntax `@file.txt` or have the 
+                         command one value from stdin using `@-`.
 ```
 
 :::tip Output of `ax nodes ls`
@@ -45,35 +38,33 @@ NODE ID    DISPLAY NAME  STATE   SETTINGS LICENSE  APPS DEPLOYED APPS RUNNING  S
 10.2.3.25  Host unreachable
 
 # get the status of all nodes in the local network as a json object
-$ ax nodes ls --local --format json 10.2.3.23 10.2.3.24
+$ ax --json nodes ls --local 10.2.3.23 10.2.3.24 10.2.3.25
 {
-    "reachable": [
+    "code":"OK",
+    "result": [
         {
-            "id": "10.2.3.23",
-            "name": "MY NODE",
-            "state": "running",
-            "settings": "valid",
-            "license": "valid", 
-            "apps_deployed": 23,
-            "apps_running": 17,
-            "started_iso": "2020-03-18T06:17:00+01:00"
-            "started_unix": 1584512220
-            "version": "1.0.0"
-        }
-    ],
-    "actyxos_unreachable": [
+            "connection":"reachable",
+            "nodeId":"10.2.3.23",
+            "displayName":"MY NODE",
+            "state":"running",
+            "settingsValid":true,
+            "licensed":true,
+            "appsDeployed":23,
+            "appsRunning":17,
+            "startedIso":"2020-05-19T07:52:26+00:00",
+            "startedUnix":1589874746,
+            "version":"1.0.0"
+        },
         {
-            "id": "10.2.3.24"
-        }
-    ],
-    "host_unreachable": [
+            "connection":"actyxosUnreachable",
+            "host":"10.2.3.24"
+        },
         {
-            "id": "10.2.3.25"
+            "connection":"hostosUnreachable",
+            "host":"10.2.3.25"
         }
     ]
-
 }
-
 ```
 
 :::info `ax nodes ls` only returns the state of the node

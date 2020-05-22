@@ -14,18 +14,16 @@ FLAGS:
     --local            Process over local network
     --all-entries      Get all entries, overrides `--entries`
     -f, --follow       Keep running and output entries as they are created
+    -j or --json       Format output as JSON
 
 OPTIONS:
-    -n, --entries NUM  Output NUM last entries [default: 20]
-    --format FORMAT    Output log messages in the defined FORMAT (either
-                       `json` or `text`) [default: text]
+    -n, --entries <num> Output NUM last entries [default: 20]
 
 ARGS:
-    <NODE>...        Node IDs or, if using `--local`, the IP addresses, of the
-                     node(s) to perform the operation on. You may also pass in a
-                     file with a value on each line using the syntax `@file.txt`
-                     or have the command read one value per line from stdin
-                     using `@-`.
+    <NODE>           Node ID or, if using `--local`, the IP address, of the
+                     node to perform the operation on. You may also pass in a
+                     file with a value using the syntax `@file.txt` or have the 
+                     command one value from stdin using `@-`.
 ```
 
 Please see the following usage examples for the `ax logs tail` command:

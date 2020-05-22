@@ -11,6 +11,8 @@ USAGE: ax apps package [FLAGS] <PATH>...
 FLAGS:
     -v, -vv, -vvv    Increase verbosity
     -h, --help       Prints help information
+    -j or --json     Format output as JSON
+
 
 ARGS:
     <PATH>...        Paths to the app manifests to process. If no path

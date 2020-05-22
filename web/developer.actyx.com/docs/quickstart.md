@@ -138,15 +138,13 @@ docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyxos_data:/data --priv
 </TabItem>
 </Tabs>
 
-You will see lots of output on the screen, including a bunch of error messages that are normal at this point. ActyxOS will be up-and-running as soon as you see something like
+ ActyxOS will be up and running as soon as you see something like
 
 ```
 ***********************
 **** ActyxOS ready ****
 ***********************
 ```
-
-![](/images/actyxos-on-docker-first-startup.gif)
 
 :::note
 As you can see, you need to provide a persistent volume and set up some port forwarding. For more information about running ActyxOS on Docker, refer to the [ActyxOS documentation](os/advanced-guides/actyxos-on-docker.md).

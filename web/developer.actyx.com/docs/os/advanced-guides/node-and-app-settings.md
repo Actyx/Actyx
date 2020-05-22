@@ -212,18 +212,19 @@ You could do so by writing the following settings schema:
       "default": "green"
     },
   },
+  "additionalProperties": false,
   "required": [
     "timeUnit"
   ]
 }
 ```
 
+:::tip
+In order to make the configuration of your app failsafe, we encourage you to always use `additionalProperties: false` . This means that you only the properties you defined can be configured, and prevents your users from accidental configuration mistakes through e.g. typos.
+:::
+
 Following association of this schema with your app, ActyxOS will now ensure that only settings meeting this schema will ever be provided to your app.
 
-:::info What if the settings are invalid?
-
-ActyxOS will only ever start an app if the settings on the node have been validated against the revelant app settings schema. Otherwise the app will be in a special state called _stopped (misconfigured)_.
-:::
 
 #### Deploying an app without settings
 
@@ -300,6 +301,10 @@ def on_start_app():
 
 Now that we have gone through how you, as an app developer, can define what people can configure using settings, we come to the last part of this page: configuring apps. As shown next, this is completely analogous to [configuring nodes](#configuring-nodes):
 
+:::note Trying to set invalid settings?
+ActyxOS validates any settings before applying them. It does so by using the node settings schema as well as the settings schema defined by each app's developer. This ensures only valid settings are ever set.
+:::
+
 
 ```bash
 # Create a yml (or JSON) file containing the settings
@@ -320,6 +325,3 @@ And similarily you can also use mode advanced scopes to selectively set settings
 $ ax settings set --local com.example.app1/backgroundColor blue 10.2.3.23
 ```
 
-:::note Trying to set invalid settings?
-ActyxOS validates any settings before applying them. It does so by using the node settings schema as well as the settings schema defined by each app's developer. This ensures only valid settings are ever set.
-:::
