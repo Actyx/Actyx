@@ -1,6 +1,6 @@
 [package]
 name = "actyxos_sdk"
-version = "0.2.1"
+version = "0.2.2"
 authors = ["Actyx AG <developer@actyx.io>"]
 edition = "2018"
 description = "Tools for interacting with the services of an ActyxOS node"
