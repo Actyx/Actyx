@@ -24,7 +24,7 @@ use std::fmt::Debug;
 #[cfg(feature = "client")]
 mod client;
 #[cfg(feature = "client")]
-pub use client::EventService;
+pub use client::{EventService, EventServiceError};
 
 /// The order in which you want to receive events for a query
 ///
@@ -225,13 +225,6 @@ pub struct PublishRequestBody {
 #[serde(rename_all = "camelCase")]
 pub struct NodeIdResponse {
     pub node_id: SourceId,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct EventServiceError {
-    pub error: String,
-    pub error_code: u16,
 }
 
 #[cfg(test)]
