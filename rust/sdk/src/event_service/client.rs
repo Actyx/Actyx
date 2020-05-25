@@ -37,7 +37,7 @@ use url::Url;
 /// This will connect to the local Event Service, either an ActyxOS node in development
 /// mode or the production ActyxOS node where the app is deployed (in particular, it will
 /// inspect the `AX_EVENT_SERVICE_URI` environment variable and fall back to
-/// `http://localhost:4454/api/v1/events/`).
+/// `http://localhost:4454/api/`).
 pub struct EventService {
     client: Client,
     url: Url,
@@ -271,7 +271,7 @@ impl Default for EventService {
     /// This will configure a connection to the local Event Service, either an ActyxOS node in development
     /// mode or the production ActyxOS node where the app is deployed (in particular, it will
     /// inspect the `AX_EVENT_SERVICE_URI` environment variable and fall back to
-    /// `http://localhost:4454/api`).
+    /// `http://localhost:4454/api/`).
     fn default() -> Self {
         let client = Client::new();
         let url = env::var("AX_EVENT_SERVICE_URI")
