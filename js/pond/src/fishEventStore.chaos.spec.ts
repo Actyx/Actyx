@@ -6,6 +6,7 @@
  */
 import { catOptions, chunksOf } from 'fp-ts/lib/Array'
 import { none, some } from 'fp-ts/lib/Option'
+import { List, Map } from 'immutable'
 import { FishName, Psn, Semantics, SourceId, SubscriptionSet, Timestamp } from './'
 import { Event, Events, EventStore, OffsetMap } from './eventstore'
 import { includeEvent } from './eventstore/testEventStore'
@@ -14,16 +15,14 @@ import { FishEventStore, FishInfo } from './fishEventStore'
 import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
 import { EnvelopeFromStore } from './store/util'
-import { EventKey, Lamport, OnEvent, Envelope } from './types'
+import { EventKey, Lamport, OnEvent } from './types'
 import { shuffle } from './util/array'
-import produce, { enableMapSet } from 'immer'
-
-enableMapSet()
+import { SerializedList, SerializedMap } from './util/immutable'
 
 const numberOfSources = 5
 const batchSize = 10
 const eventsPerSource = 200
-const numberOfIterations = 20
+const numberOfIterations = 5
 const semanticSnapshotProbability = 0.1
 const localSnapshotProbability = 0.05
 
@@ -35,22 +34,18 @@ type Payload = Readonly<{
   isLocalSnapshot: boolean
 }>
 
-type State = Map<string, number[]>
-const initialState: State = new Map()
-const onEvent: OnEvent<State, Payload> = (state, envelope) =>
-  produce(state, draft => myOnEvent(draft, envelope))
-
-const myOnEvent = (state: State, envelope: Envelope<Payload>): void => {
+type State = Map<string, List<number>>
+const initialState: State = Map()
+const onEvent: OnEvent<State, Payload> = (state, envelope) => {
   const {
     source: { sourceId },
     payload: { sequence },
   } = envelope
 
-  const seqs = state.get(sourceId) || []
-  if (seqs.length === 0) {
-    state.set(sourceId, seqs)
-  }
-  seqs.push(sequence)
+  const seqs = state.get(sourceId) || List()
+
+  const state1 = state.set(sourceId, seqs.push(sequence))
+  return state1
 }
 
 const timeScale = 1000000
@@ -69,6 +64,8 @@ const generateEvents = (count: number) => (sourceId: SourceId): Events =>
     },
   }))
 
+type SerializedState = SerializedMap<SerializedList<number>>
+
 const mkFish = (
   isSemanticSnapshot: SemanticSnapshot<Payload> | undefined,
 ): FishInfo<State, Payload> => ({
@@ -80,8 +77,9 @@ const mkFish = (
   isSemanticSnapshot,
   snapshotFormat: {
     version: 1,
-    serialize: x => Array.from(x),
-    deserialize: (serialized: [string, number[]][]) => new Map(serialized),
+    serialize: x => x,
+    deserialize: (serialized: SerializedState) =>
+      SerializedMap.deserialize(serialized).map(SerializedList.deserialize),
   },
 })
 
