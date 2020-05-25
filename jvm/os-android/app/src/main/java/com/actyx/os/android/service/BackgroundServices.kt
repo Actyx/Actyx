@@ -16,6 +16,8 @@ import arrow.core.orNull
 import com.actyx.os.android.AppRepository
 import com.actyx.os.android.R
 import com.actyx.os.android.activity.MainActivity
+import com.actyx.os.android.legacy.metrics.MetricService
+import com.actyx.os.android.legacy.usb.BaltechReaderService
 import com.actyx.os.android.legacy.zebrascanner.ZebraScannerService
 import com.actyx.os.android.model.ActyxOsSettings
 import com.actyx.os.android.osnode.AxNode
@@ -237,8 +239,8 @@ class BackgroundServices : Service() {
   private fun runServices(settings: ActyxOsSettings): Observable<Unit> {
     return Observable.merge(
       mapOf(
-//        "baltech" to BaltechReaderService(this),
-//        "metric" to MetricService(this),
+        "baltech" to BaltechReaderService(this),
+        "metric" to MetricService(this),
         "ipfs" to IpfsService(this),
         "zebrascanner" to ZebraScannerService(this)
       )
