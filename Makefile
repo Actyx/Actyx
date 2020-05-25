@@ -71,6 +71,7 @@ define fn_docker_push
 endef
 
 docker-push-musl: docker-build-musl docker-login
+	$(call fn_docker_push,musl,aarch64-unknown-linux-musl)
 	$(call fn_docker_push,musl,x86_64-unknown-linux-musl)
 	$(call fn_docker_push,musl,armv7-unknown-linux-musleabihf)
 	$(call fn_docker_push,musl,arm-unknown-linux-musleabi)
@@ -125,7 +126,11 @@ ${DOCKER_BUILD}: debug clean
 		./prepare-image.sh ..; \
 	fi
 
-	DOCKER_BUILDKIT=1 docker $(DOCKER_BUILD_COMMAND) -t $(IMAGE_NAME) \
+	# requires `qemu-user-static` (ubuntu) package; you might need to restart your docker daemon
+	# after setting DOCKER_CLI_EXPERIMENTAL=enabled (or adding `"experimental": "enabled"` to `~/.docker/config.json`)
+	# and reset some weird stuff using `docker run --rm --privileged multiarch/qemu-user-static --reset -p yes`
+	# to be able to build for `linux/arm64`. (https://github.com/docker/buildx/issues/138)
+	DOCKER_CLI_EXPERIMENTAL=enabled DOCKER_BUILDKIT=1 docker $(DOCKER_BUILD_COMMAND) -t $(IMAGE_NAME) \
 	--build-arg BUILD_DIR=$(build_dir) \
 	--build-arg ARCH=$(arch) \
 	--build-arg ARCH_AND_GIT_TAG=$(arch)-$(git_hash) \
@@ -139,6 +144,7 @@ ${DOCKER_BUILD}: debug clean
 	rm -rf $(build_dir)
 
 docker-build-musl:
+	$(call fn_docker_build_musl,aarch64-unknown-linux-musl)
 	$(call fn_docker_build_musl,x86_64-unknown-linux-musl)
 	$(call fn_docker_build_musl,armv7-unknown-linux-musleabihf)
 	$(call fn_docker_build_musl,arm-unknown-linux-musleabi)
