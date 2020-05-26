@@ -209,7 +209,7 @@ class WebappActivity : BaseActivity() {
     override fun onReceive(context: Context, intent: Intent) {
       intent.getStringExtra(ZebraScannerService.EXTRA_CODE)?.let {
         toast("Scanned code $it")
-        webView.dispatchCodeScannedCustomEvent(ScannedCodeData(it, "zebra scanner"))
+        webView.dispatchCodeScannedCustomEvent(ScannedCodeData(it, "Zebra TC8000 Scanner"))
       }
     }
   }

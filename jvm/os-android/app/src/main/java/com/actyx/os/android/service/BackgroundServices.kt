@@ -242,7 +242,7 @@ class BackgroundServices : Service() {
         "baltech" to BaltechReaderService(this),
         "metric" to MetricService(this),
         "ipfs" to IpfsService(this),
-        "zebrascanner" to ZebraScannerService(this)
+        "zebraScanner" to ZebraScannerService(this)
       )
         .map { (name, run) ->
           run(settings)
