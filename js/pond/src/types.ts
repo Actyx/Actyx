@@ -270,7 +270,8 @@ export type Envelope<E> = {
 
 const zeroKey: EventKey = {
   lamport: Lamport.zero,
-  sourceId: SourceId.of(''),
+  // Cannot use empty source id, store rejects.
+  sourceId: SourceId.of('!'),
   psn: Psn.of(0),
 }
 
