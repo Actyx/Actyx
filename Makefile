@@ -168,7 +168,7 @@ define build_bins_and_move
 	-w /src/rt-master \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it $(3) \
-	cargo --locked build --release --target $(2) --bins
+	cargo --locked build --release --target $(2) --bins --jobs 8
 	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -perm -u=x  \
 		-exec cp {} $(1) \;
 	echo "Please find your build artifacts in $(1)."
@@ -194,18 +194,18 @@ define build_bins_and_move_win64
 		rm WpdPack_4_1_2.zip && \
 		cd - && \
 		cd actyx-cli && \
-		cargo --locked build --release --target $(2) --bin ax --no-default-features && \
+		cargo --locked build --release --target $(2) --bin ax --no-default-features --jobs 8 && \
 		chown -R builder:builder ../target"
 	docker run -v `pwd`/rt-master:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it $(3) \
-	cargo --locked build --release --target $(2) --bin ada-cli
+	cargo --locked build --release --target $(2) --bin ada-cli --jobs 8
 	docker run -v `pwd`/rt-master:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it $(3) \
-	cargo --locked build --release --target $(2) --bin store-cli
+	cargo --locked build --release --target $(2) --bin store-cli --jobs 8
 	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -perm -u=x  \
 		-exec cp {} $(1) \;
 	echo "Please find your build artifacts in $(1)."
@@ -278,7 +278,7 @@ define fn-android-rust-lib
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-w /src/rt-master \
 	-it actyx/util:buildrs-x64-latest \
-	cargo --locked build -p $(CRATE) --lib --release --target $(ARCH)-linux-android
+	cargo --locked build -p $(CRATE) --lib --release --target $(ARCH)-linux-android --jobs 8
 endef
 
 define fn-android-libs
