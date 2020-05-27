@@ -19,6 +19,9 @@ import com.actyx.os.android.util.Logger
 @Serializable
 data class SwipedCardData(val cardId: String, val provenance: String)
 
+@Serializable
+data class ScannedCodeData(val code: String, val provenance: String)
+
 class WebViewFragment : Fragment() {
   private val log = Logger()
   private var url: String? = null
@@ -67,6 +70,11 @@ class WebViewFragment : Fragment() {
     dispatchCustomEvent(CARD_SCANNED, SwipedCardData.serializer(), data)
   }
 
+  fun dispatchCodeScannedCustomEvent(data: ScannedCodeData) {
+    log.info("code scanned: {}", data)
+    dispatchCustomEvent(CODE_SCANNED, ScannedCodeData.serializer(), data)
+  }
+
   private fun <T> dispatchCustomEvent(
     eventType: String,
     serializer: SerializationStrategy<T>,
@@ -102,6 +110,7 @@ class WebViewFragment : Fragment() {
 
   companion object {
     private const val CARD_SCANNED = "com.actyx.os.hardware.event.CARD_SCANNED"
+    private const val CODE_SCANNED = "com.actyx.os.hardware.event.CODE_SCANNED"
     private val json = Json(JsonConfiguration.Stable)
     private fun <T> mkDispatchCustomEventCode(
       eventType: String,

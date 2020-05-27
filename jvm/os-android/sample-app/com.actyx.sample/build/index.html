@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>Javascript Internal Script</title>
   <script type="text/javascript">
@@ -27,10 +28,35 @@
         document.getElementById("stopwatch").innerText = `running for ${formatDuration(seconds)}`;
       }, 1000);
     }
+
+    function addEvent(type, e) {
+      var eventList = document.getElementById('events');
+      var listItem = document.createElement('li');
+      listItem.appendChild(document.createTextNode(`${type}: ${e}`));
+      eventList.appendChild(listItem);
+    }
+
+    function Listen() {
+      window.addEventListener(
+        'com.actyx.os.hardware.event.CODE_SCANNED',
+        e => addEvent(e.type, e.detail.code),
+        false
+      );
+      window.addEventListener(
+        'com.actyx.os.hardware.event.CARD_SCANNED',
+        e => addEvent(e.type, e.detail.cardId),
+        false
+      );
+    }
   </script>
 </head>
-<body onload="Tick();Hello();">
-<div id="stopwatch"></div>
-<div id="config"></div>
+
+<body onload="Tick();Hello();Listen();">
+  <div id="stopwatch"></div>
+  <div id="config"></div>
+  <div>
+    <ul id="events"></ul>
+  </div>
 </body>
+
 </html>

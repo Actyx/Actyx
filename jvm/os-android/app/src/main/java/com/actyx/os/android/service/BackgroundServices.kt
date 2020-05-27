@@ -1,6 +1,9 @@
 package com.actyx.os.android.service
 
-import android.app.*
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.res.Configuration
@@ -15,6 +18,7 @@ import com.actyx.os.android.R
 import com.actyx.os.android.activity.MainActivity
 import com.actyx.os.android.legacy.metrics.MetricService
 import com.actyx.os.android.legacy.usb.BaltechReaderService
+import com.actyx.os.android.legacy.zebrascanner.ZebraScannerService
 import com.actyx.os.android.model.ActyxOsSettings
 import com.actyx.os.android.osnode.AxNode
 import com.actyx.os.android.osnode.model.NodeFfi.ToAndroid
@@ -26,7 +30,11 @@ import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.PublishSubject
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonConfiguration
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonElementSerializer
+import kotlinx.serialization.json.JsonObject
 
 typealias Scope = String
 
@@ -137,6 +145,7 @@ class BackgroundServices : Service() {
 
     val servicesDisposable =
       Observable.concat(initialSettings, settingsUpdates)
+        .doOnNext { log.info("updated settings from node: $it") }
         .filter { (scope) -> scope.startsWith(SYSTEM_SETTINGS_SCOPE) }
         .map { (_, settingsJson) ->
           val settings = jsonSerialization.parseJson(settingsJson)
@@ -232,7 +241,8 @@ class BackgroundServices : Service() {
       mapOf(
         "baltech" to BaltechReaderService(this),
         "metric" to MetricService(this),
-        "ipfs" to IpfsService(this)
+        "ipfs" to IpfsService(this),
+        "zebraScanner" to ZebraScannerService(this)
       )
         .map { (name, run) ->
           run(settings)
@@ -278,6 +288,7 @@ class BackgroundServices : Service() {
     const val ACTION_APP_LIST_UPDATED = "com.actyx.os.apps.APP_LIST_UPDATED"
     const val ACTION_SETTINGS_UPDATED = "com.actyx.os.settings.SETTINGS_UPDATED"
     const val EXTRA_SETTINGS_SCOPE = "com.actyx.intent.extra.settings.SCOPE"
+
     // Intent to start the actual WebApp inside WebAppActivity
     const val ACTION_APP_STOP_REQUESTED = "com.actyx.os.apps.APP_STOP_REQUESTED"
     const val ACTION_APP_START_REQUESTED = "com.actyx.os.apps.APP_START_REQUESTED"
