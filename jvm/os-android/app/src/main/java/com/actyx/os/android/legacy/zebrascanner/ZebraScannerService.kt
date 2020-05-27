@@ -112,7 +112,12 @@ class ZebraScannerImpl :
   }
 
   private fun initScanner(scanner: Scanner) {
-    log.info("initScanner, name: ${scanner.scannerInfo.friendlyName}, identifier: ${scanner.scannerInfo.deviceIdentifier.name}, modelnr: ${scanner.scannerInfo.modelNumber}")
+    log.info(
+      "initScanner, " +
+        "name: ${scanner.scannerInfo.friendlyName}, " +
+        "identifier: ${scanner.scannerInfo.deviceIdentifier.name}, " +
+        "modelnr: ${scanner.scannerInfo.modelNumber}"
+    )
     scanner.addDataListener(this)
     scanner.addStatusListener(this)
     scanner.triggerType = Scanner.TriggerType.HARD
@@ -197,7 +202,9 @@ class ZebraScannerImpl :
   }
 
   private fun doRead(scanner: Scanner) {
-    log.debug("doRead, scanner: ${scanner.scannerInfo.deviceIdentifier}, isReadPending: ${scanner.isReadPending}}")
+    log.debug("doRead, " +
+      "scanner: ${scanner.scannerInfo.deviceIdentifier}, " +
+      "isReadPending: ${scanner.isReadPending}}")
     try {
       if (!scanner.isReadPending) scanner.read()
     } catch (e: ScannerException) {
