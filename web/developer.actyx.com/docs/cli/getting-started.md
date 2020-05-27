@@ -128,4 +128,4 @@ rm /usr/local/bin/ax
 
 ## Troubleshooting
 
-If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to contact@actyx.io .
+If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to developer@actyx.io .

@@ -6,7 +6,7 @@ title: Quickstart
 Let's jump right in and get a first distributed application up and running.
 
 :::info Need help?
-If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to contact@actyx.io .
+If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to developer@actyx.io .
 :::
 
 import Tabs from '@theme/Tabs';
@@ -346,4 +346,4 @@ This brings us to the close of this quickstart guide.
 
 ### Where to get help and file issues
 
-If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to contact@actyx.io .
+If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to developer@actyx.io .

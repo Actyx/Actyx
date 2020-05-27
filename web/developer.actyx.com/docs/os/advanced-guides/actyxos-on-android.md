@@ -77,7 +77,7 @@ Apart from starting and stopping apps via the [Actyx CLI](/docs/cli/getting-star
 
 ### Getting help and filing issues
 
-If you want to get help or file issues, please write an e-mail to support@actyx.io
+If you want to get help or file issues, please write an e-mail to developer@actyx.io
 
 ### Installing ActyxOS without access to the Google Play store
 For everyone who does not have access to the Google Play store, ActyxOS is also publicly available as an [APK](https://en.wikipedia.org/wiki/Android_application_package). You can download it from https://downloads.actyx.com/.
