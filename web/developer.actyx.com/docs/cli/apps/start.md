@@ -12,17 +12,18 @@ FLAGS:
     -v, -vv, -vvv    Increase verbosity
     -h, --help       Prints help information
     --local          Process over local network
+    -j or --json     Format output as JSON
+ 
 
 ARGS:
     <APP>            IDs of the app(s) to start on the given nodes. You may
                      also pass in a file with a value on each line using the
                      syntax `@file.txt` or have the command read one value per
                      line from stdin using `@-`.
-    <NODE>...        Node IDs or, if using `--local`, the IP addresses, of the
-                     node(s) to perform the operation on. You may also pass in a
-                     file with a value on each line using the syntax `@file.txt`
-                     or have the command read one value per line from stdin
-                     using `@-`.
+    <NODE>           Node ID or, if using `--local`, the IP address, of the
+                     node to perform the operation on. You may also pass in a
+                     file with a value using the syntax `@file.txt` or have the 
+                     command one value from stdin using `@-`.
 ```
 
 Here are a couple of example of using the `ax apps start` command:

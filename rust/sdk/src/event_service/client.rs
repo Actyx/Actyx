@@ -22,6 +22,14 @@ use reqwest::{Client, RequestBuilder, Response};
 use std::env;
 use url::Url;
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct EventServiceError {
+    pub error: String,
+    pub error_code: u16,
+    pub context: String,
+}
+
 /// An Event Service API client with which you can perform queries and publish events.
 ///
 /// This feature is only available under the `client` feature flag.
@@ -37,7 +45,7 @@ use url::Url;
 /// This will connect to the local Event Service, either an ActyxOS node in development
 /// mode or the production ActyxOS node where the app is deployed (in particular, it will
 /// inspect the `AX_EVENT_SERVICE_URI` environment variable and fall back to
-/// `http://localhost:4454/api/v1/events/`).
+/// `http://localhost:4454/api/`).
 pub struct EventService {
     client: Client,
     url: Url,
@@ -59,16 +67,36 @@ impl EventService {
     /// `OffsetMap`.
     pub async fn get_offsets(&self) -> Result<OffsetMap, EventServiceError> {
         let response = self.do_request(|c| c.get(self.url("offsets"))).await?;
-        let bytes = response.bytes().await?;
-        Ok(serde_json::from_slice(bytes.as_ref())?)
+        let bytes = response
+            .bytes()
+            .await
+            .context(|| format!("getting body for GET {}", self.url("offsets")))?;
+        Ok(serde_json::from_slice(bytes.as_ref()).context(|| {
+            format!(
+                "deserializing offsets from {:?} received from GET {}",
+                bytes,
+                self.url("offsets")
+            )
+        })?)
     }
 
     /// Obtain the local ActyxOS node ID to use it as a source ID in
     /// [`Subscription::local`](struct.Subscription.html#method.local).
     pub async fn node_id(&self) -> Result<SourceId, EventServiceError> {
         let response = self.do_request(|c| c.get(self.url("node_id"))).await?;
-        let bytes = response.bytes().await?;
-        Ok(serde_json::from_slice::<NodeIdResponse>(bytes.as_ref())?.node_id)
+        let bytes = response
+            .bytes()
+            .await
+            .context(|| format!("getting body for GET {}", self.url("offsets")))?;
+        Ok(serde_json::from_slice::<NodeIdResponse>(bytes.as_ref())
+            .context(|| {
+                format!(
+                    "deserializing node_id from {:?} received from GET {}",
+                    bytes,
+                    self.url("offsets")
+                )
+            })?
+            .node_id)
     }
 
     /// Request a stream of events from the beginning of time until the given upper
@@ -94,12 +122,14 @@ impl EventService {
             subscriptions,
             order,
         };
-        let body = serde_json::to_value(request)?;
+        let body =
+            serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
             .do_request(|c| c.post(self.url("query")).json(&body))
             .await?;
         Ok(to_lines(response.bytes_stream())
             .map(|bs| serde_json::from_slice(bs.as_ref()))
+            // FIXME this swallows deserialization errors, silently dropping event envelopes
             .filter_map(|res| ready(res.ok())))
     }
 
@@ -127,12 +157,14 @@ impl EventService {
             subscriptions,
             order,
         };
-        let body = serde_json::to_value(request)?;
+        let body =
+            serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
             .do_request(|c| c.post(self.url("query")).json(&body))
             .await?;
         Ok(to_lines(response.bytes_stream())
             .map(|bs| serde_json::from_slice(bs.as_ref()))
+            // FIXME this swallows deserialization errors, silently dropping event envelopes
             .filter_map(|res| ready(res.ok())))
     }
 
@@ -154,12 +186,14 @@ impl EventService {
             lower_bound: None,
             subscriptions,
         };
-        let body = serde_json::to_value(request)?;
+        let body =
+            serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
             .do_request(|c| c.post(self.url("subscribe")).json(&body))
             .await?;
         Ok(to_lines(response.bytes_stream())
             .map(|bs| serde_json::from_slice(bs.as_ref()))
+            // FIXME this swallows deserialization errors, silently dropping event envelopes
             .filter_map(|res| ready(res.ok())))
     }
 
@@ -182,12 +216,14 @@ impl EventService {
             lower_bound: Some(lower_bound),
             subscriptions,
         };
-        let body = serde_json::to_value(request)?;
+        let body =
+            serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
             .do_request(|c| c.post(self.url("subscribe")).json(&body))
             .await?;
         Ok(to_lines(response.bytes_stream())
             .map(|bs| serde_json::from_slice(bs.as_ref()))
+            // FIXME this swallows deserialization errors, silently dropping event envelopes
             .filter_map(|res| ready(res.ok())))
     }
 
@@ -201,18 +237,21 @@ impl EventService {
         events: impl IntoIterator<Item = T>,
     ) -> Result<(), EventServiceError>
     where
-        T: Serialize,
+        T: Serialize + Debug,
     {
-        let data: Result<Vec<PublishEvent>, serde_cbor::Error> =
-            events.into_iter().try_fold(Vec::new(), |mut v, e| {
+        let data = events
+            .into_iter()
+            .try_fold::<_, _, Result<_, EventServiceError>>(Vec::new(), |mut v, e| {
                 v.push(PublishEvent {
                     semantics: semantics.clone(),
                     name: name.clone(),
-                    payload: Payload::compact(&e)?,
+                    payload: Payload::compact(&e).context(|| format!("serializing {:?}", &e))?,
                 });
                 Ok(v)
-            });
-        let body = serde_json::to_value(PublishRequestBody { data: data? })?;
+            })?;
+        let request = PublishRequestBody { data };
+        let body =
+            serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         self.do_request(|c| c.post(self.url("publish")).json(&body))
             .await?;
         Ok(())
@@ -224,16 +263,26 @@ impl EventService {
 
     async fn do_request(
         &self,
-        f: impl FnOnce(&Client) -> RequestBuilder,
+        f: impl Fn(&Client) -> RequestBuilder,
     ) -> Result<Response, EventServiceError> {
-        let response = f(&self.client).send().await?;
+        let response = f(&self.client)
+            .send()
+            .await
+            .context(|| format!("sending {:?}", f(&self.client)))?;
         if response.status().is_success() {
             Ok(response)
         } else {
             let error_code = response.status().as_u16();
             Err(EventServiceError {
-                error: response.text().await?,
+                error: response.text().await.context(|| {
+                    format!(
+                        "getting body for {} reply to {:?}",
+                        error_code,
+                        f(&self.client)
+                    )
+                })?,
                 error_code,
+                context: format!("sending {:?}", f(&self.client)),
             })
         }
     }
@@ -271,39 +320,75 @@ impl Default for EventService {
     /// This will configure a connection to the local Event Service, either an ActyxOS node in development
     /// mode or the production ActyxOS node where the app is deployed (in particular, it will
     /// inspect the `AX_EVENT_SERVICE_URI` environment variable and fall back to
-    /// `http://localhost:4454/api/v1/events/`).
+    /// `http://localhost:4454/api/`).
     fn default() -> Self {
         let client = Client::new();
         let url = env::var("AX_EVENT_SERVICE_URI")
-            .and_then(|uri| Url::parse(&*uri).map_err(|_| env::VarError::NotPresent))
-            .unwrap_or_else(|_| Url::parse("http://localhost:4454/api/v1/events/").unwrap());
+            .and_then(|mut uri| {
+                if !uri.ends_with("/") {
+                    uri.push('/')
+                };
+                Url::parse(&*uri).map_err(|_| env::VarError::NotPresent)
+            })
+            .unwrap_or_else(|_| Url::parse("http://localhost:4454/api/").unwrap())
+            .join("v1/events/")
+            .unwrap();
         EventService { client, url }
     }
 }
 
-impl From<reqwest::Error> for EventServiceError {
-    fn from(e: reqwest::Error) -> Self {
+trait WithContext {
+    type Output;
+    fn context<F, T>(self, context: F) -> Self::Output
+    where
+        T: Into<String>,
+        F: FnOnce() -> T;
+}
+impl<T, E> WithContext for Result<T, E>
+where
+    EventServiceError: From<(String, E)>,
+{
+    type Output = Result<T, EventServiceError>;
+
+    #[inline]
+    fn context<F, C>(self, context: F) -> Self::Output
+    where
+        C: Into<String>,
+        F: FnOnce() -> C,
+    {
+        match self {
+            Ok(value) => Ok(value),
+            Err(err) => Err(EventServiceError::from((context().into(), err))),
+        }
+    }
+}
+
+impl From<(String, reqwest::Error)> for EventServiceError {
+    fn from(e: (String, reqwest::Error)) -> Self {
         Self {
-            error: format!("{:?}", e),
+            error: format!("{:?}", e.1),
             error_code: 101,
+            context: e.0,
         }
     }
 }
 
-impl From<serde_json::Error> for EventServiceError {
-    fn from(e: serde_json::Error) -> Self {
+impl From<(String, serde_json::Error)> for EventServiceError {
+    fn from(e: (String, serde_json::Error)) -> Self {
         Self {
-            error: format!("{:?}", e),
+            error: format!("{:?}", e.1),
             error_code: 102,
+            context: e.0,
         }
     }
 }
 
-impl From<serde_cbor::Error> for EventServiceError {
-    fn from(e: serde_cbor::Error) -> Self {
+impl From<(String, serde_cbor::Error)> for EventServiceError {
+    fn from(e: (String, serde_cbor::Error)) -> Self {
         Self {
-            error: format!("{:?}", e),
+            error: format!("{:?}", e.1),
             error_code: 102,
+            context: e.0,
         }
     }
 }

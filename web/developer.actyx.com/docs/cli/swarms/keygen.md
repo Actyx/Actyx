@@ -11,6 +11,7 @@ USAGE: ax swarms keygen [FLAGS]
 FLAGS:
     -v, -vv, -vvv    Increase verbosity
     -h, --help       Prints help information
+    -j or --json     Format output as JSON
 ```
 
 This command is extremely simple; see for yourself:

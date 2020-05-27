@@ -14,7 +14,7 @@ Add the following dependency to your `Cargo.toml` file:
 
 ```yml
 [dependencies]
-actyxos_sdk = "0.1.3"
+actyxos_sdk = "~0.2"
 ```
 
 ## Example
@@ -24,6 +24,7 @@ Here is an example using the `EventService` client that retrieves some events. P
 
 ```rust
 use actyxos_sdk::event_service::{EventService, EventServiceError, Order, Subscription};
+use actyxos_sdk::semantics;
 use futures::stream::StreamExt;
 
 #[tokio::main]
@@ -36,8 +37,10 @@ pub async fn main() -> Result<(), EventServiceError> {
 
     // all events matching the given subscription
     // sorted backwards, i.e. youngest to oldest
-    let sub = vec![Subscription::semantics("MyFish")];
-    let mut events = service.query_upto(offsets, sub, Order::LamportReverse).await?;
+    let sub = vec![Subscription::wildcard(semantics!("MyFish"))];
+    let mut events = service
+        .query_upto(offsets, sub, Order::LamportReverse)
+        .await?;
 
     // print out the payload of each event
     // (cf. Payload::extract for more options)
@@ -45,10 +48,9 @@ pub async fn main() -> Result<(), EventServiceError> {
         println!("{}", event.payload.json_value());
     }
     Ok(())
- }
- ```
-
+}
+```
 
 ## Documentation
 
-You can find the latest documentation for the Rust SDK at https://docs.rs/actyxos_sdk/.
+You can find the latest documentation for the Rust SDK [on docs.rs](https://docs.rs/actyxos_sdk).

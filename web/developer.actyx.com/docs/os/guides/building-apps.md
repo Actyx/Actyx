@@ -23,7 +23,7 @@ id: com.example.myapp
 version: 1.0.0
 displayName: Example App
 description: "An example app"
-settingsSchema: ./settings-schema.json
+settingsSchema: ./settings-schema.json # You can also inline the JSON object that defines your settings schema
 ```
 
 This content of the manifest file is what you will need irrespective of what kind of app you are building. The directory should now look as follows:
@@ -53,13 +53,13 @@ id: com.example.myapp
 version: 1.0.0
 displayName: Example App
 description: "An example app"
-settingsSchema: ./settings-schema.json
+settingsSchema: ./settings-schema.json # You can also inline the JSON object that defines your settings schema
 
 # Here we define the app type
 type: web
 
 # These three properties are specific to apps of type `web`
-icon: ./icon.png
+icon: ./icon.png # Specifying the app icon is optional. If you don't specify an icon for your app, ActyxOS will automatically use a default icon.
 dist: ./
 main: index.html
 ```
@@ -74,13 +74,15 @@ id: com.example.myapp
 version: 1.0.0
 displayName: Example App
 description: "An example app"
-settingsSchema: ./settings-schema.json
+settingsSchema: ./settings-schema.json # You can also inline the JSON object that defines your settings schema
 
 # Here we define the app type
 type: docker
 
 # This one property is specific to apps of type `docker`
-dockerCompose: ./docker-compose.yml
+dockerCompose: 
+  x86_64: ./docker-compose-amd64.yml
+  aarch64: ./docker-compose-arm64v8.yml
 ```
 
 </TabItem>
@@ -95,6 +97,10 @@ For more information and a JSON schema of the app manifest file, check out the [
 You must provide a settings schema for your app. This will allow users who want to run your app to safely provide it with settings.
 
 An example settings schema (`settings-schema.json` above), could be:
+
+:::tip
+Instead of referring to a file that contains your settings schema in the app manifest, you can also inline the schema.
+:::
 
 ```json
 {
@@ -153,7 +159,9 @@ As a simple example of a web app, create a file called `index.html` and add the 
 </html>
 ```
 
-Then download [this sample app icon](https://raw.githubusercontent.com/Actyx/quickstart/master/sample-webview-app/assets/icon.png) and add it to the directory with the name `icon.png`.
+:::tip App icon is optional
+If you don't have an icon for your app, just omit the `icon` property in your ax-manifest.yml file. ActyxOS will automatically add a default icon.
+:::
 
 Your directory should now look as follows:
 

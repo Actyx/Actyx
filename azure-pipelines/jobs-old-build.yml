@@ -143,6 +143,8 @@ jobs:
           DOCKER_TAG: 'mssqlpoller-x64'
         awcli-x64:
           DOCKER_TAG: 'awcli-x64'
+        tamshot-x64:
+          DOCKER_TAG: 'tamshot-x64'
     steps:
     - script: |
         printf "Setting CURRENT_CONTAINER_BUILD_TAG to [build-$DOCKER_TAG]\n"

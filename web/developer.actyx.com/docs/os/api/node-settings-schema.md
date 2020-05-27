@@ -6,7 +6,7 @@ The format of ActyxOS node settings is defined in the **Node Setting Schema**.
 
 ActyxOS needs a number of settings to be defined in order to work, and provides optional settings that you can use to configure your nodes' behavior. Which settings are available and which values they may have is defined in the so-called ActyxOS **Node Setting Schema**. The most recent version thereof is available for download at:
 
-[https://www.actyx.com/schemas/os/node-settings.schema.json](/schemas/os/node-settings.schema.json).
+[https://developer.actyx.com/schemas/os/node-settings.schema.json](/schemas/os/node-settings.schema.json).
 
 > Auto-validation of ActyxOS app manifests in VS Code?
 >

@@ -4,9 +4,8 @@ steps:
       cargo fmt --all -- --check && \
       cargo --locked clippy -- -D warnings && \
       cargo --locked clippy --tests -- -D warnings && \
-
       for i in "i686-linux-android" "aarch64-linux-android" "armv7-linux-androideabi"; do \
-        cargo --locked build -p ax-os-node --lib --release --target $i; \
+        cargo --locked build -p ax-os-node --lib --release --target $i --jobs 8; \
       done && \
       mkdir -p ../jvm/os-android/app/src/main/jniLibs/x86/ && \
       cp ./target/i686-linux-android/release/libaxosnode.so ../jvm/os-android/app/src/main/jniLibs/x86/ && \

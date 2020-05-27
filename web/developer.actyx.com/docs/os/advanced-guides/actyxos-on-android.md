@@ -67,6 +67,9 @@ If you would like to know more about hot to configure nodes, please go to the se
 Depending on the lifecycle stage that your ActyxOS nodes or apps are in, your interaction with it might be limited to certain commands. Please check our guide on [Node and App Lifecycles](/docs/os/advanced-guides/node-and-app-lifecycle) to find out more.
 :::
 
+### Automatic restart of ActyxOS
+If ActyxOS was running on your Android device, it will automatically restart upon reboot.
+
 ### Starting and Stopping Apps
 Apart from starting and stopping apps via the [Actyx CLI](/docs/cli/getting-started), you can click on their icons and close them in the app switcher just as with every other Android app.
 
