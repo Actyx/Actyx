@@ -1,3 +1,9 @@
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as t from 'io-ts'
 import { Observable, Observer, Subscription } from 'rxjs'
@@ -91,6 +97,7 @@ export class MultiplexedWebsocket {
   private requestCounter: RequestId = 0
 
   constructor({ url, protocol, onStoreConnectionClosed, reconnectTimeout }: WsStoreConfig) {
+    log.ws.info('establishing Pond API WS', url)
     this.wsSubject = WebSocketSubject.create(
       url,
       protocol,

@@ -1,0 +1,9 @@
+manifestVersion: "1.0"
+type: "web"
+id: com.actyx.sample
+version: 1.0.5
+displayName: ActyxOS Sample App
+description: "A great first app"
+dist: "./build"
+main: "./build/index.html"
+settingsSchema: "./build/assets/schema.json"

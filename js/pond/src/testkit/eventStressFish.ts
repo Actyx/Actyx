@@ -1,3 +1,9 @@
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
 import { FishType, InitialState, OnCommand, OnEvent, OnStateChange, Semantics } from '..'
 
 export type State = ReadonlyArray<number> // all received events

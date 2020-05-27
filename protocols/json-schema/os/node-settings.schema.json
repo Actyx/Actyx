@@ -1,0 +1,188 @@
+{
+  "$schema": "http://json-schema.org/draft-06/schema#",
+  "$id": "http://www.actyx.com/schemas/os/node-settings.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "general",
+    "licensing",
+    "services"
+  ],
+  "properties": {
+    "general": {
+      "$ref": "#/definitions/General"
+    },
+    "licensing": {
+      "$ref": "#/definitions/Licensing"
+    },
+    "services": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "eventService": {
+          "$ref": "#/definitions/Services/EventService"
+        },
+        "consoleService": {
+          "$ref": "#/definitions/Services/ConsoleService"
+        },
+        "dockerRuntime": {
+          "$ref": "#/definitions/Services/DockerRuntime"
+        },
+        "webViewRuntime": {
+          "$ref": "#/definitions/Services/WebViewRuntime"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Basic": {
+      "Key": {
+        "type": "string",
+        "minLength": 128,
+        "maxLength": 128
+      },
+      "NonEmptyString": {
+        "type": "string",
+        "minLength": 1
+      },
+      "MultiAddr": {
+        "type": "string"
+      },
+      "LicenseKey": {
+        "type": "string",
+        "minLength": 64
+      }
+    },
+    "Composite": {
+      "LogLevel": {
+        "type": "string",
+        "enum": [
+          "TRACE",
+          "DEBUG",
+          "WARN",
+          "INFO",
+          "ERROR",
+          "FATAL"
+        ],
+        "default": "INFO"
+      },
+      "License": {
+        "oneOf": [
+          {
+            "$ref": "#/definitions/Basic/LicenseKey"
+          },
+          {
+            "type": "string",
+            "const": "development"
+          }
+        ]
+      }
+    },
+    "General": {
+      "type": "object",
+      "required": [
+        "swarmKey",
+        "bootstrapNodes",
+        "displayName"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "swarmKey": {
+          "$ref": "#/definitions/Basic/Key"
+        },
+        "bootstrapNodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "displayName": {
+          "$ref": "#/definitions/Basic/NonEmptyString"
+        },
+        "logLevels": {
+          "type": "object",
+          "properties": {
+            "os": {
+              "$ref": "#/definitions/Composite/LogLevel"
+            },
+            "apps": {
+              "$ref": "#/definitions/Composite/LogLevel"
+            }
+          }
+        }
+      }
+    },
+    "Licensing": {
+      "type": "object",
+      "required": [
+        "os",
+        "apps"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "os": {
+          "$ref": "#/definitions/Composite/License"
+        },
+        "apps": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^(\\d|\\w|-|_)+(\\.(\\d|\\w|-|_)+)*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/definitions/Composite/License"
+          },
+          "description": "Key-value pairs where the key is an app's ID."
+        }
+      }
+    },
+    "Services": {
+      "EventService": {
+        "type": "object",
+        "required": [
+          "topic"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "topic": {
+            "$ref": "#/definitions/Basic/NonEmptyString"
+          },
+          "readOnly": {
+            "type": "boolean",
+            "default": false
+          },
+          "_internal": {
+            "type": "object",
+            "required": [],
+            "additionalProperties": true
+          }
+        }
+      },
+      "BlobService": {
+        "type": "object",
+        "required": [],
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "ConsoleService": {
+        "type": "object",
+        "required": [],
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "DockerRuntime": {
+        "type": "object",
+        "required": [],
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "WebViewRuntime": {
+        "type": "object",
+        "required": [],
+        "additionalProperties": false,
+        "properties": {}
+      }
+    }
+  }
+}

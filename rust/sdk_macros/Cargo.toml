@@ -1,0 +1,20 @@
+[package]
+name = "actyxos_sdk_macros"
+version = "0.2.0"
+authors = ["Actyx AG <developer@actyx.io>"]
+edition = "2018"
+description = "Tools for interacting with the services of an ActyxOS node"
+readme = "README.md"
+documentation = "https://docs.rs/actyxos_sdk"
+homepage = "https://developer.actyx.com"
+license = "Apache-2.0"
+keywords = ["distributed", "decentralized", "event-sourcing"]
+categories = ["network-programming"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "~1.0"
+quote = "~1.0"
+syn = { version = "~1.0", features = ["full", "extra-traits"] }

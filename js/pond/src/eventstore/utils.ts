@@ -1,8 +1,14 @@
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import { Event, Events, WsStoreConfig } from './types'
 
 const defaultConfig: WsStoreConfig = {
-  url: 'ws://localhost:4243/store_api',
+  url: process.env.AX_STORE_URI || 'ws://localhost:4243/store_api',
 }
 
 export const mkMultiplexer = (config: Partial<WsStoreConfig> = {}): MultiplexedWebsocket => {

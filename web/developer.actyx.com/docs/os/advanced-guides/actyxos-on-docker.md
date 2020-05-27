@@ -1,0 +1,138 @@
+---
+title: ActyxOS on Docker
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+## Install ActyxOS on Docker
+
+### Edge device requirements
+
+For a list of supported devices, please refer to [Supported edge devices](/docs/faq/supported-edge-devices) Your edge device must meet the following requirements to install <em>ActyxOS on Docker</em>:
+
+- [Docker](https://docs.docker.com/) (for ActyxOS to work, you need to be able to run Docker in privileged mode)
+- Ability to run either `amd64` or `arm64v8` docker images
+
+If you do not have Docker, check the installation guide for your operating system:
+- [Linux](https://docs.docker.com/install/)
+- [Mac](https://docs.docker.com/docker-for-mac/install/)
+- [Windows](https://docs.docker.com/docker-for-windows/install/)
+
+:::tip Use a fleet management service for production
+For running ActyxOS on Docker in production, most users set up a fleet management service like [Balena](https://balena.io/). Please refer to the [Using ActyxOS on Docker with Balena](/docs/os/advanced-guides/using-balena) for more information.
+:::
+
+### Install ActyxOS on your edge device
+
+ActyxOS is [publicly available on Docker Hub](https://hub.docker.com/repository/docker/actyx/os). You can download and run ActyxOS on Docker with the following command:
+
+<Tabs
+  defaultValue="windows"
+  values={[
+    { label: 'Windows/MacOS', value: 'windows', },
+    { label: 'Linux', value: 'unix', },
+  ]
+}>
+<TabItem value="windows">
+
+```
+docker run --name actyxos -it --rm -v actyx-data:/data --privileged -p 4001:4001 -p 4457:4457 actyx/os
+```
+You used a couple of common flags here:
+- `-it` for running interactive processes.
+- `--rm` to automatically clean up the container and remove the file system when the container exits.
+- `-v /tmp/actyxdata/:/data` specifies the volumes that are **not** removed and therefore used for persistent storage. These volumes are used for keeping data safe across container restart. Specifically, it stores Installed apps, app's data, and important ActyxOS data such as your license.
+-  `-p 4457:4457 4001:4001` to publish the ports that the ActyxOS on Docker container uses to communicate to the outside.
+- `--privileged` as <em>ActyxOS on Docker</em> entails running a Docker daemon inside a Docker container. This enables <em>ActyxOS on Docker</em> to create a self-contained environment.
+
+:::info Publishing docker ports
+Since `--network=host` is not supported on Windows or Mac you have to explicitly expose the needed network ports.
+This is also true for any ports your apps may want to expose, so you would need to add them to this list.
+Please refer to the [Docker Documentation](https://docs.docker.com/) for more information on how to run Docker containers.
+:::
+
+</TabItem>
+<TabItem value="unix">
+
+```
+docker run --name actyxos -it --rm -v actyx-data:/data --privileged --network=host actyx/os
+```
+
+You used a couple of common flags here:
+- `-it` for running interactive processes
+- `--rm` to automatically clean up the container and remove the file system when the container exits
+- `-v /tmp/actyxdata/:/data` specifies the volumes that are **not** removed and therefore used for persistent storage. These volumes are used for keeping data safe across container restart. Specifically, it stores Installed apps, app's data, and important ActyxOS data such as your license.
+-  `--network=host` for the host's network stack inside the container.
+- `--privileged` as <em>ActyxOS on Docker</em> entails running a Docker daemon inside a Docker container. This enables <em>ActyxOS on Docker</em> to create a self-contained environment.
+
+:::info Docker documentation
+Please refer to the [Docker Documentation](https://docs.docker.com/) for more information on how to run Docker containers.
+:::
+
+</TabItem>
+</Tabs>
+
+### Check the status of your node
+
+In order to check on its status and interact with the node, you need to download the Actyx CLI (`ax` or `ax.exe`) from https://downloads.actyx.com and add it to your path (for detailed insallation instructions of the Actyx CLI, go [here](/docs/cli/getting-started)).
+
+You can then check on your ActyxOS node:
+
+```
+ax nodes ls --local <DEVICE_IP>
+```
+
+You should see something like:
+```
++---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
+| NODE ID       | DISPLAY NAME | STATE   | SETTINGS | LICENSE | APPS DEPLOYED | APPS RUNNING | STARTED                   | VERSION |
++---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
+| 192.168.2.107 |              | running | invalid  | invalid | 0             | 0            | 2020-03-25T09:32:07+00:00 | 1.0.0   |
++---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
+```
+
+
+Congratulations, you have successfully installed <em>ActyxOS on Docker</em>! Please note that ActyxOS is **not** operational, as you did not configure it yet. If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
+
+### Where to go next
+- [Quickstart](/docs/quickstart) is a tutorial about ActyxOS with ready-to-use apps and configurations.
+- [Troubleshooting](#troubleshooting) describes common problems, workarounds and how to get help and submit issues.
+- [FAQs](/docs/faq/supported-programming-languages) provides answers to frequently asked questions.
+
+## Troubleshooting
+
+### Environment variables
+
+#### `AX_DEV_MODE`
+
+If you set this environment variable to 1, you can interact with all ActyxOS services from your Host machine. If you are running ActyxOS on Docker on Mac or Windows, that means you are not using `networking=host`, you need to also pass the following to expose the relevant ports:
+- `-p 4243:4243` [for the Actyx Pond](/docs/pond/getting-started.md)
+- `-p 4454:4454` [for the Event Service](/docs/os/api/event-service.md)
+
+#### `ENABLE_DEBUG_LOGS`
+
+If you set this environment variable to 1, you will see debug logs from ActyxOS in your shell.
+
+### Starting and Stopping ActyxOS
+After you start ActyxOS with the appropriate `docker run` command, ActyxOS will start. After running `ax nodes ls --local <DEVICE_IP>`, you should be able to see your ActyxOS node. If you want to stop ActyxOS on your node, you need to either stop the ActyxOS docker container or stop docker.
+
+If you would like to know more about how to configure nodes, please go to the section [**Configuring nodes** in our guide on Node and App Settings](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes) 
+
+:::info Node and App lifecycles
+Depending on the lifecycle stage that your ActyxOS nodes or apps are in, your interaction with it might be limited to certain commands. Please check our guide on [Node and App Lifecycles](/docs/os/advanced-guides/node-and-app-lifecycle) to find out more.
+:::
+
+### Starting and Stopping Apps
+You can start and stop apps via the [Actyx CLI](/docs/cli/getting-started)
+
+### Getting help and filing issues
+
+If you want to get help or file issues, please write an e-mail to support@actyx.io
+
+### ActyxOS node not responding
+
+First, check that you entered the right IP in the `ax` command. If you still cannot connect, the output of `ax nodes ls` returns one of the two possible reasons:
+- **ActyxOS is not reachable.** This means that ActyxOS is not running correctly on your node. Try `docker container ls` to check all your running containers. You can start ActyxOS with the `docker run` command. The command is dependent on your host operating system and described in the installation section above for Windows, Mac and Linux.
+
+- **Host is not reachable.** This means that your development machine cannot connect to your node. Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port 4457.

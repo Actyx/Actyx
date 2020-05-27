@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Javascript Internal Script</title>
+  <script type="text/javascript">
+    function Hello() {
+      const cfg = ax.appSettings();
+      console.log(cfg);
+      document.getElementById("config").appendChild(document.createTextNode(cfg));
+    }
+
+    function formatDuration(seconds) {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      const s = Math.round(seconds % 60);
+      return [
+        h,
+        m > 9 ? m : (h ? '0' + m : m || '0'),
+        s > 9 ? s : '0' + s,
+      ].filter(Boolean).join(':');
+    }
+
+    function Tick() {
+      const start = Date.now();
+      setInterval(() => {
+        const seconds = (Date.now() - start) / 1000;
+        document.getElementById("stopwatch").innerText = `running for ${formatDuration(seconds)}`;
+      }, 1000);
+    }
+
+    function addEvent(type, e) {
+      var eventList = document.getElementById('events');
+      var listItem = document.createElement('li');
+      listItem.appendChild(document.createTextNode(`${type}: ${e}`));
+      eventList.appendChild(listItem);
+    }
+
+    function Listen() {
+      window.addEventListener(
+        'com.actyx.os.hardware.event.CODE_SCANNED',
+        e => addEvent(e.type, e.detail.code),
+        false
+      );
+      window.addEventListener(
+        'com.actyx.os.hardware.event.CARD_SCANNED',
+        e => addEvent(e.type, e.detail.cardId),
+        false
+      );
+    }
+  </script>
+</head>
+
+<body onload="Tick();Hello();Listen();">
+  <div id="stopwatch"></div>
+  <div id="config"></div>
+  <div>
+    <ul id="events"></ul>
+  </div>
+</body>
+
+</html>

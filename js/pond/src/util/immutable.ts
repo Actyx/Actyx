@@ -1,3 +1,9 @@
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
 import { List, Map } from 'immutable'
 
 // After having stringified to JSON and parsed back, the immutable-Map will be a plain object.

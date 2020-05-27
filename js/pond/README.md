@@ -1,33 +1,27 @@
-<img src="./asset/actyx_pond_logo_small.png" alt="Actyx Pond Logo" width="80" height="80"> Actyx Pond
-===
-
 # Actyx Pond
 
-A TypeScript framework for writing distributed apps that need to always work. More information at [Actyx Pond](https://www.actyx.com/pond/).
+A TypeScript framework for writing distributed apps deployed on peer-to-peer networks, without any servers. This is made possible by being based on [ActyxOS](https://www.actyx.com/os/). Please visit also the [documentation](https://www.actyx.com/pond/docs/getting-started.html) for how to get started.
 
-Visit our [Documentation](https://www.actyx.com/pond/docs/getting-started.html).
+## Key features
 
-## Benefits
+- **Distributed Event-Sourcing** architecture for great information replication facilities and declarative information consumption
 
-- **Distributed Event-Sourcing**\
-  The Actyx Pond provides you with a working distributed event-sourcing architecture out of the box.
-- **Partition Tolerance**\
- Apps built with the Actyx Pond framework are magically partition-toleration and always available.
-- **Eventual Consistency**\
-  With an innovative time-travel algorithm, the Actyx Pond guarantees eventual consistency in the face of network partitions and downtime.
+- **Partition Tolerance** built into the core by offering an eventually consistent programming model for arbitrary business logic
+
+- **Eventual Consistency made easy** by using an innovative time-travel algorithm integrated with performance optimizations like snapshots for swift recovery after restart
+
+## IDE setup
+
+The recommended IDE for developing Actyx Pond is [Visual Studio Code](https://code.visualstudio.com/).
+
+### Recommended plugins
+- [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) for live source code linting
+- [Actyx Pond](https://marketplace.visualstudio.com/items?itemName=Actyx.actyx-pond) for efficienly working with fishes
+
+### Recommended settings
+See [`settings-sample.json`](/js/pond/.vscode/settings-sample.json).
+
 
 ## License and Support
 
-Software only for evaluation and demonstration purposes.
-
-For licensing or support, please contact us at:\
-E-mail: contact@actyx.io\
-Phone: +49 (0)89 9439 740
-
-## Installation
-
-Use the following command in the same folder where you `package.json` is situated:
-
-```shell
-npm install @actyx/pond
-```
+For commercial licenses and support please email contact@actyx.io.

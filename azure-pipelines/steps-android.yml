@@ -17,9 +17,12 @@ steps:
       cargo fmt --all -- --check && \
       cargo --locked clippy -- -D warnings && \
       cargo --locked clippy --tests -- -D warnings && \
-      cargo --locked build -p store-lib --release --target i686-linux-android && \
+      cargo --locked build -p store-lib --release --target i686-linux-android --jobs 8 && \
+      cargo --locked build -p store-lib --release --target aarch64-linux-android --jobs 8 && \
       mkdir -p ../android-shell-app/app/src/main/jniLibs/x86/ && \
-      cp ./target/i686-linux-android/release/libaxstore.so ../android-shell-app/app/src/main/jniLibs/x86/libaxstore.so
+      mkdir -p ../android-shell-app/app/src/main/jniLibs/arm64-v8a/ && \
+      cp ./target/i686-linux-android/release/libaxstore.so ../android-shell-app/app/src/main/jniLibs/x86/libaxstore.so && \
+      cp ./target/aarch64-linux-android/release/libaxstore.so ../android-shell-app/app/src/main/jniLibs/arm64-v8a/libaxstore.so
     displayName: 'Build & copy store lib (x86)'
     workingDirectory: 'rt-master'
     condition: contains(variables['BUILD_STRING'],'[build-android]')

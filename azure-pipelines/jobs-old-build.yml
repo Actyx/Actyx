@@ -5,14 +5,13 @@ jobs:
     variables:
       BUILD_STRING: $[ dependencies.getBuildString.outputs['setBuildString.BUILD_STRING'] ]
     displayName: Build
+    container: buildrs_x64_latest
     pool:
-      name: Default
+      name: Native
     strategy:
       matrix:
         pond:
           MODULE: 'pond'
-        ops:
-          MODULE: 'ops'
         node-red:
           MODULE: 'node-red'
         docs:
@@ -64,25 +63,17 @@ jobs:
     - template: steps-bootstrap.yml
 
     - script: |
-        if [ "$LANGUAGE" == 'rust' ]
-        then
-            curl https://sh.rustup.rs -sSf | sh -s -- -y
-            # Use a fixed rust toolchain
-            rustup default 1.41.0
-            rustc --version
-            rustup component add rustfmt
-            rustup component add clippy
-        fi
         source "$NVM_DIR/nvm.sh"
         nvm use
+        export PATH=$PATH:/home/builder/bin
         build/bin/build-module.sh $(MODULE)
       displayName: 'Build $(MODULE)'
       env:
         # Map secrets to env vars
         DOCKERHUB_PASS: $(SECRET_DOCKERHUB_PASS)
         GITHUB_PKG_PASS: $(SECRET_GITHUB_PKG_PASS)
-        PATH: $(HOME)/.cargo/bin:$(PATH):$(HOME)/bin
-        NVM_DIR: $(HOME)/.nvm
+        # $(HOME) is resolved to the outer agents $HOME
+        NVM_DIR: /home/builder/.nvm
         # produce large dumps when rust tests fail
         RUST_BACKTRACE: full
       condition: contains(variables['BUILD_STRING'],variables['CURRENT_MODULE_BUILD_TAG'])
@@ -143,12 +134,17 @@ jobs:
           DOCKER_TAG: 'logscraper-armv7hf'
         buildrs:
           DOCKER_TAG: 'buildrs-x64'
+          DOCKER_REPO: 'actyx/util'
         balenaremoteforward:
           DOCKER_TAG: 'balenaremoteforward-x64'
         musl:
           DOCKER_TAG: 'musl-x64'
         mssqlpoller-x64:
           DOCKER_TAG: 'mssqlpoller-x64'
+        awcli-x64:
+          DOCKER_TAG: 'awcli-x64'
+        tamshot-x64:
+          DOCKER_TAG: 'tamshot-x64'
     steps:
     - script: |
         printf "Setting CURRENT_CONTAINER_BUILD_TAG to [build-$DOCKER_TAG]\n"

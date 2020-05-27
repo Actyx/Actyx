@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <Button
+        android:id="@+id/console_btn"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="0dp"
+        android:layout_height="50dp"
+        android:layout_marginStart="10.35dp"
+        android:layout_marginEnd="44dp"
+        android:gravity="start|center_vertical"
+        android:padding="0dp"
+        android:text="@string/developer_console"
+        android:textAppearance="@style/Widget.MaterialComponents.TextView"
+        android:textColor="@color/font_grey_label"
+        android:textSize="12.6sp"
+        app:layout_constraintBottom_toBottomOf="@+id/swarmNameText"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/guideline2"
+        app:layout_constraintTop_toTopOf="@+id/swarmNameText" />
+
+    <Button
+        android:id="@+id/bandwidth_usage_btn"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="0dp"
+        android:layout_height="50dp"
+        android:gravity="start|center_vertical"
+        android:padding="0dp"
+        android:text="@string/bandwidth_usage_2"
+        android:textAppearance="@style/Widget.MaterialComponents.TextView"
+        android:textColor="@color/font_grey_label"
+        android:textSize="12.6sp"
+        app:layout_constraintEnd_toEndOf="@+id/console_btn"
+        app:layout_constraintStart_toStartOf="@+id/console_btn"
+        app:layout_constraintTop_toBottomOf="@+id/divider5" />
+
+    <Button
+        android:id="@+id/connected_peers_btn"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="0dp"
+        android:layout_height="50dp"
+        android:gravity="start|center_vertical"
+        android:padding="0dp"
+        android:text="@string/connected_peers_2"
+        android:textAppearance="@style/Widget.MaterialComponents.TextView"
+        android:textColor="@color/font_grey_label"
+        android:textSize="12.6sp"
+        app:layout_constraintEnd_toEndOf="@+id/swarmNameText"
+        app:layout_constraintStart_toStartOf="@+id/swarmNameText"
+        app:layout_constraintTop_toBottomOf="@+id/divider2" />
+
+    <Button
+        android:id="@+id/ipfs_storage_btn"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="0dp"
+        android:layout_height="50dp"
+        android:layout_marginBottom="23dp"
+        android:gravity="start|center_vertical"
+        android:padding="0dp"
+        android:text="@string/ipfs_statistics"
+        android:textAppearance="@style/Widget.MaterialComponents.TextView"
+        android:textColor="@color/font_grey_label"
+        android:textSize="12.6sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="@+id/swarmNameText"
+        app:layout_constraintStart_toStartOf="@+id/swarmNameText"
+        app:layout_constraintTop_toBottomOf="@+id/divider" />
+
+    <com.actyx.os.android.activity.systeminfoscreens.LabelWithText
+        android:id="@+id/swarmNameText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="28.8dp"
+        android:layout_marginEnd="10.35dp"
+        app:label="@string/swarm_name"
+        app:layout_constraintEnd_toStartOf="@+id/guideline2"
+        app:layout_constraintStart_toStartOf="@+id/textView14"
+        app:layout_constraintTop_toBottomOf="@+id/textView14" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.5" />
+
+    <View
+        android:id="@+id/divider2"
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:layout_marginTop="15.3dp"
+        android:background="?android:attr/listDivider"
+        app:layout_constraintEnd_toEndOf="@+id/swarmNameText"
+        app:layout_constraintStart_toStartOf="@+id/swarmNameText"
+        app:layout_constraintTop_toBottomOf="@+id/swarmNameText" />
+
+    <View
+        android:id="@+id/divider5"
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:background="?android:attr/listDivider"
+        app:layout_constraintEnd_toEndOf="@+id/console_btn"
+        app:layout_constraintStart_toStartOf="@+id/console_btn"
+        app:layout_constraintTop_toBottomOf="@+id/console_btn" />
+
+    <View
+        android:id="@+id/divider"
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:background="?android:attr/listDivider"
+        app:layout_constraintEnd_toEndOf="@+id/connected_peers_btn"
+        app:layout_constraintStart_toStartOf="@+id/connected_peers_btn"
+        app:layout_constraintTop_toBottomOf="@+id/connected_peers_btn" />
+
+    <TextView
+        android:id="@+id/textView14"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="21dp"
+        android:layout_marginTop="19.8dp"
+        android:text="@string/actyx_os"
+        android:textColor="@color/font_blue"
+        android:textSize="9.9sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="SmallSp" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

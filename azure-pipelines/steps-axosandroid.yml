@@ -4,21 +4,23 @@ steps:
       cargo fmt --all -- --check && \
       cargo --locked clippy -- -D warnings && \
       cargo --locked clippy --tests -- -D warnings && \
-      cargo --locked build -p store-lib --release --target i686-linux-android && \
-      cargo --locked build -p logsvcd --lib --release --target i686-linux-android && \
-      cargo --locked build -p ax-os-settings-ffi --lib --release --target i686-linux-android && \
-      mkdir -p ../android-actyxos-app/app/src/main/jniLibs/x86/ && \
-      cp ./target/i686-linux-android/release/libaxstore.so ../android-actyxos-app/app/src/main/jniLibs/x86/ && \
-      cp ./target/i686-linux-android/release/liblogsvcd.so ../android-actyxos-app/app/src/main/jniLibs/x86/ && \
-      cp ./target/i686-linux-android/release/libaxossettingsffi.so ../android-actyxos-app/app/src/main/jniLibs/x86/
-    displayName: 'Build store & logsvcd (x86)'
+      for i in "i686-linux-android" "aarch64-linux-android" "armv7-linux-androideabi"; do \
+        cargo --locked build -p ax-os-node --lib --release --target $i --jobs 8; \
+      done && \
+      mkdir -p ../jvm/os-android/app/src/main/jniLibs/x86/ && \
+      cp ./target/i686-linux-android/release/libaxosnode.so ../jvm/os-android/app/src/main/jniLibs/x86/ && \
+      mkdir -p ../jvm/os-android/app/src/main/jniLibs/arm64-v8a/ && \
+      cp ./target/aarch64-linux-android/release/libaxosnode.so ../jvm/os-android/app/src/main/jniLibs/arm64-v8a/
+      mkdir -p ../jvm/os-android/app/src/main/jniLibs/armeabi-v7a/ && \
+      cp ./target/armv7-linux-androideabi/release/libaxosnode.so ../jvm/os-android/app/src/main/jniLibs/armeabi-v7a/
+    displayName: 'Build rust libs (x86, aarch64, armv7a)'
     workingDirectory: 'rt-master'
     condition: contains(variables['BUILD_STRING'],'[build-axosandroid]')
   - script: |
       export VAULT_ADDR=https://vault.actyx.net
       export PATH=$HOME/bin:$PATH
       vault login -method aws role=ops-travis-ci 2>&1
-      android-actyxos-app/bin/get-keystore.sh
+      jvm/os-android/bin/get-keystore.sh
     displayName: 'Get keystore'
     env:
       # Map secrets to env vars
@@ -28,8 +30,8 @@ steps:
     condition: contains(variables['BUILD_STRING'],'[build-axosandroid]')
   - task: Gradle@2
     inputs:
-      workingDirectory: 'android-actyxos-app'
-      gradleWrapperFile: 'android-actyxos-app/gradlew'
+      workingDirectory: 'jvm/os-android'
+      gradleWrapperFile: 'jvm/os-android/gradlew'
       jdkVersionOption: 1.8
       javaHomeOption: 'JDKVersion'
       tasks: 'clean ktlintCheck build assembleRelease androidGitVersion'
@@ -40,10 +42,30 @@ steps:
 
   - task: ShellScript@2
     inputs:
-      scriptPath: android-actyxos-app/bin/upload-ipfs.sh
+      scriptPath: jvm/os-android/bin/upload-ipfs.sh
     displayName: 'Upload to IPFS'
     condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axosandroid]'))
 
-  - publish: $(System.DefaultWorkingDirectory)/android-actyxos-app/app/build/outputs/assembly/Actyx/axosandroid/
-    artifact: axosandroid-apk
+  - publish: $(System.DefaultWorkingDirectory)/jvm/os-android/app/build/outputs/assembly/Actyx/axosandroid/
+    artifact: actyxos-apk
+    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axosandroid]'))
+
+  - task: AzureCLI@2
+    # No, there would be the nicely looking AzureFileCopy@4 task, which would use the `azcopy` cli (yes, it's not
+    # included in `az`), to upload a bunch of files:
+    # https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/deploy/azure-file-copy?view=azure-devops.
+    #
+    # Now, that task currently only works under Windows.
+    # Next up: Directly use `azcopy`. No built-in authentication via azure pipelines, bummer.
+    # Luckily, the `az` cli offers a legacy command `storage  blob upload-batch`, which doesn't work recursively, but that's not that an
+    # issue for our current use-case. So we use that.
+    displayName: Copy artifacts to az blob store
+    inputs:
+      azureSubscription: azure-ax-ci
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        az --version
+        az account show
+        az storage blob upload-batch -s $(System.DefaultWorkingDirectory)/jvm/os-android/app/build/outputs/assembly/Actyx/axosandroid/$(Build.SourceVersion) -d https://axartifacts.blob.core.windows.net/artifacts/ --destination-path $(Build.SourceVersion)/android/
     condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axosandroid]'))

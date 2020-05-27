@@ -1,3 +1,9 @@
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
 export {
   FishType,
   FishTypeImpl,
@@ -30,6 +36,7 @@ export {
   isNumber,
   isString,
   Milliseconds,
+  SnapshotFormat,
 } from './types'
 export {
   unreachableOrElse,

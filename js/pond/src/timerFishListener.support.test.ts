@@ -1,3 +1,9 @@
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
 // a timer listener fish to test pond infrastructure
 import { Observable } from 'rxjs'
 import { timerFishType } from './timerFish.support.test'

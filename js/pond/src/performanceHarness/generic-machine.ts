@@ -1,3 +1,9 @@
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
 import { lensPath, set } from 'ramda'
 import { CommandAsync, unreachableOrElse } from '..'
 import { FishType, OnCommand, OnEvent, OnStateChange, Semantics, Timestamp } from '../types'

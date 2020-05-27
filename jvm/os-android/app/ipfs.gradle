@@ -1,0 +1,40 @@
+apply plugin: 'de.undercouch.download'
+
+ext {
+    baseUrl = 'https://actyx-ipfs-dist.s3.eu-central-1.amazonaws.com/go-ipfs'
+    ipfsVersion = '0.4.22'
+    archs = [
+            // Keep this in sync with the dependsOn in the bottom of this file and with IpfsService#getIpfsBinary
+            '386': 'x86',
+            'arm': 'arm',
+            'arm64': 'arm64'
+            // 'amd64': 'x86_64',
+    ]
+}
+
+def ipfsFilename(String arch) {
+  "go-ipfs_v${ipfsVersion}_linux-${arch}.tar.gz"
+}
+
+def ipfsUrl(String arch) {
+    "$baseUrl/v$ipfsVersion/${ipfsFilename(arch)}"
+}
+
+task downloadIpfs(type: Download) {
+    src(archs.keySet().collect { ipfsUrl(it) }.toList())
+    dest buildDir
+    overwrite false
+}
+
+archs.each { ipfsArch, androidArch ->
+    task "unpackIpfs_$ipfsArch"(dependsOn: downloadIpfs, type: Copy) {
+        from tarTree("${downloadIpfs.dest}/${ipfsFilename(ipfsArch)}")
+        into new File(projectDir, "src/main/res/raw")
+        include 'go-ipfs/ipfs'
+        eachFile { FileCopyDetails file -> file.path = "ipfs_$androidArch" }
+    }
+}
+
+task unpackIpfs {
+    dependsOn unpackIpfs_386, unpackIpfs_arm64, unpackIpfs_arm // unpackIpfs_amd64
+}
