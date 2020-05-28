@@ -128,7 +128,7 @@ You can start and stop apps via the [Actyx CLI](/docs/cli/getting-started)
 
 ### Getting help and filing issues
 
-If you want to get help or file issues, please write an e-mail to support@actyx.io
+If you want to get help or file issues, please write an e-mail to developer@actyx.io
 
 ### ActyxOS node not responding
 

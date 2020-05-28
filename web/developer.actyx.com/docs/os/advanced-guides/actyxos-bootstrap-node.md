@@ -73,7 +73,7 @@ Please refer to the [Docker Documentation](https://docs.docker.com/) for more in
 
 ### Getting help and filing issues
 
-If you want to get help or file issues, please write an e-mail to support@actyx.io
+If you want to get help or file issues, please write an e-mail to developer@actyx.io
 
 ### ActyxOS Bootstrap Node does not connect to the right swarm
 
