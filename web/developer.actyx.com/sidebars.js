@@ -40,6 +40,7 @@ module.exports = {
     ],
     'SDKs': [
       'os/sdks/rust',
+      'os/sdks/js-ts',
     ],
   },
   pondSidebar: {

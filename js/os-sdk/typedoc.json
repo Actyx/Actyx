@@ -1,0 +1,14 @@
+{
+    "mode": "file",
+    "out": "docs",
+    "exclude": [
+        "**/*+(test).ts",
+        "**/__mocks__/**",
+        "**/test-util.ts",
+        "**/demo.ts"
+    ],
+    "disableSources": true,
+    "includeVersion": true,
+    "theme": "minimal",
+    "listInvalidSymbolLinks": true
+}
