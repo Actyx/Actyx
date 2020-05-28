@@ -42,6 +42,9 @@ module.exports = {
       'os/sdks/rust',
       'os/sdks/js-ts',
     ],
+    'Tools': [
+      'os/tools/node-manager',
+    ]
   },
   pondSidebar: {
     'Actyx Pond': [
