@@ -17,7 +17,7 @@ use super::{Event, SourceId};
 use derive_more::{From, Into};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
 use std::ops::{AddAssign, Sub, SubAssign};
 
@@ -105,6 +105,45 @@ impl OffsetMap {
     /// Counts the number of offsets spanned by this OffsetMap.
     pub fn size(&self) -> u64 {
         self - &OffsetMap::empty()
+    }
+
+    /// Compute the union of two sets of events described by OffsetMaps
+    pub fn union(&self, other: &OffsetMap) -> OffsetMap {
+        let keys = self.0.keys().chain(other.0.keys()).collect::<BTreeSet<_>>();
+        Self(
+            keys.into_iter()
+                .map(|key| {
+                    (
+                        *key,
+                        self.0
+                            .get(key)
+                            .copied()
+                            .unwrap_or_default()
+                            .max(other.0.get(key).copied().unwrap_or_default()),
+                    )
+                })
+                .collect(),
+        )
+    }
+
+    /// Compute the intersection of two sets of events described by OffsetMaps
+    pub fn intersection(&self, other: &OffsetMap) -> OffsetMap {
+        let left = self.0.keys().collect::<BTreeSet<_>>();
+        let right = other.0.keys().collect::<BTreeSet<_>>();
+        let keys = left.intersection(&right);
+        Self(
+            keys.map(|key| {
+                (
+                    **key,
+                    self.0
+                        .get(key)
+                        .copied()
+                        .unwrap_or_default()
+                        .min(other.0.get(key).copied().unwrap_or_default()),
+                )
+            })
+            .collect(),
+        )
     }
 
     pub fn into_inner(self) -> HashMap<SourceId, Offset> {
@@ -215,7 +254,7 @@ mod tests {
     use super::*;
     use crate::{
         event::{LamportTimestamp, Payload, StreamInfo, TimeStamp},
-        fish_name, semantics,
+        fish_name, semantics, source_id,
     };
     use std::str::FromStr;
 
@@ -266,5 +305,59 @@ mod tests {
 
         // also need to test the consuming Sub impl
         assert_eq!(map1 - map2, 0);
+    }
+
+    #[test]
+    pub fn must_set_op() {
+        let left = OffsetMap::from(
+            [
+                (source_id!("a"), Offset(1)),
+                (source_id!("b"), Offset(2)),
+                (source_id!("c"), Offset(3)),
+                (source_id!("d"), Offset(4)),
+            ]
+            .iter()
+            .copied()
+            .collect::<HashMap<_, _>>(),
+        );
+
+        let right = OffsetMap::from(
+            [
+                (source_id!("b"), Offset(4)),
+                (source_id!("c"), Offset(3)),
+                (source_id!("d"), Offset(2)),
+                (source_id!("e"), Offset(1)),
+            ]
+            .iter()
+            .copied()
+            .collect::<HashMap<_, _>>(),
+        );
+
+        let union = OffsetMap::from(
+            [
+                (source_id!("a"), Offset(1)),
+                (source_id!("b"), Offset(4)),
+                (source_id!("c"), Offset(3)),
+                (source_id!("d"), Offset(4)),
+                (source_id!("e"), Offset(1)),
+            ]
+            .iter()
+            .copied()
+            .collect::<HashMap<_, _>>(),
+        );
+
+        let intersection = OffsetMap::from(
+            [
+                (source_id!("b"), Offset(2)),
+                (source_id!("c"), Offset(3)),
+                (source_id!("d"), Offset(2)),
+            ]
+            .iter()
+            .copied()
+            .collect::<HashMap<_, _>>(),
+        );
+
+        assert_eq!(left.union(&right), union);
+        assert_eq!(left.intersection(&right), intersection);
     }
 }
