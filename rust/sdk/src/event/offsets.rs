@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
-use std::ops::{AddAssign, Sub, SubAssign};
+use std::ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign};
 
 /// Each ActyxOS node marks the events it publishes with its source ID and assigns
 /// a unique (consecutive) number to it: the `Offset`. The first event occupies offset zero.
@@ -107,23 +107,22 @@ impl OffsetMap {
         self - &OffsetMap::empty()
     }
 
+    /// Merge the other OffsetMap into this one, taking the union of their event sets.
+    pub fn union_with<'a>(&'a mut self, other: &OffsetMap) -> &'a mut Self {
+        for (k, v) in &other.0 {
+            self.0
+                .entry(*k)
+                .and_modify(|me| *me = (*me).max(*v))
+                .or_insert(*v);
+        }
+        self
+    }
+
     /// Compute the union of two sets of events described by OffsetMaps
     pub fn union(&self, other: &OffsetMap) -> OffsetMap {
-        let keys = self.0.keys().chain(other.0.keys()).collect::<BTreeSet<_>>();
-        Self(
-            keys.into_iter()
-                .map(|key| {
-                    (
-                        *key,
-                        self.0
-                            .get(key)
-                            .copied()
-                            .unwrap_or_default()
-                            .max(other.0.get(key).copied().unwrap_or_default()),
-                    )
-                })
-                .collect(),
-        )
+        let mut copy = self.clone();
+        copy.union_with(other);
+        copy
     }
 
     /// Compute the intersection of two sets of events described by OffsetMaps
@@ -249,6 +248,47 @@ impl Sub<&OffsetMap> for &OffsetMap {
     }
 }
 
+impl BitAnd for OffsetMap {
+    type Output = OffsetMap;
+    fn bitand(self, rhs: Self) -> Self::Output {
+        self.intersection(&rhs)
+    }
+}
+
+impl BitAnd for &OffsetMap {
+    type Output = OffsetMap;
+    fn bitand(self, rhs: Self) -> Self::Output {
+        self.intersection(rhs)
+    }
+}
+
+impl BitAndAssign for OffsetMap {
+    fn bitand_assign(&mut self, rhs: Self) {
+        *self = &*self & &rhs;
+    }
+}
+
+impl BitOr for OffsetMap {
+    type Output = OffsetMap;
+    fn bitor(mut self, rhs: Self) -> Self::Output {
+        self.union_with(&rhs);
+        self
+    }
+}
+
+impl BitOr for &OffsetMap {
+    type Output = OffsetMap;
+    fn bitor(self, rhs: Self) -> Self::Output {
+        self.union(rhs)
+    }
+}
+
+impl BitOrAssign for OffsetMap {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = &*self | &rhs;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -359,5 +399,7 @@ mod tests {
 
         assert_eq!(left.union(&right), union);
         assert_eq!(left.intersection(&right), intersection);
+        assert_eq!(&left | &right, union);
+        assert_eq!(left & right, intersection);
     }
 }
