@@ -202,9 +202,11 @@ class ZebraScannerImpl :
   }
 
   private fun doRead(scanner: Scanner) {
-    log.debug("doRead, " +
-      "scanner: ${scanner.scannerInfo.deviceIdentifier}, " +
-      "isReadPending: ${scanner.isReadPending}}")
+    log.debug(
+      "doRead, " +
+        "scanner: ${scanner.scannerInfo.deviceIdentifier}, " +
+        "isReadPending: ${scanner.isReadPending}}"
+    )
     try {
       if (!scanner.isReadPending) scanner.read()
     } catch (e: ScannerException) {
@@ -244,26 +246,30 @@ class ZebraScannerService(private val ctx: Context) : Service {
 
   override fun invoke(actyxOsSettings: ActyxOsSettings): Single<Unit> =
     Single.create { subscriber ->
-      log.info("starting Zebra scanner service")
-      val impl = ZebraScannerImpl()
+      try {
+        val impl = ZebraScannerImpl()
+        log.info("starting Zebra scanner service")
 
-      subscriber.setCancellable {
-        log.info("stopping Zebra scanner service")
-        impl.close()
-      }
-
-      impl.scans.subscribe {
-        log.info("code read: {}", it)
-        val broadcastIntent = Intent(ACTION_CODE_SCANNED).apply {
-          putExtra(EXTRA_CODE, it)
+        subscriber.setCancellable {
+          log.info("stopping Zebra scanner service")
+          impl.close()
         }
-        ctx.sendBroadcast(broadcastIntent)
-      }
 
-      val emdkResults = EMDKManager.getEMDKManager(ctx, impl)
-      if (emdkResults.statusCode == EMDKResults.STATUS_CODE.SUCCESS) {
-        // When this fails we don't fail the service as it would otherwise be restarted.
-        log.error("Couldn't get EMDKManager (status: ${emdkResults.statusString}).")
+        impl.scans.subscribe {
+          log.info("code read: {}", it)
+          val broadcastIntent = Intent(ACTION_CODE_SCANNED).apply {
+            putExtra(EXTRA_CODE, it)
+          }
+          ctx.sendBroadcast(broadcastIntent)
+        }
+
+        val emdkResults = EMDKManager.getEMDKManager(ctx, impl)
+        if (emdkResults.statusCode == EMDKResults.STATUS_CODE.SUCCESS) {
+          // When this fails we don't fail the service as it would otherwise be restarted.
+          log.error("Couldn't get EMDKManager (status: ${emdkResults.statusString}).")
+        }
+      } catch (_: NoClassDefFoundError) {
+        log.info("EMDK not available. Skipping Zebra scanner service.")
       }
       Single.never<Unit>()
     }
