@@ -33,5 +33,14 @@ settingsSchema: "./assets/schema.json"
       "./assets/schema.json"
     )
     assertEquals(expected, result)
+
+    val resultWithoutIcon =
+      Descriptor.parseYaml(input
+        .lines()
+        .filter { !it.startsWith("icon:") }
+        .joinToString("\n"))
+    val expectedWithoutIcon = expected.copy(icon = null)
+    assertEquals(expectedWithoutIcon, resultWithoutIcon)
+
   }
 }

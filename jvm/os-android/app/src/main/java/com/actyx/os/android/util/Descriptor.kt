@@ -12,7 +12,7 @@ data class Descriptor(
   val description: String,
   val version: String,
   // relative to root
-  val icon: String?,
+  val icon: String? = null,
   // relative to dist
   val main: String,
   val dist: String,
