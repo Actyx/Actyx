@@ -18,10 +18,9 @@ import { getAxEventServiceUri } from '../util'
 import { DEFAULT_EVENT_SERVICE_URI } from './constants'
 
 /**
- * These are the default SDK client options. They should be fine for almost
- * all use cases.
+ * This function returns the default client options
  */
-export const DefaultClientOpts: ApiClientOpts = {
+export const DefaultClientOpts = (): ApiClientOpts => ({
   Endpoints: {
     EventService: {
       BaseUrl: getAxEventServiceUri(DEFAULT_EVENT_SERVICE_URI),
@@ -31,7 +30,8 @@ export const DefaultClientOpts: ApiClientOpts = {
       Publish: 'v1/events/publish',
     },
   }
-}
+})
+
 
 /** @internal */
 export const CONTENT_TYPE_JSON_HEADER = { 'Content-Type': 'application/json' }

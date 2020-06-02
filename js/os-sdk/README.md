@@ -63,12 +63,10 @@ You can override the default client options by passing options ([`ApiClientOpts`
 ```typescript
 import { Client, DefaultClientOpts } from '@actyx/os-sdk'
 
-const CustomActyxOS = Client({
-  ...DefaultClientOpts,
-  Ports: {
-    EventService: 5555
-  }
-})
+const clientOpts = DefaultClientOpts()
+clientOpts.Endpoints.EventService.BaseUrl = 'http://10.2.3.23:4454/api'
+
+const CustomActyxOS = Client(clientOpts)
 ```
 
 ## Development

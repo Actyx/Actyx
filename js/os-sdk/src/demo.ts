@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 /* tslint:disable */
-import { Client, EventDraft } from './'
-import { Subscription } from './types'
+import { Client, EventDraft, Subscription } from './'
 
 // Create client with default options
 const client = Client()

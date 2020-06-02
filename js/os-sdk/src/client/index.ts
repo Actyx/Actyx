@@ -71,7 +71,7 @@ const eventServiceClient = (opts: ApiClientOpts): EventServiceClient => ({
  * })
  * ```
  */
-export const Client = (opts: ApiClientOpts = DefaultClientOpts): ApiClient => {
+export const Client = (opts: ApiClientOpts = DefaultClientOpts()): ApiClient => {
   return {
     eventService: eventServiceClient(opts),
   }

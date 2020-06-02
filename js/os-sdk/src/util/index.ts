@@ -105,9 +105,13 @@ const _getAxEventServiceUriFromEnv = (): string | null => {
 /** @internal */
 const _getAxEventServiceUriFromInjectedAx = (): string | null => {
 
-  // @ts-ignore
-  if (!window.ax || !window.ax.eventServiceUri || typeof window.ax.eventServiceUri !== 'string') {
-    return null
+  try {
+    // @ts-ignore
+    if (typeof window === 'undefined' || !window.ax || !window.ax.eventServiceUri || typeof window.ax.eventServiceUri !== 'string') {
+      return null
+    }
+  } catch (error) {
+    return null;
   }
 
   // @ts-ignore

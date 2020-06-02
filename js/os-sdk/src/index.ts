@@ -28,4 +28,5 @@ export {
   OnError,
   OnEvent,
   OnResult,
+  Subscription,
 } from './types'
