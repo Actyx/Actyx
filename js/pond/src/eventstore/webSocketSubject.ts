@@ -15,9 +15,9 @@ import { errorObject } from 'rxjs/util/errorObject'
 import { root } from 'rxjs/util/root'
 import { tryCatch } from 'rxjs/util/tryCatch'
 import log from '../loggers'
-import { isNode } from '../util/isNode'
+import { isNode } from '../util'
 
-if (isNode()) {
+if (isNode) {
   const globalAny: any = global
 
   globalAny.WebSocket = require('ws')
