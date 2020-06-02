@@ -4,6 +4,7 @@ module.exports = {
       'os/introduction',
       'os/design-principles',
       'os/architecture',
+      'os/release-notes',
     ],
     'Getting Started': [
       'os/getting-started/installation',
@@ -81,6 +82,7 @@ module.exports = {
     'Actyx CLI': [
       'cli/getting-started',
       'cli/ax',
+      'cli/release-notes',
     ],
     'ax nodes': [
       'cli/nodes/nodes',
