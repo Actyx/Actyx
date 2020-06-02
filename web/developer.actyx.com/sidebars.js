@@ -81,8 +81,8 @@ module.exports = {
   cliSidebar: {
     'Actyx CLI': [
       'cli/getting-started',
-      'cli/ax',
       'cli/release-notes',
+      'cli/ax',
     ],
     'ax nodes': [
       'cli/nodes/nodes',
