@@ -1,5 +1,5 @@
 ---
-title: ActyxOS release notes
+title: Release notes
 ---
 
 This page contains information about new features, bug fixes, deprecations and removals in ActyxOS releases. For a more extensive description of the changes, check out our [blog](https://www.actyx.com/news/).
