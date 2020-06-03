@@ -20,6 +20,8 @@ import {
   Ordering,
   EventDraft,
   Subscription,
+  LogOpts,
+  LogEntryDraft,
 } from '../types'
 
 export { tryMakeEventFromApiObj, tryMakeOffsetMapFromApiObj } from './decoding'
@@ -103,17 +105,80 @@ const _getAxEventServiceUriFromEnv = (): string | null => {
 }
 
 /** @internal */
-const _getAxEventServiceUriFromInjectedAx = (): string | null => {
+const _getAxConsoleServiceUriFromEnv = (): string | null => {
+  const uri = process.env['AX_CONSOLE_SERVICE_URI']
 
+  if (!uri) {
+    return null
+  }
+
+  if (!uri.endsWith('/')) {
+    return uri + '/'
+  }
+
+  return uri
+}
+
+/** @internal */
+const _getAxEventServiceUriFromInjectedAx = (): string | null => {
   try {
-    // @ts-ignore
-    if (typeof window === 'undefined' || !window.ax || !window.ax.eventServiceUri || typeof window.ax.eventServiceUri !== 'string') {
+    // Don't put on one-line since lint:fix won't accept it
+    if (
+      // eslint-disable-next-line
+      // @ts-ignore
+      typeof window === undefined ||
+      // eslint-disable-next-line
+      // @ts-ignore
+      !window.ax ||
+      // eslint-disable-next-line
+      // @ts-ignore
+      !window.ax.eventServiceUri ||
+      // eslint-disable-next-line
+      // @ts-ignore
+      typeof window.ax.eventServiceUri !== 'string'
+    ) {
       return null
     }
   } catch (error) {
-    return null;
+    return null
   }
 
+  // eslint-disable-next-line
+  // @ts-ignore
+  const uri: string = window.ax.eventServiceUri
+
+  if (!uri.endsWith('/')) {
+    return uri + '/'
+  }
+
+  return uri
+}
+
+/** @internal */
+const _getAxConsoleServiceUriFromInjectedAx = (): string | null => {
+  try {
+    // Don't put on one-line since lint:fix won't accept it
+    if (
+      // eslint-disable-next-line
+      // @ts-ignore
+      typeof window === undefined ||
+      // eslint-disable-next-line
+      // @ts-ignore
+      !window.ax ||
+      // eslint-disable-next-line
+      // @ts-ignore
+      !window.ax.eventServiceUri ||
+      // eslint-disable-next-line
+      // @ts-ignore
+      typeof window.ax.eventServiceUri !== 'string'
+    ) {
+      return null
+    }
+  } catch (error) {
+    return null
+  }
+
+  // eslint-disable-next-line
   // @ts-ignore
   const uri: string = window.ax.eventServiceUri
 
@@ -127,17 +192,40 @@ const _getAxEventServiceUriFromInjectedAx = (): string | null => {
 /** @internal
  * This tries the injected `ax` object first, then the environment, and then
  * returns the default defined in constants.
-*/
+ */
 export const getAxEventServiceUri = (defaultUri: string): string => {
   let uri = _getAxEventServiceUriFromInjectedAx()
   if (uri) {
-    return uri;
+    return uri
   }
 
   uri = _getAxEventServiceUriFromEnv()
   if (uri) {
-    return uri;
+    return uri
   }
 
   return defaultUri
 }
+
+/** @internal
+ * This tries the injected `ax` object first, then the environment, and then
+ * returns the default defined in constants.
+ */
+export const getAxConsoleServiceUri = (defaultUri: string): string => {
+  let uri = _getAxConsoleServiceUriFromInjectedAx()
+  if (uri) {
+    return uri
+  }
+
+  uri = _getAxConsoleServiceUriFromEnv()
+  if (uri) {
+    return uri
+  }
+
+  return defaultUri
+}
+
+/** @internal
+ */
+export const isLogEntryDraft = (e: LogOpts | LogEntryDraft): e is LogEntryDraft =>
+  (e as LogEntryDraft).severity !== undefined

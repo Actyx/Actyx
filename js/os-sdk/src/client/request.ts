@@ -103,7 +103,7 @@ export interface LineStreamingRequestOpts {
  * This function performs a streaming (line-by-line) HTTP request. Whenever a
  * new, non-empty line is received, the `onLine` callback is called with that
  * line. If the request is ended using the returned function, the `onDone`
- * function is called. If an error occurs, the `onError` callback is called. 
+ * function is called. If an error occurs, the `onError` callback is called.
  *
  * @param opts Configuration of the request (see `LineStreamingRequestOpts`)
  * @returns A function that you should call to stop the request.

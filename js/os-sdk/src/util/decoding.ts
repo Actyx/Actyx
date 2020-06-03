@@ -71,8 +71,8 @@ export const tryMakeEventFromApiObj = (obj: object): EventT | string => {
     stream: {
       streamSemantics: res.right.stream.semantics,
       streamName: res.right.stream.name,
-      source: res.right.stream.source
-    }
+      source: res.right.stream.source,
+    },
   }
 }
 

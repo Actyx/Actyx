@@ -3,8 +3,8 @@
 <head>
 	<meta charset="utf-8">
 	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<title>@actyx/os-sdk - v0.0.5 | @actyx/os-sdk - v0.0.5</title>
-	<meta name="description" content="Documentation for @actyx/os-sdk - v0.0.5">
+	<title>@actyx/os-sdk - v0.1.4 | @actyx/os-sdk - v0.1.4</title>
+	<meta name="description" content="Documentation for @actyx/os-sdk - v0.1.4">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<style type="text/css">/*! normalize.css v1.1.3 | MIT License | git.io/normalize */
 /* ==========================================================================
@@ -2692,7 +2692,7 @@ img {
 		<div class="container">
 			<div class="table-wrap">
 				<div class="table-cell">
-					<strong><a href="index.html">@actyx/os-sdk - v0.0.5</a></strong>
+					<strong><a href="index.html">@actyx/os-sdk - v0.1.4</a></strong>
 				</div>
 				<div class="table-cell" id="tsd-widgets">
 					<div id="tsd-filter">
@@ -2723,6 +2723,9 @@ img {
 <nav class="tsd-navigation secondary">
 	<ul>
 		<li class=" tsd-kind-enum">
+			<a href="enums/logseverity.html" class="tsd-kind-icon">Log<wbr>Severity</a>
+		</li>
+		<li class=" tsd-kind-enum">
 			<a href="enums/ordering.html" class="tsd-kind-icon">Ordering</a>
 		</li>
 		<li class=" tsd-kind-interface">
@@ -2732,6 +2735,12 @@ img {
 			<a href="interfaces/apiclientopts.html" class="tsd-kind-icon">Api<wbr>Client<wbr>Opts</a>
 		</li>
 		<li class=" tsd-kind-interface">
+			<a href="interfaces/apilogentrydraft.html" class="tsd-kind-icon">Api<wbr>Log<wbr>Entry<wbr>Draft</a>
+		</li>
+		<li class=" tsd-kind-interface">
+			<a href="interfaces/consoleserviceclient.html" class="tsd-kind-icon">Console<wbr>Service<wbr>Client</a>
+		</li>
+		<li class=" tsd-kind-interface">
 			<a href="interfaces/event.html" class="tsd-kind-icon">Event</a>
 		</li>
 		<li class=" tsd-kind-interface">
@@ -2739,6 +2748,12 @@ img {
 		</li>
 		<li class=" tsd-kind-interface">
 			<a href="interfaces/eventserviceclient.html" class="tsd-kind-icon">Event<wbr>Service<wbr>Client</a>
+		</li>
+		<li class=" tsd-kind-interface">
+			<a href="interfaces/logentrydraft.html" class="tsd-kind-icon">Log<wbr>Entry<wbr>Draft</a>
+		</li>
+		<li class=" tsd-kind-interface">
+			<a href="interfaces/logopts.html" class="tsd-kind-icon">Log<wbr>Opts</a>
 		</li>
 		<li class=" tsd-kind-interface">
 			<a href="interfaces/offsetmap.html" class="tsd-kind-icon">Offset<wbr>Map</a>
@@ -2751,6 +2766,12 @@ img {
 		</li>
 		<li class=" tsd-kind-interface">
 			<a href="interfaces/queryopts.html" class="tsd-kind-icon">Query<wbr>Opts</a>
+		</li>
+		<li class=" tsd-kind-interface">
+			<a href="interfaces/simplelogger.html" class="tsd-kind-icon">Simple<wbr>Logger</a>
+		</li>
+		<li class=" tsd-kind-interface">
+			<a href="interfaces/simpleloggeropts.html" class="tsd-kind-icon">Simple<wbr>Logger<wbr>Opts</a>
 		</li>
 		<li class=" tsd-kind-interface">
 			<a href="interfaces/streamidentifier.html" class="tsd-kind-icon">Stream<wbr>Identifier</a>
@@ -2776,7 +2797,7 @@ img {
 		<li class=" tsd-kind-function">
 			<a href="globals.html#client" class="tsd-kind-icon">Client</a>
 		</li>
-		<li class=" tsd-kind-object-literal">
+		<li class=" tsd-kind-function">
 			<a href="globals.html#defaultclientopts" class="tsd-kind-icon">Default<wbr>Client<wbr>Opts</a>
 		</li>
 		<li class=" tsd-kind-object-literal">
@@ -2790,7 +2811,7 @@ img {
 <div class="container container-main">
 	<div class="content-wrap">
 		<div class="tsd-panel tsd-typography">
-			<p>This is a JavaScript and TypeScript SDK for building ActyxOS apps. Currently, it wraps the ActyxOS Event Service API in a simple client that can be used from within JavaScript and TypeScript apps.</p>
+			<p>This is a JavaScript and TypeScript SDK for building ActyxOS apps. Currently, it wraps the ActyxOS Event Service and Console Service APIs in a simple client that can be used from within JavaScript and TypeScript apps.</p>
 			<a href="#actyxos" id="actyxos" style="color: inherit; text-decoration: none;">
 				<h1>ActyxOS</h1>
 			</a>
@@ -2798,8 +2819,11 @@ img {
 			<a href="#examples" id="examples" style="color: inherit; text-decoration: none;">
 				<h1>Examples</h1>
 			</a>
+			<a href="#event-service" id="event-service" style="color: inherit; text-decoration: none;">
+				<h2>Event Service</h2>
+			</a>
 			<a href="#subscribe-to-event-streams" id="subscribe-to-event-streams" style="color: inherit; text-decoration: none;">
-				<h2>Subscribe to event streams</h2>
+				<h3>Subscribe to event streams</h3>
 			</a>
 			<pre><code class="language-typescript"><span class="hljs-keyword">import</span> { Client, Subscription } <span class="hljs-keyword">from</span> <span class="hljs-string">'@actyx/os-sdk'</span>
 
@@ -2812,7 +2836,7 @@ ActyxOS.eventService.subscribe({
   }
 })</code></pre>
 			<a href="#publish-events" id="publish-events" style="color: inherit; text-decoration: none;">
-				<h2>Publish events</h2>
+				<h3>Publish events</h3>
 			</a>
 			<pre><code class="language-typescript"><span class="hljs-keyword">import</span> { Client, EventDraft } <span class="hljs-keyword">from</span> <span class="hljs-string">'@actyx/os-sdk'</span>
 
@@ -2822,6 +2846,67 @@ ActyxOS.eventService.publish({
   eventDrafts: EventDraft.make(<span class="hljs-string">'mySemantics'</span>, <span class="hljs-string">'myName'</span>, { foo: <span class="hljs-string">'bar'</span> }),
   onDone: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {
     <span class="hljs-built_in">console</span>.log(<span class="hljs-string">`Published`</span>)
+  }
+})</code></pre>
+			<a href="#console-service" id="console-service" style="color: inherit; text-decoration: none;">
+				<h2>Console Service</h2>
+			</a>
+			<a href="#simple-logging" id="simple-logging" style="color: inherit; text-decoration: none;">
+				<h3>Simple logging</h3>
+			</a>
+			<p>For simple logging needs, use the <code>SimpleLogger</code> which you can configure once
+			and then use to log messages and, optionally, additional data:</p>
+			<pre><code class="language-typescript"><span class="hljs-keyword">import</span> { Client } <span class="hljs-keyword">from</span> <span class="hljs-string">'@actyx/os-sdk'</span>
+
+<span class="hljs-keyword">const</span> ActyxOS = Client()
+
+<span class="hljs-keyword">const</span> logger: SimpleLogger = ActyxOS.consoleService.SimpleLogger({
+  logName: <span class="hljs-string">'myLogger'</span>,
+  producerName: <span class="hljs-string">'com.example.app1'</span>,
+  producerVersion: <span class="hljs-string">'1.0.0'</span>
+})
+
+logger.debug(<span class="hljs-string">'this is a DEBUG message'</span>)
+logger.warn(<span class="hljs-string">'this is a WARNING message'</span>)
+logger.info(<span class="hljs-string">'this is an INFO message'</span>)
+logger.error(<span class="hljs-string">'this is an ERROR message'</span>)
+
+logger.debug(<span class="hljs-string">'This is a message with additional data'</span>, {foo: <span class="hljs-string">'bar'</span>})</code></pre>
+			<a href="#advanced-custom-logging" id="advanced-custom-logging" style="color: inherit; text-decoration: none;">
+				<h3>Advanced (custom) logging</h3>
+			</a>
+			<p>For more advanced, custom logging needs, use the log function directly:</p>
+			<pre><code class="language-typescript"><span class="hljs-keyword">import</span> { Client } <span class="hljs-keyword">from</span> <span class="hljs-string">'@actyx/os-sdk'</span>
+
+<span class="hljs-keyword">const</span> ActyxOS = Client()
+
+ActyxOS.consoleService.log({
+  entry: {
+    logName: <span class="hljs-string">'myCustomLogger'</span>,
+    message: <span class="hljs-string">'this is a WARNING message'</span>,
+    severity: LogSeverity.WARN,
+    producer: {
+      name: <span class="hljs-string">'com.example.app1'</span>,
+      version: <span class="hljs-string">'1.0.0'</span>
+    },
+    additionalData: {
+      foo: <span class="hljs-string">'bar'</span>,
+      bar: {
+        foo: <span class="hljs-literal">true</span>,
+      }
+    },
+    labels: {
+      <span class="hljs-string">'com.example.app1.auth.username'</span>: <span class="hljs-string">'john.doe'</span>,
+      <span class="hljs-string">'com.example.app1.model.events'</span>: <span class="hljs-string">'10000'</span>,
+    }
+  },
+  <span class="hljs-comment">// Callback on successful logging</span>
+  onLogged: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {
+    <span class="hljs-comment">// Do something</span>
+  },
+  <span class="hljs-comment">// Callback on error logging</span>
+  onError: <span class="hljs-function"><span class="hljs-params">err</span> =&gt;</span> {
+    <span class="hljs-built_in">console</span>.error(<span class="hljs-string">`error logging: <span class="hljs-subst">${err}</span>`</span>)
   }
 })</code></pre>
 			<a href="#usage" id="usage" style="color: inherit; text-decoration: none;">
@@ -2835,11 +2920,11 @@ ActyxOS.eventService.publish({
 			<a href="#documentation" id="documentation" style="color: inherit; text-decoration: none;">
 				<h2>Documentation</h2>
 			</a>
-			<p>You can access the Typedoc documentation at <a href="https://developer.actyx.com/@actyx/os-sdk/">https://developer.actyx.com/@actyx/os-sdk/</a>. See especially the documentation for the <a href="https://developer.actyx.com/@actyx/os-sdk/interfaces/eventserviceclient.html#offsets">offsets</a>, <a href="https://developer.actyx.com/@actyx/os-sdk/interfaces/eventserviceclient.html#query">query</a>, <a href="https://developer.actyx.com/@actyx/os-sdk/interfaces/eventserviceclient.html#subscribe">subscribe</a>, and <a href="https://developer.actyx.com/@actyx/os-sdk/interfaces/eventserviceclient.html#publish">publish</a> functions.</p>
+			<p>You can access the Typedoc documentation at <a href="https://developer.actyx.com/@actyx/os-sdk/">https://developer.actyx.com/@actyx/os-sdk/</a>.</p>
 			<a href="#getting-help" id="getting-help" style="color: inherit; text-decoration: none;">
 				<h2>Getting help</h2>
 			</a>
-			<p>If you have questions about or issues with the ActyxOS SDK, join our <a href="https://discord.gg/262yJhc">Discord chat</a> or email us at <a href="mailto:&#x64;&#101;&#118;&#101;&#108;&#111;&#x70;&#101;&#x72;&#x40;&#x61;&#x63;&#116;&#x79;&#x78;&#x2e;&#x69;&#x6f;">&#x64;&#101;&#118;&#101;&#108;&#111;&#x70;&#101;&#x72;&#x40;&#x61;&#x63;&#116;&#x79;&#x78;&#x2e;&#x69;&#x6f;</a>.</p>
+			<p>If you have questions about or issues with the ActyxOS SDK, join our <a href="https://discord.gg/262yJhc">Discord chat</a> or email us at <a href="mailto:&#100;&#101;&#118;&#101;&#x6c;&#x6f;&#x70;&#x65;&#114;&#64;&#x61;&#99;&#116;&#x79;&#120;&#x2e;&#x69;&#x6f;">&#100;&#101;&#118;&#101;&#x6c;&#x6f;&#x70;&#x65;&#114;&#64;&#x61;&#99;&#116;&#x79;&#120;&#x2e;&#x69;&#x6f;</a>.</p>
 			<a href="#advanced" id="advanced" style="color: inherit; text-decoration: none;">
 				<h2>Advanced</h2>
 			</a>
@@ -2849,12 +2934,10 @@ ActyxOS.eventService.publish({
 			<p>You can override the default client options by passing options (<a href="https://developer.actyx.com/@actyx/os-sdk/interfaces/apiclientopts.html"><code>ApiClientOpts</code></a>) when creating the client. If you only want to override specific options, use the default options (<a href="https://developer.actyx.com/@actyx/os-sdk/globals.html#defaultclientopts"><code>DefaultClientOpts</code></a>) as shown in the following example:</p>
 			<pre><code class="language-typescript"><span class="hljs-keyword">import</span> { Client, DefaultClientOpts } <span class="hljs-keyword">from</span> <span class="hljs-string">'@actyx/os-sdk'</span>
 
-<span class="hljs-keyword">const</span> CustomActyxOS = Client({
-  ...DefaultClientOpts,
-  Ports: {
-    EventService: <span class="hljs-number">5555</span>
-  }
-})</code></pre>
+<span class="hljs-keyword">const</span> clientOpts = DefaultClientOpts()
+clientOpts.Endpoints.EventService.BaseUrl = <span class="hljs-string">'http://10.2.3.23:4454/api'</span>
+
+<span class="hljs-keyword">const</span> CustomActyxOS = Client(clientOpts)</code></pre>
 			<a href="#development" id="development" style="color: inherit; text-decoration: none;">
 				<h2>Development</h2>
 			</a>
@@ -2873,6 +2956,7 @@ ActyxOS.eventService.publish({
 					<section class="tsd-index-section ">
 						<h3>Enumerations</h3>
 						<ul class="tsd-index-list">
+							<li class="tsd-kind-enum"><a href="enums/logseverity.html" class="tsd-kind-icon">Log<wbr>Severity</a></li>
 							<li class="tsd-kind-enum"><a href="enums/ordering.html" class="tsd-kind-icon">Ordering</a></li>
 						</ul>
 					</section>
@@ -2881,13 +2965,19 @@ ActyxOS.eventService.publish({
 						<ul class="tsd-index-list">
 							<li class="tsd-kind-interface"><a href="interfaces/apiclient.html" class="tsd-kind-icon">Api<wbr>Client</a></li>
 							<li class="tsd-kind-interface"><a href="interfaces/apiclientopts.html" class="tsd-kind-icon">Api<wbr>Client<wbr>Opts</a></li>
+							<li class="tsd-kind-interface"><a href="interfaces/apilogentrydraft.html" class="tsd-kind-icon">Api<wbr>Log<wbr>Entry<wbr>Draft</a></li>
+							<li class="tsd-kind-interface"><a href="interfaces/consoleserviceclient.html" class="tsd-kind-icon">Console<wbr>Service<wbr>Client</a></li>
 							<li class="tsd-kind-interface"><a href="interfaces/event.html" class="tsd-kind-icon">Event</a></li>
 							<li class="tsd-kind-interface"><a href="interfaces/eventdraft.html" class="tsd-kind-icon">Event<wbr>Draft</a></li>
 							<li class="tsd-kind-interface"><a href="interfaces/eventserviceclient.html" class="tsd-kind-icon">Event<wbr>Service<wbr>Client</a></li>
+							<li class="tsd-kind-interface"><a href="interfaces/logentrydraft.html" class="tsd-kind-icon">Log<wbr>Entry<wbr>Draft</a></li>
+							<li class="tsd-kind-interface"><a href="interfaces/logopts.html" class="tsd-kind-icon">Log<wbr>Opts</a></li>
 							<li class="tsd-kind-interface"><a href="interfaces/offsetmap.html" class="tsd-kind-icon">Offset<wbr>Map</a></li>
 							<li class="tsd-kind-interface"><a href="interfaces/offsetsopts.html" class="tsd-kind-icon">Offsets<wbr>Opts</a></li>
 							<li class="tsd-kind-interface"><a href="interfaces/publishopts.html" class="tsd-kind-icon">Publish<wbr>Opts</a></li>
 							<li class="tsd-kind-interface"><a href="interfaces/queryopts.html" class="tsd-kind-icon">Query<wbr>Opts</a></li>
+							<li class="tsd-kind-interface"><a href="interfaces/simplelogger.html" class="tsd-kind-icon">Simple<wbr>Logger</a></li>
+							<li class="tsd-kind-interface"><a href="interfaces/simpleloggeropts.html" class="tsd-kind-icon">Simple<wbr>Logger<wbr>Opts</a></li>
 							<li class="tsd-kind-interface"><a href="interfaces/streamidentifier.html" class="tsd-kind-icon">Stream<wbr>Identifier</a></li>
 							<li class="tsd-kind-interface"><a href="interfaces/subscribeopts.html" class="tsd-kind-icon">Subscribe<wbr>Opts</a></li>
 						</ul>
@@ -2906,12 +2996,12 @@ ActyxOS.eventService.publish({
 						<h3>Functions</h3>
 						<ul class="tsd-index-list">
 							<li class="tsd-kind-function"><a href="globals.html#client" class="tsd-kind-icon">Client</a></li>
+							<li class="tsd-kind-function"><a href="globals.html#defaultclientopts" class="tsd-kind-icon">Default<wbr>Client<wbr>Opts</a></li>
 						</ul>
 					</section>
 					<section class="tsd-index-section ">
 						<h3>Object literals</h3>
 						<ul class="tsd-index-list">
-							<li class="tsd-kind-object-literal"><a href="globals.html#defaultclientopts" class="tsd-kind-icon">Default<wbr>Client<wbr>Opts</a></li>
 							<li class="tsd-kind-object-literal"><a href="globals.html#eventdraft" class="tsd-kind-icon">Event<wbr>Draft</a></li>
 							<li class="tsd-kind-object-literal"><a href="globals.html#subscription" class="tsd-kind-icon">Subscription</a></li>
 						</ul>
@@ -3126,78 +3216,35 @@ ActyxOS.eventService.publish({
 						<h4 class="tsd-parameters-title">Parameters</h4>
 						<ul class="tsd-parameters">
 							<li>
-								<h5><span class="tsd-flag ts-flagDefault value">Default value</span> opts: <a href="interfaces/apiclientopts.html" class="tsd-signature-type">ApiClientOpts</a><span class="tsd-signature-symbol"> = DefaultClientOpts</span></h5>
+								<h5><span class="tsd-flag ts-flagDefault value">Default value</span> opts: <a href="interfaces/apiclientopts.html" class="tsd-signature-type">ApiClientOpts</a><span class="tsd-signature-symbol"> = DefaultClientOpts()</span></h5>
 							</li>
 						</ul>
 						<h4 class="tsd-returns-title">Returns <a href="interfaces/apiclient.html" class="tsd-signature-type">ApiClient</a></h4>
 					</li>
 				</ul>
 			</section>
+			<section class="tsd-panel tsd-member tsd-kind-function">
+				<a name="defaultclientopts" class="tsd-anchor"></a>
+				<h3><span class="tsd-flag ts-flagConst">Const</span> Default<wbr>Client<wbr>Opts</h3>
+				<ul class="tsd-signatures tsd-kind-function">
+					<li class="tsd-signature tsd-kind-icon">Default<wbr>Client<wbr>Opts<span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">: </span><a href="interfaces/apiclientopts.html" class="tsd-signature-type">ApiClientOpts</a></li>
+				</ul>
+				<ul class="tsd-descriptions">
+					<li class="tsd-description">
+						<aside class="tsd-sources">
+						</aside>
+						<div class="tsd-comment tsd-typography">
+							<div class="lead">
+								<p>This function returns the default client options</p>
+							</div>
+						</div>
+						<h4 class="tsd-returns-title">Returns <a href="interfaces/apiclientopts.html" class="tsd-signature-type">ApiClientOpts</a></h4>
+					</li>
+				</ul>
+			</section>
 		</section>
 		<section class="tsd-panel-group tsd-member-group ">
 			<h2>Object literals</h2>
-			<section class="tsd-panel tsd-member tsd-kind-object-literal">
-				<a name="defaultclientopts" class="tsd-anchor"></a>
-				<h3><span class="tsd-flag ts-flagConst">Const</span> Default<wbr>Client<wbr>Opts</h3>
-				<div class="tsd-signature tsd-kind-icon">Default<wbr>Client<wbr>Opts<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
-				<aside class="tsd-sources">
-				</aside>
-				<div class="tsd-comment tsd-typography">
-					<div class="lead">
-						<p>These are the default SDK client options. They should be fine for almost
-						all use cases.</p>
-					</div>
-				</div>
-				<section class="tsd-panel tsd-member tsd-kind-object-literal tsd-parent-kind-object-literal">
-					<a name="defaultclientopts.endpoints" class="tsd-anchor"></a>
-					<h3>Endpoints</h3>
-					<div class="tsd-signature tsd-kind-icon">Endpoints<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
-					<aside class="tsd-sources">
-					</aside>
-					<section class="tsd-panel tsd-member tsd-kind-object-literal tsd-parent-kind-object-literal">
-						<a name="defaultclientopts.endpoints.eventservice" class="tsd-anchor"></a>
-						<h3>Event<wbr>Service</h3>
-						<div class="tsd-signature tsd-kind-icon">Event<wbr>Service<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">object</span></div>
-						<aside class="tsd-sources">
-						</aside>
-						<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-object-literal">
-							<a name="defaultclientopts.endpoints.eventservice.baseurl" class="tsd-anchor"></a>
-							<h3>Base<wbr>Url</h3>
-							<div class="tsd-signature tsd-kind-icon">Base<wbr>Url<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> = getAxEventServiceUri(DEFAULT_EVENT_SERVICE_URI)</span></div>
-							<aside class="tsd-sources">
-							</aside>
-						</section>
-						<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-object-literal">
-							<a name="defaultclientopts.endpoints.eventservice.offsets" class="tsd-anchor"></a>
-							<h3>Offsets</h3>
-							<div class="tsd-signature tsd-kind-icon">Offsets<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> = &quot;v1/events/offsets&quot;</span></div>
-							<aside class="tsd-sources">
-							</aside>
-						</section>
-						<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-object-literal">
-							<a name="defaultclientopts.endpoints.eventservice.publish" class="tsd-anchor"></a>
-							<h3>Publish</h3>
-							<div class="tsd-signature tsd-kind-icon">Publish<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> = &quot;v1/events/publish&quot;</span></div>
-							<aside class="tsd-sources">
-							</aside>
-						</section>
-						<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-object-literal">
-							<a name="defaultclientopts.endpoints.eventservice.query" class="tsd-anchor"></a>
-							<h3>Query</h3>
-							<div class="tsd-signature tsd-kind-icon">Query<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> = &quot;v1/events/query&quot;</span></div>
-							<aside class="tsd-sources">
-							</aside>
-						</section>
-						<section class="tsd-panel tsd-member tsd-kind-variable tsd-parent-kind-object-literal">
-							<a name="defaultclientopts.endpoints.eventservice.subscribe" class="tsd-anchor"></a>
-							<h3>Subscribe</h3>
-							<div class="tsd-signature tsd-kind-icon">Subscribe<span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol"> = &quot;v1/events/subscribe&quot;</span></div>
-							<aside class="tsd-sources">
-							</aside>
-						</section>
-					</section>
-				</section>
-			</section>
 			<section class="tsd-panel tsd-member tsd-kind-object-literal">
 				<a name="eventdraft" class="tsd-anchor"></a>
 				<h3><span class="tsd-flag ts-flagConst">Const</span> Event<wbr>Draft</h3>

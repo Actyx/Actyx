@@ -1,4 +1,4 @@
-This is a JavaScript and TypeScript SDK for building ActyxOS apps. Currently, it wraps the ActyxOS Event Service API in a simple client that can be used from within JavaScript and TypeScript apps.
+This is a JavaScript and TypeScript SDK for building ActyxOS apps. Currently, it wraps the ActyxOS Event Service and Console Service APIs in a simple client that can be used from within JavaScript and TypeScript apps.
 
 # ActyxOS
 
@@ -6,7 +6,9 @@ For more information about ActyxOS, please check out our developer documentation
 
 # Examples
 
-## Subscribe to event streams
+## Event Service
+
+### Subscribe to event streams
 
 ```typescript
 import { Client, Subscription } from '@actyx/os-sdk'
@@ -21,7 +23,7 @@ ActyxOS.eventService.subscribe({
 })
 ```
 
-## Publish events
+### Publish events
 
 ```typescript
 import { Client, EventDraft } from '@actyx/os-sdk'
@@ -32,6 +34,72 @@ ActyxOS.eventService.publish({
   eventDrafts: EventDraft.make('mySemantics', 'myName', { foo: 'bar' }),
   onDone: () => {
     console.log(`Published`)
+  }
+})
+```
+
+## Console Service
+
+### Simple logging
+
+For simple logging needs, use the `SimpleLogger` which you can configure once
+and then use to log messages and, optionally, additional data:
+
+```typescript
+import { Client } from '@actyx/os-sdk'
+
+const ActyxOS = Client()
+
+const logger: SimpleLogger = ActyxOS.consoleService.SimpleLogger({
+  logName: 'myLogger',
+  producerName: 'com.example.app1',
+  producerVersion: '1.0.0'
+})
+
+logger.debug('this is a DEBUG message')
+logger.warn('this is a WARNING message')
+logger.info('this is an INFO message')
+logger.error('this is an ERROR message')
+
+logger.debug('This is a message with additional data', {foo: 'bar'})
+```
+
+### Advanced (custom) logging
+
+For more advanced, custom logging needs, use the log function directly:
+
+```typescript
+import { Client } from '@actyx/os-sdk'
+
+const ActyxOS = Client()
+
+ActyxOS.consoleService.log({
+  entry: {
+    logName: 'myCustomLogger',
+    message: 'this is a WARNING message',
+    severity: LogSeverity.WARN,
+    producer: {
+      name: 'com.example.app1',
+      version: '1.0.0'
+    },
+    additionalData: {
+      foo: 'bar',
+      bar: {
+        foo: true,
+      }
+    },
+    labels: {
+      'com.example.app1.auth.username': 'john.doe',
+      'com.example.app1.model.events': '10000',
+    }
+  },
+  // Callback on successful logging
+  onLogged: () => {
+    // Do something
+  },
+  // Callback on error logging
+  onError: err => {
+    console.error(`error logging: ${err}`)
   }
 })
 ```
@@ -48,7 +116,7 @@ npm install @actyx/os-sdk
 
 ## Documentation
 
-You can access the Typedoc documentation at https://developer.actyx.com/@actyx/os-sdk/. See especially the documentation for the [offsets](https://developer.actyx.com/@actyx/os-sdk/interfaces/eventserviceclient.html#offsets), [query](https://developer.actyx.com/@actyx/os-sdk/interfaces/eventserviceclient.html#query), [subscribe](https://developer.actyx.com/@actyx/os-sdk/interfaces/eventserviceclient.html#subscribe), and [publish](https://developer.actyx.com/@actyx/os-sdk/interfaces/eventserviceclient.html#publish) functions.
+You can access the Typedoc documentation at https://developer.actyx.com/@actyx/os-sdk/.
 
 ## Getting help
 

@@ -18,7 +18,13 @@
 export const DEFAULT_EVENT_SERVICE_URI = 'http://localhost:4454/api/'
 
 /** @internal */
+export const DEFAULT_CONSOLE_SERVICE_URI = 'http://localhost:4457/api/'
+
+/** @internal */
 export const CONTENT_TYPE_JSON_HEADER = { 'Content-Type': 'application/json' }
 
 /** @internal */
 export const ACCEPT_NDJSON_HEADER = { Accept: 'application/x-ndjson' }
+
+/** @internal */
+export const ACCEPT_JSON_HEADER = { Accept: 'application/json' }

@@ -126,7 +126,7 @@ test('subscribe call on successful request', () => {
       payload: {
         bar: 'foo',
       },
-    }
+    },
   ]
 
   const expectedEvents = [

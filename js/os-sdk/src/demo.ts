@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 /* tslint:disable */
-import { Client, EventDraft, Subscription } from './'
+import { Client, SimpleLogger, LogSeverity, EventDraft, Subscription } from './'
 
 // Create client with default options
 const client = Client()
+
+// -----------------------------------------------------------------------------
+// -- Interacting with the ActyxOS Event Service
 
 const doPublish = () => {
   client.eventService.publish({
@@ -66,3 +69,57 @@ client.eventService.offsets({
     console.error(`error getting offsets: ${error}`)
   },
 })
+
+// -----------------------------------------------------------------------------
+// -- Interacting with the ActyxOS Console Service
+
+client.consoleService.log({
+  entry: {
+    logName: 'myCustomLogger',
+    message: 'this is a WARNING message',
+    severity: LogSeverity.WARN,
+    producer: {
+      name: 'com.example.app1',
+      version: '1.0.0',
+    },
+    additionalData: {
+      foo: 'bar',
+      bar: {
+        foo: true,
+      },
+    },
+    labels: {
+      'com.example.app1.auth.username': 'john.doe',
+      'com.example.app1.model.events': '10000',
+    },
+  },
+  onLogged: () => {
+    console.log('logged message!')
+  },
+  onError: err => {
+    console.error(`error logging: ${err}`)
+  },
+})
+
+client.consoleService.log({
+  message: 'hey they hey',
+  logName: 'myGreatLog',
+  producer: {
+    name: "what's up?",
+    version: '1',
+  },
+  severity: LogSeverity.DEBUG,
+})
+
+const logger: SimpleLogger = client.consoleService.SimpleLogger({
+  logName: 'myLogger',
+  producerName: 'com.example.app1',
+  producerVersion: '1.0.0',
+})
+
+logger.debug('this is a DEBUG message')
+logger.warn('this is a WARNING message')
+logger.info('this is an INFO message')
+logger.error('this is an ERROR message')
+
+logger.debug('This is a message with additional data', { foo: 'bar' })

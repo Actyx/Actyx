@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 import { ApiClientOpts } from '../types'
-import { getAxEventServiceUri } from '../util'
-import { DEFAULT_EVENT_SERVICE_URI } from './constants'
+import { getAxEventServiceUri, getAxConsoleServiceUri } from '../util'
+import { DEFAULT_EVENT_SERVICE_URI, DEFAULT_CONSOLE_SERVICE_URI } from './constants'
 
 /**
  * This function returns the default client options
@@ -29,9 +29,12 @@ export const DefaultClientOpts = (): ApiClientOpts => ({
       Query: 'v1/events/query',
       Publish: 'v1/events/publish',
     },
-  }
+    ConsoleService: {
+      BaseUrl: getAxConsoleServiceUri(DEFAULT_CONSOLE_SERVICE_URI),
+      Logs: 'v1/logs',
+    },
+  },
 })
-
 
 /** @internal */
 export const CONTENT_TYPE_JSON_HEADER = { 'Content-Type': 'application/json' }

@@ -40,7 +40,8 @@ export const _mkRequestObject = (
 /** @internal */
 export const subscribe = (clientOpts: ApiClientOpts) => (opts: SubscribeOpts) => {
   // Note we add the extra slash here for safety
-  const url = clientOpts.Endpoints.EventService.BaseUrl + clientOpts.Endpoints.EventService.Subscribe
+  const url =
+    clientOpts.Endpoints.EventService.BaseUrl + clientOpts.Endpoints.EventService.Subscribe
   const { host, port, path } = uri.parse(url)
 
   // Request options

@@ -44,8 +44,7 @@ export const _mkRequestObject = (
 
   if (lowerBound && Object.keys(lowerBound).length > 0) {
     obj.lowerBound = mkOffsetMapApiObj(lowerBound)
-  } 
-
+  }
 
   return obj
 }

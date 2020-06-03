@@ -49,7 +49,7 @@ test('_mkRequestObject with empty upper bounds has empty upper bounds object in 
     _mkRequestObject(
       [exSubscriptionWithOnlyName, exSubscriptionWithOnlySourceId],
       Ordering.LamportReverse,
-      {}
+      {},
     ),
   ).toStrictEqual({
     upperBound: {},
@@ -101,7 +101,7 @@ test('query call on successful request', () => {
       payload: {
         bar: 'foo',
       },
-    }
+    },
   ]
 
   const expectedEvents = [

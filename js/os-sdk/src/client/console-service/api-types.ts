@@ -13,23 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-export { Client } from './client'
-export { DefaultClientOpts } from './client/default-opts'
-export {
-  OffsetMap,
-  Event,
-  EventDraft,
-  StreamIdentifier,
-  Ordering,
-  ApiClientOpts,
-  ApiClient,
-  EventServiceClient,
-  OnDone,
-  OnError,
-  OnEvent,
-  OnResult,
-  LogSeverity,
-  SimpleLogger,
-  SimpleLoggerOpts,
-  Subscription,
-} from './types'
+
+export interface ApiLogEntryDraft {
+  logTimestamp?: string
+  severity: string
+  logName: string
+  message: string
+  additionalData?: unknown
+  labels: { [key: string]: string }
+  producerName: string
+  producerVersion: string
+}

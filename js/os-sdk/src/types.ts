@@ -109,6 +109,10 @@ export interface ApiClientOpts {
       Query: string
       Publish: string
     }
+    ConsoleService: {
+      BaseUrl: string
+      Logs: string
+    }
   }
 }
 
@@ -389,7 +393,7 @@ export interface OffsetsOpts {
 /**
  * This interface specifies the functionality that this SDK offers for
  * interacting with the ActyxOS [Event Service](
- * https://developer.actyx.com/docs/os/api/event-service)
+ * https://developer.actyx.com/docs/os/api/event-service).
  */
 export interface EventServiceClient {
   /**
@@ -552,9 +556,253 @@ export interface EventServiceClient {
   offsets: (opts: OffsetsOpts) => void
 }
 
+export enum LogSeverity {
+  DEBUG,
+  INFO,
+  WARN,
+  ERROR,
+}
+
+/**
+ * This data type specifies the content of a log entry that must/can be provided
+ * by your application. This is not exactly equivalent to the actual log entry
+ * stored by ActyxOS since the Console Service automatically adds additional
+ * data points such as the node's ID or display name. The Console Service also
+ * adds the timestamp unless you have specifically provided it.
+ *
+ * Have a look at the Console Service's
+ * [API documentation](/docs/os/api/console-service#structured-vs-unstructured-logs)
+ * for more details, including how ActyxOS stores log entries internally.
+ *
+ * The most basic [[LogEntryDraft]] would look as follows:
+ *
+ * ```typescript
+ * const minimalEntry: LogEntryDraft = {
+ *  logName: 'myLogger',
+ *  severity: LogSeverity.INFO,
+ *  producer: {
+ *   name: 'myapp',
+ *   version: '1.0.0',
+ * },
+ * message: 'my log message',
+ * }
+ * ```
+ */
+export interface LogEntryDraft {
+  /**
+   * Timestamp of the log entry.
+   *
+   * _Note: ActyxOS automatically adds this, so you should almost never have to
+   * set this yourself._
+   */
+  timestamp?: Date
+  /**
+   * Name of the log you want to post the entry to.
+   */
+  logName: string
+  /**
+   * Severity of the log entry (debug, warn, info or error).
+   */
+  severity: LogSeverity
+  /**
+   * Details about who produced the log message. This should be your app's name
+   * and version number.
+   */
+  producer: {
+    name: string
+    version: string
+  }
+  /**
+   * Any labels you would like to add to the log entry.
+   *
+   * _Note that labels are always of type `string: string`._
+   */
+  labels?: {
+    [key: string]: string
+  }
+  /**
+   * The actual log message.
+   */
+  message: string
+  /**
+   * Additional data you would like to add to the log entry. _Note: this is data
+   * that complements the log message (e.g. additional parsing errors)._
+   */
+  additionalData?: unknown
+}
+
+/**
+ * Configuration of a request to post a log entry to the ActyxOS Console
+ * Service. Please refer to the individual properties for more information
+ * about what each of them do.
+ */
+export interface LogOpts {
+  /**
+   * This property defines the draft log entry you want to post to the Console
+   * Service. The log entry has a number of required and a number of optional
+   * properties. Please refer to [[LogEntryDraft]] for more information and a
+   * couple of examples.
+   */
+  entry: LogEntryDraft
+
+  /**
+   * This property allows you to provide a callback that will be called when the
+   * log entry has been successfully posted.
+   *
+   * _Note: in most cases you can simply fire-and-forget and thus don't need to
+   * provide this callback._
+   */
+  onLogged?: OnResult<void>
+
+  /**
+   * This property allows you to provide a callback that will be called if an
+   * error occurs whilst the SDK tried to post the log entry.
+   *
+   * _Note: this should not happen unless there are problems with the ActyxOS
+   * node so if anything you might throw an exception here._
+   */
+  onError?: OnError
+}
+
+/**
+ * A simple logger you can use in your app. It provides four functions, one for
+ * each of the available [[LogSeverity]] levels. Check out
+ * [[ConsoleServiceClient.SimpleLogger]] if you want to see some usage examples.
+ */
+export interface SimpleLogger {
+  /**
+   * Log a debug message and optionally add additional data.
+   *
+   * @param msg            Message to be logged
+   * @param additionalData Additional data you want to attach to the log entry
+   */
+  debug: (msg: string, additionalData?: unknown) => void
+  /**
+   * Log an info message and optionally add additional data.
+   *
+   * @param msg            Message to be logged
+   * @param additionalData Additional data you want to attach to the log entry
+   */
+  info: (msg: string, additionalData?: unknown) => void
+  /**
+   * Log a warning message and optionally add additional data.
+   *
+   * @param msg            Message to be logged
+   * @param additionalData Additional data you want to attach to the log entry
+   */
+  warn: (msg: string, additionalData?: unknown) => void
+  /**
+   * Log an error message and optionally add additional data.
+   *
+   * @param msg            Message to be logged
+   * @param additionalData Additional data you want to attach to the log entry
+   */
+  error: (msg: string, additionalData?: unknown) => void
+}
+
+/**
+ * Configuration parameters for creating a [[SimpleLogger]]. You must specify
+ * the producer name and version (e.g. `myapp` and `1.0.0`) and a name for the
+ * log you want to post to (e.g. `myLogger`). You may also add a default error
+ * callback that will be called whenever an error occurs whilst trying to post
+ * a log entry.
+ */
+export interface SimpleLoggerOpts {
+  producerName: string
+  producerVersion: string
+  logName: string
+  onError?: (error: string) => void
+}
+
+/**
+ * This interface specifies the functionality that this SDK offers for
+ * interacting with the ActyxOS [Console Service](
+ * https://developer.actyx.com/docs/os/api/console-service).
+ */
+export interface ConsoleServiceClient {
+  /**
+   * This function allows you to log to the ActyxOS Console Service. You can
+   * pass in either a [[LogEntryDraft]] object or a [[LogOpts]] object. You must
+   * use the [[LogOpts]] object if you want to provide callback for when the
+   * log entry has been successfully posted or if an error occurs.
+   *
+   * **Example usage**
+   *
+   * ```typescript
+   * import { Client } from '@actyx/os-sdk'
+   *
+   * const ActyxOS = Client()
+   *
+   * ActyxOS.consoleService.log({
+   *   entry: {
+   *     logName: 'myCustomLogger',
+   *     message: 'this is a WARNING message',
+   *     severity: LogSeverity.WARN,
+   *     producer: {
+   *       name: 'com.example.app1',
+   *       version: '1.0.0'
+   *     },
+   *     additionalData: {
+   *       foo: 'bar',
+   *       bar: {
+   *         foo: true,
+   *       }
+   *     },
+   *     labels: {
+   *       'com.example.app1.auth.username': 'john.doe',
+   *       'com.example.app1.model.events': '10000',
+   *     }
+   *   },
+   *   // Callback on successful logging
+   *   onLogged: () => {
+   *     // Do something
+   *   },
+   *   // Callback on error logging
+   *   onError: err => {
+   *     console.error(`error logging: ${err}`)
+   *   }
+   * })
+   * ```
+   *
+   * @param opts Either a [[LogEntryDraft]] or a [[LogOpts]] object
+   */
+  log: (opts: LogOpts | LogEntryDraft) => void
+
+  /**
+   * Create a simple logger with `debug`, `warn`, `info` and `error` functions
+   * to easily post log entries.
+   *
+   * **Example usage**
+   * ```
+   * import { Client } from '@actyx/os-sdk'
+   *
+   * const ActyxOS = Client()
+   *
+   * const logger: SimpleLogger = ActyxOS.consoleService.SimpleLogger({
+   *   logName: 'myLogger',
+   *   producerName: 'com.example.app1',
+   *   producerVersion: '1.0.0'
+   * })
+   *
+   * logger.debug('this is a DEBUG message')
+   * logger.warn('this is a WARNING message')
+   * logger.info('this is an INFO message')
+   * logger.error('this is an ERROR message')
+   *
+   * logger.debug('This is a message with additional data', {foo: 'bar'})
+   * ```
+   *
+   * Please refer to [[SimpleLoggerOpts]] for more details about how to
+   * configure this simple logger.
+   *
+   */
+  SimpleLogger: (opts: SimpleLoggerOpts) => SimpleLogger
+}
+
 /**
  * Definition of the API client. The client currently offers access to the
- * ActyxOS Event Service via it's [[eventService]] property.
+ * ActyxOS Event Service via it's [[eventService]] property and to the
+ * ActyxOS Console Service via it's [[consoleService]] property.
  */
 export interface ApiClient {
   /**
@@ -565,4 +813,10 @@ export interface ApiClient {
    * [[EventServiceClient.publish | publish]] functions.
    */
   eventService: EventServiceClient
+  /**
+   * Access to the ActyxOS Console Service using the
+   * [[ConsoleServiceClient.SimpleLogger | SimpleLogger]] and
+   * [[ConsoleServiceClient.log | log]] functions.
+   */
+  consoleService: ConsoleServiceClient
 }

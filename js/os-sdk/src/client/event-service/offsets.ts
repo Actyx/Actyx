@@ -21,7 +21,6 @@ import { doRequest } from '../request'
 
 /** @internal */
 export const offsets = (clientOpts: ApiClientOpts) => (opts: OffsetsOpts) => {
-
   // Note we add the extra slash here for safety
   const url = clientOpts.Endpoints.EventService.BaseUrl + clientOpts.Endpoints.EventService.Offsets
   const { host, port, path } = uri.parse(url)
