@@ -4,6 +4,7 @@ module.exports = {
       'os/introduction',
       'os/design-principles',
       'os/architecture',
+      'os/release-notes',
     ],
     'Getting Started': [
       'os/getting-started/installation',
@@ -80,6 +81,7 @@ module.exports = {
   cliSidebar: {
     'Actyx CLI': [
       'cli/getting-started',
+      'cli/release-notes',
       'cli/ax',
     ],
     'ax nodes': [
