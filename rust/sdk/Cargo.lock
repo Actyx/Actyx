@@ -19,7 +19,7 @@ dependencies = [
 
 [[package]]
 name = "actyxos_sdk"
-version = "0.2.3"
+version = "0.3.0"
 dependencies = [
  "abomonation",
  "abomonation_derive",
@@ -29,6 +29,7 @@ dependencies = [
  "derive_more",
  "fixed",
  "futures",
+ "intern-arc",
  "reqwest",
  "serde",
  "serde-transcode",
@@ -55,6 +56,15 @@ name = "adler32"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d2e7343e7fc9de883d1b0341e0b13970f764c14101234857d2ddafa1cb1cac2"
+
+[[package]]
+name = "ahash"
+version = "0.3.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f3e0bf23f51883cce372d5d5892211236856e4bb37fb942e1eb135ee0f146e3"
+dependencies = [
+ "const-random",
+]
 
 [[package]]
 name = "async-compression"
@@ -123,6 +133,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "const-random"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f1af9ac737b2dd2d577701e59fd09ba34822f6f2ebdb30a7647405d9e55e16a"
+dependencies = [
+ "const-random-macro",
+ "proc-macro-hack",
+]
+
+[[package]]
+name = "const-random-macro"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25e4c606eb459dd29f7c57b2e0879f2b6f14ee130918c2b78ccb58a9624e6c7a"
+dependencies = [
+ "getrandom",
+ "proc-macro-hack",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -145,6 +175,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba125de2af0df55319f41944744ad91c71113bf74a4646efff39afe1f6842db1"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "dashmap"
+version = "3.11.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8cfcd41ae02d60edded204341d2798ba519c336c51a37330aa4b98a1128def32"
+dependencies = [
+ "ahash",
+ "cfg-if",
+ "num_cpus",
 ]
 
 [[package]]
@@ -453,6 +494,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "076f042c5b7b98f31d205f1249267e12a6518c1481e9dae9764af19b707d2292"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "intern-arc"
+version = "0.4.1"
+dependencies = [
+ "dashmap",
+ "once_cell",
+ "serde",
 ]
 
 [[package]]
