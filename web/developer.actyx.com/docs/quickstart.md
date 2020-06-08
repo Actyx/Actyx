@@ -247,7 +247,7 @@ Packaging Docker apps can take quite a bit of time. Please give it a couple of m
 After a few moments you’ll find an app package in your folder. This can be deployed to the ActyxOS node by running
 
 ```
-ax apps deploy --local com.actyx.sample-docker-app-1.0.0.tar.gz localhost
+ax apps deploy --local com.actyx.sample-docker-app-1.0.0-x86_64.tar.gz localhost
 ```
 
 You can check the state of this app using
