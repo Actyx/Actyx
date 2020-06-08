@@ -42,7 +42,7 @@ $ ax settings set --local com.actyx.os @settings.yml 10.2.3.23
 ```
 
 :::caution ActyxOS on Android only supports MultiAddrs for bootstrapNode
-ActyxOS on Android is currently not able to resolve DNS names inside MultiAddrs and thus only supports ip4 MultiAddrs. For example, if you want to connect to the public ActyxOS Bootstrap Node, you have to use set the value 
+ActyxOS on Android is currently not able to resolve DNS names inside MultiAddrs and thus only supports ip4 MultiAddrs. For example, if you want to connect to the public ActyxOS Bootstrap Node, you have to set the value 
 - /ip4/3.125.108.42/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH 
 
 instead of 
