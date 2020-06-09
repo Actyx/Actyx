@@ -2,7 +2,7 @@
 title: Building Docker apps for arm64
 author: Maximilian Haushofer
 author_title: Product Manager at Actyx
-author_url: https://example.com
+author_url: https://www.linkedin.com/in/maximilianhaushofer
 author_image_url: https://images.ctfassets.net/55iqf6xnllwu/7exkxedRNkZNPjeWIJAJFy/7f238372c06ddfc64fa321d5e665dc62/maximilian-haushofer.jpg
 tags: [ActyxOS, arm64 ]
 ---
