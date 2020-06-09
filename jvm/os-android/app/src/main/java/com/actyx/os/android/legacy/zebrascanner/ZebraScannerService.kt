@@ -2,6 +2,7 @@ package com.actyx.os.android.legacy.zebrascanner
 
 import android.content.Context
 import android.content.Intent
+import arrow.core.toOption
 import com.actyx.os.android.model.ActyxOsSettings
 import com.actyx.os.android.service.Service
 import com.actyx.os.android.util.Logger
@@ -56,16 +57,20 @@ class ZebraScannerImpl :
   override fun onOpened(emdkManager: EMDKManager) {
     log.debug("onOpened")
 
+    this.emdkManager = emdkManager
     // Acquire the barcode manager resources
     val barcodeManager = emdkManager.getInstance(BarcodeFeatureType) as BarcodeManager
     barcodeManager.addConnectionListener(this)
-    val scanner = barcodeManager.getDevice(BarcodeManager.DeviceIdentifier.DEFAULT)
+    val maybeScanner = barcodeManager.getDevice(BarcodeManager.DeviceIdentifier.DEFAULT).toOption()
 
-    initScanner(scanner)
+    maybeScanner.fold(
+      { log.info("Zebra device found (EMDK available), but no barcode scanning capability.") },
+      { scanner ->
+        initScanner(scanner)
 
-    this.emdkManager = emdkManager
-    this.barcodeManager = barcodeManager
-    this.scanner = scanner
+        this.barcodeManager = barcodeManager
+        this.scanner = scanner
+      })
   }
 
   override fun onData(scanDataCollection: ScanDataCollection?) {

@@ -101,3 +101,13 @@ First, check that you entered the right IP in the `ax` command. If you still can
 - **ActyxOS is not reachable.**
 This means that ActyxOS is not running on your node. Please click on the ActyxOS icon on your home screen. If ActyxOS is running, you can see it in the notifications overview of your Android device.
 - **Host is not reachable.** This means that your development machine cannot connect to your node. Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port 4457.
+
+### ActyxOS node is not connecting to the ActyxOS Bootstrap Node
+ActyxOS on Android is currently not able to resolve DNS names inside MultiAddrs and thus only supports ip4 or ip6 MultiAddrs. For example, if you want to connect to the public ActyxOS Bootstrap Node, you have to set the value 
+
+- /ip4/3.125.108.42/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH 
+
+instead of 
+- /dns4/demo-bootstrap.actyx.net/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH
+
+ActyxOS on Docker supports both formats. We are currently working on a fix for this. Check out our [blog](https://www.actyx.com/news/) or [release notes section](/docs/os/release-notes.md) for information on our new releases.
