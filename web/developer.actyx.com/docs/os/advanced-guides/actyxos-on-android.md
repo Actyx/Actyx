@@ -103,7 +103,7 @@ This means that ActyxOS is not running on your node. Please click on the ActyxOS
 - **Host is not reachable.** This means that your development machine cannot connect to your node. Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port 4457.
 
 ### ActyxOS node is not connecting to the ActyxOS Bootstrap Node
-ActyxOS on Android is currently not able to resolve DNS names inside MultiAddrs and thus only supports ip4 MultiAddrs. For example, if you want to connect to the public ActyxOS Bootstrap Node, you have to set the value 
+ActyxOS on Android is currently not able to resolve DNS names inside MultiAddrs and thus only supports ip4 or ip6 MultiAddrs. For example, if you want to connect to the public ActyxOS Bootstrap Node, you have to set the value 
 
 - /ip4/3.125.108.42/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH 
 
