@@ -21,7 +21,7 @@ class AxNode(ctx: Context, handler: (ToAndroid) -> Unit) {
 
   val path: String = ctx.getExternalFilesDir(null)!!.path
 
-  private val lib = com.actyx.os.android.util.Native.loadLibrary<AxNodeFFI>("axosnode")
+  private val lib = com.actyx.os.android.util.Native.loadLibrary<AxNodeFFI>("axosnodeffi")
 
   private val callback = object : Callback {
     @Suppress("unused") // must contain a single method, name doesn't matter

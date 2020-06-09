@@ -317,12 +317,12 @@ endef
 
 # ActyxOS on Android
 axosandroid-libs: debug
-	$(call fn-build-android-rust-lib-i686,ax-os-node)
-	$(call fn-copy-axosandroid-lib-i686,libaxosnode)
-	$(call fn-build-android-rust-lib-arm64,ax-os-node)
-	$(call fn-copy-axosandroid-lib-arm64,libaxosnode)
-	$(call fn-build-android-rust-lib-arm,ax-os-node)
-	$(call fn-copy-axosandroid-lib-arm,libaxosnode)
+	$(call fn-build-android-rust-lib-i686,ax-os-node-ffi)
+	$(call fn-copy-axosandroid-lib-i686,libaxosnodeffi)
+	$(call fn-build-android-rust-lib-arm64,ax-os-node-ffi)
+	$(call fn-copy-axosandroid-lib-arm64,libaxosnodeffi)
+	$(call fn-build-android-rust-lib-arm,ax-os-node-ffi)
+	$(call fn-copy-axosandroid-lib-arm,libaxosnodeffi)
 
 axosandroid-app: debug axosandroid-libs
 	./jvm/os-android/bin/get-keystore.sh
