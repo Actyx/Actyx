@@ -17,9 +17,9 @@ use super::{Event, SourceId};
 use derive_more::{From, Into};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::fmt::Debug;
-use std::ops::{AddAssign, Sub, SubAssign};
+use std::ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign};
 
 /// Each ActyxOS node marks the events it publishes with its source ID and assigns
 /// a unique (consecutive) number to it: the `Offset`. The first event occupies offset zero.
@@ -105,6 +105,44 @@ impl OffsetMap {
     /// Counts the number of offsets spanned by this OffsetMap.
     pub fn size(&self) -> u64 {
         self - &OffsetMap::empty()
+    }
+
+    /// Merge the other OffsetMap into this one, taking the union of their event sets.
+    pub fn union_with<'a>(&'a mut self, other: &OffsetMap) -> &'a mut Self {
+        for (k, v) in &other.0 {
+            self.0
+                .entry(*k)
+                .and_modify(|me| *me = (*me).max(*v))
+                .or_insert(*v);
+        }
+        self
+    }
+
+    /// Compute the union of two sets of events described by OffsetMaps
+    pub fn union(&self, other: &OffsetMap) -> OffsetMap {
+        let mut copy = self.clone();
+        copy.union_with(other);
+        copy
+    }
+
+    /// Compute the intersection of two sets of events described by OffsetMaps
+    pub fn intersection(&self, other: &OffsetMap) -> OffsetMap {
+        let left = self.0.keys().collect::<BTreeSet<_>>();
+        let right = other.0.keys().collect::<BTreeSet<_>>();
+        let keys = left.intersection(&right);
+        Self(
+            keys.map(|key| {
+                (
+                    **key,
+                    self.0
+                        .get(key)
+                        .copied()
+                        .unwrap_or_default()
+                        .min(other.0.get(key).copied().unwrap_or_default()),
+                )
+            })
+            .collect(),
+        )
     }
 
     pub fn into_inner(self) -> HashMap<SourceId, Offset> {
@@ -210,12 +248,53 @@ impl Sub<&OffsetMap> for &OffsetMap {
     }
 }
 
+impl BitAnd for OffsetMap {
+    type Output = OffsetMap;
+    fn bitand(self, rhs: Self) -> Self::Output {
+        self.intersection(&rhs)
+    }
+}
+
+impl BitAnd for &OffsetMap {
+    type Output = OffsetMap;
+    fn bitand(self, rhs: Self) -> Self::Output {
+        self.intersection(rhs)
+    }
+}
+
+impl BitAndAssign for OffsetMap {
+    fn bitand_assign(&mut self, rhs: Self) {
+        *self = &*self & &rhs;
+    }
+}
+
+impl BitOr for OffsetMap {
+    type Output = OffsetMap;
+    fn bitor(mut self, rhs: Self) -> Self::Output {
+        self.union_with(&rhs);
+        self
+    }
+}
+
+impl BitOr for &OffsetMap {
+    type Output = OffsetMap;
+    fn bitor(self, rhs: Self) -> Self::Output {
+        self.union(rhs)
+    }
+}
+
+impl BitOrAssign for OffsetMap {
+    fn bitor_assign(&mut self, rhs: Self) {
+        *self = &*self | &rhs;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::{
         event::{LamportTimestamp, Payload, StreamInfo, TimeStamp},
-        fish_name, semantics,
+        fish_name, semantics, source_id,
     };
     use std::str::FromStr;
 
@@ -266,5 +345,61 @@ mod tests {
 
         // also need to test the consuming Sub impl
         assert_eq!(map1 - map2, 0);
+    }
+
+    #[test]
+    pub fn must_set_op() {
+        let left = OffsetMap::from(
+            [
+                (source_id!("a"), Offset(1)),
+                (source_id!("b"), Offset(2)),
+                (source_id!("c"), Offset(3)),
+                (source_id!("d"), Offset(4)),
+            ]
+            .iter()
+            .copied()
+            .collect::<HashMap<_, _>>(),
+        );
+
+        let right = OffsetMap::from(
+            [
+                (source_id!("b"), Offset(4)),
+                (source_id!("c"), Offset(3)),
+                (source_id!("d"), Offset(2)),
+                (source_id!("e"), Offset(1)),
+            ]
+            .iter()
+            .copied()
+            .collect::<HashMap<_, _>>(),
+        );
+
+        let union = OffsetMap::from(
+            [
+                (source_id!("a"), Offset(1)),
+                (source_id!("b"), Offset(4)),
+                (source_id!("c"), Offset(3)),
+                (source_id!("d"), Offset(4)),
+                (source_id!("e"), Offset(1)),
+            ]
+            .iter()
+            .copied()
+            .collect::<HashMap<_, _>>(),
+        );
+
+        let intersection = OffsetMap::from(
+            [
+                (source_id!("b"), Offset(2)),
+                (source_id!("c"), Offset(3)),
+                (source_id!("d"), Offset(2)),
+            ]
+            .iter()
+            .copied()
+            .collect::<HashMap<_, _>>(),
+        );
+
+        assert_eq!(left.union(&right), union);
+        assert_eq!(left.intersection(&right), intersection);
+        assert_eq!(&left | &right, union);
+        assert_eq!(left & right, intersection);
     }
 }

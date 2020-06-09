@@ -19,7 +19,7 @@ class ActivityLifecycleLogging : Application.ActivityLifecycleCallbacks {
   }
 
   override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {
-    log.debug("activityLifecycle:onActivityInstanceState $activity, outState: $outState")
+    log.debug("activityLifecycle:onActivitySaveInstanceState $activity, outState: $outState")
   }
 
   override fun onActivityStopped(activity: Activity) {

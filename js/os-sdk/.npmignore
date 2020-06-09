@@ -1,0 +1,7 @@
+src/
+badges/
+dev-bin/
+coverage/
+tsconfig.json
+tslint.json
+jestconfig.json

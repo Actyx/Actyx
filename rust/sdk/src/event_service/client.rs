@@ -325,7 +325,7 @@ impl Default for EventService {
         let client = Client::new();
         let url = env::var("AX_EVENT_SERVICE_URI")
             .and_then(|mut uri| {
-                if !uri.ends_with("/") {
+                if !uri.ends_with('/') {
                     uri.push('/')
                 };
                 Url::parse(&*uri).map_err(|_| env::VarError::NotPresent)

@@ -22,7 +22,7 @@ use std::sync::Arc;
 ///
 /// see [`Event::extract`](struct.Event.html#method.extract) for supported ways of using the
 /// data
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct Opaque(ArcVal<[u8]>);
 

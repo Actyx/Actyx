@@ -6,7 +6,7 @@ title: Quickstart
 Let's jump right in and get a first distributed application up and running.
 
 :::info Need help?
-If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to contact@actyx.io .
+If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to developer@actyx.io .
 :::
 
 import Tabs from '@theme/Tabs';
@@ -82,16 +82,15 @@ But before we can do that we need to add some code that takes the type of fish d
 instance, identified by its name.
 
 ```typescript
-(async () => {
-    // get started with a Pond
-    const pond = await Pond.default()
+// get started with a Pond
+Pond.default().then(pond => {
     // figure out the name of the fish we want to wake up
     const myName = process.argv[2] || pond.info().sourceId
     // wake up fish with the given name and log its published states
     pond.observe(ForgetfulChatFish, myName).subscribe(console.log)
     // send a 'ping' message every 5 seconds to generate a new event
     setInterval(() => pond.feed(ForgetfulChatFish, myName)('ping').subscribe(), 5000)
-})()
+})
 ```
 
 This example shows how to start this fish and have it emit one event every five seconds.
@@ -248,7 +247,7 @@ Packaging Docker apps can take quite a bit of time. Please give it a couple of m
 After a few moments you’ll find an app package in your folder. This can be deployed to the ActyxOS node by running
 
 ```
-ax apps deploy --local com.actyx.sample-docker-app-1.0.0.tar.gz localhost
+ax apps deploy --local com.actyx.sample-docker-app-1.0.0-x86_64.tar.gz localhost
 ```
 
 You can check the state of this app using
@@ -346,4 +345,4 @@ This brings us to the close of this quickstart guide.
 
 ### Where to get help and file issues
 
-If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to contact@actyx.io .
+If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to developer@actyx.io .

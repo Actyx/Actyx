@@ -29,19 +29,15 @@ This section describes how to install the Actyx CLI. Just choose your operating 
 }>
 <TabItem value="windows">
 
-- 64-bit version of Windows
+- x64 version of Windows
 - Admin rights to run the Windows installer
 
 </TabItem>
 <TabItem value="unix">
 
-- 64-bit version of macOS
+- x64 version of macOS
 
-or Linux based on one of the following architectures:
-
-- x64
-- armv7hf
-- arm
+- x64 version of Linux
 
 </TabItem>
 </Tabs>
@@ -128,4 +124,4 @@ rm /usr/local/bin/ax
 
 ## Troubleshooting
 
-If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to contact@actyx.io .
+If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to developer@actyx.io .

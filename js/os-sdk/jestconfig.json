@@ -1,0 +1,15 @@
+{
+  "rootDir": "src/",
+  "transform": {
+    "^.+\\.(t)sx?$": "ts-jest"
+  },
+  "testRegex": "(/src/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+  "moduleFileExtensions": ["ts", "tsx", "js", "jsx", "json", "node"],
+  "coverageDirectory": "../coverage",
+  "coverageReporters": [
+    "json-summary", 
+    "text",
+    "lcov"
+  ],
+  "setupFilesAfterEnv": ["../jest.setup.js"]
+}

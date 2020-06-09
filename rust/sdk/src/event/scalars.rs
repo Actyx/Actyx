@@ -296,6 +296,25 @@ impl From<FishName> for Tag {
     }
 }
 
+/// Concatenate another part to this tag
+///
+/// ```
+/// # use actyxos_sdk::{tag, event::Tag};
+/// let user_tag = tag!("user:") + "Bob";
+/// let machine_tag = tag!("machine:") + format!("{}-{}", "thing", 42);
+///
+/// assert_eq!(user_tag, tag!("user:Bob"));
+/// assert_eq!(machine_tag, tag!("machine:thing-42"));
+/// ```
+///
+/// This will never panic because the initial tag is already proven to be a valid tag.
+impl<T: Into<String>> Add<T> for Tag {
+    type Output = Tag;
+    fn add(self, rhs: T) -> Self::Output {
+        Tag::new(self.0.to_string() + rhs.into().as_str()).unwrap()
+    }
+}
+
 /// Microseconds since the UNIX epoch, without leap seconds and in UTC
 ///
 /// ```

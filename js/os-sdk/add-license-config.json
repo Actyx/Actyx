@@ -1,0 +1,30 @@
+{
+    "license": "add-license-text",
+    "ignore": [
+        "README.md",
+        ".*",
+        "jest.config.js",
+        "jest.setup.js",
+        "add-license-text",
+        "*.snap",
+        "lib/",
+        "coverage/",
+        "docs/"
+    ],
+    "licenseFormats": {
+        "ts": {
+            "prepend": "/*",
+            "eachLine": {
+                "prepend": " * "
+            },
+            "append": " */"
+        }
+    },
+    "defaultFormat": {
+        "prepend": "/*",
+        "eachLine": {
+            "prepend": " * "
+        },
+        "append": " */"
+    }
+}
