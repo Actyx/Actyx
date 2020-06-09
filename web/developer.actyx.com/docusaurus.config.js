@@ -88,6 +88,12 @@ module.exports = {
       // Optional fields.
       anonymizeIP: true, // Should IPs be anonymized?
     },
+    algolia: {
+      apiKey: 'dee14099c148f0ca14d046428003623a',
+      indexName: 'actyx_developer',
+      algoliaOptions: {}, // Optional, if provided by Algolia
+    },
+
 
   },
   presets: [
