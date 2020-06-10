@@ -25,7 +25,7 @@ class MetricService(private val ctx: Context) : Service {
   override fun invoke(settings: ActyxOsSettings): Single<Unit> {
     val deviceId = getDeviceSerialNumber(ctx)
     val origin = AndroidOrigin(deviceId, this.javaClass.name)
-    return Observable.interval(5, 20, TimeUnit.SECONDS)
+    return Observable.interval(1, 15, TimeUnit.MINUTES)
       .concatMap { _ ->
         val timestamp = Date().time * 1000
         val deviceInfo = DeviceUtil.getDeviceInfo(ctx, deviceId)
