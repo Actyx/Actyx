@@ -309,9 +309,8 @@ ActyxOS validates any settings before applying them. It does so by using the nod
 ```bash
 # Create a yml (or JSON) file containing the settings
 $ echo "
-com.example.app1:
-  timeUnit: seconds
-  backgroundColor: red" >> app-settings.yml
+timeUnit: seconds
+backgroundColor: red" >> app-settings.yml
 
 # Use the Actyx CLI to set the setting on the node at the correct scope
 $ ax settings set --local com.example.app1 @app-settings.yml 10.2.3.23
