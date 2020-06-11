@@ -39,23 +39,12 @@ module.exports = {
           label: 'Actyx CLI',
           position: 'left',
         },
-        //{
-        //  to: 'docs/tutorials/doc1',
-        //  activeBasePath: 'docs/tutorials',
-        //  label: 'Tutorials',
-        //  position: 'left',
-        //},
         {
           to: 'docs/faq/supported-programming-languages',
           activeBasePath: 'docs/faq/',
-          label: 'FAQs',
+          label: 'FAQ',
           position: 'left',
         },
-        //{
-        //  to: 'https://challenges.actyx.com',
-        //  label: 'Challenges',
-        //  position: 'right',
-        //},
         {
           to: 'blog',
           label: 'Blog',
