@@ -4,6 +4,21 @@ title: Release notes
 
 This page contains information about new features, bug fixes, deprecations and removals in ActyxOS releases. For a more extensive description of the changes, check out our [blog](https://www.actyx.com/news/).
 
+## ActyxOS 1.0.0-rc.3
+
+**Release date: 12.06.2020**
+
+Download:
+- [Docker Hub](https://hub.docker.com/repository/docker/actyx/os)
+- [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
+
+### New features
+- Introduced configurable logging levels for ActyxOS nodes
+  
+### Bug fixes
+- Several internal stability and performance improvements
+  
+
 ## ActyxOS 1.0.0-rc.2
 
 **Release date: 25.05.2020**

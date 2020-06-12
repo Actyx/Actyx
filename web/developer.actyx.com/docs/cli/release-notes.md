@@ -4,6 +4,21 @@ title: Release notes
 
 This page contains information about new features, bug fixes, deprecations and removals in the Actyx CLI releases. For a more extensive description of the changes, check out our [blog](https://www.actyx.com/news/).
 
+## Actyx CLI 1.0.0-rc.3
+
+**Release date: 12.06.2020**
+
+[Download](https://downloads.actyx.com/)
+
+### New features
+- On ActyxOS on Docker and on Android, all node and app logs are now available via `ax logs tail`
+- Added an installer for the Actyx CLI for Windows
+
+### Bug Fixes
+- Fixed a bug that prevented packaging docker apps containing a "/" in their name
+- Fixed a bug where inlining the schema would corrupt the app package
+- Improved application packaging times
+
 ## Actyx CLI 1.0.0-rc.2
 
 **Release date: 25.05.2020**
