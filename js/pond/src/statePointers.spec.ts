@@ -4,9 +4,9 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import { Event } from './eventstore/types'
 import { getRecentPointers, StatePointers } from './statePointers'
 import { SnapshotScheduler } from './store/snapshotScheduler'
-import { EnvelopeFromStore } from './store/util'
 import { StatePointer, StateWithProvenance, Timestamp } from './types'
 
 const neverSnapshotScheduler: SnapshotScheduler = {
@@ -17,15 +17,14 @@ const neverSnapshotScheduler: SnapshotScheduler = {
   },
 }
 
-const mockEvent = (source: string) =>
-  (({ source: { sourceId: source } } as unknown) as EnvelopeFromStore<undefined>)
+const mockEvent = (source: string) => ({ sourceId: source } as Event)
 const mockState = ('mock-state' as unknown) as StateWithProvenance<undefined>
 
 const uniqTagged = (
   i: number,
   localSnap = false,
   source = 'some-source',
-): StatePointer<undefined, undefined> => ({
+): StatePointer<undefined> => ({
   i,
   tag: Math.random().toString(),
   persistAsLocalSnapshot: localSnap,
@@ -33,10 +32,8 @@ const uniqTagged = (
   finalIncludedEvent: mockEvent(source),
 })
 
-const addPopulated = (
-  sp: StatePointers<undefined, undefined>,
-  ...l: StatePointer<undefined, undefined>[]
-) => sp.addPopulatedPointers(l, l[l.length - 1].finalIncludedEvent)
+const addPopulated = (sp: StatePointers<undefined>, ...l: StatePointer<undefined>[]) =>
+  sp.addPopulatedPointers(l, l[l.length - 1].finalIncludedEvent)
 
 describe('State Pointers', () => {
   describe('scheduling', () => {
@@ -53,7 +50,7 @@ describe('State Pointers', () => {
         mockEvent('C'),
       ]
 
-      const sp = new StatePointers<undefined, undefined>(
+      const sp = new StatePointers<undefined>(
         neverSnapshotScheduler,
         TEST_RECENT_WINDOW,
         TEST_RECENT_SPACING,
@@ -71,7 +68,7 @@ describe('State Pointers', () => {
       envelopes.fill(envelope)
 
       // One state cached every 5 events, for the most recent 20 events
-      const sp = new StatePointers<undefined, undefined>(neverSnapshotScheduler, 20, 5, true)
+      const sp = new StatePointers<undefined>(neverSnapshotScheduler, 20, 5, true)
 
       const toCache = sp.getStatesToCache(Timestamp.of(0), envelopes)
 
@@ -85,7 +82,7 @@ describe('State Pointers', () => {
       const envelopes = new Array(50)
       envelopes.fill(envelope)
 
-      const sp = new StatePointers<undefined, undefined>(
+      const sp = new StatePointers<undefined>(
         neverSnapshotScheduler,
         TEST_RECENT_WINDOW,
         TEST_RECENT_SPACING,
@@ -106,7 +103,7 @@ describe('State Pointers', () => {
       // Another source-tip in the past
       envelopes[35] = mockEvent('B')
 
-      const sp = new StatePointers<undefined, undefined>(
+      const sp = new StatePointers<undefined>(
         neverSnapshotScheduler,
         TEST_RECENT_WINDOW,
         TEST_RECENT_SPACING,
@@ -120,7 +117,7 @@ describe('State Pointers', () => {
     })
 
     it('should gracefully handle buffer length 0', () => {
-      const sp = new StatePointers<undefined, undefined>(
+      const sp = new StatePointers<undefined>(
         neverSnapshotScheduler,
         TEST_RECENT_WINDOW,
         TEST_RECENT_SPACING,
@@ -142,10 +139,10 @@ describe('State Pointers', () => {
       // Pointers are mutable, so we need to start each test with a set of fresh ones
       const pointersCopy = [ptrAt5, ptrAt10, ptrAt11, ptrAt12].map(x => Object.assign({}, x))
 
-      const sp = new StatePointers<undefined, undefined>(neverSnapshotScheduler)
+      const sp = new StatePointers<undefined>(neverSnapshotScheduler)
       addPopulated(sp, ...pointersCopy)
 
-      const expectLatest = (expected: StatePointer<undefined, undefined> | undefined) =>
+      const expectLatest = (expected: StatePointer<undefined> | undefined) =>
         expect(sp.latestStored().toUndefined()).toEqual(expected)
       return { sp, expectLatest }
     }
@@ -203,7 +200,7 @@ describe('State Pointers', () => {
         },
       }
 
-      const sp = new StatePointers<undefined, undefined>(mockScheduler)
+      const sp = new StatePointers<undefined>(mockScheduler)
       addPopulated(sp, snapshot)
 
       expect(sp.getSnapshotsToPersist()).toEqual([])
@@ -231,11 +228,11 @@ describe('State Pointers', () => {
         getSnapshotLevels: (_, _ts) => [],
         isEligibleForStorage: (pending, _latest) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          return emit && (pending as any).source.sourceId === 'A'
+          return emit && (pending as any).sourceId === 'A'
         },
       }
 
-      const sp = new StatePointers<undefined, undefined>(mockScheduler)
+      const sp = new StatePointers<undefined>(mockScheduler)
       addPopulated(sp, snapshotOld)
 
       expect(sp.getSnapshotsToPersist()).toEqual([])

@@ -7,8 +7,8 @@
 import * as assert from 'assert'
 import { last } from 'fp-ts/lib/Array'
 import { fromNullable, none, Option } from 'fp-ts/lib/Option'
+import { Event, Events } from './eventstore/types'
 import { SnapshotScheduler } from './store/snapshotScheduler'
-import { EnvelopeFromStore } from './store/util'
 import { StatePointer, TaggedIndex } from './types'
 
 export const getRecentPointers = (recent: number, spacing: number) => (
@@ -58,27 +58,27 @@ export const getRecentPointers = (recent: number, spacing: number) => (
  * Then later, the scheduler may indicate that those snapshots are now old enough to actually be
  * applied as local snapshots, meaning the event array will be truncated and the snapshot persisted.
  */
-export class StatePointers<S, E> {
+export class StatePointers<S> {
   // Our latest known state -- this pointer will always live also in one of the `stores`,
   // it is NOT owned by this var. I.e. it’s effectively a pointer to the latest state pointer.
-  private latest: Option<StatePointer<S, E>> = none
+  private latest: Option<StatePointer<S>> = none
 
   // States cached in memory, never going to be persisted to anywhere.
-  private readonly ephemeral: Record<string, StatePointer<S, E>> = {}
+  private readonly ephemeral: Record<string, StatePointer<S>> = {}
 
   // Local snapshots:
   // To apply at the next opportunity
-  private readonly pendingApplication: Record<string, StatePointer<S, E>> = {}
+  private readonly pendingApplication: Record<string, StatePointer<S>> = {}
   // To apply after the scheduler greenlights (meaning they are old enough)
-  private readonly pendingEligibility: Record<string, StatePointer<S, E>> = {}
+  private readonly pendingEligibility: Record<string, StatePointer<S>> = {}
 
   // We keep every StatePointer in EXACTLY ONE of these stores.
   // There may be duplicate indices, but the object must be different, since we modify `i` in place!
   private readonly stores: Readonly<
     [
-      Record<string, StatePointer<S, E>>,
-      Record<string, StatePointer<S, E>>,
-      Record<string, StatePointer<S, E>>
+      Record<string, StatePointer<S>>,
+      Record<string, StatePointer<S>>,
+      Record<string, StatePointer<S>>
     ]
   > = [this.ephemeral, this.pendingApplication, this.pendingEligibility]
 
@@ -156,7 +156,7 @@ export class StatePointers<S, E> {
   /**
    * @returns The latest cached state, i.e. the one corresponding to the highest index.
    */
-  public latestStored(): Option<StatePointer<S, E>> {
+  public latestStored(): Option<StatePointer<S>> {
     return this.latest
   }
 
@@ -172,10 +172,7 @@ export class StatePointers<S, E> {
    * @returns List of indices (with tag) in ascending order that should be assigned their respective
    * state. No index will be smaller than that of `latestStored`!
    */
-  public getStatesToCache(
-    cycleStart: number,
-    events: ReadonlyArray<EnvelopeFromStore<E>>,
-  ): ReadonlyArray<TaggedIndex> {
+  public getStatesToCache(cycleStart: number, events: Events): ReadonlyArray<TaggedIndex> {
     const observedSources = new Set()
     const ptrs: TaggedIndex[] = []
 
@@ -193,7 +190,7 @@ export class StatePointers<S, E> {
     }
 
     for (let i = events.length - 1; i > limit; i -= 1) {
-      const source = events[i].source.sourceId
+      const source = events[i].sourceId
 
       if (observedSources.has(source)) {
         continue
@@ -220,7 +217,7 @@ export class StatePointers<S, E> {
     return newPointersAscending
   }
 
-  public getSnapshotsToPersist(): StatePointer<S, E>[] {
+  public getSnapshotsToPersist(): StatePointer<S>[] {
     return Object.values(this.pendingApplication).sort(TaggedIndex.ord.compare)
   }
 
@@ -231,7 +228,7 @@ export class StatePointers<S, E> {
    * @param newPointers The list of new pointers that were populated, probably due to us having
    * requested them via return value of `getPointersToStore`.
    */
-  public addPopulatedPointers(newPointers: StatePointer<S, E>[], tip: EnvelopeFromStore<E>): void {
+  public addPopulatedPointers(newPointers: StatePointer<S>[], tip: Event): void {
     if (newPointers.length === 0) {
       return
     }
@@ -257,12 +254,12 @@ export class StatePointers<S, E> {
   }
 
   // Just a shortcut
-  private eligible(pendingSnap: StatePointer<S, E>, tip: EnvelopeFromStore<E>): boolean {
+  private eligible(pendingSnap: StatePointer<S>, tip: Event): boolean {
     return this.snapshotScheduler.isEligibleForStorage(pendingSnap.finalIncludedEvent, tip)
   }
 
   // Qualify local snapshots that were enqueued in the past, to be persisted now.
-  private migrateQueuedSnapshots(tip: EnvelopeFromStore<E>): void {
+  private migrateQueuedSnapshots(tip: Event): void {
     const pendingTags = Object.keys(this.pendingEligibility)
 
     for (const tag of pendingTags) {
@@ -275,7 +272,7 @@ export class StatePointers<S, E> {
     }
   }
 
-  private enqueueLocalSnapshot(snap: StatePointer<S, E>, tip: EnvelopeFromStore<E>): void {
+  private enqueueLocalSnapshot(snap: StatePointer<S>, tip: Event): void {
     const applyImmediately = this.eligible(snap, tip)
 
     if (applyImmediately) {

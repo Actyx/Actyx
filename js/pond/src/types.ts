@@ -324,19 +324,12 @@ const keyFromEnvelope = (env: EnvelopeFromStore<any>): EventKey => ({
   sourceId: env.source.sourceId,
   psn: env.psn,
 })
-const keyFromEnvelope0 = (env: Event): EventKey => ({
-  lamport: env.lamport,
-  sourceId: env.sourceId,
-  psn: env.psn,
-})
-
 const formatEventKey = (key: EventKey): string => `${key.lamport}/${key.sourceId}`
 
 export const EventKey = {
   zero: zeroKey,
   ord: ordEventKey,
   fromEnvelope: keyFromEnvelope,
-  fromEnvelope0: keyFromEnvelope0,
   format: formatEventKey,
 }
 export const EventKeyIO = t.readonly(
@@ -667,9 +660,9 @@ export const TaggedIndex = {
   ord: contramap((ti: TaggedIndex) => ti.i, ordNumber),
 }
 
-export type CachedState<S, E> = {
+export type CachedState<S> = {
   readonly state: StateWithProvenance<S>
-  readonly finalIncludedEvent: EnvelopeFromStore<E>
+  readonly finalIncludedEvent: Event
 }
 
-export type StatePointer<S, E> = TaggedIndex & CachedState<S, E>
+export type StatePointer<S> = TaggedIndex & CachedState<S>

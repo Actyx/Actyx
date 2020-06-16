@@ -16,7 +16,13 @@ import { MonoTypeOperatorFunction } from 'rxjs/interfaces'
 import { concatMap, map, takeWhile, toArray } from 'rxjs/operators'
 import { Psn, SubscriptionSet } from './'
 import { EventStore } from './eventstore'
-import { Event, OffsetMap, OffsetMapBuilder, PersistedEventsSortOrders } from './eventstore/types'
+import {
+  Event,
+  Events,
+  OffsetMap,
+  OffsetMapBuilder,
+  PersistedEventsSortOrders,
+} from './eventstore/types'
 import { LatestSnapshots } from './latestSnapshots'
 import log from './loggers'
 import { SnapshotStore } from './snapshotStore'
@@ -27,7 +33,6 @@ import {
   EventKey,
   FishName,
   LocalSnapshot,
-  OnEvent,
   Semantics,
   SnapshotFormat,
   StatePointer,
@@ -84,7 +89,7 @@ export interface FishEventStore<S, E> {
    * This will be called internally from init, and externally from the fish jar for incorporating
    * foreign and own events.
    */
-  readonly processEvents: (events: ReadonlyArray<EnvelopeFromStore<E>>) => boolean
+  readonly processEvents: (events: Events) => boolean
 
   /**
    * Get the current state by running the event aggregation over the local event buffer
@@ -118,7 +123,7 @@ export interface FishEventStore<S, E> {
    * Gets the current events in the event order as an array. This will not be the full event log when
    * one of the snapshot mechanisms is enabled. Used only for debugging at this time.
    */
-  readonly currentEvents: () => ReadonlyArray<EnvelopeFromStore<E>>
+  readonly currentEvents: () => Events
 
   /**
    * Perform validation of the internal state of the store and return validation errors as strings.
@@ -258,29 +263,24 @@ export const addAndInvalidateState = <E>(
 
 const eventKeyGeq = greaterThanOrEq(EventKey.ord)
 const eventKeyLt = lessThan(EventKey.ord)
-const removeBelowHorizon = <E>(
-  events: ReadonlyArray<EnvelopeFromStore<E>>,
-  horizon: EventKey | undefined,
-): ReadonlyArray<EnvelopeFromStore<E>> => {
+const removeBelowHorizon = (events: Events, horizon: EventKey | undefined): Events => {
   if (horizon === undefined || events.length === 0) {
     return events
   }
 
   // Handle the most common cases first:
   // All events above horizon.
-  if (eventKeyGeq(EventKey.fromEnvelope(events[0]), horizon)) {
+  if (eventKeyGeq(events[0], horizon)) {
     return events
   }
 
   // All events below horizon.
-  if (eventKeyLt(EventKey.fromEnvelope(events[events.length - 1]), horizon)) {
+  if (eventKeyLt(events[events.length - 1], horizon)) {
     return []
   }
 
   // Binary-search the horizon inside the events.
-  const sliceStart = getInsertionIndex(events, horizon, (e, hrz) =>
-    EventKey.ord.compare(EventKey.fromEnvelope(e), hrz),
-  )
+  const sliceStart = getInsertionIndex(events, horizon, (e, hrz) => EventKey.ord.compare(e, hrz))
   assert(
     sliceStart > 0 && sliceStart < events.length,
     'Expected binary search to yield an index inside the array.',
@@ -293,7 +293,7 @@ const removeBelowHorizon = <E>(
 // at the next opportunity
 type ShatterAsap = Readonly<{
   // How far back to invalidate existing local snapshots
-  earliestKnownShatteringEvent: EnvelopeFromStore<{}>
+  earliestKnownShatteringEvent: Event
   // The "present" we need to rehydrate up to, after shattering,
   // in order to preserve exactly-once delivery semantics.
   // "Present" here means the boundary that the outside (fishJar)
@@ -304,8 +304,8 @@ type ShatterAsap = Readonly<{
 }>
 
 const mkShatterAsap = (
-  firstEvent: EnvelopeFromStore<{}>,
-  events: EnvelopeFromStore<{}>[],
+  firstEvent: Event,
+  events: Events,
   psnMapBuilder: OffsetMapBuilder,
   latestLocalSnap: LocalSnapshot<{}>,
 ): ShatterAsap => {
@@ -318,12 +318,10 @@ const mkShatterAsap = (
   }
 }
 
-const envelopeEarlier = lessThan(EnvelopeFromStore.ord)
-const updateShatterAsap = <E>(
-  firstEvent: EnvelopeFromStore<E>,
-  newEvents: ReadonlyArray<EnvelopeFromStore<E>>,
-) => (s: ShatterAsap): ShatterAsap => ({
-  earliestKnownShatteringEvent: envelopeEarlier(firstEvent, s.earliestKnownShatteringEvent)
+const updateShatterAsap = (firstEvent: Event, newEvents: Events) => (
+  s: ShatterAsap,
+): ShatterAsap => ({
+  earliestKnownShatteringEvent: eventKeyLt(firstEvent, s.earliestKnownShatteringEvent)
     ? firstEvent
     : s.earliestKnownShatteringEvent,
 
@@ -333,20 +331,18 @@ const updateShatterAsap = <E>(
 })
 
 export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
-  readonly events: EnvelopeFromStore<E>[] = []
+  readonly events: Event[] = []
 
   // Store past states in serialized form
-  private statePointers: StatePointers<string, E> = new StatePointers<string, E>(
-    this.snapshotScheduler,
-  )
+  private statePointers: StatePointers<string> = new StatePointers<string>(this.snapshotScheduler)
 
   private shatterAsap: Option<ShatterAsap> = none
   private recomputeLocalSnapshots: boolean = false
 
   // In serialized form
-  private readonly latestSnapshots: LatestSnapshots<string, E> = new LatestSnapshots<string, E>()
+  private readonly latestSnapshots: LatestSnapshots<string> = new LatestSnapshots<string>()
 
-  currentEvents(): ReadonlyArray<EnvelopeFromStore<E>> {
+  currentEvents(): Events {
     return this.events
   }
 
@@ -363,18 +359,14 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
   // accept/expect undefined over EventKey.zero, we also
   // default to undefined here. (Improves safety and clarity.)
   private horizon(): EventKey | undefined {
-    return this.latestSnapshots.fromSemanticFromLocalOrDefault(
-      EventKey.fromEnvelope,
-      l => l.horizon,
-      undefined,
-    )
+    return this.latestSnapshots.fromSemanticFromLocalOrDefault(x => x, l => l.horizon, undefined)
   }
 
   private baseState(): StateWithProvenance<S> {
     return this.latestSnapshots.fromSemanticFromLocalOrDefault(
       ss => ({
         state: this.fish.onEvent(this.fish.initialState(), ss),
-        psnMap: { [ss.source.sourceId]: ss.psn },
+        psnMap: { [ss.sourceId]: ss.psn },
       }),
       l => {
         return { ...l, state: this.deser(l.state), psnMap: { ...l.psnMap } }
@@ -396,7 +388,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
 
   private truncateBuffers(): void {
     this.events.length = 0
-    this.statePointers = new StatePointers<string, E>(this.snapshotScheduler)
+    this.statePointers = new StatePointers<string>(this.snapshotScheduler)
   }
 
   /**
@@ -432,7 +424,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
         return this
       })
     } else {
-      const chunks$ = getEventsForwardChunked<E>(
+      const chunks$ = getEventsForwardChunked(
         base,
         this.eventStore,
         this.fish.subscriptionSet,
@@ -480,7 +472,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     }
   }
 
-  private becomeLocal = (localSnapshotPtr: StatePointer<string, E>): void => {
+  private becomeLocal = (localSnapshotPtr: StatePointer<string>): void => {
     const localSnapshotIndex = localSnapshotPtr.i
     const { semantics, fishName } = this.fish
     if (log.pond.debug.enabled) {
@@ -488,13 +480,13 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
         '%s/%s now based on local snapshot at %s - dropping %s events',
         semantics,
         fishName,
-        EventKey.format(EventKey.fromEnvelope(localSnapshotPtr.finalIncludedEvent)),
+        EventKey.format(localSnapshotPtr.finalIncludedEvent),
         localSnapshotIndex + 1,
       )
     }
 
     const { state, psnMap } = localSnapshotPtr.state
-    const eventKey = EventKey.fromEnvelope(localSnapshotPtr.finalIncludedEvent)
+    const eventKey = localSnapshotPtr.finalIncludedEvent
     const newLatestLocalSnapshot = some({
       state,
       psnMap,
@@ -517,7 +509,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
    * @param newEvents new events, already sorted by event order ascending; duplicates will be ingored
    * @returns true if calling `currentState()` is required
    */
-  processEvents(newEvents: ReadonlyArray<EnvelopeFromStore<E>>): boolean {
+  processEvents(newEvents: Events): boolean {
     const newEventsSorted = this.assertSorted(newEvents)
 
     if (this.fish.isSemanticSnapshot !== undefined) {
@@ -528,9 +520,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
   }
 
   // TODO: Disable when are are really sure all FES inputs are sorted.
-  private assertSorted(
-    newEvents: ReadonlyArray<EnvelopeFromStore<E>>,
-  ): ReadonlyArray<EnvelopeFromStore<E>> {
+  private assertSorted(newEvents: Events): Events {
     if (newEvents.length < 2) {
       return newEvents
     }
@@ -538,14 +528,14 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     let prev = newEvents[0]
     for (let i = 1; i < newEvents.length; i++) {
       const nxt = newEvents[i]
-      const cmp = EnvelopeFromStore.ord.compare(prev, nxt)
+      const cmp = EventKey.ord.compare(prev, nxt)
       if (cmp > 0) {
         log.pond.error('Unsorted event batch, at index', i, prev, nxt, newEvents)
-        return [...newEvents].sort(EnvelopeFromStore.ord.compare)
+        return [...newEvents].sort(EventKey.ord.compare)
       } else if (cmp === 0) {
         log.pond.error('Duplicate event inside batch', nxt)
         // Not gonna bother with performance here, as this REALLY should not happen.
-        return this.assertSorted(uniqWith(EnvelopeFromStore.ord.equals)(newEvents))
+        return this.assertSorted(uniqWith<Event>(EventKey.ord.equals)(newEvents))
       }
       prev = nxt
     }
@@ -557,7 +547,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
    * @param newEvents new events, already sorted by event order ascending; duplicates will be ingored
    * @returns true if calling `currentState()` is required
    */
-  private ordinaryInsert(newEvents: ReadonlyArray<EnvelopeFromStore<E>>): boolean {
+  private ordinaryInsert(newEvents: Events): boolean {
     if (newEvents.length === 0) {
       return false
     }
@@ -573,13 +563,13 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
    * @param newEvents events to be inserted into this store; duplicates will be ignored
    * @returns true if it leaves events without corresponding states behind
    */
-  private mergeInsertEvents(newEvents: ReadonlyArray<EnvelopeFromStore<E>>): boolean {
+  private mergeInsertEvents(newEvents: Events): boolean {
     // log.pond.info('mergeInsertEvents', this.fish.fishName, 'current buffer size', this.events.length)
-    return addAndInvalidateState(
+    return addAndInvalidateState<Event>(
       this.events,
       i => this.statePointers.invalidateDownTo(i),
       newEvents,
-      EnvelopeFromStore.ord.compare,
+      EventKey.ord.compare,
     )
   }
 
@@ -589,12 +579,15 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
    * @returns true if calling `currentState()` is required
    */
   private semanticSnapshotOrientedInsert(
-    newEvents: ReadonlyArray<EnvelopeFromStore<E>>,
+    newEvents: Events,
     isSemanticSnap: SemanticSnapshot<E>,
   ): boolean {
     const horizonFiltered = removeBelowHorizon(newEvents, this.horizon())
 
-    const semanticSnapIndex = findLastIndex(horizonFiltered, isSemanticSnap)
+    const semanticSnapIndex = findLastIndex(
+      horizonFiltered.map(x => Event.toEnvelopeFromStore<E>(x)),
+      isSemanticSnap,
+    )
 
     // Nothing at all special about this batch of events.
     if (semanticSnapIndex === -1) {
@@ -618,7 +611,10 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const ss = eventsToAppend.shift()!
-    assert(isSemanticSnap(ss), 'Shifted event should have been a semantic snapshot at this point')
+    assert(
+      isSemanticSnap(Event.toEnvelopeFromStore<E>(ss)),
+      'Shifted event should have been a semantic snapshot at this point',
+    )
 
     this.latestSnapshots.semantic = some(ss)
     this.recomputeLocalSnapshots = true
@@ -627,9 +623,9 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     // - Naturally, all future states (if any) have become invalid
     // - All past states have become unneeded
     // I.e. we can drop all buffered states.
-    this.statePointers = new StatePointers<string, E>(this.snapshotScheduler)
+    this.statePointers = new StatePointers<string>(this.snapshotScheduler)
 
-    const newHorizon = EventKey.fromEnvelope(ss)
+    const newHorizon = ss
     const oldEventsAboveHorizon = removeBelowHorizon(this.events, newHorizon)
     this.events.splice(0, this.events.length, ...oldEventsAboveHorizon)
 
@@ -640,17 +636,16 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     return true
   }
 
-  private startOrContinueShattering(newEvents: ReadonlyArray<EnvelopeFromStore<E>>): boolean {
+  private startOrContinueShattering(newEvents: Events): boolean {
     if (this.fish.snapshotFormat === undefined || this.latestSnapshots.local.isNone()) {
       return false
     }
 
     const firstEvent = newEvents[0]
-    const firstEventKey = EventKey.fromEnvelope(firstEvent)
     const latestLocalSnap = this.latestSnapshots.local.value
     if (
       this.shatterAsap.isNone() &&
-      EventKey.ord.compare(firstEventKey, latestLocalSnap.eventKey) < 0
+      EventKey.ord.compare(firstEvent, latestLocalSnap.eventKey) < 0
     ) {
       const sp = this.statePointers.latestStored()
       const from = sp.fold(0, x => x.i)
@@ -706,9 +701,9 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     let i = startingPoint.fold(0, x => x.i + 1)
 
     // Potentially another pointer at startingPoint got requested... (local snapshot logic)
-    let ev = startingPoint.fold(this.events[0], x => x.finalIncludedEvent)
+    let ev: Event = startingPoint.fold(this.events[0], x => x.finalIncludedEvent)
 
-    const cachedStates: StatePointer<string, E>[] = new Array(statesToStore.length)
+    const cachedStates: StatePointer<string>[] = new Array(statesToStore.length)
 
     // statesToStore are sorted in order of ascending `i`.
     for (let j = 0; j < statesToStore.length; j++) {
@@ -819,7 +814,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
         const level = ptr.tag
         const index = ptr.i
         const entry = ptr.state
-        const key = EventKey.fromEnvelope(ptr.finalIncludedEvent)
+        const key = ptr.finalIncludedEvent
 
         return this.storeSnapshot(
           key,
@@ -851,28 +846,27 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     )
 
     const firstEvent = shatter.earliestKnownShatteringEvent
-    const invalidateFrom = EventKey.fromEnvelope(firstEvent)
 
     log.pond.info(
       'shattering snapshot because %s is before %s - base psn map is %j - horizon is %s',
-      EventKey.format(invalidateFrom),
+      EventKey.format(firstEvent),
       EventKey.format(latestLocalSnapshot.eventKey),
       latestLocalSnapshot.psnMap,
       latestLocalSnapshot.horizon ? EventKey.format(latestLocalSnapshot.horizon) : 'undefined',
     )
 
     const haveSource =
-      (latestLocalSnapshot.psnMap[firstEvent.source.sourceId] as Psn | undefined) !== undefined
+      (latestLocalSnapshot.psnMap[firstEvent.sourceId] as Psn | undefined) !== undefined
 
     log.pond.debug(
       'new source: %s, event: %s %j',
       !haveSource,
-      EventKey.format(invalidateFrom),
-      firstEvent.source,
+      EventKey.format(firstEvent),
+      firstEvent.sourceId,
     )
 
     return Observable.defer(() =>
-      Observable.from(this.snapshotStore.invalidateSnapshots(semantics, fishName, invalidateFrom))
+      Observable.from(this.snapshotStore.invalidateSnapshots(semantics, fishName, firstEvent))
         .concatMap(() => {
           // get base and chunks based on the same "present" as we have now, derived from the
           // current (shattered) base and the events on top of that. This is the only info we are
@@ -950,7 +944,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
       string,
       EventKey
     ] = this.latestSnapshots.fromSemanticFromLocalOrDefault(
-      s => ['semantic', EventKey.fromEnvelope(s)],
+      s => ['semantic', s],
       l => ['local', l.eventKey],
       ['none', EventKey.zero],
     )
@@ -971,15 +965,15 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
         fishName,
         baseToPrint,
         this.events.length,
-        EventKey.format(EventKey.fromEnvelope(this.events[0])),
-        EventKey.format(EventKey.fromEnvelope(this.events[this.events.length - 1])),
+        EventKey.format(this.events[0]),
+        EventKey.format(this.events[this.events.length - 1]),
       )
     }
   }
 
   validate(): ReadonlyArray<string> {
     const errors: string[] = []
-    errors.push(...getOrderErrors(this.events, EnvelopeFromStore.ord.compare))
+    errors.push(...getOrderErrors(this.events, EventKey.ord.compare))
     return errors
   }
 }
@@ -1000,11 +994,8 @@ const findLastIndex = <T>(es: ReadonlyArray<T>, p: (e: T) => boolean): number =>
  * @param psnMap the psn map to update. WILL BE MODIFIED IN PLACE
  * @param ev the event to include
  */
-const includeEvent = <E>(psnMap: OffsetMapBuilder, ev: EnvelopeFromStore<E>): OffsetMapBuilder => {
-  const {
-    psn,
-    source: { sourceId },
-  } = ev
+const includeEvent = (psnMap: OffsetMapBuilder, ev: Event): OffsetMapBuilder => {
+  const { psn, sourceId } = ev
   const current = lookup(psnMap, sourceId)
   if (current === undefined || current < psn) {
     psnMap[sourceId] = psn
@@ -1041,26 +1032,26 @@ export const getLatestLocalSnapshot = <S, E>(
   })
 }
 
-type EventFilterTransform = MonoTypeOperatorFunction<EnvelopeFromStore<any>>
+type EventFilterTransform = MonoTypeOperatorFunction<Event>
 export const getEventsAfterLatestSemanticSnapshot = async <S, E>(
   base: Option<LocalSnapshot<unknown>>,
   eventStore: EventStore,
   fish: FishInfo<S, E>,
   present: OffsetMap,
   isSemanticSnapshot: SemanticSnapshot<E>,
-): Promise<EnvelopeFromStore<E>[]> => {
+): Promise<Events> => {
   const { subscriptionSet } = fish
 
   // filter transform for filtering by horizon. We are not interested in events at or below the horizon, so
   // takeWhile
   const horizonFilter = base
     .chain(x => fromNullable(x.horizon))
-    .map<EventFilterTransform>(hzon =>
-      takeWhile(ev => EventKey.ord.compare(EventKey.fromEnvelope(ev), hzon) > 0),
-    )
+    .map<EventFilterTransform>(hzon => takeWhile((ev: Event) => EventKey.ord.compare(ev, hzon) > 0))
   // filter transform for when we look for a semantic snapshot. We want the semantic snapshot to be the last
   // event to be returned, so takeWhileInclusive
-  const ssFilter: EventFilterTransform = takeWhileInclusive(x => !isSemanticSnapshot(x))
+  const ssFilter: EventFilterTransform = takeWhileInclusive(
+    x => !isSemanticSnapshot(Event.toEnvelopeFromStore<E>(x)),
+  )
 
   const fromExclusive = base.map(x => x.psnMap).getOrElse({})
   const horizon = base.chain(x => fromNullable(x.horizon)).getOrElse(EventKey.zero)
@@ -1075,8 +1066,6 @@ export const getEventsAfterLatestSemanticSnapshot = async <S, E>(
     )
     .pipe(
       concatMap(envelopes => envelopes),
-      // TODO: Provide decoder?
-      map(x => Event.toEnvelopeFromStore<E>(x)),
       horizonFilter.getOrElse(x => x),
       ssFilter,
       // maybe use bufferCount here to avoid having a single large array? But currently it does not matter because the
@@ -1089,26 +1078,21 @@ export const getEventsAfterLatestSemanticSnapshot = async <S, E>(
   return allEventsInOneChunk$.toPromise()
 }
 
-export const getEventsForwardChunked = <E>(
+export const getEventsForwardChunked = (
   base: Option<LocalSnapshot<unknown>>,
   eventStore: EventStore,
   subscriptionSet: SubscriptionSet,
   present: OffsetMap,
-): Observable<EnvelopeFromStore<E>[]> => {
+): Observable<Events> => {
   const fromExclusive = base.map(x => x.psnMap).getOrElse({})
 
-  const chunks = eventStore
-    .persistedEvents(
-      { default: 'min', psns: fromExclusive },
-      { default: 'min', psns: present },
-      subscriptionSet,
-      PersistedEventsSortOrders.EventKey,
-      undefined, // No semantic snapshots means no horizon, ever.
-    )
-    .map(x => {
-      // TODO: Provide decoder?
-      return x.map(ev => Event.toEnvelopeFromStore<E>(ev))
-    })
+  const chunks = eventStore.persistedEvents(
+    { default: 'min', psns: fromExclusive },
+    { default: 'min', psns: present },
+    subscriptionSet,
+    PersistedEventsSortOrders.EventKey,
+    undefined, // No semantic snapshots means no horizon, ever.
+  )
 
   return chunks
 }
@@ -1160,7 +1144,7 @@ export type FishInfo<S, E> = Readonly<{
   fishName: FishName
   subscriptionSet: SubscriptionSet
   initialState: () => S
-  onEvent: OnEvent<S, E>
+  onEvent: (state: S, event: Event) => S
   isSemanticSnapshot: SemanticSnapshot<E> | undefined
   snapshotFormat: SnapshotFormat<S, any> | undefined
 }>

@@ -14,7 +14,7 @@ import { FishEventStore, FishInfo } from './fishEventStore'
 import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
 import { EnvelopeFromStore } from './store/util'
-import { EventKey, Lamport, OnEvent, SnapshotFormat } from './types'
+import { EventKey, Lamport, SnapshotFormat } from './types'
 import { shuffle } from './util/array'
 
 const numberOfSources = 5
@@ -33,11 +33,9 @@ type Payload = Readonly<{
 }>
 
 type State = Record<string, number[]>
-const onEvent: OnEvent<State, Payload> = (state, envelope) => {
-  const {
-    source: { sourceId },
-    payload: { sequence },
-  } = envelope
+const onEvent = (state: State, event: Event) => {
+  const { sourceId, payload } = event
+  const { sequence } = payload as Payload
 
   if (state[sourceId] !== undefined) {
     state[sourceId].push(sequence)
@@ -184,11 +182,7 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
     let n = false
 
     for (const sortedEvents of sortedChunks) {
-      const sortedEnvelopes: EnvelopeFromStore<Payload>[] = sortedEvents.map(e =>
-        Event.toEnvelopeFromStore(e),
-      )
-
-      n = store.processEvents(sortedEnvelopes) || n
+      n = store.processEvents(sortedEvents) || n
     }
 
     const isLast = i === events.length - 1

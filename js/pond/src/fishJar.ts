@@ -30,7 +30,6 @@ import { PondStateTracker } from './pond-state'
 import { CacheKey, Metadata } from './pond-v2-types'
 import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
-import { EnvelopeFromStore } from './store/util'
 import { Subscription, SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
 import {
   AsyncCommandResult,
@@ -97,7 +96,7 @@ const mkEventScanAcc = <S, E>(
   // We reveal the Provenance too, so that downstream consumers can implement specialized logic.
   const evScanAcc = (
     current: EventScanState<S, E>,
-    events: ReadonlyArray<EnvelopeFromStore<E>>,
+    events: Events,
   ): Observable<EventScanState<S, E>> => {
     const start = Timestamp.now()
     const pondStateTrackerEventProcessingToken = pondStateTracker.eventsFromOtherSourcesProcessingStarted(
@@ -258,10 +257,7 @@ const createFishJar = <S, C, E, P>(
   storeState: StateWithProvenance<S>,
   observe: ObserveMethod, // observe other fishes
   sendToStore: SendToStore, // send chunk to store
-  realtimeEvents: (
-    filter: SubscriptionSet,
-    from: OffsetMap,
-  ) => Observable<ReadonlyArray<EnvelopeFromStore<E>>>, // get realtime events
+  realtimeEvents: (filter: SubscriptionSet, from: OffsetMap) => Observable<Events>, // get realtime events
   commandExecutor: CommandExecutor, // for async effects
   offsetMap: OffsetMap,
   pondStateTracker: PondStateTracker,
@@ -518,10 +514,7 @@ export const hydrate = <S, C, E, P>(
   const token = pondStateTracker.hydrationStarted(fish.semantics, fishName)
   const subscriptionSet = mkSubscriptionSet(source, subscriptions)
 
-  const realtimeEvents = (
-    filter: SubscriptionSet,
-    from: OffsetMap,
-  ): Observable<ReadonlyArray<EnvelopeFromStore<any>>> =>
+  const realtimeEvents = (filter: SubscriptionSet, from: OffsetMap): Observable<Events> =>
     eventStore
       .allEvents(
         {
@@ -534,7 +527,6 @@ export const hydrate = <S, C, E, P>(
         // EventKey.zero, // optional
       )
       .concatMap(intoOrderedChunks)
-      .map(x => x.map(ev => Event.toEnvelopeFromStore<E>(ev)))
 
   const present = eventStore.present()
 
@@ -543,7 +535,7 @@ export const hydrate = <S, C, E, P>(
     fishName,
     initialState: () => fish.initialState(source.name, source.sourceId).state,
     subscriptionSet,
-    onEvent: fish.onEvent,
+    onEvent: (state, ev) => fish.onEvent(state, Event.toEnvelopeFromStore<E>(ev)),
     isSemanticSnapshot: fish.semanticSnapshot
       ? fish.semanticSnapshot(fishName, sourceId)
       : undefined,
@@ -620,10 +612,10 @@ const hydrateV2 = (
     initialState: () => clone(initialState),
     subscriptionSet,
 
-    onEvent: (state, envelope) =>
-      onEvent(state, envelope.payload, {
-        isLocalEvent: envelope.source.sourceId === sourceId,
-        tags: ['FIXME'], // FIXME
+    onEvent: (state, ev) =>
+      onEvent(state, ev.payload as E, {
+        isLocalEvent: ev.sourceId === sourceId,
+        tags: ev.tags,
       }),
 
     isSemanticSnapshot: isReset ? envelope => isReset(envelope.payload) : undefined,
@@ -662,7 +654,6 @@ const hydrateV2 = (
         )
         .concatMap(intoOrderedChunks)
         .filter(evs => evs.length > 0)
-        .map(x => x.map(ev => Event.toEnvelopeFromStore<E>(ev)))
 
       const mergeScanSeed: EventScanState<S, E> = {
         eventStore: fes,
