@@ -54,4 +54,12 @@
     <string name="type">type</string>
     <string name="navigate_next">navigate next</string>
     <string name="coming_soon">Coming soon!</string>
+    <string name="_continue">continue</string>
+    <string name="cancel">cancel</string>
+    <string name="notification_error_ssl_date_invalid">The date of the SSL certificate issued by "%1$s" is invalid.</string>
+    <string name="notification_error_ssl_expired">The SSL certificate issued by "%1$s" is invalid because it is expired.</string>
+    <string name="notification_error_ssl_idmismatch">The SSL certificate issued by "%1$s" is invalid because the hostname doesn\'t match.</string>
+    <string name="notification_error_ssl_invalid">The SSL certificate issued by "%1$s" is invalid.</string>
+    <string name="notification_error_ssl_not_yet_valid">The SSL certificate issued by "%1$s" is not yet valid.</string>
+    <string name="notification_error_ssl_untrusted">The SSL certificate issued by "%1$s" is invalid because the certificate authority is not trusted.</string>
 </resources>
