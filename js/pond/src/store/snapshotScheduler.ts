@@ -104,7 +104,8 @@ const getSnapshotLevels = (minLevel: number) => (
     }
   }
 
-  return valuesOf(result).sort(TaggedIndex.ord.compare)
+  const v: TaggedIndex[] = valuesOf(result)
+  return v.sort(TaggedIndex.ord.compare)
 }
 
 export const isEligibleForStorage: IsEligibleForStorage = (snap, latest) => {

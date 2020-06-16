@@ -154,6 +154,7 @@ const createEventStoreEvent = (
     name: fishName,
     payload: event,
     timestamp,
+    tags: [],
     lamport: Lamport.of(timestamp),
   }
 }

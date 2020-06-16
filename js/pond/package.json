@@ -1,6 +1,6 @@
 {
   "name": "@actyx/pond",
-  "version": "1.1.0",
+  "version": "1.2.0-alpha0",
   "description": "Actyx Pond",
   "keywords": [
     "actyx",
@@ -51,7 +51,6 @@
     "bufferutil": "4.0.1",
     "cron": "1.5.0",
     "debug": "3.2.6",
-    "format-util": "1.0.3",
     "immutable": "4.0.0-rc.12",
     "ramda": "0.25.0",
     "utf-8-validate": "5.0.2",

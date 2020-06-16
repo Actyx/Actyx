@@ -67,6 +67,13 @@ export const Subscription = {
 }
 export type Subscription = t.TypeOf<typeof SubscriptionIO>
 
+export const TagSubscription = t.readonly(
+  t.type({
+    tags: t.readonlyArray(t.string),
+    local: t.boolean,
+  }),
+)
+
 /**
  * A set of subscriptions
  */
@@ -77,6 +84,9 @@ export const SubscriptionSetIO = t.taggedUnion(
     t.type({ type: t.literal('empty') }),
     t.type({ type: t.literal('all') }),
     t.type({ type: t.literal('or'), subscriptions: t.readonlyArray(SubscriptionIO) }),
+    t.type({ type: t.literal('tags'), subscriptions: t.readonlyArray(TagSubscription) }),
+    // To be added in the future:
+    // t.type({ type: t.literal('tag_expr'), subscriptions: t.string }),
   ],
 )
 export type SubscriptionSet = t.TypeOf<typeof SubscriptionSetIO>
@@ -115,23 +125,13 @@ const mkEnvelopePredicate: (s: Subscription) => (e: Envelope<any>) => boolean = 
 }
 
 const mkEventPredicate: (s: Subscription) => (e: Event) => boolean = s => {
-  if (s.name !== '' && s.sourceId !== '') {
-    // match everything
-    return e => e.semantics === s.semantics && e.name === s.name && e.sourceId === s.sourceId
-  }
-  if (s.sourceId !== '' && s.name === '') {
-    // only name is ''
-    return e => e.semantics === s.semantics && e.sourceId === s.sourceId
-  }
-  if (s.name !== '') {
-    // match semantics and name
-    return e => e.semantics === s.semantics && e.name === s.name
-  }
-  if (s.sourceId === '') {
-    // match just semantics
-    return e => e.semantics === s.semantics
-  }
-  throw new Error('Given combination of semantics / name / sourceId is not supported!')
+  const envPredicate = mkEnvelopePredicate(s)
+  // Just use Event in Envelope form.
+  return e =>
+    envPredicate({
+      ...e,
+      source: e,
+    })
 }
 
 const mkSourceIdPredicate: (s: Subscription) => (sId: SourceId) => boolean = s => sId =>
@@ -160,6 +160,8 @@ export const subscriptionsToPredicate: <T>(
   mkPredicate: (s: Subscription) => (t: T) => boolean,
 ) => (t: T) => boolean = (subscriptionSet, mkPredicate) => {
   switch (subscriptionSet.type) {
+    case 'tags':
+      throw new Error('tags case should not be passed to this function')
     case 'empty':
       return alwaysFalse
     case 'all':
@@ -190,22 +192,31 @@ export const subscriptionsToPredicate: <T>(
     }
   }
 }
-export const subscriptionsToEnvelopePredicate = (ss: SubscriptionSet) =>
-  subscriptionsToPredicate(ss, mkEnvelopePredicate)
-
-export const subscriptionsToEventPredicate = (ss: SubscriptionSet) =>
-  subscriptionsToPredicate(ss, mkEventPredicate)
-
-export const subscriptionsToSourceIdPredicate = (ss: SubscriptionSet) =>
-  subscriptionsToPredicate(ss, mkSourceIdPredicate)
-
-export const subscriptionsToString = (ss: SubscriptionSet): string => {
-  switch (ss.type) {
-    case 'all':
-      return 'all'
-    case 'empty':
-      return 'empty'
-    case 'or':
-      return ss.subscriptions.map(Subscription.toString).join('|')
+export const subscriptionsToEnvelopePredicate = (ss: SubscriptionSet) => {
+  if (ss.type === 'tags') {
+    throw new Error('no tag support for envelopes!')
   }
+
+  return subscriptionsToPredicate(ss, mkEnvelopePredicate)
+}
+
+export const subscriptionsToEventPredicate = (ss: SubscriptionSet) => {
+  if (ss.type === 'tags') {
+    // we can ignore the 'local' flag since it will never exclude our local events
+    // and this method is used solely to decide whether locally emitted events are relevant
+    return (event: Event) =>
+      ss.subscriptions.some(tagIntersection =>
+        tagIntersection.tags.every(tag => event.tags.includes(tag)),
+      )
+  }
+
+  return subscriptionsToPredicate(ss, mkEventPredicate)
+}
+
+export const subscriptionsToSourceIdPredicate = (ss: SubscriptionSet) => {
+  if (ss.type === 'tags') {
+    throw new Error('tag-based subs cannot discern source id like this!')
+  }
+
+  return subscriptionsToPredicate(ss, mkSourceIdPredicate)
 }

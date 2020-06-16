@@ -121,6 +121,7 @@ describe('FishEventStore', () => {
   const toEnvelope = (payload: Payload, i: number): UnstoredEvent => ({
     semantics: Semantics.of('foo'),
     name: FishName.of('foo'),
+    tags: [],
     timestamp: Timestamp.of(i * 1000000),
     payload,
   })

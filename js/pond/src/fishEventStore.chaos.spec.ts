@@ -55,6 +55,7 @@ const generateEvents = (count: number) => (sourceId: SourceId): Events =>
     semantics: Semantics.of('foo'),
     sourceId,
     name: FishName.of('foo'),
+    tags: [],
     timestamp: Timestamp.of(i * timeScale),
     lamport: Lamport.of(i),
     payload: {
