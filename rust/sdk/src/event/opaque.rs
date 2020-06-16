@@ -64,7 +64,7 @@ impl<'de> Deserialize<'de> for Opaque {
         let mut serializer = serde_cbor::Serializer::new(res);
         serde_transcode::transcode(deserializer, &mut serializer).map_err(D::Error::custom)?;
         let res = serializer.into_inner();
-        Ok(Opaque(res.into()))
+        Ok(Opaque(ArcVal::from_boxed(res.into())))
     }
 }
 

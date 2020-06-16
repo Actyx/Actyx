@@ -15,25 +15,154 @@
  */
 #[cfg(feature = "dataflow")]
 use abomonation::Abomonation;
+use intern_arc::*;
 use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
 };
 use std::fmt::{self, Formatter};
 use std::ops::Deref;
-use std::sync::Arc;
+use std::{hash::Hash, sync::Arc};
 
-/// This is a helper type that allows an [`Arc`](https://doc.rust-lang.org/std/sync/struct.Arc.html)
+/// Helper macro to create interned string types
+///
+/// ```
+/// use actyxos_sdk::arcval_scalar;
+///
+/// arcval_scalar! {
+///     /// some docs
+///     pub struct Name(str);
+/// }
+///
+/// arcval_scalar! { struct Private(str) }
+///
+/// let n: Name = Name::from("Bob");
+/// let p: Private = Private::from("x".to_owned());
+/// ```
+///
+/// The declared wrapper struct derives instances for the standard library traits
+/// Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash. You can add more with the
+/// usual `#[derive()]` attribute.
+#[macro_export]
+#[cfg(feature = "dataflow")]
+macro_rules! arcval_scalar {
+    ($($(#[$attr:meta])* $vis:vis struct $id:ident(str)$(;)?)*) => {
+        $(
+            $(#[$attr])*
+            #[repr(transparent)]
+            #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash)]
+            $vis struct $id($crate::types::ArcVal<str>);
+            impl $id {
+                pub fn as_arc(&self) -> ::std::sync::Arc<str> {
+                    self.0.as_arc().clone()
+                }
+            }
+            impl ::std::ops::Deref for $id {
+                type Target = str;
+                fn deref(&self) -> &str {
+                    &*self.0
+                }
+            }
+            impl From<String> for $id {
+                fn from(s: String) -> Self {
+                    Self($crate::types::ArcVal::from_boxed(s.into()))
+                }
+            }
+            impl<'a> From<&'a str> for $id {
+                fn from(s: &'a str) -> Self {
+                    Self($crate::types::ArcVal::clone_from_unsized(s))
+                }
+            }
+            impl From<::std::sync::Arc<str>> for $id {
+                fn from(s: ::std::sync::Arc<str>) -> Self {
+                    Self($crate::types::ArcVal::from(s))
+                }
+            }
+            impl From<$crate::types::ArcVal<str>> for $id {
+                fn from(s: $crate::types::ArcVal<str>) -> Self {
+                    Self(s)
+                }
+            }
+            impl Into<$crate::types::ArcVal<str>> for $id {
+                fn into(self) -> $crate::types::ArcVal<str> {
+                    self.0
+                }
+            }
+            impl ::std::fmt::Display for $id {
+                fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+                    ::std::write!(f, "{}", self.0)
+                }
+            }
+            impl Default for $id {
+                fn default() -> Self {
+                    Self::from("")
+                }
+            }
+        )*
+    };
+}
+
+/// Interned and reference-counted immutable value
+///
+/// This type is a building block for handling large amounts of data with recurring heap-allocated
+/// values, like strings for event types and entity names, but also binary data blocks that are
+/// potentially loaded into memory multiple times. The [`arcval_scalar!`](../macro.arcval_scalar.html)
+/// macro makes it easy to tag data to denote different kinds of objects.
+///
+/// This also serves as a helper type that allows an [`Arc`](https://doc.rust-lang.org/std/sync/struct.Arc.html)
 /// to be included in a data structure that is serialized/deserialized with
-/// Abomonation. See the source code for [`Semantics`](../event/struct.Semantics.html)
-/// for an example use-case.
+/// [`Abomonation`](https://docs.rs/abomonation).
+///
+/// ```
+/// use actyxos_sdk::types::ArcVal;
+///
+/// let s: ArcVal<str> = ArcVal::clone_from_unsized("hello");
+/// let b: ArcVal<[u8; 5]> = ArcVal::from_sized([49, 50, 51, 52, 53]);
+/// let v: ArcVal<[u8]> = ArcVal::from_boxed(vec![49, 50, 51, 52, 53].into());
+///
+/// assert_eq!(&*s, "hello");
+/// assert_eq!(&*b, b"12345");
+/// assert_eq!(&*v, b"12345");
+/// ```
+///
+/// # Caveat Emptor
+///
+/// It is obviously a very bad idea to intern objects that offer internal mutability, so don’t do that.
 #[derive(Eq, PartialOrd, PartialEq, Ord, Hash)]
 #[repr(transparent)]
 pub struct ArcVal<T: ?Sized>(Arc<T>);
 
-impl<T: Default> Default for ArcVal<T> {
+impl<T: Eq + Hash + Ord + Send + Sync + 'static> ArcVal<T> {
+    pub fn from_sized(val: T) -> Self {
+        Self(intern(val))
+    }
+}
+
+impl<T> ArcVal<T>
+where
+    T: ?Sized + Eq + Hash + Ord + Send + Sync + 'static,
+    Arc<T>: for<'a> From<&'a T>,
+{
+    pub fn clone_from_unsized(val: &T) -> Self {
+        Self(intern_unsized(val))
+    }
+}
+
+impl<T: ?Sized + Eq + Hash + Ord + Send + Sync + 'static> ArcVal<T> {
+    pub fn from_boxed(val: Box<T>) -> Self {
+        Self(intern_boxed(val))
+    }
+}
+
+impl<T: ?Sized> ArcVal<T> {
+    pub fn as_arc(&self) -> &Arc<T> {
+        &self.0
+    }
+}
+
+impl<T: Default + Eq + Hash + Ord + Send + Sync + 'static> Default for ArcVal<T> {
     fn default() -> Self {
-        Self(Arc::new(T::default()))
+        Self::from_sized(T::default())
     }
 }
 
@@ -45,28 +174,24 @@ impl<T: ?Sized> Deref for ArcVal<T> {
     }
 }
 
-impl<T: ?Sized> ArcVal<T> {
-    pub fn get_mut(&mut self) -> Option<&mut T> {
-        Arc::get_mut(&mut self.0)
-    }
-
-    pub fn as_arc(&self) -> &Arc<T> {
-        &self.0
-    }
-}
-
 impl<T: ?Sized> Clone for ArcVal<T> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl<T: ?Sized, U: Sized> From<U> for ArcVal<T>
+impl<T> From<Arc<T>> for ArcVal<T>
 where
-    U: Into<Arc<T>>,
+    T: ?Sized + Eq + Hash + Ord + Send + Sync + 'static,
 {
-    fn from(x: U) -> Self {
-        Self(x.into())
+    fn from(x: Arc<T>) -> Self {
+        Self(intern_arc(x))
+    }
+}
+
+impl Default for ArcVal<str> {
+    fn default() -> Self {
+        Self(intern_unsized(""))
     }
 }
 
@@ -171,9 +296,12 @@ impl<T: Serialize + Sized> Serialize for ArcVal<T> {
     }
 }
 
-impl<'de, T: Deserialize<'de> + Sized> Deserialize<'de> for ArcVal<T> {
+impl<'de, T> Deserialize<'de> for ArcVal<T>
+where
+    T: Deserialize<'de> + Sized + Eq + Hash + Ord + Send + Sync + 'static,
+{
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<ArcVal<T>, D::Error> {
-        T::deserialize(deserializer).map(Self::from)
+        T::deserialize(deserializer).map(Self::from_sized)
     }
 }
 
@@ -193,7 +321,10 @@ impl<'de> Deserialize<'de> for ArcVal<str> {
                 formatter.write_str("string")
             }
             fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
-                Ok(ArcVal::from(v))
+                Ok(ArcVal::clone_from_unsized(v))
+            }
+            fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+                Ok(ArcVal::from_boxed(v.into()))
             }
         }
         deserializer.deserialize_str(X())
@@ -216,44 +347,36 @@ mod tests {
     #[test]
     #[cfg(feature = "dataflow")]
     pub fn must_exhume() {
-        let mut value = ArcVal::<String>::from("hello".to_owned());
+        let value = ArcVal::from_sized("hello".to_owned());
 
         let mut bytes = Vec::new();
         unsafe { abomonation::encode(&value, &mut bytes).unwrap() };
-        // modify the string so that we can see whether decode built a new one
-        unsafe { value.get_mut().unwrap().as_bytes_mut()[0] = 65 };
-        let mut bytes2 = Vec::new();
-        unsafe { abomonation::encode(&value, &mut bytes2).unwrap() };
-        std::mem::drop(value);
+        assert_eq!(&bytes[bytes.len() - 5..], b"hello");
 
-        let (value, bytes) = unsafe { abomonation::decode::<ArcVal<String>>(&mut bytes).unwrap() };
-        assert_eq!(*value, ArcVal::from("hello".to_owned()));
-        assert!(bytes.is_empty());
+        // modify the bytes to see that deserialization uses them and not the pointer
+        let pos = bytes.len() - 4;
+        bytes[pos] = b'a';
 
-        let (value, bytes) = unsafe { abomonation::decode::<ArcVal<String>>(&mut bytes2).unwrap() };
-        assert_eq!(*value, ArcVal::from("Aello".to_owned()));
+        let (value2, bytes) = unsafe { abomonation::decode::<ArcVal<String>>(&mut bytes).unwrap() };
+        assert_eq!(value2.as_ref(), "hallo".to_owned());
         assert!(bytes.is_empty());
     }
 
     #[test]
     #[cfg(feature = "dataflow")]
     pub fn must_work_for_str() {
-        let mut value = ArcVal::<str>::from("hello");
+        let value = ArcVal::clone_from_unsized("hello");
 
         let mut bytes = Vec::new();
         unsafe { abomonation::encode(&value, &mut bytes).unwrap() };
-        // modify the string so that we can see whether decode built a new one
-        unsafe { value.get_mut().unwrap().as_bytes_mut()[0] = 65 };
-        let mut bytes2 = Vec::new();
-        unsafe { abomonation::encode(&value, &mut bytes2).unwrap() };
-        std::mem::drop(value);
+        assert_eq!(&bytes[bytes.len() - 5..], b"hello");
 
-        let (value, bytes) = unsafe { abomonation::decode::<ArcVal<str>>(&mut bytes).unwrap() };
-        assert_eq!(*value, ArcVal::from("hello".to_owned()));
-        assert!(bytes.is_empty());
+        // modify the bytes to see that deserialization uses them and not the pointer
+        let pos = bytes.len() - 4;
+        bytes[pos] = b'a';
 
-        let (value, bytes) = unsafe { abomonation::decode::<ArcVal<str>>(&mut bytes2).unwrap() };
-        assert_eq!(*value, ArcVal::from("Aello".to_owned()));
+        let (value2, bytes) = unsafe { abomonation::decode::<ArcVal<str>>(&mut bytes).unwrap() };
+        assert_eq!(value2.as_ref(), "hallo".to_owned());
         assert!(bytes.is_empty());
     }
 
@@ -261,22 +384,18 @@ mod tests {
     #[cfg(feature = "dataflow")]
     #[allow(clippy::string_lit_as_bytes)]
     pub fn must_work_for_u8s() {
-        let mut value = ArcVal::<[u8]>::from("hello".as_bytes());
+        let value: ArcVal<[u8]> = ArcVal::clone_from_unsized(&*b"hello");
 
         let mut bytes = Vec::new();
         unsafe { abomonation::encode(&value, &mut bytes).unwrap() };
-        // modify the string so that we can see whether decode built a new one
-        value.get_mut().unwrap()[0] = 65;
-        let mut bytes2 = Vec::new();
-        unsafe { abomonation::encode(&value, &mut bytes2).unwrap() };
-        std::mem::drop(value);
+        assert_eq!(&bytes[bytes.len() - 5..], b"hello");
 
-        let (value, bytes) = unsafe { abomonation::decode::<ArcVal<[u8]>>(&mut bytes).unwrap() };
-        assert_eq!(*value, ArcVal::from("hello".as_bytes()));
-        assert!(bytes.is_empty());
+        // modify the bytes to see that deserialization uses them and not the pointer
+        let pos = bytes.len() - 4;
+        bytes[pos] = b'a';
 
-        let (value, bytes) = unsafe { abomonation::decode::<ArcVal<[u8]>>(&mut bytes2).unwrap() };
-        assert_eq!(*value, ArcVal::from("Aello".as_bytes()));
+        let (value2, bytes) = unsafe { abomonation::decode::<ArcVal<[u8]>>(&mut bytes).unwrap() };
+        assert_eq!(value2.as_ref(), b"hallo");
         assert!(bytes.is_empty());
     }
 

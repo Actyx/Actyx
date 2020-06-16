@@ -1,6 +1,6 @@
 [package]
 name = "actyxos_sdk"
-version = "0.2.3"
+version = "0.3.0"
 authors = ["Actyx AG <developer@actyx.io>"]
 edition = "2018"
 description = "Tools for interacting with the services of an ActyxOS node"
@@ -22,6 +22,7 @@ dataflow = ["abomonation", "abomonation_derive"]
 abomonation = { version = "~0.7", optional = true }
 abomonation_derive = { version = "~0.5", optional = true }
 actyxos_sdk_macros = { version = "~0.2" }
+intern-arc = { version = "0.1" }
 bytes = { version = "~0.5", optional = true }
 chrono = { version = "~0.4" }
 derive_more = "~0.99"

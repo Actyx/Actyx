@@ -47,7 +47,7 @@ fn nonempty_string<'de, D: Deserializer<'de>>(d: D) -> Result<ArcVal<str>, D::Er
     if s.is_empty() {
         Err(D::Error::custom("expected non-empty string"))
     } else {
-        Ok(s.into())
+        Ok(ArcVal::from_boxed(s.into()))
     }
 }
 
@@ -205,7 +205,7 @@ macro_rules! mk_scalar {
                 if value.is_empty() {
                     Err(ParseError::$err)
                 } else {
-                    Ok(Self(value.as_str().into()))
+                    Ok(Self(ArcVal::from_boxed(value.into())))
                 }
             }
             pub fn as_str(&self) -> &str {
@@ -222,7 +222,7 @@ macro_rules! mk_scalar {
                 if value.is_empty() {
                     Err(ParseError::$err)
                 } else {
-                    Ok(Self(value.into()))
+                    Ok(Self(ArcVal::clone_from_unsized(value)))
                 }
             }
         }
@@ -233,7 +233,7 @@ macro_rules! mk_scalar {
                 if value.is_empty() {
                     Err(ParseError::$err)
                 } else {
-                    Ok(Self(value.into()))
+                    Ok(Self(ArcVal::from(value)))
                 }
             }
         }

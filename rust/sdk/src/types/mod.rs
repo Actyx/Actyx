@@ -21,6 +21,10 @@ mod fixnum;
 pub use arcval::ArcVal;
 pub use fixnum::FixNum;
 
+pub mod intern_arc {
+    pub use intern_arc::*;
+}
+
 pub mod fixnum_types {
     //! collection of useful types for use with `FixNum`
     //!
