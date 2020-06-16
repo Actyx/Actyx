@@ -128,6 +128,7 @@ const createFishJar = <S, C, E, P>(
         return []
       }
       case 'publish': {
+        log.pond.debug('emitting', fish.semantics)
         return [effect.state]
       }
     }
@@ -427,6 +428,7 @@ export const hydrate = <S, C, E, P>(
   ) {
     return createSubscriptionLessFishJar(
       fish,
+      // Never changes due to no subscriptions
       initialState,
       source,
       observe,
@@ -478,7 +480,7 @@ export const hydrate = <S, C, E, P>(
   const info: FishInfo<S, E> = {
     semantics: fish.semantics,
     fishName,
-    initialState,
+    initialState: () => fish.initialState(source.name, source.sourceId).state,
     subscriptionSet,
     onEvent: fish.onEvent,
     isSemanticSnapshot: fish.semanticSnapshot

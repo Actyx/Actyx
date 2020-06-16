@@ -33,6 +33,11 @@ const uniqTagged = (
   finalIncludedEvent: mockEvent(source),
 })
 
+const addPopulated = (
+  sp: StatePointers<undefined, undefined>,
+  ...l: StatePointer<undefined, undefined>[]
+) => sp.addPopulatedPointers(l, l[l.length - 1].finalIncludedEvent)
+
 describe('State Pointers', () => {
   describe('scheduling', () => {
     const TEST_RECENT_WINDOW = 32
@@ -52,6 +57,7 @@ describe('State Pointers', () => {
         neverSnapshotScheduler,
         TEST_RECENT_WINDOW,
         TEST_RECENT_SPACING,
+        true,
       )
 
       const toCache = sp.getStatesToCache(Timestamp.of(0), envelopes)
@@ -65,7 +71,7 @@ describe('State Pointers', () => {
       envelopes.fill(envelope)
 
       // One state cached every 5 events, for the most recent 20 events
-      const sp = new StatePointers<undefined, undefined>(neverSnapshotScheduler, 20, 5)
+      const sp = new StatePointers<undefined, undefined>(neverSnapshotScheduler, 20, 5, true)
 
       const toCache = sp.getStatesToCache(Timestamp.of(0), envelopes)
 
@@ -83,6 +89,7 @@ describe('State Pointers', () => {
         neverSnapshotScheduler,
         TEST_RECENT_WINDOW,
         TEST_RECENT_SPACING,
+        true,
       )
 
       const toCache = sp.getStatesToCache(Timestamp.of(0), envelopes)
@@ -103,8 +110,9 @@ describe('State Pointers', () => {
         neverSnapshotScheduler,
         TEST_RECENT_WINDOW,
         TEST_RECENT_SPACING,
+        true,
       )
-      sp.addPopulatedPointers([uniqTagged(45)])
+      addPopulated(sp, uniqTagged(45))
 
       const toCache = sp.getStatesToCache(Timestamp.of(0), envelopes)
 
@@ -116,6 +124,7 @@ describe('State Pointers', () => {
         neverSnapshotScheduler,
         TEST_RECENT_WINDOW,
         TEST_RECENT_SPACING,
+        true,
       )
 
       const toCache = sp.getStatesToCache(0, [])
@@ -134,7 +143,7 @@ describe('State Pointers', () => {
       const pointersCopy = [ptrAt5, ptrAt10, ptrAt11, ptrAt12].map(x => Object.assign({}, x))
 
       const sp = new StatePointers<undefined, undefined>(neverSnapshotScheduler)
-      sp.addPopulatedPointers(pointersCopy)
+      addPopulated(sp, ...pointersCopy)
 
       const expectLatest = (expected: StatePointer<undefined, undefined> | undefined) =>
         expect(sp.latestStored().toUndefined()).toEqual(expected)
@@ -195,7 +204,7 @@ describe('State Pointers', () => {
       }
 
       const sp = new StatePointers<undefined, undefined>(mockScheduler)
-      sp.addPopulatedPointers([snapshot])
+      addPopulated(sp, snapshot)
 
       expect(sp.getSnapshotsToPersist()).toEqual([])
 
@@ -203,7 +212,7 @@ describe('State Pointers', () => {
 
       // Need to add something in order to requalify local snapshots
       const n = uniqTagged(20)
-      sp.addPopulatedPointers([n])
+      addPopulated(sp, n)
       expect(sp.latestStored().toUndefined()).toEqual(n)
 
       expect(sp.getSnapshotsToPersist()).toEqual([snapshot])
@@ -227,7 +236,7 @@ describe('State Pointers', () => {
       }
 
       const sp = new StatePointers<undefined, undefined>(mockScheduler)
-      sp.addPopulatedPointers([snapshotOld])
+      addPopulated(sp, snapshotOld)
 
       expect(sp.getSnapshotsToPersist()).toEqual([])
       expect(sp.latestStored().toUndefined()).toEqual(snapshotOld)
@@ -235,7 +244,7 @@ describe('State Pointers', () => {
       emit = true
 
       // Add with same tag
-      sp.addPopulatedPointers([snapshotNew])
+      addPopulated(sp, snapshotNew)
       // Make sure it is not outright rejected
       expect(sp.latestStored().toUndefined()).toEqual(snapshotNew)
       // ... but the old one has been remembered and moved to to-persist.

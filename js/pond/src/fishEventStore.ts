@@ -250,7 +250,7 @@ export const addAndInvalidateState = <E>(
   if (timeTravel) {
     // invalidate states
     invalidateHigherThan(highestUnmoved)
-    log.pond.info('time travel to index', highestUnmoved, 'of', events.length)
+    log.pond.debug('time travel to index', highestUnmoved, 'of', events.length)
   }
 
   return change
@@ -335,12 +335,16 @@ const updateShatterAsap = <E>(
 export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
   readonly events: EnvelopeFromStore<E>[] = []
 
-  private statePointers: StatePointers<S, E> = new StatePointers<S, E>(this.snapshotScheduler)
+  // Store past states in serialized form
+  private statePointers: StatePointers<string, E> = new StatePointers<string, E>(
+    this.snapshotScheduler,
+  )
 
   private shatterAsap: Option<ShatterAsap> = none
   private recomputeLocalSnapshots: boolean = false
 
-  private readonly latestSnapshots: LatestSnapshots<S, E> = new LatestSnapshots<S, E>()
+  // In serialized form
+  private readonly latestSnapshots: LatestSnapshots<string, E> = new LatestSnapshots<string, E>()
 
   currentEvents(): ReadonlyArray<EnvelopeFromStore<E>> {
     return this.events
@@ -351,6 +355,8 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     readonly eventStore: EventStore,
     readonly snapshotStore: SnapshotStore,
     readonly snapshotScheduler: SnapshotScheduler,
+    // Incremental hydration writes too many local snapshots currently, needs to be improved
+    readonly incrementalHydration = false,
   ) {}
 
   // Since our contractors (snapshotStore, eventStore) all
@@ -367,11 +373,13 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
   private baseState(): StateWithProvenance<S> {
     return this.latestSnapshots.fromSemanticFromLocalOrDefault(
       ss => ({
-        state: this.fish.onEvent(this.fish.initialState, ss),
+        state: this.fish.onEvent(this.fish.initialState(), ss),
         psnMap: { [ss.source.sourceId]: ss.psn },
       }),
-      l => l,
-      { state: this.fish.initialState, psnMap: OffsetMap.empty },
+      l => {
+        return { ...l, state: this.deser(l.state), psnMap: { ...l.psnMap } }
+      },
+      { state: this.fish.initialState(), psnMap: { ...OffsetMap.empty } },
     )
   }
 
@@ -388,7 +396,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
 
   private truncateBuffers(): void {
     this.events.length = 0
-    this.statePointers = new StatePointers<S, E>(this.snapshotScheduler)
+    this.statePointers = new StatePointers<string, E>(this.snapshotScheduler)
   }
 
   /**
@@ -404,7 +412,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
   }
 
   private hydrateFromLocalSnapshot(
-    base: Option<LocalSnapshot<S>>,
+    base: Option<LocalSnapshot<string>>,
     present: OffsetMap,
   ): Observable<FishEventStore<S, E>> {
     logChunkInfo(this.fish.semantics, this.fish.fishName, base, present)
@@ -424,9 +432,14 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
         return this
       })
     } else {
-      const chunks$ = getEventsForwardChunked(base, this.eventStore, this.fish, present)
+      const chunks$ = getEventsForwardChunked<E>(
+        base,
+        this.eventStore,
+        this.fish.subscriptionSet,
+        present,
+      )
 
-      if (!this.fish.snapshotFormat) {
+      if (!this.incrementalHydration || !this.fish.snapshotFormat) {
         // No local snapshots defined, i.e. streaming hydration does not help with anything.
         return chunks$.reduce((res, chunk) => this.processEvents(chunk) || res, false).mapTo(this)
       }
@@ -452,7 +465,22 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     }
   }
 
-  private becomeLocal = (localSnapshotPtr: StatePointer<S, E>): void => {
+  private deser = (serialized: string): S => {
+    if (!this.fish.snapshotFormat) {
+      throw new Error('should only be done for fishes with local snapshot defined')
+    }
+
+    try {
+      const jso = JSON.parse(serialized)
+      return this.fish.snapshotFormat.deserialize(jso)
+    } catch {
+      throw new Error(
+        `failed to deserialize state ${serialized} of ${this.fish.semantics}/${this.fish.fishName}`,
+      )
+    }
+  }
+
+  private becomeLocal = (localSnapshotPtr: StatePointer<string, E>): void => {
     const localSnapshotIndex = localSnapshotPtr.i
     const { semantics, fishName } = this.fish
     if (log.pond.debug.enabled) {
@@ -599,7 +627,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     // - Naturally, all future states (if any) have become invalid
     // - All past states have become unneeded
     // I.e. we can drop all buffered states.
-    this.statePointers = new StatePointers<S, E>(this.snapshotScheduler)
+    this.statePointers = new StatePointers<string, E>(this.snapshotScheduler)
 
     const newHorizon = EventKey.fromEnvelope(ss)
     const oldEventsAboveHorizon = removeBelowHorizon(this.events, newHorizon)
@@ -650,18 +678,27 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
   // show loading mask while it is working
   // for later eventually chunk `k` or by time
   applyEvents(statesToStore: ReadonlyArray<TaggedIndex>): StateWithProvenance<S> {
-    const startingPoint = this.statePointers.latestStored()
+    const startingPoint = this.statePointers.latestStored().map(latest => {
+      const stateWithProvenance0 = latest.state
+      const stateWithProvenance = {
+        // clone via deser from json
+        state: this.deser(stateWithProvenance0.state),
+        // copy
+        psnMap: { ...stateWithProvenance0.psnMap },
+      }
+      return {
+        ...latest,
+        state: stateWithProvenance,
+      }
+    })
 
+    // If we had nothing at all cached anymore, we start from the beginning again.
     const cachedStateWithProvenance = startingPoint.foldL(() => this.baseState(), x => x.state)
 
     // psnMap is a mutable psnMap that is updated while going through the event.
-    // so we *need* to make a clone of latest cached psnMap so we don't accidentally modify it in place
-    // Typescript does not protect us because of https://github.com/Microsoft/TypeScript/issues/13347
-    // it is kind of the rust way with mut, but without a compiler safety net...
-    let psnMap: OffsetMapBuilder = { ...cachedStateWithProvenance.psnMap }
+    // we have already cloned the original above, so we’re free to mutate
+    let psnMap: OffsetMapBuilder = cachedStateWithProvenance.psnMap
     let state = cachedStateWithProvenance.state
-
-    const cachedStates: StatePointer<S, E>[] = new Array(statesToStore.length)
 
     // Find the index of the first event to apply:
     // In case of a cached state, the state is aggregated including its `i`, so we must start at i+1.
@@ -670,6 +707,8 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
 
     // Potentially another pointer at startingPoint got requested... (local snapshot logic)
     let ev = startingPoint.fold(this.events[0], x => x.finalIncludedEvent)
+
+    const cachedStates: StatePointer<string, E>[] = new Array(statesToStore.length)
 
     // statesToStore are sorted in order of ascending `i`.
     for (let j = 0; j < statesToStore.length; j++) {
@@ -688,8 +727,10 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
         'Expected statesToStore to be in ascending order, with no entries earlier then the latestStored pointer.',
       )
 
+      log.pond.debug('Cloning state of', this.fish.fishName, 'at', i - 1)
+
       const psnMapCopy = { ...psnMap }
-      const stateWithProvenance = { state, psnMap: psnMapCopy }
+      const stateWithProvenance = { state: this.serializeSnapshot(state), psnMap: psnMapCopy }
 
       cachedStates[j] = {
         ...toStore,
@@ -698,12 +739,14 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
       }
     }
 
-    this.statePointers.addPopulatedPointers(cachedStates)
+    const finalEvent = this.events[this.events.length - 1]
+    this.statePointers.addPopulatedPointers(cachedStates, finalEvent)
 
     // The state pointers interface does not guarantee a pointer for the latest event,
     // so we may need to apply some more.
     while (i < this.events.length) {
-      state = this.fish.onEvent(state, this.events[i])
+      ev = this.events[i]
+      state = this.fish.onEvent(state, ev)
       psnMap = includeEvent(psnMap, ev)
       i += 1
     }
@@ -727,9 +770,8 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
   }
 
   private currentStateNoSnapshotting(): Observable<StateWithProvenance<S>> {
-    const levels = this.statePointers.getStatesToCache(1, this.events)
-
-    const state = this.applyEvents(levels)
+    // No guarantees about us being able to clone the state at all, so we can cache nothing.
+    const state = this.applyEvents([])
 
     return Observable.of(state)
   }
@@ -777,15 +819,18 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
         const level = ptr.tag
         const index = ptr.i
         const entry = ptr.state
+        const key = EventKey.fromEnvelope(ptr.finalIncludedEvent)
 
-        return this.serializeSnapshot(snapshotFormat, entry)
-          .then(blob => {
-            const key = EventKey.fromEnvelope(ptr.finalIncludedEvent)
-            return this.storeSnapshot(key, entry.psnMap, snapshotFormat.version, level, index, blob)
-          })
-          .catch(err => {
-            log.pond.error(err)
-          })
+        return this.storeSnapshot(
+          key,
+          entry.psnMap,
+          snapshotFormat.version,
+          level,
+          index,
+          entry.state,
+        ).catch(err => {
+          log.pond.error(err)
+        })
       })
       return Promise.all(persist)
     })
@@ -846,22 +891,23 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     )
   }
 
-  serializeSnapshot(
-    snapshotFormat: SnapshotFormat<S, any>,
-    entry: StateWithProvenance<S>,
-  ): Promise<unknown> {
+  private serializeSnapshot = (state: S): string => {
     const { semantics, fishName } = this.fish
 
-    return new Promise((resolve, reject) => {
-      log.pond.debug('serializing state for %s/%s', semantics, fishName)
-      try {
-        const blob = snapshotFormat.serialize(entry.state)
-        runStats.counters.add(`state-serialized/${semantics}`)
-        resolve(blob)
-      } catch (err) {
-        reject(`Failed to serialize state of ${semantics}/${fishName}: ${JSON.stringify(err)}`)
-      }
-    })
+    if (!this.fish.snapshotFormat) {
+      throw new Error('should only be done for fishes with local snapshot defined')
+    }
+
+    log.pond.debug('serializing state for %s/%s', semantics, fishName)
+    try {
+      const blob = this.fish.snapshotFormat.serialize(state)
+      runStats.counters.add(`state-serialized/${semantics}`)
+      return JSON.stringify(blob)
+    } catch (err) {
+      throw new Error(
+        `Failed to serialize state of ${semantics}/${fishName}: ${JSON.stringify(err)}`,
+      )
+    }
   }
 
   storeSnapshot(
@@ -870,7 +916,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     version: number,
     level: string,
     index: number,
-    blob: unknown,
+    blobSerialized: string,
   ): Promise<void> {
     const { semantics, fishName } = this.fish
     log.pond.debug('storing snapshot for %s/%s', semantics, fishName)
@@ -884,7 +930,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
         this.latestSnapshots.local.fold(0, l => l.cycle) + index + 1, // after offset 0 we got one more event
         version,
         level,
-        blob,
+        blobSerialized,
       )
       .then(stored => {
         if (stored) {
@@ -977,7 +1023,7 @@ export type BaseAndChunks<S> = Readonly<{
 export const getLatestLocalSnapshot = <S, E>(
   snapshotStore: SnapshotStore,
   fish: FishInfo<S, E>,
-): Observable<Option<LocalSnapshot<S>>> => {
+): Observable<Option<LocalSnapshot<string>>> => {
   const { semantics, fishName, snapshotFormat } = fish
 
   if (!snapshotFormat) {
@@ -990,21 +1036,14 @@ export const getLatestLocalSnapshot = <S, E>(
     runStats.counters.add(`snapshot-wanted/${semantics}`)
     return fromNullable(x).fold(none, localSnapshot => {
       runStats.counters.add(`snapshot-found/${semantics}`)
-      const { eventKey, state: blob, psnMap, horizon, cycle } = localSnapshot
-      try {
-        const state: S = snapshotFormat.deserialize(blob)
-        return some({ state, psnMap, eventKey, horizon, cycle })
-      } catch {
-        log.pond.error('failed to deserialize state of %s/%s', semantics, fishName)
-        return none
-      }
+      return some(localSnapshot)
     })
   })
 }
 
 type EventFilterTransform = MonoTypeOperatorFunction<EnvelopeFromStore<any>>
 export const getEventsAfterLatestSemanticSnapshot = async <S, E>(
-  base: Option<LocalSnapshot<S>>,
+  base: Option<LocalSnapshot<unknown>>,
   eventStore: EventStore,
   fish: FishInfo<S, E>,
   present: OffsetMap,
@@ -1050,14 +1089,12 @@ export const getEventsAfterLatestSemanticSnapshot = async <S, E>(
   return allEventsInOneChunk$.toPromise()
 }
 
-export const getEventsForwardChunked = <S, E>(
-  base: Option<LocalSnapshot<S>>,
+export const getEventsForwardChunked = <E>(
+  base: Option<LocalSnapshot<unknown>>,
   eventStore: EventStore,
-  fish: FishInfo<S, E>,
+  subscriptionSet: SubscriptionSet,
   present: OffsetMap,
 ): Observable<EnvelopeFromStore<E>[]> => {
-  const { subscriptionSet } = fish
-
   const fromExclusive = base.map(x => x.psnMap).getOrElse({})
 
   const chunks = eventStore
@@ -1122,7 +1159,7 @@ export type FishInfo<S, E> = Readonly<{
   semantics: Semantics
   fishName: FishName
   subscriptionSet: SubscriptionSet
-  initialState: S
+  initialState: () => S
   onEvent: OnEvent<S, E>
   isSemanticSnapshot: SemanticSnapshot<E> | undefined
   snapshotFormat: SnapshotFormat<S, any> | undefined

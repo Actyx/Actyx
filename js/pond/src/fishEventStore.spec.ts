@@ -110,7 +110,7 @@ describe('FishEventStore', () => {
     semantics: Semantics.of('some-fish'),
     fishName: FishName.of('some-name'),
     subscriptionSet: SubscriptionSet.all,
-    initialState: 0,
+    initialState: () => 0,
     onEvent: processEvent,
     isSemanticSnapshot: undefined,
     snapshotFormat: undefined,

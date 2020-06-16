@@ -10,7 +10,7 @@ import { EventKey, FishName, LocalSnapshot, Semantics } from '../types'
 import { InMemSnapshotStore } from './inMemSnapshotStore'
 import { WebsocketSnapshotStore } from './websocketSnapshotStore'
 
-export type LocalSnapshotFromIndex = LocalSnapshot<unknown>
+export type LocalSnapshotFromIndex = LocalSnapshot<string>
 
 export type StoreSnapshot = (
   semantics: Semantics,
@@ -21,7 +21,7 @@ export type StoreSnapshot = (
   cycle: number,
   version: number,
   tag: string,
-  blob: unknown,
+  serializedBlob: string,
 ) => Promise<boolean>
 
 export type RetrieveSnapshot = (

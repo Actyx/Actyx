@@ -130,7 +130,7 @@ export type SnapshotData = Readonly<{
   cycle: number
   version: number
   tag: string
-  blob: unknown
+  blob: string
 }>
 
 export const mkSnapshot = (
@@ -153,7 +153,7 @@ export const mkSnapshot = (
     cycle: 1,
     version: version || 1,
     tag: 'year',
-    blob: state,
+    blob: JSON.stringify(state),
   }
 }
 
@@ -220,7 +220,10 @@ export const snapshotTestSetup = async (
     return pubProm
   }
 
-  const latestSnap = async () => snapshotStore.retrieveSnapshot(fish.semantics, testFishName, 1)
+  const latestSnap = async () =>
+    snapshotStore
+      .retrieveSnapshot(fish.semantics, testFishName, 1)
+      .then(x => (x ? { ...x, state: JSON.parse(x.state) } : undefined))
 
   return {
     latestSnap,

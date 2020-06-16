@@ -351,6 +351,8 @@ export type InitialState<S> = (
   subscriptions?: ReadonlyArray<Subscription>
 }>
 
+// Combine the existing ("old") state and next event into a new state.
+// The returned value may be something completely new, or a mutated version of the input state.
 export type OnEvent<S, E> = (state: S, event: Envelope<E>) => S
 
 export type OnCommand<S, C, E> = (
