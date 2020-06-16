@@ -326,9 +326,10 @@ axosandroid-libs: debug
 
 axosandroid-app: debug axosandroid-libs
 	./jvm/os-android/bin/get-keystore.sh
-	docker run -v `pwd`/jvm/os-android:/src \
+	docker run -v `pwd`:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-w /src/jvm/os-android \
 	-it actyx/util:buildrs-x64-latest \
 	./gradlew clean ktlintCheck build assembleRelease
 	echo 'APK: ./jvm/os-android/app/build/outputs/apk/release/app-release.apk'
