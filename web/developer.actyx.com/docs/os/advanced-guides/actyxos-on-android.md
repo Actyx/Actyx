@@ -115,4 +115,4 @@ ActyxOS on Docker supports both formats. We are currently working on a fix for t
 ## Known issues
 
 ### Multiple windows for one app are opened in the Android app switcher
-If you stop ActyxOS while one of your apps is running and immediately start ActyxOS again, you will see multiple app windows for the same app. In order to not encounter this bug, please close all app windows either before, or after you stop ActyxOS. Should you end up in this state, you can resolve the issue by just closing all app windows manually. 
+If you stop ActyxOS while one of your apps is running and immediately start ActyxOS again, you will see multiple app windows for the same app. In order to avoid this bug, please close all app windows either before, or after you stop ActyxOS. Should you end up in this state, you can resolve the issue by just closing all app windows manually.
