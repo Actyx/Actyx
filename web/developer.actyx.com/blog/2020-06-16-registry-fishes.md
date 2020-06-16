@@ -3,7 +3,7 @@ title: The Registry Fish Pattern
 author: Alexander Halemba
 author_title: Software Engineer at Actyx
 author_url: https://github.com/Alexander89
-author_image_url: /blog/images/alexander-halemba.jpg
+author_image_url: /images/blog/alexander-halemba.jpg
 tags: [Actyx Pond, design patterns, registry]
 ---
 
