@@ -1,14 +1,10 @@
 package com.actyx.os.android.activity.systeminfoscreens
 
-import android.annotation.SuppressLint
-import android.content.Context
 import android.content.Context.WIFI_SERVICE
 import android.content.Intent
 import android.net.Uri
 import android.net.wifi.WifiManager
-import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -22,6 +18,7 @@ import com.actyx.os.android.BuildConfig
 import com.actyx.os.android.R
 import com.actyx.os.android.util.AndroidVersion
 import com.actyx.os.android.util.BaseRecyclerViewItemTouchListener
+import com.actyx.os.android.util.DeviceSerialNr
 import kotlinx.android.synthetic.main.fragment_system_info.*
 import kotlinx.io.ByteBuffer
 import kotlinx.io.ByteOrder
@@ -54,9 +51,7 @@ class SystemInfoFragment : Fragment() {
     view.findViewById<LabelWithText>(R.id.applicationCompatibilityText).setValue(getCompatibility())
 
     view.findViewById<LabelWithText>(R.id.deviceIpAddressText).setValue(getIpAddress())
-    view.findViewById<LabelWithText>(R.id.deviceSerialNumber).setValue(
-      getDeviceSerialNumber(context)
-    )
+    view.findViewById<LabelWithText>(R.id.deviceSerialNumber).setValue(DeviceSerialNr.get(context))
     view.findViewById<LabelWithText>(R.id.deviceSourceIdText).setValue(getDeviceSourceId())
 
     view.findViewById<LabelWithText>(R.id.swarmNameText).setValue(getSwarmName())
@@ -102,7 +97,7 @@ class SystemInfoFragment : Fragment() {
 
       SectionHeaderRow(getString(R.string.device)),
       LabelWithValueRow(getString(R.string.ip_address), getIpAddress()),
-      LabelWithValueRow(getString(R.string.serial_number), getDeviceSerialNumber(context)),
+      LabelWithValueRow(getString(R.string.serial_number), DeviceSerialNr.get(context)),
       LabelWithValueRow(getString(R.string.device_source_id), getDeviceSourceId()),
 
       SectionHeaderRow(getString(R.string.actyx_os)),
@@ -224,16 +219,5 @@ class SystemInfoFragment : Fragment() {
       ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN)
         .putInt(wifiManager.connectionInfo.ipAddress).array()
     ).hostAddress
-  }
-
-  @SuppressLint("HardwareIds")
-  private fun getDeviceSerialNumber(context: Context?): String {
-    return context?.let {
-      val contentResolver = it.contentResolver
-      return if (Build.SERIAL == Build.UNKNOWN)
-        Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-      else
-        Build.SERIAL
-    } ?: ""
   }
 }
