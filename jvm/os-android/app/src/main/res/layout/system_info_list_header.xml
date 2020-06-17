@@ -5,7 +5,7 @@
     android:layout_height="wrap_content">
 
     <ImageView
-        android:id="@+id/imageView"
+        android:id="@+id/imgActyxOsLogo"
         android:layout_width="50.4dp"
         android:layout_height="50.4dp"
         android:layout_marginStart="20.7dp"
@@ -19,7 +19,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.constraintlayout.widget.Guideline
-        android:id="@+id/guideline4"
+        android:id="@+id/guidelineTop"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -27,15 +27,15 @@
 
 
     <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/textView3"
+        android:id="@+id/labelActyxOS"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="11.7dp"
         android:text="@string/app_name"
         android:textColor="@color/font_black"
         android:textSize="15.3sp"
-        app:layout_constraintBottom_toTopOf="@+id/guideline4"
-        app:layout_constraintStart_toEndOf="@+id/imageView" />
+        app:layout_constraintBottom_toTopOf="@+id/guidelineTop"
+        app:layout_constraintStart_toEndOf="@+id/imgActyxOsLogo" />
 
     <com.google.android.material.textview.MaterialTextView
         android:layout_width="wrap_content"
@@ -43,8 +43,8 @@
         android:text="@string/actyx_ag"
         android:textColor="@color/font_grey"
         android:textSize="12sp"
-        app:layout_constraintStart_toStartOf="@+id/textView3"
-        app:layout_constraintTop_toTopOf="@+id/guideline4" />
+        app:layout_constraintStart_toStartOf="@+id/labelActyxOS"
+        app:layout_constraintTop_toTopOf="@+id/guidelineTop" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/stop_actyx_os"
