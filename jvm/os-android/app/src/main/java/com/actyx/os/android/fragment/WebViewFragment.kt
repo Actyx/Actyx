@@ -16,7 +16,6 @@ import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
 
-
 @Serializable
 data class SwipedCardData(val cardId: String, val provenance: String)
 
