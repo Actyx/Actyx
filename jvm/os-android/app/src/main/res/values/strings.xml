@@ -51,8 +51,8 @@
     <string name="application">Application</string>
     <string name="navigate_next">navigate next</string>
     <string name="coming_soon">Coming soon!</string>
-    <string name="_continue">continue</string>
-    <string name="cancel">cancel</string>
+    <string name="_continue">Continue</string>
+    <string name="cancel">@android:string/cancel</string>
     <string name="notification_error_ssl_date_invalid">The date of the SSL certificate issued by "%1$s" is invalid.</string>
     <string name="notification_error_ssl_expired">The SSL certificate issued by "%1$s" is invalid because it is expired.</string>
     <string name="notification_error_ssl_idmismatch">The SSL certificate issued by "%1$s" is invalid because the hostname doesn\'t match.</string>
