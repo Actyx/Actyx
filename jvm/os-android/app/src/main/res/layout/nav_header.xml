@@ -12,7 +12,8 @@
   <ImageView
     android:layout_width="48dp"
     android:layout_height="48dp"
-    app:srcCompat="@drawable/ic_actyxos_circle"/>
+    app:srcCompat="@drawable/ic_actyxos_circle"
+    android:contentDescription="@string/actyxos_logo"/>
 
   <TextView
     android:layout_width="wrap_content"
