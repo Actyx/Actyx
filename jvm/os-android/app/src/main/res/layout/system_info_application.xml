@@ -86,6 +86,7 @@
         android:layout_marginEnd="10.35dp"
         android:src="@drawable/ic_email_black_24dp"
         android:text="@string/contact_actyx_io"
+        android:contentDescription="@string/email_icon"
         app:layout_constraintBottom_toBottomOf="@+id/labelEmail"
         app:layout_constraintEnd_toStartOf="@+id/guidelineAppCenter"
         app:layout_constraintTop_toTopOf="@+id/labelEmail" />
@@ -98,6 +99,7 @@
         android:layout_marginEnd="10.35dp"
         android:src="@drawable/ic_computer_black_24dp"
         android:text="@string/www_actyx_com"
+        android:contentDescription="@string/website_icon"
         app:layout_constraintBottom_toBottomOf="@+id/labelWebsite"
         app:layout_constraintEnd_toStartOf="@+id/guidelineAppCenter"
         app:layout_constraintTop_toTopOf="@+id/labelWebsite" />
@@ -175,6 +177,7 @@
         android:layout_marginEnd="10.35dp"
         android:src="@drawable/ic_insert_drive_file_black_24dp"
         android:text="@string/details"
+        android:contentDescription="@string/license_details_icon"
         app:layout_constraintBottom_toBottomOf="@+id/labelLicense"
         app:layout_constraintEnd_toStartOf="@+id/guidelineAppCenter"
         app:layout_constraintTop_toTopOf="@+id/labelLicense" />

@@ -27,6 +27,7 @@ class TextWithIcon(context: Context, attrs: AttributeSet) : LinearLayout(context
     context.theme.obtainStyledAttributes(attrs, R.styleable.TextWithIcon, 0, 0).apply {
       textView.text = getString(R.styleable.TextWithIcon_android_text)
       imageView.setImageDrawable(getDrawable(R.styleable.TextWithIcon_android_src))
+      imageView.contentDescription = getString(R.styleable.TextWithIcon_android_contentDescription)
     }
   }
 

@@ -16,7 +16,8 @@ class LabelWithValueRow(val label: String, val value: String) : IRow
 class LabelWithValueRowAndIcon(
   val label: String,
   val value: String,
-  @DrawableRes val iconResId: Int
+  @DrawableRes val iconResId: Int,
+  val iconContentDescription: String
 ) : IRow
 
 class LinkRow(val label: String, @IdRes val navId: Int) : IRow
@@ -112,6 +113,7 @@ class SystemInfoContentAdapter(private val rows: List<IRow>) :
     rowHolder.label.text = row.label
     rowHolder.textWithIcon.setText(row.value)
     rowHolder.textWithIcon.setImageResource(row.iconResId)
+    rowHolder.textWithIcon.contentDescription = row.iconContentDescription
   }
 
   private fun onBindLink(holder: RecyclerView.ViewHolder, row: LinkRow) {

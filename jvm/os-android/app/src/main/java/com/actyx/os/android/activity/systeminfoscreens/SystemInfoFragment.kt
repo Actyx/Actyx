@@ -85,13 +85,16 @@ class SystemInfoFragment : Fragment() {
       LabelWithValueRowAndIcon(
         getString(R.string.contact),
         getString(R.string.actyx_contact_email),
-        R.drawable.ic_email_black_24dp
+        R.drawable.ic_email_black_24dp,
+        getString(R.string.email_icon)
       ),
       LabelWithValueRowAndIcon(
         getString(R.string.website),
         getString(R.string.www_actyx_com),
-        R.drawable.ic_computer_black_24dp
+        R.drawable.ic_computer_black_24dp,
+        getString(R.string.website_icon)
       ),
+      // TODO license
       LabelWithValueRow(getString(R.string.app_version), getAppVersion()),
       LabelWithValueRow(getString(R.string.compatibility), getCompatibility()),
 
