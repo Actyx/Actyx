@@ -16,7 +16,7 @@ export const start = async () => {
     onEvent: (state: State, event: Event) => [event, ...state],
 
     // CacheKey.namedAggregate('p-e-fish', 'my-process-id-100', 0)
-    cacheKey: { name: 'test-entity' },
+    entityId: { name: 'test-entity' },
   }
 
   const cancel = pond.aggregate<State, Event>(aggregate, state =>

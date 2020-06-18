@@ -87,20 +87,20 @@ export type Metadata = Readonly<{
 export type Reduce<S, E> = (state: S, event: E, metadata: Metadata) => S
 
 // To be refined: generic representation of semantics/name/version for snapshotformat
-export type CacheKey = {
+export type EntityId = {
   entityType?: string
   name: string
   version?: number
 }
 
-export const CacheKey = {
-  namedAggregate: (entityType: string, name: string, version: number) => ({
+export const EntityId = {
+  of: (entityType: string, name: string, version: number) => ({
     entityType,
     name,
     version,
   }),
   // Is there an even better way?
-  canonical: (v: CacheKey): string => JSON.stringify([v.entityType, v.name, v.version]),
+  canonical: (v: EntityId): string => JSON.stringify([v.entityType, v.name, v.version]),
 }
 
 /**
@@ -114,7 +114,7 @@ export type Aggregate<S, E> = {
 
   initialState: S
   onEvent: Reduce<S, E>
-  cacheKey: CacheKey
+  entityId: EntityId
 
   // semantic snapshot
   isReset?: (event: E) => boolean
@@ -132,7 +132,7 @@ export const Aggregate = {
 
     onEvent: (_state: E | undefined, event: E) => event,
 
-    cacheKey: CacheKey.namedAggregate('actyx.lib.latestEvent', JSON.stringify(subscriptions), 1),
+    entityId: EntityId.of('actyx.lib.latestEvent', JSON.stringify(subscriptions), 1),
 
     isReset: (_event: E) => true,
   }),
@@ -147,11 +147,7 @@ export const Aggregate = {
       return state.length > capacity ? state.slice(0, capacity) : state
     },
 
-    cacheKey: CacheKey.namedAggregate(
-      'actyx.lib.eventsDescending',
-      JSON.stringify(subscriptions),
-      1,
-    ),
+    entityId: EntityId.of('actyx.lib.eventsDescending', JSON.stringify(subscriptions), 1),
   }),
 
   eventsAscending: <E>(subscriptions: TagQuery, capacity = 100): Aggregate<E[], E> => ({
@@ -164,11 +160,7 @@ export const Aggregate = {
       return state.length > capacity ? state.slice(0, capacity) : state
     },
 
-    cacheKey: CacheKey.namedAggregate(
-      'actyx.lib.eventsAscending',
-      JSON.stringify(subscriptions),
-      1,
-    ),
+    entityId: EntityId.of('actyx.lib.eventsAscending', JSON.stringify(subscriptions), 1),
   }),
 }
 
@@ -247,7 +239,7 @@ export interface PondV2 {
     requiredTags: ReadonlyArray<string>,
     initialState: S,
     onEvent: (state: S, event: E) => S,
-    cacheKey: CacheKey,
+    entityId: EntityId,
     callback: (newState: S) => void,
   ): CancelSubscription
 
@@ -259,4 +251,20 @@ export interface PondV2 {
    * @returns            A function that can be called in order to cancel the aggregation.
    */
   aggregate<S, E>(aggregate: Aggregate<S, E>, callback: (newState: S) => void): CancelSubscription
+
+  /* CONDITIONAL EMISSION (COMMANDS) */
+
+  // Run a single Effect against the current State. Similar to sending a Command.
+  runStateEffect: <S>(agg: Aggregate<S, any>, effect: StateEffect<S, any>) => PendingEmission
+
+  // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
+  getOrCreateCommandHandle: <S>(
+    agg: Aggregate<S, any>,
+  ) => (effect: StateEffect<S, any>) => PendingEmission
+
+  // Fix effect targets beforehand, making it easier in the Effect to return the events.
+  getOrCreateCommandHandleFixedTags: <S, E>(
+    agg: Aggregate<S, any>,
+    targets: string[],
+  ) => (effect: SimpleStateEffect<S, E>) => PendingEmission
 }

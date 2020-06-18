@@ -27,7 +27,7 @@ import { FishEventStore, FishInfo } from './fishEventStore'
 import log from './loggers'
 import { SendToStore } from './pond'
 import { PondStateTracker } from './pond-state'
-import { CacheKey, Metadata } from './pond-v2-types'
+import { EntityId, Metadata } from './pond-v2-types'
 import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
 import { Subscription, SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
@@ -37,6 +37,7 @@ import {
   Psn,
   Semantics,
   SnapshotFormat,
+  SourceId,
   StateWithProvenance,
   SyncCommandResult,
   Timestamp,
@@ -157,7 +158,9 @@ type CommandScanState = Readonly<{
 
 const commandPipeline = <S, I>(
   pondStateTracker: PondStateTracker,
-  source: Source,
+  localSourceId: SourceId,
+  semantics: string,
+  name: string,
   handler: ((input: I) => Observable<Events>),
   stateSubject: Observable<StateWithProvenance<S>>,
   eventFilter: ((t: Event) => boolean),
@@ -176,8 +179,8 @@ const commandPipeline = <S, I>(
     const { command, onComplete, onError } = input
 
     const pondStateTrackerCommandProcessingToken = pondStateTracker.commandProcessingStarted(
-      source.semantics,
-      source.name,
+      semantics,
+      name,
     )
     const unblock = () => {
       pondStateTracker.commandProcessingFinished(pondStateTrackerCommandProcessingToken)
@@ -189,12 +192,16 @@ const commandPipeline = <S, I>(
           return true
         }
 
-        const latestSeen = lookup(stateWithProvenance.psnMap, source.sourceId)
+        const latestSeen = lookup(stateWithProvenance.psnMap, localSourceId)
         const pass = latestSeen !== undefined && latestSeen >= current.waitFor
 
         if (!pass) {
           log.pond.debug(
-            Source.format(source),
+            semantics,
+            '/',
+            name,
+            '/',
+            localSourceId,
             'waiting for',
             current.waitFor,
             '; currently at:',
@@ -328,7 +335,9 @@ const createFishJar = <S, C, E, P>(
 
   const cmdPipeline = commandPipeline<S, LegacyCmdRes>(
     pondStateTracker,
-    source,
+    source.sourceId,
+    source.semantics,
+    source.name,
     handleCommandResult,
     stateSubject,
     eventFilter,
@@ -593,7 +602,7 @@ const hydrateV2 = (
   subscriptionSet: SubscriptionSet,
   initialState: S,
   onEvent: (state: S, event: E, metadata: Metadata) => S,
-  cacheKey: CacheKey,
+  cacheKey: EntityId,
   enableLocalSnapshots: boolean,
   isReset?: (event: E) => boolean,
 ): Observable<StateWithProvenance<S>> => {

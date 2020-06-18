@@ -16,24 +16,26 @@ import { ConnectivityStatus, Event, Events, UnstoredEvents } from './eventstore/
 import { mkMultiplexer } from './eventstore/utils'
 import { getSourceId } from './eventstore/websocketEventStore'
 import { CommandExecutor } from './executors/commandExecutor'
-import { FishJar } from './fishJar'
+import { CommandPipeline, FishJar } from './fishJar'
 import log from './loggers'
 import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
 import {
   Aggregate,
-  CacheKey,
   CancelSubscription,
   Emit,
+  EntityId,
   Metadata,
   PendingEmission,
   PondV2,
   Reduce,
+  SimpleStateEffect,
+  StateEffect,
   TagQuery,
 } from './pond-v2-types'
 import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
-import { SubscriptionSet } from './subscription'
+import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
 import {
   Envelope,
   FishName,
@@ -245,6 +247,16 @@ const omitObservable = <S>(
   return sub.unsubscribe.bind(sub)
 }
 
+const pendingEmission = (o: Observable<void>): PendingEmission => ({
+  subscribe: o.subscribe.bind(o),
+  toPromise: () => o.toPromise(),
+})
+
+type ActiveAggregate<S> = {
+  readonly states: Observable<StateWithProvenance<S>>
+  commandPipeline?: CommandPipeline<S, ReadonlyArray<Emit<any>>>
+}
+
 type BothPonds = Pond & PondV2
 export class PondImpl implements BothPonds {
   commandsSubject: Subject<SendCommand<any>> = new Subject()
@@ -256,7 +268,7 @@ export class PondImpl implements BothPonds {
     subscriptionSet: SubscriptionSet,
     initialState: S,
     onEvent: (state: S, event: E, metadata: Metadata) => S,
-    cacheKey: CacheKey,
+    entityId: EntityId,
     enableLocalSnapshots: boolean,
     isReset?: (event: E) => boolean,
   ) => Observable<StateWithProvenance<S>>
@@ -267,7 +279,7 @@ export class PondImpl implements BothPonds {
   } = {}
 
   taggedAggregates: {
-    [cacheKey: string]: Observable<StateWithProvenance<any>>
+    [entityId: string]: ActiveAggregate<any>
   } = {}
 
   // executor for async commands
@@ -468,36 +480,39 @@ export class PondImpl implements BothPonds {
     // `o` is already (probably) hot, but we subscribe just in case.
     o.subscribe()
 
-    return {
-      subscribe: o.subscribe.bind(o),
-      toPromise: () => o.toPromise(),
-    }
+    return pendingEmission(o)
   }
 
   private getCachedOrInitialize = <S, E>(
     subscriptionSet: SubscriptionSet,
     initialState: S,
     onEvent: Reduce<S, E>,
-    cacheKey: CacheKey,
+    entityId: EntityId,
     isReset?: (event: E) => boolean,
-  ): Observable<StateWithProvenance<S>> => {
-    const key = CacheKey.canonical(cacheKey)
+  ): ActiveAggregate<S> => {
+    const key = EntityId.canonical(entityId)
     const existing = this.taggedAggregates[key]
     if (existing !== undefined) {
-      return existing.observeOn(Scheduler.queue)
+      return {
+        states: existing.states.observeOn(Scheduler.queue),
+        ...existing,
+      }
     }
 
     const stateSubject = this.hydrateV2(
       subscriptionSet,
       initialState,
       onEvent,
-      cacheKey,
+      entityId,
       true,
       isReset,
     ).shareReplay(1)
 
-    this.taggedAggregates[key] = stateSubject
-    return stateSubject
+    const a = {
+      states: stateSubject,
+    }
+    this.taggedAggregates[key] = a
+    return a
   }
 
   aggregateUncached = <S, E>(
@@ -527,7 +542,7 @@ export class PondImpl implements BothPonds {
     requiredTags: ReadonlyArray<string>,
     initialState: S,
     onEvent: (state: S, event: E) => S,
-    cacheKey: CacheKey,
+    cacheKey: EntityId,
     callback: (newState: S) => void,
   ): CancelSubscription => {
     const subscriptionSet: SubscriptionSet = {
@@ -537,11 +552,11 @@ export class PondImpl implements BothPonds {
 
     return omitObservable(
       callback,
-      this.getCachedOrInitialize(subscriptionSet, initialState, onEvent, cacheKey),
+      this.getCachedOrInitialize(subscriptionSet, initialState, onEvent, cacheKey).states,
     )
   }
 
-  private observeTagBased0 = <S, E>(acc: Aggregate<S, E>): Observable<StateWithProvenance<S>> => {
+  private observeTagBased0 = <S, E>(acc: Aggregate<S, E>): ActiveAggregate<S> => {
     const subscriptionSet: SubscriptionSet = {
       type: 'tags',
       subscriptions: TagQuery.toWireFormat(acc.subscriptions),
@@ -551,7 +566,7 @@ export class PondImpl implements BothPonds {
       subscriptionSet,
       acc.initialState,
       acc.onEvent,
-      acc.cacheKey,
+      acc.entityId,
       acc.isReset,
     )
   }
@@ -561,7 +576,69 @@ export class PondImpl implements BothPonds {
       throw new Error('custom deser not yet supported')
     }
 
-    return omitObservable(callback, this.observeTagBased0<S, E>(acc))
+    return omitObservable(callback, this.observeTagBased0<S, E>(acc).states)
+  }
+
+  // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
+  getOrCreateCommandHandle = <S>(
+    agg: Aggregate<S, any>,
+  ): ((effect: StateEffect<S, any>) => PendingEmission) => {
+    const cached = this.observeTagBased0(agg)
+
+    const handler = (emit: ReadonlyArray<Emit<any>>) => {
+      return this.emitTagged0(emit)
+    }
+
+    const subscriptionSet: SubscriptionSet = {
+      type: 'tags',
+      subscriptions: TagQuery.toWireFormat(agg.subscriptions),
+    }
+
+    const commandPipeline =
+      cached.commandPipeline ||
+      FishJar.commandPipeline<S, ReadonlyArray<Emit<any>>>(
+        this.pondStateTracker,
+        this.eventStore.sourceId,
+        agg.entityId.entityType || Semantics.none,
+        agg.entityId.name,
+        handler,
+        cached.states,
+        subscriptionsToEventPredicate(subscriptionSet),
+      )
+    cached.commandPipeline = commandPipeline
+
+    return effect => {
+      const o = new Observable<void>(x =>
+        commandPipeline.subject.next({
+          type: 'command',
+          command: effect,
+          onComplete: () => {
+            x.next()
+            x.complete()
+          },
+          onError: (err: any) => x.error(err),
+        }),
+      )
+
+      return pendingEmission(o)
+    }
+  }
+
+  getOrCreateCommandHandleFixedTags = <S, E>(
+    agg: Aggregate<S, any>,
+    tags: string[],
+  ): ((effect: SimpleStateEffect<S, E>) => PendingEmission) => {
+    const handle = this.getOrCreateCommandHandle(agg)
+
+    return effect => {
+      const fixedEffect = (s: S) => effect(s).map(payload => ({ tags, payload }))
+      return handle(fixedEffect)
+    }
+  }
+
+  runStateEffect = <S>(agg: Aggregate<S, any>, effect: StateEffect<S, any>): PendingEmission => {
+    const handle = this.getOrCreateCommandHandle(agg)
+    return handle(effect)
   }
 }
 
