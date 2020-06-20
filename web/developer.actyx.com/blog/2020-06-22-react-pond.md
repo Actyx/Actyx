@@ -1,5 +1,5 @@
 ---
-title: React-Pond as simple as a possible
+title: React-Pond as simple as possible
 author: Alexander Halemba
 author_title: Software Engineer at Actyx
 author_url: https://github.com/Alexander89
@@ -10,10 +10,11 @@ tags: [Actyx Pond, Setup, Project start, React-Pond, React, UI, Webview]
 Are you looking for a framework to build your GUI?  
 Are you starting to use React, or would you like to simplify your project?
 
-**You definitely should have a look at the React-Pond.**
+**Then you definitely should take a look at the React-Pond.**
 
-<!--truncate-->
-<img width="130px" src="https://raw.githubusercontent.com/actyx-contrib/react-pond/master/icon.png?token=AATHWQIC5RWS62GY3OINH3C645MHQ" />
+<!-- truncate -->
+
+<img width="130px" src="https://raw.githubusercontent.com/actyx-contrib/react-pond/master/icon.png" />
 
 ## The problem
 
