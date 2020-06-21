@@ -16,18 +16,29 @@
 use crate::event::*;
 use crate::event_service::*;
 use bytes::Bytes;
+use derive_more::Error;
 use futures::future::ready;
 use futures::stream::{iter, Stream, StreamExt};
 use reqwest::{Client, RequestBuilder, Response};
-use std::env;
+use std::{env, fmt::Display};
 use url::Url;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Error, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct EventServiceError {
     pub error: String,
     pub error_code: u16,
     pub context: String,
+}
+
+impl Display for EventServiceError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "error {} while {}: {}",
+            self.error_code, self.context, self.error
+        )
+    }
 }
 
 /// An Event Service API client with which you can perform queries and publish events.
