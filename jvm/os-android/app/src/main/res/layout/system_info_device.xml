@@ -12,9 +12,9 @@
         android:layout_marginTop="28.8dp"
         android:layout_marginEnd="10.35dp"
         app:label="@string/ip_address"
-        app:layout_constraintEnd_toStartOf="@+id/guideline2"
-        app:layout_constraintStart_toStartOf="@+id/textView14"
-        app:layout_constraintTop_toBottomOf="@+id/textView14" />
+        app:layout_constraintEnd_toStartOf="@+id/guidelineDeviceCenter"
+        app:layout_constraintStart_toStartOf="@+id/headerDevice"
+        app:layout_constraintTop_toBottomOf="@+id/headerDevice" />
 
 
     <com.actyx.os.android.activity.systeminfoscreens.LabelWithText
@@ -25,7 +25,7 @@
         app:label="@string/serial_number"
         app:layout_constraintEnd_toEndOf="@+id/deviceIpAddressText"
         app:layout_constraintStart_toStartOf="@+id/deviceIpAddressText"
-        app:layout_constraintTop_toBottomOf="@+id/divider2" />
+        app:layout_constraintTop_toBottomOf="@+id/dividerIpAddress" />
 
     <com.actyx.os.android.activity.systeminfoscreens.LabelWithText
         android:id="@+id/deviceSourceIdText"
@@ -37,38 +37,38 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="@+id/deviceIpAddressText"
         app:layout_constraintStart_toStartOf="@+id/deviceIpAddressText"
-        app:layout_constraintTop_toBottomOf="@+id/divider" />
+        app:layout_constraintTop_toBottomOf="@+id/dividerSerialNumber" />
 
     <androidx.constraintlayout.widget.Guideline
-        android:id="@+id/guideline2"
+        android:id="@+id/guidelineDeviceCenter"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         app:layout_constraintGuide_percent="0.5" />
 
     <View
-        android:id="@+id/divider2"
+        android:id="@+id/dividerIpAddress"
         android:layout_width="0dp"
         android:layout_height="1dp"
         android:layout_marginTop="15.3dp"
         android:background="?android:attr/listDivider"
         app:layout_constraintEnd_toEndOf="@+id/deviceIpAddressText"
-        app:layout_constraintStart_toStartOf="@+id/textView14"
+        app:layout_constraintStart_toStartOf="@+id/headerDevice"
         app:layout_constraintTop_toBottomOf="@+id/deviceIpAddressText" />
 
     <View
-        android:id="@+id/divider"
+        android:id="@+id/dividerSerialNumber"
         android:layout_width="0dp"
         android:layout_height="1dp"
         android:layout_marginTop="15.3dp"
         android:background="?android:attr/listDivider"
         app:layout_constraintEnd_toEndOf="@+id/deviceIpAddressText"
         app:layout_constraintHorizontal_bias="0.0"
-        app:layout_constraintStart_toStartOf="@+id/textView14"
+        app:layout_constraintStart_toStartOf="@+id/headerDevice"
         app:layout_constraintTop_toBottomOf="@+id/deviceSerialNumber" />
 
     <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/textView14"
+        android:id="@+id/headerDevice"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="21dp"

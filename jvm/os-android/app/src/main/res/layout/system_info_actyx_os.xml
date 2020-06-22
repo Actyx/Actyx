@@ -20,7 +20,7 @@
         android:textSize="12.6sp"
         app:layout_constraintBottom_toBottomOf="@+id/swarmNameText"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="@+id/guideline2"
+        app:layout_constraintStart_toStartOf="@+id/guidelineOsCenter"
         app:layout_constraintTop_toTopOf="@+id/swarmNameText" />
 
     <Button
@@ -36,7 +36,7 @@
         android:textSize="12.6sp"
         app:layout_constraintEnd_toEndOf="@+id/console_btn"
         app:layout_constraintStart_toStartOf="@+id/console_btn"
-        app:layout_constraintTop_toBottomOf="@+id/divider5" />
+        app:layout_constraintTop_toBottomOf="@+id/dividerConsole" />
 
     <Button
         android:id="@+id/connected_peers_btn"
@@ -51,7 +51,7 @@
         android:textSize="12.6sp"
         app:layout_constraintEnd_toEndOf="@+id/swarmNameText"
         app:layout_constraintStart_toStartOf="@+id/swarmNameText"
-        app:layout_constraintTop_toBottomOf="@+id/divider2" />
+        app:layout_constraintTop_toBottomOf="@+id/dividerSwarmName" />
 
     <Button
         android:id="@+id/ipfs_storage_btn"
@@ -68,7 +68,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="@+id/swarmNameText"
         app:layout_constraintStart_toStartOf="@+id/swarmNameText"
-        app:layout_constraintTop_toBottomOf="@+id/divider" />
+        app:layout_constraintTop_toBottomOf="@+id/dividerPeers" />
 
     <com.actyx.os.android.activity.systeminfoscreens.LabelWithText
         android:id="@+id/swarmNameText"
@@ -77,19 +77,19 @@
         android:layout_marginTop="28.8dp"
         android:layout_marginEnd="10.35dp"
         app:label="@string/swarm_name"
-        app:layout_constraintEnd_toStartOf="@+id/guideline2"
-        app:layout_constraintStart_toStartOf="@+id/textView14"
-        app:layout_constraintTop_toBottomOf="@+id/textView14" />
+        app:layout_constraintEnd_toStartOf="@+id/guidelineOsCenter"
+        app:layout_constraintStart_toStartOf="@+id/headerActyxOs"
+        app:layout_constraintTop_toBottomOf="@+id/headerActyxOs" />
 
     <androidx.constraintlayout.widget.Guideline
-        android:id="@+id/guideline2"
+        android:id="@+id/guidelineOsCenter"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         app:layout_constraintGuide_percent="0.5" />
 
     <View
-        android:id="@+id/divider2"
+        android:id="@+id/dividerSwarmName"
         android:layout_width="0dp"
         android:layout_height="1dp"
         android:layout_marginTop="15.3dp"
@@ -99,7 +99,7 @@
         app:layout_constraintTop_toBottomOf="@+id/swarmNameText" />
 
     <View
-        android:id="@+id/divider5"
+        android:id="@+id/dividerConsole"
         android:layout_width="0dp"
         android:layout_height="1dp"
         android:background="?android:attr/listDivider"
@@ -108,7 +108,7 @@
         app:layout_constraintTop_toBottomOf="@+id/console_btn" />
 
     <View
-        android:id="@+id/divider"
+        android:id="@+id/dividerPeers"
         android:layout_width="0dp"
         android:layout_height="1dp"
         android:background="?android:attr/listDivider"
@@ -117,7 +117,7 @@
         app:layout_constraintTop_toBottomOf="@+id/connected_peers_btn" />
 
     <TextView
-        android:id="@+id/textView14"
+        android:id="@+id/headerActyxOs"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="21dp"

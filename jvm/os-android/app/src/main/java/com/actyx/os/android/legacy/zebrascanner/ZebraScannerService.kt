@@ -255,17 +255,18 @@ class ZebraScannerService(private val ctx: Context) : Service {
         val impl = ZebraScannerImpl()
         log.info("starting Zebra scanner service")
 
-        subscriber.setCancellable {
-          log.info("stopping Zebra scanner service")
-          impl.close()
-        }
-
-        impl.scans.subscribe {
+        val scans = impl.scans.subscribe {
           log.info("code read: {}", it)
           val broadcastIntent = Intent(ACTION_CODE_SCANNED).apply {
             putExtra(EXTRA_CODE, it)
           }
           ctx.sendBroadcast(broadcastIntent)
+        }
+
+        subscriber.setCancellable {
+          log.info("stopping Zebra scanner service")
+          scans.dispose()
+          impl.close()
         }
 
         val emdkResults = EMDKManager.getEMDKManager(ctx, impl)

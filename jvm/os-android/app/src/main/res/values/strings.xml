@@ -1,7 +1,6 @@
 <resources>
     <string name="app_name">ActyxOS</string>
     <string name="app_icon_description">ActyxOS App Icon</string>
-    <string name="action_settings">Settings</string>
     <string name="background_services_name">ActyxOS</string>
     <string name="background_services_operational_text">ActyxOS is operational.</string>
     <string name="background_services_misconfigured_text">ActyxOS is misconfigured.</string>
@@ -34,7 +33,7 @@
     <string name="license_agreement">License Agreement</string>
     <string name="app_version">App Version</string>
     <string name="website_icon">website_icon</string>
-    <string name="details_icon">details_icon</string>
+    <string name="license_details_icon">license icon</string>
     <string name="email_icon">email icon</string>
     <string name="actyxos_logo">ActyxOS Logo</string>
     <string name="compatibility">Compatibility</string>
@@ -50,12 +49,10 @@
     <string name="bandwidth_usage_2">Bandwidth Usage</string>
     <string name="device_source_id">Device Source ID</string>
     <string name="application">Application</string>
-    <string name="connectivity">connectivity</string>
-    <string name="type">type</string>
     <string name="navigate_next">navigate next</string>
     <string name="coming_soon">Coming soon!</string>
-    <string name="_continue">continue</string>
-    <string name="cancel">cancel</string>
+    <string name="_continue">Continue</string>
+    <string name="cancel">@android:string/cancel</string>
     <string name="notification_error_ssl_date_invalid">The date of the SSL certificate issued by "%1$s" is invalid.</string>
     <string name="notification_error_ssl_expired">The SSL certificate issued by "%1$s" is invalid because it is expired.</string>
     <string name="notification_error_ssl_idmismatch">The SSL certificate issued by "%1$s" is invalid because the hostname doesn\'t match.</string>
