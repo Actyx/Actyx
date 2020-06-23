@@ -166,8 +166,9 @@ export const Aggregate = {
 
 export type AnyAggregate = Aggregate<any, any>
 
-export type StateEffect<S, E> = (state: S) => ReadonlyArray<Emit<E>>
-export type SimpleStateEffect<S, E> = (state: S) => ReadonlyArray<E>
+export type EmissionRequest = ReadonlyArray<Emit<any>> | Promise<ReadonlyArray<Emit<any>>>
+
+export type StateEffect<S> = (state: S) => EmissionRequest
 
 /**
  * Cancel an ongoing aggregation (the provided callback will stop being called).
@@ -210,7 +211,7 @@ export interface PondV2 {
    * Aggregate events into state. Aggregation starts from scratch with every call to this function,
    * i.e. no caching is done whatsoever.
    *
-   * @param requiredTags We select those events which contain every one of the required tags.
+   * @param requiredTags We select those events which are marked with all of the required tags.
    * @param initialState The initial state of the aggregation.
    * @param onEvent      How to combine old state and an incoming event into new state.
    * @param callback     Function that will be called whenever a new state becomes available.
@@ -226,7 +227,7 @@ export interface PondV2 {
   /**
    * Aggregate events into state. Caching is offered based on the passed `CacheKey`.
    *
-   * @param requiredTags We select those events which contain every one of the required tags.
+   * @param requiredTags We select those events which are marked with all of the required tags.
    * @param initialState The initial state of the aggregation.
    * @param onEvent      How to combine old state and an incoming event into new state.
    * @param cacheKey     Object describing the aggregation’s identity. If an aggregation with the same
@@ -254,17 +255,46 @@ export interface PondV2 {
 
   /* CONDITIONAL EMISSION (COMMANDS) */
 
-  // Run a single Effect against the current State. Similar to sending a Command.
-  runStateEffect: <S>(agg: Aggregate<S, any>, effect: StateEffect<S, any>) => PendingEmission
+  /**
+   * Run a single Effect against the current **locally known** State of the `aggregate`.
+   * The Effect is able to consider the current State and create Events from it.
+   * Every Effect will see the Events of all previous Effects *on this aggregate* applied already!
+   *
+   * There are no serialisation guarantees whatsoever with regards to other nodes!
+   *
+   * @param aggregate    Complete aggregation information.
+   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
+   * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
+   */
+  runStateEffect: <S>(aggregate: Aggregate<S, any>, effect: StateEffect<S>) => PendingEmission
 
-  // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
+  /**
+   * Create a handle to pass StateEffects to. Functionality is the same as `runStateEffect`, only that `agg` is bound early.
+   *
+   * @param aggregate    Complete aggregation information.
+   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
+   * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
+   */
   getOrCreateCommandHandle: <S>(
     agg: Aggregate<S, any>,
-  ) => (effect: StateEffect<S, any>) => PendingEmission
+  ) => (effect: StateEffect<S>) => PendingEmission
 
-  // Fix effect targets beforehand, making it easier in the Effect to return the events.
-  getOrCreateCommandHandleFixedTags: <S, E>(
+  /**
+   * Install a StateEffect that will be applied automatically whenever the `agg`’s State has changed.
+   * Every application will see the previous one’s resulting Events applied to the State already, if applicable;
+   * but any number of intermediate States may have been skipped between two applications.
+   *
+   * The effect can be uninstalled by calling the returned `CancelSubscription`.
+   *
+   * @param aggregate    Complete aggregation information.
+   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
+   * @param autoCancel   Condition on which the automatic effect will be cancelled -- State on which `autoCancel` returns `true`
+   *                     will be the first State the effect is *not* applied to anymore.
+   * @returns            A `CancelSubscription` object that can be used to cancel the automatic effect.
+   */
+  installAutomaticEffect: <S>(
     agg: Aggregate<S, any>,
-    targets: string[],
-  ) => (effect: SimpleStateEffect<S, E>) => PendingEmission
+    effect: StateEffect<S>,
+    autoCancel?: (state: S) => boolean,
+  ) => CancelSubscription
 }

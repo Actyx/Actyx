@@ -22,13 +22,13 @@ import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
 import {
   Aggregate,
   CancelSubscription,
+  EmissionRequest,
   Emit,
   EntityId,
   Metadata,
   PendingEmission,
   PondV2,
   Reduce,
-  SimpleStateEffect,
   StateEffect,
   TagQuery,
 } from './pond-v2-types'
@@ -254,7 +254,7 @@ const pendingEmission = (o: Observable<void>): PendingEmission => ({
 
 type ActiveAggregate<S> = {
   readonly states: Observable<StateWithProvenance<S>>
-  commandPipeline?: CommandPipeline<S, ReadonlyArray<Emit<any>>>
+  commandPipeline?: CommandPipeline<S, EmissionRequest>
 }
 
 type BothPonds = Pond & PondV2
@@ -582,12 +582,22 @@ export class PondImpl implements BothPonds {
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
   getOrCreateCommandHandle = <S>(
     agg: Aggregate<S, any>,
-  ): ((effect: StateEffect<S, any>) => PendingEmission) => {
+  ): ((effect: StateEffect<S>) => PendingEmission) => {
     const cached = this.observeTagBased0(agg)
+    const handleInternal = this.getOrCreateCommandHandle0(agg, cached)
 
-    const handler = (emit: ReadonlyArray<Emit<any>>) => {
-      return this.emitTagged0(emit)
-    }
+    return effect => pendingEmission(handleInternal(effect))
+  }
+
+  private v2CommandHandler = (emit: EmissionRequest) => {
+    return Observable.from(Promise.resolve(emit)).mergeMap(x => this.emitTagged0(x))
+  }
+
+  private getOrCreateCommandHandle0 = <S>(
+    agg: Aggregate<S, any>,
+    cached: ActiveAggregate<S>,
+  ): ((effect: StateEffect<S>) => Observable<void>) => {
+    const handler = this.v2CommandHandler
 
     const subscriptionSet: SubscriptionSet = {
       type: 'tags',
@@ -596,7 +606,7 @@ export class PondImpl implements BothPonds {
 
     const commandPipeline =
       cached.commandPipeline ||
-      FishJar.commandPipeline<S, ReadonlyArray<Emit<any>>>(
+      FishJar.commandPipeline<S, EmissionRequest>(
         this.pondStateTracker,
         this.eventStore.sourceId,
         agg.entityId.entityType || Semantics.none,
@@ -619,26 +629,61 @@ export class PondImpl implements BothPonds {
           onError: (err: any) => x.error(err),
         }),
       )
+        .shareReplay(1)
+        // Subscribing on Scheduler.queue is not strictly required, but helps with dampening feedback loops
+        .subscribeOn(Scheduler.queue)
 
-      return pendingEmission(o)
+      // We just subscribe to guarantee effect application;
+      // user is responsible for handling errors on the returned object if desired.
+      o.catch(() => Observable.empty()).subscribe()
+
+      return o
     }
   }
 
-  getOrCreateCommandHandleFixedTags = <S, E>(
-    agg: Aggregate<S, any>,
-    tags: string[],
-  ): ((effect: SimpleStateEffect<S, E>) => PendingEmission) => {
-    const handle = this.getOrCreateCommandHandle(agg)
-
-    return effect => {
-      const fixedEffect = (s: S) => effect(s).map(payload => ({ tags, payload }))
-      return handle(fixedEffect)
-    }
-  }
-
-  runStateEffect = <S>(agg: Aggregate<S, any>, effect: StateEffect<S, any>): PendingEmission => {
+  runStateEffect = <S>(agg: Aggregate<S, any>, effect: StateEffect<S>): PendingEmission => {
     const handle = this.getOrCreateCommandHandle(agg)
     return handle(effect)
+  }
+
+  installAutomaticEffect = <S>(
+    agg: Aggregate<S, any>,
+    effect: StateEffect<S>,
+    autoCancel?: (state: S) => boolean,
+  ): CancelSubscription => {
+    // We use this state `cancelled` to stop effects "asap" when user code calls the cancellation function.
+    // Otherwise it might happen that we have already queued the next effect and run longer than desired.
+    let cancelled = false
+
+    const wrappedEffect = (state: S) => (cancelled ? [] : effect(state))
+
+    const cached = this.observeTagBased0(agg)
+    const states = cached.states
+    const handleInternal = this.getOrCreateCommandHandle0(agg, cached)
+
+    const tw = autoCancel
+      ? (state: S) => {
+          if (cancelled) {
+            return false
+          } else if (autoCancel(state)) {
+            cancelled = true
+            return false
+          }
+
+          return true
+        }
+      : () => !cancelled
+
+    states
+      .map(swp => swp.state)
+      .takeWhile(tw)
+      .debounceTime(0)
+      // We could also just use `do` instead of `mergeMap` (using the public API),
+      // for no real loss, but no gain either.
+      .mergeMap(() => handleInternal(wrappedEffect))
+      .subscribe()
+
+    return () => (cancelled = true)
   }
 }
 
