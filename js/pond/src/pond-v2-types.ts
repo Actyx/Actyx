@@ -83,7 +83,6 @@ export type Metadata = Readonly<{
   timestampMicros: Timestamp
   timestampAsDate: () => Date
   lamport: Lamport
-  // TODO: Add more.
 }>
 
 // Combine the existing ("old") state and next event into a new state.

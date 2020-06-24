@@ -155,11 +155,11 @@ export type Pond2 = {
   /* CONDITIONAL EMISSION (COMMANDS) */
 
   /**
-   * Run a single Effect against the current **locally known** State of the `aggregate`.
-   * The Effect is able to consider the current State and create Events from it.
+   * Run StateEffects against the current **locally known** State of the `aggregate`.
+   * The Effect is able to consider that State and create Events from it.
    * Every Effect will see the Events of all previous Effects *on this aggregate* applied already!
    *
-   * There are no serialisation guarantees whatsoever with regards to other nodes!
+   * In regards to other nodes, there are no serialisation guarantees.
    *
    * @typeParam S        State of the Aggregate, input value to the effect.
    * @typeParam EWrite   Payload type(s) to be returned by the effect.
@@ -175,7 +175,7 @@ export type Pond2 = {
   ) => PendingEmission
 
   /**
-   * Create a handle to pass StateEffects to. Functionality is the same as `runStateEffect`, only that `agg` is bound early.
+   * Curried version of `runStateEffect`.
    *
    * @typeParam S        State of the Aggregate, input value to the effect.
    * @typeParam EWrite   Payload type(s) to be returned by the effect.
@@ -185,7 +185,7 @@ export type Pond2 = {
    * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
-  getOrCreateCommandHandle: <S, EWrite, ReadBack = false>(
+  runStateEffectC: <S, EWrite, ReadBack = false>(
     agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
   ) => (effect: StateEffect<S, EWrite>) => PendingEmission
 
@@ -396,7 +396,7 @@ export class Pond2Impl implements Pond2 {
   }
 
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
-  getOrCreateCommandHandle = <S, EWrite, ReadBack = false>(
+  runStateEffectC = <S, EWrite, ReadBack = false>(
     agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
   ): ((effect: StateEffect<S, EWrite>) => PendingEmission) => {
     const cached = this.observeTagBased0(agg)
@@ -461,7 +461,7 @@ export class Pond2Impl implements Pond2 {
     agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
     effect: StateEffect<S, EWrite>,
   ): PendingEmission => {
-    const handle = this.getOrCreateCommandHandle(agg)
+    const handle = this.runStateEffectC(agg)
     return handle(effect)
   }
 
@@ -482,15 +482,15 @@ export class Pond2Impl implements Pond2 {
 
     const tw = autoCancel
       ? (state: S) => {
-        if (cancelled) {
-          return false
-        } else if (autoCancel(state)) {
-          cancelled = true
-          return false
-        }
+          if (cancelled) {
+            return false
+          } else if (autoCancel(state)) {
+            cancelled = true
+            return false
+          }
 
-        return true
-      }
+          return true
+        }
       : () => !cancelled
 
     states

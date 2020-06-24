@@ -626,7 +626,7 @@ const hydrateV2 = (
         isLocalEvent: ev.sourceId === sourceId,
         tags: ev.tags,
         timestampMicros: ev.timestamp,
-        timestampAsDate: () => Timestamp.toDate(ev.timestamp),
+        timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
         lamport: ev.lamport,
       }),
 
