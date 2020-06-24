@@ -19,6 +19,8 @@ exactly when the events happen.
 See also the [blog post on actyx.com] for a higher-level overview.
 :::
 
+[blog post on actyx.com]: https://www.actyx.com/news/2020/6/24/real-time_dashboards_and_reports_made_efficient_and_resilient
+
 ## The problem setting
 
 In a factory, people and machines work together to produce goods, for example chairs. Multiple
@@ -44,9 +46,11 @@ Computers can help obtain such an audit trail, many of the entries can even be c
 or with very little additional input from a worker like Fred. One thing we need to ensure, though,
 is that this reporting does not keep Fred nor the drill from performing their duty, the IT system
 must be as reliable as paper — while being much easier to analyse later. This is why
-[ActyxOS](http://developer.actyx.com/docs/os/introduction) uses a fully decentralised approach, recording
+[ActyxOS] uses a fully decentralised approach, recording
 the events from the table above on the edge devices and synchronising between devices whenever a
 network connection is available.
+
+[ActyxOS]: http://developer.actyx.com/docs/os/introduction
 
 ## What we want to see
 
@@ -61,7 +65,7 @@ where Fred is working:
   this production step of order 4711 once Fred says that it is finished
 
 The first part can be implemented using [Grafana](https://grafana.com/) if we keep a table in
-[postgres](https://www.postgresql.com/) up to date with one row containing the information of what
+[PostgreSQL](https://www.postgresql.com/) up to date with one row containing the information of what
 is going on per workstation (e.g. which order is being processed and since when and by whom).
 
 machine | doing what | since
