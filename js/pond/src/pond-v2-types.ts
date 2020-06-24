@@ -6,6 +6,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Lamport, Timestamp } from './types'
+import { PondCommon } from './pond-common'
 
 /*
  * POND V2 Candidate APIs
@@ -187,7 +188,7 @@ export type PendingEmission = {
   toPromise: () => Promise<void>
 }
 
-export interface PondV2 {
+export type PondV2 = {
   /* EMISSION */
 
   /**
@@ -316,4 +317,4 @@ export interface PondV2 {
     effect: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ) => CancelSubscription
-}
+} & PondCommon
