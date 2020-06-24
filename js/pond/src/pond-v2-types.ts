@@ -83,7 +83,6 @@ export type Metadata = Readonly<{
   timestampMicros: Timestamp
   timestampAsDate: () => Date
   lamport: Lamport
-  // TODO: Add more.
 }>
 
 // Combine the existing ("old") state and next event into a new state.
@@ -260,11 +259,11 @@ export interface PondV2 {
   /* CONDITIONAL EMISSION (COMMANDS) */
 
   /**
-   * Run a single Effect against the current **locally known** State of the `aggregate`.
-   * The Effect is able to consider the current State and create Events from it.
+   * Run StateEffects against the current **locally known** State of the `aggregate`.
+   * The Effect is able to consider that State and create Events from it.
    * Every Effect will see the Events of all previous Effects *on this aggregate* applied already!
    *
-   * There are no serialisation guarantees whatsoever with regards to other nodes!
+   * In regards to other nodes, there are no serialisation guarantees.
    *
    * @typeParam S        State of the Aggregate, input value to the effect.
    * @typeParam EWrite   Payload type(s) to be returned by the effect.
@@ -275,22 +274,6 @@ export interface PondV2 {
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
   runStateEffect: <S, EWrite, ReadBack = false>(
-    aggregate: Aggregate<S, ReadBack extends true ? EWrite : any>,
-    effect: StateEffect<S, EWrite>,
-  ) => PendingEmission
-
-  /**
-   * Create a handle to pass StateEffects to. Functionality is the same as `runStateEffect`, only that `agg` is bound early.
-   *
-   * @typeParam S        State of the Aggregate, input value to the effect.
-   * @typeParam EWrite   Payload type(s) to be returned by the effect.
-   * @typeParam ReadBack Whether the Aggregate itself must be able to read the emitted events.
-   *
-   * @param aggregate    Complete aggregation information.
-   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
-   * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
-   */
-  getOrCreateCommandHandle: <S, EWrite, ReadBack = false>(
     agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
   ) => (effect: StateEffect<S, EWrite>) => PendingEmission
 

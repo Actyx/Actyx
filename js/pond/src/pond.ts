@@ -580,7 +580,7 @@ export class PondImpl implements BothPonds {
   }
 
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
-  getOrCreateCommandHandle = <S, EWrite, ReadBack = false>(
+  runStateEffect = <S, EWrite, ReadBack = false>(
     agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
   ): ((effect: StateEffect<S, EWrite>) => PendingEmission) => {
     const cached = this.observeTagBased0(agg)
@@ -639,14 +639,6 @@ export class PondImpl implements BothPonds {
 
       return o
     }
-  }
-
-  runStateEffect = <S, EWrite, ReadBack = false>(
-    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
-    effect: StateEffect<S, EWrite>,
-  ): PendingEmission => {
-    const handle = this.getOrCreateCommandHandle(agg)
-    return handle(effect)
   }
 
   installAutomaticEffect = <S, EWrite, ReadBack = false>(

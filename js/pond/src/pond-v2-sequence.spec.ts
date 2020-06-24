@@ -58,13 +58,15 @@ describe('application of commands in the pond v2', () => {
     it('should run state effect, regardless of user awaiting the promise', async () => {
       const pond = await Pond.test()
 
+      const run = pond.runStateEffect(agg)
+
       // Assert it’s run even if we don’t subscribe
-      pond.runStateEffect(agg, setN(1))
+      run(setN(1))
 
       await expectState(pond, 1)
 
-      await pond.runStateEffect(agg, setN(2)).toPromise()
-      await pond.runStateEffect(agg, setN(3)).toPromise()
+      await run(setN(2)).toPromise()
+      await run(setN(3)).toPromise()
 
       await expectState(pond, 3)
 
@@ -74,13 +76,17 @@ describe('application of commands in the pond v2', () => {
     it('should propagate errors if the user subscribes', async () => {
       const pond = await Pond.test()
 
-      await expect(pond.runStateEffect(agg, setN(2)).toPromise()).rejects.toEqual(
-        new Error('expected state to be 1, but was 0'),
-      )
+      await expect(
+        pond
+          .runStateEffect(agg)(setN(2))
+          .toPromise(),
+      ).rejects.toEqual(new Error('expected state to be 1, but was 0'))
 
-      await expect(pond.runStateEffect(agg, checkN(20)).toPromise()).rejects.toEqual(
-        new Error('expected state to be 20, but was 0'),
-      )
+      await expect(
+        pond
+          .runStateEffect(agg)(checkN(20))
+          .toPromise(),
+      ).rejects.toEqual(new Error('expected state to be 20, but was 0'))
 
       await pond.dispose()
     })
@@ -88,8 +94,9 @@ describe('application of commands in the pond v2', () => {
     it('effects should wait for application of previous', async () => {
       const pond = await Pond.test()
 
+      const r = pond.runStateEffect(agg)
       for (let i = 1; i <= 1000; i++) {
-        pond.runStateEffect(agg, setN(i))
+        r(setN(i))
       }
 
       // We can tell there weren’t any errors from us having gone up all the way to 1000.
@@ -112,11 +119,17 @@ describe('application of commands in the pond v2', () => {
       await expectState(pond, 100)
 
       // Make sure the effect has stopped by manually bumping the state ourselves.
-      await pond.runStateEffect(agg, checkN(100)).toPromise()
+      await pond
+        .runStateEffect(agg)(checkN(100))
+        .toPromise()
 
-      await pond.runStateEffect(agg, setN(101)).toPromise()
+      await pond
+        .runStateEffect(agg)(setN(101))
+        .toPromise()
       await expectState(pond, 101)
-      await pond.runStateEffect(agg, checkN(101)).toPromise()
+      await pond
+        .runStateEffect(agg)(checkN(101))
+        .toPromise()
 
       await pond.dispose()
     })
@@ -180,7 +193,7 @@ describe('application of commands in the pond v2', () => {
         }
 
         pond
-          .runStateEffect(agg, effect)
+          .runStateEffect(agg)(effect)
           .toPromise()
           .then(
             () => (success = true),
@@ -210,7 +223,7 @@ describe('application of commands in the pond v2', () => {
 
       await expectState(pond, 1)
 
-      pond.runStateEffect(agg, setN(2))
+      pond.runStateEffect(agg)(setN(2))
 
       // Bumped up to 3 already
       await expectState(pond, 3)
@@ -263,7 +276,7 @@ describe('application of commands in the pond v2', () => {
       await expectState(pond, 1)
       cancel()
 
-      pond.runStateEffect(agg, setN(2))
+      pond.runStateEffect(agg)(setN(2))
 
       await expectState(pond, 2)
 
