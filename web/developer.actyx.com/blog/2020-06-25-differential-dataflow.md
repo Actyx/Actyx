@@ -24,7 +24,7 @@ See also the [blog post on actyx.com] for a higher-level overview.
 ## The problem setting
 
 In a factory, people and machines work together to produce goods, for example chairs. Multiple
-intermediate products like the legs need to be manufactured before the chair can be assembled, where
+intermediate products like legs need to be manufactured before the chair can be assembled, where
 each piece is created and refined over a series of process steps at different workstations. Two
 obvious questions for shop-floor personnel are: what is currently going on, and how much time has it
 taken for the various people and machines to produce a given batch of chairs. These questions are
