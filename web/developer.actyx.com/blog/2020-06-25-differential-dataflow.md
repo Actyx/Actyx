@@ -199,7 +199,7 @@ again. While this sounds wasteful, it has two important advantages:
 We’ll get back to the question of long-running inputs below.
 :::
 
-To this end, it is often useful to introduce intermediate structures like `Excerpt` in the eample
+To this end, it is often useful to introduce intermediate structures like `Excerpt` in the example
 above. Besides giving useful names to its fields, it also provides the necessary sort ordering so
 that the inputs are presented in causal order: we need to see effects after their cause, concretely
 we need to see the machine stop after it has started. Sorting by normal timestamp does not always
