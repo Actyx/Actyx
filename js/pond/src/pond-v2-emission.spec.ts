@@ -4,9 +4,9 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Aggregate, Pond2, PondV2, TagQuery } from '.'
+import { Aggregate, Pond2, TagQuery } from '.'
 
-const stateAsPromise = (pond: PondV2, tags: TagQuery) =>
+const stateAsPromise = (pond: Pond2, tags: TagQuery) =>
   new Promise((resolve, _reject) => pond.aggregate(Aggregate.eventsAscending(tags), resolve))
 
 describe('application of commands in the pond', () => {

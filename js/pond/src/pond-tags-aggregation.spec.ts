@@ -1,7 +1,7 @@
 import { Observable } from 'rxjs'
-import { Aggregate, Pond2, PondV2, TagQuery } from '.'
+import { Aggregate, Pond2, TagQuery } from '.'
 
-const emitTestEvents = async (pond: PondV2) =>
+const emitTestEvents = async (pond: Pond2) =>
   pond
     .emitEvents(
       { tags: ['t0', 't1', 't2'], payload: 'hello' },
@@ -11,7 +11,7 @@ const emitTestEvents = async (pond: PondV2) =>
     )
     .toPromise()
 
-const assertStateAndDispose = async <S>(states: Observable<S>, expected: S, pond: PondV2) => {
+const assertStateAndDispose = async <S>(states: Observable<S>, expected: S, pond: Pond2) => {
   const res = states
     .debounceTime(5)
     .take(1)
@@ -23,7 +23,7 @@ const assertStateAndDispose = async <S>(states: Observable<S>, expected: S, pond
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const aggregateAsObservable = <S>(pond: PondV2, agg: Aggregate<S, any>): Observable<S> =>
+const aggregateAsObservable = <S>(pond: Pond2, agg: Aggregate<S, any>): Observable<S> =>
   new Observable(x => {
     pond.aggregate(agg, s => x.next(s))
   })

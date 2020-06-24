@@ -16,6 +16,7 @@ import { mkMultiplexer } from './eventstore/utils'
 import { getSourceId } from './eventstore/websocketEventStore'
 import { CommandPipeline, FishJar } from './fishJar'
 import log from './loggers'
+import { PondCommon } from './pond-common'
 import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
 import {
   Aggregate,
@@ -25,7 +26,6 @@ import {
   EntityId,
   Metadata,
   PendingEmission,
-  PondV2,
   Reduce,
   StateEffect,
   TagQuery,
@@ -82,7 +82,138 @@ type ActiveAggregate<S> = {
   commandPipeline?: CommandPipeline<S, EmissionRequest<any>>
 }
 
-export class Pond2Impl implements PondV2 {
+export type Pond2 = {
+  /* EMISSION */
+
+  /**
+   * Emit a single event directly.
+   *
+   * @param tags    Tags to attach to the event.
+   * @param payload The event payload.
+   * @returns       A `PendingEmission` object that can be used to register
+   *                callbacks with the emission’s completion.
+   */
+  emitEvent(tags: string[], payload: unknown): PendingEmission
+
+  /**
+   * Emit a number of events at once.
+   *
+   * @param emit    The events to be emitted, expressed as objects containing `tags` and `payload`.
+   * @returns       A `PendingEmission` object that can be used to register
+   *                callbacks with the emission’s completion.
+   */
+  emitEvents(...emit: ReadonlyArray<Emit<any>>): PendingEmission
+
+  /* AGGREGATION */
+
+  /**
+   * Aggregate events into state. Aggregation starts from scratch with every call to this function,
+   * i.e. no caching is done whatsoever.
+   *
+   * @param requiredTags We select those events which are marked with all of the required tags.
+   * @param initialState The initial state of the aggregation.
+   * @param onEvent      How to combine old state and an incoming event into new state.
+   * @param callback     Function that will be called whenever a new state becomes available.
+   * @returns            A function that can be called in order to cancel the aggregation.
+   */
+  aggregateUncached<S, E>(
+    requiredTags: ReadonlyArray<string>,
+    initialState: S,
+    onEvent: (state: S, event: E) => S,
+    callback: (newState: S) => void,
+  ): CancelSubscription
+
+  /**
+   * Aggregate events into state. Caching is offered based on the passed `CacheKey`.
+   *
+   * @param requiredTags We select those events which are marked with all of the required tags.
+   * @param initialState The initial state of the aggregation.
+   * @param onEvent      How to combine old state and an incoming event into new state.
+   * @param cacheKey     Object describing the aggregation’s identity. If an aggregation with the same
+   *                     identity is already running, that one will be returned rather than everything
+   *                     started a second time.
+   * @param callback     Function that will be called whenever a new state becomes available.
+   * @returns            A function that can be called in order to cancel the aggregation.
+   */
+  aggregatePlain<S, E>(
+    requiredTags: ReadonlyArray<string>,
+    initialState: S,
+    onEvent: (state: S, event: E) => S,
+    entityId: EntityId,
+    callback: (newState: S) => void,
+  ): CancelSubscription
+
+  /**
+   * Aggregate events into state. Caching is done based on the `cacheKey` inside the `aggregate`.
+   *
+   * @param aggregate    Complete aggregation information.
+   * @param callback     Function that will be called whenever a new state becomes available.
+   * @returns            A function that can be called in order to cancel the aggregation.
+   */
+  aggregate<S, E>(aggregate: Aggregate<S, E>, callback: (newState: S) => void): CancelSubscription
+
+  /* CONDITIONAL EMISSION (COMMANDS) */
+
+  /**
+   * Run a single Effect against the current **locally known** State of the `aggregate`.
+   * The Effect is able to consider the current State and create Events from it.
+   * Every Effect will see the Events of all previous Effects *on this aggregate* applied already!
+   *
+   * There are no serialisation guarantees whatsoever with regards to other nodes!
+   *
+   * @typeParam S        State of the Aggregate, input value to the effect.
+   * @typeParam EWrite   Payload type(s) to be returned by the effect.
+   * @typeParam ReadBack Whether the Aggregate itself must be able to read the emitted events.
+   *
+   * @param aggregate    Complete aggregation information.
+   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
+   * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
+   */
+  runStateEffect: <S, EWrite, ReadBack = false>(
+    aggregate: Aggregate<S, ReadBack extends true ? EWrite : any>,
+    effect: StateEffect<S, EWrite>,
+  ) => PendingEmission
+
+  /**
+   * Create a handle to pass StateEffects to. Functionality is the same as `runStateEffect`, only that `agg` is bound early.
+   *
+   * @typeParam S        State of the Aggregate, input value to the effect.
+   * @typeParam EWrite   Payload type(s) to be returned by the effect.
+   * @typeParam ReadBack Whether the Aggregate itself must be able to read the emitted events.
+   *
+   * @param aggregate    Complete aggregation information.
+   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
+   * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
+   */
+  getOrCreateCommandHandle: <S, EWrite, ReadBack = false>(
+    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
+  ) => (effect: StateEffect<S, EWrite>) => PendingEmission
+
+  /**
+   * Install a StateEffect that will be applied automatically whenever the `agg`’s State has changed.
+   * Every application will see the previous one’s resulting Events applied to the State already, if applicable;
+   * but any number of intermediate States may have been skipped between two applications.
+   *
+   * The effect can be uninstalled by calling the returned `CancelSubscription`.
+   *
+   * @typeParam S        State of the Aggregate, input value to the effect.
+   * @typeParam EWrite   Payload type(s) to be returned by the effect.
+   * @typeParam ReadBack Whether the Aggregate must be able to read the emitted events.
+   *
+   * @param aggregate    Complete aggregation information.
+   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
+   * @param autoCancel   Condition on which the automatic effect will be cancelled -- State on which `autoCancel` returns `true`
+   *                     will be the first State the effect is *not* applied to anymore.
+   * @returns            A `CancelSubscription` object that can be used to cancel the automatic effect.
+   */
+  installAutomaticEffect: <S, EWrite, ReadBack = false>(
+    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
+    effect: StateEffect<S, EWrite>,
+    autoCancel?: (state: S) => boolean,
+  ) => CancelSubscription
+} & PondCommon
+
+export class Pond2Impl implements Pond2 {
   readonly hydrateV2: <S, E>(
     subscriptionSet: SubscriptionSet,
     initialState: S,
@@ -402,18 +533,18 @@ const createServices = async (multiplexer: MultiplexedWebsocket): Promise<Servic
 const mkPond = async (
   multiplexer: MultiplexedWebsocket,
   opts: PondOptions = {},
-): Promise<PondV2> => {
+): Promise<Pond2> => {
   const services = await createServices(multiplexer || mkMultiplexer())
   return pondFromServices(services, opts)
 }
 
-const mkMockPond = async (opts?: PondOptions): Promise<PondV2> => {
+const mkMockPond = async (opts?: PondOptions): Promise<Pond2> => {
   const opts1: PondOptions = opts || {}
   const services = mockSetup()
   return pondFromServices(services, opts1)
 }
 
-type TestPond2 = PondV2 & {
+export type TestPond2 = Pond2 & {
   directlyPushEvents: (events: Events) => void
   eventStore: TestEventStore
 }
@@ -428,7 +559,7 @@ const mkTestPond = async (opts?: PondOptions): Promise<TestPond2> => {
     eventStore,
   }
 }
-const pondFromServices = (services: Services, opts: PondOptions): PondV2 => {
+const pondFromServices = (services: Services, opts: PondOptions): Pond2 => {
   const { eventStore, snapshotStore, commandInterface } = services
 
   const monitoring = Monitoring.of(commandInterface, 10000)
@@ -448,7 +579,7 @@ const pondFromServices = (services: Services, opts: PondOptions): PondV2 => {
 }
 
 export const Pond2 = {
-  default: async (): Promise<PondV2> => Pond2.of(mkMultiplexer()),
+  default: async (): Promise<Pond2> => Pond2.of(mkMultiplexer()),
   of: mkPond,
   mock: mkMockPond,
   test: mkTestPond,

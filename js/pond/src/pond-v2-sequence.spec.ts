@@ -5,7 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { Pond2 } from './pond-v2'
-import { Aggregate, PondV2, Reduce, StateEffect, TagQuery } from './pond-v2-types'
+import { Aggregate, Reduce, StateEffect, TagQuery } from './pond-v2-types'
 
 export type State = { n: number; fill: number }
 
@@ -54,7 +54,7 @@ const checkN: (expected: number) => StateEffect<State, never> = expected => stat
 }
 
 describe('application of commands in the pond v2', () => {
-  const expectState = (pond: PondV2, expected: number, aggr = agg): Promise<State> =>
+  const expectState = (pond: Pond2, expected: number, aggr = agg): Promise<State> =>
     new Promise((resolve, _reject) =>
       pond.aggregate(aggr, state => state.n === expected && resolve(state)),
     )
