@@ -5,6 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { Lamport, Timestamp } from './types'
 
 /*
  * POND V2 Candidate APIs
@@ -79,6 +80,9 @@ export type Emit<E> = {
 export type Metadata = Readonly<{
   isLocalEvent: boolean
   tags: ReadonlyArray<string>
+  timestampMicros: Timestamp
+  timestampAsDate: () => Date
+  lamport: Lamport
   // TODO: Add more.
 }>
 
@@ -166,9 +170,9 @@ export const Aggregate = {
 
 export type AnyAggregate = Aggregate<any, any>
 
-export type EmissionRequest = ReadonlyArray<Emit<any>> | Promise<ReadonlyArray<Emit<any>>>
+export type EmissionRequest<E> = ReadonlyArray<Emit<E>> | Promise<ReadonlyArray<Emit<E>>>
 
-export type StateEffect<S> = (state: S) => EmissionRequest
+export type StateEffect<S, EWrite> = (state: S) => EmissionRequest<EWrite>
 
 /**
  * Cancel an ongoing aggregation (the provided callback will stop being called).
@@ -262,22 +266,33 @@ export interface PondV2 {
    *
    * There are no serialisation guarantees whatsoever with regards to other nodes!
    *
-   * @param aggregate    Complete aggregation information.
-   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
-   * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
-   */
-  runStateEffect: <S>(aggregate: Aggregate<S, any>, effect: StateEffect<S>) => PendingEmission
-
-  /**
-   * Create a handle to pass StateEffects to. Functionality is the same as `runStateEffect`, only that `agg` is bound early.
+   * @typeParam S        State of the Aggregate, input value to the effect.
+   * @typeParam EWrite   Payload type(s) to be returned by the effect.
+   * @typeParam ReadBack Whether the Aggregate itself must be able to read the emitted events.
    *
    * @param aggregate    Complete aggregation information.
    * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
-  getOrCreateCommandHandle: <S>(
-    agg: Aggregate<S, any>,
-  ) => (effect: StateEffect<S>) => PendingEmission
+  runStateEffect: <S, EWrite, ReadBack = false>(
+    aggregate: Aggregate<S, ReadBack extends true ? EWrite : any>,
+    effect: StateEffect<S, EWrite>,
+  ) => PendingEmission
+
+  /**
+   * Create a handle to pass StateEffects to. Functionality is the same as `runStateEffect`, only that `agg` is bound early.
+   *
+   * @typeParam S        State of the Aggregate, input value to the effect.
+   * @typeParam EWrite   Payload type(s) to be returned by the effect.
+   * @typeParam ReadBack Whether the Aggregate itself must be able to read the emitted events.
+   *
+   * @param aggregate    Complete aggregation information.
+   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
+   * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
+   */
+  getOrCreateCommandHandle: <S, EWrite, ReadBack = false>(
+    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
+  ) => (effect: StateEffect<S, EWrite>) => PendingEmission
 
   /**
    * Install a StateEffect that will be applied automatically whenever the `agg`’s State has changed.
@@ -286,15 +301,19 @@ export interface PondV2 {
    *
    * The effect can be uninstalled by calling the returned `CancelSubscription`.
    *
+   * @typeParam S        State of the Aggregate, input value to the effect.
+   * @typeParam EWrite   Payload type(s) to be returned by the effect.
+   * @typeParam ReadBack Whether the Aggregate must be able to read the emitted events.
+   *
    * @param aggregate    Complete aggregation information.
    * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
    * @param autoCancel   Condition on which the automatic effect will be cancelled -- State on which `autoCancel` returns `true`
    *                     will be the first State the effect is *not* applied to anymore.
    * @returns            A `CancelSubscription` object that can be used to cancel the automatic effect.
    */
-  installAutomaticEffect: <S>(
-    agg: Aggregate<S, any>,
-    effect: StateEffect<S>,
+  installAutomaticEffect: <S, EWrite, ReadBack = false>(
+    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
+    effect: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ) => CancelSubscription
 }

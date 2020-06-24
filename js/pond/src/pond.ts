@@ -254,7 +254,7 @@ const pendingEmission = (o: Observable<void>): PendingEmission => ({
 
 type ActiveAggregate<S> = {
   readonly states: Observable<StateWithProvenance<S>>
-  commandPipeline?: CommandPipeline<S, EmissionRequest>
+  commandPipeline?: CommandPipeline<S, EmissionRequest<any>>
 }
 
 type BothPonds = Pond & PondV2
@@ -580,23 +580,23 @@ export class PondImpl implements BothPonds {
   }
 
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
-  getOrCreateCommandHandle = <S>(
-    agg: Aggregate<S, any>,
-  ): ((effect: StateEffect<S>) => PendingEmission) => {
+  getOrCreateCommandHandle = <S, EWrite, ReadBack = false>(
+    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
+  ): ((effect: StateEffect<S, EWrite>) => PendingEmission) => {
     const cached = this.observeTagBased0(agg)
     const handleInternal = this.getOrCreateCommandHandle0(agg, cached)
 
     return effect => pendingEmission(handleInternal(effect))
   }
 
-  private v2CommandHandler = (emit: EmissionRequest) => {
+  private v2CommandHandler = (emit: EmissionRequest<unknown>) => {
     return Observable.from(Promise.resolve(emit)).mergeMap(x => this.emitTagged0(x))
   }
 
-  private getOrCreateCommandHandle0 = <S>(
-    agg: Aggregate<S, any>,
+  private getOrCreateCommandHandle0 = <S, EWrite, ReadBack = false>(
+    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
     cached: ActiveAggregate<S>,
-  ): ((effect: StateEffect<S>) => Observable<void>) => {
+  ): ((effect: StateEffect<S, EWrite>) => Observable<void>) => {
     const handler = this.v2CommandHandler
 
     const subscriptionSet: SubscriptionSet = {
@@ -606,7 +606,7 @@ export class PondImpl implements BothPonds {
 
     const commandPipeline =
       cached.commandPipeline ||
-      FishJar.commandPipeline<S, EmissionRequest>(
+      FishJar.commandPipeline<S, EmissionRequest<any>>(
         this.pondStateTracker,
         this.eventStore.sourceId,
         agg.entityId.entityType || Semantics.none,
@@ -641,14 +641,17 @@ export class PondImpl implements BothPonds {
     }
   }
 
-  runStateEffect = <S>(agg: Aggregate<S, any>, effect: StateEffect<S>): PendingEmission => {
+  runStateEffect = <S, EWrite, ReadBack = false>(
+    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
+    effect: StateEffect<S, EWrite>,
+  ): PendingEmission => {
     const handle = this.getOrCreateCommandHandle(agg)
     return handle(effect)
   }
 
-  installAutomaticEffect = <S>(
-    agg: Aggregate<S, any>,
-    effect: StateEffect<S>,
+  installAutomaticEffect = <S, EWrite, ReadBack = false>(
+    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
+    effect: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ): CancelSubscription => {
     // We use this state `cancelled` to stop effects "asap" when user code calls the cancellation function.

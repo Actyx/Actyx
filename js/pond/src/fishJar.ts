@@ -625,6 +625,9 @@ const hydrateV2 = (
       onEvent(state, ev.payload as E, {
         isLocalEvent: ev.sourceId === sourceId,
         tags: ev.tags,
+        timestampMicros: ev.timestamp,
+        timestampAsDate: () => Timestamp.toDate(ev.timestamp),
+        lamport: ev.lamport,
       }),
 
     isSemanticSnapshot: isReset ? envelope => isReset(envelope.payload) : undefined,

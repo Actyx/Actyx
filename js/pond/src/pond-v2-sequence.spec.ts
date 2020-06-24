@@ -4,7 +4,9 @@ import { Aggregate, PondV2, Reduce, StateEffect, TagQuery } from './pond-v2-type
 
 export type State = { n: number; fill: number }
 
-export type Payload = { type: 'set'; n: number } | { type: 'fill' }
+type CompareAndIncrement = { type: 'set'; n: number }
+type Fill = { type: 'fill' }
+export type Payload = CompareAndIncrement | Fill
 
 const onEvent: Reduce<State, Payload> = (state: State, event: Payload) => {
   if (event.type === 'fill') {
@@ -30,7 +32,7 @@ const agg: Aggregate<State, Payload> = {
   entityId: { name: 'sequence-test' },
 }
 
-const setN: (n: number) => StateEffect<State> = n => state => {
+const setN: (n: number) => StateEffect<State, CompareAndIncrement> = n => state => {
   if (state.n !== n - 1) {
     throw new Error(`expected state to be ${n - 1}, but was ${state.n}`)
   }
@@ -39,7 +41,7 @@ const setN: (n: number) => StateEffect<State> = n => state => {
   return [{ tags: ['self'], payload }]
 }
 
-const checkN: (expected: number) => StateEffect<State> = expected => state => {
+const checkN: (expected: number) => StateEffect<State, never> = expected => state => {
   if (state.n !== expected) {
     throw new Error(`expected state to be ${expected}, but was ${state.n}`)
   }
@@ -98,14 +100,14 @@ describe('application of commands in the pond v2', () => {
   })
 
   describe('automatic effects', () => {
-    const autoBump: StateEffect<State> = state => [
+    const autoBump: StateEffect<State, CompareAndIncrement> = state => [
       { tags: ['self'], payload: { type: 'set', n: state.n + 1 } },
     ]
 
     it('should run until cancellation condition', async () => {
       const pond = await Pond.test()
 
-      pond.installAutomaticEffect<State>(agg, autoBump, (state: State) => state.n === 100)
+      pond.installAutomaticEffect(agg, autoBump, (state: State) => state.n === 100)
 
       await expectState(pond, 100)
 
@@ -122,7 +124,7 @@ describe('application of commands in the pond v2', () => {
     it('should respect sequence also when effect async', async () => {
       const pond = await Pond.test()
 
-      const delayedBump: StateEffect<State> = state =>
+      const delayedBump: StateEffect<State, Payload> = state =>
         new Promise((resolve, _reject) =>
           setTimeout(
             () => resolve([{ tags: ['self'], payload: { type: 'set', n: state.n + 1 } }]),
@@ -132,7 +134,7 @@ describe('application of commands in the pond v2', () => {
 
       const stateIs10 = expectState(pond, 10)
 
-      const c = pond.installAutomaticEffect<State>(agg, delayedBump)
+      const c = pond.installAutomaticEffect(agg, delayedBump)
 
       await stateIs10
 
@@ -143,7 +145,7 @@ describe('application of commands in the pond v2', () => {
     it('should wait for the actual effect’s events to be processed, ignore other events that may come in', async () => {
       const pond = await Pond.test()
 
-      pond.installAutomaticEffect<State>(agg, autoBump, (state: State) => state.n === 40)
+      pond.installAutomaticEffect(agg, autoBump, (state: State) => state.n === 40)
 
       const emitFill = () => pond.emitEvent(['self'], { type: 'fill' })
 
@@ -161,7 +163,7 @@ describe('application of commands in the pond v2', () => {
     it('should run parallel to user effects', async () => {
       const pond = await Pond.test()
 
-      pond.installAutomaticEffect<State>(
+      pond.installAutomaticEffect(
         agg,
         // We skip increasing 5, depend on our manual calls to do it.
         state =>
@@ -198,13 +200,13 @@ describe('application of commands in the pond v2', () => {
     })
 
     // Bump only even numbers
-    const bumpEven: StateEffect<State> = state =>
+    const bumpEven: StateEffect<State, CompareAndIncrement> = state =>
       state.n % 2 === 0 ? [{ tags: ['self'], payload: { type: 'set', n: state.n + 1 } }] : []
 
     it('should run parallel to user effects 2', async () => {
       const pond = await Pond.test()
 
-      pond.installAutomaticEffect<State>(agg, bumpEven)
+      pond.installAutomaticEffect<State, Payload, CompareAndIncrement>(agg, bumpEven)
 
       await expectState(pond, 1)
 
@@ -222,12 +224,12 @@ describe('application of commands in the pond v2', () => {
 
       const stateIs15 = expectState(pond, 15)
 
-      const mk = (remainder: number): StateEffect<State> => state =>
+      const mk = (remainder: number): StateEffect<State, Payload> => state =>
         state.n % 3 === remainder ? [{ tags, payload: { type: 'set', n: state.n + 1 } }] : []
 
-      pond.installAutomaticEffect<State>(agg, mk(0), s => s.n === 20)
-      pond.installAutomaticEffect<State>(agg, mk(1), s => s.n === 20)
-      pond.installAutomaticEffect<State>(agg, mk(2), s => s.n === 20)
+      pond.installAutomaticEffect(agg, mk(0), s => s.n === 20)
+      pond.installAutomaticEffect(agg, mk(1), s => s.n === 20)
+      pond.installAutomaticEffect(agg, mk(2), s => s.n === 20)
 
       await stateIs15
       await expectState(pond, 20)
@@ -239,14 +241,14 @@ describe('application of commands in the pond v2', () => {
       const pond = await Pond.test()
       const tags = ['self']
 
-      const mk = (remainder: number): StateEffect<State> => state =>
+      const mk = (remainder: number): StateEffect<State, Payload> => state =>
         state.n % 3 === remainder
           ? [{ tags, payload: { type: 'set', n: state.n + 1 } }]
           : [{ tags, payload: { type: 'fill' } }, { tags, payload: { type: 'fill' } }]
 
-      pond.installAutomaticEffect<State>(agg, mk(0), s => s.n === 10)
-      pond.installAutomaticEffect<State>(agg, mk(1), s => s.n === 10)
-      pond.installAutomaticEffect<State>(agg, mk(2), s => s.n === 10)
+      pond.installAutomaticEffect(agg, mk(0), s => s.n === 10)
+      pond.installAutomaticEffect(agg, mk(1), s => s.n === 10)
+      pond.installAutomaticEffect(agg, mk(2), s => s.n === 10)
 
       await expectState(pond, 10)
 
@@ -256,7 +258,7 @@ describe('application of commands in the pond v2', () => {
     it('should be cancellable', async () => {
       const pond = await Pond.test()
 
-      const cancel = pond.installAutomaticEffect<State>(agg, bumpEven)
+      const cancel = pond.installAutomaticEffect(agg, bumpEven)
 
       await expectState(pond, 1)
       cancel()
@@ -271,7 +273,7 @@ describe('application of commands in the pond v2', () => {
     it('should be cancellable pretty swiftly', async () => {
       const pond = await Pond.test()
 
-      const cancel = pond.installAutomaticEffect<State>(agg, autoBump)
+      const cancel = pond.installAutomaticEffect(agg, autoBump)
 
       // This is only really reliable as long as we debounce the automatic effect.
       pond.aggregate(agg, state => state.n > 1000 && cancel())
@@ -301,13 +303,13 @@ describe('application of commands in the pond v2', () => {
 
       const stateIs30 = expectState(pond, 30, beta)
 
-      const c0 = pond.installAutomaticEffect<State>(alpha, state => [
+      const c0 = pond.installAutomaticEffect<State, CompareAndIncrement, true>(alpha, state => [
         { tags: ['beta'], payload: { type: 'set', n: state.n + 1 } },
       ])
 
       await expectState(pond, 1, beta)
 
-      const c1 = pond.installAutomaticEffect<State>(beta, state => [
+      const c1 = pond.installAutomaticEffect(beta, state => [
         { tags: ['alpha'], payload: { type: 'set', n: state.n } },
       ])
 
