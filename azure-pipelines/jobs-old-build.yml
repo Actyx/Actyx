@@ -142,8 +142,8 @@ jobs:
           DOCKER_TAG: 'musl-x64'
         mssqlpoller-x64:
           DOCKER_TAG: 'mssqlpoller-x64'
-        awcli-x64:
-          DOCKER_TAG: 'awcli-x64'
+        opscli-x64:
+          DOCKER_TAG: 'opscli-x64'
         tamshot-x64:
           DOCKER_TAG: 'tamshot-x64'
     steps:

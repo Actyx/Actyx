@@ -6,15 +6,15 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.*
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
+import com.actyx.os.android.R
+import com.actyx.os.android.util.Logger
 import kotlinx.android.synthetic.main.fragment_webview.view.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationStrategy
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
-
-import com.actyx.os.android.R
-import com.actyx.os.android.util.Logger
 
 @Serializable
 data class SwipedCardData(val cardId: String, val provenance: String)
@@ -99,7 +99,28 @@ class WebViewFragment : Fragment() {
       handler: SslErrorHandler,
       error: SslError
     ) {
-      handler.proceed()
+      val sslErrorMsg = {
+        val msgId = when (error.primaryError) {
+          SslError.SSL_DATE_INVALID -> R.string.notification_error_ssl_date_invalid
+          SslError.SSL_EXPIRED -> R.string.notification_error_ssl_expired
+          SslError.SSL_IDMISMATCH -> R.string.notification_error_ssl_idmismatch
+          SslError.SSL_INVALID -> R.string.notification_error_ssl_invalid
+          SslError.SSL_NOTYETVALID -> R.string.notification_error_ssl_not_yet_valid
+          SslError.SSL_UNTRUSTED -> R.string.notification_error_ssl_untrusted
+          else -> throw IllegalArgumentException()
+        }
+        String.format(
+          resources.getString(msgId),
+          error.certificate.issuedBy.oName
+        )
+      }
+
+      val dialog = AlertDialog.Builder(requireActivity())
+        .setMessage(sslErrorMsg())
+        .setPositiveButton(R.string._continue) { _, _ -> handler.proceed() }
+        .setNegativeButton(R.string.cancel) { _, _ -> handler.cancel() }
+        .create()
+      dialog.show()
     }
 
     override fun onPageFinished(view: WebView, url: String) {

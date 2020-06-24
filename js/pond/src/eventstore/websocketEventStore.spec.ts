@@ -31,6 +31,7 @@ describe('websocketEventStore', () => {
   const jellyFishEvent = () => ({
     name: FishName.of('testFish'),
     payload: { type: 'empty' },
+    tags: [],
     semantics: Semantics.jelly('ax.Test'),
     timestamp: Timestamp.now(),
   })

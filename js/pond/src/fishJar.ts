@@ -6,6 +6,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import * as R from 'ramda'
+import { clone } from 'ramda'
 import { Observable, ReplaySubject, Scheduler, Subject, Subscription as RxSubscription } from 'rxjs'
 import { catchError, tap } from 'rxjs/operators'
 import {
@@ -19,18 +20,28 @@ import {
   StateEffect,
 } from '.'
 import { EventStore } from './eventstore'
-import { AllEventsSortOrders, Event, OffsetMap } from './eventstore/types'
+import { AllEventsSortOrders, Event, Events, OffsetMap } from './eventstore/types'
 import { intoOrderedChunks } from './eventstore/utils'
 import { CommandExecutor } from './executors/commandExecutor'
 import { FishEventStore, FishInfo } from './fishEventStore'
 import log from './loggers'
 import { SendToStore } from './pond'
 import { PondStateTracker } from './pond-state'
+import { EntityId, Metadata } from './pond-v2-types'
 import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
-import { EnvelopeFromStore } from './store/util'
-import { Subscription, SubscriptionSet, subscriptionsToEnvelopePredicate } from './subscription'
-import { ObserveMethod, Psn, Semantics, StateWithProvenance, Timestamp } from './types'
+import { Subscription, SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
+import {
+  AsyncCommandResult,
+  ObserveMethod,
+  Psn,
+  Semantics,
+  SnapshotFormat,
+  SourceId,
+  StateWithProvenance,
+  SyncCommandResult,
+  Timestamp,
+} from './types'
 import { lookup, noop } from './util'
 import { runStats } from './util/runStats'
 
@@ -45,6 +56,10 @@ export const mkSubscriptionSet = (source: Source, subscriptions?: ReadonlyArray<
   return SubscriptionSet.or(subscriptions1)
 }
 
+// I is an intermediate value that is consumed by the specialized command handling logic.
+// Pond V1 has Async vs. SyncCommandResult, while V2 has Payload+Tags.
+export type CommandFn<S, I> = (state: S) => I
+
 export type FishJar<C, E, P> = Readonly<{
   // enqueue the commands for processing
   enqueueCommand: (command: C, onComplete: () => void, onError: (err: any) => void) => void
@@ -57,9 +72,9 @@ export type FishJar<C, E, P> = Readonly<{
   dump: () => string
 }>
 
-type CommandInput<C> = Readonly<{
+type CommandInput<S, I> = Readonly<{
   type: 'command'
-  command: C
+  command: CommandFn<S, I>
   onComplete: () => void
   onError: (err: any) => void
 }>
@@ -73,76 +88,21 @@ type EventScanState<S, E> = Readonly<{
   emit: ReadonlyArray<StateWithProvenance<S>>
 }>
 
-type CommandScanState = Readonly<{
-  waitFor: Psn
-}>
-
-const createFishJar = <S, C, E, P>(
-  source: Source,
-  subscriptions: SubscriptionSet,
-  fish: FishTypeImpl<S, C, E, P>,
-  store: FishEventStore<S, E>,
-  storeState: StateWithProvenance<S>,
-  observe: ObserveMethod, // observe other fishes
-  sendToStore: SendToStore, // send chunk to store
-  realtimeEvents: (
-    filter: SubscriptionSet,
-    from: OffsetMap,
-  ) => Observable<ReadonlyArray<EnvelopeFromStore<E>>>, // get realtime events
-  commandExecutor: CommandExecutor, // for async effects
-  offsetMap: OffsetMap,
+const mkEventScanAcc = <S, E>(
   pondStateTracker: PondStateTracker,
-): FishJar<C, E, P> => {
-  // does this even have to be a subject?
-  const eventsIn = realtimeEvents(subscriptions, offsetMap)
-  const commandIn: Subject<CommandInput<C>> = new Subject()
-  const publicSubject: Subject<P> = new ReplaySubject<P>(1)
-  const stateSubject = new ReplaySubject<StateWithProvenance<S>>(1)
-  const privateStateOut = stateSubject.map(sp => sp.state)
-  const pondObservables: PondObservables<S> = {
-    observe,
-    observeSelf: () => privateStateOut,
-  }
-
-  const eventFilter = subscriptionsToEnvelopePredicate(subscriptions)
-
-  // Initial state for the mergeScan pipeline - this is the state of the Jar right after replay from FishEventStore
-  const mergeScanSeed: EventScanState<S, E> = {
-    eventStore: store,
-    emit: [storeState],
-  }
-
-  const enqueueSelfCommand = (command: C): void =>
-    commandIn.next({
-      type: 'command',
-      command,
-      onComplete: noop,
-      onError: noop,
-    })
-
-  // this does not return an observable, because it is fully synchronous and nothing can fail.
-  const runStateEffect = (effect: StateEffect<C, P>): ReadonlyArray<P> => {
-    switch (effect.type) {
-      case 'sendSelfCommand': {
-        enqueueSelfCommand(effect.command)
-        return []
-      }
-      case 'publish': {
-        return [effect.state]
-      }
-    }
-  }
-
+  semantics: Semantics,
+  name: FishName,
+) => {
   // Aggregate incoming events into ever-new states.
   // We reveal the Provenance too, so that downstream consumers can implement specialized logic.
   const evScanAcc = (
     current: EventScanState<S, E>,
-    events: ReadonlyArray<EnvelopeFromStore<E>>,
+    events: Events,
   ): Observable<EventScanState<S, E>> => {
     const start = Timestamp.now()
     const pondStateTrackerEventProcessingToken = pondStateTracker.eventsFromOtherSourcesProcessingStarted(
-      source.semantics,
-      source.name,
+      semantics,
+      name,
     )
 
     const unblock = () =>
@@ -151,7 +111,7 @@ const createFishJar = <S, C, E, P>(
       )
 
     try {
-      const profile = `inject-events/${fish.semantics}`
+      const profile = `inject-events/${semantics}`
 
       runStats.durations.start(profile, start)
       const needsState = current.eventStore.processEvents(events)
@@ -160,7 +120,7 @@ const createFishJar = <S, C, E, P>(
       const result = needsState
         ? current.eventStore
             .currentState()
-            .pipe(runStats.profile.profileObservable(`inject-compute/${fish.semantics}`))
+            .pipe(runStats.profile.profileObservable(`inject-compute/${semantics}`))
             .map(s => ({
               ...current,
               emit: [s],
@@ -181,24 +141,31 @@ const createFishJar = <S, C, E, P>(
     }
   }
 
-  // executes effects and returns a promise of the produced events
-  const handleAsyncCommandResult = (command: C) => (ar: CommandApi<ReadonlyArray<E>>) =>
-    Observable.fromPromise(commandExecutor(ar))
-      .concatMap(events => {
-        // do not process events if undefined, log only
-        if (events === undefined) {
-          log.pond.error('undefined commandResult', command, 'ar', ar)
-          // TODO: distress
-          return Observable.of([])
-        } else {
-          return sendToStore(source, events)
-        }
-      })
-      .catch(e => {
-        // TODO: distress?
-        log.pond.error(e)
-        return Observable.of([])
-      })
+  return evScanAcc
+}
+
+export type CommandPipeline<S, I> = Readonly<{
+  // Subject where new commands must be pushed
+  subject: Subject<CommandInput<S, I>>
+
+  // Subscription to the running pipeline (cancel to destroy pipeline)
+  subscription: RxSubscription
+}>
+
+type CommandScanState = Readonly<{
+  waitFor: Psn
+}>
+
+const commandPipeline = <S, I>(
+  pondStateTracker: PondStateTracker,
+  localSourceId: SourceId,
+  semantics: string,
+  name: string,
+  handler: ((input: I) => Observable<Events>),
+  stateSubject: Observable<StateWithProvenance<S>>,
+  eventFilter: ((t: Event) => boolean),
+): CommandPipeline<S, I> => {
+  const commandIn: Subject<CommandInput<S, I>> = new Subject()
 
   // Command handling pipeline. After each command, if it emitted any events that we are subscribed to,
   // the handling of the following command is delayed until upstream (event aggregation) has seen and
@@ -207,15 +174,17 @@ const createFishJar = <S, C, E, P>(
   // preceding commands.
   const cmdScanAcc = (
     current: CommandScanState,
-    input: CommandInput<C>,
+    input: CommandInput<S, I>,
   ): Observable<CommandScanState> => {
     const { command, onComplete, onError } = input
+
     const pondStateTrackerCommandProcessingToken = pondStateTracker.commandProcessingStarted(
-      source.semantics,
-      source.name,
+      semantics,
+      name,
     )
-    const unblock = () =>
+    const unblock = () => {
       pondStateTracker.commandProcessingFinished(pondStateTrackerCommandProcessingToken)
+    }
 
     const result = stateSubject
       .filter(stateWithProvenance => {
@@ -223,12 +192,16 @@ const createFishJar = <S, C, E, P>(
           return true
         }
 
-        const latestSeen = lookup(stateWithProvenance.psnMap, source.sourceId)
+        const latestSeen = lookup(stateWithProvenance.psnMap, localSourceId)
         const pass = latestSeen !== undefined && latestSeen >= current.waitFor
 
         if (!pass) {
           log.pond.debug(
-            Source.format(source),
+            semantics,
+            '/',
+            name,
+            '/',
+            localSourceId,
             'waiting for',
             current.waitFor,
             '; currently at:',
@@ -240,14 +213,8 @@ const createFishJar = <S, C, E, P>(
       .map(sp => sp.state)
       .take(1)
       .concatMap(s => {
-        const onCommandResult = fish.onCommand(s, command)
-        const stored = CommandResult.fold<E, Observable<ReadonlyArray<EnvelopeFromStore<E>>>>(
-          onCommandResult,
-        )({
-          sync: events => sendToStore(source, events),
-          async: handleAsyncCommandResult(command),
-          none: () => Observable.of([]),
-        })
+        const onCommandResult = command(s)
+        const stored = handler(onCommandResult)
 
         return stored.concatMap(envelopes => {
           if (envelopes.length === 0) {
@@ -281,7 +248,112 @@ const createFishJar = <S, C, E, P>(
     )
   }
 
-  const rxSubs: RxSubscription[] = []
+  const subscription = commandIn.mergeScan(cmdScanAcc, { waitFor: Psn.min }, 1).subscribe()
+
+  return {
+    subject: commandIn,
+    subscription,
+  }
+}
+
+const createFishJar = <S, C, E, P>(
+  source: Source,
+  subscriptions: SubscriptionSet,
+  fish: FishTypeImpl<S, C, E, P>,
+  store: FishEventStore<S, E>,
+  storeState: StateWithProvenance<S>,
+  observe: ObserveMethod, // observe other fishes
+  sendToStore: SendToStore, // send chunk to store
+  realtimeEvents: (filter: SubscriptionSet, from: OffsetMap) => Observable<Events>, // get realtime events
+  commandExecutor: CommandExecutor, // for async effects
+  offsetMap: OffsetMap,
+  pondStateTracker: PondStateTracker,
+): FishJar<C, E, P> => {
+  type LegacyCmdRes = SyncCommandResult<E> | AsyncCommandResult<E>
+
+  // does this even have to be a subject?
+  const eventsIn = realtimeEvents(subscriptions, offsetMap)
+
+  const publicSubject: Subject<P> = new ReplaySubject<P>(1)
+  const stateSubject = new ReplaySubject<StateWithProvenance<S>>(1)
+  const privateStateOut = stateSubject.map(sp => sp.state)
+  const pondObservables: PondObservables<S> = {
+    observe,
+    observeSelf: () => privateStateOut,
+  }
+
+  const eventFilter = subscriptionsToEventPredicate(subscriptions)
+
+  // Initial state for the mergeScan pipeline - this is the state of the Jar right after replay from FishEventStore
+  const mergeScanSeed: EventScanState<S, E> = {
+    eventStore: store,
+    emit: [storeState],
+  }
+
+  // this does not return an observable, because it is fully synchronous and nothing can fail.
+  const runStateEffect = (effect: StateEffect<C, P>): ReadonlyArray<P> => {
+    switch (effect.type) {
+      case 'sendSelfCommand': {
+        enqueueSelfCommand(effect.command)
+        return []
+      }
+      case 'publish': {
+        return [effect.state]
+      }
+    }
+  }
+
+  // Aggregate incoming events into ever-new states.
+  // We reveal the Provenance too, so that downstream consumers can implement specialized logic.
+  const evScanAcc = mkEventScanAcc<S, E>(pondStateTracker, source.semantics, source.name)
+
+  // executes effects and returns a promise of the produced events
+  const handleAsyncCommandResult = (ar: CommandApi<ReadonlyArray<E>>) =>
+    Observable.fromPromise(commandExecutor(ar))
+      .concatMap(events => {
+        // do not process events if undefined, log only
+        if (events === undefined) {
+          log.pond.error('undefined commandResult', '<command omitted>', 'ar', ar)
+          // TODO: distress
+          return Observable.of([])
+        } else {
+          return sendToStore(source.semantics, source.name, [], events)
+        }
+      })
+      .catch(e => {
+        // TODO: distress?
+        log.pond.error(e)
+        return Observable.of([])
+      })
+
+  const handleCommandResult = (onCommandResult: LegacyCmdRes) =>
+    CommandResult.fold<E, Observable<Events>>(onCommandResult)({
+      sync: events => sendToStore(source.semantics, source.name, [], events),
+      async: handleAsyncCommandResult,
+      none: () => Observable.of([]),
+    })
+
+  const cmdPipeline = commandPipeline<S, LegacyCmdRes>(
+    pondStateTracker,
+    source.sourceId,
+    source.semantics,
+    source.name,
+    handleCommandResult,
+    stateSubject,
+    eventFilter,
+  )
+
+  const enqueueSelfCommand = (command: C): void =>
+    cmdPipeline.subject.next({
+      type: 'command',
+      command: (s: S) => fish.onCommand(s, command),
+      onComplete: noop,
+      onError: noop,
+    })
+
+  // Must wire the commandIn topic before starting the onStateChange pipeline,
+  // since it may immediately emit self-commands.
+  const rxSubs: RxSubscription[] = [cmdPipeline.subscription]
 
   // Must subscribe to events BEFORE starting OnStateChange pipeline,
   // since in OnStateChange we may immediately trigger effects in OTHER fish,
@@ -295,10 +367,6 @@ const createFishJar = <S, C, E, P>(
       .subscribeOn(Scheduler.queue)
       .subscribe(stateSubject),
   )
-
-  // Must wire the commandIn topic before starting the onStateChange pipeline,
-  // since it may immediately emit self-commands.
-  rxSubs.push(commandIn.mergeScan(cmdScanAcc, { waitFor: Psn.min }, 1).subscribe())
 
   rxSubs.push(
     fish
@@ -318,9 +386,9 @@ const createFishJar = <S, C, E, P>(
     onComplete: () => void,
     onError: (err: any) => void,
   ): void => {
-    commandIn.next({
+    cmdPipeline.subject.next({
       type: 'command',
-      command,
+      command: (s: S) => fish.onCommand(s, command),
       onComplete,
       onError,
     })
@@ -355,7 +423,7 @@ export const createSubscriptionLessFishJar = <S, C, E, P>(
       async: cr => {
         commandExecutor(cr)
           .then(events => {
-            sendEventChunk(source, events).subscribe()
+            sendEventChunk(source.semantics, source.name, [], events).subscribe()
           })
           .then(onComplete)
           .catch(e => {
@@ -366,7 +434,7 @@ export const createSubscriptionLessFishJar = <S, C, E, P>(
           })
       },
       sync: events => {
-        sendEventChunk(source, events)
+        sendEventChunk(source.semantics, source.name, [], events)
           .do(onComplete)
           .catch(e => {
             // TODO: distress?
@@ -455,10 +523,7 @@ export const hydrate = <S, C, E, P>(
   const token = pondStateTracker.hydrationStarted(fish.semantics, fishName)
   const subscriptionSet = mkSubscriptionSet(source, subscriptions)
 
-  const realtimeEvents = (
-    filter: SubscriptionSet,
-    from: OffsetMap,
-  ): Observable<ReadonlyArray<EnvelopeFromStore<any>>> =>
+  const realtimeEvents = (filter: SubscriptionSet, from: OffsetMap): Observable<Events> =>
     eventStore
       .allEvents(
         {
@@ -471,16 +536,15 @@ export const hydrate = <S, C, E, P>(
         // EventKey.zero, // optional
       )
       .concatMap(intoOrderedChunks)
-      .map(x => x.map(ev => Event.toEnvelopeFromStore<E>(ev)))
 
   const present = eventStore.present()
 
   const info: FishInfo<S, E> = {
     semantics: fish.semantics,
     fishName,
-    initialState,
+    initialState: () => fish.initialState(source.name, source.sourceId).state,
     subscriptionSet,
-    onEvent: fish.onEvent,
+    onEvent: (state, ev) => fish.onEvent(state, Event.toEnvelopeFromStore<E>(ev)),
     isSemanticSnapshot: fish.semanticSnapshot
       ? fish.semanticSnapshot(fishName, sourceId)
       : undefined,
@@ -530,6 +594,95 @@ export const hydrate = <S, C, E, P>(
   })
 }
 
+const hydrateV2 = (
+  eventStore: EventStore,
+  snapshotStore: SnapshotStore,
+  pondStateTracker: PondStateTracker,
+) => <S, E>(
+  subscriptionSet: SubscriptionSet,
+  initialState: S,
+  onEvent: (state: S, event: E, metadata: Metadata) => S,
+  cacheKey: EntityId,
+  enableLocalSnapshots: boolean,
+  isReset?: (event: E) => boolean,
+): Observable<StateWithProvenance<S>> => {
+  const snapshotScheduler = SnapshotScheduler.create(10)
+  const semantics = cacheKey.entityType
+    ? Semantics.of(cacheKey.entityType)
+    : Semantics.internal('untyped-aggregation')
+  const fishName = FishName.of(cacheKey.name)
+
+  const { sourceId } = eventStore
+
+  // We construct a "Fish" from the given parameters in order to use the unchanged FES.
+  const info: FishInfo<S, E> = {
+    semantics,
+    fishName,
+    initialState: () => clone(initialState),
+    subscriptionSet,
+
+    onEvent: (state, ev) =>
+      onEvent(state, ev.payload as E, {
+        isLocalEvent: ev.sourceId === sourceId,
+        tags: ev.tags,
+        timestampMicros: ev.timestamp,
+        timestampAsDate: () => Timestamp.toDate(ev.timestamp),
+        lamport: ev.lamport,
+      }),
+
+    isSemanticSnapshot: isReset ? envelope => isReset(envelope.payload) : undefined,
+
+    // TODO proper support
+    snapshotFormat: enableLocalSnapshots
+      ? SnapshotFormat.identity(cacheKey.version || 0)
+      : undefined,
+  }
+
+  return eventStore
+    .present()
+    .take(1)
+    .concatMap(present => {
+      const init = FishEventStore.initialize(
+        info,
+        eventStore,
+        snapshotStore,
+        snapshotScheduler,
+        present.psns,
+      )
+
+      return init.map(fes => ({ fes, present }))
+    })
+    .concatMap(({ present, fes }) => {
+      const liveEvents = eventStore
+        .allEvents(
+          {
+            psns: present.psns,
+            default: 'min',
+          },
+          { psns: {}, default: 'max' },
+          subscriptionSet,
+          AllEventsSortOrders.Unsorted,
+          // EventKey.zero, // optional
+        )
+        .concatMap(intoOrderedChunks)
+        .filter(evs => evs.length > 0)
+
+      const mergeScanSeed: EventScanState<S, E> = {
+        eventStore: fes,
+        emit: [],
+      }
+
+      const accumulator = mkEventScanAcc<S, E>(pondStateTracker, semantics, fishName)
+
+      return Observable.concat(
+        fes.currentState().take(1),
+        liveEvents.mergeScan(accumulator, mergeScanSeed, 1).concatMap(x => x.emit),
+      )
+    })
+}
+
 export const FishJar = {
   hydrate,
+  hydrateV2,
+  commandPipeline,
 }

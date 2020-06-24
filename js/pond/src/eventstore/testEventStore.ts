@@ -6,7 +6,7 @@
  */
 import { chunksOf } from 'fp-ts/lib/Array'
 import { fromNullable } from 'fp-ts/lib/Option'
-import { Observable, ReplaySubject, Subject, Scheduler } from 'rxjs'
+import { Observable, ReplaySubject, Scheduler, Subject } from 'rxjs'
 import log from '../store/loggers'
 import { SubscriptionSet, subscriptionsToEventPredicate } from '../subscription'
 import { EventKey, Lamport, Psn, SourceId } from '../types'
@@ -18,6 +18,7 @@ import {
 } from './eventStore'
 import {
   AllEventsSortOrders,
+  ConnectivityStatus,
   Event,
   Events,
   OffsetMap,
@@ -25,7 +26,6 @@ import {
   OffsetMapWithDefault,
   PersistedEventsSortOrder,
   PersistedEventsSortOrders,
-  ConnectivityStatus,
 } from './types'
 
 export type TestEventStore = EventStore & {
@@ -65,7 +65,7 @@ const filterEvents = (
   min?: EventKey,
 ) => (events: Events): Events => {
   return events
-    .filter(e => !min || EventKey.ord.compare(EventKey.fromEnvelope0(e), min) >= 0)
+    .filter(e => !min || EventKey.ord.compare(e, min) >= 0)
     .filter(isBetweenPsnLimits(from, to))
     .filter(subscriptionsToEventPredicate(subs))
 }

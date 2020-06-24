@@ -4,7 +4,7 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Either } from 'fp-ts/lib/Either'
+import { Either, right } from 'fp-ts/lib/Either'
 import { contramap, Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
@@ -24,6 +24,8 @@ export const isBoolean = (x: any): x is boolean => typeof x === 'boolean'
 
 export declare const SemanticsTag: unique symbol
 export type Semantics = Opaque<string, typeof SemanticsTag>
+
+const internalSemantics = (s: string): Semantics => `internal-${s}` as Semantics
 export const Semantics = {
   of(name: string): Semantics {
     if (name.startsWith('jelly-')) {
@@ -36,8 +38,9 @@ export const Semantics = {
   },
   jelly: (s: string): Semantics => `jelly-${s}` as Semantics,
   isJelly: (s: Semantics): boolean => s.startsWith('jelly-'),
-  internal: (s: string): Semantics => `internal-${s}` as Semantics,
+  internal: internalSemantics,
   isInternal: (s: Semantics): boolean => s.startsWith('internal-'),
+  none: internalSemantics('nofish'),
   FromString: new t.Type<Semantics, string>(
     'SemanticsFromString',
     (x): x is Semantics => isString(x),
@@ -50,6 +53,7 @@ export declare const FishNameTag: unique symbol
 export type FishName = Opaque<string, typeof FishNameTag>
 export const FishName = {
   of: (s: string): FishName => s as FishName,
+  none: 'internal-nofish' as FishName,
   FromString: new t.Type<FishName, string>(
     'FishNameFromString',
     (x): x is FishName => isString(x),
@@ -57,6 +61,17 @@ export const FishName = {
     x => x,
   ),
 }
+
+export type Tags = ReadonlyArray<string>
+type TagsOnWire = ReadonlyArray<string> | undefined
+export const Tags = new t.Type<Tags, TagsOnWire>(
+  'TagsSetFromArray',
+  (x): x is Tags => x instanceof Array && x.every(isString),
+  // Rust side for now expresses empty tag arrays as omitting the field
+  (x, c) => (x === undefined ? right([]) : t.readonlyArray(t.string).validate(x, c)),
+  // Sending empty arrays is fine, though
+  x => x,
+)
 
 export declare const SourceIdTag: unique symbol
 export type SourceId = Opaque<string, typeof SourceIdTag>
@@ -231,11 +246,17 @@ export type HttpResponseError = {
 
 export type HttpResponse = HttpResponseSuccess | HttpResponseError
 
+export type Emit<E> = Readonly<{
+  tags: string[]
+  payload: E
+}>
+export type TaggedEvents<E> = ReadonlyArray<Emit<E>>
+
 export type SyncCommandResult<E> = ReadonlyArray<E>
 
 export type AsyncCommandResult<E> = CommandApi<ReadonlyArray<E>>
 
-export type CommandResult<E> = SyncCommandResult<E> | AsyncCommandResult<E>
+export type CommandResult<E> = SyncCommandResult<E> | AsyncCommandResult<E> // | TaggedEvents<E>
 
 export const CommandResult = {
   fold: <E, R>(result: CommandResult<E>) => (handlers: {
@@ -303,19 +324,12 @@ const keyFromEnvelope = (env: EnvelopeFromStore<any>): EventKey => ({
   sourceId: env.source.sourceId,
   psn: env.psn,
 })
-const keyFromEnvelope0 = (env: Event): EventKey => ({
-  lamport: env.lamport,
-  sourceId: env.sourceId,
-  psn: env.psn,
-})
-
 const formatEventKey = (key: EventKey): string => `${key.lamport}/${key.sourceId}`
 
 export const EventKey = {
   zero: zeroKey,
   ord: ordEventKey,
   fromEnvelope: keyFromEnvelope,
-  fromEnvelope0: keyFromEnvelope0,
   format: formatEventKey,
 }
 export const EventKeyIO = t.readonly(
@@ -351,6 +365,8 @@ export type InitialState<S> = (
   subscriptions?: ReadonlyArray<Subscription>
 }>
 
+// Combine the existing ("old") state and next event into a new state.
+// The returned value may be something completely new, or a mutated version of the input state.
 export type OnEvent<S, E> = (state: S, event: Envelope<E>) => S
 
 export type OnCommand<S, C, E> = (
@@ -644,9 +660,9 @@ export const TaggedIndex = {
   ord: contramap((ti: TaggedIndex) => ti.i, ordNumber),
 }
 
-export type CachedState<S, E> = {
+export type CachedState<S> = {
   readonly state: StateWithProvenance<S>
-  readonly finalIncludedEvent: EnvelopeFromStore<E>
+  readonly finalIncludedEvent: Event
 }
 
-export type StatePointer<S, E> = TaggedIndex & CachedState<S, E>
+export type StatePointer<S> = TaggedIndex & CachedState<S>

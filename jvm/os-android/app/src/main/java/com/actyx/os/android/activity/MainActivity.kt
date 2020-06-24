@@ -73,7 +73,7 @@ class MainActivity : BaseActivity() {
   }
 
   companion object {
-    const val ACTYXOS_APP_MIME_TYPE = "acyxos/app"
+    const val ACTYXOS_APP_MIME_TYPE = "actyxos/app"
     const val ACTION_SHORTCUT_ADDED_CALLBACK = "actyxos.intent.action.SHORTCUT_ADDED_CALLBACK"
     const val REQ_CODE_SHORTCUT_ADDED_CALLBACK = 0
   }

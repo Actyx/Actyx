@@ -6,7 +6,6 @@
  */
 import { catOptions, chunksOf } from 'fp-ts/lib/Array'
 import { none, some } from 'fp-ts/lib/Option'
-import { List, Map } from 'immutable'
 import { FishName, Psn, Semantics, SourceId, SubscriptionSet, Timestamp } from './'
 import { Event, Events, EventStore, OffsetMap } from './eventstore'
 import { includeEvent } from './eventstore/testEventStore'
@@ -15,9 +14,8 @@ import { FishEventStore, FishInfo } from './fishEventStore'
 import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
 import { EnvelopeFromStore } from './store/util'
-import { EventKey, Lamport, OnEvent } from './types'
+import { EventKey, Lamport, SnapshotFormat } from './types'
 import { shuffle } from './util/array'
-import { SerializedList, SerializedMap } from './util/immutable'
 
 const numberOfSources = 5
 const batchSize = 10
@@ -34,18 +32,18 @@ type Payload = Readonly<{
   isLocalSnapshot: boolean
 }>
 
-type State = Map<string, List<number>>
-const initialState: State = Map()
-const onEvent: OnEvent<State, Payload> = (state, envelope) => {
-  const {
-    source: { sourceId },
-    payload: { sequence },
-  } = envelope
+type State = Record<string, number[]>
+const onEvent = (state: State, event: Event) => {
+  const { sourceId, payload } = event
+  const { sequence } = payload as Payload
 
-  const seqs = state.get(sourceId) || List()
+  if (state[sourceId] !== undefined) {
+    state[sourceId].push(sequence)
+  } else {
+    state[sourceId] = [sequence]
+  }
 
-  const state1 = state.set(sourceId, seqs.push(sequence))
-  return state1
+  return state
 }
 
 const timeScale = 1000000
@@ -55,6 +53,7 @@ const generateEvents = (count: number) => (sourceId: SourceId): Events =>
     semantics: Semantics.of('foo'),
     sourceId,
     name: FishName.of('foo'),
+    tags: [],
     timestamp: Timestamp.of(i * timeScale),
     lamport: Lamport.of(i),
     payload: {
@@ -64,23 +63,18 @@ const generateEvents = (count: number) => (sourceId: SourceId): Events =>
     },
   }))
 
-type SerializedState = SerializedMap<SerializedList<number>>
-
 const mkFish = (
   isSemanticSnapshot: SemanticSnapshot<Payload> | undefined,
 ): FishInfo<State, Payload> => ({
   semantics: Semantics.of('some-fish'),
   fishName: FishName.of('some-name'),
   subscriptionSet: SubscriptionSet.all,
-  initialState,
+  initialState: () => {
+    return {}
+  },
   onEvent,
   isSemanticSnapshot,
-  snapshotFormat: {
-    version: 1,
-    serialize: x => x,
-    deserialize: (serialized: SerializedState) =>
-      SerializedMap.deserialize(serialized).map(SerializedList.deserialize),
-  },
+  snapshotFormat: SnapshotFormat.identity(1),
 })
 
 const mkSnapshotScheduler: (
@@ -154,7 +148,7 @@ const hydrate: Run = fish => async (sourceId, events, snapshotScheduler) => {
       ),
       snapshotStore: SnapshotStore.inMem(),
       offsetMap: OffsetMap.empty,
-      state: fish.initialState,
+      state: fish.initialState(),
     }),
   )
 
@@ -188,11 +182,7 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
     let n = false
 
     for (const sortedEvents of sortedChunks) {
-      const sortedEnvelopes: EnvelopeFromStore<Payload>[] = sortedEvents.map(e =>
-        Event.toEnvelopeFromStore(e),
-      )
-
-      n = store.processEvents(sortedEnvelopes) || n
+      n = store.processEvents(sortedEvents) || n
     }
 
     const isLast = i === events.length - 1
@@ -202,7 +192,7 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
           .toPromise()
           .then(sp => sp.state)
       : acc
-  }, Promise.resolve(fish.initialState))
+  }, Promise.resolve(fish.initialState()))
 }
 
 const fishConfigs = {
@@ -229,6 +219,17 @@ describe(`the fish event store with randomized inter-source event ordering`, () 
 
   for (const [name, fish] of Object.entries(fishConfigs)) {
     const expected = hydrate(fish)(sourceId, [sorted], neverSnapshotScheduler)
+
+    if (name !== 'random') {
+      it(`semantic=${name} expected should be filled`, async () => {
+        const e = await expected
+
+        expect(Object.keys(e).sort()).toEqual([...sourceIds].sort())
+        for (const evs of Object.values(e)) {
+          expect(evs.length).toEqual(eventsPerSource)
+        }
+      })
+    }
 
     for (const [snapCfgName, scheduler] of Object.entries(snapshotConfigs)) {
       // lockstep local snapshots make only sense with random semantic snapshots

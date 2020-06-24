@@ -12,6 +12,7 @@
     <declare-styleable name="TextWithIcon">
         <attr name="android:text" />
         <attr name="android:src" />
+        <attr name="android:contentDescription" />
     </declare-styleable>
 
     <declare-styleable name="LabelWithText">

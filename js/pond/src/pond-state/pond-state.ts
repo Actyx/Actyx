@@ -5,7 +5,6 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { Observable } from 'rxjs'
-import { FishName, Semantics } from '../types'
 
 export type FishProcessInfo = {
   numBeingProcessed: number
@@ -40,21 +39,21 @@ export type PondStateTracker = {
   /**
    * Returns key of the record
    */
-  hydrationStarted(fishSemantics: Semantics, fishName: FishName): string
+  hydrationStarted(fishSemantics: string, fishName: string): string
 
   hydrationFinished(key: string): void
 
   /**
    * Returns key of the record
    */
-  commandProcessingStarted(fishSemantics: Semantics, fishName: FishName): string
+  commandProcessingStarted(fishSemantics: string, fishName: string): string
 
   commandProcessingFinished(key: string): void
 
   /**
    * Returns key of the record
    */
-  eventsFromOtherSourcesProcessingStarted(fishSemantics: Semantics, fishName: FishName): string
+  eventsFromOtherSourcesProcessingStarted(fishSemantics: string, fishName: string): string
 
   eventsFromOtherSourcesProcessingFinished(key: string): void
 }

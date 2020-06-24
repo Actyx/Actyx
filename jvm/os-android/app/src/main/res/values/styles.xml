@@ -11,6 +11,10 @@
         <item name="android:statusBarColor">@android:color/transparent</item>
     </style>
 
+    <style name="AppTheme.NavHeader" parent="ThemeOverlay.MaterialComponents.Dark">
+        <item name="android:background">@color/colorAccent</item>
+    </style>
+
     <style name="AppTheme.Fullscreen" parent="AppTheme.NoActionBar">
         <item name="android:windowFullscreen">true</item>
         <item name="android:windowContentOverlay">@null</item>

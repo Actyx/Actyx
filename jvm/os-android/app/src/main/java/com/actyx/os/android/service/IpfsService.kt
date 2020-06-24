@@ -125,6 +125,7 @@ class IpfsService(private val ctx: Context) : Service {
         "init"
       ), listOf(
         "bootstrap rm --all",
+        "config --json Pubsub.Router \"gossipsub\"",
         "config Addresses.Gateway /ip4/127.0.0.1/tcp/8080",
         "config Addresses.API /ip4/0.0.0.0/tcp/5001",
         "config Datastore.StorageMax 20GB",

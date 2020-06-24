@@ -29,7 +29,7 @@ type SnapshotRow = SnapshotKey &
     lamport: Lamport
     source: SourceId
     psn: Psn
-    blob: unknown
+    blob: string
     rootsPsn: OffsetMap
     horizon: EventKey | undefined
     cycle: number
@@ -48,7 +48,7 @@ const toSnapshotRow = (
   key: EventKey,
   version: number,
   tag: string,
-  blob: unknown,
+  blob: string,
   psnMap: OffsetMap,
   horizon: EventKey | undefined,
   cycle: number,
@@ -60,7 +60,7 @@ const toSnapshotRow = (
   psn: key.psn,
   version,
   tag,
-  blob: JSON.stringify(blob),
+  blob,
   rootsPsn: psnMap,
   horizon,
   cycle,
@@ -82,7 +82,7 @@ class Impl implements SnapshotStore {
     cycle: number,
     version: number,
     tag: string,
-    blob: unknown,
+    blob: string,
   ) => {
     const snapshotRow = toSnapshotRow(sem, name, key, version, tag, blob, psnMap, horizon, cycle)
     const snapshotKey = selectSnapshotKey(snapshotRow)
@@ -135,7 +135,7 @@ class Impl implements SnapshotStore {
         Object.preventExtensions(psnMap)
         const horizon = snap.horizon
         const cycle = snap.cycle
-        return { eventKey, state: JSON.parse(snap.blob as string), psnMap, horizon, cycle }
+        return { eventKey, state: snap.blob, psnMap, horizon, cycle }
       }
     })
   }
