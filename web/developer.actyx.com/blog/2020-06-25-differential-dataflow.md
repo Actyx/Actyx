@@ -26,8 +26,8 @@ See also the [blog post on actyx.com] for a higher-level overview.
 In a factory, people and machines work together to produce goods, for example chairs. Multiple
 intermediate products like legs need to be manufactured before the chair can be assembled, where
 each piece is created and refined over a series of process steps at different workstations. Two
-obvious questions for shop-floor personnel are: what is currently going on, and how much time has it
-taken for the various people and machines to produce a given batch of chairs. These questions are
+obvious questions for shop-floor personnel are: What is currently going on, and how much time has it
+taken for the various people and machines to produce a given batch of chairs? These questions are
 merely examples of the ones we could answer if we had an audit trail like this:
 
 time | who | what
@@ -44,7 +44,7 @@ time | who | what
 
 Computers can help obtain such an audit trail, many of the entries can even be created automatically
 or with very little additional input from a worker like Fred. One thing we need to ensure, though,
-is that this reporting does not keep Fred nor the drill from performing their duty, the IT system
+is that this reporting does not keep Fred nor the drill from performing their duty. The IT system
 must be as reliable as paper — while being much easier to analyse later. This is why
 [ActyxOS] uses a fully decentralised approach, recording
 the events from the table above on the edge devices and synchronising between devices whenever a
@@ -88,15 +88,17 @@ The third part works analog by creating an ERP transaction with the relevant boo
 ## How we want to program it
 
 In order to get these processes right, it would be best to describe the required database changes or
-ERP transactions based on patterns in the event log and then let a smart framework like Differential
-Dataflow figure out how to run the corresponding computations as well as what changes to commit
-when.  Much of this work can be done using filtering and aggregation, like using SQL on a relational
-database.
+ERP transactions based on patterns in the event log and then let a smart framework like
+[Differential Dataflow] figure out how to run the corresponding computations as well as what changes
+to commit when.  Much of this work can be done using filtering and aggregation, like using SQL on a
+relational database.
+
+[Differential Dataflow]: https://docs.rs/differential-dataflow
 
 ```rust
 let (injector, events) = Flow::<Event<MachineEvent>, _>::new(scope);
 
-let out = events
+let latest = events
     .filter(|ev| ev.stream.name.as_str().starts_with("Drill"))
     .map(|ev| match ev.payload {
         MachineEvent::Started { order } => {
@@ -148,7 +150,7 @@ to match each stop event with the corresponding start event for the same order, 
 between them and emit a machine usage record.
 
 ```rust
-let out = events
+let records = events
     .filter(|ev| ev.stream.name.as_str().starts_with("Drill"))
     .map(|ev| Excerpt {
         lamport: ev.lamport,
@@ -237,7 +239,7 @@ pub struct UsageEntry {
 ```
 
 This record needs to be turned into one database row with four columns, to be inserted into a table
-of some name. This is explained to the DB driver by implementing the [DbRecord] trait.
+of some name. This is explained to the database driver by implementing the [DbRecord] trait.
 
 [DbRecord]: https://docs.rs/actyxos_data_flow/latest/actyxos_data_flow/db/trait.DbRecord.html
 
@@ -290,9 +292,9 @@ impl DbRecord<SqliteDbMechanics> for UsageEntry {
 ```
 
 This implementation is specific to the kind of database we want to write to because the column types
-may depend on this information and the Rust data type for column values depends on the DB driver. In
-this case we’re targeting [Sqlite3] because it doesn’t require setup. You’ll want to switch to
-[PostgreSQL] or [Microsoft SQL Server] for feeding your dashboards and reports.
+may depend on this information and the Rust data type for column values depends on the database
+driver. In this case we’re targeting [Sqlite3] because it doesn’t require setup. You’ll want to
+switch to [PostgreSQL] or [Microsoft SQL Server] for feeding your dashboards and reports.
 
 [Sqlite3]: https://sqlite.org
 [PostgreSQL]: https://postgresql.com
@@ -303,9 +305,11 @@ this case we’re targeting [Sqlite3] because it doesn’t require setup. You’
 We have described the contents of the database so far in terms of declarative business logic and a
 table schema for our records. The final ingredient for knowing exactly which rows need to be in the
 database is to denote the set of input events that have been processed so far. For this reason, the
-DB driver stores not only the records in the data table, it also stores — within the same
-transaction — the offset map of the events that have been ingested into an adjacent table. In the
+database driver stores not only the records in the data table, it also stores — within the same
+transaction — the [offset map] of the events that have been ingested into an adjacent table. In the
 example above that table would be named `usage_offsets`.
+
+[offset map]: https://docs.rs/actyxos_sdk/0.3.1/actyxos_sdk/event/struct.OffsetMap.html
 
 This allows the process to be stopped and restarted without any loss of data: the business logic
 will be (re)run on all events whose records are not yet in the database. Storing data and offsets in
@@ -366,7 +370,7 @@ run_with_db_channel(
 ```
 
 Besides the helper functions that wire together the [EventService client], the differential dataflow
-machine, and the DB driver, the main part here is the definition of the event subscriptions. This
+machine, and the database driver, the main part here is the definition of the event subscriptions. This
 exporter needs to see all events emitted by the [machineFish]. The full code is available
 [here](https://github.com/Actyx/actyxos_data_flow/tree/master/examples/machine-dashboard/main.rs).
 
@@ -386,7 +390,7 @@ With this, we can provide a solution that avoids endless growth by restarting th
 year, initializing the internal state only from the events of the year before. This gives enough
 context to the differential dataflow engine to emit the right deltas going forward. The
 `actyxos_data_flow` library supports this with the [new_limited] function to construct input
-collections.
+collections:
 
 [new_limited]: https://docs.rs/actyxos_data_flow/latest/actyxos_data_flow/flow/struct.Flow.html#method.new_limited
 
