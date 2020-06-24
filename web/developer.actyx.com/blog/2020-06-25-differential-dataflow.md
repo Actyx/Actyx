@@ -9,7 +9,7 @@ tags: [database, dashboards, reports]
 
 Given an audit trail of everything that has happened in your factory, how do you keep the
 dashboards, reports, and ERP system in sync with reality? This boils down to the problem of
-maintaining materialized views onto the event log. The state of the art is to update the
+maintaining materialized views of the event log. The state of the art is to update the
 views — also in external systems — in a minimal fashion, changing only what needs to change and
 exactly when the events happen.
 
