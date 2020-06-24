@@ -44,8 +44,6 @@ import {
   Timestamp,
 } from './types'
 
-
-
 export type PondOptions = {
   hbHistDelay?: number
   currentPsnHistoryDelay?: number
@@ -99,11 +97,11 @@ export class Pond2Impl implements PondV2 {
   } = {}
 
   constructor(
-    readonly eventStore: EventStore,
-    readonly snapshotStore: SnapshotStore,
-    readonly pondStateTracker: PondStateTracker,
-    readonly monitoring: Monitoring,
-    readonly opts: PondOptions,
+    private readonly eventStore: EventStore,
+    private readonly snapshotStore: SnapshotStore,
+    private readonly pondStateTracker: PondStateTracker,
+    private readonly monitoring: Monitoring,
+    private readonly opts: PondOptions,
   ) {
     this.hydrateV2 = FishJar.hydrateV2(this.eventStore, this.snapshotStore, this.pondStateTracker)
   }
@@ -130,7 +128,8 @@ export class Pond2Impl implements PondV2 {
   }
 
   dispose = async () => {
-    // Implement me
+    this.monitoring.dispose()
+    // TODO: Implement cleanup of active aggregates
   }
 
   /* POND V2 FUNCTIONS */

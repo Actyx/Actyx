@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs'
-import { Aggregate, Pond, PondV2, TagQuery } from '.'
+import { Aggregate, Pond2, PondV2, TagQuery } from '.'
 
 const emitTestEvents = async (pond: PondV2) =>
   pond
@@ -11,7 +11,7 @@ const emitTestEvents = async (pond: PondV2) =>
     )
     .toPromise()
 
-const assertStateAndDispose = async <S>(states: Observable<S>, expected: S, pond: Pond) => {
+const assertStateAndDispose = async <S>(states: Observable<S>, expected: S, pond: PondV2) => {
   const res = states
     .debounceTime(5)
     .take(1)
@@ -30,7 +30,7 @@ const aggregateAsObservable = <S>(pond: PondV2, agg: Aggregate<S, any>): Observa
 
 describe('application of commands in the pond', () => {
   const expectAggregationToYield = async (subscriptions: TagQuery, expectedResult: string[]) => {
-    const pond = await Pond.test()
+    const pond = await Pond2.test()
 
     const aggregate = Aggregate.eventsDescending<string>(subscriptions)
 
@@ -73,7 +73,7 @@ describe('application of commands in the pond', () => {
     })
 
     it('should cache based on key', async () => {
-      const pond = await Pond.test()
+      const pond = await Pond2.test()
 
       const aggregate0 = mkAggregate(TagQuery.union('t1'))
 
@@ -93,7 +93,7 @@ describe('application of commands in the pond', () => {
     })
 
     it('should cache based on key, across unsubscribe calls', async () => {
-      const pond = await Pond.test()
+      const pond = await Pond2.test()
 
       const aggregate = mkAggregate(TagQuery.union('t1'))
 
@@ -116,7 +116,7 @@ describe('application of commands in the pond', () => {
     })
 
     it('should permit different aggregations in parallel', async () => {
-      const pond = await Pond.test()
+      const pond = await Pond2.test()
 
       const aggregate0 = mkAggregate(TagQuery.union('t0'))
 

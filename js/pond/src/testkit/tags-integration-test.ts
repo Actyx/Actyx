@@ -1,12 +1,12 @@
 import { Observable } from 'rxjs'
-import { Pond } from '../'
+import { Pond2 } from '../'
 import { Aggregate, TagQuery } from '../pond-v2-types'
 
 type Event = string
 type State = ReadonlyArray<Event>
 
 export const start = async () => {
-  const pond = await Pond.default()
+  const pond = await Pond2.default()
 
   const aggregate: Aggregate<State, Event> = {
     subscriptions: TagQuery.union('t0', 't1'),

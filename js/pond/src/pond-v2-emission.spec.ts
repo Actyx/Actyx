@@ -1,11 +1,17 @@
-import { Aggregate, Pond, PondV2, TagQuery } from '.'
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
+import { Aggregate, Pond2, PondV2, TagQuery } from '.'
 
 const stateAsPromise = (pond: PondV2, tags: TagQuery) =>
   new Promise((resolve, _reject) => pond.aggregate(Aggregate.eventsAscending(tags), resolve))
 
 describe('application of commands in the pond', () => {
   it('should execute every emission-callback', async () => {
-    const pond = await Pond.test()
+    const pond = await Pond2.test()
 
     const emit = pond.emitEvent(['t0', 't1', 't2'], 'hello')
 
@@ -29,7 +35,7 @@ describe('application of commands in the pond', () => {
   })
 
   it('should execute every emission-callback even after emission has finished', async () => {
-    const pond = await Pond.test()
+    const pond = await Pond2.test()
 
     const emit = pond.emitEvent(['t0', 't1', 't2'], 'hello')
 
