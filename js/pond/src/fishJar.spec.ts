@@ -8,7 +8,7 @@
 import { Observable, Subject } from 'rxjs'
 import { CommandApi, UnsafeAsync } from './commandApi'
 import { EventStore } from './eventstore'
-import { Event } from './eventstore/types'
+import { Event, Events } from './eventstore/types'
 import { CommandExecutor } from './executors/commandExecutor'
 import { hydrate } from './fishJar'
 import log from './loggers'
@@ -20,7 +20,6 @@ import {
   PondStateTracker,
 } from './pond-state'
 import { SnapshotStore } from './snapshotStore'
-import { EnvelopeFromStore } from './store/util'
 import { Subscription } from './subscription'
 import { eventStressFish, eventStressFishBuilder, State } from './testkit/eventStressFish'
 import {
@@ -46,6 +45,25 @@ const fakeObserve: <C, E, P>(fish: FishType<C, E, P>, name: string) => Observabl
 const commandExecutor = CommandExecutor()
 const pondStateTracker = mkNoopPondStateTracker()
 
+const assignAscendingPsn = (sourceId: SourceId) => {
+  // tslint:disable-next-line no-let
+  let psn = 0
+  return <E>(semantics: Semantics, name: FishName, tags: string[], events: ReadonlyArray<E>) =>
+    Observable.from(events)
+      .map<E, Event>(e => ({
+        source: { semantics, name, sourceId },
+        tags,
+        timestamp: Timestamp.of(0),
+        lamport: Lamport.of(0),
+        semantics,
+        name,
+        sourceId,
+        psn: Psn.of(psn++),
+        payload: e,
+      }))
+      .toArray()
+}
+
 describe('FishJar', () => {
   const NUM_EVENTS = 1000
   const NUM_REALTIME_EVENTS = 100
@@ -63,50 +81,20 @@ describe('FishJar', () => {
   const fishName2 = FishName.of('eventStress2')
   const source2 = Source.of(eventStress2, fishName2, sourceId)
 
-  const sendPassThroughSwallow = () => {
-    // tslint:disable-next-line no-let
-    let psn = 0
-    return <E>(src: Source, events: ReadonlyArray<E>) =>
-      Observable.from(events)
-        .map<E, EnvelopeFromStore<E>>(e => ({
-          source: src,
-          timestamp: Timestamp.of(0),
-          lamport: Lamport.of(0),
-          id: [fishSemantics, fishName, sourceId],
-          psn: Psn.of(psn++),
-          payload: e,
-        }))
-        .toArray()
-  }
-
-  const sendPassThrough = (mockInternalStore: Subject<EnvelopeFromStore<any>[]>) => {
-    // tslint:disable-next-line no-let
-    let psn = 0
-    return <E>(src: Source, events: ReadonlyArray<E>) =>
-      Observable.from(events)
-        .map<E, EnvelopeFromStore<E>>(e => ({
-          source: src,
-          timestamp: Timestamp.of(0),
-          lamport: Lamport.of(0),
-          id: [fishSemantics, fishName, sourceId],
-          semantics: fishSemantics,
-          name: fishName,
-          sourceId: src.sourceId,
-          psn: Psn.of(psn++),
-          payload: e,
-        }))
-        .toArray()
-        .do(resultArray => mockInternalStore.next(resultArray))
+  const sendPassThrough = (mockInternalStore: Subject<Events>, sourceId: SourceId) => {
+    const assign = assignAscendingPsn(sourceId)
+    return <E>(semantics: Semantics, name: FishName, tags: string[], events: ReadonlyArray<E>) =>
+      assign(semantics, name, tags, events).do(resultArray => mockInternalStore.next(resultArray))
   }
 
   const storedEvents = new Array(NUM_EVENTS).fill(0).map<Event>((_, n) => ({
     semantics: source.semantics,
     name: source.name,
+    tags: [],
     sourceId: source.sourceId,
     timestamp: Timestamp.of(n),
     lamport: Lamport.of(n),
     payload: n,
-    // id: [fishSemantics, fishName, sourceId, SequenceNumber.of(n)],
     psn: Psn.of(n),
   }))
   const storedPayloads: ReadonlyArray<number> = storedEvents.map(ev => ev.payload as number)
@@ -116,11 +104,11 @@ describe('FishJar', () => {
     // source: source2,
     semantics: source2.semantics,
     sourceId: source2.sourceId,
+    tags: [],
     name: source2.name,
     timestamp: Timestamp.of(NUM_EVENTS + n),
     lamport: Lamport.of(NUM_EVENTS + n + 1),
     payload: 200 + n,
-    // id: [fishSemantics2, fishName2, sourceId, SequenceNumber.of(n)],
     psn: Psn.of(NUM_EVENTS + n + 1), // accomodate previous events and one generated command, however currently psns are not checked
   }))
   const livePayloads: ReadonlyArray<number> = liveEvents.map(ev => ev.payload as number)
@@ -149,23 +137,19 @@ describe('FishJar', () => {
   const multiSourceEventStress = eventStressFishBuilder(fishSemantics, multiSourceInitialState)
 
   it('should hydrate the single source fishJar and then push some realtime events', async () => {
-    const mockInternalStore = new Subject<EnvelopeFromStore<any>[]>()
+    const mockInternalStore = new Subject<Events>()
 
     const eventStore: EventStore = {
       ...EventStore.noop,
       persistedEvents: genEvents,
-      allEvents: () =>
-        Observable.concat(
-          genRealtimeEvents(),
-          mockInternalStore.map(evs => evs.map(Event.fromEnvelopeFromStore)),
-        ),
+      allEvents: () => Observable.concat(genRealtimeEvents(), mockInternalStore),
     }
     const jar = await hydrate(
       FishTypeImpl.downcast(eventStress),
       fishName,
       eventStore,
       SnapshotStore.noop,
-      sendPassThrough(mockInternalStore),
+      sendPassThrough(mockInternalStore, eventStore.sourceId),
       fakeObserve,
       commandExecutor,
       pondStateTracker,
@@ -194,7 +178,8 @@ describe('FishJar', () => {
       fishName,
       eventStore,
       SnapshotStore.noop,
-      sendPassThroughSwallow(),
+      // swallow events without propagation
+      assignAscendingPsn(eventStore.sourceId),
       fakeObserve,
       commandExecutor,
       pondStateTracker,
@@ -219,9 +204,9 @@ describe('FishJar', () => {
     }))
 
     const store = EventStore.test(sourceId)
-    const sendToStore: SendToStore = (src, events) => {
-      const chunk = makeEventChunk(defaultTimeInjector, src, events)
-      return store.persistEvents(chunk).map(c => c.map(ev => Event.toEnvelopeFromStore(ev)))
+    const sendToStore: SendToStore = (semantics, name, _tags, events) => {
+      const chunk = makeEventChunk(defaultTimeInjector, { sourceId, semantics, name }, events)
+      return store.persistEvents(chunk)
     }
 
     const jar = await hydrate(
@@ -269,9 +254,9 @@ describe('FishJar', () => {
 
     const getJar = async (fish: FishType<number, number, number>, tracker: PondStateTracker) => {
       const store = EventStore.test(sourceId)
-      const sendToStore: SendToStore = (src, events) => {
-        const chunk = makeEventChunk(defaultTimeInjector, src, events)
-        return store.persistEvents(chunk).map(c => c.map(ev => Event.toEnvelopeFromStore(ev)))
+      const sendToStore: SendToStore = (semantics, name, _tags, events) => {
+        const chunk = makeEventChunk(defaultTimeInjector, { sourceId, semantics, name }, events)
+        return store.persistEvents(chunk) // .map(c => c.map(ev => Event.toEnvelopeFromStore(ev)))
       }
 
       return hydrate(
@@ -404,21 +389,6 @@ describe('SubscriptionLessFishJar', () => {
   })
 
   const name = FishName.of('subscriptionLess')
-  const sendPassThrough = () => {
-    // tslint:disable-next-line no-let
-    let psn = 0
-    return <E>(src: Source, events: ReadonlyArray<E>) =>
-      Observable.from(events)
-        .map<E, EnvelopeFromStore<E>>(e => ({
-          source: src,
-          timestamp: Timestamp.of(0),
-          lamport: Lamport.of(0),
-          id: [subscriptionLessFish.semantics, name, sourceId],
-          psn: Psn.of(psn++),
-          payload: e,
-        }))
-        .toArray()
-  }
   it('should get created when hydrate is called with no subscriptions', async () => {
     const allEventsSpy = jest.fn()
     const persistEventsSpy = jest.fn()
@@ -438,7 +408,8 @@ describe('SubscriptionLessFishJar', () => {
       name,
       eventStore,
       SnapshotStore.noop,
-      sendPassThrough(),
+      // Just swallow the events
+      assignAscendingPsn(sourceId),
       fakeObserve,
       commandExecutor,
       pondStateTracker,
@@ -480,6 +451,6 @@ describe('SubscriptionLessFishJar', () => {
     expect(presentSpy).not.toBeCalled()
     expect(persistedEventsSpy).not.toBeCalled()
     expect(persistEventsSpy).not.toBeCalled()
-    expect(sendSpy).toBeCalledWith(expect.anything(), [2])
+    expect(sendSpy).toBeCalledWith(subscriptionLessFish.semantics, name, [], [2])
   })
 })

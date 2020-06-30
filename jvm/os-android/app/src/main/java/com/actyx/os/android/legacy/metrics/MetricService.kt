@@ -1,21 +1,19 @@
 package com.actyx.os.android.legacy.metrics
 
 import android.content.Context
-import android.os.Build
-import android.provider.Settings
 import com.actyx.os.android.model.ActyxOsSettings
 import com.actyx.os.android.service.Service
+import com.actyx.os.android.util.DeviceSerialNr
 import com.actyx.os.android.util.Logger
 import io.reactivex.Observable
 import io.reactivex.Single
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.lang.RuntimeException
-import java.util.Date
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 class MetricService(private val ctx: Context) : Service {
@@ -23,9 +21,9 @@ class MetricService(private val ctx: Context) : Service {
   val log = Logger()
 
   override fun invoke(settings: ActyxOsSettings): Single<Unit> {
-    val deviceId = getDeviceSerialNumber(ctx)
+    val deviceId = DeviceSerialNr.get(ctx)
     val origin = AndroidOrigin(deviceId, this.javaClass.name)
-    return Observable.interval(5, 20, TimeUnit.SECONDS)
+    return Observable.interval(1, 15, TimeUnit.MINUTES)
       .concatMap { _ ->
         val timestamp = Date().time * 1000
         val deviceInfo = DeviceUtil.getDeviceInfo(ctx, deviceId)
@@ -62,13 +60,5 @@ class MetricService(private val ctx: Context) : Service {
     val jsonContentType = ("application/json; charset=utf-8").toMediaType()
     private const val endpoint = "http://localhost:4454/api/v1/events/publish"
     private const val semantics = "edge.ax.sf.metrics"
-
-    private fun getDeviceSerialNumber(context: Context): String {
-      val contentResolver = context.contentResolver
-      return if (Build.SERIAL == Build.UNKNOWN)
-        Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-      else
-        Build.SERIAL
-    }
   }
 }

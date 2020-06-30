@@ -133,14 +133,17 @@ jobs:
         buildrs:
           DOCKER_TAG: 'buildrs-x64'
           DOCKER_REPO: 'actyx/util'
+        wininstallercreator:
+          DOCKER_TAG: 'windowsinstallercreator-x64'
+          DOCKER_REPO: 'actyx/util'
         balenaremoteforward:
           DOCKER_TAG: 'balenaremoteforward-x64'
         musl:
           DOCKER_TAG: 'musl-x64'
         mssqlpoller-x64:
           DOCKER_TAG: 'mssqlpoller-x64'
-        awcli-x64:
-          DOCKER_TAG: 'awcli-x64'
+        opscli-x64:
+          DOCKER_TAG: 'opscli-x64'
         tamshot-x64:
           DOCKER_TAG: 'tamshot-x64'
     steps:

@@ -97,7 +97,7 @@ export class WebsocketSnapshotStore implements SnapshotStore {
           cycle,
           version,
           tag,
-          blob: JSON.stringify(blob),
+          blob,
         }),
       )
       .map(validateOrThrow(t.boolean))
@@ -118,7 +118,7 @@ export class WebsocketSnapshotStore implements SnapshotStore {
           x === null
             ? undefined
             : {
-                state: JSON.parse(x.state),
+                state: x.state,
                 eventKey: x.eventKey,
                 psnMap: x.psnMap,
                 horizon: x.horizon || undefined,

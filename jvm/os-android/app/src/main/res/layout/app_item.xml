@@ -7,8 +7,6 @@
   android:background="?android:attr/selectableItemBackground"
   android:minHeight="72dp"
   android:paddingEnd="?android:attr/listPreferredItemPaddingRight"
-  android:paddingLeft="?android:attr/listPreferredItemPaddingLeft"
-  android:paddingRight="?android:attr/listPreferredItemPaddingRight"
   android:paddingStart="?android:attr/listPreferredItemPaddingLeft">
 
   <ImageView

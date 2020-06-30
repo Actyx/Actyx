@@ -16,7 +16,7 @@ endif
 component=$(shell echo $${DOCKER_TAG:-unknown-x64}|cut -f1 -d-)
 arch=$(shell echo $${DOCKER_TAG:-unknown-x64}|cut -f2 -d-)
 # These should be moved to the global azure pipelines build
-BUILD_RUST_TOOLCHAIN=1.43.1
+BUILD_RUST_TOOLCHAIN=1.44.0
 BUILD_SCCACHE_VERSION=0.2.12
 
 # Build specific
@@ -326,9 +326,10 @@ axosandroid-libs: debug
 
 axosandroid-app: debug axosandroid-libs
 	./jvm/os-android/bin/get-keystore.sh
-	docker run -v `pwd`/jvm/os-android:/src \
+	docker run -v `pwd`:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-w /src/jvm/os-android \
 	-it actyx/util:buildrs-x64-latest \
 	./gradlew clean ktlintCheck build assembleRelease
 	echo 'APK: ./jvm/os-android/app/build/outputs/apk/release/app-release.apk'

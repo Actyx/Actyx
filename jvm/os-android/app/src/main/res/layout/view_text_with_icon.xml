@@ -21,8 +21,8 @@
         android:id="@+id/icon"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:contentDescription="@string/email_icon"
+        android:contentDescription="@string/placeholder"
         android:tint="@color/font_blue"
-        tools:srcCompat="@drawable/ic_email_black_24dp" />
+        tools:srcCompat="@drawable/ic_apps" />
 </merge>
 

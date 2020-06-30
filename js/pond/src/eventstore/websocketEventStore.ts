@@ -209,6 +209,7 @@ export class WebsocketEventStore implements EventStore {
               .map<Event>((ev, idx) => ({
                 sourceId: this.sourceId,
                 name: ev.name,
+                tags: ev.tags,
                 payload: ev.payload,
                 semantics: ev.semantics,
                 timestamp: persistedEvents[idx].timestamp,

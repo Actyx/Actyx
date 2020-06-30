@@ -5,7 +5,7 @@
     android:layout_height="wrap_content">
 
     <ImageView
-        android:id="@+id/imageView"
+        android:id="@+id/imgActyxOsLogo"
         android:layout_width="50.4dp"
         android:layout_height="50.4dp"
         android:layout_marginStart="20.7dp"
@@ -17,7 +17,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.constraintlayout.widget.Guideline
-        android:id="@+id/guideline4"
+        android:id="@+id/guidelineAppTop"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -25,15 +25,15 @@
 
 
     <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/textView3"
+        android:id="@+id/labelActyxOS"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="11.7dp"
         android:text="@string/app_name"
         android:textColor="@color/font_black"
         android:textSize="15.3sp"
-        app:layout_constraintBottom_toTopOf="@+id/guideline4"
-        app:layout_constraintStart_toEndOf="@+id/imageView" />
+        app:layout_constraintBottom_toTopOf="@+id/guidelineAppTop"
+        app:layout_constraintStart_toEndOf="@+id/imgActyxOsLogo" />
 
     <com.google.android.material.textview.MaterialTextView
         android:layout_width="wrap_content"
@@ -41,33 +41,33 @@
         android:text="@string/actyx_ag"
         android:textColor="@color/font_grey"
         android:textSize="12sp"
-        app:layout_constraintStart_toStartOf="@+id/textView3"
-        app:layout_constraintTop_toTopOf="@+id/guideline4" />
+        app:layout_constraintStart_toStartOf="@+id/labelActyxOS"
+        app:layout_constraintTop_toTopOf="@+id/guidelineAppTop" />
 
     <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/textView"
+        android:id="@+id/labelEmail"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="31.5dp"
         android:text="@string/contact"
         android:textColor="@color/font_grey_label"
         android:textSize="12.6sp"
-        app:layout_constraintStart_toStartOf="@+id/imageView"
-        app:layout_constraintTop_toBottomOf="@+id/imageView" />
+        app:layout_constraintStart_toStartOf="@+id/imgActyxOsLogo"
+        app:layout_constraintTop_toBottomOf="@+id/imgActyxOsLogo" />
 
     <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/textView5"
+        android:id="@+id/labelWebsite"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
         android:text="@string/website"
         android:textColor="@color/font_grey_label"
         android:textSize="12.6sp"
-        app:layout_constraintStart_toStartOf="@+id/textView"
-        app:layout_constraintTop_toBottomOf="@+id/divider2" />
+        app:layout_constraintStart_toStartOf="@+id/labelEmail"
+        app:layout_constraintTop_toBottomOf="@+id/dividerEmail" />
 
     <com.google.android.material.textview.MaterialTextView
-        android:id="@+id/textView7"
+        android:id="@+id/labelLicense"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
@@ -76,8 +76,8 @@
         android:textColor="@color/font_grey_label"
         android:textSize="12.6sp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="@+id/textView5"
-        app:layout_constraintTop_toBottomOf="@+id/divider" />
+        app:layout_constraintStart_toStartOf="@+id/labelWebsite"
+        app:layout_constraintTop_toBottomOf="@+id/dividerWebsite" />
 
     <com.actyx.os.android.activity.systeminfoscreens.TextWithIcon
         android:id="@+id/email"
@@ -86,9 +86,10 @@
         android:layout_marginEnd="10.35dp"
         android:src="@drawable/ic_email_black_24dp"
         android:text="@string/contact_actyx_io"
-        app:layout_constraintBottom_toBottomOf="@+id/textView"
-        app:layout_constraintEnd_toStartOf="@+id/guideline2"
-        app:layout_constraintTop_toTopOf="@+id/textView" />
+        android:contentDescription="@string/email_icon"
+        app:layout_constraintBottom_toBottomOf="@+id/labelEmail"
+        app:layout_constraintEnd_toStartOf="@+id/guidelineAppCenter"
+        app:layout_constraintTop_toTopOf="@+id/labelEmail" />
 
 
     <com.actyx.os.android.activity.systeminfoscreens.TextWithIcon
@@ -98,61 +99,62 @@
         android:layout_marginEnd="10.35dp"
         android:src="@drawable/ic_computer_black_24dp"
         android:text="@string/www_actyx_com"
-        app:layout_constraintBottom_toBottomOf="@+id/textView5"
-        app:layout_constraintEnd_toStartOf="@+id/guideline2"
-        app:layout_constraintTop_toTopOf="@+id/textView5" />
+        android:contentDescription="@string/website_icon"
+        app:layout_constraintBottom_toBottomOf="@+id/labelWebsite"
+        app:layout_constraintEnd_toStartOf="@+id/guidelineAppCenter"
+        app:layout_constraintTop_toTopOf="@+id/labelWebsite" />
 
 
     <androidx.constraintlayout.widget.Guideline
-        android:id="@+id/guideline2"
+        android:id="@+id/guidelineAppCenter"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         app:layout_constraintGuide_percent="0.5" />
 
     <View
-        android:id="@+id/divider2"
+        android:id="@+id/dividerEmail"
         android:layout_width="0dp"
         android:layout_height="1dp"
         android:layout_marginTop="15.3dp"
         android:layout_marginEnd="10.35dp"
         android:background="?android:attr/listDivider"
-        app:layout_constraintEnd_toStartOf="@+id/guideline2"
-        app:layout_constraintStart_toStartOf="@+id/imageView"
-        app:layout_constraintTop_toBottomOf="@+id/textView" />
+        app:layout_constraintEnd_toStartOf="@+id/guidelineAppCenter"
+        app:layout_constraintStart_toStartOf="@+id/imgActyxOsLogo"
+        app:layout_constraintTop_toBottomOf="@+id/labelEmail" />
 
     <View
-        android:id="@+id/divider"
+        android:id="@+id/dividerWebsite"
         android:layout_width="0dp"
         android:layout_height="1dp"
         android:layout_marginTop="16dp"
         android:layout_marginEnd="10.35dp"
         android:background="?android:attr/listDivider"
-        app:layout_constraintEnd_toStartOf="@+id/guideline2"
+        app:layout_constraintEnd_toStartOf="@+id/guidelineAppCenter"
         app:layout_constraintHorizontal_bias="1.0"
-        app:layout_constraintStart_toStartOf="@+id/imageView"
-        app:layout_constraintTop_toBottomOf="@+id/textView5" />
+        app:layout_constraintStart_toStartOf="@+id/imgActyxOsLogo"
+        app:layout_constraintTop_toBottomOf="@+id/labelWebsite" />
 
     <View
-        android:id="@+id/divider3"
+        android:id="@+id/dividerVersion"
         android:layout_width="0dp"
         android:layout_height="1dp"
         android:layout_marginStart="10.35dp"
         android:background="?android:attr/listDivider"
-        app:layout_constraintBottom_toBottomOf="@+id/divider2"
+        app:layout_constraintBottom_toBottomOf="@+id/dividerEmail"
         app:layout_constraintEnd_toEndOf="@+id/stop_actyx_os"
-        app:layout_constraintStart_toStartOf="@+id/guideline2"
-        app:layout_constraintTop_toTopOf="@+id/divider2" />
+        app:layout_constraintStart_toStartOf="@+id/guidelineAppCenter"
+        app:layout_constraintTop_toTopOf="@+id/dividerEmail" />
 
     <View
-        android:id="@+id/divider4"
+        android:id="@+id/dividerCompat"
         android:layout_width="0dp"
         android:layout_height="1dp"
         android:layout_marginStart="10.35dp"
         android:background="?android:attr/listDivider"
-        app:layout_constraintBottom_toBottomOf="@+id/divider"
+        app:layout_constraintBottom_toBottomOf="@+id/dividerWebsite"
         app:layout_constraintEnd_toEndOf="@+id/stop_actyx_os"
-        app:layout_constraintStart_toStartOf="@+id/guideline2" />
+        app:layout_constraintStart_toStartOf="@+id/guidelineAppCenter" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/stop_actyx_os"
@@ -175,9 +177,10 @@
         android:layout_marginEnd="10.35dp"
         android:src="@drawable/ic_insert_drive_file_black_24dp"
         android:text="@string/details"
-        app:layout_constraintBottom_toBottomOf="@+id/textView7"
-        app:layout_constraintEnd_toStartOf="@+id/guideline2"
-        app:layout_constraintTop_toTopOf="@+id/textView7" />
+        android:contentDescription="@string/license_details_icon"
+        app:layout_constraintBottom_toBottomOf="@+id/labelLicense"
+        app:layout_constraintEnd_toStartOf="@+id/guidelineAppCenter"
+        app:layout_constraintTop_toTopOf="@+id/labelLicense" />
 
     <com.actyx.os.android.activity.systeminfoscreens.LabelWithText
         android:id="@+id/applicationAppVersionText"
@@ -187,7 +190,7 @@
         app:label="@string/app_version"
         app:layout_constraintBottom_toBottomOf="@+id/email"
         app:layout_constraintEnd_toEndOf="@+id/stop_actyx_os"
-        app:layout_constraintStart_toStartOf="@+id/guideline2"
+        app:layout_constraintStart_toStartOf="@+id/guidelineAppCenter"
         app:layout_constraintTop_toTopOf="@+id/email" />
 
     <com.actyx.os.android.activity.systeminfoscreens.LabelWithText
@@ -198,7 +201,7 @@
         app:label="@string/compatibility"
         app:layout_constraintBottom_toBottomOf="@+id/www"
         app:layout_constraintEnd_toEndOf="@+id/stop_actyx_os"
-        app:layout_constraintStart_toStartOf="@+id/guideline2"
+        app:layout_constraintStart_toStartOf="@+id/guidelineAppCenter"
         app:layout_constraintTop_toTopOf="@+id/www" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -9,7 +9,7 @@ import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
 import { failure as failureReporter } from 'io-ts/lib/PathReporter'
 import { createEnumType, EnvelopeFromStore } from '../store/util'
-import { FishName, Lamport, Psn, Semantics, SourceId, Timestamp } from '../types'
+import { FishName, Lamport, Psn, Semantics, SourceId, Timestamp, Tags } from '../types'
 import { OffsetMapIO } from './offsetMap'
 
 export { OffsetMap, OffsetMapBuilder } from './offsetMap'
@@ -38,6 +38,7 @@ export const EventIO = t.type({
   name: FishName.FromString,
   timestamp: Timestamp.FromNumber,
   lamport: Lamport.FromNumber,
+  tags: Tags,
   payload: t.unknown,
 })
 export type Event = t.TypeOf<typeof EventIO>
@@ -78,15 +79,6 @@ export const Event = {
     // Just a cast in `NODE_ENV==='production'`
     payload: decoder ? unsafeDecode(ev.payload, decoder) : (ev.payload as E),
   }),
-  fromEnvelopeFromStore: <E>(ev: EnvelopeFromStore<E>): Event => ({
-    lamport: ev.lamport,
-    sourceId: ev.source.sourceId,
-    semantics: ev.source.semantics,
-    name: ev.source.name,
-    timestamp: ev.timestamp,
-    psn: ev.psn,
-    payload: ev.payload,
-  }),
 }
 
 /**
@@ -106,6 +98,7 @@ export const UnstoredEvent = t.readonly(
     semantics: Semantics.FromString,
     name: FishName.FromString,
     timestamp: Timestamp.FromNumber,
+    tags: Tags,
     payload: t.unknown,
   }),
 )

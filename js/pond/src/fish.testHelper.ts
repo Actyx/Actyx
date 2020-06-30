@@ -37,6 +37,7 @@ export type RawEvent = Readonly<{
   timestamp: number
   source: string
   fishName?: string
+  tags?: string[]
 }>
 
 export type LastPublished = Readonly<{
@@ -73,6 +74,7 @@ export const eventFactory = () => {
       payload: raw.payload,
       semantics: testFishSemantics,
       name: raw.fishName ? FishName.of(raw.fishName) : testFishName,
+      tags: raw.tags || [],
     }
 
     lastPublishedForSources[raw.source] = {
@@ -130,7 +132,7 @@ export type SnapshotData = Readonly<{
   cycle: number
   version: number
   tag: string
-  blob: unknown
+  blob: string
 }>
 
 export const mkSnapshot = (
@@ -153,7 +155,7 @@ export const mkSnapshot = (
     cycle: 1,
     version: version || 1,
     tag: 'year',
-    blob: state,
+    blob: JSON.stringify(state),
   }
 }
 
@@ -167,7 +169,8 @@ export const snapshotTestSetup = async (
   storedEvents?: Events,
   storedSnapshots?: ReadonlyArray<SnapshotData>,
 ) => {
-  const eventStore = EventStore.test(SourceId.of('LOCAL-test-source'))
+  const sourceId = SourceId.of('LOCAL-test-source')
+  const eventStore = EventStore.test(sourceId)
   if (storedEvents) eventStore.directlyPushEvents(storedEvents)
 
   const snapshotStore = SnapshotStore.inMem()
@@ -189,9 +192,9 @@ export const snapshotTestSetup = async (
     .concat(Observable.of(undefined))
     .toPromise()
 
-  const sendToStore: SendToStore = (src, events) => {
-    const chunk = makeEventChunk(defaultTimeInjector, src, events)
-    return eventStore.persistEvents(chunk).map(c => c.map(ev => Event.toEnvelopeFromStore(ev)))
+  const sendToStore: SendToStore = (semantics, name, _tags, events) => {
+    const chunk = makeEventChunk(defaultTimeInjector, { semantics, name, sourceId }, events)
+    return eventStore.persistEvents(chunk)
   }
 
   const jar = await hydrate(
@@ -220,7 +223,10 @@ export const snapshotTestSetup = async (
     return pubProm
   }
 
-  const latestSnap = async () => snapshotStore.retrieveSnapshot(fish.semantics, testFishName, 1)
+  const latestSnap = async () =>
+    snapshotStore
+      .retrieveSnapshot(fish.semantics, testFishName, 1)
+      .then(x => (x ? { ...x, state: JSON.parse(x.state) } : undefined))
 
   return {
     latestSnap,

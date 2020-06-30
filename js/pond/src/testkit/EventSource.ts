@@ -29,6 +29,7 @@ export function mkEventSource<E>(
       },
       timestamp: t !== undefined ? Timestamp.of(t) : Timestamp.of(seq * 1000),
       lamport: t !== undefined ? Lamport.of(t) : Lamport.of(seq * 1000),
+      tags: [],
       payload: e,
     }
   }

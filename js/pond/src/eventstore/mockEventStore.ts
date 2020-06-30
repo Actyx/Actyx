@@ -48,6 +48,7 @@ export const mockEventStore: () => EventStore = () => {
       payload: payload.payload,
       name: payload.name,
       semantics: payload.semantics,
+      tags: [],
       sourceId,
       timestamp: payload.timestamp,
       lamport: Lamport.of(payload.timestamp),

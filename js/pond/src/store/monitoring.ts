@@ -8,7 +8,7 @@
 // #region impl
 
 import * as debug from 'debug'
-import * as format from 'format-util'
+import { format } from 'util'
 import { Observable } from 'rxjs'
 import { Timestamp } from '..'
 import {

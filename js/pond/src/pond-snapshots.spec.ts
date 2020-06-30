@@ -102,6 +102,7 @@ const createEventStoreEvent = (
     psn: Psn.of(psn),
     semantics,
     name: fishName,
+    tags: [],
     payload: event,
     timestamp,
     lamport: Lamport.of(timestamp),

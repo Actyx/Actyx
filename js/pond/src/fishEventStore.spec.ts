@@ -7,8 +7,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ord } from 'fp-ts'
 import { ordNumber } from 'fp-ts/lib/Ord'
-import { Envelope, Semantics, SubscriptionSet } from '.'
-import { EventStore, UnstoredEvent } from './eventstore'
+import { Semantics, SubscriptionSet } from '.'
+import { Event, EventStore, UnstoredEvent } from './eventstore'
 import {
   addAndInvalidateState,
   FishEventStore,
@@ -28,8 +28,8 @@ const payloadOrder = ord.ordNumber.compare
 
 const processPayload = (state: State, payload: Payload): State => payload + state
 
-const processEvent = (state: State, envelope: Envelope<Payload>): State =>
-  processPayload(envelope.payload, state)
+const processEvent = (state: State, event: Event): State =>
+  processPayload(state, event.payload as Payload)
 
 describe('FishEventStore functions', () => {
   describe('addAndInvalidateState', () => {
@@ -110,7 +110,7 @@ describe('FishEventStore', () => {
     semantics: Semantics.of('some-fish'),
     fishName: FishName.of('some-name'),
     subscriptionSet: SubscriptionSet.all,
-    initialState: 0,
+    initialState: () => 0,
     onEvent: processEvent,
     isSemanticSnapshot: undefined,
     snapshotFormat: undefined,
@@ -121,6 +121,7 @@ describe('FishEventStore', () => {
   const toEnvelope = (payload: Payload, i: number): UnstoredEvent => ({
     semantics: Semantics.of('foo'),
     name: FishName.of('foo'),
+    tags: [],
     timestamp: Timestamp.of(i * 1000000),
     payload,
   })
