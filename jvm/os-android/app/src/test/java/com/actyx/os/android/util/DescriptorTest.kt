@@ -41,6 +41,5 @@ settingsSchema: "./assets/schema.json"
         .joinToString("\n"))
     val expectedWithoutIcon = expected.copy(icon = null)
     assertEquals(expectedWithoutIcon, resultWithoutIcon)
-
   }
 }
