@@ -16,6 +16,12 @@ module.exports = {
       },
       links: [
         {
+          to: 'docs/home/welcome',
+          activeBasePath: 'docs/home/',
+          label: 'Home',
+          position: 'left',
+        },
+        {
           to: 'docs/quickstart',
           activeBasePath: 'docs/quickstart',
           label: 'Quickstart',

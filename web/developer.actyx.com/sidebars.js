@@ -1,4 +1,12 @@
 module.exports = {
+  homeSidebar: {
+    'Home': [
+      'home/welcome',
+      'home/actyx_platform',
+      'home/platform_products',
+      'home/getting_started',
+    ],
+  },
   osSidebar: {
     'ActyxOS': [
       'os/introduction',
