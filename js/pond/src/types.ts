@@ -13,7 +13,6 @@ import { CommandApi } from './commandApi'
 import { Event, OffsetMap } from './eventstore/types'
 import { EnvelopeFromStore } from './store/util'
 import { Subscription } from './subscription'
-import { Opaque } from './util/opaqueTag'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isString = (x: any): x is string => typeof x === 'string'
@@ -22,8 +21,7 @@ export const isNumber = (x: any): x is number => typeof x === 'number'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isBoolean = (x: any): x is boolean => typeof x === 'boolean'
 
-export declare const SemanticsTag: unique symbol
-export type Semantics = Opaque<string, typeof SemanticsTag>
+export type Semantics = string
 
 const internalSemantics = (s: string): Semantics => `internal-${s}` as Semantics
 export const Semantics = {
@@ -49,8 +47,7 @@ export const Semantics = {
   ),
 }
 
-export declare const FishNameTag: unique symbol
-export type FishName = Opaque<string, typeof FishNameTag>
+export type FishName = string
 export const FishName = {
   of: (s: string): FishName => s as FishName,
   none: 'internal-nofish' as FishName,
@@ -73,8 +70,7 @@ export const Tags = new t.Type<Tags, TagsOnWire>(
   x => x,
 )
 
-export declare const SourceIdTag: unique symbol
-export type SourceId = Opaque<string, typeof SourceIdTag>
+export type SourceId = string
 const mkSourceId = (text: string): SourceId => text as SourceId
 export const randomBase58: (digits: number) => string = (digits: number) => {
   const base58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'.split('')
@@ -105,8 +101,7 @@ export const SourceId = {
   ),
 }
 
-export declare const LamportTag: unique symbol
-export type Lamport = Opaque<number, typeof LamportTag>
+export type Lamport = number
 const mkLamport = (value: number): Lamport => value as Lamport
 export const Lamport = {
   of: mkLamport,
@@ -119,8 +114,7 @@ export const Lamport = {
   ),
 }
 
-export declare const PsnTag: unique symbol
-export type Psn = Opaque<number, typeof PsnTag>
+export type Psn = number
 const mkPsn = (psn: number): Psn => psn as Psn
 export const Psn = {
   of: mkPsn,
@@ -141,8 +135,7 @@ export const Psn = {
   ),
 }
 
-export declare const TimestampTag: unique symbol
-export type Timestamp = Opaque<number, typeof TimestampTag>
+export type Timestamp = number
 const mkTimestamp = (time: number): Timestamp => time as Timestamp
 const formatTimestamp = (timestamp: Timestamp): string => new Date(timestamp / 1000).toISOString()
 const secondsPerDay = 24 * 60 * 60
@@ -169,8 +162,7 @@ export const Timestamp = {
   ),
 }
 
-export declare const MillisecondsTag: unique symbol
-export type Milliseconds = Opaque<number, typeof MillisecondsTag>
+export type Milliseconds = number
 const mkMilliseconds = (time: number): Milliseconds => time as Milliseconds
 export const Milliseconds = {
   of: mkMilliseconds,

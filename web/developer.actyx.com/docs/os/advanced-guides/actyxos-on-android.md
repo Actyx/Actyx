@@ -111,3 +111,8 @@ instead of
 - /dns4/demo-bootstrap.actyx.net/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH
 
 ActyxOS on Docker supports both formats. We are currently working on a fix for this. Check out our [blog](https://www.actyx.com/news/) or [release notes section](/docs/os/release-notes.md) for information on our new releases.
+
+## Known issues
+
+### Multiple windows for one app are opened in the Android app switcher
+If you stop ActyxOS while one of your apps is running and immediately start ActyxOS again, you will see multiple app windows for the same app. In order to avoid this bug, please close all app windows either before, or after you stop ActyxOS. Should you end up in this state, you can resolve the issue by just closing all app windows manually.

@@ -11,7 +11,6 @@ import com.actyx.os.android.activity.WebappActivity
 import com.actyx.os.android.api.RestServer
 import com.actyx.os.android.service.BackgroundServices
 import com.actyx.os.android.util.Descriptor
-import io.reactivex.Observable
 import io.reactivex.subjects.BehaviorSubject
 import java.io.File
 import java.io.FileInputStream
@@ -41,19 +40,19 @@ class AppRepository(extFilesDir: File, val ctx: Context) {
     appsSubject.onNext(appInfoList())
   }
 
-  private fun appInfo(descriptor: Descriptor.DescriptorDetails): AppInfo =
+  private fun appInfo(descriptor: Descriptor): AppInfo =
     AppInfo(
       descriptor.id,
       descriptor.version,
-      descriptor.name,
-      iconFile(descriptor).map { it.absolutePath }.orNull(),
+      descriptor.displayName,
+      iconFile(descriptor)?.absolutePath,
       appUrl(descriptor),
       loadSettingsSchema(descriptor)
     )
 
   fun appInfo(appId: String): AppInfo? =
     currentAppDir(appId)?.let { current ->
-      appInfo(descriptor(current).descriptor)
+      appInfo(descriptor(current))
     }
 
   /**
@@ -64,8 +63,6 @@ class AppRepository(extFilesDir: File, val ctx: Context) {
       ?.map { it.name }
       ?.mapNotNull(::appInfo)
       ?: listOf()
-
-  fun observe(): Observable<List<AppInfo>> = appsSubject
 
   /**
    * loads the specified resource from the dist directory of the latest version of the
@@ -86,13 +83,13 @@ class AppRepository(extFilesDir: File, val ctx: Context) {
   /**
    * gets the app icon path referenced in the descriptor within the repo
    */
-  private fun iconFile(descriptor: Descriptor.DescriptorDetails): Option<File> =
-    descriptor.appIconPath.map { File(currentAppDir(descriptor.id), it) }
+  private fun iconFile(descriptor: Descriptor): File? =
+    descriptor.icon?.let { File(currentAppDir(descriptor.id), it) }
 
   /**
    * creates the url under which the app is served
    */
-  private fun appUrl(descriptor: Descriptor.DescriptorDetails): Uri =
+  private fun appUrl(descriptor: Descriptor): Uri =
     if (descriptor.main.startsWith("http"))
       Uri.parse(descriptor.main) // FIXME rm
     else
@@ -105,7 +102,7 @@ class AppRepository(extFilesDir: File, val ctx: Context) {
         .path("apps/${descriptor.id}/${descriptor.main.split("/").last()}")
         .build()
 
-  private fun loadSettingsSchema(descriptor: Descriptor.DescriptorDetails): String {
+  private fun loadSettingsSchema(descriptor: Descriptor): String {
     val schemaFile = File(currentAppDir(descriptor.id), descriptor.settingsSchema)
     return schemaFile.readText()
   }
@@ -115,12 +112,6 @@ class AppRepository(extFilesDir: File, val ctx: Context) {
    */
   private fun appBaseDir(id: String): File =
     File(baseDir, id)
-
-  /**
-   * version specific app directory
-   */
-  private fun appVersionDir(appDir: File, version: String): File =
-    File(appDir, version)
 
   /**
    * directory that contains the latest app version
@@ -141,14 +132,14 @@ class AppRepository(extFilesDir: File, val ctx: Context) {
    * loads the version-specific app descriptor
    */
   private fun descriptor(appVersionDir: File): Descriptor =
-    Descriptor.load(File(appVersionDir, "ax-descriptor.yml").readText())
+    Descriptor.parseYaml(File(appVersionDir, "ax-descriptor.yml").readText())
 
   /**
    * directory referenced from the descriptor that contains the distributed resources
    */
   private fun currentDistDir(appId: String): File? =
     currentAppDir(appId)?.let { current ->
-      descriptor(current).descriptor.dist.let { File(current, it) }
+      File(current, descriptor(current).dist)
     }
 
   fun startApp(appId: String): Either<String, Unit> =

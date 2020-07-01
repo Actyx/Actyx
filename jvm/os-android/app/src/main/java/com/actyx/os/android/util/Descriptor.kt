@@ -1,44 +1,28 @@
 package com.actyx.os.android.util
 
-import arrow.core.Option
-import org.yaml.snakeyaml.Yaml
+import com.charleskorn.kaml.Yaml
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class Descriptor(
   val manifestVersion: String,
-  val descriptor: DescriptorDetails
+  val type: String,
+  val id: String,
+  val displayName: String,
+  val description: String,
+  val version: String,
+  // relative to root
+  val icon: String? = null,
+  // relative to dist
+  val main: String,
+  val dist: String,
+  // relative to root
+  val settingsSchema: String
 ) {
-  data class DescriptorDetails(
-    val id: String,
-    val name: String,
-    val description: String,
-    val version: String,
-    // relative to root
-    val appIconPath: Option<String>,
-    // relative to dist
-    val main: String,
-    val dist: String,
-    // relative to root
-    val settingsSchema: String
-  )
-
   companion object {
-    private val yaml = Yaml()
+    private val yaml = Yaml.default
 
-    fun load(descriptorYaml: String): Descriptor {
-      val descriptor = yaml.load<Map<*, *>>(descriptorYaml)
-      return Descriptor(
-        manifestVersion = descriptor["manifestVersion"] as String,
-        descriptor = DescriptorDetails(
-          id = descriptor["id"] as String,
-          version = descriptor["version"] as String,
-          name = descriptor["displayName"] as String,
-          description = descriptor["description"] as String,
-          appIconPath = Option.fromNullable(descriptor["icon"] as String?),
-          main = descriptor["main"] as String,
-          dist = descriptor["dist"] as String,
-          settingsSchema = descriptor["settingsSchema"] as String
-        )
-      )
-    }
+    fun parseYaml(string: String): Descriptor =
+      yaml.parse(serializer(), string)
   }
 }

@@ -20,5 +20,5 @@ Change the settings of your ActyxOS nodes or installed applications and receive 
 <img src="/images/os/node-manager-settings.png" style={{maxWidth: "550px", marginBottom: "1rem" }} />
 
 ## Installation
-Please download the application [here](https://downloads.actyx.com/). Supported platforms are Windows and macOS.
+Please download the application [here](https://downloads.actyx.com/). Supported platforms are Windows, Linux and MacOS.
 

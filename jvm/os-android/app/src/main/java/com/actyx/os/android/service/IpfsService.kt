@@ -124,6 +124,9 @@ class IpfsService(private val ctx: Context) : Service {
       listOf(
         "init"
       ), listOf(
+        "config Reprovider.Interval 0",
+        "config Routing.Type dhtclient",
+        "config --json Pubsub.Router \"gossipsub\"",
         "bootstrap rm --all",
         "config --json Pubsub.Router \"gossipsub\"",
         "config Addresses.Gateway /ip4/127.0.0.1/tcp/8080",

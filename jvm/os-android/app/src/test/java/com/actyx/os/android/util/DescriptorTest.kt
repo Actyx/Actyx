@@ -1,7 +1,6 @@
 package com.actyx.os.android.util
 
-import arrow.core.some
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class DescriptorTest {
@@ -20,19 +19,27 @@ main: "index.html"
 settingsSchema: "./assets/schema.json"
 """
 
-    val result = Descriptor.load(input)
+    val result = Descriptor.parseYaml(input)
     val expected = Descriptor(
-      "1.0", Descriptor.DescriptorDetails(
-        "com.actyx.mwl",
-        "Manual Work Logging",
-        "A great first app",
-        "1.0.1",
-        "./assets/app-icon.png".some(),
-        "index.html",
-        "./build",
-        "./assets/schema.json"
-      )
+      "1.0",
+      "web",
+      "com.actyx.mwl",
+      "Manual Work Logging",
+      "A great first app",
+      "1.0.1",
+      "./assets/app-icon.png",
+      "index.html",
+      "./build",
+      "./assets/schema.json"
     )
-    assertEquals(result, expected)
+    assertEquals(expected, result)
+
+    val resultWithoutIcon =
+      Descriptor.parseYaml(input
+        .lines()
+        .filter { !it.startsWith("icon:") }
+        .joinToString("\n"))
+    val expectedWithoutIcon = expected.copy(icon = null)
+    assertEquals(expectedWithoutIcon, resultWithoutIcon)
   }
 }

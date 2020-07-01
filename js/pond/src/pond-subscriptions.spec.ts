@@ -22,10 +22,8 @@ import {
   Psn,
   Semantics,
   SourceId,
-  SourceIdTag,
   Timestamp,
 } from './types'
-import { Opaque } from './util/opaqueTag'
 
 //#region test fish definition
 export type State = number
@@ -41,7 +39,7 @@ const onEvent: OnEvent<State, Event> = (state: State, event: Envelope<Event>) =>
 
 const testFishInitialState: (subs: ReadonlyArray<Subscription>) => InitialState<State> = (
   subs: ReadonlyArray<Subscription>,
-) => (_name: string, _sourceId: Opaque<string, typeof SourceIdTag>) => ({
+) => (_name: string, _sourceId: string) => ({
   state: 0,
   subscriptions: subs,
 })
