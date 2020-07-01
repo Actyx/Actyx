@@ -1,7 +1,13 @@
 ---
 title: Actyx Platform Products
 sidebar_label: Actyx Platform Products
+hide_title: true
+hide_table_of_contents: true
 ---
+
+## Actyx Platform Products
+
+![](/images/home/actyx_products.png)
 
 The Actyx platform itself comprises several different products and tools.
 Here we provide an overview of some of the most important ones.

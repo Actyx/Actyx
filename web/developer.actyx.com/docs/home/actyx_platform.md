@@ -1,7 +1,11 @@
 ---
 title: Introduction to the Actyx Platform
 sidebar_label: The Actyx Platform
+hide_title: true
+hide_table_of_contents: true
 ---
+
+## Introduction to the Actyx Platform
 
 ![](/images/home/actyx_platform.png)
 
