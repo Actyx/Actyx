@@ -15,7 +15,7 @@ solutions faster.
 On the Actyx platform your solutions run directly at the edge without the need
 for a centralized IT infrastructure. Every component in your process that you
 want to connect — be it a machine, a robot, a worker or an ERP system — receives
-an edge computer. The logic runs directly on these edge computers and
+an edge computer. The logic runs directly on these edge devices and
 communication happens in a peer-to-peer fashion. This architectural decision
 enables us to provide a set of non-functional guarantees that are hard to
 achieve in a more centralized system; Solutions that run on the Actyx platform
