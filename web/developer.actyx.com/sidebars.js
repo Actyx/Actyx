@@ -4,7 +4,6 @@ module.exports = {
       'home/welcome',
       'home/actyx_platform',
       'home/platform_products',
-      'home/getting_started',
     ],
   },
   osSidebar: {
