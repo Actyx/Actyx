@@ -1,6 +1,6 @@
 {
   "name": "@actyx/pond",
-  "version": "1.2.0-alpha3",
+  "version": "1.2.0-rc1",
   "description": "Actyx Pond",
   "keywords": [
     "actyx",
@@ -31,7 +31,7 @@
   "bugs": {
     "url": "https://support.actyx.io"
   },
-  "homepage": "https://www.actyx.com/pond/",
+  "homepage": "https://www.actyx.com/products/pond/",
   "scripts": {
     "clean": "rimraf ./lib ./coverage",
     "build": "tsc -p ./tsconfig.prod.json",

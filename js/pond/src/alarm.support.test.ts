@@ -16,9 +16,8 @@ import {
   Timestamp,
 } from './types'
 import { unreachableOrElse } from './util/'
-import { Opaque } from './util/opaqueTag'
-export declare const SequenceNumberTag: unique symbol
-export type SequenceNumber = Opaque<number, typeof SequenceNumberTag>
+
+export type SequenceNumber = number
 const mkSequenceNumber = (sequence: number): SequenceNumber => sequence as SequenceNumber
 export const SequenceNumber = {
   of: mkSequenceNumber,
