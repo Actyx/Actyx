@@ -7,7 +7,7 @@ title: Introduction to the Actyx Platform
 ![](/images/landing_page/actyx_platform.png)
 
 The Actyx platform is an application platform for developing, deploying, running
-and monitoring factory process automation solutions. With the Actyx platform we
+and monitoring factory automation solutions. With the Actyx platform we
 bring a modern development experience to the factory automation space and
 provide you with the software and tools that enable you to build better
 solutions faster.
@@ -44,7 +44,7 @@ introduction into some of the core abstractions of the Actyx platform.
 
 ## Actyx Platform Products
 
-The Actyx platform itself is made up of several different products and tools.
+The Actyx platform itself comprises several different products and tools.
 Here we provide an overview of some of the most important ones.
 
 ### ActyxOS
@@ -96,5 +96,5 @@ The fastest way to see the Actyx platform in action is to check out our
 We also provide a half-day ramp up session with one of our engineers to get you
 started developing on the Actyx platform. If you are interested please [contact
 us](https://www.actyx.com/contact) or join us in our [Discord
-chat](https://discord.gg/262yJhc) and we will be happy to set you up or answer
-any questions you might have.
+chat](https://discord.gg/262yJhc) and we will be happy to help you set up or
+answer any questions you might have.
