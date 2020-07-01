@@ -3,7 +3,7 @@ module.exports = {
     'Home': [
       'home/welcome',
       'home/actyx_platform',
-      'home/platform_products',
+      'home/actyx_products',
     ],
   },
   osSidebar: {
