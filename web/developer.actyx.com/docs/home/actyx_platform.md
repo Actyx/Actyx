@@ -12,9 +12,9 @@ hide_table_of_contents: true
 The Actyx platform is an application platform for developing, deploying, running and monitoring factory automation solutions.
 With the Actyx platform we bring a modern development experience to the factory automation space and provide you with the software and tools that enable you to build better solutions faster.
 
-- On the Actyx platform your solutions run directly at the edge without the need for a centralized IT infrastructure.
-Every component in your process that you want to connect — be it a machine, a robot, a worker or an ERP system — receives an edge computer.
-The logic runs directly on these edge devices and communication happens in a peer-to-peer fashion.
+- On the Actyx platform, your applications run directly on the edge without the need for a centralized IT infrastructure.
+Every component in your process that you want to connect — be it a machine, a robot, a worker or an ERP system — receives an edge device.
+The business logic runs directly on these edge devices and communication happens in a peer-to-peer fashion.
 This architectural decision enables us to provide a set of non-functional guarantees that are hard to achieve in a more centralized system; Solutions that run on the Actyx platform can stay operational in the face of component failures and even in the face of network partitions the different components can keep making progress.
 In a setting like a factory with extremely high uptime requirements such resilience can be a huge advantage.
 
