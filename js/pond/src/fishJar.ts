@@ -602,7 +602,7 @@ const hydrateV2 = (
   subscriptionSet: SubscriptionSet,
   initialState: S,
   onEvent: (state: S, event: E, metadata: Metadata) => S,
-  cacheKey: EntityId,
+  cacheKey: FishId,
   enableLocalSnapshots: boolean,
   isReset?: (event: E) => boolean,
 ): Observable<StateWithProvenance<S>> => {

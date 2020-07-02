@@ -211,7 +211,7 @@ export class PondImpl implements Pond {
     subscriptionSet: SubscriptionSet,
     initialState: S,
     onEvent: (state: S, event: E, metadata: Metadata) => S,
-    entityId: EntityId,
+    fishId: FishId,
     enableLocalSnapshots: boolean,
     isReset?: (event: E) => boolean,
   ) => Observable<StateWithProvenance<S>>
@@ -222,7 +222,7 @@ export class PondImpl implements Pond {
   } = {}
 
   taggedAggregates: {
-    [entityId: string]: ActiveAggregate<any>
+    [fishId: string]: ActiveAggregate<any>
   } = {}
 
   // executor for async commands

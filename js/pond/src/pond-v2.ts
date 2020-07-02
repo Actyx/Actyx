@@ -139,7 +139,7 @@ export type Pond2 = {
     requiredTags: ReadonlyArray<string>,
     initialState: S,
     onEvent: (state: S, event: E) => S,
-    entityId: EntityId,
+    fishId: FishId,
     callback: (newState: S) => void,
   ): CancelSubscription
 
@@ -218,13 +218,13 @@ export class Pond2Impl implements Pond2 {
     subscriptionSet: SubscriptionSet,
     initialState: S,
     onEvent: (state: S, event: E, metadata: Metadata) => S,
-    entityId: EntityId,
+    fishId: FishId,
     enableLocalSnapshots: boolean,
     isReset?: (event: E) => boolean,
   ) => Observable<StateWithProvenance<S>>
 
   taggedAggregates: {
-    [entityId: string]: ActiveAggregate<any>
+    [fishId: string]: ActiveAggregate<any>
   } = {}
 
   constructor(
@@ -303,10 +303,10 @@ export class Pond2Impl implements Pond2 {
     subscriptionSet: SubscriptionSet,
     initialState: S,
     onEvent: Reduce<S, E>,
-    entityId: EntityId,
+    fishId: FishId,
     isReset?: (event: E) => boolean,
   ): ActiveAggregate<S> => {
-    const key = FishId.canonical(entityId)
+    const key = FishId.canonical(fishId)
     const existing = this.taggedAggregates[key]
     if (existing !== undefined) {
       return {
@@ -319,7 +319,7 @@ export class Pond2Impl implements Pond2 {
       subscriptionSet,
       initialState,
       onEvent,
-      entityId,
+      fishId,
       true,
       isReset,
     ).shareReplay(1)
@@ -358,7 +358,7 @@ export class Pond2Impl implements Pond2 {
     requiredTags: ReadonlyArray<string>,
     initialState: S,
     onEvent: (state: S, event: E) => S,
-    cacheKey: EntityId,
+    cacheKey: FishId,
     callback: (newState: S) => void,
   ): CancelSubscription => {
     const subscriptionSet: SubscriptionSet = {
@@ -382,7 +382,7 @@ export class Pond2Impl implements Pond2 {
       subscriptionSet,
       acc.initialState,
       acc.onEvent,
-      acc.entityId,
+      acc.fishId,
       acc.isReset,
     )
   }
@@ -425,8 +425,8 @@ export class Pond2Impl implements Pond2 {
       FishJar.commandPipeline<S, EmissionRequest<any>>(
         this.pondStateTracker,
         this.eventStore.sourceId,
-        agg.entityId.entityType || Semantics.none,
-        agg.entityId.name,
+        agg.fishId.entityType || Semantics.none,
+        agg.fishId.name,
         handler,
         cached.states,
         subscriptionsToEventPredicate(subscriptionSet),

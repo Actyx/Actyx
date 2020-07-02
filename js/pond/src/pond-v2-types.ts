@@ -117,7 +117,7 @@ export type Fish<S, E> = {
 
   initialState: S
   onEvent: Reduce<S, E>
-  entityId: FishId
+  fishId: FishId
 
   // semantic snapshot
   isReset?: (event: E) => boolean
@@ -135,7 +135,7 @@ export const Fish = {
 
     onEvent: (_state: E | undefined, event: E) => event,
 
-    entityId: FishId.of('actyx.lib.latestEvent', JSON.stringify(subscriptions), 1),
+    fishId: FishId.of('actyx.lib.latestEvent', JSON.stringify(subscriptions), 1),
 
     isReset: (_event: E) => true,
   }),
@@ -150,7 +150,7 @@ export const Fish = {
       return state.length > capacity ? state.slice(0, capacity) : state
     },
 
-    entityId: FishId.of('actyx.lib.eventsDescending', JSON.stringify(subscriptions), 1),
+    fishId: FishId.of('actyx.lib.eventsDescending', JSON.stringify(subscriptions), 1),
   }),
 
   eventsAscending: <E>(subscriptions: TagQuery, capacity = 100): Fish<E[], E> => ({
@@ -163,7 +163,7 @@ export const Fish = {
       return state.length > capacity ? state.slice(0, capacity) : state
     },
 
-    entityId: FishId.of('actyx.lib.eventsAscending', JSON.stringify(subscriptions), 1),
+    fishId: FishId.of('actyx.lib.eventsAscending', JSON.stringify(subscriptions), 1),
   }),
 }
 

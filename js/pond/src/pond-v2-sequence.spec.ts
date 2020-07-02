@@ -34,7 +34,7 @@ const agg: Fish<State, Payload> = {
 
   onEvent,
 
-  entityId: { name: 'sequence-test' },
+  fishId: { name: 'sequence-test' },
 }
 
 const setN: (n: number) => StateEffect<State, CompareAndIncrement> = n => state => {
@@ -310,7 +310,7 @@ describe('application of commands in the pond v2', () => {
 
       onEvent,
 
-      entityId: { name },
+      fishId: { name },
     })
 
     const alpha = mkAgg('alpha')

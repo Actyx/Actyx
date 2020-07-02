@@ -62,14 +62,14 @@ describe('application of commands in the pond', () => {
     type Event = string
     type State = ReadonlyArray<Event>
 
-    const mkAggregate = (subscriptions: TagQuery, entityId = { name: 'test-entity' }) => ({
+    const mkAggregate = (subscriptions: TagQuery, fishId = { name: 'test-entity' }) => ({
       subscriptions,
 
       initialState: [],
 
       onEvent: (state: State, event: Event) => [event, ...state],
 
-      entityId,
+      fishId,
     })
 
     it('should cache based on key', async () => {
