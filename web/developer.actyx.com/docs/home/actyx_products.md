@@ -15,8 +15,8 @@ Here we provide an overview of some of the most important ones.
 ### ActyxOS
 
 At the core of the Actyx platform is a piece of software that we call ActyxOS.
-Every device in your setup that you want to connect either runs ActyxOS or is connected to a device that runs ActyxOS.
-ActyxOS provides both the application runtimes to easily deploy and run your application logic on the edge devices and the middleware services that are needed to build holistic process automation solutions across different devices.
+Every device in your setup that you want to connect either runs the ActyxOS application or is connected to another device that runs it; Currently supported operating systems are Windows, Linux and macOS.
+ActyxOS provides the application runtimes to easily deploy and run your application logic on the edge devices, an event service abstraction for seamless communication between different devices and additional middleware services around storage and deployment management.
 
 It is possible to write your application logic directly on the middleware abstractions that ActyxOS provides by using the ActyxOS [APIs](os/api/event-service.md) or language specific [SDKs](os/sdks/js-ts.md).
 However, we usually recommend to start writing your solutions with Actyx Pond which builds on top of ActyxOS.
