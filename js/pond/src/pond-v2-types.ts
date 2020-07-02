@@ -36,20 +36,10 @@ const mkIntersection = (onlyLocalEvents: boolean) => (...tags: string[]): TagInt
 export type TagQuery = TagUnion | TagIntersection
 
 export const TagQuery = {
-  // Set terminology
-  intersection: mkIntersection(false),
-  intersectionLocal: mkIntersection(true),
-  union: mkUnion,
-
   // "What do I match?" terminology
   requireAll: mkIntersection(false),
   requireAllLocal: mkIntersection(true),
   matchAnyOf: mkUnion,
-
-  // JS Array terminology
-  requireEvery: mkIntersection(false),
-  requireEveryLocal: mkIntersection(true),
-  requireSome: mkUnion,
 
   // For internal use -- should maybe move somewhere else.
   toWireFormat: (sub: TagQuery) => {
