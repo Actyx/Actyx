@@ -25,9 +25,11 @@ To learn more about the specific services that ActyxOS provides and how you can 
 
 ### Actyx Pond
 
-Actyx Pond is an opinionated TypeScript framework that is built on top of the middleware abstractions that ActyxOS provides.
-At the core of Actyx Pond lies a powerful programming model that makes it easier for you to write correct event-driven applications.
-This programming model can take some time getting used to but once you get the hang of it provides you with a well structured approach to build sophisticated solutions for your use-cases.
+Actyx Pond is an opinionated TypeScript framework that is built on top of the ActyxOS event service.
+With Actyx Pond we make it easier for you to write correct event-driven applications that run across the different devices in your deployment.
+
+At the core of Actyx Pond lies a powerful programming model which guarantees eventually consistent business logic in a completely decentralized environment without coordinating entities.
+This implies that you can write applications that keep making progress in the face of network partitions or intermittent network failure but eventually converge to a consistent result once changes are propagated.
 
 To learn more about the Actyx Pond programming model and how you can start writing solutions on top of Actyx Pond please start [here](pond/getting-started.md).
 
