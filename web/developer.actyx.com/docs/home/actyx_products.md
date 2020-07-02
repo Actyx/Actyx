@@ -37,3 +37,10 @@ The Actyx Command Line Interface (CLI) is a unified tool for managing your Actyx
 The Actyx CLI enables you to easily deploy, configure and monitor your ActyxOS environment.
 
 You can find more documentation on the capabilities of the Actyx CLI [here](cli/getting-started.md).
+
+### ActyxOS Node Manager
+
+The ActyxOS Node Manager is an easy-to-use GUI for interacting with your ActyxOS environment.
+With ActyxOS Node Manager you can monitor your ActyxOS nodes, deploy applications and manage node and application settings without needing to use a terminal.
+
+You can find further information on the ActyxOS Node Manager [here](os/tools/node-manager.md).
