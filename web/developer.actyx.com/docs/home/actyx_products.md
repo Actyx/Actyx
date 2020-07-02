@@ -33,7 +33,7 @@ To learn more about the Actyx Pond programming model and how you can start writi
 
 ### Actyx CLI
 
-A more sophisticated use-case will involve running many instances of ActyxOS and applications that build on top of it across your different devices.
-To make it easier to deploy, configure and monitor these setups we provide you with the Actyx Command Line Interface (Actyx CLI) tool.
+The Actyx Command Line Interface (CLI) is a unified tool for managing your ActyxOS nodes and apps.
+The Actyx CLI enables you to easily deploy, configure and monitor your ActyxOS environment.
 
 You can find more documentation on the capabilities of the Actyx CLI [here](cli/getting-started.md).
