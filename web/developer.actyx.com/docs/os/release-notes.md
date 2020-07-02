@@ -4,6 +4,18 @@ title: Release notes
 
 This page contains information about new features, bug fixes, deprecations and removals in ActyxOS releases. For a more extensive description of the changes, check out our [blog](https://www.actyx.com/news/).
 
+## ActyxOS 1.0.0-rc.4
+
+**Release date: 03.07.2020**
+
+Download:
+- [Docker Hub](https://hub.docker.com/repository/docker/actyx/os)
+- [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
+  
+### Bug fixes
+- Several internal stability and performance improvements
+- Fixed a bug in the Docker Runtime that led to apps on the same node being stopped if they contain the same docker-compose.yml
+
 ## ActyxOS 1.0.0-rc.3
 
 **Release date: 12.06.2020**
