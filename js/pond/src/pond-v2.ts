@@ -19,11 +19,11 @@ import log from './loggers'
 import { PondCommon } from './pond-common'
 import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
 import {
-  Aggregate,
+  Fish,
   CancelSubscription,
   EmissionRequest,
   Emit,
-  EntityId,
+  FishId,
   Metadata,
   PendingEmission,
   Reduce,
@@ -150,7 +150,7 @@ export type Pond2 = {
    * @param callback     Function that will be called whenever a new state becomes available.
    * @returns            A function that can be called in order to cancel the aggregation.
    */
-  aggregate<S, E>(aggregate: Aggregate<S, E>, callback: (newState: S) => void): CancelSubscription
+  aggregate<S, E>(aggregate: Fish<S, E>, callback: (newState: S) => void): CancelSubscription
 
   /* CONDITIONAL EMISSION (COMMANDS) */
 
@@ -170,7 +170,7 @@ export type Pond2 = {
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
   runStateEffect: <S, EWrite, ReadBack = false>(
-    aggregate: Aggregate<S, ReadBack extends true ? EWrite : any>,
+    aggregate: Fish<S, ReadBack extends true ? EWrite : any>,
     effect: StateEffect<S, EWrite>,
   ) => PendingEmission
 
@@ -186,7 +186,7 @@ export type Pond2 = {
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
   runStateEffectC: <S, EWrite, ReadBack = false>(
-    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
+    agg: Fish<S, ReadBack extends true ? EWrite : any>,
   ) => (effect: StateEffect<S, EWrite>) => PendingEmission
 
   /**
@@ -207,7 +207,7 @@ export type Pond2 = {
    * @returns            A `CancelSubscription` object that can be used to cancel the automatic effect.
    */
   installAutomaticEffect: <S, EWrite, ReadBack = false>(
-    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
+    agg: Fish<S, ReadBack extends true ? EWrite : any>,
     effect: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ) => CancelSubscription
@@ -306,7 +306,7 @@ export class Pond2Impl implements Pond2 {
     entityId: EntityId,
     isReset?: (event: E) => boolean,
   ): ActiveAggregate<S> => {
-    const key = EntityId.canonical(entityId)
+    const key = FishId.canonical(entityId)
     const existing = this.taggedAggregates[key]
     if (existing !== undefined) {
       return {
@@ -372,7 +372,7 @@ export class Pond2Impl implements Pond2 {
     )
   }
 
-  private observeTagBased0 = <S, E>(acc: Aggregate<S, E>): ActiveAggregate<S> => {
+  private observeTagBased0 = <S, E>(acc: Fish<S, E>): ActiveAggregate<S> => {
     const subscriptionSet: SubscriptionSet = {
       type: 'tags',
       subscriptions: TagQuery.toWireFormat(acc.subscriptions),
@@ -387,7 +387,7 @@ export class Pond2Impl implements Pond2 {
     )
   }
 
-  aggregate = <S, E>(acc: Aggregate<S, E>, callback: (newState: S) => void): CancelSubscription => {
+  aggregate = <S, E>(acc: Fish<S, E>, callback: (newState: S) => void): CancelSubscription => {
     if (acc.deserializeState) {
       throw new Error('custom deser not yet supported')
     }
@@ -397,7 +397,7 @@ export class Pond2Impl implements Pond2 {
 
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
   runStateEffectC = <S, EWrite, ReadBack = false>(
-    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
+    agg: Fish<S, ReadBack extends true ? EWrite : any>,
   ): ((effect: StateEffect<S, EWrite>) => PendingEmission) => {
     const cached = this.observeTagBased0(agg)
     const handleInternal = this.getOrCreateCommandHandle0(agg, cached)
@@ -410,7 +410,7 @@ export class Pond2Impl implements Pond2 {
   }
 
   private getOrCreateCommandHandle0 = <S, EWrite, ReadBack = false>(
-    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
+    agg: Fish<S, ReadBack extends true ? EWrite : any>,
     cached: ActiveAggregate<S>,
   ): ((effect: StateEffect<S, EWrite>) => Observable<void>) => {
     const handler = this.v2CommandHandler
@@ -458,7 +458,7 @@ export class Pond2Impl implements Pond2 {
   }
 
   runStateEffect = <S, EWrite, ReadBack = false>(
-    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
+    agg: Fish<S, ReadBack extends true ? EWrite : any>,
     effect: StateEffect<S, EWrite>,
   ): PendingEmission => {
     const handle = this.runStateEffectC(agg)
@@ -466,7 +466,7 @@ export class Pond2Impl implements Pond2 {
   }
 
   installAutomaticEffect = <S, EWrite, ReadBack = false>(
-    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
+    agg: Fish<S, ReadBack extends true ? EWrite : any>,
     effect: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ): CancelSubscription => {

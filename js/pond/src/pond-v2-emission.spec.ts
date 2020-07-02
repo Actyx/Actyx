@@ -4,10 +4,10 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Aggregate, Pond2, TagQuery } from '.'
+import { Fish, Pond2, TagQuery } from '.'
 
 const stateAsPromise = (pond: Pond2, tags: TagQuery) =>
-  new Promise((resolve, _reject) => pond.aggregate(Aggregate.eventsAscending(tags), resolve))
+  new Promise((resolve, _reject) => pond.aggregate(Fish.eventsAscending(tags), resolve))
 
 describe('application of commands in the pond', () => {
   it('should execute every emission-callback', async () => {

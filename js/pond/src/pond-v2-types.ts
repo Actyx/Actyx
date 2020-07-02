@@ -90,26 +90,26 @@ export type Metadata = Readonly<{
 export type Reduce<S, E> = (state: S, event: E, metadata: Metadata) => S
 
 // To be refined: generic representation of semantics/name/version for snapshotformat
-export type EntityId = {
+export type FishId = {
   entityType?: string
   name: string
   version?: number
 }
 
-export const EntityId = {
+export const FishId = {
   of: (entityType: string, name: string, version: number) => ({
     entityType,
     name,
     version,
   }),
   // Is there an even better way?
-  canonical: (v: EntityId): string => JSON.stringify([v.entityType, v.name, v.version]),
+  canonical: (v: FishId): string => JSON.stringify([v.entityType, v.name, v.version]),
 }
 
 /**
  * An `Aggregate<S, E>` describes an aggregration of events of type `E` into state of type `S`.
  */
-export type Aggregate<S, E> = {
+export type Fish<S, E> = {
   // Will extend this field with further options in the future:
   // - <E>-Typed subscription
   // - Plain query string
@@ -117,7 +117,7 @@ export type Aggregate<S, E> = {
 
   initialState: S
   onEvent: Reduce<S, E>
-  entityId: EntityId
+  entityId: FishId
 
   // semantic snapshot
   isReset?: (event: E) => boolean
@@ -127,20 +127,20 @@ export type Aggregate<S, E> = {
   deserializeState?: (jsonState: unknown) => S
 }
 
-export const Aggregate = {
-  latestEvent: <E>(subscriptions: TagQuery): Aggregate<E | undefined, E> => ({
+export const Fish = {
+  latestEvent: <E>(subscriptions: TagQuery): Fish<E | undefined, E> => ({
     subscriptions,
 
     initialState: undefined,
 
     onEvent: (_state: E | undefined, event: E) => event,
 
-    entityId: EntityId.of('actyx.lib.latestEvent', JSON.stringify(subscriptions), 1),
+    entityId: FishId.of('actyx.lib.latestEvent', JSON.stringify(subscriptions), 1),
 
     isReset: (_event: E) => true,
   }),
 
-  eventsDescending: <E>(subscriptions: TagQuery, capacity = 100): Aggregate<E[], E> => ({
+  eventsDescending: <E>(subscriptions: TagQuery, capacity = 100): Fish<E[], E> => ({
     subscriptions,
 
     initialState: [],
@@ -150,10 +150,10 @@ export const Aggregate = {
       return state.length > capacity ? state.slice(0, capacity) : state
     },
 
-    entityId: EntityId.of('actyx.lib.eventsDescending', JSON.stringify(subscriptions), 1),
+    entityId: FishId.of('actyx.lib.eventsDescending', JSON.stringify(subscriptions), 1),
   }),
 
-  eventsAscending: <E>(subscriptions: TagQuery, capacity = 100): Aggregate<E[], E> => ({
+  eventsAscending: <E>(subscriptions: TagQuery, capacity = 100): Fish<E[], E> => ({
     subscriptions,
 
     initialState: [],
@@ -163,11 +163,11 @@ export const Aggregate = {
       return state.length > capacity ? state.slice(0, capacity) : state
     },
 
-    entityId: EntityId.of('actyx.lib.eventsAscending', JSON.stringify(subscriptions), 1),
+    entityId: FishId.of('actyx.lib.eventsAscending', JSON.stringify(subscriptions), 1),
   }),
 }
 
-export type AnyAggregate = Aggregate<any, any>
+export type AnyAggregate = Fish<any, any>
 
 export type EmissionRequest<E> = ReadonlyArray<Emit<E>> | Promise<ReadonlyArray<Emit<E>>>
 

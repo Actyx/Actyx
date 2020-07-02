@@ -5,7 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { Pond2 } from './pond-v2'
-import { Aggregate, Reduce, StateEffect, TagQuery } from './pond-v2-types'
+import { Fish, Reduce, StateEffect, TagQuery } from './pond-v2-types'
 
 export type State = { n: number; fill: number }
 
@@ -27,7 +27,7 @@ const onEvent: Reduce<State, Payload> = (state: State, event: Payload) => {
   return state
 }
 
-const agg: Aggregate<State, Payload> = {
+const agg: Fish<State, Payload> = {
   subscriptions: TagQuery.requireSome('self'),
 
   initialState: { n: 0, fill: 0 },

@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs'
-import { Aggregate, Pond2, TagQuery } from '.'
+import { Fish, Pond2, TagQuery } from '.'
 
 const emitTestEvents = async (pond: Pond2) =>
   pond
@@ -23,7 +23,7 @@ const assertStateAndDispose = async <S>(states: Observable<S>, expected: S, pond
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const aggregateAsObservable = <S>(pond: Pond2, agg: Aggregate<S, any>): Observable<S> =>
+const aggregateAsObservable = <S>(pond: Pond2, agg: Fish<S, any>): Observable<S> =>
   new Observable(x => {
     pond.aggregate(agg, s => x.next(s))
   })
@@ -32,7 +32,7 @@ describe('application of commands in the pond', () => {
   const expectAggregationToYield = async (subscriptions: TagQuery, expectedResult: string[]) => {
     const pond = await Pond2.test()
 
-    const aggregate = Aggregate.eventsDescending<string>(subscriptions)
+    const aggregate = Fish.eventsDescending<string>(subscriptions)
 
     const res = aggregateAsObservable(pond, aggregate)
 
