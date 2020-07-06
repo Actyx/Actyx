@@ -7,7 +7,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Lamport, Timestamp } from './types'
 // FIXME circular import
-import { EmissionTags, TypedTagQuery, TagQuery } from './tagging-types'
+import { EmissionTags, TypedTagQuery, TagQuery } from './tagging'
 /* 
  * POND V2 Candidate APIs
  */

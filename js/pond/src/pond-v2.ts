@@ -33,7 +33,7 @@ import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
-import { EmissionTags, TypedTagQuery, TagQuery } from './tagging-types'
+import { EmissionTags, TypedTagQuery, TagQuery } from './tagging'
 import {
   FishName,
   Milliseconds,
