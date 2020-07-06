@@ -1,4 +1,4 @@
-import { Tag, TypedTagQuery } from './typed-tags'
+import { Tag, TypedTagQuery } from './tagging-types'
 
 const testTag = <T extends string>(tag: T) => Tag.mk<T>(tag)
 

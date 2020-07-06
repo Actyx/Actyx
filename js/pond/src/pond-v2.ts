@@ -28,13 +28,12 @@ import {
   PendingEmission,
   Reduce,
   StateEffect,
-  TagQuery,
 } from './pond-v2-types'
 import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
-import { EmissionTags, TypedTagQuery } from './typed-tags'
+import { EmissionTags, TypedTagQuery, TagQuery } from './tagging-types'
 import {
   FishName,
   Milliseconds,
@@ -405,15 +404,15 @@ export class Pond2Impl implements Pond2 {
 
     const tw = autoCancel
       ? (state: S) => {
-          if (cancelled) {
-            return false
-          } else if (autoCancel(state)) {
-            cancelled = true
-            return false
-          }
-
-          return true
+        if (cancelled) {
+          return false
+        } else if (autoCancel(state)) {
+          cancelled = true
+          return false
         }
+
+        return true
+      }
       : () => !cancelled
 
     states

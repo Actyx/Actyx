@@ -50,6 +50,10 @@ export const TagQuery = {
   },
 }
 
+/*
+ * TYPED TAGGING functionality starts here
+ */
+
 export type Tag<E> = Readonly<{
   // raw tag
   tag: string
@@ -62,7 +66,7 @@ export const Tag = {
   mk: <E>(rawTag: string): Tag<E> => ({ tag: rawTag } as Tag<E>),
 }
 
-const rawTags = (tags: ReadonlyArray<Tag<unknown>>) => tags.map(x => x.tag)
+const extractTagStrings = (tags: ReadonlyArray<Tag<unknown>>) => tags.map(x => x.tag)
 
 export const namedSubTags = <E>(tag: Tag<E>, ...path: string[]): Tag<E>[] => {
   let curr = tag.tag
@@ -81,7 +85,7 @@ export class EmissionTags<E> {
 
   add<E1>(...tags: Tag<E>[]): EmissionTags<Extract<E, E1>> {
     const r = new EmissionTags<unknown>()
-    r.tags = this.tags.concat(rawTags(tags))
+    r.tags = this.tags.concat(extractTagStrings(tags))
     return r as EmissionTags<Extract<E, E1>>
   }
 
@@ -95,39 +99,48 @@ export class EmissionTags<E> {
   }
 }
 
-export interface TypedTagUnion<E> {
+export type TypedTagUnion<E> = {
   readonly _dataType?: E
 
   raw(): TagUnion
+
+  type: 'typed-union'
 }
 
-export interface TypedTagIntersection<E> {
+export type TypedTagIntersection<E> = {
   and<E1>(...tags: Tag<E1>[]): TypedTagIntersection<Extract<E1, E>>
 
   raw(): TagIntersection
 
   readonly _dataType?: E
+
+  type: 'typed-intersection'
 }
 
 export type TypedTagQuery<E> = TypedTagUnion<E> | TypedTagIntersection<E>
 
-const req = <E>(...tags: Tag<E>[]): TypedTagIntersection<E> => {
+const req = (onlyLocalEvents: boolean) => <E>(...tags: Tag<E>[]): TypedTagIntersection<E> => {
   return {
     and: <E1>(...moreTags: Tag<E1>[]) => {
       const cast = [...tags, ...moreTags] as Tag<Extract<E1, E>>[]
-      return req<Extract<E1, E>>(...cast)
+      return req(onlyLocalEvents)<Extract<E1, E>>(...cast)
     },
+
+    type: 'typed-intersection',
 
     raw: () => ({
       type: 'intersection',
 
-      tags: rawTags(tags),
+      tags: extractTagStrings(tags),
+
+      onlyLocalEvents,
     }),
   }
 }
 
 const matchAnyOf = <E>(...sets: TypedTagIntersection<E>[]): TypedTagUnion<E> => {
   return {
+    type: 'typed-union',
     raw: () => ({
       type: 'union',
       tags: sets.map(x => x.raw()),
@@ -136,12 +149,12 @@ const matchAnyOf = <E>(...sets: TypedTagIntersection<E>[]): TypedTagUnion<E> => 
 }
 
 const isTyped = (i: TypedTagQuery<unknown> | TagQuery): i is TypedTagQuery<unknown> => {
-  // eslint-disable-next-line no-prototype-builtins
-  return i.hasOwnProperty('raw')
+  return i.type === 'typed-union' || i.type === 'typed-intersection'
 }
 
 export const TypedTagQuery = {
-  require: req,
+  require: req(false),
+  requireLocal: req(true),
 
   matchAnyOf,
 
