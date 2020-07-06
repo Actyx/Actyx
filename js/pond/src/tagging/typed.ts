@@ -8,13 +8,7 @@ export type Tag<E> = Readonly<{
   _dataType?: E
 }>
 
-export const Tag = {
-  mk: <E>(rawTag: string): Tag<E> => ({ tag: rawTag } as Tag<E>),
-}
-
-const extractTagStrings = (tags: ReadonlyArray<Tag<unknown>>) => tags.map(x => x.tag)
-
-export const namedSubTags = <E>(tag: Tag<E>, ...path: string[]): Tag<E>[] => {
+const namedSubTags = <E>(tag: Tag<E>, ...path: string[]): Tag<E>[] => {
   let curr = tag.tag
   return path.reduce(
     (tags, element) => {
@@ -25,6 +19,15 @@ export const namedSubTags = <E>(tag: Tag<E>, ...path: string[]): Tag<E>[] => {
     [tag],
   )
 }
+
+export const Tag = {
+  mk: <E>(rawTag: string): Tag<E> => ({ tag: rawTag } as Tag<E>),
+
+  namedSubTags,
+}
+
+const extractTagStrings = (tags: ReadonlyArray<Tag<unknown>>) => tags.map(x => x.tag)
+
 
 export class EmissionTags<E> {
   private tags: ReadonlyArray<string> = []
