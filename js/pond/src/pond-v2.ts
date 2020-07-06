@@ -83,7 +83,7 @@ type ActiveFish<S> = {
   commandPipeline?: CommandPipeline<S, EmissionRequest<any>>
 }
 
-export type Pond2 = {
+export type Pond2 = PondCommon & {
   /* EMISSION */
 
   /**
@@ -132,7 +132,7 @@ export type Pond2 = {
    * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
-  run: <S, EWrite>(fish: Fish<S, any>, effect: StateEffect<S, EWrite>) => PendingEmission
+  run<S, EWrite>(fish: Fish<S, any>, effect: StateEffect<S, EWrite>): PendingEmission
 
   /**
    * Curried version of `runStateEffect`.
@@ -144,7 +144,7 @@ export type Pond2 = {
    * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
-  runC: <S, EWrite>(fish: Fish<S, any>) => (effect: StateEffect<S, EWrite>) => PendingEmission
+  runC<S, EWrite>(fish: Fish<S, any>): (effect: StateEffect<S, EWrite>) => PendingEmission
 
   /**
    * Install a StateEffect that will be applied automatically whenever the `agg`’s State has changed.
@@ -162,12 +162,12 @@ export type Pond2 = {
    *                     will be the first State the effect is *not* applied to anymore.
    * @returns            A `CancelSubscription` object that can be used to cancel the automatic effect.
    */
-  keepRunning: <S, EWrite>(
+  keepRunning<S, EWrite>(
     fish: Fish<S, any>,
     effect: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
-  ) => CancelSubscription
-} & PondCommon
+  ): CancelSubscription
+}
 
 export class Pond2Impl implements Pond2 {
   readonly hydrateV2: <S, E>(
@@ -179,7 +179,7 @@ export class Pond2Impl implements Pond2 {
     isReset?: (event: E) => boolean,
   ) => Observable<StateWithProvenance<S>>
 
-  taggedFishs: {
+  activeFishes: {
     [fishId: string]: ActiveFish<any>
   } = {}
 
@@ -263,7 +263,7 @@ export class Pond2Impl implements Pond2 {
     isReset?: (event: E) => boolean,
   ): ActiveFish<S> => {
     const key = FishId.canonical(fishId)
-    const existing = this.taggedFishs[key]
+    const existing = this.activeFishes[key]
     if (existing !== undefined) {
       return {
         ...existing,
@@ -283,7 +283,7 @@ export class Pond2Impl implements Pond2 {
     const a = {
       states: stateSubject,
     }
-    this.taggedFishs[key] = a
+    this.activeFishes[key] = a
     return a
   }
 
@@ -397,15 +397,15 @@ export class Pond2Impl implements Pond2 {
 
     const tw = autoCancel
       ? (state: S) => {
-          if (cancelled) {
-            return false
-          } else if (autoCancel(state)) {
-            cancelled = true
-            return false
-          }
-
-          return true
+        if (cancelled) {
+          return false
+        } else if (autoCancel(state)) {
+          cancelled = true
+          return false
         }
+
+        return true
+      }
       : () => !cancelled
 
     states

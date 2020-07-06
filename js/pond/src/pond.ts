@@ -107,7 +107,7 @@ export function flattenChunk(chunk: UnstoredEvents, sourceId: SourceId): Event[]
   })
 }
 
-export type Pond = {
+export type Pond = PondCommon & {
   /**
    * Obtain an observable stream of states from the given fish, waking it up if it is
    * not already actively running within this pond. It is guaranteed that after a
@@ -150,7 +150,7 @@ export type Pond = {
    * Dump all internal state of all fish, for debugging purposes.
    */
   dump(): Observable<string>
-} & PondCommon
+}
 
 const logPondError = { error: (x: any) => log.pond.error(JSON.stringify(x)) }
 
