@@ -25,7 +25,8 @@ To learn more about the specific services that ActyxOS provides and how you can 
 
 ### Actyx Pond
 
-Actyx Pond is an opinionated TypeScript framework that is built on top of the ActyxOS event streaming service.
+Actyx Pond is an opinionated software framework that is built on top of the ActyxOS event streaming service.
+Currently Actyx Pond is only available in TypeScript but other languages are coming soon, starting with C#.
 With Actyx Pond, we make it easier for you to write correct event-driven applications that run across different devices in your deployment.
 
 At the core of Actyx Pond lies a powerful programming model which guarantees eventually consistent business logic in a completely decentralized environment without central coordination.
