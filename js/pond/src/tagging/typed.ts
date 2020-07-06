@@ -28,7 +28,6 @@ export const Tag = {
 
 const extractTagStrings = (tags: ReadonlyArray<Tag<unknown>>) => tags.map(x => x.tag)
 
-
 export class EmissionTags<E> {
   private tags: ReadonlyArray<string> = []
 
@@ -70,17 +69,17 @@ export type TypedTagIntersection<E> = Readonly<{
 
 export type TypedTagQuery<E> = TypedTagUnion<E> | TypedTagIntersection<E>
 
-const req = (onlyLocalEvents: boolean) => <E>(...tags: Tag<E>[]): TypedTagIntersection<E> => {
+const req = <E>(onlyLocalEvents: boolean, tags: Tag<E>[]): TypedTagIntersection<E> => {
   return {
     and: <E1>(tag: Tag<E1>) => {
       const cast = [...tags, tag] as Tag<Extract<E1, E>>[]
-      return req(onlyLocalEvents)<Extract<E1, E>>(...cast)
+      return req(onlyLocalEvents, cast)
     },
 
     andPath: <E1>(tag: Tag<E1>, ...path: string[]) => {
       const moreTags = Tag.subTags(tag, ...path)
       const cast = [...tags, ...moreTags] as Tag<Extract<E1, E>>[]
-      return req(onlyLocalEvents)<Extract<E1, E>>(...cast)
+      return req(onlyLocalEvents, cast)
     },
 
     type: 'typed-intersection',
@@ -106,15 +105,12 @@ const matchAnyOf = <E>(...sets: TypedTagIntersection<E>[]): TypedTagUnion<E> => 
   }
 }
 
-const reqGlobal = req(false)
-const reqLocal = req(true)
-
 export const TypedTagQuery = {
-  requireTag: <E>(x: Tag<E>) => reqGlobal(x),
-  requireLocalTag: <E>(x: Tag<E>) => reqLocal(x),
+  requireTag: <E>(x: Tag<E>) => req(false, [x]),
+  requireLocalTag: <E>(x: Tag<E>) => req(true, [x]),
 
-  requirePath: <E>(tag: Tag<E>, ...path: string[]) => reqGlobal(...Tag.subTags(tag, ...path)),
-  requireLocalPath: <E>(tag: Tag<E>, ...path: string[]) => reqLocal(...Tag.subTags(tag, ...path)),
+  requirePath: <E>(tag: Tag<E>, ...path: string[]) => req(false, Tag.subTags(tag, ...path)),
+  requireLocalPath: <E>(tag: Tag<E>, ...path: string[]) => req(true, Tag.subTags(tag, ...path)),
 
   matchAnyOf,
 }
