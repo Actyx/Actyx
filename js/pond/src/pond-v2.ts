@@ -126,31 +126,24 @@ export type Pond2 = {
    *
    * @typeParam S                State of the Fish, input value to the effect.
    * @typeParam EWrite           Payload type(s) to be returned by the effect.
-   * @typeParam RequireReadable  Whether the Fish itself must be able to read the emitted events.
    *
-   * @param fish    Complete aggregation information.
+   * @param fish         Complete aggregation information.
    * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
-  run: <S, EWrite, RequireReadable = true>(
-    fish: Fish<S, RequireReadable extends true ? EWrite : any>,
-    effect: StateEffect<S, EWrite>,
-  ) => PendingEmission
+  run: <S, EWrite>(fish: Fish<S, any>, effect: StateEffect<S, EWrite>) => PendingEmission
 
   /**
    * Curried version of `runStateEffect`.
    *
    * @typeParam S                State of the Fish, input value to the effect.
    * @typeParam EWrite           Payload type(s) to be returned by the effect.
-   * @typeParam RequireReadable  Whether the Fish itself must be able to read the emitted events.
    *
-   * @param fish    Complete aggregation information.
+   * @param fish         Complete aggregation information.
    * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
-  runC: <S, EWrite, RequireReadable = true>(
-    fish: Fish<S, RequireReadable extends true ? EWrite : any>,
-  ) => (effect: StateEffect<S, EWrite>) => PendingEmission
+  runC: <S, EWrite>(fish: Fish<S, any>) => (effect: StateEffect<S, EWrite>) => PendingEmission
 
   /**
    * Install a StateEffect that will be applied automatically whenever the `agg`’s State has changed.
@@ -161,7 +154,6 @@ export type Pond2 = {
    *
    * @typeParam S        State of the Fish, input value to the effect.
    * @typeParam EWrite   Payload type(s) to be returned by the effect.
-   * @typeParam RequireReadable Whether the Fish must be able to read the emitted events.
    *
    * @param fish         Complete aggregation information.
    * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
@@ -169,8 +161,8 @@ export type Pond2 = {
    *                     will be the first State the effect is *not* applied to anymore.
    * @returns            A `CancelSubscription` object that can be used to cancel the automatic effect.
    */
-  keepRunning: <S, EWrite, RequireReadable = true>(
-    fish: Fish<S, RequireReadable extends true ? EWrite : any>,
+  keepRunning: <S, EWrite>(
+    fish: Fish<S, any>,
     effect: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ) => CancelSubscription
