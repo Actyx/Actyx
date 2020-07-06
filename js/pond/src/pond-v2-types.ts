@@ -7,6 +7,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Lamport, Timestamp } from './types'
 import { EmissionTags, TypedTagQuery, TagQuery } from './tagging'
+
 /* 
  * POND V2 Candidate APIs
  */
