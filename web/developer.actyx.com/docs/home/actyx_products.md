@@ -15,7 +15,7 @@ The following sections provide an overview of the most important ones.
 ### ActyxOS
 
 At the core of the Actyx platform is a piece of software that we call ActyxOS.
-Every device in your setup that you want to connect either runs the ActyxOS application or is connected to another device that runs it; Currently supported operating systems are Windows, Linux and macOS.
+Every device in your setup that you want to connect runs the ActyxOS application; Currently ActyxOS can be deployed on Docker and Android.
 ActyxOS provides the application runtimes to easily deploy and run your application logic on the edge devices, an event service layer for seamless communication between different devices, and additional middleware services around storage and deployment management.
 
 It is possible to write your application logic directly on the middleware that ActyxOS provides by using the ActyxOS [APIs](os/api/event-service.md) or language specific [SDKs](os/sdks/js-ts.md).
@@ -43,6 +43,6 @@ You can find more documentation on the capabilities of the Actyx CLI [here](cli/
 ### ActyxOS Node Manager
 
 The ActyxOS Node Manager is an easy-to-use GUI for interacting with your ActyxOS environment.
-With ActyxOS Node Manager you can monitor your ActyxOS nodes, deploy applications and manage node and application settings without needing to use a terminal.
+With it you can monitor your ActyxOS nodes, deploy applications and manage node and application settings without needing to use a terminal.
 
 You can find further information on the ActyxOS Node Manager [here](os/tools/node-manager.md).
