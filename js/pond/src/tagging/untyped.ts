@@ -27,25 +27,4 @@ export const TagQuery = {
   requireAll: mkIntersection(false),
   requireAllLocal: mkIntersection(true),
   matchAnyOf: mkUnion,
-
-  // For internal use -- should maybe move somewhere else.
-  toWireFormat: (sub: TagQuery) => {
-    switch (sub.type) {
-      case 'intersection':
-        return [
-          {
-            tags: sub.tags,
-            local: !!sub.onlyLocalEvents,
-          },
-        ]
-
-      case 'union':
-        return sub.tags.map(
-          s =>
-            typeof s === 'string'
-              ? { tags: [s], local: false }
-              : { tags: s.tags, local: !!s.onlyLocalEvents },
-        )
-    }
-  },
 }
