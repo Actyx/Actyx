@@ -3,7 +3,7 @@ import { Fish, Pond2, TagQuery } from '.'
 
 const emitTestEvents = async (pond: Pond2) =>
   pond
-    .emitEvents(
+    .emitMany(
       { tags: ['t0', 't1', 't2'], payload: 'hello' },
       { tags: ['t0', 't1', 't2'], payload: 'world' },
       { tags: ['t1'], payload: 't1 only' },
@@ -25,7 +25,7 @@ const assertStateAndDispose = async <S>(states: Observable<S>, expected: S, pond
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const aggregateAsObservable = <S>(pond: Pond2, agg: Fish<S, any>): Observable<S> =>
   new Observable(x => {
-    pond.aggregate(agg, s => x.next(s))
+    pond.observe(agg, s => x.next(s))
   })
 
 describe('application of commands in the pond', () => {
@@ -45,18 +45,18 @@ describe('application of commands in the pond', () => {
     expectAggregationToYield(TagQuery.requireAll('t0', 't1'), ['world', 'hello']))
 
   it('should aggregate based on tags union', async () =>
-    expectAggregationToYield(TagQuery.union('t0', 't1'), ['t1 only', 'world', 'hello']))
+    expectAggregationToYield(TagQuery.matchAnyOf('t0', 't1'), ['t1 only', 'world', 'hello']))
 
   it('should aggregate based on single tag', async () =>
-    expectAggregationToYield(TagQuery.requireEvery('t2'), ['t2 only', 'world', 'hello']))
+    expectAggregationToYield(TagQuery.requireAll('t2'), ['t2 only', 'world', 'hello']))
 
   it('should aggregate everything', async () =>
     // Empty intersection matches everything
-    expectAggregationToYield(TagQuery.requireEvery(), ['t2 only', 't1 only', 'world', 'hello']))
+    expectAggregationToYield(TagQuery.requireAll(), ['t2 only', 't1 only', 'world', 'hello']))
 
   it('should aggregate nothing', async () =>
     // Empty union means not a single subscription
-    expectAggregationToYield(TagQuery.requireSome(), []))
+    expectAggregationToYield(TagQuery.matchAnyOf(), []))
 
   describe('caching', () => {
     type Event = string
@@ -75,16 +75,16 @@ describe('application of commands in the pond', () => {
     it('should cache based on key', async () => {
       const pond = await Pond2.test()
 
-      const aggregate0 = mkAggregate(TagQuery.union('t1'))
+      const aggregate0 = mkAggregate(TagQuery.matchAnyOf('t1'))
 
-      const unsubscribe0 = pond.aggregate<State, Event>(aggregate0, _s => {
+      const unsubscribe0 = pond.observe<State, Event>(aggregate0, _s => {
         /* swallow */
       })
 
       await emitTestEvents(pond)
 
       // use same name, but different subscriptions, to assert that cached aggregate is re-used
-      const aggregate1 = mkAggregate(TagQuery.union('t99'))
+      const aggregate1 = mkAggregate(TagQuery.matchAnyOf('t99'))
 
       const res = aggregateAsObservable(pond, aggregate1)
 
@@ -95,9 +95,9 @@ describe('application of commands in the pond', () => {
     it('should cache based on key, across unsubscribe calls', async () => {
       const pond = await Pond2.test()
 
-      const aggregate = mkAggregate(TagQuery.union('t1'))
+      const aggregate = mkAggregate(TagQuery.matchAnyOf('t1'))
 
-      const unsubscribe0 = pond.aggregate<State, Event>(aggregate, _s => {
+      const unsubscribe0 = pond.observe<State, Event>(aggregate, _s => {
         /* swallow */
       })
 
@@ -107,7 +107,7 @@ describe('application of commands in the pond', () => {
 
       // should immediately pick up the existing aggregation's pipeline
       const res = new Promise((resolve, _reject) =>
-        pond.aggregate(aggregate, state => resolve(state)),
+        pond.observe(aggregate, state => resolve(state)),
       )
 
       await expect(res).resolves.toEqual(['t1 only', 'world', 'hello'])
@@ -118,16 +118,16 @@ describe('application of commands in the pond', () => {
     it('should permit different aggregations in parallel', async () => {
       const pond = await Pond2.test()
 
-      const aggregate0 = mkAggregate(TagQuery.union('t0'))
+      const aggregate0 = mkAggregate(TagQuery.matchAnyOf('t0'))
 
-      const unsubscribe0 = pond.aggregate<State, Event>(aggregate0, _s => {
+      const unsubscribe0 = pond.observe<State, Event>(aggregate0, _s => {
         /* swallow */
       })
 
       await emitTestEvents(pond)
 
       // use a different cache key to start another aggregation
-      const aggregate1 = mkAggregate(TagQuery.union('t1'), { name: 'different-name' })
+      const aggregate1 = mkAggregate(TagQuery.matchAnyOf('t1'), { name: 'different-name' })
 
       const res = aggregateAsObservable(pond, aggregate1)
 

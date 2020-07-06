@@ -93,7 +93,7 @@ export type Pond2 = {
    * @returns       A `PendingEmission` object that can be used to register
    *                callbacks with the emission’s completion.
    */
-  emitEvent(tags: string[], payload: unknown): PendingEmission
+  emit(tags: string[], payload: unknown): PendingEmission
 
   /**
    * Emit a number of events at once.
@@ -102,46 +102,9 @@ export type Pond2 = {
    * @returns       A `PendingEmission` object that can be used to register
    *                callbacks with the emission’s completion.
    */
-  emitEvents(...emit: ReadonlyArray<Emit<any>>): PendingEmission
+  emitMany(...emit: ReadonlyArray<Emit<any>>): PendingEmission
 
   /* AGGREGATION */
-
-  /**
-   * Aggregate events into state. Aggregation starts from scratch with every call to this function,
-   * i.e. no caching is done whatsoever.
-   *
-   * @param requiredTags We select those events which are marked with all of the required tags.
-   * @param initialState The initial state of the aggregation.
-   * @param onEvent      How to combine old state and an incoming event into new state.
-   * @param callback     Function that will be called whenever a new state becomes available.
-   * @returns            A function that can be called in order to cancel the aggregation.
-   */
-  aggregateUncached<S, E>(
-    requiredTags: ReadonlyArray<string>,
-    initialState: S,
-    onEvent: (state: S, event: E) => S,
-    callback: (newState: S) => void,
-  ): CancelSubscription
-
-  /**
-   * Aggregate events into state. Caching is offered based on the passed `CacheKey`.
-   *
-   * @param requiredTags We select those events which are marked with all of the required tags.
-   * @param initialState The initial state of the aggregation.
-   * @param onEvent      How to combine old state and an incoming event into new state.
-   * @param cacheKey     Object describing the aggregation’s identity. If an aggregation with the same
-   *                     identity is already running, that one will be returned rather than everything
-   *                     started a second time.
-   * @param callback     Function that will be called whenever a new state becomes available.
-   * @returns            A function that can be called in order to cancel the aggregation.
-   */
-  aggregatePlain<S, E>(
-    requiredTags: ReadonlyArray<string>,
-    initialState: S,
-    onEvent: (state: S, event: E) => S,
-    fishId: FishId,
-    callback: (newState: S) => void,
-  ): CancelSubscription
 
   /**
    * Aggregate events into state. Caching is done based on the `cacheKey` inside the `aggregate`.
@@ -150,7 +113,7 @@ export type Pond2 = {
    * @param callback     Function that will be called whenever a new state becomes available.
    * @returns            A function that can be called in order to cancel the aggregation.
    */
-  aggregate<S, E>(aggregate: Fish<S, E>, callback: (newState: S) => void): CancelSubscription
+  observe<S, E>(aggregate: Fish<S, E>, callback: (newState: S) => void): CancelSubscription
 
   /* CONDITIONAL EMISSION (COMMANDS) */
 
@@ -169,7 +132,7 @@ export type Pond2 = {
    * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
-  runStateEffect: <S, EWrite, ReadBack = false>(
+  run: <S, EWrite, ReadBack = false>(
     aggregate: Fish<S, ReadBack extends true ? EWrite : any>,
     effect: StateEffect<S, EWrite>,
   ) => PendingEmission
@@ -185,7 +148,7 @@ export type Pond2 = {
    * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
-  runStateEffectC: <S, EWrite, ReadBack = false>(
+  runC: <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
   ) => (effect: StateEffect<S, EWrite>) => PendingEmission
 
@@ -206,7 +169,7 @@ export type Pond2 = {
    *                     will be the first State the effect is *not* applied to anymore.
    * @returns            A `CancelSubscription` object that can be used to cancel the automatic effect.
    */
-  installAutomaticEffect: <S, EWrite, ReadBack = false>(
+  keepRunning: <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
     effect: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
@@ -282,11 +245,11 @@ export class Pond2Impl implements Pond2 {
     return this.eventStore.persistEvents(events)
   }
 
-  emitEvent = (tags: ReadonlyArray<string>, payload: unknown): PendingEmission => {
-    return this.emitEvents({ tags, payload })
+  emit = (tags: ReadonlyArray<string>, payload: unknown): PendingEmission => {
+    return this.emitMany({ tags, payload })
   }
 
-  emitEvents = (...emissions: ReadonlyArray<Emit<any>>): PendingEmission => {
+  emitMany = (...emissions: ReadonlyArray<Emit<any>>): PendingEmission => {
     // `shareReplay` so that every piece of user code calling `subscribe`
     // on the return value will actually be executed
     const o = this.emitTagged0(emissions)
@@ -387,7 +350,7 @@ export class Pond2Impl implements Pond2 {
     )
   }
 
-  aggregate = <S, E>(acc: Fish<S, E>, callback: (newState: S) => void): CancelSubscription => {
+  observe = <S, E>(acc: Fish<S, E>, callback: (newState: S) => void): CancelSubscription => {
     if (acc.deserializeState) {
       throw new Error('custom deser not yet supported')
     }
@@ -396,7 +359,7 @@ export class Pond2Impl implements Pond2 {
   }
 
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
-  runStateEffectC = <S, EWrite, ReadBack = false>(
+  runC = <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
   ): ((effect: StateEffect<S, EWrite>) => PendingEmission) => {
     const cached = this.observeTagBased0(agg)
@@ -457,15 +420,15 @@ export class Pond2Impl implements Pond2 {
     }
   }
 
-  runStateEffect = <S, EWrite, ReadBack = false>(
+  run = <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
     effect: StateEffect<S, EWrite>,
   ): PendingEmission => {
-    const handle = this.runStateEffectC(agg)
+    const handle = this.runC(agg)
     return handle(effect)
   }
 
-  installAutomaticEffect = <S, EWrite, ReadBack = false>(
+  keepRunning = <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
     effect: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,

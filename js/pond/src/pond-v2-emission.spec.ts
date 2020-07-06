@@ -7,13 +7,13 @@
 import { Fish, Pond2, TagQuery } from '.'
 
 const stateAsPromise = (pond: Pond2, tags: TagQuery) =>
-  new Promise((resolve, _reject) => pond.aggregate(Fish.eventsAscending(tags), resolve))
+  new Promise((resolve, _reject) => pond.observe(Fish.eventsAscending(tags), resolve))
 
 describe('application of commands in the pond', () => {
   it('should execute every emission-callback', async () => {
     const pond = await Pond2.test()
 
-    const emit = pond.emitEvent(['t0', 't1', 't2'], 'hello')
+    const emit = pond.emit(['t0', 't1', 't2'], 'hello')
 
     let cbCalled = 0
 
@@ -26,7 +26,7 @@ describe('application of commands in the pond', () => {
 
     expect(cbCalled).toEqual(2)
 
-    const events = stateAsPromise(pond, TagQuery.union('t0'))
+    const events = stateAsPromise(pond, TagQuery.matchAnyOf('t0'))
 
     // Assert we emitted only once, despite multiple subscriptions
     expect(events).resolves.toEqual(['hello'])
@@ -37,7 +37,7 @@ describe('application of commands in the pond', () => {
   it('should execute every emission-callback even after emission has finished', async () => {
     const pond = await Pond2.test()
 
-    const emit = pond.emitEvent(['t0', 't1', 't2'], 'hello')
+    const emit = pond.emit(['t0', 't1', 't2'], 'hello')
 
     // Make sure it’s completed
     await emit.toPromise()
@@ -52,7 +52,7 @@ describe('application of commands in the pond', () => {
     expect(cb0).toBeTruthy()
     expect(cb1).toBeTruthy()
 
-    const events = stateAsPromise(pond, TagQuery.intersection('t1'))
+    const events = stateAsPromise(pond, TagQuery.requireAll('t1'))
 
     // Assert we emitted only once, despite multiple subscriptions
     expect(events).resolves.toEqual(['hello'])

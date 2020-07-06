@@ -28,7 +28,7 @@ const onEvent: Reduce<State, Payload> = (state: State, event: Payload) => {
 }
 
 const agg: Fish<State, Payload> = {
-  subscriptions: TagQuery.requireSome('self'),
+  subscriptions: TagQuery.matchAnyOf('self'),
 
   initialState: { n: 0, fill: 0 },
 
@@ -56,14 +56,14 @@ const checkN: (expected: number) => StateEffect<State, never> = expected => stat
 describe('application of commands in the pond v2', () => {
   const expectState = (pond: Pond2, expected: number, aggr = agg): Promise<State> =>
     new Promise((resolve, _reject) =>
-      pond.aggregate(aggr, state => state.n === expected && resolve(state)),
+      pond.observe(aggr, state => state.n === expected && resolve(state)),
     )
 
   describe('raw state effects', () => {
     it('should run state effect, regardless of user awaiting the promise', async () => {
       const pond = await Pond2.test()
 
-      const run = pond.runStateEffectC(agg)
+      const run = pond.runC(agg)
 
       // Assert it’s run even if we don’t subscribe
       run(setN(1))
@@ -83,13 +83,13 @@ describe('application of commands in the pond v2', () => {
 
       await expect(
         pond
-          .runStateEffectC(agg)(setN(2))
+          .runC(agg)(setN(2))
           .toPromise(),
       ).rejects.toEqual(new Error('expected state to be 1, but was 0'))
 
       await expect(
         pond
-          .runStateEffectC(agg)(checkN(20))
+          .runC(agg)(checkN(20))
           .toPromise(),
       ).rejects.toEqual(new Error('expected state to be 20, but was 0'))
 
@@ -99,7 +99,7 @@ describe('application of commands in the pond v2', () => {
     it('effects should wait for application of previous', async () => {
       const pond = await Pond2.test()
 
-      const r = pond.runStateEffectC(agg)
+      const r = pond.runC(agg)
       for (let i = 1; i <= 1000; i++) {
         r(setN(i))
       }
@@ -119,21 +119,21 @@ describe('application of commands in the pond v2', () => {
     it('should run until cancellation condition', async () => {
       const pond = await Pond2.test()
 
-      pond.installAutomaticEffect(agg, autoBump, (state: State) => state.n === 100)
+      pond.keepRunning(agg, autoBump, (state: State) => state.n === 100)
 
       await expectState(pond, 100)
 
       // Make sure the effect has stopped by manually bumping the state ourselves.
       await pond
-        .runStateEffectC(agg)(checkN(100))
+        .runC(agg)(checkN(100))
         .toPromise()
 
       await pond
-        .runStateEffectC(agg)(setN(101))
+        .runC(agg)(setN(101))
         .toPromise()
       await expectState(pond, 101)
       await pond
-        .runStateEffectC(agg)(checkN(101))
+        .runC(agg)(checkN(101))
         .toPromise()
 
       await pond.dispose()
@@ -152,7 +152,7 @@ describe('application of commands in the pond v2', () => {
 
       const stateIs10 = expectState(pond, 10)
 
-      const c = pond.installAutomaticEffect(agg, delayedBump)
+      const c = pond.keepRunning(agg, delayedBump)
 
       await stateIs10
 
@@ -163,9 +163,9 @@ describe('application of commands in the pond v2', () => {
     it('should wait for the actual effect’s events to be processed, ignore other events that may come in', async () => {
       const pond = await Pond2.test()
 
-      pond.installAutomaticEffect(agg, autoBump, (state: State) => state.n === 40)
+      pond.keepRunning(agg, autoBump, (state: State) => state.n === 40)
 
-      const emitFill = () => pond.emitEvent(['self'], { type: 'fill' })
+      const emitFill = () => pond.emit(['self'], { type: 'fill' })
 
       const timer = setInterval(emitFill, 3)
 
@@ -181,7 +181,7 @@ describe('application of commands in the pond v2', () => {
     it('should run parallel to user effects', async () => {
       const pond = await Pond2.test()
 
-      pond.installAutomaticEffect(
+      pond.keepRunning(
         agg,
         // We skip increasing 5, depend on our manual calls to do it.
         state =>
@@ -198,7 +198,7 @@ describe('application of commands in the pond v2', () => {
         }
 
         pond
-          .runStateEffectC(agg)(effect)
+          .runC(agg)(effect)
           .toPromise()
           .then(
             () => (success = true),
@@ -224,11 +224,11 @@ describe('application of commands in the pond v2', () => {
     it('should run parallel to user effects 2', async () => {
       const pond = await Pond2.test()
 
-      pond.installAutomaticEffect<State, Payload, CompareAndIncrement>(agg, bumpEven)
+      pond.keepRunning<State, Payload, CompareAndIncrement>(agg, bumpEven)
 
       await expectState(pond, 1)
 
-      pond.runStateEffectC(agg)(setN(2))
+      pond.runC(agg)(setN(2))
 
       // Bumped up to 3 already
       await expectState(pond, 3)
@@ -245,9 +245,9 @@ describe('application of commands in the pond v2', () => {
       const mk = (remainder: number): StateEffect<State, Payload> => state =>
         state.n % 3 === remainder ? [{ tags, payload: { type: 'set', n: state.n + 1 } }] : []
 
-      pond.installAutomaticEffect(agg, mk(0), s => s.n === 20)
-      pond.installAutomaticEffect(agg, mk(1), s => s.n === 20)
-      pond.installAutomaticEffect(agg, mk(2), s => s.n === 20)
+      pond.keepRunning(agg, mk(0), s => s.n === 20)
+      pond.keepRunning(agg, mk(1), s => s.n === 20)
+      pond.keepRunning(agg, mk(2), s => s.n === 20)
 
       await stateIs15
       await expectState(pond, 20)
@@ -264,9 +264,9 @@ describe('application of commands in the pond v2', () => {
           ? [{ tags, payload: { type: 'set', n: state.n + 1 } }]
           : [{ tags, payload: { type: 'fill' } }, { tags, payload: { type: 'fill' } }]
 
-      pond.installAutomaticEffect(agg, mk(0), s => s.n === 10)
-      pond.installAutomaticEffect(agg, mk(1), s => s.n === 10)
-      pond.installAutomaticEffect(agg, mk(2), s => s.n === 10)
+      pond.keepRunning(agg, mk(0), s => s.n === 10)
+      pond.keepRunning(agg, mk(1), s => s.n === 10)
+      pond.keepRunning(agg, mk(2), s => s.n === 10)
 
       await expectState(pond, 10)
 
@@ -276,12 +276,12 @@ describe('application of commands in the pond v2', () => {
     it('should be cancellable', async () => {
       const pond = await Pond2.test()
 
-      const cancel = pond.installAutomaticEffect(agg, bumpEven)
+      const cancel = pond.keepRunning(agg, bumpEven)
 
       await expectState(pond, 1)
       cancel()
 
-      pond.runStateEffectC(agg)(setN(2))
+      pond.runC(agg)(setN(2))
 
       await expectState(pond, 2)
 
@@ -291,10 +291,10 @@ describe('application of commands in the pond v2', () => {
     it('should be cancellable pretty swiftly', async () => {
       const pond = await Pond2.test()
 
-      const cancel = pond.installAutomaticEffect(agg, autoBump)
+      const cancel = pond.keepRunning(agg, autoBump)
 
       // This is only really reliable as long as we debounce the automatic effect.
-      pond.aggregate(agg, state => state.n > 1000 && cancel())
+      pond.observe(agg, state => state.n > 1000 && cancel())
 
       await expectState(pond, 1001)
 
@@ -304,7 +304,7 @@ describe('application of commands in the pond v2', () => {
 
   describe('automatic effects with event sent to other aggregates', () => {
     const mkAgg = (name: string) => ({
-      subscriptions: TagQuery.requireSome(name),
+      subscriptions: TagQuery.matchAnyOf(name),
 
       initialState: { n: 0, fill: 0 },
 
@@ -321,13 +321,13 @@ describe('application of commands in the pond v2', () => {
 
       const stateIs30 = expectState(pond, 30, beta)
 
-      const c0 = pond.installAutomaticEffect<State, CompareAndIncrement, true>(alpha, state => [
+      const c0 = pond.keepRunning<State, CompareAndIncrement, true>(alpha, state => [
         { tags: ['beta'], payload: { type: 'set', n: state.n + 1 } },
       ])
 
       await expectState(pond, 1, beta)
 
-      const c1 = pond.installAutomaticEffect(beta, state => [
+      const c1 = pond.keepRunning(beta, state => [
         { tags: ['alpha'], payload: { type: 'set', n: state.n } },
       ])
 
