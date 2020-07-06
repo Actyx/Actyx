@@ -27,7 +27,7 @@ import { FishEventStore, FishInfo } from './fishEventStore'
 import log from './loggers'
 import { SendToStore } from './pond'
 import { PondStateTracker } from './pond-state'
-import { EntityId, Metadata } from './pond-v2-types'
+import { FishId, Metadata } from './pond-v2-types'
 import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
 import { Subscription, SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
@@ -602,7 +602,7 @@ const hydrateV2 = (
   subscriptionSet: SubscriptionSet,
   initialState: S,
   onEvent: (state: S, event: E, metadata: Metadata) => S,
-  cacheKey: EntityId,
+  cacheKey: FishId,
   enableLocalSnapshots: boolean,
   isReset?: (event: E) => boolean,
 ): Observable<StateWithProvenance<S>> => {

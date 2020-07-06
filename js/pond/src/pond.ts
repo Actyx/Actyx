@@ -18,24 +18,13 @@ import { getSourceId } from './eventstore/websocketEventStore'
 import { CommandExecutor } from './executors/commandExecutor'
 import { CommandPipeline, FishJar } from './fishJar'
 import log from './loggers'
+import { PondCommon } from './pond-common'
 import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
-import {
-  Aggregate,
-  CancelSubscription,
-  EmissionRequest,
-  Emit,
-  EntityId,
-  Metadata,
-  PendingEmission,
-  PondV2,
-  Reduce,
-  StateEffect,
-  TagQuery,
-} from './pond-v2-types'
+import { EmissionRequest, FishId, Metadata } from './pond-v2-types'
 import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
-import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
+import { SubscriptionSet } from './subscription'
 import {
   Envelope,
   FishName,
@@ -118,10 +107,7 @@ export function flattenChunk(chunk: UnstoredEvents, sourceId: SourceId): Event[]
   })
 }
 
-export type PondInfo = {
-  sourceId: SourceId
-}
-export type Pond = {
+export type Pond = PondCommon & {
   /**
    * Obtain an observable stream of states from the given fish, waking it up if it is
    * not already actively running within this pond. It is guaranteed that after a
@@ -164,35 +150,6 @@ export type Pond = {
    * Dump all internal state of all fish, for debugging purposes.
    */
   dump(): Observable<string>
-
-  /**
-   * Dispose subscription to IpfsStore
-   * Store subscription needs to be unsubscribed for HMR
-   */
-  dispose(): Promise<void>
-
-  /**
-   * Information about the current pond
-   */
-  info(): PondInfo
-
-  /**
-   * Obtain an observable state of the pond.
-   */
-  getPondState(): Observable<PondState>
-
-  /**
-   * Obtain an observable describing connectivity status of this node.
-   */
-  getNodeConnectivity(...specialSources: ReadonlyArray<SourceId>): Observable<ConnectivityStatus>
-
-  /**
-   * Obtain an observable that completes when we are mostly in sync with the swarm.
-   * It is recommended to wait for this on application startup, before interacting with any fish,
-   * i.e. `await pond.waitForSwarmSync().toPromise()`. The intermediate states emitted
-   * by the Observable can be used to display render a progress bar, for example.
-   */
-  waitForSwarmSync(config?: WaitForSwarmConfig): Observable<SplashState>
 }
 
 const logPondError = { error: (x: any) => log.pond.error(JSON.stringify(x)) }
@@ -239,26 +196,12 @@ export const makeEventChunk = <E>(
   }))
 }
 
-const omitObservable = <S>(
-  callback: (newState: S) => void,
-  states: Observable<StateWithProvenance<S>>,
-): CancelSubscription => {
-  const sub = states.map(x => x.state).subscribe(callback)
-  return sub.unsubscribe.bind(sub)
-}
-
-const pendingEmission = (o: Observable<void>): PendingEmission => ({
-  subscribe: o.subscribe.bind(o),
-  toPromise: () => o.toPromise(),
-})
-
 type ActiveAggregate<S> = {
   readonly states: Observable<StateWithProvenance<S>>
   commandPipeline?: CommandPipeline<S, EmissionRequest<any>>
 }
 
-type BothPonds = Pond & PondV2
-export class PondImpl implements BothPonds {
+export class PondImpl implements Pond {
   commandsSubject: Subject<SendCommand<any>> = new Subject()
   eventsSubject: Subject<UnstoredEvents> = new Subject()
   timeInjector: TimeInjector
@@ -268,7 +211,7 @@ export class PondImpl implements BothPonds {
     subscriptionSet: SubscriptionSet,
     initialState: S,
     onEvent: (state: S, event: E, metadata: Metadata) => S,
-    entityId: EntityId,
+    fishId: FishId,
     enableLocalSnapshots: boolean,
     isReset?: (event: E) => boolean,
   ) => Observable<StateWithProvenance<S>>
@@ -279,7 +222,7 @@ export class PondImpl implements BothPonds {
   } = {}
 
   taggedAggregates: {
-    [entityId: string]: ActiveAggregate<any>
+    [fishId: string]: ActiveAggregate<any>
   } = {}
 
   // executor for async commands
@@ -437,249 +380,6 @@ export class PondImpl implements BothPonds {
       .mapTo(undefined)
       .toPromise()
   }
-
-  /* POND V2 FUNCTIONS */
-  private emitTagged0 = <E>(emit: ReadonlyArray<Emit<E>>): Observable<Events> => {
-    const semantics = Semantics.none
-    const name = FishName.none
-
-    const source = {
-      sourceId: this.eventStore.sourceId,
-      semantics,
-      name,
-    }
-
-    const events = emit.map(({ tags, payload }) => {
-      const timestamp = this.timeInjector(source, [payload])
-
-      const event = {
-        semantics: Semantics.none,
-        name,
-        tags,
-        timestamp,
-        payload,
-      }
-
-      return event
-    })
-
-    return this.eventStore.persistEvents(events)
-  }
-
-  emitEvent = (tags: ReadonlyArray<string>, payload: unknown): PendingEmission => {
-    return this.emitEvents({ tags, payload })
-  }
-
-  emitEvents = (...emissions: ReadonlyArray<Emit<any>>): PendingEmission => {
-    // `shareReplay` so that every piece of user code calling `subscribe`
-    // on the return value will actually be executed
-    const o = this.emitTagged0(emissions)
-      .mapTo(void 0)
-      .shareReplay(1)
-
-    // `o` is already (probably) hot, but we subscribe just in case.
-    o.subscribe()
-
-    return pendingEmission(o)
-  }
-
-  private getCachedOrInitialize = <S, E>(
-    subscriptionSet: SubscriptionSet,
-    initialState: S,
-    onEvent: Reduce<S, E>,
-    entityId: EntityId,
-    isReset?: (event: E) => boolean,
-  ): ActiveAggregate<S> => {
-    const key = EntityId.canonical(entityId)
-    const existing = this.taggedAggregates[key]
-    if (existing !== undefined) {
-      return {
-        states: existing.states.observeOn(Scheduler.queue),
-        ...existing,
-      }
-    }
-
-    const stateSubject = this.hydrateV2(
-      subscriptionSet,
-      initialState,
-      onEvent,
-      entityId,
-      true,
-      isReset,
-    ).shareReplay(1)
-
-    const a = {
-      states: stateSubject,
-    }
-    this.taggedAggregates[key] = a
-    return a
-  }
-
-  aggregateUncached = <S, E>(
-    requiredTags: ReadonlyArray<string>,
-    initialState: S,
-    onEvent: (state: S, event: E) => S,
-    callback: (newState: S) => void,
-  ): CancelSubscription => {
-    const subscriptionSet: SubscriptionSet = {
-      type: 'tags',
-      subscriptions: [{ tags: requiredTags, local: false }],
-    }
-
-    return omitObservable(
-      callback,
-      this.hydrateV2(
-        subscriptionSet,
-        initialState,
-        onEvent,
-        { name: String(Math.random()) },
-        false,
-      ),
-    )
-  }
-
-  aggregatePlain = <S, E>(
-    requiredTags: ReadonlyArray<string>,
-    initialState: S,
-    onEvent: (state: S, event: E) => S,
-    cacheKey: EntityId,
-    callback: (newState: S) => void,
-  ): CancelSubscription => {
-    const subscriptionSet: SubscriptionSet = {
-      type: 'tags',
-      subscriptions: [{ tags: requiredTags, local: false }],
-    }
-
-    return omitObservable(
-      callback,
-      this.getCachedOrInitialize(subscriptionSet, initialState, onEvent, cacheKey).states,
-    )
-  }
-
-  private observeTagBased0 = <S, E>(acc: Aggregate<S, E>): ActiveAggregate<S> => {
-    const subscriptionSet: SubscriptionSet = {
-      type: 'tags',
-      subscriptions: TagQuery.toWireFormat(acc.subscriptions),
-    }
-
-    return this.getCachedOrInitialize(
-      subscriptionSet,
-      acc.initialState,
-      acc.onEvent,
-      acc.entityId,
-      acc.isReset,
-    )
-  }
-
-  aggregate = <S, E>(acc: Aggregate<S, E>, callback: (newState: S) => void): CancelSubscription => {
-    if (acc.deserializeState) {
-      throw new Error('custom deser not yet supported')
-    }
-
-    return omitObservable(callback, this.observeTagBased0<S, E>(acc).states)
-  }
-
-  // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
-  runStateEffect = <S, EWrite, ReadBack = false>(
-    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
-  ): ((effect: StateEffect<S, EWrite>) => PendingEmission) => {
-    const cached = this.observeTagBased0(agg)
-    const handleInternal = this.getOrCreateCommandHandle0(agg, cached)
-
-    return effect => pendingEmission(handleInternal(effect))
-  }
-
-  private v2CommandHandler = (emit: EmissionRequest<unknown>) => {
-    return Observable.from(Promise.resolve(emit)).mergeMap(x => this.emitTagged0(x))
-  }
-
-  private getOrCreateCommandHandle0 = <S, EWrite, ReadBack = false>(
-    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
-    cached: ActiveAggregate<S>,
-  ): ((effect: StateEffect<S, EWrite>) => Observable<void>) => {
-    const handler = this.v2CommandHandler
-
-    const subscriptionSet: SubscriptionSet = {
-      type: 'tags',
-      subscriptions: TagQuery.toWireFormat(agg.subscriptions),
-    }
-
-    const commandPipeline =
-      cached.commandPipeline ||
-      FishJar.commandPipeline<S, EmissionRequest<any>>(
-        this.pondStateTracker,
-        this.eventStore.sourceId,
-        agg.entityId.entityType || Semantics.none,
-        agg.entityId.name,
-        handler,
-        cached.states,
-        subscriptionsToEventPredicate(subscriptionSet),
-      )
-    cached.commandPipeline = commandPipeline
-
-    return effect => {
-      const o = new Observable<void>(x =>
-        commandPipeline.subject.next({
-          type: 'command',
-          command: effect,
-          onComplete: () => {
-            x.next()
-            x.complete()
-          },
-          onError: (err: any) => x.error(err),
-        }),
-      )
-        .shareReplay(1)
-        // Subscribing on Scheduler.queue is not strictly required, but helps with dampening feedback loops
-        .subscribeOn(Scheduler.queue)
-
-      // We just subscribe to guarantee effect application;
-      // user is responsible for handling errors on the returned object if desired.
-      o.catch(() => Observable.empty()).subscribe()
-
-      return o
-    }
-  }
-
-  installAutomaticEffect = <S, EWrite, ReadBack = false>(
-    agg: Aggregate<S, ReadBack extends true ? EWrite : any>,
-    effect: StateEffect<S, EWrite>,
-    autoCancel?: (state: S) => boolean,
-  ): CancelSubscription => {
-    // We use this state `cancelled` to stop effects "asap" when user code calls the cancellation function.
-    // Otherwise it might happen that we have already queued the next effect and run longer than desired.
-    let cancelled = false
-
-    const wrappedEffect = (state: S) => (cancelled ? [] : effect(state))
-
-    const cached = this.observeTagBased0(agg)
-    const states = cached.states
-    const handleInternal = this.getOrCreateCommandHandle0(agg, cached)
-
-    const tw = autoCancel
-      ? (state: S) => {
-          if (cancelled) {
-            return false
-          } else if (autoCancel(state)) {
-            cancelled = true
-            return false
-          }
-
-          return true
-        }
-      : () => !cancelled
-
-    states
-      .map(swp => swp.state)
-      .takeWhile(tw)
-      .debounceTime(0)
-      // We could also just use `do` instead of `mergeMap` (using the public API),
-      // for no real loss, but no gain either.
-      .mergeMap(() => handleInternal(wrappedEffect))
-      .subscribe()
-
-    return () => (cancelled = true)
-  }
 }
 
 /**
@@ -706,10 +406,7 @@ const createServices = async (multiplexer: MultiplexedWebsocket): Promise<Servic
   return { eventStore, snapshotStore, commandInterface }
 }
 
-const mkPond = async (
-  multiplexer: MultiplexedWebsocket,
-  opts: PondOptions = {},
-): Promise<BothPonds> => {
+const mkPond = async (multiplexer: MultiplexedWebsocket, opts: PondOptions = {}): Promise<Pond> => {
   const services = await createServices(multiplexer || mkMultiplexer())
   return pondFromServices(services, opts)
 }
@@ -720,7 +417,7 @@ const mkMockPond = async (opts?: PondOptions): Promise<Pond> => {
   return pondFromServices(services, opts1)
 }
 
-type TestPond = BothPonds & {
+type TestPond = Pond & {
   directlyPushEvents: (events: Events) => void
   eventStore: TestEventStore
 }
@@ -735,7 +432,7 @@ const mkTestPond = async (opts?: PondOptions): Promise<TestPond> => {
     eventStore,
   }
 }
-const pondFromServices = (services: Services, opts: PondOptions): BothPonds => {
+const pondFromServices = (services: Services, opts: PondOptions): Pond => {
   const { eventStore, snapshotStore, commandInterface } = services
 
   const monitoring = Monitoring.of(commandInterface, 10000)
@@ -754,7 +451,7 @@ const pondFromServices = (services: Services, opts: PondOptions): BothPonds => {
 }
 
 export const Pond = {
-  default: async (): Promise<BothPonds> => Pond.of(mkMultiplexer()),
+  default: async (): Promise<Pond> => Pond.of(mkMultiplexer()),
   of: mkPond,
   mock: mkMockPond,
   test: mkTestPond,
