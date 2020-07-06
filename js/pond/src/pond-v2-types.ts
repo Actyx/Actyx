@@ -11,13 +11,13 @@ import { Lamport, Timestamp } from './types'
  * POND V2 Candidate APIs
  */
 
-type TagIntersection = Readonly<{
+export type TagIntersection = Readonly<{
   type: 'intersection'
   tags: ReadonlyArray<string>
   onlyLocalEvents?: boolean
 }>
 
-type TagUnion = Readonly<{
+export type TagUnion = Readonly<{
   type: 'union'
   tags: ReadonlyArray<string | TagIntersection>
 }>

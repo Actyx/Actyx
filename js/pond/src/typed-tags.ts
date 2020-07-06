@@ -1,4 +1,4 @@
-import { TagQuery } from './pond-v2-types'
+import { TagIntersection, TagQuery, TagUnion } from './pond-v2-types'
 
 export type Tag<E> = Readonly<{
   // raw tag
@@ -8,22 +8,24 @@ export type Tag<E> = Readonly<{
   _dataType?: E
 }>
 
+export const Tag = {
+  mk: <E>(rawTag: string): Tag<E> => ({ tag: rawTag } as Tag<E>)
+}
+
+const rawTags = (tags: ReadonlyArray<Tag<unknown>>) => tags.map(x => x.tag)
+
+export const namedSubTags = <E>(tag: Tag<E>, ...path: string[]): Tag<E>[] => {
+  // foo
+}
+
 export class EmissionTags<E> {
   private tags: ReadonlyArray<string> = []
 
   constructor() { }
 
-  add<E1>(tag: Tag<E>): EmissionTags<Extract<E, E1>> {
+  add<E1>(...tags: Tag<E>[]): EmissionTags<Extract<E, E1>> {
     const r = new EmissionTags<unknown>()
-    r.tags = [...this.tags, tag.tag]
-    return r as EmissionTags<Extract<E, E1>>
-  }
-
-  addNamed<E1>(tag: Tag<E>, name: string): EmissionTags<Extract<E, E1>> {
-    const subtag = tag + ':' + name
-
-    const r = new EmissionTags<unknown>()
-    r.tags = [...this.tags, tag.tag, subtag]
+    r.tags = this.tags.concat(rawTags(tags))
     return r as EmissionTags<Extract<E, E1>>
   }
 
@@ -32,24 +34,47 @@ export class EmissionTags<E> {
   }
 }
 
-const toUnion = (q: TagQuery) => {
-  if (q.type === 'union') {
-    return q
-  } else {
-    return {
-      type: 'union',
-      tags: [q]
-    }
+export interface TypedTagUnion<E> {
+  raw(): TagUnion
+
+  readonly _dataType?: E
+}
+
+export interface TypedTagIntersection<E> {
+  and<E1>(...tags: Tag<E1>[]): TypedTagIntersection<Extract<E1, E>>
+
+  raw(): TagIntersection
+
+  readonly _dataType?: E
+}
+
+export type TypedTagQuery<E> = TypedTagUnion<E> | TypedTagIntersection<E>
+
+const req = <E>(...tags: Tag<E>[]): TypedTagIntersection<E> => {
+  return {
+    and: <E1>(...moreTags: Tag<E1>[]) => {
+      const cast = [...tags, ...moreTags] as Tag<Extract<E1, E>>[]
+      return req<Extract<E1, E>>(...cast)
+    },
+
+    raw: () => ({
+      type: 'intersection',
+      tags: rawTags(tags),
+    }),
   }
 }
 
-export class TypedTagQuery<E> {
-
-  private rawQuery?: TagQuery
-
-  union<E1>(other: TypedTagQuery<E>): TypedTagQuery<E | E1> {
-    const l = this.rawQuery.type === 'union' ? this.rawQuery : { type: 'union', tags: [this.rawQuery] }
-    l.tags.push(
+const union = <E>(...sets: TypedTagIntersection<E>[]): TypedTagUnion<E> => {
+  return {
+    raw: () => ({
+      type: 'union',
+      tags: sets.map(x => x.raw()),
+    }),
   }
+}
 
+export const TypedTagQuery = {
+  require: req,
+
+  union,
 }

@@ -273,8 +273,8 @@ export class Pond2Impl implements Pond2 {
     const existing = this.taggedFishs[key]
     if (existing !== undefined) {
       return {
-        states: existing.states.observeOn(Scheduler.queue),
         ...existing,
+        states: existing.states.observeOn(Scheduler.queue),
       }
     }
 
@@ -404,15 +404,15 @@ export class Pond2Impl implements Pond2 {
 
     const tw = autoCancel
       ? (state: S) => {
-          if (cancelled) {
-            return false
-          } else if (autoCancel(state)) {
-            cancelled = true
-            return false
-          }
-
-          return true
+        if (cancelled) {
+          return false
+        } else if (autoCancel(state)) {
+          cancelled = true
+          return false
         }
+
+        return true
+      }
       : () => !cancelled
 
     states
