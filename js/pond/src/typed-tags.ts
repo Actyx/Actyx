@@ -1,4 +1,4 @@
-import { TagIntersection, TagUnion } from './pond-v2-types'
+import { TagIntersection, TagUnion, TagQuery } from './pond-v2-types'
 
 export type Tag<E> = Readonly<{
   // raw tag
@@ -47,13 +47,17 @@ export class EmissionTags<E> {
   }
 }
 
-export interface TypedTagUnion<E> extends TagUnion {
+export interface TypedTagUnion<E> {
 
   readonly _dataType?: E
+
+  raw(): TagUnion
 }
 
-export interface TypedTagIntersection<E> extends TagIntersection {
+export interface TypedTagIntersection<E> {
   and<E1>(...tags: Tag<E1>[]): TypedTagIntersection<Extract<E1, E>>
+
+  raw(): TagIntersection
 
   readonly _dataType?: E
 }
@@ -68,25 +72,34 @@ const req = <E>(...tags: Tag<E>[]): TypedTagIntersection<E> => {
     },
 
 
-    type: 'intersection',
+    raw: () => ({
 
 
-    tags: rawTags(tags),
+      type: 'intersection',
 
-    // raw: () => ({
-    // }),
+
+      tags: rawTags(tags),
+    }),
   }
 }
 
 const matchAnyOf = <E>(...sets: TypedTagIntersection<E>[]): TypedTagUnion<E> => {
   return {
-    type: 'union',
-    tags: sets,
+    raw: () => ({
+      type: 'union',
+      tags: sets.map(x => x.raw()),
+    })
   }
+}
+
+const isTyped = (i: TypedTagQuery<unknown> | TagQuery): i is TypedTagQuery<unknown> => {
+  return i.hasOwnProperty('raw')
 }
 
 export const TypedTagQuery = {
   require: req,
 
   matchAnyOf,
+
+  isTyped
 }

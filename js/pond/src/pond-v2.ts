@@ -34,7 +34,7 @@ import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
-import { EmissionTags } from './typed-tags'
+import { EmissionTags, TypedTagQuery } from './typed-tags'
 import {
   FishName,
   Milliseconds,
@@ -288,9 +288,13 @@ export class Pond2Impl implements Pond2 {
   }
 
   private observeTagBased0 = <S, E>(acc: Fish<S, E>): ActiveFish<S> => {
+    const subs = TypedTagQuery.isTyped(acc.subscriptions)
+      ? acc.subscriptions.raw()
+      : acc.subscriptions
+
     const subscriptionSet: SubscriptionSet = {
       type: 'tags',
-      subscriptions: TagQuery.toWireFormat(acc.subscriptions),
+      subscriptions: TagQuery.toWireFormat(subs),
     }
 
     return this.getCachedOrInitialize(
@@ -330,9 +334,13 @@ export class Pond2Impl implements Pond2 {
   ): ((effect: StateEffect<S, EWrite>) => Observable<void>) => {
     const handler = this.v2CommandHandler
 
+    const subs = TypedTagQuery.isTyped(agg.subscriptions)
+      ? agg.subscriptions.raw()
+      : agg.subscriptions
+
     const subscriptionSet: SubscriptionSet = {
       type: 'tags',
-      subscriptions: TagQuery.toWireFormat(agg.subscriptions),
+      subscriptions: TagQuery.toWireFormat(subs),
     }
 
     const commandPipeline =
@@ -397,15 +405,15 @@ export class Pond2Impl implements Pond2 {
 
     const tw = autoCancel
       ? (state: S) => {
-        if (cancelled) {
-          return false
-        } else if (autoCancel(state)) {
-          cancelled = true
-          return false
-        }
+          if (cancelled) {
+            return false
+          } else if (autoCancel(state)) {
+            cancelled = true
+            return false
+          }
 
-        return true
-      }
+          return true
+        }
       : () => !cancelled
 
     states
