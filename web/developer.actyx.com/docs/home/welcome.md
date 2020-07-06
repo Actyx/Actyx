@@ -11,14 +11,14 @@ Welcome to the Actyx Developer Website! On this website you can find all the res
 
 ### Introduction
 
-Learn about the Actyx platform and the different Actyx platform products.
+Learn about the Actyx platform and the different Actyx products.
 
 - [Introduction to the Actyx Platform](home/actyx_platform.md)
 - [Actyx Platform Products](home/actyx_products.md)
 
 ### Documentation
 
-Explore the Actyx platform products further and learn how to use them.
+Explore the Actyx products further and learn how to use them.
 
 - [ActyxOS](os/introduction.md)
 - [Actyx Pond](pond/getting-started.md)
