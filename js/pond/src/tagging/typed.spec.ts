@@ -37,6 +37,6 @@ export const u = matchAnyOf(requireTag(tagA), requireTag(tagB), requireTag(abcTa
 // @ts-expect-error
 export const u2: TypedTagQuery<'A' | 'B'> = u
 
-export const n: TypedTagQuery<'A'> = requireTag(
-  ...Tag.namedSubTags(tagA, 'my-id', 'and-another-path-element-even'),
-)
+// export const n: TypedTagQuery<'A'> = requireTag(
+//   ...Tag.subTags(tagA, 'my-id', 'and-another-path-element-even'),
+// )
