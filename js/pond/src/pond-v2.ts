@@ -19,10 +19,10 @@ import log from './loggers'
 import { PondCommon } from './pond-common'
 import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
 import {
-  Fish,
   CancelSubscription,
   EmissionRequest,
   Emit,
+  Fish,
   FishId,
   Metadata,
   PendingEmission,
@@ -77,7 +77,7 @@ const pendingEmission = (o: Observable<void>): PendingEmission => ({
   toPromise: () => o.toPromise(),
 })
 
-type ActiveAggregate<S> = {
+type ActiveFish<S> = {
   readonly states: Observable<StateWithProvenance<S>>
   commandPipeline?: CommandPipeline<S, EmissionRequest<any>>
 }
@@ -107,49 +107,49 @@ export type Pond2 = {
   /* AGGREGATION */
 
   /**
-   * Aggregate events into state. Caching is done based on the `cacheKey` inside the `aggregate`.
+   * Fold events into state. Caching is done based on the `cacheKey` inside the `fish`.
    *
-   * @param aggregate    Complete aggregation information.
+   * @param fish    Complete aggregation information.
    * @param callback     Function that will be called whenever a new state becomes available.
    * @returns            A function that can be called in order to cancel the aggregation.
    */
-  observe<S, E>(aggregate: Fish<S, E>, callback: (newState: S) => void): CancelSubscription
+  observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription
 
   /* CONDITIONAL EMISSION (COMMANDS) */
 
   /**
-   * Run StateEffects against the current **locally known** State of the `aggregate`.
+   * Run StateEffects against the current **locally known** State of the `fish`.
    * The Effect is able to consider that State and create Events from it.
-   * Every Effect will see the Events of all previous Effects *on this aggregate* applied already!
+   * Every Effect will see the Events of all previous Effects *on this fish* applied already!
    *
    * In regards to other nodes, there are no serialisation guarantees.
    *
-   * @typeParam S        State of the Aggregate, input value to the effect.
-   * @typeParam EWrite   Payload type(s) to be returned by the effect.
-   * @typeParam ReadBack Whether the Aggregate itself must be able to read the emitted events.
+   * @typeParam S                State of the Fish, input value to the effect.
+   * @typeParam EWrite           Payload type(s) to be returned by the effect.
+   * @typeParam RequireReadable  Whether the Fish itself must be able to read the emitted events.
    *
-   * @param aggregate    Complete aggregation information.
+   * @param fish    Complete aggregation information.
    * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
-  run: <S, EWrite, ReadBack = false>(
-    aggregate: Fish<S, ReadBack extends true ? EWrite : any>,
+  run: <S, EWrite, RequireReadable = true>(
+    fish: Fish<S, RequireReadable extends true ? EWrite : any>,
     effect: StateEffect<S, EWrite>,
   ) => PendingEmission
 
   /**
    * Curried version of `runStateEffect`.
    *
-   * @typeParam S        State of the Aggregate, input value to the effect.
-   * @typeParam EWrite   Payload type(s) to be returned by the effect.
-   * @typeParam ReadBack Whether the Aggregate itself must be able to read the emitted events.
+   * @typeParam S                State of the Fish, input value to the effect.
+   * @typeParam EWrite           Payload type(s) to be returned by the effect.
+   * @typeParam RequireReadable  Whether the Fish itself must be able to read the emitted events.
    *
-   * @param aggregate    Complete aggregation information.
+   * @param fish    Complete aggregation information.
    * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
-  runC: <S, EWrite, ReadBack = false>(
-    agg: Fish<S, ReadBack extends true ? EWrite : any>,
+  runC: <S, EWrite, RequireReadable = true>(
+    fish: Fish<S, RequireReadable extends true ? EWrite : any>,
   ) => (effect: StateEffect<S, EWrite>) => PendingEmission
 
   /**
@@ -159,18 +159,18 @@ export type Pond2 = {
    *
    * The effect can be uninstalled by calling the returned `CancelSubscription`.
    *
-   * @typeParam S        State of the Aggregate, input value to the effect.
+   * @typeParam S        State of the Fish, input value to the effect.
    * @typeParam EWrite   Payload type(s) to be returned by the effect.
-   * @typeParam ReadBack Whether the Aggregate must be able to read the emitted events.
+   * @typeParam RequireReadable Whether the Fish must be able to read the emitted events.
    *
-   * @param aggregate    Complete aggregation information.
+   * @param fish         Complete aggregation information.
    * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
    * @param autoCancel   Condition on which the automatic effect will be cancelled -- State on which `autoCancel` returns `true`
    *                     will be the first State the effect is *not* applied to anymore.
    * @returns            A `CancelSubscription` object that can be used to cancel the automatic effect.
    */
-  keepRunning: <S, EWrite, ReadBack = false>(
-    agg: Fish<S, ReadBack extends true ? EWrite : any>,
+  keepRunning: <S, EWrite, RequireReadable = true>(
+    fish: Fish<S, RequireReadable extends true ? EWrite : any>,
     effect: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ) => CancelSubscription
@@ -186,8 +186,8 @@ export class Pond2Impl implements Pond2 {
     isReset?: (event: E) => boolean,
   ) => Observable<StateWithProvenance<S>>
 
-  taggedAggregates: {
-    [fishId: string]: ActiveAggregate<any>
+  taggedFishs: {
+    [fishId: string]: ActiveFish<any>
   } = {}
 
   constructor(
@@ -223,7 +223,7 @@ export class Pond2Impl implements Pond2 {
 
   dispose = async () => {
     this.monitoring.dispose()
-    // TODO: Implement cleanup of active aggregates
+    // TODO: Implement cleanup of active fishs
   }
 
   /* POND V2 FUNCTIONS */
@@ -268,9 +268,9 @@ export class Pond2Impl implements Pond2 {
     onEvent: Reduce<S, E>,
     fishId: FishId,
     isReset?: (event: E) => boolean,
-  ): ActiveAggregate<S> => {
+  ): ActiveFish<S> => {
     const key = FishId.canonical(fishId)
-    const existing = this.taggedAggregates[key]
+    const existing = this.taggedFishs[key]
     if (existing !== undefined) {
       return {
         states: existing.states.observeOn(Scheduler.queue),
@@ -290,52 +290,11 @@ export class Pond2Impl implements Pond2 {
     const a = {
       states: stateSubject,
     }
-    this.taggedAggregates[key] = a
+    this.taggedFishs[key] = a
     return a
   }
 
-  aggregateUncached = <S, E>(
-    requiredTags: ReadonlyArray<string>,
-    initialState: S,
-    onEvent: (state: S, event: E) => S,
-    callback: (newState: S) => void,
-  ): CancelSubscription => {
-    const subscriptionSet: SubscriptionSet = {
-      type: 'tags',
-      subscriptions: [{ tags: requiredTags, local: false }],
-    }
-
-    return omitObservable(
-      callback,
-      this.hydrateV2(
-        subscriptionSet,
-        initialState,
-        onEvent,
-        { name: String(Math.random()) },
-        false,
-      ),
-    )
-  }
-
-  aggregatePlain = <S, E>(
-    requiredTags: ReadonlyArray<string>,
-    initialState: S,
-    onEvent: (state: S, event: E) => S,
-    cacheKey: FishId,
-    callback: (newState: S) => void,
-  ): CancelSubscription => {
-    const subscriptionSet: SubscriptionSet = {
-      type: 'tags',
-      subscriptions: [{ tags: requiredTags, local: false }],
-    }
-
-    return omitObservable(
-      callback,
-      this.getCachedOrInitialize(subscriptionSet, initialState, onEvent, cacheKey).states,
-    )
-  }
-
-  private observeTagBased0 = <S, E>(acc: Fish<S, E>): ActiveAggregate<S> => {
+  private observeTagBased0 = <S, E>(acc: Fish<S, E>): ActiveFish<S> => {
     const subscriptionSet: SubscriptionSet = {
       type: 'tags',
       subscriptions: TagQuery.toWireFormat(acc.subscriptions),
@@ -374,7 +333,7 @@ export class Pond2Impl implements Pond2 {
 
   private getOrCreateCommandHandle0 = <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
-    cached: ActiveAggregate<S>,
+    cached: ActiveFish<S>,
   ): ((effect: StateEffect<S, EWrite>) => Observable<void>) => {
     const handler = this.v2CommandHandler
 

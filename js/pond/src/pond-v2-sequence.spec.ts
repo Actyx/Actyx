@@ -181,7 +181,7 @@ describe('application of commands in the pond v2', () => {
     it('should run parallel to user effects', async () => {
       const pond = await Pond2.test()
 
-      pond.keepRunning(
+      pond.keepRunning<State, Payload>(
         agg,
         // We skip increasing 5, depend on our manual calls to do it.
         state =>
@@ -198,7 +198,7 @@ describe('application of commands in the pond v2', () => {
         }
 
         pond
-          .runC(agg)(effect)
+          .run(agg, effect)
           .toPromise()
           .then(
             () => (success = true),
@@ -327,7 +327,7 @@ describe('application of commands in the pond v2', () => {
 
       await expectState(pond, 1, beta)
 
-      const c1 = pond.keepRunning(beta, state => [
+      const c1 = pond.keepRunning<State, Payload, false>(beta, state => [
         { tags: ['alpha'], payload: { type: 'set', n: state.n } },
       ])
 
