@@ -224,7 +224,7 @@ describe('application of commands in the pond v2', () => {
     it('should run parallel to user effects 2', async () => {
       const pond = await Pond2.test()
 
-      pond.keepRunning<State, Payload, CompareAndIncrement>(agg, bumpEven)
+      pond.keepRunning<State, Payload>(agg, bumpEven)
 
       await expectState(pond, 1)
 
@@ -321,13 +321,13 @@ describe('application of commands in the pond v2', () => {
 
       const stateIs30 = expectState(pond, 30, beta)
 
-      const c0 = pond.keepRunning<State, CompareAndIncrement, true>(alpha, state => [
+      const c0 = pond.keepRunning<State, CompareAndIncrement>(alpha, state => [
         { tags: ['beta'], payload: { type: 'set', n: state.n + 1 } },
       ])
 
       await expectState(pond, 1, beta)
 
-      const c1 = pond.keepRunning<State, Payload, false>(beta, state => [
+      const c1 = pond.keepRunning<State, Payload>(beta, state => [
         { tags: ['alpha'], payload: { type: 'set', n: state.n } },
       ])
 
