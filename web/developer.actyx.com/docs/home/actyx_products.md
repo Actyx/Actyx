@@ -9,8 +9,8 @@ hide_table_of_contents: true
 
 ![](/images/home/actyx_products.png)
 
-The Actyx platform itself comprises several different products and tools.
-Here we provide an overview of some of the most important ones.
+The Actyx platform itself comprises several products and tools.
+The following sections provide an overview of the most important ones.
 
 ### ActyxOS
 
@@ -26,7 +26,7 @@ To learn more about the specific services that ActyxOS provides and how you can 
 ### Actyx Pond
 
 Actyx Pond is an opinionated TypeScript framework that is built on top of the ActyxOS event service.
-With Actyx Pond we make it easier for you to write correct event-driven applications that run across the different devices in your deployment.
+With Actyx Pond, we make it easier for you to write correct event-driven applications that run across different devices in your deployment.
 
 At the core of Actyx Pond lies a powerful programming model which guarantees eventually consistent business logic in a completely decentralized environment without central coordination.
 This implies that you can write applications that keep making progress in the face of network partitions or intermittent network failure but eventually converge to a consistent result once changes are propagated.
@@ -36,7 +36,7 @@ To learn more about the Actyx Pond programming model and how you can start writi
 ### Actyx CLI
 
 The Actyx Command Line Interface (CLI) is a unified tool for managing your ActyxOS nodes and apps.
-The Actyx CLI enables you to easily deploy, configure and monitor your ActyxOS environment.
+It enables you to easily deploy, configure and monitor your ActyxOS environment.
 
 You can find more documentation on the capabilities of the Actyx CLI [here](cli/getting-started.md).
 
