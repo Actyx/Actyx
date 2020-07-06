@@ -9,7 +9,7 @@ const tagA = testTag('A')
 const tagB = testTag('B')
 
 // '0' and '1' have no overlap, so only 'A' remains
-export const q = TypedTagQuery.union(
+export const q = TypedTagQuery.matchAnyOf(
   TypedTagQuery.require(tag0).and(tag1),
   TypedTagQuery.require(tagA),
 )
@@ -30,7 +30,7 @@ export const w = TypedTagQuery.require(tagA).and(abcTag)
 // @ts-expect-error
 export const w2: TypedTagQuery<'X'> = w
 
-export const u = TypedTagQuery.union(
+export const u = TypedTagQuery.matchAnyOf(
   TypedTagQuery.require(tagA),
   TypedTagQuery.require(tagB),
   TypedTagQuery.require(abcTag),

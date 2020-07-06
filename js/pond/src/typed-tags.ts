@@ -1,4 +1,4 @@
-import { TagIntersection, TagQuery, TagUnion } from './pond-v2-types'
+import { TagIntersection, TagUnion } from './pond-v2-types'
 
 export type Tag<E> = Readonly<{
   // raw tag
@@ -9,13 +9,21 @@ export type Tag<E> = Readonly<{
 }>
 
 export const Tag = {
-  mk: <E>(rawTag: string): Tag<E> => ({ tag: rawTag } as Tag<E>)
+  mk: <E>(rawTag: string): Tag<E> => ({ tag: rawTag } as Tag<E>),
 }
 
 const rawTags = (tags: ReadonlyArray<Tag<unknown>>) => tags.map(x => x.tag)
 
 export const namedSubTags = <E>(tag: Tag<E>, ...path: string[]): Tag<E>[] => {
-  // foo
+  let curr = tag.tag
+  return path.reduce(
+    (tags, element) => {
+      curr = curr + ':' + element
+      tags.push({ tag: curr })
+      return tags
+    },
+    [tag],
+  )
 }
 
 export class EmissionTags<E> {
@@ -29,21 +37,23 @@ export class EmissionTags<E> {
     return r as EmissionTags<Extract<E, E1>>
   }
 
-  rawTags(): ReadonlyArray<string> {
+  addPath<E1>(tag: Tag<E>, ...path: string[]): EmissionTags<Extract<E, E1>> {
+    const tags = namedSubTags(tag, ...path)
+    return this.add(...tags)
+  }
+
+  raw(): ReadonlyArray<string> {
     return this.tags
   }
 }
 
-export interface TypedTagUnion<E> {
-  raw(): TagUnion
+export interface TypedTagUnion<E> extends TagUnion {
 
   readonly _dataType?: E
 }
 
-export interface TypedTagIntersection<E> {
+export interface TypedTagIntersection<E> extends TagIntersection {
   and<E1>(...tags: Tag<E1>[]): TypedTagIntersection<Extract<E1, E>>
-
-  raw(): TagIntersection
 
   readonly _dataType?: E
 }
@@ -57,24 +67,26 @@ const req = <E>(...tags: Tag<E>[]): TypedTagIntersection<E> => {
       return req<Extract<E1, E>>(...cast)
     },
 
-    raw: () => ({
-      type: 'intersection',
-      tags: rawTags(tags),
-    }),
+
+    type: 'intersection',
+
+
+    tags: rawTags(tags),
+
+    // raw: () => ({
+    // }),
   }
 }
 
-const union = <E>(...sets: TypedTagIntersection<E>[]): TypedTagUnion<E> => {
+const matchAnyOf = <E>(...sets: TypedTagIntersection<E>[]): TypedTagUnion<E> => {
   return {
-    raw: () => ({
-      type: 'union',
-      tags: sets.map(x => x.raw()),
-    }),
+    type: 'union',
+    tags: sets,
   }
 }
 
 export const TypedTagQuery = {
   require: req,
 
-  union,
+  matchAnyOf,
 }

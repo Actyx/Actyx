@@ -6,7 +6,8 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Lamport, Timestamp } from './types'
-
+// FIXME circular import
+import { EmissionTags, TypedTagQuery } from './typed-tags'
 /*
  * POND V2 Candidate APIs
  */
@@ -63,7 +64,7 @@ export const TagQuery = {
   },
 }
 export type Emit<E> = {
-  tags: ReadonlyArray<string>
+  tags: ReadonlyArray<string> | EmissionTags<E>
   payload: E
 }
 
@@ -103,7 +104,7 @@ export type Fish<S, E> = {
   // Will extend this field with further options in the future:
   // - <E>-Typed subscription
   // - Plain query string
-  subscriptions: TagQuery
+  subscriptions: TagQuery | TypedTagQuery<E>
 
   initialState: S
   onEvent: Reduce<S, E>

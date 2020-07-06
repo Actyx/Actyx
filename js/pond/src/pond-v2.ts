@@ -34,6 +34,7 @@ import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
+import { EmissionTags } from './typed-tags'
 import {
   FishName,
   Milliseconds,
@@ -226,7 +227,7 @@ export class Pond2Impl implements Pond2 {
       const event = {
         semantics: Semantics.none,
         name: FishName.none,
-        tags,
+        tags: Array.isArray(tags) ? tags : (tags as EmissionTags<E>).raw(),
         timestamp,
         payload,
       }
@@ -396,15 +397,15 @@ export class Pond2Impl implements Pond2 {
 
     const tw = autoCancel
       ? (state: S) => {
-        if (cancelled) {
-          return false
-        } else if (autoCancel(state)) {
-          cancelled = true
-          return false
-        }
+          if (cancelled) {
+            return false
+          } else if (autoCancel(state)) {
+            cancelled = true
+            return false
+          }
 
-        return true
-      }
+          return true
+        }
       : () => !cancelled
 
     states
