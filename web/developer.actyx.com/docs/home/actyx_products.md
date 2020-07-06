@@ -16,7 +16,7 @@ The following sections provide an overview of the most important ones.
 
 At the core of the Actyx platform is a piece of software that we call ActyxOS.
 Every device in your setup that you want to connect runs the ActyxOS application; Currently ActyxOS can be deployed on Docker and Android.
-ActyxOS provides the application runtimes to easily deploy and run your application logic on the edge devices, an event service layer for seamless communication between different devices, and additional middleware services around storage and deployment management.
+ActyxOS provides the application runtimes to easily deploy and run your application logic on the edge devices, an event streaming service for seamless communication between different devices, and additional middleware services around storage and deployment management.
 
 It is possible to write your application logic directly on the middleware that ActyxOS provides by using the ActyxOS [APIs](os/api/event-service.md) or language specific [SDKs](os/sdks/js-ts.md).
 However, we usually recommend to start writing your solutions with Actyx Pond which builds on top of ActyxOS.
@@ -25,7 +25,7 @@ To learn more about the specific services that ActyxOS provides and how you can 
 
 ### Actyx Pond
 
-Actyx Pond is an opinionated TypeScript framework that is built on top of the ActyxOS event service.
+Actyx Pond is an opinionated TypeScript framework that is built on top of the ActyxOS event streaming service.
 With Actyx Pond, we make it easier for you to write correct event-driven applications that run across different devices in your deployment.
 
 At the core of Actyx Pond lies a powerful programming model which guarantees eventually consistent business logic in a completely decentralized environment without central coordination.
