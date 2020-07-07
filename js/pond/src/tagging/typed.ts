@@ -16,7 +16,7 @@ export interface TypedTagUnion<E> {
 export interface TypedTagIntersection<E> {
   and<E1>(tag: TypedTagIntersection<E1>): TypedTagIntersection<Extract<E1, E>>
 
-  // andNamed<E1>(tag: TypedTagIntersection<E1>, name: string): TypedTagIntersection<Extract<E1, E>>
+  local(): TypedTagIntersection<E>
 
   raw(): TagIntersection
 
@@ -31,7 +31,6 @@ export interface Tag<E> extends TypedTagIntersection<E> {
 
   subSpace(name: string): TypedTagIntersection<E>
 
-  local(): TypedTagIntersection<E>
 }
 
 const extractTagStrings = (tags: ReadonlyArray<Tag<unknown>>) => tags.map(x => x.rawTag)
@@ -41,8 +40,6 @@ export const Tag = {
     rawTag,
 
     subSpace: (name: string) => req(false, namedSubSpace(rawTag, name)),
-
-    local: () => req(true, [rawTag]),
 
     ...req(false, [rawTag]),
   }),
@@ -61,6 +58,8 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): TypedTagIntersecti
       // const cast = [...tags, tag] as Tag<Extract<E1, E>>[]
       return req<Extract<E1, E>>(local, tags)
     },
+
+    local: () => req(true, rawTags),
 
     type: 'typed-intersection',
 
