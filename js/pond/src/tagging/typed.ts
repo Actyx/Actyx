@@ -4,29 +4,6 @@ const namedSubSpace = (rawTag: string, sub: string): string[] => {
   return [rawTag, rawTag + ':' + sub]
 }
 
-export class EmissionTags<E> {
-  private tags: ReadonlyArray<string> = []
-
-  private addRaw<E1>(rawTags: string[]): EmissionTags<Extract<E, E1>> {
-    const r = new EmissionTags<unknown>()
-    r.tags = this.tags.concat(rawTags)
-    return r as EmissionTags<Extract<E, E1>>
-  }
-
-  add<E1>(...tags: Tag<E>[]): EmissionTags<Extract<E, E1>> {
-    return this.addRaw(extractTagStrings(tags))
-  }
-
-  addNamed<E1>(tag: Tag<E>, name: string): EmissionTags<Extract<E, E1>> {
-    const tags = namedSubSpace(tag.rawTag, name)
-    return this.addRaw(tags)
-  }
-
-  raw(): ReadonlyArray<string> {
-    return this.tags
-  }
-}
-
 export interface TypedTagUnion<E> {
   raw(): TagUnion
 
@@ -108,12 +85,25 @@ export const matchAnyOf = <E>(...sets: TypedTagIntersection<E>[]): TypedTagUnion
   }
 }
 
-export const TypedTagQuery = {
-  // requireTag: <E>(x: Tag<E>) => req(false, [x]),
-  // requireNamed: <E>(tag: Tag<E>, name: string) => req(false, Tag.namedSubSpace(tag, name)),
+export class EmissionTags<E> {
+  private tags: ReadonlyArray<string> = []
 
-  // requireLocalTag: <E>(x: Tag<E>) => req(true, [x]),
-  // requireLocalNamed: <E>(tag: Tag<E>, name: string) => req(true, Tag.namedSubSpace(tag, name)),
+  private addRaw<E1>(rawTags: string[]): EmissionTags<Extract<E, E1>> {
+    const r = new EmissionTags<unknown>()
+    r.tags = this.tags.concat(rawTags)
+    return r as EmissionTags<Extract<E, E1>>
+  }
 
-  matchAnyOf,
+  add<E1>(...tags: Tag<E>[]): EmissionTags<Extract<E, E1>> {
+    return this.addRaw(extractTagStrings(tags))
+  }
+
+  addNamed<E1>(tag: Tag<E>, name: string): EmissionTags<Extract<E, E1>> {
+    const tags = namedSubSpace(tag.rawTag, name)
+    return this.addRaw(tags)
+  }
+
+  raw(): ReadonlyArray<string> {
+    return this.tags
+  }
 }
