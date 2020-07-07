@@ -32,8 +32,6 @@ export interface Tag<E> extends TypedTagIntersection<E> {
   subSpace(name: string): TypedTagIntersection<E>
 }
 
-const extractTagStrings = (tags: ReadonlyArray<Tag<unknown>>) => tags.map(x => x.rawTag)
-
 export const Tag = {
   create: <E>(rawTag: string): Tag<E> => ({
     rawTag,
@@ -54,7 +52,6 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): TypedTagIntersecti
       const local = onlyLocalEvents || !!other.onlyLocalEvents
       const tags = rawTags.concat(other.tags)
 
-      // const cast = [...tags, tag] as Tag<Extract<E1, E>>[]
       return req<Extract<E1, E>>(local, tags)
     },
 
@@ -80,28 +77,5 @@ export const matchAnyOf = <E>(...sets: TypedTagIntersection<E>[]): TypedTagUnion
       type: 'union',
       tags: sets.map(x => x.raw()),
     }),
-  }
-}
-
-export class EmissionTags<E> {
-  private tags: ReadonlyArray<string> = []
-
-  private addRaw<E1>(rawTags: string[]): EmissionTags<Extract<E, E1>> {
-    const r = new EmissionTags<unknown>()
-    r.tags = this.tags.concat(rawTags)
-    return r as EmissionTags<Extract<E, E1>>
-  }
-
-  add<E1>(...tags: Tag<E>[]): EmissionTags<Extract<E, E1>> {
-    return this.addRaw(extractTagStrings(tags))
-  }
-
-  addNamed<E1>(tag: Tag<E>, name: string): EmissionTags<Extract<E, E1>> {
-    const tags = namedSubSpace(tag.rawTag, name)
-    return this.addRaw(tags)
-  }
-
-  raw(): ReadonlyArray<string> {
-    return this.tags
   }
 }

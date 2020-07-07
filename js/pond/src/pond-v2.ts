@@ -33,7 +33,7 @@ import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
-import { EmissionTags, toWireFormat } from './tagging'
+import { toWireFormat, TypedTagIntersection } from './tagging'
 import {
   FishName,
   Milliseconds,
@@ -43,6 +43,12 @@ import {
   StateWithProvenance,
   Timestamp,
 } from './types'
+
+const isTyped = (
+  e: ReadonlyArray<string> | TypedTagIntersection<unknown>,
+): e is TypedTagIntersection<unknown> => {
+  return !Array.isArray(e)
+}
 
 export type PondOptions = {
   hbHistDelay?: number
@@ -226,7 +232,7 @@ export class Pond2Impl implements Pond2 {
       const event = {
         semantics: Semantics.none,
         name: FishName.none,
-        tags: Array.isArray(tags) ? tags : (tags as EmissionTags<E>).raw(),
+        tags: isTyped(tags) ? tags.raw().tags : tags,
         timestamp,
         payload,
       }
