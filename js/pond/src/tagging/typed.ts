@@ -30,7 +30,6 @@ export interface Tag<E> extends TypedTagIntersection<E> {
   readonly rawTag: string
 
   subSpace(name: string): TypedTagIntersection<E>
-
 }
 
 const extractTagStrings = (tags: ReadonlyArray<Tag<unknown>>) => tags.map(x => x.rawTag)
