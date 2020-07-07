@@ -9,7 +9,7 @@ const tagA = testTag('A')
 const tagB = testTag('B')
 
 // Tag that covers 3 types
-const abcTag = Tag.create<'A' | 'B' | 'C'>('abc')
+const abcTag = Tag.create<'A' | 'B' | 'C'>('ABC')
 
 describe('typed tag query system', () => {
   // '0' and '1' have no overlap, so only 'A' remains
@@ -19,8 +19,11 @@ describe('typed tag query system', () => {
     // @ts-expect-error
     const q1: TypedTagQuery<'0' | '1'> = q
 
-    // point of this test is just to assert the TS-Error above
-    expect(q1).toBeTruthy()
+    // point of this test is mostly to assert the TS-Error above
+    expect(q1.raw()).toMatchObject({
+      type: 'union',
+      tags: [{ type: 'intersection', tags: ['0', '1'] }, { type: 'intersection', tags: ['A'] }],
+    })
   })
 
   it('should allow expanding the type space manually', () => {
@@ -39,17 +42,47 @@ describe('typed tag query system', () => {
     const w2: TypedTagQuery<never> = w
 
     // point of this test is just to assert the ts error
-    expect(w2).toBeTruthy()
+    expect(w2.raw()).toMatchObject({
+      type: 'intersection',
+      tags: ['A', 'ABC'],
+      onlyLocalEvents: false,
+    })
+  })
+
+  it('should preserve local information', () => {
+    // Overlap is 'A'
+    const w = tagA.local().and(abcTag)
+
+    // @ts-expect-error
+    const w2: TypedTagQuery<never> = w
+
+    // point of this test is just to assert the ts error
+    expect(w2.raw()).toMatchObject({
+      type: 'intersection',
+      tags: ['A', 'ABC'],
+      onlyLocalEvents: true,
+    })
   })
 
   it('should union event types', () => {
     // Surface now is 'A', 'B', and 'C'
-    const u = matchAnyOf(tagA, tagB.subSpace('some-id'), abcTag)
+    const u = matchAnyOf(tagA.local(), tagB.subSpace('some-id'), abcTag)
 
     // Also covers 'C' now
     // @ts-expect-error
     const u2: TypedTagQuery<'A' | 'B'> = u
 
-    expect(u).toBeTruthy()
+    expect(u.raw()).toMatchObject({
+      type: 'union',
+      tags: [
+        { type: 'intersection', tags: ['A'], onlyLocalEvents: true },
+        {
+          type: 'intersection',
+          tags: ['B', 'B:some-id'],
+          onlyLocalEvents: false,
+        },
+        { type: 'intersection', tags: ['ABC'] },
+      ],
+    })
   })
 })
