@@ -8,22 +8,14 @@ export type Tag<E> = Readonly<{
   _dataType?: E
 }>
 
-const subTags = <E>(tag: Tag<E>, ...path: string[]): Tag<E>[] => {
-  let curr = tag.tag
-  return path.reduce(
-    (tags, element) => {
-      curr = curr + ':' + element
-      tags.push({ tag: curr })
-      return tags
-    },
-    [tag],
-  )
+const namedSubSpace = <E>(tag: Tag<E>, name: string): Tag<E>[] => {
+  return [tag, { tag: tag.tag + ':' + name }]
 }
 
 export const Tag = {
   mk: <E>(rawTag: string): Tag<E> => ({ tag: rawTag } as Tag<E>),
 
-  subTags,
+  namedSubSpace,
 }
 
 const extractTagStrings = (tags: ReadonlyArray<Tag<unknown>>) => tags.map(x => x.tag)
@@ -37,8 +29,8 @@ export class EmissionTags<E> {
     return r as EmissionTags<Extract<E, E1>>
   }
 
-  addPath<E1>(tag: Tag<E>, ...path: string[]): EmissionTags<Extract<E, E1>> {
-    const tags = Tag.subTags(tag, ...path)
+  addNamed<E1>(tag: Tag<E>, name: string): EmissionTags<Extract<E, E1>> {
+    const tags = Tag.namedSubSpace(tag, name)
     return this.add(...tags)
   }
 
@@ -47,25 +39,26 @@ export class EmissionTags<E> {
   }
 }
 
-export type TypedTagUnion<E> = Readonly<{
-  _dataType?: E
-
+export interface TypedTagUnion<E> {
   raw(): TagUnion
 
-  type: 'typed-union'
-}>
+  readonly _dataType?: E
 
-export type TypedTagIntersection<E> = Readonly<{
+  readonly type: 'typed-union'
+}
+
+// Must be interface, otherwise inferred (recursive) type gets very large.
+export interface TypedTagIntersection<E> {
   and<E1>(tag: Tag<E1>): TypedTagIntersection<Extract<E1, E>>
 
-  andPath<E1>(tag: Tag<E1>, ...path: string[]): TypedTagIntersection<Extract<E1, E>>
+  andNamed<E1>(tag: Tag<E1>, name: string): TypedTagIntersection<Extract<E1, E>>
 
   raw(): TagIntersection
 
-  _dataType?: E
+  readonly _dataType?: E
 
-  type: 'typed-intersection'
-}>
+  readonly type: 'typed-intersection'
+}
 
 export type TypedTagQuery<E> = TypedTagUnion<E> | TypedTagIntersection<E>
 
@@ -76,8 +69,8 @@ const req = <E>(onlyLocalEvents: boolean, tags: Tag<E>[]): TypedTagIntersection<
       return req(onlyLocalEvents, cast)
     },
 
-    andPath: <E1>(tag: Tag<E1>, ...path: string[]) => {
-      const moreTags = Tag.subTags(tag, ...path)
+    andNamed: <E1>(tag: Tag<E1>, name: string) => {
+      const moreTags = Tag.namedSubSpace(tag, name)
       const cast = [...tags, ...moreTags] as Tag<Extract<E1, E>>[]
       return req(onlyLocalEvents, cast)
     },
@@ -94,7 +87,7 @@ const req = <E>(onlyLocalEvents: boolean, tags: Tag<E>[]): TypedTagIntersection<
   }
 }
 
-const matchAnyOf = <E>(...sets: TypedTagIntersection<E>[]): TypedTagUnion<E> => {
+export const matchAnyOf = <E>(...sets: TypedTagIntersection<E>[]): TypedTagUnion<E> => {
   return {
     type: 'typed-union',
 
@@ -107,10 +100,10 @@ const matchAnyOf = <E>(...sets: TypedTagIntersection<E>[]): TypedTagUnion<E> => 
 
 export const TypedTagQuery = {
   requireTag: <E>(x: Tag<E>) => req(false, [x]),
-  requireLocalTag: <E>(x: Tag<E>) => req(true, [x]),
+  requireNamed: <E>(tag: Tag<E>, name: string) => req(false, Tag.namedSubSpace(tag, name)),
 
-  requirePath: <E>(tag: Tag<E>, ...path: string[]) => req(false, Tag.subTags(tag, ...path)),
-  requireLocalPath: <E>(tag: Tag<E>, ...path: string[]) => req(true, Tag.subTags(tag, ...path)),
+  requireLocalTag: <E>(x: Tag<E>) => req(true, [x]),
+  requireLocalNamed: <E>(tag: Tag<E>, name: string) => req(true, Tag.namedSubSpace(tag, name)),
 
   matchAnyOf,
 }

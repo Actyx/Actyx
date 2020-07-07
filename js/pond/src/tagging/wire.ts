@@ -1,33 +1,34 @@
 import { TagSubscription } from '../subscription'
 import { TypedTagQuery } from './typed'
-import { TagQuery } from './untyped'
+import { TagIntersection, TagQuery, TagUnion } from './untyped'
 
-const isTyped = (i: TypedTagQuery<unknown> | TagQuery): i is TypedTagQuery<unknown> => {
-  return i.type === 'typed-union' || i.type === 'typed-intersection'
-}
+const unionToWire = (sub: TagUnion) =>
+  sub.tags.map(
+    s =>
+      typeof s === 'string'
+        ? { tags: [s], local: false }
+        : { tags: s.tags, local: !!s.onlyLocalEvents },
+  )
+
+const intersectionToWire = (sub: TagIntersection) => [
+  {
+    tags: sub.tags,
+    local: !!sub.onlyLocalEvents,
+  },
+]
 
 export const toWireFormat = (
   sub: TagQuery | TypedTagQuery<unknown>,
 ): ReadonlyArray<TagSubscription> => {
-  if (isTyped(sub)) {
-    return toWireFormat(sub.raw())
-  }
-
   switch (sub.type) {
+    case 'typed-intersection':
+      return intersectionToWire(sub.raw())
     case 'intersection':
-      return [
-        {
-          tags: sub.tags,
-          local: !!sub.onlyLocalEvents,
-        },
-      ]
+      return intersectionToWire(sub)
 
+    case 'typed-union':
+      return unionToWire(sub.raw())
     case 'union':
-      return sub.tags.map(
-        s =>
-          typeof s === 'string'
-            ? { tags: [s], local: false }
-            : { tags: s.tags, local: !!s.onlyLocalEvents },
-      )
+      return unionToWire(sub)
   }
 }
