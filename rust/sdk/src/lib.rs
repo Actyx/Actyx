@@ -87,4 +87,10 @@ pub use actyxos_sdk_macros::*;
 
 pub mod event;
 pub mod event_service;
+pub mod tagged;
 pub mod types;
+
+pub use event::{
+    EventKey, LamportTimestamp, Offset, OffsetMap, Opaque, ParseError, Payload, SourceId, Tag,
+    TimeStamp,
+};

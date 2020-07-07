@@ -505,6 +505,9 @@ impl FromStr for SourceId {
         if bytes.len() > MAX_SOURCEID_LENGTH {
             return Result::Err(ParseError::SourceIdTooLong);
         }
+        if bytes.is_empty() {
+            return Result::Err(ParseError::EmptySourceId);
+        }
         let mut buf = [0; MAX_SOURCEID_LENGTH + 1];
         buf[MAX_SOURCEID_LENGTH] = bytes.len() as u8;
         buf[..bytes.len()].clone_from_slice(&bytes[..]);
@@ -576,6 +579,11 @@ mod tests {
         );
         let res = serde_json::from_reader::<_, SourceId>(b"\"\"".as_ref()).unwrap_err();
         assert_eq!(res.to_string(), "expected non-empty string");
+    }
+
+    #[test]
+    fn reject_empty_source_id() {
+        SourceId::from_str("").unwrap_err();
     }
 
     #[test]
