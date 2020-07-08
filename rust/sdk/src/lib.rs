@@ -99,5 +99,4 @@ pub use event::{
 
 pub use event_service::Order;
 
-#[cfg(feature = "client")]
 pub use event_service::EventServiceError;

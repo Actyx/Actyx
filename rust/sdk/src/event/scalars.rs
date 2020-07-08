@@ -262,6 +262,13 @@ impl Display for LamportTimestamp {
     }
 }
 
+impl Add<u64> for LamportTimestamp {
+    type Output = LamportTimestamp;
+    fn add(self, rhs: u64) -> Self::Output {
+        Self(self.0 + rhs)
+    }
+}
+
 /// A source ID uniquely identifies one ActyxOS node
 ///
 /// You can obtain the node’s source ID using [`EventService::node_id`](../event_service/struct.EventService.html#method.node_id).

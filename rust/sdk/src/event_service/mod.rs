@@ -18,13 +18,23 @@
 //! The [`EventService`](struct.EventService.html) client is only available under the `client` feature flag.
 
 use crate::event::{FishName, OffsetMap, Payload, Semantics, SourceId};
+use derive_more::{Display, Error};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 #[cfg(feature = "client")]
 pub(crate) mod client;
 #[cfg(feature = "client")]
-pub use client::{EventService, EventServiceError};
+pub use client::EventService;
+
+#[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq)]
+#[display(fmt = "error {} while {}: {}", error_code, context, error)]
+#[serde(rename_all = "camelCase")]
+pub struct EventServiceError {
+    pub error: String,
+    pub error_code: u16,
+    pub context: String,
+}
 
 /// The order in which you want to receive events for a query
 ///

@@ -8,7 +8,7 @@ use std::{
     collections::BTreeSet,
     convert::TryFrom,
     iter::FromIterator,
-    ops::{Add, Deref},
+    ops::{Add, AddAssign, BitAndAssign, Deref, SubAssign},
     sync::Arc,
 };
 
@@ -212,11 +212,16 @@ impl TagSet {
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
-}
 
-impl Add for &TagSet {
-    type Output = TagSet;
-    fn add(self, rhs: Self) -> Self::Output {
+    pub fn get(&self, idx: usize) -> Option<Tag> {
+        self.0.get(idx).cloned()
+    }
+
+    pub fn find(&self, tag: &Tag) -> Option<usize> {
+        self.0.binary_search(tag).ok()
+    }
+
+    pub fn union(&self, rhs: &TagSet) -> Self {
         let mut v = Vec::with_capacity(self.len() + rhs.len());
         let mut left = self.iter();
         let mut right = rhs.iter();
@@ -256,12 +261,31 @@ impl Add for &TagSet {
         }
         TagSet(v)
     }
+
+    pub fn intersection(&self, rhs: &TagSet) -> Self {
+        self.iter().filter(|tag| rhs.contains(tag)).collect()
+    }
+
+    pub fn difference(&self, rhs: &TagSet) -> Self {
+        self.iter().filter(|tag| !rhs.contains(tag)).collect()
+    }
+
+    pub fn is_subset(&self, rhs: &TagSet) -> bool {
+        self.iter().all(|tag| rhs.contains(&tag))
+    }
+}
+
+impl Add for &TagSet {
+    type Output = TagSet;
+    fn add(self, rhs: Self) -> Self::Output {
+        self.union(&rhs)
+    }
 }
 
 impl Add for TagSet {
     type Output = TagSet;
     fn add(self, rhs: Self) -> Self::Output {
-        (&self).add(&rhs)
+        self.union(&rhs)
     }
 }
 
@@ -296,6 +320,38 @@ impl Add<&Tag> for &TagSet {
         let mut ret = self.clone();
         ret.insert(rhs.clone());
         ret
+    }
+}
+
+impl AddAssign<Tag> for TagSet {
+    fn add_assign(&mut self, rhs: Tag) {
+        self.insert(rhs)
+    }
+}
+
+impl AddAssign<TagSet> for TagSet {
+    fn add_assign(&mut self, rhs: TagSet) {
+        for tag in rhs.iter() {
+            self.insert(tag)
+        }
+    }
+}
+
+impl SubAssign<&Tag> for TagSet {
+    fn sub_assign(&mut self, rhs: &Tag) {
+        self.remove(rhs)
+    }
+}
+
+impl SubAssign<&TagSet> for TagSet {
+    fn sub_assign(&mut self, rhs: &TagSet) {
+        self.0.retain(|tag| !rhs.contains(tag))
+    }
+}
+
+impl BitAndAssign<&TagSet> for TagSet {
+    fn bitand_assign(&mut self, rhs: &TagSet) {
+        self.0.retain(|tag| rhs.contains(tag))
     }
 }
 
