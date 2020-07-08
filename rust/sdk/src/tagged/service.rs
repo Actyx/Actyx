@@ -44,6 +44,13 @@ impl From<String> for SessionId {
     }
 }
 
+impl SessionId {
+    /// Extracts a string slice containing the entire session id
+    pub fn as_str(&self) -> &str {
+        &*self.0
+    }
+}
+
 /// The ActyxOS node identifier
 ///
 /// Each node may emit multiple sources, each identified by its own [`SourceId`](../struct.SourceId.html).
@@ -78,6 +85,11 @@ impl NodeId {
         source_id.as_str().len() > self.0.len()
             && source_id.as_str().starts_with(&*self.0)
             && source_id.as_str().as_bytes()[self.0.len()] == b'_'
+    }
+
+    /// Extracts a string slice containing the entire node id
+    pub fn as_str(&self) -> &str {
+        &*self.0
     }
 }
 
