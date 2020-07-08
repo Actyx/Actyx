@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeSet,
     convert::TryFrom,
+    iter::FromIterator,
     ops::{Add, Deref},
     sync::Arc,
 };
@@ -53,6 +54,7 @@ macro_rules! tag {
 /// ```
 #[macro_export]
 macro_rules! tags {
+    () => { $crate::tagged::TagSet::empty() };
     ($($expr:expr),*) => {{
         let mut tags = Vec::new();
         $(
@@ -162,6 +164,13 @@ impl From<BTreeSet<Tag>> for TagSet {
 impl From<&BTreeSet<Tag>> for TagSet {
     fn from(v: &BTreeSet<Tag>) -> Self {
         Self(v.iter().cloned().collect())
+    }
+}
+
+impl FromIterator<Tag> for TagSet {
+    fn from_iter<T: IntoIterator<Item = Tag>>(iter: T) -> Self {
+        let v = iter.into_iter().collect::<Vec<_>>();
+        Self::from(v)
     }
 }
 
@@ -340,9 +349,14 @@ mod tests {
         t.insert(a.clone());
         assert!(t.contains(&a));
         assert!(!t.contains(&c));
-        t.insert(b);
-        t.insert(c);
+        t.insert(b.clone());
+        t.insert(c.clone());
         t.remove(&a);
         assert_eq!(t, tags!("c", "b"));
+
+        assert_eq!(
+            vec![a, b, c].into_iter().collect::<TagSet>(),
+            tags!("a", "b", "c")
+        );
     }
 }
