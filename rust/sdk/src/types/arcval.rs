@@ -44,7 +44,6 @@ use std::{hash::Hash, sync::Arc};
 /// Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Hash. You can add more with the
 /// usual `#[derive()]` attribute.
 #[macro_export]
-#[cfg(feature = "dataflow")]
 macro_rules! arcval_scalar {
     ($($(#[$attr:meta])* $vis:vis struct $id:ident(str)$(;)?)*) => {
         $(

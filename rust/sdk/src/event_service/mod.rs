@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 #[cfg(feature = "client")]
-mod client;
+pub(crate) mod client;
 #[cfg(feature = "client")]
 pub use client::{EventService, EventServiceError};
 
@@ -34,7 +34,7 @@ pub use client::{EventService, EventServiceError};
 ///  - in strict forward Lamport order
 ///  - in strict backwards Lamport order (only possible when requesting with an upper bound OffsetMap)
 ///  - ordered in forward order per source (ActyxOS node), but not between sources
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub enum Order {
     /// Events are sorted by ascending Lamport timestamp and source ID, which defines a
@@ -68,7 +68,7 @@ pub enum Order {
 ///  - semantics (i.e. the kind of fish when using the Pond)
 ///  - name (i.e. the particular instance of this kind of fish)
 ///  - source ID (i.e. the originating ActyxOS node)
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[serde(from = "SubscriptionOnWire")]
 pub struct Subscription {

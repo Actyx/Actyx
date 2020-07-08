@@ -85,6 +85,19 @@ extern crate actyxos_sdk_macros;
 #[doc(hidden)]
 pub use actyxos_sdk_macros::*;
 
+#[macro_use]
+mod scalar;
+
 pub mod event;
 pub mod event_service;
+pub mod tagged;
 pub mod types;
+
+pub use event::{
+    LamportTimestamp, Offset, OffsetMap, Opaque, ParseError, Payload, SourceId, TimeStamp,
+};
+
+pub use event_service::Order;
+
+#[cfg(feature = "client")]
+pub use event_service::EventServiceError;
