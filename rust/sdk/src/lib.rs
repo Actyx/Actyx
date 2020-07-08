@@ -91,6 +91,10 @@ pub mod tagged;
 pub mod types;
 
 pub use event::{
-    EventKey, LamportTimestamp, Offset, OffsetMap, Opaque, ParseError, Payload, SourceId, Tag,
-    TimeStamp,
+    LamportTimestamp, Offset, OffsetMap, Opaque, ParseError, Payload, SourceId, Tag, TimeStamp,
 };
+
+pub use event_service::Order;
+
+#[cfg(feature = "client")]
+pub use event_service::EventServiceError;

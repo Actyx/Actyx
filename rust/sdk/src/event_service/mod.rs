@@ -17,24 +17,14 @@
 //!
 //! The [`EventService`](struct.EventService.html) client is only available under the `client` feature flag.
 
-use crate::{
-    arcval_scalar,
-    event::{EventKey, FishName, OffsetMap, Payload, Semantics, SourceId},
-    tagged,
-};
+use crate::event::{FishName, OffsetMap, Payload, Semantics, SourceId};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 #[cfg(feature = "client")]
-mod client;
+pub(crate) mod client;
 #[cfg(feature = "client")]
 pub use client::{EventService, EventServiceError};
-
-arcval_scalar! {
-    /// The session identifier used in subscribeUntilTimeTravel
-    #[derive(Serialize, Deserialize)]
-    pub struct SessionId(str);
-}
 
 /// The order in which you want to receive events for a query
 ///
@@ -208,41 +198,6 @@ pub struct SubscribeApiRequest {
     pub subscriptions: Vec<Subscription>,
 }
 
-/// Subscribe to live updates as the Event Services receives or publishes new events,
-/// until the recipient would need to time travel
-///
-/// Time travel is defined as receiving an event that needs to be sorted earlier than
-/// an event that has already been received.
-///
-/// Send this structure to the `$BASE_URI/subscribe` endpoint to retrieve an
-/// unbounded stream of events. If the lower bound is given, it filters out all
-/// events that are included in the `lower_bound` OffsetMap.
-///
-/// The common pattern is to take note of consumed events by adding them into an
-/// OffsetMap and resuming the stream from this OffsetMap after an app restart.
-///
-/// The delivered event stream will be filtered by the subscriptions: an event
-/// is included if any of the subscriptions matches.
-#[derive(Debug, Serialize, Deserialize, Clone, PartialOrd, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct SubscribeUntilTimeTravelApiRequest {
-    pub lower_bound: Option<OffsetMap>,
-    pub subscriptions: Vec<Subscription>,
-    pub session: Option<SessionId>,
-}
-
-/// Response to subscribeUntilTimeTravel is a stream of events terminated by a time travel.
-#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
-#[serde(rename_all = "camelCase", tag = "type")]
-pub enum SubscribeUntilTimeTravelResponse {
-    Event(tagged::Event<Payload>),
-    #[serde(rename_all = "camelCase")]
-    TimeTravel {
-        session: SessionId,
-        new_start: EventKey,
-    },
-}
-
 /// The structure of a single event to be published
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -275,11 +230,7 @@ pub struct NodeIdResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        event::{LamportTimestamp, Offset, TimeStamp},
-        fish_name, semantics, source_id,
-        tagged::Metadata,
-    };
+    use crate::{fish_name, semantics, source_id};
 
     #[test]
     fn must_pick_up_subscription() {
@@ -331,53 +282,5 @@ mod tests {
         let bytes = br#"{"source":"name"}"#.as_ref();
         let subs: Subscription = serde_json::from_reader(bytes).unwrap();
         assert_eq!(subs.as_tuple(), (None, None, Some(source_id!("name"))));
-    }
-
-    #[test]
-    fn must_serialize_subscribe_until_time_travel() {
-        let req = SubscribeUntilTimeTravelApiRequest {
-            lower_bound: None,
-            subscriptions: vec![],
-            session: None,
-        };
-        let s = serde_json::to_string(&req).unwrap();
-        assert_eq!(
-            s,
-            r#"{"lowerBound":null,"subscriptions":[],"session":null}"#
-        );
-        let r: SubscribeUntilTimeTravelApiRequest = serde_json::from_str(&*s).unwrap();
-        assert_eq!(r, req);
-
-        let resp = SubscribeUntilTimeTravelResponse::Event(tagged::Event {
-            key: EventKey {
-                lamport: LamportTimestamp::new(1),
-                source: source_id!("src"),
-                offset: Offset(3),
-            },
-            meta: Metadata {
-                timestamp: TimeStamp::new(2),
-                tags: Vec::new(),
-            },
-            payload: Payload::default(),
-        });
-        let s = serde_json::to_string(&resp).unwrap();
-        assert_eq!(
-            s,
-            r#"{"type":"event","key":{"lamport":1,"source":"src","offset":3},"meta":{"timestamp":2,"tags":[]},"payload":null}"#
-        );
-        let r: SubscribeUntilTimeTravelResponse = serde_json::from_str(&*s).unwrap();
-        assert_eq!(r, resp);
-
-        let resp = SubscribeUntilTimeTravelResponse::TimeTravel {
-            session: SessionId::from("session"),
-            new_start: EventKey::default(),
-        };
-        let s = serde_json::to_string(&resp).unwrap();
-        assert_eq!(
-            s,
-            r#"{"type":"timeTravel","session":"session","newStart":{"lamport":0,"source":"\u0000","offset":-1}}"#
-        );
-        let r: SubscribeUntilTimeTravelResponse = serde_json::from_str(&*s).unwrap();
-        assert_eq!(r, resp);
     }
 }

@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use super::{Event, EventKey, SourceId};
+use super::{Event, SourceId};
+use crate::tagged::EventKey;
 use derive_more::{From, Into};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
