@@ -182,7 +182,7 @@ mod tests {
         let s = serde_json::to_string(&resp).unwrap();
         assert_eq!(
             s,
-            r#"{"type":"timeTravel","session":"session","newStart":{"lamport":0,"source":"\u0000","offset":-1}}"#
+            r#"{"type":"timeTravel","session":"session","newStart":{"lamport":0,"source":"!","offset":-1}}"#
         );
         let r: SubscribeUntilTimeTravelResponse = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, resp);

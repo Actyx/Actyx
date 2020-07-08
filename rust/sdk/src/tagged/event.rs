@@ -51,7 +51,7 @@ use std::cmp::Ordering;
 ///
 /// ```rust
 /// use serde::{Deserialize, Serialize};
-/// use actyxos_sdk::tagged::{Event, Payload};
+/// use actyxos_sdk::{tagged::Event, Payload};
 ///
 /// #[derive(Serialize, Deserialize, Debug, Clone)]
 /// struct MyPayload {
@@ -59,7 +59,8 @@ use std::cmp::Ordering;
 ///     y: Option<f64>,
 /// }
 ///
-/// let event: Event<Payload> = Event::mk_test("semantics", "name", "{\"x\":42}").unwrap();
+/// let payload = Payload::from_json_str(r#"{"x":1.3}"#).unwrap();
+/// let event: Event<Payload> = Event::from_payload(payload);
 /// let my_event: Event<MyPayload> = event.extract::<MyPayload>().expect("expected MyPayload");
 /// ```
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
@@ -90,6 +91,22 @@ impl<T> PartialEq for Event<T> {
 }
 
 impl<T> Eq for Event<T> {}
+
+impl<T> Event<T> {
+    /// Construct a default event with fake event key and metadata containing the given payload
+    pub fn from_payload(payload: T) -> Self {
+        Event::<Payload>::default().with_payload(payload)
+    }
+
+    /// Replace the payload in this event with the given one, keeping the event key and metadata
+    pub fn with_payload<U>(self, u: U) -> Event<U> {
+        Event {
+            key: self.key,
+            meta: self.meta,
+            payload: u,
+        }
+    }
+}
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
