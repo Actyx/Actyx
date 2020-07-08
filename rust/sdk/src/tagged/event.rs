@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use crate::{source_id, LamportTimestamp, Offset, Payload, SourceId, Tag, TimeStamp};
+use super::TagSet;
+use crate::{source_id, LamportTimestamp, Offset, Payload, SourceId, TimeStamp};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
@@ -113,7 +114,7 @@ impl<T> Event<T> {
 #[serde(rename_all = "camelCase")]
 pub struct Metadata {
     pub timestamp: TimeStamp,
-    pub tags: Vec<Tag>,
+    pub tags: TagSet,
 }
 
 impl Event<Payload> {

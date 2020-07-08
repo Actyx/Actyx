@@ -21,6 +21,7 @@
 mod client;
 mod event;
 mod service;
+mod tags;
 
 #[cfg(feature = "client")]
 pub use client::EventService;
@@ -28,3 +29,4 @@ pub use event::{Event, EventKey, Metadata};
 pub use service::{
     NodeId, SessionId, SubscribeUntilTimeTravelApiRequest, SubscribeUntilTimeTravelResponse,
 };
+pub use tags::{Tag, TagSet};

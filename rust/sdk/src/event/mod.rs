@@ -47,7 +47,7 @@ mod scalars;
 
 pub use offsets::{Offset, OffsetMap};
 pub use opaque::Opaque;
-pub use scalars::{FishName, LamportTimestamp, ParseError, Semantics, SourceId, Tag, TimeStamp};
+pub use scalars::{FishName, LamportTimestamp, ParseError, Semantics, SourceId, TimeStamp};
 
 /// Events are delivered in this envelope together with their metadata
 ///

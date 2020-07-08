@@ -138,7 +138,11 @@ pub struct NodeIdResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{source_id, tagged::Metadata, LamportTimestamp, Offset, TimeStamp};
+    use crate::{
+        source_id,
+        tagged::{Metadata, TagSet},
+        LamportTimestamp, Offset, TimeStamp,
+    };
 
     #[test]
     fn must_serialize_subscribe_until_time_travel() {
@@ -163,7 +167,7 @@ mod tests {
             },
             meta: Metadata {
                 timestamp: TimeStamp::new(2),
-                tags: Vec::new(),
+                tags: TagSet::empty(),
             },
             payload: Payload::default(),
         });

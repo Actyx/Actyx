@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use crate::types::ArcVal;
+use crate::{scalar::nonempty_string, types::ArcVal};
 use chrono::{DateTime, TimeZone, Utc};
 use derive_more::{Display, From, Into};
 use serde::de::Error;
@@ -41,15 +41,6 @@ pub enum ParseError {
     EmptyTag,
 }
 impl std::error::Error for ParseError {}
-
-fn nonempty_string<'de, D: Deserializer<'de>>(d: D) -> Result<ArcVal<str>, D::Error> {
-    let s = <String>::deserialize(d)?;
-    if s.is_empty() {
-        Err(D::Error::custom("expected non-empty string"))
-    } else {
-        Ok(ArcVal::from_boxed(s.into()))
-    }
-}
 
 /// Macro for constructing a [`Semantics`](event/struct.Semantics.html) literal.
 ///
@@ -95,28 +86,6 @@ macro_rules! fish_name {
     }};
 }
 
-/// Macro for constructing a [`Tag`](event/struct.Tag.html) literal.
-///
-/// This is how it works:
-/// ```no_run
-/// use actyxos_sdk::{tag, event::Tag};
-/// let tag: Tag = tag!("abc");
-/// ```
-/// This does not compile:
-/// ```compile_fail
-/// use actyxos_sdk::{tag, event::Tag};
-/// let tag: Tag = tag!("");
-/// ```
-#[macro_export]
-macro_rules! tag {
-    ($lit:tt) => {{
-        #[allow(dead_code)]
-        type X = $crate::assert_len!($lit, 1..);
-        use ::std::convert::TryFrom;
-        $crate::event::Tag::try_from($lit).unwrap()
-    }};
-}
-
 /// Macro for constructing a [`SourceId`](event/struct.SourceId.html) literal.
 ///
 /// This is how it works:
@@ -139,113 +108,8 @@ macro_rules! source_id {
     }};
 }
 
-/// Macro for constructing a set of [`Tag`](event/struct.Tag.html) values.
-///
-/// The values accepted are either
-///  - non-empty string literals
-///  - normal expressions (enclosed in parens if multiple tokens)
-///
-/// ```rust
-/// use actyxos_sdk::{tag, tags, semantics, event::{Semantics, Tag}};
-/// use std::collections::BTreeSet;
-///
-/// let sem: Semantics = semantics!("b");
-/// let tags: BTreeSet<Tag> = tags!("a", sem);
-///
-/// let mut expected = BTreeSet::new();
-/// expected.insert(tag!("a"));
-/// expected.insert(tag!("semantics:b"));
-/// assert_eq!(tags, expected);
-/// ```
-#[macro_export]
-macro_rules! tags {
-    ($($expr:expr),*) => {{
-        let mut _tags = ::std::collections::BTreeSet::new();
-        $(
-            {
-                mod y {
-                    $crate::assert_len! { $expr, 1..,
-                        // if it is a string literal, then we know it is not empty
-                        pub fn x(z: &str) -> $crate::event::Tag {
-                            use ::std::convert::TryFrom;
-                            $crate::event::Tag::try_from(z).unwrap()
-                        },
-                        // if it is not a string literal, require an infallible conversion
-                        pub fn x(z: impl Into<$crate::event::Tag>) -> $crate::event::Tag {
-                            z.into()
-                        }
-                    }
-                }
-                _tags.insert(y::x($expr));
-            }
-        )*
-        _tags
-    }};
-    ($($x:tt)*) => {
-        compile_error!("This macro supports only string literals or expressions in parens.")
-    }
-}
-
 // DO NOT FORGET TO UPDATE THE VALUE IN THE MACRO ABOVE!
 const MAX_SOURCEID_LENGTH: usize = 15;
-
-macro_rules! mk_scalar {
-    ($(#[$attr:meta])* struct $id:ident, $err:ident) => {
-
-        $(#[$attr])*
-        #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-        #[cfg_attr(feature = "dataflow", derive(Abomonation))]
-        pub struct $id(
-            #[serde(deserialize_with = "nonempty_string")]
-            ArcVal<str>
-        );
-
-        impl $id {
-            pub fn new(value: String) -> Result<Self, ParseError> {
-                if value.is_empty() {
-                    Err(ParseError::$err)
-                } else {
-                    Ok(Self(ArcVal::from_boxed(value.into())))
-                }
-            }
-            pub fn as_str(&self) -> &str {
-                &self.0
-            }
-            pub fn as_arc(&self) -> &Arc<str> {
-                &self.0.as_arc()
-            }
-        }
-
-        impl TryFrom<&str> for $id {
-            type Error = ParseError;
-            fn try_from(value: &str) -> Result<Self, ParseError> {
-                if value.is_empty() {
-                    Err(ParseError::$err)
-                } else {
-                    Ok(Self(ArcVal::clone_from_unsized(value)))
-                }
-            }
-        }
-
-        impl TryFrom<Arc<str>> for $id {
-            type Error = ParseError;
-            fn try_from(value: Arc<str>) -> Result<Self, ParseError> {
-                if value.is_empty() {
-                    Err(ParseError::$err)
-                } else {
-                    Ok(Self(ArcVal::from(value)))
-                }
-            }
-        }
-
-        impl Deref for $id {
-            type Target = str;
-            fn deref(&self) -> &Self::Target {
-                self.0.as_ref()
-            }
-        }
-    };
-}
 
 mk_scalar!(
     /// The semantics denotes a certain kind of fish and usually implies a certain type
@@ -264,56 +128,6 @@ mk_scalar!(
     /// You may most conveniently construct values of this type with the [`fish_name!`](../macro.fish_name.html) macro.
     struct FishName, EmptyFishName
 );
-
-mk_scalar!(
-    /// Arbitrary metadata-string for an Event. Website documentation pending.
-    ///
-    /// You may most conveniently construct values of this type with the [`tag!`](../macro.tag.html) macro.
-    struct Tag, EmptyTag
-);
-
-impl From<&Semantics> for Tag {
-    fn from(value: &Semantics) -> Self {
-        Tag::new(format!("semantics:{}", value.as_str())).unwrap()
-    }
-}
-
-impl From<Semantics> for Tag {
-    fn from(value: Semantics) -> Self {
-        Tag::from(&value)
-    }
-}
-
-impl From<&FishName> for Tag {
-    fn from(value: &FishName) -> Self {
-        Tag::new(format!("fish_name:{}", value.as_str())).unwrap()
-    }
-}
-
-impl From<FishName> for Tag {
-    fn from(value: FishName) -> Self {
-        Tag::from(&value)
-    }
-}
-
-/// Concatenate another part to this tag
-///
-/// ```
-/// # use actyxos_sdk::{tag, event::Tag};
-/// let user_tag = tag!("user:") + "Bob";
-/// let machine_tag = tag!("machine:") + format!("{}-{}", "thing", 42);
-///
-/// assert_eq!(user_tag, tag!("user:Bob"));
-/// assert_eq!(machine_tag, tag!("machine:thing-42"));
-/// ```
-///
-/// This will never panic because the initial tag is already proven to be a valid tag.
-impl<T: Into<String>> Add<T> for Tag {
-    type Output = Tag;
-    fn add(self, rhs: T) -> Self::Output {
-        Tag::new(self.0.to_string() + rhs.into().as_str()).unwrap()
-    }
-}
 
 /// Microseconds since the UNIX epoch, without leap seconds and in UTC
 ///
@@ -537,23 +351,6 @@ impl Serialize for SourceId {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::BTreeSet;
-
-    #[test]
-    fn semantics_to_tag() {
-        let semantics = semantics!("test");
-
-        assert_eq!("semantics:test", Tag::from(&semantics).as_str());
-        assert_eq!("semantics:test", Tag::from(semantics).as_str());
-    }
-
-    #[test]
-    fn fish_name_to_tag() {
-        let fish_name = fish_name!("test");
-
-        assert_eq!("fish_name:test", Tag::from(&fish_name).as_str());
-        assert_eq!("fish_name:test", Tag::from(fish_name).as_str());
-    }
 
     #[test]
     fn deserialize() {
@@ -584,13 +381,5 @@ mod tests {
     #[test]
     fn reject_empty_source_id() {
         SourceId::from_str("").unwrap_err();
-    }
-
-    #[test]
-    fn make_tags() {
-        let mut tags = BTreeSet::new();
-        tags.insert(tag!("a"));
-        tags.insert(tag!("semantics:b"));
-        assert_eq!(tags!("a", semantics!("b")), tags);
     }
 }
