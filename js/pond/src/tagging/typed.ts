@@ -26,21 +26,19 @@ export interface TypedTagIntersection<E> {
 }
 
 export interface Tag<E> extends TypedTagIntersection<E> {
-  // raw tag
+  // The underlying actual tag as pure string
   readonly rawTag: string
 
   subSpace(name: string): TypedTagIntersection<E>
 }
 
-export const Tag = {
-  create: <E>(rawTag: string): Tag<E> => ({
-    rawTag,
+export const Tag = <E>(rawTag: string): Tag<E> => ({
+  rawTag,
 
-    subSpace: (name: string) => req(false, namedSubSpace(rawTag, name)),
+  subSpace: (name: string) => req(false, namedSubSpace(rawTag, name)),
 
-    ...req(false, [rawTag]),
-  }),
-}
+  ...req(false, [rawTag]),
+})
 
 export type TypedTagQuery<E> = TypedTagUnion<E> | TypedTagIntersection<E>
 

@@ -1,6 +1,6 @@
 import { matchAnyOf, Tag, TypedTagQuery } from './typed'
 
-const testTag = <T extends string>(tag: T) => Tag.create<T>(tag)
+const testTag = <T extends string>(tag: T) => Tag<T>(tag)
 
 const tag0 = testTag('0')
 const tag1 = testTag('1')
@@ -9,7 +9,7 @@ const tagA = testTag('A')
 const tagB = testTag('B')
 
 // Tag that covers 3 types
-const abcTag = Tag.create<'A' | 'B' | 'C'>('ABC')
+const abcTag = Tag<'A' | 'B' | 'C'>('ABC')
 
 describe('typed tag query system', () => {
   // '0' and '1' have no overlap, so only 'A' remains
