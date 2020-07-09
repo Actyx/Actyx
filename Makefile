@@ -52,8 +52,8 @@ ifdef RETRY
 	RETRY_ONCE = false
 else
 	RETRY_ONCE = echo && echo "--> RETRYING target $@"; \
-               $(MAKE) $(MFLAGS) RETRY=1 $@ || \
-               (echo "--> RETRY target $@ FAILED. Continuing..."; true)
+		$(MAKE) $(MFLAGS) RETRY=1 $@ || \
+		(echo "--> RETRY target $@ FAILED. Continuing..."; true)
 endif
 
 # Push to DockerHub
@@ -186,7 +186,8 @@ endef
 define build_bins_and_move_win64
 	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
 	mkdir -p $(1)
-	docker run -v `pwd`/rt-master:/src \
+	docker run \
+	-v `pwd`/rt-master:/src \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it $(3) \
 	bash -c "\
@@ -195,19 +196,21 @@ define build_bins_and_move_win64
 		unzip -p WpdPack_4_1_2.zip WpdPack/Lib/x64/Packet.lib > /usr/x86_64-w64-mingw32/lib/Packet.lib && \
 		rm WpdPack_4_1_2.zip && \
 		cd - && \
-		cd actyx-cli && \
-		cargo --locked build --release --target $(2) --bin ax --no-default-features --jobs 8 && \
-		chown -R builder:builder ../target"
-	docker run -v `pwd`/rt-master:/src \
+		cargo --locked build --release --target $(2) --bin ax --no-default-features --manifest-path actyx-cli/Cargo.toml --jobs 8 && \
+		chown -R builder:builder ./target"
+	docker run \
+	-v `pwd`/rt-master:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-it $(3) \
-	cargo --locked build --release --target $(2) --bin ada-cli --jobs 8
-	docker run -v `pwd`/rt-master:/src \
+	cargo --locked build --release --target $(2) --bin ada-cli --bin store-cli --jobs 8
+  docker run \
+	-v `pwd`:/src \
 	-u builder \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-w /src/rt-master \
 	-it $(3) \
-	cargo --locked build --release --target $(2) --bin store-cli --jobs 8
+	cargo --locked build --release --target $(2) --bin win --no-default-features --manifest-path ax-os-node/Cargo.toml --jobs 8
 	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -perm -u=x \
 		-exec cp {} $(1) \;
 	echo "Please find your build artifacts in $(1)."
