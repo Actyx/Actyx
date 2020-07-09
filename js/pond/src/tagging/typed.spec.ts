@@ -1,5 +1,5 @@
-import { matchAnyOf, Tag, TypedTagQuery } from './typed'
 import { Fish, FishId } from '../pond-v2-types'
+import { Tag, TypedTagQuery } from './typed'
 
 type T0 = {
   type: '0'
@@ -37,7 +37,7 @@ const abcTag = Tag<A | B | C>('ABC')
 
 describe('typed tag query system', () => {
   // '0' and '1' have no overlap, so only 'A' remains
-  const q = matchAnyOf(tag0.and(tag1), tagA)
+  const q = tag0.and(tag1).or(tagA)
 
   it('should prevent omission of event types covered by the tags', () => {
     // Errors because we cannot omit 'A'
@@ -96,7 +96,10 @@ describe('typed tag query system', () => {
 
   it('should union event types (complex)', () => {
     // Surface now is 'A', 'B', and 'C'
-    const u = matchAnyOf(tagA.local(), tagB.subSpace('some-id'), abcTag)
+    const u = tagA
+      .local()
+      .or(tagB.subSpace('some-id'))
+      .or(abcTag)
 
     // Also covers 'C' now
     // @ts-expect-error
@@ -117,18 +120,16 @@ describe('typed tag query system', () => {
   })
 
   it('should require fish to implement onEvent that can handle all incoming events', () => {
-    const onEvent = (state: undefined, _payload: A | B) => state
-
     // (unused var)
     // @ts-ignore
     const fishWrong: Fish<undefined, A | B> = {
-      onEvent,
+      onEvent: (state: undefined, _payload: A | B) => state,
       initialState: undefined,
       fishId: FishId.of('f', 'a', 0),
 
       // Expect error for too large subscription set
       // @ts-expect-error
-      where: abcTag
+      where: abcTag,
     }
   })
 
@@ -140,7 +141,7 @@ describe('typed tag query system', () => {
       initialState: undefined,
       fishId: FishId.of('f', 'a', 0),
 
-      where: abcTag
+      where: abcTag,
     }
   })
 })

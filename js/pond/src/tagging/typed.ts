@@ -58,9 +58,7 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): TypedTagIntersecti
     },
 
     or: <E1>(other: TypedTagIntersection<E1>) => {
-      return matchAnyOf(
-        ...([other, req(onlyLocalEvents, rawTags)] as TypedTagIntersection<E1 | E>[]),
-      )
+      return union<E1 | E>([req(onlyLocalEvents, rawTags), other])
     },
 
     local: () => req<E>(true, rawTags),
@@ -79,12 +77,12 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): TypedTagIntersecti
   return r
 }
 
-export const matchAnyOf = <E>(...sets: TypedTagIntersection<E>[]): TypedTagUnion<E> => {
+const union = <E>(sets: TypedTagIntersection<unknown>[]): TypedTagUnion<E> => {
   return {
     type: 'typed-union',
 
     or: <E1>(other: TypedTagIntersection<E1>) => {
-      return matchAnyOf(...([...sets, other] as TypedTagIntersection<E1 | E>[]))
+      return union<E1 | E>([...sets, other])
     },
 
     raw: () => ({
