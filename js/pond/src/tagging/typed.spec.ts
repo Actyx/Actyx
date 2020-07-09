@@ -120,8 +120,6 @@ describe('typed tag query system', () => {
   })
 
   it('should require fish to implement onEvent that can handle all incoming events', () => {
-    // (unused var)
-    // @ts-ignore
     const fishWrong: Fish<undefined, A | B> = {
       onEvent: (state: undefined, _payload: A | B) => state,
       initialState: undefined,
@@ -131,11 +129,11 @@ describe('typed tag query system', () => {
       // @ts-expect-error
       where: abcTag,
     }
+
+    return fishWrong
   })
 
   it('should allow fish to handle more events than indicated by tags', () => {
-    // (unused var)
-    // @ts-ignore
     const fishRight: Fish<undefined, A | B | C | T0> = {
       onEvent: (state: undefined, _payload: A | B | C | T0) => state,
       initialState: undefined,
@@ -143,5 +141,7 @@ describe('typed tag query system', () => {
 
       where: abcTag,
     }
+
+    return fishRight
   })
 })
