@@ -1,15 +1,39 @@
 import { matchAnyOf, Tag, TypedTagQuery } from './typed'
 
-const testTag = <T extends string>(tag: T) => Tag<T>(tag)
+type T0 = {
+  type: '0'
+  t0: object
+}
 
-const tag0 = testTag('0')
-const tag1 = testTag('1')
 
-const tagA = testTag('A')
-const tagB = testTag('B')
+type T1 = {
+  type: '1'
+  t1: object
+}
+
+const tag0 = Tag<T0>('0')
+const tag1 = Tag<T1>('1')
+
+type A = {
+  type: 'A'
+  data0: number
+}
+
+type B = {
+  type: 'B'
+  data1: string
+}
+
+type C = {
+  type: 'C',
+  data1: number
+}
+
+const tagA = Tag<A>('A')
+const tagB = Tag<B>('B')
 
 // Tag that covers 3 types
-const abcTag = Tag<'A' | 'B' | 'C'>('ABC')
+const abcTag = Tag<A | B | C>('ABC')
 
 describe('typed tag query system', () => {
   // '0' and '1' have no overlap, so only 'A' remains
@@ -58,6 +82,19 @@ describe('typed tag query system', () => {
       type: 'intersection',
       tags: ['A', 'ABC'],
       onlyLocalEvents: true,
+    })
+  })
+
+  it('should union event types 0 ', () => {
+    // Surface now is 'A', 'B', and 'C'
+    const u = matchAnyOf(tagA, tagB)
+
+    expect(u.raw()).toMatchObject({
+      type: 'union',
+      tags: [
+        { type: 'intersection', tags: ['A'] },
+        { type: 'intersection', tags: ['B'] },
+      ],
     })
   })
 
