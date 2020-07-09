@@ -99,7 +99,7 @@ export type Pond2 = PondCommon & {
    * @returns       A `PendingEmission` object that can be used to register
    *                callbacks with the emission’s completion.
    */
-  emit(tags: string[], payload: unknown): PendingEmission
+  emit<E>(tags: string[] | TypedTagIntersection<E>, payload: E): PendingEmission
 
   /**
    * Emit a number of events at once.
@@ -243,7 +243,7 @@ export class Pond2Impl implements Pond2 {
     return this.eventStore.persistEvents(events)
   }
 
-  emit = (tags: ReadonlyArray<string>, payload: unknown): PendingEmission => {
+  emit = <E>(tags: string[] | TypedTagIntersection<E>, payload: E): PendingEmission => {
     return this.emitMany({ tags, payload })
   }
 
