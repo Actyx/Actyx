@@ -5,7 +5,6 @@ type T0 = {
   t0: object
 }
 
-
 type T1 = {
   type: '1'
   t1: object
@@ -25,7 +24,7 @@ type B = {
 }
 
 type C = {
-  type: 'C',
+  type: 'C'
   data1: number
 }
 
@@ -51,8 +50,8 @@ describe('typed tag query system', () => {
     })
   })
 
-  it('should allow expanding the type space manually', () => {
-    // It’s OK to manually give more types
+  it('should insist on types?', () => {
+    // @ts-expect-error
     const q2: TypedTagQuery<'A' | 'more-types'> = q
 
     // Must use q2 to avoid TS error...
@@ -85,20 +84,16 @@ describe('typed tag query system', () => {
     })
   })
 
-  it('should union event types 0 ', () => {
-    // Surface now is 'A', 'B', and 'C'
-    const u = matchAnyOf(tagA, tagB)
+  it('should union event types ', () => {
+    const u = tagA.or(tagB)
 
     expect(u.raw()).toMatchObject({
       type: 'union',
-      tags: [
-        { type: 'intersection', tags: ['A'] },
-        { type: 'intersection', tags: ['B'] },
-      ],
+      tags: [{ type: 'intersection', tags: ['A'] }, { type: 'intersection', tags: ['B'] }],
     })
   })
 
-  it('should union event types', () => {
+  it('should union event types (complex)', () => {
     // Surface now is 'A', 'B', and 'C'
     const u = matchAnyOf(tagA.local(), tagB.subSpace('some-id'), abcTag)
 

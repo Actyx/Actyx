@@ -5,6 +5,8 @@ const namedSubSpace = (rawTag: string, sub: string): string[] => {
 }
 
 export interface TypedTagUnion<E> {
+  or<E1>(tag: TypedTagIntersection<E1>): TypedTagUnion<E1 | E>
+
   raw(): TagUnion
 
   readonly _dataType?: E
@@ -15,6 +17,8 @@ export interface TypedTagUnion<E> {
 // Must be interface, otherwise inferred (recursive) type gets very large.
 export interface TypedTagIntersection<E> {
   and<E1>(tag: TypedTagIntersection<E1>): TypedTagIntersection<Extract<E1, E>>
+
+  or<E1>(tag: TypedTagIntersection<E1>): TypedTagUnion<E1 | E>
 
   local(): TypedTagIntersection<E>
 
@@ -43,7 +47,7 @@ export const Tag = <E>(rawTag: string): Tag<E> => ({
 export type TypedTagQuery<E> = TypedTagUnion<E> | TypedTagIntersection<E>
 
 const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): TypedTagIntersection<E> => {
-  return {
+  const r: TypedTagIntersection<E> = {
     and: <E1>(tag: TypedTagIntersection<E1>) => {
       const other = tag.raw()
 
@@ -53,7 +57,13 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): TypedTagIntersecti
       return req<Extract<E1, E>>(local, tags)
     },
 
-    local: () => req(true, rawTags),
+    or: <E1>(other: TypedTagIntersection<E1>) => {
+      return matchAnyOf(
+        ...([other, req(onlyLocalEvents, rawTags)] as TypedTagIntersection<E1 | E>[]),
+      )
+    },
+
+    local: () => req<E>(true, rawTags),
 
     type: 'typed-intersection',
 
@@ -65,11 +75,17 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): TypedTagIntersecti
       onlyLocalEvents,
     }),
   }
+
+  return r
 }
 
 export const matchAnyOf = <E>(...sets: TypedTagIntersection<E>[]): TypedTagUnion<E> => {
   return {
     type: 'typed-union',
+
+    or: <E1>(other: TypedTagIntersection<E1>) => {
+      return matchAnyOf(...([...sets, other] as TypedTagIntersection<E1 | E>[]))
+    },
 
     raw: () => ({
       type: 'union',
