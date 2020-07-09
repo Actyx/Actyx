@@ -63,7 +63,7 @@ describe('application of commands in the pond', () => {
     type State = ReadonlyArray<Event>
 
     const mkAggregate = (subscriptions: TagQuery, fishId = { name: 'test-entity' }) => ({
-      subscriptions,
+      where: subscriptions,
 
       initialState: [],
 

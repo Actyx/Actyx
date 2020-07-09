@@ -33,13 +33,13 @@ export interface Tag<E> extends TypedTagIntersection<E> {
   // The underlying actual tag as pure string
   readonly rawTag: string
 
-  subSpace(name: string): TypedTagIntersection<E>
+  withId(name: string): TypedTagIntersection<E>
 }
 
 export const Tag = <E>(rawTag: string): Tag<E> => ({
   rawTag,
 
-  subSpace: (name: string) => req(false, namedSubSpace(rawTag, name)),
+  withId: (name: string) => req(false, namedSubSpace(rawTag, name)),
 
   ...req(false, [rawTag]),
 })

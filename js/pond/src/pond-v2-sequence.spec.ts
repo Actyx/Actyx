@@ -305,7 +305,7 @@ describe('application of commands in the pond v2', () => {
 
   describe('automatic effects with event sent to other aggregates', () => {
     const mkAgg = (name: string) => ({
-      subscriptions: TagQuery.matchAnyOf(name),
+      where: TagQuery.matchAnyOf(name),
 
       initialState: { n: 0, fill: 0 },
 

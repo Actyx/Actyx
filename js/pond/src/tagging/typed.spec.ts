@@ -98,7 +98,7 @@ describe('typed tag query system', () => {
     // Surface now is 'A', 'B', and 'C'
     const u = tagA
       .local()
-      .or(tagB.subSpace('some-id'))
+      .or(tagB.withId('some-id'))
       .or(abcTag)
 
     // Also covers 'C' now
