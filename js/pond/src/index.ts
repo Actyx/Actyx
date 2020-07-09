@@ -38,13 +38,7 @@ export {
   Milliseconds,
   SnapshotFormat,
 } from './types'
-export {
-  unreachableOrElse,
-  unreachable,
-  Loggers,
-  enableAllLoggersExcept,
-  isNode,
-} from './util'
+export { unreachableOrElse, unreachable, Loggers, enableAllLoggersExcept, isNode } from './util'
 export { Subscription, SubscriptionSet } from './subscription'
 export { CommandApi } from './commandApi'
 export { CommandApi as CommandAsync } from './commandApi'
