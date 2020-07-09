@@ -5,13 +5,11 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { CommandResult, deepFreeze, Envelope, SourceId } from '..'
+import { CommandResult, Envelope, SourceId } from '..'
 import { FishTypeImpl } from '../types'
 import { TestCommandExecutor, TestCommandExecutorConfig, TestResult } from './testCommandExecutor'
 
-const defaultConfig = {
-  deepFreeze: false,
-}
+const defaultConfig = {}
 
 const mkTestFunctions = <C, E, S>(
   fish: FishTypeImpl<S, C, E, any>,
@@ -20,7 +18,7 @@ const mkTestFunctions = <C, E, S>(
   const config1 = { ...defaultConfig, ...config }
   const commandExecutor = TestCommandExecutor(config1.commandExecutorConfig || {})
   const onEvent = (s: S, e: Envelope<E>) => {
-    const state1 = config1.deepFreeze ? deepFreeze(s) : s
+    const state1 = s
     return fish.onEvent(state1, e)
   }
   const onCommand = (s: S, c: C): TestResult<any, ReadonlyArray<E>> => {
@@ -36,7 +34,7 @@ const mkTestFunctions = <C, E, S>(
   }
   const initialState = (fishName: string, sourceId: SourceId): S => {
     const state = fish.initialState(fishName, sourceId).state
-    return config1.deepFreeze ? deepFreeze(state) : state
+    return state
   }
   return {
     fish,
@@ -63,7 +61,6 @@ export type FishTestFunctions<C, E, S> = {
 }
 
 export type FishTestFunctionsConfig = Readonly<{
-  deepFreeze: boolean
   commandExecutorConfig?: Partial<TestCommandExecutorConfig>
 }>
 

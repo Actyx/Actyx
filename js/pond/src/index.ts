@@ -43,7 +43,6 @@ export {
   unreachable,
   Loggers,
   enableAllLoggersExcept,
-  deepFreeze,
   isNode,
 } from './util'
 export { Subscription, SubscriptionSet } from './subscription'

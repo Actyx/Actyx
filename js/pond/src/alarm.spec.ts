@@ -21,14 +21,12 @@ import {
   FishName,
   Lamport,
   Source,
-  SourceId,
   SourceId as sid,
+  SourceId,
   Timestamp as ts,
 } from './types'
 
-const alarm = FishTestFunctions.of<Command, Event, State>(AlarmFish, {
-  deepFreeze: true,
-})
+const alarm = FishTestFunctions.of<Command, Event, State>(AlarmFish, {})
 
 describe('The Alarm Fish', () => {
   const sourceId: SourceId = sid.of('dummyId')

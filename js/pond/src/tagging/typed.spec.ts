@@ -16,10 +16,11 @@ describe('typed tag query system', () => {
   const q = matchAnyOf(tag0.and(tag1), tagA)
 
   it('should prevent omission of event types covered by the tags', () => {
+    // Errors because we cannot omit 'A'
     // @ts-expect-error
-    const q1: TypedTagQuery<'0' | '1'> = q
+    const q1: TypedTagQuery<'hello??'> = q
 
-    // point of this test is mostly to assert the TS-Error above
+    // We use q1 so we don’t always get a TS error for unused variable.
     expect(q1.raw()).toMatchObject({
       type: 'union',
       tags: [{ type: 'intersection', tags: ['0', '1'] }, { type: 'intersection', tags: ['A'] }],
@@ -30,7 +31,7 @@ describe('typed tag query system', () => {
     // It’s OK to manually give more types
     const q2: TypedTagQuery<'A' | 'more-types'> = q
 
-    // point of this test is just to assert the validity of the assignment
+    // Must use q2 to avoid TS error...
     expect(q2).toBeTruthy()
   })
 
@@ -38,10 +39,10 @@ describe('typed tag query system', () => {
     // Overlap is 'A'
     const w = tagA.and(abcTag)
 
+    // Errors because we cannot omit 'A'
     // @ts-expect-error
     const w2: TypedTagQuery<never> = w
 
-    // point of this test is just to assert the ts error
     expect(w2.raw()).toMatchObject({
       type: 'intersection',
       tags: ['A', 'ABC'],
@@ -53,11 +54,7 @@ describe('typed tag query system', () => {
     // Overlap is 'A'
     const w = tagA.local().and(abcTag)
 
-    // @ts-expect-error
-    const w2: TypedTagQuery<never> = w
-
-    // point of this test is just to assert the ts error
-    expect(w2.raw()).toMatchObject({
+    expect(w.raw()).toMatchObject({
       type: 'intersection',
       tags: ['A', 'ABC'],
       onlyLocalEvents: true,
