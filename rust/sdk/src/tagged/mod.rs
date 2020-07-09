@@ -15,6 +15,9 @@
  */
 //! Types and HTTP client for the Event Service v2 API with event tagging support
 //!
+//! The corresponding HTTP API in ActyxOS is not yet released, please refer to
+//! the [`event_service`](../event_service/index.html) module in the meantime.
+//!
 //! The HTTP client is only available with the `client` feature flag.
 
 #[cfg(feature = "client")]

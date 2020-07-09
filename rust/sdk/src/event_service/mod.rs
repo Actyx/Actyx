@@ -27,6 +27,11 @@ pub(crate) mod client;
 #[cfg(feature = "client")]
 pub use client::EventService;
 
+/// Error type that is returned in the response body by the Event Service when requests fail
+///
+/// The Event Service does not map client errors or internal errors to HTTP status codes,
+/// instead it gives more structured information using this data type, except when the request
+/// is not understood at all.
 #[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq)]
 #[display(fmt = "error {} while {}: {}", error_code, context, error)]
 #[serde(rename_all = "camelCase")]
