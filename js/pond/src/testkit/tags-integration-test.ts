@@ -8,7 +8,7 @@ export const start = async () => {
   const pond = await Pond2.default()
 
   const aggregate: Fish<State, Event> = {
-    subscriptions: TagQuery.matchAnyOf('t0', 't1'),
+    where: TagQuery.matchAnyOf('t0', 't1'),
 
     initialState: [],
 

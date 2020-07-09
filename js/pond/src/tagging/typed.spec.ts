@@ -1,4 +1,5 @@
 import { matchAnyOf, Tag, TypedTagQuery } from './typed'
+import { Fish, FishId } from '../pond-v2-types'
 
 type T0 = {
   type: '0'
@@ -113,5 +114,33 @@ describe('typed tag query system', () => {
         { type: 'intersection', tags: ['ABC'] },
       ],
     })
+  })
+
+  it('should require fish to implement onEvent that can handle all incoming events', () => {
+    const onEvent = (state: undefined, _payload: A | B) => state
+
+    // (unused var)
+    // @ts-ignore
+    const fishWrong: Fish<undefined, A | B> = {
+      onEvent,
+      initialState: undefined,
+      fishId: FishId.of('f', 'a', 0),
+
+      // Expect error for too large subscription set
+      // @ts-expect-error
+      where: abcTag
+    }
+  })
+
+  it('should allow fish to handle more events than indicated by tags', () => {
+    // (unused var)
+    // @ts-ignore
+    const fishRight: Fish<undefined, A | B | C | T0> = {
+      onEvent: (state: undefined, _payload: A | B | C | T0) => state,
+      initialState: undefined,
+      fishId: FishId.of('f', 'a', 0),
+
+      where: abcTag
+    }
   })
 })

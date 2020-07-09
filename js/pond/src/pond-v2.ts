@@ -295,7 +295,7 @@ export class Pond2Impl implements Pond2 {
   private observeTagBased0 = <S, E>(acc: Fish<S, E>): ActiveFish<S> => {
     const subscriptionSet: SubscriptionSet = {
       type: 'tags',
-      subscriptions: toWireFormat(acc.subscriptions),
+      subscriptions: toWireFormat(acc.where),
     }
 
     return this.getCachedOrInitialize(
@@ -337,7 +337,7 @@ export class Pond2Impl implements Pond2 {
 
     const subscriptionSet: SubscriptionSet = {
       type: 'tags',
-      subscriptions: toWireFormat(agg.subscriptions),
+      subscriptions: toWireFormat(agg.where),
     }
 
     const commandPipeline =
@@ -402,15 +402,15 @@ export class Pond2Impl implements Pond2 {
 
     const tw = autoCancel
       ? (state: S) => {
-          if (cancelled) {
-            return false
-          } else if (autoCancel(state)) {
-            cancelled = true
-            return false
-          }
-
-          return true
+        if (cancelled) {
+          return false
+        } else if (autoCancel(state)) {
+          cancelled = true
+          return false
         }
+
+        return true
+      }
       : () => !cancelled
 
     states

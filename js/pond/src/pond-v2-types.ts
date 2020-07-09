@@ -5,8 +5,8 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { TagQuery, TypedTagIntersection, TypedTagQuery } from './tagging'
 import { Lamport, Timestamp } from './types'
-import { TypedTagIntersection, TypedTagQuery, TagQuery } from './tagging'
 
 /* 
  * POND V2 Candidate APIs
@@ -52,7 +52,7 @@ export type Fish<S, E> = {
   // Will extend this field with further options in the future:
   // - <E>-Typed subscription
   // - Plain query string
-  subscriptions: TagQuery | TypedTagQuery<E>
+  where: TagQuery | TypedTagQuery<E>
 
   initialState: S
   onEvent: Reduce<S, E>
@@ -67,20 +67,20 @@ export type Fish<S, E> = {
 }
 
 export const Fish = {
-  latestEvent: <E>(subscriptions: TagQuery): Fish<E | undefined, E> => ({
-    subscriptions,
+  latestEvent: <E>(where: TagQuery): Fish<E | undefined, E> => ({
+    where,
 
     initialState: undefined,
 
     onEvent: (_state: E | undefined, event: E) => event,
 
-    fishId: FishId.of('actyx.lib.latestEvent', JSON.stringify(subscriptions), 1),
+    fishId: FishId.of('actyx.lib.latestEvent', JSON.stringify(where), 1),
 
     isReset: (_event: E) => true,
   }),
 
-  eventsDescending: <E>(subscriptions: TagQuery, capacity = 100): Fish<E[], E> => ({
-    subscriptions,
+  eventsDescending: <E>(where: TagQuery, capacity = 100): Fish<E[], E> => ({
+    where,
 
     initialState: [],
 
@@ -89,11 +89,11 @@ export const Fish = {
       return state.length > capacity ? state.slice(0, capacity) : state
     },
 
-    fishId: FishId.of('actyx.lib.eventsDescending', JSON.stringify(subscriptions), 1),
+    fishId: FishId.of('actyx.lib.eventsDescending', JSON.stringify(where), 1),
   }),
 
-  eventsAscending: <E>(subscriptions: TagQuery, capacity = 100): Fish<E[], E> => ({
-    subscriptions,
+  eventsAscending: <E>(where: TagQuery, capacity = 100): Fish<E[], E> => ({
+    where,
 
     initialState: [],
 
@@ -102,7 +102,7 @@ export const Fish = {
       return state.length > capacity ? state.slice(0, capacity) : state
     },
 
-    fishId: FishId.of('actyx.lib.eventsAscending', JSON.stringify(subscriptions), 1),
+    fishId: FishId.of('actyx.lib.eventsAscending', JSON.stringify(where), 1),
   }),
 }
 

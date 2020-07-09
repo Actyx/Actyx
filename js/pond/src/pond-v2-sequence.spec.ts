@@ -29,7 +29,7 @@ const onEvent: Reduce<State, Payload> = (state: State, event: Payload) => {
 }
 
 const agg: Fish<State, Payload> = {
-  subscriptions: TagQuery.matchAnyOf('self'),
+  where: TagQuery.matchAnyOf('self'),
 
   initialState: { n: 0, fill: 0 },
 
