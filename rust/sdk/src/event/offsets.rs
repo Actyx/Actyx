@@ -16,12 +16,13 @@
 use super::{Event, SourceId};
 use crate::tagged::EventKey;
 use derive_more::{Display, From, Into};
+use num_traits::Bounded;
 use serde::{de::Error, Deserialize, Deserializer, Serialize};
 use std::{
     cmp::Ordering,
     collections::{BTreeSet, HashMap},
     fmt::Debug,
-    ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
+    ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
 };
 
 /// Event offset within a [`SourceId`](struct.SourceId.html)’s stream or MIN value
@@ -70,7 +71,7 @@ impl OffsetOrMin {
     /// due to interop with braindead languages that do not have proper integers.
     ///
     /// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
-    pub const MAX: Offset = Offset(9_007_199_254_740_991);
+    pub const MAX: OffsetOrMin = OffsetOrMin(9_007_199_254_740_991);
 
     /// Minimum value, predecessor of the ZERO offset
     pub const MIN: OffsetOrMin = OffsetOrMin(-1);
@@ -84,12 +85,15 @@ impl OffsetOrMin {
     }
 
     /// Return the successor to this offset, where ZERO succeeds MIN
-    pub fn incr(&self) -> Self {
-        Self(self.0 + 1)
+    pub fn succ(&self) -> Offset {
+        if *self == Self::MAX {
+            panic!("cannot increment OffsetOrMin({})", self)
+        }
+        Offset(self.0 + 1)
     }
 
     /// Return the predecessor to this offset
-    pub fn decr(&self) -> Option<Self> {
+    pub fn pred(&self) -> Option<Self> {
         if self > &Self::MIN {
             Some(Self(self.0 - 1))
         } else {
@@ -119,6 +123,32 @@ impl PartialEq<Offset> for OffsetOrMin {
 impl PartialOrd<Offset> for OffsetOrMin {
     fn partial_cmp(&self, other: &Offset) -> Option<Ordering> {
         self.partial_cmp(&OffsetOrMin::from(*other))
+    }
+}
+
+impl Sub for OffsetOrMin {
+    type Output = i64;
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.0 - rhs.0
+    }
+}
+
+impl Add<u32> for OffsetOrMin {
+    type Output = Self;
+    fn add(self, rhs: u32) -> Self {
+        if Self::MAX - self < i64::from(rhs) {
+            panic!("cannot add {} to OffsetOrMin({})", rhs, self)
+        }
+        Self(self.0 + i64::from(rhs))
+    }
+}
+
+impl Bounded for OffsetOrMin {
+    fn min_value() -> Self {
+        OffsetOrMin::MIN
+    }
+    fn max_value() -> Self {
+        OffsetOrMin::MAX
     }
 }
 
@@ -164,6 +194,14 @@ impl Offset {
         Self(o.into())
     }
 
+    #[doc(hidden)]
+    pub unsafe fn from_i64(o: i64) -> Self {
+        if o < 0 {
+            panic!("got negative Offset")
+        }
+        Self(o)
+    }
+
     /// Fallible conversion from [`OffsetOrMin`](struct.OffsetOrMin.html)
     ///
     /// This returns `None` when presented with `OffsetOrMin::MIN`.
@@ -176,17 +214,24 @@ impl Offset {
     }
 
     /// Return the successor to this offset
-    pub fn incr(&self) -> Self {
+    pub fn succ(&self) -> Self {
+        if *self == Self::MAX {
+            panic!("cannot increment Offset({})", self)
+        }
         Self(self.0 + 1)
     }
 
     /// Return the predecessor to this offset
-    pub fn decr(&self) -> Option<Self> {
+    pub fn pred(&self) -> Option<Self> {
         if self > &Self::ZERO {
             Some(Self(self.0 - 1))
         } else {
             None
         }
+    }
+
+    pub fn pred_or_min(&self) -> OffsetOrMin {
+        OffsetOrMin(self.0 - 1)
     }
 }
 
@@ -205,6 +250,32 @@ impl PartialEq<OffsetOrMin> for Offset {
 impl PartialOrd<OffsetOrMin> for Offset {
     fn partial_cmp(&self, other: &OffsetOrMin) -> Option<Ordering> {
         OffsetOrMin::from(*self).partial_cmp(other)
+    }
+}
+
+impl Sub for Offset {
+    type Output = i64;
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.0 - rhs.0
+    }
+}
+
+impl Add<u32> for Offset {
+    type Output = Self;
+    fn add(self, rhs: u32) -> Self {
+        if Self::MAX - self < i64::from(rhs) {
+            panic!("cannot add {} to Offset({})", rhs, self)
+        }
+        Self(self.0 + i64::from(rhs))
+    }
+}
+
+impl Bounded for Offset {
+    fn min_value() -> Self {
+        Offset::ZERO
+    }
+    fn max_value() -> Self {
+        Offset::MAX
     }
 }
 
@@ -392,7 +463,7 @@ impl<T> SubAssign<&Event<T>> for OffsetMap {
     fn sub_assign(&mut self, other: &Event<T>) {
         let off = self.0.entry(other.stream.source).or_default();
         if *off >= other.offset {
-            if let Some(o) = other.offset.decr() {
+            if let Some(o) = other.offset.pred() {
                 *off = o.into();
             } else {
                 self.0.remove(&other.stream.source);
@@ -406,7 +477,7 @@ impl SubAssign<&EventKey> for OffsetMap {
     fn sub_assign(&mut self, other: &EventKey) {
         let off = self.0.entry(other.source).or_default();
         if *off >= other.offset {
-            if let Some(o) = other.offset.decr() {
+            if let Some(o) = other.offset.pred() {
                 *off = o.into();
             } else {
                 self.0.remove(&other.source);

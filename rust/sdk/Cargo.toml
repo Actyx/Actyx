@@ -27,6 +27,7 @@ bytes = { version = "~0.5", optional = true }
 chrono = { version = "~0.4" }
 derive_more = "~0.99"
 futures = { version = "~0.3", optional = true }
+num-traits = "0.2"
 reqwest = { version = "~0.10", features = ["json", "gzip", "stream"], optional = true }
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"

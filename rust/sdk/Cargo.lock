@@ -30,6 +30,7 @@ dependencies = [
  "fixed",
  "futures",
  "intern-arc",
+ "num-traits",
  "reqwest",
  "serde",
  "serde-transcode",
