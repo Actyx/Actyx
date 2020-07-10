@@ -177,40 +177,25 @@ define build_bins_and_move
 endef
 
 # Build ActyxOS binaries for Win64
-# NOTE: This will only build `ada-cli` and `store-cli`.
+# NOTE: This will build `ax.exe`, `win.exe`, `ada-cli.exe` and `store-cli.exe`.
 # 1st arg: output dir (will be created) of the final artifacts
 # 2nd arg: target toolchain
 # 3rd arg: docker base image
-# actyx-cli depends on fastping-rs depends on libpnet, which needs
-# a dependency from winpcap to link against
 define build_bins_and_move_win64
 	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
 	mkdir -p $(1)
 	docker run \
-	-v `pwd`/rt-master:/src \
-	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
-	-it $(3) \
-	bash -c "\
-		cd /tmp/ && \
-		wget -q https://www.winpcap.org/install/bin/WpdPack_4_1_2.zip && \
-		unzip -p WpdPack_4_1_2.zip WpdPack/Lib/x64/Packet.lib > /usr/x86_64-w64-mingw32/lib/Packet.lib && \
-		rm WpdPack_4_1_2.zip && \
-		cd - && \
-		cargo --locked build --release --target $(2) --bin ax --no-default-features --manifest-path actyx-cli/Cargo.toml --jobs 8 && \
-		chown -R builder:builder ./target"
-	docker run \
-	-v `pwd`/rt-master:/src \
-	-u builder \
-	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
-	-it $(3) \
-	cargo --locked build --release --target $(2) --bin ada-cli --bin store-cli --jobs 8
-  docker run \
 	-v `pwd`:/src \
 	-u builder \
-	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-w /src/rt-master \
+	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-e CARGO_BUILD_TARGET=$(2) \
+	-e CARGO_BUILD_JOBS=8 \
 	-it $(3) \
-	cargo --locked build --release --target $(2) --bin win --no-default-features --manifest-path ax-os-node/Cargo.toml --jobs 8
+	bash -c "\
+		cargo --locked build --release --no-default-features --manifest-path actyx-cli/Cargo.toml && \
+		cargo --locked build --release --bin win --no-default-features --manifest-path ax-os-node/Cargo.toml && \
+		cargo --locked build --release --bin ada-cli --bin store-cli"
 	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -perm -u=x \
 		-exec cp {} $(1) \;
 	echo "Please find your build artifacts in $(1)."
