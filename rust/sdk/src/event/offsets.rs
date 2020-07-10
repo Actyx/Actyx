@@ -15,32 +15,196 @@
  */
 use super::{Event, SourceId};
 use crate::tagged::EventKey;
-use derive_more::{From, Into};
-use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
-use std::collections::{BTreeSet, HashMap};
-use std::fmt::Debug;
-use std::ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign};
+use derive_more::{Display, From, Into};
+use serde::{de::Error, Deserialize, Deserializer, Serialize};
+use std::{
+    cmp::Ordering,
+    collections::{BTreeSet, HashMap},
+    fmt::Debug,
+    ops::{AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
+};
 
-/// Each ActyxOS node marks the events it publishes with its source ID and assigns
-/// a unique (consecutive) number to it: the `Offset`. The first event occupies offset zero.
+/// Event offset within a [`SourceId`](struct.SourceId.html)’s stream or MIN value
+///
+/// The event offset is not a number, it rather is an identifier that can be compared
+/// to other identifiers. There are 2^63 such values. The `incr` and `decr` functions
+/// find the successor or predecessor, respectively. `incr` does not return an option
+/// because for the use-case of naming events within a stream it is impossible to exhaust
+/// the available set of values.
+///
+/// The MIN value is not a valid offset, it is sorted before [`Offset::ZERO`](struct.Offset.html#const.ZERO).
 #[derive(
-    Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, From, Into,
+    Clone,
+    Copy,
+    Debug,
+    Serialize,
+    Deserialize,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    From,
+    Into,
+    Display,
 )]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
-pub struct Offset(pub i64);
+pub struct OffsetOrMin(#[serde(deserialize_with = "i64_from_minus_one")] i64);
+
+fn i64_from_minus_one<'de, D: Deserializer<'de>>(d: D) -> Result<i64, D::Error> {
+    let o = i64::deserialize(d)?;
+    if o < -1 {
+        Err(D::Error::custom("number below -1"))
+    } else {
+        Ok(o)
+    }
+}
+
+impl OffsetOrMin {
+    /// Zero offset, equal to [`Offset::ZERO`](struct.Offset.html#const.ZERO)
+    pub const ZERO: OffsetOrMin = OffsetOrMin(0);
+
+    /// Maximum possible offset
+    ///
+    /// the max Offset needs to fit into an i64 and also needs to be losslessly converted into an f64
+    /// due to interop with braindead languages that do not have proper integers.
+    ///
+    /// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
+    pub const MAX: Offset = Offset(9_007_199_254_740_991);
+
+    /// Minimum value, predecessor of the ZERO offset
+    pub const MIN: OffsetOrMin = OffsetOrMin(-1);
+
+    /// This function shall only be used from tests to manufacture events where needed.
+    ///
+    /// It is intentionally hard to extract the wrapped number from this type because
+    /// offsets do not support useful arithmetic operations.
+    pub fn mk_test(o: u32) -> Self {
+        Self(o.into())
+    }
+
+    /// Return the successor to this offset, where ZERO succeeds MIN
+    pub fn incr(&self) -> Self {
+        Self(self.0 + 1)
+    }
+
+    /// Return the predecessor to this offset
+    pub fn decr(&self) -> Option<Self> {
+        if self > &Self::MIN {
+            Some(Self(self.0 - 1))
+        } else {
+            None
+        }
+    }
+}
+
+impl Default for OffsetOrMin {
+    fn default() -> Self {
+        Self::MIN
+    }
+}
+
+impl From<Offset> for OffsetOrMin {
+    fn from(o: Offset) -> Self {
+        Self(o.0)
+    }
+}
+
+impl PartialEq<Offset> for OffsetOrMin {
+    fn eq(&self, other: &Offset) -> bool {
+        OffsetOrMin::from(*other) == *self
+    }
+}
+
+impl PartialOrd<Offset> for OffsetOrMin {
+    fn partial_cmp(&self, other: &Offset) -> Option<Ordering> {
+        self.partial_cmp(&OffsetOrMin::from(*other))
+    }
+}
+
+/// Event offset within a [`SourceId`](struct.SourceId.html)’s stream
+///
+/// The event offset is not a number, it rather is an identifier that can be compared
+/// to other identifiers. There are 2^63 such values. The `incr` and `decr` functions
+/// find the successor or predecessor, respectively. `incr` does not return an option
+/// because for the use-case of naming events within a stream it is impossible to exhaust
+/// the available set of values.
+#[derive(
+    Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, Display,
+)]
+#[cfg_attr(feature = "dataflow", derive(Abomonation))]
+pub struct Offset(#[serde(deserialize_with = "non_negative_i64")] i64);
+
+fn non_negative_i64<'de, D: Deserializer<'de>>(d: D) -> Result<i64, D::Error> {
+    let o = i64::deserialize(d)?;
+    if o < 0 {
+        Err(D::Error::custom("negative number"))
+    } else {
+        Ok(o)
+    }
+}
 
 impl Offset {
+    /// Minimum possible offset, also default value
     pub const ZERO: Offset = Offset(0);
 
-    pub fn decr(self) -> Self {
-        Self(self.0 - 1)
+    /// Maximum possible offset
+    ///
+    /// the max Offset needs to fit into an i64 and also needs to be losslessly converted into an f64
+    /// due to interop with braindead languages that do not have proper integers.
+    ///
+    /// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
+    pub const MAX: Offset = Offset(9_007_199_254_740_991);
+
+    /// This function shall only be used from tests to manufacture events where needed.
+    ///
+    /// It is intentionally hard to extract the wrapped number from this type because
+    /// offsets do not support useful arithmetic operations.
+    pub fn mk_test(o: u32) -> Self {
+        Self(o.into())
+    }
+
+    /// Fallible conversion from [`OffsetOrMin`](struct.OffsetOrMin.html)
+    ///
+    /// This returns `None` when presented with `OffsetOrMin::MIN`.
+    pub fn from_offset_or_min(o: OffsetOrMin) -> Option<Self> {
+        if o >= Self::ZERO {
+            Some(Self(o.0))
+        } else {
+            None
+        }
+    }
+
+    /// Return the successor to this offset
+    pub fn incr(&self) -> Self {
+        Self(self.0 + 1)
+    }
+
+    /// Return the predecessor to this offset
+    pub fn decr(&self) -> Option<Self> {
+        if self > &Self::ZERO {
+            Some(Self(self.0 - 1))
+        } else {
+            None
+        }
     }
 }
 
 impl Default for Offset {
     fn default() -> Self {
-        Self(-1)
+        Self::ZERO
+    }
+}
+
+impl PartialEq<OffsetOrMin> for Offset {
+    fn eq(&self, other: &OffsetOrMin) -> bool {
+        OffsetOrMin::from(*self) == *other
+    }
+}
+
+impl PartialOrd<OffsetOrMin> for Offset {
+    fn partial_cmp(&self, other: &OffsetOrMin) -> Option<Ordering> {
+        OffsetOrMin::from(*self).partial_cmp(other)
     }
 }
 
@@ -85,7 +249,7 @@ impl Default for Offset {
 /// The difference of two offset maps yields the number of events contained within the first
 /// but not within the second one (i.e. it counts the size of the difference set).
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct OffsetMap(HashMap<SourceId, Offset>);
+pub struct OffsetMap(HashMap<SourceId, OffsetOrMin>);
 
 impl OffsetMap {
     /// The empty `OffsetMap` is equivalent to the beginning of time, it does not contain any
@@ -146,7 +310,7 @@ impl OffsetMap {
         )
     }
 
-    pub fn into_inner(self) -> HashMap<SourceId, Offset> {
+    pub fn into_inner(self) -> HashMap<SourceId, OffsetOrMin> {
         self.0
     }
 }
@@ -157,7 +321,7 @@ impl PartialOrd for OffsetMap {
         let mut lt = false;
         let mut eq = false;
         let mut gt = false;
-        let mut cross = |a: &Offset, b: &Offset| -> bool {
+        let mut cross = |a: &OffsetOrMin, b: &OffsetOrMin| -> bool {
             match Ord::cmp(a, b) {
                 Ordering::Less => lt = true,
                 Ordering::Equal => eq = true,
@@ -187,8 +351,8 @@ impl PartialOrd for OffsetMap {
     }
 }
 
-impl AsRef<HashMap<SourceId, Offset>> for OffsetMap {
-    fn as_ref(&self) -> &HashMap<SourceId, Offset> {
+impl AsRef<HashMap<SourceId, OffsetOrMin>> for OffsetMap {
+    fn as_ref(&self) -> &HashMap<SourceId, OffsetOrMin> {
         &self.0
     }
 }
@@ -199,8 +363,8 @@ impl Default for OffsetMap {
     }
 }
 
-impl From<HashMap<SourceId, Offset>> for OffsetMap {
-    fn from(map: HashMap<SourceId, Offset>) -> Self {
+impl From<HashMap<SourceId, OffsetOrMin>> for OffsetMap {
+    fn from(map: HashMap<SourceId, OffsetOrMin>) -> Self {
         Self(map)
     }
 }
@@ -209,7 +373,7 @@ impl<T> AddAssign<&Event<T>> for OffsetMap {
     fn add_assign(&mut self, other: &Event<T>) {
         let off = self.0.entry(other.stream.source).or_default();
         if *off < other.offset {
-            *off = other.offset;
+            *off = other.offset.into();
         }
     }
 }
@@ -218,7 +382,7 @@ impl AddAssign<&EventKey> for OffsetMap {
     fn add_assign(&mut self, other: &EventKey) {
         let off = self.0.entry(other.source).or_default();
         if *off < other.offset {
-            *off = other.offset;
+            *off = other.offset.into();
         }
     }
 }
@@ -228,10 +392,10 @@ impl<T> SubAssign<&Event<T>> for OffsetMap {
     fn sub_assign(&mut self, other: &Event<T>) {
         let off = self.0.entry(other.stream.source).or_default();
         if *off >= other.offset {
-            if other.offset == Offset::ZERO {
-                self.0.remove(&other.stream.source);
+            if let Some(o) = other.offset.decr() {
+                *off = o.into();
             } else {
-                *off = other.offset.decr();
+                self.0.remove(&other.stream.source);
             }
         }
     }
@@ -242,10 +406,10 @@ impl SubAssign<&EventKey> for OffsetMap {
     fn sub_assign(&mut self, other: &EventKey) {
         let off = self.0.entry(other.source).or_default();
         if *off >= other.offset {
-            if other.offset == Offset::ZERO {
-                self.0.remove(&other.source);
+            if let Some(o) = other.offset.decr() {
+                *off = o.into();
             } else {
-                *off = other.offset.decr();
+                self.0.remove(&other.source);
             }
         }
     }
@@ -322,7 +486,7 @@ mod tests {
     };
     use std::str::FromStr;
 
-    fn mk_event(source: &str, offset: i64) -> Event<Payload> {
+    fn mk_event(source: &str, offset: u32) -> Event<Payload> {
         Event {
             lamport: LamportTimestamp::new(1),
             stream: StreamInfo {
@@ -330,7 +494,7 @@ mod tests {
                 name: fish_name!("dummy"),
                 source: SourceId::from_str(source).unwrap(),
             },
-            offset: Offset(offset),
+            offset: Offset::mk_test(offset),
             timestamp: TimeStamp::now(),
             payload: Payload::default(),
         }
@@ -375,10 +539,10 @@ mod tests {
     pub fn must_set_op() {
         let left = OffsetMap::from(
             [
-                (source_id!("a"), Offset(1)),
-                (source_id!("b"), Offset(2)),
-                (source_id!("c"), Offset(3)),
-                (source_id!("d"), Offset(4)),
+                (source_id!("a"), OffsetOrMin(1)),
+                (source_id!("b"), OffsetOrMin(2)),
+                (source_id!("c"), OffsetOrMin(3)),
+                (source_id!("d"), OffsetOrMin(4)),
             ]
             .iter()
             .copied()
@@ -387,10 +551,10 @@ mod tests {
 
         let right = OffsetMap::from(
             [
-                (source_id!("b"), Offset(4)),
-                (source_id!("c"), Offset(3)),
-                (source_id!("d"), Offset(2)),
-                (source_id!("e"), Offset(1)),
+                (source_id!("b"), OffsetOrMin(4)),
+                (source_id!("c"), OffsetOrMin(3)),
+                (source_id!("d"), OffsetOrMin(2)),
+                (source_id!("e"), OffsetOrMin(1)),
             ]
             .iter()
             .copied()
@@ -399,11 +563,11 @@ mod tests {
 
         let union = OffsetMap::from(
             [
-                (source_id!("a"), Offset(1)),
-                (source_id!("b"), Offset(4)),
-                (source_id!("c"), Offset(3)),
-                (source_id!("d"), Offset(4)),
-                (source_id!("e"), Offset(1)),
+                (source_id!("a"), OffsetOrMin(1)),
+                (source_id!("b"), OffsetOrMin(4)),
+                (source_id!("c"), OffsetOrMin(3)),
+                (source_id!("d"), OffsetOrMin(4)),
+                (source_id!("e"), OffsetOrMin(1)),
             ]
             .iter()
             .copied()
@@ -412,9 +576,9 @@ mod tests {
 
         let intersection = OffsetMap::from(
             [
-                (source_id!("b"), Offset(2)),
-                (source_id!("c"), Offset(3)),
-                (source_id!("d"), Offset(2)),
+                (source_id!("b"), OffsetOrMin(2)),
+                (source_id!("c"), OffsetOrMin(3)),
+                (source_id!("d"), OffsetOrMin(2)),
             ]
             .iter()
             .copied()
@@ -425,5 +589,11 @@ mod tests {
         assert_eq!(left.intersection(&right), intersection);
         assert_eq!(&left | &right, union);
         assert_eq!(left & right, intersection);
+    }
+
+    #[test]
+    fn must_to_string() {
+        assert_eq!(OffsetOrMin(12).to_string(), "12");
+        assert_eq!(Offset::mk_test(3).to_string(), "3");
     }
 }
