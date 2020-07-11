@@ -17,14 +17,19 @@ use super::{Event, SourceId};
 use crate::tagged::EventKey;
 use derive_more::{Display, From, Into};
 use num_traits::Bounded;
-use serde::{de::Error, Deserialize, Deserializer, Serialize};
+use serde::{
+    de::{Error, Visitor},
+    Deserialize, Deserializer, Serialize,
+};
 use std::{
     cmp::Ordering,
     collections::{BTreeSet, HashMap},
-    fmt::Debug,
+    fmt::{self, Debug},
     iter::FromIterator,
     ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
 };
+
+const MAX_SAFE_INT: i64 = 9_007_199_254_740_991;
 
 /// Event offset within a [`SourceId`](struct.SourceId.html)’s stream or MIN value
 ///
@@ -51,14 +56,64 @@ use std::{
     Display,
 )]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
-pub struct OffsetOrMin(#[serde(deserialize_with = "i64_from_minus_one")] i64);
+pub struct OffsetOrMin(#[serde(with = "i64_from_minus_one")] i64);
 
-fn i64_from_minus_one<'de, D: Deserializer<'de>>(d: D) -> Result<i64, D::Error> {
-    let o = i64::deserialize(d)?;
-    if o < -1 {
-        Err(D::Error::custom("number below -1"))
-    } else {
-        Ok(o)
+mod i64_from_minus_one {
+    use super::*;
+    use serde::Serializer;
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<i64, D::Error> {
+        fn range<E: Error>(r: Result<i64, E>) -> Result<i64, E> {
+            r.and_then(|i| {
+                if i < -1 {
+                    Err(E::custom(format!("number {} is below -1", i)))
+                } else if i > MAX_SAFE_INT {
+                    Err(E::custom(format!("number {} is too large", i)))
+                } else {
+                    Ok(i)
+                }
+            })
+        }
+        struct X;
+        impl<'de> Visitor<'de> for X {
+            type Value = i64;
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("string 'min' or integer")
+            }
+            fn visit_str<E: Error>(self, v: &str) -> Result<Self::Value, E> {
+                match v {
+                    "min" => Ok(-1),
+                    "max" => Ok(MAX_SAFE_INT),
+                    v => range(v.parse::<i64>().map_err(Error::custom)),
+                }
+            }
+            fn visit_f64<E: Error>(self, v: f64) -> Result<Self::Value, E> {
+                let i = v as i64;
+                #[allow(clippy::float_cmp)]
+                if i as f64 == v {
+                    range(Ok(i))
+                } else {
+                    Err(E::custom("not an integer"))
+                }
+            }
+            fn visit_u64<E: Error>(self, v: u64) -> Result<Self::Value, E> {
+                if v <= i64::MAX as u64 {
+                    range(Ok(v as i64))
+                } else {
+                    Err(E::custom("number too large"))
+                }
+            }
+            fn visit_i64<E: Error>(self, v: i64) -> Result<Self::Value, E> {
+                range(Ok(v))
+            }
+        }
+        d.deserialize_any(X)
+    }
+    pub fn serialize<S: Serializer>(t: &i64, s: S) -> Result<S::Ok, S::Error> {
+        if *t < 0 {
+            "min".serialize(s)
+        } else {
+            t.serialize(s)
+        }
     }
 }
 
@@ -72,7 +127,7 @@ impl OffsetOrMin {
     /// due to interop with braindead languages that do not have proper integers.
     ///
     /// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
-    pub const MAX: OffsetOrMin = OffsetOrMin(9_007_199_254_740_991);
+    pub const MAX: OffsetOrMin = OffsetOrMin(MAX_SAFE_INT);
 
     /// Minimum value, predecessor of the ZERO offset
     pub const MIN: OffsetOrMin = OffsetOrMin(-1);
@@ -170,6 +225,8 @@ fn non_negative_i64<'de, D: Deserializer<'de>>(d: D) -> Result<i64, D::Error> {
     let o = i64::deserialize(d)?;
     if o < 0 {
         Err(D::Error::custom("negative number"))
+    } else if o > MAX_SAFE_INT {
+        Err(D::Error::custom("number too large"))
     } else {
         Ok(o)
     }
@@ -327,7 +384,7 @@ impl Bounded for Offset {
 /// negative values are tolerated and ignored. This is to keep compatibility with previously
 /// documented API endpoints.
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-#[serde(from = "HashMap<SourceId, i64>")]
+#[serde(from = "HashMap<SourceId, OffsetOrMin>")]
 pub struct OffsetMap(HashMap<SourceId, Offset>);
 
 impl OffsetMap {
@@ -501,10 +558,10 @@ impl From<HashMap<SourceId, Offset>> for OffsetMap {
     }
 }
 
-impl From<HashMap<SourceId, i64>> for OffsetMap {
-    fn from(map: HashMap<SourceId, i64>) -> Self {
+impl From<HashMap<SourceId, OffsetOrMin>> for OffsetMap {
+    fn from(map: HashMap<SourceId, OffsetOrMin>) -> Self {
         map.into_iter()
-            .filter_map(|(s, o)| if o >= 0 { Some((s, Offset(o))) } else { None })
+            .filter_map(|(s, o)| Offset::from_offset_or_min(o).map(|o| (s, o)))
             .collect()
     }
 }
@@ -741,5 +798,73 @@ mod tests {
     fn must_to_string() {
         assert_eq!(OffsetOrMin(12).to_string(), "12");
         assert_eq!(Offset::mk_test(3).to_string(), "3");
+    }
+
+    fn ser<T: Serialize>(v: T, expected: &str) {
+        assert_eq!(serde_json::to_string(&v).unwrap(), expected);
+    }
+
+    fn de<'de, T: Deserialize<'de> + Debug + PartialEq>(from: &'de str, expected: T) {
+        assert_eq!(serde_json::from_str::<T>(from).unwrap(), expected);
+    }
+
+    fn err<'de, T: Deserialize<'de> + Debug>(from: &'de str, msg: &str) {
+        let s = serde_json::from_str::<T>(from).unwrap_err().to_string();
+        assert!(s.contains(msg), "{} did not contain {}", s, msg);
+    }
+
+    #[test]
+    fn must_serde_offset() {
+        ser(Offset::ZERO, "0");
+        ser(Offset::mk_test(1), "1");
+        ser(Offset::MAX, "9007199254740991");
+
+        de("0", Offset::ZERO);
+        de("1", Offset::mk_test(1));
+        de("9007199254740991", Offset::MAX);
+
+        err::<Offset>("-1", "negative");
+        err::<Offset>("-42", "negative");
+        err::<Offset>("90071992547409911", "too large");
+    }
+
+    #[test]
+    fn must_serde_offset_or_min() {
+        ser(OffsetOrMin::MIN, "\"min\"");
+        ser(OffsetOrMin::ZERO, "0");
+        ser(OffsetOrMin::mk_test(42), "42");
+        ser(OffsetOrMin::MAX, "9007199254740991");
+
+        de("\"min\"", OffsetOrMin::MIN);
+        de("-1", OffsetOrMin::MIN);
+        de("\"-1\"", OffsetOrMin::MIN);
+        de("0", OffsetOrMin::ZERO);
+        de("1", OffsetOrMin::mk_test(1));
+        de("9007199254740991", OffsetOrMin::MAX);
+        de("\"9007199254740991\"", OffsetOrMin::MAX);
+        de("\"max\"", OffsetOrMin::MAX);
+
+        err::<OffsetOrMin>("-2", "below -1");
+        err::<OffsetOrMin>("-20000000000000000000", "not an integer");
+        err::<OffsetOrMin>("3.4", "not an integer");
+        err::<OffsetOrMin>("90071992547409911", "too large");
+        err::<OffsetOrMin>("\"-2\"", "below -1");
+        err::<OffsetOrMin>("\"-20000000000000000000\"", "number too small");
+        err::<OffsetOrMin>("\"3.4\"", "invalid digit");
+        err::<OffsetOrMin>("\"90071992547409911\"", "too large");
+    }
+
+    #[test]
+    fn must_serde_offset_map() {
+        let mut map = OffsetMap::empty();
+        ser(map.clone(), "{}");
+        map.update(source_id!("a"), Offset::mk_test(12));
+        ser(map.clone(), "{\"a\":12}");
+
+        de("{}", OffsetMap::empty());
+        de("{\"a\":12}", map.clone());
+        de("{\"a\":12,\"b\":-1}", map);
+
+        err::<OffsetMap>("{\"a\":12,\"b\":-11}", "below -1");
     }
 }
