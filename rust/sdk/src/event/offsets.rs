@@ -22,6 +22,7 @@ use std::{
     cmp::Ordering,
     collections::{BTreeSet, HashMap},
     fmt::Debug,
+    iter::FromIterator,
     ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
 };
 
@@ -319,8 +320,15 @@ impl Bounded for Offset {
 ///
 /// The difference of two offset maps yields the number of events contained within the first
 /// but not within the second one (i.e. it counts the size of the difference set).
+///
+/// # Deserialization
+///
+/// An OffsetMap only contains valid offsets (non-negative numbers), but during deserialization
+/// negative values are tolerated and ignored. This is to keep compatibility with previously
+/// documented API endpoints.
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-pub struct OffsetMap(HashMap<SourceId, OffsetOrMin>);
+#[serde(from = "HashMap<SourceId, i64>")]
+pub struct OffsetMap(HashMap<SourceId, Offset>);
 
 impl OffsetMap {
     /// The empty `OffsetMap` is equivalent to the beginning of time, it does not contain any
@@ -338,20 +346,38 @@ impl OffsetMap {
             >= event.offset
     }
 
+    /// Check whether the given source contributes to the set of events in this OffsetMap
+    pub fn contains_source(&self, source: &SourceId) -> bool {
+        self.0.contains_key(source)
+    }
+
+    /// Retrieve the offset stored for the given source
+    ///
+    /// The returned value is `OffsetOrMin::MIN` if nothing is stored for the given source.
+    pub fn offset(&self, source: &SourceId) -> OffsetOrMin {
+        self.get(source)
+            .map(|o| o.into())
+            .unwrap_or(OffsetOrMin::MIN)
+    }
+
+    /// Retrieves the offset stored for the given source
+    pub fn get(&self, source: &SourceId) -> Option<Offset> {
+        self.0.get(&source).cloned()
+    }
+
     /// Counts the number of offsets spanned by this OffsetMap.
     pub fn size(&self) -> u64 {
         self - &OffsetMap::empty()
     }
 
     /// Merge the other OffsetMap into this one, taking the union of their event sets.
-    pub fn union_with<'a>(&'a mut self, other: &OffsetMap) -> &'a mut Self {
+    pub fn union_with<'a>(&'a mut self, other: &OffsetMap) {
         for (k, v) in &other.0 {
             self.0
                 .entry(*k)
                 .and_modify(|me| *me = (*me).max(*v))
                 .or_insert(*v);
         }
-        self
     }
 
     /// Compute the union of two sets of events described by OffsetMaps
@@ -359,6 +385,19 @@ impl OffsetMap {
         let mut copy = self.clone();
         copy.union_with(other);
         copy
+    }
+
+    /// Compute the intersection of two sets of events described by OffsetMaps
+    pub fn intersection_with(&mut self, other: &OffsetMap) {
+        let keys = self.0.keys().cloned().collect::<Vec<_>>();
+        for key in keys.into_iter() {
+            let offset = other.offset(&key).min(self.offset(&key));
+            if let Some(offset) = Offset::from_offset_or_min(offset) {
+                self.0.insert(key, offset);
+            } else {
+                self.0.remove(&key);
+            }
+        }
     }
 
     /// Compute the intersection of two sets of events described by OffsetMaps
@@ -381,8 +420,30 @@ impl OffsetMap {
         )
     }
 
-    pub fn into_inner(self) -> HashMap<SourceId, OffsetOrMin> {
+    pub fn into_inner(self) -> HashMap<SourceId, Offset> {
         self.0
+    }
+
+    /// An iterator over all sources that contribute events to this OffsetMap
+    pub fn sources<'a>(&'a self) -> impl Iterator<Item = SourceId> + 'a {
+        self.0.keys().cloned()
+    }
+
+    /// An iterator over all sources that contribute events to this OffsetMap including their offset
+    pub fn iter<'a>(&'a self) -> impl Iterator<Item = (SourceId, Offset)> + 'a {
+        self.0.iter().map(|(k, v)| (*k, *v))
+    }
+
+    /// Update entry for source if the given offset is larger than the stored one
+    /// and return the previous offset for this source
+    pub fn update(&mut self, source: SourceId, offset: Offset) -> Option<OffsetOrMin> {
+        let previous = self.offset(&source);
+        if offset > previous {
+            self.0.insert(source, offset);
+            Some(previous)
+        } else {
+            None
+        }
     }
 }
 
@@ -401,14 +462,14 @@ impl PartialOrd for OffsetMap {
             lt && gt
         };
         for (k, a) in &lhs.0 {
-            let b = &rhs.0.get(k).copied().unwrap_or_default();
-            if cross(a, b) {
+            let b = &rhs.offset(k);
+            if cross(&OffsetOrMin::from(*a), b) {
                 return None;
             }
         }
         for (k, b) in &rhs.0 {
-            let a = &lhs.0.get(k).copied().unwrap_or_default();
-            if cross(a, b) {
+            let a = &lhs.offset(k);
+            if cross(a, &OffsetOrMin::from(*b)) {
                 return None;
             }
         }
@@ -422,8 +483,8 @@ impl PartialOrd for OffsetMap {
     }
 }
 
-impl AsRef<HashMap<SourceId, OffsetOrMin>> for OffsetMap {
-    fn as_ref(&self) -> &HashMap<SourceId, OffsetOrMin> {
+impl AsRef<HashMap<SourceId, Offset>> for OffsetMap {
+    fn as_ref(&self) -> &HashMap<SourceId, Offset> {
         &self.0
     }
 }
@@ -434,9 +495,23 @@ impl Default for OffsetMap {
     }
 }
 
-impl From<HashMap<SourceId, OffsetOrMin>> for OffsetMap {
-    fn from(map: HashMap<SourceId, OffsetOrMin>) -> Self {
+impl From<HashMap<SourceId, Offset>> for OffsetMap {
+    fn from(map: HashMap<SourceId, Offset>) -> Self {
         Self(map)
+    }
+}
+
+impl From<HashMap<SourceId, i64>> for OffsetMap {
+    fn from(map: HashMap<SourceId, i64>) -> Self {
+        map.into_iter()
+            .filter_map(|(s, o)| if o >= 0 { Some((s, Offset(o))) } else { None })
+            .collect()
+    }
+}
+
+impl FromIterator<(SourceId, Offset)> for OffsetMap {
+    fn from_iter<T: IntoIterator<Item = (SourceId, Offset)>>(iter: T) -> Self {
+        Self(iter.into_iter().collect())
     }
 }
 
@@ -444,7 +519,7 @@ impl<T> AddAssign<&Event<T>> for OffsetMap {
     fn add_assign(&mut self, other: &Event<T>) {
         let off = self.0.entry(other.stream.source).or_default();
         if *off < other.offset {
-            *off = other.offset.into();
+            *off = other.offset;
         }
     }
 }
@@ -453,7 +528,7 @@ impl AddAssign<&EventKey> for OffsetMap {
     fn add_assign(&mut self, other: &EventKey) {
         let off = self.0.entry(other.source).or_default();
         if *off < other.offset {
-            *off = other.offset.into();
+            *off = other.offset;
         }
     }
 }
@@ -464,7 +539,7 @@ impl<T> SubAssign<&Event<T>> for OffsetMap {
         let off = self.0.entry(other.stream.source).or_default();
         if *off >= other.offset {
             if let Some(o) = other.offset.pred() {
-                *off = o.into();
+                *off = o;
             } else {
                 self.0.remove(&other.stream.source);
             }
@@ -478,7 +553,7 @@ impl SubAssign<&EventKey> for OffsetMap {
         let off = self.0.entry(other.source).or_default();
         if *off >= other.offset {
             if let Some(o) = other.offset.pred() {
-                *off = o.into();
+                *off = o;
             } else {
                 self.0.remove(&other.source);
             }
@@ -610,10 +685,10 @@ mod tests {
     pub fn must_set_op() {
         let left = OffsetMap::from(
             [
-                (source_id!("a"), OffsetOrMin(1)),
-                (source_id!("b"), OffsetOrMin(2)),
-                (source_id!("c"), OffsetOrMin(3)),
-                (source_id!("d"), OffsetOrMin(4)),
+                (source_id!("a"), Offset::mk_test(1)),
+                (source_id!("b"), Offset::mk_test(2)),
+                (source_id!("c"), Offset::mk_test(3)),
+                (source_id!("d"), Offset::mk_test(4)),
             ]
             .iter()
             .copied()
@@ -622,10 +697,10 @@ mod tests {
 
         let right = OffsetMap::from(
             [
-                (source_id!("b"), OffsetOrMin(4)),
-                (source_id!("c"), OffsetOrMin(3)),
-                (source_id!("d"), OffsetOrMin(2)),
-                (source_id!("e"), OffsetOrMin(1)),
+                (source_id!("b"), Offset::mk_test(4)),
+                (source_id!("c"), Offset::mk_test(3)),
+                (source_id!("d"), Offset::mk_test(2)),
+                (source_id!("e"), Offset::mk_test(1)),
             ]
             .iter()
             .copied()
@@ -634,11 +709,11 @@ mod tests {
 
         let union = OffsetMap::from(
             [
-                (source_id!("a"), OffsetOrMin(1)),
-                (source_id!("b"), OffsetOrMin(4)),
-                (source_id!("c"), OffsetOrMin(3)),
-                (source_id!("d"), OffsetOrMin(4)),
-                (source_id!("e"), OffsetOrMin(1)),
+                (source_id!("a"), Offset::mk_test(1)),
+                (source_id!("b"), Offset::mk_test(4)),
+                (source_id!("c"), Offset::mk_test(3)),
+                (source_id!("d"), Offset::mk_test(4)),
+                (source_id!("e"), Offset::mk_test(1)),
             ]
             .iter()
             .copied()
@@ -647,9 +722,9 @@ mod tests {
 
         let intersection = OffsetMap::from(
             [
-                (source_id!("b"), OffsetOrMin(2)),
-                (source_id!("c"), OffsetOrMin(3)),
-                (source_id!("d"), OffsetOrMin(2)),
+                (source_id!("b"), Offset::mk_test(2)),
+                (source_id!("c"), Offset::mk_test(3)),
+                (source_id!("d"), Offset::mk_test(2)),
             ]
             .iter()
             .copied()
