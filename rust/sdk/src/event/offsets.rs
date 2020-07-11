@@ -29,6 +29,12 @@ use std::{
     ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
 };
 
+/// Maximum possible offset
+///
+/// the max Offset needs to fit into an i64 and also needs to be losslessly converted into an f64
+/// due to interop with braindead languages that do not have proper integers.
+///
+/// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
 const MAX_SAFE_INT: i64 = 9_007_199_254_740_991;
 
 /// Event offset within a [`SourceId`](struct.SourceId.html)’s stream or MIN value
@@ -77,7 +83,7 @@ mod i64_from_minus_one {
         impl<'de> Visitor<'de> for X {
             type Value = i64;
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("string 'min' or integer")
+                formatter.write_str("string 'min'/'max' or integer")
             }
             fn visit_str<E: Error>(self, v: &str) -> Result<Self::Value, E> {
                 match v {
@@ -242,7 +248,7 @@ impl Offset {
     /// due to interop with braindead languages that do not have proper integers.
     ///
     /// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
-    pub const MAX: Offset = Offset(9_007_199_254_740_991);
+    pub const MAX: Offset = Offset(MAX_SAFE_INT);
 
     /// This function shall only be used from tests to manufacture events where needed.
     ///
@@ -288,6 +294,7 @@ impl Offset {
         }
     }
 
+    /// Return the predecessor to this offset, possibly [`OffsetOrMin::MIN`](struct.OffsetOrMin.html#const.MIN)
     pub fn pred_or_min(&self) -> OffsetOrMin {
         OffsetOrMin(self.0 - 1)
     }
