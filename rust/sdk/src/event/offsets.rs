@@ -637,9 +637,10 @@ impl Sub<&OffsetMap> for &OffsetMap {
     fn sub(self, other: &OffsetMap) -> u64 {
         let mut ret = 0;
         for (k, a) in &self.0 {
-            let b = &other.0.get(k).copied().unwrap_or_default();
+            let a: OffsetOrMin = (*a).into();
+            let b = other.offset(k);
             if a > b {
-                ret += (a.0 - b.0) as u64;
+                ret += (a - b) as u64;
             }
         }
         ret
