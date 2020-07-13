@@ -88,7 +88,7 @@ jobs:
       BUILD_STRING: $[ dependencies.getBuildString.outputs['setBuildString.BUILD_STRING'] ]
     displayName: Docker
     pool:
-      name: Default
+      name: Native
     timeoutInMinutes: 0
     strategy:
       matrix:
@@ -146,6 +146,22 @@ jobs:
           DOCKER_TAG: 'opscli-x64'
         tamshot-x64:
           DOCKER_TAG: 'tamshot-x64'
+        smcec-armv7hf:
+          DOCKER_TAG: 'smcec-armv7hf'
+        smcec-aarch64:
+          DOCKER_TAG: 'smcec-aarch64'
+        smapp-x64:
+          DOCKER_TAG: 'smapp-x64'
+        smapp-armv7hf:
+          DOCKER_TAG: 'smapp-armv7hf'
+        smapp-aarch64:
+          DOCKER_TAG: 'smapp-aarch64'
+        smvnc-x64:
+          DOCKER_TAG: 'smvnc-x64'
+        smvnc-armv7hf:
+          DOCKER_TAG: 'smvnc-armv7hf'
+        smvnc-aarch64:
+          DOCKER_TAG: 'smvnc-aarch64'
         timescaledb-x64:
           DOCKER_TAG: 'timescaledb-x64'
     steps:

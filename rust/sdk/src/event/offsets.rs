@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 use super::{Event, SourceId};
+use crate::tagged::EventKey;
 use derive_more::{From, Into};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -213,6 +214,15 @@ impl<T> AddAssign<&Event<T>> for OffsetMap {
     }
 }
 
+impl AddAssign<&EventKey> for OffsetMap {
+    fn add_assign(&mut self, other: &EventKey) {
+        let off = self.0.entry(other.source).or_default();
+        if *off < other.offset {
+            *off = other.offset;
+        }
+    }
+}
+
 impl<T> SubAssign<&Event<T>> for OffsetMap {
     /// Ensure that the given event is no longer contained within this OffsetMap.
     fn sub_assign(&mut self, other: &Event<T>) {
@@ -220,6 +230,20 @@ impl<T> SubAssign<&Event<T>> for OffsetMap {
         if *off >= other.offset {
             if other.offset == Offset::ZERO {
                 self.0.remove(&other.stream.source);
+            } else {
+                *off = other.offset.decr();
+            }
+        }
+    }
+}
+
+impl SubAssign<&EventKey> for OffsetMap {
+    /// Ensure that the given event is no longer contained within this OffsetMap.
+    fn sub_assign(&mut self, other: &EventKey) {
+        let off = self.0.entry(other.source).or_default();
+        if *off >= other.offset {
+            if other.offset == Offset::ZERO {
+                self.0.remove(&other.source);
             } else {
                 *off = other.offset.decr();
             }

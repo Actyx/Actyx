@@ -18,13 +18,28 @@
 //! The [`EventService`](struct.EventService.html) client is only available under the `client` feature flag.
 
 use crate::event::{FishName, OffsetMap, Payload, Semantics, SourceId};
+use derive_more::{Display, Error};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 #[cfg(feature = "client")]
-mod client;
+pub(crate) mod client;
 #[cfg(feature = "client")]
-pub use client::{EventService, EventServiceError};
+pub use client::EventService;
+
+/// Error type that is returned in the response body by the Event Service when requests fail
+///
+/// The Event Service does not map client errors or internal errors to HTTP status codes,
+/// instead it gives more structured information using this data type, except when the request
+/// is not understood at all.
+#[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq)]
+#[display(fmt = "error {} while {}: {}", error_code, context, error)]
+#[serde(rename_all = "camelCase")]
+pub struct EventServiceError {
+    pub error: String,
+    pub error_code: u16,
+    pub context: String,
+}
 
 /// The order in which you want to receive events for a query
 ///
@@ -34,7 +49,7 @@ pub use client::{EventService, EventServiceError};
 ///  - in strict forward Lamport order
 ///  - in strict backwards Lamport order (only possible when requesting with an upper bound OffsetMap)
 ///  - ordered in forward order per source (ActyxOS node), but not between sources
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub enum Order {
     /// Events are sorted by ascending Lamport timestamp and source ID, which defines a
@@ -68,7 +83,7 @@ pub enum Order {
 ///  - semantics (i.e. the kind of fish when using the Pond)
 ///  - name (i.e. the particular instance of this kind of fish)
 ///  - source ID (i.e. the originating ActyxOS node)
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 #[serde(from = "SubscriptionOnWire")]
 pub struct Subscription {

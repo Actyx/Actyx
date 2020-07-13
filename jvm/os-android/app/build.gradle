@@ -48,7 +48,7 @@ android {
   buildTypes {
     release {
       signingConfig signingConfigs.release
-      minifyEnabled false
+      minifyEnabled true
       proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
     }
   }
@@ -89,7 +89,7 @@ protobuf {
 def arrow_version = "0.10.4"
 def nav_version = "2.2.2"
 dependencies {
-  coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.0.5'
+  coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.0.9'
   compileOnly files('./libs/com.symbol.emdk.jar')
   implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
   implementation "org.jetbrains.kotlinx:kotlinx-serialization-runtime:0.14.0"
