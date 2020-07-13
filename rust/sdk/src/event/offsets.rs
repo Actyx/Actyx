@@ -225,17 +225,23 @@ impl Bounded for OffsetOrMin {
     Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, Display,
 )]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
-pub struct Offset(#[serde(deserialize_with = "non_negative_i64")] i64);
+pub struct Offset(#[serde(deserialize_with = "offset_i64")] i64);
 
-fn non_negative_i64<'de, D: Deserializer<'de>>(d: D) -> Result<i64, D::Error> {
-    let o = i64::deserialize(d)?;
+fn validate_offset(o: i64) -> Result<Offset, &'static str> {
     if o < 0 {
-        Err(D::Error::custom("negative number"))
+        Err("negative number")
     } else if o > MAX_SAFE_INT {
-        Err(D::Error::custom("number too large"))
+        Err("number too large")
     } else {
-        Ok(o)
+        Ok(Offset(o))
     }
+}
+
+fn offset_i64<'de, D: Deserializer<'de>>(d: D) -> Result<i64, D::Error> {
+    let o = i64::deserialize(d)?;
+    validate_offset(o)
+        .map(|o| o - Offset::ZERO)
+        .map_err(D::Error::custom)
 }
 
 impl Offset {
@@ -256,14 +262,6 @@ impl Offset {
     /// offsets do not support useful arithmetic operations.
     pub fn mk_test(o: u32) -> Self {
         Self(o.into())
-    }
-
-    #[doc(hidden)]
-    pub unsafe fn from_i64(o: i64) -> Self {
-        if o < 0 {
-            panic!("got negative Offset")
-        }
-        Self(o)
     }
 
     /// Fallible conversion from [`OffsetOrMin`](struct.OffsetOrMin.html)
@@ -341,6 +339,74 @@ impl Bounded for Offset {
     }
     fn max_value() -> Self {
         Offset::MAX
+    }
+}
+
+#[cfg(feature = "sqlite")]
+mod sqlite {
+    use super::*;
+    use rusqlite::{
+        types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, ValueRef},
+        ToSql,
+    };
+
+    impl FromSql for Offset {
+        fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+            value
+                .as_i64()
+                .and_then(|o| validate_offset(o).map_err(|_| FromSqlError::OutOfRange(o)))
+        }
+    }
+
+    impl ToSql for Offset {
+        fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+            Ok(ToSqlOutput::from(self.0))
+        }
+    }
+}
+
+#[cfg(feature = "postgresql")]
+mod postgresql {
+    use super::*;
+    use bytes::BytesMut;
+    use postgres_types::{FromSql, IsNull, ToSql, Type};
+
+    impl<'a> FromSql<'a> for Offset {
+        fn from_sql(
+            ty: &Type,
+            raw: &'a [u8],
+        ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+            i64::from_sql(ty, raw).and_then(|o| validate_offset(o).map_err(|e| e.into()))
+        }
+        fn accepts(ty: &Type) -> bool {
+            <i64 as FromSql>::accepts(ty)
+        }
+    }
+
+    impl ToSql for Offset {
+        fn accepts(ty: &Type) -> bool
+        where
+            Self: Sized,
+        {
+            <i64 as ToSql>::accepts(ty)
+        }
+        fn to_sql_checked(
+            &self,
+            ty: &Type,
+            out: &mut BytesMut,
+        ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
+            self.0.to_sql_checked(ty, out)
+        }
+        fn to_sql(
+            &self,
+            ty: &Type,
+            out: &mut BytesMut,
+        ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>>
+        where
+            Self: Sized,
+        {
+            self.0.to_sql(ty, out)
+        }
     }
 }
 

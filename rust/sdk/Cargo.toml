@@ -17,6 +17,8 @@ features = ["client", "dataflow"]
 [features]
 client = ["reqwest", "url", "futures", "bytes"]
 dataflow = ["abomonation", "abomonation_derive"]
+sqlite = ["rusqlite"]
+postgresql = ["postgres-types", "bytes"]
 
 [dependencies]
 abomonation = { version = "~0.7", optional = true }
@@ -28,7 +30,9 @@ chrono = { version = "~0.4" }
 derive_more = "~0.99"
 futures = { version = "~0.3", optional = true }
 num-traits = "0.2"
+postgres-types = { version = "0.1", optional = true }
 reqwest = { version = "~0.10", features = ["json", "gzip", "stream"], optional = true }
+rusqlite = { version = "0.20", optional = true }
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
 serde-transcode = "1.0"
