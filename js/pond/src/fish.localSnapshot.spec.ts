@@ -14,9 +14,8 @@ import {
   offsets,
   snapshotTestSetup,
 } from './fish.testHelper'
-import { TagQuery } from './pond-v2-types'
 
-const fishToTest = mkNumberFish(TagQuery.requireAll('default'), undefined)
+const fishToTest = mkNumberFish(undefined)
 
 describe('fish event store + jar local snapshot behavior', () => {
   it(`should create local snapshot for after seeing that enough time has passed from live event`, async () => {

@@ -12,20 +12,15 @@ import {
   semanticSnap,
   snapshotTestSetup,
 } from './fish.testHelper'
-import { TagQuery } from './pond-v2-types'
 
 /* Fish tests that do not explicitly rely on snapshots.
  * We still test fishes with all possible snapshot config configurations,
  * in order to make sure that basic funcionality is not screwed
  * by specialized snapshot logic. */
 
-const semanticSnapshotsFish = mkNumberFish(TagQuery.requireAll('default'), semanticSnap)
+const semanticSnapshotsFish = mkNumberFish(semanticSnap)
 
-const localSnapshotsFish = mkNumberFish(
-  TagQuery.requireAll('default'),
-  undefined,
-  // localSnap(1),
-)
+const localSnapshotsFish = mkNumberFish()
 
 const forAllFish = forFishes(
   ['with semantic snapshots', semanticSnapshotsFish],

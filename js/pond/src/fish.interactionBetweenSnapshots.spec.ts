@@ -15,10 +15,9 @@ import {
   semanticSnap,
   snapshotTestSetup,
 } from './fish.testHelper'
-import { TagQuery } from './pond-v2-types'
 import { Timestamp } from './types'
 
-const numberFish = mkNumberFish(TagQuery.requireAll('default'), semanticSnap)
+const numberFish = mkNumberFish(semanticSnap)
 
 describe('fish event store + jar with both local and semantic snapshots', () => {
   it(`events below snapshot horizon should not shatter fish state`, async () => {

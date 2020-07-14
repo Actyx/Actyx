@@ -12,9 +12,8 @@ import {
   semanticSnap,
   snapshotTestSetup,
 } from './fish.testHelper'
-import { TagQuery } from './pond-v2-types'
 
-const fish = mkNumberFish(TagQuery.requireAll('default'), semanticSnap)
+const fish = mkNumberFish(semanticSnap)
 
 describe('fish event store + jar semantic snapshot functionality', () => {
   it(`fish should aggegrate events between sources, resetting on semantic snapshots`, async () => {
