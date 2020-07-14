@@ -163,7 +163,7 @@ mod tests {
             key: EventKey {
                 lamport: LamportTimestamp::new(1),
                 source: source_id!("src"),
-                offset: Offset(3),
+                offset: Offset::mk_test(3),
             },
             meta: Metadata {
                 timestamp: TimeStamp::new(2),
@@ -186,7 +186,7 @@ mod tests {
         let s = serde_json::to_string(&resp).unwrap();
         assert_eq!(
             s,
-            r#"{"type":"timeTravel","session":"session","newStart":{"lamport":0,"source":"!","offset":-1}}"#
+            r#"{"type":"timeTravel","session":"session","newStart":{"lamport":0,"source":"!","offset":0}}"#
         );
         let r: SubscribeUntilTimeTravelResponse = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, resp);
