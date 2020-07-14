@@ -27,7 +27,7 @@ import { FishEventStore, FishInfo } from './fishEventStore'
 import log from './loggers'
 import { SendToStore } from './pond'
 import { PondStateTracker } from './pond-state'
-import { FishId, Metadata } from './pond-v2-types'
+import { FishId, IsReset, Metadata } from './pond-v2-types'
 import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
 import { Subscription, SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
@@ -604,7 +604,7 @@ const hydrateV2 = (
   onEvent: (state: S, event: E, metadata: Metadata) => S,
   cacheKey: FishId,
   enableLocalSnapshots: boolean,
-  isReset?: (event: E, metadata: Metadata) => boolean,
+  isReset?: IsReset<E>,
 ): Observable<StateWithProvenance<S>> => {
   const snapshotScheduler = SnapshotScheduler.create(10)
   const semantics = cacheKey.entityType

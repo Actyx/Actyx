@@ -24,7 +24,7 @@ const numberOfIterations = 5
 const semanticSnapshotProbability = 0.1
 const localSnapshotProbability = 0.05
 
-type SemanticSnapshot<E> = (env: EnvelopeFromStore<E>) => boolean
+type SemanticSnapshot = (ev: Event) => boolean
 
 type Payload = Readonly<{
   sequence: number
@@ -63,9 +63,7 @@ const generateEvents = (count: number) => (sourceId: SourceId): Events =>
     },
   }))
 
-const mkFish = (
-  isSemanticSnapshot: SemanticSnapshot<Payload> | undefined,
-): FishInfo<State, Payload> => ({
+const mkFish = (isSemanticSnapshot: SemanticSnapshot | undefined): FishInfo<State> => ({
   semantics: Semantics.of('some-fish'),
   fishName: FishName.of('some-name'),
   subscriptionSet: SubscriptionSet.all,
@@ -111,7 +109,7 @@ const neverSnapshotScheduler: SnapshotScheduler = {
 }
 
 type Run = <S>(
-  fish: FishInfo<S, Payload>,
+  fish: FishInfo<S>,
 ) => (
   sourceId: SourceId,
   events: ReadonlyArray<Events>,
@@ -198,7 +196,7 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
 const fishConfigs = {
   undefined: mkFish(undefined),
   never: mkFish(() => false),
-  random: mkFish(({ payload: { isSemanticSnapshot } }) => isSemanticSnapshot),
+  random: mkFish((ev: Event) => (ev.payload as Payload).isSemanticSnapshot),
 }
 const runConfigs = { hydrate, live: live(false), liveIntermediateStates: live(true) }
 const snapshotConfigs = {

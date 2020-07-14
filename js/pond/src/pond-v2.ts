@@ -24,6 +24,7 @@ import {
   Emit,
   Fish,
   FishId,
+  IsReset,
   Metadata,
   PendingEmission,
   Reduce,
@@ -175,7 +176,7 @@ export class Pond2Impl implements Pond2 {
     onEvent: (state: S, event: E, metadata: Metadata) => S,
     fishId: FishId,
     enableLocalSnapshots: boolean,
-    isReset?: (event: E) => boolean,
+    isReset?: IsReset<E>,
   ) => Observable<StateWithProvenance<S>>
 
   activeFishes: {
@@ -259,7 +260,7 @@ export class Pond2Impl implements Pond2 {
     initialState: S,
     onEvent: Reduce<S, E>,
     fishId: FishId,
-    isReset?: (event: E) => boolean,
+    isReset?: IsReset<E>,
   ): ActiveFish<S> => {
     const key = FishId.canonical(fishId)
     const existing = this.activeFishes[key]
