@@ -40,10 +40,13 @@ all: clean ${DOCKER_BUILD}
 clean:
 	rm -rf $(build_dir)
 
-docker-login-dockerhub:
-	docker login -u $(DOCKERHUB_USER) -p $(DOCKERHUB_PASS)
+define docker-login-dockerhub =
+	# Only login if we're not already logged in. The only way to check this is by pulling an image, we use `ipfs-x64-latest`
+	# since it's our smallest private image.
+    docker pull actyx/cosmos:ipfs-x64-latest || docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PASS}
+endef
 
-docker-login: docker-login-dockerhub
+docker-login: ; $(value docker-login-dockerhub)
 
 DOCKER_REPO ?= actyx/cosmos
 getImageNameDockerhub = $(DOCKER_REPO):$(1)-$(2)-$(3)
