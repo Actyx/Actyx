@@ -92,7 +92,7 @@ export const eventFactory = () => {
 
 export const mkNumberFish = (
   semanticSnapshot?: (ev: NumberFishEvent) => boolean,
-  where: TagQuery = TagQuery.requireAll('default')
+  where: TagQuery = TagQuery.requireAll('default'),
 ): Fish<NumberFishState, NumberFishEvent> => ({
   subscriptions: where,
   initialState: [],
