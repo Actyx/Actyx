@@ -8,24 +8,16 @@ import { Events } from './eventstore/types'
 import {
   emitter,
   forFishes,
-  localSnap,
   mkNumberFish,
   mkTimeline,
   semanticSnap,
   snapshotTestSetup,
 } from './fish.testHelper'
-import { Subscription } from './subscription'
+import { TagQuery } from './pond-v2-types'
 
-const semanticSnapshotsFish = mkNumberFish(
-  (semantics, name) => [Subscription.of(semantics, name)],
-  semanticSnap,
-)
+const semanticSnapshotsFish = mkNumberFish(TagQuery.requireAll('default'), semanticSnap)
 
-const allSnapshotsFish = mkNumberFish(
-  (semantics, name) => [Subscription.of(semantics, name)],
-  semanticSnap,
-  localSnap(1),
-)
+const allSnapshotsFish = mkNumberFish(TagQuery.requireAll('default'), semanticSnap)
 
 const forBoth = forFishes(
   ['with only semantic snapshots', semanticSnapshotsFish],

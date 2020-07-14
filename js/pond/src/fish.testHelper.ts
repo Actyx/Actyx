@@ -8,35 +8,29 @@ import { last } from 'ramda'
 import { Observable } from 'rxjs'
 import { EventStore } from './eventstore'
 import { Event, Events, OffsetMap } from './eventstore/types'
-import { CommandExecutor } from './executors/commandExecutor'
-import { hydrate } from './fishJar'
-import { defaultTimeInjector, makeEventChunk, SendToStore } from './pond'
+import { FishJar } from './fishJar'
 import { mkNoopPondStateTracker } from './pond-state'
+import { Fish, FishId, TagQuery } from './pond-v2-types'
 import { SnapshotStore } from './snapshotStore'
 import { minSnapshotAge } from './store/snapshotScheduler'
-import { Subscription } from './subscription'
 import {
   EventKey,
   FishName,
-  FishType,
-  FishTypeImpl,
   Lamport,
-  OnStateChange,
   Psn,
   Semantics,
-  SemanticSnapshot,
   SnapshotFormat,
   SourceId,
   Timestamp,
 } from './types'
 
 type NumberFishEvent = number | 'padding'
+type NumberFishState = number[]
 
 export type RawEvent = Readonly<{
   payload: NumberFishEvent
   timestamp: number
   source: string
-  fishName?: string
   tags?: string[]
 }>
 
@@ -48,6 +42,8 @@ export type LastPublished = Readonly<{
 
 export const testFishSemantics = Semantics.of('test-semantics')
 export const testFishName = FishName.of('test-fishname')
+
+export const testFishId = FishId.of(testFishSemantics, testFishName, 1)
 
 export type EventFactory = {
   mkEvent: (raw: RawEvent) => Event
@@ -73,8 +69,8 @@ export const eventFactory = () => {
       psn: Psn.of(offset),
       payload: raw.payload,
       semantics: testFishSemantics,
-      name: raw.fishName ? FishName.of(raw.fishName) : testFishName,
-      tags: raw.tags || [],
+      name: testFishName,
+      tags: (raw.tags || []).concat(['default']),
     }
 
     lastPublishedForSources[raw.source] = {
@@ -95,33 +91,27 @@ export const eventFactory = () => {
 }
 
 export const mkNumberFish = (
-  subscriptions: (semantics: Semantics, name: FishName) => ReadonlyArray<Subscription>,
-  semanticSnapshot?: SemanticSnapshot<NumberFishEvent> | undefined,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  localSnapshot?: SnapshotFormat<ReadonlyArray<number>, any> | undefined,
-) =>
-  FishType.of<ReadonlyArray<number>, NumberFishEvent, NumberFishEvent, ReadonlyArray<number>>({
-    semantics: testFishSemantics,
-    initialState: () => ({
-      state: [],
-      subscriptions: subscriptions(testFishSemantics, testFishName),
-    }),
-    onEvent: (state, ev) => {
-      if (ev.payload === 'padding') {
-        return state
-      }
+  where: TagQuery,
+  semanticSnapshot?: (ev: NumberFishEvent) => boolean,
+): Fish<NumberFishState, NumberFishEvent> => ({
+  subscriptions: where,
+  initialState: [],
+  fishId: testFishId,
+  onEvent: (state, payload) => {
+    if (payload === 'padding') {
+      return state
+    }
 
-      // The fish should enforce consistency between the predicate and actual fish behaviour.
-      // This is what it means for something to be semantic snapshot. If the fish does not return to some initial state
-      // for the event that is matched by the semanticSnapshot predicate, the behaviour of the FES is not guaranteed to be correct.
+    // The fish should enforce consistency between the predicate and actual fish behaviour.
+    // This is what it means for something to be semantic snapshot. If the fish does not return to some initial state
+    // for the event that is matched by the semanticSnapshot predicate, the behaviour of the FES is not guaranteed to be correct.
 
-      // However, for test purposes (unlike ipfsStore.replay.spec), we have created an evil fish, that does not enforce consistency.
-      return [...state, ev.payload]
-    },
-    onStateChange: OnStateChange.publishPrivateState(),
-    semanticSnapshot,
-    localSnapshot,
-  })
+    // However, for test purposes (unlike ipfsStore.replay.spec), we have created an evil fish, that does not enforce consistency.
+    state.push(payload)
+    return state
+  },
+  isReset: semanticSnapshot,
+})
 
 export type SnapshotData = Readonly<{
   semantics: Semantics
@@ -136,7 +126,7 @@ export type SnapshotData = Readonly<{
 }>
 
 export const mkSnapshot = (
-  state: number[],
+  state: NumberFishState,
   time: number,
   horizon?: number,
   psnMap?: Record<string, Psn>,
@@ -160,14 +150,10 @@ export const mkSnapshot = (
 }
 
 export const snapshotTestSetup = async (
-  fish: FishTypeImpl<
-    ReadonlyArray<number>,
-    NumberFishEvent,
-    NumberFishEvent,
-    ReadonlyArray<number>
-  >,
+  fish: Fish<NumberFishState, NumberFishEvent>,
   storedEvents?: Events,
   storedSnapshots?: ReadonlyArray<SnapshotData>,
+  enableLocalSnapshots = true,
 ) => {
   const sourceId = SourceId.of('LOCAL-test-source')
   const eventStore = EventStore.test(sourceId)
@@ -192,23 +178,22 @@ export const snapshotTestSetup = async (
     .concat(Observable.of(undefined))
     .toPromise()
 
-  const sendToStore: SendToStore = (semantics, name, _tags, events) => {
-    const chunk = makeEventChunk(defaultTimeInjector, { semantics, name, sourceId }, events)
-    return eventStore.persistEvents(chunk)
-  }
+  const hydrate = FishJar.hydrateV2(eventStore, snapshotStore, mkNoopPondStateTracker())
 
-  const jar = await hydrate(
-    fish,
-    testFishName,
-    eventStore,
-    snapshotStore,
-    sendToStore,
-    () => Observable.never(),
-    CommandExecutor({}),
-    mkNoopPondStateTracker(),
-  ).toPromise()
+  const observe = hydrate(
+    {
+      type: 'tags',
+      subscriptions: TagQuery.toWireFormat(fish.subscriptions),
+    },
+    fish.initialState,
+    fish.onEvent,
+    fish.fishId,
+    enableLocalSnapshots,
+    fish.isReset,
+  )
+    .map(x => x.state)
+    .shareReplay(1)
 
-  const observe = jar.publicSubject
   const pubEvents = eventStore.directlyPushEvents
 
   const applyAndGetState = async (events: Events, numExpectedStates = 1) => {
@@ -225,8 +210,11 @@ export const snapshotTestSetup = async (
 
   const latestSnap = async () =>
     snapshotStore
-      .retrieveSnapshot(fish.semantics, testFishName, 1)
+      .retrieveSnapshot('test-semantics', 'test-fishname', 1)
       .then(x => (x ? { ...x, state: JSON.parse(x.state) } : undefined))
+
+  // Await full hydration before tests run
+  await observe.take(1).toPromise()
 
   return {
     latestSnap,
@@ -234,30 +222,17 @@ export const snapshotTestSetup = async (
     applyAndGetState,
     observe,
     pubEvents,
-    enqueueCommand: jar.enqueueCommand,
-    dump: jar.dump,
   }
 }
 
-export const semanticSnap: SemanticSnapshot<NumberFishEvent> = () => env => env.payload === -1
+export const semanticSnap: ((ev: NumberFishEvent) => boolean) = payload => payload === -1
 
-export const localSnap = (
-  version: number,
-): SnapshotFormat<ReadonlyArray<number>, ReadonlyArray<number>> => SnapshotFormat.identity(version)
+export const localSnap = (version: number): SnapshotFormat<NumberFishState, NumberFishState> =>
+  SnapshotFormat.identity(version)
 
-export type FishTestFn = (
-  fish: FishTypeImpl<
-    ReadonlyArray<number>,
-    NumberFishEvent,
-    NumberFishEvent,
-    ReadonlyArray<number>
-  >,
-) => Promise<void>
+export type FishTestFn = (fish: Fish<NumberFishState, NumberFishEvent>) => Promise<void>
 
-export type TestFish = [
-  string,
-  FishTypeImpl<ReadonlyArray<number>, NumberFishEvent, NumberFishEvent, ReadonlyArray<number>>
-]
+export type TestFish = [string, Fish<NumberFishState, NumberFishEvent>]
 
 export const forFishes = (...fishesToTest: TestFish[]) => (what: string, fishTest: FishTestFn) => {
   for (const testFish of fishesToTest) {

@@ -8,7 +8,6 @@ import { Events } from './eventstore/types'
 import {
   emitter,
   eventFactory,
-  localSnap,
   mkNumberFish,
   mkSnapshot,
   mkTimeline,
@@ -16,14 +15,10 @@ import {
   semanticSnap,
   snapshotTestSetup,
 } from './fish.testHelper'
-import { Subscription } from './subscription'
+import { TagQuery } from './pond-v2-types'
 import { Timestamp } from './types'
 
-const numberFish = mkNumberFish(
-  (semantics, name) => [Subscription.of(semantics, name)],
-  semanticSnap,
-  localSnap(1),
-)
+const numberFish = mkNumberFish(TagQuery.requireAll('default'), semanticSnap)
 
 describe('fish event store + jar with both local and semantic snapshots', () => {
   it(`events below snapshot horizon should not shatter fish state`, async () => {

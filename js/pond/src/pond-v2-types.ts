@@ -110,7 +110,7 @@ export type Fish<S, E> = {
   fishId: FishId
 
   // semantic snapshot
-  isReset?: (event: E) => boolean
+  isReset?: (event: E, metadata: Metadata) => boolean
 
   // let’s say we require users to implement .toJSON() on their state for serialisation --
   // then we only need the reverse function. Still a topic of debate: https://github.com/Actyx/Cosmos/issues/2928

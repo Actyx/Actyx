@@ -8,35 +8,31 @@ import { Events } from './eventstore/types'
 import {
   eventFactory,
   forFishes,
-  localSnap,
   mkNumberFish,
   semanticSnap,
   snapshotTestSetup,
 } from './fish.testHelper'
-import { Subscription } from './subscription'
+import { TagQuery } from './pond-v2-types'
 
 /* Fish tests that do not explicitly rely on snapshots.
  * We still test fishes with all possible snapshot config configurations,
  * in order to make sure that basic funcionality is not screwed
  * by specialized snapshot logic. */
 
-const noSnapshotsFish = mkNumberFish((semantics, name) => [Subscription.of(semantics, name)])
+const noSnapshotsFish = mkNumberFish(TagQuery.requireAll('default'))
 
-const semanticSnapshotsFish = mkNumberFish(
-  (semantics, name) => [Subscription.of(semantics, name)],
-  semanticSnap,
-)
+const semanticSnapshotsFish = mkNumberFish(TagQuery.requireAll('default'), semanticSnap)
 
 const localSnapshotsFish = mkNumberFish(
-  (semantics, name) => [Subscription.of(semantics, name)],
+  TagQuery.requireAll('default'),
   undefined,
-  localSnap(1),
+  // localSnap(1),
 )
 
 const allSnapshotsFish = mkNumberFish(
-  (semantics, name) => [Subscription.of(semantics, name)],
+  TagQuery.requireAll('default'),
   semanticSnap,
-  localSnap(1),
+  // localSnap(1),
 )
 
 const forAllFish = forFishes(
