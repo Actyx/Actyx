@@ -7,7 +7,6 @@
 import { Events } from './eventstore/types'
 import {
   emitter,
-  forFishes,
   mkNumberFish,
   mkTimeline,
   semanticSnap,
@@ -15,32 +14,22 @@ import {
 } from './fish.testHelper'
 import { TagQuery } from './pond-v2-types'
 
-const semanticSnapshotsFish = mkNumberFish(TagQuery.requireAll('default'), semanticSnap)
-
-const allSnapshotsFish = mkNumberFish(TagQuery.requireAll('default'), semanticSnap)
-
-const forBoth = forFishes(
-  ['with only semantic snapshots', semanticSnapshotsFish],
-  ['with all types of snapshots', allSnapshotsFish],
-)
+const fish = mkNumberFish(TagQuery.requireAll('default'), semanticSnap)
 
 describe('fish event store + jar semantic snapshot functionality', () => {
-  forBoth(
-    `fish should aggegrate events between sources, resetting on semantic snapshots`,
-    async fish => {
-      const { applyAndGetState } = await snapshotTestSetup(fish)
+  it(`fish should aggegrate events between sources, resetting on semantic snapshots`, async () => {
+    const { applyAndGetState } = await snapshotTestSetup(fish)
 
-      const srcA = emitter('A')
-      const srcB = emitter('B')
-      const srcC = emitter('C')
-      const tl = mkTimeline(srcA(3), srcA(7), srcB(-1), srcC(8))
+    const srcA = emitter('A')
+    const srcB = emitter('B')
+    const srcC = emitter('C')
+    const tl = mkTimeline(srcA(3), srcA(7), srcB(-1), srcC(8))
 
-      expect(await applyAndGetState(tl.of('A'))).toEqual([3, 7])
-      expect(await applyAndGetState(tl.of('B', 'C'))).toEqual([-1, 8])
-    },
-  )
+    expect(await applyAndGetState(tl.of('A'))).toEqual([3, 7])
+    expect(await applyAndGetState(tl.of('B', 'C'))).toEqual([-1, 8])
+  })
 
-  forBoth(`fish should reset on semantic snapshot inside chunk`, async fish => {
+  it(`fish should reset on semantic snapshot inside chunk`, async () => {
     const { applyAndGetState } = await snapshotTestSetup(fish)
 
     const srcA = emitter('A')
@@ -65,7 +54,7 @@ describe('fish event store + jar semantic snapshot functionality', () => {
       srcA(11),
     )
 
-    forBoth(`should reset with every new latest semantic snapshot`, async fish => {
+    it(`should reset with every new latest semantic snapshot`, async () => {
       const { applyAndGetState } = await snapshotTestSetup(fish)
 
       expect(await applyAndGetState(tl.of('A'))).toEqual([3, 4, 7, 11])
@@ -73,7 +62,7 @@ describe('fish event store + jar semantic snapshot functionality', () => {
       expect(await applyAndGetState(tl.of('C'))).toEqual([-1, 9, 10, 11])
     })
 
-    forBoth(`should ignore semantic snapshots older than current latest`, async fish => {
+    it(`should ignore semantic snapshots older than current latest`, async () => {
       const { applyAndGetState } = await snapshotTestSetup(fish)
 
       expect(await applyAndGetState(tl.of('A'))).toEqual([3, 4, 7, 11])
@@ -81,7 +70,7 @@ describe('fish event store + jar semantic snapshot functionality', () => {
       expect(await applyAndGetState(tl.of('B'))).toEqual([-1, 9, 10, 11])
     })
 
-    forBoth(`should late comer source nicely`, async fish => {
+    it(`should late comer source nicely`, async () => {
       const { applyAndGetState } = await snapshotTestSetup(fish)
 
       expect(await applyAndGetState(tl.of('B', 'C'))).toEqual([-1, 9, 10])

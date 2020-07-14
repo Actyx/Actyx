@@ -19,8 +19,6 @@ import { TagQuery } from './pond-v2-types'
  * in order to make sure that basic funcionality is not screwed
  * by specialized snapshot logic. */
 
-const noSnapshotsFish = mkNumberFish(TagQuery.requireAll('default'))
-
 const semanticSnapshotsFish = mkNumberFish(TagQuery.requireAll('default'), semanticSnap)
 
 const localSnapshotsFish = mkNumberFish(
@@ -29,17 +27,9 @@ const localSnapshotsFish = mkNumberFish(
   // localSnap(1),
 )
 
-const allSnapshotsFish = mkNumberFish(
-  TagQuery.requireAll('default'),
-  semanticSnap,
-  // localSnap(1),
-)
-
 const forAllFish = forFishes(
-  ['without snapshots', noSnapshotsFish],
-  ['with only semantic snapshots', semanticSnapshotsFish],
+  ['with semantic snapshots', semanticSnapshotsFish],
   ['with only local snapshots', localSnapshotsFish],
-  ['with all types of snapshots', allSnapshotsFish],
 )
 
 describe('fish event store + jar snapshot agnostic behaviour', () => {

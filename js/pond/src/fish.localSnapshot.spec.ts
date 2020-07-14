@@ -8,74 +8,54 @@ import { Events } from './eventstore/types'
 import {
   emitter,
   eventFactory,
-  forFishes,
   mkNumberFish,
   mkSnapshot,
   mkTimeline,
   offsets,
-  semanticSnap,
   snapshotTestSetup,
 } from './fish.testHelper'
 import { TagQuery } from './pond-v2-types'
 
-const localSnapshotsFish = mkNumberFish(
-  TagQuery.requireAll('default'),
-  undefined,
-  // localSnap(1),
-)
-
-const allSnapshotsFish = mkNumberFish(
-  TagQuery.requireAll('default'),
-  semanticSnap,
-  // localSnap(1),
-)
-
-const forBoth = forFishes(
-  ['with only local snapshots', localSnapshotsFish],
-  ['with all types of snapshots', allSnapshotsFish],
-)
+const fishToTest = mkNumberFish(TagQuery.requireAll('default'), undefined)
 
 describe('fish event store + jar local snapshot behavior', () => {
-  forBoth(
-    `should create local snapshot for after seeing that enough time has passed from live event`,
-    async fishToTest => {
-      const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
+  it(`should create local snapshot for after seeing that enough time has passed from live event`, async () => {
+    const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
 
-      const srcV = emitter('V')
-      const srcR = emitter('R')
-      const srcQ = emitter('Q')
+    const srcV = emitter('V')
+    const srcR = emitter('R')
+    const srcQ = emitter('Q')
 
-      const tl = mkTimeline(
-        srcR(5),
-        srcR(6),
-        srcR.triggerLocalSnapshot(),
-        srcV(4),
-        srcR(7),
-        srcQ(8),
-        srcR(9),
-        srcR.ageSnapshotsOverMinAge(),
-      )
+    const tl = mkTimeline(
+      srcR(5),
+      srcR(6),
+      srcR.triggerLocalSnapshot(),
+      srcV(4),
+      srcR(7),
+      srcQ(8),
+      srcR(9),
+      srcR.ageSnapshotsOverMinAge(),
+    )
 
-      const rqTime = tl.of('R', 'Q')
-      const cutoff = rqTime.findIndex(e => e.payload === 8) + 1
+    const rqTime = tl.of('R', 'Q')
+    const cutoff = rqTime.findIndex(e => e.payload === 8) + 1
 
-      const oldEvents = tl.of('R', 'Q').slice(0, cutoff)
-      expect(await applyAndGetState(oldEvents)).toEqual([5, 6, 7, 8])
-      expect(await latestSnap()).toBeUndefined()
+    const oldEvents = tl.of('R', 'Q').slice(0, cutoff)
+    expect(await applyAndGetState(oldEvents)).toEqual([5, 6, 7, 8])
+    expect(await latestSnap()).toBeUndefined()
 
-      const newEvents = tl.of('R', 'Q').slice(cutoff)
-      expect(await applyAndGetState(newEvents)).toEqual([5, 6, 7, 8, 9])
+    const newEvents = tl.of('R', 'Q').slice(cutoff)
+    expect(await applyAndGetState(newEvents)).toEqual([5, 6, 7, 8, 9])
 
-      expect(await applyAndGetState(tl.of('V'))).toEqual([5, 6, 4, 7, 8, 9])
+    expect(await applyAndGetState(tl.of('V'))).toEqual([5, 6, 4, 7, 8, 9])
 
-      expect(await latestSnap()).toMatchObject({
-        eventKey: { lamport: 10220300 },
-        state: [5, 6],
-      })
-    },
-  )
+    expect(await latestSnap()).toMatchObject({
+      eventKey: { lamport: 10220300 },
+      state: [5, 6],
+    })
+  })
 
-  forBoth(`should create local snapshot wholly from live events`, async fishToTest => {
+  it(`should create local snapshot wholly from live events`, async () => {
     const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
 
     const srcR = emitter('R')
@@ -96,7 +76,7 @@ describe('fish event store + jar local snapshot behavior', () => {
     })
   })
 
-  forBoth(`should create local snapshot during hydration`, async fishToTest => {
+  it(`should create local snapshot during hydration`, async () => {
     const srcR = emitter('R')
 
     const timeline = mkTimeline(
@@ -144,14 +124,14 @@ describe('fish event store + jar local snapshot behavior', () => {
       state: [5, 6, 7, 8],
     }
 
-    forBoth(`when ingesting all sources at once`, async fishToTest => {
+    it(`when ingesting all sources at once`, async () => {
       const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
 
       expect(await applyAndGetState(timeline.all)).toEqual([5, 6, 7, 8, 9, 10])
       expect(await latestSnap()).toMatchObject(expectedSnap)
     })
 
-    forBoth(`when seeing R first`, async fishToTest => {
+    it(`when seeing R first`, async () => {
       const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
 
       expect(await applyAndGetState(timeline.of('R'))).toEqual([5, 7, 8])
@@ -159,7 +139,7 @@ describe('fish event store + jar local snapshot behavior', () => {
       expect(await latestSnap()).toMatchObject(expectedSnap)
     })
 
-    forBoth(`when seeing Q first`, async fishToTest => {
+    it(`when seeing Q first`, async () => {
       const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
 
       expect(await applyAndGetState(timeline.of('Q'))).toEqual([6, 9, 10])
@@ -168,7 +148,7 @@ describe('fish event store + jar local snapshot behavior', () => {
     })
   })
 
-  forBoth(`should hydrate from local snapshot`, async fishToTest => {
+  it(`should hydrate from local snapshot`, async () => {
     const { mkEvents } = eventFactory()
     const storedEvents: Events = [
       // We intentionally leave out the events that would have formed the snapshot,
@@ -189,7 +169,7 @@ describe('fish event store + jar local snapshot behavior', () => {
     expect(await applyAndGetState(currentEvents)).toEqual([8, 9, 10, 20])
   })
 
-  forBoth(`should shatter local snapshot if it receives earlier live events`, async fishToTest => {
+  it(`should shatter local snapshot if it receives earlier live events`, async () => {
     const srcA = emitter('A')
     const srcB = emitter('B')
 
@@ -214,39 +194,36 @@ describe('fish event store + jar local snapshot behavior', () => {
     expect(await latestSnap()).toEqual(undefined)
   })
 
-  forBoth(
-    `fish should shatter local snapshot if it receives earlier stored events`,
-    async fishToTest => {
-      const a = emitter('a')
-      const b = emitter('b')
-      const c = emitter('c')
-      // We will omit d from the snapshot, ie. it is a yet unknown source.
-      const d = emitter('d')
+  it(`fish should shatter local snapshot if it receives earlier stored events`, async () => {
+    const a = emitter('a')
+    const b = emitter('b')
+    const c = emitter('c')
+    // We will omit d from the snapshot, ie. it is a yet unknown source.
+    const d = emitter('d')
 
-      const tl = mkTimeline(a(1), a(2), d(3), b(4), c(5), a(6), c(7))
+    const tl = mkTimeline(a(1), a(2), d(3), b(4), c(5), a(6), c(7))
 
-      const knownEvents = [tl.of('a'), tl.of('b'), tl.of('c')]
-      const snapshotOffsets = offsets(...knownEvents)
-      // const storedEvents = flatten(knownEvents)
+    const knownEvents = [tl.of('a'), tl.of('b'), tl.of('c')]
+    const snapshotOffsets = offsets(...knownEvents)
+    // const storedEvents = flatten(knownEvents)
 
-      const storedSnaps = [mkSnapshot([1, 2, 4, 5, 6, 7], 200000, undefined, snapshotOffsets)]
+    const storedSnaps = [mkSnapshot([1, 2, 4, 5, 6, 7], 200000, undefined, snapshotOffsets)]
 
-      const { applyAndGetState, latestSnap } = await snapshotTestSetup(
-        fishToTest,
-        tl.all,
-        storedSnaps,
-      )
-      // Assert the snapshot has already been invalidated in the initial hydration.
-      expect(await latestSnap()).toEqual(undefined)
+    const { applyAndGetState, latestSnap } = await snapshotTestSetup(
+      fishToTest,
+      tl.all,
+      storedSnaps,
+    )
+    // Assert the snapshot has already been invalidated in the initial hydration.
+    expect(await latestSnap()).toEqual(undefined)
 
-      // Some later event, just because we need to feed something in order for observe to emit.
-      const liveEvent = eventFactory().mkEvent({
-        payload: 3000,
-        timestamp: Number.MAX_SAFE_INTEGER,
-        source: 'foo',
-      })
-      // Assert shatter and timetravel.
-      expect(await applyAndGetState([liveEvent])).toEqual([1, 2, 3, 4, 5, 6, 7, 3000])
-    },
-  )
+    // Some later event, just because we need to feed something in order for observe to emit.
+    const liveEvent = eventFactory().mkEvent({
+      payload: 3000,
+      timestamp: Number.MAX_SAFE_INTEGER,
+      source: 'foo',
+    })
+    // Assert shatter and timetravel.
+    expect(await applyAndGetState([liveEvent])).toEqual([1, 2, 3, 4, 5, 6, 7, 3000])
+  })
 })

@@ -19,6 +19,7 @@ import {
   StateEffect,
 } from './types'
 export { Generator } from 'testcheck'
+import { Fish, FishId, Reduce, TagQuery } from './pond-v2-types'
 
 export type State = { type: 'initial' } | { type: 'disabled' } | { type: 'enabled'; ping: number }
 
@@ -68,8 +69,8 @@ function mkReset(): Observable<StateEffect<Command, State>> {
   return Observable.of<Command>({ type: 'reset' }, { type: 'enable' }).map(StateEffect.sendSelf)
 }
 
-const onEvent: OnEvent<State, Event> = (state: State, event: Envelope<Event>) => {
-  switch (event.payload.type) {
+const onEvent: Reduce<State, Event> = (state: State, payload: Event) => {
+  switch (payload.type) {
     case 'enabled':
       return { type: 'enabled', ping: 0 }
     case 'disabled':
@@ -79,7 +80,7 @@ const onEvent: OnEvent<State, Event> = (state: State, event: Envelope<Event>) =>
     case 'reset':
       return { type: 'initial' }
     default:
-      return unreachableOrElse(event.payload, state)
+      return unreachableOrElse(payload, state)
   }
 }
 
@@ -145,4 +146,14 @@ export const brokenTimerFishType: FishType<Command, Event, State> = FishType.of<
     throw new Error('I am broken!')
   },
   onStateChange,
+})
+
+export const timerFish = (): Fish<State, Event> => ({
+  fishId: FishId.of('timerFish', 'singleton', 0),
+
+  onEvent,
+
+  initialState: { type: 'initial' },
+
+  subscriptions: TagQuery.requireAll('timer'),
 })
