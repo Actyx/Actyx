@@ -1,5 +1,5 @@
 import { TagSubscription } from '../subscription'
-import { TypedTagQuery } from './typed'
+import { Where } from './typed'
 import { TagIntersection, TagQuery, TagUnion } from './untyped'
 
 const unionToWire = (sub: TagUnion) =>
@@ -18,7 +18,7 @@ const intersectionToWire = (sub: TagIntersection) => [
 ]
 
 export const toWireFormat = (
-  sub: TagQuery | TypedTagQuery<unknown>,
+  sub: TagQuery | Where<unknown>,
 ): ReadonlyArray<TagSubscription> => {
   switch (sub.type) {
     case 'typed-intersection':

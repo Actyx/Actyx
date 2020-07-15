@@ -1,5 +1,5 @@
 import { Fish, FishId } from '../pond-v2-types'
-import { Tag, TypedTagQuery } from './typed'
+import { Tag, Where } from './typed'
 
 type T0 = {
   type: '0'
@@ -42,7 +42,7 @@ describe('typed tag query system', () => {
   it('should prevent omission of event types covered by the tags', () => {
     // Errors because we cannot omit 'A'
     // @ts-expect-error
-    const q1: TypedTagQuery<'hello??'> = q
+    const q1: Where<'hello??'> = q
 
     // We use q1 so we don’t always get a TS error for unused variable.
     expect(q1.raw()).toMatchObject({
@@ -53,7 +53,7 @@ describe('typed tag query system', () => {
 
   it('should insist on types?', () => {
     // @ts-expect-error
-    const q2: TypedTagQuery<'A' | 'more-types'> = q
+    const q2: Where<'A' | 'more-types'> = q
 
     // Must use q2 to avoid TS error...
     expect(q2).toBeTruthy()
@@ -65,7 +65,7 @@ describe('typed tag query system', () => {
 
     // Errors because we cannot omit 'A'
     // @ts-expect-error
-    const w2: TypedTagQuery<never> = w
+    const w2: Where<never> = w
 
     expect(w2.raw()).toMatchObject({
       type: 'intersection',
@@ -103,7 +103,7 @@ describe('typed tag query system', () => {
 
     // Also covers 'C' now
     // @ts-expect-error
-    const u2: TypedTagQuery<'A' | 'B'> = u
+    const u2: Where<'A' | 'B'> = u
 
     expect(u.raw()).toMatchObject({
       type: 'union',

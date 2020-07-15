@@ -44,7 +44,7 @@ export const Tag = <E>(rawTag: string): Tag<E> => ({
   ...req(false, [rawTag]),
 })
 
-export type TypedTagQuery<E> = TypedTagUnion<E> | TypedTagIntersection<E>
+export type Where<E> = TypedTagUnion<E> | TypedTagIntersection<E>
 
 const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): TypedTagIntersection<E> => {
   const r: TypedTagIntersection<E> = {

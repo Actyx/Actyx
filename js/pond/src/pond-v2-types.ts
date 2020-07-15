@@ -5,7 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { TagQuery, TypedTagIntersection, TypedTagQuery } from './tagging'
+import { TagQuery, TypedTagIntersection, Where } from './tagging'
 import { Lamport, Timestamp } from './types'
 
 /* 
@@ -53,7 +53,7 @@ export type Fish<S, E> = {
   // Will extend this field with further options in the future:
   // - <E>-Typed subscription
   // - Plain query string
-  where: TagQuery | TypedTagQuery<E>
+  where: TagQuery | Where<E>
 
   initialState: S
   onEvent: Reduce<S, E>
