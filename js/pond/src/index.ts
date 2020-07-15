@@ -47,9 +47,6 @@ export {
   isNode,
 } from './util'
 export { Subscription, SubscriptionSet } from './subscription'
-export { CommandApi } from './commandApi'
-export { CommandApi as CommandAsync } from './commandApi'
-export { Pond } from './pond'
 export { default as mkWebSocket } from './connectors/websocket'
 export { enableWsFeeder } from './connectors'
 export { ConnectivityStatus } from './eventstore/types'
