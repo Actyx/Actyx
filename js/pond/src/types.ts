@@ -4,15 +4,12 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Either, right } from 'fp-ts/lib/Either'
+import { right } from 'fp-ts/lib/Either'
 import { contramap, Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
-import { Observable } from 'rxjs'
-import { CommandApi } from './commandApi'
 import { Event, OffsetMap } from './eventstore/types'
 import { EnvelopeFromStore } from './store/util'
-import { Subscription } from './subscription'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isString = (x: any): x is string => typeof x === 'string'
@@ -198,77 +195,6 @@ export type Source = Readonly<{
 }>
 
 /**
- * Turn a Source into its flat string representation.
- *
- * Note that this will not properly escape slashes in the parameters,
- * so it is only useful for debugging!
- */
-function streamName(source: Source): string {
-  return `${source.semantics}/${source.name}/${source.sourceId}`
-}
-
-/**
- * The target of a SendCommand effect, characterised by its fish type
- * and instance name; sending to non-local pond is not supported, hence
- * no sourceId.
- */
-export type Target<C> = Readonly<{
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  semantics: FishType<C, any, any>
-  name: FishName
-}>
-
-export type SendCommand<C> = Readonly<{
-  target: Target<C>
-  command: C
-}>
-
-export type HttpResponseSuccess = {
-  status: 'success'
-  message?: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  data: any
-}
-
-export type HttpResponseError = {
-  status: 'error' | 'networkError'
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  error: any
-}
-
-export type HttpResponse = HttpResponseSuccess | HttpResponseError
-
-export type Emit<E> = Readonly<{
-  tags: string[]
-  payload: E
-}>
-export type TaggedEvents<E> = ReadonlyArray<Emit<E>>
-
-export type SyncCommandResult<E> = ReadonlyArray<E>
-
-export type AsyncCommandResult<E> = CommandApi<ReadonlyArray<E>>
-
-export type CommandResult<E> = SyncCommandResult<E> | AsyncCommandResult<E> // | TaggedEvents<E>
-
-export const CommandResult = {
-  fold: <E, R>(result: CommandResult<E>) => (handlers: {
-    sync: (value: SyncCommandResult<E>) => R
-    async: (value: AsyncCommandResult<E>) => R
-    none: () => R
-  }) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const ar: any = result
-    if (Array.isArray(ar)) {
-      return handlers.sync(ar) // just an array of events
-    } else if (ar !== undefined && ar.chain !== undefined) {
-      return handlers.async(ar) // probably a CommandApi
-    } else {
-      return handlers.none()
-    }
-  },
-}
-
-/**
  * Metadata wrapper for an event. This contains all information known to
  * the event store about this event and is passed into OnEvent so that
  * the receiving fish can distinguish between events from different sources
@@ -334,61 +260,6 @@ export const EventKeyIO = t.readonly(
 
 export type EventKey = t.TypeOf<typeof EventKeyIO>
 
-export type SendCommandEffect<C> = {
-  type: 'sendCommand'
-  command: SendCommand<C>
-}
-
-export type SendSelfCommand<C> = { readonly type: 'sendSelfCommand'; readonly command: C }
-export function mkSendSelf<C>(command: C): SendSelfCommand<C> {
-  return { type: 'sendSelfCommand', command }
-}
-
-export type PublishState<P> = { readonly type: 'publish'; readonly state: P }
-export function mkPublish<P>(p: P): PublishState<P> {
-  return { type: 'publish', state: p }
-}
-
-export type InitialState<S> = (
-  fishName: string,
-  sourceId: SourceId,
-) => Readonly<{
-  state: S
-  subscriptions?: ReadonlyArray<Subscription>
-}>
-
-// Combine the existing ("old") state and next event into a new state.
-// The returned value may be something completely new, or a mutated version of the input state.
-export type OnEvent<S, E> = (state: S, event: Envelope<E>) => S
-
-export type OnCommand<S, C, E> = (
-  state: S,
-  command: C,
-) => SyncCommandResult<E> | AsyncCommandResult<E>
-
-export const publishState = <S, C, P>(f: (state: S) => P): StateSubscription<S, C, P> => ({
-  name: 'publishState',
-  create: pond => pond.observeSelf().map(s => mkPublish(f(s))),
-})
-
-export type OnStateChange<S, C, P> = (pond: PondObservables<S>) => Observable<StateEffect<C, P>>
-export type OnStateChangeCompanion = {
-  publishState: <S, P>(f: (state: S) => P) => OnStateChange<S, never, P>
-  publishPrivateState: <S>() => OnStateChange<S, never, S>
-  noPublish: <S>() => OnStateChange<S, never, never>
-}
-export const OnStateChange: OnStateChangeCompanion = {
-  publishState: <S, P>(f: (state: S) => P) => (pond: PondObservables<S>) =>
-    pond.observeSelf().map(s => mkPublish(f(s))),
-  publishPrivateState: <S>() => (pond: PondObservables<S>) => pond.observeSelf().map(mkPublish),
-  noPublish: () => () => Observable.never(),
-}
-
-export type SemanticSnapshot<E> = (
-  name: FishName,
-  sourceId: SourceId,
-) => (ev: Envelope<E>) => boolean
-
 export type SnapshotFormat<S, Serialized> = {
   /**
    * This number must be increased whenever:
@@ -437,170 +308,6 @@ export const SnapshotFormat = {
     version,
     serialize: x => x,
     deserialize: x => x,
-  }),
-}
-
-export type StateEffect<C, P> = SendSelfCommand<C> | PublishState<P>
-
-export type StateSubscription<S, C, P> = {
-  /**
-   * A state subscription is identified by its name. Two state subscriptions with the same name
-   * are considered identical
-   */
-  readonly name: string
-  /**
-   * Create an observable based on observing the state of any number of fishes.
-   * It is the responsibility of the pond to actually subscribe to the returned observable and to
-   * apply the returned effects. The fish should not do so itself.
-   */
-  readonly create: OnStateChange<S, C, P>
-}
-
-/**
- * A fish type is described by its semantic name and three functions, responding
- * to the initial creation, to commands, and to events, respectively.
- *
- * The only implementor of this is FishTypeImpl. Implementing this type in any
- * other way will not work.
- */
-export interface FishType<C, E, P> {
-  command: C
-  event: E
-  state: P
-  semantics: Semantics
-}
-
-export type FishConfig<S, C, E, P> = {
-  semantics: Semantics
-  initialState: InitialState<S>
-  onEvent?: OnEvent<S, E>
-  onCommand?: OnCommand<S, C, E>
-  onStateChange?: OnStateChange<S, C, P>
-  semanticSnapshot?: SemanticSnapshot<E>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  localSnapshot?: SnapshotFormat<S, any>
-}
-
-const mkFishType = <S, C, E, P>(config: FishConfig<S, C, E, P>): FishTypeImpl<S, C, E, P> => {
-  const noopOnEvent: OnEvent<S, E> = (state: S) => state
-  const noopOnCommand: OnCommand<S, C, E> = () => []
-  const noopOnStateChange: OnStateChange<S, C, P> = () => Observable.never()
-  const onEvent = config.onEvent || noopOnEvent
-  const onCommand = config.onCommand || noopOnCommand
-  const onStateChange = config.onStateChange || noopOnStateChange
-  return new FishTypeImpl<S, C, E, P>(
-    config.semantics,
-    config.initialState,
-    onEvent,
-    onCommand,
-    onStateChange,
-    config.semanticSnapshot,
-    config.localSnapshot,
-  )
-}
-
-export class FishTypeImpl<S, C, E, P> implements FishType<C, E, P> {
-  static of = mkFishType
-
-  // see comment in FishType above
-  // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-  // @ts-ignore
-  command: C
-  // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-  // @ts-ignore
-  event: E
-  // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-  // @ts-ignore
-  state: P
-  // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-  // @ts-ignore
-  privateState: S
-
-  constructor(
-    readonly semantics: Semantics,
-    readonly initialState: InitialState<S>,
-    readonly onEvent: OnEvent<S, E>,
-    readonly onCommand: OnCommand<S, C, E>,
-    readonly onStateChange: OnStateChange<S, C, P>,
-    readonly semanticSnapshot: SemanticSnapshot<E> | undefined,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    readonly localSnapshot: SnapshotFormat<S, any> | undefined,
-  ) {}
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  static downcast<C, E, P>(f: FishType<C, E, P>): FishTypeImpl<any, C, E, P> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return f as any
-  }
-}
-
-export type ObserveMethod = <C, E, P>(fish: FishType<C, E, P>, fishName: string) => Observable<P>
-
-export type PondObservables<Self> = {
-  /**
-   * Obtain an observable stream of states from the given fish, waking it up if it is
-   * not already actively running within this pond. It is guaranteed that after a
-   * change in state there will eventually be a current state object emitted by the
-   * returned observable, but not every intermediate state is guaranteed to be emitted.
-   */
-  observe: ObserveMethod
-
-  /**
-   * Observe the private state update stream of the fish itself.
-   */
-  observeSelf: () => Observable<Self>
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mkSource(semantics: FishType<any, any, any>, name: FishName, sourceId: SourceId): Source {
-  return { semantics: semantics.semantics, name, sourceId }
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mkTarget<C, C1 extends C>(semantics: FishType<C, any, any>, name: FishName): Target<C1> {
-  return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    semantics: semantics as FishType<C1, any, any>,
-    name,
-  }
-}
-
-export const Source = {
-  of: mkSource,
-  format: streamName,
-}
-
-export const Target = {
-  of: mkTarget,
-}
-
-export const StateEffect = {
-  sendSelf: mkSendSelf,
-  publish: mkPublish,
-}
-
-export const FishType = {
-  of: mkFishType,
-}
-
-export const StateSubscription = {
-  publishState,
-}
-
-export type MixedDefined = object | number | string | boolean
-
-export const enum ValidationFailure {
-  InvalidPayload = 'InvalidPayload',
-  InvalidCommand = 'InvalidCommand',
-}
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type CommandValidator<T> = (command: any) => Either<ValidationFailure, T>
-
-export const SendCommand = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  of: <C>(semantics: FishType<C, any, any>, name: FishName, command: C): SendCommand<C> => ({
-    target: Target.of(semantics, name),
-    command,
   }),
 }
 
