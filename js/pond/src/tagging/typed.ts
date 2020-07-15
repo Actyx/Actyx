@@ -8,17 +8,11 @@ export interface TypedTagUnion<E> {
   /**
    * Add an alternative set we may also match. E.g. tag0.or(tag1.and(tag2)).or(tag1.and(tag3)) will match:
    * Events with tag0; Events with both tag1 and tag2; Events with both tag1 and tag3.
-   *
-   * @param ..
-   * @returns       ..
    */
   or<E1>(tag: TypedTagIntersection<E1>): TypedTagUnion<E1 | E>
 
   /**
    * Convert into an untyped TagQuery. This is for internal use.
-   *
-   * @param ..
-   * @returns       ..
    */
   raw(): TagUnion
 
@@ -34,9 +28,6 @@ export interface TypedTagUnion<E> {
 export interface TypedTagIntersection<E> {
   /**
    * Add another tag(s) to this requirement. E.g Tag<FooEvent>('foo').and(Tag<BarEvent>('bar')) will require both 'foo' and 'bar'.
-   *
-   * @param ..
-   * @returns       ..
    */
   and<E1>(tag: TypedTagIntersection<E1>): TypedTagIntersection<Extract<E1, E>>
 
@@ -44,27 +35,18 @@ export interface TypedTagIntersection<E> {
    * Add an alternative set we may also match. E.g. Tag<FooEvent>('foo').or(Tag<BarEvent>('bar')) will match 
    * each Event with at least 'foo' or 'bar'. Note that after the first `or` invocation you cannot `and` anymore,
    * so you have to nest the parts yourself: tag0.or(tag1.and(tag2)).or(tag1.and(tag3)) etc.
-   *
-   * @param ..
-   * @returns       ..
    */
   or<E1>(tag: TypedTagIntersection<E1>): TypedTagUnion<E1 | E>
 
 
   /**
    * The same requirement, but matching only Events emitted by the very node the code is run on.
-   *
-   * @param ..
-   * @returns       ..
    */
   local(): TypedTagIntersection<E>
 
 
   /**
    * Convert into an untyped TagQuery. This is for internal use.
-   *
-   * @param ..
-   * @returns       ..
    */
   raw(): TagIntersection
 
@@ -92,7 +74,7 @@ export const Tag = <E>(rawTag: string): Tag<E> => ({
 })
 
 /**
- * Typed expression for tag statements.
+ * Typed expression for tag statements. The type `E` describes which events may be annotated with the included tags.
  */
 export type Where<E> = TypedTagUnion<E> | TypedTagIntersection<E>
 
