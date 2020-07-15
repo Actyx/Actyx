@@ -135,7 +135,7 @@ export interface FishEventStore<S, E> {
   readonly validate: () => ReadonlyArray<string>
 }
 
-type SemanticSnapshot<E> = (env: EnvelopeFromStore<E>) => boolean
+type SemanticSnapshot = (ev: Event) => boolean
 
 export const getOrderErrors = <T>(
   elems: T[],
@@ -347,7 +347,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
   }
 
   constructor(
-    readonly fish: FishInfo<S, E>,
+    readonly fish: FishInfo<S>,
     readonly eventStore: EventStore,
     readonly snapshotStore: SnapshotStore,
     readonly snapshotScheduler: SnapshotScheduler,
@@ -580,14 +580,11 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
    */
   private semanticSnapshotOrientedInsert(
     newEvents: Events,
-    isSemanticSnap: SemanticSnapshot<E>,
+    isSemanticSnap: SemanticSnapshot,
   ): boolean {
     const horizonFiltered = removeBelowHorizon(newEvents, this.horizon())
 
-    const semanticSnapIndex = findLastIndex(
-      horizonFiltered.map(x => Event.toEnvelopeFromStore<E>(x)),
-      isSemanticSnap,
-    )
+    const semanticSnapIndex = findLastIndex(horizonFiltered, isSemanticSnap)
 
     // Nothing at all special about this batch of events.
     if (semanticSnapIndex === -1) {
@@ -611,10 +608,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
 
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const ss = eventsToAppend.shift()!
-    assert(
-      isSemanticSnap(Event.toEnvelopeFromStore<E>(ss)),
-      'Shifted event should have been a semantic snapshot at this point',
-    )
+    assert(isSemanticSnap(ss), 'Shifted event should have been a semantic snapshot at this point')
 
     this.latestSnapshots.semantic = some(ss)
     this.recomputeLocalSnapshots = true
@@ -1011,9 +1005,9 @@ export type BaseAndChunks<S> = Readonly<{
   chunks: Observable<ReadonlyArray<EnvelopeFromStore<any>>>
 }>
 
-export const getLatestLocalSnapshot = <S, E>(
+export const getLatestLocalSnapshot = <S>(
   snapshotStore: SnapshotStore,
-  fish: FishInfo<S, E>,
+  fish: FishInfo<S>,
 ): Observable<Option<LocalSnapshot<string>>> => {
   const { semantics, fishName, snapshotFormat } = fish
 
@@ -1033,12 +1027,12 @@ export const getLatestLocalSnapshot = <S, E>(
 }
 
 type EventFilterTransform = MonoTypeOperatorFunction<Event>
-export const getEventsAfterLatestSemanticSnapshot = async <S, E>(
+export const getEventsAfterLatestSemanticSnapshot = async <S>(
   base: Option<LocalSnapshot<unknown>>,
   eventStore: EventStore,
-  fish: FishInfo<S, E>,
+  fish: FishInfo<S>,
   present: OffsetMap,
-  isSemanticSnapshot: SemanticSnapshot<E>,
+  isSemanticSnapshot: SemanticSnapshot,
 ): Promise<Events> => {
   const { subscriptionSet } = fish
 
@@ -1049,9 +1043,7 @@ export const getEventsAfterLatestSemanticSnapshot = async <S, E>(
     .map<EventFilterTransform>(hzon => takeWhile((ev: Event) => EventKey.ord.compare(ev, hzon) > 0))
   // filter transform for when we look for a semantic snapshot. We want the semantic snapshot to be the last
   // event to be returned, so takeWhileInclusive
-  const ssFilter: EventFilterTransform = takeWhileInclusive(
-    x => !isSemanticSnapshot(Event.toEnvelopeFromStore<E>(x)),
-  )
+  const ssFilter: EventFilterTransform = takeWhileInclusive(x => !isSemanticSnapshot(x))
 
   const fromExclusive = base.map(x => x.psnMap).getOrElse({})
   const horizon = base.chain(x => fromNullable(x.horizon)).getOrElse(EventKey.zero)
@@ -1139,13 +1131,13 @@ const logChunkInfo = <T>(
  * Some of this info is just copied over from the FishType, some of it identifies the specific
  * fish instance.
  */
-export type FishInfo<S, E> = Readonly<{
+export type FishInfo<S> = Readonly<{
   semantics: Semantics
   fishName: FishName
   subscriptionSet: SubscriptionSet
   initialState: () => S
   onEvent: (state: S, event: Event) => S
-  isSemanticSnapshot: SemanticSnapshot<E> | undefined
+  isSemanticSnapshot: SemanticSnapshot | undefined
   snapshotFormat: SnapshotFormat<S, any> | undefined
 }>
 
@@ -1159,13 +1151,13 @@ export type FishInfo<S, E> = Readonly<{
  *                be relevant for the fish.
  */
 export const initialize = <S, E>(
-  fish: FishInfo<S, E>,
+  fish: FishInfo<S>,
   eventStore: EventStore,
   snapshotStore: SnapshotStore,
   snapshotScheduler: SnapshotScheduler,
   present: OffsetMap,
 ): Observable<FishEventStore<S, E>> =>
-  new FishEventStoreImpl(fish, eventStore, snapshotStore, snapshotScheduler).init(present)
+  new FishEventStoreImpl<S, E>(fish, eventStore, snapshotStore, snapshotScheduler).init(present)
 
 export const FishEventStore = {
   initialize,

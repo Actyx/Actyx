@@ -106,7 +106,7 @@ describe('FishEventStore functions', () => {
 })
 
 describe('FishEventStore', () => {
-  const fish: FishInfo<State, Payload> = {
+  const fish: FishInfo<State> = {
     semantics: Semantics.of('some-fish'),
     fishName: FishName.of('some-name'),
     subscriptionSet: SubscriptionSet.all,

@@ -45,7 +45,7 @@ mod offsets;
 mod opaque;
 mod scalars;
 
-pub use offsets::{Offset, OffsetMap};
+pub use offsets::{Offset, OffsetMap, OffsetOrMin};
 pub use opaque::Opaque;
 pub use scalars::{FishName, LamportTimestamp, ParseError, Semantics, SourceId, TimeStamp};
 
@@ -137,7 +137,7 @@ impl Event<Payload> {
         Ok(Event {
             lamport: Default::default(),
             timestamp: Default::default(),
-            offset: Offset(0),
+            offset: Offset::default(),
             stream: StreamInfo {
                 semantics: Semantics::try_from(semantics).map_err(serde_json::Error::custom)?,
                 name: FishName::try_from(name).map_err(serde_json::Error::custom)?,

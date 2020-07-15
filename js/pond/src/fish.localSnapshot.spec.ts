@@ -9,7 +9,6 @@ import {
   emitter,
   eventFactory,
   forFishes,
-  localSnap,
   mkNumberFish,
   mkSnapshot,
   mkTimeline,
@@ -17,19 +16,10 @@ import {
   semanticSnap,
   snapshotTestSetup,
 } from './fish.testHelper'
-import { Subscription } from './subscription'
 
-const localSnapshotsFish = mkNumberFish(
-  (semantics, name) => [Subscription.of(semantics, name)],
-  undefined,
-  localSnap(1),
-)
+const localSnapshotsFish = mkNumberFish(undefined)
 
-const allSnapshotsFish = mkNumberFish(
-  (semantics, name) => [Subscription.of(semantics, name)],
-  semanticSnap,
-  localSnap(1),
-)
+const allSnapshotsFish = mkNumberFish(semanticSnap)
 
 const forBoth = forFishes(
   ['with only local snapshots', localSnapshotsFish],

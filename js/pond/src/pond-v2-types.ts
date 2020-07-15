@@ -27,6 +27,7 @@ export type Metadata = Readonly<{
 // Combine the existing ("old") state and next event into a new state.
 // The returned value may be something completely new, or a mutated version of the input state.
 export type Reduce<S, E> = (state: S, event: E, metadata: Metadata) => S
+export type IsReset<E> = (event: E, metadata: Metadata) => boolean
 
 // To be refined: generic representation of semantics/name/version for snapshotformat
 export type FishId = {
@@ -59,7 +60,7 @@ export type Fish<S, E> = {
   fishId: FishId
 
   // semantic snapshot
-  isReset?: (event: E) => boolean
+  isReset?: IsReset<E>
 
   // let’s say we require users to implement .toJSON() on their state for serialisation --
   // then we only need the reverse function. Still a topic of debate: https://github.com/Actyx/Cosmos/issues/2928
@@ -76,7 +77,7 @@ export const Fish = {
 
     fishId: FishId.of('actyx.lib.latestEvent', JSON.stringify(where), 1),
 
-    isReset: (_event: E) => true,
+    isReset: () => true,
   }),
 
   eventsDescending: <E>(where: TagQuery, capacity = 100): Fish<E[], E> => ({

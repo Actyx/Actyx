@@ -8,42 +8,23 @@ import { Events } from './eventstore/types'
 import {
   eventFactory,
   forFishes,
-  localSnap,
   mkNumberFish,
   semanticSnap,
   snapshotTestSetup,
 } from './fish.testHelper'
-import { Subscription } from './subscription'
 
 /* Fish tests that do not explicitly rely on snapshots.
  * We still test fishes with all possible snapshot config configurations,
  * in order to make sure that basic funcionality is not screwed
  * by specialized snapshot logic. */
 
-const noSnapshotsFish = mkNumberFish((semantics, name) => [Subscription.of(semantics, name)])
+const semanticSnapshotsFish = mkNumberFish(semanticSnap)
 
-const semanticSnapshotsFish = mkNumberFish(
-  (semantics, name) => [Subscription.of(semantics, name)],
-  semanticSnap,
-)
-
-const localSnapshotsFish = mkNumberFish(
-  (semantics, name) => [Subscription.of(semantics, name)],
-  undefined,
-  localSnap(1),
-)
-
-const allSnapshotsFish = mkNumberFish(
-  (semantics, name) => [Subscription.of(semantics, name)],
-  semanticSnap,
-  localSnap(1),
-)
+const localSnapshotsFish = mkNumberFish()
 
 const forAllFish = forFishes(
-  ['without snapshots', noSnapshotsFish],
-  ['with only semantic snapshots', semanticSnapshotsFish],
+  ['with semantic snapshots', semanticSnapshotsFish],
   ['with only local snapshots', localSnapshotsFish],
-  ['with all types of snapshots', allSnapshotsFish],
 )
 
 describe('fish event store + jar snapshot agnostic behaviour', () => {
