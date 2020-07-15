@@ -238,12 +238,6 @@ export type HttpResponseError = {
 
 export type HttpResponse = HttpResponseSuccess | HttpResponseError
 
-export type Emit<E> = Readonly<{
-  tags: string[]
-  payload: E
-}>
-export type TaggedEvents<E> = ReadonlyArray<Emit<E>>
-
 export type SyncCommandResult<E> = ReadonlyArray<E>
 
 export type AsyncCommandResult<E> = CommandApi<ReadonlyArray<E>>

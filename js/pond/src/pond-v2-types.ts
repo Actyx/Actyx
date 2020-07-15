@@ -5,65 +5,14 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { TagQuery, TypedTagIntersection, Where } from './tagging'
 import { Lamport, Timestamp } from './types'
 
-/*
+/* 
  * POND V2 Candidate APIs
  */
-
-type TagIntersection = Readonly<{
-  type: 'intersection'
-  tags: ReadonlyArray<string>
-  onlyLocalEvents?: boolean
-}>
-
-type TagUnion = Readonly<{
-  type: 'union'
-  tags: ReadonlyArray<string | TagIntersection>
-}>
-
-const mkUnion = (...tags: (string | TagIntersection)[]): TagUnion => ({
-  type: 'union',
-  tags,
-})
-
-const mkIntersection = (onlyLocalEvents: boolean) => (...tags: string[]): TagIntersection => ({
-  type: 'intersection',
-  tags,
-  onlyLocalEvents,
-})
-
-export type TagQuery = TagUnion | TagIntersection
-
-export const TagQuery = {
-  // "What do I match?" terminology
-  requireAll: mkIntersection(false),
-  requireAllLocal: mkIntersection(true),
-  matchAnyOf: mkUnion,
-
-  // For internal use -- should maybe move somewhere else.
-  toWireFormat: (sub: TagQuery) => {
-    switch (sub.type) {
-      case 'intersection':
-        return [
-          {
-            tags: sub.tags,
-            local: !!sub.onlyLocalEvents,
-          },
-        ]
-
-      case 'union':
-        return sub.tags.map(
-          s =>
-            typeof s === 'string'
-              ? { tags: [s], local: false }
-              : { tags: s.tags, local: !!s.onlyLocalEvents },
-        )
-    }
-  },
-}
 export type Emit<E> = {
-  tags: ReadonlyArray<string>
+  tags: ReadonlyArray<string> | TypedTagIntersection<E>
   payload: E
 }
 
@@ -104,7 +53,7 @@ export type Fish<S, E> = {
   // Will extend this field with further options in the future:
   // - <E>-Typed subscription
   // - Plain query string
-  subscriptions: TagQuery
+  where: TagQuery | Where<E>
 
   initialState: S
   onEvent: Reduce<S, E>
@@ -119,20 +68,20 @@ export type Fish<S, E> = {
 }
 
 export const Fish = {
-  latestEvent: <E>(subscriptions: TagQuery): Fish<E | undefined, E> => ({
-    subscriptions,
+  latestEvent: <E>(where: TagQuery): Fish<E | undefined, E> => ({
+    where,
 
     initialState: undefined,
 
     onEvent: (_state: E | undefined, event: E) => event,
 
-    fishId: FishId.of('actyx.lib.latestEvent', JSON.stringify(subscriptions), 1),
+    fishId: FishId.of('actyx.lib.latestEvent', JSON.stringify(where), 1),
 
     isReset: () => true,
   }),
 
-  eventsDescending: <E>(subscriptions: TagQuery, capacity = 100): Fish<E[], E> => ({
-    subscriptions,
+  eventsDescending: <E>(where: TagQuery, capacity = 100): Fish<E[], E> => ({
+    where,
 
     initialState: [],
 
@@ -141,11 +90,11 @@ export const Fish = {
       return state.length > capacity ? state.slice(0, capacity) : state
     },
 
-    fishId: FishId.of('actyx.lib.eventsDescending', JSON.stringify(subscriptions), 1),
+    fishId: FishId.of('actyx.lib.eventsDescending', JSON.stringify(where), 1),
   }),
 
-  eventsAscending: <E>(subscriptions: TagQuery, capacity = 100): Fish<E[], E> => ({
-    subscriptions,
+  eventsAscending: <E>(where: TagQuery, capacity = 100): Fish<E[], E> => ({
+    where,
 
     initialState: [],
 
@@ -154,7 +103,7 @@ export const Fish = {
       return state.length > capacity ? state.slice(0, capacity) : state
     },
 
-    fishId: FishId.of('actyx.lib.eventsAscending', JSON.stringify(subscriptions), 1),
+    fishId: FishId.of('actyx.lib.eventsAscending', JSON.stringify(where), 1),
   }),
 }
 

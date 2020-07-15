@@ -5,7 +5,8 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { Pond2 } from './pond-v2'
-import { Fish, Reduce, StateEffect, TagQuery } from './pond-v2-types'
+import { Fish, Reduce, StateEffect } from './pond-v2-types'
+import { TagQuery } from './tagging'
 
 export type State = { n: number; fill: number }
 
@@ -28,7 +29,7 @@ const onEvent: Reduce<State, Payload> = (state: State, event: Payload) => {
 }
 
 const agg: Fish<State, Payload> = {
-  subscriptions: TagQuery.matchAnyOf('self'),
+  where: TagQuery.matchAnyOf('self'),
 
   initialState: { n: 0, fill: 0 },
 
@@ -304,7 +305,7 @@ describe('application of commands in the pond v2', () => {
 
   describe('automatic effects with event sent to other aggregates', () => {
     const mkAgg = (name: string) => ({
-      subscriptions: TagQuery.matchAnyOf(name),
+      where: TagQuery.matchAnyOf(name),
 
       initialState: { n: 0, fill: 0 },
 

@@ -74,6 +74,8 @@ export const TagSubscription = t.readonly(
   }),
 )
 
+export type TagSubscription = t.TypeOf<typeof TagSubscription>
+
 /**
  * A set of subscriptions
  */

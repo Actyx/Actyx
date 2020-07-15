@@ -38,14 +38,7 @@ export {
   Milliseconds,
   SnapshotFormat,
 } from './types'
-export {
-  unreachableOrElse,
-  unreachable,
-  Loggers,
-  enableAllLoggersExcept,
-  deepFreeze,
-  isNode,
-} from './util'
+export { unreachableOrElse, unreachable, Loggers, enableAllLoggersExcept, isNode } from './util'
 export { Subscription, SubscriptionSet } from './subscription'
 export { CommandApi } from './commandApi'
 export { CommandApi as CommandAsync } from './commandApi'
@@ -57,3 +50,4 @@ export { runStats } from './util/runStats'
 export { Config as StoreConfig } from './store/config'
 export * from './pond-v2-types'
 export * from './pond-v2'
+export * from './tagging'
