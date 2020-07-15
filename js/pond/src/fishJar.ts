@@ -27,7 +27,7 @@ import { FishEventStore, FishInfo } from './fishEventStore'
 import log from './loggers'
 import { SendToStore } from './pond'
 import { PondStateTracker } from './pond-state'
-import { FishId, Metadata } from './pond-v2-types'
+import { FishId, IsReset, Metadata } from './pond-v2-types'
 import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
 import { Subscription, SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
@@ -539,15 +539,15 @@ export const hydrate = <S, C, E, P>(
 
   const present = eventStore.present()
 
-  const info: FishInfo<S, E> = {
+  const ssFn = fish.semanticSnapshot ? fish.semanticSnapshot(fishName, sourceId) : undefined
+
+  const info: FishInfo<S> = {
     semantics: fish.semantics,
     fishName,
     initialState: () => fish.initialState(source.name, source.sourceId).state,
     subscriptionSet,
     onEvent: (state, ev) => fish.onEvent(state, Event.toEnvelopeFromStore<E>(ev)),
-    isSemanticSnapshot: fish.semanticSnapshot
-      ? fish.semanticSnapshot(fishName, sourceId)
-      : undefined,
+    isSemanticSnapshot: ssFn ? (ev: Event) => ssFn(Event.toEnvelopeFromStore<E>(ev)) : undefined,
     snapshotFormat: fish.localSnapshot,
   }
   const snapshotScheduler = SnapshotScheduler.create(10)
@@ -566,7 +566,7 @@ export const hydrate = <S, C, E, P>(
       .pipe(stats(`initial-compute/${fish.semantics}`))
       .do(() => pondStateTracker.hydrationFinished(token))
       .map(storeState =>
-        createFishJar(
+        createFishJar<S, C, E, P>(
           source,
           subscriptionSet,
           fish,
@@ -604,7 +604,7 @@ const hydrateV2 = (
   onEvent: (state: S, event: E, metadata: Metadata) => S,
   cacheKey: FishId,
   enableLocalSnapshots: boolean,
-  isReset?: (event: E) => boolean,
+  isReset?: IsReset<E>,
 ): Observable<StateWithProvenance<S>> => {
   const snapshotScheduler = SnapshotScheduler.create(10)
   const semantics = cacheKey.entityType
@@ -614,23 +614,24 @@ const hydrateV2 = (
 
   const { sourceId } = eventStore
 
+  const metadata = (ev: Event) => ({
+    isLocalEvent: ev.sourceId === sourceId,
+    tags: ev.tags,
+    timestampMicros: ev.timestamp,
+    timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
+    lamport: ev.lamport,
+  })
+
   // We construct a "Fish" from the given parameters in order to use the unchanged FES.
-  const info: FishInfo<S, E> = {
+  const info: FishInfo<S> = {
     semantics,
     fishName,
     initialState: () => clone(initialState),
     subscriptionSet,
 
-    onEvent: (state, ev) =>
-      onEvent(state, ev.payload as E, {
-        isLocalEvent: ev.sourceId === sourceId,
-        tags: ev.tags,
-        timestampMicros: ev.timestamp,
-        timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
-        lamport: ev.lamport,
-      }),
+    onEvent: (state, ev) => onEvent(state, ev.payload as E, metadata(ev)),
 
-    isSemanticSnapshot: isReset ? envelope => isReset(envelope.payload) : undefined,
+    isSemanticSnapshot: isReset ? (ev: Event) => isReset(ev.payload as E, metadata(ev)) : undefined,
 
     // TODO proper support
     snapshotFormat: enableLocalSnapshots
