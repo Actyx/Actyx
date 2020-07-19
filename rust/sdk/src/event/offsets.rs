@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 use super::{Event, SourceId};
-use crate::tagged::EventKey;
+use crate::tagged::{EventKey, StreamId};
 use derive_more::{Display, From, Into};
 use num_traits::Bounded;
 use serde::{
@@ -457,8 +457,8 @@ mod postgresql {
 /// negative values are tolerated and ignored. This is to keep compatibility with previously
 /// documented API endpoints.
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-#[serde(from = "HashMap<SourceId, OffsetOrMin>")]
-pub struct OffsetMap(HashMap<SourceId, Offset>);
+#[serde(from = "HashMap<StreamId, OffsetOrMin>")]
+pub struct OffsetMap(HashMap<StreamId, Offset>);
 
 impl OffsetMap {
     /// The empty `OffsetMap` is equivalent to the beginning of time, it does not contain any
@@ -470,7 +470,7 @@ impl OffsetMap {
     /// Check whether the given Event’s offset and source ID are contained within this `OffsetMap`.
     pub fn contains<T>(&self, event: &Event<T>) -> bool {
         self.0
-            .get(&event.stream.source)
+            .get(&event.stream.source.into())
             .copied()
             .unwrap_or_default()
             >= event.offset
@@ -478,21 +478,26 @@ impl OffsetMap {
 
     /// Check whether the given source contributes to the set of events in this OffsetMap
     pub fn contains_source(&self, source: &SourceId) -> bool {
-        self.0.contains_key(source)
+        self.0.contains_key(&source.into())
+    }
+
+    /// Check whether the given stream contributes to the set of events in this OffsetMap
+    pub fn contains_stream(&self, stream: &StreamId) -> bool {
+        self.0.contains_key(stream)
     }
 
     /// Retrieve the offset stored for the given source
     ///
     /// The returned value is `OffsetOrMin::MIN` if nothing is stored for the given source.
-    pub fn offset(&self, source: &SourceId) -> OffsetOrMin {
-        self.get(source)
+    pub fn offset(&self, stream: impl Into<StreamId>) -> OffsetOrMin {
+        self.get(stream)
             .map(|o| o.into())
             .unwrap_or(OffsetOrMin::MIN)
     }
 
     /// Retrieves the offset stored for the given source
-    pub fn get(&self, source: &SourceId) -> Option<Offset> {
-        self.0.get(&source).cloned()
+    pub fn get(&self, stream: impl Into<StreamId>) -> Option<Offset> {
+        self.0.get(&stream.into()).cloned()
     }
 
     /// Counts the number of offsets spanned by this OffsetMap.
@@ -521,7 +526,7 @@ impl OffsetMap {
     pub fn intersection_with(&mut self, other: &OffsetMap) {
         let keys = self.0.keys().cloned().collect::<Vec<_>>();
         for key in keys.into_iter() {
-            let offset = other.offset(&key).min(self.offset(&key));
+            let offset = other.offset(key).min(self.offset(key));
             if let Some(offset) = Offset::from_offset_or_min(offset) {
                 self.0.insert(key, offset);
             } else {
@@ -550,26 +555,41 @@ impl OffsetMap {
         )
     }
 
-    pub fn into_inner(self) -> HashMap<SourceId, Offset> {
+    pub fn into_inner(self) -> HashMap<StreamId, Offset> {
         self.0
     }
 
     /// An iterator over all sources that contribute events to this OffsetMap
     pub fn sources<'a>(&'a self) -> impl Iterator<Item = SourceId> + 'a {
-        self.0.keys().cloned()
+        self.0
+            .keys()
+            .filter_map(|stream| stream.to_source_id().ok())
+    }
+
+    /// An iterator over all streams that contribute events to this OffsetMap
+    pub fn streams<'a>(&'a self) -> impl Iterator<Item = StreamId> + 'a {
+        self.0.keys().copied()
     }
 
     /// An iterator over all sources that contribute events to this OffsetMap including their offset
-    pub fn iter<'a>(&'a self) -> impl Iterator<Item = (SourceId, Offset)> + 'a {
+    pub fn source_iter<'a>(&'a self) -> impl Iterator<Item = (SourceId, Offset)> + 'a {
+        self.0
+            .iter()
+            .filter_map(|(k, v)| k.to_source_id().ok().map(|k| (k, *v)))
+    }
+
+    /// An iterator over all streams that contribute events to this OffsetMap including their offset
+    pub fn stream_iter<'a>(&'a self) -> impl Iterator<Item = (StreamId, Offset)> + 'a {
         self.0.iter().map(|(k, v)| (*k, *v))
     }
 
     /// Update entry for source if the given offset is larger than the stored one
     /// and return the previous offset for this source
-    pub fn update(&mut self, source: SourceId, offset: Offset) -> Option<OffsetOrMin> {
-        let previous = self.offset(&source);
+    pub fn update(&mut self, stream: impl Into<StreamId>, offset: Offset) -> Option<OffsetOrMin> {
+        let stream = stream.into();
+        let previous = self.offset(stream);
         if offset > previous {
-            self.0.insert(source, offset);
+            self.0.insert(stream, offset);
             Some(previous)
         } else {
             None
@@ -592,13 +612,13 @@ impl PartialOrd for OffsetMap {
             lt && gt
         };
         for (k, a) in &lhs.0 {
-            let b = &rhs.offset(k);
+            let b = &rhs.offset(*k);
             if cross(&OffsetOrMin::from(*a), b) {
                 return None;
             }
         }
         for (k, b) in &rhs.0 {
-            let a = &lhs.offset(k);
+            let a = &lhs.offset(*k);
             if cross(a, &OffsetOrMin::from(*b)) {
                 return None;
             }
@@ -613,8 +633,8 @@ impl PartialOrd for OffsetMap {
     }
 }
 
-impl AsRef<HashMap<SourceId, Offset>> for OffsetMap {
-    fn as_ref(&self) -> &HashMap<SourceId, Offset> {
+impl AsRef<HashMap<StreamId, Offset>> for OffsetMap {
+    fn as_ref(&self) -> &HashMap<StreamId, Offset> {
         &self.0
     }
 }
@@ -627,7 +647,7 @@ impl Default for OffsetMap {
 
 impl From<HashMap<SourceId, Offset>> for OffsetMap {
     fn from(map: HashMap<SourceId, Offset>) -> Self {
-        Self(map)
+        map.into_iter().collect()
     }
 }
 
@@ -641,13 +661,33 @@ impl From<HashMap<SourceId, OffsetOrMin>> for OffsetMap {
 
 impl FromIterator<(SourceId, Offset)> for OffsetMap {
     fn from_iter<T: IntoIterator<Item = (SourceId, Offset)>>(iter: T) -> Self {
+        Self(iter.into_iter().map(|(s, o)| (s.into(), o)).collect())
+    }
+}
+
+impl From<HashMap<StreamId, Offset>> for OffsetMap {
+    fn from(map: HashMap<StreamId, Offset>) -> Self {
+        Self(map)
+    }
+}
+
+impl From<HashMap<StreamId, OffsetOrMin>> for OffsetMap {
+    fn from(map: HashMap<StreamId, OffsetOrMin>) -> Self {
+        map.into_iter()
+            .filter_map(|(s, o)| Offset::from_offset_or_min(o).map(|o| (s, o)))
+            .collect()
+    }
+}
+
+impl FromIterator<(StreamId, Offset)> for OffsetMap {
+    fn from_iter<T: IntoIterator<Item = (StreamId, Offset)>>(iter: T) -> Self {
         Self(iter.into_iter().collect())
     }
 }
 
 impl<T> AddAssign<&Event<T>> for OffsetMap {
     fn add_assign(&mut self, other: &Event<T>) {
-        let off = self.0.entry(other.stream.source).or_default();
+        let off = self.0.entry(other.stream.source.into()).or_default();
         if *off < other.offset {
             *off = other.offset;
         }
@@ -666,12 +706,12 @@ impl AddAssign<&EventKey> for OffsetMap {
 impl<T> SubAssign<&Event<T>> for OffsetMap {
     /// Ensure that the given event is no longer contained within this OffsetMap.
     fn sub_assign(&mut self, other: &Event<T>) {
-        let off = self.0.entry(other.stream.source).or_default();
+        let off = self.0.entry(other.stream.source.into()).or_default();
         if *off >= other.offset {
             if let Some(o) = other.offset.pred() {
                 *off = o;
             } else {
-                self.0.remove(&other.stream.source);
+                self.0.remove(&other.stream.source.into());
             }
         }
     }
@@ -704,7 +744,7 @@ impl Sub<&OffsetMap> for &OffsetMap {
         let mut ret = 0;
         for (k, a) in &self.0 {
             let a: OffsetOrMin = (*a).into();
-            let b = other.offset(k);
+            let b = other.offset(*k);
             if a > b {
                 ret += (a - b) as u64;
             }

@@ -109,7 +109,7 @@ macro_rules! source_id {
 }
 
 // DO NOT FORGET TO UPDATE THE VALUE IN THE MACRO ABOVE!
-const MAX_SOURCEID_LENGTH: usize = 15;
+pub(crate) const MAX_SOURCEID_LENGTH: usize = 15;
 
 mk_scalar!(
     /// The semantics denotes a certain kind of fish and usually implies a certain type
@@ -282,7 +282,7 @@ impl Add<u64> for LamportTimestamp {
 // TODO change to u128 to make it even more optimal
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
-pub struct SourceId([u8; MAX_SOURCEID_LENGTH + 1]);
+pub struct SourceId(pub(crate) [u8; MAX_SOURCEID_LENGTH + 1]);
 
 impl SourceId {
     pub fn new(s: String) -> Result<Self, ParseError> {
@@ -352,6 +352,20 @@ impl<'de> Deserialize<'de> for SourceId {
 impl Serialize for SourceId {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         serializer.serialize_str(self.as_str())
+    }
+}
+
+#[cfg(test)]
+impl quickcheck::Arbitrary for SourceId {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        use rand::Rng;
+
+        let len = g.gen_range(1, MAX_SOURCEID_LENGTH);
+        let mut s = String::with_capacity(len);
+        for _ in 0..len {
+            s.push(g.gen_range(32u8, 127u8).into());
+        }
+        SourceId::try_from(s.as_str()).unwrap()
     }
 }
 

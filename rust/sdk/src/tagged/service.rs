@@ -17,81 +17,9 @@
 //!
 //! The [`EventService`](struct.EventService.html) client is only available under the `client` feature flag.
 
-use super::{event::EventKey, Event};
-use crate::{OffsetMap, Payload, SourceId};
+use super::{event::EventKey, Event, NodeId, SessionId};
+use crate::{OffsetMap, Payload};
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
-
-/// The session identifier used in subscribeUntilTimeTravel
-#[derive(Debug, Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
-pub struct SessionId(Box<str>);
-
-impl Display for SessionId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&*self.0)
-    }
-}
-
-impl From<&str> for SessionId {
-    fn from(s: &str) -> Self {
-        Self(s.into())
-    }
-}
-
-impl From<String> for SessionId {
-    fn from(s: String) -> Self {
-        Self(s.into())
-    }
-}
-
-impl SessionId {
-    /// Extracts a string slice containing the entire session id
-    pub fn as_str(&self) -> &str {
-        &*self.0
-    }
-}
-
-/// The ActyxOS node identifier
-///
-/// Each node may emit multiple sources, each identified by its own [`SourceId`](../struct.SourceId.html).
-#[derive(Debug, Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
-pub struct NodeId(Box<str>);
-
-impl Display for NodeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&*self.0)
-    }
-}
-
-impl From<&str> for NodeId {
-    fn from(s: &str) -> Self {
-        Self(s.into())
-    }
-}
-
-impl From<String> for NodeId {
-    fn from(s: String) -> Self {
-        Self(s.into())
-    }
-}
-
-impl NodeId {
-    /// Check whether the given `SourceId` is published by the ActyxOS node identified by this `NodeId`
-    ///
-    /// This is accomplished without accessing further data by deriving the `SourceId` from its node’s
-    /// `NodeId`: the `NodeId` is extended with an underscore and possibly more characters to obtain
-    /// the `SourceId`.
-    pub fn has_source_id(&self, source_id: SourceId) -> bool {
-        source_id.as_str().len() > self.0.len()
-            && source_id.as_str().starts_with(&*self.0)
-            && source_id.as_str().as_bytes()[self.0.len()] == b'_'
-    }
-
-    /// Extracts a string slice containing the entire node id
-    pub fn as_str(&self) -> &str {
-        &*self.0
-    }
-}
 
 /// Subscribe to live updates as the Event Services receives or publishes new events,
 /// until the recipient would need to time travel
@@ -162,7 +90,7 @@ mod tests {
         let resp = SubscribeUntilTimeTravelResponse::Event(Event {
             key: EventKey {
                 lamport: LamportTimestamp::new(1),
-                source: source_id!("src"),
+                source: source_id!("src").into(),
                 offset: Offset::mk_test(3),
             },
             meta: Metadata {
