@@ -17,9 +17,27 @@
 //!
 //! The [`EventService`](struct.EventService.html) client is only available under the `client` feature flag.
 
-use super::{event::EventKey, Event, NodeId, SessionId};
+use super::{event::EventKey, Compression, Event, NodeId, SessionId, SnapshotData};
 use crate::{OffsetMap, Payload};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum StartFrom {
+    Offsets(OffsetMap),
+    Snapshot { compression: BTreeSet<Compression> },
+}
+
+impl StartFrom {
+    pub fn min_offsets(&self) -> OffsetMap {
+        if let StartFrom::Offsets(o) = self {
+            o.clone()
+        } else {
+            OffsetMap::empty()
+        }
+    }
+}
 
 /// Subscribe to live updates as the Event Services receives or publishes new events,
 /// until the recipient would need to time travel
@@ -30,30 +48,32 @@ use serde::{Deserialize, Serialize};
 /// Send this structure to the `$BASE_URI/subscribe` endpoint to retrieve an
 /// unbounded stream of events. If the lower bound is given, it filters out all
 /// events that are included in the `lower_bound` OffsetMap.
-///
-/// The common pattern is to take note of consumed events by adding them into an
-/// OffsetMap and resuming the stream from this OffsetMap after an app restart.
-///
-/// The delivered event stream will be filtered by the subscriptions: an event
-/// is included if any of the subscriptions matches.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscribeUntilTimeTravelApiRequest {
-    pub lower_bound: Option<OffsetMap>,
+    pub session: SessionId,
     pub subscription: String,
-    pub session: Option<SessionId>,
+    #[serde(flatten)]
+    pub from: StartFrom,
 }
 
-/// Response to subscribeUntilTimeTravel is a stream of events terminated by a time travel.
+/// Response to subscribeUntilTimeTravel is a stream of events possibly preceded by a
+/// start message and terminated by a time travel
+///
+///
 #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SubscribeUntilTimeTravelResponse {
-    Event(Event<Payload>),
     #[serde(rename_all = "camelCase")]
-    TimeTravel {
-        session: SessionId,
-        new_start: EventKey,
+    Start { snapshot: SnapshotData },
+    #[serde(rename_all = "camelCase")]
+    Event {
+        #[serde(flatten)]
+        event: Event<Payload>,
+        caught_up: bool,
     },
+    #[serde(rename_all = "camelCase")]
+    TimeTravel { new_start: EventKey },
 }
 
 /// Response to the `node_id` endpoint
@@ -75,46 +95,74 @@ mod tests {
     #[test]
     fn must_serialize_subscribe_until_time_travel() {
         let req = SubscribeUntilTimeTravelApiRequest {
-            lower_bound: None,
+            session: "sess".into(),
             subscription: "'tagA' & 'tagB'".to_owned(),
-            session: None,
+            from: StartFrom::Offsets(OffsetMap::empty()),
         };
         let s = serde_json::to_string(&req).unwrap();
         assert_eq!(
             s,
-            r#"{"lowerBound":null,"subscription":"'tagA' & 'tagB'","session":null}"#
+            r#"{"session":"sess","subscription":"'tagA' & 'tagB'","offsets":{}}"#
         );
         let r: SubscribeUntilTimeTravelApiRequest = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, req);
 
-        let resp = SubscribeUntilTimeTravelResponse::Event(Event {
-            key: EventKey {
-                lamport: LamportTimestamp::new(1),
-                source: source_id!("src").into(),
-                offset: Offset::mk_test(3),
+        let req = SubscribeUntilTimeTravelApiRequest {
+            session: "sess".into(),
+            subscription: "'tagA' & 'tagB'".to_owned(),
+            from: StartFrom::Snapshot {
+                compression: [Compression::Deflate].iter().copied().collect(),
             },
-            meta: Metadata {
-                timestamp: TimeStamp::new(2),
-                tags: TagSet::empty(),
-            },
-            payload: Payload::default(),
-        });
+        };
+        let s = serde_json::to_string(&req).unwrap();
+        assert_eq!(
+            s,
+            r#"{"session":"sess","subscription":"'tagA' & 'tagB'","snapshot":{"compression":["deflate"]}}"#
+        );
+        let r: SubscribeUntilTimeTravelApiRequest = serde_json::from_str(&*s).unwrap();
+        assert_eq!(r, req);
+
+        let resp = SubscribeUntilTimeTravelResponse::Start {
+            snapshot: SnapshotData::new(Compression::None, &[1, 2, 3][..]),
+        };
         let s = serde_json::to_string(&resp).unwrap();
         assert_eq!(
             s,
-            r#"{"type":"event","key":{"lamport":1,"source":"src","offset":3},"meta":{"timestamp":2,"tags":[]},"payload":null}"#
+            r#"{"type":"start","snapshot":{"compression":"none","data":"AQID"}}"#
+        );
+        let r: SubscribeUntilTimeTravelResponse = serde_json::from_str(&*s).unwrap();
+        assert_eq!(r, resp);
+
+        let resp = SubscribeUntilTimeTravelResponse::Event {
+            event: Event {
+                key: EventKey {
+                    lamport: LamportTimestamp::new(1),
+                    stream: source_id!("src").into(),
+                    offset: Offset::mk_test(3),
+                },
+                meta: Metadata {
+                    timestamp: TimeStamp::new(2),
+                    tags: TagSet::empty(),
+                },
+                payload: Payload::default(),
+            },
+            caught_up: true,
+        };
+        let s = serde_json::to_string(&resp).unwrap();
+        assert_eq!(
+            s,
+            r#"{"type":"event","key":{"lamport":1,"stream":"src","offset":3},"meta":{"timestamp":2,"tags":[]},"payload":null,"caughtUp":true}"#
         );
         let r: SubscribeUntilTimeTravelResponse = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, resp);
 
         let resp = SubscribeUntilTimeTravelResponse::TimeTravel {
-            session: SessionId::from("session"),
             new_start: EventKey::default(),
         };
         let s = serde_json::to_string(&resp).unwrap();
         assert_eq!(
             s,
-            r#"{"type":"timeTravel","session":"session","newStart":{"lamport":0,"source":"!","offset":0}}"#
+            r#"{"type":"timeTravel","newStart":{"lamport":0,"stream":"!","offset":0}}"#
         );
         let r: SubscribeUntilTimeTravelResponse = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, resp);

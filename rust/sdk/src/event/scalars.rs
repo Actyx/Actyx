@@ -13,7 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use crate::{scalar::nonempty_string, types::ArcVal};
+use crate::{scalar::nonempty_string, tagged::TagSet, types::ArcVal};
+use anyhow::anyhow;
 use chrono::{DateTime, TimeZone, Utc};
 use derive_more::{Display, From, Into};
 use serde::de::Error;
@@ -128,6 +129,51 @@ mk_scalar!(
     /// You may most conveniently construct values of this type with the [`fish_name!`](../macro.fish_name.html) macro.
     struct FishName, EmptyFishName
 );
+
+impl TryFrom<&TagSet> for Semantics {
+    type Error = anyhow::Error;
+    fn try_from(value: &TagSet) -> Result<Self, Self::Error> {
+        let sem = value
+            .iter()
+            .filter(|t| t.as_str().starts_with("semantics:"))
+            .filter_map(|t| {
+                let t = t.as_str();
+                let pos = t.find(':')?;
+                Semantics::try_from(&t[pos + 1..]).ok()
+            })
+            .collect::<Vec<_>>();
+        if sem.len() == 1 {
+            sem.into_iter()
+                .next()
+                .ok_or_else(|| anyhow!("cannot happen"))
+        } else {
+            Err(anyhow!("no unique semantics tag found"))
+        }
+    }
+}
+
+impl TryFrom<&TagSet> for FishName {
+    type Error = anyhow::Error;
+    fn try_from(value: &TagSet) -> Result<Self, Self::Error> {
+        let names = value
+            .iter()
+            .filter(|t| t.as_str().starts_with("fish_name:"))
+            .filter_map(|t| {
+                let t = t.as_str();
+                let pos = t.find(':')?;
+                FishName::try_from(&t[pos + 1..]).ok()
+            })
+            .collect::<Vec<_>>();
+        if names.len() == 1 {
+            names
+                .into_iter()
+                .next()
+                .ok_or_else(|| anyhow!("cannot happen"))
+        } else {
+            Err(anyhow!("no unique fish_name tag found"))
+        }
+    }
+}
 
 /// Microseconds since the UNIX epoch, without leap seconds and in UTC
 ///
