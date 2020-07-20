@@ -1,4 +1,4 @@
-import { Fish, FishId } from '../pond-v2-types'
+import { Emit, Fish, FishId } from '../types'
 import { Tag, Where } from './typed'
 
 type T0 = {
@@ -145,5 +145,44 @@ describe('typed tag query system', () => {
     }
 
     ignoreUnusedVar(fishRight)
+  })
+
+  it('should allow emission statements into larger tags', () => {
+    const emitRight = {
+      payload: {
+        type: 'A',
+        data0: 5,
+      },
+      tags: abcTag,
+    }
+
+    return ignoreUnusedVar(emitRight as Emit<A>)
+  })
+
+  it('should forbid emission statements for unknown types, known tags', () => {
+    const emitWrong: Emit<A> = {
+      payload: {
+        // @ts-expect-error
+        type: 'whatever',
+        data0: 5,
+      },
+      tags: tagA,
+    }
+
+    return ignoreUnusedVar(emitWrong)
+  })
+
+  it('should forbid emission statements into disconnected tags', () => {
+    const payload: T0 = {
+      type: '0',
+      t0: {},
+    }
+    const emitWrong = {
+      payload,
+      tags: abcTag,
+    }
+
+    // @ts-expect-error
+    return ignoreUnusedVar(emitWrong as Emit<T0>)
   })
 })
