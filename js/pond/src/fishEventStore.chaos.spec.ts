@@ -6,7 +6,8 @@
  */
 import { catOptions, chunksOf } from 'fp-ts/lib/Array'
 import { none, some } from 'fp-ts/lib/Option'
-import { FishName, Psn, Semantics, SourceId, SubscriptionSet, Timestamp } from './'
+import { SourceId, SubscriptionSet, Timestamp } from '.'
+import { Psn, FishName, Semantics } from './types'
 import { Event, Events, EventStore, OffsetMap } from './eventstore'
 import { includeEvent } from './eventstore/testEventStore'
 import { interleaveRandom, intoOrderedChunks } from './eventstore/utils'

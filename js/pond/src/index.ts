@@ -4,25 +4,32 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+export { ConnectivityStatus } from './eventstore/types'
+export * from './pond-v2'
+export { Config as StoreConfig } from './store/config'
+export { Subscription, SubscriptionSet } from './subscription'
+export * from './tagging'
 export {
-  SourceId,
-  Timestamp,
-  Source,
-  Semantics,
+  CancelSubscription,
+  EmissionRequest,
+  Emit,
+  Fish,
+  FishId,
   FishName,
-  Envelope,
-  Psn,
   isBoolean,
   isNumber,
+  IsReset,
   isString,
+  Metadata,
   Milliseconds,
+  PendingEmission,
+  Reduce,
+  Semantics,
   SnapshotFormat,
+  SourceId,
+  StateEffect,
+  StateWithProvenance,
+  Timestamp,
 } from './types'
-export { unreachableOrElse, unreachable, Loggers, enableAllLoggersExcept, isNode } from './util'
-export { Subscription, SubscriptionSet } from './subscription'
-export { ConnectivityStatus } from './eventstore/types'
+export { enableAllLoggersExcept, isNode, Loggers, unreachable, unreachableOrElse } from './util'
 export { runStats } from './util/runStats'
-export { Config as StoreConfig } from './store/config'
-export * from './pond-v2-types'
-export * from './pond-v2'
-export * from './tagging'

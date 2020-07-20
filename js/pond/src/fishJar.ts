@@ -9,18 +9,28 @@ import * as R from 'ramda'
 import { clone } from 'ramda'
 import { Observable, Subject, Subscription as RxSubscription } from 'rxjs'
 import { catchError, tap } from 'rxjs/operators'
-import { FishName, Source } from '.'
 import { EventStore } from './eventstore'
 import { AllEventsSortOrders, Event, Events } from './eventstore/types'
 import { intoOrderedChunks } from './eventstore/utils'
 import { FishEventStore, FishInfo } from './fishEventStore'
 import log from './loggers'
 import { PondStateTracker } from './pond-state'
-import { FishId, IsReset, Metadata } from './pond-v2-types'
 import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
 import { Subscription, SubscriptionSet } from './subscription'
-import { Psn, Semantics, SnapshotFormat, SourceId, StateWithProvenance, Timestamp } from './types'
+import {
+  FishId,
+  FishName,
+  IsReset,
+  Metadata,
+  Psn,
+  Semantics,
+  SnapshotFormat,
+  Source,
+  SourceId,
+  StateWithProvenance,
+  Timestamp,
+} from './types'
 import { lookup } from './util'
 import { runStats } from './util/runStats'
 

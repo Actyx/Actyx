@@ -18,29 +18,27 @@ import { CommandPipeline, FishJar } from './fishJar'
 import log from './loggers'
 import { PondCommon } from './pond-common'
 import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
-import {
-  CancelSubscription,
-  EmissionRequest,
-  Emit,
-  Fish,
-  FishId,
-  IsReset,
-  Metadata,
-  PendingEmission,
-  Reduce,
-  StateEffect,
-} from './pond-v2-types'
 import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
 import { toWireFormat, TypedTagIntersection } from './tagging'
 import {
+  CancelSubscription,
+  EmissionRequest,
+  Emit,
+  Fish,
+  FishId,
   FishName,
+  IsReset,
+  Metadata,
   Milliseconds,
+  PendingEmission,
+  Reduce,
   Semantics,
   Source,
   SourceId,
+  StateEffect,
   StateWithProvenance,
   Timestamp,
 } from './types'

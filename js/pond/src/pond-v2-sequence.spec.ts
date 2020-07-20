@@ -4,9 +4,7 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Pond2 } from './pond-v2'
-import { Fish, Reduce, StateEffect } from './pond-v2-types'
-import { TagQuery } from './tagging'
+import { Pond2, TagQuery, Fish, Reduce, StateEffect } from '.'
 
 export type State = { n: number; fill: number }
 
