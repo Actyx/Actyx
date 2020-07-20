@@ -17,9 +17,7 @@ const intersectionToWire = (sub: TagIntersection) => [
   },
 ]
 
-export const toWireFormat = (
-  sub: TagQuery | Where<unknown>,
-): ReadonlyArray<TagSubscription> => {
+export const toWireFormat = (sub: TagQuery | Where<unknown>): ReadonlyArray<TagSubscription> => {
   switch (sub.type) {
     case 'typed-intersection':
       return intersectionToWire(sub.raw())

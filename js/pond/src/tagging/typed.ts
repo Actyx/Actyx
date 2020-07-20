@@ -32,18 +32,16 @@ export interface TypedTagIntersection<E> {
   and<E1>(tag: TypedTagIntersection<E1>): TypedTagIntersection<Extract<E1, E>>
 
   /**
-   * Add an alternative set we may also match. E.g. Tag<FooEvent>('foo').or(Tag<BarEvent>('bar')) will match 
+   * Add an alternative set we may also match. E.g. Tag<FooEvent>('foo').or(Tag<BarEvent>('bar')) will match
    * each Event with at least 'foo' or 'bar'. Note that after the first `or` invocation you cannot `and` anymore,
    * so you have to nest the parts yourself: tag0.or(tag1.and(tag2)).or(tag1.and(tag3)) etc.
    */
   or<E1>(tag: TypedTagIntersection<E1>): TypedTagUnion<E1 | E>
 
-
   /**
    * The same requirement, but matching only Events emitted by the very node the code is run on.
    */
   local(): TypedTagIntersection<E>
-
 
   /**
    * Convert into an untyped TagQuery. This is for internal use.
