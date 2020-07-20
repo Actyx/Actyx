@@ -16,7 +16,6 @@ import { mkMultiplexer } from './eventstore/utils'
 import { getSourceId } from './eventstore/websocketEventStore'
 import { CommandPipeline, FishJar } from './fishJar'
 import log from './loggers'
-import { PondCommon } from './pond-common'
 import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
 import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
@@ -57,6 +56,10 @@ export type PondOptions = {
   stateEffectDebounce?: number
 }
 
+export type PondInfo = {
+  sourceId: SourceId
+}
+
 export const makeEventChunk = <E>(source: Source, events: ReadonlyArray<E>): UnstoredEvents => {
   const timestamp = Timestamp.now()
   const { semantics, name } = source
@@ -87,7 +90,7 @@ type ActiveFish<S> = {
   commandPipeline?: CommandPipeline<S, EmissionRequest<any>>
 }
 
-export type Pond2 = PondCommon & {
+export type Pond2 = {
   /* EMISSION */
 
   /**
@@ -171,6 +174,39 @@ export type Pond2 = PondCommon & {
     effect: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ): CancelSubscription
+
+  /*
+   * HOUSE KEEPING FUNCTIONS
+   */
+
+  /**
+  * Dispose subscription to IpfsStore
+  * Store subscription needs to be unsubscribed for HMR
+  */
+  dispose(): Promise<void>
+
+  /**
+   * Information about the current pond
+   */
+  info(): PondInfo
+
+  /**
+   * Obtain an observable state of the pond.
+   */
+  getPondState(): Observable<PondState>
+
+  /**
+   * Obtain an observable describing connectivity status of this node.
+   */
+  getNodeConnectivity(...specialSources: ReadonlyArray<SourceId>): Observable<ConnectivityStatus>
+
+  /**
+   * Obtain an observable that completes when we are mostly in sync with the swarm.
+   * It is recommended to wait for this on application startup, before interacting with any fish,
+   * i.e. `await pond.waitForSwarmSync().toPromise()`. The intermediate states emitted
+   * by the Observable can be used to display render a progress bar, for example.
+   */
+  waitForSwarmSync(config?: WaitForSwarmConfig): Observable<SplashState>
 }
 
 export class Pond2Impl implements Pond2 {
@@ -401,15 +437,15 @@ export class Pond2Impl implements Pond2 {
 
     const tw = autoCancel
       ? (state: S) => {
-          if (cancelled) {
-            return false
-          } else if (autoCancel(state)) {
-            cancelled = true
-            return false
-          }
-
-          return true
+        if (cancelled) {
+          return false
+        } else if (autoCancel(state)) {
+          cancelled = true
+          return false
         }
+
+        return true
+      }
       : () => !cancelled
 
     states

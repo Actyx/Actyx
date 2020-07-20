@@ -5,7 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 export { ConnectivityStatus } from './eventstore/types'
-export * from './pond-v2'
+export * from './pond'
 export { Config as StoreConfig } from './store/config'
 export { Subscription, SubscriptionSet } from './subscription'
 export * from './tagging'
