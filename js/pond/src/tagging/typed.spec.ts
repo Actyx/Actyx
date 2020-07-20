@@ -1,4 +1,4 @@
-import { Fish, FishId } from '../types'
+import { Fish, FishId } from '../pond-v2-types'
 import { Tag, Where } from './typed'
 
 type T0 = {
@@ -35,6 +35,9 @@ const tagB = Tag<B>('B')
 // Tag that covers 3 types
 const abcTag = Tag<A | B | C>('ABC')
 
+// Satisfy TS (no unused var)
+const ignoreUnusedVar = (_v: unknown) => undefined
+
 describe('typed tag query system', () => {
   // '0' and '1' have no overlap, so only 'A' remains
   const q = tag0.and(tag1).or(tagA)
@@ -44,7 +47,6 @@ describe('typed tag query system', () => {
     // @ts-expect-error
     const q1: Where<'hello??'> = q
 
-    // We use q1 so we don’t always get a TS error for unused variable.
     expect(q1.raw()).toMatchObject({
       type: 'union',
       tags: [{ type: 'intersection', tags: ['0', '1'] }, { type: 'intersection', tags: ['A'] }],
@@ -56,7 +58,7 @@ describe('typed tag query system', () => {
     const q2: Where<'A' | 'more-types'> = q
 
     // Must use q2 to avoid TS error...
-    expect(q2).toBeTruthy()
+    ignoreUnusedVar(q2)
   })
 
   it('should preserve the common event type', () => {
@@ -130,7 +132,7 @@ describe('typed tag query system', () => {
       where: abcTag,
     }
 
-    return fishWrong
+    ignoreUnusedVar(fishWrong)
   })
 
   it('should allow fish to handle more events than indicated by tags', () => {
@@ -142,6 +144,6 @@ describe('typed tag query system', () => {
       where: abcTag,
     }
 
-    return fishRight
+    ignoreUnusedVar(fishRight)
   })
 })
