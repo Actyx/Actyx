@@ -183,7 +183,7 @@ export type Pond = {
    * Dispose subscription to IpfsStore
    * Store subscription needs to be unsubscribed for HMR
    */
-  dispose(): Promise<void>
+  dispose(): void
 
   /**
    * Information about the current pond
@@ -193,20 +193,26 @@ export type Pond = {
   /**
    * Obtain an observable state of the pond.
    */
-  getPondState(): Observable<PondState>
+  getPondState(callback: (newState: PondState) => void): CancelSubscription
 
   /**
    * Obtain an observable describing connectivity status of this node.
    */
-  getNodeConnectivity(...specialSources: ReadonlyArray<SourceId>): Observable<ConnectivityStatus>
+  getNodeConnectivity(
+    callback: (newState: ConnectivityStatus) => void,
+    ...specialSources: ReadonlyArray<SourceId>
+  ): CancelSubscription
 
   /**
-   * Obtain an observable that completes when we are mostly in sync with the swarm.
-   * It is recommended to wait for this on application startup, before interacting with any fish,
-   * i.e. `await pond.waitForSwarmSync().toPromise()`. The intermediate states emitted
-   * by the Observable can be used to display render a progress bar, for example.
+   * Wait for the node to get in sync with the swarm.
+   * It is strongly recommended that any interaction with the Pond is delayed until the onSyncComplete callback has been notified.
+   * To obtain progress information about the sync, the onProgress callback can be supplied.
    */
-  waitForSwarmSync(config?: WaitForSwarmConfig): Observable<SplashState>
+  waitForSwarmSync(
+    onSyncComplete: () => void,
+    onProgress?: (newState: SplashState) => void,
+    config?: WaitForSwarmConfig,
+  ): void
 }
 
 export class Pond2Impl implements Pond {
@@ -233,20 +239,40 @@ export class Pond2Impl implements Pond {
     this.hydrateV2 = FishJar.hydrateV2(this.eventStore, this.snapshotStore, this.pondStateTracker)
   }
 
-  getPondState = (): Observable<PondState> => this.pondStateTracker.observe()
+  getPondState = (callback: (newState: PondState) => void) => {
+    const sub = this.pondStateTracker.observe().subscribe(callback)
+    return () => sub.unsubscribe()
+  }
 
   getNodeConnectivity = (
+    callback: (newState: ConnectivityStatus) => void,
     ...specialSources: ReadonlyArray<SourceId>
-  ): Observable<ConnectivityStatus> =>
-    this.eventStore.connectivityStatus(
-      specialSources,
-      this.opts.hbHistDelay || 1e12,
-      this.opts.updateConnectivityEvery || Milliseconds.of(10_000),
-      this.opts.currentPsnHistoryDelay || 6,
-    )
+  ) => {
+    const sub = this.eventStore
+      .connectivityStatus(
+        specialSources,
+        this.opts.hbHistDelay || 1e12,
+        this.opts.updateConnectivityEvery || Milliseconds.of(10_000),
+        this.opts.currentPsnHistoryDelay || 6,
+      )
+      .subscribe(callback)
 
-  waitForSwarmSync = (config?: WaitForSwarmConfig): Observable<SplashState> =>
-    SplashState.of(this.eventStore, config || {})
+    return () => sub.unsubscribe()
+  }
+
+  waitForSwarmSync = (
+    onSyncComplete: () => void,
+    onProgress?: (newState: SplashState) => void,
+    config?: WaitForSwarmConfig,
+  ) => {
+    const splash = SplashState.of(this.eventStore, config || {}).finally(onSyncComplete)
+
+    if (onProgress) {
+      splash.subscribe(onProgress)
+    } else {
+      splash.subscribe()
+    }
+  }
 
   info = () => {
     return {
@@ -254,7 +280,7 @@ export class Pond2Impl implements Pond {
     }
   }
 
-  dispose = async () => {
+  dispose = () => {
     this.monitoring.dispose()
     // TODO: Implement cleanup of active fishs
   }
