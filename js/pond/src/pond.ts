@@ -90,6 +90,17 @@ type ActiveFish<S> = {
   commandPipeline?: CommandPipeline<S, EmissionRequest<any>>
 }
 
+export type GetNodeConnectivityParams = Readonly<{
+  callback: (newState: ConnectivityStatus) => void
+  specialSources?: ReadonlyArray<SourceId>
+}>
+
+export type WaitForSwarmSyncParams = Readonly<{
+  onSyncComplete: () => void
+  onProgress?: (newState: SplashState) => void
+  config?: WaitForSwarmConfig
+}>
+
 export type Pond = {
   /* EMISSION */
 
@@ -180,8 +191,7 @@ export type Pond = {
    */
 
   /**
-   * Dispose subscription to IpfsStore
-   * Store subscription needs to be unsubscribed for HMR
+   * Dispose of this Pond, stopping all underlying async operations.
    */
   dispose(): void
 
@@ -198,21 +208,14 @@ export type Pond = {
   /**
    * Obtain an observable describing connectivity status of this node.
    */
-  getNodeConnectivity(
-    callback: (newState: ConnectivityStatus) => void,
-    ...specialSources: ReadonlyArray<SourceId>
-  ): CancelSubscription
+  getNodeConnectivity(params: GetNodeConnectivityParams): CancelSubscription
 
   /**
    * Wait for the node to get in sync with the swarm.
    * It is strongly recommended that any interaction with the Pond is delayed until the onSyncComplete callback has been notified.
    * To obtain progress information about the sync, the onProgress callback can be supplied.
    */
-  waitForSwarmSync(
-    onSyncComplete: () => void,
-    onProgress?: (newState: SplashState) => void,
-    config?: WaitForSwarmConfig,
-  ): void
+  waitForSwarmSync(params: WaitForSwarmSyncParams): void
 }
 
 export class Pond2Impl implements Pond {
@@ -244,31 +247,26 @@ export class Pond2Impl implements Pond {
     return () => sub.unsubscribe()
   }
 
-  getNodeConnectivity = (
-    callback: (newState: ConnectivityStatus) => void,
-    ...specialSources: ReadonlyArray<SourceId>
-  ) => {
+  getNodeConnectivity = (params: GetNodeConnectivityParams) => {
     const sub = this.eventStore
       .connectivityStatus(
-        specialSources,
+        params.specialSources || [],
         this.opts.hbHistDelay || 1e12,
         this.opts.updateConnectivityEvery || Milliseconds.of(10_000),
         this.opts.currentPsnHistoryDelay || 6,
       )
-      .subscribe(callback)
+      .subscribe(params.callback)
 
     return () => sub.unsubscribe()
   }
 
-  waitForSwarmSync = (
-    onSyncComplete: () => void,
-    onProgress?: (newState: SplashState) => void,
-    config?: WaitForSwarmConfig,
-  ) => {
-    const splash = SplashState.of(this.eventStore, config || {}).finally(onSyncComplete)
+  waitForSwarmSync = (params: WaitForSwarmSyncParams) => {
+    const splash = SplashState.of(this.eventStore, params.config || {}).finally(
+      params.onSyncComplete,
+    )
 
-    if (onProgress) {
-      splash.subscribe(onProgress)
+    if (params.onProgress) {
+      splash.subscribe(params.onProgress)
     } else {
       splash.subscribe()
     }
