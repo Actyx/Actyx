@@ -9,7 +9,6 @@ import { contramap, Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
 import { Event, OffsetMap } from './eventstore/types'
-import { EnvelopeFromStore } from './store/util'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isString = (x: any): x is string => typeof x === 'string'
@@ -230,18 +229,11 @@ const ordEventKey: Ord<EventKey> = {
   compare: keysCompare,
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const keyFromEnvelope = (env: EnvelopeFromStore<any>): EventKey => ({
-  lamport: env.lamport,
-  sourceId: env.source.sourceId,
-  psn: env.psn,
-})
 const formatEventKey = (key: EventKey): string => `${key.lamport}/${key.sourceId}`
 
 export const EventKey = {
   zero: zeroKey,
   ord: ordEventKey,
-  fromEnvelope: keyFromEnvelope,
   format: formatEventKey,
 }
 export const EventKeyIO = t.readonly(

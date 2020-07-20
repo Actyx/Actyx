@@ -28,7 +28,6 @@ import log from './loggers'
 import { SnapshotStore } from './snapshotStore'
 import { StatePointers } from './statePointers'
 import { SnapshotScheduler } from './store/snapshotScheduler'
-import { EnvelopeFromStore } from './store/util'
 import {
   EventKey,
   FishName,
@@ -996,14 +995,6 @@ const includeEvent = (psnMap: OffsetMapBuilder, ev: Event): OffsetMapBuilder => 
   }
   return psnMap
 }
-
-/**
- * Groups a base and a number of event chunks on top of it.
- */
-export type BaseAndChunks<S> = Readonly<{
-  base: Option<LocalSnapshot<S>>
-  chunks: Observable<ReadonlyArray<EnvelopeFromStore<any>>>
-}>
 
 export const getLatestLocalSnapshot = <S>(
   snapshotStore: SnapshotStore,

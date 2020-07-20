@@ -7,10 +7,9 @@
 import { Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
-import { failure as failureReporter } from 'io-ts/lib/PathReporter'
-import { createEnumType, EnvelopeFromStore } from '../store/util'
-import { FishName, Lamport, Psn, Semantics, SourceId, Timestamp, Tags } from '../types'
+import { FishName, Lamport, Psn, Semantics, SourceId, Tags, Timestamp } from '../types'
 import { OffsetMapIO } from './offsetMap'
+import { createEnumType } from './utils'
 
 export { OffsetMap, OffsetMapBuilder } from './offsetMap'
 
@@ -71,14 +70,6 @@ const ordEvent: Ord<Event> = {
 }
 export const Event = {
   ord: ordEvent,
-  toEnvelopeFromStore: <E>(ev: Event, decoder?: t.Decoder<unknown, E>): EnvelopeFromStore<E> => ({
-    source: { semantics: ev.semantics, name: ev.name, sourceId: ev.sourceId },
-    timestamp: ev.timestamp,
-    lamport: ev.lamport,
-    psn: ev.psn,
-    // Just a cast in `NODE_ENV==='production'`
-    payload: decoder ? unsafeDecode(ev.payload, decoder) : (ev.payload as E),
-  }),
 }
 
 /**
@@ -174,15 +165,6 @@ export const ConnectivityStatus = t.union([FullyConnected, PartiallyConnected, N
 export type ConnectivityStatus = t.TypeOf<typeof ConnectivityStatus>
 
 /* Other things */
-function unsafeDecode<T>(value: unknown, decoder: t.Decoder<unknown, T>): T {
-  if (process.env.NODE_ENV !== 'production') {
-    return decoder.decode(value).fold(errors => {
-      throw new Error(failureReporter(errors).join('\n'))
-    }, x => x)
-  }
-  return value as T
-}
-
 export type StoreConnectionClosedHook = () => void
 
 export type WsStoreConfig = Readonly<{

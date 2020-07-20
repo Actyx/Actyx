@@ -13,7 +13,6 @@ import { interleaveRandom, intoOrderedChunks } from './eventstore/utils'
 import { FishEventStore, FishInfo } from './fishEventStore'
 import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
-import { EnvelopeFromStore } from './store/util'
 import { EventKey, Lamport, SnapshotFormat } from './types'
 import { shuffle } from './util/array'
 
@@ -83,8 +82,8 @@ const mkSnapshotScheduler: (
   getSnapshotLevels: (_, ts, limit) =>
     catOptions(
       ts.map((t, i) => {
-        const { payload } = (t as unknown) as EnvelopeFromStore<Payload>
-        if (f(payload)) {
+        const { payload } = (t as unknown) as Event
+        if (f(payload as Payload)) {
           return some({ tag: 'x' + i, i, persistAsLocalSnapshot: true })
         } else {
           return none
