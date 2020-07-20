@@ -16,31 +16,28 @@ import { mkMultiplexer } from './eventstore/utils'
 import { getSourceId } from './eventstore/websocketEventStore'
 import { CommandPipeline, FishJar } from './fishJar'
 import log from './loggers'
-import { PondCommon } from './pond-common'
 import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
-import {
-  CancelSubscription,
-  EmissionRequest,
-  Emit,
-  Fish,
-  FishId,
-  IsReset,
-  Metadata,
-  PendingEmission,
-  Reduce,
-  StateEffect,
-} from './pond-v2-types'
 import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
 import { toWireFormat, TypedTagIntersection } from './tagging'
 import {
+  CancelSubscription,
+  EmissionRequest,
+  Emit,
+  Fish,
+  FishId,
   FishName,
+  IsReset,
+  Metadata,
   Milliseconds,
+  PendingEmission,
+  Reduce,
   Semantics,
   Source,
   SourceId,
+  StateEffect,
   StateWithProvenance,
   Timestamp,
 } from './types'
@@ -57,6 +54,10 @@ export type PondOptions = {
   updateConnectivityEvery?: Milliseconds
 
   stateEffectDebounce?: number
+}
+
+export type PondInfo = {
+  sourceId: SourceId
 }
 
 export const makeEventChunk = <E>(source: Source, events: ReadonlyArray<E>): UnstoredEvents => {
@@ -89,7 +90,7 @@ type ActiveFish<S> = {
   commandPipeline?: CommandPipeline<S, EmissionRequest<any>>
 }
 
-export type Pond2 = PondCommon & {
+export type Pond = {
   /* EMISSION */
 
   /**
@@ -173,9 +174,42 @@ export type Pond2 = PondCommon & {
     effect: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ): CancelSubscription
+
+  /*
+   * HOUSE KEEPING FUNCTIONS
+   */
+
+  /**
+   * Dispose subscription to IpfsStore
+   * Store subscription needs to be unsubscribed for HMR
+   */
+  dispose(): Promise<void>
+
+  /**
+   * Information about the current pond
+   */
+  info(): PondInfo
+
+  /**
+   * Obtain an observable state of the pond.
+   */
+  getPondState(): Observable<PondState>
+
+  /**
+   * Obtain an observable describing connectivity status of this node.
+   */
+  getNodeConnectivity(...specialSources: ReadonlyArray<SourceId>): Observable<ConnectivityStatus>
+
+  /**
+   * Obtain an observable that completes when we are mostly in sync with the swarm.
+   * It is recommended to wait for this on application startup, before interacting with any fish,
+   * i.e. `await pond.waitForSwarmSync().toPromise()`. The intermediate states emitted
+   * by the Observable can be used to display render a progress bar, for example.
+   */
+  waitForSwarmSync(config?: WaitForSwarmConfig): Observable<SplashState>
 }
 
-export class Pond2Impl implements Pond2 {
+export class Pond2Impl implements Pond {
   readonly hydrateV2: <S, E>(
     subscriptionSet: SubscriptionSet,
     initialState: S,
@@ -451,21 +485,18 @@ const createServices = async (multiplexer: MultiplexedWebsocket): Promise<Servic
   return { eventStore, snapshotStore, commandInterface }
 }
 
-const mkPond = async (
-  multiplexer: MultiplexedWebsocket,
-  opts: PondOptions = {},
-): Promise<Pond2> => {
+const mkPond = async (multiplexer: MultiplexedWebsocket, opts: PondOptions = {}): Promise<Pond> => {
   const services = await createServices(multiplexer || mkMultiplexer())
   return pondFromServices(services, opts)
 }
 
-const mkMockPond = async (opts?: PondOptions): Promise<Pond2> => {
+const mkMockPond = async (opts?: PondOptions): Promise<Pond> => {
   const opts1: PondOptions = opts || {}
   const services = mockSetup()
   return pondFromServices(services, opts1)
 }
 
-export type TestPond2 = Pond2 & {
+export type TestPond2 = Pond & {
   directlyPushEvents: (events: Events) => void
   eventStore: TestEventStore
 }
@@ -480,7 +511,7 @@ const mkTestPond = async (opts?: PondOptions): Promise<TestPond2> => {
     eventStore,
   }
 }
-const pondFromServices = (services: Services, opts: PondOptions): Pond2 => {
+const pondFromServices = (services: Services, opts: PondOptions): Pond => {
   const { eventStore, snapshotStore, commandInterface } = services
 
   const monitoring = Monitoring.of(commandInterface, 10000)
@@ -499,8 +530,8 @@ const pondFromServices = (services: Services, opts: PondOptions): Pond2 => {
   return pond
 }
 
-export const Pond2 = {
-  default: async (): Promise<Pond2> => Pond2.of(mkMultiplexer()),
+export const Pond = {
+  default: async (): Promise<Pond> => Pond.of(mkMultiplexer()),
   of: mkPond,
   mock: mkMockPond,
   test: mkTestPond,

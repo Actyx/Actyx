@@ -1,4 +1,4 @@
-import { Fish, FishId } from '../pond-v2-types'
+import { Fish, FishId } from '../types'
 import { Tag, Where } from './typed'
 
 type T0 = {

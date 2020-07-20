@@ -4,14 +4,14 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Fish, Pond2, TagQuery } from '.'
+import { Fish, Pond, TagQuery } from '.'
 
-const stateAsPromise = (pond: Pond2, tags: TagQuery) =>
+const stateAsPromise = (pond: Pond, tags: TagQuery) =>
   new Promise((resolve, _reject) => pond.observe(Fish.eventsAscending(tags), resolve))
 
 describe('application of commands in the pond', () => {
   it('should execute every emission-callback', async () => {
-    const pond = await Pond2.test()
+    const pond = await Pond.test()
 
     const emit = pond.emit(['t0', 't1', 't2'], 'hello')
 
@@ -35,7 +35,7 @@ describe('application of commands in the pond', () => {
   })
 
   it('should execute every emission-callback even after emission has finished', async () => {
-    const pond = await Pond2.test()
+    const pond = await Pond.test()
 
     const emit = pond.emit(['t0', 't1', 't2'], 'hello')
 

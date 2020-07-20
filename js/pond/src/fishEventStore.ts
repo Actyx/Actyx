@@ -14,7 +14,6 @@ import { uniqWith } from 'ramda'
 import { Observable } from 'rxjs'
 import { MonoTypeOperatorFunction } from 'rxjs/interfaces'
 import { concatMap, map, takeWhile, toArray } from 'rxjs/operators'
-import { Psn, SubscriptionSet } from './'
 import { EventStore } from './eventstore'
 import {
   Event,
@@ -28,10 +27,12 @@ import log from './loggers'
 import { SnapshotStore } from './snapshotStore'
 import { StatePointers } from './statePointers'
 import { SnapshotScheduler } from './store/snapshotScheduler'
+import { SubscriptionSet } from './subscription'
 import {
   EventKey,
   FishName,
   LocalSnapshot,
+  Psn,
   Semantics,
   SnapshotFormat,
   StatePointer,

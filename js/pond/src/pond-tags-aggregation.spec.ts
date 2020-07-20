@@ -1,7 +1,7 @@
 import { Observable } from 'rxjs'
-import { Fish, Pond2, TagQuery } from '.'
+import { Fish, Pond, TagQuery } from '.'
 
-const emitTestEvents = async (pond: Pond2) =>
+const emitTestEvents = async (pond: Pond) =>
   pond
     .emitMany(
       { tags: ['t0', 't1', 't2'], payload: 'hello' },
@@ -11,7 +11,7 @@ const emitTestEvents = async (pond: Pond2) =>
     )
     .toPromise()
 
-const assertStateAndDispose = async <S>(states: Observable<S>, expected: S, pond: Pond2) => {
+const assertStateAndDispose = async <S>(states: Observable<S>, expected: S, pond: Pond) => {
   const res = states
     .debounceTime(5)
     .take(1)
@@ -23,14 +23,14 @@ const assertStateAndDispose = async <S>(states: Observable<S>, expected: S, pond
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const aggregateAsObservable = <S>(pond: Pond2, agg: Fish<S, any>): Observable<S> =>
+const aggregateAsObservable = <S>(pond: Pond, agg: Fish<S, any>): Observable<S> =>
   new Observable(x => {
     pond.observe(agg, s => x.next(s))
   })
 
 describe('application of commands in the pond', () => {
   const expectAggregationToYield = async (subscriptions: TagQuery, expectedResult: string[]) => {
-    const pond = await Pond2.test()
+    const pond = await Pond.test()
 
     const aggregate = Fish.eventsDescending<string>(subscriptions)
 
@@ -73,7 +73,7 @@ describe('application of commands in the pond', () => {
     })
 
     it('should cache based on key', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       const aggregate0 = mkAggregate(TagQuery.matchAnyOf('t1'))
 
@@ -93,7 +93,7 @@ describe('application of commands in the pond', () => {
     })
 
     it('should cache based on key, across unsubscribe calls', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       const aggregate = mkAggregate(TagQuery.matchAnyOf('t1'))
 
@@ -116,7 +116,7 @@ describe('application of commands in the pond', () => {
     })
 
     it('should permit different aggregations in parallel', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       const aggregate0 = mkAggregate(TagQuery.matchAnyOf('t0'))
 
