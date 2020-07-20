@@ -378,7 +378,8 @@ export type Metadata = Readonly<{
   // Lamport timestamp of the event. Cf. https://en.wikipedia.org/wiki/Lamport_timestamp
   lamport: Lamport
 
-  // A unique identifyer for the event.
+  // A unique identifier for the event.
+  // Every event has exactly one eventId which is unique to it, guaranteed to not collide with any other event.
   eventId: string
 }>
 
