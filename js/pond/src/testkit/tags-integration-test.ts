@@ -1,11 +1,11 @@
 import { Observable } from 'rxjs'
-import { Pond2, TagQuery, Fish } from '../'
+import { Pond, TagQuery, Fish } from '../'
 
 type Event = string
 type State = ReadonlyArray<Event>
 
 export const start = async () => {
-  const pond = await Pond2.default()
+  const pond = await Pond.default()
 
   const aggregate: Fish<State, Event> = {
     where: TagQuery.matchAnyOf('t0', 't1'),
