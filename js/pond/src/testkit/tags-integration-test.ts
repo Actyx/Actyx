@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs'
-import { Pond, TagQuery, Fish } from '../'
+import { Fish, Pond, TagQuery } from '../'
 
 type Event = string
 type State = ReadonlyArray<Event>
@@ -23,9 +23,9 @@ export const start = async () => {
   )
 
   const tags3 = ['t0', 't1', 't2']
-  await pond
-    .emitMany({ tags: tags3, payload: 'hello' }, { tags: tags3, payload: 'world' })
-    .toPromise()
+  await pond.emit(tags3, 'hello').toPromise()
+  await pond.emit(tags3, 'world').toPromise()
+
   const q = pond.emit(['t1'], 't1 only')
   q.subscribe(() => console.log('emission callback 0'))
   q.subscribe(() => console.log('emission callback 1'))
