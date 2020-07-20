@@ -180,9 +180,9 @@ export type Pond = {
    */
 
   /**
-  * Dispose subscription to IpfsStore
-  * Store subscription needs to be unsubscribed for HMR
-  */
+   * Dispose subscription to IpfsStore
+   * Store subscription needs to be unsubscribed for HMR
+   */
   dispose(): Promise<void>
 
   /**
@@ -437,15 +437,15 @@ export class Pond2Impl implements Pond {
 
     const tw = autoCancel
       ? (state: S) => {
-        if (cancelled) {
-          return false
-        } else if (autoCancel(state)) {
-          cancelled = true
-          return false
-        }
+          if (cancelled) {
+            return false
+          } else if (autoCancel(state)) {
+            cancelled = true
+            return false
+          }
 
-        return true
-      }
+          return true
+        }
       : () => !cancelled
 
     states
@@ -485,10 +485,7 @@ const createServices = async (multiplexer: MultiplexedWebsocket): Promise<Servic
   return { eventStore, snapshotStore, commandInterface }
 }
 
-const mkPond = async (
-  multiplexer: MultiplexedWebsocket,
-  opts: PondOptions = {},
-): Promise<Pond> => {
+const mkPond = async (multiplexer: MultiplexedWebsocket, opts: PondOptions = {}): Promise<Pond> => {
   const services = await createServices(multiplexer || mkMultiplexer())
   return pondFromServices(services, opts)
 }
