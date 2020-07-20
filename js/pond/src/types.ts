@@ -361,12 +361,25 @@ export type Emit<E> = {
   payload: E
 }
 
+// Generic Metadata attached to every event.
 export type Metadata = Readonly<{
+  // Was this event written by the very node we are running on?
   isLocalEvent: boolean
+
+  // Tags belonging to the event.
   tags: ReadonlyArray<string>
+
+  // Time since Unix Epoch **in Microseconds**!
   timestampMicros: Timestamp
+
+  // Convert the Timestamp to a standard JS Date object.
   timestampAsDate: () => Date
+
+  // Lamport timestamp of the event. Cf. https://en.wikipedia.org/wiki/Lamport_timestamp
   lamport: Lamport
+
+  // A unique identifyer for the event.
+  eventId: string
 }>
 
 // Combine the existing ("old") state and next event into a new state.
