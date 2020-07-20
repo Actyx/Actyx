@@ -29,12 +29,12 @@ import {
   PendingEmission,
   Reduce,
   StateEffect,
-  TagQuery,
 } from './pond-v2-types'
 import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
+import { toWireFormat, TypedTagIntersection } from './tagging'
 import {
   FishName,
   Milliseconds,
@@ -44,6 +44,12 @@ import {
   StateWithProvenance,
   Timestamp,
 } from './types'
+
+const isTyped = (
+  e: ReadonlyArray<string> | TypedTagIntersection<unknown>,
+): e is TypedTagIntersection<unknown> => {
+  return !Array.isArray(e)
+}
 
 export type PondOptions = {
   hbHistDelay?: number
@@ -94,7 +100,7 @@ export type Pond2 = PondCommon & {
    * @returns       A `PendingEmission` object that can be used to register
    *                callbacks with the emission’s completion.
    */
-  emit(tags: string[], payload: unknown): PendingEmission
+  emit<E>(tags: string[] | TypedTagIntersection<E>, payload: E): PendingEmission
 
   /**
    * Emit a number of events at once.
@@ -227,7 +233,7 @@ export class Pond2Impl implements Pond2 {
       const event = {
         semantics: Semantics.none,
         name: FishName.none,
-        tags,
+        tags: isTyped(tags) ? tags.raw().tags : tags,
         timestamp,
         payload,
       }
@@ -238,7 +244,7 @@ export class Pond2Impl implements Pond2 {
     return this.eventStore.persistEvents(events)
   }
 
-  emit = (tags: ReadonlyArray<string>, payload: unknown): PendingEmission => {
+  emit = <E>(tags: string[] | TypedTagIntersection<E>, payload: E): PendingEmission => {
     return this.emitMany({ tags, payload })
   }
 
@@ -290,7 +296,7 @@ export class Pond2Impl implements Pond2 {
   private observeTagBased0 = <S, E>(acc: Fish<S, E>): ActiveFish<S> => {
     const subscriptionSet: SubscriptionSet = {
       type: 'tags',
-      subscriptions: TagQuery.toWireFormat(acc.subscriptions),
+      subscriptions: toWireFormat(acc.where),
     }
 
     return this.getCachedOrInitialize(
@@ -332,7 +338,7 @@ export class Pond2Impl implements Pond2 {
 
     const subscriptionSet: SubscriptionSet = {
       type: 'tags',
-      subscriptions: TagQuery.toWireFormat(agg.subscriptions),
+      subscriptions: toWireFormat(agg.where),
     }
 
     const commandPipeline =

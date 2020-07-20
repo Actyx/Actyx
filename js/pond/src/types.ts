@@ -194,12 +194,6 @@ export type Source = Readonly<{
   sourceId: SourceId
 }>
 
-/**
- * Metadata wrapper for an event. This contains all information known to
- * the event store about this event and is passed into OnEvent so that
- * the receiving fish can distinguish between events from different sources
- * it has subscribed to.
- */
 export type Envelope<E> = {
   readonly source: Source
   readonly lamport: Lamport

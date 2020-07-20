@@ -10,7 +10,8 @@ import { EventStore } from './eventstore'
 import { Event, Events, OffsetMap } from './eventstore/types'
 import { FishJar } from './fishJar'
 import { mkNoopPondStateTracker } from './pond-state'
-import { Fish, FishId, TagQuery } from './pond-v2-types'
+import { Fish, FishId } from '.'
+import { TagQuery, toWireFormat } from './tagging'
 import { SnapshotStore } from './snapshotStore'
 import { minSnapshotAge } from './store/snapshotScheduler'
 import {
@@ -94,7 +95,7 @@ export const mkNumberFish = (
   semanticSnapshot?: (ev: NumberFishEvent) => boolean,
   where: TagQuery = TagQuery.requireAll('default'),
 ): Fish<NumberFishState, NumberFishEvent> => ({
-  subscriptions: where,
+  where,
   initialState: [],
   fishId: testFishId,
   onEvent: (state, payload) => {
@@ -183,7 +184,7 @@ export const snapshotTestSetup = async (
   const observe = hydrate(
     {
       type: 'tags',
-      subscriptions: TagQuery.toWireFormat(fish.subscriptions),
+      subscriptions: toWireFormat(fish.where),
     },
     fish.initialState,
     fish.onEvent,
