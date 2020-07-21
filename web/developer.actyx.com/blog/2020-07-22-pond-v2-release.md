@@ -74,20 +74,20 @@ knowledge of the Fish’s Event Log changes, we calculate a new State and pass i
 As a demonstration of this design’s flexibility, let us look at how to build a Fish that aggregates
 the earliest and the latest Events for a given Tag:
 ```ts
-type EarliestAndLatest<E> = {
-  earliest?: E
-  latest?: E
+type EarliestAndLatest = {
+  earliest?: unknown
+  latest?: unknown
 }
 
-const makeEarliestAndLatestFish = <E>(
+const makeEarliestAndLatestFish = (
   tag: string
-): Fish<EarliestAndLatest<E>, E> => {
+): Fish<EarliestAndLatest, unknown> => {
   const initialState = {
     earliest: undefined,
     latest: undefined
   }
 
-  const onEvent = (state: EarliestAndLatest<E>, payload: E) => {
+  const onEvent = (state: EarliestAndLatest, payload: unknown) => {
     // If `earliest` is not yet set, this is the first event we see, so we update it.
     // This works because the Pond always passes us all events in the right order!
     if (state.earliest === undefined) {
