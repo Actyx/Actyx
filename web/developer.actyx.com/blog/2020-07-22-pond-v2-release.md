@@ -162,10 +162,7 @@ const makeEarliestAndLatestFish = (
   const where = TagQuery.requireAll(tag)
 
   // We uniquely identify the Fish by its 'type' and its parametrisation.
-  // The version number (1) indicates the version of our program code, e.g. if we
-  // changed the onEvent function, we would increase it to 2,
-  // in order to invalidate the persistent cache.
-  const fishId = FishId.of('earliest-latest-fish', tag, 1)
+  const fishId = FishId.of('earliest-latest-fish', tag, /* program code version: */ 1)
 
   return {
     where,
