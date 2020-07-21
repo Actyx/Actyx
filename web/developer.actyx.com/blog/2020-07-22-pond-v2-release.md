@@ -27,16 +27,38 @@ To retrieve Events based on their Tags, you can then employ logic like:
 - Events with Tag 'foo' or Tag 'bar' (or both)
 - Events with both Tags 'foo' and 'bar'
 
-Additional Tags are always okay, so if an Event has Tags ['foo', 'bar', 'baz'] it would also match, in all three cases.
+Additional Tags are always O.K., so if an Event has Tags `['foo', 'bar', 'baz']` it would also
+match, in all three cases.
 
-For the Pond, we are shipping multiple nice mechanisms for expressing your Tag-based
-queries. [Please visit our docs here](LINKPLS)
+For the Pond, we are shipping multiple nice mechanisms for expressing your Tag-based queries.
+
+A very quick demonstration ([detailed docs](LINKPLS)):
+
+```typescript
+// Select events with either both tag0 and tag1, or just tag2.
+// (Events with all three tags also match.)
+const where = TagQuery.matchAnyOf(
+  'tag2',
+  TagQuery.requireAll('tag0', 'tag1'),
+)
+
+
+// Alternative, declare your tags in association with event types:
+const Tag0 = Tag<Type0>('tag0')
+const Tag1 = Tag<Type1>('tag1')
+const Tag2 = Tag<Type2>('tag2')
+
+const where = tag2.or(tag0.and(tag1))
+
+```
+
+Also be sure to check out [our guide on how to design your application architecture based on tags](LINKPLS).
 
 ## Direct Event Emission
 
 In version 1 of the Actyx Pond, all Events had to be emitted by Fish, from a received Command.
 Now, Events can be emitted freely without any Fish at hand.
-```ts
+```typescript
 pond.emit(['myFirstTag', 'mySecondTag'], myEventPayload)
 ```
 
@@ -75,19 +97,17 @@ export const emitMaterialConsumed = (
 })
 ```
 
-
 ## Switch to Callback-Based baseline APIs
 
 A short general note before we continue.
 
-In V1, our functions returned [RxJS](https://rxjs-dev.firebaseapp.com/) version 5 `Observable`
+In v1, the Pond’s functions returned [RxJS](https://rxjs-dev.firebaseapp.com/) version 5 `Observable`
 instances in some cases, most notably `pond.observe`.
 
-In V2, we have switched to plain callback-style interfaces everywhere. This way, you don’t have to
-understand RxJS to get started with the Pond.
+In v2, we have switched to plain callback-style interfaces everywhere. This way, you don’t have to
+figure out RxJS to get started with the Pond.
 And in case you already are an ardent disciple of Reactive Programming, you are now free to plug the
-Pond into the RxJS (or competitor) version of your choice. Please [see here](LINKPLS) for a small
-guide.
+Pond into the RxJS version of your choice. Please [see here](LINKPLS) for a small guide.
 
 ## Fish
 
