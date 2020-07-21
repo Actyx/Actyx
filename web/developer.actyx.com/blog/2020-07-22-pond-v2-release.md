@@ -42,7 +42,36 @@ pond.emit(myEventPayload, ['myFirstTag', 'mySecondTag'])
 
 It is still recommended that you organize ownership of Events (by type) into modules, for example:
 
-<!-- missing code example -->
+```typescript
+import { getUserTags } from './user-fish'
+
+type MaterialConsumed = // The type you have designed
+
+// Union of all types related to material
+type MaterialEvent = MaterialConsumed | MaterialRestockedEvent | // etc.
+
+// Tag to denote all sorts of material-related Events
+const MaterialTag = Tag<MaterialEvent>('material')
+
+// Tag to denote MaterialConsumed Events
+const MaterialConsumedTag = Tag<MaterialConsumed>('material-consumed')
+
+// We expose this function for usage by all code sites that want to log material consumption
+export const emitMaterialConsumed = (
+  materialInfo: MaterialInfo,
+  loggedBy: User,
+): Emit<MaterialConsumedEvent> => ({
+  // Creating the payload is this module’s concern
+  payload: makeMaterialConsumedPayload(materialInfo, loggedBy),
+
+  // Adding the list of tags is shared concern with the user module
+  // (which would like to remember material logged per-user)
+  tags: MaterialTag.withId(materialInfo.materialId)
+    .and(MaterialConsumedTag)
+    .and(getUserTags(loggedBy)),
+})
+```
+
 
 ## Switch to Callback-Based baseline APIs
 
