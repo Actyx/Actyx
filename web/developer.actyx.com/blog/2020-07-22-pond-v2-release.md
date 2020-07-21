@@ -80,13 +80,13 @@ export const emitMaterialConsumed = (
 
 A short general note before we continue.
 
-In V1, our functions returned [rxjs](https://rxjs-dev.firebaseapp.com/) version 5 `Observable`
+In V1, our functions returned [RxJS](https://rxjs-dev.firebaseapp.com/) version 5 `Observable`
 instances in some cases, most notably `pond.observe`.
 
 In V2, we have switched to plain callback-style interfaces everywhere. This way, you don’t have to
-understand rxjs to get started with the Pond.
+understand RxJS to get started with the Pond.
 And in case you already are an ardent disciple of Reactive Programming, you are now free to plug the
-Pond into the rxjs (or competitor) version of your choice. Please [see here](LINKPLS) for a small
+Pond into the RxJS (or competitor) version of your choice. Please [see here](LINKPLS) for a small
 guide.
 
 ## Fish
