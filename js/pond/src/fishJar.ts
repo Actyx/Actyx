@@ -271,6 +271,7 @@ const hydrateV2 = (
     timestampMicros: ev.timestamp,
     timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
     lamport: ev.lamport,
+    eventId: ev.sourceId + '/' + ev.psn,
   })
 
   // We construct a "Fish" from the given parameters in order to use the unchanged FES.
