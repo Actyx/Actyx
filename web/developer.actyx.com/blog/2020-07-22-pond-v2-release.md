@@ -37,7 +37,7 @@ queries. [Please visit our docs here](LINKPLS)
 In V1 of the Pond, all Events had to be emitted by Fish, from a received Command.
 With V2, Events can be emitted freely without any Fish at hand.
 ```ts
-pond.emit(myEventPayload, ['myFirstTag', 'mySecondTag'])
+pond.emit(['myFirstTag', 'mySecondTag'], myEventPayload)
 ```
 
 It is still recommended that you organize ownership of Events (by type) into modules, for example:
@@ -80,11 +80,14 @@ export const emitMaterialConsumed = (
 
 A short general note before we continue.
 
-In V1, our functions returned RX5 `Observable` instances in some cases, most notably `pond.observe`.
+In V1, our functions returned [rxjs](https://rxjs-dev.firebaseapp.com/) version 5 `Observable`
+instances in some cases, most notably `pond.observe`.
 
-In V2, we have switched to plain callback-style interfaces everywhere, for a number of reasons. If
-you would still rather work with Observables, that’s very easy, please [see here](LINKPLS)
-
+In V2, we have switched to plain callback-style interfaces everywhere. This way, you don’t have to
+understand rxjs to get started with the Pond.
+And in case you already are an ardent disciple of Reactive Programming, you are now free to plug the
+Pond into the rxjs (or competitor) version of your choice. Please [see here](LINKPLS) for a small
+guide.
 
 ## Fish
 
