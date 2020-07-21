@@ -464,9 +464,9 @@ export class Pond2Impl implements Pond {
   ): PendingEmission => {
     const handle = this.runC(agg)
 
-    const effect = (state: S) => {
+    const effect = async (state: S) => {
       const emissions: Emit<any>[] = []
-      fn(state, (tags, payload) => emissions.push({ tags, payload }))
+      await fn(state, (tags, payload) => emissions.push({ tags, payload }))
       return emissions
     }
 
@@ -478,9 +478,9 @@ export class Pond2Impl implements Pond {
     fn: StateFn<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ): CancelSubscription => {
-    const effect = (state: S) => {
+    const effect = async (state: S) => {
       const emissions: Emit<any>[] = []
-      fn(state, (tags, payload) => emissions.push({ tags, payload }))
+      await fn(state, (tags, payload) => emissions.push({ tags, payload }))
       return emissions
     }
 
