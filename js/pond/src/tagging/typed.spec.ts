@@ -148,6 +148,23 @@ describe('typed tag query system', () => {
     ignoreUnusedVar(fishWrong)
   })
 
+  it('PROBLEM CASE', () => {
+    const fishWrong: Fish<undefined, A | B> = {
+      onEvent: (state: undefined, _payload: A | B) => state,
+      initialState: undefined,
+      fishId: FishId.of('f', 'a', 0),
+
+      // This fails to compile:
+      // @ts-expect-error
+      where: tagA.or('foo').or(abcTag),
+
+      // .. but this would work:
+      // where: tagA.or(abcTag).or('foo'),
+    }
+
+    ignoreUnusedVar(fishWrong)
+  })
+
   it('should allow fish to handle more events than indicated by tags', () => {
     const fishRight: Fish<undefined, A | B | C | T0> = {
       onEvent: (state: undefined, _payload: A | B | C | T0) => state,
