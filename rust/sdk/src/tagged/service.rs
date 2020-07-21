@@ -145,7 +145,7 @@ mod tests {
         let s = serde_json::to_string(&resp).unwrap();
         assert_eq!(
             s,
-            r#"{"type":"start","snapshot":{"compression":"none","data":"AQID"}}"#
+            r#"{"type":"state","snapshot":{"compression":"none","data":"AQID"}}"#
         );
         let r: SubscribeUntilTimeTravelResponse = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, resp);
