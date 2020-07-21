@@ -4,7 +4,7 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Pond, TagQuery, Fish, Reduce, StateEffect } from '.'
+import { Pond, TagQuery, Fish, Reduce, StateEffect, StateFn } from '.'
 
 export type State = { n: number; fill: number }
 
@@ -258,14 +258,18 @@ describe('application of commands in the pond v2', () => {
       const pond = await Pond.test()
       const tags = ['self']
 
-      const mk = (remainder: number): StateEffect<State, Payload> => state =>
-        state.n % 3 === remainder
-          ? [{ tags, payload: { type: 'set', n: state.n + 1 } }]
-          : [{ tags, payload: { type: 'fill' } }, { tags, payload: { type: 'fill' } }]
+      const mk = (remainder: number): StateFn<State, Payload> => (state, emit) => {
+        if (state.n % 3 === remainder) {
+          emit(tags, { type: 'set', n: state.n + 1 })
+        } else {
+          emit(tags, { type: 'fill' })
+          emit(tags, { type: 'fill' })
+        }
+      }
 
-      pond.keepRunning(agg, mk(0), s => s.n === 10)
-      pond.keepRunning(agg, mk(1), s => s.n === 10)
-      pond.keepRunning(agg, mk(2), s => s.n === 10)
+      pond.alwaysExec(agg, mk(0), s => s.n === 10)
+      pond.alwaysExec(agg, mk(1), s => s.n === 10)
+      pond.alwaysExec(agg, mk(2), s => s.n === 10)
 
       await expectState(pond, 10)
 

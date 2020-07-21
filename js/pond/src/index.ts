@@ -28,6 +28,7 @@ export {
   SnapshotFormat,
   SourceId,
   StateEffect,
+  StateFn,
   StateWithProvenance,
   Timestamp,
 } from './types'

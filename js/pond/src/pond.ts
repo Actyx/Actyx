@@ -38,6 +38,7 @@ import {
   Source,
   SourceId,
   StateEffect,
+  StateFn,
   StateWithProvenance,
   Timestamp,
 } from './types'
@@ -135,6 +136,27 @@ export type Pond = {
   observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription
 
   /* CONDITIONAL EMISSION (COMMANDS) */
+
+  /**
+   * Run StateFn against currently known local state of Fish. Emit events based on it by calling the `emit` function
+   * passed into the invocation of your fn.
+   *
+   * In regards to other nodes, there are no serialisation guarantees.
+   *
+   * @typeParam S                State of the Fish, input value to the effect.
+   * @typeParam EWrite           Payload type(s) to be returned by the effect.
+   *
+   * @param fish         Complete aggregation information.
+   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
+   * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
+   */
+  exec<S, EWrite>(fish: Fish<S, any>, fn: StateFn<S, EWrite>): PendingEmission
+
+  alwaysExec<S, EWrite>(
+    fish: Fish<S, any>,
+    fn: StateFn<S, EWrite>,
+    autoCancel?: (state: S) => boolean,
+  ): CancelSubscription
 
   /**
    * Run StateEffects against the current **locally known** State of the `fish`.
@@ -434,6 +456,35 @@ export class Pond2Impl implements Pond {
 
       return o
     }
+  }
+
+  exec = <S, EWrite, ReadBack = false>(
+    agg: Fish<S, ReadBack extends true ? EWrite : any>,
+    fn: StateFn<S, EWrite>,
+  ): PendingEmission => {
+    const handle = this.runC(agg)
+
+    const effect = (state: S) => {
+      const emissions: Emit<any>[] = []
+      fn(state, (tags, payload) => emissions.push({ tags, payload }))
+      return emissions
+    }
+
+    return handle(effect)
+  }
+
+  alwaysExec = <S, EWrite>(
+    fish: Fish<S, any>,
+    fn: StateFn<S, EWrite>,
+    autoCancel?: (state: S) => boolean,
+  ): CancelSubscription => {
+    const effect = (state: S) => {
+      const emissions: Emit<any>[] = []
+      fn(state, (tags, payload) => emissions.push({ tags, payload }))
+      return emissions
+    }
+
+    return this.keepRunning(fish, effect, autoCancel)
   }
 
   run = <S, EWrite, ReadBack = false>(

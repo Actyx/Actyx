@@ -456,6 +456,13 @@ export type EmissionRequest<E> = ReadonlyArray<Emit<E>> | Promise<ReadonlyArray<
 
 export type StateEffect<S, EWrite> = (state: S) => EmissionRequest<EWrite>
 
+export type AddEmission<EWrite> = <E extends EWrite>(
+  tags: string[] | TypedTagIntersection<E>,
+  payload: E,
+) => void
+
+export type StateFn<S, EWrite> = (state: S, emit: AddEmission<EWrite>) => void | Promise<void>
+
 /**
  * Cancel an ongoing aggregation (the provided callback will stop being called).
  */
