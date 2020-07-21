@@ -7,7 +7,7 @@ author_image_url: /images/blog/benjamin-sieffert.jpg
 tags: [Actyx Pond]
 ---
 
-We are happy to announce the release of the Actyx Pond Version 2. [Download from npm](LINKPLS)
+We are pleased to announce the release of the Actyx Pond Version 2. [Download from npm](LINKPLS)
 
 Read on for a brief overview of the changes, which we have developed with the goal of reducing
 boilerplate and allowing more flexibility and elegance in your application architecture.
@@ -16,11 +16,11 @@ boilerplate and allowing more flexibility and elegance in your application archi
 
 ## Tags
 
-The biggest change we’re rolling out to the Pond and the whole Actyx Event System in general with
+The biggest change we’re rolling out to the Pond and the ActyxOS EventService in general with
 this version is that Events are now indexed based on Tags assigned by your application. There can be
 any number of Tags given for an Event. That means an Event no longer belongs to one single stream
-identified by Semantics+Name, but can belong to many streams, each identified by just a string, as
-Tags are nothing but strings. 
+identified by _semantics_ and _fishName_, but instead can belong to many streams – each identified by just a
+string, as Tags are nothing but strings.
 
 To retrieve Events based on their Tags, you can then employ logic like:
 - Events with Tag 'foo'
@@ -34,8 +34,8 @@ queries. [Please visit our docs here](LINKPLS)
 
 ## Direct Event Emission
 
-In V1 of the Pond, all Events had to be emitted by Fish, from a received Command.
-With V2, Events can be emitted freely without any Fish at hand.
+In version 1 of the Actyx Pond, all Events had to be emitted by Fish, from a received Command.
+Now, Events can be emitted freely without any Fish at hand.
 ```ts
 pond.emit(['myFirstTag', 'mySecondTag'], myEventPayload)
 ```
@@ -95,11 +95,12 @@ A Fish is now a struct based on these fields:
 
 - `initialState`: State of the Fish before it has seen any Events.
 - `onEvent`: Function to create a new State from previous State and next Event. As with V1, this
-  function must be free of side-effects; but you may now modify the old State to create the next
-  one, if you like!
-- `fishId`: A unique identifier for the Fish. We need this in several layers of caching, to make
-  your code extra performant. [See our docs for details.](LINKPLS)
-- `where`: Which Events to pass to this Fish.
+  function must be free of side-effects; but you may now directly modify and return the old state,
+  just like in
+  [Array.reduce](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce).
+- `fishId`: A unique identifier for the Fish. This is used throughout several layers of caching, to make
+  your application extra-fast. [See our docs for details.](LINKPLS)
+- `where`: Which Events to pass to this Fish; like the WHERE clause in SQL.
 
 Note that in comparison to v1, this is no longer a "factory" – you set concrete values for all
 parameters.
@@ -114,6 +115,7 @@ type EarliestAndLatest = {
   latest?: unknown
 }
 
+// For non-singleton Fish, constructor functions like this are good practice
 const makeEarliestAndLatestFish = (
   tag: string
 ): Fish<EarliestAndLatest, unknown> => {
@@ -140,7 +142,10 @@ const makeEarliestAndLatestFish = (
   const where = TagQuery.requireAll(tag)
 
   // We uniquely identify the Fish by its 'type' and its parametrisation.
-  const fishId = FishId.of('earliest-latest-fish', tag, 0)
+  // The version number (1) indicates the version of our program code, e.g. if we
+  // changed the onEvent function, we would increase it to 2,
+  // in order to invalidate the persistent cache.
+  const fishId = FishId.of('earliest-latest-fish', tag, 1)
 
   return {
     where,
@@ -167,7 +172,7 @@ earlier Effects already incorporated into the State.
 
 State Effects can be async: You’re free to do any sort of I/O you need, before deciding which Events
 to emit. For example, you might do an HTTP call based on the State, then depending on the call’s
-result return an Event indicating Success/Failure.
+result return an Event indicating success or failure.
 
 Do take note, however, that as long as your State Effect is still waiting for an async operation, no
 other State Effect for that specific Fish can be started, due to the serialisation guarantee. Hence
@@ -185,6 +190,10 @@ detect this, in turn, in `onCommand`. In V2, you just don’t have to worry abou
 The hooks are also no longer part of the Fish itself.
 You start one by calling `pond.keepRunning(fish, effect)` and get back a handle that you can use to
 stop the hook at any time – observing your Fish and making it act have become two distinct things.
+
+For example, a Fish modelling the current mission of an autonomous logistics robot can be observed
+from wherever needed (including a dashboard app), but its decision logic runs only where you
+explicitly start it (i.e. on the robot).
 
 Finally, there is an optional third parameter to `keepRunning` called `autoCancel`. This can be used
 to automatically uninstall your hook based on the State. For example, if your hook refers to an
