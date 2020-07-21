@@ -23,7 +23,7 @@ use serde::{
 };
 use std::{
     cmp::Ordering,
-    collections::{BTreeSet, HashMap},
+    collections::{BTreeMap, BTreeSet},
     fmt::{self, Debug},
     iter::FromIterator,
     ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
@@ -457,8 +457,8 @@ mod postgresql {
 /// negative values are tolerated and ignored. This is to keep compatibility with previously
 /// documented API endpoints.
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
-#[serde(from = "HashMap<StreamId, OffsetOrMin>")]
-pub struct OffsetMap(HashMap<StreamId, Offset>);
+#[serde(from = "BTreeMap<StreamId, OffsetOrMin>")]
+pub struct OffsetMap(BTreeMap<StreamId, Offset>);
 
 impl OffsetMap {
     /// The empty `OffsetMap` is equivalent to the beginning of time, it does not contain any
@@ -555,7 +555,7 @@ impl OffsetMap {
         )
     }
 
-    pub fn into_inner(self) -> HashMap<StreamId, Offset> {
+    pub fn into_inner(self) -> BTreeMap<StreamId, Offset> {
         self.0
     }
 
@@ -633,26 +633,26 @@ impl PartialOrd for OffsetMap {
     }
 }
 
-impl AsRef<HashMap<StreamId, Offset>> for OffsetMap {
-    fn as_ref(&self) -> &HashMap<StreamId, Offset> {
+impl AsRef<BTreeMap<StreamId, Offset>> for OffsetMap {
+    fn as_ref(&self) -> &BTreeMap<StreamId, Offset> {
         &self.0
     }
 }
 
 impl Default for OffsetMap {
     fn default() -> Self {
-        OffsetMap(HashMap::new())
+        OffsetMap(BTreeMap::new())
     }
 }
 
-impl From<HashMap<SourceId, Offset>> for OffsetMap {
-    fn from(map: HashMap<SourceId, Offset>) -> Self {
+impl From<BTreeMap<SourceId, Offset>> for OffsetMap {
+    fn from(map: BTreeMap<SourceId, Offset>) -> Self {
         map.into_iter().collect()
     }
 }
 
-impl From<HashMap<SourceId, OffsetOrMin>> for OffsetMap {
-    fn from(map: HashMap<SourceId, OffsetOrMin>) -> Self {
+impl From<BTreeMap<SourceId, OffsetOrMin>> for OffsetMap {
+    fn from(map: BTreeMap<SourceId, OffsetOrMin>) -> Self {
         map.into_iter()
             .filter_map(|(s, o)| Offset::from_offset_or_min(o).map(|o| (s, o)))
             .collect()
@@ -665,14 +665,14 @@ impl FromIterator<(SourceId, Offset)> for OffsetMap {
     }
 }
 
-impl From<HashMap<StreamId, Offset>> for OffsetMap {
-    fn from(map: HashMap<StreamId, Offset>) -> Self {
+impl From<BTreeMap<StreamId, Offset>> for OffsetMap {
+    fn from(map: BTreeMap<StreamId, Offset>) -> Self {
         Self(map)
     }
 }
 
-impl From<HashMap<StreamId, OffsetOrMin>> for OffsetMap {
-    fn from(map: HashMap<StreamId, OffsetOrMin>) -> Self {
+impl From<BTreeMap<StreamId, OffsetOrMin>> for OffsetMap {
+    fn from(map: BTreeMap<StreamId, OffsetOrMin>) -> Self {
         map.into_iter()
             .filter_map(|(s, o)| Offset::from_offset_or_min(o).map(|o| (s, o)))
             .collect()
@@ -863,7 +863,7 @@ mod tests {
             ]
             .iter()
             .copied()
-            .collect::<HashMap<_, _>>(),
+            .collect::<BTreeMap<_, _>>(),
         );
 
         let right = OffsetMap::from(
@@ -875,7 +875,7 @@ mod tests {
             ]
             .iter()
             .copied()
-            .collect::<HashMap<_, _>>(),
+            .collect::<BTreeMap<_, _>>(),
         );
 
         let union = OffsetMap::from(
@@ -888,7 +888,7 @@ mod tests {
             ]
             .iter()
             .copied()
-            .collect::<HashMap<_, _>>(),
+            .collect::<BTreeMap<_, _>>(),
         );
 
         let intersection = OffsetMap::from(
@@ -899,7 +899,7 @@ mod tests {
             ]
             .iter()
             .copied()
-            .collect::<HashMap<_, _>>(),
+            .collect::<BTreeMap<_, _>>(),
         );
 
         assert_eq!(left.union(&right), union);

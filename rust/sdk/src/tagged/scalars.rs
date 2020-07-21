@@ -1,8 +1,5 @@
-use crate::{
-    event::scalars::{SourceId, MAX_SOURCEID_LENGTH},
-    types::varint,
-};
-use anyhow::{anyhow, bail, Context, Result};
+use crate::event::scalars::{SourceId, MAX_SOURCEID_LENGTH};
+use anyhow::{anyhow, bail, ensure, Context, Result};
 use multibase::Base;
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, fmt::Display};
@@ -169,13 +166,10 @@ impl StreamId {
             bail!("trailing garbage in StreamId");
         }
         let node_id = NodeId::try_from(node_str)?;
-        let stream_nr = varint::u64::decode(
-            multibase::decode(stream_str)
-                .context("decoding StreamId")?
-                .1
-                .as_ref(),
-        )
-        .ok_or_else(|| anyhow!("invalid stream nr in StreamId"))?;
+        let stream_nr = stream_str
+            .parse()
+            .context("parsing StreamId stream number")?;
+        ensure!(stream_nr != 0, "invalid stream nr in StreamId");
         Ok(Self { node_id, stream_nr })
     }
 }
@@ -185,15 +179,7 @@ impl Display for StreamId {
         if let Ok(source_id) = self.to_source_id() {
             f.write_str(source_id.as_str())
         } else {
-            write!(
-                f,
-                "{}.{}",
-                self.node_id,
-                multibase::encode(
-                    Base::Base64Url,
-                    varint::u64::encode(self.stream_nr).as_ref()
-                )
-            )
+            write!(f, "{}.{}", self.node_id, self.stream_nr)
         }
     }
 }
@@ -243,6 +229,7 @@ impl From<&SourceId> for StreamId {
 mod tests {
     use super::*;
     use quickcheck::Arbitrary;
+    use serde_json::Value;
 
     impl Arbitrary for NodeId {
         fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
@@ -285,7 +272,22 @@ mod tests {
         let stream_id = NodeId(BYTES).stream(12).unwrap();
         assert_eq!(
             stream_id.to_string(),
-            "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.uDA"
+            "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.12"
+        );
+    }
+
+    #[test]
+    fn quick1() {
+        let sid = StreamId {
+            node_id: NodeId([
+                81, 66, 94, 87, 52, 39, 60, 110, 43, 93, 98, 94, 97, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ]),
+            stream_nr: 0,
+        };
+        assert_eq!(
+            serde_json::to_value(&sid).unwrap(),
+            Value::String(sid.to_string())
         );
     }
 
@@ -301,8 +303,7 @@ mod tests {
         }
 
         fn stream_id_to_string(sid: StreamId) -> bool {
-            // debug format includes the surrounding double-quotes
-            serde_json::to_string(&sid).unwrap() == format!("{:?}", sid.to_string())
+            serde_json::to_value(&sid).unwrap() == Value::String(sid.to_string())
         }
 
         fn source_id_serialization(src: SourceId) -> bool {
