@@ -56,6 +56,9 @@ const MaterialTag = Tag<MaterialEvent>('material')
 // Tag to denote MaterialConsumed Events
 const MaterialConsumedTag = Tag<MaterialConsumed>('material-consumed')
 
+// Like the "user-fish" module, we also expose such a function – enabling other modules to "tag us."
+export const getMaterialTags = (materialId: string) => MaterialTag.withId(materialId)
+
 // We expose this function for usage by all code sites that want to log material consumption
 export const emitMaterialConsumed = (
   materialInfo: MaterialInfo,
@@ -66,7 +69,7 @@ export const emitMaterialConsumed = (
 
   // Adding the list of tags is shared concern with the user module
   // (which would like to remember material logged per-user)
-  tags: MaterialTag.withId(materialInfo.materialId)
+  tags: getMaterialTags(materialInfo.materialId)
     .and(MaterialConsumedTag)
     .and(getUserTags(loggedBy)),
 })
@@ -165,7 +168,7 @@ result return an Event indicating Success/Failure.
 
 Do take note, however, that as long as your State Effect is still waiting for an async operation, no
 other State Effect for that specific Fish can be started, due to the serialisation guarantee. Hence
-always make sure your async logic can’t stall forever. 
+always make sure your async logic can’t stall forever.
 
 ## OnStateChange -> pond.keepRunning
 
