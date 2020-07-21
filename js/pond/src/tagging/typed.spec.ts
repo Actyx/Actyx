@@ -135,6 +135,19 @@ describe('typed tag query system', () => {
     ignoreUnusedVar(fishWrong)
   })
 
+  it('fish should accept Where<unknown> indicating untyped tag query', () => {
+    const fishWrong: Fish<undefined, A | B> = {
+      onEvent: (state: undefined, _payload: A | B) => state,
+      initialState: undefined,
+      fishId: FishId.of('f', 'a', 0),
+
+      // Untyped combination -> Where<Untyped>, is also fine
+      where: abcTag.or('foo'),
+    }
+
+    ignoreUnusedVar(fishWrong)
+  })
+
   it('should allow fish to handle more events than indicated by tags', () => {
     const fishRight: Fish<undefined, A | B | C | T0> = {
       onEvent: (state: undefined, _payload: A | B | C | T0) => state,

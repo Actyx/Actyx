@@ -30,6 +30,7 @@ export {
   StateEffect,
   StateWithProvenance,
   Timestamp,
+  Untyped,
 } from './types'
 export { enableAllLoggersExcept, isNode, Loggers, unreachable, unreachableOrElse } from './util'
 export { runStats } from './util/runStats'
