@@ -102,7 +102,7 @@ describe('application of commands in the pond', () => {
 
       expect(events).resolves.toEqual({
         tags: ['A', 'AB'],
-        payload: 'A',
+        payload: { type: 'A' },
       })
 
       pond.dispose()
@@ -123,7 +123,7 @@ describe('application of commands in the pond', () => {
       expect(events).resolves.toEqual({
         tags: ['A', 'AB'],
         // Wrong but we made the compiler ignore it
-        payload: 'B',
+        payload: { type: 'B' },
       })
 
       pond.dispose()
