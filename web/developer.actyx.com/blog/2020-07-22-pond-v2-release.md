@@ -56,7 +56,7 @@ you would still rather work with Observables, that’s very easy, please [see he
 
 ## Fish
 
-Fish do now exist by themselves. A Fish is a struct with at least these fields:
+A Fish is now a struct based on these fields:
 
 - `initialState`: State of the Fish before it has seen any Events.
 - `onEvent`: Function to create a new State from previous State and next Event. As with V1, this
@@ -66,8 +66,61 @@ Fish do now exist by themselves. A Fish is a struct with at least these fields:
   your code extra performant. [See our docs for details.](LINKPLS)
 - `where`: Which Events to pass to this Fish.
 
-If you got that, you can just call `pond.observe(fish, callback)` and that’s it! Whenever our
+Note that in comparison to v1, this is no longer a "factory" – you pass concrete values for all
+parameters.
+And then you can already call `pond.observe(fish, callback)` and that’s it! Whenever our
 knowledge of the Fish’s Event Log changes, we calculate a new State and pass it to your callback.
+
+As a demonstration of this design’s flexibility, let us look at how to build a Fish that aggregates
+the earliest and the latest Events for a given Tag:
+```ts
+type EarliestAndLatest<E> = {
+  earliest?: E
+  latest?: E
+}
+
+const makeEarliestAndLatestFish = <E>(
+  tag: string
+): Fish<EarliestAndLatest<E>, E> => {
+  const initialState = {
+    earliest: undefined,
+    latest: undefined
+  }
+
+  const onEvent = (state: EarliestAndLatest<E>, payload: E) => {
+    // If `earliest` is not yet set, this is the first event we see, so we update it.
+    // This works because the Pond always passes us all events in the right order!
+    if (state.earliest === undefined) {
+      state.earliest = payload
+    }
+
+    // Because events are passed to us in the right order,
+    // every event we see is at the same time the latest event for us.
+    state.latest = payload
+
+    return state
+  }
+
+  // Listen to all Events with the given Tag.
+  const where = TagQuery.requireAll(tag)
+
+  // We uniquely identify the Fish by its 'type' and its parametrisation.
+  const fishId = FishId.of('earliest-latest-fish', tag, 0)
+
+  return {
+    where,
+    initialState,
+    onEvent,
+    fishId
+  }
+}
+
+// Use like this:
+pond.observe(
+  makeEarliestAndLatestFish('my-tag'),
+  state => console.log('fish updated to new state', state)
+)
+```
 
 ## Command -> StateEffect
 
