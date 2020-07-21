@@ -51,27 +51,44 @@ impl StartFrom {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscribeUntilTimeTravelApiRequest {
+    /// This id uniquely identifies one particular session. Connecting again with this
+    /// SessionId shall only be done after a TimeTravel message has been received. The
+    /// subscription is stored with the Session and all previous state is destroyed
+    /// upon receiving a different subscription for this session.
     pub session: SessionId,
+    /// Definition of the events to be received by this session, i.e. a selection of
+    /// tags coupled with other flags like “is local”.
     pub subscription: String,
+    /// The consumer may already have kept state and know at which point to resume a
+    /// previously interrupted stream. In this case, StartFrom::Offsets is used,
+    /// otherwise StartFrom::Snapshot indicates that the PondService shall figure
+    /// out where best to start out from, possibly sending a `State` message first.
     #[serde(flatten)]
     pub from: StartFrom,
 }
 
-/// Response to subscribeUntilTimeTravel is a stream of events possibly preceded by a
-/// start message and terminated by a time travel
-///
-///
+/// Response to subscribeUntilTimeTravel is a stream of events terminated by a time travel
 #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SubscribeUntilTimeTravelResponse {
+    /// This message may be sent in the beginning when a suitable snapshot has been
+    /// found for this session. It may also be sent at later times when suitable
+    /// snapshots become available by other means (if for example this session is
+    /// computed also on a different node).
     #[serde(rename_all = "camelCase")]
-    Start { snapshot: SnapshotData },
+    State { snapshot: SnapshotData },
+    /// This is the main message, a new event that is to be applied directly to the
+    /// currently known state to produce the next state.
     #[serde(rename_all = "camelCase")]
     Event {
         #[serde(flatten)]
         event: Event<Payload>,
         caught_up: bool,
     },
+    /// This message ends the stream in case a replay becomes necessary due to
+    /// time travel. The contained event key signals how far back the replay will
+    /// reach so that the consumer can invalidate locally stored snapshots (if
+    /// relevant).
     #[serde(rename_all = "camelCase")]
     TimeTravel { new_start: EventKey },
 }
@@ -122,7 +139,7 @@ mod tests {
         let r: SubscribeUntilTimeTravelApiRequest = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, req);
 
-        let resp = SubscribeUntilTimeTravelResponse::Start {
+        let resp = SubscribeUntilTimeTravelResponse::State {
             snapshot: SnapshotData::new(Compression::None, &[1, 2, 3][..]),
         };
         let s = serde_json::to_string(&resp).unwrap();
