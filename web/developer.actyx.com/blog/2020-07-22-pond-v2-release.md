@@ -95,7 +95,7 @@ A Fish is now a struct based on these fields:
   your code extra performant. [See our docs for details.](LINKPLS)
 - `where`: Which Events to pass to this Fish.
 
-Note that in comparison to v1, this is no longer a "factory" – you pass concrete values for all
+Note that in comparison to v1, this is no longer a "factory" – you set concrete values for all
 parameters.
 And then you can already call `pond.observe(fish, callback)` and that’s it! Whenever our
 knowledge of the Fish’s Event Log changes, we calculate a new State and pass it to your callback.
