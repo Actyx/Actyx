@@ -245,6 +245,8 @@ const commandPipeline = <S, I>(
   }
 }
 
+const maxLamportLength = String(Number.MAX_SAFE_INTEGER).length
+
 const hydrateV2 = (
   eventStore: EventStore,
   snapshotStore: SnapshotStore,
@@ -271,7 +273,7 @@ const hydrateV2 = (
     timestampMicros: ev.timestamp,
     timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
     lamport: ev.lamport,
-    eventId: ev.sourceId + '/' + ev.psn,
+    eventId: String(ev.lamport).padStart(maxLamportLength, '0') + '/' + ev.sourceId,
   })
 
   // We construct a "Fish" from the given parameters in order to use the unchanged FES.

@@ -380,6 +380,7 @@ export type Metadata = Readonly<{
 
   // A unique identifier for the event.
   // Every event has exactly one eventId which is unique to it, guaranteed to not collide with any other event.
+  // Events are *sorted* based on the eventId by ActyxOS: For a given event, all later events also have a higher eventId according to simple string-comparison.
   eventId: string
 }>
 
