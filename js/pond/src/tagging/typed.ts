@@ -28,7 +28,7 @@ export interface TypedTagUnion<E> {
 // Must be interface, otherwise inferred (recursive) type gets very large.
 export interface Tags<E> {
   /**
-   * Add another tag(s) to this requirement. E.g Tag<FooEvent>('foo').and(Tag<BarEvent>('bar')) will require both 'foo' and 'bar'.
+   * Add more tags to this requirement. E.g Tag<FooEvent>('foo').and(Tag<BarEvent>('bar')) will require both 'foo' and 'bar'.
    */
   and<E1>(tag: Tags<E1>): Tags<Extract<E1, E>>
 

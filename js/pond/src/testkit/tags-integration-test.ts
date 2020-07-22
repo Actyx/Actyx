@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs'
-import { Pond, TagQuery, Fish } from '../'
+import { Pond, TagQuery, Fish, Tag, Tags } from '../'
 
 type Event = string
 type State = ReadonlyArray<Event>
@@ -26,16 +26,16 @@ export const start = async () => {
   await pond
     .emitMany({ tags: tags3, payload: 'hello' }, { tags: tags3, payload: 'world' })
     .toPromise()
-  const q = pond.emit(['t1'], 't1 only')
+  const q = pond.emit(Tag('t1'), 't1 only')
   q.subscribe(() => console.log('emission callback 0'))
   q.subscribe(() => console.log('emission callback 1'))
-  await pond.emit(['t2'], 't2 only').toPromise()
+  await pond.emit(Tag('t2'), 't2 only').toPromise()
 
   await Observable.timer(500).toPromise()
   cancel()
 
   // should not be printed immediately
-  await pond.emit(['t0', 't1'], 'full match 2').toPromise()
+  await pond.emit(Tags('t0', 't1'), 'full match 2').toPromise()
 
   // The Promise behind `emitTagged` completing does not actually imply the store will be ready to serve the event already.
   await Observable.timer(500).toPromise()
@@ -44,7 +44,7 @@ export const start = async () => {
     console.log('2nd start -- updated state to', state),
   )
 
-  await pond.emit(['t0', 't1'], 'full match 3').toPromise()
+  await pond.emit(Tags('t0', 't1'), 'full match 3').toPromise()
 }
 
 start()
