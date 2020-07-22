@@ -384,6 +384,17 @@ export type Metadata = Readonly<{
   eventId: string
 }>
 
+const maxLamportLength = String(Number.MAX_SAFE_INTEGER).length
+
+export const toMetadata = (sourceId: string) => (ev: Event): Metadata => ({
+  isLocalEvent: ev.sourceId === sourceId,
+  tags: ev.tags,
+  timestampMicros: ev.timestamp,
+  timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
+  lamport: ev.lamport,
+  eventId: String(ev.lamport).padStart(maxLamportLength, '0') + '/' + ev.sourceId,
+})
+
 // Combine the existing ("old") state and next event into a new state.
 // The returned value may be something completely new, or a mutated version of the input state.
 export type Reduce<S, E> = (state: S, event: E, metadata: Metadata) => S

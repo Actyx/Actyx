@@ -30,6 +30,7 @@ import {
   SourceId,
   StateWithProvenance,
   Timestamp,
+  toMetadata,
 } from './types'
 import { lookup } from './util'
 import { runStats } from './util/runStats'
@@ -245,8 +246,6 @@ const commandPipeline = <S, I>(
   }
 }
 
-const maxLamportLength = String(Number.MAX_SAFE_INTEGER).length
-
 const hydrateV2 = (
   eventStore: EventStore,
   snapshotStore: SnapshotStore,
@@ -267,14 +266,7 @@ const hydrateV2 = (
 
   const { sourceId } = eventStore
 
-  const metadata = (ev: Event) => ({
-    isLocalEvent: ev.sourceId === sourceId,
-    tags: ev.tags,
-    timestampMicros: ev.timestamp,
-    timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
-    lamport: ev.lamport,
-    eventId: String(ev.lamport).padStart(maxLamportLength, '0') + '/' + ev.sourceId,
-  })
+  const metadata = toMetadata(sourceId)
 
   // We construct a "Fish" from the given parameters in order to use the unchanged FES.
   const info: FishInfo<S> = {
