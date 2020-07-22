@@ -180,6 +180,17 @@ describe('typed tag query system', () => {
       ignoreUnusedVar(fishRight)
     })
 
+    it('should accept additional untyped tags on an intersection', () => {
+      const fishRight: Fish<undefined, A | B> = {
+        ...fishArgs,
+
+        // Type remains Tags<A>
+        where: tagA.and('some-other-tag'),
+      }
+
+      ignoreUnusedVar(fishRight)
+    })
+
     it('should allow fish to handle more events than indicated by tags', () => {
       const fishRight: Fish<undefined, A | B | C | T0> = {
         onEvent: (state: undefined, _payload: A | B | C | T0) => state,
