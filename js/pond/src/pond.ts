@@ -24,7 +24,6 @@ import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
 import { toWireFormat, TypedTagIntersection } from './tagging'
 import {
   CancelSubscription,
-  EmissionRequest,
   Emit,
   Fish,
   FishId,
@@ -37,7 +36,6 @@ import {
   Semantics,
   Source,
   SourceId,
-  StateEffect,
   StateFn,
   StateWithProvenance,
   Timestamp,
@@ -81,10 +79,24 @@ const omitObservable = <S>(
   return sub.unsubscribe.bind(sub)
 }
 
+const wrapStateFn = <S, EWrite>(fn: StateFn<S, EWrite>) => {
+  const effect = async (state: S) => {
+    const emissions: Emit<any>[] = []
+    await fn(state, { enqueue: (tags, payload) => emissions.push({ tags, payload }) })
+    return emissions
+  }
+
+  return effect
+}
+
 const pendingEmission = (o: Observable<void>): PendingEmission => ({
   subscribe: o.subscribe.bind(o),
   toPromise: () => o.toPromise(),
 })
+
+// For internal use only. TODO: Cleanup.
+type StateEffect<S, EWrite> = (state: S) => EmissionRequest<EWrite>
+type EmissionRequest<E> = ReadonlyArray<Emit<E>> | Promise<ReadonlyArray<Emit<E>>>
 
 type ActiveFish<S> = {
   readonly states: Observable<StateWithProvenance<S>>
@@ -152,40 +164,6 @@ export type Pond = {
    */
   exec<S, EWrite>(fish: Fish<S, any>, fn: StateFn<S, EWrite>): PendingEmission
 
-  alwaysExec<S, EWrite>(
-    fish: Fish<S, any>,
-    fn: StateFn<S, EWrite>,
-    autoCancel?: (state: S) => boolean,
-  ): CancelSubscription
-
-  /**
-   * Run StateEffects against the current **locally known** State of the `fish`.
-   * The Effect is able to consider that State and create Events from it.
-   * Every Effect will see the Events of all previous Effects *on this fish* applied already!
-   *
-   * In regards to other nodes, there are no serialisation guarantees.
-   *
-   * @typeParam S                State of the Fish, input value to the effect.
-   * @typeParam EWrite           Payload type(s) to be returned by the effect.
-   *
-   * @param fish         Complete aggregation information.
-   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
-   * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
-   */
-  run<S, EWrite>(fish: Fish<S, any>, effect: StateEffect<S, EWrite>): PendingEmission
-
-  /**
-   * Curried version of `runStateEffect`.
-   *
-   * @typeParam S                State of the Fish, input value to the effect.
-   * @typeParam EWrite           Payload type(s) to be returned by the effect.
-   *
-   * @param fish         Complete aggregation information.
-   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
-   * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
-   */
-  runC<S, EWrite>(fish: Fish<S, any>): (effect: StateEffect<S, EWrite>) => PendingEmission
-
   /**
    * Install a StateEffect that will be applied automatically whenever the `agg`’s State has changed.
    * Every application will see the previous one’s resulting Events applied to the State already, if applicable;
@@ -202,9 +180,9 @@ export type Pond = {
    *                     will be the first State the effect is *not* applied to anymore.
    * @returns            A `CancelSubscription` object that can be used to cancel the automatic effect.
    */
-  keepRunning<S, EWrite>(
+  alwaysExec<S, EWrite>(
     fish: Fish<S, any>,
-    effect: StateEffect<S, EWrite>,
+    fn: StateFn<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ): CancelSubscription
 
@@ -397,7 +375,7 @@ export class Pond2Impl implements Pond {
   }
 
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
-  runC = <S, EWrite, ReadBack = false>(
+  private exec0 = <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
   ): ((effect: StateEffect<S, EWrite>) => PendingEmission) => {
     const cached = this.observeTagBased0(agg)
@@ -462,15 +440,8 @@ export class Pond2Impl implements Pond {
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
     fn: StateFn<S, EWrite>,
   ): PendingEmission => {
-    const handle = this.runC(agg)
-
-    const effect = async (state: S) => {
-      const emissions: Emit<any>[] = []
-      await fn(state, (tags, payload) => emissions.push({ tags, payload }))
-      return emissions
-    }
-
-    return handle(effect)
+    const handle = this.exec0(agg)
+    return handle(wrapStateFn(fn))
   }
 
   alwaysExec = <S, EWrite>(
@@ -478,49 +449,29 @@ export class Pond2Impl implements Pond {
     fn: StateFn<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ): CancelSubscription => {
-    const effect = async (state: S) => {
-      const emissions: Emit<any>[] = []
-      await fn(state, (tags, payload) => emissions.push({ tags, payload }))
-      return emissions
-    }
+    const effect = wrapStateFn(fn)
 
-    return this.keepRunning(fish, effect, autoCancel)
-  }
-
-  run = <S, EWrite, ReadBack = false>(
-    agg: Fish<S, ReadBack extends true ? EWrite : any>,
-    effect: StateEffect<S, EWrite>,
-  ): PendingEmission => {
-    const handle = this.runC(agg)
-    return handle(effect)
-  }
-
-  keepRunning = <S, EWrite, ReadBack = false>(
-    agg: Fish<S, ReadBack extends true ? EWrite : any>,
-    effect: StateEffect<S, EWrite>,
-    autoCancel?: (state: S) => boolean,
-  ): CancelSubscription => {
     // We use this state `cancelled` to stop effects "asap" when user code calls the cancellation function.
     // Otherwise it might happen that we have already queued the next effect and run longer than desired.
     let cancelled = false
 
     const wrappedEffect = (state: S) => (cancelled ? [] : effect(state))
 
-    const cached = this.observeTagBased0(agg)
+    const cached = this.observeTagBased0(fish)
     const states = cached.states
-    const handleInternal = this.getOrCreateCommandHandle0(agg, cached)
+    const handleInternal = this.getOrCreateCommandHandle0(fish, cached)
 
     const tw = autoCancel
       ? (state: S) => {
-          if (cancelled) {
-            return false
-          } else if (autoCancel(state)) {
-            cancelled = true
-            return false
-          }
-
-          return true
+        if (cancelled) {
+          return false
+        } else if (autoCancel(state)) {
+          cancelled = true
+          return false
         }
+
+        return true
+      }
       : () => !cancelled
 
     states

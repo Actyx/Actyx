@@ -452,16 +452,16 @@ export const Fish = {
   }),
 }
 
-export type EmissionRequest<E> = ReadonlyArray<Emit<E>> | Promise<ReadonlyArray<Emit<E>>>
-
-export type StateEffect<S, EWrite> = (state: S) => EmissionRequest<EWrite>
-
 export type AddEmission<EWrite> = <E extends EWrite>(
   tags: string[] | TypedTagIntersection<E>,
-  payload: E,
+  payload: EWrite,
 ) => void
 
-export type StateFn<S, EWrite> = (state: S, emit: AddEmission<EWrite>) => void | Promise<void>
+export type Effects<EWrite> = Readonly<{
+  queue: AddEmission<EWrite>
+}>
+
+export type StateFn<S, EWrite> = (state: S, effects: Effects<EWrite>) => void | Promise<void>
 
 /**
  * Cancel an ongoing aggregation (the provided callback will stop being called).
