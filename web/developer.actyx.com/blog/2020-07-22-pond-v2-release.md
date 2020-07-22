@@ -7,7 +7,7 @@ author_image_url: /images/blog/benjamin-sieffert.jpg
 tags: [Actyx Pond]
 ---
 
-We are pleased to announce the release of the Actyx Pond Version 2. [Download from npm](LINKPLS)
+We are happy to announce the release of the Actyx Pond Version 2. [Download from npm](LINKPLS)
 
 Read on for a brief overview of the changes, which we have developed with the goal of reducing
 boilerplate and allowing more flexibility and elegance in your application architecture.
@@ -221,3 +221,8 @@ individual task (modelled in a Fish) that is simply done for good at some point,
 read `state => state.type === 'Finished'`. 
 (The hook will not resume when the condition turns false again; if you want it to start running
 again you’ll have to once more call `keepRunning`.)
+
+The power of state effects wants to be demonstrated in the light of a full-fledged business logic
+example. Be sure to check out our upcoming blog posts, where we will demonstrate building a
+complete, valuable application on the new Pond – including a stat-effect-based integration with the
+factory’s ERP system.
