@@ -173,7 +173,7 @@ describe('application of commands in the pond v2', () => {
         // We skip increasing 5, depend on our manual calls to do it.
         (state, fx) => {
           if (state.n !== 5) {
-            fx.enQ(Tag<Payload>('self'), { type: 'set', n: state.n + 1 })
+            fx.enQ({ type: 'set', n: state.n + 1 }, Tag('self'))
           }
         },
         (state: State) => state.n === 10,
