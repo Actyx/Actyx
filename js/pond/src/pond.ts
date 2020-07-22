@@ -114,15 +114,6 @@ export type Pond = {
    */
   emit<E>(tags: Tags<E>, payload: E): PendingEmission
 
-  /**
-   * Emit a number of events at once.
-   *
-   * @param emit    The events to be emitted, expressed as objects containing `tags` and `payload`.
-   * @returns       A `PendingEmission` object that can be used to register
-   *                callbacks with the emission’s completion.
-   */
-  emitMany(...emit: ReadonlyArray<Emit<any>>): PendingEmission
-
   /* AGGREGATION */
 
   /**
@@ -306,7 +297,7 @@ export class Pond2Impl implements Pond {
     return this.emitMany({ tags, payload })
   }
 
-  emitMany = (...emissions: ReadonlyArray<Emit<any>>): PendingEmission => {
+  private emitMany = (...emissions: ReadonlyArray<Emit<any>>): PendingEmission => {
     // `shareReplay` so that every piece of user code calling `subscribe`
     // on the return value will actually be executed
     const o = this.emitTagged0(emissions)

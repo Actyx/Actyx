@@ -4,7 +4,7 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Pond, TagQuery, Fish, Reduce, StateEffect } from '.'
+import { Pond, TagQuery, Fish, Reduce, StateEffect, Tag } from '.'
 
 export type State = { n: number; fill: number }
 
@@ -164,7 +164,7 @@ describe('application of commands in the pond v2', () => {
 
       pond.keepRunning(agg, autoBump, (state: State) => state.n === 40)
 
-      const emitFill = () => pond.emit(['self'], { type: 'fill' })
+      const emitFill = () => pond.emit(Tag('self'), { type: 'fill' })
 
       const timer = setInterval(emitFill, 3)
 
