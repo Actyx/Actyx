@@ -31,13 +31,15 @@ export const OffsetMapWithDefault = t.readonly(
 )
 export type OffsetMapWithDefault = t.TypeOf<typeof OffsetMapWithDefault>
 
+const stringRA = t.readonlyArray(t.string)
+
 type Tags = ReadonlyArray<string>
 type TagsOnWire = ReadonlyArray<string> | undefined
 const Tags = new t.Type<Tags, TagsOnWire>(
   'TagsSetFromArray',
   (x): x is Tags => x instanceof Array && x.every(isString),
   // Rust side for now expresses empty tag arrays as omitting the field
-  (x, c) => (x === undefined ? right([]) : t.readonlyArray(t.string).validate(x, c)),
+  (x, c) => (x === undefined ? right([]) : stringRA.validate(x, c)),
   // Sending empty arrays is fine, though
   x => x,
 )
