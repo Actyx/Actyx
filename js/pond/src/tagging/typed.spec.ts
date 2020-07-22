@@ -165,7 +165,7 @@ describe('typed tag query system', () => {
 
         // Without cast, this will fail
         // @ts-expect-error
-        where: tagA.or(abcTag).or(Tag('foo')),
+        where: Tags('1', '2').or(Tag('foo')),
       }
 
       ignoreUnusedVar(fishWrong)
@@ -174,7 +174,7 @@ describe('typed tag query system', () => {
         ...fishArgs,
 
         // ... but adding an explicit cast solves the problem
-        where: tagA.or(abcTag).or(Tag('foo')) as Where<A | B>,
+        where: Tags('1', '2').or(Tag('foo')) as Where<A | B>,
       }
 
       ignoreUnusedVar(fishRight)
