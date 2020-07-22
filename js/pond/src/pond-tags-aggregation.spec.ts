@@ -1,15 +1,12 @@
 import { Observable } from 'rxjs'
 import { Fish, Pond, TagQuery } from '.'
 
-const emitTestEvents = async (pond: Pond) =>
-  pond
-    .emitMany(
-      { tags: ['t0', 't1', 't2'], payload: 'hello' },
-      { tags: ['t0', 't1', 't2'], payload: 'world' },
-      { tags: ['t1'], payload: 't1 only' },
-      { tags: ['t2'], payload: 't2 only' },
-    )
-    .toPromise()
+const emitTestEvents = async (pond: Pond) => {
+  await pond.emit(['t0', 't1', 't2'], 'hello').toPromise()
+  await pond.emit(['t0', 't1', 't2'], 'world').toPromise()
+  await pond.emit(['t1'], 't1 only').toPromise()
+  await pond.emit(['t2'], 't2 only').toPromise()
+}
 
 const assertStateAndDispose = async <S>(states: Observable<S>, expected: S, pond: Pond) => {
   const res = states
@@ -19,7 +16,7 @@ const assertStateAndDispose = async <S>(states: Observable<S>, expected: S, pond
 
   await expect(res).resolves.toEqual(expected)
 
-  await pond.dispose()
+  pond.dispose()
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
