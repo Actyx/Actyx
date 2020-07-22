@@ -405,9 +405,6 @@ export const FishId = {
   canonical: (v: FishId): string => JSON.stringify([v.entityType, v.name, v.version]),
 }
 
-declare const UntypedSymbol: unique symbol
-export type Untyped = typeof UntypedSymbol
-
 /**
  * A `Fish<S, E>` describes an ongoing aggregration (fold) of events of type `E` into state of type `S`.
  */
@@ -415,7 +412,7 @@ export type Fish<S, E> = {
   // Will extend this field with further options in the future:
   // - <E>-Typed subscription
   // - Plain query string
-  where: TagQuery | Where<E> | Where<Untyped>
+  where: TagQuery | Where<E>
 
   initialState: S
   onEvent: Reduce<S, E>

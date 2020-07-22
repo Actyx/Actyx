@@ -1,5 +1,5 @@
 import { Emit, Fish, FishId } from '../types'
-import { Tag, Where } from './typed'
+import { Tag, Tags, Where } from './typed'
 
 type T0 = {
   type: '0'
@@ -121,60 +121,77 @@ describe('typed tag query system', () => {
     })
   })
 
-  it('should require fish to implement onEvent that can handle all incoming events', () => {
-    const fishWrong: Fish<undefined, A | B> = {
+  describe('with Fish declarations', () => {
+    const fishArgs = {
       onEvent: (state: undefined, _payload: A | B) => state,
       initialState: undefined,
       fishId: FishId.of('f', 'a', 0),
-
-      // Expect error for too large subscription set
-      // @ts-expect-error
-      where: abcTag,
     }
 
-    ignoreUnusedVar(fishWrong)
-  })
+    it('should require fish to implement onEvent that can handle all incoming events', () => {
+      const fishWrong: Fish<undefined, A | B> = {
+        ...fishArgs,
 
-  it('fish should accept Where<unknown> indicating untyped tag query', () => {
-    const fishWrong: Fish<undefined, A | B> = {
-      onEvent: (state: undefined, _payload: A | B) => state,
-      initialState: undefined,
-      fishId: FishId.of('f', 'a', 0),
+        // Expect error for too large subscription set
+        // @ts-expect-error
+        where: abcTag,
+      }
 
-      // Untyped combination -> Where<Untyped>, is also fine
-      where: abcTag.or('foo'),
-    }
+      ignoreUnusedVar(fishWrong)
+    })
 
-    ignoreUnusedVar(fishWrong)
-  })
+    it('fish should accept direct Where<unknown> indicating untyped tag query', () => {
+      const fishRight1: Fish<undefined, A | B> = {
+        ...fishArgs,
 
-  it('PROBLEM CASE', () => {
-    const fishWrong: Fish<undefined, A | B> = {
-      onEvent: (state: undefined, _payload: A | B) => state,
-      initialState: undefined,
-      fishId: FishId.of('f', 'a', 0),
+        // Automatically type-inferred to match Fish declaration
+        where: Tags('some', 'plain', 'tags'),
+      }
 
-      // This fails to compile:
-      // @ts-expect-error
-      where: tagA.or('foo').or(abcTag),
+      const fishRight2: Fish<undefined, A | B> = {
+        ...fishArgs,
 
-      // .. but this would work:
-      // where: tagA.or(abcTag).or('foo'),
-    }
+        // Automatically type-inferred to match Fish declaration
+        where: Tag('a-single-plain-tag'),
+      }
 
-    ignoreUnusedVar(fishWrong)
-  })
+      ignoreUnusedVar(fishRight1)
+      ignoreUnusedVar(fishRight2)
+    })
 
-  it('should allow fish to handle more events than indicated by tags', () => {
-    const fishRight: Fish<undefined, A | B | C | T0> = {
-      onEvent: (state: undefined, _payload: A | B | C | T0) => state,
-      initialState: undefined,
-      fishId: FishId.of('f', 'a', 0),
+    it('should accept OR-concatentation of untyped queries with explicit cast', () => {
+      const fishWrong: Fish<undefined, A | B> = {
+        ...fishArgs,
 
-      where: abcTag,
-    }
+        // Without cast, this will fail
+        // @ts-expect-error
+        where: tagA.or(abcTag).or(Tag('foo')),
+      }
 
-    ignoreUnusedVar(fishRight)
+      ignoreUnusedVar(fishWrong)
+
+      const fishRight: Fish<undefined, A | B> = {
+        ...fishArgs,
+
+        // ... but adding an explicit cast solves the problem
+        where: tagA.or(abcTag).or(Tag('foo')) as Where<A | B>,
+      }
+
+      ignoreUnusedVar(fishRight)
+    })
+
+    it('should allow fish to handle more events than indicated by tags', () => {
+      const fishRight: Fish<undefined, A | B | C | T0> = {
+        onEvent: (state: undefined, _payload: A | B | C | T0) => state,
+        initialState: undefined,
+        fishId: FishId.of('f', 'a', 0),
+
+        // Fish declares it handles T0 also -> no problem.
+        where: abcTag,
+      }
+
+      ignoreUnusedVar(fishRight)
+    })
   })
 
   it('should allow emission statements into larger tags', () => {

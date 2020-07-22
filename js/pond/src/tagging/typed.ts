@@ -5,131 +5,7 @@ const namedSubSpace = (rawTag: string, sub: string): string[] => {
   return [rawTag, rawTag + ':' + sub]
 }
 
-// "TagUnion"
-type TagSets = Readonly<{
-
-  orU(tags: string | Tags | TypedTagIntersection<unknown>): TagSets
-
-  type: 'untyped-union'
-
-
-  /**
-   * Convert into an untyped TagQuery. This is for internal use.
-   */
-  raw(): TagUnion
-}>
-
-// "TagIntersection"
-type Tags = Readonly<{
-  and<E1>(tag: TypedTagIntersection<E1>): TypedTagIntersection<E1>
-
-  and(tag: string | Tags): Tags
-
-  or<E1>(tags: TypedTagIntersection<E1> | string | Tags): TagSets
-
-  orU(tags: string): TagSets
-
-  /**
-   * Add an alternative untyped tag we may also match.
-   * Since the tag is untyped, the events included in the resulting set may have any type.
-   */
-  or(tag: string): TagSets
-
-  /**
-   * The same requirement, but matching only Events emitted by the very node the code is run on.
-   */
-  local(): Tags
-
-
-  /**
-   * Convert into an untyped TagQuery. This is for internal use.
-   */
-  raw(): TagIntersection
-
-  type: 'untyped-intersection'
-}>
-
-const TagsImpl = (onlyLocalEvents: boolean, rawTags: string[]): Tags => {
-
-  const r: Tags = {
-    and: <E1>(tag: Tags | TypedTagIntersection<E1> | string) => {
-      if (isString(tag)) {
-        const r0: Tags = TagsImpl(onlyLocalEvents, [tag, ...rawTags])
-        return r0
-      }
-
-      if (tag.type === 'typed-intersection') {
-        const r1: TypedTagIntersection<E1> = tag.and(req<any>(onlyLocalEvents, rawTags))
-        return r1
-      }
-
-      const other: TagIntersection = tag.raw()
-
-      const local = onlyLocalEvents || !!other.onlyLocalEvents
-      const tags = rawTags.concat(other.tags)
-
-      const r2: Tags = TagsImpl(local, tags)
-      return r2
-    },
-
-
-    orU: (other: string) => {
-      return TagSets([req(onlyLocalEvents, rawTags).raw(), Tag(other).raw()])
-    },
-
-    or: <E1>(other: TypedTagIntersection<E1> | string | Tags) => {
-      const otherRaw = isString(other) ? Tag(other).raw() : other.raw()
-
-      return TagSets([r.raw(), otherRaw])
-    },
-
-    local: () => TagsImpl(true, rawTags),
-
-    type: 'untyped-intersection',
-
-    raw: () => ({
-      type: 'intersection',
-
-      tags: rawTags,
-
-      onlyLocalEvents,
-    }),
-  }
-
-  return r
-}
-
-export const Tags = (...requiredTags: string[]): Tags => TagsImpl(false, requiredTags)
-export const LocalTags = (...requiredTags: string[]): Tags => TagsImpl(true, requiredTags)
-
-const TagSets = (sets: TagIntersection[]): TagSets => {
-  return {
-    type: 'untyped-union',
-
-    orU: <E1>(other: TypedTagIntersection<E1> | string | Tags) => {
-      const otherRaw = isString(other) ? Tag(other).raw() : other.raw()
-
-      return TagSets([...sets, otherRaw])
-    },
-
-    raw: () => ({
-      type: 'union',
-      tags: sets,
-    }),
-  }
-}
-
-
-
-
-
 export interface TypedTagUnion<E> {
-  /**
-   * Add an alternative untyped tag we may also match.
-   * Since the tag is untyped, the events included in the resulting set may have any type.
-   */
-  orU(tag: string): TagSets
-
   /**
    * Add an alternative set we may also match. E.g. tag0.or(tag1.and(tag2)).or(tag1.and(tag3)) will match:
    * Events with tag0; Events with both tag1 and tag2; Events with both tag1 and tag3.
@@ -170,12 +46,6 @@ export interface TypedTagIntersection<E> {
   or<E1>(tag: TypedTagIntersection<E1>): TypedTagUnion<E1 | E>
 
   /**
-   * Add an alternative untyped tag we may also match.
-   * Since the tag is untyped, the events included in the resulting set may have any type.
-   */
-  orU(tag: string): TagSets
-
-  /**
    * The same requirement, but matching only Events emitted by the very node the code is run on.
    */
   local(): TypedTagIntersection<E>
@@ -192,6 +62,8 @@ export interface TypedTagIntersection<E> {
 
   readonly type: 'typed-intersection'
 }
+
+export const Tags = <E>(...requiredTags: string[]): TypedTagIntersection<E> => req<E>(false, requiredTags)
 
 export interface Tag<E> extends TypedTagIntersection<E> {
   // The underlying actual tag as pure string
@@ -228,10 +100,6 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): TypedTagIntersecti
       return req<Extract<E1, E>>(local, tags)
     },
 
-    orU: (other: string) => {
-      return TagSets([req(onlyLocalEvents, rawTags).raw(), Tag(other).raw()])
-    },
-
     or: <E1>(other: TypedTagIntersection<E1>) => {
       return union<E1 | E>([req(onlyLocalEvents, rawTags), other])
     },
@@ -258,11 +126,6 @@ const union = <E>(sets: TypedTagIntersection<unknown>[]): TypedTagUnion<E> => {
 
     or: <E1>(other: TypedTagIntersection<E1>) => {
       return union<E1 | E>([...sets, other])
-    },
-
-    orU: (other: string) => {
-      return TagSets([Tag(other).raw(), ...sets.map(x => x.raw())])
-
     },
 
     raw: () => ({
