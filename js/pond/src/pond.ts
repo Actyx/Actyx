@@ -180,7 +180,7 @@ export type Pond = {
    *                     will be the first State the effect is *not* applied to anymore.
    * @returns            A `CancelSubscription` object that can be used to cancel the automatic effect.
    */
-  alwaysExec<S, EWrite>(
+  keepRunning<S, EWrite>(
     fish: Fish<S, any>,
     fn: StateFn<S, EWrite>,
     autoCancel?: (state: S) => boolean,
@@ -444,7 +444,7 @@ export class Pond2Impl implements Pond {
     return handle(wrapStateFn(fn))
   }
 
-  alwaysExec = <S, EWrite>(
+  keepRunning = <S, EWrite>(
     fish: Fish<S, any>,
     fn: StateFn<S, EWrite>,
     autoCancel?: (state: S) => boolean,

@@ -112,7 +112,7 @@ describe('application of commands in the pond v2', () => {
     it('should run until cancellation condition', async () => {
       const pond = await Pond.test()
 
-      pond.alwaysExec(agg, autoBump, (state: State) => state.n === 100)
+      pond.keepRunning(agg, autoBump, (state: State) => state.n === 100)
 
       await expectState(pond, 100)
 
@@ -139,7 +139,7 @@ describe('application of commands in the pond v2', () => {
 
       const stateIs10 = expectState(pond, 10)
 
-      const c = pond.alwaysExec(agg, delayedBump)
+      const c = pond.keepRunning(agg, delayedBump)
 
       await stateIs10
 
@@ -150,7 +150,7 @@ describe('application of commands in the pond v2', () => {
     it('should wait for the actual effect’s events to be processed, ignore other events that may come in', async () => {
       const pond = await Pond.test()
 
-      pond.alwaysExec(agg, autoBump, (state: State) => state.n === 40)
+      pond.keepRunning(agg, autoBump, (state: State) => state.n === 40)
 
       const emitFill = () => pond.emit(['self'], { type: 'fill' })
 
@@ -168,7 +168,7 @@ describe('application of commands in the pond v2', () => {
     it('should run parallel to user effects', async () => {
       const pond = await Pond.test()
 
-      pond.alwaysExec<State, Payload>(
+      pond.keepRunning<State, Payload>(
         agg,
         // We skip increasing 5, depend on our manual calls to do it.
         (state, fx) => {
@@ -217,7 +217,7 @@ describe('application of commands in the pond v2', () => {
     it('should run parallel to user effects 2', async () => {
       const pond = await Pond.test()
 
-      pond.alwaysExec<State, Payload>(agg, bumpEven)
+      pond.keepRunning<State, Payload>(agg, bumpEven)
 
       await expectState(pond, 1)
 
@@ -241,9 +241,9 @@ describe('application of commands in the pond v2', () => {
         }
       }
 
-      pond.alwaysExec(agg, mk(0), s => s.n === 20)
-      pond.alwaysExec(agg, mk(1), s => s.n === 20)
-      pond.alwaysExec(agg, mk(2), s => s.n === 20)
+      pond.keepRunning(agg, mk(0), s => s.n === 20)
+      pond.keepRunning(agg, mk(1), s => s.n === 20)
+      pond.keepRunning(agg, mk(2), s => s.n === 20)
 
       await stateIs15
       await expectState(pond, 20)
@@ -264,9 +264,9 @@ describe('application of commands in the pond v2', () => {
         }
       }
 
-      pond.alwaysExec(agg, mk(0), s => s.n === 10)
-      pond.alwaysExec(agg, mk(1), s => s.n === 10)
-      pond.alwaysExec(agg, mk(2), s => s.n === 10)
+      pond.keepRunning(agg, mk(0), s => s.n === 10)
+      pond.keepRunning(agg, mk(1), s => s.n === 10)
+      pond.keepRunning(agg, mk(2), s => s.n === 10)
 
       await expectState(pond, 10)
 
@@ -276,7 +276,7 @@ describe('application of commands in the pond v2', () => {
     it('should be cancellable', async () => {
       const pond = await Pond.test()
 
-      const cancel = pond.alwaysExec(agg, bumpEven)
+      const cancel = pond.keepRunning(agg, bumpEven)
 
       await expectState(pond, 1)
       cancel()
@@ -291,7 +291,7 @@ describe('application of commands in the pond v2', () => {
     it('should be cancellable pretty swiftly', async () => {
       const pond = await Pond.test()
 
-      const cancel = pond.alwaysExec(agg, autoBump)
+      const cancel = pond.keepRunning(agg, autoBump)
 
       // This is only really reliable as long as we debounce the automatic effect.
       pond.observe(agg, state => state.n > 1000 && cancel())
@@ -321,13 +321,13 @@ describe('application of commands in the pond v2', () => {
 
       const stateIs30 = expectState(pond, 30, beta)
 
-      const c0 = pond.alwaysExec(alpha, (state, fx) =>
+      const c0 = pond.keepRunning(alpha, (state, fx) =>
         fx.enQ(Tag('beta'), { type: 'set', n: state.n + 1 }),
       )
 
       await expectState(pond, 1, beta)
 
-      const c1 = pond.alwaysExec(beta, (state, fx) =>
+      const c1 = pond.keepRunning(beta, (state, fx) =>
         fx.enQ(Tag('beta'), { type: 'set', n: state.n + 1 }),
       )
 
