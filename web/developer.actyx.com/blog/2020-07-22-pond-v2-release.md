@@ -181,48 +181,61 @@ pond.observe(
 )
 ```
 
-## Command -> StateEffect
+## Emitting Events that depend on State
 
-Commands are now `StateEffect`s. A state effect is just a function from state `S` to an array of
-event emissions `Emit<E>`.
-You run one by calling `pond.run(fish, effect)`.
-Functionality is the same as it was for commands: Every effect is guaranteed to see all events
-returned by earlier (local) effects already incorporated into the state.
+We have revamped the whole command system in order to make it much more straight-forward to
+use. As mentioned above, you can now emit events directly, so there is no longer a need for commands
+in the general case. You will only have to employ them in those cases where you need the local
+serialisation guarantee:
 
-State effects can be async: You’re free to do any sort of I/O you need, before deciding which events
-to emit. For example, you might do an HTTP call based on the state, then depending on the call’s
-result return an event indicating success or failure.
+<!-- fancy formatting maybe -->
+_Emit some events depending on locally known state of a Fish. Then do the same thing again, but
+guaranteed to see all formerly emitted events already applied to the state._
 
-Do take note, however, that as long as your state effect is still waiting for an async operation, no
-other state effect for that specific Fish can be started, due to the serialisation guarantee. Hence
-always make sure your async logic can’t stall forever, e.g. by setting a timeout for your HTTP requests.
+This is very useful in all cases where you have one node executing tasks that other nodes ask
+for. Take for example an autonomous logistics robot that is bringing material to production machines
+that are soon to run out. On the production machines, there is an ActyxOS app emitting events that
+announce the task; on the robot, there is an app which looks at the open tasks and actually tries to
+fulfill them, by driving the robot.
 
-## OnStateChange -> pond.keepRunning
+Whenever a task is done, another event needs to be published, indicating the task being done. So
+what the robot does is:
 
-Running a hook on state changes is now equivalent to just applying one and the same state effect
-again and again whenever the Fish’s state changes.
-The big advantage of this: Serialisation guarantees are now also directly baked into the hook
-application.
-In v1 it was possible that your logic would emit the same command multiple times, and you had to
-detect this, in turn, in `onCommand`. In v2, you just don’t have to worry about this at all.
+- Look at a Fish that collects open tasks into a list
+- Execute a task in the real world
+- Publish "TaskDone" event
+- Loop back to the beginning
 
-The hooks are also no longer part of the Fish itself.
-You start one by calling `pond.keepRunning(fish, effect)` and get back a handle that you can use to
-stop the hook at any time – observing your Fish and making it act have become two distinct things.
+But how can the robot be sure that the TaskDone event has already arrived at the Fish keeping the
+list of open tasks? This is where `pond.keepRunning` comes in.
 
-In this way, you can for example observe the state of a Fish modelling the current mission of an
-autonomous logistics robot, in order to display it on a dashboard; and use the very same Fish code
-on the robot itself, only _also_ starting your `keepRunning` hook – which would be the piece that is
-actually acting, taking on or rejecting missions based on the current state.
+```typescript
+pond.keepRunning(fish, (state, effects) => {
+  if (fish.tasks.length === 0) {
+    return
+  }
 
-Finally, there is an optional third parameter to `keepRunning` called `autoCancel`. This can be used
-to automatically uninstall your hook based on the state. For example, if your hook refers to an
-individual task (modelled in a Fish) that is simply done for good at some point, your autoCancel may
-read `state => state.type === 'Finished'`. 
-(The hook will not resume when the condition turns false again; if you want it to start running
-again you’ll have to once more call `keepRunning`.)
+  const nextTask = fish.tasks[0]
 
-The power of state effects wants to be demonstrated in the light of a full-fledged business logic
-example. Be sure to check out our upcoming blog posts, where we will demonstrate building a
-complete, valuable application on the new Pond – including a stat-effect-based integration with the
-factory’s ERP system.
+  // Deliver material
+  await executeInRealWorld(task)
+
+  const taskDoneEvent = makeTaskDoneEvent(task)
+  const tags = getTags(taskDoneEvent)
+  effects.enqueue(taskDoneEvent, tags)
+})
+
+```
+
+The Pond will invoke the function you pass as argument whenever the Fish’s state changes. You can
+call `effects.enqueue` any number of times to enqueue events for emission – the next time your
+function is invoked, all previously enqueued events will have been applied to the state already.
+
+If you don’t want your logic to keep running forever, you can:
+
+- Use `pond.run` to execute your logic just once, but serialised in regards to all previous local
+  invocations of `pond.run` and active `pond.keepRunning` effects
+- Set the optional third argument to `pond.keepRunning`, called autoCancel. It can be used to cancel
+  your logic for good, once a certain state of the Fish is reached. For example, if you’re modelling
+  tasks as individual Fish requiring a number of steps, you may want to stop once the final state is
+  reached: `autoCancel = (state) => state.type === 'Finished'`
