@@ -27,6 +27,11 @@ export interface TypedTagUnion<E> {
 // Must be interface, otherwise inferred (recursive) type gets very large.
 export interface TypedTagIntersection<E> {
   /**
+   * Aggregated type of the Events which may be returned by the contained tags.
+   */
+  readonly _dataType?: E
+
+  /**
    * Add another tag(s) to this requirement. E.g Tag<FooEvent>('foo').and(Tag<BarEvent>('bar')) will require both 'foo' and 'bar'.
    */
   and<E1>(tag: TypedTagIntersection<E1>): TypedTagIntersection<Extract<E1, E>>
@@ -47,11 +52,6 @@ export interface TypedTagIntersection<E> {
    * Convert into an untyped TagQuery. This is for internal use.
    */
   raw(): TagIntersection
-
-  /**
-   * Aggregated type of the Events which may be returned by the contained tags.
-   */
-  readonly _dataType?: E
 
   readonly type: 'typed-intersection'
 }

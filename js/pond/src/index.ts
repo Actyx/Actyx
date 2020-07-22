@@ -11,7 +11,6 @@ export { Subscription, SubscriptionSet } from './subscription'
 export * from './tagging'
 export {
   CancelSubscription,
-  EmissionRequest,
   Emit,
   Fish,
   FishId,
@@ -27,7 +26,6 @@ export {
   Semantics,
   SnapshotFormat,
   SourceId,
-  StateEffect,
   StateFn,
   StateWithProvenance,
   Timestamp,

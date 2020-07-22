@@ -82,7 +82,7 @@ const omitObservable = <S>(
 const wrapStateFn = <S, EWrite>(fn: StateFn<S, EWrite>) => {
   const effect = async (state: S) => {
     const emissions: Emit<any>[] = []
-    await fn(state, { enqueue: (tags, payload) => emissions.push({ tags, payload }) })
+    await fn(state, { enQ: (tags, payload) => emissions.push({ tags, payload }) })
     return emissions
   }
 
@@ -463,15 +463,15 @@ export class Pond2Impl implements Pond {
 
     const tw = autoCancel
       ? (state: S) => {
-        if (cancelled) {
-          return false
-        } else if (autoCancel(state)) {
-          cancelled = true
-          return false
-        }
+          if (cancelled) {
+            return false
+          } else if (autoCancel(state)) {
+            cancelled = true
+            return false
+          }
 
-        return true
-      }
+          return true
+        }
       : () => !cancelled
 
     states

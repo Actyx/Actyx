@@ -453,12 +453,12 @@ export const Fish = {
 }
 
 export type AddEmission<EWrite> = <E extends EWrite>(
-  tags: string[] | TypedTagIntersection<E>,
+  tags: TypedTagIntersection<E>,
   payload: EWrite,
 ) => void
 
 export type Effects<EWrite> = Readonly<{
-  queue: AddEmission<EWrite>
+  enQ: AddEmission<EWrite>
 }>
 
 export type StateFn<S, EWrite> = (state: S, effects: Effects<EWrite>) => void | Promise<void>
