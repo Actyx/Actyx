@@ -11,7 +11,7 @@ import { Event, Events, OffsetMap } from './eventstore/types'
 import { FishJar } from './fishJar'
 import { mkNoopPondStateTracker } from './pond-state'
 import { Fish, FishId } from '.'
-import { TagQuery, toWireFormat } from './tagging'
+import { Where, Tag, toWireFormat } from './tagging'
 import { SnapshotStore } from './snapshotStore'
 import { minSnapshotAge } from './store/snapshotScheduler'
 import {
@@ -93,7 +93,7 @@ export const eventFactory = () => {
 
 export const mkNumberFish = (
   semanticSnapshot?: (ev: NumberFishEvent) => boolean,
-  where: TagQuery = TagQuery.requireAll('default'),
+  where: Where<NumberFishEvent> = Tag('default'),
 ): Fish<NumberFishState, NumberFishEvent> => ({
   where,
   initialState: [],

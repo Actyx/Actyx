@@ -4,7 +4,7 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Pond, TagQuery, Fish, Reduce, StateEffect, Tag } from '.'
+import { Fish, Pond, Reduce, StateEffect, Tag } from '.'
 
 export type State = { n: number; fill: number }
 
@@ -27,7 +27,7 @@ const onEvent: Reduce<State, Payload> = (state: State, event: Payload) => {
 }
 
 const agg: Fish<State, Payload> = {
-  where: TagQuery.matchAnyOf('self'),
+  where: Tag('self'),
 
   initialState: { n: 0, fill: 0 },
 
@@ -303,7 +303,7 @@ describe('application of commands in the pond v2', () => {
 
   describe('automatic effects with event sent to other aggregates', () => {
     const mkAgg = (name: string) => ({
-      where: TagQuery.matchAnyOf(name),
+      where: Tag<Payload>(name),
 
       initialState: { n: 0, fill: 0 },
 

@@ -6,7 +6,8 @@
  */
 import { catOptions, chunksOf } from 'fp-ts/lib/Array'
 import { none, some } from 'fp-ts/lib/Option'
-import { SourceId, SubscriptionSet, Timestamp } from '.'
+import { SourceId, Timestamp } from '.'
+import { SubscriptionSet } from './subscription'
 import { Psn, FishName, Semantics } from './types'
 import { Event, Events, EventStore, OffsetMap } from './eventstore'
 import { includeEvent } from './eventstore/testEventStore'
@@ -111,10 +112,10 @@ const neverSnapshotScheduler: SnapshotScheduler = {
 type Run = <S>(
   fish: FishInfo<S>,
 ) => (
-  sourceId: SourceId,
-  events: ReadonlyArray<Events>,
-  snapshotScheduler: SnapshotScheduler,
-) => Promise<S>
+    sourceId: SourceId,
+    events: ReadonlyArray<Events>,
+    snapshotScheduler: SnapshotScheduler,
+  ) => Promise<S>
 
 const hydrate: Run = fish => async (sourceId, events, snapshotScheduler) => {
   const { state: finalState } = await events.reduce(
@@ -186,9 +187,9 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
     const isLast = i === events.length - 1
     return (n && intermediates) || isLast
       ? store
-          .currentState()
-          .toPromise()
-          .then(sp => sp.state)
+        .currentState()
+        .toPromise()
+        .then(sp => sp.state)
       : acc
   }, Promise.resolve(fish.initialState()))
 }

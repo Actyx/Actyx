@@ -6,9 +6,9 @@
  */
 import { contramap, Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
-import { TagQuery, Tags, Where } from './tagging'
 import * as t from 'io-ts'
 import { Event, OffsetMap } from './eventstore/types'
+import { Tags, Where } from './tagging'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isString = (x: any): x is string => typeof x === 'string'
@@ -400,7 +400,7 @@ export type Fish<S, E> = {
   // Will extend this field with further options in the future:
   // - <E>-Typed subscription
   // - Plain query string
-  where: TagQuery | Where<E>
+  where: Where<E>
 
   initialState: S
   onEvent: Reduce<S, E>
@@ -415,7 +415,7 @@ export type Fish<S, E> = {
 }
 
 export const Fish = {
-  latestEvent: <E>(where: TagQuery): Fish<E | undefined, E> => ({
+  latestEvent: <E>(where: Where<E>): Fish<E | undefined, E> => ({
     where,
 
     initialState: undefined,
@@ -427,7 +427,7 @@ export const Fish = {
     isReset: () => true,
   }),
 
-  eventsDescending: <E>(where: TagQuery, capacity = 100): Fish<E[], E> => ({
+  eventsDescending: <E>(where: Where<E>, capacity = 100): Fish<E[], E> => ({
     where,
 
     initialState: [],
@@ -440,7 +440,7 @@ export const Fish = {
     fishId: FishId.of('actyx.lib.eventsDescending', JSON.stringify(where), 1),
   }),
 
-  eventsAscending: <E>(where: TagQuery, capacity = 100): Fish<E[], E> => ({
+  eventsAscending: <E>(where: Where<E>, capacity = 100): Fish<E[], E> => ({
     where,
 
     initialState: [],
