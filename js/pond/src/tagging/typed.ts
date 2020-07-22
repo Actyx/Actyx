@@ -135,5 +135,4 @@ const union = <E>(sets: Tags<unknown>[]): TypedTagUnion<E> => {
   }
 }
 
-
 export const noEvents: TypedTagUnion<never> = union([])

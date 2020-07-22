@@ -112,10 +112,10 @@ const neverSnapshotScheduler: SnapshotScheduler = {
 type Run = <S>(
   fish: FishInfo<S>,
 ) => (
-    sourceId: SourceId,
-    events: ReadonlyArray<Events>,
-    snapshotScheduler: SnapshotScheduler,
-  ) => Promise<S>
+  sourceId: SourceId,
+  events: ReadonlyArray<Events>,
+  snapshotScheduler: SnapshotScheduler,
+) => Promise<S>
 
 const hydrate: Run = fish => async (sourceId, events, snapshotScheduler) => {
   const { state: finalState } = await events.reduce(
@@ -187,9 +187,9 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
     const isLast = i === events.length - 1
     return (n && intermediates) || isLast
       ? store
-        .currentState()
-        .toPromise()
-        .then(sp => sp.state)
+          .currentState()
+          .toPromise()
+          .then(sp => sp.state)
       : acc
   }, Promise.resolve(fish.initialState()))
 }
