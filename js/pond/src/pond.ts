@@ -21,7 +21,7 @@ import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
-import { toWireFormat, TypedTagIntersection } from './tagging'
+import { toWireFormat, Tags } from './tagging'
 import {
   CancelSubscription,
   EmissionRequest,
@@ -43,8 +43,8 @@ import {
 } from './types'
 
 const isTyped = (
-  e: ReadonlyArray<string> | TypedTagIntersection<unknown>,
-): e is TypedTagIntersection<unknown> => {
+  e: ReadonlyArray<string> | Tags<unknown>,
+): e is Tags<unknown> => {
   return !Array.isArray(e)
 }
 
@@ -112,7 +112,7 @@ export type Pond = {
    * @returns       A `PendingEmission` object that can be used to register
    *                callbacks with the emission’s completion.
    */
-  emit<E>(tags: string[] | TypedTagIntersection<E>, payload: E): PendingEmission
+  emit<E>(tags: string[] | Tags<E>, payload: E): PendingEmission
 
   /**
    * Emit a number of events at once.
@@ -302,7 +302,7 @@ export class Pond2Impl implements Pond {
     return this.eventStore.persistEvents(events)
   }
 
-  emit = <E>(tags: string[] | TypedTagIntersection<E>, payload: E): PendingEmission => {
+  emit = <E>(tags: string[] | Tags<E>, payload: E): PendingEmission => {
     return this.emitMany({ tags, payload })
   }
 
@@ -461,15 +461,15 @@ export class Pond2Impl implements Pond {
 
     const tw = autoCancel
       ? (state: S) => {
-          if (cancelled) {
-            return false
-          } else if (autoCancel(state)) {
-            cancelled = true
-            return false
-          }
-
-          return true
+        if (cancelled) {
+          return false
+        } else if (autoCancel(state)) {
+          cancelled = true
+          return false
         }
+
+        return true
+      }
       : () => !cancelled
 
     states

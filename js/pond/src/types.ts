@@ -4,10 +4,9 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { right } from 'fp-ts/lib/Either'
 import { contramap, Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
-import { TagQuery, TypedTagIntersection, Where } from './tagging'
+import { TagQuery, Tags, Where } from './tagging'
 import * as t from 'io-ts'
 import { Event, OffsetMap } from './eventstore/types'
 
@@ -55,17 +54,6 @@ export const FishName = {
     x => x,
   ),
 }
-
-export type Tags = ReadonlyArray<string>
-type TagsOnWire = ReadonlyArray<string> | undefined
-export const Tags = new t.Type<Tags, TagsOnWire>(
-  'TagsSetFromArray',
-  (x): x is Tags => x instanceof Array && x.every(isString),
-  // Rust side for now expresses empty tag arrays as omitting the field
-  (x, c) => (x === undefined ? right([]) : t.readonlyArray(t.string).validate(x, c)),
-  // Sending empty arrays is fine, though
-  x => x,
-)
 
 export type SourceId = string
 const mkSourceId = (text: string): SourceId => text as SourceId
@@ -357,7 +345,7 @@ export type StatePointer<S> = TaggedIndex & CachedState<S>
  * POND V2 APIs
  */
 export type Emit<E> = {
-  tags: ReadonlyArray<string> | TypedTagIntersection<E>
+  tags: ReadonlyArray<string> | Tags<E>
   payload: E
 }
 
