@@ -6,186 +6,62 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import * as R from 'ramda'
-import { Observable, ReplaySubject, Scheduler, Subject } from 'rxjs'
+import { Observable, Scheduler } from 'rxjs'
 import { CommandInterface } from './commandInterface'
 import { EventStore } from './eventstore'
 import { MultiplexedWebsocket } from './eventstore/multiplexedWebsocket'
 import { TestEventStore } from './eventstore/testEventStore'
-import { ConnectivityStatus, Event, Events, UnstoredEvents } from './eventstore/types'
+import { ConnectivityStatus, Events, UnstoredEvents } from './eventstore/types'
 import { mkMultiplexer } from './eventstore/utils'
 import { getSourceId } from './eventstore/websocketEventStore'
-import { CommandExecutor } from './executors/commandExecutor'
 import { CommandPipeline, FishJar } from './fishJar'
 import log from './loggers'
-import { PondCommon } from './pond-common'
 import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
-import { EmissionRequest, FishId, Metadata } from './pond-v2-types'
 import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
-import { SubscriptionSet } from './subscription'
+import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
+import { toWireFormat, TypedTagIntersection } from './tagging'
 import {
-  Envelope,
+  CancelSubscription,
+  EmissionRequest,
+  Emit,
+  Fish,
+  FishId,
   FishName,
-  FishType,
-  FishTypeImpl,
-  Lamport,
+  IsReset,
+  Metadata,
   Milliseconds,
-  ObserveMethod,
-  Psn,
+  PendingEmission,
+  Reduce,
   Semantics,
-  SendCommand,
   Source,
   SourceId,
+  StateEffect,
   StateWithProvenance,
   Timestamp,
 } from './types'
 
-type AnyFishJar = FishJar<any, any, any>
-
-export type EventChunkOld<E> = {
-  source: Source
-  timestamp: Timestamp
-  events: ReadonlyArray<E>
-}
-/**
- * Makes a chunk from a number of envelopes
- *
- * This is exclusively needed in old tests and should be removed once the tests are
- * refactored.
- * @param envelopes A number of envelopes
- */
-export const mkEventChunk = <E>(envelopes: ReadonlyArray<Envelope<E>>): EventChunkOld<E> => {
-  if (envelopes.length === 0) {
-    throw new Error()
-  }
-  const source = envelopes[0].source
-
-  const timestamp = envelopes[0].timestamp
-  const events = envelopes.map(x => x.payload)
-  if (envelopes.length > 1) {
-    if (!envelopes.every(x => R.equals(x.source, source))) {
-      throw new Error('all events must have the same source')
-    }
-    if (!envelopes.every(x => R.equals(x.timestamp, timestamp))) {
-      throw new Error('all events must have the same timestamp')
-    }
-  }
-  return {
-    timestamp,
-    source,
-    events,
-  }
+const isTyped = (
+  e: ReadonlyArray<string> | TypedTagIntersection<unknown>,
+): e is TypedTagIntersection<unknown> => {
+  return !Array.isArray(e)
 }
 
-export type SendToStore = <E>(
-  semantics: Semantics,
-  fishName: FishName,
-  tags: string[],
-  events: ReadonlyArray<E>,
-) => Observable<Events>
-
-/**
- * @deprecated
- * As the PSN is given out by the store, we can't do this conversion anymore.
- * Should be only used for testing purposes.
- */
-export function flattenChunk(chunk: UnstoredEvents, sourceId: SourceId): Event[] {
-  return chunk.map(event => {
-    const result = {
-      name: event.name,
-      semantics: event.semantics,
-      tags: event.tags,
-      sourceId,
-      psn: Psn.of(-1),
-      lamport: Lamport.of(0), // deprecated - test use only
-      timestamp: event.timestamp,
-      payload: event.payload,
-    }
-    return result
-  })
-}
-
-export type Pond = PondCommon & {
-  /**
-   * Obtain an observable stream of states from the given fish, waking it up if it is
-   * not already actively running within this pond. It is guaranteed that after a
-   * change in state there will eventually be a current state object emitted by the
-   * returned observable, but not every intermediate state is guaranteed to be emitted.
-   */
-  observe<C, E, P>(fish: FishType<C, E, P>, name: string): Observable<P>
-
-  /**
-   * Send a command to the given fish, ensuring that it is woken up within this pond.
-   * Processing a command usually results in the generation of events (which in turn
-   * trigger observable state changes) or other effects. The events are emitted and
-   * applied first (with running of effects as described for runEvent(), but without
-   * dispatching intermediate state updates), then effects
-   * are executed, followed finally by dispatching the new state if a change in state
-   * did in fact occur.
-   *
-   * Observable completes when command execution finishes.
-   *
-   * NOTE that this method returns a lazy observable, i.e. if not consumed then the
-   * command is also not sent.
-   *
-   * We are using two argument lists to help the type inference. The first argument list
-   * fully determines C, and the second argument list just has to check for matching.
-   */
-  feed<C, E, P>(fish: FishType<C, E, P>, name: string): (command: C) => Observable<void>
-
-  /**
-   * @deprecated
-   * Events as they are generated by the processing of commands (feed), flattened
-   */
-  _events(): Observable<Envelope<any>>
-
-  /**
-   * Commands as they are generated by the processing of commands (feed)
-   */
-  commands(): Observable<SendCommand<any>>
-
-  /**
-   * Dump all internal state of all fish, for debugging purposes.
-   */
-  dump(): Observable<string>
-}
-
-const logPondError = { error: (x: any) => log.pond.error(JSON.stringify(x)) }
-
-export type TimeInjector = (source: Source, events: ReadonlyArray<any>) => Timestamp
-
-export const defaultTimeInjector: TimeInjector = (_source: Source, _events: ReadonlyArray<any>) =>
-  Timestamp.now()
-
-export type Tap<T> = (xs: Observable<T>) => Observable<T>
-const identity = <T>(x: Observable<T>) => x
-export const Tap = {
-  none: identity,
-}
-export type CommandTap = Tap<SendCommand<any>>
-export type EventTap = Tap<UnstoredEvents>
 export type PondOptions = {
-  timeInjector?: TimeInjector
-  commandTap?: CommandTap
-  eventTap?: EventTap
-
   hbHistDelay?: number
   currentPsnHistoryDelay?: number
   updateConnectivityEvery?: Milliseconds
+
+  stateEffectDebounce?: number
 }
 
-const defaultPondOptions = {
-  timeInjector: defaultTimeInjector,
+export type PondInfo = {
+  sourceId: SourceId
 }
 
-export const makeEventChunk = <E>(
-  timeInjector: TimeInjector,
-  source: Source,
-  events: ReadonlyArray<E>,
-): UnstoredEvents => {
-  const timestamp = timeInjector(source, events)
+export const makeEventChunk = <E>(source: Source, events: ReadonlyArray<E>): UnstoredEvents => {
+  const timestamp = Timestamp.now()
   const { semantics, name } = source
   return events.map(payload => ({
     semantics,
@@ -196,172 +72,195 @@ export const makeEventChunk = <E>(
   }))
 }
 
-type ActiveAggregate<S> = {
+const omitObservable = <S>(
+  callback: (newState: S) => void,
+  states: Observable<StateWithProvenance<S>>,
+): CancelSubscription => {
+  const sub = states.map(x => x.state).subscribe(callback)
+  return sub.unsubscribe.bind(sub)
+}
+
+const pendingEmission = (o: Observable<void>): PendingEmission => ({
+  subscribe: o.subscribe.bind(o),
+  toPromise: () => o.toPromise(),
+})
+
+type ActiveFish<S> = {
   readonly states: Observable<StateWithProvenance<S>>
   commandPipeline?: CommandPipeline<S, EmissionRequest<any>>
 }
 
-export class PondImpl implements Pond {
-  commandsSubject: Subject<SendCommand<any>> = new Subject()
-  eventsSubject: Subject<UnstoredEvents> = new Subject()
-  timeInjector: TimeInjector
-  eventTap: EventTap
+export type GetNodeConnectivityParams = Readonly<{
+  callback: (newState: ConnectivityStatus) => void
+  specialSources?: ReadonlyArray<SourceId>
+}>
 
+export type WaitForSwarmSyncParams = Readonly<{
+  onSyncComplete: () => void
+  onProgress?: (newState: SplashState) => void
+  config?: WaitForSwarmConfig
+}>
+
+export type Pond = {
+  /* EMISSION */
+
+  /**
+   * Emit a single event directly.
+   *
+   * @param tags    Tags to attach to the event.
+   * @param payload The event payload.
+   * @returns       A `PendingEmission` object that can be used to register
+   *                callbacks with the emission’s completion.
+   */
+  emit<E>(tags: string[] | TypedTagIntersection<E>, payload: E): PendingEmission
+
+  /* AGGREGATION */
+
+  /**
+   * Fold events into state. Caching is done based on the `cacheKey` inside the `fish`.
+   *
+   * @param fish    Complete aggregation information.
+   * @param callback     Function that will be called whenever a new state becomes available.
+   * @returns            A function that can be called in order to cancel the aggregation.
+   */
+  observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription
+
+  /* CONDITIONAL EMISSION (COMMANDS) */
+
+  /**
+   * Run StateEffects against the current **locally known** State of the `fish`.
+   * The Effect is able to consider that State and create Events from it.
+   * Every Effect will see the Events of all previous Effects *on this fish* applied already!
+   *
+   * In regards to other nodes, there are no serialisation guarantees.
+   *
+   * @typeParam S                State of the Fish, input value to the effect.
+   * @typeParam EWrite           Payload type(s) to be returned by the effect.
+   *
+   * @param fish         Complete aggregation information.
+   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
+   * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
+   */
+  run<S, EWrite>(fish: Fish<S, any>, effect: StateEffect<S, EWrite>): PendingEmission
+
+  /**
+   * Curried version of `runStateEffect`.
+   *
+   * @typeParam S                State of the Fish, input value to the effect.
+   * @typeParam EWrite           Payload type(s) to be returned by the effect.
+   *
+   * @param fish         Complete aggregation information.
+   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
+   * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
+   */
+  runC<S, EWrite>(fish: Fish<S, any>): (effect: StateEffect<S, EWrite>) => PendingEmission
+
+  /**
+   * Install a StateEffect that will be applied automatically whenever the `agg`’s State has changed.
+   * Every application will see the previous one’s resulting Events applied to the State already, if applicable;
+   * but any number of intermediate States may have been skipped between two applications.
+   *
+   * The effect can be uninstalled by calling the returned `CancelSubscription`.
+   *
+   * @typeParam S        State of the Fish, input value to the effect.
+   * @typeParam EWrite   Payload type(s) to be returned by the effect.
+   *
+   * @param fish         Complete aggregation information.
+   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
+   * @param autoCancel   Condition on which the automatic effect will be cancelled -- State on which `autoCancel` returns `true`
+   *                     will be the first State the effect is *not* applied to anymore.
+   * @returns            A `CancelSubscription` object that can be used to cancel the automatic effect.
+   */
+  keepRunning<S, EWrite>(
+    fish: Fish<S, any>,
+    effect: StateEffect<S, EWrite>,
+    autoCancel?: (state: S) => boolean,
+  ): CancelSubscription
+
+  /*
+   * HOUSE KEEPING FUNCTIONS
+   */
+
+  /**
+   * Dispose of this Pond, stopping all underlying async operations.
+   */
+  dispose(): void
+
+  /**
+   * Information about the current pond
+   */
+  info(): PondInfo
+
+  /**
+   * Obtain an observable state of the pond.
+   */
+  getPondState(callback: (newState: PondState) => void): CancelSubscription
+
+  /**
+   * Obtain an observable describing connectivity status of this node.
+   */
+  getNodeConnectivity(params: GetNodeConnectivityParams): CancelSubscription
+
+  /**
+   * Wait for the node to get in sync with the swarm.
+   * It is strongly recommended that any interaction with the Pond is delayed until the onSyncComplete callback has been notified.
+   * To obtain progress information about the sync, the onProgress callback can be supplied.
+   */
+  waitForSwarmSync(params: WaitForSwarmSyncParams): void
+}
+
+export class Pond2Impl implements Pond {
   readonly hydrateV2: <S, E>(
     subscriptionSet: SubscriptionSet,
     initialState: S,
     onEvent: (state: S, event: E, metadata: Metadata) => S,
     fishId: FishId,
     enableLocalSnapshots: boolean,
-    isReset?: (event: E) => boolean,
+    isReset?: IsReset<E>,
   ) => Observable<StateWithProvenance<S>>
 
-  // fish containers
-  jars: {
-    [semantics: string]: { [name: string]: ReplaySubject<AnyFishJar> }
+  activeFishes: {
+    [fishId: string]: ActiveFish<any>
   } = {}
-
-  taggedAggregates: {
-    [fishId: string]: ActiveAggregate<any>
-  } = {}
-
-  // executor for async commands
-  commandExecutor: CommandExecutor
 
   constructor(
-    readonly eventStore: EventStore,
-    readonly snapshotStore: SnapshotStore,
-    readonly pondStateTracker: PondStateTracker,
-    readonly monitoring: Monitoring,
-    readonly opts: PondOptions,
+    private readonly eventStore: EventStore,
+    private readonly snapshotStore: SnapshotStore,
+    private readonly pondStateTracker: PondStateTracker,
+    private readonly monitoring: Monitoring,
+    private readonly opts: PondOptions,
   ) {
-    this.eventTap = opts.eventTap || Tap.none
-    this.timeInjector = opts.timeInjector ? opts.timeInjector : defaultPondOptions.timeInjector
-
-    const config = {
-      getState: <P>(f: FishType<any, any, P>, name: FishName): Promise<P> => {
-        return this.observe(f, name)
-          .take(1)
-          .toPromise()
-      },
-      sendCommand: <T>(sc: SendCommand<T>) => {
-        this.commandsSubject.next(sc)
-      },
-    }
-    this.commandExecutor = CommandExecutor(config)
-
     this.hydrateV2 = FishJar.hydrateV2(this.eventStore, this.snapshotStore, this.pondStateTracker)
   }
 
-  getPondState = (): Observable<PondState> => this.pondStateTracker.observe()
+  getPondState = (callback: (newState: PondState) => void) => {
+    const sub = this.pondStateTracker.observe().subscribe(callback)
+    return () => sub.unsubscribe()
+  }
 
-  getNodeConnectivity = (
-    ...specialSources: ReadonlyArray<SourceId>
-  ): Observable<ConnectivityStatus> =>
-    this.eventStore.connectivityStatus(
-      specialSources,
-      this.opts.hbHistDelay || 1e12,
-      this.opts.updateConnectivityEvery || Milliseconds.of(10_000),
-      this.opts.currentPsnHistoryDelay || 6,
+  getNodeConnectivity = (params: GetNodeConnectivityParams) => {
+    const sub = this.eventStore
+      .connectivityStatus(
+        params.specialSources || [],
+        this.opts.hbHistDelay || 1e12,
+        this.opts.updateConnectivityEvery || Milliseconds.of(10_000),
+        this.opts.currentPsnHistoryDelay || 6,
+      )
+      .subscribe(params.callback)
+
+    return () => sub.unsubscribe()
+  }
+
+  waitForSwarmSync = (params: WaitForSwarmSyncParams) => {
+    const splash = SplashState.of(this.eventStore, params.config || {}).finally(
+      params.onSyncComplete,
     )
 
-  waitForSwarmSync = (config?: WaitForSwarmConfig): Observable<SplashState> =>
-    SplashState.of(this.eventStore, config || {})
-
-  commands = () => {
-    return this.commandsSubject.asObservable()
-  }
-
-  // deprecated, testing use only
-  _events = () => {
-    return this.eventsSubject.mergeMap(c =>
-      flattenChunk(c, this.eventStore.sourceId).map(ev => Event.toEnvelopeFromStore<any>(ev)),
-    )
-  }
-
-  observe = <C, E, P>(fish: FishType<C, E, P>, name: string): Observable<P> => {
-    return this.getOrHydrateJar(FishTypeImpl.downcast(fish), FishName.of(name)).concatMap(
-      jar => jar.publicSubject,
-    )
-  }
-
-  allFishJars = (): Observable<AnyFishJar> => {
-    return Observable.of(this.jars)
-      .concatMap(f => Observable.from(Object.keys(f)).map(k => f[k]))
-      .concatMap(f => Observable.from(Object.keys(f)).map(k => f[k]))
-      .concatMap(x => x)
-  }
-
-  dump = (): Observable<string> => {
-    return this.allFishJars()
-      .map(s => s.dump())
-      .toArray()
-      .map(arr => arr.join('\n'))
-  }
-
-  getOrHydrateJar = (
-    fish: FishTypeImpl<any, any, any, any>,
-    name: FishName,
-  ): Observable<AnyFishJar> => {
-    const semantics = fish.semantics
-    const jarPath = [semantics, name]
-    const existingSubject = R.pathOr<undefined, ReplaySubject<AnyFishJar>>(
-      undefined,
-      jarPath,
-      this.jars,
-    )
-
-    if (existingSubject !== undefined) {
-      return existingSubject.observeOn(Scheduler.queue).take(1)
+    if (params.onProgress) {
+      splash.subscribe(params.onProgress)
+    } else {
+      splash.subscribe()
     }
-
-    const subject = new ReplaySubject<AnyFishJar>(1)
-    this.jars = R.assocPath(jarPath, subject, this.jars)
-    const storeEvents: SendToStore = (semantics, fishName, _tags, events) => {
-      const source = {
-        sourceId: this.eventStore.sourceId,
-        semantics,
-        name: fishName,
-      }
-
-      const chunk = makeEventChunk(this.timeInjector, source, events)
-      return Observable.of(chunk).concatMap(x => {
-        this.eventsSubject.next(x)
-        return this.eventStore.persistEvents(chunk)
-      })
-    }
-
-    FishJar.hydrate(
-      fish,
-      name,
-      this.eventStore,
-      this.snapshotStore,
-      storeEvents,
-      this.observe as ObserveMethod,
-      this.commandExecutor,
-      this.pondStateTracker,
-    ).subscribe(subject)
-    return subject
-  }
-
-  feed0 = <C, E, P>(fish: FishType<C, E, P>, name: FishName, command: C): Observable<void> => {
-    return this.getOrHydrateJar(FishTypeImpl.downcast(fish), name).mergeMap(
-      jar =>
-        new Observable<void>(x =>
-          jar.enqueueCommand(
-            command,
-            () => {
-              x.next()
-              x.complete()
-            },
-            err => x.error(err),
-          ),
-        ),
-    )
-  }
-
-  feed = <C, E, P>(fish: FishType<C, E, P>, name: FishName) => {
-    return (command: C) => this.feed0(fish, name, command)
   }
 
   info = () => {
@@ -372,13 +271,208 @@ export class PondImpl implements Pond {
 
   dispose = () => {
     this.monitoring.dispose()
-    return this.allFishJars()
-      .do(jar => jar.dispose())
-      .defaultIfEmpty(undefined)
-      .last()
-      .do(() => (this.jars = {}))
-      .mapTo(undefined)
-      .toPromise()
+    // TODO: Implement cleanup of active fishs
+  }
+
+  /* POND V2 FUNCTIONS */
+  private emitTagged0 = <E>(emit: ReadonlyArray<Emit<E>>): Observable<Events> => {
+    const events = emit.map(({ tags, payload }) => {
+      const timestamp = Timestamp.now()
+
+      const event = {
+        semantics: Semantics.none,
+        name: FishName.none,
+        tags: isTyped(tags) ? tags.raw().tags : tags,
+        timestamp,
+        payload,
+      }
+
+      return event
+    })
+
+    return this.eventStore.persistEvents(events)
+  }
+
+  emit = <E>(tags: string[] | TypedTagIntersection<E>, payload: E): PendingEmission => {
+    return this.emitMany({ tags, payload })
+  }
+
+  private emitMany = (...emissions: ReadonlyArray<Emit<any>>): PendingEmission => {
+    // `shareReplay` so that every piece of user code calling `subscribe`
+    // on the return value will actually be executed
+    const o = this.emitTagged0(emissions)
+      .mapTo(void 0)
+      .shareReplay(1)
+
+    // `o` is already (probably) hot, but we subscribe just in case.
+    o.subscribe()
+
+    return pendingEmission(o)
+  }
+
+  private getCachedOrInitialize = <S, E>(
+    subscriptionSet: SubscriptionSet,
+    initialState: S,
+    onEvent: Reduce<S, E>,
+    fishId: FishId,
+    isReset?: IsReset<E>,
+  ): ActiveFish<S> => {
+    const key = FishId.canonical(fishId)
+    const existing = this.activeFishes[key]
+    if (existing !== undefined) {
+      return {
+        ...existing,
+        states: existing.states.observeOn(Scheduler.queue),
+      }
+    }
+
+    const stateSubject = this.hydrateV2(
+      subscriptionSet,
+      initialState,
+      onEvent,
+      fishId,
+      true,
+      isReset,
+    ).shareReplay(1)
+
+    const a = {
+      states: stateSubject,
+    }
+    this.activeFishes[key] = a
+    return a
+  }
+
+  private observeTagBased0 = <S, E>(acc: Fish<S, E>): ActiveFish<S> => {
+    const subscriptionSet: SubscriptionSet = {
+      type: 'tags',
+      subscriptions: toWireFormat(acc.where),
+    }
+
+    return this.getCachedOrInitialize(
+      subscriptionSet,
+      acc.initialState,
+      acc.onEvent,
+      acc.fishId,
+      acc.isReset,
+    )
+  }
+
+  observe = <S, E>(acc: Fish<S, E>, callback: (newState: S) => void): CancelSubscription => {
+    if (acc.deserializeState) {
+      throw new Error('custom deser not yet supported')
+    }
+
+    return omitObservable(callback, this.observeTagBased0<S, E>(acc).states)
+  }
+
+  // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
+  runC = <S, EWrite, ReadBack = false>(
+    agg: Fish<S, ReadBack extends true ? EWrite : any>,
+  ): ((effect: StateEffect<S, EWrite>) => PendingEmission) => {
+    const cached = this.observeTagBased0(agg)
+    const handleInternal = this.getOrCreateCommandHandle0(agg, cached)
+
+    return effect => pendingEmission(handleInternal(effect))
+  }
+
+  private v2CommandHandler = (emit: EmissionRequest<unknown>) => {
+    return Observable.from(Promise.resolve(emit)).mergeMap(x => this.emitTagged0(x))
+  }
+
+  private getOrCreateCommandHandle0 = <S, EWrite, ReadBack = false>(
+    agg: Fish<S, ReadBack extends true ? EWrite : any>,
+    cached: ActiveFish<S>,
+  ): ((effect: StateEffect<S, EWrite>) => Observable<void>) => {
+    const handler = this.v2CommandHandler
+
+    const subscriptionSet: SubscriptionSet = {
+      type: 'tags',
+      subscriptions: toWireFormat(agg.where),
+    }
+
+    const commandPipeline =
+      cached.commandPipeline ||
+      FishJar.commandPipeline<S, EmissionRequest<any>>(
+        this.pondStateTracker,
+        this.eventStore.sourceId,
+        agg.fishId.entityType || Semantics.none,
+        agg.fishId.name,
+        handler,
+        cached.states,
+        subscriptionsToEventPredicate(subscriptionSet),
+      )
+    cached.commandPipeline = commandPipeline
+
+    return effect => {
+      const o = new Observable<void>(x =>
+        commandPipeline.subject.next({
+          type: 'command',
+          command: effect,
+          onComplete: () => {
+            x.next()
+            x.complete()
+          },
+          onError: (err: any) => x.error(err),
+        }),
+      )
+        .shareReplay(1)
+        // Subscribing on Scheduler.queue is not strictly required, but helps with dampening feedback loops
+        .subscribeOn(Scheduler.queue)
+
+      // We just subscribe to guarantee effect application;
+      // user is responsible for handling errors on the returned object if desired.
+      o.catch(() => Observable.empty()).subscribe()
+
+      return o
+    }
+  }
+
+  run = <S, EWrite, ReadBack = false>(
+    agg: Fish<S, ReadBack extends true ? EWrite : any>,
+    effect: StateEffect<S, EWrite>,
+  ): PendingEmission => {
+    const handle = this.runC(agg)
+    return handle(effect)
+  }
+
+  keepRunning = <S, EWrite, ReadBack = false>(
+    agg: Fish<S, ReadBack extends true ? EWrite : any>,
+    effect: StateEffect<S, EWrite>,
+    autoCancel?: (state: S) => boolean,
+  ): CancelSubscription => {
+    // We use this state `cancelled` to stop effects "asap" when user code calls the cancellation function.
+    // Otherwise it might happen that we have already queued the next effect and run longer than desired.
+    let cancelled = false
+
+    const wrappedEffect = (state: S) => (cancelled ? [] : effect(state))
+
+    const cached = this.observeTagBased0(agg)
+    const states = cached.states
+    const handleInternal = this.getOrCreateCommandHandle0(agg, cached)
+
+    const tw = autoCancel
+      ? (state: S) => {
+          if (cancelled) {
+            return false
+          } else if (autoCancel(state)) {
+            cancelled = true
+            return false
+          }
+
+          return true
+        }
+      : () => !cancelled
+
+    states
+      .map(swp => swp.state)
+      .takeWhile(tw)
+      .debounceTime(0)
+      // We could also just use `do` instead of `mergeMap` (using the public API),
+      // for no real loss, but no gain either.
+      .mergeMap(() => handleInternal(wrappedEffect))
+      .subscribe()
+
+    return () => (cancelled = true)
   }
 }
 
@@ -417,11 +511,11 @@ const mkMockPond = async (opts?: PondOptions): Promise<Pond> => {
   return pondFromServices(services, opts1)
 }
 
-type TestPond = Pond & {
+export type TestPond2 = Pond & {
   directlyPushEvents: (events: Events) => void
   eventStore: TestEventStore
 }
-const mkTestPond = async (opts?: PondOptions): Promise<TestPond> => {
+const mkTestPond = async (opts?: PondOptions): Promise<TestPond2> => {
   const opts1: PondOptions = opts || {}
   const eventStore = EventStore.test(SourceId.of('TEST'))
   const snapshotStore = SnapshotStore.inMem()
@@ -440,12 +534,13 @@ const pondFromServices = (services: Services, opts: PondOptions): Pond => {
   log.pond.debug('start pond with SourceID %s from store', eventStore.sourceId)
 
   const pondStateTracker = mkPondStateTracker(log.pond)
-  const pond: PondImpl = new PondImpl(eventStore, snapshotStore, pondStateTracker, monitoring, opts)
-  // execute commands by calling feed
-  pond.commandsSubject
-    .pipe(opts.commandTap || Tap.none)
-    .mergeMap(s => pond.feed0(s.target.semantics, FishName.of(s.target.name), s.command))
-    .subscribe(logPondError)
+  const pond: Pond2Impl = new Pond2Impl(
+    eventStore,
+    snapshotStore,
+    pondStateTracker,
+    monitoring,
+    opts,
+  )
 
   return pond
 }

@@ -6,14 +6,14 @@
  */
 import { catOptions, chunksOf } from 'fp-ts/lib/Array'
 import { none, some } from 'fp-ts/lib/Option'
-import { FishName, Psn, Semantics, SourceId, SubscriptionSet, Timestamp } from './'
+import { SourceId, SubscriptionSet, Timestamp } from '.'
+import { Psn, FishName, Semantics } from './types'
 import { Event, Events, EventStore, OffsetMap } from './eventstore'
 import { includeEvent } from './eventstore/testEventStore'
 import { interleaveRandom, intoOrderedChunks } from './eventstore/utils'
 import { FishEventStore, FishInfo } from './fishEventStore'
 import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
-import { EnvelopeFromStore } from './store/util'
 import { EventKey, Lamport, SnapshotFormat } from './types'
 import { shuffle } from './util/array'
 
@@ -24,7 +24,7 @@ const numberOfIterations = 5
 const semanticSnapshotProbability = 0.1
 const localSnapshotProbability = 0.05
 
-type SemanticSnapshot<E> = (env: EnvelopeFromStore<E>) => boolean
+type SemanticSnapshot = (ev: Event) => boolean
 
 type Payload = Readonly<{
   sequence: number
@@ -63,9 +63,7 @@ const generateEvents = (count: number) => (sourceId: SourceId): Events =>
     },
   }))
 
-const mkFish = (
-  isSemanticSnapshot: SemanticSnapshot<Payload> | undefined,
-): FishInfo<State, Payload> => ({
+const mkFish = (isSemanticSnapshot: SemanticSnapshot | undefined): FishInfo<State> => ({
   semantics: Semantics.of('some-fish'),
   fishName: FishName.of('some-name'),
   subscriptionSet: SubscriptionSet.all,
@@ -85,8 +83,8 @@ const mkSnapshotScheduler: (
   getSnapshotLevels: (_, ts, limit) =>
     catOptions(
       ts.map((t, i) => {
-        const { payload } = (t as unknown) as EnvelopeFromStore<Payload>
-        if (f(payload)) {
+        const { payload } = (t as unknown) as Event
+        if (f(payload as Payload)) {
           return some({ tag: 'x' + i, i, persistAsLocalSnapshot: true })
         } else {
           return none
@@ -111,7 +109,7 @@ const neverSnapshotScheduler: SnapshotScheduler = {
 }
 
 type Run = <S>(
-  fish: FishInfo<S, Payload>,
+  fish: FishInfo<S>,
 ) => (
   sourceId: SourceId,
   events: ReadonlyArray<Events>,
@@ -198,7 +196,7 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
 const fishConfigs = {
   undefined: mkFish(undefined),
   never: mkFish(() => false),
-  random: mkFish(({ payload: { isSemanticSnapshot } }) => isSemanticSnapshot),
+  random: mkFish((ev: Event) => (ev.payload as Payload).isSemanticSnapshot),
 }
 const runConfigs = { hydrate, live: live(false), liveIntermediateStates: live(true) }
 const snapshotConfigs = {

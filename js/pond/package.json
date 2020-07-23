@@ -1,6 +1,6 @@
 {
   "name": "@actyx/pond",
-  "version": "1.2.0-rc2",
+  "version": "2.0.0-rc2",
   "description": "Actyx Pond",
   "keywords": [
     "actyx",
@@ -92,6 +92,6 @@
     "seedrandom": "2.4.4",
     "testcheck": "1.0.0-rc.2",
     "ts-jest": "25.1.0",
-    "typescript": "3.6.2"
+    "typescript": "3.9.6"
   }
 }

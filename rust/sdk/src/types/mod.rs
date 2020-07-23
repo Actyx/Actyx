@@ -17,6 +17,7 @@
 
 mod arcval;
 mod fixnum;
+pub mod varint;
 
 pub use arcval::ArcVal;
 pub use fixnum::FixNum;

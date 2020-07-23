@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use super::service::{NodeId, NodeIdResponse};
+use super::{service::NodeIdResponse, NodeId};
 use crate::event_service::client::WithContext;
 use crate::{EventServiceError, OffsetMap};
 use reqwest::{Client, RequestBuilder, Response};

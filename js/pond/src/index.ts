@@ -4,56 +4,32 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+export { ConnectivityStatus } from './eventstore/types'
+export * from './pond'
+export { Config as StoreConfig } from './store/config'
+export { Subscription, SubscriptionSet } from './subscription'
+export * from './tagging'
 export {
-  FishType,
-  FishTypeImpl,
-  HttpResponse,
-  OnCommand,
-  OnEvent,
-  SourceId,
-  StateSubscription,
-  Target,
-  Timestamp,
-  mkPublish,
-  mkSendSelf,
-  PublishState,
-  publishState,
-  PondObservables,
-  StateEffect,
-  Source,
-  Semantics,
+  CancelSubscription,
+  EmissionRequest,
+  Emit,
+  Fish,
+  FishId,
   FishName,
-  InitialState,
-  SyncCommandResult,
-  AsyncCommandResult,
-  CommandResult,
-  Envelope,
-  Psn,
-  CommandValidator,
-  ValidationFailure,
-  OnStateChange,
   isBoolean,
   isNumber,
+  IsReset,
   isString,
+  Metadata,
   Milliseconds,
+  PendingEmission,
+  Reduce,
+  Semantics,
   SnapshotFormat,
+  SourceId,
+  StateEffect,
+  StateWithProvenance,
+  Timestamp,
 } from './types'
-export {
-  unreachableOrElse,
-  unreachable,
-  Loggers,
-  enableAllLoggersExcept,
-  deepFreeze,
-  isNode,
-} from './util'
-export { Subscription, SubscriptionSet } from './subscription'
-export { CommandApi } from './commandApi'
-export { CommandApi as CommandAsync } from './commandApi'
-export { Pond } from './pond'
-export { default as mkWebSocket } from './connectors/websocket'
-export { enableWsFeeder } from './connectors'
-export { ConnectivityStatus } from './eventstore/types'
+export { enableAllLoggersExcept, isNode, Loggers, unreachable, unreachableOrElse } from './util'
 export { runStats } from './util/runStats'
-export { Config as StoreConfig } from './store/config'
-export * from './pond-v2-types'
-export * from './pond-v2'

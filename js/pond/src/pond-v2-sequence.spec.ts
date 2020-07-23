@@ -4,8 +4,7 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Pond2 } from './pond-v2'
-import { Fish, Reduce, StateEffect, TagQuery } from './pond-v2-types'
+import { Pond, TagQuery, Fish, Reduce, StateEffect } from '.'
 
 export type State = { n: number; fill: number }
 
@@ -28,7 +27,7 @@ const onEvent: Reduce<State, Payload> = (state: State, event: Payload) => {
 }
 
 const agg: Fish<State, Payload> = {
-  subscriptions: TagQuery.matchAnyOf('self'),
+  where: TagQuery.matchAnyOf('self'),
 
   initialState: { n: 0, fill: 0 },
 
@@ -54,14 +53,14 @@ const checkN: (expected: number) => StateEffect<State, never> = expected => stat
 }
 
 describe('application of commands in the pond v2', () => {
-  const expectState = (pond: Pond2, expected: number, aggr = agg): Promise<State> =>
+  const expectState = (pond: Pond, expected: number, aggr = agg): Promise<State> =>
     new Promise((resolve, _reject) =>
       pond.observe(aggr, state => state.n === expected && resolve(state)),
     )
 
   describe('raw state effects', () => {
     it('should run state effect, regardless of user awaiting the promise', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       const run = pond.runC(agg)
 
@@ -79,7 +78,7 @@ describe('application of commands in the pond v2', () => {
     })
 
     it('should propagate errors if the user subscribes', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       await expect(
         pond
@@ -97,7 +96,7 @@ describe('application of commands in the pond v2', () => {
     })
 
     it('effects should wait for application of previous', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       const r = pond.runC(agg)
       for (let i = 1; i <= 1000; i++) {
@@ -117,7 +116,7 @@ describe('application of commands in the pond v2', () => {
     ]
 
     it('should run until cancellation condition', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       pond.keepRunning(agg, autoBump, (state: State) => state.n === 100)
 
@@ -140,7 +139,7 @@ describe('application of commands in the pond v2', () => {
     })
 
     it('should respect sequence also when effect async', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       const delayedBump: StateEffect<State, Payload> = state =>
         new Promise((resolve, _reject) =>
@@ -161,7 +160,7 @@ describe('application of commands in the pond v2', () => {
     })
 
     it('should wait for the actual effect’s events to be processed, ignore other events that may come in', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       pond.keepRunning(agg, autoBump, (state: State) => state.n === 40)
 
@@ -179,7 +178,7 @@ describe('application of commands in the pond v2', () => {
     })
 
     it('should run parallel to user effects', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       pond.keepRunning<State, Payload>(
         agg,
@@ -222,7 +221,7 @@ describe('application of commands in the pond v2', () => {
       state.n % 2 === 0 ? [{ tags: ['self'], payload: { type: 'set', n: state.n + 1 } }] : []
 
     it('should run parallel to user effects 2', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       pond.keepRunning<State, Payload>(agg, bumpEven)
 
@@ -237,7 +236,7 @@ describe('application of commands in the pond v2', () => {
     })
 
     it('should run multiple auto effects in parallel', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
       const tags = ['self']
 
       const stateIs15 = expectState(pond, 15)
@@ -256,7 +255,7 @@ describe('application of commands in the pond v2', () => {
     })
 
     it('should run multiple auto effects in parallel, even if they all always fire', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
       const tags = ['self']
 
       const mk = (remainder: number): StateEffect<State, Payload> => state =>
@@ -274,7 +273,7 @@ describe('application of commands in the pond v2', () => {
     })
 
     it('should be cancellable', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       const cancel = pond.keepRunning(agg, bumpEven)
 
@@ -289,7 +288,7 @@ describe('application of commands in the pond v2', () => {
     })
 
     it('should be cancellable pretty swiftly', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       const cancel = pond.keepRunning(agg, autoBump)
 
@@ -304,7 +303,7 @@ describe('application of commands in the pond v2', () => {
 
   describe('automatic effects with event sent to other aggregates', () => {
     const mkAgg = (name: string) => ({
-      subscriptions: TagQuery.matchAnyOf(name),
+      where: TagQuery.matchAnyOf(name),
 
       initialState: { n: 0, fill: 0 },
 
@@ -317,7 +316,7 @@ describe('application of commands in the pond v2', () => {
     const beta = mkAgg('beta')
 
     it('should be able to pingpong', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       const stateIs30 = expectState(pond, 30, beta)
 

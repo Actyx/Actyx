@@ -8,24 +8,7 @@
 import * as t from 'io-ts'
 import { always } from 'ramda'
 import { Event } from './eventstore/types'
-import { Envelope, FishName, FishType, Semantics, SourceId } from './types'
-
-/**
- * Upon initial construction, a fish declares which event streams it wants to
- * listen to besides its own. Subscribing to all events from sibling fish includes
- * the implicit self-subscription, i.e. events will not be delivered twice.
- */
-
-const mkSubscription = <E, E1 extends E>(
-  semantics: FishType<any, E1, any> | Semantics,
-  name?: string,
-  sourceId?: SourceId,
-): Subscription => ({
-  semantics:
-    typeof semantics === 'object' ? (semantics as FishType<any, any, any>).semantics : semantics,
-  name: name === undefined ? FishName.of('') : FishName.of(name),
-  sourceId: sourceId || SourceId.of(''),
-})
+import { Envelope, FishName, Semantics, SourceId } from './types'
 
 const subscriptionToString = (subscription: Subscription): string => {
   if (subscription.name === '' && subscription.sourceId !== '') {
@@ -61,7 +44,6 @@ export const SubscriptionIO = t.readonly(
   }),
 )
 export const Subscription = {
-  of: mkSubscription,
   parse: parseSubscription,
   toString: subscriptionToString,
 }
@@ -73,6 +55,8 @@ export const TagSubscription = t.readonly(
     local: t.boolean,
   }),
 )
+
+export type TagSubscription = t.TypeOf<typeof TagSubscription>
 
 /**
  * A set of subscriptions

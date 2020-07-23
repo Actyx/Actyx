@@ -1,17 +1,14 @@
 import { Observable } from 'rxjs'
-import { Fish, Pond2, TagQuery } from '.'
+import { Fish, Pond, TagQuery } from '.'
 
-const emitTestEvents = async (pond: Pond2) =>
-  pond
-    .emitMany(
-      { tags: ['t0', 't1', 't2'], payload: 'hello' },
-      { tags: ['t0', 't1', 't2'], payload: 'world' },
-      { tags: ['t1'], payload: 't1 only' },
-      { tags: ['t2'], payload: 't2 only' },
-    )
-    .toPromise()
+const emitTestEvents = async (pond: Pond) => {
+  await pond.emit(['t0', 't1', 't2'], 'hello').toPromise()
+  await pond.emit(['t0', 't1', 't2'], 'world').toPromise()
+  await pond.emit(['t1'], 't1 only').toPromise()
+  await pond.emit(['t2'], 't2 only').toPromise()
+}
 
-const assertStateAndDispose = async <S>(states: Observable<S>, expected: S, pond: Pond2) => {
+const assertStateAndDispose = async <S>(states: Observable<S>, expected: S, pond: Pond) => {
   const res = states
     .debounceTime(5)
     .take(1)
@@ -19,18 +16,18 @@ const assertStateAndDispose = async <S>(states: Observable<S>, expected: S, pond
 
   await expect(res).resolves.toEqual(expected)
 
-  await pond.dispose()
+  pond.dispose()
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const aggregateAsObservable = <S>(pond: Pond2, agg: Fish<S, any>): Observable<S> =>
+const aggregateAsObservable = <S>(pond: Pond, agg: Fish<S, any>): Observable<S> =>
   new Observable(x => {
     pond.observe(agg, s => x.next(s))
   })
 
 describe('application of commands in the pond', () => {
   const expectAggregationToYield = async (subscriptions: TagQuery, expectedResult: string[]) => {
-    const pond = await Pond2.test()
+    const pond = await Pond.test()
 
     const aggregate = Fish.eventsDescending<string>(subscriptions)
 
@@ -63,7 +60,7 @@ describe('application of commands in the pond', () => {
     type State = ReadonlyArray<Event>
 
     const mkAggregate = (subscriptions: TagQuery, fishId = { name: 'test-entity' }) => ({
-      subscriptions,
+      where: subscriptions,
 
       initialState: [],
 
@@ -73,7 +70,7 @@ describe('application of commands in the pond', () => {
     })
 
     it('should cache based on key', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       const aggregate0 = mkAggregate(TagQuery.matchAnyOf('t1'))
 
@@ -93,7 +90,7 @@ describe('application of commands in the pond', () => {
     })
 
     it('should cache based on key, across unsubscribe calls', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       const aggregate = mkAggregate(TagQuery.matchAnyOf('t1'))
 
@@ -116,7 +113,7 @@ describe('application of commands in the pond', () => {
     })
 
     it('should permit different aggregations in parallel', async () => {
-      const pond = await Pond2.test()
+      const pond = await Pond.test()
 
       const aggregate0 = mkAggregate(TagQuery.matchAnyOf('t0'))
 
