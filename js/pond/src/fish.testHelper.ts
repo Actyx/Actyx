@@ -25,8 +25,8 @@ import {
   Timestamp,
 } from './types'
 
-type NumberFishEvent = number | 'padding'
-type NumberFishState = number[]
+export type NumberFishEvent = number | 'padding'
+export type NumberFishState = number[]
 
 export type RawEvent = Readonly<{
   payload: NumberFishEvent
@@ -150,11 +150,10 @@ export const mkSnapshot = (
   }
 }
 
-export const snapshotTestSetup = async (
-  fish: Fish<NumberFishState, NumberFishEvent>,
+export const snapshotTestSetup = async <S>(
+  fish: Fish<S, NumberFishEvent>,
   storedEvents?: Events,
   storedSnapshots?: ReadonlyArray<SnapshotData>,
-  enableLocalSnapshots = true,
 ) => {
   const sourceId = SourceId.of('LOCAL-test-source')
   const eventStore = EventStore.test(sourceId)
@@ -186,8 +185,8 @@ export const snapshotTestSetup = async (
     fish.initialState,
     fish.onEvent,
     fish.fishId,
-    enableLocalSnapshots,
     fish.isReset,
+    fish.deserializeState,
   )
     .map(x => x.state)
     .shareReplay(1)

@@ -213,8 +213,8 @@ export class Pond2Impl implements Pond {
     initialState: S,
     onEvent: (state: S, event: E, metadata: Metadata) => S,
     fishId: FishId,
-    enableLocalSnapshots: boolean,
     isReset?: IsReset<E>,
+    deserializeState?: (jsonState: unknown) => S,
   ) => Observable<StateWithProvenance<S>>
 
   activeFishes: {
@@ -313,7 +313,8 @@ export class Pond2Impl implements Pond {
     initialState: S,
     onEvent: Reduce<S, E>,
     fishId: FishId,
-    isReset?: IsReset<E>,
+    isReset: IsReset<E> | undefined,
+    deserializeState: ((jsonState: unknown) => S) | undefined,
   ): ActiveFish<S> => {
     const key = FishId.canonical(fishId)
     const existing = this.activeFishes[key]
@@ -329,8 +330,8 @@ export class Pond2Impl implements Pond {
       initialState,
       onEvent,
       fishId,
-      true,
       isReset,
+      deserializeState,
     ).shareReplay(1)
 
     const a = {
@@ -347,15 +348,12 @@ export class Pond2Impl implements Pond {
       acc.onEvent,
       acc.fishId,
       acc.isReset,
+      acc.deserializeState,
     )
   }
 
-  observe = <S, E>(acc: Fish<S, E>, callback: (newState: S) => void): CancelSubscription => {
-    if (acc.deserializeState) {
-      throw new Error('custom deser not yet supported')
-    }
-
-    return omitObservable(callback, this.observeTagBased0<S, E>(acc).states)
+  observe = <S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription => {
+    return omitObservable(callback, this.observeTagBased0<S, E>(fish).states)
   }
 
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
