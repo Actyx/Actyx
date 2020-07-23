@@ -5,6 +5,9 @@ const namedSubSpace = (rawTag: string, sub: string): string[] => {
   return [rawTag, rawTag + ':' + sub]
 }
 
+/**
+ * Representation of a union of tag sets. I.e. this is an event selection that combines multiple `Tags` selections.
+ */
 export interface TagsUnion<E> {
   /**
    * Add an alternative set we may also match. E.g. tag0.or(tag1.and(tag2)).or(tag1.and(tag3)) will match:
@@ -18,14 +21,18 @@ export interface TagsUnion<E> {
   toWireFormat(): ReadonlyArray<TagSubscription>
 
   /**
-   * Aggregated type of the Events which may be returned by the contained tags.
+   * Type of the Events which may be returned by the contained tags.
+   * Note that this does reflect only locally declared type knowledge;
+   * historic events delivered by the Actyx system may not match these types, and this is not automatically detected.
    */
   readonly _dataType?: E
-
-  readonly type: 'typed-union'
 }
 
-// Must be interface, otherwise inferred (recursive) type gets very large.
+// Implementation note: We must use interfaces, otherwise inferred (recursive) types get very large.
+
+/**
+ * Selection of events based on required tags. `Tags('a', 'b')` will select all events that have tag 'a' *as well as* tag 'b'.
+ */
 export interface Tags<E> {
   /**
    * Add more tags to this requirement. E.g Tag<FooEvent>('foo').and(Tag<BarEvent>('bar')) will require both 'foo' and 'bar'.
@@ -39,14 +46,15 @@ export interface Tags<E> {
   and(tag: string): Tags<E>
 
   /**
-   * Add an alternative set we may also match. E.g. Tag<FooEvent>('foo').or(Tag<BarEvent>('bar')) will match
-   * each Event with at least 'foo' or 'bar'. Note that after the first `or` invocation you cannot `and` anymore,
-   * so you have to nest the parts yourself: tag0.or(tag1.and(tag2)).or(tag1.and(tag3)) etc.
+   * Add an alternative set we may also match. E.g. `Tag<FooEvent>('foo').or(Tag<BarEvent>('bar'))` will match
+   * each Event with tag 'foo' OR tag 'bar'. Note that after the first `or` invocation you cannot `and` anymore,
+   * so you have to nest the parts yourself: `tag0.or(tag1.and(tag2)).or(tag1.and(tag3))` etc.
    */
   or<E1>(tag: Tags<E1>): TagsUnion<E1 | E>
 
   /**
    * The same requirement, but matching only Events emitted by the very node the code is run on.
+   * E.g. `Tags('my-tag').local()` selects all locally emitted events tagged with 'my-tag'.
    */
   local(): Tags<E>
 
@@ -56,22 +64,29 @@ export interface Tags<E> {
   toWireFormat(): TagSubscription
 
   /**
-   * Aggregated type of the Events which may be returned by the contained tags.
+   * Type of the Events which may be returned by the contained tags.
+   * Note that this does reflect only locally declared type knowledge;
+   * historic events delivered by the Actyx system may not match these types, and this is not automatically detected.
    */
   readonly _dataType?: E
-
-  readonly type: 'typed-intersection'
 }
 
+// Declare a set of tags
 export const Tags = <E>(...requiredTags: string[]): Tags<E> => req<E>(false, requiredTags)
 
+// Representation of a single tag.
 export interface Tag<E> extends Tags<E> {
-  // The underlying actual tag as pure string
+  // The underlying actual tag as pure string.
   readonly rawTag: string
 
+  /**
+   * This very tag, suffixed with an id. E.g. `Tag<RobotEvent>('robot').withId('robot500')`
+   * expresses robot events belonging to a *specific* robot.
+   */
   withId(name: string): Tags<E>
 }
 
+// Create a new tag from the given string.
 export const Tag = <E>(rawTag: string): Tag<E> => ({
   rawTag,
 
@@ -106,8 +121,6 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): Tags<E> => {
 
     local: () => req<E>(true, rawTags),
 
-    type: 'typed-intersection',
-
     toWireFormat: () => ({
       tags: [...rawTags],
 
@@ -120,8 +133,6 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): Tags<E> => {
 
 const union = <E>(sets: Tags<unknown>[]): TagsUnion<E> => {
   return {
-    type: 'typed-union',
-
     or: <E1>(other: Tags<E1>) => {
       return union<E1 | E>([...sets, other])
     },
@@ -130,5 +141,12 @@ const union = <E>(sets: Tags<unknown>[]): TagsUnion<E> => {
   }
 }
 
+/**
+ * A `Where` expression that selects all events.
+ */
 export const allEvents: Tags<unknown> = req(false, [])
+
+/**
+ * A `Where` expression that selects no events.
+ */
 export const noEvents: TagsUnion<never> = union([])
