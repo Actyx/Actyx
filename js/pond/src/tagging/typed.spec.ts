@@ -47,10 +47,7 @@ describe('typed tag query system', () => {
     // @ts-expect-error
     const q1: Where<'hello??'> = q
 
-    expect(q1.raw()).toMatchObject({
-      type: 'union',
-      tags: [{ type: 'intersection', tags: ['0', '1'] }, { type: 'intersection', tags: ['A'] }],
-    })
+    expect(q1.toWireFormat()).toMatchObject([{ tags: ['0', '1'] }, { tags: ['A'] }])
   })
 
   it('should insist on types?', () => {
@@ -69,10 +66,9 @@ describe('typed tag query system', () => {
     // @ts-expect-error
     const w2: Where<never> = w
 
-    expect(w2.raw()).toMatchObject({
-      type: 'intersection',
+    expect(w2.toWireFormat()).toMatchObject({
       tags: ['A', 'ABC'],
-      onlyLocalEvents: false,
+      local: false,
     })
   })
 
@@ -80,20 +76,16 @@ describe('typed tag query system', () => {
     // Overlap is 'A'
     const w = tagA.local().and(abcTag)
 
-    expect(w.raw()).toMatchObject({
-      type: 'intersection',
+    expect(w.toWireFormat()).toMatchObject({
       tags: ['A', 'ABC'],
-      onlyLocalEvents: true,
+      local: true,
     })
   })
 
   it('should union event types ', () => {
     const u = tagA.or(tagB)
 
-    expect(u.raw()).toMatchObject({
-      type: 'union',
-      tags: [{ type: 'intersection', tags: ['A'] }, { type: 'intersection', tags: ['B'] }],
-    })
+    expect(u.toWireFormat()).toMatchObject([{ tags: ['A'] }, { tags: ['B'] }])
   })
 
   it('should union event types (complex)', () => {
@@ -107,18 +99,16 @@ describe('typed tag query system', () => {
     // @ts-expect-error
     const u2: Where<'A' | 'B'> = u
 
-    expect(u.raw()).toMatchObject({
-      type: 'union',
-      tags: [
-        { type: 'intersection', tags: ['A'], onlyLocalEvents: true },
-        {
-          type: 'intersection',
-          tags: ['B', 'B:some-id'],
-          onlyLocalEvents: false,
-        },
-        { type: 'intersection', tags: ['ABC'] },
-      ],
-    })
+    expect(u.toWireFormat()).toMatchObject([
+      { tags: ['A'] },
+      {
+        tags: ['B', 'B:some-id'],
+        local: false,
+      },
+      {
+        tags: ['ABC'],
+      },
+    ])
   })
 
   describe('with Fish declarations', () => {

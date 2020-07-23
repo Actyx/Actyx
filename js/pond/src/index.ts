@@ -7,7 +7,7 @@
 export { ConnectivityStatus } from './eventstore/types'
 export * from './pond'
 export { Config as StoreConfig } from './store/config'
-export * from './tagging'
+export { allEvents, noEvents, Tag, Tags, Where } from './tagging'
 export {
   CancelSubscription,
   EmissionRequest,

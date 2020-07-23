@@ -1,5 +1,5 @@
-import { TagIntersection, TagUnion } from './untyped'
 import { isString } from '..'
+import { TagSubscription } from '../subscription'
 
 const namedSubSpace = (rawTag: string, sub: string): string[] => {
   return [rawTag, rawTag + ':' + sub]
@@ -13,9 +13,9 @@ export interface TagsUnion<E> {
   or<E1>(tag: Tags<E1>): TagsUnion<E1 | E>
 
   /**
-   * Convert into an untyped TagQuery. This is for internal use.
+   * FOR INTERNAL USE. Convert to Actyx wire format.
    */
-  raw(): TagUnion
+  toWireFormat(): ReadonlyArray<TagSubscription>
 
   /**
    * Aggregated type of the Events which may be returned by the contained tags.
@@ -51,9 +51,9 @@ export interface Tags<E> {
   local(): Tags<E>
 
   /**
-   * Convert into an untyped TagQuery. This is for internal use.
+   * FOR INTERNAL USE. Convert to Actyx wire format.
    */
-  raw(): TagIntersection
+  toWireFormat(): TagSubscription
 
   /**
    * Aggregated type of the Events which may be returned by the contained tags.
@@ -92,9 +92,9 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): Tags<E> => {
         return req<E>(onlyLocalEvents, [tag, ...rawTags])
       }
 
-      const other = tag.raw()
+      const other = tag.toWireFormat()
 
-      const local = onlyLocalEvents || !!other.onlyLocalEvents
+      const local = onlyLocalEvents || !!other.local
       const tags = rawTags.concat(other.tags)
 
       return req<Extract<E1, E>>(local, tags)
@@ -108,12 +108,10 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): Tags<E> => {
 
     type: 'typed-intersection',
 
-    raw: () => ({
-      type: 'intersection',
+    toWireFormat: () => ({
+      tags: [...rawTags],
 
-      tags: rawTags,
-
-      onlyLocalEvents,
+      local: onlyLocalEvents,
     }),
   }
 
@@ -128,10 +126,7 @@ const union = <E>(sets: Tags<unknown>[]): TagsUnion<E> => {
       return union<E1 | E>([...sets, other])
     },
 
-    raw: () => ({
-      type: 'union',
-      tags: sets.map(x => x.raw()),
-    }),
+    toWireFormat: () => sets.map(x => x.toWireFormat()),
   }
 }
 

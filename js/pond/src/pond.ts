@@ -21,7 +21,7 @@ import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
-import { toWireFormat, Tags } from './tagging'
+import { Tags, toSubscriptionSet } from './tagging'
 import {
   CancelSubscription,
   EmissionRequest,
@@ -280,7 +280,7 @@ export class Pond2Impl implements Pond {
       const event = {
         semantics: Semantics.none,
         name: FishName.none,
-        tags: isTyped(tags) ? tags.raw().tags : tags,
+        tags: isTyped(tags) ? tags.toWireFormat().tags : tags,
         timestamp,
         payload,
       }
@@ -341,13 +341,8 @@ export class Pond2Impl implements Pond {
   }
 
   private observeTagBased0 = <S, E>(acc: Fish<S, E>): ActiveFish<S> => {
-    const subscriptionSet: SubscriptionSet = {
-      type: 'tags',
-      subscriptions: toWireFormat(acc.where),
-    }
-
     return this.getCachedOrInitialize(
-      subscriptionSet,
+      toSubscriptionSet(acc.where),
       acc.initialState,
       acc.onEvent,
       acc.fishId,
@@ -383,10 +378,7 @@ export class Pond2Impl implements Pond {
   ): ((effect: StateEffect<S, EWrite>) => Observable<void>) => {
     const handler = this.v2CommandHandler
 
-    const subscriptionSet: SubscriptionSet = {
-      type: 'tags',
-      subscriptions: toWireFormat(agg.where),
-    }
+    const subscriptionSet = toSubscriptionSet(agg.where)
 
     const commandPipeline =
       cached.commandPipeline ||
