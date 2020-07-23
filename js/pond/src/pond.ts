@@ -21,7 +21,7 @@ import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
-import { toWireFormat, TypedTagIntersection } from './tagging'
+import { Tags, toSubscriptionSet } from './tagging'
 import {
   CancelSubscription,
   Emit,
@@ -41,9 +41,7 @@ import {
   Timestamp,
 } from './types'
 
-const isTyped = (
-  e: ReadonlyArray<string> | TypedTagIntersection<unknown>,
-): e is TypedTagIntersection<unknown> => {
+const isTyped = (e: ReadonlyArray<string> | Tags<unknown>): e is Tags<unknown> => {
   return !Array.isArray(e)
 }
 
@@ -125,16 +123,7 @@ export type Pond = {
    * @returns       A `PendingEmission` object that can be used to register
    *                callbacks with the emission’s completion.
    */
-  emit<E>(tags: string[] | TypedTagIntersection<E>, payload: E): PendingEmission
-
-  /**
-   * Emit a number of events at once.
-   *
-   * @param emit    The events to be emitted, expressed as objects containing `tags` and `payload`.
-   * @returns       A `PendingEmission` object that can be used to register
-   *                callbacks with the emission’s completion.
-   */
-  emitMany(...emit: ReadonlyArray<Emit<any>>): PendingEmission
+  emit<E>(tags: Tags<E>, payload: E): PendingEmission
 
   /* AGGREGATION */
 
@@ -291,7 +280,7 @@ export class Pond2Impl implements Pond {
       const event = {
         semantics: Semantics.none,
         name: FishName.none,
-        tags: isTyped(tags) ? tags.raw().tags : tags,
+        tags: isTyped(tags) ? tags.toWireFormat().tags : tags,
         timestamp,
         payload,
       }
@@ -302,11 +291,11 @@ export class Pond2Impl implements Pond {
     return this.eventStore.persistEvents(events)
   }
 
-  emit = <E>(tags: string[] | TypedTagIntersection<E>, payload: E): PendingEmission => {
+  emit = <E>(tags: Tags<E>, payload: E): PendingEmission => {
     return this.emitMany({ tags, payload })
   }
 
-  emitMany = (...emissions: ReadonlyArray<Emit<any>>): PendingEmission => {
+  private emitMany = (...emissions: ReadonlyArray<Emit<any>>): PendingEmission => {
     // `shareReplay` so that every piece of user code calling `subscribe`
     // on the return value will actually be executed
     const o = this.emitTagged0(emissions)
@@ -352,13 +341,8 @@ export class Pond2Impl implements Pond {
   }
 
   private observeTagBased0 = <S, E>(acc: Fish<S, E>): ActiveFish<S> => {
-    const subscriptionSet: SubscriptionSet = {
-      type: 'tags',
-      subscriptions: toWireFormat(acc.where),
-    }
-
     return this.getCachedOrInitialize(
-      subscriptionSet,
+      toSubscriptionSet(acc.where),
       acc.initialState,
       acc.onEvent,
       acc.fishId,
@@ -394,10 +378,7 @@ export class Pond2Impl implements Pond {
   ): ((effect: StateEffect<S, EWrite>) => Observable<void>) => {
     const handler = this.v2CommandHandler
 
-    const subscriptionSet: SubscriptionSet = {
-      type: 'tags',
-      subscriptions: toWireFormat(agg.where),
-    }
+    const subscriptionSet = toSubscriptionSet(agg.where)
 
     const commandPipeline =
       cached.commandPipeline ||

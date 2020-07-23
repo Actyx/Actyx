@@ -6,7 +6,8 @@
  */
 import { catOptions, chunksOf } from 'fp-ts/lib/Array'
 import { none, some } from 'fp-ts/lib/Option'
-import { SourceId, SubscriptionSet, Timestamp } from '.'
+import { SourceId, Timestamp } from '.'
+import { SubscriptionSet } from './subscription'
 import { Psn, FishName, Semantics } from './types'
 import { Event, Events, EventStore, OffsetMap } from './eventstore'
 import { includeEvent } from './eventstore/testEventStore'

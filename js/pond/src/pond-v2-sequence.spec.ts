@@ -4,7 +4,7 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Fish, Pond, Reduce, StateFn, Tag, TagQuery } from '.'
+import { Fish, Pond, Reduce, StateFn, Tag } from '.'
 
 export type State = { n: number; fill: number }
 
@@ -27,7 +27,7 @@ const onEvent: Reduce<State, Payload> = (state: State, event: Payload) => {
 }
 
 const agg: Fish<State, Payload> = {
-  where: TagQuery.matchAnyOf('self'),
+  where: Tag('self'),
 
   initialState: { n: 0, fill: 0 },
 
@@ -149,7 +149,7 @@ describe('application of commands in the pond v2', () => {
 
       pond.keepRunning(agg, autoBump, (state: State) => state.n === 40)
 
-      const emitFill = () => pond.emit(['self'], { type: 'fill' })
+      const emitFill = () => pond.emit(Tag('self'), { type: 'fill' })
 
       const timer = setInterval(emitFill, 3)
 
@@ -301,7 +301,7 @@ describe('application of commands in the pond v2', () => {
 
   describe('automatic effects with event sent to other aggregates', () => {
     const mkAgg = (name: string) => ({
-      where: TagQuery.matchAnyOf(name),
+      where: Tag<Payload>(name),
 
       initialState: { n: 0, fill: 0 },
 

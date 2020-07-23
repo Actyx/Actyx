@@ -1,32 +1,11 @@
-import { TagSubscription } from '../subscription'
+import { SubscriptionSet } from '../subscription'
 import { Where } from './typed'
-import { TagIntersection, TagQuery, TagUnion } from './untyped'
 
-const unionToWire = (sub: TagUnion) =>
-  sub.tags.map(
-    s =>
-      typeof s === 'string'
-        ? { tags: [s], local: false }
-        : { tags: s.tags, local: !!s.onlyLocalEvents },
-  )
+export const toSubscriptionSet = (where: Where<unknown>): SubscriptionSet => {
+  const wire = where.toWireFormat()
 
-const intersectionToWire = (sub: TagIntersection) => [
-  {
-    tags: sub.tags,
-    local: !!sub.onlyLocalEvents,
-  },
-]
-
-export const toWireFormat = (sub: TagQuery | Where<unknown>): ReadonlyArray<TagSubscription> => {
-  switch (sub.type) {
-    case 'typed-intersection':
-      return intersectionToWire(sub.raw())
-    case 'intersection':
-      return intersectionToWire(sub)
-
-    case 'typed-union':
-      return unionToWire(sub.raw())
-    case 'union':
-      return unionToWire(sub)
+  return {
+    type: 'tags',
+    subscriptions: Array.isArray(wire) ? wire : [wire],
   }
 }
