@@ -408,7 +408,7 @@ export const FishId = {
 /**
  * A `Fish<S, E>` describes an ongoing aggregration (fold) of events of type `E` into state of type `S`.
  */
-export type Fish<S, E> = {
+export type Fish<S, E> = Readonly<{
   // Will extend this field with further options in the future:
   // - <E>-Typed subscription
   // - Plain query string
@@ -424,7 +424,7 @@ export type Fish<S, E> = {
   // let’s say we require users to implement .toJSON() on their state for serialisation --
   // then we only need the reverse function. Still a topic of debate: https://github.com/Actyx/Cosmos/issues/2928
   deserializeState?: (jsonState: unknown) => S
-}
+}>
 
 export const Fish = {
   latestEvent: <E>(where: TagQuery): Fish<E | undefined, E> => ({

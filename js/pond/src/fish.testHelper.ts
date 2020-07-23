@@ -6,14 +6,14 @@
  */
 import { last } from 'ramda'
 import { Observable } from 'rxjs'
+import { Fish, FishId } from '.'
 import { EventStore } from './eventstore'
 import { Event, Events, OffsetMap } from './eventstore/types'
 import { FishJar } from './fishJar'
 import { mkNoopPondStateTracker } from './pond-state'
-import { Fish, FishId } from '.'
-import { TagQuery, toWireFormat } from './tagging'
 import { SnapshotStore } from './snapshotStore'
 import { minSnapshotAge } from './store/snapshotScheduler'
+import { TagQuery, toWireFormat } from './tagging'
 import {
   EventKey,
   FishName,
@@ -154,7 +154,7 @@ export const snapshotTestSetup = async (
   fish: Fish<NumberFishState, NumberFishEvent>,
   storedEvents?: Events,
   storedSnapshots?: ReadonlyArray<SnapshotData>,
-  enableLocalSnapshots = true,
+  _enableLocalSnapshots = true,
 ) => {
   const sourceId = SourceId.of('LOCAL-test-source')
   const eventStore = EventStore.test(sourceId)
@@ -189,7 +189,6 @@ export const snapshotTestSetup = async (
     fish.initialState,
     fish.onEvent,
     fish.fishId,
-    enableLocalSnapshots,
     fish.isReset,
   )
     .map(x => x.state)
