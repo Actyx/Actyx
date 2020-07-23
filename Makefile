@@ -231,7 +231,7 @@ actyxos-bin-win64: debug clean
 
 actyxos-installer-win64: node-manager-win64
 	mkdir -p $(build_dir)/win-installer
-	cp -r ./dist/bin/win64/* $(build_dir)/win-installer
+	cp -r ./dist/bin/win64/{actyxos,ax}.exe $(build_dir)/win-installer
 	cp -r ./misc/actyxos-win-installer/* $(build_dir)/win-installer
 	cp -r $(build_dir)/ActyxOS-Node-Manager-win32-x64 $(build_dir)/win-installer/node-manager
 	docker run \
