@@ -5,12 +5,12 @@ const namedSubSpace = (rawTag: string, sub: string): string[] => {
   return [rawTag, rawTag + ':' + sub]
 }
 
-export interface TypedTagUnion<E> {
+export interface TagsUnion<E> {
   /**
    * Add an alternative set we may also match. E.g. tag0.or(tag1.and(tag2)).or(tag1.and(tag3)) will match:
    * Events with tag0; Events with both tag1 and tag2; Events with both tag1 and tag3.
    */
-  or<E1>(tag: Tags<E1>): TypedTagUnion<E1 | E>
+  or<E1>(tag: Tags<E1>): TagsUnion<E1 | E>
 
   /**
    * Convert into an untyped TagQuery. This is for internal use.
@@ -43,7 +43,7 @@ export interface Tags<E> {
    * each Event with at least 'foo' or 'bar'. Note that after the first `or` invocation you cannot `and` anymore,
    * so you have to nest the parts yourself: tag0.or(tag1.and(tag2)).or(tag1.and(tag3)) etc.
    */
-  or<E1>(tag: Tags<E1>): TypedTagUnion<E1 | E>
+  or<E1>(tag: Tags<E1>): TagsUnion<E1 | E>
 
   /**
    * The same requirement, but matching only Events emitted by the very node the code is run on.
@@ -83,7 +83,7 @@ export const Tag = <E>(rawTag: string): Tag<E> => ({
 /**
  * Typed expression for tag statements. The type `E` describes which events may be annotated with the included tags.
  */
-export type Where<E> = TypedTagUnion<E> | Tags<E>
+export type Where<E> = TagsUnion<E> | Tags<E>
 
 const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): Tags<E> => {
   const r: Tags<E> = {
@@ -120,7 +120,7 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): Tags<E> => {
   return r
 }
 
-const union = <E>(sets: Tags<unknown>[]): TypedTagUnion<E> => {
+const union = <E>(sets: Tags<unknown>[]): TagsUnion<E> => {
   return {
     type: 'typed-union',
 
@@ -135,4 +135,5 @@ const union = <E>(sets: Tags<unknown>[]): TypedTagUnion<E> => {
   }
 }
 
-export const noEvents: TypedTagUnion<never> = union([])
+export const allEvents: Tags<unknown> = req(false, [])
+export const noEvents: TagsUnion<never> = union([])
