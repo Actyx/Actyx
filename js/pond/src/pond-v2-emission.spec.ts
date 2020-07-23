@@ -4,7 +4,7 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Fish, Pond, Reduce, Tag, TagQuery, Where } from '.'
+import { Fish, Pond, Reduce, Tag, Tags, Where } from '.'
 
 type PayloadWithTags<E> =
   | {
@@ -21,7 +21,7 @@ const onEvent: <E>() => Reduce<PayloadWithTags<E>, E> = () => (_state, payload, 
 
 const fishId = { name: 'test-fish' }
 
-const stateAsPromise = <E>(pond: Pond, subs: TagQuery | Where<E>) => {
+const stateAsPromise = <E>(pond: Pond, subs: Where<E>) => {
   const fish: Fish<PayloadWithTags<E>, E> = {
     where: subs,
     initialState,
@@ -36,7 +36,7 @@ describe('application of commands in the pond', () => {
   it('should execute every emission-callback', async () => {
     const pond = await Pond.test()
 
-    const emit = pond.emit(['t0', 't1', 't2'], 'hello')
+    const emit = pond.emit(Tags('t0', 't1', 't2'), 'hello')
 
     let cbCalled = 0
 
@@ -49,7 +49,7 @@ describe('application of commands in the pond', () => {
 
     expect(cbCalled).toEqual(2)
 
-    const events = stateAsPromise(pond, TagQuery.matchAnyOf('t0'))
+    const events = stateAsPromise(pond, Tag('t0'))
 
     // Assert we emitted only once, despite multiple subscriptions
     expect(events).resolves.toEqual({ payload: 'hello', tags: ['t0', 't1', 't2'] })
@@ -60,7 +60,7 @@ describe('application of commands in the pond', () => {
   it('should execute every emission-callback even after emission has finished', async () => {
     const pond = await Pond.test()
 
-    const emit = pond.emit(['t0', 't1', 't2'], 'hello')
+    const emit = pond.emit(Tags('t0', 't1', 't2'), 'hello')
 
     // Make sure it’s completed
     await emit.toPromise()
@@ -75,7 +75,7 @@ describe('application of commands in the pond', () => {
     expect(cb0).toBeTruthy()
     expect(cb1).toBeTruthy()
 
-    const events = stateAsPromise(pond, TagQuery.requireAll('t1'))
+    const events = stateAsPromise(pond, Tag('t1'))
 
     // Assert we emitted only once, despite multiple subscriptions
     expect(events).resolves.toEqual({ payload: 'hello', tags: ['t0', 't1', 't2'] })

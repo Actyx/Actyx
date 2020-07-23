@@ -4,12 +4,11 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { right } from 'fp-ts/lib/Either'
 import { contramap, Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
-import { TagQuery, TypedTagIntersection, Where } from './tagging'
 import * as t from 'io-ts'
 import { Event, OffsetMap } from './eventstore/types'
+import { Tags, Where } from './tagging'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isString = (x: any): x is string => typeof x === 'string'
@@ -55,17 +54,6 @@ export const FishName = {
     x => x,
   ),
 }
-
-export type Tags = ReadonlyArray<string>
-type TagsOnWire = ReadonlyArray<string> | undefined
-export const Tags = new t.Type<Tags, TagsOnWire>(
-  'TagsSetFromArray',
-  (x): x is Tags => x instanceof Array && x.every(isString),
-  // Rust side for now expresses empty tag arrays as omitting the field
-  (x, c) => (x === undefined ? right([]) : t.readonlyArray(t.string).validate(x, c)),
-  // Sending empty arrays is fine, though
-  x => x,
-)
 
 export type SourceId = string
 const mkSourceId = (text: string): SourceId => text as SourceId
@@ -357,7 +345,7 @@ export type StatePointer<S> = TaggedIndex & CachedState<S>
  * POND V2 APIs
  */
 export type Emit<E> = {
-  tags: ReadonlyArray<string> | TypedTagIntersection<E>
+  tags: ReadonlyArray<string> | Tags<E>
   payload: E
 }
 
@@ -412,7 +400,7 @@ export type Fish<S, E> = {
   // Will extend this field with further options in the future:
   // - <E>-Typed subscription
   // - Plain query string
-  where: TagQuery | Where<E>
+  where: Where<E>
 
   initialState: S
   onEvent: Reduce<S, E>
@@ -427,7 +415,7 @@ export type Fish<S, E> = {
 }
 
 export const Fish = {
-  latestEvent: <E>(where: TagQuery): Fish<E | undefined, E> => ({
+  latestEvent: <E>(where: Where<E>): Fish<E | undefined, E> => ({
     where,
 
     initialState: undefined,
@@ -439,7 +427,7 @@ export const Fish = {
     isReset: () => true,
   }),
 
-  eventsDescending: <E>(where: TagQuery, capacity = 100): Fish<E[], E> => ({
+  eventsDescending: <E>(where: Where<E>, capacity = 100): Fish<E[], E> => ({
     where,
 
     initialState: [],
@@ -452,7 +440,7 @@ export const Fish = {
     fishId: FishId.of('actyx.lib.eventsDescending', JSON.stringify(where), 1),
   }),
 
-  eventsAscending: <E>(where: TagQuery, capacity = 100): Fish<E[], E> => ({
+  eventsAscending: <E>(where: Where<E>, capacity = 100): Fish<E[], E> => ({
     where,
 
     initialState: [],
