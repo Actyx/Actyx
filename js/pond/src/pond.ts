@@ -122,55 +122,66 @@ export type Pond = {
   /**
    * Emit a single event directly.
    *
-   * @param tags    Tags to attach to the event.
-   * @param payload The event payload.
-   * @returns       A `PendingEmission` object that can be used to register
-   *                callbacks with the emission’s completion.
+   * @typeParam E    Type of the event payload. If your tags are statically declared,
+   *                 their type will be checked against the payload’s type.
+   *
+   * @param tags     Tags to attach to the event. E.g. `Tags('myTag', 'myOtherTag')`
+   * @param payload  The event itself.
+   * @returns        A `PendingEmission` object that can be used to register
+   *                 callbacks with the emission’s completion.
    */
   emit<E>(tags: Tags<E>, payload: E): PendingEmission
 
   /* AGGREGATION */
 
   /**
-   * Fold events into state. Caching is done based on the `cacheKey` inside the `fish`.
+   * Observe the current state of a Fish.
    *
-   * @param fish    Complete aggregation information.
+   * Caching is done based on the `fishId` inside the `fish`, i.e. if a fish with the included
+   * `fishId` is already known, that other Fish’s ongoing aggregation will be used instead of
+   * starting a new one.
+   *
+   * @param fish         Complete Fish information.
    * @param callback     Function that will be called whenever a new state becomes available.
    * @returns            A function that can be called in order to cancel the aggregation.
    */
   observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription
 
-  /* CONDITIONAL EMISSION (COMMANDS) */
+  /* CONDITIONAL EMISSION (STATE EFFECTS) */
 
   /**
-   * Run StateFn against currently known local state of Fish. Emit events based on it by calling the `emit` function
-   * passed into the invocation of your fn.
+   * Run a `StateEffect` against currently known local state of Fish. Emit events based on it by
+   * calling the `enqueue` function passed into the invocation of your effect. Every subsequent
+   * invocation of `run` for the same Fish is guaranteed to see all events previously enqueued by
+   * effects on that Fish already applied to the state. (Local serialisation guarantee.)
    *
    * In regards to other nodes, there are no serialisation guarantees.
    *
    * @typeParam S                State of the Fish, input value to the effect.
-   * @typeParam EWrite           Payload type(s) to be returned by the effect.
+   * @typeParam EWrite           Event type(s) the effect may emit.
    *
-   * @param fish         Complete aggregation information.
-   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
+   * @param fish         Complete Fish information.
+   * @param effect       Function to enqueue new events based on state.
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
   run<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>): PendingEmission
 
   /**
-   * Install a StateEffect that will be applied automatically whenever the `agg`’s State has changed.
+   * Install a StateEffect that will be applied automatically whenever the `Fish`’s State has changed.
    * Every application will see the previous one’s resulting Events applied to the State already, if applicable;
    * but any number of intermediate States may have been skipped between two applications.
    *
+   * In regards to other nodes, there are no serialisation guarantees.
+   *
    * The effect can be uninstalled by calling the returned `CancelSubscription`.
    *
-   * @typeParam S        State of the Fish, input value to the effect.
-   * @typeParam EWrite   Payload type(s) to be returned by the effect.
+   * @typeParam S                State of the Fish, input value to the effect.
+   * @typeParam EWrite           Event type(s) the effect may emit.
    *
-   * @param fish         Complete aggregation information.
-   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
-   * @param autoCancel   Condition on which the automatic effect will be cancelled -- State on which `autoCancel` returns `true`
-   *                     will be the first State the effect is *not* applied to anymore.
+   * @param fish         Complete Fish information.
+   * @param effect       Function to enqueue new events based on state.
+   * @param autoCancel   Condition on which the automatic effect will be cancelled -- state on which `autoCancel` returns `true`
+   *                     will be the first state the effect is *not* applied to anymore.
    * @returns            A `CancelSubscription` object that can be used to cancel the automatic effect.
    */
   keepRunning<S, EWrite>(
@@ -194,12 +205,13 @@ export type Pond = {
   info(): PondInfo
 
   /**
-   * Obtain an observable state of the pond.
+   * Register a callback invoked whenever the Pond’s state changes.
+   * The `PondState` is a general description of activity within the Pond internals.
    */
   getPondState(callback: (newState: PondState) => void): CancelSubscription
 
   /**
-   * Obtain an observable describing connectivity status of this node.
+   * Register a callback invoked whenever the node’s connectivity status changes.
    */
   getNodeConnectivity(params: GetNodeConnectivityParams): CancelSubscription
 
