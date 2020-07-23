@@ -99,7 +99,7 @@ export const emitMaterialConsumed = (
 })
 ```
 
-## Switch to Callback-Based baseline APIs
+## Switch to Callback-Style APIs over Observables and Promises
 
 A short general note before we continue.
 
@@ -193,10 +193,10 @@ _Emit some events depending on locally known state of a Fish. Then do the same t
 guaranteed to see all formerly emitted events already applied to the state._
 
 This is very useful in all cases where you have one node executing tasks that other nodes ask
-for. Take for example an autonomous logistics robot that is bringing material to production machines
-that are soon to run out. On the production machines, there is an ActyxOS app emitting events that
-announce the task; on the robot, there is an app which looks at the open tasks and actually tries to
-fulfill them, by driving the robot.
+for. Take for example an autonomous logistics robot that is bringing material to production
+machines. On the production machines, there is an ActyxOS app emitting events that announce the
+task; on the robot, there is an app which looks at the open tasks and tries to fulfill them in the
+real world, by driving the robot.
 
 Whenever a task is done, another event needs to be published, indicating the task being done. So
 what the robot does is:
@@ -207,35 +207,39 @@ what the robot does is:
 - Loop back to the beginning
 
 But how can the robot be sure that the TaskDone event has already arrived at the Fish keeping the
-list of open tasks? This is where `pond.keepRunning` comes in.
+list of open tasks? In case the event hadn’t arrived yet, the robot might start on the same task a
+second time! This is where `pond.keepRunning` comes in.
 
 ```typescript
-pond.keepRunning(fish, (state, effects) => {
+pond.keepRunning(fish, async (state, enqueue) => {
   if (fish.tasks.length === 0) {
     return
   }
 
   const nextTask = fish.tasks[0]
 
-  // Deliver material
+  // Deliver material, for example
   await executeInRealWorld(task)
 
   const taskDoneEvent = makeTaskDoneEvent(task)
   const tags = getTags(taskDoneEvent)
-  effects.enqueue(taskDoneEvent, tags)
+
+  // Queue the TaskDone event for emission;
+  // the next invocation of this function will see it already applied to `state`.
+  enqueue(taskDoneEvent, tags)
 })
 
 ```
 
 The Pond will invoke the function you pass as argument whenever the Fish’s state changes. You can
-call `effects.enqueue` any number of times to enqueue events for emission – the next time your
-function is invoked, all previously enqueued events will have been applied to the state already.
+call `enqueue` any number of times to enqueue events for emission: The next time your function is
+invoked, all previously enqueued events will be part of the state already.
 
 If you don’t want your logic to keep running forever, you can:
 
 - Use `pond.run` to execute your logic just once, but serialised in regards to all previous local
-  invocations of `pond.run` and active `pond.keepRunning` effects
-- Set the optional third argument to `pond.keepRunning`, called autoCancel. It can be used to cancel
+  invocations of `pond.run`, and active `pond.keepRunning` effects.
+- Or set the optional third argument to `pond.keepRunning`, called `autoCancel`. It can be used to cancel
   your logic for good, once a certain state of the Fish is reached. For example, if you’re modelling
   tasks as individual Fish requiring a number of steps, you may want to stop once the final state is
-  reached: `autoCancel = (state) => state.type === 'Finished'`
+  reached: `autoCancel = (state) => state.type === 'Finished'`.
