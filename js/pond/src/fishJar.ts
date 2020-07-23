@@ -287,7 +287,6 @@ const hydrateV2 = (
 
     isSemanticSnapshot: isReset ? (ev: Event) => isReset(ev.payload as E, metadata(ev)) : undefined,
 
-    // TODO proper support
     snapshotFormat: deserializeState
       ? { version, serialize: x => x, deserialize: deserializeState }
       : SnapshotFormat.identity(version),

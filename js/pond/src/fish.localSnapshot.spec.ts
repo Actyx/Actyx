@@ -4,6 +4,8 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import { List } from 'immutable'
+import { Fish, Tag } from '.'
 import { Events } from './eventstore/types'
 import {
   emitter,
@@ -12,6 +14,7 @@ import {
   mkNumberFish,
   mkSnapshot,
   mkTimeline,
+  NumberFishEvent,
   offsets,
   semanticSnap,
   snapshotTestSetup,
@@ -81,6 +84,49 @@ describe('fish event store + jar local snapshot behavior', () => {
     ).all
 
     expect(await applyAndGetState(timeline)).toEqual([5, 6, 7, 8])
+    expect(await latestSnap()).toMatchObject({
+      eventKey: { lamport: 10210400 },
+      state: [5, 6, 7],
+    })
+  })
+
+  forBoth(`should allow for custom state deserialisation`, async fishTemplate => {
+    type ImmutableState = List<number>
+
+    const fishToTest: Fish<ImmutableState, NumberFishEvent> = {
+      where: Tag('default'),
+
+      initialState: List(),
+
+      onEvent: (state, event) => {
+        if (event !== 'padding') {
+          return state.push(event)
+        }
+
+        return state
+      },
+
+      isReset: fishTemplate.isReset,
+
+      fishId: fishTemplate.fishId,
+
+      deserializeState: (s: unknown) => List(s as number[]),
+    }
+
+    const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
+
+    const srcR = emitter('R')
+
+    const timeline = mkTimeline(
+      srcR(5),
+      srcR(6),
+      srcR(7),
+      srcR.triggerLocalSnapshot(),
+      srcR(8),
+      srcR.ageSnapshotsOverMinAge(),
+    ).all
+
+    expect(await applyAndGetState(timeline)).toEqual(List([5, 6, 7, 8]))
     expect(await latestSnap()).toMatchObject({
       eventKey: { lamport: 10210400 },
       state: [5, 6, 7],
