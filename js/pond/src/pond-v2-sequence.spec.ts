@@ -61,7 +61,7 @@ describe('application of commands in the pond v2', () => {
     it('should run state effect, regardless of user awaiting the promise', async () => {
       const pond = await Pond.test()
 
-      const run = (x: StateFn<State, Payload>) => pond.exec(agg, x)
+      const run = (x: StateFn<State, Payload>) => pond.run(agg, x)
 
       // Assert it’s run even if we don’t subscribe
       run(setN(1))
@@ -79,11 +79,11 @@ describe('application of commands in the pond v2', () => {
     it('should propagate errors if the user subscribes', async () => {
       const pond = await Pond.test()
 
-      await expect(pond.exec(agg, setN(2)).toPromise()).rejects.toEqual(
+      await expect(pond.run(agg, setN(2)).toPromise()).rejects.toEqual(
         new Error('expected state to be 1, but was 0'),
       )
 
-      await expect(pond.exec(agg, checkN(20)).toPromise()).rejects.toEqual(
+      await expect(pond.run(agg, checkN(20)).toPromise()).rejects.toEqual(
         new Error('expected state to be 20, but was 0'),
       )
 
@@ -93,7 +93,7 @@ describe('application of commands in the pond v2', () => {
     it('effects should wait for application of previous', async () => {
       const pond = await Pond.test()
 
-      const r = (x: StateFn<State, Payload>) => pond.exec(agg, x)
+      const r = (x: StateFn<State, Payload>) => pond.run(agg, x)
       for (let i = 1; i <= 1000; i++) {
         r(setN(i))
       }
@@ -117,11 +117,11 @@ describe('application of commands in the pond v2', () => {
       await expectState(pond, 100)
 
       // Make sure the effect has stopped by manually bumping the state ourselves.
-      await pond.exec(agg, checkN(100)).toPromise()
+      await pond.run(agg, checkN(100)).toPromise()
 
-      await pond.exec(agg, setN(101)).toPromise()
+      await pond.run(agg, setN(101)).toPromise()
       await expectState(pond, 101)
-      await pond.exec(agg, checkN(101)).toPromise()
+      await pond.run(agg, checkN(101)).toPromise()
 
       await pond.dispose()
     })
@@ -173,7 +173,7 @@ describe('application of commands in the pond v2', () => {
         // We skip increasing 5, depend on our manual calls to do it.
         (state, fx) => {
           if (state.n !== 5) {
-            fx.enQ({ type: 'set', n: state.n + 1 }, Tag('self'))
+            fx.enQ(Tag<Payload>('self'), { type: 'set', n: state.n + 1 })
           }
         },
         (state: State) => state.n === 10,
@@ -188,7 +188,7 @@ describe('application of commands in the pond v2', () => {
         }
 
         pond
-          .exec(agg, effect)
+          .run(agg, effect)
           .toPromise()
           .then(
             () => (success = true),
@@ -221,7 +221,7 @@ describe('application of commands in the pond v2', () => {
 
       await expectState(pond, 1)
 
-      pond.exec(agg, setN(2))
+      pond.run(agg, setN(2))
 
       // Bumped up to 3 already
       await expectState(pond, 3)
@@ -281,7 +281,7 @@ describe('application of commands in the pond v2', () => {
       await expectState(pond, 1)
       cancel()
 
-      pond.exec(agg, setN(2))
+      pond.run(agg, setN(2))
 
       await expectState(pond, 2)
 

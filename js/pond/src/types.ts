@@ -453,8 +453,8 @@ export const Fish = {
 }
 
 export type AddEmission<EWrite> = <E extends EWrite>(
-  payload: E,
   tags: TypedTagIntersection<E>,
+  payload: E,
 ) => void
 
 export type Effects<EWrite> = Readonly<{

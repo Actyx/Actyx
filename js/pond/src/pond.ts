@@ -162,7 +162,7 @@ export type Pond = {
    * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
-  exec<S, EWrite>(fish: Fish<S, any>, fn: StateFn<S, EWrite>): PendingEmission
+  run<S, EWrite>(fish: Fish<S, any>, fn: StateFn<S, EWrite>): PendingEmission
 
   /**
    * Install a StateEffect that will be applied automatically whenever the `agg`’s State has changed.
@@ -375,7 +375,7 @@ export class Pond2Impl implements Pond {
   }
 
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
-  private exec0 = <S, EWrite, ReadBack = false>(
+  private run0 = <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
   ): ((effect: StateEffect<S, EWrite>) => PendingEmission) => {
     const cached = this.observeTagBased0(agg)
@@ -436,11 +436,11 @@ export class Pond2Impl implements Pond {
     }
   }
 
-  exec = <S, EWrite, ReadBack = false>(
+  run = <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
     fn: StateFn<S, EWrite>,
   ): PendingEmission => {
-    const handle = this.exec0(agg)
+    const handle = this.run0(agg)
     return handle(wrapStateFn(fn))
   }
 
