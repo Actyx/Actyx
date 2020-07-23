@@ -13,7 +13,7 @@ import { FishJar } from './fishJar'
 import { mkNoopPondStateTracker } from './pond-state'
 import { SnapshotStore } from './snapshotStore'
 import { minSnapshotAge } from './store/snapshotScheduler'
-import { TagQuery, toWireFormat } from './tagging'
+import { Tag, toSubscriptionSet, Where } from './tagging'
 import {
   EventKey,
   FishName,
@@ -93,7 +93,7 @@ export const eventFactory = () => {
 
 export const mkNumberFish = (
   semanticSnapshot?: (ev: NumberFishEvent) => boolean,
-  where: TagQuery = TagQuery.requireAll('default'),
+  where: Where<NumberFishEvent> = Tag('default'),
 ): Fish<NumberFishState, NumberFishEvent> => ({
   where,
   initialState: [],
@@ -181,10 +181,7 @@ export const snapshotTestSetup = async <S>(
   const hydrate = FishJar.hydrateV2(eventStore, snapshotStore, mkNoopPondStateTracker())
 
   const observe = hydrate(
-    {
-      type: 'tags',
-      subscriptions: toWireFormat(fish.where),
-    },
+    toSubscriptionSet(fish.where),
     fish.initialState,
     fish.onEvent,
     fish.fishId,

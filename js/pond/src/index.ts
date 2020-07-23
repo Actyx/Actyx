@@ -7,15 +7,13 @@
 export { ConnectivityStatus } from './eventstore/types'
 export * from './pond'
 export { Config as StoreConfig } from './store/config'
-export { Subscription, SubscriptionSet } from './subscription'
-export * from './tagging'
+export { allEvents, noEvents, Tag, Tags, Where } from './tagging'
 export {
   CancelSubscription,
   EmissionRequest,
   Emit,
   Fish,
   FishId,
-  FishName,
   isBoolean,
   isNumber,
   IsReset,
@@ -24,8 +22,6 @@ export {
   Milliseconds,
   PendingEmission,
   Reduce,
-  Semantics,
-  SnapshotFormat,
   SourceId,
   StateEffect,
   StateWithProvenance,
