@@ -155,7 +155,7 @@ export type Pond = {
    * invocation of `run` for the same Fish is guaranteed to see all events previously enqueued by
    * effects on that Fish already applied to the state. (Local serialisation guarantee.)
    *
-   * In regards to other nodes, there are no serialisation guarantees.
+   * In regards to other nodes or Fishes, there are no serialisation guarantees.
    *
    * @typeParam S                State of the Fish, input value to the effect.
    * @typeParam EWrite           Event type(s) the effect may emit.
@@ -171,7 +171,7 @@ export type Pond = {
    * Every application will see the previous one’s resulting Events applied to the State already, if applicable;
    * but any number of intermediate States may have been skipped between two applications.
    *
-   * In regards to other nodes, there are no serialisation guarantees.
+   * In regards to other nodes or Fishes, there are no serialisation guarantees.
    *
    * The effect can be uninstalled by calling the returned `CancelSubscription`.
    *

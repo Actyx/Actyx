@@ -422,6 +422,7 @@ export type Fish<S, E> = {
    * Selection of events to aggregate in this Fish.
    * You may specify plain strings inline: `where: Tags('my', 'tag', 'selection')`
    * Or refer to typed static tags: `where: myFirstTag.and(mySecondTag).or(myThirdTag)`
+   * In both cases you would select events which contain all three given tags.
    */
   where: Where<E>
 
