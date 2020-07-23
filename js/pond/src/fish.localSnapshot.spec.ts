@@ -5,7 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { List } from 'immutable'
-import { Fish, Tag } from '.'
+import { Fish } from '.'
 import { Events } from './eventstore/types'
 import {
   emitter,
@@ -94,7 +94,7 @@ describe('fish event store + jar local snapshot behavior', () => {
     type ImmutableState = List<number>
 
     const fishToTest: Fish<ImmutableState, NumberFishEvent> = {
-      where: Tag('default'),
+      ...fishTemplate,
 
       initialState: List(),
 
@@ -105,10 +105,6 @@ describe('fish event store + jar local snapshot behavior', () => {
 
         return state
       },
-
-      isReset: fishTemplate.isReset,
-
-      fishId: fishTemplate.fishId,
 
       deserializeState: (s: unknown) => List(s as number[]),
     }
