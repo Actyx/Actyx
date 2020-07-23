@@ -82,7 +82,7 @@ const omitObservable = <S>(
 const wrapStateFn = <S, EWrite>(fn: StateFn<S, EWrite>) => {
   const effect = async (state: S) => {
     const emissions: Emit<any>[] = []
-    await fn(state, { enQ: (tags, payload) => emissions.push({ tags, payload }) })
+    await fn(state, (tags, payload) => emissions.push({ tags, payload }))
     return emissions
   }
 

@@ -457,11 +457,7 @@ export type AddEmission<EWrite> = <E extends EWrite>(
   payload: E,
 ) => void
 
-export type Effects<EWrite> = Readonly<{
-  enQ: AddEmission<EWrite>
-}>
-
-export type StateFn<S, EWrite> = (state: S, effects: Effects<EWrite>) => void | Promise<void>
+export type StateFn<S, EWrite> = (state: S, enqueue: AddEmission<EWrite>) => void | Promise<void>
 
 /**
  * Cancel an ongoing aggregation (the provided callback will stop being called).

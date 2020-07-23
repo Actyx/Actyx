@@ -36,16 +36,16 @@ const agg: Fish<State, Payload> = {
   fishId: { name: 'sequence-test' },
 }
 
-const setN: (n: number) => StateFn<State, Payload> = n => (state, fx) => {
+const setN: (n: number) => StateFn<State, Payload> = n => (state, enQ) => {
   if (state.n !== n - 1) {
     throw new Error(`expected state to be ${n - 1}, but was ${state.n}`)
   }
   const payload: CompareAndIncrement = { type: 'set', n }
 
-  return fx.enQ(Tag<Payload>('self'), payload)
+  return enQ(Tag<Payload>('self'), payload)
 }
 
-const checkN: (expected: number) => StateFn<State, never> = expected => (state, _fx) => {
+const checkN: (expected: number) => StateFn<State, never> = expected => (state, _enQ) => {
   if (state.n !== expected) {
     throw new Error(`expected state to be ${expected}, but was ${state.n}`)
   }
@@ -106,8 +106,8 @@ describe('application of commands in the pond v2', () => {
   })
 
   describe('automatic effects', () => {
-    const autoBump: StateFn<State, CompareAndIncrement> = (state, fx) =>
-      fx.enQ(Tag<CompareAndIncrement>('self'), { type: 'set', n: state.n + 1 })
+    const autoBump: StateFn<State, CompareAndIncrement> = (state, enQ) =>
+      enQ(Tag<CompareAndIncrement>('self'), { type: 'set', n: state.n + 1 })
 
     it('should run until cancellation condition', async () => {
       const pond = await Pond.test()
@@ -129,12 +129,9 @@ describe('application of commands in the pond v2', () => {
     it('should respect sequence also when effect async', async () => {
       const pond = await Pond.test()
 
-      const delayedBump: StateFn<State, Payload> = (state, fx) =>
+      const delayedBump: StateFn<State, Payload> = (state, enQ) =>
         new Promise((resolve, _reject) =>
-          setTimeout(
-            () => resolve(fx.enQ(Tag<Payload>('self'), { type: 'set', n: state.n + 1 })),
-            5,
-          ),
+          setTimeout(() => resolve(enQ(Tag<Payload>('self'), { type: 'set', n: state.n + 1 })), 5),
         )
 
       const stateIs10 = expectState(pond, 10)
@@ -171,9 +168,9 @@ describe('application of commands in the pond v2', () => {
       pond.keepRunning<State, Payload>(
         agg,
         // We skip increasing 5, depend on our manual calls to do it.
-        (state, fx) => {
+        (state, enQ) => {
           if (state.n !== 5) {
-            fx.enQ(Tag<Payload>('self'), { type: 'set', n: state.n + 1 })
+            enQ(Tag<Payload>('self'), { type: 'set', n: state.n + 1 })
           }
         },
         (state: State) => state.n === 10,
@@ -208,9 +205,9 @@ describe('application of commands in the pond v2', () => {
     })
 
     // Bump only even numbers
-    const bumpEven: StateFn<State, CompareAndIncrement> = (state, fx) => {
+    const bumpEven: StateFn<State, CompareAndIncrement> = (state, enQ) => {
       if (state.n % 2 === 0) {
-        fx.enQ<CompareAndIncrement>(Tag('self'), { type: 'set', n: state.n + 1 })
+        enQ<CompareAndIncrement>(Tag('self'), { type: 'set', n: state.n + 1 })
       }
     }
 
@@ -235,9 +232,9 @@ describe('application of commands in the pond v2', () => {
 
       const stateIs15 = expectState(pond, 15)
 
-      const mk = (remainder: number): StateFn<State, Payload> => (state, fx) => {
+      const mk = (remainder: number): StateFn<State, Payload> => (state, enQ) => {
         if (state.n % 3 === remainder) {
-          fx.enQ(tags, { type: 'set', n: state.n + 1 })
+          enQ(tags, { type: 'set', n: state.n + 1 })
         }
       }
 
@@ -255,12 +252,12 @@ describe('application of commands in the pond v2', () => {
       const pond = await Pond.test()
       const tags = Tag<Payload>('self')
 
-      const mk = (remainder: number): StateFn<State, Payload> => (state, fx) => {
+      const mk = (remainder: number): StateFn<State, Payload> => (state, enQ) => {
         if (state.n % 3 === remainder) {
-          fx.enQ(tags, { type: 'set', n: state.n + 1 })
+          enQ(tags, { type: 'set', n: state.n + 1 })
         } else {
-          fx.enQ(tags, { type: 'fill' })
-          fx.enQ(tags, { type: 'fill' })
+          enQ(tags, { type: 'fill' })
+          enQ(tags, { type: 'fill' })
         }
       }
 
@@ -321,14 +318,14 @@ describe('application of commands in the pond v2', () => {
 
       const stateIs30 = expectState(pond, 30, beta)
 
-      const c0 = pond.keepRunning(alpha, (state, fx) =>
-        fx.enQ(Tag('beta'), { type: 'set', n: state.n + 1 }),
+      const c0 = pond.keepRunning(alpha, (state, enQ) =>
+        enQ(Tag('beta'), { type: 'set', n: state.n + 1 }),
       )
 
       await expectState(pond, 1, beta)
 
-      const c1 = pond.keepRunning(beta, (state, fx) =>
-        fx.enQ(Tag('beta'), { type: 'set', n: state.n + 1 }),
+      const c1 = pond.keepRunning(beta, (state, enQ) =>
+        enQ(Tag('beta'), { type: 'set', n: state.n + 1 }),
       )
 
       await stateIs30
