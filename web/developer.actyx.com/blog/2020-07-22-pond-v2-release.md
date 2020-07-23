@@ -35,19 +35,15 @@ For the Pond, we are shipping multiple nice mechanisms for expressing your tag-b
 A very quick demonstration ([detailed docs](LINKPLS)):
 
 ```typescript
-// Select events with either both tag0 and tag1, or just tag2.
-// (Events with all three tags also match.)
-const where = TagQuery.matchAnyOf(
-  'tag2',
-  TagQuery.requireAll('tag0', 'tag1'),
-)
+// Match events with both tag0 and tag1
+const where = Tags('tag0', 'tag1')
 
-// Alternatively, declare your tags in association with event types:
+// Alternatively, statically declare your tags in association with event types:
 const Tag0 = Tag<Type0>('tag0')
 const Tag1 = Tag<Type1>('tag1')
 const Tag2 = Tag<Type2>('tag2')
 
-// And then use fluent type-checked query building
+// And get baked-in type-checking
 const where = tag2.or(tag0.and(tag1))
 
 ```
@@ -59,7 +55,7 @@ Also be sure to check out [our guide on how to design your application architect
 In version 1 of the Actyx Pond, all events had to be emitted by _Fish_, from a received _command_.
 Now, events can be emitted freely without any Fish at hand.
 ```typescript
-pond.emit(['myFirstTag', 'mySecondTag'], myEventPayload)
+pond.emit(Tags('myFirstTag', 'mySecondTag'), myEventPayload)
 ```
 
 It is still recommended that you organize ownership of events (by type) into modules, for example:
@@ -68,7 +64,7 @@ It is still recommended that you organize ownership of events (by type) into mod
 type MaterialConsumed = // The type you have designed
 
 // Sum of all types related to material
-type MaterialEvent = MaterialConsumed | MaterialRestockedEvent | // etc.
+type MaterialEvent = MaterialConsumed | MaterialRestocked | // etc.
 
 // Tag to denote any sort of material-related event
 const MaterialTag = Tag<MaterialEvent>('material')
@@ -76,27 +72,25 @@ const MaterialTag = Tag<MaterialEvent>('material')
 // Tag to denote MaterialConsumed events
 const MaterialConsumedTag = Tag<MaterialConsumed>('material-consumed')
 
-// A module modelling users, exposing a function to ahold of the tags
-// that should be attached to all user-related events.
-import { getUserTags } from './user-fish'
-
-// Like the "user-fish" module, we also expose such a function – enabling other modules to "tag us."
-export const getMaterialTags = (materialId: string) => MaterialTag.withId(materialId)
-
 // We expose this function for usage by all code sites that want to log material consumption
 export const emitMaterialConsumed = (
+  // Base data for the event
   materialInfo: MaterialInfo,
-  loggedBy: User,
-): Emit<MaterialConsumedEvent> => ({
+  // Other tags the calling site may want to attach, e.g. user which has logged the consumption
+  additionalTags: Tags<MaterialConsumed>,
+  // Pond to use for emitting the event (you could also just pass the Pond.emit function)
+  pond: Pond
+): PendingEmission => {
   // Creating the payload is this module’s concern
-  payload: makeMaterialConsumedPayload(materialInfo, loggedBy),
+  const payload = makeMaterialConsumedPayload(materialInfo, loggedBy),
 
-  // Adding the list of tags is shared concern with the user module
-  // (which would like to remember material logged per-user)
-  tags: getMaterialTags(materialInfo.materialId)
+  // Main tags are also attached by this module, with capability for extension from the outside
+  const tags = MaterialTag.withId(materialId)
     .and(MaterialConsumedTag)
-    .and(getUserTags(loggedBy)),
-})
+    .and(additionalTags),
+
+  return pond.emit(tags, payload)
+}
 ```
 
 ## Switch to Callback-Style APIs over Observables and Promises
@@ -139,7 +133,7 @@ type EarliestAndLatest = {
 
 // For non-singleton Fish, constructor functions like this are good practice
 const makeEarliestAndLatestFish = (
-  tag: string
+  tag: string,
 ): Fish<EarliestAndLatest, unknown> => {
   const initialState = {
     earliest: undefined,
@@ -160,14 +154,12 @@ const makeEarliestAndLatestFish = (
     return state
   }
 
-  // Listen to all Events with the given Tag.
-  const where = TagQuery.requireAll(tag)
-
   // We uniquely identify the Fish by its 'type' and its parametrisation.
   const fishId = FishId.of('earliest-latest-fish', tag, /* program code version: */ 1)
 
   return {
-    where,
+    // Listen to all Events with the given Tag.
+    where: Tag(tag),
     initialState,
     onEvent,
     fishId
@@ -212,11 +204,12 @@ second time! This is where `pond.keepRunning` comes in.
 
 ```typescript
 pond.keepRunning(fish, async (state, enqueue) => {
-  if (fish.tasks.length === 0) {
+  if (fish.openTasks.length === 0) {
     return
   }
 
-  const nextTask = fish.tasks[0]
+  // Use any sort of logic to select an open task for execution
+  const nextTask = fish.openTasks[0]
 
   // Deliver material, for example
   await executeInRealWorld(task)
