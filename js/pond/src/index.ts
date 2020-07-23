@@ -21,7 +21,7 @@ export {
   PendingEmission,
   Reduce,
   SourceId,
-  StateFn,
+  StateEffect,
   StateWithProvenance,
   Timestamp,
 } from './types'

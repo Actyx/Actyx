@@ -451,7 +451,10 @@ export const Fish = {
 
 export type AddEmission<EWrite> = <E extends EWrite>(tags: Tags<E>, payload: E) => void
 
-export type StateFn<S, EWrite> = (state: S, enqueue: AddEmission<EWrite>) => void | Promise<void>
+export type StateEffect<S, EWrite> = (
+  state: S,
+  enqueue: AddEmission<EWrite>,
+) => void | Promise<void>
 
 /**
  * Cancel an ongoing aggregation (the provided callback will stop being called).

@@ -4,7 +4,7 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Fish, Pond, Reduce, StateFn, Tag } from '.'
+import { Fish, Pond, Reduce, StateEffect, Tag } from '.'
 
 export type State = { n: number; fill: number }
 
@@ -36,7 +36,7 @@ const agg: Fish<State, Payload> = {
   fishId: { name: 'sequence-test' },
 }
 
-const setN: (n: number) => StateFn<State, Payload> = n => (state, enQ) => {
+const setN: (n: number) => StateEffect<State, Payload> = n => (state, enQ) => {
   if (state.n !== n - 1) {
     throw new Error(`expected state to be ${n - 1}, but was ${state.n}`)
   }
@@ -45,7 +45,7 @@ const setN: (n: number) => StateFn<State, Payload> = n => (state, enQ) => {
   return enQ(Tag<Payload>('self'), payload)
 }
 
-const checkN: (expected: number) => StateFn<State, never> = expected => (state, _enQ) => {
+const checkN: (expected: number) => StateEffect<State, never> = expected => (state, _enQ) => {
   if (state.n !== expected) {
     throw new Error(`expected state to be ${expected}, but was ${state.n}`)
   }
@@ -61,7 +61,7 @@ describe('application of commands in the pond v2', () => {
     it('should run state effect, regardless of user awaiting the promise', async () => {
       const pond = await Pond.test()
 
-      const run = (x: StateFn<State, Payload>) => pond.run(agg, x)
+      const run = (x: StateEffect<State, Payload>) => pond.run(agg, x)
 
       // Assert it’s run even if we don’t subscribe
       run(setN(1))
@@ -93,7 +93,7 @@ describe('application of commands in the pond v2', () => {
     it('effects should wait for application of previous', async () => {
       const pond = await Pond.test()
 
-      const r = (x: StateFn<State, Payload>) => pond.run(agg, x)
+      const r = (x: StateEffect<State, Payload>) => pond.run(agg, x)
       for (let i = 1; i <= 1000; i++) {
         r(setN(i))
       }
@@ -106,7 +106,7 @@ describe('application of commands in the pond v2', () => {
   })
 
   describe('automatic effects', () => {
-    const autoBump: StateFn<State, CompareAndIncrement> = (state, enQ) =>
+    const autoBump: StateEffect<State, CompareAndIncrement> = (state, enQ) =>
       enQ(Tag<CompareAndIncrement>('self'), { type: 'set', n: state.n + 1 })
 
     it('should run until cancellation condition', async () => {
@@ -129,7 +129,7 @@ describe('application of commands in the pond v2', () => {
     it('should respect sequence also when effect async', async () => {
       const pond = await Pond.test()
 
-      const delayedBump: StateFn<State, Payload> = (state, enQ) =>
+      const delayedBump: StateEffect<State, Payload> = (state, enQ) =>
         new Promise((resolve, _reject) =>
           setTimeout(() => resolve(enQ(Tag<Payload>('self'), { type: 'set', n: state.n + 1 })), 5),
         )
@@ -205,7 +205,7 @@ describe('application of commands in the pond v2', () => {
     })
 
     // Bump only even numbers
-    const bumpEven: StateFn<State, CompareAndIncrement> = (state, enQ) => {
+    const bumpEven: StateEffect<State, CompareAndIncrement> = (state, enQ) => {
       if (state.n % 2 === 0) {
         enQ<CompareAndIncrement>(Tag('self'), { type: 'set', n: state.n + 1 })
       }
@@ -232,7 +232,7 @@ describe('application of commands in the pond v2', () => {
 
       const stateIs15 = expectState(pond, 15)
 
-      const mk = (remainder: number): StateFn<State, Payload> => (state, enQ) => {
+      const mk = (remainder: number): StateEffect<State, Payload> => (state, enQ) => {
         if (state.n % 3 === remainder) {
           enQ(tags, { type: 'set', n: state.n + 1 })
         }
@@ -252,7 +252,7 @@ describe('application of commands in the pond v2', () => {
       const pond = await Pond.test()
       const tags = Tag<Payload>('self')
 
-      const mk = (remainder: number): StateFn<State, Payload> => (state, enQ) => {
+      const mk = (remainder: number): StateEffect<State, Payload> => (state, enQ) => {
         if (state.n % 3 === remainder) {
           enQ(tags, { type: 'set', n: state.n + 1 })
         } else {

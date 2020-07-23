@@ -35,7 +35,7 @@ import {
   Semantics,
   Source,
   SourceId,
-  StateFn,
+  StateEffect,
   StateWithProvenance,
   Timestamp,
 } from './types'
@@ -76,7 +76,7 @@ const omitObservable = <S>(
   return sub.unsubscribe.bind(sub)
 }
 
-const wrapStateFn = <S, EWrite>(fn: StateFn<S, EWrite>) => {
+const wrapStateFn = <S, EWrite>(fn: StateEffect<S, EWrite>) => {
   const effect = async (state: S) => {
     const emissions: Emit<any>[] = []
     await fn(state, (tags, payload) => emissions.push({ tags, payload }))
@@ -96,7 +96,7 @@ type Emit<E> = {
   tags: ReadonlyArray<string> | Tags<E>
   payload: E
 }
-type StateEffect<S, EWrite> = (state: S) => EmissionRequest<EWrite>
+type StateEffectInternal<S, EWrite> = (state: S) => EmissionRequest<EWrite>
 type EmissionRequest<E> = ReadonlyArray<Emit<E>> | Promise<ReadonlyArray<Emit<E>>>
 // endof TODO cleanup
 
@@ -155,7 +155,7 @@ export type Pond = {
    * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
-  run<S, EWrite>(fish: Fish<S, any>, fn: StateFn<S, EWrite>): PendingEmission
+  run<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>): PendingEmission
 
   /**
    * Install a StateEffect that will be applied automatically whenever the `agg`’s State has changed.
@@ -175,7 +175,7 @@ export type Pond = {
    */
   keepRunning<S, EWrite>(
     fish: Fish<S, any>,
-    fn: StateFn<S, EWrite>,
+    fn: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ): CancelSubscription
 
@@ -365,7 +365,7 @@ export class Pond2Impl implements Pond {
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
   private run0 = <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
-  ): ((effect: StateEffect<S, EWrite>) => PendingEmission) => {
+  ): ((effect: StateEffectInternal<S, EWrite>) => PendingEmission) => {
     const cached = this.observeTagBased0(agg)
     const handleInternal = this.getOrCreateCommandHandle0(agg, cached)
 
@@ -379,7 +379,7 @@ export class Pond2Impl implements Pond {
   private getOrCreateCommandHandle0 = <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
     cached: ActiveFish<S>,
-  ): ((effect: StateEffect<S, EWrite>) => Observable<void>) => {
+  ): ((effect: StateEffectInternal<S, EWrite>) => Observable<void>) => {
     const handler = this.v2CommandHandler
 
     const subscriptionSet = toSubscriptionSet(agg.where)
@@ -423,7 +423,7 @@ export class Pond2Impl implements Pond {
 
   run = <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
-    fn: StateFn<S, EWrite>,
+    fn: StateEffect<S, EWrite>,
   ): PendingEmission => {
     const handle = this.run0(agg)
     return handle(wrapStateFn(fn))
@@ -431,7 +431,7 @@ export class Pond2Impl implements Pond {
 
   keepRunning = <S, EWrite>(
     fish: Fish<S, any>,
-    fn: StateFn<S, EWrite>,
+    fn: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ): CancelSubscription => {
     const effect = wrapStateFn(fn)
