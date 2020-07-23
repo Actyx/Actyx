@@ -10,7 +10,6 @@ export { Config as StoreConfig } from './store/config'
 export { allEvents, noEvents, Tag, Tags, Where } from './tagging'
 export {
   CancelSubscription,
-  Emit,
   Fish,
   FishId,
   isBoolean,

@@ -1,4 +1,5 @@
-import { Emit, Fish, FishId } from '../types'
+import { Pond } from '..'
+import { Fish, FishId } from '../types'
 import { Tag, Tags, Where } from './typed'
 
 type T0 = {
@@ -195,42 +196,42 @@ describe('typed tag query system', () => {
     })
   })
 
-  it('should allow emission statements into larger tags', () => {
-    const emitRight = {
-      payload: {
-        type: 'A',
-        data0: 5,
-      },
-      tags: abcTag,
+  describe('Pond emission type checking', () => {
+    const test = (_fn: (pond: Pond) => void) => {
+      // Just make it easy to write declarations that use a Pond.
+      // Since we only care about type-checks, we don’t actually execute anything.
     }
 
-    return ignoreUnusedVar(emitRight as Emit<A>)
-  })
+    it('should allow emission statements into larger tags', () => {
+      test(pond =>
+        pond.emit(abcTag, {
+          type: 'A',
+          data0: 5,
+        }),
+      )
+    })
 
-  it('should forbid emission statements for unknown types, known tags', () => {
-    const emitWrong: Emit<A> = {
-      payload: {
-        // @ts-expect-error
-        type: 'whatever',
-        data0: 5,
-      },
-      tags: tagA,
-    }
+    it('should forbid emission statements for unknown types, known tags', () => {
+      test(pond =>
+        pond.emit(tagA, {
+          // @ts-expect-error
+          type: 'whatever',
 
-    return ignoreUnusedVar(emitWrong)
-  })
+          // actually it would pass if we used the `data0` field here,
+          // due to some type-widening thingy
+          dataFoo: 5,
+        }),
+      )
+    })
 
-  it('should forbid emission statements into disconnected tags', () => {
-    const payload: T0 = {
-      type: '0',
-      t0: {},
-    }
-    const emitWrong = {
-      payload,
-      tags: abcTag,
-    }
+    it('should forbid emission statements into disconnected tags', () => {
+      const payload: T0 = {
+        type: '0',
+        t0: {},
+      }
 
-    // @ts-expect-error
-    return ignoreUnusedVar(emitWrong as Emit<T0>)
+      // @ts-expect-error
+      test(pond => pond.emit(abcTag, payload))
+    })
   })
 })

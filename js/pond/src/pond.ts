@@ -24,7 +24,6 @@ import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
 import { Tags, toSubscriptionSet } from './tagging'
 import {
   CancelSubscription,
-  Emit,
   Fish,
   FishId,
   FishName,
@@ -93,8 +92,13 @@ const pendingEmission = (o: Observable<void>): PendingEmission => ({
 })
 
 // For internal use only. TODO: Cleanup.
+type Emit<E> = {
+  tags: ReadonlyArray<string> | Tags<E>
+  payload: E
+}
 type StateEffect<S, EWrite> = (state: S) => EmissionRequest<EWrite>
 type EmissionRequest<E> = ReadonlyArray<Emit<E>> | Promise<ReadonlyArray<Emit<E>>>
+// endof TODO cleanup
 
 type ActiveFish<S> = {
   readonly states: Observable<StateWithProvenance<S>>

@@ -344,11 +344,6 @@ export type StatePointer<S> = TaggedIndex & CachedState<S>
 /* 
  * POND V2 APIs
  */
-export type Emit<E> = {
-  tags: ReadonlyArray<string> | Tags<E>
-  payload: E
-}
-
 // Generic Metadata attached to every event.
 export type Metadata = Readonly<{
   // Was this event written by the very node we are running on?
@@ -454,10 +449,7 @@ export const Fish = {
   }),
 }
 
-export type AddEmission<EWrite> = <E extends EWrite>(
-  tags: Tags<E>,
-  payload: E,
-) => void
+export type AddEmission<EWrite> = <E extends EWrite>(tags: Tags<E>, payload: E) => void
 
 export type StateFn<S, EWrite> = (state: S, enqueue: AddEmission<EWrite>) => void | Promise<void>
 
