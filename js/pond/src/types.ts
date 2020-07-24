@@ -419,7 +419,7 @@ export const FishId = {
 export type Fish<S, E> = {
   /**
    * Selection of events to aggregate in this Fish.
-   * You may specify plain strings inline: `where: Tags('my', 'tag', 'selection')`
+   * You may specify plain strings inline: `where: Tags('my', 'tag', 'selection')` (which requires all three tags)
    * Or refer to typed static tags: `where: myFirstTag.and(mySecondTag).or(myThirdTag)`
    * In both cases you would select events which contain all three given tags.
    */
@@ -430,7 +430,7 @@ export type Fish<S, E> = {
 
   /*
    * Function to create the next state from previous state and next event. It works similar to `Array.reduce`.
-   * Do note however that this function must be _pure_:
+   * Do note however that — while it may modify the passed-in state — this function must be _pure_:
    * - It should not cause any side-effects (except logging)
    * - It should not reference dynamic outside state like random numbers or the current time. The result must depend purely on the input parameters.
    */
