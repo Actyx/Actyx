@@ -4,7 +4,7 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Fish, Pond, Reduce, StateEffect, Tag } from '.'
+import { Fish, FishId, Pond, Reduce, StateEffect, Tag } from '.'
 
 export type State = { n: number; fill: number }
 
@@ -33,7 +33,7 @@ const agg: Fish<State, Payload> = {
 
   onEvent,
 
-  fishId: { name: 'sequence-test' },
+  fishId: FishId.of('x', 'x', 0),
 }
 
 const setN: (n: number) => StateEffect<State, Payload> = n => (state, enQ) => {
@@ -307,7 +307,7 @@ describe('application of commands in the pond v2', () => {
 
       onEvent,
 
-      fishId: { name },
+      fishId: FishId.of('seqtest', name, 0),
     })
 
     const alpha = mkAgg('alpha')

@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs'
-import { Fish, noEvents, Pond, Tag, Tags, Where } from '.'
+import { Fish, FishId, noEvents, Pond, Tag, Tags, Where } from '.'
 
 const emitTestEvents = async (pond: Pond) => {
   await pond.emit(Tags('t0', 't1', 't2'), 'hello').toPromise()
@@ -66,7 +66,7 @@ describe('application of commands in the pond', () => {
     type Event = string
     type State = ReadonlyArray<Event>
 
-    const mkAggregate = (subscriptions: Where<Event>, fishId = { name: 'test-entity' }) => ({
+    const mkAggregate = (subscriptions: Where<Event>, fishId = FishId.of('x', 'x', 0)) => ({
       where: subscriptions,
 
       initialState: [],
@@ -131,7 +131,7 @@ describe('application of commands in the pond', () => {
       await emitTestEvents(pond)
 
       // use a different cache key to start another aggregation
-      const aggregate1 = mkAggregate(Tag('t1'), { name: 'different-name' })
+      const aggregate1 = mkAggregate(Tag('t1'), FishId.of('x', 'different-name', 0))
 
       const res = aggregateAsObservable(pond, aggregate1)
 
