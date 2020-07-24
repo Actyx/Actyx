@@ -244,11 +244,11 @@ If you don’t want your logic to keep running forever, you can:
 We hope you enjoy the 2.0 release. If you have feedback or questions, contact us via
 [mail](mailto:developer@actyx.io) or hop on our [Discord](https://discord.gg/262yJhc).
 
-We still have many interesting plans in the pipeline, to make programming on top of eventual
-consistency even more comfortable and powerful. As next steps, we have planned 2.1 release of the
-TypeScript Pond, as well as a Pond library for use with C# and other CLR languages.
+We still have many interesting plans in the pipeline, to make programming on top of a fully
+distributed event log even more comfortable and powerful. As next steps, we are aiming for a 2.1
+release of the TypeScript Pond, as well as a Pond library for use with C# and other CLR languages.
 
-Finally, if you are building user interfaces, don’t miss out on our [React
-integration](https://www.npmjs.com/package/@actyx-contrib/react-pond).
+<!-- Finally, if you are building user interfaces, don’t miss out on our [React -->
+<!-- integration](https://www.npmjs.com/package/@actyx-contrib/react-pond). -->
 
 Happy Hacking!
