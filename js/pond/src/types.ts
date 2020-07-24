@@ -368,8 +368,20 @@ export type Metadata = Readonly<{
 
   // A unique identifier for the event.
   // Every event has exactly one eventId which is unique to it, guaranteed to not collide with any other event.
+  // Events are *sorted* based on the eventId by ActyxOS: For a given event, all later events also have a higher eventId according to simple string-comparison.
   eventId: string
 }>
+
+const maxLamportLength = String(Number.MAX_SAFE_INTEGER).length
+
+export const toMetadata = (sourceId: string) => (ev: Event): Metadata => ({
+  isLocalEvent: ev.sourceId === sourceId,
+  tags: ev.tags,
+  timestampMicros: ev.timestamp,
+  timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
+  lamport: ev.lamport,
+  eventId: String(ev.lamport).padStart(maxLamportLength, '0') + '/' + ev.sourceId,
+})
 
 // Combine the existing ("old") state and next event into a new state.
 // The returned value may be something completely new, or a mutated version of the input state.

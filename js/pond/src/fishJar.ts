@@ -30,6 +30,7 @@ import {
   SourceId,
   StateWithProvenance,
   Timestamp,
+  toMetadata,
 } from './types'
 import { lookup } from './util'
 import { runStats } from './util/runStats'
@@ -265,14 +266,7 @@ const hydrateV2 = (
 
   const { sourceId } = eventStore
 
-  const metadata = (ev: Event) => ({
-    isLocalEvent: ev.sourceId === sourceId,
-    tags: ev.tags,
-    timestampMicros: ev.timestamp,
-    timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
-    lamport: ev.lamport,
-    eventId: ev.sourceId + '/' + ev.psn,
-  })
+  const metadata = toMetadata(sourceId)
 
   const version = cacheKey.version || 0
 

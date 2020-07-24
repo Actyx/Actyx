@@ -5,6 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { gen } from 'testcheck'
+import { Event } from './eventstore/types'
 import { Check } from './hackcheck'
 import {
   isBoolean,
@@ -14,6 +15,7 @@ import {
   Semantics,
   SourceId,
   Timestamp,
+  toMetadata,
 } from './types'
 
 describe('Semantics', () => {
@@ -105,5 +107,32 @@ describe('Milliseconds', () => {
     expect(Milliseconds.fromAny(now0 * 1e3)).toEqual(now0)
     expect(Milliseconds.fromAny(now0)).toEqual(now0)
     expect(Milliseconds.fromAny(now)).toEqual(now)
+  })
+})
+
+describe('toMetadata', () => {
+  const ev: Event = {
+    psn: 5,
+    semantics: '_t_',
+    sourceId: 'src',
+    name: '_t_',
+    timestamp: 50_000,
+    lamport: 12345,
+    tags: ['tags'],
+    payload: 'whatever',
+  }
+
+  const metadata = toMetadata('src')
+
+  it('should generate eventId', () => {
+    expect(metadata(ev).eventId).toEqual('0000000000012345/src')
+    expect(metadata({ ...ev, lamport: Number.MAX_SAFE_INTEGER }).eventId).toEqual(
+      '9007199254740991/src',
+    )
+  })
+
+  it('should set isLocalEvent', () => {
+    expect(metadata(ev).isLocalEvent).toBeTruthy()
+    expect(metadata({ ...ev, sourceId: 'other' }).isLocalEvent).toBeFalsy()
   })
 })
