@@ -34,7 +34,7 @@ export const Semantics = {
   isJelly: (s: Semantics): boolean => s.startsWith('jelly-'),
   internal: internalSemantics,
   isInternal: (s: Semantics): boolean => s.startsWith('internal-'),
-  none: internalSemantics('nofish'),
+  none: '_t_' as Semantics,
   FromString: new t.Type<Semantics, string>(
     'SemanticsFromString',
     (x): x is Semantics => isString(x),
@@ -46,7 +46,7 @@ export const Semantics = {
 export type FishName = string
 export const FishName = {
   of: (s: string): FishName => s as FishName,
-  none: 'internal-nofish' as FishName,
+  none: '_t_' as FishName,
   FromString: new t.Type<FishName, string>(
     'FishNameFromString',
     (x): x is FishName => isString(x),
@@ -344,11 +344,6 @@ export type StatePointer<S> = TaggedIndex & CachedState<S>
 /* 
  * POND V2 APIs
  */
-export type Emit<E> = {
-  tags: ReadonlyArray<string> | Tags<E>
-  payload: E
-}
-
 // Generic Metadata attached to every event.
 export type Metadata = Readonly<{
   // Was this event written by the very node we are running on?
@@ -386,47 +381,89 @@ export const toMetadata = (sourceId: string) => (ev: Event): Metadata => ({
 // Combine the existing ("old") state and next event into a new state.
 // The returned value may be something completely new, or a mutated version of the input state.
 export type Reduce<S, E> = (state: S, event: E, metadata: Metadata) => S
+
+// A function indicating events which completely determine the state.
+// Any event for which isReset returns true will be applied to the initial state, all earlier events discarded.
 export type IsReset<E> = (event: E, metadata: Metadata) => boolean
 
-// To be refined: generic representation of semantics/name/version for snapshotformat
+/**
+ * Unique identifier for a fish.
+ */
 export type FishId = {
-  entityType?: string
+  // A general description for the class of thing the Fish represents, e.g. 'robot'
+  entityType: string
+
+  // Concrete name of the represented thing, e.g. 'superAssembler2000'
   name: string
-  version?: number
+
+  // Version of the underlying code. Must be increased whenever the Fish’s underlying logic or event selection changes.
+  version: number
 }
 
+/**
+ * Unique identifier for a fish.
+ */
 export const FishId = {
+  /**
+   * Create a FishId from three components.
+   *
+   * @param entityType   A general description for the class of thing the Fish represents, e.g. 'robot'
+   * @param name         Concrete name of the represented thing, e.g. 'superAssembler2000'
+   * @param version      Version of the underlying code. Must be increased whenever the Fish’s underlying logic or event selection changes.
+   * @returns            A FishId.
+   */
   of: (entityType: string, name: string, version: number) => ({
     entityType,
     name,
     version,
   }),
-  // Is there an even better way?
+
+  // For internal use. Transform a FishId into a string to be used as key in caching.
   canonical: (v: FishId): string => JSON.stringify([v.entityType, v.name, v.version]),
 }
 
 /**
  * A `Fish<S, E>` describes an ongoing aggregration (fold) of events of type `E` into state of type `S`.
+ * A Fish always sees events in the correct order, even though event delivery on ActyxOS is only eventually consistent:
+ * To this effect, arrival of an hitherto unknown event "from the past" will cause a replay of the aggregation
+ * from an earlier state, instead of passing that event to the Fish out of order.
  */
 export type Fish<S, E> = Readonly<{
-  // Will extend this field with further options in the future:
-  // - <E>-Typed subscription
-  // - Plain query string
+  /**
+   * Selection of events to aggregate in this Fish.
+   * You may specify plain strings inline: `where: Tags('my', 'tag', 'selection')` (which requires all three tags)
+   * Or refer to typed static tags: `where: myFirstTag.and(mySecondTag).or(myThirdTag)`
+   * In both cases you would select events which contain all three given tags.
+   */
   where: Where<E>
 
+  // State of this Fish before it has seen any events.
   initialState: S
+
+  /*
+   * Function to create the next state from previous state and next event. It works similar to `Array.reduce`.
+   * Do note however that — while it may modify the passed-in state — this function must be _pure_:
+   * - It should not cause any side-effects (except logging)
+   * - It should not reference dynamic outside state like random numbers or the current time. The result must depend purely on the input parameters.
+   */
   onEvent: Reduce<S, E>
+
+  // Unique identifier for this fish. This is used to enable caching and other performance benefits.
   fishId: FishId
 
-  // semantic snapshot
+  // Optional: A function indicating events which completely determine the state.
+  // Any event for which isReset returns true will be applied to the initial state, all earlier events discarded.
   isReset?: IsReset<E>
 
-  // let’s say we require users to implement .toJSON() on their state for serialisation --
-  // then we only need the reverse function. Still a topic of debate: https://github.com/Actyx/Cosmos/issues/2928
+  // Custom deserialisation method for your state.
+  // The Pond snapshots your state at periodic intervals and persists to disk, to increase performance.
+  // Serialisation is done via JSON. To enable custom serialisation, implement `toJSON` on your state.
+  // To turn a custom-serialised state back into its proper type, set `deserializeState`.
   deserializeState?: (jsonState: unknown) => S
 }>
 
 export const Fish = {
+  // Observe latest event matching the given selection.
   latestEvent: <E>(where: Where<E>): Fish<E | undefined, E> => ({
     where,
 
@@ -439,6 +476,7 @@ export const Fish = {
     isReset: () => true,
   }),
 
+  // Observe latest `capacity` events matching given selection, in descending order.
   eventsDescending: <E>(where: Where<E>, capacity = 100): Fish<E[], E> => ({
     where,
 
@@ -452,6 +490,7 @@ export const Fish = {
     fishId: FishId.of('actyx.lib.eventsDescending', JSON.stringify(where), 1),
   }),
 
+  // Observe latest `capacity` events matching given selection, in ascending order.
   eventsAscending: <E>(where: Where<E>, capacity = 100): Fish<E[], E> => ({
     where,
 
@@ -466,9 +505,16 @@ export const Fish = {
   }),
 }
 
-export type EmissionRequest<E> = ReadonlyArray<Emit<E>> | Promise<ReadonlyArray<Emit<E>>>
+// Queue emission of an event whose type is covered by `EWrite`.
+export type AddEmission<EWrite> = <E extends EWrite>(tags: Tags<E>, event: E) => void
 
-export type StateEffect<S, EWrite> = (state: S) => EmissionRequest<EWrite>
+// Enqueue event emissions based on currently known local state.
+export type StateEffect<S, EWrite> = (
+  // Currently known state, including application of all events previously enqueued by state effects on the same Fish.
+  state: S,
+  // Queue an event for emission. Can be called any number of times.
+  enqueue: AddEmission<EWrite>,
+) => void | Promise<void>
 
 /**
  * Cancel an ongoing aggregation (the provided callback will stop being called).
@@ -479,6 +525,8 @@ export type CancelSubscription = () => void
  * Allows you to register actions for when event emission has completed.
  */
 export type PendingEmission = {
+  // Add another callback; if emission has already completed, the callback will be executed straight-away.
   subscribe: (whenEmitted: () => void) => void
+  // Convert to a Promise which resolves once emission has completed.
   toPromise: () => Promise<void>
 }

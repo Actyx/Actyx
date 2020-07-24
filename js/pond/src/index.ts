@@ -10,8 +10,6 @@ export { Config as StoreConfig } from './store/config'
 export { allEvents, noEvents, Tag, Tags, Where } from './tagging'
 export {
   CancelSubscription,
-  EmissionRequest,
-  Emit,
   Fish,
   FishId,
   isBoolean,
@@ -22,10 +20,8 @@ export {
   Milliseconds,
   PendingEmission,
   Reduce,
-  SourceId,
   StateEffect,
-  StateWithProvenance,
   Timestamp,
 } from './types'
-export { enableAllLoggersExcept, isNode, Loggers, unreachable, unreachableOrElse } from './util'
+export { enableAllLoggersExcept, Loggers, unreachable, unreachableOrElse } from './util'
 export { runStats } from './util/runStats'

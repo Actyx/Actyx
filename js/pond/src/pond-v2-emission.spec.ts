@@ -4,7 +4,7 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Fish, Pond, Reduce, Tag, Tags, Where } from '.'
+import { Fish, FishId, Pond, Reduce, Tag, Tags, Where } from '.'
 
 type PayloadWithTags<E> =
   | {
@@ -19,7 +19,7 @@ const onEvent: <E>() => Reduce<PayloadWithTags<E>, E> = () => (_state, payload, 
   payload,
 })
 
-const fishId = { name: 'test-fish' }
+const fishId = FishId.of('x', 'x', 0)
 
 const stateAsPromise = <E>(pond: Pond, subs: Where<E>) => {
   const fish: Fish<PayloadWithTags<E>, E> = {

@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs'
-import { Fish, Pond, Tag, Tags } from '../'
+import { Fish, FishId, Pond, Tag, Tags } from '../'
 
 type Event = string
 type State = ReadonlyArray<Event>
@@ -15,7 +15,7 @@ export const start = async () => {
     onEvent: (state: State, event: Event) => [event, ...state],
 
     // CacheKey.namedAggregate('p-e-fish', 'my-process-id-100', 0)
-    fishId: { name: 'test-entity' },
+    fishId: FishId.of('test', 'test-entity', 0),
   }
 
   const cancel = pond.observe<State, Event>(aggregate, state =>
