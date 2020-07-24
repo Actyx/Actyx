@@ -16,10 +16,12 @@
 //! Types that you may want to use in describing the event payload data
 
 mod arcval;
+mod binary;
 mod fixnum;
 pub mod varint;
 
 pub use arcval::ArcVal;
+pub use binary::Binary;
 pub use fixnum::FixNum;
 
 pub mod intern_arc {

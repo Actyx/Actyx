@@ -144,7 +144,7 @@ impl Event<Payload> {
 #[serde(rename_all = "camelCase")]
 pub struct EventKey {
     pub lamport: LamportTimestamp,
-    pub source: StreamId,
+    pub stream: StreamId,
     pub offset: Offset,
 }
 
@@ -155,7 +155,7 @@ impl Default for EventKey {
     fn default() -> Self {
         Self {
             lamport: Default::default(),
-            source: source_id!("!").into(),
+            stream: source_id!("!").into(),
             offset: Default::default(),
         }
     }
