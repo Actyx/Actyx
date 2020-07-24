@@ -162,7 +162,7 @@ In the `/sidebars.js` file, add the corresponding path to the correct sidebar. E
       'pond/guides/local-state',
       'pond/guides/subscriptions',
       'pond/guides/time-travel',
-      'pond/guides/commands',
+      'pond/guides/state-effects',
       'pond/guides/types',
       'pond/guides/snapshots',
       'pond/guides/integrating-a-ui',

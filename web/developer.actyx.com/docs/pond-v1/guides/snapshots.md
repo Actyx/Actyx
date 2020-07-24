@@ -16,22 +16,24 @@ State snapshots are currently called “local snapshots” since in contrast to 
 The chat room fish in our example keeps a list of messages in its state.
 In order to keep its wakeup time constant, we can write this list into a snapshot from time to time, so that not the full log needs to be replayed when the app starts.
 Instead, Actyx Pond will load the latest stored snapshot and start from there, replaying only events that come after the snapshot.
-The best part about this is that also the writing is done by Actyx Pond. This is enabled by default, using `JSON.stringify` to serialize, and `JSON.parse` to deserialize.
+The best part about this is that also the writing is done by Actyx Pond, we only need to switch on snapshots as a configuration option:
 
-:::note
-If you're using custom data types, you only need to implement the `toJSON()` method on your state (like e.g. immutable.js provides for you), and then need to provide a custom `deserializeState` parameter in the fish's definition.
-:::note
-
-This is of course only possible if we keep the serialized format the same.  For this purpose the `fishId` has a version
-number as well. Upon every change to the necessary interpretation of the serialized data format, the version number
-needs to be incremented:
 ```typescript
-export const chatRoomFish = {
+export const chatRoomFish = FishType.of({
   // ... same as before
-  fishId: FishId.of('ax.example.ChatRoomFish', 'my-room', 1)
-}
+  snapshotFormat: SnapshotFormat.identity(1)
+})
 ```
-When that happens is that upon waking up this new fish version for the first time all old snapshots are invalidated and the newly written ones will have the new version number.
+
+The `identity` helper in this case denotes that our State is already JSON serializable and
+deserializable without problems. If we were using any sort of custom data storage class, we would
+need to pass a custom `SnapshotFormat` with functions `serialize` and `deserialize` that convert to
+and from a JSON-stringifiable format.
+
+This is of course only possible if we keep the serialized format the same.
+For this purpose the snapshot has a version number as well that we have set to 1 here.
+Upon every change to the necessary interpretation of the serialized data format, the version number needs to be incremented.
+When that happens, all old snapshots are invalidated and the newly written ones will have the new version number.
 
 With this configuration Actyx Pond will take snapshots about every 1000 events consumed by the fish.
 
@@ -42,9 +44,10 @@ The state from a month ago will probably no longer be cached in memory, so a ful
 ## Semantic snapshots
 
 Some fishes have events that completely determine the state after applying said event.
-Consider as an example the ability to wipe the chat room clean with a new event.
+Consider as an example the ability to wipe the chat room clean with a new command.
 
 ```typescript
+type ChatRoomCommand = { type: 'addMessage'; message: string } | { type: 'clearAllMessage' }
 type ChatRoomEvent = { type: 'messageAdded'; message: string } | { type: 'messagesCleared' }
 ```
 
@@ -53,17 +56,19 @@ Therefore it would not make sense to replay any prior events, their effect would
 Actyx Pond can be informed about this by enabling the semantic snapshot configuration option when defining the fish type:
 
 ```typescript
-export const chatRoomFish = {
+export const chatRoomFish = FishType.of({
   // ... same as before
-  isReset: event => event.type === 'messagesCleared',
-}
+  semanticSnapshot: (_name, _sourceId) => event => event.payload.type === 'messagesCleared',
+})
 ```
 
-Actyx Pond takes note of semantic snapshots as they are encountered and will avoid replaying earlier events to save time.
+The supplied function computes an event predicate from the fish name and node source ID.
+Actyx Pond will during a replay search backwards through the event log, from youngest event to oldest, until an event is found that matches the predicate. This event will then be applied to the initial state of the fish, followed by all succeeding events from the log.
 
 :::note
 Whether an event constitutes a semantic snapshot lies in the eye of the beholder: the chat room fish may consider the `messagesCleared` of its event stream as such an event, but another fish listening to the same event stream may not (e.g. if it shall count all messages ever posted to the chat room). Therefore, the semanticSnapshot property is defined by the fish type and not by the event type.
 :::
 
 Both kinds of snapshots can be combined within the same fish as well.
+
 
