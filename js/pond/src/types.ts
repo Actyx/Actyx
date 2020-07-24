@@ -430,7 +430,7 @@ export type Fish<S, E> = Readonly<{
 
   /*
    * Function to create the next state from previous state and next event. It works similar to `Array.reduce`.
-   * Do note however that — while it may modify the passed-in state — this function must be _pure_:
+   * Do note however that — while it may modify the passed-in state — this function must be _pure_:
    * - It should not cause any side-effects (except logging)
    * - It should not reference dynamic outside state like random numbers or the current time. The result must depend purely on the input parameters.
    */
