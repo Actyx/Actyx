@@ -20,10 +20,8 @@ export {
   Milliseconds,
   PendingEmission,
   Reduce,
-  SourceId,
   StateEffect,
-  StateWithProvenance,
   Timestamp,
 } from './types'
-export { enableAllLoggersExcept, isNode, Loggers, unreachable, unreachableOrElse } from './util'
+export { enableAllLoggersExcept, Loggers, unreachable, unreachableOrElse } from './util'
 export { runStats } from './util/runStats'
