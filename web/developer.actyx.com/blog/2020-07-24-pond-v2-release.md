@@ -4,7 +4,7 @@ author: Benjamin Sieffert
 author_title: Distributed Systems Engineer at Actyx
 author_url: https://github.com/benjamin-actyx
 author_image_url: /images/blog/benjamin-sieffert.jpg
-tags: [Actyx Pond]
+tags: [Actyx Pond Release]
 ---
 
 We are happy to announce the release of the Actyx Pond v2 ([download from npm](https://www.npmjs.com/package/@actyx/pond)).
@@ -32,7 +32,7 @@ match, in all three cases.
 
 For the Pond, we are shipping multiple nice mechanisms for expressing your tag-based queries.
 
-A very quick demonstration ([detailed docs](../docs/pond/guides/typed-tags.md)):
+A very quick demonstration ([detailed docs](/docs/pond/guides/typed-tags)):
 
 ```typescript
 // Match events with both tag0 and tag1
@@ -117,7 +117,7 @@ A Fish is now a struct based on these fields:
   just like in
   [Array.reduce](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce).
 - `fishId`: A unique identifier for the Fish. This is used throughout several layers of caching, to make
-  your application extra-fast. [See our docs for details.](../docs/pond/programming-model.md)
+  your application extra-fast. [See our docs for details.](/docs/pond/programming-model)
 - `where`: Which events to pass to this Fish; like the WHERE clause in SQL.
 
 Note that in comparison to v1, this is no longer a "factory" – you set concrete values for all
