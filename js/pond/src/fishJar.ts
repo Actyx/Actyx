@@ -254,8 +254,8 @@ const hydrateV2 = (
   initialState: S,
   onEvent: (state: S, event: E, metadata: Metadata) => S,
   cacheKey: FishId,
-  enableLocalSnapshots: boolean,
   isReset?: IsReset<E>,
+  deserializeState?: (jsonState: unknown) => S,
 ): Observable<StateWithProvenance<S>> => {
   const snapshotScheduler = SnapshotScheduler.create(10)
   const semantics = cacheKey.entityType
@@ -271,7 +271,10 @@ const hydrateV2 = (
     timestampMicros: ev.timestamp,
     timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
     lamport: ev.lamport,
+    eventId: ev.sourceId + '/' + ev.psn,
   })
+
+  const version = cacheKey.version || 0
 
   // We construct a "Fish" from the given parameters in order to use the unchanged FES.
   const info: FishInfo<S> = {
@@ -284,10 +287,9 @@ const hydrateV2 = (
 
     isSemanticSnapshot: isReset ? (ev: Event) => isReset(ev.payload as E, metadata(ev)) : undefined,
 
-    // TODO proper support
-    snapshotFormat: enableLocalSnapshots
-      ? SnapshotFormat.identity(cacheKey.version || 0)
-      : undefined,
+    snapshotFormat: deserializeState
+      ? { version, serialize: x => x, deserialize: deserializeState }
+      : SnapshotFormat.identity(version),
   }
 
   return eventStore

@@ -133,6 +133,9 @@ jobs:
         buildrs:
           DOCKER_TAG: 'buildrs-x64'
           DOCKER_REPO: 'actyx/util'
+        buildnode:
+          DOCKER_TAG: 'buildnode-x64'
+          DOCKER_REPO: 'actyx/util'
         wininstallercreator:
           DOCKER_TAG: 'windowsinstallercreator-x64'
           DOCKER_REPO: 'actyx/util'

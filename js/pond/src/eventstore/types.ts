@@ -4,10 +4,11 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import { right } from 'fp-ts/lib/Either'
 import { Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
-import { FishName, Lamport, Psn, Semantics, SourceId, Tags, Timestamp } from '../types'
+import { FishName, isString, Lamport, Psn, Semantics, SourceId, Timestamp } from '../types'
 import { OffsetMapIO } from './offsetMap'
 import { createEnumType } from './utils'
 
@@ -29,6 +30,19 @@ export const OffsetMapWithDefault = t.readonly(
   }),
 )
 export type OffsetMapWithDefault = t.TypeOf<typeof OffsetMapWithDefault>
+
+const stringRA = t.readonlyArray(t.string)
+
+type Tags = ReadonlyArray<string>
+type TagsOnWire = ReadonlyArray<string> | undefined
+const Tags = new t.Type<Tags, TagsOnWire>(
+  'TagsSetFromArray',
+  (x): x is Tags => x instanceof Array && x.every(isString),
+  // Rust side for now expresses empty tag arrays as omitting the field
+  (x, c) => (x === undefined ? right([]) : stringRA.validate(x, c)),
+  // Sending empty arrays is fine, though
+  x => x,
+)
 
 export const EventIO = t.type({
   psn: Psn.FromNumber,

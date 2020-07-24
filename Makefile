@@ -269,6 +269,8 @@ define fn-build-android-rust-lib
 	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
 	docker run -v `pwd`:/src \
 	-u builder \
+	-v $${CARGO_HOME:-$$HOME/.cargo/git}:/usr/local/cargo/git \
+	-v $${CARGO_HOME:-$$HOME/.cargo/registry}:/usr/local/cargo/registry \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-e RUST_BACKTRACE=1 \
 	-w /src/rt-master \
@@ -330,5 +332,22 @@ axosandroid-app: debug axosandroid-libs
 axosandroid-install: debug
 	adb uninstall com.actyx.os.android
 	adb install ./jvm/os-android/app/build/outputs/apk/release/app-release.apk
+
+# For dev purposes only. APK will crash on non x86 devices.
+axosandroid-x86: debug
+	$(call fn-build-android-rust-lib-i686,ax-os-node-ffi)
+	$(call fn-copy-axosandroid-lib-i686,libaxosnodeffi)
+	./jvm/os-android/bin/get-keystore.sh
+	for i in arm64-v8a armeabi-v7a; do \
+		mkdir -p ./jvm/os-android/app/src/main/jniLibs/$$i; \
+		touch ./jvm/os-android/app/src/main/jniLibs/$$i/libaxosnodeffi.so; \
+	done
+	docker run -v `pwd`:/src \
+	-u builder \
+	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-w /src/jvm/os-android \
+	-it actyx/util:buildrs-x64-latest \
+	./gradlew clean ktlintCheck build assembleRelease
+	echo 'APK: ./jvm/os-android/app/build/outputs/apk/release/app-release.apk'
 
 axosandroid: debug clean axosandroid-libs axosandroid-app

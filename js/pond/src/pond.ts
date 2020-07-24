@@ -21,7 +21,7 @@ import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
-import { toWireFormat, TypedTagIntersection } from './tagging'
+import { Tags, toSubscriptionSet } from './tagging'
 import {
   CancelSubscription,
   EmissionRequest,
@@ -42,9 +42,7 @@ import {
   Timestamp,
 } from './types'
 
-const isTyped = (
-  e: ReadonlyArray<string> | TypedTagIntersection<unknown>,
-): e is TypedTagIntersection<unknown> => {
+const isTyped = (e: ReadonlyArray<string> | Tags<unknown>): e is Tags<unknown> => {
   return !Array.isArray(e)
 }
 
@@ -90,6 +88,17 @@ type ActiveFish<S> = {
   commandPipeline?: CommandPipeline<S, EmissionRequest<any>>
 }
 
+export type GetNodeConnectivityParams = Readonly<{
+  callback: (newState: ConnectivityStatus) => void
+  specialSources?: ReadonlyArray<SourceId>
+}>
+
+export type WaitForSwarmSyncParams = Readonly<{
+  onSyncComplete: () => void
+  onProgress?: (newState: SplashState) => void
+  config?: WaitForSwarmConfig
+}>
+
 export type Pond = {
   /* EMISSION */
 
@@ -101,16 +110,7 @@ export type Pond = {
    * @returns       A `PendingEmission` object that can be used to register
    *                callbacks with the emission’s completion.
    */
-  emit<E>(tags: string[] | TypedTagIntersection<E>, payload: E): PendingEmission
-
-  /**
-   * Emit a number of events at once.
-   *
-   * @param emit    The events to be emitted, expressed as objects containing `tags` and `payload`.
-   * @returns       A `PendingEmission` object that can be used to register
-   *                callbacks with the emission’s completion.
-   */
-  emitMany(...emit: ReadonlyArray<Emit<any>>): PendingEmission
+  emit<E>(tags: Tags<E>, payload: E): PendingEmission
 
   /* AGGREGATION */
 
@@ -180,10 +180,9 @@ export type Pond = {
    */
 
   /**
-   * Dispose subscription to IpfsStore
-   * Store subscription needs to be unsubscribed for HMR
+   * Dispose of this Pond, stopping all underlying async operations.
    */
-  dispose(): Promise<void>
+  dispose(): void
 
   /**
    * Information about the current pond
@@ -193,20 +192,19 @@ export type Pond = {
   /**
    * Obtain an observable state of the pond.
    */
-  getPondState(): Observable<PondState>
+  getPondState(callback: (newState: PondState) => void): CancelSubscription
 
   /**
    * Obtain an observable describing connectivity status of this node.
    */
-  getNodeConnectivity(...specialSources: ReadonlyArray<SourceId>): Observable<ConnectivityStatus>
+  getNodeConnectivity(params: GetNodeConnectivityParams): CancelSubscription
 
   /**
-   * Obtain an observable that completes when we are mostly in sync with the swarm.
-   * It is recommended to wait for this on application startup, before interacting with any fish,
-   * i.e. `await pond.waitForSwarmSync().toPromise()`. The intermediate states emitted
-   * by the Observable can be used to display render a progress bar, for example.
+   * Wait for the node to get in sync with the swarm.
+   * It is strongly recommended that any interaction with the Pond is delayed until the onSyncComplete callback has been notified.
+   * To obtain progress information about the sync, the onProgress callback can be supplied.
    */
-  waitForSwarmSync(config?: WaitForSwarmConfig): Observable<SplashState>
+  waitForSwarmSync(params: WaitForSwarmSyncParams): void
 }
 
 export class Pond2Impl implements Pond {
@@ -215,8 +213,8 @@ export class Pond2Impl implements Pond {
     initialState: S,
     onEvent: (state: S, event: E, metadata: Metadata) => S,
     fishId: FishId,
-    enableLocalSnapshots: boolean,
     isReset?: IsReset<E>,
+    deserializeState?: (jsonState: unknown) => S,
   ) => Observable<StateWithProvenance<S>>
 
   activeFishes: {
@@ -233,20 +231,35 @@ export class Pond2Impl implements Pond {
     this.hydrateV2 = FishJar.hydrateV2(this.eventStore, this.snapshotStore, this.pondStateTracker)
   }
 
-  getPondState = (): Observable<PondState> => this.pondStateTracker.observe()
+  getPondState = (callback: (newState: PondState) => void) => {
+    const sub = this.pondStateTracker.observe().subscribe(callback)
+    return () => sub.unsubscribe()
+  }
 
-  getNodeConnectivity = (
-    ...specialSources: ReadonlyArray<SourceId>
-  ): Observable<ConnectivityStatus> =>
-    this.eventStore.connectivityStatus(
-      specialSources,
-      this.opts.hbHistDelay || 1e12,
-      this.opts.updateConnectivityEvery || Milliseconds.of(10_000),
-      this.opts.currentPsnHistoryDelay || 6,
+  getNodeConnectivity = (params: GetNodeConnectivityParams) => {
+    const sub = this.eventStore
+      .connectivityStatus(
+        params.specialSources || [],
+        this.opts.hbHistDelay || 1e12,
+        this.opts.updateConnectivityEvery || Milliseconds.of(10_000),
+        this.opts.currentPsnHistoryDelay || 6,
+      )
+      .subscribe(params.callback)
+
+    return () => sub.unsubscribe()
+  }
+
+  waitForSwarmSync = (params: WaitForSwarmSyncParams) => {
+    const splash = SplashState.of(this.eventStore, params.config || {}).finally(
+      params.onSyncComplete,
     )
 
-  waitForSwarmSync = (config?: WaitForSwarmConfig): Observable<SplashState> =>
-    SplashState.of(this.eventStore, config || {})
+    if (params.onProgress) {
+      splash.subscribe(params.onProgress)
+    } else {
+      splash.subscribe()
+    }
+  }
 
   info = () => {
     return {
@@ -254,7 +267,7 @@ export class Pond2Impl implements Pond {
     }
   }
 
-  dispose = async () => {
+  dispose = () => {
     this.monitoring.dispose()
     // TODO: Implement cleanup of active fishs
   }
@@ -267,7 +280,7 @@ export class Pond2Impl implements Pond {
       const event = {
         semantics: Semantics.none,
         name: FishName.none,
-        tags: isTyped(tags) ? tags.raw().tags : tags,
+        tags: isTyped(tags) ? tags.toWireFormat().tags : tags,
         timestamp,
         payload,
       }
@@ -278,11 +291,11 @@ export class Pond2Impl implements Pond {
     return this.eventStore.persistEvents(events)
   }
 
-  emit = <E>(tags: string[] | TypedTagIntersection<E>, payload: E): PendingEmission => {
+  emit = <E>(tags: Tags<E>, payload: E): PendingEmission => {
     return this.emitMany({ tags, payload })
   }
 
-  emitMany = (...emissions: ReadonlyArray<Emit<any>>): PendingEmission => {
+  private emitMany = (...emissions: ReadonlyArray<Emit<any>>): PendingEmission => {
     // `shareReplay` so that every piece of user code calling `subscribe`
     // on the return value will actually be executed
     const o = this.emitTagged0(emissions)
@@ -300,7 +313,8 @@ export class Pond2Impl implements Pond {
     initialState: S,
     onEvent: Reduce<S, E>,
     fishId: FishId,
-    isReset?: IsReset<E>,
+    isReset: IsReset<E> | undefined,
+    deserializeState: ((jsonState: unknown) => S) | undefined,
   ): ActiveFish<S> => {
     const key = FishId.canonical(fishId)
     const existing = this.activeFishes[key]
@@ -316,8 +330,8 @@ export class Pond2Impl implements Pond {
       initialState,
       onEvent,
       fishId,
-      true,
       isReset,
+      deserializeState,
     ).shareReplay(1)
 
     const a = {
@@ -328,26 +342,18 @@ export class Pond2Impl implements Pond {
   }
 
   private observeTagBased0 = <S, E>(acc: Fish<S, E>): ActiveFish<S> => {
-    const subscriptionSet: SubscriptionSet = {
-      type: 'tags',
-      subscriptions: toWireFormat(acc.where),
-    }
-
     return this.getCachedOrInitialize(
-      subscriptionSet,
+      toSubscriptionSet(acc.where),
       acc.initialState,
       acc.onEvent,
       acc.fishId,
       acc.isReset,
+      acc.deserializeState,
     )
   }
 
-  observe = <S, E>(acc: Fish<S, E>, callback: (newState: S) => void): CancelSubscription => {
-    if (acc.deserializeState) {
-      throw new Error('custom deser not yet supported')
-    }
-
-    return omitObservable(callback, this.observeTagBased0<S, E>(acc).states)
+  observe = <S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription => {
+    return omitObservable(callback, this.observeTagBased0<S, E>(fish).states)
   }
 
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
@@ -370,10 +376,7 @@ export class Pond2Impl implements Pond {
   ): ((effect: StateEffect<S, EWrite>) => Observable<void>) => {
     const handler = this.v2CommandHandler
 
-    const subscriptionSet: SubscriptionSet = {
-      type: 'tags',
-      subscriptions: toWireFormat(agg.where),
-    }
+    const subscriptionSet = toSubscriptionSet(agg.where)
 
     const commandPipeline =
       cached.commandPipeline ||
