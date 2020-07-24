@@ -179,9 +179,10 @@ export type Pond = {
    * @typeParam EWrite           Event type(s) the effect may emit.
    *
    * @param fish         Complete Fish information.
-   * @param effect       Function to enqueue new events based on state.
+   * @param effect       Function that decides whether to enqueue new events based on the current state.
    * @param autoCancel   Condition on which the automatic effect will be cancelled -- state on which `autoCancel` returns `true`
-   *                     will be the first state the effect is *not* applied to anymore.
+   *                     will be the first state the effect is *not* applied to anymore. Keep in mind that not all intermediate
+   *                     states will be seen by this function.
    * @returns            A `CancelSubscription` object that can be used to cancel the automatic effect.
    */
   keepRunning<S, EWrite>(
