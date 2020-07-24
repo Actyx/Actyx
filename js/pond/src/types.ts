@@ -34,7 +34,7 @@ export const Semantics = {
   isJelly: (s: Semantics): boolean => s.startsWith('jelly-'),
   internal: internalSemantics,
   isInternal: (s: Semantics): boolean => s.startsWith('internal-'),
-  none: internalSemantics('nofish'),
+  none: '_t_' as Semantics,
   FromString: new t.Type<Semantics, string>(
     'SemanticsFromString',
     (x): x is Semantics => isString(x),
@@ -46,7 +46,7 @@ export const Semantics = {
 export type FishName = string
 export const FishName = {
   of: (s: string): FishName => s as FishName,
-  none: 'internal-nofish' as FishName,
+  none: '_t_' as FishName,
   FromString: new t.Type<FishName, string>(
     'FishNameFromString',
     (x): x is FishName => isString(x),
@@ -379,14 +379,13 @@ export type IsReset<E> = (event: E, metadata: Metadata) => boolean
  */
 export type FishId = {
   // A general description for the class of thing the Fish represents, e.g. 'robot'
-  entityType?: string
+  entityType: string
 
   // Concrete name of the represented thing, e.g. 'superAssembler2000'
   name: string
 
   // Version of the underlying code. Must be increased whenever the Fish’s underlying logic or event selection changes.
-  // No version given implies version = 0.
-  version?: number
+  version: number
 }
 
 /**
@@ -408,7 +407,7 @@ export const FishId = {
   }),
 
   // For internal use. Transform a FishId into a string to be used as key in caching.
-  canonical: (v: FishId): string => JSON.stringify([v.entityType, v.name, v.version || 0]),
+  canonical: (v: FishId): string => JSON.stringify([v.entityType, v.name, v.version]),
 }
 
 /**

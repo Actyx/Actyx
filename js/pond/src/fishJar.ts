@@ -258,9 +258,7 @@ const hydrateV2 = (
   isReset?: IsReset<E>,
 ): Observable<StateWithProvenance<S>> => {
   const snapshotScheduler = SnapshotScheduler.create(10)
-  const semantics = cacheKey.entityType
-    ? Semantics.of(cacheKey.entityType)
-    : Semantics.internal('untyped-aggregation')
+  const semantics = Semantics.of(cacheKey.entityType)
   const fishName = FishName.of(cacheKey.name)
 
   const { sourceId } = eventStore

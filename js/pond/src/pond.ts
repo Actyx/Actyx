@@ -401,7 +401,7 @@ export class Pond2Impl implements Pond {
       FishJar.commandPipeline<S, EmissionRequest<any>>(
         this.pondStateTracker,
         this.eventStore.sourceId,
-        agg.fishId.entityType || Semantics.none,
+        agg.fishId.entityType,
         agg.fishId.name,
         handler,
         cached.states,
