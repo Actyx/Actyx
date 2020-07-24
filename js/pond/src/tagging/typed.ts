@@ -24,6 +24,8 @@ export interface TagsUnion<E> {
    * Type of the Events which may be returned by the contained tags.
    * Note that this does reflect only locally declared type knowledge;
    * historic events delivered by the Actyx system may not match these types, and this is not automatically detected.
+   * It is therefore good practice to carefully review changes to the declared type so that they remain
+   * backwards compatible.
    */
   readonly _dataType?: E
 }
@@ -67,6 +69,8 @@ export interface Tags<E> {
    * Type of the Events which may be returned by the contained tags.
    * Note that this does reflect only locally declared type knowledge;
    * historic events delivered by the Actyx system may not match these types, and this is not automatically detected.
+   * It is therefore good practice to carefully review changes to the declared type so that they remain
+   * backwards compatible.
    */
   readonly _dataType?: E
 }
@@ -81,7 +85,8 @@ export interface Tag<E> extends Tags<E> {
 
   /**
    * This very tag, suffixed with an id. E.g. `Tag<RobotEvent>('robot').withId('robot500')`
-   * expresses robot events belonging to a *specific* robot.
+   * expresses robot events belonging to a *specific* robot. The suffix will be separated
+   * from the base name by a colon `:`.
    */
   withId(name: string): Tags<E>
 }
