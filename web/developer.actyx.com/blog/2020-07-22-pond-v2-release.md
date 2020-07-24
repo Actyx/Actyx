@@ -7,7 +7,7 @@ author_image_url: /images/blog/benjamin-sieffert.jpg
 tags: [Actyx Pond]
 ---
 
-We are happy to announce the release of the Actyx Pond v2 ([download from npm](LINKPLS)).
+We are happy to announce the release of the Actyx Pond v2 ([download from npm](https://www.npmjs.com/package/@actyx/pond)).
 
 Read on for a brief overview of the changes, which we have developed with the goal of reducing
 boilerplate and allowing more flexibility and elegance in your application architecture.
@@ -32,7 +32,7 @@ match, in all three cases.
 
 For the Pond, we are shipping multiple nice mechanisms for expressing your tag-based queries.
 
-A very quick demonstration ([detailed docs](LINKPLS)):
+A very quick demonstration ([detailed docs](../docs/pond/guides/typed-tags.md)):
 
 ```typescript
 // Match events with both tag0 and tag1
@@ -48,7 +48,7 @@ const where = tag2.or(tag0.and(tag1))
 
 ```
 
-Also be sure to check out [our guide on how to design your application architecture based on tags](LINKPLS).
+<!-- Also be sure to check out [our guide on how to design your application architecture based on tags](LINKPLS). -->
 
 ## Direct Event Emission
 
@@ -97,13 +97,15 @@ export const emitMaterialConsumed = (
 
 A short general note before we continue.
 
-In v1, the Pond’s functions returned [RxJS](https://rxjs-dev.firebaseapp.com/) version 5 `Observable`
+In v1, the Pond’s functions returned [RxJS](https://rxjs.dev/) version 5 `Observable`
 instances in some cases, most notably `pond.observe`.
 
 In v2, we have switched to plain callback-style interfaces everywhere. This way, you don’t have to
 figure out RxJS to get started with the Pond.
 And in case you already are an ardent disciple of Reactive Programming, you are now free to plug the
-Pond into the RxJS version of your choice. Please [see here](LINKPLS) for a small guide.
+Pond into the RxJS version of your choice.
+
+<!-- Please [see here](LINKPLS) for a small guide. -->
 
 ## Fish
 
@@ -115,7 +117,7 @@ A Fish is now a struct based on these fields:
   just like in
   [Array.reduce](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce).
 - `fishId`: A unique identifier for the Fish. This is used throughout several layers of caching, to make
-  your application extra-fast. [See our docs for details.](LINKPLS)
+  your application extra-fast. [See our docs for details.](../docs/pond/programming-model.md)
 - `where`: Which events to pass to this Fish; like the WHERE clause in SQL.
 
 Note that in comparison to v1, this is no longer a "factory" – you set concrete values for all
