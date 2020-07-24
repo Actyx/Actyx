@@ -495,7 +495,7 @@ export const Fish = {
 }
 
 // Queue emission of an event whose type is covered by `EWrite`.
-export type AddEmission<EWrite> = <E extends EWrite>(tags: Tags<E>, payload: E) => void
+export type AddEmission<EWrite> = <E extends EWrite>(tags: Tags<E>, event: E) => void
 
 // Enqueue event emissions based on currently known local state.
 export type StateEffect<S, EWrite> = (

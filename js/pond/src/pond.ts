@@ -126,11 +126,11 @@ export type Pond = {
    *                 their type will be checked against the payload’s type.
    *
    * @param tags     Tags to attach to the event. E.g. `Tags('myTag', 'myOtherTag')`
-   * @param payload  The event itself.
+   * @param event    The event itself.
    * @returns        A `PendingEmission` object that can be used to register
    *                 callbacks with the emission’s completion.
    */
-  emit<E>(tags: Tags<E>, payload: E): PendingEmission
+  emit<E>(tags: Tags<E>, event: E): PendingEmission
 
   /* AGGREGATION */
 
