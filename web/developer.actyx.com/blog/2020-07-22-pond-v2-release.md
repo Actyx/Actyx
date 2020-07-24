@@ -1,5 +1,5 @@
 ---
-title: Introducing Pond Version 2
+title: Introducing Actyx Pond v2
 author: Benjamin Sieffert
 author_title: Distributed Systems Engineer at Actyx
 author_url: https://github.com/benjamin-actyx
@@ -7,7 +7,7 @@ author_image_url: /images/blog/benjamin-sieffert.jpg
 tags: [Actyx Pond]
 ---
 
-We are happy to announce the release of the Actyx Pond Version 2. [Download from npm](LINKPLS)
+We are happy to announce the release of the Actyx Pond v2 ([download from npm](LINKPLS)).
 
 Read on for a brief overview of the changes, which we have developed with the goal of reducing
 boilerplate and allowing more flexibility and elegance in your application architecture.
