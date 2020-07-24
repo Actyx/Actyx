@@ -416,7 +416,7 @@ export const FishId = {
  * To this effect, arrival of an hitherto unknown event "from the past" will cause a replay of the aggregation
  * from an earlier state, instead of passing that event to the Fish out of order.
  */
-export type Fish<S, E> = {
+export type Fish<S, E> = Readonly<{
   /**
    * Selection of events to aggregate in this Fish.
    * You may specify plain strings inline: `where: Tags('my', 'tag', 'selection')` (which requires all three tags)
@@ -448,7 +448,7 @@ export type Fish<S, E> = {
   // Serialisation is done via JSON. To enable custom serialisation, implement `toJSON` on your state.
   // To turn a custom-serialised state back into its proper type, set `deserializeState`.
   deserializeState?: (jsonState: unknown) => S
-}
+}>
 
 export const Fish = {
   // Observe latest event matching the given selection.
