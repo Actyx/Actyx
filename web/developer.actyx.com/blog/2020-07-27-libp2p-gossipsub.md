@@ -31,7 +31,7 @@ I have tested interop with go-ipfs extensively in various scenarios over the las
 
 Prior to putting it into production, we did *one last check* with a different go-ipfs node than the one we had been using for testing.
 
-And suddenly, **nothing** worked. Our node was unable to get any events from the go-ipfs node.
+And suddenly, _nothing** worked!_ Our node was unable to get any events from the go-ipfs node.
 
 The latest version of our event dissemination system relies on the gosspsub and the bitswap protocol of libp2p. Since we are using our own custom bitswap implementation, the first thought was that that this might be the cause of the issue. However, further investigation revealed that the new node was not even able to get any message via gossipsub.
 
