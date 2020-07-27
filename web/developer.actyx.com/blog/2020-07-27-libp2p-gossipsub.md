@@ -13,13 +13,11 @@ This post describes the process of finding and fixing the issue.
 
 <!-- truncate -->
 
-# Some context
-
 ## Libp2p
 
-The [libp2p](https://libp2p.io/) network stack is a core component of many recent distributed web and blockchain projects. It is developed for the [polkadot](https://polkadot.network/) blockchain, but is also going to be the networking stack of [ethereum 2](https://www.coindesk.com/testing-ethereum-2-0-requires-basic-signaling-a-solution-is-hobbits).
+The [libp2p](https://libp2p.io/) network stack is a core component of many recent distributed web and blockchain projects. It is developed for the [polkadot](https://polkadot.network/) blockchain, but is also going to be the networking stack of [ethereum 2](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/p2p-interface.md#network-fundamentals).
 
-At Actyx, we are using libp2p as the peer to peer network stack for ActyxOS, most notably for our partition tolerant event dissemination system.
+At Actyx, we are using libp2p as the peer to peer networking stack for ActyxOS, most notably for our partition tolerant event dissemination system.
 
 Until now, we have been spawning an ipfs process to take advantage of libp2p. While this works well, it has some overhead that is no longer acceptable for us as the size of our production installations and the demands of our system integrator customers increases. So in the past months we have been migrating to a pure rust solution, using the rust implementation of libp2p that is developed by parity.
 
@@ -41,21 +39,30 @@ At this point I was a bit lost. I created an [issue](https://github.com/libp2p/r
 
 ## Open source to the rescue
 
-Thankfully, Adrian Manning from [sigma prime](https://sigmaprime.io/), the developers of the [lighthouse](https://lighthouse.sigmaprime.io/) Ethereum 2.0 client, immediately jumped on the issue. Just the fact that somebody other than me is willing to help fixing this issue was a huge relief.
+Thankfully, Adrian Manning from [sigma prime](https://sigmaprime.io/), the developers of the [lighthouse](https://lighthouse.sigmaprime.io/) Ethereum 2.0 client, immediately jumped on the issue. Just the fact that somebody other than me was willing to help fixing this issue was a huge relief.
 
-Once I looked at the tracing output at the finest level to get Adrian some info, the cause of the issue became clear relatively quickly. Our production node was go-ipfs 0.4.22. It was sending us messages that did not conform to the protocol buffers specification of the gossipsub protocol. The messageid field, that was specified as a string in the protocol buffers definition in go-ipfs, was sometimes not a valid utf8 string.
+Adrian is the main author of the rust implementation of gossipsub, which is a [central component](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/p2p-interface.md#the-gossip-domain-gossipsub) of Ethereum 2.
+
+Once I looked at the tracing output at the finest level to get Adrian some info, the cause of the issue became clear relatively quickly. Our production node was go-ipfs 0.4.22. It was sending us messages that did not conform to the protocol buffers specification of the gossipsub protocol. The [messageids field](https://github.com/libp2p/go-libp2p-pubsub/blob/dd069798bb31b4e79f7222e7a72d922695537d7b/pb/rpc.proto#L35), that was specified as a string in the protocol buffers definition in go-ipfs, was sometimes not a valid utf8 string.
 
 ## Enter protocol labs
 
-Since this was clearly something to do with go-ipfs, we had to get protocol labs involved. Again, the response was very quick and helpful.
+Since this was clearly something to do with go-ipfs, we had to get [protocol labs](https://protocol.ai/) involved. Protocol labs are the original developers of the libp2p spec, including the [gossipsub spec](https://github.com/libp2p/specs/tree/master/pubsub/gossipsub).
 
-After a few hours I got in contact with [vyzo](https://github.com/vyzo), one of the main authors of the gossipsub spec. Protocol labs confirmed that this was an issue on the go-libp2p side. It turns out that the protocol buffers library that comes with go allows both emitting and reading non-uft8 values for string fields in protocol buffers definitions, which is not according to the spec. This has been fixed in the latest version of the library, but the fact remains that there are lots of go-ipfs nodes in production that emit non utf8 message ids.
+Again, the response was very quick and helpful.
+
+After only a few hours I got in contact with [vyzo](https://github.com/vyzo), one of the main authors of the gossipsub spec. Protocol labs confirmed that this was an issue on the go-libp2p side. It turns out that the protocol buffers library that comes with go allows both emitting and reading non-uft8 values for string fields in protocol buffers definitions, which is not according to the spec:
+```
+A string must always contain UTF-8 encoded or 7-bit ASCII text, and cannot be longer than 2³².
+```
+
+This has been [fixed](https://github.com/golang/protobuf/issues/484) in the latest version of the library, but the fact remains that there are lots of go-ipfs nodes in production that emit non utf8 message ids.
 
 ## Changing the spec
 
 Message ids are opaque message identifiers to allow the gossipsub system to keep track of messages. There is no benefit in having them be human readable utf8 strings. In fact, in many cases these strings are just completely random strings.
 
-So a decision was made very quickly to adjust the spec and put a warning into the go-ipfs protocol buffers specification.
+So a decision was made quickly to adjust the spec and put a warning into the go-ipfs protocol buffers specification.
 
 The new specification is an improvement over the old one. For one, it matches reality. But more importantly, using bytes for message ids is the right thing to do. Often it is convenient to generate globally unique message ids by concatenating the peer id (a hash) and a counter or a sufficiently large random number. Previously, this data would have to be base64 encoded to make it a valid utf8 string. This makes the protocol less efficient while not making it any more human readable.
 
@@ -73,4 +80,6 @@ This was a view inside how open source software is developed. A view inside the 
 
 As a library user or end user, the bottom line is that the interop between go-libp2p and rust-libp2 has been improved. This gets us closer to the goal of libp2p as a language independent network stack for peer to peer applications.
 
-For actyx, this fix means that we are unblocked to release ActyxOS 1.0 with significantly reduced memory footprint and improved performance. Stay tuned!
+For actyx, this fix means that we are unblocked to release ActyxOS 1.0 with significantly reduced memory footprint and improved performance.
+
+Stay tuned!
