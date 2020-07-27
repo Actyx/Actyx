@@ -51,7 +51,7 @@ Since this was clearly something to do with go-ipfs, we had to get [protocol lab
 
 Again, the response was very quick and helpful.
 
-After only a few hours I got in contact with [vyzo](https://github.com/vyzo), one of the main authors of the gossipsub spec. Protocol labs confirmed that this was an issue on the go-libp2p side. It turns out that the protocol buffers library that comes with go allows both emitting and reading non-uft8 values for string fields in protocol buffers definitions, which is not according to the spec:
+After only a few hours I got in contact with Dimitris Vyzovitis, one of the main authors of the gossipsub spec. Protocol labs confirmed that this was an issue on the go-libp2p side. It turns out that the protocol buffers library that comes with go allows both emitting and reading non-uft8 values for string fields in protocol buffers definitions, which is not according to the spec:
 ```
 A string must always contain UTF-8 encoded or 7-bit ASCII text, and cannot be longer than 2³².
 ```
