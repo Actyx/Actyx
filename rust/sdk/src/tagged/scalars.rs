@@ -2,7 +2,10 @@ use crate::event::scalars::{SourceId, MAX_SOURCEID_LENGTH};
 use anyhow::{anyhow, bail, ensure, Context, Result};
 use multibase::Base;
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, fmt::Display};
+use std::{
+    convert::TryFrom,
+    fmt::{Debug, Display},
+};
 
 /// The session identifier used in subscribeUntilTimeTravel
 #[derive(Debug, Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
@@ -30,6 +33,11 @@ impl SessionId {
     /// Extracts a string slice containing the entire session id
     pub fn as_str(&self) -> &str {
         &*self.0
+    }
+
+    pub fn display<'a>(this: &'a Option<SessionId>) -> impl tracing::Value + Debug + 'a {
+        let s = this.as_ref().map(|sid| &*sid.0).unwrap_or("NoSession");
+        tracing::field::display(s)
     }
 }
 

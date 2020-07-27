@@ -7,7 +7,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ord } from 'fp-ts'
 import { ordNumber } from 'fp-ts/lib/Ord'
-import { Semantics, SubscriptionSet } from '.'
 import { Event, EventStore, UnstoredEvent } from './eventstore'
 import {
   addAndInvalidateState,
@@ -18,7 +17,8 @@ import {
 } from './fishEventStore'
 import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
-import { FishName, SourceId, StateWithProvenance, Timestamp } from './types'
+import { SubscriptionSet } from './subscription'
+import { FishName, Semantics, SourceId, StateWithProvenance, Timestamp } from './types'
 
 const impl = <S, E>(store: FishEventStore<S, E>): FishEventStoreImpl<S, E> => store as any
 

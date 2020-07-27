@@ -1,68 +1,97 @@
-import { TagIntersection, TagUnion } from './untyped'
+import { isString } from '..'
+import { TagSubscription } from '../subscription'
 
 const namedSubSpace = (rawTag: string, sub: string): string[] => {
   return [rawTag, rawTag + ':' + sub]
 }
 
-export interface TypedTagUnion<E> {
+/**
+ * Representation of a union of tag sets. I.e. this is an event selection that combines multiple `Tags` selections.
+ */
+export interface TagsUnion<E> {
   /**
    * Add an alternative set we may also match. E.g. tag0.or(tag1.and(tag2)).or(tag1.and(tag3)) will match:
    * Events with tag0; Events with both tag1 and tag2; Events with both tag1 and tag3.
    */
-  or<E1>(tag: TypedTagIntersection<E1>): TypedTagUnion<E1 | E>
+  or<E1>(tag: Tags<E1>): TagsUnion<E1 | E>
 
   /**
-   * Convert into an untyped TagQuery. This is for internal use.
+   * FOR INTERNAL USE. Convert to Actyx wire format.
    */
-  raw(): TagUnion
+  toWireFormat(): ReadonlyArray<TagSubscription>
 
   /**
-   * Aggregated type of the Events which may be returned by the contained tags.
+   * Type of the Events which may be returned by the contained tags.
+   * Note that this does reflect only locally declared type knowledge;
+   * historic events delivered by the Actyx system may not match these types, and this is not automatically detected.
+   * It is therefore good practice to carefully review changes to the declared type so that they remain
+   * backwards compatible.
    */
   readonly _dataType?: E
-
-  readonly type: 'typed-union'
 }
 
-// Must be interface, otherwise inferred (recursive) type gets very large.
-export interface TypedTagIntersection<E> {
+// Implementation note: We must use interfaces, otherwise inferred (recursive) types get very large.
+
+/**
+ * Selection of events based on required tags. `Tags('a', 'b')` will select all events that have tag 'a' *as well as* tag 'b'.
+ */
+export interface Tags<E> {
   /**
-   * Add another tag(s) to this requirement. E.g Tag<FooEvent>('foo').and(Tag<BarEvent>('bar')) will require both 'foo' and 'bar'.
+   * Add more tags to this requirement. E.g Tag<FooEvent>('foo').and(Tag<BarEvent>('bar')) will require both 'foo' and 'bar'.
    */
-  and<E1>(tag: TypedTagIntersection<E1>): TypedTagIntersection<Extract<E1, E>>
+  and<E1>(tag: Tags<E1>): Tags<Extract<E1, E>>
 
   /**
-   * Add an alternative set we may also match. E.g. Tag<FooEvent>('foo').or(Tag<BarEvent>('bar')) will match
-   * each Event with at least 'foo' or 'bar'. Note that after the first `or` invocation you cannot `and` anymore,
-   * so you have to nest the parts yourself: tag0.or(tag1.and(tag2)).or(tag1.and(tag3)) etc.
+   * Add an additional untyped tag to this requirement.
+   * Since there is no associated type, the overall type cannot be constrained further.
    */
-  or<E1>(tag: TypedTagIntersection<E1>): TypedTagUnion<E1 | E>
+  and(tag: string): Tags<E>
+
+  /**
+   * Add an alternative set we may also match. E.g. `Tag<FooEvent>('foo').or(Tag<BarEvent>('bar'))` will match
+   * each Event with tag 'foo' OR tag 'bar'. Note that after the first `or` invocation you cannot `and` anymore,
+   * so you have to nest the parts yourself: `tag0.or(tag1.and(tag2)).or(tag1.and(tag3))` etc.
+   */
+  or<E1>(tag: Tags<E1>): TagsUnion<E1 | E>
 
   /**
    * The same requirement, but matching only Events emitted by the very node the code is run on.
+   * E.g. `Tags('my-tag').local()` selects all locally emitted events tagged with 'my-tag'.
    */
-  local(): TypedTagIntersection<E>
+  local(): Tags<E>
 
   /**
-   * Convert into an untyped TagQuery. This is for internal use.
+   * FOR INTERNAL USE. Convert to Actyx wire format.
    */
-  raw(): TagIntersection
+  toWireFormat(): TagSubscription
 
   /**
-   * Aggregated type of the Events which may be returned by the contained tags.
+   * Type of the Events which may be returned by the contained tags.
+   * Note that this does reflect only locally declared type knowledge;
+   * historic events delivered by the Actyx system may not match these types, and this is not automatically detected.
+   * It is therefore good practice to carefully review changes to the declared type so that they remain
+   * backwards compatible.
    */
   readonly _dataType?: E
-
-  readonly type: 'typed-intersection'
 }
 
-export interface Tag<E> extends TypedTagIntersection<E> {
-  // The underlying actual tag as pure string
+// Declare a set of tags
+export const Tags = <E>(...requiredTags: string[]): Tags<E> => req<E>(false, requiredTags)
+
+// Representation of a single tag.
+export interface Tag<E> extends Tags<E> {
+  // The underlying actual tag as pure string.
   readonly rawTag: string
 
-  withId(name: string): TypedTagIntersection<E>
+  /**
+   * This very tag, suffixed with an id. E.g. `Tag<RobotEvent>('robot').withId('robot500')`
+   * expresses robot events belonging to a *specific* robot. The suffix will be separated
+   * from the base name by a colon `:`.
+   */
+  withId(name: string): Tags<E>
 }
 
+// Create a new tag from the given string.
 export const Tag = <E>(rawTag: string): Tag<E> => ({
   rawTag,
 
@@ -74,50 +103,55 @@ export const Tag = <E>(rawTag: string): Tag<E> => ({
 /**
  * Typed expression for tag statements. The type `E` describes which events may be annotated with the included tags.
  */
-export type Where<E> = TypedTagUnion<E> | TypedTagIntersection<E>
+export type Where<E> = TagsUnion<E> | Tags<E>
 
-const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): TypedTagIntersection<E> => {
-  const r: TypedTagIntersection<E> = {
-    and: <E1>(tag: TypedTagIntersection<E1>) => {
-      const other = tag.raw()
+const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): Tags<E> => {
+  const r: Tags<E> = {
+    and: <E1>(tag: Tags<E1> | string) => {
+      if (isString(tag)) {
+        return req<E>(onlyLocalEvents, [tag, ...rawTags])
+      }
 
-      const local = onlyLocalEvents || !!other.onlyLocalEvents
+      const other = tag.toWireFormat()
+
+      const local = onlyLocalEvents || !!other.local
       const tags = rawTags.concat(other.tags)
 
       return req<Extract<E1, E>>(local, tags)
     },
 
-    or: <E1>(other: TypedTagIntersection<E1>) => {
+    or: <E1>(other: Tags<E1>) => {
       return union<E1 | E>([req(onlyLocalEvents, rawTags), other])
     },
 
     local: () => req<E>(true, rawTags),
 
-    type: 'typed-intersection',
+    toWireFormat: () => ({
+      tags: [...rawTags],
 
-    raw: () => ({
-      type: 'intersection',
-
-      tags: rawTags,
-
-      onlyLocalEvents,
+      local: onlyLocalEvents,
     }),
   }
 
   return r
 }
 
-const union = <E>(sets: TypedTagIntersection<unknown>[]): TypedTagUnion<E> => {
+const union = <E>(sets: Tags<unknown>[]): TagsUnion<E> => {
   return {
-    type: 'typed-union',
-
-    or: <E1>(other: TypedTagIntersection<E1>) => {
+    or: <E1>(other: Tags<E1>) => {
       return union<E1 | E>([...sets, other])
     },
 
-    raw: () => ({
-      type: 'union',
-      tags: sets.map(x => x.raw()),
-    }),
+    toWireFormat: () => sets.map(x => x.toWireFormat()),
   }
 }
+
+/**
+ * A `Where` expression that selects all events.
+ */
+export const allEvents: Tags<unknown> = req(false, [])
+
+/**
+ * A `Where` expression that selects no events.
+ */
+export const noEvents: TagsUnion<never> = union([])

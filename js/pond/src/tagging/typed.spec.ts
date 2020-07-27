@@ -1,5 +1,6 @@
-import { Emit, Fish, FishId } from '../types'
-import { Tag, Where } from './typed'
+import { Pond } from '..'
+import { Fish, FishId } from '../types'
+import { Tag, Tags, Where } from './typed'
 
 type T0 = {
   type: '0'
@@ -47,10 +48,7 @@ describe('typed tag query system', () => {
     // @ts-expect-error
     const q1: Where<'hello??'> = q
 
-    expect(q1.raw()).toMatchObject({
-      type: 'union',
-      tags: [{ type: 'intersection', tags: ['0', '1'] }, { type: 'intersection', tags: ['A'] }],
-    })
+    expect(q1.toWireFormat()).toMatchObject([{ tags: ['0', '1'] }, { tags: ['A'] }])
   })
 
   it('should insist on types?', () => {
@@ -69,10 +67,9 @@ describe('typed tag query system', () => {
     // @ts-expect-error
     const w2: Where<never> = w
 
-    expect(w2.raw()).toMatchObject({
-      type: 'intersection',
+    expect(w2.toWireFormat()).toMatchObject({
       tags: ['A', 'ABC'],
-      onlyLocalEvents: false,
+      local: false,
     })
   })
 
@@ -80,20 +77,16 @@ describe('typed tag query system', () => {
     // Overlap is 'A'
     const w = tagA.local().and(abcTag)
 
-    expect(w.raw()).toMatchObject({
-      type: 'intersection',
+    expect(w.toWireFormat()).toMatchObject({
       tags: ['A', 'ABC'],
-      onlyLocalEvents: true,
+      local: true,
     })
   })
 
   it('should union event types ', () => {
     const u = tagA.or(tagB)
 
-    expect(u.raw()).toMatchObject({
-      type: 'union',
-      tags: [{ type: 'intersection', tags: ['A'] }, { type: 'intersection', tags: ['B'] }],
-    })
+    expect(u.toWireFormat()).toMatchObject([{ tags: ['A'] }, { tags: ['B'] }])
   })
 
   it('should union event types (complex)', () => {
@@ -107,82 +100,138 @@ describe('typed tag query system', () => {
     // @ts-expect-error
     const u2: Where<'A' | 'B'> = u
 
-    expect(u.raw()).toMatchObject({
-      type: 'union',
-      tags: [
-        { type: 'intersection', tags: ['A'], onlyLocalEvents: true },
-        {
-          type: 'intersection',
-          tags: ['B', 'B:some-id'],
-          onlyLocalEvents: false,
-        },
-        { type: 'intersection', tags: ['ABC'] },
-      ],
-    })
+    expect(u.toWireFormat()).toMatchObject([
+      { tags: ['A'] },
+      {
+        tags: ['B', 'B:some-id'],
+        local: false,
+      },
+      {
+        tags: ['ABC'],
+      },
+    ])
   })
 
-  it('should require fish to implement onEvent that can handle all incoming events', () => {
-    const fishWrong: Fish<undefined, A | B> = {
+  describe('with Fish declarations', () => {
+    const fishArgs = {
       onEvent: (state: undefined, _payload: A | B) => state,
       initialState: undefined,
       fishId: FishId.of('f', 'a', 0),
-
-      // Expect error for too large subscription set
-      // @ts-expect-error
-      where: abcTag,
     }
 
-    ignoreUnusedVar(fishWrong)
-  })
+    it('should require fish to implement onEvent that can handle all incoming events', () => {
+      const fishWrong: Fish<undefined, A | B> = {
+        ...fishArgs,
 
-  it('should allow fish to handle more events than indicated by tags', () => {
-    const fishRight: Fish<undefined, A | B | C | T0> = {
-      onEvent: (state: undefined, _payload: A | B | C | T0) => state,
-      initialState: undefined,
-      fishId: FishId.of('f', 'a', 0),
-
-      where: abcTag,
-    }
-
-    ignoreUnusedVar(fishRight)
-  })
-
-  it('should allow emission statements into larger tags', () => {
-    const emitRight = {
-      payload: {
-        type: 'A',
-        data0: 5,
-      },
-      tags: abcTag,
-    }
-
-    return ignoreUnusedVar(emitRight as Emit<A>)
-  })
-
-  it('should forbid emission statements for unknown types, known tags', () => {
-    const emitWrong: Emit<A> = {
-      payload: {
+        // Expect error for too large subscription set
         // @ts-expect-error
-        type: 'whatever',
-        data0: 5,
-      },
-      tags: tagA,
-    }
+        where: abcTag,
+      }
 
-    return ignoreUnusedVar(emitWrong)
+      ignoreUnusedVar(fishWrong)
+    })
+
+    it('fish should accept direct Where<unknown> indicating untyped tag query', () => {
+      const fishRight1: Fish<undefined, A | B> = {
+        ...fishArgs,
+
+        // Automatically type-inferred to match Fish declaration
+        where: Tags('some', 'plain', 'tags'),
+      }
+
+      const fishRight2: Fish<undefined, A | B> = {
+        ...fishArgs,
+
+        // Automatically type-inferred to match Fish declaration
+        where: Tag('a-single-plain-tag'),
+      }
+
+      ignoreUnusedVar(fishRight1)
+      ignoreUnusedVar(fishRight2)
+    })
+
+    it('should accept OR-concatentation of untyped queries with explicit cast', () => {
+      const fishWrong: Fish<undefined, A | B> = {
+        ...fishArgs,
+
+        // Without cast, this will fail
+        // @ts-expect-error
+        where: Tags('1', '2').or(Tag('foo')),
+      }
+
+      ignoreUnusedVar(fishWrong)
+
+      const fishRight: Fish<undefined, A | B> = {
+        ...fishArgs,
+
+        // ... but adding an explicit cast solves the problem
+        where: Tags('1', '2').or(Tag('foo')) as Where<A | B>,
+      }
+
+      ignoreUnusedVar(fishRight)
+    })
+
+    it('should accept additional untyped tags on an intersection', () => {
+      const fishRight: Fish<undefined, A | B> = {
+        ...fishArgs,
+
+        // Type remains Tags<A>
+        where: tagA.and('some-other-tag'),
+      }
+
+      ignoreUnusedVar(fishRight)
+    })
+
+    it('should allow fish to handle more events than indicated by tags', () => {
+      const fishRight: Fish<undefined, A | B | C | T0> = {
+        onEvent: (state: undefined, _payload: A | B | C | T0) => state,
+        initialState: undefined,
+        fishId: FishId.of('f', 'a', 0),
+
+        // Fish declares it handles T0 also -> no problem.
+        where: abcTag,
+      }
+
+      ignoreUnusedVar(fishRight)
+    })
   })
 
-  it('should forbid emission statements into disconnected tags', () => {
-    const payload: T0 = {
-      type: '0',
-      t0: {},
-    }
-    const emitWrong = {
-      payload,
-      tags: abcTag,
+  describe('Pond emission type checking', () => {
+    const test = (_fn: (pond: Pond) => void) => {
+      // Just make it easy to write declarations that use a Pond.
+      // Since we only care about type-checks, we don’t actually execute anything.
     }
 
-    // @ts-expect-error
-    return ignoreUnusedVar(emitWrong as Emit<T0>)
+    it('should allow emission statements into larger tags', () => {
+      test(pond =>
+        pond.emit(abcTag, {
+          type: 'A',
+          data0: 5,
+        }),
+      )
+    })
+
+    it('should forbid emission statements for unknown types, known tags', () => {
+      test(pond =>
+        pond.emit(tagA, {
+          // @ts-expect-error
+          type: 'whatever',
+
+          // actually it would pass if we used the `data0` field here,
+          // due to some type-widening thingy
+          dataFoo: 5,
+        }),
+      )
+    })
+
+    it('should forbid emission statements into disconnected tags', () => {
+      const payload: T0 = {
+        type: '0',
+        t0: {},
+      }
+
+      // @ts-expect-error
+      test(pond => pond.emit(abcTag, payload))
+    })
   })
 })

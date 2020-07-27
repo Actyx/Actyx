@@ -467,6 +467,11 @@ impl OffsetMap {
         Default::default()
     }
 
+    /// Returns true if this `OffsetMap` does not contain any events
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// Check whether the given Event’s offset and source ID are contained within this `OffsetMap`.
     pub fn contains<T>(&self, event: &Event<T>) -> bool {
         self.0
@@ -696,7 +701,7 @@ impl<T> AddAssign<&Event<T>> for OffsetMap {
 
 impl AddAssign<&EventKey> for OffsetMap {
     fn add_assign(&mut self, other: &EventKey) {
-        let off = self.0.entry(other.source).or_default();
+        let off = self.0.entry(other.stream).or_default();
         if *off < other.offset {
             *off = other.offset;
         }
@@ -720,12 +725,12 @@ impl<T> SubAssign<&Event<T>> for OffsetMap {
 impl SubAssign<&EventKey> for OffsetMap {
     /// Ensure that the given event is no longer contained within this OffsetMap.
     fn sub_assign(&mut self, other: &EventKey) {
-        let off = self.0.entry(other.source).or_default();
+        let off = self.0.entry(other.stream).or_default();
         if *off >= other.offset {
             if let Some(o) = other.offset.pred() {
                 *off = o;
             } else {
-                self.0.remove(&other.source);
+                self.0.remove(&other.stream);
             }
         }
     }

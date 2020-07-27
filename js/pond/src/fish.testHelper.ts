@@ -6,14 +6,14 @@
  */
 import { last } from 'ramda'
 import { Observable } from 'rxjs'
+import { Fish, FishId } from '.'
 import { EventStore } from './eventstore'
 import { Event, Events, OffsetMap } from './eventstore/types'
 import { FishJar } from './fishJar'
 import { mkNoopPondStateTracker } from './pond-state'
-import { Fish, FishId } from '.'
-import { TagQuery, toWireFormat } from './tagging'
 import { SnapshotStore } from './snapshotStore'
 import { minSnapshotAge } from './store/snapshotScheduler'
+import { Tag, toSubscriptionSet, Where } from './tagging'
 import {
   EventKey,
   FishName,
@@ -25,8 +25,8 @@ import {
   Timestamp,
 } from './types'
 
-type NumberFishEvent = number | 'padding'
-type NumberFishState = number[]
+export type NumberFishEvent = number | 'padding'
+export type NumberFishState = number[]
 
 export type RawEvent = Readonly<{
   payload: NumberFishEvent
@@ -93,7 +93,7 @@ export const eventFactory = () => {
 
 export const mkNumberFish = (
   semanticSnapshot?: (ev: NumberFishEvent) => boolean,
-  where: TagQuery = TagQuery.requireAll('default'),
+  where: Where<NumberFishEvent> = Tag('default'),
 ): Fish<NumberFishState, NumberFishEvent> => ({
   where,
   initialState: [],
@@ -150,11 +150,10 @@ export const mkSnapshot = (
   }
 }
 
-export const snapshotTestSetup = async (
-  fish: Fish<NumberFishState, NumberFishEvent>,
+export const snapshotTestSetup = async <S>(
+  fish: Fish<S, NumberFishEvent>,
   storedEvents?: Events,
   storedSnapshots?: ReadonlyArray<SnapshotData>,
-  enableLocalSnapshots = true,
 ) => {
   const sourceId = SourceId.of('LOCAL-test-source')
   const eventStore = EventStore.test(sourceId)
@@ -182,15 +181,12 @@ export const snapshotTestSetup = async (
   const hydrate = FishJar.hydrateV2(eventStore, snapshotStore, mkNoopPondStateTracker())
 
   const observe = hydrate(
-    {
-      type: 'tags',
-      subscriptions: toWireFormat(fish.where),
-    },
+    toSubscriptionSet(fish.where),
     fish.initialState,
     fish.onEvent,
     fish.fishId,
-    enableLocalSnapshots,
     fish.isReset,
+    fish.deserializeState,
   )
     .map(x => x.state)
     .shareReplay(1)
