@@ -7,7 +7,7 @@ author_image_url: /images/blog/ruediger-klaehn.jpg
 tags: [IPFS rust libp2p dweb]
 ---
 
-We are currently migrating our core event dissemination system to pure rust. In the process of doing so, we have discovered an interop issue between go-libp2p and rust-libp2p.
+We are currently migrating our core event dissemination system to the Rust programming language. In the process of doing so, we have discovered an interop issue between go-libp2p and rust-libp2p.
 
 This post describes the process of finding and fixing the issue.
 
@@ -15,11 +15,13 @@ This post describes the process of finding and fixing the issue.
 
 ## Libp2p
 
-The [libp2p](https://libp2p.io/) network stack is a core component of many recent distributed web and blockchain projects. It is developed for the [polkadot](https://polkadot.network/) blockchain, but is also going to be the networking stack of [ethereum 2](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/p2p-interface.md#network-fundamentals).
+The [libp2p](https://libp2p.io/) network stack is a core component of many recent distributed web and blockchain projects. The specification as well as the go- and javascript language implementations are developed by [protocol labs](protocol.ai).
+
+The rust implementation is developed for the [polkadot](https://polkadot.network/) blockchain, but is also going to be the networking stack of [ethereum 2](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/p2p-interface.md#network-fundamentals).
 
 At Actyx, we are using libp2p as the peer to peer networking stack for ActyxOS, most notably for our partition tolerant event dissemination system.
 
-Until now, we have been spawning an ipfs process to take advantage of libp2p. While this works well, it has some overhead that is no longer acceptable for us as the size of our production installations and the demands of our system integrator customers increases. So in the past months we have been migrating to a pure rust solution, using the rust implementation of libp2p that is developed by parity.
+Until now, we have been spawning a separate ipfs process to take advantage of libp2p. While this works well, it has some overhead that is no longer acceptable for us as the size of our production installations and the demands of our system integrator customers increases. So in the past months we have been migrating to a pure rust solution, using the rust implementation of libp2p that is developed by parity.
 
 This will allow us to dramatically reduce the size and complexity of ActyxOS binaries while drastically improving performance. As an example: the size of the ActyxOS apk changes from <value> to <value>.
 
@@ -80,6 +82,6 @@ This was a view inside how open source software is developed. A view inside the 
 
 As a library user or end user, the bottom line is that the interop between go-libp2p and rust-libp2 has been improved. This gets us closer to the goal of libp2p as a language independent network stack for peer to peer applications.
 
-For actyx, this fix means that we are unblocked to release ActyxOS 1.0 with significantly reduced memory footprint and improved performance.
+For Actyx, this fix means that we are unblocked to release ActyxOS 1.0.0 with significantly reduced memory footprint and improved performance.
 
 Stay tuned!
