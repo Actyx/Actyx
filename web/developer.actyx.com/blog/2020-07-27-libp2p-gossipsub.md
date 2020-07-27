@@ -17,13 +17,13 @@ This post describes the process of finding and fixing the issue.
 
 The [libp2p](https://libp2p.io/) network stack is a core component of many recent distributed web and blockchain projects. The specification as well as the go- and javascript language implementations are developed by [protocol labs](protocol.ai).
 
-The rust implementation is developed for the [polkadot](https://polkadot.network/) blockchain, but is also going to be the networking stack of [ethereum 2](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/p2p-interface.md#network-fundamentals).
+The Rust implementation is developed for the [polkadot](https://polkadot.network/) blockchain, but is also going to be the networking stack of [ethereum 2](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/p2p-interface.md#network-fundamentals).
 
 At Actyx, we are using libp2p as the peer to peer networking stack for ActyxOS, most notably for our partition tolerant event dissemination system.
 
-Until now, we have been spawning a separate ipfs process to take advantage of libp2p. While this works well, it has some overhead that is no longer acceptable for us as the size of our production installations and the demands of our system integrator customers increases. So in the past months we have been migrating to a pure rust solution, using the rust implementation of libp2p that is developed by parity.
+Until now, we have been spawning a separate ipfs process to take advantage of libp2p. While this works well, it has some overhead that is no longer acceptable for us as the size of our production installations and the demands of our system integrator customers increases. So in the past months we have been migrating to a pure Rust solution, using the Rust implementation of libp2p that is developed by parity.
 
-This will allow us to dramatically reduce the size and complexity of ActyxOS binaries while drastically improving performance. As an example: the size of the ActyxOS apk changes from <value> to <value>.
+This will allow us to dramatically reduce the size and complexity of ActyxOS binaries while drastically improving performance. As an example: the size of the ActyxOS apk changes from 1234 to 123.
 
 ## Putting things in production
 
@@ -31,7 +31,7 @@ I have tested interop with go-ipfs extensively in various scenarios over the las
 
 Prior to putting it into production, we did *one last check* with a different go-ipfs node than the one we had been using for testing.
 
-And suddenly, _nothing** worked!_ Our node was unable to get any events from the go-ipfs node.
+And suddenly, _nothing worked._ Our node was unable to get any events from the go-ipfs node.
 
 The latest version of our event dissemination system relies on the gosspsub and the bitswap protocol of libp2p. Since we are using our own custom bitswap implementation, the first thought was that that this might be the cause of the issue. However, further investigation revealed that the new node was not even able to get any message via gossipsub.
 
@@ -43,7 +43,7 @@ At this point I was a bit lost. I created an [issue](https://github.com/libp2p/r
 
 Thankfully, Adrian Manning from [sigma prime](https://sigmaprime.io/), the developers of the [lighthouse](https://lighthouse.sigmaprime.io/) Ethereum 2.0 client, immediately jumped on the issue. Just the fact that somebody other than me was willing to help fixing this issue was a huge relief.
 
-Adrian is the main author of the rust implementation of gossipsub, which is a [central component](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/p2p-interface.md#the-gossip-domain-gossipsub) of Ethereum 2.
+Adrian is the main author of the Rust implementation of gossipsub, which is a [central component](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/p2p-interface.md#the-gossip-domain-gossipsub) of Ethereum 2.
 
 Once I looked at the tracing output at the finest level to get Adrian some info, the cause of the issue became clear relatively quickly. Our production node was go-ipfs 0.4.22. It was sending us messages that did not conform to the protocol buffers specification of the gossipsub protocol. The [messageids field](https://github.com/libp2p/go-libp2p-pubsub/blob/dd069798bb31b4e79f7222e7a72d922695537d7b/pb/rpc.proto#L35), that was specified as a string in the protocol buffers definition in go-ipfs, was sometimes not a valid utf8 string.
 
@@ -70,7 +70,7 @@ The new specification is an improvement over the old one. For one, it matches re
 
 ## Fallout
 
-After updating the spec, I made a pull request against rust-libp2p to change the message id from a rust `String` to a rust `Vec<u8>`, which can hold an arbitrary sequence of bytes. After this change, connection to our production go-ipfs node immediately worked without the delay hack.
+After updating the spec, I made a pull request against rust-libp2p to change the message id from a Rust `String` to a Rust `Vec<u8>`, which can hold an arbitrary sequence of bytes. After this change, connection to our production go-ipfs node immediately worked without the delay hack.
 
 Go-ipfs will have to adjust their code generation and eventually change the protobuf definition in their repo to match the new spec. But until then, there is now going to be [a warning](https://github.com/libp2p/go-libp2p-pubsub/pull/363) as a comment in the .proto file.
 
