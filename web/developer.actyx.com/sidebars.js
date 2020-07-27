@@ -56,7 +56,7 @@ module.exports = {
   },
   pondv1Sidebar: {
     'Versions (current: v1)': [
-       { type: 'link', href: '../pond/getting-started', label: 'v2' },
+       { type: 'link', href: '/docs/pond/getting-started', label: 'v2' },
     ],
     'Actyx Pond': [
       'pond-v1/getting-started',
@@ -76,7 +76,7 @@ module.exports = {
   },
   pondSidebar: {
     'Versions (current: v2)': [
-       { type: 'link', href: '../pond-v1/getting-started', label: 'v1' },
+       { type: 'link', href: '/docs/pond-v1/getting-started', label: 'v1' },
     ],
     'Actyx Pond': [
       'pond/getting-started',
