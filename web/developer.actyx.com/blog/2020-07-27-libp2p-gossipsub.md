@@ -7,7 +7,7 @@ author_image_url: /images/blog/ruediger-klaehn.jpg
 tags: [IPFS rust libp2p dweb]
 ---
 
-We are currently migrating our core event dissemination system to the Rust programming language. In the process of doing so, we have discovered an interop issue between go-libp2p and rust-libp2p.
+We are currently migrating our core event dissemination system to the Rust programming language, using the libp2p decentralised networking stack as a basis. In the process of doing so, we have discovered an interop issue between go-libp2p and rust-libp2p.
 
 This post describes the process of finding and fixing the issue.
 
