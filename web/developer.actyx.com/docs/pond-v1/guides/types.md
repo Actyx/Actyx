@@ -1,25 +1,27 @@
 ---
-title: All those Types
+title: All those types
 ---
 
 We have chosen TypeScript for a reason: fishes offer more type-safety than using the JSON-based untyped Event Service by itself.
 
-The full signature of `Fish` has two type parameters:
+The full signature of `FishType.of()` has four type parameters:
 
-- `S` is the type of the state that the fish accumulates by processing events
-- `E` is the type of events understood by the `onEvent` handler
+- `S` is the type of the internal state that the fish accumulates by processing events
+- `C` is the type of commands accepted by the `onComamnd` handler
+- `E` is the type of events emitted by the `onCommand` handler and understood by the `onEvent` handler
+- `P` is the type of the observable state for the outside world
 
 In particular, the full type of the chat room fish we have developed so far is
 
 ```typescript
-const chatRoomFish: Fish<string[], ChatRoomEvent> = ..
+const chatRoomFish: FishTypeImpl<string[], ChatRoomCommand, ChatRoomEvent, string[]>
 ```
 
-This allows interactions with fishes via `Pond.run` and `Pond.observe` to be checked for correctness by the TypeScript compiler.
+This allows interactions with fishes via `Pond.feed` and `Pond.observe` to be checked for correctness by the TypeScript compiler.
 Unfortunately, this type-checking does not extend to the subscription set of a fish since the subscribed event streams do not necessarily have typescript declarations — they may come from ActyxOS apps that are implemented directly on top of the [Event Service](../../os/api/event-service.md).
 
 :::note
-In a future version ActyxOS will support the registration of event schemata for event streams, allowing types to be checked across nodes and apps. This will include compile-time declarations for TypeScript as well as runtime checks for all events passed into the Event Service API. For now, you can use the [typed tag](typed-tags) query API to gain better type guarantees within the Pond app itself.
+In a future version ActyxOS will support the registration of event schemata for event streams, allowing types to be checked across nodes and apps. This will include compile-time declarations for TypeScript as well as runtime checks for all events passed into the Event Service API.
 :::
 
 Static type information also gives you some measure of control over the evolution of your event types:

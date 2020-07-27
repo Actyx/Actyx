@@ -43,7 +43,7 @@ use std::str::FromStr;
 
 mod offsets;
 mod opaque;
-mod scalars;
+pub(crate) mod scalars;
 
 pub use offsets::{Offset, OffsetMap, OffsetOrMin};
 pub use opaque::Opaque;

@@ -21,11 +21,9 @@ import { SnapshotStore } from './snapshotStore'
 import { Config as WaitForSwarmConfig, SplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
-import { toWireFormat, TypedTagIntersection } from './tagging'
+import { Tags, toSubscriptionSet } from './tagging'
 import {
   CancelSubscription,
-  EmissionRequest,
-  Emit,
   Fish,
   FishId,
   FishName,
@@ -42,9 +40,7 @@ import {
   Timestamp,
 } from './types'
 
-const isTyped = (
-  e: ReadonlyArray<string> | TypedTagIntersection<unknown>,
-): e is TypedTagIntersection<unknown> => {
+const isTyped = (e: ReadonlyArray<string> | Tags<unknown>): e is Tags<unknown> => {
   return !Array.isArray(e)
 }
 
@@ -80,10 +76,29 @@ const omitObservable = <S>(
   return sub.unsubscribe.bind(sub)
 }
 
+const wrapStateFn = <S, EWrite>(fn: StateEffect<S, EWrite>) => {
+  const effect = async (state: S) => {
+    const emissions: Emit<any>[] = []
+    await fn(state, (tags, payload) => emissions.push({ tags, payload }))
+    return emissions
+  }
+
+  return effect
+}
+
 const pendingEmission = (o: Observable<void>): PendingEmission => ({
   subscribe: o.subscribe.bind(o),
   toPromise: () => o.toPromise(),
 })
+
+// For internal use only. TODO: Cleanup.
+type Emit<E> = {
+  tags: ReadonlyArray<string> | Tags<E>
+  payload: E
+}
+type StateEffectInternal<S, EWrite> = (state: S) => EmissionRequest<EWrite>
+type EmissionRequest<E> = ReadonlyArray<Emit<E>> | Promise<ReadonlyArray<Emit<E>>>
+// endof TODO cleanup
 
 type ActiveFish<S> = {
   readonly states: Observable<StateWithProvenance<S>>
@@ -107,82 +122,72 @@ export type Pond = {
   /**
    * Emit a single event directly.
    *
-   * @param tags    Tags to attach to the event.
-   * @param payload The event payload.
-   * @returns       A `PendingEmission` object that can be used to register
-   *                callbacks with the emission’s completion.
-   */
-  emit<E>(tags: string[] | TypedTagIntersection<E>, payload: E): PendingEmission
-
-  /**
-   * Emit a number of events at once.
+   * @typeParam E    Type of the event payload. If your tags are statically declared,
+   *                 their type will be checked against the payload’s type.
    *
-   * @param emit    The events to be emitted, expressed as objects containing `tags` and `payload`.
-   * @returns       A `PendingEmission` object that can be used to register
-   *                callbacks with the emission’s completion.
+   * @param tags     Tags to attach to the event. E.g. `Tags('myTag', 'myOtherTag')`
+   * @param event    The event itself.
+   * @returns        A `PendingEmission` object that can be used to register
+   *                 callbacks with the emission’s completion.
    */
-  emitMany(...emit: ReadonlyArray<Emit<any>>): PendingEmission
+  emit<E>(tags: Tags<E>, event: E): PendingEmission
 
   /* AGGREGATION */
 
   /**
-   * Fold events into state. Caching is done based on the `cacheKey` inside the `fish`.
+   * Observe the current state of a Fish.
    *
-   * @param fish    Complete aggregation information.
+   * Caching is done based on the `fishId` inside the `fish`, i.e. if a fish with the included
+   * `fishId` is already known, that other Fish’s ongoing aggregation will be used instead of
+   * starting a new one.
+   *
+   * @param fish         Complete Fish information.
    * @param callback     Function that will be called whenever a new state becomes available.
    * @returns            A function that can be called in order to cancel the aggregation.
    */
   observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription
 
-  /* CONDITIONAL EMISSION (COMMANDS) */
+  /* CONDITIONAL EMISSION (STATE EFFECTS) */
 
   /**
-   * Run StateEffects against the current **locally known** State of the `fish`.
-   * The Effect is able to consider that State and create Events from it.
-   * Every Effect will see the Events of all previous Effects *on this fish* applied already!
+   * Run a `StateEffect` against currently known local state of Fish. Emit events based on it by
+   * calling the `enqueue` function passed into the invocation of your effect. Every subsequent
+   * invocation of `run` for the same Fish is guaranteed to see all events previously enqueued by
+   * effects on that Fish already applied to the state. (Local serialisation guarantee.)
    *
-   * In regards to other nodes, there are no serialisation guarantees.
+   * In regards to other nodes or Fishes, there are no serialisation guarantees.
    *
    * @typeParam S                State of the Fish, input value to the effect.
-   * @typeParam EWrite           Payload type(s) to be returned by the effect.
+   * @typeParam EWrite           Event type(s) the effect may emit.
    *
-   * @param fish         Complete aggregation information.
-   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
+   * @param fish         Complete Fish information.
+   * @param effect       Function to enqueue new events based on state.
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
-  run<S, EWrite>(fish: Fish<S, any>, effect: StateEffect<S, EWrite>): PendingEmission
+  run<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>): PendingEmission
 
   /**
-   * Curried version of `runStateEffect`.
-   *
-   * @typeParam S                State of the Fish, input value to the effect.
-   * @typeParam EWrite           Payload type(s) to be returned by the effect.
-   *
-   * @param fish         Complete aggregation information.
-   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
-   * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
-   */
-  runC<S, EWrite>(fish: Fish<S, any>): (effect: StateEffect<S, EWrite>) => PendingEmission
-
-  /**
-   * Install a StateEffect that will be applied automatically whenever the `agg`’s State has changed.
+   * Install a StateEffect that will be applied automatically whenever the `Fish`’s State has changed.
    * Every application will see the previous one’s resulting Events applied to the State already, if applicable;
    * but any number of intermediate States may have been skipped between two applications.
    *
+   * In regards to other nodes or Fishes, there are no serialisation guarantees.
+   *
    * The effect can be uninstalled by calling the returned `CancelSubscription`.
    *
-   * @typeParam S        State of the Fish, input value to the effect.
-   * @typeParam EWrite   Payload type(s) to be returned by the effect.
+   * @typeParam S                State of the Fish, input value to the effect.
+   * @typeParam EWrite           Event type(s) the effect may emit.
    *
-   * @param fish         Complete aggregation information.
-   * @param effect       A function to turn State into an array of Events. The array may be empty, in order to emit 0 Events.
-   * @param autoCancel   Condition on which the automatic effect will be cancelled -- State on which `autoCancel` returns `true`
-   *                     will be the first State the effect is *not* applied to anymore.
+   * @param fish         Complete Fish information.
+   * @param effect       Function that decides whether to enqueue new events based on the current state.
+   * @param autoCancel   Condition on which the automatic effect will be cancelled -- state on which `autoCancel` returns `true`
+   *                     will be the first state the effect is *not* applied to anymore. Keep in mind that not all intermediate
+   *                     states will be seen by this function.
    * @returns            A `CancelSubscription` object that can be used to cancel the automatic effect.
    */
   keepRunning<S, EWrite>(
     fish: Fish<S, any>,
-    effect: StateEffect<S, EWrite>,
+    fn: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ): CancelSubscription
 
@@ -201,12 +206,13 @@ export type Pond = {
   info(): PondInfo
 
   /**
-   * Obtain an observable state of the pond.
+   * Register a callback invoked whenever the Pond’s state changes.
+   * The `PondState` is a general description of activity within the Pond internals.
    */
   getPondState(callback: (newState: PondState) => void): CancelSubscription
 
   /**
-   * Obtain an observable describing connectivity status of this node.
+   * Register a callback invoked whenever the node’s connectivity status changes.
    */
   getNodeConnectivity(params: GetNodeConnectivityParams): CancelSubscription
 
@@ -224,8 +230,8 @@ export class Pond2Impl implements Pond {
     initialState: S,
     onEvent: (state: S, event: E, metadata: Metadata) => S,
     fishId: FishId,
-    enableLocalSnapshots: boolean,
     isReset?: IsReset<E>,
+    deserializeState?: (jsonState: unknown) => S,
   ) => Observable<StateWithProvenance<S>>
 
   activeFishes: {
@@ -291,7 +297,7 @@ export class Pond2Impl implements Pond {
       const event = {
         semantics: Semantics.none,
         name: FishName.none,
-        tags: isTyped(tags) ? tags.raw().tags : tags,
+        tags: isTyped(tags) ? tags.toWireFormat().tags : tags,
         timestamp,
         payload,
       }
@@ -302,11 +308,11 @@ export class Pond2Impl implements Pond {
     return this.eventStore.persistEvents(events)
   }
 
-  emit = <E>(tags: string[] | TypedTagIntersection<E>, payload: E): PendingEmission => {
+  emit = <E>(tags: Tags<E>, payload: E): PendingEmission => {
     return this.emitMany({ tags, payload })
   }
 
-  emitMany = (...emissions: ReadonlyArray<Emit<any>>): PendingEmission => {
+  private emitMany = (...emissions: ReadonlyArray<Emit<any>>): PendingEmission => {
     // `shareReplay` so that every piece of user code calling `subscribe`
     // on the return value will actually be executed
     const o = this.emitTagged0(emissions)
@@ -324,7 +330,8 @@ export class Pond2Impl implements Pond {
     initialState: S,
     onEvent: Reduce<S, E>,
     fishId: FishId,
-    isReset?: IsReset<E>,
+    isReset: IsReset<E> | undefined,
+    deserializeState: ((jsonState: unknown) => S) | undefined,
   ): ActiveFish<S> => {
     const key = FishId.canonical(fishId)
     const existing = this.activeFishes[key]
@@ -340,8 +347,8 @@ export class Pond2Impl implements Pond {
       initialState,
       onEvent,
       fishId,
-      true,
       isReset,
+      deserializeState,
     ).shareReplay(1)
 
     const a = {
@@ -352,32 +359,24 @@ export class Pond2Impl implements Pond {
   }
 
   private observeTagBased0 = <S, E>(acc: Fish<S, E>): ActiveFish<S> => {
-    const subscriptionSet: SubscriptionSet = {
-      type: 'tags',
-      subscriptions: toWireFormat(acc.where),
-    }
-
     return this.getCachedOrInitialize(
-      subscriptionSet,
+      toSubscriptionSet(acc.where),
       acc.initialState,
       acc.onEvent,
       acc.fishId,
       acc.isReset,
+      acc.deserializeState,
     )
   }
 
-  observe = <S, E>(acc: Fish<S, E>, callback: (newState: S) => void): CancelSubscription => {
-    if (acc.deserializeState) {
-      throw new Error('custom deser not yet supported')
-    }
-
-    return omitObservable(callback, this.observeTagBased0<S, E>(acc).states)
+  observe = <S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription => {
+    return omitObservable(callback, this.observeTagBased0<S, E>(fish).states)
   }
 
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
-  runC = <S, EWrite, ReadBack = false>(
+  private run0 = <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
-  ): ((effect: StateEffect<S, EWrite>) => PendingEmission) => {
+  ): ((effect: StateEffectInternal<S, EWrite>) => PendingEmission) => {
     const cached = this.observeTagBased0(agg)
     const handleInternal = this.getOrCreateCommandHandle0(agg, cached)
 
@@ -391,20 +390,17 @@ export class Pond2Impl implements Pond {
   private getOrCreateCommandHandle0 = <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
     cached: ActiveFish<S>,
-  ): ((effect: StateEffect<S, EWrite>) => Observable<void>) => {
+  ): ((effect: StateEffectInternal<S, EWrite>) => Observable<void>) => {
     const handler = this.v2CommandHandler
 
-    const subscriptionSet: SubscriptionSet = {
-      type: 'tags',
-      subscriptions: toWireFormat(agg.where),
-    }
+    const subscriptionSet = toSubscriptionSet(agg.where)
 
     const commandPipeline =
       cached.commandPipeline ||
       FishJar.commandPipeline<S, EmissionRequest<any>>(
         this.pondStateTracker,
         this.eventStore.sourceId,
-        agg.fishId.entityType || Semantics.none,
+        agg.fishId.entityType,
         agg.fishId.name,
         handler,
         cached.states,
@@ -438,26 +434,28 @@ export class Pond2Impl implements Pond {
 
   run = <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
-    effect: StateEffect<S, EWrite>,
+    fn: StateEffect<S, EWrite>,
   ): PendingEmission => {
-    const handle = this.runC(agg)
-    return handle(effect)
+    const handle = this.run0(agg)
+    return handle(wrapStateFn(fn))
   }
 
-  keepRunning = <S, EWrite, ReadBack = false>(
-    agg: Fish<S, ReadBack extends true ? EWrite : any>,
-    effect: StateEffect<S, EWrite>,
+  keepRunning = <S, EWrite>(
+    fish: Fish<S, any>,
+    fn: StateEffect<S, EWrite>,
     autoCancel?: (state: S) => boolean,
   ): CancelSubscription => {
+    const effect = wrapStateFn(fn)
+
     // We use this state `cancelled` to stop effects "asap" when user code calls the cancellation function.
     // Otherwise it might happen that we have already queued the next effect and run longer than desired.
     let cancelled = false
 
     const wrappedEffect = (state: S) => (cancelled ? [] : effect(state))
 
-    const cached = this.observeTagBased0(agg)
+    const cached = this.observeTagBased0(fish)
     const states = cached.states
-    const handleInternal = this.getOrCreateCommandHandle0(agg, cached)
+    const handleInternal = this.getOrCreateCommandHandle0(fish, cached)
 
     const tw = autoCancel
       ? (state: S) => {

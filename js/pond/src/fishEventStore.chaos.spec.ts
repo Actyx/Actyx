@@ -6,15 +6,23 @@
  */
 import { catOptions, chunksOf } from 'fp-ts/lib/Array'
 import { none, some } from 'fp-ts/lib/Option'
-import { SourceId, SubscriptionSet, Timestamp } from '.'
-import { Psn, FishName, Semantics } from './types'
 import { Event, Events, EventStore, OffsetMap } from './eventstore'
 import { includeEvent } from './eventstore/testEventStore'
 import { interleaveRandom, intoOrderedChunks } from './eventstore/utils'
 import { FishEventStore, FishInfo } from './fishEventStore'
 import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
-import { EventKey, Lamport, SnapshotFormat } from './types'
+import { SubscriptionSet } from './subscription'
+import {
+  EventKey,
+  FishName,
+  Lamport,
+  Psn,
+  Semantics,
+  SnapshotFormat,
+  SourceId,
+  Timestamp,
+} from './types'
 import { shuffle } from './util/array'
 
 const numberOfSources = 5

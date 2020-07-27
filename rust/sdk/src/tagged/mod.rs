@@ -23,13 +23,17 @@
 #[cfg(feature = "client")]
 mod client;
 mod event;
+mod scalars;
 mod service;
+mod snapshot;
 mod tags;
 
 #[cfg(feature = "client")]
 pub use client::EventService;
 pub use event::{Event, EventKey, Metadata};
+pub use scalars::{NodeId, SessionId, StreamId};
 pub use service::{
-    NodeId, SessionId, SubscribeUntilTimeTravelApiRequest, SubscribeUntilTimeTravelResponse,
+    StartFrom, SubscribeUntilTimeTravelApiRequest, SubscribeUntilTimeTravelResponse,
 };
+pub use snapshot::{Compression, SnapshotData};
 pub use tags::{Tag, TagSet};

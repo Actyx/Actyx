@@ -17,79 +17,25 @@
 //!
 //! The [`EventService`](struct.EventService.html) client is only available under the `client` feature flag.
 
-use super::{event::EventKey, Event};
-use crate::{OffsetMap, Payload, SourceId};
+use super::{event::EventKey, Compression, Event, NodeId, SessionId, SnapshotData};
+use crate::{OffsetMap, Payload};
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+use std::collections::BTreeSet;
 
-/// The session identifier used in subscribeUntilTimeTravel
-#[derive(Debug, Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
-pub struct SessionId(Box<str>);
-
-impl Display for SessionId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&*self.0)
-    }
+#[derive(Debug, Serialize, Deserialize, Clone, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum StartFrom {
+    Offsets(OffsetMap),
+    Snapshot { compression: BTreeSet<Compression> },
 }
 
-impl From<&str> for SessionId {
-    fn from(s: &str) -> Self {
-        Self(s.into())
-    }
-}
-
-impl From<String> for SessionId {
-    fn from(s: String) -> Self {
-        Self(s.into())
-    }
-}
-
-impl SessionId {
-    /// Extracts a string slice containing the entire session id
-    pub fn as_str(&self) -> &str {
-        &*self.0
-    }
-}
-
-/// The ActyxOS node identifier
-///
-/// Each node may emit multiple sources, each identified by its own [`SourceId`](../struct.SourceId.html).
-#[derive(Debug, Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
-pub struct NodeId(Box<str>);
-
-impl Display for NodeId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&*self.0)
-    }
-}
-
-impl From<&str> for NodeId {
-    fn from(s: &str) -> Self {
-        Self(s.into())
-    }
-}
-
-impl From<String> for NodeId {
-    fn from(s: String) -> Self {
-        Self(s.into())
-    }
-}
-
-impl NodeId {
-    /// Check whether the given `SourceId` is published by the ActyxOS node identified by this `NodeId`
-    ///
-    /// This is accomplished without accessing further data by deriving the `SourceId` from its node’s
-    /// `NodeId`: the `NodeId` is extended with an underscore and possibly more characters to obtain
-    /// the `SourceId`.
-    pub fn has_source_id(&self, source_id: SourceId) -> bool {
-        source_id.as_str().len() > self.0.len()
-            && source_id.as_str().starts_with(&*self.0)
-            && source_id.as_str().as_bytes()[self.0.len()] == b'_'
-    }
-
-    /// Extracts a string slice containing the entire node id
-    pub fn as_str(&self) -> &str {
-        &*self.0
+impl StartFrom {
+    pub fn min_offsets(&self) -> OffsetMap {
+        if let StartFrom::Offsets(o) = self {
+            o.clone()
+        } else {
+            OffsetMap::empty()
+        }
     }
 }
 
@@ -102,30 +48,49 @@ impl NodeId {
 /// Send this structure to the `$BASE_URI/subscribe` endpoint to retrieve an
 /// unbounded stream of events. If the lower bound is given, it filters out all
 /// events that are included in the `lower_bound` OffsetMap.
-///
-/// The common pattern is to take note of consumed events by adding them into an
-/// OffsetMap and resuming the stream from this OffsetMap after an app restart.
-///
-/// The delivered event stream will be filtered by the subscriptions: an event
-/// is included if any of the subscriptions matches.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscribeUntilTimeTravelApiRequest {
-    pub lower_bound: Option<OffsetMap>,
+    /// This id uniquely identifies one particular session. Connecting again with this
+    /// SessionId shall only be done after a TimeTravel message has been received. The
+    /// subscription is stored with the Session and all previous state is destroyed
+    /// upon receiving a different subscription for this session.
+    pub session: SessionId,
+    /// Definition of the events to be received by this session, i.e. a selection of
+    /// tags coupled with other flags like “is local”.
     pub subscription: String,
-    pub session: Option<SessionId>,
+    /// The consumer may already have kept state and know at which point to resume a
+    /// previously interrupted stream. In this case, StartFrom::Offsets is used,
+    /// otherwise StartFrom::Snapshot indicates that the PondService shall figure
+    /// out where best to start out from, possibly sending a `State` message first.
+    #[serde(flatten)]
+    pub from: StartFrom,
 }
 
-/// Response to subscribeUntilTimeTravel is a stream of events terminated by a time travel.
+/// Response to subscribeUntilTimeTravel is a stream of events terminated by a time travel
 #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SubscribeUntilTimeTravelResponse {
-    Event(Event<Payload>),
+    /// This message may be sent in the beginning when a suitable snapshot has been
+    /// found for this session. It may also be sent at later times when suitable
+    /// snapshots become available by other means (if for example this session is
+    /// computed also on a different node).
     #[serde(rename_all = "camelCase")]
-    TimeTravel {
-        session: SessionId,
-        new_start: EventKey,
+    State { snapshot: SnapshotData },
+    /// This is the main message, a new event that is to be applied directly to the
+    /// currently known state to produce the next state.
+    #[serde(rename_all = "camelCase")]
+    Event {
+        #[serde(flatten)]
+        event: Event<Payload>,
+        caught_up: bool,
     },
+    /// This message ends the stream in case a replay becomes necessary due to
+    /// time travel. The contained event key signals how far back the replay will
+    /// reach so that the consumer can invalidate locally stored snapshots (if
+    /// relevant).
+    #[serde(rename_all = "camelCase")]
+    TimeTravel { new_start: EventKey },
 }
 
 /// Response to the `node_id` endpoint
@@ -147,46 +112,74 @@ mod tests {
     #[test]
     fn must_serialize_subscribe_until_time_travel() {
         let req = SubscribeUntilTimeTravelApiRequest {
-            lower_bound: None,
+            session: "sess".into(),
             subscription: "'tagA' & 'tagB'".to_owned(),
-            session: None,
+            from: StartFrom::Offsets(OffsetMap::empty()),
         };
         let s = serde_json::to_string(&req).unwrap();
         assert_eq!(
             s,
-            r#"{"lowerBound":null,"subscription":"'tagA' & 'tagB'","session":null}"#
+            r#"{"session":"sess","subscription":"'tagA' & 'tagB'","offsets":{}}"#
         );
         let r: SubscribeUntilTimeTravelApiRequest = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, req);
 
-        let resp = SubscribeUntilTimeTravelResponse::Event(Event {
-            key: EventKey {
-                lamport: LamportTimestamp::new(1),
-                source: source_id!("src"),
-                offset: Offset::mk_test(3),
+        let req = SubscribeUntilTimeTravelApiRequest {
+            session: "sess".into(),
+            subscription: "'tagA' & 'tagB'".to_owned(),
+            from: StartFrom::Snapshot {
+                compression: [Compression::Deflate].iter().copied().collect(),
             },
-            meta: Metadata {
-                timestamp: TimeStamp::new(2),
-                tags: TagSet::empty(),
-            },
-            payload: Payload::default(),
-        });
+        };
+        let s = serde_json::to_string(&req).unwrap();
+        assert_eq!(
+            s,
+            r#"{"session":"sess","subscription":"'tagA' & 'tagB'","snapshot":{"compression":["deflate"]}}"#
+        );
+        let r: SubscribeUntilTimeTravelApiRequest = serde_json::from_str(&*s).unwrap();
+        assert_eq!(r, req);
+
+        let resp = SubscribeUntilTimeTravelResponse::State {
+            snapshot: SnapshotData::new(Compression::None, &[1, 2, 3][..]),
+        };
         let s = serde_json::to_string(&resp).unwrap();
         assert_eq!(
             s,
-            r#"{"type":"event","key":{"lamport":1,"source":"src","offset":3},"meta":{"timestamp":2,"tags":[]},"payload":null}"#
+            r#"{"type":"state","snapshot":{"compression":"none","data":"AQID"}}"#
+        );
+        let r: SubscribeUntilTimeTravelResponse = serde_json::from_str(&*s).unwrap();
+        assert_eq!(r, resp);
+
+        let resp = SubscribeUntilTimeTravelResponse::Event {
+            event: Event {
+                key: EventKey {
+                    lamport: LamportTimestamp::new(1),
+                    stream: source_id!("src").into(),
+                    offset: Offset::mk_test(3),
+                },
+                meta: Metadata {
+                    timestamp: TimeStamp::new(2),
+                    tags: TagSet::empty(),
+                },
+                payload: Payload::default(),
+            },
+            caught_up: true,
+        };
+        let s = serde_json::to_string(&resp).unwrap();
+        assert_eq!(
+            s,
+            r#"{"type":"event","key":{"lamport":1,"stream":"src","offset":3},"meta":{"timestamp":2,"tags":[]},"payload":null,"caughtUp":true}"#
         );
         let r: SubscribeUntilTimeTravelResponse = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, resp);
 
         let resp = SubscribeUntilTimeTravelResponse::TimeTravel {
-            session: SessionId::from("session"),
             new_start: EventKey::default(),
         };
         let s = serde_json::to_string(&resp).unwrap();
         assert_eq!(
             s,
-            r#"{"type":"timeTravel","session":"session","newStart":{"lamport":0,"source":"!","offset":0}}"#
+            r#"{"type":"timeTravel","newStart":{"lamport":0,"stream":"!","offset":0}}"#
         );
         let r: SubscribeUntilTimeTravelResponse = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, resp);

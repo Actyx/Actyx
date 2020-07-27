@@ -13,8 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use super::TagSet;
-use crate::{source_id, LamportTimestamp, Offset, Payload, SourceId, TimeStamp};
+use super::{StreamId, TagSet};
+use crate::{source_id, LamportTimestamp, Offset, Payload, TimeStamp};
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
@@ -144,7 +144,7 @@ impl Event<Payload> {
 #[serde(rename_all = "camelCase")]
 pub struct EventKey {
     pub lamport: LamportTimestamp,
-    pub source: SourceId,
+    pub stream: StreamId,
     pub offset: Offset,
 }
 
@@ -155,7 +155,7 @@ impl Default for EventKey {
     fn default() -> Self {
         Self {
             lamport: Default::default(),
-            source: source_id!("!"),
+            stream: source_id!("!").into(),
             offset: Default::default(),
         }
     }

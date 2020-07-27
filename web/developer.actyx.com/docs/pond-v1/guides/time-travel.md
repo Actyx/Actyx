@@ -9,11 +9,16 @@ To make our distributed app experiment more interesting, we change the chat room
 With this change, the fish type definition looks like the following:
 
 ```typescript
-export const mkChatRoomFish = (name: string) => ({
-  fishId: FishId.of('ax.example.ChatRoom', name, 0),
-  initialState: [],
+const chatRoomSemantics = Semantics.of('ax.example.ChatRoom')
+export const chatRoomFish = FishType.of({
+  semantics: chatRoomSemantics,
+  initialState: (name) => ({
+    state: [],
+    subscriptions: [{ semantics: chatRoomSemantics, name }]
+  }),
+  onCommand: chatRoomOnCommand,
   onEvent: chatRoomOnEvent,
-  where: Tag('chatRoom').withId(name),
+  onStateChange: OnStateChange.publishPrivateState()
 })
 ```
 
@@ -22,17 +27,22 @@ The first one is for sending messages into it that we assume to come from the co
 
 ```typescript
 export const main3 = (pond: Pond, message: string) =>
-  pond.emit(['chatRoom:my-room'], { type: 'messageAdded', message}).toPromise()
+  pond
+    .feed(chatRoomFish, 'my-room')({ type: 'addMessage', message })
+    .toPromise()
 ```
 
 The second one observes the state of the chat room fish and prints the list of messages whenever it changes:
 
 ```typescript
 export const main4 = (pond: Pond) =>
-  pond.observe(mkChatRoomFish('my-room'), msgs => {
-    msgs.forEach(msg => console.log(msg))
-    console.log('---')
-  })
+  pond
+    .observe(chatRoomFish, 'my-room')
+    .do(msgs => {
+      msgs.forEach(msg => console.log(msg))
+      console.log('---')
+    })
+    .subscribe()
 ```
 
 Running the observer on one node and the sender on two different nodes we should see the list of messages updating as we send new messages to the fish.
@@ -41,7 +51,7 @@ Now, if we detach one of the sender nodes from the network for a bit and send so
 This is because the other messages cannot be transferred right now.
 
 When reconnecting the previously disconnected sending node, its messages `msgA1` to `msgA3` will show up at the observer after a short while.
-But we notice that the messages show up not at the end of the log but interleaved with the others, for example like
+But we notice that the messages show up not at the end of the log but interleaves with the others, for example like
 
     msgB1
     msgB2
@@ -64,8 +74,11 @@ This can be visualized like the grey zigzag line zipping together the events and
 
 ![](/images/pond/time-travel.png)
 
-When a new event arrives that belongs somewhere in the middle of the previously known log of events, it is inserted in its rightful spot and the current state is recomputed by applying all events again, now including the inserted event.
+When a new event arrives, that belongs somewhere in the middle of the previously known log of events, then it is inserted in its rightful spot and the current state is recomputed by applying all events again, now including the inserted event.
 This is shown on the right-hand side of the diagram above; in practice the state computation starts from the state right before the inserted event in most cases, as a cache of states is kept in memory.
+
+This is the reason for the **very important principle that fish state never be changed**, the state computation always needs to create a fresh copy.
+This copy can reuse pieces that are not changed, as is frequently done in so-called persistent data structures that are used in functional programming.
 
 The remaining question is where the ordering of events comes from: how does the Pond know where a newly received events needs to be sorted into the event log?
 
@@ -74,8 +87,7 @@ This allows all Ponds to sort the full event log in exactly the same order regar
 With this technique, it is the log itself that is eventually consistent and any business logic that deterministically computes state from such a log will be eventually consistent as well.
 
 :::note
-This explains why it is imperative that `onEvent` be fully deterministic and depend only on its inputs: the state and the event. If for example a random number generator bound to each specific edge node were used in the computation, then the same fish would compute different states on different nodes, making the system no longer eventually consistent.
+This explains why it is imperative that `onEvent` be fully deterministic and only depends on its inputs: the state and the event. If for example a random number generator bound to each specific edge node were used in the computation, then the same fish would compute different states on difference nodes, making the system no longer eventually consistent.
 :::
 
-Equipped with this knowledge we are now ready to tackle local decision-making as explained in the next section on state
-effects.
+Equipped with this knowledge we are now ready to tackle local decision-making as explained in the next section on command validation.

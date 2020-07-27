@@ -45,36 +45,30 @@ the [Actyx Pond](pond/introduction.md) library and write the app in the [Typescr
 logic are called _fishes:_
 
 ```typescript
-import { Pond, Semantics, OnStateChange, Subscription, FishTypeImpl } from '@actyx/pond'
+import { Pond, Fish, FishId, Tag } from '@actyx/pond'
 
-// Each fish keeps some local state it remembers from the events it has seen.
-// In this case, we’ll just remember some details of the latest event.
-type State = { time: string, name: string, msg: string, } | undefined
+// Each fish keeps some local state it remembers from all the events it has seen
+type State = { time: string, sender: string, msg: string, } | undefined
+type Event = { msg: string, sender: string }
+const senderTag = Tag<Event>('sender')
 
-const ForgetfulChatFish: FishTypeImpl<State, string, string, State> = FishTypeImpl.of({
+const mkForgetfulChatFish = (name: string): Fish<State, Event> => ({
     // The kind of fish is identified by the meaning of its event stream, the semantics
-    semantics: Semantics.of('ForgetfulChatFish'),
+    fishId: FishId.of('ForgetfulChatFish', name, 0),
 
-    // When the fish first wakes up, it computes its initial state and declares which
-    // event streams to listen to. Most fishes subscribe to their own event stream.
-    initialState: (_name, _sourceId) => ({
-        state: undefined, // start without information about previous event
-        subscriptions: [Subscription.of(ForgetfulChatFish)] // all fish of this kind
-    }),
+    // When the fish first wakes up, it computes its initial state and event subscriptions
+    initialState: undefined, // start without information about previous event
 
-    // Upon each new event, keep some details of that event in the state.
-    onEvent: (_state, event) => ({
-        time: new Date(event.timestamp / 1000).toISOString(),
-        name: event.source.name,
-        msg: event.payload
-    }),
+    // Upon each new event, keep some details of that event in the state
+    onEvent: (_state, { sender, msg }, metadata) =>
+        ({
+            time: metadata.timestampAsDate().toISOString(),
+            sender,
+            msg
+        }),
+    where: senderTag
+});
 
-    // Show the state computed above to the outside world (see Pond.observe below).
-    onStateChange: OnStateChange.publishPrivateState(),
-
-    // Upon each received command message generate a single event.
-    onCommand: (_state, msg) => [msg],
-})
 ```
 
 This piece of logic can be run on multiple edge devices, each running an ActyxOS node, and we’ll do so in the following.
@@ -87,9 +81,9 @@ Pond.default().then(pond => {
     // figure out the name of the fish we want to wake up
     const myName = process.argv[2] || pond.info().sourceId
     // wake up fish with the given name and log its published states
-    pond.observe(ForgetfulChatFish, myName).subscribe(console.log)
+    pond.observe(mkForgetfulChatFish(myName), console.log)
     // send a 'ping' message every 5 seconds to generate a new event
-    setInterval(() => pond.feed(ForgetfulChatFish, myName)('ping').subscribe(), 5000)
+    setInterval(() => pond.emit(nameTag.withId(myName), { msg: 'ping', sender: myName }), 5000)
 })
 ```
 

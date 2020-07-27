@@ -54,7 +54,30 @@ module.exports = {
       'os/tools/node-manager',
     ]
   },
+  pondv1Sidebar: {
+    'Versions (current: v1)': [
+       { type: 'link', href: '../pond/getting-started', label: 'v2' },
+    ],
+    'Actyx Pond': [
+      'pond-v1/getting-started',
+      'pond-v1/programming-model',
+    ],
+    'Guides': [
+      'pond-v1/guides/hello-world',
+      'pond-v1/guides/events',
+      'pond-v1/guides/local-state',
+      'pond-v1/guides/subscriptions',
+      'pond-v1/guides/time-travel',
+      'pond-v1/guides/commands',
+      'pond-v1/guides/types',
+      'pond-v1/guides/snapshots',
+      'pond-v1/guides/integrating-a-ui',
+    ],
+  },
   pondSidebar: {
+    'Versions (current: v2)': [
+       { type: 'link', href: '../pond-v1/getting-started', label: 'v1' },
+    ],
     'Actyx Pond': [
       'pond/getting-started',
       'pond/programming-model',
@@ -64,8 +87,9 @@ module.exports = {
       'pond/guides/events',
       'pond/guides/local-state',
       'pond/guides/subscriptions',
+      'pond/guides/typed-tags',
       'pond/guides/time-travel',
-      'pond/guides/commands',
+      'pond/guides/state-effects',
       'pond/guides/types',
       'pond/guides/snapshots',
       'pond/guides/integrating-a-ui',
