@@ -6,7 +6,7 @@ title: ax apps ls
 
 ```
 $ ax apps ls --help
-USAGE: ax apps ls [FLAGS] [OPTIONS] <NODE>...
+USAGE: ax apps ls [FLAGS] [OPTIONS] <NODE>
 
 FLAGS:
     -v, -vv, -vvv        Increase verbosity
@@ -17,14 +17,14 @@ FLAGS:
 ARGS:
     <NODE>           Node ID or, if using `--local`, the IP address, of the
                      node to perform the operation on. You may also pass in a
-                     file with a value using the syntax `@file.txt` or have the 
+                     file with a value using the syntax `@file.txt` or have the
                      command one value from stdin using `@-`.
 ```
 
 :::tip Output
 If a node is reachable, the output of `ax apps ls` will list the status of all apps deployed on that node. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
 - Host unreachable
-- ActyxOS unreachable (this means the host was reachable but the TCP connection reset) 
+- ActyxOS unreachable (this means the host was reachable but the TCP connection reset)
 :::
 
 
@@ -37,7 +37,7 @@ $ ax apps ls --local 10.2.3.23
 NODE ID    APP ID         STATE    SETTINGS LICENSE  MODE      STARTED                    VERSION
 10.2.3.23  com.actyx.mwl  running     valid   valid  enabled   2020-03-18T06:17:00+01:00  1.0.0
 
-# get the status of apps on a nodes in the local network as a json object
+# Get the status of apps on a node in the local network as a JSON object
 $ ax --json apps ls --local 10.2.3.23
 {
     "code":"OK",
