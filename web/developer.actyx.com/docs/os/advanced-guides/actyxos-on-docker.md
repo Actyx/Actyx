@@ -12,7 +12,7 @@ import TabItem from '@theme/TabItem';
 For a list of supported devices, please refer to [Supported edge devices](/docs/faq/supported-edge-devices) Your edge device must meet the following requirements to install <em>ActyxOS on Docker</em>:
 
 - [Docker](https://docs.docker.com/) (for ActyxOS to work, you need to be able to run Docker in privileged mode)
-- Ability to run either `amd64` or `arm64v8` docker images
+- Ability to run `amd64`, `arm64v8`, `arm32v7` or `arm32v6` docker images
 
 If you do not have Docker, check the installation guide for your operating system:
 - [Linux](https://docs.docker.com/install/)

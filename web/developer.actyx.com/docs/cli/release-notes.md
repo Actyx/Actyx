@@ -4,6 +4,18 @@ title: Release notes
 
 This page contains information about new features, bug fixes, deprecations and removals in the Actyx CLI releases. For a more extensive description of the changes, check out our [blog](https://www.actyx.com/news/).
 
+## Actyx CLI 1.0.0
+
+**Release date: 29.07.2020**
+
+[Download](https://downloads.actyx.com/)
+
+### New features
+- Introduced support for `arm` and `armhf` devices
+
+### Bug Fixes
+- Several stability improvements
+
 ## Actyx CLI 1.0.0-rc.3
 
 **Release date: 12.06.2020**
