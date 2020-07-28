@@ -220,6 +220,7 @@ endef
 node-manager-win64: actyxos-bin-win64
 	$(eval PLATFORM:=win32)
 	$(eval ARCH:=x64)
+	cp -f ./dist/bin/win64/ax.exe ./misc/actyxos-node-manager/bin/win32/
 	$(call build_node_manager,$(PLATFORM),$(ARCH))
 
 actyxos-bin-win64: debug clean
