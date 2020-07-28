@@ -241,7 +241,6 @@ class BackgroundServices : Service() {
       mapOf(
         "baltech" to BaltechReaderService(this),
         "metric" to MetricService(this),
-        "ipfs" to IpfsService(this),
         "zebraScanner" to ZebraScannerService(this)
       )
         .map { (name, run) ->
