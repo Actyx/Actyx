@@ -2,7 +2,7 @@
 title: ax apps ls
 ---
 
-### Get the states of the apps deployed to your nodes
+### Get the status of apps that are deployed to your node
 
 ```
 $ ax apps ls --help
