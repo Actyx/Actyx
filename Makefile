@@ -113,7 +113,11 @@ else
 ifeq ($(arch), x64)
 DOCKER_PLATFORM:=linux/amd64
 else
+ifeq ($(arch), arm)
+DOCKER_PLATFORM:=linux/arm/v6
+else
 $(error Unknown architecture $(arch). Please edit the Makefile appropriately.)
+endif
 endif
 endif
 endif
