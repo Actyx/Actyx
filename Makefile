@@ -201,12 +201,31 @@ define build_bins_and_move_win64
 	-it $(3) \
 	bash -c "\
 		cargo --locked build --release --no-default-features --manifest-path actyx-cli/Cargo.toml && \
-		cargo --locked build --release --bin win --no-default-features --manifest-path ax-os-node/Cargo.toml && \
+		cargo --locked build --release --bins --no-default-features --manifest-path ax-os-node-win/Cargo.toml && \
 		cargo --locked build --release --bin ada-cli --bin store-cli"
 	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -perm -u=x \
 		-exec cp {} $(1) \;
 	echo "Please find your build artifacts in $(1)."
 endef
+
+# Build ActyxOS Node Manager
+# 1st arg: target platform (darwin, mas, win32, linux)
+# 2nd arg: target arch (ia32, x64, armv7l, arm64, mips64el)
+define build_node_manager
+	docker run \
+		-v `pwd`:/src \
+		-w /src/misc/actyxos-node-manager \
+		-it actyx/util:windowsinstallercreator-x64-$(IMAGE_VERSION) \
+		npm run package -- --platform $(1) --arch $(2)
+	mkdir -p $(build_dir)
+	mv ./misc/actyxos-node-manager/out/ActyxOS-Node-Manager-$(1)-$(2) $(build_dir)/
+endef
+
+node-manager-win64: actyxos-bin-win64
+	$(eval PLATFORM:=win32)
+	$(eval ARCH:=x64)
+	cp -f ./dist/bin/win64/ax.exe ./misc/actyxos-node-manager/bin/win32/
+	$(call build_node_manager,$(PLATFORM),$(ARCH))
 
 actyxos-bin-win64: debug clean
 	$(eval ARCH?=win64)
@@ -214,6 +233,20 @@ actyxos-bin-win64: debug clean
 	$(eval OUTPUT:=./dist/bin/$(ARCH))
 	$(eval IMG:=actyx/util:buildrs-x64-$(IMAGE_VERSION))
 	$(call build_bins_and_move_win64,$(OUTPUT),$(TARGET),$(IMG))
+
+actyxos-installer-win64: node-manager-win64
+	mkdir -p $(build_dir)/win-installer
+	cp -r ./dist/bin/win64/{actyxos,ax}.exe $(build_dir)/win-installer
+	cp -r ./misc/actyxos-win-installer/* $(build_dir)/win-installer
+	cp -r $(build_dir)/ActyxOS-Node-Manager-win32-x64 $(build_dir)/win-installer/node-manager
+	docker run \
+		-v `pwd`:/src \
+		-w /src \
+		-e PRODUCT_VERSION="1.0.0-rc.4" \
+		-e SRC_DIR=. \
+		-e DIST_DIR=/src/dist/bin/win64 \
+		-it actyx/util:windowsinstallercreator-x64-$(IMAGE_VERSION) \
+		bash -c "cd $(build_dir)/win-installer && ./build.sh"
 
 actyxos-bin-x64: debug clean
 	$(eval ARCH?=x64)
