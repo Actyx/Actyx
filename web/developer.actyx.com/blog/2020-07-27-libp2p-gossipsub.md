@@ -23,7 +23,7 @@ At Actyx, we are using libp2p as the peer to peer networking stack for ActyxOS, 
 
 Until now, we have been spawning a separate ipfs process to take advantage of libp2p. While this works well, it has some overhead that is no longer acceptable for us as the size of our production installations and the demands of our system integrator customers increases. So in the past months we have been migrating to a pure Rust solution, using the Rust implementation of libp2p that is developed by parity.
 
-This will allow us to dramatically reduce the size and complexity of ActyxOS binaries while drastically improving performance. As an example: the size of the ActyxOS apk changes from 1234 to 123.
+This will allow us to dramatically reduce the size and complexity of ActyxOS binaries while drastically improving performance. As an example: the size of the ActyxOS apk changes from 105MB to 32MB.
 
 ## Putting things in production
 
@@ -33,7 +33,7 @@ Prior to putting it into production, we did *one last check* with a different go
 
 And suddenly, _nothing worked._ Our node was unable to get any events from the go-ipfs node.
 
-The latest version of our event dissemination system relies on the gosspsub and the bitswap protocol of libp2p. Since we are using our own custom bitswap implementation, the first thought was that that this might be the cause of the issue. However, further investigation revealed that the new node was not even able to get any message via gossipsub.
+The latest version of our event dissemination system relies on the gossipsub and the bitswap protocol of libp2p. Since we are using our own custom bitswap implementation, the first thought was that that this might be the cause of the issue. However, further investigation revealed that the new node was not even able to get any message via gossipsub.
 
 Initial attempts to solve the issue got me on the wrong track. It turned out that at least on my machine, everything worked just fine when I added a small delay between the peer connection and the subscription to the gossipsub topic. So I thought this might be a race condition in the handshake process between two nodes. But further tests by my colleagues revealed that this delay did not always solve the problem.
 
@@ -64,7 +64,7 @@ This has been [fixed](https://github.com/golang/protobuf/issues/484) in the late
 
 Message ids are opaque message identifiers to allow the gossipsub system to keep track of messages. There is no benefit in having them be human readable utf8 strings. In fact, in many cases these strings are just completely random strings.
 
-So a decision was made quickly to [adjust the spec](https://github.com/libp2p/specs/pull/285) and put a [warning](https://github.com/libp2p/go-libp2p-pubsub/pull/363) into the go-ipfs protocol buffers specification.
+So a decision was made to [adjust the spec](https://github.com/libp2p/specs/pull/285) and put a [warning](https://github.com/libp2p/go-libp2p-pubsub/pull/363) into the go-ipfs protocol buffers specification.
 
 The new specification is an improvement over the old one. For one, it matches reality. But more importantly, using bytes for message ids is the right thing to do. Often it is convenient to generate globally unique message ids by concatenating the peer id (a hash) and a counter or a sufficiently large random number. Previously, this data would have to be base64 encoded to make it a valid utf8 string. This makes the protocol less efficient while not making it any more human readable.
 
