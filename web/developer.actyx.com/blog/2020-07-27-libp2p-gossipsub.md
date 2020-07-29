@@ -64,7 +64,7 @@ This has been [fixed](https://github.com/golang/protobuf/issues/484) in the late
 
 Message ids are opaque message identifiers to allow the gossipsub system to keep track of messages. There is no benefit in having them be human readable utf8 strings. In fact, in many cases these strings are just completely random strings.
 
-So a decision was made quickly to adjust the spec and put a warning into the go-ipfs protocol buffers specification.
+So a decision was made quickly to [adjust the spec](https://github.com/libp2p/specs/pull/285) and put a [warning](https://github.com/libp2p/go-libp2p-pubsub/pull/363) into the go-ipfs protocol buffers specification.
 
 The new specification is an improvement over the old one. For one, it matches reality. But more importantly, using bytes for message ids is the right thing to do. Often it is convenient to generate globally unique message ids by concatenating the peer id (a hash) and a counter or a sufficiently large random number. Previously, this data would have to be base64 encoded to make it a valid utf8 string. This makes the protocol less efficient while not making it any more human readable.
 
