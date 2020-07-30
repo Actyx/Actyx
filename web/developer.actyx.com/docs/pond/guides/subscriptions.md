@@ -10,7 +10,7 @@ Therefore, defining this subscription set is fundamental, it belongs with the de
 ```typescript
 const chatRoomTag = Tag<ChatRoomEvent>('chatRoom')
 
-export const mkChatRoomFish: (name: string): Fish<string[], ChatRoomEvent> => ({
+export const mkChatRoomFish = (name: string): Fish<string[], ChatRoomEvent> => ({
   fishId: FishId.of('ax.example.ChatRoom', name, 0),
   initialState: [],
   onEvent: chatRoomOnEvent,
