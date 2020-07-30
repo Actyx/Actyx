@@ -36,17 +36,17 @@ impl SessionId {
     }
 }
 
-/// Macro for constructing a [`Semantics`](event/struct.Semantics.html) literal.
+/// Macro for constructing an [`AppId`](tagging/struct.AppId.html) literal.
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{semantics, event::Semantics};
-/// let semantics: Semantics = semantics!("abc");
+/// use actyxos_sdk::{app_id, tagged::AppId};
+/// let semantics: AppId = app_id!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyxos_sdk::{semantics, event::Semantics};
-/// let semantics: Semantics = semantics!("");
+/// use actyxos_sdk::{app_id, tagged::AppId};
+/// let semantics: AppId = app_id!("");
 /// ```
 #[macro_export]
 macro_rules! app_id {
@@ -59,11 +59,9 @@ macro_rules! app_id {
 }
 
 mk_scalar!(
-    /// The semantics denotes a certain kind of fish and usually implies a certain type
-    /// of payloads.
+    /// The app ID denotes a specific app (sans versioning)
     ///
-    /// For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started).
-    /// You may most conveniently construct values of this type with the [`semantics!`](../macro.semantics.html) macro.
+    /// This is used for marking the provenance of events as well as configuring access rights.
     struct AppId, EmptyAppId
 );
 
