@@ -10,7 +10,7 @@ Actyx Pond supports two types of snapshots to avoid processing all known events 
 
 :::note
 
-State snapshots are currently called “local snapshots” since in contrast to semantic snapshots they are bound to a node. This restriction will be lifted in a future version of Actyx Pond for distributed fishes that consume identical subscription sets when instantiated on different node.
+State snapshots are currently called “local snapshots” since in contrast to semantic snapshots they are bound to a node. This restriction will be lifted in a future version of Actyx Pond for distributed fishes that consume identical subscription sets when instantiated on different nodes.
 :::
 
 The chat room fish in our example keeps a list of messages in its state.
