@@ -34,12 +34,38 @@ impl SessionId {
     pub fn as_str(&self) -> &str {
         &*self.0
     }
-
-    pub fn display<'a>(this: &'a Option<SessionId>) -> impl tracing::Value + Debug + 'a {
-        let s = this.as_ref().map(|sid| &*sid.0).unwrap_or("NoSession");
-        tracing::field::display(s)
-    }
 }
+
+/// Macro for constructing a [`Semantics`](event/struct.Semantics.html) literal.
+///
+/// This is how it works:
+/// ```no_run
+/// use actyxos_sdk::{semantics, event::Semantics};
+/// let semantics: Semantics = semantics!("abc");
+/// ```
+/// This does not compile:
+/// ```compile_fail
+/// use actyxos_sdk::{semantics, event::Semantics};
+/// let semantics: Semantics = semantics!("");
+/// ```
+#[macro_export]
+macro_rules! app_id {
+    ($lit:tt) => {{
+        #[allow(dead_code)]
+        type X = $crate::assert_len!($lit, 1..);
+        use ::std::convert::TryFrom;
+        $crate::tagged::AppId::try_from($lit).unwrap()
+    }};
+}
+
+mk_scalar!(
+    /// The semantics denotes a certain kind of fish and usually implies a certain type
+    /// of payloads.
+    ///
+    /// For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started).
+    /// You may most conveniently construct values of this type with the [`semantics!`](../macro.semantics.html) macro.
+    struct AppId, EmptyAppId
+);
 
 /// The ActyxOS node identifier
 ///

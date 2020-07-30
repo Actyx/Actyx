@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use crate::{scalar::nonempty_string, tagged::TagSet, types::ArcVal};
+use crate::{scalar::nonempty_string, tagged::TagSet};
 use anyhow::anyhow;
 use chrono::{DateTime, TimeZone, Utc};
 use derive_more::{Display, From, Into};
@@ -22,9 +22,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     convert::TryFrom,
     fmt::{self, Debug, Display, Formatter},
-    ops::{Add, Deref, Sub},
+    ops::{Add, Sub},
     str::FromStr,
-    sync::Arc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -40,6 +39,8 @@ pub enum ParseError {
     EmptyFishName,
     #[display(fmt = "Empty string is not permissible for Tag")]
     EmptyTag,
+    #[display(fmt = "Empty string is not permissible for AppId")]
+    EmptyAppId,
 }
 impl std::error::Error for ParseError {}
 
