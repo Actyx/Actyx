@@ -130,6 +130,7 @@ ${DOCKER_BUILD}: debug clean
 	$(eval IMAGE_NAME:=$(call getImageNameDockerhub,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
 	if [ -f $(build_dir)/prepare-image.sh ]; then \
 	 	export ARCH=$(arch); \
+		export GIT_HASH=$(git_hash); \
 		cd $(build_dir); \
 		echo 'Running prepare script'; \
 		./prepare-image.sh ..; \
