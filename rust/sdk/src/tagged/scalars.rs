@@ -41,12 +41,12 @@ impl SessionId {
 /// This is how it works:
 /// ```no_run
 /// use actyxos_sdk::{app_id, tagged::AppId};
-/// let semantics: AppId = app_id!("abc");
+/// let app_id: AppId = app_id!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
 /// use actyxos_sdk::{app_id, tagged::AppId};
-/// let semantics: AppId = app_id!("");
+/// let app_id: AppId = app_id!("");
 /// ```
 #[macro_export]
 macro_rules! app_id {
