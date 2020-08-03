@@ -1,9 +1,14 @@
+use base64::DecodeError;
 use derive_more::{From, Into};
+use fmt::Display;
 use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use std::fmt::{self, Formatter};
+use std::{
+    fmt::{self, Formatter},
+    str::FromStr,
+};
 
 #[derive(Debug, Clone, From, Into, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Binary(Box<[u8]>);
@@ -36,6 +41,38 @@ impl Serialize for Binary {
         } else {
             serializer.serialize_bytes(&*self.0)
         }
+    }
+}
+
+impl FromStr for Binary {
+    type Err = DecodeError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let bytes = base64::decode(s)?;
+        Ok(Binary(bytes.into()))
+    }
+}
+
+impl AsRef<[u8]> for Binary {
+    fn as_ref(&self) -> &[u8] {
+        &*self.0
+    }
+}
+
+impl Display for Binary {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_str(base64::encode(&*self.0).as_str())
+    }
+}
+
+impl From<&[u8]> for Binary {
+    fn from(v: &[u8]) -> Self {
+        Binary(v.into())
+    }
+}
+
+impl From<Vec<u8>> for Binary {
+    fn from(v: Vec<u8>) -> Self {
+        Binary(v.into())
     }
 }
 
