@@ -21,9 +21,9 @@ The Rust implementation is developed for the [polkadot](https://polkadot.network
 
 At Actyx, we are using libp2p as the peer to peer networking stack for ActyxOS, most notably for our partition tolerant event dissemination system.
 
-Until now, we have been spawning a separate ipfs process to take advantage of libp2p. While this works well, it has some overhead that is no longer acceptable for us as the size of our production installations and the demands of our system integrator customers increases. So in the past months we have been migrating to a pure Rust solution, using the Rust implementation of libp2p that is developed by parity.
+Until now, we have been spawning a separate ipfs process to take advantage of libp2p. While this works well, it has some overhead that is no longer acceptable for us as the size of our production installations and the demands of our system integrator customers increases. So in the past months we have been migrating to a pure Rust solution, using the Rust implementation of libp2p that is developed by [parity](https://parity.io/).
 
-This will allow us to dramatically reduce the size and complexity of ActyxOS binaries while drastically improving performance. As an example: the size of the ActyxOS apk changes from 105MB to 32MB.
+This will allow us to dramatically reduce the size and complexity of ActyxOS binaries while improving performance. As an example: the size of the ActyxOS apk changes from 105MB to 32MB.
 
 ## Putting things in production
 
