@@ -155,12 +155,32 @@ If you now navigate to (http://localhost:1234) in your browser and open the Deve
 
 ![](/images/home/chat-setup-in-browser.png)
 
+### Help, I’m Stuck!
 
-
-That's it 😀. You are now ready to build the chat!
-
+If you get stuck, get help in the [Actyx Developer Chat](https://discord.gg/262yJhc) or e-mail us at developer@actyx.io. If you don’t receive an answer, or if you remain stuck, please [file an issue](https://github.com/actyx/quickstart), and we’ll help you out.
 
 ## Overview
+
+Now that you’re set up, let’s get an overview of the Actyx platform!
+
+### What is the ActyxOS?
+
+ActyxOS is a multi-node operating system that allows you to build distributed applications running in a swarm of devices. Specifically you can
+
+1. run one ore more apps on each node using the ActyxOS Runtimes
+1. access _always-available_ `localhost` APIs such as the Event Service
+1. count on automatic dissemination and persistence of data in the swarm
+
+![](/images/tutorial/actyxos-app-and-communication.png)
+
+ActyxOS enables a completely decentral architecture that allows you to **build apps that always run**. Your apps always run because they run locally (on the edge) and only interact with `localhost` APIs. Currently ActyxOS offers two APIs:
+- the **Event Service** API at `http://localhost:4454/api/v1/events` allows you to publish and receive events in the swarm of devices
+- the **Console Service** API at `http://localhost:4457/api/v1/logs` allows you to generate logs for monitoring and debugging.
+
+
+### What is Actyx Pond?
+
+
 
 ## Completing the chat
 
