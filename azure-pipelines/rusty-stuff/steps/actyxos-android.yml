@@ -1,5 +1,6 @@
 steps:
-    # Since this build doesn't depend on rt-master, we can at least do the checks before we build the release
+  - template: ../../steps-bootstrap.yml
+  # Since this build doesn't depend on rt-master, we can at least do the checks before we build the release
   - bash: |
       cargo fmt --all -- --check && \
       cargo --locked clippy -- -D warnings && \
@@ -13,42 +14,42 @@ steps:
       cp ./target/aarch64-linux-android/release/libaxosnodeffi.so ../jvm/os-android/app/src/main/jniLibs/arm64-v8a/
       mkdir -p ../jvm/os-android/app/src/main/jniLibs/armeabi-v7a/ && \
       cp ./target/armv7-linux-androideabi/release/libaxosnodeffi.so ../jvm/os-android/app/src/main/jniLibs/armeabi-v7a/
-    displayName: 'Build rust libs (x86, aarch64, armv7a)'
-    workingDirectory: 'rt-master'
-    condition: contains(variables['BUILD_STRING'],'[build-axosandroid]')
+    displayName: Build Rust libs (x86, aarch64, armv7a)
+    workingDirectory: "rt-master"
+    condition: contains(variables['BUILD_STRING'],'[build-actyxosandroid]')
   - script: |
       export VAULT_ADDR=https://vault.actyx.net
       export PATH=$HOME/bin:$PATH
       vault login -method aws role=ops-travis-ci 2>&1
       jvm/os-android/bin/get-keystore.sh
-    displayName: 'Get keystore'
+    displayName: Get Keystore
     env:
       # Map secrets to env vars
       AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
       AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
       PATH: $(PATH):$(HOME)/bin
-    condition: contains(variables['BUILD_STRING'],'[build-axosandroid]')
+    condition: contains(variables['BUILD_STRING'],'[build-actyxosandroid]')
   - task: Gradle@2
     inputs:
-      workingDirectory: 'jvm/os-android'
-      gradleWrapperFile: 'jvm/os-android/gradlew'
+      workingDirectory: "jvm/os-android"
+      gradleWrapperFile: "jvm/os-android/gradlew"
       jdkVersionOption: 1.8
-      javaHomeOption: 'JDKVersion'
-      tasks: 'clean ktlintCheck build assembleRelease androidGitVersion'
-    displayName: 'Compile ActyxOS on Android (x86)'
+      javaHomeOption: "JDKVersion"
+      tasks: "clean ktlintCheck build assembleRelease androidGitVersion"
+    displayName: Compile ActyxOS on Android (x86)
     env:
       JAVA_HOME_8_X64: /usr/lib/jvm/java-8-openjdk-amd64
-    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axosandroid]'))
+    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-actyxosandroid]'))
 
   - task: ShellScript@2
     inputs:
       scriptPath: jvm/os-android/bin/upload-ipfs.sh
-    displayName: 'Upload to IPFS'
-    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axosandroid]'))
+    displayName: Upload to IPFS
+    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-actyxosandroid]'))
 
   - publish: $(System.DefaultWorkingDirectory)/jvm/os-android/app/build/outputs/assembly/Actyx/axosandroid/
     artifact: actyxos-apk
-    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axosandroid]'))
+    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-actyxosandroid]'))
 
   - task: AzureCLI@2
     # No, there would be the nicely looking AzureFileCopy@4 task, which would use the `azcopy` cli (yes, it's not
@@ -59,7 +60,7 @@ steps:
     # Next up: Directly use `azcopy`. No built-in authentication via azure pipelines, bummer.
     # Luckily, the `az` cli offers a legacy command `storage  blob upload-batch`, which doesn't work recursively, but that's not that an
     # issue for our current use-case. So we use that.
-    displayName: Copy artifacts to az blob store
+    displayName: Copy Artifacts To Azure Blob Store
     inputs:
       azureSubscription: azure-ax-ci
       scriptType: bash
@@ -68,4 +69,9 @@ steps:
         az --version
         az account show
         az storage blob upload-batch -s $(System.DefaultWorkingDirectory)/jvm/os-android/app/build/outputs/assembly/Actyx/axosandroid/$(Build.SourceVersion) -d https://axartifacts.blob.core.windows.net/artifacts/ --destination-path $(Build.SourceVersion)/android/
-    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-axosandroid]'))
+    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-actyxosandroid]'))
+
+  - script: |
+      build/bin/post-to-slack.sh -s "ActyxOS On Android" -a "danger"
+    condition: failed()
+    displayName: Ping Slack On Failing Job

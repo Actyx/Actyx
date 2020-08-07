@@ -1,0 +1,15 @@
+jobs:
+  - job: getBuildString
+    displayName: Build String
+    pool:
+      name: Native
+    steps:
+      - checkout: none
+      # Get BUILD_STRING
+      - download: current
+        artifact: variables
+      - script: |
+          BUILD_STRING=$(cat $PIPELINE_WORKSPACE/variables/BUILD_STRING)
+          echo $BUILD_STRING
+          echo "##vso[task.setvariable variable=BUILD_STRING;isOutput=true]$BUILD_STRING"
+        name: setBuildString
