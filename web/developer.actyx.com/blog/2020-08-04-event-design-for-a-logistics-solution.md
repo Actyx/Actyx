@@ -192,7 +192,7 @@ const forId = (id: string): SkuFish => ({
 })
 
 export const SkuFish = {
-  for
+  forId
 }
 ```
 
