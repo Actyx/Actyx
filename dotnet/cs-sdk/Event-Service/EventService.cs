@@ -13,7 +13,7 @@ using System.Collections.Generic;
 using System.Threading;
 
 namespace Actyx {
-
+    
     class AsyncResponse : IAsyncEnumerator<string> {
 
 	private readonly StreamReader reader;
