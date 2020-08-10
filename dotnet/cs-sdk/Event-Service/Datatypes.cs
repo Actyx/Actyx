@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace Actyx {
 
     class EventKey {
-	
+
 	public UInt64 Lamport { get; set; }
 
 	public string Stream { get; set; }
@@ -15,7 +15,7 @@ namespace Actyx {
     }
 
     class EventMetadata {
-	
+
 	public UInt64 Timestamp { get; set; }
 
 	public string[] Tags { get; set; }
@@ -29,9 +29,21 @@ namespace Actyx {
 	public EventKey key { get; set; }
 
 	public EventMetadata meta { get; set; }
-	
+
 	public JObject payload { get; set; }
     }
 
-    
+    class EventV1
+    {
+
+	public UInt64 Lamport { get; set; }
+
+	// public string Stream { get; set; }
+
+	public UInt64 Offset { get; set; }
+
+	public UInt64 Timestamp { get; set; }
+
+	public JObject payload { get; set; }
+    }
 }
