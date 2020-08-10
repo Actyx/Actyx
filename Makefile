@@ -185,7 +185,7 @@ define build_bins_and_move
 endef
 
 # Build ActyxOS binaries for Win64
-# NOTE: This will build `ax.exe`, `win.exe`, `ada-cli.exe` and `store-cli.exe`.
+# NOTE: This will build `ax.exe` (actyx-cli), `actyxos.exe` (windows service), `ada-cli.exe` and `store-cli.exe`.
 # 1st arg: output dir (will be created) of the final artifacts
 # 2nd arg: target toolchain
 # 3rd arg: docker base image
@@ -217,7 +217,7 @@ define build_node_manager
 		-v `pwd`:/src \
 		-w /src/misc/actyxos-node-manager \
 		-it actyx/util:windowsinstallercreator-x64-$(IMAGE_VERSION) \
-		npm run package -- --platform $(1) --arch $(2)
+		bash -c "npm ci && npm run package -- --platform $(1) --arch $(2)"
 	mkdir -p $(build_dir)
 	mv ./misc/actyxos-node-manager/out/ActyxOS-Node-Manager-$(1)-$(2) $(build_dir)/
 endef
