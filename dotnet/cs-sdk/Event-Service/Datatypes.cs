@@ -1,25 +1,22 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-
+using System;
+using System.Collections.Generic;
 
 namespace Actyx {
 
-    interface OffsetMap : IDictionary<string, Int64> {
-	// Just a type alias
-    }
-    
     class EventKey {
 	
-	public Int64 Lamport { get; set; }
+	public UInt64 Lamport { get; set; }
 
 	public string Stream { get; set; }
 
-	public Int64 Offset { get; set; }
+	public UInt64 Offset { get; set; }
     }
 
     class EventMetadata {
 	
-	public Int64 Timestamp { get; set; }
+	public UInt64 Timestamp { get; set; }
 
 	public string[] Tags { get; set; }
 

@@ -51,17 +51,20 @@ namespace Actyx {
     
     class DelayedResponse : IAsyncEnumerable<string> {
 	private readonly string path;
+	private readonly string postData;
 	
-	public DelayedResponse(string path) {
+	public DelayedResponse(string path, string postData) {
 	    this.path = path;
+	    this.postData = postData;
 	}
 
 	public IAsyncEnumerator<string> GetAsyncEnumerator(CancellationToken token) {
 	    var request = WebRequest.Create(this.path);
 	    request.Method = "POST";
 	    request.ContentType = "application/json";
-
-	    var reqMsgBytes = Encoding.UTF8.GetBytes("{\"subscriptions\": [{}]}");
+	    request.Headers.Add("Authorization", "AAAARqVnY3JlYXRlZBsABayEzaJD42ZhcHBfaWRoc29tZS5hcHBmY3ljbGVzAGd2ZXJzaW9uZTEuMC4waHZhbGlkaXR5Gv////8Bf1lCGGeTcd1ywvwYue4jEjqTx0LYFTzdBzdyr65FfgYkJSlrbLTNa1R88kJNNa6+t8UDD0F/t8rlEdZAX7vXAcrDkxFVk2QFFi/o9eIlNmk8wd917afsGBD7ap5EOX4M");
+	    
+	    var reqMsgBytes = Encoding.UTF8.GetBytes(this.postData);
 	    
 	    var dataStream = request.GetRequestStream();
 	    // Write the data to the request stream.
@@ -84,8 +87,16 @@ namespace Actyx {
 	    this.endpoint = endpoint;
 	}
 	
-	public DelayedResponse subscribe2() {
-	    return new DelayedResponse(this.endpoint + "/v1/events/subscribe");
+	public DelayedResponse subscribeUntilTimeTravel(string session, string subscription, IDictionary<string, UInt64> offsets) {
+	    var req = new {
+		session,
+		subscription,
+		offsets
+	    };
+	    
+	    string postData = JsonConvert.SerializeObject(req);
+	    
+	    return new DelayedResponse(this.endpoint + "/v2/events/subscribeUntilTimeTravel", postData);
 	}
 
 	public void subscribe() {
