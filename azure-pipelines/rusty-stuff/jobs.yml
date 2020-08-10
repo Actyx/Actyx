@@ -164,8 +164,8 @@ jobs:
           INSTALLER_DIR: misc/actyxos-win-installer
           # FIXME: Derive this from somewhere else
           PRODUCT_VERSION: "1.0.0"
-          PRODUCT_NAME: "Actyx OS"
-          INSTALLER_NAME: "Actyx OS Setup"
+          PRODUCT_NAME: "ActyxOS"
+          INSTALLER_NAME: "ActyxOS Installer"
     steps:
       - template: steps/windows-installers.yml
 
