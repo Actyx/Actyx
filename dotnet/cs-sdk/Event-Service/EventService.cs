@@ -132,7 +132,7 @@ namespace Actyx {
 	    return new Request<ISuttMessage>(this.endpoint + "/v2/events/subscribeUntilTimeTravel", postData);
 	}
 
-	public Request<EventV1> subscribe()
+	public Request<Event> subscribe()
 	{
 	    var req = new {
 		subscriptions = new List<object>() {
@@ -145,7 +145,7 @@ namespace Actyx {
 	    // string postData = "{\"subscriptions\": [{}]}";
 	    string postData = JsonConvert.SerializeObject(req);
 
-	    return new Request<EventV1>(this.endpoint + "/v1/events/subscribe", postData);
+	    return new Request<Event>(this.endpoint + "/v2/events/subscribe", postData);
 	}
     }
 }

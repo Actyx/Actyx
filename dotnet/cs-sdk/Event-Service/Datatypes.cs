@@ -18,9 +18,17 @@ namespace Actyx {
 	None,
 	Deflate,
     }
-    
-    class EventKey {
 
+    class RetrievedSnapshot
+    {
+	public SnapshotCompression Compression { get; set; }
+
+	// Base64-encoded bytes if a compression other than None is set.
+	public string Data { get; set; }
+    }
+
+    struct EventKey
+    {
 	public UInt64 Lamport { get; set; }
 
 	public string Stream { get; set; }
@@ -43,32 +51,29 @@ namespace Actyx {
 
 	public string Type { get; } = "event";
 
-	public bool caughtUp { get; set; } = true;
-	
-	public EventKey key { get; set; }
+	// Only relevant if the event was retrieved via subscribeUntilTimeTravel endpoint.
+	public bool CaughtUp { get; set; } = true;
 
-	public EventMetadata meta { get; set; }
+	public EventKey Key { get; set; }
 
-	public JObject payload { get; set; }
+	public EventMetadata Meta { get; set; }
+
+	public JObject Payload { get; set; }
     }
 
     class State : ISuttMessage
     {
-	
+
 	public string Type { get; } = "state";
 
-	// snapshot: {
-	// 	compression: 'none'|'deflate',
-	// 	data: string // base64-encoded unless 'none' compression
-	// }
+	public RetrievedSnapshot Snapshot { get; set; }
     }
 
     class TimeTravel : ISuttMessage
     {
-	
 	public string Type { get; } = "timeTravel";
-	
-	public EventKey newStart { get; set; }
+
+	public EventKey NewStart { get; set; }
     }
 
     class EventV1
