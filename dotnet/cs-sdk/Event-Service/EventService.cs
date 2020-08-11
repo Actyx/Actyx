@@ -29,13 +29,15 @@ namespace Actyx {
 		return false;
 	    }
 
-	    var nextLine = await reader.ReadLineAsync();
+	    string nextLine = await reader.ReadLineAsync();
 
-	    if (!String.IsNullOrEmpty(nextLine)) {
-		this.Current = JsonConvert.DeserializeObject<T>(nextLine);
-	    } else {
+	    // Empty lines are sent as a means of keep-alive.
+	    while (String.IsNullOrEmpty(nextLine)) {
 		Console.WriteLine("empty line");
+		nextLine = await reader.ReadLineAsync();
 	    }
+
+	    this.Current = JsonConvert.DeserializeObject<T>(nextLine);
 
 	    return true;
 	}
@@ -95,7 +97,18 @@ namespace Actyx {
 
 	public Request<EventV1> subscribe()
 	{
-	    return new Request<EventV1>(this.endpoint + "/v1/events/subscribe", "{\"subscriptions\": [{}]}");
+	    var req = new {
+		subscriptions = new List<object>() {
+		    new {
+			semantics = "whatever",
+		    },
+		}
+	    };
+
+	    // string postData = "{\"subscriptions\": [{}]}";
+	    string postData = JsonConvert.SerializeObject(req);
+
+	    return new Request<EventV1>(this.endpoint + "/v1/events/subscribe", postData);
 	}
     }
 }
