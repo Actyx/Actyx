@@ -6,12 +6,13 @@ using System.Collections.Generic;
 
 namespace Actyx {
 
-    public interface ISuttMessageVisitor {
+    public interface ISuttMessageVisitor
+    {
 	void Visit(State stateMsg);
 
 	void Visit(Event eventMsg);
 
-	void Visit(TimeTravel timeTravelmsg);
+	void Visit(TimeTravel timeTravelMsg);
     }
 
     [JsonConverter(typeof(JsonSubtypes), "Type")]
@@ -19,7 +20,7 @@ namespace Actyx {
     {
 	string Type { get; }
 
-	void Accept(ISuttMessageVisitor handler);
+	void Accept(ISuttMessageVisitor visitor);
     }
 
     public enum SnapshotCompression
