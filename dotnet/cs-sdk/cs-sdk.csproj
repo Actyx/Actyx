@@ -8,7 +8,7 @@
   
   <ItemGroup>
     <PackageReference Include="JsonSubTypes" Version="1.7.0" />
-    <PackageReference Include="System.Interactive.Async" Version="4.1.1" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="System.Interactive.Async" Version="4.1.1" />
   </ItemGroup>
 </Project>

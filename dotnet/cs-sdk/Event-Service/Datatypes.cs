@@ -6,10 +6,20 @@ using System.Collections.Generic;
 
 namespace Actyx {
 
+    public interface ISuttMessageVisitor {
+	void Visit(State stateMsg);
+
+	void Visit(Event eventMsg);
+
+	void Visit(TimeTravel timeTravelmsg);
+    }
+
     [JsonConverter(typeof(JsonSubtypes), "Type")]
     public interface ISuttMessage
     {
 	string Type { get; }
+
+	void Accept(ISuttMessageVisitor handler);
     }
 
     public enum SnapshotCompression
@@ -50,6 +60,10 @@ namespace Actyx {
 
 	[JsonProperty("snapshot")]
 	public RetrievedSnapshot Snapshot { get; protected set; }
+
+	public void Accept(ISuttMessageVisitor handler) {
+	    handler.Visit(this);
+	}
     }
 
     public class Event : ISuttMessage
@@ -69,6 +83,10 @@ namespace Actyx {
 
 	[JsonProperty("payload")]
 	public JObject Payload { get; protected set; }
+
+	public void Accept(ISuttMessageVisitor handler) {
+	    handler.Visit(this);
+	}
     }
 
     public class TimeTravel : ISuttMessage
@@ -77,6 +95,10 @@ namespace Actyx {
 
 	[JsonProperty("newStart")]
 	public EventKey NewStart { get; protected set; }
+
+	public void Accept(ISuttMessageVisitor handler) {
+	    handler.Visit(this);
+	}
     }
 
     public class EventV1
