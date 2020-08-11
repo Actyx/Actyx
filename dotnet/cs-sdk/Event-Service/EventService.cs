@@ -37,14 +37,16 @@ namespace Actyx {
 		nextLine = await reader.ReadLineAsync();
 	    }
 
+	    // Immediately after the event:event line we expect the data:{json} line
 	    nextLine = await reader.ReadLineAsync();
 	    while (!nextLine.StartsWith("data:")) {
 		Console.WriteLine("EXPECTED DATA BUT FOUND: " + nextLine);
 		nextLine = await reader.ReadLineAsync();
 	    }
 
-	    nextLine = nextLine.Substring(5); // Drop the "data:" prefix
-	    this.Current = JsonConvert.DeserializeObject<T>(nextLine);
+	    // Drop the "data:" prefix and deserialize
+	    string jsonData = nextLine.Substring(5);
+	    this.Current = JsonConvert.DeserializeObject<T>(jsonData);
 
 	    return true;
 	}
