@@ -11,7 +11,9 @@ namespace cs_sdk.Tests
 	    var s = new EventService();
 	    string query = "'semantics:edge.ax.sf.UiSession'";
 
-	    await foreach (var q in s.subscribeUntilTimeTravel("foo", query, SnapshotCompression.None)) {
+	    var t = s.subscribeUntilTimeTravel("foo", query, SnapshotCompression.None);
+
+	    await foreach (var q in t) {
 	    // await foreach (var q in new EventService().subscribe()) {
 	    	Console.WriteLine("ffffff");
 	    	Console.WriteLine(q.Type);

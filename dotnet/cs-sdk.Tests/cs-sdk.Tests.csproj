@@ -5,10 +5,6 @@
     <TargetFramework>netcoreapp3.0</TargetFramework>
     <RootNamespace>cs_sdk.Tests</RootNamespace>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.0.0.0" />
-  </ItemGroup>
   
   <ItemGroup>
     <ProjectReference Include="..\cs-sdk\cs-sdk.csproj" />
