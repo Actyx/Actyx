@@ -32,11 +32,18 @@ namespace Actyx {
 	    string nextLine = await reader.ReadLineAsync();
 
 	    // Empty lines are sent as a means of keep-alive.
-	    while (String.IsNullOrEmpty(nextLine)) {
-		Console.WriteLine("empty line");
+	    while (nextLine != "event:event") {
+		Console.WriteLine("skipping: " + nextLine);
 		nextLine = await reader.ReadLineAsync();
 	    }
 
+	    nextLine = await reader.ReadLineAsync();
+	    while (!nextLine.StartsWith("data:")) {
+		Console.WriteLine("EXPECTED DATA BUT FOUND: " + nextLine);
+		nextLine = await reader.ReadLineAsync();
+	    }
+
+	    nextLine = nextLine.Substring(5); // Drop the "data:" prefix
 	    this.Current = JsonConvert.DeserializeObject<T>(nextLine);
 
 	    return true;
@@ -61,7 +68,7 @@ namespace Actyx {
 	    var request = WebRequest.Create(this.path);
 	    request.Method = "POST";
 	    request.ContentType = "application/json";
-	    request.Headers.Add("Authorization", "AAAARqVnY3JlYXRlZBsABayEzaJD42ZhcHBfaWRoc29tZS5hcHBmY3ljbGVzAGd2ZXJzaW9uZTEuMC4waHZhbGlkaXR5Gv////8Bf1lCGGeTcd1ywvwYue4jEjqTx0LYFTzdBzdyr65FfgYkJSlrbLTNa1R88kJNNa6+t8UDD0F/t8rlEdZAX7vXAcrDkxFVk2QFFi/o9eIlNmk8wd917afsGBD7ap5EOX4M");
+	    request.Headers.Add("Authorization", "Bearer AAAARqVnY3JlYXRlZBsABayEzaJD42ZhcHBfaWRoc29tZS5hcHBmY3ljbGVzAGd2ZXJzaW9uZTEuMC4waHZhbGlkaXR5Gv////8Bf1lCGGeTcd1ywvwYue4jEjqTx0LYFTzdBzdyr65FfgYkJSlrbLTNa1R88kJNNa6+t8UDD0F/t8rlEdZAX7vXAcrDkxFVk2QFFi/o9eIlNmk8wd917afsGBD7ap5EOX4M");
 
 	    var reqMsgBytes = Encoding.UTF8.GetBytes(this.postData);
 
