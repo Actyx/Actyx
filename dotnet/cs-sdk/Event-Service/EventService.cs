@@ -14,8 +14,7 @@ using System.Threading;
 
 namespace Actyx {
 
-#nullable enable
-    class StreamingResponse<T> : IAsyncEnumerator<T> where T : class {
+    class StreamingResponse<T> : IAsyncEnumerator<T> {
 
 	private readonly StreamReader reader;
 
@@ -23,14 +22,7 @@ namespace Actyx {
 	    this.reader = new StreamReader(responseDataStream);
 	}
 
-	private T? current = null;
-
-	public T? Current {
-	    get {
-		return this.current;
-	    }
-	}
-#nullable disable
+	public T Current { get; private set; }
 
 	public async ValueTask<bool> MoveNextAsync() {
 	    if (reader.EndOfStream) {
@@ -40,7 +32,7 @@ namespace Actyx {
 	    var nextLine = await reader.ReadLineAsync();
 
 	    if (!String.IsNullOrEmpty(nextLine)) {
-		this.current = JsonConvert.DeserializeObject<T>(nextLine);
+		this.Current = JsonConvert.DeserializeObject<T>(nextLine);
 	    } else {
 		Console.WriteLine("empty line");
 	    }
@@ -54,7 +46,7 @@ namespace Actyx {
     }
 
 
-    class Request<T> : IAsyncEnumerable<T> where T : class {
+    class Request<T> : IAsyncEnumerable<T> {
 	private readonly string path;
 	private readonly string postData;
 
