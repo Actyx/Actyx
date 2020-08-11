@@ -15,7 +15,11 @@ namespace Actyx
 	    // await foreach (var q in new EventService().subscribe()) {
 	    	Console.WriteLine("ffffff");
 		Console.WriteLine(q.Type);
-	    	Console.WriteLine(q.ToString());
+
+		if (q is Event) {
+		    Console.WriteLine((q as Event).Payload);
+		    Console.WriteLine((q as Event).CaughtUp);
+		}
 	    }
         }
     }

@@ -12,14 +12,13 @@ namespace Actyx {
 	string Type { get; }
     }
 
-
     enum SnapshotCompression
     {
 	None,
 	Deflate,
     }
 
-    class RetrievedSnapshot
+    struct RetrievedSnapshot
     {
 	public SnapshotCompression Compression { get; set; }
 
@@ -36,14 +35,21 @@ namespace Actyx {
 	public UInt64 Offset { get; set; }
     }
 
-    class EventMetadata {
-
+    struct EventMetadata
+    {
 	public UInt64 Timestamp { get; set; }
 
 	public string[] Tags { get; set; }
 
 	public string AppId { get; set; }
+    }
 
+    class State : ISuttMessage
+    {
+	public string Type { get; } = "state";
+
+	[JsonProperty("snapshot")]
+	public RetrievedSnapshot Snapshot { get; protected set; }
     }
 
     class Event : ISuttMessage
@@ -52,28 +58,25 @@ namespace Actyx {
 	public string Type { get; } = "event";
 
 	// Only relevant if the event was retrieved via subscribeUntilTimeTravel endpoint.
-	public bool CaughtUp { get; set; } = true;
+	[JsonProperty("caughtUp")]
+	public bool CaughtUp { get; protected set; } = true;
 
-	public EventKey Key { get; set; }
+	[JsonProperty("key")]
+	public EventKey Key { get; protected set; }
 
-	public EventMetadata Meta { get; set; }
+	[JsonProperty("meta")]
+	public EventMetadata Meta { get; protected set; }
 
-	public JObject Payload { get; set; }
-    }
-
-    class State : ISuttMessage
-    {
-
-	public string Type { get; } = "state";
-
-	public RetrievedSnapshot Snapshot { get; set; }
+	[JsonProperty("payload")]
+	public JObject Payload { get; protected set; }
     }
 
     class TimeTravel : ISuttMessage
     {
 	public string Type { get; } = "timeTravel";
 
-	public EventKey NewStart { get; set; }
+	[JsonProperty("newStart")]
+	public EventKey NewStart { get; protected set; }
     }
 
     class EventV1
