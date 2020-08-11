@@ -68,10 +68,11 @@ namespace Actyx {
 
 	public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken token) {
 	    var request = WebRequest.Create(this.path);
-	    request.Method = "POST";
 	    request.ContentType = "application/json";
 	    request.Headers.Add("Authorization", "Bearer AAAARqVnY3JlYXRlZBsABayEzaJD42ZhcHBfaWRoc29tZS5hcHBmY3ljbGVzAGd2ZXJzaW9uZTEuMC4waHZhbGlkaXR5Gv////8Bf1lCGGeTcd1ywvwYue4jEjqTx0LYFTzdBzdyr65FfgYkJSlrbLTNa1R88kJNNa6+t8UDD0F/t8rlEdZAX7vXAcrDkxFVk2QFFi/o9eIlNmk8wd917afsGBD7ap5EOX4M");
 
+	    // Setup POST data:
+	    request.Method = "POST";
 	    var reqMsgBytes = Encoding.UTF8.GetBytes(this.postData);
 
 	    var dataStream = request.GetRequestStream();
@@ -91,6 +92,20 @@ namespace Actyx {
 	public EventService(string endpoint = "http://localhost:4454/api") {
 	    this.endpoint = endpoint;
 	}
+
+	public async Task<Dictionary<string, UInt64>> offsets()
+	{
+	    var request = WebRequest.Create(this.endpoint + "/v2/events/offsets");
+	    request.ContentType = "application/json";
+	    request.Headers.Add("Authorization", "Bearer AAAARqVnY3JlYXRlZBsABayEzaJD42ZhcHBfaWRoc29tZS5hcHBmY3ljbGVzAGd2ZXJzaW9uZTEuMC4waHZhbGlkaXR5Gv////8Bf1lCGGeTcd1ywvwYue4jEjqTx0LYFTzdBzdyr65FfgYkJSlrbLTNa1R88kJNNa6+t8UDD0F/t8rlEdZAX7vXAcrDkxFVk2QFFi/o9eIlNmk8wd917afsGBD7ap5EOX4M");
+
+	    var response = await request.GetResponseAsync();
+
+	    var reader = new StreamReader(response.GetResponseStream());
+
+	    return JsonConvert.DeserializeObject<Dictionary<string, UInt64>>(reader.ReadLine());
+	}
+	
 
 	public Request<ISuttMessage> subscribeUntilTimeTravel(string session, string subscription, IDictionary<string, UInt64> offsets)
 	{

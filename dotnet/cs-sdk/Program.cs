@@ -9,9 +9,18 @@ namespace Actyx
         static async Task Main(string[] args)
         {
             Console.WriteLine("Hello World!");
+
+	    var s = new EventService();
+
+	    var offsets = await s.offsets();
+	    
+	    Console.WriteLine(string.Join(Environment.NewLine, offsets));
+
+	    return;
+	    
 	    string query = "'semantics:edge.ax.sf.UiSession'";
 
-	    await foreach (var q in new EventService().subscribeUntilTimeTravel("foo", query, SnapshotCompression.None)) {
+	    await foreach (var q in s.subscribeUntilTimeTravel("foo", query, SnapshotCompression.None)) {
 	    // await foreach (var q in new EventService().subscribe()) {
 	    	Console.WriteLine("ffffff");
 		Console.WriteLine(q.Type);
