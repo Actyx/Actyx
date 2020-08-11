@@ -1,9 +1,17 @@
+using JsonSubTypes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 
 namespace Actyx {
+
+    [JsonConverter(typeof(JsonSubtypes), "Type")]
+    public interface ISuttMessage
+    {
+	string Type { get; }
+    }
+
 
     enum SnapshotCompression
     {
@@ -30,13 +38,37 @@ namespace Actyx {
 
     }
 
-    class Event
+    class Event : ISuttMessage
     {
+
+	public string Type { get; } = "event";
+
+	public bool caughtUp { get; set; } = true;
+	
 	public EventKey key { get; set; }
 
 	public EventMetadata meta { get; set; }
 
 	public JObject payload { get; set; }
+    }
+
+    class State : ISuttMessage
+    {
+	
+	public string Type { get; } = "state";
+
+	// snapshot: {
+	// 	compression: 'none'|'deflate',
+	// 	data: string // base64-encoded unless 'none' compression
+	// }
+    }
+
+    class TimeTravel : ISuttMessage
+    {
+	
+	public string Type { get; } = "timeTravel";
+	
+	public EventKey newStart { get; set; }
     }
 
     class EventV1

@@ -92,7 +92,7 @@ namespace Actyx {
 	    this.endpoint = endpoint;
 	}
 
-	public Request<Event> subscribeUntilTimeTravel(string session, string subscription, IDictionary<string, UInt64> offsets)
+	public Request<ISuttMessage> subscribeUntilTimeTravel(string session, string subscription, IDictionary<string, UInt64> offsets)
 	{
 	    var req = new {
 		session,
@@ -102,11 +102,11 @@ namespace Actyx {
 
 	    string postData = JsonConvert.SerializeObject(req);
 
-	    return new Request<Event>(this.endpoint + "/v2/events/subscribeUntilTimeTravel", postData);
+	    return new Request<ISuttMessage>(this.endpoint + "/v2/events/subscribeUntilTimeTravel", postData);
 	}
 
 
-	public Request<Event> subscribeUntilTimeTravel(string session, string subscription, params SnapshotCompression[] acceptedFormats)
+	public Request<ISuttMessage> subscribeUntilTimeTravel(string session, string subscription, params SnapshotCompression[] acceptedFormats)
 	{
 	    List<string> compression = new List<string>();
 
@@ -129,7 +129,7 @@ namespace Actyx {
 	    string postData = JsonConvert.SerializeObject(req);
 	    Console.WriteLine("posting:" + postData);
 
-	    return new Request<Event>(this.endpoint + "/v2/events/subscribeUntilTimeTravel", postData);
+	    return new Request<ISuttMessage>(this.endpoint + "/v2/events/subscribeUntilTimeTravel", postData);
 	}
 
 	public Request<EventV1> subscribe()

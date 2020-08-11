@@ -14,7 +14,8 @@ namespace Actyx
 	    await foreach (var q in new EventService().subscribeUntilTimeTravel("foo", query, SnapshotCompression.None)) {
 	    // await foreach (var q in new EventService().subscribe()) {
 	    	Console.WriteLine("ffffff");
-	    	Console.WriteLine(q.payload);
+		Console.WriteLine(q.Type);
+	    	Console.WriteLine(q.ToString());
 	    }
         }
     }
