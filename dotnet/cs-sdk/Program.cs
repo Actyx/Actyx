@@ -11,7 +11,7 @@ namespace Actyx
             Console.WriteLine("Hello World!");
 	    string query = "'semantics:edge.ax.sf.UiSession'";
 
-	    await foreach (var q in new EventService().subscribeUntilTimeTravel("foo", query, new Dictionary<string, UInt64>())) {
+	    await foreach (var q in new EventService().subscribeUntilTimeTravel("foo", query, SnapshotCompression.None)) {
 	    // await foreach (var q in new EventService().subscribe()) {
 	    	Console.WriteLine("ffffff");
 	    	Console.WriteLine(q.payload);

@@ -5,6 +5,12 @@ using System.Collections.Generic;
 
 namespace Actyx {
 
+    enum SnapshotCompression
+    {
+	None,
+	Deflate,
+    }
+    
     class EventKey {
 
 	public UInt64 Lamport { get; set; }
