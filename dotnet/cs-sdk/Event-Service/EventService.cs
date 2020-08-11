@@ -15,11 +15,11 @@ using System.Threading;
 namespace Actyx {
 
 #nullable enable
-    class AsyncResponse<T> : IAsyncEnumerator<T> where T : class{
+    class StreamingResponse<T> : IAsyncEnumerator<T> where T : class {
 
 	private readonly StreamReader reader;
 
-	public AsyncResponse(Stream responseDataStream) {
+	public StreamingResponse(Stream responseDataStream) {
 	    this.reader = new StreamReader(responseDataStream);
 	}
 
@@ -54,11 +54,11 @@ namespace Actyx {
     }
 
 
-    class DelayedResponse<T> : IAsyncEnumerable<T> where T : class {
+    class Request<T> : IAsyncEnumerable<T> where T : class {
 	private readonly string path;
 	private readonly string postData;
 
-	public DelayedResponse(string path, string postData) {
+	public Request(string path, string postData) {
 	    this.path = path;
 	    this.postData = postData;
 	}
@@ -72,14 +72,12 @@ namespace Actyx {
 	    var reqMsgBytes = Encoding.UTF8.GetBytes(this.postData);
 
 	    var dataStream = request.GetRequestStream();
-	    // Write the data to the request stream.
 	    dataStream.Write(reqMsgBytes, 0, reqMsgBytes.Length);
-	    // Close the Stream object.
 	    dataStream.Close();
 
 	    var response = request.GetResponse();
 
-	    return new AsyncResponse<T>(response.GetResponseStream());
+	    return new StreamingResponse<T>(response.GetResponseStream());
 	}
     }
 
@@ -91,7 +89,7 @@ namespace Actyx {
 	    this.endpoint = endpoint;
 	}
 
-	public DelayedResponse<Event> subscribeUntilTimeTravel(string session, string subscription, IDictionary<string, UInt64> offsets) {
+	public Request<Event> subscribeUntilTimeTravel(string session, string subscription, IDictionary<string, UInt64> offsets) {
 	    var req = new {
 		session,
 		subscription,
@@ -100,12 +98,12 @@ namespace Actyx {
 
 	    string postData = JsonConvert.SerializeObject(req);
 
-	    return new DelayedResponse<Event>(this.endpoint + "/v2/events/subscribeUntilTimeTravel", postData);
+	    return new Request<Event>(this.endpoint + "/v2/events/subscribeUntilTimeTravel", postData);
 	}
 
-	public DelayedResponse<EventV1> subscribe()
+	public Request<EventV1> subscribe()
 	{
-	    return new DelayedResponse<EventV1>(this.endpoint + "/v1/events/subscribe", "{\"subscriptions\": [{}]}");
+	    return new Request<EventV1>(this.endpoint + "/v1/events/subscribe", "{\"subscriptions\": [{}]}");
 	}
     }
 }
