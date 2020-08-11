@@ -18,18 +18,6 @@ namespace Actyx
 
 	    return;
 	    
-	    string query = "'semantics:edge.ax.sf.UiSession'";
-
-	    await foreach (var q in s.subscribeUntilTimeTravel("foo", query, SnapshotCompression.None)) {
-	    // await foreach (var q in new EventService().subscribe()) {
-	    	Console.WriteLine("ffffff");
-		Console.WriteLine(q.Type);
-
-		if (q is Event) {
-		    Console.WriteLine((q as Event).Payload);
-		    Console.WriteLine((q as Event).CaughtUp);
-		}
-	    }
         }
     }
 }

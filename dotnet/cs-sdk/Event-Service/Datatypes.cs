@@ -12,13 +12,13 @@ namespace Actyx {
 	string Type { get; }
     }
 
-    enum SnapshotCompression
+    public enum SnapshotCompression
     {
 	None,
 	Deflate,
     }
 
-    struct RetrievedSnapshot
+    public struct RetrievedSnapshot
     {
 	public SnapshotCompression Compression { get; set; }
 
@@ -26,7 +26,7 @@ namespace Actyx {
 	public string Data { get; set; }
     }
 
-    struct EventKey
+    public struct EventKey
     {
 	public UInt64 Lamport { get; set; }
 
@@ -35,7 +35,7 @@ namespace Actyx {
 	public UInt64 Offset { get; set; }
     }
 
-    struct EventMetadata
+    public struct EventMetadata
     {
 	public UInt64 Timestamp { get; set; }
 
@@ -44,7 +44,7 @@ namespace Actyx {
 	public string AppId { get; set; }
     }
 
-    class State : ISuttMessage
+    public class State : ISuttMessage
     {
 	public string Type { get; } = "state";
 
@@ -52,7 +52,7 @@ namespace Actyx {
 	public RetrievedSnapshot Snapshot { get; protected set; }
     }
 
-    class Event : ISuttMessage
+    public class Event : ISuttMessage
     {
 
 	public string Type { get; } = "event";
@@ -71,7 +71,7 @@ namespace Actyx {
 	public JObject Payload { get; protected set; }
     }
 
-    class TimeTravel : ISuttMessage
+    public class TimeTravel : ISuttMessage
     {
 	public string Type { get; } = "timeTravel";
 
@@ -79,7 +79,7 @@ namespace Actyx {
 	public EventKey NewStart { get; protected set; }
     }
 
-    class EventV1
+    public class EventV1
     {
 
 	public UInt64 Lamport { get; set; }

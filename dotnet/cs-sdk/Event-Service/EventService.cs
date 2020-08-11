@@ -14,7 +14,7 @@ using System.Threading;
 
 namespace Actyx {
 
-    class StreamingResponse<T> : IAsyncEnumerator<T> {
+    public class StreamingResponse<T> : IAsyncEnumerator<T> {
 
 	private readonly StreamReader reader;
 
@@ -57,7 +57,7 @@ namespace Actyx {
     }
 
 
-    class Request<T> : IAsyncEnumerable<T> {
+    public class Request<T> : IAsyncEnumerable<T> {
 	private readonly string path;
 	private readonly string postData;
 
@@ -85,7 +85,7 @@ namespace Actyx {
 	}
     }
 
-    class EventService
+    public class EventService
     {
 	private readonly string endpoint;
 
