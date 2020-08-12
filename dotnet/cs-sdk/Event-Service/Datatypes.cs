@@ -44,6 +44,13 @@ namespace Actyx {
 	Object Payload { get; }
     }
 
+    public struct EventDraft : IEventDraft
+    {
+	public IEnumerable<string> Tags { get; set; }
+
+	public Object Payload { get; set; }
+    }
+
     public interface ISuttMessageVisitor
     {
 	void Visit(State stateMsg);

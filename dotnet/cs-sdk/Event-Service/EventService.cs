@@ -213,7 +213,7 @@ namespace Actyx {
 	    };
 	    string postData = JsonConvert.SerializeObject(r);
 
-	    var req = new ActyxRequest<PublishSucceeded>(this.Post("/api/v2/events/query", postData));
+	    var req = new ActyxRequest<PublishSucceeded>(this.Post("/api/v2/events/publish", postData));
 
 	    return await req.Buffer();
 	}
@@ -255,6 +255,7 @@ namespace Actyx {
 	    };
 
 	    string postData = JsonConvert.SerializeObject(req);
+	    Console.WriteLine(postData);
 
 	    return new ActyxRequest<Event>(this.Post("/api/v2/events/query", postData));
 	}
