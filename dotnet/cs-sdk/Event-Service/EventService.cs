@@ -87,17 +87,44 @@ namespace Actyx {
 
     public class EventService
     {
+	private readonly string authToken;
 	private readonly string endpoint;
 
-	public EventService(string endpoint = "http://localhost:4454/api") {
-	    this.endpoint = endpoint;
+	public static async Task<EventService> ForApp(
+			    string appName,
+			    string endpoint = "http://localhost",
+			    int eventServicePort = 4454,
+			    int nodePort = 4457
+			    )
+	{
+	    var request = WebRequest.Create(endpoint + ':' + nodePort + "/api/v0/apps/" + Uri.EscapeUriString(appName) + "/token");
+
+	    var response = await request.GetResponseAsync();
+
+	    var reader = new StreamReader(response.GetResponseStream());
+
+	    string token = JObject.Parse(reader.ReadLine())["Ok"].ToObject<string>();
+
+	    return new EventService(token, endpoint, eventServicePort);
 	}
+
+	
+	public EventService(
+			    string authToken,
+			    string endpoint = "http://localhost",
+			    int eventServicePort = 4454
+			    )
+	{
+	    this.authToken = authToken;
+	    this.endpoint = endpoint + ':' + eventServicePort;
+	}
+
 
 	public async Task<Dictionary<string, UInt64>> offsets()
 	{
 	    var request = WebRequest.Create(this.endpoint + "/v2/events/offsets");
 	    request.ContentType = "application/json";
-	    request.Headers.Add("Authorization", "Bearer AAAARqVnY3JlYXRlZBsABayEzaJD42ZhcHBfaWRoc29tZS5hcHBmY3ljbGVzAGd2ZXJzaW9uZTEuMC4waHZhbGlkaXR5Gv////8Bf1lCGGeTcd1ywvwYue4jEjqTx0LYFTzdBzdyr65FfgYkJSlrbLTNa1R88kJNNa6+t8UDD0F/t8rlEdZAX7vXAcrDkxFVk2QFFi/o9eIlNmk8wd917afsGBD7ap5EOX4M");
+	    request.Headers.Add("Authorization", this.authToken);
 
 	    var response = await request.GetResponseAsync();
 
