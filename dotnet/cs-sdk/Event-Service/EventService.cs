@@ -33,6 +33,10 @@ namespace Actyx {
 
 	    // Empty lines are sent as a means of keep-alive.
 	    while (nextLine != "event:event") {
+		if (reader.EndOfStream) {
+		    return false;
+		}
+
 		Console.WriteLine("skipping: " + nextLine);
 		nextLine = await reader.ReadLineAsync();
 	    }
@@ -40,6 +44,10 @@ namespace Actyx {
 	    // Immediately after the event:event line we expect the data:{json} line
 	    nextLine = await reader.ReadLineAsync();
 	    while (!nextLine.StartsWith("data:")) {
+		if (reader.EndOfStream) {
+		    return false;
+		}
+
 		Console.WriteLine("EXPECTED DATA BUT FOUND: " + nextLine);
 		nextLine = await reader.ReadLineAsync();
 	    }
@@ -107,6 +115,7 @@ namespace Actyx {
 
 	private WebRequest EventServiceRequest(string path)
 	{
+	    Console.WriteLine(this.endpoint + path);
 	    WebRequest request = WebRequest.Create(this.endpoint + path);
 	    request.ContentType = "application/json";
 	    request.Headers.Add("Authorization", this.authToken);
@@ -128,10 +137,9 @@ namespace Actyx {
 	    return request;
 	}
 
-
 	public async Task<Dictionary<string, UInt64>> Offsets()
 	{
-	    var request = this.EventServiceRequest(this.endpoint + "/api/v2/events/offsets");
+	    var request = this.EventServiceRequest("/api/v2/events/offsets");
 
 	    var response = await request.GetResponseAsync();
 
@@ -139,7 +147,6 @@ namespace Actyx {
 
 	    return JsonConvert.DeserializeObject<Dictionary<string, UInt64>>(reader.ReadLine());
 	}
-
 
 	public IAsyncEnumerable<ISuttMessage> SubscribeUntilTimeTravel(string session, string subscription, IDictionary<string, UInt64> offsets)
 	{
