@@ -26,6 +26,24 @@ namespace Actyx {
         }
     }
 
+    public class PublishSucceeded
+    {
+	[JsonProperty("key")]
+	public EventKey Key { get; protected set; }
+
+	[JsonProperty("appId")]
+	public string AppId { get; protected set; }
+
+    }
+
+    public interface IEventDraft
+    {
+	IEnumerable<string> Tags { get; }
+
+	// Must be JSON-Serializable.
+	Object Payload { get; }
+    }
+
     public interface ISuttMessageVisitor
     {
 	void Visit(State stateMsg);

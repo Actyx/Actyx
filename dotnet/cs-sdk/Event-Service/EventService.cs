@@ -64,6 +64,23 @@ namespace Actyx {
 	}
     }
 
+    static class AsyncBufferExtension
+    {
+        public static async Task<IList<T>> Buffer<T>(this IAsyncEnumerable<T> stream)
+        {
+	    // TODO: CancellationToken?
+	    var e = stream.GetAsyncEnumerator();
+	    IList<T> result = new List<T>();
+
+	    try
+	    {
+		while (await e.MoveNextAsync()) result.Add(e.Current);
+	    }
+	    finally { if (e != null) await e.DisposeAsync(); }
+
+	    return result;
+        }
+    }
 
     public class ActyxRequest<T> : IAsyncEnumerable<T> {
 	private readonly WebRequest request;
@@ -188,30 +205,33 @@ namespace Actyx {
 	    return new ActyxRequest<ISuttMessage>(this.Post("/api/v2/events/subscribeUntilTimeTravel", postData));
 	}
 
-	
-	public async Task<IList<Event>> Query(string subscription, 
+
+	public async Task<IList<PublishSucceeded>> Publish(IEnumerable<IEventDraft> events)
+	{
+	    var r = new {
+		data = events
+	    };
+	    string postData = JsonConvert.SerializeObject(r);
+
+	    var req = new ActyxRequest<PublishSucceeded>(this.Post("/api/v2/events/query", postData));
+
+	    return await req.Buffer();
+	}
+
+	public async Task<IList<Event>> Query(string subscription,
 					IDictionary<string, UInt64> upperBound,
 					EventsOrder order)
 	{
 	    return await this.Query(subscription, new Dictionary<string, UInt64>(), upperBound, order);
 	}
 
-	
-	public async Task<IList<Event>> Query(string subscription, 
+
+	public async Task<IList<Event>> Query(string subscription,
 					IDictionary<string, UInt64> lowerBound,
 					IDictionary<string, UInt64> upperBound,
 					EventsOrder order)
 	{
-	    var e = this.QueryStreaming(subscription, lowerBound, upperBound, order).GetAsyncEnumerator();
-	    IList<Event> result = new List<Event>();
-	    
-	    try
-	    {
-		while (await e.MoveNextAsync()) result.Add(e.Current);
-	    }
-	    finally { if (e != null) await e.DisposeAsync(); }
-
-	    return result;
+	    return await this.QueryStreaming(subscription, lowerBound, upperBound, order).Buffer();
 	}
 
 
