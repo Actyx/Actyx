@@ -88,7 +88,9 @@ namespace Actyx {
 
 	    var reader = new StreamReader(response.GetResponseStream());
 
-	    string token = JObject.Parse(reader.ReadLine())["Ok"].ToObject<string>();
+	    string token = "Bearer " + JObject.Parse(reader.ReadLine())["Ok"].ToObject<string>();
+
+	    Console.WriteLine("found token: " + token);
 
 	    return new EventService(token, endpoint, eventServicePort);
 	}
@@ -129,7 +131,7 @@ namespace Actyx {
 
 	public async Task<Dictionary<string, UInt64>> offsets()
 	{
-	    var request = this.EventServiceRequest(this.endpoint + "/v2/events/offsets");
+	    var request = this.EventServiceRequest(this.endpoint + "/api/v2/events/offsets");
 	    
 	    var response = await request.GetResponseAsync();
 
@@ -149,7 +151,7 @@ namespace Actyx {
 
 	    string postData = JsonConvert.SerializeObject(req);
 
-	    return new ActyxRequest<ISuttMessage>(this.Post("/v2/events/subscribeUntilTimeTravel", postData));
+	    return new ActyxRequest<ISuttMessage>(this.Post("/api/v2/events/subscribeUntilTimeTravel", postData));
 	}
 
 
@@ -176,7 +178,7 @@ namespace Actyx {
 	    string postData = JsonConvert.SerializeObject(req);
 	    Console.WriteLine("posting:" + postData);
 
-	    return new ActyxRequest<ISuttMessage>(this.Post("/v2/events/subscribeUntilTimeTravel", postData));
+	    return new ActyxRequest<ISuttMessage>(this.Post("/api/v2/events/subscribeUntilTimeTravel", postData));
 	}
 
 	public IAsyncEnumerable<Event> subscribe()
@@ -192,7 +194,7 @@ namespace Actyx {
 	    // string postData = "{\"subscriptions\": [{}]}";
 	    string postData = JsonConvert.SerializeObject(req);
 
-	    return new ActyxRequest<Event>(this.Post("/v2/events/subscribe", postData));
+	    return new ActyxRequest<Event>(this.Post("/api/v2/events/subscribe", postData));
 	}
     }
 }

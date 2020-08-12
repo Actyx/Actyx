@@ -9,6 +9,7 @@ namespace cs_sdk.Tests
         static async Task Main(string[] args)
         {
 	    var s = await EventService.ForApp("some.app");
+	    
 	    string query = "'semantics:edge.ax.sf.UiSession'";
 
 	    var t = s.subscribeUntilTimeTravel("foo", query, SnapshotCompression.None);
