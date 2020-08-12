@@ -57,31 +57,16 @@ namespace Actyx {
     }
 
 
-    public class Request<T> : IAsyncEnumerable<T> {
-	private readonly string path;
-	private readonly string postData;
+    public class ActyxRequest<T> : IAsyncEnumerable<T> {
+	private readonly WebRequest request;
 
-	public Request(string path, string postData) {
-	    this.path = path;
-	    this.postData = postData;
+	public ActyxRequest(WebRequest request) {
+	    this.request = request;
 	}
 
-	public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken token) {
-	    var request = WebRequest.Create(this.path);
-	    request.ContentType = "application/json";
-	    request.Headers.Add("Authorization", "Bearer AAAARqVnY3JlYXRlZBsABayEzaJD42ZhcHBfaWRoc29tZS5hcHBmY3ljbGVzAGd2ZXJzaW9uZTEuMC4waHZhbGlkaXR5Gv////8Bf1lCGGeTcd1ywvwYue4jEjqTx0LYFTzdBzdyr65FfgYkJSlrbLTNa1R88kJNNa6+t8UDD0F/t8rlEdZAX7vXAcrDkxFVk2QFFi/o9eIlNmk8wd917afsGBD7ap5EOX4M");
-
-	    // Setup POST data:
-	    request.Method = "POST";
-	    var reqMsgBytes = Encoding.UTF8.GetBytes(this.postData);
-
-	    var dataStream = request.GetRequestStream();
-	    dataStream.Write(reqMsgBytes, 0, reqMsgBytes.Length);
-	    dataStream.Close();
-
-	    var response = request.GetResponse();
-
-	    return new StreamingResponse<T>(response.GetResponseStream());
+	public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken token)
+	{    
+	    return new StreamingResponse<T>(request.GetResponse().GetResponseStream());
 	}
     }
 
@@ -108,7 +93,6 @@ namespace Actyx {
 	    return new EventService(token, endpoint, eventServicePort);
 	}
 
-	
 	public EventService(
 			    string authToken,
 			    string endpoint = "http://localhost",
@@ -119,13 +103,34 @@ namespace Actyx {
 	    this.endpoint = endpoint + ':' + eventServicePort;
 	}
 
-
-	public async Task<Dictionary<string, UInt64>> offsets()
+	private WebRequest EventServiceRequest(string path)
 	{
-	    var request = WebRequest.Create(this.endpoint + "/v2/events/offsets");
+	    WebRequest request = WebRequest.Create(this.endpoint + path);
 	    request.ContentType = "application/json";
 	    request.Headers.Add("Authorization", this.authToken);
 
+	    return request;
+	}
+
+	private WebRequest Post(string path, string postData)
+	{
+	    WebRequest request = this.EventServiceRequest(path);
+	    // Setup POST data:
+	    request.Method = "POST";
+	    byte[] reqMsgBytes = Encoding.UTF8.GetBytes(postData);
+
+	    Stream dataStream = request.GetRequestStream();
+	    dataStream.Write(reqMsgBytes, 0, reqMsgBytes.Length);
+	    dataStream.Close();
+	    
+	    return request;
+	}
+
+
+	public async Task<Dictionary<string, UInt64>> offsets()
+	{
+	    var request = this.EventServiceRequest(this.endpoint + "/v2/events/offsets");
+	    
 	    var response = await request.GetResponseAsync();
 
 	    var reader = new StreamReader(response.GetResponseStream());
@@ -134,7 +139,7 @@ namespace Actyx {
 	}
 	
 
-	public Request<ISuttMessage> subscribeUntilTimeTravel(string session, string subscription, IDictionary<string, UInt64> offsets)
+	public IAsyncEnumerable<ISuttMessage> subscribeUntilTimeTravel(string session, string subscription, IDictionary<string, UInt64> offsets)
 	{
 	    var req = new {
 		session,
@@ -144,11 +149,11 @@ namespace Actyx {
 
 	    string postData = JsonConvert.SerializeObject(req);
 
-	    return new Request<ISuttMessage>(this.endpoint + "/v2/events/subscribeUntilTimeTravel", postData);
+	    return new ActyxRequest<ISuttMessage>(this.Post("/v2/events/subscribeUntilTimeTravel", postData));
 	}
 
 
-	public Request<ISuttMessage> subscribeUntilTimeTravel(string session, string subscription, params SnapshotCompression[] acceptedFormats)
+	public IAsyncEnumerable<ISuttMessage> subscribeUntilTimeTravel(string session, string subscription, params SnapshotCompression[] acceptedFormats)
 	{
 	    List<string> compression = new List<string>();
 
@@ -171,10 +176,10 @@ namespace Actyx {
 	    string postData = JsonConvert.SerializeObject(req);
 	    Console.WriteLine("posting:" + postData);
 
-	    return new Request<ISuttMessage>(this.endpoint + "/v2/events/subscribeUntilTimeTravel", postData);
+	    return new ActyxRequest<ISuttMessage>(this.Post("/v2/events/subscribeUntilTimeTravel", postData));
 	}
 
-	public Request<Event> subscribe()
+	public IAsyncEnumerable<Event> subscribe()
 	{
 	    var req = new {
 		subscriptions = new List<object>() {
@@ -187,7 +192,7 @@ namespace Actyx {
 	    // string postData = "{\"subscriptions\": [{}]}";
 	    string postData = JsonConvert.SerializeObject(req);
 
-	    return new Request<Event>(this.endpoint + "/v2/events/subscribe", postData);
+	    return new ActyxRequest<Event>(this.Post("/v2/events/subscribe", postData));
 	}
     }
 }
