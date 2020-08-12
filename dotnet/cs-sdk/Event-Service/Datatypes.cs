@@ -6,6 +6,26 @@ using System.Collections.Generic;
 
 namespace Actyx {
 
+    public enum EventsOrder
+    {
+	Lamport,
+	LamportReverse,
+	SourceOrdered,
+    }
+
+    public static class Extensions
+    {
+        public static string ToWireString(this EventsOrder order)
+        {
+	    switch (order) {
+		case EventsOrder.Lamport: return "lamport";
+		case EventsOrder.LamportReverse: return "lamport-reverse";
+		case EventsOrder.SourceOrdered: return "source-ordered";
+		default: return "lamport";
+	    }
+        }
+    }
+
     public interface ISuttMessageVisitor
     {
 	void Visit(State stateMsg);

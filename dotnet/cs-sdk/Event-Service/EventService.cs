@@ -65,7 +65,7 @@ namespace Actyx {
 	}
 
 	public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken token)
-	{    
+	{
 	    return new StreamingResponse<T>(request.GetResponse().GetResponseStream());
 	}
     }
@@ -124,24 +124,24 @@ namespace Actyx {
 	    Stream dataStream = request.GetRequestStream();
 	    dataStream.Write(reqMsgBytes, 0, reqMsgBytes.Length);
 	    dataStream.Close();
-	    
+
 	    return request;
 	}
 
 
-	public async Task<Dictionary<string, UInt64>> offsets()
+	public async Task<Dictionary<string, UInt64>> Offsets()
 	{
 	    var request = this.EventServiceRequest(this.endpoint + "/api/v2/events/offsets");
-	    
+
 	    var response = await request.GetResponseAsync();
 
 	    var reader = new StreamReader(response.GetResponseStream());
 
 	    return JsonConvert.DeserializeObject<Dictionary<string, UInt64>>(reader.ReadLine());
 	}
-	
 
-	public IAsyncEnumerable<ISuttMessage> subscribeUntilTimeTravel(string session, string subscription, IDictionary<string, UInt64> offsets)
+
+	public IAsyncEnumerable<ISuttMessage> SubscribeUntilTimeTravel(string session, string subscription, IDictionary<string, UInt64> offsets)
 	{
 	    var req = new {
 		session,
@@ -155,7 +155,7 @@ namespace Actyx {
 	}
 
 
-	public IAsyncEnumerable<ISuttMessage> subscribeUntilTimeTravel(string session, string subscription, params SnapshotCompression[] acceptedFormats)
+	public IAsyncEnumerable<ISuttMessage> SubscribeUntilTimeTravel(string session, string subscription, params SnapshotCompression[] acceptedFormats)
 	{
 	    List<string> compression = new List<string>();
 
@@ -181,17 +181,43 @@ namespace Actyx {
 	    return new ActyxRequest<ISuttMessage>(this.Post("/api/v2/events/subscribeUntilTimeTravel", postData));
 	}
 
-	public IAsyncEnumerable<Event> subscribe()
+	public IAsyncEnumerable<Event> Query(string subscription, IDictionary<string, UInt64> upperBound, EventsOrder order)
+	{
+	    return this.Query(subscription, new Dictionary<string, UInt64>(), upperBound, order);
+	}
+
+	public IAsyncEnumerable<Event> Query(
+					     string subscription,
+					     IDictionary<string, UInt64> lowerBound,
+					     IDictionary<string, UInt64> upperBound,
+					     EventsOrder order
+					     )
 	{
 	    var req = new {
-		subscriptions = new List<object>() {
-		    new {
-			semantics = "whatever",
-		    },
-		}
+		subscription,
+		lowerBound,
+		upperBound,
+		order = order.ToWireString()
 	    };
 
-	    // string postData = "{\"subscriptions\": [{}]}";
+	    string postData = JsonConvert.SerializeObject(req);
+
+	    return new ActyxRequest<Event>(this.Post("/api/v2/events/query", postData));
+	}
+
+
+	public IAsyncEnumerable<Event> Subscribe(string subscription)
+	{
+	    return this.Subscribe(subscription, new Dictionary<string, UInt64>());
+	}
+
+	public IAsyncEnumerable<Event> Subscribe(string subscription, IDictionary<string, UInt64> lowerBound)
+	{
+	    var req = new {
+		subscription,
+		lowerBound
+	    };
+
 	    string postData = JsonConvert.SerializeObject(req);
 
 	    return new ActyxRequest<Event>(this.Post("/api/v2/events/subscribe", postData));
