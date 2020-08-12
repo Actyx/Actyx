@@ -38,9 +38,11 @@ namespace Actyx {
 
     public interface IEventDraft
     {
+	[JsonProperty("tags")]
 	IEnumerable<string> Tags { get; }
 
 	// Must be JSON-Serializable.
+	[JsonProperty("payload")]
 	Object Payload { get; }
     }
 
@@ -128,7 +130,7 @@ namespace Actyx {
 	public EventMetadata Meta { get; protected set; }
 
 	[JsonProperty("payload")]
-	public JObject Payload { get; protected set; }
+	public JToken Payload { get; protected set; }
 
 	public void Accept(ISuttMessageVisitor handler) {
 	    handler.Visit(this);
