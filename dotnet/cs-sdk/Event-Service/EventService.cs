@@ -188,12 +188,39 @@ namespace Actyx {
 	    return new ActyxRequest<ISuttMessage>(this.Post("/api/v2/events/subscribeUntilTimeTravel", postData));
 	}
 
-	public IAsyncEnumerable<Event> Query(string subscription, IDictionary<string, UInt64> upperBound, EventsOrder order)
+	
+	public async Task<IList<Event>> Query(string subscription, 
+					IDictionary<string, UInt64> upperBound,
+					EventsOrder order)
 	{
-	    return this.Query(subscription, new Dictionary<string, UInt64>(), upperBound, order);
+	    return await this.Query(subscription, new Dictionary<string, UInt64>(), upperBound, order);
 	}
 
-	public IAsyncEnumerable<Event> Query(
+	
+	public async Task<IList<Event>> Query(string subscription, 
+					IDictionary<string, UInt64> lowerBound,
+					IDictionary<string, UInt64> upperBound,
+					EventsOrder order)
+	{
+	    var e = this.QueryStreaming(subscription, lowerBound, upperBound, order).GetAsyncEnumerator();
+	    IList<Event> result = new List<Event>();
+	    
+	    try
+	    {
+		while (await e.MoveNextAsync()) result.Add(e.Current);
+	    }
+	    finally { if (e != null) await e.DisposeAsync(); }
+
+	    return result;
+	}
+
+
+	public IAsyncEnumerable<Event> QueryStreaming(string subscription, IDictionary<string, UInt64> upperBound, EventsOrder order)
+	{
+	    return this.QueryStreaming(subscription, new Dictionary<string, UInt64>(), upperBound, order);
+	}
+
+	public IAsyncEnumerable<Event> QueryStreaming(
 					     string subscription,
 					     IDictionary<string, UInt64> lowerBound,
 					     IDictionary<string, UInt64> upperBound,
