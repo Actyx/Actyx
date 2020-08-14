@@ -111,6 +111,17 @@
               "$ref": "#/definitions/Composite/LogLevel"
             }
           }
+        },
+        "authorizedKeys": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64 
+          },
+          "minItems": 0,
+          "uniqueItems": true,
+          "default": []
         }
       }
     },
