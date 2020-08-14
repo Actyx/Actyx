@@ -112,6 +112,10 @@
             }
           }
         },
+        "requireAuthentication": {
+          "type": "boolean",
+          "default": false
+          },
         "authorizedKeys": {
           "type": "array",
           "items": {
