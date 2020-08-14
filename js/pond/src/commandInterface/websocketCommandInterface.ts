@@ -19,48 +19,44 @@ import {
   SubscribeRequest,
 } from './commandInterface'
 
-export const enum RequestTypes {
+const enum RequestTypes {
   Commands = '/ax/misc/commands',
   Logging = '/ax/misc/logging',
 }
 
-export const Subscribe = t.readonly(
+const Subscribe = t.readonly(
   t.type({
     type: t.literal('subscribe'),
   }),
 )
-export type Subscribe = t.TypeOf<typeof Subscribe>
-export const AlertData = t.readonly(
+type Subscribe = t.TypeOf<typeof Subscribe>
+
+const AlertData = t.readonly(
   t.type({
     type: t.literal('alert'),
     message: t.string,
     time: Timestamp.FromNumber,
   }),
 )
-export type AlertData = t.TypeOf<typeof AlertData>
-export const HeartbeatData = t.readonly(
+type AlertData = t.TypeOf<typeof AlertData>
+
+const HeartbeatData = t.readonly(
   t.type({
     type: t.literal('heartbeat'),
     time: Timestamp.FromNumber,
   }),
 )
-export type HeartbeatData = t.TypeOf<typeof HeartbeatData>
-export const LoggingData = t.readonly(
-  t.type({
-    level: t.string,
-    tag: t.string,
-    message: t.string,
-  }),
-)
-export type LoggingData = t.TypeOf<typeof LoggingData>
-export const MetaData = t.readonly(
+type HeartbeatData = t.TypeOf<typeof HeartbeatData>
+
+const MetaData = t.readonly(
   t.type({
     type: t.literal('meta'),
     message: t.string,
   }),
 )
-export type MetaData = t.TypeOf<typeof MetaData>
-export const RunStatsData = t.readonly(
+type MetaData = t.TypeOf<typeof MetaData>
+
+const RunStatsData = t.readonly(
   t.type({
     type: t.literal('runStats'),
     counters: DurationMap,
@@ -68,18 +64,10 @@ export const RunStatsData = t.readonly(
     gauges: GaugeMap,
   }),
 )
-export type RunStatsData = t.TypeOf<typeof RunStatsData>
-
-export type CommandInterfaceData =
-  | AlertData
-  | HeartbeatData
-  | LoggingData
-  | MetaData
-  | RunStatsData
-  | Subscribe
+type RunStatsData = t.TypeOf<typeof RunStatsData>
 
 export class WebsocketCommandInterface implements CommandInterface {
-  constructor(private readonly multiplexer: MultiplexedWebsocket, readonly sourceId: SourceId) {}
+  constructor(private readonly multiplexer: MultiplexedWebsocket, readonly sourceId: SourceId) { }
 
   alert: AlertRequest = (message: string, time: Timestamp) =>
     this.multiplexer
