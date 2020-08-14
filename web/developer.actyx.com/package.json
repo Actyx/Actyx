@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "copy-dir": "^1.2.0",
-    "mkdirp": "^1.0.4"
+    "mkdirp": "^1.0.4",
+    "nan": "^2.14.1"
   }
 }
