@@ -103,6 +103,12 @@ export type WaitForSwarmSyncParams = WaitForSwarmConfig &
     onProgress?: (newState: SplashState) => void
   }>
 
+/**
+ * Main interface for interaction with the ActyxOS event system.
+ * New instances are created via `Pond.default()` or `Pond.of(options)`.
+ * Acquire a Pond for testing (which uses a simulated clean Event Store) via `Pond.test()`.
+ * @public
+ */
 export type Pond = {
   /* EMISSION */
 
