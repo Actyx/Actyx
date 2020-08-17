@@ -29,7 +29,6 @@ export type SwarmInfo = Readonly<{
   nodes: immutable.Map<string, NodeInfoEntry>
 }>
 
-
 /**
  * Mutable swarm counters information.
  * @public

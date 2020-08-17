@@ -32,7 +32,6 @@ export const none: () => never = () => {
   throw new Error('there should have been something')
 }
 
-
 /**
  * Assert that from the type information, a piece of code can never be reached.
  * If it’s still reached at runtime, this throws an Error.

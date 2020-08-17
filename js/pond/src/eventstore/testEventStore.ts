@@ -46,7 +46,7 @@ export type TestEvent = {
 export type TestEventStore = EventStore & {
   // It is up to the test case to judge which events
   // might realistically appear in the live stream.
-  directlyPushEvents: (events: TestEvent[]) => void
+  directlyPushEvents: (events: ReadonlyArray<TestEvent>) => void
   storedEvents: () => Event[]
 }
 
@@ -185,7 +185,7 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
     return Observable.of(newEvents)
   }
 
-  const directlyPushEvents = (newEvents: TestEvent[]) => {
+  const directlyPushEvents = (newEvents: ReadonlyArray<TestEvent>) => {
     let b = { ...offsets }
     for (const ev of newEvents) {
       b = includeEvent(b, ev)

@@ -12,7 +12,7 @@ import * as debug from 'debug'
  * Generic logging function signature.
  * @public
  */
-export type LogFunction = (typeof console)['log']
+export type LogFunction = ((first: any, ...rest: any[]) => void)
 
 /**
  * A concrete logger that has a namespace and a flag indicating whether
@@ -35,6 +35,40 @@ export type Loggers = {
   warn: Logger
   debug: Logger
   info: Logger
+}
+
+/**
+ * Loggers which just buffer messages.
+ */
+export type TestLoggers = {
+  errors: ReadonlyArray<string>
+  warnings: ReadonlyArray<string>
+  error: Logger
+  warn: Logger
+  debug: Logger
+  info: Logger
+}
+function mkTestLogger(dump: string[]): Logger {
+  function logger(...args: any[]): void {
+    dump.push(args.map(x => JSON.stringify(x)).join(':'))
+  }
+  logger.namespace = 'test'
+  logger.enabled = true
+
+  return logger
+}
+const mkTestLoggers = (): TestLoggers => {
+  const errors: string[] = []
+  const warnings: string[] = []
+
+  return {
+    errors,
+    warnings,
+    error: mkTestLogger(errors),
+    warn: mkTestLogger(warnings),
+    info: mkTestLogger([]),
+    debug: mkTestLogger([]),
+  }
 }
 
 // The goal is to make our logger look exactly like one from the 'debug' library,
@@ -83,6 +117,7 @@ export const globalLogLeech: LogLeech = () => {
 /** @internal */
 export const LoggersInternal = {
   globalLogLeech,
+  testLoggers: mkTestLoggers,
 }
 
 /** Loggers associated methods. @public */

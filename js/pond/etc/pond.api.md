@@ -161,7 +161,7 @@ export const Lamport: {
 };
 
 // @public
-export type LogFunction = (typeof console)['log'];
+export type LogFunction = ((first: any, ...rest: any[]) => void);
 
 // @public
 export interface Logger extends LogFunction {
