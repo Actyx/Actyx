@@ -8,11 +8,11 @@
 
 import { Observable, Scheduler } from 'rxjs'
 import { CommandInterface } from './commandInterface'
-import { EventStore } from './eventstore'
+import { EventStore, WsStoreConfig } from './eventstore'
 import { MultiplexedWebsocket } from './eventstore/multiplexedWebsocket'
 import { TestEvent } from './eventstore/testEventStore'
 import { ConnectivityStatus, Events } from './eventstore/types'
-import { mkMultiplexer } from './eventstore/utils'
+import { extendDefaultWsStoreConfig, mkMultiplexer } from './eventstore/utils'
 import { getSourceId } from './eventstore/websocketEventStore'
 import { CommandPipeline, FishJar } from './fishJar'
 import log from './loggers'
@@ -498,7 +498,8 @@ const createServices = async (multiplexer: MultiplexedWebsocket): Promise<Servic
   return { eventStore, snapshotStore, commandInterface }
 }
 
-const mkPond = async (multiplexer: MultiplexedWebsocket, opts: PondOptions = {}): Promise<Pond> => {
+const mkPond = async (connectionOpts: Partial<WsStoreConfig>, opts: PondOptions): Promise<Pond> => {
+  const multiplexer = mkMultiplexer(extendDefaultWsStoreConfig(connectionOpts))
   const services = await createServices(multiplexer || mkMultiplexer())
   return pondFromServices(services, opts)
 }
@@ -542,7 +543,7 @@ const pondFromServices = (services: Services, opts: PondOptions): Pond => {
 }
 
 export const Pond = {
-  default: async (): Promise<Pond> => Pond.of(mkMultiplexer()),
+  default: async (): Promise<Pond> => Pond.of({}, {}),
   of: mkPond,
   mock: mkMockPond,
   test: mkTestPond,
