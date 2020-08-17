@@ -28,10 +28,15 @@ import {
   PersistedEventsSortOrders,
 } from './types'
 
+/**
+ * A raw actyx event to be emitted by the TestEventStore, as if it really arrived from the outside.
+ */
+export type ActyxOsEvent = Event // Rename so it’s a less confusing namespace pollution
+
 export type TestEventStore = EventStore & {
   // It is up to the test case to judge which events
   // might realistically appear in the live stream.
-  directlyPushEvents: (events: Events) => void
+  directlyPushEvents: (events: ActyxOsEvent[]) => void
   storedEvents: () => Event[]
 }
 

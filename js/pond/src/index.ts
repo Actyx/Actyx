@@ -5,6 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 export { MultiplexedWebsocket } from './eventstore/multiplexedWebsocket'
+export { ActyxOsEvent } from './eventstore/testEventStore'
 export { ConnectivityStatus, ConnectivityStatusType } from './eventstore/types'
 export * from './pond'
 export { FishProcessInfo, PondState } from './pond-state'

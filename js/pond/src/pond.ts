@@ -10,7 +10,7 @@ import { Observable, Scheduler } from 'rxjs'
 import { CommandInterface } from './commandInterface'
 import { EventStore } from './eventstore'
 import { MultiplexedWebsocket } from './eventstore/multiplexedWebsocket'
-import { TestEventStore } from './eventstore/testEventStore'
+import { ActyxOsEvent } from './eventstore/testEventStore'
 import { ConnectivityStatus, Events, UnstoredEvents } from './eventstore/types'
 import { mkMultiplexer } from './eventstore/utils'
 import { getSourceId } from './eventstore/websocketEventStore'
@@ -458,15 +458,15 @@ class Pond2Impl implements Pond {
 
     const tw = autoCancel
       ? (state: S) => {
-        if (cancelled) {
-          return false
-        } else if (autoCancel(state)) {
-          cancelled = true
-          return false
-        }
+          if (cancelled) {
+            return false
+          } else if (autoCancel(state)) {
+            cancelled = true
+            return false
+          }
 
-        return true
-      }
+          return true
+        }
       : () => !cancelled
 
     states
@@ -518,8 +518,7 @@ const mkMockPond = async (opts?: PondOptions): Promise<Pond> => {
 }
 
 export type TestPond2 = Pond & {
-  directlyPushEvents: (events: Events) => void
-  eventStore: TestEventStore
+  directlyPushEvents: (events: ActyxOsEvent[]) => void
 }
 const mkTestPond = async (opts?: PondOptions): Promise<TestPond2> => {
   const opts1: PondOptions = opts || {}
@@ -529,7 +528,6 @@ const mkTestPond = async (opts?: PondOptions): Promise<TestPond2> => {
   return {
     ...pondFromServices({ eventStore, snapshotStore, commandInterface }, opts1),
     directlyPushEvents: eventStore.directlyPushEvents,
-    eventStore,
   }
 }
 const pondFromServices = (services: Services, opts: PondOptions): Pond => {

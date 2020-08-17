@@ -8,6 +8,7 @@ import { last } from 'ramda'
 import { Observable } from 'rxjs'
 import { Fish, FishId } from '.'
 import { EventStore } from './eventstore'
+import { ActyxOsEvent } from '.'
 import { Event, Events, OffsetMap } from './eventstore/types'
 import { FishJar } from './fishJar'
 import { mkNoopPondStateTracker } from './pond-state'
@@ -152,7 +153,7 @@ export const mkSnapshot = (
 
 export const snapshotTestSetup = async <S>(
   fish: Fish<S, NumberFishEvent>,
-  storedEvents?: Events,
+  storedEvents?: ActyxOsEvent[],
   storedSnapshots?: ReadonlyArray<SnapshotData>,
 ) => {
   const sourceId = SourceId.of('LOCAL-test-source')
@@ -193,7 +194,7 @@ export const snapshotTestSetup = async <S>(
 
   const pubEvents = eventStore.directlyPushEvents
 
-  const applyAndGetState = async (events: Events, numExpectedStates = 1) => {
+  const applyAndGetState = async (events: ActyxOsEvent[], numExpectedStates = 1) => {
     // adding events may or may not emit a new state, depending on whether the events
     // were relevant (might be before semantic snapshot or duplicates)
     const pubProm = observe
