@@ -6,10 +6,10 @@
  */
 import { Observable } from 'rxjs'
 import { SubscriptionSet } from '../subscription'
-import { EventKey, SourceId, Milliseconds } from '../types'
+import { EventKey, Milliseconds, SourceId } from '../types'
 import { mockEventStore } from './mockEventStore'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
-import { testEventStore } from './testEventStore'
+import { testEventStore, TestEventStore } from './testEventStore'
 import {
   AllEventsSortOrder,
   ConnectivityStatus,
@@ -131,7 +131,12 @@ const noopEventStore: EventStore = {
   connectivityStatus: () => Observable.empty(),
 }
 
-export const EventStore = {
+export const EventStore: {
+  noop: EventStore
+  ws: (multiplexedWebsocket: MultiplexedWebsocket, sourceId: SourceId) => EventStore
+  mock: () => EventStore
+  test: (sourceId?: SourceId, eventChunkSize?: number) => TestEventStore
+} = {
   noop: noopEventStore,
   ws: (multiplexedWebsocket: MultiplexedWebsocket, sourceId: SourceId) =>
     new WebsocketEventStore(multiplexedWebsocket, sourceId),

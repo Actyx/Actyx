@@ -224,7 +224,7 @@ export type Pond = {
   waitForSwarmSync(params: WaitForSwarmSyncParams): void
 }
 
-export class Pond2Impl implements Pond {
+class Pond2Impl implements Pond {
   readonly hydrateV2: <S, E>(
     subscriptionSet: SubscriptionSet,
     initialState: S,

@@ -10,7 +10,7 @@ import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
 import { FishName, isString, Lamport, Psn, Semantics, SourceId, Timestamp } from '../types'
 import { OffsetMapIO } from './offsetMap'
-import { createEnumType } from './utils'
+import { createEnumType, EnumType } from './utils'
 
 export { OffsetMap, OffsetMapBuilder } from './offsetMap'
 
@@ -120,10 +120,9 @@ export enum PersistedEventsSortOrders {
   ReverseEventKey = 'reverseEventKey',
   Unsorted = 'unsorted',
 }
-export const PersistedEventsSortOrder = createEnumType<PersistedEventsSortOrders>(
-  PersistedEventsSortOrders,
-  'PersistedEventsSortOrders',
-)
+export const PersistedEventsSortOrder: EnumType<PersistedEventsSortOrders> = createEnumType<
+  PersistedEventsSortOrders
+>(PersistedEventsSortOrders, 'PersistedEventsSortOrders')
 export type PersistedEventsSortOrder = t.TypeOf<typeof PersistedEventsSortOrder>
 
 /**
@@ -133,10 +132,9 @@ export enum AllEventsSortOrders {
   EventKey = 'eventKey',
   Unsorted = 'unsorted',
 }
-export const AllEventsSortOrder = createEnumType<AllEventsSortOrders>(
-  AllEventsSortOrders,
-  'AllEventsSortOrders',
-)
+export const AllEventsSortOrder: EnumType<AllEventsSortOrders> = createEnumType<
+  AllEventsSortOrders
+>(AllEventsSortOrders, 'AllEventsSortOrders')
 export type AllEventsSortOrder = t.TypeOf<typeof AllEventsSortOrder>
 
 /**
