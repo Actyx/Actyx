@@ -507,10 +507,7 @@ const createServices = async (multiplexer: MultiplexedWebsocket): Promise<Servic
   return { eventStore, snapshotStore, commandInterface }
 }
 
-const mkPond = async (
-  connectionOpts: Partial<WsStoreConfig>,
-  opts: PondOptions = {},
-): Promise<Pond> => {
+const mkPond = async (connectionOpts: Partial<WsStoreConfig>, opts: PondOptions): Promise<Pond> => {
   const multiplexer = mkMultiplexer(extendDefaultWsStoreConfig(connectionOpts))
   const services = await createServices(multiplexer || mkMultiplexer())
   return pondFromServices(services, opts)
@@ -557,7 +554,7 @@ const pondFromServices = (services: Services, opts: PondOptions): Pond => {
 }
 
 export const Pond = {
-  default: async (): Promise<Pond> => Pond.of({}),
+  default: async (): Promise<Pond> => Pond.of({}, {}),
   of: mkPond,
   mock: mkMockPond,
   test: mkTestPond,
