@@ -228,7 +228,7 @@ export type PendingEmission = {
 
 // @public
 export type Pond = {
-    emit: <E>(tags: Tags<E>, event: E) => PendingEmission;
+    emit<E>(tags: Tags<E>, event: E): PendingEmission;
     observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription;
     run<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>): PendingEmission;
     keepRunning<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>, autoCancel?: (state: S) => boolean): CancelSubscription;
@@ -461,10 +461,10 @@ export type WsStoreConfig = Readonly<{
 // Warnings were encountered during analysis:
 //
 // lib/pond.d.ts:39:8 - (tsdoc-unsupported-tag) The TSDoc tag "@typeParam" is not supported by this tool
-// lib/pond.d.ts:67:8 - (tsdoc-unsupported-tag) The TSDoc tag "@typeParam" is not supported by this tool
 // lib/pond.d.ts:68:8 - (tsdoc-unsupported-tag) The TSDoc tag "@typeParam" is not supported by this tool
-// lib/pond.d.ts:84:8 - (tsdoc-unsupported-tag) The TSDoc tag "@typeParam" is not supported by this tool
+// lib/pond.d.ts:69:8 - (tsdoc-unsupported-tag) The TSDoc tag "@typeParam" is not supported by this tool
 // lib/pond.d.ts:85:8 - (tsdoc-unsupported-tag) The TSDoc tag "@typeParam" is not supported by this tool
+// lib/pond.d.ts:86:8 - (tsdoc-unsupported-tag) The TSDoc tag "@typeParam" is not supported by this tool
 
 // (No @packageDocumentation comment for this package)
 

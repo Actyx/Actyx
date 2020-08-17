@@ -34,7 +34,7 @@
   "homepage": "https://www.actyx.com/products/pond/",
   "scripts": {
     "clean": "rimraf ./lib ./coverage",
-    "build": "tsc -p ./tsconfig.prod.json && npx api-extractor run",
+    "build": "tsc -p ./tsconfig.prod.json && api-extractor run",
     "build:watch": "npm run build -- --watch --pretty",
     "build:prod": "npm run clean && npm run lint && npm run test && npm run build",
     "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx",
