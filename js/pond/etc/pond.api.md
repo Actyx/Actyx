@@ -458,14 +458,6 @@ export type WsStoreConfig = Readonly<{
 }>;
 
 
-// Warnings were encountered during analysis:
-//
-// lib/pond.d.ts:39:8 - (tsdoc-unsupported-tag) The TSDoc tag "@typeParam" is not supported by this tool
-// lib/pond.d.ts:68:8 - (tsdoc-unsupported-tag) The TSDoc tag "@typeParam" is not supported by this tool
-// lib/pond.d.ts:69:8 - (tsdoc-unsupported-tag) The TSDoc tag "@typeParam" is not supported by this tool
-// lib/pond.d.ts:85:8 - (tsdoc-unsupported-tag) The TSDoc tag "@typeParam" is not supported by this tool
-// lib/pond.d.ts:86:8 - (tsdoc-unsupported-tag) The TSDoc tag "@typeParam" is not supported by this tool
-
 // (No @packageDocumentation comment for this package)
 
 ```

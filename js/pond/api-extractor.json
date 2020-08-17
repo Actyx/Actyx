@@ -355,7 +355,7 @@
 
       "tsdoc-unsupported-tag": {
         "logLevel": "none",
-        "addToApiReportFile": true
+        "addToApiReportFile": false
       },
       //
       // . . .
