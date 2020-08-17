@@ -9,7 +9,7 @@ import { fromNullable } from 'fp-ts/lib/Option'
 import { Observable, ReplaySubject, Scheduler, Subject } from 'rxjs'
 import log from '../store/loggers'
 import { SubscriptionSet, subscriptionsToEventPredicate } from '../subscription'
-import { EventKey, Lamport, Psn, SourceId } from '../types'
+import { EventKey, Lamport, Psn, SourceId, Timestamp } from '../types'
 import {
   EventStore,
   RequestAllEvents,
@@ -29,20 +29,35 @@ import {
 } from './types'
 
 /**
- * A raw actyx event to be emitted by the TestEventStore, as if it really arrived from the outside.
+ * A raw Actyx event to be emitted by the TestEventStore, as if it really arrived from the outside.
+ * @public
  */
-export type ActyxOsEvent = Event // Rename so it’s a less confusing namespace pollution
+export type TestEvent = {
+  psn: number
+  sourceId: string
+
+  timestamp: Timestamp
+  lamport: Lamport
+  tags: ReadonlyArray<string>
+
+  payload: unknown
+}
 
 export type TestEventStore = EventStore & {
   // It is up to the test case to judge which events
   // might realistically appear in the live stream.
-  directlyPushEvents: (events: ActyxOsEvent[]) => void
+  directlyPushEvents: (events: TestEvent[]) => void
   storedEvents: () => Event[]
 }
 
 const lookup = (offsets: OffsetMap, source: string) => fromNullable(offsets[source])
 
-export const includeEvent = (offsetsBuilder: OffsetMapBuilder, ev: Event): OffsetMap => {
+export type HasPsnAndSource = {
+  psn: number
+  sourceId: string
+}
+
+export const includeEvent = (offsetsBuilder: OffsetMapBuilder, ev: HasPsnAndSource): OffsetMap => {
   const { psn, sourceId } = ev
   const current = lookup(offsetsBuilder, sourceId)
   if (!current.exists(c => c >= psn)) {
@@ -170,7 +185,7 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
     return Observable.of(newEvents)
   }
 
-  const directlyPushEvents = (newEvents: Events) => {
+  const directlyPushEvents = (newEvents: TestEvent[]) => {
     let b = { ...offsets }
     for (const ev of newEvents) {
       b = includeEvent(b, ev)
@@ -181,8 +196,14 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
       lamport = Lamport.of(Math.max(newEvents[newEvents.length - 1].lamport + 1, lamport))
     }
 
-    persist(newEvents)
-    live.next(newEvents)
+    const newEventsCompat: Events = newEvents.map(ev => ({
+      ...ev,
+      semantics: '_t_',
+      name: '_t_',
+    }))
+
+    persist(newEventsCompat)
+    live.next(newEventsCompat)
     present.next(offsets)
   }
 

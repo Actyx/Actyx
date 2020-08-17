@@ -17,6 +17,7 @@ export interface TagsUnion<E> {
 
   /**
    * FOR INTERNAL USE. Convert to Actyx wire format.
+   * @internal
    */
   toWireFormat(): ReadonlyArray<TagSubscription>
 
@@ -62,6 +63,7 @@ export interface Tags<E> {
 
   /**
    * FOR INTERNAL USE. Convert to Actyx wire format.
+   * @internal
    */
   toWireFormat(): TagSubscription
 
@@ -148,10 +150,12 @@ const union = <E>(sets: Tags<unknown>[]): TagsUnion<E> => {
 
 /**
  * A `Where` expression that selects all events.
+ * @public
  */
 export const allEvents: Tags<unknown> = req(false, [])
 
 /**
  * A `Where` expression that selects no events.
+ * @public
  */
-export const noEvents: TagsUnion<never> = union([])
+export const noEvents: Where<never> = union([])

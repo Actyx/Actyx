@@ -16,8 +16,8 @@ import { Psn } from '../types'
  * This might grow in the future to include things like timestamps
  */
 export type NodeInfoEntry = Readonly<{
-  own?: Psn
-  swarm?: Psn
+  own?: number
+  swarm?: number
 }>
 
 /**
@@ -27,7 +27,7 @@ export type SwarmInfo = Readonly<{
   nodes: immutable.Map<string, NodeInfoEntry>
 }>
 
-type CountersMut = {
+export type CountersMut = {
   /**
    * The pond has it, the swarm doesn't
    */

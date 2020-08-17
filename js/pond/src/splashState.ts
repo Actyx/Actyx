@@ -10,7 +10,7 @@ import { EventStore, OffsetMap } from './eventstore'
 import { NodeInfoEntry, SwarmInfo, SwarmSummary } from './store/swarmState'
 import { takeWhileInclusive } from './util'
 
-type FullConfig = Readonly<{
+export type FullWaitForSwarmConfig = Readonly<{
   /**
    * Splash screen enabled
    */
@@ -33,16 +33,16 @@ type FullConfig = Readonly<{
   allowSkip: boolean
 }>
 
-const defaults: FullConfig = {
+const defaults: FullWaitForSwarmConfig = {
   enabled: true,
   waitForSwarmMs: 10000,
   minSources: 0,
   allowSkip: true,
 }
 
-export type Config = Partial<FullConfig>
+export type WaitForSwarmConfig = Partial<FullWaitForSwarmConfig>
 
-export const Config = {
+export const WaitForSwarmConfig = {
   defaults,
 }
 
@@ -106,7 +106,7 @@ const synced = (state: SplashState): boolean => {
 }
 
 export const getSplashStateImpl = (
-  config: Config,
+  config: WaitForSwarmConfig,
   swarmInfo: Observable<SwarmInfo>,
 ): Observable<SplashState> => {
   const { waitForSwarmMs, waitForSyncMs, minSources, allowSkip, enabled } = {
@@ -158,13 +158,21 @@ export const getSplashStateImpl = (
   })
 }
 
-type SplashStateDiscovery = Readonly<{
+/**
+ * Discovering swarm state.
+ * @public
+ */
+export type SplashStateDiscovery = Readonly<{
   mode: 'discovery'
   current: SwarmSummary
   skip?: () => void
 }>
 
-type SplashStateSync = Readonly<{
+/**
+ * Synchronizing up to the discovered swarm state.
+ * @public
+ */
+export type SplashStateSync = Readonly<{
   mode: 'sync'
   reference: SwarmSummary
   progress: SyncProgress
@@ -200,7 +208,7 @@ const toSwarmInfo = ([seen, own]: [OffsetMap, OffsetMap]): SwarmInfo => {
 
 export const streamSplashState = (
   eventStore: EventStore,
-  config: Config,
+  config: WaitForSwarmConfig,
 ): Observable<SplashState> => {
   const waitForSwarmMs = config.waitForSwarmMs || defaults.waitForSwarmMs
 

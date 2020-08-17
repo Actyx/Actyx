@@ -10,15 +10,15 @@ import { Observable, Scheduler } from 'rxjs'
 import { CommandInterface } from './commandInterface'
 import { EventStore } from './eventstore'
 import { MultiplexedWebsocket } from './eventstore/multiplexedWebsocket'
-import { ActyxOsEvent } from './eventstore/testEventStore'
-import { ConnectivityStatus, Events, UnstoredEvents } from './eventstore/types'
+import { TestEvent } from './eventstore/testEventStore'
+import { ConnectivityStatus, Events } from './eventstore/types'
 import { mkMultiplexer } from './eventstore/utils'
 import { getSourceId } from './eventstore/websocketEventStore'
 import { CommandPipeline, FishJar } from './fishJar'
 import log from './loggers'
 import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
 import { SnapshotStore } from './snapshotStore'
-import { Config as WaitForSwarmConfig, SplashState, streamSplashState } from './splashState'
+import { SplashState, streamSplashState, WaitForSwarmConfig } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
 import { Tags, toSubscriptionSet } from './tagging'
@@ -33,7 +33,6 @@ import {
   PendingEmission,
   Reduce,
   Semantics,
-  Source,
   SourceId,
   StateEffect,
   StateWithProvenance,
@@ -54,18 +53,6 @@ export type PondOptions = {
 
 export type PondInfo = {
   sourceId: SourceId
-}
-
-export const makeEventChunk = <E>(source: Source, events: ReadonlyArray<E>): UnstoredEvents => {
-  const timestamp = Timestamp.now()
-  const { semantics, name } = source
-  return events.map(payload => ({
-    semantics,
-    name,
-    tags: [],
-    timestamp,
-    payload,
-  }))
 }
 
 const omitObservable = <S>(
@@ -114,7 +101,6 @@ export type WaitForSwarmSyncParams = WaitForSwarmConfig &
   Readonly<{
     onSyncComplete: () => void
     onProgress?: (newState: SplashState) => void
-    // config?:
   }>
 
 export type Pond = {
@@ -518,7 +504,7 @@ const mkMockPond = async (opts?: PondOptions): Promise<Pond> => {
 }
 
 export type TestPond2 = Pond & {
-  directlyPushEvents: (events: ActyxOsEvent[]) => void
+  directlyPushEvents: (events: TestEvent[]) => void
 }
 const mkTestPond = async (opts?: PondOptions): Promise<TestPond2> => {
   const opts1: PondOptions = opts || {}

@@ -5,13 +5,22 @@
  * Copyright (C) 2020 Actyx AG
  */
 export { MultiplexedWebsocket } from './eventstore/multiplexedWebsocket'
-export { ActyxOsEvent } from './eventstore/testEventStore'
+export { TestEvent } from './eventstore/testEventStore'
 export { ConnectivityStatus, ConnectivityStatusType } from './eventstore/types'
 export * from './pond'
 export { FishProcessInfo, PondState } from './pond-state'
-export { SplashState } from './splashState'
+export {
+  FullWaitForSwarmConfig,
+  Progress,
+  SplashState,
+  SplashStateDiscovery,
+  SplashStateSync,
+  SyncProgress,
+  WaitForSwarmConfig,
+} from './splashState'
 export { Config as StoreConfig } from './store/config'
-export { allEvents, noEvents, Tag, Tags, Where } from './tagging'
+export { Counters, CountersMut, NodeInfoEntry, SwarmInfo, SwarmSummary } from './store/swarmState'
+export { allEvents, noEvents, Tag, Tags, TagsUnion, Where } from './tagging'
 export {
   AddEmission,
   CancelSubscription,
@@ -30,5 +39,11 @@ export {
   StateEffect,
   Timestamp,
 } from './types'
-export { enableAllLoggersExcept, Logger, Loggers, unreachable, unreachableOrElse } from './util'
-export { runStats } from './util/runStats'
+export {
+  enableAllLoggersExcept,
+  LogFunction,
+  Logger,
+  Loggers,
+  unreachable,
+  unreachableOrElse,
+} from './util'
