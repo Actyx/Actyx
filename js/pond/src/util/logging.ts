@@ -8,8 +8,17 @@
 
 import * as debug from 'debug'
 
-export type LogFunction = ((first: any, ...rest: any[]) => void)
+/**
+ * Generic logging function signature.
+ * @public
+ */
+export type LogFunction = (typeof console)['log']
 
+/**
+ * A concrete logger that has a namespace and a flag indicating whether
+ * it’s enabled or logged messages will just be silently swallowed.
+ * @public
+ */
 export interface Logger extends LogFunction {
   // Can never be changed after initialization
   readonly namespace: string
@@ -17,6 +26,10 @@ export interface Logger extends LogFunction {
   readonly enabled: boolean
 }
 
+/**
+ * A collection of loggers of different severity for a fixed topic.
+ * @public
+ */
 export type Loggers = {
   error: Logger
   warn: Logger
@@ -72,17 +85,23 @@ export const LoggersInternal = {
   globalLogLeech,
 }
 
+/** Loggers associated methods. @public */
 export const Loggers = {
   of: mkLoggers,
 }
 
+/**
+ * Build logging pattern for consumption by the `debug` library.
+ * @public
+ */
 export const makeLogPattern = (excludeModules: string[]) =>
   `*,${excludeModules.map(x => `-${x}:((?!error).)*`).join(',')},*:error`
+
 /**
  * Utility function to enable all logging with exception for passed in logger namespaces.
  * For excluded logger namespaces errors will still be logged!
+ * @public
  */
-/* istanbul ignore next */
 export const enableAllLoggersExcept = (excludeModules: string[]): void => {
   // $ExpectError
   localStorage.debug = makeLogPattern(excludeModules)

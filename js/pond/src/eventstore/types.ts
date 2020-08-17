@@ -187,8 +187,11 @@ export const ConnectivityStatus = t.union([FullyConnected, PartiallyConnected, N
 export type ConnectivityStatus = t.TypeOf<typeof ConnectivityStatus>
 
 /* Other things */
+
+/** Hook to run on store connection being closed. @public */
 export type StoreConnectionClosedHook = () => void
 
+/** Configuration for the WebSocket store connection. @public */
 export type WsStoreConfig = Readonly<{
   /** url of the destination */
   url: string
@@ -198,5 +201,6 @@ export type WsStoreConfig = Readonly<{
   onStoreConnectionClosed?: StoreConnectionClosedHook
   /** retry interval to establish the connection */
   reconnectTimeout?: number
+
   // todo timeouts?, heartbeats? etc.
 }>

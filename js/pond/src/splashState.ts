@@ -10,6 +10,7 @@ import { EventStore, OffsetMap } from './eventstore'
 import { NodeInfoEntry, SwarmInfo, SwarmSummary } from './store/swarmState'
 import { takeWhileInclusive } from './util'
 
+/** Configure how to wait for swarm. @public */
 export type FullWaitForSwarmConfig = Readonly<{
   /**
    * Splash screen enabled
@@ -40,14 +41,18 @@ const defaults: FullWaitForSwarmConfig = {
   allowSkip: true,
 }
 
+/** Partially configure waiting for the swarm. @public */
 export type WaitForSwarmConfig = Partial<FullWaitForSwarmConfig>
 
+/** `WaitForSwarmConfig` associated functions. @public */
 export const WaitForSwarmConfig = {
   defaults,
 }
 
+/** Sync progress in terms of event numbers. @public */
 export type Progress = Readonly<{ min: number; current: number; max: number }>
 
+/** Sync progress per source, and overall. @public */
 export type SyncProgress = Readonly<{
   sources: Progress
   events: Progress

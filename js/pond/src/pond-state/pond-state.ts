@@ -34,6 +34,11 @@ const isProcessingEventsFromOtherSources = (state: PondState): boolean =>
 const isBusy = (state: PondState): boolean =>
   isHydrating(state) || isProcessingCommands(state) || isProcessingEventsFromOtherSources(state)
 
+
+/**
+ * `PondState` associated functions.
+ * @public
+ */
 export const PondState = {
   isHydrating,
   isProcessingCommands,

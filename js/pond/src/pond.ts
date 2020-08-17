@@ -43,6 +43,7 @@ const isTyped = (e: ReadonlyArray<string> | Tags<unknown>): e is Tags<unknown> =
   return !Array.isArray(e)
 }
 
+/** Advanced configuration options for the Pond. @public */
 export type PondOptions = {
   hbHistDelay?: number
   currentPsnHistoryDelay?: number
@@ -51,6 +52,7 @@ export type PondOptions = {
   stateEffectDebounce?: number
 }
 
+/** Information concerning the running Pond. @public */
 export type PondInfo = {
   sourceId: SourceId
 }
@@ -92,11 +94,13 @@ type ActiveFish<S> = {
   commandPipeline?: CommandPipeline<S, EmissionRequest<any>>
 }
 
+/** Parameter object for the `Pond.getNodeConnectivity` call. @public */
 export type GetNodeConnectivityParams = Readonly<{
   callback: (newState: ConnectivityStatus) => void
   specialSources?: ReadonlyArray<SourceId>
 }>
 
+/** Parameter object for the `Pond.waitForSwarmSync` call. @public */
 export type WaitForSwarmSyncParams = WaitForSwarmConfig &
   Readonly<{
     onSyncComplete: () => void
@@ -115,11 +119,11 @@ export type Pond = {
   /**
    * Emit a single event directly.
    *
-   * @typeParam E    Type of the event payload. If your tags are statically declared,
+   * @typeParam E  - Type of the event payload. If your tags are statically declared,
    *                 their type will be checked against the payload’s type.
    *
-   * @param tags     Tags to attach to the event. E.g. `Tags('myTag', 'myOtherTag')`
-   * @param event    The event itself.
+   * @param tags   - Tags to attach to the event. E.g. `Tags('myTag', 'myOtherTag')`
+   * @param event  - The event itself.
    * @returns        A `PendingEmission` object that can be used to register
    *                 callbacks with the emission’s completion.
    */
@@ -134,8 +138,8 @@ export type Pond = {
    * `fishId` is already known, that other Fish’s ongoing aggregation will be used instead of
    * starting a new one.
    *
-   * @param fish         Complete Fish information.
-   * @param callback     Function that will be called whenever a new state becomes available.
+   * @param fish       - Complete Fish information.
+   * @param callback   - Function that will be called whenever a new state becomes available.
    * @returns            A function that can be called in order to cancel the aggregation.
    */
   observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription
@@ -150,11 +154,11 @@ export type Pond = {
    *
    * In regards to other nodes or Fishes, there are no serialisation guarantees.
    *
-   * @typeParam S                State of the Fish, input value to the effect.
-   * @typeParam EWrite           Event type(s) the effect may emit.
+   * @typeParam S              - State of the Fish, input value to the effect.
+   * @typeParam EWrite         - Event type(s) the effect may emit.
    *
-   * @param fish         Complete Fish information.
-   * @param effect       Function to enqueue new events based on state.
+   * @param fish       - Complete Fish information.
+   * @param effect     - Function to enqueue new events based on state.
    * @returns            A `PendingEmission` object that can be used to register callbacks with the effect’s completion.
    */
   run<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>): PendingEmission
@@ -168,12 +172,12 @@ export type Pond = {
    *
    * The effect can be uninstalled by calling the returned `CancelSubscription`.
    *
-   * @typeParam S                State of the Fish, input value to the effect.
-   * @typeParam EWrite           Event type(s) the effect may emit.
+   * @typeParam S              - State of the Fish, input value to the effect.
+   * @typeParam EWrite         - Event type(s) the effect may emit.
    *
-   * @param fish         Complete Fish information.
-   * @param effect       Function that decides whether to enqueue new events based on the current state.
-   * @param autoCancel   Condition on which the automatic effect will be cancelled -- state on which `autoCancel` returns `true`
+   * @param fish       - Complete Fish information.
+   * @param effect     - Function that decides whether to enqueue new events based on the current state.
+   * @param autoCancel - Condition on which the automatic effect will be cancelled -- state on which `autoCancel` returns `true`
    *                     will be the first state the effect is *not* applied to anymore. Keep in mind that not all intermediate
    *                     states will be seen by this function.
    * @returns            A `CancelSubscription` object that can be used to cancel the automatic effect.
@@ -450,15 +454,15 @@ class Pond2Impl implements Pond {
 
     const tw = autoCancel
       ? (state: S) => {
-          if (cancelled) {
-            return false
-          } else if (autoCancel(state)) {
-            cancelled = true
-            return false
-          }
-
-          return true
+        if (cancelled) {
+          return false
+        } else if (autoCancel(state)) {
+          cancelled = true
+          return false
         }
+
+        return true
+      }
       : () => !cancelled
 
     states
@@ -510,10 +514,11 @@ const mkMockPond = async (opts?: PondOptions): Promise<Pond> => {
   return pondFromServices(services, opts1)
 }
 
-export type TestPond2 = Pond & {
+/** A Pond with extensions for testing. @public */
+export type TestPond = Pond & {
   directlyPushEvents: (events: TestEvent[]) => void
 }
-const mkTestPond = async (opts?: PondOptions): Promise<TestPond2> => {
+const mkTestPond = async (opts?: PondOptions): Promise<TestPond> => {
   const opts1: PondOptions = opts || {}
   const eventStore = EventStore.test(SourceId.of('TEST'))
   const snapshotStore = SnapshotStore.inMem()
@@ -542,9 +547,19 @@ const pondFromServices = (services: Services, opts: PondOptions): Pond => {
   return pond
 }
 
+
+/** Static methods for constructing Pond instances. @public */
 export const Pond = {
+  /** Start Pond with default parameters. @public */
   default: async (): Promise<Pond> => Pond.of({}, {}),
+  /** Start Pond with custom parameters. @public */
   of: mkPond,
+  /** Get a Pond instance that does nothing. @public */
   mock: mkMockPond,
+  /**
+   * Get a Pond instance that runs a simulated store locally
+   * whose contents can be manually modified.
+   * @public
+   */
   test: mkTestPond,
 }

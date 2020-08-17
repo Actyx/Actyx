@@ -32,13 +32,26 @@ export const none: () => never = () => {
   throw new Error('there should have been something')
 }
 
+
+/**
+ * Assert that from the type information, a piece of code can never be reached.
+ * If it’s still reached at runtime, this throws an Error.
+ * @public
+ */
 export const unreachable: (x?: never) => never = () => {
   throw new Error('Unreachable code!')
 }
 
+/**
+ * Assert that from the type information, a certain statement can never be reached,
+ * while installing a default value to return in case the type information was wrong
+ * and the statement was in fact reached.
+ * @public
+ */
 export function unreachableOrElse<T>(_: never, t: T): T {
   return t
 }
+
 /**
  * Avoids lint false positives like "Expression is always false. (strict-type-predicates)"
  */
