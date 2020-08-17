@@ -177,6 +177,8 @@ define build_bins_and_move
 	-u builder \
 	-w /src/rt-master \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-v $${CARGO_HOME:-$$HOME/.cargo/git}:/home/builder/.cargo/git \
+	-v $${CARGO_HOME:-$$HOME/.cargo/registry}:/home/builder/.cargo/registry \
 	-it $(3) \
 	cargo --locked build --release --target $(2) --bins --jobs 8
 	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -perm -u=x \
@@ -199,6 +201,8 @@ define build_bins_and_move_win64
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-e CARGO_BUILD_TARGET=$(2) \
 	-e CARGO_BUILD_JOBS=8 \
+	-v $${CARGO_HOME:-$$HOME/.cargo/git}:/usr/local/cargo/git \
+	-v $${CARGO_HOME:-$$HOME/.cargo/registry}:/usr/local/cargo/registry \
 	-it $(3) \
 	bash -c "\
 		cargo --locked build --release --no-default-features --manifest-path actyx-cli/Cargo.toml && \
@@ -387,5 +391,9 @@ axosandroid-x86: debug
 	-it actyx/util:buildrs-x64-latest \
 	./gradlew clean ktlintCheck build assembleRelease
 	echo 'APK: ./jvm/os-android/app/build/outputs/apk/release/app-release.apk'
+
+# For dev purposes only.
+axos-docker-x64: debug
+	ARCH=x64 DOCKER_TAG=actyxos-x64 make actyxos-bin-x64 docker-build-actyxos
 
 axosandroid: debug clean axosandroid-libs axosandroid-app
