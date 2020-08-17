@@ -67,7 +67,7 @@ const RunStatsData = t.readonly(
 type RunStatsData = t.TypeOf<typeof RunStatsData>
 
 export class WebsocketCommandInterface implements CommandInterface {
-  constructor(private readonly multiplexer: MultiplexedWebsocket, readonly sourceId: SourceId) { }
+  constructor(private readonly multiplexer: MultiplexedWebsocket, readonly sourceId: SourceId) {}
 
   alert: AlertRequest = (message: string, time: Timestamp) =>
     this.multiplexer
