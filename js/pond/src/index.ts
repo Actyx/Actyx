@@ -4,11 +4,15 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-export { ConnectivityStatus } from './eventstore/types'
+export { MultiplexedWebsocket } from './eventstore/multiplexedWebsocket'
+export { ConnectivityStatus, ConnectivityStatusType } from './eventstore/types'
 export * from './pond'
+export { FishProcessInfo, PondState } from './pond-state'
+export { SplashState } from './splashState'
 export { Config as StoreConfig } from './store/config'
 export { allEvents, noEvents, Tag, Tags, Where } from './tagging'
 export {
+  AddEmission,
   CancelSubscription,
   Fish,
   FishId,
@@ -16,12 +20,14 @@ export {
   isNumber,
   IsReset,
   isString,
+  Lamport,
   Metadata,
   Milliseconds,
   PendingEmission,
   Reduce,
+  SourceId,
   StateEffect,
   Timestamp,
 } from './types'
-export { enableAllLoggersExcept, Loggers, unreachable, unreachableOrElse } from './util'
+export { enableAllLoggersExcept, Logger, Loggers, unreachable, unreachableOrElse } from './util'
 export { runStats } from './util/runStats'

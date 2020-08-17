@@ -6,6 +6,10 @@
  */
 import { Observable } from 'rxjs'
 
+/**
+ * How many Fish are active, and of which entityTypes?
+ * @public
+ */
 export type FishProcessInfo = {
   numBeingProcessed: number
   fish: {
@@ -13,6 +17,10 @@ export type FishProcessInfo = {
   }
 }
 
+/**
+ * What sort of activity is currently going on in the Pond?
+ * @public
+ */
 export type PondState = {
   hydration: FishProcessInfo
   commands: FishProcessInfo

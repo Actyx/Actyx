@@ -18,7 +18,7 @@ import { CommandPipeline, FishJar } from './fishJar'
 import log from './loggers'
 import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
 import { SnapshotStore } from './snapshotStore'
-import { Config as WaitForSwarmConfig, SplashState } from './splashState'
+import { Config as WaitForSwarmConfig, SplashState, streamSplashState } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
 import { Tags, toSubscriptionSet } from './tagging'
@@ -110,11 +110,12 @@ export type GetNodeConnectivityParams = Readonly<{
   specialSources?: ReadonlyArray<SourceId>
 }>
 
-export type WaitForSwarmSyncParams = Readonly<{
-  onSyncComplete: () => void
-  onProgress?: (newState: SplashState) => void
-  config?: WaitForSwarmConfig
-}>
+export type WaitForSwarmSyncParams = WaitForSwarmConfig &
+  Readonly<{
+    onSyncComplete: () => void
+    onProgress?: (newState: SplashState) => void
+    // config?:
+  }>
 
 export type Pond = {
   /* EMISSION */
@@ -267,9 +268,7 @@ class Pond2Impl implements Pond {
   }
 
   waitForSwarmSync = (params: WaitForSwarmSyncParams) => {
-    const splash = SplashState.of(this.eventStore, params.config || {}).finally(
-      params.onSyncComplete,
-    )
+    const splash = streamSplashState(this.eventStore, params).finally(params.onSyncComplete)
 
     if (params.onProgress) {
       splash.subscribe(params.onProgress)
@@ -459,15 +458,15 @@ class Pond2Impl implements Pond {
 
     const tw = autoCancel
       ? (state: S) => {
-          if (cancelled) {
-            return false
-          } else if (autoCancel(state)) {
-            cancelled = true
-            return false
-          }
-
-          return true
+        if (cancelled) {
+          return false
+        } else if (autoCancel(state)) {
+          cancelled = true
+          return false
         }
+
+        return true
+      }
       : () => !cancelled
 
     states

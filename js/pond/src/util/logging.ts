@@ -24,15 +24,6 @@ export type Loggers = {
   info: Logger
 }
 
-export type TestLoggers = {
-  errors: ReadonlyArray<string>
-  warnings: ReadonlyArray<string>
-  error: Logger
-  warn: Logger
-  debug: Logger
-  info: Logger
-}
-
 // The goal is to make our logger look exactly like one from the 'debug' library,
 // only we potentially leech the inputs - before they are formatted!
 export const mkLogger = (topic: string, logFnOverride?: LogFunction) => {
@@ -46,7 +37,7 @@ export const mkLogger = (topic: string, logFnOverride?: LogFunction) => {
     if (actualLogger.enabled) {
       actualLogger(first, ...rest)
       try {
-        Loggers.globalLogLeech(actualLogger.namespace, first, ...rest)
+        LoggersInternal.globalLogLeech(actualLogger.namespace, first, ...rest)
       } catch (e) {
         actualLogger('Error while leeching log message: ', e)
       }
@@ -67,29 +58,6 @@ export const mkLoggers: (topic: string) => Loggers = topic => ({
   debug: mkLogger(`${topic}:debug`),
 })
 
-function mkTestLogger(dump: string[]): Logger {
-  function logger(...args: any[]): void {
-    dump.push(args.map(x => JSON.stringify(x)).join(':'))
-  }
-  logger.namespace = 'test'
-  logger.enabled = true
-
-  return logger
-}
-const mkTestLoggers = (): TestLoggers => {
-  const errors: string[] = []
-  const warnings: string[] = []
-
-  return {
-    errors,
-    warnings,
-    error: mkTestLogger(errors),
-    warn: mkTestLogger(warnings),
-    info: mkTestLogger([]),
-    debug: mkTestLogger([]),
-  }
-}
-
 export type LogLeech = (namespace: string, first: any, ...rest: any[]) => void
 export const globalLogLeech: LogLeech = () => {
   /* Nothing by default. Overridden by monitoring module. */
@@ -99,10 +67,13 @@ export const globalLogLeech: LogLeech = () => {
    * like more extensive logging frameworks let you. */
 }
 
+/** @internal */
+export const LoggersInternal = {
+  globalLogLeech,
+}
+
 export const Loggers = {
   of: mkLoggers,
-  globalLogLeech,
-  testLoggers: mkTestLoggers,
 }
 
 export const makeLogPattern = (excludeModules: string[]) =>

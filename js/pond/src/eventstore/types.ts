@@ -138,7 +138,8 @@ export const AllEventsSortOrder: EnumType<AllEventsSortOrders> = createEnumType<
 export type AllEventsSortOrder = t.TypeOf<typeof AllEventsSortOrder>
 
 /**
- * Connectivity status
+ * Connectivity status type.
+ * @public
  */
 export enum ConnectivityStatusType {
   FullyConnected = 'FullyConnected',
@@ -157,7 +158,7 @@ const PartiallyConnected = t.readonly(
   t.type({
     status: t.literal(ConnectivityStatusType.PartiallyConnected),
     inCurrentStatusForMs: t.number,
-    specialsDisconnected: t.readonlyArray(SourceId.FromString),
+    specialsDisconnected: t.readonlyArray(t.string),
     swarmConnectivityLevel: t.number, // Percent*100, e.g. 50% would be 50, not 0.5
     eventsToRead: t.number,
     eventsToSend: t.number,
@@ -173,7 +174,16 @@ const NotConnected = t.readonly(
   }),
 )
 
+/**
+ * The IO-TS type parser for ConnectivityStatus.
+ * @public
+ */
 export const ConnectivityStatus = t.union([FullyConnected, PartiallyConnected, NotConnected])
+
+/**
+ * Current connectivity of the underlying ActyxOS node.
+ * @public
+ */
 export type ConnectivityStatus = t.TypeOf<typeof ConnectivityStatus>
 
 /* Other things */

@@ -10,10 +10,24 @@ import * as t from 'io-ts'
 import { Event, OffsetMap } from './eventstore/types'
 import { Tags, Where } from './tagging'
 
+/**
+ * Refinement that checks whether typeof x === 'string'
+ * @public
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isString = (x: any): x is string => typeof x === 'string'
+
+/**
+ * Refinement that checks whether typeof x === 'number'
+ * @public
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isNumber = (x: any): x is number => typeof x === 'number'
+
+/**
+ * Refinement that checks whether typeof x === 'boolean'
+ * @public
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isBoolean = (x: any): x is boolean => typeof x === 'boolean'
 
@@ -55,6 +69,10 @@ export const FishName = {
   ),
 }
 
+/**
+ * An ActyxOS source id.
+ * @public
+ */
 export type SourceId = string
 const mkSourceId = (text: string): SourceId => text as SourceId
 export const randomBase58: (digits: number) => string = (digits: number) => {
@@ -86,6 +104,10 @@ export const SourceId = {
   ),
 }
 
+/**
+ * Lamport timestamp, cf. https://en.wikipedia.org/wiki/Lamport_timestamp
+ * @public
+ */
 export type Lamport = number
 const mkLamport = (value: number): Lamport => value as Lamport
 export const Lamport = {
@@ -378,16 +400,23 @@ export const toMetadata = (sourceId: string) => (ev: Event): Metadata => ({
   eventId: String(ev.lamport).padStart(maxLamportLength, '0') + '/' + ev.sourceId,
 })
 
-// Combine the existing ("old") state and next event into a new state.
-// The returned value may be something completely new, or a mutated version of the input state.
+/**
+ * Combine the existing ("old") state and next event into a new state.
+ * The returned value may be something completely new, or a mutated version of the input state.
+ * @public
+ */
 export type Reduce<S, E> = (state: S, event: E, metadata: Metadata) => S
 
-// A function indicating events which completely determine the state.
-// Any event for which isReset returns true will be applied to the initial state, all earlier events discarded.
+/**
+ * A function indicating events which completely determine the state.
+ * Any event for which isReset returns true will be applied to the initial state, all earlier events discarded.
+ * @public
+ */
 export type IsReset<E> = (event: E, metadata: Metadata) => boolean
 
 /**
  * Unique identifier for a fish.
+ * @public
  */
 export type FishId = {
   // A general description for the class of thing the Fish represents, e.g. 'robot'
@@ -401,7 +430,8 @@ export type FishId = {
 }
 
 /**
- * Unique identifier for a fish.
+ * FishId associated functions.
+ * @public
  */
 export const FishId = {
   /**
@@ -427,6 +457,7 @@ export const FishId = {
  * A Fish always sees events in the correct order, even though event delivery on ActyxOS is only eventually consistent:
  * To this effect, arrival of an hitherto unknown event "from the past" will cause a replay of the aggregation
  * from an earlier state, instead of passing that event to the Fish out of order.
+ * @public
  */
 export type Fish<S, E> = Readonly<{
   /**
@@ -462,6 +493,10 @@ export type Fish<S, E> = Readonly<{
   deserializeState?: (jsonState: unknown) => S
 }>
 
+/**
+ * Fish generic generator methods.
+ * @public
+ */
 export const Fish = {
   // Observe latest event matching the given selection.
   latestEvent: <E>(where: Where<E>): Fish<E | undefined, E> => ({
@@ -505,10 +540,16 @@ export const Fish = {
   }),
 }
 
-// Queue emission of an event whose type is covered by `EWrite`.
+/**
+ * Queue emission of an event whose type is covered by `EWrite`.
+ * @public
+ */
 export type AddEmission<EWrite> = <E extends EWrite>(tags: Tags<E>, event: E) => void
 
-// Enqueue event emissions based on currently known local state.
+/**
+ * Enqueue event emissions based on currently known local state.
+ * @public
+ */
 export type StateEffect<S, EWrite> = (
   // Currently known state, including application of all events previously enqueued by state effects on the same Fish.
   state: S,
@@ -518,11 +559,13 @@ export type StateEffect<S, EWrite> = (
 
 /**
  * Cancel an ongoing aggregation (the provided callback will stop being called).
+ * @public
  */
 export type CancelSubscription = () => void
 
 /**
  * Allows you to register actions for when event emission has completed.
+ * @public
  */
 export type PendingEmission = {
   // Add another callback; if emission has already completed, the callback will be executed straight-away.
