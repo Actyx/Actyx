@@ -86,14 +86,15 @@ This is another example:
 </details>
 
 ### Starting and Stopping Apps
-Apart from starting and stopping apps via the [Actyx CLI](/docs/cli/getting-started), you can launch them
-via the app list in the ActyxOS app or via home screen icons that you can create under app details. Closing them in the app switcher works like for every other Android app.
+Apart from starting and stopping apps via the [Actyx CLI](/docs/cli/getting-started), you can launch
+them via the app list in the ActyxOS app or via home screen icons that you can create under app
+details. Closing them in the app switcher works like for every other Android app.
 
 Starting apps via the Actyx CLI by default works only when ActyxOS is in the foreground.
 To make it work in all cases, you have grant ActyxOS permission to: "Display pop-up windows while running
 in the background," "Allow apps to start automatically" or similar.
-What exactly the permissions are called will depend on the Android vendor. When in doubt, just
-enable everything under Manage&nbsp;Apps&#x2011;&#x2011;>ActyxOS&#x2011;&#x2011;>Other&nbsp;permissions
+What exactly the permissions are called depends on the Android vendor. When in doubt, just
+enable everything under Manage&nbsp;Apps&#x2011;&#x2011;>ActyxOS&#x2011;&#x2011;>Other&nbsp;permissions.
 
 <details>
   <summary>Expand for an example</summary>
