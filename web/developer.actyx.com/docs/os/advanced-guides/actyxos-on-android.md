@@ -59,7 +59,7 @@ Congratulations, you have successfully installed <em>ActyxOS on Android</em>! Pl
 ## Get started with ActyxOS on Android
 
 ### Starting and Stopping ActyxOS
-After you click on the ActyxOS icon on your home screen, ActyxOS will start. In your notification overview you can also see whether ActyxOS is misconfigured or operational. If you want to stop ActyxOS on your node, you need to go the your device settings-->Apps-->ActyxOS and then **Force Stop** ActyxOS.
+After you click on the ActyxOS icon on your home screen, ActyxOS will start. In your notification overview you can also see whether ActyxOS is misconfigured or operational. If you want to stop ActyxOS on your node, you need to go the your device&nbsp;settings&#x2011;&#x2011;>Apps&#x2011;&#x2011;>ActyxOS and then **Force Stop** ActyxOS.
 
 If you would like to know more about hot to configure nodes, please go to the section [**Configuring nodes** in our guide on Node and App Settings](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes) 
 
@@ -70,8 +70,30 @@ Depending on the lifecycle stage that your ActyxOS nodes or apps are in, your in
 ### Automatic restart of ActyxOS
 If ActyxOS was running on your Android device, it will automatically restart upon reboot.
 
+On some Android distributions you may need to explicitly permit the Autostart, by setting it to ON under
+Manage&nbsp;Apps&#x2011;&#x2011;>ActyxOS.
+
+<details>
+  <summary>Expand for an example</summary>
+
+![Enabling Autostart](/images/os/android-settings-0.jpg "ActyxOS App Settings")
+
+</details>
+
 ### Starting and Stopping Apps
-Apart from starting and stopping apps via the [Actyx CLI](/docs/cli/getting-started), you can click on their icons and close them in the app switcher just as with every other Android app.
+Apart from starting and stopping apps via the [Actyx CLI](/docs/cli/getting-started), you can click
+on their icons and close them in the app switcher just as with every other Android app.
+
+Starting apps via the Actyx CLI by default works only when ActyxOS is in the foreground.
+To make it work in all cases, you have grant ActyxOS permission to: "Display pop-up windows while running
+in the background" or "Allow apps to start automatically" (Manage&nbsp;Apps&#x2011;&#x2011;>ActyxOS&#x2011;&#x2011;>Other&nbsp;permissions)
+
+<details>
+  <summary>Expand for an example</summary>
+
+![Granting permissions to start ActyxOS apps](/images/os/android-settings-1.jpg "ActyxOS App Settings")
+
+</details>
 
 ## Troubleshooting
 
