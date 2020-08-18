@@ -86,8 +86,8 @@ This is another example:
 </details>
 
 ### Starting and Stopping Apps
-Apart from starting and stopping apps via the [Actyx CLI](/docs/cli/getting-started), you can click
-on their icons and close them in the app switcher just as with every other Android app.
+Apart from starting and stopping apps via the [Actyx CLI](/docs/cli/getting-started), you can launch them
+via the app list in the ActyxOS app or via home screen icons that you can create under app details. Closing them in the app switcher works like for every other Android app.
 
 Starting apps via the Actyx CLI by default works only when ActyxOS is in the foreground.
 To make it work in all cases, you have grant ActyxOS permission to: "Display pop-up windows while running
