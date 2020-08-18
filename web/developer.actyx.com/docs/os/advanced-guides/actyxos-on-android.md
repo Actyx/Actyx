@@ -79,6 +79,10 @@ Note that the exact name of the setting depends on your Android vendor.
 
 ![Enabling Autostart](/images/os/android-settings-0.jpg "ActyxOS App Settings")
 
+This is another example:
+
+![Enabling Autostart](/images/os/android-settings-1.jpg "ActyxOS App Settings")
+
 </details>
 
 ### Starting and Stopping Apps
@@ -96,7 +100,7 @@ enable everything under Manage&nbsp;Apps&#x2011;&#x2011;>ActyxOS&#x2011;&#x2011;
 
 Note that the exact name of the settings depends on your Android vendor.
 
-![Granting permissions to start ActyxOS apps](/images/os/android-settings-1.jpg "ActyxOS App Settings")
+![Granting permissions to start ActyxOS apps](/images/os/android-settings-2.jpg "ActyxOS App Settings")
 
 </details>
 
