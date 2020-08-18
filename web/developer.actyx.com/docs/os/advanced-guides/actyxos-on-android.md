@@ -61,7 +61,7 @@ Congratulations, you have successfully installed <em>ActyxOS on Android</em>! Pl
 ### Starting and Stopping ActyxOS
 After you click on the ActyxOS icon on your home screen, ActyxOS will start. In your notification overview you can also see whether ActyxOS is misconfigured or operational. If you want to stop ActyxOS on your node, you need to go the your device&nbsp;settings&#x2011;&#x2011;>Apps&#x2011;&#x2011;>ActyxOS and then **Force Stop** ActyxOS.
 
-If you would like to know more about hot to configure nodes, please go to the section [**Configuring nodes** in our guide on Node and App Settings](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes) 
+If you would like to know more about hot to configure nodes, please go to the section [**Configuring nodes** in our guide on Node and App Settings](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes)
 
 :::infoNode and App lifecycles
 Depending on the lifecycle stage that your ActyxOS nodes or apps are in, your interaction with it might be limited to certain commands. Please check our guide on [Node and App Lifecycles](/docs/os/advanced-guides/node-and-app-lifecycle) to find out more.
@@ -70,11 +70,12 @@ Depending on the lifecycle stage that your ActyxOS nodes or apps are in, your in
 ### Automatic restart of ActyxOS
 If ActyxOS was running on your Android device, it will automatically restart upon reboot.
 
-On some Android distributions you may need to explicitly permit the Autostart, by setting it to ON under
-Manage&nbsp;Apps&#x2011;&#x2011;>ActyxOS.
+On some Android distributions you may need to explicitly permit the Autostart in Manage&nbsp;Apps&#x2011;&#x2011;>ActyxOS.
 
 <details>
   <summary>Expand for an example</summary>
+
+Note that the exact name of the setting depends on your Android vendor.
 
 ![Enabling Autostart](/images/os/android-settings-0.jpg "ActyxOS App Settings")
 
@@ -86,10 +87,14 @@ on their icons and close them in the app switcher just as with every other Andro
 
 Starting apps via the Actyx CLI by default works only when ActyxOS is in the foreground.
 To make it work in all cases, you have grant ActyxOS permission to: "Display pop-up windows while running
-in the background" or "Allow apps to start automatically" (Manage&nbsp;Apps&#x2011;&#x2011;>ActyxOS&#x2011;&#x2011;>Other&nbsp;permissions)
+in the background," "Allow apps to start automatically" or similar.
+What exactly the permissions are called will depend on the Android vendor. When in doubt, just
+enable everything under Manage&nbsp;Apps&#x2011;&#x2011;>ActyxOS&#x2011;&#x2011;>Other&nbsp;permissions
 
 <details>
   <summary>Expand for an example</summary>
+
+Note that the exact name of the settings depends on your Android vendor.
 
 ![Granting permissions to start ActyxOS apps](/images/os/android-settings-1.jpg "ActyxOS App Settings")
 
@@ -104,7 +109,7 @@ If you want to get help or file issues, please write an e-mail to developer@acty
 ### Installing ActyxOS without access to the Google Play store
 For everyone who does not have access to the Google Play store, ActyxOS is also publicly available as an [APK](https://en.wikipedia.org/wiki/Android_application_package). You can download it from https://downloads.actyx.com/.
 
-After you downloaded the APK, you can install it on your Android device via [`adb`](https://developer.android.com/studio/command-line/adb) (If you don't have adb, check [this installation guide](https://www.xda-developers.com/install-adb-windows-macos-linux/)). 
+After you downloaded the APK, you can install it on your Android device via [`adb`](https://developer.android.com/studio/command-line/adb) (If you don't have adb, check [this installation guide](https://www.xda-developers.com/install-adb-windows-macos-linux/)).
 
 Before you connect your edge device to your development machine, make sure that USB debugging is enabled in the developer options. When you connect both devices for the first time, a popup will appear on your edge device and ask you allow the connection. After you established a connection, run:
 
@@ -125,11 +130,11 @@ This means that ActyxOS is not running on your node. Please click on the ActyxOS
 - **Host is not reachable.** This means that your development machine cannot connect to your node. Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port 4457.
 
 ### ActyxOS node is not connecting to the ActyxOS Bootstrap Node
-ActyxOS on Android is currently not able to resolve DNS names inside MultiAddrs and thus only supports ip4 or ip6 MultiAddrs. For example, if you want to connect to the public ActyxOS Bootstrap Node, you have to set the value 
+ActyxOS on Android is currently not able to resolve DNS names inside MultiAddrs and thus only supports ip4 or ip6 MultiAddrs. For example, if you want to connect to the public ActyxOS Bootstrap Node, you have to set the value
 
-- /ip4/3.125.108.42/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH 
+- /ip4/3.125.108.42/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH
 
-instead of 
+instead of
 - /dns4/demo-bootstrap.actyx.net/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH
 
 ActyxOS on Docker supports both formats. We are currently working on a fix for this. Check out our [blog](https://www.actyx.com/news/) or [release notes section](/docs/os/release-notes.md) for information on our new releases.
