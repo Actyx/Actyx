@@ -9,7 +9,7 @@ This page contains information about new features, bug fixes, deprecations and r
 **Release date: 29.07.2020**
 
 Download:
-- [Docker Hub](https://hub.docker.com/repository/docker/actyx/os)
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
 - [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
 
 ### New features
@@ -26,7 +26,7 @@ Download:
 **Release date: 03.07.2020**
 
 Download:
-- [Docker Hub](https://hub.docker.com/repository/docker/actyx/os)
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
 - [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
   
 ### Bug fixes
@@ -38,7 +38,7 @@ Download:
 **Release date: 12.06.2020**
 
 Download:
-- [Docker Hub](https://hub.docker.com/repository/docker/actyx/os)
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
 - [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
 
 ### New features
@@ -53,7 +53,7 @@ Download:
 **Release date: 25.05.2020**
 
 Download:
-- [Docker Hub](https://hub.docker.com/repository/docker/actyx/os)
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
 - [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
 
 ### New features

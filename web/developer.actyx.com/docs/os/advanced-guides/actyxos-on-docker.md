@@ -25,7 +25,7 @@ For running ActyxOS on Docker in production, most users set up a fleet managemen
 
 ### Install ActyxOS on your edge device
 
-ActyxOS is [publicly available on Docker Hub](https://hub.docker.com/repository/docker/actyx/os). You can download and run ActyxOS on Docker with the following command:
+ActyxOS is [publicly available on Docker Hub](https://hub.docker.com/r/actyx/os). You can download and run ActyxOS on Docker with the following command:
 
 <Tabs
   defaultValue="windows"
