@@ -75,9 +75,25 @@ Please refer to the [Docker Documentation](https://docs.docker.com/) for more in
 
 ### Check the status of your node
 
-In order to check on its status and interact with the node, you need to download the Actyx CLI (`ax` or `ax.exe`) from https://downloads.actyx.com and add it to your path (for detailed insallation instructions of the Actyx CLI, go [here](/docs/cli/getting-started)).
+In order to check on its status and interact with the node, you can use the [ActyxOS Node Manager](../tools/node-manager) or, if you prefer a command line tool, use the [Actyx CLI](../../cli/getting-started.md).
 
 You can then check on your ActyxOS node:
+
+<Tabs
+  defaultValue="node-manager"
+  values={[
+    { label: 'ActyxOS Node Manager', value: 'node-manager', },
+    { label: 'Actyx CLI', value: 'cli', },
+  ]
+}>
+<TabItem value="node-manager">
+
+Go to the **Status** tab, and you should that your ActyxOS node is reachable and **running**:
+
+![status](/images/os/node-manager-status-1.png)
+
+</TabItem>
+<TabItem value="cli">
 
 ```
 ax nodes ls --local <DEVICE_IP>
@@ -91,6 +107,9 @@ You should see something like:
 | 192.168.2.107 |              | running | invalid  | invalid | 0             | 0            | 2020-03-25T09:32:07+00:00 | 1.0.0   |
 +---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
 ```
+
+</TabItem>
+</Tabs>
 
 
 Congratulations, you have successfully installed <em>ActyxOS on Docker</em>! Please note that ActyxOS is **not** operational, as you did not configure it yet. If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
@@ -132,7 +151,7 @@ If you want to get help or file issues, please write an e-mail to developer@acty
 
 ### ActyxOS node not responding
 
-First, check that you entered the right IP in the `ax` command. If you still cannot connect, the output of `ax nodes ls` returns one of the two possible reasons:
+First, check that you entered the right IP in the `ax` command. If you still cannot connect, the output of `ax nodes ls` returns one of the two possible reasons (if you are using the ActyxOS Node Manager, you can see this info in the Status tab):
 - **ActyxOS is not reachable.** This means that ActyxOS is not running correctly on your node. Try `docker container ls` to check all your running containers. You can start ActyxOS with the `docker run` command. The command is dependent on your host operating system and described in the installation section above for Windows, Mac and Linux.
 
 - **Host is not reachable.** This means that your development machine cannot connect to your node. Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port 4457.
