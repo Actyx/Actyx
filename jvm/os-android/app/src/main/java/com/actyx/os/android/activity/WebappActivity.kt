@@ -69,7 +69,12 @@ class WebappActivity : BaseActivity() {
           .map { AppState.MissingOrInvalidSettings }
           // Ignore timeout if `webView` exists and is shown (this relies on the fact, that the
           // error fragment itself is not a webview stored inside `webView`)
-          .takeWhile { !webView.isVisible },
+          .takeWhile { !webView.isVisible }
+          // It might be, that there are indeed valid settings, but the node library thinks
+          // that this app is already running (as it might have been forcefully killed by
+          // Android). Signal once, that this app is stopped to trigger a new start intent
+          // cycle.
+          .doOnNext { backgroundServices?.onAppStopped(appId) },
         state
           .collectNonNull { backgroundServices?.let { getAppSettings(appId, it) } }
           .startWith(AppState.WaitingForStartCommand)
@@ -225,8 +230,6 @@ class WebappActivity : BaseActivity() {
         message.update(R.string.initializing)
         message
       }
-      // FIXME: How to determine this? E.g. user wants to start a currently misconfigured app
-      // --> startApp command will never come.. Maybe timeout here?
       is AppState.MissingOrInvalidSettings -> {
         message.update(R.string.invalid_settings_msg)
         message

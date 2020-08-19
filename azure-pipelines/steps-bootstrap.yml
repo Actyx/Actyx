@@ -1,20 +1,6 @@
 steps:
   - script: |
-      echo "SYSTEM_PULLREQUEST_SOURCEBRANCH: $SYSTEM_PULLREQUEST_SOURCEBRANCH"
-      echo "BUILD_SOURCEVERSIONAUTHOR: $BUILD_SOURCEVERSIONAUTHOR"
-      echo "BUILD_SOURCEVERSIONMESSAGE: $BUILD_SOURCEVERSIONMESSAGE"
-      echo "SYSTEM_PULLREQUEST_TARGETBRANCH: $SYSTEM_PULLREQUEST_TARGETBRANCH"
-      echo "SYSTEM_PULLREQUEST_PULLREQUESTNUMBER: $SYSTEM_PULLREQUEST_PULLREQUESTNUMBER"
-      echo "SYSTEM_PULLREQUEST_PULLREQUESTID: $SYSTEM_PULLREQUEST_PULLREQUESTID"
-      echo "BUILD_REPOSITORYNAME: $BUILD_REPOSITORY_NAME"
-      echo "BUILD_SOURCEBRANCH: $BUILD_SOURCEBRANCH"
-      echo "BUILD_SOURCEVERSIONMESSAGE: $BUILD_SOURCEVERSIONMESSAGE"
-      echo "BUILD_SOURCEVERSION: $BUILD_SOURCEVERSION"
-      echo "BUILD_REPOSITORY_NAME: $(Build.Repository.Name)"
-      echo "BUILD_REQUESTEDFOR: $BUILD_REQUESTEDFOR"
-      echo "BUILD_BUILDID: $BUILD_BUILDID"
       BUILD_LINK=https://dev.azure.com/ax-ci/Cosmos/_build/results?buildId=$BUILD_BUILDID
-      echo "BUILD_LINK: $BUILD_LINK" # Not a pre-defined variable 
       sudo apt-get update
       sudo apt-get install -y sshpass autossh curl
       mkdir ~/.ssh
@@ -26,7 +12,7 @@ steps:
       build/bin/install-vault.sh
       build/bin/forward-ipfs-gw.sh
       npm set //npm.pkg.github.com/:_authToken $GITHUB_PKG_PASS || true
-    displayName: 'Bootstrap helpers'
+    displayName: "Bootstrap helpers"
     env:
       # Map secrets to env vars
       AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)

@@ -8,7 +8,6 @@ At the core of the Actyx Pond lies an innovative programming model: business log
 written such that it reacts to the reception of new facts—called events—without needing to care where these facts are generated or how they are transported to the piece of logic that needs them. The logic entities swim in the datalake and breathe events according to their needs.  Hence, we call
 them _fishes_.
 
-
 ## Fish Identities
 
 Each fish has a unique identity in the whole swarm (linguistic note: fish form schools, not swarms; the

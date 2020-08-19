@@ -1,0 +1,33 @@
+jobs:
+  - job: buildAndUnitTest
+    dependsOn: getBuildString
+    variables:
+      BUILD_STRING: $[ dependencies.getBuildString.outputs['setBuildString.BUILD_STRING'] ]
+    displayName: Build and Unit-test
+    workspace:
+      clean: all
+    pool:
+      name: Native
+    container: buildnode_x64_latest
+    steps:
+      - script: |
+          set -e
+          npm i
+        displayName: Install Dependencies
+        workingDirectory: "js/os-sdk"
+        condition: and(contains(variables['BUILD_STRING'],'[build-js-os-sdk]'),succeeded())
+      - script: |
+          set -e
+          npm run build
+        displayName: Build JS/TS SDK
+        workingDirectory: "js/os-sdk"
+        condition: and(contains(variables['BUILD_STRING'],'[build-js-os-sdk]'),succeeded())
+      - script: |
+          npm run test
+        displayName: Test JS/TS SDK
+        workingDirectory: "js/os-sdk"
+        condition: and(contains(variables['BUILD_STRING'],'[build-js-os-sdk]'),succeeded())
+      - script: |
+          build/bin/post-to-slack.sh -s "JS/TS SDK" -a "danger"
+        displayName: Ping Slack on failing job
+        condition: failed()

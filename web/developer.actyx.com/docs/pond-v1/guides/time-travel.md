@@ -53,6 +53,7 @@ This is because the other messages cannot be transferred right now.
 When reconnecting the previously disconnected sending node, its messages `msgA1` to `msgA3` will show up at the observer after a short while.
 But we notice that the messages show up not at the end of the log but interleaves with the others, for example like
 
+```bash
     msgB1
     msgB2
     msgB3
@@ -64,6 +65,7 @@ But we notice that the messages show up not at the end of the log but interleave
     msgA3
     msgB3
     ---
+```
 
 How can this be?
 The `onEvent` handler only ever appends messages to the array, it never inserts them in the middle, yet we see that the state was changed “in the middle”.
@@ -72,7 +74,7 @@ The answer is that the `onEvent` handler may be invoked multiple times for the s
 We recall that the current state of the fish is computed by applying one event after the other, through the `onEvent` handler.
 This can be visualized like the grey zigzag line zipping together the events and their resulting states on the left-hand side of the following diagram.
 
-![](/images/pond/time-travel.png)
+![Time travel](/images/pond/time-travel.png)
 
 When a new event arrives, that belongs somewhere in the middle of the previously known log of events, then it is inserted in its rightful spot and the current state is recomputed by applying all events again, now including the inserted event.
 This is shown on the right-hand side of the diagram above; in practice the state computation starts from the state right before the inserted event in most cases, as a cache of states is kept in memory.

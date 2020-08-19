@@ -7,7 +7,6 @@ title: JS/TS SDK
 
 Building apps in [Javascript](https://developer.mozilla.org/en-US/docs/Web/JavaScript) or [Typescript](https://www.typescriptlang.org/) and want to easily create and access data streams in your ActyxOS swarm? Or you want to log from your app to easily access logs using the Actyx CLI? That's what we built the ActyxOS SDK for Javascript/Typescript for. The [`@actyx/os-sdk` package](http://npmjs.com/package/@actyx/os-sdk) defines all necessary data types and provides bindings for communicating with ActyxOS's [Event Service API](../api/event-service.md) and [Console Service API](../api/console-service.md).
 
-
 ## Installation
 
 Install with npm as follows:
@@ -72,4 +71,3 @@ logger.debug('This is a message with additional data', {foo: 'bar'})
 ## Documentation
 
 Check out the <a href="/@actyx/os-sdk" target="_blank" rel="noopener noreferrer">automatically generated Typedocs.</a>.
-

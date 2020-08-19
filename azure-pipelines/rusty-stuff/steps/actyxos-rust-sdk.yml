@@ -1,0 +1,17 @@
+steps:
+  - bash: |
+      cargo fmt --all -- --check && \
+      cargo --locked clippy -- -D warnings && \
+      cargo --locked clippy --tests -- -D warnings
+    displayName: fmt/clippy
+    workingDirectory: rust/sdk
+    condition: contains(variables['BUILD_STRING'],'[build-rt-master]')
+  - bash: |
+      cargo --locked test --jobs 8 --all-features --release -- --test-threads=1
+    displayName: tests
+    workingDirectory: rust/sdk
+    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-rt-master]'))
+  - bash: |
+      build/bin/post-to-slack.sh -s "rusty builds" -a "danger"
+    condition: failed()
+    displayName: Ping Slack on failing job

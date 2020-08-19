@@ -7,7 +7,7 @@ import TabItem from '@theme/TabItem';
 
 The **Actyx Command Line Interface (CLI)** is a unified tool to manage your ActyxOS nodes and apps. With the **Actyx CLI**, you can interact with your ActyxOS environment by running commands in your favourite terminal program:
 
-- **Linux or macOS**: Use common shell programs such as [bash](https://www.gnu.org/software/bash/), [zsh](http://www.zsh.org/) or [tcsh](https://www.tcsh.org/) to run commands in linux shells.
+- **Linux or macOS**: Use common shell programs such as [bash](https://www.gnu.org/software/bash/), [zsh](http://www.zsh.org/) or [tcsh](https://www.tcsh.org/) to run commands in linux shells
 - **Windows**: On Windows, run commands with the Windows command prompt or in [PowerShell](https://docs.microsoft.com/en-us/powershell/scripting/overview?view=powershell-7)
 
 ## Installation
@@ -59,7 +59,7 @@ This section describes how to install the Actyx CLI. Just choose your operating 
 
 3. To confirm the installation, use the `ax --version` command in PowerShell or a command prompt (open the Start menu and search for PowerShell or cmd to start them). You should see something like this:
 
-```
+```bash
 C:\> ax --version
 Actyx CLI 1.0.0
 ```
@@ -71,26 +71,28 @@ Actyx CLI 1.0.0
 
 2. Run the following command to move the Actyx CLI binary file:
 
-```
+```bash
 mv ~/Downloads/ax /usr/local/bin
 ```
-
+<!-- markdownlint-disable MD029 -->
 3. Make the Actyx CLI binary file exectuable:
 
-```
+```bash
 chmod +x /usr/local/bin/ax
 ```
+<!-- markdownlint-enable MD029 -->
 
 :::caution Additional steps if you use macOS
 If you use macOS, you need to additonally allow the Actyx CLI in two steps. First, go to **Settings** and then to **Security & Privacy**. In the **General** tab, you should see a prompt at the bottom that asks you to allow the Actyx CLI. Second, the first time you run an `ax` command, you will be prompted again to allow the Actyx CLI.
 :::
-
+<!-- markdownlint-disable MD029 -->
 4. To confirm the installation, use the `ax --version` command. You should see something like this:
 
-```
+```bash
 $  ax --version
 Actyx CLI 1.0.0
 ```
+<!-- markdownlint-enable MD029 -->
 
 </TabItem>
 </Tabs>
@@ -115,7 +117,7 @@ To uninstall the Actyx CLI, open the Control Panel, go to **Settings** and then 
 
 Run the following command:
 
-```
+```bash
 rm /usr/local/bin/ax
 ```
 

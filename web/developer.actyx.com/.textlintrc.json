@@ -1,0 +1,19 @@
+{
+  "filters": {
+    "comments": true
+  },
+  "rules": {
+    "no-todo": true,
+    "no-start-duplicated-conjunction": {
+      "interval": 2
+    },
+    "max-comma": {
+      "max": 4
+    },
+    "no-empty-section": true,
+    "period-in-list-item": true,
+    "date-weekday-mismatch": true,
+    "@textlint-rule/no-unmatched-pair": true,
+    "footnote-order": true
+  }
+}

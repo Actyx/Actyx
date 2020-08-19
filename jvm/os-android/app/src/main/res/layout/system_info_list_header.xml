@@ -56,9 +56,9 @@
         android:text="@string/stop_actyxos"
         android:textAllCaps="false"
         android:textSize="12sp"
+        android:visibility="invisible"
         app:cornerRadius="1.8dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
-
 
 </androidx.constraintlayout.widget.ConstraintLayout>

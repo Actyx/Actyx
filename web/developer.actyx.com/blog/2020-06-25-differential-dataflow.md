@@ -120,10 +120,10 @@ This code snippet operates on a [Flow] of events, which is a DSL built on the
 
 - A flow is created within a scope of execution (see [the full example] for all details), returning
   an injector handle by which events can later be fed into this flow plus the `events` handle with
-  which the data transformations are now described.
+  which the data transformations are now described
 - The `.filter()` method removes events which do not pertain to drills (just as an example), like
   `WHERE` in SQL,
-- the `.map()` turns each event into a machine status dashboard entry, like `SELECT`.
+- the `.map()` turns each event into a machine status dashboard entry, like `SELECT`
 
 [the full example]: https://github.com/Actyx/actyxos_data_flow/tree/master/examples/machine-dashboard/logic.rs
 
@@ -132,7 +132,7 @@ event for each machine on the shop-floor.  Since we are only interested in the m
 update,
 
 - we use `.group_by()` to split the collection into one group per machine and then
-- take the maximum entry within each group sorted by timestamp.
+- take the maximum entry within each group sorted by timestamp
 
 The `latest` variable now holds a description of a collection that contains one record per machine.
 Whenever a new event is injected, this collection is updated accordingly. In the example, when the
@@ -402,7 +402,6 @@ let (injector, events) = Flow::<Event<MachineEvent>, _>::new_limited(scope, one_
 This also avoids reading the whole event history upon first start, it will only ingest the last year
 of data — this can be very helpful in case the data collection has been ongoing in that factory for
 a much longer time already.
-
 
 ## Summary
 

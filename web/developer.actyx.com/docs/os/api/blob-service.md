@@ -8,7 +8,6 @@ The **Blob Service** allows you to store and share arbitrary **B**inary **L**arg
 The Blob Service is currently in internal alpha. It is planned for **public release in 2020**. To stay up to date about upcoming releases please check out our [blog](https://www.actyx.com/news) where we post release notes and roadmap updates.
 :::
 
-
 With this document we aim to provide you a preview about how the Binary Blob service works as we work toward a beta release.
 
 ## Overview
@@ -71,14 +70,14 @@ Each data blob stored using the Blob Service has the following metadata:
 
 This metadata is used by ActyxOS for management throughout the data blob's lifecycle, especially automatic and manual blob deletion according to the retention policy. The metadata is also available to you&mdash;as a developer&mdash;through the Blob Service's built-in event stream, which produces events such as the one shown below whenever a data blob is stored:
 
-```js
+```json
 {
     "stream": {
         "semantics": "com.actyx.os.storage.metadata",
         "name": "ActyxOS-StorageService-Metadata",
         "source": "a263bad7"
     },
-    "timestamp": 21323209392, 
+    "timestamp": 21323209392,
     "lamport": 39928,
     "offset": 192,
     "payload": {
@@ -166,7 +165,6 @@ The automatic distribution of data to other devices is one of the most powerful 
 
 As shown above, the Blob Store enables this through the `ActyxOS-StorageService-Metadata` stream with `com.actyx.os.storage.metadata` semantics. Getting notified about new blob stores, thus means subscribing to this event stream using the [Event Service](/os/docs/events-service.html):
 
-
 In a Node.js app you could, for instance, do this as follows:
 
 ```js{17-20}
@@ -215,7 +213,6 @@ The data blob will never be deleted.
 #### `keepUntilTime`
 
 The data blob will be deleted after the given timestamp. The following properties must/can be used to further specify the policy's behavior.
-
 
 | Property |          | Description |
 |:---------|:---------|:------------|

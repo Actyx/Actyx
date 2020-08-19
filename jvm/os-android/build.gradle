@@ -8,7 +8,7 @@ buildscript {
         maven { url "https://dl.bintray.com/arrow-kt/arrow-kt/" }
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:4.0.0'
+        classpath 'com.android.tools.build:gradle:4.0.1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath "org.jetbrains.kotlin:kotlin-serialization:$kotlin_version"
         classpath "org.jlleitschuh.gradle:ktlint-gradle:9.1.1"

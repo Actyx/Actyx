@@ -22,44 +22,52 @@ macro_rules! mk_scalar {
         );
 
         impl $id {
-            pub fn new(value: String) -> Result<Self, ParseError> {
+            pub fn new(value: String) -> Result<Self, $crate::event::ParseError> {
                 if value.is_empty() {
-                    Err(ParseError::$err)
+                    Err($crate::event::ParseError::$err)
                 } else {
-                    Ok(Self(ArcVal::from_boxed(value.into())))
+                    Ok(Self($crate::types::ArcVal::from_boxed(value.into())))
                 }
             }
             pub fn as_str(&self) -> &str {
                 &self.0
             }
-            pub fn as_arc(&self) -> &Arc<str> {
+            pub fn as_arc(&self) -> &::std::sync::Arc<str> {
                 &self.0.as_arc()
             }
         }
 
-        impl TryFrom<&str> for $id {
-            type Error = ParseError;
-            fn try_from(value: &str) -> Result<Self, ParseError> {
+        impl ::std::convert::TryFrom<&str> for $id {
+            type Error = $crate::event::ParseError;
+            fn try_from(value: &str) -> Result<Self, $crate::event::ParseError> {
                 if value.is_empty() {
-                    Err(ParseError::$err)
+                    Err($crate::event::ParseError::$err)
                 } else {
-                    Ok(Self(ArcVal::clone_from_unsized(value)))
+                    Ok(Self($crate::types::ArcVal::clone_from_unsized(value)))
                 }
             }
         }
 
-        impl TryFrom<Arc<str>> for $id {
-            type Error = ParseError;
-            fn try_from(value: Arc<str>) -> Result<Self, ParseError> {
+        impl ::std::convert::TryFrom<::std::sync::Arc<str>> for $id {
+            type Error = $crate::event::ParseError;
+            fn try_from(value: ::std::sync::Arc<str>) -> Result<Self, $crate::event::ParseError> {
                 if value.is_empty() {
-                    Err(ParseError::$err)
+                    Err($crate::event::ParseError::$err)
                 } else {
-                    Ok(Self(ArcVal::from(value)))
+                    Ok(Self($crate::types::ArcVal::from(value)))
                 }
             }
         }
 
-        impl Deref for $id {
+        impl ::std::str::FromStr for $id {
+            type Err = $crate::event::ParseError;
+            fn from_str(s: &str) -> Result<Self, $crate::event::ParseError> {
+                use std::convert::TryFrom;
+                Self::try_from(s)
+            }
+        }
+
+        impl ::std::ops::Deref for $id {
             type Target = str;
             fn deref(&self) -> &Self::Target {
                 self.0.as_ref()

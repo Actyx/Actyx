@@ -31,7 +31,7 @@ mod tags;
 #[cfg(feature = "client")]
 pub use client::EventService;
 pub use event::{Event, EventKey, Metadata};
-pub use scalars::{NodeId, SessionId, StreamId};
+pub use scalars::{AppId, NodeId, SessionId, StreamId};
 pub use service::{
     StartFrom, SubscribeUntilTimeTravelApiRequest, SubscribeUntilTimeTravelResponse,
 };

@@ -22,9 +22,10 @@ $ ax swarms keygen
 Generating swarm key, it might take some seconds...
 L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCjZiNjkzNTQzNGM0Yzc5NjY2OTM4NTkzMjM0Njg0MTY5MzA3NzQ1NmU0MjVhMzk2ZDU3NmE3OTRmNTIzMTc3NTk=
 ```
+
 ## Make a node join a swarm
 
-Use the `ax settings set` command to provide a node with the swarm key. 
+Use the `ax settings set` command to provide a node with the swarm key.
 
 Using the swarm key generated above as an example:
 
@@ -42,6 +43,6 @@ Alternatively you can set the swarm key in a settings object that you pass to th
 
 To remove a node from a swarm simply unset the relevant node setting as follows
 
-```
+```bash
 ax settings unset --local com.actyx.os/general/swarmKey localhost
 ```

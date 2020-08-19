@@ -18,7 +18,7 @@ ARGS:
     <SCOPE>          Scope at which you want to set the given settings.
     <NODE>           Node ID or, if using `--local`, the IP address, of the
                      node to perform the operation on. You may also pass in a
-                     file with a value using the syntax `@file.txt` or have the 
+                     file with a value using the syntax `@file.txt` or have the
                      command one value from stdin using `@-`.
 ```
 
@@ -45,4 +45,3 @@ $ ax settings unset --local com.example.app 10.2.3.23 10.2.3.24
 # Unset settings from multiple nodes defined in a file
 $ ax settings unset --local com.example.app @nodes.txt
 ```
-
