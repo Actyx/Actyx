@@ -15,7 +15,8 @@ Beta versions provide early access to future releases. They are intended for dev
 
 Your edge device must meet the following requirements to install <em>ActyxOS on Windows</em>:
 
-- Windows 10 with `amd64` architecture
+- Windows 10
+- `amd64` architecture
 
 ### Install ActyxOS on your edge device
 
