@@ -13,7 +13,7 @@ FLAGS:
     -h, --help       Prints help information
     --local          Process over local network
     -j or --json     Format output as JSON
- 
+
 
 ARGS:
     <APP>            IDs of the app(s) to start on the given nodes. You may
@@ -22,7 +22,7 @@ ARGS:
                      line from stdin using `@-`.
     <NODE>           Node ID or, if using `--local`, the IP address, of the
                      node to perform the operation on. You may also pass in a
-                     file with a value using the syntax `@file.txt` or have the 
+                     file with a value using the syntax `@file.txt` or have the
                      command one value from stdin using `@-`.
 ```
 

@@ -26,9 +26,9 @@ But is consistency essential? We would say the answer is "no". Some problems can
 
 Now we are finally ready to discuss the so called [CAP theorem](https://en.wikipedia.org/wiki/CAP_theorem), also named **Brewer's theorem** after computer scientist [Eric Brewer](https://en.wikipedia.org/wiki/Eric_Brewer_(scientist)), who first stated it as a loose conjecture — it was proven in 2002 by Seth Gilbert and Nancy Lynch. This theorem states that it is impossible for a distributed application to simultaneously provide more than two out of the following three guarantees:
 
--   Consistency: Every read receives the most recent write or an error
--   Availability: Every request receives a (non-error) response – without the guarantee that it contains the most recent write
--   Partition tolerance: The system continues to operate despite an arbitrary number of messages being dropped (or delayed) by the network between nodes
+- Consistency: Every read receives the most recent write or an error
+- Availability: Every request receives a (non-error) response – without the guarantee that it contains the most recent write
+- Partition tolerance: The system continues to operate despite an arbitrary number of messages being dropped (or delayed) by the network between nodes
 
 No distributed system can eschew partition tolerance (only centralized systems do, and this is why then can be CA: consistent and available at the same time). For a distributed system the choice is between CP (consistent and partition tolerant) and AP (available and partition tolerant).
 

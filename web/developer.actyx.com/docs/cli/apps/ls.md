@@ -4,7 +4,7 @@ title: ax apps ls
 
 ### Get the status of apps that are deployed to your node
 
-```
+```bash
 $ ax apps ls --help
 USAGE: ax apps ls [FLAGS] [OPTIONS] <NODE>
 
@@ -23,10 +23,10 @@ ARGS:
 
 :::tip Output
 If a node is reachable, the output of `ax apps ls` will list the status of all apps deployed on that node. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
+
 - Host unreachable
 - ActyxOS unreachable (this means the host was reachable but the TCP connection reset)
 :::
-
 
 See the following examples of using the `ax apps ls` command:
 

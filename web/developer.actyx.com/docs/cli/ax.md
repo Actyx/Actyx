@@ -2,9 +2,10 @@
 title: ax (base command)
 ---
 
-## The base command for the Actyx CLI 
+## The base command for the Actyx CLI
 
 ### Child commands
+
 Command                      | description|
 -----------------------------|------------|
 [ax nodes](nodes/nodes)     | Manage your ActyxOS nodes |

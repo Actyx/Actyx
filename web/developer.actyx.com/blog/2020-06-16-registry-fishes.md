@@ -35,13 +35,15 @@ There is a better way...
 
 A fish should always be as small as possible (think of it as a digital twin). This pattern will lead you to a data model that is **scalable**, **reuseable**, **composable**, and **maintainable**. Keeping in line with this, we split the problem into two parts:
 
- 1. **Implement state and logic of a single entity**
+<!-- markdownlint-disable MD029 -->
+1. **Implement state and logic of a single entity**
 
 - Write a fish responsible for a single instance (e.g.: `MaterialRequestFish`)
 
- 2. **Track and access many instances of an entity**
+2. **Track and access many instances of an entity**
 
 - Write a registry fish that tracks all instances (e.g.: `MaterialRequestRegistryFish`)
+<!-- markdownlint-enable MD029 -->
 
 This is the _Registry Fish Pattern_. It allows you to cleanly separate the concerns of the logic of an individual entity and keeping track of many instances thereof. Let's jump in with an example.
 
@@ -128,8 +130,6 @@ export const MaterialRequestRegistryFish =
 })
 ```
 
-
-
 Here is how you could now, for example, use the `MaterialRequestRegistryFish` to show a list of all existing material request names:
 
 ```typescript
@@ -179,8 +179,8 @@ One thing that you may have noticed is that the registry is actually pretty gene
 
 So, what is needed for a generic registry?
 
-1. We must be able to create a registry by providing event types to add fish to the registry and events to remove them.
-2. We must be able to observe all the fish in the registry to get their states.
+1. We must be able to create a registry by providing event types to add fish to the registry and events to remove them
+2. We must be able to observe all the fish in the registry to get their states
 
 Let's jump in.
 

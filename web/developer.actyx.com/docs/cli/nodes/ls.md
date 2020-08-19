@@ -4,7 +4,7 @@ title: ax nodes ls
 
 ### Get important information on your nodes
 
-```
+```bash
 $ ax nodes ls --help
 USAGE: ax nodes ls [FLAGS] [OPTIONS] <NODE>...
 
@@ -17,18 +17,20 @@ FLAGS:
 ARGS:
     <NODE>               Node ID or, if using `--local`, the IP address, of the
                          node to perform the operation on. You may also pass in a
-                         file with a value using the syntax `@file.txt` or have the 
+                         file with a value using the syntax `@file.txt` or have the
                          command one value from stdin using `@-`.
 ```
 
 :::tip Output of `ax nodes ls`
 
 If the node is reachable, the output of `ax nodes ls` will show you its status. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
+
 - Host unreachable
-- ActyxOS unreachable (this means the host was reachable but the TCP connection reset) 
+- ActyxOS unreachable (this means the host was reachable but the TCP connection reset)
 :::
 
 See the following examples of using the `ax nodes ls` command:
+
 ```bash
 # get the status of all specified nodes in the local network
 $ ax nodes ls --pretty --local 10.2.3.23 10.2.3.24 10.2.3.25
@@ -71,4 +73,3 @@ $ ax --json nodes ls --local 10.2.3.23 10.2.3.24 10.2.3.25
 
 Please keep in mind that **state**, **settings** and **license** in the  `ax nodes ls` command **only** refer to the node itself. If you want more detailed information about the state of the apps on a node, you need to use [`ax apps ls`](#apps-ls).
 :::
-

@@ -23,6 +23,7 @@ is `my-room`, and only those events that have been emitted by the very same node
 postfix `local()`; obviously, this doesn't make much sense for a chat room, which by its nature is distributed). We
 could further refine the query with other tags, for example if we'd like to subscribe to all messages in the `broadcast`
 chat room as well, the query could look like:
+
 ```typescript
   where: chatRoomTag.withId(name).local().or(chatRoomTag.withId('broadcast').local())
 ```
@@ -31,7 +32,7 @@ chat room as well, the query could look like:
 For simple cases, you can omit the type parameter for `Tag` if inlined in the fish's definition. It's best practice
 however to associate event types and tags statically however using [typed tags].
 
-[typed tags]: typed-tags 
+[typed tags]: typed-tags
 :::
 
 The `Fish` itself is not parameterized with a `name`, that's why we created a factory function to create a concrete fish
@@ -44,7 +45,7 @@ the subscription to say that we want events from the chat room fish of the given
 This is achieved by just omitting the `local()` prefix in the end:
 
 ```typescript
-  where: chatRoomTag.withId(name).or(chatRoomTag.withId('broadcast')) 
+  where: chatRoomTag.withId(name).or(chatRoomTag.withId('broadcast'))
 ```
 
 If we'd like to get all chat room events, for all rooms, then we'd need to add another dedicated tag for that, maybe

@@ -9,7 +9,7 @@ The Event Service HTTP API provides local access to the Event Service, allowing 
 - [get information about known offsets](#get-information-about-known-offsets),
 - [query event streams](#query-event-streams),
 - [subscribe to event streams](#subscribe-to-event-streams); and,
-- [publish events](#publish-events).
+- [publish events](#publish-events)
 
 It is reachable at the following base URI: `http://localhost:4454/api/v1/events`.
 
@@ -26,21 +26,21 @@ You can get information from the Event Service about known offsets, i.e. what th
 - Endpoint: `http://localhost:4454/api/v1/events/offsets`
 - HTTP method: `GET`
 - HTTP headers:
-    - `Content-Type`, must be `application/json`, default: `application/json`
-    - (optional) `Accept`, must be `application/json`, default: `application/json`
+  - `Content-Type`, must be `application/json`, default: `application/json`
+  - (optional) `Accept`, must be `application/json`, default: `application/json`
 
 There is no request body.
 
 ### Response
 
 - HTTP headers:
-    - `Content-Type` is `application/json`
-    - `Cache-Control` is `no-store` (to get fresh data and not use cache slots)
+  - `Content-Type` is `application/json`
+  - `Cache-Control` is `no-store` (to get fresh data and not use cache slots)
 
 The response body will contain a JSON object of the following structure:
 
-```js
-{ 
+```json
+{
     "<string: sourceID>": "<integer: last-known-offset>",
     "<string: sourceID>": "<integer: last-known-offset>"
 }
@@ -56,7 +56,7 @@ curl \
     -H "Accept: application/json" \
     http://localhost:4454/api/v1/events/offsets | jq .
 >
-{ 
+{
     "db66a77f": 57,
     "a263bad7": 60
 }
@@ -71,12 +71,12 @@ You can query the Event Service for bounded sets of events in one or more event 
 - Endpoint: `http://localhost:4454/api/v1/events/query`
 - HTTP method: `POST`
 - HTTP headers:
-    - `Content-Type`, must be `application/json`, default: `application/json`
-    - (optional) `Accept`, must be `application/x-ndjson`, default: `application/x-ndjson`
+  - `Content-Type`, must be `application/json`, default: `application/json`
+  - (optional) `Accept`, must be `application/x-ndjson`, default: `application/x-ndjson`
 
 The request body must contain a JSON object with the following structure:
 
-```js
+```json
 {
     "lowerBound": {
         "<string: sourceID>": "<integer: exclusive-lower-bound, e.g. 34>",
@@ -87,7 +87,7 @@ The request body must contain a JSON object with the following structure:
         "<string: sourceID>": "<integer: inclusive-upper-bound, e.g. 101>"
     },
     "subscriptions": [
-        { 
+        {
             "semantics": "<string: semantics | undefined>",
             "name": "<string: name | undefined>",
             "source": "<string: sourceID> | undefined"
@@ -138,8 +138,8 @@ The `order` object specifies in which order the events should be returned to the
 ### Response
 
 - HTTP headers:
-    - `Content-Type` is `application/x-ndjson`
-    - `Transfer-Encoding` is `chunked`
+  - `Content-Type` is `application/x-ndjson`
+  - `Transfer-Encoding` is `chunked`
 
 The response will be a stream of `<CR><LF>`-delimited event payloads of the following structure:
 
@@ -150,7 +150,7 @@ The response will be a stream of `<CR><LF>`-delimited event payloads of the foll
         "name": "<string: name>",
         "source": "<string: sourceID>"
     },
-    "timestamp": "<integer>", // unix epoch in microseconds 
+    "timestamp": "<integer>", // unix epoch in microseconds
     "lamport": "<integer>",
     "offset": "<integer>",
     "payload": "<object>"
@@ -232,8 +232,8 @@ You can use the Event Service API to subscribe to event streams. The Event Servi
 - Endpoint: `http://localhost:4454/api/v1/events/subscribe`
 - HTTP method: `POST`
 - HTTP headers:
-    - `Content-Type`, must be `application/json`, default: `application/json`
-    - (optional) `Accept`, must be `application/x-ndjson`, default: `application/x-ndjson`
+  - `Content-Type`, must be `application/json`, default: `application/json`
+  - (optional) `Accept`, must be `application/x-ndjson`, default: `application/x-ndjson`
 
 The request body must contain a JSON object with the following structure:
 
@@ -278,8 +278,8 @@ The `subscriptions` objects specifies which event streams should be queried, wit
 ### Response
 
 - HTTP headers:
-    - `Content-Type` is `application/x-ndjson`
-    - `Transfer-Encoding` is `chunked`
+  - `Content-Type` is `application/x-ndjson`
+  - `Transfer-Encoding` is `chunked`
 
 The response will be a stream of `<CR><LF>`-delimited event payloads of the following structure:
 
@@ -350,7 +350,7 @@ echo '
         "name": "temp-sensor",
         "source": "db66a77f"
     },
-    "timestamp": 21323, // unix epoch microseconds 
+    "timestamp": 21323, // unix epoch microseconds
     "lamport": 323,
     "offset": 34,
     "payload": {
@@ -369,7 +369,7 @@ You can publish new events using the Event Service API.
 - Endpoint: `http://localhost:4454/api/v1/events/publish`
 - HTTP method: `POST`
 - HTTP headers:
-    - `Content-Type`, must be `application/json`, default: `application/json`
+  - `Content-Type`, must be `application/json`, default: `application/json`
 
 The request body must contain a JSON object with the following structure:
 
@@ -492,11 +492,12 @@ req.end();
 ```
 
 ### JavaScript (browser)
+
 ```js
 function ActyxDecoder(bodyStream) {
   return new ReadableStream({
     start(controller) {
-      
+
       const dec = new TextDecoder()
       let last = ""
       // The following function handles each data chunk
