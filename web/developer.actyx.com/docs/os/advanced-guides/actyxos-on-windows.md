@@ -23,7 +23,7 @@ Your edge device must meet the following requirements to install <em>ActyxOS on 
 You can download an installer for ActyxOS on Windows on [the downloads page](https://downloads.actyx.com/). After opening the installer, you are guided through the setup process.
 
 :::info ActyxOS Node Manager included
-As ActyxOS on Windows is currently only intended for development purposes, the installer also includes the latest release of the [ActyxOS Node Manager](../tools/node-manager.md).
+The installer also includes the latest release of the [ActyxOS Node Manager](../tools/node-manager.md).
 :::
 
 ActyxOS is automatically started after the installation is finished.

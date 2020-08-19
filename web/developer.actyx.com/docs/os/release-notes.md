@@ -6,16 +6,17 @@ This page contains information about new features, bug fixes, deprecations and r
 
 ## ActyxOS 1.0.0
 
-**Release date: 29.07.2020**
+**Release date: XX.XX.2020**
 
 Download:
 - [Docker Hub](https://hub.docker.com/r/actyx/os)
 - [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
+- [Actyx Downloads page](https://downloads.actyx.com/)
 
 ### New features
 
 - Introduced ActyxOS on Android support for `armeabi-v7a` [ABI](https://developer.android.com/ndk/guides/abis.html#sa) devices, and devices with Android 5.1+
-- Introduced ActyxOS on Docker support for `arm` and `armhf` devices
+- Introduced [ActyxOS on Windows in beta version](advanced-guides/actyxos-on-windows.md)
 - Several performance improvements
 
 ### Bug fixes
