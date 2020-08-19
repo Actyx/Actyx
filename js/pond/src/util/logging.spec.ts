@@ -6,7 +6,7 @@
  */
 import * as debug from 'debug'
 import * as util from 'util'
-import { LogFunction, Loggers, LogLeech, makeLogPattern, mkLogger } from '.'
+import { LogFunction, LoggersInternal, LogLeech, makeLogPattern, mkLogger } from '.'
 
 describe('makeLogPattern', () => {
   it('must properly configure the browser', () => {
@@ -19,7 +19,7 @@ describe('mkLogger', () => {
   // eslint-disable-next-line no-control-regex
   const allColorCodes = /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g
 
-  const globalLeechBefore = Loggers.globalLogLeech
+  const globalLeechBefore = LoggersInternal.globalLogLeech
 
   beforeAll(() => {
     debug.enable('foo')
@@ -33,7 +33,7 @@ describe('mkLogger', () => {
     while (outputCapture.length > 0) {
       outputCapture.pop()
     }
-    Loggers.globalLogLeech = globalLeechBefore
+    LoggersInternal.globalLogLeech = globalLeechBefore
   })
 
   const outputCapture: string[] = []
@@ -52,7 +52,7 @@ describe('mkLogger', () => {
   })
 
   it('should forward invocation args to globalLogLeech', () => {
-    Loggers.globalLogLeech = leechToCapture
+    LoggersInternal.globalLogLeech = leechToCapture
     const l = mkLogger('foo')
 
     l('hello log')
@@ -60,7 +60,7 @@ describe('mkLogger', () => {
   })
 
   it('should catch errors thrown by global log leech and report them to normal log output', () => {
-    Loggers.globalLogLeech = (_arg0, _arg1) => {
+    LoggersInternal.globalLogLeech = (_arg0, _arg1) => {
       throw new Error('Whoops')
     }
     const l = mkLogger('foo', logToCapture)
@@ -77,28 +77,12 @@ describe('mkLogger', () => {
   })
 
   it('should call both globalLogLeech and original log function', () => {
-    Loggers.globalLogLeech = leechToCapture
+    LoggersInternal.globalLogLeech = leechToCapture
     const normalOutput: string[] = []
     const l = mkLogger('foo', args => normalOutput.push(args))
 
     l('hello log')
     assertEntry()
     assertEntry('foo hello log', normalOutput)
-  })
-})
-
-describe.only('test loggers', () => {
-  it('should dump errors', () => {
-    const log = Loggers.testLoggers()
-    log.error('first', 'second')
-
-    expect(log.errors).toEqual(['"first":"second"'])
-  })
-
-  it('should dump warnings', () => {
-    const log = Loggers.testLoggers()
-    log.warn('first', { foo: 'bar' })
-
-    expect(log.warnings).toEqual(['"first":{"foo":"bar"}'])
   })
 })
