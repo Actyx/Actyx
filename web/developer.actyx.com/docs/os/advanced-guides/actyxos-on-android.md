@@ -43,7 +43,7 @@ You can then check on your ActyxOS node:
 }>
 <TabItem value="node-manager">
 
-Go to the **Status** tab, and you should that your ActyxOS node is reachable and **running**:
+Go to the **Status** tab. It should show that your ActyxOS node is reachable and **running**:
 
 ![status](/images/os/node-manager-status-1.png)
 
@@ -116,7 +116,7 @@ You should now see <em>ActyxOS on Android</em> on the home screen of your Androi
 
 ### ActyxOS node not responding
 
-First, check that you entered the right IP in the `ax` command. If you still cannot connect, the output of `ax nodes ls` returns one of the two possible reasons (if you are using the ActyxOS Node Manager, you can see this info in the Status tab):
+First, check that you entered the right IP in the `ax` command. If you still cannot connect, the output of `ax nodes ls` returns one of the two possible reasons (if you are using the ActyxOS Node Manager, you can find this info in the Status tab):
 - **ActyxOS is not reachable.**
 This means that ActyxOS is not running on your node. Please click on the ActyxOS icon on your home screen. If ActyxOS is running, you can see it in the notifications overview of your Android device.
 - **Host is not reachable.** This means that your development machine cannot connect to your node. Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port 4457.
