@@ -32,8 +32,6 @@ If you do not have access to the Google Play store, please have a look at [our g
 
 In order to check on its status and interact with the node, you can use the [ActyxOS Node Manager](../tools/node-manager) or, if you prefer a command line tool, use the [Actyx CLI](../../cli/getting-started.md).
 
-You can then check on your ActyxOS node:
-
 <Tabs
   defaultValue="node-manager"
   values={[
