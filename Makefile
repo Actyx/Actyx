@@ -389,7 +389,7 @@ axosandroid-x86: debug
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-w /src/jvm/os-android \
 	-it actyx/util:buildrs-x64-latest \
-	./gradlew clean ktlintCheck build assembleRelease
+	./gradlew --gradle-user-home /src/jvm/os-android/.gradle clean ktlintCheck build assembleRelease
 	echo 'APK: ./jvm/os-android/app/build/outputs/apk/release/app-release.apk'
 
 # For dev purposes only.
