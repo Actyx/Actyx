@@ -1,9 +1,11 @@
 package com.actyx.os.android
 
+import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
 import android.net.Uri
+import android.os.PowerManager
 import arrow.core.Either
 import arrow.core.Option
 import com.actyx.os.android.activity.MainActivity
@@ -11,6 +13,7 @@ import com.actyx.os.android.activity.WebappActivity
 import com.actyx.os.android.api.RestServer
 import com.actyx.os.android.service.BackgroundServices
 import com.actyx.os.android.util.Descriptor
+import com.actyx.os.android.util.Logger
 import io.reactivex.subjects.BehaviorSubject
 import java.io.File
 import java.io.FileInputStream
@@ -28,6 +31,8 @@ import java.io.InputStream
  *          └─ {extracted app archive content}
  */
 class AppRepository(extFilesDir: File, val ctx: Context) {
+
+  private val log = Logger()
 
   private val tempDir = File(extFilesDir, "tmp")
   private val baseDir = File(extFilesDir, "apps")
@@ -142,10 +147,20 @@ class AppRepository(extFilesDir: File, val ctx: Context) {
       File(current, descriptor(current).dist)
     }
 
-  fun startApp(appId: String): Either<String, Unit> =
-    Option.fromNullable(appInfo(appId))
-      .toEither { "Unknown application ID '$appId'" }
-      .map { app ->
+  private fun isDeviceLocked(): Boolean {
+    // This only works when a passcode is set.
+    if ((ctx.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager).isKeyguardLocked) {
+      return true
+    }
+    return !(ctx.getSystemService(Context.POWER_SERVICE) as PowerManager).isInteractive
+  }
+
+  fun startApp(appId: String) {
+    appInfo(appId)?.let { app ->
+      // Starting activities when the screen is locked is problematic. Just ignore, we'll get
+      // another start command from the node eventually.
+      if (!isDeviceLocked()) {
+        // starting an app implies enabling which is usually done by the user on the host OS
         val intent = Intent(ctx, WebappActivity::class.java).apply {
           flags = FLAG_ACTIVITY_NEW_TASK
           action = Intent.ACTION_VIEW
@@ -154,12 +169,16 @@ class AppRepository(extFilesDir: File, val ctx: Context) {
         }
         ctx.startActivity(intent)
 
-        // Short-circuit the activity to load the WebApp directly
+        // trigger the actual start
         val startWebAppIntent = Intent(BackgroundServices.ACTION_APP_START_REQUESTED).apply {
           putExtra(BackgroundServices.EXTRA_APP_ID, app.id)
         }
         ctx.sendBroadcast(startWebAppIntent)
+      } else {
+        log.info("$appId not started as screen is currently locked")
       }
+    }
+  }
 
   fun stopApp(appId: String): Either<String, Unit> =
     Option.fromNullable(appInfo(appId))
