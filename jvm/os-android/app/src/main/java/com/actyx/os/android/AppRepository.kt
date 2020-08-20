@@ -159,6 +159,8 @@ class AppRepository(extFilesDir: File, val ctx: Context) {
     appInfo(appId)?.let { app ->
       // Starting activities when the screen is locked is problematic. Just ignore, we'll get
       // another start command from the node eventually.
+      // Note: This might change in later node implementations so will have to take care of
+      // retrying here.
       if (!isDeviceLocked()) {
         // starting an app implies enabling which is usually done by the user on the host OS
         val intent = Intent(ctx, WebappActivity::class.java).apply {
