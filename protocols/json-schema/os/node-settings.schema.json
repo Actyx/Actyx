@@ -98,6 +98,14 @@
           "minItems": 1,
           "uniqueItems": true
         },
+        "announce": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
         "displayName": {
           "$ref": "#/definitions/Basic/NonEmptyString"
         },
