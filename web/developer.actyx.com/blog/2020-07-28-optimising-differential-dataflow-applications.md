@@ -114,7 +114,7 @@ pub struct FinishedGoodsEvent {
 }
 ```
 
-This brings us to the remaining atrribute: `Abomonation`. This one is required by the internal serialisation mechanism employed
+This brings us to the remaining attribute: `Abomonation`. This one is required by the internal serialisation mechanism employed
 by the differential dataflow, which is not `Serde` as most of the Rust code uses, but `Abomonation`. This is a very efficient binary wire
 encoding, result in good performance of resultant program.
 
