@@ -1,5 +1,5 @@
 ---
-title: Optimising memory consumption of differential dataflow applications
+title: Optimizing memory consumption of differential dataflow applications
 author: Dr. Jan Pustelnik
 author_title: Software Engineer at Actyx
 author_url: https://github.com/gosubpl
@@ -7,23 +7,18 @@ author_image_url: /images/blog/jan-pustelnik.jpg
 tags: [database, dashboards, reports]
 ---
 
-In practical applications of differential dataflow to analysing factory event streams
+In practical applications of [differential dataflow](https://docs.rs/differential-dataflow/) to analyzing factory event streams
 one frequently encounters a lot of strings. Those strings usually represent various
-names - of inventory articles, workstations or activities. They can also represent certain
-properties of production processes, that we often call tags. A process can have certain
-property or not, which we represent by a presence or absence of a certain tag.
-
-Because of ownership structuring of differential dataflow we need to copy or clone a lot. 
-This results often in a very high memory usage, that can be a limiting factor, especially in
-memory constrained environments like the Raspberry Pi or other IoT platforms.
-Once looking into the memory
-usage statistics it is easy to see that most of this cloned content are strings.  
-We can work around
-this problem as long as we remember that Rust's `.clone()` operation is more about ownership than about copying bits.
-
-Let's take a look how we have handled this problem in Actyx internal BI pipelines.
+names - of inventory articles, workstations, or activities. However, the straightforward approach in data flows
+rich in string objects may lead to a lot of unnecessary duplication which can result in high memory usage, unacceptable in small devices.
+Let's take a look at how we have handled this problem in Actyx internal BI pipelines using the Actyx Rust SDK.
 
 <!--truncate-->
+
+## Introduction
+
+Differential dataflow is written in [Rust](https://www.rust-lang.org/), a modern programming language that helps building reliable
+and secure software.
 
 :::note
 See the [introduction to differential dataflow on developer.actyx.com] to get more context.
@@ -31,10 +26,24 @@ See the [introduction to differential dataflow on developer.actyx.com] to get mo
 
 [introduction to differential dataflow on developer.actyx.com]: https://developer.actyx.com/blog/2020/06/25/differential-dataflow/
 
+One of the central ideas helping Rust achieve its goals is [ownership](https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html).
+Tracing the ownership of memory and variables helps avoiding a large class of bugs that have caused security issues in the past
+and continue to trouble users of other programming languages. However, when the compiler cannot make sure that the object's
+ownership is seamlessly transferred, the programmer needs to make this explicit via the `clone()` operation.
+Because of ownership structuring of differential dataflow we need to clone a lot, which for strings means byte copy by default. 
+This results often in very high memory usage, that can be a limiting factor, especially in
+memory constrained environments like the Raspberry Pi or other IoT platforms.
+Once looking into the memory
+usage statistics it is easy to see that most of the memory contents is taken by strings.  
+We can work around
+this problem as long as we remember that Rust's `.clone()` operation is more about ownership than about copying bits.
+
+[introduction to differential dataflow on developer.actyx.com]: https://developer.actyx.com/blog/2020/06/25/differential-dataflow/
+
 ## Problem setting
 
 Let's assume that we need to process events describing finished goods produced at the factory. Each
-finished goods item has following attributes: quantity of pieces produced (pcs),
+finished goods item has the following attributes: quantity of pieces produced (pcs),
 article id (like `AGK75641`), human understandable article name like `Fork, Trifoil design line`,
 workstation at which the good was reported (say `LATHE 3`) and order id (like `FG/1234567/2020`).
 Let's model this as a Rust struct:
@@ -54,7 +63,6 @@ pub struct FinishedGoods {
 When working with ActyxOS, finished goods will probably come as a `payload` in an encompassing
 `Event` data structure, which will look like that:
 
-
 ```
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Abomonation)]
 pub struct Event {
@@ -64,11 +72,9 @@ pub struct Event {
 }
 
 ```
-
 You might have noticed that for `Event` struct we derive some interesting attributes: `Eq`, `PartialEq`, `Ord`, `PartialOrd` and `Abomonation`. These
 are here for a reason - `Eq`, `PartialEq`, `Ord` and `PartialOrd` are needed because differential dataflow orders (sorts) and deduplicates whatever data are flowing through
 the pipelines. This is for a reason - imagine we had the following event structure (required derive clauses omitted for brevity):
-
 
 ```
 pub enum ActivityStatus {
@@ -86,24 +92,23 @@ pub struct ActivityEvent {
 }
 ```
 
-Now, if we wanted to derive information about duration of the activity from the `ActivityEvent` we would want to have the events sorted,
+Now, if we wanted to derive information about the duration of the activity from the `ActivityEvent` we would want to have the events sorted,
 for the `Activity::Stopped` to come after `Activity::Started` for a given `Activity::id`, to easily write a reducer. So the differential
 dataflow makes the choice to sort by default using the order in which the fields are defined and their natural sorting order.
 
-Now, in a true decentralised system, without a single coordinator, unfortunately, timestamps cannot be trusted to come in an order
+Now, in a truely decentralized system, without a single coordinator, unfortunately, timestamps cannot be trusted to come in an order
 consistent with how things "have happened". Imagine two devices on which the activity is being processed. A user first starts the activity
 on the first device, then performs some work and marks completion by stopping the activity on the second device. If the clocks on those
 devices are out of sync, not only the duration of the activity will be negative (like minus 2 hours), which is an unavoidable consequence
 of wrong time on one or both of the devices, but also the `Started` coming after `Stopped` will result in activity incorrectly
-recognised as `ongoing` instead of `completed`.
+recognized as `ongoing` instead of `completed`.
 
 This is why in ActyxOS the default event ordering is by `LamportTimestamp`, which results in causal order, so a `Stopped` event will always
-come after the `Started` event if they were generated by the same entity (fish), even if they were generated on different devices.
+come after the `Started` event if they were generated by the same entity (we call them [fish](https://developer.actyx.com/docs/pond/programming-model)), even if they were generated on different devices.
 This is why, when processing those events,
-in the differential dataflow, we also default to the same ordering. In the case of wrong time on devices, the worst consequence will
+in the differential dataflow, we also default to the same ordering. In the case of a wrong time on devices, the worst consequence will
 be incorrect duration, but not incorrect activity status. Therefore the following definition of `FinishedGoodsEvent` would most probably be
 used in a real project involving ActyxOS:
-
 
 ```
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Abomonation)]
@@ -114,11 +119,12 @@ pub struct FinishedGoodsEvent {
 }
 ```
 
-This brings us to the remaining attribute: `Abomonation`. This one is required by the internal serialisation mechanism employed
+This brings us to the remaining attribute: `Abomonation`. This one is required by the internal serialization mechanism employed
 by the differential dataflow, which is not `Serde` as most of the Rust ecosystem uses, but `Abomonation`. This is a very efficient binary wire
-encoding, result in good performance of resultant program.
+encoding, result in good performance of the resultant program.
 
-`Abomonation`, like `Serde` needs to be transitive, so the full definition of `FinishedGoods` would run like this: 
+`Abomonation`, like `Serde` needs to be transitive, which means that if you want to build your struct out of parts, they also need to support
+`Abomonation`, so the full definition of `FinishedGoods` would run like this: 
 ```
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Abomonation)]
 pub struct FinishedGoods {
@@ -154,9 +160,7 @@ let extracts = events.map(|ev| FinishedGoodsEvent {
     timestamp: ev.timestamp,
 });
 ```
-
-and then run the processing pipeline, which groups `pcs` by `article_id` and `workstation`
-and calculates the `total_pcs`:
+and then run the processing pipeline, which groups `pcs` by `article_id` and `workstation` and calculates the `total_pcs`:
 
 ```
 let out = extracts
@@ -186,7 +190,7 @@ let out = extracts
 ```
 
 In the pipeline above we see a lot of `.clone()` operations applied to `String`s (lines indicated by a `*`). Given `article_id`
-or `workstation` is cloned twice, which results in significant memory overhead, this pipepeline could be troublesome to deploy
+or `workstation` is cloned twice, which results in significant memory overhead, this pipeline could be troublesome to deploy
 for larger volumes of data in memory-constrained environments. However, before we show how to solve this issue, let's take
 a step back - because there are two additional points to be made about the code above.
 
@@ -195,7 +199,7 @@ we have an `article_name` that should be the same for a given `article_id`. We h
 copying all `article_name`'s, but still it perhaps would be better from a business perspective if there was a second
 stream just mapping ids to names and we could use the result. Here, due to the duplication inherent in the event design,
 we need to choose whether we run additional grouping by `process_name` or trust all `process_name`s for the same
-`process_id` to be actually the same. One needs to be on the look out for such issues and frequently seemingly innocuous
+`process_id` to be actually the same. One needs to be on the lookout for such issues and frequently seemingly innocuous
 design decisions about event schemas end up being problems down the analytics pipeline.
 
 Second (`// 2`) - there is an important technicality about how differential dataflow works. If two successive records
@@ -210,7 +214,7 @@ we would get just one deduplicated record:
 (("article_1", 10), 2)
 ```
 
-Now let's get back to the main point about the memory usage due to excessive cloning.
+Now let's get back to the main point about memory usage due to excessive cloning.
 Rust strings are modifiable, like in C++ and unlike their Java counterparts.
 However, as C++ has departed from the copy-on-write (frequently abbreviated as CoW) approach for strings
 due to the change in how processors are architected, similarly in Rust strings are not CoW by default.
@@ -218,7 +222,7 @@ That results in large memory usage occurring whenever we `.clone()` a string in 
 of the string get duplicated. However, as `.clone()` in Rust is about ownership semantics
 more than actual copying of the information, this problem can be easily side-stepped.
 
-## Optimising memory usage
+## Optimizing memory usage
 
 The initial instinct would be to use the [`std::borrow::Cow`](https://doc.rust-lang.org/std/borrow/enum.Cow.html), which
 is a copy-on-mutation smart pointer in Rust and wrap the string inside of it like this:
@@ -243,6 +247,8 @@ using the CoW approach.
 Because the strings in the analytics pipelines usually are not mutated, the ideal approach would be to use _string interning_ just like Java does.
 That would leave out only a problem of creating a suitable `Abomonation` instance. This path was selected in `ActyxOS` SDK - and is called
 [ArcVal](https://docs.rs/actyxos_sdk/0.4.0/actyxos_sdk/types/struct.ArcVal.html).
+
+!!!!!!!!! TODO: one paragraph explain ArcVal
 
 Using `ArcVal` requires importing it from `actyxos_sdk` crate:
 ```
