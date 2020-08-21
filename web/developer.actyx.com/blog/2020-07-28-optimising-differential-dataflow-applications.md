@@ -220,7 +220,7 @@ more than actual copying of the information, this problem can be easily side-ste
 
 ## Optimising memory usage
 
-The initial instinct would be to use the [`std::borrow::Cow`](https://doc.rust-lang.org/std/borrow/enum.Cow.html) , which
+The initial instinct would be to use the [`std::borrow::Cow`](https://doc.rust-lang.org/std/borrow/enum.Cow.html), which
 is a copy-on-mutation smart pointer in Rust and wrap the string inside of it like this:
 ```
 use std::borrow::Cow;
