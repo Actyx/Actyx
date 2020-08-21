@@ -198,7 +198,7 @@ we need to choose whether we run additional grouping by `process_name` or trust 
 `process_id` to be actually the same. One needs to be on the look out for such issues and frequently seemingly innocuous
 design decisions about event schemas end up being problems down the analytics pipeline.
 
-Second (`\\ 2`) - there is an important technicality about how differential dataflow works. If two successive records
+Second (`// 2`) - there is an important technicality about how differential dataflow works. If two successive records
 in the pipeline have the same contents, they will be conflated together into one record with a count of `2`. So instead
 of getting the following two records (where the second parameter in the tuple is the count):
 ```
