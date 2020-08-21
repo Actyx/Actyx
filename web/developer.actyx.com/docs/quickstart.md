@@ -191,7 +191,7 @@ npm install
 Now you can start the app by running
 
 ```bash
-npm start Dori
+npm start
 ```
 
 This will connect to ActyxOS and then start printing out lines after a few seconds, corresponding to state updates from the ForgetfulChatFish named “Dori”.
