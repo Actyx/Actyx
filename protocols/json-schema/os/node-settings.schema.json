@@ -96,9 +96,10 @@
             "$ref": "#/definitions/Basic/MultiAddr"
           },
           "minItems": 1,
-          "uniqueItems": true
+          "uniqueItems": true,
+          "description": "Addresses of peers to initially connect for bootstrapping."
         },
-        "announce": {
+        "announceAddresses": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/Basic/MultiAddr"
