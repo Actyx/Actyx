@@ -93,7 +93,7 @@
         "bootstrapNodes": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Basic/MultiAddr"
           },
           "minItems": 1,
           "uniqueItems": true
@@ -101,7 +101,7 @@
         "announce": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Basic/MultiAddr"
           },
           "minItems": 0,
           "uniqueItems": true,
