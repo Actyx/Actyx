@@ -104,7 +104,9 @@
             "type": "string"
           },
           "minItems": 0,
-          "uniqueItems": true
+          "uniqueItems": true,
+          "default": [],
+          "description": "Manually configured addresses to announce."
         },
         "displayName": {
           "$ref": "#/definitions/Basic/NonEmptyString"
