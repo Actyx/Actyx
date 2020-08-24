@@ -152,14 +152,14 @@ let out = extracts
     .group_by(|e| (e.payload.article_id.clone(), e.payload.workstation.clone())) // *
     .reduce(|(article_id, workstation), inputs, outputs| {
         // same article_id should mean same article_name
-        let article_name = inputs                                 // 1
+        let article_name = inputs
             .get(0)
             .map(|e| e.0.payload.article_name.clone())            // *
             .unwrap_or_default();
         let total_pcs: i64 = inputs
             .iter()
             // note we multiply by count below!
-            .map(|(e, count)| *count as i64 * e.payload.pcs)      // 2
+            .map(|(e, count)| *count as i64 * e.payload.pcs)
             .sum();
         outputs.push((
             ProductionSummary {
