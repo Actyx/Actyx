@@ -93,10 +93,21 @@
         "bootstrapNodes": {
           "type": "array",
           "items": {
-            "type": "string"
+            "$ref": "#/definitions/Basic/MultiAddr"
           },
           "minItems": 1,
-          "uniqueItems": true
+          "uniqueItems": true,
+          "description": "Addresses of peers to initially connect for bootstrapping. These must be multiaddresses containing a peer id. E.g. /dns4/demo-bootstrap.actyx.net/tcp/4001/p2p/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH"
+        },
+        "announceAddresses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Basic/MultiAddr"
+          },
+          "minItems": 0,
+          "uniqueItems": true,
+          "default": [],
+          "description": "Manually configured addresses to announce. These must be multiaddresses without peer id, e.g. /ip4/1.2.3.4/tcp/4001"
         },
         "displayName": {
           "$ref": "#/definitions/Basic/NonEmptyString"
