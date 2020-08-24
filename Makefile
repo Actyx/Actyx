@@ -16,7 +16,7 @@ endif
 component=$(shell echo $${DOCKER_TAG:-unknown-x64}|cut -f1 -d-)
 arch=$(shell echo $${DOCKER_TAG:-unknown-x64}|cut -f2 -d-)
 # These should be moved to the global azure pipelines build
-BUILD_RUST_TOOLCHAIN=1.44.0
+BUILD_RUST_TOOLCHAIN=1.45.0
 BUILD_SCCACHE_VERSION=0.2.12
 
 # Build specific
@@ -113,7 +113,11 @@ else
 ifeq ($(arch), x64)
 DOCKER_PLATFORM:=linux/amd64
 else
+ifeq ($(arch), arm)
+DOCKER_PLATFORM:=linux/arm/v6
+else
 $(error Unknown architecture $(arch). Please edit the Makefile appropriately.)
+endif
 endif
 endif
 endif
@@ -126,6 +130,7 @@ ${DOCKER_BUILD}: debug clean
 	$(eval IMAGE_NAME:=$(call getImageNameDockerhub,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
 	if [ -f $(build_dir)/prepare-image.sh ]; then \
 	 	export ARCH=$(arch); \
+		export GIT_HASH=$(git_hash); \
 		cd $(build_dir); \
 		echo 'Running prepare script'; \
 		./prepare-image.sh ..; \
@@ -172,6 +177,8 @@ define build_bins_and_move
 	-u builder \
 	-w /src/rt-master \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-v $${CARGO_HOME:-$$HOME/.cargo/git}:/home/builder/.cargo/git \
+	-v $${CARGO_HOME:-$$HOME/.cargo/registry}:/home/builder/.cargo/registry \
 	-it $(3) \
 	cargo --locked build --release --target $(2) --bins --jobs 8
 	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -perm -u=x \
@@ -180,7 +187,7 @@ define build_bins_and_move
 endef
 
 # Build ActyxOS binaries for Win64
-# NOTE: This will build `ax.exe`, `win.exe`, `ada-cli.exe` and `store-cli.exe`.
+# NOTE: This will build `ax.exe` (actyx-cli), `actyxos.exe` (windows service), `ada-cli.exe` and `store-cli.exe`.
 # 1st arg: output dir (will be created) of the final artifacts
 # 2nd arg: target toolchain
 # 3rd arg: docker base image
@@ -194,15 +201,36 @@ define build_bins_and_move_win64
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-e CARGO_BUILD_TARGET=$(2) \
 	-e CARGO_BUILD_JOBS=8 \
+	-v $${CARGO_HOME:-$$HOME/.cargo/git}:/usr/local/cargo/git \
+	-v $${CARGO_HOME:-$$HOME/.cargo/registry}:/usr/local/cargo/registry \
 	-it $(3) \
 	bash -c "\
 		cargo --locked build --release --no-default-features --manifest-path actyx-cli/Cargo.toml && \
-		cargo --locked build --release --bin win --no-default-features --manifest-path ax-os-node/Cargo.toml && \
+		cargo --locked build --release --bins --no-default-features --manifest-path ax-os-node-win/Cargo.toml && \
 		cargo --locked build --release --bin ada-cli --bin store-cli"
 	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -perm -u=x \
 		-exec cp {} $(1) \;
 	echo "Please find your build artifacts in $(1)."
 endef
+
+# Build ActyxOS Node Manager
+# 1st arg: target platform (darwin, mas, win32, linux)
+# 2nd arg: target arch (ia32, x64, armv7l, arm64, mips64el)
+define build_node_manager
+	docker run \
+		-v `pwd`:/src \
+		-w /src/misc/actyxos-node-manager \
+		-it actyx/util:windowsinstallercreator-x64-$(IMAGE_VERSION) \
+		bash -c "npm ci && npm run package -- --platform $(1) --arch $(2)"
+	mkdir -p $(build_dir)
+	mv ./misc/actyxos-node-manager/out/ActyxOS-Node-Manager-$(1)-$(2) $(build_dir)/
+endef
+
+node-manager-win64: actyxos-bin-win64
+	$(eval PLATFORM:=win32)
+	$(eval ARCH:=x64)
+	cp -f ./dist/bin/win64/ax.exe ./misc/actyxos-node-manager/bin/win32/
+	$(call build_node_manager,$(PLATFORM),$(ARCH))
 
 actyxos-bin-win64: debug clean
 	$(eval ARCH?=win64)
@@ -210,6 +238,20 @@ actyxos-bin-win64: debug clean
 	$(eval OUTPUT:=./dist/bin/$(ARCH))
 	$(eval IMG:=actyx/util:buildrs-x64-$(IMAGE_VERSION))
 	$(call build_bins_and_move_win64,$(OUTPUT),$(TARGET),$(IMG))
+
+actyxos-installer-win64: node-manager-win64
+	mkdir -p $(build_dir)/win-installer
+	cp -r ./dist/bin/win64/{actyxos,ax}.exe $(build_dir)/win-installer
+	cp -r ./misc/actyxos-win-installer/* $(build_dir)/win-installer
+	cp -r $(build_dir)/ActyxOS-Node-Manager-win32-x64 $(build_dir)/win-installer/node-manager
+	docker run \
+		-v `pwd`:/src \
+		-w /src \
+		-e PRODUCT_VERSION="1.0.0-rc.4" \
+		-e SRC_DIR=. \
+		-e DIST_DIR=/src/dist/bin/win64 \
+		-it actyx/util:windowsinstallercreator-x64-$(IMAGE_VERSION) \
+		bash -c "cd $(build_dir)/win-installer && ./build.sh"
 
 actyxos-bin-x64: debug clean
 	$(eval ARCH?=x64)
@@ -347,7 +389,11 @@ axosandroid-x86: debug
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-w /src/jvm/os-android \
 	-it actyx/util:buildrs-x64-latest \
-	./gradlew clean ktlintCheck build assembleRelease
+	./gradlew --gradle-user-home /src/jvm/os-android/.gradle clean ktlintCheck build assembleRelease
 	echo 'APK: ./jvm/os-android/app/build/outputs/apk/release/app-release.apk'
+
+# For dev purposes only.
+axos-docker-x64: debug
+	ARCH=x64 DOCKER_TAG=actyxos-x64 make actyxos-bin-x64 docker-build-actyxos
 
 axosandroid: debug clean axosandroid-libs axosandroid-app

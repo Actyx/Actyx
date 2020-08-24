@@ -15,7 +15,7 @@ id: com.example.app1
 version: 1.0.3
 displayName: App 1
 description: "A great first app"
-dockerCompose: 
+dockerCompose:
     x86_64: ./docker-compose-amd64.yml
     aarch64: ./docker-compose-arm64v8.yml
 settingsSchema: ./settings-schema.json # <---- you could also inline the settings schema
@@ -35,7 +35,6 @@ dist: ./build/
 main: ./index.html
 settingsSchema: ./settings-schema.json # <---- you could also inline the settings schema
 ```
-
 
 In order to allow you to validate your manifest files and setup auto-complete in your IDE or text editor, we have defined the schema as a [JSON Schema](https://json-schema.org/). You can download the current schema at:
 

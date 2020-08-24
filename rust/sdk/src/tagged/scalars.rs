@@ -34,12 +34,36 @@ impl SessionId {
     pub fn as_str(&self) -> &str {
         &*self.0
     }
-
-    pub fn display<'a>(this: &'a Option<SessionId>) -> impl tracing::Value + Debug + 'a {
-        let s = this.as_ref().map(|sid| &*sid.0).unwrap_or("NoSession");
-        tracing::field::display(s)
-    }
 }
+
+/// Macro for constructing an [`AppId`](tagging/struct.AppId.html) literal.
+///
+/// This is how it works:
+/// ```no_run
+/// use actyxos_sdk::{app_id, tagged::AppId};
+/// let app_id: AppId = app_id!("abc");
+/// ```
+/// This does not compile:
+/// ```compile_fail
+/// use actyxos_sdk::{app_id, tagged::AppId};
+/// let app_id: AppId = app_id!("");
+/// ```
+#[macro_export]
+macro_rules! app_id {
+    ($lit:tt) => {{
+        #[allow(dead_code)]
+        type X = $crate::assert_len!($lit, 1..);
+        use ::std::convert::TryFrom;
+        $crate::tagged::AppId::try_from($lit).unwrap()
+    }};
+}
+
+mk_scalar!(
+    /// The app ID denotes a specific app (sans versioning)
+    ///
+    /// This is used for marking the provenance of events as well as configuring access rights.
+    struct AppId, EmptyAppId
+);
 
 /// The ActyxOS node identifier
 ///

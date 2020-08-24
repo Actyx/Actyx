@@ -29,3 +29,6 @@ lerna-debug.log*
 # VS code
 *.vs
 !.vscode
+
+# local api-extractor output
+temp/

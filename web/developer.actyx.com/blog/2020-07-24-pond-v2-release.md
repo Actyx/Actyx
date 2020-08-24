@@ -23,6 +23,7 @@ identified by _semantics_ and _fishName_, but instead can belong to many streams
 string, as tags are nothing but strings.
 
 To retrieve events based on their tags, you can then employ logic like:
+
 - Events with tag 'foo'
 - Events with tag 'foo' or Tag 'bar' (or both)
 - Events with both tags 'foo' and 'bar'
@@ -54,6 +55,7 @@ const where = tag2.or(tag0.and(tag1))
 
 In version 1 of the Actyx Pond, all events had to be emitted by _Fish_, from a received _command_.
 Now, events can be emitted freely without any Fish at hand.
+
 ```typescript
 pond.emit(Tags('myFirstTag', 'mySecondTag'), myEventPayload)
 ```
@@ -111,14 +113,14 @@ Pond into the RxJS version of your choice.
 
 A Fish is now a struct based on these fields:
 
-- `initialState`: State of the Fish before it has seen any events.
+- `initialState`: State of the Fish before it has seen any events
 - `onEvent`: Function to create a new state from previous state and next event. As with v1, this
   function must be free of side-effects; but you may now directly modify and return the old state,
   just like in
-  [Array.reduce](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce).
+  [Array.reduce](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce)
 - `fishId`: A unique identifier for the Fish. This is used throughout several layers of caching, to make
   your application extra-fast. [See our docs for details.](/docs/pond/programming-model)
-- `where`: Which events to pass to this Fish; like the WHERE clause in SQL.
+- `where`: Which events to pass to this Fish; like the WHERE clause in SQL
 
 Note that in comparison to v1, this is no longer a "factory" – you set concrete values for all
 parameters.
@@ -127,6 +129,7 @@ knowledge of the Fish’s event log changes, we calculate a new state and pass i
 
 As a demonstration of the design’s flexibility, let us look at how to build a Fish that aggregates
 the earliest and the latest Events for a given Tag:
+
 ```ts
 type EarliestAndLatest = {
   earliest?: unknown
@@ -233,11 +236,11 @@ invoked, all previously enqueued events will be part of the state already.
 If you don’t want your logic to keep running forever, you can:
 
 - Use `pond.run` to execute your logic just once, but serialised in regards to all previous local
-  invocations of `pond.run`, and active `pond.keepRunning` effects.
+  invocations of `pond.run`, and active `pond.keepRunning` effects
 - Or set the optional third argument to `pond.keepRunning`, called `autoCancel`. It can be used to cancel
   your logic for good, once a certain state of the Fish is reached. For example, if you’re modelling
   tasks as individual Fish requiring a number of steps, you may want to stop once the final state is
-  reached: `autoCancel = (state) => state.type === 'Finished'`.
+  reached: `autoCancel = (state) => state.type === 'Finished'`
 
 ## Closing Remarks
 

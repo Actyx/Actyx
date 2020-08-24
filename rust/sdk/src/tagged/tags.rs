@@ -1,15 +1,9 @@
-use crate::{
-    event::{FishName, Semantics},
-    types::ArcVal,
-    ParseError,
-};
+use crate::event::{FishName, Semantics};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeSet,
-    convert::TryFrom,
     iter::FromIterator,
-    ops::{Add, AddAssign, BitAndAssign, Deref, SubAssign},
-    sync::Arc,
+    ops::{Add, AddAssign, BitAndAssign, SubAssign},
 };
 
 /// Macro for constructing a [`Tag`](event/struct.Tag.html) literal.

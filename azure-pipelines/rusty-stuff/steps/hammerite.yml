@@ -1,0 +1,14 @@
+steps:
+  - script: |
+      set -e
+      export DOCKER_TAG=hammerite-x64
+      make docker-push-hammerite
+    displayName: Build & Push Hammerite
+    condition: contains(variables['BUILD_STRING'],'[build-rt-master]')
+    env:
+      DOCKERHUB_PASS: $(SECRET_DOCKERHUB_PASS)
+      GITHUB_PKG_PASS: $(SECRET_GITHUB_PKG_PASS)
+  - script: |
+      build/bin/post-to-slack.sh -s "Hammerite" -a "danger"
+    condition: failed()
+    displayName: Ping Slack on failing job

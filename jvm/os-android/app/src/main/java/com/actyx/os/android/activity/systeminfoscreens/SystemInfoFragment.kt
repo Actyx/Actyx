@@ -84,7 +84,7 @@ class SystemInfoFragment : Fragment() {
       SectionHeaderRow(getString(R.string.application)),
       LabelWithValueRowAndIcon(
         getString(R.string.contact),
-        getString(R.string.actyx_contact_email),
+        getString(R.string.contact_actyx_io),
         R.drawable.ic_email_black_24dp,
         getString(R.string.email_icon)
       ),
@@ -166,7 +166,7 @@ class SystemInfoFragment : Fragment() {
 
   private fun handleOnEmailLinkClick() {
     val intent = Intent(Intent.ACTION_SENDTO).apply {
-      data = Uri.parse("mailto:${getString(R.string.actyx_contact_email)}")
+      data = Uri.parse("mailto:${getString(R.string.contact_actyx_io)}")
       putExtra(Intent.EXTRA_SUBJECT, "Feedback/Support")
     }
     startActivity(Intent.createChooser(intent, "Send feedback"))

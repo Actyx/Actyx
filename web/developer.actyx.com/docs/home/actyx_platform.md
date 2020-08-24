@@ -7,7 +7,7 @@ hide_table_of_contents: true
 
 ## Introduction to the Actyx Platform
 
-![](/images/home/actyx_platform.png)
+![Actyx Platform introduction](/images/home/actyx_platform.png)
 
 The Actyx platform is an application platform for developing, deploying, running and monitoring factory automation solutions.
 With the Actyx platform we bring a modern development experience to the factory automation space and provide you with the software and tools that enable you to build better solutions faster.

@@ -17,7 +17,7 @@ FLAGS:
 ARGS:
     <NODE>           Node ID or, if using `--local`, the IP address, of the
                      node to perform the operation on. You may also pass in a
-                     file with a value using the syntax `@file.txt` or have the 
+                     file with a value using the syntax `@file.txt` or have the
                      command one value from stdin using `@-`.
 ```
 

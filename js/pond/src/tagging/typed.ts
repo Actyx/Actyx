@@ -7,6 +7,7 @@ const namedSubSpace = (rawTag: string, sub: string): string[] => {
 
 /**
  * Representation of a union of tag sets. I.e. this is an event selection that combines multiple `Tags` selections.
+ * @public
  */
 export interface TagsUnion<E> {
   /**
@@ -17,6 +18,7 @@ export interface TagsUnion<E> {
 
   /**
    * FOR INTERNAL USE. Convert to Actyx wire format.
+   * @internal
    */
   toWireFormat(): ReadonlyArray<TagSubscription>
 
@@ -34,6 +36,7 @@ export interface TagsUnion<E> {
 
 /**
  * Selection of events based on required tags. `Tags('a', 'b')` will select all events that have tag 'a' *as well as* tag 'b'.
+ * @public
  */
 export interface Tags<E> {
   /**
@@ -62,6 +65,7 @@ export interface Tags<E> {
 
   /**
    * FOR INTERNAL USE. Convert to Actyx wire format.
+   * @internal
    */
   toWireFormat(): TagSubscription
 
@@ -75,10 +79,17 @@ export interface Tags<E> {
   readonly _dataType?: E
 }
 
-// Declare a set of tags
+/**
+ * Declare a set of tags.
+ * This is a generator function to be called WITHOUT new, e.g. `const required = Tags('a', 'b', 'c')`
+ * @public
+ */
 export const Tags = <E>(...requiredTags: string[]): Tags<E> => req<E>(false, requiredTags)
 
-// Representation of a single tag.
+/**
+ * Representation of a single tag.
+ * @public
+ */
 export interface Tag<E> extends Tags<E> {
   // The underlying actual tag as pure string.
   readonly rawTag: string
@@ -91,7 +102,11 @@ export interface Tag<E> extends Tags<E> {
   withId(name: string): Tags<E>
 }
 
-// Create a new tag from the given string.
+/**
+ * Create a new tag from the given string.
+ * (Tag factory function. Call WITHOUT new, e.g. `const myTag = Tag<MyType>('my-tag')`)
+ * @public
+ */
 export const Tag = <E>(rawTag: string): Tag<E> => ({
   rawTag,
 
@@ -102,6 +117,7 @@ export const Tag = <E>(rawTag: string): Tag<E> => ({
 
 /**
  * Typed expression for tag statements. The type `E` describes which events may be annotated with the included tags.
+ * @public
  */
 export type Where<E> = TagsUnion<E> | Tags<E>
 
@@ -148,10 +164,12 @@ const union = <E>(sets: Tags<unknown>[]): TagsUnion<E> => {
 
 /**
  * A `Where` expression that selects all events.
+ * @public
  */
 export const allEvents: Tags<unknown> = req(false, [])
 
 /**
  * A `Where` expression that selects no events.
+ * @public
  */
-export const noEvents: TagsUnion<never> = union([])
+export const noEvents: Where<never> = union([])

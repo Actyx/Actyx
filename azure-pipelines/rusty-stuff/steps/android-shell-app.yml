@@ -1,16 +1,17 @@
 steps:
+  - template: ../../steps-bootstrap.yml
   - script: |
       export VAULT_ADDR=https://vault.actyx.net
       export PATH=$HOME/bin:$PATH
       vault login -method aws role=ops-travis-ci 2>&1
       android-shell-app/bin/prepare-gradle-build.sh
-    displayName: 'Prepare Android build'
+    displayName: Prepare Android build
     env:
       # Map secrets to env vars
       AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
       AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
       PATH: $(PATH):$(HOME)/bin
-    condition: contains(variables['BUILD_STRING'],'[build-android]')
+    condition: contains(variables['BUILD_STRING'],'[build-android-shell-app]')
 
     # Since this build doesn't depend on rt-master, we can at least do the checks before we build the release
   - bash: |
@@ -23,28 +24,33 @@ steps:
       mkdir -p ../android-shell-app/app/src/main/jniLibs/arm64-v8a/ && \
       cp ./target/i686-linux-android/release/libaxstore.so ../android-shell-app/app/src/main/jniLibs/x86/libaxstore.so && \
       cp ./target/aarch64-linux-android/release/libaxstore.so ../android-shell-app/app/src/main/jniLibs/arm64-v8a/libaxstore.so
-    displayName: 'Build & copy store lib (x86)'
-    workingDirectory: 'rt-master'
-    condition: contains(variables['BUILD_STRING'],'[build-android]')
+    displayName: Build & Copy Store lib (x86)
+    workingDirectory: "rt-master"
+    condition: contains(variables['BUILD_STRING'],'[build-android-shell-app]')
 
   - task: Gradle@2
     inputs:
-      workingDirectory: 'android-shell-app'
-      gradleWrapperFile: 'android-shell-app/gradlew'
+      workingDirectory: "android-shell-app"
+      gradleWrapperFile: "android-shell-app/gradlew"
       jdkVersionOption: 1.8
-      javaHomeOption: 'JDKVersion'
-      tasks: 'clean ktlint build assembleRelease androidGitVersion'
-    displayName: 'Compile Android App (x86)'
+      javaHomeOption: "JDKVersion"
+      tasks: "clean ktlint build assembleRelease androidGitVersion"
+    displayName: Compile Android App (x86)
     env:
       JAVA_HOME_8_X64: /usr/lib/jvm/java-8-openjdk-amd64
-    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-android]'))
+    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-android-shell-app]'))
 
   - task: ShellScript@2
     inputs:
       scriptPath: android-shell-app/bin/upload-ipfs.sh
-    displayName: 'Upload to IPFS'
-    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-android]'))
+    displayName: Upload to IPFS
+    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-android-shell-app]'))
 
   - publish: $(System.DefaultWorkingDirectory)/android-shell-app/app/build/outputs/assembly/Actyx/actyx-android-app/
     artifact: actyx-apk
-    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-android]'))
+    condition: and(succeeded(),contains(variables['BUILD_STRING'],'[build-android-shell-app]'))
+
+  - script: |
+      build/bin/post-to-slack.sh -s "Android Shell App & Store" -a "danger"
+    condition: failed()
+    displayName: Ping Slack On Failing Job

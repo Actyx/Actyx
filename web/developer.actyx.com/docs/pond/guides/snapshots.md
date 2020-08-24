@@ -10,7 +10,7 @@ Actyx Pond supports two types of snapshots to avoid processing all known events 
 
 :::note
 
-State snapshots are currently called “local snapshots” since in contrast to semantic snapshots they are bound to a node. This restriction will be lifted in a future version of Actyx Pond for distributed fishes that consume identical subscription sets when instantiated on different node.
+State snapshots are currently called “local snapshots” since in contrast to semantic snapshots they are bound to a node. This restriction will be lifted in a future version of Actyx Pond for distributed fishes that consume identical subscription sets when instantiated on different nodes.
 :::
 
 The chat room fish in our example keeps a list of messages in its state.
@@ -25,12 +25,14 @@ If you're using custom data types, you only need to implement the `toJSON()` met
 This is of course only possible if we keep the serialized format the same.  For this purpose the `fishId` has a version
 number as well. Upon every change to the necessary interpretation of the serialized data format, the version number
 needs to be incremented:
+
 ```typescript
 export const chatRoomFish = {
   // ... same as before
   fishId: FishId.of('ax.example.ChatRoomFish', 'my-room', 1)
 }
 ```
+
 When that happens is that upon waking up this new fish version for the first time all old snapshots are invalidated and the newly written ones will have the new version number.
 
 With this configuration Actyx Pond will take snapshots about every 1000 events consumed by the fish.
@@ -66,4 +68,3 @@ Whether an event constitutes a semantic snapshot lies in the eye of the beholder
 :::
 
 Both kinds of snapshots can be combined within the same fish as well.
-

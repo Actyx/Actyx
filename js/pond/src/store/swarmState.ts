@@ -14,20 +14,26 @@ import { Psn } from '../types'
  * All the info we got for a single node
  *
  * This might grow in the future to include things like timestamps
+ * @public
  */
 export type NodeInfoEntry = Readonly<{
-  own?: Psn
-  swarm?: Psn
+  own?: number
+  swarm?: number
 }>
 
 /**
  * All the info we got for our device in relation to the swarm
+ * @public
  */
 export type SwarmInfo = Readonly<{
   nodes: immutable.Map<string, NodeInfoEntry>
 }>
 
-type CountersMut = {
+/**
+ * Mutable swarm counters information.
+ * @public
+ */
+export type CountersMut = {
   /**
    * The pond has it, the swarm doesn't
    */
@@ -41,9 +47,16 @@ type CountersMut = {
    */
   both: number
 }
+
+/**
+ * Immutable swarm counters information.
+ * @public
+ */
 export type Counters = Readonly<CountersMut>
+
 /**
  * Summary of swarm info
+ * @public
  */
 export type SwarmSummary = Readonly<{
   info: SwarmInfo
@@ -112,6 +125,8 @@ export const swarmState = (
     emptySwarmInfo,
   )
 const emptySwarmSummary = toSwarmSummary(emptySwarmInfo)
+
+/** SwarmSummary associated functions. @public */
 export const SwarmSummary = {
   empty: emptySwarmSummary,
   fromSwarmInfo: toSwarmSummary,

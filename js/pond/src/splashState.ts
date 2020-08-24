@@ -10,7 +10,8 @@ import { EventStore, OffsetMap } from './eventstore'
 import { NodeInfoEntry, SwarmInfo, SwarmSummary } from './store/swarmState'
 import { takeWhileInclusive } from './util'
 
-type FullConfig = Readonly<{
+/** Configure how to wait for swarm. @public */
+export type FullWaitForSwarmConfig = Readonly<{
   /**
    * Splash screen enabled
    */
@@ -33,21 +34,25 @@ type FullConfig = Readonly<{
   allowSkip: boolean
 }>
 
-const defaults: FullConfig = {
+const defaults: FullWaitForSwarmConfig = {
   enabled: true,
   waitForSwarmMs: 10000,
   minSources: 0,
   allowSkip: true,
 }
 
-export type Config = Partial<FullConfig>
+/** Partially configure waiting for the swarm. @public */
+export type WaitForSwarmConfig = Partial<FullWaitForSwarmConfig>
 
-export const Config = {
+/** `WaitForSwarmConfig` associated functions. @public */
+export const WaitForSwarmConfig = {
   defaults,
 }
 
+/** Sync progress in terms of event numbers. @public */
 export type Progress = Readonly<{ min: number; current: number; max: number }>
 
+/** Sync progress per source, and overall. @public */
 export type SyncProgress = Readonly<{
   sources: Progress
   events: Progress
@@ -106,7 +111,7 @@ const synced = (state: SplashState): boolean => {
 }
 
 export const getSplashStateImpl = (
-  config: Config,
+  config: WaitForSwarmConfig,
   swarmInfo: Observable<SwarmInfo>,
 ): Observable<SplashState> => {
   const { waitForSwarmMs, waitForSyncMs, minSources, allowSkip, enabled } = {
@@ -158,13 +163,21 @@ export const getSplashStateImpl = (
   })
 }
 
-type SplashStateDiscovery = Readonly<{
+/**
+ * Discovering swarm state.
+ * @public
+ */
+export type SplashStateDiscovery = Readonly<{
   mode: 'discovery'
   current: SwarmSummary
   skip?: () => void
 }>
 
-type SplashStateSync = Readonly<{
+/**
+ * Synchronizing up to the discovered swarm state.
+ * @public
+ */
+export type SplashStateSync = Readonly<{
   mode: 'sync'
   reference: SwarmSummary
   progress: SyncProgress
@@ -172,6 +185,10 @@ type SplashStateSync = Readonly<{
   skip?: () => void
 }>
 
+/**
+ * Current state of swarm synchronization procedure.
+ * @public
+ */
 export type SplashState = SplashStateDiscovery | SplashStateSync
 
 const toSwarmInfo = ([seen, own]: [OffsetMap, OffsetMap]): SwarmInfo => {
@@ -194,27 +211,28 @@ const toSwarmInfo = ([seen, own]: [OffsetMap, OffsetMap]): SwarmInfo => {
   }
 }
 
-export const SplashState = {
-  of: (eventStore: EventStore, config: Config): Observable<SplashState> => {
-    const waitForSwarmMs = config.waitForSwarmMs || defaults.waitForSwarmMs
+export const streamSplashState = (
+  eventStore: EventStore,
+  config: WaitForSwarmConfig,
+): Observable<SplashState> => {
+  const waitForSwarmMs = config.waitForSwarmMs || defaults.waitForSwarmMs
 
-    const highestSeenRoots$ = Observable.interval(500)
-      .concatMapTo(eventStore.highestSeen())
-      .takeUntil(Observable.timer(waitForSwarmMs))
-      .map(x => x.psns)
+  const highestSeenRoots$ = Observable.interval(500)
+    .concatMapTo(eventStore.highestSeen())
+    .takeUntil(Observable.timer(waitForSwarmMs))
+    .map(x => x.psns)
 
-    /**
-     * Start with one call to present, then guarantee that at least one additional present
-     * value will come in as soon as the `discovery` phase finishes so that it could transition
-     * into a `sync` one.
-     */
-    const present$ = Observable.merge(
-      eventStore.present().take(1),
-      Observable.timer(waitForSwarmMs).switchMapTo(Observable.defer(eventStore.present)),
-    ).map(x => x.psns)
+  /**
+   * Start with one call to present, then guarantee that at least one additional present
+   * value will come in as soon as the `discovery` phase finishes so that it could transition
+   * into a `sync` one.
+   */
+  const present$ = Observable.merge(
+    eventStore.present().take(1),
+    Observable.timer(waitForSwarmMs).switchMapTo(Observable.defer(eventStore.present)),
+  ).map(x => x.psns)
 
-    const swarmInfo$ = Observable.combineLatest(highestSeenRoots$, present$).map(toSwarmInfo)
+  const swarmInfo$ = Observable.combineLatest(highestSeenRoots$, present$).map(toSwarmInfo)
 
-    return getSplashStateImpl(config, swarmInfo$)
-  },
+  return getSplashStateImpl(config, swarmInfo$)
 }

@@ -16,7 +16,6 @@ The **edge devices** must
 - Be connected to the same local-area network
 - Allow incoming/outgoing communication on ports 4001, 4450-4469 and 5001
 
-
 :::note One network = one swarm
 All devices in an ActyxOS swarm must be connected to the same local-area network.
 :::

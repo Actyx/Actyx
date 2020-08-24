@@ -7,7 +7,7 @@ Write a connector app for the [Docker Runtime](../os/advanced-guides/app-runtime
 
 _Connector apps_ are a type of ActyxOS app, whose purpose is to connect with equipment or software outside of the ActyxOS swarm. Fundamentally, there is nothing special about them, except that they always run in the Docker Runtime because interaction with the outside world does not happen via a user interface.
 
-![](/images/faq/integrating-with-software-systems.png)
+![Software systems integrationm](/images/faq/integrating-with-software-systems.png)
 
 As shown above, integrating a software system means writing a connector app that uses the network to communicate with an interface provided by the external system. Given the breadth of enterprise software systems, there are a multitude of different interface types and methods, including:
 
