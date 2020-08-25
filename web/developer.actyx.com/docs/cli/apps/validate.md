@@ -4,7 +4,7 @@ title: ax apps validate
 
 ### Validate apps and app manifests
 
-```bash
+```
 $ ax apps validate --help
 USAGE: ax apps validate [FLAGS] <PATH>...
 
@@ -24,7 +24,7 @@ ARGS:
 
 Check out these examples showing common usages of the `ax apps validate` command:
 
-```bash
+```
 # Validate the app in the current directory
 $ ax apps validate
 

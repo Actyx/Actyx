@@ -4,7 +4,7 @@ title: ax settings get
 
 ## Get settings from a node
 
-```bash
+```
 $ ax settings get --help
 USAGE: ax settings get [FLAGS] <SCOPE> <NODE>...
 
@@ -29,7 +29,7 @@ ARGS:
 
 Here are a couple of examples of using the `ax settings get` command:
 
-```bash
+```
 # Get the ActyxOS settings from a node:
 $ ax settings get --local com.actyx.os 10.2.3.23
 

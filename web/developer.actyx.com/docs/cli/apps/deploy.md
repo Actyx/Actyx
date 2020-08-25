@@ -4,7 +4,7 @@ title: ax apps deploy
 
 ### Deploy apps to nodes
 
-```bash
+```
 $ ax apps deploy --help
 USAGE: ax apps deploy [FLAGS] <PATH> <NODE>...
 
@@ -37,7 +37,7 @@ ARGS:
 
 See the following example usages of the `ax apps deploy` command:
 
-```bash
+```
 # Deploy the app in the current directory
 $ ax apps deploy --local . 10.2.3.23
 

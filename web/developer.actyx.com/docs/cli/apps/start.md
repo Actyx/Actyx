@@ -4,7 +4,7 @@ title: ax apps start
 
 ### Start apps on nodes
 
-```bash
+```
 $ ax apps start --help
 USAGE: ax apps start [FLAGS] <APP> <NODE>...
 
@@ -28,7 +28,7 @@ ARGS:
 
 Here are a couple of example of using the `ax apps start` command:
 
-```bash
+```
 # Start a single app on a single node
 $ ax apps start --local com.example.app 10.2.3.23
 com.example.app successfully started on 10.2.3.23

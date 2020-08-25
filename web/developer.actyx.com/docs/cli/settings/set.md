@@ -4,7 +4,7 @@ title: ax settings set
 
 ## Set settings on one or more nodes
 
-```bash
+```
 $ ax settings set --help
 USAGE: ax settings set [FLAGS] <SCOPE> <VALUE> <NODE>...
 
@@ -35,7 +35,7 @@ Nodes will only accept new settings for the `com.actyx.os` scope if all apps on 
 Please see the following usage examples for the `ax settings set` command:
 :::
 
-```bash
+```
 # Setting for a node from a file
 $ ax settings set --local com.actyx.os @Node1.settings.yml 10.2.3.23
 

@@ -4,7 +4,7 @@ title: ax logs tail
 
 ## Access logs generated on a node
 
-```bash
+```
 $ ax logs tail --help
 USAGE: ax logs tail [FLAGS] [OPTIONS] <NODE>...
 
@@ -28,7 +28,7 @@ ARGS:
 
 Please see the following usage examples for the `ax logs tail` command:
 
-```bash
+```
 # Access the last 40 loggest entries from a node
 $ ax logs tail --local -n 40 10.2.3.23
 

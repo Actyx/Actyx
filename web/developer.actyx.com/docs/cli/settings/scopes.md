@@ -4,7 +4,7 @@ title: ax settings scopes
 
 ## Get setting scopes from a node
 
-```bash
+```
 $ ax settings scopes --help
 USAGE: ax settings scopes [FLAGS] <NODE>
 
@@ -23,7 +23,7 @@ ARGS:
 
 Here is a simple example of using the `ax settings scopes` command:
 
-```bash
+```
 # Get the settings scopes from a node:
 $ ax settings scopes --local 10.2.3.23
 ```

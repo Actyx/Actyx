@@ -4,7 +4,7 @@ title: ax swarms keygen
 
 ## Create a swarm key
 
-```bash
+```
 $ ax swarms keygen --help
 USAGE: ax swarms keygen [FLAGS]
 
@@ -16,7 +16,7 @@ FLAGS:
 
 This command is extremely simple; see for yourself:
 
-```bash
+```
 # Create a swarm key
 $ ax swarms keygen
 
