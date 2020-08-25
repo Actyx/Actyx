@@ -98,8 +98,8 @@ export class WebSocketSubject<T> extends AnonymousSubject<T> {
       log.ws.error('WebSocket connection error -- is ActyxOS reachable?', msg)
       try {
         this._output && this._output.error('Cnx error: ' + msg)
-      } catch (_x) {
-        console.log('omg')
+      } catch (err) {
+        log.ws.error('ERROR WHILE PASSING WEBSOCKET ERROR UP THE CHAIN', err)
       }
     }
     socket.onmessage = onMessage
