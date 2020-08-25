@@ -66,10 +66,7 @@ describe('multiplexedWebsocket', () => {
     const socket = MockWebSocket.lastSocket!
     socket.trigger('error', { message: 'destination unreachable' })
 
-    let caught = ''
-    await getSourceId(s).catch(ex => (caught = ex))
-
-    expect(caught).toContain('destination unreachable')
+    await expect(getSourceId(s)).rejects.toMatch('destination unreachable')
   })
 
   it('should just work', async () => {
