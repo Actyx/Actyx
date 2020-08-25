@@ -120,7 +120,7 @@
           "type": "array",
           "items": {
             "type": "string",
-            "minLength": 64,
+            "minLength": 32,
             "maxLength": 64 
           },
           "minItems": 0,
