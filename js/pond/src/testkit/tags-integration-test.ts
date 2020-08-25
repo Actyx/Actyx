@@ -5,7 +5,10 @@ type Event = string
 type State = ReadonlyArray<Event>
 
 export const start = async () => {
-  const pond = await Pond.default()
+  const pond = await Pond.default().catch(ex => {
+    console.log('cannot start Pond, is ActyxOS running in development mode on this computer?', ex)
+    process.exit(1)
+  })
 
   const aggregate: Fish<State, Event> = {
     where: Tags('t0', 't1'),

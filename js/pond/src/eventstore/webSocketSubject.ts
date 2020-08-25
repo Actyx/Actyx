@@ -30,7 +30,7 @@ if (isNode) {
  */
 export class WebSocketSubject<T> extends AnonymousSubject<T> {
   socket?: WebSocket
-  WebSocketCtor: { new (url: string, protocol?: string | string[]): WebSocket }
+  WebSocketCtor: { new(url: string, protocol?: string | string[]): WebSocket }
   binaryType?: 'blob' | 'arraybuffer'
   socketEvents = new EventEmitter()
 
@@ -92,6 +92,15 @@ export class WebSocketSubject<T> extends AnonymousSubject<T> {
       : new WebSocketCtor(url))
     if (binaryType) {
       socket.binaryType = binaryType
+    }
+    socket.onerror = err => {
+      const msg = (err as any).message
+      log.ws.error('WebSocket connection error -- is ActyxOS reachable?', msg)
+      try {
+        this._output && this._output.error('Cnx error: ' + msg)
+      } catch (_x) {
+        console.log('omg')
+      }
     }
     socket.onmessage = onMessage
     socket.onclose = err => {
@@ -168,7 +177,7 @@ export class WebSocketSubject<T> extends AnonymousSubject<T> {
           observer.error(
             new TypeError(
               'WebSocketSubject.error must be called with an object with an error code, ' +
-                'and an optional reason: { code: number, reason: string }',
+              'and an optional reason: { code: number, reason: string }',
             ),
           )
         }
