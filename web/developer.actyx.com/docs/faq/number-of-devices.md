@@ -12,5 +12,3 @@ Given current production systems and internal benchmarks, 100 devices should wor
 :::tip You need to connect 1'000s of edge devices?
 Please [get in touch](https://www.actyx.com/contact); we would love to hear about your use-case and figure out how to make it work with ActyxOS.
 :::
-
-

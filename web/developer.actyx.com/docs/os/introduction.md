@@ -33,16 +33,14 @@ import YouTube from 'react-youtube';
 />
 </div>
 
-
-
 ## Get started
 
 Want to jump right in? Check out the [Quickstart](../quickstart.md). Alternatively, learn more about
-- the [design principles](design-principles.md) behind ActyxOS, 
+
+- the [design principles](design-principles.md) behind ActyxOS,
 - [installing ActyxOS](getting-started/installation.md),
 - how the [basics work](guides/swarms); or,
-- on what [theoretical foundation](theoretical-foundation/distributed-systems.md) ActyxOS is built.
-
+- on what [theoretical foundation](theoretical-foundation/distributed-systems.md) ActyxOS is built
 
 ## Staying informed
 

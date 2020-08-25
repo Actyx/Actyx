@@ -177,6 +177,8 @@ define build_bins_and_move
 	-u builder \
 	-w /src/rt-master \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-v $${CARGO_HOME:-$$HOME/.cargo/git}:/home/builder/.cargo/git \
+	-v $${CARGO_HOME:-$$HOME/.cargo/registry}:/home/builder/.cargo/registry \
 	-it $(3) \
 	cargo --locked build --release --target $(2) --bins --jobs 8
 	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -perm -u=x \
@@ -185,7 +187,7 @@ define build_bins_and_move
 endef
 
 # Build ActyxOS binaries for Win64
-# NOTE: This will build `ax.exe`, `win.exe`, `ada-cli.exe` and `store-cli.exe`.
+# NOTE: This will build `ax.exe` (actyx-cli), `actyxos.exe` (windows service), `ada-cli.exe` and `store-cli.exe`.
 # 1st arg: output dir (will be created) of the final artifacts
 # 2nd arg: target toolchain
 # 3rd arg: docker base image
@@ -199,6 +201,8 @@ define build_bins_and_move_win64
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-e CARGO_BUILD_TARGET=$(2) \
 	-e CARGO_BUILD_JOBS=8 \
+	-v $${CARGO_HOME:-$$HOME/.cargo/git}:/usr/local/cargo/git \
+	-v $${CARGO_HOME:-$$HOME/.cargo/registry}:/usr/local/cargo/registry \
 	-it $(3) \
 	bash -c "\
 		cargo --locked build --release --no-default-features --manifest-path actyx-cli/Cargo.toml && \
@@ -217,7 +221,7 @@ define build_node_manager
 		-v `pwd`:/src \
 		-w /src/misc/actyxos-node-manager \
 		-it actyx/util:windowsinstallercreator-x64-$(IMAGE_VERSION) \
-		npm run package -- --platform $(1) --arch $(2)
+		bash -c "npm ci && npm run package -- --platform $(1) --arch $(2)"
 	mkdir -p $(build_dir)
 	mv ./misc/actyxos-node-manager/out/ActyxOS-Node-Manager-$(1)-$(2) $(build_dir)/
 endef
@@ -385,7 +389,11 @@ axosandroid-x86: debug
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-w /src/jvm/os-android \
 	-it actyx/util:buildrs-x64-latest \
-	./gradlew clean ktlintCheck build assembleRelease
+	./gradlew --gradle-user-home /src/jvm/os-android/.gradle clean ktlintCheck build assembleRelease
 	echo 'APK: ./jvm/os-android/app/build/outputs/apk/release/app-release.apk'
+
+# For dev purposes only.
+axos-docker-x64: debug
+	ARCH=x64 DOCKER_TAG=actyxos-x64 make actyxos-bin-x64 docker-build-actyxos
 
 axosandroid: debug clean axosandroid-libs axosandroid-app

@@ -41,8 +41,10 @@ $ ax apps package @paths.txt
 
 :::note Want to save the package somewhere else than the app directory?
 The `ax apps package` command always stores its output in the directory from which it was called. If you would like to save the output somewhere else, you should call the Actyx CLI from that directory and provide it the path to the directory containing the app manifest or the path to the actual manifest. Here is an example:
-```
+
+```bash
 cd ../../../apps-packages
 ax apps package ../projects/actyx-os/apps/example-app-1
 ```
+
 :::

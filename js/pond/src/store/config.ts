@@ -4,6 +4,8 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+
+/** Actyx store communication configuration. @public */
 export type Config = Readonly<{
   monitoringMeta?: object
   /**

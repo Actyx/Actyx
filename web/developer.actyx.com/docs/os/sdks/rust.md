@@ -7,7 +7,6 @@ title: Rust SDK
 
 Building apps in [Rust](https://www.rust-lang.org/) and want to easily create and access data streams in your ActyxOS swarm? That's what we built the ActyxOS SDK for Rust for. The [`actyxos_sdk` crate](https://crates.io/crates/actyxos_sdk) defines all necessary data types and provides Rust bindings for communicating with ActyxOS's [Event Service API](../api/event-service.md).
 
-
 ## Installation
 
 Add the following dependency to your `Cargo.toml` file:
@@ -20,7 +19,6 @@ actyxos_sdk = "~0.2"
 ## Example
 
 Here is an example using the `EventService` client that retrieves some events. Please adapt the `semantics` to match your stored events in order to see output.
-
 
 ```rust
 use actyxos_sdk::event_service::{EventService, EventServiceError, Order, Subscription};

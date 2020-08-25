@@ -4,6 +4,6 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-export { PondState, PondStateTracker } from './pond-state'
+export { FishProcessInfo, PondState, PondStateTracker } from './pond-state'
 export { mkNoopPondStateTracker } from './noopPondStateTracker'
 export { mkPondStateTracker } from './pondStateTracker'

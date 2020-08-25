@@ -2,9 +2,10 @@
 title: ax apps
 ---
 
-## Build and manage your ActyxOS apps 
+## Build and manage your ActyxOS apps
 
 ### Child commands
+
 Command                      | description|
 -----------------------------|------------|
 [ax apps ls](ls.md)             | Get the states of the apps deployed to your nodes |

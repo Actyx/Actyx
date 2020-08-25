@@ -25,7 +25,7 @@ The Console Service currently only supports local access to logs, i.e. when you 
 
 Traditionally, logs were produced, persisted, and consumed as lines of text. This way of logging is referred to as _unstructured logging_. A traditional log file might look like this:
 
-```
+```bash
 # File app.log
 MyApp-1.0.3::console | 2019-09-11T21:46:12.106Z [info] Starting app...
 MyApp-1.0.3::console | 2019-09-11T21:46:12.113Z [debug] Setting route '/activities'
@@ -62,13 +62,11 @@ Whilst ActyxOS supports this type of logging, we favor _structured logging_, whe
 Both `ax.*` and `actyx.*` are reserved namespaces and aliases for `com.actyx.*`. This is done to save valuable bytes going through the network.
 :::
 
-
 This structured log provides significantly more information than could be contained in a single line in any readable fashion. Given its JSON-format, it is also easy to programmatically parse for automated analysis or interactive investigation.
 
 :::note You can generate unstructured logs with ActyxOS
 Whilst not recommended, the Console Service supports unstructured logging. Refer to the usage examples below for more information about how that works.
 :::
-
 
 ### Log lifecycle and persistence
 
@@ -129,11 +127,9 @@ The logged string is transformed in a similar fashion as for Docker apps.
 
 Structured logging&mdash;the preferred method&mdash;is possible using the Console Service's local HTTP API. You publish logs by submitting `POST` requests to the `http://localhost:4457/api/v1/logs` endpoint.
 
-
 :::warning Access only via `localhost`
-The API can only be accessed locally, i.e. at `localhost`. It is not meant to be accessed from other devices. The Console Service automatically distributes published logs in the background. As a developer, you only need to interact with the local service and API. 
+The API can only be accessed locally, i.e. at `localhost`. It is not meant to be accessed from other devices. The Console Service automatically distributes published logs in the background. As a developer, you only need to interact with the local service and API.
 :::
-
 
 The following code example shows how you can do this from a Node.js-based docker app.
 
