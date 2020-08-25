@@ -1,15 +1,7 @@
 <Project>
 	<PropertyGroup>
 		<LangVersion>
-			8.0
+			7.3
 		</LangVersion>
 	</PropertyGroup>
-	<PropertyGroup>
-		<!-- NB! Needs to be on one line without spaces. -->
-		<CodeAnalysisRuleSet>..\StyleCop.ruleset</CodeAnalysisRuleSet>
-	</PropertyGroup>
-	<ItemGroup>
-		<PackageReference Include="StyleCop.Analyzers" Version="1.1.118" PrivateAssets="all" />
-		<AdditionalFiles Include="$(SolutionDir)stylecop.json" Link="stylecop.json" />
-	</ItemGroup>
 </Project>
