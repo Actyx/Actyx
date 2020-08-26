@@ -2,23 +2,22 @@
 title: ax nodes ls
 ---
 
-### Get important information on your nodes
+### Show node info and status
 
 ```
-$ ax nodes ls --help
-USAGE: ax nodes ls [FLAGS] [OPTIONS] <NODE>...
+USAGE:
+    ax nodes ls [FLAGS] <NODE>...
 
 FLAGS:
-    -v, -vv, -vvv        Increase verbosity
-    -h, --help           Prints help information
-    --local              Process over local network
-    -j or --json         Format output as JSON
+    -h, --help       Prints help information
+    -l, --local      Process over local network
+    -V, --version    Prints version information
+    -v               Verbosity level. Add more v for higher verbosity
+                     (-v, -vv, -vvv, etc.)
 
 ARGS:
-    <NODE>               Node ID or, if using `--local`, the IP address, of the
-                         node to perform the operation on. You may also pass in a
-                         file with a value using the syntax `@file.txt` or have the
-                         command one value from stdin using `@-`.
+    <NODE>...    Node ID or, if using `--local`, the IP address of the node
+                 to perform the operation on
 ```
 
 :::tip Output of `ax nodes ls`

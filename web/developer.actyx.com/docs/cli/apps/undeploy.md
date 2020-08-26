@@ -2,28 +2,23 @@
 title: ax apps undeploy
 ---
 
-### Undeploy apps from nodes
+### Undeploy an app from a node
 
 ```
-$ ax apps undeploy --help
-USAGE: ax apps undeploy [FLAGS] <APP> <NODE>...
+USAGE:
+    ax apps undeploy [FLAGS] <APP> <NODE>
 
 FLAGS:
-    -v, -vv, -vvv    Increase verbosity
     -h, --help       Prints help information
-    --local          Process over local network
-    -j or --json     Format output as JSON
-
+    -l, --local      Process over local network
+    -V, --version    Prints version information
+    -v               Verbosity level. Add more v for higher verbosity
+                     (-v, -vv, -vvv, etc.)
 
 ARGS:
-    <APP>            IDs of the app(s) to undeploy from the given nodes. You may
-                     also pass in a file with a value on each line using the
-                     syntax `@file.txt` or have the command read one value per
-                     line from stdin using `@-`.
-    <NODE>           Node ID or, if using `--local`, the IP address, of the
-                     node to perform the operation on. You may also pass in a
-                     file with a value using the syntax `@file.txt` or have the
-                     command one value from stdin using `@-`.
+    <APP>     App ID of the app to undeploy from the given node
+    <NODE>    Node ID or, if using `--local`, the IP address of the node to
+              perform the operation on
 ```
 
 Here are a couple of example of using the `ax apps undeploy` command:

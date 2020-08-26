@@ -2,24 +2,21 @@
 title: ax apps validate
 ---
 
-### Validate apps and app manifests
+### Validate app manifests
 
 ```
-$ ax apps validate --help
-USAGE: ax apps validate [FLAGS] <PATH>...
+USAGE:
+    ax apps validate [FLAGS] [PATH]...
 
 FLAGS:
-    -v, -vv, -vvv    Increase verbosity
     -h, --help       Prints help information
-    -j or --json     Format output as JSON
+    -V, --version    Prints version information
+    -v               Verbosity level. Add more v for higher verbosity
+                     (-v, -vv, -vvv, etc.)
 
 ARGS:
-    <PATH>...        Paths to the app manifests to process. If no path
-                     is given, try to use the file `ax-manifest.yml` in
-                     the current directory. You may also pass in a file
-                     with a path on each line using the syntax `@paths.txt`
-                     or have the command read one path per line from stdin
-                     using `@-`.
+    <PATH>...    Path to the app manifest to validate or the directory that
+                 contains it [default: ax-manifest.yml]
 ```
 
 Check out these examples showing common usages of the `ax apps validate` command:

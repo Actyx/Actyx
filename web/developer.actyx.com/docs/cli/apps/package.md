@@ -2,25 +2,21 @@
 title: ax apps package
 ---
 
-### Package apps for deployment
+### Package an app
 
 ```
-$ ax apps package --help
-USAGE: ax apps package [FLAGS] <PATH>...
+USAGE:
+    ax apps package [FLAGS] [PATH]
 
 FLAGS:
-    -v, -vv, -vvv    Increase verbosity
     -h, --help       Prints help information
-    -j or --json     Format output as JSON
-
+    -V, --version    Prints version information
+    -v               Verbosity level. Add more v for higher verbosity
+                     (-v, -vv, -vvv, etc.)
 
 ARGS:
-    <PATH>...        Paths to the app manifests to process. If no path
-                     is given, try to use the file `ax-manifest.yml` in
-                     the current directory. You may also pass in a file
-                     with a path on each line using the syntax `@paths.txt`
-                     or have the command read one path per line from stdin
-                     using `@-`.
+    <PATH>    Path to the app manifest of the app to package or the directory
+              that contains it [default: ax-manifest.yml]
 ```
 
 Here are a couple of example uses of the `ax apps package` command:

@@ -2,24 +2,23 @@
 title: ax settings unset
 ---
 
-## Unset settings on one or more nodes
+## Remove settings from a node
 
 ```
-$ ax settings unset --help
-USAGE: ax settings unset [FLAGS] <SCOPE> <NODE>...
+USAGE:
+    ax settings unset [FLAGS] <SCOPE> <NODE>
 
 FLAGS:
-    -v, -vv, -vvv    Increase verbosity
     -h, --help       Prints help information
-    --local          Process over local network
-    -j or --json     Format output as JSON
+    -l, --local      Process over local network
+    -V, --version    Prints version information
+    -v               Verbosity level. Add more v for higher verbosity
+                     (-v, -vv, -vvv, etc.)
 
 ARGS:
-    <SCOPE>          Scope at which you want to set the given settings.
-    <NODE>           Node ID or, if using `--local`, the IP address, of the
-                     node to perform the operation on. You may also pass in a
-                     file with a value using the syntax `@file.txt` or have the
-                     command one value from stdin using `@-`.
+    <SCOPE>    Scope for which you want to unset the settings
+    <NODE>     Node ID or, if using `--local`, the IP address of the node to
+               perform the operation on
 ```
 
 :::cautionApp must be stopped in order to unset settings for it
