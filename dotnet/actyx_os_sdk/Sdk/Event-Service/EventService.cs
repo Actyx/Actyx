@@ -199,7 +199,8 @@ namespace Actyx
             return new ActyxRequest<ISuttMessage>(this.Post("/api/v2/events/subscribeUntilTimeTravel", postData));
         }
 
-        public IAsyncEnumerable<ISuttMessage> SubscribeUntilTimeTravel(string session, string subscription, params SnapshotCompression[] acceptedFormats)
+        public IAsyncEnumerable<ISuttMessage> SubscribeUntilTimeTravel(string session, string subscription,
+                                                                       params SnapshotCompression[] acceptedFormats)
         {
             List<string> compression = new List<string>();
 
