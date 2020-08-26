@@ -270,7 +270,7 @@ When you package your app, the Actyx CLI will automatically include the settings
 
 The last important part is accessing settings from within your app&mdash;happily knowing that they have been validated against your settings schema. The way this works depends on type of app you have built, or, more precisely, which ActyxOS runtime you are running it in.
 
-Accessing settings in web apps (WebView Runtime)
+##### Accessing settings in web apps (WebView Runtime)
 
 Your app's settings are available in the runtime using an injected global function named `ax.appSettings`. To continue with our example, you could access them as follows:
 
@@ -282,7 +282,7 @@ function onStartApp() {
 }
 ```
 
-Accessing settings in docker apps (Docker Runtime)
+###### Accessing settings in docker apps (Docker Runtime)
 
 With docker apps, the method is slightly different. In that case, we make your app's settings available as a JSON string in an environment variable called `AX_APP_SETTINGS`. Using the same example but with a docker app written in Python we would access this as follows:
 
