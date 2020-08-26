@@ -95,6 +95,17 @@ impl NodeId {
             Err(anyhow!("invalid NodeId length: {}", bytes.len()))
         }
     }
+    #[inline]
+    pub fn from_bytes(bytes: &[u8]) -> Result<NodeId> {
+        if bytes.len() == 32 {
+            let mut bits: [u8; 32] = [0u8; 32];
+            bits.copy_from_slice(&bytes[..32]);
+
+            Ok(Self(bits))
+        } else {
+            Err(anyhow!("invalid NodeId length: {}", bytes.len()))
+        }
+    }
 
     /// Creates a stream ID belonging to this node ID with the given non-zero stream number
     ///
