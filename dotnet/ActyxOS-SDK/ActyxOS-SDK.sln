@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sdk", "Sdk\Sdk.csproj", "{6
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sdk.Tests", "Sdk.Tests\Sdk.Tests.csproj", "{E2D656DA-291E-4616-864D-6425557BE900}"
 EndProject
+Project("{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}") = "Sdk.IntegrationTests", "Sdk.IntegrationTests\Sdk.IntegrationTests.csproj", "{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,5 +46,17 @@ Global
 		{E2D656DA-291E-4616-864D-6425557BE900}.Release|x64.Build.0 = Release|Any CPU
 		{E2D656DA-291E-4616-864D-6425557BE900}.Release|x86.ActiveCfg = Release|Any CPU
 		{E2D656DA-291E-4616-864D-6425557BE900}.Release|x86.Build.0 = Release|Any CPU
+		{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}.Debug|x64.Build.0 = Debug|Any CPU
+		{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}.Debug|x86.Build.0 = Debug|Any CPU
+		{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}.Release|x64.ActiveCfg = Release|Any CPU
+		{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}.Release|x64.Build.0 = Release|Any CPU
+		{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}.Release|x86.ActiveCfg = Release|Any CPU
+		{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
