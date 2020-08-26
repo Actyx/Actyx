@@ -16,7 +16,7 @@ import {
   ResponseMessage,
   ResponseMessageType,
 } from './multiplexedWebsocket'
-import { RequestTypes } from './websocketEventStore'
+import { getSourceId, RequestTypes } from './websocketEventStore'
 
 let __ws: any
 declare const global: any
@@ -59,6 +59,16 @@ const msgGen: () => ((requestId: number) => ResponseMessage[])[] = () => {
 }
 
 describe('multiplexedWebsocket', () => {
+  it('should report connection errors', async () => {
+    const s = new MultiplexedWebsocket({ url: 'ws://socket' })
+
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const socket = MockWebSocket.lastSocket!
+    socket.trigger('error', { message: 'destination unreachable' })
+
+    await expect(getSourceId(s)).rejects.toMatch('destination unreachable')
+  })
+
   it('should just work', async () => {
     const testArr = msgGen()
     const store = new MultiplexedWebsocket({ url: 'ws://socket' })
