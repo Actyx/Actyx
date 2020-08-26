@@ -77,6 +77,10 @@ Please refer to the [Docker Documentation](https://docs.docker.com/) for more in
 </TabItem>
 </Tabs>
 
+:::caution Running ActyxOS on Docker without `--network=host`
+If your [ActyxOS Bootstrap Node](actyxos-bootstrap-node.md) is not in the same local network as your ActyxOS nodes; and your ActyxOS nodes are running on Docker without `--network=host`, please read [this paragraph in our troubleshooting section](#running-actyxos-on-docker-without-networkhost).
+:::
+
 ### Check the status of your node
 
 
@@ -152,10 +156,6 @@ Depending on the lifecycle stage that your ActyxOS nodes or apps are in, your in
 
 You can start and stop apps via the [Actyx CLI](/docs/cli/getting-started)
 
-### Getting help and filing issues
-
-If you want to get help or file issues, please write an e-mail to developer@actyx.io
-
 ### ActyxOS node not responding
 
 First, check that you entered the right IP in the `ax` command. If you still cannot connect, the output of `ax nodes ls` returns one of the two possible reasons (if you are using the ActyxOS Node Manager, you can see this info in the Status tab):
@@ -163,3 +163,39 @@ First, check that you entered the right IP in the `ax` command. If you still can
 - **ActyxOS is not reachable.** This means that ActyxOS is not running correctly on your node. Try `docker container ls` to check all your running containers. You can start ActyxOS with the `docker run` command. The command is dependent on your host operating system and described in the installation section above for Windows, Mac and Linux.
 
 - **Host is not reachable.** This means that your development machine cannot connect to your node. Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port 4457
+
+### ActyxOS nodes not connecting to each other
+Your ActyxOS nodes running on Docker are not able connect to each other if
+- you are running ActyxOS without `network=host`; and
+- your ActyxOS Bootstrap Node is not running in the same local network as your ActyxOS nodes.
+
+This is inherent in Docker, as a container has no access to the IP address of its host unless it is running with `network=host`. Therefore, you have to manually configure the address that your nodes are announcing via the `announceAddress` property in the node settings:
+
+```yml
+general:
+  displayName: My Node
+  swarmKey: 4904199ec5e74cc5871cad1ddad4b9e636c9dfcc55269d954dd4048e336b5433
+  bootstrapNodes:
+    - /ip4/10.2.3.10/tcp/9090
+    - /ip4/10.2.3.11/tcp/9090
+  announceAddress:
+    - /ip4/192.168.1.101/tcp/4001 # Manually configured addresses to announce. These must be multiaddresses without peer id, i.e. ip4/<YOUR_IP>/tcp/4001
+  logLevels:
+    OS: WARN
+    Apps: INFO
+licensing:
+  os: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  apps:
+    com.example.app1: development
+    com.example.app2: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+services:
+  eventService:
+    topic: My Topic
+    readOnly: false
+```
+
+If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
+
+### Getting help and filing issues
+
+If you want to get help or file issues, please write an e-mail to developer@actyx.io
