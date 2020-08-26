@@ -6,13 +6,21 @@ ifeq ($(origin SYSTEM_PULLREQUEST_SOURCEBRANCH),undefined)
 else
 	GIT_BRANCH=$(SYSTEM_PULLREQUEST_SOURCEBRANCH)
 endif
+
+# If we're on `master`, use the `head` commit hash
 ifeq ($(GIT_BRANCH),master)
 	git_hash=$(shell git log -1 --pretty=%H)
 else
-	# Remove the Azure merge commit to get the actual latest commit in the PR branch
-	# TODO This will remove all the merge commits, so if the last commit before the merge is also a merge it will get the next-to-last one
-	git_hash=$(shell git log -1 --no-merges --pretty=%H)
+    # Ditto if GIT_BRANCH is unset (e.g. when running locally)
+    ifeq ($(GIT_BRANCH),)
+		git_hash=$(shell git log -1 --pretty=%H)
+    else
+    	# For PR commits, this turns `/refs/pull/5432/merge` into `pr5432`
+		# For non-PR commits (e.g. `proj/*` branches), this turns `/refs/heads/proj/ow/something` into `proj_ow_something`
+		git_hash=$(shell echo $BUILD_SOURCEBRANCH | sed -e 's,/refs/pull/\([0-9]*\).*,pr\1,' -e 's,/refs/heads/,,' | tr / _)
+    endif
 endif
+
 component=$(shell echo $${DOCKER_TAG:-unknown-x64}|cut -f1 -d-)
 arch=$(shell echo $${DOCKER_TAG:-unknown-x64}|cut -f2 -d-)
 # These should be moved to the global azure pipelines build
