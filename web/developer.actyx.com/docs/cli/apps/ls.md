@@ -5,7 +5,7 @@ title: ax apps ls
 ### Get the status of apps that are deployed to your node
 
 ```bash
-$ ax apps ls --help
+ax apps ls --help
 USAGE: ax apps ls [FLAGS] [OPTIONS] <NODE>
 
 FLAGS:
@@ -32,13 +32,13 @@ See the following examples of using the `ax apps ls` command:
 
 ```bash
 # List the apps on a node in your local network
-$ ax apps ls --local 10.2.3.23
+ax apps ls --local 10.2.3.23
 
 NODE ID    APP ID         STATE    SETTINGS LICENSE  MODE      STARTED                    VERSION
 10.2.3.23  com.actyx.mwl  running     valid   valid  enabled   2020-03-18T06:17:00+01:00  1.0.0
 
 # Get the status of apps on a node in the local network as a JSON object
-$ ax --json apps ls --local 10.2.3.23
+ax --json apps ls --local 10.2.3.23
 {
     "code":"OK",
     "result": [
@@ -57,11 +57,10 @@ $ ax --json apps ls --local 10.2.3.23
 }
 
 # Use an address in a file
-$ ax apps ls --local @address.txt
+ax apps ls --local @address.txt
 
 # Pass the address from stdin
-$ echo "10.2.3.23" | ax apps ls --local @-
-
+echo "10.2.3.23" | ax apps ls --local @-
 ````
 
 :::info`ax apps ls` only returns the state of the apps

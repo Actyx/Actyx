@@ -5,7 +5,7 @@ title: ax settings schema
 ## Get setting schemas from a node
 
 ```bash
-$ ax settings schema --help
+ax settings schema --help
 USAGE: ax settings schema [FLAGS] <SCOPE> <NODE>
 
 FLAGS:
@@ -26,8 +26,8 @@ Here is a simple example of using the `ax settings schema` command:
 
 ```bash
 # Get the ActyxOS nodes settings schema from a node
-$ ax settings schema --local com.actyx.os 10.2.3.23
+ax settings schema --local com.actyx.os 10.2.3.23
 
 # Get the settings schema for a specific app from a node
-$ ax settings schema --local com.example.app 10.2.3.23
+ax settings schema --local com.example.app 10.2.3.23
 ```
