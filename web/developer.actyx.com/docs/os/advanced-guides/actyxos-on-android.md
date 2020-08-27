@@ -122,7 +122,7 @@ After you downloaded the APK, you can install it on your Android device via [`ad
 Before you connect your edge device to your development machine, make sure that USB debugging is enabled in the developer options. When you connect both devices for the first time, a popup will appear on your edge device and ask you allow the connection. After you established a connection, run:
 
 ```bash
-$ adb install actyxos.apk
+adb install actyxos.apk
 axosandroid.apk: 1 file pushed. 24.7 MB/s (89486267 bytes in 3.456s)
 pkg: /data/local/tmp/axosandroid.apk
 Success

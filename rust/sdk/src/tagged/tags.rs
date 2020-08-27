@@ -2,6 +2,7 @@ use crate::event::{FishName, Semantics};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeSet,
+    convert::TryInto,
     iter::FromIterator,
     ops::{Add, AddAssign, BitAndAssign, SubAssign},
 };
@@ -266,6 +267,14 @@ impl TagSet {
 
     pub fn is_subset(&self, rhs: &TagSet) -> bool {
         self.iter().all(|tag| rhs.contains(&tag))
+    }
+
+    pub fn extract_semantics_or_default(&self) -> Semantics {
+        self.try_into().ok().unwrap_or_else(Semantics::unknown)
+    }
+
+    pub fn extract_fish_name_or_default(&self) -> FishName {
+        self.try_into().ok().unwrap_or_else(FishName::unknown)
     }
 }
 

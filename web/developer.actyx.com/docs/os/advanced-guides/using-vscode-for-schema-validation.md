@@ -11,17 +11,17 @@ You can install the extension this directly in Visual Studio Code. Just navigate
 
 First, go to settings and then search for "schema" and click on "Edit in settings.json" to configure the extension.
 
-In the settings.json file, add the following to validate all files ending in `node.yml` against the ActyxOS node settings schema :
+In the settings.json file, add the following to validate all files ending in `node.yml` against the ActyxOS node settings schema:
 
-```yaml
+```json
     "yaml.schemas": {
-        "https://actyx.com/schemas/os/node-settings.schema.json": "node.yml",
+        "https://developer.actyx.com/schemas/os/node-settings.schema.json": "node.yml",
     }
 ```
 
 You can also use JSON schemas from your local machine and add another JSON schema for your app:
 
-```yaml
+```json
     "yaml.schemas": {
         "./node-settings-schema.json": "node.yml",
         "./sapconnector-settings-schema.json": "sapconnector.yml",

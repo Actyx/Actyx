@@ -5,7 +5,7 @@ title: ax settings get
 ## Get settings from a node
 
 ```bash
-$ ax settings get --help
+ax settings get --help
 USAGE: ax settings get [FLAGS] <SCOPE> <NODE>...
 
 FLAGS:
@@ -31,14 +31,14 @@ Here are a couple of examples of using the `ax settings get` command:
 
 ```bash
 # Get the ActyxOS settings from a node:
-$ ax settings get --local com.actyx.os 10.2.3.23
+ax settings get --local com.actyx.os 10.2.3.23
 
 # Get the display name set for a node
-$ ax settings get --local com.actyx.os/general/displayName 10.2.3.23
+ax settings get --local com.actyx.os/general/displayName 10.2.3.23
 
 # Get the settings of a specific app
-$ ax settings get --local com.example.app1 10.2.3.23
+ax settings get --local com.example.app1 10.2.3.23
 
 #Get a specific setting from an app
-$ ax settings get --local com.example.app1/setting1 10.2.3.23
+ax settings get --local com.example.app1/setting1 10.2.3.23
 ```
