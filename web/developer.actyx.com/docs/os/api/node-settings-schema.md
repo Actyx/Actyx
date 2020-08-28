@@ -19,8 +19,7 @@ general:
   displayName: My Node
   swarmKey: 4904199ec5e74cc5871cad1ddad4b9e636c9dfcc55269d954dd4048e336b5433
   bootstrapNodes:
-    - /ip4/10.2.3.10/tcp/9090
-    - /ip4/10.2.3.11/tcp/9090
+    - /ip4/3.125.108.42/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH
   logLevels:
     OS: WARN
     Apps: INFO
