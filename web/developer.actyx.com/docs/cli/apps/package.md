@@ -5,7 +5,7 @@ title: ax apps package
 ### Package apps for deployment
 
 ```bash
-$ ax apps package --help
+ax apps package --help
 USAGE: ax apps package [FLAGS] <PATH>...
 
 FLAGS:
@@ -27,16 +27,16 @@ Here are a couple of example uses of the `ax apps package` command:
 
 ```bash
 # Package the app in the current directory
-$ ax apps package
+ax apps package
 
 # Package an app in a specific directory
-$ ax apps package myApp/
+ax apps package myApp/
 
 # Package multiple apps in parallel
-$ ax apps package myApp1/ myApp2/ ../specialApp
+ax apps package myApp1/ myApp2/ ../specialApp
 
 # Package a list of apps whose directories are in a file
-$ ax apps package @paths.txt
+ax apps package @paths.txt
 ```
 
 :::note Want to save the package somewhere else than the app directory?

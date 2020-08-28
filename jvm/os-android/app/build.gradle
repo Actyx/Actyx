@@ -13,7 +13,7 @@ androidGitVersion {
   codeFormat 'MNNPPPBBB'
   format '%tag%%-count%%commit%%-branch%%-dirty%'
   hideBranches = ['master']
-  baseCode 1
+  baseCode 3000
 }
 
 android {

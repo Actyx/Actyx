@@ -122,6 +122,14 @@ mk_scalar!(
     struct Semantics, EmptySemantics
 );
 
+impl Semantics {
+    /// Placeholder given to v1-style `Semantics`, when using the tagged API without providing
+    /// an explicit `semantics` tag.
+    pub fn unknown() -> Self {
+        semantics!("_t_")
+    }
+}
+
 mk_scalar!(
     /// The name identifies a particular instance of a Fish, i.e. one of a given kind as identified by
     /// its semantics.
@@ -130,6 +138,14 @@ mk_scalar!(
     /// You may most conveniently construct values of this type with the [`fish_name!`](../macro.fish_name.html) macro.
     struct FishName, EmptyFishName
 );
+
+impl FishName {
+    /// Placeholder given to v1-style `FishName`, when using the tagged API without providing
+    /// an explicit `fish_name` tag.
+    pub fn unknown() -> Self {
+        fish_name!("_t_")
+    }
+}
 
 impl TryFrom<&TagSet> for Semantics {
     type Error = anyhow::Error;

@@ -89,7 +89,7 @@ If you use macOS, you need to additonally allow the Actyx CLI in two steps. Firs
 4. To confirm the installation, use the `ax --version` command. You should see something like this:
 
 ```bash
-$  ax --version
+ ax --version
 Actyx CLI 1.0.0
 ```
 <!-- markdownlint-enable MD029 -->

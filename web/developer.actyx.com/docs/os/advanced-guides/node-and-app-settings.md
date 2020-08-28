@@ -155,7 +155,7 @@ Now we need to set these settings on the node (which, in this example, is reacha
 
 ```bash
 # Set the settings defined in `node-settings.yml` on the node
-$ ax settings set --local com.actyx.os @node-settings.yml 10.2.3.23
+ax settings set --local com.actyx.os @node-settings.yml 10.2.3.23
 #             ^           ^      ^
 #             | set       |      | read from the given file
 #                         |
@@ -166,7 +166,7 @@ If we wanted to find out if there are any top-level settings scopes other than `
 
 ```bash
 # Get top-level scopes on the node
-$ ax settings scopes --local 10.2.3.23
+ax settings scopes --local 10.2.3.23
 com.actyx.os
 ```
 
@@ -174,7 +174,7 @@ What if you want to change a single one of the settings? You could, of course, e
 
 ```bash
 # Change a setting in the tree
-$ ax settings set --local com.actyx.os/services/eventService/topic "New Topic" 10.2.3.23
+ax settings set --local com.actyx.os/services/eventService/topic "New Topic" 10.2.3.23
 #                         ^           ^                            ^
 #                         |           |                            | value to set the setting to
 #                         |           |
@@ -270,7 +270,7 @@ When you package your app, the Actyx CLI will automatically include the settings
 
 The last important part is accessing settings from within your app&mdash;happily knowing that they have been validated against your settings schema. The way this works depends on type of app you have built, or, more precisely, which ActyxOS runtime you are running it in.
 
-Accessing settings in web apps (WebView Runtime)
+##### Accessing settings in web apps (WebView Runtime)
 
 Your app's settings are available in the runtime using an injected global function named `ax.appSettings`. To continue with our example, you could access them as follows:
 
@@ -282,7 +282,7 @@ function onStartApp() {
 }
 ```
 
-Accessing settings in docker apps (Docker Runtime)
+###### Accessing settings in docker apps (Docker Runtime)
 
 With docker apps, the method is slightly different. In that case, we make your app's settings available as a JSON string in an environment variable called `AX_APP_SETTINGS`. Using the same example but with a docker app written in Python we would access this as follows:
 
@@ -306,12 +306,12 @@ ActyxOS validates any settings before applying them. It does so by using the nod
 
 ```bash
 # Create a yml (or JSON) file containing the settings
-$ echo "
+echo "
 timeUnit: seconds
 backgroundColor: red" >> app-settings.yml
 
 # Use the Actyx CLI to set the setting on the node at the correct scope
-$ ax settings set --local com.example.app1 @app-settings.yml 10.2.3.23
+ax settings set --local com.example.app1 @app-settings.yml 10.2.3.23
 #                         ^
 #                         | Use the app's id as the top-level scope
 ```

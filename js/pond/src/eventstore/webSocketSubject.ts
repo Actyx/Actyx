@@ -93,6 +93,15 @@ export class WebSocketSubject<T> extends AnonymousSubject<T> {
     if (binaryType) {
       socket.binaryType = binaryType
     }
+    socket.onerror = err => {
+      const msg = (err as any).message
+      log.ws.error('WebSocket connection error -- is ActyxOS reachable?', msg)
+      try {
+        this._output && this._output.error('Cxn error: ' + msg)
+      } catch (err) {
+        log.ws.error('Error while passing websocket error up the chain!!', err)
+      }
+    }
     socket.onmessage = onMessage
     socket.onclose = err => {
       // Can be removed, when the hot reconnect is possible

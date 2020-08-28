@@ -175,7 +175,7 @@ namespace Actyx {
 
 	    string postData = JsonConvert.SerializeObject(req);
 
-	    return new ActyxRequest<ISuttMessage>(this.Post("/api/v2/events/subscribeUntilTimeTravel", postData));
+	    return new ActyxRequest<ISuttMessage>(this.Post("/api/v2/events/subscribe_until_time_travel", postData));
 	}
 
 
@@ -202,7 +202,7 @@ namespace Actyx {
 	    string postData = JsonConvert.SerializeObject(req);
 	    Console.WriteLine("posting:" + postData);
 
-	    return new ActyxRequest<ISuttMessage>(this.Post("/api/v2/events/subscribeUntilTimeTravel", postData));
+	    return new ActyxRequest<ISuttMessage>(this.Post("/api/v2/events/subscribe_until_time_travel", postData));
 	}
 
 
