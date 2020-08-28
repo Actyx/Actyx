@@ -25,14 +25,14 @@ Here are a couple of example of using the `ax apps start` command:
 
 ```
 # Start a single app on a single node
-$ ax apps start --local com.example.app 10.2.3.23
+ax apps start --local com.example.app 10.2.3.23
 com.example.app successfully started on 10.2.3.23
 
 # Start multiple apps using stdin
-$ echo "com.example.myapp1
+echo "com.example.myapp1
 com.example.myapp2" | ax apps start --local @- 10.2.3.23
 
 # Start a single app that is already running
-$ ax apps start --local com.example.app 10.2.3.23
+ax apps start --local com.example.app 10.2.3.23
 com.example.app is already running on 10.2.3.23
 ```

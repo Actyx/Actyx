@@ -25,8 +25,8 @@ Here is a simple example of using the `ax settings schema` command:
 
 ```
 # Get the ActyxOS nodes settings schema from a node
-$ ax settings schema --local com.actyx.os 10.2.3.23
+ax settings schema --local com.actyx.os 10.2.3.23
 
 # Get the settings schema for a specific app from a node
-$ ax settings schema --local com.example.app 10.2.3.23
+ax settings schema --local com.example.app 10.2.3.23
 ```

@@ -15,9 +15,9 @@ else
     ifeq ($(GIT_BRANCH),)
 		git_hash=$(shell git log -1 --pretty=%H)
     else
-    	# For PR commits, this turns `/refs/pull/5432/merge` into `pr5432`
-		# For non-PR commits (e.g. `proj/*` branches), this turns `/refs/heads/proj/ow/something` into `proj_ow_something`
-		git_hash=$(shell echo $BUILD_SOURCEBRANCH | sed -e 's,/refs/pull/\([0-9]*\).*,pr\1,' -e 's,/refs/heads/,,' | tr / _)
+    	# For PR commits, this turns `refs/pull/5432/merge` into `pr5432`
+		# For non-PR commits (e.g. `proj/*` branches), this turns `refs/heads/proj/ow/something` into `proj_ow_something`
+		git_hash=$(shell echo $${BUILD_SOURCEBRANCH} | sed -e 's,refs/pull/\([0-9]*\).*,pr\1,' -e 's,refs/heads/,,' | tr / _)
     endif
 endif
 

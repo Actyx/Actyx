@@ -33,14 +33,14 @@ Please see the following usage examples for the `ax settings unset` command:
 
 ```
 # Unset ActyxOS settings from a node
-$ ax settings unset --local com.actyx.os 10.2.3.23
+ax settings unset --local com.actyx.os 10.2.3.23
 
 # Unset a specific app's settings from a node
-$ ax settings unset --local com.example.app 10.2.3.23
+ax settings unset --local com.example.app 10.2.3.23
 
 # Unset settings from multiple nodes
-$ ax settings unset --local com.example.app 10.2.3.23 10.2.3.24
+ax settings unset --local com.example.app 10.2.3.23 10.2.3.24
 
 # Unset settings from multiple nodes defined in a file
-$ ax settings unset --local com.example.app @nodes.txt
+ax settings unset --local com.example.app @nodes.txt
 ```

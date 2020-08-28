@@ -35,12 +35,12 @@ See the following example usages of the `ax apps deploy` command:
 
 ```
 # Deploy the app in the current directory
-$ ax apps deploy --local . 10.2.3.23
+ax apps deploy --local . 10.2.3.23
 
 # Deploy a packaged tarball to a node
-$ ax apps deploy --local myApp1-1.0.0.tar.gz 10.2.3.23
+ax apps deploy --local myApp1-1.0.0.tar.gz 10.2.3.23
 
 # Deploy multiple apps to a node
-$ echo "myApp1-1.0.0.tar.gz
+echo "myApp1-1.0.0.tar.gz
 myApp2-1.0.0.tar.gz" | ax apps deploy --local @- 10.2.3.23
 ```

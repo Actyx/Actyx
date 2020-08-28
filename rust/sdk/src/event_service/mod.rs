@@ -17,13 +17,17 @@
 //!
 //! The [`EventService`](struct.EventService.html) client is only available under the `client` feature flag.
 
-use crate::event::{FishName, OffsetMap, Payload, Semantics, SourceId};
+use crate::{
+    event::{FishName, OffsetMap, Payload, Semantics, SourceId},
+    tagged::NodeId,
+};
 use derive_more::{Display, Error};
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 #[cfg(feature = "client")]
 pub(crate) mod client;
+pub mod v2;
 #[cfg(feature = "client")]
 pub use client::EventService;
 
@@ -239,7 +243,7 @@ pub struct PublishRequestBody {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeIdResponse {
-    pub node_id: SourceId,
+    pub node_id: NodeId,
 }
 
 #[cfg(test)]

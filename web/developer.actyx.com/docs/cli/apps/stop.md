@@ -25,9 +25,9 @@ Here are a couple of example of using the `ax apps stop` command:
 
 ```
 # Stop a single app on a single node
-$ ax apps stop --local com.example.app 10.2.3.23
+ax apps stop --local com.example.app 10.2.3.23
 
 # Stop multiple apps using stdin
-$ echo "com.example.myapp1
+echo "com.example.myapp1
 com.example.myapp2" | ax apps stop --local @- 10.2.3.23
 ```

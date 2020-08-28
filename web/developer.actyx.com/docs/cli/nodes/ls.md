@@ -32,14 +32,14 @@ See the following examples of using the `ax nodes ls` command:
 
 ```
 # get the status of all specified nodes in the local network
-$ ax nodes ls --pretty --local 10.2.3.23 10.2.3.24 10.2.3.25
+ax nodes ls --pretty --local 10.2.3.23 10.2.3.24 10.2.3.25
 NODE ID    DISPLAY NAME  STATE   SETTINGS LICENSE  APPS DEPLOYED APPS RUNNING  STARTED                    VERSION
 10.2.3.23  MY NODE       running    valid   valid             23           17  2020-03-18T06:17:00+01:00  1.0.0
 10.2.3.24  ActyxOS unreachable
 10.2.3.25  Host unreachable
 
 # get the status of all nodes in the local network as a json object
-$ ax --json nodes ls --local 10.2.3.23 10.2.3.24 10.2.3.25
+ax --json nodes ls --local 10.2.3.23 10.2.3.24 10.2.3.25
 {
     "code":"OK",
     "result": [
