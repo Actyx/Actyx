@@ -30,7 +30,7 @@ One of the central ideas helping Rust achieve its goals is [ownership](https://d
 Tracing the ownership of memory and variables helps avoid a large class of bugs that have caused security issues in the past
 and continue to trouble users of other programming languages. However, when the compiler cannot make sure that the object's
 ownership is seamlessly transferred, the programmer needs to make this explicit via the `clone()` operation.
-Because of ownership structuring of differential dataflow we need to clone a lot, which for strings means copying all the bytes. 
+Because of ownership structuring of differential dataflow we need to clone a lot, which for strings means copying all the bytes.
 This results often in very high memory usage, that can be a limiting factor, especially in
 memory constrained environments like the Raspberry Pi or other IoT platforms.
 Once looking into the memory usage statistics it is easy to see that most of the memory contents is taken by strings.
@@ -46,13 +46,13 @@ article id (like `AGK75641`), human understandable article name like `Fork, Trif
 workstation at which the good was reported (say `LATHE 3`) and order id (like `FG/1234567/2020`).
 Let's model this as a Rust struct:
 
-```
+```rust
 pub struct FinishedGoods {
-	pub article_id: String,
-	pub article_name: String,
-	pub workstation: String,
-	pub order_id: String,
-	pub pcs: i64,
+    pub article_id: String,
+    pub article_name: String,
+    pub workstation: String,
+    pub order_id: String,
+    pub pcs: i64,
 }
 ```
 
@@ -61,32 +61,33 @@ pub struct FinishedGoods {
 When working with ActyxOS, finished goods will probably come as a `payload` in an encompassing
 `Event` data structure, which will look like that:
 
-```
+```rust
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Abomonation)]
 pub struct Event {
     timestamp: TimeStamp, // place first to sort in ascending (temporal) order
     lamport: LamportTimestamp, // place first to sort in ascending (causal) order
-    payload: FinishedGoods, 
+    payload: FinishedGoods,
 }
 
 ```
+
 You might have noticed that for `Event` struct we derive some interesting attributes: `Eq`, `PartialEq`, `Ord`, `PartialOrd` and `Abomonation`. These
 are here for a reason - `Eq`, `PartialEq`, `Ord` and `PartialOrd` are needed because differential dataflow orders (sorts) and deduplicates whatever data are flowing through
 the pipelines. This is for a reason - imagine we had the following event structure (required derive clauses omitted for brevity):
 
-```
+```rust
 pub enum ActivityStatus {
-	Started,
-	Stopped,
+    Started,
+    Stopped,
 }
 
 pub struct Activity {
-	pub id: String,
-	pub status: ActivityStatus,
+    pub id: String,
+    pub status: ActivityStatus,
 
 pub struct ActivityEvent {
-	timestamp: TimeStamp,
-	payload: Activity,
+    timestamp: TimeStamp,
+    payload: Activity,
 }
 ```
 
@@ -95,11 +96,12 @@ for the `Activity::Stopped` to come always after `Activity::Started` for a given
 even if they were generated on different devices. The differential dataflow makes the choice to sort by default using the order in which the fields are defined and their respective sorting orders.
 Hence for a decentralized system, the event ordering should be by `LamportTimestamp` first, which results in the aforementioned causal order.
 So we have the following full definition of `FinishedGoodsEvent`:
-```
+
+```rust
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Abomonation)]
 pub struct FinishedGoodsEvent {
     lamport: LamportTimestamp, // place first to sort in ascending (causal) order
-    payload: FinishedGoods, 
+    payload: FinishedGoods,
     timestamp: TimeStamp,
 }
 ```
@@ -109,15 +111,16 @@ by the differential dataflow, which is not [`serde`](https://serde.rs/) as most 
 encoding, result in good performance of the resultant program.
 
 `Abomonation`, like `Serde` needs to be transitive, which means that if you want to build your struct out of parts, they also need to support
-`Abomonation`, so the full definition of `FinishedGoods` would run like this: 
-```
+`Abomonation`, so the full definition of `FinishedGoods` would run like this:
+
+```rust
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Abomonation)]
 pub struct FinishedGoods {
-	pub article_id: String,
-	pub article_name: String,
-	pub workstation: String,
-	pub order_id: String,
-	pub pcs: i64,
+    pub article_id: String,
+    pub article_name: String,
+    pub workstation: String,
+    pub order_id: String,
+    pub pcs: i64,
 }
 ```
 
@@ -125,7 +128,7 @@ Now we are ready to write a pipeline that will produce a summary of produced pie
 
 The result will be the following `ProductionSummary` record:
 
-```
+```rust
 #[derive(Clone, Debug, Ord, PartialOrd, Eq, PartialEq, Abomonation)]
 pub struct ProductionSummary {
     pub article_id: String,
@@ -134,20 +137,22 @@ pub struct ProductionSummary {
     pub total_pcs: i64,
 }
 ```
+
 that will be propagated to the database.
 
-
 We start with extracting the essential parts of the event containing the `FinishedGoods` record:
-```
+
+```rust
 let extracts = events.map(|ev| FinishedGoodsEvent {
     lamport: ev.lamport,
     payload: ev.payload,
     timestamp: ev.timestamp,
 });
 ```
+
 and then run the processing pipeline, which groups `pcs` by `article_id` and `workstation` and calculates the `total_pcs`:
 
-```
+```rust
 let out = extracts
     .group_by(|e| (e.payload.article_id.clone(), e.payload.workstation.clone())) // *
     .reduce(|(article_id, workstation), inputs, outputs| {
@@ -179,7 +184,7 @@ or `workstation` is cloned twice, which results in significant memory overhead, 
 for larger volumes of data in memory-constrained environments.
 
 Rust strings are modifiable, like in C++ and unlike their Java counterparts.
-However, as C++ has departed from the copy-on-write (frequently abbreviated as CoW) approach for strings
+Furthermore, as C++ has departed from the copy-on-write (frequently abbreviated as CoW) approach for strings
 due to the change in how processors are architected, similarly in Rust strings are not CoW by default.
 That results in large memory usage occurring whenever we `.clone()` a string in Rust, because the contents
 of the string get duplicated. However, as `.clone()` in Rust is about ownership semantics
@@ -189,7 +194,8 @@ more than actual copying of the information, this problem can be easily side-ste
 
 The initial instinct would be to use the [`std::borrow::Cow`](https://doc.rust-lang.org/std/borrow/enum.Cow.html), which
 is a copy-on-mutation smart pointer in Rust and wrap the string inside of it like this:
-```
+
+```rust
 use std::borrow::Cow;
 let cow_string = Cow::from("some_article_id");
 // and then at the end of the pipeline
@@ -216,12 +222,14 @@ of contained values (so if one creates two new `ArcVal<str>` instances with the 
 where allocation will be avoided only during clone operations). Compiler enforces the immutability guarantee for us.
 
 Using `ArcVal` requires importing it from `actyxos_sdk` crate:
-```
+
+```rust
 use actyxos_sdk::types::ArcVal;
 ```
 
 The data model definitions will look then as follows:
-```
+
+```rust
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Serialize, Deserialize, Abomonation)]
 pub struct FinishedGoods {
     pub article_id: ArcVal<str>,
