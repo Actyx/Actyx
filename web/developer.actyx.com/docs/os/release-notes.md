@@ -6,7 +6,7 @@ This page contains information about new features, bug fixes, deprecations and r
 
 ## ActyxOS 1.0.0
 
-**Release date: 28.08.2020**
+Release date: 28.08.2020
 
 Download:
 
@@ -26,7 +26,7 @@ Download:
 
 ## ActyxOS 1.0.0-rc.4
 
-**Release date: 03.07.2020**
+Release date: 03.07.2020
 
 Download:
 
@@ -40,7 +40,7 @@ Download:
 
 ## ActyxOS 1.0.0-rc.3
 
-**Release date: 12.06.2020**
+Release date: 12.06.2020
 
 Download:
 
@@ -57,7 +57,7 @@ Download:
   
 ## ActyxOS 1.0.0-rc.2
 
-**Release date: 25.05.2020**
+Release date: 25.05.2020
 
 Download:
 

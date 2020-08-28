@@ -55,6 +55,7 @@ ax nodes ls --local <DEVICE_IP>
 ```
 
 You should see something like:
+
 ```
 +---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
 | NODE ID       | DISPLAY NAME | STATE   | SETTINGS | LICENSE | APPS DEPLOYED | APPS RUNNING | STARTED                   | VERSION |
