@@ -2,6 +2,8 @@
 title: ax apps start
 ---
 
+<!-- markdownlint-disable-file MD040 -->
+
 ### Start an app on a node
 
 ```

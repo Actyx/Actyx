@@ -2,6 +2,8 @@
 title: ax swarms keygen
 ---
 
+<!-- markdownlint-disable-file MD040 -->
+
 ## Generate a new ActyxOS swarm key
 
 ```

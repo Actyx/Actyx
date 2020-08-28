@@ -2,6 +2,8 @@
 title: ax apps stop
 ---
 
+<!-- markdownlint-disable-file MD040 -->
+
 ### Stop an app on a node
 
 ```

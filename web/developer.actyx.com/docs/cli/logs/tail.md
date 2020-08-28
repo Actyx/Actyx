@@ -2,6 +2,8 @@
 title: ax logs tail
 ---
 
+<!-- markdownlint-disable-file MD040 -->
+
 ## Get logs from a node
 
 ```

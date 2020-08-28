@@ -2,6 +2,8 @@
 title: ax apps undeploy
 ---
 
+<!-- markdownlint-disable-file MD040 -->
+
 ### Undeploy an app from a node
 
 ```

@@ -2,6 +2,8 @@
 title: ax settings set
 ---
 
+<!-- markdownlint-disable-file MD040 -->
+
 ## Configure settings of a node
 
 ```

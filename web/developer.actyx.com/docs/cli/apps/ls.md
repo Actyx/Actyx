@@ -2,6 +2,8 @@
 title: ax apps ls
 ---
 
+<!-- markdownlint-disable-file MD040 -->
+
 ### List apps deployed on a node
 
 ```

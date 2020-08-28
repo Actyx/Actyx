@@ -2,6 +2,8 @@
 title: ax settings scopes
 ---
 
+<!-- markdownlint-disable-file MD040 -->
+
 ## Get setting scopes from a node
 
 ```

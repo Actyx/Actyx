@@ -2,6 +2,8 @@
 title: ax settings get
 ---
 
+<!-- markdownlint-disable-file MD040 -->
+
 ## Get settings from a node
 
 ```
