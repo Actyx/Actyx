@@ -34,7 +34,6 @@ If you have problems with installing ActyxOS, please check our [Troubleshooting 
 
 In order to check on its status and interact with the node, you can use the ActyxOS Node Manager or, if you prefer a command line tool, use the [Actyx CLI](../../cli/getting-started.md).
 
-
 <Tabs
   defaultValue="node-manager"
   values={[
@@ -67,10 +66,10 @@ You should see something like:
 </TabItem>
 </Tabs>
 
-
 Congratulations, you have successfully installed <em>ActyxOS on Windows</em>! Please note that ActyxOS is **not** operational, as you did not configure it yet. If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
 
 ### Where to go next
+
 - [Quickstart](/docs/quickstart) is a tutorial about ActyxOS with ready-to-use apps and configurations.
 - [Get started](#get-started-with-actyx-on-windows) for a detailed guide on how <em>ActyxOS on Windows works</em>.
 - [Troubleshooting](#troubleshooting) describes common problems, workarounds and how to get help and submit issues.
@@ -79,24 +78,27 @@ Congratulations, you have successfully installed <em>ActyxOS on Windows</em>! Pl
 ## Get started with ActyxOS on Windows
 
 ### Starting and Stopping ActyxOS
+
 ActyxOS is automatically started after the installation is finished. ActyxOS runs as a Windows Service and can therefore be managed through the Windows Services Manager. [This is a guide for opening the Windows Service Manager](https://www.thewindowsclub.com/open-windows-services).
 
 In the Windows Service Manager, you will see that ActyxOS is running. You can now restart ActyxOS, stop it, and start it again:
 
 ![Windows Service Manager](/images/os/windows-service-manager.png)
 
-If you would like to know more about how to configure nodes, please go to the section [**Configuring nodes** in our guide on Node and App Settings](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes) 
+If you would like to know more about how to configure nodes, please go to the section [**Configuring nodes** in our guide on Node and App Settings](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
 
 :::infoNode and App lifecycles
 Depending on the lifecycle stage that your ActyxOS nodes or apps are in, your interaction with it might be limited to certain commands. Please check our guide on [Node and App Lifecycles](/docs/os/advanced-guides/node-and-app-lifecycle) to find out more.
 :::
 
 ### Automatic start of ActyxOS
+
 When your device is started, ActyxOS is automatically started too. You can configure this by right-clicking on ActyxOS in the Services Manager and then changing the `Startup type` in the properties.
 
 ![Windows Service Manager 2](/images/os/windows-service-manager-2.png)
 
 ### Logging through the Windows Event Viewer
+
 ActyxOS logs can be accessed through the Windows Event Viewer. In the Event Viewer, you can create a custom view filtering for ActyxOS logs and a log level:
 
 ![Event viewer custom view](/images/os/windows-event-viewer-custom-view.png)
@@ -118,7 +120,9 @@ If you receive the following error during installation, please close the Windows
 ![Installation error](/images/os/windows-installation-error.png)
 
 ### ActyxOS is not starting
+
 The most common reason for this problem is that the one of the ports ActyxOS needs is already in use by another program. ActyxOS uses the following ports:
+
 - 4001
 - 4454
 - 4455
@@ -131,7 +135,7 @@ As port 8080 is sometimes already in use by other programs, you can change it by
 2. Go to System and Security
 3. Go to System
 4. Go to Advanced System Settings
-5. Click on Environment Variables on the bottom right 
+5. Click on Environment Variables on the bottom right
 6. Add a new environment variable:
 
 ![Windows environment variable](/images/os/windows-environment-variables.png)
@@ -139,6 +143,7 @@ As port 8080 is sometimes already in use by other programs, you can change it by
 ### ActyxOS node not responding
 
 First, check that you entered the right IP in the `ax` command. If you still cannot connect, the output of `ax nodes ls` and the returns one of the two possible reasons (if you are using the ActyxOS Node Manager, you can see this info in the Status tab):
+
 - **ActyxOS is not reachable.**
 This means that ActyxOS is not running on your node. Please click on the ActyxOS icon on your home screen. If ActyxOS is running, you can see it in the notifications overview of your Windows device.
 - **Host is not reachable.** This means that your development machine cannot connect to your node. Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port 4457.

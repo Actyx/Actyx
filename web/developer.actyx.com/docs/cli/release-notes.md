@@ -6,20 +6,22 @@ This page contains information about new features, bug fixes, deprecations and r
 
 ## Actyx CLI 1.0.0
 
-**Release date: 29.07.2020**
+**Release date: 28.08.2020**
 
-[Download](https://downloads.actyx.com/)
+[Get it from our Downloads page](https://downloads.actyx.com/)
 
 ### New features
+
 - Introduced support for `arm` and `armhf` devices
 
 ### Bug Fixes
+
 - Several stability improvements
 - Fixed a bug that did not allow you to inline the settings schema in the app manifest
 
 ## Actyx CLI 1.0.0-rc.3
 
-Release date: 12.06.2020
+**Release date: 12.06.2020**
 
 [Download](https://downloads.actyx.com/)
 
@@ -36,7 +38,7 @@ Release date: 12.06.2020
 
 ## Actyx CLI 1.0.0-rc.2
 
-Release date: 25.05.2020
+**Release date: 25.05.2020**
 
 [Download](https://downloads.actyx.com/)
 

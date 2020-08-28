@@ -83,7 +83,6 @@ If your [ActyxOS Bootstrap Node](actyxos-bootstrap-node.md) is not in the same l
 
 ### Check the status of your node
 
-
 In order to check on its status and interact with the node, you can use the [ActyxOS Node Manager](../tools/node-manager) or, if you prefer a command line tool, use the [Actyx CLI](../../cli/getting-started.md).
 
 <Tabs
@@ -165,7 +164,9 @@ First, check that you entered the right IP in the `ax` command. If you still can
 - **Host is not reachable.** This means that your development machine cannot connect to your node. Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port 4457
 
 ### ActyxOS nodes not connecting to each other
+
 Your ActyxOS nodes running on Docker are not able connect to each other if
+
 - you are running ActyxOS without `network=host`; and
 - your ActyxOS Bootstrap Node is not running in the same local network as your ActyxOS nodes.
 
