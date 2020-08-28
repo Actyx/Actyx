@@ -7,7 +7,7 @@ author_image_url: /images/blog/jan-pustelnik.jpg
 tags: [database, dashboards, reports]
 ---
 
-In practical applications of [differential dataflow](https://docs.rs/differential-dataflow/) to analyzing factory event streams
+In practical applications of [differential dataflow](https://docs.rs/differential-dataflow/) to analyze factory event streams
 one frequently encounters a lot of strings. Those strings usually represent various
 names - of inventory articles, workstations, or activities. However, the straightforward approach in data flows
 rich in string objects may lead to a lot of unnecessary duplication which can result in high memory usage, unacceptable in small devices.
@@ -17,7 +17,7 @@ Let's take a look at how we have handled this problem in Actyx internal BI pipel
 
 ## Introduction
 
-Differential dataflow is written in [Rust](https://www.rust-lang.org/), a modern programming language that helps building reliable
+Differential dataflow is written in [Rust](https://www.rust-lang.org/), a modern programming language that helps build reliable
 and secure software.
 
 :::note
@@ -27,10 +27,10 @@ See the [introduction to differential dataflow on developer.actyx.com] to get mo
 [introduction to differential dataflow on developer.actyx.com]: https://developer.actyx.com/blog/2020/06/25/differential-dataflow/
 
 One of the central ideas helping Rust achieve its goals is [ownership](https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html).
-Tracing the ownership of memory and variables helps avoiding a large class of bugs that have caused security issues in the past
+Tracing the ownership of memory and variables helps avoid a large class of bugs that have caused security issues in the past
 and continue to trouble users of other programming languages. However, when the compiler cannot make sure that the object's
 ownership is seamlessly transferred, the programmer needs to make this explicit via the `clone()` operation.
-Because of ownership structuring of differential dataflow we need to clone a lot, which for strings means byte copy by default. 
+Because of ownership structuring of differential dataflow we need to clone a lot, which for strings means copying all the bytes. 
 This results often in very high memory usage, that can be a limiting factor, especially in
 memory constrained environments like the Raspberry Pi or other IoT platforms.
 Once looking into the memory usage statistics it is easy to see that most of the memory contents is taken by strings.
@@ -105,7 +105,7 @@ pub struct FinishedGoodsEvent {
 ```
 
 This brings us to the remaining attribute: `Abomonation`. This one is required by the internal serialization mechanism employed
-by the differential dataflow, which is not `Serde` as most of the Rust ecosystem uses, but `Abomonation`. This is a very efficient binary wire
+by the differential dataflow, which is not [`serde`](https://serde.rs/) as most of the Rust ecosystem uses, but `Abomonation`. This is a very efficient binary wire
 encoding, result in good performance of the resultant program.
 
 `Abomonation`, like `Serde` needs to be transitive, which means that if you want to build your struct out of parts, they also need to support
@@ -240,8 +240,8 @@ pub struct ProductionSummary {
 }
 ```
 
-Note that the pipeline itself will not change at all! However, now all `.clone()` operations will be essentially free! In our experience, string
-interning in the pipelines has usually reduced the memory usage to less than 50% of original usage (frequently even 30%, as would probably be for this pipeline).
+Note that the pipeline itself will not change at all! However, now all `.clone()` operations are essentially free! In our experience, string
+interning in the pipelines reduces memory usage to less than 50% of original usage (frequently less than 30%, as would probably be the case for this pipeline).
 
 ## Summary
 
