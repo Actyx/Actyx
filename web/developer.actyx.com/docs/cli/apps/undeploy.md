@@ -5,7 +5,7 @@ title: ax apps undeploy
 ### Undeploy apps from nodes
 
 ```bash
-$ ax apps undeploy --help
+ax apps undeploy --help
 USAGE: ax apps undeploy [FLAGS] <APP> <NODE>...
 
 FLAGS:
@@ -22,7 +22,7 @@ ARGS:
                      line from stdin using `@-`.
     <NODE>           Node ID or, if using `--local`, the IP address, of the
                      node to perform the operation on. You may also pass in a
-                     file with a value using the syntax `@file.txt` or have the 
+                     file with a value using the syntax `@file.txt` or have the
                      command one value from stdin using `@-`.
 ```
 
@@ -30,12 +30,12 @@ Here are a couple of example of using the `ax apps undeploy` command:
 
 ```bash
 # Undeploy a specific app from a node
-$ ax apps undeploy --local com.example.myapp1 10.2.3.23
+ax apps undeploy --local com.example.myapp1 10.2.3.23
 
 # Undeploy an app from multiple nodes
-$ ax apps undeploy --local com.example.myapp1 10.2.3.23 10.2.3.24
+ax apps undeploy --local com.example.myapp1 10.2.3.23 10.2.3.24
 
 # Undeploy multiple apps from a node
-$ echo "com.example.myapp1
+echo "com.example.myapp1
 com.example.myapp2" | ax apps undeploy --local @- 10.2.3.23
 ```

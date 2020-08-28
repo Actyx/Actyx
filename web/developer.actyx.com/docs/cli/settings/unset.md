@@ -5,7 +5,7 @@ title: ax settings unset
 ## Unset settings on one or more nodes
 
 ```bash
-$ ax settings unset --help
+ax settings unset --help
 USAGE: ax settings unset [FLAGS] <SCOPE> <NODE>...
 
 FLAGS:
@@ -18,7 +18,7 @@ ARGS:
     <SCOPE>          Scope at which you want to set the given settings.
     <NODE>           Node ID or, if using `--local`, the IP address, of the
                      node to perform the operation on. You may also pass in a
-                     file with a value using the syntax `@file.txt` or have the 
+                     file with a value using the syntax `@file.txt` or have the
                      command one value from stdin using `@-`.
 ```
 
@@ -34,15 +34,14 @@ Please see the following usage examples for the `ax settings unset` command:
 
 ```bash
 # Unset ActyxOS settings from a node
-$ ax settings unset --local com.actyx.os 10.2.3.23
+ax settings unset --local com.actyx.os 10.2.3.23
 
 # Unset a specific app's settings from a node
-$ ax settings unset --local com.example.app 10.2.3.23
+ax settings unset --local com.example.app 10.2.3.23
 
 # Unset settings from multiple nodes
-$ ax settings unset --local com.example.app 10.2.3.23 10.2.3.24
+ax settings unset --local com.example.app 10.2.3.23 10.2.3.24
 
 # Unset settings from multiple nodes defined in a file
-$ ax settings unset --local com.example.app @nodes.txt
+ax settings unset --local com.example.app @nodes.txt
 ```
-

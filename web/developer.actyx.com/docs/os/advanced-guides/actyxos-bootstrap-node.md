@@ -24,7 +24,7 @@ The ActyxOS Bootstrap Node is [publicly available on Docker Hub](https://hub.doc
 
 ```bash
 # Start the bootstrap node with your swarm key
-$ docker run --name actyxos_bootstrap_node --rm --env SWARM_KEY=99eac9c0acbbedf9cfdfcbebfa0bdea99d0bde9edf0 -p 4001:4001 -v actyxos-bootstrap-data:/data actyx/actyxos-bootstrap-node
+docker run --name actyxos_bootstrap_node --rm --env SWARM_KEY=99eac9c0acbbedf9cfdfcbebfa0bdea99d0bde9edf0 -p 4001:4001 -v actyxos-bootstrap-data:/data actyx/actyxos-bootstrap-node
 Starting ActyxOS bootstrap node
 
 ActyxOS bootstrap node running
@@ -46,7 +46,7 @@ On subsequent runs, the Swarm key will be taken from the persistent storage:
 
 ```bash
 # Running with a persistent volume, subsequent runs:
-$ docker run --rm -p 4001:4001 -v actyxos-bootstrap-data:/data actyx/actyxos-bootstrap-node
+docker run --rm -p 4001:4001 -v actyxos-bootstrap-data:/data actyx/actyxos-bootstrap-node
 Starting ActyxOS bootstrap node
 
 ActyxOS bootstrap node running
@@ -61,9 +61,10 @@ Press Ctrl+C twice to shutdown this bootstrap node.
 ```
 
 You used a couple of common flags here:
-- `--rm` to automatically clean up the container and remove the file system when the container exits.
-- `-v actyxos-bootstrap-data:/data` specifies the volumes that are **not** removed and therefore used for persistens storage. 
--  `-p 4001:4001` forwards traffic incoming on the host’s port 4001, to the container’s port 4001.
+
+- `--rm` to automatically clean up the container and remove the file system when the container exits
+- `-v actyxos-bootstrap-data:/data` specifies the volumes that are **not** removed and therefore used for persistens storage
+- `-p 4001:4001` forwards traffic incoming on the host’s port 4001, to the container’s port 4001
 
 :::infoDocker documentation
 Please refer to the [Docker Documentation](https://docs.docker.com/) for more information on how to run Docker containers.
@@ -82,4 +83,3 @@ If you were running an ActyxOS Bootstrap Node before, you need to clear the pers
 ```bash
 docker volume rm actyxos-bootstrap-data
 ````
-

@@ -11,11 +11,13 @@ const defaultConfig: WsStoreConfig = {
   url: process.env.AX_STORE_URI || 'ws://localhost:4243/store_api',
 }
 
+export const extendDefaultWsStoreConfig = (overrides: Partial<WsStoreConfig> = {}) => ({
+  ...defaultConfig,
+  ...overrides,
+})
+
 export const mkMultiplexer = (config: Partial<WsStoreConfig> = {}): MultiplexedWebsocket => {
-  const c: WsStoreConfig = {
-    ...defaultConfig,
-    ...config,
-  }
+  const c: WsStoreConfig = extendDefaultWsStoreConfig(config)
 
   return new MultiplexedWebsocket(c)
 }

@@ -10,10 +10,24 @@ import * as t from 'io-ts'
 import { Event, OffsetMap } from './eventstore/types'
 import { Tags, Where } from './tagging'
 
+/**
+ * Refinement that checks whether typeof x === 'string'
+ * @public
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isString = (x: any): x is string => typeof x === 'string'
+
+/**
+ * Refinement that checks whether typeof x === 'number'
+ * @public
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isNumber = (x: any): x is number => typeof x === 'number'
+
+/**
+ * Refinement that checks whether typeof x === 'boolean'
+ * @public
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isBoolean = (x: any): x is boolean => typeof x === 'boolean'
 
@@ -55,6 +69,10 @@ export const FishName = {
   ),
 }
 
+/**
+ * An ActyxOS source id.
+ * @public
+ */
 export type SourceId = string
 const mkSourceId = (text: string): SourceId => text as SourceId
 export const randomBase58: (digits: number) => string = (digits: number) => {
@@ -69,6 +87,11 @@ export const randomBase58: (digits: number) => string = (digits: number) => {
   }
   return result
 }
+
+/**
+ * `SourceId` associated functions.
+ * @public
+ */
 export const SourceId = {
   /**
    * Creates a SourceId from a string
@@ -86,8 +109,13 @@ export const SourceId = {
   ),
 }
 
+/**
+ * Lamport timestamp, cf. https://en.wikipedia.org/wiki/Lamport_timestamp
+ * @public
+ */
 export type Lamport = number
 const mkLamport = (value: number): Lamport => value as Lamport
+/** @public */
 export const Lamport = {
   of: mkLamport,
   zero: mkLamport(0),
@@ -120,10 +148,12 @@ export const Psn = {
   ),
 }
 
+/** Timestamp (UNIX epoch), MICROseconds resolution. @public */
 export type Timestamp = number
 const mkTimestamp = (time: number): Timestamp => time as Timestamp
 const formatTimestamp = (timestamp: Timestamp): string => new Date(timestamp / 1000).toISOString()
 const secondsPerDay = 24 * 60 * 60
+/** Helper functions for making sense of and converting Timestamps. @public */
 export const Timestamp = {
   of: mkTimestamp,
   zero: mkTimestamp(0),
@@ -147,8 +177,10 @@ export const Timestamp = {
   ),
 }
 
+/** Some number of milliseconds. @public */
 export type Milliseconds = number
 const mkMilliseconds = (time: number): Milliseconds => time as Milliseconds
+/** Helper functions for making sense of and converting Milliseconds. @public */
 export const Milliseconds = {
   of: mkMilliseconds,
   fromDate: (date: Date): Milliseconds => mkMilliseconds(date.valueOf()),
@@ -344,7 +376,8 @@ export type StatePointer<S> = TaggedIndex & CachedState<S>
 /* 
  * POND V2 APIs
  */
-// Generic Metadata attached to every event.
+
+/** Generic Metadata attached to every event. @public */
 export type Metadata = Readonly<{
   // Was this event written by the very node we are running on?
   isLocalEvent: boolean
@@ -378,16 +411,23 @@ export const toMetadata = (sourceId: string) => (ev: Event): Metadata => ({
   eventId: String(ev.lamport).padStart(maxLamportLength, '0') + '/' + ev.sourceId,
 })
 
-// Combine the existing ("old") state and next event into a new state.
-// The returned value may be something completely new, or a mutated version of the input state.
+/**
+ * Combine the existing ("old") state and next event into a new state.
+ * The returned value may be something completely new, or a mutated version of the input state.
+ * @public
+ */
 export type Reduce<S, E> = (state: S, event: E, metadata: Metadata) => S
 
-// A function indicating events which completely determine the state.
-// Any event for which isReset returns true will be applied to the initial state, all earlier events discarded.
+/**
+ * A function indicating events which completely determine the state.
+ * Any event for which isReset returns true will be applied to the initial state, all earlier events discarded.
+ * @public
+ */
 export type IsReset<E> = (event: E, metadata: Metadata) => boolean
 
 /**
  * Unique identifier for a fish.
+ * @public
  */
 export type FishId = {
   // A general description for the class of thing the Fish represents, e.g. 'robot'
@@ -401,15 +441,16 @@ export type FishId = {
 }
 
 /**
- * Unique identifier for a fish.
+ * FishId associated functions.
+ * @public
  */
 export const FishId = {
   /**
    * Create a FishId from three components.
    *
-   * @param entityType   A general description for the class of thing the Fish represents, e.g. 'robot'
-   * @param name         Concrete name of the represented thing, e.g. 'superAssembler2000'
-   * @param version      Version of the underlying code. Must be increased whenever the Fish’s underlying logic or event selection changes.
+   * @param entityType - A general description for the class of thing the Fish represents, e.g. 'robot'
+   * @param name       - Concrete name of the represented thing, e.g. 'superAssembler2000'
+   * @param version    - Version of the underlying code. Must be increased whenever the Fish’s underlying logic or event selection changes.
    * @returns            A FishId.
    */
   of: (entityType: string, name: string, version: number) => ({
@@ -427,6 +468,7 @@ export const FishId = {
  * A Fish always sees events in the correct order, even though event delivery on ActyxOS is only eventually consistent:
  * To this effect, arrival of an hitherto unknown event "from the past" will cause a replay of the aggregation
  * from an earlier state, instead of passing that event to the Fish out of order.
+ * @public
  */
 export type Fish<S, E> = Readonly<{
   /**
@@ -462,6 +504,10 @@ export type Fish<S, E> = Readonly<{
   deserializeState?: (jsonState: unknown) => S
 }>
 
+/**
+ * Fish generic generator methods.
+ * @public
+ */
 export const Fish = {
   // Observe latest event matching the given selection.
   latestEvent: <E>(where: Where<E>): Fish<E | undefined, E> => ({
@@ -505,10 +551,16 @@ export const Fish = {
   }),
 }
 
-// Queue emission of an event whose type is covered by `EWrite`.
+/**
+ * Queue emission of an event whose type is covered by `EWrite`.
+ * @public
+ */
 export type AddEmission<EWrite> = <E extends EWrite>(tags: Tags<E>, event: E) => void
 
-// Enqueue event emissions based on currently known local state.
+/**
+ * Enqueue event emissions based on currently known local state.
+ * @public
+ */
 export type StateEffect<S, EWrite> = (
   // Currently known state, including application of all events previously enqueued by state effects on the same Fish.
   state: S,
@@ -518,11 +570,13 @@ export type StateEffect<S, EWrite> = (
 
 /**
  * Cancel an ongoing aggregation (the provided callback will stop being called).
+ * @public
  */
 export type CancelSubscription = () => void
 
 /**
  * Allows you to register actions for when event emission has completed.
+ * @public
  */
 export type PendingEmission = {
   // Add another callback; if emission has already completed, the callback will be executed straight-away.

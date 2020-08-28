@@ -6,13 +6,21 @@ ifeq ($(origin SYSTEM_PULLREQUEST_SOURCEBRANCH),undefined)
 else
 	GIT_BRANCH=$(SYSTEM_PULLREQUEST_SOURCEBRANCH)
 endif
+
+# If we're on `master`, use the `head` commit hash
 ifeq ($(GIT_BRANCH),master)
 	git_hash=$(shell git log -1 --pretty=%H)
 else
-	# Remove the Azure merge commit to get the actual latest commit in the PR branch
-	# TODO This will remove all the merge commits, so if the last commit before the merge is also a merge it will get the next-to-last one
-	git_hash=$(shell git log -1 --no-merges --pretty=%H)
+    # Ditto if GIT_BRANCH is unset (e.g. when running locally)
+    ifeq ($(GIT_BRANCH),)
+		git_hash=$(shell git log -1 --pretty=%H)
+    else
+    	# For PR commits, this turns `refs/pull/5432/merge` into `pr5432`
+		# For non-PR commits (e.g. `proj/*` branches), this turns `refs/heads/proj/ow/something` into `proj_ow_something`
+		git_hash=$(shell echo $${BUILD_SOURCEBRANCH} | sed -e 's,refs/pull/\([0-9]*\).*,pr\1,' -e 's,refs/heads/,,' | tr / _)
+    endif
 endif
+
 component=$(shell echo $${DOCKER_TAG:-unknown-x64}|cut -f1 -d-)
 arch=$(shell echo $${DOCKER_TAG:-unknown-x64}|cut -f2 -d-)
 # These should be moved to the global azure pipelines build
@@ -177,6 +185,8 @@ define build_bins_and_move
 	-u builder \
 	-w /src/rt-master \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	-v $${CARGO_HOME:-$$HOME/.cargo/git}:/home/builder/.cargo/git \
+	-v $${CARGO_HOME:-$$HOME/.cargo/registry}:/home/builder/.cargo/registry \
 	-it $(3) \
 	cargo --locked build --release --target $(2) --bins --jobs 8
 	find ./rt-master/target/$(2)/release/ -maxdepth 1 -type f -perm -u=x \
@@ -199,6 +209,8 @@ define build_bins_and_move_win64
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-e CARGO_BUILD_TARGET=$(2) \
 	-e CARGO_BUILD_JOBS=8 \
+	-v $${CARGO_HOME:-$$HOME/.cargo/git}:/usr/local/cargo/git \
+	-v $${CARGO_HOME:-$$HOME/.cargo/registry}:/usr/local/cargo/registry \
 	-it $(3) \
 	bash -c "\
 		cargo --locked build --release --no-default-features --manifest-path actyx-cli/Cargo.toml && \
@@ -385,7 +397,11 @@ axosandroid-x86: debug
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-w /src/jvm/os-android \
 	-it actyx/util:buildrs-x64-latest \
-	./gradlew clean ktlintCheck build assembleRelease
+	./gradlew --gradle-user-home /src/jvm/os-android/.gradle clean ktlintCheck build assembleRelease
 	echo 'APK: ./jvm/os-android/app/build/outputs/apk/release/app-release.apk'
+
+# For dev purposes only.
+axos-docker-x64: debug
+	ARCH=x64 DOCKER_TAG=actyxos-x64 make actyxos-bin-x64 docker-build-actyxos
 
 axosandroid: debug clean axosandroid-libs axosandroid-app

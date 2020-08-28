@@ -698,6 +698,7 @@ version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e5b95e89c330291768dc840238db7f9e204fd208511ab6319b56193a7f2ae25"
 dependencies = [
+ "cc",
  "pkg-config",
  "vcpkg",
 ]

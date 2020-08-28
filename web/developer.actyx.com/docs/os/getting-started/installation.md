@@ -12,7 +12,8 @@ ActyxOS can be installed on either Docker or Android.
 _ActyxOS on Android_ is [publicly available in the Google Play store](https://play.google.com/store/apps/details?id=com.actyx.os.android). Just open the Google Play store on your device, search for ActyxOS and install it.
 
 In order to run ActyxOS on your Android device, it must:
-- run Android 6.0 or above 
+
+- run Android 6.0 or above
 - have at least 2GB of RAM
 
 ## Installing on Docker
@@ -30,7 +31,7 @@ ActyxOS is published on [DockerHub](https://hub.docker.com/), so start the image
 }>
 <TabItem value="windows">
 
-```
+```bash
 docker run -it --rm -v actyxos-data:/data --privileged -p 4001:4001 -p 4457:4457 actyx/os
 ```
 
@@ -42,7 +43,7 @@ This is also true of any ports your apps may want to expose, you’d need to add
 </TabItem>
 <TabItem value="unix">
 
-```
+```bash
 docker run -it --rm -v actyxos-data:/data --privileged --network=host actyx/os
 ```
 
@@ -53,11 +54,11 @@ ActyxOS should now be running in your Docker environment.
 
 ## Communicate with the node
 
-In order to check on its status and interact with the node, you need to download the Actyx CLI (`ax` or `ax.exe`) from https://downloads.actyx.com and add it to your path.
+In order to check on its status and interact with the node, you need to download the Actyx CLI (`ax` or `ax.exe`) from <https://downloads.actyx.com> and add it to your path.
 
 You can then check on your ActyxOS node:
 
-```
+```bash
 ax nodes ls --local <DEVICE_IP>
 ```
 
@@ -74,4 +75,3 @@ Ask for help on [our GitHub repository](https://github.com/actyx/quickstart) or 
 ## Learn more
 
 Jump to the different _Guides_ to learn more about the different aspects of ActyxOS.
-

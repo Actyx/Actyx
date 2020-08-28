@@ -11,10 +11,10 @@ Want to deploy your Docker app to a device running on arm64? Check out this blog
 
 <!--truncate-->
 
-
 As part of the ActyxOS 1.0.0-rc.2 release, we included support for devices running on `arm64`. The corresponding release of the Actyx CLI also made it possible to package your Docker app for multiple architectures at the same time. In this blog post, we'll take a look at the build procedure for apps that need to be deployed to devices running on `arm64` such as the RPi 3 or 4.
 
 If you want to follow the steps in this guide, you'll need a few things:
+
 - development machine running Docker
 - a device running an arm64 operating system, and ActyxOS on Docker ([check out our installation guide](../docs/os/advanced-guides/actyxos-on-docker#install-actyxos-on-your-edge-device))
 - a Dockerfile for the image(s) you want to package as an app
@@ -34,7 +34,7 @@ If that is not the case, we recommend using our [Windows Cross Builder](https://
 
 Assuming the absolute path to the folder containing your Dockerfile is `/Users/user/sample-docker-app/`, run the following command:
 
-```
+```bash
 docker run --privileged -e IMAGE_TAG="sample-docker-app-arm64" -e PLATFORM="linux/arm64" --rm -v /Users/user/sample-docker-app/:/data actyx/windows-cross-builder
 ```
 
@@ -44,11 +44,11 @@ Although the Windows Cross Builder allows you to build images for a number of ar
 
 After the Windows Cross Builder finished, you will find a file called `sample-docker-app-arm64.tar.gz` in the same folder that also contains your Dockerfile. In order to be able to reference the image in your docker-compose.yml file, you need to load it into your local Docker instance:
 
-```
+```bash
 docker load -i sample-docker-app-arm64.tar.gz
 ```
 
-If you want to check whether the Docker image was successfully loaded, just run `docker image ls` . 
+If you want to check whether the Docker image was successfully loaded, just run `docker image ls` .
 
 ### 2. Package your ActyxOS app
 
@@ -62,7 +62,7 @@ displayName: Sample Docker App
 description: "An Sample Docker app for arm64"
 settingsSchema: ./settings-schema.json
 type: docker
-dockerCompose: 
+dockerCompose:
   aarch64: ./docker-compose-arm64.yml # this is the path to the docker-compose file for your app
 ```
 
@@ -73,5 +73,3 @@ After executing `ax apps package`, you can find the file `com.actyx.sample-docke
 :::tip Also packaging for x86_64 devices?
 The Actyx CLI allows you to package an app for multiple architectures at the same time – just specify the other docker-compose file in the same app manifest, and ax apps package will return two tarballs containing the same app for different architectures. Check out [this example](../docs/os/api/app-manifest-schema.md).
 :::
-
-

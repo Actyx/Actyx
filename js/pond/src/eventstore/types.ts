@@ -10,7 +10,7 @@ import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
 import { FishName, isString, Lamport, Psn, Semantics, SourceId, Timestamp } from '../types'
 import { OffsetMapIO } from './offsetMap'
-import { createEnumType } from './utils'
+import { createEnumType, EnumType } from './utils'
 
 export { OffsetMap, OffsetMapBuilder } from './offsetMap'
 
@@ -120,10 +120,9 @@ export enum PersistedEventsSortOrders {
   ReverseEventKey = 'reverseEventKey',
   Unsorted = 'unsorted',
 }
-export const PersistedEventsSortOrder = createEnumType<PersistedEventsSortOrders>(
-  PersistedEventsSortOrders,
-  'PersistedEventsSortOrders',
-)
+export const PersistedEventsSortOrder: EnumType<PersistedEventsSortOrders> = createEnumType<
+  PersistedEventsSortOrders
+>(PersistedEventsSortOrders, 'PersistedEventsSortOrders')
 export type PersistedEventsSortOrder = t.TypeOf<typeof PersistedEventsSortOrder>
 
 /**
@@ -133,14 +132,14 @@ export enum AllEventsSortOrders {
   EventKey = 'eventKey',
   Unsorted = 'unsorted',
 }
-export const AllEventsSortOrder = createEnumType<AllEventsSortOrders>(
-  AllEventsSortOrders,
-  'AllEventsSortOrders',
-)
+export const AllEventsSortOrder: EnumType<AllEventsSortOrders> = createEnumType<
+  AllEventsSortOrders
+>(AllEventsSortOrders, 'AllEventsSortOrders')
 export type AllEventsSortOrder = t.TypeOf<typeof AllEventsSortOrder>
 
 /**
- * Connectivity status
+ * Connectivity status type.
+ * @public
  */
 export enum ConnectivityStatusType {
   FullyConnected = 'FullyConnected',
@@ -159,7 +158,7 @@ const PartiallyConnected = t.readonly(
   t.type({
     status: t.literal(ConnectivityStatusType.PartiallyConnected),
     inCurrentStatusForMs: t.number,
-    specialsDisconnected: t.readonlyArray(SourceId.FromString),
+    specialsDisconnected: t.readonlyArray(t.string),
     swarmConnectivityLevel: t.number, // Percent*100, e.g. 50% would be 50, not 0.5
     eventsToRead: t.number,
     eventsToSend: t.number,
@@ -175,12 +174,24 @@ const NotConnected = t.readonly(
   }),
 )
 
+/**
+ * The IO-TS type parser for ConnectivityStatus.
+ * @public
+ */
 export const ConnectivityStatus = t.union([FullyConnected, PartiallyConnected, NotConnected])
+
+/**
+ * Current connectivity of the underlying ActyxOS node.
+ * @public
+ */
 export type ConnectivityStatus = t.TypeOf<typeof ConnectivityStatus>
 
 /* Other things */
+
+/** Hook to run on store connection being closed. @public */
 export type StoreConnectionClosedHook = () => void
 
+/** Configuration for the WebSocket store connection. @public */
 export type WsStoreConfig = Readonly<{
   /** url of the destination */
   url: string
@@ -190,5 +201,6 @@ export type WsStoreConfig = Readonly<{
   onStoreConnectionClosed?: StoreConnectionClosedHook
   /** retry interval to establish the connection */
   reconnectTimeout?: number
+
   // todo timeouts?, heartbeats? etc.
 }>

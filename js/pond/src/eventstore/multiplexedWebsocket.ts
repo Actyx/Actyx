@@ -106,8 +106,14 @@ export class MultiplexedWebsocket {
     )
     /**
      * If there are no subscribers, the actual WS connection will be torn down. Keep it open.
+     * MUST OVERRIDE the `error` function, because the default empty Observer will RETHROW errors,
+     * which blows up the pipeline instead of bubbling the error up into user code.
      */
-    this.keepAlive = this.wsSubject.subscribe()
+    this.keepAlive = this.wsSubject.subscribe({
+      error: err => {
+        log.ws.error('Raw websocket communication error:', err)
+      },
+    })
   }
 
   private handlers = (requestId: RequestId, serviceId: string, payload?: any) => ({
