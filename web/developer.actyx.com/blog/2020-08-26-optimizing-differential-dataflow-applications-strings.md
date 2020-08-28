@@ -63,42 +63,6 @@ When working with ActyxOS, finished goods will probably come as a `payload` in a
 
 ```rust
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Abomonation)]
-pub struct Event {
-    timestamp: TimeStamp, // place first to sort in ascending (temporal) order
-    lamport: LamportTimestamp, // place first to sort in ascending (causal) order
-    payload: FinishedGoods,
-}
-
-```
-
-You might have noticed that for `Event` struct we derive some interesting attributes: `Eq`, `PartialEq`, `Ord`, `PartialOrd` and `Abomonation`. These
-are here for a reason - `Eq`, `PartialEq`, `Ord` and `PartialOrd` are needed because differential dataflow orders (sorts) and deduplicates whatever data are flowing through
-the pipelines. This is for a reason - imagine we had the following event structure (required derive clauses omitted for brevity):
-
-```rust
-pub enum ActivityStatus {
-    Started,
-    Stopped,
-}
-
-pub struct Activity {
-    pub id: String,
-    pub status: ActivityStatus,
-
-pub struct ActivityEvent {
-    timestamp: TimeStamp,
-    payload: Activity,
-}
-```
-
-If we wanted to derive information about the duration of the activity from the `ActivityEvent` we would want to have the events sorted,
-for the `Activity::Stopped` to come always after `Activity::Started` for a given entity (we call them [fish](https://developer.actyx.com/docs/pond/programming-model)),
-even if they were generated on different devices. The differential dataflow makes the choice to sort by default using the order in which the fields are defined and their respective sorting orders.
-Hence for a decentralized system, the event ordering should be by `LamportTimestamp` first, which results in the aforementioned causal order.
-So we have the following full definition of `FinishedGoodsEvent`:
-
-```rust
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Abomonation)]
 pub struct FinishedGoodsEvent {
     lamport: LamportTimestamp, // place first to sort in ascending (causal) order
     payload: FinishedGoods,
@@ -106,9 +70,13 @@ pub struct FinishedGoodsEvent {
 }
 ```
 
-This brings us to the remaining attribute: `Abomonation`. This one is required by the internal serialization mechanism employed
-by the differential dataflow, which is not [`serde`](https://serde.rs/) as most of the Rust ecosystem uses, but `Abomonation`. This is a very efficient binary wire
-encoding, result in good performance of the resultant program.
+You might have noticed that for `FinishedGoodsEvent` struct we derive some interesting attributes: `Eq`, `PartialEq`, `Ord`, `PartialOrd` and `Abomonation`. These
+are here for a reason - `Eq`, `PartialEq`, `Ord` and `PartialOrd` are needed because differential dataflow orders (sorts) and deduplicates whatever data are flowing through
+the pipelines.
+
+Now on to the remaining attribute: `Abomonation`. This one is required by the internal serialization mechanism employed
+by the differential dataflow, which is not [Serde](https://serde.rs/) as most of the Rust ecosystem uses, but [Abomonation](https://github.com/TimelyDataflow/abomonation).
+This is a very efficient binary wire encoding, resulting in good performance of the program but a bit cumbersome to define for complex data structures.
 
 `Abomonation`, like `Serde` needs to be transitive, which means that if you want to build your struct out of parts, they also need to support
 `Abomonation`, so the full definition of `FinishedGoods` would run like this:
