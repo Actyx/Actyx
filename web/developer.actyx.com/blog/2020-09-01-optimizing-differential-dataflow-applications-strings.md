@@ -217,7 +217,7 @@ pub struct ProductionSummary {
 ```
 
 Note that the pipeline itself will not change at all! However, now all `.clone()` operations are essentially free! In our experience, string
-interning in the pipelines reduces memory usage to less than 50% of original usage (frequently less than 30%, as would probably be the case for this pipeline).
+interning in the pipelines reduces memory usage to less than 50% of original usage (frequently even better - to less than 30%, as would probably be the case for this pipeline).
 
 ## Summary
 
