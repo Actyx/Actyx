@@ -207,7 +207,7 @@ if we wrote one, the solution would not be optimal. Imagine two events for `Fini
 be deserialised into two different strings, having the same content. Only after that we would avoid the duplication in the pipeline by
 using the CoW approach.
 
-Because the strings in the analytics pipelines usually are not mutated, the ideal approach would be to use _string interning_ just like Java does.
+Because the strings in the analytics pipelines usually are not mutated, the ideal approach would be to use [string interning](https://en.wikipedia.org/wiki/String_interning).
 That would leave out only a problem of creating a suitable `Abomonation` instance. This path was selected in `ActyxOS` SDK - and is called
 [ArcVal](https://docs.rs/actyxos_sdk/0.4.0/actyxos_sdk/types/struct.ArcVal.html).
 
