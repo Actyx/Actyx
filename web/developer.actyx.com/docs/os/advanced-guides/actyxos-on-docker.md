@@ -159,7 +159,7 @@ You can start and stop apps via the [Actyx CLI](/docs/cli/getting-started)
 
 First, check that you entered the right IP in the `ax` command. If you still cannot connect, the output of `ax nodes ls` returns one of the two possible reasons (if you are using the ActyxOS Node Manager, you can see this info in the Status tab):
 
-- **ActyxOS is not reachable.** This means that ActyxOS is not running correctly on your node. Try `docker container ls` to check all your running containers. You can start ActyxOS with the `docker run` command. The command is dependent on your host operating system and described in the installation section above for Windows, Mac and Linux.
+- **ActyxOS is not reachable.** This means that ActyxOS is not running correctly on your node. Try `docker container ls` to check all your running containers. You can start ActyxOS with the `docker run` command. The command is dependent on your host operating system and described in the installation section above for Windows, Mac and Linux
 
 - **Host is not reachable.** This means that your development machine cannot connect to your node. Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port 4457
 
@@ -168,7 +168,7 @@ First, check that you entered the right IP in the `ax` command. If you still can
 Your ActyxOS nodes running on Docker are not able connect to each other if
 
 - you are running ActyxOS without `network=host`; and
-- your ActyxOS Bootstrap Node is not running in the same local network as your ActyxOS nodes.
+- your ActyxOS Bootstrap Node is not running in the same local network as your ActyxOS nodes
 
 This is inherent in Docker, as a container has no access to the IP address of its host unless it is running with `network=host`. Therefore, you have to manually configure the address that your nodes are announcing via the `announceAddress` property in the node settings:
 

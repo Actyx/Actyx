@@ -71,10 +71,10 @@ Congratulations, you have successfully installed <em>ActyxOS on Windows</em>! Pl
 
 ### Where to go next
 
-- [Quickstart](/docs/quickstart) is a tutorial about ActyxOS with ready-to-use apps and configurations.
-- [Get started](#get-started-with-actyx-on-windows) for a detailed guide on how <em>ActyxOS on Windows works</em>.
-- [Troubleshooting](#troubleshooting) describes common problems, workarounds and how to get help and submit issues.
-- [FAQs](/docs/faq/supported-programming-languages) provides answers to frequently asked questions.
+- [Quickstart](/docs/quickstart) is a tutorial about ActyxOS with ready-to-use apps and configurations
+- [Get started](#get-started-with-actyx-on-windows) for a detailed guide on how <em>ActyxOS on Windows works</em>
+- [Troubleshooting](#troubleshooting) describes common problems, workarounds and how to get help and submit issues
+- [FAQs](/docs/faq/supported-programming-languages) provides answers to frequently asked questions
 
 ## Get started with ActyxOS on Windows
 
@@ -146,5 +146,5 @@ As port 8080 is sometimes already in use by other programs, you can change it by
 First, check that you entered the right IP in the `ax` command. If you still cannot connect, the output of `ax nodes ls` and the returns one of the two possible reasons (if you are using the ActyxOS Node Manager, you can see this info in the Status tab):
 
 - **ActyxOS is not reachable.**
-This means that ActyxOS is not running on your node. Please click on the ActyxOS icon on your home screen. If ActyxOS is running, you can see it in the notifications overview of your Windows device.
-- **Host is not reachable.** This means that your development machine cannot connect to your node. Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port 4457.
+This means that ActyxOS is not running on your node. Please click on the ActyxOS icon on your home screen. If ActyxOS is running, you can see it in the notifications overview of your Windows device
+- **Host is not reachable.** This means that your development machine cannot connect to your node. Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port 4457
