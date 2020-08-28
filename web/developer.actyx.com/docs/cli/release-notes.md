@@ -15,6 +15,7 @@ This page contains information about new features, bug fixes, deprecations and r
 
 ### Bug Fixes
 - Several stability improvements
+- Fixed a bug that did not allow you to inline the settings schema in the app manifest
 
 ## Actyx CLI 1.0.0-rc.3
 
