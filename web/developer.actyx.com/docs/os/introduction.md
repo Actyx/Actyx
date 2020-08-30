@@ -42,6 +42,8 @@ Want to jump right in? Check out the [Quickstart](../quickstart.md). Alternative
 - how the [basics work](guides/swarms); or,
 - on what [theoretical foundation](theoretical-foundation/distributed-systems.md) ActyxOS is built
 
+Or start reading the [API reference](api/event-service.md).
+
 ## Staying informed
 
 - [Twitter](https://twitter.com/actyx)

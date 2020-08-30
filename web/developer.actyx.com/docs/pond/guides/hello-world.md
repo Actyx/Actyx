@@ -2,10 +2,10 @@
 title: Hello World
 ---
 
-Your first Actyx Pond program.
+_Your first Actyx Pond program._
 
-As discussed in the [programming model section](../programming-model.md), the main programming unit in Actyx Pond is a
-_Fish_.  A very simple fish we can write is one that just offers a friendly greeting to whoever observes it:
+The main programming unit in Actyx Pond is a _Fish_.
+A very simple fish we can write is one that just offers a friendly greeting to whoever observes it:
 
 ```typescript
 const helloWorldFish = {
@@ -35,6 +35,16 @@ const main = async () => {
   pond.observe(helloWorldFish, console.log)
 }
 ```
+
+:::note Try it out!
+```text
+git clone https://github.com/Actyx/quickstart.git
+cd quickstart/hello-world
+npm install
+npm start
+```
+You should see the greeting logged to the console.
+:::
 
 To bring a fish to life we need to create a pond in which it can breathe.
 Once the pond is created, we can ask the pond to observe our `helloWorldFish`; the second argument is a callback, which

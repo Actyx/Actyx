@@ -79,10 +79,10 @@ module.exports = {
        { type: 'link', href: '/docs/pond-v1/getting-started', label: 'v1' },
     ],
     'Actyx Pond': [
+      'pond/introduction',
       'pond/getting-started',
-      'pond/programming-model',
     ],
-    'Guides': [
+    'Learning the Pond in 10 steps': [
       'pond/guides/hello-world',
       'pond/guides/events',
       'pond/guides/local-state',

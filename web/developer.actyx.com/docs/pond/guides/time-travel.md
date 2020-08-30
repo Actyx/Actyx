@@ -2,11 +2,10 @@
 title: Time Travel
 ---
 
-Actyx Pond allows always available distributed apps to be written with any logic you like, and the result will be eventually consistent.
-This magic feat is attained by employing nothing less than time travel.
+_Actyx Pond allows always available distributed apps to be written with any logic you like, and the result will be eventually consistent.
+This magic feat is attained by employing nothing less than time travel._
 
-To make our distributed app experiment more interesting, we change the chat room fish to actually publish the list of messages instead of their count.
-With this change, the fish type definition looks like the following:
+Recall our chat room fish that accumulates messages in an array of strings:
 
 ```typescript
 export const mkChatRoomFish = (name: string) => ({
@@ -18,11 +17,11 @@ export const mkChatRoomFish = (name: string) => ({
 ```
 
 Now we create two small programs for interacting with the chat room.
-The first one is for sending messages into it that we assume to come from the command line:
+The first one is for sending messages into it (perhaps coming from the command line):
 
 ```typescript
 export const main3 = (pond: Pond, message: string) =>
-  pond.emit(['chatRoom:my-room'], { type: 'messageAdded', message}).toPromise()
+  pond.emit(['chatRoom:my-room'], { type: 'messageAdded', message})
 ```
 
 The second one observes the state of the chat room fish and prints the list of messages whenever it changes:

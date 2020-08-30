@@ -2,29 +2,38 @@
 title: State Effects
 ---
 
-Events can record not only facts from sensors, they can also create facts by recording decisions.
+_Events record facts, which can be a sensor reading as well as a decision that has been taken_.
 
 :::note
 If you only read one thing, read the note further down on eventual consistency!
 :::
 
-In fact, what we have done so far in the chat room example was just that: the event has recorded the decisions we made
-before sending the respective commands.  This is a common theme in that a fish’s observable state may be used to drive a
-UI from which a human operator selects possible actions.  Each action is then recorded as a fact by emitting a
-corresponding event.
+With sensor readings, like from a thermometer, it is quite obvious how they are turned into events: the app reads the sensor and emits an event with the details.
+The only freedom in this process is when to trigger this action, all other details are fixed.
 
-The UI will typically only display valid actions for the current state, so some validation is already performed within this loop.
-The Pond API allows us to add more validation by checking the incoming command against the current state before deciding whether and which events to emit.
+In our chat example, we encountered a somewhat different setting. Here it is the caller of the message emission program that determines the contents of the event, namely the message text.
+We kept things simple by using the command line approach, but usually such a program has a graphical user interface where someone can enter the message and press the send button.
+When that happens, the emission of the event can be seen as deterministic as it was in the thermometer case: all the details are fixed, the event records the fact that the end-user has sent the given message.
 
-In the chat room example we may forbid the posting of a message that has already been posted (this is a slightly contrived example, but sometimes Slack might be better with such a policy).
-We can implement this by making use of the current state that is passed into the effect function, a.k.a. `StateEffect`.
+In many cases, the end-user has less freedom than in the chat app, because certain actions may be allowed only in specific situations.
+In the chat case the administrator may suspend the ability to send messages, in which case the SEND button should be deactivated.
+This is a common pattern that holds with a human in the loop as well as for a completely automated decision making process.
+
+The purpose of Actyx Pond is to concentrate on the business rules and take away as much of the boilerplate as possible.
+One tricky problem to solve in an event-based system is “have I done this already?” in order to avoid taking the same decision twice — it may take a bit of time to see the event that recorded the decision reach all relevant places.
+In the case of a single fish, this problem is solved by using _state effects_, a mechanism that allows you to atomically check the latest state and decide upon the emission of some events.
+The Pond guarantees that the next state effect will only run once the emitted events have been applied to the state.
+
+In the chat room example we may demonstrate this by forbidding the posting of a message that has already been posted (this is a slightly contrived example, but sometimes Slack might be better with such a policy).
+We can implement this by making use of the current state that is passed into the effect function.
 
 ```typescript
-const sendChatMessage = (message: string): StateEffect<string[], ChatRoomEvent> => (state, enqueue) => {
-  if (!state.includes(message)) {
-    enqueue(Tags('chatRoom:my-room'),  { type: 'messageAdded', message })
+const sendChatMessage = (message: string): StateEffect<string[], ChatRoomEvent> =>
+  (state, enqueue) => {
+    if (!state.includes(message)) {
+      enqueue(Tags('chatRoom:my-room'),  { type: 'messageAdded', message })
+    }
   }
-}
 
 ```
 
@@ -36,7 +45,7 @@ During a network partition, or when things happen truly concurrently, the knowle
 Once an event is in the log there is no way to remove it again, so we will have to live with the mistake — **the effect function does not run again during time travel.**
 
 The good thing is that we can easily recognize the mistake in the `onEvent` handler or by inspecting the observed state.
-The second message could be displayed differently or not at all, as shown in the following snippet.
+The second message could be displayed differently or not at all, as demonstrated in the following snippet.
 
 ```typescript
 const chatRoomOnEvent: Reduce<string[], ChatRoomEvent> = (state, event) => {

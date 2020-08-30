@@ -2,15 +2,11 @@
 title: Getting Started
 ---
 
-![actyx pond logo](/images/pond/actyx-pond-logo.png)
-
-Writing distributed apps is difficult. The **Actyx Pond** framework makes it simple.
-
 The Actyx Pond is a highly opinionated framework for building always-available distributed apps on [ActyxOS](../os/introduction.md). It provides a programming model and system guarantees ideally suitable for use-cases requiring 100% availability. With this focus, the Actyx Pond can take care of concerns like eventual consistency, allowing you to concentrate on your business logic.
 
 ## Installation
 
-The Actyx Pond is available on [npm](http://npmjs.com/package/@actyx/pond). To install in your project run:
+The Actyx Pond is available on [npmjs.org](http://npmjs.com/package/@actyx/pond). To install in your project run:
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
@@ -63,9 +59,15 @@ var pond = require("@actyx/pond");
 </TabItem>
 </Tabs>
 
-## ActyxOS and Actyx Pond in 10 minutes
+## Diving into the Pond
 
-Here is a video that Alex, one of our engineers, made explaining Actyx in 10 minutes.
+The best way to get started is by following the tutorial, starting with the obligatory [Hello World](guides/hello-world.md).
+The tutorial teaches you the main concepts you will encounter when working with Actyx Pond in ten short lessons.
+Just following this material should take no more than 1–2 hours, although you may well find yourself trying out extensions to the examples.
+If you encounter questions or get stuck, don’t hesitate to ask us by [mail](mailto:developer@actyx.io) or via our [Discord channel](https://discord.gg/262yJhc).
+You may also peruse or open issues on [the GitHub repository](https://github.com/actyx/quickstart).
+
+If you prefer an overview first, you are very welcome to watch this video that Alex, one of our engineers, made to explain working with the Actyx Platform in 10 minutes.
 
 import YouTube from 'react-youtube';
 
@@ -78,11 +80,3 @@ import YouTube from 'react-youtube';
   }}
 />
 </div>
-
-## Problems?
-
-Ask for help on [our GitHub repository](https://github.com/actyx/quickstart) or [Twitter](https://twitter.com/actyx) or email developer@actyx.io.
-
-## Learn more
-
-Read up on the Actyx Pond's innovative [Programming Model](programming-model.md) or jump to the different [_Guides_](guides/hello-world.md) to learn more about the different aspects of the Actyx Pond.

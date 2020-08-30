@@ -92,10 +92,10 @@ const tags = {
   chatRoom: Tag<ChatRoomEvent>('chatRoom'),
   sender: Tag<ChatRoomEvent>('sender'),
 }
-// TagQuery.requireAll('chatRoom:my-room')
+// only 'chatRoom:my-room'
 tags.chatRoom.withId('my-room')
-// TagQuery.matchAnyOf('chatRoom:broadcast', 'chatRoom:my-room')
+// 'chatRoom:broadcast' or 'chatRoom:my-room'
 tags.chatRoom.withId('broadcast').or(tags.chatRoom.withId('my-room'))
-// TagQuery.requireAll('chatRoom:Melmac', 'sender:Alf')
+// 'chatRoom:Melmac' and 'sender:Alf'
 tags.chatRoom.withId('Melmac').and(tags.sender.withId('Alf'))
 ```
