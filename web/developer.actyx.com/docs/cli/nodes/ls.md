@@ -2,8 +2,6 @@
 title: ax nodes ls
 ---
 
-<!-- markdownlint-disable-file MD040 -->
-
 ### Show node info and status
 
 ```

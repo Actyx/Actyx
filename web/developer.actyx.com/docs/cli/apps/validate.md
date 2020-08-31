@@ -2,8 +2,6 @@
 title: ax apps validate
 ---
 
-<!-- markdownlint-disable-file MD040 -->
-
 ### Validate app manifests
 
 ```

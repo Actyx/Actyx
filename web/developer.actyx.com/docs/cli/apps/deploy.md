@@ -2,8 +2,6 @@
 title: ax apps deploy
 ---
 
-<!-- markdownlint-disable-file MD040 -->
-
 ### Deploy an app to a node
 
 ```
