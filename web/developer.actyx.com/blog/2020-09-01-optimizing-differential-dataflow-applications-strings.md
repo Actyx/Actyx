@@ -178,7 +178,7 @@ cow_string.as_ref().to_owned();
 
 With this approach, however, we encounter two important issues. First, `std::borrow::Cow` does not have an `Abomonation` instance. Second, even
 if we wrote one, the solution would not be optimal. Imagine two events for `FinishedGoods`, both having the same `article_id`. They would
-be deserialised into two different strings, having the same content. Only after that we would avoid the duplication in the pipeline by
+be deserialized into two different strings, having the same content. Only after that we would avoid the duplication in the pipeline by
 using the CoW approach.
 
 Because the strings in the analytics pipelines usually are not mutated, the ideal approach would be to use [string interning](https://en.wikipedia.org/wiki/String_interning).
