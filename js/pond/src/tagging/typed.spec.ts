@@ -116,6 +116,20 @@ describe('typed tag query system', () => {
     ])
   })
 
+  it('should OR several WHEREs', () => {
+    const w0 = tag0.or(tag1)
+    const w1 = tagA.or(tagB)
+
+    const ww: Where<T0 | T1 | A | B> = w0.or(w1)
+
+    expect(ww.toWireFormat()).toMatchObject([
+      { tags: ['B'] },
+      { tags: ['A'] },
+      { tags: ['1'] },
+      { tags: ['0'] },
+    ])
+  })
+
   describe('with Fish declarations', () => {
     const fishArgs = {
       onEvent: (state: undefined, _payload: A | B) => state,
