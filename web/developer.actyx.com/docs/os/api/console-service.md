@@ -199,7 +199,7 @@ Until the release of the Actyx Console, logs can only be accessed locally. In or
 Example:
 
 ```bash
-$ ax logs --tail --local EdgeDevice1
+ax logs --tail --local EdgeDevice1
 > MyApp-1.0.3::console | 2019-09-11T21:46:12.106Z [info] Starting app...
 > MyApp-1.0.3::console | 2019-09-11T21:46:12.113Z [debug] Setting route '/activities'
 > MyApp-1.0.3::console | 2019-09-11T21:46:12.113Z [debug] 34 activities loaded
@@ -210,7 +210,7 @@ $ ax logs --tail --local EdgeDevice1
 You can also retrieve logs in their **structured** format using the `--format=json` flag with the `ax logs` command:
 
 ```bash
-$ ax logs --tail --local --format=json EdgeDevice1 | jq
+ax logs --tail --local --format=json EdgeDevice1 | jq
 >{
     "logTimestamp": "2019-09-11T21:46:12.106Z",
     "severity": "info",

@@ -37,7 +37,7 @@ This section describes how to install the Actyx CLI. Just choose your operating 
 
 - x64 version of macOS
 
-- x64 version of Linux
+- x64, arm64, armhf or arm version of Linux
 
 </TabItem>
 </Tabs>
@@ -61,7 +61,7 @@ This section describes how to install the Actyx CLI. Just choose your operating 
 
 ```bash
 C:\> ax --version
-Actyx CLI 1.0.0-RC1
+Actyx CLI 1.0.0
 ```
 
 </TabItem>
@@ -89,8 +89,8 @@ If you use macOS, you need to additonally allow the Actyx CLI in two steps. Firs
 4. To confirm the installation, use the `ax --version` command. You should see something like this:
 
 ```bash
-$  ax --version
-Actyx CLI 1.0.0-RC1
+ ax --version
+Actyx CLI 1.0.0
 ```
 <!-- markdownlint-enable MD029 -->
 

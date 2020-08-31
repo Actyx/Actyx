@@ -30,17 +30,31 @@ If you do not have access to the Google Play store, please have a look at [our g
 
 ### Check the status of your node
 
-In order to check on its status and interact with the node, you need to download the Actyx CLI (`ax` or `ax.exe`) from <https://downloads.actyx.com> and add it to your path (for detailed insallation instructions of the Actyx CLI, go [here](/docs/cli/getting-started)).
+In order to check on its status and interact with the node, you can use the [ActyxOS Node Manager](../tools/node-manager) or, if you prefer a command line tool, use the [Actyx CLI](../../cli/getting-started.md).
 
-You can then check on your ActyxOS node:
+<Tabs
+  defaultValue="node-manager"
+  values={[
+    { label: 'ActyxOS Node Manager', value: 'node-manager', },
+    { label: 'Actyx CLI', value: 'cli', },
+  ]
+}>
+<TabItem value="node-manager">
 
-```bash
+Go to the **Status** tab. It should show that your ActyxOS node is reachable and **running**:
+
+![status](/images/os/node-manager-status-1.png)
+
+</TabItem>
+<TabItem value="cli">
+
+```text
 ax nodes ls --local <DEVICE_IP>
 ```
 
 You should see something like:
 
-```bash
+```text
 +---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
 | NODE ID       | DISPLAY NAME | STATE   | SETTINGS | LICENSE | APPS DEPLOYED | APPS RUNNING | STARTED                   | VERSION |
 +---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
@@ -48,7 +62,10 @@ You should see something like:
 +---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
 ```
 
-Congratulations, you have successfully installed *ActyxOS on Android*! Please note that ActyxOS is **not** operational, as you did not configure it yet. If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
+</TabItem>
+</Tabs>
+
+Congratulations, you have successfully installed <em>ActyxOS on Android</em>! Please note that ActyxOS is **not** operational, as you did not configure it yet. If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
 
 ### Where to go next
 
@@ -122,7 +139,7 @@ After you downloaded the APK, you can install it on your Android device via [`ad
 Before you connect your edge device to your development machine, make sure that USB debugging is enabled in the developer options. When you connect both devices for the first time, a popup will appear on your edge device and ask you allow the connection. After you established a connection, run:
 
 ```bash
-$ adb install actyxos.apk
+adb install actyxos.apk
 axosandroid.apk: 1 file pushed. 24.7 MB/s (89486267 bytes in 3.456s)
 pkg: /data/local/tmp/axosandroid.apk
 Success
@@ -132,7 +149,7 @@ You should now see *ActyxOS on Android* on the home screen of your Android devic
 
 ### ActyxOS node not responding
 
-First, check that you entered the right IP in the `ax` command. If you still cannot connect, the output of `ax nodes ls` returns one of the two possible reasons:
+First, check that you entered the right IP in the `ax` command. If you still cannot connect, the output of `ax nodes ls` returns one of the two possible reasons (if you are using the ActyxOS Node Manager, you can find this info in the Status tab):
 
 - **ActyxOS is not reachable.**
 This means that ActyxOS is not running on your node. Please click on the ActyxOS icon on your home screen. If ActyxOS is running, you can see it in the notifications overview of your Android device
