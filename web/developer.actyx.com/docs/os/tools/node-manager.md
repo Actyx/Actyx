@@ -40,7 +40,7 @@ The _Apps Tab_ gives an overview of all applications that are installed on the n
 
 - App ID: The ID you specify in the apps `manifest.yml`. This is also the settings scope of this application.
 - Version: Version number of the application
-- Enabled: Status of the application (_Disabled_ or _Enabled_). For more info please refer to the [application lifecycle](https://developer.actyx.com/docs/os/advanced-guides/node-and-app-lifecycle/).
+- Enabled: Status of the application (_Disabled_ or _Enabled_).
 - State: `Stopped` or `Running`
 - Settings: `Invalid` or `Valid`
 - License: `Invalid` or `Valid`
