@@ -33,8 +33,8 @@ Upon installing the ActyxOS Node Manager on macOS, you will need to make a chang
 1. Click _OK_ on the initial prompt after opening Node Manager for the first time.
 <img src="/images/os/installation-01.png" style={{marginBottom: "1rem" }} />
 
-2. Go to the **Security & Privacy** section in your System Preferences application and click on _Open Anyway_. 
+2. Go to the **Security & Privacy** section in your System Preferences application and click on _Open Anyway_.
 <img src="/images/os/installation-02.png" style={{marginBottom: "1rem" }} />
 
-3. Finally, open Node Manager again and click _Open_ when prompted with another dialogue. 
+3. Finally, open Node Manager again and click _Open_ when prompted with another dialogue.
 <img src="/images/os/installation-03.png" style={{marginBottom: "1rem" }} />
