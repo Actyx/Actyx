@@ -5,12 +5,16 @@ title: ActyxOS Node Manager
 <!-- Add as react component to be able to handle the width (otherwise it goes full width) -->
 <img src="/images/os/node-manager-icon.png" style={{maxWidth: "150px", marginBottom: "1rem" }} />
 
-The ActyxOS Node Manager provides an easy-to-use GUI to interact with ActyxOS nodes. It provides all functionalities you need for monitoring and configuring your nodes and packaging and deploying apps. The main elements of the applications are the status bar and 5 tabs, which will be explained in more detail in the following.
+The ActyxOS Node Manager provides an easy-to-use GUI to interact with ActyxOS nodes.
+It provides all functionalities you need for monitoring and configuring your nodes and packaging and deploying apps.
+The main elements of the applications are the status bar and 5 tabs, which will be explained in more detail in the following.
 
 <img src="/images/os/node-manager-header.png" style={{maxWidth: "550px", marginBottom: "1rem" }} />
 
 ### Status Bar
-The status bar lets you connect to your nodes by entering the IP address of the node you want to connect to into the text field and hitting the _Connect_ button. In addition, the bar displays the current connection status of your node at all times on the left.
+
+The status bar lets you connect to your nodes by entering the IP address of the node you want to connect to into the text field and hitting the _Connect_ button.
+In addition, the bar displays the current connection status of your node at all times on the left.
 
 ### Status Tab
 
@@ -41,9 +45,9 @@ The _Apps Tab_ gives an overview of all applications that are installed on the n
 
 <img src="/images/os/node-manager-apps.png" style={{maxWidth: "550px" }} />
 
-- **App ID**: The ID you specify in the apps `manifest.yml`. This is also the settings scope of this application.
+- **App ID**: The ID you specify in the apps `manifest.yml`. This is also the settings scope of this application
 - **Version**: Version number of the application
-- **Enabled**: Status of the application (_Disabled_ or _Enabled_).
+- **Enabled**: Status of the application (_Disabled_ or _Enabled_)
 - **State**: `Stopped` or `Running`
 - **Settings**: `Invalid` or `Valid`
 - **License**: `Invalid` or `Valid`
@@ -54,26 +58,37 @@ The _Apps Tab_ gives an overview of all applications that are installed on the n
 For more information on the node's general state or settings and license states, please refer to the [node and app lifecycle documentation](../advanced-guides/node-and-app-lifecycle/).
 :::
 
-Moreover, the _Apps Tab_ offers the capability to validate and package an application and deploy applications to nodes. In case you want to validate or package an application, please enter the path to the app directory into the text field. If you want to deploy an application, please enter the path to the packaged tar.gz file into the text field. 
+Moreover, the _Apps Tab_ offers the capability to validate and package an application and deploy applications to nodes.
+In case you want to validate or package an application, please enter the path to the app directory into the text field.
+If you want to deploy an application, please enter the path to the packaged tar.gz file into the text field.
 
 ### Settings Tab
 
-The _Settings Tab_ displays all [settings scopes](../advanced-guides/node-and-app-settings/#configuring-nodes) that are deployed to the node and their respective settings in an interactive code editor. The scope of the node is `com.actyx.os` and the scope of the apps are their respective app ID. 
+The _Settings Tab_ displays all [settings scopes](../advanced-guides/node-and-app-settings/#configuring-nodes) that are deployed to the node and their respective settings in an interactive code editor.
+The scope of the node is `com.actyx.os` and the scope of the apps are their respective app ID.
 
 <img src="/images/os/node-manager-settings.png" style={{maxWidth: "550px" }} />
 
-You can simply edit the JSON file in the editor to change the settings for your node or for an app. Every time you edit the settings, your changes will be validated against the JSON schema and can only be saved when settings comply with the schema. You can view the settings schema by ticking the checkbox in the bottom right corner. 
+You can simply edit the JSON file in the editor to change the settings for your node or for an app.
+Every time you edit the settings, your changes will be validated against the JSON schema and can only be saved when settings comply with the schema.
+You can view the settings schema by ticking the checkbox in the bottom right corner.
 
 ### Tools Tab
-The _Tools Tab_ lets you generate a new swarm key and lets you copy it to the clipboard. A [swarm](../guides/swarms/#whats-a-swarm) is defined by a single property, the so-called swarm key. In order to participate in a swarm, a node must have the secret swarm key. The swarm key is a setting that must be set for a node to function correctly. 
+
+The _Tools Tab_ lets you generate a new swarm key and lets you copy it to the clipboard.
+A [swarm](../guides/swarms/#whats-a-swarm) is defined by a single property, the so-called swarm key.
+In order to participate in a swarm, a node must have the secret swarm key.
+The swarm key is a setting that must be set for a node to function correctly.
 
 ### About Tab
-The _About Tab_ displays the Actyx CLI version that the node manager is based on. Additionally you can see the Software License Agreement and links to our support channels. 
 
+The _About Tab_ displays the Actyx CLI version that the node manager is based on.
+Additionally you can see the Software License Agreement and links to our support channels.
 
 ## Installation
 
-Please download the application [here](https://downloads.actyx.com/). Supported platforms are Windows, Linux and macOS.
+Please download the application [here](https://downloads.actyx.com/).
+Supported platforms are Windows, Linux and macOS.
 
 :::info Installing on macOS
 Upon installing the ActyxOS Node Manager on macOS, you will need to make a change in your security settings because Actyx is not yet listed as an Apple developer.
