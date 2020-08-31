@@ -70,6 +70,55 @@ module.exports = {
       type: 'category', label:
         'Tools', items: [
           'os/tools/node-manager',
+          {
+            type: 'category',
+            label: 'Actyx CLI',
+            items: [
+              'cli/getting-started',
+              'cli/ax',
+              {
+                type: 'category', label: 'ax nodes', items: [
+                  'cli/nodes/nodes',
+                  'cli/nodes/ls',
+                ]
+              },
+              {
+                type: 'category', label: 'ax apps', items: [
+                  'cli/apps/apps',
+                  'cli/apps/ls',
+                  'cli/apps/validate',
+                  'cli/apps/package',
+                  'cli/apps/deploy',
+                  'cli/apps/undeploy',
+                  'cli/apps/start',
+                  'cli/apps/stop',
+                ]
+              },
+              {
+                type: 'category', label: 'ax settings', items: [
+                  'cli/settings/settings',
+                  'cli/settings/scopes',
+                  'cli/settings/schema',
+                  'cli/settings/get',
+                  'cli/settings/set',
+                  'cli/settings/unset',
+                ]
+              },
+              {
+                type: 'category', label: 'ax logs', items: [
+                  'cli/logs/logs',
+                  'cli/logs/tail',
+                ]
+              },
+              {
+                type: 'category', label: 'ax swarms', items: [
+                  'cli/swarms/swarms',
+                  'cli/swarms/keygen',
+                ]
+              },
+              'cli/release-notes',
+            ]
+          }
         ]
     },
     'os/release-notes'
@@ -130,49 +179,4 @@ module.exports = {
     'faq/number-of-devices',
     'faq/running-out-of-disk-space',
   ],
-  cliSidebar: [
-    'cli/getting-started',
-    'cli/ax',
-    {
-      type: 'category', label: 'ax nodes', items: [
-        'cli/nodes/nodes',
-        'cli/nodes/ls',
-      ]
-    },
-    {
-      type: 'category', label: 'ax apps', items: [
-        'cli/apps/apps',
-        'cli/apps/ls',
-        'cli/apps/validate',
-        'cli/apps/package',
-        'cli/apps/deploy',
-        'cli/apps/undeploy',
-        'cli/apps/start',
-        'cli/apps/stop',
-      ]
-    },
-    {
-      type: 'category', label: 'ax settings', items: [
-        'cli/settings/settings',
-        'cli/settings/scopes',
-        'cli/settings/schema',
-        'cli/settings/get',
-        'cli/settings/set',
-        'cli/settings/unset',
-      ]
-    },
-    {
-      type: 'category', label: 'ax logs', items: [
-        'cli/logs/logs',
-        'cli/logs/tail',
-      ]
-    },
-    {
-      type: 'category', label: 'ax swarms', items: [
-        'cli/swarms/swarms',
-        'cli/swarms/keygen',
-      ]
-    },
-    'cli/release-notes',
-  ]
 };

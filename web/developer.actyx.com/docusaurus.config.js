@@ -34,15 +34,9 @@ module.exports = {
           position: 'left',
         },
         {
-          to: 'docs/pond/getting-started',
+          to: 'docs/pond/introduction',
           activeBasePath: 'docs/pond/',
           label: 'Actyx Pond',
-          position: 'left',
-        },
-        {
-          to: 'docs/cli/getting-started',
-          activeBasePath: 'docs/cli/',
-          label: 'Actyx CLI',
           position: 'left',
         },
         {
