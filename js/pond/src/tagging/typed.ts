@@ -136,7 +136,7 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): Tags<E> => {
 
     toWireFormat: () => [{ local: onlyLocalEvents, tags: rawTags }],
 
-    merge: <T>(moreSets: Tags<unknown>[]) => union<T>([r, ...moreSets]),
+    merge: <T>(moreSets: Tags<unknown>[]) => union<T>(moreSets.concat(r)),
   }
 
   return r
@@ -148,7 +148,7 @@ const union = <E>(sets: Tags<unknown>[]): Where<E> => {
       return other.merge<E | E1>(sets)
     },
 
-    merge: <T>(moreSets: Tags<unknown>[]) => union<T>([...sets, ...moreSets]),
+    merge: <T>(moreSets: Tags<unknown>[]) => union<T>(moreSets.concat(sets)),
 
     toWireFormat: () => sets.map(x => ({ local: x.onlyLocalEvents, tags: x.rawTags })),
   }

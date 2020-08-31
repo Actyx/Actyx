@@ -48,7 +48,7 @@ describe('typed tag query system', () => {
     // @ts-expect-error
     const q1: Where<'hello??'> = q
 
-    expect(q1.toWireFormat()).toMatchObject([{ tags: ['A'] }, { tags: ['0', '1'] }])
+    expect(q1.toWireFormat()).toMatchObject([{ tags: ['0', '1'] }, { tags: ['A'] }])
   })
 
   it('should insist on types?', () => {
@@ -90,7 +90,7 @@ describe('typed tag query system', () => {
   it('should union event types ', () => {
     const u = tagA.or(tagB)
 
-    expect(u.toWireFormat()).toMatchObject([{ tags: ['B'] }, { tags: ['A'] }])
+    expect(u.toWireFormat()).toMatchObject([{ tags: ['A'] }, { tags: ['B'] }])
   })
 
   it('should union event types (complex)', () => {
@@ -105,13 +105,13 @@ describe('typed tag query system', () => {
     const u2: Where<'A' | 'B'> = u
 
     expect(u.toWireFormat()).toMatchObject([
-      { tags: ['ABC'] },
+      { tags: ['A'] },
       {
         tags: ['B', 'B:some-id'],
         local: false,
       },
       {
-        tags: ['A'],
+        tags: ['ABC'],
       },
     ])
   })
@@ -123,10 +123,10 @@ describe('typed tag query system', () => {
     const ww: Where<T0 | T1 | A | B> = w0.or(w1)
 
     expect(ww.toWireFormat()).toMatchObject([
-      { tags: ['B'] },
-      { tags: ['A'] },
-      { tags: ['1'] },
       { tags: ['0'] },
+      { tags: ['1'] },
+      { tags: ['A'] },
+      { tags: ['B'] },
     ])
   })
 
