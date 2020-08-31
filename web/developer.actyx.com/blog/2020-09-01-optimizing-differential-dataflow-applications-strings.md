@@ -17,8 +17,8 @@ Let's take a look at how we have handled this problem in Actyx internal BI pipel
 
 ## Introduction
 
-Differential dataflow is written in [Rust](https://www.rust-lang.org/), a modern programming language that helps build reliable
-and secure software.
+Differential dataflow is written in [Rust](https://www.rust-lang.org/), a modern programming language that helps build reliable,
+safe, and secure software.
 
 :::note
 See the [introduction to differential dataflow on developer.actyx.com] to get more context.
@@ -29,7 +29,7 @@ See the [introduction to differential dataflow on developer.actyx.com] to get mo
 One of the central ideas helping Rust achieve its goals is [ownership](https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html).
 Tracing the ownership of memory and variables helps avoid a large class of bugs that have caused security issues in the past
 and continue to trouble users of other programming languages. However, when the compiler cannot make sure that the object's
-ownership is seamlessly transferred, the programmer needs to make this explicit via the `clone()` operation.
+ownership is seamlessly transferred, the programmer needs to use the `clone()` operation.
 Because of ownership structuring of differential dataflow we need to clone a lot, which for strings means copying all the bytes.
 This results often in very high memory usage, that can be a limiting factor, especially in
 memory constrained environments like the Raspberry Pi or other IoT platforms.
@@ -187,9 +187,9 @@ That would leave out only a problem of creating a suitable `Abomonation` instanc
 
 The `ArcVal` essentially is an `Abomonation`-enabled container for holding references to immutable strings, with cheap clone operation and deduplication
 of contained values (so if one creates two new `ArcVal<str>` instances with the same contents, memory will be allocated only once, unlike with `Refcell`
-where allocation will be avoided only during clone operations). Compiler enforces the immutability guarantee for us.
+where allocation will be avoided only during clone operations). The Rust compiler enforces the immutability guarantee for us.
 
-Using `ArcVal` requires importing it from `actyxos_sdk` crate:
+Using `ArcVal` requires importing it from the [`actyxos_sdk`](https://crates.io/crates/actyxos_sdk) crate:
 
 ```rust
 use actyxos_sdk::types::ArcVal;
