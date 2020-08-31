@@ -163,6 +163,9 @@ As a simple example of a web app, create a file called `index.html` and add the 
 </html>
 ```
 
+This obviously does not use any ActyxOS features, at this point we are only interested in the capability of deploying and running this app on ActyxOS.
+We will take a look at more interesting logic in the [event streams](event-streams.md) guide.
+
 :::tip App icon is optional
 If you don't have an icon for your app, just omit the `icon` property in your ax-manifest.yml file. ActyxOS will automatically add a default icon.
 :::
@@ -187,6 +190,9 @@ Create a file named `Dockerfile` in your directoy and add the following content 
 FROM alpine
 CMD while sleep 1; do date +%T; done
 ```
+
+This obviously does not use any ActyxOS features, at this point we are only interested in the capability of deploying and running this app on ActyxOS.
+We will take a look at more interesting logic in the [event streams](event-streams.md) guide.
 
 Now build the docker image, tagging it (naming it) `myapp` (make sure you are in the `my-app` directory):
 
