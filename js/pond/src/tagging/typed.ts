@@ -9,18 +9,12 @@ const namedSubSpace = (rawTag: string, sub: string): string[] => {
  * Representation of a union of tag sets. I.e. this is an event selection that combines multiple `Tags` selections.
  * @public
  */
-export interface TagsUnion<E> {
+export interface Where<E> {
   /**
    * Add an alternative set we may also match. E.g. tag0.or(tag1.and(tag2)).or(tag1.and(tag3)) will match:
    * Events with tag0; Events with both tag1 and tag2; Events with both tag1 and tag3.
    */
-  or<E1>(tag: Tags<E1>): TagsUnion<E1 | E>
-
-  /**
-   * FOR INTERNAL USE. Convert to Actyx wire format.
-   * @internal
-   */
-  toWireFormat(): ReadonlyArray<TagSubscription>
+  or<E1>(tag: Where<E1>): Where<E1 | E>
 
   /**
    * Type of the Events which may be returned by the contained tags.
@@ -30,6 +24,18 @@ export interface TagsUnion<E> {
    * backwards compatible.
    */
   readonly _dataType?: E
+
+  /**
+   * FOR INTERNAL USE. Convert to Actyx wire format.
+   * @internal
+   */
+  toWireFormat(): ReadonlyArray<TagSubscription>
+
+  /**
+   * For merging with another Where statement. (Worse API than the public one, but easier to implement.)
+   * @internal
+   */
+  merge<T>(tagsSets: Tags<unknown>[]): Where<T>
 }
 
 // Implementation note: We must use interfaces, otherwise inferred (recursive) types get very large.
@@ -38,7 +44,7 @@ export interface TagsUnion<E> {
  * Selection of events based on required tags. `Tags('a', 'b')` will select all events that have tag 'a' *as well as* tag 'b'.
  * @public
  */
-export interface Tags<E> {
+export interface Tags<E> extends Where<E> {
   /**
    * Add more tags to this requirement. E.g Tag<FooEvent>('foo').and(Tag<BarEvent>('bar')) will require both 'foo' and 'bar'.
    */
@@ -51,32 +57,22 @@ export interface Tags<E> {
   and(tag: string): Tags<E>
 
   /**
-   * Add an alternative set we may also match. E.g. `Tag<FooEvent>('foo').or(Tag<BarEvent>('bar'))` will match
-   * each Event with tag 'foo' OR tag 'bar'. Note that after the first `or` invocation you cannot `and` anymore,
-   * so you have to nest the parts yourself: `tag0.or(tag1.and(tag2)).or(tag1.and(tag3))` etc.
-   */
-  or<E1>(tag: Tags<E1>): TagsUnion<E1 | E>
-
-  /**
    * The same requirement, but matching only Events emitted by the very node the code is run on.
    * E.g. `Tags('my-tag').local()` selects all locally emitted events tagged with 'my-tag'.
    */
   local(): Tags<E>
 
   /**
-   * FOR INTERNAL USE. Convert to Actyx wire format.
+   * The actual included tags.
    * @internal
    */
-  toWireFormat(): TagSubscription
+  readonly rawTags: ReadonlyArray<string>
 
   /**
-   * Type of the Events which may be returned by the contained tags.
-   * Note that this does reflect only locally declared type knowledge;
-   * historic events delivered by the Actyx system may not match these types, and this is not automatically detected.
-   * It is therefore good practice to carefully review changes to the declared type so that they remain
-   * backwards compatible.
+   * Whether this specific set is meant to be local-only.
+   * @internal
    */
-  readonly _dataType?: E
+  readonly onlyLocalEvents: boolean
 }
 
 /**
@@ -115,50 +111,46 @@ export const Tag = <E>(rawTag: string): Tag<E> => ({
   ...req(false, [rawTag]),
 })
 
-/**
- * Typed expression for tag statements. The type `E` describes which events may be annotated with the included tags.
- * @public
- */
-export type Where<E> = TagsUnion<E> | Tags<E>
-
 const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): Tags<E> => {
   const r: Tags<E> = {
-    and: <E1>(tag: Tags<E1> | string) => {
-      if (isString(tag)) {
-        return req<E>(onlyLocalEvents, [tag, ...rawTags])
+    and: <E1>(otherTags: Tags<E1> | string) => {
+      if (isString(otherTags)) {
+        return req<E>(onlyLocalEvents, [otherTags, ...rawTags])
       }
 
-      const other = tag.toWireFormat()
-
-      const local = onlyLocalEvents || !!other.local
-      const tags = rawTags.concat(other.tags)
+      const local = onlyLocalEvents || !!otherTags.onlyLocalEvents
+      const tags = rawTags.concat(otherTags.rawTags)
 
       return req<Extract<E1, E>>(local, tags)
     },
 
-    or: <E1>(other: Tags<E1>) => {
-      return union<E1 | E>([req(onlyLocalEvents, rawTags), other])
+    or: <E1>(other: Where<E1>) => {
+      return other.merge<E | E1>([r])
     },
 
     local: () => req<E>(true, rawTags),
 
-    toWireFormat: () => ({
-      tags: [...rawTags],
+    onlyLocalEvents,
 
-      local: onlyLocalEvents,
-    }),
+    rawTags,
+
+    toWireFormat: () => [{ local: onlyLocalEvents, tags: rawTags }],
+
+    merge: <T>(moreSets: Tags<unknown>[]) => union<T>([r, ...moreSets]),
   }
 
   return r
 }
 
-const union = <E>(sets: Tags<unknown>[]): TagsUnion<E> => {
+const union = <E>(sets: Tags<unknown>[]): Where<E> => {
   return {
-    or: <E1>(other: Tags<E1>) => {
-      return union<E1 | E>([...sets, other])
+    or: <E1>(other: Where<E1>) => {
+      return other.merge<E | E1>(sets)
     },
 
-    toWireFormat: () => sets.map(x => x.toWireFormat()),
+    merge: <T>(moreSets: Tags<unknown>[]) => union<T>([...sets, ...moreSets]),
+
+    toWireFormat: () => sets.map(x => ({ local: x.onlyLocalEvents, tags: x.rawTags })),
   }
 }
 

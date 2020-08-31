@@ -188,9 +188,7 @@ export type Pond = {
     autoCancel?: (state: S) => boolean,
   ): CancelSubscription
 
-  /*
-   * HOUSE KEEPING FUNCTIONS
-   */
+  /* HOUSE KEEPING FUNCTIONS */
 
   /**
    * Dispose of this Pond, stopping all underlying async operations.
@@ -292,7 +290,7 @@ class Pond2Impl implements Pond {
       const event = {
         semantics: Semantics.none,
         name: FishName.none,
-        tags: isTyped(tags) ? tags.toWireFormat().tags : tags,
+        tags: isTyped(tags) ? tags.rawTags : tags,
         timestamp,
         payload,
       }

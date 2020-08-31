@@ -48,7 +48,7 @@ describe('typed tag query system', () => {
     // @ts-expect-error
     const q1: Where<'hello??'> = q
 
-    expect(q1.toWireFormat()).toMatchObject([{ tags: ['0', '1'] }, { tags: ['A'] }])
+    expect(q1.toWireFormat()).toMatchObject([{ tags: ['A'] }, { tags: ['0', '1'] }])
   })
 
   it('should insist on types?', () => {
@@ -67,26 +67,30 @@ describe('typed tag query system', () => {
     // @ts-expect-error
     const w2: Where<never> = w
 
-    expect(w2.toWireFormat()).toMatchObject({
-      tags: ['A', 'ABC'],
-      local: false,
-    })
+    expect(w2.toWireFormat()).toMatchObject([
+      {
+        tags: ['A', 'ABC'],
+        local: false,
+      },
+    ])
   })
 
   it('should preserve local information', () => {
     // Overlap is 'A'
     const w = tagA.local().and(abcTag)
 
-    expect(w.toWireFormat()).toMatchObject({
-      tags: ['A', 'ABC'],
-      local: true,
-    })
+    expect(w.toWireFormat()).toMatchObject([
+      {
+        tags: ['A', 'ABC'],
+        local: true,
+      },
+    ])
   })
 
   it('should union event types ', () => {
     const u = tagA.or(tagB)
 
-    expect(u.toWireFormat()).toMatchObject([{ tags: ['A'] }, { tags: ['B'] }])
+    expect(u.toWireFormat()).toMatchObject([{ tags: ['B'] }, { tags: ['A'] }])
   })
 
   it('should union event types (complex)', () => {
@@ -101,13 +105,13 @@ describe('typed tag query system', () => {
     const u2: Where<'A' | 'B'> = u
 
     expect(u.toWireFormat()).toMatchObject([
-      { tags: ['A'] },
+      { tags: ['ABC'] },
       {
         tags: ['B', 'B:some-id'],
         local: false,
       },
       {
-        tags: ['ABC'],
+        tags: ['A'],
       },
     ])
   })
