@@ -25,7 +25,7 @@ The Console Service currently only supports local access to logs, i.e. when you 
 
 Traditionally, logs were produced, persisted, and consumed as lines of text. This way of logging is referred to as _unstructured logging_. A traditional log file might look like this:
 
-```bash
+```
 # File app.log
 MyApp-1.0.3::console | 2019-09-11T21:46:12.106Z [info] Starting app...
 MyApp-1.0.3::console | 2019-09-11T21:46:12.113Z [debug] Setting route '/activities'
@@ -198,7 +198,7 @@ Until the release of the Actyx Console, logs can only be accessed locally. In or
 
 Example:
 
-```bash
+```
 ax logs --tail --local EdgeDevice1
 > MyApp-1.0.3::console | 2019-09-11T21:46:12.106Z [info] Starting app...
 > MyApp-1.0.3::console | 2019-09-11T21:46:12.113Z [debug] Setting route '/activities'

@@ -31,7 +31,7 @@ ActyxOS is published on [DockerHub](https://hub.docker.com/), so start the image
 }>
 <TabItem value="windows">
 
-```bash
+```
 docker run -it --rm -v actyxos-data:/data --privileged -p 4001:4001 -p 4457:4457 actyx/os
 ```
 
@@ -43,7 +43,7 @@ This is also true of any ports your apps may want to expose, you’d need to add
 </TabItem>
 <TabItem value="unix">
 
-```bash
+```
 docker run -it --rm -v actyxos-data:/data --privileged --network=host actyx/os
 ```
 
@@ -58,7 +58,7 @@ In order to check on its status and interact with the node, you need to download
 
 You can then check on your ActyxOS node:
 
-```bash
+```
 ax nodes ls --local <DEVICE_IP>
 ```
 

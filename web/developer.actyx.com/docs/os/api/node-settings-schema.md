@@ -36,7 +36,7 @@ services:
 
 If this were stored in a file named `settings.yml`, you could now use the [Actyx CLI](/os/docs/actyx-cli.html) to set these setting as follows:
 
-```bash
+```
 ax settings set --local com.actyx.os @settings.yml 10.2.3.23
 ```
 

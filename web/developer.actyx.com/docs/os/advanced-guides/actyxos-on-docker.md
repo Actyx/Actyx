@@ -37,7 +37,7 @@ ActyxOS is [publicly available on Docker Hub](https://hub.docker.com/r/actyx/os)
 }>
 <TabItem value="windows">
 
-```bash
+```
 docker run --name actyxos -it --rm -v actyx-data:/data --privileged -p 4001:4001 -p 4457:4457 actyx/os
 ```
 
@@ -58,7 +58,7 @@ Please refer to the [Docker Documentation](https://docs.docker.com/) for more in
 </TabItem>
 <TabItem value="unix">
 
-```bash
+```
 docker run --name actyxos -it --rm -v actyx-data:/data --privileged --network=host actyx/os
 ```
 
@@ -101,13 +101,13 @@ Go to the **Status** tab, and you should that your ActyxOS node is reachable and
 </TabItem>
 <TabItem value="cli">
 
-```text
+```
 ax nodes ls --local <DEVICE_IP>
 ```
 
 You should see something like:
 
-```text
+```
 +---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
 | NODE ID       | DISPLAY NAME | STATE   | SETTINGS | LICENSE | APPS DEPLOYED | APPS RUNNING | STARTED                   | VERSION |
 +---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+

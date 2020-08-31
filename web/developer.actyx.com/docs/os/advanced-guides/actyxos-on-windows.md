@@ -50,13 +50,13 @@ Go to the **Status** tab, and you should that your ActyxOS node is reachable and
 </TabItem>
 <TabItem value="cli">
 
-```text
+```
 ax nodes ls --local <DEVICE_IP>
 ```
 
 You should see something like:
 
-```text
+```
 +---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
 | NODE ID       | DISPLAY NAME | STATE   | SETTINGS | LICENSE | APPS DEPLOYED | APPS RUNNING | STARTED                   | VERSION |
 +---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
