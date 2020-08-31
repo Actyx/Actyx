@@ -2,28 +2,28 @@
 title: ax settings set
 ---
 
-## Set settings on one or more nodes
+<!-- markdownlint-disable-file MD040 -->
 
-```bash
-ax settings set --help
-USAGE: ax settings set [FLAGS] <SCOPE> <VALUE> <NODE>...
+## Configure settings of a node
+
+```
+USAGE:
+    ax settings set [FLAGS] <SCOPE> <VALUE> <NODE>
 
 FLAGS:
-    -v, -vv, -vvv    Increase verbosity
     -h, --help       Prints help information
-    --local          Process over local network
-    -j or --json     Format output as JSON
+    -l, --local      Process over local network
+    -V, --version    Prints version information
+    -v               Verbosity level. Add more v for higher verbosity
+                     (-v, -vv, -vvv, etc.)
 
 ARGS:
-    <SCOPE>          Scope at which you want to set the given settings.
-    <VALUE>          The value you want to set at the given scope as a YAML
-                     or JSON string. You may also pass in a file using the
-                     syntax `@file.yml` or have the command read from
-                     stdin using `@-`.
-    <NODE>           Node ID or, if using `--local`, the IP address, of the
-                     node to perform the operation on. You may also pass in a
-                     file with a value using the syntax `@file.txt` or have the
-                     command one value from stdin using `@-`.
+    <SCOPE>    Scope for which you want to set the given settings
+    <VALUE>    The value you want to set for the given scope as a YAML or JSON
+               string. You may also pass in a file using the syntax `@file.yml`
+               or have the command read from stdin using `@-`
+    <NODE>     Node ID or, if using `--local`, the IP address of the node to
+               perform the operation on
 ```
 
 :::cautionApp must be stopped in order to set settings for it
@@ -35,7 +35,7 @@ Nodes will only accept new settings for the `com.actyx.os` scope if all apps on 
 Please see the following usage examples for the `ax settings set` command:
 :::
 
-```bash
+```
 # Setting for a node from a file
 ax settings set --local com.actyx.os @Node1.settings.yml 10.2.3.23
 

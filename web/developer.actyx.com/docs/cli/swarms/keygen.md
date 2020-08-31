@@ -2,21 +2,28 @@
 title: ax swarms keygen
 ---
 
-## Create a swarm key
+<!-- markdownlint-disable-file MD040 -->
 
-```bash
-ax swarms keygen --help
-USAGE: ax swarms keygen [FLAGS]
+## Generate a new ActyxOS swarm key
+
+```
+USAGE:
+    ax swarms keygen [FLAGS] [OPTIONS]
 
 FLAGS:
-    -v, -vv, -vvv    Increase verbosity
     -h, --help       Prints help information
-    -j or --json     Format output as JSON
+    -V, --version    Prints version information
+    -v               Verbosity level. Add more v for higher verbosity
+                     (-v, -vv, -vvv, etc.)
+
+OPTIONS:
+    -o, --output <output>    Create file <output> and write the generated key
+                             to it
 ```
 
 This command is extremely simple; see for yourself:
 
-```bash
+```
 # Create a swarm key
 ax swarms keygen
 

@@ -2,23 +2,24 @@
 title: ax apps ls
 ---
 
-### Get the status of apps that are deployed to your node
+<!-- markdownlint-disable-file MD040 -->
 
-```bash
-ax apps ls --help
-USAGE: ax apps ls [FLAGS] [OPTIONS] <NODE>
+### List apps deployed on a node
+
+```
+USAGE:
+    ax apps ls [FLAGS] <NODE>
 
 FLAGS:
-    -v, -vv, -vvv        Increase verbosity
-    -h, --help           Prints help information
-    --local              Process over local network
-    -j or --json         Format output as JSON
+    -h, --help       Prints help information
+    -l, --local      Process over local network
+    -V, --version    Prints version information
+    -v               Verbosity level. Add more v for higher verbosity
+                     (-v, -vv, -vvv, etc.)
 
 ARGS:
-    <NODE>           Node ID or, if using `--local`, the IP address, of the
-                     node to perform the operation on. You may also pass in a
-                     file with a value using the syntax `@file.txt` or have the
-                     command read the value from stdin using `@-`.
+    <NODE>    Node ID or, if using `--local`, the IP address of the node to
+              perform the operation on
 ```
 
 :::tip Output
@@ -30,7 +31,7 @@ If a node is reachable, the output of `ax apps ls` will list the status of all a
 
 See the following examples of using the `ax apps ls` command:
 
-```bash
+```
 # List the apps on a node in your local network
 ax apps ls --local 10.2.3.23
 

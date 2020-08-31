@@ -2,23 +2,24 @@
 title: ax nodes ls
 ---
 
-### Get important information on your nodes
+<!-- markdownlint-disable-file MD040 -->
 
-```bash
-ax nodes ls --help
-USAGE: ax nodes ls [FLAGS] [OPTIONS] <NODE>...
+### Show node info and status
+
+```
+USAGE:
+    ax nodes ls [FLAGS] <NODE>...
 
 FLAGS:
-    -v, -vv, -vvv        Increase verbosity
-    -h, --help           Prints help information
-    --local              Process over local network
-    -j or --json         Format output as JSON
+    -h, --help       Prints help information
+    -l, --local      Process over local network
+    -V, --version    Prints version information
+    -v               Verbosity level. Add more v for higher verbosity
+                     (-v, -vv, -vvv, etc.)
 
 ARGS:
-    <NODE>               Node ID or, if using `--local`, the IP address, of the
-                         node to perform the operation on. You may also pass in a
-                         file with a value using the syntax `@file.txt` or have the
-                         command one value from stdin using `@-`.
+    <NODE>...    Node ID or, if using `--local`, the IP address of the node
+                 to perform the operation on
 ```
 
 :::tip Output of `ax nodes ls`
@@ -31,7 +32,7 @@ If the node is reachable, the output of `ax nodes ls` will show you its status. 
 
 See the following examples of using the `ax nodes ls` command:
 
-```bash
+```
 # get the status of all specified nodes in the local network
 ax nodes ls --pretty --local 10.2.3.23 10.2.3.24 10.2.3.25
 NODE ID    DISPLAY NAME  STATE   SETTINGS LICENSE  APPS DEPLOYED APPS RUNNING  STARTED                    VERSION
