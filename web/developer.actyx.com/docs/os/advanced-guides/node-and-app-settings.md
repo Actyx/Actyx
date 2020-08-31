@@ -220,14 +220,15 @@ You could do so by writing the following settings schema:
 ```
 
 :::tip
-In order to make the configuration of your app failsafe, we encourage you to always use `additionalProperties: false` . This means that you only the properties you defined can be configured, and prevents your users from accidental configuration mistakes through e.g. typos.
+In order to make the configuration of your app failsafe, we encourage you to always use `additionalProperties: false` . This means that only the properties you defined can be configured and prevents typos from going unnoticed.
 :::
 
 Following association of this schema with your app, ActyxOS will now ensure that only settings meeting this schema will ever be provided to your app.
 
 #### Deploying an app without settings
 
-If your app has no settings, you must still provide a settings schema. In this case you need to define a settings schema that does not require you to actually configure the app:
+If your app has no settings, ActyxOS still needs a settings schema.
+You may define a settings schema that does not require any settings and provides an empty object as default:
 
 ```json
 {
@@ -235,10 +236,20 @@ If your app has no settings, you must still provide a settings schema. In this c
 }
 ```
 
-The above settings schema will configure `{}` as your default settings, and ActyxOS will therefore automatically validate your app settings. After deploying your app, you will not be required to set any settings as they are already valid.
+A stricter approach is to forbid any different settings:
 
-:::warning
-As configuring apps with the ActyxOS settings management entails many advantages, we advise to only use the above settings schema if your app actually has no configuration options.
+```json
+{
+  "type": "object",
+  "additionalProperties": false,
+  "default": {}
+}
+```
+
+In either case, ActyxOS will check the default value against the rest of the schema as part of deploying the app, and since the default is already valid you won’t need to explicitly provide any settings to get the app into the configured state.
+
+:::tip
+As configuring apps with the ActyxOS settings management entails many advantages, we advise to only use the above settings schema if your app is not configurable at all.
 :::
 
 #### Associating the schema to your app

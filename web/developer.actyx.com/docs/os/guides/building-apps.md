@@ -99,10 +99,6 @@ You must provide a settings schema for your app. This will allow users who want 
 
 An example settings schema (`settings-schema.json` above), could be:
 
-:::tip
-Instead of referring to a file that contains your settings schema in the app manifest, you can also inline the schema.
-:::
-
 ```json
 {
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -131,8 +127,15 @@ my-app/
 |--- settings.schema.json
 ```
 
-:::warning You have no settings?
-You must still provide a settings schema. [This section](/docs/os/advanced-guides/node-and-app-settings#deploying-an-app-without-settings) provides you with a settings schema that does require you to configure settings after deployment.
+:::info You have no settings?
+If your app is not configurable at all, you can also tell ActyxOS that.
+The shortest form just provides an empty object as default, which can also be declared directly within the manifest:
+
+```yaml
+settingsSchema: { "default": {} }
+```
+
+More details can be found [in this section](../advanced-guides/node-and-app-settings.md#deploying-an-app-without-settings).
 :::
 
 ## App logic

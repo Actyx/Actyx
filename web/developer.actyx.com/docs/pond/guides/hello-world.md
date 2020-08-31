@@ -37,12 +37,14 @@ const main = async () => {
 ```
 
 :::note Try it out!
+
 ```text
 git clone https://github.com/Actyx/quickstart.git
 cd quickstart/hello-world
 npm install
 npm start
 ```
+
 You should see the greeting logged to the console.
 :::
 
