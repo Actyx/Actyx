@@ -25,7 +25,7 @@ In a future version ActyxOS will support the registration of event schemata for 
 Static type information also gives you some measure of control over the evolution of your event types:
 when changing the definition of the event type, you and your team will see this explicitly so that you can carefully consider whether the changes will be backwards compatible, i.e. whether the changed fish code will be able to still understand the existing old events.
 
-An event-sourced system like ActyxOS needs similar care as a widely used database when updating the data schema.
+An [event-sourced](https://martinfowler.com/eaaDev/EventSourcing.html) system like ActyxOS needs similar care as a widely used database when updating the data schema.
 In our case it is not a table structure whose columns change, it is a set of events whose properties may change, or new events may be added and old ones deprecated.
 With the current Actyx Pond infrastructure, it is necessary to retain compatibility with old events when making changes, i.e. old events will stay in the event log as they were and will still need to be understood by new app versions.
 
