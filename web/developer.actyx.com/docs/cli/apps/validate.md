@@ -22,15 +22,15 @@ ARGS:
 Check out these examples showing common usages of the `ax apps validate` command:
 
 ```
-# Validate the app in the current directory
+# Validate an app in the current directory with default manifest ax-manifest.yml
 ax apps validate
 
-# Validate an app in a specific directory
-ax apps validate myApp/
+# Validate an app in the current directory with manifest another-manifest.yml
+ax apps validate another-manifest.yml
 
-# Validate multiple apps in parallel
+# Validate an app in the specified directory myApp with manifest myApp/another-manifest.yml
+ax apps validate myApp/another-manifest.yml
+
+# Validate multiple apps in the specified directories with default manifest ax-manifest.yml
 ax apps validate myApp1/ myApp2/ ../specialApp
-
-# Validate a list of apps whose directories are in a file
-ax apps validate @paths.txt
 ```
