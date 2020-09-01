@@ -66,17 +66,3 @@ The tutorial teaches you the main concepts you will encounter when working with 
 Just following this material should take no more than 1–2 hours, although you may well find yourself trying out extensions to the examples.
 If you encounter questions or get stuck, don’t hesitate to ask us by [mail](mailto:developer@actyx.io) or via our [Discord channel](https://discord.gg/262yJhc).
 You may also peruse or open issues on [the GitHub repository](https://github.com/actyx/quickstart).
-
-If you prefer an overview first, you are very welcome to watch this video that Alex, one of our engineers, made to explain working with the Actyx Platform in 10 minutes.
-
-import YouTube from 'react-youtube';
-
-<div className="embedded-yt-wrapper">
-<YouTube
-  videoId="T36Gsae9woo"
-  className="embedded-yt-iframe"
-  opts={{
-    playerVars: { autoplay: 0 },
-  }}
-/>
-</div>
