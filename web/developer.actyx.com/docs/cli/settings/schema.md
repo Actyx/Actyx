@@ -2,8 +2,6 @@
 title: ax settings schema
 ---
 
-<!-- markdownlint-disable-file MD040 -->
-
 ## Get setting schemas from a node
 
 ```

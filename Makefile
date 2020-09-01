@@ -11,8 +11,8 @@ endif
 ifeq ($(GIT_BRANCH),master)
 	git_hash=$(shell git log -1 --pretty=%H)
 else
-    # Ditto if GIT_BRANCH is unset (e.g. when running locally)
-    ifeq ($(GIT_BRANCH),)
+    # Ditto if running locally, AGENT_BUILDDIRECTORY is used to find out whether we're running on azure pipelines
+    ifeq ($(AGENT_BUILDDIRECTORY),)
 		git_hash=$(shell git log -1 --pretty=%H)
     else
     	# For PR commits, this turns `refs/pull/5432/merge` into `pr5432`

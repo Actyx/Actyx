@@ -99,10 +99,6 @@ You must provide a settings schema for your app. This will allow users who want 
 
 An example settings schema (`settings-schema.json` above), could be:
 
-:::tip
-Instead of referring to a file that contains your settings schema in the app manifest, you can also inline the schema.
-:::
-
 ```json
 {
   "$schema": "http://json-schema.org/draft-06/schema#",
@@ -131,8 +127,15 @@ my-app/
 |--- settings.schema.json
 ```
 
-:::warning You have no settings?
-You must still provide a settings schema. [This section](/docs/os/advanced-guides/node-and-app-settings#deploying-an-app-without-settings) provides you with a settings schema that does require you to configure settings after deployment.
+:::info You have no settings?
+If your app is not configurable at all, you can also tell ActyxOS that.
+The shortest form just provides an empty object as default, which can also be declared directly within the manifest:
+
+```yaml
+settingsSchema: { "default": {} }
+```
+
+More details can be found [in this section](../advanced-guides/node-and-app-settings.md#deploying-an-app-without-settings).
 :::
 
 ## App logic
@@ -160,6 +163,9 @@ As a simple example of a web app, create a file called `index.html` and add the 
 </html>
 ```
 
+This obviously does not use any ActyxOS features, at this point we are only interested in the capability of deploying and running this app on ActyxOS.
+We will take a look at more interesting logic in the [event streams](event-streams.md) guide.
+
 :::tip App icon is optional
 If you don't have an icon for your app, just omit the `icon` property in your ax-manifest.yml file. ActyxOS will automatically add a default icon.
 :::
@@ -184,6 +190,9 @@ Create a file named `Dockerfile` in your directoy and add the following content 
 FROM alpine
 CMD while sleep 1; do date +%T; done
 ```
+
+This obviously does not use any ActyxOS features, at this point we are only interested in the capability of deploying and running this app on ActyxOS.
+We will take a look at more interesting logic in the [event streams](event-streams.md) guide.
 
 Now build the docker image, tagging it (naming it) `myapp` (make sure you are in the `my-app` directory):
 

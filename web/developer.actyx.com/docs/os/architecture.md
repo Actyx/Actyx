@@ -2,6 +2,13 @@
 title: Architecture
 ---
 
+On a technical level, ActyxOS combines two things:
+
+- a novel database dealing in flexible event streams, fully decentralised and thus available locally on each edge device — you could imagine this part as a message broker where the readers create the topics by their event stream queries, but without any central infrastructure
+- the ability to host apps and manage their settings and lifecycle
+
+Your apps thus interact with both a runtime environment and event stream services, both offered by ActyxOS:
+
 ![ActyxOS Architecture](/images/os/architecture.png)
 
 ActyxOS provides five core services and, where applicable, associated APIs or deployment tools. These services either provide stand-alone functionality or allow you to build your own apps.
