@@ -24,6 +24,6 @@ ARGS:
 Here are a couple of example of using the `ax apps stop` command:
 
 ```
-# Start app with App ID com.example.app on node at 10.2.3.23
+# Stop app with App ID com.example.app on node at 10.2.3.23
 ax apps stop --local com.example.app 10.2.3.23
 ```
