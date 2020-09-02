@@ -24,7 +24,7 @@ export {
 } from './splashState'
 export { Config as StoreConfig } from './store/config'
 export { Counters, CountersMut, NodeInfoEntry, SwarmInfo, SwarmSummary } from './store/swarmState'
-export { allEvents, noEvents, Tag, Tags, TagsUnion, Where } from './tagging'
+export { allEvents, noEvents, Tag, Tags, Where } from './tagging'
 export {
   AddEmission,
   CancelSubscription,
