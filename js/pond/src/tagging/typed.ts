@@ -26,6 +26,12 @@ export interface Where<E> {
   readonly _dataType?: E
 
   /**
+   * Convert to an Actyx Event Service query string.
+   * Can be used to uniquely identify a set of events.
+   */
+  toString(): string
+
+  /**
    * FOR INTERNAL USE. Convert to Actyx wire format.
    * @internal
    */
@@ -137,6 +143,19 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): Tags<E> => {
     toWireFormat: () => [{ local: onlyLocalEvents, tags: rawTags }],
 
     merge: <T>(moreSets: Tags<unknown>[]) => union<T>(moreSets.concat(r)),
+
+    toString: () => {
+      if (rawTags.length === 0) {
+        return 'allEvents'
+      }
+
+      return (
+        rawTags
+          .sort()
+          .map(escapeTag)
+          .join(' & ') + (onlyLocalEvents ? ' & isLocal' : '')
+      )
+    },
   }
 
   return r
@@ -151,6 +170,12 @@ const union = <E>(sets: Tags<unknown>[]): Where<E> => {
     merge: <T>(moreSets: Tags<unknown>[]) => union<T>(moreSets.concat(sets)),
 
     toWireFormat: () => sets.map(x => ({ local: x.onlyLocalEvents, tags: x.rawTags })),
+
+    toString: () =>
+      sets
+        .map(s => s.toString())
+        .sort()
+        .join(' | '),
   }
 }
 
@@ -165,3 +190,6 @@ export const allEvents: Tags<unknown> = req(false, [])
  * @public
  */
 export const noEvents: Where<never> = union([])
+
+/** @internal */
+export const escapeTag = (rawTag: string) => "'" + rawTag.replace(/'/g, "''") + "'"
