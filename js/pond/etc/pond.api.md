@@ -442,6 +442,7 @@ export type WaitForSwarmSyncParams = WaitForSwarmConfig & Readonly<{
 export interface Where<E> {
     readonly _dataType?: E;
     or<E1>(tag: Where<E1>): Where<E1 | E>;
+    toString(): string;
 }
 
 // @public
