@@ -30,8 +30,9 @@ Nodes will only accept new settings if the relevant app is not running. For exam
 
 :::cautionAll app must be stopped in order to set node settings
 Nodes will only accept new settings for the `com.actyx.os` scope if all apps on the node(s) are not running.
-Please see the following usage examples for the `ax settings set` command:
 :::
+
+Please see the following usage examples for the `ax settings set` command:
 
 ```
 # Set settings for settings scope com.actyx.os at node 10.2.3.23 from file
