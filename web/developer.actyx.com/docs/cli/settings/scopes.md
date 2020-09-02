@@ -20,7 +20,7 @@ ARGS:
               perform the operation on
 ```
 
-Here is a simple example of using the `ax settings scopes` command:
+Here is an example of using the `ax settings scopes` command:
 
 ```
 # Get all the settings scopes from node at 10.2.3.23
