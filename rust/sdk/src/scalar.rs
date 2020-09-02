@@ -73,5 +73,11 @@ macro_rules! mk_scalar {
                 self.0.as_ref()
             }
         }
+
+        impl ::std::fmt::Display for $id {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                write!(f, "{}", self.0)
+            }
+        }
     };
 }
