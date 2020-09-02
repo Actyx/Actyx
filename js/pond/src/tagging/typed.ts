@@ -27,7 +27,6 @@ export interface Where<E> {
 
   /**
    * Convert to an Actyx Event Service query string.
-   * Can be used to uniquely identify a set of events.
    */
   toString(): string
 
@@ -149,12 +148,7 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): Tags<E> => {
         return 'allEvents'
       }
 
-      return (
-        rawTags
-          .sort()
-          .map(escapeTag)
-          .join(' & ') + (onlyLocalEvents ? ' & isLocal' : '')
-      )
+      return rawTags.map(escapeTag).join(' & ') + (onlyLocalEvents ? ' & isLocal' : '')
     },
   }
 
@@ -171,11 +165,7 @@ const union = <E>(sets: Tags<unknown>[]): Where<E> => {
 
     toWireFormat: () => sets.map(x => ({ local: x.onlyLocalEvents, tags: x.rawTags })),
 
-    toString: () =>
-      sets
-        .map(s => s.toString())
-        .sort()
-        .join(' | '),
+    toString: () => sets.map(s => s.toString()).join(' | '),
   }
 }
 

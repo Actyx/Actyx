@@ -120,8 +120,7 @@ describe('typed tag query system', () => {
         tags: ['ABC'],
       },
     ])
-    // Note that subqueries are re-ordered to reach one canonical form
-    expect(u.toString()).toEqual("'A' & isLocal | 'ABC' | 'B' & 'B:some-id'")
+    expect(u.toString()).toEqual("'A' & isLocal | 'B' & 'B:some-id' | 'ABC'")
   })
 
   it('should OR several WHEREs', () => {
