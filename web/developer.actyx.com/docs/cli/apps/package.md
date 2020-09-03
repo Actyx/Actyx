@@ -19,7 +19,7 @@ ARGS:
               that contains it [default: ax-manifest.yml]
 ```
 
-The `ax apps package` command will spit out the packaged app as a tarball which can then be deployed.
+The `ax apps package` command will write the packaged app as a tarball to disk, which can then be deployed.
 
 Here are a couple of example uses of the `ax apps package` command:
 

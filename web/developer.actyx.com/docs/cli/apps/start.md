@@ -21,7 +21,7 @@ ARGS:
               perform the operation on
 ```
 
-Here are a couple of example of using the `ax apps start` command:
+Here is an example of using the `ax apps start` command:
 
 ```
 # Start app with ID com.example.app on node at 10.2.3.23
