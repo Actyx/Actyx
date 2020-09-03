@@ -2,12 +2,24 @@
 
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <ReleaseVersion>0.1.0</ReleaseVersion>
+    <PackOnBuild>true</PackOnBuild>
+    <PackageId>ActyxOS.Sdk</PackageId>
+    <PackageVersion>0.1.0</PackageVersion>
+    <Authors>Actyx AG</Authors>
+    <Copyright>© Actyx AG. All rights reserved.</Copyright>
+    <PackageIconUrl>https://developer.actyx.com/img/logo.svg</PackageIconUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <Owners>Actyx</Owners>
+    <PackageTags>distributed event-sourcing decentralized</PackageTags>
+    <Description>Data types needed for communicating with ActyxOS and C# bindings for the ActyxOS APIs.</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="JsonSubTypes" Version="1.7.0" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="System.Interactive.Async" Version="4.1.1" />
+    <None Include="..\..\..\web\developer.actyx.com\static\images\csharp-sdk.png" Pack="true" PackagePath="\icon.png"/>
   </ItemGroup>
 
 </Project>
