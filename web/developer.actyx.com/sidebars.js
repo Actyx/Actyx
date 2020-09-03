@@ -42,6 +42,7 @@ module.exports = {
           'os/advanced-guides/using-workspace-one',
           'os/advanced-guides/using-balena',
           'os/advanced-guides/using-vscode-for-schema-validation',
+          'os/advanced-guides/provided-security',
         ]
     }, {
       type: 'category', label:
