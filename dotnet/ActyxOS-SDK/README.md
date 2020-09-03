@@ -1,4 +1,6 @@
-TODO: Badges for nuget and docs
+TODO: link to docs
+
+[![NuGet](https://buildstats.info/nuget/ActyxOS.Sdk)](https://www.nuget.org/packages/ActyxOS.Sdk/)
 
 # <img src="https://developer.actyx.com/img/logo.svg" height="32px"> ActyxOS SDK
 
@@ -14,9 +16,13 @@ bindings for the ActyxOS APIs.
 
 TODO
 
-## Publishing to NuGet
+## Building
 
-run
+```bash
+dotnet pack --configuration Release # default config is Debug
+```
+
+## Publishing to NuGet
 
 ```
 dotnet nuget push \

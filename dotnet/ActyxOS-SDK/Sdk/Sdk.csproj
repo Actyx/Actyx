@@ -8,7 +8,6 @@
     <PackageVersion>0.1.0</PackageVersion>
     <Authors>Actyx AG</Authors>
     <Copyright>© Actyx AG. All rights reserved.</Copyright>
-    <PackageIconUrl>https://developer.actyx.com/img/logo.svg</PackageIconUrl>
     <PackageIcon>icon.png</PackageIcon>
     <Owners>Actyx</Owners>
     <PackageTags>distributed event-sourcing decentralized</PackageTags>
