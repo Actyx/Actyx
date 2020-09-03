@@ -28,12 +28,12 @@ ARGS:
 Please see the following usage examples for the `ax logs tail` command:
 
 ```
-# Access the last 40 loggest entries from a node
+# Get the last 40 log entries from node at 10.2.3.23
 ax logs tail --local -n 40 10.2.3.23
 
-# Access logs in structured (json) format
-ax logs tail --local --format json 10.2.3.23
+# Get the logs in structured JSON format
+ax --json logs tail --local 10.2.3.23
 
-# Follow logs as they are created
+# Keep running and output log entries as they are created
 ax logs tail --local --follow 10.2.3.23
 ```

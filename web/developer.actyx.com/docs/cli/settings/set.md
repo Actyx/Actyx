@@ -30,20 +30,19 @@ Nodes will only accept new settings if the relevant app is not running. For exam
 
 :::cautionAll app must be stopped in order to set node settings
 Nodes will only accept new settings for the `com.actyx.os` scope if all apps on the node(s) are not running.
-Please see the following usage examples for the `ax settings set` command:
 :::
 
-```
-# Setting for a node from a file
-ax settings set --local com.actyx.os @Node1.settings.yml 10.2.3.23
+Please see the following usage examples for the `ax settings set` command:
 
-# Setting a single specific ActyxOS node setting
+```
+# Set settings for settings scope com.actyx.os at node 10.2.3.23 from file
+# node1.settings.yml
+ax settings set --local com.actyx.os @node1.settings.yml 10.2.3.23
+
+# Just set the specific setting displayName
 ax settings set --local com.actyx.os/general/displayName "Node 1" 10.2.3.23
 
-# Setting settings for multiple nodes at the same time
-ax settings set --local com.actyx.os/general/swarmKey @swarm.key 10.2.3.23 10.2.3.24
-
-# Setting ActyxOS settings for a node using stdin
+# Read in settings from stdin
 echo "
 general:
   swarmKey: 4245c0e542a4f89985a92de178d2169dc7f3596a382828aa8381bc13370e9880
