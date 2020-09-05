@@ -2,7 +2,7 @@
 title: Integrating a UI
 ---
 
-Wrapping it up with a UI.
+_Wrapping it up with a UI._
 
 So far we have concentrated on the internals of a fish, on writing the business logic.
 An important aspect of many apps is the involvement of human operators, which requires the presentation of a UI that they can see and interact with.
@@ -73,6 +73,8 @@ main().catch(x => console.log(x))
 ```
 
 ## And that’s it!
+
+<!-- TODO: link to @actyx-contrib/react-pond -->
 
 With this you have seen all important aspects of Actyx Pond in play.
 You are welcome to modify the examples and experiment to your liking, and don’t hesitate to drop us a line if you have any question!

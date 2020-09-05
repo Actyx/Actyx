@@ -2,43 +2,44 @@
 title: ax apps ls
 ---
 
-### Get the status of apps that are deployed to your node
+### List apps deployed on a node
 
 ```
-$ ax apps ls --help
-USAGE: ax apps ls [FLAGS] [OPTIONS] <NODE>
+USAGE:
+    ax apps ls [FLAGS] <NODE>
 
 FLAGS:
-    -v, -vv, -vvv        Increase verbosity
-    -h, --help           Prints help information
-    --local              Process over local network
-    -j or --json         Format output as JSON
+    -h, --help       Prints help information
+    -l, --local      Process over local network
+    -V, --version    Prints version information
+    -v               Verbosity level. Add more v for higher verbosity
+                     (-v, -vv, -vvv, etc.)
 
 ARGS:
-    <NODE>           Node ID or, if using `--local`, the IP address, of the
-                     node to perform the operation on. You may also pass in a
-                     file with a value using the syntax `@file.txt` or have the
-                     command read the value from stdin using `@-`.
+    <NODE>    Node ID or, if using `--local`, the IP address of the node to
+              perform the operation on
 ```
 
 :::tip Output
 If a node is reachable, the output of `ax apps ls` will list the status of all apps deployed on that node. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
+
 - Host unreachable
 - ActyxOS unreachable (this means the host was reachable but the TCP connection reset)
 :::
 
-
 See the following examples of using the `ax apps ls` command:
 
-```bash
+```
 # List the apps on a node in your local network
-$ ax apps ls --local 10.2.3.23
-
-NODE ID    APP ID         STATE    SETTINGS LICENSE  MODE      STARTED                    VERSION
-10.2.3.23  com.actyx.mwl  running     valid   valid  enabled   2020-03-18T06:17:00+01:00  1.0.0
+ax apps ls --local 10.2.3.23
++---------------+------------------------+---------+---------+---------+----------+---------+-------------------------------------+
+| NODE ID       | APP ID                 | VERSION | ENABLED | STATE   | SETTINGS | LICENSE | STARTED                             |
++---------------+------------------------+---------+---------+---------+----------+---------+-------------------------------------+
+| 10.2.3.23     | com.actyx.mwl          | 1.0.0   | ENABLED | RUNNING | VALID    | VALID   | 2020-09-01T15:24:03.816870152+00:00 |
++---------------+------------------------+---------+---------+---------+----------+---------+-------------------------------------+
 
 # Get the status of apps on a node in the local network as a JSON object
-$ ax --json apps ls --local 10.2.3.23
+ax --json apps ls --local 10.2.3.23
 {
     "code":"OK",
     "result": [
@@ -55,13 +56,6 @@ $ ax --json apps ls --local 10.2.3.23
         }
     ]
 }
-
-# Use an address in a file
-$ ax apps ls --local @address.txt
-
-# Pass the address from stdin
-$ echo "10.2.3.23" | ax apps ls --local @-
-
 ````
 
 :::info`ax apps ls` only returns the state of the apps

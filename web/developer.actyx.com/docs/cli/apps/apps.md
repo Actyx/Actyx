@@ -2,15 +2,16 @@
 title: ax apps
 ---
 
-## Build and manage your ActyxOS apps 
+## Manage ActyxOS apps
 
-### Child commands
+### Subcommands
+
 Command                      | description|
 -----------------------------|------------|
-[ax apps ls](ls.md)             | Get the states of the apps deployed to your nodes |
-[ax apps validate](validate.md) | Validate aps and app manifests |
-[ax apps package](package.md)   | Package apps for deployment |
-[ax apps deploy](deploy.md)     | Undeploy apps from nodes |
-[ax apps undeploy](undeploy.md) | Undeploy apps from nodes |
-[ax apps start](start.md)       | Start apps on nodes |
-[ax apps stop](stop.md)         | Stop apps on nodes |
+[ax apps ls](ls.md)             | List apps deployed on a node |
+[ax apps validate](validate.md) | Validate app manifests |
+[ax apps package](package.md)   | Package an app |
+[ax apps deploy](deploy.md)     | Deploy an app to a node |
+[ax apps undeploy](undeploy.md) | Undeploy an app from a node |
+[ax apps start](start.md)       | Start an app on a node |
+[ax apps stop](stop.md)         | Stop an app on a node |

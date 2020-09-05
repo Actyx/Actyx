@@ -17,4 +17,3 @@ ActyxOS is known to work on the following edge devices (production-level maturit
 - [Microsoft Hyper-V VMs](https://docs.microsoft.com/en-us/virtualization/hyper-v-on-windows/about/)
 
 Please also refer to the [Which operating systems does ActyxOS support?](./supported-device-operating-systems.md) FAQ.
-

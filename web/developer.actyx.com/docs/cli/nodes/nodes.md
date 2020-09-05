@@ -2,9 +2,10 @@
 title: ax nodes
 ---
 
-## Manage your ActyxOS nodes 
+## Manage ActyxOS nodes
 
-### Child commands
+### Subcommands
+
 Command                      | description|
 -----------------------------|------------|
-[ax nodes ls](ls)            | Get important information on your nodes |
+[ax nodes ls](ls)            | Show node info and status |

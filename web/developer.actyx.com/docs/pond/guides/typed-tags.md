@@ -6,6 +6,7 @@ In the examples so far, we have not paid much attention to the type parameter `E
 tag queries inline into the fish's definition, we can omit the explicit type parameter, as it's inferred for us by the
 compiler to be the same as the events the fish is able to consume in `onEvent`. If more elaborate queries are needed, we
 can add an explicit type cast:
+
 ```typescript
 // Only events for `my-room`
 where: Tag('chatRoom').withId('my-room') // equivalent to `Tag('chatRoom:my-room')`
@@ -21,6 +22,7 @@ both `a` and `b` to be present on the events.
 :::
 
 These events could be emitted as follows:
+
 ```typescript
 pond.emit(
   ['chatRoom:Melmac', 'sender:Alf'],
@@ -29,6 +31,7 @@ pond.emit(
 ```
 
 And our `chatRoomFish` which subscribes to those events:
+
 ```typescript
 export const mkChatRoomFish: (name: string): Fish<string[], ChatRoomEvent> => ({
   // ...
@@ -43,6 +46,7 @@ expected shape. In order to be able to link tags and event types at compile time
 It's a fluent API to both tag events and describe event subscriptions.
 
 Let's see how we can rewrite our example above:
+
 ```typescript
 const tags = {
   chatRoom: Tag<ChatRoomEvent>('chatRoom'),
@@ -70,25 +74,28 @@ subscription, as every event we're interested should at least have the `chatRoom
 the chat room tag with the type `ChatRoomEvent`.
 
 Now, how will this help us?
+
 ```typescript
 pond.emit(
   ChatRoom.tags.chatRoom.withId('Melmac').and(ChatRoom.tags.sender.withId('Alf')),
   { type: 'this type does not exist' }
 ).toPromise()
 ```
+
 This will now actually fail to compile, because only a `ChatRoomEvent` is allowed to be passed to the `emit` function. The
 same mechanism can be used as well for state effects.
 
 Finally, let's go back to our initial queries and rewrite them using the fluent API:
+
 ```typescript
 const tags = {
   chatRoom: Tag<ChatRoomEvent>('chatRoom'),
   sender: Tag<ChatRoomEvent>('sender'),
 }
-// TagQuery.requireAll('chatRoom:my-room')
+// only 'chatRoom:my-room'
 tags.chatRoom.withId('my-room')
-// TagQuery.matchAnyOf('chatRoom:broadcast', 'chatRoom:my-room')
+// 'chatRoom:broadcast' or 'chatRoom:my-room'
 tags.chatRoom.withId('broadcast').or(tags.chatRoom.withId('my-room'))
-// TagQuery.requireAll('chatRoom:Melmac', 'sender:Alf')
+// 'chatRoom:Melmac' and 'sender:Alf'
 tags.chatRoom.withId('Melmac').and(tags.sender.withId('Alf'))
 ```

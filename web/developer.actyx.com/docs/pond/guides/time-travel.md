@@ -2,11 +2,10 @@
 title: Time Travel
 ---
 
-Actyx Pond allows always available distributed apps to be written with any logic you like, and the result will be eventually consistent.
-This magic feat is attained by employing nothing less than time travel.
+_Actyx Pond allows always available distributed apps to be written with any logic you like, and the result will be eventually consistent.
+This magic feat is attained by employing nothing less than time travel._
 
-To make our distributed app experiment more interesting, we change the chat room fish to actually publish the list of messages instead of their count.
-With this change, the fish type definition looks like the following:
+Recall our chat room fish that accumulates messages in an array of strings:
 
 ```typescript
 export const mkChatRoomFish = (name: string) => ({
@@ -18,11 +17,11 @@ export const mkChatRoomFish = (name: string) => ({
 ```
 
 Now we create two small programs for interacting with the chat room.
-The first one is for sending messages into it that we assume to come from the command line:
+The first one is for sending messages into it (perhaps coming from the command line):
 
 ```typescript
 export const main3 = (pond: Pond, message: string) =>
-  pond.emit(['chatRoom:my-room'], { type: 'messageAdded', message}).toPromise()
+  pond.emit(['chatRoom:my-room'], { type: 'messageAdded', message})
 ```
 
 The second one observes the state of the chat room fish and prints the list of messages whenever it changes:
@@ -43,6 +42,7 @@ This is because the other messages cannot be transferred right now.
 When reconnecting the previously disconnected sending node, its messages `msgA1` to `msgA3` will show up at the observer after a short while.
 But we notice that the messages show up not at the end of the log but interleaved with the others, for example like
 
+```bash
     msgB1
     msgB2
     msgB3
@@ -54,6 +54,7 @@ But we notice that the messages show up not at the end of the log but interleave
     msgA3
     msgB3
     ---
+```
 
 How can this be?
 The `onEvent` handler only ever appends messages to the array, it never inserts them in the middle, yet we see that the state was changed “in the middle”.
@@ -62,7 +63,7 @@ The answer is that the `onEvent` handler may be invoked multiple times for the s
 We recall that the current state of the fish is computed by applying one event after the other, through the `onEvent` handler.
 This can be visualized like the grey zigzag line zipping together the events and their resulting states on the left-hand side of the following diagram.
 
-![](/images/pond/time-travel.png)
+![Time Travel](/images/pond/time-travel.png)
 
 When a new event arrives that belongs somewhere in the middle of the previously known log of events, it is inserted in its rightful spot and the current state is recomputed by applying all events again, now including the inserted event.
 This is shown on the right-hand side of the diagram above; in practice the state computation starts from the state right before the inserted event in most cases, as a cache of states is kept in memory.

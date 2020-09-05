@@ -70,5 +70,3 @@ Whether an event constitutes a semantic snapshot lies in the eye of the beholder
 :::
 
 Both kinds of snapshots can be combined within the same fish as well.
-
-

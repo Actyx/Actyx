@@ -2,39 +2,38 @@
 title: ax logs tail
 ---
 
-## Access logs generated on a node
+## Get logs from a node
 
-```bash
-$ ax logs tail --help
-USAGE: ax logs tail [FLAGS] [OPTIONS] <NODE>...
+```
+USAGE:
+    ax logs tail [FLAGS] [OPTIONS] <NODE>
 
 FLAGS:
-    -v, -vv, -vvv      Increase verbosity
-    -h, --help         Prints help information
-    --local            Process over local network
-    --all-entries      Get all entries, overrides `--entries`
-    -f, --follow       Keep running and output entries as they are created
-    -j or --json       Format output as JSON
+        --all-entries    Get all log entries (overrides --entries)
+    -f, --follow         Keep running and output entries as they are created
+    -h, --help           Prints help information
+    -l, --local          Process over local network
+    -V, --version        Prints version information
+    -v                   Verbosity level. Add more v for higher verbosity
+                         (-v, -vv, -vvv, etc.)
 
 OPTIONS:
-    -n, --entries <num> Output NUM last entries [default: 20]
+    -n, --entries <entries>    Output the last <entries> entries [default: 20]
 
 ARGS:
-    <NODE>           Node ID or, if using `--local`, the IP address, of the
-                     node to perform the operation on. You may also pass in a
-                     file with a value using the syntax `@file.txt` or have the 
-                     command one value from stdin using `@-`.
+    <NODE>    Node ID or, if using `--local`, the IP address of the node to
+              perform the operation on
 ```
 
 Please see the following usage examples for the `ax logs tail` command:
 
-```bash
-# Access the last 40 loggest entries from a node
-$ ax logs tail --local -n 40 10.2.3.23
+```
+# Get the last 40 log entries from node at 10.2.3.23
+ax logs tail --local -n 40 10.2.3.23
 
-# Access logs in structured (json) format
-$ ax logs tail --local --format json 10.2.3.23
+# Get the logs in structured JSON format
+ax --json logs tail --local 10.2.3.23
 
-# Follow logs as they are created
-$ ax logs tail --local --follow 10.2.3.23
+# Keep running and output log entries as they are created
+ax logs tail --local --follow 10.2.3.23
 ```

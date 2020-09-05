@@ -2,9 +2,10 @@
 title: ax logs
 ---
 
-## Mange your ActyxOS node and app logs
+## Manage ActyxOS node and app logs
 
-### Child commands
+### Subcommands
+
 Command                      | description|
 -----------------------------|------------|
-[ax logs tail](tail.md)             | Access logs generated on a node |
+[ax logs tail](tail.md) | Get logs from a node |

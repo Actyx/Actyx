@@ -168,5 +168,6 @@ In reality, you would not implement your system this way. You would, rather, def
 :::
 
 ## Learn more
+
 - Martin Flowler's [introducton to event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html)
 - [Event Sourcing Pattern (Microsoft)](https://docs.microsoft.com/en-us/azure/architecture/patterns/event-sourcing)

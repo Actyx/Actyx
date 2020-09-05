@@ -8,8 +8,8 @@
 // #region impl
 
 import * as debug from 'debug'
-import { format } from 'util'
 import { Observable } from 'rxjs'
+import { format } from 'util'
 import { Timestamp } from '..'
 import {
   CommandInterface,
@@ -18,7 +18,7 @@ import {
   LogLevel,
   RunStatsRequest,
 } from '../commandInterface'
-import { getMemoryUsage, isNode, Loggers, noop } from '../util'
+import { getMemoryUsage, isNode, Loggers, LoggersInternal, noop } from '../util'
 import { runStats } from '../util/runStats'
 import { log } from './loggers'
 
@@ -67,7 +67,7 @@ const sendDistressCall = (commandInterface: CommandInterface) => (msg?: any, ...
 export const enableLogging = (commandInterface: CommandInterface, namespaces?: string) => {
   // TODO: set localStorage.debug to persist it?
   namespaces && debug.enable(namespaces)
-  Loggers.globalLogLeech = dissectAndSend(commandInterface)
+  LoggersInternal.globalLogLeech = dissectAndSend(commandInterface)
 }
 const disableLogging = () => (debug as any).disable()
 

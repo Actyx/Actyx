@@ -4,42 +4,27 @@ title: Programming Model
 
 The **Actyx Pond** is an opinionated TypeScript framework for writing distributed apps preferring availability over consistency.
 
-At the core of the Actyx Pond lies an innovative programming model: business logic is
-written such that it reacts to the reception of new facts—called events—without needing to care where these facts are generated or how they are transported to the piece of logic that needs them. The logic entities swim in the datalake and breathe events according to their needs.  Hence, we call
-them _fishes_.
-
+At the core of the Actyx Pond lies an innovative programming model: business logic is written such that it reacts to the reception of new facts—called events—without needing to care where these facts are generated or how they are transported to the piece of logic that needs them. The logic entities swim in the datalake and breathe events according to their needs.  Hence, we call them _fishes_.
 
 ## Fish Identities
 
-Each fish has a unique identity in the whole swarm (linguistic note: fish form schools, not swarms; the
-use of the term “swarm” stems from peer-to-peer systems like the underlying IPFS technology that
-apparently views individual devices like flying insects). The full identifier of a fish has three parts:
+Each fish has a unique identity in the whole swarm (linguistic note: fish form schools, not swarms; the use of the term “swarm” stems from peer-to-peer systems like the underlying IPFS technology that apparently views individual devices like flying insects). The full identifier of a fish has three parts:
 
 1. the _fish type_ specifies the purpose of the fish, e.g. thermometer readings
-
-2. the _name_ distinguishes this fish from other fish of the same semantics, e.g. the location of
-   the physical thermometer
-
+2. the _name_ distinguishes this fish from other fish of the same semantics, e.g. the location of the physical thermometer
 3. the _version_ of the fish (this needs to be incremented whenever the fish's business logic changes)
 
 ![devices](/images/pond/fishes-on-devices.png)
 
-Each event a fish emits, can be provided with an arbitrary amount of tags, e.g. with a semantic identification of the
-event (`temperatureReading`) and a description about its origin (`thermometerLocation:hotEnd`). Note that event emission
-does not require a fish, but can also be done without one.
+Each event a fish emits, can be provided with an arbitrary amount of tags, e.g. with a semantic identification of the event (`temperatureReading`) and a description about its origin (`thermometerLocation:hotEnd`). Note that event emission does not require a fish, but can also be done without one.
 
-It is important to note that the “same” fish—identified by fish type & name—can run on different devices, each having
-its own identity and producing its own distinct emitted events.
+It is important to note that the “same” fish—identified by fish type & name—can run on different devices, each having its own identity and producing its own distinct emitted events.
 
 ## How fishes communicate
 
-Fishes communicate with other fishes by way of event subscriptions, i.e. a fish can declare interest
-in the events emitted by another fish.
+Fishes communicate with other fishes by way of event subscriptions, i.e. a fish can declare interest in the events emitted by another fish.
 
-This is done by supplying a query describing the tags the desired events should have and forming a _subscription_ from
-that, it's also possible to only subscribe to local events ignoring events originating from other nodes; the usage of
-this concept will be discussed in the next section.
-
+This is done by supplying a query describing the tags the desired events should have and forming a _subscription_ from that, it's also possible to only subscribe to local events ignoring events originating from other nodes; the usage of this concept will be discussed in the next section.
 
 ## Fishes reading events
 
@@ -65,22 +50,15 @@ Fishes compute their current state by deterministically applying the subscribed 
 
 ## Writing events
 
-Events emission is not coupled to the usage of fishes, but is conceptually treated together. Event creation can be
-triggered from anywhere in the application, from an external system (e.g. via an HTTP call), or from a human operator of
-the app.
+Events emission is not coupled to the usage of fishes, but is conceptually treated together. Event creation can be triggered from anywhere in the application, from an external system (e.g. via an HTTP call), or from a human operator of the app.
 
 ![emitting](/images/pond/fish-emitting-events.png)
 
 Usually, the current state as derived from all locally known events of a fish is interpreted in order to emit an event.
-This is called a state effect. A `StateEffect` is a function, accepting the derived state of a fish, and returning a
-list of events (consisting of tags and a payload) to be emitted.  The list of events may be empty, or it may record the
-fact that an invalid condition was encountered, whichever is required by the business requirements.
+This is called a state effect. A `StateEffect` is a function, accepting the derived state of a fish, and returning a list of events (consisting of tags and a payload) to be emitted.  The list of events may be empty, or it may record the fact that an invalid condition was encountered, whichever is required by the business requirements.
 
-It is important to note that the fish will not change its state alone by emitting a state effect; it needs to emit an
-event, which is written to the event stream and then passed into the `onEvent` handler as usual (if the emitted tags
-match the fish's subscription), where the state can be changed.  This is done in order to make all state changes
-reliably repeatable after a crash or restart of the app — only events are persistent, state effects are not recorded and
-thus also not replayed.
+It is important to note that the fish will not change its state alone by emitting a state effect; it needs to emit an event, which is written to the event stream and then passed into the `onEvent` handler as usual (if the emitted tags match the fish's subscription), where the state can be changed.  This is done in order to make all state changes
+reliably repeatable after a crash or restart of the app — only events are persistent, state effects are not recorded and thus also not replayed.
 
 :::info Remember
 Fishes record facts (including environmental observation as well as decisions) by emitting events; fact generation is not deterministic and depends on the currently known and possibly incomplete state.

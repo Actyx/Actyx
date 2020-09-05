@@ -40,7 +40,7 @@ The sidebar (left on the page) is defined in the `faqSidebar` property in `/side
 
 Docusaurus uses standard Markdown syntax extended with MDX. Any page should have the following structure
 
-```
+```bash
 ---
 property1: value
 property2: value
@@ -57,7 +57,7 @@ More content
 Even more content
 ```
 
-As you can see, a page is composed of so-called _header fields_ (enclosed by `---` above and below), followed by the actual content. The content can be any valid Markdown. Indeed, you can even use MDX. Please refer to [this page](https://v2.docusaurus.io/docs/markdown-features/) for more information. 
+As you can see, a page is composed of so-called _header fields_ (enclosed by `---` above and below), followed by the actual content. The content can be any valid Markdown. Indeed, you can even use MDX. Please refer to [this page](https://v2.docusaurus.io/docs/markdown-features/) for more information.
 
 **Important**: do not use h1 headers (i.e. `#`). The highest-level header on the page should be a second-level header (`##`).
 
@@ -77,17 +77,16 @@ Check out [this page](../pond/design-principles.md).
 
 Images and other static files must be places in the `/static` directory. If you place a file called `my-img.png` in `/static/images`, you can link to it within the markdown pages as follows:
 
-
 ```md
 Here comes an image:
 
-![](/images/my-img.png)
+![My image](/images/my-img.png)
 ```
 
 Note that the path does not include `static`. The fact that there is a difference between the path in the source and in the build, unfortunately means that preview doesn't show the images. You can solve this by creating a symlink in the root directory of the site as follows:
 
-```
-$ ln -s /static/images /images
+```bash
+ln -s /static/images /images
 ```
 
 #### Callouts
@@ -124,7 +123,7 @@ Create a new Markdown file in the correct directory, e.g. `/docs/os/further-info
 
 At the top of the file add, at least, the following:
 
-```
+```md
 ---
 title: Great question.
 ---
@@ -142,12 +141,11 @@ Here are the other header fields you can use (copy pasted from [the Docusaurus d
 - `description`: The description of your document, which will become the <meta name="description" content="..."/> and <meta property="og:description" content="..."/> in <head>, used by search engines. If this field is not present, it will default to the first line of the contents.
 - `image`: Cover or thumbnail image that will be used when displaying the link to your post.
 
-
 #### Add the page to a corresponding sidebar
 
 In the `/sidebars.js` file, add the corresponding path to the correct sidebar. E.g. if you wanted to add a new section and link to the Actyx Pond docs, you would do so as follows:
 
-```
+```json
   pondSidebar: {
     'Actyx Pond': [
       'pond/introduction',
@@ -187,19 +185,52 @@ This website is built using [Docusaurus 2](https://v2.docusaurus.io/) with the `
 
 Set the correct npm version and install dependencies:
 
-```
-$ nvm use
-$ npm install
+```bash
+nvm use
+npm install
 ```
 
 Start the local development server (with hot reload):
 
-```
-$ npm run start
+```bash
+npm run start
 ```
 
 Build the site (output in `build/`):
 
+```bash
+npm run build
 ```
-$ npm run build
+
+#### Linting
+
+Automatically detect common mistakes in markdown files, like syntax and grammar issues:
+
+```bash
+npm run lint
+```
+
+Automatically fix markdown issues found where possible:
+
+```bash
+npm run lint:md:fix
+```
+
+Automatically fix text issues found where possible:
+
+```bash
+npm run lint:txt:fix
+```
+
+Fix with dry-run (preview):
+
+```bash
+npm run lint:txt:dry
+```
+
+For a better linter experience when typing, please use this vscode extension
+<https://marketplace.visualstudio.com/items?itemName=DavidAnson.vscode-markdownlint>
+
+```bash
+code --install-extension DavidAnson.vscode-markdownlint
 ```

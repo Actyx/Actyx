@@ -15,9 +15,9 @@ id: com.example.app1
 version: 1.0.3
 displayName: App 1
 description: "A great first app"
-dockerCompose: 
-    x86_64: ./docker-compose-amd64.yml
-    aarch64: ./docker-compose-arm64v8.yml
+dockerCompose:
+  x86_64: ./docker-compose-amd64.yml
+  aarch64: ./docker-compose-arm64v8.yml
 settingsSchema: ./settings-schema.json # <---- you could also inline the settings schema
 ```
 
@@ -36,11 +36,10 @@ main: ./index.html
 settingsSchema: ./settings-schema.json # <---- you could also inline the settings schema
 ```
 
-
 In order to allow you to validate your manifest files and setup auto-complete in your IDE or text editor, we have defined the schema as a [JSON Schema](https://json-schema.org/). You can download the current schema at:
 
 [https://developer.actyx.com/schemas/os/app-manifest.schema.json](/schemas/os/app-manifest.schema.json).
 
 :::tip Use Auto-validation of ActyxOS app manifests in VS Code?
-Check out our [guide](/docs/os/advanced-guides/using-vscode-for-schema-validation.md) on how to setup VS Code for automatic JSON schema validation.
+Check out our [guide](/docs/os/advanced-guides/using-vscode-for-schema-validation) on how to setup VS Code for automatic JSON schema validation.
 :::

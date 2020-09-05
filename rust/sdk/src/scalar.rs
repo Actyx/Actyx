@@ -59,10 +59,24 @@ macro_rules! mk_scalar {
             }
         }
 
+        impl ::std::str::FromStr for $id {
+            type Err = $crate::event::ParseError;
+            fn from_str(s: &str) -> Result<Self, $crate::event::ParseError> {
+                use std::convert::TryFrom;
+                Self::try_from(s)
+            }
+        }
+
         impl ::std::ops::Deref for $id {
             type Target = str;
             fn deref(&self) -> &Self::Target {
                 self.0.as_ref()
+            }
+        }
+
+        impl ::std::fmt::Display for $id {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                write!(f, "{}", self.0)
             }
         }
     };

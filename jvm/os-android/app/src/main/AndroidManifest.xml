@@ -23,7 +23,7 @@
     <!--  LEGACY NFC-->
     <uses-feature
         android:name="android.hardware.nfc"
-        android:required="true" />
+        android:required="false" />
 
     <application
         android:name=".Application"

@@ -2,24 +2,23 @@
 title: ax settings unset
 ---
 
-## Unset settings on one or more nodes
+## Remove settings from a node
 
-```bash
-$ ax settings unset --help
-USAGE: ax settings unset [FLAGS] <SCOPE> <NODE>...
+```
+USAGE:
+    ax settings unset [FLAGS] <SCOPE> <NODE>
 
 FLAGS:
-    -v, -vv, -vvv    Increase verbosity
     -h, --help       Prints help information
-    --local          Process over local network
-    -j or --json     Format output as JSON
+    -l, --local      Process over local network
+    -V, --version    Prints version information
+    -v               Verbosity level. Add more v for higher verbosity
+                     (-v, -vv, -vvv, etc.)
 
 ARGS:
-    <SCOPE>          Scope at which you want to set the given settings.
-    <NODE>           Node ID or, if using `--local`, the IP address, of the
-                     node to perform the operation on. You may also pass in a
-                     file with a value using the syntax `@file.txt` or have the 
-                     command one value from stdin using `@-`.
+    <SCOPE>    Scope for which you want to unset the settings
+    <NODE>     Node ID or, if using `--local`, the IP address of the node to
+               perform the operation on
 ```
 
 :::cautionApp must be stopped in order to unset settings for it
@@ -32,17 +31,11 @@ Nodes will only unset settings for the `com.actyx.os` scope if all apps on the n
 
 Please see the following usage examples for the `ax settings unset` command:
 
-```bash
-# Unset ActyxOS settings from a node
-$ ax settings unset --local com.actyx.os 10.2.3.23
-
-# Unset a specific app's settings from a node
-$ ax settings unset --local com.example.app 10.2.3.23
-
-# Unset settings from multiple nodes
-$ ax settings unset --local com.example.app 10.2.3.23 10.2.3.24
-
-# Unset settings from multiple nodes defined in a file
-$ ax settings unset --local com.example.app @nodes.txt
 ```
+# Unset the settings for the node with settings scope com.actyx.os at 10.2.3.23
+ax settings unset --local com.actyx.os 10.2.3.23
 
+# Unset the settings for the app with settings scope com.example.app from node
+# at 10.2.3.23
+ax settings unset --local com.example.app 10.2.3.23
+```

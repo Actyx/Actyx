@@ -72,9 +72,8 @@ impl EventService {
         })?)
     }
 
-    /// Obtain the local ActyxOS node ID to use it as a source ID in
-    /// [`Subscription::local`](struct.Subscription.html#method.local).
-    pub async fn node_id(&self) -> Result<SourceId, EventServiceError> {
+    /// Obtain the local ActyxOS node ID
+    pub async fn node_id(&self) -> Result<NodeId, EventServiceError> {
         let response = self.do_request(|c| c.get(self.url("node_id"))).await?;
         let bytes = response
             .bytes()

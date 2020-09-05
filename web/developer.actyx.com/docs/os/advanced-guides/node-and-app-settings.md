@@ -85,7 +85,7 @@ To check out the complete set of settings, go to the API reference for the the [
 As an app developer it is completely up to you what you want users of your app to be able to configure. As you will see below, you will do so by defining your own _App Settings Schema_ using [JSON Schema](https://json-schema.org/).
 
 :::tip Setup Visual Studio Code for automatic schema validation
-You can automatically validate your settings in Visual Studio Code while you write them. Check out our guide to [using ActyxOS setting schemas in Visual Studio Code](/docs/faq/vscode-setup-schema).
+You can automatically validate your settings in Visual Studio Code while you write them. Check out our guide to [using ActyxOS setting schemas in Visual Studio Code](using-vscode-for-schema-validation.md).
 :::
 
 This was just a short introduction and touched only the basics of setting and schemas in ActyxOS. We will dive into more depth in the concrete usage cases in the next section.
@@ -103,7 +103,7 @@ In this section we will take a look at how an ActyxOS node actually stores its s
 
 Every node has its own _settings object_ that combines its node settings, as well as app settings for all apps that are deployed on this node. It has the following structure:
 
-```
+```bash
 com.actyx.os:
   # ActyxOS node settings
   # ...
@@ -127,7 +127,7 @@ The primary tool for setting settings, both at the node and the app level, is th
 
 - `ax settings scopes` for figuring out what the top-level _scopes_ of the _settings object_ on the node are,
 - `ax settings get` to get settings from a node; and,
-- `ax settings set` to set settings on a node.
+- `ax settings set` to set settings on a node
 - `ax settings schema` to get the settings schema for a particular scope
 :::
 
@@ -155,8 +155,8 @@ Now we need to set these settings on the node (which, in this example, is reacha
 
 ```bash
 # Set the settings defined in `node-settings.yml` on the node
-$ ax settings set --local com.actyx.os @node-settings.yml 10.2.3.23
-#             ^           ^      ^                 
+ax settings set --local com.actyx.os @node-settings.yml 10.2.3.23
+#             ^           ^      ^
 #             | set       |      | read from the given file
 #                         |
 #                         | set the settings at the `com.actyx.os` scope
@@ -166,7 +166,7 @@ If we wanted to find out if there are any top-level settings scopes other than `
 
 ```bash
 # Get top-level scopes on the node
-$ ax settings scopes --local 10.2.3.23
+ax settings scopes --local 10.2.3.23
 com.actyx.os
 ```
 
@@ -174,7 +174,7 @@ What if you want to change a single one of the settings? You could, of course, e
 
 ```bash
 # Change a setting in the tree
-$ ax settings set --local com.actyx.os/services/eventService/topic "New Topic" 10.2.3.23
+ax settings set --local com.actyx.os/services/eventService/topic "New Topic" 10.2.3.23
 #                         ^           ^                            ^
 #                         |           |                            | value to set the setting to
 #                         |           |
@@ -220,15 +220,15 @@ You could do so by writing the following settings schema:
 ```
 
 :::tip
-In order to make the configuration of your app failsafe, we encourage you to always use `additionalProperties: false` . This means that you only the properties you defined can be configured, and prevents your users from accidental configuration mistakes through e.g. typos.
+In order to make the configuration of your app failsafe, we encourage you to always use `additionalProperties: false` . This means that only the properties you defined can be configured and prevents typos from going unnoticed.
 :::
 
 Following association of this schema with your app, ActyxOS will now ensure that only settings meeting this schema will ever be provided to your app.
 
-
 #### Deploying an app without settings
 
-If your app has no settings, you must still provide a settings schema. In this case you need to define a settings schema that does not require you to actually configure the app:
+If your app has no settings, ActyxOS still needs a settings schema.
+You may define a settings schema that does not require any settings and provides an empty object as default:
 
 ```json
 {
@@ -236,10 +236,20 @@ If your app has no settings, you must still provide a settings schema. In this c
 }
 ```
 
-The above settings schema will configure `{}` as your default settings, and ActyxOS will therefore automatically validate your app settings. After deploying your app, you will not be required to set any settings as they are already valid.
+A stricter approach is to forbid any different settings:
 
-:::warning
-As configuring apps with the ActyxOS settings management entails many advantages, we advise to only use the above settings schema if your app actually has no configuration options.
+```json
+{
+  "type": "object",
+  "additionalProperties": false,
+  "default": {}
+}
+```
+
+In either case, ActyxOS will check the default value against the rest of the schema as part of deploying the app, and since the default is already valid you won’t need to explicitly provide any settings to get the app into the configured state.
+
+:::tip
+As configuring apps with the ActyxOS settings management entails many advantages, we advise to only use the above settings schema if your app is not configurable at all.
 :::
 
 #### Associating the schema to your app
@@ -271,7 +281,7 @@ When you package your app, the Actyx CLI will automatically include the settings
 
 The last important part is accessing settings from within your app&mdash;happily knowing that they have been validated against your settings schema. The way this works depends on type of app you have built, or, more precisely, which ActyxOS runtime you are running it in.
 
-**Accessing settings in web apps (WebView Runtime)**
+##### Accessing settings in web apps (WebView Runtime)
 
 Your app's settings are available in the runtime using an injected global function named `ax.appSettings`. To continue with our example, you could access them as follows:
 
@@ -283,7 +293,7 @@ function onStartApp() {
 }
 ```
 
-**Accessing settings in docker apps (Docker Runtime)**
+###### Accessing settings in docker apps (Docker Runtime)
 
 With docker apps, the method is slightly different. In that case, we make your app's settings available as a JSON string in an environment variable called `AX_APP_SETTINGS`. Using the same example but with a docker app written in Python we would access this as follows:
 
@@ -305,22 +315,20 @@ Now that we have gone through how you, as an app developer, can define what peop
 ActyxOS validates any settings before applying them. It does so by using the node settings schema as well as the settings schema defined by each app's developer. This ensures only valid settings are ever set.
 :::
 
-
 ```bash
 # Create a yml (or JSON) file containing the settings
-$ echo "
+echo "
 timeUnit: seconds
 backgroundColor: red" >> app-settings.yml
 
 # Use the Actyx CLI to set the setting on the node at the correct scope
-$ ax settings set --local com.example.app1 @app-settings.yml 10.2.3.23
-#                         ^                
+ax settings set --local com.example.app1 @app-settings.yml 10.2.3.23
+#                         ^
 #                         | Use the app's id as the top-level scope
 ```
 
 And similarily you can also use mode advanced scopes to selectively set settings within the app's settings tree. Consider for example wanting to change only the background color. You could do so using the following command
 
 ```bash
-$ ax settings set --local com.example.app1/backgroundColor blue 10.2.3.23
+ax settings set --local com.example.app1/backgroundColor blue 10.2.3.23
 ```
-

@@ -6,10 +6,11 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
 You encapsulate your business logic on ActyxOS as apps. An app is composed of, at least,
+
 - a unique id (e.g. `com.example.app`),
 - a display name (e.g. _Example App_),
 - a settings schema (which can also be empty); and,
-- the logic itself (e.g. a docker image or a web app).
+- the logic itself (e.g. a docker image or a web app)
 
 Currently you can build two types of apps for ActyxOS: _web apps_ and _docker apps_. Let's run through an example.
 
@@ -28,7 +29,7 @@ settingsSchema: ./settings-schema.json # You can also inline the JSON object tha
 
 This content of the manifest file is what you will need irrespective of what kind of app you are building. The directory should now look as follows:
 
-```
+```bash
 my-app/
 |--- ax-manifest.yml
 ```
@@ -80,7 +81,7 @@ settingsSchema: ./settings-schema.json # You can also inline the JSON object tha
 type: docker
 
 # This one property is specific to apps of type `docker`
-dockerCompose: 
+dockerCompose:
   x86_64: ./docker-compose-amd64.yml
   aarch64: ./docker-compose-arm64v8.yml
 ```
@@ -97,10 +98,6 @@ For more information and a JSON schema of the app manifest file, check out the [
 You must provide a settings schema for your app. This will allow users who want to run your app to safely provide it with settings.
 
 An example settings schema (`settings-schema.json` above), could be:
-
-:::tip
-Instead of referring to a file that contains your settings schema in the app manifest, you can also inline the schema.
-:::
 
 ```json
 {
@@ -124,14 +121,21 @@ For more information about app settings please the advanced guide about [Node an
 
 Your directory structure should now look as follows:
 
-```
+```bash
 my-app/
 |--- ax-manifest.yml
 |--- settings.schema.json
 ```
 
-:::warning You have no settings?
-You must still provide a settings schema. [This section](/docs/os/advanced-guides/node-and-app-settings#deploying-an-app-without-settings) provides you with a settings schema that does require you to configure settings after deployment.
+:::info You have no settings?
+If your app is not configurable at all, you can also tell ActyxOS that.
+The shortest form just provides an empty object as default, which can also be declared directly within the manifest:
+
+```yaml
+settingsSchema: { "default": {} }
+```
+
+More details can be found [in this section](../advanced-guides/node-and-app-settings.md#deploying-an-app-without-settings).
 :::
 
 ## App logic
@@ -159,13 +163,16 @@ As a simple example of a web app, create a file called `index.html` and add the 
 </html>
 ```
 
+This obviously does not use any ActyxOS features, at this point we are only interested in the capability of deploying and running this app on ActyxOS.
+We will take a look at more interesting logic in the [event streams](event-streams.md) guide.
+
 :::tip App icon is optional
 If you don't have an icon for your app, just omit the `icon` property in your ax-manifest.yml file. ActyxOS will automatically add a default icon.
 :::
 
 Your directory should now look as follows:
 
-```
+```bash
 my-app/
 |--- ax-manifest.yml
 |--- settings.schema.json
@@ -184,15 +191,18 @@ FROM alpine
 CMD while sleep 1; do date +%T; done
 ```
 
+This obviously does not use any ActyxOS features, at this point we are only interested in the capability of deploying and running this app on ActyxOS.
+We will take a look at more interesting logic in the [event streams](event-streams.md) guide.
+
 Now build the docker image, tagging it (naming it) `myapp` (make sure you are in the `my-app` directory):
 
-```
+```bash
 docker build --tag myapp .
 ```
 
 Now create a file called `docker-compose.yml` and add the following content:
 
-```
+```yaml
 version: '2.0'
 services:
   myapp:
@@ -201,7 +211,7 @@ services:
 
 You have now created a docker image on your machine and a docker compose file explaining how to run your app. Your directory should now look as follows:
 
-```
+```bash
 my-app/
 |--- ax-manifest.yml
 |--- settings.schema.json
@@ -213,7 +223,7 @@ my-app/
 
 In order to run your web or docker app on ActyxOS, you need to package it using the [Actyx CLI](../../cli/getting-started). Run the following command from within the `my-app` directory:
 
-```
+```bash
 ax apps package .
 ```
 

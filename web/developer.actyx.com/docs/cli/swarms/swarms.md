@@ -2,9 +2,10 @@
 title: ax swarms
 ---
 
-## Build and manage your ActyxOS apps 
+## Manage ActyxOS swarms
 
-### Child commands
+### Subcommands
+
 Command                      | description|
 -----------------------------|------------|
-[ax swarms keygen](keygen.md)     | Create a swarm key |
+[ax swarms keygen](keygen.md) | Generate a new ActyxOS swarm key |
