@@ -353,7 +353,7 @@ Pond.default().then(pond => {
 }).catch(console.log)
 ```
 
-To test that everything works navigate to the `chat` directory, run `npm run start` and open (http://localhost:1234). You should now see the chat app. If you started ActyxOS on Docker on your local machine, you should now also be able to send messages. However, right now you still don't have anyone to chat with.
+To test that everything works navigate to the `chat` directory, run `npm run start` and open (http://localhost:1234). You should now see the chat app. If you started ActyxOS on Docker on your local machine, you should now also be able to send messages. However, you still don't have anyone to chat with.
 
 ### Package and run the app
 
