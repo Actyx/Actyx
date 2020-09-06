@@ -104,11 +104,11 @@ On your local machine now install the ActyxOS Node Manager, which you can downlo
 
 This is what it should look like approximately:
 
-![Set node settings using the ActyxOS Node Manager](/images/home/set-settings-using-node-manager.png)
+![Set node settings using the ActyxOS Node Manager](/images/tutorials/chat-tutorial/set-settings-using-node-manager.png)
 
 If everything has worked, you should see the ActyxOS node running on both devices as shown below:
 
-![Correctly running ActyxOS node in Node Manager](/images/home/working-actyxos-node-in-node-manager.png)
+![Correctly running ActyxOS node in Node Manager](/images/tutorials/chat-tutorial/working-actyxos-node-in-node-manager.png)
 
 ### Setup a web app project
 
@@ -172,11 +172,11 @@ console.log('Hello, world!')
 
 To test that everything works, open a terminal, navigate to the `chat` directory and run `npm install` and then `npm run start`. This is what you should see in your terminal.
 
-![npm run start](/images/home/chat-npm-run-start-post-setup.png)
+![npm run start](/images/tutorials/chat-tutorial/chat-npm-run-start-post-setup.png)
 
 If you now navigate to [http://localhost:1234](http://localhost:1234) in your browser and open the Developer Tools you should see this:
 
-![Chat in browser](/images/home/chat-setup-in-browser.png)
+![Chat in browser](/images/tutorials/chat-tutorial/chat-setup-in-browser.png)
 
 ### Help, I’m stuck!
 
@@ -194,7 +194,7 @@ ActyxOS is a multi-node operating system that allows you to build edge native ap
 1. Access _always-available_ `localhost` APIs such as the Event Service
 1. Count on automatic dissemination and persistence of data in the swarm
 
-![ActyxOS schematic](/images/tutorial/actyxos-app-and-communication.png)
+![ActyxOS schematic](/images/tutorials/chat-tutorial/actyxos-app-and-communication.png)
 
 ActyxOS enables a completely decentral architecture that allows you to **build apps that always run**. Your apps always run because they run locally (on the edge) and only interact with `localhost` APIs. Currently ActyxOS offers two APIs:
 
@@ -208,7 +208,7 @@ Actyx Pond is an application framework for building apps that run on ActyxOS. It
 1. You implement the business logic of your application by writing so-called _fishes_ and run those in ActyxOS apps
 1. Actyx Pond then automatically synchronizes the state of all fishes throughout the swarm of nodes
 
-![Actyx Pond schematic](/images/tutorial/actyx-pond-how-it-works.png)
+![Actyx Pond schematic](/images/tutorials/chat-tutorial/actyx-pond-how-it-works.png)
 
 What is interesting about the Actyx Pond is that it **allows you to forget completely about how to synchronize state between nodes** in the swarm. This happens, for example, when one of the nodes goes offline for a while. As soon as it comes back up, the Actyx Pond automatically reconciles what happened between all the nodes while they were disconnected from each other.
 
@@ -226,7 +226,7 @@ To implement and run our chat app we need to do three things:
 1. Implement our chat logic as a fish
 1. Package and run our chat app
 
-![Steps for building the chat](/images/tutorial/steps-to-complete-chat.png)
+![Steps for building the chat](/images/tutorials/chat-tutorial/steps-to-complete-chat.png)
 
 ### Chat logic
 
@@ -376,17 +376,17 @@ settingsSchema: { default: { } }
 
 Before packaging the app, run `npm run build` to create a distribution version of the web app (which will be placed in the `dist` directory). If everything works you should see something like this:
 
-![npm run build](/images/tutorial/npm-run-build.png)
+![npm run build](/images/tutorials/chat-tutorial/npm-run-build.png)
 
 Now use the ActyxOS Node Manager to package and deploy the app (use the path to the `chat` directory):
 
-![Package app with Node Manager](/images/tutorial/node-manager-package-app.png)
+![Package app with Node Manager](/images/tutorials/chat-tutorial/node-manager-package-app.png)
 
-![Deploy app with Node Manager](/images/tutorial/node-manager-deploy-app.png)
+![Deploy app with Node Manager](/images/tutorials/chat-tutorial/node-manager-deploy-app.png)
 
 If you open ActyxOS on the Android device, you should now see the chat app. You can click and open the app and should now be able to chat back and forth with your local machine!
 
-![Open chat on Android](/images/tutorial/find-open-use-chat-app.png)
+![Open chat on Android](/images/tutorials/chat-tutorial/find-open-use-chat-app.png)
 
 You have just built a multi-node application that would traditionally have required a web server and a shared database or pub-sub broker. Here is what you can try out now:
 
