@@ -6,7 +6,7 @@ sidebar_label: Tutorial
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-In this tutorial we are going to build a small chat app on top of the Actyx Platform. **You might be tempted to skip it because you are not building chats in real-life — give it a chance.** The techniques that you will learn in this tutorial are fundamental to building any app on the platform, and mastering them will give you a good understanding of its capabilities.
+In this tutorial, we are going to build a small chat app on top of the Actyx Platform. **You might be tempted to skip it because you are not building chats in real-life — give it a chance.** The techniques that you will learn in this tutorial are fundamental to building any app on the platform, and mastering them will give you a good understanding of its capabilities.
 
 ## Before we start
 
@@ -77,7 +77,7 @@ Now that you have two devices running ActyxOS, note their IP addresses. On Andro
 
 On your local machine now install the ActyxOS Node Manager, which you can download from [downloads.actyx.com](https://downloads.actyx.com). Once installed, use it to connect to each of the ActyxOS nodes using the devices' IP addresses. Then navigate to the _Settings_ tab and paste the following settings for the `com.actyx.os` namespace and click _Save_.
 
-```yaml
+```json
 {
    "general": {
       "bootstrapNodes": [
@@ -262,7 +262,7 @@ This is the complete chat logic. Let's now turn this into a fish.
 
 In Actyx Pond you implement a fish by creating an object with a couple of properties. You must provide the fish with an ID, an initial state, the `onEvent` function and information about where to get the chat messages from, a so-called _event stream tag_.
 
-First add the following imports to the top of the `index.ts` file:
+First, add the following imports to the top of the `index.ts` file:
 
 ```ts
 import { FishId, Pond, Fish, Tag } from '@actyx/pond'
