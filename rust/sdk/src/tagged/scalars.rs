@@ -75,7 +75,7 @@ mk_scalar!(
 /// Deserialization is supported from binary data or multibase format.
 ///
 /// Each node may emit multiple sources, each identified by its own [`StreamId`](struct.StreamId.html).
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(into = "String", try_from = "String")]
 pub struct NodeId([u8; 32]);
@@ -134,6 +134,13 @@ impl Display for NodeId {
     }
 }
 
+impl Debug for NodeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // We could in theory also print NodeId differently based on the upper 16 bytes being zero, but that should ideally never be relevant
+        write!(f, "NodeId({})", self)
+    }
+}
+
 impl Into<String> for NodeId {
     fn into(self) -> String {
         self.to_string()
@@ -164,7 +171,7 @@ impl TryFrom<String> for NodeId {
 /// followed by a dot and a base64url multibase-encoded multiformats-varint (see also
 /// [`varint`](../varint)), unless the stream number is zero, in which case the node ID
 /// is interpreted as a [`SourceId`](../event/struct.SourceId.html).
-#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(into = "String", try_from = "String")]
 pub struct StreamId {
@@ -224,6 +231,12 @@ impl Display for StreamId {
         } else {
             write!(f, "{}.{}", self.node_id, self.stream_nr)
         }
+    }
+}
+
+impl Debug for StreamId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "StreamId({})", self)
     }
 }
 
