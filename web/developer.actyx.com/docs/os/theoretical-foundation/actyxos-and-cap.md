@@ -1,5 +1,6 @@
 ---
 title: ActyxOS and CAP
+hide_table_of_contents: true
 ---
 
 A discussion of ActyxOS in light of the CAP theorem

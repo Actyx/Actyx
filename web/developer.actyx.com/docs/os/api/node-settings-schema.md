@@ -1,5 +1,6 @@
 ---
 title: Node Settings Schema
+hide_table_of_contents: true
 ---
 
 The format of ActyxOS node settings is defined in the **Node Setting Schema**.

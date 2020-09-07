@@ -1,5 +1,6 @@
 ---
 title: Events
+hide_table_of_contents: true
 ---
 
 _A fish consumes events, but emitting events is not coupled to fishes._

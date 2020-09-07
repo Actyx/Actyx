@@ -1,5 +1,6 @@
 ---
 title: All those Types
+hide_table_of_contents: true
 ---
 
 We have chosen TypeScript for a reason: fishes offer more type-safety than using the JSON-based untyped Event Service by itself.

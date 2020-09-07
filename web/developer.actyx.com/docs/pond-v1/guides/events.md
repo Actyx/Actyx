@@ -1,5 +1,6 @@
 ---
 title: Events
+hide_table_of_contents: true
 ---
 
 A Fish is a source of events, so let’s emit some events!

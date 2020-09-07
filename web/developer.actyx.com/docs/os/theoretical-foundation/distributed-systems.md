@@ -8,7 +8,7 @@ What are disributed system and why are they relevant with ActyxOS?
 
 A _distributed system_ is a system composed of multiple software components, running on different networked computers, that communicate and collaborate by passing messages to each other.
 
-![Distributed System](/images/images/distributed-system.png)
+![Distributed System](/images/os/distributed-systems.svg)
 
 - **Node**: an individual computer, and the software components running on it, of a distributed system
 - **Network**: the underlying data communication technology and protocols over which nodes communication

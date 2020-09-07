@@ -1,5 +1,6 @@
 ---
 title: Event Subscriptions
+hide_table_of_contents: true
 ---
 
 _A fish can listen to more events than it generates itself, it can accumulate knowledge from many sources._

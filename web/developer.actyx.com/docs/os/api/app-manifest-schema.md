@@ -1,5 +1,6 @@
 ---
 title: App Manifest Schema
+hide_table_of_contents: true
 ---
 
 Each ActyxOS app is described by an **app manifest**.

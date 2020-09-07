@@ -1,5 +1,6 @@
 ---
 title: Command validation
+hide_table_of_contents: true
 ---
 
 Fishes can record not only facts from sensors, they can also create facts by recording decisions.

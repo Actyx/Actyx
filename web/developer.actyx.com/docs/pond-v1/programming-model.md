@@ -1,5 +1,6 @@
 ---
 title: Programming Model
+hide_table_of_contents: true
 ---
 
 The **Actyx Pond** is an opinionated TypeScript framework for writing distributed apps preferring availability over consistency.
@@ -22,7 +23,7 @@ apparently views individual devices like flying insects). The full identifier of
 3. the _source_ denotes the device on which this instance of the fish is currently being run; the
    source is assigned automatically by the ActyxOS runtime
 
-![devices](/images/pond/fishes-on-devices.png)
+![devices](/images/pond/v1-fish-on-devices.svg)
 
 The fish identifier is at the same time the name of the event stream emitted by this fish. It is important
 to note that the “same” fish—identified by semantics & name—can run on different devices, each
@@ -36,7 +37,7 @@ in the events emitted by another fish. This is done by supplying the name of the
 triplet of semantics, name, and source and forming a _subscription_ from that; the usage of this
 concept will be discussed in the next section.
 
-![subscription](/images/pond/subscriptions.png)
+![subscription](/images/pond/v1-fish-subscriptions.svg)
 
 If a fish on one source is interested in all fishes of a given semantics and name on all devices in
 the swarm, it declares the subscription without specifying the source. It will then receive the
@@ -58,7 +59,7 @@ One **very important note** is that events become available at each edge device 
 Therefore, if you run the same fish logic with the same subscriptions on different devices, they will receive events at different times or in different order; consequently, the current state computed at each device may temporarily be different.
 But Actyx Pond will ensure that eventually — when the device has had the chance to catch up with the latest information — all fishes will have seen the same events and will have computed the same state.
 
-![reading](/images/pond/fish-reading-events.png)
+![reading](/images/pond/fish-reading.svg)
 
 The illustration shows that besides the events there is one more input, namely the initial state from which the fish will start before it has seen any events.
 The `onEvent` handler is a function that takes the current state and the next event and computes the next state from that.
@@ -77,7 +78,7 @@ Fishes compute their current state by deterministically applying the subscribed 
 The second trigger for a fish’s activity is when it receives a command.
 These commands can come from other fishes (sent from their `onCommand` handler), from an external system (e.g. via an HTTP call), or from a human operator of the app.
 
-![emitting](/images/pond/fish-emitting-events.png)
+![emitting](/images/pond/fish-writing.svg)
 
 Every incoming command is interpreted in the context of the current state as derived from all locally known events.
 The result of the `onCommand` function is a list of events to be appended to the fish’s event stream.

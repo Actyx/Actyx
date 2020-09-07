@@ -1,5 +1,6 @@
 ---
 title: API Overview
+hide_table_of_contents: true
 ---
 
 Each ActyxOS node provides a set of APIs that are described on the following pages:

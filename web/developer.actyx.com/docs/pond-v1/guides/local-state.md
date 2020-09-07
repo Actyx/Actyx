@@ -1,5 +1,6 @@
 ---
 title: Local State
+hide_table_of_contents: true
 ---
 
 Making sense of events: building up local state.

@@ -1,5 +1,6 @@
 ---
 title: Architecture
+hide_table_of_contents: true
 ---
 
 On a technical level, ActyxOS combines two things:
@@ -9,7 +10,7 @@ On a technical level, ActyxOS combines two things:
 
 Your apps thus interact with both a runtime environment and event stream services, both offered by ActyxOS:
 
-![ActyxOS Architecture](/images/os/architecture.png)
+![ActyxOS Architecture](/images/os/architecture.svg)
 
 ActyxOS provides five core services and, where applicable, associated APIs or deployment tools. These services either provide stand-alone functionality or allow you to build your own apps.
 

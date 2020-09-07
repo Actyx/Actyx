@@ -1,5 +1,6 @@
 ---
 title: Typed Tags
+hide_table_of_contents: true
 ---
 
 In the examples so far, we have not paid much attention to the type parameter `E` of `Tag<E>`. When constructing simple

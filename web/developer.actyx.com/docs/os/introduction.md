@@ -1,5 +1,6 @@
 ---
 title: Introduction
+hide_table_of_contents: true
 ---
 
 ActyxOS makes it easy to run distributed applications on multiple nodes. It is a piece of software that allows you to run your own apps on one or more edge devices and have these apps seamlesslesy communicate and share data with each other.

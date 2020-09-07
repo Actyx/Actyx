@@ -1,8 +1,7 @@
 ---
 title: Getting Started
+hide_table_of_contents: true
 ---
-
-![actyx pond logo](/images/pond/actyx-pond-logo.png)
 
 Writing distributed apps is difficult. The **Actyx Pond** framework makes it simple.
 

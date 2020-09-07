@@ -1,5 +1,6 @@
 ---
 title: Guides Overview
+hide_table_of_contents: true
 ---
 
 In this section we talk about the main parts of the ActyxOS lifecycle:
