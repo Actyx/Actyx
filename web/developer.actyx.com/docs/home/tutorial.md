@@ -217,7 +217,7 @@ What is interesting about Actyx Pond is that it **allows you to forget completel
 If you want to learn more about Actyx Pond, please start [here](/pond/introduction.md)
 
 :::info Eventual consistency for a partition tolerant system
-Formally speaking, Actyx Pond provides eventual consistency for logic implemented on the partition tolerant ActyxOS.
+Formally speaking, Actyx Pond provides eventual consistency for logic implemented on the partition tolerant ActyxOS. You can learn more about the theoretical concepts underlying ActyxOS and Actyx Pond [here](/os/theoretical-foundation/distributed-systems.md).
 :::
 
 Let's now have a look at how to use ActyxOS and Actyx Pond to build our decentralized chat app.
