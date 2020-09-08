@@ -75,7 +75,7 @@ If you get stuck or want to learn more about ActyxOS on Android check out [this 
 
 Now that you have two devices running ActyxOS, note their IP addresses. On Android, you can find the IP address from the ActyxOS System Info tab or directly from your settings. For your local machine, it depends on the operating system that you are running. A quick online search should do the job.
 
-On your local machine now install the ActyxOS Node Manager, which you can download from [downloads.actyx.com](https://downloads.actyx.com). Once installed, use it to connect to each of the ActyxOS nodes using the devices' IP addresses. Then navigate to the _Settings_ tab and paste the following settings for the `com.actyx.os` namespace and click _Save_.
+On your local machine now install the ActyxOS Node Manager, which you can download from [downloads.actyx.com](https://downloads.actyx.com). Once installed, use it to connect to each of the ActyxOS nodes using the devices' IP addresses. Then navigate to the _Settings_ tab and paste the following settings for the `com.actyx.os` namespace, choose a `displayName` of your choice, and then click _Save_.
 
 ```json
 {
@@ -83,7 +83,7 @@ On your local machine now install the ActyxOS Node Manager, which you can downlo
       "bootstrapNodes": [
          "/ip4/3.125.108.42/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH"
       ],
-      "displayName": "Remote Sample Node",
+      "displayName": "Display Name",
       "swarmKey": "L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCmQ3YjBmNDFjY2ZlYTEyM2FkYTJhYWI0MmY2NjRjOWUyNWUwZWYyZThmNGJjNjJlOTg3NmE3NDU1MTc3ZWQzOGIK"
    },
    "licensing": {
