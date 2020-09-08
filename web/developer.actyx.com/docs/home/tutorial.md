@@ -201,9 +201,11 @@ ActyxOS enables a completely decentral architecture that allows you to **build a
 - The **Event Service** API at `http://localhost:4454/api/v1/events` allows you to publish and receive events in the swarm of nodes
 - The **Console Service** API at `http://localhost:4457/api/v1/logs` allows you to generate logs for monitoring and debugging
 
+If you want to learn more about ActyxOS, check out our [guides](/os/guides/overview.md) and [advanced guides](/os/advanced-guides/overview.md).
+
 ### What is Actyx Pond?
 
-Actyx Pond is an application framework for building apps that run on ActyxOS. It is currently available for the [TypeScript](https://www.typescriptlang.org/) programming language. _Support for further languages, inlcuding C#/.NET is planned._ Here is how to works:
+Actyx Pond is an application framework for building apps that run on ActyxOS. It is currently available for the TypeScript programming language. _Support for further languages, inlcuding C#/.NET is planned._ Here is how to works:
 
 1. You implement the business logic of your application by writing so-called _fishes_ and run those in ActyxOS apps
 1. Actyx Pond then automatically synchronizes the state of all fishes throughout the swarm of nodes
@@ -212,11 +214,13 @@ Actyx Pond is an application framework for building apps that run on ActyxOS. It
 
 What is interesting about Actyx Pond is that it **allows you to forget completely about how to synchronize state between nodes** in the swarm. This happens, for example, when one of the nodes goes offline for a while. As soon as it comes back up, Actyx Pond automatically reconciles what happened between all the nodes while they were disconnected from each other.
 
+If you want to learn more about Actyx Pond, please start [here](/pond/introduction.md)
+
 :::info Eventual consistency for a partition tolerant system
 Formally speaking, Actyx Pond provides eventual consistency for logic implemented on the partition tolerant ActyxOS.
 :::
 
-Let's have a look at how to use ActyxOS and Actyx Pond to build a decentralized chat.
+Let's now have a look at how to use ActyxOS and Actyx Pond to build our decentralized chat app.
 
 ## Building the chat
 
@@ -400,10 +404,10 @@ We hope that you are now starting to experience the power of edge native applica
 ## Further resources
 
 - Learn more about [ActyxOS](/os/introduction.md)
-- Learn more about [Actyx Pond](/pond/getting-started.md)
-- Check out the additional libraries and tools such as the
-  - The Actyx Pond [VS Code extension](https://marketplace.visualstudio.com/items?itemName=Actyx.actyx-pond) for efficiently writing fishes
-  - The [React-Pond](https://github.com/actyx-contrib/react-pond) library to quickly integrate with React
+- Learn more about [Actyx Pond](/pond/introduction.md)
+- Check out the additional libraries and tools such as the:
+  - Actyx Pond [VS Code extension](https://marketplace.visualstudio.com/items?itemName=Actyx.actyx-pond) for efficiently writing fishes
+  - [React-Pond](https://github.com/actyx-contrib/react-pond) library to quickly integrate with React
   - ActyxOS SDKs for [Rust](./os/sdks/rust.md) and [JS/TS](./os/sdks/js-ts.md)
 
 :::note Join our Discord chat
