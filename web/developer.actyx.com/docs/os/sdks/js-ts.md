@@ -5,7 +5,7 @@ title: JS/TS SDK
 <!-- Add as react component to be able to handle the width (otherwise it goes full width) -->
 <img src="/images/js-sdk.png" style={{maxWidth: "150px", marginBottom: "2rem" }} />
 
-Building apps in [Javascript](https://developer.mozilla.org/en-US/docs/Web/JavaScript) or [Typescript](https://www.typescriptlang.org/) and want to easily create and access data streams in your ActyxOS swarm? Or you want to log from your app to easily access logs using the Actyx CLI? That's what we built the ActyxOS SDK for Javascript/Typescript for. The [`@actyx/os-sdk` package](http://npmjs.com/package/@actyx/os-sdk) defines all necessary data types and provides bindings for communicating with ActyxOS's [Event Service API](../api/event-service.md) and [Console Service API](../api/console-service.md).
+Building apps in [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript) or [TypeScript](https://www.typescriptlang.org/) and want to easily create and access data streams in your ActyxOS swarm? Or you want to log from your app to easily access logs using the Actyx CLI? That's what we built the ActyxOS SDK for JavaScript/TypeScript for. The [`@actyx/os-sdk` package](http://npmjs.com/package/@actyx/os-sdk) defines all necessary data types and provides bindings for communicating with ActyxOS's [Event Service API](../api/event-service.md) and [Console Service API](../api/console-service.md).
 
 ## Installation
 
@@ -70,4 +70,4 @@ logger.debug('This is a message with additional data', {foo: 'bar'})
 
 ## Documentation
 
-Check out the <a href="/@actyx/os-sdk" target="_blank" rel="noopener noreferrer">automatically generated Typedocs.</a>.
+Check out the latest documentation for the JS/TS SDK <a href="/@actyx/os-sdk" target="_blank" rel="noopener noreferrer">here</a>.
