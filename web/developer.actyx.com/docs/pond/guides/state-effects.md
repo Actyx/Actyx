@@ -1,5 +1,6 @@
 ---
 title: State Effects
+hide_table_of_contents: true
 ---
 
 _Events record facts, which can be a sensor reading as well as a decision that has been taken_.

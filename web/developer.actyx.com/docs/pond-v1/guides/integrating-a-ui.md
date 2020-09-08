@@ -1,5 +1,6 @@
 ---
 title: Integrating a UI
+hide_table_of_contents: true
 ---
 
 Wrapping it up with a UI.

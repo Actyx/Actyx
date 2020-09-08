@@ -41,7 +41,7 @@ To give you an example, here are some examples of the type of data you could sto
 
 As shown in the following illustration, the Blob Service automatically distributes stored data between edge devices. As a developer, you do not have to worry about how that distribution occurs; you can simply retrieve the data from your app on any other edge device.
 
-![data-distribution](/images/os/data-distribution.png)
+![data-distribution](/images/os/data-distribution.svg)
 <!-- Source: https://docs.google.com/presentation/d/1mjL8V3tU8tFTboEOFrJg6gd6yXIHQBOnyDCoqico8hQ/edit#slide=id.g60c052b336_0_0 -->
 
 :::info Distribution during network outages

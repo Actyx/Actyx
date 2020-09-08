@@ -1,5 +1,6 @@
 ---
 title: Advanced Guides Overview
+hide_table_of_contents: true
 ---
 
 In this section we discuss more of the details around how ActyxOS works in each of the supported host environments.

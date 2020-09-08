@@ -1,5 +1,6 @@
 ---
 title: Hello World
+hide_table_of_contents: true
 ---
 
 _Your first Actyx Pond program._

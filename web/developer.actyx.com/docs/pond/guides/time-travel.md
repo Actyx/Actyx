@@ -1,5 +1,6 @@
 ---
 title: Time Travel
+hide_table_of_contents: true
 ---
 
 _Actyx Pond allows always available distributed apps to be written with any logic you like, and the result will be eventually consistent.
@@ -63,7 +64,7 @@ The answer is that the `onEvent` handler may be invoked multiple times for the s
 We recall that the current state of the fish is computed by applying one event after the other, through the `onEvent` handler.
 This can be visualized like the grey zigzag line zipping together the events and their resulting states on the left-hand side of the following diagram.
 
-![Time Travel](/images/pond/time-travel.png)
+![Time Travel](/images/pond/time-travel.svg)
 
 When a new event arrives that belongs somewhere in the middle of the previously known log of events, it is inserted in its rightful spot and the current state is recomputed by applying all events again, now including the inserted event.
 This is shown on the right-hand side of the diagram above; in practice the state computation starts from the state right before the inserted event in most cases, as a cache of states is kept in memory.

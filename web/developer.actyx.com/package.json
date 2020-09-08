@@ -24,6 +24,7 @@
     "react": "^16.8.4",
     "react-dom": "^16.8.4",
     "react-youtube": "^7.9.0",
+    "styled-components": "^5.1.1",
     "textlint-rule-no-empty-section": "^1.1.0"
   },
   "browserslist": {

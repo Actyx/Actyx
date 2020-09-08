@@ -1,5 +1,6 @@
 ---
 title: Snapshots
+hide_table_of_contents: true
 ---
 
 _The state of a fish may become expensive to calculate from scratch: snapshots to the rescue!_

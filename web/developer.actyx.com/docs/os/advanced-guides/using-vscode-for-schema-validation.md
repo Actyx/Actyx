@@ -1,5 +1,6 @@
 ---
 title: Using Visual Studio Code for settings schema validation
+hide_table_of_contents: true
 ---
 
 With the [ActyxOS node settings schema](https://actyx.com/schemas/os/node-settings.schema.json) or any other [JSON Schema](https://json-schema.org/) of one of your apps, you can automatically validate your settings in Visual Studio Code while you write them. This is how you setup the automatic validation:

@@ -1,5 +1,6 @@
 ---
 title: Design Principles
+hide_table_of_contents: true
 ---
 
 - **Availability over consistency** - We favor availability of each individual node to consistency of the system as a whole. Your app should always work, even when other nodes are unavailable
