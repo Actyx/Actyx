@@ -210,7 +210,7 @@ Actyx Pond is an application framework for building apps that run on ActyxOS. It
 
 ![Actyx Pond schematic](/images/tutorials/chat-tutorial/actyx-pond-how-it-works.png)
 
-What is interesting about the Actyx Pond is that it **allows you to forget completely about how to synchronize state between nodes** in the swarm. This happens, for example, when one of the nodes goes offline for a while. As soon as it comes back up, the Actyx Pond automatically reconciles what happened between all the nodes while they were disconnected from each other.
+What is interesting about Actyx Pond is that it **allows you to forget completely about how to synchronize state between nodes** in the swarm. This happens, for example, when one of the nodes goes offline for a while. As soon as it comes back up, Actyx Pond automatically reconciles what happened between all the nodes while they were disconnected from each other.
 
 :::info Eventual consistency for a partition tolerant system
 Formally speaking, Actyx Pond provides eventual consistency for logic implemented on the partition tolerant ActyxOS.
