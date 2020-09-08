@@ -38,7 +38,7 @@ If you have disabled mDNS in your network, you will have to ensure your devices 
 
 If you don't have Docker installed on your PC already, you can install it from [here](https://docs.docker.com/get-docker/).
 
-ActyxOS on Docker is publicly available on Docker Hub. To download and run the latest version please execute the following command from your CLI.
+ActyxOS on Docker is publicly available on [Docker Hub](https://hub.docker.com/r/actyx/os). To download and run the latest version please execute the following command from your CLI.
 
 <Tabs
   defaultValue="windows"
