@@ -1,24 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
-    <ReleaseVersion>0.1.0</ReleaseVersion>
-    <PackOnBuild>true</PackOnBuild>
-    <PackageId>ActyxOS.Sdk</PackageId>
-    <PackageVersion>0.1.0</PackageVersion>
-    <Authors>Actyx AG</Authors>
-    <Copyright>© Actyx AG. All rights reserved.</Copyright>
-    <PackageIcon>icon.png</PackageIcon>
+    <AssemblyName>ActyxOS.Sdk</AssemblyName>
+    <Description>Data types for communicating with ActyxOS and C# bindings for the ActyxOS APIs.</Description>
+    <PackageProjectUrl>https://developer.actyx.com/docs/os/sdks/dotnet</PackageProjectUrl>
+    <PackageLicenseUrl>https://licenses.nuget.org/Apache-2.0</PackageLicenseUrl>
     <Owners>Actyx</Owners>
+    <Authors>Actyx AG</Authors>
+    <Copyright>© Actyx AG</Copyright>
     <PackageTags>distributed event-sourcing decentralized</PackageTags>
-    <Description>Data types needed for communicating with ActyxOS and C# bindings for the ActyxOS APIs.</Description>
+    <PackageIcon>icon.png</PackageIcon>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <PackOnBuild>true</PackOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="JsonSubTypes" Version="1.7.0" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="System.Interactive.Async" Version="4.1.1" />
-    <None Include="..\..\..\web\developer.actyx.com\static\images\csharp-sdk.png" Pack="true" PackagePath="\icon.png"/>
+    <None Include="..\..\..\web\developer.actyx.com\static\images\csharp-sdk.png" Pack="true" PackagePath="\icon.png" />
   </ItemGroup>
 
 </Project>
