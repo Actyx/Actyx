@@ -70,4 +70,4 @@ logger.debug('This is a message with additional data', {foo: 'bar'})
 
 ## Documentation
 
-Check out the latest documentation for the JS/TS SDK <a href="/@actyx/os-sdk" target="_blank" rel="noopener noreferrer">here</a>.
+Check out the latest <a href="/@actyx/os-sdk" target="_blank" rel="noopener noreferrer">documentation for the JS/TS SDK</a>.
