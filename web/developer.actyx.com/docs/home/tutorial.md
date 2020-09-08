@@ -194,7 +194,7 @@ ActyxOS is a multi-node operating system that allows you to build edge native ap
 1. Access _always-available_ `localhost` APIs such as the Event Service
 1. Count on automatic dissemination and persistence of data in the swarm
 
-![ActyxOS schematic](/images/tutorials/chat-tutorial/actyxos-app-and-communication.png)
+![ActyxOS schematic](/images/tutorials/chat-tutorial/actyxos-app-and-communication.svg)
 
 ActyxOS enables a completely decentral architecture that allows you to **build apps that always run**. Your apps always run because they run locally (on the edge) and only interact with `localhost` APIs. Currently ActyxOS offers two APIs:
 
@@ -210,7 +210,7 @@ Actyx Pond is an application framework for building apps that run on ActyxOS. It
 1. You implement the business logic of your application by writing so-called _fishes_ and run those in ActyxOS apps
 1. Actyx Pond then automatically synchronizes the state of all fishes throughout the swarm of nodes
 
-![Actyx Pond schematic](/images/tutorials/chat-tutorial/actyx-pond-how-it-works.png)
+![Actyx Pond schematic](/images/tutorials/chat-tutorial/actyx-pond-how-it-works.svg)
 
 What is interesting about Actyx Pond is that it **allows you to forget completely about how to synchronize state between nodes** in the swarm. This happens, for example, when one of the nodes goes offline for a while. As soon as it comes back up, Actyx Pond automatically reconciles what happened between all the nodes while they were disconnected from each other.
 
@@ -230,7 +230,7 @@ To implement and run our chat app we need to do three things:
 1. Implement our chat logic as a fish
 1. Package and run our chat app
 
-![Steps for building the chat](/images/tutorials/chat-tutorial/steps-to-complete-chat.png)
+![Steps for building the chat](/images/tutorials/chat-tutorial/steps-to-complete-chat.svg)
 
 ### Chat logic
 
