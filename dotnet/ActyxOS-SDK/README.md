@@ -16,6 +16,14 @@ bindings for the ActyxOS APIs.
 
 TODO
 
+## Releasing
+
+[GitVersion](https://gitversion.net/) is used to automatically set the version based on git tags. The prefix used is `"dotnet/sdk-"`. E.g. version `1.0.0` is created by running
+
+```
+git tag dotnet/sdk-1.0.0 <optional refspec, otherwise HEAD is used>
+```
+
 ## Building
 
 ```bash
