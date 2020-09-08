@@ -12,8 +12,8 @@ module.exports = {
       id: 'support_us',
       content:
         '⭐️ We just released v1.0.0 of ActyxOS! Check our <a target="_blank" rel="noopener noreferrer" href="https://github.com/facebook/docusaurus">Blog</a> for news! ⭐️',
-        backgroundColor: '#1998ff',
-        textColor: '#fff',
+      backgroundColor: '#1998ff',
+      textColor: '#fff',
     },
     colorMode: {
       defaultMode: 'light',
@@ -26,7 +26,7 @@ module.exports = {
       title: '',
       logo: {
         alt: 'Actyx Developer',
-        src: 'img/logo.svg',
+        src: 'img/header.svg',
       },
       links: [
         {
@@ -61,8 +61,8 @@ module.exports = {
     },
     footer: {
       logo: {
-        alt: 'Actyx Logo',
-        src: 'img/logo.svg',
+        alt: 'Actyx Developer',
+        src: 'img/header.svg',
         href: 'www.developer.actyx.com'
       },
       style: 'light',
@@ -85,7 +85,7 @@ module.exports = {
             {
               label: 'Actyx Node Manager',
               to: 'docs/os/tools/node-manager',
-            } 
+            }
           ]
         },
         {
@@ -127,7 +127,7 @@ module.exports = {
             {
               label: 'Press',
               to: 'https://www.actyx.com/news',
-            } 
+            }
           ]
         }
       ],
