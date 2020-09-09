@@ -35,7 +35,6 @@ The services exposed there are currently still in alpha testing.
 - `4455`
 - `4458`
 
-
 ### Install ActyxOS on your edge device
 
 You can download an installer for ActyxOS on Windows on [the downloads page](https://downloads.actyx.com/). After opening the installer, you are guided through the setup process.
