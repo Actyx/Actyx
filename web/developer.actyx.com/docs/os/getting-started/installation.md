@@ -32,7 +32,7 @@ ActyxOS is published on [DockerHub](https://hub.docker.com/), so start the image
 <TabItem value="windows">
 
 ```bash
-docker run -it --rm -v actyxos-data:/data --privileged -p 4001:4001 -p 4457:4457 actyx/os
+docker run -it --rm -v actyxos-data:/data --privileged -p 4001:4001 -p 4457:4457 -p 4243:4243 -p 4454:4454 actyx/os
 ```
 
 :::note

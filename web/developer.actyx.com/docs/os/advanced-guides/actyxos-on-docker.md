@@ -38,15 +38,15 @@ ActyxOS is [publicly available on Docker Hub](https://hub.docker.com/r/actyx/os)
 <TabItem value="windows">
 
 ```bash
-docker run --name actyxos -it --rm -v actyx-data:/data --privileged -p 4001:4001 -p 4457:4457 actyx/os
+docker run --name actyxos -it --rm -v actyx-data:/data --privileged -p 4001:4001 -p 4457:4457 -p 4243:4243 -p 4454:4454 actyx/os
 ```
 
 You used a couple of common flags here:
 
 - `-it` for running interactive processes
 - `--rm` to automatically clean up the container and remove the file system when the container exits
-- `-v /tmp/actyxdata/:/data` specifies the volumes that are **not** removed and therefore used for persistent storage. These volumes are used for keeping data safe across container restart. Specifically, it stores Installed apps, app's data, and important ActyxOS data such as your license
-- `-p 4457:4457 4001:4001` to publish the ports that the ActyxOS on Docker container uses to communicate to the outside
+- `-v actyx-data:/data` specifies the volumes that are **not** removed and therefore used for persistent storage. These volumes are used for keeping data safe across container restart. Specifically, it stores Installed apps, app's data, and important ActyxOS data such as your license
+- `-p 4001:4001 ...` to publish the ports that the ActyxOS on Docker container uses to communicate to the outside
 - `--privileged` as <em>ActyxOS on Docker</em> entails running a Docker daemon inside a Docker container. This enables <em>ActyxOS on Docker</em> to create a self-contained environment
 
 :::info Publishing docker ports
@@ -66,7 +66,7 @@ You used a couple of common flags here:
 
 - `-it` for running interactive processes
 - `--rm` to automatically clean up the container and remove the file system when the container exits
-- `-v /tmp/actyxdata/:/data` specifies the volumes that are **not** removed and therefore used for persistent storage. These volumes are used for keeping data safe across container restart. Specifically, it stores Installed apps, app's data, and important ActyxOS data such as your license
+- `-v actyx-data:/data` specifies the volumes that are **not** removed and therefore used for persistent storage. These volumes are used for keeping data safe across container restart. Specifically, it stores Installed apps, app's data, and important ActyxOS data such as your license
 - `--network=host` for the host's network stack inside the container
 - `--privileged` as <em>ActyxOS on Docker</em> entails running a Docker daemon inside a Docker container. This enables <em>ActyxOS on Docker</em> to create a self-contained environment
 
