@@ -25,7 +25,7 @@ If you require further assistance with running ActyxOS in production, please fee
 ## Required ports
 
 ActyxOS currently requires five ports to operate.
-Before starting ActyxOS make sure that these ports are not already in use by another programn.
+Before starting ActyxOS make sure that these ports are not already in use by another program.
 
 - `4001` - Used for internode communication
 - `4243` - Exposes a WebSocket endpoint for the Actyx Pond (only on localhost)
