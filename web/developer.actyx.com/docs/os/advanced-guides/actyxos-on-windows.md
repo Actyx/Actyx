@@ -122,12 +122,13 @@ If you receive the following error during installation, please close the Windows
 
 ### ActyxOS is not starting
 
-The most common reason for this problem is that the one of the ports ActyxOS needs is already in use by another program. ActyxOS uses the following ports:
+The most common reason for this problem is that one of the ports ActyxOS needs is already in use by another program. ActyxOS currently uses the following ports:
 
 - 4001
 - 4454
 - 4455
 - 4457
+- 4243
 - 8080
 
 As port 8080 is sometimes already in use by other programs, you can change it by setting the `ACTYXOS_IPFS_NODE__GATEWAY_PORT` environment to a different port. You can do this by following these steps:
