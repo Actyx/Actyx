@@ -57,10 +57,10 @@ ActyxOS should now be running in your Docker environment.
 ActyxOS currently requires five ports to operate.
 Before starting ActyxOS make sure that these ports are not already in use by another programn.
 
-- `4457` - Exposes the [Console Service](/os/api/console-service.md)
-- `4454` - Exposes the [Event Service](/os/api/event-service.md)
-- `4243` - Exposes a WebSocket endpoint for the Actyx Pond
 - `4001` - Used for internode communication
+- `4243` - Exposes a WebSocket endpoint for the Actyx Pond
+- `4454` - Exposes the [Event Service](/os/api/event-service.md)
+- `4457` - Exposes the [Console Service](/os/api/console-service.md)
 - `8080` - Exposes an [IPFS Gateway](https://docs.ipfs.io/concepts/ipfs-gateway/)
 
 ## Communicate with the node
