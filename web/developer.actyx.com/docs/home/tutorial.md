@@ -50,14 +50,14 @@ ActyxOS on Docker is publicly available on [Docker Hub](https://hub.docker.com/r
 <TabItem value="windows">
 
 ```
-docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyxos_data:/data --privileged -p 4001:4001 -p 4457:4457 -p 4243:4243 -p 4454:4454 actyx/os
+docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyxos-data:/data --privileged -p 4001:4001 -p 4457:4457 -p 4243:4243 -p 4454:4454 actyx/os
 ```
 
 </TabItem>
 <TabItem value="unix">
 
 ```
-docker run --name actyxos -it --rm -v actyx-data:/data --privileged --network=host actyx/os
+docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyx-data:/data --privileged --network=host actyx/os
 ```
 
 </TabItem>
