@@ -12,14 +12,12 @@ In particular, we talk about
 
 All of these implementations follow the same rules regarding when settings can be changed and apps can be started, which is detailed in
 
-- the [Node and App lifecycle](node-and-app-lifecycle.md)
+- [Node and App lifecycle](node-and-app-lifecycle.md)
 - [Node and App settings](node-and-app-settings.md)
 
-The following topics are of interest when deploying and operating ActyxOS in the field:
+The following topics can be of interest when deploying and operating ActyxOS in the field:
 
 - [ActyxOS Bootstrap Node](actyxos-bootstrap-node.md) to aid in mutual discovery within restrictive network environments
-- fleet management [using Workspace One](using-workspace-one.md) (coming soon)
-- fleet management [using Balena](using-balena.md) (coming soon)
 
 And finally, these help you while developing and testing your ActyxOS apps:
 
