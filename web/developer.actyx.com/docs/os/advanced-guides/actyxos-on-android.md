@@ -111,11 +111,15 @@ Apart from starting and stopping apps via the [Actyx CLI](/docs/cli/getting-star
 them via the app list in the ActyxOS app or via home screen icons that you can create under app
 details. Closing them in the app switcher works like for every other Android app.
 
-Starting apps via the Actyx CLI by default works only when ActyxOS is in the foreground.
+Starting apps via the Actyx CLI or the ActyxOS Node Manager by default works only when ActyxOS is in the foreground.
 To make it work in all cases, you have grant ActyxOS permission to: "Display pop-up windows while running
 in the background," "Allow apps to start automatically" or similar.
 What exactly the permissions are called depends on the Android vendor. When in doubt, just
 enable everything under Manage&nbsp;Apps&#x2011;&#x2011;>ActyxOS&#x2011;&#x2011;>Other&nbsp;permissions.
+
+:::caution Restrctions on starting apps from the background on Andoroid 10+
+Android 10 introduced [restrictions on starting apps from the background](https://developer.android.com/guide/components/activities/background-starts). After you started an app with the Actyx CLI, or with the ActyxOS Node Manager, it will therefore only start once you move the ActyxOS app into the foreground.
+:::
 
 <details>
   <summary>Expand for an example</summary>
