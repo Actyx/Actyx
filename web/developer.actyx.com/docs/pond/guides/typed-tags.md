@@ -19,8 +19,11 @@ where: Tag('chatRoom').withId('my-room').or(
     Tag('chatRoom').withId('broadcast')
 ) as Where<ChatRoomEvent>
 
-// Events for a specific room and from a specific sender
-where: Tag('chatRoom').withId('Melmac').and(Tag('sender').withId('Alf'))
+// Events for a specific room and from a specific sender –
+// also needs an explicit cast
+where: Tag('chatRoom').withId('Melmac').and(
+    Tag('sender').withId('Alf')
+) as Where<ChatRoomEvent>
 ```
 
 These events could be emitted as follows:

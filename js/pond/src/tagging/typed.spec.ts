@@ -228,6 +228,30 @@ describe('typed tag query system', () => {
       ignoreUnusedVar(fishRight)
     })
 
+    it('should accept additional tags with explicit cast', () => {
+      const fishWrong: Fish<undefined, A | B> = {
+        ...fishArgs,
+
+        // Without cast, this will fail
+        // @ts-expect-error
+        where: Tag('q')
+          .withId('n')
+          .and(Tag('some-other-tag').withId('foo')),
+      }
+
+      const fishRight: Fish<undefined, A | B> = {
+        ...fishArgs,
+
+        // Casting works
+        where: Tag('q')
+          .withId('n')
+          .and(Tag('some-other-tag').withId('foo')) as Where<A>,
+      }
+
+      ignoreUnusedVar(fishWrong)
+      ignoreUnusedVar(fishRight)
+    })
+
     it('should allow fish to handle more events than indicated by tags', () => {
       const fishRight: Fish<undefined, A | B | C | T0> = {
         onEvent: (state: undefined, _payload: A | B | C | T0) => state,
