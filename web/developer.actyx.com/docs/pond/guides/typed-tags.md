@@ -9,27 +9,38 @@ compiler to be the same as the events the fish is able to consume in `onEvent`. 
 can add an explicit type cast:
 
 ```typescript
-// Only events for `my-room`
-where: Tag('chatRoom').withId('my-room') // equivalent to `Tag('chatRoom:my-room')`
-// Events from either `my-room` or `broadcast`
-where: Tag('chatRoom:my-room').or(Tag('chatRoom:broadcast')) as TagUnion<ChatEvent> // explicit cast necessary
-// Events for a specific room from a specific sender
-where: Tags('chatRoom:Melmac', 'sender:Alf')
-```
+// Only events for `my-room`.
+// Equivalent to `Tags('chatRoom', 'chatRoom:my-room')`
+where: Tag('chatRoom').withId('my-room')
 
-:::note
-The `Tags` function is a shortcut to construct an intersection between multiple tags, e.g. `Tags('a', 'b')` requires
-both `a` and `b` to be present on the events.
-:::
+// Events from either `my-room` or `broadcast`
+// An explicit cast is needed in this case.
+where: Tag('chatRoom').withId('my-room').or(
+    Tag('chatRoom').withId('broadcast')
+) as Where<ChatRoomEvent>
+
+// Events for a specific room, from a specific sender –
+// also needs an explicit cast
+where: Tag('chatRoom').withId('Melmac').and(
+    Tag('sender').withId('Alf')
+) as Where<ChatRoomEvent>
+```
 
 These events could be emitted as follows:
 
 ```typescript
 pond.emit(
-  ['chatRoom:Melmac', 'sender:Alf'],
-  { type: 'messageAdded', message: "If you love something, let it go. If it comes back to you, it's yours. If it's run over by a car, you don't want it." }
-).toPromise()
+  Tag('chatRoom').withId('Melmac').and(Tag('sender').withId('Alf')),
+  { type: 'messageAdded', message: "If you love something, let it go." }
+)
 ```
+:::note General and specific tags
+It’s important to use the `withId` helper. It makes sure we are not only tagging with
+`chatRoom:Melmac`, but with just `chatRoom` as well. This is important, because there is no
+way to prefix-query tags! If a consumer wants to read all `chatRoom` events, not just those for a
+specific room, it can then do so via just `Tag('chatRoom')`.
+:::note
+
 
 And our `chatRoomFish` which subscribes to those events:
 
@@ -37,7 +48,7 @@ And our `chatRoomFish` which subscribes to those events:
 export const mkChatRoomFish: (name: string): Fish<string[], ChatRoomEvent> => ({
   // ...
   fishId: FishId.of('ax.example.ChatRoom', name, 0),
-  where: Tag('chatRoom').withId(name}),
+  where: Tag('chatRoom').withId(name),
 })
 ```
 
@@ -51,7 +62,7 @@ Let's see how we can rewrite our example above:
 ```typescript
 const tags = {
   chatRoom: Tag<ChatRoomEvent>('chatRoom'),
-  sender: Tag('sender'),
+  sender: Tag<ChatRoomEvent>('sender'),
 }
 
 const mkChatRoomFish = (name: string): Fish<string[], ChatRoomEvent> => ({
@@ -70,33 +81,42 @@ export const ChatRoom = {
 First, we create a helper object called `tags`, being a single place where we can put all related tags to this fish. We wrap
 both `tags` and the `mkChatRoomFish` function inside a wrapper object called `ChatRoom` and export only that. This way,
 all coherent parts are modularized. The subscription of the fish can be rewritten to `tags.chatRoom.withId(name)`,
-which will require all events to have the tag `` `chatRoom:${name}` ``. We're ignoring the `sender` tag within the
+which will require all events to have the tags `` 'chatRoom' & `chatRoom:${name}` ``. We're ignoring the `sender` tag within the
 subscription, as every event we're interested should at least have the `chatRoom` tag. Also note, that we parameterized
 the chat room tag with the type `ChatRoomEvent`.
 
 Now, how will this help us?
 
 ```typescript
+const tags = ChatRoom.tags
+
+// Will fail to compile:
 pond.emit(
-  ChatRoom.tags.chatRoom.withId('Melmac').and(ChatRoom.tags.sender.withId('Alf')),
+  tags.chatRoom.withId('Melmac').and(tags.sender.withId('Alf')),
   { type: 'this type does not exist' }
-).toPromise()
+)
 ```
 
-This will now actually fail to compile, because only a `ChatRoomEvent` is allowed to be passed to the `emit` function. The
-same mechanism can be used as well for state effects.
+This will now actually fail to compile, because only a `ChatRoomEvent` is allowed to be passed to the `emit` function.
 
-Finally, let's go back to our initial queries and rewrite them using the fluent API:
+Finally, let's go back to our initial queries and rewrite them using the typed API:
 
 ```typescript
 const tags = {
   chatRoom: Tag<ChatRoomEvent>('chatRoom'),
   sender: Tag<ChatRoomEvent>('sender'),
 }
-// only 'chatRoom:my-room'
-tags.chatRoom.withId('my-room')
-// 'chatRoom:broadcast' or 'chatRoom:my-room'
-tags.chatRoom.withId('broadcast').or(tags.chatRoom.withId('my-room'))
-// 'chatRoom:Melmac' and 'sender:Alf'
-tags.chatRoom.withId('Melmac').and(tags.sender.withId('Alf'))
+// 'chatRoom' & 'chatRoom:my-room'
+where: tags.chatRoom.withId('my-room')
+
+// 'chatRoom' & ('chatRoom:broadcast' | 'chatRoom:my-room')
+where: tags.chatRoom.withId('broadcast').or(tags.chatRoom.withId('my-room'))
+
+// 'chatRoom' & 'chatRoom:Melmac' & 'sender' & 'sender:Alf'
+where: tags.chatRoom.withId('Melmac').and(tags.sender.withId('Alf'))
 ```
+
+:::tip Inspect your queries
+Since Pond 2.2 you can call `toString()` on your `Where` objects to find out what your query does
+under the hood, at a glance. The format is similar to the last code snippet’s comments.
+:::
