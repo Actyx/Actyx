@@ -6,7 +6,7 @@ hide_table_of_contents: true
 _Your first Actyx Pond program._
 
 The main programming unit in Actyx Pond is a _Fish_. A fish is like a living entity: It
-"feeds on" little pieces information – events – produced by connected ActyxOS nodes. From the
+"feeds on" little pieces of information – events – produced by connected ActyxOS nodes. From the
 events, it builds its _state_. So when a new event is produced somewhere, the state updates. In your
 application, you can _observe_ a fish’s state meaning you get realtime updates!
 
@@ -28,11 +28,11 @@ updated state. It’s like `Array.reduce`. In this case, we just set the state t
 have seen! Of course, this could be much more elaborate.
 
 The `initialState` defines what state we are in before having seen any events. Fittingly, we just
-send out a general greeting: Hello, world!
+send out a general greeting: *Hello, world!*
 
 Finally, we're providing a `where` clause describing which events this fish is interested in. By
 passing `allEvents` we do in fact select all events created by the application; we might also pass
-`noEvents` to select process no events and always stay at the initial state. But of course, there is
+`noEvents` to process no events and always stay at the initial state. But of course, there is
 rich functionality for selecting only _some_ events. We will get to that later.
 
 For now, let's see how the friendly fish can give us a warm greeting:
@@ -54,7 +54,7 @@ npm install
 npm start
 ```
 
-You should see the greeting logged to the console – unless your swarm already has some events, in
+You should see our initial greeting logged to the console – unless your swarm already has some events, in
 which case you will see the latest one!
 :::
 
