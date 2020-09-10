@@ -12,15 +12,15 @@ In this tutorial, we are going to build a small chat app on top of the Actyx Pla
 
 The tutorial is divided into three sections:
 
-- [Setup for the tutorial](#setup-for-the-tutorial) will give you a starting point to follow the tutorial
-- [Overview](#overview) will teach you the fundamentals of Actyx: nodes, events, and fishes
-- [Building the chat](#building-the-chat) will teach you the most common techniques in Actyx development
+- The first section, [Setup for the tutorial](#setup-for-the-tutorial), will explain how to set up your ActyxOS nodes and give you a starting point to follow the tutorial
+- The [Overview](#overview) section will teach you the fundamentals of Actyx: nodes, events, and fishes
+- The last section, [Building the chat](#building-the-chat), will teach you the most common techniques in Actyx development
 
 You don’t have to complete all of the sections at once to get value out of this tutorial. Try to get as far as you can — even if it’s just one or two sections.
 
 ### Prerequisites
 
-In order to get the most out of this tutorial it is helpful if you are somewhat familiar with HTML, CSS and TypeScript. But since this is a fairly simple app you should be able to follow along even if you are coming from a different programming language.
+In order to get the most out of this tutorial, it is helpful if you have basic knowledge of HTML, CSS, and TypeScript. But since this is a fairly simple app you should be able to follow along even if you are coming from a different programming language.
 
 :::info Typescript in 5 minutes
 If you haven't worked in TypeScript before, we can recommend [this guide](https://www.typescriptlang.org/docs/handbook/typescript-in-5-minutes.html) to brush up on the basics.
@@ -43,7 +43,7 @@ ActyxOS on Docker is publicly available on [Docker Hub](https://hub.docker.com/r
 <Tabs
   defaultValue="windows"
   values={[
-    { label: 'Windows/MacOS', value: 'windows', },
+    { label: 'Windows/macOS', value: 'windows', },
     { label: 'Linux', value: 'unix', },
   ]
 }>
@@ -164,7 +164,7 @@ Now create a file called `index.html` and add the following:
 </html>
 ```
 
-Finally, create a file named `index.ts` with the following:
+Finally, create a file named `index.ts` with the following content:
 
 ```ts
 console.log('Hello, world!')
