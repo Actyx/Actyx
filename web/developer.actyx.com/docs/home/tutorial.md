@@ -405,6 +405,10 @@ Here is what you can try out now:
 
 We hope that you are now starting to experience the power of edge native applications and the Actyx Platform. If you are keen to dive a bit deeper, check out the following further resources.
 
+## Download the code
+
+You can download the complete code for this tutorial from [GitHub](https://github.com/Actyx/chat-app-tutorial).
+
 ## Further resources
 
 - Learn more about [ActyxOS](/os/introduction.md)
