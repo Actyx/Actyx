@@ -12,15 +12,16 @@ for emitting events: `pond.emit` and `pond.run` (we'll learn how to use [state e
 Events are tagged with an arbitrary number of tags, each tag being just a non-empty string:
 
 ```typescript
-await pond.emit(
-    Tags('chat', 'channel:lobby', 'sender:Alf'),
+pond.emit(
+    // We add the pure 'chatRoom' tag as well, to allow finding all chat events at once.
+    Tags('chatRoom', 'chatRoom:lobby', 'sender', 'sender:Alf'),
     { type: 'messageAdded', message: 'Hello!' }
-).toPromise()
+)
 ```
 
-This event will be tagged with three tags: `chat`, `channel:lobby`, and `sender:Alf`. We already see, that we can add
-some structure to the tags, e.g. using the `channel` identifier.
-ActyxOS does not treat the `:` specially, but Actyx Pond contains some convenience functions based on the convention shown above.
+This event will be tagged with four tags: `chatRoom`, `chatRoom:lobby`, `sender` and `sender:Alf`. We already see that we can add
+some structure to the tags by using prefixes.
+ActyxOS however does not treat the `:` specially. The Actyx Pond contains some convenience functions based on the convention shown above.
 
 Obviously, within the context of Actyx Pond, events usually go together with some business logic implemented in fishes.
 In this example we consider a fish that models a chat room. The main action that can be performed on such a room is to
@@ -35,6 +36,6 @@ type ChatRoomEvent = { type: 'messageAdded', message: string }
 All necessary imports (like `Tags`) are available from the `@actyx/pond` module.
 :::
 
-We'll see in the next section about [local state], how to construct a fish to make use of the emitted event.
+We'll see in the next section about [local state] how we can construct a fish to make use of the emitted event.
 
 [local state]: local-state
