@@ -29,7 +29,7 @@ These events could be emitted as follows:
 pond.emit(
   Tag('chatRoom').withId('Melmac').and(Tag('sender').withId('Alf')),
   { type: 'messageAdded', message: "If you love something, let it go." }
-).toPromise()
+)
 ```
 :::note General and specific tags
 It’s important to use the `withId` helper. It makes sure we are not only tagging with
