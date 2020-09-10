@@ -33,7 +33,7 @@ important to generate different `FishId`: Otherwise the pond might use a cached 
 different chat room!
 
 If we'd like to get all chat room events, for all rooms, we just omit the call to `withId`:
-`Tag('chatRoom')` selects across all ids. Such a subscription might make sense for keeping track of
+`Tag('chatRoom')` alone matches them all. Such a subscription might make sense for keeping track of
 some property across all rooms, e.g. seeing how often people use swear words in the chat.
 
 
