@@ -34,6 +34,8 @@ If you have disabled mDNS in your network, you will have to ensure your devices 
 
 ## Setup for the tutorial
 
+Now, let's get right to it. In this section we will turn your devices into ActyxOS nodes, configure the nodes, and set up the basic directory structure for the app we will build.
+
 ### Setup a Docker device
 
 If you don't have Docker installed on your PC already, you can install it from [here](https://docs.docker.com/get-docker/).
@@ -220,9 +222,9 @@ If you want to learn more about Actyx Pond, please start [here](/pond/introducti
 Formally speaking, Actyx Pond provides eventual consistency for logic implemented on the partition tolerant ActyxOS. You can learn more about the theoretical concepts underlying ActyxOS and Actyx Pond [here](/os/theoretical-foundation/distributed-systems.md).
 :::
 
-Let's now have a look at how to use ActyxOS and Actyx Pond to build our decentralized chat app.
-
 ## Building the chat
+
+Let's now have a look at how to use ActyxOS and Actyx Pond to build our decentralized chat app.
 
 To implement and run our chat app we need to do three things:
 
