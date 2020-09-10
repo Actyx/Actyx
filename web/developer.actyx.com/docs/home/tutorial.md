@@ -394,7 +394,9 @@ If you open ActyxOS on the Android device, you should now see the chat app. You 
 
 ![Open chat on Android](/images/tutorials/chat-tutorial/find-open-use-chat-app.png)
 
-You have just built a multi-node application that would traditionally have required a web server and a shared database or pub-sub broker. Here is what you can try out now:
+And just like that we have built a multi-node application that would traditionally have required a web server and a shared database or pub-sub broker 🎉
+
+Here is what you can try out now:
 
 - Do the chat messages get shared between nodes?
 - Do I see history if I restart the app?
