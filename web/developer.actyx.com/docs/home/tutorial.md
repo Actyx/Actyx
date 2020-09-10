@@ -409,7 +409,7 @@ We hope that you are now starting to experience the power of edge native applica
 
 - Learn more about [ActyxOS](/os/introduction.md)
 - Learn more about [Actyx Pond](/pond/introduction.md)
-- Check out the additional libraries and tools such as the:
+- Or check out these additional libraries and tools:
   - Actyx Pond [VS Code extension](https://marketplace.visualstudio.com/items?itemName=Actyx.actyx-pond) for efficiently writing fishes
   - [React-Pond](https://github.com/actyx-contrib/react-pond) library to quickly integrate with React
   - ActyxOS SDKs for [Rust](./os/sdks/rust.md) and [JS/TS](./os/sdks/js-ts.md)
