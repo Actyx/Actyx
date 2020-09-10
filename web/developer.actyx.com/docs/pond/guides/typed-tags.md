@@ -34,6 +34,7 @@ pond.emit(
   { type: 'messageAdded', message: "If you love something, let it go." }
 )
 ```
+
 :::note General and specific tags
 It’s important to use the `withId` helper. It makes sure we are not only tagging with
 `chatRoom:Melmac`, but with just `chatRoom` as well. This is important, because there is no
@@ -41,15 +42,16 @@ way to prefix-query tags! If a consumer wants to read all `chatRoom` events, not
 specific room, it can then do so via just `Tag('chatRoom')`.
 :::note
 
-
 And our `chatRoomFish` which subscribes to those events:
 
 ```typescript
+
 export const mkChatRoomFish: (name: string): Fish<string[], ChatRoomEvent> => ({
   // ...
   fishId: FishId.of('ax.example.ChatRoom', name, 0),
   where: Tag('chatRoom').withId(name),
 })
+
 ```
 
 Now, we could theoretically change the shape of `ChatRoomEvent`, requiring for example another field. If we forgot to

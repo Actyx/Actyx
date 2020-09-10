@@ -21,7 +21,7 @@ const chatRoomOnEvent: Reduce<string[], ChatRoomEvent> = (state, event) => {
       return state
     }
     default:
-	  // Assert we have not forgotten any case
+    // Assert we have not forgotten any case
       return unreachableOrElse(event.type, state)
   }
 }
