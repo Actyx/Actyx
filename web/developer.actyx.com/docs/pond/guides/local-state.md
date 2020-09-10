@@ -6,14 +6,14 @@ hide_table_of_contents: true
 _Making sense of events: building up local state._
 
 A fish’s purpose is to learn about its environment and make or record decisions based on its knowledge.
-So far we have only outfitted our fishes wih an initial state, their knowledge was static.
-In this section we implement the logic for how a fish can change its state by ingesting information in the form of events.
+In this section we implement the logic for how a fish can accumulate useful state by ingesting events.
 
 A fish reacts to events as they become available, therefore we need to add an `onEvent` handler to our fish.
 Since the point of the event handler is to manage the fish’s state, the first piece of information we need to settle on is what state we want to keep.
 In our example we model a chat room, so we’ll go with a list of messages — which in Typescript matches an array of strings.
 
 ```typescript
+// The type parameters of Reduce are: 1. the state, 2. the incoming events
 const chatRoomOnEvent: Reduce<string[], ChatRoomEvent> = (state, event) => {
   switch (event.type) {
     case 'messageAdded': {
@@ -21,6 +21,7 @@ const chatRoomOnEvent: Reduce<string[], ChatRoomEvent> = (state, event) => {
       return state
     }
     default:
+    // Assert we have not forgotten any case
       return unreachableOrElse(event.type, state)
   }
 }
@@ -31,12 +32,13 @@ All necessary imports (like `Reduce`) are available from the `@actyx/pond` modul
 :::
 
 The only event our chat room fish knows is of type `messageAdded`, so we need to handle that.
+Usually you will have a couple of different types, which is when the `switch` approach comes in handy.
 
 The `onEvent` handler computes a new state from the old state and the event; you are free to choose whether to mutate
 the passed in state or return a new copy, depending on your preference.  The `unreachableOrElse` helper function
 ensures that we don’t forget to handle a case in the switch statement.
 
-What remains to be done is to hook this new `onEvent` handler into our fish definition:
+What remains to be done is to hook this new `onEvent` handler into a fish definition:
 
 ```typescript
 export const chatRoomFish: Fish<string[], ChatRoomEvent> = {
@@ -45,6 +47,19 @@ export const chatRoomFish: Fish<string[], ChatRoomEvent> = {
   onEvent: chatRoomOnEvent,
   where: Tag('chatRoom').withId('lobby'),
 }
+
+pond.observe(chatRoomFish, state => console.log('Full list of messages:', state))
 ```
 
-With this we have seen all important triggers for a fish: it reacts to events by computing a new state, plus its state is observable from the outside world. In the next section we start looking into the distributed aspects of writing fishes.
+:::note Selecting only local events
+
+If your node is part of an ActyxOS swarm where this tutorial has already been run, your fish might
+already have picked up some messages from the past!
+
+If desired, you can get rid of such interference, by scoping your subscriptions to your local
+node. Simply use the `.local()` transformation, as in `Tag('chatRoom').withId('lobby').local()`
+:::
+
+With this we have seen all important triggers for a fish: it reacts to events by computing a new
+state, plus its state is observable from the outside world. In the next section we start looking
+into the distributed aspects of writing fishes.

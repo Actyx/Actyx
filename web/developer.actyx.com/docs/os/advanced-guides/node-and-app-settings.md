@@ -275,7 +275,7 @@ Alternatively the settings schema can be inlined into the manifest:
 settingsSchema: { "default": {} } # <------------- inlined settings schema
 ```
 
-When you package your app, the Actyx CLI will automatically include the settings schema so that it will be available to ActyxOS when your app is deployed.
+When you package your app, the Actyx CLI wiactyxoll automatically include the settings schema so that it will be available to ActyxOS when your app is deployed.
 
 #### Accessing settings in your app
 
@@ -283,12 +283,12 @@ The last important part is accessing settings from within your app&mdash;happily
 
 ##### Accessing settings in web apps (WebView Runtime)
 
-Your app's settings are available in the runtime using an injected global function named `ax.appSettings`. To continue with our example, you could access them as follows:
+Your app's settings are available in the runtime using an injected global function named `ax.appSettings`. This function returns a string containing a JSON-stringified object. To continue with our example, you could access them as follows:
 
 ```javascript
 
 function onStartApp() {
-  const { timeUnit, backgroundColor } = ax.appSettings()
+  const { timeUnit, backgroundColor } = JSON.parse(ax.appSettings())
   // Do something with the timeUnit and backgroundColor...
 }
 ```

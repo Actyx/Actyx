@@ -39,7 +39,7 @@ Value      | Apps                    |
  `Disabled`| App should be stopped |
 
 :::tip Use fleet management services to control this behaviour for your nodes
-ActyxOS does not control the Host system of your nodes, therefore this is only available for apps. You can use fleet management services such as [Balena for ActyxOS on Docker](using-balena) or [Workspace one for ActyxOS on Android](using-workspace-one) to control e.g. restarts of ActyxOS.
+ActyxOS does not control the Host system of your nodes, therefore this is only available for apps. You can use fleet management services such as [Balena for ActyxOS on Docker](https://balena.io/) or [Workspace one for ActyxOS on Android](https://www.vmware.com/products/workspace-one.html) to control e.g. restarts of ActyxOS.
 :::
 
 ### Settings
