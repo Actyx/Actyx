@@ -13,7 +13,7 @@ Events are tagged with an arbitrary number of tags, each tag being just a non-em
 
 ```typescript
 pond.emit(
-    // We add the pure 'chatRoom' tag as well, to allow finding all chat events at once.
+    // We add the pure 'chatRoom' tag as well, to allow finding all chat events
     Tags('chatRoom', 'chatRoom:lobby', 'sender', 'sender:Alf'),
     { type: 'messageAdded', message: 'Hello!' }
 )
