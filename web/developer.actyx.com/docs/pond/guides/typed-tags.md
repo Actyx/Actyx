@@ -81,7 +81,7 @@ export const ChatRoom = {
 First, we create a helper object called `tags`, being a single place where we can put all related tags to this fish. We wrap
 both `tags` and the `mkChatRoomFish` function inside a wrapper object called `ChatRoom` and export only that. This way,
 all coherent parts are modularized. The subscription of the fish can be rewritten to `tags.chatRoom.withId(name)`,
-which will require all events to have the tags `` 'chatRoom' & `chatRoom:${name}` ``. We're ignoring the `sender` tag within the
+which will require all events to have the tags `chatRoom` and `chatRoom:${name}`. We're ignoring the `sender` tag within the
 subscription, as every event we're interested should at least have the `chatRoom` tag. Also note, that we parameterized
 the chat room tag with the type `ChatRoomEvent`.
 
