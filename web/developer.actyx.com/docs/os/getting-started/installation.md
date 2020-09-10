@@ -5,7 +5,8 @@ title: Installation
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-ActyxOS can be installed on Android and Docker.
+ActyxOS is currently available on Android and Docker.
+A Beta release for ActyxOS on Windows is also available.
 
 ## Installing on Android
 
@@ -90,6 +91,16 @@ docker run -it --rm -e AX_DEV_MODE=1 -v actyxos-data:/data --privileged --networ
 </Tabs>
 
 For further information regarding ActyxOS on Docker please start [here](/os/advanced-guides/actyxos-on-docker.md).
+
+## Installing on Windows
+
+:::caution Beta version only for development purposes
+ActyxOS on Windows is currently in public Beta and should not be used in production environments.
+:::
+
+You can download an installer for ActyxOS on Windows on [the downloads page](https://downloads.actyx.com/). After opening the installer, you are guided through the setup process.
+
+For further information regarding ActyxOS on Windows please start [here](/os/advanced-guides/actyxos-on-windows.md).
 
 ## Required ports
 
