@@ -207,7 +207,7 @@ If you want to learn more about ActyxOS, check out our [guides](/os/guides/overv
 
 ### What is Actyx Pond?
 
-Actyx Pond is an application framework for building apps that run on ActyxOS. It is currently available for the TypeScript programming language. _Support for further languages, inlcuding C#/.NET is planned._ Here is how to works:
+Actyx Pond is an application framework for building apps that run on ActyxOS. It is currently available for the TypeScript programming language. _Support for further languages, including C#/.NET is planned._ Here is how to works:
 
 1. You implement the business logic of your application by writing so-called _fishes_ and run those in ActyxOS apps
 1. Actyx Pond then automatically synchronizes the state of all fishes throughout the swarm of nodes
