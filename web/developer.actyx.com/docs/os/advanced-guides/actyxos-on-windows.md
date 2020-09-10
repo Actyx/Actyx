@@ -18,6 +18,23 @@ Your edge device must meet the following requirements to install <em>ActyxOS on 
 - Windows 10
 - `amd64` architecture
 
+## Required ports
+
+ActyxOS currently requires five ports to operate.
+Before starting ActyxOS make sure that these ports are not already in use by another program.
+
+- `4001` - Used for internode communication
+- `4243` - Exposes a WebSocket endpoint for the Actyx Pond (only on localhost)
+- `4454` - Exposes the [Event Service](/os/api/event-service.md) (only on localhost)
+- `4457` - Exposes the [Console Service](/os/api/console-service.md)
+- `8080` - Exposes an [IPFS Gateway](https://docs.ipfs.io/concepts/ipfs-gateway/) (only on localhost)
+
+The following ports are reserved for future use.
+The services exposed there are currently still in alpha testing.
+
+- `4455`
+- `4458`
+
 ### Install ActyxOS on your edge device
 
 You can download an installer for ActyxOS on Windows on [the downloads page](https://downloads.actyx.com/). After opening the installer, you are guided through the setup process.
@@ -122,11 +139,11 @@ If you receive the following error during installation, please close the Windows
 
 ### ActyxOS is not starting
 
-The most common reason for this problem is that the one of the ports ActyxOS needs is already in use by another program. ActyxOS uses the following ports:
+The most common reason for this problem is that one of the ports ActyxOS needs is already in use by another program. ActyxOS currently uses the following ports:
 
 - 4001
+- 4243
 - 4454
-- 4455
 - 4457
 - 8080
 
