@@ -10,7 +10,7 @@ Therefore, defining the set of event subscriptions is fundamental, it belongs wi
 
 ```typescript
 const mkChatRoomFish = (name: string): Fish<string[], ChatRoomEvent> => ({
-  fishId: FishId.of('ax.example.ChatRoom', name, 0),
+  fishId: FishId.of('ChatRoom-Example', name, 0),
   initialState: [],
   onEvent: chatRoomOnEvent,
   where: Tag('chatRoom').withId(name),

@@ -32,7 +32,7 @@ All necessary imports (like `Reduce`) are available from the `@actyx/pond` modul
 :::
 
 The only event our chat room fish knows is of type `messageAdded`, so we need to handle that.
-Usually you will have a couple different types, which is when the `switch` approach comes in handy.
+Usually you will have a couple of different types, which is when the `switch` approach comes in handy.
 
 The `onEvent` handler computes a new state from the old state and the event; you are free to choose whether to mutate
 the passed in state or return a new copy, depending on your preference.  The `unreachableOrElse` helper function
@@ -57,7 +57,7 @@ If your node is part of an ActyxOS swarm where this tutorial has already been ru
 already have picked up some messages from the past!
 
 If desired, you can get rid of such interference, by scoping your subscriptions to your local
-node. Simply call the `local()` transformation, like `Tag('chatRoom').withId('lobby').local()`
+node. Simply use the `.local()` transformation, as in `Tag('chatRoom').withId('lobby').local()`
 :::
 
 With this we have seen all important triggers for a fish: it reacts to events by computing a new
