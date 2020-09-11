@@ -192,7 +192,7 @@ Now that you’re set up, let’s get an overview of the Actyx platform!
 
 ActyxOS is a multi-node operating system that allows you to build edge native applications running in a swarm of nodes (devices). Specifically you can:
 
-1. Run one ore more apps on each node using the ActyxOS Runtimes
+1. Run one ore more apps on each node using the ActyxOS runtimes
 1. Access _always-available_ `localhost` APIs such as the Event Service
 1. Count on automatic dissemination and persistence of data in the swarm
 
@@ -224,7 +224,7 @@ Let's now have a look at how to use ActyxOS and Actyx Pond to build our decentra
 
 To implement and run our chat app we need to do three things:
 
-1. Install ActyxOS on each node (or device). Already done!
+1. ~~Install ActyxOS on each node (or device).~~ Already done!
 1. Implement our chat logic as a fish
 1. Package and run our chat app
 
@@ -249,7 +249,7 @@ When a fish first starts up, it won't have received any chat messages yet. So le
 const INITIAL_STATE: ChatState = []
 ```
 
-Now comes the actual logic of our chat, namely how to calculate the chat (which we will show to the user), from the events we have received. We do this by writing a so-called `onEvent` function. In this case, we will simply add the chat messages (`ChatEvent`) we have received to our state (`ChatState`):
+Now comes the actual logic of our chat, namely how to calculate the chat state (which we will show to the user), from the events we have received. We do this by writing a so-called `onEvent` function. In this case, we will simply add the chat messages (`ChatEvent`) we have received to our state (`ChatState`):
 
 ```ts
 function onEvent(state: ChatState, event: ChatEvent) {
