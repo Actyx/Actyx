@@ -16,11 +16,28 @@ In particular, the full type of the chat room fish we have developed so far is
 const chatRoomFish: Fish<string[], ChatRoomEvent> = ..
 ```
 
-This allows interactions with fishes via `Pond.run` and `Pond.observe` to be checked for correctness by the TypeScript compiler.
-Unfortunately, this type-checking does not extend to the subscription set of a fish since the subscribed event streams do not necessarily have typescript declarations — they may come from ActyxOS apps that are implemented directly on top of the [Event Service](../../os/api/event-service.md).
+This allows interactions with fishes via `Pond.run` and `Pond.observe` to be checked for correctness
+by the TypeScript compiler.
+
+Via the [typed tagging system](typed-tags), correctness is also checked for `Pond.emit`: Given a set
+of tags (constructed like `someTag.and(someOtherTag).and(aThirdTag.withId('some-id'))`), only those
+events may be emitted that are part of the type of all of these tags.
+
+On the flipside, a Fish’s `onEvent` is type-checked to cover _at least_ all the event types declared
+by its subscription set.
+```typescript
+const tagA = Tag<EventA>('A')
+const tagB = Tag<EventB>('B')
+
+// Requiring either one of the tags means that the fish must have handling for the complete set
+const whereAOrB: Where<EventA | EventB> = tagA.or(tagB)
+
+// Requiring both tags means the fish must only have handling for the intersection of their types
+const whereAAndB: Where<Extract<EventA, EventB>> = tagA.and(tagB)
+```
 
 :::note
-In a future version ActyxOS will support the registration of event schemata for event streams, allowing types to be checked across nodes and apps. This will include compile-time declarations for TypeScript as well as runtime checks for all events passed into the Event Service API. For now, you can use the [typed tag](typed-tags) query API to gain better type guarantees within the Pond app itself.
+In a future version ActyxOS will support the registration of event schemata for event streams, allowing types to be checked across nodes and apps. This will include compile-time declarations for TypeScript as well as runtime checks for all events passed into the Event Service API.
 :::
 
 Static type information also gives you some measure of control over the evolution of your event types:
