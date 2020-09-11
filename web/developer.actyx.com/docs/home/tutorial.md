@@ -203,8 +203,6 @@ ActyxOS enables a completely decentral architecture that allows you to **build a
 - The **Event Service** API at `http://localhost:4454/api/v1/events` allows you to publish and receive events in the swarm of nodes
 - The **Console Service** API at `http://localhost:4457/api/v1/logs` allows you to generate logs for monitoring and debugging
 
-If you want to learn more about ActyxOS, check out our [guides](/os/guides/overview.md) and [advanced guides](/os/advanced-guides/overview.md).
-
 ### What is Actyx Pond?
 
 Actyx Pond is an application framework for building apps that run on ActyxOS. It is currently available for the TypeScript programming language. _Support for further languages, including C#/.NET is planned._ Here is how to works:
@@ -215,8 +213,6 @@ Actyx Pond is an application framework for building apps that run on ActyxOS. It
 ![Actyx Pond schematic](/images/tutorials/chat-tutorial/actyx-pond-how-it-works.svg)
 
 What is interesting about Actyx Pond is that it **allows you to forget completely about how to synchronize state between nodes** in the swarm. This happens, for example, when one of the nodes goes offline for a while. As soon as it comes back up, Actyx Pond automatically reconciles what happened between all the nodes while they were disconnected from each other.
-
-If you want to learn more about Actyx Pond, please start [here](/pond/introduction.md)
 
 :::info Eventual consistency for a partition tolerant system
 Formally speaking, Actyx Pond provides eventual consistency for logic implemented on the partition tolerant ActyxOS. You can learn more about the theoretical concepts underlying ActyxOS and Actyx Pond [here](/os/theoretical-foundation/distributed-systems.md).
