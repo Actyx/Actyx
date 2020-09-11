@@ -26,7 +26,6 @@ You can get information from the Event Service about known offsets, i.e. what th
 - Endpoint: `http://localhost:4454/api/v1/events/offsets`
 - HTTP method: `GET`
 - HTTP headers:
-  - `Content-Type`, must be `application/json`, default: `application/json`
   - (optional) `Accept`, must be `application/json`, default: `application/json`
 
 There is no request body.
@@ -205,8 +204,8 @@ echo '
     -d @- \
     -H "Content-Type: application/json" \
     -H "Accept: application/x-ndjson" \
-    http://localhost:4454/api/v1/events/query
-    | jq
+    http://localhost:4454/api/v1/events/query \
+| jq .
 > {
     "stream": {
         "semantics": "com.actyx.examples.temperature",
@@ -314,7 +313,7 @@ See the following example using cURL:
 echo '
 {
     "lowerBound": {
-            "db66a77f": 34,
+        "db66a77f": 34,
         "a263bad7": -1
     },
     "subscriptions": [
@@ -342,7 +341,7 @@ echo '
     -H "Content-Type: application/json" \
     -H "Accept: application/x-ndjson" \
     http://localhost:4454/api/v1/events/subscribe \
-| jq . \
+| jq .
 >
 {
     "stream": {
@@ -401,7 +400,8 @@ The response will provide feedback using HTTP status codes, with `201` signifyin
 See the following example using cURL:
 
 ```bash
-echo '{
+echo '
+{
     "data": [
         {
             "semantics": "com.actyx.examples.temperature",
@@ -409,7 +409,6 @@ echo '{
             "payload": {
                 "foo": [1, 3, 4],
                 "bar": { "a": 1, "b": 103 }
-        }
         },
         {
             "semantics": "com.actyx.examples.temperature",
@@ -417,7 +416,6 @@ echo '{
             "payload": {
                 "foo": [3, 1, 1],
                 "bar": { "a": 13, "b": 48 }
-        }
         }
     ]
 }
