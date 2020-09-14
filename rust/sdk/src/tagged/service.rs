@@ -117,10 +117,7 @@ mod tests {
             from: StartFrom::Offsets(OffsetMap::empty()),
         };
         let s = serde_json::to_string(&req).unwrap();
-        assert_eq!(
-            s,
-            r#"{"session":"sess","subscription":"'tagA' & 'tagB'","offsets":{}}"#
-        );
+        assert_eq!(s, r#"{"session":"sess","subscription":"'tagA' & 'tagB'","offsets":{}}"#);
         let r: SubscribeUntilTimeTravelApiRequest = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, req);
 
@@ -143,10 +140,7 @@ mod tests {
             snapshot: SnapshotData::new(Compression::None, &[1, 2, 3][..]),
         };
         let s = serde_json::to_string(&resp).unwrap();
-        assert_eq!(
-            s,
-            r#"{"type":"state","snapshot":{"compression":"none","data":"AQID"}}"#
-        );
+        assert_eq!(s, r#"{"type":"state","snapshot":{"compression":"none","data":"AQID"}}"#);
         let r: SubscribeUntilTimeTravelResponse = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, resp);
 

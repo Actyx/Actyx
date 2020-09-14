@@ -198,9 +198,7 @@ impl StreamId {
             bytes.copy_from_slice(&self.node_id.as_ref()[0..=MAX_SOURCEID_LENGTH]);
             Ok(SourceId(bytes))
         } else {
-            Err(anyhow!(
-                "can only convert StreamId with stream number zero to SourceId"
-            ))
+            Err(anyhow!("can only convert StreamId with stream number zero to SourceId"))
         }
     }
 
@@ -216,9 +214,7 @@ impl StreamId {
             bail!("trailing garbage in StreamId");
         }
         let node_id = NodeId::try_from(node_str)?;
-        let stream_nr = stream_str
-            .parse()
-            .context("parsing StreamId stream number")?;
+        let stream_nr = stream_str.parse().context("parsing StreamId stream number")?;
         ensure!(stream_nr != 0, "invalid stream nr in StreamId");
         Ok(Self { node_id, stream_nr })
     }
@@ -249,11 +245,7 @@ impl Into<String> for StreamId {
 impl TryFrom<&str> for StreamId {
     type Error = anyhow::Error;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Self::parse_str(value).or_else(|_| {
-            Ok(SourceId::try_from(value)
-                .context("parsing StreamId")?
-                .into())
-        })
+        Self::parse_str(value).or_else(|_| Ok(SourceId::try_from(value).context("parsing StreamId")?.into()))
     }
 }
 
@@ -310,41 +302,32 @@ mod tests {
     }
 
     const BYTES: [u8; 32] = [
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-        26, 27, 28, 29, 30, 31, 32,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+        31, 32,
     ];
 
     #[test]
     fn node_id_serialization() {
         let node_id = NodeId(BYTES);
-        assert_eq!(
-            node_id.to_string(),
-            "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA"
-        );
+        assert_eq!(node_id.to_string(), "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA");
     }
 
     #[test]
     fn stream_id_serialization() {
         let stream_id = NodeId(BYTES).stream(12).unwrap();
-        assert_eq!(
-            stream_id.to_string(),
-            "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.12"
-        );
+        assert_eq!(stream_id.to_string(), "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.12");
     }
 
     #[test]
     fn quick1() {
         let sid = StreamId {
             node_id: NodeId([
-                81, 66, 94, 87, 52, 39, 60, 110, 43, 93, 98, 94, 97, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0,
-                0, 0, 0, 0, 0, 0, 0, 0, 0,
+                81, 66, 94, 87, 52, 39, 60, 110, 43, 93, 98, 94, 97, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0,
             ]),
             stream_nr: 0,
         };
-        assert_eq!(
-            serde_json::to_value(&sid).unwrap(),
-            Value::String(sid.to_string())
-        );
+        assert_eq!(serde_json::to_value(&sid).unwrap(), Value::String(sid.to_string()));
     }
 
     quickcheck::quickcheck! {
