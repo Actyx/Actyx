@@ -192,7 +192,7 @@ The response will be in the [Server-Sent Events format](https://developer.mozill
         "name": "<string: name>",
         "source": "<string: sourceID>"
     },
-    "timestamp": "<integer>", // unix epoch in microseconds
+    "timestamp": "<integer: unix epoch in microseconds>",
     "lamport": "<integer>",
     "offset": "<integer>",
     "payload": "<object>"
@@ -310,7 +310,7 @@ The response will be in the [Server-Sent Events format](https://developer.mozill
         "name": "<string: name>",
         "source": "<string: sourceID>"
     },
-    "timestamp": "<integer>",
+    "timestamp": "<integer: unix epoch in microseconds>",
     "lamport": "<integer>",
     "offset": "<integer>",
     "payload": "<object>"
@@ -357,7 +357,7 @@ echo '
         "name": "_t_",
         "source": "db66a77f"
     },
-    "timestamp": 1599224884528020, // unix epoch microseconds
+    "timestamp": 1599224884528020,
     "lamport": 323,
     "offset": 34,
     "payload": {

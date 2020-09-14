@@ -149,7 +149,7 @@ The response will be a stream of `<CR><LF>`-delimited event payloads of the foll
         "name": "<string: name>",
         "source": "<string: sourceID>"
     },
-    "timestamp": "<integer>", // unix epoch in microseconds
+    "timestamp": "<integer: unix epoch in microseconds>",
     "lamport": "<integer>",
     "offset": "<integer>",
     "payload": "<object>"
@@ -289,7 +289,7 @@ The response will be a stream of `<CR><LF>`-delimited event payloads of the foll
         "name": "<string: name>",
         "source": "<string: sourceID>"
     },
-    "timestamp": "<integer>",
+    "timestamp": "<integer: unix epoch in microseconds>",
     "lamport": "<integer>",
     "offset": "<integer>",
     "payload": "<object>"
@@ -349,7 +349,7 @@ echo '
         "name": "temp-sensor",
         "source": "db66a77f"
     },
-    "timestamp": 21323, // unix epoch microseconds
+    "timestamp": 21323,
     "lamport": 323,
     "offset": 34,
     "payload": {
