@@ -167,10 +167,8 @@ module.exports = {
   },
   {
     type: 'category', label:
-      'In-Depth Guides', items: [
-        'pond/guides/tag-type-checking',
-	'pond/guides/fish-id',
-	'pond/guides/rxjs-integration',
+      'Pond In-Depth', items: [
+        'pond/in-depth/tag-type-checking',
       ]
   },
   ],
