@@ -165,6 +165,14 @@ module.exports = {
         'pond/guides/integrating-a-ui',
       ]
   },
+  {
+    type: 'category', label:
+      'In-Depth Guides', items: [
+        'pond/guides/tag-type-checking',
+	'pond/guides/fish-id',
+	'pond/guides/rxjs-integration',
+      ]
+  },
   ],
   faqSidebar: [
     'faq/supported-programming-languages',
