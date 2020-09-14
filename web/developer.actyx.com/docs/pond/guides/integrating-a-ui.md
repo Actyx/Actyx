@@ -13,9 +13,11 @@ change its state.  We have seen how to observe a fish’s state in the [Hello wo
 to modify it when we discussed [emitting events](state-effects).
 
 ```typescript
+const myRoomTags = Tag('chatRoom').withId('my-room')
+
 export const wireUI = (pond: Pond) => {
   const sendToRoom = (message: string) =>
-    pond.emit(['chatRoom:my-room'], { type: 'messageAdded', message }).toPromise()
+    pond.emit(myRoomTags, { type: 'messageAdded', message }).toPromise()
   const rootEl = document.getElementById('root')
 
   pond
@@ -63,7 +65,7 @@ When the enter key is pressed in the input field, the `sendToRoom` function is i
 In order to try this out, we create a minimal `index.js` to tie everything together, assuming that all chat room and UI code is placed in `chat.tsx`:
 
 ```typescript
-import { Pond } from 'ada'
+import { Pond } from '@actyx/pond'
 import { wireUI } from './chat'
 
 const main = async () => {
