@@ -70,7 +70,7 @@ You can query the Event Service for bounded sets of events in one or more event 
 - Endpoint: `http://localhost:4454/api/v1/events/query`
 - HTTP method: `POST`
 - HTTP headers:
-  - `Content-Type`, must be `application/json`, default: `application/json`
+  - `Content-Type`, must be `application/json`
   - (optional) `Accept`, must be `application/x-ndjson`, default: `application/x-ndjson`
 
 The request body must contain a JSON object with the following structure:
@@ -231,7 +231,7 @@ You can use the Event Service API to subscribe to event streams. The Event Servi
 - Endpoint: `http://localhost:4454/api/v1/events/subscribe`
 - HTTP method: `POST`
 - HTTP headers:
-  - `Content-Type`, must be `application/json`, default: `application/json`
+  - `Content-Type`, must be `application/json`
   - (optional) `Accept`, must be `application/x-ndjson`, default: `application/x-ndjson`
 
 The request body must contain a JSON object with the following structure:
@@ -368,7 +368,7 @@ You can publish new events using the Event Service API.
 - Endpoint: `http://localhost:4454/api/v1/events/publish`
 - HTTP method: `POST`
 - HTTP headers:
-  - `Content-Type`, must be `application/json`, default: `application/json`
+  - `Content-Type`, must be `application/json`
 
 The request body must contain a JSON object with the following structure:
 
