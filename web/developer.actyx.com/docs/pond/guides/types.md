@@ -27,7 +27,7 @@ On the flipside, a Fish’s `onEvent` is type-checked to cover _at least_ all th
 by its subscription set.
 ```typescript
 const UserTag = Tag<UserEvent>('user')
-const MachineTag = Tag<EventB>('machine')
+const MachineTag = Tag<MachineEvent>('machine')
 
 // Requiring either one of the tags means that the fish must have handling for the complete set
 const whereUserOrMachine: Where<UserEvent | MachineEvent> = UserTag.or(MachineTag)
