@@ -118,5 +118,5 @@ where: tags.chatRoom.withId('Melmac').and(tags.sender.withId('Alf'))
 
 :::tip The Definitive Guide
 If you want to know more, check out the [complete guide](/docs/pond/in-depth/tag-type-checking). It
-also contains useful guidance on using modules to structure your tags and migrate data formats.
+also contains useful guidance on application architecture using tags!
 :::
