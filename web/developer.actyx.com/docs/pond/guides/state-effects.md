@@ -26,7 +26,7 @@ In the case of a single fish, this problem is solved by using _state effects_, a
 The Pond guarantees that the next state effect will only run once the emitted events have been applied to the state.
 
 In the chat room example we may use this to forbid senders from posting a message twice in a row:
-(Let’s say, to avoid `/amsg`-style spam, or just to guard against double-clicked "send" buttons.)
+(Let’s say, to guard against double-clicked "send" buttons.)
 
 ```typescript
 const lastMsgBySender = (sender: string): Fish<string, ChatRoomEvent> => ({

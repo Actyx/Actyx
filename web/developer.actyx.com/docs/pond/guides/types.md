@@ -32,7 +32,7 @@ const tagB = Tag<EventB>('B')
 // Requiring either one of the tags means that the fish must have handling for the complete set
 const whereAOrB: Where<EventA | EventB> = tagA.or(tagB)
 
-// Requiring both tags means the fish must only have handling for the intersection of their types
+// Requiring both tags means the fish must only have handling for the intersection of their TypeScript-types
 const whereAAndB: Where<Extract<EventA, EventB>> = tagA.and(tagB)
 ```
 
