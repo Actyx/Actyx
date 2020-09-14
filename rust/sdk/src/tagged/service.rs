@@ -50,7 +50,7 @@ impl StartFrom {
 /// events that are included in the `lower_bound` OffsetMap.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct SubscribeUntilTimeTravelApiRequest {
+pub struct SubscribeMonotonicRequest {
     /// This id uniquely identifies one particular session. Connecting again with this
     /// SessionId shall only be done after a TimeTravel message has been received. The
     /// subscription is stored with the Session and all previous state is destroyed
@@ -67,10 +67,10 @@ pub struct SubscribeUntilTimeTravelApiRequest {
     pub from: StartFrom,
 }
 
-/// Response to subscribeUntilTimeTravel is a stream of events terminated by a time travel
+/// Response to subscribeMonotonic is a stream of events terminated by a time travel
 #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
-pub enum SubscribeUntilTimeTravelResponse {
+pub enum SubscribeMonotonicResponse {
     /// This message may be sent in the beginning when a suitable snapshot has been
     /// found for this session. It may also be sent at later times when suitable
     /// snapshots become available by other means (if for example this session is
@@ -110,18 +110,18 @@ mod tests {
     };
 
     #[test]
-    fn must_serialize_subscribe_until_time_travel() {
-        let req = SubscribeUntilTimeTravelApiRequest {
+    fn must_serialize_subscribe_monotonic() {
+        let req = SubscribeMonotonicRequest {
             session: "sess".into(),
             subscription: "'tagA' & 'tagB'".to_owned(),
             from: StartFrom::Offsets(OffsetMap::empty()),
         };
         let s = serde_json::to_string(&req).unwrap();
         assert_eq!(s, r#"{"session":"sess","subscription":"'tagA' & 'tagB'","offsets":{}}"#);
-        let r: SubscribeUntilTimeTravelApiRequest = serde_json::from_str(&*s).unwrap();
+        let r: SubscribeMonotonicRequest = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, req);
 
-        let req = SubscribeUntilTimeTravelApiRequest {
+        let req = SubscribeMonotonicRequest {
             session: "sess".into(),
             subscription: "'tagA' & 'tagB'".to_owned(),
             from: StartFrom::Snapshot {
@@ -133,18 +133,18 @@ mod tests {
             s,
             r#"{"session":"sess","subscription":"'tagA' & 'tagB'","snapshot":{"compression":["deflate"]}}"#
         );
-        let r: SubscribeUntilTimeTravelApiRequest = serde_json::from_str(&*s).unwrap();
+        let r: SubscribeMonotonicRequest = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, req);
 
-        let resp = SubscribeUntilTimeTravelResponse::State {
+        let resp = SubscribeMonotonicResponse::State {
             snapshot: SnapshotData::new(Compression::None, &[1, 2, 3][..]),
         };
         let s = serde_json::to_string(&resp).unwrap();
         assert_eq!(s, r#"{"type":"state","snapshot":{"compression":"none","data":"AQID"}}"#);
-        let r: SubscribeUntilTimeTravelResponse = serde_json::from_str(&*s).unwrap();
+        let r: SubscribeMonotonicResponse = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, resp);
 
-        let resp = SubscribeUntilTimeTravelResponse::Event {
+        let resp = SubscribeMonotonicResponse::Event {
             event: Event {
                 key: EventKey {
                     lamport: LamportTimestamp::new(1),
@@ -164,10 +164,10 @@ mod tests {
             s,
             r#"{"type":"event","key":{"lamport":1,"stream":"src","offset":3},"meta":{"timestamp":2,"tags":[]},"payload":null,"caughtUp":true}"#
         );
-        let r: SubscribeUntilTimeTravelResponse = serde_json::from_str(&*s).unwrap();
+        let r: SubscribeMonotonicResponse = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, resp);
 
-        let resp = SubscribeUntilTimeTravelResponse::TimeTravel {
+        let resp = SubscribeMonotonicResponse::TimeTravel {
             new_start: EventKey::default(),
         };
         let s = serde_json::to_string(&resp).unwrap();
@@ -175,7 +175,7 @@ mod tests {
             s,
             r#"{"type":"timeTravel","newStart":{"lamport":0,"stream":"!","offset":0}}"#
         );
-        let r: SubscribeUntilTimeTravelResponse = serde_json::from_str(&*s).unwrap();
+        let r: SubscribeMonotonicResponse = serde_json::from_str(&*s).unwrap();
         assert_eq!(r, resp);
     }
 }

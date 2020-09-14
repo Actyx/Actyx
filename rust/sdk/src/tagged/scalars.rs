@@ -7,7 +7,7 @@ use std::{
     fmt::{Debug, Display},
 };
 
-/// The session identifier used in subscribeUntilTimeTravel
+/// The session identifier used in /subscribe_monotonic
 #[derive(Debug, Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct SessionId(Box<str>);
 
