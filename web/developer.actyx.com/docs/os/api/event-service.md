@@ -198,7 +198,7 @@ echo '
     ],
     "order": "lamport-reverse"
 }
-'\
+' \
 | curl \
     -X "POST" \
     -d @- \
@@ -334,7 +334,7 @@ echo '
         {}
     ]
 }
-'\
+' \
 | curl \
     -s -X "POST" \
     -d @- \
@@ -419,7 +419,7 @@ echo '
         }
     ]
 }
-'\
+' \
 | curl \
     -X "POST" \
     -d @- \

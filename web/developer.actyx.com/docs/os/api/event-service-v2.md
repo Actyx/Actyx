@@ -231,7 +231,7 @@ echo '
     "subsciption": "'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')",
     "order": "lamport-reverse"
 }
-'\
+' \
 | curl \
     -s -X "POST" \
     -H "Authorization: Bearer $AUTH_TOKEN" \
@@ -341,7 +341,7 @@ echo '
     },
     "subsciption": "'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')"
 }
-'\
+' \
 | curl -N \
     -s -X "POST" \
     -H "Authorization: Bearer $AUTH_TOKEN" \
@@ -424,7 +424,7 @@ echo '
         }
     ]
 }
-'\
+' \
 | curl \
     -s -X "POST" \
     -H "Authorization: Bearer $AUTH_TOKEN" \
