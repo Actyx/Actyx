@@ -26,14 +26,15 @@ events may be emitted that are part of the type of all of these tags.
 On the flipside, a Fish’s `onEvent` is type-checked to cover _at least_ all the event types declared
 by its subscription set.
 ```typescript
-const tagA = Tag<EventA>('A')
-const tagB = Tag<EventB>('B')
+const UserTag = Tag<UserEvent>('user')
+const MachineTag = Tag<EventB>('machine')
 
 // Requiring either one of the tags means that the fish must have handling for the complete set
-const whereAOrB: Where<EventA | EventB> = tagA.or(tagB)
+const whereUserOrMachine: Where<UserEvent | MachineEvent> = UserTag.or(MachineTag)
 
-// Requiring both tags means the fish must only have handling for the intersection of their TypeScript-types
-const whereAAndB: Where<Extract<EventA, EventB>> = tagA.and(tagB)
+// Requiring both tags means the fish must only have handling for
+// Types that are common to both Union Types
+const whereUserAndMachine: Where<Extract<MachineEvent, UserEvent>> = UserTag.and(MachineTag)
 ```
 
 :::note
