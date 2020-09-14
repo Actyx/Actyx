@@ -80,6 +80,10 @@ A single tag may turn into `Tags` in two ways.
   
 - Calling `and` with more tags, we simply create a `Tags` object containing the concatenation.
 
+:::tip Inspect your Queries
+Since Pond 2.2 you can call `toString()` on `Where` / `Tags` / `Tag` objects to find out what your query does
+under the hood, at a glance.
+:::
 
 ## Inferred Type Requirements
 
