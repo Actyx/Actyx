@@ -5,7 +5,7 @@ hide_table_of_contents: true
 
 _All you ever wanted to know about tag-associated type-checking._
 
-In the [tutorial](typed-tags) on tag typing, we have motivated the system and shown briefly how to
+In the [tutorial](/docs/pond/guides/typed-tags) on tag typing, we have motivated the system and shown briefly how to
 use it. This guide covers all the tricks, corner-cases and design reasons.
 
 ## The Object Types: Tag, Tags and Where
