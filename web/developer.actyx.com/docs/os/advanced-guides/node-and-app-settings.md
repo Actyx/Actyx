@@ -123,7 +123,7 @@ The structure of this settings objects allows you to initially set, retrieve, or
 ActyxOS provides a number of settings that you can set. Some of those are required for the node to work, whereas others are optional. You can download the full ActyxOS [_Node Settings Schema_](../api/node-settings-schema.md) [here](/schemas/os/node-settings.schema.json). In this section we will show you how you can configure a node.
 
 :::info
-The primary tool for setting settings, both at the node and the app level, is the [Actyx CLI](../../cli/getting-started). The Actyx CLI provides three important commands for doing so:
+The primary tool for setting settings, both at the node and the app level, is the [Actyx CLI](../../cli/getting-started.md). The Actyx CLI provides three important commands for doing so:
 
 - `ax settings scopes` for figuring out what the top-level _scopes_ of the _settings object_ on the node are,
 - `ax settings get` to get settings from a node; and,

@@ -41,7 +41,7 @@ quickstart/
 
 ActyxOS is all about distributed apps communicating with one another, so let’s write an app that sends
 events around and displays events from other apps. The easiest approach is to use
-the [Actyx Pond](pond/getting-started) library and write the app in the [Typescript](https://www.typescriptlang.org/) language. The distributable pieces of app
+the [Actyx Pond](/docs/pond/getting-started) library and write the app in the [Typescript](https://www.typescriptlang.org/) language. The distributable pieces of app
 logic are called _fishes:_
 
 ```typescript
@@ -265,7 +265,7 @@ In order to make this sample fully distributed you can either start another Acty
 After installing [ActyxOS from the Google Play store](https://play.google.com/store/apps/details?id=com.actyx.os.android), start ActyxOS by clicking on the ActyxOS app in Android.
 
 :::tip Having trouble installing?
-Check out the [ActyxOS on Android guide](os/advanced-guides/actyxos-on-android).
+Check out the [ActyxOS on Android guide](/docs/os/advanced-guides/actyxos-on-android).
 :::
 
 Now that you have installed ActyxOS on the second device, let's configure the node and then package and deploy one of the sample apps. From the `quickstart` folder, run the following command:
@@ -331,9 +331,9 @@ This brings us to the close of this quickstart guide.
 
 ## Further reading
 
-- Learn more about ActyxOS and how to use it in the [ActyxOS docs](./os/getting-started/installation.md)
-- Dive into the Actyx Pond and its fishes in the [Actyx Pond docs](./pond/getting-started.md)
-- Check out what else you can do with the CLI in the [Actyx CLI docs](./cli/getting-started.md)
+- Learn more about ActyxOS and how to use it in the [ActyxOS docs](/docs/os/introduction.md)
+- Dive into the Actyx Pond and its fishes in the [Actyx Pond docs](/docs/pond/getting-started.md)
+- Check out what else you can do with the CLI in the [Actyx CLI docs](/docs/cli/getting-started.md)
 
 ## Troubleshooting
 

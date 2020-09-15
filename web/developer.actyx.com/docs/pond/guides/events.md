@@ -6,8 +6,7 @@ hide_table_of_contents: true
 _A fish consumes events, but emitting events is not coupled to fishes._
 
 Events can be emitted directly using the Actyx Event Service, or using the Actyx Pond. Actyx Pond provides two main APIs
-for emitting events: `pond.emit` and `pond.run` (we'll learn how to use [state effects] later).
-[state effects]: state-effects
+for emitting events: `pond.emit` and `pond.run` (we'll learn how to use [state effects](state-effects.md) later).
 
 Events are tagged with an arbitrary number of tags, each tag being just a non-empty string:
 
@@ -36,6 +35,4 @@ type ChatRoomEvent = { type: 'messageAdded', message: string }
 All necessary imports (like `Tags`) are available from the `@actyx/pond` module.
 :::
 
-We'll see in the next section about [local state] how we can construct a fish to make use of the emitted event.
-
-[local state]: local-state
+We'll see in the next section about [local state](/docs/pond/guides/local-state), how to construct a fish to make use of the emitted event.

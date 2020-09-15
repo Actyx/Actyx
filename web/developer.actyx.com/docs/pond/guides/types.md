@@ -25,6 +25,7 @@ events may be emitted that are part of the type of all of these tags.
 
 On the flipside, a Fish’s `onEvent` is type-checked to cover _at least_ all the event types declared
 by its subscription set.
+
 ```typescript
 const UserTag = Tag<UserEvent>('user')
 const MachineTag = Tag<MachineEvent>('machine')
@@ -38,7 +39,7 @@ const whereUserAndMachine: Where<Extract<MachineEvent, UserEvent>> = UserTag.and
 ```
 
 :::note
-In a future version ActyxOS will support the registration of event schemata for event streams, allowing types to be checked across nodes and apps. This will include compile-time declarations for TypeScript as well as runtime checks for all events passed into the Event Service API.
+In a future version ActyxOS will support the registration of event schemata for event streams, allowing types to be checked across nodes and apps. This will include compile-time declarations for TypeScript as well as runtime checks for all events passed into the Event Service API. For now, you can use the [typed tag](/docs/pond/guides/typed-tags) query API to gain better type guarantees within the Pond app itself.
 :::
 
 Static type information also gives you some measure of control over the evolution of your event types:

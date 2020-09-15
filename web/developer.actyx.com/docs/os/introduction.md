@@ -40,7 +40,7 @@ Want to jump right in? Check out the [Quickstart](../quickstart.md). Alternative
 
 - the [design principles](design-principles.md) behind ActyxOS,
 - [installing ActyxOS](getting-started/installation.md),
-- how the [basics work](guides/swarms); or,
+- how the [basics work](guides/overview.md); or,
 - on what [theoretical foundation](theoretical-foundation/distributed-systems.md) ActyxOS is built
 
 Or start reading the [API reference](api/overview.md).
@@ -50,7 +50,7 @@ Or start reading the [API reference](api/overview.md).
 - [Twitter](https://twitter.com/actyx)
 - [Github](https://github.com/actyx)
 - [Facebook](https://www.facebook.com/actyx/)
-- [LinkedIn](https://www.linkedin.com/company/actyx/)
+- [LinkedIn](https://www.linkedin.com/company/actyx)
 
 ## Contact us / Something missing?
 
