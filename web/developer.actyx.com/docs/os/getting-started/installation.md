@@ -15,7 +15,7 @@ Just open the Google Play store on your device, search for ActyxOS and install i
 
 In order to be able to run ActyxOS on Android, your device needs to meet the following requirements:
 
-- Android 5.1+
+- Android 6+
 - [Android System Webview](https://play.google.com/store/apps/details?id=com.google.android.webview) Version 70+
 - Minimum 2GB RAM
 - `x86`, `arm64-v8a` or `armeabi-v7a` [ABI](https://developer.android.com/ndk/guides/abis.html#sa)
