@@ -25,6 +25,7 @@ events may be emitted that are part of the type of all of these tags.
 
 On the flipside, a Fish’s `onEvent` is type-checked to cover _at least_ all the event types declared
 by its subscription set.
+
 ```typescript
 const UserTag = Tag<UserEvent>('user')
 const MachineTag = Tag<MachineEvent>('machine')
