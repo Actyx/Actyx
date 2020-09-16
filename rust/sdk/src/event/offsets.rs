@@ -47,21 +47,7 @@ const MAX_SAFE_INT: i64 = 9_007_199_254_740_991;
 /// the available set of values.
 ///
 /// The MIN value is not a valid offset, it is sorted before [`Offset::ZERO`](struct.Offset.html#const.ZERO).
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Serialize,
-    Deserialize,
-    Hash,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    From,
-    Into,
-    Display,
-)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, From, Into, Display)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct OffsetOrMin(#[serde(with = "i64_from_minus_one")] i64);
 
@@ -222,9 +208,7 @@ impl Bounded for OffsetOrMin {
 /// find the successor or predecessor, respectively. `incr` does not return an option
 /// because for the use-case of naming events within a stream it is impossible to exhaust
 /// the available set of values.
-#[derive(
-    Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, Display,
-)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, Display)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct Offset(#[serde(deserialize_with = "offset_i64")] i64);
 
@@ -259,9 +243,7 @@ fn validate_offset(o: i64) -> Result<Offset, &'static str> {
 
 fn offset_i64<'de, D: Deserializer<'de>>(d: D) -> Result<i64, D::Error> {
     let o = i64::deserialize(d)?;
-    validate_offset(o)
-        .map(|o| o - Offset::ZERO)
-        .map_err(D::Error::custom)
+    validate_offset(o).map(|o| o - Offset::ZERO).map_err(D::Error::custom)
 }
 
 impl Offset {
@@ -392,10 +374,7 @@ mod postgresql {
     use postgres_types::{FromSql, IsNull, ToSql, Type};
 
     impl<'a> FromSql<'a> for Offset {
-        fn from_sql(
-            ty: &Type,
-            raw: &'a [u8],
-        ) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
+        fn from_sql(ty: &Type, raw: &'a [u8]) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
             i64::from_sql(ty, raw).and_then(|o| validate_offset(o).map_err(|e| e.into()))
         }
         fn accepts(ty: &Type) -> bool {
@@ -417,11 +396,7 @@ mod postgresql {
         ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
             self.0.to_sql_checked(ty, out)
         }
-        fn to_sql(
-            &self,
-            ty: &Type,
-            out: &mut BytesMut,
-        ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>>
+        fn to_sql(&self, ty: &Type, out: &mut BytesMut) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>>
         where
             Self: Sized,
         {
@@ -494,11 +469,7 @@ impl OffsetMap {
 
     /// Check whether the given Event’s offset and source ID are contained within this `OffsetMap`.
     pub fn contains<T>(&self, event: &Event<T>) -> bool {
-        self.0
-            .get(&event.stream.source.into())
-            .copied()
-            .unwrap_or_default()
-            >= event.offset
+        self.0.get(&event.stream.source.into()).copied().unwrap_or_default() >= event.offset
     }
 
     /// Check whether the given source contributes to the set of events in this OffsetMap
@@ -515,9 +486,7 @@ impl OffsetMap {
     ///
     /// The returned value is `OffsetOrMin::MIN` if nothing is stored for the given source.
     pub fn offset(&self, stream: impl Into<StreamId>) -> OffsetOrMin {
-        self.get(stream)
-            .map(|o| o.into())
-            .unwrap_or(OffsetOrMin::MIN)
+        self.get(stream).map(|o| o.into()).unwrap_or(OffsetOrMin::MIN)
     }
 
     /// Retrieves the offset stored for the given source
@@ -533,10 +502,7 @@ impl OffsetMap {
     /// Merge the other OffsetMap into this one, taking the union of their event sets.
     pub fn union_with<'a>(&'a mut self, other: &OffsetMap) {
         for (k, v) in &other.0 {
-            self.0
-                .entry(*k)
-                .and_modify(|me| *me = (*me).max(*v))
-                .or_insert(*v);
+            self.0.entry(*k).and_modify(|me| *me = (*me).max(*v)).or_insert(*v);
         }
     }
 
@@ -586,9 +552,7 @@ impl OffsetMap {
 
     /// An iterator over all sources that contribute events to this OffsetMap
     pub fn sources<'a>(&'a self) -> impl Iterator<Item = SourceId> + 'a {
-        self.0
-            .keys()
-            .filter_map(|stream| stream.to_source_id().ok())
+        self.0.keys().filter_map(|stream| stream.to_source_id().ok())
     }
 
     /// An iterator over all streams that contribute events to this OffsetMap

@@ -93,10 +93,7 @@ impl EventService {
         self.url.join(path).unwrap()
     }
 
-    async fn do_request(
-        &self,
-        f: impl Fn(&Client) -> RequestBuilder,
-    ) -> Result<Response, EventServiceError> {
+    async fn do_request(&self, f: impl Fn(&Client) -> RequestBuilder) -> Result<Response, EventServiceError> {
         let response = f(&self.client)
             .send()
             .await
@@ -106,13 +103,10 @@ impl EventService {
         } else {
             let error_code = response.status().as_u16();
             Err(EventServiceError {
-                error: response.text().await.context(|| {
-                    format!(
-                        "getting body for {} reply to {:?}",
-                        error_code,
-                        f(&self.client)
-                    )
-                })?,
+                error: response
+                    .text()
+                    .await
+                    .context(|| format!("getting body for {} reply to {:?}", error_code, f(&self.client)))?,
                 error_code,
                 context: format!("sending {:?}", f(&self.client)),
             })

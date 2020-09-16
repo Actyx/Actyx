@@ -93,9 +93,7 @@ pub mod event_service;
 pub mod tagged;
 pub mod types;
 
-pub use event::{
-    LamportTimestamp, Offset, OffsetMap, OffsetOrMin, Opaque, ParseError, Payload, TimeStamp,
-};
+pub use event::{LamportTimestamp, Offset, OffsetMap, OffsetOrMin, Opaque, ParseError, Payload, TimeStamp};
 
 pub use event_service::Order;
 
