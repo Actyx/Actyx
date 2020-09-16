@@ -24,6 +24,7 @@ use serde::{
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
+    convert::TryFrom,
     fmt::{self, Debug},
     iter::FromIterator,
     ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
@@ -226,6 +227,25 @@ impl Bounded for OffsetOrMin {
 )]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct Offset(#[serde(deserialize_with = "offset_i64")] i64);
+
+impl From<Offset> for u64 {
+    fn from(value: Offset) -> Self {
+        // offset is guaranteed to be positive
+        value.0 as u64
+    }
+}
+
+impl TryFrom<u64> for Offset {
+    type Error = &'static str;
+
+    fn try_from(value: u64) -> Result<Self, Self::Error> {
+        if value > MAX_SAFE_INT as u64 {
+            Err("number too large")
+        } else {
+            Ok(Offset(value as i64))
+        }
+    }
+}
 
 fn validate_offset(o: i64) -> Result<Offset, &'static str> {
     if o < 0 {
