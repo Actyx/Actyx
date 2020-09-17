@@ -17,7 +17,7 @@ Download:
 ### New features
 
 - Introduced [ActyxOS on Windows in beta version](advanced-guides/actyxos-on-windows.md)
-- Introduced ActyxOS on Android support for `armeabi-v7a` [ABI](https://developer.android.com/ndk/guides/abis.html#sa) devices, and devices with Android 5.1+
+- Introduced ActyxOS on Android support for `armeabi-v7a` [ABI](https://developer.android.com/ndk/guides/abis.html#sa) devices
 - Several performance improvements
 
 ### Bug fixes
