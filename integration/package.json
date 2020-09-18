@@ -1,0 +1,31 @@
+{
+  "name": "actyxos-integration",
+  "version": "1.0.0",
+  "description": "ActyxOS integration test suite",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node index",
+    "build": "tsc",
+    "docker": "build && docker build -t proalpha-material . && docker push rolandkuhn/actyx: proalpha-material",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^14.10.1",
+    "@typescript-eslint/eslint-plugin": "^4.1.0",
+    "@typescript-eslint/parser": "^4.1.0",
+    "eslint": "^7.9.0",
+    "eslint-config-prettier": "^6.11.0",
+    "eslint-plugin-prettier": "^3.1.4",
+    "eslint-plugin-react": "^7.20.6",
+    "prettier": "^2.0.5",
+    "ts-node": "^9.0.0",
+    "typescript": "^4.0.2"
+  },
+  "dependencies": {
+    "@actyx/os-sdk": "^0.2.0",
+    "fp-ts": "^2.8.2",
+    "io-ts": "^2.2.10"
+  }
+}
