@@ -15,6 +15,11 @@ namespace Sdk.IntegrationTests
             this.rawTags.AddRange(tags);
         }
 
+        public Tags(params string[] tags)
+        {
+            this.rawTags.AddRange(tags);
+        }
+
         public Tags<ESub> and<ESub>(Tags<ESub> other) where ESub : E
         {
             return new Tags<ESub>(rawTags.Concat(other.rawTags));
@@ -35,7 +40,6 @@ namespace Sdk.IntegrationTests
             return new Tags<E>(new string[] { this.rawTag, this.rawTag + ':' + id });
         }
     }
-
 
 
     interface EventHandler<S, in E>
@@ -76,9 +80,9 @@ namespace Sdk.IntegrationTests
 
     class Fooo
     {
-        static async Task Ok(Ponder p)
+        static Task Ok(Ponder p)
         {
-
+            Tags<string> myTags = new Tags<string>("foo", "bar");
 
         }
     }
