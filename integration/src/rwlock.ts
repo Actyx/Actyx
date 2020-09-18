@@ -1,3 +1,5 @@
+export type RwLockState = 'read' | 'write' | 'idle'
+
 export class RwLock {
   /**
    * rw > 0: readers
@@ -8,7 +10,7 @@ export class RwLock {
   /** tasks wait list */
   private queue: (() => void)[] = []
 
-  readLock = async <T>(f: () => Promise<T>): Promise<T> => {
+  readLock = async <T>(f: () => Promise<T> | T): Promise<T> => {
     const release = (t: T) => {
       this.rw -= 1
       if (this.queue.length > 0) {
@@ -18,21 +20,21 @@ export class RwLock {
     }
     if (this.rw >= 0 && this.queue.length == 0) {
       this.rw += 1
-      return f().then(release)
+      return Promise.resolve(f()).then(release)
     } else {
       return new Promise((res) =>
         this.queue.push(() => {
           if (this.rw >= 0) {
             this.queue.shift()
             this.rw += 1
-            setTimeout(() => f().then(release).then(res))
+            setTimeout(() => Promise.resolve(f()).then(release).then(res))
           }
         }),
       )
     }
   }
 
-  writeLock = async <T>(f: () => Promise<T>): Promise<T> => {
+  writeLock = async <T>(f: () => Promise<T> | T): Promise<T> => {
     const release = (t: T) => {
       this.rw = 0
       if (this.queue.length > 0) {
@@ -42,17 +44,19 @@ export class RwLock {
     }
     if (this.rw == 0 && this.queue.length == 0) {
       this.rw = -1
-      return f().then(release)
+      return Promise.resolve(f()).then(release)
     } else {
       return new Promise((res) =>
         this.queue.push(() => {
           if (this.rw == 0) {
             this.queue.shift()
             this.rw = -1
-            setTimeout(() => f().then(release).then(res))
+            setTimeout(() => Promise.resolve(f()).then(release).then(res))
           }
         }),
       )
     }
   }
+
+  state = (): RwLockState => (this.rw > 0 ? 'read' : this.rw < 0 ? 'write' : 'idle')
 }

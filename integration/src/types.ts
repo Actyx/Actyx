@@ -1,5 +1,3 @@
-import { Url } from 'url'
-
 export type OS = 'win' | 'linux' | 'mac' | 'android'
 export type Arch = 'armv7' | 'aarch64' | 'x86_64'
 export type Host = 'docker' | 'process' | 'android'
@@ -9,7 +7,7 @@ export type Target = {
   os: OS
   arch: Arch
   /** base URL for deploying ActyxOS via Docker API */
-  docker?: Url
+  docker?: URL
   /** base path for deploying ActyxOS as host:dir */
   rsync?: string
   /** ADB connection string for deploying to Android */
@@ -30,6 +28,6 @@ export type ActyxOSNode = {
   os: OS
   arch: Arch
   runtimes: Runtime[]
-  console: Url
-  events: Url
+  console: URL
+  events: URL
 }

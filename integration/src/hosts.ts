@@ -1,4 +1,3 @@
-import { Url } from 'url'
 import { selectNodes } from './nodeselection'
 import { RwLock } from './rwlock'
 import { ActyxOSNode, NodeSelection, Target } from './types'
@@ -35,7 +34,7 @@ export const buildNodes = async (hosts: Target[]): Promise<void> => {
   nodes = (await Promise.all(build)).flat()
 }
 
-const deployDocker = async (base: Url, host: Target, name: string): Promise<ActyxOSNode[]> => []
+const deployDocker = async (base: URL, host: Target, name: string): Promise<ActyxOSNode[]> => []
 const deployProcess = async (base: string, host: Target, name: string): Promise<ActyxOSNode[]> => []
 const deployAndroid = async (base: string, host: Target, name: string): Promise<ActyxOSNode[]> => []
 
