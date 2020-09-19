@@ -24,10 +24,12 @@ export class RwLock {
     } else {
       return new Promise((res) =>
         this.queue.push(() => {
-          if (this.rw >= 0) {
-            this.queue.shift()
-            this.rw += 1
-            setTimeout(() => Promise.resolve(f()).then(release).then(res))
+          // queue head is only run when rw ≥ 0
+          this.queue.shift()
+          this.rw += 1
+          setTimeout(() => Promise.resolve(f()).then(release).then(res))
+          if (this.queue.length > 0) {
+            this.queue[0]()
           }
         }),
       )

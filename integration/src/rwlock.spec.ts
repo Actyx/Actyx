@@ -85,4 +85,25 @@ describe('RwLock', () => {
     await prom3
     expect(value3).toBe(11)
   })
+  it('should run readers in parallel', async () => {
+    const lock = new RwLock()
+    // lock for writing and keep locked
+    const [writeValue, setWrite] = mkPromise<number>()
+    const writeP = lock.writeLock(() => writeValue)
+    expect(lock.state()).toBe('write')
+    // now add two blocked readers (first one to be released manually)
+    const arr: number[] = []
+    const [readValue, setRead] = mkPromise<number>()
+    const read1 = lock.readLock(() => readValue.then(() => arr.push(1)))
+    const read2 = lock.readLock(() => arr.push(2))
+    expect(arr.length).toBe(0)
+    // finishing the writer should immediately run both readers
+    setWrite(42)
+    expect(await writeP).toBe(42)
+    expect(await read2).toBe(1)
+    expect(arr).toEqual([2])
+    setRead(3)
+    expect(await read1).toBe(2)
+    expect(arr).toEqual([2, 1])
+  })
 })
