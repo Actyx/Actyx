@@ -117,35 +117,36 @@ export const mkInstance = async (): Promise<void> => {
   }
   process.stdout.write('\n')
 
-  console.log('installing ActyxOS')
-  await ssh.sftp((sftp) =>
-    Ssh.mkProm0((cb) =>
-      sftp.fastPut(
-        '../dist/bin/x64/actyxos-linux',
-        'actyxos',
-        {
-          mode: 0o755,
-          step: (curr, chunk, total) => {
-            process.stdout.clearLine(0)
-            process.stdout.write(
-              `\rprogress ${curr} / ${total} (${Math.floor((curr * 100) / total)}%)`,
-            )
-          },
-          concurrency: 4,
-        },
-        cb,
-      ),
-    ),
-  )
+  // console.log('installing ActyxOS')
+  // await ssh.sftp(async (sftp) => {
+  //   await Ssh.mkProm0((cb) => sftp.unlink('actyxos', cb))
+  //   return Ssh.mkProm0((cb) =>
+  //     sftp.fastPut(
+  //       '../dist/bin/x64/actyxos-linux',
+  //       'actyxos',
+  //       {
+  //         mode: 0o755,
+  //         step: (curr, chunk, total) => {
+  //           process.stdout.clearLine(0)
+  //           process.stdout.write(
+  //             `\rprogress ${curr} / ${total} (${Math.floor((curr * 100) / total)}%)`,
+  //           )
+  //         },
+  //         concurrency: 4,
+  //       },
+  //       cb,
+  //     ),
+  //   )
+  // })
+  // process.stdout.write('\n')
 
-  console.log((await ssh.exec('pkill actyxos')).stdout)
+  console.log('killing old ActyxOS instances')
+  console.log((await ssh.exec('pkill -e actyxos')).stdout)
 
   await pollDelay(() => Promise.resolve(1))
 
-  const tearDown = new EventEmitter()
-
   const osP = new Promise<void>((res, rej) => {
-    ssh.conn.exec('./actyxos', (err, channel) => {
+    ssh.conn.exec('ENABLE_DEBUG_LOGS=1 ./actyxos', (err, channel) => {
       if (err) rej(err)
       channel.on('data', (x: Buffer | string) => {
         const s = netString(x)
@@ -162,11 +163,6 @@ export const mkInstance = async (): Promise<void> => {
         console.log(err)
         rej(err)
       })
-      tearDown.on('end', () => {
-        console.log('killing ActyxOS')
-        channel.signal('TERM')
-        channel.write('\x03')
-      })
     })
   })
 
@@ -179,8 +175,7 @@ export const mkInstance = async (): Promise<void> => {
   const ax = new CLI(`localhost:${port}`)
   console.log('node status', await ax.Nodes.Ls())
 
-  tearDown.emit('end')
-
-  await pollDelay(() => Promise.resolve(1))
-  server.close()
+  console.log((await ssh.exec('pkill -e actyxos')).stdout)
+  server.emit('end')
+  ssh.end()
 }

@@ -1,3 +1,4 @@
+import { SCHED_NONE } from 'cluster'
 import { createServer, Server } from 'net'
 /* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -128,14 +129,25 @@ export class Client implements ISsh {
           conn.on('error', (err) =>
             console.log('incoming connection %i error: %s', myId, err.message),
           )
-          conn.on('close', () => console.log('incoming connection %i closed', myId))
+          conn.on('end', () => {
+            console.log('incoming connection %i closed', myId)
+            channel.end()
+          })
           channel.on('error', (err: any) =>
             console.log('forwarded connection %i error: %s', myId, err.message),
           )
-          channel.on('close', () => console.log('forwarded connection %i closed', myId))
+          channel.on('end', () => {
+            console.log('forwarded connection %i closed', myId)
+            conn.end()
+          })
         })
       })
-      server.on('close', () => connections.forEach((conn) => conn.end()))
+      server.on('end', () => {
+        console.log('forwarder for port %i closing down', dstPort)
+        server.close()
+        connections.forEach((conn) => conn.end())
+        connections.splice(0, connections.length)
+      })
       server.on('error', rej)
       server.listen(0, '127.0.0.1', () => {
         const addr = server.address()
