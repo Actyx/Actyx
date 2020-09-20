@@ -13,7 +13,7 @@ import {
 import { Either, isLeft } from 'fp-ts/lib/Either'
 import { Errors } from 'io-ts'
 import { PathReporter } from 'io-ts/lib/PathReporter'
-import * as execa from 'execa'
+import execa from 'execa'
 import { StringDecoder } from 'string_decoder'
 import { Transform } from 'stream'
 
@@ -124,6 +124,7 @@ export const mkExec = (binary: string, addr: string) => ({
         })
         if (process.stdout === null) {
           onError(`stdout is null`)
+          // eslint-disable-next-line @typescript-eslint/no-empty-function
           return () => {}
         }
         //console.log(`got non-null stdout`)
@@ -205,6 +206,7 @@ export const mkExec = (binary: string, addr: string) => ({
       } catch (error) {
         //console.log(`caught error (err: ${error})`)
         onError(error.toString())
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
         return () => {}
       }
     },
