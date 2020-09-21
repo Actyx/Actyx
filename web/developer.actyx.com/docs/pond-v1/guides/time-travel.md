@@ -1,5 +1,6 @@
 ---
 title: Time Travel
+hide_table_of_contents: true
 ---
 
 Actyx Pond allows always available distributed apps to be written with any logic you like, and the result will be eventually consistent.

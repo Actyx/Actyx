@@ -66,26 +66,19 @@ fn parse_opt_usize(boxed: &Option<Box<Expr>>, default: usize) -> Result<usize, E
         Some(expr) => &**expr,
         None => return Ok(default),
     };
-    if let Expr::Lit(ExprLit {
-        lit: Lit::Int(i), ..
-    }) = expr
-    {
+    if let Expr::Lit(ExprLit { lit: Lit::Int(i), .. }) = expr {
         i.base10_parse::<usize>()
     } else {
         Err(Error::new_spanned(boxed, ""))
     }
 }
 
-fn parse_range(
-    from: Option<Box<Expr>>,
-    to: Option<Box<Expr>>,
-    limits: RangeLimits,
-) -> Result<(usize, usize), Error> {
+fn parse_range(from: Option<Box<Expr>>, to: Option<Box<Expr>>, limits: RangeLimits) -> Result<(usize, usize), Error> {
     let from = match parse_opt_usize(&from, 0) {
         Ok(from) => from,
         _ => return Err(Error::new_spanned(from, "must range over usize values")),
     };
-    let to = match (parse_opt_usize(&to, usize::MAX), limits) {
+    let to = match (parse_opt_usize(&to, usize::max_value()), limits) {
         (Ok(to), RangeLimits::HalfOpen(_)) => to - 1,
         (Ok(to), RangeLimits::Closed(_)) => to,
         _ => return Err(Error::new_spanned(from, "must range over usize values")),

@@ -113,11 +113,8 @@ impl EventService {
             subscriptions,
             order,
         };
-        let body =
-            serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
-        let response = self
-            .do_request(|c| c.post(self.url("query")).json(&body))
-            .await?;
+        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
+        let response = self.do_request(|c| c.post(self.url("query")).json(&body)).await?;
         Ok(to_lines(response.bytes_stream())
             .map(|bs| serde_json::from_slice(bs.as_ref()))
             // FIXME this swallows deserialization errors, silently dropping event envelopes
@@ -148,11 +145,8 @@ impl EventService {
             subscriptions,
             order,
         };
-        let body =
-            serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
-        let response = self
-            .do_request(|c| c.post(self.url("query")).json(&body))
-            .await?;
+        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
+        let response = self.do_request(|c| c.post(self.url("query")).json(&body)).await?;
         Ok(to_lines(response.bytes_stream())
             .map(|bs| serde_json::from_slice(bs.as_ref()))
             // FIXME this swallows deserialization errors, silently dropping event envelopes
@@ -177,11 +171,8 @@ impl EventService {
             lower_bound: None,
             subscriptions,
         };
-        let body =
-            serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
-        let response = self
-            .do_request(|c| c.post(self.url("subscribe")).json(&body))
-            .await?;
+        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
+        let response = self.do_request(|c| c.post(self.url("subscribe")).json(&body)).await?;
         Ok(to_lines(response.bytes_stream())
             .map(|bs| serde_json::from_slice(bs.as_ref()))
             // FIXME this swallows deserialization errors, silently dropping event envelopes
@@ -207,11 +198,8 @@ impl EventService {
             lower_bound: Some(lower_bound),
             subscriptions,
         };
-        let body =
-            serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
-        let response = self
-            .do_request(|c| c.post(self.url("subscribe")).json(&body))
-            .await?;
+        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
+        let response = self.do_request(|c| c.post(self.url("subscribe")).json(&body)).await?;
         Ok(to_lines(response.bytes_stream())
             .map(|bs| serde_json::from_slice(bs.as_ref()))
             // FIXME this swallows deserialization errors, silently dropping event envelopes
@@ -241,10 +229,8 @@ impl EventService {
                 Ok(v)
             })?;
         let request = PublishRequestBody { data };
-        let body =
-            serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
-        self.do_request(|c| c.post(self.url("publish")).json(&body))
-            .await?;
+        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
+        self.do_request(|c| c.post(self.url("publish")).json(&body)).await?;
         Ok(())
     }
 
@@ -252,10 +238,7 @@ impl EventService {
         self.url.join(path).unwrap()
     }
 
-    async fn do_request(
-        &self,
-        f: impl Fn(&Client) -> RequestBuilder,
-    ) -> Result<Response, EventServiceError> {
+    async fn do_request(&self, f: impl Fn(&Client) -> RequestBuilder) -> Result<Response, EventServiceError> {
         let response = f(&self.client)
             .send()
             .await
@@ -265,13 +248,10 @@ impl EventService {
         } else {
             let error_code = response.status().as_u16();
             Err(EventServiceError {
-                error: response.text().await.context(|| {
-                    format!(
-                        "getting body for {} reply to {:?}",
-                        error_code,
-                        f(&self.client)
-                    )
-                })?,
+                error: response
+                    .text()
+                    .await
+                    .context(|| format!("getting body for {} reply to {:?}", error_code, f(&self.client)))?,
                 error_code,
                 context: format!("sending {:?}", f(&self.client)),
             })
@@ -279,16 +259,11 @@ impl EventService {
     }
 }
 
-pub(crate) fn to_lines(
-    stream: impl Stream<Item = Result<Bytes, reqwest::Error>>,
-) -> impl Stream<Item = Vec<u8>> {
+pub(crate) fn to_lines(stream: impl Stream<Item = Result<Bytes, reqwest::Error>>) -> impl Stream<Item = Vec<u8>> {
     let mut buf = Vec::<u8>::new();
     let to_lines = move |bytes: Bytes| {
         buf.extend_from_slice(bytes.as_ref());
-        let mut ret = buf
-            .split(|b| *b == b'\n')
-            .map(|bs| bs.to_vec())
-            .collect::<Vec<_>>();
+        let mut ret = buf.split(|b| *b == b'\n').map(|bs| bs.to_vec()).collect::<Vec<_>>();
         if let Some(last) = ret.pop() {
             buf.clear();
             buf.extend_from_slice(last.as_ref());

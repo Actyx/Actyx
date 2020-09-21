@@ -36,6 +36,8 @@ const tagB = Tag<B>('B')
 // Tag that covers 3 types
 const abcTag = Tag<A | B | C>('ABC')
 
+const tagWithQuotes = Tag<unknown>("a 'funny' tag")
+
 // Satisfy TS (no unused var)
 const ignoreUnusedVar = (_v: unknown) => undefined
 
@@ -49,6 +51,7 @@ describe('typed tag query system', () => {
     const q1: Where<'hello??'> = q
 
     expect(q1.toWireFormat()).toMatchObject([{ tags: ['0', '1'] }, { tags: ['A'] }])
+    expect(q1.toString()).toEqual("'0' & '1' | 'A'")
   })
 
   it('should insist on types?', () => {
@@ -67,26 +70,33 @@ describe('typed tag query system', () => {
     // @ts-expect-error
     const w2: Where<never> = w
 
-    expect(w2.toWireFormat()).toMatchObject({
-      tags: ['A', 'ABC'],
-      local: false,
-    })
+    expect(w2.toWireFormat()).toMatchObject([
+      {
+        tags: ['A', 'ABC'],
+        local: false,
+      },
+    ])
+    expect(w2.toString()).toEqual("'A' & 'ABC'")
   })
 
   it('should preserve local information', () => {
     // Overlap is 'A'
     const w = tagA.local().and(abcTag)
 
-    expect(w.toWireFormat()).toMatchObject({
-      tags: ['A', 'ABC'],
-      local: true,
-    })
+    expect(w.toWireFormat()).toMatchObject([
+      {
+        tags: ['A', 'ABC'],
+        local: true,
+      },
+    ])
+    expect(w.toString()).toEqual("'A' & 'ABC' & isLocal")
   })
 
   it('should union event types ', () => {
     const u = tagA.or(tagB)
 
     expect(u.toWireFormat()).toMatchObject([{ tags: ['A'] }, { tags: ['B'] }])
+    expect(u.toString()).toEqual("'A' | 'B'")
   })
 
   it('should union event types (complex)', () => {
@@ -110,6 +120,31 @@ describe('typed tag query system', () => {
         tags: ['ABC'],
       },
     ])
+    expect(u.toString()).toEqual("'A' & isLocal | 'B' & 'B:some-id' | 'ABC'")
+  })
+
+  it('should OR several WHEREs', () => {
+    const w0 = tag0.or(tag1)
+    const w1 = tagA.or(tagB)
+
+    const ww: Where<T0 | T1 | A | B> = w0.or(w1)
+
+    expect(ww.toWireFormat()).toMatchObject([
+      { tags: ['0'] },
+      { tags: ['1'] },
+      { tags: ['A'] },
+      { tags: ['B'] },
+    ])
+
+    expect(ww.toString()).toEqual("'0' | '1' | 'A' | 'B'")
+  })
+
+  it('should tolerate tags with spaces and quotes', () => {
+    const w0: Where<unknown> = tag0.or(tagWithQuotes)
+
+    expect(w0.toWireFormat()).toMatchObject([{ tags: ['0'] }, { tags: ["a 'funny' tag"] }])
+
+    expect(w0.toString()).toEqual("'0' | 'a ''funny'' tag'")
   })
 
   describe('with Fish declarations', () => {
@@ -179,6 +214,41 @@ describe('typed tag query system', () => {
         where: tagA.and('some-other-tag'),
       }
 
+      ignoreUnusedVar(fishRight)
+    })
+
+    it('should accept additional tags on an intersection', () => {
+      const fishRight: Fish<undefined, A | B> = {
+        ...fishArgs,
+
+        // Type remains Tags<A>
+        where: tagA.withId('n').and(Tag('some-other-tag').withId('foo')),
+      }
+
+      ignoreUnusedVar(fishRight)
+    })
+
+    it('should accept additional tags with explicit cast', () => {
+      const fishWrong: Fish<undefined, A | B> = {
+        ...fishArgs,
+
+        // Without cast, this will fail
+        // @ts-expect-error
+        where: Tag('q')
+          .withId('n')
+          .and(Tag('some-other-tag').withId('foo')),
+      }
+
+      const fishRight: Fish<undefined, A | B> = {
+        ...fishArgs,
+
+        // Casting works
+        where: Tag('q')
+          .withId('n')
+          .and(Tag('some-other-tag').withId('foo')) as Where<A>,
+      }
+
+      ignoreUnusedVar(fishWrong)
       ignoreUnusedVar(fishRight)
     })
 

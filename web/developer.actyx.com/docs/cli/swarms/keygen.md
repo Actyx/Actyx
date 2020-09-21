@@ -2,8 +2,6 @@
 title: ax swarms keygen
 ---
 
-<!-- markdownlint-disable-file MD040 -->
-
 ## Generate a new ActyxOS swarm key
 
 ```
@@ -21,12 +19,12 @@ OPTIONS:
                              to it
 ```
 
-This command is extremely simple; see for yourself:
+Please see the following usage examples for the `ax swarms keygen` command:
 
 ```
-# Create a swarm key
+# Generate a new swarm key and write it to stdout
 ax swarms keygen
 
-# Create a swarm key, save it and set it on a node
-ax swarms keygen | tee swarm.key | ax settings set --local com.actyx.os/general/swarmKey @- 10.2.3.23
+# Generate a new swarm key, create file swarm.key and write the generated key to it
+ax swarms keygen -o swarm.key
 ```

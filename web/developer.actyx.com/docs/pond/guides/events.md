@@ -1,21 +1,26 @@
 ---
 title: Events
+hide_table_of_contents: true
 ---
 
-A fish consumes events, but emitting events is not coupled to fishes.
+_A fish consumes events, but emitting events is not coupled to fishes._
 
 Events can be emitted directly using the Actyx Event Service, or using the Actyx Pond. Actyx Pond provides two main APIs
-for emitting events: `pond.emit` and `pond.run` (we'll learn how to use [state effects] later).
-[state effects]: state-effects
+for emitting events: `pond.emit` and `pond.run` (we'll learn how to use [state effects](state-effects.md) later).
 
-Events are tagged with an arbitrary amount of tags, each tag being simply just a string:
+Events are tagged with an arbitrary number of tags, each tag being just a non-empty string:
 
 ```typescript
-await pond.emit(Tags('chat', 'channel:lobby', 'sender:Alf'), { type: 'messageAdded', message: 'Hello!' }).toPromise()
+pond.emit(
+    // We add the pure 'chatRoom' tag as well, to allow finding all chat events
+    Tags('chatRoom', 'chatRoom:lobby', 'sender', 'sender:Alf'),
+    { type: 'messageAdded', message: 'Hello!' }
+)
 ```
 
-This event will be tagged with three tags: `chat`, `channel:lobby`, and `sender:Alf`. We already see, that we can add
-some structure to the tags, e.g. using the `channel` identifier.
+This event will be tagged with four tags: `chatRoom`, `chatRoom:lobby`, `sender` and `sender:Alf`. We already see that we can add
+some structure to the tags by using prefixes.
+ActyxOS however does not treat the `:` specially. The Actyx Pond contains some convenience functions based on the convention shown above.
 
 Obviously, within the context of Actyx Pond, events usually go together with some business logic implemented in fishes.
 In this example we consider a fish that models a chat room. The main action that can be performed on such a room is to
@@ -30,6 +35,4 @@ type ChatRoomEvent = { type: 'messageAdded', message: string }
 All necessary imports (like `Tags`) are available from the `@actyx/pond` module.
 :::
 
-We'll see in the next section about [local state], how to construct a fish to make use of the emitted event.
-
-[local state]: local-state
+We'll see in the next section about [local state](/docs/pond/guides/local-state), how to construct a fish to make use of the emitted event.

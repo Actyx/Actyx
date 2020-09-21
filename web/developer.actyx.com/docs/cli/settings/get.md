@@ -2,8 +2,6 @@
 title: ax settings get
 ---
 
-<!-- markdownlint-disable-file MD040 -->
-
 ## Get settings from a node
 
 ```
@@ -29,18 +27,18 @@ ARGS:
 >
 > The return value of this command will always be either null or schema-conformant, unless the `--no-defaults` flag is used.
 
-Here are a couple of examples of using the `ax settings get` command:
+Here are some examples of using the `ax settings get` command:
 
 ```
-# Get the ActyxOS settings from a node:
+# Get the settings for the node with settings scope com.actyx.os at 10.2.3.23
 ax settings get --local com.actyx.os 10.2.3.23
 
-# Get the display name set for a node
+# Just get the displayName setting
 ax settings get --local com.actyx.os/general/displayName 10.2.3.23
 
-# Get the settings of a specific app
-ax settings get --local com.example.app1 10.2.3.23
+# Get the settings for the app with settings scope com.example.app from node at 10.2.3.23
+ax settings get --local com.example.app 10.2.3.23
 
-#Get a specific setting from an app
-ax settings get --local com.example.app1/setting1 10.2.3.23
+# Just get the specific setting setting1
+ax settings get --local com.example.app/setting1 10.2.3.23
 ```

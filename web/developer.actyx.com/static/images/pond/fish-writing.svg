@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1310.93" height="656.33" viewBox="0 0 1310.93 656.33">
+  <defs>
+    <style>
+      .e51bbdec-3324-4f13-84f9-348ab4c4c910, .f0896eb5-86c7-4fe9-b5eb-82c4234b687e {
+        fill: none;
+      }
+
+      .a79a3d17-897e-4953-b936-ea54fa4efb7d {
+        fill: #dceaf4;
+      }
+
+      .fb634e8a-7321-4e95-bb94-2c54d77901cf {
+        fill: url(#b598f490-09ad-4cd1-bc3d-0eaebec15c3c);
+      }
+
+      .a8cc8c7b-9058-46b9-83a4-dc56617079e4, .a92779a5-b53d-48ca-b909-f8c6703889e5, .af6a6917-8be2-432c-994f-c3296e74cc33, .b1ebf7a2-b2fd-4773-912b-289805089136, .be2062d5-4202-4114-95ea-c78b0257aac4 {
+        fill: #fff;
+      }
+
+      .a8cc8c7b-9058-46b9-83a4-dc56617079e4, .a92779a5-b53d-48ca-b909-f8c6703889e5, .af6a6917-8be2-432c-994f-c3296e74cc33, .b1ebf7a2-b2fd-4773-912b-289805089136 {
+        stroke: #b2bfce;
+      }
+
+      .a8cc8c7b-9058-46b9-83a4-dc56617079e4, .a92779a5-b53d-48ca-b909-f8c6703889e5, .af6a6917-8be2-432c-994f-c3296e74cc33, .b1ebf7a2-b2fd-4773-912b-289805089136, .b85c3bd4-d921-4933-bf7b-491c6e5ace00, .be2062d5-4202-4114-95ea-c78b0257aac4, .bf7761bb-cd53-42c9-b424-6214203b66a2, .e51bbdec-3324-4f13-84f9-348ab4c4c910, .e9d51f7e-c8d3-44eb-8347-9cbbcadcc3f0, .f9d4b965-545e-498d-b004-bb94f638b3e7 {
+        stroke-miterlimit: 10;
+      }
+
+      .a8cc8c7b-9058-46b9-83a4-dc56617079e4, .a92779a5-b53d-48ca-b909-f8c6703889e5, .af6a6917-8be2-432c-994f-c3296e74cc33, .b1ebf7a2-b2fd-4773-912b-289805089136, .be2062d5-4202-4114-95ea-c78b0257aac4, .e51bbdec-3324-4f13-84f9-348ab4c4c910 {
+        stroke-width: 2px;
+      }
+
+      .bf7761bb-cd53-42c9-b424-6214203b66a2, .e9d51f7e-c8d3-44eb-8347-9cbbcadcc3f0, .f9d4b965-545e-498d-b004-bb94f638b3e7 {
+        font-size: 24px;
+        stroke-width: 0.5px;
+      }
+
+      .bf7761bb-cd53-42c9-b424-6214203b66a2, .e9d51f7e-c8d3-44eb-8347-9cbbcadcc3f0 {
+        fill: #2a4b7d;
+        stroke: #2a4b7d;
+      }
+
+      .b85c3bd4-d921-4933-bf7b-491c6e5ace00, .bf7761bb-cd53-42c9-b424-6214203b66a2, .e9d51f7e-c8d3-44eb-8347-9cbbcadcc3f0, .f9d4b965-545e-498d-b004-bb94f638b3e7 {
+        font-family: SegoeUI, Segoe UI;
+      }
+
+      .e91929a2-2424-421f-b528-d9f742fe134f {
+        letter-spacing: -0.02em;
+      }
+
+      .a801b0ce-f809-4413-8504-a3b92b4ee11d {
+        letter-spacing: -0.01em;
+      }
+
+      .ec1c0b09-ac71-4e42-a6ef-b6aef47c2720 {
+        letter-spacing: -0.03em;
+      }
+
+      .f9d4b965-545e-498d-b004-bb94f638b3e7 {
+        fill: #1998ff;
+      }
+
+      .be2062d5-4202-4114-95ea-c78b0257aac4, .f9d4b965-545e-498d-b004-bb94f638b3e7 {
+        stroke: #1998ff;
+      }
+
+      .f5d604d6-d862-4dcf-a125-689b527db60b {
+        letter-spacing: 0.02em;
+      }
+
+      .b85c3bd4-d921-4933-bf7b-491c6e5ace00 {
+        font-size: 20px;
+        fill: #75828e;
+        stroke-width: 0.3px;
+        letter-spacing: 0.05em;
+      }
+
+      .b85c3bd4-d921-4933-bf7b-491c6e5ace00, .e51bbdec-3324-4f13-84f9-348ab4c4c910 {
+        stroke: #75828e;
+      }
+
+      .b0e5c9a5-3a9c-4942-9c24-3b94813a86a4 {
+        letter-spacing: -0.03em;
+      }
+
+      .a4d1d9c1-f124-43cb-9492-990c12e4f635 {
+        letter-spacing: -0.02em;
+      }
+
+      .a8cc8c7b-9058-46b9-83a4-dc56617079e4 {
+        opacity: 0.3;
+      }
+
+      .a92779a5-b53d-48ca-b909-f8c6703889e5 {
+        opacity: 0.5;
+      }
+
+      .af6a6917-8be2-432c-994f-c3296e74cc33 {
+        opacity: 0.7;
+      }
+
+      .bf7761bb-cd53-42c9-b424-6214203b66a2 {
+        letter-spacing: 0.02em;
+      }
+
+      .b412e1c9-6cc1-47ba-9995-447d6c5da3ff {
+        letter-spacing: 0.02em;
+      }
+
+      .e62520fc-4564-43ec-b18e-8252fb94bc62 {
+        letter-spacing: -0.01em;
+      }
+
+      .f55f062f-10e6-4156-8340-ee340080637f {
+        letter-spacing: 0.02em;
+      }
+
+      .ec1bc081-9286-445c-b849-c2d17445b9ba {
+        letter-spacing: 0.01em;
+      }
+    </style>
+    <pattern id="b598f490-09ad-4cd1-bc3d-0eaebec15c3c" data-name="Docs Polka Background" width="60" height="60" patternTransform="translate(618.26 1080.03) scale(0.87 0.65)" patternUnits="userSpaceOnUse" viewBox="0 0 60 60">
+      <rect class="f0896eb5-86c7-4fe9-b5eb-82c4234b687e" width="60" height="60"/>
+      <circle class="a79a3d17-897e-4953-b936-ea54fa4efb7d" cx="30" cy="30" r="2.47"/>
+    </pattern>
+  </defs>
+  <g id="f37d70d2-2f5a-485f-b851-45b68e456366" data-name="Layer 2">
+    <rect class="fb634e8a-7321-4e95-bb94-2c54d77901cf" x="3.54" y="3.74" width="1305.22" height="651.58"/>
+  </g>
+  <g id="b618b069-31fd-4480-b586-a4fec717b701" data-name="Layer 1">
+    <rect class="b1ebf7a2-b2fd-4773-912b-289805089136" x="764.48" y="237.15" width="247.65" height="99.83" rx="19.88"/>
+    <text class="e9d51f7e-c8d3-44eb-8347-9cbbcadcc3f0" transform="translate(822.93 296.59)">Pri<tspan class="e91929a2-2424-421f-b528-d9f742fe134f" x="27.6" y="0">v</tspan><tspan x="38.66" y="0">a</tspan><tspan class="a801b0ce-f809-4413-8504-a3b92b4ee11d" x="50.87" y="0">t</tspan><tspan x="58.82" y="0">e </tspan><tspan class="ec1c0b09-ac71-4e42-a6ef-b6aef47c2720" x="77.94" y="0">S</tspan><tspan x="89.92" y="0">ta</tspan><tspan class="a801b0ce-f809-4413-8504-a3b92b4ee11d" x="110.26" y="0">t</tspan><tspan x="118.21" y="0">e</tspan></text>
+    <text class="f9d4b965-545e-498d-b004-bb94f638b3e7" transform="translate(286.48 111.75)">Human Input</text>
+    <text class="f9d4b965-545e-498d-b004-bb94f638b3e7" transform="translate(815.03 111.75)">User In<tspan class="a801b0ce-f809-4413-8504-a3b92b4ee11d" x="74.11" y="0">t</tspan><tspan x="82.05" y="0">e</tspan><tspan class="f5d604d6-d862-4dcf-a125-689b527db60b" x="94.61" y="0">r</tspan><tspan x="103.41" y="0">face</tspan></text>
+    <rect class="be2062d5-4202-4114-95ea-c78b0257aac4" x="254.8" y="248.43" width="176.94" height="77.73"/>
+    <text class="f9d4b965-545e-498d-b004-bb94f638b3e7" transform="translate(274.35 296.82)">onCommand</text>
+    <text class="b85c3bd4-d921-4933-bf7b-491c6e5ace00" transform="translate(510.63 498.7)">EVENTS</text>
+    <text class="b85c3bd4-d921-4933-bf7b-491c6e5ace00" transform="translate(573.27 278.99)">S<tspan class="b0e5c9a5-3a9c-4942-9c24-3b94813a86a4" x="11.63" y="0">T</tspan><tspan class="a4d1d9c1-f124-43cb-9492-990c12e4f635" x="21.6" y="0">A</tspan><tspan x="34.06" y="0">TE</tspan></text>
+    <rect class="a8cc8c7b-9058-46b9-83a4-dc56617079e4" x="736.12" y="439.2" width="338.91" height="103.27" rx="19.88"/>
+    <rect class="a92779a5-b53d-48ca-b909-f8c6703889e5" x="730.12" y="445.2" width="338.91" height="103.27" rx="19.88"/>
+    <rect class="af6a6917-8be2-432c-994f-c3296e74cc33" x="724.12" y="451.2" width="338.91" height="103.27" rx="19.88"/>
+    <rect class="b1ebf7a2-b2fd-4773-912b-289805089136" x="718.12" y="457.2" width="338.91" height="103.27" rx="19.88"/>
+    <text class="bf7761bb-cd53-42c9-b424-6214203b66a2" transform="translate(815.45 514.8)">E<tspan class="b412e1c9-6cc1-47ba-9995-447d6c5da3ff" x="12.72" y="0">v</tspan><tspan x="24.65" y="0">ent </tspan><tspan class="e62520fc-4564-43ec-b18e-8252fb94bc62" x="67.79" y="0">S</tspan><tspan class="f55f062f-10e6-4156-8340-ee340080637f" x="80.34" y="0">t</tspan><tspan class="ec1bc081-9286-445c-b849-c2d17445b9ba" x="89.05" y="0">r</tspan><tspan class="f55f062f-10e6-4156-8340-ee340080637f" x="97.66" y="0">eam</tspan></text>
+    <path class="e51bbdec-3324-4f13-84f9-348ab4c4c910" d="M474.62,302.72l-6.75-6.9-5.41-5.52a2.31,2.31,0,0,1,0-2.74l5.41-5.53,6.75-6.9"/>
+    <line class="e51bbdec-3324-4f13-84f9-348ab4c4c910" x1="746.68" y1="289.16" x2="462.8" y2="289.16"/>
+    <g>
+      <path class="e51bbdec-3324-4f13-84f9-348ab4c4c910" d="M907.66,357.13l-6.89-6.75L895.24,345a2.31,2.31,0,0,0-2.74,0L887,350.38l-6.89,6.75"/>
+      <line class="e51bbdec-3324-4f13-84f9-348ab4c4c910" x1="894.11" y1="429.07" x2="894.11" y2="345.32"/>
+    </g>
+    <g>
+      <path class="e51bbdec-3324-4f13-84f9-348ab4c4c910" d="M357.07,206.5l-6.9,6.75-5.53,5.41a2.31,2.31,0,0,1-2.74,0l-5.52-5.41-6.9-6.75"/>
+      <line class="e51bbdec-3324-4f13-84f9-348ab4c4c910" x1="343.51" y1="134.56" x2="343.51" y2="218.32"/>
+    </g>
+    <g>
+      <path class="e51bbdec-3324-4f13-84f9-348ab4c4c910" d="M910.8,206.5l-6.9,6.75-5.53,5.41a2.31,2.31,0,0,1-2.74,0l-5.52-5.41-6.9-6.75"/>
+      <line class="e51bbdec-3324-4f13-84f9-348ab4c4c910" x1="897.24" y1="134.56" x2="897.24" y2="218.32"/>
+    </g>
+    <path class="e51bbdec-3324-4f13-84f9-348ab4c4c910" d="M692.32,522.9l6.75-6.9,5.41-5.53a2.34,2.34,0,0,0,0-2.74l-5.41-5.53-6.75-6.89"/>
+    <path class="e51bbdec-3324-4f13-84f9-348ab4c4c910" d="M343.26,339.12V503.84a5.5,5.5,0,0,0,5.5,5.5H704.13"/>
+  </g>
+</svg>

@@ -1,8 +1,9 @@
 ---
 title: Snapshots
+hide_table_of_contents: true
 ---
 
-The state of a fish may become expensive to calculate from scratch: snapshots to the rescue!
+_The state of a fish may become expensive to calculate from scratch: snapshots to the rescue!_
 
 Actyx Pond supports two types of snapshots to avoid processing all known events for a fish’s subscription set during wakeup: _state snapshots_ and _semantic snapshots_.
 
@@ -10,7 +11,7 @@ Actyx Pond supports two types of snapshots to avoid processing all known events 
 
 :::note
 
-State snapshots are currently called “local snapshots” since in contrast to semantic snapshots they are bound to a node. This restriction will be lifted in a future version of Actyx Pond for distributed fishes that consume identical subscription sets when instantiated on different nodes.
+State snapshots are also called “local snapshots” since in contrast to semantic snapshots they are bound to a node. This restriction will be lifted in a future version of Actyx Pond for distributed fishes that consume identical subscription sets when instantiated on different nodes.
 :::
 
 The chat room fish in our example keeps a list of messages in its state.
@@ -33,17 +34,17 @@ export const chatRoomFish = {
 }
 ```
 
-When that happens is that upon waking up this new fish version for the first time all old snapshots are invalidated and the newly written ones will have the new version number.
+When the Pond sees this fish waking up with the new version, all old snapshots are invalidated and the newly written ones will have the new version number.
 
-With this configuration Actyx Pond will take snapshots about every 1000 events consumed by the fish.
+By default, Actyx Pond will take snapshots about every 1000 events consumed by the fish.
 
-Why is it necessary to keep multiple snapshots?
-It may happen that a node that still has event stored for this fish lies disconnected in a drawer for a month, and when it comes back online it will synchronize these events, leading the fish to time travel to a state before those events.
+In addition to the lastest one, the Pond will retain a snapshot each from last week, last month, and last year.
+This helps with the occasional very long time travel: it may happen that a node that still has event stored for this fish lies disconnected in a drawer for a month, and when it comes back online it will synchronize these events, leading the fish to time travel to a state before those events.
 The state from a month ago will probably no longer be cached in memory, so a full replay is started, taking advantage of any snapshot that is older than the event that caused the time travel.
 
 ## Semantic snapshots
 
-Some fishes have events that completely determine the state after applying said event.
+Some fishes have events that completely determine the state after applying said event — you could say that such an event resets the state, regardless of what the previous state was.
 Consider as an example the ability to wipe the chat room clean with a new event.
 
 ```typescript
@@ -52,7 +53,7 @@ type ChatRoomEvent = { type: 'messageAdded'; message: string } | { type: 'messag
 
 The result of applying the `messagesCleared` event would be the empty array.
 Therefore it would not make sense to replay any prior events, their effect would be undone by this event.
-Actyx Pond can be informed about this by enabling the semantic snapshot configuration option when defining the fish type:
+Actyx Pond can be informed about this by providing a function that recognises such “reset events”:
 
 ```typescript
 export const chatRoomFish = {

@@ -1,12 +1,12 @@
 ---
 title: Time Travel
+hide_table_of_contents: true
 ---
 
-Actyx Pond allows always available distributed apps to be written with any logic you like, and the result will be eventually consistent.
-This magic feat is attained by employing nothing less than time travel.
+_Actyx Pond allows always available distributed apps to be written with any logic you like, and the result will be eventually consistent.
+This magic feat is attained by employing nothing less than time travel._
 
-To make our distributed app experiment more interesting, we change the chat room fish to actually publish the list of messages instead of their count.
-With this change, the fish type definition looks like the following:
+Recall our chat room fish that accumulates messages in an array of strings:
 
 ```typescript
 export const mkChatRoomFish = (name: string) => ({
@@ -18,17 +18,20 @@ export const mkChatRoomFish = (name: string) => ({
 ```
 
 Now we create two small programs for interacting with the chat room.
-The first one is for sending messages into it that we assume to come from the command line:
+The first one is for sending messages into it (perhaps coming from the command line):
 
 ```typescript
-export const main3 = (pond: Pond, message: string) =>
-  pond.emit(['chatRoom:my-room'], { type: 'messageAdded', message}).toPromise()
+const sendMessage = (pond: Pond, message: string) =>
+  pond.emit(
+    Tag('chatRoom').withId('my-room'),
+    { type: 'messageAdded', message }
+  )
 ```
 
 The second one observes the state of the chat room fish and prints the list of messages whenever it changes:
 
 ```typescript
-export const main4 = (pond: Pond) =>
+export const observeRoom = (pond: Pond) =>
   pond.observe(mkChatRoomFish('my-room'), msgs => {
     msgs.forEach(msg => console.log(msg))
     console.log('---')
@@ -36,35 +39,37 @@ export const main4 = (pond: Pond) =>
 ```
 
 Running the observer on one node and the sender on two different nodes we should see the list of messages updating as we send new messages to the fish.
+([Learn how to set up a swarm of multiple nodes.](/docs/os/guides/swarms))
+
 The sequence of these messages corresponds to the sequence in which we send them from the two nodes.
-Now, if we detach one of the sender nodes from the network for a bit and send some messages from it, let’s say `msgA1` to `msgA3`, while also sending `msgB1` to `msgB3` from the still connected node, we will see only `msgB1` to `msgB3` showing up at our observer.
+Now, if we detach one of the sender nodes from the network for a bit and send some messages from it, let’s say `msg_A_1` to `msg_A_3`, while also sending `msg_B_1` to `msg_B_3` from the still connected node, we will see only `msg_B_1` to `msg_B_3` showing up at our observer.
 This is because the other messages cannot be transferred right now.
 
-When reconnecting the previously disconnected sending node, its messages `msgA1` to `msgA3` will show up at the observer after a short while.
+When reconnecting the previously disconnected sending node, its messages `msg_A_1` to `msg_A_3` will show up at the observer after a short while.
 But we notice that the messages show up not at the end of the log but interleaved with the others, for example like
 
 ```bash
-    msgB1
-    msgB2
-    msgB3
-    --- // this is the previous state
-    msgB1
-    msgA1
-    msgA2
-    msgB2
-    msgA3
-    msgB3
+    msg_B_3
+    msg_B_2
+    msg_B_1
+    --- // ^ this was the previous state
+    msg_B_3
+    msg_A_3
+    msg_B_2
+    msg_A_2
+    msg_A_1
+    msg_B_1
     ---
 ```
 
 How can this be?
-The `onEvent` handler only ever appends messages to the array, it never inserts them in the middle, yet we see that the state was changed “in the middle”.
+The `onEvent` handler only ever prepends messages to the array, it never inserts them in the middle, yet we see that the state was changed “in the middle”.
 The answer is that the `onEvent` handler may be invoked multiple times for the same event, if after the reception of that event other events are received that are sorted “earlier” than this event.
 
 We recall that the current state of the fish is computed by applying one event after the other, through the `onEvent` handler.
 This can be visualized like the grey zigzag line zipping together the events and their resulting states on the left-hand side of the following diagram.
 
-![Time Travel](/images/pond/time-travel.png)
+![Time Travel](/images/pond/time-travel.svg)
 
 When a new event arrives that belongs somewhere in the middle of the previously known log of events, it is inserted in its rightful spot and the current state is recomputed by applying all events again, now including the inserted event.
 This is shown on the right-hand side of the diagram above; in practice the state computation starts from the state right before the inserted event in most cases, as a cache of states is kept in memory.

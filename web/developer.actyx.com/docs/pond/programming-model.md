@@ -14,7 +14,7 @@ Each fish has a unique identity in the whole swarm (linguistic note: fish form s
 2. the _name_ distinguishes this fish from other fish of the same semantics, e.g. the location of the physical thermometer
 3. the _version_ of the fish (this needs to be incremented whenever the fish's business logic changes)
 
-![devices](/images/pond/fishes-on-devices.png)
+![devices](/images/pond/v2-fish-on-devices.svg)
 
 Each event a fish emits, can be provided with an arbitrary amount of tags, e.g. with a semantic identification of the event (`temperatureReading`) and a description about its origin (`thermometerLocation:hotEnd`). Note that event emission does not require a fish, but can also be done without one.
 
@@ -34,7 +34,7 @@ One **very important note** is that events become available at each edge device 
 Therefore, if you run the same fish logic with the same subscriptions on different devices, they will receive events at different times or in different order; consequently, the current state computed at each device may temporarily be different.
 But Actyx Pond will ensure that eventually — when the device has had the chance to catch up with the latest information — all fishes will have seen the same events and will have computed the same state.
 
-![reading](/images/pond/fish-reading-events.png)
+![reading](/images/pond/fish-reading.svg)
 
 The illustration shows that besides the events there is one more input, namely the initial state from which the fish will start before it has seen any events.
 The `onEvent` handler is a function that takes the current state and the next event and computes the next state from that.
@@ -52,7 +52,7 @@ Fishes compute their current state by deterministically applying the subscribed 
 
 Events emission is not coupled to the usage of fishes, but is conceptually treated together. Event creation can be triggered from anywhere in the application, from an external system (e.g. via an HTTP call), or from a human operator of the app.
 
-![emitting](/images/pond/fish-emitting-events.png)
+![emitting](/images/pond/fish-writing.svg)
 
 Usually, the current state as derived from all locally known events of a fish is interpreted in order to emit an event.
 This is called a state effect. A `StateEffect` is a function, accepting the derived state of a fish, and returning a list of events (consisting of tags and a payload) to be emitted.  The list of events may be empty, or it may record the fact that an invalid condition was encountered, whichever is required by the business requirements.
@@ -68,7 +68,7 @@ Fishes record facts (including environmental observation as well as decisions) b
 
 As we have discussed above, the current state of a fish on an edge device may still be missing information that is available elsewhere in the swarm.
 The most distinctive characteristic of the Actyx Pond framework is that it allows this fish to still make progress — process commands and emit events — even though this might lead to inconsistencies for a human looking at the whole system.
-This trade-off of favoring availability over consistency is a fundamental one, it is impossible to have both, as is also explained at [ActyxOS and CAP](../os/theoretical-foundation/actyxos-and-cap).
+This trade-off of favoring availability over consistency is a fundamental one, it is impossible to have both, as is also explained at [ActyxOS and CAP](/docs/os/theoretical-foundation/actyxos-and-cap).
 
 We made this choice because a mission-critical environment like a factory shop-floor is built around this same choice already:
 groups of persons are working with machines and material to deliver the required products, independent of other processes ongoing on the shop-floor around them.

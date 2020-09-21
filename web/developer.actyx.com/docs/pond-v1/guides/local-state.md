@@ -1,5 +1,6 @@
 ---
 title: Local State
+hide_table_of_contents: true
 ---
 
 Making sense of events: building up local state.
@@ -33,7 +34,7 @@ The only event our chat room fish knows is of type `messageAdded`, so we need to
 The type of the `event` parameter to our function is not the bare event, though, it is an `Envelope<ChatRoomEvent>` that contains some metadata on the event in addition to the event payload (like where and when the event was recorded).
 
 It is **very important to note** that the `onEvent` handler computes a new state from the old state and the event, meaning that the old state **must not be changed**.
-We will get to the reason behind this important principle when discussing [time travel](time-travel).
+We will get to the reason behind this important principle when discussing [time travel](/docs/pond-v1/guides/time-travel).
 This is the reason for using array spread syntax when creating the new fish state.
 As previously, the `unreachableOrElse` helper function ensures that we don’t forget to handle a case in the switch statement.
 

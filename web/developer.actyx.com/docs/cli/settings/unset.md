@@ -2,8 +2,6 @@
 title: ax settings unset
 ---
 
-<!-- markdownlint-disable-file MD040 -->
-
 ## Remove settings from a node
 
 ```
@@ -34,15 +32,10 @@ Nodes will only unset settings for the `com.actyx.os` scope if all apps on the n
 Please see the following usage examples for the `ax settings unset` command:
 
 ```
-# Unset ActyxOS settings from a node
+# Unset the settings for the node with settings scope com.actyx.os at 10.2.3.23
 ax settings unset --local com.actyx.os 10.2.3.23
 
-# Unset a specific app's settings from a node
+# Unset the settings for the app with settings scope com.example.app from node
+# at 10.2.3.23
 ax settings unset --local com.example.app 10.2.3.23
-
-# Unset settings from multiple nodes
-ax settings unset --local com.example.app 10.2.3.23 10.2.3.24
-
-# Unset settings from multiple nodes defined in a file
-ax settings unset --local com.example.app @nodes.txt
 ```

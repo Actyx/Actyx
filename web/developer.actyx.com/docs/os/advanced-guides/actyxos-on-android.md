@@ -7,26 +7,46 @@ import TabItem from '@theme/TabItem';
 
 ## Install ActyxOS on Android
 
-### Edge device requirements
+### Device requirements
 
-For a list of supported devices, please refer to [Supported edge devices](/docs/faq/supported-edge-devices) Your edge device must meet the following requirements to install *ActyxOS on Android*:
+In order to be able to run ActyxOS on Android, your device needs to meet the following requirements:
 
-- Android 5.1+
+- Android 6+
 - [Android System Webview](https://play.google.com/store/apps/details?id=com.google.android.webview) Version 70+
-- 2GB Ram
+- Minimum 2GB RAM
 - `x86`, `arm64-v8a` or `armeabi-v7a` [ABI](https://developer.android.com/ndk/guides/abis.html#sa)
 
+You can find a list of devices that we know to work well [here](/faq/supported-edge-devices.md).
+
 :::tip Running *ActyxOS on Android* with a fleet management service
-For running *ActyxOS on Android* in production, most users set up a fleet management service like [Workspace One](https://www.vmware.com/products/workspace-one.html). Please refer to our guide for [Using Workspace One](/docs/os/advanced-guides/using-workspace-one) for more information.
+For running *ActyxOS on Android* in production, most users set up a fleet management service like [Workspace One](https://www.vmware.com/products/workspace-one.html).
+If you require further assistance with running ActyxOS in production, please feel free to contact us at developer@actyx.io or join our [Discord chat](https://discord.gg/262yJhc).
 :::
 
-### Install ActyxOS on your edge device
+### Required ports
 
-*ActyxOS on Android* is [publicly available in the Google Play store](https://play.google.com/store/apps/details?id=com.actyx.os.android). Just open the Google Play store on your device, search for ActyxOS and install it.
+ActyxOS currently requires five ports to operate.
+Before starting ActyxOS make sure that these ports are not already in use by another program.
+
+- `4001` - Used for internode communication
+- `4243` - Exposes a WebSocket endpoint for the Actyx Pond (only on localhost)
+- `4454` - Exposes the [Event Service](/os/api/event-service.md) (only on localhost)
+- `4457` - Exposes the [Console Service](/os/api/console-service.md)
+- `8080` - Exposes an [IPFS Gateway](https://docs.ipfs.io/concepts/ipfs-gateway/) (only on localhost)
+
+The following ports are reserved for future use.
+The services exposed there are currently still in alpha testing.
+
+- `4455`
+- `4458`
+
+### Install ActyxOS on your device
+
+*ActyxOS on Android* is publicly available in the [Google Play store](https://play.google.com/store/apps/details?id=com.actyx.os.android). Just open the Google Play store on your device, search for ActyxOS and install it.
 
 After clicking on the ActyxOS icon on your home screen, ActyxOS starts. While ActyxOS is running, you can also see ActyxOS in your notifications overview.
 
-If you do not have access to the Google Play store, please have a look at [our guide in the Troubleshooting section](/docs/os/advanced-guides/actyxos-on-android#installing-actyxos-without-access-to-the-google-play-store).
+If you do not have access to the Google Play store, please have a look at [our guide](/docs/os/advanced-guides/actyxos-on-android#installing-actyxos-without-access-to-the-google-play-store) in the Troubleshooting section.
 
 ### Check the status of your node
 
@@ -111,11 +131,15 @@ Apart from starting and stopping apps via the [Actyx CLI](/docs/cli/getting-star
 them via the app list in the ActyxOS app or via home screen icons that you can create under app
 details. Closing them in the app switcher works like for every other Android app.
 
-Starting apps via the Actyx CLI by default works only when ActyxOS is in the foreground.
+Starting apps via the Actyx CLI or the ActyxOS Node Manager by default works only when ActyxOS is in the foreground.
 To make it work in all cases, you have grant ActyxOS permission to: "Display pop-up windows while running
 in the background," "Allow apps to start automatically" or similar.
 What exactly the permissions are called depends on the Android vendor. When in doubt, just
 enable everything under Manage&nbsp;Apps&#x2011;&#x2011;>ActyxOS&#x2011;&#x2011;>Other&nbsp;permissions.
+
+:::caution Restrctions on starting apps from the background on Andoroid 10+
+Android 10 introduced [restrictions on starting apps from the background](https://developer.android.com/guide/components/activities/background-starts). After you started an app with the Actyx CLI, or with the ActyxOS Node Manager, it will therefore only start once you move the ActyxOS app into the foreground.
+:::
 
 <details>
   <summary>Expand for an example</summary>
@@ -165,7 +189,7 @@ instead of
 
 - /dns4/demo-bootstrap.actyx.net/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH
 
-ActyxOS on Docker supports both formats. We are currently working on a fix for this. Check out our [blog](https://www.actyx.com/news/) or [release notes section](/docs/os/release-notes.md) for information on our new releases.
+ActyxOS on Docker supports both formats. We are currently working on a fix for this. Check out our [blog](https://www.actyx.com/news/) or [release notes section](/docs/os/release-notes) for information on our new releases.
 
 ## Known issues
 

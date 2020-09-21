@@ -2,8 +2,6 @@
 title: ax apps undeploy
 ---
 
-<!-- markdownlint-disable-file MD040 -->
-
 ### Undeploy an app from a node
 
 ```
@@ -23,16 +21,9 @@ ARGS:
               perform the operation on
 ```
 
-Here are a couple of example of using the `ax apps undeploy` command:
+Here is an example of using the `ax apps undeploy` command:
 
 ```
-# Undeploy a specific app from a node
-ax apps undeploy --local com.example.myapp1 10.2.3.23
-
-# Undeploy an app from multiple nodes
-ax apps undeploy --local com.example.myapp1 10.2.3.23 10.2.3.24
-
-# Undeploy multiple apps from a node
-echo "com.example.myapp1
-com.example.myapp2" | ax apps undeploy --local @- 10.2.3.23
+# Undeploy app with ID com.example.app from node at 10.2.3.23
+ax apps undeploy --local com.example.app 10.2.3.23
 ```

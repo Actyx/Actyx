@@ -8,7 +8,7 @@ Running an app on ActyxOS requires you to deploy the app, configure the app and 
 
 If you followed the previous guide, [Building Apps](building-apps.md), you should be in the directory called `my-app`. In this directory you should have a file called `com.example.myapp-1.0.0.tar.gz` that contains your packaged ActyxOS app.
 
-To deploy the app use the [Actyx CLI](../../cli/getting-started) as follows:
+To deploy the app use the [Actyx CLI](/docs/cli/getting-started) as follows:
 
 ```
 ax apps deploy com.example.myapp-1.0.0.tar.gz --local localhost

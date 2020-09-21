@@ -1,5 +1,6 @@
 ---
 title: Integrating a UI
+hide_table_of_contents: true
 ---
 
 Wrapping it up with a UI.
@@ -8,7 +9,7 @@ So far we have concentrated on the internals of a fish, on writing the business 
 An important aspect of many apps is the involvement of human operators, which requires the presentation of a UI that they can see and interact with.
 
 For a UI we need two things: a current state that determines what is shown, and a way to send commands to a fish to effect change.
-We have seen how to observe a fish’s state in the [Hello world](hello-world) section already, and sending commands came up when we discussed [emitting events](events).
+We have seen how to observe a fish’s state in the [Hello world](/docs/pond-v1/guides/hello-world) section already, and sending commands came up when we discussed [emitting events](/docs/pond-v1/guides/events).
 
 ```typescript
 export const wireUI = (pond: Pond) => {

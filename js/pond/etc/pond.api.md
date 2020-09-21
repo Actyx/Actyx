@@ -366,22 +366,14 @@ export interface Tag<E> extends Tags<E> {
 export const Tag: <E>(rawTag: string) => Tag<E>;
 
 // @public
-export interface Tags<E> {
+export interface Tags<E> extends Where<E> {
     and<E1>(tag: Tags<E1>): Tags<Extract<E1, E>>;
     and(tag: string): Tags<E>;
-    readonly _dataType?: E;
     local(): Tags<E>;
-    or<E1>(tag: Tags<E1>): TagsUnion<E1 | E>;
 }
 
 // @public
 export const Tags: <E>(...requiredTags: string[]) => Tags<E>;
-
-// @public
-export interface TagsUnion<E> {
-    readonly _dataType?: E;
-    or<E1>(tag: Tags<E1>): TagsUnion<E1 | E>;
-}
 
 // @public
 export type TestEvent = {
@@ -447,7 +439,11 @@ export type WaitForSwarmSyncParams = WaitForSwarmConfig & Readonly<{
 }>;
 
 // @public
-export type Where<E> = TagsUnion<E> | Tags<E>;
+export interface Where<E> {
+    readonly _dataType?: E;
+    or<E1>(tag: Where<E1>): Where<E1 | E>;
+    toString(): string;
+}
 
 // @public
 export type WsStoreConfig = Readonly<{

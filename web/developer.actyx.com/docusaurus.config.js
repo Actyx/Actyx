@@ -8,19 +8,27 @@ module.exports = {
   projectName: 'Actyx',
   plugins: ['@docusaurus/plugin-google-analytics'],
   themeConfig: {
+    announcementBar: {
+      id: 'support_us',
+      content:
+        '⭐️ We just released v1.0.0 of ActyxOS! Check our <a target="_blank" rel="noopener noreferrer" href="https://github.com/facebook/docusaurus">Blog</a> for news! ⭐️',
+      backgroundColor: '#1998ff',
+      textColor: '#fff',
+    },
+    colorMode: {
+      defaultMode: 'light',
+      disableSwitch: true,
+      respectPrefersColorScheme: false,
+    },
+    disableDarkMode: true,
+    sidebarCollapsible: true,
     navbar: {
-      title: 'Actyx Developers',
+      title: '',
       logo: {
         alt: 'Actyx Developer',
-        src: 'img/logo.svg',
+        src: 'img/header.svg',
       },
       links: [
-        {
-          to: 'docs/home/welcome',
-          activeBasePath: 'docs/home/',
-          label: 'Home',
-          position: 'left',
-        },
         {
           to: 'docs/quickstart',
           activeBasePath: 'docs/quickstart',
@@ -34,21 +42,9 @@ module.exports = {
           position: 'left',
         },
         {
-          to: 'docs/pond/getting-started',
+          to: 'docs/pond/introduction',
           activeBasePath: 'docs/pond/',
-          label: 'Actyx Pond',
-          position: 'left',
-        },
-        {
-          to: 'docs/cli/getting-started',
-          activeBasePath: 'docs/cli/',
-          label: 'Actyx CLI',
-          position: 'left',
-        },
-        {
-          to: 'docs/faq/supported-programming-languages',
-          activeBasePath: 'docs/faq/',
-          label: 'FAQ',
+          label: 'Actyx\u00a0Pond',
           position: 'left',
         },
         {
@@ -61,22 +57,86 @@ module.exports = {
           label: 'Downloads',
           position: 'right',
         },
-        {
-          to: 'https://www.actyx.com',
-          label: 'www.actyx.com',
-          position: 'right',
-        },
       ],
     },
     footer: {
+      logo: {
+        alt: 'Actyx Developer',
+        src: 'img/header.svg',
+        href: 'www.developer.actyx.com'
+      },
       style: 'light',
+      links: [
+        {
+          title: 'Product Documentation',
+          items: [
+            {
+              label: 'ActyxOS',
+              to: 'docs/os/introduction',
+            },
+            {
+              label: 'Actyx Pond',
+              to: 'docs/pond/introduction',
+            },
+            {
+              label: 'Actyx CLI',
+              to: 'docs/cli/getting-started',
+            },
+            {
+              label: 'Actyx Node Manager',
+              to: 'docs/os/tools/node-manager',
+            }
+          ]
+        },
+        {
+          title: 'Useful Links',
+          items: [
+            {
+              label: 'FAQ',
+              to: 'docs/faq/supported-programming-languages'
+            },
+            {
+              label: 'Blog Posts',
+              to: 'blog',
+            },
+            {
+              label: 'Downloads',
+              to: 'https://downloads.actyx.com/',
+            },
+            {
+              label: 'Discord',
+              to: 'https://discord.gg/262yJhc',
+            }
+          ]
+        },
+        {
+          title: 'Actyx',
+          items: [
+            {
+              label: 'Home',
+              to: 'https://www.actyx.com',
+            },
+            {
+              label: 'Team',
+              to: 'https://www.actyx.com/company/team',
+            },
+            {
+              label: 'Career',
+              to: 'https://careers.actyx.io/',
+            },
+            {
+              label: 'Press',
+              to: 'https://www.actyx.com/news',
+            }
+          ]
+        }
+      ],
       copyright: `Copyright © ${new Date().getFullYear()} Actyx AG`,
     },
     prism: {
-      theme: require('prism-react-renderer/themes/github'),
+      theme: require('prism-react-renderer/themes/palenight'),
       darkTheme: require('prism-react-renderer/themes/dracula'),
       additionalLanguages: ['rust','csharp'],
-
     },
     googleAnalytics: {
       trackingID: 'UA-102758359-7',
@@ -88,8 +148,6 @@ module.exports = {
       indexName: 'actyx_developer',
       algoliaOptions: {}, // Optional, if provided by Algolia
     },
-
-
   },
   presets: [
     [

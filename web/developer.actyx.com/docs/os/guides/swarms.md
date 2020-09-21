@@ -9,7 +9,7 @@ import TabItem from '@theme/TabItem';
 
 An ActyxOS swarm is a mesh of nodes communicating in a local network. A swarm may have 1 to N nodes in it.
 
-![A simple ActyxOS swarm](/images/os/swarm.png)
+![A simple ActyxOS swarm](/images/os/swarm.svg)
 
 A swarm is defined by a single property, the so-called **swarm key**. In order to participate in a swarm, a node must have the secret swarm key. The swarm key is a [setting](../advanced-guides/node-and-app-settings.md) that must be set for a node to function correctly.
 

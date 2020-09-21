@@ -2,8 +2,6 @@
 title: ax settings schema
 ---
 
-<!-- markdownlint-disable-file MD040 -->
-
 ## Get setting schemas from a node
 
 ```
@@ -23,12 +21,13 @@ ARGS:
                perform the operation on
 ```
 
-Here is a simple example of using the `ax settings schema` command:
+Here are some examples of using the `ax settings schema` command:
 
 ```
-# Get the ActyxOS nodes settings schema from a node
+# Get the settings schema for the node with settings scope com.actyx.os at 10.2.3.23
 ax settings schema --local com.actyx.os 10.2.3.23
 
-# Get the settings schema for a specific app from a node
+# Get the settings schema for the app with settings scope com.example.app
+# from node at 10.2.3.23
 ax settings schema --local com.example.app 10.2.3.23
 ```

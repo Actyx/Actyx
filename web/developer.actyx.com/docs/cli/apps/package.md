@@ -2,8 +2,6 @@
 title: ax apps package
 ---
 
-<!-- markdownlint-disable-file MD040 -->
-
 ### Package an app
 
 ```
@@ -21,20 +19,24 @@ ARGS:
               that contains it [default: ax-manifest.yml]
 ```
 
+The `ax apps package` command will write the packaged app as a tarball to disk, which can then be deployed.
+
 Here are a couple of example uses of the `ax apps package` command:
 
 ```
-# Package the app in the current directory
+# Package an app in the current directory with default manifest ax-manifest.yml
 ax apps package
 
-# Package an app in a specific directory
+# Package an app in the current directory with manifest another-manifest.yml
+ax apps package another-manifest.yml
+
+# Package the app in the specified directory myApp with default manifest
+# ax-manifest.yml
 ax apps package myApp/
 
-# Package multiple apps in parallel
-ax apps package myApp1/ myApp2/ ../specialApp
-
-# Package a list of apps whose directories are in a file
-ax apps package @paths.txt
+# Package an app in the specified directory myApp with manifest
+# myApp/another-manifest.yml
+ax apps package myApp/another-manifest.yml
 ```
 
 :::note Want to save the package somewhere else than the app directory?

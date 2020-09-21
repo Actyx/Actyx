@@ -123,7 +123,7 @@ The structure of this settings objects allows you to initially set, retrieve, or
 ActyxOS provides a number of settings that you can set. Some of those are required for the node to work, whereas others are optional. You can download the full ActyxOS [_Node Settings Schema_](../api/node-settings-schema.md) [here](/schemas/os/node-settings.schema.json). In this section we will show you how you can configure a node.
 
 :::info
-The primary tool for setting settings, both at the node and the app level, is the [Actyx CLI](../../cli/getting-started). The Actyx CLI provides three important commands for doing so:
+The primary tool for setting settings, both at the node and the app level, is the [Actyx CLI](../../cli/getting-started.md). The Actyx CLI provides three important commands for doing so:
 
 - `ax settings scopes` for figuring out what the top-level _scopes_ of the _settings object_ on the node are,
 - `ax settings get` to get settings from a node; and,
@@ -224,14 +224,15 @@ You could do so by writing the following settings schema:
 ```
 
 :::tip
-In order to make the configuration of your app failsafe, we encourage you to always use `additionalProperties: false` . This means that you only the properties you defined can be configured, and prevents your users from accidental configuration mistakes through e.g. typos.
+In order to make the configuration of your app failsafe, we encourage you to always use `additionalProperties: false` . This means that only the properties you defined can be configured and prevents typos from going unnoticed.
 :::
 
 Following association of this schema with your app, ActyxOS will now ensure that only settings meeting this schema will ever be provided to your app.
 
 #### Deploying an app without settings
 
-If your app has no settings, you must still provide a settings schema. In this case you need to define a settings schema that does not require you to actually configure the app:
+If your app has no settings, ActyxOS still needs a settings schema.
+You may define a settings schema that does not require any settings and provides an empty object as default:
 
 ```json
 {
@@ -239,10 +240,20 @@ If your app has no settings, you must still provide a settings schema. In this c
 }
 ```
 
-The above settings schema will configure `{}` as your default settings, and ActyxOS will therefore automatically validate your app settings. After deploying your app, you will not be required to set any settings as they are already valid.
+A stricter approach is to forbid any different settings:
 
-:::warning
-As configuring apps with the ActyxOS settings management entails many advantages, we advise to only use the above settings schema if your app actually has no configuration options.
+```json
+{
+  "type": "object",
+  "additionalProperties": false,
+  "default": {}
+}
+```
+
+In either case, ActyxOS will check the default value against the rest of the schema as part of deploying the app, and since the default is already valid you won’t need to explicitly provide any settings to get the app into the configured state.
+
+:::tip
+As configuring apps with the ActyxOS settings management entails many advantages, we advise to only use the above settings schema if your app is not configurable at all.
 :::
 
 #### Associating the schema to your app
@@ -268,7 +279,7 @@ Alternatively the settings schema can be inlined into the manifest:
 settingsSchema: { "default": {} } # <------------- inlined settings schema
 ```
 
-When you package your app, the Actyx CLI will automatically include the settings schema so that it will be available to ActyxOS when your app is deployed.
+When you package your app, the Actyx CLI wiactyxoll automatically include the settings schema so that it will be available to ActyxOS when your app is deployed.
 
 #### Accessing settings in your app
 
@@ -276,12 +287,12 @@ The last important part is accessing settings from within your app&mdash;happily
 
 ##### Accessing settings in web apps (WebView Runtime)
 
-Your app's settings are available in the runtime using an injected global function named `ax.appSettings`. To continue with our example, you could access them as follows:
+Your app's settings are available in the runtime using an injected global function named `ax.appSettings`. This function returns a string containing a JSON-stringified object. To continue with our example, you could access them as follows:
 
 ```javascript
 
 function onStartApp() {
-  const { timeUnit, backgroundColor } = ax.appSettings()
+  const { timeUnit, backgroundColor } = JSON.parse(ax.appSettings())
   // Do something with the timeUnit and backgroundColor...
 }
 ```

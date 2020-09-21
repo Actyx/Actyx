@@ -1,5 +1,6 @@
 ---
 title: Events
+hide_table_of_contents: true
 ---
 
 A Fish is a source of events, so let’s emit some events!
@@ -39,7 +40,7 @@ All necessary imports (like `OnCommand`) are available from the `@actyx/pond` mo
 :::
 
 The definition of an `onCommand` handler starts by declaring the types of state, commands, and events that this handler will process.
-The state is passed in as first function argument, but we don’t need it in this example and use the empty object — this will become important in the section on [command validation](commands) later on.
+The state is passed in as first function argument, but we don’t need it in this example and use the empty object — this will become important in the section on [command validation](/docs/pond-v1/guides/events) later on.
 
 A typical fish will handle multiple commands, so we handle the command type in a switch statement; the default case is using a helper function from the `ada` module that guards against forgetting to handle any of the cases — you can try to remove the first case and observe the resulting compiler error.
 The return value of `onCommand` is a list of events to be emitted.

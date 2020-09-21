@@ -11,10 +11,14 @@ As you interact with an ActyxOS node or app, it transitions through different st
 
 The states of nodes and apps are a combination of three and four boolean variables, respectively. Note that not all theoretically possible combinations of these variables can actually be achieved, this will become clear in the second section of this page. The state of your node or app can depend on the following variables:
 
-- [Status](#status)
-- [Mode](#mode)
-- [Settings](#settings)
-- [License](#license)
+- [States](#states)
+  - [Status](#status)
+  - [Mode (only apps)](#mode-only-apps)
+  - [Settings](#settings)
+  - [Licenses](#licenses)
+- [Events and state transitions](#events-and-state-transitions)
+  - [Node lifecycle](#node-lifecycle)
+  - [App lifecycle](#app-lifecycle)
 
 The tables in the following sub-sections will explain the meaning of each variable and its values for ActyxOS nodes and apps.
 
@@ -39,7 +43,7 @@ Value      | Apps                    |
  `Disabled`| App should be stopped |
 
 :::tip Use fleet management services to control this behaviour for your nodes
-ActyxOS does not control the Host system of your nodes, therefore this is only available for apps. You can use fleet management services such as [Balena for ActyxOS on Docker](using-balena) or [Workspace one for ActyxOS on Android](using-workspace-one) to control e.g. restarts of ActyxOS.
+ActyxOS does not control the Host system of your nodes, therefore this is only available for apps. You can use fleet management services such as [Balena for ActyxOS on Docker](https://balena.io/) or [Workspace one for ActyxOS on Android](https://www.vmware.com/products/workspace-one.html) to control e.g. restarts of ActyxOS.
 :::
 
 ### Settings
@@ -51,7 +55,7 @@ Value     | Nodes                               | Apps                          
  `Valid`  | The settings object under `com.actyx.os` (= your node settings) is valid | The settings object under `<APP ID>` is valid |
  `Invalid`| The settings object under `com.actyx.os` (= your node settings) is invalid      | The settings object under `<APP ID>` is invalid |
 
-If you want to know more about node and app settings and in ActyxOS, please refer to our advanced guide on [Node and App Settings](node-and-app-settings).
+If you want to know more about node and app settings and in ActyxOS, please refer to our advanced guide on [Node and App Settings](node-and-app-settings.md).
 
 ### Licenses
 
