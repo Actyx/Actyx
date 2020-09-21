@@ -45,9 +45,9 @@ jobs:
           scriptType: bash
           scriptLocation: inlineScript
           inlineScript: |
-            az --version
-            az account show
-            az storage blob upload-batch -s $(System.DefaultWorkingDirectory)/js/pond/package/ -d https://axartifacts.blob.core.windows.net/artifacts/ --destination-path $(Build.SourceVersion)/
+            /usr/bin/az --version
+            /usr/bin/az account show
+            /usr/bin/az storage blob upload-batch -s $(System.DefaultWorkingDirectory)/js/pond/package/ -d https://axartifacts.blob.core.windows.net/artifacts/ --destination-path $(Build.SourceVersion)/
         condition: and(contains(variables['BUILD_STRING'],'[build-actyx-pond]'),succeeded())
       - script: |
           build/bin/post-to-slack.sh -s "Actyx Pond" -a "danger"
