@@ -1,42 +1,9 @@
+import { MyGlobal } from '../../jest/setup'
 import { selectNodes } from './nodeselection'
 import { RwLock } from './rwlock'
-import { ActyxOSNode, NodeSelection, Target } from './types'
+import { ActyxOSNode, NodeSelection } from './types'
 
-let nodes: ActyxOSNode[] = []
-
-/**
- * Try to deploy ActyxOS on all given targets, each one receiving all compatible
- * variants (e.g. might deploy ActyxOS on Docker and ActyxOS on Windows when given
- * a Windows target that has Docker running)
- *
- * @param hosts list of target hosts on which ActyxOS can be deployed
- */
-export const buildNodes = async (hosts: Target[]): Promise<void> => {
-  const build: Promise<ActyxOSNode[]>[] = []
-  let idx = 0
-  const getName = () => {
-    idx += 1
-    return `h${idx}`
-  }
-
-  for (const host of hosts) {
-    // if (host.docker !== undefined) {
-    //   build.push(deployDocker(host.docker, host, getName()).catch(() => []))
-    // }
-    // if (host.rsync !== undefined) {
-    //   build.push(deployProcess(host.rsync, host, getName()).catch(() => []))
-    // }
-    // if (host.adb !== undefined) {
-    //   build.push(deployAndroid(host.adb, host, getName()).catch(() => []))
-    // }
-  }
-
-  nodes = (await Promise.all(build)).flat()
-}
-
-// const deployDocker = async (base: URL, host: Target, name: string): Promise<ActyxOSNode[]> => []
-// const deployProcess = async (base: string, host: Target, name: string): Promise<ActyxOSNode[]> => []
-// const deployAndroid = async (base: string, host: Target, name: string): Promise<ActyxOSNode[]> => []
+const nodes: ActyxOSNode[] = (<MyGlobal>global).nodeSetup.nodes || []
 
 const lock = new RwLock()
 

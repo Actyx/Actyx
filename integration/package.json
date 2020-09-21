@@ -4,7 +4,8 @@
   "description": "ActyxOS integration test suite",
   "main": "index.js",
   "scripts": {
-    "test": "TZ=UTC jest --config jest.config.js"
+    "build": "rimraf dist && tsc",
+    "test": "npm run build && TZ=UTC jest"
   },
   "author": "",
   "license": "ISC",
@@ -21,6 +22,7 @@
     "eslint-plugin-react": "^7.20.6",
     "jest": "^26.4.2",
     "prettier": "^2.0.5",
+    "rimraf": "^3.0.2",
     "ts-jest": "^26.3.0",
     "ts-node": "^9.0.0",
     "typescript": "^4.0.2"

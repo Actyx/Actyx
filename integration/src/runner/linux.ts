@@ -37,8 +37,8 @@ export const mkNodeLinux = async (
 
   console.log('installing ActyxOS')
   await ssh.sftp(async (sftp) => {
-    await Ssh.mkProm0((cb) => sftp.unlink('actyxos', cb))
-    return Ssh.mkProm0((cb) =>
+    await Ssh.mkProm0((cb) => sftp.unlink('actyxos', () => cb(undefined)))
+    await Ssh.mkProm0((cb) =>
       sftp.fastPut(
         '../dist/bin/x64/actyxos-linux',
         'actyxos',
@@ -88,9 +88,7 @@ export const mkNodeLinux = async (
   const shutdown = () => {
     server.emit('end')
     ssh.end()
-    if ('shutdown' in target) {
-      target.shutdown()
-    }
+    target.shutdown()
   }
 
   return { name, target, host: 'process', runtimes: [], ax, shutdown }

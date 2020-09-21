@@ -1,7 +1,30 @@
 import { EC2 } from 'aws-sdk'
+import { MyGlobal } from '../../jest/setup'
+import { AwsKey } from './types'
 
 // determines frequency of polling AWS APIs (e.g. waiting for instance start)
 const pollDelay = <T>(f: () => Promise<T>) => new Promise((res) => setTimeout(res, 2000)).then(f)
+
+export const myKey = (<MyGlobal>global).nodeSetup.key
+
+export const createKey = async (ec2: EC2): Promise<AwsKey> => {
+  const keyName = `cosmos-${Date.now()}`
+  const { KeyMaterial } = await ec2
+    .createKeyPair({
+      KeyName: keyName,
+      TagSpecifications: [
+        { ResourceType: 'key-pair', Tags: [{ Key: 'Customer', Value: 'Cosmos integration' }] },
+      ],
+    })
+    .promise()
+  if (KeyMaterial === undefined) throw new Error('cannot create key pair')
+  return { keyName, privateKey: KeyMaterial }
+}
+
+export const deleteKey = async (ec2: EC2, KeyName: string): Promise<void> => {
+  console.log('deleting key pair %s', KeyName)
+  await ec2.deleteKeyPair({ KeyName }).promise()
+}
 
 export const createInstance = async (
   ec2: EC2,
@@ -71,5 +94,6 @@ export const cleanUpInstances = async (ec2: EC2): Promise<void> => {
 }
 
 export const terminateInstance = async (ec2: EC2, instance: string): Promise<void> => {
+  console.log('terminating instance %s', instance)
   await ec2.terminateInstances({ InstanceIds: [instance] }).promise()
 }

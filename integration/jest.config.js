@@ -1,3 +1,7 @@
+// This is visible in globalSetup, globalTeardown, and via globals below also in tests.
+// The idea is that its contents are provided in globalSetup.
+global.nodeSetup = {}
+
 module.exports = {
   rootDir: '.',
   preset: 'ts-jest',
@@ -5,9 +9,12 @@ module.exports = {
     'ts-jest': {
       tsConfig: 'tsconfig.json',
     },
+    nodeSetup: global.nodeSetup,
   },
-  testEnvironment: 'jsdom',
-  moduleFileExtensions: ['js', 'json', 'jsx', 'ts', 'tsx'],
+  globalSetup: './dist/jest/setup.js',
+  globalTeardown: './dist/jest/teardown.js',
+  testEnvironment: 'node',
+  moduleFileExtensions: ['js', 'json', 'jsx'],
   collectCoverage: true,
   collectCoverageFrom: ['**/*.{ts,tsx}', '!**/*.{stories.tsx}', '!**/*.d.ts'],
   coveragePathIgnorePatterns: ['/node_modules/', 'src/hosts.ts'],
@@ -21,7 +28,5 @@ module.exports = {
     },
   },
   testPathIgnorePatterns: ['/node_modules/', '.+support\\.test\\.ts'],
-  setupFiles: ['<rootDir>/jest-setup.js'],
-  moduleDirectories: ['node_modules', '<rootDir>'],
   maxWorkers: '50%',
 }

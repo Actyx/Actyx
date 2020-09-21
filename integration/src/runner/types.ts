@@ -38,3 +38,8 @@ export type ActyxOSNode = {
   ax: CLI
   shutdown: () => void
 }
+
+export type AwsKey = {
+  keyName: string
+  privateKey: string
+}

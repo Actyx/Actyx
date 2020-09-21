@@ -22,6 +22,10 @@ module.exports = {
         allowHigherOrderFunctions: true,
       },
     ],
+    '@typescript-eslint/no-unused-vars': [
+      'warn',
+      { varsIgnorePattern: '^_', argsIgnorePattern: '^_' },
+    ],
   },
   settings: {
     react: {
