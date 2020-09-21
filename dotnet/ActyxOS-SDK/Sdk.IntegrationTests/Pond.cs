@@ -41,11 +41,7 @@ namespace Sdk.IntegrationTests
         }
     }
 
-
-    interface EventHandler<S, in E>
-    {
-        S onEvent(S oldState, E eventPayload);
-    }
+    public delegate S OnEvent<S, in E>(S oldState, E eventPayload);
 
     interface IUpdatedBy<in E>
     {
@@ -59,9 +55,11 @@ namespace Sdk.IntegrationTests
 
     interface FishBuilder<S>
     {
-        FishBuilder<S> subscribeTo<E>(Tags<E> subscription, EventHandler<S, E> handler);
+        FishBuilder<S> subscribeTo<E>(Tags<E> subscription, OnEvent<S, E> handler);
 
         FishBuilder<S> subscribeTo<E>(Tags<E> subscription) where E : IUpdateState<S>;
+
+        FishBuilder<S> subscribeToT<SConcrete, E>(Tags<E> subscription) where SConcrete : IUpdatedBy<E>, S;
     }
 
     interface FishBuilderX<S, X> : FishBuilder<S> where S : IUpdatedBy<X>
@@ -78,40 +76,61 @@ namespace Sdk.IntegrationTests
     }
 
 
-    class Fooo
+    interface IOwnEvent : IUpdateState<MyState>
     {
-        static Task Ok(Ponder p)
-        {
-            Tags<string> myTags = new Tags<string>("foo", "bar");
+    }
 
+    interface IForeignEvent
+    {
+
+    }
+
+    class MyState : IUpdatedBy<IForeignEvent>
+    {
+        public void updateWith(IForeignEvent evt)
+        {
+            return;
         }
     }
 
-    // class FishBuilder<S> : FishBuilder<S>
-    // {
-    //     private readonly string fishId;
-    //     private readonly S initialState;
+    class Fooo
+    {
+        static FishBuilder<MyState> Ok(Ponder p)
+        {
+            Tags<string> myTags = new Tags<string>("foo", "bar");
 
-    //     public FishBuilder(string fishId, S initialState)
-    //     {
-    //         this.fishId = fishId;
-    //         this.initialState = initialState;
-    //     }
+            return new FishBuilderC<MyState>("dummy", new MyState())
+                .subscribeTo(myTags, (oldState, evt) => new MyState())
+                .subscribeTo(new Tags<IOwnEvent>("own"))
+                .subscribeToT<MyState, IForeignEvent>(new Tags<IForeignEvent>("foreign"));
+        }
+    }
 
-    //     FishBuilder<S> subscribeTo(Tags<E> subscription, EventHandler<S, E> handler)
-    //     {
-    //         return this;
-    //     }
+    class FishBuilderC<S> : FishBuilder<S>
+    {
+        private readonly string fishId;
+        private readonly S initialState;
 
-    //     FishBuilder<S> subscribeTo(Tags<E> subscription) where S : IUpdatedBy<E>
-    //     {
-    //         return this;
-    //     }
+        public FishBuilderC(string fishId, S initialState)
+        {
+            this.fishId = fishId;
+            this.initialState = initialState;
+        }
 
-    //     FishBuilder<S> subscribeTo(Tags<E> subscription) where E : IUpdateState<S>
-    //     {
-    //         return this;
-    //     }
-    // }
+        public FishBuilder<S> subscribeTo<E>(Tags<E> subscription, OnEvent<S, E> handler)
+        {
+            return this;
+        }
+
+        public FishBuilder<S> subscribeTo<E>(Tags<E> subscription) where E : IUpdateState<S>
+        {
+            return this;
+        }
+
+        public FishBuilder<S> subscribeToT<SConcrete, E>(Tags<E> subscription) where SConcrete : IUpdatedBy<E>, S
+        {
+            return this;
+        }
+    }
 
 }
