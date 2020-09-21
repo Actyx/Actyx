@@ -20,23 +20,23 @@ export const buildNodes = async (hosts: Target[]): Promise<void> => {
   }
 
   for (const host of hosts) {
-    if (host.docker !== undefined) {
-      build.push(deployDocker(host.docker, host, getName()).catch(() => []))
-    }
-    if (host.rsync !== undefined) {
-      build.push(deployProcess(host.rsync, host, getName()).catch(() => []))
-    }
-    if (host.adb !== undefined) {
-      build.push(deployAndroid(host.adb, host, getName()).catch(() => []))
-    }
+    // if (host.docker !== undefined) {
+    //   build.push(deployDocker(host.docker, host, getName()).catch(() => []))
+    // }
+    // if (host.rsync !== undefined) {
+    //   build.push(deployProcess(host.rsync, host, getName()).catch(() => []))
+    // }
+    // if (host.adb !== undefined) {
+    //   build.push(deployAndroid(host.adb, host, getName()).catch(() => []))
+    // }
   }
 
   nodes = (await Promise.all(build)).flat()
 }
 
-const deployDocker = async (base: URL, host: Target, name: string): Promise<ActyxOSNode[]> => []
-const deployProcess = async (base: string, host: Target, name: string): Promise<ActyxOSNode[]> => []
-const deployAndroid = async (base: string, host: Target, name: string): Promise<ActyxOSNode[]> => []
+// const deployDocker = async (base: URL, host: Target, name: string): Promise<ActyxOSNode[]> => []
+// const deployProcess = async (base: string, host: Target, name: string): Promise<ActyxOSNode[]> => []
+// const deployAndroid = async (base: string, host: Target, name: string): Promise<ActyxOSNode[]> => []
 
 const lock = new RwLock()
 

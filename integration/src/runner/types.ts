@@ -1,3 +1,5 @@
+import { CLI } from '../ax'
+
 export type OS = 'win' | 'linux' | 'mac' | 'android'
 export type Arch = 'armv7' | 'aarch64' | 'x86_64'
 export type Host = 'docker' | 'process' | 'android'
@@ -6,13 +8,20 @@ export type Runtime = 'webview' | 'docker' | 'process'
 export type Target = {
   os: OS
   arch: Arch
-  /** base URL for deploying ActyxOS via Docker API */
-  docker?: URL
-  /** base path for deploying ActyxOS as host:dir */
-  rsync?: string
-  /** ADB connection string for deploying to Android */
-  adb?: string
+  kind: TargetKind
+  shutdown: () => void
 }
+
+export type SshAble = {
+  host: string
+  username: string
+  privateKey: string
+}
+
+export type TargetKind =
+  | ({ type: 'aws'; instance: string } & SshAble)
+  | ({ type: 'borrowed' } & SshAble)
+  | 'test'
 
 export type NodeSelection = {
   os?: OS
@@ -25,9 +34,7 @@ export type ActyxOSNode = {
   name: string
   target: Target
   host: Host
-  os: OS
-  arch: Arch
   runtimes: Runtime[]
-  console: URL
-  events: URL
+  ax: CLI
+  shutdown: () => void
 }

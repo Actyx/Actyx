@@ -1,8 +1,8 @@
 import { ActyxOSNode, NodeSelection } from './types'
 
 const matches = (selection: NodeSelection) => (node: ActyxOSNode) =>
-  (selection.os === node.os || selection.os === undefined) &&
-  (selection.arch === node.arch || selection.arch === undefined) &&
+  (selection.os === node.target.os || selection.os === undefined) &&
+  (selection.arch === node.target.arch || selection.arch === undefined) &&
   (selection.host === node.host || selection.host === undefined) &&
   (node.runtimes.some((rt) => rt === selection.runtime) || selection.runtime === undefined)
 

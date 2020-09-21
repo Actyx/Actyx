@@ -1,4 +1,3 @@
-import { SCHED_NONE } from 'cluster'
 import { createServer, Server } from 'net'
 /* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -21,13 +20,6 @@ export interface ExecResult {
   code?: number
   stdout: string
   stderr: string
-}
-
-export interface ISsh {
-  pty(cmd: string): Promise<void>
-  stream(cmd: string, pty?: boolean): Promise<SshClient.Channel>
-  shell(): Promise<boolean>
-  exec(cmd: string, options?: ExecOptions): Promise<ExecResult>
 }
 
 export const mkProm = <T>(f: (cb: (err: any, value: T) => void) => void): Promise<T> =>
@@ -55,7 +47,7 @@ export const mkProm0 = (f: (cb: (err: any) => void) => void): Promise<void> =>
 /**
  * Low level async wrapper. Service builds on this for a more terse API.
  */
-export class Client implements ISsh {
+export class Client {
   config: SshClient.ConnectConfig
   conn: SshClient.Client
   private _endPromise!: Promise<boolean>

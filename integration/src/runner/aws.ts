@@ -1,38 +1,24 @@
-import AWS from 'aws-sdk'
-import { EventEmitter } from 'events'
-import { readFileSync } from 'fs'
-import { CLI } from '../ax'
-import * as Ssh from './ssh'
-
-const sshKey = {
-  keyName: 'rkuhn-ec2',
-  privateKey: readFileSync('/Users/rkuhn/.ssh/rkuhn-ec2.pem'),
-}
+import { EC2 } from 'aws-sdk'
 
 // determines frequency of polling AWS APIs (e.g. waiting for instance start)
 const pollDelay = <T>(f: () => Promise<T>) => new Promise((res) => setTimeout(res, 2000)).then(f)
 
-const netString = (x: Buffer | string) => (Buffer.isBuffer(x) ? x.toString() : x)
+export const createInstance = async (
+  ec2: EC2,
+  params: EC2.RunInstancesRequest,
+): Promise<EC2.Instance> => {
+  const ts = params.TagSpecifications
+  const myTags: EC2.TagSpecification = {
+    ResourceType: 'instance',
+    Tags: [{ Key: 'Customer', Value: 'Cosmos integration' }],
+  }
+  const withTags = { ...params, TagSpecifications: ts ? [...ts, myTags] : [myTags] }
 
-const createInstance = async (ec2: AWS.EC2) => {
-  let instance = (
-    await ec2
-      .runInstances({
-        ImageId: 'ami-0718a1ae90971ce4d',
-        MinCount: 1,
-        MaxCount: 1,
-        SecurityGroupIds: ['sg-064dfecc275620375'],
-        SubnetId: '',
-        TagSpecifications: [
-          { ResourceType: 'instance', Tags: [{ Key: 'Customer', Value: 'Cosmos integration' }] },
-        ],
-        KeyName: sshKey.keyName,
-      })
-      .promise()
-  ).Instances?.[0]
+  let instance = (await ec2.runInstances(withTags).promise()).Instances?.[0]
+
   if (instance === undefined) {
     console.error('cannot start instance')
-    return
+    throw new Error('cannot start instance')
   }
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const id = instance.InstanceId!
@@ -48,14 +34,17 @@ const createInstance = async (ec2: AWS.EC2) => {
 
   if (instance === undefined || instance.State?.Name !== 'running') {
     console.error('instance did not start')
-    return
+    throw new Error('instance did not start, last state was' + instance?.State?.Name)
   }
   console.log('instance started')
 
   return instance
 }
 
-const cleanUpInstances = async (ec2: AWS.EC2) => {
+// prune instances started more than a day ago
+const PRUNE_AGE_MS = 86_400_000
+
+export const cleanUpInstances = async (ec2: EC2): Promise<void> => {
   const old = (
     await ec2
       .describeInstances({
@@ -69,7 +58,11 @@ const cleanUpInstances = async (ec2: AWS.EC2) => {
   if (old !== undefined && old.length > 0) {
     const ids = old.flatMap((reservation) =>
       (reservation.Instances || []).flatMap((instance) =>
-        instance.InstanceId !== undefined ? [instance.InstanceId] : [],
+        instance.InstanceId !== undefined &&
+        instance.LaunchTime !== undefined &&
+        instance.LaunchTime.getTime() < Date.now() - PRUNE_AGE_MS
+          ? [instance.InstanceId]
+          : [],
       ),
     )
     console.log('terminating instances', ids)
@@ -77,105 +70,6 @@ const cleanUpInstances = async (ec2: AWS.EC2) => {
   }
 }
 
-export const mkInstance = async (): Promise<void> => {
-  const ec2 = new AWS.EC2({ region: 'eu-central-1' })
-
-  let instance: AWS.EC2.Instance | undefined
-  if (typeof process.argv[2] === 'string') {
-    const res = await ec2.describeInstances({ InstanceIds: [process.argv[2]] }).promise()
-    const i = res.Reservations?.[0]?.Instances?.[0]
-    instance = i !== undefined ? i : await createInstance(ec2)
-  } else {
-    await cleanUpInstances(ec2)
-    instance = await createInstance(ec2)
-  }
-  if (instance === undefined) {
-    return
-  }
-
-  const ssh = new Ssh.Client({
-    host: instance.PublicIpAddress,
-    username: 'ubuntu',
-    privateKey: sshKey.privateKey,
-  })
-
-  let connected = false
-  let attempts = 5
-  process.stdout.write('connecting ')
-  while (!connected && attempts-- > 0) {
-    try {
-      await pollDelay(() => ssh.connect())
-      connected = true
-    } catch (error) {
-      if (error.code === 'ECONNREFUSED') {
-        process.stdout.write('.')
-      } else {
-        console.log(error)
-        return
-      }
-    }
-  }
-  process.stdout.write('\n')
-
-  // console.log('installing ActyxOS')
-  // await ssh.sftp(async (sftp) => {
-  //   await Ssh.mkProm0((cb) => sftp.unlink('actyxos', cb))
-  //   return Ssh.mkProm0((cb) =>
-  //     sftp.fastPut(
-  //       '../dist/bin/x64/actyxos-linux',
-  //       'actyxos',
-  //       {
-  //         mode: 0o755,
-  //         step: (curr, chunk, total) => {
-  //           process.stdout.clearLine(0)
-  //           process.stdout.write(
-  //             `\rprogress ${curr} / ${total} (${Math.floor((curr * 100) / total)}%)`,
-  //           )
-  //         },
-  //         concurrency: 4,
-  //       },
-  //       cb,
-  //     ),
-  //   )
-  // })
-  // process.stdout.write('\n')
-
-  console.log('killing old ActyxOS instances')
-  console.log((await ssh.exec('pkill -e actyxos')).stdout)
-
-  await pollDelay(() => Promise.resolve(1))
-
-  const osP = new Promise<void>((res, rej) => {
-    ssh.conn.exec('ENABLE_DEBUG_LOGS=1 ./actyxos', (err, channel) => {
-      if (err) rej(err)
-      channel.on('data', (x: Buffer | string) => {
-        const s = netString(x)
-        console.log('* ActyxOS: %s', s)
-        if (s.indexOf('ActyxOS started') >= 0) {
-          res()
-        }
-      })
-      channel.on('close', () => {
-        console.log('* ActyxOS closed')
-        rej('closed')
-      })
-      channel.on('error', (err: Error) => {
-        console.log(err)
-        rej(err)
-      })
-    })
-  })
-
-  await osP
-
-  console.log('forwarding console port')
-  const [port, server] = await ssh.forwardPort(4457)
-  console.log('  console reachable on port %i', port)
-
-  const ax = new CLI(`localhost:${port}`)
-  console.log('node status', await ax.Nodes.Ls())
-
-  console.log((await ssh.exec('pkill -e actyxos')).stdout)
-  server.emit('end')
-  ssh.end()
+export const terminateInstance = async (ec2: EC2, instance: string): Promise<void> => {
+  await ec2.terminateInstances({ InstanceIds: [instance] }).promise()
 }

@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-empty-function */
+import { CLI } from '../ax'
 import { selectNodes } from './nodeselection'
 import { ActyxOSNode, Arch, Host, OS, Runtime } from './types'
 
@@ -7,13 +9,11 @@ const mkNode = (os: OS, arch: Arch, host: Host, runtimes: Runtime[]): ActyxOSNod
   const name = `n${counter}`
   return {
     name,
-    os,
-    arch,
     host,
     runtimes,
-    target: { os, arch },
-    console: new URL('http://localhost'),
-    events: new URL('http://localhost'),
+    target: { os, arch, kind: 'test', shutdown: () => {} },
+    ax: new CLI('localhost'),
+    shutdown: () => {},
   }
 }
 
