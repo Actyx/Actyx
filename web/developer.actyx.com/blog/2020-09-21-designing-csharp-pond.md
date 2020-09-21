@@ -88,15 +88,12 @@ So instead we may see "being updated" as the state’s responsibility:
 class MyState
 {
   // Among other things:
-  void consumeSomeForeignEvent(ISomeForeignEvent event);
+  MyState consumeSomeForeignEvent(ISomeForeignEvent event);
 }
 
 // Later:
 new FishBuilder(fishId, initialState)
-  .subscribeTo<ISomeForeignEvent>(someForeignEvents, (state, event) => {
-    state.consumeSomeForeignEvent(event);
-    return state;
-  })
+  .subscribeTo<ISomeForeignEvent>(someForeignEvents, (state, event) => state.consumeSomeForeignEvent(event))
   .build()
 ```
 
