@@ -1,5 +1,5 @@
 ---
-title: Designing the Pond in C# - A Farewell to Union Types
+title: A Farewell to Union Types
 author: Benjamin Sieffert
 author_title: Distributed Systems Engineer at Actyx
 author_url: https://github.com/benjamin-actyx
@@ -12,65 +12,137 @@ Pond V2](./2020-07-24-pond-v2-release) in C#.
 
 C# and TypeScript build on quite different foundations. Both are modern multi-paradigm languages;
 both have somewhat dynamic function dispatch mechanisms; but the typical C# program is still very much
-concerned with the _concrete type_ of objects, as modelled by the CLR. TypeScript meanwhile is
+concerned with the _runtime type_ of objects, as modelled by the CLR. TypeScript meanwhile is
 all about _type shapes_ (or duck typing): The type system itself quite strong, but its _reality_ is
-not as deeply rooted in the runtime.
+not really rooted in the runtime.
 
-In this blog post, we are going to explore briefly the challenges this has raised for us in porting
-the Pond, and how we are planning to overcome them to the effect of perhaps an API that’s actually
-nicer than the TypeScript one.
+One way this difference in typing plays out is "union types." Union types are a cornerstone of TS
+programming, and prominently feature in our TS Pond interfaces. But C# does not have an exact
+equivalent. In this blog post we are looking at ways to still express the same interface in C# as we
+do in TS.
 
 <!-- truncate -->
 
-An important TypeScript feature used by the Pond are _union types_. A Fish declares a subscription
-set encompassing any number of event types, then implements an `onEvent` function that accepts the
-union of those types as parameter. One handler for everything.
+The C# equivalent of unioning any two types is clunky: An `Either<A, B>` type, no matter how
+`Either` is implemented, does not automatically cover values of type `A`. Contrary to TS, such
+values would have to be explicitly wrapped.
 
-In TS this "union" is formed simply via e.g. `type TypeAorB = TypeA | TypeB`, expressing that anything of
-type `TypeAorB` may be _either_ of `TypeA` or of `TypeB`. Any object that is of `TypeA` is
-_automatically_ also of `TypeAorB` as defined here!
+The actually idiomatic alternative to union types in C# is to just use a common interface among all
+types of the union. But in a producer/consumer architecture, such an approach is unfortunate: Every
+new consumer would have to change code among all event producers, adding "its own" union
+interface. An event read by five different consumers would end up implementing five different union
+interfaces.
 
-Consider the brute-force equivalent in C#: `Either<TypeA, TypeB>`. Regardless of the implementation
-of `Either`, an object of `TypeA` will never automatically be `Either<TypeA, TypeB>` as well.
+Such an architecture _does_ have advantages – e.g. it’s easy to see who the consumers are at a
+glance – but we do not want to make it mandatory.
 
-How does the TS programmer tell whether an input of `TypeAorB` is actually TypeA, or actually TypeB?
-Since none of these types actually has a _runtime reality_ to it, `instanceof` is not available.
+So we are about to do a very simple thing. Rather than having you specify just one subscription and
+one event handler ("onEvent") in a Fish, it may have multiple subscriptions, each with its own event
+handler. It’s just like a union, only the real union is never explicitly constructed.
 
-Instead, a concept known as "tagged unions" must be employed: A common field is introduced between
-all relevant types, and assigned a different singleton-type (the "tag") for each type.
-```ts
-type TypeA = {
-  // Read: Field 'discriminant' may only ever contain the string 'A' (tag for this type)
-  discriminant: 'A'
-  
-  // This field meanwhile may contain *any* string
-  someDataField: string
-  
-  // .. more data fields ..
+```csharp
+new FishBuilder(fishId, initialState)
+  .subscribeTo<E>(events1, handlerForE)
+  .subscribeTo<F>(events2, handlerForF)
+  .build()
+```
+
+Imagine here `events1` to be some typed selector of events, where all contained events have type
+`E`. `handlerForE` then is a function `S onEvent(S oldState, E event);`, much like `onEvent` in the
+TS Pond. In the next line, events of type `F` are selected, and the `handlerForF` takes `F event`.
+
+## Ways of implementing handlers
+
+If you are serious about object-oriented design, you will probably put very little code in the
+handler function itself. Instead, you would view the update logic as either a method of the event,
+or a method of the state.
+
+### Seeing the Event as responsible for updating
+
+Let’s see how the handler would be implemented when update logic is put into the event objects:
+
+```cs
+interface IMyEvent
+{
+    MyState updateState(MyState oldState);
 }
 
-type TypeB = {
-  discriminant: 'B'
-  
-  // ... data fields ...
+// Later:
+new FishBuilder(fishId, initialState)
+  .subscribeTo<IMyEvent>(myEvents, (oldState, event) => event.updateState(oldState))
+  .build()
+```
+
+`IMyEvent` may actually cover more than one concrete class, using
+[JsonSubTypes](https://github.com/manuc66/JsonSubTypes).
+
+This is a very nice approach if `IMyEvent` is owned by the same code module as the Fish: We are fine
+with tight coupling. But if the producer lives in a different module, we are back to the problem of
+_having to go there_ and add an additional interface implementation on the event type.
+
+### Seeing the State as responsible for updating
+
+So instead we may see "being updated" as the state’s responsibility:
+
+```cs
+class MyState
+{
+  // Among other things:
+  void consumeSomeForeignEvent(ISomeForeignEvent event);
+}
+
+// Later:
+new FishBuilder(fishId, initialState)
+  .subscribeTo<ISomeForeignEvent>(someForeignEvents, (state, event) => {
+    state.consumeSomeForeignEvent(event);
+    return state;
+  })
+  .build()
+```
+
+If `ISomeForeignEvent` covers different concrete types, `updateWith` may have to use `instanceof`
+checks to find out what to do. In turn, the producer’s code does not have to be touched: All logic
+lives on our side, the consumer’s side.
+
+### Making it nicer
+
+It’s very simple to add a shortcut for the case where we put the logic into events:
+
+```cs
+interface EventHandler<S, in E>
+{
+    S onEvent(S oldState, E eventPayload);
+}
+
+interface IUpdateState<S>
+{
+    S updateState(S oldState);
+}
+
+class FishBuilder<S>
+{
+    // Explicitly specify handler
+    FishBuilder<S> subscribeTo<E>(Tags<E> subscription, EventHandler<S, E> handler);
+
+    // If event type implements logic to update S, we don’t need an explicit handler!
+    FishBuilder<S> subscribeTo<E>(Tags<E> subscription) where E : IUpdateState<S>;
 }
 ```
-As soon as the code has asserted `obj.discriminant === 'A'`, TypeScript will allow the object to be
-used as if it was `TypeA`. Actually there are still no guarantees: All other fields may be
-missing. The producer of `obj` may have misbehaved and constructed a `TypeB`, only with the
-`discriminant` set to A. The compile-time checks of TS forbid this, but the data may come from a
-plain JS producer, or from JSON...
 
-JSON handling consequently is another point where we must depart from our TypeScript
-ways. Deserializing an object in TS just gives `any`, which you may cast as you wish. So what we are
-doing for event deserialization is ultimately trust the user’s type declarations all the way: There
-are no checks performed on the JSON we read, as to it really "has" the right type. This works fine
-as long as everything is read and written by parts of the same code-base.
+However, C# does not like the analogous way of having the logic inside state:
 
-In C#, deserialization must declare the type to deserialize _into_ upfront, and depending on the
-configuration it may then even fail when fields are missing, etc.
+```cs
 
-### Handlers per Type
+interface IUpdatedBy<in E>
+{
+    void updateWith(E eventPayload);
+}
 
-So what we will be doing is to depart from the "one event handler for everything" model. The large
-`switch` statements in leads to in some cases have always been bogus, actually.
+class FishBuilder<S>
+{
+    // Fails to compile, because generic E is only in the method signature
+    FishBuilder<S> subscribeTo<E>(Tags<E> subscription) where S : IUpdatedBy<E>;
+}
+```
+
+Perhaps we can find a way around it, or perhaps it does not matter much.
