@@ -7,24 +7,24 @@ author_image_url: /images/blog/benjamin-sieffert.jpg
 tags: [Actyx Pond CSharp C#]
 ---
 
-One of the many projects we’re pushing forward in Actyx currently is a port of the [Actyx
+One of the many projects we’re currently pushing forward at Actyx is a port of the [Actyx
 Pond V2](./2020-07-24-pond-v2-release) from TypeScript to C#.
 
 C# and TypeScript build on very different foundations. Both are modern multi-paradigm languages;
 both have somewhat dynamic function dispatch mechanisms; but the typical C# program is still very much
 concerned with the _runtime type_ of objects, as modelled by the CLR. TypeScript meanwhile is
-all about _type shapes_ (or duck typing): The type system itself quite strong, but its _reality_ does
+all about _type shapes_ (or duck typing): The type system itself is quite strong, but its _reality_ does
 not carry over into the (JavaScript) runtime.
 
-One way this difference in typing plays out is "union types." Union types are a cornerstone of TS
-programming, and prominently feature in our TS Pond interfaces. But C# does not have an exact
-equivalent. In this blog post we are looking at ways to preserve the TS interfaces, without
+One way this difference in typing plays out is _union types_. Union types are a cornerstone of TypeScript
+programming, and prominently feature in our TypeScript Pond interfaces. But C# does not have an exact
+equivalent. In this blog post we are looking at ways to preserve the TypeScript interfaces, without
 giving up idiomatic C#.
 
 <!-- truncate -->
 
 The C# equivalent of unioning any two types is clunky: An `Either<A, B>` type, no matter how
-`Either` is implemented, does not automatically cover values of type `A`. Contrary to TS,
+`Either` is implemented, does not automatically cover values of type `A`. Contrary to TypeScript,
 values of type `A` or `B` would have to be explicitly wrapped into `Either<A, B>`.
 
 The actually idiomatic alternative to union types in C# is to just use a common interface among all
@@ -40,7 +40,7 @@ So we are about to do a very simple thing. Rather than having the code specify j
 one event handler ("onEvent") per Fish, the Fish may have multiple subscriptions, each with its own event
 handler. It’s just like a union, only the real union is never explicitly constructed.
 
-```csharp
+```cs
 new FishBuilder(fishId, initialState)
   .subscribeTo<E>(eventSelector1, handlerForE)
   .subscribeTo<F>(eventSelector2, handlerForF)
@@ -48,8 +48,8 @@ new FishBuilder(fishId, initialState)
 ```
 
 Imagine here `eventSelector1` to be some typed selector of events, where all contained events have type
-`E`. `handlerForE` then is a function `S onEvent(S oldState, E event);`, much like `onEvent` in the
-TS Pond. In the next line, events of type `F` are selected, and the `handlerForF` takes `F event`.
+`E`. `handlerForE` then is a function `S onEvent(S oldState, E event);`, much like [`onEvent`](https://developer.actyx.com/docs/pond/guides/local-state) in the
+TypeScript Pond. In the next line, events of type `F` are selected, and the `handlerForF` takes `F event`.
 
 ## Ways of implementing handlers
 
@@ -59,7 +59,7 @@ or a method of the state.
 
 ### Seeing the Event as responsible for updating
 
-Let’s see how the handler would be implemented when update logic is put into the event objects.
+Let’s see how the handler would be implemented when update logic is put into the event definition.
 
 ```cs
 interface IMyEvent
