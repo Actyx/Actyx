@@ -7,47 +7,47 @@ author_image_url: /images/blog/benjamin-sieffert.jpg
 tags: [Actyx Pond Csharp C#]
 ---
 
-One of the many projects we’re pushing forward in Actyx currently is an implementation of the [Actyx
-Pond V2](./2020-07-24-pond-v2-release) in C#.
+One of the many projects we’re pushing forward in Actyx currently is a port of the [Actyx
+Pond V2](./2020-07-24-pond-v2-release) from TypeScript to C#.
 
-C# and TypeScript build on quite different foundations. Both are modern multi-paradigm languages;
+C# and TypeScript build on very different foundations. Both are modern multi-paradigm languages;
 both have somewhat dynamic function dispatch mechanisms; but the typical C# program is still very much
 concerned with the _runtime type_ of objects, as modelled by the CLR. TypeScript meanwhile is
-all about _type shapes_ (or duck typing): The type system itself quite strong, but its _reality_ is
-not really rooted in the runtime.
+all about _type shapes_ (or duck typing): The type system itself quite strong, but its _reality_ does
+not carry over into the (JavaScript) runtime.
 
 One way this difference in typing plays out is "union types." Union types are a cornerstone of TS
 programming, and prominently feature in our TS Pond interfaces. But C# does not have an exact
-equivalent. In this blog post we are looking at ways to still express the same interface in C# as we
-do in TS.
+equivalent. In this blog post we are looking at ways to preserve the TS interfaces, without
+giving up idiomatic C#.
 
 <!-- truncate -->
 
 The C# equivalent of unioning any two types is clunky: An `Either<A, B>` type, no matter how
-`Either` is implemented, does not automatically cover values of type `A`. Contrary to TS, such
-values would have to be explicitly wrapped.
+`Either` is implemented, does not automatically cover values of type `A`. Contrary to TS,
+values of type `A` or `B` would have to be explicitly wrapped into `Either<A, B>`.
 
 The actually idiomatic alternative to union types in C# is to just use a common interface among all
-types of the union. But in a producer/consumer architecture, such an approach is unfortunate: Every
+types of the union. But in a producer/consumer architecture, this approach is problematic: Every
 new consumer would have to change code among all event producers, adding "its own" union
 interface. An event read by five different consumers would end up implementing five different union
 interfaces.
 
-Such an architecture _does_ have advantages – e.g. it’s easy to see who the consumers are at a
+That architecture _does_ have advantages – e.g. it’s easy to see who the consumers are at a
 glance – but we do not want to make it mandatory.
 
-So we are about to do a very simple thing. Rather than having you specify just one subscription and
-one event handler ("onEvent") in a Fish, it may have multiple subscriptions, each with its own event
+So we are about to do a very simple thing. Rather than having the code specify just one subscription and
+one event handler ("onEvent") per Fish, the Fish may have multiple subscriptions, each with its own event
 handler. It’s just like a union, only the real union is never explicitly constructed.
 
 ```csharp
 new FishBuilder(fishId, initialState)
-  .subscribeTo<E>(events1, handlerForE)
-  .subscribeTo<F>(events2, handlerForF)
+  .subscribeTo<E>(eventSelector1, handlerForE)
+  .subscribeTo<F>(eventSelector2, handlerForF)
   .build()
 ```
 
-Imagine here `events1` to be some typed selector of events, where all contained events have type
+Imagine here `eventSelector1` to be some typed selector of events, where all contained events have type
 `E`. `handlerForE` then is a function `S onEvent(S oldState, E event);`, much like `onEvent` in the
 TS Pond. In the next line, events of type `F` are selected, and the `handlerForF` takes `F event`.
 
@@ -59,7 +59,7 @@ or a method of the state.
 
 ### Seeing the Event as responsible for updating
 
-Let’s see how the handler would be implemented when update logic is put into the event objects:
+Let’s see how the handler would be implemented when update logic is put into the event objects.
 
 ```cs
 interface IMyEvent
@@ -93,15 +93,18 @@ class MyState
 
 // Later:
 new FishBuilder(fishId, initialState)
-  .subscribeTo<ISomeForeignEvent>(someForeignEvents, (state, event) => state.consumeSomeForeignEvent(event))
+  .subscribeTo<ISomeForeignEvent>(
+    someForeignEvents,
+    (state, event) => state.consumeSomeForeignEvent(event)
+  )
   .build()
 ```
 
 If `ISomeForeignEvent` covers different concrete types, `updateWith` may have to use `instanceof`
-checks to find out what to do. In turn, the producer’s code does not have to be touched: All logic
-lives on our side, the consumer’s side.
+checks to find out what to do. (Or, more elegantly, a `switch` on the input.) In turn, the
+producer’s code does not have to be touched: All logic lives on our side, the consumer’s side.
 
-### Making it nicer
+### Shortcuts
 
 It’s very simple to add a shortcut for the case where we put the logic into events:
 
@@ -126,20 +129,55 @@ class FishBuilder<S>
 }
 ```
 
-However, C# does not like the analogous way of having the logic inside state:
+We would like to define the case where logic lives inside `S` in an analogous manner. Unfortunately,
+C# is not that expressive yet.
 
 ```cs
-
-interface IUpdatedBy<in E>
-{
-    void updateWith(E eventPayload);
-}
-
 class FishBuilder<S>
 {
-    // Fails to compile, because generic E is only in the method signature
+    // Fails to compile, because generic S is not scoped to the method
     FishBuilder<S> subscribeTo<E>(Tags<E> subscription) where S : IUpdatedBy<E>;
+}
+
+// Works, but captures only **one** E, even if S supports multiple different E.
+class FishBuilder<S> where S : IUpdatedBy<E>
+{
+    FishBuilder<S> subscribeTo<E>(Tags<E> subscription)
 }
 ```
 
-Perhaps we can find a way around it, or perhaps it does not matter much.
+So let’s capture `S` and `E` at the same time:
+
+```cs
+FishBuilder.make(fishId, initialState, events1, events2, events3)
+    .subscribeTo(events4, handler)
+    .build();
+    
+// The implementation is not so nice:
+static FishBuilder<S> make<S, E, F, G>(
+    string fishId,
+    S initialState,
+    Selection<E> selection1,
+    Selection<F> selection2,
+    Selection<G> selection3,
+) where S : IUpdatedBy<E>, IUpdatedBy<F>, IUpdatedBy<G>;
+```
+
+Basically, we must offer a different impl. per number of subscriptions. That’s okay, a lot of
+libraries solve similar problems the same way.
+
+### Future Work
+
+Attributes in C# can make lots of things very easy to write down. One might imagine an attribute for
+handler declaration. Perhaps it might even include the selection of events.
+
+```cs
+class MyState
+{
+  [ActyxEvtHandler(SomeEvent.Class, Where("some-event-selector"))]
+  MyState updateWith(SomeEvent evt) { /* ... */ };
+}
+```
+However, compile-time and runtime-checks are starting to mix in this approach. Likely it won’t reach
+maximal compile-time safety. We will focus on shipping slightly more verbose, attribute-less APIs first, and
+then look into building less safe convenience functionality.

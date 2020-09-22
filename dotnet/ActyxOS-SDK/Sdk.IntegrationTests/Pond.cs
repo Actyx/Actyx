@@ -85,11 +85,11 @@ namespace Sdk.IntegrationTests
 
     }
 
-    class MyState : IUpdatedBy<IForeignEvent>
+    class MyState
     {
-        public void updateWith(IForeignEvent evt)
+        public MyState handleForeignEvent(IForeignEvent evt)
         {
-            return;
+            return this;
         }
     }
 
@@ -102,7 +102,7 @@ namespace Sdk.IntegrationTests
             return new FishBuilderC<MyState>("dummy", new MyState())
                 .subscribeTo(myTags, (oldState, evt) => new MyState())
                 .subscribeTo(new Tags<IOwnEvent>("own"))
-                .subscribeToT<MyState, IForeignEvent>(new Tags<IForeignEvent>("foreign"));
+                .subscribeTo(new Tags<IForeignEvent>("foreign"), MyState.handleForeignEvent);
         }
     }
 
@@ -112,6 +112,13 @@ namespace Sdk.IntegrationTests
         private readonly S initialState;
 
         public FishBuilderC(string fishId, S initialState)
+        {
+            this.fishId = fishId;
+            this.initialState = initialState;
+        }
+
+
+        public static FishBuilderC<S> mkWithStart<E>(string fishId, S initialState, Tags<E> ee) where S : IUpdatedBy<E>
         {
             this.fishId = fishId;
             this.initialState = initialState;
