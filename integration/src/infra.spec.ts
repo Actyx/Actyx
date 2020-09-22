@@ -13,9 +13,35 @@ describe('the Infrastructure', () => {
             appsRunning: 0,
             connection: 'reachable',
             state: 'running',
-            version: '1.0.',
+            version: '1.0.0',
           },
         ],
+      },
+    ])
+
+    const settings = await runOnEach([{}], false, (node) => node.ax.Settings.Get('com.actyx.os'))
+    expect(settings).toHaveLength(1)
+    expect(settings).toMatchObject([
+      {
+        code: 'OK',
+        result: {
+          general: {
+            logLevels: {
+              apps: 'INFO',
+              os: 'DEBUG',
+            },
+          },
+          licensing: {
+            apps: {},
+            os: 'development',
+          },
+          services: {
+            eventService: {
+              readOnly: false,
+              topic: 'Cosmos',
+            },
+          },
+        },
       },
     ])
   })

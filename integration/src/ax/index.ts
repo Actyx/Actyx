@@ -8,6 +8,7 @@ export class CLI {
   public readonly Apps
   public readonly Settings
   public readonly Logs
+  public readonly Swarms
 
   constructor(private readonly node: string, binary?: string) {
     // TODO: get binary from Cosmos build
@@ -17,5 +18,6 @@ export class CLI {
     this.Apps = exec.Apps
     this.Settings = exec.Settings
     this.Logs = exec.Logs
+    this.Swarms = exec.Swarms
   }
 }

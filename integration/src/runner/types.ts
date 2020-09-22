@@ -19,9 +19,9 @@ export type SshAble = {
 }
 
 export type TargetKind =
-  | ({ type: 'aws'; instance: string } & SshAble)
+  | ({ type: 'aws'; instance: string; privateAddress: string } & SshAble)
   | ({ type: 'borrowed' } & SshAble)
-  | 'test'
+  | { type: 'test' }
 
 export type NodeSelection = {
   os?: OS

@@ -71,6 +71,18 @@ export const Response_Nodes_Ls = io.intersection([
 
 export type Response_Nodes_Ls = io.TypeOf<typeof Response_Nodes_Ls>
 
+export const Response_Settings_Get = io.union([
+  ERR_NODE_UNREACHABLE,
+  io.intersection([
+    _OK,
+    io.type({
+      result: io.unknown,
+    }),
+  ]),
+])
+
+export type Response_Settings_Get = io.TypeOf<typeof Response_Settings_Get>
+
 export const Response_Settings_Set = io.union([
   ERR_APP_ENABLED,
   ERR_INVALID_INPUT,
@@ -242,3 +254,34 @@ export const Response_Logs_Tail_Entry = io.union([
 ])
 
 export type Response_Logs_Tail_Entry = io.TypeOf<typeof Response_Logs_Tail_Entry>
+
+export const Response_Internal_Swarm_State = io.union([
+  io.type({ Err: io.type({ code: io.string, message: io.string }) }),
+  io.type({
+    Ok: io.type({
+      swarm: io.type({
+        listen_addrs: io.array(io.string),
+        peer_id: io.string,
+        peers: io.record(
+          io.string,
+          io.type({
+            addresses: io.record(
+              io.string,
+              io.type({
+                provenance: io.string,
+                state: io.union([
+                  io.string,
+                  io.type({ Connected: io.type({ since: io.number }) }),
+                  io.type({ Disconnected: io.type({ since: io.number }) }),
+                ]),
+              }),
+            ),
+            connection_state: io.string,
+          }),
+        ),
+      }),
+    }),
+  }),
+])
+
+export type Response_Internal_Swarm_State = io.TypeOf<typeof Response_Internal_Swarm_State>

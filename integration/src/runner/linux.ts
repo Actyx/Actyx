@@ -107,7 +107,7 @@ export const mkNodeLinux = async (
   const [port, server] = await ssh.forwardPort(4457, (line) => logger(`node ${name} ${line}`))
   console.log('node %s console reachable on port %i', name, port)
 
-  const ax = new CLI(`localhost:${port}`)
+  const ax = new CLI(`localhost:${port}`, '../rt-master/target/release/ax')
 
   const shutdown = async () => {
     console.log('node %s shutting down', name)

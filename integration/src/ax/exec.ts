@@ -1,5 +1,6 @@
 import {
   Response_Nodes_Ls,
+  Response_Settings_Get,
   Response_Settings_Set,
   Response_Settings_Unset,
   Response_Apps_Package,
@@ -9,6 +10,7 @@ import {
   Response_Apps_Stop,
   Response_Apps_Ls,
   Response_Logs_Tail_Entry,
+  Response_Internal_Swarm_State,
 } from './types'
 import { Either, isLeft } from 'fp-ts/lib/Either'
 import { Errors } from 'io-ts'
@@ -16,10 +18,20 @@ import { PathReporter } from 'io-ts/lib/PathReporter'
 import execa from 'execa'
 import { StringDecoder } from 'string_decoder'
 import { Transform } from 'stream'
+import fetch from 'node-fetch'
 
-const rightOrThrow = <A>(e: Either<Errors, A>): A => {
+const rightOrThrow = <A>(e: Either<Errors, A>, obj: unknown): A => {
   if (isLeft(e)) {
-    throw new Error(PathReporter.report(e).join(', '))
+    throw new Error(
+      e.left
+        .map((err) => {
+          const path = err.context.map(({ key }) => key).join('.')
+          return `invalid ${err.value} at ${path}: ${err.message}`
+        })
+        .join(', ') +
+        ' while parsing ' +
+        JSON.stringify(obj, null, 2),
+    )
   }
   return e.right
 }
@@ -61,55 +73,101 @@ export const SettingsInput = {
   },
 }
 
+type Exec = {
+  Swarms: {
+    KeyGen: () => Promise<string>
+    State: () => Promise<Response_Internal_Swarm_State>
+  }
+  Nodes: {
+    Ls: () => Promise<Response_Nodes_Ls>
+  }
+  Settings: {
+    Get: (scope: string) => Promise<Response_Settings_Get>
+    Set: (scope: string, input: SettingsInput) => Promise<Response_Settings_Set>
+    Unset: (scope: string) => Promise<Response_Settings_Unset>
+  }
+  Apps: {
+    Package: (path: string) => Promise<Response_Apps_Package>
+    Deploy: (packagePath: string, force?: boolean) => Promise<Response_Apps_Deploy>
+    Undeploy: (appId: string) => Promise<Response_Apps_Undeploy>
+    Start: (appId: string) => Promise<Response_Apps_Start>
+    Stop: (appId: string) => Promise<Response_Apps_Stop>
+    Ls: () => Promise<Response_Apps_Ls>
+  }
+  Logs: {
+    TailFollow: (
+      onEntry: (entry: Response_Logs_Tail_Entry) => void,
+      onError: (error: string) => void,
+    ) => () => void
+  }
+}
+
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export const mkExec = (binary: string, addr: string) => ({
+export const mkExec = (binary: string, addr: string): Exec => ({
+  Swarms: {
+    KeyGen: async (): Promise<string> => {
+      const response = await exec(binary, ['swarms', 'keygen'])
+      const key = response?.result?.swarmKey
+      if (typeof key === 'string') return key
+      else throw new Error('no swarm key found in ' + response)
+    },
+    State: async (): Promise<Response_Internal_Swarm_State> => {
+      const response = await fetch(`http://${addr}/_internal/swarm/state`)
+      const json = await response.json()
+      return rightOrThrow(Response_Internal_Swarm_State.decode(json), json)
+    },
+  },
   Nodes: {
     Ls: async (): Promise<Response_Nodes_Ls> => {
       const response = await exec(binary, [`nodes`, `ls`, `--local`, addr])
-      return rightOrThrow(Response_Nodes_Ls.decode(response))
+      return rightOrThrow(Response_Nodes_Ls.decode(response), response)
     },
   },
   Settings: {
+    Get: async (scope: string): Promise<Response_Settings_Get> => {
+      const response = await exec(binary, ['settings', 'get', scope, '--local', addr])
+      return rightOrThrow(Response_Settings_Get.decode(response), response)
+    },
     Set: async (scope: string, settingsInput: SettingsInput): Promise<Response_Settings_Set> => {
       const input = SettingsInput.match({
         File: (input) => `@${input.path}`,
         Value: (input) => JSON.stringify(input.value),
       })(settingsInput)
       const response = await exec(binary, [`settings`, `set`, scope, `--local`, input, addr])
-      return rightOrThrow(Response_Settings_Set.decode(response))
+      return rightOrThrow(Response_Settings_Set.decode(response), response)
     },
     Unset: async (scope: string): Promise<Response_Settings_Unset> => {
       const response = await exec(binary, [`settings`, `unset`, scope, `--local`, addr])
-      return rightOrThrow(Response_Settings_Unset.decode(response))
+      return rightOrThrow(Response_Settings_Unset.decode(response), response)
     },
   },
   Apps: {
     Package: async (path: string): Promise<Response_Apps_Package> => {
       const response = await exec(binary, [`apps`, `package`, path])
-      return rightOrThrow(Response_Apps_Package.decode(response))
+      return rightOrThrow(Response_Apps_Package.decode(response), response)
     },
     Deploy: async (packagePath: string, force?: boolean): Promise<Response_Apps_Deploy> => {
       const response = await exec(
         binary,
         [`apps`, `deploy`, packagePath, `--local`, addr].concat(force ? ['--force'] : []),
       )
-      return rightOrThrow(Response_Apps_Deploy.decode(response))
+      return rightOrThrow(Response_Apps_Deploy.decode(response), response)
     },
     Undeploy: async (appId: string): Promise<Response_Apps_Undeploy> => {
       const response = await exec(binary, [`apps`, `undeploy`, appId, `--local`, addr])
-      return rightOrThrow(Response_Apps_Undeploy.decode(response))
+      return rightOrThrow(Response_Apps_Undeploy.decode(response), response)
     },
     Start: async (appId: string): Promise<Response_Apps_Start> => {
       const response = await exec(binary, [`apps`, `start`, appId, `--local`, addr])
-      return rightOrThrow(Response_Apps_Start.decode(response))
+      return rightOrThrow(Response_Apps_Start.decode(response), response)
     },
     Stop: async (appId: string): Promise<Response_Apps_Stop> => {
       const response = await exec(binary, [`apps`, `stop`, appId, `--local`, addr])
-      return rightOrThrow(Response_Apps_Stop.decode(response))
+      return rightOrThrow(Response_Apps_Stop.decode(response), response)
     },
     Ls: async (): Promise<Response_Apps_Ls> => {
       const response = await exec(binary, [`apps`, `ls`, `--local`, addr])
-      return rightOrThrow(Response_Apps_Ls.decode(response))
+      return rightOrThrow(Response_Apps_Ls.decode(response), response)
     },
   },
   Logs: {
