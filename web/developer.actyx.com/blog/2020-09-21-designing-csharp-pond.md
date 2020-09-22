@@ -4,7 +4,7 @@ author: Benjamin Sieffert
 author_title: Distributed Systems Engineer at Actyx
 author_url: https://github.com/benjamin-actyx
 author_image_url: /images/blog/benjamin-sieffert.jpg
-tags: [Actyx Pond Csharp C#]
+tags: [Actyx Pond CSharp C#]
 ---
 
 One of the many projects we’re pushing forward in Actyx currently is a port of the [Actyx
@@ -122,10 +122,10 @@ interface IUpdateState<S>
 class FishBuilder<S>
 {
     // Explicitly specify handler
-    FishBuilder<S> subscribeTo<E>(Tags<E> subscription, EventHandler<S, E> handler);
+    FishBuilder<S> subscribeTo<E>(Selection<E> subscription, EventHandler<S, E> handler);
 
     // If event type implements logic to update S, we don’t need an explicit handler!
-    FishBuilder<S> subscribeTo<E>(Tags<E> subscription) where E : IUpdateState<S>;
+    FishBuilder<S> subscribeTo<E>(Selection<E> subscription) where E : IUpdateState<S>;
 }
 ```
 
@@ -136,26 +136,26 @@ C# is not that expressive yet.
 class FishBuilder<S>
 {
     // Fails to compile, because generic S is not scoped to the method
-    FishBuilder<S> subscribeTo<E>(Tags<E> subscription) where S : IUpdatedBy<E>;
+    FishBuilder<S> subscribeTo<E>(Selection<E> subscription) where S : IUpdatedBy<E>;
 }
 
 // Works, but captures only **one** E, even if S supports multiple different E.
 class FishBuilder<S> where S : IUpdatedBy<E>
 {
-    FishBuilder<S> subscribeTo<E>(Tags<E> subscription)
+    FishBuilder<S> subscribeTo<E>(Selection<E> subscription)
 }
 ```
 
 So let’s capture `S` and `E` at the same time:
 
-```cs
+```csharp
 FishBuilder.make(fishId, initialState, events1, events2, events3)
     .subscribeTo(events4, handler)
     .build();
     
 // The implementation is not so nice:
 static FishBuilder<S> make<S, E, F, G>(
-    string fishId,
+    FishId fishId,
     S initialState,
     Selection<E> selection1,
     Selection<F> selection2,
@@ -179,5 +179,10 @@ class MyState
 }
 ```
 However, compile-time and runtime-checks are starting to mix in this approach. Likely it won’t reach
-maximal compile-time safety. We will focus on shipping slightly more verbose, attribute-less APIs first, and
-then look into building less safe convenience functionality.
+maximal compile-time safety. We will focus on shipping the slightly more verbose APIs first, since
+everything else must be based on them in any case. Then we will look into how Attributes can improve
+ease of use.
+
+### Closing Words
+
+And that’s it for now. Should you have any wishes or suggestions for our upcoming C# libraries, [contact us](mailto:developer@actyx.io)!
