@@ -10,8 +10,6 @@ describe('the Infrastructure', () => {
         code: 'OK',
         result: [
           {
-            appsDeployed: 0,
-            appsRunning: 0,
             connection: 'reachable',
             state: 'running',
             version: '1.0.0',
@@ -76,8 +74,10 @@ describe('the Infrastructure', () => {
     ev1.sort()
     const ev2 = events[1].map((ev) => ev.stream.streamName)
     ev2.sort()
+    const expected = allNodeNames().slice(0, 2)
+    expected.sort()
 
-    expect(ev1).toEqual(allNodeNames().slice(0, 2))
-    expect(ev2).toEqual(allNodeNames().slice(0, 2))
+    expect(ev1).toEqual(expected)
+    expect(ev2).toEqual(expected)
   })
 })
