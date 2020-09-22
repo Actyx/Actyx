@@ -125,7 +125,7 @@ In order to check on its status and interact with the node, you need to download
 
 You can then check on your ActyxOS node:
 
-```bash
+```
 ax nodes ls --local <DEVICE_IP>
 ```
 

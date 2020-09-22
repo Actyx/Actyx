@@ -136,7 +136,7 @@ module.exports = {
     prism: {
       theme: require('prism-react-renderer/themes/palenight'),
       darkTheme: require('prism-react-renderer/themes/dracula'),
-      additionalLanguages: ['rust'],
+      additionalLanguages: ['rust','csharp'],
     },
     googleAnalytics: {
       trackingID: 'UA-102758359-7',
