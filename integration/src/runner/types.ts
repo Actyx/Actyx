@@ -10,7 +10,9 @@ export type Target = {
   os: OS
   arch: Arch
   kind: TargetKind
-  shutdown: () => Promise<void>
+  _private: {
+    shutdown: () => Promise<void>
+  }
 }
 
 export type SshAble = {
@@ -38,7 +40,13 @@ export type ActyxOSNode = {
   runtimes: Runtime[]
   ax: CLI
   actyxOS: ApiClient
-  shutdown: () => Promise<void>
+  _private: {
+    shutdown: () => Promise<void>
+    axBinary: string
+    axHost: string
+    apiEvent: string
+    apiConsole: string
+  }
 }
 
 export type AwsKey = {

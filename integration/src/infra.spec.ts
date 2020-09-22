@@ -41,7 +41,7 @@ describe('the Infrastructure', () => {
           services: {
             eventService: {
               readOnly: false,
-              topic: 'Cosmos',
+              topic: 'Cosmos integration',
             },
           },
         },

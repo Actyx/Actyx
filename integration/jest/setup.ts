@@ -50,14 +50,16 @@ const createNode = async (nodeSetup: NodeSetup, name: string): Promise<void> => 
             username: 'ubuntu',
             privateKey: nodeSetup.key.privateKey,
           },
-          shutdown: () => {
-            // keep this switch here to easily enable keeping the nodes around for debugging
-            if (Date.now() > 0) {
-              return terminateInstance(nodeSetup.ec2, instance.InstanceId!)
-            } else {
-              console.log(instance.PublicIpAddress, nodeSetup.key.privateKey)
-              return Promise.resolve()
-            }
+          _private: {
+            shutdown: () => {
+              // keep this switch here to easily enable keeping the nodes around for debugging
+              if (Date.now() > 0) {
+                return terminateInstance(nodeSetup.ec2, instance.InstanceId!)
+              } else {
+                console.log(instance.PublicIpAddress, nodeSetup.key.privateKey)
+                return Promise.resolve()
+              }
+            },
           },
         },
         logger,
@@ -183,7 +185,7 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
 
   console.log('bootstrap node set up, settings all set')
 
-  let attempts = 30
+  let attempts = 60
   while ((await getPeers(bootstrap)) < nodeSetup.nodes.length - 1 && attempts-- > 0) {
     await new Promise((res) => setTimeout(res, 1000))
   }

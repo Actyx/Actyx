@@ -10,7 +10,7 @@ const teardown = async (_config: Record<string, unknown>): Promise<void> => {
   await new Promise((res, rej) => {
     Promise.all(
       nodeSetup.nodes.map((node) =>
-        node.shutdown().catch((err) => {
+        node._private.shutdown().catch((err) => {
           console.log(`node ${node.name} error while shutting down: ${err}`)
         }),
       ),

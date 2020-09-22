@@ -13,7 +13,7 @@ module.exports = {
   },
   globalSetup: './dist/jest/setup.js',
   globalTeardown: './dist/jest/teardown.js',
-  testEnvironment: 'node',
+  testEnvironment: './dist/jest/environment.js',
   moduleFileExtensions: ['js', 'json', 'jsx'],
   testPathIgnorePatterns: ['/node_modules/', '.+support\\.test\\.ts'],
   maxWorkers: '50%',

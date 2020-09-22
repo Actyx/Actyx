@@ -118,10 +118,15 @@ export const mkNodeLinux = async (
   )
   console.log('node %s event service reachable on port %i', name, port4454)
 
-  const ax = new CLI(`localhost:${port4457}`, '../rt-master/target/release/ax')
+  const axBinary = '../rt-master/target/release/ax'
+  const axHost = `localhost:${port4457}`
+  const ax = new CLI(axHost, axBinary)
+
+  const apiConsole = `http://localhost:${port4457}/api/`
+  const apiEvent = `http://localhost:${port4454}/api/`
   const opts = DefaultClientOpts()
-  opts.Endpoints.ConsoleService.BaseUrl = `http://localhost:${port4457}/api/`
-  opts.Endpoints.EventService.BaseUrl = `http://localhost:${port4454}/api/`
+  opts.Endpoints.ConsoleService.BaseUrl = apiConsole
+  opts.Endpoints.EventService.BaseUrl = apiEvent
   const actyxOS = Client(opts)
 
   const shutdown = async () => {
@@ -130,9 +135,17 @@ export const mkNodeLinux = async (
     server4457.emit('end')
     await ssh.end()
     console.log('node %s ssh stopped', name)
-    await target.shutdown()
+    await target._private.shutdown()
     console.log('node %s instance terminated', name)
   }
 
-  return { name, target, host: 'process', runtimes: [], ax, actyxOS, shutdown }
+  return {
+    name,
+    target,
+    host: 'process',
+    runtimes: [],
+    ax,
+    actyxOS,
+    _private: { shutdown, axBinary, axHost, apiConsole, apiEvent },
+  }
 }
