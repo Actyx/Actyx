@@ -50,7 +50,15 @@ const createNode = async (nodeSetup: NodeSetup, name: string): Promise<void> => 
             username: 'ubuntu',
             privateKey: nodeSetup.key.privateKey,
           },
-          shutdown: () => terminateInstance(nodeSetup.ec2, instance.InstanceId!),
+          shutdown: () => {
+            // keep this switch here to easily enable keeping the nodes around for debugging
+            if (Date.now() > 0) {
+              return terminateInstance(nodeSetup.ec2, instance.InstanceId!)
+            } else {
+              console.log(instance.PublicIpAddress, nodeSetup.key.privateKey)
+              return Promise.resolve()
+            }
+          },
         },
         logger,
       )
@@ -72,6 +80,70 @@ const getPeerId = async (ax: CLI, retries = 10): Promise<string | undefined> => 
   } else {
     return state.Ok.swarm.peer_id
   }
+}
+
+const setInitialSettings = async (bootstrap: ActyxOSNode): Promise<void> => {
+  await bootstrap.ax.Settings.Set(
+    'com.actyx.os',
+    SettingsInput.FromValue({
+      general: {
+        bootstrapNodes: [
+          '/ip4/3.121.252.117/tcp/4001/ipfs/QmaWM8pMoMYkJrdbUZkxHyUavH3tCxRdCC9NYCnXRfQ4Eg',
+        ],
+        swarmKey:
+          'L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCjM3NjQ3NTMzNTgzMTY1NWE3MzQxMzE1NzQ1NjI0MzQ2NDI3OTY5Nzk2MTY1MzgzODcyNTI3ODRkMzY2ZjZmNjQ=',
+        displayName: 'test',
+      },
+      licensing: { apps: {}, os: 'development' },
+      services: { eventService: { topic: 'a' } },
+    }),
+  ).catch(console.error)
+}
+
+const setAllSettings = async (
+  bootstrap: ActyxOSNode & { target: { kind: { type: 'aws' } } },
+  peerId: string,
+  nodes: ActyxOSNode[],
+): Promise<void> => {
+  const ips = [bootstrap.target.kind.host, bootstrap.target.kind.privateAddress]
+  const bootstrapNodes = ips.map((ip) => `/ip4/${ip}/tcp/4001/ipfs/${peerId}`)
+
+  const swarmKey = await bootstrap.ax.Swarms.KeyGen()
+
+  const settings = (displayName: string) => ({
+    general: {
+      bootstrapNodes,
+      displayName,
+      logLevels: { apps: 'INFO', os: 'DEBUG' },
+      swarmKey,
+    },
+    licensing: { apps: {}, os: 'development' },
+    services: {
+      eventService: {
+        readOnly: false,
+        topic: 'Cosmos integration',
+      },
+    },
+  })
+
+  await Promise.all(
+    nodes.map((node) =>
+      node.ax.Settings.Set('com.actyx.os', SettingsInput.FromValue(settings(node.name))),
+    ),
+  )
+}
+
+const getPeers = async (node: ActyxOSNode): Promise<number> => {
+  const state = await node.ax.Swarms.State()
+  if ('Err' in state) {
+    console.log(`error getting peers: ${state.Err.message}`)
+    return -1
+  }
+  const numPeers = Object.values(state.Ok.swarm.peers).filter(
+    (peer) => peer.connection_state === 'Connected',
+  ).length
+  console.log(`  numPeers = ${numPeers}`)
+  return numPeers
 }
 
 const setup = async (_config: Record<string, unknown>): Promise<void> => {
@@ -98,61 +170,28 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
   console.log(`setting up bootstrap node ${bootstrap.name}`)
 
   // need to set some valid settings to get started (that swarm key is no actually used one)
-  await bootstrap.ax.Settings.Set(
-    'com.actyx.os',
-    SettingsInput.FromValue({
-      general: {
-        bootstrapNodes: [
-          '/ip4/3.121.252.117/tcp/4001/ipfs/QmaWM8pMoMYkJrdbUZkxHyUavH3tCxRdCC9NYCnXRfQ4Eg',
-        ],
-        swarmKey:
-          'L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCjM3NjQ3NTMzNTgzMTY1NWE3MzQxMzE1NzQ1NjI0MzQ2NDI3OTY5Nzk2MTY1MzgzODcyNTI3ODRkMzY2ZjZmNjQ=',
-        displayName: 'test',
-      },
-      licensing: { apps: {}, os: 'development' },
-      services: { eventService: { topic: 'a' } },
-    }),
-  ).catch(console.error)
+  await setInitialSettings(bootstrap)
 
-  const state = await bootstrap.ax.Swarms.State()
-  if ('Err' in state) {
-    console.log(state.Err)
-    return
-  }
   const peerId = await getPeerId(bootstrap.ax)
   if (peerId === undefined) {
     console.error('timeout waiting for store to start')
     return
   }
   console.log(`bootstrap node ${bootstrap.name} has PeerId ${peerId}`)
-  const ips = [bootstrap.target.kind.host, bootstrap.target.kind.privateAddress]
-  const bootstrapNodes = ips.map((ip) => `/ip4/${ip}/tcp/4001/ipfs/${peerId}`)
 
-  const swarmKey = await bootstrap.ax.Swarms.KeyGen()
-
-  const settings = (displayName: string) => ({
-    general: {
-      bootstrapNodes,
-      displayName,
-      logLevels: { apps: 'INFO', os: 'DEBUG' },
-      swarmKey,
-    },
-    licensing: { apps: {}, os: 'development' },
-    services: {
-      eventService: {
-        readOnly: false,
-        topic: 'Cosmos integration',
-      },
-    },
-  })
-
-  await Promise.all(
-    nodeSetup.nodes.map((node) =>
-      node.ax.Settings.Set('com.actyx.os', SettingsInput.FromValue(settings(node.name))),
-    ),
-  )
+  await setAllSettings(bootstrap, peerId, nodeSetup.nodes)
 
   console.log('bootstrap node set up, settings all set')
+
+  let attempts = 30
+  while ((await getPeers(bootstrap)) < nodeSetup.nodes.length - 1 && attempts-- > 0) {
+    await new Promise((res) => setTimeout(res, 1000))
+  }
+  if (attempts === -1) {
+    console.error('swarm did not fully connect')
+  } else {
+    console.error('swarm fully connected')
+  }
 }
 
 export default setup

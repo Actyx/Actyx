@@ -20,11 +20,12 @@ const teardown = async (_config: Record<string, unknown>): Promise<void> => {
   await deleteKey(nodeSetup.ec2, nodeSetup.key.keyName).catch(console.error)
 
   for (const name in nodeSetup.logs) {
-    process.stdout.write(`****\nlogs for node ${name}\n****\n`)
+    process.stdout.write(`\n****\nlogs for node ${name}\n****\n\n`)
     for (const entry of nodeSetup.logs[name]) {
       process.stdout.write(`${entry.time.toISOString()} ${entry.line}\n`)
     }
   }
+  process.stdout.write('\n')
 }
 
 export default teardown

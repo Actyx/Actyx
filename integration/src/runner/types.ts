@@ -1,4 +1,5 @@
 import { CLI } from '../ax'
+import { ApiClient } from '@actyx/os-sdk'
 
 export type OS = 'win' | 'linux' | 'mac' | 'android'
 export type Arch = 'armv7' | 'aarch64' | 'x86_64'
@@ -36,6 +37,7 @@ export type ActyxOSNode = {
   host: Host
   runtimes: Runtime[]
   ax: CLI
+  actyxOS: ApiClient
   shutdown: () => Promise<void>
 }
 

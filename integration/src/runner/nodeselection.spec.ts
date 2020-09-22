@@ -1,3 +1,4 @@
+import { Client } from '@actyx/os-sdk'
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { CLI } from '../ax'
 import { selectNodes } from './nodeselection'
@@ -13,6 +14,7 @@ const mkNode = (os: OS, arch: Arch, host: Host, runtimes: Runtime[]): ActyxOSNod
     runtimes,
     target: { os, arch, kind: { type: 'test' }, shutdown: () => Promise.resolve() },
     ax: new CLI('localhost'),
+    actyxOS: Client(),
     shutdown: () => Promise.resolve(),
   }
 }

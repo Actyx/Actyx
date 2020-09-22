@@ -11,6 +11,8 @@ const lock = new RwLock()
 
 const ts = () => new Date().toISOString()
 
+export const allNodeNames = (): string[] => nodes.map((n) => n.name)
+
 /**
  * Run the given logic for each of the selected nodes in parallel and return
  * an array of results, in the same order that the selections were given.

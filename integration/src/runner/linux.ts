@@ -1,3 +1,4 @@
+import { Client, DefaultClientOpts } from '@actyx/os-sdk'
 import { CLI } from '../ax'
 import * as Ssh from './ssh'
 import { ActyxOSNode, SshAble, Target } from './types'
@@ -25,8 +26,12 @@ export const mkNodeLinux = async (
       connected = true
     } catch (error) {
       if (error.code !== 'ECONNREFUSED') {
-        console.log('node %s ssh connection error: %o', name, error)
-        throw new Error(`connection error: ${error}`)
+        console.log(
+          'node %s ssh connection error (remaining attempts %i): %o',
+          name,
+          attempts,
+          error,
+        )
       }
     }
   }
@@ -103,20 +108,31 @@ export const mkNodeLinux = async (
     })
   })
 
-  console.log('node %s forwarding console port', name)
-  const [port, server] = await ssh.forwardPort(4457, (line) => logger(`node ${name} ${line}`))
-  console.log('node %s console reachable on port %i', name, port)
+  const [port4457, server4457] = await ssh.forwardPort(4457, (line) =>
+    logger(`node ${name} ${line}`),
+  )
+  console.log('node %s console reachable on port %i', name, port4457)
 
-  const ax = new CLI(`localhost:${port}`, '../rt-master/target/release/ax')
+  const [port4454, server4454] = await ssh.forwardPort(4454, (line) =>
+    logger(`node ${name} ${line}`),
+  )
+  console.log('node %s event service reachable on port %i', name, port4454)
+
+  const ax = new CLI(`localhost:${port4457}`, '../rt-master/target/release/ax')
+  const opts = DefaultClientOpts()
+  opts.Endpoints.ConsoleService.BaseUrl = `http://localhost:${port4457}/api/`
+  opts.Endpoints.EventService.BaseUrl = `http://localhost:${port4454}/api/`
+  const actyxOS = Client(opts)
 
   const shutdown = async () => {
     console.log('node %s shutting down', name)
-    server.emit('end')
+    server4454.emit('end')
+    server4457.emit('end')
     await ssh.end()
     console.log('node %s ssh stopped', name)
     await target.shutdown()
     console.log('node %s instance terminated', name)
   }
 
-  return { name, target, host: 'process', runtimes: [], ax, shutdown }
+  return { name, target, host: 'process', runtimes: [], ax, actyxOS, shutdown }
 }
