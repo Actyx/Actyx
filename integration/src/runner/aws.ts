@@ -18,6 +18,7 @@ export const createKey = async (ec2: EC2): Promise<AwsKey> => {
     })
     .promise()
   if (KeyMaterial === undefined) throw new Error('cannot create key pair')
+  console.log('created key %s', keyName)
   return { keyName, privateKey: KeyMaterial }
 }
 
@@ -47,19 +48,16 @@ export const createInstance = async (
   const id = instance.InstanceId!
   console.log('instance %s created', id)
 
-  process.stdout.write('waiting for instance start ')
   while (instance !== undefined && instance.State?.Name === 'pending') {
     const update = await pollDelay(() => ec2.describeInstances({ InstanceIds: [id] }).promise())
-    process.stdout.write('.')
     instance = update.Reservations?.[0].Instances?.[0]
   }
-  process.stdout.write('\n')
 
   if (instance === undefined || instance.State?.Name !== 'running') {
-    console.error('instance did not start')
+    console.error('instance %s did not start', id)
     throw new Error('instance did not start, last state was' + instance?.State?.Name)
   }
-  console.log('instance started')
+  console.log('instance %s started', id)
 
   return instance
 }

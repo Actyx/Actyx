@@ -1,6 +1,6 @@
-import { createServer, Server } from 'net'
 /* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { createServer, Server } from 'net'
 import * as SshClient from 'ssh2'
 import { Duplex } from 'stream'
 import * as tty from 'tty'
@@ -94,19 +94,16 @@ export class Client {
 
   private id = 1
 
-  forwardPort(dstPort: number): Promise<[number, Server]> {
+  forwardPort(
+    dstPort: number,
+    logger: (s: string) => void = console.log,
+  ): Promise<[number, Server]> {
     const prom = new Promise<[number, Server]>((res, rej) => {
       const connections: Duplex[] = []
       const server = createServer((conn) => {
         const myId = this.id++
-        console.debug(
-          'new connection %i from %s:%i -> %s:%i, forwarding to port %i',
-          myId,
-          conn.remoteAddress,
-          conn.remotePort,
-          conn.localAddress,
-          conn.localPort,
-          dstPort,
+        logger(
+          `new connection ${myId} from ${conn.remoteAddress}:${conn.remotePort} -> ${conn.localAddress}:${conn.localPort}, forwarding to port ${dstPort}`,
         )
         conn.setNoDelay()
         const port = conn.localPort
@@ -116,26 +113,24 @@ export class Client {
             return
           }
           conn.pipe(channel).pipe(conn)
-          console.debug('pipe established %i', myId)
+          logger(`pipe established ${myId}`)
           connections.push(conn, channel)
-          conn.on('error', (err) =>
-            console.log('incoming connection %i error: %s', myId, err.message),
-          )
+          conn.on('error', (err) => logger(`incoming connection ${myId} error: ${err.message}`))
           conn.on('end', () => {
-            console.log('incoming connection %i closed', myId)
+            logger(`incoming connection ${myId} closed`)
             channel.end()
           })
           channel.on('error', (err: any) =>
-            console.log('forwarded connection %i error: %s', myId, err.message),
+            logger(`forwarded connection ${myId} error: ${err.message}`),
           )
           channel.on('end', () => {
-            console.log('forwarded connection %i closed', myId)
+            logger(`forwarded connection ${myId} closed`)
             conn.end()
           })
         })
       })
       server.on('end', () => {
-        console.log('forwarder for port %i closing down', dstPort)
+        logger(`forwarder for port ${dstPort} closing down`)
         server.close()
         connections.forEach((conn) => conn.end())
         connections.splice(0, connections.length)

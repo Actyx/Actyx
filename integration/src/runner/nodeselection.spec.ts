@@ -11,9 +11,9 @@ const mkNode = (os: OS, arch: Arch, host: Host, runtimes: Runtime[]): ActyxOSNod
     name,
     host,
     runtimes,
-    target: { os, arch, kind: 'test', shutdown: () => {} },
+    target: { os, arch, kind: 'test', shutdown: () => Promise.resolve() },
     ax: new CLI('localhost'),
-    shutdown: () => {},
+    shutdown: () => Promise.resolve(),
   }
 }
 
