@@ -43,7 +43,7 @@
     "lint:fix": "npm run lint -- --fix",
     "format:configs": "prettier --write .prettierrc.json jest.config.js .vscode/settings.json tsconfig.prod.json tsconfig.json .eslintrc.json",
     "test": "TZ=UTC jest",
-    "test:ci": "TZ=UTC jest -w 1",
+    "test:ci": "TZ=UTC jest --maxWorkers 1",
     "test:dev": "TZ=UTC jest --coverage=false && npm run api:accept",
     "test:watch": "TZ=UTC jest --coverage=false --watch",
     "tsc": "tsc --noEmit -p ./tsconfig.json",
