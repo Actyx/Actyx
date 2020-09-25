@@ -17,6 +17,7 @@ jobs:
           MODULE: "build"
         klk-opc-ua:
           MODULE: "klk-opc-ua"
+        # TODO Hammerite is being built twice: once here and once in the Containers
         connectors:
           MODULE: "connectors"
     workspace:
@@ -27,7 +28,6 @@ jobs:
           echo "##vso[task.setvariable variable=CURRENT_MODULE_BUILD_TAG][build-$MODULE]"
         displayName: Set $CURRENT_MODULE_BUILD_TAG
 
-# Not needed as long as we're using Native agents (and SBT and NVM are installed globally on all build hosts)
       - script: |
 
           # The reason we're using this method and not the Node.js tool installer (https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/tool/node-js?view=azure-devops)
@@ -64,6 +64,7 @@ jobs:
 
       - template: steps-bootstrap.yml
 
+      # TODO Change /home/builder to $HOME below?
       - script: |
           source "$NVM_DIR/nvm.sh"
           nvm use
