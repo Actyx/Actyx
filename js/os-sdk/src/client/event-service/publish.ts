@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { EventDraft, ApiClientOpts, PublishOpts } from '../../types'
+import { EventDraft, ApiClientOpts, PublishOpts, PublishPromiseOpts } from '../../types'
 import * as uri from 'uri-js'
 
 import * as CONSTANTS from '../constants'
@@ -63,3 +63,7 @@ export const publish = (clientOpts: ApiClientOpts) => (opts: PublishOpts) => {
     onError: opts.onError,
   })
 }
+
+/** @internal */
+export const publishPromise = (clientOpts: ApiClientOpts) => (opts: PublishPromiseOpts) =>
+  new Promise<void>((res, rej) => publish(clientOpts)({ ...opts, onDone: res, onError: rej }))

@@ -13,12 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { OffsetMap, ApiClientOpts, Event, Subscription, SubscribeOpts } from '../../types'
+import {
+  OffsetMap,
+  ApiClientOpts,
+  Event,
+  Subscription,
+  SubscribeOpts,
+  SubscribeStreamOpts,
+} from '../../types'
 import { mkSubscriptionApiObj, mkOffsetMapApiObj, tryMakeEventFromApiObj } from '../../util'
 import * as uri from 'uri-js'
+import * as http from 'http'
 
 import * as CONSTANTS from '../constants'
 import { doLineStreamingRequest } from '../request'
+import { streamToEvents } from '../../util/decoding'
 
 /** @internal */
 export const _mkRequestObject = (
@@ -80,5 +89,41 @@ export const subscribe = (clientOpts: ApiClientOpts) => (opts: SubscribeOpts) =>
     },
     onDone: opts.onDone,
     onError: opts.onError,
+  })
+}
+
+/** @internal */
+export const subscribeStream = (clientOpts: ApiClientOpts) => (opts: SubscribeStreamOpts) => {
+  const url =
+    clientOpts.Endpoints.EventService.BaseUrl + clientOpts.Endpoints.EventService.Subscribe
+  const { host, port, path } = uri.parse(url)
+
+  // Request options
+  const requestOptions = {
+    hostname: host,
+    port: port,
+    path: path,
+    method: 'POST',
+    headers: CONSTANTS.CONTENT_TYPE_JSON_HEADER,
+  }
+
+  const body = JSON.stringify(_mkRequestObject(opts.subscriptions, opts.lowerBound))
+
+  return new Promise<AsyncIterable<Event> & { cancel: () => void }>((res, rej) => {
+    const req = http.request(requestOptions, msg => {
+      if (msg.statusCode !== 200) {
+        rej(new Error(`server responded with code ${msg.statusCode}`))
+        req.destroy()
+        return
+      }
+
+      res(Object.assign(streamToEvents(msg), { cancel: () => msg.destroy() }))
+    })
+
+    req.on('error', rej)
+    req.on('close', rej)
+
+    req.write(body)
+    req.end()
   })
 }

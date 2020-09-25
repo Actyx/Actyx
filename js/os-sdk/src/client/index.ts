@@ -14,42 +14,43 @@
  * limitations under the License.
  */
 import { ApiClient, EventServiceClient, ApiClientOpts, ConsoleServiceClient } from '../types'
-import { subscribe } from './event-service/subscribe'
-import { query } from './event-service/query'
-import { offsets } from './event-service/offsets'
-import { publish } from './event-service/publish'
+import { subscribe, subscribeStream } from './event-service/subscribe'
+import { query, queryStream } from './event-service/query'
+import { offsets, offsetsPromise } from './event-service/offsets'
+import { publish, publishPromise } from './event-service/publish'
 import { DefaultClientOpts } from './default-opts'
 import { log } from './console-service/log'
 import { createSimpleLogger } from './console-service/simple-logger'
 
 /** @internal */
 const addTrailingSlashToBaseUrlsIfNecessary = (opts: ApiClientOpts): ApiClientOpts => {
-  if (opts.Endpoints.EventService.BaseUrl.endsWith('/')) {
-    return opts
+  const opts2: ApiClientOpts = JSON.parse(JSON.stringify(opts))
+  const events = opts2.Endpoints.EventService
+  if (!events.BaseUrl.endsWith('/')) {
+    events.BaseUrl = events.BaseUrl + '/'
   }
-  return {
-    ...opts,
-    Endpoints: {
-      ...opts.Endpoints,
-      EventService: {
-        ...opts.Endpoints.EventService,
-        BaseUrl: opts.Endpoints.EventService.BaseUrl + '/',
-      },
-    },
+  const console = opts2.Endpoints.ConsoleService
+  if (!console.BaseUrl.endsWith('/')) {
+    console.BaseUrl = console.BaseUrl + '/'
   }
+  return opts2
 }
 
 /** @internal */
 const eventServiceClient = (opts: ApiClientOpts): EventServiceClient => ({
-  subscribe: subscribe(addTrailingSlashToBaseUrlsIfNecessary(opts)),
-  query: query(addTrailingSlashToBaseUrlsIfNecessary(opts)),
-  publish: publish(addTrailingSlashToBaseUrlsIfNecessary(opts)),
-  offsets: offsets(addTrailingSlashToBaseUrlsIfNecessary(opts)),
+  subscribe: subscribe(opts),
+  subscribeStream: subscribeStream(opts),
+  query: query(opts),
+  queryStream: queryStream(opts),
+  publish: publish(opts),
+  publishPromise: publishPromise(opts),
+  offsets: offsets(opts),
+  offsetsPromise: offsetsPromise(opts),
 })
 
 /** @internal */
 const consoleServiceClient = (opts: ApiClientOpts): ConsoleServiceClient => ({
-  log: log(addTrailingSlashToBaseUrlsIfNecessary(opts)),
+  log: log(opts),
   SimpleLogger: createSimpleLogger(opts),
 })
 
@@ -80,8 +81,9 @@ const consoleServiceClient = (opts: ApiClientOpts): ConsoleServiceClient => ({
  * ```
  */
 export const Client = (opts: ApiClientOpts = DefaultClientOpts()): ApiClient => {
+  const opts2 = addTrailingSlashToBaseUrlsIfNecessary(opts)
   return {
-    eventService: eventServiceClient(opts),
-    consoleService: consoleServiceClient(opts),
+    eventService: eventServiceClient(opts2),
+    consoleService: consoleServiceClient(opts2),
   }
 }

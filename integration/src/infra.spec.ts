@@ -49,22 +49,17 @@ describe('the Infrastructure', () => {
 
   test('must allow event communication', async () => {
     const events = await runOnEach([{}, {}], false, async (node) => {
-      node.actyxOS.eventService.publish({
+      await node.actyxOS.eventService.publishPromise({
         eventDrafts: [EventDraft.make('the Infrastructure', node.name, 42)],
       })
       const events: Event[] = []
-      await new Promise((res) => {
-        const stop = node.actyxOS.eventService.subscribe({
-          subscriptions: [{ streamSemantics: 'the Infrastructure' }],
-          onEvent: (ev) => {
-            events.push(ev)
-            if (events.length === 2) {
-              stop()
-              res()
-            }
-          },
-        })
+      const sub = await node.actyxOS.eventService.subscribeStream({
+        subscriptions: [{ streamSemantics: 'the Infrastructure' }],
       })
+      for await (const event of sub) {
+        events.push(event)
+        if (events.length === 2) break
+      }
       return events
     })
 

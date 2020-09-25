@@ -32,7 +32,8 @@ export const runOnEach = async <T>(
   }
   const ns = n.map((x) => x.name).join(', ')
 
-  console.log(`${ts()} runOnEach on nodes [${ns}]`)
+  // FIXME add test name
+  process.stdout.write(`${ts()} runOnEach on nodes [${ns}]\n`)
   const logic = () => Promise.all(n.map(f))
 
   let success = false
@@ -41,7 +42,7 @@ export const runOnEach = async <T>(
     success = true
     return ret
   } finally {
-    console.log(`${ts()} runOnEach on nodes [${ns}] is done, success=${success}`)
+    process.stdout.write(`${ts()} runOnEach on nodes [${ns}] is done, success=${success}\n`)
   }
 }
 
@@ -64,7 +65,7 @@ export const runOnAll = async <T>(
   }
   const ns = n.map((x) => x.name).join(', ')
 
-  console.log(`${ts()} runOnAll on nodes [${ns}]`)
+  process.stdout.write(`${ts()} runOnAll on nodes [${ns}]\n`)
   const logic = () => f(n)
   let success = false
   try {
@@ -72,6 +73,6 @@ export const runOnAll = async <T>(
     success = true
     return ret
   } finally {
-    console.log(`${ts()} runOnAll on nodes [${ns}] is done, success=${success}`)
+    process.stdout.write(`${ts()} runOnAll on nodes [${ns}] is done, success=${success}\n`)
   }
 }
