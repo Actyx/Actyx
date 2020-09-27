@@ -1,5 +1,8 @@
 import { Event, EventDraft } from '@actyx/os-sdk'
-import { allNodeNames, runOnEach } from './runner/hosts'
+import { allNodeNames, runOnAll, runOnEach } from './runner/hosts'
+import * as PondV1 from 'pondV1'
+import { Pond, PondState } from '@actyx/pond'
+import { MultiplexedWebsocket } from 'pondV1/lib/eventstore/multiplexedWebsocket'
 
 describe('the Infrastructure', () => {
   test('must create global nodes pool', async () => {
@@ -74,5 +77,21 @@ describe('the Infrastructure', () => {
 
     expect(ev1).toEqual(expected)
     expect(ev2).toEqual(expected)
+  })
+
+  test('must test Pond v1', async () => {
+    const result = await runOnAll([{}], false, async ([node]) => {
+      const pond = await PondV1.Pond.of(new MultiplexedWebsocket({ url: node._private.apiPond }))
+      return pond.getPondState().take(1).toPromise()
+    })
+    expect(result).toEqual({})
+  })
+
+  test('must test Pond v2', async () => {
+    const result = await runOnAll([{}], false, async ([node]) => {
+      const pond = await Pond.of({ url: node._private.apiPond }, {})
+      return new Promise<PondState>((res) => pond.getPondState(res))
+    })
+    expect(result).toEqual({})
   })
 })

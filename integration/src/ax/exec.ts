@@ -23,7 +23,7 @@ import fetch from 'node-fetch'
 const rightOrThrow = <A>(e: Either<Errors, A>, obj: unknown): A => {
   if (isLeft(e)) {
     throw new Error(
-      e.left
+      e.value
         .map((err) => {
           const path = err.context.map(({ key }) => key).join('.')
           return `invalid ${err.value} at ${path}: ${err.message}`
@@ -33,7 +33,7 @@ const rightOrThrow = <A>(e: Either<Errors, A>, obj: unknown): A => {
         JSON.stringify(obj, null, 2),
     )
   }
-  return e.right
+  return e.value
 }
 
 const exec = async (binary: string, args: string[]) => {
@@ -229,10 +229,10 @@ export const mkExec = (binary: string, addr: string): Exec => ({
             //console.log(`error decoding log entry: ${PathReporter.report(entry).join(', ')}`)
             error = `error decoding log entry response: ${PathReporter.report(entry).join(', ')}`
             process.kill()
-          } else if (entry.right.code !== 'OK') {
-            onError(`${entry.right.code}: ${entry.right.message}`)
+          } else if (entry.value.code !== 'OK') {
+            onError(`${entry.value.code}: ${entry.value.message}`)
           } else {
-            onEntry(entry.right)
+            onEntry(entry.value)
           }
         })
 

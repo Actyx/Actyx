@@ -21,6 +21,7 @@ const mkNode = (os: OS, arch: Arch, host: Host, runtimes: Runtime[]): ActyxOSNod
       axHost: '',
       apiConsole: '',
       apiEvent: '',
+      apiPond: '',
     },
   }
 }

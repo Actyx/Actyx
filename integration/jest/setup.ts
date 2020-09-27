@@ -84,16 +84,13 @@ const getPeerId = async (ax: CLI, retries = 10): Promise<string | undefined> => 
   }
 }
 
-const setInitialSettings = async (bootstrap: ActyxOSNode): Promise<void> => {
+const setInitialSettings = async (bootstrap: ActyxOSNode, swarmKey: string): Promise<void> => {
   await bootstrap.ax.Settings.Set(
     'com.actyx.os',
     SettingsInput.FromValue({
       general: {
-        bootstrapNodes: [
-          '/ip4/3.121.252.117/tcp/4001/ipfs/QmaWM8pMoMYkJrdbUZkxHyUavH3tCxRdCC9NYCnXRfQ4Eg',
-        ],
-        swarmKey:
-          'L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCjM3NjQ3NTMzNTgzMTY1NWE3MzQxMzE1NzQ1NjI0MzQ2NDI3OTY5Nzk2MTY1MzgzODcyNTI3ODRkMzY2ZjZmNjQ=',
+        bootstrapNodes: [],
+        swarmKey,
         displayName: 'test',
       },
       licensing: { apps: {}, os: 'development' },
@@ -106,11 +103,10 @@ const setAllSettings = async (
   bootstrap: ActyxOSNode & { target: { kind: { type: 'aws' } } },
   peerId: string,
   nodes: ActyxOSNode[],
+  swarmKey: string,
 ): Promise<void> => {
   const ips = [bootstrap.target.kind.host, bootstrap.target.kind.privateAddress]
   const bootstrapNodes = ips.map((ip) => `/ip4/${ip}/tcp/4001/ipfs/${peerId}`)
-
-  const swarmKey = await bootstrap.ax.Swarms.KeyGen()
 
   const settings = (displayName: string) => ({
     general: {
@@ -171,8 +167,9 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
 
   console.log(`setting up bootstrap node ${bootstrap.name}`)
 
-  // need to set some valid settings to get started (that swarm key is no actually used one)
-  await setInitialSettings(bootstrap)
+  // need to set some valid settings to be able to get the peerId
+  const swarmKey = await bootstrap.ax.Swarms.KeyGen()
+  await setInitialSettings(bootstrap, swarmKey)
 
   const peerId = await getPeerId(bootstrap.ax)
   if (peerId === undefined) {
@@ -181,7 +178,7 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
   }
   console.log(`bootstrap node ${bootstrap.name} has PeerId ${peerId}`)
 
-  await setAllSettings(bootstrap, peerId, nodeSetup.nodes)
+  await setAllSettings(bootstrap, peerId, nodeSetup.nodes, swarmKey)
 
   console.log('bootstrap node set up, settings all set')
 

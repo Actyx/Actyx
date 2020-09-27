@@ -46,6 +46,7 @@ export type ActyxOSNode = {
     axHost: string
     apiEvent: string
     apiConsole: string
+    apiPond: string
   }
 }
 

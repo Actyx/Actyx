@@ -118,6 +118,11 @@ export const mkNodeLinux = async (
   )
   console.log('node %s event service reachable on port %i', name, port4454)
 
+  const [port4243, server4243] = await ssh.forwardPort(4243, (line) =>
+    logger(`node ${name} ${line}`),
+  )
+  console.log('node %s event service reachable on port %i', name, port4243)
+
   const axBinary = '../rt-master/target/release/ax'
   const axHost = `localhost:${port4457}`
   const ax = new CLI(axHost, axBinary)
@@ -129,10 +134,13 @@ export const mkNodeLinux = async (
   opts.Endpoints.EventService.BaseUrl = apiEvent
   const actyxOS = Client(opts)
 
+  const apiPond = `ws://localhost:${port4243}/store_api`
+
   const shutdown = async () => {
     console.log('node %s shutting down', name)
     server4454.emit('end')
     server4457.emit('end')
+    server4243.emit('end')
     await ssh.end()
     console.log('node %s ssh stopped', name)
     await target._private.shutdown()
@@ -146,6 +154,6 @@ export const mkNodeLinux = async (
     runtimes: [],
     ax,
     actyxOS,
-    _private: { shutdown, axBinary, axHost, apiConsole, apiEvent },
+    _private: { shutdown, axBinary, axHost, apiConsole, apiEvent, apiPond },
   }
 }
