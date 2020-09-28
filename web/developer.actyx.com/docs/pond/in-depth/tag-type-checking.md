@@ -41,12 +41,12 @@ Since `or` returns `Where`, you can _not_ do this: `(tagA.or(tagB)).and(tagC)`
 
 You have to fall back to the normalized form: `(tagA.and(tagC)).or(tagB.and(tagC))`
 
-We do not support the first version, in order to guard against mistakes of the following kind: Accidentally
-writing `tagA.or(tagB).and(tagC)` instead of `tagA.or(tagB.and(tagC))` – just one misplaced bracket
-and the whole query is significantly altered, perhaps selecting nothing at all, because tagA and
-tagC don’t overlap. (According to normal boolean logic rules, one might expect the `and` to bind
-stronger than the `or`, but this is very hard to mimic in TS evaluation order where `or` will
-always be called first!)
+We do not support the first version, in order to guard against mistakes of the following kind:
+Accidentally writing `tagA.or(tagB).and(tagC)` instead of `tagA.or(tagB.and(tagC))` – just one
+misplaced bracket and the whole query is significantly altered, perhaps selecting nothing at all,
+because events with tagA and event with tagC don’t overlap. (According to normal boolean logic
+rules, one might expect the `and` to bind stronger than the `or`, but this is very hard to mimic in
+TypeScript evaluation order where `or` will always be called first!)
 
 ### Tag
 
@@ -102,9 +102,9 @@ const tags = fooBarTag.and(fooTag) // type is inferred to be Tags<EventFoo>
 `EventFoo`. So `EventFoo` is the only common type between the two. `and` does detect this
 _type intersection_ between both arguments, and narrow to it!
 
-Logically, since `fooTag` is only attached to `EventFoo` instances, and we require `fooTag` to
-be present on _all_ events, we can expect to find _no_ `EventBar` instances anymore, when requiring
-both tags at once.
+Logically, since `fooTag` is only attached to `EventFoo` instances, and we require `fooTag` to be
+present on the selected events, we can expect to find _no_ `EventBar` instances anymore, when
+requiring both tags at once.
 
 Now let’s consider both sides of the event system, producer (`Pond.emit`) and consumer (`Fish`).
 
