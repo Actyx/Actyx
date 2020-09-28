@@ -4,6 +4,20 @@ module.exports = {
     'home/actyx_platform',
     'home/actyx_products',
     'home/tutorial',
+    {
+      type: 'category', label:
+        'Real-world Tutorial', items: [
+          'home/tutorial/introduction',
+          'home/tutorial/solution-architecture',
+          'home/tutorial/get-started',
+          'home/tutorial/run-the-apps',
+          'home/tutorial/explore-the-apps',
+          'home/tutorial/task-1',
+          'home/tutorial/task-2',
+          'home/tutorial/summary',
+          'home/tutorial/next-steps',
+        ]
+    },
   ],
   osSidebar: [
     {
