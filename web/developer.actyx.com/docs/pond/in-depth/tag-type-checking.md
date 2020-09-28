@@ -50,7 +50,7 @@ always be called first!)
 
 ### Tag
 
-A single tag, tied to the type of events it may be attached to. Using typescripts’s union types, we
+A single tag, tied to the type of events it may be attached to. Using TypeScript’s union types, we
 are unrestricted in the number of associated events:
 
 ```typescript
@@ -108,14 +108,14 @@ both tags at once.
 
 Now let’s consider both sides of the event system, producer (`Pond.emit`) and consumer (`Fish`).
 
-- The `Fish` is required to handle all events it may possibly receive. `onEvent` must not take a
+- The Fish is required to handle all events it may possibly receive. `onEvent` must not take a
   type more narrow than the type associated with `where`. Dropping `EventBar` from the type now
   makes the implementation easier: the impossible case of receiving an `EventBar` does not have to
   be considered anymore by `onEvent`.
   
-- `Pond.emit` meanwhile must not emit events into tags that do not declare a fitting type
-  association. `Pond.emit(fooTag, barEvent)` must fail. But then, `Pond.emit(fooBarTag.and(fooTag),
-  barEvent)` must also fail! And it does, because `BarEvent` is dropped from the associated type.
+- Events passed into`Pond.emit` must not be tagged with tags that do not declare a fitting type
+  association. Emitting a `BarEvent` with a `fooTag` or `fooBarTag.and(fooTag)` fails because
+  `BarEvent` is dropped from the associated type.
   
 ### OR
 
@@ -253,7 +253,7 @@ export const emitFooEvent = (pond: Pond, mark: number, details: string) => {
 ## Automatic Type Inference
 
 When giving tags inline, types can often be automatically inferred. This is nice for
-proto-typing. Beware though that it’s the exact reverse of static type-safety guarantees. The
+prototyping. Beware though that it’s the exact reverse of static type-safety guarantees. The
 compiler simply trusts you that things will work out.
 
 ```typescript
