@@ -85,11 +85,22 @@ namespace Sdk.IntegrationTests
 
     }
 
-    class MyState
+    class MyState : IUpdatedBy<IOwnEvent>, IUpdatedBy<IForeignEvent>
     {
         public MyState handleForeignEvent(IForeignEvent evt)
         {
             return this;
+        }
+
+
+        public void updateWith(IOwnEvent eventPayload)
+        {
+            return;
+        }
+
+        public void updateWith(IForeignEvent eventPayload)
+        {
+            return;
         }
     }
 
@@ -99,10 +110,12 @@ namespace Sdk.IntegrationTests
         {
             Tags<string> myTags = new Tags<string>("foo", "bar");
 
-            return new FishBuilderC<MyState>("dummy", new MyState())
-                .subscribeTo(myTags, (oldState, evt) => new MyState())
-                .subscribeTo(new Tags<IOwnEvent>("own"))
-                .subscribeTo(new Tags<IForeignEvent>("foreign"), MyState.handleForeignEvent);
+            return FishBuilderC<MyState>.mkWithStart("dummy", new MyState(), new Tags<IOwnEvent>("own"), new Tags<IForeignEvent>("foreign"));
+
+            // return new FishBuilderC<MyState>("dummy", new MyState())
+            //     .subscribeTo(myTags, (oldState, evt) => new MyState())
+            //     .subscribeTo(new Tags<IOwnEvent>("own"))
+            //     .subscribeTo(new Tags<IForeignEvent>("foreign"), MyState.handleForeignEvent);
         }
     }
 
@@ -118,10 +131,9 @@ namespace Sdk.IntegrationTests
         }
 
 
-        public static FishBuilderC<S> mkWithStart<E>(string fishId, S initialState, Tags<E> ee) where S : IUpdatedBy<E>
+        public static FishBuilderC<X> mkWithStart<X, E, F>(string fishId, X initialState, Tags<E> ee, Tags<F> ef) where X : IUpdatedBy<E>, IUpdatedBy<F>
         {
-            this.fishId = fishId;
-            this.initialState = initialState;
+            return new FishBuilderC<X>(fishId, initialState);
         }
 
         public FishBuilder<S> subscribeTo<E>(Tags<E> subscription, OnEvent<S, E> handler)
