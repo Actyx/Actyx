@@ -70,13 +70,18 @@ const onEvent = (state, event) => {
 
 The important point is: _Even if the activity is Completed, WorkStarted events are still handled normally._
 
-Of course the application wants to avoid that users work on completed activities. To that end, it
-may hide the "Start Working" button for Completed Activities. But an event, on the other hand, is
+Of course the application wants to avoid that users work on completed activities.  But an event is
 something that has already happened! An event is not about intention; it’s already _truth_. Ignoring
 the event does not accomplish anything, it does not stop the user from working on the activity.
 
 Someone did not get the info about the task being completed already, and started working on
-it. That’s a fact. The fact should be made visible. We depend on the worker to recognize the issue
-and properly log the fact that work has ended, by creating a WorkStopped event. Otherwise we will
-never know how much that user actually worked. Just that the activity was marked as Completed does
-not mean he stopped work. This is often very important for booking time data into external systems.
+it. That’s a fact. We depend on the worker to recognize the issue, stop working, and properly log
+that fact by creating a WorkStopped event. Otherwise we will never know how much that user actually
+worked. Just that the activity was marked as Completed does not mean he stopped working. This is often
+very important for booking time data into external systems.
+
+Hence it is crucial that the application still offers the "Stop Working" button for users
+that are working on completed activities. Or one might consider a more flashy alternative: A
+warning box popping up, saying "Please stop work on already completed activity! (tap HERE when you have
+stopped)"
+
