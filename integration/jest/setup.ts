@@ -18,20 +18,23 @@ export type NodeSetup = {
   logs: { [n: string]: LogEntry[] }
 }
 
-export type MyGlobal = typeof global & { nodeSetup: NodeSetup }
+export type MyGlobal = typeof global & { axNodeSetup: NodeSetup }
 
-const createNode = async (nodeSetup: NodeSetup, name: string): Promise<void> => {
+const createNode = async (
+  ec2: EC2,
+  key: AwsKey,
+  name: string,
+): Promise<[LogEntry[], ActyxOSNode] | undefined> => {
   try {
-    const instance = await createInstance(nodeSetup.ec2, {
+    const instance = await createInstance(ec2, {
       ImageId: 'ami-0718a1ae90971ce4d',
       MinCount: 1,
       MaxCount: 1,
       SecurityGroupIds: ['sg-064dfecc275620375'],
-      KeyName: nodeSetup.key.keyName,
+      KeyName: key.keyName,
     })
 
     const logs: LogEntry[] = []
-    nodeSetup.logs[name] = logs
     const logger = (line: string) => {
       logs.push({ time: new Date(), line })
     }
@@ -48,15 +51,15 @@ const createNode = async (nodeSetup: NodeSetup, name: string): Promise<void> => 
             privateAddress: instance.PrivateIpAddress!,
             host: instance.PublicIpAddress!,
             username: 'ubuntu',
-            privateKey: nodeSetup.key.privateKey,
+            privateKey: key.privateKey,
           },
           _private: {
             shutdown: () => {
               // keep this switch here to easily enable keeping the nodes around for debugging
               if (Date.now() > 0) {
-                return terminateInstance(nodeSetup.ec2, instance.InstanceId!)
+                return terminateInstance(ec2, instance.InstanceId!)
               } else {
-                console.log(instance.PublicIpAddress, nodeSetup.key.privateKey)
+                console.log(instance.PublicIpAddress, key.privateKey)
                 return Promise.resolve()
               }
             },
@@ -64,10 +67,10 @@ const createNode = async (nodeSetup: NodeSetup, name: string): Promise<void> => 
         },
         logger,
       )
-      nodeSetup.nodes.push(node)
+      return [logs, node]
     } catch (e) {
       console.error('node %s error while setting up:', name, e)
-      await terminateInstance(nodeSetup.ec2, instance.InstanceId!)
+      await terminateInstance(ec2, instance.InstanceId!)
     }
   } catch (e) {
     console.error('node %s cannot create AWS node:', name, e)
@@ -145,19 +148,26 @@ const getPeers = async (node: ActyxOSNode): Promise<number> => {
 }
 
 const setup = async (_config: Record<string, unknown>): Promise<void> => {
-  const nodeSetup = (<MyGlobal>global).nodeSetup
+  const axNodeSetup = (<MyGlobal>global).axNodeSetup
 
   process.stdout.write('\n')
 
   // CRITICAL: must define all NodeSetup fields here to avoid undefined reference errors
-  nodeSetup.ec2 = new EC2({ region: 'eu-central-1' })
-  nodeSetup.key = await createKey(nodeSetup.ec2)
-  nodeSetup.nodes = []
-  nodeSetup.logs = {}
+  axNodeSetup.ec2 = new EC2({ region: 'eu-central-1' })
+  axNodeSetup.key = await createKey(axNodeSetup.ec2)
+  axNodeSetup.nodes = []
+  axNodeSetup.logs = {}
 
-  await Promise.all(['pool1', 'pool2'].map((name) => createNode(nodeSetup, name)))
+  for (const res of await Promise.all(
+    ['pool1', 'pool2'].map((name) => createNode(axNodeSetup.ec2, axNodeSetup.key, name)),
+  )) {
+    if (res === undefined) continue
+    const [logs, node] = res
+    axNodeSetup.nodes.push(node)
+    axNodeSetup.logs[node.name] = logs
+  }
 
-  const bootstrap = nodeSetup.nodes.find(
+  const bootstrap = axNodeSetup.nodes.find(
     (node): node is ActyxOSNode & { target: { kind: { type: 'aws' } } } =>
       node.target.kind.type === 'aws' && node.host === 'process',
   )
@@ -178,12 +188,12 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
   }
   console.log(`bootstrap node ${bootstrap.name} has PeerId ${peerId}`)
 
-  await setAllSettings(bootstrap, peerId, nodeSetup.nodes, swarmKey)
+  await setAllSettings(bootstrap, peerId, axNodeSetup.nodes, swarmKey)
 
   console.log('bootstrap node set up, settings all set')
 
   let attempts = 60
-  while ((await getPeers(bootstrap)) < nodeSetup.nodes.length - 1 && attempts-- > 0) {
+  while ((await getPeers(bootstrap)) < axNodeSetup.nodes.length - 1 && attempts-- > 0) {
     await new Promise((res) => setTimeout(res, 1000))
   }
   if (attempts === -1) {

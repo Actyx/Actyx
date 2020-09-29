@@ -13,9 +13,9 @@ class MyEnvironment extends NodeEnvironment {
   async setup(): Promise<void> {
     await super.setup()
 
-    const nodeSetup = (<MyGlobal>(<unknown>this.global)).nodeSetup
+    const axNodeSetup = (<MyGlobal>(<unknown>this.global)).axNodeSetup
 
-    for (const node of nodeSetup.nodes) {
+    for (const node of axNodeSetup.nodes) {
       node.ax = new CLI(node._private.axHost, node._private.axBinary)
 
       const opts = DefaultClientOpts()

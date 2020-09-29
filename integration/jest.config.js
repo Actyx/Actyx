@@ -1,6 +1,6 @@
 // This is visible in globalSetup, globalTeardown, and via globals below also in tests.
 // The idea is that its contents are provided in globalSetup.
-global.nodeSetup = {}
+global.axNodeSetup = {}
 
 module.exports = {
   rootDir: '.',
@@ -9,7 +9,7 @@ module.exports = {
     'ts-jest': {
       tsConfig: 'tsconfig.json',
     },
-    nodeSetup: global.nodeSetup,
+    axNodeSetup: global.axNodeSetup,
   },
   globalSetup: './dist/jest/setup.js',
   globalTeardown: './dist/jest/teardown.js',

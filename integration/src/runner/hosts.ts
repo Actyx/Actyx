@@ -5,7 +5,7 @@ import { ActyxOSNode, NodeSelection } from './types'
 
 // This is provided by jest/setup.ts and passed by jest to our worker (serialised)
 // therefore any contained functions will not work.
-const nodes: ActyxOSNode[] = (<MyGlobal>global).nodeSetup.nodes
+const nodes: ActyxOSNode[] = (<MyGlobal>global).axNodeSetup.nodes
 
 const lock = new RwLock()
 

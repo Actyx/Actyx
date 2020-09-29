@@ -5,7 +5,7 @@ import { AwsKey } from './types'
 // determines frequency of polling AWS APIs (e.g. waiting for instance start)
 const pollDelay = <T>(f: () => Promise<T>) => new Promise((res) => setTimeout(res, 2000)).then(f)
 
-export const myKey = (<MyGlobal>global).nodeSetup.key
+export const myKey = (<MyGlobal>global).axNodeSetup.key
 
 export const createKey = async (ec2: EC2): Promise<AwsKey> => {
   const keyName = `cosmos-${Date.now()}`
