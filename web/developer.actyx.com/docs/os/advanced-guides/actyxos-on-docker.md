@@ -46,9 +46,10 @@ The services exposed there are currently still in alpha testing.
 ActyxOS on Docker is published on [DockerHub](https://hub.docker.com/r/actyx/os). To download and run the latest version in production mode execute the following command.
 
 <Tabs
+  groupId="operating-systems"
   defaultValue="windows"
   values={[
-    { label: 'Windows/MacOS', value: 'windows', },
+    { label: 'Windows/macOS', value: 'windows', },
     { label: 'Linux', value: 'unix', },
   ]
 }>
@@ -101,7 +102,7 @@ If you want to run ActyxOS on Docker in development mode, for example because yo
 <Tabs
   defaultValue="windows"
   values={[
-    { label: 'Windows/Mac', value: 'windows', },
+    { label: 'Windows/macOS', value: 'windows', },
     { label: 'Linux', value: 'unix', },
   ]
 }>
@@ -134,6 +135,7 @@ If your [ActyxOS Bootstrap Node](actyxos-bootstrap-node.md) is not in the same l
 In order to check on its status and interact with the node, you can use the [ActyxOS Node Manager](../tools/node-manager) or, if you prefer a command line tool, use the [Actyx CLI](../../cli/getting-started.md).
 
 <Tabs
+  groupId="operating-systems"
   defaultValue="node-manager"
   values={[
     { label: 'ActyxOS Node Manager', value: 'node-manager', },
@@ -149,13 +151,13 @@ Go to the **Status** tab, and you should that your ActyxOS node is reachable and
 </TabItem>
 <TabItem value="cli">
 
-```text
+```
 ax nodes ls --local <DEVICE_IP>
 ```
 
 You should see something like this:
 
-```text
+```
 +---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
 | NODE ID       | DISPLAY NAME | STATE   | SETTINGS | LICENSE | APPS DEPLOYED | APPS RUNNING | STARTED                   | VERSION |
 +---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
@@ -172,7 +174,7 @@ If you want to find out more about configuring ActyxOS node, please check our gu
 
 ## Where to go next
 
-- [Quickstart](/docs/quickstart) is a tutorial about ActyxOS with ready-to-use apps and configurations
+- [Quickstart](/docs/learn-actyx/quickstart.md) is a tutorial about ActyxOS with ready-to-use apps and configurations
 - [Troubleshooting](#troubleshooting) describes common problems, workarounds and how to get help and submit issues
 - [FAQs](/docs/faq/supported-programming-languages) provides answers to frequently asked questions
 

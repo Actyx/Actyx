@@ -59,7 +59,7 @@ describe('application of commands in the pond v2', () => {
 
   describe('raw state effects', () => {
     it('should run state effect, regardless of user awaiting the promise', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       const run = (x: StateEffect<State, Payload>) => pond.run(agg, x)
 
@@ -73,11 +73,11 @@ describe('application of commands in the pond v2', () => {
 
       await expectState(pond, 3)
 
-      await pond.dispose()
+      pond.dispose()
     })
 
     it('should propagate errors if the user subscribes', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       await expect(pond.run(agg, setN(2)).toPromise()).rejects.toEqual(
         new Error('expected state to be 1, but was 0'),
@@ -87,11 +87,11 @@ describe('application of commands in the pond v2', () => {
         new Error('expected state to be 20, but was 0'),
       )
 
-      await pond.dispose()
+      pond.dispose()
     })
 
     it('effects should wait for application of previous', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       const r = (x: StateEffect<State, Payload>) => pond.run(agg, x)
       for (let i = 1; i <= 1000; i++) {
@@ -101,7 +101,7 @@ describe('application of commands in the pond v2', () => {
       // We can tell there weren’t any errors from us having gone up all the way to 1000.
       await expectState(pond, 1000)
 
-      await pond.dispose()
+      pond.dispose()
     })
   })
 
@@ -110,7 +110,7 @@ describe('application of commands in the pond v2', () => {
       enQ(Tag<CompareAndIncrement>('self'), { type: 'set', n: state.n + 1 })
 
     it('should run until cancellation condition', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       pond.keepRunning(agg, autoBump, (state: State) => state.n === 100)
 
@@ -123,11 +123,11 @@ describe('application of commands in the pond v2', () => {
       await expectState(pond, 101)
       await pond.run(agg, checkN(101)).toPromise()
 
-      await pond.dispose()
+      pond.dispose()
     })
 
     it('should respect sequence also when effect async', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       const delayedBump: StateEffect<State, Payload> = (state, enQ) =>
         new Promise((resolve, _reject) =>
@@ -141,11 +141,11 @@ describe('application of commands in the pond v2', () => {
       await stateIs10
 
       c()
-      await pond.dispose()
+      pond.dispose()
     })
 
     it('should wait for the actual effect’s events to be processed, ignore other events that may come in', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       pond.keepRunning(agg, autoBump, (state: State) => state.n === 40)
 
@@ -159,11 +159,11 @@ describe('application of commands in the pond v2', () => {
 
       clearInterval(timer)
 
-      await pond.dispose()
+      pond.dispose()
     })
 
     it('should run parallel to user effects', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       pond.keepRunning<State, Payload>(
         agg,
@@ -201,7 +201,7 @@ describe('application of commands in the pond v2', () => {
 
       clearInterval(q)
 
-      await pond.dispose()
+      pond.dispose()
     })
 
     // Bump only even numbers
@@ -212,7 +212,7 @@ describe('application of commands in the pond v2', () => {
     }
 
     it('should run parallel to user effects 2', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       pond.keepRunning<State, Payload>(agg, bumpEven)
 
@@ -223,11 +223,11 @@ describe('application of commands in the pond v2', () => {
       // Bumped up to 3 already
       await expectState(pond, 3)
 
-      await pond.dispose()
+      pond.dispose()
     })
 
     it('should run multiple auto effects in parallel', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
       const tags = Tag<Payload>('self')
 
       const stateIs15 = expectState(pond, 15)
@@ -245,11 +245,11 @@ describe('application of commands in the pond v2', () => {
       await stateIs15
       await expectState(pond, 20)
 
-      await pond.dispose()
+      pond.dispose()
     })
 
     it('should run multiple auto effects in parallel, even if they all always fire', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
       const tags = Tag<Payload>('self')
 
       const mk = (remainder: number): StateEffect<State, Payload> => (state, enQ) => {
@@ -267,11 +267,11 @@ describe('application of commands in the pond v2', () => {
 
       await expectState(pond, 10)
 
-      await pond.dispose()
+      pond.dispose()
     })
 
     it('should be cancellable', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       const cancel = pond.keepRunning(agg, bumpEven)
 
@@ -282,11 +282,11 @@ describe('application of commands in the pond v2', () => {
 
       await expectState(pond, 2)
 
-      await pond.dispose()
+      pond.dispose()
     })
 
     it('should be cancellable pretty swiftly', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       const cancel = pond.keepRunning(agg, autoBump)
 
@@ -295,7 +295,7 @@ describe('application of commands in the pond v2', () => {
 
       await expectState(pond, 1001)
 
-      await pond.dispose()
+      pond.dispose()
     })
   })
 
@@ -314,7 +314,7 @@ describe('application of commands in the pond v2', () => {
     const beta = mkAgg('beta')
 
     it('should be able to pingpong', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       const stateIs30 = expectState(pond, 30, beta)
 
@@ -332,7 +332,7 @@ describe('application of commands in the pond v2', () => {
 
       c0()
       c1()
-      await pond.dispose()
+      pond.dispose()
     })
   })
 })

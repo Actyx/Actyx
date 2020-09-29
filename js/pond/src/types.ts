@@ -453,11 +453,17 @@ export const FishId = {
    * @param version    - Version of the underlying code. Must be increased whenever the Fish’s underlying logic or event selection changes.
    * @returns            A FishId.
    */
-  of: (entityType: string, name: string, version: number) => ({
-    entityType,
-    name,
-    version,
-  }),
+  of: (entityType: string, name: string, version: number) => {
+    if (!entityType || !name) {
+      throw new Error('Fish-Id parts must not be left empty')
+    }
+
+    return {
+      entityType,
+      name,
+      version,
+    }
+  },
 
   // For internal use. Transform a FishId into a string to be used as key in caching.
   canonical: (v: FishId): string => JSON.stringify([v.entityType, v.name, v.version]),
@@ -482,7 +488,7 @@ export type Fish<S, E> = Readonly<{
   // State of this Fish before it has seen any events.
   initialState: S
 
-  /*
+  /**
    * Function to create the next state from previous state and next event. It works similar to `Array.reduce`.
    * Do note however that — while it may modify the passed-in state — this function must be _pure_:
    * - It should not cause any side-effects (except logging)

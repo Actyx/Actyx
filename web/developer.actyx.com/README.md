@@ -173,6 +173,18 @@ In the `/sidebars.js` file, add the corresponding path to the correct sidebar. E
 
 Please check the existing sections and links in `/sidebars.js` for examples.
 
+### React Components
+
+To extend the capabilities of docusaurus, there are also a couple of react components to choose from when building pages. The components are:
+- `SectionHero.tsx`
+This element has an optional button (`showButton={false}` prevents displaying the button)
+- `TwoElementRow.tsx`
+The two col element can have 0-n optional links and 0-n optional tags
+- `ThreeElementRow.tsx`
+This element can have 0-n optional links
+- `DownloadLink.tsx`
+- `StayInformed.tsx`
+
 ### How it works
 
 This website is built using [Docusaurus 2](https://v2.docusaurus.io/) with the `@docusaurus/preset-classic` preset. Docusaurus generates a static site that can be served from somewhere. We use Netlify, which automatically pulls `Cosmos` from Github, then builds and then serves the site at [https://developer.actyx.com](https://developer.actyx.com).

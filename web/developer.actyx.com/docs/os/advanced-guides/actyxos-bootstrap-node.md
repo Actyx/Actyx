@@ -22,7 +22,7 @@ For running ActyxOS on Docker in production, most users set up a fleet managemen
 
 The ActyxOS Bootstrap Node is [publicly available on Docker Hub](https://hub.docker.com/repository/docker/actyx/actyxos-bootstrap-node). You can download and run an ActyxOS Bootstrap Node with the following command:
 
-```bash
+```
 # Start the bootstrap node with your swarm key
 docker run --name actyxos_bootstrap_node --rm --env SWARM_KEY=99eac9c0acbbedf9cfdfcbebfa0bdea99d0bde9edf0 -p 4001:4001 -v actyxos-bootstrap-data:/data actyx/actyxos-bootstrap-node
 Starting ActyxOS bootstrap node
@@ -44,7 +44,7 @@ It is highly recommended to use a persistent volume, as you will otherwise have 
 
 On subsequent runs, the Swarm key will be taken from the persistent storage:
 
-```bash
+```
 # Running with a persistent volume, subsequent runs:
 docker run --rm -p 4001:4001 -v actyxos-bootstrap-data:/data actyx/actyxos-bootstrap-node
 Starting ActyxOS bootstrap node
@@ -80,6 +80,6 @@ If you want to get help or file issues, please write an e-mail to developer@acty
 
 If you were running an ActyxOS Bootstrap Node before, you need to clear the persistent volume on your machine to run an ActyxOS Bootstrap Node for another swarm. In order to clear the persistent volume, execute the following command:
 
-```bash
+```
 docker volume rm actyxos-bootstrap-data
 ````

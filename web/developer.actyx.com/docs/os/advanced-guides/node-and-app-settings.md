@@ -103,7 +103,7 @@ In this section we will take a look at how an ActyxOS node actually stores its s
 
 Every node has its own _settings object_ that combines its node settings, as well as app settings for all apps that are deployed on this node. It has the following structure:
 
-```bash
+```yml
 com.actyx.os:
   # ActyxOS node settings
   # ...
@@ -131,6 +131,8 @@ The primary tool for setting settings, both at the node and the app level, is th
 - `ax settings schema` to get the settings schema for a particular scope
 :::
 
+#### Configure settings for a node
+
 Let's jump into an example, where we want to configure a brand-new ActyxOS node. First we create a new file &mdash; let's call it `node-settings.yml` and set all the settings to the values we want:
 
 ```yml
@@ -151,36 +153,37 @@ services:
   webViewRuntime: {}
   ```
 
-Now we need to set these settings on the node (which, in this example, is reachable at 10.2.3.23) using the Actyx CLI's `ax settings set` command:
+Now we need to set these settings (defined in `node-settings.yml`) on the node (which, in this example, is reachable at 10.2.3.23) using the Actyx CLI's `ax settings set` command:
 
-```bash
-# Set the settings defined in `node-settings.yml` on the node
-ax settings set --local com.actyx.os @node-settings.yml 10.2.3.23
-#             ^           ^      ^
-#             | set       |      | read from the given file
-#                         |
-#                         | set the settings at the `com.actyx.os` scope
 ```
+ax settings set --local com.actyx.os @node-settings.yml 10.2.3.23
+            ^            ^           ^
+            | set        |           | read from the given file
+                         |
+                         | set the settings at the `com.actyx.os` scope
+```
+
+#### Get top-level scopes from a node
 
 If we wanted to find out if there are any top-level settings scopes other than `com.actyx.os`, the pre-defined scope at which you configure the node itself, we could use the Actyx CLI's `ax settings scopes` command:
 
-```bash
-# Get top-level scopes on the node
+```
 ax settings scopes --local 10.2.3.23
 com.actyx.os
 ```
 
+#### Change one specific value of your node or app settings
+
 What if you want to change a single one of the settings? You could, of course, edit the file and run through the same process again. The Actyx CLI offers a much simpler way of doing this though. Check out how we could, for example, just change the ActyxOS [_Event Service_](../api/event-service.md) topic:
 
-```bash
-# Change a setting in the tree
+```
 ax settings set --local com.actyx.os/services/eventService/topic "New Topic" 10.2.3.23
-#                         ^           ^                            ^
-#                         |           |                            | value to set the setting to
-#                         |           |
-#                         |           | path into the settings object
-#                         |
-#                         | top-level scope as the entry point
+                          ^           ^                            ^
+                          |           |                            | value to set the setting to
+                          |           |
+                          |           | path into the settings object
+                          |
+                          | top-level scope as the entry point
 ```
 
 The Actyx CLI allows you to not only set settings at top-level scopes such as `com.actyx.os`, but rather allows you to change leafs or even sub-trees in the node's settings object.
@@ -329,6 +332,6 @@ ax settings set --local com.example.app1 @app-settings.yml 10.2.3.23
 
 And similarily you can also use mode advanced scopes to selectively set settings within the app's settings tree. Consider for example wanting to change only the background color. You could do so using the following command
 
-```bash
+```
 ax settings set --local com.example.app1/backgroundColor blue 10.2.3.23
 ```
