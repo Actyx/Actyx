@@ -125,14 +125,14 @@ In order to check on its status and interact with the node, you need to download
 
 You can then check on your ActyxOS node:
 
-```bash
+```
 ax nodes ls --local <DEVICE_IP>
 ```
 
 Please refer to the [Actyx CLI documentation](/docs/cli/getting-started) for installation instructions or to learn more about using the Actyx CLI.
 
 :::info
-If you want to try out ActyxOS by deploying some sample apps, please take a look at [the Quickstart Guide](../../quickstart.md#run-the-app-in-dev-mode).
+If you want to try out ActyxOS by deploying some sample apps, please take a look at [the Quickstart Guide](../../learn-actyx/quickstart.md#run-the-app-in-dev-mode).
 :::
 
 ## Problems?

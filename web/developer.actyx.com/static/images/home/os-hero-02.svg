@@ -1,0 +1,83 @@
+<svg id="b7748e9d-f5b6-48c5-8077-5378373bd1e0" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="2500" height="1000" viewBox="0 0 2500 1000">
+  <defs>
+    <style>
+      .e6837189-2167-4fdd-84f4-79829c047754, .fc87ad88-a948-48f8-ab89-e45c3f7566ef {
+        fill: #383e51;
+      }
+
+      .ae13d971-5971-4162-862b-e4b07ba8dc8e {
+        fill: #292d3e;
+      }
+
+      .e6837189-2167-4fdd-84f4-79829c047754 {
+        font-size: 60px;
+        stroke: #383e51;
+        stroke-miterlimit: 10;
+        font-family: Menlo-Regular, Menlo;
+        letter-spacing: 0.01em;
+      }
+
+      .bdb36cf1-dedb-4116-bfc8-dbbd28893305 {
+        filter: url(#b1ffd831-1e76-4957-934e-3b221a991866);
+      }
+
+      .fd732a7f-bb9a-4426-b04c-10fa2499f126 {
+        fill: #fff;
+      }
+
+      .bafe9adf-e049-4c1b-adfe-8dce5531f8cf {
+        fill: #0a2540;
+      }
+
+      .fc6c2e37-0549-4a0c-b078-a93ee3a6fde3 {
+        fill: #6dbeff;
+      }
+
+      .b8a97e21-4d7f-457c-98af-b5f3e1ef4d28 {
+        fill: #0073e6;
+      }
+
+      .bbc4d730-f586-4196-9440-73c6c222b498 {
+        fill: #55baff;
+      }
+    </style>
+    <filter id="b1ffd831-1e76-4957-934e-3b221a991866" x="-15%" y="-15%" width="140%" height="130%" name="AI_Shadow_2">
+      <feGaussianBlur result="blur" stdDeviation="30" in="SourceAlpha"/>
+      <feOffset result="offsetBlurredAlpha" in="blur"/>
+      <feMerge>
+        <feMergeNode in="offsetBlurredAlpha"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect class="fc87ad88-a948-48f8-ab89-e45c3f7566ef" width="2500" height="1000"/>
+  <path class="ae13d971-5971-4162-862b-e4b07ba8dc8e" d="M297.38,277.31H2202.62A95.39,95.39,0,0,1,2298,372.7V1000a0,0,0,0,1,0,0H202a0,0,0,0,1,0,0V372.7A95.39,95.39,0,0,1,297.38,277.31Z"/>
+  <text class="e6837189-2167-4fdd-84f4-79829c047754" transform="translate(333.79 487.24)">[18:45][~:]$ ax nodes ls --local localhost<tspan x="0" y="80">+-----------+--------------+---------+----------+-------</tspan><tspan x="0" y="160" xml:space="preserve">| NODE ID   | DISPLAY NAME | STATE   | SETTINGS | LICENS</tspan><tspan x="0" y="240">+-----------+--------------+---------+----------+-------</tspan><tspan x="0" y="320" xml:space="preserve">| localhost | Sample Node  | running | valid    | valid </tspan><tspan x="0" y="400">+-----------+--------------+---------+----------+-------</tspan></text>
+  <g>
+    <g>
+      <g class="bdb36cf1-dedb-4116-bfc8-dbbd28893305">
+        <circle class="fd732a7f-bb9a-4426-b04c-10fa2499f126" cx="1250" cy="320" r="204.16"/>
+      </g>
+      <circle class="fd732a7f-bb9a-4426-b04c-10fa2499f126" cx="1250" cy="320" r="220"/>
+    </g>
+    <g>
+      <g>
+        <path class="bafe9adf-e049-4c1b-adfe-8dce5531f8cf" d="M1371.81,384.65l-19.38-11.31-107.51-62.61-101.47,58.12a3.49,3.49,0,0,1-3,5.26,3.52,3.52,0,0,1-1.76-.49l104,60.63a3.6,3.6,0,0,0,3.59,0l50.59-29a3.58,3.58,0,0,1,3.58,0l21.23,12.29a3.58,3.58,0,0,0,3.58,0l46.6-26.7A3.59,3.59,0,0,0,1371.81,384.65Z"/>
+        <path class="fc6c2e37-0549-4a0c-b078-a93ee3a6fde3" d="M1138.42,367.72l.3-.17a3.51,3.51,0,0,1,1.7-.46,3.56,3.56,0,0,1,1.56.38l.47.27a3.65,3.65,0,0,1,1,1.11l101.47-58.12-.06-117v-7a3.51,3.51,0,0,0-1.7.46l-.3.17-100.17,58a3.58,3.58,0,0,0,0,6.19l48.25,28.24-52,29.36a3.59,3.59,0,0,0-1.82,3.11l-.23,58.19A3.52,3.52,0,0,1,1138.42,367.72Z"/>
+        <path class="b8a97e21-4d7f-457c-98af-b5f3e1ef4d28" d="M1136.91,370.6s0,0,0,.07v-.19S1136.91,370.56,1136.91,370.6Z"/>
+        <path class="b8a97e21-4d7f-457c-98af-b5f3e1ef4d28" d="M1138.66,373.62l-.23-.14Z"/>
+        <polygon class="b8a97e21-4d7f-457c-98af-b5f3e1ef4d28" points="1143.45 368.85 1137.38 372.33 1137.38 372.33 1143.45 368.85 1143.45 368.85"/>
+        <path class="bbc4d730-f586-4196-9440-73c6c222b498" d="M1142.45,367.74l-.47-.27a3.56,3.56,0,0,0-1.56-.38,3.51,3.51,0,0,0-1.7.46l-.3.17a3.52,3.52,0,0,0-1.5,2.76v.19a3.5,3.5,0,0,0,.46,1.66l6.07-3.48A3.65,3.65,0,0,0,1142.45,367.74Z"/>
+        <path class="bafe9adf-e049-4c1b-adfe-8dce5531f8cf" d="M1143.93,370.6a3.48,3.48,0,0,0-.48-1.75l-6.07,3.48a3.5,3.5,0,0,0,1,1.15l.23.14a3.49,3.49,0,0,0,5.27-3Z"/>
+      </g>
+      <g>
+        <path class="fd732a7f-bb9a-4426-b04c-10fa2499f126" d="M1242.86,187.34l.3-.17Z"/>
+        <path class="fd732a7f-bb9a-4426-b04c-10fa2499f126" d="M1246.42,187.09l.47.28A3.24,3.24,0,0,0,1246.42,187.09Z"/>
+        <path class="b8a97e21-4d7f-457c-98af-b5f3e1ef4d28" d="M1350.59,247.71l-103.7-60.34-.47-.28a3.56,3.56,0,0,0-1.56-.38v7l.06,117,107.51,62.61-.06-122.54A3.58,3.58,0,0,0,1350.59,247.71Z"/>
+      </g>
+      <polygon class="b8a97e21-4d7f-457c-98af-b5f3e1ef4d28" points="1191.32 341.81 1190.93 279.82 1244.92 310.73 1244.95 372.77 1191.32 341.81"/>
+      <polygon class="bafe9adf-e049-4c1b-adfe-8dce5531f8cf" points="1244.92 310.73 1298.35 279.46 1244.89 248.7 1190.93 279.82 1244.92 310.73"/>
+      <polygon class="fc6c2e37-0549-4a0c-b078-a93ee3a6fde3" points="1298.56 341.76 1298.3 279.6 1244.92 310.73 1244.95 372.77 1298.56 341.76"/>
+    </g>
+  </g>
+</svg>

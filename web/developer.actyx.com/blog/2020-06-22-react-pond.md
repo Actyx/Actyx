@@ -185,7 +185,7 @@ export const App = () => {
 Our project is now ready to start, and we use Parcel to compiling our app.
 
 **Make sure that ActyxOS is *started* and *configured***  
-checkout the [quickstart](https://developer.actyx.com/docs/quickstart/#start-actyxos) and the [ActyxOS Node Manager](https://developer.actyx.com/docs/os/tools/node-manager) to set the settings of your ActyxOS Node if it is not already done.
+checkout the [quickstart](https://developer.actyx.com/docs/learn-actyx/quickstart/#start-actyxos) and the [ActyxOS Node Manager](https://developer.actyx.com/docs/os/tools/node-manager) to set the settings of your ActyxOS Node if it is not already done.
 
 Add two scripts to the `package.json` in the root directory of your project. The  `"scripts"` section should look like this on the end:
 

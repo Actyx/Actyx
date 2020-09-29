@@ -1,10 +1,17 @@
 ---
-title: "Tutorial: Intro to Actyx"
+title: "Tutorial – Building a chat app with Actyx Pond"
 sidebar_label: Tutorial
+hide_title: true
 ---
 
+import {Strap} from '../../src/components/Strap.tsx'
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import {DownloadLink} from '../../src/components/DownloadLink.tsx'
+
+<Strap strap={"Tutorial"} />
+
+# Building a chat app with Actyx Pond
 
 In this tutorial, we are going to build a small chat app on top of the Actyx Platform. **You might be tempted to skip it because you are not building chats in real-life — give it a chance.** The techniques that you will learn in this tutorial are fundamental to building any app on the platform, and mastering them will give you a good understanding of its capabilities.
 
@@ -403,7 +410,9 @@ We hope that you are now starting to experience the power of edge native applica
 
 ## Download the code
 
-You can download the complete code for this tutorial from [GitHub](https://github.com/Actyx/chat-app-tutorial).
+You can download the complete code for this tutorial from GitHub.
+
+<DownloadLink cta={"Download from GitHub" } link={"https://github.com/Actyx/chat-app-tutorial.git" }/>
 
 ## Further resources
 
