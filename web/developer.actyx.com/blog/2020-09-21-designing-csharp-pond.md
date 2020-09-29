@@ -149,12 +149,12 @@ class FishBuilder<S> where S : IUpdatedBy<E>
 So let’s capture `S` and `E` at the same time:
 
 ```csharp
-FishBuilder.make(fishId, initialState, events1, events2, events3)
+FishBuilder.for(fishId, initialState, events1, events2, events3)
     .subscribeTo(events4, handler)
     .build();
     
 // The implementation is not so nice:
-static FishBuilder<S> make<S, E, F, G>(
+static FishBuilder<S> for<S, E, F, G>(
     FishId fishId,
     S initialState,
     Selection<E> selection1,
