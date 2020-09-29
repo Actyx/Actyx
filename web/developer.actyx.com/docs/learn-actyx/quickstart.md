@@ -1,7 +1,14 @@
 ---
 title: Quickstart
+sidebar_label: Quickstart
+hide_title: true
 ---
 
+import {Strap} from '../../src/components/Strap.tsx'
+
+<Strap strap={"Quickstart Guide"} />
+
+# Learning the basics of ActyxOS
 
 Let's jump right in and get a first distributed application up and running.
 
@@ -109,9 +116,10 @@ Check out the [troubleshooting section](#troubleshooting) below or let us know.
 Now, start ActyxOS as a Docker container on your local machine. Since ActyxOS is published on [DockerHub](https://hub.docker.com/), you can start it using the following command:
 
 <Tabs
+  groupId="operating-systems"
   defaultValue="windows/macos"
   values={[
-    { label: 'Windows/MacOS', value: 'windows/macos', },
+    { label: 'Windows/macOS', value: 'windows/macos', },
     { label: 'Linux', value: 'linux', },
   ]
 }>
@@ -146,10 +154,11 @@ As you can see, you need to provide a persistent volume and set up some port for
 Now that it is running, we need to provide the ActyxOS node with a couple of settings. These allow the node to function correctly. For now, we will just use the sample settings defined in `misc/local-sample-node-settings.yml`. Run the following command:
 
 <Tabs
+  groupId="operating-systems"
   defaultValue="windows"
   values={[
     { label: 'Windows', value: 'windows', },
-    { label: 'Linux/MacOS', value: 'unix', },
+    { label: 'Linux/macOS', value: 'unix', },
   ]
 }>
 <TabItem value="windows">
@@ -271,10 +280,11 @@ Check out the [ActyxOS on Android guide](/docs/os/advanced-guides/actyxos-on-and
 Now that you have installed ActyxOS on the second device, let's configure the node and then package and deploy one of the sample apps. From the `quickstart` folder, run the following command:
 
 <Tabs
+  groupId="operating-systems"
   defaultValue="windows"
   values={[
     { label: 'Windows', value: 'windows', },
-    { label: 'Linux/MacOS', value: 'unix', },
+    { label: 'Linux/macOS', value: 'unix', },
   ]
 }>
 <TabItem value="windows">

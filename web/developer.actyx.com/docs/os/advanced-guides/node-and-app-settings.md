@@ -157,11 +157,10 @@ Now we need to set these settings (defined in `node-settings.yml`) on the node (
 
 ```
 ax settings set --local com.actyx.os @node-settings.yml 10.2.3.23
-
-              ^           ^      ^
-              | set       |      | read from the given file
-                          |
-                          | set the settings at the `com.actyx.os` scope
+            ^            ^           ^
+            | set        |           | read from the given file
+                         |
+                         | set the settings at the `com.actyx.os` scope
 ```
 
 #### Get top-level scopes from a node

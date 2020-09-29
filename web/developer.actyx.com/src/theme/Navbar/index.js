@@ -93,13 +93,6 @@ function Navbar() {
   const logoSrc = logo.srcDark && isDarkTheme ? logo.srcDark : logo.src;
   const logoImageUrl = useBaseUrl(logoSrc);
 
-  const IconTest = styled.div`
-  width: 10px;
-  height: 10px;
-  background-color: black;
-  `
-
-
   return (
     <nav
       ref={navbarRef}
@@ -212,7 +205,7 @@ function Navbar() {
           )}
         </div>
         <div className="navbar-sidebar__items">
-          <div className="menu">
+        <div className="menu">
             <ul className="menu__list">
               {links.map((linkItem, i) => (
                 <li className="menu__list-item" key={i}>

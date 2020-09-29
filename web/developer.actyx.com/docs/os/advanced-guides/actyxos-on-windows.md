@@ -88,7 +88,7 @@ Congratulations, you have successfully installed <em>ActyxOS on Windows</em>! Pl
 
 ### Where to go next
 
-- [Quickstart](/docs/quickstart) is a tutorial about ActyxOS with ready-to-use apps and configurations
+- [Quickstart](/docs/learn-actyx/quickstart.md) is a tutorial about ActyxOS with ready-to-use apps and configurations
 - [Get started](#get-started-with-actyx-on-windows) for a detailed guide on how <em>ActyxOS on Windows works</em>
 - [Troubleshooting](#troubleshooting) describes common problems, workarounds and how to get help and submit issues
 - [FAQs](/docs/faq/supported-programming-languages) provides answers to frequently asked questions
