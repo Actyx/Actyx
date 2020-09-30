@@ -173,6 +173,14 @@ module.exports = {
         'pond/guides/integrating-a-ui',
       ]
   },
+  {
+    type: 'category', 
+    label: 'Fish\u00a0Parameters', 
+    items: [
+      'pond/fish-parameters/initial-state',
+      'pond/fish-parameters/on-event',
+      ]
+  },
   ],
   learnActyxSidebar: [
     'learn-actyx/learn-actyx',
