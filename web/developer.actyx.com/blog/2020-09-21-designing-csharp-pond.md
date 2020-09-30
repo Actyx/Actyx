@@ -4,7 +4,7 @@ author: Benjamin Sieffert
 author_title: Distributed Systems Engineer at Actyx
 author_url: https://github.com/benjamin-actyx
 author_image_url: /images/blog/benjamin-sieffert.jpg
-tags: [Actyx Pond CSharp C#]
+tags: [Actyx Pond, CSharp, C#]
 ---
 
 One of the many projects we’re currently pushing forward at Actyx is a port of the [Actyx
@@ -18,7 +18,7 @@ not carry over into the (JavaScript) runtime.
 
 One way this difference in typing plays out is _union types_. Union types are a cornerstone of TypeScript
 programming, and prominently feature in our TypeScript Pond interfaces. But C# does not have an exact
-equivalent. In this blog post we are looking at ways to preserve the TypeScript interfaces, without
+equivalent. In this blog post we are looking at ways to preserve all the TypeScript Pond’s features, without
 giving up idiomatic C#.
 
 <!-- truncate -->
@@ -31,7 +31,7 @@ The actually idiomatic alternative to union types in C# is to just use a common 
 types of the union. But in a producer/consumer architecture, this approach is problematic: Every
 new consumer would have to change code among all event producers, adding "its own" union
 interface. An event read by five different consumers would end up implementing five different union
-interfaces.
+interfaces. (Or its definition would be copied five times.)
 
 That architecture _does_ have advantages – e.g. it’s easy to see who the consumers are at a
 glance – but we do not want to make it mandatory.
