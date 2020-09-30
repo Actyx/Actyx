@@ -37,7 +37,7 @@ That architecture _does_ have advantages – e.g. it’s easy to see who the con
 glance – but we do not want to make it mandatory.
 
 So we are about to do a very simple thing. Rather than having the code specify just one subscription and
-one event handler ("onEvent") per Fish, the Fish may have multiple subscriptions, each with its own event
+one event handler ("onEvent") per Fish, the Fish may have multiple selections, each with its own event
 handler. It’s just like a union, only the real union is never explicitly constructed.
 
 ```cs
