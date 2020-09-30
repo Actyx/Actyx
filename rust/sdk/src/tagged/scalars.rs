@@ -68,8 +68,11 @@ mk_scalar!(
 /// The ActyxOS node identifier
 ///
 /// Each ActyxOS node has a private key that defines its identity. The corresponding public
-/// key uniquely identifies the node but depends on the used crypto scheme. Therefore, we
-/// use a 256bit hash of the public key as NodeId.
+/// key uniquely identifies the node but depends on the used crypto scheme. For now, we are
+/// using ed25519.
+///
+/// So the NodeId is just the 32 bytes of ed25519 public key. Nevertheless you should treat it
+/// as an opaque value.
 ///
 /// Values of this type serialize as Base64url multibase strings by default.
 /// Deserialization is supported from binary data or multibase format.
