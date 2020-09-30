@@ -69,7 +69,7 @@ interface IMyEvent
 
 // Later:
 new FishBuilder(fishId, initialState)
-  .subscribeTo<IMyEvent>(myEvents, (oldState, event) => event.updateState(oldState))
+  .subscribeTo<IMyEvent>(mySelection, (oldState, event) => event.updateState(oldState))
   .build()
 ```
 
@@ -94,7 +94,7 @@ class MyState
 // Later:
 new FishBuilder(fishId, initialState)
   .subscribeTo<ISomeForeignEvent>(
-    someForeignEvents,
+    someForeignEventsSelection,
     (state, event) => state.consumeSomeForeignEvent(event)
   )
   .build()
@@ -122,10 +122,10 @@ interface IUpdateState<S>
 class FishBuilder<S>
 {
     // Explicitly specify handler
-    FishBuilder<S> subscribeTo<E>(Selection<E> subscription, EventHandler<S, E> handler);
+    FishBuilder<S> subscribeTo<E>(Selection<E> selection, EventHandler<S, E> handler);
 
     // If event type implements logic to update S, we don’t need an explicit handler!
-    FishBuilder<S> subscribeTo<E>(Selection<E> subscription) where E : IUpdateState<S>;
+    FishBuilder<S> subscribeTo<E>(Selection<E> selection) where E : IUpdateState<S>;
 }
 ```
 
@@ -136,13 +136,13 @@ C# is not that expressive yet.
 class FishBuilder<S>
 {
     // Fails to compile, because generic S is not scoped to the method
-    FishBuilder<S> subscribeTo<E>(Selection<E> subscription) where S : IUpdatedBy<E>;
+    FishBuilder<S> subscribeTo<E>(Selection<E> selection) where S : IUpdatedBy<E>;
 }
 
 // Works, but captures only **one** E, even if S supports multiple different E.
 class FishBuilder<S> where S : IUpdatedBy<E>
 {
-    FishBuilder<S> subscribeTo<E>(Selection<E> subscription)
+    FishBuilder<S> subscribeTo<E>(Selection<E> selection)
 }
 ```
 
