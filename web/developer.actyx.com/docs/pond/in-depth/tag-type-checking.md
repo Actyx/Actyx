@@ -13,7 +13,7 @@ use it. This guide covers all the tricks, corner-cases and design reasons.
 ### Where
 
 There are three object types involved with the tag query system. `Where` is the most general one,
-expressing some arbitrary event selection. The field `where` of a `Fish` object accepts this
+expressing some arbitrary event selection. The field `where` of a Fish object accepts this
 type. `Where` is the only type that can express "OR" logic:
 
 `Tag<E1>('tag 1').or(Tag<E2>('tag 2')): Where<E1 | E2>` will match events that have `tag 1` and also
@@ -223,7 +223,6 @@ export const emitFooEvent = (pond: Pond, mark: number, details: string) => {
     return pond.emit(fooBarTag, fooEvt)
 }
 
-// And stop exporting any old emitFooEvent function you may have offered
 ```
 
 If you want to spare new consumers the burden of supporting the old `EventFoo`, and those consumers
@@ -247,8 +246,9 @@ export const emitFooEvent = (pond: Pond, mark: number, details: string) => {
     return pond.emit(backwardsCompatTags, fooEvt)
 }
 
-// And stop exporting any old emitFooEvent function you may have offered
 ```
+
+Finally, stop exporting any old `emitFooEvent` function you may have offered.
 
 ## Automatic Type Inference
 
