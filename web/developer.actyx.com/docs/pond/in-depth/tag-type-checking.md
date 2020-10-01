@@ -33,7 +33,7 @@ type EventBar = {
   someString: string
 }
 
-// Tagged union type (TS feature)
+// Union type
 type Event = EventFoo | EventBar
 
 const fooBarTag = Tag<Event>('foo-or-bar-event')
