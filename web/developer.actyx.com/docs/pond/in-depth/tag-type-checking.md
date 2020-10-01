@@ -160,7 +160,7 @@ Now let’s consider both sides of the event system, producer (`Pond.emit`) and 
   
 - Events passed into`Pond.emit` must not be tagged with tags that do not declare a fitting type
   association. Emitting a `BarEvent` with a `fooTag` or `fooBarTag.and(fooTag)` fails because
-  `BarEvent` is dropped from the associated type.
+  `BarEvent` has been dropped from the associated type.
   
 ### OR
 
@@ -231,8 +231,8 @@ type EventFoo = {
   type: // ?
   
   data: {
-	mark: number
-	details: string
+    mark: number
+    details: string
   }
 }
 ```
@@ -247,8 +247,8 @@ type EventFooV2 = {
   type: 'foo.v2'
   
   data: {
-	mark: number
-	details: string
+    mark: number
+    details: string
   }
 }
 
@@ -265,7 +265,7 @@ export const FooBarEvents: Where<EventFoo | EventBar | EventFooV2> = fooBarTag
 
 // For producers of FooEvent2
 export const emitFooEvent = (pond: Pond, mark: number, details: string) => {
-	const fooEvt: EventFooV2 = { type: 'foo.v2', data: { mark, details } }
+    const fooEvt: EventFooV2 = { type: 'foo.v2', data: { mark, details } }
     return pond.emit(fooBarTag, fooEvt)
 }
 
@@ -288,7 +288,7 @@ export const FooBarEventsV2: Where<EventBar | EventFooV2> = fooBarTagV2
 const backwardsCompatTags = fooBarTag.and(fooBarTagV2)
 
 export const emitFooEvent = (pond: Pond, mark: number, details: string) => {
-	const fooEvt: EventFoo2 = { type: 'foo.v2', data: { mark, details } }
+    const fooEvt: EventFoo2 = { type: 'foo.v2', data: { mark, details } }
     return pond.emit(backwardsCompatTags, fooEvt)
 }
 
