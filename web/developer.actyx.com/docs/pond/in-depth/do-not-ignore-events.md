@@ -76,12 +76,11 @@ the event does not accomplish anything, it does not stop the user from working o
 
 Someone did not get the info about the task being completed already, and started working on
 it. That’s a fact. We depend on the worker to recognize the issue, stop working, and properly log
-that fact by creating a WorkStopped event. Otherwise we will never know how much that user actually
-worked. Just that the activity was marked as Completed does not mean he stopped working. This is often
+that fact by creating a WorkStopped event. Otherwise we will never know how much that person actually
+worked. Just that the activity was marked as Completed does not mean they stopped working. This is often
 very important for booking time data into external systems.
 
 Hence it is crucial that the application still offers the "Stop Working" button for users
 that are working on completed activities. Or one might consider a more flashy alternative: A
 warning box popping up, saying "Please stop work on already completed activity! (tap HERE when you have
 stopped)"
-
