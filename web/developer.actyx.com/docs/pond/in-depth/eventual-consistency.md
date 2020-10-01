@@ -39,7 +39,7 @@ intended: For example, some misunderstanding causes two people to start working 
 even though just one of them was supposed to do it. After a couple of confused phone calls, the
 situation is finally cleared up.
 
-### When faced with contradictory information, make it visible!
+## When faced with contradictory information, make it visible!
 
 An ActyxOS app can be a huge improvement over confused phone calls, by making contradictions _visible_ and
 offering help with resolving botched situations. But the actual resolving, in the real world, must
@@ -67,7 +67,12 @@ in the UI via some small indicator.
 Do note however that connectivity quality is only ever something after the fact! Even if
 connectivity was good just one second ago, it may be gone since half a second.
 
-<!-- # True Consistency -->
+# True Consistency
 
-<!-- If you really need true consistency, you can use the event model to implement your own consensus -->
-<!-- algorithm.  -->
+Complete consistency can – at the cost of availability – be achieved by using so-called "consensus
+algorithms." In theory, ActyxOS’ eventually consistent event system is entirely sufficient for
+building consensus algorithms on top of it. However, the implementation is not trivial.
+
+A future release of ActyxOS will ship with a native consensus implementation akin to the [Paxos
+Protocol](https://en.wikipedia.org/wiki/Paxos_(computer_science)). Based on that will be offered
+high-level interfaces that hide the underlying complexity of achieving consensus.
