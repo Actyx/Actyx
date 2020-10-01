@@ -62,10 +62,11 @@ Hence
 
 The `Pond` offers a function called `getNodeConnectivity` which gives information about how well
 connected the underlying ActyxOS currently is. It’s a good idea to make this information available
-in the UI via some small indicator.
+in the UI via some small indicator ([example](https://github.com/Actyx/industrial-ui/tree/master/src/components/NetworkStatusIcon)).
 
 Do note however that connectivity quality is only ever something after the fact! Even if
-connectivity was good just one second ago, it may be gone since half a second.
+connectivity was good just a second ago, the next message sent may already be lost to a connection
+issue that is starting just now.
 
 # True Consistency
 
@@ -73,6 +74,6 @@ Complete consistency can – at the cost of availability – be achieved by usin
 algorithms." In theory, ActyxOS’ eventually consistent event system is entirely sufficient for
 building consensus algorithms on top of it. However, the implementation is not trivial.
 
-A future release of ActyxOS will ship with a native consensus implementation akin to the [Paxos
-Protocol](https://en.wikipedia.org/wiki/Paxos_(computer_science)). Based on that will be offered
+A future release of ActyxOS will ship with a native consensus implementation akin to
+[Paxos](https://en.wikipedia.org/wiki/Paxos_(computer_science)). Based on that will be offered
 high-level interfaces that hide the underlying complexity of achieving consensus.
