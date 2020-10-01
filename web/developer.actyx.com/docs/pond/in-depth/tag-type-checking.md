@@ -178,10 +178,10 @@ Logically, since we require only either of the two tags to be present on the eve
 events of both associated types. A Fish running on this event set must handle both types in its
 `onEvent`.
 
-A `Where` statement cannot be emitted into. The intent is unclear – what does it mean to emit into
-one tag OR another tag? –, and the type requirement does not match: Even though the associated type
-is `EventFoo | EventBar`, it’s actually incorrect to tag of the events _either_ with both tags!
-`fooTag` may not tag `EventBar`, and `barTag` may not tag `EventFoo`.
+A `Where` statement cannot be used for emission. The intent is unclear: What does it mean to emit
+tagged with one tag OR another tag? And also the type requirement does not match: Even though the
+associated type is `EventFoo | EventBar`, it’s actually incorrect to tag _either_ of the events with
+both tags!  `fooTag` may not tag `EventBar`, and `barTag` may not tag `EventFoo`.
 
 (`fooTag.and(barTag)` fittingly infers `Tag<never>` in this case, meaning it will yield no events and
 allow no events to be emitted, either.)
@@ -189,8 +189,8 @@ allow no events to be emitted, either.)
 ## Types are Ultimately not Guaranteed
 
 All this type-checking is in effect only at compile-time. Events are persistent, and possibly shared
-between different programs, or versions of your program. If you emitted an `EventBar` into `fooTag`
-in the past, it _will_ be passed to `onEvent` even if `where: fooTag`!
+between different programs, or versions of your program. If you emitted an `EventBar` with `fooTag`
+attached in the past, it _will_ be passed to `onEvent`, if `where: fooTag`.
 
 Hence you should take care to implement your `onEvent` somewhat defensively. Below, we outline some
 good architecture practices to keep you safe.
