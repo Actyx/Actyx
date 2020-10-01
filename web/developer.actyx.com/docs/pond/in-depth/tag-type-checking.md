@@ -29,7 +29,7 @@ selection (it extends `Where`) and for emission.
   requires _both_ `foo` and `bar` to be present on an event. (The event may have more tags than
   that and will still match.)
   
-- When used for emission, all the tags are attached to the emitted event. Simple. 
+- When used for emission, all the tags are attached to the emitted event.
 
 `Tags('foo', 'bar')` is a shortcut for `Tag('foo').and(Tag('bar'))`.
 
@@ -219,7 +219,7 @@ export const FooBarEvents: Where<EventFoo | EventBar | EventFooV2> = fooBarTag
 
 // For producers of FooEvent2
 export const emitFooEvent = (pond: Pond, mark: number, details: string) => {
-	const fooEvt: EventFoo2 = { type: 'foo.v2', data: { mark, details } }
+	const fooEvt: EventFooV2 = { type: 'foo.v2', data: { mark, details } }
     return pond.emit(fooBarTag, fooEvt)
 }
 
