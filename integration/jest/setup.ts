@@ -59,7 +59,7 @@ const createNode = async (
               if (Date.now() > 0) {
                 return terminateInstance(ec2, instance.InstanceId!)
               } else {
-                console.log(instance.PublicIpAddress, key.privateKey)
+                console.log('NOT terminating instance', instance.PublicIpAddress, key.privateKey)
                 return Promise.resolve()
               }
             },
