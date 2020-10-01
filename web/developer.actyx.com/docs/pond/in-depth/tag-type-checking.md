@@ -145,7 +145,7 @@ const tags = fooBarTag.and(fooTag) // type is inferred to be Tags<EventFoo>
 
 `fooBarTag` may contain both: `EventFoo` and `EventBar`. But `fooTag` can _only_ contain
 `EventFoo`. So `EventFoo` is the only common type between the two. `and` does detect this
-_type intersection_ between both arguments, and narrow to it!
+_type intersection_ between both arguments, and narrows down the result’s associated type accordingly.
 
 Logically, since `fooTag` is only attached to `EventFoo` instances, and we require `fooTag` to be
 present on the selected events, we can expect to find _no_ `EventBar` instances anymore, when
