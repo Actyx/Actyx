@@ -27,7 +27,7 @@ they will eventually reach agreement.
 
 :::tip
 Even well-connected nodes can be thought of as being partitioned by their network latency. There is no such
-thing as perfect connectivity.
+thing as perfect or instantaneous connectivity.
 :::
 
 # Impact on Application Development
