@@ -74,6 +74,9 @@ mk_scalar!(
 /// So the NodeId is just the 32 bytes of ed25519 public key. Nevertheless you should treat it
 /// as an opaque value.
 ///
+/// The bits of a NodeId should not be assumed to be entirely evenly distributed, so if need
+/// an even distribution for some reason, you would have to hash it.
+///
 /// Values of this type serialize as Base64url multibase strings by default.
 /// Deserialization is supported from binary data or multibase format.
 ///
