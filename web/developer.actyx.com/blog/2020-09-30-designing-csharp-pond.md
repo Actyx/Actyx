@@ -152,7 +152,7 @@ So let’s capture `S` and `E` at the same time:
 FishBuilder.for(fishId, initialState, events1, events2, events3)
     .subscribeTo(events4, handler)
     .build();
-    
+
 // The implementation is not so nice:
 static FishBuilder<S> for<S, E, F, G>(
     FishId fishId,
@@ -178,6 +178,7 @@ class MyState
   MyState updateWith(SomeEvent evt) { /* ... */ };
 }
 ```
+
 However, compile-time and runtime-checks are starting to mix in this approach. Likely it won’t reach
 maximal compile-time safety. We will focus on shipping the slightly more verbose APIs first, since
 everything else must be based on them in any case. Then we will look into how Attributes can improve
