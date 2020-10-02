@@ -18,7 +18,7 @@ Learn about the Actyx platform and the different Actyx products.
 
 If you prefer a more hands-on introduction, check out this tutorial:
 
-- [Tutorial: Intro to Actyx](/home/tutorial.md)
+- [Tutorial: Intro to Actyx](/docs/learn-actyx/tutorial.md)
 
 ### Documentation
 

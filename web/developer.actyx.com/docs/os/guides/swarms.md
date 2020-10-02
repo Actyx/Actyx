@@ -37,7 +37,7 @@ ax settings set --local com.actyx.os/general/swarmKey L2tleS9zd2FybS9wc2svMS4wLj
 ActyxOS will automatically validate the format of the swarm key. If you provide an invalid swarm key, the `ax settings set` command will return an error.
 :::
 
-Alternatively you can set the swarm key in a settings object that you pass to the node. See the [example node settings](https://github.com/Actyx/quickstart/blob/master/misc/local-sample-node-settings.yml#L5) from the [quickstart guide](../../quickstart.md).
+Alternatively you can set the swarm key in a settings object that you pass to the node. See the [example node settings](https://github.com/Actyx/quickstart/blob/master/misc/local-sample-node-settings.yml#L5) from the [quickstart guide](../../learn-actyx/quickstart.md).
 
 ## Remove a node from a swarm
 

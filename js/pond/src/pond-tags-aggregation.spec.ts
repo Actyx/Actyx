@@ -30,7 +30,7 @@ describe('application of commands in the pond', () => {
     subscriptions: Where<string>,
     expectedResult: string[],
   ) => {
-    const pond = await Pond.test()
+    const pond = Pond.test()
 
     const aggregate = Fish.eventsDescending<string>(subscriptions)
 
@@ -77,7 +77,7 @@ describe('application of commands in the pond', () => {
     })
 
     it('should cache based on key', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       const aggregate0 = mkAggregate(Tag('t1'))
 
@@ -97,7 +97,7 @@ describe('application of commands in the pond', () => {
     })
 
     it('should cache based on key, across unsubscribe calls', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       const aggregate = mkAggregate(Tag('t1'))
 
@@ -120,7 +120,7 @@ describe('application of commands in the pond', () => {
     })
 
     it('should permit different aggregations in parallel', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       const aggregate0 = mkAggregate(Tag('t0'))
 
