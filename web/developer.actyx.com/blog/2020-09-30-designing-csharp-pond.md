@@ -1,5 +1,5 @@
 ---
-title: Designing the C# Pond: Union Types
+title: "Designing the C# Pond: Union Types"
 author: Benjamin Sieffert
 author_title: Distributed Systems Engineer at Actyx
 author_url: https://github.com/benjamin-actyx
