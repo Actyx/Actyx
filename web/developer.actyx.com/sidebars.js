@@ -2,21 +2,6 @@ module.exports = {
   homeSidebar: [
     'home/actyx_platform',
     'home/actyx_products',
-    'home/tutorial',
-    {
-      type: 'category', label:
-        'Real-world Tutorial', items: [
-          'home/tutorial/introduction',
-          'home/tutorial/solution-architecture',
-          'home/tutorial/get-started',
-          'home/tutorial/run-the-apps',
-          'home/tutorial/explore-the-apps',
-          'home/tutorial/task-1',
-          'home/tutorial/task-2',
-          'home/tutorial/summary',
-          'home/tutorial/next-steps',
-        ]
-    },
   ],
   osSidebar: [
     {
@@ -193,6 +178,20 @@ module.exports = {
     'learn-actyx/learn-actyx',
     'learn-actyx/quickstart',
     'learn-actyx/tutorial',
+    {
+      type: 'category', label:
+        'Real-world Tutorial', items: [
+          'home/tutorial/introduction',
+          'home/tutorial/solution-architecture',
+          'home/tutorial/get-started',
+          'home/tutorial/run-the-apps',
+          'home/tutorial/explore-the-apps',
+          'home/tutorial/task-1',
+          'home/tutorial/task-2',
+          'home/tutorial/summary',
+          'home/tutorial/next-steps',
+        ]
+    },
   ],
   faqSidebar: [
     'faq/supported-programming-languages',
