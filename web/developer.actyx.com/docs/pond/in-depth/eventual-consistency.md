@@ -68,11 +68,11 @@ Do note however that connectivity quality can only be measured for the past! Eve
 network message reached its destination within a millisecond, the next one may already get dropped –
 it’s impossible to predict with certainty.
 
-# True Consistency
+# True Consistency (Strict Serialisability)
 
-True consistency can – at the cost of availability – be achieved by using so-called "consensus
-algorithms." In theory, ActyxOS’ eventually consistent event system is entirely sufficient for
-building consensus algorithms on top of it. However, the implementation is not trivial.
+True consistency can – at the cost of availability – be achieved by using _consensus algorithms_. In
+theory, ActyxOS’ eventually consistent event system is entirely sufficient for building consensus
+algorithms on top of it. However, the implementation is not trivial.
 
 A future release of ActyxOS will ship with a native consensus implementation akin to
 [Paxos](https://en.wikipedia.org/wiki/Paxos_(computer_science)). Based on that will be offered
