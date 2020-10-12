@@ -17,6 +17,7 @@ jobs:
           MODULE: "build"
         klk-opc-ua:
           MODULE: "klk-opc-ua"
+        # TODO Hammerite is being built twice: once here and once in the Containers
         connectors:
           MODULE: "connectors"
     workspace:
@@ -29,7 +30,7 @@ jobs:
 
       - script: |
 
-          # The reason we're using this method and not the Node.js tool installer (https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/tool/node-js?view=azure-devops) 
+          # The reason we're using this method and not the Node.js tool installer (https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/tool/node-js?view=azure-devops)
           # is so we can use the current `.nvmrc`
           curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
           export NVM_DIR="$HOME/.nvm"
@@ -40,20 +41,20 @@ jobs:
           # comment/uncomment one another if one stops working for some reason
 
           if ! [ -x "$(command -v sbt)" ]; then
-          # 1. Get SBT via SDKMAN - https://www.scala-sbt.org/1.x/docs/Installing-sbt-on-Linux.html 
-            echo "Attempting to install SBT using SDKMAN"
-            curl -s "https://get.sdkman.io" | bash
-            source "$HOME/.sdkman/bin/sdkman-init.sh" && sdk version
-            sdk list java
-            # Recommended version was 11.0.4.hs-adpt but it's gone from SDKMAN by now, so using one above
-            sdk install java 11.0.5.hs-adpt
-            sdk install sbt
+          # 1. Get SBT via SDKMAN - https://www.scala-sbt.org/1.x/docs/Installing-sbt-on-Linux.html
+          #  echo "Attempting to install SBT using SDKMAN"
+          #  curl -s "https://get.sdkman.io" | bash
+          #  source "$HOME/.sdkman/bin/sdkman-init.sh" && sdk version
+          #  sdk list java
+          #  # Recommended version was 11.0.4.hs-adpt but it's gone from SDKMAN by now, so using one above
+          #  sdk install java 11.0.8.hs-adpt
+          #  sdk install sbt
 
-          # 2. Get SBT via Debiat apt repo 
-          # echo "Attempting to install SBT using the Debian SBT APT repo (bintray)"
-          # echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee /etc/apt/sources.list.d/sbt.list
-          # sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
-          # sudo apt-get update && sudo apt-get install sbt -y
+          # 2. Get SBT via Debian apt repo
+          echo "Attempting to install SBT using the Debian SBT APT repo (bintray)"
+          echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee /etc/apt/sources.list.d/sbt.list
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
+          sudo apt-get update && sudo apt-get install sbt -y
 
           else
             echo "SBT already installed, skipping install."
@@ -63,6 +64,7 @@ jobs:
 
       - template: steps-bootstrap.yml
 
+      # TODO Change /home/builder to $HOME below?
       - script: |
           source "$NVM_DIR/nvm.sh"
           nvm use

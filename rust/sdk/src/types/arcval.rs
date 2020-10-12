@@ -242,8 +242,7 @@ impl Abomonation for ArcVal<str> {
             return None;
         }
         let (mine, bytes) = bytes.split_at_mut(*len);
-        let arc: Arc<str> =
-            str::from_utf8_unchecked(slice::from_raw_parts(mine.as_ptr(), *len)).into();
+        let arc: Arc<str> = str::from_utf8_unchecked(slice::from_raw_parts(mine.as_ptr(), *len)).into();
         let garbage = mem::replace(&mut self.0, arc);
         mem::forget(garbage);
         Some(bytes)

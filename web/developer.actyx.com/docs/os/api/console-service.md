@@ -25,7 +25,7 @@ The Console Service currently only supports local access to logs, i.e. when you 
 
 Traditionally, logs were produced, persisted, and consumed as lines of text. This way of logging is referred to as _unstructured logging_. A traditional log file might look like this:
 
-```bash
+```
 # File app.log
 MyApp-1.0.3::console | 2019-09-11T21:46:12.106Z [info] Starting app...
 MyApp-1.0.3::console | 2019-09-11T21:46:12.113Z [debug] Setting route '/activities'
@@ -88,7 +88,7 @@ Unstructured logging is supported for both Docker apps and WebView apps.
 
 #### Docker apps
 
-The business logic running in a docker container can output to [stdout](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)) or [stderr](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)). The ActyxOS [Docker Runtime](../advances-guides/app-runtimes.md#docker-runtime) automatically captures these outputs and transforms them into structured log messages of the following standard shape:
+The business logic running in a docker container can output to [stdout](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)) or [stderr](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)). The ActyxOS [Docker Runtime](/docs/os/advanced-guides/actyxos-on-docker) automatically captures these outputs and transforms them into structured log messages of the following standard shape:
 
 ```javascript
 {
@@ -190,7 +190,7 @@ If "logTimestamp" is omitted the Console Service will add it automatically for y
 
 ### Accessing log messages
 
-Until the release of the Actyx Console in 2020, logs can only be accessed using the [Actyx CLI](../../cli.md) with the `ax logs` command. You can either retrieve all logs on the edge device or tail all logs generated from the time you execute the command.
+Until the release of the Actyx Console in 2020, logs can only be accessed using the [Actyx CLI](/docs/cli/getting-started) with the `ax logs` command. You can either retrieve all logs on the edge device or tail all logs generated from the time you execute the command.
 
 :::note
 Until the release of the Actyx Console, logs can only be accessed locally. In order for this to work, you must use the `--local` flag when calling Actyx CLI commands.
@@ -198,7 +198,7 @@ Until the release of the Actyx Console, logs can only be accessed locally. In or
 
 Example:
 
-```bash
+```
 ax logs --tail --local EdgeDevice1
 > MyApp-1.0.3::console | 2019-09-11T21:46:12.106Z [info] Starting app...
 > MyApp-1.0.3::console | 2019-09-11T21:46:12.113Z [debug] Setting route '/activities'

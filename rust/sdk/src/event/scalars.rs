@@ -160,9 +160,7 @@ impl TryFrom<&TagSet> for Semantics {
             })
             .collect::<Vec<_>>();
         if sem.len() == 1 {
-            sem.into_iter()
-                .next()
-                .ok_or_else(|| anyhow!("cannot happen"))
+            sem.into_iter().next().ok_or_else(|| anyhow!("cannot happen"))
         } else {
             Err(anyhow!("no unique semantics tag found"))
         }
@@ -182,10 +180,7 @@ impl TryFrom<&TagSet> for FishName {
             })
             .collect::<Vec<_>>();
         if names.len() == 1 {
-            names
-                .into_iter()
-                .next()
-                .ok_or_else(|| anyhow!("cannot happen"))
+            names.into_iter().next().ok_or_else(|| anyhow!("cannot happen"))
         } else {
             Err(anyhow!("no unique fish_name tag found"))
         }
@@ -205,21 +200,7 @@ impl TryFrom<&TagSet> for FishName {
 /// assert_eq!(timestamp.as_i64() * 1000, date_time.timestamp_nanos());
 /// assert_eq!(TimeStamp::from(date_time), timestamp);
 /// ```
-#[derive(
-    Copy,
-    Clone,
-    Debug,
-    Default,
-    From,
-    Into,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Serialize,
-    Deserialize,
-)]
+#[derive(Copy, Clone, Debug, Default, From, Into, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct TimeStamp(u64);
 
@@ -229,9 +210,7 @@ impl TimeStamp {
     }
     pub fn now() -> TimeStamp {
         let now = SystemTime::now();
-        let duration = now
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went waaaay backwards");
+        let duration = now.duration_since(UNIX_EPOCH).expect("Time went waaaay backwards");
         TimeStamp::new(duration.as_micros() as u64)
     }
     #[deprecated(since = "0.2.1", note = "use .into()")]
@@ -245,10 +224,7 @@ impl TimeStamp {
 
 impl Into<DateTime<Utc>> for TimeStamp {
     fn into(self) -> DateTime<Utc> {
-        Utc.timestamp(
-            (self.0 / 1_000_000) as i64,
-            (self.0 % 1_000_000) as u32 * 1000,
-        )
+        Utc.timestamp((self.0 / 1_000_000) as i64, (self.0 % 1_000_000) as u32 * 1000)
     }
 }
 
@@ -285,21 +261,7 @@ impl Add<u64> for TimeStamp {
 ///
 /// - an event is emitted
 /// - a heartbeat is received
-#[derive(
-    Copy,
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Serialize,
-    Deserialize,
-    Default,
-    From,
-    Into,
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default, From, Into)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct LamportTimestamp(u64);
 
@@ -407,8 +369,7 @@ impl Display for SourceId {
 
 impl<'de> Deserialize<'de> for SourceId {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<SourceId, D::Error> {
-        nonempty_string(deserializer)
-            .and_then(|arc| SourceId::try_from(&*arc).map_err(D::Error::custom))
+        nonempty_string(deserializer).and_then(|arc| SourceId::try_from(&*arc).map_err(D::Error::custom))
     }
 }
 

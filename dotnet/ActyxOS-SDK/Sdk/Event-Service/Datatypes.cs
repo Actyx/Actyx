@@ -53,7 +53,7 @@ namespace Actyx
         public object Payload { get; set; }
     }
 
-    public interface ISuttMessageVisitor
+    public interface ISubscribeMonotonicMessageVisitor
     {
         void Visit(State stateMsg);
 
@@ -63,11 +63,11 @@ namespace Actyx
     }
 
     [JsonConverter(typeof(JsonSubtypes), "Type")]
-    public interface ISuttMessage
+    public interface ISubscribeMonotonicMessage
     {
         string Type { get; }
 
-        void Accept(ISuttMessageVisitor visitor);
+        void Accept(ISubscribeMonotonicMessageVisitor visitor);
     }
 
     public enum SnapshotCompression
@@ -102,24 +102,24 @@ namespace Actyx
         public string AppId { get; set; }
     }
 
-    public class State : ISuttMessage
+    public class State : ISubscribeMonotonicMessage
     {
         public string Type { get; } = "state";
 
         [JsonProperty("snapshot")]
         public RetrievedSnapshot Snapshot { get; protected set; }
 
-        public void Accept(ISuttMessageVisitor handler)
+        public void Accept(ISubscribeMonotonicMessageVisitor handler)
         {
             handler.Visit(this);
         }
     }
 
-    public class Event : ISuttMessage
+    public class Event : ISubscribeMonotonicMessage
     {
         public string Type { get; } = "event";
 
-        // Only relevant if the event was retrieved via subscribeUntilTimeTravel endpoint.
+        // Only relevant if the event was retrieved via subscribe_monotonic endpoint.
         [JsonProperty("caughtUp")]
         public bool CaughtUp { get; protected set; } = true;
 
@@ -132,20 +132,20 @@ namespace Actyx
         [JsonProperty("payload")]
         public JToken Payload { get; protected set; }
 
-        public void Accept(ISuttMessageVisitor handler)
+        public void Accept(ISubscribeMonotonicMessageVisitor handler)
         {
             handler.Visit(this);
         }
     }
 
-    public class TimeTravel : ISuttMessage
+    public class TimeTravel : ISubscribeMonotonicMessage
     {
         public string Type { get; } = "timeTravel";
 
         [JsonProperty("newStart")]
         public EventKey NewStart { get; protected set; }
 
-        public void Accept(ISuttMessageVisitor handler)
+        public void Accept(ISubscribeMonotonicMessageVisitor handler)
         {
             handler.Visit(this);
         }

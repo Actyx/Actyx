@@ -1,6 +1,5 @@
 module.exports = {
   homeSidebar: [
-    'home/welcome',
     'home/actyx_platform',
     'home/actyx_products',
   ],
@@ -15,14 +14,16 @@ module.exports = {
       ]
     },
     {
-      type: 'category', label:
-        'Getting Started', items: [
+      type: 'category', 
+      label: 'Getting\u00a0Started', 
+      items: [
           'os/getting-started/installation',
           'os/getting-started/licensing',
         ]
     }, {
-      type: 'category', label:
-        'Guides', items: [
+      type: 'category', 
+      label: 'Guides', 
+      items: [
           'os/guides/overview',
           'os/guides/swarms',
           'os/guides/building-apps',
@@ -30,8 +31,9 @@ module.exports = {
           'os/guides/event-streams',
         ]
     }, {
-      type: 'category', label:
-        'Advanced Guides', items: [
+      type: 'category', 
+      label: 'Advanced\u00a0Guides', 
+      items: [
           'os/advanced-guides/overview',
           'os/advanced-guides/actyxos-on-android',
           'os/advanced-guides/actyxos-on-docker',
@@ -43,15 +45,17 @@ module.exports = {
           'os/advanced-guides/provided-security',
         ]
     }, {
-      type: 'category', label:
-        'Theoretical Foundation', items: [
+      type: 'category', 
+      label:  'Theoretical\u00a0Foundation', 
+      items: [
           'os/theoretical-foundation/distributed-systems',
           'os/theoretical-foundation/event-sourcing',
           'os/theoretical-foundation/actyxos-and-cap',
         ]
     }, {
-      type: 'category', label:
-        'API Reference', items: [
+      type: 'category', 
+      label: 'API\u00a0Reference', 
+      items: [
           'os/api/overview',
           'os/api/event-service',
           'os/api/blob-service',
@@ -60,29 +64,31 @@ module.exports = {
           'os/api/app-manifest-schema',
         ]
     }, {
-      type: 'category', label:
-        'SDKs', items: [
+      type: 'category', 
+      label: 'SDKs', 
+      items: [
           'os/sdks/rust',
           'os/sdks/js-ts',
         ]
     }, {
-      type: 'category', label:
-        'Tools', items: [
+      type: 'category', 
+      label: 'Tools', 
+      items: [
           'os/tools/node-manager',
           {
             type: 'category',
-            label: 'Actyx CLI',
+            label: 'Actyx\u00a0CLI',
             items: [
               'cli/getting-started',
               'cli/ax',
               {
-                type: 'category', label: 'ax nodes', items: [
+                type: 'category', label: 'ax\u00a0nodes', items: [
                   'cli/nodes/nodes',
                   'cli/nodes/ls',
                 ]
               },
               {
-                type: 'category', label: 'ax apps', items: [
+                type: 'category', label: 'ax\u00a0apps', items: [
                   'cli/apps/apps',
                   'cli/apps/ls',
                   'cli/apps/validate',
@@ -94,7 +100,7 @@ module.exports = {
                 ]
               },
               {
-                type: 'category', label: 'ax settings', items: [
+                type: 'category', label: 'ax\u00a0settings', items: [
                   'cli/settings/settings',
                   'cli/settings/scopes',
                   'cli/settings/schema',
@@ -104,13 +110,13 @@ module.exports = {
                 ]
               },
               {
-                type: 'category', label: 'ax logs', items: [
+                type: 'category', label: 'ax\u00a0logs', items: [
                   'cli/logs/logs',
                   'cli/logs/tail',
                 ]
               },
               {
-                type: 'category', label: 'ax swarms', items: [
+                type: 'category', label: 'ax\u00a0swarms', items: [
                   'cli/swarms/swarms',
                   'cli/swarms/keygen',
                 ]
@@ -123,7 +129,7 @@ module.exports = {
     'os/release-notes'
   ],
   pondv1Sidebar: {
-    'Versions (current: v1)': [
+    'Versions\u00a0(current:\u00a0v1)': [
       { type: 'link', href: '/docs/pond/introduction', label: 'v2' },
     ],
     'Actyx Pond': [
@@ -143,16 +149,18 @@ module.exports = {
     ],
   },
   pondSidebar: [{
-    type: 'category', label:
-      'Versions (current: v2)', items: [
+    type: 'category', 
+    label: 'Versions\u00a0(current:\u00a0v2)', 
+    items: [
         { type: 'link', href: '/docs/pond-v1/getting-started', label: 'v1' },
       ]
   },
     'pond/introduction',
     'pond/getting-started',
   {
-    type: 'category', label:
-      'Learning the Pond in 10 steps', items: [
+    type: 'category', 
+    label: 'Learning\u00a0the\u00a0Pond\u00a0in\u00a010\u00a0steps', 
+    items: [
         'pond/guides/hello-world',
         'pond/guides/events',
         'pond/guides/local-state',
@@ -173,6 +181,11 @@ module.exports = {
 	'pond/in-depth/do-not-ignore-events',
       ]
   },
+  ],
+  learnActyxSidebar: [
+    'learn-actyx/learn-actyx',
+    'learn-actyx/quickstart',
+    'learn-actyx/tutorial',
   ],
   faqSidebar: [
     'faq/supported-programming-languages',

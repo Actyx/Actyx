@@ -1,7 +1,7 @@
 [![Latest Version](https://img.shields.io/crates/v/actyxos_sdk.svg)](https://crates.io/crates/actyxos_sdk)
 [![Rust Documentation](https://docs.rs/actyxos_sdk/badge.svg)](https://docs.rs/actyxos_sdk)
 
-# <img src="https://developer.actyx.com/img/logo.svg" height="32px"> ActyxOS SDK
+# <img src="https://developer.actyx.com/images/rust-sdk.png" height="32px"> ActyxOS SDK
 
 [ActyxOS](https://developer.actyx.com/docs/os/introduction) makes it easy to run distributed
 applications on multiple nodes. It is a piece of software that allows you to run your own apps

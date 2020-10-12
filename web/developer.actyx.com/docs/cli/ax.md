@@ -8,7 +8,7 @@ title: ax (base command)
 
 Command                      | description|
 -----------------------------|------------|
-[ax nodes](nodes/nodes) | Manage ActyxOS nodes |
+[ax nodes](nodes/nodes.md) | Manage ActyxOS nodes |
 [ax apps](apps/apps) | Manage ActyxOS apps |
 [ax settings](settings/settings)   | Manage ActyxOS node or app settings |
 [ax logs](logs/logs) | Manage ActyxOS node and app logs |

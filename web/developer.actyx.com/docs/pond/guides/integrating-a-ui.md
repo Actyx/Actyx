@@ -9,8 +9,8 @@ So far we have concentrated on the internals of a fish, on writing the business 
 An important aspect of many apps is the involvement of human operators, which requires the presentation of a UI that they can see and interact with.
 
 For a UI we need two things: a current state that determines what is shown, and a way to emit events for a fish to
-change its state.  We have seen how to observe a fish’s state in the [Hello world](hello-world) section already, and how
-to modify it when we discussed [emitting events](state-effects).
+change its state.  We have seen how to observe a fish’s state in the [Hello world](/docs/pond/guides/hello-world) section already, and how
+to modify it when we discussed [emitting events](/docs/pond/guides/state-effects).
 
 ```typescript
 const myRoomTags = Tag('chatRoom').withId('my-room')

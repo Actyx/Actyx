@@ -30,12 +30,6 @@ module.exports = {
       },
       links: [
         {
-          to: 'docs/quickstart',
-          activeBasePath: 'docs/quickstart',
-          label: 'Quickstart',
-          position: 'left',
-        },
-        {
           to: 'docs/os/introduction',
           activeBasePath: 'docs/os/',
           label: 'ActyxOS',
@@ -45,6 +39,12 @@ module.exports = {
           to: 'docs/pond/introduction',
           activeBasePath: 'docs/pond/',
           label: 'Actyx\u00a0Pond',
+          position: 'left',
+        },
+        {
+          to: 'docs/learn-actyx/learn-actyx',
+          activeBasePath: 'learn-actyx/learn-actyx',
+          label: 'Learn\u00a0Actyx',
           position: 'left',
         },
         {
@@ -63,7 +63,7 @@ module.exports = {
       logo: {
         alt: 'Actyx Developer',
         src: 'img/header.svg',
-        href: 'www.developer.actyx.com'
+        href: 'https://developer.actyx.com'
       },
       style: 'light',
       links: [
@@ -136,7 +136,7 @@ module.exports = {
     prism: {
       theme: require('prism-react-renderer/themes/palenight'),
       darkTheme: require('prism-react-renderer/themes/dracula'),
-      additionalLanguages: ['rust'],
+      additionalLanguages: ['rust','csharp'],
     },
     googleAnalytics: {
       trackingID: 'UA-102758359-7',

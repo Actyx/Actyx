@@ -25,8 +25,8 @@ use serde::{
 use std::fmt::{self, Display};
 use std::iter::{Product, Sum};
 use std::ops::{
-    Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Rem, RemAssign, Shl, ShlAssign, Shr,
-    ShrAssign, Sub, SubAssign,
+    Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Rem, RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub,
+    SubAssign,
 };
 
 /// This is a helper type that allows JSON numbers to be decoded in a fashion
@@ -400,10 +400,7 @@ mod tests {
         let js = json!({"x": 6213412, "y": 3.1415926});
         let s = serde_json::from_value::<S>(js).unwrap();
         assert_eq!(s.x, FixNum::panicking(6213412));
-        assert_eq!(
-            s.y.unwrap(),
-            FixedI128::<U10>::from_bits(0b11__00100_10001).into()
-        );
+        assert_eq!(s.y.unwrap(), FixedI128::<U10>::from_bits(0b11__00100_10001).into());
         assert_eq!(
             s.x + FixedI128::<U5>::from_num(0.1),
             FixedI128::<U5>::from_bits(0b101_11101_10011_11001_00100__00011).into()
@@ -431,9 +428,7 @@ mod tests {
     #[cfg(feature = "dataflow")]
     pub fn must_abomonate() {
         let mut s = S {
-            x: FixNum(FixedI128::<U5>::from_bits(
-                0b101_11101_10011_11001_00100__00011,
-            )),
+            x: FixNum(FixedI128::<U5>::from_bits(0b101_11101_10011_11001_00100__00011)),
             y: Some(FixNum(FixedI128::<U10>::from_bits(0b11__00100_10001))),
         };
         let mut bytes = Vec::new();
@@ -455,9 +450,7 @@ mod tests {
     }
 
     fn get_error(v: serde_json::Value) -> String {
-        serde_json::from_value::<FixNum<U110>>(v)
-            .unwrap_err()
-            .to_string()
+        serde_json::from_value::<FixNum<U110>>(v).unwrap_err().to_string()
     }
 
     #[test]
@@ -502,21 +495,11 @@ mod tests {
         assert_eq!(!x, FixNum::panicking(-7.875000001));
         assert_eq!(-x, FixNum::panicking(-63) >> 3);
 
-        let v: Vec<FixNum<U10>> = vec![
-            FixNum::panicking(1),
-            FixNum::panicking(2),
-            FixNum::panicking(3),
-        ];
+        let v: Vec<FixNum<U10>> = vec![FixNum::panicking(1), FixNum::panicking(2), FixNum::panicking(3)];
         assert_eq!(v.iter().sum::<FixNum<U10>>(), FixNum::panicking(6));
-        assert_eq!(
-            v.clone().into_iter().sum::<FixNum<U10>>(),
-            FixNum::panicking(6)
-        );
+        assert_eq!(v.clone().into_iter().sum::<FixNum<U10>>(), FixNum::panicking(6));
         assert_eq!(v.iter().product::<FixNum<U10>>(), FixNum::panicking(6));
-        assert_eq!(
-            v.clone().into_iter().product::<FixNum<U10>>(),
-            FixNum::panicking(6)
-        );
+        assert_eq!(v.clone().into_iter().product::<FixNum<U10>>(), FixNum::panicking(6));
 
         let v = v.iter().map(|x| x + 3).collect::<Vec<_>>();
         assert_eq!(v.into_iter().sum::<FixNum<U10>>(), FixNum::panicking(15));

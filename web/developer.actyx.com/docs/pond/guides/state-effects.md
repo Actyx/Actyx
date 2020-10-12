@@ -26,7 +26,7 @@ In the case of a single fish, this problem is solved by using _state effects_, a
 The Pond guarantees that the next state effect will only run once the emitted events have been applied to the state.
 
 In the chat room example we may use this to forbid senders from posting a message twice in a row:
-(Let’s say, to avoid `/amsg`-style spam, or just to guard against double-clicked "send" buttons.)
+(Let’s say, to guard against the "send" button being double-clicked.)
 
 ```typescript
 const lastMsgBySender = (sender: string): Fish<string, ChatRoomEvent> => ({
@@ -39,7 +39,6 @@ const lastMsgBySender = (sender: string): Fish<string, ChatRoomEvent> => ({
   fishId: FishId.of('last-message-by', sender, 0),
 })
 
-
 const sendChatMessage = (sender: string, message: string) => {
 
   const checkAndEmit: StateEffect<string, ChatRoomEvent> =
@@ -48,9 +47,10 @@ const sendChatMessage = (sender: string, message: string) => {
         { type: 'messageAdded', message }
     )
 
-    pond.run(lastMsgBySender(sender), checkAndEmit)
+  pond.run(lastMsgBySender(sender), checkAndEmit)
 }
 ```
+
 It must be noted that the validation is only guaranteed *locally*. This makes sense, because one user (sender) will probably not be using several devices at the same time.
 Still, if they were, and those devices were disconnected from each other for a while, then this sender may sneak in the same message multiple times in a row.
 

@@ -134,8 +134,10 @@ describe('runStats', () => {
     // very long-running profiled operation
     const foo = Observable.timer(100000).pipe(profileObservable)
 
+    const subs = []
+
     for (let i = 0; i < 10; i++) {
-      foo.subscribe()
+      subs.push(foo.subscribe())
     }
     // wait a second
     await Observable.timer(1000).toPromise()
@@ -144,6 +146,8 @@ describe('runStats', () => {
     const { pending } = stats.test
     expect('count' in stats.test).toBeFalsy()
     expect(pending).toEqual(10)
+
+    subs.forEach(s => s.unsubscribe())
   })
 
   it('should be roughly correct', () => {
