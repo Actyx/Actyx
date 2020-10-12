@@ -89,7 +89,7 @@ mod i64_from_minus_one {
                 }
             }
             fn visit_u64<E: Error>(self, v: u64) -> Result<Self::Value, E> {
-                if v <= i64::MAX as u64 {
+                if v <= i64::max_value() as u64 {
                     range(Ok(v as i64))
                 } else {
                     Err(E::custom("number too large"))
