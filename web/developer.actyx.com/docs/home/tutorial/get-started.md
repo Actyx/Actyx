@@ -20,7 +20,6 @@ Clone the repository from GitHub:
 git clone https://github.com/Actyx/DemoMachineKit.git
 ```
 
-
 Alternatively, you can download the repository as a Zip file, unzip it, and open it in Android Studio.
 
 <DownloadLink cta={"Download" } link={"https://github.com/Actyx/DemoMachineKit/archive/master.zip" }/>
@@ -29,7 +28,7 @@ Alternatively, you can download the repository as a Zip file, unzip it, and open
 
 Inspect the project. It consists of a few configuration files, as well as  3 apps in the `src` folder: `dashboard`, `task-system`, `wago-connector`. The `fish` folder contains all relevant fish used in the apps.
 
-**[REPLACE IMAGE BELOW]**
+[REPLACE IMAGE BELOW]
 
 <img src={useBaseUrl('static/images/tutorials/dx1-tutorial/project.png')} />
 
@@ -59,7 +58,7 @@ As port 1234 is already taken by the dashboard, it will be assigned to a random 
 - a planned duration
 - a machine
 
-After entering a name and selecting a duration, the `Place task" button will still be greyed out as your system does not know of a machine yet.
+After entering a name and selecting a duration, the `Place task` button will still be greyed out as your system does not know of a machine yet.
 
 In order to let your system know of a new machine, start the wago-connector app:
 
@@ -69,13 +68,13 @@ node:wago-connector:start
 
 Now a field with your machine `Wago` should appear, allowing you to click on `Place task`:
 
-**[REPLACE IMAGE BELOW]**
+[REPLACE IMAGE BELOW]
 
 <img src={useBaseUrl('static/images/tutorials/dx1-tutorial/task-system1.png')} />
 
 After placing the ask, take another look at the dashboard – you should now see a machine, as well as an order:
 
-**[REPLACE IMAGE BELOW]**
+[REPLACE IMAGE BELOW]
 
 <img src={useBaseUrl('static/images/tutorials/dx1-tutorial/dashboard1.png')} />
 
