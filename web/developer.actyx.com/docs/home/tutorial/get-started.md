@@ -53,7 +53,7 @@ For creating orders, lets first start the order creation app:
 npm run ui:task-system:start
 ```
 
-As port 1234 is already taken by the dashboard, it will be assigned to a random port – just check the output in your terminal and, in a different browser window, navigate to `localhost:<PORT>`. You should now be able to create a order and associate the following information with it:
+As port 1234 is already taken by the dashboard, it will be assigned to a random port – just check the output in your terminal and, in a different browser window, navigate to `localhost:<PORT>`. You should now be able to create an order and associate the following information with it:
 
 - a name
 - a planned duration
@@ -73,7 +73,7 @@ Now a field with your machine `Wago` should appear, allowing you to click on `Pl
 
 <img src={useBaseUrl('static/images/tutorials/dx1-tutorial/task-system1.png')} />
 
-After placing the ask, take another look at the dashboard – you should now see a machine, as well as a order:
+After placing the ask, take another look at the dashboard – you should now see a machine, as well as an order:
 
 **[REPLACE IMAGE BELOW]**
 

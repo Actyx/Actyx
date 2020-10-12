@@ -21,7 +21,7 @@ This tutorial is divided into several sections:
 
 ## Introduction
 
-We will cover a typical production use case in this topic:
+We will cover a typical production use case in this tutorial:
 
 <img src={useBaseUrl('static/images/tutorials/dx1-tutorial/use-case.png')} />
 
