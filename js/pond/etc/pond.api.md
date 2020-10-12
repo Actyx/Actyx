@@ -243,8 +243,8 @@ export type Pond = {
 export const Pond: {
     default: () => Promise<Pond>;
     of: (connectionOpts: Partial<WsStoreConfig>, opts: PondOptions) => Promise<Pond>;
-    mock: (opts?: PondOptions | undefined) => Promise<Pond>;
-    test: (opts?: PondOptions | undefined) => Promise<TestPond>;
+    mock: (opts?: PondOptions | undefined) => Pond;
+    test: (opts?: PondOptions | undefined) => TestPond;
 };
 
 // @public

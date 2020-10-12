@@ -27,18 +27,19 @@ On the flipside, a Fish’s `onEvent` is type-checked to cover _at least_ all th
 by its subscription set.
 
 ```typescript
-const tagA = Tag<EventA>('A')
-const tagB = Tag<EventB>('B')
+const UserTag = Tag<UserEvent>('user')
+const MachineTag = Tag<MachineEvent>('machine')
 
 // Requiring either one of the tags means that the fish must have handling for the complete set
-const whereAOrB: Where<EventA | EventB> = tagA.or(tagB)
+const whereUserOrMachine: Where<UserEvent | MachineEvent> = UserTag.or(MachineTag)
 
-// Requiring both tags means the fish must only have handling for the intersection of their types
-const whereAAndB: Where<Extract<EventA, EventB>> = tagA.and(tagB)
+// Requiring both tags means the fish must only have handling for
+// Types that are common to both Union Types
+const whereUserAndMachine: Where<Extract<MachineEvent, UserEvent>> = UserTag.and(MachineTag)
 ```
 
 :::note
-In a future version ActyxOS will support the registration of event schemata for event streams, allowing types to be checked across nodes and apps. This will include compile-time declarations for TypeScript as well as runtime checks for all events passed into the Event Service API.
+In a future version ActyxOS will support the registration of event schemata for event streams, allowing types to be checked across nodes and apps. This will include compile-time declarations for TypeScript as well as runtime checks for all events passed into the Event Service API. For now, you can use the [typed tag](/docs/pond/guides/typed-tags) query API to gain better type guarantees within the Pond app itself.
 :::
 
 Static type information also gives you some measure of control over the evolution of your event types:

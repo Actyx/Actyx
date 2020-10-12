@@ -413,9 +413,6 @@ mod tests {
         t.remove(&a);
         assert_eq!(t, tags!("c", "b"));
 
-        assert_eq!(
-            vec![a, b, c].into_iter().collect::<TagSet>(),
-            tags!("a", "b", "c")
-        );
+        assert_eq!(vec![a, b, c].into_iter().collect::<TagSet>(), tags!("a", "b", "c"));
     }
 }

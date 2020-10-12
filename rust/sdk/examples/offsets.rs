@@ -19,9 +19,7 @@ pub async fn main() -> Result<(), EventServiceError> {
     // all events matching the given subscription
     // sorted backwards, i.e. youngest to oldest
     let sub = vec![Subscription::wildcard(semantics!("MyFish"))];
-    let mut events = service
-        .query_upto(offsets, sub, Order::LamportReverse)
-        .await?;
+    let mut events = service.query_upto(offsets, sub, Order::LamportReverse).await?;
 
     // print out the payload of each event
     // (cf. Payload::extract for more options)

@@ -13,17 +13,21 @@ Welcome to the Actyx Developer Website! On this website you can find all the res
 
 Learn about the Actyx platform and the different Actyx products.
 
-- [Introduction to the Actyx Platform](home/actyx_platform.md)
-- [Actyx Platform Products](home/actyx_products.md)
+- [Introduction to the Actyx Platform](/home/actyx_platform.md)
+- [Actyx Platform Products](/home/actyx_products.md)
+
+If you prefer a more hands-on introduction, check out this tutorial:
+
+- [Tutorial: Intro to Actyx](/docs/learn-actyx/tutorial.md)
 
 ### Documentation
 
 Explore the Actyx products further and learn how to use them.
 
-- [ActyxOS](os/introduction.md)
-- [Actyx Pond](pond/getting-started.md)
-- [Actyx CLI](cli/getting-started.md)
-- [ActyxOS Node Manager](os/tools/node-manager.md)
+- [ActyxOS](/os/introduction.md)
+- [Actyx Pond](/pond/getting-started.md)
+- [Actyx CLI](/cli/getting-started.md)
+- [ActyxOS Node Manager](/os/tools/node-manager.md)
 
 ### Getting Started
 

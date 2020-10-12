@@ -32,6 +32,7 @@ jobs:
       - template: steps/actyxos-rust-sdk.yml
 
   # The following builds intentionally don't depend on `rtmaster` to speed up overall build times.
+  # TODO However, we're building store-lib multiple times: once for each of these, once for the actual store container and once for the actyxOsBinaries below (and SCCACHE sometimes does not work)
   - job: androidShellApp
     dependsOn: getBuildString
     variables:
@@ -170,6 +171,7 @@ jobs:
       - template: steps/windows-installers.yml
 
   - job: hammerite
+    # TODO Why does this depend on actyxOsContainers? Shouldn't it just depend on the specific ada-clir container?
     dependsOn: [getBuildString, actyxOsContainers]
     variables:
       BUILD_STRING: $[ dependencies.getBuildString.outputs['setBuildString.BUILD_STRING'] ]

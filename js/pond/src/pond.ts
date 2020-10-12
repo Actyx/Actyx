@@ -506,7 +506,7 @@ const mkPond = async (connectionOpts: Partial<WsStoreConfig>, opts: PondOptions)
   return pondFromServices(services, opts)
 }
 
-const mkMockPond = async (opts?: PondOptions): Promise<Pond> => {
+const mkMockPond = (opts?: PondOptions): Pond => {
   const opts1: PondOptions = opts || {}
   const services = mockSetup()
   return pondFromServices(services, opts1)
@@ -516,7 +516,7 @@ const mkMockPond = async (opts?: PondOptions): Promise<Pond> => {
 export type TestPond = Pond & {
   directlyPushEvents: (events: TestEvent[]) => void
 }
-const mkTestPond = async (opts?: PondOptions): Promise<TestPond> => {
+const mkTestPond = (opts?: PondOptions): TestPond => {
   const opts1: PondOptions = opts || {}
   const eventStore = EventStore.test(SourceId.of('TEST'))
   const snapshotStore = SnapshotStore.inMem()
