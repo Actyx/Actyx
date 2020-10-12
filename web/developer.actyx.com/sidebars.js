@@ -173,6 +173,12 @@ module.exports = {
         'pond/guides/integrating-a-ui',
       ]
   },
+  {
+    type: 'category', label:
+      'Pond In-Depth', items: [
+        'pond/in-depth/tag-type-checking',
+      ]
+  },
   ],
   learnActyxSidebar: [
     'learn-actyx/learn-actyx',

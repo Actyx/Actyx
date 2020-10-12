@@ -9,11 +9,10 @@ const StrapWrapper = styled.div`
   color: ${defaults.colors.primary};
   margin-top: 7px;
   margin-bottom: -92px;
-`
-
+`;
 
 type Props = Readonly<{
-  strap: string
+  strap: string;
 }>;
 
 /*
@@ -27,6 +26,4 @@ Example:
 # Building a chat app with Actyx Pond
 
 */
-export const Strap = ({ strap }: Props) => (
-    <StrapWrapper>{strap}</StrapWrapper>
-);
+export const Strap = ({ strap }: Props) => <StrapWrapper>{strap}</StrapWrapper>;
