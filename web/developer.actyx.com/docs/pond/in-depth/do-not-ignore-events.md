@@ -42,6 +42,7 @@ type ActivityEvent = WorkStarted | WorkStopped | Completed
 ```
 
 Here is a good way to aggregate these events into a state for the activity:
+
 ```ts
 type ActivityState = {
   activeWorkerIds: Record<string, boolean>
