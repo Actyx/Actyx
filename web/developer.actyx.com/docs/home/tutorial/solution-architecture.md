@@ -18,8 +18,9 @@ The above picture shows how the solution would look like in a production-scenari
 - A machine gateway that starts and finishes production orders and collects machine data
 - A mobile phone or tablet that displays a dashboard
 
-As you might not have Android mobile phones or tablets available, we will first run the Order Import app as well as the Dashboard app on only one ActyxOS node: your PC. The functionality is the same, no matter where your apps are run.
+As you might not have Android mobile phones and a machine gateway available, you will run all apps on only one ActyxOS node in this tutorial: your development machine. The functionality is the same, no matter where your apps are run. In the last section of this tutorial, we will point you to documentation on how to pacakge and deploy these apps to actual devices.
+
 
 :::info
-In the last (optional) chapter of this tutorial, you will then package and deploy these apps to actual Android devices.
+Add info about running ActyxOS in development mode, and running apps in the browser/node vs. on ActyxOS runtimes
 :::

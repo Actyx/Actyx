@@ -184,7 +184,6 @@ module.exports = {
           'home/tutorial/introduction',
           'home/tutorial/solution-architecture',
           'home/tutorial/get-started',
-          'home/tutorial/run-the-apps',
           'home/tutorial/explore-the-apps',
           'home/tutorial/task-1',
           'home/tutorial/task-2',

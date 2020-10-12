@@ -7,14 +7,18 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 
-In this tutorial, you are going to learn how a real-world production use case is built with the Actyx Platform. The techniques you’ll learn in the tutorial are fundamental to building ActyxOS apps, and mastering it will give you a deep understanding of the Actyx Platform.
+Welcome to the Advanced Tutorial. You are going to learn advanced Actyx Pond programming concepts by implementing a simplified real-world production use case with the Actyx Platform.
 
 This tutorial is divided into several sections:
 
 - Solution architecture
-- Setup 
-- Run the apps on your development machine
-- TODO
+- Run the apps
+- Getting started
+- Explore the code behind the apps
+- Task 1: TBD
+- Task 2: TBD
+- Summary
+- Next steps
 
 ## Introduction
 
@@ -24,12 +28,17 @@ We will cover a typical production use case in this topic:
 
 ## What you need
 
+To understand the Advanced ActyxOS Tutorial, you should know the fundamentals of how to build an ActyxOS app using the Actyx Pond. This tutorial builds on skills taught in the ActyxOS Chat app tutorial **(TODO add link)**. Specifically, you should know how to do the following:
+
+- Start ActyxOS in Development Mode
+- Configure node settings and run ActyxOS apps
+- Write a fish in the Actyx Pond framework
+
+In addition, you will need:
+
 - A good understanding of Typescript
+- A good understanding of React
 - 1 - 2 hours time for completing this tutorial
-- TODO: PLC connector
-- ActyxOS running on your development machine **TODO: Add link**
-- ActyxOS Node Manager, or the Actyx CLI, installed on your development machine **TODO: Add link**
-- [Visual Studio Code](https://code.visualstudio.com/)
 
 ## What you'll learn
 
@@ -42,7 +51,6 @@ We will cover a typical production use case in this topic:
 ## What you'll do
 
 - Explore the code behind 3 different ActyxOS apps
-- Package, deploy and run ActyxOS apps
+- Run ActyxOS apps in development mode on your machine
 - Import production order data into ActyxOS
-- Integrate a machine with ActyxOS
-- TODO
+- Integrate a machine PLC with ActyxOS
