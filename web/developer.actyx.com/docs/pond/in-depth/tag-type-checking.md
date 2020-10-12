@@ -178,7 +178,7 @@ events of both associated types. A Fish running on this event set must handle bo
 `onEvent`.
 
 A `Where` statement cannot be used for emission. The intent is unclear: What does it mean to emit
-tagged with one tag OR another tag? And also the type requirement does not match: Even though the
+an event tagged with one tag OR another tag? And also the type requirement does not match: Even though the
 associated type is `EventFoo | EventBar`, it’s actually incorrect to tag _either_ of the events with
 both tags!  `fooTag` may not tag `EventBar`, and `barTag` may not tag `EventFoo`.
 
