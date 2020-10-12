@@ -58,7 +58,7 @@ const lastSeenType: Fish<EventType | undefined, Event> = {
 
 ### Tags
 
-`Tags` is the next more general type. It represents a "set of tags." 
+`Tags` is the next more general type. It represents a "set of tags."
 
 A single tag may turn into `Tags` in two ways.
 
@@ -127,7 +127,6 @@ misplaced bracket and the whole query is significantly altered, perhaps selectin
 because events with tagA and events with tagC don’t overlap. (According to normal boolean logic
 rules, one might expect the `and` to bind stronger than the `or`, but this is very hard to mimic in
 TypeScript evaluation order where `or` will always be called first!)
-
 
 ## Inferred Type Requirements
 
@@ -202,6 +201,7 @@ _runtime_ type checks!
 
 It is strongly recommended you declare each of your tags only _once_: statically, with fixed associated
 types. And then always reference the canonical instance. That is:
+
 ```typescript
 // Somewhere close to the definition of the event types:
 const fooBarTag = Tag<EventFoo | EventBar>('foo-or-bar-event')
@@ -273,7 +273,6 @@ export const emitFooEvent = (pond: Pond, mark: number, details: string) => {
 
 If you want to spare new consumers the burden of supporting the old `EventFoo`, and those consumers
 do not care about missing out on the old data, consider introducing a new tag, as well:
-
 
 ```typescript
 // For consumers that care about old events
