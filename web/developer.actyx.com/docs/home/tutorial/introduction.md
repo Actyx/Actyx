@@ -12,9 +12,8 @@ Welcome to the Advanced Tutorial. You are going to learn advanced Actyx Pond pro
 This tutorial is divided into several sections:
 
 - Solution architecture
-- Run the apps
 - Getting started
-- Explore the code behind the apps
+- Explore the apps
 - Task 1: TBD
 - Task 2: TBD
 - Summary
