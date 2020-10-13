@@ -159,45 +159,45 @@ export const ThreeElementRow = ({
   link3,
   showLinks,
 }: Props) => (
-    <Wrapper>
-      <ColLeft>
-        <ImageDiv>
-          <img src={img1} />
-        </ImageDiv>
-        <Headline>{title1}</Headline>
-        <Subheadline>{body1}</Subheadline>
-        <a href={link1}>
-          <Link showLinks={showLinks}>
-            {cta1}
-            <Arrow />
-          </Link>
-        </a>
-      </ColLeft>
-      <ColMiddle>
-        <ImageDiv>
-          <img src={img2} />
-        </ImageDiv>
-        <Headline>{title2}</Headline>
-        <Subheadline>{body2}</Subheadline>
-        <a href={link2}>
-          <Link showLinks={showLinks}>
-            {cta2}
-            <Arrow />
-          </Link>
-        </a>
-      </ColMiddle>
-      <ColRight>
-        <ImageDiv>
-          <img src={img3} />
-        </ImageDiv>
-        <Headline>{title3}</Headline>
-        <Subheadline>{body3}</Subheadline>
-        <a href={link3}>
-          <Link showLinks={showLinks}>
-            {cta3}
-            <Arrow />
-          </Link>
-        </a>
-      </ColRight>
-    </Wrapper>
-  );
+  <Wrapper>
+    <ColLeft>
+      <ImageDiv>
+        <img src={img1} />
+      </ImageDiv>
+      <Headline>{title1}</Headline>
+      <Subheadline>{body1}</Subheadline>
+      <a href={link1}>
+        <Link showLinks={showLinks}>
+          {cta1}
+          <Arrow />
+        </Link>
+      </a>
+    </ColLeft>
+    <ColMiddle>
+      <ImageDiv>
+        <img src={img2} />
+      </ImageDiv>
+      <Headline>{title2}</Headline>
+      <Subheadline>{body2}</Subheadline>
+      <a href={link2}>
+        <Link showLinks={showLinks}>
+          {cta2}
+          <Arrow />
+        </Link>
+      </a>
+    </ColMiddle>
+    <ColRight>
+      <ImageDiv>
+        <img src={img3} />
+      </ImageDiv>
+      <Headline>{title3}</Headline>
+      <Subheadline>{body3}</Subheadline>
+      <a href={link3}>
+        <Link showLinks={showLinks}>
+          {cta3}
+          <Arrow />
+        </Link>
+      </a>
+    </ColRight>
+  </Wrapper>
+);

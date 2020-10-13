@@ -6,7 +6,7 @@ const createTheme = () => {
       subheadline: "17px",
       body: "16px",
       small: "12px",
-      midium: "14px"
+      medium: "14px",
     },
     fontWeights: {
       thin: 400,
