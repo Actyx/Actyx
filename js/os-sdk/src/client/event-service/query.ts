@@ -21,6 +21,7 @@ import {
   Event,
   QueryOpts,
   QueryStreamOpts,
+  EventStream,
 } from '../../types'
 import {
   mkSubscriptionApiObj,
@@ -119,7 +120,7 @@ export const queryStream = (clientOpts: ApiClientOpts) => (opts: QueryStreamOpts
     _mkRequestObject(opts.subscriptions, opts.ordering, opts.upperBound, opts.lowerBound),
   )
 
-  return new Promise<AsyncIterable<Event> & { cancel: () => void }>((res, rej) => {
+  return new Promise<EventStream>((res, rej) => {
     const req = http.request(requestOptions, msg => {
       if (msg.statusCode !== 200) {
         rej(new Error(`server responded with code ${msg.statusCode}`))

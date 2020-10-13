@@ -121,7 +121,7 @@ export const mkNodeLinux = async (
   const [port4243, server4243] = await ssh.forwardPort(4243, (line) =>
     logger(`node ${name} ${line}`),
   )
-  console.log('node %s event service reachable on port %i', name, port4243)
+  console.log('node %s pond service reachable on port %i', name, port4243)
 
   const axBinary = '../rt-master/target/release/ax'
   const axHost = `localhost:${port4457}`

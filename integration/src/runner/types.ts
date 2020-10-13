@@ -26,6 +26,21 @@ export type TargetKind =
   | ({ type: 'borrowed' } & SshAble)
   | { type: 'test' }
 
+export const printTarget = (t: Target): string => {
+  const kind = t.kind
+  switch (kind.type) {
+    case 'aws': {
+      return `AWS ${kind.instance} ${kind.host} ${t.os}/${t.arch}`
+    }
+    case 'borrowed': {
+      return `borrowed ${kind.host} ${t.os}/${t.arch}`
+    }
+    case 'test': {
+      return `test ${t.os}/${t.arch}`
+    }
+  }
+}
+
 export type NodeSelection = {
   os?: OS
   arch?: Arch

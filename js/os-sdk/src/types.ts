@@ -93,6 +93,19 @@ export const EventDraft = {
 }
 
 /**
+ * A stream of events that can be consumed with a `for-await-loop` and that can
+ * also be cancelled externally. The second part is needed when cancellation may
+ * occur during the `await` phase of the loop, in which case calling `cancel` is
+ * the only way to correctly release all stream resources.
+ */
+export interface EventStream extends AsyncIterable<Event> {
+  /**
+   * Cancel the stream and release all related resources.
+   */
+  cancel: () => void
+}
+
+/**
  * The API client is configurable. This interface defines the properties it
  * requires. In most cases you will not need to configure anything. Refer to
  * [[DefaultClientOpts]] for information about the default client options.
@@ -500,22 +513,23 @@ export interface EventServiceClient {
    * ```
    *
    * If you want to stop the subscription based on an external event, you can do so by
-   * using the `.close()` method of the returned subscription:
+   * using the `.cancel()` method of the returned subscription:
    *
    * ```typescript
    * const subscription = await client.eventService.subscribeStream(opts)
    *
    * // Later
-   * subscription.close()
+   * subscription.cancel()
    * ```
+   *
+   * This is not needed when using `for await (...)` and breaking or finishing the loop,
+   * in which case the loop itself will handle stream cancellation.
    *
    * @param opts Options for the subscription (see [[SubscribeStreamOpts]]).
    * @returns    An async iterable that also contains a callback for terminating the
    *             stream if you need to do that unrelated to the for-await-loop.
    */
-  subscribeStream: (
-    opts: SubscribeStreamOpts,
-  ) => Promise<AsyncIterable<Event> & { cancel: () => void }>
+  subscribeStream: (opts: SubscribeStreamOpts) => Promise<EventStream>
 
   /**
    * This function allows you to query the ActyxOS Event Service. As opposed to
@@ -596,20 +610,23 @@ export interface EventServiceClient {
    * ```
    *
    * If you want to stop the subscription based on an external event, you can do so by
-   * using the `.close()` method of the returned subscription:
+   * using the `.cancel()` method of the returned subscription:
    *
    * ```typescript
    * const subscription = await client.eventService.queryStream(opts)
    *
    * // Later
-   * subscription.close()
+   * subscription.cancel()
    * ```
+   *
+   * This is not needed when using `for await (...)` and breaking or finishing the loop,
+   * in which case the loop itself will handle stream cancellation.
    *
    * @param opts Options for the query (see [[QueryStreamOpts]]).
    * @returns    An async iterable that also contains a callback for terminating the
    *             stream if you need to do that unrelated to the for-await-loop.
    */
-  queryStream: (opts: QueryStreamOpts) => Promise<AsyncIterable<Event> & { cancel: () => void }>
+  queryStream: (opts: QueryStreamOpts) => Promise<EventStream>
 
   /**
    * This function allows you to publish events using the ActyxOS Event Service.

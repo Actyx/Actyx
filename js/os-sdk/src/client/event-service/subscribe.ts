@@ -20,6 +20,7 @@ import {
   Subscription,
   SubscribeOpts,
   SubscribeStreamOpts,
+  EventStream,
 } from '../../types'
 import { mkSubscriptionApiObj, mkOffsetMapApiObj, tryMakeEventFromApiObj } from '../../util'
 import * as uri from 'uri-js'
@@ -109,7 +110,7 @@ export const subscribeStream = (clientOpts: ApiClientOpts) => (opts: SubscribeSt
 
   const body = JSON.stringify(_mkRequestObject(opts.subscriptions, opts.lowerBound))
 
-  return new Promise<AsyncIterable<Event> & { cancel: () => void }>((res, rej) => {
+  return new Promise<EventStream>((res, rej) => {
     const req = http.request(requestOptions, msg => {
       if (msg.statusCode !== 200) {
         rej(new Error(`server responded with code ${msg.statusCode}`))

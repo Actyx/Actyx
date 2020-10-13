@@ -1,6 +1,8 @@
 // This is visible in globalSetup, globalTeardown, and via globals below also in tests.
 // The idea is that its contents are provided in globalSetup.
-global.axNodeSetup = {}
+global.axNodeSetup = {
+  keepNodesRunning: true,
+}
 
 module.exports = {
   rootDir: '.',

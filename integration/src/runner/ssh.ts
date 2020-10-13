@@ -109,7 +109,8 @@ export class Client {
         const port = conn.localPort
         this.conn.forwardOut('127.0.0.1', port, '127.0.0.1', dstPort, (err, channel) => {
           if (err) {
-            conn.destroy(err)
+            conn.destroy()
+            logger(`connection error: ${err}`)
             return
           }
           conn.pipe(channel).pipe(conn)

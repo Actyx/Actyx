@@ -16,6 +16,7 @@ export type NodeSetup = {
   ec2: EC2
   key: AwsKey
   logs: { [n: string]: LogEntry[] }
+  keepNodesRunning: boolean
 }
 
 export type MyGlobal = typeof global & { axNodeSetup: NodeSetup }
@@ -28,10 +29,12 @@ const createNode = async (
   try {
     const instance = await createInstance(ec2, {
       ImageId: 'ami-0718a1ae90971ce4d',
+      InstanceType: 't2.small',
       MinCount: 1,
       MaxCount: 1,
-      SecurityGroupIds: ['sg-064dfecc275620375'],
+      SecurityGroupIds: ['sg-0d942c552d4ff817c'],
       KeyName: key.keyName,
+      SubnetId: 'subnet-0f6bd6dc4ce64810e',
     })
 
     const logs: LogEntry[] = []
@@ -54,15 +57,7 @@ const createNode = async (
             privateKey: key.privateKey,
           },
           _private: {
-            shutdown: () => {
-              // keep this switch here to easily enable keeping the nodes around for debugging
-              if (Date.now() > 0) {
-                return terminateInstance(ec2, instance.InstanceId!)
-              } else {
-                console.log('NOT terminating instance', instance.PublicIpAddress, key.privateKey)
-                return Promise.resolve()
-              }
-            },
+            shutdown: () => terminateInstance(ec2, instance.InstanceId!),
           },
         },
         logger,
@@ -88,18 +83,17 @@ const getPeerId = async (ax: CLI, retries = 10): Promise<string | undefined> => 
 }
 
 const setInitialSettings = async (bootstrap: ActyxOSNode, swarmKey: string): Promise<void> => {
-  await bootstrap.ax.Settings.Set(
+  const result = await bootstrap.ax.Settings.Set(
     'com.actyx.os',
     SettingsInput.FromValue({
       general: {
-        bootstrapNodes: [],
         swarmKey,
         displayName: 'test',
       },
-      licensing: { apps: {}, os: 'development' },
       services: { eventService: { topic: 'a' } },
     }),
   ).catch(console.error)
+  console.log('set settings result:', result)
 }
 
 const setAllSettings = async (
@@ -127,11 +121,16 @@ const setAllSettings = async (
     },
   })
 
-  await Promise.all(
+  const result = await Promise.all(
     nodes.map((node) =>
       node.ax.Settings.Set('com.actyx.os', SettingsInput.FromValue(settings(node.name))),
     ),
   )
+  const errors = result.map((res, idx) => ({ res, idx })).filter(({ res }) => res.code !== 'OK')
+  console.log('%i errors', errors.length)
+  for (const { res, idx } of errors) {
+    console.log('%s:', nodes[idx], res)
+  }
 }
 
 const getPeers = async (node: ActyxOSNode): Promise<number> => {
