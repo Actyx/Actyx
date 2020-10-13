@@ -27,8 +27,9 @@ export const mkNodeLinux = async (
     } catch (error) {
       if (error.code !== 'ECONNREFUSED') {
         console.log(
-          'node %s ssh connection error (remaining attempts %i): %o',
+          'node %s ssh connection error to %s (remaining attempts %i): %o',
           name,
+          host,
           attempts,
           error,
         )

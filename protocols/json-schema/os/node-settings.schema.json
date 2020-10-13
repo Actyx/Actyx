@@ -161,10 +161,11 @@
           },
           "description": "Key-value pairs where the key is an app's ID.",
           "default": {}
-        },
-        "default": {
-          "os": "development"
         }
+      },
+      "default": {
+        "os": "development",
+        "apps": {}
       }
     },
     "Services": {

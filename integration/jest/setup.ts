@@ -28,7 +28,7 @@ const createNode = async (
 ): Promise<[LogEntry[], ActyxOSNode] | undefined> => {
   try {
     const instance = await createInstance(ec2, {
-      ImageId: 'ami-0718a1ae90971ce4d',
+      ImageId: 'ami-0254f49f790a514ab', // Debian 11 from Oct 5, 2020
       InstanceType: 't2.small',
       MinCount: 1,
       MaxCount: 1,
@@ -53,7 +53,7 @@ const createNode = async (
             instance: instance.InstanceId!,
             privateAddress: instance.PrivateIpAddress!,
             host: instance.PublicIpAddress!,
-            username: 'ubuntu',
+            username: 'admin',
             privateKey: key.privateKey,
           },
           _private: {
@@ -65,6 +65,9 @@ const createNode = async (
       return [logs, node]
     } catch (e) {
       console.error('node %s error while setting up:', name, e)
+      for (const entry of logs) {
+        process.stdout.write(`${entry.time.toISOString()} ${entry.line}\n`)
+      }
       await terminateInstance(ec2, instance.InstanceId!)
     }
   } catch (e) {
