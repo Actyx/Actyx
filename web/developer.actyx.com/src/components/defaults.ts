@@ -4,8 +4,9 @@ const createTheme = () => {
       hero: "26px",
       title: "20px",
       subheadline: "17px",
-      body: "14px",
+      body: "16px",
       small: "12px",
+      midium: "14px"
     },
     fontWeights: {
       thin: 400,
