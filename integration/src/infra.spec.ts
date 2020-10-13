@@ -1,7 +1,7 @@
 import { Event, EventDraft } from '@actyx/os-sdk'
 import { allNodeNames, runOnAll, runOnEach } from './runner/hosts'
 import * as PondV1 from 'pondV1'
-import { Pond, PondState } from '@actyx/pond'
+import { ConnectivityStatus, Pond } from '@actyx/pond'
 import { MultiplexedWebsocket } from 'pondV1/lib/eventstore/multiplexedWebsocket'
 
 describe('the Infrastructure', () => {
@@ -82,16 +82,25 @@ describe('the Infrastructure', () => {
   test('must test Pond v1', async () => {
     const result = await runOnAll([{}], false, async ([node]) => {
       const pond = await PondV1.Pond.of(new MultiplexedWebsocket({ url: node._private.apiPond }))
-      return pond.getPondState().take(1).toPromise()
+      return pond.getNodeConnectivity().take(1).toPromise()
     })
-    expect(result).toEqual({})
+    // cannot assert connected or not connected since we don’t know when this case is run
+    expect(typeof result.status).toBe('string')
   })
 
   test('must test Pond v2', async () => {
     const result = await runOnAll([{}], false, async ([node]) => {
       const pond = await Pond.of({ url: node._private.apiPond }, {})
-      return new Promise<PondState>((res) => pond.getPondState(res))
+      return new Promise<ConnectivityStatus>((res) => {
+        const cancel = pond.getNodeConnectivity({
+          callback: (conn) => {
+            cancel()
+            res(conn)
+          },
+        })
+      })
     })
-    expect(result).toEqual({})
+    // cannot assert connected or not connected since we don’t know when this case is run
+    expect(typeof result.status).toBe('string')
   })
 })
