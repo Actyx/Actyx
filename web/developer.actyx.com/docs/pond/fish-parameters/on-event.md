@@ -18,11 +18,10 @@ log.
 
 [Read a concrete example in our tutorial.]()
 
-Due to this, it is very important that `onEvent` is a "pure function." A pure function is a function
-where the output depends _only_ in the inputs.
+Due to this, it is very important that `onEvent` is a _pure function_. A pure function is a function
+where the output depends solely in the inputs.
 
-The following are examples of things that are NOT pure and hence must not be done inside
-`onEvent`:
+The following are examples of things that are NOT pure and hence must be avoided inside `onEvent`:
 
 - Looking at the current time via `new Date()` or similar. If you need to get the time at which an
   event occured, look at the `metadata`.
