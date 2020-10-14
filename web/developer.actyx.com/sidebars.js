@@ -180,6 +180,8 @@ module.exports = {
       'pond/fish-parameters/initial-state',
       'pond/fish-parameters/on-event',
       'pond/fish-parameters/deserialize-state',
+      'pond/fish-parameters/fish-id',
+      'pond/fish-parameters/where',
       ]
   },
   ],
