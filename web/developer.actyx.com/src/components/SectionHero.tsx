@@ -88,7 +88,7 @@ const Button = styled.div<{
   padding-top: 8px;
   padding-bottom: 8px;
   margin-bottom: 20px;
-  font-size: ${defaults.fontsizes.midium};
+  font-size: ${defaults.fontsizes.medium};
   font-weight: 600;
   text-transform: uppercase;
   box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
