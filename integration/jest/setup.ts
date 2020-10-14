@@ -35,6 +35,7 @@ const createNode = async (
       SecurityGroupIds: ['sg-0d942c552d4ff817c'],
       KeyName: key.keyName,
       SubnetId: 'subnet-0f6bd6dc4ce64810e',
+      InstanceInitiatedShutdownBehavior: 'terminate',
     })
 
     const logs: LogEntry[] = []
@@ -159,6 +160,8 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
   axNodeSetup.key = await createKey(axNodeSetup.ec2)
   axNodeSetup.nodes = []
   axNodeSetup.logs = {}
+  
+  process.on('SIGINT', () => axNodeSetup.nodes.forEach(node => node._private.shutdown()))
 
   for (const res of await Promise.all(
     ['pool1', 'pool2'].map((name) => createNode(axNodeSetup.ec2, axNodeSetup.key, name)),
