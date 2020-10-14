@@ -19,7 +19,7 @@ meantime are exchanged. No events are discarded.
 According to a distributed clock mechanism ([Lamport
 time](https://en.wikipedia.org/wiki/Lamport_timestamp)), one canonical order for all events is
 settled. In this way, as soon as nodes have knowledge of the same set of events, they can also agree
-on their _order_. When they agree on their order, aggregation (like onEvent) can run over the
+on their *order*. When they agree on their order, aggregation (like onEvent) can run over the
 time-line of events, and will yield the same **consistent** result everywhere.
 
 During a network partition, nodes will neccessarily be in disagreement. Once the partition is over,
