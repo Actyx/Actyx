@@ -54,7 +54,7 @@ This is because the other messages cannot be transferred right now.
 When reconnecting the previously disconnected sending node, its messages `msgA1` to `msgA3` will show up at the observer after a short while.
 But we notice that the messages show up not at the end of the log but interleaves with the others, for example like
 
-```bash
+```text
     msgB1
     msgB2
     msgB3

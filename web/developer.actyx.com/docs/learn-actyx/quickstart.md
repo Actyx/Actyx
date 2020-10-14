@@ -32,13 +32,13 @@ import TabItem from '@theme/TabItem';
 
 All the files you need for this quickstart guide can be found in a [Github repository](https://github.com/Actyx/quickstart). Go ahead and clone it:
 
-```
+```text
 git clone https://github.com/Actyx/quickstart
 ```
 
 Inside the newly created `quickstart` directory you should now find the following files and directories:
 
-```
+```text
 quickstart/
 |--- scripts/
 |--- sample-webview-app/
@@ -105,7 +105,7 @@ Download and install the latest version of the Actyx CLI (`ax`). You can find bu
 
 Once installed you can check that everything works as follows:
 
-```
+```text
 ax --version
 ```
 
@@ -127,14 +127,14 @@ Now, start ActyxOS as a Docker container on your local machine. Since ActyxOS is
 }>
 <TabItem value="windows/macos">
 
-```
+```text
 docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyxos_data:/data --privileged -p 4001:4001 -p 4457:4457 -p 4243:4243 -p 4454:4454 actyx/os
 ```
 
 </TabItem>
 <TabItem value="linux">
 
-```
+```text
 docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyxos_data:/data --privileged --network=host actyx/os
 ```
 
@@ -143,7 +143,7 @@ docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyxos_data:/data --priv
 
  ActyxOS will be up and running as soon as you see something like
 
-```
+```text
 ***********************
 **** ActyxOS ready ****
 ***********************
@@ -165,14 +165,14 @@ Now that it is running, we need to provide the ActyxOS node with a couple of set
 }>
 <TabItem value="windows">
 
-```
+```text
 ax settings set --local com.actyx.os @misc\local-sample-node-settings.yml localhost
 ```
 
 </TabItem>
 <TabItem value="unix">
 
-```
+```text
 ax settings set --local com.actyx.os @misc/local-sample-node-settings.yml localhost
 ```
 
@@ -181,7 +181,7 @@ ax settings set --local com.actyx.os @misc/local-sample-node-settings.yml localh
 
 😊 Congrats! Your computer is now running a fully configured ActyxOS node. You can check this by running
 
-```
+```text
 ax nodes ls --local localhost
 ```
 
@@ -195,13 +195,13 @@ In the following we assume that you have cloned the [github repository with the 
 
 You’ll find the app prepared in the folder `sample-docker-app`. Inside this folder, run the following to install the dependencies:
 
-```
+```text
 npm install
 ```
 
 Now you can start the app by running
 
-```
+```text
 npm start
 ```
 
@@ -211,13 +211,13 @@ This will connect to ActyxOS and then start printing out lines after a few secon
 
 The WebView app is prepared in the folder `sample-webview-app`. As for the docker app, first install the dependencies:
 
-```
+```text
 npm install
 ```
 
 Then start the built-in webserver by running
 
-```
+```text
 npm start
 ```
 
@@ -235,13 +235,13 @@ Why don’t you try your hand at keeping the last ten messages in its state and 
 
 First, we need to build a docker image containing the app. This is done inside the `sample-docker-app` folder by running
 
-```
+```text
 npm run build:image
 ```
 
 The resulting image is packaged into an Actyx App using the Actyx CLI:
 
-```
+```text
 ax apps package
 ```
 
@@ -251,19 +251,19 @@ Packaging Docker apps can take quite a bit of time. Please give it a couple of m
 
 After a few moments you’ll find an app package in your folder. This can be deployed to the ActyxOS node by running
 
-```
+```text
 ax apps deploy --local com.actyx.sample-docker-app-1.0.0-x86_64.tar.gz localhost
 ```
 
 You can check the state of this app using
 
-```
+```text
 ax apps ls --local localhost
 ```
 
 As you will see the app is deployed, but `stopped`, so let's start it with this command:
 
-```
+```text
 ax apps start --local com.actyx.sample-docker-app localhost
 ```
 
@@ -291,14 +291,14 @@ Now that you have installed ActyxOS on the second device, let's configure the no
 }>
 <TabItem value="windows">
 
-```
+```text
 ax settings set --local com.actyx.os @misc\remote-sample-node-settings.yml <DEVICE_IP>
 ```
 
 </TabItem>
 <TabItem value="unix">
 
-```
+```text
 ax settings set --local com.actyx.os @misc/remote-sample-node-settings.yml <DEVICE_IP>
 ```
 
@@ -313,25 +313,25 @@ The ActyxOS node on the second device should now be fully functional! 😊
 
 Now go back to the `sample-webview-app` folder and create the production build for this web app:
 
-```
+```text
 npm run build
 ```
 
 The resulting files in the `dist` folder can now be packaged into an Actyx app using
 
-```
+```text
 ax apps package
 ```
 
 The resulting app is then deployed to the Android device by running
 
-```
+```text
 ax apps deploy --local com.actyx.sample-webview-app-1.0.0.tar.gz <DEVICE_IP>
 ```
 
 Now that the app is deployed, you can start it either by selecting it from the ActyxOS app on Android or by using the Actyx CLI:
 
-```
+```text
 ax apps start --local com.actyx.sample-webview-app <DEVICE_IP>
 ```
 

@@ -4,7 +4,7 @@ title: ax apps ls
 
 ### List apps deployed on a node
 
-```
+```text
 USAGE:
     ax apps ls [FLAGS] <NODE>
 
@@ -29,7 +29,7 @@ If a node is reachable, the output of `ax apps ls` will list the status of all a
 
 See the following examples of using the `ax apps ls` command:
 
-```
+```text
 # List the apps on a node in your local network
 ax apps ls --local 10.2.3.23
 +---------------+------------------------+---------+---------+---------+----------+---------+-------------------------------------+
