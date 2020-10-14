@@ -42,15 +42,10 @@ export type EventsOrTimetravel = StateMsg | EventsMsg | TimetravelMsg
 
 // New API:
 // Stream events as they become available, until time-travel would occour.
-// To be implemented on the store side with lots of cleverness.
-// - Should do its best to supply events in forward-order (currently not true for Ruststore allEvents API)
-// - Should buffer recent X events like the FES used to, for quick travel to the recent past
-// - Should quickly find `from`
-// - TODO: Should signal when pond can start to emit states (no pending events on store side)
-// - etc.
+// To be eventually implemented on the rust-store side with lots of added cleverness.
 export const eventsMonotonic = (eventStore: EventStore) => (
     subscriptions: SubscriptionSet,
-    // Sending 'from' means we dont want a snapshot
+    // Sending 'from' means we DONT want a snapshot
     _from?: OffsetMap,
     _horizon?: EventKey,
 ): Observable<EventsOrTimetravel> => {

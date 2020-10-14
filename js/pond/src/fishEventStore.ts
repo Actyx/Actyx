@@ -39,7 +39,7 @@ import {
   StateWithProvenance,
   TaggedIndex,
 } from './types'
-import { lookup, runStats, takeWhileInclusive } from './util'
+import { runStats, takeWhileInclusive } from './util'
 import { getInsertionIndex } from './util/binarySearch'
 
 /**
@@ -302,6 +302,8 @@ type ShatterAsap = Readonly<{
   // The snapshot we suppose we are going to shatter.
   snapshotToShatter: LocalSnapshot<{}>
 }>
+
+const includeEvent = OffsetMap.update
 
 const mkShatterAsap = (
   firstEvent: Event,
@@ -979,22 +981,6 @@ const findLastIndex = <T>(es: ReadonlyArray<T>, p: (e: T) => boolean): number =>
     }
   }
   return -1
-}
-
-/**
- * Updates a given psn map with a new event.
- * Note that the events need to be applied in event order
- *
- * @param psnMap the psn map to update. WILL BE MODIFIED IN PLACE
- * @param ev the event to include
- */
-const includeEvent = (psnMap: OffsetMapBuilder, ev: Event): OffsetMapBuilder => {
-  const { psn, sourceId } = ev
-  const current = lookup(psnMap, sourceId)
-  if (current === undefined || current < psn) {
-    psnMap[sourceId] = psn
-  }
-  return psnMap
 }
 
 export const getLatestLocalSnapshot = <S>(
