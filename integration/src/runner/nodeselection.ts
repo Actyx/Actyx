@@ -6,6 +6,14 @@ const matches = (selection: NodeSelection) => (node: ActyxOSNode) =>
   (selection.host === node.host || selection.host === undefined) &&
   (node.runtimes.some((rt) => rt === selection.runtime) || selection.runtime === undefined)
 
+/**
+ * Select nodes from the given array of nodes, yielding an array containing
+ * one entry per selection and in matching order; or yielding null if the
+ * selection cannot be fulfilled.
+ *
+ * The algorithm is not the dumbest, but also not perfect: it may not always
+ * find a solution to the constraints, even when one would exist.
+ */
 export const selectNodes = (
   selections: NodeSelection[],
   nodes: ActyxOSNode[],
