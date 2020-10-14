@@ -177,11 +177,11 @@ module.exports = {
     type: 'category', 
     label: 'Fish\u00a0Parameters', 
     items: [
-      'pond/fish-parameters/initial-state',
       'pond/fish-parameters/on-event',
-      'pond/fish-parameters/deserialize-state',
-      'pond/fish-parameters/fish-id',
+      'pond/fish-parameters/initial-state',
       'pond/fish-parameters/where',
+      'pond/fish-parameters/fish-id',
+      'pond/fish-parameters/deserialize-state',
       ]
   },
   ],
