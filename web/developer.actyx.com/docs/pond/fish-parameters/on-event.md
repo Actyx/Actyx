@@ -86,11 +86,11 @@ states are passed to the observation callback.
 
 ActyxOS uses a specialized mechanism called [Lamport
 Clock](https://en.wikipedia.org/wiki/Lamport_timestamp) to sort events. Effectively this works like
-sorting by time, only better. Sorting by wall clock time would run into issues when clocks on devies
+sorting by time, only better. Sorting by wall clock time would run into issues when clocks on devices
 are off: It would require a robust NTP setup to keep time in sync.
 
-Lamport timestamps word independant from device time. They also do a good job of preserving a
-useful, logical order when network partitions happen.
+Lamport timestamps work independently from device time. They also do a good job of preserving a
+useful, logical order even when network partitions happen.
 
 In the rare case that lamport timestamp of two events should be identical, other factors are used to
 decide on a consistent ordering. Ultimately, the ordering of `eventId` (inside `metadata`) is
