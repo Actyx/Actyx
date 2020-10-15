@@ -13,4 +13,6 @@ To retrieve this event in a Fish, we may write `where: Tag('foo')`.
 Alternatively: `where: Tag('bar')`.  
 Using `where: Tags('foo', 'bar')` we will also select the event, but now it must have _both_ tags.
 
-<!-- TODO: Links to detailed docs -->
+You can read more about emitting and selecting events in the [tutorial](../guides/subscriptions).  
+There is also a [very detailed guide](../in-depth/tag-type-checking) covering type-checking best
+practices.
