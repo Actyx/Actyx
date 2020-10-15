@@ -6,45 +6,66 @@ hide_table_of_contents: true
 `onEvent` is the function used to aggregate _events_ into _state_. Conceptionally it is very similar
 to the function you pass to
 [Array.reduce](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce). Think
-of the sorted event log as the array and the state as the accumulation object.
+of the sorted event log as the array, and the state as the accumulation object.
 
 ## Time Travel and Keeping `onEvent` Pure
 
 The most important thing to keep in mind when implementing `onEvent` is that it may be called again
 and again with very similar inputs. This is due to time travel. When an event _from the past_
 arrives, it is inserted into its proper spot in the log of all relevant events. Then, in order to
-compute an updated correct state, the `onEvent` aggregation is run again over the complete event
-log.
+compute an updated correct state, the `onEvent` aggregation is run over the event log again.
 
 [Read a concrete example in our tutorial.]()
 
 Due to this, it is very important that `onEvent` is a _pure function_. A pure function is a function
-where the output depends solely in the inputs.
+where the output depends solely on the inputs.
 
-The following are examples of things that are NOT pure and hence must be avoided inside `onEvent`:
+### Impure Procedures To Avoid
+
+The following are examples of code that is NOT pure and hence must be avoided inside `onEvent`.
 
 - Looking at the current time via `new Date()` or similar. If you need to get the time at which an
   event occured, look at the `metadata`.
   
 - Accessing dynamic global state.
 
-- Modifying anything that is not part of the output state. 
+- Modifying anything that is not part of the output state, for example a variable captured by the
+  `onEvent` function.
 
 
+## The Inputs to `onEvent`
 
+### `state: S`
 
-## The Inputs
-
-- `state: S` – the current state of the Fish, i.e. a state to which all _previous_ events have
-  already been applied
+The current state of the Fish. That is, a state to which all _previous_ events have already been
+applied.
   
-- `event: E` – the current event to apply
+### `event: E`
 
-- `metadata: Metadata` – a collection of various metadata tied to the event. See ....
+The current event to apply.
 
-## The Output
+### `metadata: Metadata`
 
-The function must return a value of type `S`. The following are all legal:
+A collection of various metadata tied to the event.
+
+- `isLocalEvent` - Whether the node was created on the same node that `onEvent` is currently being executed on.
+
+- `tags` - The tags that were attached to the event when it was emitted.
+
+- `timestampMicros` - **Microseconds** since [Epoch](https://en.wikipedia.org/wiki/Unix_time).
+
+- `timestampAsDate` - A function that returns the timestamp as a plain JS `Date` object.
+
+- `lamport` - Timestamp according to [Lamport
+  Clock](https://en.wikipedia.org/wiki/Lamport_timestamp). This is useful for debugging. Events
+  are fed ordered by Lamport timestamp ascending.
+  
+- `eventId` - A unique identifier for the event. Every event has exactly one `eventId` which is unique
+  to it, guaranteed to not collide with any other event.
+
+## The Output of `onEvent`
+
+The `onEvent` implementation must return a value of type `S`. The following are all legal:
 
 - Returning the input state, unchanged. Although note that you [should not ignore events]
 
@@ -53,10 +74,13 @@ The function must return a value of type `S`. The following are all legal:
 - Returning a completely new object.
 
 The returned value will then be fed as input `state` to the `onEvent` invocation for the next
-event.
-
+event.  
 It will also be potentially published to observers that have called `pond.observe` for this
-Fish. ----
+Fish. It’s important to note, however, that during time-travel, observers are not notified of
+intermediate states – they are only notified of the updated new latest state.  
+A similar thing happens when observation on a new Fish, that already has some events, starts: All
+existing events are applied, and then the observer receives the latest state. No intermediate
+states are passed to the observation callback.
 
-
+## The Order of Events
 

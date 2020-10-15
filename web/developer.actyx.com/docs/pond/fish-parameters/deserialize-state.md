@@ -17,7 +17,7 @@ to implement `deserializeState`. The process is the following:
   the input to `deserializeState` is the object returned by `toJSON`, and `deserializeState` must
   convert that back into the proper state type.
   
-  
+
 ## An Example with immutable-js
 
 [immutable-js](https://github.com/immutable-js/immutable-js) is a great library for performant
