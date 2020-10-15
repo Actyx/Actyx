@@ -37,7 +37,10 @@ The following are examples of code that is NOT pure and hence must be avoided in
 ### `state: S`
 
 The current state of the Fish. That is, a state to which all _previous_ events have already been
-applied.
+applied.  
+Note that it will always just be the **locally known** previous events that have been applied. That
+is the exact point of time travel: Some previous events may always [be yet
+unknown](../in-depth/eventual-consistency).
   
 ### `event: E`
 
