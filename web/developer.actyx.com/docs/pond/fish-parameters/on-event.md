@@ -15,7 +15,7 @@ and again with very similar inputs. This is due to time travel. When an event _f
 arrives, it is inserted into its proper spot in the log of all relevant events. Then, in order to
 compute an updated correct state, the `onEvent` aggregation is run over the event log again.
 
-[Read a concrete example in our tutorial.]()
+[Read a concrete example in our tutorial.](/docs/pond/guides/time-travel)
 
 Due to this, it is very important that `onEvent` is a _pure function_. A pure function is a function
 where the output depends solely on the inputs.
@@ -31,7 +31,6 @@ The following are examples of code that is NOT pure and hence must be avoided in
 
 - Modifying anything that is not part of the output state, for example a variable captured by the
   `onEvent` function.
-
 
 ## The Inputs to `onEvent`
 
@@ -52,7 +51,8 @@ A collection of various metadata tied to the event.
 
 - `tags` - The tags that were attached to the event when it was emitted.
 
-- `timestampMicros` - **Microseconds** since [Epoch](https://en.wikipedia.org/wiki/Unix_time).
+- `timestampMicros` - **Microseconds** since [Epoch](https://en.wikipedia.org/wiki/Unix_time) on the
+  node that emitted the event, at time of emission.
 
 - `timestampAsDate` - A function that returns the timestamp as a plain JS `Date` object.
 
@@ -82,5 +82,16 @@ A similar thing happens when observation on a new Fish, that already has some ev
 existing events are applied, and then the observer receives the latest state. No intermediate
 states are passed to the observation callback.
 
-## The Order of Events
+## The Order of Events - What does "previous" mean?
 
+ActyxOS uses a specialized mechanism called [Lamport
+Clock](https://en.wikipedia.org/wiki/Lamport_timestamp) to sort events. Effectively this works like
+sorting by time, only better. Sorting by wall clock time would run into issues when clocks on devies
+are off: It would require a robust NTP setup to keep time in sync.
+
+Lamport timestamps word independant from device time. They also do a good job of preserving a
+useful, logical order when network partitions happen.
+
+In the rare case that lamport timestamp of two events should be identical, other factors are used to
+decide on a consistent ordering. Ultimately, the ordering of `eventId` (inside `metadata`) is
+equivalent to the ordering of events.

@@ -14,7 +14,7 @@ Because the `fishId` is used for caching, it’s important that if two Fish have
 they are really the same fish. We have split the id intro three parts, to make it easy to conform to
 this requirement:
 
-### `entityType` 
+### `entityType`
 
 This should be a string describing the general thing modelled by your Fish. It can be thought of as
 its namespace. In the apps we have written at Actyx, we used strings like "edge.ax.sf.User". But

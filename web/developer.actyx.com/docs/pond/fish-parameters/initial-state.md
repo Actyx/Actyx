@@ -9,7 +9,6 @@ The `initialState` is the starting state of a Fish, before it receives its first
 The object you pass as `initialState` will never be modified by the Pond. It will be cloned whenever
 needed. To observe the current state, always use `pond.observe`.
 
-
 ## Creating the Initial State when some Data is Mandatory
 
 Coming up with an initial state can be tricky.
@@ -68,7 +67,6 @@ mandatory fields in the initial state is a problem.
 
 One solution to this is to use a union type marking the different situations.
 
-
 ```ts
 type UnknownProcess = {
   stateType: 'unknown'
@@ -123,8 +121,8 @@ export const observeProcess = (id: string, pond: Pond, callback: Callback) => {
   const outerCallback = (state: ProcessFishState) => {
     // Skip states of type UnknownProcess for outside observers.
     if (state.stateType === 'known') {
-	  callback(state)
-	}
+     callback(state)
+    }
   }
   
   return pond.observe(makeProcessFish(id), outerCallback)
