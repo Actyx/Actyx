@@ -55,8 +55,8 @@ const ImageDiv = styled.div`
   width: 100%;
   border-radius: 0.4rem;
   overflow: hidden;
-  display: flex; 
-  justify-content: center; 
+  display: flex;
+  justify-content: center;
   align-items: center;
   &:hover {
     box-shadow: 0 5px 20px rgba(50, 50, 93, 0.35);
@@ -67,7 +67,6 @@ const ImageDiv = styled.div`
     transition-timing-function: ease-in-out;
     transition-delay: 0s;
   }
-}
 `;
 
 const Headline = styled.div`
@@ -105,7 +104,7 @@ const ArrowStyled = styled.span`
   }
 `;
 
-const Arrow: React.FC = () => (
+const Arrow = () => (
   <ArrowStyled>
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -150 447 550">
       <path d="M26.9 255c1.8.3 3.7.4 5.5.4h315.5l-6.9 3.2c-6.7 3.2-12.8 7.5-18.1 12.8l-88.5 88.5c-11.7 11.1-13.6 29-4.6 42.4 10.4 14.3 30.5 17.4 44.7 6.9 1.2-.8 2.2-1.8 3.3-2.8l160-160c12.5-12.5 12.5-32.8 0-45.3l-160-160c-12.5-12.5-32.8-12.5-45.3.1-1 1-1.9 2-2.7 3.1-9 13.4-7 31.3 4.6 42.4l88.3 88.6c4.7 4.7 10.1 8.6 16 11.7l9.6 4.3H34.2c-16.3-.6-30.7 10.8-33.8 26.9-2.8 17.5 9 34 26.5 36.8z" />

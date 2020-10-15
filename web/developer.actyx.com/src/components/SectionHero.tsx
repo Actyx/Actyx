@@ -31,8 +31,8 @@ const LeftCol = styled.div`
 const ImageDiv = styled.div`
   overflow: hidden;
   width: 100%;
-  display: flex; 
-  justify-content: center; 
+  display: flex;
+  justify-content: center;
   align-items: center;
   img {
     padding: 0;
@@ -76,7 +76,7 @@ const Subheadline = styled.div`
 const Button = styled.div<{
   button?: boolean;
 }>`
-  display:inline-block; 
+  display: inline-block;
   cursor: pointer;
   text-align: center;
   border-radius: 3px;
@@ -88,7 +88,7 @@ const Button = styled.div<{
   padding-top: 8px;
   padding-bottom: 8px;
   margin-bottom: 20px;
-  font-size: ${defaults.fontsizes.body};
+  font-size: ${defaults.fontsizes.midium};
   font-weight: 600;
   text-transform: uppercase;
   box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -101,8 +101,8 @@ const Button = styled.div<{
     transition-timing-function: ease-in-out;
     transition-delay: 0s;
   }
-}
 `;
+
 type Props = Readonly<{
   img: string;
   title: string;

@@ -185,6 +185,15 @@ module.exports = {
       'pond/fish-parameters/is-reset',
       ]
   },
+  {
+    type: 'category',
+    label: 'Pond In-Depth',
+    items: [
+        'pond/in-depth/tag-type-checking',
+	'pond/in-depth/eventual-consistency',
+	'pond/in-depth/do-not-ignore-events',
+      ]
+  },
   ],
   learnActyxSidebar: [
     'learn-actyx/learn-actyx',

@@ -1665,7 +1665,7 @@ code, pre {
   font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
   padding: 0.2em;
   margin: 0;
-  font-size: 14px;
+  font-size: 16px;
   background-color: rgba(0, 0, 0, 0.04);
 }
 
@@ -2085,7 +2085,7 @@ footer .tsd-legend {
   color: #fff;
   background-color: #808080;
   text-indent: 0;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: normal;
 }
 
@@ -2371,7 +2371,7 @@ footer .tsd-legend {
   padding: 10px;
   border: 1px solid #eee;
   font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
-  font-size: 14px;
+  font-size: 16px;
   overflow-x: auto;
 }
 .tsd-signature.tsd-kind-icon {
@@ -2490,7 +2490,7 @@ ul.tsd-type-parameters .tsd-comment {
 }
 
 .tsd-sources {
-  font-size: 14px;
+  font-size: 16px;
   color: #808080;
   margin: 0 0 1em 0;
 }

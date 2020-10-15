@@ -14,7 +14,8 @@
     "lint:txt:dry": "textlint --dry-run ./docs/**/* ./blog/**/*",
     "lint:md:check": "npx markdownlint-cli \"./docs/**/*.md\" \"./blog/**/*\"",
     "lint:md:fix": "npx markdownlint-cli --fix \"./docs/**/*.md\" \"./blog/**/*\"",
-    "lint": "npm run lint:md:check && npm run lint:txt:check"
+    "lint": "npm run lint:md:check && npm run lint:txt:check && prettier './src/**/*.{js,ts,tsx}' --check",
+    "lint:code:fix": "prettier './src/**/*.{js,ts,tsx}' --write"
   },
   "dependencies": {
     "@docusaurus/core": "^2.0.0-alpha.48",
@@ -41,10 +42,12 @@
   },
   "devDependencies": {
     "@textlint-rule/textlint-rule-no-unmatched-pair": "^1.0.7",
+    "@types/styled-components": "^5.1.3",
     "copy-dir": "^1.2.0",
     "markdownlint-cli": "^0.23.2",
     "mkdirp": "^1.0.4",
     "nan": "^2.14.1",
+    "prettier": "2.1.2",
     "textlint": "^11.7.6",
     "textlint-filter-rule-comments": "^1.2.2",
     "textlint-rule-date-weekday-mismatch": "^1.0.5",
