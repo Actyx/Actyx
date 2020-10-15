@@ -67,7 +67,7 @@ A collection of various metadata tied to the event.
 
 The `onEvent` implementation must return a value of type `S`. The following are all legal:
 
-- Returning the input state, unchanged. Although note that you [should not ignore events]
+- Returning the input state, unchanged. Although note that you [should not ignore events](../in-depth/do-not-ignore-events).
 
 - Modifying the input state and returning it.
 
