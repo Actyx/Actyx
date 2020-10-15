@@ -12,10 +12,10 @@ needed. To observe the current state, always use `pond.observe`.
 
 Coming up with an initial state can be tricky.
 
-Often you model entities that have a lot of mandatory information to them. In a traditional DB, you
+Often you model entities that have a lot of mandatory information to them. In a traditional database, you
 would mark the corresponding column as `NOT NULL`. In an event-based system like ActyxOS, you will
 translate this into a "Creation Event" with a type that contains a field for each piece of mandatory
-information.
+information:
 
 ```ts
 type ProcessCreated = {
@@ -99,11 +99,8 @@ const onEvent = (state: ProcessFishState, event: ProcessEvent) => {
 
 const makeProcessFish = (id: string): Fish<ProcessFishState, ProcessEvent> => ({
   where: ProcessTag.withId(id),
-
   initialState: { stateType: 'unknown', id }
-  
   onEvent,
-
   fishId: FishId.of('process', id, 1),
 })
 ```

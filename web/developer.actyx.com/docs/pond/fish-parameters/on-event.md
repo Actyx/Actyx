@@ -6,7 +6,7 @@ hide_table_of_contents: true
 `onEvent` is the function used to aggregate _events_ into _state_. Conceptionally it is very similar
 to the function you pass to
 [Array.reduce](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce). Think
-of the sorted event log as the array, and the state as the accumulation object.
+of the sorted event log as the array, and the state as the accumulated object.
 
 ## Time Travel and Keeping `onEvent` Pure
 
@@ -78,7 +78,7 @@ event.
 It will also be potentially published to observers that have called `pond.observe` for this
 Fish. It’s important to note, however, that during time-travel, observers are not notified of
 intermediate states – they are only notified of the updated new latest state.  
-A similar thing happens when observation on a new Fish, that already has some events, starts: All
+A similar thing happens when starting observation on a new Fish that already has some events: All
 existing events are applied, and then the observer receives the latest state. No intermediate
 states are passed to the observation callback.
 

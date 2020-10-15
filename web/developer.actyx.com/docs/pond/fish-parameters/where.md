@@ -11,6 +11,6 @@ This emits an event with tags 'foo' and 'bar':
 
 To retrieve this event in a Fish, we may write `where: Tag('foo')`.  
 Alternatively: `where: Tag('bar')`.  
-Using `where: Tags('foo', 'bar')` we will also select the event, but now it _must_ have both tags.
+Using `where: Tags('foo', 'bar')` we will also select the event, but now it must have _both_ tags.
 
 <!-- TODO: Links to detailed docs -->
