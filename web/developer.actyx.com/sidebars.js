@@ -182,6 +182,7 @@ module.exports = {
       'pond/fish-parameters/where',
       'pond/fish-parameters/fish-id',
       'pond/fish-parameters/deserialize-state',
+      'pond/fish-parameters/is-reset',
       ]
   },
   ],

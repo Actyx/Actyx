@@ -3,7 +3,6 @@ title: initialState
 hide_table_of_contents: true
 ---
 
-
 The `initialState` is the starting state of a Fish, before it receives its first event.
 
 The object you pass as `initialState` will never be modified by the Pond. It will be cloned whenever
