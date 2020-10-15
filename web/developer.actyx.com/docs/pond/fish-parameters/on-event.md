@@ -50,17 +50,20 @@ The current event to apply.
 
 A collection of various metadata tied to the event.
 
-- `isLocalEvent` - Whether the node was created on the same node that `onEvent` is currently being executed on.
+- `isLocalEvent` - Whether the event was created on the same node that `onEvent` is currently being
+  executed on.
 
 - `tags` - The tags that were attached to the event when it was emitted.
 
 - `timestampMicros` - **Microseconds** since [Epoch](https://en.wikipedia.org/wiki/Unix_time) on the
-  node that emitted the event, at time of emission.
+  node that emitted the event, at time of emission. If time on the node was wrong, this timestamp
+  will also be wrong.
 
-- `timestampAsDate` - A function that returns the timestamp as a plain JS `Date` object.
+- `timestampAsDate` - A function that returns the `timestampMicros` converted to a plain JS `Date`
+  object.
 
 - `lamport` - Timestamp according to [Lamport
-  Clock](https://en.wikipedia.org/wiki/Lamport_timestamp). This is useful for debugging. Events
+  Clock](https://en.wikipedia.org/wiki/Lamport_timestamp). This is only useful for debugging. Events
   are fed ordered by Lamport timestamp ascending.
   
 - `eventId` - A unique identifier for the event. Every event has exactly one `eventId` which is unique
