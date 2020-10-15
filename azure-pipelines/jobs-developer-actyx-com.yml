@@ -1,0 +1,27 @@
+jobs:
+  - job: runTests 
+    dependsOn: getBuildString
+    variables:
+      BUILD_STRING: $[ dependencies.getBuildString.outputs['setBuildString.BUILD_STRING'] ]
+    displayName: Run tests
+    workspace:
+      clean: all
+    pool:
+      name: Native
+    container: buildnode_x64_latest
+    steps:
+      - script: |
+          set -e
+          npm i
+        displayName: Install Dependencies
+        workingDirectory: "web/developer.actyx.com"
+        condition: and(contains(variables['BUILD_STRING'],'[build-developer-actyx-com]'),succeeded())
+      - script: |
+          npm run test
+        displayName: Test developer.actyx.com
+        workingDirectory: "web/developer.actyx.com"
+        condition: and(contains(variables['BUILD_STRING'],'[build-developer-actyx-com]'),succeeded())
+      - script: |
+          build/bin/post-to-slack.sh -s "developer.actyx.com" -a "danger"
+        displayName: Ping Slack on failing job
+        condition: failed()
