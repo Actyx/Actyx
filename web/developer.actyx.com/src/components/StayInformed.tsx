@@ -43,15 +43,14 @@ const ColRight = styled.div`
 `;
 
 const ImageDiv = styled.div`
-width: 100%;
-height: 30px;
-border-radius: 0.4rem;
-background-color: #fff;
-overflow: hidden;
-img {
+  width: 100%;
+  height: 30px;
+  border-radius: 0.4rem;
+  background-color: #fff;
+  overflow: hidden;
+  img {
     height: 30px;
-}
-}
+  }
 `;
 
 type Props = Readonly<{

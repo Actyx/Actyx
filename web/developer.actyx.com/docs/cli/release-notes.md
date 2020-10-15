@@ -4,6 +4,8 @@ title: Release notes
 
 This page contains information about new features, bug fixes, deprecations and removals in the Actyx CLI releases. For a more extensive description of the changes, check out our [blog](https://www.actyx.com/news/).
 
+<!-- markdownlint-disable MD024 -->
+
 ## Actyx CLI 1.0.0
 
 Release date: 28.08.2020
@@ -51,3 +53,5 @@ Release date: 25.05.2020
 ### Removals and non-backwards compatible changes
 
 - Removed the possibility to specify more than one node in all commands but `ax nodes ls`
+
+<!-- markdownlint-enable MD024 -->
