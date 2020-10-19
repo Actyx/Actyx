@@ -5,7 +5,7 @@ hide_table_of_contents: true
 
 `onEvent` is the function used to aggregate _events_ into _state_. Conceptionally it is very similar
 to the function you pass to
-[Array.reduce](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce). Think
+[Array.reduce()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce). Think
 of the sorted event log as the array, and the state as the accumulated object.
 
 ## Time Travel and Keeping `onEvent` Pure
@@ -55,14 +55,14 @@ A collection of various metadata tied to the event.
 
 - `tags` - The tags that were attached to the event when it was emitted.
 
-- `timestampMicros` - **Microseconds** since [Epoch](https://en.wikipedia.org/wiki/Unix_time) on the
-  node that emitted the event, at time of emission. If time on the node was wrong, this timestamp
+- `timestampMicros` - **Microseconds** since the [Epoch](https://en.wikipedia.org/wiki/Unix_time) on the
+  node that emitted the event, at time of emission. If the clock on that node was not set correctly, this timestamp
   will also be wrong.
 
 - `timestampAsDate` - A function that returns the `timestampMicros` converted to a plain JS `Date`
   object.
 
-- `lamport` - Timestamp according to [Lamport
+- `lamport` - Timestamp according to the [Lamport
   Clock](https://en.wikipedia.org/wiki/Lamport_timestamp). This is only useful for debugging. Events
   are fed ordered by Lamport timestamp ascending.
   
@@ -100,4 +100,4 @@ useful, logical order even when network partitions happen.
 
 In the rare case that lamport timestamp of two events should be identical, other factors are used to
 decide on a consistent ordering. Ultimately, the ordering of `eventId` (inside `metadata`) is
-equivalent to the ordering of events.
+what decides the ordering of events.

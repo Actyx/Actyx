@@ -3,7 +3,7 @@ title: isReset
 hide_table_of_contents: true
 ---
 
-`isReset` is a function that can define events with a special property: They _reset_ the state to
+`isReset` is a function that identifies events with a special property: They _reset_ the state to
 some value that only depends on this specific event and the [initial state](./initial-state). That
 means no previous event has any bearing whatsoever on the state after the _reset event_ has been
 applied.

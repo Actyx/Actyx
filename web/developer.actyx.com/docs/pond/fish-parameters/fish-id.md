@@ -4,8 +4,8 @@ hide_table_of_contents: true
 ---
 
 The `fishId` is the unique identifier of a Fish. It is used to implement caching, in order to
-improve performance of Pond-based applications. Whenever a Fish is observed via `pond.observe` or
-`pond.run`, and it has already been observed previously, we can avoid aggregating all its events
+improve performance of Pond-based applications. Whenever a Fish is observed via `Pond.observe()` or
+`Pond.run()`, and it has already been observed previously, we can avoid aggregating all its events
 again: Instead we just build on the previous state.
 
 ## Constructing a good FishId
@@ -19,7 +19,7 @@ this requirement:
 This should be a string describing what sort of thing the Fish expresses. It can be thought of as a namespace
 for the string supplied as `name`.
 
-An `entityType` for a Fish that represents a user might be "edge.ax.sf.User", or simply "User".
+An `entityType` for a Fish that represents a user might be "User" or "Workstation".
 
 A Fish does not have to represent any specific thing rooted in reality, just like classes and
 objects in programming don’t have to.
