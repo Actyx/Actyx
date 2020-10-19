@@ -169,16 +169,3 @@ jobs:
           INSTALLER_NAME: "ActyxOS Installer"
     steps:
       - template: steps/windows-installers.yml
-
-  - job: hammerite
-    # TODO Why does this depend on actyxOsContainers? Shouldn't it just depend on the specific ada-clir container?
-    dependsOn: [getBuildString, actyxOsContainers]
-    variables:
-      BUILD_STRING: $[ dependencies.getBuildString.outputs['setBuildString.BUILD_STRING'] ]
-    displayName: Hammerite
-    workspace:
-      clean: all
-    pool:
-      name: Native
-    steps:
-      - template: steps/hammerite.yml

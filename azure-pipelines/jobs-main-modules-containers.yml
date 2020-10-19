@@ -25,24 +25,6 @@ jobs:
           DOCKER_TAG: "node-armv7hf"
         ipfs-armv7hf:
           DOCKER_TAG: "ipfs-armv7hf"
-        bagsapconnector-x64:
-          DOCKER_TAG: "bagsapconnector-x64"
-          SRC_PATH: "./connectors/bag-sap"
-        flexishttpconnector-x64:
-          DOCKER_TAG: "flexishttpconnector-x64"
-          SRC_PATH: "./connectors/flexis/http"
-        flexisftpconnector-x64:
-          DOCKER_TAG: "flexisftpconnector-x64"
-          SRC_PATH: "./connectors/flexis/ftp"
-        opcuaconnector-x64:
-          DOCKER_TAG: "opcuaconnector-x64"
-          SRC_PATH: "./connectors/opc-ua"
-        iafisconnector-x64:
-          DOCKER_TAG: "iafisconnector-x64"
-          SRC_PATH: "./connectors/iafis"
-        batchcenterconnector-x64:
-          DOCKER_TAG: "batchcenterconnector-x64"
-          SRC_PATH: "./connectors/batchcenter"
         buildrs:
           DOCKER_TAG: "buildrs-x64"
           DOCKER_REPO: "actyx/util"
