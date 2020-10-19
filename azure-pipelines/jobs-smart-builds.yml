@@ -12,7 +12,7 @@ jobs:
           # This diffs files on the current PR and the relevant Cosmos branch this PR was branched from
           BASE_HASH=$(echo $BUILD_SOURCEVERSIONMESSAGE | cut -f 4 -d " ")
           CHANGES_FILE=$(mktemp /tmp/build-changes-XXXXXX)
-          trap QUIT "rm $CHANGES_FILE"
+          trap "rm $CHANGES_FILE" EXIT
           git diff --name-only $SYSTEM_PULLREQUEST_SOURCECOMMITID $BASE_HASH > $CHANGES_FILE
           node build/bin/smart-builds/smart-builds.js -- $CHANGES_FILE
         name: runSmartBuilds
