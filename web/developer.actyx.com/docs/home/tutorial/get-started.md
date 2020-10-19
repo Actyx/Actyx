@@ -24,19 +24,14 @@ Alternatively, you can download the repository as a Zip file, unzip it, and open
 
 <DownloadLink cta={"Download" } link={"https://github.com/Actyx/DemoMachineKit/archive/master.zip" }/>
 
-### Open the project in your IDE
-
-Inspect the project. It consists of a few configuration files, as well as  3 apps in the `src` folder: `dashboard`, `task-system`, `wago-connector`. The `fish` folder contains all relevant fish used in the apps.
-
-[REPLACE IMAGE BELOW]
-
-<img src={useBaseUrl('static/images/tutorials/dx1-tutorial/project.png')} />
-
-We will take a closer look at the structure in the next chapter.
-
 ### Run the apps
 
 Before you can run the apps, make sure that ActyxOS is running in development mode (check [this guide](https://developer.actyx.com/docs/os/getting-started/installation) for installation on your OS) and has valid settings (check [this guide](https://developer.actyx.com/docs/learn-actyx/tutorial#configure-your-nodes) for node configuration).
+
+:::info Need help?
+If you have any issues or just want to give feedback on our tutorial, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to developer@actyx.io .
+:::
+
 
 From the root directory, run the following commands to start the dashboard and the dashboard app:
 

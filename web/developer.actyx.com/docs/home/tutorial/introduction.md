@@ -53,3 +53,7 @@ In addition, you will need:
 - Run ActyxOS apps in development mode on your machine
 - Import production order data into ActyxOS
 - Integrate a machine PLC with ActyxOS
+
+:::info Need support?
+If you have any issues or just want to give feedback on our tutorial, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to developer@actyx.io .
+:::
