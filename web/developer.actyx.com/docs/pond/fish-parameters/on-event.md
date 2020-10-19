@@ -82,7 +82,7 @@ The `onEvent` implementation must return a value of type `S`. The following are 
 The returned value will then be fed as input `state` to the `onEvent` invocation for the next
 event.  
 It will also be potentially published to observers that have called `pond.observe` for this
-Fish. It’s important to note, however, that during time-travel, observers are not notified of
+Fish. It’s important to note, however, that during time travel, observers are not notified of
 intermediate states – they are only notified of the updated new latest state.  
 A similar thing happens when starting observation on a new Fish that already has some events: All
 existing events are applied, and then the observer receives the latest state. No intermediate

@@ -22,13 +22,15 @@ type ProcessCreated = {
   eventType: 'ProcessCreated'
 
   // Unique identifier for the process
-  id: string
+  processId: string
 
   // non-nullable fields to be filled for every created process
   name: string
   description: string
   /* .. etc .. */
 }
+
+type ProcessEvent = ProcessCreated | SomeOtherProcessEventTypes
 
 // creating a process:
 const processCreatedEvent: ProcessCreated = createProcess() // take info from somewhere
@@ -114,13 +116,13 @@ We can fix the public API for observers by exposing a dedicated observation func
 export type Callback: (state: KnownProcess) => void
 
 export const observeProcess = (id: string, pond: Pond, callback: Callback) => {
-  const outerCallback = (state: ProcessFishState) => {
+  const filteredCallback = (state: ProcessFishState) => {
     // Skip states of type UnknownProcess for outside observers.
     if (state.stateType === 'known') {
      callback(state)
     }
   }
   
-  return pond.observe(makeProcessFish(id), outerCallback)
+  return pond.observe(makeProcessFish(id), filteredCallback)
 }
 ```

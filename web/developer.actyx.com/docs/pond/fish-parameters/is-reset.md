@@ -35,6 +35,6 @@ Without defining `isReset`, we would lose a lot of performance due to
 
 - going through all historic events
 
-- time-travelling when events occur out of order
+- time travelling when events occur out of order
 
-By defining `isReset`, we disregard historic events and avoid unneccessary time-travel.
+By defining `isReset`, we disregard historic events and avoid unneccessary time travel.
