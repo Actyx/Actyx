@@ -21,9 +21,9 @@ This tutorial is divided into several sections:
 
 ## Introduction
 
-We will cover a typical production use case in this tutorial:
+We will cover a typical production use case in this tutorial. In this imaginary, yet realistic factory setup, we have a mobile app that creates production orders, a machine which can start and finish those orders and finally a dashboard app which can display informative production data.
 
-<img src={useBaseUrl('static/images/tutorials/dx1-tutorial/use-case.png')} />
+<img src={useBaseUrl('static/images/tutorials/dx1-tutorial/tutorial-setup-01.svg')} />
 
 ## What you need
 
