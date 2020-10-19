@@ -31,21 +31,6 @@ jobs:
     steps:
       - template: steps/actyxos-rust-sdk.yml
 
-  # The following builds intentionally don't depend on `rtmaster` to speed up overall build times.
-  # TODO However, we're building store-lib multiple times: once for each of these, once for the actual store container and once for the actyxOsBinaries below (and SCCACHE sometimes does not work)
-  - job: androidShellApp
-    dependsOn: getBuildString
-    variables:
-      BUILD_STRING: $[ dependencies.getBuildString.outputs['setBuildString.BUILD_STRING'] ]
-    container: buildrs_x64_latest
-    displayName: Android Shell App
-    workspace:
-      clean: all
-    pool:
-      name: Native
-    steps:
-      - template: steps/android-shell-app.yml
-
   - job: actyxOsAndroid
     dependsOn: getBuildString
     variables:
