@@ -27,7 +27,7 @@ object as defined by immutable-js:
 import { List } from 'immutable'
 
 // `push` returns a new `List` with the given item appended
-const onEvent = (state: List<any>, event: any): List<any> => state.push(event)
+const onEvent = (state: List<unknown>, event: unknown): List<unknown> => state.push(event)
 ```
 
 Since the data structures provided by immutable-js already implement `toJSON`, the serialization
@@ -39,7 +39,7 @@ Now when the state is parsed, it is still an array and not a `List`. Hence we im
 
 ```ts
 // List has a constructor function that takes an array
-const deserializeState = (stateFromJson: any[]): List<any> => List(stateFromJson)
+const deserializeState = (stateFromJson: unknown): List<unknown> => List(stateFromJson as unknown[])
 
 const fish = {
   fishId: FishId.of('list-of-all-events', 'immutable-js', 1),
