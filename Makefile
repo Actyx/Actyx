@@ -281,7 +281,7 @@ actyxos-bin-arm:
 	$(eval IMG:=actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION))
 	$(call build_bins_and_move,$(OUTPUT),$(TARGET),$(IMG))
 
-android: debug clean android-store-lib
+actyxos-bin-all: actyxos-bin-arm actyxos-bin-armv7hf actyxos-bin-aarch64 actyxos-bin-x64
 
 android-store-lib: debug
 	$(call fn-build-android-rust-lib-i686,store-lib)
@@ -380,3 +380,8 @@ axos-docker-x64: debug
 	ARCH=x64 DOCKER_TAG=actyxos-x64 make actyxos-bin-x64 docker-build-actyxos
 
 axosandroid: debug clean axosandroid-libs axosandroid-app
+
+# build all the things, but no side-effecting things like uploading artifacts somewhere
+build-all: axosandroid axos-docker-x64 axosandroid-x86 actyxos-bin-all \
+  actyxos-bin-win64 actyxos-installer-win64 node-manager-win64 \
+  docker-build-musl
