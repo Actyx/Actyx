@@ -42,7 +42,7 @@ debug: print-GIT_BRANCH print-git_hash print-component print-arch print-build_di
 
 .PHONY: all
 
-all: clean ${DOCKER_BUILD}
+docker-build-non-musl: clean ${DOCKER_BUILD}
 
 clean:
 	rm -rf $(build_dir)
@@ -379,9 +379,11 @@ axosandroid-x86: debug
 axos-docker-x64: debug
 	ARCH=x64 DOCKER_TAG=actyxos-x64 make actyxos-bin-x64 docker-build-actyxos
 
-axosandroid: debug clean axosandroid-libs axosandroid-app
+axosandroid: docker-login debug clean axosandroid-libs axosandroid-app
 
 # build all the things, but no side-effecting things like uploading artifacts somewhere
-build-all: axosandroid axos-docker-x64 axosandroid-x86 actyxos-bin-all \
-  actyxos-bin-win64 actyxos-installer-win64 node-manager-win64 \
-  docker-build-musl
+build-all: docker-login \
+  axosandroid axosandroid-x86 \
+  actyxos-bin-all actyxos-bin-win64 \
+  actyxos-installer-win64 node-manager-win64 \
+  docker-build-musl docker-build-non-musl axos-docker-x64
