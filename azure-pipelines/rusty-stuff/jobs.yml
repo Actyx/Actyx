@@ -80,19 +80,6 @@ jobs:
     steps:
       - template: steps/actyxos-binaries.yml
 
-  # Distributed stress testing nightly build
-  - job: distributedStressTest
-    displayName: Nightly Distributed Stress Test
-    variables:
-      BUILD_STRING: $[ dependencies.getBuildString.outputs['setBuildString.BUILD_STRING'] ]
-    condition: eq(variables['Build.Reason'], 'Schedule') ## run only on Scheduled runs, not on prs or merges to master
-    workspace:
-      clean: all
-    pool:
-      name: Native
-    steps:
-      - template: steps/distributed-stress-test.yml
-
   - job: actyxOsContainers
     dependsOn: [getBuildString, actyxosbinaries]
     variables:
