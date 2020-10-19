@@ -58,3 +58,7 @@ export const offsets = (clientOpts: ApiClientOpts) => (opts: OffsetsOpts) => {
     onError: opts.onError,
   })
 }
+
+/** @internal */
+export const offsetsPromise = (clientOpts: ApiClientOpts) => () =>
+  new Promise<OffsetMap>((res, rej) => offsets(clientOpts)({ onOffsets: res, onError: rej }))

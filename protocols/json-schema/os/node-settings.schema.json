@@ -95,7 +95,7 @@
           "items": {
             "$ref": "#/definitions/Basic/MultiAddr"
           },
-          "minItems": 1,
+          "default": [],
           "uniqueItems": true,
           "description": "Addresses of peers to initially connect for bootstrapping. These must be multiaddresses containing a peer id. E.g. /dns4/demo-bootstrap.actyx.net/tcp/4001/p2p/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH"
         },
@@ -126,13 +126,13 @@
         "requireAuthentication": {
           "type": "boolean",
           "default": false
-          },
+        },
         "authorizedKeys": {
           "type": "array",
           "items": {
             "type": "string",
             "minLength": 32,
-            "maxLength": 64 
+            "maxLength": 64
           },
           "minItems": 0,
           "uniqueItems": true,
@@ -159,8 +159,13 @@
           "additionalProperties": {
             "$ref": "#/definitions/Composite/License"
           },
-          "description": "Key-value pairs where the key is an app's ID."
+          "description": "Key-value pairs where the key is an app's ID.",
+          "default": {}
         }
+      },
+      "default": {
+        "os": "development",
+        "apps": {}
       }
     },
     "Services": {
