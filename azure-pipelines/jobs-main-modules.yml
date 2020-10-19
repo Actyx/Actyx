@@ -11,15 +11,8 @@ jobs:
       matrix:
         pond:
           MODULE: "pond"
-        node-red:
-          MODULE: "node-red"
         build:
           MODULE: "build"
-        klk-opc-ua:
-          MODULE: "klk-opc-ua"
-        # TODO Hammerite is being built twice: once here and once in the Containers
-        connectors:
-          MODULE: "connectors"
     workspace:
       clean: all
     steps:
