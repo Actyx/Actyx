@@ -289,24 +289,7 @@ actyxos-bin-arm:
 	$(eval IMG:=actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION))
 	$(call build_bins_and_move,$(OUTPUT),$(TARGET),$(IMG))
 
-
-# Android Shell App, i686 32 bit
-android-app: debug
-	mkdir -p ./android-shell-app/app/src/main/jniLibs/x86
-	cp ./rt-master/target/i686-linux-android/release/libaxstore.so ./android-shell-app/app/src/main/jniLibs/x86/libaxstore.so
-	mkdir -p ./android-shell-app/app/src/main/jniLibs/arm64-v8a
-	cp ./rt-master/target/aarch64-linux-android/release/libaxstore.so ./android-shell-app/app/src/main/jniLibs/arm64-v8a/libaxstore.so
-	./android-shell-app/bin/prepare-gradle-build.sh
-	pushd android-shell-app; \
-	./gradlew clean ktlint build assemble; \
-	popd
-	echo 'APK: ./android-shell-app/app/build/outputs/apk/release/app-release.apk'
-
-android: debug clean android-store-lib android-app
-
-android-install: debug
-	adb uninstall io.actyx.shell
-	adb install ./android-shell-app/app/build/outputs/apk/release/app-release.apk
+android: debug clean android-store-lib
 
 android-store-lib: debug
 	$(call fn-build-android-rust-lib-i686,store-lib)
