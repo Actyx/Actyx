@@ -11,8 +11,6 @@ jobs:
       matrix:
         pond:
           MODULE: "pond"
-        node-red:
-          MODULE: "node-red"
         build:
           MODULE: "build"
         klk-opc-ua:
