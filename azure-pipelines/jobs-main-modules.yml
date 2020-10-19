@@ -13,8 +13,6 @@ jobs:
           MODULE: "pond"
         build:
           MODULE: "build"
-        klk-opc-ua:
-          MODULE: "klk-opc-ua"
     workspace:
       clean: all
     steps:
