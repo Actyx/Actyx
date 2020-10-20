@@ -1,32 +1,19 @@
-import { clone } from 'ramda'
 import { Event, Events, OffsetMap } from '../eventstore/types'
-import { EventKey, LocalSnapshot, StateWithProvenance } from '../types'
-
-export type States<S> = {
-    latest: StateWithProvenance<S>
-
-    snapshots?: ReadonlyArray<LocalSnapshot<S>>
-}
+import { StateWithProvenance } from '../types'
 
 export type Reducer<S> = {
-    appendEvents: (events: Events) => States<S>
+    appendEvents: (events: Events) => StateWithProvenance<S>
 
     setState: (state: StateWithProvenance<S>) => void
 
-    // Returns the point to pick up from. `undefined` means we start from latest snapshot (if any)
-    timeTravel: (trigger: EventKey) => OffsetMap | undefined
+    currentOffsets: () => OffsetMap
 }
 
 export const MonotonicReducer = <S>(
     onEvent: (oldState: S, event: Event) => S,
-    initialState: S,
+    initialState: StateWithProvenance<S>,
 ): Reducer<S> => {
-    const state0 = (): StateWithProvenance<S> => ({
-        state: clone(initialState),
-        psnMap: {},
-    })
-
-    let swp = state0()
+    let swp = initialState
 
     return {
         appendEvents: (events: Events) => {
@@ -39,16 +26,11 @@ export const MonotonicReducer = <S>(
 
             swp = { state, psnMap }
 
-            return {
-                latest: swp,
-            }
+            return swp
         },
 
         setState: s => (swp = s),
 
-        timeTravel: () => {
-            swp = state0()
-            return undefined
-        }
+        currentOffsets: () => swp.psnMap
     }
 }

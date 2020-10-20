@@ -45,6 +45,7 @@ const includeEvent = (psnMap: OffsetMapBuilder, ev: Event): OffsetMapBuilder => 
 export type OffsetMapBuilder = Record<string, Psn>
 export type OffsetMapCompanion = Readonly<{
   empty: OffsetMap
+  isEmpty: (m: OffsetMap) => boolean
   lookup: (m: OffsetMap, s: string) => Psn
   lookupOrUndefined: (m: OffsetMap, s: string) => Psn | undefined
   update: (m: OffsetMapBuilder, ev: Event) => OffsetMapBuilder
@@ -52,6 +53,7 @@ export type OffsetMapCompanion = Readonly<{
 
 export const OffsetMap: OffsetMapCompanion = {
   empty: emptyOffsetMap,
+  isEmpty: m => Object.keys(m).length === 0,
   lookup: offsetMapLookup,
   lookupOrUndefined: (m: OffsetMapBuilder, s: string) => m[s],
   update: includeEvent,

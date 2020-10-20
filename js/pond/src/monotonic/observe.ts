@@ -56,12 +56,11 @@ export const observeMonotonic = (
 
         const onEventRaw = mkOnEventRaw(sourceId, clone(initialState), onEvent, isReset)
 
-        const reducer = MonotonicReducer(onEventRaw, initialState)
+        const initReducer = () => MonotonicReducer(onEventRaw, { state: clone(initialState), psnMap: {} })
+        let reducer = initReducer()
 
         const out: Subject<StateWithProvenance<S>> = new ReplaySubject(1)
 
-        let startingPoint: OffsetMap | undefined = undefined
-        let timeTravelTriggered = false
 
         const observer: Observer<EventsOrTimetravel> = {
             next: (msg) => {
@@ -71,14 +70,15 @@ export const observeMonotonic = (
                         return
 
                     case MsgType.events: {
-                        const states = reducer.appendEvents(msg.events)
-                        out.next(states.latest)
+                        // TODO: Store snapshots (must be async into some pipeline)
+                        // TODO: caughtUp handling
+                        out.next(reducer.appendEvents(msg.events))
                         return
                     }
 
                     case MsgType.timetravel: {
-                        timeTravelTriggered = true
-                        startingPoint = reducer.timeTravel(msg.trigger)
+                        // TODO: Find locally cached state
+                        reducer = initReducer()
                         return
                     }
                 }
@@ -89,13 +89,9 @@ export const observeMonotonic = (
             },
 
             complete: () => {
-                if (timeTravelTriggered) {
-                    timeTravelTriggered = false
-                    startFromScratch(startingPoint)
-                } else {
-                    // Connection closed, we try to pick up from where we stopped
-                    out.take(1).delay(5000).do(latest => startFromScratch(latest.psnMap)).subscribe()
-                }
+                // TODO: Try loading snapshot (wait for snapshot pipeline -> then load)
+                const current = reducer.currentOffsets()
+                startFromScratch(OffsetMap.isEmpty(current) ? undefined : current)
             }
         }
 
