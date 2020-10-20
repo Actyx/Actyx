@@ -205,7 +205,7 @@ define build_bins_and_move_win64
 	mkdir -p $(1)
 	docker run \
 	-v `pwd`:/src \
-	-u builder \
+	-u builder\
 	-w /src/rt-master \
 	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-e CARGO_BUILD_TARGET=$(2) \
@@ -227,6 +227,7 @@ endef
 # 2nd arg: target arch (ia32, x64, armv7l, arm64, mips64el)
 define build_node_manager
 	docker run \
+	  -u builder \
 		-v `pwd`:/src \
 		-w /src/misc/actyxos-node-manager \
 		-it actyx/util:windowsinstallercreator-x64-$(IMAGE_VERSION) \
@@ -254,6 +255,7 @@ actyxos-installer-win64: node-manager-win64
 	cp -r ./misc/actyxos-win-installer/* $(build_dir)/win-installer
 	cp -r $(build_dir)/ActyxOS-Node-Manager-win32-x64 $(build_dir)/win-installer/node-manager
 	docker run \
+	  -u builder \
 		-v `pwd`:/src \
 		-w /src \
 		-e PRODUCT_VERSION="1.0.0-rc.4" \
