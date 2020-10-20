@@ -49,6 +49,7 @@ clean:
 
 prepare:
 	rustup default $(BUILD_RUST_TOOLCHAIN)
+	docker pull actyx/util:buildnode-x64-latest
 	docker pull actyx/util:buildrs-x64-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-aarch64-unknown-linux-musl-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-x86_64-unknown-linux-musl-$(IMAGE_VERSION)
