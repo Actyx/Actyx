@@ -12,7 +12,7 @@ export type Reducer<S> = {
 
     setState: (state: StateWithProvenance<S>) => void
 
-    // Returns the OffsetMap to pick up from. `undefined` means we start from latest snapshot (if any)
+    // Returns the point to pick up from. `undefined` means we start from latest snapshot (if any)
     timeTravel: (trigger: EventKey) => OffsetMap | undefined
 }
 

@@ -4,16 +4,22 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-/* eslint-disable @typescript-eslint/no-explicit-any @typescript-eslint/no-let */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Observable } from 'rxjs'
 import { EventStore } from '../eventstore'
-import { AllEventsSortOrders, Event, Events, OffsetMap, OffsetMapWithDefault, PersistedEventsSortOrders } from '../eventstore/types'
+import {
+    AllEventsSortOrders,
+    Event,
+    Events,
+    OffsetMap,
+    OffsetMapWithDefault,
+    PersistedEventsSortOrders,
+} from '../eventstore/types'
 import log from '../loggers'
 import { SubscriptionSet } from '../subscription'
 import { EventKey, LocalSnapshot } from '../types'
 import { takeWhileInclusive } from '../util'
 import { getInsertionIndex } from '../util/binarySearch'
-
 
 export enum MsgType {
     state = 'state',
@@ -40,51 +46,49 @@ export type TimetravelMsg = {
 
 export type EventsOrTimetravel = StateMsg | EventsMsg | TimetravelMsg
 
-// New API:
-// Stream events as they become available, until time-travel would occour.
-// To be eventually implemented on the rust-store side with lots of added cleverness.
-export const eventsMonotonic = (eventStore: EventStore) => (
+export type SubscribeMonotonic = (
     subscriptions: SubscriptionSet,
     // Sending 'from' means we DONT want a snapshot
     _from?: OffsetMap,
     _horizon?: EventKey,
-): Observable<EventsOrTimetravel> => {
-    return eventStore
-        .present()
-        .take(1)
-        .concatMap(present => monotonicFrom(eventStore, subscriptions, present))
-}
+) => Observable<EventsOrTimetravel>
 
-const monotonicFrom = (eventStore: EventStore, subscriptions: SubscriptionSet,
-    present: OffsetMapWithDefault,
-): Observable<EventsOrTimetravel> => {
+// New API:
+// Stream events as they become available, until time-travel would occour.
+// To be eventually implemented on the rust-store side with lots of added cleverness.
+export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
+    eventStore: EventStore,
+) => {
+    const monotonicFrom = (
+        subscriptions: SubscriptionSet,
+        present: OffsetMapWithDefault,
+    ): Observable<EventsOrTimetravel> => {
+        const persisted: Observable<EventsMsg> = eventStore
+            .persistedEvents(
+                { default: 'min', psns: {} },
+                { default: 'min', psns: present.psns },
+                subscriptions,
+                PersistedEventsSortOrders.EventKey,
+                undefined, // No semantic snapshots means no horizon, ever.
+            )
+            .map(chunk => ({
+                type: MsgType.events,
+                events: chunk,
+                caughtUp: false,
+            }))
 
+        const realtime = Observable.defer(() => realtimeFrom(subscriptions, present))
 
-    const persisted: Observable<EventsMsg> = eventStore.persistedEvents(
-        { default: 'min', psns: {} },
-        { default: 'min', psns: present.psns },
-        subscriptions,
-        PersistedEventsSortOrders.EventKey,
-        undefined, // No semantic snapshots means no horizon, ever.
-    ).map(chunk => ({
-        type: MsgType.events,
-        events: chunk,
-        caughtUp: false
-    }))
+        return persisted.concat(realtime)
+    }
 
-    const realtime = Observable.defer(() => realtimeFrom(eventStore, subscriptions, present))
+    const realtimeFrom = (
+        subscriptions: SubscriptionSet,
+        present: OffsetMapWithDefault,
+    ): Observable<EventsOrTimetravel> => {
+        let latest = EventKey.zero
 
-    return persisted.concat(realtime)
-}
-
-const realtimeFrom = (eventStore: EventStore, subscriptions: SubscriptionSet,
-    present: OffsetMapWithDefault,
-): Observable<EventsOrTimetravel> => {
-
-    let latest = EventKey.zero
-
-    const realtimeEvents = eventStore
-        .allEvents(
+        const realtimeEvents = eventStore.allEvents(
             {
                 psns: present.psns,
                 default: 'min',
@@ -92,45 +96,58 @@ const realtimeFrom = (eventStore: EventStore, subscriptions: SubscriptionSet,
             { psns: {}, default: 'max' },
             subscriptions,
             AllEventsSortOrders.Unsorted,
-            undefined // horizon,
+            undefined, // horizon,
         )
-    // Buffer incoming updates, try to preserve forward order -- act like a clever rust-side!
-    // .bufferTime(3)
-    // .map(chunks => {
-    //     const flattened: Event[] = chunks.reduce((chunk: Events, acc: Events) => acc.concat(chunk), [] as Event[])
-    //     return flattened.sort(EventKey.ord.compare)
-    // }
-    // ))
+        // Buffer incoming updates, try to preserve forward order -- act like a clever rust-side!
+        // .bufferTime(3)
+        // .map(chunks => {
+        //     const flattened: Event[] = chunks.reduce((chunk: Events, acc: Events) => acc.concat(chunk), [] as Event[])
+        //     return flattened.sort(EventKey.ord.compare)
+        // }
+        // ))
 
-    return realtimeEvents
-        .filter(next => next.length > 0)
-        .map(next => {
-            // Take while we are going strictly forwards
-            const nextKey = next[0]
-            const pass = EventKey.ord.compare(nextKey, latest) >= 0
+        return realtimeEvents
+            .filter(next => next.length > 0)
+            .map(next => {
+                // Take while we are going strictly forwards
+                const nextKey = next[0]
+                const pass = EventKey.ord.compare(nextKey, latest) >= 0
 
-            if (!pass) {
-                log.pond.info('triggered time-travel back to ' + JSON.stringify(nextKey))
+                if (!pass) {
+                    return timeTravelMsg(latest, next)
+                }
 
-                const high =
-                    getInsertionIndex(next, latest, (e, l) =>
-                        EventKey.ord.compare(e, l),
-                    ) - 1
+                log.pond.info('rt passed, ' + JSON.stringify(nextKey) + ' > ' + JSON.stringify(latest))
 
+                latest = next[next.length - 1]
                 return {
-                    type: MsgType.timetravel,
-                    trigger: next[0],
-                    high: next[high], // highest event to cause time-travel
-                } as TimetravelMsg
-            }
+                    type: MsgType.events,
+                    events: next,
+                } as EventsMsg
+            })
+            .pipe(takeWhileInclusive(m => m.type !== MsgType.timetravel))
+    }
 
-            log.pond.info('rt passed, ' + JSON.stringify(nextKey) + ' > ' + JSON.stringify(latest))
+    return (
+        subscriptions: SubscriptionSet,
+        _from?: OffsetMap,
+        _horizon?: EventKey,
+    ): Observable<EventsOrTimetravel> => {
+        return eventStore
+            .present()
+            .take(1)
+            .concatMap(present => monotonicFrom(subscriptions, present))
+    }
+}
 
-            latest = next[next.length - 1]
-            return {
-                type: MsgType.events,
-                events: next,
-            } as EventsMsg
-        })
-        .pipe(takeWhileInclusive(m => m.type !== MsgType.timetravel))
+const timeTravelMsg = (previousHead: EventKey, next: Events) => {
+    log.pond.info('triggered time-travel back to ' + EventKey.format(next[0]))
+
+    const high = getInsertionIndex(next, previousHead, (e, l) => EventKey.ord.compare(e, l)) - 1
+
+    return {
+        type: MsgType.timetravel,
+        trigger: next[0],
+        high: next[high], // highest event to cause time-travel
+    } as TimetravelMsg
 }
