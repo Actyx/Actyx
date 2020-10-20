@@ -180,15 +180,12 @@ module.exports = {
     'learn-actyx/tutorial',
     {
       type: 'category', label:
-        'Real-world Tutorial', items: [
-          'home/tutorial/introduction',
-          'home/tutorial/solution-architecture',
-          'home/tutorial/get-started',
-          'home/tutorial/explore-the-apps',
-          'home/tutorial/task-1',
-          'home/tutorial/task-2',
-          'home/tutorial/summary',
-          'home/tutorial/next-steps',
+        'Advanced Tutorial', items: [
+          'learn-actyx/advanced-tutorial/introduction',
+          'learn-actyx/advanced-tutorial/solution-architecture',
+          'learn-actyx/advanced-tutorial/get-started',
+          'learn-actyx/advanced-tutorial/explore-the-apps',
+          'learn-actyx/advanced-tutorial/next-steps',
         ]
     },
   ],

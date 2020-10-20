@@ -1,5 +1,5 @@
 ---
-title: "Tutorial: A real-world use case"
+title: "Introduction"
 sidebar_label: Introduction
 ---
 
@@ -14,9 +14,6 @@ This tutorial is divided into several sections:
 - Solution architecture
 - Getting started
 - Explore the apps
-- Task 1: TBD
-- Task 2: TBD
-- Summary
 - Next steps
 
 ## Introduction
@@ -41,7 +38,7 @@ In addition, you will need:
 
 ## What you'll learn
 
-- How a real-world Actyx solution works
+- How a real-world Actyx solution is implemented
 - What the building blocks of an Actyx app are
 - How to import order data into ActyxOS
 - How to integrate with machines
