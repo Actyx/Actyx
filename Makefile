@@ -47,6 +47,14 @@ docker-build-non-musl: clean ${DOCKER_BUILD}
 clean:
 	rm -rf $(build_dir)
 
+prepare:
+	rustup default $(BUILD_RUST_TOOLCHAIN)
+	docker pull actyx/util:buildrs-x64-$(IMAGE_VERSION)
+	docker pull actyx/cosmos:musl-aarch64-unknown-linux-musl-$(IMAGE_VERSION)
+	docker pull actyx/cosmos:musl-x86_64-unknown-linux-musl-$(IMAGE_VERSION)
+	docker pull actyx/cosmos:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
+	docker pull actyx/cosmos:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
+
 define docker-login-dockerhub =
 	# Only login if we're not already logged in. The only way to check this is by pulling an image, we use `ipfs-x64-latest`
 	# since it's our smallest private image.
