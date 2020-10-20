@@ -1,3 +1,4 @@
+import { clone } from 'ramda'
 import { Event, Events, OffsetMap } from '../eventstore/types'
 import { EventKey, LocalSnapshot, StateWithProvenance } from '../types'
 
@@ -20,10 +21,12 @@ export const MonotonicReducer = <S>(
     onEvent: (oldState: S, event: Event) => S,
     initialState: S,
 ): Reducer<S> => {
-    let swp: StateWithProvenance<S> = {
-        state: initialState,
+    const state0 = (): StateWithProvenance<S> => ({
+        state: clone(initialState),
         psnMap: {},
-    }
+    })
+
+    let swp = state0()
 
     return {
         appendEvents: (events: Events) => {
@@ -43,6 +46,9 @@ export const MonotonicReducer = <S>(
 
         setState: s => (swp = s),
 
-        timeTravel: () => undefined,
+        timeTravel: () => {
+            swp = state0()
+            return undefined
+        }
     }
 }
