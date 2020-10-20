@@ -86,7 +86,7 @@ Open `orderFish.ts`. The following illustration should make it easier to underst
 
 <img src={useBaseUrl('static/images/tutorials/dx1-tutorial/orderfish.png')} />
 
-As you can see in `orderfish.ts` , `DefinedState` can be, depending on the event, either `idle`, `active`, or `done`.
+As you can see in `orderfish.ts` , `DefinedState` can be – depending on the event – either `idle`, `active`, or `done`.
 
 ## Apps
 
