@@ -30,7 +30,9 @@ Before you can run the apps, make sure that ActyxOS is running in development mo
 If you have any issues or just want to give feedback on our tutorial, you are welcome to join our [Discord chat](https://discord.gg/262yJhc), raise an issue in the [GitHub repo](https://github.com/Actyx/DemoMachineKit/issues) or write us an e-mail to developer@actyx.io .
 :::
 
-From the root directory, run the following command to start the Dashboard app:
+Before you start any apps, run `npm install` from the root directory.
+
+To start the Dashboard app, run:
 
 ```
 npm run ui:dashboard:start
