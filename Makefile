@@ -46,6 +46,7 @@ targets = $(sort $(foreach oa,$(osArch),$(target-$(oa))))
 # execute linter, style checker and tests for everything
 validate: validate-rt-master validate-rust-sdk validate-rust-sdk-macros validate-os-android
 
+# execute fmt check, clippy and tests for rt-master
 validate-rt-master:
 	cd rt-master && \
 		cargo +$(BUILD_RUST_TOOLCHAIN) fmt --all -- --check && \
@@ -53,6 +54,7 @@ validate-rt-master:
 		cargo +$(BUILD_RUST_TOOLCHAIN) --locked clippy --tests -- -D warnings && \
 		cargo +$(BUILD_RUST_TOOLCHAIN) test --all-features
 
+# execute fmt check, clippy and tests for rust-sdk
 validate-rust-sdk:
 	cd rust/sdk && \
 		cargo +$(BUILD_RUST_TOOLCHAIN) fmt --all -- --check && \
@@ -60,6 +62,7 @@ validate-rust-sdk:
 		cargo +$(BUILD_RUST_TOOLCHAIN) --locked clippy --tests -- -D warnings && \
 		cargo +$(BUILD_RUST_TOOLCHAIN) test --all-features
 
+# execute fmt check, clippy and tests for rust-sdk-macros
 validate-rust-sdk-macros:
 	cd rust/sdk_macros && \
 		cargo +$(BUILD_RUST_TOOLCHAIN) fmt --all -- --check && \
@@ -67,9 +70,10 @@ validate-rust-sdk-macros:
 		cargo +$(BUILD_RUST_TOOLCHAIN) --locked clippy --tests -- -D warnings && \
 		cargo +$(BUILD_RUST_TOOLCHAIN) test --all-features
 
+# execute linter for os-android
 validate-os-android:
 	cd jvm/os-android/ && \
-		./gradlew clean ktlintCheck
+		./gradlew clean ktlintCheck test
 
 # define mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
