@@ -28,8 +28,11 @@ clean:
 
 prepare: UNCONDITIONAL
 	rustup default $(BUILD_RUST_TOOLCHAIN)
+	# used for js builds
 	docker pull actyx/util:buildnode-x64-$(IMAGE_VERSION)
+	# used for windows rust builds
 	docker pull actyx/util:buildrs-x64-$(IMAGE_VERSION)
+	# used for linux rust builds
 	docker pull actyx/cosmos:musl-aarch64-unknown-linux-musl-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-x86_64-unknown-linux-musl-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
@@ -44,7 +47,7 @@ os = $(sort $(foreach oa,$(osArch),$(word 1,$(subst -, ,$(oa)))))
 targets = $(sort $(foreach oa,$(osArch),$(target-$(oa))))
 
 # execute linter, style checker and tests for everything
-validate: validate-rt-master validate-rust-sdk validate-rust-sdk-macros validate-os-android
+validate: validate-rt-master validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website
 
 # execute fmt check, clippy and tests for rt-master
 validate-rt-master:
@@ -74,6 +77,32 @@ validate-rust-sdk-macros:
 validate-os-android:
 	cd jvm/os-android/ && \
 		./gradlew clean ktlintCheck test
+
+# validate all js
+validate-js: validate-js-pond validate-js-sdk
+
+# validate js pond
+validate-js-pond:
+	cd js/pond && \
+		npm i && \
+		npm run test && \
+		npm run build:prod
+
+# validate js sdk
+validate-js-sdk:
+	cd js/os-sdk && \
+		npm i && \
+		npm run test && \
+		npm run build
+
+# validate all websites
+validate-website: validate-website-developer
+
+# validate developer.actyx.com
+validate-website-developer:
+	cd web/developer.actyx.com && \
+		npm i && \
+		npm run test
 
 # define mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
