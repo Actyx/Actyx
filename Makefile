@@ -161,16 +161,13 @@ targetPatterns = $(foreach t,$(targets),rt-master/target/$(t)/release/%)
 
 $(targetPatterns): TARGET = $(word 3,$(subst /, ,$@))
 $(targetPatterns): OS = $(word 3,$(subst -, ,$(TARGET)))
-$(targetPatterns): UNCONDITIONAL
-	@# create these so that they belong to the current user (Docker would create as root)
-	mkdir -p ${CARGO_HOME}/git
-	mkdir -p ${CARGO_HOME}/registry
+$(targetPatterns): cargo-init UNCONDITIONAL
 	docker run \
 	  -u $(shell id -u) \
 	  -w /src/rt-master \
 	  -e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	  -e CARGO_BUILD_TARGET=$(TARGET) \
-	  -e CARGO_BUILD_JOBS=8 \
+	  -e CARGO_BUILD_JOBS=$(CARGO_BUILD_JOBS) \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
 	  -v ${CARGO_HOME}/git:/home/builder/.cargo/git \
@@ -187,20 +184,13 @@ soTargetPatterns = $(foreach t,$(android_so_targets),rt-master/target/$(t)/relea
 
 $(soTargetPatterns): TARGET = $(word 3,$(subst /, ,$@))
 $(soTargetPatterns): OS = $(word 3,$(subst -, ,$(TARGET)))
-$(soTargetPatterns): UNCONDITIONAL
-	@echo $(android_so_targets)
-	@echo $(OS)
-	@echo $(TARGET)
-	@echo $(image-linux)
-	@# create these so that they belong to the current user (Docker would create as root)
-	mkdir -p ${CARGO_HOME}/git
-	mkdir -p ${CARGO_HOME}/registry
+$(soTargetPatterns): cargo-init UNCONDITIONAL
 	docker run \
 	  -u $(shell id -u) \
 	  -w /src/rt-master \
 	  -e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	  -e CARGO_BUILD_TARGET=$(TARGET) \
-	  -e CARGO_BUILD_JOBS=8 \
+	  -e CARGO_BUILD_JOBS=$(CARGO_BUILD_JOBS) \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
 	  -v ${CARGO_HOME}/git:/home/builder/.cargo/git \
@@ -208,3 +198,8 @@ $(soTargetPatterns): UNCONDITIONAL
 	  -it --rm \
 	  actyx/util:buildrs-x64-latest \
 	  cargo --locked build -p ax-os-node-ffi --lib --release --target $(TARGET)
+
+cargo-init: UNCONDITIONAL
+	@# create these so that they belong to the current user (Docker would create as root)
+	mkdir -p ${CARGO_HOME}/git
+	mkdir -p ${CARGO_HOME}/registry
