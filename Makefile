@@ -56,63 +56,55 @@ CARGO := cargo +$(BUILD_RUST_TOOLCHAIN)
 
 # execute fmt check, clippy and tests for rt-master
 validate-rt-master:
-	cd rt-master && \
-		$(CARGO) fmt --all -- --check && \
-		$(CARGO) --locked clippy -- -D warnings && \
-		$(CARGO) --locked clippy --tests -- -D warnings && \
-		$(CARGO) test --all-features
+	cd rt-master && $(CARGO) fmt --all -- --check
+	cd rt-master && $(CARGO) --locked clippy -- -D warnings
+	cd rt-master && $(CARGO) --locked clippy --tests -- -D warnings
+	cd rt-master && $(CARGO) test --all-features
 
 # execute fmt check, clippy and tests for rust-sdk
 validate-rust-sdk:
-	cd rust/sdk && \
-		$(CARGO) fmt --all -- --check && \
-		$(CARGO) --locked clippy -- -D warnings && \
-		$(CARGO) --locked clippy --tests -- -D warnings && \
-		$(CARGO) test --all-features
+	cd rust/sdk && $(CARGO) fmt --all -- --check
+	cd rust/sdk && $(CARGO) --locked clippy -- -D warnings
+	cd rust/sdk && $(CARGO) --locked clippy --tests -- -D warnings
+	cd rust/sdk && $(CARGO) test --all-features
 
 # execute fmt check, clippy and tests for rust-sdk-macros
 validate-rust-sdk-macros:
-	cd rust/sdk_macros && \
-		$(CARGO) fmt --all -- --check && \
-		$(CARGO) --locked clippy -- -D warnings && \
-		$(CARGO) --locked clippy --tests -- -D warnings && \
-		$(CARGO) test --all-features
+	cd rust/sdk_macros && $(CARGO) fmt --all -- --check
+	cd rust/sdk_macros && $(CARGO) --locked clippy -- -D warnings
+	cd rust/sdk_macros && $(CARGO) --locked clippy --tests -- -D warnings
+	cd rust/sdk_macros && $(CARGO) test --all-features
 
 # execute linter for os-android
 validate-os-android:
-	cd jvm/os-android/ && \
-		./gradlew clean ktlintCheck test
+	cd jvm/os-android/ && ./gradlew clean ktlintCheck test
 
 # validate all js
 validate-js: validate-js-pond validate-js-sdk
 
 # validate js pond
 validate-js-pond:
-	cd js/pond && \
-		npm i && \
-		npm run test && \
-		npm run build:prod
+	cd js/pond && npm i
+	cd js/pond && npm run test
+	cd js/pond && npm run build:prod
 
 # validate js sdk
 validate-js-sdk:
-	cd js/os-sdk && \
-		npm i && \
-		npm run test && \
-		npm run build
+	cd js/os-sdk && npm i
+	cd js/os-sdk && npm run test
+	cd js/os-sdk && npm run build
 
 # validate all websites
 validate-website: validate-website-developer validate-website-downloads
 
 # validate developer.actyx.com
 validate-website-developer:
-	cd web/developer.actyx.com && \
-		npm i && \
-		npm run test
+	cd web/developer.actyx.com && npm i
+	cd web/developer.actyx.com && npm run test
 
 # validate downloads.actyx.com
 validate-website-downloads:
-	cd web/downloads.actyx.com && \
-		npm i
+	cd web/downloads.actyx.com && npm i
 
 # define mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
