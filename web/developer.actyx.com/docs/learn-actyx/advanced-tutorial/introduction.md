@@ -24,7 +24,7 @@ We will cover a typical production use case in this tutorial. In this imaginary,
 
 ## What you need
 
-To understand the Advanced ActyxOS Tutorial, you should know the fundamentals of how to build an ActyxOS app using the Actyx Pond. This tutorial builds on skills taught in the ActyxOS Chat app tutorial **(TODO add link)**. Specifically, you should know how to do the following:
+To understand the Advanced ActyxOS Tutorial, you should know the fundamentals of how to build an ActyxOS app using the Actyx Pond. This tutorial builds on skills taught in the [ActyxOS Chat app tutorial](/docs/learn-actyx/tutorial). Specifically, you should know how to do the following:
 
 - Start ActyxOS in Development Mode
 - Configure node settings and run ActyxOS apps
