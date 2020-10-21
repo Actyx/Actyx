@@ -112,7 +112,7 @@ Just as the ERP Simulator, the Dashboard is a React app. Open `Orders.tsx` and h
 ### Machine App
 
 :::info
-The PLC used for this example is [add link]
+The PLC used for this example is a [Wago PLC](https://www.wago.com/global/automation-technology/discover-plcs).
 :::
 
 While this app is integrating with the above Wago PLC, the underlying logic is model-independent and would be similar for any other machine integration.

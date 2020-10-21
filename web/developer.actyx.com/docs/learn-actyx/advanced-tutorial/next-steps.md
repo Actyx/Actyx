@@ -15,6 +15,8 @@ At this point, you have run a simplified example of a solution based on 3 ActyxO
 
 - **package the apps and deploy them to actual devices:** Check our guide for [building](/docs/os/guides/building-apps) and [running apps](/docs/os/guides/running-apps)
 
+We would appreciate if you fill out the feedback form below, it should not take longer than 2 minutes. Thank you!
+
 :::info Need help?
 If you have any issues or just want to give feedback on our tutorial, you are welcome to join our [Discord chat](https://discord.gg/262yJhc), raise an issue in the [GitHub repo](https://github.com/Actyx/DemoMachineKit/issues) or write us an e-mail to developer@actyx.io .
 :::
