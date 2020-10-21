@@ -49,6 +49,9 @@ targets = $(sort $(foreach oa,$(osArch),$(target-$(oa))))
 # execute linter, style checker and tests for everything
 validate: validate-rt-master validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website
 
+# declare all the validate targets to be phony
+.PHONY: validate-rt-master validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website
+
 CARGO := cargo +$(BUILD_RUST_TOOLCHAIN)
 
 # execute fmt check, clippy and tests for rt-master
