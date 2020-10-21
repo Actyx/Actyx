@@ -107,7 +107,7 @@ The order in this example is created through the UI and only contains informatio
 
 ### Dashboard App
 
-Just as the ERP Simulator, the Dashboard is a React app. Open `Tasks.tsx` as have a look at the logic of the ERP simulator app.
+Just as the ERP Simulator, the Dashboard is a React app. Open `Orders.tsx` and have a look at the logic of the ERP simulator app.
 
 ### Machine App
 

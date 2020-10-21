@@ -57,7 +57,7 @@ After entering a name and selecting a duration, the `Place order` button will st
 In order to let your system know of a new machine, start the Wago Connector App:
 
 ```
-node:wago-connector:start
+npm run node:wago-connector:start
 ```
 
 Now a field with your machine `Wago` should appear, allowing you to click on `Place order`:
