@@ -161,11 +161,16 @@ $(targetPatterns): UNCONDITIONAL
 	  $(image-$(OS)) \
 	  cargo --locked build --release --bin $(basename $*)
 
-android_targets = i686-linux-android aarch64-linux-android armv7-linux-androideabi
-rt-master/target/i686-linux-android/release/libaxosnodeffi.so: TARGET = i686-linux-android
-rt-master/target/i686-linux-android/release/libaxosnodeffi.so: OS = $(word 3,$(subst -, ,$(TARGET)))
-rt-master/target/i686-linux-android/release/libaxosnodeffi.so: UNCONDITIONAL
-	@echo $(android_targets)
+# targets for which we need a .so file for android
+android_so_targets = i686-linux-android aarch64-linux-android armv7-linux-androideabi
+
+# make a list of pattern rules (with %) for all possible .so files needed for android
+soTargetPatterns = $(foreach t,$(android_so_targets),rt-master/target/$(t)/release/libaxosnodeffi.so)
+
+$(soTargetPatterns): TARGET = $(word 3,$(subst /, ,$@))
+$(soTargetPatterns): OS = $(word 3,$(subst -, ,$(TARGET)))
+$(soTargetPatterns): UNCONDITIONAL
+	@echo $(android_so_targets)
 	@echo $(OS)
 	@echo $(TARGET)
 	@echo $(image-linux)
