@@ -49,29 +49,31 @@ targets = $(sort $(foreach oa,$(osArch),$(target-$(oa))))
 # execute linter, style checker and tests for everything
 validate: validate-rt-master validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website
 
+CARGO := cargo +$(BUILD_RUST_TOOLCHAIN)
+
 # execute fmt check, clippy and tests for rt-master
 validate-rt-master:
 	cd rt-master && \
-		cargo +$(BUILD_RUST_TOOLCHAIN) fmt --all -- --check && \
-		cargo +$(BUILD_RUST_TOOLCHAIN) --locked clippy -- -D warnings && \
-		cargo +$(BUILD_RUST_TOOLCHAIN) --locked clippy --tests -- -D warnings && \
-		cargo +$(BUILD_RUST_TOOLCHAIN) test --all-features
+		$(CARGO) fmt --all -- --check && \
+		$(CARGO) --locked clippy -- -D warnings && \
+		$(CARGO) --locked clippy --tests -- -D warnings && \
+		$(CARGO) test --all-features
 
 # execute fmt check, clippy and tests for rust-sdk
 validate-rust-sdk:
 	cd rust/sdk && \
-		cargo +$(BUILD_RUST_TOOLCHAIN) fmt --all -- --check && \
-		cargo +$(BUILD_RUST_TOOLCHAIN) --locked clippy -- -D warnings && \
-		cargo +$(BUILD_RUST_TOOLCHAIN) --locked clippy --tests -- -D warnings && \
-		cargo +$(BUILD_RUST_TOOLCHAIN) test --all-features
+		$(CARGO) fmt --all -- --check && \
+		$(CARGO) --locked clippy -- -D warnings && \
+		$(CARGO) --locked clippy --tests -- -D warnings && \
+		$(CARGO) test --all-features
 
 # execute fmt check, clippy and tests for rust-sdk-macros
 validate-rust-sdk-macros:
 	cd rust/sdk_macros && \
-		cargo +$(BUILD_RUST_TOOLCHAIN) fmt --all -- --check && \
-		cargo +$(BUILD_RUST_TOOLCHAIN) --locked clippy -- -D warnings && \
-		cargo +$(BUILD_RUST_TOOLCHAIN) --locked clippy --tests -- -D warnings && \
-		cargo +$(BUILD_RUST_TOOLCHAIN) test --all-features
+		$(CARGO) fmt --all -- --check && \
+		$(CARGO) --locked clippy -- -D warnings && \
+		$(CARGO) --locked clippy --tests -- -D warnings && \
+		$(CARGO) test --all-features
 
 # execute linter for os-android
 validate-os-android:
