@@ -84,10 +84,11 @@ $(targetPatterns): UNCONDITIONAL
 	  -e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	  -e CARGO_BUILD_TARGET=$(TARGET) \
 	  -e CARGO_BUILD_JOBS=8 \
+	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
 	  -v ${CARGO_HOME}/git:/home/builder/.cargo/git \
 	  -v ${CARGO_HOME}/registry:/home/builder/.cargo/registry \
-	  -it \
+	  -it --rm \
 	  $(image-$(OS)) \
 	  cargo --locked build --release --bin $(basename $*)
 
