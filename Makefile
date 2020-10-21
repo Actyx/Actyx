@@ -81,9 +81,11 @@ validate-rust-sdk-macros:
 	cd rust/sdk_macros && $(CARGO) test --all-features -j $(CARGO_TEST_JOBS)
 
 # execute linter for os-android
-validate-os-android:
+validate-os-android: android-libaxosnodeffi
 	jvm/os-android/bin/get-keystore.sh
 	cd jvm/os-android/ && ./gradlew clean ktlintCheck
+
+android-libaxosnodeffi: rt-master/target/i686-linux-android/release/libaxosnodeffi.so rt-master/target/aarch64-linux-android/release/libaxosnodeffi.so rt-master/target/armv7-linux-androideabi/release/libaxosnodeffi.so
 
 # validate all js
 validate-js: validate-js-pond validate-js-sdk
