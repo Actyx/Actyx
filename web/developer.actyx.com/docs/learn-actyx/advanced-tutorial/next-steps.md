@@ -18,3 +18,5 @@ At this point, you have run a simplified example of a solution based on 3 ActyxO
 :::info Need help?
 If you have any issues or just want to give feedback on our tutorial, you are welcome to join our [Discord chat](https://discord.gg/262yJhc), raise an issue in the [GitHub repo](https://github.com/Actyx/DemoMachineKit/issues) or write us an e-mail to developer@actyx.io .
 :::
+
+<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSfDwqwPMzaRh0Fac7jEdMQbq6w2cIyX3r5Twx_-qvLIgs895A/viewform?embedded=true" width="640" height="600" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
