@@ -96,13 +96,18 @@ validate-js-sdk:
 		npm run build
 
 # validate all websites
-validate-website: validate-website-developer
+validate-website: validate-website-developer validate-website-downloads
 
 # validate developer.actyx.com
 validate-website-developer:
 	cd web/developer.actyx.com && \
 		npm i && \
 		npm run test
+
+# validate downloads.actyx.com
+validate-website-downloads:
+	cd web/downloads.actyx.com && \
+		npm i
 
 # define mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
