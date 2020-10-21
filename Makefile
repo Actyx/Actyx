@@ -26,10 +26,8 @@ clean:
 # mark things with this dependency to run whenever requested
 .PHONY: UNCONDITIONAL
 
-prepare: UNCONDITIONAL
-	rustup default $(BUILD_RUST_TOOLCHAIN)
-	# used for js builds
-	docker pull actyx/util:buildnode-x64-$(IMAGE_VERSION)
+prepare: prepare-js UNCONDITIONAL
+	rustup install $(BUILD_RUST_TOOLCHAIN)
 	# used for windows rust builds
 	docker pull actyx/util:buildrs-x64-$(IMAGE_VERSION)
 	# used for linux rust builds
@@ -37,6 +35,10 @@ prepare: UNCONDITIONAL
 	docker pull actyx/cosmos:musl-x86_64-unknown-linux-musl-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
+
+prepare-js: UNCONDITIONAL
+	# install nvm
+	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash
 
 # list all os-arch and binary names
 osArch = linux-aarch64 linux-x86_64 linux-armv7 linux-arm windows-x86_64
