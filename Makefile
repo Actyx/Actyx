@@ -4,6 +4,7 @@ all-LINUX := $(foreach arch,x86_64 aarch64 armv7 arm,linux-$(arch)/actyxos-linux
 all-WINDOWS := windows-x86_64/win.exe
 
 CARGO_TEST_JOBS := 4
+CARGO_BUILD_JOBS := 8
 
 all: $(patsubst %,dist/bin/%,$(all-LINUX) $(all-WINDOWS))
 
@@ -160,3 +161,27 @@ $(targetPatterns): UNCONDITIONAL
 	  $(image-$(OS)) \
 	  cargo --locked build --release --bin $(basename $*)
 
+android_targets = i686-linux-android aarch64-linux-android armv7-linux-androideabi
+rt-master/target/i686-linux-android/release/libaxosnodeffi.so: TARGET = i686-linux-android
+rt-master/target/i686-linux-android/release/libaxosnodeffi.so: OS = $(word 3,$(subst -, ,$(TARGET)))
+rt-master/target/i686-linux-android/release/libaxosnodeffi.so: UNCONDITIONAL
+	@echo $(android_targets)
+	@echo $(OS)
+	@echo $(TARGET)
+	@echo $(image-linux)
+	@# create these so that they belong to the current user (Docker would create as root)
+	mkdir -p ${CARGO_HOME}/git
+	mkdir -p ${CARGO_HOME}/registry
+	docker run \
+	  -u $(shell id -u) \
+	  -w /src/rt-master \
+	  -e SCCACHE_REDIS=$(SCCACHE_REDIS) \
+	  -e CARGO_BUILD_TARGET=$(TARGET) \
+	  -e CARGO_BUILD_JOBS=8 \
+	  -e HOME=/home/builder \
+	  -v `pwd`:/src \
+	  -v ${CARGO_HOME}/git:/home/builder/.cargo/git \
+	  -v ${CARGO_HOME}/registry:/home/builder/.cargo/registry \
+	  -it --rm \
+	  actyx/util:buildrs-x64-latest \
+	  cargo --locked build -p ax-os-node-ffi --lib --release --target $(TARGET)
