@@ -3,6 +3,8 @@ SHELL := /bin/bash
 all-LINUX := $(foreach arch,x86_64 aarch64 armv7 arm,linux-$(arch)/actyxos-linux)
 all-WINDOWS := windows-x86_64/win.exe
 
+CARGO_TEST_JOBS := 4
+
 all: $(patsubst %,dist/bin/%,$(all-LINUX) $(all-WINDOWS))
 
 # These should be moved to the global azure pipelines build
@@ -49,37 +51,38 @@ os = $(sort $(foreach oa,$(osArch),$(word 1,$(subst -, ,$(oa)))))
 targets = $(sort $(foreach oa,$(osArch),$(target-$(oa))))
 
 # execute linter, style checker and tests for everything
-validate: validate-rt-master validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website
+validate: validate-os validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website
 
 # declare all the validate targets to be phony
-.PHONY: validate-rt-master validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website
+.PHONY: validate-os validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website
 
 CARGO := cargo +$(BUILD_RUST_TOOLCHAIN)
 
 # execute fmt check, clippy and tests for rt-master
-validate-rt-master:
+validate-os:
 	cd rt-master && $(CARGO) fmt --all -- --check
 	cd rt-master && $(CARGO) --locked clippy -- -D warnings
 	cd rt-master && $(CARGO) --locked clippy --tests -- -D warnings
-	cd rt-master && $(CARGO) test --all-features
+	cd rt-master && $(CARGO) test --all-features -j $(CARGO_TEST_JOBS)
 
 # execute fmt check, clippy and tests for rust-sdk
 validate-rust-sdk:
 	cd rust/sdk && $(CARGO) fmt --all -- --check
 	cd rust/sdk && $(CARGO) --locked clippy -- -D warnings
 	cd rust/sdk && $(CARGO) --locked clippy --tests -- -D warnings
-	cd rust/sdk && $(CARGO) test --all-features
+	cd rust/sdk && $(CARGO) test --all-features -j $(CARGO_TEST_JOBS)
 
 # execute fmt check, clippy and tests for rust-sdk-macros
 validate-rust-sdk-macros:
 	cd rust/sdk_macros && $(CARGO) fmt --all -- --check
 	cd rust/sdk_macros && $(CARGO) --locked clippy -- -D warnings
 	cd rust/sdk_macros && $(CARGO) --locked clippy --tests -- -D warnings
-	cd rust/sdk_macros && $(CARGO) test --all-features
+	cd rust/sdk_macros && $(CARGO) test --all-features -j $(CARGO_TEST_JOBS)
 
 # execute linter for os-android
 validate-os-android:
-	cd jvm/os-android/ && ./gradlew clean ktlintCheck test
+	jvm/os-android/bin/get-keystore.sh
+	cd jvm/os-android/ && ./gradlew clean ktlintCheck
 
 # validate all js
 validate-js: validate-js-pond validate-js-sdk
