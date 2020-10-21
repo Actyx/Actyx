@@ -85,7 +85,23 @@ validate-os-android: android-libaxosnodeffi
 	jvm/os-android/bin/get-keystore.sh
 	cd jvm/os-android/ && ./gradlew clean ktlintCheck
 
-android-libaxosnodeffi: rt-master/target/i686-linux-android/release/libaxosnodeffi.so rt-master/target/aarch64-linux-android/release/libaxosnodeffi.so rt-master/target/armv7-linux-androideabi/release/libaxosnodeffi.so
+# combines all the .so files to build actyxos on android
+android-libaxosnodeffi: \
+	jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so \
+	jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so \
+	jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so
+
+jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so: rt-master/target/i686-linux-android/release/libaxosnodeffi.so
+	mkdir -p jvm/os-android/app/src/main/jniLibs/x86/
+	cp rt-master/target/i686-linux-android/release/libaxosnodeffi.so jvm/os-android/app/src/main/jniLibs/x86/
+
+jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so:
+	mkdir -p jvm/os-android/app/src/main/jniLibs/arm64-v8a/
+	cp rt-master/target/aarch64-linux-android/release/libaxosnodeffi.so jvm/os-android/app/src/main/jniLibs/arm64-v8a/
+
+jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so:
+	mkdir -p jvm/os-android/app/src/main/jniLibs/armeabi-v7a/
+	cp rt-master/target/armv7-linux-androideabi/release/libaxosnodeffi.so jvm/os-android/app/src/main/jniLibs/armeabi-v7a/
 
 # validate all js
 validate-js: validate-js-pond validate-js-sdk
