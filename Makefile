@@ -21,12 +21,12 @@ print-%:
 	@echo $* = $($*)
 
 clean:
-	cargo clean --manifest-path rt-master/Cargo.toml
+	cd rt-master && cargo clean
 
 # mark things with this dependency to run whenever requested
-.PHONY: ALWAYS
+.PHONY: UNCONDITIONAL
 
-prepare: ALWAYS
+prepare: UNCONDITIONAL
 	rustup default $(BUILD_RUST_TOOLCHAIN)
 	docker pull actyx/util:buildnode-x64-$(IMAGE_VERSION)
 	docker pull actyx/util:buildrs-x64-$(IMAGE_VERSION)
@@ -35,27 +35,46 @@ prepare: ALWAYS
 	docker pull actyx/cosmos:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
 
-# define mapping from os-arch to target
+# list all os-arch and binary names
+osArch = linux-aarch64 linux-x86_64 linux-armv7 linux-arm windows-x86_64
+binaries = ax ax.exe actyxos-linux win.exe
+
+# compute list of all OSs and rust targets
+os = $(sort $(foreach oa,$(osArch),$(word 1,$(subst -, ,$(oa)))))
+targets = $(sort $(foreach oa,$(osArch),$(target-$(oa))))
+
+# define mapping from os-arch to rust target
 target-linux-aarch64 = aarch64-unknown-linux-musl
 target-linux-x86_64 = x86_64-unknown-linux-musl
 target-linux-armv7 = armv7-unknown-linux-musleabihf
 target-linux-arm = arm-unknown-linux-musleabi
 target-windows-x86_64 = x86_64-pc-windows-gnu
 
-# define mapping from os to image name
+# define mapping from os to builder image name
 image-linux = actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 
-dist/bin/%: ARTIFACT = rt-master/target/$(value target-$(word 1,$(subst /, ,$*)))/release/$(word 2,$(subst /, ,$*))
-dist/bin/%: ALWAYS
-	make $(ARTIFACT)
+# build rules for binaries on the current platform (i.e. no cross-building)
+dist/bin/current/%: rt-master/target/release/%
 	mkdir -p $(dir $@)
-	cp $(ARTIFACT) $@
+	cp $< $@
+rt-master/target/release/%: UNCONDITIONAL
+	cd rt-master && cargo --locked build --release --bin $(basename $*)
 
-rt-master/target/%: TARGET = $(word 1,$(subst /, ,$*))
-rt-master/target/%: OS = $(word 3,$(subst -, ,$(TARGET)))
-rt-master/target/%: BIN = $(basename $(word 3,$(subst /, ,$*)))
-rt-master/target/%: ALWAYS
+# define build rules for all cross-built binaries (unfortunately using pattern rules is impossible)
+define mkDistRule =
+dist/bin/$(1)/$(2): rt-master/target/$(target-$(1))/release/$(2)
+	mkdir -p $$(dir $$@)
+	cp $$< $$@
+endef
+$(foreach oa,$(osArch),$(foreach bin,$(binaries),$(eval $(call mkDistRule,$(oa),$(bin)))))
+
+# make a list of pattern rules (with %) for all possible rust binaries
+targetPatterns = $(foreach t,$(targets),rt-master/target/$(t)/release/%)
+
+$(targetPatterns): TARGET = $(word 3,$(subst /, ,$@))
+$(targetPatterns): OS = $(word 3,$(subst -, ,$(TARGET)))
+$(targetPatterns): UNCONDITIONAL
 	@# create these so that they belong to the current user (Docker would create as root)
 	mkdir -p ${CARGO_HOME}/git
 	mkdir -p ${CARGO_HOME}/registry
@@ -70,5 +89,5 @@ rt-master/target/%: ALWAYS
 	  -v ${CARGO_HOME}/registry:/home/builder/.cargo/registry \
 	  -it \
 	  $(image-$(OS)) \
-	  cargo --locked build --release --bin $(BIN)
+	  cargo --locked build --release --bin $(basename $*)
 
