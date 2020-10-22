@@ -12,7 +12,7 @@ In this chapter, you will run all apps in development mode and interact with the
 
 To get the sample project, you can either:
 
-Clone the repository from GitHub:
+Clone the repository from GitHub by running:
 
 ```
 git clone https://github.com/Actyx/DemoMachineKit.git
@@ -27,7 +27,7 @@ Alternatively, you can download the repository as a Zip file, unzip it, and open
 Before you can run the apps, make sure that ActyxOS is running in development mode (check [this guide](https://developer.actyx.com/docs/os/getting-started/installation) for installation on your OS) and has valid settings (check [this guide](https://developer.actyx.com/docs/learn-actyx/tutorial#configure-your-nodes) for node configuration).
 
 :::info Need help?
-If you have any issues or just want to give feedback on our tutorial, you are welcome to join our [Discord chat](https://discord.gg/262yJhc), raise an issue in the [GitHub repo](https://github.com/Actyx/DemoMachineKit/issues) or write us an e-mail to developer@actyx.io .
+If you run into problems or want to give feedback, you are welcome to join our [Discord chat](https://discord.gg/262yJhc), raise an issue in the [GitHub repo](https://github.com/Actyx/DemoMachineKit/issues) or write us an e-mail to developer@actyx.io.
 :::
 
 Before you start any apps, run `npm install` from the root directory.
@@ -38,7 +38,7 @@ To start the Dashboard app, run:
 npm run ui:dashboard:start
 ```
 
-After visiting [`localhost:1234`](localhost:1234) you should now see an empty dashboard that only displays "Machines" and "Orders".
+After visiting `localhost:1234` you should see an empty dashboard that only displays "Machines" and "Orders".
 
 For creating orders, lets first start the ERP Simulator App:
 
@@ -46,7 +46,7 @@ For creating orders, lets first start the ERP Simulator App:
 npm run ui:erp-simulator:start
 ```
 
-In a different browser window, navigate to [`localhost:1235`](localhost:1235). You should now be able to create an order and associate the following information with it:
+In a different browser window, navigate to `localhost:1235`. You should now be able to create an order and associate the following information with it:
 
 - a name
 - a planned duration
@@ -68,6 +68,6 @@ After placing the order, take another look at the dashboard – you should now 
 
 <img src={useBaseUrl('static/images/tutorials/dx1-tutorial/dashboard1.png')} />
 
-As the Wago Connector App running on your development machine is not connected to an actual Wago PLC, your machine will stay in the state `disabled` , and your order will stay in the state `idle`. If your wago-connector app was connected to an actual Wago PLC, it would show its state and your order would change into a different state (such as `running` or `interrupted`), depending on the data it receives from the Wago PLC.
+As the Wago Connector App running on your development machine is not connected to an actual Wago PLC, your machine will stay in the state `disabled`, and your order will stay in the state `idle`. If your Wago Connector App was connected to an actual Wago PLC, it would show its state and your order would change into a different state (such as `running` or `interrupted`), depending on the data it receives from the Wago PLC.
 
 Now that you have a basic understanding of the use case and how the apps work, we will take a closer look at the business logic in the next section.
