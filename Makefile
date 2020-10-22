@@ -117,14 +117,14 @@ validate-js: validate-js-pond validate-js-sdk
 
 # validate js pond
 validate-js-pond:
-	cd js/pond && source ~/.nvm/env && nvm install && nvm use && \
+	cd js/pond && source ~/.nvm/env && nvm install && \
 		npm i && \
 		npm run test && \
 		npm run build:prod
 
 # validate js sdk
 validate-js-sdk:
-	cd js/os-sdk && source ~/.nvm/env && nvm install && nvm use && \
+	cd js/os-sdk && source ~/.nvm/env && nvm install && \
 		npm i && \
 		npm run test && \
 		npm run build
@@ -134,13 +134,13 @@ validate-website: validate-website-developer validate-website-downloads
 
 # validate developer.actyx.com
 validate-website-developer:
-	cd web/developer.actyx.com && source ~/.nvm/env && nvm install && nvm use && \
+	cd web/developer.actyx.com && source ~/.nvm/env && nvm install && \
 		npm i && \
 		npm run test
 
 # validate downloads.actyx.com
 validate-website-downloads:
-	cd web/downloads.actyx.com && source ~/.nvm/nvm.sh && nvm install && nvm use && \
+	cd web/downloads.actyx.com && source ~/.nvm/nvm.sh && nvm install && \
 		npm i
 
 # define mapping from os-arch to target
@@ -212,7 +212,7 @@ $(soTargetPatterns): cargo-init UNCONDITIONAL
 	  actyx/util:buildrs-x64-latest \
 	  cargo --locked build -p ax-os-node-ffi --lib --release --target $(TARGET)
 
-cargo-init: UNCONDITIONAL
-	@# create these so that they belong to the current user (Docker would create as root)
-	mkdir -p ${CARGO_HOME}/git
-	mkdir -p ${CARGO_HOME}/registry
+# create these so that they belong to the current user (Docker would create as root)
+cargo-init: $(CARGO_HOME)/git $(CARGO_HOME)/registry
+$(CARGO_HOME)/%:
+	mkdir -p $@
