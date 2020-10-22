@@ -117,31 +117,31 @@ validate-js: validate-js-pond validate-js-sdk
 
 # validate js pond
 validate-js-pond:
-	cd js/pond && source ~/.nvm/nvm.sh && nvm install && nvm use
-	cd js/pond && npm i
-	cd js/pond && npm run test
-	cd js/pond && npm run build:prod
+	cd js/pond && source ~/.nvm/env && nvm install && nvm use && \
+		npm i && \
+		npm run test && \
+		npm run build:prod
 
 # validate js sdk
 validate-js-sdk:
-	cd js/os-sdk && source ~/.nvm/nvm.sh && nvm install && nvm use
-	cd js/os-sdk && npm i
-	cd js/os-sdk && npm run test
-	cd js/os-sdk && npm run build
+	cd js/os-sdk && source ~/.nvm/env && nvm install && nvm use && \
+		npm i && \
+		npm run test && \
+		npm run build
 
 # validate all websites
 validate-website: validate-website-developer validate-website-downloads
 
 # validate developer.actyx.com
 validate-website-developer:
-	cd web/developer.actyx.com && source ~/.nvm/nvm.sh && nvm install && nvm use
-	cd web/developer.actyx.com && npm i
-	cd web/developer.actyx.com && npm run test
+	cd web/developer.actyx.com && source ~/.nvm/env && nvm install && nvm use && \
+		npm i && \
+		npm run test
 
 # validate downloads.actyx.com
 validate-website-downloads:
-	cd web/downloads.actyx.com && source ~/.nvm/nvm.sh && nvm install && nvm use
-	cd web/downloads.actyx.com && npm i
+	cd web/downloads.actyx.com && source ~/.nvm/nvm.sh && nvm install && nvm use && \
+		npm i
 
 # define mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
