@@ -35,7 +35,6 @@ clean:
 .PHONY: UNCONDITIONAL
 
 prepare: prepare-js prepare-rs UNCONDITIONAL
-	rustup install $(BUILD_RUST_TOOLCHAIN)
 	# used for windows and android rust builds
 	docker pull actyx/util:buildrs-x64-$(IMAGE_VERSION)
 	# used for linux rust builds
@@ -47,6 +46,7 @@ prepare: prepare-js prepare-rs UNCONDITIONAL
 prepare-rs: UNCONDITIONAL
 	# install rustup
 	curl https://sh.rustup.rs -sSf | sh -s -- -y
+	rustup install $(BUILD_RUST_TOOLCHAIN)
 
 prepare-js: UNCONDITIONAL
 	# install nvm
