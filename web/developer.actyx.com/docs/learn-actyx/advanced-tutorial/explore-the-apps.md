@@ -44,7 +44,7 @@ You will find the implementation of the event and state types, as well as the ac
 
 ## Fishes
 
-As discussed in more detail in [add link], a fish is the main programming unit in the Actyx Pond framework. It always represents one entity of your business logic and should always have only a single responsibility – which means in this case, you need fishes to keep track of your machines, as well as your orders.
+As discussed in more detail in the [Actyx Pond documentation](/docs/pond/introduction), a fish is the main programming unit in the Actyx Pond framework. It always represents one entity of your business logic and should always have only a single responsibility – which means in this case, you need fishes to keep track of your machines, as well as your orders.
 
 ```text
 fish/
