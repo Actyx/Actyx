@@ -158,7 +158,7 @@ image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 dist/bin/current/%: rt-master/target/release/%
 	mkdir -p $(dir $@)
 	cp $< $@
-rt-master/target/release/%: UNCONDITIONAL
+rt-master/target/release/%:
 	cd rt-master && cargo --locked build --release --bin $(basename $*)
 
 # define build rules for all cross-built binaries (unfortunately using pattern rules is impossible)
@@ -174,7 +174,7 @@ targetPatterns = $(foreach t,$(targets),rt-master/target/$(t)/release/%)
 
 $(targetPatterns): TARGET = $(word 3,$(subst /, ,$@))
 $(targetPatterns): OS = $(word 3,$(subst -, ,$(TARGET)))
-$(targetPatterns): cargo-init UNCONDITIONAL
+$(targetPatterns): cargo-init
 	docker run \
 	  -u $(shell id -u) \
 	  -w /src/rt-master \
@@ -197,7 +197,7 @@ soTargetPatterns = $(foreach t,$(android_so_targets),rt-master/target/$(t)/relea
 
 $(soTargetPatterns): TARGET = $(word 3,$(subst /, ,$@))
 $(soTargetPatterns): OS = $(word 3,$(subst -, ,$(TARGET)))
-$(soTargetPatterns): cargo-init UNCONDITIONAL
+$(soTargetPatterns): cargo-init
 	docker run \
 	  -u $(shell id -u) \
 	  -w /src/rt-master \
