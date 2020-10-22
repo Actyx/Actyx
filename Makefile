@@ -108,14 +108,14 @@ validate-js: validate-js-pond validate-js-sdk
 
 # validate js pond
 validate-js-pond:
-	cd js/pond && source ~/.nvm/nvm.sh && nvm use
+	cd js/pond && source ~/.nvm/nvm.sh && nvm install && nvm use
 	cd js/pond && npm i
 	cd js/pond && npm run test
 	cd js/pond && npm run build:prod
 
 # validate js sdk
 validate-js-sdk:
-	cd js/os-sdk && source ~/.nvm/nvm.sh && nvm use
+	cd js/os-sdk && source ~/.nvm/nvm.sh && nvm install && nvm use
 	cd js/os-sdk && npm i
 	cd js/os-sdk && npm run test
 	cd js/os-sdk && npm run build
@@ -125,13 +125,13 @@ validate-website: validate-website-developer validate-website-downloads
 
 # validate developer.actyx.com
 validate-website-developer:
-	cd web/developer.actyx.com && source ~/.nvm/nvm.sh && nvm use
+	cd web/developer.actyx.com && source ~/.nvm/nvm.sh && nvm install && nvm use
 	cd web/developer.actyx.com && npm i
 	cd web/developer.actyx.com && npm run test
 
 # validate downloads.actyx.com
 validate-website-downloads:
-	cd web/downloads.actyx.com && source ~/.nvm/nvm.sh && nvm use
+	cd web/downloads.actyx.com && source ~/.nvm/nvm.sh && nvm install && nvm use
 	cd web/downloads.actyx.com && npm i
 
 # define mapping from os-arch to target
