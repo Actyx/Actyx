@@ -199,6 +199,16 @@ module.exports = {
     'learn-actyx/learn-actyx',
     'learn-actyx/quickstart',
     'learn-actyx/tutorial',
+    {
+      type: 'category', label:
+        'Advanced Tutorial', items: [
+          'learn-actyx/advanced-tutorial/introduction',
+          'learn-actyx/advanced-tutorial/solution-architecture',
+          'learn-actyx/advanced-tutorial/get-started',
+          'learn-actyx/advanced-tutorial/explore-the-apps',
+          'learn-actyx/advanced-tutorial/next-steps',
+        ]
+    },
   ],
   faqSidebar: [
     'faq/supported-programming-languages',
