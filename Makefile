@@ -103,7 +103,7 @@ validate-rust-sdk-macros:
 
 .PHONY: validate-os-android
 # execute linter for os-android
-validate-os-android: android-libaxosnodeffi
+validate-os-android: diagnostics android-libaxosnodeffi
 	jvm/os-android/bin/get-keystore.sh
 	cd jvm/os-android/ && ./gradlew clean ktlintCheck
 
@@ -126,7 +126,7 @@ jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so: rt-master/tar
 	cp $< $@
 
 # validate all js
-validate-js: validate-js-pond validate-js-sdk
+validate-js: diagnostics validate-js-pond validate-js-sdk
 
 # validate js pond
 validate-js-pond:
@@ -143,7 +143,7 @@ validate-js-sdk:
 		npm run build
 
 # validate all websites
-validate-website: validate-website-developer validate-website-downloads
+validate-website: diagnostics validate-website-developer validate-website-downloads
 
 # validate developer.actyx.com
 validate-website-developer:
