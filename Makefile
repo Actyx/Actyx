@@ -117,14 +117,14 @@ validate-js: validate-js-pond validate-js-sdk
 
 # validate js pond
 validate-js-pond:
-	cd js/pond && source ~/.nvm/env && nvm install && \
+	cd js/pond && source ~/.nvm/nvm.sh && nvm install && \
 		npm i && \
 		npm run test && \
 		npm run build:prod
 
 # validate js sdk
 validate-js-sdk:
-	cd js/os-sdk && source ~/.nvm/env && nvm install && \
+	cd js/os-sdk && source ~/.nvm/nvm.sh && nvm install && \
 		npm i && \
 		npm run test && \
 		npm run build
@@ -134,7 +134,7 @@ validate-website: validate-website-developer validate-website-downloads
 
 # validate developer.actyx.com
 validate-website-developer:
-	cd web/developer.actyx.com && source ~/.nvm/env && nvm install && \
+	cd web/developer.actyx.com && source ~/.nvm/nvm.sh && nvm install && \
 		npm i && \
 		npm run test
 
