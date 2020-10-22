@@ -38,7 +38,7 @@ DemoMachineKit/
 
 Before diving into the code, have a look at the below illustration. It shows the events and states that will be modelled in the fishes and apps.
 
-<img src={useBaseUrl('static/images/tutorials/dx1-tutorial/statemachine.png')} />
+<img src={useBaseUrl('images/tutorials/dx1-tutorial/statemachine.png')} />
 
 You will find the implementation of the event and state types, as well as the actual state machine, in the fishes. Event emission is triggered in the apps.
 
@@ -78,13 +78,13 @@ In the following sections, we will take a closer look on how the fishes that tra
 
 Open `machineFish.ts`. The following illustration should make it easier to understand `machineFish.ts`. It represents the state- and event types of the machine fish responsible for the state of a single machine:
 
-<img src={useBaseUrl('static/images/tutorials/dx1-tutorial/machinefish.png')} />
+<img src={useBaseUrl('images/tutorials/dx1-tutorial/machinefish.png')} />
 
 ### Order fish
 
 Open `orderFish.ts`. The following illustration should make it easier to understand `orderFish.ts`. It represents the state- and event types of the order fish responsible for the state of a single order:
 
-<img src={useBaseUrl('static/images/tutorials/dx1-tutorial/orderfish.png')} />
+<img src={useBaseUrl('images/tutorials/dx1-tutorial/orderfish.png')} />
 
 As you can see in `orderfish.ts` , `DefinedState` can be – depending on the event – either `idle`, `active`, or `done`.
 

@@ -25,7 +25,7 @@ An Actyx solution always consists of several physical devices that each run an i
 
 The below picture shows what the solution would look like in a production-scenario with three nodes.
 
-<img src={useBaseUrl('static/images/tutorials/dx1-tutorial/tutorial-setup-02.svg')} />
+<img src={useBaseUrl('images/tutorials/dx1-tutorial/tutorial-setup-02.svg')} />
 
 Don't worry in case you do not have Android phones, a machine gateway and a Wago PLC available. In this tutorial you will run all apps on only one ActyxOS node: your development machine. The functionality is the same, no matter where your apps run. In the last section of this tutorial, we will point you to documentation on how to package and deploy these apps to actual devices.
 
