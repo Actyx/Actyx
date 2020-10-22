@@ -62,11 +62,11 @@ npm run node:wago-connector:start
 
 Now a field with your machine `Wago` should appear, allowing you to click on `Place order`:
 
-<img src={useBaseUrl('static/images/tutorials/dx1-tutorial/erpsimulator.png')} />
+<img src={useBaseUrl('images/tutorials/dx1-tutorial/erpsimulator.png')} />
 
 After placing the order, take another look at the dashboard – you should now see a machine, as well as an order:
 
-<img src={useBaseUrl('static/images/tutorials/dx1-tutorial/dashboard1.png')} />
+<img src={useBaseUrl('images/tutorials/dx1-tutorial/dashboard1.png')} />
 
 As the Wago Connector App running on your development machine is not connected to an actual Wago PLC, your machine will stay in the state `disabled`, and your order will stay in the state `idle`. If your Wago Connector App was connected to an actual Wago PLC, it would show its state and your order would change into a different state (such as `running` or `interrupted`), depending on the data it receives from the Wago PLC.
 
