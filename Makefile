@@ -68,8 +68,16 @@ validate: validate-os validate-rust-sdk validate-rust-sdk-macros validate-os-and
 
 CARGO := cargo +$(BUILD_RUST_TOOLCHAIN)
 
+.PHONY: diagnostics
+
+diagnostics:
+	@echo HOME = $(HOME)
+	@echo USER = $(shell whoami)
+	@echo PATH = $(PATH)
+	env
+
 # execute fmt check, clippy and tests for rt-master
-validate-os:
+validate-os: diagnostics
 	cd rt-master && $(CARGO) fmt --all -- --check
 	cd rt-master && $(CARGO) --locked clippy -- -D warnings
 	cd rt-master && $(CARGO) --locked clippy --tests -- -D warnings
