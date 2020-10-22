@@ -25,19 +25,28 @@ print-%:
 
 clean:
 	cd rt-master && cargo clean
+	cd web/downloads.actyx.com && rm -rf node_modules
+	cd web/developer.actyx.com && rm -rf node_modules
+	cd js/pond && rm -rf node_modules
+	cd js/os-sdk && rm -rf node_modules
+	cd jvm/os-android && ./gradlew clean
 
 # mark things with this dependency to run whenever requested
 .PHONY: UNCONDITIONAL
 
-prepare: prepare-js UNCONDITIONAL
+prepare: prepare-js prepare-rs UNCONDITIONAL
 	rustup install $(BUILD_RUST_TOOLCHAIN)
-	# used for windows rust builds
+	# used for windows and android rust builds
 	docker pull actyx/util:buildrs-x64-$(IMAGE_VERSION)
 	# used for linux rust builds
 	docker pull actyx/cosmos:musl-aarch64-unknown-linux-musl-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-x86_64-unknown-linux-musl-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
+
+prepare-rs: UNCONDITIONAL
+	# install rustup
+	curl https://sh.rustup.rs -sSf | sh -s -- -y
 
 prepare-js: UNCONDITIONAL
 	# install nvm
