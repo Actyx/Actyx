@@ -77,6 +77,7 @@ diagnostics:
 	@echo PATH = $(PATH)
 	@echo PWD = $(shell pwd)
 
+.PHONY: validate-os
 # execute fmt check, clippy and tests for rt-master
 validate-os: diagnostics
 	cd rt-master && $(CARGO) fmt --all -- --check
@@ -84,6 +85,7 @@ validate-os: diagnostics
 	cd rt-master && $(CARGO) --locked clippy --tests -- -D warnings
 	cd rt-master && $(CARGO) test --all-features -j $(CARGO_TEST_JOBS)
 
+.PHONY: validate-rust-sdk
 # execute fmt check, clippy and tests for rust-sdk
 validate-rust-sdk:
 	cd rust/sdk && $(CARGO) fmt --all -- --check
@@ -91,6 +93,7 @@ validate-rust-sdk:
 	cd rust/sdk && $(CARGO) --locked clippy --tests -- -D warnings
 	cd rust/sdk && $(CARGO) test --all-features -j $(CARGO_TEST_JOBS)
 
+.PHONY: validate-rust-sdk-macros
 # execute fmt check, clippy and tests for rust-sdk-macros
 validate-rust-sdk-macros:
 	cd rust/sdk_macros && $(CARGO) fmt --all -- --check
@@ -98,6 +101,7 @@ validate-rust-sdk-macros:
 	cd rust/sdk_macros && $(CARGO) --locked clippy --tests -- -D warnings
 	cd rust/sdk_macros && $(CARGO) test --all-features -j $(CARGO_TEST_JOBS)
 
+.PHONY: validate-os-android
 # execute linter for os-android
 validate-os-android: android-libaxosnodeffi
 	jvm/os-android/bin/get-keystore.sh
