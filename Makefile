@@ -112,11 +112,11 @@ jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so: rt-master/target/i686
 	mkdir -p $(dir $@)
 	cp $< $@
 
-jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so:
+jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so: rt-master/target/aarch64-linux-android/release/libaxosnodeffi.so
 	mkdir -p $(dir $@)
 	cp $< $@
 
-jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so:
+jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so: rt-master/target/armv7-linux-androideabi/release/libaxosnodeffi.so
 	mkdir -p $(dir $@)
 	cp $< $@
 
