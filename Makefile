@@ -32,9 +32,9 @@ clean:
 	cd jvm/os-android && ./gradlew clean
 
 # mark things with this dependency to run whenever requested
-.PHONY: UNCONDITIONAL
+.PHONY: prepare prepare-js prepare-rs
 
-prepare: prepare-js prepare-rs UNCONDITIONAL
+prepare: prepare-js prepare-rs
 	# used for windows and android rust builds
 	docker pull actyx/util:buildrs-x64-$(IMAGE_VERSION)
 	# used for linux rust builds
@@ -43,12 +43,12 @@ prepare: prepare-js prepare-rs UNCONDITIONAL
 	docker pull actyx/cosmos:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
 
-prepare-rs: UNCONDITIONAL
+prepare-rs:
 	# install rustup
 	curl https://sh.rustup.rs -sSf | sh -s -- -y
 	rustup install $(BUILD_RUST_TOOLCHAIN)
 
-prepare-js: UNCONDITIONAL
+prepare-js:
 	# install nvm
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash
 
@@ -101,16 +101,16 @@ android-libaxosnodeffi: \
 	jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so
 
 jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so: rt-master/target/i686-linux-android/release/libaxosnodeffi.so
-	mkdir -p jvm/os-android/app/src/main/jniLibs/x86/
-	cp rt-master/target/i686-linux-android/release/libaxosnodeffi.so jvm/os-android/app/src/main/jniLibs/x86/
+	mkdir -p $(dir $@)
+	cp $< $@
 
 jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so:
-	mkdir -p jvm/os-android/app/src/main/jniLibs/arm64-v8a/
-	cp rt-master/target/aarch64-linux-android/release/libaxosnodeffi.so jvm/os-android/app/src/main/jniLibs/arm64-v8a/
+	mkdir -p $(dir $@)
+	cp $< $@
 
 jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so:
-	mkdir -p jvm/os-android/app/src/main/jniLibs/armeabi-v7a/
-	cp rt-master/target/armv7-linux-androideabi/release/libaxosnodeffi.so jvm/os-android/app/src/main/jniLibs/armeabi-v7a/
+	mkdir -p $(dir $@)
+	cp $< $@
 
 # validate all js
 validate-js: validate-js-pond validate-js-sdk
