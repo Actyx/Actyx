@@ -62,7 +62,7 @@ npm run node:wago-connector:start
 
 Now a field with your machine `Wago` should appear, allowing you to click on `Place order`:
 
-<img src={useBaseUrl('static/images/tutorials/dx1-tutorial/task-system1.png')} />
+<img src={useBaseUrl('static/images/tutorials/dx1-tutorial/erpsimulator.png')} />
 
 After placing the order, take another look at the dashboard – you should now see a machine, as well as an order:
 
