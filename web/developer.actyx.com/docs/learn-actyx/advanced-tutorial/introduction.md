@@ -18,7 +18,7 @@ This tutorial is divided into several sections:
 
 ## Introduction
 
-We will cover a typical production use case in this tutorial. In this imaginary, yet realistic factory setup, we have a mobile app that creates production orders, a machine which can start and finish those orders and finally a dashboard app which can display informative production data.
+We will cover a typical production use case in this tutorial. In this imaginary yet realistic factory setup we have a mobile app that creates production orders, a machine which can start and finish those orders and finally a dashboard app which can display informative production data.
 
 <img src={useBaseUrl('static/images/tutorials/dx1-tutorial/tutorial-setup-01.svg')} />
 
@@ -32,9 +32,9 @@ To understand the Advanced ActyxOS Tutorial, you should know the fundamentals of
 
 In addition, you will need:
 
-- A good understanding of Typescript
-- A good understanding of React
-- 1 - 2 hours time for completing this tutorial
+- A good understanding of [TypeScript](https://www.typescriptlang.org/)
+- A good understanding of [React](https://reactjs.org/)
+- an hour or two for completing this tutorial
 
 ## What you'll learn
 
@@ -46,11 +46,11 @@ In addition, you will need:
 
 ## What you'll do
 
-- Explore the code behind 3 different ActyxOS apps
+- Explore the implementation of three different ActyxOS apps
 - Run ActyxOS apps in development mode on your machine
 - Import production order data into ActyxOS
 - Integrate a machine PLC with ActyxOS
 
 :::info Need support?
-If you have any issues or just want to give feedback on our tutorial, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to developer@actyx.io .
+If you run into problems or want to give feedback, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to developer@actyx.io.
 :::

@@ -7,31 +7,31 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 
-In this section, you will explore the source code behind the apps. The first part will briefly explain the overall project structure, and the second and third section will focus on the fishes used by the apps and the apps themselves.
+In this section, you will explore the implementation of the apps. The first part will briefly explain the overall project structure, and the second and third section will focus on the fishes used by the apps as well as the apps themselves.
 
 :::info Need help?
-If you have any issues or just want to give feedback on our tutorial, you are welcome to join our [Discord chat](https://discord.gg/262yJhc), raise an issue in the [GitHub repo](https://github.com/Actyx/DemoMachineKit/issues) or write us an e-mail to developer@actyx.io .
+If you run into problems or want to give feedback you are welcome to join our [Discord chat](https://discord.gg/262yJhc), raise an issue in the [GitHub repo](https://github.com/Actyx/DemoMachineKit/issues) or write us an e-mail to developer@actyx.io.
 :::
 
 ## Project structure
 
-The project consists of a few configuration files, as well as  3 apps in the `src` folder: `dashboard`, `erp-simulator`, `wago-connector`. The `fish` folder contains all relevant fishes used in the apps.
+The project consists of a few configuration files, as well as 3 apps in the `src` folder: `dashboard`, `erp-simulator`, `wago-connector`. The `fish` folder contains all relevant fishes used in the apps.
 
 ```text
 DemoMachineKit/
-|--- src/
-     |--- dashboard
-     |--- erp-simulator
-     |--- wago-connector
-     |--- fish
-|--- .editorconfig
-|--- .eslintrc.js
-|--- .gitignore
-|--- .prettierrc.js
-|--- package.json
-|--- package-lock.json
-|--- README.md
-|--- tsconfig.json
+├── src/
+│   ├── dashboard
+│   ├── erp-simulator
+│   ├── wago-connector
+│   └── fish/
+├── .editorconfig
+├── .eslintrc.js
+├── .gitignore
+├── .prettierrc.js
+├── package.json
+├── package-lock.json
+├── README.md
+└── tsconfig.json
 ```
 
 ## Business logic
@@ -47,10 +47,10 @@ You will find the implementation of the event and state types, as well as the ac
 As discussed in more detail in the [Actyx Pond documentation](/docs/pond/introduction), a fish is the main programming unit in the Actyx Pond framework. It always represents one entity of your business logic and should always have only a single responsibility – which means in this case, you need fishes to keep track of your machines, as well as your orders.
 
 ```text
-fish/
-|--- index.ts
-|--- machineFish.ts
-|--- orderFish.ts
+DemoMachineKit/src/fish/
+├── index.ts
+├── machineFish.ts
+└── orderFish.ts
 ```
 
 The `machineFish.ts` and `orderFish.ts` code is structured into the same sections:
@@ -65,7 +65,7 @@ The `machineFish.ts` and `orderFish.ts` code is structured into the same section
 
 **4. Definition of fishes**
 
-<!-- markdownlint-disable MD036 -->
+<!-- markdownlint-enable MD036 -->
 
 For this use case, two kinds of fishes are defined for machines as well as orders. Each of the fishes serves a different purpose:
 
@@ -97,7 +97,7 @@ Now that you have seen the business logic shared by all apps in the fishes, this
 
 In addition to the above, you will find files describing the logic itself.
 
-If you want to know more about the ActyxOS-specific parts, please visit our [guide on building apps](/docs/os/guides/building-apps):
+If you want to know more about the ActyxOS-specific parts, please visit our [guide on building apps](/docs/os/guides/building-apps).
 
 ### ERP Simulator App
 
