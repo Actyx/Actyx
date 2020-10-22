@@ -14,7 +14,8 @@ export BUILD_SCCACHE_VERSION := 0.2.12
 
 export CARGO_HOME ?= $(HOME)/.cargo
 
-export SCCACHE_REDIS ?= $(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache)
+# export SCCACHE_REDIS ?= $(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache)
+SCCACHE_REDIS :=
 
 # Helper to try out local builds of Docker images
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),latest)
