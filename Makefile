@@ -74,7 +74,7 @@ diagnostics:
 	@echo HOME = $(HOME)
 	@echo USER = $(shell whoami)
 	@echo PATH = $(PATH)
-	env
+	@echo PWD = $(shell pwd)
 
 # execute fmt check, clippy and tests for rt-master
 validate-os: diagnostics
