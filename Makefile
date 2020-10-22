@@ -14,6 +14,9 @@ export BUILD_SCCACHE_VERSION := 0.2.12
 
 export CARGO_HOME ?= $(HOME)/.cargo
 
+# log in to vault and store the token in an environment variable
+export VAULT_TOKEN ?= $(shell vault login -method aws role=ops-travis-ci -token-only)
+
 # export SCCACHE_REDIS ?= $(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache)
 SCCACHE_REDIS :=
 
