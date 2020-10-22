@@ -193,7 +193,7 @@ $(targetPatterns): cargo-init
 	  -v `pwd`:/src \
 	  -v ${CARGO_HOME}/git:/home/builder/.cargo/git \
 	  -v ${CARGO_HOME}/registry:/home/builder/.cargo/registry \
-	  -it --rm \
+	  --rm \
 	  $(image-$(OS)) \
 	  cargo --locked build --release --bin $(basename $*)
 
@@ -216,7 +216,7 @@ $(soTargetPatterns): cargo-init
 	  -v `pwd`:/src \
 	  -v ${CARGO_HOME}/git:/home/builder/.cargo/git \
 	  -v ${CARGO_HOME}/registry:/home/builder/.cargo/registry \
-	  -it --rm \
+	  --rm \
 	  actyx/util:buildrs-x64-latest \
 	  cargo --locked build -p ax-os-node-ffi --lib --release --target $(TARGET)
 
