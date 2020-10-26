@@ -15,6 +15,8 @@ export BUILD_SCCACHE_VERSION := 0.2.12
 export CARGO_HOME ?= $(HOME)/.cargo
 
 # log in to vault and store the token in an environment variable
+# to run this locally, set the VAULT_TOKEN environment variable by running vault login with your dev role.
+# e.g. `export VAULT_TOKEN=`vault login -token-only -method aws role=dev-ruediger`
 export VAULT_TOKEN ?= $(shell vault login -token-only -method aws role=ops-travis-ci)
 
 # export SCCACHE_REDIS ?= $(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache)
@@ -232,3 +234,10 @@ $(soTargetPatterns): cargo-init
 cargo-init: $(CARGO_HOME)/git $(CARGO_HOME)/registry
 $(CARGO_HOME)/%:
 	mkdir -p $@
+
+jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnodeffi
+	cd jvm/os-android && ./gradlew ktlintCheck build assembleRelease androidGitVersion
+
+dist/bin/actyxos.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
+	mkdir -p $(dir $@)
+	cp $< $@
