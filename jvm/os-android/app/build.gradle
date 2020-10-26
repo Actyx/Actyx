@@ -127,8 +127,10 @@ dependencies {
 def archs = ["x86", "arm64-v8a", "armeabi-v7a"]
 def nativeLibs = ["axosnodeffi"]
 task checkExternalLibsExist() {
-  [archs, nativeLibs].eachCombination { arch, lib ->
-    assert file("./src/main/jniLibs/${arch}/lib${lib}.so").exists()
+  doLast {
+    [archs, nativeLibs].eachCombination { arch, lib ->
+      assert file("./src/main/jniLibs/${arch}/lib${lib}.so").exists()
+    }
   }
 }
 assemble.dependsOn checkExternalLibsExist
