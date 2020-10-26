@@ -106,7 +106,7 @@ validate-rust-sdk-macros:
 
 .PHONY: validate-os-android
 # execute linter for os-android
-validate-os-android: diagnostics android-libaxosnodeffi
+validate-os-android: diagnostics
 	jvm/os-android/bin/get-keystore.sh
 	cd jvm/os-android/ && ./gradlew clean ktlintCheck
 
