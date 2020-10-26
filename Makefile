@@ -59,14 +59,6 @@ prepare-js:
 	# install nvm
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash
 
-# list all os-arch and binary names
-osArch = linux-aarch64 linux-x86_64 linux-armv7 linux-arm windows-x86_64
-binaries = ax ax.exe actyxos-linux win.exe
-
-# compute list of all OSs and rust targets
-os = $(sort $(foreach oa,$(osArch),$(word 1,$(subst -, ,$(oa)))))
-targets = $(sort $(foreach oa,$(osArch),$(target-$(oa))))
-
 # execute linter, style checker and tests for everything
 validate: validate-os validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website
 
@@ -173,14 +165,32 @@ target-windows-x86_64 = x86_64-pc-windows-gnu
 image-linux = actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 
-# build rules for binaries on the current platform (i.e. no cross-building)
+# list all os-arch and binary names
+osArch = linux-aarch64 linux-x86_64 linux-armv7 linux-arm windows-x86_64
+binaries = ax ax.exe actyxos-linux win.exe
+
+# compute list of all OSs (e.g. linux, windows) and rust targets (looking into the target-* vars)
+os = $(sort $(foreach oa,$(osArch),$(word 1,$(subst -, ,$(oa)))))
+targets = $(sort $(foreach oa,$(osArch),$(target-$(oa))))
+
+# build rules for binaries on the current platform (i.e. no cross-building), like ax.exe
+# two-step process:
+#   - declare dependency from dist/bin/* to the right file in rt-master/target/...
+#   - declare how to build the file in rt-master/target/...
 dist/bin/current/%: rt-master/target/release/%
 	mkdir -p $(dir $@)
 	cp $< $@
+# here % (and thus $*) matches something like ax.exe, so we need to strip the suffix with `basename`
 rt-master/target/release/%:
 	cd rt-master && cargo --locked build --release --bin $(basename $*)
 
-# define build rules for all cross-built binaries (unfortunately using pattern rules is impossible)
+# In the following the same two-step process is used as for the current os/arch above.
+# The difference is that %-patterns won’t works since there are two variables to fill:
+# the os-arch string and the binary name. Therefore, we generate all rules by multiplying
+# the list of os-arch strings with the possible binaries and using `eval` to synthesize
+# one rule for each such combination.
+# mkDistRule is the template that is then instantiated by the nested `foreach` below,
+# where $(1) and $(2) will be replaced by the loop values for os-arch and binary name, respectively.
 define mkDistRule =
 dist/bin/$(1)/$(2): rt-master/target/$(target-$(1))/release/$(2)
 	mkdir -p $$(dir $$@)
@@ -188,9 +198,17 @@ dist/bin/$(1)/$(2): rt-master/target/$(target-$(1))/release/$(2)
 endef
 $(foreach oa,$(osArch),$(foreach bin,$(binaries),$(eval $(call mkDistRule,$(oa),$(bin)))))
 
-# make a list of pattern rules (with %) for all possible rust binaries
+# Make a list of pattern rules (with %) for all possible rust binaries
+# containing e.g. rt-master/target/aarch64-unknown-linux-musl/release/%.
+# These will be used below to define how to build all binaries for that target.
 targetPatterns = $(foreach t,$(targets),rt-master/target/$(t)/release/%)
 
+# Set target-specific variables TARGET and OS by inspecting the target $@:
+#   - TARGET is the third path element
+#   - OS is the third dash-separated component of TARGET
+# These variables are available in the rule directly below by virtue of
+# being associated with the same target patterns. The variables are local
+# to this rule, i.e. do not pollute the global namespace.
 $(targetPatterns): TARGET = $(word 3,$(subst /, ,$@))
 $(targetPatterns): OS = $(word 3,$(subst -, ,$(TARGET)))
 $(targetPatterns): cargo-init
@@ -202,8 +220,8 @@ $(targetPatterns): cargo-init
 	  -e CARGO_BUILD_JOBS=$(CARGO_BUILD_JOBS) \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
-	  -v ${CARGO_HOME}/git:/home/builder/.cargo/git \
-	  -v ${CARGO_HOME}/registry:/home/builder/.cargo/registry \
+	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
+	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(image-$(OS)) \
 	  cargo --locked build --release --bin $(basename $*)
@@ -214,6 +232,7 @@ android_so_targets = i686-linux-android aarch64-linux-android armv7-linux-androi
 # make a list of pattern rules (with %) for all possible .so files needed for android
 soTargetPatterns = $(foreach t,$(android_so_targets),rt-master/target/$(t)/release/libaxosnodeffi.so)
 
+# same principle as above for targetPatterns
 $(soTargetPatterns): TARGET = $(word 3,$(subst /, ,$@))
 $(soTargetPatterns): OS = $(word 3,$(subst -, ,$(TARGET)))
 $(soTargetPatterns): cargo-init
@@ -225,13 +244,14 @@ $(soTargetPatterns): cargo-init
 	  -e CARGO_BUILD_JOBS=$(CARGO_BUILD_JOBS) \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
-	  -v ${CARGO_HOME}/git:/home/builder/.cargo/git \
-	  -v ${CARGO_HOME}/registry:/home/builder/.cargo/registry \
+	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
+	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  actyx/util:buildrs-x64-latest \
 	  cargo --locked build -p ax-os-node-ffi --lib --release --target $(TARGET)
 
 # create these so that they belong to the current user (Docker would create as root)
+# (formulating as rule dependencies only runs mkdir when they are missing)
 cargo-init: $(CARGO_HOME)/git $(CARGO_HOME)/registry
 $(CARGO_HOME)/%:
 	mkdir -p $@
