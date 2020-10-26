@@ -2,11 +2,12 @@ SHELL := /bin/bash
 
 all-LINUX := $(foreach arch,x86_64 aarch64 armv7 arm,linux-$(arch)/actyxos-linux)
 all-WINDOWS := windows-x86_64/win.exe
+all-ANDROID := actyxos.apk
 
 CARGO_TEST_JOBS := 4
 CARGO_BUILD_JOBS := 8
 
-all: $(patsubst %,dist/bin/%,$(all-LINUX) $(all-WINDOWS))
+all: $(patsubst %,dist/bin/%,$(all-LINUX) $(all-WINDOWS) $(all-ANDROID))
 
 # These should be moved to the global azure pipelines build
 export BUILD_RUST_TOOLCHAIN := 1.45.0
