@@ -9,6 +9,8 @@ const setup = () => {
 
   return {
     quickstart: {
+      dirSampleWebviewApp,
+      dirSampleDockerApp,
       async getReady(): Promise<string> {
         console.log('Get ready quickstart:')
 
