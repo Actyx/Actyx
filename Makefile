@@ -262,3 +262,18 @@ jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnod
 dist/bin/actyxos.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
 	mkdir -p $(dir $@)
 	cp $< $@
+
+.PHONY: windows-installer
+misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64/actyxos-node-manager.exe: dist/bin/win64/ax.exe
+	mkdir -p misc/actyxos-node-manager/bin/win32
+	cp dist/bin/win64/ax.exe misc/actyxos-node-manager/bin/win32/
+	docker run \
+	  -u $(shell id -u) \
+	  -w /src/misc/actyxos-node-manager \
+	  -v `pwd`:/src \
+	  --rm actyx/util:windowsinstallercreator-x64-latest \
+	  bash -c "npm install && npm run package -- --platform win32 --arch x64"
+
+dist/bin/x64/actyxos-node-manager.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64/actyxos-node-manager.exe
+	mkdir -p $(dir $@)
+	cp $< $@
