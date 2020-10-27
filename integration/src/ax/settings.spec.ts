@@ -20,14 +20,10 @@ describe('ax settings', () => {
 
     test('return ax scope', async () => {
       const responses = await runOnEach([{}, {}], false, (node) => node.ax.Settings.Scopes())
-      const areValid = responses.every(
-        (r) => r.code === 'OK' && r.result.length >= 1 && r.result.includes('com.actyx.os'),
-      )
       const reponsesShape = [
         { code: 'OK', result: ['com.actyx.os'] },
         { code: 'OK', result: ['com.actyx.os'] },
       ]
-      expect(areValid).toBe(true)
       expect(responses).toMatchObject(reponsesShape)
     })
   })
