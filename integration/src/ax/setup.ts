@@ -38,7 +38,7 @@ const setup = () => {
           console.log('building...')
           await execa('npm', ['run', 'build:image'], { cwd: dirSampleDockerApp })
 
-          return Promise.resolve('quickstart ready')
+          return Promise.resolve('quickstart ready!')
         } catch (err) {
           return Promise.reject(err)
         }

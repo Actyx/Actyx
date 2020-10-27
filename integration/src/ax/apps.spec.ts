@@ -22,14 +22,13 @@ describe('ax apps', () => {
       ]
       expect(responses).toMatchObject(test)
     })
-
-    describe('validate', () => {
-      test('return `ERR_INVALID_INPUT` if path does not exist', async () => {
-        const response = await fakeNodeHostUnreachable.ax.Apps.Validate('foo')
-        expect(isCodeInvalidInput(response)).toBe(true)
-      })
+  })
+  // FIXME: found out why the next test pass but its name does not show up in stdout
+  describe('validate', () => {
+    test('return `ERR_INVALID_INPUT` if file path does not exist', async () => {
+      console.log('SPO')
+      const response = await fakeNodeHostUnreachable.ax.Apps.Validate('foo')
+      expect(isCodeInvalidInput(response)).toBe(true)
     })
-
-    //TODO: test it all
   })
 })
