@@ -7,7 +7,7 @@ all-ANDROID := actyxos.apk
 CARGO_TEST_JOBS := 4
 CARGO_BUILD_JOBS := 8
 
-all: $(patsubst %,dist/bin/%,$(all-LINUX) $(all-WINDOWS) $(all-ANDROID))
+all: $(patsubst %,dist/bin/%,$(all-LINUX) $(all-WINDOWS) $(all-ANDROID)) dist/bin/win64/installer
 
 # These should be moved to the global azure pipelines build
 export BUILD_RUST_TOOLCHAIN := 1.45.0
@@ -283,7 +283,7 @@ dist/bin/win64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win
 	cp dist/bin/win64/actyxos.exe misc/actyxos-win-installer
 	cp dist/bin/win64/ax.exe misc/actyxos-win-installer
 	cp -r misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 misc/actyxos-win-installer/node-manager
-	ls -alh .
+	# ls -alh .
 	docker run \
 	  -u $(shell id -u) \
 	  -v `pwd`:/src \
