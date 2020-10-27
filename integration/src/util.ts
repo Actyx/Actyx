@@ -3,6 +3,7 @@ import { CLI } from './ax'
 import { ActyxOSNode, Arch, Host, OS, Runtime } from './runner/types'
 import { promises as fs } from 'fs'
 
+// TODO: use fs-extra instead
 export const exists = async (filePath: string): Promise<boolean> => {
   try {
     await fs.access(filePath)

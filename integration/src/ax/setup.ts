@@ -1,43 +1,39 @@
 import execa from 'execa'
 import { remove, mkdirs, pathExists } from 'fs-extra'
-// import { exists } from '../util'
 
-export const setup = {
-  quickstart: {
-    sameWebviewApp: {
-      getReady: async (): Promise<string> => {
-        console.log('get ready quickstart')
+const setup = () => {
+  const dirTemp = 'temp'
+  const dirQuickstart = 'temp/quickstart'
+  const dirSampleWebviewApp = 'temp/quickstart/sample-webview-app'
 
-        const DIR = 'temp'
-        const DIR_QUICKSTART = `${DIR}/quickstart`
-        const DIR_SAMPLE_WEBVIEW_APP = `${DIR_QUICKSTART}/sample-webview-app`
-        // const AX_MANIFEST = `${DIR_SAMPLE_WEBVIEW_APP}/ax-manifest.yml`
+  return {
+    quickstart: {
+      async getReady(): Promise<string> {
+        console.log('Get ready quickstart')
 
         try {
-          const hasFolder = await pathExists(DIR)
+          const hasFolder = await pathExists(dirTemp)
           if (hasFolder) {
-            await remove(DIR)
+            await remove(dirTemp)
           }
-          await mkdirs(DIR)
+          await mkdirs(dirTemp)
 
           console.log('cloning repo...')
-          await execa('git', ['clone', 'https://github.com/Actyx/quickstart.git', DIR_QUICKSTART])
+          await execa('git', ['clone', 'https://github.com/Actyx/quickstart.git', dirQuickstart])
 
           console.log('installing...')
-          await execa('npm', ['install'], { cwd: DIR_SAMPLE_WEBVIEW_APP })
+          await execa('npm', ['install'], { cwd: dirSampleWebviewApp })
 
           console.log('building...')
-          await execa('npm', ['run', 'build'], { cwd: DIR_SAMPLE_WEBVIEW_APP })
+          await execa('npm', ['run', 'build'], { cwd: dirSampleWebviewApp })
 
-          // await execa(`ax`, [`-j`, `apps`, `validate`, AX_MANIFEST])
-          return Promise.resolve('installed and builded')
-          // await remove(TEMP_DIR)
+          return Promise.resolve('quickstart ready')
         } catch (err) {
           return Promise.reject(err)
         }
       },
     },
-  },
+  }
 }
 
-setup.quickstart.sameWebviewApp.getReady().then(console.log).then(console.error)
+export const axSetup = setup()

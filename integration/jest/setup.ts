@@ -2,6 +2,7 @@
 import { EC2 } from 'aws-sdk'
 import { CLI } from '../src/ax'
 import { SettingsInput } from '../src/ax/exec'
+import { axSetup } from '../src/ax/setup'
 import { createInstance, createKey, terminateInstance } from '../src/runner/aws'
 import { mkNodeLinux } from '../src/runner/linux'
 import { ActyxOSNode, AwsKey } from '../src/runner/types'
@@ -151,6 +152,15 @@ const getPeers = async (node: ActyxOSNode): Promise<number> => {
 }
 
 const setup = async (_config: Record<string, unknown>): Promise<void> => {
+  // install quickstart locally so we can test against apps
+  process.stdout.write('\n')
+  try {
+    const statusMessage = await axSetup.quickstart.getReady()
+    console.log(statusMessage)
+  } catch (err) {
+    console.error(err)
+  }
+
   const axNodeSetup = (<MyGlobal>global).axNodeSetup
 
   process.stdout.write('\n')
