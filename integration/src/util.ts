@@ -39,7 +39,7 @@ export const mkNodeTest = (
   }
 }
 
-export const testNodeHostUnreachable = mkNodeTest(
+export const fakeNodeHostUnreachable = mkNodeTest(
   'android',
   'aarch64',
   'android',
@@ -48,7 +48,7 @@ export const testNodeHostUnreachable = mkNodeTest(
   '123',
 )
 
-export const testNodeActyxosUnreachable = mkNodeTest(
+export const fakeNodeActyxosUnreachable = mkNodeTest(
   'android',
   'aarch64',
   'android',

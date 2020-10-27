@@ -1,16 +1,16 @@
 import { runOnEach } from '../runner/hosts'
-import { testNodeActyxosUnreachable, testNodeHostUnreachable } from '../util'
-import { isCodeNodeUnreachable } from './util'
+import { fakeNodeActyxosUnreachable, fakeNodeHostUnreachable } from '../util'
+import { isCodeInvalidInput, isCodeNodeUnreachable } from './util'
 
 describe('ax apps', () => {
   describe('ls', () => {
     test('return `ERR_NODE_UNREACHABLE`', async () => {
-      const r = await testNodeHostUnreachable.ax.Apps.Ls()
+      const r = await fakeNodeHostUnreachable.ax.Apps.Ls()
       expect(isCodeNodeUnreachable(r)).toBe(true)
     })
 
     test('return `ERR_NODE_UNREACHABLE`', async () => {
-      const r = await testNodeActyxosUnreachable.ax.Apps.Ls()
+      const r = await fakeNodeActyxosUnreachable.ax.Apps.Ls()
       expect(isCodeNodeUnreachable(r)).toBe(true)
     })
 
@@ -21,6 +21,13 @@ describe('ax apps', () => {
         { code: 'OK', result: [] },
       ]
       expect(responses).toMatchObject(test)
+    })
+
+    describe('validate', () => {
+      test('return `ERR_INVALID_INPUT` if path does not exist', async () => {
+        const response = await fakeNodeHostUnreachable.ax.Apps.Validate('foo')
+        expect(isCodeInvalidInput(response)).toBe(true)
+      })
     })
 
     //TODO: test it all

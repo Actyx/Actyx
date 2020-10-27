@@ -2,19 +2,19 @@
 const nodeSettingSchema = require('../../../../protocols/json-schema/os/node-settings.schema.json')
 
 import { runOnEach } from '../runner/hosts'
-import { testNodeActyxosUnreachable, testNodeHostUnreachable } from '../util'
+import { fakeNodeActyxosUnreachable, fakeNodeHostUnreachable } from '../util'
 import { isCodeNodeUnreachable } from './util'
 import fetch from 'node-fetch'
 
 describe('ax settings', () => {
   describe('scopes', () => {
     test('return ERR_NODE_UNREACHABLE', async () => {
-      const response = await testNodeHostUnreachable.ax.Settings.Scopes()
+      const response = await fakeNodeHostUnreachable.ax.Settings.Scopes()
       expect(isCodeNodeUnreachable(response)).toBe(true)
     })
 
     test('return ERR_NODE_UNREACHABLE', async () => {
-      const response = await testNodeActyxosUnreachable.ax.Settings.Scopes()
+      const response = await fakeNodeActyxosUnreachable.ax.Settings.Scopes()
       expect(isCodeNodeUnreachable(response)).toBe(true)
     })
 
@@ -30,12 +30,12 @@ describe('ax settings', () => {
 
   describe('schema', () => {
     test('return ERR_NODE_UNREACHABLE', async () => {
-      const response = await testNodeHostUnreachable.ax.Settings.Schema('com.actyx.os')
+      const response = await fakeNodeHostUnreachable.ax.Settings.Schema('com.actyx.os')
       expect(isCodeNodeUnreachable(response)).toBe(true)
     })
 
     test('return ERR_NODE_UNREACHABLE', async () => {
-      const response = await testNodeActyxosUnreachable.ax.Settings.Schema('com.actyx.os')
+      const response = await fakeNodeActyxosUnreachable.ax.Settings.Schema('com.actyx.os')
       expect(isCodeNodeUnreachable(response)).toBe(true)
     })
 

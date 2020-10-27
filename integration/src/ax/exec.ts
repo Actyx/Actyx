@@ -14,6 +14,7 @@ import {
   Response_Settings_Scopes,
   Response_Settings_Schema,
   Reponse_Swarms_Keygen,
+  Reponse_Apps_Validate,
 } from './types'
 import { Either, isLeft } from 'fp-ts/lib/Either'
 import { Errors } from 'io-ts'
@@ -103,6 +104,7 @@ type Exec = {
     Start: (appId: string) => Promise<Response_Apps_Start>
     Stop: (appId: string) => Promise<Response_Apps_Stop>
     Ls: () => Promise<Response_Apps_Ls>
+    Validate: (filePath?: string) => Promise<Reponse_Apps_Validate>
   }
   Logs: {
     TailFollow: (
@@ -185,6 +187,10 @@ export const mkExec = (binary: string, addr: string): Exec => ({
     Ls: async (): Promise<Response_Apps_Ls> => {
       const response = await exec(binary, [`apps`, `ls`, `--local`, addr])
       return rightOrThrow(Response_Apps_Ls.decode(response), response)
+    },
+    Validate: async (filePath?: string): Promise<Reponse_Apps_Validate> => {
+      const response = await exec(binary, [`apps`, `validate`, filePath ?? ''])
+      return rightOrThrow(Reponse_Apps_Validate.decode(response), response)
     },
   },
   Logs: {
