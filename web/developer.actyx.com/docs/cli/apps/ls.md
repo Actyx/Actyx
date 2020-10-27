@@ -20,13 +20,6 @@ ARGS:
               perform the operation on
 ```
 
-:::tip Output
-If a node is reachable, the output of `ax apps ls` will list the status of all apps deployed on that node. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
-
-- Host unreachable
-- ActyxOS unreachable (this means the host was reachable but the TCP connection reset)
-:::
-
 See the following examples of using the `ax apps ls` command:
 
 ```
