@@ -159,6 +159,8 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
     console.log(statusMessage)
   } catch (err) {
     console.error(err)
+    process.exitCode = 1
+    process.exit()
   }
 
   const axNodeSetup = (<MyGlobal>global).axNodeSetup
