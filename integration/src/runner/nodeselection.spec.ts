@@ -1,34 +1,9 @@
-import { Client } from '@actyx/os-sdk'
-/* eslint-disable @typescript-eslint/no-empty-function */
-import { CLI } from '../ax'
+import { mkNodeTest } from '../util'
 import { selectNodes } from './nodeselection'
-import { ActyxOSNode, Arch, Host, OS, Runtime } from './types'
 
-let counter = 0
-const mkNode = (os: OS, arch: Arch, host: Host, runtimes: Runtime[]): ActyxOSNode => {
-  counter += 1
-  const name = `n${counter}`
-  return {
-    name,
-    host,
-    runtimes,
-    target: { os, arch, kind: { type: 'test' }, _private: { shutdown: () => Promise.resolve() } },
-    ax: new CLI('localhost'),
-    actyxOS: Client(),
-    _private: {
-      shutdown: () => Promise.resolve(),
-      axBinary: '',
-      axHost: '',
-      apiConsole: '',
-      apiEvent: '',
-      apiPond: '',
-    },
-  }
-}
-
-const n1 = mkNode('android', 'aarch64', 'android', ['webview'])
-const n2 = mkNode('linux', 'x86_64', 'docker', ['docker'])
-const n3 = mkNode('win', 'aarch64', 'process', [])
+const n1 = mkNodeTest('android', 'aarch64', 'android', ['webview'], 'n0')
+const n2 = mkNodeTest('linux', 'x86_64', 'docker', ['docker'], 'n1')
+const n3 = mkNodeTest('win', 'aarch64', 'process', [], 'n2')
 
 describe('NodeSelection', () => {
   it('should fail', () => {

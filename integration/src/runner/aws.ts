@@ -17,7 +17,9 @@ export const createKey = async (ec2: EC2): Promise<AwsKey> => {
       ],
     })
     .promise()
-  if (KeyMaterial === undefined) throw new Error('cannot create key pair')
+  if (KeyMaterial === undefined) {
+    throw new Error('cannot create key pair')
+  }
   console.log('created key %s', keyName)
   return { keyName, privateKey: KeyMaterial }
 }

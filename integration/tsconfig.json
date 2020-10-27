@@ -3,7 +3,6 @@
     "target": "es2017",
     "outDir": "dist",
     "module": "commonjs",
-    "jsx": "react",
     "strict": true,
     "moduleResolution": "node",
     "esModuleInterop": true,

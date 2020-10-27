@@ -37,6 +37,7 @@
   "main": "index.js",
   "name": "actyxos-integration",
   "scripts": {
+    "tsc": "tsc",
     "build": "rimraf dist && tsc",
     "test": "npm run build && TZ=UTC jest",
     "lint:fix": "tsc & eslint './src/**/*.{js,ts,tsx}' --fix & prettier './src/**/*.{js,ts,tsx}' --write",

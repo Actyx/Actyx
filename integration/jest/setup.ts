@@ -160,13 +160,15 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
   axNodeSetup.key = await createKey(axNodeSetup.ec2)
   axNodeSetup.nodes = []
   axNodeSetup.logs = {}
-  
-  process.on('SIGINT', () => axNodeSetup.nodes.forEach(node => node._private.shutdown()))
+
+  process.on('SIGINT', () => axNodeSetup.nodes.forEach((node) => node._private.shutdown()))
 
   for (const res of await Promise.all(
     ['pool1', 'pool2'].map((name) => createNode(axNodeSetup.ec2, axNodeSetup.key, name)),
   )) {
-    if (res === undefined) continue
+    if (res === undefined) {
+      continue
+    }
     const [logs, node] = res
     axNodeSetup.nodes.push(node)
     axNodeSetup.logs[node.name] = logs
@@ -184,7 +186,15 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
 
   // need to set some valid settings to be able to get the peerId
   const swarmKey = await bootstrap.ax.Swarms.KeyGen()
-  await setInitialSettings(bootstrap, swarmKey)
+
+  if (swarmKey.code !== 'OK') {
+    new Error('cannot generate swarmkey')
+    return
+  }
+
+  const key = swarmKey.result.swarmKey
+
+  await setInitialSettings(bootstrap, key)
 
   const peerId = await getPeerId(bootstrap.ax)
   if (peerId === undefined) {
@@ -193,7 +203,7 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
   }
   console.log(`bootstrap node ${bootstrap.name} has PeerId ${peerId}`)
 
-  await setAllSettings(bootstrap, peerId, axNodeSetup.nodes, swarmKey)
+  await setAllSettings(bootstrap, peerId, axNodeSetup.nodes, key)
 
   console.log('bootstrap node set up, settings all set')
 
