@@ -15,9 +15,11 @@ import {
 
 const fish = mkNumberFish(semanticSnap)
 
+const setup = () => snapshotTestSetup(fish, undefined, undefined, true)
+
 describe('fish event store + jar semantic snapshot functionality', () => {
-  it(`fish should aggegrate events between sources, resetting on semantic snapshots`, async () => {
-    const { applyAndGetState } = await snapshotTestSetup(fish)
+  it.only(`fish should aggegrate events between sources, resetting on semantic snapshots`, async () => {
+    const { applyAndGetState } = await setup()
 
     const srcA = emitter('A')
     const srcB = emitter('B')
@@ -29,7 +31,7 @@ describe('fish event store + jar semantic snapshot functionality', () => {
   })
 
   it(`fish should reset on semantic snapshot inside chunk`, async () => {
-    const { applyAndGetState } = await snapshotTestSetup(fish)
+    const { applyAndGetState } = await setup()
 
     const srcA = emitter('A')
     const events: Events = mkTimeline(srcA(3), srcA(7), srcA(-1), srcA(8)).all
@@ -54,7 +56,7 @@ describe('fish event store + jar semantic snapshot functionality', () => {
     )
 
     it(`should reset with every new latest semantic snapshot`, async () => {
-      const { applyAndGetState } = await snapshotTestSetup(fish)
+      const { applyAndGetState } = await setup()
 
       expect(await applyAndGetState(tl.of('A'))).toEqual([3, 4, 7, 11])
       expect(await applyAndGetState(tl.of('B'))).toEqual([-1, 10, 11])
@@ -62,7 +64,7 @@ describe('fish event store + jar semantic snapshot functionality', () => {
     })
 
     it(`should ignore semantic snapshots older than current latest`, async () => {
-      const { applyAndGetState } = await snapshotTestSetup(fish)
+      const { applyAndGetState } = await setup()
 
       expect(await applyAndGetState(tl.of('A'))).toEqual([3, 4, 7, 11])
       expect(await applyAndGetState(tl.of('C'))).toEqual([-1, 9, 11])
@@ -70,7 +72,7 @@ describe('fish event store + jar semantic snapshot functionality', () => {
     })
 
     it(`should late comer source nicely`, async () => {
-      const { applyAndGetState } = await snapshotTestSetup(fish)
+      const { applyAndGetState } = await setup()
 
       expect(await applyAndGetState(tl.of('B', 'C'))).toEqual([-1, 9, 10])
       expect(await applyAndGetState(tl.of('A'))).toEqual([-1, 9, 10, 11])
