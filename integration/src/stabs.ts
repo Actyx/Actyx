@@ -1,19 +1,9 @@
 import { Client } from '@actyx/os-sdk'
+
 import { CLI } from './ax'
 import { ActyxOSNode, Arch, Host, OS, Runtime } from './runner/types'
-import { promises as fs } from 'fs'
 
-// TODO: use fs-extra instead
-export const exists = async (filePath: string): Promise<boolean> => {
-  try {
-    await fs.access(filePath)
-    return true
-  } catch {
-    return false
-  }
-}
-
-export const mkNodeTest = (
+export const mkNodeStab = (
   os: OS,
   arch: Arch,
   host: Host,
@@ -39,7 +29,7 @@ export const mkNodeTest = (
   }
 }
 
-export const fakeNodeHostUnreachable = mkNodeTest(
+export const stabNodeHostUnreachable = mkNodeStab(
   'android',
   'aarch64',
   'android',
@@ -48,7 +38,7 @@ export const fakeNodeHostUnreachable = mkNodeTest(
   '123',
 )
 
-export const fakeNodeActyxosUnreachable = mkNodeTest(
+export const stabNodeActyxosUnreachable = mkNodeStab(
   'android',
   'aarch64',
   'android',

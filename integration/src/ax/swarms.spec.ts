@@ -1,8 +1,8 @@
 import { runOnAll, runOnEach } from '../runner/hosts'
 import { isCodeInvalidInput, isCodeOk } from './util'
 import { promises as fs } from 'fs'
-import { exists } from '../util'
 import { Reponse_Swarms_Keygen } from './types'
+import { pathExists } from 'fs-extra'
 
 const FILE_PATH = 'temp-swarm-key'
 
@@ -45,7 +45,7 @@ describe('ax swarms', () => {
     })
 
     test('must create a file with a valid swarmKey', async () => {
-      const fileExists = await exists(FILE_PATH)
+      const fileExists = await pathExists(FILE_PATH)
       if (fileExists) {
         await fs.unlink(FILE_PATH)
       }
@@ -60,8 +60,8 @@ describe('ax swarms', () => {
     test('must create a file with a unique valid swarmKey', async () => {
       const file1 = `${FILE_PATH}0`
       const file2 = `${FILE_PATH}1`
-      const file1Exists = await exists(file1)
-      const file2Exists = await exists(file2)
+      const file1Exists = await pathExists(file1)
+      const file2Exists = await pathExists(file2)
       if (file1Exists) {
         await fs.unlink(file1)
       }
@@ -79,7 +79,7 @@ describe('ax swarms', () => {
     })
 
     test('must return `ERR_INVALID_INPUT` when cannot write a swarm key to file since file key already exists', async () => {
-      const fileExists = await exists(FILE_PATH)
+      const fileExists = await pathExists(FILE_PATH)
       if (fileExists) {
         await fs.unlink(FILE_PATH)
       }
