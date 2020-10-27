@@ -7,6 +7,7 @@
     "aws-sdk": "^2.759.0",
     "execa": "^4.0.3",
     "fp-ts": "^1.19.5",
+    "fs-extra": "^9.0.1",
     "io-ts": "^1.10.4",
     "io-ts-types": "^0.4.1",
     "node-fetch": "^2.6.1",
@@ -15,6 +16,7 @@
     "ssh2": "^0.8.9"
   },
   "devDependencies": {
+    "@types/fs-extra": "^9.0.2",
     "@types/jest": "^26.0.14",
     "@types/node": "^14.11.2",
     "@types/node-fetch": "^2.5.7",
