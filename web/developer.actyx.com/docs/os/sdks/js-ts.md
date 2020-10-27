@@ -24,12 +24,21 @@ import { Client, Subscription } from '@actyx/os-sdk'
 
 const ActyxOS = Client()
 
+// callback style
 ActyxOS.eventService.subscribe({
   subscriptions: Subscription.everything(),
   onEvent: event => {
-    console.log(`got event: ${JSON.stringify(event)}`)
+    console.log('got event', event)
   }
 })
+
+// stream style
+const eventStream = ActyxOS.eventService.subscribeStream({
+  subscriptions: Subscription.everything(),
+})
+for await (const event of eventStream) {
+  console.log('got event', event)
+}
 ```
 
 Here is how you would publish events:
@@ -39,11 +48,17 @@ import { Client, EventDraft } from '@actyx/os-sdk'
 
 const ActyxOS = Client()
 
+// callback style
 ActyxOS.eventService.publish({
   eventDrafts: EventDraft.make('mySemantics', 'myName', { foo: 'bar' }),
   onDone: () => {
     console.log(`Published`)
   }
+})
+
+// promise style
+await ActyxOS.eventService.publishPromise({
+  eventDrafts: EventDraft.make('mySemantics', 'myName', { foo: 'bar' }),
 })
 ```
 
