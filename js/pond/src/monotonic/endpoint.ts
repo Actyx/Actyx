@@ -5,6 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { fromNullable, none, Option, some } from 'fp-ts/lib/Option'
 import { flatten } from 'ramda'
 import { Observable } from 'rxjs'
 import { EventStore } from '../eventstore'
@@ -17,9 +18,10 @@ import {
   PersistedEventsSortOrders,
 } from '../eventstore/types'
 import log from '../loggers'
+import { SnapshotStore } from '../snapshotStore'
 import { SubscriptionSet } from '../subscription'
-import { EventKey, LocalSnapshot } from '../types'
-import { takeWhileInclusive } from '../util'
+import { EventKey, FishId, LocalSnapshot } from '../types'
+import { runStats, takeWhileInclusive } from '../util'
 import { getInsertionIndex } from '../util/binarySearch'
 
 export enum MsgType {
@@ -30,7 +32,7 @@ export enum MsgType {
 
 export type StateMsg = {
   type: MsgType.state
-  state: LocalSnapshot<unknown>
+  snapshot: LocalSnapshot<unknown>
 }
 
 export type EventsMsg = {
@@ -48,26 +50,28 @@ export type TimetravelMsg = {
 export type EventsOrTimetravel = StateMsg | EventsMsg | TimetravelMsg
 
 export type SubscribeMonotonic = (
+  fishId: FishId,
   subscriptions: SubscriptionSet,
   // Sending 'from' means we DONT want a snapshot
-  _from?: OffsetMap,
-  _horizon?: EventKey,
+  from?: OffsetMap,
+  horizon?: EventKey,
 ) => Observable<EventsOrTimetravel>
 
 // New API:
 // Stream events as they become available, until time-travel would occour.
 // To be eventually implemented on the rust-store side with lots of added cleverness.
-export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
+export const eventsMonotonic: (
   eventStore: EventStore,
-) => {
+  snapshotStore: SnapshotStore,
+) => SubscribeMonotonic = (eventStore, snapshotStore) => {
   const realtimeFrom = (
     subscriptions: SubscriptionSet,
-    present: OffsetMapWithDefault,
+    startFrom: OffsetMap,
     latest: EventKey,
   ): Observable<EventsOrTimetravel> => {
     const realtimeEvents = eventStore.allEvents(
       {
-        psns: present.psns,
+        psns: startFrom,
         default: 'min',
       },
       { psns: {}, default: 'max' },
@@ -86,6 +90,7 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
         const pass = EventKey.ord.compare(nextKey, latest) >= 0
 
         if (!pass) {
+          // FIXME: Invalidate snapshots
           return timeTravelMsg(latest, next)
         }
 
@@ -104,12 +109,13 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
 
   const monotonicFrom = (
     subscriptions: SubscriptionSet,
-    present: OffsetMapWithDefault,
+    present: OffsetMap,
+    lowerBound?: OffsetMap,
   ): Observable<EventsOrTimetravel> => {
     const persisted = eventStore
       .persistedEvents(
-        { default: 'min', psns: {} },
-        { default: 'min', psns: present.psns },
+        { default: 'min', psns: lowerBound || {} },
+        { default: 'min', psns: present },
         subscriptions,
         PersistedEventsSortOrders.EventKey,
         undefined, // No semantic snapshots means no horizon, ever.
@@ -131,19 +137,66 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
     })
   }
 
+  const tryReadSnapshot = (fishId: FishId): Observable<Option<LocalSnapshot<unknown>>> => {
+    const semantics = fishId.entityType
+    const name = fishId.name
+    const version = fishId.version
+
+    return Observable.from(snapshotStore.retrieveSnapshot(semantics, name, version)).map(x => {
+      runStats.counters.add(`snapshot-wanted/${semantics}`)
+      return fromNullable(x).fold(none, localSnapshot => {
+        runStats.counters.add(`snapshot-found/${semantics}`)
+        return some(localSnapshot)
+      })
+    })
+  }
+
+  const startFromMaybeSnapshot = (subscriptions: SubscriptionSet) => ([maybeSnapshot, present]: [
+    Option<LocalSnapshot<unknown>>,
+    OffsetMapWithDefault
+  ]) =>
+    maybeSnapshot.fold(
+      // No snapshot -> start from scratch
+      monotonicFrom(subscriptions, present.psns),
+      x =>
+        Observable.concat(
+          Observable.of(stateMsg(x)),
+          monotonicFrom(subscriptions, present.psns, x.psnMap),
+        ),
+    )
+
   return (
+    fishId: FishId,
     subscriptions: SubscriptionSet,
-    _from?: OffsetMap,
+    from?: OffsetMap,
     _horizon?: EventKey,
   ): Observable<EventsOrTimetravel> => {
-    return eventStore
-      .present()
-      .take(1)
-      .concatMap(present => monotonicFrom(subscriptions, present))
+    // `from` NOT given -> try finding a snapshot
+    if (from) {
+      // Client explicitly requests us to start at a certain point
+      return eventStore
+        .present()
+        .take(1)
+        .concatMap(present => monotonicFrom(subscriptions, present.psns, from))
+    } else {
+      return Observable.combineLatest(
+        tryReadSnapshot(fishId).take(1),
+        eventStore.present().take(1),
+      ).concatMap(startFromMaybeSnapshot(subscriptions))
+    }
   }
 }
 
-const timeTravelMsg = (previousHead: EventKey, next: Events) => {
+const stateMsg = (snapshot: LocalSnapshot<unknown>): StateMsg => {
+  log.pond.info('picking up from local snapshot ' + EventKey.format(snapshot.eventKey))
+
+  return {
+    type: MsgType.state,
+    snapshot,
+  }
+}
+
+const timeTravelMsg = (previousHead: EventKey, next: Events): TimetravelMsg => {
   log.pond.info('triggered time-travel back to ' + EventKey.format(next[0]))
 
   const high = getInsertionIndex(next, previousHead, (e, l) => EventKey.ord.compare(e, l)) - 1
@@ -152,5 +205,5 @@ const timeTravelMsg = (previousHead: EventKey, next: Events) => {
     type: MsgType.timetravel,
     trigger: next[0],
     high: next[high], // highest event to cause time-travel
-  } as TimetravelMsg
+  }
 }

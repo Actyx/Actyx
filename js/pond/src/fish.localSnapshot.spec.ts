@@ -209,7 +209,12 @@ describe('fish event store + jar local snapshot behavior', () => {
     ]
     const storedSnaps = [mkSnapshot([8, 9, 10], 500)]
 
-    const { applyAndGetState } = await snapshotTestSetup(fishToTest, storedEvents, storedSnaps)
+    const { applyAndGetState } = await snapshotTestSetup(
+      fishToTest,
+      storedEvents,
+      storedSnaps,
+      true,
+    )
 
     const currentEvents: Events = mkEvents([
       {
