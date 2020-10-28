@@ -74,6 +74,14 @@ export const observeMonotonic = (
     horizon: undefined,
   })
 
+  const makeResetMsg = (trigger: EventKey): StateMsg => {
+    const latestValid = findStartingState(trigger)
+    return {
+      type: MsgType.state,
+      state: latestValid,
+    }
+  }
+
   const reducer = MonotonicReducer(onEventRaw, findStartingState(EventKey.zero))
 
   // On time travel, switch to a fresh subscribeMonotonic stream
@@ -82,13 +90,8 @@ export const observeMonotonic = (
       .subscribeOn(Scheduler.queue)
       .concatMap(msg => {
         if (msg.type === MsgType.timetravel) {
-          const latestValid = findStartingState(msg.trigger)
-          const resetMsg: StateMsg = {
-            type: MsgType.state,
-            state: latestValid,
-          }
-
-          const startFrom = latestValid.psnMap
+          const resetMsg = makeResetMsg(msg.trigger)
+          const startFrom = resetMsg.state.psnMap
 
           return Observable.concat(
             Observable.of(resetMsg),
@@ -101,12 +104,12 @@ export const observeMonotonic = (
       .catch(err => {
         console.log(err) // Improve me
 
-        // Terminate normally and let the code further below take care of restarting
-        return Observable.empty()
+        // Reset the reducer and let the code further below take care of restarting the stream
+        return Observable.of(makeResetMsg(EventKey.zero))
       })
 
   // If the stream of updates terminates without a timetravel message – due to an error or the ws engine –,
-  // then we can just restart it.
+  // then we can just restart it. (Tests pending.)
   const updates$ = Observable.concat(updates(), Observable.defer(updates))
 
   return updates$.concatMap(msg => {
