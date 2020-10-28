@@ -14,7 +14,6 @@ import {
   Event,
   Events,
   OffsetMap,
-  OffsetMapWithDefault,
   PersistedEventsSortOrders,
 } from '../eventstore/types'
 import log from '../loggers'
@@ -161,43 +160,42 @@ export const eventsMonotonic: (
     })
   }
 
-  const startFromMaybeSnapshot = (fishId: FishId, subscriptions: SubscriptionSet) => ([
-    maybeSnapshot,
-    present,
-  ]: [Option<LocalSnapshot<string>>, OffsetMapWithDefault]) =>
-    maybeSnapshot.fold(
-      // No snapshot found-> start from scratch
-      monotonicFrom(fishId, subscriptions, present.psns),
-      snap => {
-        const earliestNewEvent = eventStore
-          .persistedEvents(
-            { default: 'min', psns: snap.psnMap },
-            { default: 'min', psns: present.psns },
-            subscriptions,
-            PersistedEventsSortOrders.EventKey,
-            undefined, // No semantic snapshots means no horizon, ever.
-          )
-          .defaultIfEmpty([])
+  const startFromSnapshot = (
+    fishId: FishId,
+    subscriptions: SubscriptionSet,
+    present: OffsetMap,
+  ) => (snap: LocalSnapshot<string>) => {
+    const earliestNewEvent = eventStore
+      .persistedEvents(
+        { default: 'min', psns: snap.psnMap },
+        { default: 'min', psns: present },
+        subscriptions,
+        PersistedEventsSortOrders.EventKey,
+        snap.horizon,
+      )
+      .defaultIfEmpty([])
+      .take(1)
+
+    return earliestNewEvent.concatMap(earliest => {
+      const snapshotOutdated =
+        earliest.length > 0 && EventKey.ord.compare(earliest[0], snap.eventKey) < 0
+
+      if (snapshotOutdated) {
+        // Invalidate this snapshot and try again.
+        return Observable.from(
+          snapshotStore.invalidateSnapshots(fishId.entityType, fishId.name, earliest[0]),
+        )
           .take(1)
+          .concatMap(() => observeMonotonicFromSnapshot(fishId, subscriptions))
+      }
 
-        return earliestNewEvent.concatMap(earliest => {
-          // Snapshot is already outdated -> try again
-          if (earliest.length > 0 && EventKey.ord.compare(earliest[0], snap.eventKey) < 0) {
-            return Observable.from(
-              snapshotStore.invalidateSnapshots(fishId.entityType, fishId.name, earliest[0]),
-            )
-              .take(1)
-              .concatMap(() => observeMonotonicFromSnapshot(fishId, subscriptions))
-          }
-
-          // Otherwise just pick up from snapshot
-          return Observable.concat(
-            Observable.of(stateMsg(snap)),
-            monotonicFrom(fishId, subscriptions, present.psns, snap.psnMap, snap.eventKey),
-          )
-        })
-      },
-    )
+      // Otherwise just pick up from snapshot
+      return Observable.concat(
+        Observable.of(stateMsg(snap)),
+        monotonicFrom(fishId, subscriptions, present, snap.psnMap, snap.eventKey),
+      )
+    })
+  }
 
   const observeMonotonicFromSnapshot = (
     fishId: FishId,
@@ -207,7 +205,13 @@ export const eventsMonotonic: (
     return Observable.combineLatest(
       tryReadSnapshot(fishId).take(1),
       eventStore.present().take(1),
-    ).concatMap(startFromMaybeSnapshot(fishId, subscriptions))
+    ).concatMap(([maybeSnapshot, present]) =>
+      maybeSnapshot.fold(
+        // No snapshot found -> start from scratch
+        monotonicFrom(fishId, subscriptions, present.psns),
+        startFromSnapshot(fishId, subscriptions, present.psns),
+      ),
+    )
   }
 
   return (
