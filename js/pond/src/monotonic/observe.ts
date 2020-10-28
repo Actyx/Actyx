@@ -1,11 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { clone } from 'ramda'
-import { Observable, Observer, ReplaySubject, Scheduler, Subject } from 'rxjs'
+import { Observable, Scheduler } from 'rxjs'
 import { Event, EventStore, OffsetMap } from '../eventstore'
 import { PondStateTracker } from '../pond-state'
 import { SnapshotStore } from '../snapshotStore'
 import { SubscriptionSet } from '../subscription'
-import { FishId, IsReset, Metadata, SourceId, StateWithProvenance, toMetadata } from '../types'
+import {
+  EventKey,
+  FishId,
+  IsReset,
+  Metadata,
+  SourceId,
+  StateWithProvenance,
+  toMetadata,
+} from '../types'
 import { eventsMonotonic, EventsOrTimetravel, MsgType } from './endpoint'
 import { MonotonicReducer } from './reducer'
 
@@ -52,64 +60,64 @@ export const observeMonotonic = (
 ): Observable<StateWithProvenance<S>> => {
   const endpoint = eventsMonotonic(eventStore)
 
-  console.log('HELLO')
-
   const { sourceId } = eventStore
 
   const onEventRaw = mkOnEventRaw(sourceId, clone(initialState), onEvent, isReset)
 
-  const initReducer = () => MonotonicReducer(onEventRaw, { state: clone(initialState), psnMap: {} })
-  let reducer = initReducer()
+  const findInitialState = (_before: EventKey): StateWithProvenance<S> => ({
+    state: clone(initialState),
+    psnMap: {},
+  })
 
-  const out: Subject<StateWithProvenance<S>> = new ReplaySubject(1)
+  const reducer = MonotonicReducer(onEventRaw, findInitialState(EventKey.zero))
 
-  const observer: Observer<EventsOrTimetravel> = {
-    next: msg => {
-      switch (msg.type) {
-        case MsgType.state:
-          reducer.setState(msg.state as StateWithProvenance<S>)
-          return
+  const startFromScratch = (from?: OffsetMap): Observable<EventsOrTimetravel> => {
+    const s = endpoint(subscriptionSet, from).subscribeOn(Scheduler.queue)
+    return Observable.concat(
+      s,
+      Observable.defer(() => {
+        const current = reducer.currentOffsets()
+        return startFromScratch(OffsetMap.isEmpty(current) ? undefined : current)
+      }),
+    )
+  }
 
-        case MsgType.events: {
-          // TODO: Store snapshots (must be async into some pipeline)
-          // TODO: caughtUp handling
-          const s = reducer.appendEvents(msg.events)
-          console.log('GOT', msg)
-          if (msg.caughtUp) {
-            out.next(s)
-          }
-          return
-        }
+  // On time travel, switch to a fresh subscribeMonotonic stream
+  const updates$ = startFromScratch()
 
-        case MsgType.timetravel: {
-          // TODO: Find locally cached state
-          reducer = initReducer()
-          return
-        }
+  // .mergeMap(msg => {
+  //         if (msg.type === MsgType.timetravel) {
+  //             const current = reducer.currentOffsets()
+  //             return startFromScratch(OffsetMap.isEmpty(current) ? undefined : current)
+  //         } else {
+  //             return Observable.of(msg)
+  //         }
+  //     })
+
+  // const updates$ = Observable.concat(
+  //     startFromScratch(),
+  //     Observable.defer(() =>
+
+  return updates$.concatMap(msg => {
+    switch (msg.type) {
+      case MsgType.timetravel: {
+        reducer.setState(findInitialState(msg.trigger))
+        return []
       }
-    },
 
-    error: e => {
-      console.log(e)
-    },
+      case MsgType.state: {
+        reducer.setState(msg.state as StateWithProvenance<S>)
+        return []
+      }
 
-    complete: () => {
-      // TODO: Try loading snapshot (wait for snapshot pipeline -> then load)
-      const current = reducer.currentOffsets()
-      startFromScratch(OffsetMap.isEmpty(current) ? undefined : current)
-    },
-  }
-
-  const startFromScratch = (from?: OffsetMap): void => {
-    console.log('startFromScratch', from)
-
-    endpoint(subscriptionSet, from)
-      .subscribeOn(Scheduler.queue)
-      .subscribe(observer)
-  }
-
-  // This could be phrased in terms of a mergeScan, but there’d be no gain in clarity imho.
-  startFromScratch()
-
-  return out
+      case MsgType.events: {
+        // TODO: Store snapshots (must be async into some pipeline)
+        const s = reducer.appendEvents(msg.events)
+        if (msg.caughtUp) {
+          return [s]
+        }
+        return []
+      }
+    }
+  })
 }
