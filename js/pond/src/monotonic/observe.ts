@@ -82,9 +82,6 @@ export const observeMonotonic = (
     }
   }
 
-  const reducer = MonotonicReducer(onEventRaw, findStartingState(EventKey.zero))
-
-  // On time travel, switch to a fresh subscribeMonotonic stream
   const updates = (from?: OffsetMap): Observable<StateMsg | EventsMsg> =>
     endpoint(subscriptionSet, from)
       .subscribeOn(Scheduler.queue)
@@ -93,6 +90,7 @@ export const observeMonotonic = (
           const resetMsg = makeResetMsg(msg.trigger)
           const startFrom = resetMsg.state.psnMap
 
+          // On time travel, reset the state and start a fresh stream
           return Observable.concat(
             Observable.of(resetMsg),
             updates(OffsetMap.isEmpty(startFrom) ? undefined : startFrom),
@@ -112,6 +110,8 @@ export const observeMonotonic = (
   // then we can just restart it. (Tests pending.)
   const updates$ = Observable.concat(updates(), Observable.defer(updates))
 
+  // This will probably turn into a mergeScan when local snapshots are added
+  const reducer = MonotonicReducer(onEventRaw, findStartingState(EventKey.zero))
   return updates$.concatMap(msg => {
     switch (msg.type) {
       case MsgType.state: {
