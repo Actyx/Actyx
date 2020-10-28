@@ -5,8 +5,6 @@ export type Reducer<S> = {
   appendEvents: (events: Events) => StateWithProvenance<S>
 
   setState: (state: StateWithProvenance<S>) => void
-
-  currentOffsets: () => OffsetMap
 }
 
 export const MonotonicReducer = <S>(
@@ -30,7 +28,5 @@ export const MonotonicReducer = <S>(
     },
 
     setState: s => (swp = s),
-
-    currentOffsets: () => swp.psnMap,
   }
 }
