@@ -65,9 +65,10 @@ export const observeMonotonic = (
 
   const onEventRaw = mkOnEventRaw(sourceId, clone(initialState), onEvent, isReset)
 
+  const initialStateAsString = JSON.stringify(initialState)
   // Here we can find earlier states that we have cached in-process.
   const findStartingState = (_before: EventKey): LocalSnapshot<string> => ({
-    state: JSON.stringify(initialState),
+    state: initialStateAsString,
     psnMap: {},
     cycle: 0,
     eventKey: EventKey.zero,
