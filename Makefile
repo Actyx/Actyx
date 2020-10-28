@@ -290,7 +290,7 @@ dist/bin/win64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win
 	  -w /src/misc/actyxos-win-installer \
 	  -e DIST_DIR='/src/dist/bin/win64/installer' \
 	  -e SRC_DIR='/src/misc/actyxos-win-installer' \
-	  -e PRODUCT_VERSION=1.0.0 \
+	  -e PRODUCT_VERSION=1.0.1-SNAPSHOT \
 	  -e PRODUCT_NAME=ActyxOS \
 	  -e INSTALLER_NAME='ActyxOS Installer' \
 	  --rm \
