@@ -126,6 +126,7 @@ const mkEventScanAcc = <S, E>(
       )
     } catch (e) {
       // Synchronous error, for example from onEvent
+      console.log(e)
       unblock()
       throw e
     }

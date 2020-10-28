@@ -59,33 +59,12 @@ export type SubscribeMonotonic = (
 export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
   eventStore: EventStore,
 ) => {
-  const monotonicFrom = (
-    subscriptions: SubscriptionSet,
-    present: OffsetMapWithDefault,
-  ): Observable<EventsOrTimetravel> => {
-    const persisted: Observable<EventsMsg> = eventStore
-      .persistedEvents(
-        { default: 'min', psns: {} },
-        { default: 'min', psns: present.psns },
-        subscriptions,
-        PersistedEventsSortOrders.EventKey,
-        undefined, // No semantic snapshots means no horizon, ever.
-      )
-      .map(chunk => ({
-        type: MsgType.events,
-        events: chunk,
-        caughtUp: false,
-      }))
-
-    const realtime = Observable.defer(() => realtimeFrom(subscriptions, present))
-
-    return persisted.concat(realtime)
-  }
-
   const realtimeFrom = (
     subscriptions: SubscriptionSet,
     present: OffsetMapWithDefault,
   ): Observable<EventsOrTimetravel> => {
+    console.log('starting RT')
+
     let latest = EventKey.zero
 
     const realtimeEvents = eventStore.allEvents(
@@ -107,8 +86,11 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
     // ))
 
     return realtimeEvents
+      .do(() => console.log('x'))
       .filter(next => next.length > 0)
       .map(next => {
+        console.log('next RT', next.length)
+
         // Take while we are going strictly forwards
         const nextKey = next[0]
         const pass = EventKey.ord.compare(nextKey, latest) >= 0
@@ -119,13 +101,45 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
 
         log.pond.info('rt passed, ' + JSON.stringify(nextKey) + ' > ' + JSON.stringify(latest))
 
+        console.log('rt passed, ' + EventKey.format(nextKey) + ' > ' + EventKey.format(latest))
+
         latest = next[next.length - 1]
-        return {
+        const r: EventsMsg = {
           type: MsgType.events,
           events: next,
-        } as EventsMsg
+          caughtUp: true,
+        }
+        return r
       })
       .pipe(takeWhileInclusive(m => m.type !== MsgType.timetravel))
+  }
+
+  const monotonicFrom = (
+    subscriptions: SubscriptionSet,
+    present: OffsetMapWithDefault,
+  ): Observable<EventsOrTimetravel> => {
+    const persisted: Observable<EventsMsg> = eventStore
+      .persistedEvents(
+        { default: 'min', psns: {} },
+        { default: 'min', psns: present.psns },
+        subscriptions,
+        PersistedEventsSortOrders.EventKey,
+        undefined, // No semantic snapshots means no horizon, ever.
+      )
+      .concatMap(x => x)
+      .toArray()
+      .map(
+        allInOneChunk =>
+          ({
+            type: MsgType.events,
+            events: allInOneChunk,
+            caughtUp: true,
+          } as EventsMsg),
+      )
+
+    const realtime = Observable.defer(() => realtimeFrom(subscriptions, present))
+
+    return persisted.concat(realtime)
   }
 
   return (
@@ -143,6 +157,8 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
 
 const timeTravelMsg = (previousHead: EventKey, next: Events) => {
   log.pond.info('triggered time-travel back to ' + EventKey.format(next[0]))
+
+  console.log('triggered time-travel back to ' + EventKey.format(next[0]))
 
   const high = getInsertionIndex(next, previousHead, (e, l) => EventKey.ord.compare(e, l)) - 1
 

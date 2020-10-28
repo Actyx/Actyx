@@ -95,6 +95,7 @@ const persistence = () => {
   const persisted: Event[] = []
 
   const persist = (evs: Events) => {
+    console.log('persist')
     persisted.push(...evs)
     sorted = false
   }
@@ -155,7 +156,12 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
           subs,
           (sortOrder as string) as PersistedEventsSortOrder,
           min,
-        ),
+        )
+          .concatMap(x => {
+            console.log('concatmapping persisted')
+            return x
+          })
+          .toArray(),
         liveStream(fromPsn, toPsn, subs, sortOrder, min),
       )
     }
@@ -186,6 +192,8 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
   }
 
   const directlyPushEvents = (newEvents: ReadonlyArray<TestEvent>) => {
+    console.log('dp')
+
     let b = { ...offsets }
     for (const ev of newEvents) {
       b = includeEvent(b, ev)
@@ -202,9 +210,10 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
       name: '_t_',
     }))
 
+    console.log('dp1')
     persist(newEventsCompat)
-    live.next(newEventsCompat)
     present.next(offsets)
+    live.next(newEventsCompat)
   }
 
   const toIo = (o: OffsetMap): OffsetMapWithDefault => ({ psns: o, default: 'max' })
