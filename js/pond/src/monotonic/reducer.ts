@@ -4,14 +4,19 @@ import { StateWithProvenance } from '../types'
 export type Reducer<S> = {
   appendEvents: (events: Events) => StateWithProvenance<S>
 
-  setState: (state: StateWithProvenance<S>) => void
+  setState: (state: StateWithProvenance<string>) => void
 }
 
 export const MonotonicReducer = <S>(
   onEvent: (oldState: S, event: Event) => S,
-  initialState: StateWithProvenance<S>,
+  initialState: StateWithProvenance<string>,
+  deserializeState?: (jsonState: unknown) => S,
 ): Reducer<S> => {
-  let swp = initialState
+  const deserialize = deserializeState
+    ? (s: StateWithProvenance<string>) => ({ ...s, state: deserializeState(JSON.parse(s.state)) })
+    : (s: StateWithProvenance<string>) => ({ ...s, state: JSON.parse(s.state) as S })
+
+  let swp = deserialize(initialState)
 
   return {
     appendEvents: (events: Events) => {
@@ -27,6 +32,6 @@ export const MonotonicReducer = <S>(
       return swp
     },
 
-    setState: s => (swp = s),
+    setState: s => (swp = deserialize(s)),
   }
 }

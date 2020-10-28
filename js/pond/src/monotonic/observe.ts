@@ -66,8 +66,8 @@ export const observeMonotonic = (
   const onEventRaw = mkOnEventRaw(sourceId, clone(initialState), onEvent, isReset)
 
   // Here we can find earlier states that we have cached in-process.
-  const findStartingState = (_before: EventKey): LocalSnapshot<S> => ({
-    state: clone(initialState),
+  const findStartingState = (_before: EventKey): LocalSnapshot<string> => ({
+    state: JSON.stringify(initialState),
     psnMap: {},
     cycle: 0,
     eventKey: EventKey.zero,
@@ -86,29 +86,18 @@ export const observeMonotonic = (
     endpoint(fishId, subscriptionSet, from)
       .subscribeOn(Scheduler.queue)
       .concatMap(msg => {
-        switch (msg.type) {
-          case MsgType.events:
-            return [msg]
+        if (msg.type === MsgType.timetravel) {
+          const resetMsg = makeResetMsg(msg.trigger)
+          const startFrom = resetMsg.snapshot.psnMap
 
-          case MsgType.state: {
-            const jraw = JSON.parse(msg.snapshot.state as string)
-            const jproper = deserializeState ? deserializeState(jraw) : jraw
-
-            msg.snapshot = { ...msg.snapshot, state: jproper }
-            return [msg]
-          }
-
-          case MsgType.timetravel: {
-            const resetMsg = makeResetMsg(msg.trigger)
-            const startFrom = resetMsg.snapshot.psnMap
-
-            // On time travel, reset the state and start a fresh stream
-            return Observable.concat(
-              Observable.of(resetMsg),
-              updates(OffsetMap.isEmpty(startFrom) ? undefined : startFrom),
-            )
-          }
+          // On time travel, reset the state and start a fresh stream
+          return Observable.concat(
+            Observable.of(resetMsg),
+            updates(OffsetMap.isEmpty(startFrom) ? undefined : startFrom),
+          )
         }
+
+        return [msg]
       })
       .catch(err => {
         console.log(err) // Improve me
@@ -122,11 +111,11 @@ export const observeMonotonic = (
   const updates$ = Observable.concat(updates(), Observable.defer(updates))
 
   // This will probably turn into a mergeScan when local snapshots are added
-  const reducer = MonotonicReducer(onEventRaw, findStartingState(EventKey.zero))
+  const reducer = MonotonicReducer(onEventRaw, findStartingState(EventKey.zero), deserializeState)
   return updates$.concatMap(msg => {
     switch (msg.type) {
       case MsgType.state: {
-        reducer.setState(msg.snapshot as StateWithProvenance<S>)
+        reducer.setState(msg.snapshot)
         return []
       }
 

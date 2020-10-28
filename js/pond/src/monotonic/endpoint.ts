@@ -32,7 +32,7 @@ export enum MsgType {
 
 export type StateMsg = {
   type: MsgType.state
-  snapshot: LocalSnapshot<unknown>
+  snapshot: LocalSnapshot<string>
 }
 
 export type EventsMsg = {
@@ -137,7 +137,7 @@ export const eventsMonotonic: (
     })
   }
 
-  const tryReadSnapshot = (fishId: FishId): Observable<Option<LocalSnapshot<unknown>>> => {
+  const tryReadSnapshot = (fishId: FishId): Observable<Option<LocalSnapshot<string>>> => {
     const semantics = fishId.entityType
     const name = fishId.name
     const version = fishId.version
@@ -152,7 +152,7 @@ export const eventsMonotonic: (
   }
 
   const startFromMaybeSnapshot = (subscriptions: SubscriptionSet) => ([maybeSnapshot, present]: [
-    Option<LocalSnapshot<unknown>>,
+    Option<LocalSnapshot<string>>,
     OffsetMapWithDefault
   ]) =>
     maybeSnapshot.fold(
@@ -187,7 +187,7 @@ export const eventsMonotonic: (
   }
 }
 
-const stateMsg = (snapshot: LocalSnapshot<unknown>): StateMsg => {
+const stateMsg = (snapshot: LocalSnapshot<string>): StateMsg => {
   log.pond.info('picking up from local snapshot ' + EventKey.format(snapshot.eventKey))
 
   return {
