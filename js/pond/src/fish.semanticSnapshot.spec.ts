@@ -18,7 +18,7 @@ const fish = mkNumberFish(semanticSnap)
 const setup = () => snapshotTestSetup(fish, undefined, undefined, true)
 
 describe('fish event store + jar semantic snapshot functionality', () => {
-  it.only(`fish should aggegrate events between sources, resetting on semantic snapshots`, async () => {
+  it(`fish should aggegrate events between sources, resetting on semantic snapshots`, async () => {
     const { applyAndGetState } = await setup()
 
     const srcA = emitter('A')

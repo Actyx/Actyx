@@ -5,6 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { flatten } from 'ramda'
 import { Observable } from 'rxjs'
 import { EventStore } from '../eventstore'
 import {
@@ -62,10 +63,9 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
   const realtimeFrom = (
     subscriptions: SubscriptionSet,
     present: OffsetMapWithDefault,
+    latest: EventKey,
   ): Observable<EventsOrTimetravel> => {
-    console.log('starting RT')
-
-    let latest = EventKey.zero
+    console.log('starting RT w/ latest:', EventKey.format(latest))
 
     const realtimeEvents = eventStore.allEvents(
       {
@@ -118,7 +118,7 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
     subscriptions: SubscriptionSet,
     present: OffsetMapWithDefault,
   ): Observable<EventsOrTimetravel> => {
-    const persisted: Observable<EventsMsg> = eventStore
+    const persisted = eventStore
       .persistedEvents(
         { default: 'min', psns: {} },
         { default: 'min', psns: present.psns },
@@ -126,20 +126,21 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
         PersistedEventsSortOrders.EventKey,
         undefined, // No semantic snapshots means no horizon, ever.
       )
-      .concatMap(x => x)
       .toArray()
-      .map(
-        allInOneChunk =>
-          ({
-            type: MsgType.events,
-            events: allInOneChunk,
-            caughtUp: true,
-          } as EventsMsg),
-      )
 
-    const realtime = Observable.defer(() => realtimeFrom(subscriptions, present))
+    return persisted.concatMap(chunks => {
+      const events = flatten(chunks)
 
-    return persisted.concat(realtime)
+      const latest = events.length === 0 ? EventKey.zero : events[events.length - 1]
+
+      const initial = Observable.of<EventsMsg>({
+        type: MsgType.events,
+        events: flatten(chunks),
+        caughtUp: true,
+      })
+
+      return initial.concat(realtimeFrom(subscriptions, present, latest))
+    })
   }
 
   return (
