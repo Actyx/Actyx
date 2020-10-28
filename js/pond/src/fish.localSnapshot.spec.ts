@@ -240,6 +240,7 @@ describe('fish event store + jar local snapshot behavior', () => {
       fishToTest,
       storedEvents,
       storedSnaps,
+      true,
     )
     // Make sure it did not shatter yet, because the stored events are covered by its psn map.
     expect(await latestSnap()).toMatchObject({

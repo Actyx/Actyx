@@ -113,13 +113,14 @@ export const eventsMonotonic: (
       .pipe(takeWhileInclusive(m => m.type !== MsgType.timetravel))
   }
 
-  // The only reason we need this step is that allEvents will make no effort whatsoever
+  // The only reason we need this step is that allEvents makes no effort whatsoever
   // to give you a proper ordering for *known* events; so we must take care of it by first streaming *to* present.
   const monotonicFrom = (
     fishId: FishId,
     subscriptions: SubscriptionSet,
     present: OffsetMap,
     lowerBound: OffsetMap = {},
+    defaultLatest: EventKey = EventKey.zero,
   ): Observable<EventsOrTimetravel> => {
     const persisted = eventStore
       .persistedEvents(
@@ -134,7 +135,7 @@ export const eventsMonotonic: (
     return persisted.concatMap(chunks => {
       const events = flatten(chunks)
 
-      const latest = events.length === 0 ? EventKey.zero : events[events.length - 1]
+      const latest = events.length === 0 ? defaultLatest : events[events.length - 1]
 
       const initial = Observable.of<EventsMsg>({
         type: MsgType.events,
@@ -192,7 +193,7 @@ export const eventsMonotonic: (
           // Otherwise just pick up from snapshot
           return Observable.concat(
             Observable.of(stateMsg(snap)),
-            monotonicFrom(fishId, subscriptions, present.psns, snap.psnMap),
+            monotonicFrom(fishId, subscriptions, present.psns, snap.psnMap, snap.eventKey),
           )
         })
       },
@@ -215,7 +216,6 @@ export const eventsMonotonic: (
     from?: OffsetMap,
     _horizon?: EventKey,
   ): Observable<EventsOrTimetravel> => {
-    // `from` NOT given -> try finding a snapshot
     if (from) {
       // Client explicitly requests us to start at a certain point
       return eventStore
@@ -223,6 +223,7 @@ export const eventsMonotonic: (
         .take(1)
         .concatMap(present => monotonicFrom(fishId, subscriptions, present.psns, from))
     } else {
+      // `from` NOT given -> try finding a snapshot
       return observeMonotonicFromSnapshot(fishId, subscriptions)
     }
   }
