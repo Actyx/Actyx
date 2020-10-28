@@ -32,6 +32,10 @@ export const MonotonicReducer = <S>(
       return swp
     },
 
-    setState: s => (swp = deserialize(s)),
+    setState: s => {
+      swp = deserialize(s)
+      // Clone the input offsets, since they may not be mutable
+      swp.psnMap = { ...swp.psnMap }
+    },
   }
 }

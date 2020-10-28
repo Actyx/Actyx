@@ -65,6 +65,7 @@ export const eventsMonotonic: (
   snapshotStore: SnapshotStore,
 ) => SubscribeMonotonic = (eventStore, snapshotStore) => {
   const realtimeFrom = (
+    fishId: FishId,
     subscriptions: SubscriptionSet,
     startFrom: OffsetMap,
     latest: EventKey,
@@ -82,39 +83,47 @@ export const eventsMonotonic: (
 
     return realtimeEvents
       .filter(next => next.length > 0)
-      .map(nextUnsorted => {
-        const next = [...nextUnsorted].sort(EventKey.ord.compare)
+      .mergeMap(
+        (nextUnsorted): Observable<EventsOrTimetravel> => {
+          const next = [...nextUnsorted].sort(EventKey.ord.compare)
 
-        // Take while we are going strictly forwards
-        const nextKey = next[0]
-        const pass = EventKey.ord.compare(nextKey, latest) >= 0
+          // Take while we are going strictly forwards
+          const nextKey = next[0]
+          const pass = EventKey.ord.compare(nextKey, latest) >= 0
 
-        if (!pass) {
-          // FIXME: Invalidate snapshots
-          return timeTravelMsg(latest, next)
-        }
+          if (!pass) {
+            return Observable.from(
+              snapshotStore
+                .invalidateSnapshots(fishId.entityType, fishId.name, nextKey)
+                .then(() => timeTravelMsg(latest, next)),
+            )
+          }
 
-        log.pond.info('rt passed, ' + JSON.stringify(nextKey) + ' > ' + JSON.stringify(latest))
+          log.pond.info('rt passed, ' + JSON.stringify(nextKey) + ' > ' + JSON.stringify(latest))
 
-        latest = next[next.length - 1]
-        const r: EventsMsg = {
-          type: MsgType.events,
-          events: next,
-          caughtUp: true,
-        }
-        return r
-      })
+          latest = next[next.length - 1]
+          const r: EventsMsg = {
+            type: MsgType.events,
+            events: next,
+            caughtUp: true,
+          }
+          return Observable.of(r)
+        },
+      )
       .pipe(takeWhileInclusive(m => m.type !== MsgType.timetravel))
   }
 
+  // The only reason we need this step is that allEvents will make no effort whatsoever
+  // to give you a proper ordering for *known* events; so we must take care of it by first streaming *to* present.
   const monotonicFrom = (
+    fishId: FishId,
     subscriptions: SubscriptionSet,
     present: OffsetMap,
-    lowerBound?: OffsetMap,
+    lowerBound: OffsetMap = {},
   ): Observable<EventsOrTimetravel> => {
     const persisted = eventStore
       .persistedEvents(
-        { default: 'min', psns: lowerBound || {} },
+        { default: 'min', psns: lowerBound },
         { default: 'min', psns: present },
         subscriptions,
         PersistedEventsSortOrders.EventKey,
@@ -133,7 +142,7 @@ export const eventsMonotonic: (
         caughtUp: true,
       })
 
-      return initial.concat(realtimeFrom(subscriptions, present, latest))
+      return initial.concat(realtimeFrom(fishId, subscriptions, present, latest))
     })
   }
 
@@ -151,19 +160,54 @@ export const eventsMonotonic: (
     })
   }
 
-  const startFromMaybeSnapshot = (subscriptions: SubscriptionSet) => ([maybeSnapshot, present]: [
-    Option<LocalSnapshot<string>>,
-    OffsetMapWithDefault
-  ]) =>
+  const startFromMaybeSnapshot = (fishId: FishId, subscriptions: SubscriptionSet) => ([
+    maybeSnapshot,
+    present,
+  ]: [Option<LocalSnapshot<string>>, OffsetMapWithDefault]) =>
     maybeSnapshot.fold(
-      // No snapshot -> start from scratch
-      monotonicFrom(subscriptions, present.psns),
-      x =>
-        Observable.concat(
-          Observable.of(stateMsg(x)),
-          monotonicFrom(subscriptions, present.psns, x.psnMap),
-        ),
+      // No snapshot found-> start from scratch
+      monotonicFrom(fishId, subscriptions, present.psns),
+      snap => {
+        const earliestNewEvent = eventStore
+          .persistedEvents(
+            { default: 'min', psns: snap.psnMap },
+            { default: 'min', psns: present.psns },
+            subscriptions,
+            PersistedEventsSortOrders.EventKey,
+            undefined, // No semantic snapshots means no horizon, ever.
+          )
+          .defaultIfEmpty([])
+          .take(1)
+
+        return earliestNewEvent.concatMap(earliest => {
+          // Snapshot is already outdated -> try again
+          if (earliest.length > 0 && EventKey.ord.compare(earliest[0], snap.eventKey) < 0) {
+            return Observable.from(
+              snapshotStore.invalidateSnapshots(fishId.entityType, fishId.name, earliest[0]),
+            )
+              .take(1)
+              .concatMap(() => observeMonotonicFromSnapshot(fishId, subscriptions))
+          }
+
+          // Otherwise just pick up from snapshot
+          return Observable.concat(
+            Observable.of(stateMsg(snap)),
+            monotonicFrom(fishId, subscriptions, present.psns, snap.psnMap),
+          )
+        })
+      },
     )
+
+  const observeMonotonicFromSnapshot = (
+    fishId: FishId,
+    subscriptions: SubscriptionSet,
+    _horizon?: EventKey,
+  ): Observable<EventsOrTimetravel> => {
+    return Observable.combineLatest(
+      tryReadSnapshot(fishId).take(1),
+      eventStore.present().take(1),
+    ).concatMap(startFromMaybeSnapshot(fishId, subscriptions))
+  }
 
   return (
     fishId: FishId,
@@ -177,12 +221,9 @@ export const eventsMonotonic: (
       return eventStore
         .present()
         .take(1)
-        .concatMap(present => monotonicFrom(subscriptions, present.psns, from))
+        .concatMap(present => monotonicFrom(fishId, subscriptions, present.psns, from))
     } else {
-      return Observable.combineLatest(
-        tryReadSnapshot(fishId).take(1),
-        eventStore.present().take(1),
-      ).concatMap(startFromMaybeSnapshot(subscriptions))
+      return observeMonotonicFromSnapshot(fishId, subscriptions)
     }
   }
 }

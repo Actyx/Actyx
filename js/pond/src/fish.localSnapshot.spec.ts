@@ -273,6 +273,7 @@ describe('fish event store + jar local snapshot behavior', () => {
         fishToTest,
         tl.all,
         storedSnaps,
+        true,
       )
       // Assert the snapshot has already been invalidated in the initial hydration.
       expect(await latestSnap()).toEqual(undefined)
