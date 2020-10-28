@@ -7,7 +7,10 @@ all-ANDROID := actyxos.apk
 CARGO_TEST_JOBS := 4
 CARGO_BUILD_JOBS := 8
 
-all: $(patsubst %,dist/bin/%,$(all-LINUX) $(all-WINDOWS) $(all-ANDROID)) dist/bin/win64/installer
+all: $(patsubst %,dist/bin/%,$(all-LINUX) $(all-WINDOWS) $(all-ANDROID)) \
+	dist/bin/win64/installer \
+	dist/js/pond \
+	dist/js/os-sdk
 
 # These should be moved to the global azure pipelines build
 export BUILD_RUST_TOOLCHAIN := 1.45.0
@@ -121,6 +124,23 @@ validate-js-sdk:
 		npm i && \
 		npm run test && \
 		npm run build
+
+# make js pond
+dist/js/pond:
+	mkdir -p $@
+	cd js/pond && source ~/.nvm/nvm.sh && nvm install && \
+		npm i && \
+		npm run build:prod
+	cd js/pond && mv `npm pack` ../../$@
+
+# make js sdk
+dist/js/os-sdk:
+	mkdir -p $@
+	cd js/os-sdk && source ~/.nvm/nvm.sh && nvm install && \
+		npm i && \
+		npm run build
+	cd js/os-sdk && npm pack
+	mv js/os-sdk/actyx-os-sdk-*.tgz $@/
 
 # validate all websites
 validate-website: diagnostics validate-website-developer validate-website-downloads
