@@ -60,10 +60,10 @@ prepare-js:
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash
 
 # execute linter, style checker and tests for everything
-validate: validate-os validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website
+validate: validate-os validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website validate-misc
 
 # declare all the validate targets to be phony
-.PHONY: validate-os validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website
+.PHONY: validate-os validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website validate-misc
 
 CARGO := cargo +$(BUILD_RUST_TOOLCHAIN)
 
@@ -105,24 +105,6 @@ validate-os-android: diagnostics
 	jvm/os-android/bin/get-keystore.sh
 	cd jvm/os-android/ && ./gradlew clean ktlintCheck
 
-# combines all the .so files to build actyxos on android
-android-libaxosnodeffi: \
-	jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so \
-	jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so \
-	jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so
-
-jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so: rt-master/target/i686-linux-android/release/libaxosnodeffi.so
-	mkdir -p $(dir $@)
-	cp $< $@
-
-jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so: rt-master/target/aarch64-linux-android/release/libaxosnodeffi.so
-	mkdir -p $(dir $@)
-	cp $< $@
-
-jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so: rt-master/target/armv7-linux-androideabi/release/libaxosnodeffi.so
-	mkdir -p $(dir $@)
-	cp $< $@
-
 # validate all js
 validate-js: diagnostics validate-js-pond validate-js-sdk
 
@@ -153,6 +135,39 @@ validate-website-developer:
 validate-website-downloads:
 	cd web/downloads.actyx.com && source ~/.nvm/nvm.sh && nvm install && \
 		npm i
+
+validate-misc: validate-actyxos-node-manager validate-actyxos-win-installer
+
+# run npm install. There don't seem to be
+validate-actyxos-node-manager:
+	mkdir -p misc/actyxos-node-manager/bin/win32
+	cp dist/bin/win64/ax.exe misc/actyxos-node-manager/bin/win32/
+	docker run \
+	  -u $(shell id -u) \
+	  -v `pwd`:/src \
+	  -w /src/misc/actyxos-node-manager \
+	  --rm actyx/util:windowsinstallercreator-x64-latest \
+	  bash -c "npm install"
+
+validate-actyxos-win-installer:
+
+# combines all the .so files to build actyxos on android
+android-libaxosnodeffi: \
+	jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so \
+	jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so \
+	jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so
+
+jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so: rt-master/target/i686-linux-android/release/libaxosnodeffi.so
+	mkdir -p $(dir $@)
+	cp $< $@
+
+jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so: rt-master/target/aarch64-linux-android/release/libaxosnodeffi.so
+	mkdir -p $(dir $@)
+	cp $< $@
+
+jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so: rt-master/target/armv7-linux-androideabi/release/libaxosnodeffi.so
+	mkdir -p $(dir $@)
+	cp $< $@
 
 # define mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
