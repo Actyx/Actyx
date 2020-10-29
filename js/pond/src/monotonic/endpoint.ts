@@ -162,7 +162,7 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
 const timeTravelMsg = (previousHead: EventKey, next: Events) => {
   log.pond.info('triggered time-travel back to ' + EventKey.format(next[0]))
 
-  const high = getInsertionIndex(next, previousHead, (e, l) => EventKey.ord.compare(e, l)) - 1
+  const high = getInsertionIndex(next, previousHead, EventKey.ord.compare) - 1
 
   return {
     type: MsgType.timetravel,
