@@ -84,7 +84,7 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
       { psns: {}, default: 'max' },
       subscriptions,
       AllEventsSortOrders.Unsorted,
-      undefined, // horizon,
+      undefined, // Horizon handling to-be-implemented
     )
 
     return realtimeEvents
@@ -155,7 +155,7 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
   ): Observable<EventsOrTimetravel> => {
     return eventStore
       .present()
-      .take(1)
+      .first()
       .concatMap(monotonicFrom(subscriptions))
   }
 }
