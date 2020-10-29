@@ -40,6 +40,7 @@ clean:
 	cd js/pond && rm -rf node_modules
 	cd js/os-sdk && rm -rf node_modules
 	cd jvm/os-android && ./gradlew clean
+	cd dist && rm -rf *
 
 # mark things with this dependency to run whenever requested
 .PHONY: prepare prepare-js prepare-rs
@@ -160,8 +161,6 @@ validate-misc: validate-actyxos-node-manager validate-actyxos-win-installer
 
 # run npm install. There don't seem to be
 validate-actyxos-node-manager:
-	mkdir -p misc/actyxos-node-manager/bin/win32
-	cp dist/bin/win64/ax.exe misc/actyxos-node-manager/bin/win32/
 	docker run \
 	  -u $(shell id -u) \
 	  -v `pwd`:/src \
@@ -169,7 +168,7 @@ validate-actyxos-node-manager:
 	  --rm actyx/util:windowsinstallercreator-x64-latest \
 	  bash -c "npm install"
 
-validate-actyxos-win-installer:
+validate-actyxos-win-installer: validate-actyxos-node-manager
 
 # combines all the .so files to build actyxos on android
 android-libaxosnodeffi: \
