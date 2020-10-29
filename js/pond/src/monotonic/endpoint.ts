@@ -6,7 +6,6 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { greaterThan } from 'fp-ts/lib/Ord'
-import { flatten } from 'ramda'
 import { Observable } from 'rxjs'
 import { EventStore } from '../eventstore'
 import {
@@ -134,13 +133,13 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
       .toArray()
 
     return persisted.concatMap(chunks => {
-      const events = flatten(chunks)
+      const events = chunks.flat()
 
       const latest = events.length === 0 ? EventKey.zero : events[events.length - 1]
 
       const initial = Observable.of<EventsMsg>({
         type: MsgType.events,
-        events: flatten(chunks),
+        events,
         caughtUp: true,
       })
 
