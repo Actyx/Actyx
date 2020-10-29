@@ -147,11 +147,11 @@ describe('application of commands in the pond v2', () => {
     it('should wait for the actual effect’s events to be processed, ignore other events that may come in', async () => {
       const pond = Pond.test()
 
-      pond.keepRunning(agg, autoBump, (state: State) => state.n === 40)
-
       const emitFill = () => pond.emit(Tag('self'), { type: 'fill' })
 
-      const timer = setInterval(emitFill, 3)
+      const timer = setInterval(emitFill, 1)
+
+      pond.keepRunning(agg, autoBump, (state: State) => state.n === 40)
 
       const s = await expectState(pond, 40)
       // Just make sure some fill events were in fact processed.

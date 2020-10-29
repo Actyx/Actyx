@@ -464,9 +464,9 @@ class Pond2Impl implements Pond {
       : () => !cancelled
 
     states
+      .observeOn(Scheduler.async)
       .map(swp => swp.state)
       .takeWhile(tw)
-      .debounceTime(0)
       // We could also just use `do` instead of `mergeMap` (using the public API),
       // for no real loss, but no gain either.
       .mergeMap(() => handleInternal(wrappedEffect))
