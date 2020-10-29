@@ -18,6 +18,8 @@ import {
 import { eventsMonotonic, EventsMsg, MsgType, StateMsg } from './endpoint'
 import { MonotonicReducer } from './reducer'
 
+// Take some Fish parameters and combine them into a "simpler" onEvent
+// with typical reducer signature: (S, E) => S
 const mkOnEventRaw = <S, E>(
   sourceId: SourceId,
   initialState: S,
@@ -47,6 +49,11 @@ const mkOnEventRaw = <S, E>(
   }
 }
 
+/*
+ * Observe a Fish using the subscribe_monotonic endpoint (currently TS impl., but can drop in real impl.)
+ *
+ * Signature is the same as FishJar.hydrateV2 so we can easily swap it in.
+ */
 export const observeMonotonic = (
   eventStore: EventStore,
   _snapshotStore: SnapshotStore,
@@ -66,6 +73,7 @@ export const observeMonotonic = (
   const onEventRaw = mkOnEventRaw(sourceId, clone(initialState), onEvent, isReset)
 
   // Here we can find earlier states that we have cached in-process.
+  // Returning the initial state is always fine, though. It just leads to more processing.
   const findStartingState = (_before: EventKey): LocalSnapshot<S> => ({
     state: clone(initialState),
     psnMap: {},
@@ -74,6 +82,7 @@ export const observeMonotonic = (
     horizon: undefined,
   })
 
+  // Create a message that sets the Reducer back to a locally cached state.
   const makeResetMsg = (trigger: EventKey): StateMsg => {
     const latestValid = findStartingState(trigger)
     return {
@@ -82,6 +91,11 @@ export const observeMonotonic = (
     }
   }
 
+  // The stream of update messages.
+  // This is a transformation from the endpoint’s protocol, which includes time travel,
+  // to a protocal that does NOT terminate and not send time travel messages:
+  // Rather, time travel messages are mapped to a restart of the stream.
+  // In the end we get an easier to consume protocol.
   const updates = (from?: OffsetMap): Observable<StateMsg | EventsMsg> =>
     endpoint(subscriptionSet, from)
       .subscribeOn(Scheduler.queue)
@@ -93,6 +107,7 @@ export const observeMonotonic = (
           // On time travel, reset the state and start a fresh stream
           return Observable.concat(
             Observable.of(resetMsg),
+            // Recursive call, can’t be helped
             updates(OffsetMap.isEmpty(startFrom) ? undefined : startFrom),
           )
         } else {
