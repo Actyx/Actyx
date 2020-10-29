@@ -101,7 +101,7 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
           return timeTravelMsg(latest, next)
         }
 
-        log.pond.info('rt passed, ' + JSON.stringify(nextKey) + ' > ' + JSON.stringify(latest))
+        log.pond.debug('rt passed, ' + JSON.stringify(nextKey) + ' > ' + JSON.stringify(latest))
 
         // We have captured `latest` in the closure and are updating it here
         latest = next[next.length - 1]
