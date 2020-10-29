@@ -16,7 +16,7 @@ import {
   toMetadata,
 } from '../types'
 import { eventsMonotonic, EventsMsg, MsgType, StateMsg } from './endpoint'
-import { MonotonicReducer } from './reducer'
+import { stateWithProvenanceReducer } from './reducer'
 
 // Take some Fish parameters and combine them into a "simpler" onEvent
 // with typical reducer signature: (S, E) => S
@@ -126,7 +126,7 @@ export const observeMonotonic = (
   const updates$ = Observable.concat(updates(), Observable.defer(updates))
 
   // This will probably turn into a mergeScan when local snapshots are added
-  const reducer = MonotonicReducer(onEventRaw, findStartingState(EventKey.zero))
+  const reducer = stateWithProvenanceReducer(onEventRaw, findStartingState(EventKey.zero))
   return updates$.concatMap(msg => {
     switch (msg.type) {
       case MsgType.state: {
