@@ -23,28 +23,32 @@ import { EventKey, FishId, LocalSnapshot } from '../types'
 import { runStats, takeWhileInclusive } from '../util'
 import { getInsertionIndex } from '../util/binarySearch'
 
+// New API:
+// Stream events as they become available, until time-travel would occour.
+// To be eventually implemented on the rust-store side with lots of added cleverness.
+
 export enum MsgType {
   state = 'state',
   events = 'events',
   timetravel = 'timetravel',
 }
 
-export type StateMsg = {
+export type StateMsg = Readonly<{
   type: MsgType.state
   snapshot: LocalSnapshot<string>
-}
+}>
 
-export type EventsMsg = {
+export type EventsMsg = Readonly<{
   type: MsgType.events
   events: Events
   caughtUp: boolean
-}
+}>
 
-export type TimetravelMsg = {
+export type TimetravelMsg = Readonly<{
   type: MsgType.timetravel
-  trigger: Event
-  high: Event
-}
+  trigger: Event // earliest known event to cause time travel
+  high: Event // latest known event to cause time travel
+}>
 
 export type EventsOrTimetravel = StateMsg | EventsMsg | TimetravelMsg
 
@@ -56,18 +60,22 @@ export type SubscribeMonotonic = (
   horizon?: EventKey,
 ) => Observable<EventsOrTimetravel>
 
-// New API:
-// Stream events as they become available, until time-travel would occour.
-// To be eventually implemented on the rust-store side with lots of added cleverness.
+/**
+ * Create a new endpoint, based on the given EventStore and SnapshotStore.
+ * The returned function itself is stateless between subsequent calls --
+ * all state is within the EventStore itself.
+ */
 export const eventsMonotonic: (
   eventStore: EventStore,
   snapshotStore: SnapshotStore,
 ) => SubscribeMonotonic = (eventStore, snapshotStore) => {
+  // Stream realtime events from the given point on.
+  // As soon as time-travel would occur, the stream terminates with a TimetravelMsg.
   const realtimeFrom = (
     fishId: FishId,
     subscriptions: SubscriptionSet,
     startFrom: OffsetMap,
-    latest: EventKey,
+    knownLatest: EventKey,
   ): Observable<EventsOrTimetravel> => {
     const realtimeEvents = eventStore.allEvents(
       {
@@ -80,10 +88,13 @@ export const eventsMonotonic: (
       undefined, // horizon,
     )
 
+    let latest = knownLatest
+
     return realtimeEvents
       .filter(next => next.length > 0)
       .mergeMap(
         (nextUnsorted): Observable<EventsOrTimetravel> => {
+          // Delivered chunks are potentially not sorted
           const next = [...nextUnsorted].sort(EventKey.ord.compare)
 
           // Take while we are going strictly forwards
@@ -100,6 +111,7 @@ export const eventsMonotonic: (
 
           log.pond.info('rt passed, ' + JSON.stringify(nextKey) + ' > ' + JSON.stringify(latest))
 
+          // We have captured `latest` in the closure and are updating it here
           latest = next[next.length - 1]
           const r: EventsMsg = {
             type: MsgType.events,
@@ -114,6 +126,11 @@ export const eventsMonotonic: (
 
   // The only reason we need this step is that allEvents makes no effort whatsoever
   // to give you a proper ordering for *known* events; so we must take care of it by first streaming *to* present.
+
+  // Stream events monotonically from the given point on.
+  // This function is needed, because `realtimeFrom` will return *past* data out of order, too.
+  // So in order to have a meaningful shot at reaching a stable state, we must first "forward-stream" up to the known present,
+  // and then switch over to "realtime" streaming.
   const monotonicFrom = (
     fishId: FishId,
     subscriptions: SubscriptionSet,
@@ -127,8 +144,9 @@ export const eventsMonotonic: (
         { default: 'min', psns: present },
         subscriptions,
         PersistedEventsSortOrders.EventKey,
-        undefined, // No semantic snapshots means no horizon, ever.
+        undefined, // Horizon handling to-be-implemented
       )
+      // Past events are loaded all in one chunk, this is consistent with FES behavior
       .toArray()
 
     return persisted.concatMap(chunks => {
@@ -250,6 +268,6 @@ const timeTravelMsg = (previousHead: EventKey, next: Events): TimetravelMsg => {
   return {
     type: MsgType.timetravel,
     trigger: next[0],
-    high: next[high], // highest event to cause time-travel
+    high: next[high],
   }
 }
