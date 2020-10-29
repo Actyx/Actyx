@@ -65,9 +65,7 @@ const eventKeyGreater = greaterThan(EventKey.ord)
  * The returned function itself is stateless between subsequent calls --
  * all state is within the EventStore itself.
  */
-export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
-  eventStore: EventStore,
-) => {
+export const eventsMonotonic = (eventStore: EventStore): SubscribeMonotonic => {
   // Stream realtime events from the given point on.
   // As soon as time-travel would occur, the stream terminates with a TimetravelMsg.
   const realtimeFrom = (
