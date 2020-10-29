@@ -291,6 +291,7 @@ $(CARGO_HOME)/%:
 	mkdir -p $@
 
 jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnodeffi
+	jvm/os-android/bin/get-keystore.sh
 	cd jvm/os-android && ./gradlew ktlintCheck build assembleRelease androidGitVersion
 
 dist/bin/actyxos.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
