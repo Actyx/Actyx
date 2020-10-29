@@ -5,6 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { greaterThan } from 'fp-ts/lib/Ord'
 import { flatten } from 'ramda'
 import { Observable } from 'rxjs'
 import { EventStore } from '../eventstore'
@@ -58,6 +59,8 @@ export type SubscribeMonotonic = (
   _horizon?: EventKey,
 ) => Observable<EventsOrTimetravel>
 
+const eventKeyGreater = greaterThan(EventKey.ord)
+
 /**
  * Create a new endpoint, based on the given EventStore.
  * The returned function itself is stateless between subsequent calls --
@@ -86,15 +89,15 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
 
     return realtimeEvents
       .filter(next => next.length > 0)
-      .map(nextUnsorted => {
+      .map<Events, EventsOrTimetravel>(nextUnsorted => {
         // Delivered chunks are potentially not sorted
         const next = [...nextUnsorted].sort(EventKey.ord.compare)
 
         // Take while we are going strictly forwards
         const nextKey = next[0]
-        const pass = EventKey.ord.compare(nextKey, latest) >= 0
+        const nextIsOlderThanLatest = eventKeyGreater(latest, nextKey)
 
-        if (!pass) {
+        if (nextIsOlderThanLatest) {
           return timeTravelMsg(latest, next)
         }
 
@@ -103,12 +106,11 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
         // We have captured `latest` in the closure and are updating it here
         latest = next[next.length - 1]
 
-        const r: EventsMsg = {
+        return {
           type: MsgType.events,
           events: next,
           caughtUp: true,
         }
-        return r
       })
       .pipe(takeWhileInclusive(m => m.type !== MsgType.timetravel))
   }
@@ -117,8 +119,7 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
   // This function is needed, because `realtimeFrom` will return *past* data out of order, too.
   // So in order to have a meaningful shot at reaching a stable state, we must first "forward-stream" up to the known present,
   // and then switch over to "realtime" streaming.
-  const monotonicFrom = (
-    subscriptions: SubscriptionSet,
+  const monotonicFrom = (subscriptions: SubscriptionSet) => (
     present: OffsetMapWithDefault,
   ): Observable<EventsOrTimetravel> => {
     const persisted = eventStore
@@ -155,11 +156,11 @@ export const eventsMonotonic: (eventStore: EventStore) => SubscribeMonotonic = (
     return eventStore
       .present()
       .take(1)
-      .concatMap(present => monotonicFrom(subscriptions, present))
+      .concatMap(monotonicFrom(subscriptions))
   }
 }
 
-const timeTravelMsg = (previousHead: EventKey, next: Events) => {
+const timeTravelMsg = (previousHead: EventKey, next: Events): TimetravelMsg => {
   log.pond.info('triggered time-travel back to ' + EventKey.format(next[0]))
 
   const high = getInsertionIndex(next, previousHead, EventKey.ord.compare) - 1
@@ -168,5 +169,5 @@ const timeTravelMsg = (previousHead: EventKey, next: Events) => {
     type: MsgType.timetravel,
     trigger: next[0],
     high: next[high],
-  } as TimetravelMsg
+  }
 }
