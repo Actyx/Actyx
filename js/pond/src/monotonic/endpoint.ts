@@ -131,7 +131,8 @@ export const eventsMonotonic = (eventStore: EventStore): SubscribeMonotonic => {
       .toArray()
 
     return persisted.concatMap(chunks => {
-      const events = chunks.flat()
+      // flatten
+      const events = new Array<Event>().concat(...chunks)
 
       const latest = events.length === 0 ? EventKey.zero : events[events.length - 1]
 
