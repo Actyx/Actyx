@@ -1,5 +1,4 @@
-import execa from 'execa'
-import { remove, mkdirs, pathExists } from 'fs-extra'
+import { mkDir, gitClone, npmInstall, npmRun } from './util'
 
 type Quickstart = () => Readonly<{
   dirSampleWebviewApp: string
@@ -12,6 +11,8 @@ const quickstart: Quickstart = () => {
   const dirSampleWebviewApp = 'temp/quickstart/sample-webview-app'
   const dirSampleDockerApp = 'temp/quickstart/sample-docker-app'
 
+  const npmRunBuild = npmRun('build')
+
   return {
     dirSampleWebviewApp,
     dirSampleDockerApp,
@@ -20,28 +21,15 @@ const quickstart: Quickstart = () => {
       console.log('Setup quickstart:')
 
       try {
-        const hasFolder = await pathExists(dirQuickstart)
-        if (hasFolder) {
-          await remove(dirQuickstart)
-        }
-        await mkdirs(dirQuickstart)
+        await mkDir(dirQuickstart)
 
-        console.log('cloning repo...')
-        await execa('git', ['clone', 'https://github.com/Actyx/quickstart.git', dirQuickstart])
+        await gitClone('https://github.com/Actyx/quickstart.git', dirQuickstart)
 
-        console.log('sample-webview-app:')
-        console.log('installing...')
-        await execa('npm', ['install'], { cwd: dirSampleWebviewApp })
+        await npmInstall(dirSampleWebviewApp)
+        await npmRunBuild(dirSampleWebviewApp)
 
-        console.log('building...')
-        await execa('npm', ['run', 'build'], { cwd: dirSampleWebviewApp })
-
-        console.log('sample-docker-app:')
-        console.log('installing...')
-        await execa('npm', ['install'], { cwd: dirSampleDockerApp })
-
-        console.log('building...')
-        await execa('npm', ['run', 'build:image'], { cwd: dirSampleDockerApp })
+        await npmInstall(dirSampleDockerApp)
+        await npmRunBuild(dirSampleDockerApp)
 
         return Promise.resolve('quickstart ready!')
       } catch (err) {

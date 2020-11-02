@@ -1,5 +1,4 @@
-import execa from 'execa'
-import { remove, mkdirs, pathExists } from 'fs-extra'
+import { mkDir, gitClone, npmInstall, npmRun } from './util'
 
 type DemoMachineKit = () => Readonly<{
   dirDashboard: string
@@ -14,6 +13,8 @@ const demoMachineKit: DemoMachineKit = () => {
   const dirErpSimulator = 'temp/DemoMachineKit/erp-simulator'
   const dirWagoConnector = 'temp/DemoMachineKit/wago-connector'
 
+  const npmRunBuild = (name: string) => npmRun(name)(dirDemoMachineKit)
+
   return {
     dirDashboard,
     dirErpSimulator,
@@ -23,33 +24,14 @@ const demoMachineKit: DemoMachineKit = () => {
       console.log('Setup DemoMachineKit:')
 
       try {
-        const hasFolder = await pathExists(dirDemoMachineKit)
-        if (hasFolder) {
-          await remove(dirDemoMachineKit)
-        }
-        await mkdirs(dirDemoMachineKit)
+        await mkDir(dirDemoMachineKit)
 
-        console.log('cloning repo...')
-        await execa('git', [
-          'clone',
-          'https://github.com/Actyx/DemoMachineKit.git',
-          dirDemoMachineKit,
-        ])
+        await gitClone('https://github.com/Actyx/DemoMachineKit.git', dirDemoMachineKit)
 
-        console.log('installing...')
-        await execa('npm', ['install'], { cwd: dirDemoMachineKit })
-
-        console.log('dashboard:')
-        console.log('building...')
-        await execa('npm', ['run', 'ui:dashboard:build'], { cwd: dirDemoMachineKit })
-
-        console.log('erp-simulator:')
-        console.log('building...')
-        await execa('npm', ['run', 'ui:erp-simulator:build'], { cwd: dirDemoMachineKit })
-
-        console.log('node:wago-connector:build:')
-        console.log('building...')
-        await execa('npm', ['run', 'node:wago-connector:build'], { cwd: dirDemoMachineKit })
+        await npmInstall(dirDemoMachineKit)
+        await npmRunBuild('ui:dashboard:build')
+        await npmRunBuild('ui:erp-simulator:build')
+        await npmRunBuild('node:wago-connector:build')
 
         return Promise.resolve('DemoMachineKit ready!')
       } catch (err) {
