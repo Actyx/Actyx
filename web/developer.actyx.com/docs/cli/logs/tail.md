@@ -4,7 +4,7 @@ title: ax logs tail
 
 ## Get logs from a node
 
-```
+```text
 USAGE:
     ax logs tail [FLAGS] [OPTIONS] <NODE>
 
@@ -27,7 +27,7 @@ ARGS:
 
 Please see the following usage examples for the `ax logs tail` command:
 
-```
+```text
 # Get the last 40 log entries from node at 10.2.3.23
 ax logs tail --local -n 40 10.2.3.23
 

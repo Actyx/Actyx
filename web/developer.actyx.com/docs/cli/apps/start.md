@@ -4,7 +4,7 @@ title: ax apps start
 
 ### Start an app on a node
 
-```
+```text
 USAGE:
     ax apps start [FLAGS] <APP> <NODE>
 
@@ -23,7 +23,7 @@ ARGS:
 
 Here is an example of using the `ax apps start` command:
 
-```
+```text
 # Start app with ID com.example.app on node at 10.2.3.23
 ax apps start --local com.example.app 10.2.3.23
 ```
