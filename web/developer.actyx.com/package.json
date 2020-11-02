@@ -3,19 +3,20 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "prebuild": "npm run copy-schemas",
+    "prestart": "npm run copy-schemas && npm run lint",
+    "start": "docusaurus start",
     "copy-schemas": "node bin/copy-schemas.js",
-    "start": "npm run prebuild && docusaurus start",
     "build": "npm run lint && docusaurus build",
-    "swizzle": "docusaurus swizzle",
     "deploy": "npm run lint && docusaurus deploy",
+    "swizzle": "docusaurus swizzle",
     "lint:txt:check": "textlint -f pretty-error ./docs/**/* ./blog/**/*",
     "lint:txt:fix": "textlint --fix ./docs/**/* ./blog/**/*",
     "lint:txt:dry": "textlint --dry-run ./docs/**/* ./blog/**/*",
     "lint:md:check": "npx markdownlint-cli \"./docs/**/*.md\" \"./blog/**/*\"",
     "lint:md:fix": "npx markdownlint-cli --fix \"./docs/**/*.md\" \"./blog/**/*\"",
     "lint": "npm run lint:md:check && npm run lint:txt:check && prettier './src/**/*.{js,ts,tsx}' --check",
-    "lint:code:fix": "prettier './src/**/*.{js,ts,tsx}' --write"
+    "lint:code:fix": "prettier './src/**/*.{js,ts,tsx}' --write",
+    "test": "npm run lint"
   },
   "dependencies": {
     "@docusaurus/core": "^2.0.0-alpha.48",

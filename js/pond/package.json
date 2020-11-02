@@ -1,55 +1,7 @@
 {
-  "name": "@actyx/pond",
-  "version": "2.2.0",
-  "description": "Actyx Pond",
-  "keywords": [
-    "actyx",
-    "pond",
-    "distributed-systems",
-    "distributed apps",
-    "distributed",
-    "industry 4.0",
-    "smart-factory",
-    "event-sourcing",
-    "iot",
-    "serverless",
-    "p2p",
-    "peer-to-peer",
-    "synchronization",
-    "decentralized",
-    "datastore",
-    "offline-first"
-  ],
-  "main": "./lib/index.js",
-  "types": "./dist/pond.d.ts",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Actyx/Cosmos.git"
-  },
   "author": "Actyx AG",
-  "license": "GPL-3.0-only",
   "bugs": {
     "url": "https://support.actyx.io"
-  },
-  "homepage": "https://www.actyx.com/products/pond/",
-  "scripts": {
-    "api:accept": "api-extractor run -l",
-    "api:assert": "api-extractor run",
-    "clean": "rimraf ./lib ./coverage",
-    "build": "tsc -p ./tsconfig.prod.json",
-    "build:watch": "npm run build -- --watch --pretty",
-    "build:prod": "npm run clean && npm run lint && npm run test:ci && npm run build && npm run api:assert",
-    "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx",
-    "lint:fix": "npm run lint -- --fix",
-    "format:configs": "prettier --write .prettierrc.json jest.config.js .vscode/settings.json tsconfig.prod.json tsconfig.json .eslintrc.json",
-    "test": "TZ=UTC jest",
-    "test:ci": "TZ=UTC jest --maxWorkers 1",
-    "test:dev": "TZ=UTC jest --coverage=false && npm run api:accept",
-    "test:watch": "TZ=UTC jest --coverage=false --watch",
-    "tsc": "tsc --noEmit -p ./tsconfig.json",
-    "tsc:watch": "npm run tsc -- --watch --pretty",
-    "madge": "madge --circular --extensions ts,tsx ./",
-    "addLicense": "license-check-and-add add -f add-license-config.json"
   },
   "dependencies": {
     "bufferutil": "4.0.1",
@@ -64,14 +16,14 @@
     "utf-8-validate": "5.0.2",
     "ws": "7.2.1"
   },
-  "peerDependencies": {},
+  "description": "Actyx Pond",
   "devDependencies": {
     "@microsoft/api-extractor": "^7.9.4",
     "@types/cron": "1.3.0",
     "@types/debug": "0.0.30",
     "@types/fetch-mock": "7.3.2",
     "@types/jest": "25.1.1",
-    "@types/node": "10.11.0",
+    "@types/node": "14.14.6",
     "@types/pako": "1.0.0",
     "@types/ramda": "github:types/npm-ramda#9529aa3c8ff70ff84afcbc0be83443c00f30ea90",
     "@types/seedrandom": "2.4.27",
@@ -98,5 +50,52 @@
     "testcheck": "1.0.0-rc.2",
     "ts-jest": "25.1.0",
     "typescript": "3.9.6"
-  }
+  },
+  "homepage": "https://www.actyx.com/products/pond/",
+  "keywords": [
+    "actyx",
+    "pond",
+    "distributed-systems",
+    "distributed apps",
+    "distributed",
+    "industry 4.0",
+    "smart-factory",
+    "event-sourcing",
+    "iot",
+    "serverless",
+    "p2p",
+    "peer-to-peer",
+    "synchronization",
+    "decentralized",
+    "datastore",
+    "offline-first"
+  ],
+  "license": "GPL-3.0-only",
+  "main": "./lib/index.js",
+  "name": "@actyx/pond",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Actyx/Cosmos.git"
+  },
+  "scripts": {
+    "api:accept": "api-extractor run -l",
+    "api:assert": "api-extractor run",
+    "clean": "rimraf ./lib ./coverage",
+    "build": "tsc -p ./tsconfig.prod.json",
+    "build:watch": "npm run build -- --watch --pretty",
+    "build:prod": "npm run clean && npm run lint && npm run test:ci && npm run build && npm run api:assert",
+    "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "npm run lint -- --fix",
+    "format:configs": "prettier --write .prettierrc.json jest.config.js .vscode/settings.json tsconfig.prod.json tsconfig.json .eslintrc.json",
+    "test": "TZ=UTC jest",
+    "test:ci": "TZ=UTC jest --maxWorkers 1",
+    "test:dev": "TZ=UTC jest --coverage=false && npm run api:accept",
+    "test:watch": "TZ=UTC jest --coverage=false --watch",
+    "tsc": "tsc --noEmit -p ./tsconfig.json",
+    "tsc:watch": "npm run tsc -- --watch --pretty",
+    "madge": "madge --circular --extensions ts,tsx ./",
+    "addLicense": "license-check-and-add add -f add-license-config.json"
+  },
+  "types": "./lib/index.d.ts",
+  "version": "2.2.0"
 }

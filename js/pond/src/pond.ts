@@ -23,6 +23,7 @@ import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
 import { Tags, toSubscriptionSet } from './tagging'
 import {
+  AddEmission,
   CancelSubscription,
   Fish,
   FishId,
@@ -68,7 +69,21 @@ const omitObservable = <S>(
 const wrapStateFn = <S, EWrite>(fn: StateEffect<S, EWrite>) => {
   const effect = async (state: S) => {
     const emissions: Emit<any>[] = []
-    await fn(state, (tags, payload) => emissions.push({ tags, payload }))
+    let returned = false
+
+    const enqueueEmission: AddEmission<EWrite> = (tags, payload) => {
+      if (returned) {
+        throw new Error(
+          'The function you passed to run/keepRunning has already returned -- enqueuing emissions via the passed "AddEmission" function is no longer possible.',
+        )
+      }
+
+      emissions.push({ tags, payload })
+    }
+
+    await fn(state, enqueueEmission)
+    returned = true
+
     return emissions
   }
 

@@ -32,7 +32,6 @@ build_dir=dist/build
 DOCKER_DIR=ops/docker/images
 # The musl images have a separate target so remove them to avoid warnings
 DOCKER_BUILD = $(shell arr=(`ls -1 ${DOCKER_DIR} | grep -v -e "^musl\\$$"`); printf "docker-build-%s\n " "$${arr[@]}")
-DOCKER_BUILD_SBT = docker-build-bagsapconnector docker-build-flexishttpconnector docker-build-flexisftpconnector docker-build-opcuaconnector docker-build-iafisconnector docker-build-batchcenterconnector
 
 # Helper to try out local builds of Docker images
 IMAGE_VERSION:=$(or $(LOCAL_IMAGE_VERSION),latest)
@@ -90,13 +89,6 @@ docker-push-musl: docker-build-musl docker-login
 docker-push-%: docker-build-% docker-login
 	$(eval DOCKER_IMAGE_NAME:=$(subst docker-push-,,$@))
 	$(call fn_docker_push,$(DOCKER_IMAGE_NAME),$(arch))
-
-$(DOCKER_BUILD_SBT): debug clean
-	echo "Using sbt-native-packager to generate the docker image..";
-	pushd $(SRC_PATH) && \
-	sbt validate && \
-	IMAGE_NAME=$(call getImageNameDockerhub,$(subst docker-build-,,$@),$(arch),$(git_hash)) sbt docker:publishLocal && \
-	popd
 
 # Build the Dockerfile located at `ops/docker/images/musl` for
 # the specified $TARGET toolchain.
@@ -289,24 +281,7 @@ actyxos-bin-arm:
 	$(eval IMG:=actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION))
 	$(call build_bins_and_move,$(OUTPUT),$(TARGET),$(IMG))
 
-
-# Android Shell App, i686 32 bit
-android-app: debug
-	mkdir -p ./android-shell-app/app/src/main/jniLibs/x86
-	cp ./rt-master/target/i686-linux-android/release/libaxstore.so ./android-shell-app/app/src/main/jniLibs/x86/libaxstore.so
-	mkdir -p ./android-shell-app/app/src/main/jniLibs/arm64-v8a
-	cp ./rt-master/target/aarch64-linux-android/release/libaxstore.so ./android-shell-app/app/src/main/jniLibs/arm64-v8a/libaxstore.so
-	./android-shell-app/bin/prepare-gradle-build.sh
-	pushd android-shell-app; \
-	./gradlew clean ktlint build assemble; \
-	popd
-	echo 'APK: ./android-shell-app/app/build/outputs/apk/release/app-release.apk'
-
-android: debug clean android-store-lib android-app
-
-android-install: debug
-	adb uninstall io.actyx.shell
-	adb install ./android-shell-app/app/build/outputs/apk/release/app-release.apk
+android: debug clean android-store-lib
 
 android-store-lib: debug
 	$(call fn-build-android-rust-lib-i686,store-lib)

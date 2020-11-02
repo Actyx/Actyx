@@ -11,6 +11,8 @@ import {DownloadLink} from '../../src/components/DownloadLink.tsx'
 
 <Strap strap={"Tutorial"} />
 
+<!-- markdownlint-disable MD025 -->
+
 # Building a chat app with Actyx Pond
 
 In this tutorial, we are going to build a small chat app on top of the Actyx Platform. **You might be tempted to skip it because you are not building chats in real-life — give it a chance.** The techniques that you will learn in this tutorial are fundamental to building any app on the platform, and mastering them will give you a good understanding of its capabilities.
@@ -58,14 +60,14 @@ ActyxOS on Docker is publicly available on [Docker Hub](https://hub.docker.com/r
 }>
 <TabItem value="windows">
 
-```
+```text
 docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyxos-data:/data --privileged -p 4001:4001 -p 4457:4457 -p 4243:4243 -p 4454:4454 actyx/os
 ```
 
 </TabItem>
 <TabItem value="unix">
 
-```
+```text
 docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyx-data:/data --privileged --network=host actyx/os
 ```
 
@@ -426,3 +428,5 @@ You can download the complete code for this tutorial from GitHub.
 :::note Join our Discord chat
 Feel free to join our [Actyx Developer Chat](https://discord.gg/262yJhc) on Discord. We would love to hear about what you want to build on the Actyx platform.
 :::
+
+<!-- markdownlint-disable MD025 -->

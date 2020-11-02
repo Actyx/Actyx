@@ -4,6 +4,8 @@ title: Release notes
 
 This page contains information about new features, bug fixes, deprecations and removals in ActyxOS releases. For a more extensive description of the changes, check out our [blog](https://www.actyx.com/news/).
 
+<!-- markdownlint-disable MD024 -->
+
 ## ActyxOS 1.0.0
 
 Release date: 28.08.2020
@@ -83,3 +85,5 @@ Download:
 ### Removals and non-backwards compatible changes
 
 - ActyxOS 1.0.0-rc.2 is only compatible with the Actyx CLI 1.0.0-rc.2 and will not work with apps that were packaged with earlier versions of the Actyx CLI
+
+<!-- markdownlint-enable MD024 -->

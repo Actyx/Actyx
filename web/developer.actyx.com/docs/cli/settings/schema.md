@@ -4,7 +4,7 @@ title: ax settings schema
 
 ## Get setting schemas from a node
 
-```
+```text
 USAGE:
     ax settings schema [FLAGS] <SCOPE> <NODE>
 
@@ -23,7 +23,7 @@ ARGS:
 
 Here are some examples of using the `ax settings schema` command:
 
-```
+```text
 # Get the settings schema for the node with settings scope com.actyx.os at 10.2.3.23
 ax settings schema --local com.actyx.os 10.2.3.23
 

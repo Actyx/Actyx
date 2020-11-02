@@ -31,21 +31,6 @@ jobs:
     steps:
       - template: steps/actyxos-rust-sdk.yml
 
-  # The following builds intentionally don't depend on `rtmaster` to speed up overall build times.
-  # TODO However, we're building store-lib multiple times: once for each of these, once for the actual store container and once for the actyxOsBinaries below (and SCCACHE sometimes does not work)
-  - job: androidShellApp
-    dependsOn: getBuildString
-    variables:
-      BUILD_STRING: $[ dependencies.getBuildString.outputs['setBuildString.BUILD_STRING'] ]
-    container: buildrs_x64_latest
-    displayName: Android Shell App
-    workspace:
-      clean: all
-    pool:
-      name: Native
-    steps:
-      - template: steps/android-shell-app.yml
-
   - job: actyxOsAndroid
     dependsOn: getBuildString
     variables:
@@ -94,19 +79,6 @@ jobs:
           containerImage: musl_linux_aarch64
     steps:
       - template: steps/actyxos-binaries.yml
-
-  # Distributed stress testing nightly build
-  - job: distributedStressTest
-    displayName: Nightly Distributed Stress Test
-    variables:
-      BUILD_STRING: $[ dependencies.getBuildString.outputs['setBuildString.BUILD_STRING'] ]
-    condition: eq(variables['Build.Reason'], 'Schedule') ## run only on Scheduled runs, not on prs or merges to master
-    workspace:
-      clean: all
-    pool:
-      name: Native
-    steps:
-      - template: steps/distributed-stress-test.yml
 
   - job: actyxOsContainers
     dependsOn: [getBuildString, actyxosbinaries]
@@ -169,16 +141,3 @@ jobs:
           INSTALLER_NAME: "ActyxOS Installer"
     steps:
       - template: steps/windows-installers.yml
-
-  - job: hammerite
-    # TODO Why does this depend on actyxOsContainers? Shouldn't it just depend on the specific ada-clir container?
-    dependsOn: [getBuildString, actyxOsContainers]
-    variables:
-      BUILD_STRING: $[ dependencies.getBuildString.outputs['setBuildString.BUILD_STRING'] ]
-    displayName: Hammerite
-    workspace:
-      clean: all
-    pool:
-      name: Native
-    steps:
-      - template: steps/hammerite.yml

@@ -149,7 +149,8 @@ export const eventsMonotonic = (
       .toArray()
 
     return persisted.concatMap(chunks => {
-      const events = chunks.flat()
+      // flatten
+      const events = new Array<Event>().concat(...chunks)
 
       const latest = events.length === 0 ? defaultLatest : events[events.length - 1]
 

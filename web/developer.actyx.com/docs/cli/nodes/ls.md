@@ -4,7 +4,7 @@ title: ax nodes ls
 
 ### Show node info and status
 
-```
+```text
 USAGE:
     ax nodes ls [FLAGS] <NODE>...
 
@@ -30,7 +30,7 @@ If the node is reachable, the output of `ax nodes ls` will show you its status. 
 
 See the following examples of using the `ax nodes ls` command:
 
-```
+```text
 # Get the status of all specified nodes in the local network
 ax nodes ls --local 10.2.3.23 10.2.3.24
 +-------------------------------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
