@@ -303,15 +303,13 @@ type ShatterAsap = Readonly<{
   snapshotToShatter: LocalSnapshot<{}>
 }>
 
-const includeEvent = OffsetMap.update
-
 const mkShatterAsap = (
   firstEvent: Event,
   events: Events,
   psnMapBuilder: OffsetMapBuilder,
   latestLocalSnap: LocalSnapshot<{}>,
 ): ShatterAsap => {
-  const knownOffset = events.reduce((psnMap, evt) => includeEvent(psnMap, evt), psnMapBuilder)
+  const knownOffset = events.reduce((psnMap, evt) => OffsetMap.update(psnMap, evt), psnMapBuilder)
 
   return {
     rehydrateUpTo: knownOffset,
@@ -327,7 +325,7 @@ const updateShatterAsap = (firstEvent: Event, newEvents: Events) => (
     ? firstEvent
     : s.earliestKnownShatteringEvent,
 
-  rehydrateUpTo: newEvents.reduce((psnMap, evt) => includeEvent(psnMap, evt), s.rehydrateUpTo),
+  rehydrateUpTo: newEvents.reduce((psnMap, evt) => OffsetMap.update(psnMap, evt), s.rehydrateUpTo),
 
   snapshotToShatter: s.snapshotToShatter,
 })
@@ -707,7 +705,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
       while (i <= toStore.i) {
         ev = this.events[i]
         state = this.fish.onEvent(state, ev)
-        psnMap = includeEvent(psnMap, ev)
+        psnMap = OffsetMap.update(psnMap, ev)
 
         i += 1
       }
@@ -738,7 +736,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     while (i < this.events.length) {
       ev = this.events[i]
       state = this.fish.onEvent(state, ev)
-      psnMap = includeEvent(psnMap, ev)
+      psnMap = OffsetMap.update(psnMap, ev)
       i += 1
     }
 

@@ -6,7 +6,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { fromNullable, none, Option, some } from 'fp-ts/lib/Option'
-import { flatten } from 'ramda'
+import { greaterThan } from 'fp-ts/lib/Ord'
 import { Observable } from 'rxjs'
 import { EventStore } from '../eventstore'
 import {
@@ -60,15 +60,17 @@ export type SubscribeMonotonic = (
   horizon?: EventKey,
 ) => Observable<EventsOrTimetravel>
 
+const eventKeyGreater = greaterThan(EventKey.ord)
+
 /**
  * Create a new endpoint, based on the given EventStore and SnapshotStore.
  * The returned function itself is stateless between subsequent calls --
  * all state is within the EventStore itself.
  */
-export const eventsMonotonic: (
+export const eventsMonotonic = (
   eventStore: EventStore,
   snapshotStore: SnapshotStore,
-) => SubscribeMonotonic = (eventStore, snapshotStore) => {
+): SubscribeMonotonic => {
   // Stream realtime events from the given point on.
   // As soon as time-travel would occur, the stream terminates with a TimetravelMsg.
   const realtimeFrom = (
@@ -85,7 +87,7 @@ export const eventsMonotonic: (
       { psns: {}, default: 'max' },
       subscriptions,
       AllEventsSortOrders.Unsorted,
-      undefined, // horizon,
+      undefined, // Horizon handling to-be-implemented
     )
 
     let latest = knownLatest
@@ -98,9 +100,9 @@ export const eventsMonotonic: (
 
         // Take while we are going strictly forwards
         const nextKey = next[0]
-        const pass = EventKey.ord.compare(nextKey, latest) >= 0
+        const nextIsOlderThanLatest = eventKeyGreater(latest, nextKey)
 
-        if (!pass) {
+        if (nextIsOlderThanLatest) {
           return Observable.from(
             snapshotStore
               .invalidateSnapshots(fishId.entityType, fishId.name, nextKey)
@@ -108,16 +110,15 @@ export const eventsMonotonic: (
           )
         }
 
-        log.pond.info('rt passed, ' + JSON.stringify(nextKey) + ' > ' + JSON.stringify(latest))
+        log.pond.debug('rt passed, ' + JSON.stringify(nextKey) + ' > ' + JSON.stringify(latest))
 
         // We have captured `latest` in the closure and are updating it here
         latest = next[next.length - 1]
-        const r: EventsMsg = {
+        return Observable.of({
           type: MsgType.events,
           events: next,
           caughtUp: true,
-        }
-        return Observable.of(r)
+        })
       })
       .pipe(takeWhileInclusive(m => m.type !== MsgType.timetravel))
   }
@@ -148,13 +149,13 @@ export const eventsMonotonic: (
       .toArray()
 
     return persisted.concatMap(chunks => {
-      const events = flatten(chunks)
+      const events = chunks.flat()
 
       const latest = events.length === 0 ? defaultLatest : events[events.length - 1]
 
       const initial = Observable.of<EventsMsg>({
         type: MsgType.events,
-        events: flatten(chunks),
+        events,
         caughtUp: true,
       })
 
@@ -240,7 +241,7 @@ export const eventsMonotonic: (
       // Client explicitly requests us to start at a certain point
       return eventStore
         .present()
-        .take(1)
+        .first()
         .concatMap(present => monotonicFrom(fishId, subscriptions, present.psns, from))
     } else {
       // `from` NOT given -> try finding a snapshot
@@ -261,7 +262,7 @@ const stateMsg = (snapshot: LocalSnapshot<string>): StateMsg => {
 const timeTravelMsg = (previousHead: EventKey, next: Events): TimetravelMsg => {
   log.pond.info('triggered time-travel back to ' + EventKey.format(next[0]))
 
-  const high = getInsertionIndex(next, previousHead, (e, l) => EventKey.ord.compare(e, l)) - 1
+  const high = getInsertionIndex(next, previousHead, EventKey.ord.compare) - 1
 
   return {
     type: MsgType.timetravel,

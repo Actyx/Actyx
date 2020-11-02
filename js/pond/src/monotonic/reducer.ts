@@ -7,7 +7,7 @@ export type Reducer<S> = {
   setState: (state: StateWithProvenance<string>) => void
 }
 
-export const MonotonicReducer = <S>(
+export const stateWithProvenanceReducer = <S>(
   onEvent: (oldState: S, event: Event) => S,
   initialState: StateWithProvenance<string>,
   deserializeState?: (jsonState: unknown) => S,
