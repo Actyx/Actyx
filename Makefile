@@ -8,7 +8,7 @@ CARGO_TEST_JOBS := 4
 CARGO_BUILD_JOBS := 8
 
 all: $(patsubst %,dist/bin/%,$(all-LINUX) $(all-WINDOWS) $(all-ANDROID)) \
-	dist/bin/win64/installer \
+	dist/bin/windows-x86_64/installer \
 	dist/js/pond \
 	dist/js/os-sdk
 
@@ -237,6 +237,9 @@ $(foreach oa,$(osArch),$(foreach bin,$(binaries),$(eval $(call mkDistRule,$(oa),
 # These will be used below to define how to build all binaries for that target.
 targetPatterns = $(foreach t,$(targets),rt-master/target/$(t)/release/%)
 
+# add extra options to disable default features for the windows build. This requires specifying a manifest path.
+rt-master/target/x86_64-pc-windows-gnu/release/ax.exe: CARGO_EXTRA_OPTIONS=--no-default-features --manifest-path actyx-cli/Cargo.toml
+
 # Set target-specific variables TARGET and OS by inspecting the target $@:
 #   - TARGET is the third path element
 #   - OS is the third dash-separated component of TARGET
@@ -258,7 +261,7 @@ $(targetPatterns): cargo-init
 	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(image-$(OS)) \
-	  cargo --locked build --release --bin $(basename $*)
+	  cargo --locked build --release $(CARGO_EXTRA_OPTIONS) --bin $(basename $*)
 
 # targets for which we need a .so file for android
 android_so_targets = i686-linux-android aarch64-linux-android armv7-linux-androideabi
@@ -304,9 +307,9 @@ dist/bin/actyxos.apk: jvm/os-android/app/build/outputs/apk/release/app-release.a
 	mkdir -p $(dir $@)
 	cp $< $@
 
-misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/win64/ax.exe
+misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/windows-x86_64/ax.exe
 	mkdir -p misc/actyxos-node-manager/bin/win32
-	cp dist/bin/win64/ax.exe misc/actyxos-node-manager/bin/win32/
+	cp dist/bin/windows-x86_64/ax.exe misc/actyxos-node-manager/bin/win32/
 	docker run \
 	  -u $(shell id -u) \
 	  -v `pwd`:/src \
@@ -314,22 +317,22 @@ misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/win64/ax.
 	  --rm actyx/util:windowsinstallercreator-x64-latest \
 	  bash -c "npm install && npm run package -- --platform win32 --arch x64"
 
-dist/bin/win64/actyxos-node-manager.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64
+dist/bin/windows-x86_64/actyxos-node-manager.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64
 	mkdir -p $(dir $@)
 	cp $</actyxos-node-manager.exe $@
 
-dist/bin/win64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/win64/ax.exe dist/bin/win64/actyxos.exe
+dist/bin/windows-x86_64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyxos.exe
 	mkdir -p $@
 	cp $</actyxos-node-manager.exe misc/actyxos-win-installer
-	cp dist/bin/win64/actyxos.exe misc/actyxos-win-installer
-	cp dist/bin/win64/ax.exe misc/actyxos-win-installer
+	cp dist/bin/windows-x86_64/actyxos.exe misc/actyxos-win-installer
+	cp dist/bin/windows-x86_64/ax.exe misc/actyxos-win-installer
 	cp -r misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 misc/actyxos-win-installer/node-manager
 	# ls -alh .
 	docker run \
 	  -u $(shell id -u) \
 	  -v `pwd`:/src \
 	  -w /src/misc/actyxos-win-installer \
-	  -e DIST_DIR='/src/dist/bin/win64/installer' \
+	  -e DIST_DIR='/src/dist/bin/windows-x86_64/installer' \
 	  -e SRC_DIR='/src/misc/actyxos-win-installer' \
 	  -e PRODUCT_VERSION=1.0.1-SNAPSHOT \
 	  -e PRODUCT_NAME=ActyxOS \
