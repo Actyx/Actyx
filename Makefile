@@ -237,6 +237,9 @@ $(foreach oa,$(osArch),$(foreach bin,$(binaries),$(eval $(call mkDistRule,$(oa),
 # These will be used below to define how to build all binaries for that target.
 targetPatterns = $(foreach t,$(targets),rt-master/target/$(t)/release/%)
 
+# add extra options to disable default features for the windows build. This requires specifying a manifest path.
+rt-master/target/x86_64-pc-windows-gnu/release/ax.exe: CARGO_EXTRA_OPTIONS=--no-default-features --manifest-path actyx-cli/Cargo.toml
+
 # Set target-specific variables TARGET and OS by inspecting the target $@:
 #   - TARGET is the third path element
 #   - OS is the third dash-separated component of TARGET
@@ -258,7 +261,7 @@ $(targetPatterns): cargo-init
 	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(image-$(OS)) \
-	  cargo --locked build --release --bin $(basename $*)
+	  cargo --locked build --release $(CARGO_EXTRA_OPTIONS) --bin $(basename $*)
 
 # targets for which we need a .so file for android
 android_so_targets = i686-linux-android aarch64-linux-android armv7-linux-androideabi
