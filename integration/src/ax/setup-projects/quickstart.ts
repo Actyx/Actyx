@@ -8,7 +8,6 @@ type Quickstart = () => Readonly<{
 }>
 
 const quickstart: Quickstart = () => {
-  const dirTemp = 'temp'
   const dirQuickstart = 'temp/quickstart'
   const dirSampleWebviewApp = 'temp/quickstart/sample-webview-app'
   const dirSampleDockerApp = 'temp/quickstart/sample-docker-app'
@@ -21,11 +20,11 @@ const quickstart: Quickstart = () => {
       console.log('Setup quickstart:')
 
       try {
-        const hasFolder = await pathExists(dirTemp)
+        const hasFolder = await pathExists(dirQuickstart)
         if (hasFolder) {
-          await remove(dirTemp)
+          await remove(dirQuickstart)
         }
-        await mkdirs(dirTemp)
+        await mkdirs(dirQuickstart)
 
         console.log('cloning repo...')
         await execa('git', ['clone', 'https://github.com/Actyx/quickstart.git', dirQuickstart])

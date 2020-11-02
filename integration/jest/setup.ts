@@ -2,6 +2,7 @@
 import { EC2 } from 'aws-sdk'
 import { CLI } from '../src/ax'
 import { SettingsInput } from '../src/ax/exec'
+import demoMachineKit from '../src/ax/setup-projects/demo-machine-kit'
 import quickstart from '../src/ax/setup-projects/quickstart'
 import { createInstance, createKey, terminateInstance } from '../src/runner/aws'
 import { mkNodeLinux } from '../src/runner/linux'
@@ -152,12 +153,17 @@ const getPeers = async (node: ActyxOSNode): Promise<number> => {
 }
 
 const setup = async (_config: Record<string, unknown>): Promise<void> => {
-  // install quickstart locally so we can test against apps
   process.stdout.write('\n')
 
+  // install sample apps locally for t esting
   try {
-    const statusMessage = await quickstart.setup()
-    console.log(statusMessage)
+    const quickstartStatusMessage = await quickstart.setup()
+    console.log(quickstartStatusMessage)
+    process.stdout.write('\n')
+
+    const demoMachineKitStatusMessage = await demoMachineKit.setup()
+    console.log(demoMachineKitStatusMessage)
+    process.stdout.write('\n')
   } catch (err) {
     console.error(err)
     process.exitCode = 1
