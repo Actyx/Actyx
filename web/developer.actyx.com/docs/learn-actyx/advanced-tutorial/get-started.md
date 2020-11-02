@@ -14,7 +14,7 @@ To get the sample project, you can either:
 
 Clone the repository from GitHub by running:
 
-```
+```text
 git clone https://github.com/Actyx/DemoMachineKit.git
 ```
 
@@ -34,7 +34,7 @@ Before you start any apps, run `npm install` from the root directory.
 
 To start the Dashboard app, run:
 
-```
+```text
 npm run ui:dashboard:start
 ```
 
@@ -42,7 +42,7 @@ After visiting `localhost:1234` you should see an empty dashboard that only disp
 
 For creating orders, lets first start the ERP Simulator App:
 
-```
+```text
 npm run ui:erp-simulator:start
 ```
 
@@ -56,7 +56,7 @@ After entering a name and selecting a duration, the `Place order` button will st
 
 In order to let your system know of a new machine, start the Wago Connector App:
 
-```
+```text
 npm run node:wago-connector:start
 ```
 

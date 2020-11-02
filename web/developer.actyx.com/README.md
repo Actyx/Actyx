@@ -185,6 +185,9 @@ This element can have 0-n optional links
 - `DownloadLink.tsx`
 - `StayInformed.tsx`
 
+### Redirects
+There is a `_redirects` file in `/netlify/` which defines site redirects. If you change the folder structure of the docs in a PR so that links might now lead to 404s (from `/docs/quickstart` to `/docs/learn-actyx/quickstart`), please make sure to include the FROM url and the TO url separated by a space in the `_redirects` file. 
+
 ### How it works
 
 This website is built using [Docusaurus 2](https://v2.docusaurus.io/) with the `@docusaurus/preset-classic` preset. Docusaurus generates a static site that can be served from somewhere. We use Netlify, which automatically pulls `Cosmos` from Github, then builds and then serves the site at [https://developer.actyx.com](https://developer.actyx.com).

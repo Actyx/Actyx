@@ -7,6 +7,7 @@
     "copy-schemas": "node bin/copy-schemas.js",
     "start": "npm run prebuild && docusaurus start",
     "build": "npm run lint && docusaurus build",
+    "postbuild": "node bin/copy-redirects.js",
     "swizzle": "docusaurus swizzle",
     "deploy": "npm run lint && docusaurus deploy",
     "lint:txt:check": "textlint -f pretty-error ./docs/**/* ./blog/**/*",

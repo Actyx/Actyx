@@ -30,7 +30,7 @@ Even well-connected nodes can be thought of as being partitioned by their networ
 thing as perfect or instantaneous connectivity.
 :::
 
-# Impact on Application Development
+## Impact on Application Development
 
 It’s important to keep the Eventual Consistency model in mind when designing applications on
 ActyxOS. Seemingly contradictory information may be created on different nodes. But the
@@ -39,7 +39,7 @@ intended: For example, some misunderstanding causes two people to start working 
 even though just one of them was supposed to do it. After a couple of confused phone calls, the
 situation is finally cleared up.
 
-## When faced with contradictory information, make it visible!
+### When faced with contradictory information, make it visible!
 
 An ActyxOS app can be a huge improvement over confused phone calls, by making contradictions _visible_ and
 offering help with resolving botched situations. But the actual resolving, in the real world, must
@@ -56,7 +56,7 @@ Hence
   
 - [Do Not Ignore Events.](/docs/pond/in-depth/do-not-ignore-events)
   
-# Being Aware of Connectivity Issues
+## Being Aware of Connectivity Issues
 
 <!-- TODO: Dedicated page or something for getNodeConnectivity -->
 
@@ -68,7 +68,7 @@ Do note however that connectivity quality can only be measured for the past! Eve
 network message reached its destination within a millisecond, the next one may already get dropped –
 it’s impossible to predict with certainty.
 
-# True Consistency (Strict Serialisability)
+## True Consistency (Strict Serialisability)
 
 True consistency can – at the cost of availability – be achieved by using _consensus algorithms_. In
 theory, ActyxOS’ eventually consistent event system is entirely sufficient for building consensus
