@@ -92,35 +92,33 @@ export const eventsMonotonic: (
 
     return realtimeEvents
       .filter(next => next.length > 0)
-      .mergeMap(
-        (nextUnsorted): Observable<EventsOrTimetravel> => {
-          // Delivered chunks are potentially not sorted
-          const next = [...nextUnsorted].sort(EventKey.ord.compare)
+      .mergeMap<Events, EventsOrTimetravel>(nextUnsorted => {
+        // Delivered chunks are potentially not sorted
+        const next = [...nextUnsorted].sort(EventKey.ord.compare)
 
-          // Take while we are going strictly forwards
-          const nextKey = next[0]
-          const pass = EventKey.ord.compare(nextKey, latest) >= 0
+        // Take while we are going strictly forwards
+        const nextKey = next[0]
+        const pass = EventKey.ord.compare(nextKey, latest) >= 0
 
-          if (!pass) {
-            return Observable.from(
-              snapshotStore
-                .invalidateSnapshots(fishId.entityType, fishId.name, nextKey)
-                .then(() => timeTravelMsg(latest, next)),
-            )
-          }
+        if (!pass) {
+          return Observable.from(
+            snapshotStore
+              .invalidateSnapshots(fishId.entityType, fishId.name, nextKey)
+              .then(() => timeTravelMsg(latest, next)),
+          )
+        }
 
-          log.pond.info('rt passed, ' + JSON.stringify(nextKey) + ' > ' + JSON.stringify(latest))
+        log.pond.info('rt passed, ' + JSON.stringify(nextKey) + ' > ' + JSON.stringify(latest))
 
-          // We have captured `latest` in the closure and are updating it here
-          latest = next[next.length - 1]
-          const r: EventsMsg = {
-            type: MsgType.events,
-            events: next,
-            caughtUp: true,
-          }
-          return Observable.of(r)
-        },
-      )
+        // We have captured `latest` in the closure and are updating it here
+        latest = next[next.length - 1]
+        const r: EventsMsg = {
+          type: MsgType.events,
+          events: next,
+          caughtUp: true,
+        }
+        return Observable.of(r)
+      })
       .pipe(takeWhileInclusive(m => m.type !== MsgType.timetravel))
   }
 
