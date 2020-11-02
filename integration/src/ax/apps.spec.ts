@@ -1,4 +1,4 @@
-import { runOnEach } from '../runner/hosts'
+import { runOnAll, runOnEach } from '../runner/hosts'
 import { stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../stubs'
 import quickstart from './setup-projects/quickstart'
 import { isCodeInvalidInput, isCodeNodeUnreachable, isCodeOk } from './util'
@@ -31,8 +31,9 @@ describe('ax apps', () => {
     })
 
     test('return `OK` and validate an app in the specified directory with default manifest', async () => {
+      // TODO add control for cwd tp Apps.Validate so I can test properly
       const manifestPath = quickstart.dirSampleWebviewApp
-      const manifestDefault = 'ax-manifest.yml'
+      const manifestDefault = 'temp/quickstart/sample-webview-app'
       const [response] = await runOnEach([{}], false, (node) => node.ax.Apps.Validate(manifestPath))
       const reponseShape = { code: 'OK', result: [manifestDefault] }
       expect(isCodeOk(response)).toBe(true)
@@ -46,5 +47,18 @@ describe('ax apps', () => {
       expect(isCodeOk(response)).toBe(true)
       expect(response).toMatchObject(reponseShape)
     })
+
+    test('return multiple `ERR_INVALID_INPUT` if input paths do not exist for multiple apps', async () => {
+      const [response1, response2] = await runOnAll([{}, {}], false, ([node1, node2]) =>
+        Promise.all([
+          node1.ax.Apps.Validate('not-existing-path1'),
+          node2.ax.Apps.Validate('not-existing-path2'),
+        ]),
+      )
+      expect(isCodeInvalidInput(response1)).toBe(true)
+      expect(isCodeInvalidInput(response2)).toBe(true)
+    })
+    // TODO add multiple apps happy case
+    // TODO add vadalite app in current directory with default manifest
   })
 })

@@ -27,6 +27,6 @@ export const npmInstall = (path: string): execa.ExecaChildProcess<string> => {
 }
 
 export const npmRun = (scriptName: string) => (path: string): execa.ExecaChildProcess<string> => {
-  console.log(`run ${scriptName} into ${path}`)
+  console.log(`npm run ${scriptName} into ${path}`)
   return execa('npm', ['run', scriptName], { cwd: path })
 }
