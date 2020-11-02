@@ -145,7 +145,7 @@ export const eventsMonotonic = (
         PersistedEventsSortOrders.EventKey,
         undefined, // Horizon handling to-be-implemented
       )
-      // Past events are loaded all in one chunk, this is consistent with FES behavior
+      // Past events are loaded all in one chunk -- FIXME.
       .toArray()
 
     return persisted.concatMap(chunks => {

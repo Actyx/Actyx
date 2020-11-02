@@ -129,7 +129,7 @@ export const observeMonotonic = (
   // This will probably turn into a mergeScan when local snapshots are added
   const reducer = stateWithProvenanceReducer(
     onEventRaw,
-    findStartingState(EventKey.zero),
+    { state: clone(initialState), psnMap: OffsetMap.empty },
     deserializeState,
   )
   return updates$.concatMap(msg => {
