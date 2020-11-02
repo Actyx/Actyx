@@ -1,16 +1,16 @@
 import { runOnEach } from '../runner/hosts'
-import { stabNodeActyxosUnreachable, stabNodeHostUnreachable } from '../stabs'
+import { stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../stubs'
 import { isCodeInvalidInput, isCodeNodeUnreachable } from './util'
 
 describe('ax apps', () => {
   describe('ls', () => {
     test('return `ERR_NODE_UNREACHABLE`', async () => {
-      const r = await stabNodeHostUnreachable.ax.Apps.Ls()
+      const r = await stubNodeHostUnreachable.ax.Apps.Ls()
       expect(isCodeNodeUnreachable(r)).toBe(true)
     })
 
     test('return `ERR_NODE_UNREACHABLE`', async () => {
-      const r = await stabNodeActyxosUnreachable.ax.Apps.Ls()
+      const r = await stubNodeActyxosUnreachable.ax.Apps.Ls()
       expect(isCodeNodeUnreachable(r)).toBe(true)
     })
 
@@ -26,7 +26,7 @@ describe('ax apps', () => {
   // FIXME: found out why the next test pass but its name does not show up in stdout
   describe('validate', () => {
     test('return `ERR_INVALID_INPUT` if file path does not exist', async () => {
-      const response = await stabNodeHostUnreachable.ax.Apps.Validate('foo')
+      const response = await stubNodeHostUnreachable.ax.Apps.Validate('foo')
       expect(isCodeInvalidInput(response)).toBe(true)
     })
   })

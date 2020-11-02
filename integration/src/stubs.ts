@@ -3,7 +3,7 @@ import { Client } from '@actyx/os-sdk'
 import { CLI } from './ax'
 import { ActyxOSNode, Arch, Host, OS, Runtime } from './runner/types'
 
-export const mkNodeStab = (
+export const mkNodeStub = (
   os: OS,
   arch: Arch,
   host: Host,
@@ -29,7 +29,7 @@ export const mkNodeStab = (
   }
 }
 
-export const stabNodeHostUnreachable = mkNodeStab(
+export const stubNodeHostUnreachable = mkNodeStub(
   'android',
   'aarch64',
   'android',
@@ -38,7 +38,7 @@ export const stabNodeHostUnreachable = mkNodeStab(
   '123',
 )
 
-export const stabNodeActyxosUnreachable = mkNodeStab(
+export const stubNodeActyxosUnreachable = mkNodeStub(
   'android',
   'aarch64',
   'android',

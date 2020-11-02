@@ -1,9 +1,9 @@
-import { mkNodeStab } from '../stabs'
+import { mkNodeStub } from '../stubs'
 import { selectNodes } from './nodeselection'
 
-const n1 = mkNodeStab('android', 'aarch64', 'android', ['webview'], 'n0')
-const n2 = mkNodeStab('linux', 'x86_64', 'docker', ['docker'], 'n1')
-const n3 = mkNodeStab('win', 'aarch64', 'process', [], 'n2')
+const n1 = mkNodeStub('android', 'aarch64', 'android', ['webview'], 'n0')
+const n2 = mkNodeStub('linux', 'x86_64', 'docker', ['docker'], 'n1')
+const n3 = mkNodeStub('win', 'aarch64', 'process', [], 'n2')
 
 describe('NodeSelection', () => {
   it('should fail', () => {
