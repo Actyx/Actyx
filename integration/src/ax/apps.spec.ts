@@ -1,6 +1,7 @@
 import { runOnEach } from '../runner/hosts'
 import { stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../stubs'
-import { isCodeInvalidInput, isCodeNodeUnreachable } from './util'
+import quickstart from './setup-projects/quickstart'
+import { isCodeInvalidInput, isCodeNodeUnreachable, isCodeOk } from './util'
 
 describe('ax apps', () => {
   describe('ls', () => {
@@ -23,11 +24,19 @@ describe('ax apps', () => {
       expect(responses).toMatchObject(test)
     })
   })
-  // FIXME: found out why the next test pass but its name does not show up in stdout
   describe('validate', () => {
     test('return `ERR_INVALID_INPUT` if file path does not exist', async () => {
-      const response = await stubNodeHostUnreachable.ax.Apps.Validate('foo')
+      const response = await stubNodeHostUnreachable.ax.Apps.Validate('not-existing-path')
       expect(isCodeInvalidInput(response)).toBe(true)
+    })
+
+    test('return `OK` using default path', async () => {
+      const response = await stubNodeHostUnreachable.ax.Apps.Validate(
+        quickstart.dirSampleWebviewApp,
+      )
+      const reponseShape = { code: 'OK', result: ['temp/quickstart/sample-webview-app'] }
+      expect(isCodeOk(response)).toBe(true)
+      expect(response).toMatchObject(reponseShape)
     })
   })
 })
