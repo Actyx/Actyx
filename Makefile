@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
 all-LINUX := $(foreach arch,x86_64 aarch64 armv7 arm,linux-$(arch)/actyxos-linux)
-all-WINDOWS := windows-x86_64/win.exe
+all-WINDOWS := windows-x86_64/actyxos.exe
 all-ANDROID := actyxos.apk
 
 CARGO_TEST_JOBS := 4
@@ -242,15 +242,11 @@ rt-master/target/x86_64-pc-windows-gnu/release/ax.exe: CARGO_EXTRA_OPTIONS=--no-
 rt-master/target/x86_64-pc-windows-gnu/release/actyxos.exe: CARGO_EXTRA_OPTIONS=--no-default-features --manifest-path ax-os-node-win/Cargo.toml
 rt-master/target/x86_64-pc-windows-gnu/release/win.exe: CARGO_EXTRA_OPTIONS=--no-default-features --manifest-path ax-os-node/Cargo.toml
 
-# Set target-specific variables TARGET and OS by inspecting the target $@:
-#   - TARGET is the third path element
-#   - OS is the third dash-separated component of TARGET
-# These variables are available in the rule directly below by virtue of
-# being associated with the same target patterns. The variables are local
-# to this rule, i.e. do not pollute the global namespace.
-$(targetPatterns): TARGET = $(word 3,$(subst /, ,$@))
-$(targetPatterns): OS = $(word 3,$(subst -, ,$(TARGET)))
-$(targetPatterns): cargo-init
+# define a pattern rule for making any binary for a given target
+# where the build image is computed by first extracting the OS from the target string and then
+# looking into the image-* mapping - this requires the TARGET variable to be set while evaluating!
+define mkBinaryRule =
+rt-master/target/$(TARGET)/release/%: cargo-init
 	docker run \
 	  -u $(shell id -u) \
 	  -w /src/rt-master \
@@ -262,8 +258,10 @@ $(targetPatterns): cargo-init
 	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
 	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  --rm \
-	  $(image-$(OS)) \
-	  cargo --locked build --release $(CARGO_EXTRA_OPTIONS) --bin $(basename $*)
+	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
+	  cargo --locked build --release $(CARGO_EXTRA_OPTIONS) --bin $$(basename $$*)
+endef
+$(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
 
 # targets for which we need a .so file for android
 android_so_targets = i686-linux-android aarch64-linux-android armv7-linux-androideabi
