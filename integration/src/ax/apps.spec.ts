@@ -30,11 +30,19 @@ describe('ax apps', () => {
       expect(isCodeInvalidInput(response)).toBe(true)
     })
 
-    test('return `OK` using default path', async () => {
-      const response = await stubNodeHostUnreachable.ax.Apps.Validate(
-        quickstart.dirSampleWebviewApp,
-      )
-      const reponseShape = { code: 'OK', result: ['temp/quickstart/sample-webview-app'] }
+    test.only('return `OK` without specifying a manifest', async () => {
+      const manifestPath = quickstart.dirSampleWebviewApp
+      const manifestDefault = 'ax-manifest.yml'
+      const [response] = await runOnEach([{}], false, (node) => node.ax.Apps.Validate(manifestPath))
+      const reponseShape = { code: 'OK', result: [manifestDefault] }
+      expect(isCodeOk(response)).toBe(true)
+      expect(response).toMatchObject(reponseShape)
+    })
+
+    test('return `OK` specifying a manifest `ax-manifest.yml`', async () => {
+      const manifestPath = `${quickstart.dirSampleWebviewApp}/ax-manifest.yml`
+      const [response] = await runOnEach([{}], false, (node) => node.ax.Apps.Validate(manifestPath))
+      const reponseShape = { code: 'OK', result: [manifestPath] }
       expect(isCodeOk(response)).toBe(true)
       expect(response).toMatchObject(reponseShape)
     })
