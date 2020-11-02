@@ -4,7 +4,7 @@ title: ax apps package
 
 ### Package an app
 
-```
+```text
 USAGE:
     ax apps package [FLAGS] [PATH]
 
@@ -23,7 +23,7 @@ The `ax apps package` command will write the packaged app as a tarball to disk, 
 
 Here are a couple of example uses of the `ax apps package` command:
 
-```
+```text
 # Package an app in the current directory with default manifest ax-manifest.yml
 ax apps package
 
@@ -42,7 +42,7 @@ ax apps package myApp/another-manifest.yml
 :::note Want to save the package somewhere else than the app directory?
 The `ax apps package` command always stores its output in the directory from which it was called. If you would like to save the output somewhere else, you should call the Actyx CLI from that directory and provide it the path to the directory containing the app manifest or the path to the actual manifest. Here is an example:
 
-```
+```text
 cd ../../../apps-packages
 ax apps package ../projects/actyx-os/apps/example-app-1
 ```

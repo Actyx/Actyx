@@ -55,7 +55,7 @@ ActyxOS on Docker is published on [DockerHub](https://hub.docker.com/r/actyx/os)
 }>
 <TabItem value="windows">
 
-```
+```text
 docker run --name actyxos -it --rm -v actyx-data:/data --privileged -p 4001:4001 -p 4457:4457 actyx/os
 ```
 
@@ -76,7 +76,7 @@ Please refer to the [Docker Documentation](https://docs.docker.com/) for more in
 </TabItem>
 <TabItem value="unix">
 
-```
+```text
 docker run --name actyxos -it --rm -v actyx-data:/data --privileged --network=host actyx/os
 ```
 
@@ -108,7 +108,7 @@ If you want to run ActyxOS on Docker in development mode, for example because yo
 }>
 <TabItem value="windows">
 
-```
+```text
 docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyxos-data:/data --privileged -p 4001:4001 -p 4457:4457 -p 127.0.0.1:4243:4243 -p 127.0.0.1:4454:4454 actyx/os
 ```
 
@@ -119,7 +119,7 @@ In development mode we additionally need to forward ports 4454 and 4243 to expos
 </TabItem>
 <TabItem value="unix">
 
-```
+```text
 docker run -it --rm -e AX_DEV_MODE=1 -v actyxos-data:/data --privileged --network=host actyx/os
 ```
 
@@ -151,13 +151,13 @@ Go to the **Status** tab, and you should that your ActyxOS node is reachable and
 </TabItem>
 <TabItem value="cli">
 
-```
+```text
 ax nodes ls --local <DEVICE_IP>
 ```
 
 You should see something like this:
 
-```
+```text
 +---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
 | NODE ID       | DISPLAY NAME | STATE   | SETTINGS | LICENSE | APPS DEPLOYED | APPS RUNNING | STARTED                   | VERSION |
 +---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+

@@ -13,7 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { OffsetMap, Ordering, ApiClientOpts, Subscription, Event, QueryOpts } from '../../types'
+import {
+  OffsetMap,
+  Ordering,
+  ApiClientOpts,
+  Subscription,
+  Event,
+  QueryOpts,
+  QueryStreamOpts,
+  EventStream,
+} from '../../types'
 import {
   mkSubscriptionApiObj,
   mkOffsetMapApiObj,
@@ -21,9 +30,11 @@ import {
   orderingToApiStr,
 } from '../../util'
 import * as uri from 'uri-js'
+import * as http from 'http'
 
 import * as CONSTANTS from '../constants'
 import { doLineStreamingRequest } from '../request'
+import { streamToEvents } from '../../util/decoding'
 
 /** @internal */
 export const _mkRequestObject = (
@@ -89,5 +100,41 @@ export const query = (clientOpts: ApiClientOpts) => (opts: QueryOpts) => {
     },
     onDone: opts.onDone,
     onError: opts.onError,
+  })
+}
+
+export const queryStream = (clientOpts: ApiClientOpts) => (opts: QueryStreamOpts) => {
+  const url = clientOpts.Endpoints.EventService.BaseUrl + clientOpts.Endpoints.EventService.Query
+  const { host, port, path } = uri.parse(url)
+
+  // Request options
+  const requestOptions = {
+    hostname: host,
+    port: port,
+    path: path,
+    method: 'POST',
+    headers: CONSTANTS.CONTENT_TYPE_JSON_HEADER,
+  }
+
+  const body = JSON.stringify(
+    _mkRequestObject(opts.subscriptions, opts.ordering, opts.upperBound, opts.lowerBound),
+  )
+
+  return new Promise<EventStream>((res, rej) => {
+    const req = http.request(requestOptions, msg => {
+      if (msg.statusCode !== 200) {
+        rej(new Error(`server responded with code ${msg.statusCode}`))
+        req.destroy()
+        return
+      }
+
+      res(Object.assign(streamToEvents(msg), { cancel: () => msg.destroy() }))
+    })
+
+    req.on('error', rej)
+    req.on('close', rej)
+
+    req.write(body)
+    req.end()
   })
 }

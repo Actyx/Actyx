@@ -4,7 +4,7 @@ title: ax settings unset
 
 ## Remove settings from a node
 
-```
+```text
 USAGE:
     ax settings unset [FLAGS] <SCOPE> <NODE>
 
@@ -31,7 +31,7 @@ Nodes will only unset settings for the `com.actyx.os` scope if all apps on the n
 
 Please see the following usage examples for the `ax settings unset` command:
 
-```
+```text
 # Unset the settings for the node with settings scope com.actyx.os at 10.2.3.23
 ax settings unset --local com.actyx.os 10.2.3.23
 

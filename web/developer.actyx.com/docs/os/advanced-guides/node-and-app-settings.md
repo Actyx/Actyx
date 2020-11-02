@@ -155,7 +155,7 @@ services:
 
 Now we need to set these settings (defined in `node-settings.yml`) on the node (which, in this example, is reachable at 10.2.3.23) using the Actyx CLI's `ax settings set` command:
 
-```
+```text
 ax settings set --local com.actyx.os @node-settings.yml 10.2.3.23
             ^            ^           ^
             | set        |           | read from the given file
@@ -167,7 +167,7 @@ ax settings set --local com.actyx.os @node-settings.yml 10.2.3.23
 
 If we wanted to find out if there are any top-level settings scopes other than `com.actyx.os`, the pre-defined scope at which you configure the node itself, we could use the Actyx CLI's `ax settings scopes` command:
 
-```
+```text
 ax settings scopes --local 10.2.3.23
 com.actyx.os
 ```
@@ -176,7 +176,7 @@ com.actyx.os
 
 What if you want to change a single one of the settings? You could, of course, edit the file and run through the same process again. The Actyx CLI offers a much simpler way of doing this though. Check out how we could, for example, just change the ActyxOS [_Event Service_](../api/event-service.md) topic:
 
-```
+```text
 ax settings set --local com.actyx.os/services/eventService/topic "New Topic" 10.2.3.23
                           ^           ^                            ^
                           |           |                            | value to set the setting to
@@ -318,7 +318,7 @@ Now that we have gone through how you, as an app developer, can define what peop
 ActyxOS validates any settings before applying them. It does so by using the node settings schema as well as the settings schema defined by each app's developer. This ensures only valid settings are ever set.
 :::
 
-```bash
+```text
 # Create a yml (or JSON) file containing the settings
 echo "
 timeUnit: seconds
@@ -332,6 +332,6 @@ ax settings set --local com.example.app1 @app-settings.yml 10.2.3.23
 
 And similarily you can also use mode advanced scopes to selectively set settings within the app's settings tree. Consider for example wanting to change only the background color. You could do so using the following command
 
-```
+```text
 ax settings set --local com.example.app1/backgroundColor blue 10.2.3.23
 ```

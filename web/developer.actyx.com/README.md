@@ -176,6 +176,7 @@ Please check the existing sections and links in `/sidebars.js` for examples.
 ### React Components
 
 To extend the capabilities of docusaurus, there are also a couple of react components to choose from when building pages. The components are:
+
 - `SectionHero.tsx`
 This element has an optional button (`showButton={false}` prevents displaying the button)
 - `TwoElementRow.tsx`
@@ -246,3 +247,12 @@ For a better linter experience when typing, please use this vscode extension
 ```bash
 code --install-extension DavidAnson.vscode-markdownlint
 ```
+
+You can disable some rules using:
+
+<!-- markdownlint-disable MD037 -->
+Some probelatic text ([Lamport time](https://en.wikipedia.org/wiki/Lamport_timestamp))
+<!-- markdownlint-enable MD037 -->
+
+More information about markdownlint configuration can be found here:
+<https://github.com/DavidAnson/markdownlint#configuration>

@@ -93,6 +93,19 @@ export const EventDraft = {
 }
 
 /**
+ * A stream of events that can be consumed with a `for-await-loop` and that can
+ * also be cancelled externally. The second part is needed when cancellation may
+ * occur during the `await` phase of the loop, in which case calling `cancel` is
+ * the only way to correctly release all stream resources.
+ */
+export interface EventStream extends AsyncIterable<Event> {
+  /**
+   * Cancel the stream and release all related resources.
+   */
+  cancel: () => void
+}
+
+/**
  * The API client is configurable. This interface defines the properties it
  * requires. In most cases you will not need to configure anything. Refer to
  * [[DefaultClientOpts]] for information about the default client options.
@@ -193,7 +206,7 @@ export type OnResult<T> = (result: T) => void
  * to the individual properties for more information about what each of them
  * do.
  */
-export interface SubscribeOpts {
+export type SubscribeOpts = {
   /**
    * This property defines the stream subscriptions to be made as part of this
    * subscription. You can subscribe to not only one ActyxOS event stream, but
@@ -233,11 +246,13 @@ export interface SubscribeOpts {
    *
    */
   subscriptions: Subscription | Subscription[]
+
   /**
    * This is a callback that will be called for each event returned by the
    * subscription.
    */
   onEvent: OnEvent
+
   /**
    * This is a callback that will be called after the subscription has ended.
    * Since subscriptions don't naturally end, this only happens if the
@@ -245,6 +260,7 @@ export interface SubscribeOpts {
    * [[EventServiceClient.subscribe]]).
    */
   onDone?: OnDone
+
   /**
    * This is a callback that will be called if an error occurs during the
    * subscription.
@@ -252,6 +268,7 @@ export interface SubscribeOpts {
    * _Note that a subscription is immediately destroyed if an error occurs._
    */
   onError?: OnError
+
   /**
    * You can provide an [[OffsetMap]] specifying the lower bound of your
    * subscription. Please refer to the [ActyxOS Event Service documentation](
@@ -261,11 +278,13 @@ export interface SubscribeOpts {
   lowerBound?: OffsetMap
 }
 
+export type SubscribeStreamOpts = Omit<SubscribeOpts, 'onEvent' | 'onDone' | 'onError'>
+
 /**
  * Configuration of a query to the ActyxOS Event Service. Please refer to the
  * individual properties for more information about what each of them do.
  */
-export interface QueryOpts {
+export type QueryOpts = {
   /**
    * You can provide an [[OffsetMap]] specifying the lower bound of your query.
    * Please refer to the [ActyxOS Event Service documentation](
@@ -331,6 +350,7 @@ export interface QueryOpts {
    * for more details.
    */
   ordering: Ordering
+
   /**
    * This is a callback that will be called for each event returned by the
    * query.
@@ -351,13 +371,19 @@ export interface QueryOpts {
   onError?: OnError
 }
 
+export type QueryStreamOpts = Omit<QueryOpts, 'onEvent' | 'onDone' | 'onError'>
+
 /**
  * Configuration of a publishing request to the ActyxOS Event Service. Please
  * refer to the individual properties for more information about what each of
  * them do.
  */
-export interface PublishOpts {
+export type PublishOpts = {
+  /**
+   * The event drafts to be published (and thus turned into events).
+   */
   eventDrafts: EventDraft | EventDraft[]
+
   /**
    * This is a callback that will be called after the event(s) have been
    * successfully published.
@@ -372,11 +398,18 @@ export interface PublishOpts {
 }
 
 /**
+ * Configuration of a publishing request to the ActyxOS Event Service. Please
+ * refer to the individual properties for more information about what each of
+ * them do.
+ */
+export type PublishPromiseOpts = Omit<PublishOpts, 'onDone' | 'onError'>
+
+/**
  * Configuration of a request for offsets to the ActyxOS Event Service. Please
  * refer to the individual properties for more information about what each of
  * them do.
  */
-export interface OffsetsOpts {
+export type OffsetsOpts = {
   /**
    * This is a callback that will be called with the offsets once they have been
    * received from the Event Service.
@@ -398,53 +431,51 @@ export interface OffsetsOpts {
 export interface EventServiceClient {
   /**
    * This function allows you to perform a subscription to the ActyxOS Event
-   * Service. Because subscriptions never end, this function only returns if
-   * the subscription is aborted by you using the returned callback, or if an
-   * error occurs. Please refer to the [[SubscribeOpts]] docs for more details
+   * Service. Please refer to the [[SubscribeOpts]] docs for more details
    * about how to _configure_ your subscription.
-   * 
+   *
    * **Example usage**
-   * 
+   *
    * ```typescript
    * const stopSubscription = client.eventService.subscribe({
    *   // Specify a lower bound of offsets; we will not get events below that
    *   // offset
    *   lowerBound: offsets,
-   * 
+   *
    *   // Define a subscription to all events in all event streams
    *   subscriptions: Subscription.everything(),
-   * 
+   *
    *   // Provide a callback that will be called for every event that is
    *   // returned by the subscription
    *   onEvent: event => {
    *     console.log('Event:')
    *     console.log(JSON.stringify(event, null, 2))
    *   },
-   * 
+   *
    *   // This callback will be called if you manually abort the subscription
    *   // using the function returned by this function
    *   onDone: () => {
    *     console.log(`Subscription done!`)
    *   },
-   * 
+   *
    *   // This callback will be called if any error occurs during the execution
    *   // of the subscription
    *   onError: error => {
    *     console.error(`error during subscription: ${error}`)
    *   },
-     })
+   * })
    * ```
-   * 
+   *
    * If you want to stop the subscription at some point, you could do so by
    * using the function returned by this function:
-   * 
+   *
    * ```typescript
    * const stopSubscription = client.eventService.subscribe(opts)
-   * 
+   *
    * // Later
    * stopSubscription()
    * ```
-   * 
+   *
    * @param opts Options for the subscription (see [[SubscribeOpts]]).
    * @returns    Callback for aborting the subscription. Calling the returned
    *             function will stop the subscription. If you have provided an
@@ -452,6 +483,53 @@ export interface EventServiceClient {
    *             when the subscription ends.
    */
   subscribe: (opts: SubscribeOpts) => () => void
+
+  /**
+   * This function allows you to perform a subscription to the ActyxOS Event
+   * Service. Please refer to the [[SubscribeStreamOpts]] docs for more details
+   * about how to _configure_ your subscription.
+   *
+   * **Example usage**
+   *
+   * ```typescript
+   * const subscription = await client.eventService.subscribeStream({
+   *   // Specify a lower bound of offsets; we will not get events below that
+   *   // offset
+   *   lowerBound: offsets,
+   *
+   *   // Define a subscription to all events in all event streams
+   *   subscriptions: Subscription.everything(),
+   * })
+   *
+   * for await (const event of subscription) {
+   *   console.log('Event:')
+   *   console.log(JSON.stringify(event, null, 2))
+   *   // in case you don’t need further events:
+   *   if (isDone(event)) {
+   *     break
+   *     // this will also terminate the subscription and release resources
+   *   }
+   * }
+   * ```
+   *
+   * If you want to stop the subscription based on an external event, you can do so by
+   * using the `.cancel()` method of the returned subscription:
+   *
+   * ```typescript
+   * const subscription = await client.eventService.subscribeStream(opts)
+   *
+   * // Later
+   * subscription.cancel()
+   * ```
+   *
+   * This is not needed when using `for await (...)` and breaking or finishing the loop,
+   * in which case the loop itself will handle stream cancellation.
+   *
+   * @param opts Options for the subscription (see [[SubscribeStreamOpts]]).
+   * @returns    An async iterable that also contains a callback for terminating the
+   *             stream if you need to do that unrelated to the for-await-loop.
+   */
+  subscribeStream: (opts: SubscribeStreamOpts) => Promise<EventStream>
 
   /**
    * This function allows you to query the ActyxOS Event Service. As opposed to
@@ -498,6 +576,59 @@ export interface EventServiceClient {
   query: (opts: QueryOpts) => void
 
   /**
+   * This function allows you to query the ActyxOS Event Service. As opposed to
+   * subscriptions, a query will always end. Please refer to the [[QueryOpts]]
+   * docs for more details about how to _configure_ your query.
+   *
+   * **Example usage**
+   *
+   * ```typescript
+   * const subscription = await client.eventService.queryStream({
+   *   // Specify a lower bound of offsets; we will not get events below that
+   *   // offset
+   *   lowerBound: offsets,
+   *
+   *   // Define an upper bound for the query
+   *   upperBound: toOffsets,
+   *
+   *   // Order the events using their lamport timestamp
+   *   ordering: Ordering.Lamport,
+   *
+   *   // Define a subscription to all events in all event streams
+   *   subscriptions: Subscription.everything(),
+   * })
+   *
+   * for await (const event of subscription) {
+   *   console.log('Event:')
+   *   console.log(JSON.stringify(event, null, 2))
+   *   // in case you don’t need further events:
+   *   if (isDone(event)) {
+   *     break
+   *     // this will also terminate the subscription and release resources
+   *   }
+   * }
+   * ```
+   *
+   * If you want to stop the subscription based on an external event, you can do so by
+   * using the `.cancel()` method of the returned subscription:
+   *
+   * ```typescript
+   * const subscription = await client.eventService.queryStream(opts)
+   *
+   * // Later
+   * subscription.cancel()
+   * ```
+   *
+   * This is not needed when using `for await (...)` and breaking or finishing the loop,
+   * in which case the loop itself will handle stream cancellation.
+   *
+   * @param opts Options for the query (see [[QueryStreamOpts]]).
+   * @returns    An async iterable that also contains a callback for terminating the
+   *             stream if you need to do that unrelated to the for-await-loop.
+   */
+  queryStream: (opts: QueryStreamOpts) => Promise<EventStream>
+
+  /**
    * This function allows you to publish events using the ActyxOS Event Service.
    * Please refer to the [[PublishOpts]] docs for more details about how to
    * _configure_ your call to this function.
@@ -529,6 +660,24 @@ export interface EventServiceClient {
   publish: (opts: PublishOpts) => void
 
   /**
+   * This function allows you to publish events using the ActyxOS Event Service.
+   * Please refer to the [[PublishOpts]] docs for more details about how to
+   * _configure_ your call to this function.
+   *
+   * **Example usage**
+   *
+   * ```typescript
+   * await client.eventService.publish({
+   *   // Pass in one or more event drafts that you want to publish
+   *   eventDrafts: EventDraft.make('testSemantics', 'testName', { foo: 'bar' }),
+   * })
+   * ```
+   *
+   * @param opts Options for the publish (see [[PublishOpts]]).
+   */
+  publishPromise: (opts: PublishPromiseOpts) => Promise<void>
+
+  /**
    * This function allows you to get all known offsets from the ActyxOS Event
    * Service. Please refer to the [[OffsetsOpts]] docs for more details about how
    * to _configure_ your call to this function.
@@ -554,6 +703,22 @@ export interface EventServiceClient {
    * @param opts Options for the publish (see [[PublishOpts]]).
    */
   offsets: (opts: OffsetsOpts) => void
+
+  /**
+   * This function allows you to get all known offsets from the ActyxOS Event
+   * Service. Please refer to the [[OffsetsOpts]] docs for more details about how
+   * to _configure_ your call to this function.
+   *
+   * **Example usage**
+   *
+   * ```typescript
+   * const offsets = await client.eventService.offsets()
+   * // now use them e.g. for a .queryStream() as upperBound
+   * ```
+   *
+   * @returns A promise that will be fulfilled with the currently known offsets.
+   */
+  offsetsPromise: () => Promise<OffsetMap>
 }
 
 export enum LogSeverity {
@@ -588,7 +753,7 @@ export enum LogSeverity {
  * }
  * ```
  */
-export interface LogEntryDraft {
+export type LogEntryDraft = {
   /**
    * Timestamp of the log entry.
    *
@@ -636,7 +801,7 @@ export interface LogEntryDraft {
  * Service. Please refer to the individual properties for more information
  * about what each of them do.
  */
-export interface LogOpts {
+export type LogOpts = {
   /**
    * This property defines the draft log entry you want to post to the Console
    * Service. The log entry has a number of required and a number of optional
@@ -707,7 +872,7 @@ export interface SimpleLogger {
  * callback that will be called whenever an error occurs whilst trying to post
  * a log entry.
  */
-export interface SimpleLoggerOpts {
+export type SimpleLoggerOpts = {
   producerName: string
   producerVersion: string
   logName: string

@@ -4,7 +4,7 @@ title: ax swarms keygen
 
 ## Generate a new ActyxOS swarm key
 
-```
+```text
 USAGE:
     ax swarms keygen [FLAGS] [OPTIONS]
 
@@ -21,7 +21,7 @@ OPTIONS:
 
 Please see the following usage examples for the `ax swarms keygen` command:
 
-```
+```text
 # Generate a new swarm key and write it to stdout
 ax swarms keygen
 

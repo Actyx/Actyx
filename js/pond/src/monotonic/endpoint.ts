@@ -145,11 +145,12 @@ export const eventsMonotonic = (
         PersistedEventsSortOrders.EventKey,
         undefined, // Horizon handling to-be-implemented
       )
-      // Past events are loaded all in one chunk, this is consistent with FES behavior
+      // Past events are loaded all in one chunk -- FIXME.
       .toArray()
 
     return persisted.concatMap(chunks => {
-      const events = chunks.flat()
+      // flatten
+      const events = new Array<Event>().concat(...chunks)
 
       const latest = events.length === 0 ? defaultLatest : events[events.length - 1]
 

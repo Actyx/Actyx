@@ -88,7 +88,7 @@ const Headline = styled.div`
 
 const Subheadline = styled.div`
   font-family: "system-ui", "-apple-system", "Helvetica", sans-serif;
-  font-size: 14px;
+  font-size: ${defaults.fontsizes.body};
   color: #4e566d;
   margin-bottom: 20px;
 `;
@@ -98,7 +98,7 @@ const Link = styled.div<{
 }>`
   display: ${(p) => (p.showLinks ? "block" : "none")};
   font-family: "system-ui", "-apple-system", "Helvetica", sans-serif;
-  font-size: 14px;
+  font-size: ${defaults.fontsizes.body};
   font-weight: 500;
   color: #1998ff;
   text-decoration: none;

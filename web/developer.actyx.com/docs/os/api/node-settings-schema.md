@@ -33,6 +33,6 @@ services:
 
 If this were stored in a file named `settings.yml`, you could now use the [Actyx CLI](/docs/cli/getting-started) to set these setting as follows:
 
-```
+```text
 ax settings set --local com.actyx.os @settings.yml 10.2.3.23
 ```
