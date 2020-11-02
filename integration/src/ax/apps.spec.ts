@@ -31,7 +31,7 @@ describe('ax apps', () => {
     })
 
     test('return `OK` and validate an app in the specified directory with default manifest', async () => {
-      // TODO add control for cwd tp Apps.Validate so I can test properly
+      // TODO add control for cwd tp Apps.Validate so I can test properly current directory behaviour
       const manifestPath = quickstart.dirSampleWebviewApp
       const manifestDefault = 'temp/quickstart/sample-webview-app'
       const [response] = await runOnEach([{}], false, (node) => node.ax.Apps.Validate(manifestPath))
