@@ -201,7 +201,7 @@ image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 
 # list all os-arch and binary names
 osArch = linux-aarch64 linux-x86_64 linux-armv7 linux-arm windows-x86_64
-binaries = ax ax.exe actyxos-linux win.exe
+binaries = ax ax.exe actyxos-linux actyxos.exe
 
 # compute list of all OSs (e.g. linux, windows) and rust targets (looking into the target-* vars)
 os = $(sort $(foreach oa,$(osArch),$(word 1,$(subst -, ,$(oa)))))
@@ -239,6 +239,8 @@ targetPatterns = $(foreach t,$(targets),rt-master/target/$(t)/release/%)
 
 # add extra options to disable default features for the windows build. This requires specifying a manifest path.
 rt-master/target/x86_64-pc-windows-gnu/release/ax.exe: CARGO_EXTRA_OPTIONS=--no-default-features --manifest-path actyx-cli/Cargo.toml
+rt-master/target/x86_64-pc-windows-gnu/release/actyxos.exe: CARGO_EXTRA_OPTIONS=--no-default-features --manifest-path ax-os-node-win/Cargo.toml
+rt-master/target/x86_64-pc-windows-gnu/release/win.exe: CARGO_EXTRA_OPTIONS=--no-default-features --manifest-path ax-os-node/Cargo.toml
 
 # Set target-specific variables TARGET and OS by inspecting the target $@:
 #   - TARGET is the third path element
