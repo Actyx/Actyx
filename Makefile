@@ -8,7 +8,7 @@ CARGO_TEST_JOBS := 4
 CARGO_BUILD_JOBS := 8
 
 all: $(patsubst %,dist/bin/%,$(all-LINUX) $(all-WINDOWS) $(all-ANDROID)) \
-	dist/bin/win64/installer \
+	dist/bin/windows-x86_64/installer \
 	dist/js/pond \
 	dist/js/os-sdk
 
@@ -307,9 +307,9 @@ dist/bin/actyxos.apk: jvm/os-android/app/build/outputs/apk/release/app-release.a
 	mkdir -p $(dir $@)
 	cp $< $@
 
-misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/win64/ax.exe
+misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/windows-x86_64/ax.exe
 	mkdir -p misc/actyxos-node-manager/bin/win32
-	cp dist/bin/win64/ax.exe misc/actyxos-node-manager/bin/win32/
+	cp dist/bin/windows-x86_64/ax.exe misc/actyxos-node-manager/bin/win32/
 	docker run \
 	  -u $(shell id -u) \
 	  -v `pwd`:/src \
@@ -317,22 +317,22 @@ misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/win64/ax.
 	  --rm actyx/util:windowsinstallercreator-x64-latest \
 	  bash -c "npm install && npm run package -- --platform win32 --arch x64"
 
-dist/bin/win64/actyxos-node-manager.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64
+dist/bin/windows-x86_64/actyxos-node-manager.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64
 	mkdir -p $(dir $@)
 	cp $</actyxos-node-manager.exe $@
 
-dist/bin/win64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/win64/ax.exe dist/bin/win64/actyxos.exe
+dist/bin/windows-x86_64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyxos.exe
 	mkdir -p $@
 	cp $</actyxos-node-manager.exe misc/actyxos-win-installer
-	cp dist/bin/win64/actyxos.exe misc/actyxos-win-installer
-	cp dist/bin/win64/ax.exe misc/actyxos-win-installer
+	cp dist/bin/windows-x86_64/actyxos.exe misc/actyxos-win-installer
+	cp dist/bin/windows-x86_64/ax.exe misc/actyxos-win-installer
 	cp -r misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 misc/actyxos-win-installer/node-manager
 	# ls -alh .
 	docker run \
 	  -u $(shell id -u) \
 	  -v `pwd`:/src \
 	  -w /src/misc/actyxos-win-installer \
-	  -e DIST_DIR='/src/dist/bin/win64/installer' \
+	  -e DIST_DIR='/src/dist/bin/windows-x86_64/installer' \
 	  -e SRC_DIR='/src/misc/actyxos-win-installer' \
 	  -e PRODUCT_VERSION=1.0.1-SNAPSHOT \
 	  -e PRODUCT_NAME=ActyxOS \
