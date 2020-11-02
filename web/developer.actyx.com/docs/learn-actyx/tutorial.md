@@ -11,6 +11,8 @@ import {DownloadLink} from '../../src/components/DownloadLink.tsx'
 
 <Strap strap={"Tutorial"} />
 
+<!-- markdownlint-disable MD025 -->
+
 # Building a chat app with Actyx Pond
 
 In this tutorial, we are going to build a small chat app on top of the Actyx Platform. **You might be tempted to skip it because you are not building chats in real-life — give it a chance.** The techniques that you will learn in this tutorial are fundamental to building any app on the platform, and mastering them will give you a good understanding of its capabilities.
@@ -426,3 +428,5 @@ You can download the complete code for this tutorial from GitHub.
 :::note Join our Discord chat
 Feel free to join our [Actyx Developer Chat](https://discord.gg/262yJhc) on Discord. We would love to hear about what you want to build on the Actyx platform.
 :::
+
+<!-- markdownlint-disable MD025 -->

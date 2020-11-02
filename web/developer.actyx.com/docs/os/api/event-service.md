@@ -17,6 +17,8 @@ It is reachable at the following base URI: `http://localhost:4454/api/v1/events`
 JSON used in the examples below is pretty-printed. This is only to make it more readable here. In reality, the Event Service API does not return pretty-printed JSON.
 :::
 
+<!-- markdownlint-disable MD024 -->
+
 ## Get information about known offsets
 
 You can get information from the Event Service about known offsets, i.e. what the event service believes to be the last offset for each stream.
@@ -625,3 +627,5 @@ public class Application
     }
 }
 ```
+
+<!-- markdownlint-enable MD024 -->
