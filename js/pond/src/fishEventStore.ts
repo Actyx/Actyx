@@ -39,7 +39,7 @@ import {
   StateWithProvenance,
   TaggedIndex,
 } from './types'
-import { lookup, runStats, takeWhileInclusive } from './util'
+import { runStats, takeWhileInclusive } from './util'
 import { getInsertionIndex } from './util/binarySearch'
 
 /**
@@ -309,7 +309,7 @@ const mkShatterAsap = (
   psnMapBuilder: OffsetMapBuilder,
   latestLocalSnap: LocalSnapshot<{}>,
 ): ShatterAsap => {
-  const knownOffset = events.reduce((psnMap, evt) => includeEvent(psnMap, evt), psnMapBuilder)
+  const knownOffset = events.reduce((psnMap, evt) => OffsetMap.update(psnMap, evt), psnMapBuilder)
 
   return {
     rehydrateUpTo: knownOffset,
@@ -325,7 +325,7 @@ const updateShatterAsap = (firstEvent: Event, newEvents: Events) => (
     ? firstEvent
     : s.earliestKnownShatteringEvent,
 
-  rehydrateUpTo: newEvents.reduce((psnMap, evt) => includeEvent(psnMap, evt), s.rehydrateUpTo),
+  rehydrateUpTo: newEvents.reduce((psnMap, evt) => OffsetMap.update(psnMap, evt), s.rehydrateUpTo),
 
   snapshotToShatter: s.snapshotToShatter,
 })
@@ -705,7 +705,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
       while (i <= toStore.i) {
         ev = this.events[i]
         state = this.fish.onEvent(state, ev)
-        psnMap = includeEvent(psnMap, ev)
+        psnMap = OffsetMap.update(psnMap, ev)
 
         i += 1
       }
@@ -736,7 +736,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
     while (i < this.events.length) {
       ev = this.events[i]
       state = this.fish.onEvent(state, ev)
-      psnMap = includeEvent(psnMap, ev)
+      psnMap = OffsetMap.update(psnMap, ev)
       i += 1
     }
 
@@ -979,22 +979,6 @@ const findLastIndex = <T>(es: ReadonlyArray<T>, p: (e: T) => boolean): number =>
     }
   }
   return -1
-}
-
-/**
- * Updates a given psn map with a new event.
- * Note that the events need to be applied in event order
- *
- * @param psnMap the psn map to update. WILL BE MODIFIED IN PLACE
- * @param ev the event to include
- */
-const includeEvent = (psnMap: OffsetMapBuilder, ev: Event): OffsetMapBuilder => {
-  const { psn, sourceId } = ev
-  const current = lookup(psnMap, sourceId)
-  if (current === undefined || current < psn) {
-    psnMap[sourceId] = psn
-  }
-  return psnMap
 }
 
 export const getLatestLocalSnapshot = <S>(

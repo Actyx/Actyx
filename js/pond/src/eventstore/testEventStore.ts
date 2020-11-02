@@ -203,8 +203,8 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
     }))
 
     persist(newEventsCompat)
-    live.next(newEventsCompat)
     present.next(offsets)
+    live.next(newEventsCompat)
   }
 
   const toIo = (o: OffsetMap): OffsetMapWithDefault => ({ psns: o, default: 'max' })
