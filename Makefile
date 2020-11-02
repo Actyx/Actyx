@@ -291,7 +291,14 @@ $(CARGO_HOME)/%:
 	mkdir -p $@
 
 jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnodeffi
-	cd jvm/os-android && ./gradlew ktlintCheck build assembleRelease androidGitVersion
+	jvm/os-android/bin/get-keystore.sh
+	docker run \
+	  -u $(shell id -u) \
+	  -v `pwd`:/src \
+	  -w /src/jvm/os-android \
+	  --rm \
+	  actyx/util:buildrs-x64-latest \
+      ./gradlew ktlintCheck build assembleRelease androidGitVersion
 
 dist/bin/actyxos.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
 	mkdir -p $(dir $@)
