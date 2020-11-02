@@ -8,7 +8,7 @@ jobs:
       clean: all
     pool:
       name: Native
-    container: buildnode_x64_latest
+    container: node:12.19-buster
     steps:
       - script: |
           set -e
