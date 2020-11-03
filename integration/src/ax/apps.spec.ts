@@ -1,7 +1,6 @@
 import { runOnAll, runOnEach } from '../runner/hosts'
 import { stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../stubs'
-import demoMachineKit from './setup-projects/demo-machine-kit'
-import quickstart from './setup-projects/quickstart'
+import { demoMachineKit, quickstart } from './setup-projects'
 import { isCodeInvalidInput, isCodeNodeUnreachable, isCodeOk } from './util'
 
 describe('ax apps', () => {
