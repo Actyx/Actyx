@@ -183,7 +183,7 @@ export const eventsMonotonic = (
     subscriptions: SubscriptionSet,
     present: OffsetMap,
   ) => (snap: LocalSnapshot<string>) => {
-    const earliestNewEvent = eventStore
+    const earliestNewEvents = eventStore
       .persistedEvents(
         { default: 'min', psns: snap.psnMap },
         { default: 'min', psns: present },
@@ -194,9 +194,8 @@ export const eventsMonotonic = (
       .defaultIfEmpty([])
       .first()
 
-    return earliestNewEvent.concatMap(earliest => {
-      const snapshotOutdated =
-        earliest.length > 0 && EventKey.ord.compare(earliest[0], snap.eventKey) < 0
+    return earliestNewEvents.concatMap(earliest => {
+      const snapshotOutdated = earliest.length > 0 && eventKeyGreater(snap.eventKey, earliest[0])
 
       if (snapshotOutdated) {
         // Invalidate this snapshot and try again.
