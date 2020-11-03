@@ -112,7 +112,6 @@ export const stateWithProvenanceReducer = <S>(
           ? queue.getSnapsToStore(snapshotEligible(events[events.length - 1].timestamp))
           : []
 
-      console.log('XXXX', snapshots.length)
       return {
         snapshots,
         // This is for all downstream consumers, so we clone.
