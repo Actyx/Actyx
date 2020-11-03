@@ -154,7 +154,7 @@ const getPeers = async (node: ActyxOSNode): Promise<number> => {
 const setup = async (_config: Record<string, unknown>): Promise<void> => {
   process.stdout.write('\n')
 
-  // install sample apps locally for t esting
+  // install sample apps locally for testing
   try {
     const quickstartStatusMessage = await quickstart.setup()
     console.log(quickstartStatusMessage)
