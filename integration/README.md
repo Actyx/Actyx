@@ -11,7 +11,7 @@ Then you can `npm i` and `npm test` in this project. If you forgot to first buil
 
 ## Scripts
 
-- use `npm run clean` to remove the `temp` folder where test projects are cloned and builded
+- use `npm run clean:temp` to remove the `temp` folder where test projects are cloned and builded
 
 ## Caveats
 

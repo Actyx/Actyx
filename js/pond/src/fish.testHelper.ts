@@ -10,6 +10,7 @@ import { Fish, FishId, TestEvent } from '.'
 import { EventStore } from './eventstore'
 import { Event, Events, OffsetMap } from './eventstore/types'
 import { FishJar } from './fishJar'
+import { observeMonotonic } from './monotonic'
 import { mkNoopPondStateTracker } from './pond-state'
 import { SnapshotStore } from './snapshotStore'
 import { minSnapshotAge } from './store/snapshotScheduler'
@@ -154,6 +155,7 @@ export const snapshotTestSetup = async <S>(
   fish: Fish<S, NumberFishEvent>,
   storedEvents?: ReadonlyArray<TestEvent>,
   storedSnapshots?: ReadonlyArray<SnapshotData>,
+  useSubscribeMonotonicEndpoint: boolean = false,
 ) => {
   const sourceId = SourceId.of('LOCAL-test-source')
   const eventStore = EventStore.test(sourceId)
@@ -178,7 +180,9 @@ export const snapshotTestSetup = async <S>(
     .concat(Observable.of(undefined))
     .toPromise()
 
-  const hydrate = FishJar.hydrateV2(eventStore, snapshotStore, mkNoopPondStateTracker())
+  const hydrate = useSubscribeMonotonicEndpoint
+    ? observeMonotonic(eventStore, snapshotStore, mkNoopPondStateTracker())
+    : FishJar.hydrateV2(eventStore, snapshotStore, mkNoopPondStateTracker())
 
   const observe = hydrate(
     toSubscriptionSet(fish.where),

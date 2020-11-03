@@ -7,7 +7,6 @@
     "aws-sdk": "^2.759.0",
     "execa": "^4.0.3",
     "fp-ts": "^1.19.5",
-    "fs-extra": "^9.0.1",
     "io-ts": "^1.10.4",
     "io-ts-types": "^0.4.1",
     "node-fetch": "^2.6.1",
@@ -16,7 +15,6 @@
     "ssh2": "^0.8.9"
   },
   "devDependencies": {
-    "@types/fs-extra": "^9.0.2",
     "@types/jest": "^26.0.14",
     "@types/node": "^14.11.2",
     "@types/node-fetch": "^2.5.7",
@@ -40,11 +38,12 @@
   "name": "actyxos-integration",
   "scripts": {
     "tsc": "tsc",
-    "build": "rimraf dist && npm run tsc",
+    "build": "rimraf dist && tsc",
     "test": "npm run build && TZ=UTC jest",
     "lint:fix": "tsc & eslint './src/**/*.{js,ts,tsx}' --fix & prettier './src/**/*.{js,ts,tsx}' --write",
     "lint": "tsc & eslint './src/**/*.{js,ts,tsx}' & prettier './src/**/*.{js,ts,tsx}' --check",
-    "clean": "rimraf temp"
+    "cleanup": "ts-node --project ./tsconfig.json ./src/cleanup.ts",
+    "clean:temp": "rimrag temp"
   },
   "version": "1.0.0"
 }
