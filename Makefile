@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
 all-LINUX := $(foreach arch,x86_64 aarch64 armv7 arm,linux-$(arch)/actyxos-linux)
-all-WINDOWS := windows-x86_64/actyxos.exe
+all-WINDOWS := windows-x86_64/actyxos.exe windows-x86_64/ax.exe
 all-ANDROID := actyxos.apk
 
 CARGO_TEST_JOBS := 4
