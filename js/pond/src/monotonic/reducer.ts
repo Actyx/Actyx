@@ -1,12 +1,14 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { greaterThan } from 'fp-ts/lib/Ord'
 import { Event, Events, OffsetMap } from '../eventstore/types'
-import { EventKey, LocalSnapshot, StateWithProvenance } from '../types'
+import { SnapshotScheduler } from '../store/snapshotScheduler'
+import { EventKey, LocalSnapshot, StateWithProvenance, Timestamp } from '../types'
 
-export type PendingSnapshot = {
+export type PendingSnapshot = Readonly<{
   snap: LocalSnapshot<string>
   tag: string
-}
+  timestamp: Timestamp
+}>
 
 export type Reducer<S> = {
   appendEvents: (
@@ -43,7 +45,9 @@ export const stateWithProvenanceReducer = <S>(
 
   let queue = snapshotQueue()
 
-  const snapshotEligible = (_latest: EventKey) => (_snapBase: EventKey) => false
+  const snapshotScheduler = SnapshotScheduler.create(10)
+  const snapshotEligible = (latest: Timestamp) => (snapBase: PendingSnapshot) =>
+    snapshotScheduler.isEligibleForStorage(snapBase, { timestamp: latest })
 
   return {
     appendEvents: (events: Events, emit: boolean) => {
@@ -63,8 +67,13 @@ export const stateWithProvenanceReducer = <S>(
         horizon: head.horizon, // TODO: Detect new horizons from events
       }
 
+      const snapshots =
+        events.length > 0
+          ? queue.getSnapsToStore(snapshotEligible(events[events.length - 1].timestamp))
+          : []
+
       return {
-        snapshots: queue.getSnapsToStore(snapshotEligible(eventKey)),
+        snapshots,
         // This is for all downstream consumers, so we clone.
         emit: emit ? [cloneSnap(head)] : [],
       }
@@ -99,10 +108,10 @@ const snapshotQueue = () => {
     }
   }
 
-  const getSnapsToStore = (storeNow: (snapshotKey: EventKey) => boolean): PendingSnapshot[] => {
+  const getSnapsToStore = (storeNow: (snapshot: PendingSnapshot) => boolean): PendingSnapshot[] => {
     const res = []
 
-    while (queue.length > 0 && storeNow(queue[0].snap.eventKey)) {
+    while (queue.length > 0 && storeNow(queue[0])) {
       res.push(queue.shift()!)
     }
 
