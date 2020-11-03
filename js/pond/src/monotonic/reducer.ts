@@ -50,48 +50,15 @@ export const stateWithProvenanceReducer = <S>(
   const snapshotEligible = (latest: Timestamp) => (snapBase: PendingSnapshot) =>
     snapshotScheduler.isEligibleForStorage(snapBase, { timestamp: latest })
 
-  // TODO: Don’t define functions inline. (Fix when upstream is merged.)
-  return {
-    appendEvents: (events: Events, emit: boolean) => {
-      let { state, psnMap, eventKey } = head
+  const appendEvents = (events: Events, emit: boolean) => {
+    let { state, psnMap, eventKey } = head
 
-      // FIXME: Arguments are a bit questionable, but we can’t change the scheduler yet, otherwise the FES-based tests start failing.
-      const statesToStore = snapshotScheduler.getSnapshotLevels(head.cycle + 1, events, 0)
+    // FIXME: Arguments are a bit questionable, but we can’t change the scheduler yet, otherwise the FES-based tests start failing.
+    const statesToStore = snapshotScheduler.getSnapshotLevels(head.cycle + 1, events, 0)
 
-      let i = 0
-      for (const toStore of statesToStore) {
-        while (i <= toStore.i) {
-          const ev = events[i]
-          state = onEvent(state, ev)
-          psnMap = OffsetMap.update(psnMap, ev)
-          eventKey = ev
-
-          i += 1
-        }
-
-        assert(
-          // i has been incremented by 1 at the end of the loop, we actually do expect equality
-          i - 1 === toStore.i,
-          'Expected statesToStore to be in ascending order, with no entries earlier then the latestStored pointer.',
-        )
-
-        const psnMapCopy = { ...psnMap }
-        const stateWithProvenance = {
-          state: JSON.stringify(state),
-          psnMap: psnMapCopy,
-          cycle: head.cycle + i,
-          eventKey,
-          horizon: head.horizon, // TODO: Detect new horizons from events
-        }
-
-        queue.addPending({
-          snap: stateWithProvenance,
-          tag: toStore.tag,
-          timestamp: events[i].timestamp,
-        })
-      }
-
-      while (i < events.length) {
+    let i = 0
+    for (const toStore of statesToStore) {
+      while (i <= toStore.i) {
         const ev = events[i]
         state = onEvent(state, ev)
         psnMap = OffsetMap.update(psnMap, ev)
@@ -100,25 +67,59 @@ export const stateWithProvenanceReducer = <S>(
         i += 1
       }
 
-      head = {
-        state,
-        psnMap,
-        cycle: head.cycle + events.length,
+      assert(
+        // i has been incremented by 1 at the end of the loop, we actually do expect equality
+        i - 1 === toStore.i,
+        'Expected statesToStore to be in ascending order, with no entries earlier then the latestStored pointer.',
+      )
+
+      const psnMapCopy = { ...psnMap }
+      const stateWithProvenance = {
+        state: JSON.stringify(state),
+        psnMap: psnMapCopy,
+        cycle: head.cycle + i,
         eventKey,
         horizon: head.horizon, // TODO: Detect new horizons from events
       }
 
-      const snapshots =
-        events.length > 0
-          ? queue.getSnapsToStore(snapshotEligible(events[events.length - 1].timestamp))
-          : []
+      queue.addPending({
+        snap: stateWithProvenance,
+        tag: toStore.tag,
+        timestamp: events[i].timestamp,
+      })
+    }
 
-      return {
-        snapshots,
-        // This is for all downstream consumers, so we clone.
-        emit: emit ? [cloneSnap(head)] : [],
-      }
-    },
+    while (i < events.length) {
+      const ev = events[i]
+      state = onEvent(state, ev)
+      psnMap = OffsetMap.update(psnMap, ev)
+      eventKey = ev
+
+      i += 1
+    }
+
+    head = {
+      state,
+      psnMap,
+      cycle: head.cycle + events.length,
+      eventKey,
+      horizon: head.horizon, // TODO: Detect new horizons from events
+    }
+
+    const snapshots =
+      events.length > 0
+        ? queue.getSnapsToStore(snapshotEligible(events[events.length - 1].timestamp))
+        : []
+
+    return {
+      snapshots,
+      // This is for all downstream consumers, so we clone.
+      emit: emit ? [cloneSnap(head)] : [],
+    }
+  }
+
+  return {
+    appendEvents,
 
     setState: snap => {
       if (eventKeyGreater(snap.eventKey, head.eventKey)) {
