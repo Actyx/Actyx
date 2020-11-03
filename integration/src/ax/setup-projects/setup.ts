@@ -2,7 +2,7 @@ import demoMachineKit from './demo-machine-kit'
 import quickstart from './quickstart'
 import { canSetupAfterTempDirHasBeenCreated } from './util'
 
-export const setupProjects = async (): Promise<void> => {
+export const setupTestProjects = async (): Promise<void> => {
   try {
     const canSetup = await canSetupAfterTempDirHasBeenCreated('temp')
     if (canSetup) {

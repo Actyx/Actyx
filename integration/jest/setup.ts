@@ -2,7 +2,7 @@
 import { EC2 } from 'aws-sdk'
 import { CLI } from '../src/ax/cli'
 import { SettingsInput } from '../src/ax/exec'
-import { setupProjects } from '../src/ax/setup-projects/setup'
+import { setupTestProjects } from '../src/ax/setup-projects/setup'
 import { createInstance, createKey, terminateInstance } from '../src/runner/aws'
 import { mkNodeLinux } from '../src/runner/linux'
 import { ActyxOSNode, AwsKey } from '../src/runner/types'
@@ -154,7 +154,7 @@ const getPeers = async (node: ActyxOSNode): Promise<number> => {
 const setup = async (_config: Record<string, unknown>): Promise<void> => {
   process.stdout.write('\n')
 
-  setupProjects()
+  setupTestProjects()
 
   const axNodeSetup = (<MyGlobal>global).axNodeSetup
 
