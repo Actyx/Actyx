@@ -1,4 +1,4 @@
-import { mkDir, gitClone, npmInstall, npmRun } from './util'
+import { gitClone, npmInstall, npmRun, TEMP_DIR } from './util'
 
 type DemoMachineKit = () => Readonly<{
   dirDashboard: string
@@ -8,10 +8,10 @@ type DemoMachineKit = () => Readonly<{
 }>
 
 const demoMachineKit: DemoMachineKit = () => {
-  const dirDemoMachineKit = 'temp/DemoMachineKit'
-  const dirDashboard = 'temp/DemoMachineKit/src/dashboard'
-  const dirErpSimulator = 'temp/DemoMachineKit/src/erp-simulator'
-  const dirWagoConnector = 'temp/DemoMachineKit/src/wago-connector'
+  const dirDemoMachineKit = `${TEMP_DIR}/DemoMachineKit`
+  const dirDashboard = `${TEMP_DIR}/DemoMachineKit/src/dashboard`
+  const dirErpSimulator = `${TEMP_DIR}/DemoMachineKit/src/erp-simulator`
+  const dirWagoConnector = `${TEMP_DIR}/DemoMachineKit/src/wago-connector`
 
   const npmRunBuild = (name: string) => npmRun(name)(dirDemoMachineKit)
 
@@ -24,8 +24,6 @@ const demoMachineKit: DemoMachineKit = () => {
       console.log('Setup DemoMachineKit:')
 
       try {
-        await mkDir(dirDemoMachineKit)
-
         await gitClone('https://github.com/Actyx/DemoMachineKit.git', dirDemoMachineKit)
 
         await npmInstall(dirDemoMachineKit)

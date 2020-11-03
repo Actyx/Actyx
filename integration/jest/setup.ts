@@ -2,7 +2,7 @@
 import { EC2 } from 'aws-sdk'
 import { CLI } from '../src/ax/cli'
 import { SettingsInput } from '../src/ax/exec'
-import { demoMachineKit, quickstart } from '../src/ax/setup-projects'
+import { setupProjects } from '../src/ax/setup-projects/setup'
 import { createInstance, createKey, terminateInstance } from '../src/runner/aws'
 import { mkNodeLinux } from '../src/runner/linux'
 import { ActyxOSNode, AwsKey } from '../src/runner/types'
@@ -154,20 +154,7 @@ const getPeers = async (node: ActyxOSNode): Promise<number> => {
 const setup = async (_config: Record<string, unknown>): Promise<void> => {
   process.stdout.write('\n')
 
-  // install sample apps locally for testing
-  try {
-    const quickstartStatusMessage = await quickstart.setup()
-    console.log(quickstartStatusMessage)
-    process.stdout.write('\n')
-
-    const demoMachineKitStatusMessage = await demoMachineKit.setup()
-    console.log(demoMachineKitStatusMessage)
-    process.stdout.write('\n')
-  } catch (err) {
-    console.error(err)
-    process.exitCode = 1
-    process.exit()
-  }
+  setupProjects()
 
   const axNodeSetup = (<MyGlobal>global).axNodeSetup
 

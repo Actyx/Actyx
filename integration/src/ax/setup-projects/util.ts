@@ -1,19 +1,15 @@
 import execa from 'execa'
-import { mkdirs, pathExists, remove } from 'fs-extra'
+import { mkdirs, pathExists } from 'fs-extra'
 
-export const mkDir = async (path: string): Promise<string> => {
-  try {
-    const hasDir = await pathExists(path)
-    if (hasDir) {
-      await remove(path)
-    }
+export const TEMP_DIR = 'temp'
+
+export const canSetupAfterTempDirHasBeenCreated = async (path: string): Promise<boolean> => {
+  const hasTempDir = await pathExists(path)
+  if (!hasTempDir) {
     await mkdirs(path)
-    const message = `dir created ${path}`
-    console.log(message)
-    return Promise.resolve(message)
-  } catch (error) {
-    return Promise.reject(error)
+    return Promise.resolve(true)
   }
+  return Promise.resolve(false)
 }
 
 export const gitClone = (url: string, path: string): execa.ExecaChildProcess<string> => {
