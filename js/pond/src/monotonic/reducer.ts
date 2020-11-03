@@ -4,13 +4,18 @@ import { StateWithProvenance } from '../types'
 export type Reducer<S> = {
   appendEvents: (events: Events) => StateWithProvenance<S>
 
-  setState: (state: StateWithProvenance<S>) => void
+  setState: (state: StateWithProvenance<string>) => void
 }
 
 export const stateWithProvenanceReducer = <S>(
   onEvent: (oldState: S, event: Event) => S,
   initialState: StateWithProvenance<S>,
+  deserializeState?: (jsonState: unknown) => S,
 ): Reducer<S> => {
+  const deserialize = deserializeState
+    ? (s: string): S => deserializeState(JSON.parse(s))
+    : (s: string): S => JSON.parse(s) as S
+
   let swp = initialState
 
   return {
@@ -27,6 +32,10 @@ export const stateWithProvenanceReducer = <S>(
       return swp
     },
 
-    setState: s => (swp = s),
+    setState: s => {
+      const oldState = deserialize(s.state)
+      // Clone the input offsets, since they may not be mutable
+      swp = { psnMap: { ...s.psnMap }, state: oldState }
+    },
   }
 }

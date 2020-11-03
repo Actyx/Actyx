@@ -209,7 +209,12 @@ describe('fish event store + jar local snapshot behavior', () => {
     ]
     const storedSnaps = [mkSnapshot([8, 9, 10], 500)]
 
-    const { applyAndGetState } = await snapshotTestSetup(fishToTest, storedEvents, storedSnaps)
+    const { applyAndGetState } = await snapshotTestSetup(
+      fishToTest,
+      storedEvents,
+      storedSnaps,
+      true,
+    )
 
     const currentEvents: Events = mkEvents([
       {
@@ -235,6 +240,7 @@ describe('fish event store + jar local snapshot behavior', () => {
       fishToTest,
       storedEvents,
       storedSnaps,
+      true,
     )
     // Make sure it did not shatter yet, because the stored events are covered by its psn map.
     expect(await latestSnap()).toMatchObject({
@@ -268,6 +274,7 @@ describe('fish event store + jar local snapshot behavior', () => {
         fishToTest,
         tl.all,
         storedSnaps,
+        true,
       )
       // Assert the snapshot has already been invalidated in the initial hydration.
       expect(await latestSnap()).toEqual(undefined)
