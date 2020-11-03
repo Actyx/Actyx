@@ -50,7 +50,7 @@ describe('ax settings', () => {
         })
     })
 
-    // TODO: enable this test later when we can compare with the latest schema
+    // TODO enable this test later when we can compare with the latest schema
     // https://github.com/Actyx/Cosmos/pull/5446#discussion_r512061598
     test.skip('schema in docs is updated with cli schema', async () => {
       const urlSchema = 'https://developer.actyx.com/schemas/os/node-settings.schema.json'

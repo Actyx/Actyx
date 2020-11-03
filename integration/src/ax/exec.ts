@@ -40,9 +40,10 @@ const rightOrThrow = <A>(e: Either<Errors, A>, obj: unknown): A => {
   return e.value
 }
 
-const exec = async (binary: string, args: string[]) => {
+const exec = async (binary: string, args: string[], cwd?: string) => {
   try {
-    return JSON.parse((await execa(binary, [`-j`].concat(args))).stdout)
+    const option: execa.Options | undefined = cwd ? { cwd } : undefined
+    return JSON.parse((await execa(binary, [`-j`].concat(args), option)).stdout)
   } catch (error) {
     try {
       return JSON.parse(error.stdout)
@@ -105,6 +106,7 @@ type Exec = {
     Stop: (appId: string) => Promise<Response_Apps_Stop>
     Ls: () => Promise<Response_Apps_Ls>
     Validate: (filePath?: string) => Promise<Reponse_Apps_Validate>
+    ValidateCwd: (cwd: string) => Promise<Reponse_Apps_Validate>
   }
   Logs: {
     TailFollow: (
@@ -190,6 +192,10 @@ export const mkExec = (binary: string, addr: string): Exec => ({
     },
     Validate: async (filePath?: string): Promise<Reponse_Apps_Validate> => {
       const response = await exec(binary, [`apps`, `validate`, filePath ?? ''])
+      return rightOrThrow(Reponse_Apps_Validate.decode(response), response)
+    },
+    ValidateCwd: async (cwd: string): Promise<Reponse_Apps_Validate> => {
+      const response = await exec(binary, [`apps`, `validate`], cwd)
       return rightOrThrow(Reponse_Apps_Validate.decode(response), response)
     },
   },

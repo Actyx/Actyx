@@ -32,21 +32,28 @@ describe('ax apps', () => {
     })
 
     test('return `OK` and validate an app in the specified directory with default manifest', async () => {
-      // TODO add control for cwd tp Apps.Validate so I can test properly current directory behaviour
       const manifestPath = quickstart.dirSampleWebviewApp
       const manifestDefault = 'temp/quickstart/sample-webview-app'
       const [response] = await runOnEach([{}], false, (node) => node.ax.Apps.Validate(manifestPath))
       const reponseShape = { code: 'OK', result: [manifestDefault] }
-      expect(isCodeOk(response)).toBe(true)
       expect(response).toMatchObject(reponseShape)
+      expect(isCodeOk(response)).toBe(true)
+    })
+
+    test('return `OK` and validate with default manifest', async () => {
+      const cwdDir = quickstart.dirSampleWebviewApp
+      const [response] = await runOnEach([{}], false, (node) => node.ax.Apps.ValidateCwd(cwdDir))
+      const reponseShape = { code: 'OK', result: ['ax-manifest.yml'] }
+      expect(response).toMatchObject(reponseShape)
+      expect(isCodeOk(response)).toBe(true)
     })
 
     test('return `OK` and validate an app in the specified directory with manifest', async () => {
       const manifestPath = `${quickstart.dirSampleWebviewApp}/ax-manifest.yml`
       const [response] = await runOnEach([{}], false, (node) => node.ax.Apps.Validate(manifestPath))
       const reponseShape = { code: 'OK', result: [manifestPath] }
-      expect(isCodeOk(response)).toBe(true)
       expect(response).toMatchObject(reponseShape)
+      expect(isCodeOk(response)).toBe(true)
     })
 
     test('return multiple `ERR_INVALID_INPUT` if input paths do not exist for multiple apps', async () => {
@@ -70,12 +77,10 @@ describe('ax apps', () => {
       )
       const reponse1Shape = { code: 'OK', result: ['temp/DemoMachineKit/src/dashboard'] }
       const reponse2Shape = { code: 'OK', result: ['temp/DemoMachineKit/src/erp-simulator'] }
-      expect(isCodeOk(response1)).toBe(true)
-      expect(isCodeOk(response2)).toBe(true)
       expect(response1).toMatchObject(reponse1Shape)
       expect(response2).toMatchObject(reponse2Shape)
+      expect(isCodeOk(response1)).toBe(true)
+      expect(isCodeOk(response2)).toBe(true)
     })
-
-    // TODO add vadalite app in current directory with default manifest
   })
 })

@@ -1,4 +1,4 @@
-// TODO: update all type including ERR_INTERNAL_ERROR where reproducible
+// TODO update all type including ERR_INTERNAL_ERROR where reproducible
 import * as io from 'io-ts'
 
 const _OK = io.type({

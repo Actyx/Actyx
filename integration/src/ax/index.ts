@@ -11,7 +11,7 @@ export class CLI {
   public readonly Swarms
 
   constructor(private readonly node: string, binary?: string) {
-    // TODO: get binary from Cosmos build
+    // TODO get binary from Cosmos build
     this.binary = binary || 'ax'
     const exec = mkExec(this.binary, this.node)
     this.Nodes = exec.Nodes
