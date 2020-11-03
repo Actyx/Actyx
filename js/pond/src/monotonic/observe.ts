@@ -114,34 +114,38 @@ export const observeMonotonic = (
   // to a protocal that does NOT terminate and not send time travel messages:
   // Rather, time travel messages are mapped to a restart of the stream.
   // In the end we get an easier to consume protocol.
-  const updates = (from?: OffsetMap): Observable<StateMsg | EventsMsg> =>
-    Observable.from(storeSnapshotsPromise) // Wait for pending snapshot storage requests to finish
+  const updates = (from?: OffsetMap): Observable<StateMsg | EventsMsg> => {
+    const stream = Observable.defer(() =>
+      endpoint(fishId, subscriptionSet, from)
+        .subscribeOn(Scheduler.queue)
+        .concatMap(msg => {
+          if (msg.type === MsgType.timetravel) {
+            const resetMsg = makeResetMsg(msg.trigger)
+            const startFrom = resetMsg.snapshot.psnMap
+
+            // On time travel, reset the state and start a fresh stream
+            return Observable.concat(
+              Observable.of(resetMsg),
+              // Recursive call, can’t be helped
+              updates(OffsetMap.isEmpty(startFrom) ? undefined : startFrom),
+            )
+          }
+
+          return [msg]
+        })
+        .catch(err => {
+          console.log(err) // Improve me
+
+          // Reset the reducer and let the code further below take care of restarting the stream
+          return Observable.of(makeResetMsg(EventKey.zero))
+        }),
+    )
+
+    // Wait for pending snapshot storage requests to finish
+    return Observable.from(storeSnapshotsPromise)
       .first()
-      .concatMap(() =>
-        endpoint(fishId, subscriptionSet, from)
-          .subscribeOn(Scheduler.queue)
-          .concatMap(msg => {
-            if (msg.type === MsgType.timetravel) {
-              const resetMsg = makeResetMsg(msg.trigger)
-              const startFrom = resetMsg.snapshot.psnMap
-
-              // On time travel, reset the state and start a fresh stream
-              return Observable.concat(
-                Observable.of(resetMsg),
-                // Recursive call, can’t be helped
-                updates(OffsetMap.isEmpty(startFrom) ? undefined : startFrom),
-              )
-            }
-
-            return [msg]
-          })
-          .catch(err => {
-            console.log(err) // Improve me
-
-            // Reset the reducer and let the code further below take care of restarting the stream
-            return Observable.of(makeResetMsg(EventKey.zero))
-          }),
-      )
+      .concatMap(() => stream)
+  }
 
   // If the stream of updates terminates without a timetravel message – due to an error or the ws engine –,
   // then we can just restart it. (Tests pending.)

@@ -9,7 +9,7 @@ import { last } from 'fp-ts/lib/Array'
 import { fromNullable, none, Option } from 'fp-ts/lib/Option'
 import { Event, Events } from './eventstore/types'
 import { SnapshotScheduler } from './store/snapshotScheduler'
-import { EventKey, Lamport, StatePointer, TaggedIndex } from './types'
+import { StatePointer, TaggedIndex } from './types'
 
 export const getRecentPointers = (recent: number, spacing: number) => (
   initialCycle: number,
@@ -119,41 +119,6 @@ export class StatePointers<S> {
           delete store[tag]
         } else if (ptr.i > high) {
           high = ptr.i
-          newLatest = ptr
-        }
-      }
-    }
-
-    this.latest = fromNullable(newLatest)
-  }
-
-  /**
-   * Invalidate all stored states after a certain EventKey.
-   *
-   * @param earliestInvavlid The earliest EventKey to invalidate.
-   */
-  public invalidateLaterThan(earliestInvalid: EventKey): void {
-    if (this.latest.exists(l => EventKey.ord.compare(earliestInvalid, l.finalIncludedEvent) > 0)) {
-      // Latest is earlier than where we are going down to,
-      // so there are no pointers at all to invalidate.
-      return
-    } else {
-      this.latest = none
-    }
-
-    let high = Lamport.zero // TODO: Why lamport and not eventkey?
-    let newLatest
-
-    for (const store of this.stores) {
-      const tags = Object.keys(store)
-
-      for (const tag of tags) {
-        const ptr = store[tag]
-
-        if (EventKey.ord.compare(ptr.finalIncludedEvent, earliestInvalid) >= 0) {
-          delete store[tag]
-        } else if (ptr.finalIncludedEvent.lamport >= high) {
-          high = ptr.finalIncludedEvent.lamport
           newLatest = ptr
         }
       }
