@@ -74,7 +74,7 @@ export const stateWithProvenanceReducer = <S>(
       )
 
       const psnMapCopy = { ...psnMap }
-      const stateWithProvenance = {
+      const snap = {
         state: JSON.stringify(state),
         psnMap: psnMapCopy,
         cycle: head.cycle + i,
@@ -83,7 +83,7 @@ export const stateWithProvenanceReducer = <S>(
       }
 
       queue.addPending({
-        snap: stateWithProvenance,
+        snap,
         tag: toStore.tag,
         timestamp: events[i].timestamp,
       })
