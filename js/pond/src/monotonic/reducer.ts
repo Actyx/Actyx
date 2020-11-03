@@ -5,8 +5,10 @@ import { Event, Events, OffsetMap } from '../eventstore/types'
 import { SnapshotScheduler } from '../store/snapshotScheduler'
 import { EventKey, LocalSnapshot, StateWithProvenance, Timestamp } from '../types'
 
+export type SerializedStateSnap = LocalSnapshot<string>
+
 export type PendingSnapshot = Readonly<{
-  snap: LocalSnapshot<string>
+  snap: SerializedStateSnap
   tag: string
   timestamp: Timestamp
 }>
@@ -20,7 +22,7 @@ export type Reducer<S> = {
     emit: StateWithProvenance<S>[]
   }
 
-  setState: (state: LocalSnapshot<string>) => void
+  setState: (state: SerializedStateSnap) => void
 }
 
 export const stateWithProvenanceReducer = <S>(

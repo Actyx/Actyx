@@ -19,9 +19,10 @@ import {
 import log from '../loggers'
 import { SnapshotStore } from '../snapshotStore'
 import { SubscriptionSet } from '../subscription'
-import { EventKey, FishId, LocalSnapshot } from '../types'
+import { EventKey, FishId } from '../types'
 import { runStats, takeWhileInclusive } from '../util'
 import { getInsertionIndex } from '../util/binarySearch'
+import { SerializedStateSnap } from './reducer'
 
 // New API:
 // Stream events as they become available, until time-travel would occour.
@@ -35,7 +36,7 @@ export enum MsgType {
 
 export type StateMsg = Readonly<{
   type: MsgType.state
-  snapshot: LocalSnapshot<string>
+  snapshot: SerializedStateSnap
 }>
 
 export type EventsMsg = Readonly<{
@@ -164,7 +165,7 @@ export const eventsMonotonic = (
     })
   }
 
-  const tryReadSnapshot = async (fishId: FishId): Promise<Option<LocalSnapshot<string>>> => {
+  const tryReadSnapshot = async (fishId: FishId): Promise<Option<SerializedStateSnap>> => {
     const semantics = fishId.entityType
     const name = fishId.name
     const version = fishId.version
@@ -182,7 +183,7 @@ export const eventsMonotonic = (
     fishId: FishId,
     subscriptions: SubscriptionSet,
     present: OffsetMap,
-  ) => (snap: LocalSnapshot<string>) => {
+  ) => (snap: SerializedStateSnap) => {
     const earliestNewEvents = eventStore
       .persistedEvents(
         { default: 'min', psns: snap.psnMap },
@@ -250,7 +251,7 @@ export const eventsMonotonic = (
   }
 }
 
-const stateMsg = (snapshot: LocalSnapshot<string>): StateMsg => {
+const stateMsg = (snapshot: SerializedStateSnap): StateMsg => {
   log.pond.info('picking up from local snapshot ' + EventKey.format(snapshot.eventKey))
 
   return {

@@ -9,14 +9,13 @@ import {
   EventKey,
   FishId,
   IsReset,
-  LocalSnapshot,
   Metadata,
   SourceId,
   StateWithProvenance,
   toMetadata,
 } from '../types'
 import { eventsMonotonic, EventsMsg, MsgType, StateMsg } from './endpoint'
-import { PendingSnapshot, stateWithProvenanceReducer } from './reducer'
+import { PendingSnapshot, SerializedStateSnap, stateWithProvenanceReducer } from './reducer'
 
 // Take some Fish parameters and combine them into a "simpler" onEvent
 // with typical reducer signature: (S, E) => S
@@ -75,7 +74,7 @@ export const observeMonotonic = (
   const initialStateAsString = JSON.stringify(initialState)
   // Here we can find earlier states that we have cached in-process.
   // Returning the initial state is always fine, though. It just leads to more processing.
-  const findStartingState = (_before: EventKey): LocalSnapshot<string> => ({
+  const findStartingState = (_before: EventKey): SerializedStateSnap => ({
     state: initialStateAsString,
     psnMap: {},
     cycle: 0,
