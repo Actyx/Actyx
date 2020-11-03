@@ -50,6 +50,7 @@ export const stateWithProvenanceReducer = <S>(
   const snapshotEligible = (latest: Timestamp) => (snapBase: PendingSnapshot) =>
     snapshotScheduler.isEligibleForStorage(snapBase, { timestamp: latest })
 
+  // TODO: Don’t define functions inline. (Fix when upstream is merged.)
   return {
     appendEvents: (events: Events, emit: boolean) => {
       let { state, psnMap, eventKey } = head
