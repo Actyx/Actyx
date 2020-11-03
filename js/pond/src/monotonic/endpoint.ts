@@ -5,7 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { fromNullable, none, Option, some } from 'fp-ts/lib/Option'
+import { fromNullable, Option } from 'fp-ts/lib/Option'
 import { greaterThan } from 'fp-ts/lib/Ord'
 import { Observable } from 'rxjs'
 import { EventStore } from '../eventstore'
@@ -172,9 +172,9 @@ export const eventsMonotonic = (
     const retrieved = await snapshotStore.retrieveSnapshot(semantics, name, version)
 
     runStats.counters.add(`snapshot-wanted/${semantics}`)
-    return fromNullable(retrieved).fold(none, localSnapshot => {
+    return fromNullable(retrieved).map(x => {
       runStats.counters.add(`snapshot-found/${semantics}`)
-      return some(localSnapshot)
+      return x
     })
   }
 
