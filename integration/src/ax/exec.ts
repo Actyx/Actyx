@@ -40,11 +40,11 @@ const rightOrThrow = <A>(e: Either<Errors, A>, obj: unknown): A => {
   return e.value
 }
 
-const exec = async (binary: string, args: string[], cwd?: string) => {
+const exec = async (binaryPath: string, args: string[], cwd?: string) => {
   try {
     const option: execa.Options | undefined = cwd ? { cwd } : undefined
-    const response = (await execa((cwd ? '../../../' : '') + binary, [`-j`].concat(args), option))
-      .stdout
+    const binaryPathCwdOrProcess = (cwd ? '../../../' : '') + binaryPath
+    const response = (await execa(binaryPathCwdOrProcess, [`-j`].concat(args), option)).stdout
     return JSON.parse(response)
   } catch (error) {
     try {
