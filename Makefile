@@ -237,10 +237,11 @@ $(foreach oa,$(osArch),$(foreach bin,$(binaries),$(eval $(call mkDistRule,$(oa),
 # These will be used below to define how to build all binaries for that target.
 targetPatterns = $(foreach t,$(targets),rt-master/target/$(t)/release/%)
 
-# add extra options to disable default features for the windows build. This requires specifying a manifest path.
-rt-master/target/x86_64-pc-windows-gnu/release/ax.exe: CARGO_EXTRA_OPTIONS=--no-default-features --manifest-path actyx-cli/Cargo.toml
-rt-master/target/x86_64-pc-windows-gnu/release/actyxos.exe: CARGO_EXTRA_OPTIONS=--no-default-features --manifest-path ax-os-node-win/Cargo.toml
-rt-master/target/x86_64-pc-windows-gnu/release/win.exe: CARGO_EXTRA_OPTIONS=--no-default-features --manifest-path ax-os-node/Cargo.toml
+# loopup table for extra cargo options for the windows build.
+# for the windows build, we need to default features. This requires specifying a manifest path.
+cargo-extra-options-rt-master/target/x86_64-pc-windows-gnu/release/ax.exe:=--no-default-features --manifest-path actyx-cli/Cargo.toml
+cargo-extra-options-rt-master/target/x86_64-pc-windows-gnu/release/actyxos.exe:=--no-default-features --manifest-path ax-os-node-win/Cargo.toml
+cargo-extra-options-rt-master/target/x86_64-pc-windows-gnu/release/win.exe:=--no-default-features --manifest-path ax-os-node/Cargo.toml
 
 # define a pattern rule for making any binary for a given target
 # where the build image is computed by first extracting the OS from the target string and then
@@ -259,7 +260,7 @@ rt-master/target/$(TARGET)/release/%: cargo-init
 	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
-	  cargo --locked build --release $(CARGO_EXTRA_OPTIONS) --bin $$(basename $$*)
+	  cargo --locked build --release $$(cargo-extra-options-$$@) --bin $$(basename $$*)
 endef
 $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
 
