@@ -1,5 +1,5 @@
 import { Client, DefaultClientOpts } from '@actyx/os-sdk'
-import { CLI } from '../ax'
+import { CLI } from '../ax/cli'
 import * as Ssh from './ssh'
 import { ActyxOSNode, SshAble, Target } from './types'
 

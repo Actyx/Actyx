@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Client, DefaultClientOpts } from '@actyx/os-sdk'
 import NodeEnvironment from 'jest-environment-node'
-import { CLI } from '../src/ax'
+import { CLI } from '../src/ax/cli'
 import { MyGlobal } from './setup'
 
 class MyEnvironment extends NodeEnvironment {

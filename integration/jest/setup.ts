@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { EC2 } from 'aws-sdk'
-import { CLI } from '../src/ax'
+import { CLI } from '../src/ax/cli'
 import { SettingsInput } from '../src/ax/exec'
 import demoMachineKit from '../src/ax/setup-projects/demo-machine-kit'
 import quickstart from '../src/ax/setup-projects/quickstart'
