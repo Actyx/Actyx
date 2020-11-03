@@ -164,17 +164,17 @@ export const eventsMonotonic = (
     })
   }
 
-  const tryReadSnapshot = (fishId: FishId): Observable<Option<LocalSnapshot<string>>> => {
+  const tryReadSnapshot = async (fishId: FishId): Promise<Option<LocalSnapshot<string>>> => {
     const semantics = fishId.entityType
     const name = fishId.name
     const version = fishId.version
 
-    return Observable.from(snapshotStore.retrieveSnapshot(semantics, name, version)).map(x => {
-      runStats.counters.add(`snapshot-wanted/${semantics}`)
-      return fromNullable(x).fold(none, localSnapshot => {
-        runStats.counters.add(`snapshot-found/${semantics}`)
-        return some(localSnapshot)
-      })
+    const retrieved = await snapshotStore.retrieveSnapshot(semantics, name, version)
+
+    runStats.counters.add(`snapshot-wanted/${semantics}`)
+    return fromNullable(retrieved).fold(none, localSnapshot => {
+      runStats.counters.add(`snapshot-found/${semantics}`)
+      return some(localSnapshot)
     })
   }
 
@@ -192,7 +192,7 @@ export const eventsMonotonic = (
         snap.horizon,
       )
       .defaultIfEmpty([])
-      .take(1)
+      .first()
 
     return earliestNewEvent.concatMap(earliest => {
       const snapshotOutdated =
@@ -203,7 +203,7 @@ export const eventsMonotonic = (
         return Observable.from(
           snapshotStore.invalidateSnapshots(fishId.entityType, fishId.name, earliest[0]),
         )
-          .take(1)
+          .first()
           .concatMap(() => observeMonotonicFromSnapshot(fishId, subscriptions))
       }
 
@@ -221,8 +221,8 @@ export const eventsMonotonic = (
     _horizon?: EventKey,
   ): Observable<EventsOrTimetravel> => {
     return Observable.combineLatest(
-      tryReadSnapshot(fishId).take(1),
-      eventStore.present().take(1),
+      Observable.from(tryReadSnapshot(fishId)).first(),
+      eventStore.present().first(),
     ).concatMap(([maybeSnapshot, present]) =>
       maybeSnapshot.fold(
         // No snapshot found -> start from scratch
