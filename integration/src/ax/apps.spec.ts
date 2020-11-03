@@ -40,12 +40,9 @@ describe('ax apps', () => {
       expect(isCodeOk(response)).toBe(true)
     })
 
-    test.only('return `OK` and validate with default manifest', async () => {
-      console.log('xxxxxxxxxxxxxxxxxxxxxxxxxxx')
+    test('return `OK` and validate with default manifest', async () => {
       const cwdDir = quickstart.dirSampleWebviewApp
-      console.log('cwdDir', cwdDir)
       const [response] = await runOnEach([{}], false, (node) => node.ax.Apps.ValidateCwd(cwdDir))
-      console.log('response', response)
       const reponseShape = { code: 'OK', result: ['ax-manifest.yml'] }
       expect(response).toMatchObject(reponseShape)
       expect(isCodeOk(response)).toBe(true)

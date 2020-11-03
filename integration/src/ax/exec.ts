@@ -40,18 +40,13 @@ const rightOrThrow = <A>(e: Either<Errors, A>, obj: unknown): A => {
   return e.value
 }
 
-// SPO
 const exec = async (binary: string, args: string[], cwd?: string) => {
   try {
     const option: execa.Options | undefined = cwd ? { cwd } : undefined
     const response = (await execa((cwd ? '../../../' : '') + binary, [`-j`].concat(args), option))
       .stdout
-    console.log('xxxxxxxx')
-    console.log(response)
     return JSON.parse(response)
   } catch (error) {
-    console.log('error')
-    console.log(error)
     try {
       return JSON.parse(error.stdout)
     } catch (errParse) {
