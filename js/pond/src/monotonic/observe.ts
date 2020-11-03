@@ -16,7 +16,7 @@ import {
   toMetadata,
 } from '../types'
 import { eventsMonotonic, EventsMsg, MsgType, StateMsg } from './endpoint'
-import { stateWithProvenanceReducer } from './reducer'
+import { PendingSnapshot, stateWithProvenanceReducer } from './reducer'
 
 // Take some Fish parameters and combine them into a "simpler" onEvent
 // with typical reducer signature: (S, E) => S
@@ -92,7 +92,9 @@ export const observeMonotonic = (
     }
   }
 
-  const storeSnapshot = async (snap: LocalSnapshot<string>, tag: string) =>
+  const storeSnapshot = async (toStore: PendingSnapshot) => {
+    const { snap, tag } = toStore
+    console.log('oooooh storing')
     snapshotStore.storeSnapshot(
       fishId.entityType,
       fishId.name,
@@ -104,6 +106,7 @@ export const observeMonotonic = (
       tag,
       snap.state,
     )
+  }
   // Chain of snapshot storage promises
   let storeSnapshotsPromise: Promise<void> = Promise.resolve()
 
@@ -148,7 +151,13 @@ export const observeMonotonic = (
   // This will probably turn into a mergeScan when local snapshots are added
   const reducer = stateWithProvenanceReducer(
     onEventRaw,
-    { state: initialState, psnMap: OffsetMap.empty },
+    {
+      state: initialState,
+      psnMap: OffsetMap.empty,
+      eventKey: EventKey.zero,
+      horizon: undefined,
+      cycle: 0,
+    },
     deserializeState,
   )
   return updates$.concatMap(msg => {
@@ -162,7 +171,7 @@ export const observeMonotonic = (
         // TODO: Store snapshots
         const s = reducer.appendEvents(msg.events, msg.caughtUp)
         storeSnapshotsPromise = storeSnapshotsPromise.then(async () => {
-          await Promise.all(s.snapshots.map(x => storeSnapshot(x, 'foo')))
+          await Promise.all(s.snapshots.map(storeSnapshot))
           // TODO: Log errors
           return
         })

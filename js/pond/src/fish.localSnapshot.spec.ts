@@ -33,7 +33,12 @@ describe('fish event store + jar local snapshot behavior', () => {
   forBoth(
     `should create local snapshot for after seeing that enough time has passed from live event`,
     async fishToTest => {
-      const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
+      const { applyAndGetState, latestSnap } = await snapshotTestSetup(
+        fishToTest,
+        undefined,
+        undefined,
+        true,
+      )
 
       const srcV = emitter('V')
       const srcR = emitter('R')

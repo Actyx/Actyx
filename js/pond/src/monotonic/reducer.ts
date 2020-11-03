@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import * as assert from 'assert'
 import { greaterThan } from 'fp-ts/lib/Ord'
 import { Event, Events, OffsetMap } from '../eventstore/types'
 import { SnapshotScheduler } from '../store/snapshotScheduler'
@@ -53,10 +54,48 @@ export const stateWithProvenanceReducer = <S>(
     appendEvents: (events: Events, emit: boolean) => {
       let { state, psnMap, eventKey } = head
 
-      for (const ev of events) {
+      const statesToStore = snapshotScheduler.getSnapshotLevels(head.cycle, events, 0)
+
+      let i = 0
+      for (const toStore of statesToStore) {
+        while (i <= toStore.i) {
+          const ev = events[i]
+          state = onEvent(state, ev)
+          psnMap = OffsetMap.update(psnMap, ev)
+          eventKey = ev
+
+          i += 1
+        }
+
+        assert(
+          // i has been incremented by 1 at the end of the loop, we actually do expect equality
+          i - 1 === toStore.i,
+          'Expected statesToStore to be in ascending order, with no entries earlier then the latestStored pointer.',
+        )
+
+        const psnMapCopy = { ...psnMap }
+        const stateWithProvenance = {
+          state: JSON.stringify(state),
+          psnMap: psnMapCopy,
+          cycle: head.cycle + i,
+          eventKey,
+          horizon: head.horizon, // TODO: Detect new horizons from events
+        }
+
+        queue.addPending({
+          snap: stateWithProvenance,
+          tag: toStore.tag,
+          timestamp: events[i].timestamp,
+        })
+      }
+
+      while (i < events.length) {
+        const ev = events[i]
         state = onEvent(state, ev)
         psnMap = OffsetMap.update(psnMap, ev)
         eventKey = ev
+
+        i += 1
       }
 
       head = {
@@ -72,6 +111,7 @@ export const stateWithProvenanceReducer = <S>(
           ? queue.getSnapsToStore(snapshotEligible(events[events.length - 1].timestamp))
           : []
 
+      console.log('XXXX', snapshots.length)
       return {
         snapshots,
         // This is for all downstream consumers, so we clone.
@@ -100,7 +140,7 @@ const eventKeyGreater = greaterThan(EventKey.ord)
 const snapshotQueue = () => {
   const queue: PendingSnapshot[] = []
 
-  const addPending = (snapshotsAscending: PendingSnapshot[]) => queue.push(...snapshotsAscending)
+  const addPending = (snap: PendingSnapshot) => queue.push(snap)
 
   const invalidateLaterThan = (cutOff: EventKey) => {
     while (queue.length > 0 && eventKeyGreater(queue[queue.length - 1].snap.eventKey, cutOff)) {
