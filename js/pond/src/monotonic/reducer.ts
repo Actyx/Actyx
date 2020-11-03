@@ -54,7 +54,8 @@ export const stateWithProvenanceReducer = <S>(
     appendEvents: (events: Events, emit: boolean) => {
       let { state, psnMap, eventKey } = head
 
-      const statesToStore = snapshotScheduler.getSnapshotLevels(head.cycle, events, 0)
+      // FIXME: Arguments are a bit questionable, but we can’t change the scheduler yet, otherwise the FES-based tests start failing.
+      const statesToStore = snapshotScheduler.getSnapshotLevels(head.cycle + 1, events, 0)
 
       let i = 0
       for (const toStore of statesToStore) {
