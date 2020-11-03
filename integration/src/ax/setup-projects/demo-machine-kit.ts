@@ -9,9 +9,9 @@ type DemoMachineKit = () => Readonly<{
 
 const demoMachineKit: DemoMachineKit = () => {
   const dirDemoMachineKit = 'temp/DemoMachineKit'
-  const dirDashboard = 'temp/DemoMachineKit/dashboard'
-  const dirErpSimulator = 'temp/DemoMachineKit/erp-simulator'
-  const dirWagoConnector = 'temp/DemoMachineKit/wago-connector'
+  const dirDashboard = 'temp/DemoMachineKit/src/dashboard'
+  const dirErpSimulator = 'temp/DemoMachineKit/src/erp-simulator'
+  const dirWagoConnector = 'temp/DemoMachineKit/src/wago-connector'
 
   const npmRunBuild = (name: string) => npmRun(name)(dirDemoMachineKit)
 

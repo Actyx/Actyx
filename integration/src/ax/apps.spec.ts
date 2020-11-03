@@ -1,5 +1,6 @@
 import { runOnAll, runOnEach } from '../runner/hosts'
 import { stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../stubs'
+import demoMachineKit from './setup-projects/demo-machine-kit'
 import quickstart from './setup-projects/quickstart'
 import { isCodeInvalidInput, isCodeNodeUnreachable, isCodeOk } from './util'
 
@@ -58,7 +59,23 @@ describe('ax apps', () => {
       expect(isCodeInvalidInput(response1)).toBe(true)
       expect(isCodeInvalidInput(response2)).toBe(true)
     })
-    // TODO add multiple apps happy case
+
+    test('return multiple `OK` an validate apps if input paths do exists for multiple apps', async () => {
+      const { dirDashboard, dirErpSimulator } = demoMachineKit
+      const [response1, response2] = await runOnAll([{}, {}], false, ([node1, node2]) =>
+        Promise.all([
+          node1.ax.Apps.Validate(dirDashboard),
+          node2.ax.Apps.Validate(dirErpSimulator),
+        ]),
+      )
+      const reponse1Shape = { code: 'OK', result: ['temp/DemoMachineKit/src/dashboard'] }
+      const reponse2Shape = { code: 'OK', result: ['temp/DemoMachineKit/src/erp-simulator'] }
+      expect(isCodeOk(response1)).toBe(true)
+      expect(isCodeOk(response2)).toBe(true)
+      expect(response1).toMatchObject(reponse1Shape)
+      expect(response2).toMatchObject(reponse2Shape)
+    })
+
     // TODO add vadalite app in current directory with default manifest
   })
 })
