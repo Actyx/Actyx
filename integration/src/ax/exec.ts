@@ -102,6 +102,7 @@ type Exec = {
   }
   Apps: {
     Package: (path: string) => Promise<Response_Apps_Package>
+    PackageCwd: (cwd: string) => Promise<Response_Apps_Package>
     Deploy: (packagePath: string, force?: boolean) => Promise<Response_Apps_Deploy>
     Undeploy: (appId: string) => Promise<Response_Apps_Undeploy>
     Start: (appId: string) => Promise<Response_Apps_Start>
@@ -169,6 +170,10 @@ export const mkExec = (binary: string, addr: string): Exec => ({
       const response = await exec(binary, [`apps`, `package`, path])
       return rightOrThrow(Response_Apps_Package.decode(response), response)
     },
+    PackageCwd: async (cwd: string): Promise<Response_Apps_Package> => {
+      const response = await exec(binary, [`apps`, `package`, cwd])
+      return rightOrThrow(Response_Apps_Package.decode(response), response)
+    },
     Deploy: async (packagePath: string, force?: boolean): Promise<Response_Apps_Deploy> => {
       const response = await exec(
         binary,
@@ -192,6 +197,7 @@ export const mkExec = (binary: string, addr: string): Exec => ({
       const response = await exec(binary, [`apps`, `ls`, `--local`, addr])
       return rightOrThrow(Response_Apps_Ls.decode(response), response)
     },
+    // TODO SPO fishy filePath should be not optional, double check it
     Validate: async (filePath?: string): Promise<Reponse_Apps_Validate> => {
       const response = await exec(binary, [`apps`, `validate`, filePath ?? ''])
       return rightOrThrow(Reponse_Apps_Validate.decode(response), response)

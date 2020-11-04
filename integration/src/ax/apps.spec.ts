@@ -3,6 +3,7 @@ import { stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../stubs'
 import { demoMachineKit, quickstart } from './setup-projects'
 import { isCodeInvalidInput, isCodeNodeUnreachable, isCodeOk } from './util'
 import { remove, pathExists } from 'fs-extra'
+import { Response_Apps_Package } from './types'
 
 describe('ax apps', () => {
   describe('ls', () => {
@@ -85,6 +86,11 @@ describe('ax apps', () => {
   })
 
   describe('package', () => {
+    const tarballFile = 'com.actyx.sample-webview-app-1.0.0.tar.gz'
+
+    const haveValidPacakgePath = (response: Response_Apps_Package, tarballFile: string) =>
+      response.code === 'OK' && response.result.every((x) => x.packagePath.endsWith(tarballFile))
+
     test('return `ERR_INVALID_INPUT` if manifest was not found', async () => {
       const [reponse] = await runOnEach([{}], false, (node) =>
         node.ax.Apps.Package('not-exiting-path'),
@@ -92,19 +98,27 @@ describe('ax apps', () => {
       expect(isCodeInvalidInput(reponse)).toBe(true)
     })
 
-    test('return `OK` and package an app in the specified directory with manifest', async () => {
-      const tarballFile = 'com.actyx.sample-webview-app-1.0.0.tar.gz'
-
+    test('return `OK` and Package an app in the current directory with default manifest ax-manifest.yml', async () => {
       await remove(tarballFile)
 
-      const [reponse] = await runOnEach([{}, {}], false, (node) =>
-        node.ax.Apps.Package(quickstart.dirSampleWebviewApp),
+      const [response] = await runOnEach([{}], false, (node) =>
+        node.ax.Apps.PackageCwd(quickstart.dirSampleWebviewApp),
       )
-      const haveValidPacakgePath =
-        reponse.code === 'OK' && reponse.result.every((x) => x.packagePath.endsWith(tarballFile))
 
-      expect(isCodeOk(reponse)).toBe(true)
-      expect(haveValidPacakgePath).toBe(true)
+      expect(isCodeOk(response)).toBe(true)
+      expect(haveValidPacakgePath(response, tarballFile)).toBe(true)
+
+      await remove(tarballFile)
+    })
+
+    test('return `OK` and package an app in the specified directory with manifest', async () => {
+      await remove(tarballFile)
+
+      const manifestPath = `${quickstart.dirSampleWebviewApp}/ax-manifest.yml`
+      const [response] = await runOnEach([{}], false, (node) => node.ax.Apps.Package(manifestPath))
+
+      expect(isCodeOk(response)).toBe(true)
+      expect(haveValidPacakgePath(response, tarballFile)).toBe(true)
 
       const wasTarballCreated = await pathExists(tarballFile)
       expect(wasTarballCreated).toBe(true)
@@ -114,7 +128,7 @@ describe('ax apps', () => {
 
     /* Test cases:
 
-    TODO
+    DONE 
     # Package an app in the current directory with default manifest ax-manifest.yml
     ax apps package
 
