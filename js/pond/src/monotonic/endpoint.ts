@@ -192,6 +192,8 @@ export const eventsMonotonic = (
         PersistedEventsSortOrders.EventKey,
         snap.horizon,
       )
+      // testEventStore can send empty chunks, real store hopefully will not
+      .filter(chunk => chunk.length > 0)
       .defaultIfEmpty([])
       .first()
 
