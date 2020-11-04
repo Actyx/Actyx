@@ -11,7 +11,7 @@ Then you can `npm i` and `npm test` in this project. If you forgot to first buil
 
 ## Scripts
 
-- use `npm run clean:temp` to remove the `temp` folder where test projects are cloned and builded
+- use `npm run clean:temp` to remove the `temp` folder where test projects are cloned and built
 
 ## Caveats
 
@@ -19,4 +19,4 @@ Currently on MacOS `actyxos-linux` binaries cannot be cross compiled for linux (
 
 ## Dev
 
-- To run only a single test file use for example `npm run tsc && jest -- ./dist/src/ax/your-test.spec.js`
+- To run only a single test file use for example: `npm run tsc && jest -- ./dist/src/ax/your-test.spec.js`
