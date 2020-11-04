@@ -2,6 +2,7 @@
 import { clone } from 'ramda'
 import { Observable, Scheduler } from 'rxjs'
 import { Event, EventStore, OffsetMap } from '../eventstore'
+import log from '../loggers'
 import { PondStateTracker } from '../pond-state'
 import { SnapshotStore } from '../snapshotStore'
 import { SubscriptionSet } from '../subscription'
@@ -133,7 +134,7 @@ export const observeMonotonic = (
           return [msg]
         })
         .catch(err => {
-          console.log(err) // Improve me
+          log.pond.error(err)
 
           // Reset the reducer and let the code further below take care of restarting the stream
           return Observable.of(makeResetMsg(EventKey.zero))
@@ -170,11 +171,9 @@ export const observeMonotonic = (
       }
 
       case MsgType.events: {
-        // TODO: Store snapshots
         const s = reducer.appendEvents(msg.events, msg.caughtUp)
         storeSnapshotsPromise = storeSnapshotsPromise.then(async () => {
-          await Promise.all(s.snapshots.map(storeSnapshot))
-          // TODO: Log errors
+          await Promise.all(s.snapshots.map(storeSnapshot)).catch(log.pond.warn)
           return
         })
         return s.emit
