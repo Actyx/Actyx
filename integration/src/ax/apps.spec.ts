@@ -82,4 +82,13 @@ describe('ax apps', () => {
       expect(isCodeOk(response2)).toBe(true)
     })
   })
+
+  describe('package', () => {
+    test('return `ERR_INVALID_INPUT` if manifest was not found', async () => {
+      const [reponse] = await runOnEach([{}], false, (node) =>
+        node.ax.Apps.Package('not-exiting-path'),
+      )
+      expect(isCodeInvalidInput(reponse)).toBe(true)
+    })
+  })
 })
