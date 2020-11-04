@@ -1,11 +1,10 @@
 ---
 title: ax logs
+hide_table_of_contents: true
 ---
 
 ## Manage ActyxOS node and app logs
 
-### Subcommands
-
-Command                      | description|
+Command                      | Functionality|
 -----------------------------|------------|
 [ax logs tail](tail.md) | Get logs from a node |

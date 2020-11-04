@@ -14,8 +14,7 @@ a one-way integration: exporting data originating from the warehouse to the ERP 
 
 <!-- truncate -->
 
-In an earlier [blog post] we went through the process of designing event schemata for a warehouse logistics solution,
-and sketched the core functionality of the [`SkuFish`]. This fish’s main responsibility is to track the metadata and current
+In an earlier [blog post] we went through the process of designing event schemata for a warehouse logistics solution, and sketched the core functionality of the [`SkuFish`]. This fish’s main responsibility is to track the metadata and current
 location of an individual stockkeeping unit (SKU) inside a warehouse.
 
 [blog post]: /blog/2020/08/04/event-design-for-a-logistics-solution
@@ -158,7 +157,7 @@ tags, and can be queried using any combination of them. This means, an event is 
 stream_ originating from one fish, but can belong to many streams, and individually consumed. Here, instead of stringly
 typed tages, we're using the `TypedTag` feature of the Actyx Pond to link event types to explicit tags.
 
-[post]: /blog/2020/07/22/pond-v2-release
+[post]: /blog/2020/07/24/pond-v2-release
 
 ```typescript
 const tags = {

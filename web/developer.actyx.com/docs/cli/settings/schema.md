@@ -2,9 +2,7 @@
 title: ax settings schema
 ---
 
-## Get setting schemas from a node
-
-```text
+```text title="Get setting schemas from an ActyxOS node"
 USAGE:
     ax settings schema [FLAGS] <SCOPE> <NODE>
 
@@ -23,7 +21,7 @@ ARGS:
 
 Here are some examples of using the `ax settings schema` command:
 
-```text
+```text title="Example Usage"
 # Get the settings schema for the node with settings scope com.actyx.os at 10.2.3.23
 ax settings schema --local com.actyx.os 10.2.3.23
 

@@ -2,8 +2,6 @@
 title: ax (base command)
 ---
 
-## The base command for the Actyx CLI
-
 ### Subcommands
 
 Command                      | description|

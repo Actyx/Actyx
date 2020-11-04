@@ -50,7 +50,7 @@ If you do not have access to the Google Play store, please have a look at [our g
 
 ### Check the status of your node
 
-In order to check on its status and interact with the node, you can use the [ActyxOS Node Manager](../tools/node-manager) or, if you prefer a command line tool, use the [Actyx CLI](../../cli/getting-started.md).
+In order to check on its status and interact with the node, you can use the [ActyxOS Node Manager](../../node-manager/overview.md) or, if you prefer a command line tool, use the [Actyx CLI](../../cli/getting-started.md).
 
 <Tabs
   groupId="operating-systems"
@@ -64,7 +64,7 @@ In order to check on its status and interact with the node, you can use the [Act
 
 Go to the **Status** tab. It should show that your ActyxOS node is reachable and **running**:
 
-![status](/images/os/node-manager-status-1.png)
+![status](/images/node-manager/node-manager-status-1.png)
 
 </TabItem>
 <TabItem value="cli">
@@ -90,7 +90,7 @@ Congratulations, you have successfully installed <em>ActyxOS on Android</em>! Pl
 
 ### Where to go next
 
-- [Quickstart](/docs/learn-actyx/quickstart.md) is a tutorial about ActyxOS with ready-to-use apps and configurations
+- [Quickstart](../../learn-actyx/quickstart.md) is a tutorial about ActyxOS with ready-to-use apps and configurations
 - [Get started](#get-started-with-actyx-on-android) for a detailed guide on how *ActyxOS on Android* works
 - [Troubleshooting](#troubleshooting) describes common problems, workarounds and how to get help and submit issues
 - [FAQs](/docs/faq/supported-programming-languages) provides answers to frequently asked questions

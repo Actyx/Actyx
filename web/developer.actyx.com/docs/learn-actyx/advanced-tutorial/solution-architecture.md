@@ -3,12 +3,12 @@ title: "Solution architecture"
 sidebar_label: Solution architecture
 ---
 
+An Actyx solution always consists of several physical devices that each run an instance of ActyxOS. These devices are called ActyxOS nodes. Your Actyx apps will be deployed on the ActyxOS nodes. The example use case in this tutorial entails developing 3 apps:
+
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import {ThreeElementRow} from '../../../src/components/ThreeElementRow.tsx'
-
-An Actyx solution always consists of several physical devices that each run an instance of ActyxOS. These devices are called ActyxOS nodes. Your Actyx apps will be deployed on the ActyxOS nodes. The example use case in this tutorial entails developing 3 apps:
 
 <ThreeElementRow
     img1={useBaseUrl('images/tutorials/dx1-tutorial/erp-simulator-icon.svg')}

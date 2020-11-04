@@ -4,7 +4,6 @@ import defaults from "../components/defaults";
 
 const Wrapper = styled.div`
   width: 100%;
-  height: 250px;
   display: flex;
   flex-direction: row;
   justify-content: space-between;

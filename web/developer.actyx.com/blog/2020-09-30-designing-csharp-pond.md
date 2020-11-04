@@ -8,7 +8,7 @@ tags: [Actyx Pond, CSharp, C#]
 ---
 
 One of the many projects we’re currently pushing forward at Actyx is a port of the [Actyx
-Pond V2](./2020-07-24-pond-v2-release) from TypeScript to C#.
+Pond V2](/blog/2020/07/24/pond-v2-release) from TypeScript to C#.
 
 C# and TypeScript build on very different foundations. Both are modern multi-paradigm languages;
 both have somewhat dynamic function dispatch mechanisms; but the typical C# program is still very much

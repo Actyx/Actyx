@@ -132,7 +132,7 @@ If your [ActyxOS Bootstrap Node](actyxos-bootstrap-node.md) is not in the same l
 
 ## Check the status of your node
 
-In order to check on its status and interact with the node, you can use the [ActyxOS Node Manager](../tools/node-manager) or, if you prefer a command line tool, use the [Actyx CLI](../../cli/getting-started.md).
+In order to check on its status and interact with the node, you can use the [ActyxOS Node Manager](../../node-manager/overview.md) or, if you prefer a command line tool, use the [Actyx CLI](../../cli/getting-started.md).
 
 <Tabs
   groupId="operating-systems"
@@ -146,7 +146,7 @@ In order to check on its status and interact with the node, you can use the [Act
 
 Go to the **Status** tab, and you should that your ActyxOS node is reachable and **running**:
 
-![status](/images/os/node-manager-status-1.png)
+![status](/images/node-manager/node-manager-status-1.png)
 
 </TabItem>
 <TabItem value="cli">
@@ -174,7 +174,7 @@ If you want to find out more about configuring ActyxOS node, please check our gu
 
 ## Where to go next
 
-- [Quickstart](/docs/learn-actyx/quickstart.md) is a tutorial about ActyxOS with ready-to-use apps and configurations
+- [Quickstart](../../learn-actyx/quickstart.md) is a tutorial about ActyxOS with ready-to-use apps and configurations
 - [Troubleshooting](#troubleshooting) describes common problems, workarounds and how to get help and submit issues
 - [FAQs](/docs/faq/supported-programming-languages) provides answers to frequently asked questions
 
@@ -187,8 +187,8 @@ If you want to find out more about configuring ActyxOS node, please check our gu
 If you set this environment variable to 1, you can interact with all ActyxOS services from your Host machine.
 If you are running ActyxOS on Docker on Mac or Windows, which means you are not using `network=host`, you need to also pass the following options to forward the relevant ports:
 
-- `-p 4243:4243` [for the Actyx Pond WebSocket endpoint](/docs/pond/getting-started.md)
-- `-p 4454:4454` [for the Event Service](/docs/os/api/event-service.md)
+- `-p 4243:4243` [for the Actyx Pond WebSocket endpoint](../../pond/getting-started.md)
+- `-p 4454:4454` [for the Event Service](../api/event-service.md)
 
 #### `ENABLE_DEBUG_LOGS`
 

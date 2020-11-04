@@ -1,5 +1,6 @@
 ---
 title: Installation
+description: A guide on how to install ActyxOS on all supported platforms.
 ---
 
 import Tabs from '@theme/Tabs';
@@ -32,9 +33,10 @@ You can find Docker installation instructions [here](https://docs.docker.com/get
 ActyxOS on Docker is published on [DockerHub](https://hub.docker.com/r/actyx/os). To download and run the latest version in production mode execute the following command.
 
 <Tabs
+  groupId="operating-systems"
   defaultValue="windows"
   values={[
-    { label: 'Windows/Mac', value: 'windows', },
+    { label: 'Windows/macOS', value: 'windows', },
     { label: 'Linux', value: 'unix', },
   ]
 }>
@@ -64,9 +66,10 @@ docker run -it --rm -v actyxos-data:/data --privileged --network=host actyx/os
 If you want to run ActyxOS on Docker in development mode, for example because you want to test an ActyxOS application locally without deploying, please use the following command instead. This way all the needed ActyxOS services are also exposed on localhost of the host.
 
 <Tabs
+  groupId="operating-systems"
   defaultValue="windows"
   values={[
-    { label: 'Windows/Mac', value: 'windows', },
+    { label: 'Windows/macOS', value: 'windows', },
     { label: 'Linux', value: 'unix', },
   ]
 }>
@@ -135,10 +138,22 @@ Please refer to the [Actyx CLI documentation](/docs/cli/getting-started) for ins
 If you want to try out ActyxOS by deploying some sample apps, please take a look at [the Quickstart Guide](../../learn-actyx/quickstart.md#run-the-app-in-dev-mode).
 :::
 
-## Problems?
+## Licensing
+
+### During development
+
+You are free to use ActyxOS for development. Please set the ActyxOS license in your node settings to `development`. The same applies for app keys.
+
+### Running in production
+
+You may only run ActyxOS in production if you have purchased and own a valid license for every production node (i.e. installation of ActyxOS) as stated in the _Actyx Software License Agreement_. The same applies for running apps in production; you must have purchased and own a valid app key.
+
+For more information about pricing check out [our website](https://www.actyx.com/pricing). Please [contact our sales team](https://www.actyx.com/contact) if you would like to purchase ActyxOS licenses or ActyxOS App Keys.
+
+### Problems?
 
 Ask for help on [our GitHub repository](https://github.com/actyx/quickstart) or [Twitter](https://twitter.com/actyx) or email developer@actyx.io.
 
-## Learn more
+### Learn more
 
 Jump to the different _Guides_ to learn more about the different aspects of ActyxOS.
