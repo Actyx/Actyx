@@ -92,7 +92,7 @@ describe('ax apps', () => {
       expect(isCodeInvalidInput(reponse)).toBe(true)
     })
 
-    test('return `OK` and package app if input path does exist', async () => {
+    test('return `OK` and package an app in the specified directory with manifest', async () => {
       const tarballFile = 'com.actyx.sample-webview-app-1.0.0.tar.gz'
 
       await remove(tarballFile)
@@ -111,5 +111,26 @@ describe('ax apps', () => {
 
       await remove(tarballFile)
     })
+
+    /* Test cases:
+
+    TODO
+    # Package an app in the current directory with default manifest ax-manifest.yml
+    ax apps package
+
+    TODO
+    # Package an app in the current directory with manifest another-manifest.yml
+    ax apps package another-manifest.yml
+
+    TODO
+    # Package the app in the specified directory myApp with default manifest
+    # ax-manifest.yml
+    ax apps package myApp/
+
+    DONE
+    # Package an app in the specified directory myApp with manifest
+    # myApp/another-manifest.yml
+    ax apps package myApp/another-manifest.yml
+    */
   })
 })
