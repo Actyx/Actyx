@@ -37,7 +37,7 @@ export const stateWithProvenanceReducer = <S>(
     const snapState = deserialize(snap.state)
     // Clone the input offsets, since they may not be mutable
     // (TODO: Seems like slightly too much cloning of offsets)
-    return { ...snap, psnMap: { ...snap.psnMap }, state: snapState }
+    return { ...snap, state: snapState }
   }
 
   // Head is always the latest state known to us
@@ -47,7 +47,6 @@ export const stateWithProvenanceReducer = <S>(
     ...head,
     // Clone the mutable parts to avoid interference
     state: JSON.stringify(head.state),
-    psnMap: { ...head.psnMap },
   })
 
   const clonedHead = () => deserializeSnapshot(snapshotHead())
@@ -64,12 +63,13 @@ export const stateWithProvenanceReducer = <S>(
       return
     }
 
-    let { state, psnMap, eventKey, cycle } = head
+    let { state, eventKey, cycle } = head
+    const offsets = { ...head.psnMap }
 
     while (i <= iToInclusive) {
       const ev = events[i]
       state = onEvent(state, ev)
-      psnMap = OffsetMap.update(psnMap, ev)
+      OffsetMap.update(offsets, ev)
       eventKey = ev
 
       i += 1
@@ -78,7 +78,7 @@ export const stateWithProvenanceReducer = <S>(
 
     head = {
       state,
-      psnMap,
+      psnMap: offsets,
       cycle,
       eventKey,
       horizon: head.horizon, // TODO: Detect new horizons from events
@@ -97,7 +97,7 @@ export const stateWithProvenanceReducer = <S>(
       queue.addPending({
         snap: snapshotHead(),
         tag: toStore.tag,
-        timestamp: events[i].timestamp,
+        timestamp: events[toStore.i].timestamp,
       })
     }
 
