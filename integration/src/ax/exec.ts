@@ -171,7 +171,7 @@ export const mkExec = (binary: string, addr: string): Exec => ({
       return rightOrThrow(Response_Apps_Package.decode(response), response)
     },
     PackageCwd: async (cwd: string): Promise<Response_Apps_Package> => {
-      const response = await exec(binary, [`apps`, `package`, cwd])
+      const response = await exec(binary, [`apps`, `package`], cwd)
       return rightOrThrow(Response_Apps_Package.decode(response), response)
     },
     Deploy: async (packagePath: string, force?: boolean): Promise<Response_Apps_Deploy> => {
