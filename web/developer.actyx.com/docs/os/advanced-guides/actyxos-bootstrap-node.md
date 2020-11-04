@@ -15,7 +15,7 @@ Each ActyxOS swarm needs to have its own ActyxOS Bootstrap Node. It is needed wh
 - [Docker engine](https://docs.docker.com/install/) (If you are using a fleet management service like [Balena](https://balena.io/) like balena, you do not need to install it manually.)
 
 :::tip Running ActyxOS on Docker with a fleet management service
-For running ActyxOS on Docker in production, most users set up a fleet management service like [Balena](https://balena.io/). Please refer to the [Using ActyxOS on Docker with Balena](/docs/os/advanced-guides/using-balena) for more information.
+For running ActyxOS on Docker in production, most users set up a fleet management service like [Balena](https://balena.io/).
 :::
 
 ## Run your ActyxOS Bootstrap Node

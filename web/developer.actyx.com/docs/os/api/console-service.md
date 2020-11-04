@@ -16,7 +16,7 @@ Key capabilities:
 - Enable local or remote access to historical or real-time logs
 
 :::note Local access only
-The Console Service currently only supports local access to logs, i.e. when you are in the same network as the edge device. We plan to introduce remote logging in 2020. Stay tuned for more.
+The Console Service currently only supports local access to logs, i.e. when you are in the same network as the edge device. We plan to introduce remote logging in 2021. Stay tuned for more.
 :::
 
 ## Basics
@@ -75,7 +75,7 @@ Logs are generated when your app runs. As you may not always be available to imm
 Given disk constraints and configuration options, ActyxOS may at some point delete logs from the edge device. The deletion happens in a FIFO fashion, with the oldest logs being deleted first, irrespective of level.
 
 :::info Long-term persistence with the upcoming Actyx Console
-The Actyx Console is planned for release in 2020. It will allow for logs to automatically be sent from the edge device to the scalable, cloud-based Console. Then you will be able to access logs long after they have been deleted from the edge device. Stay tuned for release updates.
+The Actyx Console is planned for release in 2021. It will allow for logs to automatically be sent from the edge device to the scalable, cloud-based Console. Then you will be able to access logs long after they have been deleted from the edge device. Stay tuned for release updates.
 :::
 
 ## Usage
@@ -190,7 +190,7 @@ If "logTimestamp" is omitted the Console Service will add it automatically for y
 
 ### Accessing log messages
 
-Until the release of the Actyx Console in 2020, logs can only be accessed using the [Actyx CLI](/docs/cli/getting-started) with the `ax logs` command. You can either retrieve all logs on the edge device or tail all logs generated from the time you execute the command.
+Until the release of the Actyx Console in 2021, logs can only be accessed using the [Actyx CLI](/docs/cli/getting-started) with the `ax logs` command. You can either retrieve all logs on the edge device or tail all logs generated from the time you execute the command.
 
 :::note
 Until the release of the Actyx Console, logs can only be accessed locally. In order for this to work, you must use the `--local` flag when calling Actyx CLI commands.

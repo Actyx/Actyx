@@ -4,7 +4,7 @@ author: Rüdiger Klaehn
 author_title: Distributed Systems Engineer at Actyx
 author_url: https://github.com/rklaehn
 author_image_url: /images/blog/ruediger-klaehn.jpg
-tags: [IPFS rust libp2p dweb]
+tags: [IPFS, rust, libp2p, dweb]
 ---
 
 We are currently migrating our core event dissemination system to the Rust programming language, using the libp2p decentralised networking stack as a basis. In the process of doing so, we have discovered an interop issue between go-libp2p and rust-libp2p.

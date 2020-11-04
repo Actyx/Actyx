@@ -1,10 +1,8 @@
 ---
 title: ax apps validate
----
+--- 
 
-### Validate app manifests
-
-```text
+```text title="Validate an app manifest"
 USAGE:
     ax apps validate [FLAGS] [PATH]...
 
@@ -21,7 +19,7 @@ ARGS:
 
 Check out these examples showing common usages of the `ax apps validate` command:
 
-```text
+```text title="Example Usage"
 # Validate an app in the current directory with default manifest ax-manifest.yml
 ax apps validate
 
