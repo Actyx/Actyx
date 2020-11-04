@@ -2,6 +2,7 @@ import { runOnAll, runOnEach } from '../runner/hosts'
 import { stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../stubs'
 import { demoMachineKit, quickstart } from './setup-projects'
 import { isCodeInvalidInput, isCodeNodeUnreachable, isCodeOk } from './util'
+import { remove, pathExists } from 'fs-extra'
 
 describe('ax apps', () => {
   describe('ls', () => {
@@ -91,11 +92,24 @@ describe('ax apps', () => {
       expect(isCodeInvalidInput(reponse)).toBe(true)
     })
 
-    test('return `OK` an package app if input path does exist', async () => {
-      const [reponse] = await runOnEach([{}], false, (node) =>
+    test('return `OK` and package app if input path does exist', async () => {
+      const tarballFile = 'com.actyx.sample-webview-app-1.0.0.tar.gz'
+
+      await remove(tarballFile)
+
+      const [reponse] = await runOnEach([{}, {}], false, (node) =>
         node.ax.Apps.Package(quickstart.dirSampleWebviewApp),
       )
+      const haveValidPacakgePath =
+        reponse.code === 'OK' && reponse.result.every((x) => x.packagePath.endsWith(tarballFile))
+
       expect(isCodeOk(reponse)).toBe(true)
+      expect(haveValidPacakgePath).toBe(true)
+
+      const wasTarballCreated = await pathExists(tarballFile)
+      expect(wasTarballCreated).toBe(true)
+
+      await remove(tarballFile)
     })
   })
 })

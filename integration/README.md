@@ -16,3 +16,7 @@ Then you can `npm i` and `npm test` in this project. If you forgot to first buil
 ## Caveats
 
 Currently on MacOS `actyxos-linux` binaries cannot be cross compiled for linux (`cargo build --release --target x86_64-unknown-linux-gnu --bin actyxos-linux`). To get these files, instead open Azure Pipelines website, and go to your build. At the top, you will see "Related" and "XX published". Click on "XX published", open actyxos-bin-x64 -> x66, you'll find the `actyxos-linux` binary there. This will only happen with master builds or with PR builds that modify rt-master or build.
+
+## Dev
+
+- To run only a single test file use for example `npm run tsc && jest -- ./dist/src/ax/your-test.spec.js`
