@@ -7,10 +7,17 @@ all-ANDROID := actyxos.apk
 CARGO_TEST_JOBS := 4
 CARGO_BUILD_JOBS := 8
 
-all: $(patsubst %,dist/bin/%,$(all-LINUX) $(all-WINDOWS) $(all-ANDROID)) \
-	dist/bin/windows-x86_64/installer \
+all-linux: $(patsubst %,dist/bin/%,$(all-LINUX))
+
+all-android: $(patsubst %,dist/bin/%,$(all-ANDROID))
+
+all-windows: $(patsubst %,dist/bin/%,$(all-WINDOWS)) dist/bin/windows-x86_64/installer
+
+all-js: \
 	dist/js/pond \
 	dist/js/os-sdk
+
+all: all-linux all-android all-windows all-js
 
 # These should be moved to the global azure pipelines build
 export BUILD_RUST_TOOLCHAIN := 1.45.0
