@@ -32,7 +32,7 @@ describe('ax apps', () => {
     test('return `OK` and validate an app in the specified directory with default manifest', async () => {
       const manifestPath = quickstart.dirSampleWebviewApp
       const manifestDefault = 'temp/quickstart/sample-webview-app'
-      const [response] = await runOnEach([{}], false, (node) => node.ax.Apps.Validate(manifestPath))
+      const response = await stubNode.ax.Apps.Validate(manifestPath)
       const reponseShape = { code: 'OK', result: [manifestDefault] }
       expect(response).toMatchObject(reponseShape)
       expect(isCodeOk(response)).toBe(true)
