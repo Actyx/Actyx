@@ -90,5 +90,12 @@ describe('ax apps', () => {
       )
       expect(isCodeInvalidInput(reponse)).toBe(true)
     })
+
+    test('return `OK` an package app if input path does exist', async () => {
+      const [reponse] = await runOnEach([{}], false, (node) =>
+        node.ax.Apps.Package(quickstart.dirSampleWebviewApp),
+      )
+      expect(isCodeOk(reponse)).toBe(true)
+    })
   })
 })
