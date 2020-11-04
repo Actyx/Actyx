@@ -154,7 +154,7 @@ export const observeMonotonic = (
   const reducer = stateWithProvenanceReducer(
     onEventRaw,
     {
-      state: initialState,
+      state: initialStateAsString,
       psnMap: OffsetMap.empty,
       eventKey: EventKey.zero,
       horizon: undefined,

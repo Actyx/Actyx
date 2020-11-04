@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import * as assert from 'assert'
 import { greaterThan } from 'fp-ts/lib/Ord'
 import { Event, Events, OffsetMap } from '../eventstore/types'
 import { SnapshotScheduler } from '../store/snapshotScheduler'
@@ -27,24 +26,31 @@ export type Reducer<S> = {
 
 export const stateWithProvenanceReducer = <S>(
   onEvent: (oldState: S, event: Event) => S,
-  initialState: LocalSnapshot<S>,
+  initialState: SerializedStateSnap,
   deserializeState?: (jsonState: unknown) => S,
 ): Reducer<S> => {
   const deserialize = deserializeState
     ? (s: string): S => deserializeState(JSON.parse(s))
     : (s: string): S => JSON.parse(s) as S
 
-  const cloneSnap = (snap: LocalSnapshot<S>) => {
-    const offsets = { ...snap.psnMap }
-    const state = deserialize(JSON.stringify(snap.state))
-    return {
-      ...snap,
-      psnMap: offsets,
-      state,
-    }
+  const deserializeSnapshot = (snap: SerializedStateSnap): LocalSnapshot<S> => {
+    const snapState = deserialize(snap.state)
+    // Clone the input offsets, since they may not be mutable
+    // (TODO: Seems like slightly too much cloning of offsets)
+    return { ...snap, psnMap: { ...snap.psnMap }, state: snapState }
   }
 
-  let head = cloneSnap(initialState)
+  // Head is always the latest state known to us
+  let head: LocalSnapshot<S> = deserializeSnapshot(initialState)
+
+  const snapshotHead = (): SerializedStateSnap => ({
+    ...head,
+    // Clone the mutable parts to avoid interference
+    state: JSON.stringify(head.state),
+    psnMap: { ...head.psnMap },
+  })
+
+  const clonedHead = () => deserializeSnapshot(snapshotHead())
 
   let queue = snapshotQueue()
 
@@ -52,61 +58,50 @@ export const stateWithProvenanceReducer = <S>(
   const snapshotEligible = (latest: Timestamp) => (snapBase: PendingSnapshot) =>
     snapshotScheduler.isEligibleForStorage(snapBase, { timestamp: latest })
 
-  const appendEvents = (events: Events, emit: boolean) => {
-    let { state, psnMap, eventKey } = head
-
-    // FIXME: Arguments are a bit questionable, but we can’t change the scheduler yet, otherwise the FES-based tests start failing.
-    const statesToStore = snapshotScheduler.getSnapshotLevels(head.cycle + 1, events, 0)
-
-    let i = 0
-    for (const toStore of statesToStore) {
-      while (i <= toStore.i) {
-        const ev = events[i]
-        state = onEvent(state, ev)
-        psnMap = OffsetMap.update(psnMap, ev)
-        eventKey = ev
-
-        i += 1
-      }
-
-      assert(
-        // i has been incremented by 1 at the end of the loop, we actually do expect equality
-        i - 1 === toStore.i,
-        'Expected statesToStore to be in ascending order, with no entries earlier then the latestStored pointer.',
-      )
-
-      const psnMapCopy = { ...psnMap }
-      const snap = {
-        state: JSON.stringify(state),
-        psnMap: psnMapCopy,
-        cycle: head.cycle + i,
-        eventKey,
-        horizon: head.horizon, // TODO: Detect new horizons from events
-      }
-
-      queue.addPending({
-        snap,
-        tag: toStore.tag,
-        timestamp: events[i].timestamp,
-      })
+  // Advance the head by applying the given event array between (i ..= iToInclusive)
+  const advanceHead = (events: Events, i: number, iToInclusive: number) => {
+    if (i > iToInclusive) {
+      return
     }
 
-    while (i < events.length) {
+    let { state, psnMap, eventKey, cycle } = head
+
+    while (i <= iToInclusive) {
       const ev = events[i]
       state = onEvent(state, ev)
       psnMap = OffsetMap.update(psnMap, ev)
       eventKey = ev
 
       i += 1
+      cycle += 1
     }
 
     head = {
       state,
       psnMap,
-      cycle: head.cycle + events.length,
+      cycle,
       eventKey,
       horizon: head.horizon, // TODO: Detect new horizons from events
     }
+  }
+
+  const appendEvents = (events: Events, emit: boolean) => {
+    // FIXME: Arguments are a bit questionable, but we can’t change the scheduler yet, otherwise the FES-based tests start failing.
+    const statesToStore = snapshotScheduler.getSnapshotLevels(head.cycle + 1, events, 0)
+
+    let i = 0
+    for (const toStore of statesToStore) {
+      advanceHead(events, i, toStore.i)
+      i = toStore.i + 1
+
+      queue.addPending({
+        snap: snapshotHead(),
+        tag: toStore.tag,
+        timestamp: events[i].timestamp,
+      })
+    }
+
+    advanceHead(events, i, events.length - 1)
 
     const snapshots =
       events.length > 0
@@ -116,7 +111,7 @@ export const stateWithProvenanceReducer = <S>(
     return {
       snapshots,
       // This is for all downstream consumers, so we clone.
-      emit: emit ? [cloneSnap(head)] : [],
+      emit: emit ? [clonedHead()] : [],
     }
   }
 
@@ -132,9 +127,7 @@ export const stateWithProvenanceReducer = <S>(
         queue.invalidateLaterThan(snap.eventKey)
       }
 
-      const oldState = deserialize(snap.state)
-      // Clone the input offsets, since they may not be mutable
-      head = { ...snap, psnMap: { ...snap.psnMap }, state: oldState }
+      head = deserializeSnapshot(snap)
     },
   }
 }
