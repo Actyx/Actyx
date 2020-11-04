@@ -1,5 +1,5 @@
 import { runOnAll, runOnEach } from '../runner/hosts'
-import { stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../stubs'
+import { stubNode, stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../stubs'
 import { demoMachineKit, quickstart } from './setup-projects'
 import { isCodeInvalidInput, isCodeNodeUnreachable, isCodeOk } from './util'
 import { remove, pathExists } from 'fs-extra'
@@ -18,11 +18,8 @@ describe('ax apps', () => {
     })
 
     test('return empty result if no apps', async () => {
-      const responses = await runOnEach([{}, {}], false, (node) => node.ax.Apps.Ls())
-      const test = [
-        { code: 'OK', result: [] },
-        { code: 'OK', result: [] },
-      ]
+      const responses = await stubNode.ax.Apps.Ls()
+      const test = { code: 'OK', result: [] }
       expect(responses).toMatchObject(test)
     })
   })
