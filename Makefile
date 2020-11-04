@@ -138,17 +138,17 @@ dist/js/pond:
 	mkdir -p $@
 	cd js/pond && source ~/.nvm/nvm.sh && nvm install && \
 		npm i && \
-		npm run build:prod
-	cd js/pond && mv `npm pack` ../../$@
+		npm run build:prod && \
+		mv `npm pack` ../../$@/
 
 # make js sdk
 dist/js/os-sdk:
 	mkdir -p $@
 	cd js/os-sdk && source ~/.nvm/nvm.sh && nvm install && \
 		npm i && \
-		npm run build
-	cd js/os-sdk && npm pack
-	mv js/os-sdk/actyx-os-sdk-*.tgz $@/
+		npm run build && \
+		npm pack && \
+		mv actyx-os-sdk-*.tgz ../../$@/
 
 # validate all websites
 validate-website: diagnostics validate-website-developer validate-website-downloads
