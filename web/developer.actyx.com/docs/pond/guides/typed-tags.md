@@ -116,7 +116,8 @@ where: tags.chatRoom.withId('broadcast').or(tags.chatRoom.withId('my-room'))
 where: tags.chatRoom.withId('Melmac').and(tags.sender.withId('Alf'))
 ```
 
-:::tip Inspect your queries
-Since Pond 2.2 you can call `toString()` on your `Where` objects to find out what your query does
-under the hood, at a glance. The format is similar to the last code snippet’s comments.
+:::tip The Definitive Guide
+If you want to learn about all the details, check out the [complete
+guide](/docs/pond/in-depth/tag-type-checking).
+It also contains important guidance on application architecture using tags!
 :::

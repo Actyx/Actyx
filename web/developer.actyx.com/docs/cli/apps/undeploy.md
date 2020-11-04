@@ -2,9 +2,7 @@
 title: ax apps undeploy
 ---
 
-### Undeploy an app from a node
-
-```text
+```text title="Undeploy an app from an ActyxOS node"
 USAGE:
     ax apps undeploy [FLAGS] <APP> <NODE>
 
@@ -23,7 +21,7 @@ ARGS:
 
 Here is an example of using the `ax apps undeploy` command:
 
-```text
+```text title="Example Usage"
 # Undeploy app with ID com.example.app from node at 10.2.3.23
 ax apps undeploy --local com.example.app 10.2.3.23
 ```
