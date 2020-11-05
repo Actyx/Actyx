@@ -18,7 +18,7 @@ describe('ax apps', () => {
       expect(isCodeNodeUnreachable(r)).toBe(true)
     })
 
-    test('return empty result if no apps', async () => {
+    test('return `OK` and empty result if no apps', async () => {
       const responses = await stubNode.ax.Apps.Ls()
       const test = { code: 'OK', result: [] }
       expect(responses).toMatchObject(test)
