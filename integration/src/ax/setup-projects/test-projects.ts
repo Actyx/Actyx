@@ -2,7 +2,7 @@ import demoMachineKit from './demo-machine-kit'
 import quickstart from './quickstart'
 import { canSetupAfterRemoveOrCreateTempDir } from './util'
 
-export const setupTestProjects = async (): Promise<void> => {
+const setup = async (): Promise<void> => {
   try {
     const canSetup = await canSetupAfterRemoveOrCreateTempDir('temp')
     if (canSetup) {
@@ -20,3 +20,15 @@ export const setupTestProjects = async (): Promise<void> => {
     process.exit()
   }
 }
+
+const testProjects = {
+  quickstart: {
+    dirs: quickstart.dirs,
+  },
+  demoMachineKit: {
+    dirs: demoMachineKit.dirs,
+  },
+  setup,
+}
+
+export default testProjects

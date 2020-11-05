@@ -1,13 +1,10 @@
-import { gitClone, npmInstall, npmRun, TEMP_DIR } from './util'
+import { gitClone, npmInstall, npmRun, TEMP_DIR, TestProject } from './util'
 
-type Quickstart = () => Readonly<{
-  dirQuickstart: string
-  dirSampleWebviewApp: string
-  dirSampleDockerApp: string
-  setup: () => Promise<string>
-}>
+type Dirs = 'dirQuickstart' | 'dirSampleWebviewApp' | 'dirSampleDockerApp'
 
-const quickstart: Quickstart = () => {
+type Quickstart = TestProject<Dirs>
+
+const quickstart = (): Quickstart => {
   const dirQuickstart = `${TEMP_DIR}/quickstart`
   const dirSampleWebviewApp = `${TEMP_DIR}/quickstart/sample-webview-app`
   const dirSampleDockerApp = `${TEMP_DIR}/quickstart/sample-docker-app`
@@ -15,9 +12,11 @@ const quickstart: Quickstart = () => {
   const npmRunBuild = npmRun('build')
 
   return {
-    dirQuickstart,
-    dirSampleWebviewApp,
-    dirSampleDockerApp,
+    dirs: {
+      dirQuickstart,
+      dirSampleWebviewApp,
+      dirSampleDockerApp,
+    },
 
     async setup(): Promise<string> {
       console.log('Setup quickstart:')

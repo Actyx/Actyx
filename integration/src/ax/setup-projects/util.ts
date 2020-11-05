@@ -3,6 +3,11 @@ import { mkdirs, pathExists } from 'fs-extra'
 
 export const TEMP_DIR = 'temp'
 
+export type TestProject<T extends string> = Readonly<{
+  dirs: Record<T, string>
+  setup: () => Promise<string>
+}>
+
 export const canSetupAfterRemoveOrCreateTempDir = async (path: string): Promise<boolean> => {
   const hasTempDir = await pathExists(path)
   if (!hasTempDir) {
