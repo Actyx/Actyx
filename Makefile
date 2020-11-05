@@ -10,10 +10,13 @@
 # - nvm should be installed. https://github.com/nvm-sh/nvm#install--update-script
 # - docker needs to be installed and configured
 # - able to access dockerhub
+# - the various docker images used for the build should be up to date
 # - if you want to use SCCACHE to speed up rust builds, make sure the SCCACHE_REDIS
 #   environment variable is set:
 #   export SCCACHE_REDIS=`vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache`
 #   the default is to not use it
+#
+# You can use make prepare to update the docker images and install required tools.
 SHELL := /bin/bash
 
 all-LINUX := $(foreach arch,x86_64 aarch64 armv7 arm,linux-$(arch)/actyxos-linux)
@@ -36,7 +39,6 @@ all-js: \
 	dist/js/pond \
 	dist/js/os-sdk
 
-# These should be moved to the global azure pipelines build
 export BUILD_RUST_TOOLCHAIN := 1.45.0
 export BUILD_SCCACHE_VERSION := 0.2.12
 
@@ -57,6 +59,9 @@ export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),latest)
 print-%:
 	@echo $* = $($*)
 
+# delete almost all generated artifacts
+# this does not need to be run from CI, since it always starts with a fresh checkout anyway.
+# use this locally to ensure a truly fresh build.
 clean:
 	cd rt-master/target && rm -rf *
 	cd web/downloads.actyx.com && rm -rf node_modules
