@@ -3,7 +3,7 @@ import { mkdirs, pathExists } from 'fs-extra'
 
 export const TEMP_DIR = 'temp'
 
-export const canSetupAfterTempDirHasBeenCreated = async (path: string): Promise<boolean> => {
+export const canSetupAfterRemoveOrCreateTempDir = async (path: string): Promise<boolean> => {
   const hasTempDir = await pathExists(path)
   if (!hasTempDir) {
     await mkdirs(path)

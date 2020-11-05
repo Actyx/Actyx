@@ -1,10 +1,10 @@
 import demoMachineKit from './demo-machine-kit'
 import quickstart from './quickstart'
-import { canSetupAfterTempDirHasBeenCreated } from './util'
+import { canSetupAfterRemoveOrCreateTempDir } from './util'
 
 export const setupTestProjects = async (): Promise<void> => {
   try {
-    const canSetup = await canSetupAfterTempDirHasBeenCreated('temp')
+    const canSetup = await canSetupAfterRemoveOrCreateTempDir('temp')
     if (canSetup) {
       const quickstartStatusMessage = await quickstart.setup()
       console.log(quickstartStatusMessage)
