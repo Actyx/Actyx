@@ -10,9 +10,9 @@ export class CLI {
   public readonly Logs
   public readonly Swarms
 
-  constructor(private readonly node: string, binaryPath?: string) {
+  constructor(private readonly node: string, binaryPath: string) {
     // TODO get binary from Cosmos build
-    this.binaryPath = binaryPath || 'ax'
+    this.binaryPath = binaryPath
     const exec = mkExec(this.binaryPath, this.node)
     this.Nodes = exec.Nodes
     this.Apps = exec.Apps

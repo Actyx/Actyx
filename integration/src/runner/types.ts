@@ -57,7 +57,7 @@ export type ActyxOSNode = {
   actyxOS: ApiClient
   _private: {
     shutdown: () => Promise<void>
-    axBinary: string
+    axBinaryPath: string
     axHost: string
     apiEvent: string
     apiConsole: string

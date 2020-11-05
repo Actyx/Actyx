@@ -124,9 +124,9 @@ export const mkNodeLinux = async (
   )
   console.log('node %s pond service reachable on port %i', name, port4243)
 
-  const axBinary = '../rt-master/target/release/ax'
+  const axBinaryPath = '../rt-master/target/release/ax'
   const axHost = `localhost:${port4457}`
-  const ax = new CLI(axHost, axBinary)
+  const ax = new CLI(axHost, axBinaryPath)
 
   const apiConsole = `http://localhost:${port4457}/api/`
   const apiEvent = `http://localhost:${port4454}/api/`
@@ -155,6 +155,6 @@ export const mkNodeLinux = async (
     runtimes: [],
     ax,
     actyxOS,
-    _private: { shutdown, axBinary, axHost, apiConsole, apiEvent, apiPond },
+    _private: { shutdown, axBinaryPath, axHost, apiConsole, apiEvent, apiPond },
   }
 }
