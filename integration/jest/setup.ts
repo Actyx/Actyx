@@ -154,7 +154,7 @@ const getPeers = async (node: ActyxOSNode): Promise<number> => {
 const setup = async (_config: Record<string, unknown>): Promise<void> => {
   process.stdout.write('\n')
 
-  testProjects.setup()
+  await testProjects.setup()
 
   const axNodeSetup = (<MyGlobal>global).axNodeSetup
 

@@ -18,7 +18,7 @@ const quickstart = (): Quickstart => {
       dirSampleDockerApp,
     },
 
-    async setup(): Promise<string> {
+    async setup() {
       console.log('Setup quickstart:')
 
       await gitClone('https://github.com/Actyx/quickstart.git', dirQuickstart)
@@ -29,7 +29,7 @@ const quickstart = (): Quickstart => {
       await npmInstall(dirSampleDockerApp)
       await npmRunBuild(dirSampleDockerApp)
 
-      return 'quickstart ready!'
+      console.log('quickstart ready!')
     },
   }
 }

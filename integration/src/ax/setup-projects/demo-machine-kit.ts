@@ -19,7 +19,7 @@ const demoMachineKit = (): DemoMachineKit => {
       dirWagoConnector,
     },
 
-    async setup(): Promise<string> {
+    async setup() {
       console.log('Setup DemoMachineKit:')
 
       await gitClone('https://github.com/Actyx/DemoMachineKit.git', dirDemoMachineKit)
@@ -29,7 +29,7 @@ const demoMachineKit = (): DemoMachineKit => {
       await npmRunBuild('ui:erp-simulator:build')
       await npmRunBuild('node:wago-connector:build')
 
-      return 'DemoMachineKit ready!'
+      console.log('DemoMachineKit ready!')
     },
   }
 }
