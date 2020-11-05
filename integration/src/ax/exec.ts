@@ -110,6 +110,7 @@ type Exec = {
     Ls: () => Promise<Response_Apps_Ls>
     Validate: (path: string) => Promise<Reponse_Apps_Validate>
     ValidateCwd: (cwd: string) => Promise<Reponse_Apps_Validate>
+    ValidateMultiApps: (appPaths: ReadonlyArray<string>) => Promise<Reponse_Apps_Validate>
   }
   Logs: {
     TailFollow: (
@@ -203,6 +204,10 @@ export const mkExec = (binary: string, addr: string): Exec => ({
     },
     ValidateCwd: async (cwd: string): Promise<Reponse_Apps_Validate> => {
       const response = await exec(binary, [`apps`, `validate`], cwd)
+      return rightOrThrow(Reponse_Apps_Validate.decode(response), response)
+    },
+    ValidateMultiApps: async (appPaths: ReadonlyArray<string>): Promise<Reponse_Apps_Validate> => {
+      const response = await exec(binary, [`apps`, `validate`, ...appPaths])
       return rightOrThrow(Reponse_Apps_Validate.decode(response), response)
     },
   },
