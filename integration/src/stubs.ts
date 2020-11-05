@@ -11,16 +11,17 @@ export const mkNodeStub = (
   name: string,
   addr = 'localhost',
 ): ActyxOSNode => {
+  const axBinaryPath = '../rt-master/target/release/ax'
   return {
     name,
     host,
     runtimes,
     target: { os, arch, kind: { type: 'test' }, _private: { shutdown: () => Promise.resolve() } },
-    ax: new CLI(addr),
+    ax: new CLI(addr, axBinaryPath),
     actyxOS: Client(),
     _private: {
       shutdown: () => Promise.resolve(),
-      axBinary: '',
+      axBinaryPath: '',
       axHost: '',
       apiConsole: '',
       apiEvent: '',

@@ -16,7 +16,7 @@ class MyEnvironment extends NodeEnvironment {
     const axNodeSetup = (<MyGlobal>(<unknown>this.global)).axNodeSetup
 
     for (const node of axNodeSetup.nodes) {
-      node.ax = new CLI(node._private.axHost, node._private.axBinary)
+      node.ax = new CLI(node._private.axHost, node._private.axBinaryPath)
 
       const opts = DefaultClientOpts()
       opts.Endpoints.ConsoleService.BaseUrl = node._private.apiConsole
