@@ -25,7 +25,6 @@ component=$(shell echo $${DOCKER_TAG:-unknown-x64}|cut -f1 -d-)
 arch=$(shell echo $${DOCKER_TAG:-unknown-x64}|cut -f2 -d-)
 # These should be moved to the global azure pipelines build
 BUILD_RUST_TOOLCHAIN=1.45.0
-BUILD_SCCACHE_VERSION=0.2.12
 
 # Build specific
 build_dir=dist/build
@@ -80,12 +79,6 @@ define fn_docker_push
 	fi
 endef
 
-docker-push-musl: docker-build-musl docker-login
-	$(call fn_docker_push,musl,aarch64-unknown-linux-musl)
-	$(call fn_docker_push,musl,x86_64-unknown-linux-musl)
-	$(call fn_docker_push,musl,armv7-unknown-linux-musleabihf)
-	$(call fn_docker_push,musl,arm-unknown-linux-musleabi)
-
 docker-push-%: docker-build-% docker-login
 	$(eval DOCKER_IMAGE_NAME:=$(subst docker-push-,,$@))
 	$(call fn_docker_push,$(DOCKER_IMAGE_NAME),$(arch))
@@ -99,7 +92,6 @@ define fn_docker_build_musl
 	pushd $(DOCKER_DIR)/musl; \
 	DOCKER_BUILDKIT=1 docker build -t $(IMAGE_NAME) \
 	--build-arg BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
- 	--build-arg BUILD_SCCACHE_VERSION=$(BUILD_SCCACHE_VERSION) \
 	--build-arg TARGET=$(TARGET) \
 	-f Dockerfile .
 endef
@@ -148,7 +140,6 @@ ${DOCKER_BUILD}: debug clean
 	--build-arg GIT_COMMIT=$(git_hash) \
 	--build-arg GIT_BRANCH=$(GIT_BRANCH) \
 	--build-arg BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
-	--build-arg BUILD_SCCACHE_VERSION=$(BUILD_SCCACHE_VERSION) \
 	-f $(build_dir)/Dockerfile .
 	echo "Cleaning up $(build_dir)"
 	rm -rf $(build_dir)
@@ -171,12 +162,10 @@ docker-build-actyxos: docker-build-docker-logging-plugin
 # 2nd arg: target toolchain
 # 3rd arg: docker base image
 define build_bins_and_move
-	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
 	mkdir -p $(1)
 	docker run -v `pwd`:/src \
 	-u builder \
 	-w /src/rt-master \
-	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-v $${CARGO_HOME:-$$HOME/.cargo/git}:/home/builder/.cargo/git \
 	-v $${CARGO_HOME:-$$HOME/.cargo/registry}:/home/builder/.cargo/registry \
 	-it $(3) \
@@ -192,13 +181,11 @@ endef
 # 2nd arg: target toolchain
 # 3rd arg: docker base image
 define build_bins_and_move_win64
-	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
 	mkdir -p $(1)
 	docker run \
 	-v `pwd`:/src \
 	-u builder \
 	-w /src/rt-master \
-	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-e CARGO_BUILD_TARGET=$(2) \
 	-e CARGO_BUILD_JOBS=8 \
 	-v $${CARGO_HOME:-$$HOME/.cargo/git}:/usr/local/cargo/git \
@@ -291,12 +278,10 @@ define fn-build-android-rust-lib
 	$(eval TARGET:=$(1))
 	$(eval ARCH:=$(2))
 	$(eval CRATE:=$(3))
-	$(eval SCCACHE_REDIS?=$(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache))
 	docker run -v `pwd`:/src \
 	-u builder \
 	-v $${CARGO_HOME:-$$HOME/.cargo/git}:/usr/local/cargo/git \
 	-v $${CARGO_HOME:-$$HOME/.cargo/registry}:/usr/local/cargo/registry \
-	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-e RUST_BACKTRACE=1 \
 	-w /src/rt-master \
 	-it actyx/util:buildrs-x64-latest \
@@ -348,7 +333,6 @@ axosandroid-app: debug axosandroid-libs
 	./jvm/os-android/bin/get-keystore.sh
 	docker run -v `pwd`:/src \
 	-u builder \
-	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-w /src/jvm/os-android \
 	-it actyx/util:buildrs-x64-latest \
 	./gradlew clean ktlintCheck build assembleRelease
@@ -369,7 +353,6 @@ axosandroid-x86: debug
 	done
 	docker run -v `pwd`:/src \
 	-u builder \
-	-e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	-w /src/jvm/os-android \
 	-it actyx/util:buildrs-x64-latest \
 	./gradlew --gradle-user-home /src/jvm/os-android/.gradle clean ktlintCheck build assembleRelease
