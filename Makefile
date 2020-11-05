@@ -11,10 +11,6 @@
 # - docker needs to be installed and configured
 # - able to access dockerhub
 # - the various docker images used for the build should be up to date
-# - if you want to use SCCACHE to speed up rust builds, make sure the SCCACHE_REDIS
-#   environment variable is set:
-#   export SCCACHE_REDIS=`vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache`
-#   the default is to not use it
 #
 # You can use make prepare to update the docker images and install required tools.
 SHELL := /bin/bash
@@ -40,7 +36,6 @@ all-js: \
 	dist/js/os-sdk
 
 export BUILD_RUST_TOOLCHAIN := 1.45.0
-export BUILD_SCCACHE_VERSION := 0.2.12
 
 export CARGO_HOME ?= $(HOME)/.cargo
 
@@ -48,9 +43,6 @@ export CARGO_HOME ?= $(HOME)/.cargo
 # to run this locally, set the VAULT_TOKEN environment variable by running vault login with your dev role.
 # e.g. `export VAULT_TOKEN=`vault login -token-only -method aws role=dev-ruediger`
 export VAULT_TOKEN ?= $(shell vault login -token-only -method aws role=ops-travis-ci)
-
-# export SCCACHE_REDIS ?= $(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache)
-SCCACHE_REDIS ?= $(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache)
 
 # Helper to try out local builds of Docker images
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),latest)
@@ -282,7 +274,6 @@ rt-master/target/$(TARGET)/release/%: cargo-init
 	docker run \
 	  -u $(shell id -u) \
 	  -w /src/rt-master \
-	  -e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	  -e CARGO_BUILD_TARGET=$(TARGET) \
 	  -e CARGO_BUILD_JOBS=$(CARGO_BUILD_JOBS) \
 	  -e HOME=/home/builder \
@@ -308,7 +299,6 @@ $(soTargetPatterns): cargo-init
 	docker run \
 	  -u $(shell id -u) \
 	  -w /src/rt-master \
-	  -e SCCACHE_REDIS=$(SCCACHE_REDIS) \
 	  -e CARGO_BUILD_TARGET=$(TARGET) \
 	  -e CARGO_BUILD_JOBS=$(CARGO_BUILD_JOBS) \
 	  -e HOME=/home/builder \
