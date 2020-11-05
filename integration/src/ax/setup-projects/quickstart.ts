@@ -22,19 +22,15 @@ const quickstart: Quickstart = () => {
     async setup(): Promise<string> {
       console.log('Setup quickstart:')
 
-      try {
-        await gitClone('https://github.com/Actyx/quickstart.git', dirQuickstart)
+      await gitClone('https://github.com/Actyx/quickstart.git', dirQuickstart)
 
-        await npmInstall(dirSampleWebviewApp)
-        await npmRunBuild(dirSampleWebviewApp)
+      await npmInstall(dirSampleWebviewApp)
+      await npmRunBuild(dirSampleWebviewApp)
 
-        await npmInstall(dirSampleDockerApp)
-        await npmRunBuild(dirSampleDockerApp)
+      await npmInstall(dirSampleDockerApp)
+      await npmRunBuild(dirSampleDockerApp)
 
-        return Promise.resolve('quickstart ready!')
-      } catch (err) {
-        return Promise.reject(err)
-      }
+      return 'quickstart ready!'
     },
   }
 }

@@ -23,18 +23,14 @@ const demoMachineKit: DemoMachineKit = () => {
     async setup(): Promise<string> {
       console.log('Setup DemoMachineKit:')
 
-      try {
-        await gitClone('https://github.com/Actyx/DemoMachineKit.git', dirDemoMachineKit)
+      await gitClone('https://github.com/Actyx/DemoMachineKit.git', dirDemoMachineKit)
 
-        await npmInstall(dirDemoMachineKit)
-        await npmRunBuild('ui:dashboard:build')
-        await npmRunBuild('ui:erp-simulator:build')
-        await npmRunBuild('node:wago-connector:build')
+      await npmInstall(dirDemoMachineKit)
+      await npmRunBuild('ui:dashboard:build')
+      await npmRunBuild('ui:erp-simulator:build')
+      await npmRunBuild('node:wago-connector:build')
 
-        return Promise.resolve('DemoMachineKit ready!')
-      } catch (err) {
-        return Promise.reject(err)
-      }
+      return 'DemoMachineKit ready!'
     },
   }
 }
