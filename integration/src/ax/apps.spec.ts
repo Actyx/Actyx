@@ -105,7 +105,7 @@ describe('ax apps', () => {
       expect(isCodeInvalidInput(reponse)).toBe(true)
     })
 
-    // ???
+    // DONE
     test('return `OK` and Package an app in the current directory with default manifest ax-manifest.yml', async () => {
       await remove(tarballFile)
 
@@ -116,7 +116,7 @@ describe('ax apps', () => {
 
       await remove(tarballFile)
     })
-
+    // DONE
     test('return `OK` and package an app in the specified directory with manifest', async () => {
       await remove(tarballFile)
 
