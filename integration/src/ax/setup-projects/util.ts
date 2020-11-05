@@ -7,9 +7,9 @@ export const canSetupAfterTempDirHasBeenCreated = async (path: string): Promise<
   const hasTempDir = await pathExists(path)
   if (!hasTempDir) {
     await mkdirs(path)
-    return Promise.resolve(true)
+    return true
   }
-  return Promise.resolve(false)
+  return false
 }
 
 export const gitClone = (url: string, path: string): execa.ExecaChildProcess<string> => {
