@@ -3,17 +3,17 @@ import { mkExec } from './exec'
 export * from './types'
 
 export class CLI {
-  private readonly binary: string
+  private readonly binaryPath: string
   public readonly Nodes
   public readonly Apps
   public readonly Settings
   public readonly Logs
   public readonly Swarms
 
-  constructor(private readonly node: string, binary?: string) {
+  constructor(private readonly node: string, binaryPath?: string) {
     // TODO get binary from Cosmos build
-    this.binary = binary || 'ax'
-    const exec = mkExec(this.binary, this.node)
+    this.binaryPath = binaryPath || 'ax'
+    const exec = mkExec(this.binaryPath, this.node)
     this.Nodes = exec.Nodes
     this.Apps = exec.Apps
     this.Settings = exec.Settings
