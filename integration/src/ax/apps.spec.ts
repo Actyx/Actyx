@@ -80,6 +80,8 @@ describe('ax apps', () => {
   })
 
   describe('package', () => {
+    beforeEach(async () => await remove(tarballFile))
+
     const tarballFile = 'com.actyx.sample-webview-app-1.0.0.tar.gz'
 
     const haveValidPacakgePath = (response: Response_Apps_Package, tarballFile: string) =>
@@ -91,19 +93,13 @@ describe('ax apps', () => {
     })
 
     test('return `OK` and Package an app in the current directory with default manifest ax-manifest.yml', async () => {
-      await remove(tarballFile)
-
       const response = await stubNode.ax.Apps.PackageCwd(quickstart.dirs.dirSampleWebviewApp)
 
       expect(isCodeOk(response)).toBe(true)
       expect(haveValidPacakgePath(response, tarballFile)).toBe(true)
-
-      await remove(tarballFile)
     })
 
     test('return `OK` and package an app in the specified directory with manifest', async () => {
-      await remove(tarballFile)
-
       const manifestPath = `${quickstart.dirs.dirSampleWebviewApp}/ax-manifest.yml`
       const response = await stubNode.ax.Apps.Package(manifestPath)
 
@@ -112,8 +108,6 @@ describe('ax apps', () => {
 
       const wasTarballCreated = await pathExists(tarballFile)
       expect(wasTarballCreated).toBe(true)
-
-      await remove(tarballFile)
     })
   })
 })
