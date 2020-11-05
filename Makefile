@@ -1,11 +1,30 @@
+# Make all for this file should build every artifact in Cosmos, from the various
+# rust binaries to the js packages to the websites(s) and windows and android installers.
+#
+# Finished artifacts will be in dist.
+#
+# Prerequisites for using this makefile locally:
+#
+# - vault credentials should be in the `VAULT_TOKEN` environment variable.
+#   E.g. `export VAULT_TOKEN=`vault login -token-only -method aws role=dev-ruediger`
+# - nvm should be installed. https://github.com/nvm-sh/nvm#install--update-script
+# - docker needs to be installed and configured
+# - able to access dockerhub
+# - if you want to use SCCACHE to speed up rust builds, make sure the SCCACHE_REDIS
+#   environment variable is set:
+#   export SCCACHE_REDIS=`vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache`
+#   the default is to not use it
 SHELL := /bin/bash
 
 all-LINUX := $(foreach arch,x86_64 aarch64 armv7 arm,linux-$(arch)/actyxos-linux)
 all-WINDOWS := windows-x86_64/actyxos.exe windows-x86_64/ax.exe
 all-ANDROID := actyxos.apk
 
-CARGO_TEST_JOBS := 4
+CARGO_TEST_JOBS := 8
 CARGO_BUILD_JOBS := 8
+
+# this needs to remain the first so it is the default target
+all: all-linux all-android all-windows all-js
 
 all-linux: $(patsubst %,dist/bin/%,$(all-LINUX))
 
@@ -16,8 +35,6 @@ all-windows: $(patsubst %,dist/bin/%,$(all-WINDOWS)) dist/bin/windows-x86_64/ins
 all-js: \
 	dist/js/pond \
 	dist/js/os-sdk
-
-all: all-linux all-android all-windows all-js
 
 # These should be moved to the global azure pipelines build
 export BUILD_RUST_TOOLCHAIN := 1.45.0
@@ -31,7 +48,7 @@ export CARGO_HOME ?= $(HOME)/.cargo
 export VAULT_TOKEN ?= $(shell vault login -token-only -method aws role=ops-travis-ci)
 
 # export SCCACHE_REDIS ?= $(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache)
-SCCACHE_REDIS :=
+SCCACHE_REDIS ?=
 
 # Helper to try out local builds of Docker images
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),latest)
@@ -41,12 +58,12 @@ print-%:
 	@echo $* = $($*)
 
 clean:
-	cd rt-master && cargo clean
+	cd rt-master/target && rm -rf *
 	cd web/downloads.actyx.com && rm -rf node_modules
 	cd web/developer.actyx.com && rm -rf node_modules
 	cd js/pond && rm -rf node_modules
 	cd js/os-sdk && rm -rf node_modules
-	cd jvm/os-android && ./gradlew clean
+	cd jvm/os-android/gradle && rm -rf build
 	cd dist && rm -rf *
 
 # mark things with this dependency to run whenever requested
@@ -134,6 +151,7 @@ validate-js-sdk:
 		npm run build
 
 # make js pond
+# this is running directly on the host container, so it needs to have nvm installed
 dist/js/pond:
 	mkdir -p $@
 	cd js/pond && source ~/.nvm/nvm.sh && nvm install && \
@@ -142,6 +160,7 @@ dist/js/pond:
 		mv `npm pack` ../../$@/
 
 # make js sdk
+# this is running directly on the host container, so it needs to have nvm installed
 dist/js/os-sdk:
 	mkdir -p $@
 	cd js/os-sdk && source ~/.nvm/nvm.sh && nvm install && \
@@ -166,7 +185,7 @@ validate-website-downloads:
 
 validate-misc: validate-actyxos-node-manager validate-actyxos-win-installer
 
-# run npm install. There don't seem to be
+# run npm install. There don't seem to be any tests.
 validate-actyxos-node-manager:
 	docker run \
 	  -u $(shell id -u) \
