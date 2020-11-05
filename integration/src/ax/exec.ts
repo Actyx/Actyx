@@ -44,8 +44,8 @@ const exec = async (binaryPath: string, args: string[], cwd?: string) => {
   try {
     const option: execa.Options | undefined = cwd ? { cwd } : undefined
     const binaryPathCwdOrProcess = (cwd ? '../../../' : '') + binaryPath
-    const response = (await execa(binaryPathCwdOrProcess, [`-j`].concat(args), option)).stdout
-    return JSON.parse(response)
+    const response = await execa(binaryPathCwdOrProcess, [`-j`].concat(args), option)
+    return JSON.parse(response.stdout)
   } catch (error) {
     try {
       return JSON.parse(error.stdout)
