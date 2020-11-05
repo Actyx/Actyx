@@ -64,9 +64,11 @@ clean:
 	cd dist && rm -rf *
 
 # mark things with this dependency to run whenever requested
-.PHONY: prepare prepare-js prepare-rs
+.PHONY: prepare prepare-js prepare-rs prepare-docker
 
-prepare: prepare-js prepare-rs
+prepare: prepare-js prepare-rs prepare-docker
+
+prepare-docker:
 	# used for windows and android rust builds
 	docker pull actyx/util:buildrs-x64-$(IMAGE_VERSION)
 	# used for linux rust builds
