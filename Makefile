@@ -48,7 +48,7 @@ export CARGO_HOME ?= $(HOME)/.cargo
 export VAULT_TOKEN ?= $(shell vault login -token-only -method aws role=ops-travis-ci)
 
 # export SCCACHE_REDIS ?= $(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache)
-SCCACHE_REDIS ?=
+SCCACHE_REDIS ?= $(shell vault kv get -field=SCCACHE_REDIS secret/ops.actyx.redis-sccache)
 
 # Helper to try out local builds of Docker images
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),latest)
