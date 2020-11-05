@@ -1,7 +1,6 @@
 import { stubNode, stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../stubs'
 import { isCodeInvalidInput, isCodeNodeUnreachable, isCodeOk } from './util'
 import { remove, pathExists } from 'fs-extra'
-import { Response_Apps_Package } from './types'
 import testProjects from './setup-projects/test-projects'
 
 const { demoMachineKit, quickstart } = testProjects
@@ -80,12 +79,10 @@ describe('ax apps', () => {
   })
 
   describe('package', () => {
-    beforeEach(async () => await remove(tarballFile))
-
     const tarballFile = 'com.actyx.sample-webview-app-1.0.0.tar.gz'
+    const regexTarballFile = new RegExp(`${tarballFile}+$`, 'g')
 
-    const haveValidPacakgePath = (response: Response_Apps_Package, tarballFile: string) =>
-      response.code === 'OK' && response.result.every((x) => x.packagePath.endsWith(tarballFile))
+    beforeEach(async () => await remove(tarballFile))
 
     test('return `ERR_INVALID_INPUT` if manifest was not found', async () => {
       const reponse = await stubNode.ax.Apps.Package('not-exiting-path')
@@ -96,7 +93,8 @@ describe('ax apps', () => {
       const response = await stubNode.ax.Apps.PackageCwd(quickstart.dirs.dirSampleWebviewApp)
 
       expect(isCodeOk(response)).toBe(true)
-      expect(haveValidPacakgePath(response, tarballFile)).toBe(true)
+      expect(response.code === 'OK' && response.result[0]).toHaveProperty('packagePath')
+      expect(response.code === 'OK' && response.result[0].packagePath).toMatch(regexTarballFile)
     })
 
     test('return `OK` and package an app in the specified directory with manifest', async () => {
@@ -104,7 +102,8 @@ describe('ax apps', () => {
       const response = await stubNode.ax.Apps.Package(manifestPath)
 
       expect(isCodeOk(response)).toBe(true)
-      expect(haveValidPacakgePath(response, tarballFile)).toBe(true)
+      expect(response.code === 'OK' && response.result[0]).toHaveProperty('packagePath')
+      expect(response.code === 'OK' && response.result[0].packagePath).toMatch(regexTarballFile)
 
       const wasTarballCreated = await pathExists(tarballFile)
       expect(wasTarballCreated).toBe(true)
