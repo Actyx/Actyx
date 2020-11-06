@@ -82,7 +82,13 @@ describe('ax apps', () => {
     const tarballFile = 'com.actyx.sample-webview-app-1.0.0.tar.gz'
     const regexTarballFile = new RegExp(`${tarballFile}+$`, 'g')
 
-    beforeEach(async () => await remove(tarballFile))
+    const removeTarballs = async () => {
+      await remove(`${tarballFile}`)
+      await remove(`${quickstart.dirs.dirSampleWebviewApp}/${tarballFile}`)
+    }
+
+    beforeEach(() => removeTarballs())
+    afterEach(() => removeTarballs())
 
     test('return `ERR_INVALID_INPUT` if manifest was not found', async () => {
       const reponse = await stubNode.ax.Apps.Package('not-exiting-path')
