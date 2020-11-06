@@ -75,7 +75,8 @@
             "type": "string",
             "const": "development"
           }
-        ]
+        ],
+        "default": "development"
       }
     },
     "General": {
@@ -162,10 +163,6 @@
           "description": "Key-value pairs where the key is an app's ID.",
           "default": {}
         }
-      },
-      "default": {
-        "os": "development",
-        "apps": {}
       }
     },
     "Services": {
