@@ -17,7 +17,7 @@ export type Reducer<S> = {
     events: Events,
     emit: boolean,
   ) => {
-    snapshots: PendingSnapshot[]
+    snapshots: ReadonlyArray<PendingSnapshot>
     emit: StateWithProvenance<S>[]
   }
 
@@ -58,15 +58,17 @@ export const stateWithProvenanceReducer = <S>(
     snapshotScheduler.isEligibleForStorage(snapBase, { timestamp: latest })
 
   // Advance the head by applying the given event array between (i ..= iToInclusive)
-  const advanceHead = (events: Events, i: number, iToInclusive: number) => {
-    if (i > iToInclusive) {
+  const advanceHead = (events: Events, fromIdx: number, toIdxInclusive: number) => {
+    if (fromIdx > toIdxInclusive) {
       return
     }
+
+    let i = fromIdx
 
     let { state, eventKey, cycle } = head
     const offsets = { ...head.psnMap }
 
-    while (i <= iToInclusive) {
+    while (i <= toIdxInclusive) {
       const ev = events[i]
       state = onEvent(state, ev)
       OffsetMap.update(offsets, ev)
@@ -85,14 +87,14 @@ export const stateWithProvenanceReducer = <S>(
     }
   }
 
-  const appendEvents = (events: Events, emit: boolean) => {
+  const appendEvents: Reducer<S>['appendEvents'] = (events, emit) => {
     // FIXME: Arguments are a bit questionable, but we can’t change the scheduler yet, otherwise the FES-based tests start failing.
     const statesToStore = snapshotScheduler.getSnapshotLevels(head.cycle + 1, events, 0)
 
-    let i = 0
+    let fromIdx = 0
     for (const toStore of statesToStore) {
-      advanceHead(events, i, toStore.i)
-      i = toStore.i + 1
+      advanceHead(events, fromIdx, toStore.i)
+      fromIdx = toStore.i + 1
 
       queue.addPending({
         snap: snapshotHead(),
@@ -101,11 +103,11 @@ export const stateWithProvenanceReducer = <S>(
       })
     }
 
-    advanceHead(events, i, events.length - 1)
+    advanceHead(events, fromIdx, events.length - 1)
 
     const snapshots =
       events.length > 0
-        ? queue.getSnapsToStore(snapshotEligible(events[events.length - 1].timestamp))
+        ? queue.getSnapshotsToStore(snapshotEligible(events[events.length - 1].timestamp))
         : []
 
     return {
@@ -145,7 +147,9 @@ const snapshotQueue = () => {
     }
   }
 
-  const getSnapsToStore = (storeNow: (snapshot: PendingSnapshot) => boolean): PendingSnapshot[] => {
+  const getSnapshotsToStore = (
+    storeNow: (snapshot: PendingSnapshot) => boolean,
+  ): ReadonlyArray<PendingSnapshot> => {
     const res = []
 
     while (queue.length > 0 && storeNow(queue[0])) {
@@ -158,6 +162,6 @@ const snapshotQueue = () => {
   return {
     addPending,
     invalidateLaterThan,
-    getSnapsToStore,
+    getSnapshotsToStore,
   }
 }

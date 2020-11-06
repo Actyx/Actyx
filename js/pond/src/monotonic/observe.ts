@@ -115,8 +115,10 @@ export const observeMonotonic = (
   // Rather, time travel messages are mapped to a restart of the stream.
   // In the end we get an easier to consume protocol.
   const updates = (from?: OffsetMap): Observable<StateMsg | EventsMsg> => {
-    const stream = Observable.defer(() =>
+    const stream = () =>
       endpoint(fishId, subscriptionSet, from)
+        // This is a high-pressure pipeline with potential recursion, hence we run on a Scheduler
+        // to guard against excess CPU usage and stack overflow.
         .subscribeOn(Scheduler.queue)
         .concatMap(msg => {
           if (msg.type === MsgType.timetravel) {
@@ -138,13 +140,12 @@ export const observeMonotonic = (
 
           // Reset the reducer and let the code further below take care of restarting the stream
           return Observable.of(makeResetMsg(EventKey.zero))
-        }),
-    )
+        })
 
     // Wait for pending snapshot storage requests to finish
     return Observable.from(storeSnapshotsPromise)
       .first()
-      .concatMap(() => stream)
+      .concatMap(stream)
   }
 
   // If the stream of updates terminates without a timetravel message – due to an error or the ws engine –,
