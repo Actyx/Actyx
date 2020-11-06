@@ -1,6 +1,6 @@
 const settings = {
   binaryPath: {
-    ax: '../rt-master/target/release/ax',
+    ax: '../dist/bin/x64/ax',
     actyxosLinux: '../dist/bin/x64/actyxos-linux',
   },
 }
