@@ -1,6 +1,6 @@
 import { gitClone, npmInstall, npmRun, TEMP_DIR, TestProject } from './util'
 
-type Dirs = 'dirDashboard' | 'dirErpSimulator' | 'dirWagoConnector'
+type Dirs = 'dashboard' | 'erpSimulator' | 'wagoConnector'
 
 type DemoMachineKit = TestProject<Dirs>
 
@@ -14,9 +14,9 @@ const demoMachineKit = (): DemoMachineKit => {
 
   return {
     dirs: {
-      dirDashboard,
-      dirErpSimulator,
-      dirWagoConnector,
+      dashboard: dirDashboard,
+      erpSimulator: dirErpSimulator,
+      wagoConnector: dirWagoConnector,
     },
 
     async setup() {

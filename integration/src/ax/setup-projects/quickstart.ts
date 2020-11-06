@@ -1,6 +1,6 @@
 import { gitClone, npmInstall, npmRun, TEMP_DIR, TestProject } from './util'
 
-type Dirs = 'dirQuickstart' | 'dirSampleWebviewApp' | 'dirSampleDockerApp'
+type Dirs = 'quickstart' | 'sampleWebviewApp' | 'sampleDockerApp'
 
 type Quickstart = TestProject<Dirs>
 
@@ -13,9 +13,9 @@ const quickstart = (): Quickstart => {
 
   return {
     dirs: {
-      dirQuickstart,
-      dirSampleWebviewApp,
-      dirSampleDockerApp,
+      quickstart: dirQuickstart,
+      sampleWebviewApp: dirSampleWebviewApp,
+      sampleDockerApp: dirSampleDockerApp,
     },
 
     async setup() {
