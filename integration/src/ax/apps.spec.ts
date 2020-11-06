@@ -1,7 +1,7 @@
 import { stubNode, stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../stubs'
 import { isCodeInvalidInput, isCodeNodeUnreachable, isCodeOk } from './util'
 import { remove, pathExists } from 'fs-extra'
-import testProjects from './setup-projects/test-projects'
+import testProjects from './setup-projects'
 
 const { demoMachineKit, quickstart } = testProjects
 
