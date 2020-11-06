@@ -18,9 +18,9 @@ Then you can `npm i` and `npm test` in this project. If you forgot to first buil
 
 - To run only a single test file use for example: `npm run tsc && jest -- ./dist/src/ax/your-test.spec.js`
 
-| Enviroment variable                          | Description              |
-|----------------------------------------------|--------------------------|
-| AX_INTEGRATION_SKIP_SETUP_TEST_PROJECTS=true | skip setup test projects |
+| Enviroment variable                                 | Description              |
+|-----------------------------------------------------|--------------------------|
+| export AX_INTEGRATION_SKIP_SETUP_TEST_PROJECTS=true | skip setup test projects |
 
 ## Caveats
 
