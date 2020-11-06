@@ -65,10 +65,9 @@ describe('ax apps', () => {
     })
 
     test('return multiple `OK` an validate apps if input paths do exists for multiple apps', async () => {
-      const { dirDashboard, dirErpSimulator } = demoMachineKit.dirs
       const response = await stubNodeHostUnreachable.ax.Apps.ValidateMultiApps([
-        dirDashboard,
-        dirErpSimulator,
+        demoMachineKit.dirs.dirDashboard,
+        demoMachineKit.dirs.dirErpSimulator,
       ])
       const reponseShape = {
         code: 'OK',
