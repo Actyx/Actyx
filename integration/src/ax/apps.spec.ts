@@ -60,6 +60,7 @@ describe('ax apps', () => {
         'not-existing-path1',
         'not-existing-path2',
       ])
+      expect(response.code === 'ERR_INVALID_INPUT' && response).toHaveProperty('message')
       expect(isCodeInvalidInput(response)).toBe(true)
     })
 
