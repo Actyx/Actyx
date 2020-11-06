@@ -5,7 +5,7 @@ import { ensureDir } from 'fs-extra'
 const setup = async (): Promise<void> => {
   const skipSetup = process.env.AX_INTEGRATION_SKIP_SETUP_TEST_PROJECTS === 'true'
   if (skipSetup) {
-    console.log('skip setup test projects')
+    console.log('Skip setup test projects')
     return
   }
   try {

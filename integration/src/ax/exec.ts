@@ -23,6 +23,7 @@ import execa from 'execa'
 import { StringDecoder } from 'string_decoder'
 import { Transform } from 'stream'
 import fetch from 'node-fetch'
+import * as path from 'path'
 
 const rightOrThrow = <A>(e: Either<Errors, A>, obj: unknown): A => {
   if (isLeft(e)) {
@@ -43,8 +44,8 @@ const rightOrThrow = <A>(e: Either<Errors, A>, obj: unknown): A => {
 const exec = async (binaryPath: string, args: string[], cwd?: string) => {
   try {
     const option: execa.Options | undefined = cwd ? { cwd } : undefined
-    const binaryPathCwdOrProcess = (cwd ? '../../../' : '') + binaryPath
-    const response = await execa(binaryPathCwdOrProcess, [`-j`].concat(args), option)
+    const binaryPathResolved = path.resolve(binaryPath)
+    const response = await execa(binaryPathResolved, [`-j`].concat(args), option)
     return JSON.parse(response.stdout)
   } catch (error) {
     try {

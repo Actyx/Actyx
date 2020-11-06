@@ -16,7 +16,7 @@ Then you can `npm i` and `npm test` in this project. If you forgot to first buil
 | npm run lint:fix   | automatically fix lint issues                                     |
 | npm run clean:temp | remove the `temp` folder where test projects are cloned and built |
 
-- To run only a single test file use for example: `npm run tsc && jest -- ./dist/src/ax/your-test.spec.js`
+- To run only a single test file use for example: `npx tsc && npx jest -- ./dist/src/ax/your-test.spec.js`
 
 | Enviroment variable                                 | Description              |
 |-----------------------------------------------------|--------------------------|
