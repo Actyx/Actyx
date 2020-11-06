@@ -34,24 +34,24 @@ describe('ax apps', () => {
       const manifestPath = quickstart.dirs.dirSampleWebviewApp
       const manifestDefault = 'temp/quickstart/sample-webview-app'
       const response = await stubNode.ax.Apps.Validate(manifestPath)
-      const reponseShape = { code: 'OK', result: [manifestDefault] }
-      expect(response).toMatchObject(reponseShape)
+      const responseShape = { code: 'OK', result: [manifestDefault] }
+      expect(response).toMatchObject(responseShape)
       expect(isCodeOk(response)).toBe(true)
     })
 
     test('return `OK` and validate with default manifest', async () => {
       const cwdDir = quickstart.dirs.dirSampleWebviewApp
       const response = await stubNode.ax.Apps.ValidateCwd(cwdDir)
-      const reponseShape = { code: 'OK', result: ['ax-manifest.yml'] }
-      expect(response).toMatchObject(reponseShape)
+      const responseShape = { code: 'OK', result: ['ax-manifest.yml'] }
+      expect(response).toMatchObject(responseShape)
       expect(isCodeOk(response)).toBe(true)
     })
 
     test('return `OK` and validate an app in the specified directory with manifest', async () => {
       const manifestPath = `${quickstart.dirs.dirSampleWebviewApp}/ax-manifest.yml`
       const response = await stubNode.ax.Apps.Validate(manifestPath)
-      const reponseShape = { code: 'OK', result: [manifestPath] }
-      expect(response).toMatchObject(reponseShape)
+      const responseShape = { code: 'OK', result: [manifestPath] }
+      expect(response).toMatchObject(responseShape)
       expect(isCodeOk(response)).toBe(true)
     })
 
@@ -69,11 +69,11 @@ describe('ax apps', () => {
         demoMachineKit.dirs.dirDashboard,
         demoMachineKit.dirs.dirErpSimulator,
       ])
-      const reponseShape = {
+      const responseShape = {
         code: 'OK',
         result: ['temp/DemoMachineKit/src/dashboard', 'temp/DemoMachineKit/src/erp-simulator'],
       }
-      expect(response).toMatchObject(reponseShape)
+      expect(response).toMatchObject(responseShape)
       expect(isCodeOk(response)).toBe(true)
     })
   })
@@ -91,8 +91,9 @@ describe('ax apps', () => {
     afterEach(() => removeTarballs())
 
     test('return `ERR_INVALID_INPUT` if manifest was not found', async () => {
-      const reponse = await stubNode.ax.Apps.Package('not-exiting-path')
-      expect(isCodeInvalidInput(reponse)).toBe(true)
+      const response = await stubNode.ax.Apps.Package('not-exiting-path')
+      expect(response.code === 'ERR_INVALID_INPUT' && response).toHaveProperty('message')
+      expect(isCodeInvalidInput(response)).toBe(true)
     })
 
     test('return `OK` and Package an app in the current directory with default manifest ax-manifest.yml', async () => {

@@ -20,11 +20,11 @@ describe('ax settings', () => {
 
     test('return ax scope', async () => {
       const responses = await runOnEach([{}, {}], false, (node) => node.ax.Settings.Scopes())
-      const reponsesShape = [
+      const responsesShape = [
         { code: 'OK', result: ['com.actyx.os'] },
         { code: 'OK', result: ['com.actyx.os'] },
       ]
-      expect(responses).toMatchObject(reponsesShape)
+      expect(responses).toMatchObject(responsesShape)
     })
   })
 

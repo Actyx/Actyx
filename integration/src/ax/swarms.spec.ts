@@ -6,9 +6,9 @@ import { pathExists } from 'fs-extra'
 
 const FILE_PATH = 'temp-swarm-key'
 
-const getKeyAndOutputFromResponse = (reponse: Reponse_Swarms_Keygen) =>
-  reponse.code === 'OK'
-    ? { swarmKey: reponse.result.swarmKey, outputPath: reponse.result.outputPath }
+const getKeyAndOutputFromResponse = (response: Reponse_Swarms_Keygen) =>
+  response.code === 'OK'
+    ? { swarmKey: response.result.swarmKey, outputPath: response.result.outputPath }
     : undefined
 
 const isBase64 = (data: string) => Buffer.from(data, 'base64').toString('base64') === data
