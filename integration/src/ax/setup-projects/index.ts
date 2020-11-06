@@ -1,1 +1,2 @@
-export { default as testProjects } from './test-projects'
+import testProjects from './test-projects'
+export default testProjects

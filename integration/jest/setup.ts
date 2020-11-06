@@ -2,7 +2,7 @@
 import { EC2 } from 'aws-sdk'
 import { CLI } from '../src/ax/cli'
 import { SettingsInput } from '../src/ax/exec'
-import testProjects from '../src/ax/setup-projects/test-projects'
+import testProjects from '../src/ax/setup-projects'
 import { createInstance, createKey, terminateInstance } from '../src/runner/aws'
 import { mkNodeLinux } from '../src/runner/linux'
 import { ActyxOSNode, AwsKey } from '../src/runner/types'
