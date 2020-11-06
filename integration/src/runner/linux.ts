@@ -1,4 +1,5 @@
 import { Client, DefaultClientOpts } from '@actyx/os-sdk'
+import settings from '../../settings'
 import { CLI } from '../ax/cli'
 import * as Ssh from './ssh'
 import { ActyxOSNode, SshAble, Target } from './types'
@@ -47,7 +48,7 @@ export const mkNodeLinux = async (
     await Ssh.mkProm0((cb) => sftp.unlink('actyxos', () => cb(undefined)))
     await Ssh.mkProm0((cb) =>
       sftp.fastPut(
-        '../dist/bin/x64/actyxos-linux',
+        settings.binaryPath.actyxosLinux,
         'actyxos',
         {
           mode: 0o755,
@@ -124,7 +125,7 @@ export const mkNodeLinux = async (
   )
   console.log('node %s pond service reachable on port %i', name, port4243)
 
-  const axBinaryPath = '../rt-master/target/release/ax'
+  const axBinaryPath = settings.binaryPath.ax
   const axHost = `localhost:${port4457}`
   const ax = new CLI(axHost, axBinaryPath)
 
