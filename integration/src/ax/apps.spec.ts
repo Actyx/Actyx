@@ -19,8 +19,8 @@ describe('ax apps', () => {
 
     test('return `OK` and empty result if no apps', async () => {
       const responses = await stubNode.ax.Apps.Ls()
-      const test = { code: 'OK', result: [] }
-      expect(responses).toMatchObject(test)
+      const responseShape = { code: 'OK', result: [] }
+      expect(responses).toMatchObject(responseShape)
     })
   })
 
@@ -89,6 +89,7 @@ describe('ax apps', () => {
     }
 
     beforeEach(() => removeTarballs())
+
     afterEach(() => removeTarballs())
 
     test('return `ERR_INVALID_INPUT` if manifest was not found', async () => {
@@ -99,7 +100,6 @@ describe('ax apps', () => {
 
     test('return `OK` and Package an app in the current directory with default manifest ax-manifest.yml', async () => {
       const response = await stubNode.ax.Apps.PackageCwd(quickstart.dirs.dirSampleWebviewApp)
-
       expect(isCodeOk(response)).toBe(true)
       expect(response.code === 'OK' && response.result[0]).toHaveProperty('packagePath')
       expect(response.code === 'OK' && response.result[0].packagePath).toMatch(regexTarballFile)
