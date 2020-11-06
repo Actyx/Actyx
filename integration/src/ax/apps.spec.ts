@@ -27,6 +27,7 @@ describe('ax apps', () => {
   describe('validate', () => {
     test('return `ERR_INVALID_INPUT` if file path does not exist', async () => {
       const response = await stubNodeHostUnreachable.ax.Apps.Validate('not-existing-path')
+      expect(response.code === 'ERR_INVALID_INPUT' && response).toHaveProperty('message')
       expect(isCodeInvalidInput(response)).toBe(true)
     })
 
