@@ -38,7 +38,7 @@
   "name": "actyxos-integration",
   "scripts": {
     "tsc": "tsc",
-    "build": "rimraf dist && tsc",
+    "build": "rimraf dist && npm run tsc",
     "test": "npm run build && TZ=UTC jest",
     "lint:fix": "tsc & eslint './src/**/*.{js,ts,tsx}' --fix & prettier './src/**/*.{js,ts,tsx}' --write",
     "lint": "tsc & eslint './src/**/*.{js,ts,tsx}' & prettier './src/**/*.{js,ts,tsx}' --check",
