@@ -115,6 +115,19 @@ module.exports = {
       ],
     },
     {
+    type: 'category',
+    label: 'Fish\u00a0Parameters',
+    collapsed: false,
+    items: [
+      'pond/fish-parameters/on-event',
+      'pond/fish-parameters/initial-state',
+      'pond/fish-parameters/where',
+      'pond/fish-parameters/fish-id',
+      'pond/fish-parameters/deserialize-state',
+      'pond/fish-parameters/is-reset',
+      ]
+    },
+    {
       type: "category",
       label: "Pond In-Depth",
       collapsed: false,
@@ -187,7 +200,7 @@ module.exports = {
       label: "Advanced\u00a0Tutorial",
       collapsed: false,
       items: [
-        "learn-actyx/advanced-tutorial/introduction", 
+        "learn-actyx/advanced-tutorial/introduction",
         "learn-actyx/advanced-tutorial/solution-architecture",
         "learn-actyx/advanced-tutorial/get-started",
         "learn-actyx/advanced-tutorial/explore-the-apps",
