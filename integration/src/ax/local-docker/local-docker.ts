@@ -1,10 +1,12 @@
 import execa from 'execa'
 
+const CONTAINER_NAME = 'test-actyxos'
+
 const mkRun = (opts: string[] = []) => (actyxosDataPath: string): string =>
   [
     'docker run',
     '--detach',
-    '--name test-actyxos',
+    `--name ${CONTAINER_NAME}`,
     '--rm',
     '-e AX_DEV_MODE=1',
     `-v ${actyxosDataPath}:/data`,
@@ -29,3 +31,6 @@ export const runLocalDocker = (platform: NodeJS.Platform, actyxosDataPath: strin
   supportedPlatforms.includes(platform)
     ? execa.command(getSpecificCmd(platform)(actyxosDataPath)).then(() => undefined)
     : Promise.reject(`Can not run Docker, platform ${platform} is not supported!`)
+
+export const stopLocalDocker = (): Promise<void> =>
+  execa.command(`docker stop ${CONTAINER_NAME}`).then(() => undefined)
