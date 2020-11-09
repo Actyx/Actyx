@@ -1,8 +1,8 @@
 # How to use this
 
-Integration tests use primarily the artifacts built from the current commit, so you need to
+Integration tests use primarily the artifacts built from the current commit, so you need to:
 
-- make ActyxOS and related binaries (`actyxos-linux` and `ax`) available by compiling them for all desired target platforms (will be taken from `Cosmos/dist/bin/*`), for instance `Cosmos/dist/bin/x64/actyxos-linux` and `Cosmos/dist/bin/x64/ax`
+- make ActyxOS and related binaries (`actyxos-linux` and `ax`) available by compiling them for all desired target platforms (will be taken from `Cosmos/dist/bin/*`), use `make dist/bin/current/ax` and `make dist/bin/linux-x86_64/actyxos-linux` in `Cosmos` directory
 - change permission for the binaries `chmod +x actyxos-linux` and `chmod +x ax`
 - run `npm run build` in `js/os-sdk` and `js/pond`
 
