@@ -18,7 +18,8 @@ const localDocker = () => {
   return {
     async setup() {
       try {
-        await execa.command(cmd)
+        execa.command(cmd)
+        console.log('Running ActyxOS on Docker')
       } catch (error) {
         console.log('Make sure ActyxOS is not running locally when using integration tests!')
         console.error(error.stderr)
