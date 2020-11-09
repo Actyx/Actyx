@@ -112,7 +112,7 @@
         },
         "displayName": {
           "$ref": "#/definitions/Basic/NonEmptyString",
-          "default": "Default node"
+          "default": "Default Node"
         },
         "logLevels": {
           "type": "object",
