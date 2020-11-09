@@ -151,7 +151,8 @@
       "additionalProperties": false,
       "properties": {
         "os": {
-          "$ref": "#/definitions/Composite/License"
+          "$ref": "#/definitions/Composite/License",
+          "default": "development"
         },
         "apps": {
           "type": "object",
@@ -164,10 +165,6 @@
           "description": "Key-value pairs where the key is an app's ID.",
           "default": {}
         }
-      },
-      "default": {
-        "os": "development",
-        "apps": {}
       }
     },
     "Services": {
