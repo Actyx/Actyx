@@ -2,9 +2,7 @@
 title: ax apps deploy
 ---
 
-### Deploy an app to a node
-
-```text
+```text title="Deploy an app to an ActyxOS node"
 USAGE:
     ax apps deploy [FLAGS] [OPTIONS] <PATH> <NODE>
 
@@ -33,7 +31,7 @@ ARGS:
 
 See the following example usages of the `ax apps deploy` command:
 
-```text
+```text title="Example Usage"
 # Deploy a packaged app tarball to a node
 ax apps deploy --local myApp1-1.0.0.tar.gz 10.2.3.23
 ```

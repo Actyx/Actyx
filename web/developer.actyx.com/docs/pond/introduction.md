@@ -4,7 +4,7 @@ hide_table_of_contents: true
 ---
 
 Writing distributed apps is difficult.
-The **Actyx Pond** framework makes it simpler by providing an opinionated set of tools on top of [ActyxOS](../os/introduction).
+The **Actyx Pond** framework makes it simpler by providing an opinionated set of tools on top of [ActyxOS](../os/general/introduction).
 
 The idea behind Actyx Pond is that you take your app’s business logic and split it according to responsibilities.
 These usually match the physical objects or abstract concepts that your app models and interacts with, be that temperature sensors, robots, receipts, or text messages.

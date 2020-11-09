@@ -56,26 +56,27 @@ const mkOnEventRaw = <S, E>(
  */
 export const observeMonotonic = (
   eventStore: EventStore,
-  _snapshotStore: SnapshotStore,
+  snapshotStore: SnapshotStore,
   _pondStateTracker: PondStateTracker,
 ) => <S, E>(
   subscriptionSet: SubscriptionSet,
   initialState: S,
   onEvent: (state: S, event: E, metadata: Metadata) => S,
-  _cacheKey: FishId,
+  fishId: FishId,
   isReset?: IsReset<E>,
-  _deserializeState?: (jsonState: unknown) => S,
+  deserializeState?: (jsonState: unknown) => S,
 ): Observable<StateWithProvenance<S>> => {
-  const endpoint = eventsMonotonic(eventStore)
+  const endpoint = eventsMonotonic(eventStore, snapshotStore)
 
   const { sourceId } = eventStore
 
   const onEventRaw = mkOnEventRaw(sourceId, clone(initialState), onEvent, isReset)
 
+  const initialStateAsString = JSON.stringify(initialState)
   // Here we can find earlier states that we have cached in-process.
   // Returning the initial state is always fine, though. It just leads to more processing.
-  const findStartingState = (_before: EventKey): LocalSnapshot<S> => ({
-    state: clone(initialState),
+  const findStartingState = (_before: EventKey): LocalSnapshot<string> => ({
+    state: initialStateAsString,
     psnMap: {},
     cycle: 0,
     eventKey: EventKey.zero,
@@ -87,7 +88,7 @@ export const observeMonotonic = (
     const latestValid = findStartingState(trigger)
     return {
       type: MsgType.state,
-      state: latestValid,
+      snapshot: latestValid,
     }
   }
 
@@ -97,12 +98,12 @@ export const observeMonotonic = (
   // Rather, time travel messages are mapped to a restart of the stream.
   // In the end we get an easier to consume protocol.
   const updates = (from?: OffsetMap): Observable<StateMsg | EventsMsg> =>
-    endpoint(subscriptionSet, from)
+    endpoint(fishId, subscriptionSet, from)
       .subscribeOn(Scheduler.queue)
       .concatMap(msg => {
         if (msg.type === MsgType.timetravel) {
           const resetMsg = makeResetMsg(msg.trigger)
-          const startFrom = resetMsg.state.psnMap
+          const startFrom = resetMsg.snapshot.psnMap
 
           // On time travel, reset the state and start a fresh stream
           return Observable.concat(
@@ -110,9 +111,9 @@ export const observeMonotonic = (
             // Recursive call, can’t be helped
             updates(OffsetMap.isEmpty(startFrom) ? undefined : startFrom),
           )
-        } else {
-          return [msg]
         }
+
+        return [msg]
       })
       .catch(err => {
         console.log(err) // Improve me
@@ -126,11 +127,15 @@ export const observeMonotonic = (
   const updates$ = Observable.concat(updates(), Observable.defer(updates))
 
   // This will probably turn into a mergeScan when local snapshots are added
-  const reducer = stateWithProvenanceReducer(onEventRaw, findStartingState(EventKey.zero))
+  const reducer = stateWithProvenanceReducer(
+    onEventRaw,
+    { state: clone(initialState), psnMap: OffsetMap.empty },
+    deserializeState,
+  )
   return updates$.concatMap(msg => {
     switch (msg.type) {
       case MsgType.state: {
-        reducer.setState(msg.state as StateWithProvenance<S>)
+        reducer.setState(msg.snapshot)
         return []
       }
 

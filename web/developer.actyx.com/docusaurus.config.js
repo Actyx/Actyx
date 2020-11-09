@@ -6,44 +6,54 @@ module.exports = {
   favicon: 'img/favicon.ico',
   organizationName: 'Actyx',
   projectName: 'Actyx',
-  plugins: ['@docusaurus/plugin-google-analytics'],
+  plugins: [],
   themeConfig: {
     announcementBar: {
-      id: 'support_us',
+      id: 'blog',
       content:
-        '⭐️ We just released v1.0.0 of ActyxOS! Check our <a target="_blank" rel="noopener noreferrer" href="https://github.com/facebook/docusaurus">Blog</a> for news! ⭐️',
-      backgroundColor: '#1998ff',
-      textColor: '#fff',
+        '🚀 We released v1.0.0 of ActyxOS! Check our <a target="_blank" rel="noopener noreferrer" href="https://developer.actyx.com/blog">Blog</a> for news! 🚀',
+      backgroundColor: '#f5f6f7',
+      textColor: '#000',
     },
     colorMode: {
       defaultMode: 'light',
       disableSwitch: true,
       respectPrefersColorScheme: false,
     },
-    disableDarkMode: true,
-    sidebarCollapsible: true,
     navbar: {
       title: '',
       logo: {
         alt: 'Actyx Developer',
         src: 'img/header.svg',
       },
-      links: [
+      items: [
         {
-          to: 'docs/os/introduction',
-          activeBasePath: 'docs/os/',
-          label: 'ActyxOS',
+              label: 'ActyxOS',
+              activeBasePath: 'docs/os/',
+              to: 'docs/os/general/introduction'
+            },
+            {
+              label: 'Actyx\u00a0Pond',
+              activeBasePath: 'docs/pond/',
+              to: 'docs/pond/introduction'
+            },
+        {
+          label: 'Node\u00a0Management',
           position: 'left',
+          items: [
+            {
+              label: 'Actyx\u00a0CLI',
+              to: 'docs/cli/getting-started'
+            },
+            {
+              label: 'ActyxOS\u00a0Node\u00a0Manager',
+              to: 'docs/node-manager/overview'
+            },
+          ]
         },
         {
-          to: 'docs/pond/introduction',
-          activeBasePath: 'docs/pond/',
-          label: 'Actyx\u00a0Pond',
-          position: 'left',
-        },
-        {
-          to: 'docs/learn-actyx/learn-actyx',
-          activeBasePath: 'learn-actyx/learn-actyx',
+          to: 'docs/learn-actyx',
+          activeBasePath: 'learn-actyx',
           label: 'Learn\u00a0Actyx',
           position: 'left',
         },
@@ -51,11 +61,6 @@ module.exports = {
           to: 'blog',
           label: 'Blog',
           position: 'right'
-        },
-        {
-          to: 'https://downloads.actyx.com',
-          label: 'Downloads',
-          position: 'right',
         },
       ],
     },
@@ -72,20 +77,12 @@ module.exports = {
           items: [
             {
               label: 'ActyxOS',
-              to: 'docs/os/introduction',
+              to: 'docs/os/general/introduction',
             },
             {
               label: 'Actyx Pond',
               to: 'docs/pond/introduction',
             },
-            {
-              label: 'Actyx CLI',
-              to: 'docs/cli/getting-started',
-            },
-            {
-              label: 'Actyx Node Manager',
-              to: 'docs/os/tools/node-manager',
-            }
           ]
         },
         {
@@ -106,6 +103,19 @@ module.exports = {
             {
               label: 'Discord',
               to: 'https://discord.gg/262yJhc',
+            }
+          ]
+        },
+        {
+          title: 'Node Management',
+          items: [
+            {
+              label: 'Actyx CLI',
+              to: 'docs/cli/getting-started',
+            },
+            {
+              label: 'Actyx Node Manager',
+              to: 'docs/node-manager/overview',
             }
           ]
         },

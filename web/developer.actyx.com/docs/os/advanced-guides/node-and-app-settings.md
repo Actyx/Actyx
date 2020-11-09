@@ -68,7 +68,7 @@ com.example.sap_connector: # Root of the settings tree
 
 ### Node settings schema
 
-We have defined exactly how the behavior of ActyxOS nodes can be configured in our ActyxOS [_Node Settings Schema_](../api/node-settings-schema.md) which you can download anytime from [here](/schemas/os/node-settings.schema.json).
+We have defined exactly how the behavior of ActyxOS nodes can be configured in our ActyxOS [_Node Settings Schema_](../api/node-settings-schema.md) which you can download anytime from [here](pathname:///schemas/os/node-settings.schema.json).
 
 Here are a couple of examples for ActyxOS nodes settings:
 
@@ -120,7 +120,7 @@ The structure of this settings objects allows you to initially set, retrieve, or
 
 ### Configuring nodes
 
-ActyxOS provides a number of settings that you can set. Some of those are required for the node to work, whereas others are optional. You can download the full ActyxOS [_Node Settings Schema_](../api/node-settings-schema.md) [here](/schemas/os/node-settings.schema.json). In this section we will show you how you can configure a node.
+ActyxOS provides a number of settings that you can set. Some of those are required for the node to work, whereas others are optional. You can download the full ActyxOS [_Node Settings Schema_](../api/node-settings-schema.md) [here](pathname:///schemas/os/node-settings.schema.json). In this section we will show you how you can configure a node.
 
 :::info
 The primary tool for setting settings, both at the node and the app level, is the [Actyx CLI](../../cli/getting-started.md). The Actyx CLI provides three important commands for doing so:
