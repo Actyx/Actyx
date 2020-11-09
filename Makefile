@@ -238,7 +238,7 @@ targets = $(sort $(foreach oa,$(osArch),$(target-$(oa))))
 #   - declare how to build the file in rt-master/target/...
 dist/bin/current/%: rt-master/target/release/%
 	mkdir -p $(dir $@)
-	cp $< $@
+	cp -a $< $@
 # here % (and thus $*) matches something like ax.exe, so we need to strip the suffix with `basename`
 rt-master/target/release/%:
 	cd rt-master && cargo --locked build --release --bin $(basename $*)
@@ -253,7 +253,7 @@ rt-master/target/release/%:
 define mkDistRule =
 dist/bin/$(1)/$(2): rt-master/target/$(target-$(1))/release/$(2)
 	mkdir -p $$(dir $$@)
-	cp $$< $$@
+	cp -a $$< $$@
 endef
 $(foreach oa,$(osArch),$(foreach bin,$(binaries),$(eval $(call mkDistRule,$(oa),$(bin)))))
 
@@ -343,7 +343,7 @@ misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/windows-x
 
 dist/bin/windows-x86_64/actyxos-node-manager.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64
 	mkdir -p $(dir $@)
-	cp $</actyxos-node-manager.exe $@
+	cp -a $</actyxos-node-manager.exe $@
 
 dist/bin/windows-x86_64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyxos.exe
 	mkdir -p $@
