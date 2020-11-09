@@ -9,11 +9,11 @@ In order to make it easier for you to work with Actyx Pond we have created a few
 
 ## React Pond
 
-React Pond is a thin React wrapper for Actyx Pond. I allows you to easily integrate Actyx Pond in your React applications.
+React Pond is a thin React wrapper for Actyx Pond. It allows you to easily integrate Actyx Pond in your [React](https://reactjs.org/) applications.
 
 ### Getting Started
 
-React Pond is available as [a npm package](https://www.npmjs.com/package/@actyx-contrib/react-pond). You can also find documentation there.
+React Pond is available as [an npm package](https://www.npmjs.com/package/@actyx-contrib/react-pond). You can also find documentation there.
 
 :::info See The Code
 Want to see how React Pond works or help develop it? Check out the [project on GitHub](https://github.com/actyx-contrib/react-pond) – it is open source.
@@ -25,4 +25,4 @@ The Actyx Project CLI is a simple command line tool that helps you set up new Ac
 
 ### Getting Started
 
-The Actyx Project CLI is available as [a npm package](https://www.npmjs.com/package/@actyx-contrib/react-pond). You can also find documentation there.
+The Actyx Project CLI is available as [an npm package](https://www.npmjs.com/package/@actyx-contrib/react-pond). You can also find documentation there.
