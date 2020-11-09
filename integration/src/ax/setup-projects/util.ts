@@ -1,5 +1,5 @@
 import execa, { ExecaReturnValue } from 'execa'
-import { mkdirs, pathExists, remove } from 'fs-extra'
+import { remove } from 'fs-extra'
 
 export const TEMP_DIR = 'temp'
 
@@ -7,15 +7,6 @@ export type TestProject<T extends string> = Readonly<{
   dirs: Record<T, string>
   setup: () => Promise<void>
 }>
-
-export const canSetupAfterRemoveOrCreateTempDir = async (path: string): Promise<boolean> => {
-  const hasTempDir = await pathExists(path)
-  if (!hasTempDir) {
-    await mkdirs(path)
-    return true
-  }
-  return false
-}
 
 export const gitClone = async (url: string, path: string): Promise<ExecaReturnValue<string>> => {
   await remove(path)
