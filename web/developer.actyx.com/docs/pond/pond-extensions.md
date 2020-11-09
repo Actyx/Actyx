@@ -3,6 +3,8 @@ title: Pond Extensions
 hide_table_of_contents: true
 ---
 
+<!-- markdownlint-disable MD024 -->
+
 In order to make it easier for you to work with Actyx Pond we have created a few extension packages.
 
 ## React Pond
