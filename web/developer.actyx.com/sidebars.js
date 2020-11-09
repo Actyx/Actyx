@@ -124,6 +124,7 @@ module.exports = {
         "pond/in-depth/do-not-ignore-events",
       ],
     },
+    "pond/pond-extensions",
   ],
   nodeManagerSidebar: [
     "node-manager/overview",
@@ -187,7 +188,7 @@ module.exports = {
       label: "Advanced\u00a0Tutorial",
       collapsed: false,
       items: [
-        "learn-actyx/advanced-tutorial/introduction", 
+        "learn-actyx/advanced-tutorial/introduction",
         "learn-actyx/advanced-tutorial/solution-architecture",
         "learn-actyx/advanced-tutorial/get-started",
         "learn-actyx/advanced-tutorial/explore-the-apps",
