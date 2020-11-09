@@ -1,5 +1,4 @@
 import execa from 'execa'
-import { platform } from 'os'
 
 const mkRun = (opts: string[] = []) => (actyxosDataPath: string): string =>
   [
@@ -23,16 +22,10 @@ export const runOnLinux = mkRun(['--network=host'])
 // TODO: unit test
 export const runOnWinMac = mkRun()
 
-const tap = <T>(cb: (x: T) => void) => (x: T): T => {
-  cb(x)
-  return x
-}
+const supportedPlatforms: NodeJS.Platform[] = ['win32', 'darwin', 'linux']
+const getSpecificCmd = (x: NodeJS.Platform) => (x === 'linux' ? runOnLinux : runOnWinMac)
 
-export const runLocalDocker = async (actyxosDataPath: string): Promise<void> =>
-  ['win32', 'darwin', 'linux'].includes(platform())
-    ? execa
-        .command(
-          tap(console.log)((platform() === 'linux' ? runOnLinux : runOnWinMac)(actyxosDataPath)),
-        )
-        .then(() => undefined)
-    : Promise.reject(`Cannot run Docker, platform ${platform()} is not supported!`)
+export const runLocalDocker = (platform: NodeJS.Platform, actyxosDataPath: string): Promise<void> =>
+  supportedPlatforms.includes(platform)
+    ? execa.command(getSpecificCmd(platform)(actyxosDataPath)).then(() => undefined)
+    : Promise.reject(`Can not run Docker, platform ${platform} is not supported!`)
