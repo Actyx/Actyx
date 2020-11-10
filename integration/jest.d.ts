@@ -4,6 +4,7 @@ declare global {
     interface Matchers<R> {
       myHelloMatcher(): CustomMatcherResult
       toMatchErrNodeUnreachable(): CustomMatcherResult
+      toMatchErrInvalidInput(): CustomMatcherResult
     }
   }
 }

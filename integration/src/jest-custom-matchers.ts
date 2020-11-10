@@ -1,4 +1,26 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+const hasPropertyResponse = (response: any, propery: string, value?: string) => {
+  if (value) {
+    return response && propery in response && response[propery] === value
+  } else {
+    return response && propery in response
+  }
+}
+
+const validateResponseError = (response: any, codeExpected: string) => {
+  const hasMessage = hasPropertyResponse(response, 'message')
+  const hasCode = hasPropertyResponse(response, 'code', codeExpected)
+  const pass = hasCode && hasMessage
+  const message = () =>
+    `Expected code was: ${codeExpected} instead got: ${response.code}, message was ${
+      hasMessage ? 'found' : 'not found'
+    }`
+  return {
+    message,
+    pass,
+  }
+}
+
 expect.extend({
   myHelloMatcher(input: string): jest.CustomMatcherResult {
     return {
@@ -7,15 +29,14 @@ expect.extend({
     }
   },
   toMatchErrNodeUnreachable(response: any): jest.CustomMatcherResult {
-    const errorCodeExpected = 'ERR_NODE_UNREACHABLE'
-    const hasCodeError = response && 'code' in response && response.code === errorCodeExpected
-    const hasMessage = response && 'message' in response
-    const pass = hasCodeError && hasMessage
-
-    const message = () =>
-      `Expected code was: ${errorCodeExpected} instead got: ${response.code}, message was ${
-        hasMessage ? 'found' : 'not found'
-      }`
+    const { message, pass } = validateResponseError(response, 'ERR_NODE_UNREACHABLE')
+    return {
+      message,
+      pass,
+    }
+  },
+  toMatchErrInvalidInput(response: any): jest.CustomMatcherResult {
+    const { message, pass } = validateResponseError(response, 'ERR_INVALID_INPUT')
     return {
       message,
       pass,

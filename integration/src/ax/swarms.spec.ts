@@ -1,5 +1,5 @@
 import { runOnAll, runOnEach } from '../runner/hosts'
-import { isCodeInvalidInput, isCodeOk } from './util'
+import { isCodeOk } from './util'
 import { promises as fs } from 'fs'
 import { Reponse_Swarms_Keygen } from './types'
 import { pathExists } from 'fs-extra'
@@ -85,8 +85,7 @@ describe('ax swarms', () => {
       }
       await runOnEach([{}], false, (node) => node.ax.Swarms.KeyGen(FILE_PATH))
       const responses = await runOnEach([{}], false, (node) => node.ax.Swarms.KeyGen(FILE_PATH))
-      const hasInvalid = responses.some(isCodeInvalidInput)
-      expect(hasInvalid)
+      responses.forEach((r) => expect(r).toMatchErrInvalidInput())
       await fs.unlink(FILE_PATH)
     })
   })

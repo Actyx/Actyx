@@ -1,5 +1,5 @@
 import { stubNode, stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../stubs'
-import { isCodeInvalidInput, isCodeOk } from './util'
+import { isCodeOk } from './util'
 import { remove, pathExists } from 'fs-extra'
 import { quickstartDirs } from './setup-projects/quickstart'
 import { demoMachineKitDirs } from './setup-projects/demo-machine-kit'
@@ -26,8 +26,7 @@ describe('ax apps', () => {
   describe('validate', () => {
     test('return `ERR_INVALID_INPUT` if file path does not exist', async () => {
       const response = await stubNodeHostUnreachable.ax.Apps.Validate('not-existing-path')
-      expect(response.code === 'ERR_INVALID_INPUT' && response).toHaveProperty('message')
-      expect(isCodeInvalidInput(response)).toBe(true)
+      expect(response).toMatchErrInvalidInput()
     })
 
     test('return `OK` and validate an app in the specified directory with default manifest', async () => {
@@ -61,7 +60,7 @@ describe('ax apps', () => {
         'not-existing-path2',
       ])
       expect(response.code === 'ERR_INVALID_INPUT' && response).toHaveProperty('message')
-      expect(isCodeInvalidInput(response)).toBe(true)
+      expect(response).toMatchErrInvalidInput()
     })
 
     test('return multiple `OK` an validate apps if input paths do exists for multiple apps', async () => {
@@ -93,8 +92,7 @@ describe('ax apps', () => {
 
     test('return `ERR_INVALID_INPUT` if manifest was not found', async () => {
       const response = await stubNode.ax.Apps.Package('not-exiting-path')
-      expect(response.code === 'ERR_INVALID_INPUT' && response).toHaveProperty('message')
-      expect(isCodeInvalidInput(response)).toBe(true)
+      expect(response).toMatchErrInvalidInput()
     })
 
     test('return `OK` and Package an app in the current directory with default manifest ax-manifest.yml', async () => {
