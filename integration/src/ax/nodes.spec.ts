@@ -9,6 +9,7 @@ const areReachable = areConnectionsOfStatus('reachable')
 const areHostUnreachable = areConnectionsOfStatus('hostUnreachable')
 const areActyxosUnreachable = areConnectionsOfStatus('actyxosUnreachable')
 
+// SPO: convert to using stabs
 describe('ax nodes', () => {
   describe('ls', () => {
     test('return connection `hostUnreachable`', async () => {
