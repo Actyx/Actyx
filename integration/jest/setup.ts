@@ -2,13 +2,13 @@
 import { EC2 } from 'aws-sdk'
 import { CLI } from '../src/ax/cli'
 import { SettingsInput } from '../src/ax/exec'
-import { runLocalDocker } from '../src/ax/setup-projects/local-docker'
 import { createInstance, createKey, terminateInstance } from '../src/runner/aws'
 import { mkNodeLinux } from '../src/runner/linux'
 import { ActyxOSNode, AwsKey } from '../src/runner/types'
 import { platform } from 'os'
 import settings from '../settings'
 import { setupTestProjects } from '../src/ax/setup-projects/test-projects'
+import { runLocalDocker } from '../src/ax/setup-projects/local-docker'
 
 type LogEntry = {
   time: Date
