@@ -15,6 +15,7 @@
     "ssh2": "^0.8.9"
   },
   "devDependencies": {
+    "@types/fs-extra": "^9.0.3",
     "@types/jest": "^26.0.14",
     "@types/node": "^14.11.2",
     "@types/node-fetch": "^2.5.7",

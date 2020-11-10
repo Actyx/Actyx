@@ -8,6 +8,7 @@ import { createInstance, createKey, terminateInstance } from '../src/runner/aws'
 import { mkNodeLinux } from '../src/runner/linux'
 import { ActyxOSNode, AwsKey } from '../src/runner/types'
 import { platform } from 'os'
+import settings from '../settings'
 
 type LogEntry = {
   time: Date
@@ -156,7 +157,7 @@ const getPeers = async (node: ActyxOSNode): Promise<number> => {
 const setup = async (_config: Record<string, unknown>): Promise<void> => {
   process.stdout.write('\n')
 
-  await runLocalDocker(platform(), 'temp1')
+  await runLocalDocker(platform(), settings.localDocker.containerName)
 
   await testProjects.setup()
 
