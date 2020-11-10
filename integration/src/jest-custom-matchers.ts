@@ -22,12 +22,6 @@ const validateResponseError = (response: any, codeExpected: string) => {
 }
 
 expect.extend({
-  myHelloMatcher(input: string): jest.CustomMatcherResult {
-    return {
-      message: () => 'hello world I am a custom matchert',
-      pass: input === 'hello world' ? true : false,
-    }
-  },
   toMatchErrNodeUnreachable(response: any): jest.CustomMatcherResult {
     const { message, pass } = validateResponseError(response, 'ERR_NODE_UNREACHABLE')
     return {
