@@ -1,8 +1,8 @@
-import { runOnAll, runOnEach } from '../runner/hosts'
-import { isCodeOk } from './util'
+import { runOnEach } from '../runner/hosts'
 import { promises as fs } from 'fs'
 import { Reponse_Swarms_Keygen } from './types'
 import { pathExists } from 'fs-extra'
+import { stubNode } from '../stubs'
 
 const FILE_PATH = 'temp-swarm-key'
 
@@ -17,31 +17,33 @@ const isKeyValid = (key?: string) => key && isBase64(key) && isLen128(key)
 
 describe('ax swarms', () => {
   describe('keygen', () => {
+    // TODO: double check this should work using EC2 instance
     test('must return status Ok for swarm state', async () => {
       const responses = await runOnEach([{}, {}], false, (node) => node.ax.Swarms.State())
-      const areStatesValid = responses.every((r) => 'Ok' in r)
+      const areStatesValid = responses.every((r) => 'OK' in r)
       expect(areStatesValid).toBe(true)
     })
 
     test('must return valid swarmKeys (128 length and base64)', async () => {
-      const responses = await runOnEach([{}, {}], false, (node) => node.ax.Swarms.KeyGen())
-      const areValidResponses = responses.every((r) => isCodeOk(r))
-      expect(areValidResponses).toBe(true)
-
-      const areKeyAndOutputValid = responses
-        .map(getKeyAndOutputFromResponse)
-        .every((k) => isKeyValid(k?.swarmKey) && Boolean(k))
-      expect(areKeyAndOutputValid).toBe(true)
+      const response = await stubNode.ax.Swarms.KeyGen()
+      const responseShape = {
+        code: 'OK',
+        result: {
+          swarmKey: expect.any(String),
+          outputPath: null,
+        },
+      }
+      expect(response).toMatchObject(responseShape)
+      const key = getKeyAndOutputFromResponse(response)?.swarmKey
+      expect(isKeyValid(key)).toBeTruthy()
     })
 
     test('must return a unique valid swarmKeys', async () => {
-      const responses = await runOnEach([{}, {}], false, (node) => node.ax.Swarms.KeyGen())
-      const keys = responses
-        .map(getKeyAndOutputFromResponse)
-        .filter(Boolean)
-        .map((x) => x?.swarmKey)
-      const areKeysUnique = new Set(keys).size === keys.length
-      expect(areKeysUnique).toBe(true)
+      const response1 = await stubNode.ax.Swarms.KeyGen()
+      const response2 = await stubNode.ax.Swarms.KeyGen()
+      const key1 = getKeyAndOutputFromResponse(response1)?.swarmKey
+      const key2 = getKeyAndOutputFromResponse(response2)?.swarmKey
+      expect(key1).not.toEqual(key2)
     })
 
     test('must create a file with a valid swarmKey', async () => {
@@ -49,15 +51,13 @@ describe('ax swarms', () => {
       if (fileExists) {
         await fs.unlink(FILE_PATH)
       }
-      const [response] = await runOnEach([{}], false, (node) => node.ax.Swarms.KeyGen(FILE_PATH))
-      const swarmKey = response.code === 'OK' && response.result.swarmKey
+      await stubNode.ax.Swarms.KeyGen(FILE_PATH)
       const swarmKeyFile = await fs.readFile(FILE_PATH, 'utf-8')
       expect(isKeyValid(swarmKeyFile)).toBe(true)
-      expect(swarmKey).toBe(swarmKeyFile)
       await fs.unlink(FILE_PATH)
     })
 
-    test('must create a file with a unique valid swarmKey', async () => {
+    test('must create files with a unique valid swarmKey', async () => {
       const file1 = `${FILE_PATH}0`
       const file2 = `${FILE_PATH}1`
       const file1Exists = await pathExists(file1)
@@ -68,9 +68,10 @@ describe('ax swarms', () => {
       if (file2Exists) {
         await fs.unlink(file2)
       }
-      await runOnAll([{}, {}], false, ([node1, node2]) =>
-        Promise.all([node1.ax.Swarms.KeyGen(file1), node2.ax.Swarms.KeyGen(file2)]),
-      )
+
+      await stubNode.ax.Swarms.KeyGen(file1)
+      await stubNode.ax.Swarms.KeyGen(file2)
+
       const key1 = await fs.readFile(file1, 'utf-8')
       const key2 = await fs.readFile(file2, 'utf-8')
       expect(key1).not.toBe(key2)
@@ -78,14 +79,15 @@ describe('ax swarms', () => {
       await fs.unlink(file2)
     })
 
-    test('must return `ERR_INVALID_INPUT` when cannot write a swarm key to file since file key already exists', async () => {
+    test('must return `ERR_INVALID_INPUT` when cannot write a swarm key on existing file', async () => {
       const fileExists = await pathExists(FILE_PATH)
       if (fileExists) {
         await fs.unlink(FILE_PATH)
       }
-      await runOnEach([{}], false, (node) => node.ax.Swarms.KeyGen(FILE_PATH))
-      const responses = await runOnEach([{}], false, (node) => node.ax.Swarms.KeyGen(FILE_PATH))
-      responses.forEach((r) => expect(r).toMatchErrInvalidInput())
+      const response1 = await stubNode.ax.Swarms.KeyGen(FILE_PATH)
+      const response2 = await stubNode.ax.Swarms.KeyGen(FILE_PATH)
+      expect(response1).toMatchCodeOk()
+      expect(response2).toMatchErrInvalidInput()
       await fs.unlink(FILE_PATH)
     })
   })
