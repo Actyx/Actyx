@@ -111,7 +111,7 @@ export const eventsMonotonic = (
           )
         }
 
-        log.pond.debug(
+        log.submono.debug(
           'order-check passed: ' + EventKey.format(nextKey) + ' > ' + EventKey.format(latest),
           'for realtime chunk of size',
           next.length,
@@ -157,7 +157,7 @@ export const eventsMonotonic = (
       // flatten
       const events = new Array<Event>().concat(...chunks)
 
-      log.pond.debug(FishId.canonical(fishId), 'hydration event count:', events.length)
+      log.submono.debug(FishId.canonical(fishId), 'hydration event count:', events.length)
 
       const latest = events.length === 0 ? defaultLatest : events[events.length - 1]
 
@@ -207,7 +207,7 @@ export const eventsMonotonic = (
       const snapshotOutdated = earliest.length > 0 && eventKeyGreater(snap.eventKey, earliest[0])
 
       if (snapshotOutdated) {
-        log.pond.debug(
+        log.submono.debug(
           FishId.canonical(fishId),
           'discarding outdated snapshot',
           EventKey.format(snap.eventKey),
@@ -268,7 +268,7 @@ export const eventsMonotonic = (
 }
 
 const stateMsg = (fishId: FishId, snapshot: SerializedStateSnap): StateMsg => {
-  log.pond.info(
+  log.submono.info(
     FishId.canonical(fishId),
     'picking up from local snapshot',
     EventKey.format(snapshot.eventKey),
@@ -281,7 +281,7 @@ const stateMsg = (fishId: FishId, snapshot: SerializedStateSnap): StateMsg => {
 }
 
 const timeTravelMsg = (fishId: FishId, previousHead: EventKey, next: Events): TimetravelMsg => {
-  log.pond.info(FishId.canonical(fishId), 'must time-travel back to:', EventKey.format(next[0]))
+  log.submono.info(FishId.canonical(fishId), 'must time-travel back to:', EventKey.format(next[0]))
 
   const high = getInsertionIndex(next, previousHead, EventKey.ord.compare) - 1
 
