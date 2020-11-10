@@ -8,4 +8,3 @@ export const hasReponseCodeStatus = <T extends Response>(status: string) => (
 
 export const isCodeOk = hasReponseCodeStatus('OK')
 export const isCodeInvalidInput = hasReponseCodeStatus('ERR_INVALID_INPUT')
-export const isCodeNodeUnreachable = hasReponseCodeStatus('ERR_NODE_UNREACHABLE')

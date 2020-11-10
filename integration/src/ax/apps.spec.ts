@@ -1,5 +1,5 @@
 import { stubNode, stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../stubs'
-import { isCodeInvalidInput, isCodeNodeUnreachable, isCodeOk } from './util'
+import { isCodeInvalidInput, isCodeOk } from './util'
 import { remove, pathExists } from 'fs-extra'
 import { quickstartDirs } from './setup-projects/quickstart'
 import { demoMachineKitDirs } from './setup-projects/demo-machine-kit'
@@ -7,13 +7,13 @@ import { demoMachineKitDirs } from './setup-projects/demo-machine-kit'
 describe('ax apps', () => {
   describe('ls', () => {
     test('return `ERR_NODE_UNREACHABLE`', async () => {
-      const r = await stubNodeHostUnreachable.ax.Apps.Ls()
-      expect(isCodeNodeUnreachable(r)).toBe(true)
+      const response = await stubNodeHostUnreachable.ax.Apps.Ls()
+      expect(response).toMatchErrNodeUnreachable()
     })
 
     test('return `ERR_NODE_UNREACHABLE`', async () => {
-      const r = await stubNodeActyxosUnreachable.ax.Apps.Ls()
-      expect(isCodeNodeUnreachable(r)).toBe(true)
+      const response = await stubNodeActyxosUnreachable.ax.Apps.Ls()
+      expect(response).toMatchErrNodeUnreachable()
     })
 
     test('return `OK` and empty result if no apps', async () => {
