@@ -5,6 +5,7 @@ declare global {
       myHelloMatcher(): CustomMatcherResult
       toMatchErrNodeUnreachable(): CustomMatcherResult
       toMatchErrInvalidInput(): CustomMatcherResult
+      toMatchCodeOk(): CustomMatcherResult
     }
   }
 }
