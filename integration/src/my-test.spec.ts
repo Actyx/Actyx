@@ -1,5 +1,3 @@
-import '../jest-custom-matchers'
-
 describe('myMatcher', () => {
   it('should false true if hello world is passed', () => {
     expect('hello world').myHelloMatcher()

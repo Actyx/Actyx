@@ -19,4 +19,5 @@ module.exports = {
   moduleFileExtensions: ['js', 'json', 'jsx'],
   testPathIgnorePatterns: ['/node_modules/', '.+support\\.test\\.ts'],
   maxWorkers: '50%',
+  setupFilesAfterEnv: ['./dist/src/jest-custom-matchers.js'],
 }
