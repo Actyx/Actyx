@@ -107,11 +107,15 @@ export const eventsMonotonic = (
           return Observable.from(
             snapshotStore
               .invalidateSnapshots(fishId.entityType, fishId.name, nextKey)
-              .then(() => timeTravelMsg(latest, next)),
+              .then(() => timeTravelMsg(fishId, latest, next)),
           )
         }
 
-        log.pond.debug('rt passed, ' + JSON.stringify(nextKey) + ' > ' + JSON.stringify(latest))
+        log.pond.debug(
+          'order-check passed: ' + EventKey.format(nextKey) + ' > ' + EventKey.format(latest),
+          'for realtime chunk of size',
+          next.length,
+        )
 
         // We have captured `latest` in the closure and are updating it here
         latest = next[next.length - 1]
@@ -152,6 +156,8 @@ export const eventsMonotonic = (
     return persisted.concatMap(chunks => {
       // flatten
       const events = new Array<Event>().concat(...chunks)
+
+      log.pond.debug(FishId.canonical(fishId), 'hydration event count:', events.length)
 
       const latest = events.length === 0 ? defaultLatest : events[events.length - 1]
 
@@ -201,6 +207,14 @@ export const eventsMonotonic = (
       const snapshotOutdated = earliest.length > 0 && eventKeyGreater(snap.eventKey, earliest[0])
 
       if (snapshotOutdated) {
+        log.pond.debug(
+          FishId.canonical(fishId),
+          'discarding outdated snapshot',
+          EventKey.format(snap.eventKey),
+          'due to',
+          EventKey.format(earliest[0]),
+        )
+
         // Invalidate this snapshot and try again.
         return Observable.from(
           snapshotStore.invalidateSnapshots(fishId.entityType, fishId.name, earliest[0]),
@@ -211,7 +225,7 @@ export const eventsMonotonic = (
 
       // Otherwise just pick up from snapshot
       return Observable.concat(
-        Observable.of(stateMsg(snap)),
+        Observable.of(stateMsg(fishId, snap)),
         monotonicFrom(fishId, subscriptions, present, snap.psnMap, snap.eventKey),
       )
     })
@@ -253,8 +267,12 @@ export const eventsMonotonic = (
   }
 }
 
-const stateMsg = (snapshot: SerializedStateSnap): StateMsg => {
-  log.pond.info('picking up from local snapshot ' + EventKey.format(snapshot.eventKey))
+const stateMsg = (fishId: FishId, snapshot: SerializedStateSnap): StateMsg => {
+  log.pond.info(
+    FishId.canonical(fishId),
+    'picking up from local snapshot',
+    EventKey.format(snapshot.eventKey),
+  )
 
   return {
     type: MsgType.state,
@@ -262,8 +280,8 @@ const stateMsg = (snapshot: SerializedStateSnap): StateMsg => {
   }
 }
 
-const timeTravelMsg = (previousHead: EventKey, next: Events): TimetravelMsg => {
-  log.pond.info('triggered time-travel back to ' + EventKey.format(next[0]))
+const timeTravelMsg = (fishId: FishId, previousHead: EventKey, next: Events): TimetravelMsg => {
+  log.pond.info(FishId.canonical(fishId), 'must time-travel back to:', EventKey.format(next[0]))
 
   const high = getInsertionIndex(next, previousHead, EventKey.ord.compare) - 1
 
