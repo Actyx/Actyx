@@ -19,9 +19,7 @@ const mkRun = (opts: string[] = []) => (actyxosDataPath: string): string =>
     'actyx/os',
   ].join(' ')
 
-// TODO: unit test
 export const runOnLinux = mkRun(['--network=host'])
-// TODO: unit test
 export const runOnWinMac = mkRun()
 
 const supportedPlatforms: NodeJS.Platform[] = ['win32', 'darwin', 'linux']
@@ -29,8 +27,12 @@ const getSpecificCmd = (x: NodeJS.Platform) => (x === 'linux' ? runOnLinux : run
 
 export const runLocalDocker = (platform: NodeJS.Platform, actyxosDataPath: string): Promise<void> =>
   supportedPlatforms.includes(platform)
-    ? execa.command(getSpecificCmd(platform)(actyxosDataPath)).then(() => undefined)
+    ? execa
+        .command(getSpecificCmd(platform)(actyxosDataPath))
+        .then(() => console.log(`Docker container ${CONTAINER_NAME} started.`))
     : Promise.reject(`Can not run Docker, platform ${platform} is not supported!`)
 
 export const stopLocalDocker = (): Promise<void> =>
-  execa.command(`docker stop ${CONTAINER_NAME}`).then(() => undefined)
+  execa
+    .command(`docker stop ${CONTAINER_NAME}`)
+    .then(() => console.log(`Docker container ${CONTAINER_NAME} stopped.`))
