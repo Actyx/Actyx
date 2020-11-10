@@ -1,9 +1,8 @@
 import { stubNode, stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../stubs'
 import { isCodeInvalidInput, isCodeNodeUnreachable, isCodeOk } from './util'
 import { remove, pathExists } from 'fs-extra'
-import testProjects from './setup-projects'
-
-const { demoMachineKit, quickstart } = testProjects
+import { quickstartDirs } from './setup-projects/quickstart'
+import { demoMachineKitDirs } from './setup-projects/demo-machine-kit'
 
 describe('ax apps', () => {
   describe('ls', () => {
@@ -32,7 +31,7 @@ describe('ax apps', () => {
     })
 
     test('return `OK` and validate an app in the specified directory with default manifest', async () => {
-      const manifestPath = quickstart.dirs.sampleWebviewApp
+      const manifestPath = quickstartDirs.sampleWebviewApp
       const manifestDefault = 'temp/quickstart/sample-webview-app'
       const response = await stubNode.ax.Apps.Validate(manifestPath)
       const responseShape = { code: 'OK', result: [manifestDefault] }
@@ -41,7 +40,7 @@ describe('ax apps', () => {
     })
 
     test('return `OK` and validate with default manifest', async () => {
-      const cwdDir = quickstart.dirs.sampleWebviewApp
+      const cwdDir = quickstartDirs.sampleWebviewApp
       const response = await stubNode.ax.Apps.ValidateCwd(cwdDir)
       const responseShape = { code: 'OK', result: ['ax-manifest.yml'] }
       expect(response).toMatchObject(responseShape)
@@ -49,7 +48,7 @@ describe('ax apps', () => {
     })
 
     test('return `OK` and validate an app in the specified directory with manifest', async () => {
-      const manifestPath = `${quickstart.dirs.sampleWebviewApp}/ax-manifest.yml`
+      const manifestPath = `${quickstartDirs.sampleWebviewApp}/ax-manifest.yml`
       const response = await stubNode.ax.Apps.Validate(manifestPath)
       const responseShape = { code: 'OK', result: [manifestPath] }
       expect(response).toMatchObject(responseShape)
@@ -67,8 +66,8 @@ describe('ax apps', () => {
 
     test('return multiple `OK` an validate apps if input paths do exists for multiple apps', async () => {
       const response = await stubNodeHostUnreachable.ax.Apps.ValidateMultiApps([
-        demoMachineKit.dirs.dashboard,
-        demoMachineKit.dirs.erpSimulator,
+        demoMachineKitDirs.dashboard,
+        demoMachineKitDirs.erpSimulator,
       ])
       const responseShape = {
         code: 'OK',
@@ -85,7 +84,7 @@ describe('ax apps', () => {
 
     const removeTarballs = async () => {
       await remove(`${tarballFile}`)
-      await remove(`${quickstart.dirs.sampleWebviewApp}/${tarballFile}`)
+      await remove(`${quickstartDirs.sampleWebviewApp}/${tarballFile}`)
     }
 
     beforeEach(() => removeTarballs())
@@ -99,14 +98,14 @@ describe('ax apps', () => {
     })
 
     test('return `OK` and Package an app in the current directory with default manifest ax-manifest.yml', async () => {
-      const response = await stubNode.ax.Apps.PackageCwd(quickstart.dirs.sampleWebviewApp)
+      const response = await stubNode.ax.Apps.PackageCwd(quickstartDirs.sampleWebviewApp)
       expect(isCodeOk(response)).toBe(true)
       expect(response.code === 'OK' && response.result[0]).toHaveProperty('packagePath')
       expect(response.code === 'OK' && response.result[0].packagePath).toMatch(regexTarballFile)
     })
 
     test('return `OK` and package an app in the specified directory with manifest', async () => {
-      const manifestPath = `${quickstart.dirs.sampleWebviewApp}/ax-manifest.yml`
+      const manifestPath = `${quickstartDirs.sampleWebviewApp}/ax-manifest.yml`
       const response = await stubNode.ax.Apps.Package(manifestPath)
 
       expect(isCodeOk(response)).toBe(true)

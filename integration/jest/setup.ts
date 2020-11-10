@@ -2,13 +2,13 @@
 import { EC2 } from 'aws-sdk'
 import { CLI } from '../src/ax/cli'
 import { SettingsInput } from '../src/ax/exec'
-import testProjects from '../src/ax/setup-projects'
 import { runLocalDocker } from '../src/ax/setup-projects/local-docker'
 import { createInstance, createKey, terminateInstance } from '../src/runner/aws'
 import { mkNodeLinux } from '../src/runner/linux'
 import { ActyxOSNode, AwsKey } from '../src/runner/types'
 import { platform } from 'os'
 import settings from '../settings'
+import { setupTestProjects } from '../src/ax/setup-projects/test-projects'
 
 type LogEntry = {
   time: Date
@@ -159,7 +159,7 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
 
   await runLocalDocker(platform(), settings.localDocker.containerName)
 
-  await testProjects.setup()
+  await setupTestProjects()
 
   const axNodeSetup = (<MyGlobal>global).axNodeSetup
 

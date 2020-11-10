@@ -24,9 +24,9 @@ const removeDockerVolume = async (containerName: string): Promise<void> => {
   return hasContainer
     ? execa
         .command(`docker volume rm ${containerName}`)
-        .then(() => console.log(`Docker ${containerName} volume was removed`))
+        .then(() => console.log(`Volume for Docker container ${containerName} was removed`))
         .catch(console.error)
-    : console.log(`Docker container ${containerName} is not a mounted volume`)
+    : console.log(`Docker container ${containerName} has not a mounted volume`)
 }
 
 const getSpecificCmd = (x: NodeJS.Platform) => (x === 'linux' ? runOnLinux : runOnWinMac)
