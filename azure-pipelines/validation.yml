@@ -47,6 +47,11 @@ stages:
       - job:
         displayName: make validate-os validate-rust-sdk
         steps:
+          - task: CacheBeta@1
+            displayName: Load cache for rt-master
+            inputs:
+              key: $(Agent.OS) | rt-master/Cargo.lock
+              path: rt-master/target
           - bash: |
               make validate-os validate-rust-sdk validate-rust-sdk-macros
             env:
