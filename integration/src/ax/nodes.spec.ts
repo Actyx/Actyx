@@ -1,31 +1,46 @@
-import { runOnEach } from '../runner/hosts'
-import { stubNodeHostUnreachable, stubNodeActyxosUnreachable } from '../stubs'
-import { Response_Nodes_Ls } from './types'
+import { stubNodeHostUnreachable, stubNodeActyxosUnreachable, stubNode } from '../stubs'
 
-const areConnectionsOfStatus = (status: string) => (r: Response_Nodes_Ls) =>
-  r.code === 'OK' && r.result.every((r) => r.connection === status)
-
-const areReachable = areConnectionsOfStatus('reachable')
-const areHostUnreachable = areConnectionsOfStatus('hostUnreachable')
-const areActyxosUnreachable = areConnectionsOfStatus('actyxosUnreachable')
-
-// SPO: convert to using stabs
 describe('ax nodes', () => {
   describe('ls', () => {
-    test('return connection `hostUnreachable`', async () => {
+    test('return OK and result with connection hostUnreachable', async () => {
       const response = await stubNodeHostUnreachable.ax.Nodes.Ls()
-      expect(areHostUnreachable(response)).toBe(true)
+      const responseShape = {
+        code: 'OK',
+        result: [{ connection: 'hostUnreachable', host: '123' }],
+      }
+      expect(response).toMatchObject(responseShape)
     })
 
-    test('return connection `actyxosUnreachable`', async () => {
+    test('return OK and result with connection actyxosUnreachable', async () => {
       const response = await stubNodeActyxosUnreachable.ax.Nodes.Ls()
-      expect(areActyxosUnreachable(response)).toBe(true)
+      const responseShape = {
+        code: 'OK',
+        result: [{ connection: 'actyxosUnreachable', host: 'localhost' }],
+      }
+      expect(response).toMatchObject(responseShape)
     })
 
-    test('return connection `reachable`', async () => {
-      const responses = await runOnEach([{}, {}], false, (node) => node.ax.Nodes.Ls())
-      const areValid = responses.every(areReachable)
-      expect(areValid).toBe(true)
+    test('return OK and result with connection reachable', async () => {
+      const response = await stubNode.ax.Nodes.Ls()
+      const responseShape = {
+        code: 'OK',
+        result: [
+          {
+            connection: 'reachable',
+            nodeId: 'localhost',
+            displayName: null,
+            state: 'running',
+            settingsValid: false,
+            licensed: false,
+            appsDeployed: 0,
+            appsRunning: 0,
+            startedIso: expect.any(String),
+            startedUnix: expect.any(Number),
+            version: '1.0.0',
+          },
+        ],
+      }
+      expect(response).toMatchObject(responseShape)
     })
   })
 })
