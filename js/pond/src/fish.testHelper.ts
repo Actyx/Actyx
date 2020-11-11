@@ -193,7 +193,6 @@ export const snapshotTestSetup = async <S>(
     fish.deserializeState,
   )
     .map(x => x.state)
-    .observeOn(Scheduler.queue)
     .shareReplay(1)
 
   const pubEvents = eventStore.directlyPushEvents
@@ -202,6 +201,7 @@ export const snapshotTestSetup = async <S>(
     // adding events may or may not emit a new state, depending on whether the events
     // were relevant (might be before semantic snapshot or duplicates)
     const pubProm = observe
+      .observeOn(Scheduler.async)
       .take(1 + numExpectedStates)
       .timeout(100)
       .catch(() => Observable.empty())
