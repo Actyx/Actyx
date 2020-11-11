@@ -31,6 +31,10 @@ schedules:
       include:
         - master
 
+trigger: none
+
+pr: none
+
 variables:
   SLACK_HOOK: ***REMOVED***
   BUILD_REASON: $(Build.Reason)
