@@ -15,7 +15,8 @@
 # You can use make prepare to update the docker images and install required tools.
 SHELL := /bin/bash
 
-all-LINUX := $(foreach arch,x86_64 aarch64 armv7 arm,linux-$(arch)/actyxos-linux)
+architectures = aarch64 x86_64 armv7 arm
+all-LINUX := $(foreach arch,$(architectures),linux-$(arch)/actyxos-linux)
 all-WINDOWS := windows-x86_64/actyxos.exe windows-x86_64/ax.exe
 all-ANDROID := actyxos.apk
 
@@ -225,7 +226,6 @@ image-linux = actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 
 # list all os-arch and binary names
-architectures = aarch64 x86_64 armv7 arm
 osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64
 binaries = ax ax.exe actyxos-linux actyxos.exe
 
@@ -368,33 +368,15 @@ dist/bin/windows-x86_64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Ma
 	  ./build.sh
 
 
-# Git specifics 
-ifeq ($(origin SYSTEM_PULLREQUEST_SOURCEBRANCH),undefined)
-	GIT_BRANCH=$(shell echo $${BUILD_SOURCEBRANCH:-`git rev-parse --abbrev-ref HEAD`} | sed -e "s,refs/heads/,,g")
-else
-	GIT_BRANCH=$(SYSTEM_PULLREQUEST_SOURCEBRANCH)
-endif
-# If we're on `master`, use the `head` commit hash
-ifeq ($(GIT_BRANCH),master)
-	git_hash=$(shell git log -1 --pretty=%H)
-else
-    # Ditto if running locally, AGENT_BUILDDIRECTORY is used to find out whether we're running on azure pipelines
-    ifeq ($(AGENT_BUILDDIRECTORY),) 
-    git_hash=$(shell git log -1 --pretty=%H)
-    else
-      # For PR commits, this turns `refs/pull/5432/merge` into `pr5432`
-    # For non-PR commits (e.g. `proj/*` branches), this turns `refs/heads/proj/ow/something` into `proj_ow_something`
-    git_hash=$(shell echo $${BUILD_SOURCEBRANCH} | sed -e 's,refs/pull/\([0-9]*\).*,pr\1,' -e 's,refs/heads/,,' | tr / _)
-    endif
-endif
+GIT_BRANCH=$(shell echo `git rev-parse --abbrev-ref HEAD` | sed -e "s,refs/heads/,,g")
+git_hash=$(shell git log -1 --pretty=%H)
 
 dockerDir = ops/docker/images
 #soTargetPatterns = $(foreach t,$(android_so_targets),rt-master/target/$(t)/release/libaxosnodeffi.so)
 dockerTargetPatterns = $(foreach a,$(architectures),$(shell arr=(`ls -1 ${dockerDir} | grep -v -e "^musl\\$$"`); printf "docker-build-%s-$(a)\n " "$${arr[@]}"))
 dockerBuildDir = dist/docker
 .PHONY : $(dockerTargetPatterns)
-#TODO
-# arch = linux-x86_64
+
 # mapping from arch to docker platform
 dockerPlatform-aarch64 = linux/arm64
 dockerPlatform-x86_64 = linux/amd64
