@@ -8,7 +8,7 @@ const StrapWrapper = styled.div`
   font-weight: ${defaults.fontWeights.regular};
   color: ${defaults.colors.primary};
   margin-top: 7px;
-  margin-bottom: -92px;
+  margin-bottom: -60px;
 `;
 
 type Props = Readonly<{

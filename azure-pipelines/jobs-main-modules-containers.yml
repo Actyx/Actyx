@@ -3,24 +3,19 @@ jobs:
     dependsOn: getBuildString
     variables:
       BUILD_STRING: $[ dependencies.getBuildString.outputs['setBuildString.BUILD_STRING'] ]
-    displayName: "Container:"
+    displayName: 'Container:'
     pool:
       name: Native
     timeoutInMinutes: 0
     strategy:
       matrix:
         ipfs-x64:
-          DOCKER_TAG: "ipfs-x64"
+          DOCKER_TAG: 'ipfs-x64'
         ipfs-armv7hf:
-          DOCKER_TAG: "ipfs-armv7hf"
-        buildrs:
-          DOCKER_TAG: "buildrs-x64"
-          DOCKER_REPO: "actyx/util"
+          DOCKER_TAG: 'ipfs-armv7hf'
         wininstallercreator:
-          DOCKER_TAG: "windowsinstallercreator-x64"
-          DOCKER_REPO: "actyx/util"
-        musl:
-          DOCKER_TAG: "musl-x64"
+          DOCKER_TAG: 'windowsinstallercreator-x64'
+          DOCKER_REPO: 'actyx/util'
     steps:
       - script: |
           printf "Setting CURRENT_CONTAINER_BUILD_TAG to [build-$DOCKER_TAG]\n"
@@ -52,4 +47,4 @@ jobs:
       - script: |
           build/bin/post-to-slack.sh -s "Main Container - $DOCKER_TAG" -a "danger"
         condition: failed()
-        displayName: "Ping Slack on failing job"
+        displayName: 'Ping Slack on failing job'

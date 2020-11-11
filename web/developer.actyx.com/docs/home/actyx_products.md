@@ -21,7 +21,7 @@ ActyxOS provides the application runtimes to easily deploy and run your applicat
 It is possible to write your application logic directly on the middleware that ActyxOS provides by using the ActyxOS [APIs](os/api/event-service.md) or language specific [SDKs](os/sdks/js-ts.md).
 However, we usually recommend to start writing your solutions with Actyx Pond which builds on top of ActyxOS.
 
-To learn more about the specific services that ActyxOS provides and how you can start using it please start [here](os/introduction.md).
+To learn more about the specific services that ActyxOS provides and how you can start using it please start [here](os/general/introduction.md).
 
 ### Actyx Pond
 
@@ -46,4 +46,4 @@ You can find more documentation on the capabilities of the Actyx CLI [here](cli/
 The ActyxOS Node Manager is an easy-to-use GUI for interacting with your ActyxOS environment.
 With it you can monitor your ActyxOS nodes, deploy applications and manage node and application settings without needing to use a terminal.
 
-You can find further information on the ActyxOS Node Manager [here](os/tools/node-manager.md).
+You can find further information on the ActyxOS Node Manager [here](../node-manager/overview.md).

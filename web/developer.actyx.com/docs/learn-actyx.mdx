@@ -3,16 +3,28 @@ title: Learn Actyx
 sidebar_title: Learn Actyx
 hide_title: true
 hide_table_of_contents: true
+description: A collection of guides and tutorials that teach you how to build apps on the Actyx platform
 ---
 
-import {SectionHero} from '../../src/components/SectionHero.tsx'
-import {TwoElementRow} from '../../src/components/TwoElementRow.tsx'
-import {ThreeElementRow} from '../../src/components/ThreeElementRow.tsx'
-import {StayInformed} from '../../src/components/StayInformed.tsx'
-import {DownloadLink} from '../../src/components/DownloadLink.tsx'
+import {SectionHero} from '../src/components/SectionHero.tsx'
+import {TwoElementRow} from '../src/components/TwoElementRow.tsx'
+import {ThreeElementRow} from '../src/components/ThreeElementRow.tsx'
+import {StayInformed} from '../src/components/StayInformed.tsx'
+import {DownloadLink} from '../src/components/DownloadLink.tsx'
 import useBaseUrl from "@docusaurus/useBaseUrl";
 
-## Tutorials
+<SectionHero
+        img={useBaseUrl("images/tutorials/learn-actyx/advanced-tutorial-hero.svg")}
+        title={"Try out our advanced tutorial!"}
+        subtitle={
+          "In this tutorial, you will learn how a realistic ActyxOS setup can look inside a factory."
+        }
+        cta={"advanced tutorial"}
+        link={useBaseUrl("/docs/learn-actyx/advanced-tutorial/introduction")}
+        button={true}
+/>
+
+## Our other tutorials
 
 <TwoElementRow
     img1={useBaseUrl('images/tutorials/learn-actyx/quickstart.svg')}

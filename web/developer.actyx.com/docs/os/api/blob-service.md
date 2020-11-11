@@ -5,7 +5,7 @@ title: Blob Service
 The **Blob Service** allows you to store and share arbitrary **B**inary **L**arge **Ob**jects.
 
 :::warning Alpha version software
-The Blob Service is currently in internal alpha. It is planned for **public release in 2020**. To stay up to date about upcoming releases please check out our [blog](https://www.actyx.com/news) where we post release notes and roadmap updates.
+The Blob Service is currently in internal alpha. It is planned for **public release in 2021**. To stay up to date about upcoming releases please check out our [blog](https://www.actyx.com/news) where we post release notes and roadmap updates.
 :::
 
 With this document we aim to provide you a preview about how the Binary Blob service works as we work toward a beta release.

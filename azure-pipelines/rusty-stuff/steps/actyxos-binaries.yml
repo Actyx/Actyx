@@ -10,20 +10,17 @@ steps:
       # clippy on windows requires `--no-default-features` which can't be applied on a workspace level
       # cargo --locked clippy -- -D warnings && \
       # cargo --locked clippy --tests -- -D warnings && \
-      sccache -s && \
       cargo --locked build --release --no-default-features --manifest-path actyx-cli/Cargo.toml && \
       cargo --locked build --release --bins --no-default-features --manifest-path ax-os-node-win/Cargo.toml && \
       cargo --locked build --release --bin ada-cli --bin store-cli && \
       mkdir -p $OUTPUT && \
       find ./target/$TARGET/release/ -maxdepth 1 -type f -executable  \
         -exec cp {} $OUTPUT \; && \
-      ls -alh $OUTPUT/* && \
-      sccache -s
+      ls -alh $OUTPUT/*
     displayName: Build Binaries (win64)
-    workingDirectory: "rt-master"
+    workingDirectory: 'rt-master'
     condition: and(contains(variables['BUILD_STRING'],'[build-rt-master]'),contains(variables['ARCH'],'win64'))
     env:
-      SCCACHE_REDIS: $(SECRET_SCCACHE_REDIS)
       CARGO_BUILD_TARGET: $(TARGET)
       CARGO_BUILD_JOBS: 8
       CARGO_BUILD_INCREMENTAL: false
@@ -33,18 +30,15 @@ steps:
       cargo fmt --all -- --check && \
       cargo --locked clippy -- -D warnings && \
       cargo --locked clippy --tests -- -D warnings && \
-      sccache -s && \
       cargo --locked build --release --target $TARGET --bins --jobs 8 && \
       mkdir -p $OUTPUT && \
       find ./target/$TARGET/release/ -maxdepth 1 -type f -executable  \
         -exec cp {} $OUTPUT \; && \
-      ls -alh $OUTPUT/* && \
-      sccache -s
+      ls -alh $OUTPUT/*
     displayName: Build Binaries (Linux)
-    workingDirectory: "rt-master"
+    workingDirectory: 'rt-master'
     condition: and(contains(variables['BUILD_STRING'],'[build-rt-master]'),not(contains(variables['ARCH'],'win64')))
     env:
-      SCCACHE_REDIS: $(SECRET_SCCACHE_REDIS)
       CARGO_BUILD_INCREMENTAL: false
   - publish: $(System.DefaultWorkingDirectory)/dist/bin
     artifact: actyxos-bin-$(ARCH)

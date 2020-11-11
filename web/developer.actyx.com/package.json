@@ -7,8 +7,9 @@
     "start": "docusaurus start",
     "copy-schemas": "node bin/copy-schemas.js",
     "build": "npm run lint && docusaurus build",
-    "deploy": "npm run lint && docusaurus deploy",
+    "postbuild": "node bin/copy-redirects.js",
     "swizzle": "docusaurus swizzle",
+    "deploy": "npm run lint && docusaurus deploy",
     "lint:txt:check": "textlint -f pretty-error ./docs/**/* ./blog/**/*",
     "lint:txt:fix": "textlint --fix ./docs/**/* ./blog/**/*",
     "lint:txt:dry": "textlint --dry-run ./docs/**/* ./blog/**/*",
@@ -19,8 +20,8 @@
     "test": "npm run lint"
   },
   "dependencies": {
-    "@docusaurus/core": "^2.0.0-alpha.48",
-    "@docusaurus/preset-classic": "^2.0.0-alpha.48",
+    "@docusaurus/core": "^2.0.0-alpha.66",
+    "@docusaurus/preset-classic": "^2.0.0-alpha.66",
     "chromium": "^2.1.2",
     "classnames": "^2.2.6",
     "react": "^16.8.4",

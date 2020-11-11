@@ -27,8 +27,8 @@ Now it is your turn to take this new tool and revisit all the use-cases you prev
 To get started:
 
 - [Actyx Platform](https://developer.actyx.com/docs/home/actyx_platform)
-- [ActyxOS documentation](https://developer.actyx.com/docs/os/introduction)
-- [ActyxOS NodeManager documentation](https://developer.actyx.com/docs/os/tools/node-manager)
+- [ActyxOS documentation](https://developer.actyx.com/docs/os/general/introduction)
+- [ActyxOS NodeManager documentation](https://developer.actyx.com/docs/node-manager/overview)
 - [Actyx Pond documentation](https://developer.actyx.com/docs/pond/getting-started)
 
 We are looking forward to hearing your thoughts and answering your questions via [email](mailto:developer@actyx.io), [twitter](https://twitter.com/actyx), or [discord](https://discord.gg/262yJhc).

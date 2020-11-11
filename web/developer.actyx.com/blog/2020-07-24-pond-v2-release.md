@@ -4,7 +4,7 @@ author: Benjamin Sieffert
 author_title: Distributed Systems Engineer at Actyx
 author_url: https://github.com/benjamin-actyx
 author_image_url: /images/blog/benjamin-sieffert.jpg
-tags: [Actyx Pond Release]
+tags: [Actyx Pond, Release]
 ---
 
 We are happy to announce the release of the Actyx Pond v2 ([download from npm](https://www.npmjs.com/package/@actyx/pond)).
