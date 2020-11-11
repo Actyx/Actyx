@@ -51,7 +51,7 @@ stages:
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: windows-binaries
             condition: succeeded()
-      - job:
+      - job: makeAllLinux
         displayName: make all-linux
         steps:
           - bash: |
@@ -64,6 +64,22 @@ stages:
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: linux-binaries
             condition: succeeded()
+      - job:
+        displayName: make docker-build-actyxos
+        dependsOn:
+          - makeAllLinux
+        steps:
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              targetPath: $(System.DefaultWorkingDirectory)/dist/bin
+          - bash: |
+              build/bin/install-vault.sh
+              make docker-build-actyxos
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+
       - job:
         displayName: make all-android
         steps:

@@ -139,6 +139,7 @@ validate-js: diagnostics validate-js-pond validate-js-sdk
 validate-js-pond:
 	cd js/pond && source ~/.nvm/nvm.sh && nvm install && \
 		npm i && \
+		npm run test && \
 		npm run build:prod
 
 # validate js sdk
@@ -224,7 +225,8 @@ image-linux = actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 
 # list all os-arch and binary names
-osArch = linux-aarch64 linux-x86_64 linux-armv7 linux-arm windows-x86_64
+architectures = aarch64 x86_64 armv7 arm
+osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64
 binaries = ax ax.exe actyxos-linux actyxos.exe
 
 # compute list of all OSs (e.g. linux, windows) and rust targets (looking into the target-* vars)
@@ -255,6 +257,7 @@ dist/bin/$(1)/$(2): rt-master/target/$(target-$(1))/release/$(2)
 	cp -a $$< $$@
 endef
 $(foreach oa,$(osArch),$(foreach bin,$(binaries),$(eval $(call mkDistRule,$(oa),$(bin)))))
+$(foreach a,$(architectures),$(foreach bin,docker-logging-plugin docker-axosnode,$(eval $(call mkDistRule,linux-$(a),$(bin)))))
 
 # Make a list of pattern rules (with %) for all possible rust binaries
 # containing e.g. rt-master/target/aarch64-unknown-linux-musl/release/%.
@@ -363,3 +366,84 @@ dist/bin/windows-x86_64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Ma
 	  --rm \
 	  actyx/util:windowsinstallercreator-x64-latest \
 	  ./build.sh
+
+
+# Git specifics 
+ifeq ($(origin SYSTEM_PULLREQUEST_SOURCEBRANCH),undefined)
+	GIT_BRANCH=$(shell echo $${BUILD_SOURCEBRANCH:-`git rev-parse --abbrev-ref HEAD`} | sed -e "s,refs/heads/,,g")
+else
+	GIT_BRANCH=$(SYSTEM_PULLREQUEST_SOURCEBRANCH)
+endif
+# If we're on `master`, use the `head` commit hash
+ifeq ($(GIT_BRANCH),master)
+	git_hash=$(shell git log -1 --pretty=%H)
+else
+    # Ditto if running locally, AGENT_BUILDDIRECTORY is used to find out whether we're running on azure pipelines
+    ifeq ($(AGENT_BUILDDIRECTORY),) 
+    git_hash=$(shell git log -1 --pretty=%H)
+    else
+      # For PR commits, this turns `refs/pull/5432/merge` into `pr5432`
+    # For non-PR commits (e.g. `proj/*` branches), this turns `refs/heads/proj/ow/something` into `proj_ow_something`
+    git_hash=$(shell echo $${BUILD_SOURCEBRANCH} | sed -e 's,refs/pull/\([0-9]*\).*,pr\1,' -e 's,refs/heads/,,' | tr / _)
+    endif
+endif
+
+dockerDir = ops/docker/images
+#soTargetPatterns = $(foreach t,$(android_so_targets),rt-master/target/$(t)/release/libaxosnodeffi.so)
+dockerTargetPatterns = $(foreach a,$(architectures),$(shell arr=(`ls -1 ${dockerDir} | grep -v -e "^musl\\$$"`); printf "docker-build-%s-$(a)\n " "$${arr[@]}"))
+dockerBuildDir = dist/docker
+.PHONY : $(dockerTargetPatterns)
+#TODO
+# arch = linux-x86_64
+# mapping from arch to docker platform
+dockerPlatform-aarch64 = linux/arm64
+dockerPlatform-x86_64 = linux/amd64
+dockerPlatform-armv7 = linux/arm/v7
+dockerPlatform-arm = linux/arm/v6
+# dockerPlatform = linux/amd64
+DOCKER_REPO ?= actyx/cosmos
+getImageNameDockerhub = $(DOCKER_REPO):$(1)-$(2)-$(3)
+$(dockerTargetPatterns):
+	# must not use `component` here because of dependencies
+	$(eval DOCKER_TAG:=$(subst docker-build-,,$@))
+	$(eval arch:=$(shell echo $(DOCKER_TAG) | cut -f2 -d-))
+	$(eval DOCKER_IMAGE_NAME:=$(shell echo $(DOCKER_TAG) | cut -f1 -d-))
+	echo $(DOCKER_TAG) $(arch) $(DOCKER_IMAGE_NAME)
+	mkdir -p $(dockerBuildDir)
+	cp -RPp $(dockerDir)/$(DOCKER_IMAGE_NAME)/* $(dockerBuildDir)
+	$(eval IMAGE_NAME:=$(call getImageNameDockerhub,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
+	if [ -f $(dockerBuildDir)/prepare-image.sh ]; then \
+	  export ARCH=$(arch); \
+	  export GIT_HASH=$(git_hash); \
+	  cd $(dockerBuildDir); \
+	  echo 'Running prepare script'; \
+	  ./prepare-image.sh ..; \
+	fi
+
+	# requires `qemu-user-static` (ubuntu) package; you might need to restart your docker daemon
+	# after setting DOCKER_CLI_EXPERIMENTAL=enabled (or adding `"experimental": "enabled"` to `~/.docker/config.json`)
+	# and reset some weird stuff using `docker run --rm --privileged multiarch/qemu-user-static --reset -p yes`
+	# to be able to build for `linux/arm64`. (https://github.com/docker/buildx/issues/138)
+	DOCKER_CLI_EXPERIMENTAL=enabled DOCKER_BUILDKIT=1 docker buildx build \
+	--platform $(dockerPlatform-$(arch)) \
+	--load \
+	--tag $(IMAGE_NAME) \
+	--build-arg BUILD_DIR=$(dockerBuildDir) \
+	--build-arg ARCH=$(arch) \
+	--build-arg ARCH_AND_GIT_TAG=$(arch)-$(git_hash) \
+	--build-arg IMAGE_NAME=actyx/cosmos \
+	--build-arg GIT_COMMIT=$(git_hash) \
+	--build-arg GIT_BRANCH=$(GIT_BRANCH) \
+	--build-arg BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
+	-f $(dockerBuildDir)/Dockerfile .
+	echo "Cleaning up $(dockerBuildDir)"
+	rm -rf $(dockerBuildDir)
+
+
+# why is this not working?
+# docker-build-dockerloggingplugin-%: dist/bin/linux-%/docker-logging-plugin
+# docker-build-actyxos-%: dist/bin/linux-%/docker-axosnode docker-build-dockerloggingplugin-%
+$(foreach a,$(architectures),$(eval docker-build-dockerloggingplugin-$(a): dist/bin/linux-$(a)/docker-logging-plugin))
+$(foreach a,$(architectures),$(eval docker-build-actyxos-$(a): dist/bin/linux-$(a)/docker-axosnode docker-build-dockerloggingplugin-$(a)))
+
+docker-build-actyxos: $(foreach a,$(architectures),docker-build-actyxos-$(a))
