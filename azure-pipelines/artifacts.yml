@@ -30,6 +30,7 @@ trigger:
       - master
       - proj/*
 
+name: Cosmos-Artifacts
 schedules:
   - cron: "0 0 * * *"
     displayName: Periodic build
@@ -77,7 +78,6 @@ variables:
 
 stages:
   - stage: makeArtifacts
-    condition: eq(variables['Build.Reason'], 'Schedule')
     dependsOn: []
     displayName: Make all artifacts
     pool:
@@ -136,10 +136,9 @@ stages:
             artifact: android-binaries
             condition: succeeded()
   - stage: notifyMakeSuccess
-    condition: eq(variables['Build.Reason'], 'Schedule')
     dependsOn:
       - makeArtifacts
     displayName: Notify Slack on successful make all
     jobs:
-      - template: azure-pipelines/jobs-notify-success.yml
+      - template: jobs-notify-success.yml
 

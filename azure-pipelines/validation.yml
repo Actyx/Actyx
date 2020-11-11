@@ -29,7 +29,7 @@ trigger:
     include:
       - master
       - proj/*
-
+name: Cosmos-Validation
 pr:
   autoCancel: true
   branches:
@@ -68,6 +68,7 @@ variables:
   SLACK_HOOK: ***REMOVED***
   BUILD_REASON: $(Build.Reason)
 
+stages:
   - stage: validation
     dependsOn: []
     displayName: PR validation
@@ -129,7 +130,7 @@ variables:
       - validation
     displayName: Notify Slack on successful build
     jobs:
-      - template: azure-pipelines/jobs-notify-success.yml
+      - template: jobs-notify-success.yml
 
   - stage: integration
     displayName: Nightly integration test
