@@ -33,9 +33,17 @@ schedules:
 
 variables:
   SLACK_HOOK: ***REMOVED***
+  BUILD_REASON: $(Build.Reason)
 
 stages:
+  - stage: printout
+    jobs:
+    - job:
+      steps:
+        - bash: |
+            echo $BUILD_REASON
   - stage: makeArtifacts
+    condition: or(eq(variables['Build.Reason'], 'Schedule'), eq(variables['Build.Reason'], 'Manual'))
     dependsOn: []
     displayName: Make all artifacts
     pool:
@@ -100,6 +108,8 @@ stages:
 
   - stage: upload
     displayName: Upload to az blob store
+    dependsOn:
+      - makeArtifacts
     jobs:
       - job:
         steps:
@@ -128,13 +138,14 @@ stages:
 
   - stage: notifyMakeSuccess
     dependsOn:
-      - makeArtifacts
+      - upload
     displayName: Notify Slack on successful make all
     jobs:
       - template: jobs-notify-success.yml
 
   - stage: integration
     displayName: Nightly integration test
+    condition: or(eq(variables['Build.Reason'], 'Schedule'), eq(variables['Build.Reason'], 'Manual'))
     jobs:
       - job: cleanup
         displayName: Integration test cleanup tasks
