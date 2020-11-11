@@ -9,19 +9,27 @@ describe('start', () => {
   const appId = 'com.actyx.sample-docker-app'
   const tarballFile = 'com.actyx.sample-docker-app-1.0.0.tar.gz'
 
-  const removeTarballs = async () => {
-    await remove(`${tarballFile}`)
-    await remove(`${quickstartDirs.sampleDockerApp}/${tarballFile}`)
+  const undeployAllApps = async () => {
+    // TODO: SPO make sure all apps are undeployed and minimize jest timeout
+    const responseLs = await stubNode.ax.Apps.Ls()
+    if (responseLs.code === 'OK') {
+      const appIds = responseLs.result.map((r) => r.appId)
+      console.log(appIds)
+      appIds.forEach((id) => stubNode.ax.Apps.Undeploy(id))
+      await waitForMs(6000)
+    }
+    expect(responseLs).toMatchCodeOk()
   }
 
   const reset = async () => {
-    await removeTarballs()
+    await remove(`${tarballFile}`)
     await stubNode.ax.Settings.Unset(scope)
+    await undeployAllApps()
   }
 
-  beforeEach(async () => reset())
+  beforeEach(async () => await reset())
 
-  afterEach(async () => reset())
+  afterEach(async () => await reset())
 
   test('quickstart/sample-docker-app run deploy/start/ls/stop/undeploy', async () => {
     await stubNode.ax.Settings.Set(
