@@ -5,7 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { last } from 'ramda'
-import { Observable } from 'rxjs'
+import { Observable, Scheduler } from 'rxjs'
 import { Fish, FishId, TestEvent } from '.'
 import { EventStore } from './eventstore'
 import { Event, Events, OffsetMap } from './eventstore/types'
@@ -193,6 +193,7 @@ export const snapshotTestSetup = async <S>(
     fish.deserializeState,
   )
     .map(x => x.state)
+    .observeOn(Scheduler.queue)
     .shareReplay(1)
 
   const pubEvents = eventStore.directlyPushEvents
