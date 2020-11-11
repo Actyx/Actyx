@@ -89,7 +89,7 @@ export const SettingsInput = {
 type Exec = {
   Swarms: {
     KeyGen: (file?: string) => Promise<Reponse_Swarms_Keygen>
-    State: () => Promise<Response_Internal_Swarm_State>
+    State: (port?: number) => Promise<Response_Internal_Swarm_State>
   }
   Nodes: {
     Ls: () => Promise<Response_Nodes_Ls>
@@ -129,8 +129,8 @@ export const mkExec = (binary: string, addr: string): Exec => ({
       const response = await exec(binary, ['swarms', 'keygen', ...fileArgs])
       return rightOrThrow(Reponse_Swarms_Keygen.decode(response), response)
     },
-    State: async (): Promise<Response_Internal_Swarm_State> => {
-      const response = await fetch(`http://${addr}/_internal/swarm/state`)
+    State: async (port?: number): Promise<Response_Internal_Swarm_State> => {
+      const response = await fetch(`http://${addr}${port ? `:${port}` : ''}/_internal/swarm/state`)
       const json = await response.json()
       return rightOrThrow(Response_Internal_Swarm_State.decode(json), json)
     },

@@ -23,7 +23,7 @@ describe('ax swarms', () => {
         scope,
         SettingsInput.FromFile('./temp/quickstart/misc/local-sample-node-settings.yml'),
       )
-      const response = await stubNode.ax.Swarms.State()
+      const response = await stubNode.ax.Swarms.State(4457)
       const responseShape = {
         Ok: {
           store: { block_count: expect.any(Number), block_size: expect.any(Number) },

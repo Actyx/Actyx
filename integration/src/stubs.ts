@@ -31,14 +31,7 @@ export const mkNodeStub = (
   }
 }
 
-export const stubNode = mkNodeStub(
-  'android',
-  'aarch64',
-  'android',
-  ['webview'],
-  'foo',
-  'localhost:4457',
-)
+export const stubNode = mkNodeStub('android', 'aarch64', 'android', ['webview'], 'foo', 'localhost')
 
 export const stubNodeHostUnreachable = mkNodeStub(
   'android',
