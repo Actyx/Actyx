@@ -24,57 +24,15 @@
 # leading to random failures. All CI hosts have a crontab that logs in to both every hour.
 # See https://github.com/Actyx/Cosmos/pull/5138.
 
-trigger:
-  branches:
-    include:
-      - master
-      - proj/*
-
-name: Cosmos-Artifacts
 schedules:
   - cron: "0 0 * * *"
     displayName: Periodic build
     branches:
       include:
         - master
-        - aqua/make-all
-pr:
-  autoCancel: true
-  branches:
-    include:
-      - master
-      - proj/*
-
-# TODO: Enable this once https://github.com/testcontainers/testcontainers-rs/issues/129 materialized.
-#schedules:
-#- cron: "0 0 * * *"
-#  # In your build scripts, check for BUILD_REASON=='Schedule'
-#  displayName: Daily midnight build (w/ integration tests)
-#  branches:
-#    include:build
-
-# See https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema#container-resource
-# The agent runs those containers in order to compile Actyx binaries (and the android app, that contains the rust-based store)
-# resources:
-#   containers:
-#     - container: buildrs_x64_latest
-#       image: actyx/util:buildrs-x64-latest
-#     - container: buildnode_x64_latest
-#       image: actyx/util:buildnode-x64-latest
-#     - container: wininstaller_x64_latest
-#       image: actyx/util:windowsinstallercreator-x64-latest
-#     - container: musl_linux_x64
-#       image: actyx/cosmos:musl-x86_64-unknown-linux-musl-latest
-#     - container: musl_linux_armv7hf
-#       image: actyx/cosmos:musl-armv7-unknown-linux-musleabihf-latest
-#     - container: musl_linux_arm
-#       image: actyx/cosmos:musl-arm-unknown-linux-musleabi-latest
-#     - container: musl_linux_aarch64
-#       image: actyx/cosmos:musl-aarch64-unknown-linux-musl-latest
 
 variables:
   SLACK_HOOK: ***REMOVED***
-  BUILD_REASON: $(Build.Reason)
 
 stages:
   - stage: makeArtifacts
@@ -135,6 +93,39 @@ stages:
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: android-binaries
             condition: succeeded()
+  #  TODO
+  # - stage: makeContainers
+    # displayName: make containers
+
+
+  - stage: upload
+    displayName: Upload to az blob store
+    jobs:
+      - job:
+        steps:
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              path: pipeline-artifacts
+            
+
+          - task: AzureCLI@2
+            # No, there would be the nicely looking AzureFileCopy@4 task, which would use the `azcopy` cli (yes, it's not
+            # included in `az`), to upload a bunch of files:
+            # https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/deploy/azure-file-copy?view=azure-devops.
+            #
+            # Now, that task currently only works under Windows.
+            # Next up: Directly use `azcopy`. No built-in authentication via azure pipelines, bummer.
+            # Luckily, the `az` cli offers a legacy command `storage  blob upload-batch`.
+            displayName: Upload
+            inputs:
+              azureSubscription: azure-ax-ci
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az --version
+                az account show
+                az storage blob upload-batch -s $(System.DefaultWorkingDirectory)/pipeline-artifacts -d https://axartifacts.blob.core.windows.net/artifacts/ --destination-path $(Build.SourceVersion)/
+
   - stage: notifyMakeSuccess
     dependsOn:
       - makeArtifacts
@@ -142,3 +133,20 @@ stages:
     jobs:
       - template: jobs-notify-success.yml
 
+  - stage: integration
+    displayName: Nightly integration test
+    jobs:
+      - job: cleanup
+        displayName: Integration test cleanup tasks
+        steps:
+          - bash: |
+              cd integration
+              # TODO NVM?
+              npm install
+              npm run cleanup 43200
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+            name: cleanupInstances
+            displayName: Clean up old integration test instances

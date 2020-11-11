@@ -29,7 +29,6 @@ trigger:
     include:
       - master
       - proj/*
-name: Cosmos-Validation
 pr:
   autoCancel: true
   branches:
@@ -37,36 +36,8 @@ pr:
       - master
       - proj/*
 
-# TODO: Enable this once https://github.com/testcontainers/testcontainers-rs/issues/129 materialized.
-#schedules:
-#- cron: "0 0 * * *"
-#  # In your build scripts, check for BUILD_REASON=='Schedule'
-#  displayName: Daily midnight build (w/ integration tests)
-#  branches:
-#    include:build
-
-# See https://docs.microsoft.com/en-us/azure/devops/pipelines/yaml-schema?view=azure-devops&tabs=schema#container-resource
-# The agent runs those containers in order to compile Actyx binaries (and the android app, that contains the rust-based store)
-# resources:
-#   containers:
-#     - container: buildrs_x64_latest
-#       image: actyx/util:buildrs-x64-latest
-#     - container: buildnode_x64_latest
-#       image: actyx/util:buildnode-x64-latest
-#     - container: wininstaller_x64_latest
-#       image: actyx/util:windowsinstallercreator-x64-latest
-#     - container: musl_linux_x64
-#       image: actyx/cosmos:musl-x86_64-unknown-linux-musl-latest
-#     - container: musl_linux_armv7hf
-#       image: actyx/cosmos:musl-armv7-unknown-linux-musleabihf-latest
-#     - container: musl_linux_arm
-#       image: actyx/cosmos:musl-arm-unknown-linux-musleabi-latest
-#     - container: musl_linux_aarch64
-#       image: actyx/cosmos:musl-aarch64-unknown-linux-musl-latest
-
 variables:
   SLACK_HOOK: ***REMOVED***
-  BUILD_REASON: $(Build.Reason)
 
 stages:
   - stage: validation
@@ -125,27 +96,10 @@ stages:
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
 
+
   - stage: notifySuccess
     dependsOn:
       - validation
     displayName: Notify Slack on successful build
     jobs:
       - template: jobs-notify-success.yml
-
-  - stage: integration
-    displayName: Nightly integration test
-    jobs:
-      - job: cleanup
-        displayName: Integration test cleanup tasks
-        steps:
-          - bash: |
-              cd integration
-              # TODO NVM?
-              npm install
-              npm run cleanup 43200
-            env:
-              # Map secrets to env vars. This needs to be done manually
-              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
-              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
-            name: cleanupInstances
-            displayName: Clean up old integration test instances
