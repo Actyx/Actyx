@@ -15,11 +15,9 @@ pr: none
 
 variables:
   SLACK_HOOK: ***REMOVED***
-  BUILD_REASON: $(Build.Reason)
 
 stages:
   - stage: makeArtifacts
-    condition: or(eq(variables['Build.Reason'], 'Schedule'), eq(variables['Build.Reason'], 'Manual'))
     dependsOn: []
     displayName: Make all artifacts
     pool:
@@ -65,7 +63,17 @@ stages:
             artifact: linux-binaries
             condition: succeeded()
       - job:
-        displayName: make docker-build-actyxos
+        displayName: make docker-build-actyxos-
+        strategy:
+          matrix:
+            x8664:
+              ARCH: x86_64
+            aarch64:
+              ARCH: aarch64
+            armv7:
+              ARCH: armv7
+            arm:
+              ARCH: arm
         dependsOn:
           - makeAllLinux
         steps:
@@ -74,7 +82,7 @@ stages:
               targetPath: $(System.DefaultWorkingDirectory)/dist/bin
           - bash: |
               build/bin/install-vault.sh
-              make docker-build-actyxos
+              make docker-build-actyxos-$ARCH
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
@@ -137,7 +145,6 @@ stages:
 
   - stage: integration
     displayName: Nightly integration test
-    condition: or(eq(variables['Build.Reason'], 'Schedule'), eq(variables['Build.Reason'], 'Manual'))
     jobs:
       - job: cleanup
         displayName: Integration test cleanup tasks
