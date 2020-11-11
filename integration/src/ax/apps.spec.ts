@@ -28,6 +28,14 @@ describe('ax apps', () => {
       expect(response).toMatchErrInvalidInput()
     })
 
+    test('return ERR_INVALID_INPUT if file paths do not exist for multiple apps', async () => {
+      const response = await stubNode.ax.Apps.ValidateMultiApps([
+        'not-existing-path1',
+        'not-existing-path2',
+      ])
+      expect(response).toMatchErrInvalidInput()
+    })
+
     test('return OK and validate an app in the specified directory with default manifest', async () => {
       const manifestPath = quickstartDirs.sampleWebviewApp
       const manifestDefault = 'temp/quickstart/sample-webview-app'
@@ -50,15 +58,7 @@ describe('ax apps', () => {
       expect(response).toMatchObject(responseShape)
     })
 
-    test('return ERR_INVALID_INPUT if input paths do not exist for multiple apps', async () => {
-      const response = await stubNode.ax.Apps.ValidateMultiApps([
-        'not-existing-path1',
-        'not-existing-path2',
-      ])
-      expect(response).toMatchErrInvalidInput()
-    })
-
-    test('return OK and validate apps if input paths do exists', async () => {
+    test('return OK and validate apps if file paths do exists', async () => {
       const response = await stubNodeHostUnreachable.ax.Apps.ValidateMultiApps([
         demoMachineKitDirs.dashboard,
         demoMachineKitDirs.erpSimulator,
