@@ -139,7 +139,6 @@ validate-js: diagnostics validate-js-pond validate-js-sdk
 validate-js-pond:
 	cd js/pond && source ~/.nvm/nvm.sh && nvm install && \
 		npm i && \
-		npm run test && \
 		npm run build:prod
 
 # validate js sdk

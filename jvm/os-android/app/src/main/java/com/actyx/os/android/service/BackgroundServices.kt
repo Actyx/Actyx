@@ -21,6 +21,8 @@ import com.actyx.os.android.legacy.usb.BaltechReaderService
 import com.actyx.os.android.legacy.zebrascanner.ZebraScannerService
 import com.actyx.os.android.model.ActyxOsSettings
 import com.actyx.os.android.osnode.AxNode
+import com.actyx.os.android.osnode.MessageHandler
+import com.actyx.os.android.osnode.Scope
 import com.actyx.os.android.osnode.model.NodeFfi.ToAndroid
 import com.actyx.os.android.util.Logger
 import com.actyx.os.android.util.lens
@@ -35,8 +37,6 @@ import kotlinx.serialization.json.JsonConfiguration
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonElementSerializer
 import kotlinx.serialization.json.JsonObject
-
-typealias Scope = String
 
 class BackgroundServices : Service() {
   data class SettingsUpdate(val scope: Scope, val settingsJson: String)
@@ -66,7 +66,7 @@ class BackgroundServices : Service() {
     override fun onAppDisabled(appId: String) = axNode.notifyAppDisabled(appId)
   }
 
-  private fun handler(msg: ToAndroid) {
+  private fun mkMsgHandler(appRepository: AppRepository): MessageHandler = { msg ->
     when (msg.payloadCase) {
       ToAndroid.PayloadCase.SETTINGSUPDATED ->
         settingsUpdates.onNext(
@@ -85,10 +85,13 @@ class BackgroundServices : Service() {
         appRepository.stopApp(msg.stopApp.appId)
       ToAndroid.PayloadCase.NODESTATECHANGED ->
         setupNotificationAndService(msg.nodeStateChanged.state)
+      ToAndroid.PayloadCase.PAYLOAD_NOT_SET, ToAndroid.PayloadCase.ISRUNNING, null -> {
+        // ignored
+      }
     }
   }
 
-  fun setupNotificationAndService(nodeState: ToAndroid.NodeStateChanged.State) {
+  private fun setupNotificationAndService(nodeState: ToAndroid.NodeStateChanged.State) {
     stopForeground(true)
 
     setupNotification(nodeState).also { n ->
@@ -113,11 +116,11 @@ class BackgroundServices : Service() {
 
     super.onCreate()
     setupNotificationAndService(ToAndroid.NodeStateChanged.State.MISCONFIGURED)
-    axNode = AxNode(this, ::handler)
 
-    val extFilesDir = applicationContext.getExternalFilesDir(null)!!
     // TODO check if null
+    val extFilesDir = applicationContext.getExternalFilesDir(null)!!
     appRepository = AppRepository(extFilesDir, this)
+    axNode = AxNode(this, mkMsgHandler(appRepository))
 
     // FIXME remove
     val initialSettings =
