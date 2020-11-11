@@ -3,6 +3,7 @@ import { Reponse_Swarms_Keygen } from './types'
 import { pathExists } from 'fs-extra'
 import { stubNode } from '../stubs'
 import { SettingsInput } from './exec'
+import { quickstartDirs } from './setup-projects/quickstart'
 
 const FILE_PATH = 'temp-swarm-key'
 
@@ -21,7 +22,7 @@ describe('ax swarms', () => {
       const scope = 'com.actyx.os'
       await stubNode.ax.Settings.Set(
         scope,
-        SettingsInput.FromFile('./temp/quickstart/misc/local-sample-node-settings.yml'),
+        SettingsInput.FromFile(`${quickstartDirs.quickstart}/misc/local-sample-node-settings.yml`),
       )
       const response = await stubNode.ax.Swarms.State(4457)
       const responseShape = {
