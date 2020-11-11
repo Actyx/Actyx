@@ -1,4 +1,5 @@
 import execa from 'execa'
+import settings from '../../../settings'
 
 export const runLocalDocker = async (
   platform: NodeJS.Platform,
@@ -45,7 +46,7 @@ const mkRun = (opts: string[] = []) => (containerName: string): string =>
     '-p 127.0.0.1:4454:4454',
     '--privileged',
     ...opts,
-    'actyx/os',
+    settings.localDocker.pull,
   ].join(' ')
 
 const runOnLinux = mkRun(['--network=host'])

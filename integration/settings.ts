@@ -7,6 +7,7 @@ const settings = {
   },
   localDocker: {
     containerName: 'test-actyxos',
+    pull: 'actyx/os:1.0.0',
   },
 }
 
