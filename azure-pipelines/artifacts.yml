@@ -83,6 +83,17 @@ stages:
           - bash: |
               build/bin/install-vault.sh
               make docker-build-actyxos-$ARCH
+              git_hash=`git log -1 --pretty=%H`
+              image_name=actyx/cosmos:actyxos-$ARCH-$git_hash
+              docker push $image_name
+
+              head_of_master=`git rev-parse origin/master`
+              # TODO: Move to external bash script for re-use
+              if [ "$git_hash" == "$head_of_master" ]; then
+                latest_image_name=actyx/cosmos:actyxos-$ARCH-latest
+                docker tag $image_name $latest_image_name
+                docker push $latest_image_name
+              fi
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
