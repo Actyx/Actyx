@@ -55,13 +55,13 @@ print-%:
 # this does not need to be run from CI, since it always starts with a fresh checkout anyway.
 # use this locally to ensure a truly fresh build.
 clean:
-	cd rt-master/target && rm -rf *
-	cd web/downloads.actyx.com && rm -rf node_modules
-	cd web/developer.actyx.com && rm -rf node_modules
-	cd js/pond && rm -rf node_modules
-	cd js/os-sdk && rm -rf node_modules
-	cd jvm/os-android/gradle && rm -rf build
-	cd dist && rm -rf *
+	rm -rf rt-master/target/*
+	rm -rf web/downloads.actyx.com/node_modules
+	rm -rf web/developer.actyx.com/node_modules
+	rm -rf js/pond/node_modules
+	rm -rf js/os-sdk/node_modules
+	rm -rf jvm/os-android/gradle/build
+	rm -rf dist
 
 # mark things with this dependency to run whenever requested
 .PHONY: prepare prepare-js prepare-rs prepare-docker
