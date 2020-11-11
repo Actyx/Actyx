@@ -19,5 +19,7 @@ export const quickstartSetup = async (): Promise<void> => {
   await npmInstall(quickstartDirs.sampleDockerApp)
   await npmRunBuild(quickstartDirs.sampleDockerApp)
 
+  await npmRun('build:image')(quickstartDirs.sampleDockerApp)
+
   console.log('quickstart ready!')
 }
