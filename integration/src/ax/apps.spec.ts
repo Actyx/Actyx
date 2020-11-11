@@ -50,7 +50,7 @@ describe('ax apps', () => {
       expect(response).toMatchObject(responseShape)
     })
 
-    test('return multiple `ERR_INVALID_INPUT` if input paths do not exist for multiple apps', async () => {
+    test('return `ERR_INVALID_INPUT` if input paths do not exist for multiple apps', async () => {
       const response = await stubNodeHostUnreachable.ax.Apps.ValidateMultiApps([
         'not-existing-path1',
         'not-existing-path2',
