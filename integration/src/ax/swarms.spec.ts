@@ -1,8 +1,8 @@
-import { runOnEach } from '../runner/hosts'
 import { promises as fs } from 'fs'
 import { Reponse_Swarms_Keygen } from './types'
 import { pathExists } from 'fs-extra'
 import { stubNode } from '../stubs'
+import { SettingsInput } from './exec'
 
 const FILE_PATH = 'temp-swarm-key'
 
@@ -17,11 +17,25 @@ const isKeyValid = (key?: string) => key && isBase64(key) && isLen128(key)
 
 describe('ax swarms', () => {
   describe('keygen', () => {
-    // FIXME: should use localhocker instead
     test('return status OK for swarm state', async () => {
-      const responses = await runOnEach([{}, {}], false, (node) => node.ax.Swarms.State())
-      const areStatesValid = responses.every((r) => 'OK' in r)
-      expect(areStatesValid).toBe(true)
+      const scope = 'com.actyx.os'
+      await stubNode.ax.Settings.Set(
+        scope,
+        SettingsInput.FromFile('./temp/quickstart/misc/local-sample-node-settings.yml'),
+      )
+      const response = await stubNode.ax.Swarms.State()
+      const responseShape = {
+        Ok: {
+          store: { block_count: expect.any(Number), block_size: expect.any(Number) },
+          swarm: {
+            listen_addrs: expect.any(Array),
+            peer_id: expect.any(String),
+            peers: expect.any(Object),
+          },
+        },
+      }
+      expect(response).toMatchObject(responseShape)
+      await stubNode.ax.Settings.Unset(scope)
     })
 
     test('return valid swarmKeys (128 length and base64)', async () => {
