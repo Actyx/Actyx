@@ -14,8 +14,9 @@ import mozilla.appservices.support.RustBuffer
 import mozilla.appservices.support.toNioDirectBuffer
 
 typealias Scope = String
+typealias MessageHandler = (ToAndroid) -> Unit
 
-class AxNode(ctx: Context, handler: (ToAndroid) -> Unit) {
+class AxNode(ctx: Context, handler: MessageHandler) {
   val log = Logger()
   var lastNodeState = ToAndroid.NodeStateChanged.State.MISCONFIGURED
 
