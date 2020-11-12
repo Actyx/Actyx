@@ -40,7 +40,8 @@
   "scripts": {
     "tsc": "tsc",
     "build": "rimraf dist && npm run tsc",
-    "test": "npm run build && TZ=UTC jest",
+    "test": "npm run build && TZ=UTC jest --config=jest.config.js",
+    "test:localdocker": "npm run build && TZ=UTC jest --config=jest.local-docker.config.js",
     "lint:fix": "tsc & eslint './src/**/*.{js,ts,tsx}' --fix & prettier './src/**/*.{js,ts,tsx}' --write",
     "lint": "tsc & eslint './src/**/*.{js,ts,tsx}' & prettier './src/**/*.{js,ts,tsx}' --check",
     "cleanup": "ts-node --project ./tsconfig.json ./src/cleanup.ts",

@@ -18,7 +18,6 @@ Then you can `npm i` and `npm test` in this project. If you forgot to first buil
 
 - To run only a single test file use for example: `npx tsc && npx jest -- ./dist/src/ax/your-test.spec.js`
 
-| Environment variable                                | Description                                                       |
-|-----------------------------------------------------|-------------------------------------------------------------------|
-| export AX_INTEGRATION_SKIP_SETUP_TEST_PROJECTS=true | skip setup test projects                                          |
-| export AX_INTEGRATION_SKIP_EC2=true                 | skip testing using EC instances and use instead only local Docker |
+| Environment variable                                | Description              |
+|-----------------------------------------------------|--------------------------|
+| export AX_INTEGRATION_SKIP_SETUP_TEST_PROJECTS=true | skip setup test projects |
