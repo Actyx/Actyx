@@ -88,7 +88,6 @@ describe('quickstart-dockerapp', () => {
 
     const responseLs2 = await stubNode.ax.Apps.Ls()
     const responseLs2Shape = { code: 'OK', result: [] }
-    expect(responseLs2).toMatchCodeOk()
     expect(responseLs2).toMatchObject(responseLs2Shape)
   })
 })
