@@ -5,9 +5,9 @@ import { SettingsInput } from '../exec'
 import { quickstartDirs } from '../setup-projects/quickstart'
 
 const WAIT_TIMEOUT_MS = 20_000
-const FREQUENCY_MS = 1_000
+const TRY_FREQUENCY_MS = 1_000
 
-const waitStop = waitForStop(FREQUENCY_MS, WAIT_TIMEOUT_MS)
+const waitStop = waitForStop(TRY_FREQUENCY_MS, WAIT_TIMEOUT_MS)
 const waitStopDockerApp = waitStop('com.actyx.sample-docker-app')
 
 describe('quickstart-dockerapp', () => {
