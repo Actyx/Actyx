@@ -40,7 +40,9 @@ expect.extend({
     const expectedCode = 'OK'
     const pass = hasPropertyResponse(response, 'code', 'OK')
     const message = () =>
-      `Expected code was: ${expectedCode}, instead got: ${response.code}, response was: ${response}`
+      `Expected code was: ${expectedCode}, instead got: ${
+        response.code
+      }, response was: ${JSON.stringify(response)}`
     return {
       message,
       pass,
