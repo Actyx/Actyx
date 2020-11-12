@@ -10,14 +10,15 @@ Then you can `npm i` and `npm test` in this project. If you forgot to first buil
 
 ## Dev
 
-| Scripts            | Description                                                       |
-|--------------------|-------------------------------------------------------------------|
-| npm test           | run all complete test suite                                       |
-| npm run lint:fix   | automatically fix lint issues                                     |
-| npm run clean:temp | remove the `temp` folder where test projects are cloned and built |
+| Scripts                  | Description                                                       |
+|--------------------------|-------------------------------------------------------------------|
+| npm test                 | Run test suite using EC2 instanced and local Docker               |
+| npm run test:localdocker | Run test suite using local Docker only                            |
+| npm run lint:fix         | Automatically fix lint issues                                     |
+| npm run clean:temp       | Remove the `temp` folder where test projects are cloned and built |
 
-- To run only a single test file use for example: `npx tsc && npx jest -- ./dist/src/ax/your-test.spec.js`
+- To run only a single test file use for example: `npx tsc && npx jest -- ./dist/src/your-test.spec.js`
 
 | Environment variable                                | Description              |
 |-----------------------------------------------------|--------------------------|
-| export AX_INTEGRATION_SKIP_SETUP_TEST_PROJECTS=true | skip setup test projects |
+| export AX_INTEGRATION_SKIP_SETUP_TEST_PROJECTS=true | Skip setup test projects |
