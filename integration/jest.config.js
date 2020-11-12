@@ -20,5 +20,5 @@ module.exports = {
   testPathIgnorePatterns: ['/node_modules/', '.+support\\.test\\.ts'],
   maxWorkers: '50%',
   setupFilesAfterEnv: ['./dist/src/jest-custom-matchers.js'],
-  testTimeout: 30000,
+  testTimeout: 40000,
 }
