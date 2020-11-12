@@ -156,6 +156,7 @@ const getPeers = async (node: ActyxOSNode): Promise<number> => {
 
 const setup = async (_config: Record<string, unknown>): Promise<void> => {
   process.stdout.write('\n')
+  console.log('Running Jest with EC2 instances')
 
   await runLocalDocker(platform(), settings.localDocker.containerName)
 
