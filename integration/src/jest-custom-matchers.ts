@@ -39,7 +39,8 @@ expect.extend({
   toMatchCodeOk(response: any): jest.CustomMatcherResult {
     const expectedCode = 'OK'
     const pass = hasPropertyResponse(response, 'code', 'OK')
-    const message = () => `Expected code was: ${expectedCode}, instead got: ${response.code}`
+    const message = () =>
+      `Expected code was: ${expectedCode}, instead got: ${response.code}, response was: ${response}`
     return {
       message,
       pass,
