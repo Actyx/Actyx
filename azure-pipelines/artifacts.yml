@@ -1,6 +1,6 @@
 # Artifact generation pipeline
 #
-# For general remarks, see ./README.md
+# For general remarks, see ../README.md
 
 schedules:
   - cron: "0 */6 * * *" # Every 6 hours
@@ -102,6 +102,7 @@ stages:
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: android-binaries
             condition: succeeded()
+
 
   - stage: upload
     displayName: Upload to az blob store

@@ -1,6 +1,6 @@
-# PR validation pipeline
+# Validation pipeline
 #
-# For general remarks, see ./README.md
+# For general remarks, see ../README.md
 
 trigger:
   branches:
@@ -20,7 +20,7 @@ variables:
 stages:
   - stage: validation
     dependsOn: []
-    displayName: PR validation
+    displayName: Validation
     pool:
       name: Native
     jobs:
