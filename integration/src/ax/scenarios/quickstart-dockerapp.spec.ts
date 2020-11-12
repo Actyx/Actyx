@@ -4,19 +4,30 @@ import { stubNode } from '../../stubs'
 import { SettingsInput } from '../exec'
 import { quickstartDirs } from '../setup-projects/quickstart'
 
+const WAIT_FOR_STOP = 20000
+
 describe('start', () => {
   const scope = 'com.actyx.os'
   const appId = 'com.actyx.sample-docker-app'
   const tarballFile = 'com.actyx.sample-docker-app-1.0.0.tar.gz'
 
   const undeployAllApps = async () => {
-    // TODO: SPO make sure all apps are undeployed and minimize jest timeout
     const responseLs = await stubNode.ax.Apps.Ls()
     if (responseLs.code === 'OK') {
-      const appIds = responseLs.result.map((r) => r.appId)
-      console.log(appIds)
-      appIds.forEach((id) => stubNode.ax.Apps.Undeploy(id))
-      await waitForMs(6000)
+      const apps = responseLs.result.map((r) => ({
+        appId: r.appId,
+        running: r.running,
+      }))
+      const hasApps = apps.length > 0
+      if (hasApps) {
+        const appsRunning = apps.filter((a) => a.running === true)
+        const hasAppsRunning = appsRunning.length > 0
+        if (hasAppsRunning) {
+          appsRunning.forEach((a) => stubNode.ax.Apps.Stop(a.appId))
+          await waitForMs(WAIT_FOR_STOP)
+        }
+        apps.forEach((app) => stubNode.ax.Apps.Undeploy(app.appId))
+      }
     }
     expect(responseLs).toMatchCodeOk()
   }
@@ -48,11 +59,14 @@ describe('start', () => {
     const responseStop = await stubNode.ax.Apps.Stop(appId)
     expect(responseStop).toMatchCodeOk()
 
-    await waitForMs(6000)
+    await waitForMs(WAIT_FOR_STOP)
 
-    await stubNode.ax.Apps.Undeploy(appId)
+    const responseUndeploy = await stubNode.ax.Apps.Undeploy(appId)
+    expect(responseUndeploy).toMatchCodeOk()
+
     const responseLs2 = await stubNode.ax.Apps.Ls()
     const responseLs2Shape = { code: 'OK', result: [] }
+    expect(responseLs2).toMatchCodeOk()
     expect(responseLs2).toMatchObject(responseLs2Shape)
   })
 })
