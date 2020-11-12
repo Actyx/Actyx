@@ -1,17 +1,21 @@
 import { remove } from 'fs-extra'
-import { waitForMs } from '../../jest-util'
+import { waitForStop } from '../../jest-util'
 import { stubNode } from '../../stubs'
 import { SettingsInput } from '../exec'
 import { quickstartDirs } from '../setup-projects/quickstart'
 
-const WAIT_FOR_STOP = 20000
+const WAIT_TIMEOUT_MS = 20_000
+const FREQUENCY_MS = 1_000
 
-describe('start', () => {
+const waitStop = waitForStop(FREQUENCY_MS, WAIT_TIMEOUT_MS)
+const waitStopDockerApp = waitStop('com.actyx.sample-docker-app')
+
+describe('quickstart-dockerapp', () => {
   const scope = 'com.actyx.os'
   const appId = 'com.actyx.sample-docker-app'
-  const tarballFile = 'com.actyx.sample-docker-app-1.0.0.tar.gz'
+  const tarballFile = 'com.actyx.sample-docker-app-1.0.0-x86_64.tar.gz' // SPO double check this
 
-  const undeployAllApps = async () => {
+  const stopAndUndeployAllApps = async () => {
     const responseLs = await stubNode.ax.Apps.Ls()
     if (responseLs.code === 'OK') {
       const apps = responseLs.result.map((r) => ({
@@ -23,8 +27,10 @@ describe('start', () => {
         const appsRunning = apps.filter((a) => a.running === true)
         const hasAppsRunning = appsRunning.length > 0
         if (hasAppsRunning) {
-          appsRunning.forEach((a) => stubNode.ax.Apps.Stop(a.appId))
-          await waitForMs(WAIT_FOR_STOP)
+          appsRunning.forEach(async (a) => {
+            stubNode.ax.Apps.Stop(a.appId)
+            await waitStop(a.appId)()
+          })
         }
         apps.forEach((app) => stubNode.ax.Apps.Undeploy(app.appId))
       }
@@ -32,15 +38,15 @@ describe('start', () => {
     expect(responseLs).toMatchCodeOk()
   }
 
-  const reset = async () => {
-    await remove(`${tarballFile}`)
+  const resetTestEviroment = async () => {
     await stubNode.ax.Settings.Unset(scope)
-    await undeployAllApps()
+    await remove(`${tarballFile}`)
+    await stopAndUndeployAllApps()
   }
 
-  beforeEach(async () => await reset())
+  beforeEach(async () => await resetTestEviroment())
 
-  afterEach(async () => await reset())
+  afterEach(async () => await resetTestEviroment())
 
   test('quickstart/sample-docker-app run deploy/start/ls/stop/undeploy', async () => {
     await stubNode.ax.Settings.Set(
@@ -54,12 +60,28 @@ describe('start', () => {
     expect(responseStart).toMatchCodeOk()
 
     const responseLs1 = await stubNode.ax.Apps.Ls()
-    expect(responseLs1).toMatchCodeOk()
+    const responseLs1Shape = {
+      code: 'OK',
+      result: [
+        {
+          nodeId: 'localhost',
+          appId: 'com.actyx.sample-docker-app',
+          version: '1.0.0',
+          running: false,
+          startedIso: null,
+          startedUnix: null,
+          licensed: true,
+          settingsValid: true,
+          enabled: true,
+        },
+      ],
+    }
+    expect(responseLs1).toMatchObject(responseLs1Shape)
 
     const responseStop = await stubNode.ax.Apps.Stop(appId)
     expect(responseStop).toMatchCodeOk()
 
-    await waitForMs(WAIT_FOR_STOP)
+    await waitStopDockerApp()
 
     const responseUndeploy = await stubNode.ax.Apps.Undeploy(appId)
     expect(responseUndeploy).toMatchCodeOk()

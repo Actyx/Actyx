@@ -1,8 +1,5 @@
 import { stubNode } from './stubs'
 
-export const waitForMs = (ms: number): Promise<void> =>
-  new Promise((res) => setTimeout(() => res(), ms))
-
 export const waitForStop = (checkEveryMs: number, timeoutMs: number) => (
   appId: string,
 ) => (): Promise<string> => {
