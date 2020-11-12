@@ -12,5 +12,6 @@ module.exports = {
   setupFilesAfterEnv: ['./dist/src/jest-custom-matchers.js'],
   testTimeout: 120000,
   globalSetup: './dist/jest/setup-local-docker.js',
+  globalTeardown: './dist/jest/teardown-local-docker.js', // SPO FIXME
   testMatch: ['<rootDir>/dist/src/local-docker/**/*'],
 }
