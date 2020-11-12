@@ -5,7 +5,7 @@ export const waitForMs = (ms: number): Promise<void> =>
 
 export const waitForStop = (checkEveryMs: number, timeoutMs: number) => (
   appId: string,
-): Promise<string> => {
+) => (): Promise<string> => {
   const started = process.hrtime()
   return new Promise((res, rej) => {
     const check = () => {

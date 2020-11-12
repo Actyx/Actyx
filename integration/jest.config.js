@@ -21,4 +21,5 @@ module.exports = {
   maxWorkers: '50%',
   setupFilesAfterEnv: ['./dist/src/jest-custom-matchers.js'],
   testTimeout: 40000,
+  testTimeout: 120000,
 }
