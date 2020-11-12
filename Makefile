@@ -78,6 +78,15 @@ prepare-docker:
 	docker pull actyx/cosmos:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
 
+# requires `qemu-user-static` (ubuntu) package; you might need to restart your docker daemon
+# after setting DOCKER_CLI_EXPERIMENTAL=enabled (or adding `"experimental": "enabled"` to `~/.docker/config.json`)
+#
+# In case of errors, try `docker run --rm --privileged multiarch/qemu-user-static --reset -p yes`
+# to be able to build for `linux/arm64`. (https://github.com/docker/buildx/issues/138)
+prepare-docker-crosscompile:
+	for i in `docker buildx ls | awk '{print $$1}'`; do DOCKER_CLI_EXPERIMENTAL=enabled docker buildx rm $$i; done
+	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx create --platform linux/arm64,linux/amd64,linux/arm/v6,linux/arm/v7 --use
+
 prepare-rs:
 	# install rustup
 	curl https://sh.rustup.rs -sSf | sh -s -- -y
@@ -368,11 +377,18 @@ dist/bin/windows-x86_64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Ma
 	  ./build.sh
 
 
-GIT_BRANCH=$(shell echo `git rev-parse --abbrev-ref HEAD` | sed -e "s,refs/heads/,,g")
-git_hash=$(shell git log -1 --pretty=%H)
+# Getting the current git branch and commit hash
+gitBranch=$(shell echo `git rev-parse --abbrev-ref HEAD` | sed -e "s,refs/heads/,,g")
+gitHash=$(shell git log -1 --pretty=%H)
 
+# For each directory inside ${dockerDir}, create targets for each architecture, e.g.
+# 	actyxos --> docker-build-actyxos-x86_64
+# 			--> docker-build-actyxos-aarch64
+# 			--> docker-build-actyxos-arm
+# 			--> docker-build-actyxos-armv7
+#
+# The `docker buildx` command will be used to cross compile the images.
 dockerDir = ops/docker/images
-#soTargetPatterns = $(foreach t,$(android_so_targets),rt-master/target/$(t)/release/libaxosnodeffi.so)
 dockerTargetPatterns = $(foreach a,$(architectures),$(shell arr=(`ls -1 ${dockerDir} | grep -v -e "^musl\\$$"`); printf "docker-build-%s-$(a)\n " "$${arr[@]}"))
 dockerBuildDir = dist/docker
 .PHONY : $(dockerTargetPatterns)
@@ -382,7 +398,6 @@ dockerPlatform-aarch64 = linux/arm64
 dockerPlatform-x86_64 = linux/amd64
 dockerPlatform-armv7 = linux/arm/v7
 dockerPlatform-arm = linux/arm/v6
-# dockerPlatform = linux/amd64
 DOCKER_REPO ?= actyx/cosmos
 getImageNameDockerhub = $(DOCKER_REPO):$(1)-$(2)-$(3)
 $(dockerTargetPatterns):
@@ -393,29 +408,25 @@ $(dockerTargetPatterns):
 	echo $(DOCKER_TAG) $(arch) $(DOCKER_IMAGE_NAME)
 	mkdir -p $(dockerBuildDir)
 	cp -RPp $(dockerDir)/$(DOCKER_IMAGE_NAME)/* $(dockerBuildDir)
-	$(eval IMAGE_NAME:=$(call getImageNameDockerhub,$(DOCKER_IMAGE_NAME),$(arch),$(git_hash)))
+	$(eval IMAGE_NAME:=$(call getImageNameDockerhub,$(DOCKER_IMAGE_NAME),$(arch),$(gitHash)))
 	if [ -f $(dockerBuildDir)/prepare-image.sh ]; then \
 	  export ARCH=$(arch); \
-	  export GIT_HASH=$(git_hash); \
+	  export GIT_HASH=$(gitHash); \
 	  cd $(dockerBuildDir); \
 	  echo 'Running prepare script'; \
 	  ./prepare-image.sh ..; \
 	fi
 
-	# requires `qemu-user-static` (ubuntu) package; you might need to restart your docker daemon
-	# after setting DOCKER_CLI_EXPERIMENTAL=enabled (or adding `"experimental": "enabled"` to `~/.docker/config.json`)
-	# and reset some weird stuff using `docker run --rm --privileged multiarch/qemu-user-static --reset -p yes`
-	# to be able to build for `linux/arm64`. (https://github.com/docker/buildx/issues/138)
 	DOCKER_CLI_EXPERIMENTAL=enabled DOCKER_BUILDKIT=1 docker buildx build \
 	--platform $(dockerPlatform-$(arch)) \
 	--load \
 	--tag $(IMAGE_NAME) \
 	--build-arg BUILD_DIR=$(dockerBuildDir) \
 	--build-arg ARCH=$(arch) \
-	--build-arg ARCH_AND_GIT_TAG=$(arch)-$(git_hash) \
+	--build-arg ARCH_AND_GIT_TAG=$(arch)-$(gitHash) \
 	--build-arg IMAGE_NAME=actyx/cosmos \
-	--build-arg GIT_COMMIT=$(git_hash) \
-	--build-arg GIT_BRANCH=$(GIT_BRANCH) \
+	--build-arg GIT_COMMIT=$(gitHash) \
+	--build-arg gitBranch=$(gitBranch) \
 	--build-arg BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
 	-f $(dockerBuildDir)/Dockerfile .
 	echo "Cleaning up $(dockerBuildDir)"

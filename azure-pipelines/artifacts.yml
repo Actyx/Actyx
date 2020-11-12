@@ -102,10 +102,6 @@ stages:
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: android-binaries
             condition: succeeded()
-  #  TODO
-  # - stage: makeContainers
-    # displayName: make containers
-
 
   - stage: upload
     displayName: Upload to az blob store
