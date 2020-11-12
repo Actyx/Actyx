@@ -433,10 +433,6 @@ $(dockerTargetPatterns):
 	echo "Cleaning up $(dockerBuildDir)"
 	rm -rf $(dockerBuildDir)
 
-
-# why is this not working?
-# docker-build-dockerloggingplugin-%: dist/bin/linux-%/docker-logging-plugin
-# docker-build-actyxos-%: dist/bin/linux-%/docker-axosnode docker-build-dockerloggingplugin-%
 $(foreach a,$(architectures),$(eval docker-build-dockerloggingplugin-$(a): dist/bin/linux-$(a)/docker-logging-plugin))
 $(foreach a,$(architectures),$(eval docker-build-actyxos-$(a): dist/bin/linux-$(a)/docker-axosnode docker-build-dockerloggingplugin-$(a)))
 
