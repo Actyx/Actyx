@@ -1,4 +1,4 @@
-import { stubNodeHostUnreachable, stubNodeActyxosUnreachable, stubNode } from '../stubs'
+import { stubNodeHostUnreachable, stubNodeActyxosUnreachable, stubNode } from '../../stubs'
 
 describe('ax nodes', () => {
   describe('ls', () => {

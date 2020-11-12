@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import settings from '../settings'
-import { stopLocalDocker } from '../src/ax/setup-projects/local-docker'
+import { stopLocalDocker } from '../src/setup-projects/local-docker'
 import { deleteKey } from '../src/runner/aws'
 import { printTarget } from '../src/runner/types'
 import { MyGlobal } from './setup'

@@ -1,9 +1,9 @@
 import { promises as fs } from 'fs'
-import { Reponse_Swarms_Keygen } from './types'
+import { Reponse_Swarms_Keygen } from '../../cli/types'
 import { pathExists } from 'fs-extra'
-import { stubNode } from '../stubs'
-import { SettingsInput } from './exec'
-import { quickstartDirs } from './setup-projects/quickstart'
+import { stubNode } from '../../stubs'
+import { SettingsInput } from '../../cli/exec'
+import { quickstartDirs } from '../../setup-projects/quickstart'
 
 const FILE_PATH = 'temp-swarm-key'
 

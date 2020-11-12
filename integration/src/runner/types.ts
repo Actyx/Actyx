@@ -1,4 +1,4 @@
-import { CLI } from '../ax/cli'
+import { CLI } from '../cli/cli'
 import { ApiClient } from '@actyx/os-sdk'
 
 export type OS = 'win' | 'linux' | 'mac' | 'android'

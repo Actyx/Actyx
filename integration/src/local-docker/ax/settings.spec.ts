@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const nodeSettingSchema = require('../../../../protocols/json-schema/os/node-settings.schema.json')
 
-import { stubNode, stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../stubs'
+import { stubNode, stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../../stubs'
 import fetch from 'node-fetch'
 
 describe('ax settings', () => {

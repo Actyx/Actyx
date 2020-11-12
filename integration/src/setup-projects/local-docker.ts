@@ -1,5 +1,5 @@
 import execa from 'execa'
-import settings from '../../../settings'
+import settings from '../../settings'
 
 export const runLocalDocker = async (
   platform: NodeJS.Platform,

@@ -1,8 +1,8 @@
 import { remove } from 'fs-extra'
-import { waitForStop } from '../../jest-util'
-import { stubNode } from '../../stubs'
-import { SettingsInput } from '../exec'
-import { quickstartDirs } from '../setup-projects/quickstart'
+import { waitForStop } from '../../../jest-util'
+import { stubNode } from '../../../stubs'
+import { SettingsInput } from '../../../cli/exec'
+import { quickstartDirs } from '../../../setup-projects/quickstart'
 
 const WAIT_TIMEOUT_MS = 20_000
 const TRY_FREQUENCY_MS = 1_000

@@ -1,7 +1,7 @@
-import { stubNode, stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../stubs'
+import { stubNode, stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../../stubs'
 import { remove, pathExists } from 'fs-extra'
-import { quickstartDirs } from './setup-projects/quickstart'
-import { demoMachineKitDirs } from './setup-projects/demo-machine-kit'
+import { quickstartDirs } from '../../setup-projects/quickstart'
+import { demoMachineKitDirs } from '../../setup-projects/demo-machine-kit'
 
 describe('ax apps', () => {
   describe('ls', () => {

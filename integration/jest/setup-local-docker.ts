@@ -1,7 +1,7 @@
 import { platform } from 'os'
 import settings from '../settings'
-import { runLocalDocker } from '../src/ax/setup-projects/local-docker'
-import { setupTestProjects } from '../src/ax/setup-projects/test-projects'
+import { runLocalDocker } from '../src/setup-projects/local-docker'
+import { setupTestProjects } from '../src/setup-projects/test-projects'
 
 const setup = async (_config: Record<string, unknown>): Promise<void> => {
   process.stdout.write('\n')

@@ -1,7 +1,7 @@
 import { Client } from '@actyx/os-sdk'
 import settings from '../settings'
 
-import { CLI } from './ax/cli'
+import { CLI } from './cli/cli'
 import { ActyxOSNode, Arch, Host, OS, Runtime } from './runner/types'
 
 export const mkNodeStub = (
