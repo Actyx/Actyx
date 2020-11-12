@@ -130,14 +130,17 @@ stages:
                 az storage blob upload-batch -s $(System.DefaultWorkingDirectory)/pipeline-artifacts -d https://axartifacts.blob.core.windows.net/artifacts/ --destination-path $(Build.SourceVersion)/
 
   - stage: notifyMakeSuccess
+    displayName: Notify Slack on successful make all
     dependsOn:
       - upload
-    displayName: Notify Slack on successful make all
+      - integration
     jobs:
       - template: jobs-notify-success.yml
 
   - stage: integration
     displayName: Nightly integration test
+    dependsOn:
+      - upload
     jobs:
       - job: cleanup
         displayName: Integration test cleanup tasks

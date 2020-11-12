@@ -16,6 +16,7 @@
 SHELL := /bin/bash
 
 architectures = aarch64 x86_64 armv7 arm
+
 all-LINUX := $(foreach arch,$(architectures),linux-$(arch)/actyxos-linux)
 all-WINDOWS := windows-x86_64/actyxos.exe windows-x86_64/ax.exe
 all-ANDROID := actyxos.apk
@@ -148,14 +149,14 @@ validate-js: diagnostics validate-js-pond validate-js-sdk
 # validate js pond
 validate-js-pond:
 	cd js/pond && source ~/.nvm/nvm.sh && nvm install && \
-		npm i && \
+		npm install && \
 		npm run test && \
 		npm run build:prod
 
 # validate js sdk
 validate-js-sdk:
 	cd js/os-sdk && source ~/.nvm/nvm.sh && nvm install && \
-		npm i && \
+		npm install && \
 		npm run test && \
 		npm run build
 
@@ -164,7 +165,7 @@ validate-js-sdk:
 dist/js/pond:
 	mkdir -p $@
 	cd js/pond && source ~/.nvm/nvm.sh && nvm install && \
-		npm i && \
+		npm install && \
 		npm run build:prod && \
 		mv `npm pack` ../../$@/
 
@@ -173,7 +174,7 @@ dist/js/pond:
 dist/js/os-sdk:
 	mkdir -p $@
 	cd js/os-sdk && source ~/.nvm/nvm.sh && nvm install && \
-		npm i && \
+		npm install && \
 		npm run build && \
 		npm pack && \
 		mv actyx-os-sdk-*.tgz ../../$@/
@@ -184,13 +185,13 @@ validate-website: diagnostics validate-website-developer validate-website-downlo
 # validate developer.actyx.com
 validate-website-developer:
 	cd web/developer.actyx.com && source ~/.nvm/nvm.sh && nvm install && \
-		npm i && \
+		npm install && \
 		npm run test
 
 # validate downloads.actyx.com
 validate-website-downloads:
 	cd web/downloads.actyx.com && source ~/.nvm/nvm.sh && nvm install && \
-		npm i
+		npm install
 
 validate-misc: validate-actyxos-node-manager validate-actyxos-win-installer
 
