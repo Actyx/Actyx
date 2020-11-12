@@ -74,12 +74,7 @@ stages:
               ARCH: armv7
             arm:
               ARCH: arm
-        dependsOn:
-          - makeAllLinux
         steps:
-          - task: DownloadPipelineArtifact@2
-            inputs:
-              targetPath: $(System.DefaultWorkingDirectory)/dist/bin
           - bash: |
               build/bin/install-vault.sh
               make docker-build-actyxos-$ARCH
