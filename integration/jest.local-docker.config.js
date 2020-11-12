@@ -12,7 +12,5 @@ module.exports = {
   setupFilesAfterEnv: ['./dist/src/jest-custom-matchers.js'],
   testTimeout: 120000,
   globalSetup: './dist/jest/setup-local-docker.js',
-  // testMatch: ['<root>/src/local-docker/'],
   testMatch: ['<rootDir>/dist/src/local-docker/**/*'],
 }
-console.log('xxxxxxxxxxx', process.cwd())
