@@ -14,7 +14,7 @@ const validateResponseError = (response: any, codeExpected: string) => {
   const message = () =>
     `Expected code was: ${codeExpected} instead got: ${response.code}, message was ${
       hasMessage ? 'found' : 'not found'
-    }`
+    }, response was: ${JSON.stringify(response)}`
   return {
     message,
     pass,
