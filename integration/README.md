@@ -31,7 +31,8 @@ Then you can `npm install` and `npm test` in this project. If you forgot to firs
 
 ## Local Docker test suite
 
-The local Docker test suite, usable with `npm run test:localdocker` will test the `ax` cli against a *single* node ActyxOS on Docker published on Docker Hub.
+The local Docker test suite, usable with `npm run test:localdocker` will test the `ax` cli against a *single* node ActyxOS on Docker published on Docker Hub. It will use as "test projects" the `quickstart` and `DemoMachineKit`.
+
 Tests run serially and each test should be executed in a "clean" test environment.
 To reset the test environment for each test file the developer has to call the following utility function:
 
