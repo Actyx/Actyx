@@ -1,10 +1,13 @@
-import { gitClone, npmInstall, npmRun, TEMP_DIR } from './util'
+import { gitClone, npmInstall, npmRun } from './util'
+import settings from '../../settings'
+
+const { tempDir } = settings.testProjects
 
 export const demoMachineKitDirs = {
-  demoMachineKit: `${TEMP_DIR}/DemoMachineKit`,
-  dashboard: `${TEMP_DIR}/DemoMachineKit/src/dashboard`,
-  erpSimulator: `${TEMP_DIR}/DemoMachineKit/src/erp-simulator`,
-  wagoConnector: `${TEMP_DIR}/DemoMachineKit/src/wago-connector`,
+  demoMachineKit: `${tempDir}/DemoMachineKit`,
+  dashboard: `${tempDir}/DemoMachineKit/src/dashboard`,
+  erpSimulator: `${tempDir}/DemoMachineKit/src/erp-simulator`,
+  wagoConnector: `${tempDir}/DemoMachineKit/src/wago-connector`,
 }
 
 export const demoMachineKitSetup = async (): Promise<void> => {
