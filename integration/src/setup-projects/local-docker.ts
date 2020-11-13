@@ -5,7 +5,7 @@ export const runLocalDocker = async (
   platform: NodeJS.Platform,
   containerName: string,
 ): Promise<void> => {
-  await removeDockerVolume(containerName)
+  await stopLocalDocker(containerName)
   return supportedPlatforms.includes(platform)
     ? execa
         .command(getSpecificCmd(platform)(containerName))
