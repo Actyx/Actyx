@@ -2,8 +2,8 @@
 
 const settings = {
   binaryPath: {
-    ax: '../dist/bin/x64/ax',
-    actyxosLinux: '../dist/bin/x64/actyxos-linux',
+    ax: '../dist/bin/linux-x86_64/ax', //TODO: make it more flexible
+    actyxosLinux: '../dist/bin/linux-x86_64/actyxos-linux',
   },
   localDocker: {
     containerName: 'test-actyxos',
