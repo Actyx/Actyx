@@ -26,7 +26,7 @@ export const waitForActyxOStoBeReachable = async (): Promise<void> => {
 }
 
 export const waitForByInterval = (checkEveryMs: number, timeoutMs: number) => (
-  predicateFb: () => Promise<boolean>,
+  predicateCb: () => Promise<boolean>,
 ) => (): Promise<void> => {
   const started = process.hrtime()
   return new Promise((res, rej) => {
@@ -37,7 +37,7 @@ export const waitForByInterval = (checkEveryMs: number, timeoutMs: number) => (
         return
       }
       setTimeout(async () => {
-        const canResolve = await predicateFb()
+        const canResolve = await predicateCb()
         if (canResolve) {
           res()
           return
