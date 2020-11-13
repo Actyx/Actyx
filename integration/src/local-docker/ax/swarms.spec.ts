@@ -25,7 +25,6 @@ describe('ax swarms', () => {
 
   describe('keygen', () => {
     test('return status OK for swarm state', async () => {
-      const scope = 'com.actyx.os'
       const response = await stubNode.ax.Swarms.State(4457)
       const responseShape = {
         Ok: {
@@ -38,7 +37,6 @@ describe('ax swarms', () => {
         },
       }
       expect(response).toMatchObject(responseShape)
-      await stubNode.ax.Settings.Unset(scope)
     })
 
     test('return valid swarmKeys (128 length and base64)', async () => {
