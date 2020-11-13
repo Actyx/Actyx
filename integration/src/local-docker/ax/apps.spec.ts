@@ -2,7 +2,7 @@ import { stubNode, stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '.
 import { remove, pathExists } from 'fs-extra'
 import { quickstartDirs } from '../../setup-projects/quickstart'
 import { demoMachineKitDirs } from '../../setup-projects/demo-machine-kit'
-import { resetTestEviroment } from '../util'
+import { resetTestEviroment } from '../local-docker-util'
 
 describe('ax apps', () => {
   beforeAll(async () => {

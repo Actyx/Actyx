@@ -1,5 +1,5 @@
 import { stubNodeHostUnreachable, stubNodeActyxosUnreachable, stubNode } from '../../stubs'
-import { resetTestEviroment } from '../util'
+import { resetTestEviroment } from '../local-docker-util'
 
 describe('ax nodes', () => {
   beforeAll(async () => {

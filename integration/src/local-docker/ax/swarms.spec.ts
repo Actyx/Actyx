@@ -4,7 +4,7 @@ import { pathExists } from 'fs-extra'
 import { stubNode } from '../../stubs'
 import { SettingsInput } from '../../cli/exec'
 import { quickstartDirs } from '../../setup-projects/quickstart'
-import { resetTestEviroment } from '../util'
+import { resetTestEviroment } from '../local-docker-util'
 
 const FILE_PATH = 'temp-swarm-key'
 

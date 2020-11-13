@@ -1,15 +1,43 @@
 import { stubNode } from '../stubs'
-import { waitForStop } from '../jest-util'
 import { SettingsInput } from '../cli/exec'
 import { quickstartDirs } from '../setup-projects/quickstart'
 import { Response_Settings_Set, Response_Settings_Unset } from '../cli/types'
 
+const ACTYXOS_SCOPE = 'com.actyx.os'
 const WAIT_TIMEOUT_MS = 20_000
 const TRY_FREQUENCY_MS = 1_000
 
-const waitStop = waitForStop(TRY_FREQUENCY_MS, WAIT_TIMEOUT_MS)
+export const waitForStop = (checkEveryMs: number, timeoutMs: number) => (
+  appId: string,
+) => (): Promise<string> => {
+  const started = process.hrtime()
+  return new Promise((res, rej) => {
+    const check = () => {
+      const [diffSeconds] = process.hrtime(started)
+      if (diffSeconds >= timeoutMs / 1000) {
+        rej('waitForStop timeout')
+        return
+      }
+      setTimeout(async () => {
+        const resultLs = await stubNode.ax.Apps.Ls()
+        if (resultLs.code === 'OK') {
+          const app = resultLs.result.find((a) => a.appId === appId)
+          const isAppStopped = app?.running === false
+          if (isAppStopped) {
+            res(`${app?.appId} is stopped`)
+            return
+          } else {
+            check()
+          }
+        }
+      }, checkEveryMs)
+    }
 
-const ACTYXOS_SCOPE = 'com.actyx.os'
+    check()
+  })
+}
+
+const waitStop = waitForStop(TRY_FREQUENCY_MS, WAIT_TIMEOUT_MS)
 
 const stopAndUndeployAllApps = async () => {
   const responseLs = await stubNode.ax.Apps.Ls()
@@ -44,8 +72,6 @@ const unsetNode = async (scope: string): Promise<Response_Settings_Unset> =>
 
 export const resetTestEviroment = async (): Promise<void> => {
   await stopAndUndeployAllApps()
-
-  // await remove(`${tarballFile}`)
 
   await unsetNode(ACTYXOS_SCOPE)
   await setNode(ACTYXOS_SCOPE)

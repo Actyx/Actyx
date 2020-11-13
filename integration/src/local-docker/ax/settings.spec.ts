@@ -3,7 +3,7 @@ const nodeSettingSchema = require('../../../../../protocols/json-schema/os/node-
 
 import { stubNode, stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../../stubs'
 import fetch from 'node-fetch'
-import { resetTestEviroment } from '../util'
+import { resetTestEviroment } from '../local-docker-util'
 
 describe('ax settings', () => {
   beforeAll(async () => {
