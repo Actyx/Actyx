@@ -10,7 +10,6 @@ const TRY_FREQUENCY_MS = 1_000
 export const waitForActyxOStoBeReachable = async (): Promise<void> => {
   const predicate = async (): Promise<boolean> => {
     const resultNodeLs = await stubNode.ax.Nodes.Ls()
-    console.log(JSON.stringify(resultNodeLs))
     if (resultNodeLs.code === 'OK') {
       const isRechable = resultNodeLs.result[0].connection === 'reachable'
       return isRechable
@@ -18,17 +17,16 @@ export const waitForActyxOStoBeReachable = async (): Promise<void> => {
       return false
     }
   }
-  await waitForX(TRY_FREQUENCY_MS, WAIT_TIMEOUT_MS)(predicate)()
+  await waitForByInterval(TRY_FREQUENCY_MS, WAIT_TIMEOUT_MS)(predicate)()
 }
 
-export const waitForX = (checkEveryMs: number, timeoutMs: number) => (
+export const waitForByInterval = (checkEveryMs: number, timeoutMs: number) => (
   predicateFb: () => Promise<boolean>,
-) => (): Promise<string> => {
+) => (): Promise<void> => {
   const started = process.hrtime()
   return new Promise((res, rej) => {
     const check = () => {
       const [diffSeconds] = process.hrtime(started)
-      console.log(diffSeconds)
       if (diffSeconds >= timeoutMs / 1000) {
         rej('waitForStop timeout')
         return
@@ -49,37 +47,20 @@ export const waitForX = (checkEveryMs: number, timeoutMs: number) => (
   })
 }
 
-export const waitForStop = (checkEveryMs: number, timeoutMs: number) => (
-  appId: string,
-) => (): Promise<string> => {
-  const started = process.hrtime()
-  return new Promise((res, rej) => {
-    const check = () => {
-      const [diffSeconds] = process.hrtime(started)
-      if (diffSeconds >= timeoutMs / 1000) {
-        rej('waitForStop timeout')
-        return
-      }
-      setTimeout(async () => {
-        const resultLs = await stubNode.ax.Apps.Ls()
-        if (resultLs.code === 'OK') {
-          const app = resultLs.result.find((a) => a.appId === appId)
-          const isAppStopped = app?.running === false
-          if (isAppStopped) {
-            res(`${app?.appId} is stopped`)
-            return
-          } else {
-            check()
-          }
-        }
-      }, checkEveryMs)
+export const waitForStop = async (appId: string): Promise<void> => {
+  const predicate = (appId: string) => async (): Promise<boolean> => {
+    const resultLs = await stubNode.ax.Apps.Ls()
+    console.log('resultSTOP', JSON.stringify(resultLs))
+    if (resultLs.code === 'OK') {
+      const app = resultLs.result.find((a) => a.appId === appId)
+      const isAppStopped = app?.running === false
+      return isAppStopped
+    } else {
+      return false
     }
-
-    check()
-  })
+  }
+  return waitForByInterval(TRY_FREQUENCY_MS, WAIT_TIMEOUT_MS)(predicate(appId))()
 }
-
-const waitStop = waitForStop(TRY_FREQUENCY_MS, WAIT_TIMEOUT_MS)
 
 const stopAndUndeployAllApps = async () => {
   const responseLs = await stubNode.ax.Apps.Ls()
@@ -95,7 +76,7 @@ const stopAndUndeployAllApps = async () => {
       if (hasAppsRunning) {
         appsRunning.forEach(async (a) => {
           await stubNode.ax.Apps.Stop(a.appId)
-          await waitStop(a.appId)()
+          await waitForStop(a.appId)
         })
       }
       apps.forEach((app) => stubNode.ax.Apps.Undeploy(app.appId))
