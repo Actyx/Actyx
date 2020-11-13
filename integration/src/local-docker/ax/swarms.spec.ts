@@ -2,8 +2,6 @@ import { promises as fs } from 'fs'
 import { Reponse_Swarms_Keygen } from '../../cli/types'
 import { pathExists } from 'fs-extra'
 import { stubNode } from '../../stubs'
-import { SettingsInput } from '../../cli/exec'
-import { quickstartDirs } from '../../setup-projects/quickstart'
 import { resetTestEviroment } from '../local-docker-util'
 
 const FILE_PATH = 'temp-swarm-key'
@@ -28,10 +26,6 @@ describe('ax swarms', () => {
   describe('keygen', () => {
     test('return status OK for swarm state', async () => {
       const scope = 'com.actyx.os'
-      await stubNode.ax.Settings.Set(
-        scope,
-        SettingsInput.FromFile(`${quickstartDirs.quickstart}/misc/local-sample-node-settings.yml`),
-      )
       const response = await stubNode.ax.Swarms.State(4457)
       const responseShape = {
         Ok: {
