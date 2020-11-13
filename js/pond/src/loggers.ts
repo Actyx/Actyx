@@ -12,5 +12,6 @@ const pond = Loggers.of('pond')
 const chaos = Loggers.of('chaos')
 const http = Loggers.of('http')
 const ws = Loggers.of('ws')
-export const log = { pond, chaos, http, ws }
+const submono = Loggers.of('subscribe_monotonic')
+export const log = { pond, chaos, http, ws, submono }
 export default log

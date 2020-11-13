@@ -109,6 +109,8 @@ export const observeMonotonic = (
   // Chain of snapshot storage promises
   let storeSnapshotsPromise: Promise<void> = Promise.resolve()
 
+  const trackingId = FishId.canonical(fishId)
+
   // The stream of update messages.
   // This is a transformation from the endpoint’s protocol, which includes time travel,
   // to a protocal that does NOT terminate and not send time travel messages:
@@ -124,6 +126,8 @@ export const observeMonotonic = (
           if (msg.type === MsgType.timetravel) {
             const resetMsg = makeResetMsg(msg.trigger)
             const startFrom = resetMsg.snapshot.psnMap
+
+            log.pond.info(trackingId, 'time traveling due to', EventKey.format(msg.trigger))
 
             // On time travel, reset the state and start a fresh stream
             return Observable.concat(
@@ -167,11 +171,26 @@ export const observeMonotonic = (
   return updates$.concatMap(msg => {
     switch (msg.type) {
       case MsgType.state: {
+        log.pond.info(
+          trackingId,
+          'directly setting state.',
+          'Num sources:',
+          Object.keys(msg.snapshot.psnMap).length,
+          '- Cycle:',
+          msg.snapshot.cycle,
+        )
         reducer.setState(msg.snapshot)
         return []
       }
 
       case MsgType.events: {
+        log.pond.debug(
+          trackingId,
+          'applying event chunk of size',
+          msg.events.length,
+          '- caughtUp:',
+          msg.caughtUp,
+        )
         const s = reducer.appendEvents(msg.events, msg.caughtUp)
         storeSnapshotsPromise = storeSnapshotsPromise.then(async () => {
           await Promise.all(s.snapshots.map(storeSnapshot)).catch(log.pond.warn)
