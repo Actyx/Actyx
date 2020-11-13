@@ -7,12 +7,12 @@ const WAIT_TIMEOUT_MS = 20_000
 const TRY_FREQUENCY_MS = 1_000
 
 const APP_ID = 'com.actyx.sample-docker-app'
-const TARBALL_FILE = 'com.actyx.sample-docker-app-1.0.0-x86_64.tar.gz' // SPO double check this
+const TARBALL_FILE = 'com.actyx.sample-docker-app-1.0.0-x86_64.tar.gz'
 
 const waitStop = waitForStop(TRY_FREQUENCY_MS, WAIT_TIMEOUT_MS)
 const waitStopDockerApp = waitStop('com.actyx.sample-docker-app')
 
-describe('quickstart-dockerapp', () => {
+describe('basic app lifecycle', () => {
   const reset = async () => {
     await remove(`${TARBALL_FILE}`)
     await resetTestEviroment()
@@ -22,7 +22,7 @@ describe('quickstart-dockerapp', () => {
 
   afterEach(async () => await reset())
 
-  test('quickstart/sample-docker-app run deploy/start/ls/stop/undeploy', async () => {
+  test('for quickstart sample-docker-app run deploy, start, ls, stop, undeploy', async () => {
     const responseDeploy = await stubNode.ax.Apps.Deploy(quickstartDirs.sampleDockerApp)
     expect(responseDeploy).toMatchCodeOk()
 
