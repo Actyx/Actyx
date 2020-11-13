@@ -6,7 +6,7 @@ Test suites for combined Actyx products.
 
 Integration tests use primarily the artifacts built from the current commit, so you need to:
 
-- make ActyxOS and related binaries (`actyxos-linux` and `ax`) available by compiling them for all desired target platforms (will be taken from `Cosmos/dist/bin/*`), use the `make` command in `Cosmos` folder for example: `make dist/bin/current/ax` and `make dist/bin/linux-x86_64/actyxos-linux`
+- make ActyxOS and related binaries (`actyxos-linux` and `ax`) available by compiling them for all desired target platforms (will be taken from `Cosmos/dist/bin/*`), use the `make` command in `Cosmos` folder for example: `make dist/bin/current/ax` and `make dist/bin/linux-x86_64/actyxos-linux` (workaround: if make does not work on macos, please compile binaries and move file manuallyin `dist`)
 - change permission for the binaries `chmod +x actyxos-linux` and `chmod +x ax` [this is a workaround for now]
 - run `npm run build` in `js/os-sdk` and `js/pond`
 
