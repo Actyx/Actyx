@@ -7,6 +7,48 @@ const ACTYXOS_SCOPE = 'com.actyx.os'
 const WAIT_TIMEOUT_MS = 20_000
 const TRY_FREQUENCY_MS = 1_000
 
+export const waitForActyxOStoBeReachable = async (): Promise<void> => {
+  const predicate = async (): Promise<boolean> => {
+    const resultNodeLs = await stubNode.ax.Nodes.Ls()
+    console.log(JSON.stringify(resultNodeLs))
+    if (resultNodeLs.code === 'OK') {
+      const isRechable = resultNodeLs.result[0].connection === 'reachable'
+      return isRechable
+    } else {
+      return false
+    }
+  }
+  await waitForX(TRY_FREQUENCY_MS, WAIT_TIMEOUT_MS)(predicate)()
+}
+
+export const waitForX = (checkEveryMs: number, timeoutMs: number) => (
+  predicateFb: () => Promise<boolean>,
+) => (): Promise<string> => {
+  const started = process.hrtime()
+  return new Promise((res, rej) => {
+    const check = () => {
+      const [diffSeconds] = process.hrtime(started)
+      console.log(diffSeconds)
+      if (diffSeconds >= timeoutMs / 1000) {
+        rej('waitForStop timeout')
+        return
+      }
+      setTimeout(async () => {
+        const canResolve = await predicateFb()
+        console.log('canResolve', canResolve)
+        if (canResolve) {
+          res()
+          return
+        } else {
+          check()
+        }
+      }, checkEveryMs)
+    }
+
+    check()
+  })
+}
+
 export const waitForStop = (checkEveryMs: number, timeoutMs: number) => (
   appId: string,
 ) => (): Promise<string> => {
