@@ -24,6 +24,7 @@ describe('ax swarms', () => {
   afterAll(async () => {
     await resetTestEviroment()
   })
+
   describe('keygen', () => {
     test('return status OK for swarm state', async () => {
       const scope = 'com.actyx.os'
