@@ -13,5 +13,5 @@ module.exports = {
   testTimeout: 120000,
   globalSetup: './dist/jest/setup-local-docker.js',
   globalTeardown: './dist/jest/teardown-local-docker.js',
-  testMatch: ['<rootDir>/dist/src/local-docker/**/*'],
+  testMatch: ['<rootDir>/dist/src/local-docker/**/*.(test|spec).(js)'],
 }
