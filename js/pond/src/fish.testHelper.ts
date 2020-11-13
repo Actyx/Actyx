@@ -7,6 +7,7 @@
 import { last } from 'ramda'
 import { Observable, Scheduler } from 'rxjs'
 import { Fish, FishId, TestEvent } from '.'
+import { SnapshotScheduler } from './store/snapshotScheduler'
 import { EventStore } from './eventstore'
 import { Event, Events, OffsetMap } from './eventstore/types'
 import { FishJar } from './fishJar'
@@ -181,7 +182,7 @@ export const snapshotTestSetup = async <S>(
     .toPromise()
 
   const hydrate = useSubscribeMonotonicEndpoint
-    ? observeMonotonic(eventStore, snapshotStore, mkNoopPondStateTracker())
+    ? observeMonotonic(eventStore, snapshotStore, SnapshotScheduler.create(10))
     : FishJar.hydrateV2(eventStore, snapshotStore, mkNoopPondStateTracker())
 
   const observe = hydrate(

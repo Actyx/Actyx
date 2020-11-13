@@ -3,8 +3,9 @@ import { clone } from 'ramda'
 import { Observable, Scheduler } from 'rxjs'
 import { Event, EventStore, OffsetMap } from '../eventstore'
 import log from '../loggers'
-import { PondStateTracker } from '../pond-state'
+import { PondStateTracker, mkNoopPondStateTracker } from '../pond-state'
 import { SnapshotStore } from '../snapshotStore'
+import { SnapshotScheduler } from '../store/snapshotScheduler'
 import { SubscriptionSet } from '../subscription'
 import {
   EventKey,
@@ -57,7 +58,8 @@ const mkOnEventRaw = <S, E>(
 export const observeMonotonic = (
   eventStore: EventStore,
   snapshotStore: SnapshotStore,
-  _pondStateTracker: PondStateTracker,
+  snapshotScheduler: SnapshotScheduler,
+  _pondStateTracker: PondStateTracker = mkNoopPondStateTracker(),
 ) => <S, E>(
   subscriptionSet: SubscriptionSet,
   initialState: S,
@@ -166,6 +168,7 @@ export const observeMonotonic = (
       horizon: undefined,
       cycle: 0,
     },
+    snapshotScheduler,
     deserializeState,
   )
   return updates$.concatMap(msg => {
