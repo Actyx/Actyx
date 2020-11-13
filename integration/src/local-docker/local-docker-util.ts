@@ -11,12 +11,17 @@ export const waitForActyxOStoBeReachable = async (): Promise<void> => {
   const predicate = async (): Promise<boolean> => {
     const resultNodeLs = await stubNode.ax.Nodes.Ls()
     if (resultNodeLs.code === 'OK') {
-      const isRechable = resultNodeLs.result[0].connection === 'reachable'
+      const connection = resultNodeLs.result[0].connection
+      const isRechable = connection === 'reachable'
+      if (isRechable) {
+        console.log('ActyxOS connection is reachable')
+      }
       return isRechable
     } else {
       return false
     }
   }
+  console.log('Waiting ActyxOS connection to be reachable')
   await waitForByInterval(TRY_FREQUENCY_MS, WAIT_TIMEOUT_MS)(predicate)()
 }
 
@@ -28,12 +33,11 @@ export const waitForByInterval = (checkEveryMs: number, timeoutMs: number) => (
     const check = () => {
       const [diffSeconds] = process.hrtime(started)
       if (diffSeconds >= timeoutMs / 1000) {
-        rej('waitForStop timeout')
+        rej('waitForByInterval timeout')
         return
       }
       setTimeout(async () => {
         const canResolve = await predicateFb()
-        console.log('canResolve', canResolve)
         if (canResolve) {
           res()
           return
@@ -50,7 +54,6 @@ export const waitForByInterval = (checkEveryMs: number, timeoutMs: number) => (
 export const waitForStop = async (appId: string): Promise<void> => {
   const predicate = (appId: string) => async (): Promise<boolean> => {
     const resultLs = await stubNode.ax.Apps.Ls()
-    console.log('resultSTOP', JSON.stringify(resultLs))
     if (resultLs.code === 'OK') {
       const app = resultLs.result.find((a) => a.appId === appId)
       const isAppStopped = app?.running === false
@@ -62,7 +65,7 @@ export const waitForStop = async (appId: string): Promise<void> => {
   return waitForByInterval(TRY_FREQUENCY_MS, WAIT_TIMEOUT_MS)(predicate(appId))()
 }
 
-const stopAndUndeployAllApps = async () => {
+const stopAndUndeployAllApps = async (): Promise<void> => {
   const responseLs = await stubNode.ax.Apps.Ls()
   if (responseLs.code === 'OK') {
     const apps = responseLs.result.map((r) => ({

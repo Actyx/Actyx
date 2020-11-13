@@ -9,13 +9,7 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
   console.log('Running Jest with local Docker only')
 
   await runLocalDocker(platform(), settings.localDocker.containerName)
-
-  console.log('START WAITING ____________')
   await waitForActyxOStoBeReachable()
-  // await new Promise((res) => {
-  //   setTimeout(() => res(), 6000)
-  // })
-  console.log('CONTINUE ____________')
 
   await setupTestProjects()
 }
