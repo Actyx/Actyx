@@ -5,7 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { last } from 'ramda'
-import { Observable } from 'rxjs'
+import { Observable, Scheduler } from 'rxjs'
 import { Fish, FishId, TestEvent } from '.'
 import { EventStore } from './eventstore'
 import { Event, Events, OffsetMap } from './eventstore/types'
@@ -197,13 +197,13 @@ export const snapshotTestSetup = async <S>(
 
   const pubEvents = eventStore.directlyPushEvents
 
-  const applyAndGetState = async (events: ReadonlyArray<TestEvent>, numExpectedStates = 1) => {
+  const applyAndGetState = async (events: ReadonlyArray<TestEvent>) => {
     // adding events may or may not emit a new state, depending on whether the events
     // were relevant (might be before semantic snapshot or duplicates)
     const pubProm = observe
-      .take(1 + numExpectedStates)
-      .timeout(100)
-      .catch(() => Observable.empty())
+      .observeOn(Scheduler.async)
+      .debounceTime(0)
+      .first()
       .toPromise()
     pubEvents(events)
     return pubProm
