@@ -1,6 +1,13 @@
 import { stubNodeHostUnreachable, stubNodeActyxosUnreachable, stubNode } from '../../stubs'
+import { resetTestEviroment } from '../util'
 
 describe('ax nodes', () => {
+  beforeAll(async () => {
+    await resetTestEviroment()
+  })
+  afterAll(async () => {
+    await resetTestEviroment()
+  })
   describe('ls', () => {
     test('return OK and result with connection hostUnreachable', async () => {
       const response = await stubNodeHostUnreachable.ax.Nodes.Ls()
@@ -28,10 +35,10 @@ describe('ax nodes', () => {
           {
             connection: 'reachable',
             nodeId: 'localhost',
-            displayName: null,
+            displayName: 'Local Sample Node',
             state: 'running',
-            settingsValid: false,
-            licensed: false,
+            settingsValid: true,
+            licensed: true,
             appsDeployed: 0,
             appsRunning: 0,
             startedIso: expect.any(String),

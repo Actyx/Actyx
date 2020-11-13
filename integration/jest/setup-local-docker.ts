@@ -9,6 +9,12 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
 
   await runLocalDocker(platform(), settings.localDocker.containerName)
 
+  console.log('START WAITING ____________')
+  await new Promise((res) => {
+    setTimeout(() => res(), 6000)
+  })
+  console.log('CONTINUE ____________')
+
   await setupTestProjects()
 }
 

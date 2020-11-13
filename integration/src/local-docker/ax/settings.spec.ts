@@ -3,8 +3,16 @@ const nodeSettingSchema = require('../../../../../protocols/json-schema/os/node-
 
 import { stubNode, stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../../stubs'
 import fetch from 'node-fetch'
+import { resetTestEviroment } from '../util'
 
 describe('ax settings', () => {
+  beforeAll(async () => {
+    await resetTestEviroment()
+  })
+  afterAll(async () => {
+    await resetTestEviroment()
+  })
+
   describe('scopes', () => {
     test('return ERR_NODE_UNREACHABLE if node host is unreachable', async () => {
       const response = await stubNodeHostUnreachable.ax.Settings.Scopes()

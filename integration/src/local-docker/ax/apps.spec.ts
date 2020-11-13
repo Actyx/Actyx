@@ -2,8 +2,16 @@ import { stubNode, stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '.
 import { remove, pathExists } from 'fs-extra'
 import { quickstartDirs } from '../../setup-projects/quickstart'
 import { demoMachineKitDirs } from '../../setup-projects/demo-machine-kit'
+import { resetTestEviroment } from '../util'
 
 describe('ax apps', () => {
+  beforeAll(async () => {
+    await resetTestEviroment()
+  })
+  afterAll(async () => {
+    await resetTestEviroment()
+  })
+
   describe('ls', () => {
     test('return ERR_NODE_UNREACHABLE if host is unreachable', async () => {
       const response = await stubNodeHostUnreachable.ax.Apps.Ls()
