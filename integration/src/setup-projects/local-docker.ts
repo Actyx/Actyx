@@ -5,7 +5,7 @@ export const runLocalDocker = async (
   platform: NodeJS.Platform,
   containerName: string,
 ): Promise<void> => {
-  // SPO fix check if the docker container is running first
+  // FIXME: SPO fix check if the docker container is running first
   await removeDockerVolume(containerName)
   return supportedPlatforms.includes(platform)
     ? execa
