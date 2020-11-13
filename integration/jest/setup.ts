@@ -9,6 +9,7 @@ import { platform } from 'os'
 import settings from '../settings'
 import { setupTestProjects } from '../src/setup-projects/test-projects'
 import { runLocalDocker } from '../src/setup-projects/local-docker'
+import { waitForActyxOStoBeReachable } from '../src/local-docker/local-docker-util'
 
 type LogEntry = {
   time: Date
@@ -159,6 +160,7 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
   console.log('Running Jest with EC2 instances')
 
   await runLocalDocker(platform(), settings.localDocker.containerName)
+  await waitForActyxOStoBeReachable()
 
   await setupTestProjects()
 
