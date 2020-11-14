@@ -1,10 +1,15 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { EC2 } from 'aws-sdk'
-import { CLI } from '../src/ax'
-import { SettingsInput } from '../src/ax/exec'
+import { CLI } from '../src/cli/cli'
+import { SettingsInput } from '../src/cli/exec'
 import { createInstance, createKey, terminateInstance } from '../src/runner/aws'
 import { mkNodeLinux } from '../src/runner/linux'
 import { ActyxOSNode, AwsKey } from '../src/runner/types'
+import { platform } from 'os'
+import settings from '../settings'
+import { setupTestProjects } from '../src/setup-projects/test-projects'
+import { runLocalDocker } from '../src/setup-projects/local-docker'
+import { waitForActyxOStoBeReachable } from '../src/local-docker/local-docker-util'
 
 type LogEntry = {
   time: Date
@@ -151,6 +156,14 @@ const getPeers = async (node: ActyxOSNode): Promise<number> => {
 }
 
 const setup = async (_config: Record<string, unknown>): Promise<void> => {
+  process.stdout.write('\n')
+  console.log('Running Jest with EC2 instances')
+
+  await runLocalDocker(platform(), settings.localDocker.containerName)
+  await waitForActyxOStoBeReachable()
+
+  await setupTestProjects()
+
   const axNodeSetup = (<MyGlobal>global).axNodeSetup
 
   process.stdout.write('\n')

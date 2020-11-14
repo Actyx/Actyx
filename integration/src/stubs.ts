@@ -1,18 +1,10 @@
 import { Client } from '@actyx/os-sdk'
-import { CLI } from './ax'
+import settings from '../settings'
+
+import { CLI } from './cli/cli'
 import { ActyxOSNode, Arch, Host, OS, Runtime } from './runner/types'
-import { promises as fs } from 'fs'
 
-export const exists = async (filePath: string): Promise<boolean> => {
-  try {
-    await fs.access(filePath)
-    return true
-  } catch {
-    return false
-  }
-}
-
-export const mkNodeTest = (
+export const mkNodeStub = (
   os: OS,
   arch: Arch,
   host: Host,
@@ -20,16 +12,17 @@ export const mkNodeTest = (
   name: string,
   addr = 'localhost',
 ): ActyxOSNode => {
+  const axBinaryPath = settings.binaryPath.ax
   return {
     name,
     host,
     runtimes,
     target: { os, arch, kind: { type: 'test' }, _private: { shutdown: () => Promise.resolve() } },
-    ax: new CLI(addr),
+    ax: new CLI(addr, axBinaryPath),
     actyxOS: Client(),
     _private: {
       shutdown: () => Promise.resolve(),
-      axBinary: '',
+      axBinaryPath: '',
       axHost: '',
       apiConsole: '',
       apiEvent: '',
@@ -38,7 +31,9 @@ export const mkNodeTest = (
   }
 }
 
-export const testNodeHostUnreachable = mkNodeTest(
+export const stubNode = mkNodeStub('android', 'aarch64', 'android', ['webview'], 'foo', 'localhost')
+
+export const stubNodeHostUnreachable = mkNodeStub(
   'android',
   'aarch64',
   'android',
@@ -47,7 +42,7 @@ export const testNodeHostUnreachable = mkNodeTest(
   '123',
 )
 
-export const testNodeActyxosUnreachable = mkNodeTest(
+export const stubNodeActyxosUnreachable = mkNodeStub(
   'android',
   'aarch64',
   'android',
