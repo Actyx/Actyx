@@ -27,6 +27,7 @@ export type Reducer<S> = {
 export const stateWithProvenanceReducer = <S>(
   onEvent: (oldState: S, event: Event) => S,
   initialState: SerializedStateSnap,
+  snapshotScheduler: SnapshotScheduler,
   deserializeState?: (jsonState: unknown) => S,
 ): Reducer<S> => {
   const deserialize = deserializeState
@@ -35,8 +36,6 @@ export const stateWithProvenanceReducer = <S>(
 
   const deserializeSnapshot = (snap: SerializedStateSnap): LocalSnapshot<S> => {
     const snapState = deserialize(snap.state)
-    // Clone the input offsets, since they may not be mutable
-    // (TODO: Seems like slightly too much cloning of offsets)
     return { ...snap, state: snapState }
   }
 
@@ -45,7 +44,6 @@ export const stateWithProvenanceReducer = <S>(
 
   const snapshotHead = (): SerializedStateSnap => ({
     ...head,
-    // Clone the mutable parts to avoid interference
     state: JSON.stringify(head.state),
   })
 
@@ -53,19 +51,21 @@ export const stateWithProvenanceReducer = <S>(
 
   let queue = snapshotQueue()
 
-  const snapshotScheduler = SnapshotScheduler.create(10)
   const snapshotEligible = (latest: Timestamp) => (snapBase: PendingSnapshot) =>
     snapshotScheduler.isEligibleForStorage(snapBase, { timestamp: latest })
 
   // Advance the head by applying the given event array between (i ..= iToInclusive)
-  const advanceHead = (events: Events, fromIdx: number, toIdxInclusive: number) => {
-    if (fromIdx > toIdxInclusive) {
-      return
+  const advanceHead = (events: Events, fromIdxExclusive: number, toIdxInclusive: number) => {
+    if (fromIdxExclusive > toIdxInclusive) {
+      throw new Error(
+        'cannot move head backwards!, from:' + fromIdxExclusive + ' to:' + toIdxInclusive,
+      )
     }
 
-    let i = fromIdx
+    let i = fromIdxExclusive + 1
 
     let { state, eventKey, cycle } = head
+    // Clone before modification -> need to clone nowehere else
     const offsets = { ...head.psnMap }
 
     while (i <= toIdxInclusive) {
@@ -91,10 +91,10 @@ export const stateWithProvenanceReducer = <S>(
     // FIXME: Arguments are a bit questionable, but we can’t change the scheduler yet, otherwise the FES-based tests start failing.
     const statesToStore = snapshotScheduler.getSnapshotLevels(head.cycle + 1, events, 0)
 
-    let fromIdx = 0
+    let fromIdxExclusive = -1
     for (const toStore of statesToStore) {
-      advanceHead(events, fromIdx, toStore.i)
-      fromIdx = toStore.i + 1
+      advanceHead(events, fromIdxExclusive, toStore.i)
+      fromIdxExclusive = toStore.i
 
       queue.addPending({
         snap: snapshotHead(),
@@ -103,7 +103,7 @@ export const stateWithProvenanceReducer = <S>(
       })
     }
 
-    advanceHead(events, fromIdx, events.length - 1)
+    advanceHead(events, fromIdxExclusive, events.length - 1)
 
     const snapshots =
       events.length > 0

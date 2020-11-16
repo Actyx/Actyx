@@ -236,6 +236,18 @@ export const Response_Apps_Stop = io.union([
 
 export type Response_Apps_Stop = io.TypeOf<typeof Response_Apps_Stop>
 
+export const Reponse_Apps_Validate = io.union([
+  ERR_INVALID_INPUT,
+  io.intersection([
+    _OK,
+    io.type({
+      result: io.array(io.string),
+    }),
+  ]),
+])
+
+export type Reponse_Apps_Validate = io.TypeOf<typeof Reponse_Apps_Validate>
+
 export const Response_Apps_Ls = io.union([
   ERR_INTERNAL_ERROR,
   ERR_NODE_UNREACHABLE,

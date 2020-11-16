@@ -6,24 +6,16 @@
  */
 import { catOptions, chunksOf } from 'fp-ts/lib/Array'
 import { none, some } from 'fp-ts/lib/Option'
-import { Event, Events, EventStore, OffsetMap } from './eventstore'
-import { includeEvent } from './eventstore/testEventStore'
-import { interleaveRandom, intoOrderedChunks } from './eventstore/utils'
-import { FishEventStore, FishInfo } from './fishEventStore'
-import { SnapshotStore } from './snapshotStore'
-import { SnapshotScheduler } from './store/snapshotScheduler'
-import { SubscriptionSet } from './subscription'
-import {
-  EventKey,
-  FishName,
-  Lamport,
-  Psn,
-  Semantics,
-  SnapshotFormat,
-  SourceId,
-  Timestamp,
-} from './types'
-import { shuffle } from './util/array'
+import { observeMonotonic } from '.'
+import { allEvents, Fish, Lamport, SourceId, Timestamp, Where } from '..'
+import { Event, Events, EventStore, OffsetMap } from '../eventstore'
+import { includeEvent } from '../eventstore/testEventStore'
+import { interleaveRandom } from '../eventstore/utils'
+import { SnapshotStore } from '../snapshotStore'
+import { SnapshotScheduler } from '../store/snapshotScheduler'
+import { toSubscriptionSet } from '../tagging'
+import { EventKey, FishName, Metadata, Psn, Semantics } from '../types'
+import { shuffle } from '../util/array'
 
 const numberOfSources = 5
 const batchSize = 10
@@ -32,23 +24,31 @@ const numberOfIterations = 5
 const semanticSnapshotProbability = 0.1
 const localSnapshotProbability = 0.05
 
-type SemanticSnapshot = (ev: Event) => boolean
+type SemanticSnapshot = (ev: Payload) => boolean
 
 type Payload = Readonly<{
+  sourceId: string
   sequence: number
   isSemanticSnapshot: boolean
   isLocalSnapshot: boolean
 }>
 
-type State = Record<string, number[]>
-const onEvent = (state: State, event: Event) => {
-  const { sourceId, payload } = event
-  const { sequence } = payload as Payload
+type State = {
+  // For asserting that each individual source is delivered in proper order.
+  perSource: Record<string, number[]>
+  // For asserting that order between sources is correct.
+  overall: string[]
+}
 
-  if (state[sourceId] !== undefined) {
-    state[sourceId].push(sequence)
+const onEvent = (state: State, event: Payload, metadata: Metadata) => {
+  const { sourceId, sequence } = event
+
+  const { perSource, overall } = state
+  overall.push(metadata.eventId)
+  if (perSource[sourceId] !== undefined) {
+    perSource[sourceId].push(sequence)
   } else {
-    state[sourceId] = [sequence]
+    perSource[sourceId] = [sequence]
   }
 
   return state
@@ -65,22 +65,19 @@ const generateEvents = (count: number) => (sourceId: SourceId): Events =>
     timestamp: Timestamp.of(i * timeScale),
     lamport: Lamport.of(i),
     payload: {
+      sourceId,
       sequence: i,
       isSemanticSnapshot: Math.random() < semanticSnapshotProbability,
       isLocalSnapshot: Math.random() < localSnapshotProbability,
     },
   }))
 
-const mkFish = (isSemanticSnapshot: SemanticSnapshot | undefined): FishInfo<State> => ({
-  semantics: Semantics.of('some-fish'),
-  fishName: FishName.of('some-name'),
-  subscriptionSet: SubscriptionSet.all,
-  initialState: () => {
-    return {}
-  },
+const mkFish = (isSemanticSnapshot: SemanticSnapshot | undefined): Fish<State, Payload> => ({
+  fishId: { entityType: 'some-fish', name: 'some-name', version: 0 },
+  where: allEvents as Where<Payload>,
+  initialState: { perSource: {}, overall: [] },
   onEvent,
-  isSemanticSnapshot,
-  snapshotFormat: SnapshotFormat.identity(1),
+  isReset: isSemanticSnapshot ? (ev, _meta) => isSemanticSnapshot(ev) : undefined,
 })
 
 const mkSnapshotScheduler: (
@@ -98,9 +95,7 @@ const mkSnapshotScheduler: (
           return none
         }
       }),
-    )
-      .filter(x => x.i > limit)
-      .reverse(),
+    ).filter(x => x.i > limit),
   // Delay = 0 means we always store directly
   isEligibleForStorage: (snap, latest) => {
     const delta = latest.timestamp - snap.timestamp
@@ -117,7 +112,8 @@ const neverSnapshotScheduler: SnapshotScheduler = {
 }
 
 type Run = <S>(
-  fish: FishInfo<S>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fish: Fish<S, any>,
 ) => (
   sourceId: SourceId,
   events: ReadonlyArray<Events>,
@@ -131,18 +127,20 @@ const hydrate: Run = fish => async (sourceId, events, snapshotScheduler) => {
       const offsetMap1 = batch.reduce(includeEvent, { ...offsetMap })
 
       eventStore.directlyPushEvents(batch)
-      const store = await FishEventStore.initialize(
-        fish,
-        eventStore,
-        snapshotStore,
-        snapshotScheduler,
-        offsetMap1,
-      ).toPromise()
-      const state1 = await store
-        .currentState()
+
+      const state1 = observeMonotonic(eventStore, snapshotStore, snapshotScheduler)(
+        toSubscriptionSet(fish.where),
+        fish.initialState,
+        fish.onEvent,
+        fish.fishId,
+        fish.isReset,
+        fish.deserializeState,
+      )
+        .first()
         .toPromise()
-        .then(sp => sp.state)
-      return { state: state1, offsetMap: offsetMap1, eventStore, snapshotStore }
+        .then(swp => swp.state)
+
+      return { state: await state1, offsetMap: offsetMap1, eventStore, snapshotStore }
     },
     Promise.resolve({
       eventStore: EventStore.test(
@@ -154,7 +152,7 @@ const hydrate: Run = fish => async (sourceId, events, snapshotScheduler) => {
       ),
       snapshotStore: SnapshotStore.inMem(),
       offsetMap: OffsetMap.empty,
-      state: fish.initialState(),
+      state: fish.initialState,
     }),
   )
 
@@ -168,43 +166,46 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
 ) => {
   const eventStore = EventStore.test(sourceId) // todo inmem?
   const snapshotStore = SnapshotStore.inMem()
-  const store = await FishEventStore.initialize(
-    fish,
-    eventStore,
-    snapshotStore,
-    snapshotScheduler,
-    OffsetMap.empty,
-  ).toPromise()
+
+  const observe = observeMonotonic(eventStore, snapshotStore, snapshotScheduler)
+
+  const states$ = observe(
+    toSubscriptionSet(fish.where),
+    fish.initialState,
+    fish.onEvent,
+    fish.fishId,
+    fish.isReset,
+    fish.deserializeState,
+  )
+    // This is needed for letting tests run correctly:
+    // - buffer 1 element so that order of pipelines doesnt matter
+    // - debounce 0 so that other pipelines have a chance to run
+    // Hopefully this does not distort test results.
+    .shareReplay(1)
+    .debounceTime(0)
 
   return events.reduce(async (acc, batch, i) => {
     await acc
 
-    eventStore.directlyPushEvents(batch) // Make available for rehydration.
-
-    // FES expects every batch to be sorted internally.
-    // To assure this we use the same procedure as the fishJar does.
-    const sortedChunks = intoOrderedChunks(batch)
-
-    let n = false
-
-    for (const sortedEvents of sortedChunks) {
-      n = store.processEvents(sortedEvents) || n
-    }
-
     const isLast = i === events.length - 1
-    return (n && intermediates) || isLast
-      ? store
-          .currentState()
-          .toPromise()
-          .then(sp => sp.state)
-      : acc
-  }, Promise.resolve(fish.initialState()))
+    const res =
+      isLast || intermediates
+        ? states$
+            .take(1)
+            .toPromise()
+            .then(x => x.state)
+        : acc
+
+    eventStore.directlyPushEvents(batch)
+
+    return res
+  }, Promise.resolve(fish.initialState))
 }
 
 const fishConfigs = {
   undefined: mkFish(undefined),
   never: mkFish(() => false),
-  random: mkFish((ev: Event) => (ev.payload as Payload).isSemanticSnapshot),
+  random: mkFish((ev: Payload) => ev.isSemanticSnapshot),
 }
 const runConfigs = { hydrate, live: live(false), liveIntermediateStates: live(true) }
 const snapshotConfigs = {
@@ -230,8 +231,9 @@ describe(`the fish event store with randomized inter-source event ordering`, () 
       it(`semantic=${name} expected should be filled`, async () => {
         const e = await expected
 
-        expect(Object.keys(e).sort()).toEqual([...sourceIds].sort())
-        for (const evs of Object.values(e)) {
+        expect(Object.keys(e.perSource).sort()).toEqual([...sourceIds].sort())
+        expect(e.overall.length).toEqual(eventsPerSource * sourceIds.length)
+        for (const evs of Object.values(e.perSource)) {
           expect(evs.length).toEqual(eventsPerSource)
         }
       })

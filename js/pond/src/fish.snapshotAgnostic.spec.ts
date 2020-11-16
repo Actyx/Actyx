@@ -72,12 +72,12 @@ describe('fish event store + jar snapshot agnostic behaviour', () => {
   forAllFish(`should deal properly with unsorted live chunks, A first`, async fish => {
     const { applyAndGetState } = await setup(fish)
 
-    expect(await applyAndGetState(aEvents.concat(bEvents), 2)).toEqual([1, 2, 3, 4])
+    expect(await applyAndGetState(aEvents.concat(bEvents))).toEqual([1, 2, 3, 4])
   })
 
   forAllFish(`should deal properly with unsorted live chunks, B first`, async fish => {
     const { applyAndGetState } = await setup(fish)
 
-    expect(await applyAndGetState(bEvents.concat(aEvents), 2)).toEqual([1, 2, 3, 4])
+    expect(await applyAndGetState(bEvents.concat(aEvents))).toEqual([1, 2, 3, 4])
   })
 })

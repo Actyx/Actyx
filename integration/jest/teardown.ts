@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import settings from '../settings'
+import { stopLocalDocker } from '../src/setup-projects/local-docker'
 import { deleteKey } from '../src/runner/aws'
 import { printTarget } from '../src/runner/types'
 import { MyGlobal } from './setup'
@@ -7,6 +9,8 @@ const teardown = async (_config: Record<string, unknown>): Promise<void> => {
   const axNodeSetup = (<MyGlobal>global).axNodeSetup
 
   process.stdout.write('****\n\nSHUTTING DOWN\n\n')
+
+  await stopLocalDocker(settings.localDocker.containerName)
 
   if (axNodeSetup.keepNodesRunning) {
     console.log('as per your request: NOT terminating instances')

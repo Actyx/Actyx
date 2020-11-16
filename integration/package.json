@@ -15,6 +15,7 @@
     "ssh2": "^0.8.9"
   },
   "devDependencies": {
+    "@types/fs-extra": "^9.0.3",
     "@types/jest": "^26.0.14",
     "@types/node": "^14.11.2",
     "@types/node-fetch": "^2.5.7",
@@ -38,11 +39,14 @@
   "name": "actyxos-integration",
   "scripts": {
     "tsc": "tsc",
-    "build": "rimraf dist && tsc",
-    "test": "npm run build && TZ=UTC jest",
+    "build": "rimraf dist && npm run tsc",
+    "test": "npm run build && TZ=UTC jest --config=jest.config.js",
+    "test:localdocker": "npm run build && export AX_INTEGRATION_SKIP_SETUP_TEST_PROJECTS=false && TZ=UTC jest --runInBand --config=jest.local-docker.config.js",
+    "test:localdocker:nosetup": "npm run build && export AX_INTEGRATION_SKIP_SETUP_TEST_PROJECTS=true && TZ=UTC jest --runInBand --config=jest.local-docker.config.js",
     "lint:fix": "tsc & eslint './src/**/*.{js,ts,tsx}' --fix & prettier './src/**/*.{js,ts,tsx}' --write",
     "lint": "tsc & eslint './src/**/*.{js,ts,tsx}' & prettier './src/**/*.{js,ts,tsx}' --check",
-    "cleanup": "ts-node --project ./tsconfig.json ./src/cleanup.ts"
+    "cleanup": "ts-node --project ./tsconfig.json ./src/cleanup.ts",
+    "clean:temp": "rimraf temp"
   },
   "version": "1.0.0"
 }

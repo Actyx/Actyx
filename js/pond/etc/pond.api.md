@@ -13,6 +13,21 @@ export type AddEmission<EWrite> = <E extends EWrite>(tags: Tags<E>, event: E) =>
 // @public
 export const allEvents: Tags<unknown>;
 
+// @beta
+export type Caching = NoCaching | InProcessCaching;
+
+// @beta
+export const Caching: {
+    none: {
+        type: "none";
+    };
+    isEnabled: (c: Caching | undefined) => c is Readonly<{
+        type: 'in-process';
+        key: string;
+    }>;
+    inProcess: (key: string) => Caching;
+};
+
 // @public
 export type CancelSubscription = () => void;
 
@@ -138,6 +153,12 @@ export type GetNodeConnectivityParams = Readonly<{
     specialSources?: ReadonlyArray<SourceId>;
 }>;
 
+// @beta
+export type InProcessCaching = Readonly<{
+    type: 'in-process';
+    key: string;
+}>;
+
 // @public
 export const isBoolean: (x: any) => x is boolean;
 
@@ -211,6 +232,11 @@ export const Milliseconds: {
     FromNumber: t.Type<number, number, unknown>;
 };
 
+// @beta
+export type NoCaching = {
+    readonly type: 'none';
+};
+
 // @public
 export type NodeInfoEntry = Readonly<{
     own?: number;
@@ -219,6 +245,12 @@ export type NodeInfoEntry = Readonly<{
 
 // @public
 export const noEvents: Where<never>;
+
+// @beta
+export type ObserveAllOpts = Partial<{
+    caching: Caching;
+    expireAfterFirst: Milliseconds;
+}>;
 
 // @public
 export type PendingEmission = {
@@ -230,6 +262,8 @@ export type PendingEmission = {
 export type Pond = {
     emit<E>(tags: Tags<E>, event: E): PendingEmission;
     observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription;
+    observeAll<F, S>(firstEventsSelector: Where<F>, makeFish: (firstEvent: F) => Fish<S, any>, opts: ObserveAllOpts, callback: (states: S[]) => void): CancelSubscription;
+    observeOne<F, S>(firstEventSelector: Where<F>, makeFish: (firstEvent: F) => Fish<S, any>, callback: (newState: S) => void): CancelSubscription;
     run<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>): PendingEmission;
     keepRunning<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>, autoCancel?: (state: S) => boolean): CancelSubscription;
     dispose(): void;

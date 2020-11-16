@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { clone } from 'ramda'
-import { Observable, Scheduler } from 'rxjs'
+import { Observable, Scheduler, Subject } from 'rxjs'
 import { Event, EventStore, OffsetMap } from '../eventstore'
 import log from '../loggers'
-import { PondStateTracker } from '../pond-state'
+import { mkNoopPondStateTracker, PondStateTracker } from '../pond-state'
 import { SnapshotStore } from '../snapshotStore'
+import { SnapshotScheduler } from '../store/snapshotScheduler'
 import { SubscriptionSet } from '../subscription'
 import {
   EventKey,
@@ -15,7 +16,14 @@ import {
   StateWithProvenance,
   toMetadata,
 } from '../types'
-import { eventsMonotonic, EventsMsg, MsgType, StateMsg } from './endpoint'
+import {
+  eventsMonotonic,
+  EventsMsg,
+  EventsOrTimetravel,
+  MsgType,
+  StateMsg,
+  TimeTravelMsg,
+} from './endpoint'
 import { PendingSnapshot, SerializedStateSnap, stateWithProvenanceReducer } from './reducer'
 
 // Take some Fish parameters and combine them into a "simpler" onEvent
@@ -57,7 +65,8 @@ const mkOnEventRaw = <S, E>(
 export const observeMonotonic = (
   eventStore: EventStore,
   snapshotStore: SnapshotStore,
-  _pondStateTracker: PondStateTracker,
+  snapshotScheduler: SnapshotScheduler,
+  _pondStateTracker: PondStateTracker = mkNoopPondStateTracker(),
 ) => <S, E>(
   subscriptionSet: SubscriptionSet,
   initialState: S,
@@ -73,19 +82,21 @@ export const observeMonotonic = (
   const onEventRaw = mkOnEventRaw(sourceId, clone(initialState), onEvent, isReset)
 
   const initialStateAsString = JSON.stringify(initialState)
-  // Here we can find earlier states that we have cached in-process.
-  // Returning the initial state is always fine, though. It just leads to more processing.
-  const findStartingState = (_before: EventKey): SerializedStateSnap => ({
+  const initialStateSnapshot = {
     state: initialStateAsString,
-    psnMap: {},
-    cycle: 0,
+    psnMap: OffsetMap.empty,
     eventKey: EventKey.zero,
     horizon: undefined,
-  })
+    cycle: 0,
+  }
+
+  // Here we can find earlier states that we have cached in-process.
+  // Returning the initial state is always fine, though. It just leads to more processing.
+  const findStartingState = (_before: EventKey): SerializedStateSnap => initialStateSnapshot
 
   // Create a message that sets the Reducer back to a locally cached state.
-  const makeResetMsg = (trigger: EventKey): StateMsg => {
-    const latestValid = findStartingState(trigger)
+  const makeResetMsg = (timeTravel: TimeTravelMsg): StateMsg => {
+    const latestValid = findStartingState(timeTravel.trigger)
     return {
       type: MsgType.state,
       snapshot: latestValid,
@@ -109,38 +120,14 @@ export const observeMonotonic = (
   // Chain of snapshot storage promises
   let storeSnapshotsPromise: Promise<void> = Promise.resolve()
 
-  // The stream of update messages.
-  // This is a transformation from the endpoint’s protocol, which includes time travel,
-  // to a protocal that does NOT terminate and not send time travel messages:
-  // Rather, time travel messages are mapped to a restart of the stream.
-  // In the end we get an easier to consume protocol.
-  const updates = (from?: OffsetMap): Observable<StateMsg | EventsMsg> => {
+  const trackingId = FishId.canonical(fishId)
+
+  // The stream of update messages. Should end with a time travel message.
+  const monotonicUpdates = (from?: OffsetMap): Observable<EventsOrTimetravel> => {
     const stream = () =>
       endpoint(fishId, subscriptionSet, from)
-        // This is a high-pressure pipeline with potential recursion, hence we run on a Scheduler
-        // to guard against excess CPU usage and stack overflow.
+        // Run on a scheduler to avoid locking the program up if lots of data is coming in.
         .subscribeOn(Scheduler.queue)
-        .concatMap(msg => {
-          if (msg.type === MsgType.timetravel) {
-            const resetMsg = makeResetMsg(msg.trigger)
-            const startFrom = resetMsg.snapshot.psnMap
-
-            // On time travel, reset the state and start a fresh stream
-            return Observable.concat(
-              Observable.of(resetMsg),
-              // Recursive call, can’t be helped
-              updates(OffsetMap.isEmpty(startFrom) ? undefined : startFrom),
-            )
-          }
-
-          return [msg]
-        })
-        .catch(err => {
-          log.pond.error(err)
-
-          // Reset the reducer and let the code further below take care of restarting the stream
-          return Observable.of(makeResetMsg(EventKey.zero))
-        })
 
     // Wait for pending snapshot storage requests to finish
     return Observable.from(storeSnapshotsPromise)
@@ -148,30 +135,44 @@ export const observeMonotonic = (
       .concatMap(stream)
   }
 
-  // If the stream of updates terminates without a timetravel message – due to an error or the ws engine –,
-  // then we can just restart it. (Tests pending.)
-  const updates$ = Observable.concat(updates(), Observable.defer(updates))
-
-  // This will probably turn into a mergeScan when local snapshots are added
   const reducer = stateWithProvenanceReducer(
     onEventRaw,
-    {
-      state: initialStateAsString,
-      psnMap: OffsetMap.empty,
-      eventKey: EventKey.zero,
-      horizon: undefined,
-      cycle: 0,
-    },
+    initialStateSnapshot,
+    snapshotScheduler,
     deserializeState,
   )
-  return updates$.concatMap(msg => {
+
+  return makeEndless(
+    monotonicUpdates,
+    makeResetMsg,
+    {
+      type: MsgType.state,
+      snapshot: initialStateSnapshot,
+    },
+    trackingId,
+  ).concatMap(msg => {
     switch (msg.type) {
       case MsgType.state: {
+        log.pond.info(
+          trackingId,
+          'directly setting state.',
+          'Num sources:',
+          Object.keys(msg.snapshot.psnMap).length,
+          '- Cycle:',
+          msg.snapshot.cycle,
+        )
         reducer.setState(msg.snapshot)
         return []
       }
 
       case MsgType.events: {
+        log.pond.debug(
+          trackingId,
+          'applying event chunk of size',
+          msg.events.length,
+          '- caughtUp:',
+          msg.caughtUp,
+        )
         const s = reducer.appendEvents(msg.events, msg.caughtUp)
         storeSnapshotsPromise = storeSnapshotsPromise.then(async () => {
           await Promise.all(s.snapshots.map(storeSnapshot)).catch(log.pond.warn)
@@ -180,5 +181,48 @@ export const observeMonotonic = (
         return s.emit
       }
     }
+  })
+}
+
+type TimeTravelToStateMsg = (timeTravel: TimeTravelMsg) => StateMsg
+
+type GetMonotonicUpdates = (from?: OffsetMap) => Observable<EventsOrTimetravel>
+
+// Make a monotonic, limited stream of updates into an unlimited one,
+// by chaining the final message (time travel) into a StateMsg and
+// automatic restart of the monotonic stream, with appropriate arguments.
+const makeEndless = (
+  monotonicUpdates: GetMonotonicUpdates,
+  timeTravelToStateMsg: TimeTravelToStateMsg,
+  resetCompletely: StateMsg,
+  trackingId: string,
+): Observable<StateMsg | EventsMsg> => {
+  const endless = new Subject<StateMsg | EventsMsg>()
+  const start = new Subject<OffsetMap>()
+
+  start
+    .switchMap(x => monotonicUpdates(OffsetMap.isEmpty(x) ? undefined : x))
+    .catch(x => {
+      log.pond.error(x)
+      // On error, just try starting from scratch completely (should happen very rarely.)
+      start.next(OffsetMap.empty)
+      return Observable.of(resetCompletely)
+    })
+    .map(x => {
+      if (x.type !== MsgType.timetravel) {
+        return x
+      }
+      log.pond.info(trackingId, 'time traveling due to', EventKey.format(x.trigger))
+      const resetMsg = timeTravelToStateMsg(x)
+      start.next(resetMsg.snapshot.psnMap)
+      return resetMsg
+    })
+    .subscribe(endless)
+
+  start.next(OffsetMap.empty)
+
+  return endless.asObservable().finally(() => {
+    start.complete()
+    endless.complete()
   })
 }

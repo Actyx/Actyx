@@ -1,3 +1,9 @@
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
 import { Observable } from 'rxjs'
 import { Fish, FishId, noEvents, Pond, Tag, Tags, Where } from '.'
 
@@ -25,7 +31,7 @@ const aggregateAsObservable = <S>(pond: Pond, agg: Fish<S, any>): Observable<S> 
     pond.observe(agg, s => x.next(s))
   })
 
-describe('application of commands in the pond', () => {
+describe('tag-based aggregation (Fish observe) in the Pond', () => {
   const expectAggregationToYield = async (
     subscriptions: Where<string>,
     expectedResult: string[],

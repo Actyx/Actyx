@@ -1,4 +1,4 @@
-import { CLI } from '../ax'
+import { CLI } from '../cli/cli'
 import { ApiClient } from '@actyx/os-sdk'
 
 export type OS = 'win' | 'linux' | 'mac' | 'android'
@@ -57,7 +57,7 @@ export type ActyxOSNode = {
   actyxOS: ApiClient
   _private: {
     shutdown: () => Promise<void>
-    axBinary: string
+    axBinaryPath: string
     axHost: string
     apiEvent: string
     apiConsole: string
