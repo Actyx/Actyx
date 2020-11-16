@@ -353,7 +353,7 @@ export class FishEventStoreImpl<S, E> implements FishEventStore<S, E> {
       })
     } else {
       const chunks$ = getEventsForwardChunked(
-        base,
+        base.map(x => x.psnMap),
         this.eventStore,
         this.fish.subscriptionSet,
         present,
@@ -975,12 +975,12 @@ export const getEventsAfterLatestSemanticSnapshot = async <S>(
 }
 
 export const getEventsForwardChunked = (
-  base: Option<LocalSnapshot<unknown>>,
+  base: Option<OffsetMap>,
   eventStore: EventStore,
   subscriptionSet: SubscriptionSet,
   present: OffsetMap,
 ): Observable<Events> => {
-  const fromExclusive = base.map(x => x.psnMap).getOrElse({})
+  const fromExclusive = base.getOrElse({})
 
   const chunks = eventStore.persistedEvents(
     { default: 'min', psns: fromExclusive },

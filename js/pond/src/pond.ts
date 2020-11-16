@@ -6,12 +6,12 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Observable, Scheduler } from 'rxjs'
+import { Observable, ReplaySubject, Scheduler, Subscription } from 'rxjs'
 import { CommandInterface } from './commandInterface'
 import { EventStore, WsStoreConfig } from './eventstore'
 import { MultiplexedWebsocket } from './eventstore/multiplexedWebsocket'
 import { TestEvent } from './eventstore/testEventStore'
-import { ConnectivityStatus, Events } from './eventstore/types'
+import { AllEventsSortOrders, ConnectivityStatus, Events } from './eventstore/types'
 import { extendDefaultWsStoreConfig, mkMultiplexer } from './eventstore/utils'
 import { getSourceId } from './eventstore/websocketEventStore'
 import { CommandPipeline, FishJar } from './fishJar'
@@ -21,9 +21,10 @@ import { SnapshotStore } from './snapshotStore'
 import { SplashState, streamSplashState, WaitForSwarmConfig } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
-import { Tags, toSubscriptionSet } from './tagging'
+import { Tags, toSubscriptionSet, Where } from './tagging'
 import {
   AddEmission,
+  Caching,
   CancelSubscription,
   Fish,
   FishId,
@@ -31,6 +32,7 @@ import {
   IsReset,
   Metadata,
   Milliseconds,
+  ObserveAllOpts,
   PendingEmission,
   Reduce,
   Semantics,
@@ -106,6 +108,7 @@ type EmissionRequest<E> = ReadonlyArray<Emit<E>> | Promise<ReadonlyArray<Emit<E>
 
 type ActiveFish<S> = {
   readonly states: Observable<StateWithProvenance<S>>
+  readonly subscription: Subscription
   commandPipeline?: CommandPipeline<S, EmissionRequest<any>>
 }
 
@@ -155,9 +158,62 @@ export type Pond = {
    *
    * @param fish       - Complete Fish information.
    * @param callback   - Function that will be called whenever a new state becomes available.
-   * @returns            A function that can be called in order to cancel the aggregation.
+   * @returns            A function that can be called in order to cancel the subscription.
    */
   observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription
+
+  /**
+   * Create Fish from events and observe them all.
+   * Note that if a Fish created from some event f0 will also observe events earlier than f0, if they are selected by `where`
+   *
+   * @typeParam F        - Type of the events used to initialize Fish.
+   * @typeParam S        - Type of the observed Fish’s state.
+   *
+   * @param firstEventsSelector  - A `Where<F>` object identifying the first events to start Fish from
+   * @param makeFish     - Factory function to create a Fish with state `S` from an event of type `F`.
+   *                       If Fish with same FishId are created by makeFish, these Fish must be identical!
+   * @param opts         - Optional arguments regarding caching and expiry
+   * @param callback     - Function that will be called with the array of states whenever the set of Fish
+   *                       changes or any of the contained Fish’s state changes.
+   *
+   * @returns              A function that can be called in order to cancel the subscription.
+   *
+   * @beta
+   */
+  observeAll<F, S>(
+    // Expression to extract the initial events, e.g. Tag<TaskCreated>
+    firstEventsSelector: Where<F>,
+    // Create a concrete Fish from the initial event
+    makeFish: (firstEvent: F) => Fish<S, any>,
+    // When to remove Fish from the "all" set.
+    opts: ObserveAllOpts,
+    callback: (states: S[]) => void,
+  ): CancelSubscription
+
+  /**
+   * Find the event selected by `firstEvent`, and start a Fish from it.
+   * It is legal for `firstEvent` to actually select multiple events;
+   * however, `makeFish` must yield the same Fish no matter one is passed in.
+   *
+   * @typeParam F        - Type of the initial event.
+   * @typeParam S        - Type of the observed Fish’s state.
+   *
+   * @param firstEventSelector   - A `Where<F>` object identifying the first event
+   * @param makeFish     - Factory function to create the Fish with state `S` from the event of type `F`.
+   *                       The Fish is able to observe events earlier than the first event.
+   * @param callback     - Function that will be called with the Fish’s state `S`.
+   *                       As long as the first event does not exist, this callback will also not be called.
+   *
+   * @returns              A function that can be called in order to cancel the subscription.
+   *
+   * @beta
+   */
+  observeOne<F, S>(
+    // Expression to find the Fish’s starting event, e.g. Tag('task-created').withId('my-task')
+    firstEventSelector: Where<F>,
+    makeFish: (firstEvent: F) => Fish<S, any>,
+    callback: (newState: S) => void,
+  ): CancelSubscription
 
   /* CONDITIONAL EMISSION (STATE EFFECTS) */
 
@@ -234,6 +290,35 @@ export type Pond = {
   waitForSwarmSync(params: WaitForSwarmSyncParams): void
 }
 
+type ActiveObserveAll<S> = Readonly<{
+  states: Observable<S[]>
+  subscription: Subscription
+}>
+
+const getOrInitialize = <T>(
+  cache: Record<string, { states: Observable<T>; subscription: Subscription }>,
+  key: string,
+  makeT: () => Observable<T>,
+) => {
+  const existing = cache[key]
+  if (existing !== undefined) {
+    return {
+      ...existing,
+      states: existing.states.observeOn(Scheduler.queue),
+    }
+  }
+
+  const stateSubject = new ReplaySubject<T>(1)
+  const subscription = makeT().subscribe(stateSubject)
+
+  const a = {
+    states: stateSubject,
+    subscription,
+  }
+  cache[key] = a
+  return a
+}
+
 class Pond2Impl implements Pond {
   readonly hydrateV2: <S, E>(
     subscriptionSet: SubscriptionSet,
@@ -247,6 +332,8 @@ class Pond2Impl implements Pond {
   activeFishes: {
     [fishId: string]: ActiveFish<any>
   } = {}
+
+  activeObserveAll: Record<string, ActiveObserveAll<any>> = {}
 
   constructor(
     private readonly eventStore: EventStore,
@@ -342,28 +429,9 @@ class Pond2Impl implements Pond {
     deserializeState: ((jsonState: unknown) => S) | undefined,
   ): ActiveFish<S> => {
     const key = FishId.canonical(fishId)
-    const existing = this.activeFishes[key]
-    if (existing !== undefined) {
-      return {
-        ...existing,
-        states: existing.states.observeOn(Scheduler.queue),
-      }
-    }
-
-    const stateSubject = this.hydrateV2(
-      subscriptionSet,
-      initialState,
-      onEvent,
-      fishId,
-      isReset,
-      deserializeState,
-    ).shareReplay(1)
-
-    const a = {
-      states: stateSubject,
-    }
-    this.activeFishes[key] = a
-    return a
+    return getOrInitialize(this.activeFishes, key, () =>
+      this.hydrateV2(subscriptionSet, initialState, onEvent, fishId, isReset, deserializeState),
+    )
   }
 
   private observeTagBased0 = <S, E>(acc: Fish<S, E>): ActiveFish<S> => {
@@ -438,6 +506,66 @@ class Pond2Impl implements Pond {
 
       return o
     }
+  }
+
+  observeAll = <F, S>(
+    // Expression to extract the initial events, e.g. Tag<TaskCreated>
+    firstEvents: Where<F>,
+    // Create a concrete Fish from the initial event
+    makeFish: (firstEvent: F) => Fish<S, any>,
+    // When to remove Fish from the "all" set.
+    opts: ObserveAllOpts,
+    callback: (states: S[]) => void,
+  ): CancelSubscription => {
+    const makeAgg = (): Observable<S[]> => {
+      const fishStructs$ = FishJar.observeAll(
+        this.eventStore,
+        this.snapshotStore,
+        this.pondStateTracker,
+      )(firstEvents, makeFish, opts.expireAfterFirst)
+
+      return fishStructs$.switchMap(known => {
+        const observations = known
+          .toArray()
+          .map(([_key, fish]) =>
+            this.observeTagBased0<S, any>(fish.fish).states.map(swp => swp.state),
+          )
+
+        return observations.length === 0
+          ? Observable.of([])
+          : Observable.combineLatest(observations)
+      })
+    }
+
+    const fishStates$ = Caching.isEnabled(opts.caching)
+      ? getOrInitialize(this.activeObserveAll, opts.caching.key, makeAgg).states
+      : makeAgg()
+
+    const sub = fishStates$.subscribe(callback)
+    return () => sub.unsubscribe()
+  }
+
+  observeOne = <F, S>(
+    // Expression to find the Fish’s starting event, e.g. Tag('task-created').withId('my-task')
+    firstEvent: Where<F>,
+    makeFish: (firstEvent: F) => Fish<S, any>,
+    callback: (newState: S) => void,
+  ): CancelSubscription => {
+    const states = this.eventStore
+      .allEvents(
+        {
+          psns: {},
+          default: 'min',
+        },
+        { psns: {}, default: 'max' },
+        toSubscriptionSet(firstEvent),
+        AllEventsSortOrders.Unsorted,
+      )
+      .first()
+      .concatMap(x => x)
+      .concatMap(f => this.observeTagBased0<S, unknown>(makeFish(f.payload as F)).states)
+
+    return omitObservable(callback, states)
   }
 
   run = <S, EWrite, ReadBack = false>(
