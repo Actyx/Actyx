@@ -97,6 +97,7 @@ module.exports = {
     },
     "pond/introduction",
     "pond/getting-started",
+    "pond/api-reference",
     {
       type: "category",
       label: "Learning\u00a0the\u00a0Pond\u00a0in\u00a010\u00a0steps",
