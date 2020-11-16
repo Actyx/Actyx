@@ -137,6 +137,16 @@ stages:
     jobs:
       - template: jobs-notify-success.yml
 
+  - stage: notifyMakeFailure
+    displayName: Notify Slack on failure
+    condition: failed()
+    dependsOn:
+      - makeArtifacts
+      - upload
+      - integration
+    jobs:
+      - template: slack-notify-failure.yml
+
   - stage: integration
     displayName: Nightly integration test
     dependsOn:

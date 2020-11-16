@@ -17,7 +17,7 @@ SHELL := /bin/bash
 
 architectures = aarch64 x86_64 armv7 arm
 
-all-LINUX := $(foreach arch,$(architectures),linux-$(arch)/actyxos-linux)
+all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyxos-linux ax,linux-$(arch)/$(bin)))
 all-WINDOWS := windows-x86_64/actyxos.exe windows-x86_64/ax.exe
 all-ANDROID := actyxos.apk
 
