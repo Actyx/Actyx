@@ -41,6 +41,7 @@ import {
   StateWithProvenance,
   Timestamp,
 } from './types'
+import { noop } from './util'
 
 const isTyped = (e: ReadonlyArray<string> | Tags<unknown>): e is Tags<unknown> => {
   return !Array.isArray(e)
@@ -340,6 +341,7 @@ class Pond2Impl implements Pond {
     private readonly snapshotStore: SnapshotStore,
     private readonly pondStateTracker: PondStateTracker,
     private readonly monitoring: Monitoring,
+    private readonly finalTeardown: () => void,
     private readonly opts: PondOptions,
   ) {
     this.hydrateV2 = FishJar.hydrateV2(this.eventStore, this.snapshotStore, this.pondStateTracker)
@@ -381,7 +383,12 @@ class Pond2Impl implements Pond {
 
   dispose = () => {
     this.monitoring.dispose()
-    // TODO: Implement cleanup of active fishs
+
+    Object.values(this.activeFishes).forEach(({ subscription }) => subscription.unsubscribe())
+
+    Object.values(this.activeObserveAll).forEach(({ subscription }) => subscription.unsubscribe())
+
+    this.finalTeardown()
   }
 
   /* POND V2 FUNCTIONS */
@@ -626,13 +633,15 @@ type Services = Readonly<{
   eventStore: EventStore
   snapshotStore: SnapshotStore
   commandInterface: CommandInterface
+
+  teardown: () => void
 }>
 
 const mockSetup = (): Services => {
   const eventStore = EventStore.mock()
   const snapshotStore = SnapshotStore.inMem()
   const commandInterface = CommandInterface.mock()
-  return { eventStore, snapshotStore, commandInterface }
+  return { eventStore, snapshotStore, commandInterface, teardown: noop }
 }
 
 const createServices = async (multiplexer: MultiplexedWebsocket): Promise<Services> => {
@@ -640,7 +649,7 @@ const createServices = async (multiplexer: MultiplexedWebsocket): Promise<Servic
   const eventStore = EventStore.ws(multiplexer, sourceId)
   const snapshotStore = SnapshotStore.ws(multiplexer)
   const commandInterface = CommandInterface.ws(multiplexer, sourceId)
-  return { eventStore, snapshotStore, commandInterface }
+  return { eventStore, snapshotStore, commandInterface, teardown: multiplexer.close }
 }
 
 const mkPond = async (connectionOpts: Partial<WsStoreConfig>, opts: PondOptions): Promise<Pond> => {
@@ -665,12 +674,12 @@ const mkTestPond = (opts?: PondOptions): TestPond => {
   const snapshotStore = SnapshotStore.inMem()
   const commandInterface = CommandInterface.mock()
   return {
-    ...pondFromServices({ eventStore, snapshotStore, commandInterface }, opts1),
+    ...pondFromServices({ eventStore, snapshotStore, commandInterface, teardown: noop }, opts1),
     directlyPushEvents: eventStore.directlyPushEvents,
   }
 }
 const pondFromServices = (services: Services, opts: PondOptions): Pond => {
-  const { eventStore, snapshotStore, commandInterface } = services
+  const { eventStore, snapshotStore, commandInterface, teardown } = services
 
   const monitoring = Monitoring.of(commandInterface, 10000)
 
@@ -682,6 +691,7 @@ const pondFromServices = (services: Services, opts: PondOptions): Pond => {
     snapshotStore,
     pondStateTracker,
     monitoring,
+    teardown,
     opts,
   )
 

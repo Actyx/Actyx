@@ -45,13 +45,13 @@ export type EventsMsg = Readonly<{
   caughtUp: boolean
 }>
 
-export type TimetravelMsg = Readonly<{
+export type TimeTravelMsg = Readonly<{
   type: MsgType.timetravel
   trigger: Event // earliest known event to cause time travel
   high: Event // latest known event to cause time travel
 }>
 
-export type EventsOrTimetravel = StateMsg | EventsMsg | TimetravelMsg
+export type EventsOrTimetravel = StateMsg | EventsMsg | TimeTravelMsg
 
 export type SubscribeMonotonic = (
   fishId: FishId,
@@ -280,7 +280,7 @@ const stateMsg = (fishId: FishId, snapshot: SerializedStateSnap): StateMsg => {
   }
 }
 
-const timeTravelMsg = (fishId: FishId, previousHead: EventKey, next: Events): TimetravelMsg => {
+const timeTravelMsg = (fishId: FishId, previousHead: EventKey, next: Events): TimeTravelMsg => {
   log.submono.info(FishId.canonical(fishId), 'must time-travel back to:', EventKey.format(next[0]))
 
   const high = getInsertionIndex(next, previousHead, EventKey.ord.compare) - 1
