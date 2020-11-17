@@ -398,6 +398,7 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
   } catch (error) {
     console.log('error while setting up bootstrap:', error)
     await Promise.all(axNodeSetup.nodes.map((node) => node._private.shutdown()))
+    throw new Error('configuring bootstrap failed')
   }
 }
 
