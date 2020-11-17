@@ -1,12 +1,12 @@
 import { Event, EventDraft } from '@actyx/os-sdk'
-import { allNodeNames, runOnAll, runOnEach } from './runner/hosts'
+import { allNodeNames, runOnAll, runOnEach } from './infrastructure/hosts'
 import * as PondV1 from 'pondV1'
 import { ConnectivityStatus, Pond } from '@actyx/pond'
 import { MultiplexedWebsocket } from 'pondV1/lib/eventstore/multiplexedWebsocket'
 
 describe('the Infrastructure', () => {
   test('must create global nodes pool', async () => {
-    const status = await runOnEach([{}], false, (node) => node.ax.Nodes.Ls())
+    const status = await runOnEach([{}], (node) => node.ax.Nodes.Ls())
     expect(status).toMatchObject([
       {
         code: 'OK',
@@ -23,7 +23,7 @@ describe('the Infrastructure', () => {
   })
 
   test('must set up global nodes', async () => {
-    const settings = await runOnEach([{}], false, (node) => node.ax.Settings.Get('com.actyx.os'))
+    const settings = await runOnEach([{}], (node) => node.ax.Settings.Get('com.actyx.os'))
     expect(settings).toMatchObject([
       {
         code: 'OK',
@@ -51,7 +51,7 @@ describe('the Infrastructure', () => {
   })
 
   test('must allow event communication', async () => {
-    const events = await runOnEach([{}, {}], false, async (node) => {
+    const events = await runOnEach([{}, {}], async (node) => {
       await node.actyxOS.eventService.publishPromise({
         eventDrafts: [EventDraft.make('the Infrastructure', node.name, 42)],
       })
@@ -80,7 +80,7 @@ describe('the Infrastructure', () => {
   })
 
   test('must test Pond v1', async () => {
-    const result = await runOnAll([{}], false, async ([node]) => {
+    const result = await runOnAll([{}], async ([node]) => {
       const pond = await PondV1.Pond.of(new MultiplexedWebsocket({ url: node._private.apiPond }))
       return pond.getNodeConnectivity().take(1).toPromise()
     })
@@ -89,7 +89,7 @@ describe('the Infrastructure', () => {
   })
 
   test('must test Pond v2', async () => {
-    const result = await runOnAll([{}], false, async ([node]) => {
+    const result = await runOnAll([{}], async ([node]) => {
       const pond = await Pond.of({ url: node._private.apiPond }, {})
       return new Promise<ConnectivityStatus>((res) => {
         const cancel = pond.getNodeConnectivity({

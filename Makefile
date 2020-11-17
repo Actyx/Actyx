@@ -37,6 +37,12 @@ all-js: \
 	dist/js/pond \
 	dist/js/os-sdk
 
+# Create a `make-always` target that always has the current timestamp.
+# Depending on this ensures that the rule is always executed.
+.PHONY: make-always
+make-always:
+	touch $@
+
 export BUILD_RUST_TOOLCHAIN := 1.47.0
 
 export CARGO_HOME ?= $(HOME)/.cargo
@@ -252,7 +258,7 @@ dist/bin/current/%: rt-master/target/release/%
 	mkdir -p $(dir $@)
 	cp -a $< $@
 # here % (and thus $*) matches something like ax.exe, so we need to strip the suffix with `basename`
-rt-master/target/release/%:
+rt-master/target/release/%: make-always
 	cd rt-master && cargo --locked build --release --bin $(basename $*)
 
 # In the following the same two-step process is used as for the current os/arch above.
@@ -285,7 +291,7 @@ cargo-extra-options-rt-master/target/x86_64-pc-windows-gnu/release/win.exe:=--no
 # where the build image is computed by first extracting the OS from the target string and then
 # looking into the image-* mapping - this requires the TARGET variable to be set while evaluating!
 define mkBinaryRule =
-rt-master/target/$(TARGET)/release/%: cargo-init
+rt-master/target/$(TARGET)/release/%: cargo-init make-always
 	docker run \
 	  -u $(shell id -u) \
 	  -w /src/rt-master \
@@ -310,7 +316,7 @@ soTargetPatterns = $(foreach t,$(android_so_targets),rt-master/target/$(t)/relea
 # same principle as above for targetPatterns
 $(soTargetPatterns): TARGET = $(word 3,$(subst /, ,$@))
 $(soTargetPatterns): OS = $(word 3,$(subst -, ,$(TARGET)))
-$(soTargetPatterns): cargo-init
+$(soTargetPatterns): cargo-init make-always
 	docker run \
 	  -u $(shell id -u) \
 	  -w /src/rt-master \
@@ -330,7 +336,7 @@ cargo-init: $(CARGO_HOME)/git $(CARGO_HOME)/registry
 $(CARGO_HOME)/%:
 	mkdir -p $@
 
-jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnodeffi
+jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnodeffi make-always
 	jvm/os-android/bin/get-keystore.sh
 	docker run \
 	  -u $(shell id -u) \
@@ -344,7 +350,7 @@ dist/bin/actyxos.apk: jvm/os-android/app/build/outputs/apk/release/app-release.a
 	mkdir -p $(dir $@)
 	cp $< $@
 
-misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/windows-x86_64/ax.exe
+misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/windows-x86_64/ax.exe make-always
 	mkdir -p misc/actyxos-node-manager/bin/win32
 	cp dist/bin/windows-x86_64/ax.exe misc/actyxos-node-manager/bin/win32/
 	docker run \
@@ -358,7 +364,7 @@ dist/bin/windows-x86_64/actyxos-node-manager.exe: misc/actyxos-node-manager/out/
 	mkdir -p $(dir $@)
 	cp -a $</actyxos-node-manager.exe $@
 
-dist/bin/windows-x86_64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyxos.exe
+dist/bin/windows-x86_64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyxos.exe make-always
 	mkdir -p $@
 	cp $</actyxos-node-manager.exe misc/actyxos-win-installer
 	cp dist/bin/windows-x86_64/actyxos.exe misc/actyxos-win-installer
@@ -393,7 +399,6 @@ gitHash=$(shell git log -1 --pretty=%H)
 dockerDir = ops/docker/images
 dockerTargetPatterns = $(foreach a,$(architectures),$(shell arr=(`ls -1 ${dockerDir} | grep -v -e "^musl\\$$"`); printf "docker-build-%s-$(a)\n " "$${arr[@]}"))
 dockerBuildDir = dist/docker
-.PHONY : $(dockerTargetPatterns)
 
 # mapping from arch to docker platform
 dockerPlatform-aarch64 = linux/arm64
@@ -402,7 +407,7 @@ dockerPlatform-armv7 = linux/arm/v7
 dockerPlatform-arm = linux/arm/v6
 DOCKER_REPO ?= actyx/cosmos
 getImageNameDockerhub = $(DOCKER_REPO):$(1)-$(2)-$(3)
-$(dockerTargetPatterns):
+$(dockerTargetPatterns): make-always
 	# must not use `component` here because of dependencies
 	$(eval DOCKER_TAG:=$(subst docker-build-,,$@))
 	$(eval arch:=$(shell echo $(DOCKER_TAG) | cut -f2 -d-))

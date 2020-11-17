@@ -1,0 +1,43 @@
+hosts:
+#- name: x86_64-linux-linux
+#  prepare:
+#    type: create-aws-ec2
+#    # Debian 11 from Oct 5, 2020
+#    ami: ami-0254f49f790a514ab
+#    instance: t2.small
+#    user: admin
+#  install: linux
+#- name: x86_64-linux-docker
+#  prepare:
+#    type: create-aws-ec2
+#    ami: ami-0254f49f790a514ab
+#    instance: t2.small
+#    user: admin
+#  install: docker
+#- name: aarch64-linux-linux
+#  prepare:
+#    type: create-aws-ec2
+#    # Ubuntu 20.04
+#    ami: ami-0aa72f02ca1be5339
+#    instance: a1.medium
+#    user: ubuntu
+#  install: linux
+#- name: aarch64-linux-docker
+#  prepare:
+#    type: create-aws-ec2
+#    ami: ami-0aa72f02ca1be5339
+#    instance: a1.medium
+#    user: ubuntu
+#  install: docker
+- name: local-linux
+  prepare:
+    type: local
+  install: linux
+- name: local-docker
+  prepare:
+    type: local
+  install: docker
+settings:
+  tempDir: temp
+  keepNodesRunning: false
+  skipTestProjectPreparation: true

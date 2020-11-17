@@ -1,13 +1,10 @@
 import { MyGlobal } from '../../jest/setup'
-import { selectNodes } from './nodeselection'
-import { RwLock } from './rwlock'
+import { nodeMatches, selectNodes } from './nodeselection'
 import { ActyxOSNode, NodeSelection } from './types'
 
 // This is provided by jest/setup.ts and passed by jest to our worker (serialised)
 // therefore any contained functions will not work.
 const nodes: ActyxOSNode[] = (<MyGlobal>global).axNodeSetup.nodes
-
-const lock = new RwLock()
 
 const ts = () => new Date().toISOString()
 
@@ -23,36 +20,23 @@ export const allNodeNames = (): string[] => nodes.map((n) => n.name)
  */
 export const runOnEach = async <T>(
   selection: NodeSelection[],
-  exclusive: boolean,
   f: (node: ActyxOSNode) => Promise<T>,
 ): Promise<T[]> => {
   const n = selectNodes(selection, nodes)
   if (n === null) {
     throw new Error('cannot satisfy node selection ' + JSON.stringify(selection))
   }
-  const ns = n.map((x) => x.name).join(', ')
 
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
-  const state = (<any>expect).getState()
-  let testName: string = state.testPath
-  if (testName.startsWith(process.cwd())) {
-    testName = `<cwd>` + testName.substr(process.cwd().length)
-  }
-  testName += ': ' + state.currentTestName
-
-  process.stdout.write(`${ts()} ${testName} runOnEach on nodes [${ns}]\n`)
-  const logic = () => Promise.all(n.map(f))
-
-  let success = false
-  try {
-    const ret = await (exclusive ? lock.writeLock(logic) : lock.readLock(logic))
-    success = true
-    return ret
-  } finally {
-    process.stdout.write(
-      `${ts()} ${testName} runOnEach on nodes [${ns}] is done, success=${success}\n`,
-    )
-  }
+  return runOnNodes('runOnEach', n, () =>
+    Promise.all(
+      n.map((node) =>
+        f(node).catch((error) => {
+          error.message += '\n\n... while testing node ' + node.name
+          throw error
+        }),
+      ),
+    ),
+  )
 }
 
 /**
@@ -65,15 +49,35 @@ export const runOnEach = async <T>(
  */
 export const runOnAll = async <T>(
   selection: NodeSelection[],
-  exclusive: boolean,
   f: (nodes: ActyxOSNode[]) => Promise<T>,
 ): Promise<T> => {
   const n = selectNodes(selection, nodes)
   if (n === null) {
     throw new Error('cannot satisfy node selection ' + JSON.stringify(selection))
   }
-  const ns = n.map((x) => x.name).join(', ')
 
+  return runOnNodes('runOnAll', n, () => f(n))
+}
+
+export const runOnEvery = async <T>(
+  selection: NodeSelection,
+  f: (node: ActyxOSNode) => Promise<T>,
+): Promise<T[]> => {
+  const n = nodes.filter(nodeMatches(selection))
+
+  return runOnNodes('runOnEvery', n, () =>
+    Promise.all(
+      n.map((node) =>
+        f(node).catch((error) => {
+          error.message += '\n\n... while testing node ' + node.name
+          throw error
+        }),
+      ),
+    ),
+  )
+}
+
+const getTestName = () => {
   // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
   const state = (<any>expect).getState()
   let testName: string = state.testPath
@@ -81,17 +85,22 @@ export const runOnAll = async <T>(
     testName = `<cwd>` + testName.substr(process.cwd().length)
   }
   testName += ': ' + state.currentTestName
+  return testName
+}
 
-  process.stdout.write(`${ts()} ${testName} runOnAll on nodes [${ns}]\n`)
-  const logic = () => f(n)
+const runOnNodes = async <T>(label: string, n: ActyxOSNode[], f: () => Promise<T>): Promise<T> => {
+  const ns = n.map((x) => x.name).join(', ')
+  const testName = getTestName()
+  process.stdout.write(`${ts()} ${testName} ${label} on nodes [${ns}]\n`)
+
   let success = false
   try {
-    const ret = await (exclusive ? lock.writeLock(logic) : lock.readLock(logic))
+    const ret = await f()
     success = true
     return ret
   } finally {
     process.stdout.write(
-      `${ts()} ${testName} runOnAll on nodes [${ns}] is done, success=${success}\n`,
+      `${ts()} ${testName} ${label} on nodes [${ns}] is done, success=${success}\n`,
     )
   }
 }

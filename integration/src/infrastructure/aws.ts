@@ -29,16 +29,28 @@ export const deleteKey = async (ec2: EC2, KeyName: string): Promise<void> => {
   await ec2.deleteKeyPair({ KeyName }).promise()
 }
 
+const defaultParams: EC2.RunInstancesRequest = {
+  MinCount: 1,
+  MaxCount: 1,
+  SecurityGroupIds: ['sg-0d942c552d4ff817c'],
+  SubnetId: 'subnet-09149eb0bab11908d',
+  InstanceInitiatedShutdownBehavior: 'terminate',
+}
+
 export const createInstance = async (
   ec2: EC2,
-  params: EC2.RunInstancesRequest,
+  params: Partial<EC2.RunInstancesRequest>,
 ): Promise<EC2.Instance> => {
   const ts = params.TagSpecifications
   const myTags: EC2.TagSpecification = {
     ResourceType: 'instance',
     Tags: [{ Key: 'Customer', Value: 'Cosmos integration' }],
   }
-  const withTags = { ...params, TagSpecifications: ts ? [...ts, myTags] : [myTags] }
+  const withTags = {
+    ...defaultParams,
+    ...params,
+    TagSpecifications: ts ? [...ts, myTags] : [myTags],
+  }
 
   let instance = (await ec2.runInstances(withTags).promise()).Instances?.[0]
 

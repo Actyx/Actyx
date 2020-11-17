@@ -202,7 +202,7 @@ export class Client {
           rej(err)
           return
         }
-        stream.on('close', (code: number, signal: string) => {
+        stream.on('exit', (code: number, signal: string) => {
           result.code = code
           result.signal = signal
           stream.end()
@@ -223,7 +223,12 @@ export class Client {
 
   sftp<T>(f: (x: SshClient.SFTPWrapper) => Promise<T> | T): Promise<T> {
     const prom = new Promise<T>((res, rej) => {
+      const timer = setTimeout(
+        () => rej(new Error('timeout while starting SFTP subprotocol')),
+        10_000,
+      )
       this.conn.sftp((err, sftp) => {
+        clearTimeout(timer)
         if (err) {
           rej(err)
           return

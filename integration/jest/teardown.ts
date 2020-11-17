@@ -1,8 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import settings from '../settings'
-import { stopLocalDocker } from '../src/setup-projects/local-docker'
-import { deleteKey } from '../src/runner/aws'
-import { printTarget } from '../src/runner/types'
+import { deleteKey } from '../src/infrastructure/aws'
+import { printTarget } from '../src/infrastructure/types'
 import { MyGlobal } from './setup'
 
 const teardown = async (_config: Record<string, unknown>): Promise<void> => {
@@ -10,9 +8,9 @@ const teardown = async (_config: Record<string, unknown>): Promise<void> => {
 
   process.stdout.write('****\n\nSHUTTING DOWN\n\n')
 
-  await stopLocalDocker(settings.localDocker.containerName)
+  await deleteKey(axNodeSetup.ec2, axNodeSetup.key.keyName).catch(console.error)
 
-  if (axNodeSetup.keepNodesRunning) {
+  if (axNodeSetup.settings.keepNodesRunning) {
     console.log('as per your request: NOT terminating instances')
     console.log('private SSH key file:')
     console.log(axNodeSetup.key.privateKey)
@@ -34,18 +32,11 @@ const teardown = async (_config: Record<string, unknown>): Promise<void> => {
       ).then(() => res())
       setTimeout(() => rej(new Error('timeout waiting for shutdown')), 10_000)
     }).catch(console.error)
-    await deleteKey(axNodeSetup.ec2, axNodeSetup.key.keyName).catch(console.error)
   }
 
-  for (const name in axNodeSetup.logs) {
-    process.stdout.write(`\n****\nlogs for node ${name}\n****\n\n`)
-    for (const entry of axNodeSetup.logs[name]) {
-      process.stdout.write(`${entry.time.toISOString()} ${entry.line}\n`)
-    }
-  }
   process.stdout.write('\n')
 
-  if (axNodeSetup.keepNodesRunning) {
+  if (axNodeSetup.settings.keepNodesRunning) {
     console.log('process will not end since SSH forwarding remains active')
     console.log('please press ctrl-C when done (and shut down those instances!)')
   }

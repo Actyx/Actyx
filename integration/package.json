@@ -7,12 +7,15 @@
     "aws-sdk": "^2.759.0",
     "execa": "^4.0.3",
     "fp-ts": "^1.19.5",
+    "fs-extra": "^9.0.1",
     "io-ts": "^1.10.4",
-    "io-ts-types": "^0.4.1",
+    "io-ts-types": "^0.4.8",
+    "newtype-ts": "^0.2.4",
     "node-fetch": "^2.6.1",
     "pondV1": "npm:@actyx/pond@^1.1.0",
     "rxjs": "^5.5.12",
-    "ssh2": "^0.8.9"
+    "ssh2": "^0.8.9",
+    "yaml": "^1.10.0"
   },
   "devDependencies": {
     "@types/fs-extra": "^9.0.3",

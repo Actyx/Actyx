@@ -1,6 +1,6 @@
 import { ActyxOSNode, NodeSelection } from './types'
 
-const matches = (selection: NodeSelection) => (node: ActyxOSNode) =>
+export const nodeMatches = (selection: NodeSelection) => (node: ActyxOSNode): boolean =>
   (selection.os === node.target.os || selection.os === undefined) &&
   (selection.arch === node.target.arch || selection.arch === undefined) &&
   (selection.host === node.host || selection.host === undefined) &&
@@ -18,7 +18,7 @@ export const selectNodes = (
   selections: NodeSelection[],
   nodes: ActyxOSNode[],
 ): ActyxOSNode[] | null => {
-  const found = selections.map((sel) => nodes.filter(matches(sel)))
+  const found = selections.map((sel) => nodes.filter(nodeMatches(sel)))
   const assigned: (ActyxOSNode | null)[] = selections.map(() => null)
 
   while (assigned.some((a) => a === null)) {

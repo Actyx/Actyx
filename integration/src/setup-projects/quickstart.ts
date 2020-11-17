@@ -1,28 +1,33 @@
 import { gitClone, npmInstall, npmRun } from './util'
-import settings from '../../settings'
 
-const { tempDir } = settings.testProjects
+type Dirs = {
+  quickstart: string
+  sampleWebviewApp: string
+  sampleDockerApp: string
+}
 
-export const quickstartDirs = {
+export const quickstartDirs = (tempDir: string): Dirs => ({
   quickstart: `${tempDir}/quickstart`,
   sampleWebviewApp: `${tempDir}/quickstart/sample-webview-app`,
   sampleDockerApp: `${tempDir}/quickstart/sample-docker-app`,
-}
+})
 
-export const quickstartSetup = async (): Promise<void> => {
+export const quickstartSetup = async (tempDir: string): Promise<void> => {
+  const dirs = quickstartDirs(tempDir)
+
   const npmRunBuild = npmRun('build')
 
   console.log('Setup quickstart:')
 
-  await gitClone('https://github.com/Actyx/quickstart.git', quickstartDirs.quickstart)
+  await gitClone('https://github.com/Actyx/quickstart.git', dirs.quickstart)
 
-  await npmInstall(quickstartDirs.sampleWebviewApp)
-  await npmRunBuild(quickstartDirs.sampleWebviewApp)
+  await npmInstall(dirs.sampleWebviewApp)
+  await npmRunBuild(dirs.sampleWebviewApp)
 
-  await npmInstall(quickstartDirs.sampleDockerApp)
-  await npmRunBuild(quickstartDirs.sampleDockerApp)
+  await npmInstall(dirs.sampleDockerApp)
+  await npmRunBuild(dirs.sampleDockerApp)
 
-  await npmRun('build:image')(quickstartDirs.sampleDockerApp)
+  await npmRun('build:image')(dirs.sampleDockerApp)
 
   console.log('quickstart ready!')
 }

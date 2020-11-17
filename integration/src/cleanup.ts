@@ -1,5 +1,5 @@
 import { EC2 } from 'aws-sdk'
-import { cleanUpInstances, cleanUpKeys } from './runner/aws'
+import { cleanUpInstances, cleanUpKeys } from './infrastructure/aws'
 
 const main = async () => {
   if (process.argv.length !== 3) {
