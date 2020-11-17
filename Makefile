@@ -37,14 +37,15 @@ all-js: \
 	dist/js/pond \
 	dist/js/os-sdk
 
-export BUILD_RUST_TOOLCHAIN := 1.45.0
+export BUILD_RUST_TOOLCHAIN := 1.47.0
 
 export CARGO_HOME ?= $(HOME)/.cargo
 
 # log in to vault and store the token in an environment variable
 # to run this locally, set the VAULT_TOKEN environment variable by running vault login with your dev role.
 # e.g. `export VAULT_TOKEN=`vault login -token-only -method aws role=dev-ruediger`
-export VAULT_TOKEN ?= $(shell vault login -token-only -method aws role=ops-travis-ci)
+export VAULT_ADDR ?= https://vault.actyx.net
+export VAULT_TOKEN ?= $(shell VAULT_ADDR=$(VAULT_ADDR) vault login -token-only -method aws role=ops-travis-ci)
 
 # Helper to try out local builds of Docker images
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),latest)

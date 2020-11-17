@@ -514,6 +514,7 @@ impl OffsetMap {
     }
 
     /// Compute the intersection of two sets of events described by OffsetMaps
+    #[allow(clippy::needless_collect)]
     pub fn intersection_with(&mut self, other: &OffsetMap) {
         let keys = self.0.keys().cloned().collect::<Vec<_>>();
         for key in keys.into_iter() {
