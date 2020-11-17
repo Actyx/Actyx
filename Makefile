@@ -37,7 +37,7 @@ all-js: \
 	dist/js/pond \
 	dist/js/os-sdk
 
-export BUILD_RUST_TOOLCHAIN := 1.45.0
+export BUILD_RUST_TOOLCHAIN := 1.47.0
 
 export CARGO_HOME ?= $(HOME)/.cargo
 
