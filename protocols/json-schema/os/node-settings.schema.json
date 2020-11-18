@@ -97,7 +97,7 @@
           "items": {
             "$ref": "#/definitions/Basic/MultiAddr"
           },
-          "default": ["/ip4/3.125.108.42/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH"],
+          "default": [],
           "uniqueItems": true,
           "description": "Addresses of peers to initially connect for bootstrapping. These must be multiaddresses containing a peer id. E.g. /dns4/demo-bootstrap.actyx.net/tcp/4001/p2p/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH"
         },
