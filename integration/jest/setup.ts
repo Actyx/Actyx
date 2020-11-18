@@ -31,7 +31,7 @@ const getGitHash = async (settings: Settings) => {
   if (settings.gitHash !== null) {
     return settings.gitHash
   }
-  const result = await execa('git', ['log', '-1', '--pretty=%H'])
+  const result = await execa.command('git rev-parse HEAD')
   return result.stdout
 }
 

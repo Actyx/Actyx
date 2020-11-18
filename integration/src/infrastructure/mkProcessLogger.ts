@@ -3,7 +3,8 @@ type Logger = {
   flush: () => void
 }
 
-const netString = (x: Buffer | string) => (Buffer.isBuffer(x) ? x.toString('utf-8') : x)
+export const netString = (x: Buffer | string): string =>
+  Buffer.isBuffer(x) ? x.toString('utf-8') : x
 
 export const mkProcessLogger = (logger: (s: string) => void, nodeName: string): Logger => {
   const lines = { stdout: '', stderr: '' }

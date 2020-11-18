@@ -2,6 +2,7 @@ import execa from 'execa'
 import fs from 'fs'
 import path from 'path'
 import { getFreePort } from './checkPort'
+import { netString } from './mkProcessLogger'
 import { settings } from './settings'
 
 export class Ssh {
@@ -45,10 +46,14 @@ export class Ssh {
 
   async scp(mine: string, theirs: string): Promise<void> {
     const common = this.commonOpts.slice()
-    const userHost = common.pop()
-    const proc = execa('scp', [...common, mine, `${userHost}:${theirs}`])
-    proc.stderr?.on('data', (chunk) => console.log('stderr', chunk))
-    proc.stdout?.on('data', (chunk) => console.log('stdout', chunk))
+    const target = common.pop() + ':' + theirs
+    const proc = execa('scp', [...common, mine, target])
+    proc.stderr?.on('data', (chunk) =>
+      console.log('scp %s -> %s [stderr]', mine, target, netString(chunk)),
+    )
+    proc.stdout?.on('data', (chunk) =>
+      console.log('scp %s -> %s [stdout]', mine, target, netString(chunk)),
+    )
     const result = await proc
     if (result.exitCode !== 0) {
       throw result
