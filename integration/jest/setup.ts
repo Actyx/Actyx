@@ -183,7 +183,7 @@ const configureBoostrap = async (nodes: ActyxOSNode[]) => {
  * Create and/or install ActyxOS nodes and wait until they form a swarm.
  * @param _config
  */
-const setup = async (_config: Record<string, unknown>): Promise<void> => {
+const setupInternal = async (_config: Record<string, unknown>): Promise<void> => {
   process.stdout.write('\n')
 
   const configFile = process.env.AX_CI_HOSTS || 'hosts.yaml'
@@ -249,6 +249,24 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
     console.log('error while setting up bootstrap:', error)
     await Promise.all(axNodeSetup.nodes.map((node) => node._private.shutdown()))
     throw new Error('configuring bootstrap failed')
+  }
+}
+
+const setup = async (config: Record<string, unknown>): Promise<void> => {
+  const started = process.hrtime.bigint()
+  const timer = setInterval(
+    () =>
+      console.log(
+        ' - clock: %i seconds',
+        Math.floor(Number((process.hrtime.bigint() - started) / BigInt(1_000_000_000))),
+      ),
+    10_000,
+  )
+
+  try {
+    return await setupInternal(config)
+  } finally {
+    clearInterval(timer)
   }
 }
 
