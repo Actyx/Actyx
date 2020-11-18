@@ -21,6 +21,9 @@ const teardown = async (_config: Record<string, unknown>): Promise<void> => {
       console.log('    event:', n._private.apiEvent)
       console.log('    pond:', n._private.apiPond)
     }
+    process.stdout.write('\n')
+    console.log('process will not end since SSH forwarding remains active')
+    console.log('please press ctrl-C when done (and shut down those instances!)')
   } else {
     await new Promise((res, rej) => {
       Promise.all(
@@ -35,11 +38,6 @@ const teardown = async (_config: Record<string, unknown>): Promise<void> => {
   }
 
   process.stdout.write('\n')
-
-  if (axNodeSetup.settings.keepNodesRunning) {
-    console.log('process will not end since SSH forwarding remains active')
-    console.log('please press ctrl-C when done (and shut down those instances!)')
-  }
 }
 
 export default teardown

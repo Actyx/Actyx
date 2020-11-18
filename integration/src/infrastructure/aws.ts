@@ -29,7 +29,7 @@ export const deleteKey = async (ec2: EC2, KeyName: string): Promise<void> => {
   await ec2.deleteKeyPair({ KeyName }).promise()
 }
 
-const defaultParams: EC2.RunInstancesRequest = {
+const DEFAULT_PARAMS: EC2.RunInstancesRequest = {
   MinCount: 1,
   MaxCount: 1,
   SecurityGroupIds: ['sg-0d942c552d4ff817c'],
@@ -47,7 +47,7 @@ export const createInstance = async (
     Tags: [{ Key: 'Customer', Value: 'Cosmos integration' }],
   }
   const withTags = {
-    ...defaultParams,
+    ...DEFAULT_PARAMS,
     ...params,
     TagSpecifications: ts ? [...ts, myTags] : [myTags],
   }

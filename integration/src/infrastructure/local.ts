@@ -5,19 +5,30 @@ import path from 'path'
 import { CLI } from '../cli'
 import { portInUse } from './checkPort'
 import { mkProcessLogger } from './mkProcessLogger'
-import { actyxOsDockerImage, actyxOsLinuxBinary, currentAxBinary, settings } from './settings'
+import { actyxOsDockerImage, currentActyxOsBinary, currentAxBinary, settings } from './settings'
 import { ActyxOSNode, Target } from './types'
+
+let alreadyRunning: string | undefined = undefined
 
 export const mkNodeLocalProcess = async (
   nodeName: string,
   target: Target,
   logger: (s: string) => void,
 ): Promise<ActyxOSNode> => {
-  const cwd = path.resolve(settings().tempDir, 'actyxos-data')
-  await remove(cwd)
-  await ensureDir(cwd)
-  const binary = actyxOsLinuxBinary(target.arch)
-  console.log('node %s starting locally: %s in %s', nodeName, binary, cwd)
+  const workingDir = path.resolve(settings().tempDir, 'actyxos-data')
+  await remove(workingDir)
+  await ensureDir(workingDir)
+  const binary = currentActyxOsBinary
+  if (alreadyRunning !== undefined) {
+    console.log(
+      'node %s cannot start: local ActyxOS process already running for node %s',
+      nodeName,
+      alreadyRunning,
+    )
+    throw new Error('duplicate usage of local process')
+  }
+  alreadyRunning = nodeName
+  console.log('node %s starting locally: %s in %s', nodeName, binary, workingDir)
 
   for (const port of [4001, 4243, 4454, 4457, 8080]) {
     if (await portInUse(port)) {
@@ -25,7 +36,7 @@ export const mkNodeLocalProcess = async (
     }
   }
 
-  const proc = execa(binary, ['--working_dir', cwd], { env: { RUST_BACKTRACE: '1' } })
+  const proc = execa(binary, ['--working_dir', workingDir], { env: { RUST_BACKTRACE: '1' } })
   const shutdown = async () => {
     console.log('node %s killing process', nodeName)
     proc.kill('SIGTERM')

@@ -29,6 +29,14 @@ hosts:
     instance: a1.medium
     user: ubuntu
   install: docker
+- name: local-linux
+  prepare:
+    type: local
+  install: linux
+- name: local-docker
+  prepare:
+    type: local
+  install: docker
 settings:
   # Where folders and files will be created during a test run.
   tempDir: temp
@@ -36,6 +44,6 @@ settings:
   # and the spawned hosts alive, so that you can investigate them. ctrl-C will kill them.
   keepNodesRunning: false
   # Set this to true if you already have the test setup in tempDir and want to save time.
-  skipTestProjectPreparation: false
+  skipTestProjectPreparation: true
   # Set this to a specific hash instead of null to use Docker artifacts from that commit.
-  gitHash: null
+  gitHash: 5e9badace7a51b70117e0d7574cc61cdd49de1a7

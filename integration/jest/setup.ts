@@ -27,7 +27,10 @@ export type NodeSetup = {
 
 export type MyGlobal = typeof global & { axNodeSetup: NodeSetup }
 
-const getGitHash = async () => {
+const getGitHash = async (settings: Settings) => {
+  if (settings.gitHash !== null) {
+    return settings.gitHash
+  }
   const result = await execa('git', ['log', '-1', '--pretty=%H'])
   return result.stdout
 }
@@ -70,9 +73,7 @@ const createAwsInstance = async (
 const installProcess = async (target: Target, host: HostConfig, logger: (line: string) => void) => {
   const kind = target.kind
   switch (kind.type) {
-    case 'aws': {
-      return await mkNodeSshProcess(host.name, target, kind, logger)
-    }
+    case 'aws':
     case 'ssh': {
       return await mkNodeSshProcess(host.name, target, kind, logger)
     }
@@ -92,9 +93,7 @@ const installDocker = async (
 ) => {
   const kind = target.kind
   switch (kind.type) {
-    case 'aws': {
-      return await mkNodeSshDocker(host.name, target, kind, logger, gitHash)
-    }
+    case 'aws':
     case 'ssh': {
       return await mkNodeSshDocker(host.name, target, kind, logger, gitHash)
     }
@@ -265,8 +264,8 @@ const setAllSettings = async (
   }
 }
 
-const getPeers = async (nodes: ActyxOSNode[]): Promise<number> => {
-  const getPeersOne = async (ax: CLI) => {
+const getNumPeersMax = async (nodes: ActyxOSNode[]): Promise<number> => {
+  const getNumPeersOne = async (ax: CLI) => {
     const state = await ax.Swarms.State()
     if ('Err' in state) {
       console.log(`error getting peers: ${state.Err.message}`)
@@ -277,7 +276,7 @@ const getPeers = async (nodes: ActyxOSNode[]): Promise<number> => {
     ).length
     return numPeers
   }
-  const res = await Promise.all(nodes.map((node) => getPeersOne(node.ax)))
+  const res = await Promise.all(nodes.map((node) => getNumPeersOne(node.ax)))
   return res.reduce((a, b) => Math.max(a, b), 0)
 }
 
@@ -313,10 +312,10 @@ const configureBoostrap = async (nodes: ActyxOSNode[]) => {
   do {
     attempts -= 1
     await new Promise((res) => setTimeout(res, 1000))
-    const now = await getPeers(bootstrap)
-    if (now !== numPeers) {
-      console.log('  numPeers = ', now)
-      numPeers = now
+    const currentPeers = await getNumPeersMax(bootstrap)
+    if (currentPeers !== numPeers) {
+      console.log('  numPeers = ', currentPeers)
+      numPeers = currentPeers
     }
   } while (numPeers < nodes.length - 1 && attempts-- > 0)
   if (attempts === -1) {
@@ -333,7 +332,7 @@ const configureBoostrap = async (nodes: ActyxOSNode[]) => {
 const setup = async (_config: Record<string, unknown>): Promise<void> => {
   process.stdout.write('\n')
 
-  const configFile = process.env.HOSTS || 'hosts.yaml'
+  const configFile = process.env.AX_CI_HOSTS || 'hosts.yaml'
   console.log('Running Jest with hosts described in ' + configFile)
 
   const configObject = YAML.parse(await fs.readFile(configFile, 'utf-8'))
@@ -362,7 +361,7 @@ const setup = async (_config: Record<string, unknown>): Promise<void> => {
     deleteKey(ec2, axNodeSetup.key.keyName)
   })
 
-  const gitHash = await getGitHash()
+  const gitHash = await getGitHash(config.settings)
 
   /*
    * Create all the nodes as described in the settings.

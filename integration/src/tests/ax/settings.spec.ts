@@ -4,6 +4,7 @@ const nodeSettingSchema = require('../../../../../protocols/json-schema/os/node-
 import { stubNode, stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../../stubs'
 import fetch from 'node-fetch'
 import { assertOK } from '../../assertOK'
+import { runOnEvery } from '../../infrastructure/hosts'
 
 describe('ax settings', () => {
   describe('scopes', () => {
@@ -18,8 +19,10 @@ describe('ax settings', () => {
     })
 
     test('return default com.actyx.os', async () => {
-      const responses = assertOK(await stubNode.ax.Settings.Scopes())
-      expect(responses.result).toEqual(expect.arrayContaining(['com.actyx.os']))
+      await runOnEvery({}, async (node) => {
+        const responses = assertOK(await node.ax.Settings.Scopes())
+        expect(responses.result).toEqual(expect.arrayContaining(['com.actyx.os']))
+      })
     })
   })
 
@@ -35,8 +38,10 @@ describe('ax settings', () => {
     })
 
     test('return valid ax schema for node', async () => {
-      const response = assertOK(await stubNode.ax.Settings.Schema('com.actyx.os'))
-      expect(response.result).toMatchObject(nodeSettingSchema)
+      await runOnEvery({}, async (node) => {
+        const response = assertOK(await node.ax.Settings.Schema('com.actyx.os'))
+        expect(response.result).toMatchObject(nodeSettingSchema)
+      })
     })
 
     // this will fail whenever we have unreleased changes — need to think about useful test

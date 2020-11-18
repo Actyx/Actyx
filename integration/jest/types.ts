@@ -68,6 +68,7 @@ const settings = t.type({
   tempDir: t.string,
   keepNodesRunning: t.boolean,
   skipTestProjectPreparation: t.boolean,
+  gitHash: t.union([t.string, t.null]),
 })
 export type Settings = t.TypeOf<typeof settings>
 
