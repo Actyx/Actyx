@@ -307,7 +307,8 @@ describe('application of commands in the pond v2', () => {
       pond.dispose()
     })
 
-    it('should be cancellable pretty swiftly', async () => {
+    // FIXME: This is too flaky on CI
+    it.skip('should be cancellable pretty swiftly', async () => {
       const pond = Pond.test()
 
       const cancel = pond.keepRunning(agg, autoBump)
