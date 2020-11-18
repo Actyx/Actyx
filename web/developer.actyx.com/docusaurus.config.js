@@ -9,9 +9,9 @@ module.exports = {
   plugins: [],
   themeConfig: {
     announcementBar: {
-      id: 'blog',
+      id: 'pond-2.3.0',
       content:
-        '🚀 We released v1.0.0 of ActyxOS! Check our <a target="_blank" rel="noopener noreferrer" href="https://developer.actyx.com/blog">Blog</a> for news! 🚀',
+        '🚀 We released v2.3.0 of Actyx Pond! Read the <a target="_blank" rel="noopener noreferrer" href="https://developer.actyx.com/blog/2020/11/18/pond-230-release">Blog Post</a> to learn more! 🚀',
       backgroundColor: '#f5f6f7',
       textColor: '#000',
     },
