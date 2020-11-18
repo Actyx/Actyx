@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Client, DefaultClientOpts } from '@actyx/os-sdk'
+import { EC2 } from 'aws-sdk'
 import NodeEnvironment from 'jest-environment-node'
 import { CLI } from '../src/cli'
 import { MyGlobal } from './setup'
@@ -13,7 +14,9 @@ class MyEnvironment extends NodeEnvironment {
   async setup(): Promise<void> {
     await super.setup()
 
-    const axNodeSetup = (<MyGlobal>(<unknown>this.global)).axNodeSetup
+    const axNodeSetup = (<MyGlobal>global).axNodeSetup
+    axNodeSetup.ec2 = new EC2({ region: 'eu-central-1' })
+    axNodeSetup.envNodes = []
 
     for (const node of axNodeSetup.nodes) {
       node.ax = new CLI(node._private.axHost, node._private.axBinaryPath)
@@ -26,6 +29,9 @@ class MyEnvironment extends NodeEnvironment {
   }
 
   async teardown(): Promise<void> {
+    for (const node of (<MyGlobal>global).axNodeSetup.envNodes || []) {
+      await node._private.shutdown()
+    }
     await super.teardown()
   }
 

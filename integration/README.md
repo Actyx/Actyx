@@ -41,7 +41,7 @@ When creating tests, please follow the rules:
     - do not change the committed `hosts.yaml` file unless you intend to add to the CI runs
     - do not add `type: local` nodes to the `hosts.yaml`
 
-- Create per-suite nodes in a `beforeAll` hook, this way they will only be created if the suite actually runs and they will automatically be cleaned up afterwards.
+- Create per-suite nodes in a `beforeAll` hook using `createNode` (from `create.ts`), this way they will only be created if the suite actually runs and they will automatically be cleaned up afterwards.
 
 - When referring to binaries, always go through the central `settings.ts` functions to allow consistent selection of versions.
   Add to `settings.ts` if facilities are missing.
