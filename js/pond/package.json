@@ -97,5 +97,5 @@
     "addLicense": "license-check-and-add add -f add-license-config.json"
   },
   "types": "./lib/index.d.ts",
-  "version": "2.2.0"
+  "version": "2.3.0"
 }

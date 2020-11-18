@@ -303,13 +303,10 @@ const getOrInitialize = <T>(
 ) => {
   const existing = cache[key]
   if (existing !== undefined) {
-    return {
-      ...existing,
-      states: existing.states.observeOn(Scheduler.queue),
-    }
+    return existing
   }
 
-  const stateSubject = new ReplaySubject<T>(1)
+  const stateSubject = new ReplaySubject<T>(1, undefined, Scheduler.queue)
   const subscription = makeT().subscribe(stateSubject)
 
   const a = {
