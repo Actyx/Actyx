@@ -67,9 +67,9 @@ clean:
 	rm -rf dist
 
 # mark things with this dependency to run whenever requested
-.PHONY: prepare prepare-js prepare-rs prepare-docker
+.PHONY: prepare prepare-js prepare-rs prepare-docker prepare-docker-crosscompile
 
-prepare: prepare-js prepare-rs prepare-docker
+prepare: prepare-js prepare-rs prepare-docker prepare-docker-crosscompile
 
 prepare-docker:
 	# used for windows and android rust builds
@@ -80,14 +80,15 @@ prepare-docker:
 	docker pull actyx/cosmos:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
 
-# requires `qemu-user-static` (ubuntu) package; you might need to restart your docker daemon
-# after setting DOCKER_CLI_EXPERIMENTAL=enabled (or adding `"experimental": "enabled"` to `~/.docker/config.json`)
-#
-# In case of errors, try `docker run --rm --privileged multiarch/qemu-user-static --reset -p yes`
-# to be able to build for `linux/arm64`. (https://github.com/docker/buildx/issues/138)
+export DOCKER_CLI_EXPERIMENTAL := enabled
+LITERAL_SPACE :=
+LITERAL_SPACE +=
+LITERAL_COMMA := ,
 prepare-docker-crosscompile:
-	for i in `docker buildx ls | awk '{print $$1}'`; do DOCKER_CLI_EXPERIMENTAL=enabled docker buildx rm $$i; done
-	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx create --platform linux/arm64,linux/amd64,linux/arm/v6,linux/arm/v7 --use
+	./bin/check-docker-requirements.sh check_docker_version
+	./bin/check-docker-requirements.sh enable_multi_arch_support
+	for i in `docker buildx ls | awk '{print $$1}'`; do docker buildx rm $$i; done
+	docker buildx create --platform $(subst $(LITERAL_SPACE),$(LITERAL_COMMA),$(foreach a,$(architectures),$(dockerPlatform-$(a)))) --use
 
 prepare-rs:
 	# install rustup
