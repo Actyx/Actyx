@@ -224,7 +224,7 @@ async function forwardPortsAndBuildClients(
     console.log('node %s shutting down', nodeName)
     actyxOsProc.kill('SIGTERM')
     console.log('node %s ssh stopped', nodeName)
-    await target._private.shutdown()
+    await target._private.cleanup()
     console.log('node %s instance terminated', nodeName)
     proc.kill('SIGTERM')
   }

@@ -4,23 +4,35 @@ import { settings } from '../../infrastructure/settings'
 import { runOnEvery } from '../../infrastructure/hosts'
 import { waitFor } from '../../retry'
 import path from 'path'
+import { Arch } from '../../../jest/types'
 
 const tempDir = settings().tempDir
 
 describe('basic app lifecycle', () => {
   test('for quickstart sample-docker-app run deploy, start, ls, stop, undeploy', async () => {
-    const cwd = quickstartDirs(tempDir).sampleDockerApp
-    const pkgResponse = await stubNode.ax.Apps.PackageCwd(cwd)
+    const workingDir = quickstartDirs(tempDir).sampleDockerApp
+    const pkgResponse = await stubNode.ax.Apps.PackageCwd(workingDir)
     if (pkgResponse.code !== 'OK') {
       fail(`failed to package quickstart docker: ${JSON.stringify(pkgResponse)}`)
     }
-    const { appId, appVersion, packagePath: packageName } = pkgResponse.result[0]
-    const packagePath = path.resolve(cwd, packageName)
+    const { appId, appVersion } = pkgResponse.result[0]
+    for (const pkg of pkgResponse.result.slice(1)) {
+      expect(pkg).toMatchObject({ appId, appVersion })
+    }
+    const packagePath = (arch: Arch) => {
+      const found = pkgResponse.result.find(({ packagePath }) => packagePath.indexOf(arch) >= 0)
+      if (found === undefined) {
+        fail(
+          `no package for ${arch} in [${pkgResponse.result.map((x) => x.packagePath).join(', ')}]`,
+        )
+      }
+      return path.resolve(workingDir, found.packagePath)
+    }
 
     expect(appVersion).toMatch(/^1\.\d+\.\d+$/)
 
     await runOnEvery({ runtime: 'docker' }, async (node) => {
-      const responseDeploy = await node.ax.Apps.Deploy(packagePath)
+      const responseDeploy = await node.ax.Apps.Deploy(packagePath(node.target.arch))
       expect(responseDeploy).toMatchCodeOk()
 
       const responseStart = await node.ax.Apps.Start(appId)
@@ -60,5 +72,5 @@ describe('basic app lifecycle', () => {
 
       expect(await node.ax.Apps.Ls()).toMatchObject({ code: 'OK', result: [] })
     })
-  })
+  }, 240_000)
 })

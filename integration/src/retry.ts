@@ -30,3 +30,18 @@ export const waitFor = <T>(
     setTimeout(runExpectation, 0)
   })
 }
+
+export const retryTimes = async <T>(op: () => T | Promise<T>, times: number): Promise<T> => {
+  let tries = 1
+  for (;;) {
+    try {
+      return await op()
+    } catch (error) {
+      if (tries >= times) {
+        throw error
+      } else {
+        tries += 1
+      }
+    }
+  }
+}

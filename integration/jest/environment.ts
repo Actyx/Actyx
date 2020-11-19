@@ -16,7 +16,7 @@ class MyEnvironment extends NodeEnvironment {
 
     const axNodeSetup = (<MyGlobal>(<unknown>this.global)).axNodeSetup
     axNodeSetup.ec2 = new EC2({ region: 'eu-central-1' })
-    axNodeSetup.envNodes = []
+    axNodeSetup.thisTestEnvNodes = []
 
     for (const node of axNodeSetup.nodes) {
       node.ax = new CLI(node._private.axHost, node._private.axBinaryPath)
@@ -29,7 +29,7 @@ class MyEnvironment extends NodeEnvironment {
   }
 
   async teardown(): Promise<void> {
-    for (const node of (<MyGlobal>(<unknown>this.global)).axNodeSetup.envNodes || []) {
+    for (const node of (<MyGlobal>(<unknown>this.global)).axNodeSetup.thisTestEnvNodes || []) {
       await node._private.shutdown()
     }
     await super.teardown()

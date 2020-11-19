@@ -39,7 +39,7 @@ const createAwsInstance = async (
     privateKey: key.privateKey,
   }
   const shutdown = () => terminateInstance(ec2, instance.InstanceId!)
-  return { os, arch, kind, _private: { shutdown } }
+  return { os, arch, kind, _private: { cleanup: shutdown } }
 }
 
 const installProcess = async (target: Target, host: HostConfig, logger: (line: string) => void) => {
@@ -82,7 +82,7 @@ const installDocker = async (
  * @param host
  */
 export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefined> => {
-  const { ec2, key, gitHash, envNodes } = (<MyGlobal>global).axNodeSetup
+  const { ec2, key, gitHash, thisTestEnvNodes: envNodes } = (<MyGlobal>global).axNodeSetup
 
   let target: Target | undefined = undefined
 
@@ -98,7 +98,7 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
       target = {
         os: currentOS(),
         arch: currentArch(),
-        _private: { shutdown },
+        _private: { cleanup: shutdown },
         kind: { type: 'local' },
       }
       break
@@ -154,6 +154,6 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
     for (const entry of logs) {
       process.stdout.write(`${entry.time.toISOString()} ${entry.line}\n`)
     }
-    await target._private.shutdown()
+    await target._private.cleanup()
   }
 }

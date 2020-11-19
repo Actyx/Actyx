@@ -17,7 +17,7 @@ export const mkNodeStub = (
     name,
     host,
     runtimes,
-    target: { os, arch, kind: { type: 'test' }, _private: { shutdown: () => Promise.resolve() } },
+    target: { os, arch, kind: { type: 'test' }, _private: { cleanup: () => Promise.resolve() } },
     ax: new CLI(addr, axBinaryPath),
     actyxOS: Client(),
     _private: {

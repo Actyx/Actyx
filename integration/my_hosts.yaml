@@ -1,34 +1,4 @@
 hosts:
-- name: x86_64-linux-linux
-  prepare:
-    type: create-aws-ec2
-    # Debian 11 from Oct 5, 2020
-    ami: ami-0254f49f790a514ab
-    instance: t2.small
-    user: admin
-  install: linux
-- name: x86_64-linux-docker
-  prepare:
-    type: create-aws-ec2
-    ami: ami-0254f49f790a514ab
-    instance: t2.small
-    user: admin
-  install: docker
-- name: aarch64-linux-linux
-  prepare:
-    type: create-aws-ec2
-    # Ubuntu 20.04
-    ami: ami-0aa72f02ca1be5339
-    instance: a1.medium
-    user: ubuntu
-  install: linux
-- name: aarch64-linux-docker
-  prepare:
-    type: create-aws-ec2
-    ami: ami-0aa72f02ca1be5339
-    instance: a1.medium
-    user: ubuntu
-  install: docker
 - name: local-linux
   prepare:
     type: local
@@ -44,6 +14,6 @@ settings:
   # and the spawned hosts alive, so that you can investigate them. ctrl-C will kill them.
   keepNodesRunning: false
   # Set this to true if you already have the test setup in tempDir and want to save time.
-  skipTestProjectPreparation: true
+  skipTestProjectPreparation: false
   # Set this to a specific hash instead of null to use Docker artifacts from that commit.
-  gitHash: 5e9badace7a51b70117e0d7574cc61cdd49de1a7
+  gitHash: null

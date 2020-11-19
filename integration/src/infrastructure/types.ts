@@ -7,7 +7,7 @@ export type Target = {
   arch: Arch
   kind: TargetKind
   _private: {
-    shutdown: () => Promise<void>
+    cleanup: () => Promise<void>
   }
 }
 

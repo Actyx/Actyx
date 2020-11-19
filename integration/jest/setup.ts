@@ -10,6 +10,7 @@ import YAML from 'yaml'
 import { rightOrThrow } from '../src/infrastructure/rightOrThrow'
 import execa from 'execa'
 import { createNode } from '../src/infrastructure/create'
+import { retryTimes } from '../src/retry'
 
 export type LogEntry = {
   time: Date
@@ -22,7 +23,7 @@ export type NodeSetup = {
   key: AwsKey
   settings: Settings
   gitHash: string
-  envNodes?: ActyxOSNode[]
+  thisTestEnvNodes?: ActyxOSNode[]
 }
 
 export type MyGlobal = typeof global & { axNodeSetup: NodeSetup }
@@ -37,7 +38,7 @@ const getGitHash = async (settings: Settings) => {
 
 const getPeerId = async (ax: CLI, retries = 10): Promise<string | undefined> => {
   await new Promise((res) => setTimeout(res, 1000))
-  const state = await ax.Swarms.State()
+  const state = await retryTimes(ax.Swarms.State, 3)
   if ('Err' in state) {
     return retries === 0 ? undefined : getPeerId(ax, retries - 1)
   } else {
@@ -120,7 +121,7 @@ const setAllSettings = async (
 
 const getNumPeersMax = async (nodes: ActyxOSNode[]): Promise<number> => {
   const getNumPeersOne = async (ax: CLI) => {
-    const state = await ax.Swarms.State()
+    const state = await retryTimes(ax.Swarms.State, 3)
     if ('Err' in state) {
       console.log(`error getting peers: ${state.Err.message}`)
       return -1

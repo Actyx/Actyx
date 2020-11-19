@@ -1,5 +1,6 @@
 import execa from 'execa'
 import fs from 'fs'
+import { removeSync } from 'fs-extra'
 import path from 'path'
 import { getFreePort } from './checkPort'
 import { netString } from './mkProcessLogger'
@@ -12,11 +13,7 @@ export class Ssh {
     const tempDir = settings().tempDir
     const keyFile = path.resolve(tempDir, 'keyFile.pem')
     const knownHosts = path.resolve(tempDir, 'known_hosts')
-    try {
-      fs.unlinkSync(keyFile)
-    } catch (e) {
-      // this is fine
-    }
+    removeSync(keyFile)
     fs.writeFileSync(keyFile, key, { mode: 0o400 })
     // it is important that user@host comes last, see scp
     this.commonOpts = [

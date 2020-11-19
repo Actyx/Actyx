@@ -14,11 +14,11 @@ Then you can `npm install` and `npm test` in this project. If you forgot to firs
 
 ## Dev
 
-| Scripts          | Description                                                       |
-|------------------|-------------------------------------------------------------------|
-| npm test         | Run test suites EC2 instances and local Docker                    |
-| npm run lint:fix | Automatically fix lint issues                                     |
-| npm run clean    | Remove the `temp` folder where test projects are cloned and built |
+| Scripts          | Description                                              |
+|------------------|----------------------------------------------------------|
+| npm test         | Run test suites EC2 instances and local Docker           |
+| npm run lint:fix | Automatically fix lint issues                            |
+| npm run clean    | Remove the `temp` holding test projects and ActyxOS data |
 
 | Environment variable               | Description                               |
 |------------------------------------|-------------------------------------------|
@@ -26,7 +26,7 @@ Then you can `npm install` and `npm test` in this project. If you forgot to firs
 
 When developing test cases it is faster to use a copy of `hosts.yaml` that only uses local nodes by setting `type: local` (like one with `install: linux` and as many as needed with `install: docker`).
 This way the turnaround time is pretty short, allowing you to quickly iterate on only a specific test or suite.
-In this case you may also want to disable the repeated preparation of the test projects `skipTestProjectPreparation: true`.
+In this case you may also want to disable the repeated preparation of the test projects by setting `skipTestProjectPreparation: true`.
 
 **IMPORTANT PHILOSOPHY NOTE: Only add infrastructure (including configurability) when you actually need it, never add anything proactively!**
 
