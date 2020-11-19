@@ -87,7 +87,7 @@ type Exec = {
   }
   Apps: {
     Package: (path: string) => Promise<Response_Apps_Package>
-    PackageCwd: (cwd: string) => Promise<Response_Apps_Package>
+    PackageCwd: (cwd: string, path?: string) => Promise<Response_Apps_Package>
     Deploy: (packagePath: string, force?: boolean) => Promise<Response_Apps_Deploy>
     Undeploy: (appId: string) => Promise<Response_Apps_Undeploy>
     Start: (appId: string) => Promise<Response_Apps_Start>
@@ -156,8 +156,12 @@ export const mkExec = (binary: string, addr: string): Exec => ({
       const response = await exec(binary, [`apps`, `package`, path])
       return rightOrThrow(Response_Apps_Package.decode(response), response)
     },
-    PackageCwd: async (cwd: string): Promise<Response_Apps_Package> => {
-      const response = await exec(binary, [`apps`, `package`], cwd)
+    PackageCwd: async (cwd: string, path?: string): Promise<Response_Apps_Package> => {
+      const response = await exec(
+        binary,
+        [`apps`, `package`, ...(path === undefined ? [] : [path])],
+        cwd,
+      )
       return rightOrThrow(Response_Apps_Package.decode(response), response)
     },
     Deploy: async (packagePath: string, force?: boolean): Promise<Response_Apps_Deploy> => {

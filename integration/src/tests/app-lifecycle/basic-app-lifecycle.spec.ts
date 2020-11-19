@@ -5,16 +5,17 @@ import { runOnEvery } from '../../infrastructure/hosts'
 import { waitFor } from '../../retry'
 import path from 'path'
 import { Arch } from '../../../jest/types'
+import { assertOK } from '../../assertOK'
 
 const tempDir = settings().tempDir
 
 describe('basic app lifecycle', () => {
   test('for quickstart sample-docker-app run deploy, start, ls, stop, undeploy', async () => {
     const workingDir = quickstartDirs(tempDir).sampleDockerApp
-    const pkgResponse = await stubNode.ax.Apps.PackageCwd(workingDir)
-    if (pkgResponse.code !== 'OK') {
-      fail(`failed to package quickstart docker: ${JSON.stringify(pkgResponse)}`)
-    }
+    const pkgResponse = assertOK(
+      await stubNode.ax.Apps.PackageCwd(workingDir, 'ax-manifest-all.yml'),
+    )
+    expect(pkgResponse.result).toHaveLength(2)
     const { appId, appVersion } = pkgResponse.result[0]
     for (const pkg of pkgResponse.result.slice(1)) {
       expect(pkg).toMatchObject({ appId, appVersion })
