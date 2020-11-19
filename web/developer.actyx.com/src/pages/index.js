@@ -112,7 +112,8 @@ function Home() {
       />
       <VerticalSpace />
       <h2>Getting Started</h2>
-      The fastest way to see the Actyx platform in action is to check out our{" "}
+      The fastest way to see the Actyx platform in action is to check out our
+      <span>&nbsp;</span>
       <a href={useBaseUrl("/docs/learn-actyx/quickstart")}>Quickstart Guide</a>.
       We also provide a half-day ramp up session with one of our engineers to
       get you started developing on the Actyx platform. If you are interested
