@@ -14,19 +14,19 @@ Then you can `npm install` and `npm test` in this project. If you forgot to firs
 
 ## Dev
 
-| Scripts          | Description                                                        |
-|------------------|--------------------------------------------------------------------|
-| npm test         | Run test suites EC2 instances and local Docker                     |
-| npm run lint:fix | Automatically fix lint issues                                      |
-| npm run clean    | Remove the `temp` folder where test projects are cloned and built  |
+| Scripts          | Description                                                       |
+|------------------|-------------------------------------------------------------------|
+| npm test         | Run test suites EC2 instances and local Docker                    |
+| npm run lint:fix | Automatically fix lint issues                                     |
+| npm run clean    | Remove the `temp` folder where test projects are cloned and built |
 
 | Environment variable               | Description                               |
 |------------------------------------|-------------------------------------------|
 | export AX_CI_HOSTS=your_hosts.yaml | Use a different selection of target hosts |
 
-When developing test cases it is nicer to use a copy of `hosts.yaml` that only uses local nodes (like one with `install: linux` and as many as needed with `install: docker`).
+When developing test cases it is faster to use a copy of `hosts.yaml` that only uses local nodes by setting `type: local` (like one with `install: linux` and as many as needed with `install: docker`).
 This way the turnaround time is pretty short, allowing you to quickly iterate on only a specific test or suite.
-In this case you may also want to disable the repeated preparation of the test projects.
+In this case you may also want to disable the repeated preparation of the test projects `skipTestProjectPreparation: true`.
 
 **IMPORTANT PHILOSOPHY NOTE: Only add infrastructure (including configurability) when you actually need it, never add anything proactively!**
 
@@ -36,10 +36,10 @@ When creating tests, please follow the rules:
 
 - Using nodes from `hosts.ts` (e.g. with `runOnEvery`) needs to consider these as shared resources:
 
-    - no destructive actions like stopping all apps or changing `com.actyx.os` settings
-    - the test must assume that other tests use the same nodes at the same time, so don’t assert “no apps running” or similar
-    - do not change the committed `hosts.yaml` file unless you intend to add to the CI runs
-    - do not add `type: local` nodes to the `hosts.yaml`
+  - no destructive actions like stopping all apps or changing `com.actyx.os` settings
+  - the test must assume that other tests use the same nodes at the same time, so don’t assert “no apps running” or similar
+  - do not change the committed `hosts.yaml` file unless you intend to add to the CI runs
+  - do not add `type: local` nodes to the `hosts.yaml`
 
 - Create per-suite nodes in a `beforeAll` hook using `createNode` (from `create.ts`), this way they will only be created if the suite actually runs and they will automatically be cleaned up afterwards.
 
