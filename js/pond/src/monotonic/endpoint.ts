@@ -22,7 +22,7 @@ import { SubscriptionSet } from '../subscription'
 import { EventKey, FishId } from '../types'
 import { runStats, takeWhileInclusive } from '../util'
 import { getInsertionIndex } from '../util/binarySearch'
-import { SerializedStateSnap } from './reducer'
+import { SerializedStateSnap } from './types'
 
 // New API:
 // Stream events as they become available, until time-travel would occour.
@@ -56,10 +56,15 @@ export type EventsOrTimetravel = StateMsg | EventsMsg | TimeTravelMsg
 export type SubscribeMonotonic = (
   fishId: FishId,
   subscriptions: SubscriptionSet,
-  // Sending 'from' means we DONT want a snapshot
-  from?: OffsetMap,
-  horizon?: EventKey,
+  // Sending 'attemptStartFrom' means we DONT want a snapshot
+  attemptStartFrom?: FixedStart,
 ) => Observable<EventsOrTimetravel>
+
+export type FixedStart = Readonly<{
+  from: OffsetMap
+  latestEventKey: EventKey
+  horizon?: EventKey
+}>
 
 const eventKeyGreater = greaterThan(EventKey.ord)
 
@@ -128,7 +133,7 @@ export const eventsMonotonic = (
       .pipe(takeWhileInclusive(m => m.type !== MsgType.timetravel))
   }
 
-  // The only reason we need this step is that allEvents makes no effort whatsoever
+  // The only reason we need the "catch up to present" step is that `allEvents` makes no effort whatsoever
   // to give you a proper ordering for *known* events; so we must take care of it by first streaming *to* present.
 
   // Stream events monotonically from the given point on.
@@ -171,6 +176,67 @@ export const eventsMonotonic = (
     })
   }
 
+  // Given a FixedStart point, check whether we can reach `present` without time travel.
+  // If so, apply whenValid. Otherwise apply whenInvalid to the earliest chunk between start and present.
+  const validateFixedStart = (
+    subscriptions: SubscriptionSet,
+    present: OffsetMap,
+    attemptStartFrom: FixedStart,
+    whenInvalid: (outdatedChunk: Events) => Observable<EventsOrTimetravel>,
+    whenValid: () => Observable<EventsOrTimetravel>,
+  ): Observable<EventsOrTimetravel> => {
+    const earliestNewEvents = eventStore
+      .persistedEvents(
+        { default: 'min', psns: attemptStartFrom.from },
+        { default: 'min', psns: present },
+        subscriptions,
+        PersistedEventsSortOrders.EventKey,
+        attemptStartFrom.horizon,
+      )
+      // testEventStore can send empty chunks, real store hopefully will not
+      .filter(chunk => chunk.length > 0)
+      .defaultIfEmpty([])
+      .first()
+
+    // Find the earliest persistent chunk after the starting point and see whether it’s after the FixedStart
+    return earliestNewEvents.concatMap(earliest => {
+      const offsetOutdated =
+        earliest.length > 0 && eventKeyGreater(attemptStartFrom.latestEventKey, earliest[0])
+
+      return offsetOutdated ? whenInvalid(earliest) : whenValid()
+    })
+  }
+
+  // Client thinks it has valid offsets to start from -- it may be wrong, though!
+  const startFromFixedOffsets = (
+    fishId: FishId,
+    subscriptions: SubscriptionSet,
+    present: OffsetMap,
+  ) => (attemptStartFrom: FixedStart): Observable<EventsOrTimetravel> => {
+    const whenValid = () =>
+      monotonicFrom(
+        fishId,
+        subscriptions,
+        present,
+        attemptStartFrom.from,
+        attemptStartFrom.latestEventKey,
+      )
+
+    const whenInvalid = (earliest: Events) => {
+      log.submono.debug(
+        FishId.canonical(fishId),
+        'discarding outdated requested FixedStart',
+        EventKey.format(attemptStartFrom.latestEventKey),
+        'due to',
+        EventKey.format(earliest[0]),
+      )
+
+      return Observable.of(timeTravelMsg(fishId, attemptStartFrom.latestEventKey, earliest))
+    }
+
+    return validateFixedStart(subscriptions, present, attemptStartFrom, whenInvalid, whenValid)
+  }
+
   const tryReadSnapshot = async (fishId: FishId): Promise<Option<SerializedStateSnap>> => {
     const semantics = fishId.entityType
     const name = fishId.name
@@ -185,50 +251,41 @@ export const eventsMonotonic = (
     })
   }
 
+  // Try start from a snapshot we have found. The snapshot may be outdated, though.
   const startFromSnapshot = (
     fishId: FishId,
     subscriptions: SubscriptionSet,
     present: OffsetMap,
-  ) => (snap: SerializedStateSnap) => {
-    const earliestNewEvents = eventStore
-      .persistedEvents(
-        { default: 'min', psns: snap.psnMap },
-        { default: 'min', psns: present },
-        subscriptions,
-        PersistedEventsSortOrders.EventKey,
-        snap.horizon,
+  ) => (snap: SerializedStateSnap): Observable<EventsOrTimetravel> => {
+    const fixedStart = {
+      from: snap.psnMap,
+      horizon: snap.horizon,
+      latestEventKey: snap.eventKey,
+    }
+
+    const whenInvalid = (earliest: Events) => {
+      log.submono.debug(
+        FishId.canonical(fishId),
+        'discarding outdated snapshot',
+        EventKey.format(snap.eventKey),
+        'due to',
+        EventKey.format(earliest[0]),
       )
-      // testEventStore can send empty chunks, real store hopefully will not
-      .filter(chunk => chunk.length > 0)
-      .defaultIfEmpty([])
-      .first()
 
-    return earliestNewEvents.concatMap(earliest => {
-      const snapshotOutdated = earliest.length > 0 && eventKeyGreater(snap.eventKey, earliest[0])
+      return Observable.from(
+        snapshotStore.invalidateSnapshots(fishId.entityType, fishId.name, earliest[0]),
+      )
+        .first()
+        .concatMap(() => observeMonotonicFromSnapshot(fishId, subscriptions))
+    }
 
-      if (snapshotOutdated) {
-        log.submono.debug(
-          FishId.canonical(fishId),
-          'discarding outdated snapshot',
-          EventKey.format(snap.eventKey),
-          'due to',
-          EventKey.format(earliest[0]),
-        )
-
-        // Invalidate this snapshot and try again.
-        return Observable.from(
-          snapshotStore.invalidateSnapshots(fishId.entityType, fishId.name, earliest[0]),
-        )
-          .first()
-          .concatMap(() => observeMonotonicFromSnapshot(fishId, subscriptions))
-      }
-
-      // Otherwise just pick up from snapshot
-      return Observable.concat(
+    const whenValid = () =>
+      Observable.concat(
         Observable.of(stateMsg(fishId, snap)),
         monotonicFrom(fishId, subscriptions, present, snap.psnMap, snap.eventKey),
       )
-    })
+
+    return validateFixedStart(subscriptions, present, fixedStart, whenInvalid, whenValid)
   }
 
   const observeMonotonicFromSnapshot = (
@@ -251,15 +308,16 @@ export const eventsMonotonic = (
   return (
     fishId: FishId,
     subscriptions: SubscriptionSet,
-    from?: OffsetMap,
-    _horizon?: EventKey,
+    attemptStartFrom?: FixedStart,
   ): Observable<EventsOrTimetravel> => {
-    if (from) {
+    if (attemptStartFrom) {
       // Client explicitly requests us to start at a certain point
       return eventStore
         .present()
         .first()
-        .concatMap(present => monotonicFrom(fishId, subscriptions, present.psns, from))
+        .concatMap(present =>
+          startFromFixedOffsets(fishId, subscriptions, present.psns)(attemptStartFrom),
+        )
     } else {
       // `from` NOT given -> try finding a snapshot
       return observeMonotonicFromSnapshot(fishId, subscriptions)

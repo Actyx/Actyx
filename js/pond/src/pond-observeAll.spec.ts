@@ -206,13 +206,13 @@ describe('Pond.observeAll', () => {
 
     initFish(pond, 1, 2, 3)
 
-    // Sleep 5 ms -> trigger expiry
-    await Observable.timer(5).toPromise()
+    // Sleep 20 ms -> trigger expiry
+    await Observable.timer(20).toPromise()
 
     initFish(pond, 2, 5)
 
     const states = new Observable<FishState[]>(o =>
-      pond.observeAll(firstEvents, makeFish, { expireAfterFirst: Milliseconds.of(4) }, x =>
+      pond.observeAll(firstEvents, makeFish, { expireAfterFirst: Milliseconds.of(18) }, x =>
         o.next(x),
       ),
     )
