@@ -177,24 +177,20 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
     fish.isReset,
     fish.deserializeState,
   )
+    .map(x => x.state)
     // This is needed for letting tests run correctly:
     // - buffer 1 element so that order of pipelines doesnt matter
-    // - debounce 0 so that other pipelines have a chance to run
+    // - debounce so that other pipelines have a chance to run.
+    //   (If we don’t request intermediate states, we need a bit more time in the end to find the final state.)
     // Hopefully this does not distort test results.
     .shareReplay(1)
-    .debounceTime(0)
+    .debounceTime(intermediates ? 0 : 5)
 
   return events.reduce(async (acc, batch, i) => {
     await acc
 
     const isLast = i === events.length - 1
-    const res =
-      isLast || intermediates
-        ? states$
-            .take(1)
-            .toPromise()
-            .then(x => x.state)
-        : acc
+    const res = isLast || intermediates ? states$.take(1).toPromise() : acc
 
     eventStore.directlyPushEvents(batch)
 
