@@ -6,7 +6,15 @@ module.exports = {
   favicon: 'img/favicon.ico',
   organizationName: 'Actyx',
   projectName: 'Actyx',
-  plugins: [],
+  plugins: [
+    [
+      require.resolve('docusaurus-gtm-plugin'),
+      {
+        id: 'GTM-5PXCMFH',
+      },
+    ],
+    [require.resolve('./src/plugins/analytics'), {}],
+  ],
   themeConfig: {
     announcementBar: {
       id: 'pond-2.3.0',
@@ -28,28 +36,28 @@ module.exports = {
       },
       items: [
         {
-              label: 'ActyxOS',
-              activeBasePath: 'docs/os/',
-              to: 'docs/os/general/introduction'
-            },
-            {
-              label: 'Actyx\u00a0Pond',
-              activeBasePath: 'docs/pond/',
-              to: 'docs/pond/introduction'
-            },
+          label: 'ActyxOS',
+          activeBasePath: 'docs/os/',
+          to: 'docs/os/general/introduction',
+        },
+        {
+          label: 'Actyx\u00a0Pond',
+          activeBasePath: 'docs/pond/',
+          to: 'docs/pond/introduction',
+        },
         {
           label: 'Node\u00a0Management',
           position: 'left',
           items: [
             {
               label: 'Actyx\u00a0CLI',
-              to: 'docs/cli/getting-started'
+              to: 'docs/cli/getting-started',
             },
             {
               label: 'ActyxOS\u00a0Node\u00a0Manager',
-              to: 'docs/node-manager/overview'
+              to: 'docs/node-manager/overview',
             },
-          ]
+          ],
         },
         {
           to: 'docs/learn-actyx',
@@ -60,7 +68,7 @@ module.exports = {
         {
           to: 'blog',
           label: 'Blog',
-          position: 'right'
+          position: 'right',
         },
       ],
     },
@@ -68,7 +76,7 @@ module.exports = {
       logo: {
         alt: 'Actyx Developer',
         src: 'img/header.svg',
-        href: 'https://developer.actyx.com'
+        href: 'https://developer.actyx.com',
       },
       style: 'light',
       links: [
@@ -83,14 +91,14 @@ module.exports = {
               label: 'Actyx Pond',
               to: 'docs/pond/introduction',
             },
-          ]
+          ],
         },
         {
           title: 'Useful Links',
           items: [
             {
               label: 'FAQ',
-              to: 'docs/faq/supported-programming-languages'
+              to: 'docs/faq/supported-programming-languages',
             },
             {
               label: 'Blog Posts',
@@ -103,8 +111,8 @@ module.exports = {
             {
               label: 'Discord',
               to: 'https://discord.gg/262yJhc',
-            }
-          ]
+            },
+          ],
         },
         {
           title: 'Node Management',
@@ -116,8 +124,8 @@ module.exports = {
             {
               label: 'Actyx Node Manager',
               to: 'docs/node-manager/overview',
-            }
-          ]
+            },
+          ],
         },
         {
           title: 'Actyx',
@@ -137,21 +145,16 @@ module.exports = {
             {
               label: 'Press',
               to: 'https://www.actyx.com/news',
-            }
-          ]
-        }
+            },
+          ],
+        },
       ],
       copyright: `Copyright © ${new Date().getFullYear()} Actyx AG`,
     },
     prism: {
       theme: require('prism-react-renderer/themes/palenight'),
       darkTheme: require('prism-react-renderer/themes/dracula'),
-      additionalLanguages: ['rust','csharp'],
-    },
-    googleAnalytics: {
-      trackingID: 'UA-102758359-7',
-      // Optional fields.
-      anonymizeIP: true, // Should IPs be anonymized?
+      additionalLanguages: ['rust', 'csharp'],
     },
     algolia: {
       apiKey: 'dee14099c148f0ca14d046428003623a',
