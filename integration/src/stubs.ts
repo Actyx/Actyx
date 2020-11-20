@@ -1,8 +1,8 @@
 import { Client } from '@actyx/os-sdk'
-import settings from '../settings'
-
-import { CLI } from './cli/cli'
-import { ActyxOSNode, Arch, Host, OS, Runtime } from './runner/types'
+import { CLI } from './cli'
+import { ActyxOSNode } from './infrastructure/types'
+import { Arch, Host, OS, Runtime } from '../jest/types'
+import { currentAxBinary } from './infrastructure/settings'
 
 export const mkNodeStub = (
   os: OS,
@@ -12,12 +12,12 @@ export const mkNodeStub = (
   name: string,
   addr = 'localhost',
 ): ActyxOSNode => {
-  const axBinaryPath = settings.binaryPath.ax
+  const axBinaryPath = currentAxBinary
   return {
     name,
     host,
     runtimes,
-    target: { os, arch, kind: { type: 'test' }, _private: { shutdown: () => Promise.resolve() } },
+    target: { os, arch, kind: { type: 'test' }, _private: { cleanup: () => Promise.resolve() } },
     ax: new CLI(addr, axBinaryPath),
     actyxOS: Client(),
     _private: {

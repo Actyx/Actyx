@@ -1,17 +1,13 @@
-import { CLI } from '../cli/cli'
+import { CLI } from '../cli'
 import { ApiClient } from '@actyx/os-sdk'
-
-export type OS = 'win' | 'linux' | 'mac' | 'android'
-export type Arch = 'armv7' | 'aarch64' | 'x86_64'
-export type Host = 'docker' | 'process' | 'android'
-export type Runtime = 'webview' | 'docker' | 'process'
+import { Arch, Host, OS, Runtime } from '../../jest/types'
 
 export type Target = {
   os: OS
   arch: Arch
   kind: TargetKind
   _private: {
-    shutdown: () => Promise<void>
+    cleanup: () => Promise<void>
   }
 }
 
@@ -23,7 +19,8 @@ export type SshAble = {
 
 export type TargetKind =
   | ({ type: 'aws'; instance: string; privateAddress: string } & SshAble)
-  | ({ type: 'borrowed' } & SshAble)
+  | ({ type: 'ssh' } & SshAble)
+  | { type: 'local' }
   | { type: 'test' }
 
 export const printTarget = (t: Target): string => {
@@ -32,8 +29,11 @@ export const printTarget = (t: Target): string => {
     case 'aws': {
       return `AWS ${kind.instance} ${kind.host} ${t.os}/${t.arch}`
     }
-    case 'borrowed': {
-      return `borrowed ${kind.host} ${t.os}/${t.arch}`
+    case 'ssh': {
+      return `borrowed (SSH) ${kind.host} ${t.os}/${t.arch}`
+    }
+    case 'local': {
+      return `borrowed (local) ${t.os}/${t.arch}`
     }
     case 'test': {
       return `test ${t.os}/${t.arch}`

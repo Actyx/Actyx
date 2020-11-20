@@ -16,30 +16,14 @@ import {
   Reponse_Swarms_Keygen,
   Reponse_Apps_Validate,
 } from './types'
-import { Either, isLeft } from 'fp-ts/lib/Either'
-import { Errors } from 'io-ts'
+import { isLeft } from 'fp-ts/lib/Either'
 import { PathReporter } from 'io-ts/lib/PathReporter'
 import execa from 'execa'
 import { StringDecoder } from 'string_decoder'
 import { Transform } from 'stream'
 import fetch from 'node-fetch'
 import * as path from 'path'
-
-const rightOrThrow = <A>(e: Either<Errors, A>, obj: unknown): A => {
-  if (isLeft(e)) {
-    throw new Error(
-      e.value
-        .map((err) => {
-          const path = err.context.map(({ key }) => key).join('.')
-          return `invalid ${err.value} at ${path}: ${err.message}`
-        })
-        .join(', ') +
-        ' while parsing ' +
-        JSON.stringify(obj, null, 2),
-    )
-  }
-  return e.value
-}
+import { rightOrThrow } from '../infrastructure/rightOrThrow'
 
 const exec = async (binaryPath: string, args: string[], cwd?: string) => {
   try {
@@ -89,7 +73,7 @@ export const SettingsInput = {
 type Exec = {
   Swarms: {
     KeyGen: (file?: string) => Promise<Reponse_Swarms_Keygen>
-    State: (port?: number) => Promise<Response_Internal_Swarm_State>
+    State: () => Promise<Response_Internal_Swarm_State>
   }
   Nodes: {
     Ls: () => Promise<Response_Nodes_Ls>
@@ -103,7 +87,7 @@ type Exec = {
   }
   Apps: {
     Package: (path: string) => Promise<Response_Apps_Package>
-    PackageCwd: (cwd: string) => Promise<Response_Apps_Package>
+    PackageCwd: (cwd: string, path?: string) => Promise<Response_Apps_Package>
     Deploy: (packagePath: string, force?: boolean) => Promise<Response_Apps_Deploy>
     Undeploy: (appId: string) => Promise<Response_Apps_Undeploy>
     Start: (appId: string) => Promise<Response_Apps_Start>
@@ -129,8 +113,8 @@ export const mkExec = (binary: string, addr: string): Exec => ({
       const response = await exec(binary, ['swarms', 'keygen', ...fileArgs])
       return rightOrThrow(Reponse_Swarms_Keygen.decode(response), response)
     },
-    State: async (port?: number): Promise<Response_Internal_Swarm_State> => {
-      const response = await fetch(`http://${addr}${port ? `:${port}` : ''}/_internal/swarm/state`)
+    State: async (): Promise<Response_Internal_Swarm_State> => {
+      const response = await fetch(`http://${addr}/_internal/swarm/state`)
       const json = await response.json()
       return rightOrThrow(Response_Internal_Swarm_State.decode(json), json)
     },
@@ -172,8 +156,12 @@ export const mkExec = (binary: string, addr: string): Exec => ({
       const response = await exec(binary, [`apps`, `package`, path])
       return rightOrThrow(Response_Apps_Package.decode(response), response)
     },
-    PackageCwd: async (cwd: string): Promise<Response_Apps_Package> => {
-      const response = await exec(binary, [`apps`, `package`], cwd)
+    PackageCwd: async (cwd: string, path?: string): Promise<Response_Apps_Package> => {
+      const response = await exec(
+        binary,
+        [`apps`, `package`, ...(path === undefined ? [] : [path])],
+        cwd,
+      )
       return rightOrThrow(Response_Apps_Package.decode(response), response)
     },
     Deploy: async (packagePath: string, force?: boolean): Promise<Response_Apps_Deploy> => {

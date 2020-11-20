@@ -1,23 +1,28 @@
 import { gitClone, npmInstall, npmRun } from './util'
-import settings from '../../settings'
 
-const { tempDir } = settings.testProjects
+type Dirs = {
+  demoMachineKit: string
+  dashboard: string
+  erpSimulator: string
+  wagoConnector: string
+}
 
-export const demoMachineKitDirs = {
+export const demoMachineKitDirs = (tempDir: string): Dirs => ({
   demoMachineKit: `${tempDir}/DemoMachineKit`,
   dashboard: `${tempDir}/DemoMachineKit/src/dashboard`,
   erpSimulator: `${tempDir}/DemoMachineKit/src/erp-simulator`,
   wagoConnector: `${tempDir}/DemoMachineKit/src/wago-connector`,
-}
+})
 
-export const demoMachineKitSetup = async (): Promise<void> => {
-  const npmRunBuild = (name: string) => npmRun(name)(demoMachineKitDirs.demoMachineKit)
+export const demoMachineKitSetup = async (tempDir: string): Promise<void> => {
+  const dirs = demoMachineKitDirs(tempDir)
+  const npmRunBuild = (name: string) => npmRun(name)(dirs.demoMachineKit)
 
   console.log('Setup DemoMachineKit:')
 
-  await gitClone('https://github.com/Actyx/DemoMachineKit.git', demoMachineKitDirs.demoMachineKit)
+  await gitClone('https://github.com/Actyx/DemoMachineKit.git', dirs.demoMachineKit)
 
-  await npmInstall(demoMachineKitDirs.demoMachineKit)
+  await npmInstall(dirs.demoMachineKit)
   await npmRunBuild('ui:dashboard:build')
   await npmRunBuild('ui:erp-simulator:build')
   await npmRunBuild('node:wago-connector:build')
