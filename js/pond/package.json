@@ -98,7 +98,7 @@
     "seedrandom": "2.4.4",
     "testcheck": "1.0.0-rc.2",
     "ts-jest": "25.1.0",
-    "typedoc": "^0.17.0-3",
+    "typedoc": "0.17.0-3",
     "typescript": "3.9.6"
   }
 }
