@@ -11,6 +11,7 @@
     "io-ts": "1.10.1",
     "ramda": "0.25.0",
     "rxjs": "5.5.12",
+    "typedoc": "^0.17.0-3",
     "ws": "7.2.1"
   },
   "description": "Actyx Pond",
@@ -84,7 +85,8 @@
     "tsc": "tsc --noEmit -p ./tsconfig.json",
     "tsc:watch": "npm run tsc -- --watch --pretty",
     "madge": "madge --circular --extensions ts,tsx ./",
-    "addLicense": "license-check-and-add add -f add-license-config.json"
+    "addLicense": "license-check-and-add add -f add-license-config.json",
+    "build:docs": "rm -rf ../../web/developer.actyx.com/static/@actyx/pond/ && typedoc --mode library --options typedoc.json src/index.ts"
   },
   "types": "./lib/index.d.ts",
   "version": "2.3.0"
