@@ -138,6 +138,7 @@ module.exports = {
         "pond/in-depth/do-not-ignore-events",
       ],
     },
+    "pond/pond-extensions",
   ],
   nodeManagerSidebar: [
     "node-manager/overview",
