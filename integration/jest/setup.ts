@@ -38,7 +38,7 @@ const getGitHash = async (settings: Settings) => {
 
 const getPeerId = async (ax: CLI, retries = 10): Promise<string | undefined> => {
   await new Promise((res) => setTimeout(res, 1000))
-  const state = await retryTimes(ax.Swarms.State, 3)
+  const state = await retryTimes(ax.swarms.state, 3)
   if ('Err' in state) {
     return retries === 0 ? undefined : getPeerId(ax, retries - 1)
   } else {
@@ -48,16 +48,18 @@ const getPeerId = async (ax: CLI, retries = 10): Promise<string | undefined> => 
 
 const setInitialSettings = async (bootstrap: ActyxOSNode[], swarmKey: string): Promise<void> => {
   for (const node of bootstrap) {
-    const result = await node.ax.Settings.Set(
-      'com.actyx.os',
-      SettingsInput.FromValue({
-        general: {
-          swarmKey,
-          displayName: 'initial',
-        },
-        services: { eventService: { topic: 'a' } },
-      }),
-    ).catch(console.error)
+    const result = await node.ax.settings
+      .set(
+        'com.actyx.os',
+        SettingsInput.FromValue({
+          general: {
+            swarmKey,
+            displayName: 'initial',
+          },
+          services: { eventService: { topic: 'a' } },
+        }),
+      )
+      .catch(console.error)
     if (result !== undefined && result.code !== 'OK') {
       console.log('node %s set settings result:', node, result)
     }
@@ -109,7 +111,7 @@ const setAllSettings = async (
 
   const result = await Promise.all(
     nodes.map((node) =>
-      node.ax.Settings.Set('com.actyx.os', SettingsInput.FromValue(settings(node.name))),
+      node.ax.settings.set('com.actyx.os', SettingsInput.FromValue(settings(node.name))),
     ),
   )
   const errors = result.map((res, idx) => ({ res, idx })).filter(({ res }) => res.code !== 'OK')
@@ -121,7 +123,7 @@ const setAllSettings = async (
 
 const getNumPeersMax = async (nodes: ActyxOSNode[]): Promise<number> => {
   const getNumPeersOne = async (ax: CLI) => {
-    const state = await retryTimes(ax.Swarms.State, 3)
+    const state = await retryTimes(ax.swarms.state, 3)
     if ('Err' in state) {
       console.log(`error getting peers: ${state.Err.message}`)
       return -1
@@ -148,7 +150,7 @@ const configureBoostrap = async (nodes: ActyxOSNode[]) => {
   console.log(`setting up bootstrap nodes ${bootstrap.map((node) => node.name)}`)
 
   // need to set some valid settings to be able to get the peerId
-  const swarmKey = await bootstrap[0].ax.Swarms.KeyGen()
+  const swarmKey = await bootstrap[0].ax.swarms.keyGen()
   if (swarmKey.code !== 'OK') {
     new Error('cannot generate swarmkey')
     return

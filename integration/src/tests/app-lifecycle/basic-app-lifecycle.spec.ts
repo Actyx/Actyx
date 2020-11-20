@@ -13,7 +13,7 @@ describe('basic app lifecycle', () => {
   test('for quickstart sample-docker-app run deploy, start, ls, stop, undeploy', async () => {
     const workingDir = quickstartDirs(tempDir).sampleDockerApp
     const pkgResponse = assertOK(
-      await stubNode.ax.Apps.PackageCwd(workingDir, 'ax-manifest-all.yml'),
+      await stubNode.ax.apps.packageCwd(workingDir, 'ax-manifest-all.yml'),
     )
     expect(pkgResponse.result).toHaveLength(2)
     const { appId, appVersion } = pkgResponse.result[0]
@@ -33,10 +33,10 @@ describe('basic app lifecycle', () => {
     expect(appVersion).toMatch(/^1\.\d+\.\d+$/)
 
     await runOnEvery({ runtime: 'docker' }, async (node) => {
-      const responseDeploy = await node.ax.Apps.Deploy(packagePath(node.target.arch))
+      const responseDeploy = await node.ax.apps.deploy(packagePath(node.target.arch))
       expect(responseDeploy).toMatchCodeOk()
 
-      const responseStart = await node.ax.Apps.Start(appId)
+      const responseStart = await node.ax.apps.start(appId)
       expect(responseStart).toMatchCodeOk()
 
       const appRunning = {
@@ -53,25 +53,25 @@ describe('basic app lifecycle', () => {
         ],
       }
       await waitFor(async () => {
-        const response = await node.ax.Apps.Ls()
+        const response = await node.ax.apps.ls()
         expect(response).toMatchObject(appRunning)
       })
 
-      const responseStop = await node.ax.Apps.Stop(appId)
+      const responseStop = await node.ax.apps.stop(appId)
       expect(responseStop).toMatchCodeOk()
 
       await waitFor(async () => {
-        const response = await node.ax.Apps.Ls()
+        const response = await node.ax.apps.ls()
         expect(response).toMatchObject({
           code: 'OK',
           result: [{ enabled: false, running: false }],
         })
       }, 15_000)
 
-      const responseUndeploy = await node.ax.Apps.Undeploy(appId)
+      const responseUndeploy = await node.ax.apps.undeploy(appId)
       expect(responseUndeploy).toMatchCodeOk()
 
-      expect(await node.ax.Apps.Ls()).toMatchObject({ code: 'OK', result: [] })
+      expect(await node.ax.apps.ls()).toMatchObject({ code: 'OK', result: [] })
     })
   }, 240_000)
 })

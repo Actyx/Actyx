@@ -6,7 +6,7 @@ import { MultiplexedWebsocket } from 'pondV1/lib/eventstore/multiplexedWebsocket
 
 describe('the Infrastructure', () => {
   test('must create global nodes pool', async () => {
-    const status = await runOnEach([{}], (node) => node.ax.Nodes.Ls())
+    const status = await runOnEach([{}], (node) => node.ax.nodes.ls())
     expect(status).toMatchObject([
       {
         code: 'OK',
@@ -23,7 +23,7 @@ describe('the Infrastructure', () => {
   })
 
   test('must set up global nodes', async () => {
-    const settings = await runOnEach([{}], (node) => node.ax.Settings.Get('com.actyx.os'))
+    const settings = await runOnEach([{}], (node) => node.ax.settings.get('com.actyx.os'))
     expect(settings).toMatchObject([
       {
         code: 'OK',

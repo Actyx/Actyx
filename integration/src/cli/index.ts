@@ -4,19 +4,19 @@ export * from './types'
 
 export class CLI {
   private readonly binaryPath: string
-  public readonly Nodes
-  public readonly Apps
-  public readonly Settings
-  public readonly Logs
-  public readonly Swarms
+  public readonly nodes
+  public readonly apps
+  public readonly settings
+  public readonly logs
+  public readonly swarms
 
   constructor(private readonly node: string, binaryPath: string) {
     this.binaryPath = binaryPath
     const exec = mkExec(this.binaryPath, this.node)
-    this.Nodes = exec.Nodes
-    this.Apps = exec.Apps
-    this.Settings = exec.Settings
-    this.Logs = exec.Logs
-    this.Swarms = exec.Swarms
+    this.nodes = exec.nodes
+    this.apps = exec.apps
+    this.settings = exec.settings
+    this.logs = exec.logs
+    this.swarms = exec.swarms
   }
 }

@@ -5,12 +5,12 @@ import { stubNodeHostUnreachable, stubNodeActyxosUnreachable } from '../../stubs
 describe('ax nodes', () => {
   describe('ls', () => {
     test('return OK and result with connection hostUnreachable', async () => {
-      const response = assertOK(await stubNodeHostUnreachable.ax.Nodes.Ls())
+      const response = assertOK(await stubNodeHostUnreachable.ax.nodes.ls())
       expect(response.result).toMatchObject([{ connection: 'hostUnreachable', host: '123' }])
     })
 
     test('return OK and result with connection actyxosUnreachable', async () => {
-      const response = assertOK(await stubNodeActyxosUnreachable.ax.Nodes.Ls())
+      const response = assertOK(await stubNodeActyxosUnreachable.ax.nodes.ls())
       expect(response.result).toMatchObject([
         { connection: 'actyxosUnreachable', host: 'localhost' },
       ])
@@ -18,7 +18,7 @@ describe('ax nodes', () => {
 
     test('return OK and result with connection reachable', async () => {
       await runOnEvery({}, async (node) => {
-        const response = assertOK(await node.ax.Nodes.Ls())
+        const response = assertOK(await node.ax.nodes.ls())
         const responseShape = [
           {
             connection: 'reachable',
