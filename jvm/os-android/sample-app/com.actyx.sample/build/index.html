@@ -6,7 +6,9 @@
   <script type="text/javascript">
     function Hello() {
       const cfg = ax.appSettings();
+      const token = ax.appToken;
       console.log(cfg);
+      console.log("Token", token);
       document.getElementById("config").appendChild(document.createTextNode(cfg));
     }
 

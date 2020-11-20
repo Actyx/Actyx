@@ -17,8 +17,8 @@ SHELL := /bin/bash
 
 architectures = aarch64 x86_64 armv7 arm
 
-all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyxos-linux ax,linux-$(arch)/$(bin)))
-all-WINDOWS := windows-x86_64/actyxos.exe windows-x86_64/ax.exe
+all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyxos-linux ax,linux-$(arch)/$(bin))) linux-x86_64/webview-runner.tgz
+all-WINDOWS := $(foreach t,actyxos.exe ax.exe installer webview-runner.zip,windows-x86_64/$t)
 all-ANDROID := actyxos.apk
 
 CARGO_TEST_JOBS := 8
@@ -31,7 +31,7 @@ all-linux: $(patsubst %,dist/bin/%,$(all-LINUX))
 
 all-android: $(patsubst %,dist/bin/%,$(all-ANDROID))
 
-all-windows: $(patsubst %,dist/bin/%,$(all-WINDOWS)) dist/bin/windows-x86_64/installer
+all-windows: $(patsubst %,dist/bin/%,$(all-WINDOWS))
 
 all-js: \
 	dist/js/pond \
@@ -70,6 +70,7 @@ clean:
 	rm -rf js/pond/node_modules
 	rm -rf js/os-sdk/node_modules
 	rm -rf jvm/os-android/gradle/build
+	rm -rf cpp/webview-runner/dist
 	rm -rf dist
 
 # mark things with this dependency to run whenever requested
@@ -328,7 +329,7 @@ $(soTargetPatterns): cargo-init make-always
 	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
 	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  --rm \
-	  actyx/util:buildrs-x64-latest \
+	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
 	  cargo --locked build -p ax-os-node-ffi --lib --release --target $(TARGET)
 
 # create these so that they belong to the current user (Docker would create as root)
@@ -344,7 +345,7 @@ jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnod
 	  -v `pwd`:/src \
 	  -w /src/jvm/os-android \
 	  --rm \
-	  actyx/util:buildrs-x64-latest \
+	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
       ./gradlew ktlintCheck build assembleRelease androidGitVersion
 
 dist/bin/actyxos.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
@@ -444,3 +445,45 @@ $(foreach a,$(architectures),$(eval docker-build-dockerloggingplugin-$(a): dist/
 $(foreach a,$(architectures),$(eval docker-build-actyxos-$(a): dist/bin/linux-$(a)/docker-axosnode docker-build-dockerloggingplugin-$(a)))
 
 docker-build-actyxos: $(foreach a,$(architectures),docker-build-actyxos-$(a))
+
+/tmp/cef-%-x86_64:
+	mkdir -p $@ && \
+	wget -qO- https://cef-builds.spotifycdn.com/cef_binary_86.0.21%2Bg6a2c8e7%2Bchromium-86.0.4240.183_$*64_minimal.tar.bz2 | tar --strip-components 1 -jxf - -C $@
+
+dist/bin/linux-x86_64/webview-runner.tgz: /tmp/cef-linux-x86_64
+	$(eval target_dir:=$(dir $@))
+	mkdir -p $(target_dir)
+	mkdir -p cpp/webview-runner/dist
+	docker run \
+	  -u $(shell id -u) \
+	  -v `pwd`/cpp/webview-runner:/src \
+	  -w /src/dist \
+	  -e HOME=/home/builder \
+	  -v /tmp/cef-linux-x86_64:/tmp/cef \
+	  -e CEF_ROOT=/tmp/cef \
+	  --rm \
+	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
+	  bash -c 'cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release .. && make -j$(CARGO_BUILD_JOBS) webview-runner'
+	tar cvfz $@ -C cpp/webview-runner/dist/src/Release .
+
+# The docker image `actyx/util:msvc16-x64-latest` is used for cross compilation
+# to Windows. This image uses wine to run the MSVC toolchain, as CEF3 doesn't
+# support MinGW.  The container has been created with
+# https://github.com/Actyx/MSVCDocker
+dist/bin/windows-x86_64/webview-runner.zip: /tmp/cef-windows-x86_64
+	$(eval target_dir:=$(dir $@))
+	mkdir -p $(target_dir)
+	cd cpp/webview-runner && \
+		rm -rf dist && \
+		mkdir dist && \
+		docker run \
+		  -v `pwd`:/host/ \
+			-w /host/dist \
+			-u $(shell id -u):$(shell id -g) \
+			-e CEF_ROOT=Z:/tmp/cef \
+			-v /tmp/cef-windows-x86_64:/tmp/cef \
+			-e MSVCARCH=64 \
+			--rm \
+			actyx/util:msvc16-x64-latest \
+			bash -c 'vcwine cmake -G "NMake Makefiles JOM" -DCMAKE_BUILD_TYPE=Release -Wno-dev .. && vcwine jom'
+	(cd cpp/webview-runner/dist/src/Release && zip -r - .) > $@
