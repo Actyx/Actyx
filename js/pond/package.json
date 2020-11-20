@@ -62,7 +62,6 @@
     "io-ts-types": "0.4.1",
     "ramda": "0.25.0",
     "rxjs": "5.5.12",
-    "typedoc": "^0.17.0-3",
     "utf-8-validate": "5.0.2",
     "ws": "7.2.1"
   },
@@ -99,6 +98,7 @@
     "seedrandom": "2.4.4",
     "testcheck": "1.0.0-rc.2",
     "ts-jest": "25.1.0",
+    "typedoc": "^0.17.0-3",
     "typescript": "3.9.6"
   }
 }
