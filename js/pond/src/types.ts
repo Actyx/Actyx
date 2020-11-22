@@ -469,6 +469,48 @@ export const FishId = {
   canonical: (v: FishId): string => JSON.stringify([v.entityType, v.name, v.version]),
 }
 
+/** Indicate in-process (nonpersistent) Caching. @beta */
+export type InProcessCaching = Readonly<{
+  type: 'in-process'
+
+  /* Cache key used to find previously stored values */
+  key: string
+}>
+
+/** Indicator for disabled caching of pond.observeAll(). @beta */
+export type NoCaching = { readonly type: 'none' }
+
+/** Caching indicator for pond.observeAll(). @beta */
+export type Caching = NoCaching | InProcessCaching
+
+export type EnabledCaching = InProcessCaching
+
+/** Caching related functions @beta */
+export const Caching = {
+  none: { type: 'none' as const },
+
+  isEnabled: (c: Caching | undefined): c is EnabledCaching => c !== undefined && c.type !== 'none',
+
+  inProcess: (key: string): Caching => ({
+    type: 'in-process',
+    key,
+  }),
+}
+
+/** Optional parameters to pond.observeAll @beta */
+export type ObserveAllOpts = Partial<{
+  /**
+   * How to cache the known set of Fish.
+   * Defaults to no caching, i.e. the set will be rebuilt from events on every invocation.
+   */
+  caching: Caching
+
+  /** Fish expires from the set of 'all' when its first event reaches a certain age */
+  expireAfterFirst: Milliseconds
+
+  // Future work: expireAfterLatest(Milliseconds), expireAfterEvent(Where)
+}>
+
 /**
  * A `Fish<S, E>` describes an ongoing aggregration (fold) of events of type `E` into state of type `S`.
  * A Fish always sees events in the correct order, even though event delivery on ActyxOS is only eventually consistent:

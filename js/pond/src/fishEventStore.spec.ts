@@ -6,14 +6,12 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ord } from 'fp-ts'
-import { ordNumber } from 'fp-ts/lib/Ord'
 import { Event, EventStore, UnstoredEvent } from './eventstore'
 import {
   addAndInvalidateState,
   FishEventStore,
   FishEventStoreImpl,
   FishInfo,
-  mergeSortedInto,
 } from './fishEventStore'
 import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
@@ -77,30 +75,6 @@ describe('FishEventStore functions', () => {
       addAndInvalidateState(events1, i => (states.length = i + 1), newEvents, payloadOrder)
       expect(events1).toEqual([0, 2, 3, 4, 5, 6, 8])
       expect(states).toEqual([{ state: 1, psnMap: {} }, { state: 2, psnMap: {} }])
-    })
-  })
-
-  describe('mergeSortedInto', () => {
-    const merge = (l: number[], r: number[]): [number, number[]] => {
-      const out = l.slice().concat(...r)
-      const h = mergeSortedInto(l, r, out, ordNumber.compare)
-      return [h, out]
-    }
-
-    it('should sort without overlap', () => {
-      expect(merge([1, 2, 3], [4, 5, 6])).toEqual([2, [1, 2, 3, 4, 5, 6]])
-    })
-
-    it('should sort with partial overlap', () => {
-      expect(merge([1, 2, 3, 4], [4, 5, 6])).toEqual([3, [1, 2, 3, 4, 5, 6]])
-    })
-
-    it('should sort with exact overlap', () => {
-      expect(merge([1, 2, 3, 4, 5, 6], [4, 5, 6])).toEqual([5, [1, 2, 3, 4, 5, 6]])
-    })
-
-    it('should sort with more overlap', () => {
-      expect(merge([1, 2, 3, 4, 5, 6], [4, 5])).toEqual([5, [1, 2, 3, 4, 5, 6]])
     })
   })
 })

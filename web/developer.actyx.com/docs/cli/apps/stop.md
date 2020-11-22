@@ -2,9 +2,7 @@
 title: ax apps stop
 ---
 
-### Stop an app on a node
-
-```text
+```text title="Stop an app on an ActyxOS node"
 USAGE:
     ax apps stop [FLAGS] <APP> <NODE>
 
@@ -23,7 +21,7 @@ ARGS:
 
 Here is an example of using the `ax apps stop` command:
 
-```text
+```text title="Example Usage"
 # Stop app with ID com.example.app on node at 10.2.3.23
 ax apps stop --local com.example.app 10.2.3.23
 ```

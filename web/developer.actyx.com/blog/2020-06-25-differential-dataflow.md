@@ -50,7 +50,7 @@ must be as reliable as paper — while being much easier to analyse later. T
 the events from the table above on the edge devices and synchronising between devices whenever a
 network connection is available.
 
-[ActyxOS]: http://developer.actyx.com/docs/os/introduction
+[ActyxOS]: http://developer.actyx.com/docs/os/general/introduction
 
 ## What we want to see
 

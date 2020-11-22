@@ -1,8 +1,6 @@
 // This is visible in globalSetup, globalTeardown, and via globals below also in tests.
 // The idea is that its contents are provided in globalSetup.
-global.axNodeSetup = {
-  keepNodesRunning: false, // set to true only locally to debug failures
-}
+global.axNodeSetup = {}
 
 module.exports = {
   rootDir: '.',
@@ -13,10 +11,12 @@ module.exports = {
     },
     axNodeSetup: global.axNodeSetup,
   },
-  globalSetup: './dist/jest/setup.js',
-  globalTeardown: './dist/jest/teardown.js',
-  testEnvironment: './dist/jest/environment.js',
   moduleFileExtensions: ['js', 'json', 'jsx'],
   testPathIgnorePatterns: ['/node_modules/', '.+support\\.test\\.ts'],
   maxWorkers: '50%',
+  setupFilesAfterEnv: ['./dist/src/jest-custom-matchers.js'],
+  testTimeout: 120000,
+  globalSetup: './dist/jest/setup.js',
+  globalTeardown: './dist/jest/teardown.js',
+  testEnvironment: './dist/jest/environment.js',
 }

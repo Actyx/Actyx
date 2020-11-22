@@ -9,9 +9,12 @@ import {
   eventFactory,
   forFishes,
   mkNumberFish,
+  NumberFishEvent,
+  NumberFishState,
   semanticSnap,
   snapshotTestSetup,
 } from './fish.testHelper'
+import { Fish } from './types'
 
 /* Fish tests that do not explicitly rely on snapshots.
  * We still test fishes with all possible snapshot config configurations,
@@ -26,6 +29,9 @@ const forAllFish = forFishes(
   ['with semantic snapshots', semanticSnapshotsFish],
   ['with only local snapshots', localSnapshotsFish],
 )
+
+const setup = (fish: Fish<NumberFishState, NumberFishEvent>) =>
+  snapshotTestSetup(fish, undefined, undefined, true)
 
 describe('fish event store + jar snapshot agnostic behaviour', () => {
   const { mkEvents } = eventFactory()
@@ -56,7 +62,7 @@ describe('fish event store + jar snapshot agnostic behaviour', () => {
   ])
 
   forAllFish(`should put events into the right order for state computation`, async fish => {
-    const { applyAndGetState } = await snapshotTestSetup(fish)
+    const { applyAndGetState } = await setup(fish)
 
     expect(await applyAndGetState(aEvents)).toEqual([1, 3])
 
@@ -64,14 +70,14 @@ describe('fish event store + jar snapshot agnostic behaviour', () => {
   })
 
   forAllFish(`should deal properly with unsorted live chunks, A first`, async fish => {
-    const { applyAndGetState } = await snapshotTestSetup(fish)
+    const { applyAndGetState } = await setup(fish)
 
-    expect(await applyAndGetState(aEvents.concat(bEvents), 2)).toEqual([1, 2, 3, 4])
+    expect(await applyAndGetState(aEvents.concat(bEvents))).toEqual([1, 2, 3, 4])
   })
 
   forAllFish(`should deal properly with unsorted live chunks, B first`, async fish => {
-    const { applyAndGetState } = await snapshotTestSetup(fish)
+    const { applyAndGetState } = await setup(fish)
 
-    expect(await applyAndGetState(bEvents.concat(aEvents), 2)).toEqual([1, 2, 3, 4])
+    expect(await applyAndGetState(bEvents.concat(aEvents))).toEqual([1, 2, 3, 4])
   })
 })

@@ -1,0 +1,168 @@
+# Artifact generation pipeline
+#
+# For general remarks, see ../README.md
+
+schedules:
+  - cron: "0 */6 * * *" # Every 6 hours
+    displayName: Periodic build
+    branches:
+      include:
+        - master
+
+trigger: none
+
+pr: none
+
+variables:
+  SLACK_HOOK: ***REMOVED***
+
+stages:
+  - stage: makeArtifacts
+    dependsOn: []
+    displayName: Make all artifacts
+    pool:
+      name: Native
+    jobs:
+      - job:
+        displayName: make all-js
+        steps:
+          - bash: |
+              build/bin/install-vault.sh
+              make all-js
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+          - publish: $(System.DefaultWorkingDirectory)/dist/js
+            artifact: js-packages
+            condition: succeeded()
+      - job:
+        displayName: make all-windows
+        steps:
+          - bash: |
+              build/bin/install-vault.sh
+              make all-windows
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+          - publish: $(System.DefaultWorkingDirectory)/dist/bin
+            artifact: windows-binaries
+            condition: succeeded()
+      - job: makeAllLinux
+        displayName: make all-linux
+        steps:
+          - bash: |
+              build/bin/install-vault.sh
+              make all-linux
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+          - publish: $(System.DefaultWorkingDirectory)/dist/bin
+            artifact: linux-binaries
+            condition: succeeded()
+      - job:
+        displayName: make docker-build-actyxos-
+        strategy:
+          matrix:
+            x8664:
+              ARCH: x86_64
+            aarch64:
+              ARCH: aarch64
+            armv7:
+              ARCH: armv7
+            arm:
+              ARCH: arm
+        steps:
+          - bash: |
+              build/bin/install-vault.sh
+              make docker-build-actyxos-$ARCH
+              ./azure-pipelines/push-to-dockerhub.sh actyx/cosmos:actyxos-$ARCH
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+
+      - job:
+        displayName: make all-android
+        steps:
+          - bash: |
+              build/bin/install-vault.sh
+              make all-android
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+          - publish: $(System.DefaultWorkingDirectory)/dist/bin
+            artifact: android-binaries
+            condition: succeeded()
+
+
+  - stage: upload
+    displayName: Upload to az blob store
+    dependsOn:
+      - makeArtifacts
+    jobs:
+      - job:
+        steps:
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              path: pipeline-artifacts
+            
+
+          - task: AzureCLI@2
+            # Now, there would be the nicely looking AzureFileCopy@4 task, which would use the `azcopy` cli (yes, it's not
+            # included in `az`), to upload a bunch of files:
+            # https://docs.microsoft.com/en-us/azure/devops/pipelines/tasks/deploy/azure-file-copy?view=azure-devops.
+            #
+            # Now, that task currently only works under Windows.
+            # Next up: Directly use `azcopy`. No built-in authentication via azure pipelines, bummer.
+            # Luckily, the `az` cli offers a legacy command `storage  blob upload-batch`.
+            displayName: Upload
+            inputs:
+              azureSubscription: azure-ax-ci
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az --version
+                az account show
+                az storage blob upload-batch -s $(System.DefaultWorkingDirectory)/pipeline-artifacts -d https://axartifacts.blob.core.windows.net/artifacts/ --destination-path $(Build.SourceVersion)/
+
+  - stage: notifyMakeSuccess
+    displayName: Notify Slack on successful make all
+    dependsOn:
+      - upload
+      - integration
+    jobs:
+      - template: jobs-notify-success.yml
+
+  - stage: notifyMakeFailure
+    displayName: Notify Slack on failure
+    condition: failed()
+    dependsOn:
+      - makeArtifacts
+      - upload
+      - integration
+    jobs:
+      - template: slack-notify-failure.yml
+
+  - stage: integration
+    displayName: Nightly integration test
+    dependsOn:
+      - upload
+    jobs:
+      - job: cleanup
+        displayName: Integration test cleanup tasks
+        steps:
+          - bash: |
+              cd integration
+              # TODO NVM?
+              npm install
+              npm run cleanup 43200
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+            name: cleanupInstances
+            displayName: Clean up old integration test instances

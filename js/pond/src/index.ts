@@ -27,9 +27,11 @@ export { Counters, CountersMut, NodeInfoEntry, SwarmInfo, SwarmSummary } from '.
 export { allEvents, noEvents, Tag, Tags, Where } from './tagging'
 export {
   AddEmission,
+  Caching,
   CancelSubscription,
   Fish,
   FishId,
+  InProcessCaching,
   isBoolean,
   isNumber,
   IsReset,
@@ -37,6 +39,8 @@ export {
   Lamport,
   Metadata,
   Milliseconds,
+  NoCaching,
+  ObserveAllOpts,
   PendingEmission,
   Reduce,
   SourceId,

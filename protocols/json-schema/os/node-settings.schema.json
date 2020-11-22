@@ -75,7 +75,8 @@
             "type": "string",
             "const": "development"
           }
-        ]
+        ],
+        "default": "development"
       }
     },
     "General": {
@@ -88,7 +89,8 @@
       "additionalProperties": false,
       "properties": {
         "swarmKey": {
-          "$ref": "#/definitions/Basic/Key"
+          "$ref": "#/definitions/Basic/Key",
+          "default": "L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCmQ3YjBmNDFjY2ZlYTEyM2FkYTJhYWI0MmY2NjRjOWUyNWUwZWYyZThmNGJjNjJlOTg3NmE3NDU1MTc3ZWQzOGIK"
         },
         "bootstrapNodes": {
           "type": "array",
@@ -110,7 +112,8 @@
           "description": "Manually configured addresses to announce. These must be multiaddresses without peer id, e.g. /ip4/1.2.3.4/tcp/4001"
         },
         "displayName": {
-          "$ref": "#/definitions/Basic/NonEmptyString"
+          "$ref": "#/definitions/Basic/NonEmptyString",
+          "default": "Default Node"
         },
         "logLevels": {
           "type": "object",
@@ -149,7 +152,8 @@
       "additionalProperties": false,
       "properties": {
         "os": {
-          "$ref": "#/definitions/Composite/License"
+          "$ref": "#/definitions/Composite/License",
+          "default": "development"
         },
         "apps": {
           "type": "object",
@@ -162,10 +166,6 @@
           "description": "Key-value pairs where the key is an app's ID.",
           "default": {}
         }
-      },
-      "default": {
-        "os": "development",
-        "apps": {}
       }
     },
     "Services": {
@@ -177,7 +177,8 @@
         "additionalProperties": false,
         "properties": {
           "topic": {
-            "$ref": "#/definitions/Basic/NonEmptyString"
+            "$ref": "#/definitions/Basic/NonEmptyString",
+            "default": "default-topic"
           },
           "readOnly": {
             "type": "boolean",

@@ -2,6 +2,7 @@
 title: Quickstart
 sidebar_label: Quickstart
 hide_title: true
+description: Quickstart guide to learn the basics of ActyxOS
 ---
 
 import {Strap} from '../../src/components/Strap.tsx'
@@ -343,9 +344,9 @@ This brings us to the close of this quickstart guide.
 
 ## Further reading
 
-- Learn more about ActyxOS and how to use it in the [ActyxOS docs](/docs/os/introduction.md)
-- Dive into the Actyx Pond and its fishes in the [Actyx Pond docs](/docs/pond/getting-started.md)
-- Check out what else you can do with the CLI in the [Actyx CLI docs](/docs/cli/getting-started.md)
+- Learn more about ActyxOS and how to use it in the [ActyxOS docs](../os/general/introduction.md)
+- Dive into the Actyx Pond and its fishes in the [Actyx Pond docs](../pond/getting-started.md)
+- Check out what else you can do with the CLI in the [Actyx CLI docs](../cli/getting-started.md)
 
 ## Troubleshooting
 

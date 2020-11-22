@@ -58,7 +58,7 @@ _Decentralized_ systems are a special form of a distributed system where there i
 
 By building and running apps on ActyxOS you are building a _decentralized_, and thus also a _distributed_, system. Edge devices provide the computing power and access to the underlying network. Apps run on nodes and communicate by passing messages (see [Event Streams](../api/event-service.md)). Blobs can be published by any node and accessed from any other node (see [Blob Storage](../api/blob-service.md)).
 
-With ActyxOS you get all the benefits of distributed systems: **scalability**, **reliability**, and **performance**. ActyxOS also tries to reduce the challenges associated with a distributed system to a minimum. If you build apps using the [Actyx Pond](/docs/pond/introduction.md) – a framework for building always-available apps&mdash;many of the challenges are completely taken care of for you.
+With ActyxOS you get all the benefits of distributed systems: **scalability**, **reliability**, and **performance**. ActyxOS also tries to reduce the challenges associated with a distributed system to a minimum. If you build apps using the [Actyx Pond](../../pond/introduction.md) – a framework for building always-available apps&mdash;many of the challenges are completely taken care of for you.
 
 ## Learn more
 

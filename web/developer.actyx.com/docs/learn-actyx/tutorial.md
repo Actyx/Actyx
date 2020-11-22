@@ -418,7 +418,7 @@ You can download the complete code for this tutorial from GitHub.
 
 ## Further resources
 
-- Learn more about [ActyxOS](/os/introduction.md)
+- Learn more about [ActyxOS](/os/general/introduction.md)
 - Learn more about [Actyx Pond](/pond/introduction.md)
 - Or check out these additional libraries and tools:
   - Actyx Pond [VS Code extension](https://marketplace.visualstudio.com/items?itemName=Actyx.actyx-pond) for efficiently writing fishes

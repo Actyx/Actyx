@@ -5,11 +5,13 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { last } from 'ramda'
-import { Observable } from 'rxjs'
+import { Observable, Scheduler } from 'rxjs'
 import { Fish, FishId, TestEvent } from '.'
+import { SnapshotScheduler } from './store/snapshotScheduler'
 import { EventStore } from './eventstore'
 import { Event, Events, OffsetMap } from './eventstore/types'
 import { FishJar } from './fishJar'
+import { observeMonotonic } from './monotonic'
 import { mkNoopPondStateTracker } from './pond-state'
 import { SnapshotStore } from './snapshotStore'
 import { minSnapshotAge } from './store/snapshotScheduler'
@@ -154,6 +156,7 @@ export const snapshotTestSetup = async <S>(
   fish: Fish<S, NumberFishEvent>,
   storedEvents?: ReadonlyArray<TestEvent>,
   storedSnapshots?: ReadonlyArray<SnapshotData>,
+  useSubscribeMonotonicEndpoint: boolean = false,
 ) => {
   const sourceId = SourceId.of('LOCAL-test-source')
   const eventStore = EventStore.test(sourceId)
@@ -178,7 +181,9 @@ export const snapshotTestSetup = async <S>(
     .concat(Observable.of(undefined))
     .toPromise()
 
-  const hydrate = FishJar.hydrateV2(eventStore, snapshotStore, mkNoopPondStateTracker())
+  const hydrate = useSubscribeMonotonicEndpoint
+    ? observeMonotonic(eventStore, snapshotStore, SnapshotScheduler.create(10))
+    : FishJar.hydrateV2(eventStore, snapshotStore, mkNoopPondStateTracker())
 
   const observe = hydrate(
     toSubscriptionSet(fish.where),
@@ -193,13 +198,13 @@ export const snapshotTestSetup = async <S>(
 
   const pubEvents = eventStore.directlyPushEvents
 
-  const applyAndGetState = async (events: ReadonlyArray<TestEvent>, numExpectedStates = 1) => {
+  const applyAndGetState = async (events: ReadonlyArray<TestEvent>) => {
     // adding events may or may not emit a new state, depending on whether the events
     // were relevant (might be before semantic snapshot or duplicates)
     const pubProm = observe
-      .take(1 + numExpectedStates)
-      .timeout(100)
-      .catch(() => Observable.empty())
+      .observeOn(Scheduler.async)
+      .debounceTime(0)
+      .first()
       .toPromise()
     pubEvents(events)
     return pubProm

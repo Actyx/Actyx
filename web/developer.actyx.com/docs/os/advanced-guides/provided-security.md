@@ -40,12 +40,6 @@ so called _multiaddress_ to the `ax` command:
 To interact with a remote node, first a local key pair authenticating the client needs to be created.
 This is done automatically using the `ax` command:
 
-TEST
-
-```text
-ax settings get . --local /dns4/localhost/tcp/4458
-```
-
 ```text
 ➜  ~ ax settings get . --local /dns4/localhost/tcp/4458
 No local key pair found, generated one ("0hoWXFyVHzbhhQ6fU+z/kZb8oaN+ligosj2/hzuJn04I=") at location /home/dev/.config/actyxos/keys

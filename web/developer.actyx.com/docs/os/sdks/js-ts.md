@@ -1,5 +1,6 @@
 ---
 title: JS/TS SDK
+description: A custom JS/TS SDK for ActyxOS
 ---
 
 <!-- Add as react component to be able to handle the width (otherwise it goes full width) -->
