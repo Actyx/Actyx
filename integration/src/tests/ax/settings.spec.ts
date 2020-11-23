@@ -1,7 +1,7 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const nodeSettingSchema = require('../../../../../protocols/json-schema/os/node-settings.schema.json')
 
-import { stubNode, stubNodeActyxosUnreachable, stubNodeHostUnreachable } from '../../stubs'
+import { stubs } from '../../stubs'
 import fetch from 'node-fetch'
 import { assertOK } from '../../assertOK'
 import { runOnEvery } from '../../infrastructure/hosts'
@@ -9,12 +9,12 @@ import { runOnEvery } from '../../infrastructure/hosts'
 describe('ax settings', () => {
   describe('scopes', () => {
     test('return ERR_NODE_UNREACHABLE if node host is unreachable', async () => {
-      const response = await stubNodeHostUnreachable.ax.settings.scopes()
+      const response = await stubs.hostUnreachable.ax.settings.scopes()
       expect(response).toMatchErrNodeUnreachable()
     })
 
     test('return ERR_NODE_UNREACHABLE if actyxos is unreachable', async () => {
-      const response = await stubNodeActyxosUnreachable.ax.settings.scopes()
+      const response = await stubs.actyxOSUnreachable.ax.settings.scopes()
       expect(response).toMatchErrNodeUnreachable()
     })
 
@@ -28,12 +28,12 @@ describe('ax settings', () => {
 
   describe('schema', () => {
     test('return ERR_NODE_UNREACHABLE if node host is unreachable', async () => {
-      const response = await stubNodeHostUnreachable.ax.settings.schema('com.actyx.os')
+      const response = await stubs.hostUnreachable.ax.settings.schema('com.actyx.os')
       expect(response).toMatchErrNodeUnreachable()
     })
 
     test('return ERR_NODE_UNREACHABLE if actyxos is unreachable', async () => {
-      const response = await stubNodeActyxosUnreachable.ax.settings.schema('com.actyx.os')
+      const response = await stubs.actyxOSUnreachable.ax.settings.schema('com.actyx.os')
       expect(response).toMatchErrNodeUnreachable()
     })
 
@@ -50,7 +50,7 @@ describe('ax settings', () => {
       const responseWeb = await fetch(urlSchemaWeb)
       const schemaWeb = await responseWeb.json()
 
-      const response = assertOK(await stubNode.ax.settings.schema('com.actyx.os'))
+      const response = assertOK(await stubs.axOnly.ax.settings.schema('com.actyx.os'))
       expect(response.result).toMatchObject(schemaWeb)
     })
   })

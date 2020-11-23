@@ -26,7 +26,7 @@ export const mkNodeSshProcess = async (
   const ssh = new Ssh(sshParams.host, sshParams.username, sshParams.privateKey)
   await connectSsh(ssh, nodeName, sshParams)
 
-  const binaryPath = actyxOsLinuxBinary(target.arch)
+  const binaryPath = await actyxOsLinuxBinary(target.arch)
   await uploadActyxOS(nodeName, ssh, binaryPath)
 
   const proc = await startActyxOS(nodeName, logger, ssh)
@@ -207,7 +207,7 @@ async function forwardPortsAndBuildClients(
   console.log('node %s event service reachable on port %i', nodeName, port4454)
   console.log('node %s pond service reachable on port %i', nodeName, port4243)
 
-  const axBinaryPath = currentAxBinary
+  const axBinaryPath = await currentAxBinary()
   const axHost = `localhost:${port4457}`
   const ax = new CLI(axHost, axBinaryPath)
 

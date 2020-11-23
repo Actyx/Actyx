@@ -17,3 +17,5 @@ settings:
   skipTestProjectPreparation: false
   # Set this to a specific hash instead of null to use Docker artifacts from that commit.
   gitHash: null
+  # Rather than writing all logs to individual files, dump everything on stdout
+  logToStdout: false

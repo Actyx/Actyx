@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { ensureDirSync } from 'fs-extra'
 import { EC2 } from 'aws-sdk'
 import { createInstance, terminateInstance } from './aws'
 import { mkNodeSshDocker, mkNodeSshProcess } from './linux'
@@ -6,6 +7,8 @@ import { ActyxOSNode, AwsKey, Target, TargetKind } from './types'
 import { Arch, currentArch, currentOS, HostConfig } from '../../jest/types'
 import { mkNodeLocalDocker, mkNodeLocalProcess } from './local'
 import { LogEntry, MyGlobal } from '../../jest/setup'
+import fs from 'fs'
+import path from 'path'
 
 const decodeAwsArch = (instance: EC2.Instance): Arch => {
   switch (instance.Architecture) {
@@ -28,7 +31,7 @@ const createAwsInstance = async (
     ImageId: prepare.ami,
     KeyName: key.keyName,
   })
-  const os = instance.Platform === 'Windows' ? 'win' : 'linux'
+  const os = instance.Platform === 'Windows' ? 'windows' : 'linux'
   const arch = decodeAwsArch(instance)
   const kind: TargetKind = {
     type: 'aws',
@@ -82,7 +85,14 @@ const installDocker = async (
  * @param host
  */
 export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefined> => {
-  const { ec2, key, gitHash, thisTestEnvNodes: envNodes } = (<MyGlobal>global).axNodeSetup
+  const {
+    ec2,
+    key,
+    gitHash,
+    thisTestEnvNodes: envNodes,
+    settings: { logToStdout },
+    runIdentifier,
+  } = (<MyGlobal>global).axNodeSetup
 
   let target: Target | undefined = undefined
 
@@ -136,10 +146,20 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
         await shutdown().catch((error) =>
           console.error('node %s error while shutting down:', host.name, error),
         )
-        process.stdout.write(`\n****\nlogs for node ${host.name}\n****\n\n`)
+        const logFilePath = mkLogFilePath(runIdentifier, host)
+        const [logSink, flush] = logToStdout
+          ? [process.stdout.write, () => ({})]
+          : appendToFile(logFilePath)
+
+        process.stdout.write(
+          `\n****\nlogs for node ${host.name}${
+            logToStdout ? '' : ` redirected to "${logFilePath}"`
+          }\n****\n\n`,
+        )
         for (const entry of logs) {
-          process.stdout.write(`${entry.time.toISOString()} ${entry.line}\n`)
+          logSink(`${entry.time.toISOString()} ${entry.line}\n`)
         }
+        flush()
         logs.length = 0
       }
     }
@@ -156,4 +176,17 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
     }
     await target._private.cleanup()
   }
+}
+
+// Constructs a log file path for a given `runId` and a `host`. Will create any
+// needed folders.
+const mkLogFilePath = (runId: string, host: HostConfig) => {
+  const folder = path.resolve('logs', runId)
+  ensureDirSync(folder)
+  return path.resolve(folder, host.name)
+}
+
+const appendToFile = (fileName: string): [(_: string) => void, () => void] => {
+  const fd = fs.openSync(fileName, 'a')
+  return [(line: string) => fs.writeSync(fd, line), () => fs.closeSync(fd)]
 }

@@ -3,8 +3,10 @@ import { CLI } from './cli'
 import { ActyxOSNode } from './infrastructure/types'
 import { Arch, Host, OS, Runtime } from '../jest/types'
 import { currentAxBinary } from './infrastructure/settings'
+import { MyGlobal, Stubs } from '../jest/setup'
 
-export const mkNodeStub = (
+const mkNodeStub = (
+  axBinaryPath: string,
   os: OS,
   arch: Arch,
   host: Host,
@@ -12,7 +14,6 @@ export const mkNodeStub = (
   name: string,
   addr = 'localhost',
 ): ActyxOSNode => {
-  const axBinaryPath = currentAxBinary
   return {
     name,
     host,
@@ -31,22 +32,43 @@ export const mkNodeStub = (
   }
 }
 
-export const stubNode = mkNodeStub('android', 'aarch64', 'android', ['webview'], 'foo', 'localhost')
+export const stubs = (<MyGlobal>global).stubs
 
-export const stubNodeHostUnreachable = mkNodeStub(
-  'android',
-  'aarch64',
-  'android',
-  ['webview'],
-  'foo',
-  '123',
-)
+// To be called in Jest's TestEnvironment prepration procedure: `environment.ts`
+export const setupStubs = async (): Promise<Stubs> => {
+  const axBinaryPath = await currentAxBinary()
+  const def = mkNodeStub(
+    axBinaryPath,
+    'android',
+    'aarch64',
+    'android',
+    ['webview'],
+    'foo',
+    'localhost',
+  )
+  const hostUnreachable = mkNodeStub(
+    axBinaryPath,
+    'android',
+    'aarch64',
+    'android',
+    ['webview'],
+    'foo',
+    'idontexist',
+  )
+  const actyxOSUnreachable = mkNodeStub(
+    axBinaryPath,
+    'android',
+    'aarch64',
+    'android',
+    ['webview'],
+    'foo',
+    'localhost:123',
+  )
 
-export const stubNodeActyxosUnreachable = mkNodeStub(
-  'android',
-  'aarch64',
-  'android',
-  ['webview'],
-  'foo',
-  'localhost:123',
-)
+  return {
+    axOnly: def,
+    hostUnreachable,
+    actyxOSUnreachable,
+    mkStub: (a, b, c, d, e) => mkNodeStub(axBinaryPath, a, b, c, d, e, 'localhost'),
+  }
+}

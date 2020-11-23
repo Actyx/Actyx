@@ -1,4 +1,3 @@
-import { stubNode } from '../../stubs'
 import { quickstartDirs } from '../../setup-projects/quickstart'
 import { settings } from '../../infrastructure/settings'
 import { runOnEvery } from '../../infrastructure/hosts'
@@ -6,6 +5,7 @@ import { waitFor } from '../../retry'
 import path from 'path'
 import { Arch } from '../../../jest/types'
 import { assertOK } from '../../assertOK'
+import { stubs } from '../../stubs'
 
 const tempDir = settings().tempDir
 
@@ -13,7 +13,7 @@ describe('basic app lifecycle', () => {
   test('for quickstart sample-docker-app run deploy, start, ls, stop, undeploy', async () => {
     const workingDir = quickstartDirs(tempDir).sampleDockerApp
     const pkgResponse = assertOK(
-      await stubNode.ax.apps.packageCwd(workingDir, 'ax-manifest-all.yml'),
+      await stubs.axOnly.ax.apps.packageCwd(workingDir, 'ax-manifest-all.yml'),
     )
     expect(pkgResponse.result).toHaveLength(2)
     const { appId, appVersion } = pkgResponse.result[0]

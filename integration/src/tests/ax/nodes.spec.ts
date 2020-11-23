@@ -1,16 +1,16 @@
 import { assertOK } from '../../assertOK'
 import { runOnEvery } from '../../infrastructure/hosts'
-import { stubNodeHostUnreachable, stubNodeActyxosUnreachable } from '../../stubs'
+import { stubs } from '../../stubs'
 
 describe('ax nodes', () => {
   describe('ls', () => {
     test('return OK and result with connection hostUnreachable', async () => {
-      const response = assertOK(await stubNodeHostUnreachable.ax.nodes.ls())
-      expect(response.result).toMatchObject([{ connection: 'hostUnreachable', host: '123' }])
+      const response = assertOK(await stubs.hostUnreachable.ax.nodes.ls())
+      expect(response.result).toMatchObject([{ connection: 'hostUnreachable', host: 'idontexist' }])
     })
 
     test('return OK and result with connection actyxosUnreachable', async () => {
-      const response = assertOK(await stubNodeActyxosUnreachable.ax.nodes.ls())
+      const response = assertOK(await stubs.actyxOSUnreachable.ax.nodes.ls())
       expect(response.result).toMatchObject([
         { connection: 'actyxosUnreachable', host: 'localhost' },
       ])

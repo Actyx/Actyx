@@ -18,7 +18,7 @@ export const mkNodeLocalProcess = async (
   const workingDir = path.resolve(settings().tempDir, 'actyxos-data')
   await remove(workingDir)
   await ensureDir(workingDir)
-  const binary = currentActyxOsBinary
+  const binary = await currentActyxOsBinary()
   if (alreadyRunning !== undefined) {
     console.log(
       'node %s cannot start: local ActyxOS process already running for node %s',
@@ -61,16 +61,17 @@ export const mkNodeLocalProcess = async (
   console.log('node %s ActyxOS started', nodeName)
 
   const opts = DefaultClientOpts()
+  const axBinaryPath = await currentAxBinary()
   return {
     name: nodeName,
     target,
     host: 'process',
     runtimes: [],
-    ax: new CLI('localhost:4457', currentAxBinary),
+    ax: new CLI('localhost:4457', axBinaryPath),
     actyxOS: Client(opts),
     _private: {
       shutdown,
-      axBinaryPath: currentAxBinary,
+      axBinaryPath,
       axHost: 'localhost',
       apiConsole: opts.Endpoints.ConsoleService.BaseUrl,
       apiEvent: opts.Endpoints.EventService.BaseUrl,
@@ -135,16 +136,17 @@ export const mkNodeLocalDocker = async (
     opts.Endpoints.ConsoleService.BaseUrl = apiConsole
     opts.Endpoints.EventService.BaseUrl = apiEvent
 
+    const axBinaryPath = await currentAxBinary()
     return {
       name: nodeName,
       target,
       host: 'docker',
       runtimes: ['docker'],
-      ax: new CLI(axHost, currentAxBinary),
+      ax: new CLI(axHost, axBinaryPath),
       actyxOS: Client(opts),
       _private: {
         shutdown,
-        axBinaryPath: currentAxBinary,
+        axBinaryPath,
         axHost,
         apiConsole,
         apiEvent,

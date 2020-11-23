@@ -3,6 +3,7 @@ import { Client, DefaultClientOpts } from '@actyx/os-sdk'
 import { EC2 } from 'aws-sdk'
 import NodeEnvironment from 'jest-environment-node'
 import { CLI } from '../src/cli'
+import { setupStubs } from '../src/stubs'
 import { MyGlobal } from './setup'
 
 class MyEnvironment extends NodeEnvironment {
@@ -26,6 +27,9 @@ class MyEnvironment extends NodeEnvironment {
       opts.Endpoints.EventService.BaseUrl = node._private.apiEvent
       node.actyxOS = Client(opts)
     }
+    ;(<MyGlobal>global).axNodeSetup = axNodeSetup
+
+    this.global.stubs = await setupStubs()
   }
 
   async teardown(): Promise<void> {

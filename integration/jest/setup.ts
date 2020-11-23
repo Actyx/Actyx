@@ -5,7 +5,7 @@ import { createKey, deleteKey } from '../src/infrastructure/aws'
 import { ActyxOSNode, AwsKey, printTarget } from '../src/infrastructure/types'
 import { setupTestProjects } from '../src/setup-projects'
 import { promises as fs } from 'fs'
-import { Config, Settings } from './types'
+import { Arch, Config, Host, OS, Runtime, Settings } from './types'
 import YAML from 'yaml'
 import { rightOrThrow } from '../src/infrastructure/rightOrThrow'
 import execa from 'execa'
@@ -23,10 +23,20 @@ export type NodeSetup = {
   key: AwsKey
   settings: Settings
   gitHash: string
+  // Unique identifier for this particular run. This is used to group all logs
+  // files related to one run (a run being test suites sharing a common global
+  // setup/teardown).
+  runIdentifier: string
   thisTestEnvNodes?: ActyxOSNode[]
 }
 
-export type MyGlobal = typeof global & { axNodeSetup: NodeSetup }
+export type Stubs = {
+  axOnly: ActyxOSNode
+  hostUnreachable: ActyxOSNode
+  actyxOSUnreachable: ActyxOSNode
+  mkStub: (os: OS, arch: Arch, host: Host, runtimes: Runtime[], name: string) => ActyxOSNode
+}
+export type MyGlobal = typeof global & { axNodeSetup: NodeSetup; stubs: Stubs }
 
 const getGitHash = async (settings: Settings) => {
   if (settings.gitHash !== null) {
@@ -211,6 +221,7 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
     nodes: [],
     settings: config.settings,
     gitHash: await getGitHash(config.settings),
+    runIdentifier: new Date().toISOString(),
   }
   Object.assign(axNodeSetup, axNodeSetupObject)
 

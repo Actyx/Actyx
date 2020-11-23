@@ -1,14 +1,14 @@
 import * as t from 'io-ts'
 import { fromNullable } from 'io-ts-types'
 
-export const OS = t.keyof({ linux: 0, win: 0, mac: 0, android: 0 })
+export const OS = t.keyof({ linux: 0, windows: 0, mac: 0, android: 0 })
 export type OS = t.TypeOf<typeof OS>
 export const currentOS = (): OS => {
   switch (process.platform) {
     case 'android':
       return 'android'
     case 'win32':
-      return 'win'
+      return 'windows'
     case 'darwin':
       return 'mac'
     case 'linux':
@@ -69,6 +69,8 @@ const settings = t.type({
   keepNodesRunning: t.boolean,
   skipTestProjectPreparation: t.boolean,
   gitHash: t.union([t.string, t.null]),
+  // Rather than writing all logs to individual files, dump everything on stdout
+  logToStdout: t.boolean,
 })
 export type Settings = t.TypeOf<typeof settings>
 
