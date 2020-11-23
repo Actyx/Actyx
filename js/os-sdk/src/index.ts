@@ -15,21 +15,4 @@
  */
 export { Client } from './client'
 export { DefaultClientOpts } from './client/default-opts'
-export {
-  OffsetMap,
-  Event,
-  EventDraft,
-  StreamIdentifier,
-  Ordering,
-  ApiClientOpts,
-  ApiClient,
-  EventServiceClient,
-  OnDone,
-  OnError,
-  OnEvent,
-  OnResult,
-  LogSeverity,
-  SimpleLogger,
-  SimpleLoggerOpts,
-  Subscription,
-} from './types'
+export * from './types'
