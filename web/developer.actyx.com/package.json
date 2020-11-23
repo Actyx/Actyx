@@ -22,8 +22,11 @@
   "dependencies": {
     "@docusaurus/core": "^2.0.0-alpha.66",
     "@docusaurus/preset-classic": "^2.0.0-alpha.66",
+    "@docusaurus/theme-classic": "^2.0.0-alpha.68",
     "chromium": "^2.1.2",
     "classnames": "^2.2.6",
+    "docusaurus-gtm-plugin": "0.0.2",
+    "js-cookie": "^2.2.1",
     "react": "^16.8.4",
     "react-dom": "^16.8.4",
     "react-youtube": "^7.9.0",

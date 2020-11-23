@@ -39,6 +39,7 @@
     "rxjs-marbles": "2.4.1",
     "testcheck": "1.0.0-rc.2",
     "ts-jest": "25.1.0",
+    "typedoc": "0.17.0-3",
     "typescript": "3.9.6"
   },
   "homepage": "https://developer.actyx.com/docs/pond/introduction/",
@@ -84,7 +85,8 @@
     "tsc": "tsc --noEmit -p ./tsconfig.json",
     "tsc:watch": "npm run tsc -- --watch --pretty",
     "madge": "madge --circular --extensions ts,tsx ./",
-    "addLicense": "license-check-and-add add -f add-license-config.json"
+    "addLicense": "license-check-and-add add -f add-license-config.json",
+    "build:docs": "rm -rf ../../web/developer.actyx.com/static/@actyx/pond/ && typedoc --mode library --options typedoc.json src/index.ts"
   },
   "types": "./lib/index.d.ts",
   "version": "2.3.0"

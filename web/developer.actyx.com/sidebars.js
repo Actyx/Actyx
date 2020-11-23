@@ -97,6 +97,7 @@ module.exports = {
     },
     "pond/introduction",
     "pond/getting-started",
+    "pond/api-reference",
     {
       type: "category",
       label: "Learning\u00a0the\u00a0Pond\u00a0in\u00a010\u00a0steps",
@@ -115,6 +116,19 @@ module.exports = {
       ],
     },
     {
+    type: 'category',
+    label: 'Fish\u00a0Parameters',
+    collapsed: false,
+    items: [
+      'pond/fish-parameters/on-event',
+      'pond/fish-parameters/initial-state',
+      'pond/fish-parameters/where',
+      'pond/fish-parameters/fish-id',
+      'pond/fish-parameters/deserialize-state',
+      'pond/fish-parameters/is-reset',
+      ]
+    },
+    {
       type: "category",
       label: "Pond In-Depth",
       collapsed: false,
@@ -124,6 +138,7 @@ module.exports = {
         "pond/in-depth/do-not-ignore-events",
       ],
     },
+    "pond/pond-extensions",
   ],
   nodeManagerSidebar: [
     "node-manager/overview",
@@ -187,7 +202,7 @@ module.exports = {
       label: "Advanced\u00a0Tutorial",
       collapsed: false,
       items: [
-        "learn-actyx/advanced-tutorial/introduction", 
+        "learn-actyx/advanced-tutorial/introduction",
         "learn-actyx/advanced-tutorial/solution-architecture",
         "learn-actyx/advanced-tutorial/get-started",
         "learn-actyx/advanced-tutorial/explore-the-apps",
