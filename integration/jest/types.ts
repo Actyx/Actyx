@@ -1,7 +1,7 @@
 import * as t from 'io-ts'
 import { fromNullable } from 'io-ts-types'
 
-export const OS = t.keyof({ linux: 0, windows: 0, mac: 0, android: 0 })
+export const OS = t.keyof({ linux: 0, windows: 0, macos: 0, android: 0 })
 export type OS = t.TypeOf<typeof OS>
 export const currentOS = (): OS => {
   switch (process.platform) {
@@ -10,7 +10,7 @@ export const currentOS = (): OS => {
     case 'win32':
       return 'windows'
     case 'darwin':
-      return 'mac'
+      return 'macos'
     case 'linux':
       return 'linux'
     default:
@@ -41,7 +41,9 @@ const createEC2 = t.type({
   ami: t.string,
   instance: t.string,
   user: t.string,
+  armv7: fromNullable(t.boolean)(false),
 })
+export type CreateEC2 = t.TypeOf<typeof createEC2>
 
 const useLocal = t.type({
   type: t.literal('local'),
