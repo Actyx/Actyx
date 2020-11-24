@@ -3,11 +3,7 @@
   "$id": "https://developer.actyx.com/schemas/os/node-settings.schema.json",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "general",
-    "licensing",
-    "services"
-  ],
+  "required": [],
   "properties": {
     "general": {
       "$ref": "#/definitions/General"
@@ -81,11 +77,7 @@
     },
     "General": {
       "type": "object",
-      "required": [
-        "swarmKey",
-        "bootstrapNodes",
-        "displayName"
-      ],
+      "required": [],
       "additionalProperties": false,
       "properties": {
         "swarmKey": {
@@ -145,10 +137,7 @@
     },
     "Licensing": {
       "type": "object",
-      "required": [
-        "os",
-        "apps"
-      ],
+      "required": [],
       "additionalProperties": false,
       "properties": {
         "os": {
@@ -171,9 +160,7 @@
     "Services": {
       "EventService": {
         "type": "object",
-        "required": [
-          "topic"
-        ],
+        "required": [],
         "additionalProperties": false,
         "properties": {
           "topic": {
@@ -218,3 +205,4 @@
     }
   }
 }
+
