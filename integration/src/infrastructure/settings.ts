@@ -89,3 +89,14 @@ const download = (
     }),
   )
 }
+
+export const getTestName = (): string => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
+  const state = (<any>expect).getState()
+  let testName: string = state.testPath
+  if (testName.startsWith(process.cwd())) {
+    testName = `<cwd>` + testName.substr(process.cwd().length)
+  }
+  testName += ': ' + state.currentTestName
+  return testName
+}
