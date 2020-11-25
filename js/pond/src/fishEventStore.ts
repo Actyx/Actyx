@@ -5,7 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
+/* istanbul ignore file */
 import * as assert from 'assert'
 import { last } from 'fp-ts/lib/Array'
 import { fromNullable, none, Option, some } from 'fp-ts/lib/Option'

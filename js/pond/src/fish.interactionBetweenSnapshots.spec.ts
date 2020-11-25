@@ -15,7 +15,6 @@ import {
   semanticSnap,
   snapshotTestSetup,
 } from './fish.testHelper'
-import { Timestamp } from './types'
 
 const numberFish = mkNumberFish(semanticSnap)
 
@@ -50,34 +49,6 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
       horizon: { lamport: 900 },
       state: [8, 9, 10],
     })
-  })
-
-  it(`semantic snapshot events should invalidate all past local snapshots`, async () => {
-    const { mkEvents } = eventFactory()
-    const now = Timestamp.now()
-
-    const { applyAndGetState, latestSnap } = await snapshotTestSetup(
-      numberFish,
-      [],
-      [mkSnapshot([8, 9, 10], now - 2000)],
-    )
-
-    const liveWithSemanticSnapshot: Events = mkEvents([
-      {
-        timestamp: now,
-        source: 'B',
-        payload: -1,
-      },
-      {
-        timestamp: now + 100,
-        source: 'B',
-        payload: 1,
-      },
-    ])
-
-    expect(await applyAndGetState(liveWithSemanticSnapshot)).toEqual([-1, 1])
-    // No new snapshot yet since all known events are within 1h of latest known event.
-    expect(await latestSnap()).toEqual(undefined)
   })
 
   it(`semantic snapshot events below snapshot horizon should not shatter fish state`, async () => {
@@ -126,7 +97,7 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
     expect(await latestSnap()).toEqual(undefined)
   })
 
-  it(`should local-snapshot semantic snapshot events, eventually`, async () => {
+  it(`should local-snapshot semantic snapshot events`, async () => {
     const srcA = emitter('A')
     const srcB = emitter('B')
 
@@ -146,7 +117,7 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
 
     expect(await applyAndGetState(timeline)).toEqual([-1, 4])
     expect(await latestSnap()).toMatchObject({
-      eventKey: { lamport: 10240400 },
+      eventKey: { lamport: 10220400 },
       state: [-1],
       horizon: { lamport: 400 },
     })
@@ -174,7 +145,7 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
 
     expect(await applyAndGetState(timeline)).toEqual([-1, 5, 6])
     expect(await latestSnap()).toMatchObject({
-      eventKey: { lamport: 7374080900 },
+      eventKey: { lamport: 7374030900 },
       state: [-1, 5],
       horizon: { lamport: 7210250800 },
     })
@@ -206,13 +177,12 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
 
     expect(await applyAndGetState(timeline.of('B'))).toEqual([1, 2, 3, 4, 5, 7])
     expect(await latestSnap()).toMatchObject({
-      eventKey: { lamport: 10210400 },
+      eventKey: { lamport: 10220400 },
       state: [1, 2, 3],
       horizon: undefined,
     })
 
     expect(await applyAndGetState(timeline.of('C'))).toEqual([-1, 7, 8])
-    expect(await latestSnap()).toBeUndefined() // Removed by the semantic snapshot.
   })
 
   describe(`horizon`, () => {
@@ -238,7 +208,8 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
 
     const expectedFinalState = [-1, 3, 4, 5, 6, 7, 8]
     const expectedFinalSnap = {
-      eventKey: { lamport: 7251161000 },
+      // Exact eventKey differs between scenarios,
+      // since snapshots are scheduled before looking for semantic snapshots... it’s complicated
       state: [-1, 3, 4, 5, 6],
       horizon: { lamport: 400 },
     }
@@ -248,7 +219,7 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
 
       expect(await applyAndGetState(timeline.of('A', 'C'))).toEqual([-1, 3, 4, 5, 8])
       expect(await latestSnap()).toMatchObject({
-        eventKey: { lamport: 10230500 },
+        eventKey: { lamport: 10210500 },
         state: [-1, 3],
         horizon: { lamport: 400 },
       })
@@ -262,7 +233,7 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
 
       expect(await applyAndGetState(timeline.of('A', 'B'))).toEqual([-1, 3, 4, 6, 7])
       expect(await latestSnap()).toMatchObject({
-        eventKey: { lamport: 7251171000 },
+        eventKey: { lamport: 7251161000 },
         state: [-1, 3, 4, 6],
         horizon: { lamport: 400 },
       })
@@ -276,7 +247,7 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
 
       expect(await applyAndGetState(timeline.of('B', 'C'))).toEqual([2, 5, 6, 7, 8])
       expect(await latestSnap()).toMatchObject({
-        eventKey: { lamport: 7251181000 },
+        eventKey: { lamport: 7251191000 },
         state: [2, 5, 6],
         horizon: undefined,
       })

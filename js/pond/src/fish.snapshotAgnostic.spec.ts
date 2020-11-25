@@ -30,8 +30,7 @@ const forAllFish = forFishes(
   ['with only local snapshots', localSnapshotsFish],
 )
 
-const setup = (fish: Fish<NumberFishState, NumberFishEvent>) =>
-  snapshotTestSetup(fish, undefined, undefined, true)
+const setup = (fish: Fish<NumberFishState, NumberFishEvent>) => snapshotTestSetup(fish)
 
 describe('fish event store + jar snapshot agnostic behaviour', () => {
   const { mkEvents } = eventFactory()

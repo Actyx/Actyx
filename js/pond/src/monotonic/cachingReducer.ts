@@ -1,5 +1,5 @@
 import { last, partition } from 'fp-ts/lib/Array'
-import { Option } from 'fp-ts/lib/Option'
+import { none, Option, some } from 'fp-ts/lib/Option'
 import { gt } from 'fp-ts/lib/Ord'
 import log from '../loggers'
 import { SnapshotScheduler } from '../store/snapshotScheduler'
@@ -25,6 +25,11 @@ export const cachingReducer = <S>(
     return { ...snap, state: snapState }
   }
 
+  const serialize = (original: LocalSnapshot<S>): SerializedStateSnap => ({
+    ...original,
+    state: JSON.stringify(original.state),
+  })
+
   const queue = snapshotQueue()
 
   // Chain of snapshot storage promises
@@ -33,30 +38,29 @@ export const cachingReducer = <S>(
   const snapshotEligible = (latest: Timestamp) => (snapBase: PendingSnapshot) =>
     snapshotScheduler.isEligibleForStorage(snapBase, { timestamp: latest })
 
-  // This is needed for scheduling local snapshots. It counts events since last semantic snapshot.
-  let cycle = 0
+  let latestStateSerialized: Option<SerializedStateSnap> = none
 
   const appendEvents: CachingReducer<S>['appendEvents'] = events => {
     // FIXME: Arguments are a bit questionable, but we can’t change the scheduler yet, otherwise the FES-based tests start failing.
-    const statesToStore = snapshotScheduler.getSnapshotLevels(cycle + 1, events, 0)
+    const statesToStore = snapshotScheduler.getSnapshotLevels(
+      latestStateSerialized.map(x => x.cycle).getOrElse(0),
+      events,
+      0,
+    )
 
     let fromIdx = 0
     for (const toStore of statesToStore) {
-      const stateWithProvenance = simpleReducer.appendEvents(events, fromIdx, toStore.i)
+      const headState = simpleReducer.appendEvents(events, fromIdx, toStore.i)
       fromIdx = toStore.i + 1
 
       queue.addPending({
-        snap: {
-          ...stateWithProvenance,
-          state: JSON.stringify(stateWithProvenance.state),
-        },
+        snap: serialize(headState),
         tag: toStore.tag,
         timestamp: events[toStore.i].timestamp,
       })
     }
 
     const latestState = simpleReducer.appendEvents(events, fromIdx, events.length - 1)
-    cycle = latestState.cycle
 
     const snapshotsToPersist =
       events.length > 0
@@ -71,15 +75,17 @@ export const cachingReducer = <S>(
       )
     }
 
-    return latestState
+    // Make another copy so that downstream doesn’t mutate what’s in the SimpleReducer
+    const latestStateSer = serialize(latestState)
+    latestStateSerialized = some(latestStateSer)
+    return deserializeSnapshot(latestStateSer)
   }
 
   const setState = (snap: SerializedStateSnap) => {
     // Time travel to the past: All newer cached states are invalid
     queue.invalidateLaterThan(snap.eventKey)
 
-    cycle = snap.cycle
-
+    latestStateSerialized = some(snap)
     simpleReducer.setState(deserializeSnapshot(snap))
   }
 
@@ -87,9 +93,20 @@ export const cachingReducer = <S>(
     appendEvents,
     awaitPendingPersistence: () => storeSnapshotsPromise,
     latestKnownValidState: (lowestInvalidating, highestInvalidating) =>
-      queue.latestValid(lowestInvalidating, highestInvalidating).map(x => x.snap),
+      latestStateSerialized
+        .filter(isSnapshotValid(lowestInvalidating, highestInvalidating))
+        .orElse(() => queue.latestValid(lowestInvalidating, highestInvalidating).map(x => x.snap)),
     setState,
   }
+}
+
+const isSnapshotValid = (lowestInvalidating: EventKey, highestInvalidating: EventKey) => (
+  snap: SerializedStateSnap,
+): boolean => {
+  const snapshotValid = eventKeyGreater(lowestInvalidating, snap.eventKey)
+  const horizonVoidsTimeTravel =
+    !!snap.horizon && eventKeyGreater(snap.horizon, highestInvalidating)
+  return snapshotValid || horizonVoidsTimeTravel
 }
 
 type SnapshotQueue = {
@@ -138,12 +155,7 @@ const snapshotQueue = (): SnapshotQueue => {
     highestInvalidating: EventKey,
   ): Option<PendingSnapshot> => {
     return last(
-      queue.filter(({ snap }) => {
-        const snapshotValid = eventKeyGreater(lowestInvalidating, snap.eventKey)
-        const horizonVoidsTimeTravel =
-          snap.horizon && eventKeyGreater(snap.horizon, highestInvalidating)
-        return snapshotValid || horizonVoidsTimeTravel
-      }),
+      queue.filter(({ snap }) => isSnapshotValid(lowestInvalidating, highestInvalidating)(snap)),
     )
   }
 

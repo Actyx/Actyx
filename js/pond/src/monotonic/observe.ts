@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { none, Option, some } from 'fp-ts/lib/Option'
 import { clone } from 'ramda'
-import { Observable, Scheduler, Subject } from 'rxjs'
+import { Observable, Subject, Scheduler } from 'rxjs'
 import { Event, EventStore, OffsetMap } from '../eventstore'
 import log from '../loggers'
 import { mkNoopPondStateTracker, PondStateTracker } from '../pond-state'
@@ -14,7 +14,6 @@ import {
   IsReset,
   LocalSnapshot,
   Metadata,
-  SourceId,
   StateWithProvenance,
   toMetadata,
 } from '../types'
@@ -30,37 +29,6 @@ import {
 } from './endpoint'
 import { simpleReducer } from './simpleReducer'
 import { PendingSnapshot, SerializedStateSnap } from './types'
-
-// Take some Fish parameters and combine them into a "simpler" onEvent
-// with typical reducer signature: (S, E) => S
-const mkOnEventRaw = <S, E>(
-  sourceId: SourceId,
-  initialState: S,
-  onEvent: (state: S, event: E, metadata: Metadata) => S,
-  isReset?: IsReset<E>,
-) => {
-  const metadata = toMetadata(sourceId)
-
-  if (!isReset) {
-    return (state: S, ev: Event) => {
-      const m = metadata(ev)
-      const payload = ev.payload as E
-
-      return onEvent(state, payload, m)
-    }
-  }
-
-  return (state: S, ev: Event) => {
-    const m = metadata(ev)
-    const payload = ev.payload as E
-
-    if (isReset(payload, m)) {
-      return onEvent(clone(initialState), payload, m)
-    } else {
-      return onEvent(state, payload, m)
-    }
-  }
-}
 
 const stateMsg = (latestValid: SerializedStateSnap): StateMsg => ({
   type: MsgType.state,
@@ -89,8 +57,6 @@ export const observeMonotonic = (
 
   const { sourceId } = eventStore
 
-  const onEventRaw = mkOnEventRaw(sourceId, clone(initialState), onEvent, isReset)
-
   const initialStateAsString = JSON.stringify(initialState)
   const initialStateSnapshot: SerializedStateSnap = {
     state: initialStateAsString,
@@ -114,13 +80,23 @@ export const observeMonotonic = (
       snap.state,
     )
   }
-  const innerReducer = simpleReducer(onEventRaw, {
-    state: clone(initialState),
-    psnMap: OffsetMap.empty,
-    eventKey: EventKey.zero,
-    horizon: undefined,
-    cycle: 0,
-  })
+
+  const metadata = toMetadata(sourceId)
+  const castPayload = (ev: Event): E => ev.payload as E
+  const onEventRaw = (state: S, ev: Event) => onEvent(state, castPayload(ev), metadata(ev))
+  const isResetRaw = isReset ? (ev: Event) => isReset(castPayload(ev), metadata(ev)) : () => false
+
+  const innerReducer = simpleReducer(
+    onEventRaw,
+    {
+      state: clone(initialState),
+      psnMap: OffsetMap.empty,
+      eventKey: EventKey.zero,
+      horizon: undefined,
+      cycle: 0,
+    },
+    isResetRaw,
+  )
   const reducer = cachingReducer(innerReducer, snapshotScheduler, storeSnapshot, deserializeState)
 
   // The stream of update messages. Should end with a time travel message.

@@ -441,7 +441,7 @@ const observeAllStartWithInitial = <F, S>(
     return []
   })
 
-  return Observable.concat(Observable.of(immutableFishSet), updates)
+  return updates.startWith(Map(init))
 }
 
 export const FishJar = {

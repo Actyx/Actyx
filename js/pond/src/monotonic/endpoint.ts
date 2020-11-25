@@ -82,21 +82,20 @@ export const eventsMonotonic = (
   const realtimeFrom = (
     fishId: FishId,
     subscriptions: SubscriptionSet,
-    startFrom: OffsetMap,
-    knownLatest: EventKey,
+    fixedStart: FixedStart,
   ): Observable<EventsOrTimetravel> => {
     const realtimeEvents = eventStore.allEvents(
       {
-        psns: startFrom,
+        psns: fixedStart.from,
         default: 'min',
       },
       { psns: {}, default: 'max' },
       subscriptions,
       AllEventsSortOrders.Unsorted,
-      undefined, // Horizon handling to-be-implemented
+      fixedStart.horizon,
     )
 
-    let latest = knownLatest
+    let latest = fixedStart.latestEventKey
 
     return realtimeEvents
       .filter(next => next.length > 0)
@@ -144,16 +143,18 @@ export const eventsMonotonic = (
     fishId: FishId,
     subscriptions: SubscriptionSet,
     present: OffsetMap,
-    lowerBound: OffsetMap = {},
-    defaultLatest: EventKey = EventKey.zero,
+    fixedStart: FixedStart = {
+      from: {},
+      latestEventKey: EventKey.zero,
+    },
   ): Observable<EventsOrTimetravel> => {
     const persisted = eventStore
       .persistedEvents(
-        { default: 'min', psns: lowerBound },
+        { default: 'min', psns: fixedStart.from },
         { default: 'min', psns: present },
         subscriptions,
         PersistedEventsSortOrders.EventKey,
-        undefined, // Horizon handling to-be-implemented
+        fixedStart.horizon,
       )
       // Past events are loaded all in one chunk -- FIXME.
       .toArray()
@@ -164,7 +165,7 @@ export const eventsMonotonic = (
 
       log.submono.debug(FishId.canonical(fishId), 'hydration event count:', events.length)
 
-      const latest = events.length === 0 ? defaultLatest : events[events.length - 1]
+      const latest = events.length === 0 ? fixedStart.latestEventKey : events[events.length - 1]
 
       const initial = Observable.of<EventsMsg>({
         type: MsgType.events,
@@ -172,7 +173,13 @@ export const eventsMonotonic = (
         caughtUp: true,
       })
 
-      return initial.concat(realtimeFrom(fishId, subscriptions, present, latest))
+      return initial.concat(
+        realtimeFrom(fishId, subscriptions, {
+          from: present,
+          latestEventKey: latest,
+          horizon: fixedStart.horizon,
+        }),
+      )
     })
   }
 
@@ -213,14 +220,7 @@ export const eventsMonotonic = (
     subscriptions: SubscriptionSet,
     present: OffsetMap,
   ) => (attemptStartFrom: FixedStart): Observable<EventsOrTimetravel> => {
-    const whenValid = () =>
-      monotonicFrom(
-        fishId,
-        subscriptions,
-        present,
-        attemptStartFrom.from,
-        attemptStartFrom.latestEventKey,
-      )
+    const whenValid = () => monotonicFrom(fishId, subscriptions, present, attemptStartFrom)
 
     const whenInvalid = (earliest: Events) => {
       log.submono.debug(
@@ -282,7 +282,11 @@ export const eventsMonotonic = (
     const whenValid = () =>
       Observable.concat(
         Observable.of(stateMsg(fishId, snap)),
-        monotonicFrom(fishId, subscriptions, present, snap.psnMap, snap.eventKey),
+        monotonicFrom(fishId, subscriptions, present, {
+          from: snap.psnMap,
+          latestEventKey: snap.eventKey,
+          horizon: snap.horizon,
+        }),
       )
 
     return validateFixedStart(subscriptions, present, fixedStart, whenInvalid, whenValid)
@@ -291,7 +295,6 @@ export const eventsMonotonic = (
   const observeMonotonicFromSnapshot = (
     fishId: FishId,
     subscriptions: SubscriptionSet,
-    _horizon?: EventKey,
   ): Observable<EventsOrTimetravel> => {
     return Observable.combineLatest(
       Observable.from(tryReadSnapshot(fishId)).first(),
