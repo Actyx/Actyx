@@ -1,5 +1,6 @@
 import { MyGlobal } from '../../jest/setup'
 import { nodeMatches, selectNodes } from './nodeselection'
+import { getTestName } from './settings'
 import { ActyxOSNode, NodeSelection } from './types'
 
 // This is provided by jest/setup.ts and passed by jest to our worker (serialised)
@@ -75,17 +76,6 @@ export const runOnEvery = async <T>(
       ),
     ),
   )
-}
-
-const getTestName = () => {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, @typescript-eslint/no-explicit-any
-  const state = (<any>expect).getState()
-  let testName: string = state.testPath
-  if (testName.startsWith(process.cwd())) {
-    testName = `<cwd>` + testName.substr(process.cwd().length)
-  }
-  testName += ': ' + state.currentTestName
-  return testName
 }
 
 const runOnNodes = async <T>(label: string, n: ActyxOSNode[], f: () => Promise<T>): Promise<T> => {

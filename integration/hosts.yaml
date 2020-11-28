@@ -29,6 +29,23 @@ hosts:
     instance: a1.medium
     user: ubuntu
   install: docker
+- name: armv7-linux-linux
+  prepare:
+    type: create-aws-ec2
+    ami: ami-0aa72f02ca1be5339
+    instance: a1.medium
+    user: ubuntu
+    # There are no ARMv7 instances, but we can run ARMv7 binaries to test them
+    armv7: true
+  install: linux
+- name: armv7-linux-docker
+  prepare:
+    type: create-aws-ec2
+    ami: ami-0aa72f02ca1be5339
+    instance: a1.medium
+    user: ubuntu
+    armv7: true
+  install: docker
 settings:
   # Where folders and files will be created during a test run.
   tempDir: temp

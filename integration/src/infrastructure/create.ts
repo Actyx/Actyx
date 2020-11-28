@@ -4,35 +4,31 @@ import { EC2 } from 'aws-sdk'
 import { createInstance, terminateInstance } from './aws'
 import { mkNodeSshDocker, mkNodeSshProcess } from './linux'
 import { ActyxOSNode, AwsKey, Target, TargetKind } from './types'
-import { Arch, currentArch, currentOS, HostConfig } from '../../jest/types'
+import { Arch, CreateEC2, currentArch, currentOS, HostConfig } from '../../jest/types'
 import { mkNodeLocalDocker, mkNodeLocalProcess } from './local'
 import { LogEntry, MyGlobal } from '../../jest/setup'
 import fs from 'fs'
 import path from 'path'
 
-const decodeAwsArch = (instance: EC2.Instance): Arch => {
+const decodeAwsArch = (instance: EC2.Instance, armv7: boolean): Arch => {
   switch (instance.Architecture) {
     case 'x86_64':
       return 'x86_64'
     case 'arm64':
-      return 'aarch64'
+      return armv7 ? 'armv7' : 'aarch64'
     default:
       throw new Error(`unknown AWS arch: ${instance.Architecture}`)
   }
 }
 
-const createAwsInstance = async (
-  ec2: EC2,
-  prepare: { type: 'create-aws-ec2'; ami: string; instance: string; user: string },
-  key: AwsKey,
-): Promise<Target> => {
+const createAwsInstance = async (ec2: EC2, prepare: CreateEC2, key: AwsKey): Promise<Target> => {
   const instance = await createInstance(ec2, {
     InstanceType: prepare.instance,
     ImageId: prepare.ami,
     KeyName: key.keyName,
   })
   const os = instance.Platform === 'Windows' ? 'windows' : 'linux'
-  const arch = decodeAwsArch(instance)
+  const arch = decodeAwsArch(instance, prepare.armv7)
   const kind: TargetKind = {
     type: 'aws',
     instance: instance.InstanceId!,
