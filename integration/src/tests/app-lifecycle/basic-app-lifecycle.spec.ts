@@ -33,6 +33,11 @@ describe('basic app lifecycle', () => {
     expect(appVersion).toMatch(/^1\.\d+\.\d+$/)
 
     await runOnEvery({ runtime: 'docker' }, async (node) => {
+      if (node.target.arch === 'armv7') {
+        // ax cannot yet package for 32bit arm
+        return
+      }
+
       const responseDeploy = await node.ax.apps.deploy(packagePath(node.target.arch))
       expect(responseDeploy).toMatchCodeOk()
 
