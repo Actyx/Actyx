@@ -59,9 +59,9 @@ Refer to the following sections to learn more about the different services:
 
 - **Sensible defaults** - Where possible we provide sensible defaults to flatten the learning curve. If you have specific needs, please [reach out](introduction.md#contact-us--something-missing) and we can help you tune ActyxOS to your needs
 
-## ActyxOS and Actyx Pond in 10 minutes
+## ActyxOS and Actyx Pond in 2 minutes
 
-Here is a video that Alex, one of our engineers, made explaining Actyx in 10 minutes.
+Here is a video that Alex, one of our engineers, made explaining Actyx in 2 minutes.
 
 import YouTube from 'react-youtube';
 
