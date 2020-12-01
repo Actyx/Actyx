@@ -135,7 +135,7 @@ In that directory create a file called `package.json` and add the following cont
   "version": "1.0.0",
   "description": "A decentralized chat",
   "scripts": {
-    "build": "tsc && parcel build index.html --public-url .",
+    "build": "tsc && parcel build index.html --public-url ./",
     "start": "tsc && parcel index.html"
   },
   "dependencies": {
