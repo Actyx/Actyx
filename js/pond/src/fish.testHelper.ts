@@ -7,14 +7,11 @@
 import { last } from 'ramda'
 import { Observable, Scheduler } from 'rxjs'
 import { Fish, FishId, TestEvent } from '.'
-import { SnapshotScheduler } from './store/snapshotScheduler'
 import { EventStore } from './eventstore'
 import { Event, Events, OffsetMap } from './eventstore/types'
-import { FishJar } from './fishJar'
 import { observeMonotonic } from './monotonic'
-import { mkNoopPondStateTracker } from './pond-state'
 import { SnapshotStore } from './snapshotStore'
-import { minSnapshotAge } from './store/snapshotScheduler'
+import { minSnapshotAge, SnapshotScheduler } from './store/snapshotScheduler'
 import { Tag, toSubscriptionSet, Where } from './tagging'
 import {
   EventKey,
@@ -156,7 +153,6 @@ export const snapshotTestSetup = async <S>(
   fish: Fish<S, NumberFishEvent>,
   storedEvents?: ReadonlyArray<TestEvent>,
   storedSnapshots?: ReadonlyArray<SnapshotData>,
-  useSubscribeMonotonicEndpoint: boolean = false,
 ) => {
   const sourceId = SourceId.of('LOCAL-test-source')
   const eventStore = EventStore.test(sourceId)
@@ -181,9 +177,7 @@ export const snapshotTestSetup = async <S>(
     .concat(Observable.of(undefined))
     .toPromise()
 
-  const hydrate = useSubscribeMonotonicEndpoint
-    ? observeMonotonic(eventStore, snapshotStore, SnapshotScheduler.create(10))
-    : FishJar.hydrateV2(eventStore, snapshotStore, mkNoopPondStateTracker())
+  const hydrate = observeMonotonic(eventStore, snapshotStore, SnapshotScheduler.create(10))
 
   const observe = hydrate(
     toSubscriptionSet(fish.where),

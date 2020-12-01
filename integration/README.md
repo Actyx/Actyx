@@ -6,40 +6,42 @@ Test suites for combined Actyx products.
 
 Integration tests use primarily the artifacts built from the current commit, so you need to:
 
-- make ActyxOS and related binaries (`actyxos-linux` and `ax`) available by compiling them for the "current" platforms (will be taken from `Cosmos/dist/bin/*`), use the `make` command in `Cosmos` folder for example: `make dist/bin/current/ax` and `make dist/bin/current/actyxos-linux`
-- run `npm run build` in `js/os-sdk` and `js/pond`
+- Make ActyxOS and related binaries (`actyxos-linux` and `ax`) available by compiling them for the "current" platform as well as the platforms to be tested.
+  The artifacts will be taken from `Cosmos/dist/bin/**` as well as DockerHub, use the `make all` command in the `Cosmos` folder
+- run `npm install && npm run build` in `js/os-sdk` and `js/pond`
 
 Then you can `npm install` and `npm test` in this project. If you forgot to first build the other JS projects, you’ll have to remove `node_modules` and start over.
 
 ## Dev
 
-| Scripts                          | Description                                                        |
-|----------------------------------|--------------------------------------------------------------------|
-| npm test                         | Run test suites EC2 instances and local Docker                     |
-| npm run test:localdocker         | Run test suite local Docker only                                   |
-| npm run test:localdocker:nosetup | Run test suite using local Docker only and skip test project setup |
-| npm run lint:fix                 | Automatically fix lint issues                                      |
-| npm run clean:temp               | Remove the `temp` folder where test projects are cloned and built  |
+| Scripts          | Description                                              |
+|------------------|----------------------------------------------------------|
+| npm test         | Run test suites EC2 instances and local Docker           |
+| npm run lint:fix | Automatically fix lint issues                            |
+| npm run clean    | Remove the `temp` holding test projects and ActyxOS data |
 
-| Environment variable                                | Description              |
-|-----------------------------------------------------|--------------------------|
-| export AX_INTEGRATION_SKIP_SETUP_TEST_PROJECTS=true | Skip setup test projects |
+| Environment variable               | Description                               |
+|------------------------------------|-------------------------------------------|
+| export AX_CI_HOSTS=your_hosts.yaml | Use a different selection of target hosts |
 
-- to run only a single test file use for example: `npx tsc && npx jest --config=jest.local-docker.config.js -- ./dist/src/yourtest.spec.js`
-- common settings are included in `settings.ts`
+When developing test cases it is faster to use a copy of `hosts.yaml` that only uses local nodes by setting `type: local` (like one with `install: linux` and as many as needed with `install: docker`).
+This way the turnaround time is pretty short, allowing you to quickly iterate on only a specific test or suite.
+In this case you may also want to disable the repeated preparation of the test projects by setting `skipTestProjectPreparation: true`.
 
-## Local Docker test suite
+**IMPORTANT PHILOSOPHY NOTE: Only add infrastructure (including configurability) when you actually need it, never add anything proactively!**
 
-The local Docker test suite, usable with `npm run test:localdocker` will test the `ax` cli against a *single* node ActyxOS on Docker published on Docker Hub. It will use as "test projects" the `quickstart` and `DemoMachineKit`.
+## Test Design
 
-Tests run serially and each test should be executed in a "clean" test environment.
-To reset the test environment for each test file the developer has to call the following utility function:
+When creating tests, please follow the rules:
 
-```typescript
-  beforeAll(async () => {
-    await resetTestEviroment()
-  })
-  afterAll(async () => {
-    await resetTestEviroment()
-  })
-```
+- Using nodes from `hosts.ts` (e.g. with `runOnEvery`) needs to consider these as shared resources:
+
+  - no destructive actions like stopping all apps or changing `com.actyx.os` settings
+  - the test must assume that other tests use the same nodes at the same time, so don’t assert “no apps running” or similar
+  - do not change the committed `hosts.yaml` file unless you intend to add to the CI runs
+  - do not add `type: local` nodes to the `hosts.yaml`
+
+- Create per-suite nodes in a `beforeAll` hook using `createNode` (from `create.ts`), this way they will only be created if the suite actually runs and they will automatically be cleaned up afterwards.
+
+- When referring to binaries, always go through the central `settings.ts` functions to allow consistent selection of versions.
+  Add to `settings.ts` if facilities are missing.

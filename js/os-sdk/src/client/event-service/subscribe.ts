@@ -118,7 +118,7 @@ export const subscribeStream = (clientOpts: ApiClientOpts) => (opts: SubscribeSt
         return
       }
 
-      res(Object.assign(streamToEvents(msg), { cancel: () => msg.destroy() }))
+      res(Object.assign(streamToEvents(msg), { cancel: () => req.destroy() }))
     })
 
     req.on('error', rej)

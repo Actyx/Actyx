@@ -33,12 +33,7 @@ describe('fish event store + jar local snapshot behavior', () => {
   forBoth(
     `should create local snapshot for after seeing that enough time has passed from live event`,
     async fishToTest => {
-      const { applyAndGetState, latestSnap } = await snapshotTestSetup(
-        fishToTest,
-        undefined,
-        undefined,
-        true,
-      )
+      const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
 
       const srcV = emitter('V')
       const srcR = emitter('R')
@@ -68,19 +63,14 @@ describe('fish event store + jar local snapshot behavior', () => {
       expect(await applyAndGetState(tl.of('V'))).toEqual([5, 6, 4, 7, 8, 9])
 
       expect(await latestSnap()).toMatchObject({
-        eventKey: { lamport: 10220300 },
+        eventKey: { lamport: 10230300 },
         state: [5, 6],
       })
     },
   )
 
   forBoth(`should create local snapshot wholly from live events`, async fishToTest => {
-    const { applyAndGetState, latestSnap } = await snapshotTestSetup(
-      fishToTest,
-      undefined,
-      undefined,
-      true,
-    )
+    const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
 
     const srcR = emitter('R')
 
@@ -95,12 +85,12 @@ describe('fish event store + jar local snapshot behavior', () => {
 
     expect(await applyAndGetState(timeline)).toEqual([5, 6, 7, 8])
     expect(await latestSnap()).toMatchObject({
-      eventKey: { lamport: 10210400 },
+      eventKey: { lamport: 10220400 },
       state: [5, 6, 7],
     })
   })
 
-  forBoth(`should allow for custom state deserialisation`, async fishTemplate => {
+  forBoth(`should support custom state deserialisation`, async fishTemplate => {
     type ImmutableState = List<number>
 
     const fishToTest: Fish<ImmutableState, NumberFishEvent> = {
@@ -119,12 +109,7 @@ describe('fish event store + jar local snapshot behavior', () => {
       deserializeState: (s: unknown) => List(s as number[]),
     }
 
-    const { applyAndGetState, latestSnap } = await snapshotTestSetup(
-      fishToTest,
-      undefined,
-      undefined,
-      true,
-    )
+    const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
 
     const srcR = emitter('R')
 
@@ -139,7 +124,7 @@ describe('fish event store + jar local snapshot behavior', () => {
 
     expect(await applyAndGetState(timeline)).toEqual(List([5, 6, 7, 8]))
     expect(await latestSnap()).toMatchObject({
-      eventKey: { lamport: 10210400 },
+      eventKey: { lamport: 10220400 },
       state: [5, 6, 7],
     })
   })
@@ -159,19 +144,14 @@ describe('fish event store + jar local snapshot behavior', () => {
 
     const storedEvents = timeline.slice(0, 4)
 
-    const { applyAndGetState, latestSnap } = await snapshotTestSetup(
-      fishToTest,
-      storedEvents,
-      undefined,
-      true,
-    )
+    const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest, storedEvents)
 
     // Need to emit sth. in order to observe
     const liveEvents = timeline.slice(4)
 
     expect(await applyAndGetState(liveEvents)).toEqual([5, 6, 7, 8, 9])
     expect(await latestSnap()).toMatchObject({
-      eventKey: { lamport: 40930400 },
+      eventKey: { lamport: 40940400 },
       state: [5, 6, 7],
     })
   })
@@ -193,29 +173,19 @@ describe('fish event store + jar local snapshot behavior', () => {
     )
 
     const expectedSnap = {
-      eventKey: { lamport: 204770500 },
+      eventKey: { lamport: 204780500 },
       state: [5, 6, 7, 8],
     }
 
     forBoth(`when ingesting all sources at once`, async fishToTest => {
-      const { applyAndGetState, latestSnap } = await snapshotTestSetup(
-        fishToTest,
-        undefined,
-        undefined,
-        true,
-      )
+      const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
 
       expect(await applyAndGetState(timeline.all)).toEqual([5, 6, 7, 8, 9, 10])
       expect(await latestSnap()).toMatchObject(expectedSnap)
     })
 
     forBoth(`when seeing R first`, async fishToTest => {
-      const { applyAndGetState, latestSnap } = await snapshotTestSetup(
-        fishToTest,
-        undefined,
-        undefined,
-        true,
-      )
+      const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
 
       expect(await applyAndGetState(timeline.of('R'))).toEqual([5, 7, 8])
       expect(await applyAndGetState(timeline.of('Q'))).toEqual([5, 6, 7, 8, 9, 10])
@@ -223,12 +193,7 @@ describe('fish event store + jar local snapshot behavior', () => {
     })
 
     forBoth(`when seeing Q first`, async fishToTest => {
-      const { applyAndGetState, latestSnap } = await snapshotTestSetup(
-        fishToTest,
-        undefined,
-        undefined,
-        true,
-      )
+      const { applyAndGetState, latestSnap } = await snapshotTestSetup(fishToTest)
 
       expect(await applyAndGetState(timeline.of('Q'))).toEqual([6, 9, 10])
       expect(await applyAndGetState(timeline.of('R'))).toEqual([5, 6, 7, 8, 9, 10])
@@ -244,12 +209,7 @@ describe('fish event store + jar local snapshot behavior', () => {
     ]
     const storedSnaps = [mkSnapshot([8, 9, 10], 500)]
 
-    const { applyAndGetState } = await snapshotTestSetup(
-      fishToTest,
-      storedEvents,
-      storedSnaps,
-      true,
-    )
+    const { applyAndGetState } = await snapshotTestSetup(fishToTest, storedEvents, storedSnaps)
 
     const currentEvents: Events = mkEvents([
       {
@@ -275,7 +235,6 @@ describe('fish event store + jar local snapshot behavior', () => {
       fishToTest,
       storedEvents,
       storedSnaps,
-      true,
     )
     // Make sure it did not shatter yet, because the stored events are covered by its psn map.
     expect(await latestSnap()).toMatchObject({
@@ -309,7 +268,6 @@ describe('fish event store + jar local snapshot behavior', () => {
         fishToTest,
         tl.all,
         storedSnaps,
-        true,
       )
       // Assert the snapshot has already been invalidated in the initial hydration.
       expect(await latestSnap()).toEqual(undefined)

@@ -15,7 +15,7 @@ import {
 
 const fish = mkNumberFish(semanticSnap)
 
-const setup = () => snapshotTestSetup(fish, undefined, undefined, true)
+const setup = () => snapshotTestSetup(fish)
 
 describe('fish event store + jar semantic snapshot functionality', () => {
   it(`fish should aggegrate events between sources, resetting on semantic snapshots`, async () => {

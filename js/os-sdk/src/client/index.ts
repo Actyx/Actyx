@@ -19,7 +19,7 @@ import { query, queryStream } from './event-service/query'
 import { offsets, offsetsPromise } from './event-service/offsets'
 import { publish, publishPromise } from './event-service/publish'
 import { DefaultClientOpts } from './default-opts'
-import { log } from './console-service/log'
+import { log, logPromise } from './console-service/log'
 import { createSimpleLogger } from './console-service/simple-logger'
 
 /** @internal */
@@ -51,6 +51,7 @@ const eventServiceClient = (opts: ApiClientOpts): EventServiceClient => ({
 /** @internal */
 const consoleServiceClient = (opts: ApiClientOpts): ConsoleServiceClient => ({
   log: log(opts),
+  logPromise: logPromise(opts),
   SimpleLogger: createSimpleLogger(opts),
 })
 

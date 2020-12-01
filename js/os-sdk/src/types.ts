@@ -667,7 +667,7 @@ export interface EventServiceClient {
    * **Example usage**
    *
    * ```typescript
-   * await client.eventService.publish({
+   * await client.eventService.publishPromise({
    *   // Pass in one or more event drafts that you want to publish
    *   eventDrafts: EventDraft.make('testSemantics', 'testName', { foo: 'bar' }),
    * })
@@ -712,7 +712,7 @@ export interface EventServiceClient {
    * **Example usage**
    *
    * ```typescript
-   * const offsets = await client.eventService.offsets()
+   * const offsets = await client.eventService.offsetsPromise()
    * // now use them e.g. for a .queryStream() as upperBound
    * ```
    *
@@ -932,6 +932,41 @@ export interface ConsoleServiceClient {
    * @param opts Either a [[LogEntryDraft]] or a [[LogOpts]] object
    */
   log: (opts: LogOpts | LogEntryDraft) => void
+
+  /**
+   * This function allows you to log a [[LogEntryDraft]] to the ActyxOS Console Service.
+   *
+   * **Example usage**
+   *
+   * ```typescript
+   * import { Client } from '@actyx/os-sdk'
+   *
+   * const ActyxOS = Client()
+   *
+   * await ActyxOS.consoleService.logPromise({
+   *   logName: 'myCustomLogger',
+   *   message: 'this is a WARNING message',
+   *   severity: LogSeverity.WARN,
+   *   producer: {
+   *     name: 'com.example.app1',
+   *     version: '1.0.0'
+   *   },
+   *   additionalData: {
+   *     foo: 'bar',
+   *     bar: {
+   *       foo: true,
+   *     }
+   *   },
+   *   labels: {
+   *     'com.example.app1.auth.username': 'john.doe',
+   *     'com.example.app1.model.events': '10000',
+   *   }
+   * })
+   * ```
+   *
+   * @param opts a [[LogEntryDraft]]
+   */
+  logPromise: (entry: LogEntryDraft) => Promise<void>
 
   /**
    * Create a simple logger with `debug`, `warn`, `info` and `error` functions

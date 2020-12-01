@@ -16,30 +16,14 @@ import {
   Reponse_Swarms_Keygen,
   Reponse_Apps_Validate,
 } from './types'
-import { Either, isLeft } from 'fp-ts/lib/Either'
-import { Errors } from 'io-ts'
+import { isLeft } from 'fp-ts/lib/Either'
 import { PathReporter } from 'io-ts/lib/PathReporter'
 import execa from 'execa'
 import { StringDecoder } from 'string_decoder'
 import { Transform } from 'stream'
 import fetch from 'node-fetch'
 import * as path from 'path'
-
-const rightOrThrow = <A>(e: Either<Errors, A>, obj: unknown): A => {
-  if (isLeft(e)) {
-    throw new Error(
-      e.value
-        .map((err) => {
-          const path = err.context.map(({ key }) => key).join('.')
-          return `invalid ${err.value} at ${path}: ${err.message}`
-        })
-        .join(', ') +
-        ' while parsing ' +
-        JSON.stringify(obj, null, 2),
-    )
-  }
-  return e.value
-}
+import { rightOrThrow } from '../infrastructure/rightOrThrow'
 
 const exec = async (binaryPath: string, args: string[], cwd?: string) => {
   try {
@@ -87,34 +71,34 @@ export const SettingsInput = {
 }
 
 type Exec = {
-  Swarms: {
-    KeyGen: (file?: string) => Promise<Reponse_Swarms_Keygen>
-    State: (port?: number) => Promise<Response_Internal_Swarm_State>
+  swarms: {
+    keyGen: (file?: string) => Promise<Reponse_Swarms_Keygen>
+    state: () => Promise<Response_Internal_Swarm_State>
   }
-  Nodes: {
-    Ls: () => Promise<Response_Nodes_Ls>
+  nodes: {
+    ls: () => Promise<Response_Nodes_Ls>
   }
-  Settings: {
-    Scopes: () => Promise<Response_Settings_Scopes>
-    Get: (scope: string) => Promise<Response_Settings_Get>
-    Set: (scope: string, input: SettingsInput) => Promise<Response_Settings_Set>
-    Unset: (scope: string) => Promise<Response_Settings_Unset>
-    Schema: (scope: string) => Promise<Response_Settings_Schema>
+  settings: {
+    scopes: () => Promise<Response_Settings_Scopes>
+    get: (scope: string) => Promise<Response_Settings_Get>
+    set: (scope: string, input: SettingsInput) => Promise<Response_Settings_Set>
+    unset: (scope: string) => Promise<Response_Settings_Unset>
+    schema: (scope: string) => Promise<Response_Settings_Schema>
   }
-  Apps: {
-    Package: (path: string) => Promise<Response_Apps_Package>
-    PackageCwd: (cwd: string) => Promise<Response_Apps_Package>
-    Deploy: (packagePath: string, force?: boolean) => Promise<Response_Apps_Deploy>
-    Undeploy: (appId: string) => Promise<Response_Apps_Undeploy>
-    Start: (appId: string) => Promise<Response_Apps_Start>
-    Stop: (appId: string) => Promise<Response_Apps_Stop>
-    Ls: () => Promise<Response_Apps_Ls>
-    Validate: (path: string) => Promise<Reponse_Apps_Validate>
-    ValidateCwd: (cwd: string) => Promise<Reponse_Apps_Validate>
-    ValidateMultiApps: (appPaths: ReadonlyArray<string>) => Promise<Reponse_Apps_Validate>
+  apps: {
+    package: (path: string) => Promise<Response_Apps_Package>
+    packageCwd: (cwd: string, path?: string) => Promise<Response_Apps_Package>
+    deploy: (packagePath: string, force?: boolean) => Promise<Response_Apps_Deploy>
+    undeploy: (appId: string) => Promise<Response_Apps_Undeploy>
+    start: (appId: string) => Promise<Response_Apps_Start>
+    stop: (appId: string) => Promise<Response_Apps_Stop>
+    ls: () => Promise<Response_Apps_Ls>
+    validate: (path: string) => Promise<Reponse_Apps_Validate>
+    validateCwd: (cwd: string) => Promise<Reponse_Apps_Validate>
+    validateMultiApps: (appPaths: ReadonlyArray<string>) => Promise<Reponse_Apps_Validate>
   }
-  Logs: {
-    TailFollow: (
+  logs: {
+    tailFollow: (
       onEntry: (entry: Response_Logs_Tail_Entry) => void,
       onError: (error: string) => void,
     ) => () => void
@@ -123,34 +107,34 @@ type Exec = {
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export const mkExec = (binary: string, addr: string): Exec => ({
-  Swarms: {
-    KeyGen: async (file): Promise<Reponse_Swarms_Keygen> => {
+  swarms: {
+    keyGen: async (file): Promise<Reponse_Swarms_Keygen> => {
       const fileArgs = file ? ['-o', file] : []
       const response = await exec(binary, ['swarms', 'keygen', ...fileArgs])
       return rightOrThrow(Reponse_Swarms_Keygen.decode(response), response)
     },
-    State: async (port?: number): Promise<Response_Internal_Swarm_State> => {
-      const response = await fetch(`http://${addr}${port ? `:${port}` : ''}/_internal/swarm/state`)
+    state: async (): Promise<Response_Internal_Swarm_State> => {
+      const response = await fetch(`http://${addr}/_internal/swarm/state`)
       const json = await response.json()
       return rightOrThrow(Response_Internal_Swarm_State.decode(json), json)
     },
   },
-  Nodes: {
-    Ls: async (): Promise<Response_Nodes_Ls> => {
+  nodes: {
+    ls: async (): Promise<Response_Nodes_Ls> => {
       const response = await exec(binary, [`nodes`, `ls`, `--local`, ...addr.split(' ')])
       return rightOrThrow(Response_Nodes_Ls.decode(response), response)
     },
   },
-  Settings: {
-    Scopes: async () => {
+  settings: {
+    scopes: async () => {
       const response = await exec(binary, ['settings', 'scopes', '--local', addr])
       return rightOrThrow(Response_Settings_Scopes.decode(response), response)
     },
-    Get: async (scope: string): Promise<Response_Settings_Get> => {
+    get: async (scope: string): Promise<Response_Settings_Get> => {
       const response = await exec(binary, ['settings', 'get', scope, '--local', addr])
       return rightOrThrow(Response_Settings_Get.decode(response), response)
     },
-    Set: async (scope: string, settingsInput: SettingsInput): Promise<Response_Settings_Set> => {
+    set: async (scope: string, settingsInput: SettingsInput): Promise<Response_Settings_Set> => {
       const input = SettingsInput.match({
         File: (input) => `@${input.path}`,
         Value: (input) => JSON.stringify(input.value),
@@ -158,62 +142,66 @@ export const mkExec = (binary: string, addr: string): Exec => ({
       const response = await exec(binary, [`settings`, `set`, scope, `--local`, input, addr])
       return rightOrThrow(Response_Settings_Set.decode(response), response)
     },
-    Unset: async (scope: string): Promise<Response_Settings_Unset> => {
+    unset: async (scope: string): Promise<Response_Settings_Unset> => {
       const response = await exec(binary, [`settings`, `unset`, scope, `--local`, addr])
       return rightOrThrow(Response_Settings_Unset.decode(response), response)
     },
-    Schema: async (scope: string) => {
+    schema: async (scope: string) => {
       const response = await exec(binary, [`settings`, `schema`, `--local`, scope, addr])
       return rightOrThrow(Response_Settings_Schema.decode(response), response)
     },
   },
-  Apps: {
-    Package: async (path: string): Promise<Response_Apps_Package> => {
+  apps: {
+    package: async (path: string): Promise<Response_Apps_Package> => {
       const response = await exec(binary, [`apps`, `package`, path])
       return rightOrThrow(Response_Apps_Package.decode(response), response)
     },
-    PackageCwd: async (cwd: string): Promise<Response_Apps_Package> => {
-      const response = await exec(binary, [`apps`, `package`], cwd)
+    packageCwd: async (cwd: string, path?: string): Promise<Response_Apps_Package> => {
+      const response = await exec(
+        binary,
+        [`apps`, `package`, ...(path === undefined ? [] : [path])],
+        cwd,
+      )
       return rightOrThrow(Response_Apps_Package.decode(response), response)
     },
-    Deploy: async (packagePath: string, force?: boolean): Promise<Response_Apps_Deploy> => {
+    deploy: async (packagePath: string, force?: boolean): Promise<Response_Apps_Deploy> => {
       const response = await exec(
         binary,
         [`apps`, `deploy`, packagePath, `--local`, addr].concat(force ? ['--force'] : []),
       )
       return rightOrThrow(Response_Apps_Deploy.decode(response), response)
     },
-    Undeploy: async (appId: string): Promise<Response_Apps_Undeploy> => {
+    undeploy: async (appId: string): Promise<Response_Apps_Undeploy> => {
       const response = await exec(binary, [`apps`, `undeploy`, appId, `--local`, addr])
       return rightOrThrow(Response_Apps_Undeploy.decode(response), response)
     },
-    Start: async (appId: string): Promise<Response_Apps_Start> => {
+    start: async (appId: string): Promise<Response_Apps_Start> => {
       const response = await exec(binary, [`apps`, `start`, appId, `--local`, addr])
       return rightOrThrow(Response_Apps_Start.decode(response), response)
     },
-    Stop: async (appId: string): Promise<Response_Apps_Stop> => {
+    stop: async (appId: string): Promise<Response_Apps_Stop> => {
       const response = await exec(binary, [`apps`, `stop`, appId, `--local`, addr])
       return rightOrThrow(Response_Apps_Stop.decode(response), response)
     },
-    Ls: async (): Promise<Response_Apps_Ls> => {
+    ls: async (): Promise<Response_Apps_Ls> => {
       const response = await exec(binary, [`apps`, `ls`, `--local`, addr])
       return rightOrThrow(Response_Apps_Ls.decode(response), response)
     },
-    Validate: async (path: string): Promise<Reponse_Apps_Validate> => {
+    validate: async (path: string): Promise<Reponse_Apps_Validate> => {
       const response = await exec(binary, [`apps`, `validate`, path])
       return rightOrThrow(Reponse_Apps_Validate.decode(response), response)
     },
-    ValidateCwd: async (cwd: string): Promise<Reponse_Apps_Validate> => {
+    validateCwd: async (cwd: string): Promise<Reponse_Apps_Validate> => {
       const response = await exec(binary, [`apps`, `validate`], cwd)
       return rightOrThrow(Reponse_Apps_Validate.decode(response), response)
     },
-    ValidateMultiApps: async (appPaths: ReadonlyArray<string>): Promise<Reponse_Apps_Validate> => {
+    validateMultiApps: async (appPaths: ReadonlyArray<string>): Promise<Reponse_Apps_Validate> => {
       const response = await exec(binary, [`apps`, `validate`, ...appPaths])
       return rightOrThrow(Reponse_Apps_Validate.decode(response), response)
     },
   },
-  Logs: {
-    TailFollow: (
+  logs: {
+    tailFollow: (
       onEntry: (entry: Response_Logs_Tail_Entry) => void,
       onError: (error: string) => void,
     ): (() => void) => {

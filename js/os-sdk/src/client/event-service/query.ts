@@ -128,7 +128,7 @@ export const queryStream = (clientOpts: ApiClientOpts) => (opts: QueryStreamOpts
         return
       }
 
-      res(Object.assign(streamToEvents(msg), { cancel: () => msg.destroy() }))
+      res(Object.assign(streamToEvents(msg), { cancel: () => req.destroy() }))
     })
 
     req.on('error', rej)

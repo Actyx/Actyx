@@ -17,8 +17,8 @@ SHELL := /bin/bash
 
 architectures = aarch64 x86_64 armv7 arm
 
-all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyxos-linux ax,linux-$(arch)/$(bin)))
-all-WINDOWS := windows-x86_64/actyxos.exe windows-x86_64/ax.exe
+all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyxos-linux ax,linux-$(arch)/$(bin))) linux-x86_64/webview-runner.tgz
+all-WINDOWS := $(foreach t,actyxos.exe ax.exe installer webview-runner.zip,windows-x86_64/$t)
 all-ANDROID := actyxos.apk
 
 CARGO_TEST_JOBS := 8
@@ -31,13 +31,19 @@ all-linux: $(patsubst %,dist/bin/%,$(all-LINUX))
 
 all-android: $(patsubst %,dist/bin/%,$(all-ANDROID))
 
-all-windows: $(patsubst %,dist/bin/%,$(all-WINDOWS)) dist/bin/windows-x86_64/installer
+all-windows: $(patsubst %,dist/bin/%,$(all-WINDOWS))
 
 all-js: \
 	dist/js/pond \
 	dist/js/os-sdk
 
-export BUILD_RUST_TOOLCHAIN := 1.47.0
+# Create a `make-always` target that always has the current timestamp.
+# Depending on this ensures that the rule is always executed.
+.PHONY: make-always
+make-always:
+	touch $@
+
+export BUILD_RUST_TOOLCHAIN := 1.48.0
 
 export CARGO_HOME ?= $(HOME)/.cargo
 
@@ -64,12 +70,13 @@ clean:
 	rm -rf js/pond/node_modules
 	rm -rf js/os-sdk/node_modules
 	rm -rf jvm/os-android/gradle/build
+	rm -rf cpp/webview-runner/dist
 	rm -rf dist
 
 # mark things with this dependency to run whenever requested
-.PHONY: prepare prepare-js prepare-rs prepare-docker
+.PHONY: prepare prepare-js prepare-rs prepare-docker prepare-docker-crosscompile
 
-prepare: prepare-js prepare-rs prepare-docker
+prepare: prepare-js prepare-rs prepare-docker prepare-docker-crosscompile
 
 prepare-docker:
 	# used for windows and android rust builds
@@ -80,14 +87,15 @@ prepare-docker:
 	docker pull actyx/cosmos:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
 
-# requires `qemu-user-static` (ubuntu) package; you might need to restart your docker daemon
-# after setting DOCKER_CLI_EXPERIMENTAL=enabled (or adding `"experimental": "enabled"` to `~/.docker/config.json`)
-#
-# In case of errors, try `docker run --rm --privileged multiarch/qemu-user-static --reset -p yes`
-# to be able to build for `linux/arm64`. (https://github.com/docker/buildx/issues/138)
+export DOCKER_CLI_EXPERIMENTAL := enabled
+LITERAL_SPACE :=
+LITERAL_SPACE +=
+LITERAL_COMMA := ,
 prepare-docker-crosscompile:
-	for i in `docker buildx ls | awk '{print $$1}'`; do DOCKER_CLI_EXPERIMENTAL=enabled docker buildx rm $$i; done
-	DOCKER_CLI_EXPERIMENTAL=enabled docker buildx create --platform linux/arm64,linux/amd64,linux/arm/v6,linux/arm/v7 --use
+	./bin/check-docker-requirements.sh check_docker_version
+	./bin/check-docker-requirements.sh enable_multi_arch_support
+	for i in `docker buildx ls | awk '{print $$1}'`; do docker buildx rm $$i; done
+	docker buildx create --platform $(subst $(LITERAL_SPACE),$(LITERAL_COMMA),$(foreach a,$(architectures),$(dockerPlatform-$(a)))) --use
 
 prepare-rs:
 	# install rustup
@@ -252,7 +260,7 @@ dist/bin/current/%: rt-master/target/release/%
 	mkdir -p $(dir $@)
 	cp -a $< $@
 # here % (and thus $*) matches something like ax.exe, so we need to strip the suffix with `basename`
-rt-master/target/release/%:
+rt-master/target/release/%: make-always
 	cd rt-master && cargo --locked build --release --bin $(basename $*)
 
 # In the following the same two-step process is used as for the current os/arch above.
@@ -285,7 +293,7 @@ cargo-extra-options-rt-master/target/x86_64-pc-windows-gnu/release/win.exe:=--no
 # where the build image is computed by first extracting the OS from the target string and then
 # looking into the image-* mapping - this requires the TARGET variable to be set while evaluating!
 define mkBinaryRule =
-rt-master/target/$(TARGET)/release/%: cargo-init
+rt-master/target/$(TARGET)/release/%: cargo-init make-always
 	docker run \
 	  -u $(shell id -u) \
 	  -w /src/rt-master \
@@ -310,7 +318,7 @@ soTargetPatterns = $(foreach t,$(android_so_targets),rt-master/target/$(t)/relea
 # same principle as above for targetPatterns
 $(soTargetPatterns): TARGET = $(word 3,$(subst /, ,$@))
 $(soTargetPatterns): OS = $(word 3,$(subst -, ,$(TARGET)))
-$(soTargetPatterns): cargo-init
+$(soTargetPatterns): cargo-init make-always
 	docker run \
 	  -u $(shell id -u) \
 	  -w /src/rt-master \
@@ -321,7 +329,7 @@ $(soTargetPatterns): cargo-init
 	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
 	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  --rm \
-	  actyx/util:buildrs-x64-latest \
+	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
 	  cargo --locked build -p ax-os-node-ffi --lib --release --target $(TARGET)
 
 # create these so that they belong to the current user (Docker would create as root)
@@ -330,21 +338,21 @@ cargo-init: $(CARGO_HOME)/git $(CARGO_HOME)/registry
 $(CARGO_HOME)/%:
 	mkdir -p $@
 
-jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnodeffi
+jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnodeffi make-always
 	jvm/os-android/bin/get-keystore.sh
 	docker run \
 	  -u $(shell id -u) \
 	  -v `pwd`:/src \
 	  -w /src/jvm/os-android \
 	  --rm \
-	  actyx/util:buildrs-x64-latest \
+	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
       ./gradlew ktlintCheck build assembleRelease androidGitVersion
 
 dist/bin/actyxos.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
 	mkdir -p $(dir $@)
 	cp $< $@
 
-misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/windows-x86_64/ax.exe
+misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/windows-x86_64/ax.exe make-always
 	mkdir -p misc/actyxos-node-manager/bin/win32
 	cp dist/bin/windows-x86_64/ax.exe misc/actyxos-node-manager/bin/win32/
 	docker run \
@@ -358,7 +366,7 @@ dist/bin/windows-x86_64/actyxos-node-manager.exe: misc/actyxos-node-manager/out/
 	mkdir -p $(dir $@)
 	cp -a $</actyxos-node-manager.exe $@
 
-dist/bin/windows-x86_64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyxos.exe
+dist/bin/windows-x86_64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyxos.exe make-always
 	mkdir -p $@
 	cp $</actyxos-node-manager.exe misc/actyxos-win-installer
 	cp dist/bin/windows-x86_64/actyxos.exe misc/actyxos-win-installer
@@ -393,7 +401,6 @@ gitHash=$(shell git log -1 --pretty=%H)
 dockerDir = ops/docker/images
 dockerTargetPatterns = $(foreach a,$(architectures),$(shell arr=(`ls -1 ${dockerDir} | grep -v -e "^musl\\$$"`); printf "docker-build-%s-$(a)\n " "$${arr[@]}"))
 dockerBuildDir = dist/docker
-.PHONY : $(dockerTargetPatterns)
 
 # mapping from arch to docker platform
 dockerPlatform-aarch64 = linux/arm64
@@ -402,7 +409,7 @@ dockerPlatform-armv7 = linux/arm/v7
 dockerPlatform-arm = linux/arm/v6
 DOCKER_REPO ?= actyx/cosmos
 getImageNameDockerhub = $(DOCKER_REPO):$(1)-$(2)-$(3)
-$(dockerTargetPatterns):
+$(dockerTargetPatterns): make-always
 	# must not use `component` here because of dependencies
 	$(eval DOCKER_TAG:=$(subst docker-build-,,$@))
 	$(eval arch:=$(shell echo $(DOCKER_TAG) | cut -f2 -d-))
@@ -438,3 +445,45 @@ $(foreach a,$(architectures),$(eval docker-build-dockerloggingplugin-$(a): dist/
 $(foreach a,$(architectures),$(eval docker-build-actyxos-$(a): dist/bin/linux-$(a)/docker-axosnode docker-build-dockerloggingplugin-$(a)))
 
 docker-build-actyxos: $(foreach a,$(architectures),docker-build-actyxos-$(a))
+
+/tmp/cef-%-x86_64:
+	mkdir -p $@ && \
+	wget -qO- https://cef-builds.spotifycdn.com/cef_binary_86.0.21%2Bg6a2c8e7%2Bchromium-86.0.4240.183_$*64_minimal.tar.bz2 | tar --strip-components 1 -jxf - -C $@
+
+dist/bin/linux-x86_64/webview-runner.tgz: /tmp/cef-linux-x86_64
+	$(eval target_dir:=$(dir $@))
+	mkdir -p $(target_dir)
+	mkdir -p cpp/webview-runner/dist
+	docker run \
+	  -u $(shell id -u) \
+	  -v `pwd`/cpp/webview-runner:/src \
+	  -w /src/dist \
+	  -e HOME=/home/builder \
+	  -v /tmp/cef-linux-x86_64:/tmp/cef \
+	  -e CEF_ROOT=/tmp/cef \
+	  --rm \
+	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
+	  bash -c 'cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release .. && make -j$(CARGO_BUILD_JOBS) webview-runner'
+	tar cvfz $@ -C cpp/webview-runner/dist/src/Release .
+
+# The docker image `actyx/util:msvc16-x64-latest` is used for cross compilation
+# to Windows. This image uses wine to run the MSVC toolchain, as CEF3 doesn't
+# support MinGW.  The container has been created with
+# https://github.com/Actyx/MSVCDocker
+dist/bin/windows-x86_64/webview-runner.zip: /tmp/cef-windows-x86_64
+	$(eval target_dir:=$(dir $@))
+	mkdir -p $(target_dir)
+	cd cpp/webview-runner && \
+		rm -rf dist && \
+		mkdir dist && \
+		docker run \
+		  -v `pwd`:/host/ \
+			-w /host/dist \
+			-u $(shell id -u):$(shell id -g) \
+			-e CEF_ROOT=Z:/tmp/cef \
+			-v /tmp/cef-windows-x86_64:/tmp/cef \
+			-e MSVCARCH=64 \
+			--rm \
+			actyx/util:msvc16-x64-latest \
+			bash -c 'vcwine cmake -G "NMake Makefiles JOM" -DCMAKE_BUILD_TYPE=Release -Wno-dev .. && vcwine jom'
+	(cd cpp/webview-runner/dist/src/Release && zip -r - .) > $@

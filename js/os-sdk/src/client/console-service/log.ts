@@ -46,3 +46,7 @@ export const log = (clientOpts: ApiClientOpts) => (opts: LogOpts | LogEntryDraft
     onError: iOpts.onError,
   })
 }
+
+/** @internal */
+export const logPromise = (clientOpts: ApiClientOpts) => (entry: LogEntryDraft) =>
+  new Promise<void>((onLogged, onError) => log(clientOpts)({ entry, onLogged, onError }))

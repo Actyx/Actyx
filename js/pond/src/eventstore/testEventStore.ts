@@ -10,7 +10,7 @@ import { Observable, ReplaySubject, Scheduler, Subject } from 'rxjs'
 import log from '../store/loggers'
 import { SubscriptionSet, subscriptionsToEventPredicate } from '../subscription'
 import { EventKey, Lamport, Psn, SourceId, Timestamp } from '../types'
-import { getInsertionIndex, mergeSortedInto } from '../util'
+import { binarySearch, mergeSortedInto } from '../util'
 import {
   EventStore,
   RequestAllEvents,
@@ -123,16 +123,30 @@ const ordOffsetsEvent = (offsets: OffsetMapWithDefault, events: Events) => (i: n
   )
 }
 
-const filterEvents = (
+const filterSortedEvents = (
+  events: Events,
   from: OffsetMapWithDefault,
   to: OffsetMapWithDefault,
   subs: SubscriptionSet,
   min?: EventKey,
-) => (events: Events): Events => {
-  const sliceStart = min ? getInsertionIndex(events, min, EventKey.ord.compare) : 0
+): Event[] => {
+  // If min is given, should be among the existing events
+  const sliceStart = min ? binarySearch(events, min, EventKey.ord.compare) + 1 : 0
 
   return events
     .slice(sliceStart)
+    .filter(isBetweenPsnLimits(from, to))
+    .filter(subscriptionsToEventPredicate(subs))
+}
+
+const filterUnsortedEvents = (
+  from: OffsetMapWithDefault,
+  to: OffsetMapWithDefault,
+  subs: SubscriptionSet,
+  min?: EventKey,
+) => (events: Events): Event[] => {
+  return events
+    .filter(ev => !min || EventKey.ord.compare(ev, min) > 0)
     .filter(isBetweenPsnLimits(from, to))
     .filter(subscriptionsToEventPredicate(subs))
 }
@@ -210,9 +224,12 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
   const persistedEvents: RequestPersistedEvents = (from, to, subs, sortOrder, min) => {
     const events = getPersistedPreFiltered(from, to)
 
-    const ret = sortOrder === PersistedEventsSortOrders.ReverseEventKey ? events.reverse() : events
+    const filtered = filterSortedEvents(events, from, to, subs, min)
 
-    return Observable.from(chunksOf(ret, eventChunkSize)).map(filterEvents(from, to, subs, min))
+    const ret =
+      sortOrder === PersistedEventsSortOrders.ReverseEventKey ? filtered.reverse() : filtered
+
+    return Observable.from(chunksOf(ret, eventChunkSize)).defaultIfEmpty([])
   }
 
   const liveStream: RequestAllEvents = (from, to, subs, sortOrder, min) => {
@@ -223,7 +240,7 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
     return (
       live
         .asObservable()
-        .map(filterEvents(from, to, subs, min))
+        .map(filterUnsortedEvents(from, to, subs, min))
         // Delivering live events may trigger new events (via onStateChange) and again new events,
         // until we exhaust the call stack. The prod store shouldn’t have that problem due to obvious reasons.
         .observeOn(Scheduler.queue)
