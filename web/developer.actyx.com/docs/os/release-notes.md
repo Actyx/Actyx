@@ -17,14 +17,17 @@ Download:
 - [Actyx Downloads page](https://downloads.actyx.com/)
 
 ### New features
+
 - Introduced [ActyxOS on Linux in beta version](advanced-guides/actyxos-on-linux.md)
 - ActyxOS nodes start up without the need to set settings
 - Many performance improvements
 
 ### Bug fixes
-- Nodes running ActyxOS on Android no longer crash during startup 
+
+- Nodes running ActyxOS on Android no longer crash during startup
 - Nodes reliably start after an ActyxOS update
 - Many stability improvements around our core infrastructure
+
 ## ActyxOS 1.0.0
 
 Release date: 28.08.2020

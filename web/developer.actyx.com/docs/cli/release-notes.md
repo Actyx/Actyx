@@ -14,9 +14,12 @@ Release date: 7.12.2020
 
 ### New features
 
-
+- placeholder
+  
 ### Bug Fixes
 
+- placeholder
+  
 ## Actyx CLI 1.0.0
 
 Release date: 28.08.2020
