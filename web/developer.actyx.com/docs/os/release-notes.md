@@ -19,14 +19,20 @@ Download:
 ### New features
 
 - Introduced [ActyxOS on Linux in beta version](advanced-guides/actyxos-on-linux.md)
-- ActyxOS nodes start up without the need to set settings
+- ActyxOS nodes start up without the need to set settings by having default settings for all required values
 - Many performance improvements
 
 ### Bug fixes
 
-- Nodes running ActyxOS on Android no longer crash during startup
-- Nodes reliably start after an ActyxOS update
 - Many stability improvements around our core infrastructure
+- fixed an issue that resulted in a node crash if there are gaps in event offsets
+- fixed an issue that led to ActyxOS on Android crashing if started without available network interface
+- fixed an issue that resulted in default node settings not being used after manually set settings were unset
+- changed the node settings schema so that properties with default values are not required anymore
+- fixed an issue that led to ActyxOS not validating apps if optional properties in the manifest were missing (`description` and `settingsSchema`)
+- fixed an issue that resulted in the node crashing if configured with an invalid bootstrap node address
+- Fixed an issue that prohibited access to the [Console Service logging API](/os/api/console-service.md) from the browser and WebView Runtime due to CORS restrictions
+
 
 ## ActyxOS 1.0.0
 
