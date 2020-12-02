@@ -167,10 +167,10 @@ const _getAxConsoleServiceUriFromInjectedAx = (): string | null => {
       !window.ax ||
       // eslint-disable-next-line
       // @ts-ignore
-      !window.ax.eventServiceUri ||
+      !window.ax.consoleServiceUri ||
       // eslint-disable-next-line
       // @ts-ignore
-      typeof window.ax.eventServiceUri !== 'string'
+      typeof window.ax.consoleServiceUri !== 'string'
     ) {
       return null
     }
