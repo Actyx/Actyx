@@ -242,7 +242,17 @@ If your app has no settings, you can just leave the property `settingsSchema` ou
 }
 ```
 
-ActyxOS will check the default value against the rest of the schema as part of deploying the app, and since the default is already valid you won’t need to explicitly provide any settings to get the app into the configured state.
+A stricter approach is to forbid any different settings:
+
+```json
+{
+  "type": "object",
+  "additionalProperties": false,
+  "default": {}
+}
+```
+
+In either case, ActyxOS will check the default value against the rest of the schema as part of deploying the app, and since the default is already valid you won’t need to explicitly provide any settings to get the app into the configured state.
 
 :::tip
 As configuring apps with the ActyxOS settings management entails many advantages, we advise to only use the above settings schema if your app is not configurable at all.
