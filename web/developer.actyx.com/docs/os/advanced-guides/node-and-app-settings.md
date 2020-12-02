@@ -135,6 +135,10 @@ The primary tool for setting settings, both at the node and the app level, is th
 
 Let's jump into an example, where we want to configure a brand-new ActyxOS node. First we create a new file &mdash; let's call it `node-settings.yml` and set all the settings to the values we want:
 
+:::tip Default node settings
+ActyxOS nodes have default values for all settings that ActyxOS needs to work locally. You can find the node settings schema that contains the default values [here](../api/node-settings-schema.md).
+:::
+
 ```yml
 general:
   displayName: My Test Node
@@ -230,8 +234,7 @@ Following association of this schema with your app, ActyxOS will now ensure that
 
 #### Deploying an app without settings
 
-If your app has no settings, ActyxOS still needs a settings schema.
-You may define a settings schema that does not require any settings and provides an empty object as default:
+If your app has no settings, you can just leave the property `settingsSchema` out of your Actyx manifest. ActyxOS will then automatically add a settings schema to your app that does not require any settings, and provides an empty object as default:
 
 ```json
 {
@@ -239,17 +242,7 @@ You may define a settings schema that does not require any settings and provides
 }
 ```
 
-A stricter approach is to forbid any different settings:
-
-```json
-{
-  "type": "object",
-  "additionalProperties": false,
-  "default": {}
-}
-```
-
-In either case, ActyxOS will check the default value against the rest of the schema as part of deploying the app, and since the default is already valid you won’t need to explicitly provide any settings to get the app into the configured state.
+ActyxOS will check the default value against the rest of the schema as part of deploying the app, and since the default is already valid you won’t need to explicitly provide any settings to get the app into the configured state.
 
 :::tip
 As configuring apps with the ActyxOS settings management entails many advantages, we advise to only use the above settings schema if your app is not configurable at all.
