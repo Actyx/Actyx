@@ -61,7 +61,9 @@ describe('the Infrastructure', () => {
       })
       for await (const event of sub) {
         events.push(event)
-        if (events.length === 2) break
+        if (events.length === 2) {
+          break
+        }
       }
       return events
     })
@@ -70,8 +72,10 @@ describe('the Infrastructure', () => {
 
     const ev1 = events[0].map((ev) => ev.stream.streamName)
     ev1.sort()
+
     const ev2 = events[1].map((ev) => ev.stream.streamName)
     ev2.sort()
+
     const expected = allNodeNames().slice(0, 2)
     expected.sort()
 

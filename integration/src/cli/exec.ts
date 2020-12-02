@@ -13,8 +13,8 @@ import {
   Response_Internal_Swarm_State,
   Response_Settings_Scopes,
   Response_Settings_Schema,
-  Reponse_Swarms_Keygen,
-  Reponse_Apps_Validate,
+  Response_Swarms_Keygen,
+  Response_Apps_Validate,
 } from './types'
 import { isLeft } from 'fp-ts/lib/Either'
 import { PathReporter } from 'io-ts/lib/PathReporter'
@@ -72,7 +72,7 @@ export const SettingsInput = {
 
 type Exec = {
   swarms: {
-    keyGen: (file?: string) => Promise<Reponse_Swarms_Keygen>
+    keyGen: (file?: string) => Promise<Response_Swarms_Keygen>
     state: () => Promise<Response_Internal_Swarm_State>
   }
   nodes: {
@@ -80,7 +80,7 @@ type Exec = {
   }
   settings: {
     scopes: () => Promise<Response_Settings_Scopes>
-    get: (scope: string) => Promise<Response_Settings_Get>
+    get: (scope: string, noDefaults?: boolean) => Promise<Response_Settings_Get>
     set: (scope: string, input: SettingsInput) => Promise<Response_Settings_Set>
     unset: (scope: string) => Promise<Response_Settings_Unset>
     schema: (scope: string) => Promise<Response_Settings_Schema>
@@ -93,9 +93,9 @@ type Exec = {
     start: (appId: string) => Promise<Response_Apps_Start>
     stop: (appId: string) => Promise<Response_Apps_Stop>
     ls: () => Promise<Response_Apps_Ls>
-    validate: (path: string) => Promise<Reponse_Apps_Validate>
-    validateCwd: (cwd: string) => Promise<Reponse_Apps_Validate>
-    validateMultiApps: (appPaths: ReadonlyArray<string>) => Promise<Reponse_Apps_Validate>
+    validate: (path: string) => Promise<Response_Apps_Validate>
+    validateCwd: (cwd: string) => Promise<Response_Apps_Validate>
+    validateMultiApps: (appPaths: ReadonlyArray<string>) => Promise<Response_Apps_Validate>
   }
   logs: {
     tailFollow: (
@@ -108,10 +108,10 @@ type Exec = {
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export const mkExec = (binary: string, addr: string): Exec => ({
   swarms: {
-    keyGen: async (file): Promise<Reponse_Swarms_Keygen> => {
+    keyGen: async (file): Promise<Response_Swarms_Keygen> => {
       const fileArgs = file ? ['-o', file] : []
       const response = await exec(binary, ['swarms', 'keygen', ...fileArgs])
-      return rightOrThrow(Reponse_Swarms_Keygen.decode(response), response)
+      return rightOrThrow(Response_Swarms_Keygen.decode(response), response)
     },
     state: async (): Promise<Response_Internal_Swarm_State> => {
       const response = await fetch(`http://${addr}/_internal/swarm/state`)
@@ -130,8 +130,11 @@ export const mkExec = (binary: string, addr: string): Exec => ({
       const response = await exec(binary, ['settings', 'scopes', '--local', addr])
       return rightOrThrow(Response_Settings_Scopes.decode(response), response)
     },
-    get: async (scope: string): Promise<Response_Settings_Get> => {
-      const response = await exec(binary, ['settings', 'get', scope, '--local', addr])
+    get: async (scope: string, noDefaults?: boolean): Promise<Response_Settings_Get> => {
+      const response = await exec(
+        binary,
+        ['settings', 'get', scope, '--local', addr].concat(noDefaults ? ['--no-defaults'] : []),
+      )
       return rightOrThrow(Response_Settings_Get.decode(response), response)
     },
     set: async (scope: string, settingsInput: SettingsInput): Promise<Response_Settings_Set> => {
@@ -187,17 +190,17 @@ export const mkExec = (binary: string, addr: string): Exec => ({
       const response = await exec(binary, [`apps`, `ls`, `--local`, addr])
       return rightOrThrow(Response_Apps_Ls.decode(response), response)
     },
-    validate: async (path: string): Promise<Reponse_Apps_Validate> => {
+    validate: async (path: string): Promise<Response_Apps_Validate> => {
       const response = await exec(binary, [`apps`, `validate`, path])
-      return rightOrThrow(Reponse_Apps_Validate.decode(response), response)
+      return rightOrThrow(Response_Apps_Validate.decode(response), response)
     },
-    validateCwd: async (cwd: string): Promise<Reponse_Apps_Validate> => {
+    validateCwd: async (cwd: string): Promise<Response_Apps_Validate> => {
       const response = await exec(binary, [`apps`, `validate`], cwd)
-      return rightOrThrow(Reponse_Apps_Validate.decode(response), response)
+      return rightOrThrow(Response_Apps_Validate.decode(response), response)
     },
-    validateMultiApps: async (appPaths: ReadonlyArray<string>): Promise<Reponse_Apps_Validate> => {
+    validateMultiApps: async (appPaths: ReadonlyArray<string>): Promise<Response_Apps_Validate> => {
       const response = await exec(binary, [`apps`, `validate`, ...appPaths])
-      return rightOrThrow(Reponse_Apps_Validate.decode(response), response)
+      return rightOrThrow(Response_Apps_Validate.decode(response), response)
     },
   },
   logs: {
