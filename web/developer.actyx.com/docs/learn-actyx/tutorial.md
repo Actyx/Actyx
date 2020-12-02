@@ -45,81 +45,47 @@ If you have disabled mDNS in your network, you will have to ensure your devices 
 
 Now, let's get right to it. In this section we will turn your devices into ActyxOS nodes, configure the nodes, and set up the basic directory structure for the app we will build.
 
-### Setup a Docker device
-
-If you don't have Docker installed on your PC already, you can install it from [here](https://docs.docker.com/get-docker/).
-
-ActyxOS on Docker is publicly available on [Docker Hub](https://hub.docker.com/r/actyx/os). To download and run the latest version please execute the following command from your CLI.
+### Setup your local device
 
 <Tabs
-  defaultValue="windows"
+  groupId="operating-systems"
+  defaultValue="windows/macos"
   values={[
-    { label: 'Windows/macOS', value: 'windows', },
-    { label: 'Linux', value: 'unix', },
+    { label: 'Windows/Linux', value: 'windows/linux', },
+    { label: 'macOS', value: 'macos', },
   ]
 }>
-<TabItem value="windows">
+<TabItem value="windows/linux">
 
-```text
-docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyxos-data:/data --privileged -p 4001:4001 -p 4457:4457 -p 4243:4243 -p 4454:4454 actyx/os
-```
+ActyxOS currently runs natively on Windows and Linux. To install ActyxOS on one of these operating systems, please download the respective installer from [our downloads](https://downloads.actyx.com/) and install ActyxOS as you would with any other application. You can also find detailled installation guides for [Windows](../os/advanced-guides/actyxos-on-windows.md) and [Linux](../os/advanced-guides/actyxos-on-linux.md).
 
 </TabItem>
-<TabItem value="unix">
+<TabItem value="macos">
+
+If you are working on a Mac, you can use ActyxOS on Docker. 
+If you don't have Docker installed on your Mac already, you can install it from [here](https://docs.docker.com/get-docker/). 
+ActyxOS on Docker is publicly available on [Docker Hub](https://hub.docker.com/r/actyx/os). 
+To download and run the latest version please execute the following command from your terminal.
 
 ```text
 docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyx-data:/data --privileged --network=host actyx/os
 ```
 
-</TabItem>
-</Tabs>
+Since Docker does not support peer discovery via mDNS, you need to configure your Docker node with a bootstrap node. To do that, please paste the following command into your terminal.
+
+```text
+ax settings set --local com.actyx.os/general/bootstrapnode ["/dns4/demo-bootstrap.actyx.net/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH"] localhost
+```
 
 If you get stuck or want to learn more about ActyxOS on Docker check out [this guide](/os/advanced-guides/actyxos-on-docker.md).
+</TabItem>
+</Tabs>
 
 ### Setup an Android device
 
 ActyxOS on Android is publicly available from the [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android&hl=en). Just open the Google Play store on your Android device, search for ActyxOS and install it. To start ActyxOS, just open the app like any other.
 
 If you get stuck or want to learn more about ActyxOS on Android check out [this guide](/os/advanced-guides/actyxos-on-android.md)
-
-### Configure your nodes
-
-Now that you have two devices running ActyxOS, note their IP addresses. On Android, you can find the IP address from the ActyxOS System Info tab or directly from your settings. For your local machine, it depends on the operating system that you are running. A quick online search should do the job.
-
-On your local machine now install the ActyxOS Node Manager, which you can download from [downloads.actyx.com](https://downloads.actyx.com). Once installed, use it to connect to each of the ActyxOS nodes using the devices' IP addresses. Then navigate to the _Settings_ tab and paste the following settings for the `com.actyx.os` namespace, choose a `displayName` of your choice, and then click _Save_.
-
-```json
-{
-   "general": {
-      "bootstrapNodes": [
-         "/ip4/3.125.108.42/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH"
-      ],
-      "displayName": "Display Name",
-      "swarmKey": "L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCmQ3YjBmNDFjY2ZlYTEyM2FkYTJhYWI0MmY2NjRjOWUyNWUwZWYyZThmNGJjNjJlOTg3NmE3NDU1MTc3ZWQzOGIK"
-   },
-   "licensing": {
-      "os": "development",
-      "apps": {}
-   },
-   "services": {
-      "consoleService": {},
-      "eventService": {
-         "readOnly": false,
-         "topic": "SampleTopic"
-      },
-      "dockerRuntime": {},
-      "webViewRuntime": {}
-   }
-}
-```
-
-This is what it should look like approximately:
-
-![Set node settings using the ActyxOS Node Manager](/images/tutorials/chat-tutorial/set-settings-using-node-manager.png)
-
-If everything has worked, you should see the ActyxOS node running on both devices as shown below:
-
-![Correctly running ActyxOS node in Node Manager](/images/tutorials/chat-tutorial/working-actyxos-node-in-node-manager.png)
 
 ### Setup a web app project
 
