@@ -3,7 +3,6 @@
   "$id": "https://developer.actyx.com/schemas/os/node-settings.schema.json",
   "type": "object",
   "additionalProperties": false,
-  "required": [],
   "properties": {
     "general": {
       "$ref": "#/definitions/General"
@@ -77,7 +76,6 @@
     },
     "General": {
       "type": "object",
-      "required": [],
       "additionalProperties": false,
       "properties": {
         "swarmKey": {
@@ -109,6 +107,7 @@
         },
         "logLevels": {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "os": {
               "$ref": "#/definitions/Composite/LogLevel"
@@ -137,7 +136,6 @@
     },
     "Licensing": {
       "type": "object",
-      "required": [],
       "additionalProperties": false,
       "properties": {
         "os": {
@@ -160,7 +158,6 @@
     "Services": {
       "EventService": {
         "type": "object",
-        "required": [],
         "additionalProperties": false,
         "properties": {
           "topic": {
@@ -173,32 +170,27 @@
           },
           "_internal": {
             "type": "object",
-            "required": [],
             "additionalProperties": true
           }
         }
       },
       "BlobService": {
         "type": "object",
-        "required": [],
         "additionalProperties": false,
         "properties": {}
       },
       "ConsoleService": {
         "type": "object",
-        "required": [],
         "additionalProperties": false,
         "properties": {}
       },
       "DockerRuntime": {
         "type": "object",
-        "required": [],
         "additionalProperties": false,
         "properties": {}
       },
       "WebViewRuntime": {
         "type": "object",
-        "required": [],
         "additionalProperties": false,
         "properties": {}
       }
