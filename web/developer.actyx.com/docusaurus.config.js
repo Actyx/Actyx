@@ -19,7 +19,7 @@ module.exports = {
     announcementBar: {
       id: 'pond-2.3.0',
       content:
-        '🚀 We released v2.3.0 of Actyx Pond! Read the <a target="_blank" rel="noopener noreferrer" href="https://developer.actyx.com/blog/2020/11/18/pond-230-release">Blog Post</a> to learn more! 🚀',
+        '🥁 We released version 1.1.0 of ActyxOS! Read the <a target="_blank" rel="noopener noreferrer" href="https://developer.actyx.com/blog/2020/12/07/actyxos-1-1-0-release">blog post</a> to learn more or check out <a target="_blank" rel="noopener noreferrer" href="https://developer.actyx.com/docs/os/release-notes">release notes</a> ! 🥁',
       backgroundColor: '#f5f6f7',
       textColor: '#000',
     },
