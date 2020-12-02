@@ -894,7 +894,7 @@ export interface ConsoleServiceClient {
    * **Example usage**
    *
    * ```typescript
-   * import { Client } from '@actyx/os-sdk'
+   * import { Client, LogSeverity } from '@actyx/os-sdk'
    *
    * const ActyxOS = Client()
    *
