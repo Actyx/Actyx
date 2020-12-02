@@ -84,7 +84,7 @@ You should see something like:
 </TabItem>
 </Tabs>
 
-Congratulations, you have successfully installed <em>ActyxOS on Windows</em>! Please note that ActyxOS is **not** operational, as you did not configure it yet. If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
+Congratulations, you have successfully installed <em>ActyxOS on Android</em>! While you can already use ActyxOS locally, you may have to – depending on your exact setup – configure it to be able to connect to other ActyxOS nodes. If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
 
 ### Where to go next
 
