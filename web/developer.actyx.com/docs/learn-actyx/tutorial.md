@@ -49,7 +49,7 @@ Now, let's get right to it. In this section we will turn your devices into Actyx
 
 <Tabs
   groupId="operating-systems"
-  defaultValue="windows/macos"
+  defaultValue="windows/linux"
   values={[
     { label: 'Windows/Linux', value: 'windows/linux', },
     { label: 'macOS', value: 'macos', },
@@ -62,9 +62,9 @@ ActyxOS currently runs natively on Windows and Linux. To install ActyxOS on one 
 </TabItem>
 <TabItem value="macos">
 
-If you are working on a Mac, you can use ActyxOS on Docker. 
-If you don't have Docker installed on your Mac already, you can install it from [here](https://docs.docker.com/get-docker/). 
-ActyxOS on Docker is publicly available on [Docker Hub](https://hub.docker.com/r/actyx/os). 
+If you are working on a Mac, you can use ActyxOS on Docker.
+If you don't have Docker installed on your Mac already, you can install it from [here](https://docs.docker.com/get-docker/).
+ActyxOS on Docker is publicly available on [Docker Hub](https://hub.docker.com/r/actyx/os).
 To download and run the latest version please execute the following command from your terminal.
 
 ```text
