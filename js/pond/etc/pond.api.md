@@ -249,6 +249,7 @@ export const noEvents: Where<never>;
 // @beta
 export type ObserveAllOpts = Partial<{
     caching: Caching;
+    expireAfterSeed: Milliseconds;
     expireAfterFirst: Milliseconds;
 }>;
 
@@ -262,8 +263,8 @@ export type PendingEmission = {
 export type Pond = {
     emit<E>(tags: Tags<E>, event: E): PendingEmission;
     observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription;
-    observeAll<F, S>(firstEventsSelector: Where<F>, makeFish: (firstEvent: F) => Fish<S, any>, opts: ObserveAllOpts, callback: (states: S[]) => void): CancelSubscription;
-    observeOne<F, S>(firstEventSelector: Where<F>, makeFish: (firstEvent: F) => Fish<S, any>, callback: (newState: S) => void): CancelSubscription;
+    observeAll<ESeed, S>(seedEventsSelector: Where<ESeed>, makeFish: (seedEvent: ESeed) => Fish<S, any> | undefined, opts: ObserveAllOpts, callback: (states: S[]) => void): CancelSubscription;
+    observeOne<ESeed, S>(seedEventSelector: Where<ESeed>, makeFish: (seedEvent: ESeed) => Fish<S, any>, callback: (newState: S) => void): CancelSubscription;
     run<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>): PendingEmission;
     keepRunning<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>, autoCancel?: (state: S) => boolean): CancelSubscription;
     dispose(): void;

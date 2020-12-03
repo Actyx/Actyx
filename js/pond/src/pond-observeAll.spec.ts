@@ -11,7 +11,7 @@ type InitFish = {
   readonly fishSpecificTag: string
 }
 
-const firstEvents = Tag<InitFish>('init')
+const seedEvents = Tag<InitFish>('init')
 
 const makeMakeFish = (overrides?: (f: InitFish) => Partial<Fish<FishState, unknown>>) => (
   f: InitFish,
@@ -31,7 +31,7 @@ const makeMakeFish = (overrides?: (f: InitFish) => Partial<Fish<FishState, unkno
 
 const initFish = (pond: Pond, ...tags: unknown[]) => {
   for (const fishSpecificTag of tags) {
-    pond.emit(firstEvents, { fishSpecificTag: String(fishSpecificTag) })
+    pond.emit(seedEvents, { fishSpecificTag: String(fishSpecificTag) })
   }
 }
 
@@ -47,7 +47,7 @@ const expectFishWithEvents = async (
 ) => {
   const states = await new Observable<FishState[]>(o =>
     pond.observeAll(
-      firstEvents,
+      seedEvents,
       makeFish,
       {
         // Randomly enable or disable caching - should make no difference
@@ -71,7 +71,7 @@ const expectFishWithEvents = async (
 }
 
 describe('Pond.observeAll', () => {
-  it('should create all fish identified by firstEvents', async () => {
+  it('should create all fish identified by seedEvents', async () => {
     const pond = Pond.test()
 
     const makeFish = makeMakeFish()
@@ -87,11 +87,11 @@ describe('Pond.observeAll', () => {
     pond.dispose()
   })
 
-  it('should update all fish identified by firstEvents', async () => {
+  it('should update all fish identified by seedEvents', async () => {
     const pond = Pond.test()
 
     const makeFish = makeMakeFish((f: InitFish) => ({
-      where: Tag(f.fishSpecificTag).or(firstEvents),
+      where: Tag(f.fishSpecificTag).or(seedEvents),
     }))
 
     initFish(pond, 1, 2, 3)
@@ -147,7 +147,7 @@ describe('Pond.observeAll', () => {
     // Make the same fish from every event
     const makeFish = makeMakeFish(_f => ({
       fishId: FishId.of('same', 'same', 1),
-      where: firstEvents,
+      where: seedEvents,
     }))
 
     // Latest writer wins -- users should take care to actually make the same Fish,
@@ -181,7 +181,7 @@ describe('Pond.observeAll', () => {
     pond.dispose()
   })
 
-  it('should deliver events older than the first event', async () => {
+  it('should deliver events older than the seed event', async () => {
     const pond = Pond.test()
 
     pond.emit(Tag('1'), 'whatever')
@@ -194,6 +194,29 @@ describe('Pond.observeAll', () => {
     await expectFishWithEvents(pond, makeFish, {
       1: 2,
       2: 0,
+    })
+
+    pond.dispose()
+  })
+
+  it('should just ignore events where makeFish returns undefined', async () => {
+    const pond = Pond.test()
+
+    const maybeMakeFish = (f: InitFish): Fish<FishState, unknown> => {
+      if (f.fishSpecificTag.length === 1) {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        return undefined!
+      }
+
+      return makeMakeFish()(f)
+    }
+
+    initFish(pond, 1, 30, 2, 3, 20, 30)
+
+    // All numbers with length=1 are ignored..
+    await expectFishWithEvents(pond, maybeMakeFish, {
+      20: 0,
+      30: 0,
     })
 
     pond.dispose()
@@ -213,7 +236,7 @@ describe('Pond.observeAll', () => {
     initFish(pond, 2, 5)
 
     const states = new Observable<FishState[]>(o =>
-      pond.observeAll(firstEvents, makeFish, { expireAfterFirst: Milliseconds.of(18) }, x =>
+      pond.observeAll(seedEvents, makeFish, { expireAfterSeed: Milliseconds.of(4) }, x =>
         o.next(x),
       ),
     )
@@ -221,7 +244,7 @@ describe('Pond.observeAll', () => {
       .first()
       .toPromise()
 
-    // 2 got another first event, so it’s included -- the others are dropped
+    // 2 got another seed event, so it’s included -- the others are dropped
     await expectFishWithEvents(pond, makeFish, {
       2: 0,
       5: 0,
@@ -245,7 +268,7 @@ describe('Pond.observeAll', () => {
     }
 
     const cancel = pond.observeAll(
-      firstEvents,
+      seedEvents,
       makeFish,
       {
         caching: Caching.inProcess('test'),
@@ -263,7 +286,7 @@ describe('Pond.observeAll', () => {
 
     // However, hitting the cache should immediately supply the last value, rather than wait for any change
     const cancel2 = pond.observeAll(
-      firstEvents,
+      seedEvents,
       makeFish,
       {
         caching: Caching.inProcess('test'),
@@ -278,16 +301,16 @@ describe('Pond.observeAll', () => {
   })
 })
 
-describe('Pond.observeAny', () => {
-  const firstEvent = firstEvents
+describe('Pond.observeOne', () => {
+  const seedEvent = seedEvents
 
   const readState = async (pond: Pond, makeFish: (f: InitFish) => Fish<FishState, unknown>) =>
-    new Observable<FishState>(o => pond.observeOne(firstEvent, makeFish, x => o.next(x)))
+    new Observable<FishState>(o => pond.observeOne(seedEvent, makeFish, x => o.next(x)))
       .debounceTime(0)
       .first()
       .toPromise()
 
-  it('should create the Fish from firstEvent', async () => {
+  it('should create the Fish from seedEvent', async () => {
     const pond = Pond.test()
 
     pond.emit(Tag('1'), '.')
@@ -304,10 +327,10 @@ describe('Pond.observeAny', () => {
     pond.dispose()
   })
 
-  it('should allow multiple firstEvent, choosing any of them', async () => {
+  it('should allow multiple seedEvent, choosing any of them', async () => {
     const pond = Pond.test()
     const makeFish = makeMakeFish(() => ({
-      where: firstEvent,
+      where: seedEvent,
     }))
 
     initFish(pond, 4, 4, 4)

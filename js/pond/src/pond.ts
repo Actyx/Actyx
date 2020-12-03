@@ -14,7 +14,7 @@ import { TestEvent } from './eventstore/testEventStore'
 import { AllEventsSortOrders, ConnectivityStatus, Events } from './eventstore/types'
 import { extendDefaultWsStoreConfig, mkMultiplexer } from './eventstore/utils'
 import { getSourceId } from './eventstore/websocketEventStore'
-import { CommandPipeline, FishJar } from './fishJar'
+import { CommandPipeline, FishJar, StartedFishMap } from './fishJar'
 import log from './loggers'
 import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
 import { SnapshotStore } from './snapshotStore'
@@ -170,9 +170,10 @@ export type Pond = {
    * @typeParam F        - Type of the events used to initialize Fish.
    * @typeParam S        - Type of the observed Fish’s state.
    *
-   * @param firstEventsSelector  - A `Where<F>` object identifying the first events to start Fish from
+   * @param seedEventsSelector  - A `Where<F>` object identifying the seed events to start Fish from
    * @param makeFish     - Factory function to create a Fish with state `S` from an event of type `F`.
    *                       If Fish with same FishId are created by makeFish, these Fish must be identical!
+   *                       `undefined` may be returned to indicate the given seed event should not be converted to a Fish at all.
    * @param opts         - Optional arguments regarding caching and expiry
    * @param callback     - Function that will be called with the array of states whenever the set of Fish
    *                       changes or any of the contained Fish’s state changes.
@@ -181,11 +182,11 @@ export type Pond = {
    *
    * @beta
    */
-  observeAll<F, S>(
+  observeAll<ESeed, S>(
     // Expression to extract the initial events, e.g. Tag<TaskCreated>
-    firstEventsSelector: Where<F>,
+    seedEventsSelector: Where<ESeed>,
     // Create a concrete Fish from the initial event
-    makeFish: (firstEvent: F) => Fish<S, any>,
+    makeFish: (seedEvent: ESeed) => Fish<S, any> | undefined,
     // When to remove Fish from the "all" set.
     opts: ObserveAllOpts,
     callback: (states: S[]) => void,
@@ -199,7 +200,7 @@ export type Pond = {
    * @typeParam F        - Type of the initial event.
    * @typeParam S        - Type of the observed Fish’s state.
    *
-   * @param firstEventSelector   - A `Where<F>` object identifying the first event
+   * @param seedEventSelector   - A `Where<F>` object identifying the seed event
    * @param makeFish     - Factory function to create the Fish with state `S` from the event of type `F`.
    *                       The Fish is able to observe events earlier than the first event.
    * @param callback     - Function that will be called with the Fish’s state `S`.
@@ -209,10 +210,10 @@ export type Pond = {
    *
    * @beta
    */
-  observeOne<F, S>(
+  observeOne<ESeed, S>(
     // Expression to find the Fish’s starting event, e.g. Tag('task-created').withId('my-task')
-    firstEventSelector: Where<F>,
-    makeFish: (firstEvent: F) => Fish<S, any>,
+    seedEventSelector: Where<ESeed>,
+    makeFish: (seedEvent: ESeed) => Fish<S, any>,
     callback: (newState: S) => void,
   ): CancelSubscription
 
@@ -327,6 +328,12 @@ class Pond2Impl implements Pond {
     deserializeState?: (jsonState: unknown) => S,
   ) => Observable<StateWithProvenance<S>>
 
+  readonly observeAllImpl: <ESeed, S>(
+    firstEvents: Where<ESeed>,
+    makeFish: (seed: ESeed) => Fish<S, any> | undefined,
+    expireAfterSeed?: Milliseconds,
+  ) => Observable<StartedFishMap<S>>
+
   activeFishes: {
     [fishId: string]: ActiveFish<any>
   } = {}
@@ -342,6 +349,11 @@ class Pond2Impl implements Pond {
     private readonly opts: PondOptions,
   ) {
     this.hydrateV2 = FishJar.hydrateV2(this.eventStore, this.snapshotStore, this.pondStateTracker)
+    this.observeAllImpl = FishJar.observeAll(
+      this.eventStore,
+      this.snapshotStore,
+      this.pondStateTracker,
+    )
   }
 
   getPondState = (callback: (newState: PondState) => void) => {
@@ -512,21 +524,31 @@ class Pond2Impl implements Pond {
     }
   }
 
-  observeAll = <F, S>(
+  observeAll = <ESeed, S>(
     // Expression to extract the initial events, e.g. Tag<TaskCreated>
-    firstEvents: Where<F>,
+    seedEvents: Where<ESeed>,
     // Create a concrete Fish from the initial event
-    makeFish: (firstEvent: F) => Fish<S, any>,
+    makeFish: (seed: ESeed) => Fish<S, any> | undefined,
     // When to remove Fish from the "all" set.
     opts: ObserveAllOpts,
     callback: (states: S[]) => void,
   ): CancelSubscription => {
+    const safeMakeFish = (seed: ESeed) => {
+      try {
+        return makeFish(seed)
+      } catch (err) {
+        // Maybe improve me at some point
+        log.pond.error('Swallowed makeFish error:', err)
+        return undefined
+      }
+    }
+
     const makeAgg = (): Observable<S[]> => {
-      const fishStructs$ = FishJar.observeAll(
-        this.eventStore,
-        this.snapshotStore,
-        this.pondStateTracker,
-      )(firstEvents, makeFish, opts.expireAfterFirst)
+      const fishStructs$ = this.observeAllImpl(
+        seedEvents,
+        safeMakeFish,
+        typeof opts.expireAfterSeed === 'number' ? opts.expireAfterSeed : opts.expireAfterFirst,
+      )
 
       return fishStructs$.switchMap(known => {
         const observations = known
@@ -549,10 +571,10 @@ class Pond2Impl implements Pond {
     return () => sub.unsubscribe()
   }
 
-  observeOne = <F, S>(
+  observeOne = <ESeed, S>(
     // Expression to find the Fish’s starting event, e.g. Tag('task-created').withId('my-task')
-    firstEvent: Where<F>,
-    makeFish: (firstEvent: F) => Fish<S, any>,
+    seedEvent: Where<ESeed>,
+    makeFish: (seedEvent: ESeed) => Fish<S, any>,
     callback: (newState: S) => void,
   ): CancelSubscription => {
     const states = this.eventStore
@@ -562,12 +584,12 @@ class Pond2Impl implements Pond {
           default: 'min',
         },
         { psns: {}, default: 'max' },
-        toSubscriptionSet(firstEvent),
+        toSubscriptionSet(seedEvent),
         AllEventsSortOrders.Unsorted,
       )
       .first()
       .concatMap(x => x)
-      .concatMap(f => this.observeTagBased0<S, unknown>(makeFish(f.payload as F)).states)
+      .concatMap(f => this.observeTagBased0<S, unknown>(makeFish(f.payload as ESeed)).states)
 
     return omitObservable(callback, states)
   }

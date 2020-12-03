@@ -506,6 +506,11 @@ export type ObserveAllOpts = Partial<{
   caching: Caching
 
   /** Fish expires from the set of 'all' when its first event reaches a certain age */
+  expireAfterSeed: Milliseconds
+
+  /**
+   * @deprecated Renamed to `expireAfterSeed`
+   */
   expireAfterFirst: Milliseconds
 
   // Future work: expireAfterLatest(Milliseconds), expireAfterEvent(Where)
