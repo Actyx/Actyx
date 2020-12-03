@@ -534,5 +534,5 @@ dist/bin/windows-x86_64/accessory: rust/accessory/target/x86_64-pc-windows-gnu/r
 	cp $(dir $<)/{accessory.exe,libbrp_lib.dll} $@
 
 dist/bin/windows-x86_64/accessory.zip: dist/bin/windows-x86_64/accessory dist/bin/windows-x86_64/accessory/libbrp_lib.dll
-	(cd $(dir $<) && zip -r - .) > $@
+	(cd $< && zip -r - .) > $@
 ## Accessory END
