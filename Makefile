@@ -526,8 +526,8 @@ dist/bin/linux-x86_64/accessory: rust/accessory/target/x86_64-unknown-linux-gnu/
 	mkdir -p $@
 	cp $(dir $<)/{accessory,libbrp_lib.so} $@
 
-dist/bin/linux-x86_64/accessory.tgz: dist/bin/linux-x86_64/accessory/accessory dist/bin/linux-x86_64/accessory/libbrp_lib.so
-	tar cvfz $@ -C $(dir $<) .
+dist/bin/linux-x86_64/accessory.tgz: dist/bin/linux-x86_64/accessory dist/bin/linux-x86_64/accessory/libbrp_lib.so
+	tar cvfz $@ -C $< .
 
 dist/bin/windows-x86_64/accessory: rust/accessory/target/x86_64-pc-windows-gnu/release/accessory.exe
 	mkdir -p $@
