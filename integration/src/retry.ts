@@ -1,3 +1,5 @@
+import { ActyxOSNode } from './infrastructure/types'
+
 const million = BigInt(1_000_000)
 const millisToBigInt = (n: number) => BigInt(n) * million
 
@@ -30,6 +32,24 @@ export const waitFor = <T>(
     setTimeout(runExpectation, 0)
   })
 }
+
+export const waitForAppToStop = async (appId: string, node: ActyxOSNode): Promise<void> =>
+  await waitFor(async () => {
+    const response = await node.ax.apps.ls()
+    expect(response).toMatchObject({
+      code: 'OK',
+      result: [{ enabled: false, running: false, appId }],
+    })
+  }, 25_000)
+
+export const waitForAppToStart = async (appId: string, node: ActyxOSNode): Promise<void> =>
+  await waitFor(async () => {
+    const response = await node.ax.apps.ls()
+    expect(response).toMatchObject({
+      code: 'OK',
+      result: [{ enabled: true, running: true, appId }],
+    })
+  })
 
 export const retryTimes = async <T>(op: () => T | Promise<T>, times: number): Promise<T> => {
   let tries = 1

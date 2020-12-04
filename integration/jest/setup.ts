@@ -153,8 +153,7 @@ const configureBoostrap = async (nodes: ActyxOSNode[]) => {
     (node): node is ActyxOSNode & { host: 'process' } => node.host === 'process',
   )
   if (bootstrap.length === 0) {
-    console.error('cannot find suitable bootstrap nodes')
-    return
+    throw new Error('cannot find suitable bootstrap nodes')
   }
 
   console.log(`setting up bootstrap nodes ${bootstrap.map((node) => node.name)}`)
@@ -162,8 +161,7 @@ const configureBoostrap = async (nodes: ActyxOSNode[]) => {
   // need to set some valid settings to be able to get the peerId
   const swarmKey = await bootstrap[0].ax.swarms.keyGen()
   if (swarmKey.code !== 'OK') {
-    new Error('cannot generate swarmkey')
-    return
+    throw new Error('cannot generate swarmkey')
   }
   const key = swarmKey.result.swarmKey
   await setInitialSettings(bootstrap, key)
@@ -188,7 +186,7 @@ const configureBoostrap = async (nodes: ActyxOSNode[]) => {
   if (attempts === -1) {
     console.error('swarm did not fully connect')
   } else {
-    console.error('swarm fully connected')
+    console.log('swarm fully connected')
   }
 }
 

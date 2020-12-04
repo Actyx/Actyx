@@ -28,6 +28,7 @@ export const quickstartSetup = async (tempDir: string): Promise<void> => {
   await npmRunBuild(dirs.sampleDockerApp)
 
   await npmRun('build:image')(dirs.sampleDockerApp)
+
   await npmRun('build:image:aarch64')(dirs.sampleDockerApp)
   await npmRun('build:image:armv7')(dirs.sampleDockerApp)
   await npmRun('build:image:arm')(dirs.sampleDockerApp)

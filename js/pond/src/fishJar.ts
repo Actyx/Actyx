@@ -339,15 +339,17 @@ type StartedFish<S> = {
   startedFrom: Event
 }
 
+export type StartedFishMap<S> = Map<string, StartedFish<S>>
+
 const observeAll = (
   eventStore: EventStore,
   _snapshotStore: SnapshotStore,
   _pondStateTracker: PondStateTracker,
-) => <F, S>(
-  firstEvents: Where<F>,
-  makeFish: (firstEvent: F) => Fish<S, any>,
-  expireAfterFirst?: Milliseconds,
-): Observable<Map<string, StartedFish<S>>> => {
+) => <ESeed, S>(
+  firstEvents: Where<ESeed>,
+  makeFish: (seed: ESeed) => Fish<S, any> | undefined,
+  expireAfterSeed?: Milliseconds,
+): Observable<StartedFishMap<S>> => {
   const subscriptionSet = toSubscriptionSet(firstEvents)
 
   const fish$ = eventStore
@@ -359,8 +361,11 @@ const observeAll = (
       // This step is only so that we don’t emit outdated collection while receiving chunks of old events
       const initialFishs = persisted.reduce((acc: Record<string, StartedFish<S>>, chunk) => {
         for (const evt of chunk) {
-          const fish = makeFish(evt.payload as F)
-          acc[FishId.canonical(fish.fishId)] = { fish, startedFrom: evt }
+          const fish = makeFish(evt.payload as ESeed)
+
+          if (fish !== undefined) {
+            acc[FishId.canonical(fish.fishId)] = { fish, startedFrom: evt }
+          }
         }
         return acc
       }, {})
@@ -371,7 +376,7 @@ const observeAll = (
           makeFish,
           subscriptionSet,
           present.psns,
-          expireAfterFirst,
+          expireAfterSeed,
         ),
       )
     })
@@ -392,12 +397,12 @@ const mkPrune = (timeout?: Milliseconds) => {
   }
 }
 
-const observeAllStartWithInitial = <F, S>(
+const observeAllStartWithInitial = <ESeed, S>(
   eventStore: EventStore,
-  makeFish: (firstEvent: F) => Fish<S, any>,
+  makeFish: (seed: ESeed) => Fish<S, any> | undefined,
   subscriptionSet: SubscriptionSet,
   present: OffsetMap,
-  expireAfterFirst?: Milliseconds,
+  expireAfterSeed?: Milliseconds,
 ) => (init: Record<string, StartedFish<S>>) => {
   // Switch to immutable representation so as to not screw over downstream consumers
   let immutableFishSet = Map(init)
@@ -412,13 +417,18 @@ const observeAllStartWithInitial = <F, S>(
     AllEventsSortOrders.Unsorted,
   )
 
-  const prune = mkPrune(expireAfterFirst)
+  const prune = mkPrune(expireAfterSeed)
 
   const updates = liveEvents.concatMap(chunk => {
     const oldSize = immutableFishSet.size
 
     for (const evt of chunk) {
-      const fish = makeFish(evt.payload as F)
+      const fish = makeFish(evt.payload as ESeed)
+
+      if (fish === undefined) {
+        continue
+      }
+
       const newEntry = { fish, startedFrom: evt }
 
       // Latest writer wins. This is only relevant for expiry -- the Fish ought to be the same, and the Pond will have it cached.

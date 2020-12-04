@@ -1,4 +1,3 @@
-// TODO: update all type including ERR_INTERNAL_ERROR where reproducible
 import * as io from 'io-ts'
 
 const _OK = io.type({
@@ -81,6 +80,7 @@ export type Response_Nodes_Ls = io.TypeOf<typeof Response_Nodes_Ls>
 
 export const Response_Settings_Get = io.union([
   ERR_NODE_UNREACHABLE,
+  ERR_INTERNAL_ERROR,
   io.intersection([
     _OK,
     io.type({
@@ -236,7 +236,7 @@ export const Response_Apps_Stop = io.union([
 
 export type Response_Apps_Stop = io.TypeOf<typeof Response_Apps_Stop>
 
-export const Reponse_Apps_Validate = io.union([
+export const Response_Apps_Validate = io.union([
   ERR_INVALID_INPUT,
   io.intersection([
     _OK,
@@ -246,7 +246,7 @@ export const Reponse_Apps_Validate = io.union([
   ]),
 ])
 
-export type Reponse_Apps_Validate = io.TypeOf<typeof Reponse_Apps_Validate>
+export type Response_Apps_Validate = io.TypeOf<typeof Response_Apps_Validate>
 
 export const Response_Apps_Ls = io.union([
   ERR_INTERNAL_ERROR,
@@ -333,7 +333,7 @@ export const Response_Internal_Swarm_State = io.union([
 
 export type Response_Internal_Swarm_State = io.TypeOf<typeof Response_Internal_Swarm_State>
 
-export const Reponse_Swarms_Keygen = io.union([
+export const Response_Swarms_Keygen = io.union([
   ERR_INVALID_INPUT,
   io.intersection([
     _OK,
@@ -346,4 +346,4 @@ export const Reponse_Swarms_Keygen = io.union([
   ]),
 ])
 
-export type Reponse_Swarms_Keygen = io.TypeOf<typeof Reponse_Swarms_Keygen>
+export type Response_Swarms_Keygen = io.TypeOf<typeof Response_Swarms_Keygen>

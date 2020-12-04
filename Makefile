@@ -17,8 +17,8 @@ SHELL := /bin/bash
 
 architectures = aarch64 x86_64 armv7 arm
 
-all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyxos-linux ax,linux-$(arch)/$(bin))) linux-x86_64/webview-runner.tgz
-all-WINDOWS := $(foreach t,actyxos.exe ax.exe installer webview-runner.zip,windows-x86_64/$t)
+all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyxos-linux ax,linux-$(arch)/$(bin))) linux-x86_64/webview-runner.tgz linux-x86_64/accessory.tgz
+all-WINDOWS := $(foreach t,actyxos.exe ax.exe installer webview-runner.zip accessory.zip,windows-x86_64/$t)
 all-ANDROID := actyxos.apk
 
 CARGO_TEST_JOBS := 8
@@ -106,8 +106,13 @@ prepare-js:
 	# install nvm
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash
 
+# create validation targets for all folder inside `./rust`
+rust-validation = $(shell arr=(`ls -1 rust`); printf "validate-rust-%s " "$${arr[@]}")
+.PHONY: validate-rust $(rust-validation)
+validate-rust: $(rust-validation) validate-os
+
 # execute linter, style checker and tests for everything
-validate: validate-os validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website validate-misc
+validate: validate-os validate-rust validate-os-android validate-js validate-website validate-misc
 
 # declare all the validate targets to be phony
 .PHONY: validate-os validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website validate-misc
@@ -122,6 +127,16 @@ diagnostics:
 	@echo PATH = $(PATH)
 	@echo PWD = $(shell pwd)
 
+define mkRustTestRule=
+$(TARGET_NAME): cargo-init make-always
+  $(eval TARGET_PATH:=rust/$(word 3, $(subst -, ,$(TARGET_NAME))))
+	cd $(TARGET_PATH) && $(CARGO) fmt --all -- --check
+	cd $(TARGET_PATH) && $(CARGO) --locked clippy --all-targets -- -D warnings
+	cd $(TARGET_PATH) && $(CARGO) test --all-features -j $(CARGO_TEST_JOBS)
+endef
+
+$(foreach TARGET_NAME,$(rust-validation),$(eval $(mkRustTestRule)))
+
 .PHONY: validate-os
 # execute fmt check, clippy and tests for rt-master
 validate-os: diagnostics
@@ -129,22 +144,6 @@ validate-os: diagnostics
 	cd rt-master && $(CARGO) --locked clippy -- -D warnings
 	cd rt-master && $(CARGO) --locked clippy --tests -- -D warnings
 	cd rt-master && $(CARGO) test --all-features -j $(CARGO_TEST_JOBS)
-
-.PHONY: validate-rust-sdk
-# execute fmt check, clippy and tests for rust-sdk
-validate-rust-sdk:
-	cd rust/sdk && $(CARGO) fmt --all -- --check
-	cd rust/sdk && $(CARGO) --locked clippy -- -D warnings
-	cd rust/sdk && $(CARGO) --locked clippy --tests -- -D warnings
-	cd rust/sdk && $(CARGO) test --all-features -j $(CARGO_TEST_JOBS)
-
-.PHONY: validate-rust-sdk-macros
-# execute fmt check, clippy and tests for rust-sdk-macros
-validate-rust-sdk-macros:
-	cd rust/sdk_macros && $(CARGO) fmt --all -- --check
-	cd rust/sdk_macros && $(CARGO) --locked clippy -- -D warnings
-	cd rust/sdk_macros && $(CARGO) --locked clippy --tests -- -D warnings
-	cd rust/sdk_macros && $(CARGO) test --all-features -j $(CARGO_TEST_JOBS)
 
 .PHONY: validate-os-android
 # execute linter for os-android
@@ -239,6 +238,12 @@ target-linux-x86_64 = x86_64-unknown-linux-musl
 target-linux-armv7 = armv7-unknown-linux-musleabihf
 target-linux-arm = arm-unknown-linux-musleabi
 target-windows-x86_64 = x86_64-pc-windows-gnu
+# non-musl targets
+target-nonmusl-linux-aarch64 = aarch64-unknown-linux-gnu
+target-nonmusl-linux-x86_64 = x86_64-unknown-linux-gnu
+target-nonmusl-linux-armv7 = armv7-unknown-linux-gnueabihf
+target-nonmusl-linux-arm = arm-unknown-linux-gnueabi
+target-nonmusl-windows-x86_64 = x86_64-pc-windows-gnu
 
 # define mapping from os to builder image name
 image-linux = actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION)
@@ -251,6 +256,7 @@ binaries = ax ax.exe actyxos-linux actyxos.exe
 # compute list of all OSs (e.g. linux, windows) and rust targets (looking into the target-* vars)
 os = $(sort $(foreach oa,$(osArch),$(word 1,$(subst -, ,$(oa)))))
 targets = $(sort $(foreach oa,$(osArch),$(target-$(oa))))
+targets-nonmusl = $(sort $(foreach oa,$(osArch),$(target-nonmusl-$(oa))))
 
 # build rules for binaries on the current platform (i.e. no cross-building), like ax.exe
 # two-step process:
@@ -446,6 +452,7 @@ $(foreach a,$(architectures),$(eval docker-build-actyxos-$(a): dist/bin/linux-$(
 
 docker-build-actyxos: $(foreach a,$(architectures),docker-build-actyxos-$(a))
 
+# Webview-runner
 /tmp/cef-%-x86_64:
 	mkdir -p $@ && \
 	wget -qO- https://cef-builds.spotifycdn.com/cef_binary_86.0.21%2Bg6a2c8e7%2Bchromium-86.0.4240.183_$*64_minimal.tar.bz2 | tar --strip-components 1 -jxf - -C $@
@@ -487,3 +494,45 @@ dist/bin/windows-x86_64/webview-runner.zip: /tmp/cef-windows-x86_64
 			actyx/util:msvc16-x64-latest \
 			bash -c 'vcwine cmake -G "NMake Makefiles JOM" -DCMAKE_BUILD_TYPE=Release -Wno-dev .. && vcwine jom'
 	(cd cpp/webview-runner/dist/src/Release && zip -r - .) > $@
+## Webview-runner END
+
+## Accessory
+# Only x86_64 so far ..
+accessoryPatterns = $(foreach t,$(targets),rust/accessory/target/$(t)/release/%)
+rust/accessory/target/release/%: make-always
+	cd rust/accessory && cargo --locked build --release
+
+# libudev being LGPL doesn't allow to statically link against, so no musl for us
+define mkAccessoryBinaryRule =
+rust/accessory/target/$(TARGET)/release/%: cargo-init make-always
+	docker run \
+	  -u $(shell id -u) \
+	  -w /src/rust/accessory \
+	  -e CARGO_BUILD_TARGET=$(TARGET) \
+	  -e CARGO_BUILD_JOBS=$(CARGO_BUILD_JOBS) \
+	  -e HOME=/home/builder \
+	  -e PKG_CONFIG_ALLOW_CROSS=1 \
+	  -v `pwd`:/src \
+	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
+	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
+	  --rm \
+	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
+	  cargo --locked build --release
+endef
+targets-accessory = $(sort $(foreach oa,linux-x86_64 windows-x86_64,$(target-nonmusl-$(oa))))
+$(foreach TARGET,$(targets-accessory),$(eval $(mkAccessoryBinaryRule)))
+
+dist/bin/linux-x86_64/accessory: rust/accessory/target/x86_64-unknown-linux-gnu/release/accessory
+	mkdir -p $@
+	cp $(dir $<)/{accessory,libbrp_lib.so} $@
+
+dist/bin/linux-x86_64/accessory.tgz: dist/bin/linux-x86_64/accessory dist/bin/linux-x86_64/accessory/libbrp_lib.so
+	tar cvfz $@ -C $< .
+
+dist/bin/windows-x86_64/accessory: rust/accessory/target/x86_64-pc-windows-gnu/release/accessory.exe
+	mkdir -p $@
+	cp $(dir $<)/{accessory.exe,libbrp_lib.dll} $@
+
+dist/bin/windows-x86_64/accessory.zip: dist/bin/windows-x86_64/accessory dist/bin/windows-x86_64/accessory/libbrp_lib.dll
+	(cd $< && zip -r - .) > $@
+## Accessory END

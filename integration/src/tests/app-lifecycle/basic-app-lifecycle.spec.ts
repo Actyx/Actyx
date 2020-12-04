@@ -1,7 +1,7 @@
 import { quickstartDirs } from '../../setup-projects/quickstart'
 import { settings } from '../../infrastructure/settings'
 import { runOnEvery } from '../../infrastructure/hosts'
-import { waitFor } from '../../retry'
+import { waitFor, waitForAppToStop } from '../../retry'
 import path from 'path'
 import { Arch } from '../../../jest/types'
 import { assertOK } from '../../assertOK'
@@ -16,6 +16,7 @@ describe('basic app lifecycle', () => {
       await stubs.axOnly.ax.apps.packageCwd(workingDir, 'ax-manifest-all.yml'),
     )
     expect(pkgResponse.result).toHaveLength(2)
+
     const { appId, appVersion } = pkgResponse.result[0]
     for (const pkg of pkgResponse.result.slice(1)) {
       expect(pkg).toMatchObject({ appId, appVersion })
@@ -64,14 +65,7 @@ describe('basic app lifecycle', () => {
 
       const responseStop = await node.ax.apps.stop(appId)
       expect(responseStop).toMatchCodeOk()
-
-      await waitFor(async () => {
-        const response = await node.ax.apps.ls()
-        expect(response).toMatchObject({
-          code: 'OK',
-          result: [{ enabled: false, running: false }],
-        })
-      }, 15_000)
+      await waitForAppToStop(appId, node)
 
       const responseUndeploy = await node.ax.apps.undeploy(appId)
       expect(responseUndeploy).toMatchCodeOk()
