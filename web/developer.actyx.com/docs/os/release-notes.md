@@ -25,13 +25,14 @@ Download:
 ### Bug fixes
 
 - Many stability improvements around our core infrastructure
-- fixed an issue that resulted in a node crash if there are gaps in event offsets
-- fixed an issue that led to ActyxOS on Android crashing if started without available network interface
-- fixed an issue that resulted in default node settings not being used after manually set settings were unset
-- changed the node settings schema so that properties with default values are not required anymore
-- fixed an issue that led to ActyxOS not validating apps if optional properties in the manifest were missing (`description` and `settingsSchema`)
-- fixed an issue that resulted in the node crashing if configured with an invalid bootstrap node address
+- Fixed an issue that resulted in a node crash if there are gaps in event offsets
+- Fixed an issue that led to ActyxOS on Android crashing if started without available network interface
+- Fixed an issue that resulted in default node settings not being used after manually set settings were unset
+- Changed the node settings schema so that properties with default values are not required anymore
+- Fixed an issue that led to ActyxOS not validating apps if optional properties in the manifest were missing (`description` and `settingsSchema`)
+- Fixed an issue that resulted in the node crashing if configured with an invalid bootstrap node address
 - Fixed an issue that prohibited access to the [Console Service logging API](/os/api/console-service.md) from the browser and WebView Runtime due to CORS restrictions
+- Fixed an issue where offet bounds were not properly respected for tag-based (Pond v2) queries
 
 ## ActyxOS 1.0.0
 
