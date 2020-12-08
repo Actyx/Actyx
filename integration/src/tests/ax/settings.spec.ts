@@ -188,7 +188,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
     })
   })
 
-  describe('unset', () => {
+  describe.skip('unset', () => {
     test('return ERR_NODE_UNREACHABLE if node host is unreachable', async () => {
       const response = await stubs.hostUnreachable.ax.settings.unset(scopeActyxOS)
       expect(response).toMatchErrNodeUnreachable()
