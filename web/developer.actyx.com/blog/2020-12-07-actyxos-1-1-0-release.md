@@ -2,7 +2,7 @@
 title: ActyxOS 1.1.0 Released
 author: Nicolas Kiefer, Maximilian Haushofer
 author_title: Product Managers
-author_url: https://www.linkedin.com/in/nicolas-kiefer-0aa177b3/
+author_url: https://www.actyx.com/about
 tags: [ActyxOS, Release]
 image: /images/blog/1.1.0-release/actyxos-on-linux.png
 ---
