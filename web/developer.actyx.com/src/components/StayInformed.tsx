@@ -1,5 +1,5 @@
-import React from "react";
-import styled from "styled-components";
+import React from 'react'
+import styled from 'styled-components'
 
 const Wrapper = styled.div`
   width: 100%;
@@ -10,7 +10,7 @@ const Wrapper = styled.div`
   flex-grow: 1;
   flex-direction: row;
   margin-bottom: 30px;
-`;
+`
 
 const ColLeft = styled.div`
   width: 30px;
@@ -20,7 +20,7 @@ const ColLeft = styled.div`
   a {
     text-decoration: none;
   }
-`;
+`
 
 const ColMiddle = styled.div`
   width: 30px;
@@ -30,7 +30,7 @@ const ColMiddle = styled.div`
   a {
     text-decoration: none;
   }
-`;
+`
 
 const ColRight = styled.div`
   height: 100%;
@@ -40,7 +40,7 @@ const ColRight = styled.div`
   a {
     text-decoration: none;
   }
-`;
+`
 
 const ImageDiv = styled.div`
   width: 100%;
@@ -51,14 +51,14 @@ const ImageDiv = styled.div`
   img {
     height: 30px;
   }
-`;
+`
 
 type Props = Readonly<{
-  img1: string;
-  img2: string;
-  img3: string;
-  img4: string;
-}>;
+  img1: string
+  img2: string
+  img3: string
+  img4: string
+}>
 
 export const StayInformed = ({ img1, img2, img3, img4 }: Props) => (
   <Wrapper>
@@ -91,4 +91,4 @@ export const StayInformed = ({ img1, img2, img3, img4 }: Props) => (
       </a>
     </ColRight>
   </Wrapper>
-);
+)

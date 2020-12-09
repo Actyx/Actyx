@@ -1,12 +1,12 @@
 const createTheme = () => {
   const theme = {
     fontsizes: {
-      hero: "26px",
-      title: "20px",
-      subheadline: "17px",
-      body: "16px",
-      small: "12px",
-      medium: "14px",
+      hero: '26px',
+      title: '20px',
+      subheadline: '17px',
+      body: '16px',
+      small: '12px',
+      medium: '14px',
     },
     fontWeights: {
       thin: 400,
@@ -20,11 +20,11 @@ const createTheme = () => {
       large: 1440,
     },
     colors: {
-      primary: "#1998ff",
+      primary: '#1998ff',
     },
-  };
-  return theme;
-};
+  }
+  return theme
+}
 
-const theme = createTheme();
-export default theme;
+const theme = createTheme()
+export default theme
