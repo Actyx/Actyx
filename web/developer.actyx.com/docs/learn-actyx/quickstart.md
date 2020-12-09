@@ -16,7 +16,7 @@ import {Strap} from '../../src/components/Strap.tsx'
 Let's jump right in and get a first distributed application up and running.
 
 :::info Need help?
-If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to developer@actyx.io .
+If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord server](https://discord.gg/262yJhc) or write us an e-mail to developer@actyx.io .
 :::
 
 import Tabs from '@theme/Tabs';
@@ -104,7 +104,7 @@ Now we want to see this in action, so let’s install the necessary ingredients.
 
 Download and install the latest version of the Actyx CLI (`ax`). You can find builds for several operating systems at <https://downloads.actyx.com>. You can find detailed installation instructions for the Actyx CLI [here](/docs/cli/getting-started).
 
-Once installed you can check that everything works as follows:
+Once installed you can check that everything works by typing the following into your command line:
 
 ```text
 ax --version
@@ -180,7 +180,7 @@ ax settings set --local com.actyx.os @misc/local-sample-node-settings.yml localh
 </TabItem>
 </Tabs>
 
-😊 Congrats! Your computer is now running a fully configured ActyxOS node. You can check this by running
+😊 Congrats! Your computer is now running a fully configured ActyxOS node. You can check this by running the following command in your command line:
 
 ```text
 ax nodes ls --local localhost
@@ -352,6 +352,6 @@ This brings us to the close of this quickstart guide.
 
 ### Where to get help and file issues
 
-If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc) or write us an e-mail to developer@actyx.io .
+If you have any issues or just want to give feedback on our quickstart guide, you are welcome to join our [Discord chat](https://discord.gg/262yJhc), start a discussion on [GitHub](https://github.com/Actyx/quickstart/discussions) or write us an e-mail to developer@actyx.io .
 
 <!-- markdownlint-enable MD025 -->
