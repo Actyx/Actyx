@@ -148,7 +148,9 @@ export const eventsMonotonic = (
       latestEventKey: EventKey.zero,
     },
   ): Observable<EventsOrTimetravel> => {
-    const persisted = eventStore
+    let latest = fixedStart.latestEventKey
+
+    const persisted: Observable<EventsMsg> = eventStore
       .persistedEvents(
         { default: 'min', psns: fixedStart.from },
         { default: 'min', psns: present },
@@ -156,31 +158,34 @@ export const eventsMonotonic = (
         PersistedEventsSortOrders.EventKey,
         fixedStart.horizon,
       )
-      // Past events are loaded all in one chunk -- FIXME.
-      .toArray()
-
-    return persisted.concatMap(chunks => {
-      // flatten
-      const events = new Array<Event>().concat(...chunks)
-
-      log.submono.debug(FishId.canonical(fishId), 'hydration event count:', events.length)
-
-      const latest = events.length === 0 ? fixedStart.latestEventKey : events[events.length - 1]
-
-      const initial = Observable.of<EventsMsg>({
+      .filter(chunk => chunk.length > 0)
+      .do(chunk => (latest = chunk[chunk.length - 1]))
+      .map(chunk => ({
         type: MsgType.events,
-        events,
-        caughtUp: true,
-      })
+        events: chunk,
+        caughtUp: false,
+      }))
 
-      return initial.concat(
-        realtimeFrom(fishId, subscriptions, {
-          from: present,
-          latestEventKey: latest,
-          horizon: fixedStart.horizon,
-        }),
-      )
-    })
+    const realtimeStream = Observable.defer(() =>
+      realtimeFrom(fishId, subscriptions, {
+        from: present,
+        latestEventKey: latest,
+        horizon: fixedStart.horizon,
+      }),
+    )
+
+    return Observable.concat(
+      persisted,
+      Observable.of<EventsMsg>({
+        type: MsgType.events,
+        events: [],
+        // Empty chunk with caughtUp=true, to trigger emission of current state.
+        // The proper impl should obviously set caughtUp=true for the final proper (nonempty) chunk;
+        // but we have a hard time detecting the final chunk here.
+        caughtUp: true,
+      }),
+      realtimeStream,
+    )
   }
 
   // Given a FixedStart point, check whether we can reach `present` without time travel.

@@ -14,12 +14,12 @@ import { interleaveRandom } from '../eventstore/utils'
 import { SnapshotStore } from '../snapshotStore'
 import { SnapshotScheduler } from '../store/snapshotScheduler'
 import { toSubscriptionSet } from '../tagging'
-import { EventKey, FishName, Metadata, Psn, FishErrorReporter, Semantics } from '../types'
+import { EventKey, FishErrorReporter, FishName, Metadata, Psn, Semantics } from '../types'
 import { shuffle } from '../util/array'
 
 const numberOfSources = 5
 const batchSize = 10
-const eventsPerSource = 200
+const eventsPerSource = 100
 const numberOfIterations = 5
 const semanticSnapshotProbability = 0.1
 const localSnapshotProbability = 0.05
