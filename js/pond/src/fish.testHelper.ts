@@ -15,9 +15,11 @@ import { minSnapshotAge, SnapshotScheduler } from './store/snapshotScheduler'
 import { Tag, toSubscriptionSet, Where } from './tagging'
 import {
   EventKey,
+  FishErrorContext,
   FishName,
   Lamport,
   Psn,
+  FishErrorReporter,
   Semantics,
   SnapshotFormat,
   SourceId,
@@ -158,6 +160,12 @@ export const snapshotTestSetup = async <S>(
   const eventStore = EventStore.test(sourceId)
   if (storedEvents) eventStore.directlyPushEvents(storedEvents)
 
+  let lastErr: FishErrorContext | null = null
+  const testReportFishError: FishErrorReporter = (_err, _fishId, detail) => {
+    lastErr = detail
+  }
+  const latestErr = () => lastErr
+
   const snapshotStore = SnapshotStore.inMem()
   await Observable.from(storedSnapshots || [])
     .concatMap(snap => {
@@ -177,7 +185,12 @@ export const snapshotTestSetup = async <S>(
     .concat(Observable.of(undefined))
     .toPromise()
 
-  const hydrate = observeMonotonic(eventStore, snapshotStore, SnapshotScheduler.create(10))
+  const hydrate = observeMonotonic(
+    eventStore,
+    snapshotStore,
+    SnapshotScheduler.create(10),
+    testReportFishError,
+  )
 
   const observe = hydrate(
     toSubscriptionSet(fish.where),
@@ -209,15 +222,16 @@ export const snapshotTestSetup = async <S>(
       .retrieveSnapshot('test-semantics', 'test-fishname', 1)
       .then(x => (x ? { ...x, state: JSON.parse(x.state) } : undefined))
 
-  // Await full hydration before tests run
-  await observe.take(1).toPromise()
+  const wakeup = () => observe.take(1).toPromise()
 
   return {
     latestSnap,
+    latestErr,
     snapshotStore,
     applyAndGetState,
     observe,
     pubEvents,
+    wakeup,
   }
 }
 

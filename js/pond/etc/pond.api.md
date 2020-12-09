@@ -114,6 +114,24 @@ export const Fish: {
 };
 
 // @public
+export type FishErrorContext = {
+    occuredIn: 'onEvent';
+    state: unknown;
+    event: unknown;
+    metadata: Metadata;
+} | {
+    occuredIn: 'isReset';
+    event: unknown;
+    metadata: Metadata;
+} | {
+    occuredIn: 'deserializeState';
+    jsonState: unknown;
+};
+
+// @public
+export type FishErrorReporter = (err: unknown, fishId: FishId, detail: FishErrorContext) => void;
+
+// @public
 export type FishId = {
     entityType: string;
     name: string;
@@ -262,9 +280,9 @@ export type PendingEmission = {
 // @public
 export type Pond = {
     emit<E>(tags: Tags<E>, event: E): PendingEmission;
-    observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription;
+    observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void, stoppedByError?: (err: unknown) => void): CancelSubscription;
     observeAll<ESeed, S>(seedEventsSelector: Where<ESeed>, makeFish: (seedEvent: ESeed) => Fish<S, any> | undefined, opts: ObserveAllOpts, callback: (states: S[]) => void): CancelSubscription;
-    observeOne<ESeed, S>(seedEventSelector: Where<ESeed>, makeFish: (seedEvent: ESeed) => Fish<S, any>, callback: (newState: S) => void): CancelSubscription;
+    observeOne<ESeed, S>(seedEventSelector: Where<ESeed>, makeFish: (seedEvent: ESeed) => Fish<S, any>, callback: (newState: S) => void, stoppedByError?: (err: unknown) => void): CancelSubscription;
     run<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>): PendingEmission;
     keepRunning<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>, autoCancel?: (state: S) => boolean): CancelSubscription;
     dispose(): void;
@@ -293,6 +311,7 @@ export type PondOptions = {
     currentPsnHistoryDelay?: number;
     updateConnectivityEvery?: Milliseconds;
     stateEffectDebounce?: number;
+    fishErrorReporter?: FishErrorReporter;
 };
 
 // @public

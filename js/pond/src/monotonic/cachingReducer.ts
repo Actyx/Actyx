@@ -14,7 +14,7 @@ export const cachingReducer = <S>(
   simpleReducer: SimpleReducer<S>,
   snapshotScheduler: SnapshotScheduler,
   storeSnapshot: (toStore: PendingSnapshot) => Promise<void>,
-  deserializeState?: (jsonState: unknown) => S,
+  deserializeState: undefined | ((jsonState: unknown) => S),
 ): CachingReducer<S> => {
   const deserialize = deserializeState
     ? (s: string): S => deserializeState(JSON.parse(s))

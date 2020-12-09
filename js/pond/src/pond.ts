@@ -6,7 +6,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Observable, ReplaySubject, Scheduler, Subscription } from 'rxjs'
+import { Observable, ReplaySubject, Scheduler, Subject, Subscription } from 'rxjs'
 import { CommandInterface } from './commandInterface'
 import { EventStore, WsStoreConfig } from './eventstore'
 import { MultiplexedWebsocket } from './eventstore/multiplexedWebsocket'
@@ -16,10 +16,12 @@ import { extendDefaultWsStoreConfig, mkMultiplexer } from './eventstore/utils'
 import { getSourceId } from './eventstore/websocketEventStore'
 import { CommandPipeline, FishJar, StartedFishMap } from './fishJar'
 import log from './loggers'
+import { observeMonotonic } from './monotonic'
 import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
 import { SnapshotStore } from './snapshotStore'
 import { SplashState, streamSplashState, WaitForSwarmConfig } from './splashState'
 import { Monitoring } from './store/monitoring'
+import { SnapshotScheduler } from './store/snapshotScheduler'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
 import { Tags, toSubscriptionSet, Where } from './tagging'
 import {
@@ -35,6 +37,7 @@ import {
   ObserveAllOpts,
   PendingEmission,
   Reduce,
+  FishErrorReporter,
   Semantics,
   SourceId,
   StateEffect,
@@ -54,6 +57,8 @@ export type PondOptions = {
   updateConnectivityEvery?: Milliseconds
 
   stateEffectDebounce?: number
+
+  fishErrorReporter?: FishErrorReporter
 }
 
 /** Information concerning the running Pond. @public */
@@ -62,11 +67,20 @@ export type PondInfo = {
 }
 
 const omitObservable = <S>(
+  stoppedByError: ((err: unknown) => void) | undefined,
   callback: (newState: S) => void,
   states: Observable<StateWithProvenance<S>>,
 ): CancelSubscription => {
-  const sub = states.map(x => x.state).subscribe(callback)
-  return sub.unsubscribe.bind(sub)
+  try {
+    // Not passing an error callback seems to cause bad behavior with RXjs internally
+    const sub = states
+      .map(x => x.state)
+      .subscribe(callback, typeof stoppedByError === 'function' ? stoppedByError : noop)
+    return sub.unsubscribe.bind(sub)
+  } catch (err) {
+    stoppedByError && stoppedByError(err)
+    return noop
+  }
 }
 
 const wrapStateFn = <S, EWrite>(fn: StateEffect<S, EWrite>) => {
@@ -108,7 +122,7 @@ type EmissionRequest<E> = ReadonlyArray<Emit<E>> | Promise<ReadonlyArray<Emit<E>
 // endof TODO cleanup
 
 type ActiveFish<S> = {
-  readonly states: Observable<StateWithProvenance<S>>
+  readonly states: Subject<StateWithProvenance<S>>
   readonly subscription: Subscription
   commandPipeline?: CommandPipeline<S, EmissionRequest<any>>
 }
@@ -159,9 +173,15 @@ export type Pond = {
    *
    * @param fish       - Complete Fish information.
    * @param callback   - Function that will be called whenever a new state becomes available.
+   * @param stoppedByError - Function that will be called when one of the Fish’s functions throws an error.
+   *                         A Fish will always stop emitting further states after errors, even if no `stoppedByError` argument is passed.
    * @returns            A function that can be called in order to cancel the subscription.
    */
-  observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription
+  observe<S, E>(
+    fish: Fish<S, E>,
+    callback: (newState: S) => void,
+    stoppedByError?: (err: unknown) => void,
+  ): CancelSubscription
 
   /**
    * Create Fish from events and observe them all.
@@ -177,6 +197,8 @@ export type Pond = {
    * @param opts         - Optional arguments regarding caching and expiry
    * @param callback     - Function that will be called with the array of states whenever the set of Fish
    *                       changes or any of the contained Fish’s state changes.
+   * @param stoppedByError - Function that will be called when one of the Fish’s functions throws an error.
+   *                         A Fish will always stop emitting further states after errors, even if no `stoppedByError` argument is passed.
    *
    * @returns              A function that can be called in order to cancel the subscription.
    *
@@ -215,6 +237,7 @@ export type Pond = {
     seedEventSelector: Where<ESeed>,
     makeFish: (seedEvent: ESeed) => Fish<S, any>,
     callback: (newState: S) => void,
+    stoppedByError?: (err: unknown) => void,
   ): CancelSubscription
 
   /* CONDITIONAL EMISSION (STATE EFFECTS) */
@@ -293,12 +316,12 @@ export type Pond = {
 }
 
 type ActiveObserveAll<S> = Readonly<{
-  states: Observable<S[]>
+  states: Subject<S[]>
   subscription: Subscription
 }>
 
 const getOrInitialize = <T>(
-  cache: Record<string, { states: Observable<T>; subscription: Subscription }>,
+  cache: Record<string, { states: Subject<T>; subscription: Subscription }>,
   key: string,
   makeT: () => Observable<T>,
 ) => {
@@ -317,6 +340,9 @@ const getOrInitialize = <T>(
   cache[key] = a
   return a
 }
+
+const defaultReportFishError: FishErrorReporter = (err, fishId, detail) =>
+  console.error('Error while executing', FishId.canonical(fishId), ':', err, detail)
 
 class Pond2Impl implements Pond {
   readonly hydrateV2: <S, E>(
@@ -348,7 +374,16 @@ class Pond2Impl implements Pond {
     private readonly finalTeardown: () => void,
     private readonly opts: PondOptions,
   ) {
-    this.hydrateV2 = FishJar.hydrateV2(this.eventStore, this.snapshotStore, this.pondStateTracker)
+    this.hydrateV2 = observeMonotonic(
+      this.eventStore,
+      this.snapshotStore,
+      SnapshotScheduler.create(10),
+      typeof opts.fishErrorReporter === 'function'
+        ? opts.fishErrorReporter
+        : defaultReportFishError,
+      this.pondStateTracker,
+    )
+
     this.observeAllImpl = FishJar.observeAll(
       this.eventStore,
       this.snapshotStore,
@@ -461,8 +496,12 @@ class Pond2Impl implements Pond {
     )
   }
 
-  observe = <S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription => {
-    return omitObservable(callback, this.observeTagBased0<S, E>(fish).states)
+  observe = <S, E>(
+    fish: Fish<S, E>,
+    callback: (newState: S) => void,
+    stoppedByError?: (err: unknown) => void,
+  ): CancelSubscription => {
+    return omitObservable(stoppedByError, callback, this.observeTagBased0<S, E>(fish).states)
   }
 
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
@@ -576,6 +615,7 @@ class Pond2Impl implements Pond {
     seedEvent: Where<ESeed>,
     makeFish: (seedEvent: ESeed) => Fish<S, any>,
     callback: (newState: S) => void,
+    stoppedByError?: (err: unknown) => void,
   ): CancelSubscription => {
     const states = this.eventStore
       .allEvents(
@@ -591,7 +631,7 @@ class Pond2Impl implements Pond {
       .concatMap(x => x)
       .concatMap(f => this.observeTagBased0<S, unknown>(makeFish(f.payload as ESeed)).states)
 
-    return omitObservable(callback, states)
+    return omitObservable(stoppedByError, callback, states)
   }
 
   run = <S, EWrite, ReadBack = false>(

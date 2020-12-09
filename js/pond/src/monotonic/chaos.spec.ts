@@ -6,7 +6,6 @@
  */
 import { catOptions, chunksOf } from 'fp-ts/lib/Array'
 import { none, some } from 'fp-ts/lib/Option'
-import { Scheduler } from 'rxjs'
 import { observeMonotonic } from '.'
 import { allEvents, Fish, Lamport, SourceId, Timestamp, Where } from '..'
 import { Event, Events, EventStore, OffsetMap } from '../eventstore'
@@ -15,7 +14,7 @@ import { interleaveRandom } from '../eventstore/utils'
 import { SnapshotStore } from '../snapshotStore'
 import { SnapshotScheduler } from '../store/snapshotScheduler'
 import { toSubscriptionSet } from '../tagging'
-import { EventKey, FishName, Metadata, Psn, Semantics } from '../types'
+import { EventKey, FishName, Metadata, Psn, FishErrorReporter, Semantics } from '../types'
 import { shuffle } from '../util/array'
 
 const numberOfSources = 5
@@ -112,6 +111,8 @@ const neverSnapshotScheduler: SnapshotScheduler = {
   },
 }
 
+const testReportFishError: FishErrorReporter = (err, _fishId, detail) => console.error(err, detail)
+
 type Run = <S>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fish: Fish<S, any>,
@@ -129,7 +130,12 @@ const hydrate: Run = fish => async (sourceId, events, snapshotScheduler) => {
 
       eventStore.directlyPushEvents(batch)
 
-      const state1 = observeMonotonic(eventStore, snapshotStore, snapshotScheduler)(
+      const state1 = observeMonotonic(
+        eventStore,
+        snapshotStore,
+        snapshotScheduler,
+        testReportFishError,
+      )(
         toSubscriptionSet(fish.where),
         fish.initialState,
         fish.onEvent,
@@ -168,37 +174,54 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
   const eventStore = EventStore.test(sourceId) // todo inmem?
   const snapshotStore = SnapshotStore.inMem()
 
-  const observe = observeMonotonic(eventStore, snapshotStore, snapshotScheduler)
-
-  const states$ = observe(
-    toSubscriptionSet(fish.where),
-    fish.initialState,
-    fish.onEvent,
-    fish.fishId,
-    fish.isReset,
-    fish.deserializeState,
+  const observe = observeMonotonic(
+    eventStore,
+    snapshotStore,
+    snapshotScheduler,
+    testReportFishError,
   )
-    .map(x => x.state)
-    // This is needed for letting tests run correctly:
-    // - buffer 1 element so that order of pipelines doesnt matter
-    // - async scheduler to give priority to other pipelines
-    // - debounce so that other pipelines have a chance to run
-    //   (If we don’t request intermediate states, we need a bit more time in the end to find the final state.)
-    // Hopefully this does not distort test results.
-    .shareReplay(1)
-    .observeOn(Scheduler.async)
-    .debounceTime(intermediates ? 0 : 5)
 
-  return events.reduce(async (acc, batch, i) => {
-    await acc
+  if (intermediates) {
+    const states$ = observe(
+      toSubscriptionSet(fish.where),
+      fish.initialState,
+      fish.onEvent,
+      fish.fishId,
+      fish.isReset,
+      fish.deserializeState,
+    )
+      .map(x => x.state)
+      .shareReplay(1)
 
-    const isLast = i === events.length - 1
-    const res = isLast || intermediates ? states$.take(1).toPromise() : acc
+    return events.reduce(async (acc, batch, _i) => {
+      await acc
 
-    eventStore.directlyPushEvents(batch)
+      const res = states$
+        .debounceTime(2)
+        .take(1)
+        .toPromise()
+      eventStore.directlyPushEvents(batch)
 
-    return res
-  }, Promise.resolve(fish.initialState))
+      return res
+    }, Promise.resolve(fish.initialState))
+  } else {
+    const finalStatePromise = observe(
+      toSubscriptionSet(fish.where),
+      fish.initialState,
+      fish.onEvent,
+      fish.fishId,
+      fish.isReset,
+      fish.deserializeState,
+    )
+      .map(x => x.state)
+      .debounceTime(5)
+      .first()
+      .toPromise()
+
+    events.forEach(eventStore.directlyPushEvents)
+
+    return finalStatePromise
+  }
 }
 
 const fishConfigs = {

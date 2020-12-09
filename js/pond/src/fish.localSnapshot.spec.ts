@@ -222,6 +222,29 @@ describe('fish event store + jar local snapshot behavior', () => {
     expect(await applyAndGetState(currentEvents)).toEqual([8, 9, 10, 20])
   })
 
+  forBoth(
+    `should report error encountered when hydrating from local snapshot`,
+    async fishToTest => {
+      const storedEvents: Events = [
+        // We intentionally leave out the events that would have formed the snapshot,
+        // in order to assert that the snapshot is really used for hydration
+      ]
+      const storedSnaps = [mkSnapshot([8, 9, 10], 500)]
+
+      const fish = {
+        ...fishToTest,
+        deserializeState: () => {
+          throw new Error('broken')
+        },
+      }
+
+      const { wakeup, latestErr } = await snapshotTestSetup(fish, storedEvents, storedSnaps)
+
+      await expect(wakeup()).rejects.toMatchObject({ message: 'broken' })
+      expect(latestErr()).toMatchObject({ occuredIn: 'deserializeState' })
+    },
+  )
+
   forBoth(`should shatter local snapshot if it receives earlier live events`, async fishToTest => {
     const srcA = emitter('A')
     const srcB = emitter('B')
@@ -264,11 +287,13 @@ describe('fish event store + jar local snapshot behavior', () => {
 
       const storedSnaps = [mkSnapshot([1, 2, 4, 5, 6, 7], 200000, undefined, snapshotOffsets)]
 
-      const { applyAndGetState, latestSnap } = await snapshotTestSetup(
+      const { applyAndGetState, latestSnap, wakeup } = await snapshotTestSetup(
         fishToTest,
         tl.all,
         storedSnaps,
       )
+      await wakeup()
+
       // Assert the snapshot has already been invalidated in the initial hydration.
       expect(await latestSnap()).toEqual(undefined)
 

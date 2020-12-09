@@ -305,7 +305,9 @@ describe('Pond.observeOne', () => {
   const seedEvent = seedEvents
 
   const readState = async (pond: Pond, makeFish: (f: InitFish) => Fish<FishState, unknown>) =>
-    new Observable<FishState>(o => pond.observeOne(seedEvent, makeFish, x => o.next(x)))
+    new Observable<FishState>(o =>
+      pond.observeOne(seedEvent, makeFish, x => o.next(x), err => o.error(err)),
+    )
       .debounceTime(0)
       .first()
       .toPromise()
@@ -336,6 +338,28 @@ describe('Pond.observeOne', () => {
     initFish(pond, 4, 4, 4)
 
     await expect(readState(pond, makeFish)).resolves.toMatchObject({ myTag: '4', numEvents: 3 })
+
+    pond.dispose()
+  })
+
+  it('should also propagate errors', async () => {
+    let reported: FishId | null = null
+    const pond = Pond.test({
+      fishErrorReporter: (_, fishId) => {
+        reported = fishId
+      },
+    })
+    const makeFish = makeMakeFish(() => ({
+      where: seedEvent,
+      isReset: () => {
+        throw new Error('broken')
+      },
+    }))
+
+    initFish(pond, 4, 4, 4)
+
+    await expect(readState(pond, makeFish)).rejects.toMatchObject({ message: 'broken' })
+    expect(reported).toMatchObject({ entityType: 'hello', name: '4' })
 
     pond.dispose()
   })

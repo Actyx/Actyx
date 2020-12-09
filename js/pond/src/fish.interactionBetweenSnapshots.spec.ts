@@ -21,13 +21,14 @@ const numberFish = mkNumberFish(semanticSnap)
 describe('fish event store + jar with both local and semantic snapshots', () => {
   it(`events below snapshot horizon should not shatter fish state`, async () => {
     const { mkEvents } = eventFactory()
-    const { applyAndGetState, latestSnap } = await snapshotTestSetup(
+    const { applyAndGetState, latestSnap, wakeup } = await snapshotTestSetup(
       numberFish,
       [
         /* Intentionally omitting the events that would have formed the snapshot. */
       ],
       [mkSnapshot([8, 9, 10], 1000, 900)],
     )
+    await wakeup()
 
     const belowHorizonEvents: Events = mkEvents([
       {
@@ -53,11 +54,12 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
 
   it(`semantic snapshot events below snapshot horizon should not shatter fish state`, async () => {
     const { mkEvents } = eventFactory()
-    const { applyAndGetState, latestSnap } = await snapshotTestSetup(
+    const { applyAndGetState, latestSnap, wakeup } = await snapshotTestSetup(
       numberFish,
       [],
       [mkSnapshot([8, 9, 10], 1000, 900)],
     )
+    await wakeup()
 
     const belowHorizonEvents: Events = mkEvents([
       {
@@ -113,7 +115,8 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
       srcA.ageSnapshotsOverMinAge(),
     ).all
 
-    const { applyAndGetState, latestSnap } = await snapshotTestSetup(numberFish)
+    const { applyAndGetState, latestSnap, wakeup } = await snapshotTestSetup(numberFish)
+    await wakeup()
 
     expect(await applyAndGetState(timeline)).toEqual([-1, 4])
     expect(await latestSnap()).toMatchObject({
@@ -141,7 +144,8 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
       srcA.ageSnapshotsOverMinAge(),
     ).all
 
-    const { applyAndGetState, latestSnap } = await snapshotTestSetup(numberFish)
+    const { applyAndGetState, latestSnap, wakeup } = await snapshotTestSetup(numberFish)
+    await wakeup()
 
     expect(await applyAndGetState(timeline)).toEqual([-1, 5, 6])
     expect(await latestSnap()).toMatchObject({
@@ -215,7 +219,8 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
     }
 
     it(`should be preserved from semantic snapshots via local snapshots`, async () => {
-      const { applyAndGetState, latestSnap } = await snapshotTestSetup(numberFish)
+      const { applyAndGetState, latestSnap, wakeup } = await snapshotTestSetup(numberFish)
+      await wakeup()
 
       expect(await applyAndGetState(timeline.of('A', 'C'))).toEqual([-1, 3, 4, 5, 8])
       expect(await latestSnap()).toMatchObject({
@@ -229,7 +234,8 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
     })
 
     it(`should be respected when shattering, by not getting the low events`, async () => {
-      const { applyAndGetState, latestSnap } = await snapshotTestSetup(numberFish)
+      const { applyAndGetState, latestSnap, wakeup } = await snapshotTestSetup(numberFish)
+      await wakeup()
 
       expect(await applyAndGetState(timeline.of('A', 'B'))).toEqual([-1, 3, 4, 6, 7])
       expect(await latestSnap()).toMatchObject({
@@ -243,7 +249,8 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
     })
 
     it(`should be retroactively found when timetravelling`, async () => {
-      const { applyAndGetState, latestSnap } = await snapshotTestSetup(numberFish)
+      const { applyAndGetState, latestSnap, wakeup } = await snapshotTestSetup(numberFish)
+      await wakeup()
 
       expect(await applyAndGetState(timeline.of('B', 'C'))).toEqual([2, 5, 6, 7, 8])
       expect(await latestSnap()).toMatchObject({

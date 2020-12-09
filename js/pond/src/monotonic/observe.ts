@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { none, Option, some } from 'fp-ts/lib/Option'
 import { clone } from 'ramda'
-import { Observable, Subject, Scheduler } from 'rxjs'
+import { Observable, Scheduler, Subject } from 'rxjs'
 import { Event, EventStore, OffsetMap } from '../eventstore'
 import log from '../loggers'
 import { mkNoopPondStateTracker, PondStateTracker } from '../pond-state'
@@ -14,6 +14,7 @@ import {
   IsReset,
   LocalSnapshot,
   Metadata,
+  FishErrorReporter,
   StateWithProvenance,
   toMetadata,
 } from '../types'
@@ -35,6 +36,53 @@ const stateMsg = (latestValid: SerializedStateSnap): StateMsg => ({
   snapshot: latestValid,
 })
 
+const withErrorHandling = <S, E>(
+  fishId: FishId,
+  sourceId: string,
+  reportFishError: FishErrorReporter,
+  onEvent: (state: S, event: E, metadata: Metadata) => S,
+  isReset?: IsReset<E>,
+  deserializeState?: (jsonState: unknown) => S,
+) => {
+  const mkMetadata = toMetadata(sourceId)
+  const castPayload = (ev: Event): E => ev.payload as E
+
+  const onEventWrapped = (state: S, ev: Event) => {
+    const metadata = mkMetadata(ev)
+    try {
+      return onEvent(state, castPayload(ev), metadata)
+    } catch (err) {
+      reportFishError(err, fishId, { occuredIn: 'onEvent', event: ev, state, metadata })
+      throw err
+    }
+  }
+
+  const isResetWrapped = isReset
+    ? (ev: Event) => {
+        const metadata = mkMetadata(ev)
+        try {
+          return isReset(castPayload(ev), metadata)
+        } catch (err) {
+          reportFishError(err, fishId, { occuredIn: 'isReset', event: ev, metadata })
+          throw err
+        }
+      }
+    : () => false
+
+  const deserializeStateWrapped = deserializeState
+    ? (jsonState: unknown) => {
+        try {
+          return deserializeState(jsonState)
+        } catch (err) {
+          reportFishError(err, fishId, { occuredIn: 'deserializeState', jsonState })
+          throw err
+        }
+      }
+    : undefined
+
+  return { onEventWrapped, isResetWrapped, deserializeStateWrapped }
+}
+
 /*
  * Observe a Fish using the subscribe_monotonic endpoint (currently TS impl., but can drop in real impl.)
  *
@@ -44,7 +92,8 @@ export const observeMonotonic = (
   eventStore: EventStore,
   snapshotStore: SnapshotStore,
   snapshotScheduler: SnapshotScheduler,
-  _pondStateTracker: PondStateTracker = mkNoopPondStateTracker(),
+  reportFishError: FishErrorReporter,
+  pondStateTracker: PondStateTracker = mkNoopPondStateTracker(),
 ) => <S, E>(
   subscriptionSet: SubscriptionSet,
   initialState: S,
@@ -81,13 +130,17 @@ export const observeMonotonic = (
     )
   }
 
-  const metadata = toMetadata(sourceId)
-  const castPayload = (ev: Event): E => ev.payload as E
-  const onEventRaw = (state: S, ev: Event) => onEvent(state, castPayload(ev), metadata(ev))
-  const isResetRaw = isReset ? (ev: Event) => isReset(castPayload(ev), metadata(ev)) : () => false
+  const { onEventWrapped, isResetWrapped, deserializeStateWrapped } = withErrorHandling(
+    fishId,
+    sourceId,
+    reportFishError,
+    onEvent,
+    isReset,
+    deserializeState,
+  )
 
   const innerReducer = simpleReducer(
-    onEventRaw,
+    onEventWrapped,
     {
       state: clone(initialState),
       psnMap: OffsetMap.empty,
@@ -95,9 +148,14 @@ export const observeMonotonic = (
       horizon: undefined,
       cycle: 0,
     },
-    isResetRaw,
+    isResetWrapped,
   )
-  const reducer = cachingReducer(innerReducer, snapshotScheduler, storeSnapshot, deserializeState)
+  const reducer = cachingReducer(
+    innerReducer,
+    snapshotScheduler,
+    storeSnapshot,
+    deserializeStateWrapped,
+  )
 
   // The stream of update messages. Should end with a time travel message.
   const monotonicUpdates = (from: Option<FixedStart>): Observable<EventsOrTimetravel> => {
@@ -128,33 +186,43 @@ export const observeMonotonic = (
     resetToInitialState,
     trackingId,
   ).concatMap(msg => {
-    switch (msg.type) {
-      case MsgType.state: {
-        log.pond.info(
-          trackingId,
-          'directly setting state.',
-          'Num sources:',
-          Object.keys(msg.snapshot.psnMap).length,
-          '- Cycle:',
-          msg.snapshot.cycle,
-        )
+    const pondStateTrackerId = pondStateTracker.eventsFromOtherSourcesProcessingStarted(
+      fishId.entityType,
+      fishId.name,
+    )
+    try {
+      switch (msg.type) {
+        case MsgType.state: {
+          log.pond.info(
+            trackingId,
+            'directly setting state.',
+            'Num sources:',
+            Object.keys(msg.snapshot.psnMap).length,
+            '- Cycle:',
+            msg.snapshot.cycle,
+          )
 
-        reducer.setState(msg.snapshot)
-        return []
+          reducer.setState(msg.snapshot)
+          return []
+        }
+
+        case MsgType.events: {
+          log.pond.debug(
+            trackingId,
+            'applying event chunk of size',
+            msg.events.length,
+            '- caughtUp:',
+            msg.caughtUp,
+          )
+
+          const s = reducer.appendEvents(msg.events)
+          return msg.caughtUp ? [s] : []
+        }
       }
-
-      case MsgType.events: {
-        log.pond.debug(
-          trackingId,
-          'applying event chunk of size',
-          msg.events.length,
-          '- caughtUp:',
-          msg.caughtUp,
-        )
-
-        const s = reducer.appendEvents(msg.events)
-        return msg.caughtUp ? [s] : []
-      }
+    } catch (err) {
+      return Observable.throw(err)
+    } finally {
+      pondStateTracker.eventsFromOtherSourcesProcessingFinished(pondStateTrackerId)
     }
   })
 }

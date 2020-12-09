@@ -637,3 +637,12 @@ export type PendingEmission = {
   // Convert to a Promise which resolves once emission has completed.
   toPromise: () => Promise<void>
 }
+
+/** Context for an error thrown by a Fish’s functions. @public */
+export type FishErrorContext =
+  | { occuredIn: 'onEvent'; state: unknown; event: unknown; metadata: Metadata }
+  | { occuredIn: 'isReset'; event: unknown; metadata: Metadata }
+  | { occuredIn: 'deserializeState'; jsonState: unknown }
+
+/** Error reporter for when Fish functions throw exceptions. @public */
+export type FishErrorReporter = (err: unknown, fishId: FishId, detail: FishErrorContext) => void
