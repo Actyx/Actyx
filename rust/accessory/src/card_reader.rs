@@ -1,7 +1,11 @@
 use crate::{baltech, AccessoryError};
 use rusb::DeviceDescriptor;
 use serde::Serialize;
-use std::{ffi::CString, fmt, time::Duration};
+use std::{
+    ffi::{CStr, CString},
+    fmt,
+    time::Duration,
+};
 use tracing::*;
 
 #[derive(Debug, Ord, Eq, PartialEq, PartialOrd, Clone, Serialize)]
@@ -30,7 +34,11 @@ pub enum CardReader {
 }
 impl CardReader {
     pub fn create_from_usb(id: ReaderId, usb_descriptor: &DeviceDescriptor) -> anyhow::Result<Self> {
+        // TODO: handle >1 baltech readers
         if usb_descriptor.vendor_id() == BALTECH_VENDOR_ID {
+            // Some time for USB initialization (e.g. Baltech needs that before
+            // being responive after just having been plugged in)
+            std::thread::sleep(Duration::from_millis(100));
             let context = baltech::Context::open()?;
             Ok(CardReader::Baltech { id, context })
         } else {
@@ -97,8 +105,8 @@ impl CardReader {
                         AccessoryError::PcscError(err)
                     })?
                     .to_vec();
-                // TODO: maybe need to cut last two bytes? http://downloads.acs.com.hk/drivers/en/API-ACR122U-2.02.pdf
-                // at least for ACR122uu last two bytes indicate success (0x90 0x00); need to check Zebra scanner
+                // For ACR122uu last two bytes indicate success (0x90 0x00)
+                // http://downloads.acs.com.hk/drivers/en/API-ACR122U-2.02.pdf
                 if resp.len() < 4 {
                     error!("Error from running APDU command: {:X?}", resp);
                     Err(AccessoryError::PcscError(pcsc::Error::UnknownResMng).into())
@@ -133,6 +141,16 @@ impl From<&pcsc::ReaderState> for ReaderId {
     fn from(rs: &pcsc::ReaderState) -> Self {
         let protocol_identifier = rs.name().to_bytes().to_vec();
         let friendly_name = rs.name().to_string_lossy().to_string();
+        Self {
+            protocol_identifier,
+            friendly_name,
+        }
+    }
+}
+impl ReaderId {
+    pub fn from_pcsc_name(name: &CStr) -> Self {
+        let protocol_identifier = name.to_bytes().to_vec();
+        let friendly_name = name.to_string_lossy().to_string();
         Self {
             protocol_identifier,
             friendly_name,

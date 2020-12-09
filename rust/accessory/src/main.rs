@@ -1,3 +1,6 @@
+// Hide command prompt
+#![windows_subsystem = "windows"]
+
 use accessory::card_poll_loop;
 use actyxos_sdk::{event::FishName, event_service::EventService, fish_name, semantics};
 use std::str::FromStr;

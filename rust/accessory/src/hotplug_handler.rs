@@ -4,6 +4,7 @@ use rusb::{Device, DeviceDescriptor, UsbContext};
 use std::{
     collections::{BTreeMap, BTreeSet},
     convert::TryInto,
+    ffi::CString,
     fmt,
     ops::Deref,
     sync::Arc,
@@ -84,26 +85,39 @@ impl HotPlugHandler {
             let handler_c = handler.clone();
             let ctx_c = ctx.clone();
             // TODO: shutdown thread, maybe ..
-            std::thread::spawn(move || loop {
-                if let Err(e) = handler_c.poor_mans_hotplug_detection(&ctx_c) {
-                    error!("Hotplug detection failed: {}. Retrying in 5 s ..", e);
-                    std::thread::sleep(Duration::from_secs(5));
+            std::thread::spawn(move || {
+                let mut known_devices = Default::default();
+                loop {
+                    if let Err(e) = handler_c.poor_mans_hotplug_detection(&ctx_c, &mut known_devices) {
+                        error!("Hotplug detection failed: {}. Retrying in 5 s ..", e);
+                        // Conservatively mark all readers as detached
+                        let _ = handler_c.notify_readers_detached(known_devices.iter().map(|x| x.0.clone()));
+                        known_devices = Default::default();
+                        std::thread::sleep(Duration::from_secs(5));
+                    }
                 }
             });
         }
         let handler_c = handler.clone();
         // TODO: shutdown thread, maybe ..
-        std::thread::spawn(move || loop {
-            match pcsc::Context::establish(pcsc::Scope::User) {
-                Ok(pcsc_ctx) => {
-                    if let Err(e) = handler_c.pcsc_detection_loop(&pcsc_ctx) {
-                        error!("Hotplug pcsc detection failed: {}. Retrying in 1 s .. Note: This is normal on Windows on device ejection.", e);
-                        std::thread::sleep(Duration::from_secs(1));
+        std::thread::spawn(move || {
+            let mut known_readers = Default::default();
+            loop {
+                match pcsc::Context::establish(pcsc::Scope::User) {
+                    Ok(pcsc_ctx) => {
+                        if let Err(e) = handler_c.pcsc_detection_loop(&pcsc_ctx, &mut known_readers) {
+                            error!("Hotplug pcsc detection failed: {}. Retrying in 1 s .. Note: This is normal on Windows on device ejection.", e);
+                            // Conservatively mark all readers as detached
+                            let _ = handler_c
+                                .notify_readers_detached(known_readers.iter().map(|x| ReaderId::from_pcsc_name(&**x)));
+                            known_readers = Default::default();
+                            std::thread::sleep(Duration::from_secs(1));
+                        }
                     }
-                }
-                Err(e) => {
-                    error!("Error creating pcsc context {}", e);
-                    std::thread::sleep(Duration::from_secs(5));
+                    Err(e) => {
+                        error!("Error creating pcsc context {}", e);
+                        std::thread::sleep(Duration::from_secs(5));
+                    }
                 }
             }
         });
@@ -111,17 +125,13 @@ impl HotPlugHandler {
     }
     /// Loop monitoring attached USB devices. Used in case `libusb` doesn't
     /// provide said capability (like on Windows).
-    fn poor_mans_hotplug_detection(&self, ctx: &rusb::Context) -> anyhow::Result<()> {
-        let mut known_devices: BTreeMap<ReaderId, UsbDescriptor> = Default::default();
-        // Get status quo
-        for device in ctx.devices()?.iter() {
-            let id = (&device).try_into()?;
-            let descriptor = device.device_descriptor()?;
-            known_devices.insert(id, descriptor.into());
-        }
-        // Now monitor the list of attached usb devices
+    fn poor_mans_hotplug_detection(
+        &self,
+        ctx: &rusb::Context,
+        known_devices: &mut BTreeMap<ReaderId, UsbDescriptor>,
+    ) -> anyhow::Result<()> {
+        // Monitor the list of attached usb devices
         loop {
-            std::thread::sleep(Duration::from_millis(50));
             let mut new_devices: BTreeMap<ReaderId, UsbDescriptor> = Default::default();
             for device in ctx.devices()?.iter() {
                 let id = (&device).try_into()?;
@@ -143,55 +153,46 @@ impl HotPlugHandler {
                 .chain(removed.map(|id| HotPlugEvent::Detached((*id).clone())))
                 .try_for_each(|x| self.tx.send(x))?;
 
-            known_devices = new_devices;
+            let _ = std::mem::replace(known_devices, new_devices);
+            std::thread::sleep(Duration::from_millis(500));
         }
     }
     /// Loop monitoring connected PCSC devices
-    fn pcsc_detection_loop(&self, ctx: &pcsc::Context) -> anyhow::Result<()> {
-        use pcsc::*;
+    fn pcsc_detection_loop(&self, ctx: &pcsc::Context, known_readers: &mut BTreeSet<CString>) -> anyhow::Result<()> {
         let mut readers_buf = [0; 2048];
-        let mut reader_states = vec![
-            // Listen for reader insertions/removals, if supported.
-            ReaderState::new(PNP_NOTIFICATION(), State::UNAWARE),
-        ];
         loop {
-            // Remove dead readers.
-            fn is_dead(rs: &ReaderState) -> bool {
-                rs.event_state().intersects(State::UNKNOWN | State::IGNORE)
-            }
-            for rs in &reader_states {
-                if is_dead(rs) {
-                    info!("PCSC: Removing {:?}", rs.name());
-                    let id = rs.into();
-                    self.tx.send(HotPlugEvent::Detached(id)).unwrap();
-                }
-            }
-            reader_states.retain(|rs| !is_dead(rs));
+            let new_readers = ctx
+                .list_readers(&mut readers_buf)?
+                .into_iter()
+                // .map(|x| x.to_bytes().to_vec())
+                .collect::<BTreeSet<_>>();
 
-            // Add new readers.
-            let names = ctx.list_readers(&mut readers_buf)?;
-            for name in names {
-                if !reader_states.iter().any(|rs| rs.name() == name) {
-                    info!("Adding {:?}", name);
-                    let reader_state = ReaderState::new(name, State::UNAWARE);
-                    let id = (&reader_state).into();
-                    reader_states.push(reader_state);
-                    self.tx.send(HotPlugEvent::PcscAttached((id, ctx.clone()))).unwrap();
-                }
-            }
+            let known = known_readers.iter().map(|x| &**x).collect();
+            let added = new_readers.difference(&known);
+            let removed = known.difference(&new_readers);
 
-            // Update the view of the state to wait on.
-            for rs in &mut reader_states {
-                rs.sync_current_state();
-            }
+            added
+                .map(|s| ReaderId::from_pcsc_name(*s))
+                .map(|id| HotPlugEvent::PcscAttached((id, ctx.clone())))
+                .chain(
+                    removed
+                        .map(|s| ReaderId::from_pcsc_name(*s))
+                        .map(HotPlugEvent::Detached),
+                )
+                .try_for_each(|x| self.tx.send(x))?;
 
-            // Wait until the state changes.
-            // This blocks the complete lib, so we need to yield from time to time (timeout)
-            if let Err(e) = ctx.get_status_change(Duration::from_millis(50), &mut reader_states[..]) {
-                if e != pcsc::Error::Timeout {
-                    error!("Error getting status change: {}", e);
-                }
-            }
+            let _ = std::mem::replace(known_readers, new_readers.iter().map(|x| (*x).to_owned()).collect());
+            std::thread::sleep(Duration::from_millis(500));
         }
+    }
+    fn notify_readers_detached<T>(&self, readers: T) -> anyhow::Result<()>
+    where
+        T: IntoIterator,
+        T::Item: Into<ReaderId>,
+    {
+        for r in readers {
+            self.tx.send(HotPlugEvent::Detached(r.into()))?;
+        }
+        Ok(())
     }
 }

@@ -18,23 +18,7 @@ pub fn card_poll_loop(tx_out: Option<tokio::sync::mpsc::Sender<CardScanned>>) ->
     let (tx, rx) = unbounded();
     let _hotplug = HotPlugHandler::try_setup(&rusb_ctx, tx)?;
 
-    // TODO: handle >1 baltech readers
     let mut attached_readers: BTreeMap<ReaderId, CardReader> = Default::default();
-    for d in rusb_ctx.devices()?.iter() {
-        let id: ReaderId = (&d).into();
-        trace!("Attached USB device ID {:?}", id);
-        let usb_descriptor = d.device_descriptor()?;
-        match CardReader::create_from_usb(id.clone(), &usb_descriptor) {
-            Ok(card_reader) => {
-                info!("Created reader \"{:?}\"", id);
-                attached_readers.insert(id, card_reader);
-            }
-            Err(e) => match e.downcast_ref::<AccessoryError>() {
-                Some(AccessoryError::NotABaltechReader) => {}
-                _ => error!("Error creating reader from USB device: {}", e),
-            },
-        }
-    }
     loop {
         // Drive rusb event loop
         rusb_ctx.handle_events(Some(Duration::from_millis(20)))?;
@@ -42,24 +26,23 @@ pub fn card_poll_loop(tx_out: Option<tokio::sync::mpsc::Sender<CardScanned>>) ->
         // Handle hotplug events, either from USB or PCSC
         while let Ok(d) = rx.try_recv() {
             match d {
-                HotPlugEvent::UsbAttached((id, d)) => {
-                    // Some time for USB initialization (e.g. Baltech needs that before being responive)
-                    std::thread::sleep(Duration::from_millis(100));
-                    match CardReader::create_from_usb(id.clone(), &*d) {
-                        Ok(card_reader) => {
-                            attached_readers.insert(id, card_reader);
-                        }
-                        Err(e) => match e.downcast_ref::<AccessoryError>() {
-                            Some(AccessoryError::NotABaltechReader) => {}
-                            _ => error!("Error creating reader from USB device: {}", e),
-                        },
+                HotPlugEvent::UsbAttached((id, d)) => match CardReader::create_from_usb(id.clone(), &*d) {
+                    Ok(card_reader) => {
+                        info!("Usb reader attached: \"{:?}\"", id);
+                        attached_readers.insert(id, card_reader);
                     }
-                }
+                    Err(e) => match e.downcast_ref::<AccessoryError>() {
+                        Some(AccessoryError::NotABaltechReader) => {}
+                        _ => error!("Error creating reader from USB device: {}", e),
+                    },
+                },
                 HotPlugEvent::PcscAttached((id, ctx)) => {
+                    info!("Pcsc reader attached: \"{:?}\"", id);
                     let reader = CardReader::create_from_pcsc(ctx, id.clone());
                     attached_readers.insert(id, reader);
                 }
                 HotPlugEvent::Detached(id) => {
+                    info!("Reader detached: \"{:?}\"", id);
                     attached_readers.remove(&id);
                 }
             }

@@ -131,7 +131,7 @@ impl fmt::Display for brp_CardType {
 }
 impl Drop for Context {
     fn drop(&mut self) {
-        info!("Destroying device connection");
+        debug!("Destroying device connection");
         unsafe { brp_destroy(self.device_handle) };
     }
 }
@@ -140,12 +140,12 @@ impl Context {
     pub fn open() -> anyhow::Result<Self> {
         let device_handle = unsafe { brp_create() };
         let protocol_handle = unsafe { brp_create_usb_hid(0) };
-        info!("protocol_handle {:?}", protocol_handle);
+        debug!("protocol_handle {:?}", protocol_handle);
         // Compose protocol stack
         try_brp!(brp_set_io(device_handle, protocol_handle));
         trace!("Set io stack");
         try_brp!(brp_open(device_handle));
-        info!("Opened connection to reader");
+        debug!("Opened connection to reader");
         Ok(Self {
             device_handle,
             protocol_handle,

@@ -372,11 +372,13 @@ dist/bin/windows-x86_64/actyxos-node-manager.exe: misc/actyxos-node-manager/out/
 	mkdir -p $(dir $@)
 	cp -a $</actyxos-node-manager.exe $@
 
-dist/bin/windows-x86_64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyxos.exe make-always
+dist/bin/windows-x86_64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyxos.exe dist/bin/windows-x86_64/webview-runner.zip dist/bin/windows-x86_64/accessory.zip make-always
 	mkdir -p $@
 	cp $</actyxos-node-manager.exe misc/actyxos-win-installer
 	cp dist/bin/windows-x86_64/actyxos.exe misc/actyxos-win-installer
 	cp dist/bin/windows-x86_64/ax.exe misc/actyxos-win-installer
+	unzip -n dist/bin/windows-x86_64/webview-runner.zip -d misc/actyxos-win-installer/webview-runner
+	unzip -n dist/bin/windows-x86_64/accessory.zip -d misc/actyxos-win-installer/webview-runner
 	cp -r misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 misc/actyxos-win-installer/node-manager
 	# ls -alh .
 	docker run \
