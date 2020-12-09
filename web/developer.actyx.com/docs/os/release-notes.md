@@ -33,6 +33,7 @@ Download:
 - Fixed an issue that resulted in the node crashing if configured with an invalid bootstrap node address
 - Fixed an issue that prohibited access to the [Console Service logging API](/os/api/console-service.md) from the browser and WebView Runtime due to CORS restrictions
 - Fixed an issue where offet bounds were not properly respected for tag-based (Pond v2) queries
+- Fixed an issue that lead to `ax logs tail` not returning all log messages
 
 ## ActyxOS 1.0.0
 
