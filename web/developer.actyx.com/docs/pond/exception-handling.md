@@ -5,7 +5,7 @@ title: Exception Handling
 It is important to write the functions contained in a Fish – `onEvent`, `deserializeState` and `isReset` – very defensively.
 If they throw errors, there is often no reasonable way to continue running a Fish; because its final state depends on all previous states.
 
-:::warn
+:::warning
 A Fish is **stopped** when one of its function throws an error.
 
 It’s most recommended you wrap your complete `onEvent` inside a try/catch block and implement exception handling that makes sense for that specific Fish.
