@@ -86,6 +86,15 @@ You should see something like:
 
 Congratulations, you have successfully installed <em>ActyxOS on Android</em>! While you can already use ActyxOS locally, you may have to – depending on your exact setup – configure it to be able to connect to other ActyxOS nodes. If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
 
+:::warning Changing Settings
+There is currently a known bug in ActyxOS on Windows that leads to the node crashing after changing certain node settings. Please be aware that you need to restart your node after changing one of the following settings:
+
+- `general/swarmKey`
+- `general/bootstrapNodes`
+- `services/eventService/readOnly`
+- `services/eventService/topic`
+:::
+
 ### Where to go next
 
 - [Quickstart](../../learn-actyx/quickstart.md) is a tutorial about ActyxOS with ready-to-use apps and configurations
@@ -124,6 +133,10 @@ ActyxOS logs can be accessed through the Windows Event Viewer. In the Event View
 You can then see all ActyxOS logs in that view:
 
 ![Event viewer](/images/os/windows-event-viewer.png)
+
+:::warning Logs not accessible through `ax logs tail`
+ActyxOS logs are currently only available thorugh the Window event viewer.
+:::
 
 ## Troubleshooting
 
@@ -165,3 +178,12 @@ First, check that you entered the right IP in the `ax` command. If you still can
 - **ActyxOS is not reachable.**
 This means that ActyxOS is not running on your node. Please click on the ActyxOS icon on your home screen. If ActyxOS is running, you can see it in the notifications overview of your Windows device
 - **Host is not reachable.** This means that your development machine cannot connect to your node. Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port 4457
+
+:::warning Changing Settings
+There is currently a known bug in ActyxOS on Windows that leads to the node crashing after changing certain node settings. Please be aware that you need to restart your node after changing one of the following settings:
+
+- `general/swarmKey`
+- `general/bootstrapNodes`
+- `services/eventService/readOnly`
+- `services/eventService/topic`
+:::
