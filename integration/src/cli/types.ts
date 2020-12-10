@@ -24,6 +24,10 @@ const ERR_SETTINGS_UNKNOWN_SCOPE = io.type({
   code: io.literal('ERR_SETTINGS_UNKNOWN_SCOPE'),
   message: io.string,
 })
+const ERR_SETTINGS_NOT_FOUND_AT_SCOPE = io.type({
+  code: io.literal('ERR_SETTINGS_NOT_FOUND_AT_SCOPE'),
+  message: io.string,
+})
 const ERR_APP_INVALID_PACKAGE = io.type({
   code: io.literal('ERR_APP_INVALID_PACKAGE'),
   message: io.string,
@@ -81,6 +85,7 @@ export type Response_Nodes_Ls = io.TypeOf<typeof Response_Nodes_Ls>
 export const Response_Settings_Get = io.union([
   ERR_NODE_UNREACHABLE,
   ERR_INTERNAL_ERROR,
+  ERR_SETTINGS_NOT_FOUND_AT_SCOPE,
   io.intersection([
     _OK,
     io.type({

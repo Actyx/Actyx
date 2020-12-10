@@ -171,7 +171,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
 
       const responseGet = await testNode.ax.settings.get(scopeActyxOS, true)
       const responseGetShape = {
-        code: 'ERR_INTERNAL_ERROR',
+        code: 'ERR_SETTINGS_NOT_FOUND_AT_SCOPE',
         message: expect.any(String),
       }
       expect(responseGet).toMatchObject(responseGetShape)
