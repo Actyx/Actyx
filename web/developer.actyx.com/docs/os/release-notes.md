@@ -8,7 +8,7 @@ This page contains information about new features, bug fixes, deprecations and r
 
 ## ActyxOS 1.1.0
 
-Release date: 7.12.2020
+Release date: 11.12.2020
 
 Download:
 
@@ -32,7 +32,7 @@ Download:
 - Fixed an issue that led to ActyxOS not validating apps if optional properties in the manifest were missing (`description` and `settingsSchema`)
 - Fixed an issue that resulted in the node crashing if configured with an invalid bootstrap node address
 - Fixed an issue that prohibited access to the [Console Service logging API](/os/api/console-service.md) from the browser and WebView Runtime due to CORS restrictions
-- Fixed an issue where offet bounds were not properly respected for tag-based (Pond v2) queries
+- Fixed an issue where offset bounds were not properly respected for tag-based (Pond v2) queries
 - Fixed an issue that lead to `ax logs tail` not returning all log messages
 
 ## ActyxOS 1.0.0
