@@ -2,13 +2,13 @@
 title: Release notes
 ---
 
-This page contains information about new features, bug fixes, deprecations and removals in ActyxOS releases. For a more extensive description of the changes, check out our [blog](https://www.actyx.com/news/).
+This page contains information about new features, bug fixes, deprecations and removals in ActyxOS releases. For a more extensive description of the changes, check out our [blog](https://developer.actyx.com/blog/).
 
 <!-- markdownlint-disable MD024 -->
 
 ## ActyxOS 1.1.0
 
-Release date: 7.12.2020
+Release date: 11.12.2020
 
 Download:
 
