@@ -41,7 +41,7 @@ There is no request body.
 
 The response body will contain a JSON object of the following structure:
 
-```json
+```text
 {
     "<string: sourceID>": "<integer: last-known-offset>",
     "<string: sourceID>": "<integer: last-known-offset>"
@@ -52,7 +52,7 @@ The response body will contain a JSON object of the following structure:
 
 See the following example using cURL:
 
-```bash
+```text
 curl \
     -s -X "GET" \
     -H "Accept: application/json" \

@@ -1,6 +1,6 @@
-import React from "react";
-import styled from "styled-components";
-import defaults from "../components/defaults";
+import React from 'react'
+import styled from 'styled-components'
+import defaults from '../components/defaults'
 
 const Wrapper = styled.div`
   width: 100%;
@@ -15,7 +15,7 @@ const Wrapper = styled.div`
     width: 100%;
     height: auto;
   }
-`;
+`
 
 const LeftCol = styled.div`
   width: 54%;
@@ -25,7 +25,7 @@ const LeftCol = styled.div`
   @media (max-width: ${defaults.viewport.medium}px) {
     width: 100%;
   }
-`;
+`
 
 const ImageDiv = styled.div`
   overflow: hidden;
@@ -36,7 +36,7 @@ const ImageDiv = styled.div`
   img {
     padding: 0;
   }
-`;
+`
 
 const RightCol = styled.div`
   padding-left: 20px;
@@ -50,30 +50,30 @@ const RightCol = styled.div`
     width: 100%;
     margin-top: 20px;
   }
-`;
+`
 
 const TextWrapper = styled.div`
   flex-direction: column;
   align-items: flex-end;
   justify-content: flex-start;
-`;
+`
 
 const Headline = styled.div`
-  font-family: "system-ui", "-apple-system", "Helvetica", sans-serif;
+  font-family: 'system-ui', '-apple-system', 'Helvetica', sans-serif;
   font-size: 26px;
   font-weight: 500;
   margin-bottom: 10px;
-`;
+`
 
 const Subheadline = styled.div`
-  font-family: "system-ui", "-apple-system", "Helvetica", sans-serif;
+  font-family: 'system-ui', '-apple-system', 'Helvetica', sans-serif;
   font-size: ${defaults.fontsizes.subheadline};
   color: #4e566d;
   margin-bottom: 32px;
-`;
+`
 
 const Button = styled.div<{
-  button?: boolean;
+  button?: boolean
 }>`
   display: inline-block;
   cursor: pointer;
@@ -82,12 +82,12 @@ const Button = styled.div<{
   background-color: #1998ff;
   letter-spacing: 0.02em;
   white-space: nowrap;
-  padding-left: ${(p) => (p.button ? "10px" : "0")};
-  padding-right: ${(p) => (p.button ? "10px" : "0")};
+  padding-left: ${(p) => (p.button ? '10px' : '0')};
+  padding-right: ${(p) => (p.button ? '10px' : '0')};
   padding-top: 8px;
   padding-bottom: 8px;
   margin-bottom: 20px;
-  font-size: ${defaults.fontsizes.midium};
+  font-size: ${defaults.fontsizes.medium};
   font-weight: 600;
   text-transform: uppercase;
   box-shadow: 0 4px 6px rgba(50, 50, 93, 0.11), 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -100,25 +100,18 @@ const Button = styled.div<{
     transition-timing-function: ease-in-out;
     transition-delay: 0s;
   }
-`;
+`
 
 type Props = Readonly<{
-  img: string;
-  title: string;
-  subtitle: string;
-  cta?: string;
-  link?: string;
-  button?: boolean;
-}>;
+  img: string
+  title: string
+  subtitle: string
+  cta?: string
+  link?: string
+  button?: boolean
+}>
 
-export const SectionHero = ({
-  img,
-  title,
-  subtitle,
-  cta,
-  link,
-  button,
-}: Props) => (
+export const SectionHero = ({ img, title, subtitle, cta, link, button }: Props) => (
   <Wrapper>
     <LeftCol>
       <ImageDiv>
@@ -135,4 +128,4 @@ export const SectionHero = ({
       </TextWrapper>
     </RightCol>
   </Wrapper>
-);
+)

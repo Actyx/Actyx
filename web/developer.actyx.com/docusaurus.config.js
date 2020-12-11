@@ -19,7 +19,7 @@ module.exports = {
     announcementBar: {
       id: 'pond-2.3.0',
       content:
-        '🚀 We released v2.4.0 of Actyx Pond! Read the <a target="_blank" rel="noopener noreferrer" href="https://developer.actyx.com/blog/2020/12/09/pond-240-release">Blog Post</a> to learn more! 🚀',
+        '🥁 We released version 1.1.0 of ActyxOS! Read the <a target="_blank" rel="noopener noreferrer" href="https://developer.actyx.com/blog/2020/12/07/actyxos-1-1-0-release">blog post</a> to learn more or check out <a target="_blank" rel="noopener noreferrer" href="https://developer.actyx.com/docs/os/release-notes">release notes</a> ! 🥁',
       backgroundColor: '#f5f6f7',
       textColor: '#000',
     },
@@ -126,6 +126,19 @@ module.exports = {
               to: 'docs/node-manager/overview',
             },
           ],
+        },
+        {
+          title: 'Node Management',
+          items: [
+            {
+              label: 'Actyx CLI',
+              to: 'docs/cli/getting-started',
+            },
+            {
+              label: 'Actyx Node Manager',
+              to: 'docs/node-manager/overview',
+            }
+          ]
         },
         {
           title: 'Actyx',

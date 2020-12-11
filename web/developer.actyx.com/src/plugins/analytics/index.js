@@ -1,11 +1,11 @@
-const path = require("path");
+const path = require('path')
 
 module.exports = function (context, options) {
   // ...
   return {
-    name: "analytics",
+    name: 'analytics',
     getThemePath() {
-      return path.resolve(__dirname, "./theme");
+      return path.resolve(__dirname, './theme')
     },
     //async loadContent() {
     //  /* ... */
@@ -16,5 +16,5 @@ module.exports = function (context, options) {
     //  console.log(`contentLoaded`);
     //},
     /* other lifecycle API */
-  };
-};
+  }
+}

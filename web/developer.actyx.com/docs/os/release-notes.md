@@ -6,6 +6,35 @@ This page contains information about new features, bug fixes, deprecations and r
 
 <!-- markdownlint-disable MD024 -->
 
+## ActyxOS 1.1.0
+
+Release date: 7.12.2020
+
+Download:
+
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
+- [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
+- [Actyx Downloads page](https://downloads.actyx.com/)
+
+### New features
+
+- Introduced [ActyxOS on Linux in beta version](advanced-guides/actyxos-on-linux.md)
+- ActyxOS nodes start up without the need to set settings by having default settings for all required values. You can find the new node settings schema [here](api/node-settings-schema.md)
+- Many performance improvements
+
+### Bug fixes
+
+- Many stability improvements around our core infrastructure
+- Fixed an issue that resulted in a node crash if there are gaps in event offsets
+- Fixed an issue that led to ActyxOS on Android crashing if started without available network interface
+- Fixed an issue that resulted in default node settings not being used after manually set settings were unset
+- Changed the node settings schema so that properties with default values are not required anymore
+- Fixed an issue that led to ActyxOS not validating apps if optional properties in the manifest were missing (`description` and `settingsSchema`)
+- Fixed an issue that resulted in the node crashing if configured with an invalid bootstrap node address
+- Fixed an issue that prohibited access to the [Console Service logging API](/os/api/console-service.md) from the browser and WebView Runtime due to CORS restrictions
+- Fixed an issue where offet bounds were not properly respected for tag-based (Pond v2) queries
+- Fixed an issue that lead to `ax logs tail` not returning all log messages
+
 ## ActyxOS 1.0.0
 
 Release date: 28.08.2020

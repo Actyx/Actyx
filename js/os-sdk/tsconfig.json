@@ -8,7 +8,10 @@
     "target": "es2017",
     "jsx": "react",
     "moduleResolution": "node",
-    "lib": ["dom", "es2017"],
+    "lib": [
+      "dom",
+      "es2019"
+    ],
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,

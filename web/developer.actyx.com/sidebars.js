@@ -22,12 +22,13 @@ module.exports = {
     {
       type: "category",
       label: "Advanced\u00a0Guides",
-      collapsed: true,
+      collapsed: false,
       items: [
         "os/advanced-guides/overview",
         "os/advanced-guides/actyxos-on-android",
         "os/advanced-guides/actyxos-on-docker",
         "os/advanced-guides/actyxos-on-windows",
+        "os/advanced-guides/actyxos-on-linux",
         "os/advanced-guides/node-and-app-lifecycle",
         "os/advanced-guides/node-and-app-settings",
         "os/advanced-guides/actyxos-bootstrap-node",
@@ -61,7 +62,7 @@ module.exports = {
     {
       type: "category",
       label: "Theoretical\u00a0Foundation",
-      collapsed: true,
+      collapsed: false,
       items: [
         "os/theoretical-foundation/distributed-systems",
         "os/theoretical-foundation/event-sourcing",
@@ -174,7 +175,7 @@ module.exports = {
     {
       type: "category",
       label: "ax\u00a0settings",
-      collapsed: true,
+      collapsed: false,
       items: [
         "cli/settings/settings",
         "cli/settings/scopes",
@@ -187,11 +188,13 @@ module.exports = {
     {
       type: "category",
       label: "ax\u00a0logs",
+      collapsed: false,
       items: ["cli/logs/logs", "cli/logs/tail"],
     },
     {
       type: "category",
       label: "ax\u00a0swarms",
+      collapsed: false,
       items: ["cli/swarms/swarms", "cli/swarms/keygen"],
     },
     "cli/release-notes",

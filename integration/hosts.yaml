@@ -1,0 +1,60 @@
+hosts:
+- name: x86_64-linux-linux
+  prepare:
+    type: create-aws-ec2
+    # Debian 11 from Oct 5, 2020
+    ami: ami-0254f49f790a514ab
+    instance: t2.small
+    user: admin
+  install: linux
+- name: x86_64-linux-docker
+  prepare:
+    type: create-aws-ec2
+    ami: ami-0254f49f790a514ab
+    instance: t2.small
+    user: admin
+  install: docker
+- name: aarch64-linux-linux
+  prepare:
+    type: create-aws-ec2
+    # Ubuntu 20.04
+    ami: ami-0aa72f02ca1be5339
+    instance: a1.medium
+    user: ubuntu
+  install: linux
+- name: aarch64-linux-docker
+  prepare:
+    type: create-aws-ec2
+    ami: ami-0aa72f02ca1be5339
+    instance: a1.medium
+    user: ubuntu
+  install: docker
+- name: armv7-linux-linux
+  prepare:
+    type: create-aws-ec2
+    ami: ami-0aa72f02ca1be5339
+    instance: a1.medium
+    user: ubuntu
+    # There are no ARMv7 instances, but we can run ARMv7 binaries to test them
+    armv7: true
+  install: linux
+- name: armv7-linux-docker
+  prepare:
+    type: create-aws-ec2
+    ami: ami-0aa72f02ca1be5339
+    instance: a1.medium
+    user: ubuntu
+    armv7: true
+  install: docker
+settings:
+  # Where folders and files will be created during a test run.
+  tempDir: temp
+  # When set to true `npm test` will not terminate but keep SSH forwarding open
+  # and the spawned hosts alive, so that you can investigate them. ctrl-C will kill them.
+  keepNodesRunning: false
+  # Set this to true if you already have the test setup in tempDir and want to save time.
+  skipTestProjectPreparation: false
+  # Set this to a specific hash instead of null to use Docker artifacts from that commit.
+  gitHash: null
+  # Rather than writing all logs to individual files, dump everything on stdout
+  logToStdout: false
