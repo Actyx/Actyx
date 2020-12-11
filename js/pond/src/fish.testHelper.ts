@@ -5,20 +5,21 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { last } from 'ramda'
-import { Observable } from 'rxjs'
+import { Observable, Scheduler } from 'rxjs'
 import { Fish, FishId, TestEvent } from '.'
 import { EventStore } from './eventstore'
 import { Event, Events, OffsetMap } from './eventstore/types'
-import { FishJar } from './fishJar'
-import { mkNoopPondStateTracker } from './pond-state'
+import { observeMonotonic } from './monotonic'
 import { SnapshotStore } from './snapshotStore'
-import { minSnapshotAge } from './store/snapshotScheduler'
+import { minSnapshotAge, SnapshotScheduler } from './store/snapshotScheduler'
 import { Tag, toSubscriptionSet, Where } from './tagging'
 import {
   EventKey,
+  FishErrorContext,
   FishName,
   Lamport,
   Psn,
+  FishErrorReporter,
   Semantics,
   SnapshotFormat,
   SourceId,
@@ -159,6 +160,12 @@ export const snapshotTestSetup = async <S>(
   const eventStore = EventStore.test(sourceId)
   if (storedEvents) eventStore.directlyPushEvents(storedEvents)
 
+  let lastErr: FishErrorContext | null = null
+  const testReportFishError: FishErrorReporter = (_err, _fishId, detail) => {
+    lastErr = detail
+  }
+  const latestErr = () => lastErr
+
   const snapshotStore = SnapshotStore.inMem()
   await Observable.from(storedSnapshots || [])
     .concatMap(snap => {
@@ -178,7 +185,12 @@ export const snapshotTestSetup = async <S>(
     .concat(Observable.of(undefined))
     .toPromise()
 
-  const hydrate = FishJar.hydrateV2(eventStore, snapshotStore, mkNoopPondStateTracker())
+  const hydrate = observeMonotonic(
+    eventStore,
+    snapshotStore,
+    SnapshotScheduler.create(10),
+    testReportFishError,
+  )
 
   const observe = hydrate(
     toSubscriptionSet(fish.where),
@@ -193,13 +205,13 @@ export const snapshotTestSetup = async <S>(
 
   const pubEvents = eventStore.directlyPushEvents
 
-  const applyAndGetState = async (events: ReadonlyArray<TestEvent>, numExpectedStates = 1) => {
+  const applyAndGetState = async (events: ReadonlyArray<TestEvent>) => {
     // adding events may or may not emit a new state, depending on whether the events
     // were relevant (might be before semantic snapshot or duplicates)
     const pubProm = observe
-      .take(1 + numExpectedStates)
-      .timeout(100)
-      .catch(() => Observable.empty())
+      .observeOn(Scheduler.async)
+      .debounceTime(0)
+      .first()
       .toPromise()
     pubEvents(events)
     return pubProm
@@ -210,15 +222,16 @@ export const snapshotTestSetup = async <S>(
       .retrieveSnapshot('test-semantics', 'test-fishname', 1)
       .then(x => (x ? { ...x, state: JSON.parse(x.state) } : undefined))
 
-  // Await full hydration before tests run
-  await observe.take(1).toPromise()
+  const wakeup = () => observe.take(1).toPromise()
 
   return {
     latestSnap,
+    latestErr,
     snapshotStore,
     applyAndGetState,
     observe,
     pubEvents,
+    wakeup,
   }
 }
 

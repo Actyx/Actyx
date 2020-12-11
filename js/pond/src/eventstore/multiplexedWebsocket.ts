@@ -91,10 +91,13 @@ export const validateOrThrow = <T>(decoder: t.Decoder<any, T>) => (value: any) =
 
 export class MultiplexedWebsocket {
   private wsSubject: WebSocketSubject<ResponseMessage>
-  // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-  // @ts-ignore TS6133 (declared but never read)
   private keepAlive: Subscription
   private requestCounter: RequestId = 0
+
+  close = () => {
+    this.keepAlive.unsubscribe()
+    this.wsSubject.unsubscribe()
+  }
 
   constructor({ url, protocol, onStoreConnectionClosed, reconnectTimeout }: WsStoreConfig) {
     log.ws.info('establishing Pond API WS', url)

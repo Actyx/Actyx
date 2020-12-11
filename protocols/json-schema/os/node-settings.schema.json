@@ -3,11 +3,6 @@
   "$id": "https://developer.actyx.com/schemas/os/node-settings.schema.json",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "general",
-    "licensing",
-    "services"
-  ],
   "properties": {
     "general": {
       "$ref": "#/definitions/General"
@@ -75,27 +70,24 @@
             "type": "string",
             "const": "development"
           }
-        ]
+        ],
+        "default": "development"
       }
     },
     "General": {
       "type": "object",
-      "required": [
-        "swarmKey",
-        "bootstrapNodes",
-        "displayName"
-      ],
       "additionalProperties": false,
       "properties": {
         "swarmKey": {
-          "$ref": "#/definitions/Basic/Key"
+          "$ref": "#/definitions/Basic/Key",
+          "default": "L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCmQ3YjBmNDFjY2ZlYTEyM2FkYTJhYWI0MmY2NjRjOWUyNWUwZWYyZThmNGJjNjJlOTg3NmE3NDU1MTc3ZWQzOGIK"
         },
         "bootstrapNodes": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/Basic/MultiAddr"
           },
-          "minItems": 1,
+          "default": [],
           "uniqueItems": true,
           "description": "Addresses of peers to initially connect for bootstrapping. These must be multiaddresses containing a peer id. E.g. /dns4/demo-bootstrap.actyx.net/tcp/4001/p2p/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH"
         },
@@ -110,10 +102,12 @@
           "description": "Manually configured addresses to announce. These must be multiaddresses without peer id, e.g. /ip4/1.2.3.4/tcp/4001"
         },
         "displayName": {
-          "$ref": "#/definitions/Basic/NonEmptyString"
+          "$ref": "#/definitions/Basic/NonEmptyString",
+          "default": "Default Node"
         },
         "logLevels": {
           "type": "object",
+          "additionalProperties": false,
           "properties": {
             "os": {
               "$ref": "#/definitions/Composite/LogLevel"
@@ -126,13 +120,13 @@
         "requireAuthentication": {
           "type": "boolean",
           "default": false
-          },
+        },
         "authorizedKeys": {
           "type": "array",
           "items": {
             "type": "string",
             "minLength": 32,
-            "maxLength": 64 
+            "maxLength": 64
           },
           "minItems": 0,
           "uniqueItems": true,
@@ -142,14 +136,11 @@
     },
     "Licensing": {
       "type": "object",
-      "required": [
-        "os",
-        "apps"
-      ],
       "additionalProperties": false,
       "properties": {
         "os": {
-          "$ref": "#/definitions/Composite/License"
+          "$ref": "#/definitions/Composite/License",
+          "default": "development"
         },
         "apps": {
           "type": "object",
@@ -159,20 +150,19 @@
           "additionalProperties": {
             "$ref": "#/definitions/Composite/License"
           },
-          "description": "Key-value pairs where the key is an app's ID."
+          "description": "Key-value pairs where the key is an app's ID.",
+          "default": {}
         }
       }
     },
     "Services": {
       "EventService": {
         "type": "object",
-        "required": [
-          "topic"
-        ],
         "additionalProperties": false,
         "properties": {
           "topic": {
-            "$ref": "#/definitions/Basic/NonEmptyString"
+            "$ref": "#/definitions/Basic/NonEmptyString",
+            "default": "default-topic"
           },
           "readOnly": {
             "type": "boolean",
@@ -180,35 +170,31 @@
           },
           "_internal": {
             "type": "object",
-            "required": [],
             "additionalProperties": true
           }
         }
       },
       "BlobService": {
         "type": "object",
-        "required": [],
         "additionalProperties": false,
         "properties": {}
       },
       "ConsoleService": {
         "type": "object",
-        "required": [],
         "additionalProperties": false,
         "properties": {}
       },
       "DockerRuntime": {
         "type": "object",
-        "required": [],
         "additionalProperties": false,
         "properties": {}
       },
       "WebViewRuntime": {
         "type": "object",
-        "required": [],
         "additionalProperties": false,
         "properties": {}
       }
     }
   }
 }
+

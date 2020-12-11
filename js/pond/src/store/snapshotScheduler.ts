@@ -36,9 +36,9 @@ export type GetSnapshotLevels = <T extends HasTimestamp>(
  *
  * @returns whether to apply the `scheduledSnapshot` to the FES
  */
-export type IsEligibleForStorage = <T extends HasTimestamp>(
-  scheduledSnapshot: T,
-  latestState: T,
+export type IsEligibleForStorage = (
+  scheduledSnapshot: HasTimestamp,
+  latestState: HasTimestamp,
 ) => boolean
 
 export type SnapshotScheduler = {

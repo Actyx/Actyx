@@ -1,9 +1,9 @@
-import React from "react";
-import styled from "styled-components";
-import defaults from "../components/defaults";
+import React from 'react'
+import styled from 'styled-components'
+import defaults from '../components/defaults'
 
 const Link = styled.div`
-  font-family: "system-ui", "-apple-system", "Helvetica", sans-serif;
+  font-family: 'system-ui', '-apple-system', 'Helvetica', sans-serif;
   font-size: ${defaults.fontsizes.body};
   font-weight: ${defaults.fontWeights.regular};
   color: ${defaults.colors.primary};
@@ -12,7 +12,7 @@ const Link = styled.div`
   a {
     text-decoration: none;
   }
-`;
+`
 
 const ArrowStyled = styled.span`
   svg {
@@ -23,7 +23,7 @@ const ArrowStyled = styled.span`
     transform: translateY(3px);
     margin-right: 10px;
   }
-`;
+`
 
 const Arrow = () => (
   <ArrowStyled>
@@ -45,12 +45,12 @@ const Arrow = () => (
       </g>
     </svg>
   </ArrowStyled>
-);
+)
 
 type Props = Readonly<{
-  link: string;
-  cta: string;
-}>;
+  link: string
+  cta: string
+}>
 
 export const DownloadLink = ({ link, cta }: Props) => (
   <Link>
@@ -59,4 +59,4 @@ export const DownloadLink = ({ link, cta }: Props) => (
       {cta}
     </a>
   </Link>
-);
+)

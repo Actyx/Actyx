@@ -135,6 +135,10 @@ The primary tool for setting settings, both at the node and the app level, is th
 
 Let's jump into an example, where we want to configure a brand-new ActyxOS node. First we create a new file &mdash; let's call it `node-settings.yml` and set all the settings to the values we want:
 
+:::tip Default node settings
+ActyxOS nodes have default values for all settings that ActyxOS needs to work locally. You can find the node settings schema that contains the default values [here](../api/node-settings-schema.md).
+:::
+
 ```yml
 general:
   displayName: My Test Node
@@ -162,6 +166,15 @@ ax settings set --local com.actyx.os @node-settings.yml 10.2.3.23
                          |
                          | set the settings at the `com.actyx.os` scope
 ```
+
+:::warning Changing Settings
+There is currently a known bug in ActyxOS on Windows that leads to the node crashing after changing certain node settings. Please be aware that you need to restart your node after changing one of the following settings:
+
+- `general/swarmKey`
+- `general/bootstrapNodes`
+- `services/eventService/readOnly`
+- `services/eventService/topic`
+:::
 
 #### Get top-level scopes from a node
 
@@ -230,8 +243,7 @@ Following association of this schema with your app, ActyxOS will now ensure that
 
 #### Deploying an app without settings
 
-If your app has no settings, ActyxOS still needs a settings schema.
-You may define a settings schema that does not require any settings and provides an empty object as default:
+If your app has no settings, you can just leave the property `settingsSchema` out of your Actyx manifest. ActyxOS will then automatically add a settings schema to your app that does not require any settings, and provides an empty object as default:
 
 ```json
 {

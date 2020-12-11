@@ -5,24 +5,31 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { none } from 'fp-ts/lib/Option'
+import { lessThan } from 'fp-ts/lib/Ord'
+import { Map } from 'immutable'
 import * as R from 'ramda'
 import { clone } from 'ramda'
 import { Observable, Subject, Subscription as RxSubscription } from 'rxjs'
 import { catchError, tap } from 'rxjs/operators'
 import { EventStore } from './eventstore'
-import { AllEventsSortOrders, Event, Events } from './eventstore/types'
+import { AllEventsSortOrders, Event, Events, OffsetMap } from './eventstore/types'
 import { intoOrderedChunks } from './eventstore/utils'
-import { FishEventStore, FishInfo } from './fishEventStore'
+import { FishEventStore, FishInfo, getEventsForwardChunked } from './fishEventStore'
 import log from './loggers'
 import { PondStateTracker } from './pond-state'
 import { SnapshotStore } from './snapshotStore'
 import { SnapshotScheduler } from './store/snapshotScheduler'
 import { Subscription, SubscriptionSet } from './subscription'
+import { toSubscriptionSet, Where } from './tagging'
 import {
+  EventKey,
+  Fish,
   FishId,
   FishName,
   IsReset,
   Metadata,
+  Milliseconds,
   Psn,
   Semantics,
   SnapshotFormat,
@@ -327,7 +334,128 @@ const hydrateV2 = (
     })
 }
 
+type StartedFish<S> = {
+  fish: Fish<S, any>
+  startedFrom: Event
+}
+
+export type StartedFishMap<S> = Map<string, StartedFish<S>>
+
+const observeAll = (
+  eventStore: EventStore,
+  _snapshotStore: SnapshotStore,
+  _pondStateTracker: PondStateTracker,
+) => <ESeed, S>(
+  firstEvents: Where<ESeed>,
+  makeFish: (seed: ESeed) => Fish<S, any> | undefined,
+  expireAfterSeed?: Milliseconds,
+): Observable<StartedFishMap<S>> => {
+  const subscriptionSet = toSubscriptionSet(firstEvents)
+
+  const fish$ = eventStore
+    .present()
+    .first()
+    .concatMap(present => {
+      const persisted = getEventsForwardChunked(none, eventStore, subscriptionSet, present.psns)
+
+      // This step is only so that we don’t emit outdated collection while receiving chunks of old events
+      const initialFishs = persisted.reduce((acc: Record<string, StartedFish<S>>, chunk) => {
+        for (const evt of chunk) {
+          const fish = makeFish(evt.payload as ESeed)
+
+          if (fish !== undefined) {
+            acc[FishId.canonical(fish.fishId)] = { fish, startedFrom: evt }
+          }
+        }
+        return acc
+      }, {})
+
+      return initialFishs.concatMap(
+        observeAllStartWithInitial(
+          eventStore,
+          makeFish,
+          subscriptionSet,
+          present.psns,
+          expireAfterSeed,
+        ),
+      )
+    })
+
+  return fish$
+}
+
+const earlier = lessThan(EventKey.ord)
+
+const mkPrune = (timeout?: Milliseconds) => {
+  if (!timeout) return <S>(cur: Map<string, StartedFish<S>>) => cur
+
+  const timeoutMicros = Milliseconds.toTimestamp(timeout)
+
+  return <S>(cur: Map<string, StartedFish<S>>) => {
+    const now = Timestamp.now()
+    return cur.filter(started => started.startedFrom.timestamp + timeoutMicros > now)
+  }
+}
+
+const observeAllStartWithInitial = <ESeed, S>(
+  eventStore: EventStore,
+  makeFish: (seed: ESeed) => Fish<S, any> | undefined,
+  subscriptionSet: SubscriptionSet,
+  present: OffsetMap,
+  expireAfterSeed?: Milliseconds,
+) => (init: Record<string, StartedFish<S>>) => {
+  // Switch to immutable representation so as to not screw over downstream consumers
+  let immutableFishSet = Map(init)
+
+  const liveEvents = eventStore.allEvents(
+    {
+      psns: present,
+      default: 'min',
+    },
+    { psns: {}, default: 'max' },
+    subscriptionSet,
+    AllEventsSortOrders.Unsorted,
+  )
+
+  const prune = mkPrune(expireAfterSeed)
+
+  const updates = liveEvents.concatMap(chunk => {
+    const oldSize = immutableFishSet.size
+
+    for (const evt of chunk) {
+      const fish = makeFish(evt.payload as ESeed)
+
+      if (fish === undefined) {
+        continue
+      }
+
+      const newEntry = { fish, startedFrom: evt }
+
+      // Latest writer wins. This is only relevant for expiry -- the Fish ought to be the same, and the Pond will have it cached.
+      immutableFishSet = immutableFishSet.update(
+        FishId.canonical(fish.fishId),
+        existing => (!existing || earlier(existing.startedFrom, evt) ? newEntry : existing),
+      )
+    }
+
+    const newSize = immutableFishSet.size
+    const newFishAppeared = newSize > oldSize
+
+    immutableFishSet = prune(immutableFishSet)
+    const oldFishPruned = immutableFishSet.size < newSize
+
+    if (newFishAppeared || oldFishPruned) {
+      return [immutableFishSet]
+    }
+
+    return []
+  })
+
+  return updates.startWith(Map(init))
+}
+
 export const FishJar = {
   hydrateV2,
   commandPipeline,
+  observeAll,
 }

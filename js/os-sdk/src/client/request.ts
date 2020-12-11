@@ -39,8 +39,7 @@ export interface RequestOpts {
 
 export const doRequest = (opts: RequestOpts): void => {
   let chunks = ''
-  let error: string | null = null
-  let resultSent = false
+  let notified = false
 
   const req = http.request(opts.requestOptions, res => {
     if (res.statusCode === opts.expectedStatusCode) {
@@ -49,35 +48,35 @@ export const doRequest = (opts: RequestOpts): void => {
         chunks += chunk
       })
       res.on('end', () => {
-        if (!resultSent) {
+        if (!notified) {
           opts.onResult(chunks)
-          resultSent = true
+          notified = true
         }
       })
     } else {
-      error = `server returned unexpected code ${res.statusCode}`
+      if (!notified) {
+        opts.onError && opts.onError(`server returned unexpected code ${res.statusCode}`)
+        notified = true
+      }
       req.destroy()
     }
   })
   req.on('error', (err: string) => {
-    error = err
+    if (!notified) {
+      opts.onError && opts.onError(err)
+      notified = true
+    }
   })
-  req.on('close', (err: string) => {
+  req.on('close', (err: string | undefined | null) => {
     req.destroy()
-    if (error !== null) {
-      if (opts.onError) {
-        opts.onError(error)
-      }
-    } else if (err !== '' && err !== undefined && err !== null) {
-      if (opts.onError) {
-        opts.onError(err)
-      }
-    } else {
-      if (!resultSent) {
-        if (opts.onError) {
+    if (!notified) {
+      if (err !== '' && err !== undefined && err !== null) {
+        opts.onError && opts.onError(err)
+      } else {
+        opts.onError &&
           opts.onError(`requested ended without sending a result and without an error`)
-        }
       }
+      notified = true
     }
     req.destroy()
   })
@@ -138,18 +137,18 @@ export const doLineStreamingRequest = (opts: LineStreamingRequestOpts): (() => v
     },
   })
 
-  // This is set to non-null if the request has an error. Otherwise
-  // if returns none (this happens only when the connection is
-  // manually aborted using the returned function).
-  let error: string | null = null
+  let finished = false
 
   const req = http.request(opts.requestOptions, res => {
     if (res.statusCode === opts.expectedStatusCode) {
       res.pipe(subscriptionDecoder).on('data', str => {
-        opts.onLine(str)
+        !finished && opts.onLine(str)
       })
     } else {
-      error = `server returned unexpected code ${res.statusCode}`
+      if (!finished) {
+        opts.onError && opts.onError(`server returned unexpected code ${res.statusCode}`)
+        finished = true
+      }
       req.destroy()
     }
   })
@@ -159,22 +158,20 @@ export const doLineStreamingRequest = (opts: LineStreamingRequestOpts): (() => v
   }
 
   req.on('error', (err: string) => {
-    error = err
+    if (!finished) {
+      opts.onError && opts.onError(err)
+      finished = true
+    }
   })
   req.on('close', (err: string) => {
     req.destroy()
-    if (error === null) {
-      if (opts.onDone) {
-        opts.onDone()
+    if (!finished) {
+      if (err !== '' && err !== undefined && err !== null) {
+        opts.onError && opts.onError(err)
+      } else {
+        opts.onDone && opts.onDone()
       }
-    } else if (err !== '' && err !== undefined && err !== null) {
-      if (opts.onError) {
-        opts.onError(err)
-      }
-    } else {
-      if (opts.onError) {
-        opts.onError(error as string)
-      }
+      finished = true
     }
   })
 

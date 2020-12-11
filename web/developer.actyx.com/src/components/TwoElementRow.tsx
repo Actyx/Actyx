@@ -1,6 +1,6 @@
-import React from "react";
-import styled from "styled-components";
-import defaults from "../components/defaults";
+import React from 'react'
+import styled from 'styled-components'
+import defaults from '../components/defaults'
 
 const Wrapper = styled.div`
   width: 100%;
@@ -15,7 +15,7 @@ const Wrapper = styled.div`
     width: 100%;
     height: auto;
   }
-`;
+`
 
 const ColLeft = styled.div`
   width: 50%;
@@ -31,7 +31,7 @@ const ColLeft = styled.div`
     margin-bottom: 30px;
     padding-right: 0;
   }
-`;
+`
 
 const ColRight = styled.div`
   border-left: 1px solid #eee;
@@ -48,7 +48,7 @@ const ColRight = styled.div`
     border-left: none;
     width: 100%;
   }
-`;
+`
 
 const ImageDiv = styled.div`
   cursor: pointer;
@@ -67,32 +67,32 @@ const ImageDiv = styled.div`
     transition-timing-function: ease-in-out;
     transition-delay: 0s;
   }
-`;
+`
 
 const Headline = styled.div`
-  font-family: "system-ui", "-apple-system", "Helvetica", sans-serif;
+  font-family: 'system-ui', '-apple-system', 'Helvetica', sans-serif;
   font-size: ${defaults.fontsizes.title};
   font-weight: ${defaults.fontWeights.regular};
   line-height: 1.3;
   margin-bottom: 10px;
   margin-top: 20px;
-`;
+`
 
 const Subheadline = styled.div`
-  font-family: "system-ui", "-apple-system", "Helvetica", sans-serif;
+  font-family: 'system-ui', '-apple-system', 'Helvetica', sans-serif;
   font-size: ${defaults.fontsizes.body};
   color: #4e566d;
   margin-bottom: 20px;
-`;
+`
 
 const Link = styled.div`
-  font-family: "system-ui", "-apple-system", "Helvetica", sans-serif;
+  font-family: 'system-ui', '-apple-system', 'Helvetica', sans-serif;
   font-size: ${defaults.fontsizes.body};
   font-weight: ${defaults.fontWeights.regular};
   color: ${defaults.colors.primary};
   text-decoration: none;
   margin-bottom: 5px;
-`;
+`
 
 const ArrowStyled = styled.span`
   svg {
@@ -102,7 +102,7 @@ const ArrowStyled = styled.span`
     height: 15px;
     margin-left: 10px;
   }
-`;
+`
 
 const Arrow = () => (
   <ArrowStyled>
@@ -110,19 +110,19 @@ const Arrow = () => (
       <path d="M26.9 255c1.8.3 3.7.4 5.5.4h315.5l-6.9 3.2c-6.7 3.2-12.8 7.5-18.1 12.8l-88.5 88.5c-11.7 11.1-13.6 29-4.6 42.4 10.4 14.3 30.5 17.4 44.7 6.9 1.2-.8 2.2-1.8 3.3-2.8l160-160c12.5-12.5 12.5-32.8 0-45.3l-160-160c-12.5-12.5-32.8-12.5-45.3.1-1 1-1.9 2-2.7 3.1-9 13.4-7 31.3 4.6 42.4l88.3 88.6c4.7 4.7 10.1 8.6 16 11.7l9.6 4.3H34.2c-16.3-.6-30.7 10.8-33.8 26.9-2.8 17.5 9 34 26.5 36.8z" />
     </svg>
   </ArrowStyled>
-);
+)
 
 const BadgeWrapper = styled.div<{
-  showBadges?: boolean;
+  showBadges?: boolean
 }>`
-  display: ${(p) => (p.showBadges ? "flex" : "none")};
+  display: ${(p) => (p.showBadges ? 'flex' : 'none')};
   flex-direction: row;
   padding-top: 15px;
   margin-top: 0px;
-`;
+`
 
 const Badge = styled.div`
-  font-family: "system-ui", "-apple-system", "Helvetica", sans-serif;
+  font-family: 'system-ui', '-apple-system', 'Helvetica', sans-serif;
   font-size: 10px;
   font-weight: 700;
   display: inline-block;
@@ -134,23 +134,23 @@ const Badge = styled.div`
   padding-left: 12px;
   line-height: 20px;
   margin-right: 10px;
-`;
+`
 
 type Props = Readonly<{
-  img1: string;
-  img2?: string;
-  title1: string;
-  title2?: string;
-  body1: string;
-  body2?: string;
-  cta1: string[];
-  cta2?: string[];
-  link1?: string[];
-  link2?: string[];
-  badges1?: string[];
-  badges2?: string[];
-  showBadges?: boolean;
-}>;
+  img1: string
+  img2?: string
+  title1: string
+  title2?: string
+  body1: string
+  body2?: string
+  cta1: string[]
+  cta2?: string[]
+  link1?: string[]
+  link2?: string[]
+  badges1?: string[]
+  badges2?: string[]
+  showBadges?: boolean
+}>
 
 export const TwoElementRow = ({
   img1,
@@ -213,4 +213,4 @@ export const TwoElementRow = ({
       </BadgeWrapper>
     </ColRight>
   </Wrapper>
-);
+)

@@ -6,6 +6,17 @@ This page contains information about new features, bug fixes, deprecations and r
 
 <!-- markdownlint-disable MD024 -->
 
+## Actyx CLI 1.1.0
+
+Release date: 7.12.2020
+
+[Get it from our Downloads page](https://downloads.actyx.com/)
+  
+### Bug Fixes
+
+- fixed an issue that led to the Actyx CLI not validating or packaging apps if optional properties in the manifest were missing (`description` and `settingsSchema`)
+- fixed an issue that resulted in automatic invalidation of node settings after executing `ax settings unset` for any scope within `com.actyx.os`
+  
 ## Actyx CLI 1.0.0
 
 Release date: 28.08.2020
