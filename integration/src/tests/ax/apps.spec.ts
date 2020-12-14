@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import * as path from 'path'
 import { stubs } from '../../stubs'
 import { remove, pathExists, ensureFile } from 'fs-extra'
 import { quickstartDirs } from '../../setup-projects/quickstart'
@@ -8,14 +9,16 @@ import { ActyxOSNode } from '../../infrastructure/types'
 import { waitFor, waitForAppToStart, waitForAppToStop } from '../../retry'
 import { settings } from '../../infrastructure/settings'
 import { createPackageSampleDockerApp, createTestNodeDockerLocal } from '../../test-node-factory'
+import { tempDir } from '../../setup-projects/util'
 
 describe('ax apps', () => {
   const invalidPath = 'invalid-path'
-  const tempDir = settings().tempDir
+  const projectTempDir = path.resolve(settings().tempDir)
 
   let testNode: ActyxOSNode
 
-  const sampleWebviewAppDir = quickstartDirs(tempDir).sampleWebviewApp
+  const sampleWebviewAppDir = quickstartDirs(projectTempDir).sampleWebviewApp
+  const workingDir = tempDir()
 
   beforeAll(async () => {
     testNode = await createTestNodeDockerLocal('apps')
@@ -53,9 +56,8 @@ describe('ax apps', () => {
     })
 
     test('return OK and validate an app in the specified directory with default manifest', async () => {
-      const manifestDefault = 'temp/quickstart/sample-webview-app'
       const response = await testNode.ax.apps.validate(sampleWebviewAppDir)
-      const responseShape = { code: 'OK', result: [manifestDefault] }
+      const responseShape = { code: 'OK', result: [sampleWebviewAppDir] }
       expect(response).toEqual(responseShape)
     })
 
@@ -74,12 +76,15 @@ describe('ax apps', () => {
 
     test('return OK and validate apps if file paths do exists', async () => {
       const response = await testNode.ax.apps.validateMultiApps([
-        demoMachineKitDirs(tempDir).dashboard,
-        demoMachineKitDirs(tempDir).erpSimulator,
+        demoMachineKitDirs(projectTempDir).dashboard,
+        demoMachineKitDirs(projectTempDir).erpSimulator,
       ])
       const responseShape = {
         code: 'OK',
-        result: ['temp/DemoMachineKit/src/dashboard', 'temp/DemoMachineKit/src/erp-simulator'],
+        result: [
+          'temp/DemoMachineKit/src/dashboard',
+          'temp/DemoMachineKit/src/erp-simulator',
+        ].map((d) => path.resolve(d)),
       }
       expect(response).toMatchObject(responseShape)
     })
@@ -94,41 +99,24 @@ describe('ax apps', () => {
   })
 
   describe('package', () => {
-    const tarballFile = 'com.actyx.sample-webview-app-1.0.0.tar.gz'
-    const regexTarballFile = new RegExp(`${tarballFile}+$`, 'g')
+    const tarballFileName = 'com.actyx.sample-webview-app-1.0.0.tar.gz'
+    const tarballFile = path.resolve(workingDir, tarballFileName)
+    const regexTarballFile = new RegExp(`${tarballFileName}+$`, 'g')
 
-    const removeTarballs = async () => {
-      await remove(`${tarballFile}`)
-      await remove(`${sampleWebviewAppDir}/${tarballFile}`)
-    }
+    const removeTarball = () => remove(tarballFile)
 
-    beforeEach(() => removeTarballs())
+    beforeEach(() => removeTarball())
 
-    afterEach(() => removeTarballs())
+    afterEach(() => removeTarball())
 
     test('return ERR_INVALID_INPUT if manifest was not found', async () => {
       const response = await testNode.ax.apps.package(invalidPath)
       expect(response).toMatchErrInvalidInput()
     })
 
-    test('return OK and package an app in the current directory with default manifest ax-manifest.yml', async () => {
-      const response = await testNode.ax.apps.packageCwd(sampleWebviewAppDir)
-      const responseShape = {
-        code: 'OK',
-        result: [
-          {
-            appId: 'com.actyx.sample-webview-app',
-            appVersion: '1.0.0',
-            packagePath: expect.stringMatching(regexTarballFile),
-          },
-        ],
-      }
-      expect(response).toMatchObject(responseShape)
-    })
-
     test('return OK and package an app in the specified directory with manifest', async () => {
       const manifestPath = `${sampleWebviewAppDir}/ax-manifest.yml`
-      const response = await testNode.ax.apps.package(manifestPath)
+      const response = await testNode.ax.apps.packageCwd(workingDir, manifestPath)
       const responseShape = {
         code: 'OK',
         result: [

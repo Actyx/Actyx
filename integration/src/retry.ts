@@ -49,6 +49,19 @@ export const waitForAppToStart = async (appId: string, node: ActyxOSNode): Promi
       code: 'OK',
       result: [{ enabled: true, running: true, appId }],
     })
+  }, 25_000)
+
+export const waitForNodeToBeConfigured = async (node: ActyxOSNode): Promise<void> =>
+  await waitFor(async () => {
+    const response = await node.ax.nodes.ls()
+    if (response.code == 'OK') {
+      expect(response).toMatchObject({
+        code: 'OK',
+        result: [{ ...response.result[0], connection: 'reachable', settingsValid: true }],
+      })
+    } else {
+      expect(false)
+    }
   })
 
 export const retryTimes = async <T>(op: () => T | Promise<T>, times: number): Promise<T> => {

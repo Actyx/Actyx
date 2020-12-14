@@ -1,0 +1,51 @@
+# Integration test pipeline for manual triggers and debugging
+# Note: This doesn't build any artifacts, so make sure all needed artifacts are
+# available for `AX_GIT_HASH`
+trigger: none
+
+pr: none
+
+stages:
+  - stage: integration
+    displayName: Manual integration test
+    pool:
+      name: Native
+    jobs:
+      - job: integrationTest
+        displayName: Integration Test
+        steps:
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              path: pipeline-artifacts
+          - bash: |
+              build/bin/install-vault.sh
+              make prepare-js all-js
+              cd integration
+              source ~/.nvm/nvm.sh
+              nvm use
+              npm install
+              npm test
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+            displayName: npm test
+          - publish: $(System.DefaultWorkingDirectory)/integration/logs
+            condition: failed()
+            artifact: integration-test-logs-attempt$(System.JobAttempt)
+      - job: cleanup
+        displayName: Integration test cleanup tasks
+        condition: always()
+        steps:
+          - bash: |
+              source ~/.nvm/nvm.sh
+              cd integration
+              nvm use
+              npm install
+              npm run cleanup 43200
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+            name: cleanupInstances
+            displayName: Clean up old integration test instances

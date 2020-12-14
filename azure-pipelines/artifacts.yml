@@ -183,7 +183,7 @@ stages:
             displayName: npm test
           - publish: $(System.DefaultWorkingDirectory)/integration/logs
             condition: failed()
-            artifact: integration-test-logs
+            artifact: integration-test-logs-attempt$(System.JobAttempt)
       - job: cleanup
         displayName: Integration test cleanup tasks
         condition: always()

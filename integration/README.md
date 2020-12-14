@@ -12,6 +12,9 @@ Integration tests use primarily the artifacts built from the current commit, so 
 
 Then you can `nvm use`, `npm install`, and `npm test` in this project. If you forgot to first build the other JS projects, you’ll have to remove `node_modules` and start over.
 
+You can provide a dedicated git hash to test as an environment variable
+`AX_GIT_HASH` or in the provided settings file.
+
 ## Dev
 
 | Scripts          | Description                                    |

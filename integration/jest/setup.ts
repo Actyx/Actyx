@@ -39,10 +39,17 @@ export type Stubs = {
 export type MyGlobal = typeof global & { axNodeSetup: NodeSetup; stubs: Stubs }
 
 const getGitHash = async (settings: Settings) => {
+  const maybeEnv = process.env['AX_GIT_HASH']
+  if (maybeEnv !== undefined && maybeEnv !== null && maybeEnv.length > 0) {
+    console.log('Using git hash from environment:', maybeEnv)
+    return maybeEnv
+  }
   if (settings.gitHash !== null) {
+    console.log('Using git hash from settings:', settings.gitHash)
     return settings.gitHash
   }
   const result = await execa.command('git rev-parse HEAD')
+  console.log('Using git hash from current HEAD:', result.stdout)
   return result.stdout
 }
 
@@ -215,13 +222,17 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   // then make the global.axNodeSetup complete by copying the type-checked properties into it.
   const axNodeSetup = (<MyGlobal>global).axNodeSetup
   const ec2 = new EC2({ region: 'eu-central-1' })
+  // Overwrite config from env vars
+  const keepNodesRunning = config.settings.keepNodesRunning || process.env['AX_DEBUG'] !== undefined
+  const gitHash = await getGitHash(config.settings)
   const key = await createKey(config, ec2)
   const axNodeSetupObject: NodeSetup = {
     ec2,
     key,
     nodes: [],
-    settings: config.settings,
-    gitHash: await getGitHash(config.settings),
+    // Overwrite gitHash in settings
+    settings: { ...config.settings, gitHash, keepNodesRunning },
+    gitHash,
     runIdentifier: key.keyName,
   }
   Object.assign(axNodeSetup, axNodeSetupObject)
