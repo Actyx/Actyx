@@ -1,13 +1,19 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { EC2 } from 'aws-sdk'
+import execa from 'execa'
+import { promises as fs, createWriteStream } from 'fs'
+import { remove } from 'fs-extra'
+import path from 'path'
 import { MyGlobal } from '../../jest/setup'
-import { AwsKey } from './types'
+import { Arch, Config, CreateEC2 } from '../../jest/types'
+import { AwsKey, SshAble, Target, TargetKind } from './types'
 
 // determines frequency of polling AWS APIs (e.g. waiting for instance start)
 const pollDelay = <T>(f: () => Promise<T>) => new Promise((res) => setTimeout(res, 2000)).then(f)
 
 export const myKey = (<MyGlobal>global)?.axNodeSetup?.key
 
-export const createKey = async (ec2: EC2): Promise<AwsKey> => {
+export const createKey = async (config: Config, ec2: EC2): Promise<AwsKey> => {
   const keyName = `cosmos-${Date.now()}`
   const { KeyMaterial } = await ec2
     .createKeyPair({
@@ -21,7 +27,25 @@ export const createKey = async (ec2: EC2): Promise<AwsKey> => {
     throw new Error('cannot create key pair')
   }
   console.log('created key %s', keyName)
-  return { keyName, privateKey: KeyMaterial }
+
+  // obtain public key; this requires writing private key to a file because ssh-keygen says so
+  const privateKeyPath = path.resolve(config.settings.tempDir, 'sshPrivateKey')
+  await remove(privateKeyPath)
+  await fs.writeFile(privateKeyPath, KeyMaterial, {
+    mode: 0o400,
+  })
+  const publicKeyPath = path.resolve(config.settings.tempDir, 'sshPublicKey')
+  await remove(publicKeyPath)
+  await execa('ssh-keygen', ['-yf', privateKeyPath], {
+    stdout: await new Promise((res, rej) => {
+      const s = createWriteStream(publicKeyPath)
+      s.on('open', () => res(s))
+      s.on('error', rej)
+      s.on('close', () => console.log('stream closed'))
+    }),
+  })
+
+  return { keyName, privateKey: KeyMaterial, publicKeyPath }
 }
 
 export const deleteKey = async (ec2: EC2, KeyName: string): Promise<void> => {
@@ -42,9 +66,17 @@ export const createInstance = async (
   params: Partial<EC2.RunInstancesRequest>,
 ): Promise<EC2.Instance> => {
   const ts = params.TagSpecifications
+
+  // need to extract the 'instance' tags because each resource type can only be named once
+  let instanceTags: EC2.TagList = []
+  const instanceTagsIdx = ts?.findIndex((spec) => spec.ResourceType === 'instance')
+  if (ts !== undefined && instanceTagsIdx !== undefined && instanceTagsIdx >= 0) {
+    instanceTags = ts.splice(instanceTagsIdx, 1)[0].Tags || []
+  }
+
   const myTags: EC2.TagSpecification = {
     ResourceType: 'instance',
-    Tags: [{ Key: 'Customer', Value: 'Cosmos integration' }],
+    Tags: [...instanceTags, { Key: 'Customer', Value: 'Cosmos integration' }],
   }
   const withTags = {
     ...DEFAULT_PARAMS,
@@ -52,6 +84,8 @@ export const createInstance = async (
     TagSpecifications: ts ? [...ts, myTags] : [myTags],
   }
 
+  // this is the main thing
+  console.log('creating instance', withTags)
   let instance = (await ec2.runInstances(withTags).promise()).Instances?.[0]
 
   if (instance === undefined) {
@@ -74,6 +108,37 @@ export const createInstance = async (
   console.log('instance %s started', id)
 
   return instance
+}
+
+const decodeAwsArch = (instance: EC2.Instance, armv7: boolean): Arch => {
+  switch (instance.Architecture) {
+    case 'x86_64':
+      return 'x86_64'
+    case 'arm64':
+      return armv7 ? 'armv7' : 'aarch64'
+    default:
+      throw new Error(`unknown AWS arch: ${instance.Architecture}`)
+  }
+}
+
+export const instanceToTarget = (
+  instance: EC2.Instance,
+  prepare: CreateEC2,
+  key: AwsKey,
+  ec2: EC2,
+): Target & { kind: SshAble } => {
+  const os = instance.Platform === 'windows' ? 'windows' : 'linux'
+  const arch = decodeAwsArch(instance, prepare.armv7)
+  const kind: TargetKind = {
+    type: 'aws',
+    instance: instance.InstanceId!,
+    privateAddress: instance.PrivateIpAddress!,
+    host: instance.PublicIpAddress!,
+    username: prepare.user,
+    privateKey: key.privateKey,
+  }
+  const shutdown = () => terminateInstance(ec2, instance.InstanceId!)
+  return { os, arch, kind, _private: { cleanup: shutdown } }
 }
 
 export const cleanUpInstances = async (ec2: EC2, cutoff: number): Promise<void> => {

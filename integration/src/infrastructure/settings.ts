@@ -8,9 +8,11 @@ import { ensureDirSync } from 'fs-extra'
 
 export const settings = (): Settings => (<MyGlobal>global).axNodeSetup.settings
 
+// .exe will be appended in case target is windows
 export const enum Binary {
   ax = 'ax',
   actyxOsLinux = 'actyxos-linux',
+  actyxOsInstaller = 'ActyxOS-Installer',
 }
 
 export const currentAxBinary = (): Promise<string> => getCurrent(Binary.ax)
@@ -27,6 +29,9 @@ export const actyxOsLinuxBinary = async (arch: Arch): Promise<string> =>
 
 export const actyxOsDockerImage = (arch: Arch, version: string): string =>
   `actyx/cosmos:actyxos-${arch}-${version}`
+
+export const windowsActyxOsInstaller = async (arch: Arch): Promise<string> =>
+  getOrDownload('windows', arch, Binary.actyxOsInstaller, settings().gitHash)
 
 const ensureBinaryExists = async (p: string): Promise<string> => {
   if (!fs.existsSync(p)) {

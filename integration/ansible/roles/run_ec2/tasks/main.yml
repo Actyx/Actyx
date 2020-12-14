@@ -1,0 +1,44 @@
+---
+# tasks file for run_ec2
+- name: Create user_data directory
+  file:
+    path: user_data
+    state: directory
+
+- name: Create temp user_data file
+  template:
+    src: templates/winrm.txt.template
+    dest: "{{ ec2_user_data }}"
+
+- name: RUN EC2 INSTANCE
+  ec2_instance:
+    region: "{{ ec2_region }}"
+    key_name: "{{ ec2_key_name }}"
+    name: "{{ ec2_node_name }}"
+    vpc_subnet_id: "{{ ec2_vpc_subnet_id }}"
+    security_group: "{{ec2_security_group}}"
+    image_id: "{{ ec2_image_id }}"
+    user_data: "{{ lookup('file', '{{ ec2_user_data }}')}}"
+    instance_type: "{{ ec2_instance_type }}"
+    filters:
+      # these are used to find and possibly alter an existing instance to be used
+      # so we must prevent finding instances from other runs
+      tag:Customer: Cosmos integration
+      tag:ci_run: "{{ ci_run }}"
+      instance-state-name: running
+    tags:
+      Customer: Cosmos integration
+      ci_run: "{{ ci_run }}"
+    state: present
+  register: ec2_instance
+
+- debug:
+    msg: asdf_created_instance {{ ec2_instance }}
+
+- name: Refresh Inventory
+  meta: refresh_inventory
+
+- name: Waiting a moment
+  pause:
+    seconds: 3
+

@@ -3,7 +3,7 @@ import { CLI } from '../src/cli'
 import { SettingsInput } from '../src/cli/exec'
 import { createKey, deleteKey } from '../src/infrastructure/aws'
 import { ActyxOSNode, AwsKey, printTarget } from '../src/infrastructure/types'
-import { setupTestProjects } from '../src/setup-projects'
+import { setupAnsible, setupTestProjects } from '../src/setup-projects'
 import { promises as fs } from 'fs'
 import { Arch, Config, Host, OS, Runtime, Settings } from './types'
 import YAML from 'yaml'
@@ -208,18 +208,21 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
     ? Promise.resolve()
     : setupTestProjects(config.settings.tempDir)
 
+  await setupAnsible()
+
   // CRITICAL: axNodeSetup does not yet have all the fields of the NodeSetup type at this point
   // so we get the (partial) object’s reference, construct a fully type-checked NodeSetup, and
   // then make the global.axNodeSetup complete by copying the type-checked properties into it.
   const axNodeSetup = (<MyGlobal>global).axNodeSetup
   const ec2 = new EC2({ region: 'eu-central-1' })
+  const key = await createKey(config, ec2)
   const axNodeSetupObject: NodeSetup = {
     ec2,
-    key: await createKey(ec2),
+    key,
     nodes: [],
     settings: config.settings,
     gitHash: await getGitHash(config.settings),
-    runIdentifier: new Date().toISOString(),
+    runIdentifier: key.keyName,
   }
   Object.assign(axNodeSetup, axNodeSetupObject)
 

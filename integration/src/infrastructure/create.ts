@@ -1,56 +1,50 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { ensureDirSync } from 'fs-extra'
 import { EC2 } from 'aws-sdk'
-import { createInstance, terminateInstance } from './aws'
+import { createInstance, instanceToTarget } from './aws'
 import { mkNodeSshDocker, mkNodeSshProcess } from './linux'
-import { ActyxOSNode, AwsKey, Target, TargetKind } from './types'
-import { Arch, CreateEC2, currentArch, currentOS, HostConfig } from '../../jest/types'
+import { ActyxOSNode, AwsKey, Target } from './types'
+import { CreateEC2, currentArch, currentOS, HostConfig } from '../../jest/types'
 import { mkNodeLocalDocker, mkNodeLocalProcess } from './local'
 import { LogEntry, MyGlobal } from '../../jest/setup'
 import fs from 'fs'
 import path from 'path'
+import { mkNodeWinRM } from './windows'
 
-const decodeAwsArch = (instance: EC2.Instance, armv7: boolean): Arch => {
-  switch (instance.Architecture) {
-    case 'x86_64':
-      return 'x86_64'
-    case 'arm64':
-      return armv7 ? 'armv7' : 'aarch64'
-    default:
-      throw new Error(`unknown AWS arch: ${instance.Architecture}`)
-  }
-}
-
-const createAwsInstance = async (ec2: EC2, prepare: CreateEC2, key: AwsKey): Promise<Target> => {
+const createAwsInstance = async (
+  ec2: EC2,
+  prepare: CreateEC2,
+  key: AwsKey,
+  hostname: string,
+  runIdentifier: string,
+): Promise<Target> => {
   const instance = await createInstance(ec2, {
     InstanceType: prepare.instance,
     ImageId: prepare.ami,
     KeyName: key.keyName,
+    TagSpecifications: [
+      {
+        ResourceType: 'instance',
+        Tags: [
+          { Key: 'Name', Value: hostname },
+          { Key: 'ci_run', Value: runIdentifier },
+        ],
+      },
+    ],
   })
-  const os = instance.Platform === 'Windows' ? 'windows' : 'linux'
-  const arch = decodeAwsArch(instance, prepare.armv7)
-  const kind: TargetKind = {
-    type: 'aws',
-    instance: instance.InstanceId!,
-    privateAddress: instance.PrivateIpAddress!,
-    host: instance.PublicIpAddress!,
-    username: prepare.user,
-    privateKey: key.privateKey,
-  }
-  const shutdown = () => terminateInstance(ec2, instance.InstanceId!)
-  return { os, arch, kind, _private: { cleanup: shutdown } }
+  return instanceToTarget(instance, prepare, key, ec2)
 }
 
 const installProcess = async (target: Target, host: HostConfig, logger: (line: string) => void) => {
   const kind = target.kind
   switch (kind.type) {
     case 'aws':
-    case 'ssh': {
+    case 'ssh':
       return await mkNodeSshProcess(host.name, target, kind, logger)
-    }
-    case 'local': {
+
+    case 'local':
       return await mkNodeLocalProcess(host.name, target, logger)
-    }
+
     default:
       console.error('unknown kind:', kind)
   }
@@ -65,19 +59,35 @@ const installDocker = async (
   const kind = target.kind
   switch (kind.type) {
     case 'aws':
-    case 'ssh': {
+    case 'ssh':
       return await mkNodeSshDocker(host.name, target, kind, logger, gitHash)
-    }
-    case 'local': {
+
+    case 'local':
       return await mkNodeLocalDocker(host.name, target, gitHash, logger)
-    }
+
     default:
       console.error('unknown kind:', kind)
   }
 }
 
+const installWindows = async (
+  ec2: EC2,
+  prepare: CreateEC2,
+  key: AwsKey,
+  host: HostConfig,
+  ciRun: string,
+  publicKeyPath: string,
+  logger: (line: string) => void,
+) => {
+  // create some random string of at least 20 characters
+  const adminPW = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2)
+  return await mkNodeWinRM(ec2, prepare, key, ciRun, host.name, adminPW, publicKeyPath, logger)
+}
+
 /**
- * Create a new
+ * Create a new node from the HostConfig that describes it. This can entail spinning up an EC2
+ * host or it can mean using locally available resources like a Docker daemon.
+ *
  * @param host
  */
 export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefined> => {
@@ -85,35 +95,32 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
     ec2,
     key,
     gitHash,
-    thisTestEnvNodes: envNodes,
+    thisTestEnvNodes,
     settings: { logToStdout },
     runIdentifier,
   } = (<MyGlobal>global).axNodeSetup
 
   let target: Target | undefined = undefined
 
-  const { prepare } = host
-  switch (prepare.type) {
-    case 'create-aws-ec2': {
-      target = await createAwsInstance(ec2, prepare, key)
-      break
-    }
-    case 'local': {
-      console.log('node %s using the local system', host.name)
-      const shutdown = () => Promise.resolve()
-      target = {
-        os: currentOS(),
-        arch: currentArch(),
-        _private: { cleanup: shutdown },
-        kind: { type: 'local' },
+  if (host.install !== 'windows') {
+    const { prepare, name: hostname } = host
+    switch (prepare.type) {
+      case 'create-aws-ec2': {
+        target = await createAwsInstance(ec2, prepare, key, hostname, runIdentifier)
+        break
       }
-      break
+      case 'local': {
+        console.log('node %s using the local system', host.name)
+        const shutdown = () => Promise.resolve()
+        target = {
+          os: currentOS(),
+          arch: currentArch(),
+          _private: { cleanup: shutdown },
+          kind: { type: 'local' },
+        }
+        break
+      }
     }
-  }
-
-  if (target === undefined) {
-    console.error('no recipe to prepare node %s', host.name)
-    return
   }
 
   const logs: LogEntry[] = []
@@ -125,11 +132,36 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
     let node: ActyxOSNode | undefined
     switch (host.install) {
       case 'linux':
+        if (target === undefined) {
+          console.error('no recipe to prepare node %s', host.name)
+          return
+        }
         node = await installProcess(target, host, logger)
         break
       case 'docker':
+        if (target === undefined) {
+          console.error('no recipe to prepare node %s', host.name)
+          return
+        }
         node = await installDocker(target, host, logger, gitHash)
         break
+      case 'windows': {
+        const { prepare } = host
+        if (prepare.type !== 'create-aws-ec2') {
+          console.error('can only install windows on EC2, not', prepare)
+          return
+        }
+        node = await installWindows(
+          ec2,
+          prepare,
+          key,
+          host,
+          runIdentifier,
+          key.publicKeyPath,
+          logger,
+        )
+        break
+      }
       default:
         return
     }
@@ -160,8 +192,8 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
       }
     }
 
-    if (envNodes !== undefined && node !== undefined) {
-      envNodes.push(node)
+    if (thisTestEnvNodes !== undefined && node !== undefined) {
+      thisTestEnvNodes.push(node)
     }
 
     return node
@@ -170,7 +202,7 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
     for (const entry of logs) {
       process.stdout.write(`${entry.time.toISOString()} ${entry.line}\n`)
     }
-    await target._private.cleanup()
+    await target?._private.cleanup()
   }
 }
 
