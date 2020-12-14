@@ -14,6 +14,12 @@ module.exports = {
       },
     ],
     [require.resolve('./src/plugins/analytics'), {}],
+    [
+      require.resolve('./src/plugins/arm'),
+      {
+	      releasesYml: './__auto-releases.yml',
+      },
+    ],
   ],
   themeConfig: {
     announcementBar: {
@@ -68,6 +74,11 @@ module.exports = {
         {
           to: 'blog',
           label: 'Blog',
+          position: 'right',
+        },
+        {
+          to: 'releases',
+          label: 'Releases',
           position: 'right',
         },
       ],
@@ -137,8 +148,8 @@ module.exports = {
             {
               label: 'Actyx Node Manager',
               to: 'docs/node-manager/overview',
-            }
-          ]
+            },
+          ],
         },
         {
           title: 'Actyx',

@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "prestart": "npm run copy-schemas && npm run lint",
-    "start": "docusaurus start",
+    "start": "docusaurus start --host 0.0.0.0",
     "copy-schemas": "node bin/copy-schemas.js",
-    "build": "npm run lint && docusaurus build",
+    "build-with-lint": "npm run lint && docusaurus build",
+    "build": "npm run lint & docusaurus build",
     "postbuild": "node bin/copy-redirects.js",
     "swizzle": "docusaurus swizzle",
     "deploy": "npm run lint && docusaurus deploy",
@@ -15,8 +16,8 @@
     "lint:txt:dry": "textlint --dry-run ./docs/**/* ./blog/**/*",
     "lint:md:check": "markdownlint \"./docs/**/*.md\" \"./blog/**/*\"",
     "lint:md:fix": "markdownlint --fix \"./docs/**/*.md\" \"./blog/**/*\"",
-    "lint": "tsc & eslint './src/**/*.{js,ts,tsx}' & prettier './src/**/*.{js,ts,tsx}' --check && npm run lint:md:check && npm run lint:txt:check",
-    "lint:code:fix": "tsc & eslint './src/**/*.{js,ts,tsx}' --fix & prettier './src/**/*.{js,ts,tsx}' --write",
+    "lint": "eslint './src/**/*.{js,ts,tsx}' & prettier './src/**/*.{js,ts,tsx}' --check && npm run lint:md:check && npm run lint:txt:check",
+    "lint:code:fix": "eslint './src/**/*.{js,ts,tsx}' --fix & prettier './src/**/*.{js,ts,tsx}' --write",
     "lint:fix": "npm run lint:code:fix && npm run lint:txt:fix && npm run lint:md:fix",
     "test": "npm run lint"
   },
@@ -24,15 +25,20 @@
     "@docusaurus/core": "^2.0.0-alpha.66",
     "@docusaurus/preset-classic": "^2.0.0-alpha.66",
     "@docusaurus/theme-classic": "^2.0.0-alpha.68",
+    "@typescript-eslint/eslint-plugin": "^4.9.1",
+    "@typescript-eslint/parser": "^4.9.1",
     "chromium": "^2.1.2",
     "classnames": "^2.2.6",
+    "cosmos-release": "../../release/",
     "docusaurus-gtm-plugin": "0.0.2",
     "js-cookie": "^2.2.1",
     "react": "^16.8.4",
     "react-dom": "^16.8.4",
     "react-youtube": "^7.9.0",
     "styled-components": "^5.1.1",
-    "textlint-rule-no-empty-section": "^1.1.0"
+    "textlint-rule-no-empty-section": "^1.1.0",
+    "typescript": "^4.1.3",
+    "typescript-eslint": "0.0.1-alpha.0"
   },
   "browserslist": {
     "production": [
@@ -53,7 +59,6 @@
     "eslint": "^7.15.0",
     "eslint-config-prettier": "^7.0.0",
     "eslint-plugin-prettier": "^3.2.0",
-    "eslint-plugin-simple-import-sort": "^6.0.1",
     "markdownlint-cli": "^0.23.2",
     "mkdirp": "^1.0.4",
     "nan": "^2.14.1",
