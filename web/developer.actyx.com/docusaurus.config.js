@@ -94,6 +94,19 @@ module.exports = {
           ],
         },
         {
+          title: 'Node Management',
+          items: [
+            {
+              label: 'Actyx CLI',
+              to: 'docs/cli/getting-started',
+            },
+            {
+              label: 'Actyx Node Manager',
+              to: 'docs/node-manager/overview',
+            }
+          ]
+        },
+        {
           title: 'Useful Links',
           items: [
             {
@@ -113,32 +126,6 @@ module.exports = {
               to: 'https://discord.gg/262yJhc',
             },
           ],
-        },
-        {
-          title: 'Node Management',
-          items: [
-            {
-              label: 'Actyx CLI',
-              to: 'docs/cli/getting-started',
-            },
-            {
-              label: 'Actyx Node Manager',
-              to: 'docs/node-manager/overview',
-            },
-          ],
-        },
-        {
-          title: 'Node Management',
-          items: [
-            {
-              label: 'Actyx CLI',
-              to: 'docs/cli/getting-started',
-            },
-            {
-              label: 'Actyx Node Manager',
-              to: 'docs/node-manager/overview',
-            }
-          ]
         },
         {
           title: 'Actyx',
