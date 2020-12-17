@@ -7,7 +7,7 @@ import TabItem from '@theme/TabItem';
 
 The ActyxOS bootstrap node helps your nodes find their peers.
 
-Each ActyxOS swarm needs to have its own ActyxOS Bootstrap Node. It is needed whenever a new node joins the swarm. Once the new node establishes a connection to the ActyxOS Bootstrap Node, it will be automatically peered with all other nodes in the same swarm.
+If you are running ActyxOS only on Windows and Android, nodes will connect automatically through mDNS–assuming mDNS is enabled on your devices and local network. If your swarm also consists of ActyxOS nodes running on docker, or your nodes cannot use mDNS, you can use an ActyxOS Bootstrap Node to connect them. It is configured in each node's settings and will automatically connect all peered nodes in the same swarm to each other.
 
 ## Host requirements
 
