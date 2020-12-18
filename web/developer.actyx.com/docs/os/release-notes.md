@@ -18,14 +18,14 @@ Download:
 
 ### New features
 
-- Improved logging for ActyxOS nodes running on Windows
-- Improved usability of ActyxOS on Windows
+- `ax logs tail` now also works if you are running ActyxOS on Windows
+- ActyxOS on Windows is not a Windows system service anymore and now has a tray icon
 
 ### Bug fixes
 
 - Many stability improvements around our core infrastructure
-- Fixed an issue that resulted in a node crashing if certain settings were changed on Windows
-- Fixed an issue where default settings could not be accessed in the ActyxOS Node Manager
+- Fixed an issue that resulted in a node crashing if certain settings (swarmKey or EventService settings) were changed on Windows
+- Fixed an issue that lead to the settings tab of the ActyxOS Node Manager not working becaues it did not display default values
 
 ## ActyxOS 1.1.0
 
