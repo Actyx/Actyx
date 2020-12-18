@@ -4,7 +4,7 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { isString } from '..'
+import { isString } from '../types'
 import { TagSubscription } from '../subscription'
 
 const namedSubSpace = (rawTag: string, sub: string): string[] => {

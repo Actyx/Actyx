@@ -29,6 +29,7 @@ import {
   Caching,
   CancelSubscription,
   Fish,
+  FishErrorReporter,
   FishId,
   FishName,
   IsReset,
@@ -37,7 +38,6 @@ import {
   ObserveAllOpts,
   PendingEmission,
   Reduce,
-  FishErrorReporter,
   Semantics,
   SourceId,
   StateEffect,
@@ -197,8 +197,6 @@ export type Pond = {
    * @param opts         - Optional arguments regarding caching and expiry
    * @param callback     - Function that will be called with the array of states whenever the set of Fish
    *                       changes or any of the contained Fish’s state changes.
-   * @param stoppedByError - Function that will be called when one of the Fish’s functions throws an error.
-   *                         A Fish will always stop emitting further states after errors, even if no `stoppedByError` argument is passed.
    *
    * @returns              A function that can be called in order to cancel the subscription.
    *

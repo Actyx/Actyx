@@ -6,21 +6,20 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventEmitter } from 'events'
-import { Observable } from 'rxjs'
-import { ReplaySubject } from 'rxjs/ReplaySubject'
-import { AnonymousSubject, Subject } from 'rxjs/Subject'
-import { Subscriber } from 'rxjs/Subscriber'
-import { Subscription } from 'rxjs/Subscription'
-import { errorObject } from 'rxjs/util/errorObject'
-import { root } from 'rxjs/util/root'
-import { tryCatch } from 'rxjs/util/tryCatch'
+import {
+  AnonymousSubject,
+  Observable,
+  ReplaySubject,
+  Subject,
+  Subscriber,
+  Subscription,
+} from 'rxjs'
 import log from '../loggers'
 import { isNode } from '../util'
+import { root } from '../util/root'
 
 if (isNode) {
-  const globalAny: any = global
-
-  globalAny.WebSocket = require('ws')
+  root.WebSocket = require('ws')
 }
 
 /**
@@ -132,11 +131,11 @@ export class WebSocketSubject<T> extends AnonymousSubject<T> {
     const observer = this._output
     try {
       const onmessage = (e: MessageEvent) => {
-        const result = tryCatch(this.resultSelector)(e)
-        if (result === errorObject) {
-          observer.error(errorObject.e)
-        } else {
+        try {
+          const result = this.resultSelector(e)
           observer.next(result)
+        } catch (e) {
+          observer.error(e)
         }
       }
       this.socket = this.createSocket(onmessage)

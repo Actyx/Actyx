@@ -7,7 +7,8 @@
 // utilities that are specific to the runtime / execution environment
 
 // true if we are probably running on nodejs
-export const isNode: boolean = process && process.toString() === '[object process]'
+export const isNode: boolean =
+  typeof process === 'object' && process.release && process.release.name === 'node'
 
 // getting memory usage in bytes
 export function getMemoryUsage(): { [key: string]: number } {
