@@ -167,15 +167,6 @@ ax settings set --local com.actyx.os @node-settings.yml 10.2.3.23
                          | set the settings at the `com.actyx.os` scope
 ```
 
-:::warning Changing Settings
-There is currently a known bug in ActyxOS on Windows that leads to the node crashing after changing certain node settings. Please be aware that you need to restart your node after changing one of the following settings:
-
-- `general/swarmKey`
-- `general/bootstrapNodes`
-- `services/eventService/readOnly`
-- `services/eventService/topic`
-:::
-
 #### Get top-level scopes from a node
 
 If we wanted to find out if there are any top-level settings scopes other than `com.actyx.os`, the pre-defined scope at which you configure the node itself, we could use the Actyx CLI's `ax settings scopes` command:

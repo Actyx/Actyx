@@ -23,9 +23,9 @@ module.exports = {
   ],
   themeConfig: {
     announcementBar: {
-      id: 'pond-2.3.0',
+      id: 'os-111',
       content:
-        '🥁 We released version 1.1.0 of ActyxOS! Read the <a target="_blank" rel="noopener noreferrer" href="https://developer.actyx.com/blog/2020/12/07/actyxos-1-1-0-release">blog post</a> to learn more or check out <a target="_blank" rel="noopener noreferrer" href="https://developer.actyx.com/docs/os/release-notes">release notes</a> ! 🥁',
+        '🥁 We released version 1.1.1 of ActyxOS! Check out <a target="_blank" rel="noopener noreferrer" href="https://downloads.actyx.com/docs/os/release-notes">release notes</a> and <a target="_blank" rel="noopener noreferrer" href="https://downloads.actyx.com">download</a> the latest and greatest! 🥁',
       backgroundColor: '#f5f6f7',
       textColor: '#000',
     },
