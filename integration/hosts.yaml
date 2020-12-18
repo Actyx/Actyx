@@ -46,6 +46,14 @@ hosts:
     user: ubuntu
     armv7: true
   install: docker
+- name: windows-1
+  prepare:
+    type: create-aws-ec2
+    # Windows Server 2019
+    ami: ami-0da198ce94f235cdc
+    instance: t2.large
+    user: Administrator
+  install: windows
 settings:
   # Where folders and files will be created during a test run.
   tempDir: temp

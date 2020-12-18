@@ -98,7 +98,6 @@ stages:
             artifact: android-binaries
             condition: succeeded()
 
-
   - stage: upload
     displayName: Upload to az blob store
     dependsOn:
@@ -109,7 +108,6 @@ stages:
           - task: DownloadPipelineArtifact@2
             inputs:
               path: pipeline-artifacts
-            
 
           - task: AzureCLI@2
             # Now, there would be the nicely looking AzureFileCopy@4 task, which would use the `azcopy` cli (yes, it's not
@@ -134,6 +132,7 @@ stages:
     dependsOn:
       - upload
       - integration
+      - release
     jobs:
       - template: jobs-notify-success.yml
 
@@ -144,6 +143,7 @@ stages:
       - makeArtifacts
       - upload
       - integration
+      - release
     jobs:
       - template: slack-notify-failure.yml
 
@@ -183,7 +183,7 @@ stages:
             displayName: npm test
           - publish: $(System.DefaultWorkingDirectory)/integration/logs
             condition: failed()
-            artifact: integration-test-logs
+            artifact: integration-test-logs-attempt$(System.JobAttempt)
       - job: cleanup
         displayName: Integration test cleanup tasks
         condition: always()
@@ -200,3 +200,41 @@ stages:
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
             name: cleanupInstances
             displayName: Clean up old integration test instances
+  - stage: release
+    displayName: Continuous release
+    pool:
+      name: Native
+    dependsOn:
+      - upload # If no artifacts have been built this shouldn't work
+      - integration # Same if the integration tests didn't succeed
+    jobs:
+      - job: release
+        displayName: Release
+        steps:
+          - checkout: self # self represents the repo where the initial Pipelines YAML file was found
+            clean: true # whether to fetch clean each time
+            submodules: recursive # set to 'true' for a single level of submodules or 'recursive' to get submodules of submodules
+            persistCredentials: true # set to 'true' to leave the OAuth token in the Git config after the initial fetch
+          - bash: |
+              cd release
+              source ~/.nvm/nvm.sh
+              nvm use
+              npm install
+              echo "Building cosmos-release"
+              npm run build
+              echo "Running release"
+              echo "Repo dir: $REPO_DIR"
+              echo "Target rev: $TARGET_REV"
+              echo "Setting git email and username"
+              git config user.email "cosmos-release@actyx.io"
+              git config user.name "cosmos-release"
+              echo "Pruning local tags"
+              git fetch --force --prune origin "+refs/tags/*:refs/tags/*"
+              echo "Getting tags from remote"
+              git fetch --all --tags
+              npm run cli -- release 1 $TARGET_REV $ARM_NF --localRepo $REPO_DIR --skipMalformed --skipIfNoNotes
+            env:
+              ARM_NF: $(RELEASE_NETLIFY_ACCESS_TOKEN)
+              REPO_DIR: $(Build.SourcesDirectory)
+              TARGET_REV: $(Build.SourceVersion)
+            displayName: run release

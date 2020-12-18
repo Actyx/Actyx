@@ -1,0 +1,9 @@
+---
+plugin: aws_ec2
+filters:
+  tag:Customer: Cosmos integration
+  instance-state-name: running
+groups:
+  windows: tags.get('ci_run') == lookup('env','CI_RUN') and tags.get('Name') == lookup('env','EC2_NODE_NAME')
+hostnames:
+  - ip-address

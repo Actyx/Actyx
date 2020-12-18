@@ -35,7 +35,8 @@ export class Ssh {
       ports.map(async (port, idx) => {
         const ours = await getFreePort()
         ret[idx] = ours
-        return `-L${ours}:localhost:${port}`
+        // Windows port forwarding doesn't work with `localhost`
+        return `-L${ours}:127.0.0.1:${port}`
       }),
     )
     return [ret, execa('ssh', [...fwd, '-nNf', ...this.commonOpts])]

@@ -6,6 +6,27 @@ This page contains information about new features, bug fixes, deprecations and r
 
 <!-- markdownlint-disable MD024 -->
 
+## ActyxOS 1.1.1
+
+Release date: 18.12.2020
+
+Download:
+
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
+- [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
+- [Actyx Downloads page](https://downloads.actyx.com/)
+
+### New features
+
+- `ax logs tail` now also works if you are running ActyxOS on Windows
+- ActyxOS on Windows is not a Windows system service anymore and now has a tray icon
+
+### Bug fixes
+
+- Many stability improvements around our core infrastructure
+- Fixed an issue that resulted in a node crashing if certain settings (swarmKey or EventService settings) were changed on Windows
+- Fixed an issue that lead to the settings tab of the ActyxOS Node Manager not working becaues it did not display default values
+
 ## ActyxOS 1.1.0
 
 Release date: 11.12.2020

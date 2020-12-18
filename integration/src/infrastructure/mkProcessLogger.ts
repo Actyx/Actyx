@@ -1,24 +1,28 @@
 type Logger = {
-  log: (where: 'stdout' | 'stderr', s: Buffer | string) => boolean
+  log: (where: 'stdout' | 'stderr', s: Buffer | string) => string[] | undefined
   flush: () => void
 }
 
 export const netString = (x: Buffer | string): string =>
   Buffer.isBuffer(x) ? x.toString('utf-8') : x
 
-export const mkProcessLogger = (logger: (s: string) => void, nodeName: string): Logger => {
+export const mkProcessLogger = (
+  logger: (s: string) => void,
+  nodeName: string,
+  triggers: string[],
+): Logger => {
   const lines = { stdout: '', stderr: '' }
   const log = (where: keyof typeof lines, s: Buffer | string) => {
     const l = (lines[where] + netString(s)).split('\n')
     lines[where] = l.pop() || ''
-    let startedSeen = false
+    const matchedLines = []
     for (const line of l) {
       logger(`node ${nodeName} ActyxOS ${where}: ${line}`)
-      if (line.indexOf('ActyxOS started') >= 0 || line.indexOf('ActyxOS ready') >= 0) {
-        startedSeen = true
+      if (triggers.some((s) => line.indexOf(s) >= 0)) {
+        matchedLines.push(line)
       }
     }
-    return startedSeen
+    return matchedLines.length > 0 ? matchedLines : undefined
   }
   const flush = () => {
     if (lines.stdout !== '') {
