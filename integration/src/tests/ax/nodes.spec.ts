@@ -31,7 +31,7 @@ describe('ax nodes', () => {
             appsRunning: expect.any(Number),
             startedIso: expect.any(String),
             startedUnix: expect.any(Number),
-            version: '1.1.0',
+            version: '1.1.1',
           },
         ]
         expect(response.result).toMatchObject(responseShape)
