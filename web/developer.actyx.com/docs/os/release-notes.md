@@ -6,6 +6,27 @@ This page contains information about new features, bug fixes, deprecations and r
 
 <!-- markdownlint-disable MD024 -->
 
+## ActyxOS 1.1.1
+
+Release date: 18.12.2020
+
+Download:
+
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
+- [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
+- [Actyx Downloads page](https://downloads.actyx.com/)
+
+### New features
+
+- Improved logging for ActyxOS nodes running on Windows
+- Improved usability of ActyxOS on Windows
+
+### Bug fixes
+
+- Many stability improvements around our core infrastructure
+- Fixed an issue that resulted in a node crashing if certain settings were changed on Windows
+- Fixed an issue where default settings could not be accessed in the ActyxOS Node Manager
+
 ## ActyxOS 1.1.0
 
 Release date: 7.12.2020
