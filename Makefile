@@ -386,7 +386,7 @@ dist/bin/windows-x86_64/ActyxOS-Installer.exe: misc/actyxos-node-manager/out/Act
 	  -w /src/misc/actyxos-win-installer \
 	  -e DIST_DIR='/src/dist/bin/windows-x86_64' \
 	  -e SRC_DIR='/src/misc/actyxos-win-installer' \
-	  -e PRODUCT_VERSION=1.1.0 \
+	  -e PRODUCT_VERSION=1.1.1 \
 	  -e PRODUCT_NAME=ActyxOS \
 	  -e INSTALLER_NAME='ActyxOS-Installer' \
 	  --rm \
