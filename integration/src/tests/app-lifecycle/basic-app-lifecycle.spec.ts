@@ -6,14 +6,20 @@ import path from 'path'
 import { Arch } from '../../../jest/types'
 import { assertOK } from '../../assertOK'
 import { stubs } from '../../stubs'
+import { tempDir } from '../../setup-projects/util'
 
-const tempDir = settings().tempDir
+const projectTempDir = path.resolve(settings().tempDir)
 
 describe('basic app lifecycle', () => {
   test('for quickstart sample-docker-app run deploy, start, ls, stop, undeploy', async () => {
-    const workingDir = quickstartDirs(tempDir).sampleDockerApp
+    const workingDir = tempDir()
+    const projectDir = quickstartDirs(projectTempDir).sampleDockerApp
+    console.log('package cwd', workingDir, path.resolve(projectDir, 'ax-manifest-all.yml'))
     const pkgResponse = assertOK(
-      await stubs.axOnly.ax.apps.packageCwd(workingDir, 'ax-manifest-all.yml'),
+      await stubs.axOnly.ax.apps.packageCwd(
+        workingDir,
+        path.resolve(projectDir, 'ax-manifest-all.yml'),
+      ),
     )
     expect(pkgResponse.result).toHaveLength(2)
 

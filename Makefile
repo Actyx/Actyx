@@ -18,7 +18,7 @@ SHELL := /bin/bash
 architectures = aarch64 x86_64 armv7 arm
 
 all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyxos-linux ax,linux-$(arch)/$(bin))) linux-x86_64/webview-runner.tgz linux-x86_64/accessory.tgz
-all-WINDOWS := $(foreach t,actyxos.exe ax.exe installer webview-runner.zip accessory.zip,windows-x86_64/$t)
+all-WINDOWS := $(foreach t,actyxos.exe ax.exe ActyxOS-Installer.exe webview-runner.zip accessory.zip,windows-x86_64/$t)
 all-ANDROID := actyxos.apk
 
 CARGO_TEST_JOBS := 8
@@ -372,8 +372,7 @@ dist/bin/windows-x86_64/actyxos-node-manager.exe: misc/actyxos-node-manager/out/
 	mkdir -p $(dir $@)
 	cp -a $</actyxos-node-manager.exe $@
 
-dist/bin/windows-x86_64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyxos.exe dist/bin/windows-x86_64/webview-runner.zip dist/bin/windows-x86_64/accessory.zip make-always
-	mkdir -p $@
+dist/bin/windows-x86_64/ActyxOS-Installer.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyxos.exe dist/bin/windows-x86_64/webview-runner.zip dist/bin/windows-x86_64/accessory.zip make-always
 	cp $</actyxos-node-manager.exe misc/actyxos-win-installer
 	cp dist/bin/windows-x86_64/actyxos.exe misc/actyxos-win-installer
 	cp dist/bin/windows-x86_64/ax.exe misc/actyxos-win-installer
@@ -385,11 +384,11 @@ dist/bin/windows-x86_64/installer: misc/actyxos-node-manager/out/ActyxOS-Node-Ma
 	  -u $(shell id -u) \
 	  -v `pwd`:/src \
 	  -w /src/misc/actyxos-win-installer \
-	  -e DIST_DIR='/src/dist/bin/windows-x86_64/installer' \
+	  -e DIST_DIR='/src/dist/bin/windows-x86_64' \
 	  -e SRC_DIR='/src/misc/actyxos-win-installer' \
-	  -e PRODUCT_VERSION=1.1.0 \
+	  -e PRODUCT_VERSION=1.1.1 \
 	  -e PRODUCT_NAME=ActyxOS \
-	  -e INSTALLER_NAME='ActyxOS Installer' \
+	  -e INSTALLER_NAME='ActyxOS-Installer' \
 	  --rm \
 	  actyx/util:windowsinstallercreator-x64-latest \
 	  ./build.sh

@@ -36,7 +36,3 @@ ax --json logs tail --local 10.2.3.23
 # Keep running and output log entries as they are created
 ax logs tail --local --follow 10.2.3.23
 ```
-
-:::warning Logs not accessible through `ax logs tail` on Windows
-If you are using ActyxOS on Windows, you can currently only [access logs through the Windows Event Viewer](../../os/advanced-guides/actyxos-on-windows#logging-through-the-windows-event-viewer).
-:::

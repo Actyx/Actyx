@@ -68,4 +68,5 @@ export type ActyxOSNode = {
 export type AwsKey = {
   keyName: string
   privateKey: string
+  publicKeyPath: string
 }

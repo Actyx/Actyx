@@ -31,14 +31,10 @@ export const mkNodeSshProcess = async (
 
   const proc = await startActyxOS(nodeName, logger, ssh)
 
-  const clients = await forwardPortsAndBuildClients(ssh, nodeName, target, proc[0])
-  return {
-    name: nodeName,
-    target,
+  return await forwardPortsAndBuildClients(ssh, nodeName, target, proc[0], {
     host: 'process',
     runtimes: [],
-    ...clients,
-  }
+  })
 }
 
 export const mkNodeSshDocker = async (
@@ -77,14 +73,10 @@ export const mkNodeSshDocker = async (
     actyxOsDockerImage(target.arch, gitHash)
   const proc = await startActyxOS(nodeName, logger, ssh, command)
 
-  const clients = await forwardPortsAndBuildClients(ssh, nodeName, target, proc[0])
-  return {
-    name: nodeName,
-    target,
+  return await forwardPortsAndBuildClients(ssh, nodeName, target, proc[0], {
     host: 'docker',
     runtimes: ['docker'],
-    ...clients,
-  }
+  })
 }
 
 async function ensureDocker(ssh: Ssh, node: string, user: string) {
@@ -171,7 +163,7 @@ function startActyxOS(
         rej(new Error(`node ${nodeName}: ActyxOS did not start within ${START_TIMEOUT / 1000}sec`)),
       START_TIMEOUT,
     )
-    const { log, flush } = mkProcessLogger(logger, nodeName)
+    const { log, flush } = mkProcessLogger(logger, nodeName, ['ActyxOS ready', 'ActyxOS started'])
     const proc = ssh.exec(command)
     proc.stdout?.on('data', (s: Buffer | string) => {
       if (log('stdout', s)) {
@@ -195,12 +187,13 @@ function startActyxOS(
   })
 }
 
-async function forwardPortsAndBuildClients(
+export const forwardPortsAndBuildClients = async (
   ssh: Ssh,
   nodeName: string,
   target: Target,
-  actyxOsProc: execa.ExecaChildProcess<string>,
-) {
+  actyxOsProc: execa.ExecaChildProcess<string> | undefined,
+  theRest: Omit<ActyxOSNode, 'ax' | 'actyxOS' | '_private' | 'name' | 'target'>,
+): Promise<ActyxOSNode> => {
   const [[port4243, port4454, port4457], proc] = await ssh.forwardPorts(4243, 4454, 4457)
 
   console.log('node %s console reachable on port %i', nodeName, port4457)
@@ -222,7 +215,7 @@ async function forwardPortsAndBuildClients(
 
   const shutdown = async () => {
     console.log('node %s shutting down', nodeName)
-    actyxOsProc.kill('SIGTERM')
+    actyxOsProc?.kill('SIGTERM')
     console.log('node %s ssh stopped', nodeName)
     await target._private.cleanup()
     console.log('node %s instance terminated', nodeName)
@@ -230,5 +223,5 @@ async function forwardPortsAndBuildClients(
   }
 
   const _private = { shutdown, axBinaryPath, axHost, apiConsole, apiEvent, apiPond }
-  return { ax, actyxOS, _private }
+  return { ax, actyxOS, _private, name: nodeName, target, ...theRest }
 }
