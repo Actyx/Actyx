@@ -8,6 +8,7 @@
     "copy-schemas": "node bin/copy-schemas.js",
     "build-with-lint": "npm run lint && docusaurus build",
     "build": "npm run lint & docusaurus build",
+    "prebuild": "npm run copy-schemas",
     "postbuild": "node bin/copy-redirects.js",
     "swizzle": "docusaurus swizzle",
     "deploy": "npm run lint && docusaurus deploy",
