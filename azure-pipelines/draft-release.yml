@@ -47,7 +47,7 @@ stages:
               git fetch --force --prune origin "+refs/tags/*:refs/tags/*"
               echo "Getting tags from remote"
               git fetch --all --tags
-              npm run cli -- release 1 $TARGET_REV $ARM_NF --localRepo $REPO_DIR --skipMalformed --draft --releaseWithoutNotes
+              npm run cli -- release 1 $TARGET_REV $ARM_NF --localRepo $REPO_DIR --skipMalformed --draft --releaseWithoutNotes --dontTagDraft
             env:
               ARM_NF: $(RELEASE_NETLIFY_ACCESS_TOKEN)
               REPO_DIR: $(Build.SourcesDirectory)

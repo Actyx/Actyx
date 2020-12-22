@@ -165,4 +165,3 @@ First, check that you entered the right IP in the `ax` command. If you still can
 - **ActyxOS is not reachable.**
 This means that ActyxOS is not running on your node. Please click on the ActyxOS icon on your home screen. If ActyxOS is running, you can see it in the notifications overview of your Windows device
 - **Host is not reachable.** This means that your development machine cannot connect to your node. Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port 4457
-
