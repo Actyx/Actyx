@@ -17,8 +17,8 @@ SHELL := /bin/bash
 
 architectures = aarch64 x86_64 armv7 arm
 
-all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyxos-linux ax,linux-$(arch)/$(bin))) linux-x86_64/webview-runner.tgz linux-x86_64/accessory.tgz
-all-WINDOWS := $(foreach t,actyxos.exe ax.exe ActyxOS-Installer.exe webview-runner.zip accessory.zip,windows-x86_64/$t)
+all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyxos-linux ax,linux-$(arch)/$(bin)))
+all-WINDOWS := $(foreach t,actyxos.exe ax.exe ActyxOS-Installer.exe,windows-x86_64/$t)
 all-ANDROID := actyxos.apk
 
 CARGO_TEST_JOBS := 8
@@ -75,7 +75,6 @@ clean:
 	rm -rf js/pond/node_modules
 	rm -rf js/os-sdk/node_modules
 	rm -rf jvm/os-android/gradle/build
-	rm -rf cpp/webview-runner/dist
 	rm -rf dist
 
 # mark things with this dependency to run whenever requested
@@ -377,12 +376,10 @@ dist/bin/windows-x86_64/actyxos-node-manager.exe: misc/actyxos-node-manager/out/
 	mkdir -p $(dir $@)
 	cp -a $</actyxos-node-manager.exe $@
 
-dist/bin/windows-x86_64/ActyxOS-Installer.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyxos.exe dist/bin/windows-x86_64/webview-runner.zip dist/bin/windows-x86_64/accessory.zip make-always
+dist/bin/windows-x86_64/ActyxOS-Installer.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyxos.exe make-always
 	cp $</actyxos-node-manager.exe misc/actyxos-win-installer
 	cp dist/bin/windows-x86_64/actyxos.exe misc/actyxos-win-installer
 	cp dist/bin/windows-x86_64/ax.exe misc/actyxos-win-installer
-	unzip -n dist/bin/windows-x86_64/webview-runner.zip -d misc/actyxos-win-installer/webview-runner
-	unzip -n dist/bin/windows-x86_64/accessory.zip -d misc/actyxos-win-installer/webview-runner
 	cp -r misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 misc/actyxos-win-installer/node-manager
 	# ls -alh .
 	docker run \
@@ -457,88 +454,3 @@ $(foreach a,$(architectures),$(eval docker-build-dockerloggingplugin-$(a): dist/
 $(foreach a,$(architectures),$(eval docker-build-actyxos-$(a): dist/bin/linux-$(a)/docker-axosnode docker-build-dockerloggingplugin-$(a)))
 
 docker-build-actyxos: $(foreach a,$(architectures),docker-build-actyxos-$(a))
-
-# Webview-runner
-/tmp/cef-%-x86_64:
-	mkdir -p $@ && \
-	wget -qO- https://cef-builds.spotifycdn.com/cef_binary_86.0.21%2Bg6a2c8e7%2Bchromium-86.0.4240.183_$*64_minimal.tar.bz2 | tar --strip-components 1 -jxf - -C $@
-
-dist/bin/linux-x86_64/webview-runner.tgz: /tmp/cef-linux-x86_64
-	$(eval target_dir:=$(dir $@))
-	mkdir -p $(target_dir)
-	mkdir -p cpp/webview-runner/dist
-	docker run \
-	  -u $(shell id -u) \
-	  -v `pwd`/cpp/webview-runner:/src \
-	  -w /src/dist \
-	  -e HOME=/home/builder \
-	  -v /tmp/cef-linux-x86_64:/tmp/cef \
-	  -e CEF_ROOT=/tmp/cef \
-	  --rm \
-	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
-	  bash -c 'cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release .. && make -j$(CARGO_BUILD_JOBS) webview-runner'
-	tar cvfz $@ -C cpp/webview-runner/dist/src/Release .
-
-# The docker image `actyx/util:msvc16-x64-latest` is used for cross compilation
-# to Windows. This image uses wine to run the MSVC toolchain, as CEF3 doesn't
-# support MinGW.  The container has been created with
-# https://github.com/Actyx/MSVCDocker
-dist/bin/windows-x86_64/webview-runner.zip: /tmp/cef-windows-x86_64
-	$(eval target_dir:=$(dir $@))
-	mkdir -p $(target_dir)
-	cd cpp/webview-runner && \
-		rm -rf dist && \
-		mkdir dist && \
-		docker run \
-		  -v `pwd`:/host/ \
-			-w /host/dist \
-			-u $(shell id -u):$(shell id -g) \
-			-e CEF_ROOT=Z:/tmp/cef \
-			-v /tmp/cef-windows-x86_64:/tmp/cef \
-			-e MSVCARCH=64 \
-			--rm \
-			actyx/util:msvc16-x64-latest \
-			bash -c 'vcwine cmake -G "NMake Makefiles JOM" -DCMAKE_BUILD_TYPE=Release -Wno-dev .. && vcwine jom'
-	(cd cpp/webview-runner/dist/src/Release && zip -r - .) > $@
-## Webview-runner END
-
-## Accessory
-# Only x86_64 so far ..
-accessoryPatterns = $(foreach t,$(targets),rust/accessory/target/$(t)/release/%)
-rust/accessory/target/release/%: make-always
-	cd rust/accessory && cargo --locked build --release
-
-# libudev being LGPL doesn't allow to statically link against, so no musl for us
-define mkAccessoryBinaryRule =
-rust/accessory/target/$(TARGET)/release/%: cargo-init make-always
-	docker run \
-	  -u $(shell id -u) \
-	  -w /src/rust/accessory \
-	  -e CARGO_BUILD_TARGET=$(TARGET) \
-	  -e CARGO_BUILD_JOBS=$(CARGO_BUILD_JOBS) \
-	  -e HOME=/home/builder \
-	  -e PKG_CONFIG_ALLOW_CROSS=1 \
-	  -v `pwd`:/src \
-	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
-	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
-	  --rm \
-	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
-	  cargo --locked build --release
-endef
-targets-accessory = $(sort $(foreach oa,linux-x86_64 windows-x86_64,$(target-nonmusl-$(oa))))
-$(foreach TARGET,$(targets-accessory),$(eval $(mkAccessoryBinaryRule)))
-
-dist/bin/linux-x86_64/accessory: rust/accessory/target/x86_64-unknown-linux-gnu/release/accessory
-	mkdir -p $@
-	cp $(dir $<)/{accessory,libbrp_lib.so} $@
-
-dist/bin/linux-x86_64/accessory.tgz: dist/bin/linux-x86_64/accessory dist/bin/linux-x86_64/accessory/libbrp_lib.so
-	tar cvfz $@ -C $< .
-
-dist/bin/windows-x86_64/accessory: rust/accessory/target/x86_64-pc-windows-gnu/release/accessory.exe
-	mkdir -p $@
-	cp $(dir $<)/{accessory.exe,libbrp_lib.dll} $@
-
-dist/bin/windows-x86_64/accessory.zip: dist/bin/windows-x86_64/accessory dist/bin/windows-x86_64/accessory/libbrp_lib.dll
-	(cd $< && zip -r - .) > $@
-## Accessory END
