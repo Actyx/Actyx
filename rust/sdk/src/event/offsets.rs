@@ -16,6 +16,9 @@
 use super::{Event, SourceId};
 use crate::tagged::{EventKey, StreamId};
 use derive_more::{Display, From, Into};
+use libipld::cbor::decode::TryReadCbor;
+use libipld::cbor::DagCborCodec;
+use libipld::codec::{Decode, Encode};
 use num_traits::Bounded;
 use serde::{
     de::{Error, Visitor},
@@ -26,6 +29,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     convert::TryFrom,
     fmt::{self, Debug},
+    io::{Read, Write},
     iter::FromIterator,
     ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
 };
@@ -341,6 +345,29 @@ impl Bounded for Offset {
     }
     fn max_value() -> Self {
         Offset::MAX
+    }
+}
+
+impl TryReadCbor for Offset {
+    fn try_read_cbor<R: Read>(r: &mut R, major: u8) -> libipld::Result<Option<Self>> {
+        if let Some(value) = u64::try_read_cbor(r, major)? {
+            validate_offset(value as i64).map_err(|e| anyhow::anyhow!("{}", e))?;
+            Ok(Some(Offset(value as i64)))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+impl Encode<DagCborCodec> for Offset {
+    fn encode<W: Write>(&self, c: DagCborCodec, w: &mut W) -> libipld::Result<()> {
+        (self.0 as u64).encode(c, w)
+    }
+}
+
+impl Decode<DagCborCodec> for Offset {
+    fn decode<R: Read>(_: DagCborCodec, r: &mut R) -> libipld::Result<Self> {
+        libipld::cbor::decode::read(r)
     }
 }
 

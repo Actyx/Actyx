@@ -21,10 +21,9 @@
 
 extern crate proc_macro;
 
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use syn::{
-    export::Span,
     parse::{Parse, ParseStream},
     Error, Expr, ExprGroup, ExprLit, ExprRange, Item, Lit, LitByteStr, LitStr, RangeLimits, Token,
 };
