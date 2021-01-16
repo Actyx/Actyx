@@ -380,20 +380,6 @@ impl Serialize for SourceId {
 }
 
 #[cfg(test)]
-impl quickcheck::Arbitrary for SourceId {
-    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-        use rand::Rng;
-
-        let len = g.gen_range(1, MAX_SOURCEID_LENGTH);
-        let mut s = String::with_capacity(len);
-        for _ in 0..len {
-            s.push(g.gen_range(32u8, 127u8).into());
-        }
-        SourceId::try_from(s.as_str()).unwrap()
-    }
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
 

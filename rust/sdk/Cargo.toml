@@ -19,6 +19,7 @@ client = ["reqwest", "url", "futures", "bytes"]
 dataflow = ["abomonation", "abomonation_derive"]
 sqlite = ["rusqlite"]
 postgresql = ["postgres-types", "bytes"]
+arb = ["quickcheck", "rand"]
 
 [dependencies]
 abomonation = { version = "~0.7", optional = true }
@@ -45,11 +46,13 @@ serde-transcode = "1.0"
 tracing = "0.1.16"
 typenum = "~1.12"
 url = { version = "~2.1", optional = true }
+quickcheck = { version = "0.9", optional = true }
+rand = { version = "0.7", optional = true }
 
 [dev-dependencies]
-quickcheck = "0.9"
-rand = "0.7"
 tokio = { version = "~0.2", features = ["rt-threaded", "macros"] }
+quickcheck = { version = "0.9" }
+rand = { version = "0.7" }
 
 [[example]]
 name = "offsets"

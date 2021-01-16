@@ -167,6 +167,12 @@ impl From<Offset> for OffsetOrMin {
     }
 }
 
+impl From<u32> for OffsetOrMin {
+    fn from(value: u32) -> Self {
+        Self(value.into())
+    }
+}
+
 impl PartialEq<Offset> for OffsetOrMin {
     fn eq(&self, other: &Offset) -> bool {
         OffsetOrMin::from(*other) == *self
@@ -220,6 +226,13 @@ impl From<Offset> for u64 {
     fn from(value: Offset) -> Self {
         // offset is guaranteed to be positive
         value.0 as u64
+    }
+}
+
+impl From<u32> for Offset {
+    fn from(value: u32) -> Offset {
+        // An u32 is guaranteed to fit into an offset
+        Self(value as i64)
     }
 }
 

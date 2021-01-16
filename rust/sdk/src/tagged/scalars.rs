@@ -4,7 +4,8 @@ use multibase::Base;
 use serde::{Deserialize, Serialize};
 use std::{
     convert::TryFrom,
-    fmt::{Debug, Display},
+    fmt::{self, Debug, Display},
+    num::{NonZeroU64, TryFromIntError},
 };
 
 /// The session identifier used in /subscribe_monotonic
@@ -84,7 +85,7 @@ mk_scalar!(
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(into = "String", try_from = "String")]
-pub struct NodeId([u8; 32]);
+pub struct NodeId(pub(crate) [u8; 32]);
 
 impl NodeId {
     pub fn to_multibase(&self, base: Base) -> String {
@@ -116,14 +117,10 @@ impl NodeId {
     /// Creates a stream ID belonging to this node ID with the given non-zero stream number
     ///
     /// Stream number zero is reserved for embedding [`SourceId`](../event/struct.SourceId.html).
-    pub fn stream(&self, stream_nr: u64) -> Option<StreamId> {
-        if stream_nr == 0 {
-            None
-        } else {
-            Some(StreamId {
-                node_id: *self,
-                stream_nr,
-            })
+    pub fn stream(&self, stream_nr: StreamNr) -> StreamId {
+        StreamId {
+            node_id: *self,
+            stream_nr: stream_nr.into(),
         }
     }
 }
@@ -181,8 +178,8 @@ impl TryFrom<String> for NodeId {
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(into = "String", try_from = "String")]
 pub struct StreamId {
-    node_id: NodeId,
-    stream_nr: u64,
+    pub(crate) node_id: NodeId,
+    pub(crate) stream_nr: u64,
 }
 
 impl StreamId {
@@ -279,33 +276,36 @@ impl From<&SourceId> for StreamId {
     }
 }
 
+/// StreamNr. Can not be 0
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct StreamNr(NonZeroU64);
+
+impl TryFrom<u64> for StreamNr {
+    type Error = TryFromIntError;
+
+    fn try_from(value: u64) -> std::result::Result<Self, Self::Error> {
+        Ok(StreamNr(NonZeroU64::try_from(value)?))
+    }
+}
+
+impl From<StreamNr> for u64 {
+    fn from(value: StreamNr) -> Self {
+        value.0.into()
+    }
+}
+
+impl fmt::Display for StreamNr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Display::fmt(&self.0, f)
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use std::convert::TryInto;
+
     use super::*;
-    use quickcheck::Arbitrary;
     use serde_json::Value;
-
-    impl Arbitrary for NodeId {
-        fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-            let mut bytes = [0u8; 32];
-            g.fill_bytes(&mut bytes[..]);
-            NodeId(bytes)
-        }
-    }
-
-    impl Arbitrary for StreamId {
-        fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-            let stream_nr = u64::arbitrary(g);
-            if stream_nr == 0 {
-                SourceId::arbitrary(g).into()
-            } else {
-                Self {
-                    node_id: NodeId::arbitrary(g),
-                    stream_nr,
-                }
-            }
-        }
-    }
 
     const BYTES: [u8; 32] = [
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
@@ -320,7 +320,7 @@ mod tests {
 
     #[test]
     fn stream_id_serialization() {
-        let stream_id = NodeId(BYTES).stream(12).unwrap();
+        let stream_id = NodeId(BYTES).stream(12.try_into().unwrap());
         assert_eq!(stream_id.to_string(), "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.12");
     }
 
