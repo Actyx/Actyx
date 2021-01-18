@@ -1,34 +1,18 @@
 {
-  "name": "@actyx/os-sdk",
-  "description": "ActyxOS Javascript/Typescript SDK",
-  "version": "0.2.0",
-  "license": "Apache-2.0",
   "author": "Actyx",
-  "repository": {
-    "type": "git",
-    "url": "ssh://git@github.com/Actyx/Cosmos.git"
-  },
-  "homepage": "https://developer.actyx.com/docs/os/sdks/js-ts",
   "bugs": {
     "url": "https://support.actyx.io"
   },
-  "scripts": {
-    "build": "tsc",
-    "build:dev": "tsc --watch",
-    "format": "prettier --write \"src/**/*.ts\" \"src/**/*.js\"",
-    "format:check": "prettier --check \"src/**/*.ts\" \"src/**/*.js\"",
-    "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx",
-    "lint:fix": "npm run lint -- --fix",
-    "ensure-exact-deps": "npm-exact-versions",
-    "demo": "ts-node src/demo.ts",
-    "prepack": "tsc",
-    "docs": "typedoc --out ../../web/developer.actyx.com/static/@actyx/os-sdk/ src/",
-    "test": "npm run build && npm run ensure-exact-deps && npm run check-license && RUN_INTEGRATION_TESTS=${RUN_INTEGRATION_TESTS:-0} jest --config jestconfig.json --coverage",
-    "add-license": "license-check-and-add add -f add-license-config.json",
-    "check-license": "license-check-and-add check -f add-license-config.json"
+  "description": "ActyxOS Javascript/Typescript SDK",
+  "dependencies": {
+    "@types/node": "12.7.12",
+    "fp-ts": "2.1.0",
+    "http": "0.0.0",
+    "io-ts": "2.0.1",
+    "stream": "0.0.2",
+    "string_decoder": "1.3.0",
+    "uri-js": "4.2.2"
   },
-  "main": "lib/index.js",
-  "types": "lib/index.d.ts",
   "devDependencies": {
     "@types/jest": "24.0.19",
     "@typescript-eslint/eslint-plugin": "2.17.0",
@@ -46,17 +30,29 @@
     "typedoc": "0.17.7",
     "typescript": "3.9.3"
   },
-  "dependencies": {
-    "@types/node": "12.7.12",
-    "fp-ts": "2.1.0",
-    "http": "0.0.0",
-    "io-ts": "2.0.1",
-    "stream": "0.0.2",
-    "string_decoder": "1.3.0",
-    "uri-js": "4.2.2"
+  "homepage": "https://developer.actyx.com/docs/os/sdks/js-ts",
+  "license": "Apache-2.0",
+  "main": "lib/index.js",
+  "name": "@actyx/os-sdk",
+  "repository": {
+    "type": "git",
+    "url": "ssh://git@github.com/Actyx/Cosmos.git"
   },
-  "engines": {
-    "yarn": "YARN NO LONGER USED - use npm instead.",
-    "node": "10.16"
-  }
+  "scripts": {
+    "build": "tsc",
+    "build:dev": "tsc --watch",
+    "format": "prettier --write \"src/**/*.ts\" \"src/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"src/**/*.js\"",
+    "lint": "eslint ./src --ext .js,.jsx,.ts,.tsx",
+    "lint:fix": "npm run lint -- --fix",
+    "ensure-exact-deps": "npm-exact-versions",
+    "demo": "ts-node src/demo.ts",
+    "prepack": "tsc",
+    "docs": "typedoc --out ../../web/developer.actyx.com/static/@actyx/os-sdk/ src/",
+    "test": "npm run build && npm run ensure-exact-deps && npm run check-license && RUN_INTEGRATION_TESTS=${RUN_INTEGRATION_TESTS:-0} jest --config jestconfig.json --coverage",
+    "add-license": "license-check-and-add add -f add-license-config.json",
+    "check-license": "license-check-and-add check -f add-license-config.json"
+  },
+  "types": "lib/index.d.ts",
+  "version": "0.3.1"
 }

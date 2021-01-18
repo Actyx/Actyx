@@ -453,15 +453,68 @@ export const FishId = {
    * @param version    - Version of the underlying code. Must be increased whenever the Fish’s underlying logic or event selection changes.
    * @returns            A FishId.
    */
-  of: (entityType: string, name: string, version: number) => ({
-    entityType,
-    name,
-    version,
-  }),
+  of: (entityType: string, name: string, version: number) => {
+    if (!entityType || !name) {
+      throw new Error('Fish-Id parts must not be left empty')
+    }
+
+    return {
+      entityType,
+      name,
+      version,
+    }
+  },
 
   // For internal use. Transform a FishId into a string to be used as key in caching.
   canonical: (v: FishId): string => JSON.stringify([v.entityType, v.name, v.version]),
 }
+
+/** Indicate in-process (nonpersistent) Caching. @beta */
+export type InProcessCaching = Readonly<{
+  type: 'in-process'
+
+  /* Cache key used to find previously stored values */
+  key: string
+}>
+
+/** Indicator for disabled caching of pond.observeAll(). @beta */
+export type NoCaching = { readonly type: 'none' }
+
+/** Caching indicator for pond.observeAll(). @beta */
+export type Caching = NoCaching | InProcessCaching
+
+export type EnabledCaching = InProcessCaching
+
+/** Caching related functions @beta */
+export const Caching = {
+  none: { type: 'none' as const },
+
+  isEnabled: (c: Caching | undefined): c is EnabledCaching => c !== undefined && c.type !== 'none',
+
+  inProcess: (key: string): Caching => ({
+    type: 'in-process',
+    key,
+  }),
+}
+
+/** Optional parameters to pond.observeAll @beta */
+export type ObserveAllOpts = Partial<{
+  /**
+   * How to cache the known set of Fish.
+   * Defaults to no caching, i.e. the set will be rebuilt from events on every invocation.
+   */
+  caching: Caching
+
+  /** Fish expires from the set of 'all' when its first event reaches a certain age */
+  expireAfterSeed: Milliseconds
+
+  /**
+   * @deprecated Renamed to `expireAfterSeed`
+   */
+  expireAfterFirst: Milliseconds
+
+  // Future work: expireAfterLatest(Milliseconds), expireAfterEvent(Where)
+}>
 
 /**
  * A `Fish<S, E>` describes an ongoing aggregration (fold) of events of type `E` into state of type `S`.
@@ -482,7 +535,7 @@ export type Fish<S, E> = Readonly<{
   // State of this Fish before it has seen any events.
   initialState: S
 
-  /*
+  /**
    * Function to create the next state from previous state and next event. It works similar to `Array.reduce`.
    * Do note however that — while it may modify the passed-in state — this function must be _pure_:
    * - It should not cause any side-effects (except logging)
@@ -584,3 +637,12 @@ export type PendingEmission = {
   // Convert to a Promise which resolves once emission has completed.
   toPromise: () => Promise<void>
 }
+
+/** Context for an error thrown by a Fish’s functions. @public */
+export type FishErrorContext =
+  | { occuredIn: 'onEvent'; state: unknown; event: unknown; metadata: Metadata }
+  | { occuredIn: 'isReset'; event: unknown; metadata: Metadata }
+  | { occuredIn: 'deserializeState'; jsonState: unknown }
+
+/** Error reporter for when Fish functions throw exceptions. @public */
+export type FishErrorReporter = (err: unknown, fishId: FishId, detail: FishErrorContext) => void

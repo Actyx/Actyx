@@ -10,6 +10,7 @@ import { Observable, ReplaySubject, Scheduler, Subject } from 'rxjs'
 import log from '../store/loggers'
 import { SubscriptionSet, subscriptionsToEventPredicate } from '../subscription'
 import { EventKey, Lamport, Psn, SourceId, Timestamp } from '../types'
+import { binarySearch, mergeSortedInto } from '../util'
 import {
   EventStore,
   RequestAllEvents,
@@ -78,38 +79,136 @@ const isBetweenPsnLimits = (from: OffsetMapWithDefault, to: OffsetMapWithDefault
   return passLower && passUpper
 }
 
-const filterEvents = (
+/**
+ * HERE BE DRAGONS: This function is just a draft of an optimisation we may do in a Rust-side impl
+ * Take an offset map and a sorted array of events -> find an index that fully covers the offsetmap.
+ * - Psn of event is smaller than in map -> Too low
+ * - Psn of event is higher -> Too high
+ * - Event’s source is not in offsets: Too high if offsets default is 'min'
+ * - Psn eq: Too low, unless the next event is too high
+ */
+export const binSearchOffsets = (a: Events, offsets: OffsetMapWithDefault): number => {
+  let low = 0
+  let high = a.length
+
+  const c = ordOffsetsEvent(offsets, a)
+
+  while (low < high) {
+    const mid = (low + high) >>> 1
+    if (c(mid) < 0) low = mid + 1
+    else high = mid
+  }
+  return low
+}
+
+// For use within `binSearchOffsets` -- very specialized comparison.
+const ordOffsetsEvent = (offsets: OffsetMapWithDefault, events: Events) => (i: number): number => {
+  const ev = events[i]
+  const source = ev.sourceId
+
+  const offset = lookup(offsets.psns, source)
+
+  return offset.fold(
+    // Unknown source: Too high.
+    1,
+    o => {
+      const d = ev.psn - o
+      if (d !== 0 || i + 1 === events.length) {
+        return d
+      }
+
+      // If d=0, delegate to the next higher index
+      return ordOffsetsEvent(offsets, events)(i + 1)
+    },
+  )
+}
+
+const filterSortedEvents = (
+  events: Events,
   from: OffsetMapWithDefault,
   to: OffsetMapWithDefault,
   subs: SubscriptionSet,
   min?: EventKey,
-) => (events: Events): Events => {
+): Event[] => {
+  // If min is given, should be among the existing events
+  const sliceStart = min ? binarySearch(events, min, EventKey.ord.compare) + 1 : 0
+
   return events
-    .filter(e => !min || EventKey.ord.compare(e, min) >= 0)
+    .slice(sliceStart)
+    .filter(isBetweenPsnLimits(from, to))
+    .filter(subscriptionsToEventPredicate(subs))
+}
+
+const filterUnsortedEvents = (
+  from: OffsetMapWithDefault,
+  to: OffsetMapWithDefault,
+  subs: SubscriptionSet,
+  min?: EventKey,
+) => (events: Events): Event[] => {
+  return events
+    .filter(ev => !min || EventKey.ord.compare(ev, min) > 0)
     .filter(isBetweenPsnLimits(from, to))
     .filter(subscriptionsToEventPredicate(subs))
 }
 
 const persistence = () => {
-  let sorted = true
-  const persisted: Event[] = []
+  let persisted: Event[] = []
 
-  const persist = (evs: Events) => {
-    persisted.push(...evs)
-    sorted = false
-  }
-  const getPersisted = () => {
-    if (!sorted) {
-      persisted.sort(EventKey.ord.compare)
-      sorted = true
+  const persist = (evsUnsorted: Events) => {
+    const evs = [...evsUnsorted].sort(EventKey.ord.compare)
+    if (persisted.length === 0) {
+      persisted = evs
+      return
     }
 
+    if (evs.length === 0) {
+      return
+    }
+
+    const oldPersisted = [...persisted]
+
+    // Array with lower first element has to go first
+    if (EventKey.ord.compare(oldPersisted[0], evs[0]) > 0) {
+      persisted = oldPersisted.concat(evs)
+      mergeSortedInto(oldPersisted, evs, persisted, EventKey.ord.compare)
+    } else {
+      persisted = evs.concat(oldPersisted)
+      mergeSortedInto(evs, oldPersisted, persisted, EventKey.ord.compare)
+    }
+  }
+
+  const allPersisted = () => {
     return persisted
+  }
+
+  // Get persisted events as a mutable slice with best-effort pre-filtering
+  const getPersistedPreFiltered = (
+    from: OffsetMapWithDefault,
+    to: OffsetMapWithDefault,
+  ): Event[] => {
+    const events = allPersisted()
+
+    if (OffsetMap.isEmpty(from.psns)) {
+      return [...events]
+    }
+
+    if (from.default === to.default) {
+      return [...events]
+    } else {
+      // Here be dragons...
+      // We actually want to use this when picking up from a snapshot, but that only works when
+      // we can guarantee the snapshot is still valid. In case we are hydrating from scratch, we cannot guarantee that!
+      // So currently it’s only used for the "live" stream to basically detect that no persisted event needs to be delivered
+      // (because in tests the live stream will relibably always start from present and the persisted events will exactly cover the present.)
+      const start = binSearchOffsets(events, from)
+      return events.slice(start)
+    }
   }
 
   return {
     persist,
-    getPersisted,
+    getPersistedPreFiltered,
+    allPersisted,
   }
 }
 
@@ -117,18 +216,20 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
   sourceId = SourceId.of('TEST'),
   eventChunkSize = 4,
 ) => {
-  const { persist, getPersisted } = persistence()
+  const { persist, getPersistedPreFiltered, allPersisted } = persistence()
 
   const present = new ReplaySubject<OffsetMap>(1)
   const live = new Subject<Events>()
 
   const persistedEvents: RequestPersistedEvents = (from, to, subs, sortOrder, min) => {
-    const events = getPersisted()
+    const events = getPersistedPreFiltered(from, to)
+
+    const filtered = filterSortedEvents(events, from, to, subs, min)
 
     const ret =
-      sortOrder === PersistedEventsSortOrders.ReverseEventKey ? [...events].reverse() : events
+      sortOrder === PersistedEventsSortOrders.ReverseEventKey ? filtered.reverse() : filtered
 
-    return Observable.from(chunksOf(ret, eventChunkSize)).map(filterEvents(from, to, subs, min))
+    return Observable.from(chunksOf(ret, eventChunkSize)).defaultIfEmpty([])
   }
 
   const liveStream: RequestAllEvents = (from, to, subs, sortOrder, min) => {
@@ -139,7 +240,7 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
     return (
       live
         .asObservable()
-        .map(filterEvents(from, to, subs, min))
+        .map(filterUnsortedEvents(from, to, subs, min))
         // Delivering live events may trigger new events (via onStateChange) and again new events,
         // until we exhaust the call stack. The prod store shouldn’t have that problem due to obvious reasons.
         .observeOn(Scheduler.queue)
@@ -193,7 +294,7 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
     offsets = b
 
     if (newEvents.length > 0) {
-      lamport = Lamport.of(Math.max(newEvents[newEvents.length - 1].lamport + 1, lamport))
+      lamport = Lamport.of(Math.max(lamport, ...newEvents.map(x => x.lamport)) + 1)
     }
 
     const newEventsCompat: Events = newEvents.map(ev => ({
@@ -203,8 +304,8 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
     }))
 
     persist(newEventsCompat)
-    live.next(newEventsCompat)
     present.next(offsets)
+    live.next(newEventsCompat)
   }
 
   const toIo = (o: OffsetMap): OffsetMapWithDefault => ({ psns: o, default: 'max' })
@@ -221,7 +322,7 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
     allEvents,
     persistEvents,
     directlyPushEvents,
-    storedEvents: () => getPersisted(),
+    storedEvents: allPersisted,
     connectivityStatus: () => Observable.empty<ConnectivityStatus>(),
   }
 }

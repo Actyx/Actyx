@@ -28,7 +28,7 @@ namespace Sdk.IntegrationTests
 
             var a = s.QueryStreaming(query, offsets, EventsOrder.LamportReverse);
 
-            // var t = s.subscribeUntilTimeTravel("foo", query, SnapshotCompression.None);
+            // var t = s.subscribeMonotonic("foo", query, SnapshotCompression.None);
 
             await foreach (var q in a)
             {

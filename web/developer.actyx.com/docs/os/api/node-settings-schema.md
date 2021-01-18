@@ -7,7 +7,7 @@ The format of ActyxOS node settings is defined in the **Node Setting Schema**.
 
 ActyxOS needs a number of settings to be defined in order to work, and provides optional settings that you can use to configure your nodes' behavior. Which settings are available and which values they may have is defined in the so-called ActyxOS **Node Setting Schema**. The most recent version thereof is available for download at:
 
-[https://developer.actyx.com/schemas/os/node-settings.schema.json](/schemas/os/node-settings.schema.json)
+[https://developer.actyx.com/schemas/os/node-settings.schema.json](pathname:///schemas/os/node-settings.schema.json)
 
 Here is an example of schema-compliant node settings:
 
@@ -31,8 +31,8 @@ services:
     readOnly: false
 ```
 
-If this were stored in a file named `settings.yml`, you could now use the [Actyx CLI](/os/docs/actyx-cli.html) to set these setting as follows:
+If this were stored in a file named `settings.yml`, you could now use the [Actyx CLI](/docs/cli/getting-started) to set these setting as follows:
 
-```bash
+```text
 ax settings set --local com.actyx.os @settings.yml 10.2.3.23
 ```

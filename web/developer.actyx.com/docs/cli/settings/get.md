@@ -2,9 +2,7 @@
 title: ax settings get
 ---
 
-## Get settings from a node
-
-```
+```text title="Get settings from an ActyxOS node"
 USAGE:
     ax settings get [FLAGS] <SCOPE> <NODE>
 
@@ -29,7 +27,7 @@ ARGS:
 
 Here are some examples of using the `ax settings get` command:
 
-```
+```text title="Example Usage"
 # Get the settings for the node with settings scope com.actyx.os at 10.2.3.23
 ax settings get --local com.actyx.os 10.2.3.23
 

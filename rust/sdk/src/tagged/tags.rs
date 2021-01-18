@@ -1,4 +1,5 @@
 use crate::event::{FishName, Semantics};
+use libipld::DagCbor;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeSet,
@@ -130,9 +131,10 @@ impl<T: Into<String>> Add<T> for Tag {
 /// A set of tags in canonical iteration order
 ///
 /// All constructors and serialization ensure that tags appear only once and in string sort order.
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(DagCbor, Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(from = "Vec<Tag>")]
+#[ipld(repr = "value")]
 pub struct TagSet(Vec<Tag>);
 
 impl From<Vec<Tag>> for TagSet {
@@ -413,9 +415,6 @@ mod tests {
         t.remove(&a);
         assert_eq!(t, tags!("c", "b"));
 
-        assert_eq!(
-            vec![a, b, c].into_iter().collect::<TagSet>(),
-            tags!("a", "b", "c")
-        );
+        assert_eq!(vec![a, b, c].into_iter().collect::<TagSet>(), tags!("a", "b", "c"));
     }
 }

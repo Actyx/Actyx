@@ -17,6 +17,8 @@ It is reachable at the following base URI: `http://localhost:4454/api/v1/events`
 JSON used in the examples below is pretty-printed. This is only to make it more readable here. In reality, the Event Service API does not return pretty-printed JSON.
 :::
 
+<!-- markdownlint-disable MD024 -->
+
 ## Get information about known offsets
 
 You can get information from the Event Service about known offsets, i.e. what the event service believes to be the last offset for each stream.
@@ -38,7 +40,7 @@ There is no request body.
 
 The response body will contain a JSON object of the following structure:
 
-```json
+```text
 {
     "<string: sourceID>": "<integer: last-known-offset>",
     "<string: sourceID>": "<integer: last-known-offset>"
@@ -49,7 +51,7 @@ The response body will contain a JSON object of the following structure:
 
 See the following example using cURL:
 
-```bash
+```text
 curl \
     -s -X "GET" \
     -H "Accept: application/json" \
@@ -623,3 +625,5 @@ public class Application
     }
 }
 ```
+
+<!-- markdownlint-enable MD024 -->

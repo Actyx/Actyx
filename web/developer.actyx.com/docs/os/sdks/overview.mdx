@@ -1,0 +1,25 @@
+---
+title: ActyxOS SDKs
+sidebar_label: Overview
+hide_table_of_contents: true
+---
+
+The ActyxOS SDKs wrap ActyxOS Services in different programming languages for ease of use in your applications.
+![ActyxOS Architecture](/images/os/sdk-architecture.svg)
+
+import {TwoElementRow} from '../../../src/components/TwoElementRow.tsx'
+import useBaseUrl from "@docusaurus/useBaseUrl";
+
+<TwoElementRow
+    img1={useBaseUrl('images/os/rust-sdk.svg')}
+    img2={useBaseUrl('images/os/js-sdk.svg')}
+    title1={"ActyxOS Rust SDK"}
+    title2={"ActyxOS JS/TS SDK"}
+    body1={"The ActyxOS Rust SDK defines the data types needed for communicating with ActyxOS and provides Rust bindings for the ActyxOS Event Service HTTP API."}
+    body2={"The ActyxOS JS/TS SDK wraps the ActyxOS Event Service and Console Service HTTP APIs in a simple client that can be used from within JavaScript and TypeScript apps."}
+    cta1={["Read more on crates.io", "Read Rust SDK documentation"]}
+    cta2={["Read more on npm", "Read JS/TS SDK documentation"]}
+    link1={[useBaseUrl('https://crates.io/crates/actyxos_sdk'), useBaseUrl('/docs/os/sdks/rust')]}
+    link2={[useBaseUrl('https://www.npmjs.com/package/@actyx/os-sdk'), useBaseUrl('/docs/os/sdks/js-ts')]}
+/>
+

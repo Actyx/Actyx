@@ -1,0 +1,72 @@
+# Validation pipeline
+#
+# For general remarks, see ../README.md
+
+trigger:
+  branches:
+    include:
+      - master
+      - proj/*
+pr:
+  autoCancel: true
+  branches:
+    include:
+      - master
+      - proj/*
+
+variables:
+  SLACK_HOOK: ***REMOVED***
+
+stages:
+  - stage: validation
+    dependsOn: []
+    displayName: Validation
+    pool:
+      name: Native
+    jobs:
+      - job:
+        displayName: make validate-js
+        steps:
+          - bash: |
+              build/bin/install-vault.sh
+              make validate-js
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+      - job:
+        displayName: make validate-os validate-rust-sdk
+        steps:
+          - bash: |
+              make validate-os validate-rust-sdk validate-rust-sdk-macros
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+      - job:
+        displayName: make validate-os-android
+        steps:
+          - bash: |
+              build/bin/install-vault.sh
+              make validate-os-android
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+      - job:
+        displayName: make validate-misc
+        steps:
+          - bash: |
+              build/bin/install-vault.sh
+              make validate-misc
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+
+  - stage: notifySuccess
+    dependsOn:
+      - validation
+    displayName: Notify Slack on successful build
+    jobs:
+      - template: jobs-notify-success.yml

@@ -5,7 +5,7 @@ title: Blob Service
 The **Blob Service** allows you to store and share arbitrary **B**inary **L**arge **Ob**jects.
 
 :::warning Alpha version software
-The Blob Service is currently in internal alpha. It is planned for **public release in 2020**. To stay up to date about upcoming releases please check out our [blog](https://www.actyx.com/news) where we post release notes and roadmap updates.
+The Blob Service is currently in internal alpha. It is planned for **public release in 2021**. To stay up to date about upcoming releases please check out our [blog](https://www.actyx.com/news) where we post release notes and roadmap updates.
 :::
 
 With this document we aim to provide you a preview about how the Binary Blob service works as we work toward a beta release.
@@ -163,7 +163,7 @@ $ curl -s -X "GET" \
 
 The automatic distribution of data to other devices is one of the most powerful features of the Blob Service. Since it happens automatically, you must, however, be able to get notified when new data is distributed.
 
-As shown above, the Blob Store enables this through the `ActyxOS-StorageService-Metadata` stream with `com.actyx.os.storage.metadata` semantics. Getting notified about new blob stores, thus means subscribing to this event stream using the [Event Service](/os/docs/events-service.html):
+As shown above, the Blob Store enables this through the `ActyxOS-StorageService-Metadata` stream with `com.actyx.os.storage.metadata` semantics. Getting notified about new blob stores, thus means subscribing to this event stream using the [Event Service](/docs/os/api/event-service):
 
 In a Node.js app you could, for instance, do this as follows:
 
@@ -193,7 +193,7 @@ fetch('http://localhost:4454/api/v1/events/subscribe', {
 ```
 
 :::note Event stream offsets
-The example above is a simplified implementation. In order to not receive events you have already received in the past, you would keep track of an offset map and request only events that you have not yet received. Please refer to the [Event Service](/os/docs/event-service.html) guide for more information.
+The example above is a simplified implementation. In order to not receive events you have already received in the past, you would keep track of an offset map and request only events that you have not yet received. Please refer to the [Event Service](event-service.md) guide for more information.
 :::
 
 ### Deleting data
@@ -201,7 +201,7 @@ The example above is a simplified implementation. In order to not receive events
 Data blobs cannot be manually deleted from within an app. Deletion happens automatically according to each data blob's individual retention policy. See the [storing data](#storing-data) section above for an example of how to set a policy.
 
 :::note
-The swarm administrator can manually delete any data blob at any time using the [Actyx CLI](../../cli.md).
+The swarm administrator can manually delete any data blob at any time using the [Actyx CLI](/docs/cli/getting-started).
 :::
 
 The Blob Service supports the following retention policies for data blobs:

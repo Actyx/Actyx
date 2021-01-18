@@ -253,11 +253,7 @@ mod tests {
 
     #[test]
     fn must_pick_up_subscription() {
-        let sub = Subscription::local(
-            semantics!("semantics"),
-            fish_name!("name"),
-            source_id!("source"),
-        );
+        let sub = Subscription::local(semantics!("semantics"), fish_name!("name"), source_id!("source"));
         let bytes = serde_json::to_string(&sub).unwrap();
         assert_eq!(
             bytes,

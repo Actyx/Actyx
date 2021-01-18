@@ -10,7 +10,7 @@
 import * as debug from 'debug'
 import { Observable } from 'rxjs'
 import { format } from 'util'
-import { Timestamp } from '..'
+import { Timestamp } from '../types'
 import {
   CommandInterface,
   ControlCommand,

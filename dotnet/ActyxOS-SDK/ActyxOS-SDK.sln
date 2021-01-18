@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sdk", "Sdk\Sdk.csproj", "{6
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sdk.Tests", "Sdk.Tests\Sdk.Tests.csproj", "{E2D656DA-291E-4616-864D-6425557BE900}"
 EndProject
-Project("{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}") = "Sdk.IntegrationTests", "Sdk.IntegrationTests\Sdk.IntegrationTests.csproj", "{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sdk.IntegrationTests", "Sdk.IntegrationTests\Sdk.IntegrationTests.csproj", "{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -58,5 +58,8 @@ Global
 		{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}.Release|x64.Build.0 = Release|Any CPU
 		{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}.Release|x86.ActiveCfg = Release|Any CPU
 		{35EFC82F-EF61-4762-A6FC-3F5FC7AD6FF6}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		version = 0.1.0
 	EndGlobalSection
 EndGlobal

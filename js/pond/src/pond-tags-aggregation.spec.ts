@@ -1,5 +1,21 @@
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
 import { Observable } from 'rxjs'
-import { Fish, FishId, noEvents, Pond, Tag, Tags, Where } from '.'
+import {
+  Fish,
+  FishErrorContext,
+  FishErrorReporter,
+  FishId,
+  noEvents,
+  Pond,
+  Tag,
+  Tags,
+  Where,
+} from '.'
 
 const emitTestEvents = async (pond: Pond) => {
   await pond.emit(Tags('t0', 't1', 't2'), 'hello').toPromise()
@@ -25,12 +41,12 @@ const aggregateAsObservable = <S>(pond: Pond, agg: Fish<S, any>): Observable<S> 
     pond.observe(agg, s => x.next(s))
   })
 
-describe('application of commands in the pond', () => {
+describe('tag-based aggregation (Fish observe) in the Pond', () => {
   const expectAggregationToYield = async (
     subscriptions: Where<string>,
     expectedResult: string[],
   ) => {
-    const pond = await Pond.test()
+    const pond = Pond.test()
 
     const aggregate = Fish.eventsDescending<string>(subscriptions)
 
@@ -62,6 +78,166 @@ describe('application of commands in the pond', () => {
     // Empty union means not a single subscription
     expectAggregationToYield(noEvents, []))
 
+  describe('error handling', () => {
+    const brokenFish: Fish<string, string> = {
+      onEvent: (_state, event) => {
+        if (event === 'error') {
+          throw new Error('oh, I am broken')
+        }
+
+        return event
+      },
+      initialState: 'initial',
+      where: Tag<string>('t1'),
+      fishId: FishId.of('broken', 'test', 1),
+    }
+
+    const setup = (
+      errorCb?: (err: unknown) => void,
+      fishExt: Partial<Fish<string, string>> = {},
+    ) => {
+      let reported: FishErrorContext | null = null
+      const fishErrorReporter: FishErrorReporter = (_err, _fishId, detail) => {
+        reported = detail
+      }
+
+      const pond = Pond.test({ fishErrorReporter })
+
+      let latestState: string = 'unset'
+      pond.observe(
+        {
+          ...brokenFish,
+          ...fishExt,
+        },
+        s => {
+          latestState = s
+        },
+        errorCb,
+      )
+
+      const emitEventSequenceWithError = async () => {
+        await pond.emit(Tag('t1'), 't1 event 1').toPromise()
+        await pond.emit(Tag('t1'), 'error').toPromise()
+        await pond.emit(Tag('t1'), 't1 event 2').toPromise()
+      }
+
+      return {
+        pond,
+        emitEventSequenceWithError,
+        lastReportedErr: () => reported,
+        assertLatestState: (expected: string) => expect(latestState).toEqual(expected),
+      }
+    }
+
+    it('should pass at least the last good state to the callback, even if an error has been thrown', async () => {
+      const { pond, emitEventSequenceWithError, assertLatestState, lastReportedErr } = setup()
+
+      await emitEventSequenceWithError()
+
+      assertLatestState('t1 event 1')
+      expect(lastReportedErr()).toMatchObject({ occuredIn: 'onEvent' })
+
+      let latestState2: string = 'unset'
+      pond.observe(brokenFish, s => {
+        latestState2 = s
+      })
+      await Observable.timer(0).toPromise() // yield
+      expect(latestState2).toEqual('t1 event 1')
+
+      pond.dispose()
+    })
+
+    it('should propagate errors to the supplied error callback', async () => {
+      let reportedErr = null
+      const stoppedByError = (err: unknown) => {
+        reportedErr = err
+      }
+
+      const { pond, emitEventSequenceWithError, assertLatestState } = setup(stoppedByError)
+
+      assertLatestState('unset')
+      await emitEventSequenceWithError()
+
+      assertLatestState('t1 event 1')
+      expect(reportedErr).toBeDefined()
+
+      pond.dispose()
+    })
+
+    it('should supply final value, then call stoppedByError', async () => {
+      let reportedErr = null
+      const stoppedByError = (err: unknown) => {
+        reportedErr = err
+      }
+
+      const { pond, emitEventSequenceWithError, assertLatestState } = setup(stoppedByError)
+
+      assertLatestState('unset')
+      await emitEventSequenceWithError()
+
+      expect(reportedErr).toBeDefined()
+
+      let reportedErr2 = null
+      let latestState2: string = 'unset'
+      pond.observe(
+        brokenFish,
+        s => {
+          latestState2 = s
+        },
+        err => {
+          reportedErr2 = err
+        },
+      )
+      await Observable.timer(0).toPromise() // yield
+      expect(latestState2).toEqual('t1 event 1')
+      expect(reportedErr2).toBeDefined()
+
+      pond.dispose()
+    })
+
+    it('should report if error was caused by isReset', async () => {
+      const { pond, emitEventSequenceWithError, assertLatestState, lastReportedErr } = setup(
+        undefined,
+        {
+          isReset: ev => {
+            if (ev === 'error') {
+              throw new Error('broken')
+            }
+            return true
+          },
+        },
+      )
+
+      assertLatestState('unset')
+      await emitEventSequenceWithError()
+
+      assertLatestState('t1 event 1')
+      expect(lastReportedErr()).toMatchObject({ occuredIn: 'isReset' })
+
+      pond.dispose()
+    })
+
+    it('should report if error was caused by deserializeState', async () => {
+      const { pond, emitEventSequenceWithError, assertLatestState, lastReportedErr } = setup(
+        undefined,
+        {
+          onEvent: x => x,
+          deserializeState: () => {
+            throw new Error('broken')
+          },
+        },
+      )
+
+      assertLatestState('unset')
+      await emitEventSequenceWithError()
+
+      assertLatestState('unset')
+      expect(lastReportedErr()).toMatchObject({ occuredIn: 'deserializeState' })
+
+      pond.dispose()
+    })
+  })
+
   describe('caching', () => {
     type Event = string
     type State = ReadonlyArray<Event>
@@ -77,7 +253,7 @@ describe('application of commands in the pond', () => {
     })
 
     it('should cache based on key', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       const aggregate0 = mkAggregate(Tag('t1'))
 
@@ -97,7 +273,7 @@ describe('application of commands in the pond', () => {
     })
 
     it('should cache based on key, across unsubscribe calls', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       const aggregate = mkAggregate(Tag('t1'))
 
@@ -120,7 +296,7 @@ describe('application of commands in the pond', () => {
     })
 
     it('should permit different aggregations in parallel', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       const aggregate0 = mkAggregate(Tag('t0'))
 

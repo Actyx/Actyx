@@ -6,55 +6,79 @@ module.exports = {
   favicon: 'img/favicon.ico',
   organizationName: 'Actyx',
   projectName: 'Actyx',
-  plugins: ['@docusaurus/plugin-google-analytics'],
+  plugins: [
+    [
+      require.resolve('docusaurus-gtm-plugin'),
+      {
+        id: 'GTM-5PXCMFH',
+      },
+    ],
+    [require.resolve('./src/plugins/analytics'), {}],
+    [
+      require.resolve('./src/plugins/arm'),
+      {
+	      releasesYml: './__auto-releases.yml',
+      },
+    ],
+  ],
   themeConfig: {
     announcementBar: {
-      id: 'support_us',
+      id: 'os-111',
       content:
-        '⭐️ We just released v1.0.0 of ActyxOS! Check our <a target="_blank" rel="noopener noreferrer" href="https://github.com/facebook/docusaurus">Blog</a> for news! ⭐️',
-      backgroundColor: '#1998ff',
-      textColor: '#fff',
+        '🥁 We released version 1.1.1 of ActyxOS! Check out <a target="_blank" rel="noopener noreferrer" href="https://downloads.actyx.com/docs/os/release-notes">release notes</a> and <a target="_blank" rel="noopener noreferrer" href="https://downloads.actyx.com">download</a> the latest and greatest! 🥁',
+      backgroundColor: '#f5f6f7',
+      textColor: '#000',
     },
     colorMode: {
       defaultMode: 'light',
       disableSwitch: true,
       respectPrefersColorScheme: false,
     },
-    disableDarkMode: true,
-    sidebarCollapsible: true,
     navbar: {
       title: '',
       logo: {
         alt: 'Actyx Developer',
         src: 'img/header.svg',
       },
-      links: [
+      items: [
         {
-          to: 'docs/quickstart',
-          activeBasePath: 'docs/quickstart',
-          label: 'Quickstart',
-          position: 'left',
-        },
-        {
-          to: 'docs/os/introduction',
-          activeBasePath: 'docs/os/',
           label: 'ActyxOS',
-          position: 'left',
+          activeBasePath: 'docs/os/',
+          to: 'docs/os/general/introduction',
         },
         {
-          to: 'docs/pond/introduction',
-          activeBasePath: 'docs/pond/',
           label: 'Actyx\u00a0Pond',
+          activeBasePath: 'docs/pond/',
+          to: 'docs/pond/introduction',
+        },
+        {
+          label: 'Node\u00a0Management',
+          position: 'left',
+          items: [
+            {
+              label: 'Actyx\u00a0CLI',
+              to: 'docs/cli/getting-started',
+            },
+            {
+              label: 'ActyxOS\u00a0Node\u00a0Manager',
+              to: 'docs/node-manager/overview',
+            },
+          ],
+        },
+        {
+          to: 'docs/learn-actyx',
+          activeBasePath: 'learn-actyx',
+          label: 'Learn\u00a0Actyx',
           position: 'left',
         },
         {
           to: 'blog',
           label: 'Blog',
-          position: 'right'
+          position: 'right',
         },
         {
-          to: 'https://downloads.actyx.com',
-          label: 'Downloads',
+          to: 'releases',
+          label: 'Releases',
           position: 'right',
         },
       ],
@@ -63,7 +87,7 @@ module.exports = {
       logo: {
         alt: 'Actyx Developer',
         src: 'img/header.svg',
-        href: 'www.developer.actyx.com'
+        href: 'https://developer.actyx.com',
       },
       style: 'light',
       links: [
@@ -72,28 +96,20 @@ module.exports = {
           items: [
             {
               label: 'ActyxOS',
-              to: 'docs/os/introduction',
+              to: 'docs/os/general/introduction',
             },
             {
               label: 'Actyx Pond',
               to: 'docs/pond/introduction',
             },
-            {
-              label: 'Actyx CLI',
-              to: 'docs/cli/getting-started',
-            },
-            {
-              label: 'Actyx Node Manager',
-              to: 'docs/os/tools/node-manager',
-            }
-          ]
+          ],
         },
         {
           title: 'Useful Links',
           items: [
             {
               label: 'FAQ',
-              to: 'docs/faq/supported-programming-languages'
+              to: 'docs/faq/supported-programming-languages',
             },
             {
               label: 'Blog Posts',
@@ -106,8 +122,34 @@ module.exports = {
             {
               label: 'Discord',
               to: 'https://discord.gg/262yJhc',
-            }
-          ]
+            },
+          ],
+        },
+        {
+          title: 'Node Management',
+          items: [
+            {
+              label: 'Actyx CLI',
+              to: 'docs/cli/getting-started',
+            },
+            {
+              label: 'Actyx Node Manager',
+              to: 'docs/node-manager/overview',
+            },
+          ],
+        },
+        {
+          title: 'Node Management',
+          items: [
+            {
+              label: 'Actyx CLI',
+              to: 'docs/cli/getting-started',
+            },
+            {
+              label: 'Actyx Node Manager',
+              to: 'docs/node-manager/overview',
+            },
+          ],
         },
         {
           title: 'Actyx',
@@ -127,21 +169,16 @@ module.exports = {
             {
               label: 'Press',
               to: 'https://www.actyx.com/news',
-            }
-          ]
-        }
+            },
+          ],
+        },
       ],
       copyright: `Copyright © ${new Date().getFullYear()} Actyx AG`,
     },
     prism: {
       theme: require('prism-react-renderer/themes/palenight'),
       darkTheme: require('prism-react-renderer/themes/dracula'),
-      additionalLanguages: ['rust'],
-    },
-    googleAnalytics: {
-      trackingID: 'UA-102758359-7',
-      // Optional fields.
-      anonymizeIP: true, // Should IPs be anonymized?
+      additionalLanguages: ['rust', 'csharp'],
     },
     algolia: {
       apiKey: 'dee14099c148f0ca14d046428003623a',

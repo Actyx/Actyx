@@ -127,8 +127,12 @@ dependencies {
 def archs = ["x86", "arm64-v8a", "armeabi-v7a"]
 def nativeLibs = ["axosnodeffi"]
 task checkExternalLibsExist() {
-  [archs, nativeLibs].eachCombination { arch, lib ->
-    assert file("./src/main/jniLibs/${arch}/lib${lib}.so").exists()
+  // this is the task setup. Doing things here means they are executed on each gradle run
+  doLast {
+    // this is the task execution. It will only run when running the task or tasks that depend on it
+    [archs, nativeLibs].eachCombination { arch, lib ->
+      assert file("./src/main/jniLibs/${arch}/lib${lib}.so").exists()
+    }
   }
 }
 assemble.dependsOn checkExternalLibsExist

@@ -46,15 +46,16 @@ The services exposed there are currently still in alpha testing.
 ActyxOS on Docker is published on [DockerHub](https://hub.docker.com/r/actyx/os). To download and run the latest version in production mode execute the following command.
 
 <Tabs
+  groupId="operating-systems"
   defaultValue="windows"
   values={[
-    { label: 'Windows/MacOS', value: 'windows', },
+    { label: 'Windows/macOS', value: 'windows', },
     { label: 'Linux', value: 'unix', },
   ]
 }>
 <TabItem value="windows">
 
-```
+```text
 docker run --name actyxos -it --rm -v actyx-data:/data --privileged -p 4001:4001 -p 4457:4457 actyx/os
 ```
 
@@ -75,7 +76,7 @@ Please refer to the [Docker Documentation](https://docs.docker.com/) for more in
 </TabItem>
 <TabItem value="unix">
 
-```
+```text
 docker run --name actyxos -it --rm -v actyx-data:/data --privileged --network=host actyx/os
 ```
 
@@ -101,13 +102,13 @@ If you want to run ActyxOS on Docker in development mode, for example because yo
 <Tabs
   defaultValue="windows"
   values={[
-    { label: 'Windows/Mac', value: 'windows', },
+    { label: 'Windows/macOS', value: 'windows', },
     { label: 'Linux', value: 'unix', },
   ]
 }>
 <TabItem value="windows">
 
-```
+```text
 docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyxos-data:/data --privileged -p 4001:4001 -p 4457:4457 -p 127.0.0.1:4243:4243 -p 127.0.0.1:4454:4454 actyx/os
 ```
 
@@ -118,7 +119,7 @@ In development mode we additionally need to forward ports 4454 and 4243 to expos
 </TabItem>
 <TabItem value="unix">
 
-```
+```text
 docker run -it --rm -e AX_DEV_MODE=1 -v actyxos-data:/data --privileged --network=host actyx/os
 ```
 
@@ -131,9 +132,10 @@ If your [ActyxOS Bootstrap Node](actyxos-bootstrap-node.md) is not in the same l
 
 ## Check the status of your node
 
-In order to check on its status and interact with the node, you can use the [ActyxOS Node Manager](../tools/node-manager) or, if you prefer a command line tool, use the [Actyx CLI](../../cli/getting-started.md).
+In order to check on its status and interact with the node, you can use the [ActyxOS Node Manager](../../node-manager/overview.md) or, if you prefer a command line tool, use the [Actyx CLI](../../cli/getting-started.md).
 
 <Tabs
+  groupId="operating-systems"
   defaultValue="node-manager"
   values={[
     { label: 'ActyxOS Node Manager', value: 'node-manager', },
@@ -144,7 +146,7 @@ In order to check on its status and interact with the node, you can use the [Act
 
 Go to the **Status** tab, and you should that your ActyxOS node is reachable and **running**:
 
-![status](/images/os/node-manager-status-1.png)
+![status](/images/node-manager/node-manager-status-1.png)
 
 </TabItem>
 <TabItem value="cli">
@@ -166,13 +168,11 @@ You should see something like this:
 </TabItem>
 </Tabs>
 
-Congratulations, you have successfully started <em>ActyxOS on Docker</em>!
-Please note that ActyxOS is **not** operational, as you did not configure it yet.
-If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
+Congratulations, you have successfully installed <em>ActyxOS on Docker</em>! While you can already use ActyxOS locally, you may have to – depending on your exact setup – configure it to be able to connect to other ActyxOS nodes. If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
 
 ## Where to go next
 
-- [Quickstart](/docs/quickstart) is a tutorial about ActyxOS with ready-to-use apps and configurations
+- [Quickstart](../../learn-actyx/quickstart.md) is a tutorial about ActyxOS with ready-to-use apps and configurations
 - [Troubleshooting](#troubleshooting) describes common problems, workarounds and how to get help and submit issues
 - [FAQs](/docs/faq/supported-programming-languages) provides answers to frequently asked questions
 
@@ -185,8 +185,8 @@ If you want to find out more about configuring ActyxOS node, please check our gu
 If you set this environment variable to 1, you can interact with all ActyxOS services from your Host machine.
 If you are running ActyxOS on Docker on Mac or Windows, which means you are not using `network=host`, you need to also pass the following options to forward the relevant ports:
 
-- `-p 4243:4243` [for the Actyx Pond WebSocket endpoint](/docs/pond/getting-started.md)
-- `-p 4454:4454` [for the Event Service](/docs/os/api/event-service.md)
+- `-p 4243:4243` [for the Actyx Pond WebSocket endpoint](../../pond/getting-started.md)
+- `-p 4454:4454` [for the Event Service](../api/event-service.md)
 
 #### `ENABLE_DEBUG_LOGS`
 

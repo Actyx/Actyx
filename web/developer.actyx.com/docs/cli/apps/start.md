@@ -2,9 +2,7 @@
 title: ax apps start
 ---
 
-### Start an app on a node
-
-```
+```text title="Start an app on an ActyxOS node"
 USAGE:
     ax apps start [FLAGS] <APP> <NODE>
 
@@ -23,7 +21,7 @@ ARGS:
 
 Here is an example of using the `ax apps start` command:
 
-```
+```text title="Example Usage"
 # Start app with ID com.example.app on node at 10.2.3.23
 ax apps start --local com.example.app 10.2.3.23
 ```

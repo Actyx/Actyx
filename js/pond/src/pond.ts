@@ -6,30 +6,36 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Observable, Scheduler } from 'rxjs'
+import { Observable, ReplaySubject, Scheduler, Subject, Subscription } from 'rxjs'
 import { CommandInterface } from './commandInterface'
 import { EventStore, WsStoreConfig } from './eventstore'
 import { MultiplexedWebsocket } from './eventstore/multiplexedWebsocket'
 import { TestEvent } from './eventstore/testEventStore'
-import { ConnectivityStatus, Events } from './eventstore/types'
+import { AllEventsSortOrders, ConnectivityStatus, Events } from './eventstore/types'
 import { extendDefaultWsStoreConfig, mkMultiplexer } from './eventstore/utils'
 import { getSourceId } from './eventstore/websocketEventStore'
-import { CommandPipeline, FishJar } from './fishJar'
+import { CommandPipeline, FishJar, StartedFishMap } from './fishJar'
 import log from './loggers'
+import { observeMonotonic } from './monotonic'
 import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
 import { SnapshotStore } from './snapshotStore'
 import { SplashState, streamSplashState, WaitForSwarmConfig } from './splashState'
 import { Monitoring } from './store/monitoring'
+import { SnapshotScheduler } from './store/snapshotScheduler'
 import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
-import { Tags, toSubscriptionSet } from './tagging'
+import { Tags, toSubscriptionSet, Where } from './tagging'
 import {
+  AddEmission,
+  Caching,
   CancelSubscription,
   Fish,
+  FishErrorReporter,
   FishId,
   FishName,
   IsReset,
   Metadata,
   Milliseconds,
+  ObserveAllOpts,
   PendingEmission,
   Reduce,
   Semantics,
@@ -38,6 +44,7 @@ import {
   StateWithProvenance,
   Timestamp,
 } from './types'
+import { noop } from './util'
 
 const isTyped = (e: ReadonlyArray<string> | Tags<unknown>): e is Tags<unknown> => {
   return !Array.isArray(e)
@@ -50,6 +57,8 @@ export type PondOptions = {
   updateConnectivityEvery?: Milliseconds
 
   stateEffectDebounce?: number
+
+  fishErrorReporter?: FishErrorReporter
 }
 
 /** Information concerning the running Pond. @public */
@@ -58,17 +67,40 @@ export type PondInfo = {
 }
 
 const omitObservable = <S>(
+  stoppedByError: ((err: unknown) => void) | undefined,
   callback: (newState: S) => void,
   states: Observable<StateWithProvenance<S>>,
 ): CancelSubscription => {
-  const sub = states.map(x => x.state).subscribe(callback)
-  return sub.unsubscribe.bind(sub)
+  try {
+    // Not passing an error callback seems to cause bad behavior with RXjs internally
+    const sub = states
+      .map(x => x.state)
+      .subscribe(callback, typeof stoppedByError === 'function' ? stoppedByError : noop)
+    return sub.unsubscribe.bind(sub)
+  } catch (err) {
+    stoppedByError && stoppedByError(err)
+    return noop
+  }
 }
 
 const wrapStateFn = <S, EWrite>(fn: StateEffect<S, EWrite>) => {
   const effect = async (state: S) => {
     const emissions: Emit<any>[] = []
-    await fn(state, (tags, payload) => emissions.push({ tags, payload }))
+    let returned = false
+
+    const enqueueEmission: AddEmission<EWrite> = (tags, payload) => {
+      if (returned) {
+        throw new Error(
+          'The function you passed to run/keepRunning has already returned -- enqueuing emissions via the passed "AddEmission" function is no longer possible.',
+        )
+      }
+
+      emissions.push({ tags, payload })
+    }
+
+    await fn(state, enqueueEmission)
+    returned = true
+
     return emissions
   }
 
@@ -90,7 +122,8 @@ type EmissionRequest<E> = ReadonlyArray<Emit<E>> | Promise<ReadonlyArray<Emit<E>
 // endof TODO cleanup
 
 type ActiveFish<S> = {
-  readonly states: Observable<StateWithProvenance<S>>
+  readonly states: Subject<StateWithProvenance<S>>
+  readonly subscription: Subscription
   commandPipeline?: CommandPipeline<S, EmissionRequest<any>>
 }
 
@@ -140,9 +173,70 @@ export type Pond = {
    *
    * @param fish       - Complete Fish information.
    * @param callback   - Function that will be called whenever a new state becomes available.
-   * @returns            A function that can be called in order to cancel the aggregation.
+   * @param stoppedByError - Function that will be called when one of the Fish’s functions throws an error.
+   *                         A Fish will always stop emitting further states after errors, even if no `stoppedByError` argument is passed.
+   * @returns            A function that can be called in order to cancel the subscription.
    */
-  observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription
+  observe<S, E>(
+    fish: Fish<S, E>,
+    callback: (newState: S) => void,
+    stoppedByError?: (err: unknown) => void,
+  ): CancelSubscription
+
+  /**
+   * Create Fish from events and observe them all.
+   * Note that if a Fish created from some event f0 will also observe events earlier than f0, if they are selected by `where`
+   *
+   * @typeParam F        - Type of the events used to initialize Fish.
+   * @typeParam S        - Type of the observed Fish’s state.
+   *
+   * @param seedEventsSelector  - A `Where<F>` object identifying the seed events to start Fish from
+   * @param makeFish     - Factory function to create a Fish with state `S` from an event of type `F`.
+   *                       If Fish with same FishId are created by makeFish, these Fish must be identical!
+   *                       `undefined` may be returned to indicate the given seed event should not be converted to a Fish at all.
+   * @param opts         - Optional arguments regarding caching and expiry
+   * @param callback     - Function that will be called with the array of states whenever the set of Fish
+   *                       changes or any of the contained Fish’s state changes.
+   *
+   * @returns              A function that can be called in order to cancel the subscription.
+   *
+   * @beta
+   */
+  observeAll<ESeed, S>(
+    // Expression to extract the initial events, e.g. Tag<TaskCreated>
+    seedEventsSelector: Where<ESeed>,
+    // Create a concrete Fish from the initial event
+    makeFish: (seedEvent: ESeed) => Fish<S, any> | undefined,
+    // When to remove Fish from the "all" set.
+    opts: ObserveAllOpts,
+    callback: (states: S[]) => void,
+  ): CancelSubscription
+
+  /**
+   * Find the event selected by `firstEvent`, and start a Fish from it.
+   * It is legal for `firstEvent` to actually select multiple events;
+   * however, `makeFish` must yield the same Fish no matter one is passed in.
+   *
+   * @typeParam F        - Type of the initial event.
+   * @typeParam S        - Type of the observed Fish’s state.
+   *
+   * @param seedEventSelector   - A `Where<F>` object identifying the seed event
+   * @param makeFish     - Factory function to create the Fish with state `S` from the event of type `F`.
+   *                       The Fish is able to observe events earlier than the first event.
+   * @param callback     - Function that will be called with the Fish’s state `S`.
+   *                       As long as the first event does not exist, this callback will also not be called.
+   *
+   * @returns              A function that can be called in order to cancel the subscription.
+   *
+   * @beta
+   */
+  observeOne<ESeed, S>(
+    // Expression to find the Fish’s starting event, e.g. Tag('task-created').withId('my-task')
+    seedEventSelector: Where<ESeed>,
+    makeFish: (seedEvent: ESeed) => Fish<S, any>,
+    callback: (newState: S) => void,
+    stoppedByError?: (err: unknown) => void,
+  ): CancelSubscription
 
   /* CONDITIONAL EMISSION (STATE EFFECTS) */
 
@@ -219,6 +313,35 @@ export type Pond = {
   waitForSwarmSync(params: WaitForSwarmSyncParams): void
 }
 
+type ActiveObserveAll<S> = Readonly<{
+  states: Subject<S[]>
+  subscription: Subscription
+}>
+
+const getOrInitialize = <T>(
+  cache: Record<string, { states: Subject<T>; subscription: Subscription }>,
+  key: string,
+  makeT: () => Observable<T>,
+) => {
+  const existing = cache[key]
+  if (existing !== undefined) {
+    return existing
+  }
+
+  const stateSubject = new ReplaySubject<T>(1, undefined, Scheduler.queue)
+  const subscription = makeT().subscribe(stateSubject)
+
+  const a = {
+    states: stateSubject,
+    subscription,
+  }
+  cache[key] = a
+  return a
+}
+
+const defaultReportFishError: FishErrorReporter = (err, fishId, detail) =>
+  console.error('Error while executing', FishId.canonical(fishId), ':', err, detail)
+
 class Pond2Impl implements Pond {
   readonly hydrateV2: <S, E>(
     subscriptionSet: SubscriptionSet,
@@ -229,18 +352,41 @@ class Pond2Impl implements Pond {
     deserializeState?: (jsonState: unknown) => S,
   ) => Observable<StateWithProvenance<S>>
 
+  readonly observeAllImpl: <ESeed, S>(
+    firstEvents: Where<ESeed>,
+    makeFish: (seed: ESeed) => Fish<S, any> | undefined,
+    expireAfterSeed?: Milliseconds,
+  ) => Observable<StartedFishMap<S>>
+
   activeFishes: {
     [fishId: string]: ActiveFish<any>
   } = {}
+
+  activeObserveAll: Record<string, ActiveObserveAll<any>> = {}
 
   constructor(
     private readonly eventStore: EventStore,
     private readonly snapshotStore: SnapshotStore,
     private readonly pondStateTracker: PondStateTracker,
     private readonly monitoring: Monitoring,
+    private readonly finalTeardown: () => void,
     private readonly opts: PondOptions,
   ) {
-    this.hydrateV2 = FishJar.hydrateV2(this.eventStore, this.snapshotStore, this.pondStateTracker)
+    this.hydrateV2 = observeMonotonic(
+      this.eventStore,
+      this.snapshotStore,
+      SnapshotScheduler.create(10),
+      typeof opts.fishErrorReporter === 'function'
+        ? opts.fishErrorReporter
+        : defaultReportFishError,
+      this.pondStateTracker,
+    )
+
+    this.observeAllImpl = FishJar.observeAll(
+      this.eventStore,
+      this.snapshotStore,
+      this.pondStateTracker,
+    )
   }
 
   getPondState = (callback: (newState: PondState) => void) => {
@@ -279,7 +425,12 @@ class Pond2Impl implements Pond {
 
   dispose = () => {
     this.monitoring.dispose()
-    // TODO: Implement cleanup of active fishs
+
+    Object.values(this.activeFishes).forEach(({ subscription }) => subscription.unsubscribe())
+
+    Object.values(this.activeObserveAll).forEach(({ subscription }) => subscription.unsubscribe())
+
+    this.finalTeardown()
   }
 
   /* POND V2 FUNCTIONS */
@@ -327,28 +478,9 @@ class Pond2Impl implements Pond {
     deserializeState: ((jsonState: unknown) => S) | undefined,
   ): ActiveFish<S> => {
     const key = FishId.canonical(fishId)
-    const existing = this.activeFishes[key]
-    if (existing !== undefined) {
-      return {
-        ...existing,
-        states: existing.states.observeOn(Scheduler.queue),
-      }
-    }
-
-    const stateSubject = this.hydrateV2(
-      subscriptionSet,
-      initialState,
-      onEvent,
-      fishId,
-      isReset,
-      deserializeState,
-    ).shareReplay(1)
-
-    const a = {
-      states: stateSubject,
-    }
-    this.activeFishes[key] = a
-    return a
+    return getOrInitialize(this.activeFishes, key, () =>
+      this.hydrateV2(subscriptionSet, initialState, onEvent, fishId, isReset, deserializeState),
+    )
   }
 
   private observeTagBased0 = <S, E>(acc: Fish<S, E>): ActiveFish<S> => {
@@ -362,8 +494,12 @@ class Pond2Impl implements Pond {
     )
   }
 
-  observe = <S, E>(fish: Fish<S, E>, callback: (newState: S) => void): CancelSubscription => {
-    return omitObservable(callback, this.observeTagBased0<S, E>(fish).states)
+  observe = <S, E>(
+    fish: Fish<S, E>,
+    callback: (newState: S) => void,
+    stoppedByError?: (err: unknown) => void,
+  ): CancelSubscription => {
+    return omitObservable(stoppedByError, callback, this.observeTagBased0<S, E>(fish).states)
   }
 
   // Get a (cached) Handle to run StateEffects against. Every Effect will see the previous one applied to the State.
@@ -425,6 +561,77 @@ class Pond2Impl implements Pond {
     }
   }
 
+  observeAll = <ESeed, S>(
+    // Expression to extract the initial events, e.g. Tag<TaskCreated>
+    seedEvents: Where<ESeed>,
+    // Create a concrete Fish from the initial event
+    makeFish: (seed: ESeed) => Fish<S, any> | undefined,
+    // When to remove Fish from the "all" set.
+    opts: ObserveAllOpts,
+    callback: (states: S[]) => void,
+  ): CancelSubscription => {
+    const safeMakeFish = (seed: ESeed) => {
+      try {
+        return makeFish(seed)
+      } catch (err) {
+        // Maybe improve me at some point
+        log.pond.error('Swallowed makeFish error:', err)
+        return undefined
+      }
+    }
+
+    const makeAgg = (): Observable<S[]> => {
+      const fishStructs$ = this.observeAllImpl(
+        seedEvents,
+        safeMakeFish,
+        typeof opts.expireAfterSeed === 'number' ? opts.expireAfterSeed : opts.expireAfterFirst,
+      )
+
+      return fishStructs$.switchMap(known => {
+        const observations = known
+          .toArray()
+          .map(([_key, fish]) =>
+            this.observeTagBased0<S, any>(fish.fish).states.map(swp => swp.state),
+          )
+
+        return observations.length === 0
+          ? Observable.of([])
+          : Observable.combineLatest(observations)
+      })
+    }
+
+    const fishStates$ = Caching.isEnabled(opts.caching)
+      ? getOrInitialize(this.activeObserveAll, opts.caching.key, makeAgg).states
+      : makeAgg()
+
+    const sub = fishStates$.subscribe(callback)
+    return () => sub.unsubscribe()
+  }
+
+  observeOne = <ESeed, S>(
+    // Expression to find the Fish’s starting event, e.g. Tag('task-created').withId('my-task')
+    seedEvent: Where<ESeed>,
+    makeFish: (seedEvent: ESeed) => Fish<S, any>,
+    callback: (newState: S) => void,
+    stoppedByError?: (err: unknown) => void,
+  ): CancelSubscription => {
+    const states = this.eventStore
+      .allEvents(
+        {
+          psns: {},
+          default: 'min',
+        },
+        { psns: {}, default: 'max' },
+        toSubscriptionSet(seedEvent),
+        AllEventsSortOrders.Unsorted,
+      )
+      .first()
+      .concatMap(x => x)
+      .concatMap(f => this.observeTagBased0<S, unknown>(makeFish(f.payload as ESeed)).states)
+
+    return omitObservable(stoppedByError, callback, states)
+  }
+
   run = <S, EWrite, ReadBack = false>(
     agg: Fish<S, ReadBack extends true ? EWrite : any>,
     fn: StateEffect<S, EWrite>,
@@ -464,9 +671,9 @@ class Pond2Impl implements Pond {
       : () => !cancelled
 
     states
+      .observeOn(Scheduler.async)
       .map(swp => swp.state)
       .takeWhile(tw)
-      .debounceTime(0)
       // We could also just use `do` instead of `mergeMap` (using the public API),
       // for no real loss, but no gain either.
       .mergeMap(() => handleInternal(wrappedEffect))
@@ -483,13 +690,15 @@ type Services = Readonly<{
   eventStore: EventStore
   snapshotStore: SnapshotStore
   commandInterface: CommandInterface
+
+  teardown: () => void
 }>
 
 const mockSetup = (): Services => {
   const eventStore = EventStore.mock()
   const snapshotStore = SnapshotStore.inMem()
   const commandInterface = CommandInterface.mock()
-  return { eventStore, snapshotStore, commandInterface }
+  return { eventStore, snapshotStore, commandInterface, teardown: noop }
 }
 
 const createServices = async (multiplexer: MultiplexedWebsocket): Promise<Services> => {
@@ -497,7 +706,7 @@ const createServices = async (multiplexer: MultiplexedWebsocket): Promise<Servic
   const eventStore = EventStore.ws(multiplexer, sourceId)
   const snapshotStore = SnapshotStore.ws(multiplexer)
   const commandInterface = CommandInterface.ws(multiplexer, sourceId)
-  return { eventStore, snapshotStore, commandInterface }
+  return { eventStore, snapshotStore, commandInterface, teardown: multiplexer.close }
 }
 
 const mkPond = async (connectionOpts: Partial<WsStoreConfig>, opts: PondOptions): Promise<Pond> => {
@@ -506,7 +715,7 @@ const mkPond = async (connectionOpts: Partial<WsStoreConfig>, opts: PondOptions)
   return pondFromServices(services, opts)
 }
 
-const mkMockPond = async (opts?: PondOptions): Promise<Pond> => {
+const mkMockPond = (opts?: PondOptions): Pond => {
   const opts1: PondOptions = opts || {}
   const services = mockSetup()
   return pondFromServices(services, opts1)
@@ -516,18 +725,18 @@ const mkMockPond = async (opts?: PondOptions): Promise<Pond> => {
 export type TestPond = Pond & {
   directlyPushEvents: (events: TestEvent[]) => void
 }
-const mkTestPond = async (opts?: PondOptions): Promise<TestPond> => {
+const mkTestPond = (opts?: PondOptions): TestPond => {
   const opts1: PondOptions = opts || {}
   const eventStore = EventStore.test(SourceId.of('TEST'))
   const snapshotStore = SnapshotStore.inMem()
   const commandInterface = CommandInterface.mock()
   return {
-    ...pondFromServices({ eventStore, snapshotStore, commandInterface }, opts1),
+    ...pondFromServices({ eventStore, snapshotStore, commandInterface, teardown: noop }, opts1),
     directlyPushEvents: eventStore.directlyPushEvents,
   }
 }
 const pondFromServices = (services: Services, opts: PondOptions): Pond => {
-  const { eventStore, snapshotStore, commandInterface } = services
+  const { eventStore, snapshotStore, commandInterface, teardown } = services
 
   const monitoring = Monitoring.of(commandInterface, 10000)
 
@@ -539,6 +748,7 @@ const pondFromServices = (services: Services, opts: PondOptions): Pond => {
     snapshotStore,
     pondStateTracker,
     monitoring,
+    teardown,
     opts,
   )
 

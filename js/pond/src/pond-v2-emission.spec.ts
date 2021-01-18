@@ -34,7 +34,7 @@ const stateAsPromise = <E>(pond: Pond, subs: Where<E>) => {
 
 describe('application of commands in the pond', () => {
   it('should execute every emission-callback', async () => {
-    const pond = await Pond.test()
+    const pond = Pond.test()
 
     const emit = pond.emit(Tags('t0', 't1', 't2'), 'hello')
 
@@ -58,7 +58,7 @@ describe('application of commands in the pond', () => {
   })
 
   it('should execute every emission-callback even after emission has finished', async () => {
-    const pond = await Pond.test()
+    const pond = Pond.test()
 
     const emit = pond.emit(Tags('t0', 't1', 't2'), 'hello')
 
@@ -91,7 +91,7 @@ describe('application of commands in the pond', () => {
     const tagAB = Tag<A | B>('AB')
 
     it('should attach all tags correctly', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       const tags = tagA.and(tagAB)
       const emit = pond.emit(tags, { type: 'A' })
@@ -109,7 +109,7 @@ describe('application of commands in the pond', () => {
     })
 
     it('should fail to compile if some tags cannot contain the event', async () => {
-      const pond = await Pond.test()
+      const pond = Pond.test()
 
       const tags = tagA.and(tagAB)
       const payload: B = { type: 'B' }

@@ -79,22 +79,27 @@ const validationErrorsMsgs = (input: any, decoder: string, errors: t.Errors) => 
   )}`
 }
 
+const isTestEnv =
+  typeof process !== 'undefined' && process.env && process.env.NODE_ENV !== 'production'
+
 // Just as cast in production
-export const validateOrThrow = <T>(decoder: t.Decoder<any, T>) => (value: any) => {
-  if (process.env.NODE_ENV !== 'production') {
-    return decoder.decode(value).fold(errors => {
-      throw new Error(validationErrorsMsgs(value, decoder.name, errors))
-    }, x => x)
-  }
-  return value as T
-}
+export const validateOrThrow: <T>(decoder: t.Decoder<any, T>) => (value: any) => T = decoder =>
+  isTestEnv
+    ? (value: any) =>
+        decoder.decode(value).fold(errors => {
+          throw new Error(validationErrorsMsgs(value, decoder.name, errors))
+        }, x => x)
+    : <T>(value: any) => value as T
 
 export class MultiplexedWebsocket {
   private wsSubject: WebSocketSubject<ResponseMessage>
-  // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
-  // @ts-ignore TS6133 (declared but never read)
   private keepAlive: Subscription
   private requestCounter: RequestId = 0
+
+  close = () => {
+    this.keepAlive.unsubscribe()
+    this.wsSubject.unsubscribe()
+  }
 
   constructor({ url, protocol, onStoreConnectionClosed, reconnectTimeout }: WsStoreConfig) {
     log.ws.info('establishing Pond API WS', url)

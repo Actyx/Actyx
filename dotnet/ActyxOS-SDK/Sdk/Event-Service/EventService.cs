@@ -181,7 +181,7 @@ namespace Actyx
             return JsonConvert.DeserializeObject<Dictionary<string, ulong>>(reader.ReadLine());
         }
 
-        public IAsyncEnumerable<ISuttMessage> SubscribeUntilTimeTravel(
+        public IAsyncEnumerable<ISubscribeMonotonicMessage> SubscribeMonotonic(
           string session,
           string subscription,
           IDictionary<string, ulong> offsets
@@ -196,10 +196,10 @@ namespace Actyx
 
             string postData = JsonConvert.SerializeObject(req);
 
-            return new ActyxRequest<ISuttMessage>(this.Post("/api/v2/events/subscribeUntilTimeTravel", postData));
+            return new ActyxRequest<ISubscribeMonotonicMessage>(this.Post("/api/v2/events/subscribe_monotonic", postData));
         }
 
-        public IAsyncEnumerable<ISuttMessage> SubscribeUntilTimeTravel(string session, string subscription,
+        public IAsyncEnumerable<ISubscribeMonotonicMessage> SubscribeMonotonic(string session, string subscription,
                                                                        params SnapshotCompression[] acceptedFormats)
         {
             List<string> compression = new List<string>();
@@ -229,7 +229,7 @@ namespace Actyx
             string postData = JsonConvert.SerializeObject(req);
             Console.WriteLine("posting:" + postData);
 
-            return new ActyxRequest<ISuttMessage>(this.Post("/api/v2/events/subscribeUntilTimeTravel", postData));
+            return new ActyxRequest<ISubscribeMonotonicMessage>(this.Post("/api/v2/events/subscribe_monotonic", postData));
         }
 
         public async Task<IList<PublishSucceeded>> Publish(IEnumerable<IEventDraft> events)

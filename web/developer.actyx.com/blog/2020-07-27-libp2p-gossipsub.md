@@ -4,7 +4,7 @@ author: Rüdiger Klaehn
 author_title: Distributed Systems Engineer at Actyx
 author_url: https://github.com/rklaehn
 author_image_url: /images/blog/ruediger-klaehn.jpg
-tags: [IPFS rust libp2p dweb]
+tags: [IPFS, rust, libp2p, dweb]
 ---
 
 We are currently migrating our core event dissemination system to the Rust programming language, using the libp2p decentralised networking stack as a basis. In the process of doing so, we have discovered an interop issue between go-libp2p and rust-libp2p.
@@ -15,7 +15,7 @@ This post describes the process of finding and fixing the issue.
 
 ## Libp2p
 
-The [libp2p](https://libp2p.io/) network stack is a core component of many recent distributed web and blockchain projects. The specification as well as the go- and javascript language implementations are developed by [protocol labs](protocol.ai).
+The [libp2p](https://libp2p.io/) network stack is a core component of many recent distributed web and blockchain projects. The specification as well as the go- and javascript language implementations are developed by [protocol labs](https://protocol.ai/).
 
 The Rust implementation is developed for the [polkadot](https://polkadot.network/) blockchain, but is also going to be the networking stack of [ethereum 2](https://github.com/ethereum/eth2.0-specs/blob/dev/specs/phase0/p2p-interface.md#network-fundamentals).
 

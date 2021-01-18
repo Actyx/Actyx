@@ -40,14 +40,14 @@ so called _multiaddress_ to the `ax` command:
 To interact with a remote node, first a local key pair authenticating the client needs to be created.
 This is done automatically using the `ax` command:
 
-```
+```text
 ➜  ~ ax settings get . --local /dns4/localhost/tcp/4458
 No local key pair found, generated one ("0hoWXFyVHzbhhQ6fU+z/kZb8oaN+ligosj2/hzuJn04I=") at location /home/dev/.config/actyxos/keys
 ```
 
 Interacting with the remote host will use this key pair:
 
-```
+```text
 ➜  ~ ax settings get . --local /dns4/localhost/tcp/4458
 The authenticity of host '/dns4/localhost/tcp/4458' can't be established.
 Node's ID is '12D3KooWH4duqeY7Pj3or9j7aKnmaxz8WUYtVYnZUbACW21hGvBh'.
@@ -64,7 +64,7 @@ And the open HTTP API will be disabled.
 Let's see how that looks like in practice.
 First, let's find out the local key id:
 
-```
+```text
 ax swarms listKeys
 Local keystore location: /home/ow/.config/actyxos/keys
 
@@ -74,7 +74,7 @@ Available key pairs (identified by the respective public key):
 
 Then our public key is added to the ActyxOS node.
 
-```
+```text
 ax settings set com.actyx.os/general/authorizedKeys ["0hoWXFyVHzbhhQ6fU+z/kZb8oaN+ligosj2/hzuJn04I="] --local /dns4/localhost/tcp/4458
 Successfully replaced settings at com.actyx.os/general/authorizedKeys. Created object with defaults:
 ---
@@ -87,7 +87,7 @@ general:
 
 Afterwards, we can switch on the `requireAuthentication` flag to reject all unauthorized access using
 
-```
+```text
 ax settings set com.actyx.os/general/requireAuthentication true --local /dns4/localhost/tcp/4458
 ```
 
@@ -95,7 +95,7 @@ Now, every interaction between the Actyx CLI and the remote ActyxOS node is auth
 
 Note that interfacing with the HTTP-based API won't work any longer:
 
-```
+```text
 ax settings get . --local localhost
 [ERR_NODE_MISCONFIGURED] Error: Node HTTP API is not available, if setting `com.actyx.os/general/requireAuthentication` is set to true. Consider using the experimental API on port 4458 instead.
 ```

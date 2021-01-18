@@ -10,9 +10,26 @@ import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
 import { FishName, isString, Lamport, Psn, Semantics, SourceId, Timestamp } from '../types'
 import { OffsetMapIO } from './offsetMap'
-import { createEnumType, EnumType } from './utils'
 
 export { OffsetMap, OffsetMapBuilder } from './offsetMap'
+
+// EnumType Class
+export class EnumType<A> extends t.Type<A> {
+  public readonly _tag: 'EnumType' = 'EnumType'
+  public enumObject!: object
+  public constructor(e: object, name?: string) {
+    super(
+      name || 'enum',
+      (u): u is A => Object.values(this.enumObject).some(v => v === u),
+      (u, c) => (this.is(u) ? t.success(u) : t.failure(u, c)),
+      t.identity,
+    )
+    this.enumObject = e
+  }
+}
+
+// simple helper function
+export const createEnumType = <T>(e: object, name?: string) => new EnumType<T>(e, name)
 
 /**
  * Basically adds -infinity and +infinity to a PSN

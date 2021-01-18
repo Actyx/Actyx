@@ -2,9 +2,7 @@
 title: ax settings scopes
 ---
 
-## Get setting scopes from a node
-
-```
+```text title="Get setting scopes from an ActyxOS node"
 USAGE:
     ax settings scopes [FLAGS] <NODE>
 
@@ -22,7 +20,7 @@ ARGS:
 
 Here is an example of using the `ax settings scopes` command:
 
-```
+```text title="Example Usage"
 # Get all the settings scopes from node at 10.2.3.23
 ax settings scopes --local 10.2.3.23
 ```

@@ -25,27 +25,40 @@ One tricky problem to solve in an event-based system is “have I done this alre
 In the case of a single fish, this problem is solved by using _state effects_, a mechanism that allows you to atomically check the latest state and decide upon the emission of some events.
 The Pond guarantees that the next state effect will only run once the emitted events have been applied to the state.
 
-In the chat room example we may demonstrate this by forbidding the posting of a message that has already been posted (this is a slightly contrived example, but sometimes Slack might be better with such a policy).
-We can implement this by making use of the current state that is passed into the effect function.
+In the chat room example we may use this to forbid senders from posting a message twice in a row:
+(Let’s say, to guard against the "send" button being double-clicked.)
 
 ```typescript
-const sendChatMessage = (message: string): StateEffect<string[], ChatRoomEvent> =>
-  (state, enqueue) => {
-    if (!state.includes(message)) {
-      enqueue(Tags('chatRoom:my-room'),  { type: 'messageAdded', message })
-    }
-  }
+const lastMsgBySender = (sender: string): Fish<string, ChatRoomEvent> => ({
+  where: Tag('sender').withId(sender),
 
+  initialState: '',
+
+  onEvent: (_s, event) => event.message,
+
+  fishId: FishId.of('last-message-by', sender, 0),
+})
+
+const sendChatMessage = (sender: string, message: string) => {
+
+  const checkAndEmit: StateEffect<string, ChatRoomEvent> =
+    (state, enqueue) => (state !== message) && enqueue(
+        Tag('sender').withId(sender).and(Tag('chatRoom').withId('my-room')),
+        { type: 'messageAdded', message }
+    )
+
+  pond.run(lastMsgBySender(sender), checkAndEmit)
+}
 ```
 
-When trying this out, it will work to our satisfaction as long as messages are posted one after the other from different devices while the network is fully working.
-If we disconnect one device from the network and send message `Hello World!`, then send that very same message from a still connected device, we will see the second message accepted; worse still, when reconnecting the previously disconnected device, we will see both copies of the message in the log.
+It must be noted that the validation is only guaranteed *locally*. This makes sense, because one user (sender) will probably not be using several devices at the same time.
+Still, if they were, and those devices were disconnected from each other for a while, then this sender may sneak in the same message multiple times in a row.
 
 The reason for this is as simple as it is fundamental: each fish can make decisions only based on the incomplete knowledge that it has.
 During a network partition, or when things happen truly concurrently, the knowledge may be crucially incomplete, leading to wrong inputs being accepted.
 Once an event is in the log there is no way to remove it again, so we will have to live with the mistake — **the effect function does not run again during time travel.**
 
-The good thing is that we can easily recognize the mistake in the `onEvent` handler or by inspecting the observed state.
+We could easily guard individual chat rooms against printing the same message multiple times in a row, at least, by recognizing duplicates in `onEvent`.
 The second message could be displayed differently or not at all, as demonstrated in the following snippet.
 
 ```typescript
@@ -54,9 +67,11 @@ const chatRoomOnEvent: Reduce<string[], ChatRoomEvent> = (state, event) => {
     case 'messageAdded': {
       const { message } = event
       if (state.includes(message)) {
-        return [...state, `[${message}] <-- DUPLICATE`]
+        state.unshift(`[${message}] <-- DUPLICATE`)
+      } else {
+        state.unshift(message)
       }
-      return [...state, message]
+      return state
     }
     default:
       return unreachableOrElse(event.type, state)
@@ -64,10 +79,10 @@ const chatRoomOnEvent: Reduce<string[], ChatRoomEvent> = (state, event) => {
 }
 ```
 
-Instead of showing the data differently, we might just as easily observe the duplication in the state and send a text message to alert the operator of the chat room — this would not make much sense in this example use-case, but in different cases where for example a logistics robot discovers that it is delivering material to a factory workstation that already received that delivery from another robot, it would make sense to alert a human to resolve the conflict.
+Instead of showing the data differently, we might just as easily observe the duplication in the state and send a text message to alert the operator of the chat — this would not make much sense in this example use-case, but in different cases where for example a logistics robot discovers that it is delivering material to a factory workstation that already received that delivery from another robot, it would make sense to alert a human to resolve the conflict.
 
 :::warning Important note
-The fact that command validation in Actyx Pond is not strictly consistent is the price that needs to be paid for having a system that is 100% available, where all devices can always make progress independent from each other.
+The fact that effect validation in Actyx Pond is not strictly consistent is the price that needs to be paid for having a system that is 100% available, where all devices can always make progress independent from each other.
 Distributed systems research shows that it is impossible to make this consistent without having to stop the system during certain network partitions or hardware outages.
 :::
 

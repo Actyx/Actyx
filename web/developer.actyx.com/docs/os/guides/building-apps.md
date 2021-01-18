@@ -29,7 +29,7 @@ settingsSchema: ./settings-schema.json # You can also inline the JSON object tha
 
 This content of the manifest file is what you will need irrespective of what kind of app you are building. The directory should now look as follows:
 
-```bash
+```text
 my-app/
 |--- ax-manifest.yml
 ```
@@ -121,7 +121,7 @@ For more information about app settings please the advanced guide about [Node an
 
 Your directory structure should now look as follows:
 
-```bash
+```text
 my-app/
 |--- ax-manifest.yml
 |--- settings.schema.json
@@ -172,7 +172,7 @@ If you don't have an icon for your app, just omit the `icon` property in your ax
 
 Your directory should now look as follows:
 
-```bash
+```text
 my-app/
 |--- ax-manifest.yml
 |--- settings.schema.json
@@ -196,7 +196,7 @@ We will take a look at more interesting logic in the [event streams](event-strea
 
 Now build the docker image, tagging it (naming it) `myapp` (make sure you are in the `my-app` directory):
 
-```bash
+```text
 docker build --tag myapp .
 ```
 
@@ -211,7 +211,7 @@ services:
 
 You have now created a docker image on your machine and a docker compose file explaining how to run your app. Your directory should now look as follows:
 
-```bash
+```text
 my-app/
 |--- ax-manifest.yml
 |--- settings.schema.json
@@ -223,7 +223,7 @@ my-app/
 
 In order to run your web or docker app on ActyxOS, you need to package it using the [Actyx CLI](../../cli/getting-started). Run the following command from within the `my-app` directory:
 
-```bash
+```text
 ax apps package .
 ```
 

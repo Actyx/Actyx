@@ -40,7 +40,7 @@ The services exposed there are currently still in alpha testing.
 You can download an installer for ActyxOS on Windows on [the downloads page](https://downloads.actyx.com/). After opening the installer, you are guided through the setup process.
 
 :::info ActyxOS Node Manager included
-The installer also includes the latest release of the [ActyxOS Node Manager](../tools/node-manager.md).
+The installer also includes the latest release of the [ActyxOS Node Manager](../../node-manager/overview.md).
 :::
 
 ActyxOS is automatically started after the installation is finished.
@@ -62,7 +62,7 @@ In order to check on its status and interact with the node, you can use the Acty
 
 Go to the **Status** tab, and you should that your ActyxOS node is reachable and **running**:
 
-![status](/images/os/node-manager-status-1.png)
+![status](/images/node-manager/node-manager-status-1.png)
 
 </TabItem>
 <TabItem value="cli">
@@ -84,11 +84,11 @@ You should see something like:
 </TabItem>
 </Tabs>
 
-Congratulations, you have successfully installed <em>ActyxOS on Windows</em>! Please note that ActyxOS is **not** operational, as you did not configure it yet. If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
+Congratulations, you have successfully installed <em>ActyxOS on Android</em>! While you can already use ActyxOS locally, you may have to – depending on your exact setup – configure it to be able to connect to other ActyxOS nodes. If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
 
 ### Where to go next
 
-- [Quickstart](/docs/quickstart) is a tutorial about ActyxOS with ready-to-use apps and configurations
+- [Quickstart](../../learn-actyx/quickstart.md) is a tutorial about ActyxOS with ready-to-use apps and configurations
 - [Get started](#get-started-with-actyx-on-windows) for a detailed guide on how <em>ActyxOS on Windows works</em>
 - [Troubleshooting](#troubleshooting) describes common problems, workarounds and how to get help and submit issues
 - [FAQs](/docs/faq/supported-programming-languages) provides answers to frequently asked questions

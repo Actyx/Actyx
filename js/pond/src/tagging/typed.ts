@@ -1,4 +1,10 @@
-import { isString } from '..'
+/*
+ * Actyx Pond: A TypeScript framework for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2020 Actyx AG
+ */
+import { isString } from '../types'
 import { TagSubscription } from '../subscription'
 
 const namedSubSpace = (rawTag: string, sub: string): string[] => {

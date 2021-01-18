@@ -96,7 +96,7 @@ Fishes record facts (including environmental observation as well as decisions) b
 
 As we have discussed above, the current state of a fish on an edge device may still be missing information that is available elsewhere in the swarm.
 The most distinctive characteristic of the Actyx Pond framework is that it allows this fish to still make progress — process commands and emit events — even though this might lead to inconsistencies for a human looking at the whole system.
-This trade-off of favoring availability over consistency is a fundamental one, it is impossible to have both, as is also explained at [ActyxOS and CAP](../os/theoretical-foundation/actyxos-and-cap).
+This trade-off of favoring availability over consistency is a fundamental one, it is impossible to have both, as is also explained at [ActyxOS and CAP](/docs/os/theoretical-foundation/actyxos-and-cap).
 
 We made this choice because a mission-critical environment like a factory shop-floor is built around this same choice already:
 groups of persons are working with machines and material to deliver the required products, independent of other processes ongoing on the shop-floor around them.

@@ -16,7 +16,7 @@ Key capabilities:
 - Enable local or remote access to historical or real-time logs
 
 :::note Local access only
-The Console Service currently only supports local access to logs, i.e. when you are in the same network as the edge device. We plan to introduce remote logging in 2020. Stay tuned for more.
+The Console Service currently only supports local access to logs, i.e. when you are in the same network as the edge device. We plan to introduce remote logging in 2021. Stay tuned for more.
 :::
 
 ## Basics
@@ -25,7 +25,7 @@ The Console Service currently only supports local access to logs, i.e. when you 
 
 Traditionally, logs were produced, persisted, and consumed as lines of text. This way of logging is referred to as _unstructured logging_. A traditional log file might look like this:
 
-```bash
+```text
 # File app.log
 MyApp-1.0.3::console | 2019-09-11T21:46:12.106Z [info] Starting app...
 MyApp-1.0.3::console | 2019-09-11T21:46:12.113Z [debug] Setting route '/activities'
@@ -75,7 +75,7 @@ Logs are generated when your app runs. As you may not always be available to imm
 Given disk constraints and configuration options, ActyxOS may at some point delete logs from the edge device. The deletion happens in a FIFO fashion, with the oldest logs being deleted first, irrespective of level.
 
 :::info Long-term persistence with the upcoming Actyx Console
-The Actyx Console is planned for release in 2020. It will allow for logs to automatically be sent from the edge device to the scalable, cloud-based Console. Then you will be able to access logs long after they have been deleted from the edge device. Stay tuned for release updates.
+The Actyx Console is planned for release in 2021. It will allow for logs to automatically be sent from the edge device to the scalable, cloud-based Console. Then you will be able to access logs long after they have been deleted from the edge device. Stay tuned for release updates.
 :::
 
 ## Usage
@@ -88,7 +88,7 @@ Unstructured logging is supported for both Docker apps and WebView apps.
 
 #### Docker apps
 
-The business logic running in a docker container can output to [stdout](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)) or [stderr](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)). The ActyxOS [Docker Runtime](../advances-guides/app-runtimes.md#docker-runtime) automatically captures these outputs and transforms them into structured log messages of the following standard shape:
+The business logic running in a docker container can output to [stdout](https://en.wikipedia.org/wiki/Standard_streams#Standard_output_(stdout)) or [stderr](https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)). The ActyxOS [Docker Runtime](/docs/os/advanced-guides/actyxos-on-docker) automatically captures these outputs and transforms them into structured log messages of the following standard shape:
 
 ```javascript
 {
@@ -190,7 +190,7 @@ If "logTimestamp" is omitted the Console Service will add it automatically for y
 
 ### Accessing log messages
 
-Until the release of the Actyx Console in 2020, logs can only be accessed using the [Actyx CLI](../../cli.md) with the `ax logs` command. You can either retrieve all logs on the edge device or tail all logs generated from the time you execute the command.
+Until the release of the Actyx Console in 2021, logs can only be accessed using the [Actyx CLI](/docs/cli/getting-started) with the `ax logs` command. You can either retrieve all logs on the edge device or tail all logs generated from the time you execute the command.
 
 :::note
 Until the release of the Actyx Console, logs can only be accessed locally. In order for this to work, you must use the `--local` flag when calling Actyx CLI commands.
@@ -198,7 +198,7 @@ Until the release of the Actyx Console, logs can only be accessed locally. In or
 
 Example:
 
-```bash
+```text
 ax logs --tail --local EdgeDevice1
 > MyApp-1.0.3::console | 2019-09-11T21:46:12.106Z [info] Starting app...
 > MyApp-1.0.3::console | 2019-09-11T21:46:12.113Z [debug] Setting route '/activities'
@@ -209,7 +209,7 @@ ax logs --tail --local EdgeDevice1
 
 You can also retrieve logs in their **structured** format using the `--format=json` flag with the `ax logs` command:
 
-```bash
+```text
 ax logs --tail --local --format=json EdgeDevice1 | jq
 >{
     "logTimestamp": "2019-09-11T21:46:12.106Z",

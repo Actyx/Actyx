@@ -1,10 +1,9 @@
 ---
 title: ax logs tail
+hide_table_of_contents: true
 ---
 
-## Get logs from a node
-
-```
+```text title="Get logs from an ActyxOS node"
 USAGE:
     ax logs tail [FLAGS] [OPTIONS] <NODE>
 
@@ -27,7 +26,7 @@ ARGS:
 
 Please see the following usage examples for the `ax logs tail` command:
 
-```
+```text title="Example Usage"
 # Get the last 40 log entries from node at 10.2.3.23
 ax logs tail --local -n 40 10.2.3.23
 

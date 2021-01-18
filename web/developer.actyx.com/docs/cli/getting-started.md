@@ -21,6 +21,7 @@ This section describes how to install the Actyx CLI. Just choose your operating 
 ### Requirements
 
 <Tabs
+  groupId="operating-systems"
   defaultValue="windows"
   values={[
     { label: 'Windows', value: 'windows', },
@@ -45,6 +46,7 @@ This section describes how to install the Actyx CLI. Just choose your operating 
 ### Installing the Actyx CLI
 
 <Tabs
+  groupId="operating-systems"
   defaultValue="windows"
   values={[
     { label: 'Windows', value: 'windows', },
@@ -102,6 +104,7 @@ If you have problems with installing the Actyx CLI, please check our [troublesho
 ### Uninstalling the Actyx CLI
 
 <Tabs
+  groupId="operating-systems"
   defaultValue="windows"
   values={[
     { label: 'Windows', value: 'windows', },

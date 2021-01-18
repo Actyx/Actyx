@@ -17,6 +17,7 @@ import { isLeft } from 'fp-ts/lib/Either'
 import { Event as EventT, OffsetMap } from '../types'
 import * as t from 'io-ts'
 import { PathReporter } from 'io-ts/lib/PathReporter'
+import { StringDecoder } from 'string_decoder'
 
 /** @internal */
 export const NonEmptyStringType = new t.Type<string, string, unknown>(
@@ -25,7 +26,7 @@ export const NonEmptyStringType = new t.Type<string, string, unknown>(
   (input, context) =>
     typeof input === 'string' && input.trim().length > 0
       ? t.success(input)
-      : t.failure(input, context),
+      : t.failure(input, context, 'expected non-empty string'),
   t.identity,
 )
 
@@ -73,6 +74,45 @@ export const tryMakeEventFromApiObj = (obj: object): EventT | string => {
       streamName: res.right.stream.name,
       source: res.right.stream.source,
     },
+  }
+}
+
+const lineToEvent = (line: string): EventT[] => {
+  if (line.trim() === '') return []
+
+  let obj = {}
+  try {
+    obj = JSON.parse(line)
+  } catch (err) {
+    throw new Error(`cannot parse line '${line}' as JSON`)
+  }
+
+  const eitherEvent = tryMakeEventFromApiObj(obj)
+  if (typeof eitherEvent === 'string') {
+    throw new Error(`unable to parse event: ${eitherEvent}`)
+  }
+
+  return [eitherEvent]
+}
+
+export async function* streamToEvents(
+  input: AsyncIterable<Buffer>,
+): AsyncGenerator<EventT, void, undefined> {
+  const decoder = new StringDecoder('utf8')
+  let rest = ''
+
+  for await (const buf of input) {
+    const s = decoder.write(buf)
+    const arr = (rest + s).split(/\r?\n/)
+    rest = arr.pop() || ''
+    yield* arr.flatMap(lineToEvent)
+  }
+
+  rest += decoder.end()
+  try {
+    yield* lineToEvent(rest)
+  } catch (e) {
+    throw new Error(`unable to parse last line rest: ${rest}`)
   }
 }
 

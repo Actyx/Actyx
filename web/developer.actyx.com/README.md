@@ -173,6 +173,22 @@ In the `/sidebars.js` file, add the corresponding path to the correct sidebar. E
 
 Please check the existing sections and links in `/sidebars.js` for examples.
 
+### React Components
+
+To extend the capabilities of docusaurus, there are also a couple of react components to choose from when building pages. The components are:
+
+- `SectionHero.tsx`
+This element has an optional button (`showButton={false}` prevents displaying the button)
+- `TwoElementRow.tsx`
+The two col element can have 0-n optional links and 0-n optional tags
+- `ThreeElementRow.tsx`
+This element can have 0-n optional links
+- `DownloadLink.tsx`
+- `StayInformed.tsx`
+
+### Redirects
+There is a `_redirects` file in `/netlify/` which defines site redirects. If you change the folder structure of the docs in a PR so that links might now lead to 404s (from `/docs/quickstart` to `/docs/learn-actyx/quickstart`), please make sure to include the FROM url and the TO url separated by a space in the `_redirects` file. 
+
 ### How it works
 
 This website is built using [Docusaurus 2](https://v2.docusaurus.io/) with the `@docusaurus/preset-classic` preset. Docusaurus generates a static site that can be served from somewhere. We use Netlify, which automatically pulls `Cosmos` from Github, then builds and then serves the site at [https://developer.actyx.com](https://developer.actyx.com).
@@ -234,3 +250,12 @@ For a better linter experience when typing, please use this vscode extension
 ```bash
 code --install-extension DavidAnson.vscode-markdownlint
 ```
+
+You can disable some rules using:
+
+<!-- markdownlint-disable MD037 -->
+Some probelatic text ([Lamport time](https://en.wikipedia.org/wiki/Lamport_timestamp))
+<!-- markdownlint-enable MD037 -->
+
+More information about markdownlint configuration can be found here:
+<https://github.com/DavidAnson/markdownlint#configuration>

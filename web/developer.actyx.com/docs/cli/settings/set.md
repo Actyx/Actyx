@@ -2,9 +2,7 @@
 title: ax settings set
 ---
 
-## Configure settings of a node
-
-```
+```text title="Configure settings of an ActyxOS node"
 USAGE:
     ax settings set [FLAGS] <SCOPE> <VALUE> <NODE>
 
@@ -34,7 +32,7 @@ Nodes will only accept new settings for the `com.actyx.os` scope if all apps on 
 
 Please see the following usage examples for the `ax settings set` command:
 
-```
+```text title="Example Usage"
 # Set settings for settings scope com.actyx.os at node 10.2.3.23 from file
 # node1.settings.yml
 ax settings set --local com.actyx.os @node1.settings.yml 10.2.3.23

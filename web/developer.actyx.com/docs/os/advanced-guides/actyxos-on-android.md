@@ -11,7 +11,7 @@ import TabItem from '@theme/TabItem';
 
 In order to be able to run ActyxOS on Android, your device needs to meet the following requirements:
 
-- Android 5.1+
+- Android 6+
 - [Android System Webview](https://play.google.com/store/apps/details?id=com.google.android.webview) Version 70+
 - Minimum 2GB RAM
 - `x86`, `arm64-v8a` or `armeabi-v7a` [ABI](https://developer.android.com/ndk/guides/abis.html#sa)
@@ -50,9 +50,10 @@ If you do not have access to the Google Play store, please have a look at [our g
 
 ### Check the status of your node
 
-In order to check on its status and interact with the node, you can use the [ActyxOS Node Manager](../tools/node-manager) or, if you prefer a command line tool, use the [Actyx CLI](../../cli/getting-started.md).
+In order to check on its status and interact with the node, you can use the [ActyxOS Node Manager](../../node-manager/overview.md) or, if you prefer a command line tool, use the [Actyx CLI](../../cli/getting-started.md).
 
 <Tabs
+  groupId="operating-systems"
   defaultValue="node-manager"
   values={[
     { label: 'ActyxOS Node Manager', value: 'node-manager', },
@@ -63,7 +64,7 @@ In order to check on its status and interact with the node, you can use the [Act
 
 Go to the **Status** tab. It should show that your ActyxOS node is reachable and **running**:
 
-![status](/images/os/node-manager-status-1.png)
+![status](/images/node-manager/node-manager-status-1.png)
 
 </TabItem>
 <TabItem value="cli">
@@ -85,11 +86,11 @@ You should see something like:
 </TabItem>
 </Tabs>
 
-Congratulations, you have successfully installed <em>ActyxOS on Android</em>! Please note that ActyxOS is **not** operational, as you did not configure it yet. If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
+Congratulations, you have successfully installed <em>ActyxOS on Android</em>! While you can already use ActyxOS locally, you may have to – depending on your exact setup – configure it to be able to connect to other ActyxOS nodes. If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
 
 ### Where to go next
 
-- [Quickstart](/docs/quickstart) is a tutorial about ActyxOS with ready-to-use apps and configurations
+- [Quickstart](../../learn-actyx/quickstart.md) is a tutorial about ActyxOS with ready-to-use apps and configurations
 - [Get started](#get-started-with-actyx-on-android) for a detailed guide on how *ActyxOS on Android* works
 - [Troubleshooting](#troubleshooting) describes common problems, workarounds and how to get help and submit issues
 - [FAQs](/docs/faq/supported-programming-languages) provides answers to frequently asked questions
@@ -189,7 +190,7 @@ instead of
 
 - /dns4/demo-bootstrap.actyx.net/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH
 
-ActyxOS on Docker supports both formats. We are currently working on a fix for this. Check out our [blog](https://www.actyx.com/news/) or [release notes section](/docs/os/release-notes.md) for information on our new releases.
+ActyxOS on Docker supports both formats. We are currently working on a fix for this. Check out our [blog](https://www.actyx.com/news/) or [release notes section](/docs/os/release-notes) for information on our new releases.
 
 ## Known issues
 

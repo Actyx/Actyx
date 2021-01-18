@@ -4,11 +4,12 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import { isNode } from '../util'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import { Event, Events, WsStoreConfig } from './types'
 
 const defaultConfig: WsStoreConfig = {
-  url: process.env.AX_STORE_URI || 'ws://localhost:4243/store_api',
+  url: (isNode && process.env.AX_STORE_URI) || 'ws://localhost:4243/store_api',
 }
 
 export const extendDefaultWsStoreConfig = (overrides: Partial<WsStoreConfig> = {}) => ({
@@ -21,26 +22,6 @@ export const mkMultiplexer = (config: Partial<WsStoreConfig> = {}): MultiplexedW
 
   return new MultiplexedWebsocket(c)
 }
-
-import * as t from 'io-ts'
-
-// EnumType Class
-export class EnumType<A> extends t.Type<A> {
-  public readonly _tag: 'EnumType' = 'EnumType'
-  public enumObject!: object
-  public constructor(e: object, name?: string) {
-    super(
-      name || 'enum',
-      (u): u is A => Object.values(this.enumObject).some(v => v === u),
-      (u, c) => (this.is(u) ? t.success(u) : t.failure(u, c)),
-      t.identity,
-    )
-    this.enumObject = e
-  }
-}
-
-// simple helper function
-export const createEnumType = <T>(e: object, name?: string) => new EnumType<T>(e, name)
 
 /**
  * Randomly interleaves several arrays so that the order within each array is preserved.

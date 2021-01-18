@@ -1,11 +1,10 @@
 ---
 title: ax nodes
+hide_table_of_contents: true
 ---
 
 ## Manage ActyxOS nodes
 
-### Subcommands
-
-Command                      | description|
+Command                      | Functionality |
 -----------------------------|------------|
 [ax nodes ls](ls)            | Show node info and status |

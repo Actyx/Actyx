@@ -129,11 +129,7 @@ impl Event<Payload> {
     /// **Caveat emptor:** This will not generate proper
     /// timestamps and two such events will compare equal to each other (so cannot be
     /// put into collections without first making their Lamport timestamps unique).
-    pub fn mk_test(
-        semantics: &str,
-        name: &str,
-        payload: &str,
-    ) -> Result<Event<Payload>, serde_json::Error> {
+    pub fn mk_test(semantics: &str, name: &str, payload: &str) -> Result<Event<Payload>, serde_json::Error> {
         Ok(Event {
             lamport: Default::default(),
             timestamp: Default::default(),

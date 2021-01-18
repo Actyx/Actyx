@@ -50,7 +50,7 @@ must be as reliable as paper — while being much easier to analyse later. T
 the events from the table above on the edge devices and synchronising between devices whenever a
 network connection is available.
 
-[ActyxOS]: http://developer.actyx.com/docs/os/introduction
+[ActyxOS]: http://developer.actyx.com/docs/os/general/introduction
 
 ## What we want to see
 
@@ -65,7 +65,7 @@ where Fred is working:
   this production step of order 4711 once Fred says that it is finished
 
 The first part can be implemented using [Grafana](https://grafana.com/) if we keep a table in
-[PostgreSQL](https://www.postgresql.com/) up to date with one row containing the information of what
+[PostgreSQL](https://www.postgresql.org/) up to date with one row containing the information of what
 is going on per workstation (e.g. which order is being processed and since when and by whom).
 
 machine | doing what | since
