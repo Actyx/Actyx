@@ -384,6 +384,7 @@ impl<'de, T: LeEqU128> Deserialize<'de> for FixNum<T> {
 impl<T: LeEqU128> abomonation::Abomonation for FixNum<T> {}
 
 #[cfg(test)]
+#[allow(clippy::unusual_byte_groupings)]
 mod tests {
     use super::*;
 

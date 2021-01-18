@@ -43,7 +43,7 @@ all-js: \
 make-always:
 	touch $@
 
-export BUILD_RUST_TOOLCHAIN := 1.48.0
+export BUILD_RUST_TOOLCHAIN := 1.49.0
 
 export CARGO_HOME ?= $(HOME)/.cargo
 
@@ -53,8 +53,13 @@ export CARGO_HOME ?= $(HOME)/.cargo
 export VAULT_ADDR ?= https://vault.actyx.net
 export VAULT_TOKEN ?= $(shell VAULT_ADDR=$(VAULT_ADDR) vault login -token-only -method aws role=ops-travis-ci)
 
+# The stable image version is the git commit hash inside `Actyx/Cosmos`, with
+# which the respective images was built. Whenever the build images (inside
+# ops/docker/images/{buildrs,musl}/Dockerfile) are modified (meaning built and
+# pushed), this needs to be changed.
+export LATEST_STABLE_IMAGE_VERSION := 5ffeec3ceee18b4a7a84c5e3b106225847633278
 # Helper to try out local builds of Docker images
-export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),latest)
+export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))
 
 # Debug helpers
 print-%:
