@@ -16,7 +16,7 @@ The Event Service HTTP API provides local access to the Event Service, allowing 
 It is reachable at the following base URI: `http://localhost:4454/api/v2/events`.
 
 :::info Pretty printed JSON
-JSON used in the examples below is pretty-printed with [jq](https://stedolan.github.io/jq/) to make it more readable — the Event Service API returns compact JSON strings. This is only to make it more readable here. In reality, the Event Service API does not return pretty-printed JSON.
+JSON used in the examples below is pretty-printed with [jq](https://stedolan.github.io/jq/). This is only to make it more readable here. In reality, the Event Service API does not return pretty-printed JSON but the usual compact JSON you know from any other service.
 :::
 
 ## Prerequisites
@@ -24,7 +24,7 @@ JSON used in the examples below is pretty-printed with [jq](https://stedolan.git
 Communication with the Event Service needs to be authenticated. Therefore an authorization token which is associated with the requesting app needs to be retrieved from the Console Service. This token then needs to be passed in the `Authorization` header with every request to the Event Service. In the following examples we will use the `$AUTH_TOKEN` environment variable which can be initialized with
 
 ```bash
-export AUTH_TOKEN="$(curl -s localhost:4457/api/v0/apps/<my_app_id>/token | jq -r '.Ok')"
+export AUTH_TOKEN="$(curl -s localhost:4457/api/v0/apps/example_app/token | jq -r '.Ok')"
 ```
 
 While the following examples use [cURL](https://curl.se/) other command-line or graphical tools (e.g. [Postman](https://www.postman.com/product/api-client/)) would work as well.
@@ -75,7 +75,7 @@ curl \
 
 ## Get information about known offsets
 
-You can get information from the Event Service about known offsets, i.e. what the event service believes to be the last offset for each stream.
+You can get information from the Event Service about known offsets, i.e. what the event service believes to be the latest offset for each stream.
 
 ### Request
 
@@ -161,7 +161,7 @@ The `lowerBound` is optional. If none is set for one, multiple or all subscribed
 
 The `upperBound` object specifies the upper bound offset for each source id with the numbers being **inclusive**. i.e. an `upperBound` specification of `34` means the event service will return events with offsets `<= 34`.
 
-The `upperBound` is **required.** For every subscribed source where no upper bound offset it set, the result will be empty.
+The `upperBound` is **required.** For every subscribed source where no upper bound offset is set, the result will be empty.
 
 #### Required: Subscription (`subscription`)
 
@@ -411,7 +411,9 @@ The `offsets` object specifies the lower bound offset for each source id with th
 }
 ```
 
-The `snapshot` object specifies that the event should start with returning a snapshot if there exists one. Otherwise an empty offset map will be used. The specified compression scheme will be used for delivering snapshots.
+The `snapshot` object specifies that the event should start with returning a snapshot if there exists one. In that case, events will be returned starting from the snapshot. Otherwise, events will be returned from the beginning of time on.
+
+The specified compression scheme will be used for delivering snapshots.
 
 // TODO: Link to snapshot docs.
 
