@@ -16,7 +16,7 @@ The Event Service HTTP API provides local access to the Event Service, allowing 
 It is reachable at the following base URI: `http://localhost:4454/api/v2/events`.
 
 :::info Pretty printed JSON
-JSON used in the examples below is pretty-printed. This is only to make it more readable here. In reality, the Event Service API does not return pretty-printed JSON.
+JSON used in the examples below is pretty-printed with [jq](https://stedolan.github.io/jq/) to make it more readable — the Event Service API returns compact JSON strings. This is only to make it more readable here. In reality, the Event Service API does not return pretty-printed JSON.
 :::
 
 ## Prerequisites
@@ -26,6 +26,8 @@ Communication with the Event Service needs to be authenticated. Therefore an aut
 ```bash
 export AUTH_TOKEN="$(curl -s localhost:4457/api/v0/apps/<my_app_id>/token | jq -r '.Ok')"
 ```
+
+While the following examples use [cURL](https://curl.se/) other command-line or graphical tools (e.g. [Postman](https://www.postman.com/product/api-client/)) would work as well.
 
 ## Get the node ID
 
@@ -153,7 +155,7 @@ You use the request body to specify the details of your request as documented in
 
 The `lowerBound` object specifies the lower bound offset for each source id with the numbers being **exclusive**. i.e. a `lowerBound` specification of `34` means the event service will return events with offsets `> 34`.
 
-The `lowerBound` is optional. If none is set for one, multiple or all subscribed sources, the Event Store will assume a lower bound offset of `-1`, i.e. the beginning.
+The `lowerBound` is optional. If none is set for one, multiple or all subscribed sources, the Event Store will assume no lower bound.
 
 #### Required: Upper bounds for offsets (`upperBound`)
 
@@ -165,7 +167,7 @@ The `upperBound` is **required.** For every subscribed source where no upper bou
 
 The `subscription` field specifies a tag expression for which events should be queried.
 
-// TODO: just link to pond/guides/subscriptions?
+// TODO: Link to subscription docs.
 
 Not specifying the source of a stream does not make sense in this context since no events will be returned for sources without a defined upper bound.
 
@@ -259,7 +261,7 @@ echo '
 
 ## Subscribe to event streams
 
-You can use the Event Service API to subscribe to event streams. The Event Service may return past events and will return new events as they are received.
+You can use the Event Service API to subscribe to event streams. The Event Service may return past events and continue returning new "live" events as they are received.
 
 ### Request
 
@@ -411,6 +413,8 @@ The `offsets` object specifies the lower bound offset for each source id with th
 
 The `snapshot` object specifies that the event should start with returning a snapshot if there exists one. Otherwise an empty offset map will be used. The specified compression scheme will be used for delivering snapshots.
 
+// TODO: Link to snapshot docs.
+
 Specify additional details of your request as documented in the following.
 
 #### Required: Session ID (`session`)
@@ -448,7 +452,7 @@ This message may be sent in the beginning when a suitable snapshot has been foun
 ```js
 {
     "type": "<string: 'event'>",
-    "caughtUp": "<boolean: more events available for immediate delivery?>",
+    "caughtUp": "<boolean: known events delivery exhausted?>",
     "event":  {
         "key": {
             "stream": "<string: sourceID>", // TODO: this is inconsistent with /subscribe
