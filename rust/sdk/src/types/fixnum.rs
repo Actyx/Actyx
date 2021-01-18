@@ -384,6 +384,7 @@ impl<'de, T: LeEqU128> Deserialize<'de> for FixNum<T> {
 impl<T: LeEqU128> abomonation::Abomonation for FixNum<T> {}
 
 #[cfg(test)]
+#[allow(clippy::unusual_byte_groupings)]
 mod tests {
     use super::*;
 
@@ -400,10 +401,10 @@ mod tests {
         let js = json!({"x": 6213412, "y": 3.1415926});
         let s = serde_json::from_value::<S>(js).unwrap();
         assert_eq!(s.x, FixNum::panicking(6213412));
-        assert_eq!(s.y.unwrap(), FixedI128::<U10>::from_bits(0b1100_1001_0001).into());
+        assert_eq!(s.y.unwrap(), FixedI128::<U10>::from_bits(0b11__00100_10001).into());
         assert_eq!(
             s.x + FixedI128::<U5>::from_num(0.1),
-            FixedI128::<U5>::from_bits(0b1011_1101_1001_1110_0100_1000_0011).into()
+            FixedI128::<U5>::from_bits(0b101_11101_10011_11001_00100__00011).into()
         );
         let out = serde_json::to_string(&s).unwrap();
         let s2 = serde_json::from_str::<S>(out.as_str()).unwrap();
