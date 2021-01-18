@@ -54,7 +54,8 @@ export VAULT_ADDR ?= https://vault.actyx.net
 export VAULT_TOKEN ?= $(shell VAULT_ADDR=$(VAULT_ADDR) vault login -token-only -method aws role=ops-travis-ci)
 
 # Helper to try out local builds of Docker images
-export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),latest)
+export LATEST_STABLE_IMAGE_VERSION := 5ffeec3ceee18b4a7a84c5e3b106225847633278
+export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))
 
 # Debug helpers
 print-%:
