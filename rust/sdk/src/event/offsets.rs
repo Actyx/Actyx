@@ -527,7 +527,7 @@ impl OffsetMap {
     }
 
     /// Merge the other OffsetMap into this one, taking the union of their event sets.
-    pub fn union_with<'a>(&'a mut self, other: &OffsetMap) {
+    pub fn union_with(&mut self, other: &OffsetMap) {
         for (k, v) in &other.0 {
             self.0.entry(*k).and_modify(|me| *me = (*me).max(*v)).or_insert(*v);
         }
@@ -579,24 +579,24 @@ impl OffsetMap {
     }
 
     /// An iterator over all sources that contribute events to this OffsetMap
-    pub fn sources<'a>(&'a self) -> impl Iterator<Item = SourceId> + 'a {
+    pub fn sources(&'_ self) -> impl Iterator<Item = SourceId> + '_ {
         self.0.keys().filter_map(|stream| stream.to_source_id().ok())
     }
 
     /// An iterator over all streams that contribute events to this OffsetMap
-    pub fn streams<'a>(&'a self) -> impl Iterator<Item = StreamId> + 'a {
+    pub fn streams(&'_ self) -> impl Iterator<Item = StreamId> + '_ {
         self.0.keys().copied()
     }
 
     /// An iterator over all sources that contribute events to this OffsetMap including their offset
-    pub fn source_iter<'a>(&'a self) -> impl Iterator<Item = (SourceId, Offset)> + 'a {
+    pub fn source_iter(&'_ self) -> impl Iterator<Item = (SourceId, Offset)> + '_ {
         self.0
             .iter()
             .filter_map(|(k, v)| k.to_source_id().ok().map(|k| (k, *v)))
     }
 
     /// An iterator over all streams that contribute events to this OffsetMap including their offset
-    pub fn stream_iter<'a>(&'a self) -> impl Iterator<Item = (StreamId, Offset)> + 'a {
+    pub fn stream_iter(&'_ self) -> impl Iterator<Item = (StreamId, Offset)> + '_ {
         self.0.iter().map(|(k, v)| (*k, *v))
     }
 
