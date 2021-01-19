@@ -28,7 +28,6 @@ You can get information from the Event Service about known offsets, i.e. what th
 - Endpoint: `http://localhost:4454/api/v1/events/offsets`
 - HTTP method: `GET`
 - HTTP headers:
-  - `Content-Type`, must be `application/json`, default: `application/json`
   - (optional) `Accept`, must be `application/json`, default: `application/json`
 
 There is no request body.
@@ -73,7 +72,7 @@ You can query the Event Service for bounded sets of events in one or more event 
 - Endpoint: `http://localhost:4454/api/v1/events/query`
 - HTTP method: `POST`
 - HTTP headers:
-  - `Content-Type`, must be `application/json`, default: `application/json`
+  - `Content-Type`, must be `application/json`
   - (optional) `Accept`, must be `application/x-ndjson`, default: `application/x-ndjson`
 
 The request body must contain a JSON object with the following structure:
@@ -152,7 +151,7 @@ The response will be a stream of `<CR><LF>`-delimited event payloads of the foll
         "name": "<string: name>",
         "source": "<string: sourceID>"
     },
-    "timestamp": "<integer>", // unix epoch in microseconds
+    "timestamp": "<integer: unix epoch in microseconds>",
     "lamport": "<integer>",
     "offset": "<integer>",
     "payload": "<object>"
@@ -201,14 +200,14 @@ echo '
     ],
     "order": "lamport-reverse"
 }
-'\
+' \
 | curl \
     -X "POST" \
     -d @- \
     -H "Content-Type: application/json" \
     -H "Accept: application/x-ndjson" \
-    http://localhost:4454/api/v1/events/query
-    | jq
+    http://localhost:4454/api/v1/events/query \
+| jq .
 > {
     "stream": {
         "semantics": "com.actyx.examples.temperature",
@@ -234,7 +233,7 @@ You can use the Event Service API to subscribe to event streams. The Event Servi
 - Endpoint: `http://localhost:4454/api/v1/events/subscribe`
 - HTTP method: `POST`
 - HTTP headers:
-  - `Content-Type`, must be `application/json`, default: `application/json`
+  - `Content-Type`, must be `application/json`
   - (optional) `Accept`, must be `application/x-ndjson`, default: `application/x-ndjson`
 
 The request body must contain a JSON object with the following structure:
@@ -292,7 +291,7 @@ The response will be a stream of `<CR><LF>`-delimited event payloads of the foll
         "name": "<string: name>",
         "source": "<string: sourceID>"
     },
-    "timestamp": "<integer>",
+    "timestamp": "<integer: unix epoch in microseconds>",
     "lamport": "<integer>",
     "offset": "<integer>",
     "payload": "<object>"
@@ -316,7 +315,7 @@ See the following example using cURL:
 echo '
 {
     "lowerBound": {
-            "db66a77f": 34,
+        "db66a77f": 34,
         "a263bad7": -1
     },
     "subscriptions": [
@@ -337,14 +336,14 @@ echo '
         {}
     ]
 }
-'\
+' \
 | curl \
     -s -X "POST" \
     -d @- \
     -H "Content-Type: application/json" \
     -H "Accept: application/x-ndjson" \
     http://localhost:4454/api/v1/events/subscribe \
-| jq . \
+| jq .
 >
 {
     "stream": {
@@ -352,7 +351,7 @@ echo '
         "name": "temp-sensor",
         "source": "db66a77f"
     },
-    "timestamp": 21323, // unix epoch microseconds
+    "timestamp": 21323,
     "lamport": 323,
     "offset": 34,
     "payload": {
@@ -371,7 +370,7 @@ You can publish new events using the Event Service API.
 - Endpoint: `http://localhost:4454/api/v1/events/publish`
 - HTTP method: `POST`
 - HTTP headers:
-  - `Content-Type`, must be `application/json`, default: `application/json`
+  - `Content-Type`, must be `application/json`
 
 The request body must contain a JSON object with the following structure:
 
@@ -403,7 +402,8 @@ The response will provide feedback using HTTP status codes, with `201` signifyin
 See the following example using cURL:
 
 ```bash
-echo '{
+echo '
+{
     "data": [
         {
             "semantics": "com.actyx.examples.temperature",
@@ -411,7 +411,6 @@ echo '{
             "payload": {
                 "foo": [1, 3, 4],
                 "bar": { "a": 1, "b": 103 }
-        }
         },
         {
             "semantics": "com.actyx.examples.temperature",
@@ -420,10 +419,9 @@ echo '{
                 "foo": [3, 1, 1],
                 "bar": { "a": 13, "b": 48 }
         }
-        }
     ]
 }
-'\
+' \
 | curl \
     -X "POST" \
     -d @- \
