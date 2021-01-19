@@ -20,6 +20,8 @@
 //!
 //! The HTTP client is only available with the `client` feature flag.
 
+#[cfg(any(test, feature = "arb"))]
+mod arb;
 #[cfg(feature = "client")]
 mod client;
 mod event;

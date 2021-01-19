@@ -41,6 +41,8 @@ use std::convert::TryFrom;
 use std::fmt::{self, Debug, Display, Formatter};
 use std::str::FromStr;
 
+#[cfg(any(test, feature = "arb"))]
+mod arb;
 mod offsets;
 mod opaque;
 pub(crate) mod scalars;
