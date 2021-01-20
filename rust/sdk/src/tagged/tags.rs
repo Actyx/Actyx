@@ -198,7 +198,7 @@ impl TagSet {
         self.0.binary_search(tag).is_ok()
     }
 
-    pub fn iter(&'_ self) -> impl Iterator<Item = Tag> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = Tag> + '_ {
         self.0.iter().cloned()
     }
 

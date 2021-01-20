@@ -37,7 +37,7 @@ macro_rules! declare_varint {
                 let mut bits = 0;
 
                 for b in bytes {
-                    v = v.checked_add((*b as $id) << bits)?;
+                    v = v.checked_add(((*b as $id) & 127) << bits)?;
                     bits += 7;
                     if *b < 128 {
                         if *b == 0 && bits > 7 {
@@ -66,61 +66,73 @@ declare_varint!(u128, 19);
 
 #[cfg(test)]
 mod tests {
+    use quickcheck::TestResult;
+    use std::fmt::Debug;
+
     use super::*;
+
+    fn should_equal<T: Debug + PartialEq>(left: T, right: T) -> TestResult {
+        if left == right {
+            TestResult::passed()
+        } else {
+            TestResult::error(format!("{:?} does not equal {:?}", left, right))
+        }
+    }
 
     #[test]
     fn test() {
         assert_eq!(u32::encode(1234).as_ref(), &[210, 9]);
+        assert_eq!(u32::encode(128).as_ref(), &[128, 1]);
         assert_eq!(u32::decode(&[128, 0]), None); // not minimal
         assert_eq!(u32::decode(&[128, 1, 0]), None); // trailing garbage
     }
 
     quickcheck::quickcheck! {
-        fn size_u8(v: u8) -> bool {
+        fn size_u8(v: u8) -> TestResult {
             let bits = 1.max(8 - v.leading_zeros() as usize);
             let bytes = (bits + 6) / 7;
             let res = u8::encode(v);
-            res.as_ref().len() == bytes
+            should_equal(res.as_ref().len(), bytes)
         }
-        fn size_u16(v: u16) -> bool {
+        fn size_u16(v: u16) -> TestResult {
             let bits = 1.max(16 - v.leading_zeros() as usize);
             let bytes = (bits + 6) / 7;
             let res = u16::encode(v);
-            res.as_ref().len() == bytes
+            should_equal(res.as_ref().len(), bytes)
         }
-        fn size_u32(v: u32) -> bool {
+        fn size_u32(v: u32) -> TestResult {
             let bits = 1.max(32 - v.leading_zeros() as usize);
             let bytes = (bits + 6) / 7;
             let res = u32::encode(v);
-            res.as_ref().len() == bytes
+            should_equal(res.as_ref().len(), bytes)
         }
-        fn size_u64(v: u64) -> bool {
+        fn size_u64(v: u64) -> TestResult {
             let bits = 1.max(64 - v.leading_zeros() as usize);
             let bytes = (bits + 6) / 7;
             let res = u64::encode(v);
-            res.as_ref().len() == bytes
+            should_equal(res.as_ref().len(), bytes)
         }
-        fn size_u128(v: u128) -> bool {
+        fn size_u128(v: u128) -> TestResult {
             let bits = 1.max(128 - v.leading_zeros() as usize);
             let bytes = (bits + 6) / 7;
             let res = u128::encode(v);
-            res.as_ref().len() == bytes
+            should_equal(res.as_ref().len(), bytes)
         }
 
-        fn roundtrip_u8(v: u8) -> bool {
-            u8::decode(u8::encode(v).as_ref()) == Some(v)
+        fn roundtrip_u8(v: u8) -> TestResult {
+            should_equal(u8::decode(u8::encode(v).as_ref()), Some(v))
         }
-        fn roundtrip_u16(v: u16) -> bool {
-            u16::decode(u16::encode(v).as_ref()) == Some(v)
+        fn roundtrip_u16(v: u16) -> TestResult {
+            should_equal(u16::decode(u16::encode(v).as_ref()), Some(v))
         }
-        fn roundtrip_u32(v: u32) -> bool {
-            u32::decode(u32::encode(v).as_ref()) == Some(v)
+        fn roundtrip_u32(v: u32) -> TestResult {
+            should_equal(u32::decode(u32::encode(v).as_ref()), Some(v))
         }
-        fn roundtrip_u64(v: u64) -> bool {
-            u64::decode(u64::encode(v).as_ref()) == Some(v)
+        fn roundtrip_u64(v: u64) -> TestResult {
+            should_equal(u64::decode(u64::encode(v).as_ref()), Some(v))
         }
-        fn roundtrip_u128(v: u128) -> bool {
-            u128::decode(u128::encode(v).as_ref()) == Some(v)
+        fn roundtrip_u128(v: u128) -> TestResult {
+            should_equal(u128::decode(u128::encode(v).as_ref()), Some(v))
         }
     }
 }
