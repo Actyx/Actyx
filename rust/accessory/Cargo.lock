@@ -520,9 +520,9 @@ checksum = "f7531096570974c3a9dcf9e4b8e1cede1ec26cf5046219fb3b9d897503b9be59"
 
 [[package]]
 name = "fixed"
-version = "1.5.0"
+version = "0.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac9066245905bb98fca1671fe6fbb1ae7f6083e824d2411c4d0f5663fec466d8"
+checksum = "f32ca1abdbb21d63a3e02a658a9e3001b172f13c8b46724299e21190c5ee5041"
 dependencies = [
  "typenum",
 ]
