@@ -18,7 +18,7 @@ ActyxOS makes it easy to run distributed applications on multiple nodes. It is a
     img1={useBaseUrl('images/icons/distribution.svg')}
     img2={useBaseUrl('images/icons/storage.svg')}
     img3={useBaseUrl('images/icons/edge.svg')}
-    title1={"Data dissementation"}
+    title1={"Data dissemination"}
     title2={"Distributed data storage"}
     title3={"Edge runtimes"}
     body1={"Share events between nodes in real-time without the need for central servers or messages brokers."}
@@ -27,7 +27,7 @@ ActyxOS makes it easy to run distributed applications on multiple nodes. It is a
     showLinks={false}
 />
 
-Our goal is to allow people to program the naturally dezentralized collaboration of humans and machines.
+Our goal is to allow people to program the naturally decentralized collaboration of humans and machines.
 
 ## Architecture
 
