@@ -19,7 +19,8 @@
     "lint": "eslint './src/**/*.{js,ts,tsx}' & prettier './src/**/*.{js,ts,tsx}' --check && npm run lint:md:check && npm run lint:txt:check",
     "lint:code:fix": "eslint './src/**/*.{js,ts,tsx}' --fix & prettier './src/**/*.{js,ts,tsx}' --write",
     "lint:fix": "npm run lint:code:fix && npm run lint:txt:fix && npm run lint:md:fix",
-    "test": "npm run lint"
+    "test": "npm run lint",
+    "serve": "docusaurus serve" 
   },
   "dependencies": {
     "@docusaurus/core": "^2.0.0-alpha.66",

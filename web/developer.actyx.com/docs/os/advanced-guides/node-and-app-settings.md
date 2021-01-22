@@ -6,9 +6,9 @@ Throughout their lifecycle you may want to configure the behavior of nodes and a
 
 ## Basics
 
-Settings are a means to configure the behavior of systems. Depending on the settings, the system will behave differently. Which parts of a system are configurable and in which fashion is defined by the developer of the system. Throughout the development phase she may choose to make certain behaviors configurable by defining settings that a user of the system can later _set_ to arbitrary or well-defined values.
+Settings are a means to configure the behavior of systems. Depending on the settings, the system will behave differently. Which parts of a system are configurable and in which fashion is defined by the developer of the system. Throughout the development phase, you may choose to make certain behaviors configurable by defining settings that a user of the system can later set to arbitrary or well-defined values.
 
-Consider, as a simple example, the language shown in a user-interface. The developer of said interface can decide to only and always show UI element in English, or she can make it configurable through a _language_ setting. The setting may be defined as follows:
+Consider, as a simple example, the language shown in a user-interface. The developer of said interface can decide to only and always show UI element in English, or you can make it configurable through a _language_ setting. The setting may be defined as follows:
 
 | Setting  | Type     | Permitted values                      | Default value |
 | -------- | -------- | ------------------------------------- | ------------- |

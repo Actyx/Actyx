@@ -148,7 +148,7 @@ When persisting computed state in an event consumer, it is good practice to stor
 Let's run through an example using the hypothetical robot described above. This robot sends events about its location changes. The app running on the robot would have a piece of code as follows for generating relevant event objects (more information about the exact API check out the [API reference](../api/event-service.md)).
 
 ```typescript
-function mkPositionChangedEvent(newPosition: string): Event {
+function mkChangedPositionEvent(newPosition: string): Event {
   return {
       semantics: "com.robot-maker-ltd.positionChange",
       name: "robot1",

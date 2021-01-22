@@ -97,9 +97,9 @@ This metadata is used by ActyxOS for management throughout the data blob's lifec
 
 ## Usage
 
-The Storage Service is one of the tools ActyxOS offers you to construct collaboration for humans and machines. You can store data, retrieve data, inform others about the storage and delete data as necessary.
+The Blob Service is one of the tools ActyxOS offers you to construct collaboration for humans and machines. You can store data, retrieve data, inform others about the storage and delete data as necessary.
 
-Interaction with the Storage Service happens using a local HTTP API. The endpoint is `http://localhost:4455/api/v1/blobs`.
+Interaction with the Blob Service happens using a local HTTP API. The endpoint is `http://localhost:4455/api/v1/blobs`.
 
 ::: info Important
 The API can only be accessed locally, i.e. at `localhost`. It is not meant to be accessed from other devices. The distribution of data blobs to and from other devices happens automatically in the background. You have access to all stored data blobs from your local device.

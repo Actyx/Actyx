@@ -158,7 +158,7 @@ The following illustration shows the lifecycle stages, states and events of an A
 }>
 <TabItem value="misconfigured">
 
-A node starts its lifecycle once it is installed on a node via `ax apps deploy`. At that point its states are **Stopped**, **Disabled**, **LicenseValid**, **SettingsInvalid**.
+An app starts its lifecycle once it is installed on a node via `ax apps deploy`. At that point its states are **Stopped**, **Disabled**, **LicenseValid**, **SettingsInvalid**.
 
 From this point only one event leading to a transition is possible:
 
