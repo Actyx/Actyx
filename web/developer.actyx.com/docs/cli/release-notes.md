@@ -6,6 +6,12 @@ This page contains information about new features, bug fixes, deprecations and r
 
 <!-- markdownlint-disable MD024 -->
 
+## Actyx CLI 1.1.2
+
+Release date: 22.1.2021
+
+[Get it from our Downloads page](https://downloads.actyx.com/)
+
 ## Actyx CLI 1.1.1
 
 Release date: 18.12.2020

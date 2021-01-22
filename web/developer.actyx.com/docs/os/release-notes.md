@@ -6,6 +6,24 @@ This page contains information about new features, bug fixes, deprecations and r
 
 <!-- markdownlint-disable MD024 -->
 
+## ActyxOS 1.1.2
+
+Release date: 22.1.2021
+
+Download:
+
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
+- [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
+- [Actyx Downloads page](https://downloads.actyx.com/)
+
+### New features
+
+- Applications running on Android can now access the device camera
+
+### Bug fixes
+
+- Many stability improvements around our core infrastructure
+
 ## ActyxOS 1.1.1
 
 Release date: 18.12.2020

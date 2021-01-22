@@ -23,9 +23,9 @@ module.exports = {
   ],
   themeConfig: {
     announcementBar: {
-      id: 'os-111',
+      id: 'os-112',
       content:
-        '🥁 We released version 1.1.1 of ActyxOS! Check out the <a rel="noopener noreferrer" href="https://downloads.actyx.com/docs/os/release-notes">release notes</a> and <a rel="noopener noreferrer" href="https://downloads.actyx.com">download</a> the latest and greatest! 🥁',
+        '🤩 We released version 1.1.2 of ActyxOS! Check out the <a rel="noopener noreferrer" href="https://downloads.actyx.com/docs/os/release-notes">release notes</a> and <a rel="noopener noreferrer" href="https://downloads.actyx.com">download</a> the latest and greatest! 🤩',
       backgroundColor: '#f5f6f7',
       textColor: '#000',
     },
