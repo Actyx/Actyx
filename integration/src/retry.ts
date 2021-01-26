@@ -33,24 +33,6 @@ export const waitFor = <T>(
   })
 }
 
-export const waitForAppToStop = async (appId: string, node: ActyxOSNode): Promise<void> =>
-  await waitFor(async () => {
-    const response = await node.ax.apps.ls()
-    expect(response).toMatchObject({
-      code: 'OK',
-      result: [{ enabled: false, running: false, appId }],
-    })
-  }, 25_000)
-
-export const waitForAppToStart = async (appId: string, node: ActyxOSNode): Promise<void> =>
-  await waitFor(async () => {
-    const response = await node.ax.apps.ls()
-    expect(response).toMatchObject({
-      code: 'OK',
-      result: [{ enabled: true, running: true, appId }],
-    })
-  }, 25_000)
-
 export const waitForNodeToBeConfigured = async (node: ActyxOSNode): Promise<void> =>
   await waitFor(async () => {
     const response = await node.ax.nodes.ls()

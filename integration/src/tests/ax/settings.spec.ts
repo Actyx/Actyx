@@ -6,7 +6,7 @@ import fetch from 'node-fetch'
 import { assertOK } from '../../assertOK'
 import { runOnEvery } from '../../infrastructure/hosts'
 import { ActyxOSNode } from '../../infrastructure/types'
-import { createPackageSampleDockerApp, createTestNodeDockerLocal } from '../../test-node-factory'
+import { createTestNodeDockerLocal } from '../../test-node-factory'
 import { readFile, remove } from 'fs-extra'
 import { quickstartDirs } from '../../setup-projects/quickstart'
 import { settings } from '../../infrastructure/settings'
@@ -14,7 +14,7 @@ import path from 'path'
 import YAML from 'yaml'
 import { writeFile } from 'fs/promises'
 import { SettingsInput } from '../../cli/exec'
-import { waitForAppToStart, waitForAppToStop, waitForNodeToBeConfigured } from '../../retry'
+import { waitForNodeToBeConfigured } from '../../retry'
 
 describe('ax settings (using quickstart ActyxOS default setting)', () => {
   const workingDir = quickstartDirs(settings().tempDir).quickstart
@@ -22,18 +22,10 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
   const scopeActyxOS = 'com.actyx.os'
 
   let testNode: ActyxOSNode
-  let packagePath = ''
-  let appId = ''
 
   beforeAll(async () => {
     // Node will be added to the global `thisEnvNodes` and eventually cleaned up
     testNode = await createTestNodeDockerLocal('settings')
-
-    const infoSampleDockerApp = await createPackageSampleDockerApp(testNode)
-    // Make sure no other tests touching the generated tarball is running in
-    // parallel!
-    packagePath = infoSampleDockerApp.packagePath
-    appId = infoSampleDockerApp.appId
   })
 
   const resetSettingActyxOS = async () => {
@@ -229,46 +221,6 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
         message: expect.any(String),
       }
       expect(responseUnset).toMatchObject(responseUnsetShape)
-    })
-
-    test('return OK after unset setting for an app', async () => {
-      expect(await testNode.ax.apps.deploy(packagePath)).toMatchCodeOk()
-
-      expect(await testNode.ax.settings.unset(appId)).toMatchCodeOk()
-
-      expect(await testNode.ax.apps.undeploy(appId)).toMatchCodeOk()
-    })
-
-    test('return ERR_APP_ENABLED if app is running', async () => {
-      expect(await testNode.ax.apps.deploy(packagePath)).toMatchCodeOk()
-
-      expect(await testNode.ax.apps.start(appId)).toMatchCodeOk()
-      await waitForAppToStart(appId, testNode)
-
-      const response = await testNode.ax.settings.unset(appId)
-      const responseShape = { code: 'ERR_APP_ENABLED', message: expect.any(String) }
-      expect(response).toMatchObject(responseShape)
-
-      expect(await testNode.ax.apps.stop(appId)).toMatchCodeOk()
-      await waitForAppToStop(appId, testNode)
-
-      expect(await testNode.ax.apps.undeploy(appId)).toMatchCodeOk()
-    })
-
-    test('return ERR_APP_ENABLED if app is running and unset is for com.actyx.os', async () => {
-      expect(await testNode.ax.apps.deploy(packagePath)).toMatchCodeOk()
-
-      expect(await testNode.ax.apps.start(appId)).toMatchCodeOk()
-      await waitForAppToStart(appId, testNode)
-
-      const response = await testNode.ax.settings.unset(scopeActyxOS)
-      const responseShape = { code: 'ERR_APP_ENABLED', message: expect.any(String) }
-      expect(response).toMatchObject(responseShape)
-
-      expect(await testNode.ax.apps.stop(appId)).toMatchCodeOk()
-      await waitForAppToStop(appId, testNode)
-
-      expect(await testNode.ax.apps.undeploy(appId)).toMatchCodeOk()
     })
   })
 })

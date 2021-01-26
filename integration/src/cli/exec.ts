@@ -3,18 +3,11 @@ import {
   Response_Settings_Get,
   Response_Settings_Set,
   Response_Settings_Unset,
-  Response_Apps_Package,
-  Response_Apps_Deploy,
-  Response_Apps_Undeploy,
-  Response_Apps_Start,
-  Response_Apps_Stop,
-  Response_Apps_Ls,
   Response_Logs_Tail_Entry,
   Response_Internal_Swarm_State,
   Response_Settings_Scopes,
   Response_Settings_Schema,
   Response_Swarms_Keygen,
-  Response_Apps_Validate,
 } from './types'
 import { isLeft } from 'fp-ts/lib/Either'
 import { PathReporter } from 'io-ts/lib/PathReporter'
@@ -85,18 +78,6 @@ type Exec = {
     unset: (scope: string) => Promise<Response_Settings_Unset>
     schema: (scope: string) => Promise<Response_Settings_Schema>
   }
-  apps: {
-    package: (path: string) => Promise<Response_Apps_Package>
-    packageCwd: (cwd: string, path?: string) => Promise<Response_Apps_Package>
-    deploy: (packagePath: string, force?: boolean) => Promise<Response_Apps_Deploy>
-    undeploy: (appId: string) => Promise<Response_Apps_Undeploy>
-    start: (appId: string) => Promise<Response_Apps_Start>
-    stop: (appId: string) => Promise<Response_Apps_Stop>
-    ls: () => Promise<Response_Apps_Ls>
-    validate: (path: string) => Promise<Response_Apps_Validate>
-    validateCwd: (cwd: string) => Promise<Response_Apps_Validate>
-    validateMultiApps: (appPaths: ReadonlyArray<string>) => Promise<Response_Apps_Validate>
-  }
   logs: {
     tailFollow: (
       onEntry: (entry: Response_Logs_Tail_Entry) => void,
@@ -152,55 +133,6 @@ export const mkExec = (binary: string, addr: string): Exec => ({
     schema: async (scope: string) => {
       const response = await exec(binary, [`settings`, `schema`, `--local`, scope, addr])
       return rightOrThrow(Response_Settings_Schema.decode(response), response)
-    },
-  },
-  apps: {
-    package: async (path: string): Promise<Response_Apps_Package> => {
-      const response = await exec(binary, [`apps`, `package`, path])
-      return rightOrThrow(Response_Apps_Package.decode(response), response)
-    },
-    packageCwd: async (cwd: string, path?: string): Promise<Response_Apps_Package> => {
-      const response = await exec(
-        binary,
-        [`apps`, `package`, ...(path === undefined ? [] : [path])],
-        cwd,
-      )
-      return rightOrThrow(Response_Apps_Package.decode(response), response)
-    },
-    deploy: async (packagePath: string, force?: boolean): Promise<Response_Apps_Deploy> => {
-      const response = await exec(
-        binary,
-        [`apps`, `deploy`, packagePath, `--local`, addr].concat(force ? ['--force'] : []),
-      )
-      return rightOrThrow(Response_Apps_Deploy.decode(response), response)
-    },
-    undeploy: async (appId: string): Promise<Response_Apps_Undeploy> => {
-      const response = await exec(binary, [`apps`, `undeploy`, appId, `--local`, addr])
-      return rightOrThrow(Response_Apps_Undeploy.decode(response), response)
-    },
-    start: async (appId: string): Promise<Response_Apps_Start> => {
-      const response = await exec(binary, [`apps`, `start`, appId, `--local`, addr])
-      return rightOrThrow(Response_Apps_Start.decode(response), response)
-    },
-    stop: async (appId: string): Promise<Response_Apps_Stop> => {
-      const response = await exec(binary, [`apps`, `stop`, appId, `--local`, addr])
-      return rightOrThrow(Response_Apps_Stop.decode(response), response)
-    },
-    ls: async (): Promise<Response_Apps_Ls> => {
-      const response = await exec(binary, [`apps`, `ls`, `--local`, addr])
-      return rightOrThrow(Response_Apps_Ls.decode(response), response)
-    },
-    validate: async (path: string): Promise<Response_Apps_Validate> => {
-      const response = await exec(binary, [`apps`, `validate`, path])
-      return rightOrThrow(Response_Apps_Validate.decode(response), response)
-    },
-    validateCwd: async (cwd: string): Promise<Response_Apps_Validate> => {
-      const response = await exec(binary, [`apps`, `validate`], cwd)
-      return rightOrThrow(Response_Apps_Validate.decode(response), response)
-    },
-    validateMultiApps: async (appPaths: ReadonlyArray<string>): Promise<Response_Apps_Validate> => {
-      const response = await exec(binary, [`apps`, `validate`, ...appPaths])
-      return rightOrThrow(Response_Apps_Validate.decode(response), response)
     },
   },
   logs: {
