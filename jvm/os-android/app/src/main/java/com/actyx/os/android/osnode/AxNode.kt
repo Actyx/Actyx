@@ -57,31 +57,15 @@ class AxNode(ctx: Context, handler: MessageHandler) {
   }
 
   fun notifyAppStarted(appId: String) {
-    val msg = ToNative.newBuilder().setAppStarted(
-      ToNative.AppStarted.newBuilder().setAppId(appId).build()
-    ).build()
-    sendMessage(msg).mapLeft { log.error("Error sending message: {}", it) }
   }
 
   fun notifyAppStopped(appId: String) {
-    val msg = ToNative.newBuilder().setAppStopped(
-      ToNative.AppStopped.newBuilder().setAppId(appId).build()
-    ).build()
-    sendMessage(msg).mapLeft { log.error("Error sending message: {}", it) }
   }
 
   fun notifyAppEnabled(appId: String) {
-    val msg = ToNative.newBuilder().setAppEnabled(
-      ToNative.AppEnabled.newBuilder().setAppId(appId).build()
-    ).build()
-    sendMessage(msg).mapLeft { log.error("Error sending message: {}", it) }
   }
 
   fun notifyAppDisabled(appId: String) {
-    val msg = ToNative.newBuilder().setAppDisabled(
-      ToNative.AppDisabled.newBuilder().setAppId(appId).build()
-    ).build()
-    sendMessage(msg).mapLeft { log.error("Error sending message: {}", it) }
   }
 
   fun sendMessage(msg: ToNative): Either<String, Unit> {

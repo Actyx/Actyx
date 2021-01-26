@@ -67,28 +67,6 @@ class BackgroundServices : Service() {
   }
 
   private fun mkMsgHandler(appRepository: AppRepository): MessageHandler = { msg ->
-    when (msg.payloadCase) {
-      ToAndroid.PayloadCase.SETTINGSUPDATED ->
-        settingsUpdates.onNext(
-          SettingsUpdate(
-            msg.settingsUpdated.changedScope,
-            msg.settingsUpdated.rootSettingsJson
-          )
-        )
-      ToAndroid.PayloadCase.APPDEPLOYED ->
-        appUpdates.onNext(msg.appDeployed.appId)
-      ToAndroid.PayloadCase.APPUNDEPLOYED ->
-        appUpdates.onNext(msg.appUndeployed.appId)
-      ToAndroid.PayloadCase.STARTAPP ->
-        appRepository.startApp(msg.startApp.appId)
-      ToAndroid.PayloadCase.STOPAPP ->
-        appRepository.stopApp(msg.stopApp.appId)
-      ToAndroid.PayloadCase.NODESTATECHANGED ->
-        setupNotificationAndService(msg.nodeStateChanged.state)
-      ToAndroid.PayloadCase.PAYLOAD_NOT_SET, ToAndroid.PayloadCase.ISRUNNING, null -> {
-        // ignored
-      }
-    }
   }
 
   private fun setupNotificationAndService(nodeState: ToAndroid.NodeStateChanged.State) {
