@@ -180,7 +180,7 @@ The `order` object specifies in which order the events should be returned to the
 3. `stream-ordered`: ascending order according to events' lamport timestamp per stream, with no inter-stream ordering guarantees
 
 :::info Event order criteria
-Please note that for identical lamport values the stream ID is taken into acoount as a secondary sort criterion for event ordering.
+Please note that for identical Lamport timestamps the stream ID is taken into account as a secondary sort criterion for event ordering.
 :::
 
 TODO:
@@ -203,7 +203,7 @@ The response will be a stream of `<CR><LF>`-delimited event payloads of the foll
         "offset": "<integer>"
     },
     "meta": {
-        "timestamp": "<integer: unix epoch in microseconds>",
+        "timestamp": "<integer: microseconds since Unix epoch>",
         "tags": "<string[]>"
     },
     "payload": "<object>"
@@ -242,7 +242,7 @@ echo '
     -H "Authorization: Bearer $AUTH_TOKEN" \
     -d @- \
     -H "Content-Type: application/json" \
-    -H "application/x-ndjson" \
+    -H "Accept: application/x-ndjson" \
     http://localhost:4454/api/v2/events/query \
 | jq .
 >
@@ -351,7 +351,7 @@ echo '
     -H "Authorization: Bearer $AUTH_TOKEN" \
     -d @- \
     -H "Content-Type: application/json" \
-    -H "application/x-ndjson" \
+    -H "Accept: application/x-ndjson" \
     http://localhost:4454/api/v2/events/subscribe \
 | jq .
 >
@@ -454,7 +454,7 @@ This message may be sent in the beginning when a suitable snapshot has been foun
 
 ```js
 {
-    "type: "snapshot",
+    "type": "snapshot",
     "compression": "<string: 'none' | 'deflate'>",
     "data": "<string: Base64 encoded snapshot>", // TODO is this correct?
 }
@@ -524,7 +524,7 @@ echo '
     -H "Authorization: Bearer $AUTH_TOKEN" \
     -d @- \
     -H "Content-Type: application/json" \
-    -H "application/x-ndjson" \
+    -H "Accept: application/x-ndjson" \
     http://localhost:4454/api/v2/events/subscribe_monotonic \
 | jq .
 >
