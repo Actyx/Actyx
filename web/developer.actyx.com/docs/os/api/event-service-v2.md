@@ -69,7 +69,7 @@ curl \
     http://localhost:4454/api/v2/events/node_id | jq .
 >
 {
-    "nodeId": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2"
+    "node": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA"
 }
 ```
 
