@@ -214,11 +214,12 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
       expect(responseUnset).toMatchObject(responseUnsetShape)
     })
 
-    test('return ERR_SETTINGS_UNKNOWN_SCOPE after unset or a not existing scope', async () => {
-      const responseUnset = await testNode.ax.settings.unset('not-existing-scope')
+    test('return OK for a not existing scope', async () => {
+      const scope = 'i-dont-exist'
+      const responseUnset = await testNode.ax.settings.unset(scope)
       const responseUnsetShape = {
-        code: 'ERR_SETTINGS_UNKNOWN_SCOPE',
-        message: expect.any(String),
+        code: 'OK',
+        result: { scope },
       }
       expect(responseUnset).toMatchObject(responseUnsetShape)
     })
