@@ -286,7 +286,7 @@ dist/bin/$(1)/$(2): rt-master/target/$(target-$(1))/release/$(2)
 	cp -a $$< $$@
 endef
 $(foreach oa,$(osArch),$(foreach bin,$(binaries),$(eval $(call mkDistRule,$(oa),$(bin)))))
-$(foreach a,$(architectures),$(foreach bin,docker-logging-plugin docker-axosnode,$(eval $(call mkDistRule,linux-$(a),$(bin)))))
+$(foreach a,$(architectures),$(foreach bin,docker-logging-plugin,$(eval $(call mkDistRule,linux-$(a),$(bin)))))
 
 # Make a list of pattern rules (with %) for all possible rust binaries
 # containing e.g. rt-master/target/aarch64-unknown-linux-musl/release/%.
@@ -451,6 +451,6 @@ $(dockerTargetPatterns): make-always
 	rm -rf $(dockerBuildDir)
 
 $(foreach a,$(architectures),$(eval docker-build-dockerloggingplugin-$(a): dist/bin/linux-$(a)/docker-logging-plugin))
-$(foreach a,$(architectures),$(eval docker-build-actyxos-$(a): dist/bin/linux-$(a)/docker-axosnode docker-build-dockerloggingplugin-$(a)))
+$(foreach a,$(architectures),$(eval docker-build-actyxos-$(a): dist/bin/linux-$(a)/actyxos-linux docker-build-dockerloggingplugin-$(a)))
 
 docker-build-actyxos: $(foreach a,$(architectures),docker-build-actyxos-$(a))
