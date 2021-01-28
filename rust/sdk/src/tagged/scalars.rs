@@ -139,7 +139,6 @@ impl Display for NodeId {
 
 impl Debug for NodeId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // We could in theory also print NodeId differently based on the upper 16 bytes being zero, but that should ideally never be relevant
         write!(f, "NodeId({})", self)
     }
 }
