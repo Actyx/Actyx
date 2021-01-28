@@ -1,5 +1,8 @@
-use super::{NodeId, StreamId, StreamNr};
 use quickcheck::{Arbitrary, Gen};
+
+use crate::event::SourceId;
+
+use super::{NodeId, StreamId};
 
 impl Arbitrary for NodeId {
     fn arbitrary(g: &mut Gen) -> Self {
@@ -11,17 +14,16 @@ impl Arbitrary for NodeId {
     }
 }
 
-impl Arbitrary for StreamNr {
-    fn arbitrary(g: &mut Gen) -> Self {
-        u64::arbitrary(g).into()
-    }
-}
-
 impl Arbitrary for StreamId {
     fn arbitrary(g: &mut Gen) -> Self {
-        Self {
-            node_id: NodeId::arbitrary(g),
-            stream_nr: StreamNr::arbitrary(g),
+        let stream_nr = u64::arbitrary(g);
+        if stream_nr == 0 {
+            SourceId::arbitrary(g).into()
+        } else {
+            Self {
+                node_id: NodeId::arbitrary(g),
+                stream_nr,
+            }
         }
     }
 }
