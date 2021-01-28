@@ -67,7 +67,8 @@ curl \
     -H "Authorization: Bearer $AUTH_TOKEN" \
     -H "Accept: application/json" \
     http://localhost:4454/api/v2/events/node_id | jq .
->
+```
+```js
 {
     "node": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA"
 }
@@ -114,7 +115,8 @@ curl \
     -H "Authorization: Bearer $AUTH_TOKEN" \
     -H "Accept: application/json" \
     http://localhost:4454/api/v2/events/offsets | jq .
->
+```
+```text
 {
     "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2": 57,
     "yjbwMjEteMT9Em8sGFwwde7kAGgJDxpTLJZZTxvduuKW.5": 60
@@ -245,7 +247,8 @@ echo '
     -H "Accept: application/x-ndjson" \
     http://localhost:4454/api/v2/events/query \
 | jq .
->
+```
+```js
 {
     "key": {
         "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2",
@@ -354,7 +357,8 @@ echo '
     -H "Accept: application/x-ndjson" \
     http://localhost:4454/api/v2/events/subscribe \
 | jq .
->
+```
+```js
 {
     "key": {
         "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2",
@@ -527,7 +531,8 @@ echo '
     -H "Accept: application/x-ndjson" \
     http://localhost:4454/api/v2/events/subscribe_monotonic \
 | jq .
->
+```
+```js
 {
     "type": "event",
     "key": {
@@ -582,7 +587,7 @@ The request body must contain a JSON object with the following structure:
 
 ### Response
 
-The response will provide feedback using HTTP status codes, with `201` signifying that the request was successfully processed and the events published.
+The response will provide feedback using HTTP status codes, with `201` signifying that the request was successfully processed and the events published and and empty response body.
 
 If an error is encountered while publishing events, a JSON object with the following structure will be returned:
 
@@ -621,7 +626,6 @@ echo '
     -d @- \
     -H "Content-Type: application/json" \
     http://localhost:4454/api/v2/events/publish
-> Response: HTTP 201 | 500 | 400 with an invalid body
 ```
 
 ## SDKs
