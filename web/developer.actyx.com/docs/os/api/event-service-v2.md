@@ -78,6 +78,8 @@ curl \
 
 You can get information from the Event Service about known offsets, i.e. what the event service believes to be the latest offset for each stream.
 
+Take a look at the [Event Streams guide](https://developer.actyx.com/docs/os/guides/event-streams/#offsets-and-partitions) to learn more about the role of offsets.
+
 ### Request
 
 - Endpoint: `http://localhost:4454/api/v2/events/offsets`
