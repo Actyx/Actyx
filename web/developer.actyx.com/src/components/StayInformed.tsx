@@ -60,7 +60,7 @@ type Props = Readonly<{
   img4: string
 }>
 
-export const StayInformed = ({ img1, img2, img3, img4 }: Props) => (
+export const StayInformed: React.FC<Props> = ({ img1, img2, img3, img4 }: Props) => (
   <Wrapper>
     <ColLeft>
       <a href="https://www.twitter.com/actyx">

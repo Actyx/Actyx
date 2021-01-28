@@ -10,10 +10,13 @@ This page contains information about new features, bug fixes, deprecations and r
 
 Release date: 22.1.2021
 
+:::info
+Version 1.1.2 of ActyxOS is not available on the Google Playstore. Please download this version from our [downloads page](https://downloads.actyx.com/).
+:::
+
 Download:
 
 - [Docker Hub](https://hub.docker.com/r/actyx/os)
-- [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
 - [Actyx Downloads page](https://downloads.actyx.com/)
 
 ### New features

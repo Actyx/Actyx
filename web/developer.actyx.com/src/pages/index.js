@@ -1,16 +1,13 @@
 import React from 'react'
-import { Redirect } from '@docusaurus/router'
 import Layout from '@theme/Layout'
-import useDocusaurusContext from '@docusaurus/useDocusaurusContext'
 import { SectionHero } from '../../src/components/SectionHero.tsx'
 import styled from 'styled-components'
 import { TwoElementRow } from '../../src/components/TwoElementRow.tsx'
 import { ThreeElementRow } from '../../src/components/ThreeElementRow.tsx'
 import { StayInformed } from '../../src/components/StayInformed.tsx'
-import { DownloadLink } from '../../src/components/DownloadLink.tsx'
-import { Strap } from '../../src/components/Strap.tsx'
 import useBaseUrl from '@docusaurus/useBaseUrl'
 
+/* eslint-disable */
 const PageWrapper = styled.div`
   max-width: 1140px;
   padding-left: 40px;
