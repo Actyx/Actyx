@@ -148,7 +148,7 @@ The request body must contain a JSON object with the following structure:
         "<string: stream ID>": "<integer: inclusive-upper-bound, e.g. 49>",
         "<string: stream ID>": "<integer: inclusive-upper-bound, e.g. 101>"
     },
-    "where": "<string: tag expression, e.g. ['tag1' & 'tag2']>",
+    "where": "<string: tag expression, e.g. «'tag1' & 'tag2'»>",
     "order": "<string: 'lamport' | 'lamport-reverse' | 'stream-ordered'"
 }
 ```
