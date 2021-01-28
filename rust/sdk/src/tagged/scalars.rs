@@ -1,11 +1,10 @@
 use crate::event::scalars::{SourceId, MAX_SOURCEID_LENGTH};
-use anyhow::{anyhow, bail, ensure, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use multibase::Base;
 use serde::{Deserialize, Serialize};
 use std::{
-    convert::TryFrom,
+    convert::{TryFrom, TryInto},
     fmt::{self, Debug, Display},
-    num::{NonZeroU64, TryFromIntError},
 };
 
 /// The session identifier used in /subscribe_monotonic
@@ -82,6 +81,10 @@ mk_scalar!(
 /// Deserialization is supported from binary data or multibase format.
 ///
 /// Each node may emit multiple sources, each identified by its own [`StreamId`](struct.StreamId.html).
+///
+/// For backwards compatibility, it is possible to convert a SourceId into a NodeId. NodeIds constructed
+/// like this will have the last 16 bytes set to 0. It is exceedingly unlikely that a normally generated
+/// NodeId will have this property.
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(into = "String", try_from = "String")]
@@ -114,15 +117,44 @@ impl NodeId {
         }
     }
 
+    pub fn is_from_source(&self) -> bool {
+        self.0[MAX_SOURCEID_LENGTH + 1..] == [0u8; 32 - MAX_SOURCEID_LENGTH - 1]
+    }
+
+    /// Extract a source id from a fake NodeId.
+    pub fn source_id(&self) -> anyhow::Result<SourceId> {
+        if self.is_from_source() {
+            Ok(SourceId(self.0[0..MAX_SOURCEID_LENGTH + 1].try_into().unwrap()))
+        } else {
+            Err(anyhow!("This nodeid was not created from a SourceId"))
+        }
+    }
+
     /// Creates a stream ID belonging to this node ID with the given non-zero stream number
     ///
     /// Stream number zero is reserved for embedding [`SourceId`](../event/struct.SourceId.html).
     pub fn stream(&self, stream_nr: StreamNr) -> StreamId {
         StreamId {
             node_id: *self,
-            stream_nr: stream_nr.into(),
+            stream_nr,
         }
     }
+}
+
+impl From<SourceId> for NodeId {
+    fn from(value: SourceId) -> Self {
+        let mut bytes = [0u8; 32];
+        bytes[0..=MAX_SOURCEID_LENGTH].copy_from_slice(&value.0[..]);
+        NodeId(bytes)
+    }
+}
+
+impl TryFrom<NodeId> for SourceId {
+    fn try_from(value: NodeId) -> std::result::Result<Self, Self::Error> {
+        value.source_id()
+    }
+
+    type Error = anyhow::Error;
 }
 
 impl AsRef<[u8]> for NodeId {
@@ -133,12 +165,17 @@ impl AsRef<[u8]> for NodeId {
 
 impl Display for NodeId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.to_multibase(Base::Base64Url))
+        if let Ok(source) = self.source_id() {
+            write!(f, "{}", source)
+        } else {
+            f.write_str(&self.to_multibase(Base::Base64Url))
+        }
     }
 }
 
 impl Debug for NodeId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // We could in theory also print NodeId differently based on the upper 16 bytes being zero, but that should ideally never be relevant
         write!(f, "NodeId({})", self)
     }
 }
@@ -171,37 +208,26 @@ impl TryFrom<String> for NodeId {
 ///
 /// The default serialization of this type is the string representation of the NodeId
 /// followed by a dot and a base64url multibase-encoded multiformats-varint (see also
-/// [`varint`](../varint)), unless the stream number is zero, in which case the node ID
-/// is interpreted as a [`SourceId`](../event/struct.SourceId.html).
+/// [`varint`](../varint)).
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(into = "String", try_from = "String")]
 pub struct StreamId {
     pub(crate) node_id: NodeId,
-    pub(crate) stream_nr: u64,
+    pub(crate) stream_nr: StreamNr,
 }
 
 impl StreamId {
-    pub fn node_id(&self) -> Option<NodeId> {
-        if self.stream_nr == 0 {
-            None
-        } else {
-            Some(self.node_id)
-        }
+    pub fn node_id(&self) -> NodeId {
+        self.node_id
     }
 
-    pub fn stream_nr(&self) -> u64 {
+    pub fn stream_nr(&self) -> StreamNr {
         self.stream_nr
     }
 
-    pub fn to_source_id(self) -> Result<SourceId, anyhow::Error> {
-        if self.stream_nr == 0 {
-            let mut bytes = [0u8; MAX_SOURCEID_LENGTH + 1];
-            bytes.copy_from_slice(&self.node_id.as_ref()[0..=MAX_SOURCEID_LENGTH]);
-            Ok(SourceId(bytes))
-        } else {
-            Err(anyhow!("can only convert StreamId with stream number zero to SourceId"))
-        }
+    pub fn source_id(self) -> Result<SourceId, anyhow::Error> {
+        self.node_id().try_into()
     }
 
     fn parse_str(value: &str) -> Result<Self> {
@@ -216,15 +242,17 @@ impl StreamId {
             bail!("trailing garbage in StreamId");
         }
         let node_id = NodeId::try_from(node_str)?;
-        let stream_nr = stream_str.parse().context("parsing StreamId stream number")?;
-        ensure!(stream_nr != 0, "invalid stream nr in StreamId");
+        let stream_nr = stream_str
+            .parse::<u64>()
+            .context("parsing StreamId stream number")?
+            .into();
         Ok(Self { node_id, stream_nr })
     }
 }
 
 impl Display for StreamId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Ok(source_id) = self.to_source_id() {
+        if let Ok(source_id) = self.source_id() {
             f.write_str(source_id.as_str())
         } else {
             write!(f, "{}.{}", self.node_id, self.stream_nr)
@@ -270,26 +298,25 @@ impl From<&SourceId> for StreamId {
         bytes[0..=MAX_SOURCEID_LENGTH].copy_from_slice(&src.0[..]);
         StreamId {
             node_id: NodeId(bytes),
-            stream_nr: 0,
+            stream_nr: 0.into(),
         }
     }
 }
 
-/// StreamNr. Can not be 0
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct StreamNr(NonZeroU64);
+/// StreamNr. Newtype alias for u64
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "dataflow", derive(Abomonation))]
+pub struct StreamNr(u64);
 
-impl TryFrom<u64> for StreamNr {
-    type Error = TryFromIntError;
-
-    fn try_from(value: u64) -> std::result::Result<Self, Self::Error> {
-        Ok(StreamNr(NonZeroU64::try_from(value)?))
+impl From<u64> for StreamNr {
+    fn from(value: u64) -> Self {
+        Self(value)
     }
 }
 
 impl From<StreamNr> for u64 {
     fn from(value: StreamNr) -> Self {
-        value.0.into()
+        value.0
     }
 }
 
@@ -330,7 +357,7 @@ mod tests {
                 81, 66, 94, 87, 52, 39, 60, 110, 43, 93, 98, 94, 97, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0,
             ]),
-            stream_nr: 0,
+            stream_nr: 0.into(),
         };
         assert_eq!(serde_json::to_value(&sid).unwrap(), Value::String(sid.to_string()));
     }
@@ -362,7 +389,11 @@ mod tests {
         }
 
         fn source_id_roundtrip(src: SourceId) -> bool {
-            Ok(src) == StreamId::from(src).to_source_id().map_err(|_| "")
+            Ok(src) == StreamId::from(src).source_id().map_err(|_| ())
+        }
+
+        fn source_id_node_id_roundtrip(id: SourceId) -> bool {
+            Ok(id) == NodeId::from(id).source_id().map_err(|_| ())
         }
     }
 }
