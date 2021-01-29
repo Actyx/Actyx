@@ -593,7 +593,7 @@ impl OffsetMap {
 
     /// An iterator over all sources that contribute events to this OffsetMap
     pub fn sources(&self) -> impl Iterator<Item = SourceId> + '_ {
-        self.0.keys().filter_map(|stream| stream.to_source_id().ok())
+        self.0.keys().filter_map(|stream| stream.source_id().ok())
     }
 
     /// An iterator over all streams that contribute events to this OffsetMap
@@ -603,9 +603,7 @@ impl OffsetMap {
 
     /// An iterator over all sources that contribute events to this OffsetMap including their offset
     pub fn source_iter(&self) -> impl Iterator<Item = (SourceId, Offset)> + '_ {
-        self.0
-            .iter()
-            .filter_map(|(k, v)| k.to_source_id().ok().map(|k| (k, *v)))
+        self.0.iter().filter_map(|(k, v)| k.source_id().ok().map(|k| (k, *v)))
     }
 
     /// An iterator over all streams that contribute events to this OffsetMap including their offset
