@@ -21,7 +21,7 @@ JSON used in the examples below is pretty-printed with [jq](https://stedolan.git
 
 ## Prerequisites
 
-Communication with the Event Service needs to be authenticated. Therefore an authorization token which is associated with the requesting app needs to be retrieved from the Console Service. This token then needs to be passed in the `Authorization` header with every request to the Event Service. In the following examples we will use the `$AUTH_TOKEN` environment variable which can be initialized with
+Communication with the Event Service needs to be authenticated. Therefore an authorization token which is associated with the requesting app needs to be retrieved by the node. This token then needs to be passed in the `Authorization` header with every request to the Event Service. In the following examples we will use the `$AUTH_TOKEN` environment variable which can be initialized with
 
 ```bash
 export AUTH_TOKEN="$(curl -s localhost:4457/api/v0/apps/example_app/token | jq -r '.Ok')"
@@ -30,6 +30,8 @@ export AUTH_TOKEN="$(curl -s localhost:4457/api/v0/apps/example_app/token | jq -
 While the following examples use [cURL](https://curl.se/) other command-line or graphical tools (e.g. [Postman](https://www.postman.com/product/api-client/)) would work as well.
 
 ## Get the node ID
+
+TODO: this needs more explanation. could be moved to the event stream guide, which needs updating reg. the source id conversion.
 
 You can request the ID of the node backing the Event Service.
 
@@ -105,7 +107,7 @@ The response body will contain a JSON object of the following structure:
 }
 ```
 
-TODO: talk about stream IDs?
+TODO: talk about stream IDs? -> event stream guide
 
 ### Example
 
@@ -430,7 +432,7 @@ Specify additional details of your request as documented in the following.
 
 #### Required: Session ID (`session`)
 
-The session identifier is chosen by the client and must be used consistently by the client to resume an earlier session.
+The session identifier is chosen by the client and must be used consistently by the client to resume an earlier session. For fishes this will usually be the fish id.
 
 :::info
 If the the `where` filter changes, a new session will be created regardless of the existance of a session with the same ID.
