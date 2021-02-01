@@ -24,7 +24,7 @@ The ActyxOS Bootstrap Node is [publicly available on Docker Hub](https://hub.doc
 
 ```text
 # Start the bootstrap node with your swarm key
-docker run --name actyxos_bootstrap_node --rm --env SWARM_KEY=99eac9c0acbbedf9cfdfcbebfa0bdea99d0bde9edf0 -p 4001:4001 -v actyxos-bootstrap-data:/data actyx/actyxos-bootstrap-node
+docker run --name actyxos_bootstrap_node --rm --env SWARM_KEY=L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCjRkNWEzODQ3NGY1MjYzNDc1MjY2NTY3NTMwNTM0NjRkNGUzNzUyNDQ3ODY1NjIzMzRhMzg3MDU4NjU2MTcxNGQ= -p 4001:4001 -v actyxos-bootstrap-data:/data actyx/actyxos-bootstrap-node
 Starting ActyxOS bootstrap node
 
 ActyxOS bootstrap node running
