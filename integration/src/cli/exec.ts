@@ -14,7 +14,6 @@ import { PathReporter } from 'io-ts/lib/PathReporter'
 import execa from 'execa'
 import { StringDecoder } from 'string_decoder'
 import { Transform } from 'stream'
-import fetch from 'node-fetch'
 import * as path from 'path'
 import { rightOrThrow } from '../infrastructure/rightOrThrow'
 
@@ -95,8 +94,7 @@ export const mkExec = (binary: string, addr: string): Exec => ({
       return rightOrThrow(Response_Swarms_Keygen.decode(response), response)
     },
     state: async (): Promise<Response_Internal_Swarm_State> => {
-      const response = await fetch(`http://${addr}/_internal/swarm/state`)
-      const json = await response.json()
+      const json = await exec(binary, ['_internal', 'swarm', '--local', addr])
       return rightOrThrow(Response_Internal_Swarm_State.decode(json), json)
     },
   },

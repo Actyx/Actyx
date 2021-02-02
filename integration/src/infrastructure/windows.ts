@@ -85,7 +85,6 @@ export const mkNodeWinRM = async (
   const actyxOsProc = await startActyxOS(nodeName, logger, ssh)
   return await forwardPortsAndBuildClients(ssh, nodeName, target, actyxOsProc[0], {
     host: 'process',
-    runtimes: ['webview'],
   })
 }
 

@@ -30,9 +30,11 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
 
   const resetSettingActyxOS = async () => {
     expect(await testNode.ax.settings.unset(scopeActyxOS)).toMatchCodeOk()
+    await waitForNodeToBeConfigured(testNode)
     expect(
       await testNode.ax.settings.set(scopeActyxOS, SettingsInput.FromFile(settingDefaultFilePath)),
     ).toMatchCodeOk()
+    await waitForNodeToBeConfigured(testNode)
     expect(
       await testNode.ax.settings.set(
         `${scopeActyxOS}/general/logLevels/os`,
@@ -51,12 +53,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
 
   describe('scopes', () => {
     test('return ERR_NODE_UNREACHABLE if node host is unreachable', async () => {
-      const response = await stubs.hostUnreachable.ax.settings.scopes()
-      expect(response).toMatchErrNodeUnreachable()
-    })
-
-    test('return ERR_NODE_UNREACHABLE if actyxos is unreachable', async () => {
-      const response = await stubs.actyxOSUnreachable.ax.settings.scopes()
+      const response = await stubs.unreachable.ax.settings.scopes()
       expect(response).toMatchErrNodeUnreachable()
     })
 
@@ -70,12 +67,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
 
   describe('schema', () => {
     test('return ERR_NODE_UNREACHABLE if node host is unreachable', async () => {
-      const response = await stubs.hostUnreachable.ax.settings.schema(scopeActyxOS)
-      expect(response).toMatchErrNodeUnreachable()
-    })
-
-    test('return ERR_NODE_UNREACHABLE if actyxos is unreachable', async () => {
-      const response = await stubs.actyxOSUnreachable.ax.settings.schema(scopeActyxOS)
+      const response = await stubs.unreachable.ax.settings.schema(scopeActyxOS)
       expect(response).toMatchErrNodeUnreachable()
     })
 
@@ -99,12 +91,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
 
   describe('get', () => {
     test('return ERR_NODE_UNREACHABLE if node host is unreachable', async () => {
-      const response = await stubs.hostUnreachable.ax.settings.get(scopeActyxOS)
-      expect(response).toMatchErrNodeUnreachable()
-    })
-
-    test('return ERR_NODE_UNREACHABLE if actyxos is unreachable', async () => {
-      const response = await stubs.actyxOSUnreachable.ax.settings.get(scopeActyxOS)
+      const response = await stubs.unreachable.ax.settings.get(scopeActyxOS)
       expect(response).toMatchErrNodeUnreachable()
     })
 
@@ -115,7 +102,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
         result: {
           general: {
             announceAddresses: [],
-            authorizedKeys: [],
+            authorizedKeys: [expect.any(String)],
             bootstrapNodes: [
               '/dns4/demo-bootstrap.actyx.net/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH',
             ],
@@ -175,23 +162,12 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
       await testNode.ax.settings.set(scopeActyxOS, SettingsInput.FromFile(settingDefaultFilePath))
     })
 
-    test('return ERR_INTERNAL_ERROR if com.actyx.os is not set --no-defaults', async () => {
-      await testNode.ax.settings.unset(scopeActyxOS)
-
-      const responseGet = await testNode.ax.settings.get(scopeActyxOS, true)
-      const responseGetShape = {
-        code: 'ERR_SETTINGS_NOT_FOUND_AT_SCOPE',
-        message: expect.any(String),
-      }
-      expect(responseGet).toMatchObject(responseGetShape)
-      await testNode.ax.settings.set(scopeActyxOS, SettingsInput.FromFile(settingDefaultFilePath))
-    })
-
-    test('return OK if com.actyx.os is not set', async () => {
+    test('return OK  with authorized key set if com.actyx.os has been unset', async () => {
       await testNode.ax.settings.unset(scopeActyxOS)
 
       const responseGet = await testNode.ax.settings.get(scopeActyxOS)
       expect(responseGet).toMatchCodeOk()
+      expect(responseGet).toHaveProperty('result.general.authorizedKeys')
 
       await testNode.ax.settings.set(scopeActyxOS, SettingsInput.FromFile(settingDefaultFilePath))
     })
@@ -199,12 +175,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
 
   describe('unset', () => {
     test('return ERR_NODE_UNREACHABLE if node host is unreachable', async () => {
-      const response = await stubs.hostUnreachable.ax.settings.unset(scopeActyxOS)
-      expect(response).toMatchErrNodeUnreachable()
-    })
-
-    test('return ERR_NODE_UNREACHABLE if actyxos is unreachable', async () => {
-      const response = await stubs.actyxOSUnreachable.ax.settings.unset(scopeActyxOS)
+      const response = await stubs.unreachable.ax.settings.unset(scopeActyxOS)
       expect(response).toMatchErrNodeUnreachable()
     })
 

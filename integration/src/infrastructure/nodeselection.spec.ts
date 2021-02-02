@@ -1,9 +1,9 @@
 import { stubs } from '../stubs'
 import { selectNodes } from './nodeselection'
 
-const n1 = stubs.mkStub('android', 'aarch64', 'android', ['webview'], 'n0')
-const n2 = stubs.mkStub('linux', 'x86_64', 'docker', ['docker'], 'n1')
-const n3 = stubs.mkStub('windows', 'aarch64', 'process', [], 'n2')
+const n1 = stubs.mkStub('android', 'aarch64', 'android', 'n0')
+const n2 = stubs.mkStub('linux', 'x86_64', 'docker', 'n1')
+const n3 = stubs.mkStub('windows', 'aarch64', 'process', 'n2')
 
 describe('NodeSelection', () => {
   it('should fail', () => {
