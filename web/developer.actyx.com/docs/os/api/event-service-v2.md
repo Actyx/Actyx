@@ -55,7 +55,7 @@ The response body will contain a JSON object of the following structure:
 
 ```js
 {
-    "node": "<string: node ID>",
+    "nodeId": "<string: node ID>",
 }
 ```
 
@@ -72,7 +72,7 @@ curl \
 ```
 ```js
 {
-    "node": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA"
+    "nodeId": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA"
 }
 ```
 
@@ -107,7 +107,10 @@ The response body will contain a JSON object of the following structure:
 }
 ```
 
-TODO: talk about stream IDs? -> event stream guide
+:::info Event Streams
+To learn more about stream IDs and Event Streams in general see our [detailed guide](https://developer.actyx.com/docs/os/guides/event-streams).
+:::
+TODO: Update event stream guide (stream IDs)
 
 ### Example
 
@@ -153,7 +156,7 @@ The request body must contain a JSON object with the following structure:
         "<string: stream ID>": "<integer: inclusive-upper-bound, e.g. 101>"
     },
     "where": "<string: tag expression, e.g. «'tag1' & 'tag2'»>",
-    "order": "<string: 'lamport' | 'lamport-reverse' | 'stream-ordered'"
+    "order": "<string: 'asc' | 'desc' | 'stream-asc'"
 }
 ```
 
@@ -181,16 +184,15 @@ The `where` field specifies a tag expression for which events should be queried.
 
 The `order` object specifies in which order the events should be returned to the caller. There are three options, one of which must be specified:
 
-1. `lamport`: ascending order according to events' [lamport timestamp](https://en.wikipedia.org/wiki/Lamport_timestamps)
-2. `lamport-reverse`: descending order according to events' lamport timestamp
-3. `stream-ordered`: ascending order according to events' lamport timestamp per stream, with no inter-stream ordering guarantees
+1. `asc`: ascending order according to events' [lamport timestamp](https://en.wikipedia.org/wiki/Lamport_timestamps)
+2. `desc`: descending order according to events' lamport timestamp
+3. `stream-asc`: ascending order according to events' lamport timestamp per stream, with no inter-stream ordering guarantees
 
 :::info Event order criteria
 Please note that for identical Lamport timestamps the stream ID is taken into account as a secondary sort criterion for event ordering.
 :::
 
 TODO:
-- Still not sure if our users want to be bothered with the term "lamport". Why not go with `asc`/`desc`/`stream-asc` or `causal-asc`/`causal-desc`
 - Make a general section about sorting and link to it?
 
 ### Response
@@ -240,7 +242,7 @@ echo '
         "yjbwMjEteMT9Em8sGFwwde7kAGgJDxpTLJZZTxvduuKW.5": 60
     },
     "where": "'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')",
-    "order": "lamport-reverse"
+    "order": "desc"
 }
 ' \
 | curl \
@@ -274,6 +276,8 @@ echo '
 
 You can use the Event Service API to subscribe to event streams. The Event Service may return past events and continue returning new "live" events as they are received.
 
+TODO: clarify ordering
+
 ### Request
 
 - Endpoint: `http://localhost:4454/api/v2/events/subscribe`
@@ -287,22 +291,21 @@ The request body must contain a JSON object with the following structure:
 
 ```js
 {
-    "lowerBound": { // TODO: "offsets" like subscribe_monotonic ?
+    "offsets": {
         "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. 34>",
         "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. -1>"
     },
-
     "where": "<string: tag expression, e.g. ['tag1' & 'tag2']>"
 }
 ```
 
 You use the request body to specify the details of your request as documented in the following.
 
-#### Optional: Lower bound for offsets (`lowerBound`)
+#### Optional: Lower bound for offsets (`offsets`)
 
-The `lowerBound` object specifies the lower bound offset for each stream with the numbers being **exclusive**. i.e. a `lowerBound` specification of `34` means the event service will return events with offsets `> 34`.
+The `offsets` object specifies the lower bound offset for each stream with the numbers being **exclusive**. i.e. a `offsets` specification of `34` means the event service will return events with offsets `> 34`.
 
-The `lowerBound` is optional. If none is set for one, multiple or all subscribed streams, the Event Store will assume a lower bound offset of `-1`, i.e. the beginning.
+The `offsets` is optional. If none is set for one, multiple or all subscribed streams, the Event Store will assume a lower bound offset of `-1`, i.e. the beginning.
 
 #### Required: Filter (`where`)
 
@@ -346,7 +349,7 @@ See the following example using cURL:
 ```bash
 echo '
 {
-    "lowerBound": {
+    "offsets": {
         "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2": 34,
         "yjbwMjEteMT9Em8sGFwwde7kAGgJDxpTLJZZTxvduuKW.5": -1
     },
