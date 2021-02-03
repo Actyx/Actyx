@@ -210,6 +210,7 @@ stages:
     jobs:
       - job: release
         displayName: Release
+        condition: eq(variables['Build.SourceBranch'], 'refs/heads/master')
         steps:
           - checkout: self # self represents the repo where the initial Pipelines YAML file was found
             clean: true # whether to fetch clean each time
