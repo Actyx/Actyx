@@ -4,6 +4,7 @@
   "dependencies": {
     "@actyx/os-sdk": "file:../js/os-sdk",
     "@actyx/pond": "file:../js/pond",
+    "@types/node-fetch": "^2.5.8",
     "aws-sdk": "2.759.0",
     "execa": "4.0.3",
     "fp-ts": "1.19.5",
@@ -11,6 +12,7 @@
     "io-ts": "1.10.4",
     "io-ts-types": "0.4.8",
     "newtype-ts": "0.2.4",
+    "node-fetch": "^2.6.1",
     "pondV1": "npm:@actyx/pond@^1.1.0",
     "rxjs": "5.5.12",
     "yaml": "1.10.0"

@@ -29,6 +29,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
   })
 
   const resetSettingActyxOS = async () => {
+    await waitForNodeToBeConfigured(testNode)
     expect(await testNode.ax.settings.unset(scopeActyxOS)).toMatchCodeOk()
     await waitForNodeToBeConfigured(testNode)
     expect(
@@ -111,7 +112,6 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
               apps: 'INFO',
               os: 'DEBUG',
             },
-            requireAuthentication: false,
             swarmKey:
               'L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCmQ3YjBmNDFjY2ZlYTEyM2FkYTJhYWI0MmY2NjRjOWUyNWUwZWYyZThmNGJjNjJlOTg3NmE3NDU1MTc3ZWQzOGIK',
           },

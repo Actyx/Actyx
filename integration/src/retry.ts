@@ -35,7 +35,6 @@ export const waitFor = <T>(
 
 export const waitForNodeToBeConfigured = async (node: ActyxOSNode): Promise<void> =>
   await waitFor(async () => {
-    await new Promise((res) => setTimeout(res, 100))
     const response = await node.ax.nodes.ls()
     if (response.code == 'OK') {
       expect(response).toMatchObject({
