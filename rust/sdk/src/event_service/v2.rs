@@ -1,5 +1,5 @@
 use super::{OffsetMap, Payload};
-use crate::tagged::TagSet;
+use crate::tagged::{EventKey, TagSet};
 use serde::{Deserialize, Serialize};
 
 /// The order in which you want to receive events for a query
@@ -55,7 +55,7 @@ pub struct SubscribeApiRequest {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
-pub struct PublishApiRequestBody {
+pub struct PublishApiRequestElement {
     pub tags: TagSet,
     pub payload: Payload,
 }
@@ -63,5 +63,11 @@ pub struct PublishApiRequestBody {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PublishApiRequest {
-    pub data: Vec<PublishApiRequestBody>,
+    pub data: Vec<PublishApiRequestElement>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PublishApiResponse {
+    pub data: Vec<EventKey>,
 }
