@@ -17,8 +17,8 @@
 //!
 //! The [`EventService`](struct.EventService.html) client is only available under the `client` feature flag.
 
-use super::{event::EventKey, Compression, Event, NodeId, SessionId, SnapshotData};
-use crate::{OffsetMap, Payload};
+use super::{event::EventKey, Compression, NodeId, SessionId, SnapshotData};
+use crate::{event_service::v2::EventResponse, OffsetMap, Payload};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
@@ -58,7 +58,7 @@ pub struct SubscribeMonotonicRequest {
     pub session: SessionId,
     /// Definition of the events to be received by this session, i.e. a selection of
     /// tags coupled with other flags like “is local”.
-    pub subscription: String,
+    pub r#where: String,
     /// The consumer may already have kept state and know at which point to resume a
     /// previously interrupted stream. In this case, StartFrom::Offsets is used,
     /// otherwise StartFrom::Snapshot indicates that the PondService shall figure
@@ -82,7 +82,7 @@ pub enum SubscribeMonotonicResponse {
     #[serde(rename_all = "camelCase")]
     Event {
         #[serde(flatten)]
-        event: Event<Payload>,
+        event: EventResponse<Payload>,
         caught_up: bool,
     },
     /// This message ends the stream in case a replay becomes necessary due to
@@ -113,7 +113,7 @@ mod tests {
     fn must_serialize_subscribe_monotonic() {
         let req = SubscribeMonotonicRequest {
             session: "sess".into(),
-            subscription: "'tagA' & 'tagB'".to_owned(),
+            r#where: "'tagA' & 'tagB'".to_owned(),
             from: StartFrom::Offsets(OffsetMap::empty()),
         };
         let s = serde_json::to_string(&req).unwrap();
@@ -123,7 +123,7 @@ mod tests {
 
         let req = SubscribeMonotonicRequest {
             session: "sess".into(),
-            subscription: "'tagA' & 'tagB'".to_owned(),
+            r#where: "'tagA' & 'tagB'".to_owned(),
             from: StartFrom::Snapshot {
                 compression: [Compression::Deflate].iter().copied().collect(),
             },

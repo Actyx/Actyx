@@ -1,5 +1,8 @@
 use super::{OffsetMap, Payload};
-use crate::tagged::{EventKey, TagSet};
+use crate::{
+    tagged::{EventKey, StreamId, TagSet},
+    LamportTimestamp, Offset, TimeStamp,
+};
 use serde::{Deserialize, Serialize};
 
 /// The order in which you want to receive events for a query
@@ -42,7 +45,7 @@ pub enum Order {
 pub struct QueryApiRequest {
     pub lower_bound: Option<OffsetMap>,
     pub upper_bound: OffsetMap,
-    pub r#where: String,
+    pub r#where: String, // TODO: (de-)serialize to/from TagExpr?
     pub order: Order,
 }
 
@@ -50,7 +53,47 @@ pub struct QueryApiRequest {
 #[serde(rename_all = "camelCase")]
 pub struct SubscribeApiRequest {
     pub offsets: Option<OffsetMap>,
-    pub subscription: String,
+    pub r#where: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct EventResponse<T> {
+    pub stream: StreamId,
+    pub lamport: LamportTimestamp,
+    pub offset: Offset,
+    pub timestamp: TimeStamp,
+    pub tags: TagSet,
+    pub payload: T,
+}
+
+impl EventResponse<Payload> {
+    /// Try to extract the given type from the generic payload and return a new
+    /// event envelope if successful. The produced payload is deserialized as efficiently
+    /// as possible and may therefore still reference memory owned by the `Payload`.
+    /// You may need to `.clone()` it to remove this dependency.
+    pub fn extract<'a, T>(&'a self) -> Result<EventResponse<T>, serde_cbor::Error>
+    where
+        T: Deserialize<'a> + Clone,
+    {
+        let payload = self.payload.extract::<T>()?;
+        let EventResponse {
+            stream,
+            lamport,
+            offset,
+            timestamp,
+            tags,
+            ..
+        } = self.clone();
+        Ok(EventResponse {
+            stream,
+            lamport,
+            offset,
+            timestamp,
+            tags,
+            payload,
+        })
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
