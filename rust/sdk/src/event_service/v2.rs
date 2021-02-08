@@ -83,7 +83,7 @@ impl EventResponse<Payload> {
             offset,
             timestamp,
             tags,
-            ..
+            .. // payload
         } = self.clone();
         Ok(EventResponse {
             stream,
@@ -93,6 +93,20 @@ impl EventResponse<Payload> {
             tags,
             payload,
         })
+    }
+}
+
+impl<T> std::fmt::Display for EventResponse<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        use chrono::TimeZone;
+        let time = chrono::Local.timestamp_millis(self.timestamp.as_i64() / 1000);
+        write!(
+            f,
+            "Event at {} ({}, stream ID {})",
+            time.to_rfc3339_opts(chrono::SecondsFormat::Millis, false),
+            self.lamport,
+            self.stream,
+        )
     }
 }
 
