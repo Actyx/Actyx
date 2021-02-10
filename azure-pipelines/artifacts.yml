@@ -27,6 +27,7 @@ stages:
         displayName: make all-js
         steps:
           - bash: |
+              set -e
               build/bin/install-vault.sh
               make all-js
             env:
@@ -40,6 +41,7 @@ stages:
         displayName: make all-windows
         steps:
           - bash: |
+              set -e
               build/bin/install-vault.sh
               make all-windows
             env:
@@ -53,6 +55,7 @@ stages:
         displayName: make all-linux
         steps:
           - bash: |
+              set -e
               build/bin/install-vault.sh
               make all-linux
             env:
@@ -76,6 +79,7 @@ stages:
               ARCH: arm
         steps:
           - bash: |
+              set -e
               build/bin/install-vault.sh
               make docker-build-actyxos-$ARCH
               ./azure-pipelines/push-to-dockerhub.sh actyx/cosmos:actyxos-$ARCH
@@ -88,6 +92,7 @@ stages:
         displayName: make all-android
         steps:
           - bash: |
+              set -e
               build/bin/install-vault.sh
               make all-android
             env:
@@ -123,6 +128,7 @@ stages:
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
+                set -e
                 az --version
                 az account show
                 az storage blob upload-batch -s $(System.DefaultWorkingDirectory)/pipeline-artifacts -d https://axartifacts.blob.core.windows.net/artifacts/ --destination-path $(Build.SourceVersion)/
@@ -161,6 +167,7 @@ stages:
             inputs:
               path: pipeline-artifacts
           - bash: |
+              set -e
               mkdir -p dist/bin 
               cd pipeline-artifacts
               for i in `ls`; do mv $i/* ../dist/bin/; done
@@ -169,6 +176,7 @@ stages:
               cp -r bin/linux-x86_64 bin/current
             displayName: Massage artifact directory structure
           - bash: |
+              set -e
               build/bin/install-vault.sh
               make prepare-js all-js
               cd integration
@@ -189,6 +197,7 @@ stages:
         condition: always()
         steps:
           - bash: |
+              set -e
               source ~/.nvm/nvm.sh
               cd integration
               nvm use
@@ -217,6 +226,7 @@ stages:
             submodules: recursive # set to 'true' for a single level of submodules or 'recursive' to get submodules of submodules
             persistCredentials: true # set to 'true' to leave the OAuth token in the Git config after the initial fetch
           - bash: |
+              set -e
               cd release
               source ~/.nvm/nvm.sh
               nvm use
