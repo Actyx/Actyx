@@ -102,9 +102,12 @@ export interface Tag<E> extends Tags<E> {
   readonly rawTag: string
 
   /**
-   * This very tag, suffixed with an id. E.g. `Tag<RobotEvent>('robot').withId('robot500')`
-   * expresses robot events belonging to a *specific* robot. The suffix will be separated
-   * from the base name by a colon `:`.
+   * Returns two tags:
+   *
+   *  - this tag
+   *  - this tag suffixed with the given `name`, e.g. `Tag<RobotEvent>('robot').withId('robot500')`
+   *    expresses robot events belonging to a *specific* robot. The suffix will be separated
+   *    from the base name by a colon `:`.
    */
   withId(name: string): Tags<E>
 }
