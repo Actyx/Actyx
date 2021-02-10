@@ -20,7 +20,6 @@ describe('ax nodes', () => {
     test('return OK and result with connection reachable', async () => {
       await runOnEvery({}, async (node) => {
         const response = assertOK(await node.ax.nodes.ls())
-        console.log(`${node.name}: ${JSON.stringify(response)}`)
         const responseShape = [
           {
             connection: 'reachable',
