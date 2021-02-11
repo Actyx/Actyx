@@ -81,7 +81,10 @@ macro_rules! mk_scalar {
         }
 
         impl ::libipld::cbor::decode::TryReadCbor for $id {
-            fn try_read_cbor<R: ::std::io::Read>(r: &mut R, major: u8) -> ::libipld::error::Result<Option<Self>> {
+            fn try_read_cbor<R: ::std::io::Read + ::std::io::Seek>(
+                r: &mut R,
+                major: u8,
+            ) -> ::libipld::error::Result<Option<Self>> {
                 if let Some(v) = String::try_read_cbor(r, major)? {
                     Ok(Some(v.parse()?))
                 } else {
@@ -91,14 +94,21 @@ macro_rules! mk_scalar {
         }
 
         impl ::libipld::codec::Decode<::libipld::cbor::DagCborCodec> for $id {
-            fn decode<R: ::std::io::Read>(c: ::libipld::cbor::DagCborCodec, r: &mut R) -> ::libipld::error::Result<Self> {
+            fn decode<R: ::std::io::Read + ::std::io::Seek>(
+                c: ::libipld::cbor::DagCborCodec,
+                r: &mut R,
+            ) -> ::libipld::error::Result<Self> {
                 use ::std::str::FromStr;
                 Ok(Self::from_str(&String::decode(c, r)?)?)
             }
         }
 
         impl ::libipld::codec::Encode<::libipld::cbor::DagCborCodec> for $id {
-            fn encode<W: ::std::io::Write>(&self, c: ::libipld::cbor::DagCborCodec, w: &mut W) -> ::libipld::error::Result<()> {
+            fn encode<W: ::std::io::Write>(
+                &self,
+                c: ::libipld::cbor::DagCborCodec,
+                w: &mut W,
+            ) -> ::libipld::error::Result<()> {
                 use ::std::ops::Deref;
                 self.deref().encode(c, w)
             }
