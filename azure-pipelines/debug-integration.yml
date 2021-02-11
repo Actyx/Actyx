@@ -18,6 +18,7 @@ stages:
             inputs:
               path: pipeline-artifacts
           - bash: |
+              set -e
               build/bin/install-vault.sh
               make prepare-js all-js
               cd integration
@@ -38,6 +39,7 @@ stages:
         condition: always()
         steps:
           - bash: |
+              set -e
               source ~/.nvm/nvm.sh
               cd integration
               nvm use
