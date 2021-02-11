@@ -138,6 +138,7 @@ module.exports = {
         "pond/in-depth/tag-type-checking",
         "pond/in-depth/eventual-consistency",
         "pond/in-depth/do-not-ignore-events",
+	"pond/in-depth/cycling-states",
 	"pond/in-depth/observe-all",
 	"pond/in-depth/observe-one",
       ],
