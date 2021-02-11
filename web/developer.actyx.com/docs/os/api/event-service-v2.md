@@ -617,12 +617,14 @@ echo '
             "payload": {
                 "value": 22,
                 "foo": { "a": 1, "b": 103 }
+            }
         },
         {
             "tags": ["com.actyx.examples.temperature", "sensor:temp-sensor1"],
             "payload": {
                 "value": 23,
                 "foo": { "a": 13, "b": 48 }
+            }
         }
     ]
 }
