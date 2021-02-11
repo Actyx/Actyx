@@ -29,7 +29,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     convert::TryFrom,
     fmt::{self, Debug},
-    io::{Read, Write},
+    io::{Read, Seek, Write},
     iter::FromIterator,
     ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
 };
@@ -362,7 +362,7 @@ impl Bounded for Offset {
 }
 
 impl TryReadCbor for Offset {
-    fn try_read_cbor<R: Read>(r: &mut R, major: u8) -> libipld::Result<Option<Self>> {
+    fn try_read_cbor<R: Read + Seek>(r: &mut R, major: u8) -> libipld::Result<Option<Self>> {
         if let Some(value) = u64::try_read_cbor(r, major)? {
             validate_offset(value as i64).map_err(|e| anyhow::anyhow!("{}", e))?;
             Ok(Some(Offset(value as i64)))
@@ -379,7 +379,7 @@ impl Encode<DagCborCodec> for Offset {
 }
 
 impl Decode<DagCborCodec> for Offset {
-    fn decode<R: Read>(_: DagCborCodec, r: &mut R) -> libipld::Result<Self> {
+    fn decode<R: Read + Seek>(_: DagCborCodec, r: &mut R) -> libipld::Result<Self> {
         libipld::cbor::decode::read(r)
     }
 }
