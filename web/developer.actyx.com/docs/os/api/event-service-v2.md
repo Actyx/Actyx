@@ -168,11 +168,15 @@ The `lowerBound` object specifies the lower bound offset for each stream with th
 
 The `lowerBound` is optional. If none is set for one, multiple or all subscribed streams, the Event Store will assume no lower bound.
 
+FIXME: reword (we don't subscribe to streams.)
+
 #### Required: Upper bounds for offsets (`upperBound`)
 
 The `upperBound` object specifies the upper bound offset for each stream with the numbers being **inclusive**. i.e. an `upperBound` specification of `34` means the event service will return events with offsets `<= 34`.
 
 The `upperBound` is **required.** For every subscribed stream where no upper bound offset is set, the result will be empty.
+
+FIXME: reword (we don't subscribe to streams.) Can't we just stop at the current present and make this optional, too?
 
 #### Required: Filter (`where`)
 
