@@ -17,12 +17,7 @@ export const setupTestProjects = async (tempDir: string): Promise<void> => {
 }
 
 export const getPipEnv = async (): Promise<string> => {
-  if (currentOS() == 'macos') {
-    return 'pipenv'
-  } else {
-    const base = (await execa.command('python -m site --user-base')).stdout
-    return `${base}/bin/pipenv --python python`
-  }
+  return 'pipenv'
 }
 
 export const setupAnsible = async (): Promise<void> => {
@@ -47,12 +42,5 @@ const setupAnsibleMac = async (): Promise<void> => {
 const setupAnsibleDebianish = async (): Promise<void> => {
   await execa.command('pip3 install --user pipenv')
 
-  const res2 = await execa.command('pipenv install', { cwd: 'ansible' }).catch((e) => e)
-  if (res2 instanceof Error) {
-    console.log('pipenv not found, looking for local user python bin dir')
-    const pipenv = await getPipEnv()
-    await execa.command(`${pipenv} --site-packages install`, {
-      cwd: 'ansible',
-    })
-  }
+  await execa.command('pipenv install', { cwd: 'ansible' })
 }
