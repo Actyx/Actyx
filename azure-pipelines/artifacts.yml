@@ -34,6 +34,7 @@ stages:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
           - publish: $(System.DefaultWorkingDirectory)/dist/js
             artifact: js-packages
             condition: succeeded()
@@ -48,6 +49,7 @@ stages:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: windows-binaries
             condition: succeeded()
@@ -62,6 +64,7 @@ stages:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: linux-binaries
             condition: succeeded()
@@ -87,6 +90,7 @@ stages:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
 
       - job:
         displayName: make all-android
@@ -99,6 +103,7 @@ stages:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: android-binaries
             condition: succeeded()
@@ -175,6 +180,8 @@ stages:
               find -type f -exec chmod +x {} \;
               cp -r bin/linux-x86_64 bin/current
             displayName: Massage artifact directory structure
+            env:
+              BASH_ENV: "~/.bashrc"
           - bash: |
               set -e
               build/bin/install-vault.sh
@@ -188,6 +195,7 @@ stages:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
             displayName: npm test
           - publish: $(System.DefaultWorkingDirectory)/integration/logs
             condition: failed()
@@ -207,6 +215,7 @@ stages:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
             name: cleanupInstances
             displayName: Clean up old integration test instances
   - stage: release
@@ -228,7 +237,6 @@ stages:
           - bash: |
               set -e
               cd release
-              source ~/.nvm/nvm.sh
               nvm use
               npm install
               echo "Building cosmos-release"
@@ -248,4 +256,5 @@ stages:
               ARM_NF: $(RELEASE_NETLIFY_ACCESS_TOKEN)
               REPO_DIR: $(Build.SourcesDirectory)
               TARGET_REV: $(Build.SourceVersion)
+              BASH_ENV: "~/.bashrc"
             displayName: run release
