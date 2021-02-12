@@ -293,12 +293,6 @@ $(foreach a,$(architectures),$(foreach bin,docker-logging-plugin,$(eval $(call m
 # These will be used below to define how to build all binaries for that target.
 targetPatterns = $(foreach t,$(targets),rt-master/target/$(t)/release/%)
 
-# loopup table for extra cargo options for the windows build.
-# for the windows build, we need to default features. This requires specifying a manifest path.
-cargo-extra-options-rt-master/target/x86_64-pc-windows-gnu/release/ax.exe:=--no-default-features --manifest-path actyx-cli/Cargo.toml
-cargo-extra-options-rt-master/target/x86_64-pc-windows-gnu/release/actyxos.exe:=--no-default-features --manifest-path ax-os-node-win/Cargo.toml
-cargo-extra-options-rt-master/target/x86_64-pc-windows-gnu/release/win.exe:=--no-default-features --manifest-path ax-os-node/Cargo.toml
-
 # define a pattern rule for making any binary for a given target
 # where the build image is computed by first extracting the OS from the target string and then
 # looking into the image-* mapping - this requires the TARGET variable to be set while evaluating!
@@ -315,7 +309,7 @@ rt-master/target/$(TARGET)/release/%: cargo-init make-always
 	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
-	  cargo --locked build --release $$(cargo-extra-options-$$@) --bin $$(basename $$*)
+	  cargo --locked build --release --bin $$(basename $$*)
 endef
 $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
 
@@ -340,7 +334,7 @@ $(soTargetPatterns): cargo-init make-always
 	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
-	  cargo --locked build -p ax-os-node-ffi --lib --release --target $(TARGET)
+	  cargo --locked build -p node-ffi --lib --release --target $(TARGET)
 
 # create these so that they belong to the current user (Docker would create as root)
 # (formulating as rule dependencies only runs mkdir when they are missing)

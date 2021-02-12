@@ -30,18 +30,18 @@ export const mkNodeLocalProcess = async (
   alreadyRunning = nodeName
   console.log('node %s starting locally: %s in %s', nodeName, binary, workingDir)
 
-  for (const port of [4001, 4243, 4454, 4457, 8080]) {
+  for (const port of [4001, 4243, 4454, 4458, 8080]) {
     if (await portInUse(port)) {
       throw new Error(`port ${port} is already in use`)
     }
   }
 
-  const proc = execa(binary, ['--working_dir', workingDir], { env: { RUST_BACKTRACE: '1' } })
+  const proc = execa(binary, ['--working-dir', workingDir], { env: { RUST_BACKTRACE: '1' } })
   const shutdown = async () => {
     console.log('node %s killing process', nodeName)
     proc.kill('SIGTERM')
   }
-  const { log, flush } = mkProcessLogger(logger, nodeName, ['ActyxOS started'])
+    const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
 
   await new Promise((res, rej) => {
     proc.stdout?.on('data', (s: Buffer | string) => log('stdout', s) && res())
@@ -66,8 +66,7 @@ export const mkNodeLocalProcess = async (
     name: nodeName,
     target,
     host: 'process',
-    runtimes: [],
-    ax: new CLI('localhost:4457', axBinaryPath),
+    ax: await CLI.build('localhost:4458', axBinaryPath),
     actyxOS: Client(opts),
     _private: {
       shutdown,
@@ -92,7 +91,7 @@ export const mkNodeLocalDocker = async (
   // exposing the ports and then using -P to use random (free) ports, avoiding trouble
   const command =
     'docker run -d --rm -e AX_DEV_MODE=1 -e ENABLE_DEBUG_LOGS=1 -v /data --privileged ' +
-    '--expose 4001 --expose 4457 --expose 4454 --expose 4243 -P ' +
+    '--expose 4001 --expose 4458 --expose 4454 --expose 4243 -P ' +
     image
 
   const dockerRun = await execa.command(command)
@@ -105,7 +104,7 @@ export const mkNodeLocalDocker = async (
 
   try {
     const proc = execa('docker', ['logs', '--follow', container])
-    const { log, flush } = mkProcessLogger(logger, nodeName, ['ActyxOS ready'])
+    const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
 
     await new Promise((res, rej) => {
       proc.stdout?.on('data', (s: Buffer | string) => log('stdout', s) && res())
@@ -129,7 +128,7 @@ export const mkNodeLocalDocker = async (
     )[0].NetworkSettings.Ports
 
     const port = (original: number): string => ports[`${original}/tcp`][0].HostPort
-    const axHost = `localhost:${port(4457)}`
+    const axHost = `localhost:${port(4458)}`
     const apiConsole = `http://localhost:${port(4454)}/api/`
     const apiEvent = `http://localhost:${port(4454)}/api/`
     const opts = DefaultClientOpts()
@@ -141,8 +140,7 @@ export const mkNodeLocalDocker = async (
       name: nodeName,
       target,
       host: 'docker',
-      runtimes: ['docker'],
-      ax: new CLI(axHost, axBinaryPath),
+      ax: await CLI.build(axHost, axBinaryPath),
       actyxOS: Client(opts),
       _private: {
         shutdown,

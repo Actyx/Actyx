@@ -5,7 +5,7 @@ import { createKey, deleteKey } from '../src/infrastructure/aws'
 import { ActyxOSNode, AwsKey, printTarget } from '../src/infrastructure/types'
 import { setupAnsible, setupTestProjects } from '../src/setup-projects'
 import { promises as fs } from 'fs'
-import { Arch, Config, Host, OS, Runtime, Settings } from './types'
+import { Arch, Config, Host, OS, Settings } from './types'
 import YAML from 'yaml'
 import { rightOrThrow } from '../src/infrastructure/rightOrThrow'
 import execa from 'execa'
@@ -32,9 +32,8 @@ export type NodeSetup = {
 
 export type Stubs = {
   axOnly: ActyxOSNode
-  hostUnreachable: ActyxOSNode
-  actyxOSUnreachable: ActyxOSNode
-  mkStub: (os: OS, arch: Arch, host: Host, runtimes: Runtime[], name: string) => ActyxOSNode
+  unreachable: ActyxOSNode
+  mkStub: (os: OS, arch: Arch, host: Host, name: string) => Promise<ActyxOSNode>
 }
 export type MyGlobal = typeof global & { axNodeSetup: NodeSetup; stubs: Stubs }
 
@@ -56,10 +55,10 @@ const getGitHash = async (settings: Settings) => {
 const getPeerId = async (ax: CLI, retries = 10): Promise<string | undefined> => {
   await new Promise((res) => setTimeout(res, 1000))
   const state = await retryTimes(ax.swarms.state, 3)
-  if ('Err' in state) {
+  if (state.code != 'OK') {
     return retries === 0 ? undefined : getPeerId(ax, retries - 1)
   } else {
-    return state.Ok.swarm.peer_id
+    return state.result.swarm.peer_id
   }
 }
 
@@ -127,12 +126,23 @@ const setAllSettings = async (
   })
 
   const result = await Promise.all(
-    nodes.map((node) =>
-      node.ax.settings.set('com.actyx.os', SettingsInput.FromValue(settings(node.name))),
-    ),
+    nodes.map(async (node) => {
+      let retry_cnt = 0
+      let result = { code: 'ERR_NODE_UNREACHABLE' }
+      while (result.code !== 'OK' && retry_cnt < 10) {
+        await new Promise((res) => setTimeout(res, 1000))
+        result = await node.ax.settings.set(
+          'com.actyx.os',
+          SettingsInput.FromValue(settings(node.name)),
+        )
+
+        retry_cnt += 1
+      }
+      return result
+    }),
   )
   const errors = result.map((res, idx) => ({ res, idx })).filter(({ res }) => res.code !== 'OK')
-  console.log('%i errors', errors.length)
+  console.log('%i errors setting settings', errors.length)
   for (const { res, idx } of errors) {
     console.log('%s:', nodes[idx], res)
   }
@@ -141,11 +151,11 @@ const setAllSettings = async (
 const getNumPeersMax = async (nodes: ActyxOSNode[]): Promise<number> => {
   const getNumPeersOne = async (ax: CLI) => {
     const state = await retryTimes(ax.swarms.state, 3)
-    if ('Err' in state) {
-      console.log(`error getting peers: ${state.Err.message}`)
+    if (state.code != 'OK') {
+      console.log(`error getting peers: ${state.message}`)
       return -1
     }
-    const numPeers = Object.values(state.Ok.swarm.peers).filter(
+    const numPeers = Object.values(state.result.swarm.peers).filter(
       (peer) => peer.connection_state === 'Connected',
     ).length
     return numPeers
@@ -230,8 +240,7 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
     ec2,
     key,
     nodes: [],
-    // Overwrite gitHash in settings
-    settings: { ...config.settings, gitHash, keepNodesRunning },
+    settings: { ...config.settings, keepNodesRunning },
     gitHash,
     runIdentifier: key.keyName,
   }
@@ -258,11 +267,7 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
 
   console.log(
     '\n*** ActyxOS nodes started ***\n\n- ' +
-      axNodeSetup.nodes
-        .map(
-          (node) => `${node.name} on ${printTarget(node.target)} with runtimes [${node.runtimes}]`,
-        )
-        .join('\n- ') +
+      axNodeSetup.nodes.map((node) => `${node.name} on ${printTarget(node.target)}`).join('\n- ') +
       '\n',
   )
 

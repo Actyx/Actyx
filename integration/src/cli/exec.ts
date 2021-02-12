@@ -8,13 +8,13 @@ import {
   Response_Settings_Scopes,
   Response_Settings_Schema,
   Response_Swarms_Keygen,
+  Response_Users_Keygen,
 } from './types'
 import { isLeft } from 'fp-ts/lib/Either'
 import { PathReporter } from 'io-ts/lib/PathReporter'
 import execa from 'execa'
 import { StringDecoder } from 'string_decoder'
 import { Transform } from 'stream'
-import fetch from 'node-fetch'
 import * as path from 'path'
 import { rightOrThrow } from '../infrastructure/rightOrThrow'
 
@@ -64,6 +64,9 @@ export const SettingsInput = {
 }
 
 type Exec = {
+  users: {
+    keyGen: () => Promise<Response_Users_Keygen>
+  }
   swarms: {
     keyGen: (file?: string) => Promise<Response_Swarms_Keygen>
     state: () => Promise<Response_Internal_Swarm_State>
@@ -88,6 +91,12 @@ type Exec = {
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export const mkExec = (binary: string, addr: string): Exec => ({
+  users: {
+    keyGen: async (): Promise<Response_Users_Keygen> => {
+      const response = await exec(binary, ['users', 'keygen'])
+      return rightOrThrow(Response_Users_Keygen.decode(response), response)
+    },
+  },
   swarms: {
     keyGen: async (file): Promise<Response_Swarms_Keygen> => {
       const fileArgs = file ? ['-o', file] : []
@@ -95,8 +104,7 @@ export const mkExec = (binary: string, addr: string): Exec => ({
       return rightOrThrow(Response_Swarms_Keygen.decode(response), response)
     },
     state: async (): Promise<Response_Internal_Swarm_State> => {
-      const response = await fetch(`http://${addr}/_internal/swarm/state`)
-      const json = await response.json()
+      const json = await exec(binary, ['_internal', 'swarm', '--local', addr])
       return rightOrThrow(Response_Internal_Swarm_State.decode(json), json)
     },
   },

@@ -39,7 +39,7 @@ export const waitForNodeToBeConfigured = async (node: ActyxOSNode): Promise<void
     if (response.code == 'OK') {
       expect(response).toMatchObject({
         code: 'OK',
-        result: [{ ...response.result[0], connection: 'reachable', settingsValid: true }],
+        result: [{ ...response.result[0], connection: 'reachable' }],
       })
     } else {
       expect(false)

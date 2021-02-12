@@ -33,7 +33,6 @@ export const mkNodeSshProcess = async (
 
   return await forwardPortsAndBuildClients(ssh, nodeName, target, proc[0], {
     host: 'process',
-    runtimes: [],
   })
 }
 
@@ -69,13 +68,12 @@ export const mkNodeSshDocker = async (
 
   const command =
     'docker run -i --rm -e AX_DEV_MODE=1 -e ENABLE_DEBUG_LOGS=1 -v /data --privileged ' +
-    '-p 4001:4001 -p 127.0.0.1:4457:4457 -p 127.0.0.1:4454:4454 -p 127.0.0.1:4243:4243 ' +
+    '-p 4001:4001 -p 127.0.0.1:4458:4458 -p 127.0.0.1:4454:4454 -p 127.0.0.1:4243:4243 ' +
     actyxOsDockerImage(target.arch, gitHash)
   const proc = await startActyxOS(nodeName, logger, ssh, command)
 
   return await forwardPortsAndBuildClients(ssh, nodeName, target, proc[0], {
     host: 'docker',
-    runtimes: ['docker'],
   })
 }
 
@@ -163,7 +161,7 @@ function startActyxOS(
         rej(new Error(`node ${nodeName}: ActyxOS did not start within ${START_TIMEOUT / 1000}sec`)),
       START_TIMEOUT,
     )
-    const { log, flush } = mkProcessLogger(logger, nodeName, ['ActyxOS ready', 'ActyxOS started'])
+    const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
     const proc = ssh.exec(command)
     proc.stdout?.on('data', (s: Buffer | string) => {
       if (log('stdout', s)) {
@@ -194,17 +192,18 @@ export const forwardPortsAndBuildClients = async (
   actyxOsProc: execa.ExecaChildProcess<string> | undefined,
   theRest: Omit<ActyxOSNode, 'ax' | 'actyxOS' | '_private' | 'name' | 'target'>,
 ): Promise<ActyxOSNode> => {
-  const [[port4243, port4454, port4457], proc] = await ssh.forwardPorts(4243, 4454, 4457)
+  const [[port4243, port4454, port4458], proc] = await ssh.forwardPorts(4243, 4454, 4458)
 
-  console.log('node %s console reachable on port %i', nodeName, port4457)
+  console.log('node %s console reachable on port %i', nodeName, port4458)
   console.log('node %s event service reachable on port %i', nodeName, port4454)
   console.log('node %s pond service reachable on port %i', nodeName, port4243)
 
   const axBinaryPath = await currentAxBinary()
-  const axHost = `localhost:${port4457}`
-  const ax = new CLI(axHost, axBinaryPath)
+  const axHost = `localhost:${port4458}`
+  console.error('created cli w/ ', axHost)
+  const ax = await CLI.build(axHost, axBinaryPath)
 
-  const apiConsole = `http://localhost:${port4457}/api/`
+  const apiConsole = `http://localhost:${port4458}/api/`
   const apiEvent = `http://localhost:${port4454}/api/`
   const opts = DefaultClientOpts()
   opts.Endpoints.ConsoleService.BaseUrl = apiConsole
