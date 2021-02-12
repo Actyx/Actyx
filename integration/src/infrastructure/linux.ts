@@ -161,7 +161,7 @@ function startActyxOS(
         rej(new Error(`node ${nodeName}: ActyxOS did not start within ${START_TIMEOUT / 1000}sec`)),
       START_TIMEOUT,
     )
-    const { log, flush } = mkProcessLogger(logger, nodeName, ['ActyxOS ready', 'ActyxOS started'])
+    const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
     const proc = ssh.exec(command)
     proc.stdout?.on('data', (s: Buffer | string) => {
       if (log('stdout', s)) {

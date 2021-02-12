@@ -92,11 +92,11 @@ function startActyxOS(
   nodeName: string,
   logger: (s: string) => void,
   ssh: Ssh,
-  command = 'C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyxos.exe --working_dir C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyxos-data --background',
+  command = 'C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyxos.exe --working-dir C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyxos-data --background',
 ): Promise<[execa.ExecaChildProcess<string>]> {
   // awaiting a Promise<Promise<T>> yields T (WTF?!?) so we need to put it into an array
   return new Promise((res, rej) => {
-    const { log, flush } = mkProcessLogger(logger, nodeName, ['ActyxOS ready', 'ActyxOS started'])
+    const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
     const proc = ssh.exec(command)
     proc.stdout?.on('data', (s: Buffer | string) => {
       if (log('stdout', s)) {

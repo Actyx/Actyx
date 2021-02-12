@@ -41,7 +41,7 @@ export const mkNodeLocalProcess = async (
     console.log('node %s killing process', nodeName)
     proc.kill('SIGTERM')
   }
-  const { log, flush } = mkProcessLogger(logger, nodeName, ['ActyxOS started'])
+    const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
 
   await new Promise((res, rej) => {
     proc.stdout?.on('data', (s: Buffer | string) => log('stdout', s) && res())
@@ -104,7 +104,7 @@ export const mkNodeLocalDocker = async (
 
   try {
     const proc = execa('docker', ['logs', '--follow', container])
-    const { log, flush } = mkProcessLogger(logger, nodeName, ['ActyxOS ready'])
+    const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
 
     await new Promise((res, rej) => {
       proc.stdout?.on('data', (s: Buffer | string) => log('stdout', s) && res())
