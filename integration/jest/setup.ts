@@ -33,7 +33,7 @@ export type NodeSetup = {
 export type Stubs = {
   axOnly: ActyxOSNode
   unreachable: ActyxOSNode
-  mkStub: (os: OS, arch: Arch, host: Host, name: string) => ActyxOSNode
+  mkStub: (os: OS, arch: Arch, host: Host, name: string) => Promise<ActyxOSNode>
 }
 export type MyGlobal = typeof global & { axNodeSetup: NodeSetup; stubs: Stubs }
 

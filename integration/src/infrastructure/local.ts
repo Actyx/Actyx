@@ -66,7 +66,7 @@ export const mkNodeLocalProcess = async (
     name: nodeName,
     target,
     host: 'process',
-    ax: new CLI('localhost:4458', axBinaryPath),
+    ax: await CLI.build('localhost:4458', axBinaryPath),
     actyxOS: Client(opts),
     _private: {
       shutdown,
@@ -140,7 +140,7 @@ export const mkNodeLocalDocker = async (
       name: nodeName,
       target,
       host: 'docker',
-      ax: new CLI(axHost, axBinaryPath),
+      ax: await CLI.build(axHost, axBinaryPath),
       actyxOS: Client(opts),
       _private: {
         shutdown,

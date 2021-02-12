@@ -1,9 +1,15 @@
 import { stubs } from '../stubs'
 import { selectNodes } from './nodeselection'
+import { ActyxOSNode } from './types'
 
-const n1 = stubs.mkStub('android', 'aarch64', 'android', 'n0')
-const n2 = stubs.mkStub('linux', 'x86_64', 'docker', 'n1')
-const n3 = stubs.mkStub('windows', 'aarch64', 'process', 'n2')
+let n1: ActyxOSNode
+let n2: ActyxOSNode
+let n3: ActyxOSNode
+beforeAll(async () => {
+  n1 = await stubs.mkStub('android', 'aarch64', 'android', 'n0')
+  n2 = await stubs.mkStub('linux', 'x86_64', 'docker', 'n1')
+  n3 = await stubs.mkStub('windows', 'aarch64', 'process', 'n2')
+})
 
 describe('NodeSelection', () => {
   it('should fail', () => {

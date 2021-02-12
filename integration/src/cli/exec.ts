@@ -8,6 +8,7 @@ import {
   Response_Settings_Scopes,
   Response_Settings_Schema,
   Response_Swarms_Keygen,
+  Response_Users_Keygen,
 } from './types'
 import { isLeft } from 'fp-ts/lib/Either'
 import { PathReporter } from 'io-ts/lib/PathReporter'
@@ -63,6 +64,9 @@ export const SettingsInput = {
 }
 
 type Exec = {
+  users: {
+    keyGen: () => Promise<Response_Users_Keygen>
+  }
   swarms: {
     keyGen: (file?: string) => Promise<Response_Swarms_Keygen>
     state: () => Promise<Response_Internal_Swarm_State>
@@ -87,6 +91,12 @@ type Exec = {
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export const mkExec = (binary: string, addr: string): Exec => ({
+  users: {
+    keyGen: async (): Promise<Response_Users_Keygen> => {
+      const response = await exec(binary, ['users', 'keygen'])
+      return rightOrThrow(Response_Users_Keygen.decode(response), response)
+    },
+  },
   swarms: {
     keyGen: async (file): Promise<Response_Swarms_Keygen> => {
       const fileArgs = file ? ['-o', file] : []

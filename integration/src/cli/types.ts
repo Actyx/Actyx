@@ -28,6 +28,10 @@ const ERR_NODE_UNREACHABLE = io.type({
   code: io.literal('ERR_NODE_UNREACHABLE'),
   message: io.string,
 })
+const ERR_FILE_EXISTS = io.type({
+  code: io.literal('ERR_FILE_EXISTS'),
+  message: io.string,
+})
 
 export const Response_Nodes_Ls = io.union([
   ERR_INTERNAL_ERROR,
@@ -209,3 +213,18 @@ export const Response_Swarms_Keygen = io.union([
 ])
 
 export type Response_Swarms_Keygen = io.TypeOf<typeof Response_Swarms_Keygen>
+
+export const Response_Users_Keygen = io.union([
+  ERR_FILE_EXISTS,
+  io.intersection([
+    _OK,
+    io.type({
+      result: io.type({
+        pubKey: io.string,
+        keystorePath: io.string,
+      }),
+    }),
+  ]),
+])
+
+export type Response_Users_Keygen = io.TypeOf<typeof Response_Users_Keygen>

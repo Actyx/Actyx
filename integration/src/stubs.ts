@@ -5,19 +5,19 @@ import { Arch, Host, OS } from '../jest/types'
 import { currentAxBinary } from './infrastructure/settings'
 import { MyGlobal, Stubs } from '../jest/setup'
 
-const mkNodeStub = (
+const mkNodeStub = async (
   axBinaryPath: string,
   os: OS,
   arch: Arch,
   host: Host,
   name: string,
   addr = 'localhost',
-): ActyxOSNode => {
+): Promise<ActyxOSNode> => {
   return {
     name,
     host,
     target: { os, arch, kind: { type: 'test' }, _private: { cleanup: () => Promise.resolve() } },
-    ax: new CLI(addr, axBinaryPath),
+    ax: await CLI.build(addr, axBinaryPath),
     actyxOS: Client(),
     _private: {
       shutdown: () => Promise.resolve(),
@@ -35,8 +35,8 @@ export const stubs = (<MyGlobal>global).stubs
 // To be called in Jest's TestEnvironment prepration procedure: `environment.ts`
 export const setupStubs = async (): Promise<Stubs> => {
   const axBinaryPath = await currentAxBinary()
-  const def = mkNodeStub(axBinaryPath, 'android', 'aarch64', 'android', 'foo', 'localhost')
-  const unreachable = mkNodeStub(
+  const def = await mkNodeStub(axBinaryPath, 'android', 'aarch64', 'android', 'foo', 'localhost')
+  const unreachable = await mkNodeStub(
     axBinaryPath,
     'android',
     'aarch64',

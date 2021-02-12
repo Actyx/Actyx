@@ -201,7 +201,7 @@ export const forwardPortsAndBuildClients = async (
   const axBinaryPath = await currentAxBinary()
   const axHost = `localhost:${port4458}`
   console.error('created cli w/ ', axHost)
-  const ax = new CLI(axHost, axBinaryPath)
+  const ax = await CLI.build(axHost, axBinaryPath)
 
   const apiConsole = `http://localhost:${port4458}/api/`
   const apiEvent = `http://localhost:${port4454}/api/`

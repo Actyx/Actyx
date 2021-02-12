@@ -20,7 +20,7 @@ class MyEnvironment extends NodeEnvironment {
     axNodeSetup.thisTestEnvNodes = []
 
     for (const node of axNodeSetup.nodes) {
-      node.ax = new CLI(node._private.axHost, node._private.axBinaryPath)
+      node.ax = await CLI.build(node._private.axHost, node._private.axBinaryPath)
 
       const opts = DefaultClientOpts()
       opts.Endpoints.ConsoleService.BaseUrl = node._private.apiConsole
