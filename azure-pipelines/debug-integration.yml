@@ -14,9 +14,6 @@ stages:
       - job: integrationTest
         displayName: Integration Test
         steps:
-          - task: DownloadPipelineArtifact@2
-            inputs:
-              path: pipeline-artifacts
           - bash: |
               set -e
               build/bin/install-vault.sh
