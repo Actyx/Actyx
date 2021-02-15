@@ -34,6 +34,8 @@ mod tags;
 pub use client::EventService;
 pub use event::{Event, EventKey, Metadata};
 pub use scalars::{AppId, NodeId, SessionId, StreamId, StreamNr};
-pub use service::{StartFrom, SubscribeMonotonicRequest, SubscribeMonotonicResponse};
+pub use service::{
+    QueryApiResponse, StartFrom, SubscribeApiResponse, SubscribeMonotonicRequest, SubscribeMonotonicResponse,
+};
 pub use snapshot::{Compression, SnapshotData};
 pub use tags::{Tag, TagSet};

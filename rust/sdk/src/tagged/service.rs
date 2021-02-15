@@ -93,6 +93,24 @@ pub enum SubscribeMonotonicResponse {
     TimeTravel { new_start: EventKey },
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum QueryApiResponse {
+    #[serde(rename_all = "camelCase")]
+    Event(EventResponse<Payload>),
+    // #[serde(rename_all = "camelCase")]
+    // Offset(OffsetMap),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum SubscribeApiResponse {
+    #[serde(rename_all = "camelCase")]
+    Event(EventResponse<Payload>),
+    // #[serde(rename_all = "camelCase")]
+    // Offset(OffsetMap),
+}
+
 /// Response to the `node_id` endpoint
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
