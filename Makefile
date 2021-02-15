@@ -92,14 +92,11 @@ prepare-docker:
 	docker pull actyx/cosmos:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
 
 export DOCKER_CLI_EXPERIMENTAL := enabled
-LITERAL_SPACE :=
-LITERAL_SPACE +=
-LITERAL_COMMA := ,
 prepare-docker-crosscompile:
 	./bin/check-docker-requirements.sh check_docker_version
 	./bin/check-docker-requirements.sh enable_multi_arch_support
 	for i in `docker buildx ls | awk '{print $$1}'`; do docker buildx rm $$i; done
-	docker buildx create --platform $(subst $(LITERAL_SPACE),$(LITERAL_COMMA),$(foreach a,$(architectures),$(dockerPlatform-$(a)))) --use
+	docker buildx create --use
 
 prepare-rs:
 	# install rustup
@@ -242,6 +239,7 @@ target-linux-x86_64 = x86_64-unknown-linux-musl
 target-linux-armv7 = armv7-unknown-linux-musleabihf
 target-linux-arm = arm-unknown-linux-musleabi
 target-windows-x86_64 = x86_64-pc-windows-gnu
+
 # non-musl targets
 target-nonmusl-linux-aarch64 = aarch64-unknown-linux-gnu
 target-nonmusl-linux-x86_64 = x86_64-unknown-linux-gnu
@@ -389,62 +387,14 @@ dist/bin/windows-x86_64/ActyxOS-Installer.exe: misc/actyxos-node-manager/out/Act
 	  actyx/util:windowsinstallercreator-x64-latest \
 	  ./build.sh
 
+# this will build the actyx docker image for all supported architectures. the
+# resulting images won't be loaded into the local docker daemon, because that
+# is not supported yet by docker, but will just remain in the build cache. one
+# can either load a single one of them providing the appropriate `--platform`
+# and `--load`, or `--push` them to a remote registry
+docker-build-actyx:
+	docker buildx build --platform linux/amd64,linux/arm/v6,linux/arm/v7,linux/aarch64 -f ops/docker/images/actyx/Dockerfile .
 
-# Getting the current git branch and commit hash
-gitBranch=$(shell echo `git rev-parse --abbrev-ref HEAD` | sed -e "s,refs/heads/,,g")
-gitHash=$(shell git log -1 --pretty=%H)
-
-# For each directory inside ${dockerDir}, create targets for each architecture, e.g.
-# 	actyxos --> docker-build-actyxos-x86_64
-# 			--> docker-build-actyxos-aarch64
-# 			--> docker-build-actyxos-arm
-# 			--> docker-build-actyxos-armv7
-#
-# The `docker buildx` command will be used to cross compile the images.
-dockerDir = ops/docker/images
-dockerTargetPatterns = $(foreach a,$(architectures),$(shell arr=(`ls -1 ${dockerDir} | grep -v -e "^musl\\$$"`); printf "docker-build-%s-$(a)\n " "$${arr[@]}"))
-dockerBuildDir = dist/docker
-
-# mapping from arch to docker platform
-dockerPlatform-aarch64 = linux/arm64
-dockerPlatform-x86_64 = linux/amd64
-dockerPlatform-armv7 = linux/arm/v7
-dockerPlatform-arm = linux/arm/v6
-DOCKER_REPO ?= actyx/cosmos
-getImageNameDockerhub = $(DOCKER_REPO):$(1)-$(2)-$(3)
-$(dockerTargetPatterns): make-always
-	# must not use `component` here because of dependencies
-	$(eval DOCKER_TAG:=$(subst docker-build-,,$@))
-	$(eval arch:=$(shell echo $(DOCKER_TAG) | cut -f2 -d-))
-	$(eval DOCKER_IMAGE_NAME:=$(shell echo $(DOCKER_TAG) | cut -f1 -d-))
-	echo $(DOCKER_TAG) $(arch) $(DOCKER_IMAGE_NAME)
-	mkdir -p $(dockerBuildDir)
-	cp -RPp $(dockerDir)/$(DOCKER_IMAGE_NAME)/* $(dockerBuildDir)
-	$(eval IMAGE_NAME:=$(call getImageNameDockerhub,$(DOCKER_IMAGE_NAME),$(arch),$(gitHash)))
-	if [ -f $(dockerBuildDir)/prepare-image.sh ]; then \
-	  export ARCH=$(arch); \
-	  export GIT_HASH=$(gitHash); \
-	  cd $(dockerBuildDir); \
-	  echo 'Running prepare script'; \
-	  ./prepare-image.sh ..; \
-	fi
-
-	DOCKER_CLI_EXPERIMENTAL=enabled DOCKER_BUILDKIT=1 docker buildx build \
-	--platform $(dockerPlatform-$(arch)) \
-	--load \
-	--tag $(IMAGE_NAME) \
-	--build-arg BUILD_DIR=$(dockerBuildDir) \
-	--build-arg ARCH=$(arch) \
-	--build-arg ARCH_AND_GIT_TAG=$(arch)-$(gitHash) \
-	--build-arg IMAGE_NAME=actyx/cosmos \
-	--build-arg GIT_COMMIT=$(gitHash) \
-	--build-arg gitBranch=$(gitBranch) \
-	--build-arg BUILD_RUST_TOOLCHAIN=$(BUILD_RUST_TOOLCHAIN) \
-	-f $(dockerBuildDir)/Dockerfile .
-	echo "Cleaning up $(dockerBuildDir)"
-	rm -rf $(dockerBuildDir)
-
-$(foreach a,$(architectures),$(eval docker-build-dockerloggingplugin-$(a): dist/bin/linux-$(a)/docker-logging-plugin))
-$(foreach a,$(architectures),$(eval docker-build-actyxos-$(a): dist/bin/linux-$(a)/actyx-linux docker-build-dockerloggingplugin-$(a)))
-
-docker-build-actyxos: $(foreach a,$(architectures),docker-build-actyxos-$(a))
+# build for local architecture and load into docker daemon
+docker-build-actyx-current:
+	docker buildx build --load -f ops/docker/images/actyx/Dockerfile .
