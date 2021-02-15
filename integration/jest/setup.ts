@@ -254,11 +254,18 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   /*
    * Create all the nodes as described in the settings.
    */
-  for (const node of await Promise.all(config.hosts.map(createNode))) {
-    if (node === undefined) {
-      continue
+  try {
+    for (const node of await Promise.all(config.hosts.map(createNode))) {
+      if (node === undefined) {
+        continue
+      }
+      axNodeSetup.nodes.push(node)
     }
-    axNodeSetup.nodes.push(node)
+  } catch (e) {
+    // any error have already been logged inside `createNode`
+    console.log('error during node creation, shutting down ..')
+    await Promise.all(axNodeSetup.nodes.map((node) => node._private.shutdown()))
+    throw new Error('configuring bootstrap failed')
   }
 
   console.log(
