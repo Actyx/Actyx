@@ -254,11 +254,7 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   /*
    * Create all the nodes as described in the settings.
    */
-  for (const node of await Promise.all(
-    config.hosts.map((host) =>
-      createNode(host).catch(console.error.bind('node %s cannot create AWS node:', host.name)),
-    ),
-  )) {
+  for (const node of await Promise.all(config.hosts.map(createNode))) {
     if (node === undefined) {
       continue
     }
