@@ -11,7 +11,7 @@ export const settings = (): Settings => (<MyGlobal>global).axNodeSetup.settings
 // .exe will be appended in case target is windows
 export const enum Binary {
   ax = 'ax',
-  actyxOsLinux = 'actyxos-linux',
+  actyxOsLinux = 'actyx-linux',
   actyxOsInstaller = 'ActyxOS-Installer',
 }
 

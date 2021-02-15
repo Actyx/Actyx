@@ -17,8 +17,8 @@ SHELL := /bin/bash
 
 architectures = aarch64 x86_64 armv7 arm
 
-all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyxos-linux ax,linux-$(arch)/$(bin)))
-all-WINDOWS := $(foreach t,actyxos.exe ax.exe ActyxOS-Installer.exe,windows-x86_64/$t)
+all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyx-linux ax,linux-$(arch)/$(bin)))
+all-WINDOWS := $(foreach t,actyx.exe ax.exe ActyxOS-Installer.exe,windows-x86_64/$t)
 all-ANDROID := actyxos.apk
 
 CARGO_TEST_JOBS := 8
@@ -255,7 +255,7 @@ image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 
 # list all os-arch and binary names
 osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64
-binaries = ax ax.exe actyxos-linux actyxos.exe
+binaries = ax ax.exe actyx-linux actyx.exe
 
 # compute list of all OSs (e.g. linux, windows) and rust targets (looking into the target-* vars)
 os = $(sort $(foreach oa,$(osArch),$(word 1,$(subst -, ,$(oa)))))
@@ -370,9 +370,9 @@ dist/bin/windows-x86_64/actyxos-node-manager.exe: misc/actyxos-node-manager/out/
 	mkdir -p $(dir $@)
 	cp -a $</actyxos-node-manager.exe $@
 
-dist/bin/windows-x86_64/ActyxOS-Installer.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyxos.exe make-always
+dist/bin/windows-x86_64/ActyxOS-Installer.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyx.exe make-always
 	cp $</actyxos-node-manager.exe misc/actyxos-win-installer
-	cp dist/bin/windows-x86_64/actyxos.exe misc/actyxos-win-installer
+	cp dist/bin/windows-x86_64/actyx.exe misc/actyxos-win-installer
 	cp dist/bin/windows-x86_64/ax.exe misc/actyxos-win-installer
 	cp -r misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 misc/actyxos-win-installer/node-manager
 	# ls -alh .
@@ -445,6 +445,6 @@ $(dockerTargetPatterns): make-always
 	rm -rf $(dockerBuildDir)
 
 $(foreach a,$(architectures),$(eval docker-build-dockerloggingplugin-$(a): dist/bin/linux-$(a)/docker-logging-plugin))
-$(foreach a,$(architectures),$(eval docker-build-actyxos-$(a): dist/bin/linux-$(a)/actyxos-linux docker-build-dockerloggingplugin-$(a)))
+$(foreach a,$(architectures),$(eval docker-build-actyxos-$(a): dist/bin/linux-$(a)/actyx-linux docker-build-dockerloggingplugin-$(a)))
 
 docker-build-actyxos: $(foreach a,$(architectures),docker-build-actyxos-$(a))

@@ -6,7 +6,7 @@ Test suites for combined Actyx products.
 
 Integration tests use primarily the artifacts built from the current commit, so you need to:
 
-- Make ActyxOS and related binaries (`actyxos-linux` and `ax`) available by compiling them for the "current" platform as well as the platforms to be tested.
+- Make ActyxOS and related binaries (`actyx-linux` and `ax`) available by compiling them for the "current" platform as well as the platforms to be tested.
   The artifacts will be taken from `Cosmos/dist/bin/**` as well as DockerHub, use the `make all` command in the `Cosmos` folder
 - run `nvm use && npm install && npm run build` in `js/os-sdk` and `js/pond`
 

@@ -19,7 +19,7 @@
   win_package:
     path: 'c:\temp\{{ pw_package_file }}'
     arguments: "{{ pw_package_args }}"
-    creates_path: 'C:\Users\Administrator\AppData\Local\ActyxOS\actyxos.exe'
+    creates_path: 'C:\Users\Administrator\AppData\Local\ActyxOS\actyx.exe'
 
 - name: Create SSH Directory
   win_file:
