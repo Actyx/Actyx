@@ -47,8 +47,13 @@ const getGitHash = async (settings: Settings) => {
     console.log('Using git hash from settings:', settings.gitHash)
     return settings.gitHash
   }
+  const result = await currentHead()
+  console.log('Using git hash from current HEAD:', result)
+  return result
+}
+
+const currentHead = async () => {
   const result = await execa.command('git rev-parse HEAD')
-  console.log('Using git hash from current HEAD:', result.stdout)
   return result.stdout
 }
 
@@ -240,7 +245,15 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
     ec2,
     key,
     nodes: [],
-    settings: { ...config.settings, keepNodesRunning },
+    settings: {
+      ...config.settings,
+      keepNodesRunning,
+      // Only override gitHash in settings, if its different from the current
+      // HEAD. If it's the current HEAD, we signal it by setting it to null. This
+      // effectively makes sure, that instead of downloading the artifacts,
+      // they're going to be looked up in `Cosmos/dist`.
+      gitHash: gitHash === (await currentHead()) ? null : gitHash,
+    },
     gitHash,
     runIdentifier: key.keyName,
   }
