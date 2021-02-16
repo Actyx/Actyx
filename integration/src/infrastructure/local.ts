@@ -90,7 +90,7 @@ export const mkNodeLocalDocker = async (
 
   // exposing the ports and then using -P to use random (free) ports, avoiding trouble
   const command =
-    'docker run -d --rm -e AX_DEV_MODE=1 -e ENABLE_DEBUG_LOGS=1 -v /data --privileged ' +
+    'docker run -d --rm -v /data ' +
     '--expose 4001 --expose 4458 --expose 4454 --expose 4243 -P ' +
     image
 
