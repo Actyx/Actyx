@@ -41,7 +41,7 @@ export const mkNodeLocalProcess = async (
     console.log('node %s killing process', nodeName)
     proc.kill('SIGTERM')
   }
-    const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
+  const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
 
   await new Promise((res, rej) => {
     proc.stdout?.on('data', (s: Buffer | string) => log('stdout', s) && res())
