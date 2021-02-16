@@ -79,10 +79,10 @@ stages:
               MASTER_TAG=""
               if [ "$GIT_COMMIT" == "$head_of_master" ]; then
                   echo "Running on HEAD of master ($head_of_master), tagging image as latest"
-                  MASTER_TAG="actyx/cosmos:actyx-latest"
+                  MASTER_TAG="--tag actyx/cosmos:actyx-latest"
               fi
-              # TODO: add --push
               docker buildx build \
+                --push \
                 --platform linux/arm64/v8,linux/amd64,linux/arm/v6,linux/arm/v7 \
                 --build-arg GIT_COMMIT=$GIT_COMMIT \
                 --tag actyx/cosmos:actyx-$GIT_COMMIT $MASTER_TAG \
