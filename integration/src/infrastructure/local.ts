@@ -30,7 +30,7 @@ export const mkNodeLocalProcess = async (
   alreadyRunning = nodeName
   console.log('node %s starting locally: %s in %s', nodeName, binary, workingDir)
 
-  for (const port of [4001,  4454, 4458]) {
+  for (const port of [4001, 4454, 4458]) {
     if (await portInUse(port)) {
       throw new Error(`port ${port} is already in use`)
     }
