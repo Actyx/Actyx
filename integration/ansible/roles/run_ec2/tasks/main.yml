@@ -26,6 +26,7 @@
       tag:Customer: Cosmos integration
       tag:ci_run: "{{ ci_run }}"
       instance-state-name: running
+      image_id: "{{ ec2_image_id }}"
     tags:
       Customer: Cosmos integration
       ci_run: "{{ ci_run }}"
