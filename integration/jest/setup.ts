@@ -248,7 +248,7 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
     settings: {
       ...config.settings,
       keepNodesRunning,
-      // Only override gitHash in settings, if its different from the current
+      // Only override gitHash in settings if it’s different from the current
       // HEAD. If it's the current HEAD, we signal it by setting it to null. This
       // effectively makes sure, that instead of downloading the artifacts,
       // they're going to be looked up in `Cosmos/dist`.
