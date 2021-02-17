@@ -278,7 +278,7 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
     // any error have already been logged inside `createNode`
     console.log('error during node creation, shutting down ..')
     await Promise.all(axNodeSetup.nodes.map((node) => node._private.shutdown()))
-    throw new Error('configuring bootstrap failed')
+    throw new Error('node creation failed')
   }
 
   console.log(
