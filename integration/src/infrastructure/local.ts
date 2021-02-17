@@ -15,7 +15,7 @@ export const mkNodeLocalProcess = async (
   target: Target,
   logger: (s: string) => void,
 ): Promise<ActyxOSNode> => {
-  const workingDir = path.resolve(settings().tempDir, 'actyxos-data')
+  const workingDir = path.resolve(settings().tempDir, 'actyx-data')
   await remove(workingDir)
   await ensureDir(workingDir)
   const binary = await currentActyxOsBinary()
