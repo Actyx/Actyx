@@ -11,7 +11,7 @@ export const settings = (): Settings => (<MyGlobal>global).axNodeSetup.settings
 // .exe will be appended in case target is windows
 export const enum Binary {
   ax = 'ax',
-  actyxOsLinux = 'actyxos-linux',
+  actyxOsLinux = 'actyx-linux',
   actyxOsInstaller = 'ActyxOS-Installer',
 }
 
@@ -27,8 +27,9 @@ const getCurrent = (bin: Binary) =>
 export const actyxOsLinuxBinary = async (arch: Arch): Promise<string> =>
   getOrDownload('linux', arch, Binary.actyxOsLinux, settings().gitHash)
 
+// multiarch manifest, so it should Do The Right Thing (TM)
 export const actyxOsDockerImage = (arch: Arch, version: string): string =>
-  `actyx/cosmos:actyxos-${arch}-${version}`
+  `actyx/cosmos:actyx-${version}`
 
 export const windowsActyxOsInstaller = async (arch: Arch): Promise<string> =>
   getOrDownload('windows', arch, Binary.actyxOsInstaller, settings().gitHash)

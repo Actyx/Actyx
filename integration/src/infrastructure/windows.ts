@@ -92,7 +92,7 @@ function startActyxOS(
   nodeName: string,
   logger: (s: string) => void,
   ssh: Ssh,
-  command = 'C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyxos.exe --working-dir C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyxos-data --background',
+  command = 'C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyx.exe --working-dir C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyx-data --background',
 ): Promise<[execa.ExecaChildProcess<string>]> {
   // awaiting a Promise<Promise<T>> yields T (WTF?!?) so we need to put it into an array
   return new Promise((res, rej) => {

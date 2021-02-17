@@ -15,7 +15,7 @@ export const mkNodeLocalProcess = async (
   target: Target,
   logger: (s: string) => void,
 ): Promise<ActyxOSNode> => {
-  const workingDir = path.resolve(settings().tempDir, 'actyxos-data')
+  const workingDir = path.resolve(settings().tempDir, 'actyx-data')
   await remove(workingDir)
   await ensureDir(workingDir)
   const binary = await currentActyxOsBinary()
@@ -41,7 +41,7 @@ export const mkNodeLocalProcess = async (
     console.log('node %s killing process', nodeName)
     proc.kill('SIGTERM')
   }
-    const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
+  const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
 
   await new Promise((res, rej) => {
     proc.stdout?.on('data', (s: Buffer | string) => log('stdout', s) && res())
@@ -90,7 +90,7 @@ export const mkNodeLocalDocker = async (
 
   // exposing the ports and then using -P to use random (free) ports, avoiding trouble
   const command =
-    'docker run -d --rm -e AX_DEV_MODE=1 -e ENABLE_DEBUG_LOGS=1 -v /data --privileged ' +
+    'docker run -d --rm -v /data ' +
     '--expose 4001 --expose 4458 --expose 4454 --expose 4243 -P ' +
     image
 
