@@ -68,30 +68,28 @@ stages:
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: linux-binaries
             condition: succeeded()
-      - job:
-        displayName: make docker-build-actyxos-
-        strategy:
-          matrix:
-            x8664:
-              ARCH: x86_64
-            aarch64:
-              ARCH: aarch64
-            armv7:
-              ARCH: armv7
-            arm:
-              ARCH: arm
+      - job: makeActyxDocker
+        displayName: actyx multiarch docker images
         steps:
           - bash: |
               set -e
-              build/bin/install-vault.sh
-              make docker-build-actyxos-$ARCH
-              ./azure-pipelines/push-to-dockerhub.sh actyx/cosmos:actyxos-$ARCH
+              GIT_COMMIT=`git log -1 --pretty=%H`
+              MASTER_TAG=
+              head_of_master=`git rev-parse origin/master`
+              MASTER_TAG=""
+              if [ "$GIT_COMMIT" == "$head_of_master" ]; then
+                  echo "Running on HEAD of master ($head_of_master), tagging image as latest"
+                  MASTER_TAG="--tag actyx/cosmos:actyx-latest"
+              fi
+              docker buildx build \
+                --push \
+                --platform linux/arm64/v8,linux/amd64,linux/arm/v6,linux/arm/v7 \
+                --build-arg GIT_COMMIT=$GIT_COMMIT \
+                --tag actyx/cosmos:actyx-$GIT_COMMIT $MASTER_TAG \
+                -f ops/docker/images/actyx/Dockerfile \
+                .
             env:
-              # Map secrets to env vars. This needs to be done manually
-              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
-              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
-
       - job:
         displayName: make all-android
         steps:

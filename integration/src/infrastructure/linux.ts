@@ -67,7 +67,7 @@ export const mkNodeSshDocker = async (
   console.log('node %s Docker login successful', nodeName)
 
   const command =
-    'docker run -i --rm -e AX_DEV_MODE=1 -e ENABLE_DEBUG_LOGS=1 -v /data --privileged ' +
+    'docker run -i --rm -v /data ' +
     '-p 4001:4001 -p 127.0.0.1:4458:4458 -p 127.0.0.1:4454:4454 ' +
     actyxOsDockerImage(target.arch, gitHash)
   const proc = await startActyxOS(nodeName, logger, ssh, command)
