@@ -12,7 +12,7 @@
 
 - name: Copy Install File
   win_copy:
-    src: "{{ pw_package_path }}{{ pw_package_file }}"
+    src: "{{ pw_package_path }}/{{ pw_package_file }}"
     dest: 'c:\temp\{{ pw_package_file }}'
 
 - name: Install ActyxOS
