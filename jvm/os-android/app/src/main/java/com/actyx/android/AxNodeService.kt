@@ -20,10 +20,10 @@ class AxNodeService : Service() {
     stopSelf()
     Intent(this, MainActivity::class.java).also {
       val message = when (code) {
-        10 -> "Actyx stopped by node. $msg"
-        11 -> "" // stopped by the user
-        12 -> "Actyx stopped by Android OS"
-        42 -> "Failed to start node. $msg"
+        AxNode.NODE_STOPPED_BY_NODE -> "Actyx stopped by node. $msg"
+        AxNode.NODE_STOPPED_BY_NODE_UI -> "" // stopped by the user
+        AxNode.NODE_STOPPED_BY_HOST -> "Actyx stopped by Android OS"
+        AxNode.FAILED_TO_START_NODE -> "Failed to start node. $msg"
         else -> "Error code: $code. $msg"
       }
       it.putExtra(AXNODE_MESSAGE, message)

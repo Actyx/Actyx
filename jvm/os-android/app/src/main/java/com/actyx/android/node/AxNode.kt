@@ -34,6 +34,13 @@ class AxNode(ctx: Context, handler: AxNodeMessageHandler) {
     }
   }
 
-  fun shutdownByUser() = lib.axnode_shutdown(0)
-  fun shutdownBySystem() = lib.axnode_shutdown(1)
+  fun shutdownByUser() = lib.axnode_shutdown(NODE_STOPPED_BY_NODE_UI)
+  fun shutdownBySystem() = lib.axnode_shutdown(NODE_STOPPED_BY_HOST)
+
+  companion object {
+    const val NODE_STOPPED_BY_NODE = 10
+    const val NODE_STOPPED_BY_NODE_UI = 11
+    const val NODE_STOPPED_BY_HOST = 12
+    const val FAILED_TO_START_NODE = 42
+  }
 }
