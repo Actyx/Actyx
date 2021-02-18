@@ -19,10 +19,12 @@ class AxNodeService : Service() {
     stopForeground(true)
     stopSelf()
     Intent(this, MainActivity::class.java).also {
-      val message = if (code == 11) {
-        msg
-      } else {
-        "Error code: $code. $msg"
+      val message = when (code) {
+        10 -> "Actyx stopped by node. $msg"
+        11 -> "" // stopped by the user
+        12 -> "Actyx stopped by Android OS"
+        42 -> "Failed to start node. $msg"
+        else -> "Error code: $code. $msg"
       }
       it.putExtra(AXNODE_MESSAGE, message)
       it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

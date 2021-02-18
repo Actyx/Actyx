@@ -6,11 +6,6 @@ import com.sun.jna.CallbackThreadInitializer
 import com.sun.jna.Native
 import com.sun.jna.Pointer
 
-// Args defined in /Cosmos/rt-master/node/src/components/android.rs
-// 42 -> axnode_init failure
-// 10 -> node stopped by node
-// 11 -> node stopped by node ui
-// 12 -> node stopped by host
 typealias AxNodeMessageHandler = (code: Int, msg: String) -> Unit
 
 class AxNode(ctx: Context, handler: AxNodeMessageHandler) {
