@@ -68,7 +68,7 @@ export const mkNodeSshDocker = async (
 
   const command =
     'docker run -i --rm -v /data ' +
-    '-p 4001:4001 -p 127.0.0.1:4458:4458 -p 127.0.0.1:4454:4454 -p 127.0.0.1:4243:4243 ' +
+    '-p 4001:4001 -p 127.0.0.1:4458:4458 -p 127.0.0.1:4454:4454 ' +
     actyxOsDockerImage(target.arch, gitHash)
   const proc = await startActyxOS(nodeName, logger, ssh, command)
 
@@ -192,11 +192,10 @@ export const forwardPortsAndBuildClients = async (
   actyxOsProc: execa.ExecaChildProcess<string> | undefined,
   theRest: Omit<ActyxOSNode, 'ax' | 'actyxOS' | '_private' | 'name' | 'target'>,
 ): Promise<ActyxOSNode> => {
-  const [[port4243, port4454, port4458], proc] = await ssh.forwardPorts(4243, 4454, 4458)
+  const [[port4454, port4458], proc] = await ssh.forwardPorts(4454, 4458)
 
   console.log('node %s console reachable on port %i', nodeName, port4458)
   console.log('node %s event service reachable on port %i', nodeName, port4454)
-  console.log('node %s pond service reachable on port %i', nodeName, port4243)
 
   const axBinaryPath = await currentAxBinary()
   const axHost = `localhost:${port4458}`
@@ -210,7 +209,7 @@ export const forwardPortsAndBuildClients = async (
   opts.Endpoints.EventService.BaseUrl = apiEvent
   const actyxOS = Client(opts)
 
-  const apiPond = `ws://localhost:${port4243}/store_api`
+  const apiPond = `ws://localhost:${port4454}/store_api`
 
   const shutdown = async () => {
     console.log('node %s shutting down', nodeName)

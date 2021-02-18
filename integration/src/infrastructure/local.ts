@@ -30,7 +30,7 @@ export const mkNodeLocalProcess = async (
   alreadyRunning = nodeName
   console.log('node %s starting locally: %s in %s', nodeName, binary, workingDir)
 
-  for (const port of [4001, 4243, 4454, 4458, 8080]) {
+  for (const port of [4001, 4454, 4458]) {
     if (await portInUse(port)) {
       throw new Error(`port ${port} is already in use`)
     }
@@ -74,7 +74,7 @@ export const mkNodeLocalProcess = async (
       axHost: 'localhost',
       apiConsole: opts.Endpoints.ConsoleService.BaseUrl,
       apiEvent: opts.Endpoints.EventService.BaseUrl,
-      apiPond: 'ws://localhost:4243/store_api',
+      apiPond: 'ws://localhost:4454/store_api',
     },
   }
 }
@@ -90,9 +90,7 @@ export const mkNodeLocalDocker = async (
 
   // exposing the ports and then using -P to use random (free) ports, avoiding trouble
   const command =
-    'docker run -d --rm -v /data ' +
-    '--expose 4001 --expose 4458 --expose 4454 --expose 4243 -P ' +
-    image
+    'docker run -d --rm -v /data ' + '--expose 4001 --expose 4458 --expose 4454 -P ' + image
 
   const dockerRun = await execa.command(command)
   const container = dockerRun.stdout
@@ -148,7 +146,7 @@ export const mkNodeLocalDocker = async (
         axHost,
         apiConsole,
         apiEvent,
-        apiPond: `ws://localhost:${port(4243)}/store_api`,
+        apiPond: `ws://localhost:${port(4454)}/store_api`,
       },
     }
   } catch (err) {

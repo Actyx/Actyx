@@ -38,7 +38,7 @@ describe('Pond', () => {
     for (const res of results) {
       expect(res).toEqual(firstResult)
     }
-  })
+  }, 180_000)
 
   // Assert that Fish only receive exactly those events that they are subscribed to,
   // and always in the proper order.
