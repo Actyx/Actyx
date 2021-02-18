@@ -7,6 +7,7 @@ import { forwardPortsAndBuildClients } from './linux'
 import { mkProcessLogger } from './mkProcessLogger'
 import { windowsActyxOsInstaller } from './settings'
 import { Ssh } from './ssh'
+import * as path from 'path'
 import { ActyxOSNode, AwsKey } from './types'
 
 export const mkNodeWinRM = async (
@@ -19,7 +20,14 @@ export const mkNodeWinRM = async (
   publicKeyPath: string,
   logger: (line: string) => void,
 ): Promise<ActyxOSNode | undefined> => {
-  const _installer_exists = await windowsActyxOsInstaller('x86_64')
+  const absInstallerPath = await windowsActyxOsInstaller('x86_64')
+  // Input to Ansible is the relative path to a folder in which
+  // `ActyxOS-Installer.exe` exists. The path needs to be relative to the sub
+  // directory where the relevant ansible task lies.
+  const relInstallerFolderPath = path.relative(
+    'ansible/roles/prepare_windows',
+    path.dirname(absInstallerPath),
+  )
   const pipEnv = await getPipEnv()
   const proc = execa.command(
     `${pipEnv} run ansible-playbook -i inventory/actyx.aws_ec2.yml -v playbook.yml`,
@@ -34,6 +42,7 @@ export const mkNodeWinRM = async (
         EC2_KEY_NAME: key.keyName,
         EC2_NODE_NAME: nodeName,
         SSH_PUBLIC_KEY: publicKeyPath,
+        LOCAL_INSTALLER_DIR: relInstallerFolderPath,
       },
     },
   )
@@ -92,7 +101,7 @@ function startActyxOS(
   nodeName: string,
   logger: (s: string) => void,
   ssh: Ssh,
-  command = 'C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyxos.exe --working-dir C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyxos-data --background',
+  command = 'C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyx.exe --working-dir C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyx-data --background',
 ): Promise<[execa.ExecaChildProcess<string>]> {
   // awaiting a Promise<Promise<T>> yields T (WTF?!?) so we need to put it into an array
   return new Promise((res, rej) => {

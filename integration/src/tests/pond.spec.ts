@@ -1,4 +1,4 @@
-import { Fish, FishId, Pond, Tag } from '@actyx/pond'
+import { Fish, FishId, Pond, Tag, Tags, Where } from '@actyx/pond'
 import { Observable } from 'rxjs'
 import { runConcurrentlyOnAll, withPond } from '../infrastructure/hosts'
 
@@ -20,11 +20,13 @@ const isSortedAsc = (data: string[]): boolean => {
 }
 
 describe('Pond', () => {
+  // Assert that events are always fed to Fish in the correct order on every node, at any time,
+  // and also assert that all events reach all Fish eventually.
   test('ordering / time travel', async () => {
     const randomId = String(Math.random())
 
     const results = await runConcurrentlyOnAll<string[]>((nodes) => {
-      const t = concurrentOrderingTest(nodes.length, randomId)
+      const t = (pond: Pond) => concurrentOrderingTest(nodes.length, 1000, Tag(randomId), pond)
       return nodes.map((node) => withPond(node, t))
     })
 
@@ -36,8 +38,47 @@ describe('Pond', () => {
     for (const res of results) {
       expect(res).toEqual(firstResult)
     }
+  }, 180_000)
+
+  // Assert that Fish only receive exactly those events that they are subscribed to,
+  // and always in the proper order.
+  test('event filter / subscription', async () => {
+    const randomId = String(Math.random())
+    const base = Tag(randomId)
+
+    const allResults = await runConcurrentlyOnAll<string[][]>((nodes) => {
+      const t = (pond: Pond) =>
+        Promise.all([
+          // Some different ways in which tags might be combined.
+          // We run all of these in parallel, to assert their events are not accidentally mixed up.
+          concurrentOrderingTest(nodes.length, 300, base.withId('/1'), pond),
+          concurrentOrderingTest(nodes.length, 300, base.and('/2'), pond),
+          concurrentOrderingTest(nodes.length, 300, Tag(':3:').and(base).and('::3'), pond),
+          concurrentOrderingTest(nodes.length, 300, Tag('xxx').and(base.withId('___4___')), pond),
+          concurrentOrderingTest(nodes.length, 300, Tag('5').withId(randomId), pond),
+        ])
+      return nodes.map((node) => withPond(node, t))
+    })
+
+    // Basically we need to `transpose` allResults.
+    // But our fp-ts is too old, does not have transpose fn.
+    for (const resNumber in allResults[0]) {
+      const results = allResults.map((r) => r[resNumber])
+
+      expect(results.length).toBeGreaterThan(1)
+
+      const firstResult = results[0]
+      expect(isSortedAsc(firstResult)).toBeTruthy()
+
+      for (const res of results) {
+        expect(res).toEqual(firstResult)
+      }
+    }
   })
 
+  // Roughly assert causal consistency, by asserting that for every event we see in the Fish,
+  // we have already seen at least as many events as the writer of that event.
+  // FIXME currently skipped because we have no causal consistency guarantee.
   test.skip('sequencing / causal consistency', async () => {
     const randomId = String(Math.random())
 
@@ -52,13 +93,61 @@ describe('Pond', () => {
   })
 })
 
+const randomTags = (prefix: string) => (c: number): Tags<never> => {
+  return Tag(prefix)
+    .withId(String(c))
+    .and(Tag(c + 'ok'))
+}
+
+const padSubWithDummies = <E>(where: Where<E>): Where<E> => {
+  const rt = randomTags('in')
+
+  for (;;) {
+    const c = Math.random()
+    if (c < 0.4) {
+      where = where.or(rt(c)) as Where<E>
+    } else if (c < 0.8) {
+      where = rt(c).or(where)
+    } else {
+      break
+    }
+  }
+
+  return where
+}
+
+const padEmitWithDummies = <E>(tags: Tags<E>): Tags<E> => {
+  const rt = randomTags('out')
+
+  for (;;) {
+    const c = Math.random()
+    if (c < 0.4) {
+      tags = tags.and(rt(c))
+    } else if (c < 0.8) {
+      tags = rt(c).and(tags)
+    } else {
+      break
+    }
+  }
+
+  return tags
+}
+
+const fishName = (source: string, subs: Where<unknown>) =>
+  `source=${source}, subs=${subs.toString()}`
+
 // Emit events while reading events from other nodes, too.
 // Assert all intermediate observed states are properly sorted (time travel)
 // and the final state (all events from all participants) is reached.
-const concurrentOrderingTest = (numNodes: number, streamName: string) => async (
+const concurrentOrderingTest = async (
+  numNodes: number,
+  eventsPerNode: number,
+  streamTags: Tags<unknown>,
   pond: Pond,
 ): Promise<string[]> => {
-  const where = Tag(streamName)
+  const where = padSubWithDummies(streamTags)
+
+  const { sourceId } = pond.info()
 
   const f: Fish<string[], unknown> = {
     where,
@@ -67,10 +156,8 @@ const concurrentOrderingTest = (numNodes: number, streamName: string) => async (
       state.push(metadata.eventId)
       return state
     },
-    fishId: FishId.of('orderingtest', 'test', 1),
+    fishId: FishId.of('orderingtest', fishName(sourceId, where), 1),
   }
-
-  const eventsPerNode = 1000
 
   const expectedSum = numNodes * eventsPerNode
 
@@ -91,8 +178,9 @@ const concurrentOrderingTest = (numNodes: number, streamName: string) => async (
     ),
   )
 
+  const emissionTags = padEmitWithDummies(streamTags)
   for (let i = 0; i < eventsPerNode; i++) {
-    await pond.emit(Tag('whatever').and(where), { hello: 'world' }).toPromise()
+    await pond.emit(emissionTags, { hello: 'world' }).toPromise()
     await Observable.timer(10 * Math.random()).toPromise()
   }
 
@@ -108,8 +196,12 @@ const sequenceCausalityTest = (numNodes: number, streamName: string) => async (
 
   const tags = Tag(streamName).and(Tag<Event>('seqtest'))
 
+  const where = padSubWithDummies(tags)
+
+  const { sourceId } = pond.info()
+
   const f: Fish<string[], Event> = {
-    where: tags,
+    where,
     initialState: [],
     onEvent: (state, event, metadata) => {
       if (state.length < event.numLocallyKnown) {
@@ -124,7 +216,7 @@ const sequenceCausalityTest = (numNodes: number, streamName: string) => async (
       state.push(metadata.eventId)
       return state
     },
-    fishId: FishId.of('seqtest', 'test', 1),
+    fishId: FishId.of('seqtest', fishName(sourceId, where), 1),
   }
 
   const eventsPerNode = 1000
@@ -148,10 +240,11 @@ const sequenceCausalityTest = (numNodes: number, streamName: string) => async (
     ),
   )
 
+  const emissionTags = padEmitWithDummies(tags)
   const cancel = pond.keepRunning(
     f,
     async (state, enqueue) => {
-      enqueue(tags, { numLocallyKnown: state.length })
+      enqueue(emissionTags, { numLocallyKnown: state.length })
       await Observable.timer(10 * Math.random()).toPromise()
     },
     (state) => state.length >= expectedSum,

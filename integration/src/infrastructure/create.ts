@@ -203,6 +203,7 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
       process.stdout.write(`${entry.time.toISOString()} ${entry.line}\n`)
     }
     await target?._private.cleanup()
+    throw e
   }
 }
 

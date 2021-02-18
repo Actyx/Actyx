@@ -35,6 +35,7 @@ stages:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
       - job:
         displayName: make validate-os validate-rust-sdk
         steps:
@@ -45,6 +46,7 @@ stages:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
       - job:
         displayName: make validate-os-android
         steps:
@@ -56,6 +58,7 @@ stages:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
       - job:
         displayName: make validate-misc
         steps:
@@ -67,6 +70,7 @@ stages:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
 
   - stage: notifySuccess
     dependsOn:

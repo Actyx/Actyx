@@ -47,8 +47,13 @@ const getGitHash = async (settings: Settings) => {
     console.log('Using git hash from settings:', settings.gitHash)
     return settings.gitHash
   }
+  const result = await currentHead()
+  console.log('Using git hash from current HEAD:', result)
+  return result
+}
+
+const currentHead = async () => {
   const result = await execa.command('git rev-parse HEAD')
-  console.log('Using git hash from current HEAD:', result.stdout)
   return result.stdout
 }
 
@@ -96,7 +101,7 @@ const getBootstrapNodes = async (bootstrap: ActyxOSNode[]): Promise<string[]> =>
       addr.push(kind.privateAddress)
     }
     if (pid !== undefined) {
-      ret.push(...addr.map((a) => `/ip4/${a}/tcp/4001/ipfs/${pid}`))
+      ret.push(...addr.map((a) => `/ip4/${a}/tcp/4001/p2p/${pid}`))
     }
   }
   return ret
@@ -240,7 +245,15 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
     ec2,
     key,
     nodes: [],
-    settings: { ...config.settings, keepNodesRunning },
+    settings: {
+      ...config.settings,
+      keepNodesRunning,
+      // Only override gitHash in settings if it’s different from the current
+      // HEAD. If it's the current HEAD, we signal it by setting it to null. This
+      // effectively makes sure, that instead of downloading the artifacts,
+      // they're going to be looked up in `Cosmos/dist`.
+      gitHash: gitHash === (await currentHead()) ? null : gitHash,
+    },
     gitHash,
     runIdentifier: key.keyName,
   }
@@ -254,15 +267,18 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   /*
    * Create all the nodes as described in the settings.
    */
-  for (const node of await Promise.all(
-    config.hosts.map((host) =>
-      createNode(host).catch(console.error.bind('node %s cannot create AWS node:', host.name)),
-    ),
-  )) {
-    if (node === undefined) {
-      continue
+  try {
+    for (const node of await Promise.all(config.hosts.map(createNode))) {
+      if (node === undefined) {
+        continue
+      }
+      axNodeSetup.nodes.push(node)
     }
-    axNodeSetup.nodes.push(node)
+  } catch (e) {
+    // any error have already been logged inside `createNode`
+    console.log('error during node creation, shutting down ..')
+    await Promise.all(axNodeSetup.nodes.map((node) => node._private.shutdown()))
+    throw new Error('node creation failed')
   }
 
   console.log(

@@ -12,14 +12,14 @@
 
 - name: Copy Install File
   win_copy:
-    src: "{{ pw_package_path }}{{ pw_package_file }}"
+    src: "{{ pw_package_path }}/{{ pw_package_file }}"
     dest: 'c:\temp\{{ pw_package_file }}'
 
 - name: Install ActyxOS
   win_package:
     path: 'c:\temp\{{ pw_package_file }}'
     arguments: "{{ pw_package_args }}"
-    creates_path: 'C:\Users\Administrator\AppData\Local\ActyxOS\actyxos.exe'
+    creates_path: 'C:\Users\Administrator\AppData\Local\ActyxOS\actyx.exe'
 
 - name: Create SSH Directory
   win_file:
