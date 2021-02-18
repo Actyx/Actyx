@@ -1,4 +1,4 @@
-# ActyxOS on Android
+# Actyx on Android
 
 ## Code style
 To format the code, we use [ktlint](https://github.com/shyiko/ktlint)

@@ -19,7 +19,7 @@ architectures = aarch64 x86_64 armv7 arm
 
 all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyxos-linux ax,linux-$(arch)/$(bin)))
 all-WINDOWS := $(foreach t,actyxos.exe ax.exe ActyxOS-Installer.exe,windows-x86_64/$t)
-all-ANDROID := actyxos.apk
+all-ANDROID := actyx.apk
 
 CARGO_TEST_JOBS := 8
 CARGO_BUILD_JOBS := 8
@@ -352,7 +352,7 @@ jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnod
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
       ./gradlew ktlintCheck build assembleRelease androidGitVersion
 
-dist/bin/actyxos.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
+dist/bin/actyx.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
 	mkdir -p $(dir $@)
 	cp $< $@
 
