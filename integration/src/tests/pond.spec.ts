@@ -36,7 +36,7 @@ describe('Pond', () => {
     for (const res of results) {
       expect(res).toEqual(firstResult)
     }
-  })
+  }, 180_000)
 
   test.skip('sequencing / causal consistency', async () => {
     const randomId = String(Math.random())
