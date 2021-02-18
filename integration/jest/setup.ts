@@ -101,7 +101,7 @@ const getBootstrapNodes = async (bootstrap: ActyxOSNode[]): Promise<string[]> =>
       addr.push(kind.privateAddress)
     }
     if (pid !== undefined) {
-      ret.push(...addr.map((a) => `/ip4/${a}/tcp/4001/ipfs/${pid}`))
+      ret.push(...addr.map((a) => `/ip4/${a}/tcp/4001/p2p/${pid}`))
     }
   }
   return ret
