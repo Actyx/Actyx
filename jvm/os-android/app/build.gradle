@@ -4,7 +4,6 @@ plugins {
   id 'kotlinx-serialization'
   id 'org.jlleitschuh.gradle.ktlint'
   id 'com.gladed.androidgitversion'
-  id 'com.google.protobuf'
 }
 
 apply from: '../actyx-local/actyx.properties'
@@ -58,35 +57,6 @@ android {
   ktlint {
     android = true
   }
-    sourceSets {
-        main {
-            java.srcDirs += "${protobuf.generatedFilesBaseDir}/main/javalite"
-            proto {
-                srcDir '../../../protocols/protobuf'
-            }
-        }
-    }
-}
-
-protobuf {
-    protoc {
-        artifact = 'com.google.protobuf:protoc:3.0.0'
-    }
-    plugins {
-        javalite {
-            artifact = 'com.google.protobuf:protoc-gen-javalite:3.0.0'
-        }
-    }
-    generateProtoTasks {
-        all().each { task ->
-            task.builtins {
-                remove java
-            }
-            task.plugins {
-                javalite { }
-            }
-        }
-    }
 }
 
 dependencies {
