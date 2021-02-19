@@ -90,21 +90,21 @@ stages:
                 .
             env:
               BASH_ENV: "~/.bashrc"
-      - job:
-        displayName: make all-android
-        steps:
-          - bash: |
-              set -e
-              build/bin/install-vault.sh
-              make all-android
-            env:
-              # Map secrets to env vars. This needs to be done manually
-              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
-              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
-              BASH_ENV: "~/.bashrc"
-          - publish: $(System.DefaultWorkingDirectory)/dist/bin
-            artifact: android-binaries
-            condition: succeeded()
+              #      - job:
+              #        displayName: make all-android
+              #        steps:
+              #          - bash: |
+              #              set -e
+              #              build/bin/install-vault.sh
+              #              make all-android
+              #            env:
+              #              # Map secrets to env vars. This needs to be done manually
+              #              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              #              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              #              BASH_ENV: "~/.bashrc"
+              #          - publish: $(System.DefaultWorkingDirectory)/dist/bin
+              #            artifact: android-binaries
+              #            condition: succeeded()
 
   - stage: upload
     displayName: Upload to az blob store
