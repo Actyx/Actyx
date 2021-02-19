@@ -4,6 +4,7 @@ plugins {
   id 'kotlinx-serialization'
   id 'org.jlleitschuh.gradle.ktlint'
   id 'com.gladed.androidgitversion'
+  id 'com.quittle.setup-android-sdk' version '2.1.0'
 }
 
 apply from: '../actyx-local/actyx.properties'
