@@ -35,11 +35,14 @@
 //! deserializing to a type that supports equality and total ordering.
 
 use chrono::{Local, SecondsFormat, TimeZone};
+use libipld::DagCbor;
 use serde::{de::Error, Deserialize, Serialize};
-use std::cmp::Ordering;
-use std::convert::TryFrom;
-use std::fmt::{self, Debug, Display, Formatter};
-use std::str::FromStr;
+use std::{
+    cmp::Ordering,
+    convert::TryFrom,
+    fmt::{self, Debug, Display, Formatter},
+    str::FromStr,
+};
 
 #[cfg(any(test, feature = "arb"))]
 mod arb;
@@ -201,7 +204,7 @@ pub struct StreamInfo {
 ///
 /// see [`Event::extract`](struct.Event.html#method.extract) for supported ways of using the
 /// data
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Ord, PartialOrd, DagCbor)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct Payload(Opaque);
 
