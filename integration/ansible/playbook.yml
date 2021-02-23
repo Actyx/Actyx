@@ -22,9 +22,9 @@
   hosts: windows
   gather_facts: false
   vars:
-    pw_package_file: ActyxOS-Installer.exe
+    pw_package_file: Actyx-Installer.exe
     pw_package_path: "{{ lookup('env','LOCAL_INSTALLER_DIR') }}"
-    pw_package_id: ActyxOS
+    pw_package_id: Actyx
     pw_package_args: "/S /background"
     pw_winssh_pubkey: "{{ lookup('env','SSH_PUBLIC_KEY') }}"
     ansible_connection: winrm
