@@ -130,11 +130,18 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "os": {
+            "node": {
               "$ref": "#/definitions/Composite/LogLevel"
             },
             "apps": {
-              "$ref": "#/definitions/Composite/LogLevel"
+              "type": "object",
+              "propertyNames": {
+                "pattern": "^(\\d|\\w|-|_)+(\\.(\\d|\\w|-|_)+)*$"
+              },
+              "additionalProperties": {
+                "$ref": "#/definitions/Composite/LogLevel"
+              },
+              "description": "Key-value pairs where the key is an app's log level."
             }
           }
         },
@@ -153,7 +160,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "os": {
+        "node": {
           "$ref": "#/definitions/Composite/NodeLicense",
           "default": "development"
         },
