@@ -100,20 +100,9 @@ impl Decode<DagCborCodec> for Opaque {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::from_cbor_me;
     use libipld::codec::Codec;
     use serde_json::json;
-
-    #[test]
-    fn opaque_json_roundtrip() {
-        let text = "";
-        // using JSON value allows CBOR to use known-length array encoding
-        let o1: Opaque = serde_json::from_value(json!([text])).unwrap();
-        let j = serde_json::to_string(&o1).unwrap();
-        // if we don’t parse the JSON first then CBOR will use indefinite length encoding
-        let v = serde_json::from_str(&j).unwrap();
-        let o2: Opaque = serde_json::from_value(v).unwrap();
-        assert_eq!(o1, o2);
-    }
 
     #[test]
     fn opaque_dag_cbor_roundtrip() -> anyhow::Result<()> {
@@ -121,6 +110,14 @@ mod tests {
         // using JSON value allows CBOR to use known-length array encoding
         let o1: Opaque = serde_json::from_value(json!([text]))?;
         let tmp = DagCborCodec.encode(&o1)?;
+        let expected = from_cbor_me(
+            r#"
+81     # array(1)
+   60  # text(0)
+       # ""
+"#,
+        )?;
+        assert_eq!(tmp, expected);
         let o2: Opaque = DagCborCodec.decode(&tmp)?;
         assert_eq!(o1, o2);
         Ok(())

@@ -206,6 +206,7 @@ pub struct StreamInfo {
 /// data
 #[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Ord, PartialOrd, DagCbor)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
+#[ipld(repr = "value")]
 pub struct Payload(Opaque);
 
 impl Payload {
@@ -261,5 +262,31 @@ impl Default for Payload {
 impl Debug for Payload {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(f, "{}", self.json_string())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::from_cbor_me;
+    use libipld::{cbor::DagCborCodec, codec::Codec};
+
+    #[test]
+    fn payload_dag_cbor_roundtrip() -> anyhow::Result<()> {
+        let text = "";
+        // using JSON value allows CBOR to use known-length array encoding
+        let p1: Payload = serde_json::from_value(json!([text]))?;
+        let tmp = DagCborCodec.encode(&p1)?;
+        let expected = from_cbor_me(
+            r#"
+81     # array(1)
+   60  # text(0)
+       # ""
+"#,
+        )?;
+        assert_eq!(tmp, expected);
+        let p2: Payload = DagCborCodec.decode(&tmp)?;
+        assert_eq!(p1, p2);
+        Ok(())
     }
 }
