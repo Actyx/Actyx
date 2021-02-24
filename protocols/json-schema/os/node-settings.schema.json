@@ -4,8 +4,8 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "swarm": {
-      "$ref": "#/definitions/Swarm"
+    "swarms": {
+      "$ref": "#/definitions/Swarms"
     },
     "licensing": {
       "$ref": "#/definitions/Licensing"
@@ -85,7 +85,7 @@
         ]
       }
     },
-    "Swarm": {
+    "Swarms": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
