@@ -17,11 +17,10 @@ use crate::types::ArcVal;
 use libipld::{
     cbor::DagCborCodec,
     codec::{Decode, Encode},
-    raw_value::IgnoredAny,
+    raw_value::RawValue,
 };
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::convert::TryFrom;
 use std::sync::Arc;
 
 /// A ref-counted slice of memory holding a compact binary representation of an event payload
@@ -83,16 +82,7 @@ impl Encode<DagCborCodec> for Opaque {
 
 impl Decode<DagCborCodec> for Opaque {
     fn decode<R: std::io::Read + std::io::Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
-        // todo: simplify once we got RawValue::into_box or something...
-        use std::io::SeekFrom;
-        let p0 = r.seek(SeekFrom::Current(0))?;
-        IgnoredAny::decode(c, r)?;
-        let p1 = r.seek(SeekFrom::Current(0))?;
-        anyhow::ensure!(p1 > p0);
-        let len = usize::try_from(p1 - p0)?;
-        r.seek(SeekFrom::Start(p0))?;
-        let mut tmp = vec![0u8; len];
-        r.read_exact(&mut tmp)?;
+        let tmp = RawValue::<DagCborCodec>::decode(c, r)?;
         Ok(Self(ArcVal::from_boxed(tmp.into())))
     }
 }
