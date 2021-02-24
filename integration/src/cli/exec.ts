@@ -65,7 +65,7 @@ export const SettingsInput = {
 
 type Exec = {
   users: {
-    keyGen: () => Promise<Response_Users_Keygen>
+    keyGen: (file: string) => Promise<Response_Users_Keygen>
   }
   swarms: {
     keyGen: (file?: string) => Promise<Response_Swarms_Keygen>
@@ -90,10 +90,10 @@ type Exec = {
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export const mkExec = (binary: string, addr: string): Exec => ({
+export const mkExec = (binary: string, addr: string, identityPath: string): Exec => ({
   users: {
-    keyGen: async (): Promise<Response_Users_Keygen> => {
-      const response = await exec(binary, ['users', 'keygen'])
+    keyGen: async (file: string): Promise<Response_Users_Keygen> => {
+      const response = await exec(binary, ['users', 'keygen', '--file', file])
       return rightOrThrow(Response_Users_Keygen.decode(response), response)
     },
   },
@@ -104,25 +104,42 @@ export const mkExec = (binary: string, addr: string): Exec => ({
       return rightOrThrow(Response_Swarms_Keygen.decode(response), response)
     },
     state: async (): Promise<Response_Internal_Swarm_State> => {
-      const json = await exec(binary, ['_internal', 'swarm', '--local', addr])
+      const json = await exec(binary, ['_internal', 'swarm', '--local', addr, '-i', identityPath])
       return rightOrThrow(Response_Internal_Swarm_State.decode(json), json)
     },
   },
   nodes: {
     ls: async (): Promise<Response_Nodes_Ls> => {
-      const response = await exec(binary, [`nodes`, `ls`, `--local`, ...addr.split(' ')])
+      const response = await exec(binary, [
+        `nodes`,
+        `ls`,
+        `--local`,
+        ...addr.split(' '),
+        '-i',
+        identityPath,
+      ])
+      console.log(`trying ${addr} with ${identityPath}`)
       return rightOrThrow(Response_Nodes_Ls.decode(response), response)
     },
   },
   settings: {
     scopes: async () => {
-      const response = await exec(binary, ['settings', 'scopes', '--local', addr])
+      const response = await exec(binary, [
+        'settings',
+        'scopes',
+        '--local',
+        addr,
+        '-i',
+        identityPath,
+      ])
       return rightOrThrow(Response_Settings_Scopes.decode(response), response)
     },
     get: async (scope: string, noDefaults?: boolean): Promise<Response_Settings_Get> => {
       const response = await exec(
         binary,
-        ['settings', 'get', scope, '--local', addr].concat(noDefaults ? ['--no-defaults'] : []),
+        ['settings', 'get', scope, '--local', addr, '-i', identityPath].concat(
+          noDefaults ? ['--no-defaults'] : [],
+        ),
       )
       return rightOrThrow(Response_Settings_Get.decode(response), response)
     },
@@ -131,15 +148,40 @@ export const mkExec = (binary: string, addr: string): Exec => ({
         File: (input) => `@${input.path}`,
         Value: (input) => JSON.stringify(input.value),
       })(settingsInput)
-      const response = await exec(binary, [`settings`, `set`, scope, `--local`, input, addr])
+      const response = await exec(binary, [
+        `settings`,
+        `set`,
+        scope,
+        `--local`,
+        input,
+        addr,
+        '-i',
+        identityPath,
+      ])
       return rightOrThrow(Response_Settings_Set.decode(response), response)
     },
     unset: async (scope: string): Promise<Response_Settings_Unset> => {
-      const response = await exec(binary, [`settings`, `unset`, scope, `--local`, addr])
+      const response = await exec(binary, [
+        `settings`,
+        `unset`,
+        scope,
+        `--local`,
+        addr,
+        '-i',
+        identityPath,
+      ])
       return rightOrThrow(Response_Settings_Unset.decode(response), response)
     },
     schema: async (scope: string) => {
-      const response = await exec(binary, [`settings`, `schema`, `--local`, scope, addr])
+      const response = await exec(binary, [
+        `settings`,
+        `schema`,
+        `--local`,
+        scope,
+        addr,
+        '-i',
+        identityPath,
+      ])
       return rightOrThrow(Response_Settings_Schema.decode(response), response)
     },
   },
@@ -150,9 +192,13 @@ export const mkExec = (binary: string, addr: string): Exec => ({
     ): (() => void) => {
       try {
         //console.log(`starting ax process`)
-        const process = execa(`ax`, [`-j`, `logs`, `tail`, `-f`, `--local`, addr], {
-          buffer: false,
-        })
+        const process = execa(
+          `ax`,
+          [`-j`, `logs`, `tail`, `-f`, `--local`, addr, '-i', identityPath],
+          {
+            buffer: false,
+          },
+        )
         if (process.stdout === null) {
           onError(`stdout is null`)
           // eslint-disable-next-line @typescript-eslint/no-empty-function

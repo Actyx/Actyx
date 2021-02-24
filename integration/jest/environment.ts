@@ -16,6 +16,7 @@ class MyEnvironment extends NodeEnvironment {
     await super.setup()
 
     const axNodeSetup = (<MyGlobal>(<unknown>this.global)).axNodeSetup
+    ;(<MyGlobal>global).axNodeSetup = axNodeSetup
     axNodeSetup.ec2 = new EC2({ region: 'eu-central-1' })
     axNodeSetup.thisTestEnvNodes = []
 
@@ -27,7 +28,6 @@ class MyEnvironment extends NodeEnvironment {
       opts.Endpoints.EventService.BaseUrl = node._private.apiEvent
       node.actyxOS = Client(opts)
     }
-    ;(<MyGlobal>global).axNodeSetup = axNodeSetup
 
     this.global.stubs = await setupStubs()
   }
