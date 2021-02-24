@@ -98,3 +98,9 @@ pub use event::{LamportTimestamp, Offset, OffsetMap, OffsetOrMin, Opaque, ParseE
 pub use event_service::Order;
 
 pub use event_service::EventServiceError;
+
+#[cfg(test)]
+mod test_util;
+
+#[cfg(test)]
+pub use test_util::*;

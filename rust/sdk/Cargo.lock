@@ -31,6 +31,7 @@ dependencies = [
  "derive_more",
  "fixed",
  "futures",
+ "hex",
  "intern-arc",
  "libipld",
  "multibase 0.9.1",
@@ -601,6 +602,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hex"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "644f9158b2f133fd50f5fb3242878846d9eb792e445c893805ff0e3824006e35"
+
+[[package]]
 name = "hmac"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -755,9 +762,9 @@ checksum = "89203f3fba0a3795506acaad8ebce3c80c0af93f994d5a1d7a0b1eeb23271929"
 
 [[package]]
 name = "libipld"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "502662e0fa70757c025b8899b1a738f42fa172e83515e8415a78395dca5b6042"
+checksum = "8d59307d95e7c706e1604be291bee73840751b6bb7dc7b0a7fc3e915e74a8c23"
 dependencies = [
  "async-trait",
  "cached",
@@ -774,9 +781,9 @@ dependencies = [
 
 [[package]]
 name = "libipld-cbor"
-version = "0.10.1"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a596a9245c881c0cadd47f04145cb542eb2f62d5879893656577694f5333730"
+checksum = "a7046a0fadddb99493a63bd6feaa89e48093b582353b18efd95541c8756c64a8"
 dependencies = [
  "byteorder",
  "libipld-core",
@@ -786,9 +793,9 @@ dependencies = [
 
 [[package]]
 name = "libipld-cbor-derive"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec8bbd31f0e333d03236a7445a07bb5677b71cdb0b5b349b6fb2380703c2e934"
+checksum = "ed36af388299bc436f0a49014679b1e81d64757b4bb3413431695e4aea01d928"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -798,9 +805,9 @@ dependencies = [
 
 [[package]]
 name = "libipld-core"
-version = "0.10.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb4c6117e05152bdb8bf1b47b1ebaf22f067a2b8bb99af66886d05d9d8ae0bd8"
+checksum = "ff51610e03e83a91b2ec5c0ba8ce0d63e475677ab34d2eedf99ac438cffebd59"
 dependencies = [
  "anyhow",
  "cid",
@@ -811,9 +818,9 @@ dependencies = [
 
 [[package]]
 name = "libipld-macro"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e726ab1b1e58d285964711c17cff6e678c2b2d80e784f487252c81b35438546"
+checksum = "6a2bdd797b0abb80a52c0b215d8721e31c4162216a7930f41af70517f0ed5193"
 dependencies = [
  "libipld-core",
 ]
