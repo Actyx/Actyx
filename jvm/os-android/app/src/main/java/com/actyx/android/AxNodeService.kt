@@ -22,7 +22,7 @@ class AxNodeService : Service() {
       val message = when (code) {
         AxNode.NODE_STOPPED_BY_NODE -> "Actyx stopped by node. $msg"
         AxNode.NODE_STOPPED_BY_NODE_UI -> "" // stopped by the user
-        AxNode.NODE_STOPPED_BY_HOST -> "Actyx stopped by Android OS"
+        AxNode.NODE_STOPPED_BY_HOST -> "Actyx stopped by Android"
         AxNode.FAILED_TO_START_NODE -> "Failed to start node. $msg"
         else -> "Error code: $code. $msg"
       }
