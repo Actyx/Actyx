@@ -92,6 +92,7 @@ macro_rules! tags {
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct Tag(#[serde(deserialize_with = "crate::scalar::nonempty_string")] ArcVal<str>);
 
+#[allow(clippy::len_without_is_empty)]
 impl Tag {
     pub fn new(value: String) -> std::result::Result<Self, crate::event::ParseError> {
         if value.is_empty() {
@@ -466,7 +467,7 @@ mod tests {
         assert_eq!(
             tags!("c", "b", "c", "a")
                 .iter()
-                .map(|t| t.to_string().to_owned())
+                .map(|t| t.to_string())
                 .collect::<Vec<_>>(),
             vec!["a", "b", "c"]
         );
