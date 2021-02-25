@@ -93,7 +93,7 @@ type Exec = {
 export const mkExec = (binary: string, addr: string, identityPath: string): Exec => ({
   users: {
     keyGen: async (file: string): Promise<Response_Users_Keygen> => {
-      const response = await exec(binary, ['users', 'keygen', '--file', file])
+      const response = await exec(binary, ['users', 'keygen', '--output', file])
       return rightOrThrow(Response_Users_Keygen.decode(response), response)
     },
   },
