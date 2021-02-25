@@ -29,6 +29,7 @@ module.exports = {
         "os/advanced-guides/actyxos-on-docker",
         "os/advanced-guides/actyxos-on-windows",
         "os/advanced-guides/actyxos-on-linux",
+        "os/advanced-guides/actyxos-on-macos",
         "os/advanced-guides/node-and-app-lifecycle",
         "os/advanced-guides/node-and-app-settings",
         "os/advanced-guides/actyxos-bootstrap-node",
