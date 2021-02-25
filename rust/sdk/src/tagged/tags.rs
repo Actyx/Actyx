@@ -2,13 +2,20 @@ use crate::{
     event::{FishName, Semantics},
     types::ArcVal,
 };
-use libipld::DagCbor;
+use libipld::{
+    cbor::DagCborCodec,
+    codec::{Decode, Encode},
+    DagCbor,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeSet,
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
+    fmt, io,
     iter::FromIterator,
     ops::{Add, AddAssign, BitAndAssign, SubAssign},
+    str::FromStr,
+    sync::Arc,
 };
 
 /// Macro for constructing a [`Tag`](event/struct.Tag.html) literal.
@@ -93,15 +100,13 @@ impl Tag {
             Ok(Self(crate::types::ArcVal::from_boxed(value.into())))
         }
     }
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-    pub fn as_arc(&self) -> &::std::sync::Arc<str> {
-        self.0.as_arc()
+
+    pub fn len(&self) -> usize {
+        self.0.len()
     }
 }
 
-impl ::std::convert::TryFrom<&str> for Tag {
+impl TryFrom<&str> for Tag {
     type Error = crate::event::ParseError;
     fn try_from(value: &str) -> std::result::Result<Self, crate::event::ParseError> {
         if value.is_empty() {
@@ -112,9 +117,9 @@ impl ::std::convert::TryFrom<&str> for Tag {
     }
 }
 
-impl ::std::convert::TryFrom<::std::sync::Arc<str>> for Tag {
+impl TryFrom<Arc<str>> for Tag {
     type Error = crate::event::ParseError;
-    fn try_from(value: ::std::sync::Arc<str>) -> std::result::Result<Self, crate::event::ParseError> {
+    fn try_from(value: Arc<str>) -> std::result::Result<Self, crate::event::ParseError> {
         if value.is_empty() {
             Err(crate::event::ParseError::EmptyTag)
         } else {
@@ -123,41 +128,28 @@ impl ::std::convert::TryFrom<::std::sync::Arc<str>> for Tag {
     }
 }
 
-impl ::std::str::FromStr for Tag {
+impl FromStr for Tag {
     type Err = crate::event::ParseError;
     fn from_str(s: &str) -> std::result::Result<Self, crate::event::ParseError> {
-        use std::convert::TryFrom;
         Self::try_from(s)
     }
 }
 
-impl ::std::ops::Deref for Tag {
-    type Target = str;
-    fn deref(&self) -> &Self::Target {
-        self.0.as_ref()
-    }
-}
-
-impl ::std::fmt::Display for Tag {
-    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+impl fmt::Display for Tag {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-impl ::libipld::codec::Decode<::libipld::cbor::DagCborCodec> for Tag {
-    fn decode<R: ::std::io::Read + ::std::io::Seek>(
-        c: ::libipld::cbor::DagCborCodec,
-        r: &mut R,
-    ) -> ::libipld::error::Result<Self> {
-        use ::std::str::FromStr;
+impl Decode<DagCborCodec> for Tag {
+    fn decode<R: io::Read + io::Seek>(c: DagCborCodec, r: &mut R) -> ::libipld::error::Result<Self> {
         Ok(Self::from_str(&String::decode(c, r)?)?)
     }
 }
 
-impl ::libipld::codec::Encode<::libipld::cbor::DagCborCodec> for Tag {
-    fn encode<W: ::std::io::Write>(&self, c: ::libipld::cbor::DagCborCodec, w: &mut W) -> ::libipld::error::Result<()> {
-        use ::std::ops::Deref;
-        self.deref().encode(c, w)
+impl Encode<DagCborCodec> for Tag {
+    fn encode<W: io::Write>(&self, c: DagCborCodec, w: &mut W) -> ::libipld::error::Result<()> {
+        self.0.encode(c, w)
     }
 }
 
@@ -445,16 +437,16 @@ mod tests {
     fn semantics_to_tag() {
         let semantics = semantics!("test");
 
-        assert_eq!("semantics:test", Tag::from(&semantics).as_str());
-        assert_eq!("semantics:test", Tag::from(semantics).as_str());
+        assert_eq!("semantics:test", Tag::from(&semantics).to_string());
+        assert_eq!("semantics:test", Tag::from(semantics).to_string());
     }
 
     #[test]
     fn fish_name_to_tag() {
         let fish_name = fish_name!("test");
 
-        assert_eq!("fish_name:test", Tag::from(&fish_name).as_str());
-        assert_eq!("fish_name:test", Tag::from(fish_name).as_str());
+        assert_eq!("fish_name:test", Tag::from(&fish_name).to_string());
+        assert_eq!("fish_name:test", Tag::from(fish_name).to_string());
     }
 
     #[test]
@@ -474,7 +466,7 @@ mod tests {
         assert_eq!(
             tags!("c", "b", "c", "a")
                 .iter()
-                .map(|t| t.as_str().to_owned())
+                .map(|t| t.to_string().to_owned())
                 .collect::<Vec<_>>(),
             vec!["a", "b", "c"]
         );
