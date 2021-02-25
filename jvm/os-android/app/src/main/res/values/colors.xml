@@ -7,4 +7,6 @@
     <color name="gray_200">#8395B2</color>
     <color name="gray_100">#F4F5F7</color>
     <color name="red_400">#DB3C67</color>
+    <color name="black">#000000</color>
+    <color name="gray_dark">#e1e3e8</color>
 </resources>

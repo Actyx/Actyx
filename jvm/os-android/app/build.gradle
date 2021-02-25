@@ -29,7 +29,7 @@ android {
   }
   buildToolsVersion '30.0.3'
   defaultConfig {
-    applicationId 'com.actyx.os.android'
+    applicationId 'com.actyx.android'
     minSdkVersion 22
     targetSdkVersion 30
     versionCode androidGitVersion.code()

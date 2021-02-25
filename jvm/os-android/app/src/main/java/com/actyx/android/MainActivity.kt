@@ -17,6 +17,7 @@ import com.actyx.android.util.toBitmap
 
 class MainActivity : AppCompatActivity() {
   private val log = Logger()
+  private var shutdownPending = false
 
   @SuppressLint("SourceLockedOrientationActivity")
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,21 +46,30 @@ class MainActivity : AppCompatActivity() {
     if (intent != null && intent.hasExtra(AxNodeService.AXNODE_MESSAGE)) {
       val message = intent.getStringExtra(AxNodeService.AXNODE_MESSAGE)
       log.info("Actyx is stopped. $message")
-      AlertDialog.Builder(this)
-        .setCancelable(false)
-        .setMessage(message)
-        .setPositiveButton(getString(R.string.ok)) { _, _ ->
-          finish()
-          System.exit(0)
-        }
-        .create().apply {
-          setTitle(getString(R.string.actyx_is_stopped))
-          show()
-        }
+      // User initiated shutdown, so skip alert dialog
+      if (shutdownPending) {
+        finish()
+        System.exit(0)
+      } else {
+        AlertDialog.Builder(this)
+          .setCancelable(false)
+          .setMessage(message)
+          .setPositiveButton(getString(R.string.ok)) { _, _ ->
+            finish()
+            System.exit(0)
+          }
+          .create().apply {
+            setTitle(getString(R.string.actyx_is_stopped))
+            show()
+          }
+      }
+    } else if (intent != null && intent.action == AxNodeService.REQUEST_QUIT) {
+      findViewById<Button>(R.id.quit_actyx)?.callOnClick()
     }
   }
 
   private fun signalShutdown() {
+    shutdownPending = true
     Toast.makeText(this, getString(R.string.actyx_is_stopping), Toast.LENGTH_SHORT).show()
     Intent(this@MainActivity, AxNodeService::class.java).also {
       it.action = AxNodeService.STOPFOREGROUND_ACTION
@@ -72,7 +82,7 @@ class MainActivity : AppCompatActivity() {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
       val name = resources.getString(R.string.app_name)
       val icon = ContextCompat.getDrawable(this, R.drawable.actyx_icon)?.toBitmap()
-      val color = ContextCompat.getColor(this, R.color.colorPrimary)
+      val color = ContextCompat.getColor(this, R.color.gray_dark)
       //noinspection deprecation
       setTaskDescription(ActivityManager.TaskDescription(name, icon, color))
     }

@@ -80,13 +80,21 @@ class AxNodeService : Service() {
       getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
     }
 
+    val requestQuitIntent = Intent(this, MainActivity::class.java).apply {
+      action = REQUEST_QUIT
+    }
+
     return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
       .setOngoing(true)
       .setContentTitle(contextText)
       .setSmallIcon(R.drawable.actyx_icon)
+      .setColor(resources.getColor(R.color.colorPrimary))
       .setLargeIcon(BitmapFactory.decodeResource(resources, R.drawable.actyx_icon))
       .setCategory(Notification.CATEGORY_SERVICE)
       .setContentIntent(pendingIntent)
+      .setPriority(NotificationCompat.PRIORITY_LOW)
+      .addAction(0, getString(R.string.quit),
+        PendingIntent.getActivity(this, 0, requestQuitIntent, 0))
       .build()
   }
 
@@ -95,5 +103,6 @@ class AxNodeService : Service() {
     const val ONGOING_NOTIFICATION_ID = 7
     const val STOPFOREGROUND_ACTION = "com.actyx.android.STOPFOREGROUND_ACTION"
     const val AXNODE_MESSAGE = "com.actyx.android.AXNODE_MESSAGE"
+    const val REQUEST_QUIT = "com.actyx.android.REQUEST_QUIT"
   }
 }
