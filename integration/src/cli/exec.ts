@@ -118,7 +118,6 @@ export const mkExec = (binary: string, addr: string, identityPath: string): Exec
         '-i',
         identityPath,
       ])
-      console.log(`trying ${addr} with ${identityPath}`)
       return rightOrThrow(Response_Nodes_Ls.decode(response), response)
     },
   },
