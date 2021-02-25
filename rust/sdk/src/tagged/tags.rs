@@ -1,4 +1,7 @@
-use crate::event::{FishName, Semantics};
+use crate::{
+    event::{FishName, Semantics},
+    types::ArcVal,
+};
 use libipld::DagCbor;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -78,12 +81,85 @@ macro_rules! tags {
     }
 }
 
-mk_scalar!(
-    /// Arbitrary metadata-string for an Event. Website documentation pending.
-    ///
-    /// You may most conveniently construct values of this type with the [`tag!`](../macro.tag.html) macro.
-    struct Tag, EmptyTag
-);
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "dataflow", derive(Abomonation))]
+pub struct Tag(#[serde(deserialize_with = "crate::scalar::nonempty_string")] ArcVal<str>);
+
+impl Tag {
+    pub fn new(value: String) -> std::result::Result<Self, crate::event::ParseError> {
+        if value.is_empty() {
+            Err(crate::event::ParseError::EmptyTag)
+        } else {
+            Ok(Self(crate::types::ArcVal::from_boxed(value.into())))
+        }
+    }
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+    pub fn as_arc(&self) -> &::std::sync::Arc<str> {
+        self.0.as_arc()
+    }
+}
+
+impl ::std::convert::TryFrom<&str> for Tag {
+    type Error = crate::event::ParseError;
+    fn try_from(value: &str) -> std::result::Result<Self, crate::event::ParseError> {
+        if value.is_empty() {
+            Err(crate::event::ParseError::EmptyTag)
+        } else {
+            Ok(Self(crate::types::ArcVal::clone_from_unsized(value)))
+        }
+    }
+}
+
+impl ::std::convert::TryFrom<::std::sync::Arc<str>> for Tag {
+    type Error = crate::event::ParseError;
+    fn try_from(value: ::std::sync::Arc<str>) -> std::result::Result<Self, crate::event::ParseError> {
+        if value.is_empty() {
+            Err(crate::event::ParseError::EmptyTag)
+        } else {
+            Ok(Self(crate::types::ArcVal::from(value)))
+        }
+    }
+}
+
+impl ::std::str::FromStr for Tag {
+    type Err = crate::event::ParseError;
+    fn from_str(s: &str) -> std::result::Result<Self, crate::event::ParseError> {
+        use std::convert::TryFrom;
+        Self::try_from(s)
+    }
+}
+
+impl ::std::ops::Deref for Tag {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref()
+    }
+}
+
+impl ::std::fmt::Display for Tag {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl ::libipld::codec::Decode<::libipld::cbor::DagCborCodec> for Tag {
+    fn decode<R: ::std::io::Read + ::std::io::Seek>(
+        c: ::libipld::cbor::DagCborCodec,
+        r: &mut R,
+    ) -> ::libipld::error::Result<Self> {
+        use ::std::str::FromStr;
+        Ok(Self::from_str(&String::decode(c, r)?)?)
+    }
+}
+
+impl ::libipld::codec::Encode<::libipld::cbor::DagCborCodec> for Tag {
+    fn encode<W: ::std::io::Write>(&self, c: ::libipld::cbor::DagCborCodec, w: &mut W) -> ::libipld::error::Result<()> {
+        use ::std::ops::Deref;
+        self.deref().encode(c, w)
+    }
+}
 
 impl From<&Semantics> for Tag {
     fn from(value: &Semantics) -> Self {
