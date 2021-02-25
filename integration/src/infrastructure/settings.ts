@@ -12,7 +12,7 @@ export const settings = (): Settings => (<MyGlobal>global).axNodeSetup.settings
 export const enum Binary {
   ax = 'ax',
   actyxOsLinux = 'actyx-linux',
-  actyxOsInstaller = 'ActyxOS-Installer',
+  actyxOsInstaller = 'Actyx-Installer',
 }
 
 export const currentAxBinary = (): Promise<string> => getCurrent(Binary.ax)

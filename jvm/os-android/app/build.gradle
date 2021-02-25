@@ -12,7 +12,7 @@ apply from: '../actyx-local/actyx.properties'
 androidGitVersion {
   prefix 'os-android-'
   codeFormat 'MNNPPPBBB'
-  format '%tag%%-count%%commit%%-branch%%-dirty%'
+  format '%tag%%-count%%-commit%%-dirty%'
   hideBranches = ['master']
   baseCode 3000
 }
