@@ -5,7 +5,7 @@ module.exports = {
   baseUrl: '/',
   favicon: 'img/favicon.ico',
   organizationName: 'Actyx',
-  projectName: 'Actyx',
+  projectName: 'Actyx Developer Website',
   plugins: [
     [
       require.resolve('docusaurus-gtm-plugin'),
@@ -23,9 +23,8 @@ module.exports = {
   ],
   themeConfig: {
     announcementBar: {
-      id: 'os-112',
-      content:
-        '🤩 We released version 1.1.2 of ActyxOS! Check out the <a rel="noopener noreferrer" href="https://developer.actyx.com/docs/os/release-notes">release notes</a> and <a rel="noopener noreferrer" href="https://downloads.actyx.com">download</a> the latest and greatest! 🤩',
+      id: 'v2-release',
+      content:'Announcement Bar Content',
       backgroundColor: '#f5f6f7',
       textColor: '#000',
     },
@@ -42,45 +41,10 @@ module.exports = {
       },
       items: [
         {
-          label: 'ActyxOS',
-          activeBasePath: 'docs/os/',
-          to: 'docs/os/general/introduction',
-        },
-        {
-          label: 'Actyx\u00a0Pond',
-          activeBasePath: 'docs/pond/',
-          to: 'docs/pond/introduction',
-        },
-        {
-          label: 'Node\u00a0Management',
-          position: 'left',
-          items: [
-            {
-              label: 'Actyx\u00a0CLI',
-              to: 'docs/cli/getting-started',
-            },
-            {
-              label: 'ActyxOS\u00a0Node\u00a0Manager',
-              to: 'docs/node-manager/overview',
-            },
-          ],
-        },
-        {
-          to: 'docs/learn-actyx',
-          activeBasePath: 'learn-actyx',
-          label: 'Learn\u00a0Actyx',
-          position: 'left',
-        },
-        {
-          to: 'blog',
-          label: 'Blog',
-          position: 'right',
-        },
-        {
-          to: 'releases',
-          label: 'Releases',
-          position: 'right',
-        },
+          label: 'Navbar Element',
+          activeBasePath: 'docs/hello',
+          to: 'docs/hello',
+        }
       ],
     },
     footer: {
@@ -92,71 +56,12 @@ module.exports = {
       style: 'light',
       links: [
         {
-          title: 'Product Documentation',
+          title: 'Footer Header',
           items: [
             {
-              label: 'ActyxOS',
-              to: 'docs/os/general/introduction',
-            },
-            {
-              label: 'Actyx Pond',
-              to: 'docs/pond/introduction',
-            },
-          ],
-        },
-        {
-          title: 'Node Management',
-          items: [
-            {
-              label: 'Actyx CLI',
-              to: 'docs/cli/getting-started',
-            },
-            {
-              label: 'Actyx Node Manager',
-              to: 'docs/node-manager/overview',
+              label: 'Footer Label',
+              to: 'docs/hello',
             }
-          ]
-        },
-        {
-          title: 'Useful Links',
-          items: [
-            {
-              label: 'FAQ',
-              to: 'docs/faq/supported-programming-languages',
-            },
-            {
-              label: 'Blog Posts',
-              to: 'blog',
-            },
-            {
-              label: 'Downloads',
-              to: 'https://downloads.actyx.com/',
-            },
-            {
-              label: 'Discord',
-              to: 'https://discord.gg/262yJhc',
-            },
-          ],
-        },
-        {
-          title: 'Actyx',
-          items: [
-            {
-              label: 'Home',
-              to: 'https://www.actyx.com',
-            },
-            {
-              label: 'Team',
-              to: 'https://www.actyx.com/company/team',
-            },
-            {
-              label: 'Career',
-              to: 'https://careers.actyx.io/',
-            },
-            {
-              label: 'Press',
-              to: 'https://www.actyx.com/news',
-            },
           ],
         },
       ],
