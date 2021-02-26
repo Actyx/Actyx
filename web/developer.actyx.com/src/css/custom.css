@@ -7,62 +7,62 @@
 
 /* You can override the default Infima variables here. */
 @font-face {
-  font-family: "Lato";
-  src: url("/static/fonts/Lato-Thin.ttf") format("truetype");
+  font-family: 'Lato';
+  src: url('/static/fonts/Lato-Thin.ttf') format('truetype');
   font-weight: 100;
   font-style: normal;
 }
 @font-face {
-  font-family: "Lato";
-  src: url("/static/fonts/Lato-ThinItalic.ttf") format("truetype");
+  font-family: 'Lato';
+  src: url('/static/fonts/Lato-ThinItalic.ttf') format('truetype');
   font-weight: 100;
   font-style: italic;
 }
 @font-face {
-  font-family: "Lato";
-  src: url("/static/fonts/Lato-Light.ttf") format("truetype");
+  font-family: 'Lato';
+  src: url('/static/fonts/Lato-Light.ttf') format('truetype');
   font-weight: 300;
   font-style: normal;
 }
 @font-face {
-  font-family: "Lato";
-  src: url("/static/fonts/Lato-LightItalic.ttf") format("truetype");
+  font-family: 'Lato';
+  src: url('/static/fonts/Lato-LightItalic.ttf') format('truetype');
   font-weight: 300;
   font-style: italic;
 }
 @font-face {
-  font-family: "Lato";
-  src: url("/static/fonts/Lato-Regular.ttf") format("truetype");
+  font-family: 'Lato';
+  src: url('/static/fonts/Lato-Regular.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
 }
 @font-face {
-  font-family: "Lato";
-  src: url("/static/fonts/Lato-Italic.ttf") format("truetype");
+  font-family: 'Lato';
+  src: url('/static/fonts/Lato-Italic.ttf') format('truetype');
   font-weight: 400;
   font-style: italic;
 }
 @font-face {
-  font-family: "Lato";
-  src: url("/static/fonts/Lato-Bold.ttf") format("truetype");
+  font-family: 'Lato';
+  src: url('/static/fonts/Lato-Bold.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
 }
 @font-face {
-  font-family: "Lato";
-  src: url("/static/fonts/Lato-BoldItalic.ttf") format("truetype");
+  font-family: 'Lato';
+  src: url('/static/fonts/Lato-BoldItalic.ttf') format('truetype');
   font-weight: 700;
   font-style: italic;
 }
 @font-face {
-  font-family: "Lato";
-  src: url("/static/fonts/Lato-Black.ttf") format("truetype");
+  font-family: 'Lato';
+  src: url('/static/fonts/Lato-Black.ttf') format('truetype');
   font-weight: 900;
   font-style: normal;
 }
 @font-face {
-  font-family: "Lato";
-  src: url("/static/fonts/Lato-BlackItalic.ttf") format("truetype");
+  font-family: 'Lato';
+  src: url('/static/fonts/Lato-BlackItalic.ttf') format('truetype');
   font-weight: 900;
   font-style: italic;
 }
@@ -76,7 +76,7 @@
   --ifm-color-primary-lighter: #43abff;
   --ifm-color-primary-lightest: #6dbeff;
   --ifm-code-font-size: 95%;
-  --ifm-pre-padding:  20px;
+  --ifm-pre-padding: 20px;
 
   --ifm-dark-value: 10%;
   --ifm-darker-value: 15%;
@@ -147,9 +147,9 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  --ifm-font-family-base: "Lato";
-  --ifm-font-family-monospace: SFMono-Regular, Menlo, Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
+  --ifm-font-family-base: 'Lato';
+  --ifm-font-family-monospace: SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+    'Courier New', monospace;
   --ifm-menu-link-sublist-icon: url('data:image/svg+xml;utf8,<svg alt="Arrow" xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 32 24"><path fill="rgba(0,0,0,0.0)" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"></path></svg>');
   --ifm-navbar-search-input-icon: url('data:image/svg+xml;utf8,<svg fill="rgba(0,0,0,0.5)" alt="Search" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" height="16px" width="16px"><path d="M6.02945,10.20327a4.17382,4.17382,0,1,1,4.17382-4.17382A4.15609,4.15609,0,0,1,6.02945,10.20327Zm9.69195,4.2199L10.8989,9.59979A5.88021,5.88021,0,0,0,12.058,6.02856,6.00467,6.00467,0,1,0,9.59979,10.8989l4.82338,4.82338a.89729.89729,0,0,0,1.29912,0,.89749.89749,0,0,0-.00087-1.29909Z" /></svg>');
   --ifm-menu-color-background-hover: #fff;
@@ -164,8 +164,7 @@
   box-sizing: border-box;
   display: flex;
   height: var(--ifm-navbar-height);
-  padding: var(--ifm-navbar-padding-vertical)
-    var(--ifm-navbar-padding-horizontal);
+  padding: var(--ifm-navbar-padding-vertical) var(--ifm-navbar-padding-horizontal);
   width: 100%;
 }
 .navbar > .container,
@@ -234,13 +233,11 @@
 }
 .navbar .navbar__item {
   display: inline-block;
-  padding: var(--ifm-navbar-item-padding-vertical)
-    var(--ifm-navbar-item-padding-horizontal);
+  padding: var(--ifm-navbar-item-padding-vertical) var(--ifm-navbar-item-padding-horizontal);
 }
 .navbar .navbar__item.dropdown {
   padding: 0;
 }
-
 
 .dropdown {
   display: inline-flex;
@@ -296,8 +293,7 @@
   color: var(--ifm-navbar-link-color);
   cursor: pointer;
   font-weight: var(--ifm-font-weight-semibold);
-  padding: var(--ifm-navbar-item-padding-vertical)
-    var(--ifm-navbar-item-padding-horizontal);
+  padding: var(--ifm-navbar-item-padding-vertical) var(--ifm-navbar-item-padding-horizontal);
   text-decoration: none;
 }
 .navbar .navbar__link:hover,
@@ -438,8 +434,7 @@
   box-shadow: var(--ifm-navbar-shadow);
   display: flex;
   height: var(--ifm-navbar-height);
-  padding: var(--ifm-navbar-padding-vertical)
-    var(--ifm-navbar-padding-horizontal);
+  padding: var(--ifm-navbar-padding-vertical) var(--ifm-navbar-padding-horizontal);
 }
 .navbar .navbar-sidebar__items {
   padding: 0.5rem;
@@ -553,20 +548,13 @@
   font-weight: var(--ifm-button-font-weight);
   line-height: 1.5;
   outline: 0;
-  padding: calc(
-      var(--ifm-button-padding-vertical) * var(--ifm-button-size-multiplier)
-    )
-    calc(
-      var(--ifm-button-padding-horizontal) * var(--ifm-button-size-multiplier)
-    );
+  padding: calc(var(--ifm-button-padding-vertical) * var(--ifm-button-size-multiplier))
+    calc(var(--ifm-button-padding-horizontal) * var(--ifm-button-size-multiplier));
   text-align: center;
   text-decoration: none;
-  transition: color var(--ifm-button-transition-duration)
-      cubic-bezier(0.08, 0.52, 0.52, 1),
-    background var(--ifm-button-transition-duration)
-      cubic-bezier(0.08, 0.52, 0.52, 1),
-    border-color var(--ifm-button-transition-duration)
-      cubic-bezier(0.08, 0.52, 0.52, 1);
+  transition: color var(--ifm-button-transition-duration) cubic-bezier(0.08, 0.52, 0.52, 1),
+    background var(--ifm-button-transition-duration) cubic-bezier(0.08, 0.52, 0.52, 1),
+    border-color var(--ifm-button-transition-duration) cubic-bezier(0.08, 0.52, 0.52, 1);
   -webkit-user-select: none;
   user-select: none;
   vertical-align: middle;
@@ -1067,13 +1055,11 @@ li {
 
 .admonition:not(.alert) {
   background-color: var(--ra-admonition-background-color);
-  border: var(--ra-admonition-border-width) solid
-    var(--ra-admonition-border-color);
+  border: var(--ra-admonition-border-width) solid var(--ra-admonition-border-color);
   border-radius: var(--ra-admonition-border-radius);
   box-sizing: border-box;
   color: var(--ra-admonition-color);
-  padding: var(--ra-admonition-padding-vertical)
-    var(--ra-admonition-padding-horizontal);
+  padding: var(--ra-admonition-padding-vertical) var(--ra-admonition-padding-horizontal);
 }
 
 .admonition:not(.alert) {
@@ -1214,11 +1200,11 @@ li {
   position: absolute;
 }
 .moon_node_modules-\@docusaurus-theme-classic-src-theme-Toggle-::before {
-  content: "\1F319" !important;
+  content: '\1F319' !important;
   /*content: '' !important;*/
 }
 .sun_node_modules-\@docusaurus-theme-classic-src-theme-Toggle-::before {
-  content: "\2600" !important;
+  content: '\2600' !important;
   /* content: '' !important;*/
 }
 
@@ -1284,7 +1270,7 @@ li {
   transition: opacity 0.25s ease;
 }
 
-[data-theme="dark"] .react-toggle .react-toggle-track-check,
+[data-theme='dark'] .react-toggle .react-toggle-track-check,
 .react-toggle--checked .react-toggle-track-check {
   opacity: 1;
   transition: opacity 0.25s ease;
@@ -1304,7 +1290,7 @@ li {
   transition: opacity 0.25s ease;
 }
 
-[data-theme="dark"] .react-toggle .react-toggle-track-x,
+[data-theme='dark'] .react-toggle .react-toggle-track-x,
 .react-toggle--checked .react-toggle-track-x {
   opacity: 0;
 }
@@ -1323,7 +1309,7 @@ li {
   transition: all 0.25s ease;
 }
 
-[data-theme="dark"] .react-toggle .react-toggle-thumb,
+[data-theme='dark'] .react-toggle .react-toggle-thumb,
 .react-toggle--checked .react-toggle-thumb {
   left: 27px;
   border-color: #19ab27;
@@ -1369,8 +1355,7 @@ li {
   margin: 0;
   list-style-type: none;
   padding-left: 0;
-  transition: height var(--ifm-transition-fast)
-    cubic-bezier(0.08, 0.52, 0.52, 1);
+  transition: height var(--ifm-transition-fast) cubic-bezier(0.08, 0.52, 0.52, 1);
 }
 .menu .menu__list .menu__list {
   margin-left: var(--ifm-menu-link-padding-horizontal);
@@ -1405,7 +1390,7 @@ li {
   background-image: var(--ifm-menu-link-sublist-icon);
   background-size: 2rem 2rem;
   background-position: center;
-  content: " ";
+  content: ' ';
   display: inline-block;
   height: 1.5rem;
   width: 1.5rem;
@@ -1509,7 +1494,7 @@ pre .line-numbers {
   counter-reset: linenumber;
 }
 
-.announcementBarContent_node_modules-\@docusaurus-theme-classic-lib-theme-AnnouncementBar- > a{
+.announcementBarContent_node_modules-\@docusaurus-theme-classic-lib-theme-AnnouncementBar- > a {
   font-size: inherit !important;
 }
 
@@ -1518,14 +1503,13 @@ pre .line-numbers {
   padding-top: 20px !important;
 }
 
-
-.blogPostTitle_node_modules-\@docusaurus-theme-classic-lib-theme-BlogPostItem- > a{
+.blogPostTitle_node_modules-\@docusaurus-theme-classic-lib-theme-BlogPostItem- > a {
   font-size: 32px !important;
   line-height: 0% !important;
   text-decoration: none !important;
 }
 
-.sidebarItemLink_node_modules-\@docusaurus-theme-classic-lib-theme-BlogSidebar-  {
+.sidebarItemLink_node_modules-\@docusaurus-theme-classic-lib-theme-BlogSidebar- {
   color: #555 !important;
 }
 

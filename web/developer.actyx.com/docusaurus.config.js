@@ -6,6 +6,7 @@ module.exports = {
   favicon: 'img/favicon.ico',
   organizationName: 'Actyx',
   projectName: 'Actyx Developer Website',
+  onBrokenLinks: 'ignore',
   plugins: [
     [
       require.resolve('docusaurus-gtm-plugin'),
@@ -17,14 +18,14 @@ module.exports = {
     [
       require.resolve('./src/plugins/arm'),
       {
-	      releasesYml: './__auto-releases.yml',
+        releasesYml: './__auto-releases.yml',
       },
     ],
   ],
   themeConfig: {
     announcementBar: {
       id: 'v2-release',
-      content:'Announcement Bar Content',
+      content: 'Announcement Bar Content',
       backgroundColor: '#f5f6f7',
       textColor: '#000',
     },
@@ -44,7 +45,7 @@ module.exports = {
           label: 'Navbar Element',
           activeBasePath: 'docs/hello',
           to: 'docs/hello',
-        }
+        },
       ],
     },
     footer: {
@@ -61,7 +62,7 @@ module.exports = {
             {
               label: 'Footer Label',
               to: 'docs/hello',
-            }
+            },
           ],
         },
       ],
@@ -91,4 +92,4 @@ module.exports = {
       },
     ],
   ],
-};
+}
