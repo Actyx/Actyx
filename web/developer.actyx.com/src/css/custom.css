@@ -126,7 +126,7 @@
   --ifm-color-danger-lightest: rgb(253, 156, 159);
 
   --ifm-color-white: #fff;
-  --ifm-color-black: rgb(29, 29, 29);
+  --ifm-color-black: #2A2F45;
 
   --ifm-color-gray-0: var(--ifm-color-white);
   --ifm-color-gray-100: #f5f6f7;
@@ -137,7 +137,7 @@
   --ifm-color-gray-600: #8d949e;
   --ifm-color-gray-700: #606770;
   --ifm-color-gray-800: #444950;
-  --ifm-color-gray-900: #30343a;
+  --ifm-color-gray-900: #2A2F45;
   --ifm-color-gray-1000: var(--ifm-color-black);
 
   --ifm-navbar-search-input-background-color: #fff;
@@ -156,8 +156,56 @@
 }
 
 :root {
-  --ifm-container-width: 1140px;
+  --ifm-container-width: 1200px;
 }
+
+
+h1 {
+  font-size: 32px !important;
+  margin-bottom: 1.5rem !important;
+  font-weight: 500;
+}
+
+h2 {
+  font-size: 20px;
+  font-weight: 500;
+}
+
+h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+h4,
+.tsd-index-panel h3 {
+  font-size: 15px !important;
+  font-weight: 500;
+}
+
+h5 {
+  font-size: 0.83em;
+  font-weight: 600;
+}
+
+h6 {
+  font-size: 0.67em;
+  font-weight: 600;
+}
+
+hr {
+  border: 1px solid #eee !important;
+}
+
+p,
+li {
+  font-size: 16px !important;
+}
+
+code,
+span {
+  font-size: 13px !important;
+}
+
 .navbar {
   background-color: var(--ifm-navbar-background-color);
   box-shadow: var(--ifm-navbar-shadow);
@@ -766,51 +814,6 @@
   text-decoration: none;
 }
 
-h1 {
-  font-size: 32px !important;
-  margin-bottom: 1.5rem !important;
-  font-weight: 500;
-}
-
-h2 {
-  font-size: 20px;
-  font-weight: 500;
-}
-
-h3 {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-h4,
-.tsd-index-panel h3 {
-  font-size: 15px !important;
-  font-weight: 500;
-}
-
-h5 {
-  font-size: 0.83em;
-  font-weight: 600;
-}
-
-h6 {
-  font-size: 0.67em;
-  font-weight: 600;
-}
-
-hr {
-  border: 1px solid #eee !important;
-}
-
-p,
-li {
-  font-size: 16px !important;
-}
-
-code,
-span {
-  font-size: 13px !important;
-}
 .embedded-yt-wrapper {
   position: relative;
   width: 100%;
@@ -1375,6 +1378,13 @@ li {
 .menu .menu__list-item.menu__list-item--collapsed .menu__link--sublist:after {
   transform: rotateX(180deg);
 }
+
+.menu .menu__link.menu__link--sublist.menu__link--active {
+  text-transform: uppercase;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .menu .menu__link {
   border-radius: 5rem;
   color: var(--ifm-menu-color);
@@ -1382,7 +1392,6 @@ li {
   display: flex;
   line-height: 20px;
   justify-content: space-between;
-  text-decoration: none;
   margin-top: 5px;
   padding: 2px 20px;
 }
