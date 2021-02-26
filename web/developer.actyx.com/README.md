@@ -95,7 +95,7 @@ You can create _info_, _tip_, _note_ and _warning_ callouts using the following 
 
 ```md
 :::tip Title
-The content and title *can* include markdown.
+The content and title _can_ include markdown.
 :::
 ```
 
@@ -178,16 +178,17 @@ Please check the existing sections and links in `/sidebars.js` for examples.
 To extend the capabilities of docusaurus, there are also a couple of react components to choose from when building pages. The components are:
 
 - `SectionHero.tsx`
-This element has an optional button (`showButton={false}` prevents displaying the button)
+  This element has an optional button (`showButton={false}` prevents displaying the button)
 - `TwoElementRow.tsx`
-The two col element can have 0-n optional links and 0-n optional tags
+  The two col element can have 0-n optional links and 0-n optional tags
 - `ThreeElementRow.tsx`
-This element can have 0-n optional links
+  This element can have 0-n optional links
 - `DownloadLink.tsx`
 - `StayInformed.tsx`
 
 ### Redirects
-There is a `_redirects` file in `/netlify/` which defines site redirects. If you change the folder structure of the docs in a PR so that links might now lead to 404s (from `/docs/quickstart` to `/docs/learn-actyx/quickstart`), please make sure to include the FROM url and the TO url separated by a space in the `_redirects` file. 
+
+There is a `_redirects` file in `/netlify/` which defines site redirects. If you change the folder structure of the docs in a PR so that links might now lead to 404s (from `/docs/quickstart` to `/docs/learn-actyx/quickstart`), please make sure to include the FROM url and the TO url separated by a space in the `_redirects` file.
 
 ### How it works
 
@@ -254,7 +255,9 @@ code --install-extension DavidAnson.vscode-markdownlint
 You can disable some rules using:
 
 <!-- markdownlint-disable MD037 -->
-Some probelatic text ([Lamport time](https://en.wikipedia.org/wiki/Lamport_timestamp))
+
+Some problematic text ([Lamport time](https://en.wikipedia.org/wiki/Lamport_timestamp))
+
 <!-- markdownlint-enable MD037 -->
 
 More information about markdownlint configuration can be found here:

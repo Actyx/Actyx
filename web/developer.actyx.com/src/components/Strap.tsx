@@ -26,4 +26,4 @@ Example:
 # Building a chat app with Actyx Pond
 
 */
-export const Strap = ({ strap }: Props) => <StrapWrapper>{strap}</StrapWrapper>
+export const Strap: React.FC<Props> = ({ strap }: Props) => <StrapWrapper>{strap}</StrapWrapper>

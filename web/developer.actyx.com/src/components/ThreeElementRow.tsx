@@ -141,7 +141,7 @@ type Props = Readonly<{
   showLinks?: boolean
 }>
 
-export const ThreeElementRow = ({
+export const ThreeElementRow: React.FC<Props> = ({
   img1,
   img2,
   img3,
