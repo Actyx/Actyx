@@ -52,7 +52,7 @@ type Props = Readonly<{
   cta: string
 }>
 
-export const DownloadLink = ({ link, cta }: Props) => (
+export const DownloadLink: React.FC<Props> = ({ link, cta }: Props) => (
   <Link>
     <a href={link}>
       <Arrow />

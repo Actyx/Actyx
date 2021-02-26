@@ -39,11 +39,13 @@ The services exposed there are currently still in alpha testing.
 
 You can download an installer for ActyxOS on Windows on [the downloads page](https://downloads.actyx.com/). After opening the installer, you are guided through the setup process.
 
-:::info ActyxOS Node Manager included
-The installer also includes the latest release of the [ActyxOS Node Manager](../../node-manager/overview.md).
+:::info CLI and Node Manager included
+The installer also includes the latest release of the [ActyxOS Node Manager](../../node-manager/overview.md) and the [Actyx CLI](../../cli/getting-started.md).
 :::
 
-ActyxOS is automatically started after the installation is finished.
+To start ActyxOS, you can press the Windows key on your keyboard, type _ActyxOS_ and hit enter. You should see an icon appear in the lower right tray panel.
+
+![actyx-tray-icon](/images/os/windows-tray-icon.png)
 
 If you have problems with installing ActyxOS, please check our [Troubleshooting section below](#troubleshooting).
 
@@ -62,7 +64,7 @@ In order to check on its status and interact with the node, you can use the Acty
 
 Go to the **Status** tab, and you should that your ActyxOS node is reachable and **running**:
 
-![status](/images/node-manager/node-manager-status-1.png)
+![status](/images/os/windows-guide-node-manager.png)
 
 </TabItem>
 <TabItem value="cli">
@@ -74,17 +76,17 @@ ax nodes ls --local <DEVICE_IP>
 You should see something like:
 
 ```text
-+---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
-| NODE ID       | DISPLAY NAME | STATE   | SETTINGS | LICENSE | APPS DEPLOYED | APPS RUNNING | STARTED                   | VERSION |
-+---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
-| 192.168.2.107 |              | running | invalid  | invalid | 0             | 0            | 2020-03-25T09:32:07+00:00 | 1.0.0   |
-+---------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
++-----------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
+| NODE ID   | DISPLAY NAME | STATE   | SETTINGS | LICENSE | APPS DEPLOYED | APPS RUNNING | STARTED                   | VERSION |
++-----------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
+| localhost | Local Node   | running | valid    | valid   | 0             | 0            | 2021-02-25T07:29:46+00:00 | 1.1.2   |
++-----------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
 ```
 
 </TabItem>
 </Tabs>
 
-Congratulations, you have successfully installed <em>ActyxOS on Android</em>! While you can already use ActyxOS locally, you may have to – depending on your exact setup – configure it to be able to connect to other ActyxOS nodes. If you want to find out more about configuring ActyxOS node, please check our guide about [configuring nodes](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
+Congratulations, you have successfully installed <em>ActyxOS on Windows</em>! While you can already use ActyxOS locally, you may have to – depending on your exact setup – configure it to be able to connect to other ActyxOS nodes. If you want to find out more about configuring your ActyxOS node, please check our [dedicated guide](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
 
 ### Where to go next
 
@@ -97,23 +99,13 @@ Congratulations, you have successfully installed <em>ActyxOS on Android</em>! Wh
 
 ### Starting and Stopping ActyxOS
 
-ActyxOS is automatically started after the installation is finished. ActyxOS runs as a Windows Service and can therefore be managed through the Windows Services Manager. [This is a guide for opening the Windows Service Manager](https://www.thewindowsclub.com/open-windows-services).
+Starting ActyxOS works as described above. If you want to stop ActyxOS, please right-click on the tray icon in the lower right of your screen and choose _Exit_. ActyxOS is now shutting down.
 
-In the Windows Service Manager, you will see that ActyxOS is running. You can now restart ActyxOS, stop it, and start it again:
+![status](/images/os/exit-node-manager.png)
 
-![Windows Service Manager](/images/os/windows-service-manager.png)
-
-If you would like to know more about how to configure nodes, please go to the section [**Configuring nodes** in our guide on Node and App Settings](/docs/os/advanced-guides/node-and-app-settings#configuring-nodes).
-
-:::infoNode and App lifecycles
-Depending on the lifecycle stage that your ActyxOS nodes or apps are in, your interaction with it might be limited to certain commands. Please check our guide on [Node and App Lifecycles](/docs/os/advanced-guides/node-and-app-lifecycle) to find out more.
+:::info Launch Node Manager
+To interact with your node, you can conveniently launch the ActyxOS Node Manager with a right-click on the tray icon and choosing the _Launch Node Manager_ option.
 :::
-
-### Automatic start of ActyxOS
-
-When your device is started, ActyxOS is automatically started too. You can configure this by right-clicking on ActyxOS in the Services Manager and then changing the `Startup type` in the properties.
-
-![Windows Service Manager 2](/images/os/windows-service-manager-2.png)
 
 ### Logging through the Windows Event Viewer
 

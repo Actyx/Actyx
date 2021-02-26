@@ -199,33 +199,33 @@ Until the release of the Actyx Console, logs can only be accessed locally. In or
 Example:
 
 ```text
-ax logs --tail --local EdgeDevice1
-> MyApp-1.0.3::console | 2019-09-11T21:46:12.106Z [info] Starting app...
-> MyApp-1.0.3::console | 2019-09-11T21:46:12.113Z [debug] Setting route '/activities'
-> MyApp-1.0.3::console | 2019-09-11T21:46:12.113Z [debug] 34 activities loaded
-> MyApp-1.0.3::console | 2019-09-11T21:46:12.113Z [info] User 'jdoe' registered
-> MyApp-1.0.3::console | 2019-09-11T21:46:12.114Z [debug] Setting route '/preferences'
+ax logs tail --local 192.168.1.100
+> 2021-01-20 14:16:43.283 UTC INFO Example-App-Logger Starting app...
+> 2021-01-20 14:16:43.283 UTC DEBUG Example-App-Logger Setting route '/activities'
+> 2021-01-20 14:16:43.285 UTC DEBUG Example-App-Logger 34 activities loaded
+> 2021-01-20 14:16:43.285 UTC INFO Example-App-Logger User 'jdoe' registered
+> 2021-01-20 14:16:43.288 UTC DEBUG Example-App-Logger Setting route '/preferences'
 ```
 
-You can also retrieve logs in their **structured** format using the `--format=json` flag with the `ax logs` command:
+You can also retrieve logs in their **structured** format using the `-j` flag with the `ax logs tail` command:
 
 ```text
-ax logs --tail --local --format=json EdgeDevice1 | jq
->{
-    "logTimestamp": "2019-09-11T21:46:12.106Z",
-    "severity": "info",
-    "message": "Starting app...",
-    "logName": "ax.os.stdout",
-    "nodeId": "9d6083b3-3e06-4e59-b59c-bdfee1eae8cb",
-    "nodeName": "EdgeDevice1",
+ax -j logs tail --local 192.168.1.100 | jq
+>
+{
+  "code": "OK",
+  "result": {
     "sequenceNumber": 42,
-    "producerName": "com.mycompany.myapp",
-    "producerVersion": "1.0.3",
-    "additionalData": {
-        "customKey": "custom value"
-    },
-    "labels": {
-        "com.app-builder-ltd.gdpr-relevant": "false"
-    }
+    "logTimestamp": "2021-01-20T14:16:43.283Z",
+    "nodeId": "9d6083b3-3e06-4e59-b59c-bdfee1eae8cb",
+    "nodeName": "Sample Node",
+    "severity": "INFO",
+    "message": "Starting app...",
+    "logName": "Example-App-Logger",
+    "additionalData": null,
+    "labels": {},
+    "producerName": "com.example.app",
+    "producerVersion": "1.0.0"
+  }
 }
 ```

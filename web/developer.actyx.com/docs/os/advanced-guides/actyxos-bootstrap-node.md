@@ -7,7 +7,7 @@ import TabItem from '@theme/TabItem';
 
 The ActyxOS bootstrap node helps your nodes find their peers.
 
-Each ActyxOS swarm needs to have its own ActyxOS Bootstrap Node. It is needed whenever a new node joins the swarm. Once the new node establishes a connection to the ActyxOS Bootstrap Node, it will be automatically peered with all other nodes in the same swarm.
+If you are running ActyxOS only on Windows and Android, nodes will connect automatically through mDNS–assuming mDNS is enabled on your devices and local network. If your swarm also consists of ActyxOS nodes running on docker, or your nodes cannot use mDNS, you can use an ActyxOS Bootstrap Node to connect them. It is configured in each node's settings and will automatically connect all peered nodes in the same swarm to each other.
 
 ## Host requirements
 
@@ -24,7 +24,7 @@ The ActyxOS Bootstrap Node is [publicly available on Docker Hub](https://hub.doc
 
 ```text
 # Start the bootstrap node with your swarm key
-docker run --name actyxos_bootstrap_node --rm --env SWARM_KEY=99eac9c0acbbedf9cfdfcbebfa0bdea99d0bde9edf0 -p 4001:4001 -v actyxos-bootstrap-data:/data actyx/actyxos-bootstrap-node
+docker run --name actyxos_bootstrap_node --rm --env SWARM_KEY=L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCjRkNWEzODQ3NGY1MjYzNDc1MjY2NTY3NTMwNTM0NjRkNGUzNzUyNDQ3ODY1NjIzMzRhMzg3MDU4NjU2MTcxNGQ= -p 4001:4001 -v actyxos-bootstrap-data:/data actyx/actyxos-bootstrap-node
 Starting ActyxOS bootstrap node
 
 ActyxOS bootstrap node running
