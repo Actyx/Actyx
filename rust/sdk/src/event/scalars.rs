@@ -152,9 +152,9 @@ impl TryFrom<&TagSet> for Semantics {
     fn try_from(value: &TagSet) -> Result<Self, Self::Error> {
         let sem = value
             .iter()
-            .filter(|t| t.as_str().starts_with("semantics:"))
+            .filter(|t| t.to_string().starts_with("semantics:"))
             .filter_map(|t| {
-                let t = t.as_str();
+                let t = t.to_string();
                 let pos = t.find(':')?;
                 Semantics::try_from(&t[pos + 1..]).ok()
             })
@@ -172,9 +172,9 @@ impl TryFrom<&TagSet> for FishName {
     fn try_from(value: &TagSet) -> Result<Self, Self::Error> {
         let names = value
             .iter()
-            .filter(|t| t.as_str().starts_with("fish_name:"))
+            .filter(|t| t.to_string().starts_with("fish_name:"))
             .filter_map(|t| {
-                let t = t.as_str();
+                let t = t.to_string();
                 let pos = t.find(':')?;
                 FishName::try_from(&t[pos + 1..]).ok()
             })
