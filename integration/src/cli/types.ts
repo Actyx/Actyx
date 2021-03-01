@@ -28,15 +28,14 @@ const ERR_NODE_UNREACHABLE = io.type({
   code: io.literal('ERR_NODE_UNREACHABLE'),
   message: io.string,
 })
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const ERR_NODE_MISCONFIGURED = io.type({
-  code: io.literal('ERR_NODE_MISCONFIGURED'),
+const ERR_FILE_EXISTS = io.type({
+  code: io.literal('ERR_FILE_EXISTS'),
   message: io.string,
 })
 
 export const Response_Nodes_Ls = io.union([
   ERR_INTERNAL_ERROR,
+  ERR_INVALID_INPUT,
   io.intersection([
     _OK,
     io.type({
@@ -44,23 +43,19 @@ export const Response_Nodes_Ls = io.union([
         io.union([
           io.type({
             connection: io.literal('reachable'),
+            host: io.string,
             nodeId: io.string,
             displayName: io.union([io.null, io.string]),
-            state: io.literal('running'),
-            settingsValid: io.boolean,
-            licensed: io.boolean,
-            appsDeployed: io.Integer,
-            appsRunning: io.Integer,
             startedIso: io.string,
             startedUnix: io.Integer,
             version: io.string,
           }),
           io.type({
-            connection: io.literal('hostUnreachable'),
+            connection: io.literal('unreachable'),
             host: io.string,
           }),
           io.type({
-            connection: io.literal('actyxosUnreachable'),
+            connection: io.literal('unauthorized'),
             host: io.string,
           }),
         ]),
@@ -171,32 +166,35 @@ export const Response_Logs_Tail_Entry = io.union([
 export type Response_Logs_Tail_Entry = io.TypeOf<typeof Response_Logs_Tail_Entry>
 
 export const Response_Internal_Swarm_State = io.union([
-  io.type({ Err: io.type({ code: io.string, message: io.string }) }),
-  io.type({
-    Ok: io.type({
-      swarm: io.type({
-        listen_addrs: io.array(io.string),
-        peer_id: io.string,
-        peers: io.record(
-          io.string,
-          io.type({
-            addresses: io.record(
-              io.string,
-              io.type({
-                provenance: io.string,
-                state: io.union([
-                  io.string,
-                  io.type({ Connected: io.type({ since: io.number }) }),
-                  io.type({ Disconnected: io.type({ since: io.number }) }),
-                ]),
-              }),
-            ),
-            connection_state: io.string,
-          }),
-        ),
+  ERR_INVALID_INPUT,
+  io.intersection([
+    _OK,
+    io.type({
+      result: io.type({
+        swarm: io.type({
+          listen_addrs: io.array(io.string),
+          peer_id: io.string,
+          peers: io.record(
+            io.string,
+            io.type({
+              addresses: io.record(
+                io.string,
+                io.type({
+                  provenance: io.string,
+                  state: io.union([
+                    io.string,
+                    io.type({ Connected: io.type({ since: io.number }) }),
+                    io.type({ Disconnected: io.type({ since: io.number }) }),
+                  ]),
+                }),
+              ),
+              connection_state: io.string,
+            }),
+          ),
+        }),
       }),
     }),
-  }),
+  ]),
 ])
 
 export type Response_Internal_Swarm_State = io.TypeOf<typeof Response_Internal_Swarm_State>
@@ -215,3 +213,18 @@ export const Response_Swarms_Keygen = io.union([
 ])
 
 export type Response_Swarms_Keygen = io.TypeOf<typeof Response_Swarms_Keygen>
+
+export const Response_Users_Keygen = io.union([
+  ERR_FILE_EXISTS,
+  io.intersection([
+    _OK,
+    io.type({
+      result: io.type({
+        pubKey: io.string,
+        keystorePath: io.string,
+      }),
+    }),
+  ]),
+])
+
+export type Response_Users_Keygen = io.TypeOf<typeof Response_Users_Keygen>

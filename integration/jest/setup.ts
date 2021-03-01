@@ -5,7 +5,7 @@ import { createKey, deleteKey } from '../src/infrastructure/aws'
 import { ActyxOSNode, AwsKey, printTarget } from '../src/infrastructure/types'
 import { setupAnsible, setupTestProjects } from '../src/setup-projects'
 import { promises as fs } from 'fs'
-import { Arch, Config, Host, OS, Runtime, Settings } from './types'
+import { Arch, Config, Host, OS, Settings } from './types'
 import YAML from 'yaml'
 import { rightOrThrow } from '../src/infrastructure/rightOrThrow'
 import execa from 'execa'
@@ -32,9 +32,8 @@ export type NodeSetup = {
 
 export type Stubs = {
   axOnly: ActyxOSNode
-  hostUnreachable: ActyxOSNode
-  actyxOSUnreachable: ActyxOSNode
-  mkStub: (os: OS, arch: Arch, host: Host, runtimes: Runtime[], name: string) => ActyxOSNode
+  unreachable: ActyxOSNode
+  mkStub: (os: OS, arch: Arch, host: Host, name: string) => Promise<ActyxOSNode>
 }
 export type MyGlobal = typeof global & { axNodeSetup: NodeSetup; stubs: Stubs }
 
@@ -48,18 +47,23 @@ const getGitHash = async (settings: Settings) => {
     console.log('Using git hash from settings:', settings.gitHash)
     return settings.gitHash
   }
+  const result = await currentHead()
+  console.log('Using git hash from current HEAD:', result)
+  return result
+}
+
+const currentHead = async () => {
   const result = await execa.command('git rev-parse HEAD')
-  console.log('Using git hash from current HEAD:', result.stdout)
   return result.stdout
 }
 
 const getPeerId = async (ax: CLI, retries = 10): Promise<string | undefined> => {
   await new Promise((res) => setTimeout(res, 1000))
   const state = await retryTimes(ax.swarms.state, 3)
-  if ('Err' in state) {
+  if (state.code != 'OK') {
     return retries === 0 ? undefined : getPeerId(ax, retries - 1)
   } else {
-    return state.Ok.swarm.peer_id
+    return state.result.swarm.peer_id
   }
 }
 
@@ -97,7 +101,7 @@ const getBootstrapNodes = async (bootstrap: ActyxOSNode[]): Promise<string[]> =>
       addr.push(kind.privateAddress)
     }
     if (pid !== undefined) {
-      ret.push(...addr.map((a) => `/ip4/${a}/tcp/4001/ipfs/${pid}`))
+      ret.push(...addr.map((a) => `/ip4/${a}/tcp/4001/p2p/${pid}`))
     }
   }
   return ret
@@ -127,12 +131,23 @@ const setAllSettings = async (
   })
 
   const result = await Promise.all(
-    nodes.map((node) =>
-      node.ax.settings.set('com.actyx.os', SettingsInput.FromValue(settings(node.name))),
-    ),
+    nodes.map(async (node) => {
+      let retry_cnt = 0
+      let result = { code: 'ERR_NODE_UNREACHABLE' }
+      while (result.code !== 'OK' && retry_cnt < 10) {
+        await new Promise((res) => setTimeout(res, 1000))
+        result = await node.ax.settings.set(
+          'com.actyx.os',
+          SettingsInput.FromValue(settings(node.name)),
+        )
+
+        retry_cnt += 1
+      }
+      return result
+    }),
   )
   const errors = result.map((res, idx) => ({ res, idx })).filter(({ res }) => res.code !== 'OK')
-  console.log('%i errors', errors.length)
+  console.log('%i errors setting settings', errors.length)
   for (const { res, idx } of errors) {
     console.log('%s:', nodes[idx], res)
   }
@@ -141,11 +156,11 @@ const setAllSettings = async (
 const getNumPeersMax = async (nodes: ActyxOSNode[]): Promise<number> => {
   const getNumPeersOne = async (ax: CLI) => {
     const state = await retryTimes(ax.swarms.state, 3)
-    if ('Err' in state) {
-      console.log(`error getting peers: ${state.Err.message}`)
+    if (state.code != 'OK') {
+      console.log(`error getting peers: ${state.message}`)
       return -1
     }
-    const numPeers = Object.values(state.Ok.swarm.peers).filter(
+    const numPeers = Object.values(state.result.swarm.peers).filter(
       (peer) => peer.connection_state === 'Connected',
     ).length
     return numPeers
@@ -230,8 +245,15 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
     ec2,
     key,
     nodes: [],
-    // Overwrite gitHash in settings
-    settings: { ...config.settings, gitHash, keepNodesRunning },
+    settings: {
+      ...config.settings,
+      keepNodesRunning,
+      // Only override gitHash in settings if it’s different from the current
+      // HEAD. If it's the current HEAD, we signal it by setting it to null. This
+      // effectively makes sure, that instead of downloading the artifacts,
+      // they're going to be looked up in `Cosmos/dist`.
+      gitHash: gitHash === (await currentHead()) ? null : gitHash,
+    },
     gitHash,
     runIdentifier: key.keyName,
   }
@@ -245,24 +267,23 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   /*
    * Create all the nodes as described in the settings.
    */
-  for (const node of await Promise.all(
-    config.hosts.map((host) =>
-      createNode(host).catch(console.error.bind('node %s cannot create AWS node:', host.name)),
-    ),
-  )) {
-    if (node === undefined) {
-      continue
+  try {
+    for (const node of await Promise.all(config.hosts.map(createNode))) {
+      if (node === undefined) {
+        continue
+      }
+      axNodeSetup.nodes.push(node)
     }
-    axNodeSetup.nodes.push(node)
+  } catch (e) {
+    // any error have already been logged inside `createNode`
+    console.log('error during node creation, shutting down ..')
+    await Promise.all(axNodeSetup.nodes.map((node) => node._private.shutdown()))
+    throw new Error('node creation failed')
   }
 
   console.log(
     '\n*** ActyxOS nodes started ***\n\n- ' +
-      axNodeSetup.nodes
-        .map(
-          (node) => `${node.name} on ${printTarget(node.target)} with runtimes [${node.runtimes}]`,
-        )
-        .join('\n- ') +
+      axNodeSetup.nodes.map((node) => `${node.name} on ${printTarget(node.target)}`).join('\n- ') +
       '\n',
   )
 

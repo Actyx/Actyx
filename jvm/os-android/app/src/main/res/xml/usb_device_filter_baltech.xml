@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-
-<resources>
-<!--    NB! Values below need to be in sync with `BaltechReaderService`-->
-    <usb-device vendor-id="5037" product-id="61465" />
-</resources>

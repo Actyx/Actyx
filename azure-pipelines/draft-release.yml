@@ -31,8 +31,8 @@ stages:
             submodules: recursive # set to 'true' for a single level of submodules or 'recursive' to get submodules of submodules
             persistCredentials: true # set to 'true' to leave the OAuth token in the Git config after the initial fetch
           - bash: |
+              set -e
               cd release
-              source ~/.nvm/nvm.sh
               nvm use
               npm install
               echo "Building cosmos-release"
@@ -52,6 +52,7 @@ stages:
               ARM_NF: $(RELEASE_NETLIFY_ACCESS_TOKEN)
               REPO_DIR: $(Build.SourcesDirectory)
               TARGET_REV: $(Build.SourceVersion)
+              BASH_ENV: "~/.bashrc"
             displayName: run release
 
   - stage: notifySuccess

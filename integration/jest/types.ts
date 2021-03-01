@@ -34,7 +34,6 @@ export const currentArch = (): Arch => {
 }
 
 export type Host = 'docker' | 'process' | 'android'
-export type Runtime = 'webview' | 'docker' | 'process'
 
 const createEC2 = t.type({
   type: t.literal('create-aws-ec2'),

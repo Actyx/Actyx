@@ -2,9 +2,30 @@
 title: Release notes
 ---
 
-This page contains information about new features, bug fixes, deprecations and removals in ActyxOS releases. For a more extensive description of the changes, check out our [blog](https://www.actyx.com/news/).
+This page contains information about new features, bug fixes, deprecations and removals in ActyxOS releases. For a more extensive description of the changes, check out our [blog](https://developer.actyx.com/blog/).
 
 <!-- markdownlint-disable MD024 -->
+
+## ActyxOS 1.1.2
+
+Release date: 22.1.2021
+
+:::info
+Version 1.1.2 of ActyxOS is not available on the Google Playstore. Please download this version from our [downloads page](https://downloads.actyx.com/).
+:::
+
+Download:
+
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
+- [Actyx Downloads page](https://downloads.actyx.com/)
+
+### New features
+
+- Applications running on Android can now access the device camera
+
+### Bug fixes
+
+- Many stability improvements around our core infrastructure
 
 ## ActyxOS 1.1.1
 
@@ -29,7 +50,7 @@ Download:
 
 ## ActyxOS 1.1.0
 
-Release date: 7.12.2020
+Release date: 11.12.2020
 
 Download:
 
@@ -53,7 +74,7 @@ Download:
 - Fixed an issue that led to ActyxOS not validating apps if optional properties in the manifest were missing (`description` and `settingsSchema`)
 - Fixed an issue that resulted in the node crashing if configured with an invalid bootstrap node address
 - Fixed an issue that prohibited access to the [Console Service logging API](/os/api/console-service.md) from the browser and WebView Runtime due to CORS restrictions
-- Fixed an issue where offet bounds were not properly respected for tag-based (Pond v2) queries
+- Fixed an issue where offset bounds were not properly respected for tag-based (Pond v2) queries
 - Fixed an issue that lead to `ax logs tail` not returning all log messages
 
 ## ActyxOS 1.0.0

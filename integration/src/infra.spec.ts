@@ -13,8 +13,7 @@ describe('the Infrastructure', () => {
         result: [
           {
             connection: 'reachable',
-            state: 'running',
-            version: '1.1.1',
+            version: '2.0.0-dev',
           },
         ],
       },

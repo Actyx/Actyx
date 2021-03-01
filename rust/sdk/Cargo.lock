@@ -31,6 +31,7 @@ dependencies = [
  "derive_more",
  "fixed",
  "futures",
+ "hex",
  "intern-arc",
  "libipld",
  "multibase 0.9.1",
@@ -109,15 +110,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-lock"
-version = "2.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1996609732bde4a9988bc42125f55f2af5f3c36370e27c778d5191a4a1b63bfb"
-dependencies = [
- "event-listener",
-]
-
-[[package]]
 name = "async-trait"
 version = "0.1.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -181,10 +173,11 @@ checksum = "b700ce4376041dcd0a327fd0097c41095743c4c8af8887265942faf1100bd040"
 
 [[package]]
 name = "cached"
-version = "0.22.0"
+version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "37bc788b1f75520b1425759a82bbf66b70e005969bb6116e1025e3f654d3850a"
+checksum = "5e2afe73808fbaac302e39c9754bfc3c4b4d0f99c9c240b9f4e4efc841ad1b74"
 dependencies = [
+ "hashbrown",
  "once_cell",
 ]
 
@@ -374,12 +367,6 @@ dependencies = [
  "log",
  "regex",
 ]
-
-[[package]]
-name = "event-listener"
-version = "2.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7531096570974c3a9dcf9e4b8e1cede1ec26cf5046219fb3b9d897503b9be59"
 
 [[package]]
 name = "fallible-iterator"
@@ -615,6 +602,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "hex"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "644f9158b2f133fd50f5fb3242878846d9eb792e445c893805ff0e3824006e35"
+
+[[package]]
 name = "hmac"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -716,6 +709,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "instant"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61124eeebbd69b8190558df225adf7e4caafce0d743919e5d6b19652314ec5ec"
+dependencies = [
+ "cfg-if 1.0.0",
+]
+
+[[package]]
 name = "intern-arc"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -760,11 +762,10 @@ checksum = "89203f3fba0a3795506acaad8ebce3c80c0af93f994d5a1d7a0b1eeb23271929"
 
 [[package]]
 name = "libipld"
-version = "0.9.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11dd111df23ff5f0e1108dbcb607b72f0a51b7ff81781e45abff104f44252bbe"
+checksum = "8d59307d95e7c706e1604be291bee73840751b6bb7dc7b0a7fc3e915e74a8c23"
 dependencies = [
- "async-lock",
  "async-trait",
  "cached",
  "fnv",
@@ -774,14 +775,15 @@ dependencies = [
  "libipld-macro",
  "log",
  "multihash",
+ "parking_lot",
  "thiserror",
 ]
 
 [[package]]
 name = "libipld-cbor"
-version = "0.9.1"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eabf40e76c19673764409ea26bc12db8c313249939512ae47f705d74b2342666"
+checksum = "a7046a0fadddb99493a63bd6feaa89e48093b582353b18efd95541c8756c64a8"
 dependencies = [
  "byteorder",
  "libipld-core",
@@ -791,9 +793,9 @@ dependencies = [
 
 [[package]]
 name = "libipld-cbor-derive"
-version = "0.9.2"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ab060b500ad9ef4e7b03ae5ed2412327055357a4ad101c6259855ceb933fa61"
+checksum = "ed36af388299bc436f0a49014679b1e81d64757b4bb3413431695e4aea01d928"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -803,9 +805,9 @@ dependencies = [
 
 [[package]]
 name = "libipld-core"
-version = "0.9.0"
+version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee56cc147154af8d64803f60a66644c0b58a9273a7dfcaca5b0462c94e825fbb"
+checksum = "ff51610e03e83a91b2ec5c0ba8ce0d63e475677ab34d2eedf99ac438cffebd59"
 dependencies = [
  "anyhow",
  "cid",
@@ -816,9 +818,9 @@ dependencies = [
 
 [[package]]
 name = "libipld-macro"
-version = "0.9.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcb31ad397fa0b8b7d878b555c6cb0c3217e782d7b00554ccd5f791576ed00eb"
+checksum = "6a2bdd797b0abb80a52c0b215d8721e31c4162216a7930f41af70517f0ed5193"
 dependencies = [
  "libipld-core",
 ]
@@ -835,12 +837,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "log"
-version = "0.4.13"
+name = "lock_api"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fcf3805d4480bb5b86070dcfeb9e2cb2ebc148adb753c5cca5f884d1d65a42b2"
+checksum = "dd96ffd135b2fd7b973ac026d28085defbe8983df057ced3eb4f2130b0831312"
 dependencies = [
- "cfg-if 0.1.10",
+ "scopeguard",
+]
+
+[[package]]
+name = "log"
+version = "0.4.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
+dependencies = [
+ "cfg-if 1.0.0",
 ]
 
 [[package]]
@@ -1059,6 +1070,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "parking_lot"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d7744ac029df22dca6284efe4e898991d28e3085c706c972bcd7da4a27a15eb"
+dependencies = [
+ "instant",
+ "lock_api",
+ "parking_lot_core",
+]
+
+[[package]]
+name = "parking_lot_core"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ccb628cad4f84851442432c60ad8e1f607e29752d0bf072cbd0baf28aa34272"
+dependencies = [
+ "cfg-if 1.0.0",
+ "instant",
+ "libc",
+ "redox_syscall 0.1.57",
+ "smallvec",
+ "winapi",
+]
+
+[[package]]
 name = "percent-encoding"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1273,6 +1309,12 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
+version = "0.1.57"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41cc0f7e4d5d4544e8861606a285bb08d3e70712ccc7d2b84d7c0ccfaf4b05ce"
+
+[[package]]
+name = "redox_syscall"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05ec8ca9416c5ea37062b502703cd7fcb207736bc294f6e0cf367ac6fc234570"
@@ -1374,6 +1416,12 @@ dependencies = [
  "lazy_static",
  "winapi",
 ]
+
+[[package]]
+name = "scopeguard"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
 
 [[package]]
 name = "security-framework"
@@ -1514,9 +1562,9 @@ checksum = "1e81da0851ada1f3e9d4312c704aa4f8806f0f9d69faaf8df2f3464b4a9437c2"
 
 [[package]]
 name = "syn"
-version = "1.0.58"
+version = "1.0.60"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc60a3d73ea6594cd712d830cc1f0390fd71542d8c8cd24e70cc54cdfd5e05d5"
+checksum = "c700597eca8a5a762beb35753ef6b94df201c81cca676604f547495a0d7f0081"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1544,7 +1592,7 @@ dependencies = [
  "cfg-if 1.0.0",
  "libc",
  "rand",
- "redox_syscall",
+ "redox_syscall 0.2.4",
  "remove_dir_all",
  "winapi",
 ]

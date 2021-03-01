@@ -1,32 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.actyx.os.android">
+    package="com.actyx.android">
 
-    <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <!--  LEGACY METRICS-->
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!--  LEGACY NFC-->
-    <uses-permission android:name="android.permission.NFC" />
-    <!--  LEGACY Zebra Scanner-->
-    <uses-permission android:name="com.symbol.emdk.permission.EMDK" />
 
-    <!--  LEGACY USB-->
-    <uses-feature
-        android:name="android.hardware.usb.host"
-        android:required="false" />
-    <!--  LEGACY NFC-->
-    <uses-feature
-        android:name="android.hardware.nfc"
-        android:required="false" />
 
     <application
-        android:name=".Application"
+        android:name=".ActyxApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -35,21 +19,8 @@
         android:usesCleartextTraffic="true"
         tools:ignore="GoogleAppIndexingWarning,UnusedAttribute">
         <activity
-            android:name=".activity.WebappActivity"
-            android:configChanges="orientation|keyboardHidden|screenSize"
-            android:theme="@style/AppTheme.Fullscreen"
-            android:documentLaunchMode="intoExisting">
-            <!--
-            documentLaunchMode="intoExisting" will run this in a dedicated task or reuse a possibly
-            existing one with with equal starting intent's `dataAndType`.
-            -->
-            <intent-filter>
-                <action android:name="android.intent.action.CREATE_SHORTCUT" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-        <activity
-            android:name=".activity.MainActivity"
+            android:launchMode="singleTask"
+            android:name=".MainActivity"
             android:label="@string/app_name"
             android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
@@ -57,51 +28,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <!--  LEGACY USB-->
-        <activity
-            android:name="com.actyx.os.android.legacy.usb.BaltechEventReceiverActivity"
-            android:excludeFromRecents="true"
-            android:exported="false"
-            android:label="ActyxOS"
-            android:noHistory="true"
-            android:theme="@style/Theme.Transparent">
-            <intent-filter>
-                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
-            </intent-filter>
-            <meta-data
-                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
-                android:resource="@xml/usb_device_filter_baltech" />
-        </activity>
-        <!--  LEGACY NFC -->
-        <activity
-            android:name="com.actyx.os.android.legacy.nfc.NfcIntentReceiverActivity"
-            android:excludeFromRecents="true"
-            android:exported="true"
-            android:label="ActyxOS"
-            android:noHistory="true"
-            android:theme="@style/Theme.Transparent">
-            <intent-filter>
-                <action android:name="android.nfc.action.TECH_DISCOVERED" />
-            </intent-filter>
-            <meta-data
-                android:name="android.nfc.action.TECH_DISCOVERED"
-                android:resource="@xml/nfc_tech_filter" />
-        </activity>
         <service
-            android:name=".service.BackgroundServices"
-            android:exported="false"
+            android:name=".AxNodeService"
             android:process=":background_services"
+            android:exported="false"
             android:stopWithTask="false" />
         <receiver android:name=".Autostart">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
-
-        <!--  LEGACY Zebra Scanner-->
-        <uses-library
-            android:name="com.symbol.emdk"
-            android:required="false" />
+        <meta-data
+            android:name="preloaded_fonts"
+            android:resource="@array/preloaded_fonts" />
     </application>
 
 </manifest>

@@ -1,5 +1,5 @@
 ---
-pw_package_file: ActyxOS-Installer.exe
+pw_package_file: Actyx-Installer.exe
 pw_package_path: ../../../../dist/bin/windows-x86_64/
 pw_package_id: ActyxOS
 pw_package_args: "/S /background"
