@@ -18,8 +18,8 @@ SHELL := /bin/bash
 architectures = aarch64 x86_64 armv7 arm
 
 all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyx-linux ax,linux-$(arch)/$(bin)))
-all-WINDOWS := $(foreach t,actyx.exe ax.exe ActyxOS-Installer.exe,windows-x86_64/$t)
-all-ANDROID := actyxos.apk
+all-WINDOWS := $(foreach t,actyx.exe ax.exe Actyx-Installer.exe,windows-x86_64/$t)
+all-ANDROID := actyx.apk
 
 CARGO_TEST_JOBS := 8
 CARGO_BUILD_JOBS := 8
@@ -57,7 +57,7 @@ export VAULT_TOKEN ?= $(shell VAULT_ADDR=$(VAULT_ADDR) vault login -token-only -
 # which the respective images was built. Whenever the build images (inside
 # ops/docker/images/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := a323226596bcf90c248969af1d6b0913ae5d1e59
+export LATEST_STABLE_IMAGE_VERSION := 34cc0175489887c2729bea392ddf79ef5b733880
 # Helper to try out local builds of Docker images
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))
 
@@ -202,7 +202,7 @@ validate-website-downloads:
 	cd web/downloads.actyx.com && source ~/.nvm/nvm.sh && nvm install && \
 		npm install
 
-validate-misc: validate-actyxos-node-manager validate-actyxos-win-installer
+validate-misc: validate-actyxos-node-manager validate-actyx-win-installer
 
 # run npm install. There don't seem to be any tests.
 validate-actyxos-node-manager:
@@ -213,7 +213,7 @@ validate-actyxos-node-manager:
 	  --rm actyx/util:windowsinstallercreator-x64-latest \
 	  bash -c "npm install"
 
-validate-actyxos-win-installer: validate-actyxos-node-manager
+validate-actyx-win-installer: validate-actyxos-node-manager
 
 # combines all the .so files to build actyxos on android
 android-libaxosnodeffi: \
@@ -350,7 +350,7 @@ jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnod
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
       ./gradlew ktlintCheck build assembleRelease androidGitVersion
 
-dist/bin/actyxos.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
+dist/bin/actyx.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
 	mkdir -p $(dir $@)
 	cp $< $@
 
@@ -368,21 +368,21 @@ dist/bin/windows-x86_64/actyxos-node-manager.exe: misc/actyxos-node-manager/out/
 	mkdir -p $(dir $@)
 	cp -a $</actyxos-node-manager.exe $@
 
-dist/bin/windows-x86_64/ActyxOS-Installer.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyx.exe make-always
-	cp $</actyxos-node-manager.exe misc/actyxos-win-installer
-	cp dist/bin/windows-x86_64/actyx.exe misc/actyxos-win-installer
-	cp dist/bin/windows-x86_64/ax.exe misc/actyxos-win-installer
-	cp -r misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 misc/actyxos-win-installer/node-manager
+dist/bin/windows-x86_64/Actyx-Installer.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyx.exe make-always
+	cp $</actyxos-node-manager.exe misc/actyx-win-installer
+	cp dist/bin/windows-x86_64/actyx.exe misc/actyx-win-installer
+	cp dist/bin/windows-x86_64/ax.exe misc/actyx-win-installer
+	cp -r misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 misc/actyx-win-installer/node-manager
 	# ls -alh .
 	docker run \
 	  -u $(shell id -u) \
 	  -v `pwd`:/src \
-	  -w /src/misc/actyxos-win-installer \
+	  -w /src/misc/actyx-win-installer \
 	  -e DIST_DIR='/src/dist/bin/windows-x86_64' \
-	  -e SRC_DIR='/src/misc/actyxos-win-installer' \
+	  -e SRC_DIR='/src/misc/actyx-win-installer' \
 	  -e PRODUCT_VERSION=1.1.1 \
-	  -e PRODUCT_NAME=ActyxOS \
-	  -e INSTALLER_NAME='ActyxOS-Installer' \
+	  -e PRODUCT_NAME=Actyx \
+	  -e INSTALLER_NAME='Actyx-Installer' \
 	  --rm \
 	  actyx/util:windowsinstallercreator-x64-latest \
 	  ./build.sh

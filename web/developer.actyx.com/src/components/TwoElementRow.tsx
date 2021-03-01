@@ -152,7 +152,7 @@ type Props = Readonly<{
   showBadges?: boolean
 }>
 
-export const TwoElementRow = ({
+export const TwoElementRow: React.FC<Props> = ({
   img1,
   img2,
   title1,

@@ -58,9 +58,6 @@ actyx-local
 # created stuff
 app/release
 
-# files downloaded during build time
-app/src/main/res/raw/ipfs*
-
 # Backup and IDEiles
 *~
 .history/

@@ -13,8 +13,8 @@ cd $(dirname $0)/..
 assembly=app/build/outputs/assembly/Actyx/axosandroid/${BUILD_SOURCEVERSION}
 echo "Current version's path = $assembly"
 mkdir -p ${assembly}
-mv app/build/outputs/apk/debug/app-debug.apk ${assembly}/actyxos-debug.apk
-mv app/build/outputs/apk/release/app-release.apk ${assembly}/actyxos.apk
+mv app/build/outputs/apk/debug/app-debug.apk ${assembly}/actyx-debug.apk
+mv app/build/outputs/apk/release/app-release.apk ${assembly}/actyx.apk
 
 # Make a descriptor for IPFS
 
@@ -30,7 +30,7 @@ descriptor=$(cat <<EOF
 {
 "artifacts": [
 {
-  "file": "actyxos.apk",
+  "file": "actyx.apk",
   "type": "android",
   "apkVersion": "$apk_version"
 },

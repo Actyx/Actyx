@@ -1,7 +1,7 @@
 ---
 title: Event Service
 ---
-
+<!-- textlint-disable -->
 This is a reference page for the ActyxOS **Event API**.
 
 The Event Service HTTP API provides local access to the Event Service, allowing you to
@@ -211,7 +211,8 @@ If an error is encountered while processing the stream of events, the stream wil
 ```
 
 TODO: verify! currently getting {"code":500,"message":"warp internal server error, unhandled Rejection."} for an empty request body while the server logs
-```
+
+```text
 code 500 rejections Rejection([MethodNotAllowed, BodyDeserializeError { cause: Error("missing field `subscription`", line: 1, column: 2) }])
 ```
 
@@ -488,7 +489,6 @@ In case the service learns about events that need to be sorted earlier than an e
     }
 }
 ```
-
 
 If an error is encountered while processing the stream of events, the stream will terminate with a final error JSON object with the following structure:
 

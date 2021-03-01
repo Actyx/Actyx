@@ -165,7 +165,7 @@ Now that you’re set up, let’s get an overview of the Actyx platform!
 
 ### What is ActyxOS?
 
-ActyxOS is a multi-node operating system that allows you to build edge native applications running in a swarm of nodes (devices). Specifically you can:
+ActyxOS is a multi-node operating system that allows you to build local-first applications running in a swarm of nodes (devices). Specifically you can:
 
 1. Run one ore more apps on each node using the ActyxOS runtimes
 1. Access _always-available_ `localhost` APIs such as the Event Service
@@ -374,7 +374,7 @@ Here is what you can try out now:
 - What happens if I chat or restart in airplane mode?
 - How are messages sorted after I reconnect a device?
 
-We hope that you are now starting to experience the power of edge native applications and the Actyx Platform. If you are keen to dive a bit deeper, check out the following further resources.
+We hope that you are now starting to experience the power of local-first applications and the Actyx Platform. If you are keen to dive a bit deeper, check out the following further resources.
 
 ## Download the code
 

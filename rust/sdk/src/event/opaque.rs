@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 use crate::types::ArcVal;
+use libipld::{
+    cbor::DagCborCodec,
+    codec::{Decode, Encode},
+    raw_value::RawValue,
+};
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::sync::Arc;
@@ -68,21 +73,44 @@ impl<'de> Deserialize<'de> for Opaque {
     }
 }
 
+impl Encode<DagCborCodec> for Opaque {
+    fn encode<W: std::io::Write>(&self, _c: DagCborCodec, w: &mut W) -> anyhow::Result<()> {
+        // we know that an opaque contains cbor, so we just write it
+        Ok(w.write_all(self.as_ref())?)
+    }
+}
+
+impl Decode<DagCborCodec> for Opaque {
+    fn decode<R: std::io::Read + std::io::Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
+        let tmp = RawValue::<DagCborCodec>::decode(c, r)?;
+        Ok(Self(ArcVal::from_boxed(tmp.into())))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::from_cbor_me;
+    use libipld::codec::Codec;
     use serde_json::json;
 
     #[test]
-    fn opaque_json_roundtrip() {
+    fn opaque_dag_cbor_roundtrip() -> anyhow::Result<()> {
         let text = "";
         // using JSON value allows CBOR to use known-length array encoding
-        let o1: Opaque = serde_json::from_value(json!([text])).unwrap();
-        let j = serde_json::to_string(&o1).unwrap();
-        // if we don’t parse the JSON first then CBOR will use indefinite length encoding
-        let v = serde_json::from_str(&j).unwrap();
-        let o2: Opaque = serde_json::from_value(v).unwrap();
+        let o1: Opaque = serde_json::from_value(json!([text]))?;
+        let tmp = DagCborCodec.encode(&o1)?;
+        let expected = from_cbor_me(
+            r#"
+81     # array(1)
+   60  # text(0)
+       # ""
+"#,
+        )?;
+        assert_eq!(tmp, expected);
+        let o2: Opaque = DagCborCodec.decode(&tmp)?;
         assert_eq!(o1, o2);
+        Ok(())
     }
 
     #[test]

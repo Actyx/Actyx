@@ -80,19 +80,6 @@ macro_rules! mk_scalar {
             }
         }
 
-        impl ::libipld::cbor::decode::TryReadCbor for $id {
-            fn try_read_cbor<R: ::std::io::Read + ::std::io::Seek>(
-                r: &mut R,
-                major: u8,
-            ) -> ::libipld::error::Result<Option<Self>> {
-                if let Some(v) = String::try_read_cbor(r, major)? {
-                    Ok(Some(v.parse()?))
-                } else {
-                    Ok(None)
-                }
-            }
-        }
-
         impl ::libipld::codec::Decode<::libipld::cbor::DagCborCodec> for $id {
             fn decode<R: ::std::io::Read + ::std::io::Seek>(
                 c: ::libipld::cbor::DagCborCodec,
