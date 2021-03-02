@@ -1,5 +1,7 @@
 import { assertOK } from '../../assertOK'
+import { CLI } from '../../cli'
 import { runOnEvery } from '../../infrastructure/hosts'
+import { currentAxBinary } from '../../infrastructure/settings'
 import { stubs } from '../../stubs'
 
 describe('ax nodes', () => {
@@ -29,6 +31,22 @@ describe('ax nodes', () => {
             startedIso: expect.any(String),
             startedUnix: expect.any(Number),
             version: '2.0.0-dev',
+          },
+        ]
+        expect(response.result).toMatchObject(responseShape)
+      })
+    })
+
+    test('return OK and result with unauthorized', async () => {
+      await runOnEvery({}, async (node) => {
+        // This will generate a CLI with a different than private key the node
+        // was setup with
+        const unauthorizedCli = await CLI.build(node._private.axHost, await currentAxBinary())
+        const response = assertOK(await unauthorizedCli.nodes.ls())
+        const responseShape = [
+          {
+            connection: 'unauthorized',
+            host: expect.any(String),
           },
         ]
         expect(response.result).toMatchObject(responseShape)
