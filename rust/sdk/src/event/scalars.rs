@@ -356,7 +356,7 @@ impl FromStr for SourceId {
         }
         let mut buf = [0; MAX_SOURCEID_LENGTH + 1];
         buf[MAX_SOURCEID_LENGTH] = bytes.len() as u8;
-        buf[..bytes.len()].clone_from_slice(&bytes[..]);
+        buf[..bytes.len()].clone_from_slice(bytes);
         Result::Ok(SourceId(buf))
     }
 }
