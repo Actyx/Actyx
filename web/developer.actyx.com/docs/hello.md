@@ -1,11 +1,20 @@
 ---
+id: hello
 title: Placeholder Page
+hide_title: false
+hide_table_of_contents: true
+sidebar_label: Placeholder Sidebar Title
+keywords: [keyword1, keyword2]
+description: Placeholder page to test things out.
+image: /images/defaults/default.svg
 ---
 
 ## Introduction to the Actyx Platform
 
 > What is this looking like?
 > This is a quote i believe
+
+<!-- truncate -->
 
 The Actyx platform is an application platform for developing, deploying, running and monitoring local-first applications, such as factory automation on the shop-floor where utmost reliability is required.
 With the Actyx platform we bring a modern development experience to this space and provide you with the software and tools that enable you to build better solutions faster.
