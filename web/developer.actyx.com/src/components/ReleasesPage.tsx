@@ -1,5 +1,5 @@
 import React from 'react'
-import Layout from '@theme/Layout'
+import Layout from '../plugins/analytics/theme/Layout'
 import styled from 'styled-components'
 import moment from 'moment'
 import { toShortHash, flattenToActual, Tags } from '../release-util'

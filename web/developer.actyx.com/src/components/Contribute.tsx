@@ -7,4 +7,4 @@ type Props = Readonly<{
   example: string
 }>
 
-export const ComponentTemplate: React.FC<Props> = ({ example }: Props) => <Wrapper></Wrapper>
+export const Contribute: React.FC<Props> = ({ example }: Props) => <Wrapper></Wrapper>
