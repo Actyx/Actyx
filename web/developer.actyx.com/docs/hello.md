@@ -2,7 +2,7 @@
 id: hello
 title: Placeholder Page
 hide_title: false
-hide_table_of_contents: true
+hide_table_of_contents: false
 sidebar_label: Placeholder Sidebar Title
 keywords: [keyword1, keyword2]
 description: Placeholder page to test things out.
