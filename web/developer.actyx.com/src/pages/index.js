@@ -1,6 +1,7 @@
 import React from 'react'
 import Layout from '@theme/Layout'
 import styled from 'styled-components'
+import { PageTag } from '../components/PageTag'
 
 /* eslint-disable */
 const PageWrapper = styled.div`
@@ -13,7 +14,11 @@ const PageWrapper = styled.div`
 `
 
 function Home() {
-  return <PageWrapper></PageWrapper>
+  return (
+    <PageWrapper>
+      <PageTag />
+    </PageWrapper>
+  )
 }
 
 function HomePage() {

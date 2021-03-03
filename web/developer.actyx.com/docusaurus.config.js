@@ -42,7 +42,27 @@ module.exports = {
       },
       items: [
         {
-          label: 'Navbar Element',
+          label: 'Actyx',
+          activeBasePath: 'docs/hello',
+          to: 'docs/hello',
+        },
+        {
+          label: 'SDKs',
+          activeBasePath: 'docs/hello',
+          to: 'docs/hello',
+        },
+        {
+          label: 'CLI',
+          activeBasePath: 'docs/hello',
+          to: 'docs/hello',
+        },
+        {
+          label: 'Node Manager',
+          activeBasePath: 'docs/hello',
+          to: 'docs/hello',
+        },
+        {
+          label: 'Building Apps',
           activeBasePath: 'docs/hello',
           to: 'docs/hello',
         },
