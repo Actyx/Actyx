@@ -389,7 +389,7 @@ echo '
 
 ## Subscribe to event streams monotonically
 
-You can use the Event Service API to subscribe to event streams with strong ordering guarentees. This means that whenever the service learns about events that need to be sorted earlier than an event that has already been delivered the result is finished with a _time travel_ event.
+You can use the Event Service API to subscribe to event streams with the guarantee that whenever the service learns about events that need to be sorted earlier than an event that has already been delivered the stream ends with a _time travel_ message.
 
 ### Request
 
@@ -442,7 +442,7 @@ Specify additional details of your request as documented in the following.
 The session identifier is chosen by the client and must be used consistently by the client to resume an earlier session. For fishes this will usually be the fish id.
 
 :::info
-If the the `where` filter changes, a new session will be created regardless of the existance of a session with the same ID.
+If the `where` filter changes, a new session will be created regardless of the existence of a session with the same ID.
 :::
 
 TODO: 
