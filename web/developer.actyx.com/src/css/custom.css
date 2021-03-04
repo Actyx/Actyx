@@ -1522,10 +1522,6 @@ pre .line-numbers {
   counter-reset: linenumber;
 }
 
-.announcementBarContent_node_modules-\@docusaurus-theme-classic-lib-theme-AnnouncementBar- > a {
-  font-size: inherit !important;
-}
-
 .sidebarItemTitle_node_modules-\@docusaurus-theme-classic-lib-theme-BlogSidebar- {
   font-size: 22px !important;
   padding-top: 20px !important;

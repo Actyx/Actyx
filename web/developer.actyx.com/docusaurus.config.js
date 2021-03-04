@@ -24,10 +24,10 @@ module.exports = {
   ],
   themeConfig: {
     announcementBar: {
-      id: 'v2-release',
+      id: 'test007',
       content: 'Announcement Bar Content',
-      backgroundColor: '#f5f6f7',
-      textColor: '#000',
+      backgroundColor: '#373c40',
+      textColor: '#fff',
     },
     colorMode: {
       defaultMode: 'light',
