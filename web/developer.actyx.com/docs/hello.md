@@ -1,6 +1,6 @@
 ---
 id: hello
-title: Placeholder Page
+title: Installation Guide
 hide_title: false
 hide_table_of_contents: false
 sidebar_label: Placeholder Sidebar Title

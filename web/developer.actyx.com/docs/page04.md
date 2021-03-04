@@ -1,3 +1,3 @@
 ---
-title: Page 04 Placeholder
+title: Licensing
 ---
