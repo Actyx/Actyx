@@ -1,0 +1,46 @@
+---
+title: Event Service API Reference
+id: Test API Reference
+hide_title: false
+hide_table_of_contents: true
+sidebar_label: Event Service API
+keywords: [explanation, test]
+description: Explanation guide for tests
+image: /images/os/js-sdk.png
+---
+
+import { APIReference } from '../src/components/APIReference.tsx'
+import Markdown from 'react-markdown'
+import mdContent from '../code-samples/test.tsx'
+import renderer from '../src/components/Renderer.tsx'
+
+This is a reference page for the ActyxOS **Event API**.
+
+The Event Service HTTP API provides local access to the Event Service, allowing you to
+
+- [get the node ID](#get-node-id)
+- [get information about known offsets](#get-information-about-known-offsets),
+- [query event streams](#query-event-streams),
+- [subscribe to event streams](#subscribe-to-event-streams),
+- [subscribe to event streams monotonically](#subscribe-to-event-streams-monotonically); and,
+- [publish events](#publish-events)
+
+It is reachable at the following base URI: `http://localhost:4454/api/v2/events`.
+
+:::info Pretty printed JSON
+JSON used in the examples below is pretty-printed with [jq](https://stedolan.github.io/jq/). This is only to make it more readable here. In reality, the Event Service API does not return pretty-printed JSON but the usual compact JSON you know from any other service.
+:::
+
+## Prerequisites
+
+Communication with the Event Service needs to be authenticated. Therefore an authorization token which is associated with the requesting app needs to be retrieved by the node. This token then needs to be passed in the `Authorization` header with every request to the Event Service. In the following examples we will use the `$AUTH_TOKEN` environment variable which can be initialized with
+
+```bash
+export AUTH_TOKEN="$(curl -s localhost:4457/api/v0/apps/example_app/token | jq -r '.Ok')"
+```
+
+While the following examples use [cURL](https://curl.se/) other command-line or graphical tools (e.g. [Postman](https://www.postman.com/product/api-client/)) would work as well.
+
+## Getting information about known offsets
+
+<APIReference code={mdContent}></APIReference>

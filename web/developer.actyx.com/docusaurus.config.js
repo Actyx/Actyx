@@ -89,7 +89,7 @@ module.exports = {
       copyright: `Copyright © ${new Date().getFullYear()} Actyx AG`,
     },
     prism: {
-      theme: require('prism-react-renderer/themes/palenight'),
+      theme: require('prism-react-renderer/themes/vsDark'),
       darkTheme: require('prism-react-renderer/themes/dracula'),
       additionalLanguages: ['rust', 'csharp'],
     },

@@ -4,7 +4,7 @@ module.exports = {
       type: 'category',
       label: '💬 Explanations',
       collapsed: false,
-      items: ['hello', 'event-streams', 'page03'],
+      items: ['hello', 'event-streams', 'Test API Reference']
     },
     {
       type: 'category',

@@ -1510,7 +1510,7 @@ pre code {
   margin: 0;
   max-width: auto;
   overflow: visible;
-  padding: 20px !important;
+  padding: 0px !important;
   white-space: pre;
   word-break: normal;
   word-wrap: normal;

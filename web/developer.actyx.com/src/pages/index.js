@@ -2,6 +2,7 @@ import React from 'react'
 import Layout from '@theme/Layout'
 import styled from 'styled-components'
 import { PageTag } from '../components/PageTag'
+import { APIReference } from '../components/APIReference'
 
 /* eslint-disable */
 const PageWrapper = styled.div`
@@ -16,7 +17,7 @@ const PageWrapper = styled.div`
 function Home() {
   return (
     <PageWrapper>
-      <PageTag />
+      <APIReference>```kdfjsndfv```</APIReference>
     </PageWrapper>
   )
 }
