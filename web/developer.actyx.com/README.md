@@ -10,60 +10,17 @@ This directory contains the source used to build the [https://developer.actyx.co
 
 ### Content structure
 
-The site has four sections:
-
-#### ActyxOS
-
-Documentation related to ActyxOS. All content can be found in `/docs/os`.
-
-The sidebar (left on the page) is defined in the `osSidebar` property in `/sidebars.js`.
-
-#### Actyx Pond
-
-Documentation related to Actyx Pond. All content can be found in `/docs/pond`.
-
-The sidebar (left on the page) is defined in the `pondSidebar` property in `/sidebars.js`.
-
-#### Actyx CLI
-
-Documentation related to the Actyx CLI. All content can be found in `/docs/cli.md` (currently it is just a single page).
-
-The sidebar (left on the page) is defined in the `pondSidebar` property in `/sidebars.js`.
-
-#### FAQ
-
-Frequently asked questions. All content can be found in `/docs/faq`.
-
-The sidebar (left on the page) is defined in the `faqSidebar` property in `/sidebars.js`.
-
 ### Content format
 
-Docusaurus uses standard Markdown syntax extended with MDX. Any page should have the following structure
+Docusaurus uses standard Markdown syntax extended with MDX. To have a unified document structure, please download [this VS Code extension](). Using the extension, you can generate a few different files:
 
-```bash
----
-property1: value
-property2: value
----
+- Explanation Guides
+- How-To-Guides
+- API Reference
 
-My content
-
-## My first header
-
-More content
-
-## My second header
-
-Even more content
-```
+Depending on the kind you choose, the extension will generate a Markdown snippet with all necessary things already in place — now you only need to fill in the content :-)
 
 As you can see, a page is composed of so-called _header fields_ (enclosed by `---` above and below), followed by the actual content. The content can be any valid Markdown. Indeed, you can even use MDX. Please refer to [this page](https://v2.docusaurus.io/docs/markdown-features/) for more information.
-
-**Important**: do not use h1 headers (i.e. `#`). The highest-level header on the page should be a second-level header (`##`).
-
-#### Header fields
-
-At the very least, each page should have a `title` header field.
 
 #### Linking to other pages
 
@@ -88,6 +45,8 @@ Note that the path does not include `static`. The fact that there is a differenc
 ```bash
 ln -s /static/images /images
 ```
+
+All .svg image files that are in the static or any inner folder will be optimized during `prebuild` using an [svg optimizer](https://www.npmjs.com/package/svgo) and saved back under their original name in the same folder.
 
 #### Callouts
 
