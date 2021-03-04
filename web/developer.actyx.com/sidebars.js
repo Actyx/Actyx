@@ -2,15 +2,21 @@ module.exports = {
   homeSidebar: [
     {
       type: "category",
-      label: "Actyx CLI",
+      label: "Explanations",
       collapsed: false,
       items: ["hello"],
     },
     {
       type: "category",
-      label: "General",
+      label: "How-To-Guides",
       collapsed: false,
-      items: ["hello", "page01", "page02", "page03", "page04", "page05"],
+      items: ["page01"],
+    },
+    {
+      type: "category",
+      label: "API Reference",
+      collapsed: false,
+      items: ["page02"],
     }
   ]
 };

@@ -226,7 +226,8 @@ span {
 }
 .navbar.navbar--fixed-top {
   position: -webkit-sticky;
-  box-shadow: none;
+  box-shadow: none; /* var(--ifm-navbar-shadow); */
+  border-bottom: 1px solid var(--ifm-toc-border-color);
   position: sticky;
   top: 0;
   z-index: var(--ifm-z-index-fixed);
