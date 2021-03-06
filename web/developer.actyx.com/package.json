@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "prestart": "npm run copy-schemas && npm run lint",
-    "start": "docusaurus start --host 0.0.0.0",
+    "start": "npm run lint && docusaurus start --host 0.0.0.0",
     "copy-schemas": "node bin/copy-schemas.js",
     "build-with-lint": "npm run lint && docusaurus build",
     "build": "npm run lint && docusaurus build",

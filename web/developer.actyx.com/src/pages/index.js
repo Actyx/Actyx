@@ -4,6 +4,7 @@ import styled from 'styled-components'
 import { PageTag } from '../components/PageTag'
 import { APIReference } from '../components/APIReference'
 import { Callout } from '../components/Callout'
+import SearchBarHomePage from '../theme/SearchBar-Homepage'
 
 /* eslint-disable */
 const PageWrapper = styled.div`
@@ -18,7 +19,7 @@ const PageWrapper = styled.div`
 function Home() {
   return (
     <PageWrapper>
-      <Callout />
+      <SearchBarHomePage />
     </PageWrapper>
   )
 }
