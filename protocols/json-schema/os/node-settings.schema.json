@@ -141,6 +141,7 @@
               "additionalProperties": {
                 "$ref": "#/definitions/Composite/LogLevel"
               },
+	      "default": {},
               "description": "Key-value pairs where the key is an app ID and the value is the corresponding log level."
             }
           }
