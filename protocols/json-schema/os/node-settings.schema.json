@@ -141,7 +141,7 @@
               "additionalProperties": {
                 "$ref": "#/definitions/Composite/LogLevel"
               },
-              "description": "Key-value pairs where the key is an app's log level."
+              "description": "Key-value pairs where the key is an app ID and the value is the corresponding log level."
             }
           }
         },
@@ -152,7 +152,7 @@
           },
           "default": [],
           "uniqueItems": true,
-          "description": "Public Key of the users allowed to connect to the node"
+          "description": "Public keys of the users allowed to connect to the node."
         }
       }
     },
