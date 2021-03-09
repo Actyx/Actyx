@@ -88,16 +88,17 @@ pub use actyxos_sdk_macros::*;
 #[macro_use]
 mod scalar;
 
+pub mod dnf;
 pub mod event;
 pub mod event_service;
+pub mod expression;
 pub mod tagged;
 pub mod types;
 
+pub use dnf::Dnf;
 pub use event::{LamportTimestamp, Offset, OffsetMap, OffsetOrMin, Opaque, ParseError, Payload, TimeStamp};
-
-pub use event_service::Order;
-
-pub use event_service::EventServiceError;
+pub use event_service::EventService;
+pub use expression::Expression;
 
 #[cfg(test)]
 mod test_util;

@@ -1,99 +1,43 @@
-/*
- * Copyright 2020 Actyx AG
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-use super::{service::NodeIdResponse, NodeId};
-use crate::event_service::client::WithContext;
-use crate::{EventServiceError, OffsetMap};
+use anyhow::Result;
+use async_trait::async_trait;
+use bytes::Bytes;
+use derive_more::{Display, Error};
+use futures::{future, stream::iter, Stream, StreamExt};
 use reqwest::{Client, RequestBuilder, Response};
-use std::env;
+use serde::{Deserialize, Serialize};
 use url::Url;
 
-/// An Event Service API client with which you can perform queries and publish events.
+use crate::event_service;
+
+/// Error type that is returned in the response body by the Event Service when requests fail
 ///
-/// This feature is only available under the `client` feature flag.
-///
-/// The common way to create an EventService instance is to use the default constructor:
-///
-/// ```rust
-/// use actyxos_sdk::event_service::EventService;
-///
-/// let event_service: EventService = EventService::default();
-/// ```
-///
-/// This will connect to the local Event Service, either an ActyxOS node in development
-/// mode or the production ActyxOS node where the app is deployed (in particular, it will
-/// inspect the `AX_EVENT_SERVICE_URI` environment variable and fall back to
-/// `http://localhost:4454/api/`).
+/// The Event Service does not map client errors or internal errors to HTTP status codes,
+/// instead it gives more structured information using this data type, except when the request
+/// is not understood at all.
+#[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq)]
+#[display(fmt = "error {} while {}: {}", error_code, context, error)]
+#[serde(rename_all = "camelCase")]
+pub struct EventServiceError {
+    pub error: String,
+    pub error_code: u16,
+    pub context: String,
+}
+
+#[derive(Clone)]
 pub struct EventService {
     client: Client,
     url: Url,
 }
 
 impl EventService {
-    /// Construct a new client from a reqwest [`Client`](https://docs.rs/reqwest/0.10.4/reqwest/struct.Client.html)
-    /// and a base URL. The URL _must_ end with a slash as the endpoints below it are resolved as relative paths.
-    pub fn new(client: &Client, url: Url) -> Self {
-        EventService {
-            client: client.clone(),
-            url,
-        }
-    }
-
-    /// Obtain an [`OffsetMap`](../event/struct.OffsetMap.html) that describes the set of all events currently known to the
-    /// Event Service. New events are continuously ingested from other ActyxOS nodes, which
-    /// means that calling this method again at a later time is likely to produce a larger
-    /// `OffsetMap`.
-    pub async fn get_offsets(&self) -> Result<OffsetMap, EventServiceError> {
-        let response = self.do_request(|c| c.get(self.url("offsets"))).await?;
-        let bytes = response
-            .bytes()
-            .await
-            .context(|| format!("getting body for GET {}", self.url("offsets")))?;
-        Ok(serde_json::from_slice(bytes.as_ref()).context(|| {
-            format!(
-                "deserializing offsets from {:?} received from GET {}",
-                bytes,
-                self.url("offsets")
-            )
-        })?)
-    }
-
-    /// Obtain the local ActyxOS node ID to use it as a source ID in
-    /// [`Subscription::local`](struct.Subscription.html#method.local).
-    pub async fn node_id(&self) -> Result<NodeId, EventServiceError> {
-        let response = self.do_request(|c| c.get(self.url("node_id"))).await?;
-        let bytes = response
-            .bytes()
-            .await
-            .context(|| format!("getting body for GET {}", self.url("offsets")))?;
-        Ok(serde_json::from_slice::<NodeIdResponse>(bytes.as_ref())
-            .context(|| {
-                format!(
-                    "deserializing node_id from {:?} received from GET {}",
-                    bytes,
-                    self.url("offsets")
-                )
-            })?
-            .node_id)
-    }
-
     fn url(&self, path: &str) -> Url {
         self.url.join(path).unwrap()
     }
 
-    async fn do_request(&self, f: impl Fn(&Client) -> RequestBuilder) -> Result<Response, EventServiceError> {
+    async fn do_request(
+        &self,
+        f: impl Fn(&Client) -> RequestBuilder,
+    ) -> std::result::Result<Response, EventServiceError> {
         let response = f(&self.client)
             .send()
             .await
@@ -117,20 +61,189 @@ impl EventService {
 impl Default for EventService {
     /// This will configure a connection to the local Event Service, either an ActyxOS node in development
     /// mode or the production ActyxOS node where the app is deployed (in particular, it will
-    /// inspect the `AX_EVENT_SERVICE_URI` environment variable and fall back to
+    /// inspect the `AX_API_URI` environment variable and fall back to
     /// `http://localhost:4454/api/`).
     fn default() -> Self {
         let client = Client::new();
-        let url = env::var("AX_EVENT_SERVICE_URI")
+        let url = std::env::var("AX_API_URI")
             .and_then(|mut uri| {
                 if !uri.ends_with('/') {
                     uri.push('/')
                 };
-                Url::parse(&*uri).map_err(|_| env::VarError::NotPresent)
+                Url::parse(&*uri).map_err(|_| std::env::VarError::NotPresent)
             })
             .unwrap_or_else(|_| Url::parse("http://localhost:4454/api/").unwrap())
             .join("v2/events/")
             .unwrap();
         EventService { client, url }
+    }
+}
+
+#[async_trait]
+impl event_service::EventService for EventService {
+    async fn node_id(&self) -> Result<event_service::NodeIdResponse> {
+        let response = self.do_request(|c| c.get(self.url("node_id"))).await?;
+        let bytes = response
+            .bytes()
+            .await
+            .context(|| format!("getting body for GET {}", self.url("node_id")))?;
+        Ok(serde_json::from_slice(bytes.as_ref()).context(|| {
+            format!(
+                "deserializing node_id response from {:?} received from GET {}",
+                bytes,
+                self.url("node_id")
+            )
+        })?)
+    }
+
+    async fn offsets(&self) -> Result<crate::OffsetMap> {
+        let response = self.do_request(|c| c.get(self.url("offsets"))).await?;
+        let bytes = response
+            .bytes()
+            .await
+            .context(|| format!("getting body for GET {}", self.url("offsets")))?;
+        Ok(serde_json::from_slice(bytes.as_ref()).context(|| {
+            format!(
+                "deserializing offsets response from {:?} received from GET {}",
+                bytes,
+                self.url("offsets")
+            )
+        })?)
+    }
+
+    async fn publish(&self, request: event_service::PublishRequest) -> Result<event_service::PublishResponse> {
+        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
+        let response = self.do_request(|c| c.post(self.url("publish")).json(&body)).await?;
+        let bytes = response
+            .bytes()
+            .await
+            .context(|| format!("getting body for GET {}", self.url("publish")))?;
+        Ok(serde_json::from_slice(bytes.as_ref()).context(|| {
+            format!(
+                "deserializing publish response from {:?} received from GET {}",
+                bytes,
+                self.url("publish")
+            )
+        })?)
+    }
+
+    async fn query(
+        &self,
+        request: event_service::QueryRequest,
+    ) -> Result<futures::stream::BoxStream<'static, event_service::QueryResponse>> {
+        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
+        let response = self.do_request(|c| c.post(self.url("query")).json(&body)).await?;
+        let res = to_lines(response.bytes_stream())
+            .map(|bs| serde_json::from_slice(bs.as_ref()))
+            // FIXME this swallows deserialization errors, silently dropping event envelopes
+            .filter_map(|res| future::ready(res.ok()));
+        Ok(res.boxed())
+    }
+
+    async fn subscribe(
+        &self,
+        request: event_service::SubscribeRequest,
+    ) -> Result<futures::stream::BoxStream<'static, event_service::SubscribeResponse>> {
+        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
+        let response = self.do_request(|c| c.post(self.url("subscribe")).json(&body)).await?;
+        let res = to_lines(response.bytes_stream())
+            .map(|bs| serde_json::from_slice(bs.as_ref()))
+            // FIXME this swallows deserialization errors, silently dropping event envelopes
+            .filter_map(|res| future::ready(res.ok()));
+        Ok(res.boxed())
+    }
+
+    async fn subscribe_monotonic(
+        &self,
+        request: event_service::SubscribeMonotonicRequest,
+    ) -> Result<futures::stream::BoxStream<'static, event_service::SubscribeMonotonicResponse>> {
+        let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
+        let response = self
+            .do_request(|c| c.post(self.url("subscribe_monotonic")).json(&body))
+            .await?;
+        let res = to_lines(response.bytes_stream())
+            .map(|bs| serde_json::from_slice(bs.as_ref()))
+            // FIXME this swallows deserialization errors, silently dropping event envelopes
+            .filter_map(|res| future::ready(res.ok()));
+        Ok(res.boxed())
+    }
+}
+
+pub(crate) fn to_lines(stream: impl Stream<Item = Result<Bytes, reqwest::Error>>) -> impl Stream<Item = Vec<u8>> {
+    let mut buf = Vec::<u8>::new();
+    let to_lines = move |bytes: Bytes| {
+        buf.extend_from_slice(bytes.as_ref());
+        let mut ret = buf.split(|b| *b == b'\n').map(|bs| bs.to_vec()).collect::<Vec<_>>();
+        if let Some(last) = ret.pop() {
+            buf.clear();
+            buf.extend_from_slice(last.as_ref());
+        }
+        iter(ret.into_iter().map(|mut bs| {
+            if bs.ends_with(b"\r") {
+                bs.pop();
+            }
+            bs
+        }))
+    };
+    stream
+        .take_while(|res| future::ready(res.is_ok()))
+        .map(|res| res.unwrap())
+        .map(to_lines)
+        .flatten()
+}
+
+pub(crate) trait WithContext {
+    type Output;
+    fn context<F, T>(self, context: F) -> Self::Output
+    where
+        T: Into<String>,
+        F: FnOnce() -> T;
+}
+impl<T, E> WithContext for std::result::Result<T, E>
+where
+    EventServiceError: From<(String, E)>,
+{
+    type Output = std::result::Result<T, EventServiceError>;
+
+    #[inline]
+    fn context<F, C>(self, context: F) -> Self::Output
+    where
+        C: Into<String>,
+        F: FnOnce() -> C,
+    {
+        match self {
+            Ok(value) => Ok(value),
+            Err(err) => Err(EventServiceError::from((context().into(), err))),
+        }
+    }
+}
+
+impl From<(String, reqwest::Error)> for EventServiceError {
+    fn from(e: (String, reqwest::Error)) -> Self {
+        Self {
+            error: format!("{:?}", e.1),
+            error_code: 101,
+            context: e.0,
+        }
+    }
+}
+
+impl From<(String, serde_json::Error)> for EventServiceError {
+    fn from(e: (String, serde_json::Error)) -> Self {
+        Self {
+            error: format!("{:?}", e.1),
+            error_code: 102,
+            context: e.0,
+        }
+    }
+}
+
+impl From<(String, serde_cbor::Error)> for EventServiceError {
+    fn from(e: (String, serde_cbor::Error)) -> Self {
+        Self {
+            error: format!("{:?}", e.1),
+            error_code: 102,
+            context: e.0,
+        }
     }
 }
