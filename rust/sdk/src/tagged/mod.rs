@@ -26,14 +26,12 @@ mod arb;
 mod client;
 mod event;
 mod scalars;
-mod service;
 mod snapshot;
 mod tags;
 
 #[cfg(feature = "client")]
-pub use client::EventService;
+pub use client::EventService as EventServiceHttpClient;
 pub use event::{Event, EventKey, Metadata};
 pub use scalars::{AppId, NodeId, SessionId, StreamId, StreamNr};
-pub use service::{StartFrom, SubscribeMonotonicRequest, SubscribeMonotonicResponse};
 pub use snapshot::{Compression, SnapshotData};
 pub use tags::{Tag, TagSet};

@@ -21,7 +21,7 @@ JSON used in the examples below is pretty-printed with [jq](https://stedolan.git
 
 ## Prerequisites
 
-Communication with the Event Service needs to be authenticated. Therefore an authorization token which is associated with the requesting app needs to be retrieved from the Console Service. This token then needs to be passed in the `Authorization` header with every request to the Event Service. In the following examples we will use the `$AUTH_TOKEN` environment variable which can be initialized with
+Communication with the Event Service needs to be authenticated. Therefore an authorization token which is associated with the requesting app needs to be retrieved by the node. This token then needs to be passed in the `Authorization` header with every request to the Event Service. In the following examples we will use the `$AUTH_TOKEN` environment variable which can be initialized with
 
 ```bash
 export AUTH_TOKEN="$(curl -s localhost:4457/api/v0/apps/example_app/token | jq -r '.Ok')"
@@ -30,6 +30,8 @@ export AUTH_TOKEN="$(curl -s localhost:4457/api/v0/apps/example_app/token | jq -
 While the following examples use [cURL](https://curl.se/) other command-line or graphical tools (e.g. [Postman](https://www.postman.com/product/api-client/)) would work as well.
 
 ## Get the node ID
+
+TODO: this needs more explanation. could be moved to the event stream guide, which needs updating reg. the source id conversion.
 
 You can request the ID of the node backing the Event Service.
 
@@ -51,9 +53,9 @@ There is no request body.
 
 The response body will contain a JSON object of the following structure:
 
-```json
+```js
 {
-    "nodeId": "<string: node-id>",
+    "nodeId": "<string: node ID>",
 }
 ```
 
@@ -67,15 +69,18 @@ curl \
     -H "Authorization: Bearer $AUTH_TOKEN" \
     -H "Accept: application/json" \
     http://localhost:4454/api/v2/events/node_id | jq .
->
+```
+```js
 {
-    "nodeId": "db66a77f"
+    "nodeId": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA"
 }
 ```
 
 ## Get information about known offsets
 
 You can get information from the Event Service about known offsets, i.e. what the event service believes to be the latest offset for each stream.
+
+Take a look at the [Event Streams guide](https://developer.actyx.com/docs/os/guides/event-streams/#offsets-and-partitions) to learn more about the role of offsets.
 
 ### Request
 
@@ -95,12 +100,17 @@ There is no request body.
 
 The response body will contain a JSON object of the following structure:
 
-```json
+```js
 {
-    "<string: sourceID>": "<integer: last-known-offset>",
-    "<string: sourceID>": "<integer: last-known-offset>"
+    "<string: stream ID>": "<integer: last-known-offset>",
+    "<string: stream ID>": "<integer: last-known-offset>"
 }
 ```
+
+:::info Event Streams
+To learn more about stream IDs and Event Streams in general see our [detailed guide](https://developer.actyx.com/docs/os/guides/event-streams).
+:::
+TODO: Update event stream guide (stream IDs)
 
 ### Example
 
@@ -112,10 +122,11 @@ curl \
     -H "Authorization: Bearer $AUTH_TOKEN" \
     -H "Accept: application/json" \
     http://localhost:4454/api/v2/events/offsets | jq .
->
+```
+```text
 {
-    "db66a77f": 57,
-    "a263bad7": 60
+    "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2": 57,
+    "yjbwMjEteMT9Em8sGFwwde7kAGgJDxpTLJZZTxvduuKW.5": 60
 }
 ```
 
@@ -130,22 +141,22 @@ You can query the Event Service for bounded sets of events in one or more event 
 - HTTP headers:
   - `Authorization`, see [Prerequisites](#prerequisites)
   - `Content-Type`, must be `application/json`
-  - (optional) `Accept`, must be `text/event-stream`, default: `text/event-stream`
+  - (optional) `Accept`, must be `application/x-ndjson`, default: `application/x-ndjson`
 
 The request body must contain a JSON object with the following structure:
 
-```json
+```js
 {
     "lowerBound": {
-        "<string: sourceID>": "<integer: exclusive-lower-bound, e.g. 34>",
-        "<string: sourceID>": "<integer: exclusive-lower-bound, e.g. -1>"
+        "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. 34>",
+        "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. -1>"
     },
     "upperBound": {
-        "<string: sourceID>": "<integer: inclusive-upper-bound, e.g. 49>",
-        "<string: sourceID>": "<integer: inclusive-upper-bound, e.g. 101>"
+        "<string: stream ID>": "<integer: inclusive-upper-bound, e.g. 49>",
+        "<string: stream ID>": "<integer: inclusive-upper-bound, e.g. 101>"
     },
-    "subscription": "<string: tag expression, e.g. ['tag1' & 'tag2']>",
-    "order": "<string: 'lamport' | 'lamport-reverse' | 'source-ordered'"
+    "where": "<string: tag expression, e.g. «'tag1' & 'tag2'»>",
+    "order": "<string: 'asc' | 'desc' | 'stream-asc'"
 }
 ```
 
@@ -153,50 +164,60 @@ You use the request body to specify the details of your request as documented in
 
 #### Optional: Lower bound for offsets (`lowerBound`)
 
-The `lowerBound` object specifies the lower bound offset for each source id with the numbers being **exclusive**. i.e. a `lowerBound` specification of `34` means the event service will return events with offsets `> 34`.
+The `lowerBound` object specifies the lower bound offset for each stream with the numbers being **exclusive**. i.e. a `lowerBound` specification of `34` means the event service will return events with offsets `> 34`.
 
-The `lowerBound` is optional. If none is set for one, multiple or all subscribed sources, the Event Store will assume no lower bound.
+The `lowerBound` is optional. If none is set for one, multiple or all subscribed streams, the Event Store will assume no lower bound.
+
+FIXME: reword (we don't subscribe to streams.)
 
 #### Required: Upper bounds for offsets (`upperBound`)
 
-The `upperBound` object specifies the upper bound offset for each source id with the numbers being **inclusive**. i.e. an `upperBound` specification of `34` means the event service will return events with offsets `<= 34`.
+The `upperBound` object specifies the upper bound offset for each stream with the numbers being **inclusive**. i.e. an `upperBound` specification of `34` means the event service will return events with offsets `<= 34`.
 
-The `upperBound` is **required.** For every subscribed source where no upper bound offset is set, the result will be empty.
+The `upperBound` is **required.** For every subscribed stream where no upper bound offset is set, the result will be empty.
 
-#### Required: Subscription (`subscription`)
+FIXME: reword (we don't subscribe to streams.) Can't we just stop at the current present and make this optional, too?
 
-The `subscription` field specifies a tag expression for which events should be queried.
+#### Required: Filter (`where`)
+
+The `where` field specifies a tag expression for which events should be queried.
 
 // TODO: Link to subscription docs.
-
-Not specifying the source of a stream does not make sense in this context since no events will be returned for sources without a defined upper bound.
 
 #### Required: Ordering (`order`)
 
 The `order` object specifies in which order the events should be returned to the caller. There are three options, one of which must be specified:
 
-1. `lamport`: ascending order according to events' [lamport timestamp](https://en.wikipedia.org/wiki/Lamport_timestamps)
-2. `lamport-reverse`: descending order according to events' lamport timestamp
-3. `source-ordered`: ascending order according to events' lamport timestamp per source, with no inter-source ordering guarantees
+1. `asc`: ascending order according to events' [lamport timestamp](https://en.wikipedia.org/wiki/Lamport_timestamps)
+2. `desc`: descending order according to events' lamport timestamp
+3. `stream-asc`: ascending order according to events' lamport timestamp per stream, with no inter-stream ordering guarantees
+
+:::info Event order criteria
+Please note that for identical Lamport timestamps the stream ID is taken into account as a secondary sort criterion for event ordering.
+:::
+
+TODO:
+- Make a general section about sorting and link to it?
 
 ### Response
 
 - HTTP headers:
-  - `Content-Type` is `text/event-stream`
+  - `Content-Type` is `application/x-ndjson`
   - `Transfer-Encoding` is `chunked`
 
-The response will be in the [Server-Sent Events format](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format) with an event identifier of `event` and a `data` field of the following structure:
+The response will be a stream of `<CR><LF>`-delimited event payloads of the following JSON structure:
 
 ```js
 {
-    "stream": {
-        "semantics": "<string: semantics>",
-        "name": "<string: name>",
-        "source": "<string: sourceID>"
+    "key": {
+        "stream": "<string: stream ID>",
+        "lamport": "<integer>",
+        "offset": "<integer>"
     },
-    "timestamp": "<integer: unix epoch in microseconds>",
-    "lamport": "<integer>",
-    "offset": "<integer>",
+    "meta": {
+        "timestamp": "<integer: microseconds since Unix epoch>",
+        "tags": "<string[]>"
+    },
     "payload": "<object>"
 }
 ```
@@ -205,15 +226,8 @@ If an error is encountered while processing the stream of events, the stream wil
 
 ```js
 {
-    "error": "message",
-    "errorCode": 500
+    "error": "<string: message>"
 }
-```
-
-TODO: verify! currently getting {"code":500,"message":"warp internal server error, unhandled Rejection."} for an empty request body while the server logs
-
-```text
-code 500 rejections Rejection([MethodNotAllowed, BodyDeserializeError { cause: Error("missing field `subscription`", line: 1, column: 2) }])
 ```
 
 ### Example
@@ -224,15 +238,15 @@ See the following example using cURL:
 echo '
 {
     "lowerBound": {
-        "db66a77f": 34,
-        "a263bad7": -1
+        "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2": 34,
+        "yjbwMjEteMT9Em8sGFwwde7kAGgJDxpTLJZZTxvduuKW.5": -1
     },
     "upperBound": {
-        "db66a77f": 57,
-        "a263bad7": 60
+        "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2": 57,
+        "yjbwMjEteMT9Em8sGFwwde7kAGgJDxpTLJZZTxvduuKW.5": 60
     },
-    "subscription": "'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')",
-    "order": "lamport-reverse"
+    "where": "'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')",
+    "order": "desc"
 }
 ' \
 | curl \
@@ -240,19 +254,21 @@ echo '
     -H "Authorization: Bearer $AUTH_TOKEN" \
     -d @- \
     -H "Content-Type: application/json" \
-    -H "Accept: text/event-stream" \
+    -H "Accept: application/x-ndjson" \
     http://localhost:4454/api/v2/events/query \
-| grep -A1 "event:event" | grep "data:" | sed -e "s/^data://" | jq .
->
+| jq .
+```
+```js
 {
-    "stream": {
-        "semantics": "_t_",
-        "name": "_t_",
-        "source": "db66a77f"
+    "key": {
+        "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2",
+        "lamport": 323,
+        "offset": 34
     },
-    "timestamp": 1599224884528020,
-    "lamport": 323,
-    "offset": 34,
+    "meta": {
+        "timestamp": 1599224884528020,
+        "tags": ["com.actyx.examples.temperature", "sensor:temp-sensor1"]
+    },
     "payload": {
         "foo": "bar",
         "fooArr": ["bar1", "bar2"]
@@ -264,6 +280,8 @@ echo '
 
 You can use the Event Service API to subscribe to event streams. The Event Service may return past events and continue returning new "live" events as they are received.
 
+TODO: clarify ordering
+
 ### Request
 
 - Endpoint: `http://localhost:4454/api/v2/events/subscribe`
@@ -271,51 +289,51 @@ You can use the Event Service API to subscribe to event streams. The Event Servi
 - HTTP headers:
   - `Authorization`, see [Prerequisites](#prerequisites)
   - `Content-Type`, must be `application/json`
-  - (optional) `Accept`, must be `text/event-stream`, default: `text/event-stream`
+  - (optional) `Accept`, must be `application/x-ndjson`, default: `application/x-ndjson`
 
 The request body must contain a JSON object with the following structure:
 
 ```js
 {
-    "lowerBound": {
-        "<string: sourceID>": "<integer: exclusive-lower-bound, e.g. 34>",
-        "<string: sourceID>": "<integer: exclusive-lower-bound, e.g. -1>"
+    "offsets": {
+        "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. 34>",
+        "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. -1>"
     },
-
-    "subscription": "<string: tag expression, e.g. ['tag1' & 'tag2']>"
+    "where": "<string: tag expression, e.g. ['tag1' & 'tag2']>"
 }
 ```
 
 You use the request body to specify the details of your request as documented in the following.
 
-#### Optional: Lower bound for offsets (`lowerBound`)
+#### Optional: Lower bound for offsets (`offsets`)
 
-The `lowerBound` object specifies the lower bound offset for each source id with the numbers being **exclusive**. i.e. a `lowerBound` specification of `34` means the event service will return events with offsets `> 34`.
+The `offsets` object specifies the lower bound offset for each stream with the numbers being **exclusive**. i.e. a `offsets` specification of `34` means the event service will return events with offsets `> 34`.
 
-The `lowerBound` is optional. If none is set for one, multiple or all subscribed sources, the Event Store will assume a lower bound offset of `-1`, i.e. the beginning.
+The `offsets` is optional. If none is set for one, multiple or all subscribed streams, the Event Store will assume a lower bound offset of `-1`, i.e. the beginning.
 
-#### Required: Subscription (`subscription`)
+#### Required: Filter (`where`)
 
-The `subscription` field specifies a tag expression for which events should be queried.
+The `where` field specifies a tag expression for which events should be queried.
 
 ### Response
 
 - HTTP headers:
-  - `Content-Type` is `text/event-stream`
+  - `Content-Type` is `application/x-ndjson`
   - `Transfer-Encoding` is `chunked`
 
-The response will be in the [Server-Sent Events format](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format) with an event identifier of `event` and a `data` field of the following structure:
+The response will be a stream of `<CR><LF>`-delimited event payloads of the following JSON structure:
 
 ```js
 {
-    "stream": {
-        "semantics": "<string: semantics>",
-        "name": "<string: name>",
-        "source": "<string: sourceID>"
+    "key": {
+        "stream": "<string: stream ID>",
+        "lamport": "<integer>",
+        "offset": "<integer>"
     },
-    "timestamp": "<integer: unix epoch in microseconds>",
-    "lamport": "<integer>",
-    "offset": "<integer>",
+    "meta": {
+        "timestamp": "<integer: unix epoch in microseconds>",
+        "tags": "<string[]>"
+    }
     "payload": "<object>"
 }
 ```
@@ -324,12 +342,9 @@ If an error is encountered while processing the stream of events, the stream wil
 
 ```js
 {
-    "error": "message",
-    "errorCode": 500
+    "error": "<string: message>"
 }
 ```
-
-// TODO: verify!
 
 ### Example
 
@@ -338,11 +353,11 @@ See the following example using cURL:
 ```bash
 echo '
 {
-    "lowerBound": {
-        "db66a77f": 34,
-        "a263bad7": -1
+    "offsets": {
+        "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2": 34,
+        "yjbwMjEteMT9Em8sGFwwde7kAGgJDxpTLJZZTxvduuKW.5": -1
     },
-    "subscription": "'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')"
+    "where": "'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')"
 }
 ' \
 | curl -N \
@@ -350,19 +365,21 @@ echo '
     -H "Authorization: Bearer $AUTH_TOKEN" \
     -d @- \
     -H "Content-Type: application/json" \
-    -H "Accept: text/event-stream" \
+    -H "Accept: application/x-ndjson" \
     http://localhost:4454/api/v2/events/subscribe \
-| grep --line-buffered -A1 "event:event" | grep --line-buffered "data:" | sed -ue "s/^data://" | jq --unbuffered .
->
+| jq .
+```
+```js
 {
-    "stream": {
-        "semantics": "_t_",
-        "name": "_t_",
-        "source": "db66a77f"
+    "key": {
+        "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2",
+        "lamport": 323,
+        "offset": 34
     },
-    "timestamp": 1599224884528020,
-    "lamport": 323,
-    "offset": 34,
+    "meta": {
+        "timestamp": 1599224884528020,
+        "tags": ["com.actyx.examples.temperature", "sensor:temp-sensor1"]
+    },
     "payload": {
         "foo": "bar",
         "fooArr": ["bar1", "bar2"]
@@ -372,7 +389,7 @@ echo '
 
 ## Subscribe to event streams monotonically
 
-You can use the Event Service API to subscribe to event streams with strong ordering guarentees. This means that whenever the service learns about events that need to be sorted earlier than an event that has already been delivered the result is finished with a time travel event.
+You can use the Event Service API to subscribe to event streams with the guarantee that whenever the service learns about events that need to be sorted earlier than an event that has already been delivered the stream ends with a _time travel_ message.
 
 ### Request
 
@@ -381,7 +398,7 @@ You can use the Event Service API to subscribe to event streams with strong orde
 - HTTP headers:
   - `Authorization`, see [Prerequisites](#prerequisites)
   - `Content-Type`, must be `application/json`
-  - (optional) `Accept`, must be `text/event-stream`, default: `text/event-stream`
+  - (optional) `Accept`, must be `application/x-ndjson`, default: `application/x-ndjson`
 
 The request body must contain a JSON object with one of the following structures:
 
@@ -390,22 +407,22 @@ The request body must contain a JSON object with one of the following structures
 ```js
 {
     "session": "<string: user supplied session ID>",
-    "subscription": "<string: tag expression, e.g. ['tag1' & 'tag2']>",
+    "where": "<string: tag expression, e.g. ['tag1' & 'tag2']>",
     "offsets": {
-        "<string: sourceID>": "<integer: exclusive-lower-bound, e.g. 34>",
-        "<string: sourceID>": "<integer: exclusive-lower-bound, e.g. -1>"
+        "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. 34>",
+        "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. -1>"
     },
 }
 ```
 
-The `offsets` object specifies the lower bound offset for each source id with the numbers being **exclusive**. i.e. a `offsets` specification of `34` means the event service will return events with offsets `> 34`.
+The `offsets` object specifies the lower bound offset for each stream with the numbers being **exclusive**. i.e. a `offsets` specification of `34` means the event service will return events with offsets `> 34`.
 
 #### Starting from a snapshot
 
 ```js
 {
     "session": "<string: user supplied session ID>",
-    "subscription": "<string: tag expression, e.g. ['tag1' & 'tag2']>",
+    "where": "<string: tag expression, e.g. ['tag1' & 'tag2']>",
     "snapshot": {
         "<string: compression>": "<string: 'none' | 'deflate'>"
     },
@@ -422,21 +439,29 @@ Specify additional details of your request as documented in the following.
 
 #### Required: Session ID (`session`)
 
-The session identifier is chosen by the client and must be used consistently by the client to resume an earlier session.
+The session identifier is chosen by the client and must be used consistently by the client to resume an earlier session. For fishes this will usually be the fish id.
 
-TODO: what if the user makes to requests with same session id but different subscription?
+:::info
+If the `where` filter changes, a new session will be created regardless of the existence of a session with the same ID.
+:::
 
-#### Required: Subscription (`subscription`)
+TODO: 
+- Clarify what "resuming" a session implies.
+- What if the user makes to requests with same session ID but different subscription? -> hash both
+- Can't we keep this stateless by the client keeping track of the offsets and resume on error? We have to keep track of session ID already.
+- What about expiration? How do we to communicate that to the client?
 
-The `subscription` field specifies a tag expression for which events should be queried.
+#### Required: Filter (`where`)
+
+The `where` field specifies a tag expression for which events should be queried.
 
 ### Response
 
 - HTTP headers:
-  - `Content-Type` is `text/event-stream`
+  - `Content-Type` is `application/x-ndjson`
   - `Transfer-Encoding` is `chunked`
 
-The response will be in the [Server-Sent Events format](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format) with the following event identifiers of `event` and the respective `data` formats:
+The response will be in the [Newline Delimited JSON format](http://ndjson.org/) with the following formats:
 
 #### Event type `snapshot`
 
@@ -444,7 +469,7 @@ This message may be sent in the beginning when a suitable snapshot has been foun
 
 ```js
 {
-    "type: "<string: 'snapshot'>", // TODO: isn't this reduntant with the SSE event tag?
+    "type": "snapshot",
     "compression": "<string: 'none' | 'deflate'>",
     "data": "<string: Base64 encoded snapshot>", // TODO is this correct?
 }
@@ -454,36 +479,32 @@ This message may be sent in the beginning when a suitable snapshot has been foun
 
 ```js
 {
-    "type": "<string: 'event'>",
+    "type": "event",
     "caughtUp": "<boolean: known events delivery exhausted?>",
     "event":  {
         "key": {
-            "stream": "<string: sourceID>", // TODO: this is inconsistent with /subscribe
+            "stream": "<string: stream ID>",
             "lamport": "<integer>",
             "offset": "<integer>"
         },
         "meta" {
           "timestamp": "<integer: unix epoch in microseconds>",
-          "tags": ["<string: tag, e.g. tag1>", "<string: tag, e.g. tag2>"]
+          "tags": "<string[]>"
         },
         "payload": "<object>"
     }
 }
 ```
 
-#### Event type `timeTravel` // TODO still use this term?
+#### Event type `timeTravel`
 
 In case the service learns about events that need to be sorted earlier than an event that has already been delivered, an event of this type is emitted and the stream is closed.
 
 ```js
 {
-    "type": "<string: 'timeTravel'>",
+    "type": "timeTravel",
     "newStart": {
-        "stream": {
-            "semantics": "<string: semantics>",
-            "name": "<string: name>",
-            "source": "<string: sourceID>"
-        }
+        "stream": "<string: stream ID>",
         "lamport": "<integer>",
         "offset": "<integer>"
     }
@@ -494,12 +515,9 @@ If an error is encountered while processing the stream of events, the stream wil
 
 ```js
 {
-    "error": "message",
-    "errorCode": 500
+    "error": "<string: message>"
 }
 ```
-
-// TODO: verify!
 
 ### Example
 
@@ -509,10 +527,10 @@ See the following example using cURL:
 echo '
 {
     "session": "<my_session_id>",
-    "subscription": "'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')",
+    "where": "'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')",
     "offsets": {
-        "db66a77f": 34,
-        "a263bad7": -1
+        "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2": 34,
+        "yjbwMjEteMT9Em8sGFwwde7kAGgJDxpTLJZZTxvduuKW.5": -1
     }
 }
 ' \
@@ -521,17 +539,22 @@ echo '
     -H "Authorization: Bearer $AUTH_TOKEN" \
     -d @- \
     -H "Content-Type: application/json" \
-    -H "Accept: text/event-stream" \
+    -H "Accept: application/x-ndjson" \
     http://localhost:4454/api/v2/events/subscribe_monotonic \
-| grep --line-buffered -A1 "event:(snapshot\|event\|timetravel)" | grep --line-buffered "data:" | sed -ue "s/^data://" | jq --unbuffered .
->
+| jq .
+```
+```js
 {
     "type": "event",
     "key": {
         "lamport": 323,
-        "stream": "db66a77f",
+        "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2",
         "offset": 34,
 
+    },
+    "meta": {
+        "timestamp": 1599224884528020,
+        "tags": ["com.actyx.examples.temperature", "sensor:temp-sensor1"]
     },
     "payload": {
         "foo": "bar",
@@ -574,7 +597,27 @@ The request body must contain a JSON object with the following structure:
 
 ### Response
 
-The response will provide feedback using HTTP status codes, with `201` signifying that the request was successfully processed and the events published.
+- HTTP headers:
+  - `Content-Type` is `application/json`
+
+The response body will contain a JSON object of the following structure:
+
+```js
+{
+    "data": [
+        {
+            "streamNr": "<integer: stream number>",
+            "lamport": "<integer>",
+            "offset": "<integer>"
+        },
+        {
+            "streamNr": "<integer: stream number>",
+            "lamport": "<integer>",
+            "offset": "<integer>"
+        }
+    ]
+}
+```
 
 ### Example
 
@@ -587,14 +630,16 @@ echo '
         {
             "tags": ["com.actyx.examples.temperature", "sensor:temp-sensor1"],
             "payload": {
-                "foo": [1, 3, 4],
-                "bar": { "a": 1, "b": 103 }
+                "value": 22,
+                "foo": { "a": 1, "b": 103 }
+            }
         },
         {
             "tags": ["com.actyx.examples.temperature", "sensor:temp-sensor1"],
             "payload": {
-                "foo": [3, 1, 1],
-                "bar": { "a": 13, "b": 48 }
+                "value": 23,
+                "foo": { "a": 13, "b": 48 }
+            }
         }
     ]
 }
@@ -605,9 +650,25 @@ echo '
     -d @- \
     -H "Content-Type: application/json" \
     http://localhost:4454/api/v2/events/publish
-> Response: HTTP 201 | 500 | 400 with an invalid body
+```
+```js
+{
+  "data": [
+    {
+      "streamNr": 0,
+      "lamport": 23,
+      "offset": 8
+    },
+    {
+      "streamNr": 0,
+      "lamport": 24,
+      "offset": 9
+    }
+  ]
+}
+
 ```
 
-## Usage examples in different languages
+## SDKs
 
-// TODO: shall these be adapted or shall we just links to the SDKs?
+Actyx provides [SDKs](https://developer.actyx.com/docs/os/sdks/overview) for several programming languages including an Event Service API that provides a more ergonomic access than the low level, HTTP-based communication examples provided here.
