@@ -3,7 +3,7 @@ id: hello
 title: Installation Guide
 hide_title: false
 hide_table_of_contents: false
-sidebar_label: Placeholder Sidebar Title
+sidebar_label: Installing Actyx
 keywords: [keyword1, keyword2]
 description: Placeholder page to test things out.
 image: /images/defaults/default.svg

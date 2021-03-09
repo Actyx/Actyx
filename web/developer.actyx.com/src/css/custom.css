@@ -247,6 +247,7 @@ span {
   height: 2rem;
   width: calc(var(--doc-sidebar-width) - var(--ifm-navbar-padding-horizontal));
   text-decoration: none;
+  /*margin-right: auto; uncomment if navbar items should be centered*/ 
 }
 
 .navbar__brand {
@@ -294,6 +295,10 @@ span {
 
 .navbar__items {
   display: grid;
+}
+
+.navbar .navbar__link:last-child {
+  margin-right: auto;
 }
 .dropdown {
   display: inline-flex;

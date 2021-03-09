@@ -42,27 +42,17 @@ module.exports = {
       },
       items: [
         {
-          label: 'Actyx',
+          label: 'Start With Actyx',
           activeBasePath: 'docs/hello',
           to: 'docs/hello',
         },
         {
-          label: 'SDKs',
+          label: 'Build Solutions',
           activeBasePath: 'docs/page01',
           to: 'docs/page01',
         },
         {
-          label: 'CLI',
-          activeBasePath: 'docs/page02',
-          to: 'docs/page02',
-        },
-        {
-          label: 'Node Manager',
-          activeBasePath: 'docs/page03',
-          to: 'docs/page03',
-        },
-        {
-          label: 'Building Apps',
+          label: 'Deploy To Production',
           activeBasePath: 'docs/page04',
           to: 'docs/page04',
         },
