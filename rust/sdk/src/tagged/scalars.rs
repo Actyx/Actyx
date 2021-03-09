@@ -302,6 +302,28 @@ impl From<&SourceId> for StreamId {
         }
     }
 }
+#[cfg(feature = "sqlite")]
+mod sqlite {
+    use super::*;
+    use rusqlite::{
+        types::{FromSql, FromSqlError, FromSqlResult, ToSqlOutput, ValueRef},
+        ToSql,
+    };
+
+    impl FromSql for StreamId {
+        fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
+            value
+                .as_str()
+                .and_then(|s| StreamId::try_from(s).map_err(|_| FromSqlError::InvalidType))
+        }
+    }
+
+    impl ToSql for StreamId {
+        fn to_sql(&self) -> rusqlite::Result<ToSqlOutput<'_>> {
+            Ok(ToSqlOutput::from(self.to_string()))
+        }
+    }
+}
 
 /// StreamNr. Newtype alias for u64
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
