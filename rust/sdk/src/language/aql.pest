@@ -1,0 +1,56 @@
+expression = { SOI ~ ( query | simple_expr ) ~ EOI }
+
+// queries
+query = { "FROM" ~ tag_expr ~ query_ops* ~ "END"? }
+query_ops = _{ filter | select }
+filter = { "FILTER" ~ simple_expr }
+select = { "SELECT" ~ simple_expr }
+
+// strings
+single_quoted = @{ "'" ~ ( !"'" ~ ANY | "''" )+ ~ "'" }
+double_quoted = @{ "\"" ~ ( !"\"" ~ ANY | "\"\"" )+ ~ "\"" }
+nonempty_string = { single_quoted | double_quoted }
+empty_string = { "\"\"" | "''" }
+string = { nonempty_string | empty_string }
+
+// literals
+null = { "null" }
+bool = { "true" | "false" }
+number = { decimal }
+decimal = @{ "-"? ~ digit+ ~ ( "." ~ digit+ )? }
+digit = { '0'..'9' }
+
+// identifiers
+ident = @{ "_" | LOWERCASE_LETTER ~ ( LOWERCASE_LETTER | NUMBER | "_" )* }
+
+// tags
+tag_expr = { tag_atom ~ ( tag_op ~ tag_atom )* }
+tag_atom = _{ tag | "(" ~ tag_expr ~ ")" }
+tag_op = _{ and | or }
+tag = { nonempty_string }
+
+// expressions
+simple_expr = { simple_atom ~ ( simple_op ~ simple_atom )* }
+simple_op = _{ add | sub | mul | div | modulo | pow | and | or | xor | lt | le | gt | ge | eq | ne }
+simple_atom = _{ number | ident | string | "(" ~ simple_expr ~ ")" | simple_not }
+simple_not = { "!" ~ simple_atom }
+
+// operators
+add = { "+" }
+sub = { "-" }
+mul = { "*" }
+div = { "/" | "÷" }
+modulo = { "%" }
+pow = { "^" }
+and = { "&" }
+or = { "|" }
+not = { "!" }
+xor = { "~" }
+lt = { "<" }
+le = { "<=" | "≤" }
+gt = { ">" }
+ge = { ">=" | "≥" }
+eq = { "=" }
+ne = { "!=" | "≠" }
+
+WHITESPACE = _{ WHITE_SPACE }
