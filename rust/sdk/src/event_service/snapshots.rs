@@ -1,7 +1,7 @@
 use crate::{
-    event::{FishName, Semantics, SourceId},
+    event::{FishName, Semantics},
     tagged::EventKey,
-    LamportTimestamp, Offset, OffsetMap,
+    OffsetMap,
 };
 use serde::{Deserialize, Serialize};
 
@@ -45,16 +45,4 @@ pub struct RetrieveSnapshotResponse {
     pub event_key: EventKey,
     pub horizon: Option<EventKey>,
     pub cycle: u64,
-}
-
-/// Event key used in the snapshot endpoints of the pond service
-///
-/// to be replaced with actyxos_sdk::EventKey for v2
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Copy)]
-#[serde(rename_all = "camelCase")]
-pub struct EventKeyV1 {
-    pub lamport: LamportTimestamp,
-    pub source_id: SourceId,
-    #[serde(rename = "psn")]
-    pub offset: Offset,
 }
