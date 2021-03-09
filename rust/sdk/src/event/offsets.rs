@@ -16,7 +16,6 @@
 use super::{Event, SourceId};
 use crate::tagged::{EventKey, StreamId};
 use derive_more::{Display, From, Into};
-use libipld::cbor::decode::TryReadCbor;
 use libipld::cbor::DagCborCodec;
 use libipld::codec::{Decode, Encode};
 use num_traits::Bounded;
@@ -29,7 +28,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     convert::TryFrom,
     fmt::{self, Debug},
-    io::{Read, Write},
+    io::{Read, Seek, Write},
     iter::FromIterator,
     ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
 };
@@ -361,17 +360,6 @@ impl Bounded for Offset {
     }
 }
 
-impl TryReadCbor for Offset {
-    fn try_read_cbor<R: Read>(r: &mut R, major: u8) -> libipld::Result<Option<Self>> {
-        if let Some(value) = u64::try_read_cbor(r, major)? {
-            validate_offset(value as i64).map_err(|e| anyhow::anyhow!("{}", e))?;
-            Ok(Some(Offset(value as i64)))
-        } else {
-            Ok(None)
-        }
-    }
-}
-
 impl Encode<DagCborCodec> for Offset {
     fn encode<W: Write>(&self, c: DagCborCodec, w: &mut W) -> libipld::Result<()> {
         (self.0 as u64).encode(c, w)
@@ -379,8 +367,10 @@ impl Encode<DagCborCodec> for Offset {
 }
 
 impl Decode<DagCborCodec> for Offset {
-    fn decode<R: Read>(_: DagCborCodec, r: &mut R) -> libipld::Result<Self> {
-        libipld::cbor::decode::read(r)
+    fn decode<R: Read + Seek>(c: DagCborCodec, r: &mut R) -> libipld::Result<Self> {
+        let raw = u64::decode(c, r)?;
+        let validated = validate_offset(i64::try_from(raw)?).map_err(|e| anyhow::anyhow!("{}", e))?;
+        Ok(validated)
     }
 }
 
@@ -592,24 +582,22 @@ impl OffsetMap {
     }
 
     /// An iterator over all sources that contribute events to this OffsetMap
-    pub fn sources(&'_ self) -> impl Iterator<Item = SourceId> + '_ {
-        self.0.keys().filter_map(|stream| stream.to_source_id().ok())
+    pub fn sources(&self) -> impl Iterator<Item = SourceId> + '_ {
+        self.0.keys().filter_map(|stream| stream.source_id().ok())
     }
 
     /// An iterator over all streams that contribute events to this OffsetMap
-    pub fn streams(&'_ self) -> impl Iterator<Item = StreamId> + '_ {
+    pub fn streams(&self) -> impl Iterator<Item = StreamId> + '_ {
         self.0.keys().copied()
     }
 
     /// An iterator over all sources that contribute events to this OffsetMap including their offset
-    pub fn source_iter(&'_ self) -> impl Iterator<Item = (SourceId, Offset)> + '_ {
-        self.0
-            .iter()
-            .filter_map(|(k, v)| k.to_source_id().ok().map(|k| (k, *v)))
+    pub fn source_iter(&self) -> impl Iterator<Item = (SourceId, Offset)> + '_ {
+        self.0.iter().filter_map(|(k, v)| k.source_id().ok().map(|k| (k, *v)))
     }
 
     /// An iterator over all streams that contribute events to this OffsetMap including their offset
-    pub fn stream_iter(&'_ self) -> impl Iterator<Item = (StreamId, Offset)> + '_ {
+    pub fn stream_iter(&self) -> impl Iterator<Item = (StreamId, Offset)> + '_ {
         self.0.iter().map(|(k, v)| (*k, *v))
     }
 

@@ -1,22 +1,48 @@
+import { settings } from '../infrastructure/settings'
+import * as path from 'path'
 import { mkExec } from './exec'
 
 export * from './types'
 
 export class CLI {
   private readonly binaryPath: string
+  public readonly identityPath: string
   public readonly nodes
-  public readonly apps
   public readonly settings
   public readonly logs
   public readonly swarms
+  public readonly users
 
-  constructor(private readonly node: string, binaryPath: string) {
+  public static async build(node: string, binaryPath: string): Promise<CLI> {
+    const randIdentifier = Math.random().toString(36).substring(7)
+    const identityPath = path.resolve(settings().tempDir, `${node}-${randIdentifier}`)
+    const cli = new CLI(node, binaryPath, identityPath)
+
+    // Make sure a local keypair is available; ignore if the file already exists
+    await cli.users.keyGen(cli.identityPath)
+    return cli
+  }
+
+  public static async buildWithIdentityPath(
+    node: string,
+    binaryPath: string,
+    identityPath: string,
+  ): Promise<CLI> {
+    const cli = new CLI(node, binaryPath, identityPath)
+
+    // Make sure a local keypair is available; ignore if the file already exists
+    await cli.users.keyGen(cli.identityPath)
+    return cli
+  }
+
+  private constructor(private readonly node: string, binaryPath: string, identityPath: string) {
     this.binaryPath = binaryPath
-    const exec = mkExec(this.binaryPath, this.node)
+    this.identityPath = identityPath
+    const exec = mkExec(this.binaryPath, this.node, this.identityPath)
     this.nodes = exec.nodes
-    this.apps = exec.apps
     this.settings = exec.settings
     this.logs = exec.logs
     this.swarms = exec.swarms
+    this.users = exec.users
   }
 }

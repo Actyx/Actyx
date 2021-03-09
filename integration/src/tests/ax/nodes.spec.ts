@@ -1,19 +1,22 @@
 import { assertOK } from '../../assertOK'
+import { CLI } from '../../cli'
 import { runOnEvery } from '../../infrastructure/hosts'
+import { currentAxBinary } from '../../infrastructure/settings'
 import { stubs } from '../../stubs'
 
 describe('ax nodes', () => {
   describe('ls', () => {
-    test('return OK and result with connection hostUnreachable', async () => {
-      const response = assertOK(await stubs.hostUnreachable.ax.nodes.ls())
-      expect(response.result).toMatchObject([{ connection: 'hostUnreachable', host: 'idontexist' }])
-    })
-
-    test('return OK and result with connection actyxosUnreachable', async () => {
-      const response = assertOK(await stubs.actyxOSUnreachable.ax.nodes.ls())
-      expect(response.result).toMatchObject([
-        { connection: 'actyxosUnreachable', host: 'localhost' },
-      ])
+    test('return Ok and result with connection hostUnreachable', async () => {
+      const response = await stubs.unreachable.ax.nodes.ls()
+      expect(response).toMatchObject({
+        code: 'OK',
+        result: [
+          {
+            connection: 'unreachable',
+            host: expect.any(String),
+          },
+        ],
+      })
     })
 
     test('return OK and result with connection reachable', async () => {
@@ -22,16 +25,28 @@ describe('ax nodes', () => {
         const responseShape = [
           {
             connection: 'reachable',
-            nodeId: 'localhost',
+            host: expect.any(String),
+            nodeId: expect.any(String),
             displayName: node.name,
-            state: 'running',
-            settingsValid: true,
-            licensed: true,
-            appsDeployed: expect.any(Number),
-            appsRunning: expect.any(Number),
             startedIso: expect.any(String),
             startedUnix: expect.any(Number),
-            version: '1.1.1',
+            version: '2.0.0-dev',
+          },
+        ]
+        expect(response.result).toMatchObject(responseShape)
+      })
+    })
+
+    test('return OK and result with unauthorized', async () => {
+      await runOnEvery({}, async (node) => {
+        // This will generate a CLI with a different than private key the node
+        // was setup with
+        const unauthorizedCli = await CLI.build(node._private.axHost, await currentAxBinary())
+        const response = assertOK(await unauthorizedCli.nodes.ls())
+        const responseShape = [
+          {
+            connection: 'unauthorized',
+            host: expect.any(String),
           },
         ]
         expect(response.result).toMatchObject(responseShape)

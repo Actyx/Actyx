@@ -3,25 +3,18 @@ import {
   Response_Settings_Get,
   Response_Settings_Set,
   Response_Settings_Unset,
-  Response_Apps_Package,
-  Response_Apps_Deploy,
-  Response_Apps_Undeploy,
-  Response_Apps_Start,
-  Response_Apps_Stop,
-  Response_Apps_Ls,
   Response_Logs_Tail_Entry,
   Response_Internal_Swarm_State,
   Response_Settings_Scopes,
   Response_Settings_Schema,
   Response_Swarms_Keygen,
-  Response_Apps_Validate,
+  Response_Users_Keygen,
 } from './types'
 import { isLeft } from 'fp-ts/lib/Either'
 import { PathReporter } from 'io-ts/lib/PathReporter'
 import execa from 'execa'
 import { StringDecoder } from 'string_decoder'
 import { Transform } from 'stream'
-import fetch from 'node-fetch'
 import * as path from 'path'
 import { rightOrThrow } from '../infrastructure/rightOrThrow'
 
@@ -71,6 +64,9 @@ export const SettingsInput = {
 }
 
 type Exec = {
+  users: {
+    keyGen: (file: string) => Promise<Response_Users_Keygen>
+  }
   swarms: {
     keyGen: (file?: string) => Promise<Response_Swarms_Keygen>
     state: () => Promise<Response_Internal_Swarm_State>
@@ -85,18 +81,6 @@ type Exec = {
     unset: (scope: string) => Promise<Response_Settings_Unset>
     schema: (scope: string) => Promise<Response_Settings_Schema>
   }
-  apps: {
-    package: (path: string) => Promise<Response_Apps_Package>
-    packageCwd: (cwd: string, path?: string) => Promise<Response_Apps_Package>
-    deploy: (packagePath: string, force?: boolean) => Promise<Response_Apps_Deploy>
-    undeploy: (appId: string) => Promise<Response_Apps_Undeploy>
-    start: (appId: string) => Promise<Response_Apps_Start>
-    stop: (appId: string) => Promise<Response_Apps_Stop>
-    ls: () => Promise<Response_Apps_Ls>
-    validate: (path: string) => Promise<Response_Apps_Validate>
-    validateCwd: (cwd: string) => Promise<Response_Apps_Validate>
-    validateMultiApps: (appPaths: ReadonlyArray<string>) => Promise<Response_Apps_Validate>
-  }
   logs: {
     tailFollow: (
       onEntry: (entry: Response_Logs_Tail_Entry) => void,
@@ -106,7 +90,13 @@ type Exec = {
 }
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-export const mkExec = (binary: string, addr: string): Exec => ({
+export const mkExec = (binary: string, addr: string, identityPath: string): Exec => ({
+  users: {
+    keyGen: async (file: string): Promise<Response_Users_Keygen> => {
+      const response = await exec(binary, ['users', 'keygen', '--output', file])
+      return rightOrThrow(Response_Users_Keygen.decode(response), response)
+    },
+  },
   swarms: {
     keyGen: async (file): Promise<Response_Swarms_Keygen> => {
       const fileArgs = file ? ['-o', file] : []
@@ -114,26 +104,41 @@ export const mkExec = (binary: string, addr: string): Exec => ({
       return rightOrThrow(Response_Swarms_Keygen.decode(response), response)
     },
     state: async (): Promise<Response_Internal_Swarm_State> => {
-      const response = await fetch(`http://${addr}/_internal/swarm/state`)
-      const json = await response.json()
+      const json = await exec(binary, ['_internal', 'swarm', '--local', addr, '-i', identityPath])
       return rightOrThrow(Response_Internal_Swarm_State.decode(json), json)
     },
   },
   nodes: {
     ls: async (): Promise<Response_Nodes_Ls> => {
-      const response = await exec(binary, [`nodes`, `ls`, `--local`, ...addr.split(' ')])
+      const response = await exec(binary, [
+        `nodes`,
+        `ls`,
+        `--local`,
+        ...addr.split(' '),
+        '-i',
+        identityPath,
+      ])
       return rightOrThrow(Response_Nodes_Ls.decode(response), response)
     },
   },
   settings: {
     scopes: async () => {
-      const response = await exec(binary, ['settings', 'scopes', '--local', addr])
+      const response = await exec(binary, [
+        'settings',
+        'scopes',
+        '--local',
+        addr,
+        '-i',
+        identityPath,
+      ])
       return rightOrThrow(Response_Settings_Scopes.decode(response), response)
     },
     get: async (scope: string, noDefaults?: boolean): Promise<Response_Settings_Get> => {
       const response = await exec(
         binary,
-        ['settings', 'get', scope, '--local', addr].concat(noDefaults ? ['--no-defaults'] : []),
+        ['settings', 'get', scope, '--local', addr, '-i', identityPath].concat(
+          noDefaults ? ['--no-defaults'] : [],
+        ),
       )
       return rightOrThrow(Response_Settings_Get.decode(response), response)
     },
@@ -142,65 +147,41 @@ export const mkExec = (binary: string, addr: string): Exec => ({
         File: (input) => `@${input.path}`,
         Value: (input) => JSON.stringify(input.value),
       })(settingsInput)
-      const response = await exec(binary, [`settings`, `set`, scope, `--local`, input, addr])
+      const response = await exec(binary, [
+        `settings`,
+        `set`,
+        scope,
+        `--local`,
+        input,
+        addr,
+        '-i',
+        identityPath,
+      ])
       return rightOrThrow(Response_Settings_Set.decode(response), response)
     },
     unset: async (scope: string): Promise<Response_Settings_Unset> => {
-      const response = await exec(binary, [`settings`, `unset`, scope, `--local`, addr])
+      const response = await exec(binary, [
+        `settings`,
+        `unset`,
+        scope,
+        `--local`,
+        addr,
+        '-i',
+        identityPath,
+      ])
       return rightOrThrow(Response_Settings_Unset.decode(response), response)
     },
     schema: async (scope: string) => {
-      const response = await exec(binary, [`settings`, `schema`, `--local`, scope, addr])
+      const response = await exec(binary, [
+        `settings`,
+        `schema`,
+        `--local`,
+        scope,
+        addr,
+        '-i',
+        identityPath,
+      ])
       return rightOrThrow(Response_Settings_Schema.decode(response), response)
-    },
-  },
-  apps: {
-    package: async (path: string): Promise<Response_Apps_Package> => {
-      const response = await exec(binary, [`apps`, `package`, path])
-      return rightOrThrow(Response_Apps_Package.decode(response), response)
-    },
-    packageCwd: async (cwd: string, path?: string): Promise<Response_Apps_Package> => {
-      const response = await exec(
-        binary,
-        [`apps`, `package`, ...(path === undefined ? [] : [path])],
-        cwd,
-      )
-      return rightOrThrow(Response_Apps_Package.decode(response), response)
-    },
-    deploy: async (packagePath: string, force?: boolean): Promise<Response_Apps_Deploy> => {
-      const response = await exec(
-        binary,
-        [`apps`, `deploy`, packagePath, `--local`, addr].concat(force ? ['--force'] : []),
-      )
-      return rightOrThrow(Response_Apps_Deploy.decode(response), response)
-    },
-    undeploy: async (appId: string): Promise<Response_Apps_Undeploy> => {
-      const response = await exec(binary, [`apps`, `undeploy`, appId, `--local`, addr])
-      return rightOrThrow(Response_Apps_Undeploy.decode(response), response)
-    },
-    start: async (appId: string): Promise<Response_Apps_Start> => {
-      const response = await exec(binary, [`apps`, `start`, appId, `--local`, addr])
-      return rightOrThrow(Response_Apps_Start.decode(response), response)
-    },
-    stop: async (appId: string): Promise<Response_Apps_Stop> => {
-      const response = await exec(binary, [`apps`, `stop`, appId, `--local`, addr])
-      return rightOrThrow(Response_Apps_Stop.decode(response), response)
-    },
-    ls: async (): Promise<Response_Apps_Ls> => {
-      const response = await exec(binary, [`apps`, `ls`, `--local`, addr])
-      return rightOrThrow(Response_Apps_Ls.decode(response), response)
-    },
-    validate: async (path: string): Promise<Response_Apps_Validate> => {
-      const response = await exec(binary, [`apps`, `validate`, path])
-      return rightOrThrow(Response_Apps_Validate.decode(response), response)
-    },
-    validateCwd: async (cwd: string): Promise<Response_Apps_Validate> => {
-      const response = await exec(binary, [`apps`, `validate`], cwd)
-      return rightOrThrow(Response_Apps_Validate.decode(response), response)
-    },
-    validateMultiApps: async (appPaths: ReadonlyArray<string>): Promise<Response_Apps_Validate> => {
-      const response = await exec(binary, [`apps`, `validate`, ...appPaths])
-      return rightOrThrow(Response_Apps_Validate.decode(response), response)
     },
   },
   logs: {
@@ -210,9 +191,13 @@ export const mkExec = (binary: string, addr: string): Exec => ({
     ): (() => void) => {
       try {
         //console.log(`starting ax process`)
-        const process = execa(`ax`, [`-j`, `logs`, `tail`, `-f`, `--local`, addr], {
-          buffer: false,
-        })
+        const process = execa(
+          `ax`,
+          [`-j`, `logs`, `tail`, `-f`, `--local`, addr, '-i', identityPath],
+          {
+            buffer: false,
+          },
+        )
         if (process.stdout === null) {
           onError(`stdout is null`)
           // eslint-disable-next-line @typescript-eslint/no-empty-function

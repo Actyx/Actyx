@@ -1,6 +1,6 @@
 import { CLI } from '../cli'
 import { ApiClient } from '@actyx/os-sdk'
-import { Arch, Host, OS, Runtime } from '../../jest/types'
+import { Arch, Host, OS } from '../../jest/types'
 
 export type Target = {
   os: OS
@@ -45,14 +45,12 @@ export type NodeSelection = {
   os?: OS
   arch?: Arch
   host?: Host
-  runtime?: Runtime
 }
 
 export type ActyxOSNode = {
   name: string
   target: Target
   host: Host
-  runtimes: Runtime[]
   ax: CLI
   actyxOS: ApiClient
   _private: {

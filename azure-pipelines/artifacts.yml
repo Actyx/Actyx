@@ -27,12 +27,14 @@ stages:
         displayName: make all-js
         steps:
           - bash: |
+              set -e
               build/bin/install-vault.sh
               make all-js
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
           - publish: $(System.DefaultWorkingDirectory)/dist/js
             artifact: js-packages
             condition: succeeded()
@@ -40,12 +42,14 @@ stages:
         displayName: make all-windows
         steps:
           - bash: |
+              set -e
               build/bin/install-vault.sh
               make all-windows
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: windows-binaries
             condition: succeeded()
@@ -53,47 +57,51 @@ stages:
         displayName: make all-linux
         steps:
           - bash: |
+              set -e
               build/bin/install-vault.sh
               make all-linux
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: linux-binaries
             condition: succeeded()
-      - job:
-        displayName: make docker-build-actyxos-
-        strategy:
-          matrix:
-            x8664:
-              ARCH: x86_64
-            aarch64:
-              ARCH: aarch64
-            armv7:
-              ARCH: armv7
-            arm:
-              ARCH: arm
+      - job: makeActyxDocker
+        displayName: actyx multiarch docker images
         steps:
           - bash: |
-              build/bin/install-vault.sh
-              make docker-build-actyxos-$ARCH
-              ./azure-pipelines/push-to-dockerhub.sh actyx/cosmos:actyxos-$ARCH
+              set -e
+              GIT_COMMIT=`git log -1 --pretty=%H`
+              MASTER_TAG=
+              head_of_master=`git rev-parse origin/master`
+              MASTER_TAG=""
+              if [ "$GIT_COMMIT" == "$head_of_master" ]; then
+                  echo "Running on HEAD of master ($head_of_master), tagging image as latest"
+                  MASTER_TAG="--tag actyx/cosmos:actyx-latest"
+              fi
+              docker buildx build \
+                --push \
+                --platform linux/arm64/v8,linux/amd64,linux/arm/v6,linux/arm/v7 \
+                --build-arg GIT_COMMIT=$GIT_COMMIT \
+                --tag actyx/cosmos:actyx-$GIT_COMMIT $MASTER_TAG \
+                -f ops/docker/images/actyx/Dockerfile \
+                .
             env:
-              # Map secrets to env vars. This needs to be done manually
-              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
-              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
-
+              BASH_ENV: "~/.bashrc"
       - job:
         displayName: make all-android
         steps:
           - bash: |
+              set -e
               build/bin/install-vault.sh
               make all-android
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: android-binaries
             condition: succeeded()
@@ -123,6 +131,7 @@ stages:
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
+                set -e
                 az --version
                 az account show
                 az storage blob upload-batch -s $(System.DefaultWorkingDirectory)/pipeline-artifacts -d https://axartifacts.blob.core.windows.net/artifacts/ --destination-path $(Build.SourceVersion)/
@@ -154,41 +163,49 @@ stages:
     dependsOn:
       - upload
     jobs:
-      - job: integrationTest
-        displayName: Integration Test
-        steps:
-          - task: DownloadPipelineArtifact@2
-            inputs:
-              path: pipeline-artifacts
-          - bash: |
-              mkdir -p dist/bin 
-              cd pipeline-artifacts
-              for i in `ls`; do mv $i/* ../dist/bin/; done
-              cd ../dist
-              find -type f -exec chmod +x {} \;
-              cp -r bin/linux-x86_64 bin/current
-            displayName: Massage artifact directory structure
-          - bash: |
-              build/bin/install-vault.sh
-              make prepare-js all-js
-              cd integration
-              source ~/.nvm/nvm.sh
-              nvm use
-              npm install
-              npm test
-            env:
-              # Map secrets to env vars. This needs to be done manually
-              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
-              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
-            displayName: npm test
-          - publish: $(System.DefaultWorkingDirectory)/integration/logs
-            condition: failed()
-            artifact: integration-test-logs-attempt$(System.JobAttempt)
+      # Integration tests are disabled for the moment, but will be enabled
+      # again once the banyan integration reaches a certain stability.
+      #      - job: integrationTest
+      #        displayName: Integration Test
+      #        steps:
+      #          - task: DownloadPipelineArtifact@2
+      #            inputs:
+      #              path: pipeline-artifacts
+      #          - bash: |
+      #              set -e
+      #              mkdir -p dist/bin
+      #              cd pipeline-artifacts
+      #              for i in `ls`; do mv $i/* ../dist/bin/; done
+      #              cd ../dist
+      #              find -type f -exec chmod +x {} \;
+      #              cp -r bin/linux-x86_64 bin/current
+      #            displayName: Massage artifact directory structure
+      #            env:
+      #              BASH_ENV: "~/.bashrc"
+      #          - bash: |
+      #              set -e
+      #              build/bin/install-vault.sh
+      #              make prepare-js all-js
+      #              cd integration
+      #              source ~/.nvm/nvm.sh
+      #              nvm use
+      #              npm install
+      #              npm test
+      #            env:
+      #              # Map secrets to env vars. This needs to be done manually
+      #              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+      #              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+      #              BASH_ENV: "~/.bashrc"
+      #            displayName: npm test
+      #          - publish: $(System.DefaultWorkingDirectory)/integration/logs
+      #            condition: failed()
+      #            artifact: integration-test-logs-attempt$(System.JobAttempt)
       - job: cleanup
         displayName: Integration test cleanup tasks
         condition: always()
         steps:
           - bash: |
+              set -e
               source ~/.nvm/nvm.sh
               cd integration
               nvm use
@@ -198,6 +215,7 @@ stages:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
             name: cleanupInstances
             displayName: Clean up old integration test instances
   - stage: release
@@ -210,14 +228,15 @@ stages:
     jobs:
       - job: release
         displayName: Release
+        condition: eq(variables['Build.SourceBranch'], 'refs/heads/master')
         steps:
           - checkout: self # self represents the repo where the initial Pipelines YAML file was found
             clean: true # whether to fetch clean each time
             submodules: recursive # set to 'true' for a single level of submodules or 'recursive' to get submodules of submodules
             persistCredentials: true # set to 'true' to leave the OAuth token in the Git config after the initial fetch
           - bash: |
+              set -e
               cd release
-              source ~/.nvm/nvm.sh
               nvm use
               npm install
               echo "Building cosmos-release"
@@ -237,4 +256,5 @@ stages:
               ARM_NF: $(RELEASE_NETLIFY_ACCESS_TOKEN)
               REPO_DIR: $(Build.SourcesDirectory)
               TARGET_REV: $(Build.SourceVersion)
+              BASH_ENV: "~/.bashrc"
             displayName: run release

@@ -74,7 +74,7 @@ manifestVersion: "1.0"
 id: com.example.myapp
 version: 1.0.0
 displayName: Example App
-description: "An example app"
+description: An example app
 settingsSchema: ./settings-schema.json # You can also inline the JSON object that defines your settings schema
 
 # Here we define the app type

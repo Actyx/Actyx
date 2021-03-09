@@ -16,18 +16,20 @@ class MyEnvironment extends NodeEnvironment {
     await super.setup()
 
     const axNodeSetup = (<MyGlobal>(<unknown>this.global)).axNodeSetup
+    ;(<MyGlobal>global).axNodeSetup = axNodeSetup
     axNodeSetup.ec2 = new EC2({ region: 'eu-central-1' })
     axNodeSetup.thisTestEnvNodes = []
 
+    // global objects must be serializable to copy into jest's test context, that's why we have to re-setup some things
     for (const node of axNodeSetup.nodes) {
-      node.ax = new CLI(node._private.axHost, node._private.axBinaryPath)
+      // Reuse the identity the node was set up with
+      node.ax = await CLI.buildWithIdentityPath(node._private.axHost, node._private.axBinaryPath, node.ax.identityPath)
 
       const opts = DefaultClientOpts()
       opts.Endpoints.ConsoleService.BaseUrl = node._private.apiConsole
       opts.Endpoints.EventService.BaseUrl = node._private.apiEvent
       node.actyxOS = Client(opts)
     }
-    ;(<MyGlobal>global).axNodeSetup = axNodeSetup
 
     this.global.stubs = await setupStubs()
   }

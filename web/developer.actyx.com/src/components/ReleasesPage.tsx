@@ -4,6 +4,8 @@ import styled from 'styled-components'
 import moment from 'moment'
 import { toShortHash, flattenToActual, Tags } from '../release-util'
 
+/* eslint-disable */
+
 const PageWrapper = styled.div`
   max-width: 1140px;
   padding-left: 40px;

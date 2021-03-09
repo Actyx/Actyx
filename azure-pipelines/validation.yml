@@ -28,41 +28,49 @@ stages:
         displayName: make validate-js
         steps:
           - bash: |
+              set -e
               build/bin/install-vault.sh
               make validate-js
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
       - job:
         displayName: make validate-os validate-rust-sdk
         steps:
           - bash: |
+              set -e
               make validate-os validate-rust-sdk validate-rust-sdk-macros
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
       - job:
         displayName: make validate-os-android
         steps:
           - bash: |
+              set -e
               build/bin/install-vault.sh
               make validate-os-android
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
       - job:
         displayName: make validate-misc
         steps:
           - bash: |
+              set -e
               build/bin/install-vault.sh
               make validate-misc
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
 
   - stage: notifySuccess
     dependsOn:

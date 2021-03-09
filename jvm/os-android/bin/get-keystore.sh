@@ -25,11 +25,11 @@ echo ${credentials} | jq -r '.data.data.keystore' | base64 -d > jvm/os-android/a
 descriptor=$(cat <<EOF
 {
     "artifacts": [{
-        "file" :"actyxos-debug.apk",
+        "file" :"actyx-debug.apk",
         "type": "apk"
     },
     {
-        "file" :"actyxos.apk",
+        "file" :"actyx.apk",
         "type": "apk"
     }],
     "repo": "${BUILD_REPOSITORY_NAME}",

@@ -1,3 +1,4 @@
+import { Pond } from '@actyx/pond'
 import { MyGlobal } from '../../jest/setup'
 import { nodeMatches, selectNodes } from './nodeselection'
 import { getTestName } from './settings'
@@ -44,8 +45,28 @@ export const runOnEach = async <T>(
  * Run the given logic once for all of the selected nodes and return the
  * computed value.
  *
+ * @param f the logic to be executed with all available nodes
+ */
+export const runConcurrentlyOnAll = async <T>(
+  f: (nodes: ActyxOSNode[]) => ReadonlyArray<Promise<T>>,
+): Promise<T[]> => {
+  return runOnNodes('runOnAll', nodes, () => Promise.all(f(nodes)))
+}
+
+export const withPond = async <T>(node: ActyxOSNode, f: (pond: Pond) => Promise<T>): Promise<T> => {
+  const pond = await Pond.of({ url: node._private.apiPond }, {})
+  try {
+    return await f(pond)
+  } finally {
+    pond.dispose()
+  }
+}
+
+/**
+ * Run the given logic once for all of the selected nodes and return the
+ * computed value.
+ *
  * @param selection list of node selectors
- * @param exclusive when true, the given logic has exclusive access to all selected ActyxOS nodes
  * @param f the logic to be executed with all selected nodes
  */
 export const runOnAll = async <T>(

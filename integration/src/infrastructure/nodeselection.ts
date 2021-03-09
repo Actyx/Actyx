@@ -3,8 +3,7 @@ import { ActyxOSNode, NodeSelection } from './types'
 export const nodeMatches = (selection: NodeSelection) => (node: ActyxOSNode): boolean =>
   (selection.os === node.target.os || selection.os === undefined) &&
   (selection.arch === node.target.arch || selection.arch === undefined) &&
-  (selection.host === node.host || selection.host === undefined) &&
-  (node.runtimes.some((rt) => rt === selection.runtime) || selection.runtime === undefined)
+  (selection.host === node.host || selection.host === undefined)
 
 /**
  * Select nodes from the given array of nodes, yielding an array containing

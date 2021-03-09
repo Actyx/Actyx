@@ -4,10 +4,6 @@ const _OK = io.type({
   code: io.literal('OK'),
 })
 
-const ERR_APP_ENABLED = io.type({
-  code: io.literal('ERR_APP_ENABLED'),
-  message: io.string,
-})
 const ERR_INVALID_INPUT = io.type({
   code: io.literal('ERR_INVALID_INPUT'),
   message: io.string,
@@ -28,26 +24,18 @@ const ERR_SETTINGS_NOT_FOUND_AT_SCOPE = io.type({
   code: io.literal('ERR_SETTINGS_NOT_FOUND_AT_SCOPE'),
   message: io.string,
 })
-const ERR_APP_INVALID_PACKAGE = io.type({
-  code: io.literal('ERR_APP_INVALID_PACKAGE'),
-  message: io.string,
-})
-const ERR_APP_ALREADY_DEPLOYED = io.type({
-  code: io.literal('ERR_APP_ALREADY_DEPLOYED'),
-  message: io.string,
-})
 const ERR_NODE_UNREACHABLE = io.type({
   code: io.literal('ERR_NODE_UNREACHABLE'),
   message: io.string,
 })
-
-const ERR_NODE_MISCONFIGURED = io.type({
-  code: io.literal('ERR_NODE_MISCONFIGURED'),
+const ERR_FILE_EXISTS = io.type({
+  code: io.literal('ERR_FILE_EXISTS'),
   message: io.string,
 })
 
 export const Response_Nodes_Ls = io.union([
   ERR_INTERNAL_ERROR,
+  ERR_INVALID_INPUT,
   io.intersection([
     _OK,
     io.type({
@@ -55,23 +43,19 @@ export const Response_Nodes_Ls = io.union([
         io.union([
           io.type({
             connection: io.literal('reachable'),
+            host: io.string,
             nodeId: io.string,
             displayName: io.union([io.null, io.string]),
-            state: io.literal('running'),
-            settingsValid: io.boolean,
-            licensed: io.boolean,
-            appsDeployed: io.Integer,
-            appsRunning: io.Integer,
             startedIso: io.string,
             startedUnix: io.Integer,
             version: io.string,
           }),
           io.type({
-            connection: io.literal('hostUnreachable'),
+            connection: io.literal('unreachable'),
             host: io.string,
           }),
           io.type({
-            connection: io.literal('actyxosUnreachable'),
+            connection: io.literal('unauthorized'),
             host: io.string,
           }),
         ]),
@@ -123,7 +107,6 @@ export const Response_Settings_Schema = io.union([
 export type Response_Settings_Schema = io.TypeOf<typeof Response_Settings_Schema>
 
 export const Response_Settings_Set = io.union([
-  ERR_APP_ENABLED,
   ERR_INVALID_INPUT,
   ERR_SETTINGS_INVALID,
   ERR_NODE_UNREACHABLE,
@@ -141,7 +124,6 @@ export const Response_Settings_Set = io.union([
 export type Response_Settings_Set = io.TypeOf<typeof Response_Settings_Set>
 
 export const Response_Settings_Unset = io.union([
-  ERR_APP_ENABLED,
   ERR_SETTINGS_UNKNOWN_SCOPE,
   ERR_NODE_UNREACHABLE,
   io.intersection([
@@ -153,130 +135,6 @@ export const Response_Settings_Unset = io.union([
 ])
 
 export type Response_Settings_Unset = io.TypeOf<typeof Response_Settings_Unset>
-
-export const Response_Apps_Package = io.union([
-  ERR_INVALID_INPUT,
-  io.intersection([
-    _OK,
-    io.type({
-      result: io.array(
-        io.type({
-          appId: io.string,
-          appVersion: io.string,
-          packagePath: io.string,
-        }),
-      ),
-    }),
-  ]),
-])
-
-export type Response_Apps_Package = io.TypeOf<typeof Response_Apps_Package>
-
-export const Response_Apps_Deploy = io.union([
-  ERR_INVALID_INPUT,
-  ERR_APP_INVALID_PACKAGE,
-  ERR_APP_ALREADY_DEPLOYED,
-  ERR_NODE_UNREACHABLE,
-  io.intersection([
-    _OK,
-    io.type({
-      result: io.type({
-        redeployed: io.boolean,
-      }),
-    }),
-  ]),
-])
-
-export type Response_Apps_Deploy = io.TypeOf<typeof Response_Apps_Deploy>
-
-export const Response_Apps_Undeploy = io.union([
-  ERR_INVALID_INPUT,
-  ERR_APP_ENABLED,
-  ERR_NODE_UNREACHABLE,
-  io.intersection([
-    _OK,
-    io.type({
-      result: io.type({
-        appId: io.string,
-        host: io.string,
-      }),
-    }),
-  ]),
-])
-
-export type Response_Apps_Undeploy = io.TypeOf<typeof Response_Apps_Undeploy>
-
-export const Response_Apps_Start = io.union([
-  ERR_INVALID_INPUT,
-  ERR_NODE_UNREACHABLE,
-  ERR_NODE_MISCONFIGURED,
-  io.intersection([
-    _OK,
-    io.type({
-      result: io.type({
-        appId: io.string,
-        host: io.string,
-        alreadyStarted: io.boolean,
-      }),
-    }),
-  ]),
-])
-
-export type Response_Apps_Start = io.TypeOf<typeof Response_Apps_Start>
-
-export const Response_Apps_Stop = io.union([
-  ERR_INVALID_INPUT,
-  ERR_NODE_UNREACHABLE,
-  io.intersection([
-    _OK,
-    io.type({
-      result: io.type({
-        appId: io.string,
-        host: io.string,
-        alreadyStopped: io.boolean,
-      }),
-    }),
-  ]),
-])
-
-export type Response_Apps_Stop = io.TypeOf<typeof Response_Apps_Stop>
-
-export const Response_Apps_Validate = io.union([
-  ERR_INVALID_INPUT,
-  io.intersection([
-    _OK,
-    io.type({
-      result: io.array(io.string),
-    }),
-  ]),
-])
-
-export type Response_Apps_Validate = io.TypeOf<typeof Response_Apps_Validate>
-
-export const Response_Apps_Ls = io.union([
-  ERR_INTERNAL_ERROR,
-  ERR_NODE_UNREACHABLE,
-  io.intersection([
-    _OK,
-    io.type({
-      result: io.array(
-        io.type({
-          nodeId: io.string,
-          appId: io.string,
-          version: io.string,
-          running: io.boolean,
-          startedIso: io.union([io.null, io.string]),
-          startedUnix: io.union([io.null, io.number]),
-          licensed: io.boolean,
-          settingsValid: io.boolean,
-          enabled: io.boolean,
-        }),
-      ),
-    }),
-  ]),
-])
-
-export type Response_Apps_Ls = io.TypeOf<typeof Response_Apps_Ls>
 
 export const Response_Logs_Tail_Entry = io.union([
   ERR_NODE_UNREACHABLE,
@@ -308,32 +166,35 @@ export const Response_Logs_Tail_Entry = io.union([
 export type Response_Logs_Tail_Entry = io.TypeOf<typeof Response_Logs_Tail_Entry>
 
 export const Response_Internal_Swarm_State = io.union([
-  io.type({ Err: io.type({ code: io.string, message: io.string }) }),
-  io.type({
-    Ok: io.type({
-      swarm: io.type({
-        listen_addrs: io.array(io.string),
-        peer_id: io.string,
-        peers: io.record(
-          io.string,
-          io.type({
-            addresses: io.record(
-              io.string,
-              io.type({
-                provenance: io.string,
-                state: io.union([
-                  io.string,
-                  io.type({ Connected: io.type({ since: io.number }) }),
-                  io.type({ Disconnected: io.type({ since: io.number }) }),
-                ]),
-              }),
-            ),
-            connection_state: io.string,
-          }),
-        ),
+  ERR_INVALID_INPUT,
+  io.intersection([
+    _OK,
+    io.type({
+      result: io.type({
+        swarm: io.type({
+          listen_addrs: io.array(io.string),
+          peer_id: io.string,
+          peers: io.record(
+            io.string,
+            io.type({
+              addresses: io.record(
+                io.string,
+                io.type({
+                  provenance: io.string,
+                  state: io.union([
+                    io.string,
+                    io.type({ Connected: io.type({ since: io.number }) }),
+                    io.type({ Disconnected: io.type({ since: io.number }) }),
+                  ]),
+                }),
+              ),
+              connection_state: io.string,
+            }),
+          ),
+        }),
       }),
     }),
-  }),
+  ]),
 ])
 
 export type Response_Internal_Swarm_State = io.TypeOf<typeof Response_Internal_Swarm_State>
@@ -352,3 +213,19 @@ export const Response_Swarms_Keygen = io.union([
 ])
 
 export type Response_Swarms_Keygen = io.TypeOf<typeof Response_Swarms_Keygen>
+
+export const Response_Users_Keygen = io.union([
+  ERR_FILE_EXISTS,
+  io.intersection([
+    _OK,
+    io.type({
+      result: io.type({
+        privateKeyPath: io.string,
+        publicKeyPath: io.string,
+        publicKey: io.string,
+      }),
+    }),
+  ]),
+])
+
+export type Response_Users_Keygen = io.TypeOf<typeof Response_Users_Keygen>

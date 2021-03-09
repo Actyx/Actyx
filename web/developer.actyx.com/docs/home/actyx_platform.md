@@ -9,7 +9,7 @@ hide_table_of_contents: true
 
 ![Actyx Platform introduction](/images/home/actyx_platform.svg)
 
-The Actyx platform is an application platform for developing, deploying, running and monitoring edge native applications, such as factory automation on the shop-floor where utmost reliability is required.
+The Actyx platform is an application platform for developing, deploying, running and monitoring local-first applications, such as factory automation on the shop-floor where utmost reliability is required.
 With the Actyx platform we bring a modern development experience to this space and provide you with the software and tools that enable you to build better solutions faster.
 
 On the Actyx platform, your applications run directly on the edge without the need for a centralized IT infrastructure.

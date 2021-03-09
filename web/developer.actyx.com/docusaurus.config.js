@@ -23,9 +23,9 @@ module.exports = {
   ],
   themeConfig: {
     announcementBar: {
-      id: 'os-111',
+      id: 'os-112',
       content:
-        '🥁 We released version 1.1.1 of ActyxOS! Check out <a target="_blank" rel="noopener noreferrer" href="https://downloads.actyx.com/docs/os/release-notes">release notes</a> and <a target="_blank" rel="noopener noreferrer" href="https://downloads.actyx.com">download</a> the latest and greatest! 🥁',
+        '🤩 We released version 1.1.2 of ActyxOS! Check out the <a rel="noopener noreferrer" href="https://developer.actyx.com/docs/os/release-notes">release notes</a> and <a rel="noopener noreferrer" href="https://downloads.actyx.com">download</a> the latest and greatest! 🤩',
       backgroundColor: '#f5f6f7',
       textColor: '#000',
     },
@@ -105,6 +105,19 @@ module.exports = {
           ],
         },
         {
+          title: 'Node Management',
+          items: [
+            {
+              label: 'Actyx CLI',
+              to: 'docs/cli/getting-started',
+            },
+            {
+              label: 'Actyx Node Manager',
+              to: 'docs/node-manager/overview',
+            }
+          ]
+        },
+        {
           title: 'Useful Links',
           items: [
             {
@@ -122,32 +135,6 @@ module.exports = {
             {
               label: 'Discord',
               to: 'https://discord.gg/262yJhc',
-            },
-          ],
-        },
-        {
-          title: 'Node Management',
-          items: [
-            {
-              label: 'Actyx CLI',
-              to: 'docs/cli/getting-started',
-            },
-            {
-              label: 'Actyx Node Manager',
-              to: 'docs/node-manager/overview',
-            },
-          ],
-        },
-        {
-          title: 'Node Management',
-          items: [
-            {
-              label: 'Actyx CLI',
-              to: 'docs/cli/getting-started',
-            },
-            {
-              label: 'Actyx Node Manager',
-              to: 'docs/node-manager/overview',
             },
           ],
         },

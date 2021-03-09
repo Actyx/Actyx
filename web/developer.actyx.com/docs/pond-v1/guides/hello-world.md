@@ -37,7 +37,7 @@ const main = async () => {
 ```
 
 To bring a fish to life we need to create a pond in which it can breathe.
-Once the the pond is created, we can ask the pond to observe our `helloWorldFish`; the second argument (the empty string) is the name of the particular fish of kind “hello world” that we want — in this example we don’t care about this part.
+Once the pond is created, we can ask the pond to observe our `helloWorldFish`; the second argument (the empty string) is the name of the particular fish of kind “hello world” that we want — in this example we don’t care about this part.
 The pond will now take a look to check whether the fish we are asking for is already up and running, and it will wake it up (“hydrate” it) if that is not the case.
 Once the fish is alive, we will get the initial state it publishes as an RxJS `Observable`, on which we register a callback that will print the greeting to the console and start the whole pipeline with the final `.subscribe()` call.
 

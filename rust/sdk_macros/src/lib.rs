@@ -87,13 +87,21 @@ fn parse_range(from: Option<Box<Expr>>, to: Option<Box<Expr>>, limits: RangeLimi
 
 macro_rules! lit {
     ($typ:ident, $pat:ident) => {
-        Expr::Lit(ExprLit { lit: Lit::$typ($pat), .. })
+        Expr::Lit(ExprLit {
+            lit: Lit::$typ($pat),
+            ..
+        })
     };
 }
 macro_rules! range {
     ($from:ident, $to:ident, $limits:ident) => {
-        ExprRange {$from, $to, $limits, .. }
-    }
+        ExprRange {
+            $from,
+            $to,
+            $limits,
+            ..
+        }
+    };
 }
 
 /// This macro takes a string and a range and asserts that the string’s length

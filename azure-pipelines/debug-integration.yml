@@ -14,14 +14,11 @@ stages:
       - job: integrationTest
         displayName: Integration Test
         steps:
-          - task: DownloadPipelineArtifact@2
-            inputs:
-              path: pipeline-artifacts
           - bash: |
+              set -e
               build/bin/install-vault.sh
               make prepare-js all-js
               cd integration
-              source ~/.nvm/nvm.sh
               nvm use
               npm install
               npm test
@@ -29,6 +26,7 @@ stages:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
             displayName: npm test
           - publish: $(System.DefaultWorkingDirectory)/integration/logs
             condition: failed()
@@ -38,7 +36,7 @@ stages:
         condition: always()
         steps:
           - bash: |
-              source ~/.nvm/nvm.sh
+              set -e
               cd integration
               nvm use
               npm install
@@ -47,5 +45,6 @@ stages:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
             name: cleanupInstances
             displayName: Clean up old integration test instances

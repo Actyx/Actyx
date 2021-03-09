@@ -6,7 +6,7 @@ import fetch from 'node-fetch'
 import { assertOK } from '../../assertOK'
 import { runOnEvery } from '../../infrastructure/hosts'
 import { ActyxOSNode } from '../../infrastructure/types'
-import { createPackageSampleDockerApp, createTestNodeDockerLocal } from '../../test-node-factory'
+import { createTestNodeDockerLocal } from '../../test-node-factory'
 import { readFile, remove } from 'fs-extra'
 import { quickstartDirs } from '../../setup-projects/quickstart'
 import { settings } from '../../infrastructure/settings'
@@ -14,7 +14,7 @@ import path from 'path'
 import YAML from 'yaml'
 import { writeFile } from 'fs/promises'
 import { SettingsInput } from '../../cli/exec'
-import { waitForAppToStart, waitForAppToStop, waitForNodeToBeConfigured } from '../../retry'
+import { waitForNodeToBeConfigured } from '../../retry'
 
 describe('ax settings (using quickstart ActyxOS default setting)', () => {
   const workingDir = quickstartDirs(settings().tempDir).quickstart
@@ -22,25 +22,20 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
   const scopeActyxOS = 'com.actyx.os'
 
   let testNode: ActyxOSNode
-  let packagePath = ''
-  let appId = ''
 
   beforeAll(async () => {
     // Node will be added to the global `thisEnvNodes` and eventually cleaned up
     testNode = await createTestNodeDockerLocal('settings')
-
-    const infoSampleDockerApp = await createPackageSampleDockerApp(testNode)
-    // Make sure no other tests touching the generated tarball is running in
-    // parallel!
-    packagePath = infoSampleDockerApp.packagePath
-    appId = infoSampleDockerApp.appId
   })
 
   const resetSettingActyxOS = async () => {
+    await waitForNodeToBeConfigured(testNode)
     expect(await testNode.ax.settings.unset(scopeActyxOS)).toMatchCodeOk()
+    await waitForNodeToBeConfigured(testNode)
     expect(
       await testNode.ax.settings.set(scopeActyxOS, SettingsInput.FromFile(settingDefaultFilePath)),
     ).toMatchCodeOk()
+    await waitForNodeToBeConfigured(testNode)
     expect(
       await testNode.ax.settings.set(
         `${scopeActyxOS}/general/logLevels/os`,
@@ -59,12 +54,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
 
   describe('scopes', () => {
     test('return ERR_NODE_UNREACHABLE if node host is unreachable', async () => {
-      const response = await stubs.hostUnreachable.ax.settings.scopes()
-      expect(response).toMatchErrNodeUnreachable()
-    })
-
-    test('return ERR_NODE_UNREACHABLE if actyxos is unreachable', async () => {
-      const response = await stubs.actyxOSUnreachable.ax.settings.scopes()
+      const response = await stubs.unreachable.ax.settings.scopes()
       expect(response).toMatchErrNodeUnreachable()
     })
 
@@ -78,12 +68,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
 
   describe('schema', () => {
     test('return ERR_NODE_UNREACHABLE if node host is unreachable', async () => {
-      const response = await stubs.hostUnreachable.ax.settings.schema(scopeActyxOS)
-      expect(response).toMatchErrNodeUnreachable()
-    })
-
-    test('return ERR_NODE_UNREACHABLE if actyxos is unreachable', async () => {
-      const response = await stubs.actyxOSUnreachable.ax.settings.schema(scopeActyxOS)
+      const response = await stubs.unreachable.ax.settings.schema(scopeActyxOS)
       expect(response).toMatchErrNodeUnreachable()
     })
 
@@ -107,12 +92,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
 
   describe('get', () => {
     test('return ERR_NODE_UNREACHABLE if node host is unreachable', async () => {
-      const response = await stubs.hostUnreachable.ax.settings.get(scopeActyxOS)
-      expect(response).toMatchErrNodeUnreachable()
-    })
-
-    test('return ERR_NODE_UNREACHABLE if actyxos is unreachable', async () => {
-      const response = await stubs.actyxOSUnreachable.ax.settings.get(scopeActyxOS)
+      const response = await stubs.unreachable.ax.settings.get(scopeActyxOS)
       expect(response).toMatchErrNodeUnreachable()
     })
 
@@ -123,7 +103,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
         result: {
           general: {
             announceAddresses: [],
-            authorizedKeys: [],
+            authorizedKeys: [expect.any(String)],
             bootstrapNodes: [
               '/dns4/demo-bootstrap.actyx.net/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH',
             ],
@@ -132,7 +112,6 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
               apps: 'INFO',
               os: 'DEBUG',
             },
-            requireAuthentication: false,
             swarmKey:
               'L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCmQ3YjBmNDFjY2ZlYTEyM2FkYTJhYWI0MmY2NjRjOWUyNWUwZWYyZThmNGJjNjJlOTg3NmE3NDU1MTc3ZWQzOGIK',
           },
@@ -183,23 +162,12 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
       await testNode.ax.settings.set(scopeActyxOS, SettingsInput.FromFile(settingDefaultFilePath))
     })
 
-    test('return ERR_INTERNAL_ERROR if com.actyx.os is not set --no-defaults', async () => {
-      await testNode.ax.settings.unset(scopeActyxOS)
-
-      const responseGet = await testNode.ax.settings.get(scopeActyxOS, true)
-      const responseGetShape = {
-        code: 'ERR_SETTINGS_NOT_FOUND_AT_SCOPE',
-        message: expect.any(String),
-      }
-      expect(responseGet).toMatchObject(responseGetShape)
-      await testNode.ax.settings.set(scopeActyxOS, SettingsInput.FromFile(settingDefaultFilePath))
-    })
-
-    test('return OK if com.actyx.os is not set', async () => {
+    test('return OK  with authorized key set if com.actyx.os has been unset', async () => {
       await testNode.ax.settings.unset(scopeActyxOS)
 
       const responseGet = await testNode.ax.settings.get(scopeActyxOS)
       expect(responseGet).toMatchCodeOk()
+      expect(responseGet).toHaveProperty('result.general.authorizedKeys')
 
       await testNode.ax.settings.set(scopeActyxOS, SettingsInput.FromFile(settingDefaultFilePath))
     })
@@ -207,12 +175,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
 
   describe('unset', () => {
     test('return ERR_NODE_UNREACHABLE if node host is unreachable', async () => {
-      const response = await stubs.hostUnreachable.ax.settings.unset(scopeActyxOS)
-      expect(response).toMatchErrNodeUnreachable()
-    })
-
-    test('return ERR_NODE_UNREACHABLE if actyxos is unreachable', async () => {
-      const response = await stubs.actyxOSUnreachable.ax.settings.unset(scopeActyxOS)
+      const response = await stubs.unreachable.ax.settings.unset(scopeActyxOS)
       expect(response).toMatchErrNodeUnreachable()
     })
 
@@ -222,53 +185,14 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
       expect(responseUnset).toMatchObject(responseUnsetShape)
     })
 
-    test('return ERR_SETTINGS_UNKNOWN_SCOPE after unset or a not existing scope', async () => {
-      const responseUnset = await testNode.ax.settings.unset('not-existing-scope')
+    test('return OK for a not existing scope', async () => {
+      const scope = 'i-dont-exist'
+      const responseUnset = await testNode.ax.settings.unset(scope)
       const responseUnsetShape = {
-        code: 'ERR_SETTINGS_UNKNOWN_SCOPE',
-        message: expect.any(String),
+        code: 'OK',
+        result: { scope },
       }
       expect(responseUnset).toMatchObject(responseUnsetShape)
-    })
-
-    test('return OK after unset setting for an app', async () => {
-      expect(await testNode.ax.apps.deploy(packagePath)).toMatchCodeOk()
-
-      expect(await testNode.ax.settings.unset(appId)).toMatchCodeOk()
-
-      expect(await testNode.ax.apps.undeploy(appId)).toMatchCodeOk()
-    })
-
-    test('return ERR_APP_ENABLED if app is running', async () => {
-      expect(await testNode.ax.apps.deploy(packagePath)).toMatchCodeOk()
-
-      expect(await testNode.ax.apps.start(appId)).toMatchCodeOk()
-      await waitForAppToStart(appId, testNode)
-
-      const response = await testNode.ax.settings.unset(appId)
-      const responseShape = { code: 'ERR_APP_ENABLED', message: expect.any(String) }
-      expect(response).toMatchObject(responseShape)
-
-      expect(await testNode.ax.apps.stop(appId)).toMatchCodeOk()
-      await waitForAppToStop(appId, testNode)
-
-      expect(await testNode.ax.apps.undeploy(appId)).toMatchCodeOk()
-    })
-
-    test('return ERR_APP_ENABLED if app is running and unset is for com.actyx.os', async () => {
-      expect(await testNode.ax.apps.deploy(packagePath)).toMatchCodeOk()
-
-      expect(await testNode.ax.apps.start(appId)).toMatchCodeOk()
-      await waitForAppToStart(appId, testNode)
-
-      const response = await testNode.ax.settings.unset(scopeActyxOS)
-      const responseShape = { code: 'ERR_APP_ENABLED', message: expect.any(String) }
-      expect(response).toMatchObject(responseShape)
-
-      expect(await testNode.ax.apps.stop(appId)).toMatchCodeOk()
-      await waitForAppToStop(appId, testNode)
-
-      expect(await testNode.ax.apps.undeploy(appId)).toMatchCodeOk()
     })
   })
 })
