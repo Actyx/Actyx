@@ -582,7 +582,6 @@ The request body must contain a JSON object with the following structure:
 {
     "data": [
         {
-            // TODO: do we need stream nr here?
             "tags": ["<string: tag, e.g. tag1>", "<string: tag, e.g. tag2>"],
             "payload": "<object>"
         },
@@ -598,13 +597,25 @@ The request body must contain a JSON object with the following structure:
 
 ### Response
 
-The response will provide feedback using HTTP status codes, with `201` signifying that the request was successfully processed and the events published and and empty response body.
+- HTTP headers:
+  - `Content-Type` is `application/json`
 
-If an error is encountered while publishing events, a JSON object with the following structure will be returned:
+The response body will contain a JSON object of the following structure:
 
 ```js
 {
-    "error": "<string: message>"
+    "data": [
+        {
+            "streamNr": "<integer: stream number>",
+            "lamport": "<integer>",
+            "offset": "<integer>"
+        },
+        {
+            "streamNr": "<integer: stream number>",
+            "lamport": "<integer>",
+            "offset": "<integer>"
+        }
+    ]
 }
 ```
 
@@ -639,6 +650,23 @@ echo '
     -d @- \
     -H "Content-Type: application/json" \
     http://localhost:4454/api/v2/events/publish
+```
+```js
+{
+  "data": [
+    {
+      "streamNr": 0,
+      "lamport": 23,
+      "offset": 8
+    },
+    {
+      "streamNr": 0,
+      "lamport": 24,
+      "offset": 9
+    }
+  ]
+}
+
 ```
 
 ## SDKs
