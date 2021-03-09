@@ -46,6 +46,7 @@ const WaveAnimation = styled.div`
   width: 60px;
   font-size: 26px;
   position: relative;
+  margin-left: 4px;
   animation-name: ${waveAnimation};
   animation-duration: 4s;
   animation-iteration-count: infinite;
@@ -84,6 +85,8 @@ export const Hero: React.FC<Props> = ({ example }: Props) => (
         solutions on the Actyx platform.
       </HeroCopy>
     </LineWrapper>
-    <SearchBarHomePage />
+    <LineWrapper>
+      <SearchBarHomePage />
+    </LineWrapper>
   </Wrapper>
 )
