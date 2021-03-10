@@ -70,6 +70,7 @@ curl \
     -H "Accept: application/json" \
     http://localhost:4454/api/v2/events/node_id | jq .
 ```
+
 ```js
 {
     "nodeId": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA"
@@ -123,6 +124,7 @@ curl \
     -H "Accept: application/json" \
     http://localhost:4454/api/v2/events/offsets | jq .
 ```
+
 ```text
 {
     "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2": 57,
@@ -197,6 +199,7 @@ Please note that for identical Lamport timestamps the stream ID is taken into ac
 :::
 
 TODO:
+
 - Make a general section about sorting and link to it?
 
 ### Response
@@ -258,6 +261,7 @@ echo '
     http://localhost:4454/api/v2/events/query \
 | jq .
 ```
+
 ```js
 {
     "key": {
@@ -369,6 +373,7 @@ echo '
     http://localhost:4454/api/v2/events/subscribe \
 | jq .
 ```
+
 ```js
 {
     "key": {
@@ -445,7 +450,8 @@ The session identifier is chosen by the client and must be used consistently by 
 If the `where` filter changes, a new session will be created regardless of the existence of a session with the same ID.
 :::
 
-TODO: 
+TODO:
+ 
 - Clarify what "resuming" a session implies.
 - What if the user makes to requests with same session ID but different subscription? -> hash both
 - Can't we keep this stateless by the client keeping track of the offsets and resume on error? We have to keep track of session ID already.
@@ -543,6 +549,7 @@ echo '
     http://localhost:4454/api/v2/events/subscribe_monotonic \
 | jq .
 ```
+
 ```js
 {
     "type": "event",
@@ -651,6 +658,7 @@ echo '
     -H "Content-Type: application/json" \
     http://localhost:4454/api/v2/events/publish
 ```
+
 ```js
 {
   "data": [
