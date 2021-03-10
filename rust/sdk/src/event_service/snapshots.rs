@@ -1,17 +1,18 @@
 use crate::{
-    event::{FishName, Semantics, SourceId},
-    LamportTimestamp, Offset, OffsetMap,
+    event::{FishName, Semantics},
+    tagged::EventKey,
+    OffsetMap,
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct StoreSnapshotRequest {
-    pub semantics: Semantics,
+    pub entity_type: Semantics,
     pub name: FishName,
-    pub key: EventKeyV1,
-    pub psn_map: OffsetMap,
-    pub horizon: Option<EventKeyV1>,
+    pub key: EventKey,
+    pub offset_map: OffsetMap,
+    pub horizon: Option<EventKey>,
     pub cycle: u64,
     pub version: u64,
     pub tag: String,
@@ -21,7 +22,7 @@ pub struct StoreSnapshotRequest {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RetrieveSnapshotRequest {
-    pub semantics: Semantics,
+    pub entity_type: Semantics,
     pub name: FishName,
     pub version: u64,
 }
@@ -29,29 +30,19 @@ pub struct RetrieveSnapshotRequest {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct InvalidateSnapshotsRequest {
-    pub semantics: Semantics,
+    //TODO: Create `EntityType` type
+    pub entity_type: Semantics,
+    //TODO: Create `Name` type
     pub name: FishName,
-    pub key: EventKeyV1,
+    pub key: EventKey,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RetrieveSnapshotResponse {
     pub state: String,
-    pub psn_map: OffsetMap,
-    pub event_key: EventKeyV1,
-    pub horizon: Option<EventKeyV1>,
+    pub offset_map: OffsetMap,
+    pub event_key: EventKey,
+    pub horizon: Option<EventKey>,
     pub cycle: u64,
-}
-
-/// Event key used in the snapshot endpoints of the pond service
-///
-/// to be replaced with actyxos_sdk::EventKey for v2
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Copy)]
-#[serde(rename_all = "camelCase")]
-pub struct EventKeyV1 {
-    pub lamport: LamportTimestamp,
-    pub source_id: SourceId,
-    #[serde(rename = "psn")]
-    pub offset: Offset,
 }
