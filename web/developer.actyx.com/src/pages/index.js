@@ -19,7 +19,7 @@ const PageWrapper = styled.div`
 function Home() {
   return (
     <PageWrapper>
-      <Hero/>
+      <Hero />
     </PageWrapper>
   )
 }

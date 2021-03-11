@@ -239,6 +239,48 @@ span {
   justify-content: space-between;
   width: 100%;
 }
+
+article {
+  padding-top: 0px;
+  padding-right: 24px;
+  padding-left: 0px;
+  padding-bottom: 24px;
+  margin: 0px;
+  border-bottom: #e1e5e8;
+}
+
+article > header > h2 > a {
+  font-size: 24px;
+  font-weight: 700;
+  color: #2a2f45;
+}
+
+article > header > h2 > a:hover {
+  font-size: 24px;
+  font-weight: 700;
+  text-decoration: none;
+}
+footer {
+  margin-bottom: 0px !important;
+}
+
+article > footer.row.margin-vert--lg {
+  margin-bottom: 0px;
+}
+
+.blogPostTitle_node_modules-\@docusaurus-theme-classic-lib-next-theme-BlogPostItem- {
+  font-size: 24px !important;
+}
+
+.DocSearch-Button {
+  max-width: 300px;
+  margin: 0px;
+  border-radius: 5px !important;
+  border: 1px solid #e1e5e8 !important;
+  background-color: white !important;
+}
+
+
 .navbar .navbar__brand {
   align-items: center;
   color: var(--ifm-navbar-link-color);
@@ -247,7 +289,7 @@ span {
   height: 2rem;
   width: calc(var(--doc-sidebar-width) - var(--ifm-navbar-padding-horizontal));
   text-decoration: none;
-  margin-right: auto; /*uncomment if navbar items should be centered*/ 
+  /*margin-right: auto; uncomment if navbar items should be centered*/ 
 }
 
 .navbar__brand {
@@ -350,6 +392,7 @@ span {
     display: none;
   }
 }
+
 .navbar .navbar__link {
   color: var(--ifm-navbar-link-color);
   cursor: pointer;
@@ -567,10 +610,6 @@ span {
   padding-left: var(--ifm-spacing-horizontal);
   padding-right: 2rem;
   width: 100%;
-}
-
-.blogPostTitle_node_modules-\@docusaurus-theme-classic-src-theme-BlogPostItem- {
-  font-size: 3rem;
 }
 
 .blogPostDate_node_modules-\@docusaurus-theme-classic-src-theme-BlogPostItem- {
@@ -1530,12 +1569,6 @@ pre .line-numbers {
 .sidebarItemTitle_node_modules-\@docusaurus-theme-classic-lib-theme-BlogSidebar- {
   font-size: 22px !important;
   padding-top: 20px !important;
-}
-
-.blogPostTitle_node_modules-\@docusaurus-theme-classic-lib-theme-BlogPostItem- > a {
-  font-size: 32px !important;
-  line-height: 0% !important;
-  text-decoration: none !important;
 }
 
 .sidebarItemLink_node_modules-\@docusaurus-theme-classic-lib-theme-BlogSidebar- {

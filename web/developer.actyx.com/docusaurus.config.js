@@ -42,19 +42,24 @@ module.exports = {
       },
       items: [
         {
-          label: 'Start With Actyx',
+          label: 'Start',
           activeBasePath: 'docs/start/',
           to: 'docs/start/overview',
         },
         {
-          label: 'Build Solutions',
+          label: 'Build',
           activeBasePath: 'docs/build/',
           to: 'docs/build/overview',
         },
         {
-          label: 'Deploy To Production',
+          label: 'Deploy',
           activeBasePath: 'docs/deploy/',
           to: 'docs/deploy/overview',
+        },
+        {
+          label: 'Blog',
+          to: 'blog',
+          position: 'right',
         },
       ],
     },
@@ -67,11 +72,111 @@ module.exports = {
       style: 'light',
       links: [
         {
-          title: 'Footer Header',
+          title: 'Reference Deep Dives',
           items: [
             {
-              label: 'Footer Label',
-              to: 'docs/hello',
+              label: 'Actyx',
+              to: 'docs/build/reference/actyx-api',
+            },
+            {
+              label: 'SDK',
+              to: 'docs/build/reference/js-ts-sdk',
+            },
+            {
+              label: 'CLI',
+              to: 'docs/deploy/reference/cli',
+            },
+            {
+              label: 'Node Manager',
+              to: 'docs/deploy/reference/cli',
+            },
+          ],
+        },
+        {
+          title: 'Building Solutions',
+          items: [
+            {
+              label: 'Local Twins',
+              to: 'docs/build/explanation/local-twins',
+            },
+            {
+              label: 'UI Apps',
+              to: 'docs/build/explanation/ui-apps',
+            },
+            {
+              label: 'Headless Apps',
+              to: 'docs/build/explanation/headless-apps',
+            },
+            {
+              label: 'Actyx SDK',
+              to: 'docs/build/how-to/actyx-sdk',
+            },
+          ],
+        },
+        {
+          title: 'Quick Links',
+          items: [
+            {
+              label: 'Actyx Node',
+              to: 'docs/start/explanation/the-actyx-node',
+            },
+            {
+              label: 'Node Lifecycle',
+              to: 'docs/start/explanation/node-lifecycle',
+            },
+            {
+              label: 'Typescript SDK',
+              to: 'docs/build/reference/js-ts-sdk',
+            },
+            {
+              label: 'Node Configuration',
+              to: 'docs/deploy/how-to/node-configuration',
+            },
+            {
+              label: 'Deployments',
+              to: 'docs/deploy/how-to/deployments',
+            },
+          ],
+        },
+        {
+          title: 'Community',
+          items: [
+            {
+              label: 'Forum',
+              to: 'https://www.actyx.com',
+            },
+            {
+              label: 'Actyx Academy',
+              to: 'https://www.actyx.com/team',
+            },
+            {
+              label: 'Discord',
+              to: 'https://www.actyx.com/careers',
+            },
+            {
+              label: 'Blog',
+              to: 'https://www.actyx.com/blog',
+            },
+          ],
+        },
+        {
+          title: 'Company',
+          items: [
+            {
+              label: 'Home',
+              to: 'https://www.actyx.com',
+            },
+            {
+              label: 'Team',
+              to: 'https://www.actyx.com/team',
+            },
+            {
+              label: 'Careers',
+              to: 'https://www.actyx.com/careers',
+            },
+            {
+              label: 'Press',
+              to: 'https://www.actyx.com/blog',
             },
           ],
         },
@@ -98,6 +203,10 @@ module.exports = {
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
+        },
+        blog: {
+          postsPerPage: 6,
+          blogSidebarTitle: 'Our latest posts',
         },
       },
     ],
