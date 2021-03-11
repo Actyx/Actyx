@@ -133,7 +133,7 @@ $(TARGET_NAME): cargo-init make-always
   $(eval TARGET_PATH:=rust/$(word 3, $(subst -, ,$(TARGET_NAME))))
 	cd $(TARGET_PATH) && $(CARGO) fmt --all -- --check
 	cd $(TARGET_PATH) && $(CARGO) --locked clippy --all-targets -- -D warnings
-	cd $(TARGET_PATH) && $(CARGO) test --all-features -j $(CARGO_TEST_JOBS)
+	cd $(TARGET_PATH) && $(CARGO) test --locked --all-features -j $(CARGO_TEST_JOBS)
 endef
 
 $(foreach TARGET_NAME,$(rust-validation),$(eval $(mkRustTestRule)))
