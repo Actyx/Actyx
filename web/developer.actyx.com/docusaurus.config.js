@@ -69,7 +69,7 @@ module.exports = {
         src: 'img/header.svg',
         href: 'https://developer.actyx.com',
       },
-      style: 'light',
+      style: 'dark',
       links: [
         {
           title: 'Reference Deep Dives',
