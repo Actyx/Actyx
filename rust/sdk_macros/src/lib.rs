@@ -85,6 +85,7 @@ fn parse_range(from: Option<Box<Expr>>, to: Option<Box<Expr>>, limits: RangeLimi
     Ok((from, to))
 }
 
+#[rustfmt::skip]
 macro_rules! lit {
     ($typ:ident, $pat:ident) => {
         Expr::Lit(ExprLit {
@@ -93,6 +94,7 @@ macro_rules! lit {
         })
     };
 }
+#[rustfmt::skip]
 macro_rules! range {
     ($from:ident, $to:ident, $limits:ident) => {
         ExprRange {
