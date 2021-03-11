@@ -43,17 +43,17 @@ module.exports = {
       items: [
         {
           label: 'Start With Actyx',
-          activeBasePath: 'docs/start/overview',
+          activeBasePath: 'docs/start/',
           to: 'docs/start/overview',
         },
         {
           label: 'Build Solutions',
-          activeBasePath: 'docs/build/overview',
+          activeBasePath: 'docs/build/',
           to: 'docs/build/overview',
         },
         {
           label: 'Deploy To Production',
-          activeBasePath: 'docs/deploy/overview',
+          activeBasePath: 'docs/deploy/',
           to: 'docs/deploy/overview',
         },
       ],

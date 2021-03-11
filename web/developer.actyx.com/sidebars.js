@@ -13,7 +13,7 @@ module.exports = {
       items: [
         'start/explanation/the-actyx-node',
         'start/explanation/node-lifecycle',
-        'start/explanation/distributed-systems',        
+        'start/explanation/distributed-systems',
         'start/explanation/event-sourcing',
         'start/explanation/event-ordering',
         'start/explanation/actyx-and-cap',
@@ -75,7 +75,7 @@ module.exports = {
         'build/reference/actyx-api',
         'build/reference/js-ts-sdk',
         'build/reference/rust-sdk',
-        'build/reference/app-manifest'
+        'build/reference/app-manifest',
       ],
     },
   ],
@@ -90,10 +90,7 @@ module.exports = {
       type: 'category',
       label: '💬 Explanations',
       collapsed: false,
-      items: [
-        'deploy/explanation/swarms',
-        'deploy/explanation/peer-discovery',
-      ],
+      items: ['deploy/explanation/swarms', 'deploy/explanation/peer-discovery'],
     },
     {
       type: 'category',
@@ -113,7 +110,8 @@ module.exports = {
       collapsed: false,
       items: [
         'deploy/reference/cli',
-        'deploy/reference/node-manager'
+        'deploy/reference/node-manager',
+        'deploy/reference/node-settings-schema',
       ],
     },
   ],
