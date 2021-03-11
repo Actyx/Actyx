@@ -121,10 +121,6 @@ module.exports = {
               to: 'docs/start/explanation/the-actyx-node',
             },
             {
-              label: 'Node Lifecycle',
-              to: 'docs/start/explanation/node-lifecycle',
-            },
-            {
               label: 'Typescript SDK',
               to: 'docs/build/reference/js-ts-sdk',
             },
