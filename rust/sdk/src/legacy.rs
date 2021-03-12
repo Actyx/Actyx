@@ -23,7 +23,11 @@ use anyhow::anyhow;
 use derive_more::Display;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{scalar::nonempty_string, tags::TagSet};
+use crate::{
+    scalar::nonempty_string,
+    scalars::{NodeId, StreamId},
+    tags::TagSet,
+};
 
 #[derive(Debug, Display, PartialEq)]
 pub enum ParseError {
@@ -268,20 +272,22 @@ impl FromStr for SourceId {
     }
 }
 
-// impl Into<StreamId> for SourceId {
-//     unimplemented!()
-// }
+impl From<SourceId> for StreamId {
+    fn from(src: SourceId) -> Self {
+        Self::from(&src)
+    }
+}
 
-// impl Into<StreamId> for SourceId {
-//     fn into(src: SourceId) -> Self {
-//         let mut bytes = [0u8; 32];
-//         bytes[0..=MAX_SOURCEID_LENGTH].copy_from_slice(&src.0[..]);
-//         StreamId {
-//             node_id: NodeId(bytes),
-//             stream_nr: 0.into(),
-//         }
-//     }
-// }
+impl From<&SourceId> for StreamId {
+    fn from(src: &SourceId) -> Self {
+        let mut bytes = [0u8; 32];
+        bytes[0..=MAX_SOURCEID_LENGTH].copy_from_slice(&src.0[..]);
+        StreamId {
+            node_id: NodeId(bytes),
+            stream_nr: 0.into(),
+        }
+    }
+}
 
 impl Display for SourceId {
     fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
