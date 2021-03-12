@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 actyxos_sdk = { version = "0.5", path = "../../sdk" }
 ax-os-settings = { path = "../ax-os-settings" }
-lake-formats = { path = "../lake-formats" }
+trees = { path = "../trees" }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
 
 anyhow = "1.0.38"

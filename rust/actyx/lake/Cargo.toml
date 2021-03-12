@@ -8,7 +8,7 @@ edition = "2018"
 actyxos_sdk = { version = "0.5", path = "../../sdk" }
 ax-futures-util = { path = "../ax-futures-util" }
 ipfs-node = { path = "../ipfs-node" }
-lake-formats = { path = "../lake-formats" }
+trees = { path = "../trees" }
 util = { path = "../util" }
 
 anyhow = "1.0.38"

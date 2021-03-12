@@ -5,8 +5,8 @@ use ax_config::StoreConfig;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use futures::StreamExt;
 use lake::live::{LiveEvents, Topic};
-use lake_formats::PublishSnapshot;
 use store_core::BanyanStore;
+use trees::PublishSnapshot;
 
 pub struct Cmd;
 

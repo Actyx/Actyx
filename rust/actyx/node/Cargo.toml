@@ -20,7 +20,7 @@ ax-futures-util = { path = "../ax-futures-util" }
 ax-os-settings = { path = "../ax-os-settings" }
 crypto = { path = "../crypto/" }
 ipfs-node = { path = "../ipfs-node" }
-lake-formats = { path = "../lake-formats" }
+trees = { path = "../trees" }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
 logsvcd = { path = "../logsvcd" }
 store-core = { path = "../store-core" }

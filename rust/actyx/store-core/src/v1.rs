@@ -20,15 +20,15 @@ use lake::access::{
     common::StreamEventSelection, ConsumerAccessError, EventOrHeartbeat, EventOrHeartbeatStreamOrError,
     EventStoreConsumerAccess, EventStreamOrError,
 };
-use lake_formats::{
-    axtrees::{AxKey, TagsQuery},
-    OffsetMapOrMax, PublishSnapshot, RootMap, StreamHeartBeat,
-};
 use std::{
     collections::BTreeSet,
     convert::{TryFrom, TryInto},
     ops::RangeInclusive,
     time::Duration,
+};
+use trees::{
+    axtrees::{AxKey, TagsQuery},
+    OffsetMapOrMax, PublishSnapshot, RootMap, StreamHeartBeat,
 };
 
 fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> {

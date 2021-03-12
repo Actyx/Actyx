@@ -10,7 +10,7 @@ ax-config = { path = "../ax-config" }
 ax-futures-util = { path = "../ax-futures-util" }
 ipfs-node = { path = "../ipfs-node" }
 lake = { path = "../lake" }
-lake-formats = { path = "../lake-formats" }
+trees = { path = "../trees" }
 util = { path = "../util" }
 
 anyhow = "1.0.38"

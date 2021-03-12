@@ -12,7 +12,6 @@ use futures::{
     future::{ok, ready, FutureExt},
     stream::{self, BoxStream, StreamExt},
 };
-use lake_formats::{StreamHeartBeat, TagSubscriptions};
 use pretty_assertions::assert_eq;
 use std::{
     cmp::Ordering,
@@ -20,6 +19,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tracing::{debug, trace};
+use trees::{StreamHeartBeat, TagSubscriptions};
 use util::sampled_broadcast::{self, Receiver, Sender};
 
 use quickcheck::Arbitrary;

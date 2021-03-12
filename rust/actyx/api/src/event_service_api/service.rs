@@ -18,10 +18,10 @@ use futures::{
     TryFutureExt,
 };
 use lake::access::{ConsumerAccessError, EventSelection, EventStoreConsumerAccess};
-use lake_formats::OffsetMapOrMax;
 use num_traits::Bounded;
 use store_core::{BanyanStore, EventStore, Present};
 use thiserror::Error;
+use trees::OffsetMapOrMax;
 
 #[derive(Debug, Error)]
 pub enum Error {

@@ -12,7 +12,7 @@ members = [
   "crypto",
   "ipfs-node",
   "lake",
-  "lake-formats",
+  "trees",
   "libp2p-ax-bitswap",
   "libp2p-broadcast",
   "libp2p-streaming-response",

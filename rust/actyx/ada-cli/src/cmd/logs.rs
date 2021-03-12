@@ -6,11 +6,11 @@ use ax_config::StoreConfig;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use futures::StreamExt;
 use lake::live::{LiveEvents, Topic};
-use lake_formats::FullMonitoringMessage;
 use std::collections::BTreeSet;
 use std::io::Write;
 use std::str::FromStr;
 use store_core::BanyanStore;
+use trees::FullMonitoringMessage;
 
 pub struct Cmd;
 

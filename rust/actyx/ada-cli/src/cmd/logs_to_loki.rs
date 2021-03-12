@@ -13,12 +13,12 @@ use hyper::header::HeaderValue;
 use hyper::{Body, Client as HyperClient, Method, Request};
 use itertools::Itertools;
 use lake::live::{LiveEvents, Topic};
-use lake_formats::monitoring::{FullMonitoringMessage, PublishLog};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::pin::Pin;
 use store_core::BanyanStore;
 use tracing::*;
+use trees::monitoring::{FullMonitoringMessage, PublishLog};
 use util::serde_util::from_json_or_cbor_slice;
 use warp::http::Uri;
 

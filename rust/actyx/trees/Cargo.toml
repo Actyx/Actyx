@@ -1,11 +1,12 @@
 [package]
-name = "lake-formats"
+name = "trees"
 version = "0.1.0"
 authors = ["Actyx AG"]
 edition = "2018"
 
 [dependencies]
 actyxos_sdk = { version = "0.5", path = "../../sdk" }
+ax-futures-util = { path = "../ax-futures-util" }
 
 anyhow = "1.0.38"
 banyan = "0.8.1"

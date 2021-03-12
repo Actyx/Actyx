@@ -7,8 +7,8 @@ use actyxos_sdk::{
 use ax_futures_util::{prelude::*, stream::MergeOrdered};
 use futures::future::{ready, try_join_all, BoxFuture, Future, FutureExt, TryFutureExt};
 use futures::stream::{self, BoxStream, StreamExt};
-use lake_formats::StreamHeartBeat;
 use std::{cmp::Ordering, collections::BTreeSet, str::FromStr};
+use trees::StreamHeartBeat;
 
 #[derive(Debug, Clone)]
 enum EnvelopeOrTick {
@@ -201,9 +201,9 @@ mod tests {
     use actyxos_sdk::{tags, Expression, Offset, OffsetOrMin};
     use ax_futures_util::stream::Drainer;
     use futures::stream::Stream;
-    use lake_formats::OffsetMapOrMax;
     use num_traits::Bounded;
     use pretty_assertions::assert_eq;
+    use trees::OffsetMapOrMax;
 
     async fn drain<T: Clone + Send + 'static>(s: impl Stream<Item = T> + Send + 'static) -> Vec<T> {
         s.collect::<Vec<_>>().await
