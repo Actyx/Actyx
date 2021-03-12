@@ -22,46 +22,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "actyx-cli"
-version = "2.0.0-dev"
-dependencies = [
- "actyxos-lib",
- "actyxos_sdk",
- "anyhow",
- "assert_cmd",
- "ax-os-settings",
- "base64 0.13.0",
- "bytes 1.0.1",
- "chrono",
- "clap",
- "crypto",
- "derive_more",
- "dirs 3.0.1",
- "futures 0.3.13",
- "hex 0.4.2",
- "hyper 0.14.4",
- "ipfs-node",
- "libp2p",
- "libp2p-streaming-response",
- "maplit",
- "predicates",
- "prettytable-rs",
- "rand 0.8.3",
- "regex",
- "serde 1.0.123",
- "serde_json",
- "serde_yaml",
- "store-core",
- "structopt",
- "tempfile",
- "tokio 1.2.0",
- "tracing",
- "tracing-futures",
- "tracing-subscriber",
- "util",
-]
-
-[[package]]
 name = "actyxos-lib"
 version = "0.1.0"
 dependencies = [
@@ -538,6 +498,46 @@ name = "autocfg"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
+
+[[package]]
+name = "ax"
+version = "2.0.0-dev"
+dependencies = [
+ "actyxos-lib",
+ "actyxos_sdk",
+ "anyhow",
+ "assert_cmd",
+ "ax-os-settings",
+ "base64 0.13.0",
+ "bytes 1.0.1",
+ "chrono",
+ "clap",
+ "crypto",
+ "derive_more",
+ "dirs 3.0.1",
+ "futures 0.3.13",
+ "hex 0.4.2",
+ "hyper 0.14.4",
+ "ipfs-node",
+ "libp2p",
+ "libp2p-streaming-response",
+ "maplit",
+ "predicates",
+ "prettytable-rs",
+ "rand 0.8.3",
+ "regex",
+ "serde 1.0.123",
+ "serde_json",
+ "serde_yaml",
+ "store-core",
+ "structopt",
+ "tempfile",
+ "tokio 1.2.0",
+ "tracing",
+ "tracing-futures",
+ "tracing-subscriber",
+ "util",
+]
 
 [[package]]
 name = "ax-config"

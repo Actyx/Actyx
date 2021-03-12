@@ -119,7 +119,7 @@ usual CI process, because of its dependency on the `actyx-linux` bin target.
 To succesfully run these integration tests, you'll need:
 ```
     cargo build --bin actyx-linux
-    RUST_LOG=trace cargo --locked test --color=always --package actyx-cli --test cli -- --exact --ignored
+    RUST_LOG=trace cargo --locked test --color=always --package ax --test cli -- --exact --ignored
 ```
 */
 #[tokio::test(flavor = "multi_thread")]

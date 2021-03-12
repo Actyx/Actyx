@@ -1,5 +1,5 @@
 [package]
-name = "actyx-cli"
+name = "ax"
 version = "2.0.0-dev"
 authors = ["Actyx AG"]
 edition = "2018"

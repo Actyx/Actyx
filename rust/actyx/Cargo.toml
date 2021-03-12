@@ -2,8 +2,8 @@
 # since this is used in build scripts to populate the docker image cache!
 [workspace]
 members = [
-  "actyx-cli",
   "actyxos-lib",
+  "ax",
   "ada-cli",
   "api",
   "ax-config",
