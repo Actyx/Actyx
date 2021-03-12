@@ -465,16 +465,6 @@ mod postgresql {
 /// An event may be added into an `OffsetMap` to denote that from the event’s source all events
 /// up to this one shall be included in the `OffsetMap`.
 ///
-/// ```rust
-/// # use actyxos_sdk::event::{Event, OffsetMap, Payload};
-/// let mut offsets: OffsetMap = OffsetMap::empty();
-/// let event: Event<Payload> = Event::mk_test("semantics", "name", "42").unwrap();
-///
-/// // keeping track of having seen this event:
-/// offsets += &event;
-/// assert!(offsets.contains(&event));
-/// ```
-///
 /// The difference of two offset maps yields the number of events contained within the first
 /// but not within the second one (i.e. it counts the size of the difference set).
 ///
@@ -783,8 +773,7 @@ impl BitOrAssign for OffsetMap {
 mod tests {
     use super::*;
     use crate::{
-        event::Metadata,
-        payload::Payload,
+        event::{Metadata, Payload},
         scalars::NodeId,
         tags,
         timestamp::{LamportTimestamp, TimeStamp},
@@ -805,7 +794,7 @@ mod tests {
             },
             meta: Metadata {
                 timestamp: TimeStamp::now(),
-                tags: tags!("dummmy"),
+                tags: tags!("dummy"),
             },
             payload: Payload::default(),
         }

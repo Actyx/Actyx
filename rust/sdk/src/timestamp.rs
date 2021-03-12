@@ -25,7 +25,7 @@ use std::{
 /// Microseconds since the UNIX epoch, without leap seconds and in UTC
 ///
 /// ```
-/// use actyxos_sdk::event::TimeStamp;
+/// use actyxos_sdk::timestamp::TimeStamp;
 /// use chrono::{DateTime, Utc, TimeZone};
 ///
 /// let timestamp = TimeStamp::now();

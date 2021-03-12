@@ -31,12 +31,12 @@ impl std::error::Error for ParseError {}
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{semantics, event::Semantics};
+/// use actyxos_sdk::{semantics, legacy::Semantics};
 /// let semantics: Semantics = semantics!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyxos_sdk::{semantics, event::Semantics};
+/// use actyxos_sdk::{semantics, legacy::Semantics};
 /// let semantics: Semantics = semantics!("");
 /// ```
 #[macro_export]
@@ -53,12 +53,12 @@ macro_rules! semantics {
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{fish_name, event::FishName};
+/// use actyxos_sdk::{fish_name, legacy::FishName};
 /// let fish_name: FishName = fish_name!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyxos_sdk::{fish_name, event::FishName};
+/// use actyxos_sdk::{fish_name, legacy::FishName};
 /// let fish_name: FishName = fish_name!("");
 /// ```
 #[macro_export]
@@ -75,12 +75,12 @@ macro_rules! fish_name {
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{source_id, event::SourceId};
+/// use actyxos_sdk::{source_id, legacy::SourceId};
 /// let source_id: SourceId = source_id!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyxos_sdk::{source_id, event::SourceId};
+/// use actyxos_sdk::{source_id, legacy::SourceId};
 /// let source_id: SourceId = source_id!("");
 /// ```
 #[macro_export]

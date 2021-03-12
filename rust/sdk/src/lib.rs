@@ -33,15 +33,15 @@
 //!
 //! ```no_run
 //! use actyxos_sdk::{
-//!   event_service::{EventService, Order, QueryRequest, QueryResponse},
-//!   tagged::EventServiceHttpClient,
+//!   service::{EventService, Order, QueryRequest, QueryResponse},
+//!   http_client::HttpClient,
 //! };
 //! use futures::stream::StreamExt;
 //!
 //! #[tokio::main]
 //! pub async fn main() -> anyhow::Result<()> {
 //!   // client for locally running Actyx Event Service
-//!   let service = EventServiceHttpClient::default();
+//!   let service = HttpClient::default();
 //!
 //!   // retrieve largest currently known event stream cursor
 //!   let offsets = service.offsets().await?;
@@ -102,19 +102,17 @@ pub mod expression;
 pub mod http_client;
 pub mod legacy;
 pub mod offset;
-pub mod payload;
 pub mod scalars;
 pub mod service;
 pub mod tags;
 pub mod timestamp;
 pub mod types;
 
-pub use event::{Event, EventKey, Metadata};
+pub use event::{Event, EventKey, Metadata, Opaque, Payload};
 pub use expression::{Dnf, Expression};
 #[cfg(feature = "client")]
 pub use http_client::HttpClient;
 pub use offset::{Offset, OffsetMap, OffsetOrMin};
-pub use payload::{Opaque, Payload};
 pub use scalars::{AppId, NodeId, StreamId, StreamNr};
 pub use service::EventService;
 pub use tags::{Tag, TagSet};

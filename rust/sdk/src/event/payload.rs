@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Actyx AG
+ * Copyright 2021 Actyx AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,7 @@ use libipld::DagCbor;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Formatter};
 
-mod opaque;
-
-pub use opaque::Opaque;
+use super::Opaque;
 
 /// Compact binary storage of events created when they are received from the Event Service
 ///
@@ -100,10 +98,10 @@ mod tests {
         let tmp = DagCborCodec.encode(&p1)?;
         let expected = from_cbor_me(
             r#"
-81     # array(1)
-   60  # text(0)
-       # ""
-"#,
+ 81     # array(1)
+    60  # text(0)
+        # ""
+ "#,
         )?;
         assert_eq!(tmp, expected);
         let p2: Payload = DagCborCodec.decode(&tmp)?;

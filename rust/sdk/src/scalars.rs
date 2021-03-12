@@ -10,12 +10,12 @@ use std::{
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{app_id, tagged::AppId};
+/// use actyxos_sdk::{app_id, scalars::AppId};
 /// let app_id: AppId = app_id!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyxos_sdk::{app_id, tagged::AppId};
+/// use actyxos_sdk::{app_id, scalars::AppId};
 /// let app_id: AppId = app_id!("");
 /// ```
 #[macro_export]
@@ -24,7 +24,7 @@ macro_rules! app_id {
         #[allow(dead_code)]
         type X = $crate::assert_len!($lit, 1..);
         use ::std::convert::TryFrom;
-        $crate::tagged::AppId::try_from($lit).unwrap()
+        $crate::scalars::AppId::try_from($lit).unwrap()
     }};
 }
 

@@ -47,7 +47,7 @@ macro_rules! tag {
 ///  - normal expressions (enclosed in parens if multiple tokens)
 ///
 /// ```rust
-/// use actyxos_sdk::{tag, tags, semantics, event::Semantics, tagged::{Tag, TagSet}};
+/// use actyxos_sdk::{tags::{Tag, TagSet}, semantics, tag, tags, legacy::Semantics};
 /// use std::collections::BTreeSet;
 ///
 /// let sem: Semantics = semantics!("b");

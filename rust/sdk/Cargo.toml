@@ -69,6 +69,3 @@ required-features = ["client"]
 name = "publish"
 path = "examples/publish.rs"
 required-features = ["client"]
-
-[lib]
-doctest = false # FIXME
