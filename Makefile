@@ -118,7 +118,7 @@ validate: validate-os validate-rust validate-os-android validate-js validate-web
 # declare all the validate targets to be phony
 .PHONY: validate-os validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website validate-misc
 
-CARGO := cargo +$(BUILD_RUST_TOOLCHAIN)
+CARGO := RUST_BACKTRACE=1  cargo +$(BUILD_RUST_TOOLCHAIN)
 
 .PHONY: diagnostics
 
