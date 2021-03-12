@@ -1,27 +1,35 @@
-use super::{scalars::MAX_SOURCEID_LENGTH, SourceId};
-use crate::{tagged::StreamId, Offset, OffsetMap, OffsetOrMin};
+use crate::{
+    tagged::{NodeId, StreamId, StreamNr},
+    Offset, OffsetMap, OffsetOrMin,
+};
 use quickcheck::{Arbitrary, Gen};
 use std::{
     collections::BTreeMap,
-    convert::TryFrom,
     ops::{Add, Range, Rem, Sub},
 };
 
-fn gen_range<T>(g: &mut Gen, r: Range<T>) -> T
-where
-    T: Arbitrary + Add<Output = T> + Sub<Output = T> + Rem<Output = T> + Copy,
-{
-    T::arbitrary(g) % (r.end - r.start) + r.start
+impl Arbitrary for NodeId {
+    fn arbitrary(g: &mut Gen) -> Self {
+        let mut bytes = [0u8; 32];
+        for b in &mut bytes {
+            *b = u8::arbitrary(g);
+        }
+        NodeId(bytes)
+    }
 }
 
-impl Arbitrary for SourceId {
+impl Arbitrary for StreamNr {
     fn arbitrary(g: &mut Gen) -> Self {
-        let len = gen_range(g, 1..MAX_SOURCEID_LENGTH);
-        let mut s = String::with_capacity(len);
-        for _ in 0..len {
-            s.push(gen_range(g, 32u8..127u8).into());
+        u64::arbitrary(g).into()
+    }
+}
+
+impl Arbitrary for StreamId {
+    fn arbitrary(g: &mut Gen) -> Self {
+        Self {
+            node_id: NodeId::arbitrary(g),
+            stream_nr: StreamNr::arbitrary(g),
         }
-        SourceId::try_from(s.as_str()).unwrap()
     }
 }
 

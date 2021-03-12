@@ -398,24 +398,5 @@ mod tests {
         fn stream_id_to_string(sid: StreamId) -> bool {
             serde_json::to_value(&sid).unwrap() == Value::String(sid.to_string())
         }
-
-        fn source_id_serialization(src: SourceId) -> bool {
-            let stream = StreamId::from(src);
-            serde_json::to_string(&src).map_err(|_| "a") == serde_json::to_string(&stream).map_err(|_| "b")
-        }
-
-        fn source_id_deserialization(src: SourceId) -> bool {
-            let s = src.to_string();
-            SourceId::try_from(&*s).map_err(|_| "a").map(StreamId::from)
-              == StreamId::try_from(s).map_err(|_| "b")
-        }
-
-        fn source_id_roundtrip(src: SourceId) -> bool {
-            Ok(src) == StreamId::from(src).source_id().map_err(|_| ())
-        }
-
-        fn source_id_node_id_roundtrip(id: SourceId) -> bool {
-            Ok(id) == NodeId::from(id).source_id().map_err(|_| ())
-        }
     }
 }
