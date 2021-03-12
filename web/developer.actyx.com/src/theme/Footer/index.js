@@ -66,7 +66,7 @@ function Footer() {
                         <li
                           key={key}
                           className="footer__item" // Developer provided the HTML, so assume it's safe.
-                          // eslint-disable-next-line react/no-danger
+                          // eslint-disable-next-line
                           dangerouslySetInnerHTML={{
                             __html: item.html,
                           }}
@@ -105,7 +105,7 @@ function Footer() {
             {copyright ? (
               <div
                 className="footer__copyright" // Developer provided the HTML, so assume it's safe.
-                // eslint-disable-next-line react/no-danger
+                // eslint-disable-next-line
                 dangerouslySetInnerHTML={{
                   __html: copyright,
                 }}
