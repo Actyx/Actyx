@@ -1,9 +1,10 @@
-use crate::{
-    legacy::{FishName, Semantics},
-    tagged::EventKey,
-    OffsetMap,
-};
 use serde::{Deserialize, Serialize};
+
+use crate::{
+    event::EventKey,
+    legacy::{FishName, Semantics},
+    offset::OffsetMap,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]

@@ -3,7 +3,7 @@
 extern crate actyxos_sdk_macros;
 
 use actyxos_sdk::{
-    event_service::{EventService, Order, QueryRequest, QueryResponse},
+    service::{EventService, Order, QueryRequest, QueryResponse},
     tagged::EventServiceHttpClient,
 };
 use futures::stream::StreamExt;

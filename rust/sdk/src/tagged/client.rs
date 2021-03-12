@@ -7,7 +7,7 @@ use reqwest::{Client, RequestBuilder, Response};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::event_service;
+use crate::service;
 
 /// Error type that is returned in the response body by the Event Service when requests fail
 ///
@@ -80,8 +80,8 @@ impl Default for EventService {
 }
 
 #[async_trait]
-impl event_service::EventService for EventService {
-    async fn node_id(&self) -> Result<event_service::NodeIdResponse> {
+impl service::EventService for EventService {
+    async fn node_id(&self) -> Result<service::NodeIdResponse> {
         let response = self.do_request(|c| c.get(self.url("node_id"))).await?;
         let bytes = response
             .bytes()
@@ -111,7 +111,7 @@ impl event_service::EventService for EventService {
         })?)
     }
 
-    async fn publish(&self, request: event_service::PublishRequest) -> Result<event_service::PublishResponse> {
+    async fn publish(&self, request: service::PublishRequest) -> Result<service::PublishResponse> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self.do_request(|c| c.post(self.url("publish")).json(&body)).await?;
         let bytes = response
@@ -129,8 +129,8 @@ impl event_service::EventService for EventService {
 
     async fn query(
         &self,
-        request: event_service::QueryRequest,
-    ) -> Result<futures::stream::BoxStream<'static, event_service::QueryResponse>> {
+        request: service::QueryRequest,
+    ) -> Result<futures::stream::BoxStream<'static, service::QueryResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self.do_request(|c| c.post(self.url("query")).json(&body)).await?;
         let res = to_lines(response.bytes_stream())
@@ -142,8 +142,8 @@ impl event_service::EventService for EventService {
 
     async fn subscribe(
         &self,
-        request: event_service::SubscribeRequest,
-    ) -> Result<futures::stream::BoxStream<'static, event_service::SubscribeResponse>> {
+        request: service::SubscribeRequest,
+    ) -> Result<futures::stream::BoxStream<'static, service::SubscribeResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self.do_request(|c| c.post(self.url("subscribe")).json(&body)).await?;
         let res = to_lines(response.bytes_stream())
@@ -155,8 +155,8 @@ impl event_service::EventService for EventService {
 
     async fn subscribe_monotonic(
         &self,
-        request: event_service::SubscribeMonotonicRequest,
-    ) -> Result<futures::stream::BoxStream<'static, event_service::SubscribeMonotonicResponse>> {
+        request: service::SubscribeMonotonicRequest,
+    ) -> Result<futures::stream::BoxStream<'static, service::SubscribeMonotonicResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
             .do_request(|c| c.post(self.url("subscribe_monotonic")).json(&body))

@@ -13,10 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use super::{StreamId, TagSet};
-use crate::{LamportTimestamp, Offset, Payload, TimeStamp};
-use serde::{Deserialize, Serialize};
 use std::{cmp::Ordering, convert::TryFrom};
+
+use serde::{Deserialize, Serialize};
+
+use crate::{scalars::StreamId, tagged::TagSet, LamportTimestamp, Offset, Payload, TimeStamp};
 
 /// Events are delivered in this envelope together with their metadata
 ///

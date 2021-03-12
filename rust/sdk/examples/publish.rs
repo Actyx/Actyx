@@ -1,5 +1,5 @@
 use actyxos_sdk::{
-    event_service::{EventService, PublishEvent, PublishRequest},
+    service::{EventService, PublishEvent, PublishRequest},
     tagged::EventServiceHttpClient,
     tags, Payload,
 };

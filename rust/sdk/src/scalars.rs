@@ -6,35 +6,6 @@ use std::{
     fmt::{self, Debug, Display},
 };
 
-/// The session identifier used in /subscribe_monotonic
-#[derive(Debug, Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
-pub struct SessionId(Box<str>);
-
-impl Display for SessionId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&*self.0)
-    }
-}
-
-impl From<&str> for SessionId {
-    fn from(s: &str) -> Self {
-        Self(s.into())
-    }
-}
-
-impl From<String> for SessionId {
-    fn from(s: String) -> Self {
-        Self(s.into())
-    }
-}
-
-impl SessionId {
-    /// Extracts a string slice containing the entire session id
-    pub fn as_str(&self) -> &str {
-        &*self.0
-    }
-}
-
 /// Macro for constructing an [`AppId`](tagging/struct.AppId.html) literal.
 ///
 /// This is how it works:

@@ -1,9 +1,10 @@
+use std::collections::BTreeMap;
+
 use crate::{
-    tagged::{NodeId, StreamId, StreamNr},
-    Offset, OffsetMap, OffsetOrMin,
+    offset::{Offset, OffsetMap, OffsetOrMin},
+    scalars::{NodeId, StreamId, StreamNr},
 };
 use quickcheck::{Arbitrary, Gen};
-use std::collections::BTreeMap;
 
 impl Arbitrary for NodeId {
     fn arbitrary(g: &mut Gen) -> Self {

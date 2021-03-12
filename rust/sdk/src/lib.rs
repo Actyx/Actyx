@@ -97,20 +97,24 @@ mod scalar;
 #[cfg(any(test, feature = "arb"))]
 pub mod arb;
 pub mod dnf;
-pub mod event_service;
+pub mod event;
 pub mod expression;
 pub mod legacy;
-pub mod offsets;
+pub mod offset;
 pub mod payload;
+pub mod scalars;
+pub mod service;
 pub mod tagged;
 pub mod timestamp;
 pub mod types;
 
 pub use dnf::Dnf;
-pub use event_service::EventService;
+pub use event::{Event, EventKey, Metadata};
 pub use expression::Expression;
-pub use offsets::{Offset, OffsetMap, OffsetOrMin};
+pub use offset::{Offset, OffsetMap, OffsetOrMin};
 pub use payload::{Opaque, Payload};
+pub use scalars::{AppId, NodeId, StreamId, StreamNr};
+pub use service::EventService;
 pub use timestamp::{LamportTimestamp, TimeStamp};
 
 #[cfg(test)]

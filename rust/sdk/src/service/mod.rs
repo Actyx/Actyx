@@ -1,6 +1,10 @@
+use std::fmt::Display;
+
 use crate::{
+    event::{Event, EventKey, Metadata},
     expression::Expression,
-    tagged::{Event, EventKey, Metadata, NodeId, StreamId, StreamNr, TagSet},
+    scalars::{NodeId, StreamId, StreamNr},
+    tagged::TagSet,
     types::Binary,
     LamportTimestamp, Offset, OffsetMap, Payload, TimeStamp,
 };
@@ -201,7 +205,7 @@ impl StartFrom {
 #[derive(Debug, Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct SessionId(Box<str>);
 
-impl std::fmt::Display for SessionId {
+impl Display for SessionId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&*self.0)
     }
@@ -219,9 +223,9 @@ impl From<String> for SessionId {
     }
 }
 
-impl AsRef<str> for SessionId {
+impl SessionId {
     /// Extracts a string slice containing the entire session id
-    fn as_ref(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         &*self.0
     }
 }

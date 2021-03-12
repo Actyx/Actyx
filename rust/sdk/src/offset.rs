@@ -13,16 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use crate::tagged::Event;
-use crate::tagged::{EventKey, StreamId};
-use derive_more::{Display, From, Into};
-use libipld::cbor::DagCborCodec;
-use libipld::codec::{Decode, Encode};
-use num_traits::Bounded;
-use serde::{
-    de::{Error, Visitor},
-    Deserialize, Deserializer, Serialize,
-};
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet},
@@ -32,6 +22,18 @@ use std::{
     iter::FromIterator,
     ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
 };
+
+use derive_more::{Display, From, Into};
+use libipld::cbor::DagCborCodec;
+use libipld::codec::{Decode, Encode};
+use num_traits::Bounded;
+use serde::{
+    de::{Error, Visitor},
+    Deserialize, Deserializer, Serialize,
+};
+
+use crate::event::{Event, EventKey};
+use crate::scalars::StreamId;
 
 /// Maximum possible offset
 ///
@@ -779,11 +781,11 @@ impl BitOrAssign for OffsetMap {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use crate::{
+        event::Metadata,
         payload::Payload,
-        tagged::{Metadata, NodeId},
+        scalars::NodeId,
         tags,
         timestamp::{LamportTimestamp, TimeStamp},
     };
