@@ -19,7 +19,7 @@ members = [
   "node",
   "node-ffi",
   "node-win",
-  "store-core",
+  "swarm",
   "tracing_win_event_log",
   "util",
   "wsrpc",

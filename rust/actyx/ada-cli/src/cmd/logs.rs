@@ -8,8 +8,8 @@ use futures::StreamExt;
 use std::collections::BTreeSet;
 use std::io::Write;
 use std::str::FromStr;
-use store_core::live::{LiveEvents, Topic};
-use store_core::BanyanStore;
+use swarm::live::{LiveEvents, Topic};
+use swarm::BanyanStore;
 use trees::FullMonitoringMessage;
 
 pub struct Cmd;

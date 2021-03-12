@@ -10,7 +10,7 @@ actyxos-lib = {path = "../actyxos-lib"}
 ax-config = { path = "../ax-config" }
 ipfs-node = { path = "../ipfs-node" }
 trees = { path = "../trees" }
-store-core = { path = "../store-core" }
+swarm = { path = "../swarm" }
 util = { path = "../util" }
 
 anyhow = "1.0.38"

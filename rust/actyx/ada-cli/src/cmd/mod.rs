@@ -2,7 +2,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use ax_config::StoreConfig;
 use clap::ArgMatches;
-use store_core::BanyanStore;
+use swarm::BanyanStore;
 
 pub mod balena_logs_to_pubsub;
 pub mod copy_pubsub;

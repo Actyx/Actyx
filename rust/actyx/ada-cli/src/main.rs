@@ -2,7 +2,7 @@ use anyhow::Result;
 use ax_config::StoreConfig;
 use clap::{App, Arg, ArgGroup, ArgMatches};
 use std::convert::TryFrom;
-use store_core::BanyanStore;
+use swarm::BanyanStore;
 use tracing_subscriber::EnvFilter;
 
 mod cmd;

@@ -20,7 +20,7 @@ use std::{
     pin::Pin,
     str::FromStr,
 };
-use store_core::BanyanStore;
+use swarm::BanyanStore;
 use tracing::*;
 use trees::{monitoring::FullMonitoringMessage, PublishLog};
 use warp::http::{header::CONTENT_TYPE, HeaderValue, Response, Uri};

@@ -6,7 +6,7 @@ use banyan::query::AllQuery;
 use futures::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use store_core::BanyanStore;
+use swarm::BanyanStore;
 
 fn setup_logger() {
     tracing_log::LogTracer::init().ok();

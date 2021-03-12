@@ -7,8 +7,8 @@ use future::TryFutureExt;
 use futures::{future, stream};
 use ipfs_node::IpfsNode;
 use postgres::{Client, Config, NoTls};
-use store_core::BanyanStore;
 use stream::StreamExt;
+use swarm::BanyanStore;
 use util::pinned_resource::PinnedResource;
 
 pub struct Cmd;
