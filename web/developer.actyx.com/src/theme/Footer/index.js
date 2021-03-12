@@ -9,7 +9,7 @@ import clsx from 'clsx'
 import Link from '@docusaurus/Link'
 import { useThemeConfig } from '@docusaurus/theme-common'
 import useBaseUrl from '@docusaurus/useBaseUrl'
-import styles from './styles.module.css'
+import { BuildNumber } from '../../components/BuildNumber'
 
 function FooterLink({ to, href, label, prependBaseUrlToHref, ...props }) {
   const toUrl = useBaseUrl(to)
@@ -35,12 +35,9 @@ function FooterLink({ to, href, label, prependBaseUrlToHref, ...props }) {
   )
 }
 
-const FooterLogo = ({ url, alt }) => <img className="footer__logo" alt={alt} src={url} />
-
 function Footer() {
   const { footer } = useThemeConfig()
   const { copyright, links = [], logo = {} } = footer || {}
-  const logoUrl = useBaseUrl(logo.src)
 
   if (!footer) {
     return null
@@ -86,15 +83,10 @@ function Footer() {
             ))}
           </div>
         )}
-        <a className="no--hover" href="/releases">
-          <div className={styles.releasesLinkWrapper}>
-            <div className={styles.build}>Release Build:</div>
-            <div className={styles.buildNumber}>1.10930</div>
-          </div>
-        </a>
+        <BuildNumber pre="Release: " build="build-1.17242" /> {/* {releases[0].tag} */}
         {(logo || copyright) && (
           <div className="footer__bottom">
-            {logo && logo.src && (
+            {/* {logo && logo.src && (
               <div className="margin-bottom--sm">
                 {logo.href ? (
                   <a
@@ -109,7 +101,7 @@ function Footer() {
                   <FooterLogo alt={logo.alt} url={logoUrl} />
                 )}
               </div>
-            )}
+            )} */}
             {copyright ? (
               <div
                 className="footer__copyright" // Developer provided the HTML, so assume it's safe.

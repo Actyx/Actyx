@@ -564,6 +564,9 @@ article > footer.row.margin-vert--lg {
   padding-left: 100px;
 }
 
+.footer__title {
+  color: #8faac9;
+}
 @media (max-width: 450px) {
   .container {
     padding-left: 1rem !important;
