@@ -27,7 +27,7 @@ fn node_schema_in_sync() {
     };
     let current_schema: serde_json::Value = serde_json::from_slice(include_bytes!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../protocols/json-schema/os/node-settings.schema.json"
+        "/../../../protocols/json-schema/os/node-settings.schema.json"
     )))
     .unwrap();
 

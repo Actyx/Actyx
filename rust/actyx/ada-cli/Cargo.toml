@@ -5,7 +5,7 @@ authors = ["Actyx AG"]
 edition = "2018"
 
 [dependencies]
-actyxos_sdk = { version = "0.5", features = ["postgresql"], path = "../../rust/sdk" }
+actyxos_sdk = { version = "0.5", features = ["postgresql"], path = "../../sdk" }
 actyxos-lib = {path = "../actyxos-lib"}
 ax-config = { path = "../ax-config" }
 ipfs-node = { path = "../ipfs-node" }

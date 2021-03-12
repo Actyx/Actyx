@@ -99,7 +99,7 @@ pub fn apply_system_schema(settings_repo: &mut settings::Repository) -> settings
     debug!("setting current schema for com.actyx.os");
     let schema: serde_json::Value = serde_json::from_slice(include_bytes!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../protocols/json-schema/os/node-settings.schema.json"
+        "/../../../protocols/json-schema/os/node-settings.schema.json"
     )))
     .expect("embedded settings schema is not valid json");
     // check that embedded schema for com.actyx.os is a valid schema. If not, there is no point in going on.
@@ -398,7 +398,7 @@ mod test {
         let runtime = Host::new(temp_dir.path().to_path_buf());
         let mut node = Node::new(runtime_rx, vec![], runtime).unwrap();
         let schema = serde_json::from_slice(include_bytes!(
-            "../../../protocols/json-schema/os/node-settings.schema.json"
+            "../../../../protocols/json-schema/os/node-settings.schema.json"
         ))
         .unwrap();
         let scope = system_scope();

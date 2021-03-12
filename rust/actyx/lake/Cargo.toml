@@ -5,7 +5,7 @@ authors = ["Actyx AG"]
 edition = "2018"
 
 [dependencies]
-actyxos_sdk = { version = "0.5", path = "../../rust/sdk" }
+actyxos_sdk = { version = "0.5", path = "../../sdk" }
 ax-futures-util = { path = "../ax-futures-util" }
 ipfs-node = { path = "../ipfs-node" }
 lake-formats = { path = "../lake-formats" }
@@ -25,7 +25,7 @@ thiserror = "1.0.23"
 tracing = "0.1.22"
 
 [dev-dependencies]
-actyxos_sdk = { version = "0.5", path = "../../rust/sdk", features = ["arb"] }
+actyxos_sdk = { version = "0.5", path = "../../sdk", features = ["arb"] }
 
 parking_lot = "0.11.1"
 pretty_assertions = "0.6.1"

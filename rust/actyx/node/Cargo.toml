@@ -12,7 +12,7 @@ path = "src/bin/linux.rs"
 prost-build = "0.7.0"
 
 [dependencies]
-actyxos_sdk = { version = "0.5", path = "../../rust/sdk" }
+actyxos_sdk = { version = "0.5", path = "../../sdk" }
 actyxos-lib = { path = "../actyxos-lib" }
 api = { path = "../api" }
 ax-config = { path = "../ax-config" }
@@ -65,7 +65,7 @@ crate-type = ["lib"]
 name = "node"
 
 [dev-dependencies]
-actyxos_sdk = { version = "0.5", path = "../../rust/sdk", features = ["client"] }
+actyxos_sdk = { version = "0.5", path = "../../sdk", features = ["client"] }
 criterion = { version = "0.3.4", features = ["html_reports", "async_tokio" ] }
 maplit = "1.0.2"
 tracing-subscriber = "0.2.15"
