@@ -3,10 +3,7 @@ use crate::{
     Offset, OffsetMap, OffsetOrMin,
 };
 use quickcheck::{Arbitrary, Gen};
-use std::{
-    collections::BTreeMap,
-    ops::{Add, Range, Rem, Sub},
-};
+use std::collections::BTreeMap;
 
 impl Arbitrary for NodeId {
     fn arbitrary(g: &mut Gen) -> Self {
