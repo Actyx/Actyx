@@ -30,6 +30,10 @@ chrono = { version = "0.4.19", features = ["serde"] }
 ax-os-settings = { path = "../ax-os-settings" }
 derive_more = "0.99.11"
 
+[target.'cfg(target_os = "android")'.dependencies]
+rogcat = "0.4.1"
+maplit = "1.0.2"
+
 [dev-dependencies]
 maplit = "1.0.2"
 futures-test = "0.3.12"

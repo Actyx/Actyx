@@ -6788,6 +6788,7 @@ dependencies = [
  "quickcheck 1.0.3",
  "quickcheck_macros",
  "rand 0.8.3",
+ "rogcat",
  "serde 1.0.123",
  "serde_cbor",
  "serde_json",
