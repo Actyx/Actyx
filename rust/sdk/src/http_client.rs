@@ -1,3 +1,18 @@
+/*
+ * Copyright 2021 Actyx AG
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 use anyhow::Result;
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -7,7 +22,10 @@ use reqwest::{Client, RequestBuilder, Response};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::service;
+use crate::service::{
+    EventService, NodeIdResponse, PublishRequest, PublishResponse, QueryRequest, QueryResponse,
+    SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
+};
 
 /// Error type that is returned in the response body by the Event Service when requests fail
 ///
@@ -17,19 +35,19 @@ use crate::service;
 #[derive(Clone, Debug, Error, Display, Serialize, Deserialize, PartialEq)]
 #[display(fmt = "error {} while {}: {}", error_code, context, error)]
 #[serde(rename_all = "camelCase")]
-pub struct EventServiceError {
+pub struct HttpClientError {
     pub error: String,
     pub error_code: u16,
     pub context: String,
 }
 
 #[derive(Clone)]
-pub struct EventService {
+pub struct HttpClient {
     client: Client,
     url: Url,
 }
 
-impl EventService {
+impl HttpClient {
     fn url(&self, path: &str) -> Url {
         self.url.join(path).unwrap()
     }
@@ -37,7 +55,7 @@ impl EventService {
     async fn do_request(
         &self,
         f: impl Fn(&Client) -> RequestBuilder,
-    ) -> std::result::Result<Response, EventServiceError> {
+    ) -> std::result::Result<Response, HttpClientError> {
         let response = f(&self.client)
             .send()
             .await
@@ -46,7 +64,7 @@ impl EventService {
             Ok(response)
         } else {
             let error_code = response.status().as_u16();
-            Err(EventServiceError {
+            Err(HttpClientError {
                 error: response
                     .text()
                     .await
@@ -58,7 +76,7 @@ impl EventService {
     }
 }
 
-impl Default for EventService {
+impl Default for HttpClient {
     /// This will configure a connection to the local Event Service, either an ActyxOS node in development
     /// mode or the production ActyxOS node where the app is deployed (in particular, it will
     /// inspect the `AX_API_URI` environment variable and fall back to
@@ -75,13 +93,13 @@ impl Default for EventService {
             .unwrap_or_else(|_| Url::parse("http://localhost:4454/api/").unwrap())
             .join("v2/events/")
             .unwrap();
-        EventService { client, url }
+        HttpClient { client, url }
     }
 }
 
 #[async_trait]
-impl service::EventService for EventService {
-    async fn node_id(&self) -> Result<service::NodeIdResponse> {
+impl EventService for HttpClient {
+    async fn node_id(&self) -> Result<NodeIdResponse> {
         let response = self.do_request(|c| c.get(self.url("node_id"))).await?;
         let bytes = response
             .bytes()
@@ -111,7 +129,7 @@ impl service::EventService for EventService {
         })?)
     }
 
-    async fn publish(&self, request: service::PublishRequest) -> Result<service::PublishResponse> {
+    async fn publish(&self, request: PublishRequest) -> Result<PublishResponse> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self.do_request(|c| c.post(self.url("publish")).json(&body)).await?;
         let bytes = response
@@ -127,10 +145,7 @@ impl service::EventService for EventService {
         })?)
     }
 
-    async fn query(
-        &self,
-        request: service::QueryRequest,
-    ) -> Result<futures::stream::BoxStream<'static, service::QueryResponse>> {
+    async fn query(&self, request: QueryRequest) -> Result<futures::stream::BoxStream<'static, QueryResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self.do_request(|c| c.post(self.url("query")).json(&body)).await?;
         let res = to_lines(response.bytes_stream())
@@ -142,8 +157,8 @@ impl service::EventService for EventService {
 
     async fn subscribe(
         &self,
-        request: service::SubscribeRequest,
-    ) -> Result<futures::stream::BoxStream<'static, service::SubscribeResponse>> {
+        request: SubscribeRequest,
+    ) -> Result<futures::stream::BoxStream<'static, SubscribeResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self.do_request(|c| c.post(self.url("subscribe")).json(&body)).await?;
         let res = to_lines(response.bytes_stream())
@@ -155,8 +170,8 @@ impl service::EventService for EventService {
 
     async fn subscribe_monotonic(
         &self,
-        request: service::SubscribeMonotonicRequest,
-    ) -> Result<futures::stream::BoxStream<'static, service::SubscribeMonotonicResponse>> {
+        request: SubscribeMonotonicRequest,
+    ) -> Result<futures::stream::BoxStream<'static, SubscribeMonotonicResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
             .do_request(|c| c.post(self.url("subscribe_monotonic")).json(&body))
@@ -201,9 +216,9 @@ pub(crate) trait WithContext {
 }
 impl<T, E> WithContext for std::result::Result<T, E>
 where
-    EventServiceError: From<(String, E)>,
+    HttpClientError: From<(String, E)>,
 {
-    type Output = std::result::Result<T, EventServiceError>;
+    type Output = std::result::Result<T, HttpClientError>;
 
     #[inline]
     fn context<F, C>(self, context: F) -> Self::Output
@@ -213,12 +228,12 @@ where
     {
         match self {
             Ok(value) => Ok(value),
-            Err(err) => Err(EventServiceError::from((context().into(), err))),
+            Err(err) => Err(HttpClientError::from((context().into(), err))),
         }
     }
 }
 
-impl From<(String, reqwest::Error)> for EventServiceError {
+impl From<(String, reqwest::Error)> for HttpClientError {
     fn from(e: (String, reqwest::Error)) -> Self {
         Self {
             error: format!("{:?}", e.1),
@@ -228,7 +243,7 @@ impl From<(String, reqwest::Error)> for EventServiceError {
     }
 }
 
-impl From<(String, serde_json::Error)> for EventServiceError {
+impl From<(String, serde_json::Error)> for HttpClientError {
     fn from(e: (String, serde_json::Error)) -> Self {
         Self {
             error: format!("{:?}", e.1),
@@ -238,7 +253,7 @@ impl From<(String, serde_json::Error)> for EventServiceError {
     }
 }
 
-impl From<(String, serde_cbor::Error)> for EventServiceError {
+impl From<(String, serde_cbor::Error)> for HttpClientError {
     fn from(e: (String, serde_cbor::Error)) -> Self {
         Self {
             error: format!("{:?}", e.1),

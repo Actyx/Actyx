@@ -99,12 +99,13 @@ pub mod arb;
 pub mod dnf;
 pub mod event;
 pub mod expression;
+#[cfg(feature = "client")]
+pub mod http_client;
 pub mod legacy;
 pub mod offset;
 pub mod payload;
 pub mod scalars;
 pub mod service;
-pub mod tagged;
 pub mod tags;
 pub mod timestamp;
 pub mod types;
@@ -112,6 +113,8 @@ pub mod types;
 pub use dnf::Dnf;
 pub use event::{Event, EventKey, Metadata};
 pub use expression::Expression;
+#[cfg(feature = "client")]
+pub use http_client::HttpClient;
 pub use offset::{Offset, OffsetMap, OffsetOrMin};
 pub use payload::{Opaque, Payload};
 pub use scalars::{AppId, NodeId, StreamId, StreamNr};

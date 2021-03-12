@@ -1,7 +1,6 @@
 use actyxos_sdk::{
     service::{EventService, PublishEvent, PublishRequest},
-    tagged::EventServiceHttpClient,
-    tags, Payload,
+    tags, HttpClient, Payload,
 };
 use futures::{stream, FutureExt, Stream, StreamExt, TryStreamExt};
 
@@ -11,7 +10,7 @@ fn counter() -> impl Stream<Item = i32> {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let service = EventServiceHttpClient::default();
+    let service = HttpClient::default();
     let mut results = counter().flat_map(|i| {
         service
             .publish(PublishRequest {

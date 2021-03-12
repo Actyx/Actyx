@@ -4,14 +4,14 @@ extern crate actyxos_sdk_macros;
 
 use actyxos_sdk::{
     service::{EventService, Order, QueryRequest, QueryResponse},
-    tagged::EventServiceHttpClient,
+    HttpClient,
 };
 use futures::stream::StreamExt;
 
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
     // client for locally running Actyx Event Service
-    let service = EventServiceHttpClient::default();
+    let service = HttpClient::default();
 
     // retrieve largest currently known event stream cursor
     let offsets = service.offsets().await?;
