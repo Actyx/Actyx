@@ -6,7 +6,7 @@ use std::{
 use maplit::btreeset;
 use reduce::Reduce;
 
-use crate::expression::Expression;
+use super::Expression;
 
 /// Disjunctive normal form of a boolean query expression
 ///

@@ -14,7 +14,7 @@ use nom::{
 use reduce::Reduce;
 use serde::{Deserialize, Deserializer};
 
-use crate::dnf::Dnf;
+use super::Dnf;
 
 fn space(i: &str) -> IResult<&str, (), VerboseError<&str>> {
     let (i, _) = i.split_at_position_complete(|c| !" \r\n\t".find_token(c))?;

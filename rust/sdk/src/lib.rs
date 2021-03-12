@@ -96,7 +96,6 @@ mod scalar;
 
 #[cfg(any(test, feature = "arb"))]
 pub mod arb;
-pub mod dnf;
 pub mod event;
 pub mod expression;
 #[cfg(feature = "client")]
@@ -110,9 +109,8 @@ pub mod tags;
 pub mod timestamp;
 pub mod types;
 
-pub use dnf::Dnf;
 pub use event::{Event, EventKey, Metadata};
-pub use expression::Expression;
+pub use expression::{Dnf, Expression};
 #[cfg(feature = "client")]
 pub use http_client::HttpClient;
 pub use offset::{Offset, OffsetMap, OffsetOrMin};
