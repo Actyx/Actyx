@@ -113,7 +113,6 @@ dependencies = [
  "hyper 0.14.4",
  "ipfs-node",
  "itertools 0.10.0",
- "lake",
  "lazy_static 1.4.0",
  "libipld",
  "maplit",
@@ -305,7 +304,6 @@ dependencies = [
  "hyper 0.14.4",
  "ipfs-node",
  "itertools 0.10.0",
- "lake",
  "libipld",
  "maplit",
  "mime_guess",
@@ -2789,34 +2787,6 @@ checksum = "7507624b29483431c0ba2d82aece8ca6cdba9382bff4ddd0f7490560c056098d"
 dependencies = [
  "winapi 0.2.8",
  "winapi-build",
-]
-
-[[package]]
-name = "lake"
-version = "0.1.0"
-dependencies = [
- "actyxos_sdk",
- "anyhow",
- "ax-futures-util",
- "banyan",
- "base64 0.13.0",
- "derive_more",
- "futures 0.3.13",
- "ipfs-node",
- "libipld",
- "maplit",
- "num-traits 0.2.14",
- "parking_lot 0.11.1",
- "pretty_assertions",
- "quickcheck 1.0.3",
- "serde 1.0.123",
- "serde_json",
- "thiserror",
- "tokio 1.2.0",
- "tracing",
- "tracing-subscriber",
- "trees",
- "util",
 ]
 
 [[package]]
@@ -5799,17 +5769,18 @@ dependencies = [
  "ax-config",
  "ax-futures-util",
  "banyan",
+ "derive_more",
  "fnv",
  "futures 0.3.13",
  "hex 0.4.2",
  "ipfs-node",
  "ipfs-sqlite-block-store",
  "itertools 0.10.0",
- "lake",
  "libipld",
  "maplit",
  "num-traits 0.2.14",
  "parking_lot 0.11.1",
+ "pretty_assertions",
  "quickcheck 1.0.3",
  "rayon",
  "rstest",

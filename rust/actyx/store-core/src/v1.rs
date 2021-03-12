@@ -1,3 +1,7 @@
+use crate::access::{
+    common::StreamEventSelection, ConsumerAccessError, EventOrHeartbeat, EventOrHeartbeatStreamOrError,
+    EventStoreConsumerAccess, EventStreamOrError,
+};
 use crate::{BanyanStore, TT};
 use actyxos_sdk::{
     event_service::snapshots::{
@@ -16,10 +20,6 @@ use forest::FilteredChunk;
 use futures::future::BoxFuture;
 use futures::prelude::*;
 use futures::stream::BoxStream;
-use lake::access::{
-    common::StreamEventSelection, ConsumerAccessError, EventOrHeartbeat, EventOrHeartbeatStreamOrError,
-    EventStoreConsumerAccess, EventStreamOrError,
-};
 use std::{
     collections::BTreeSet,
     convert::{TryFrom, TryInto},

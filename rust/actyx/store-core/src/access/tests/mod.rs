@@ -1,6 +1,7 @@
 use crate::access::{
     EventOrHeartbeat, EventOrHeartbeatStreamOrError, EventStoreConsumerAccess, EventStreamOrError, StreamEventSelection,
 };
+use ::trees::{StreamHeartBeat, TagSubscriptions};
 use actyxos_sdk::{
     event::{LamportTimestamp, Payload, TimeStamp},
     tagged::{Event, EventKey, Metadata, NodeId, StreamId, Tag, TagSet},
@@ -19,7 +20,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tracing::{debug, trace};
-use trees::{StreamHeartBeat, TagSubscriptions};
 use util::sampled_broadcast::{self, Receiver, Sender};
 
 use quickcheck::Arbitrary;
