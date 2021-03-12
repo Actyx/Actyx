@@ -1,5 +1,5 @@
 use crate::{
-    event::{FishName, Semantics},
+    legacy::{FishName, Semantics},
     types::ArcVal,
 };
 use libipld::{
@@ -94,9 +94,9 @@ pub struct Tag(#[serde(deserialize_with = "crate::scalar::nonempty_string")] Arc
 
 #[allow(clippy::len_without_is_empty)]
 impl Tag {
-    pub fn new(value: String) -> std::result::Result<Self, crate::event::ParseError> {
+    pub fn new(value: String) -> std::result::Result<Self, crate::legacy::ParseError> {
         if value.is_empty() {
-            Err(crate::event::ParseError::EmptyTag)
+            Err(crate::legacy::ParseError::EmptyTag)
         } else {
             Ok(Self(crate::types::ArcVal::from_boxed(value.into())))
         }
@@ -108,10 +108,10 @@ impl Tag {
 }
 
 impl TryFrom<&str> for Tag {
-    type Error = crate::event::ParseError;
-    fn try_from(value: &str) -> std::result::Result<Self, crate::event::ParseError> {
+    type Error = crate::legacy::ParseError;
+    fn try_from(value: &str) -> std::result::Result<Self, crate::legacy::ParseError> {
         if value.is_empty() {
-            Err(crate::event::ParseError::EmptyTag)
+            Err(crate::legacy::ParseError::EmptyTag)
         } else {
             Ok(Self(crate::types::ArcVal::clone_from_unsized(value)))
         }
@@ -119,10 +119,10 @@ impl TryFrom<&str> for Tag {
 }
 
 impl TryFrom<Arc<str>> for Tag {
-    type Error = crate::event::ParseError;
-    fn try_from(value: Arc<str>) -> std::result::Result<Self, crate::event::ParseError> {
+    type Error = crate::legacy::ParseError;
+    fn try_from(value: Arc<str>) -> std::result::Result<Self, crate::legacy::ParseError> {
         if value.is_empty() {
-            Err(crate::event::ParseError::EmptyTag)
+            Err(crate::legacy::ParseError::EmptyTag)
         } else {
             Ok(Self(crate::types::ArcVal::from(value)))
         }
@@ -130,8 +130,8 @@ impl TryFrom<Arc<str>> for Tag {
 }
 
 impl FromStr for Tag {
-    type Err = crate::event::ParseError;
-    fn from_str(s: &str) -> std::result::Result<Self, crate::event::ParseError> {
+    type Err = crate::legacy::ParseError;
+    fn from_str(s: &str) -> std::result::Result<Self, crate::legacy::ParseError> {
         Self::try_from(s)
     }
 }

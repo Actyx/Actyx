@@ -94,17 +94,24 @@ pub use actyxos_sdk_macros::*;
 #[macro_use]
 mod scalar;
 
+#[cfg(any(test, feature = "arb"))]
+pub mod arb;
 pub mod dnf;
-pub mod event;
 pub mod event_service;
 pub mod expression;
+pub mod legacy;
+pub mod offsets;
+pub mod payload;
 pub mod tagged;
+pub mod timestamp;
 pub mod types;
 
 pub use dnf::Dnf;
-pub use event::{LamportTimestamp, Offset, OffsetMap, OffsetOrMin, Opaque, ParseError, Payload, TimeStamp};
 pub use event_service::EventService;
 pub use expression::Expression;
+pub use offsets::{Offset, OffsetMap, OffsetOrMin};
+pub use payload::{Opaque, Payload};
+pub use timestamp::{LamportTimestamp, TimeStamp};
 
 #[cfg(test)]
 mod test_util;

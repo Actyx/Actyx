@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 use super::{StreamId, TagSet};
-use crate::{source_id, LamportTimestamp, Offset, Payload, TimeStamp};
+use crate::{LamportTimestamp, Offset, Payload, TimeStamp};
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
+use std::{cmp::Ordering, convert::TryFrom};
 
 /// Events are delivered in this envelope together with their metadata
 ///
@@ -155,7 +155,7 @@ impl Default for EventKey {
     fn default() -> Self {
         Self {
             lamport: Default::default(),
-            stream: source_id!("!").into(),
+            stream: StreamId::try_from("!").unwrap(), // FIXME
             offset: Default::default(),
         }
     }

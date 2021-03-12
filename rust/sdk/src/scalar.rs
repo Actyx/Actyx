@@ -22,9 +22,9 @@ macro_rules! mk_scalar {
         );
 
         impl $id {
-            pub fn new(value: String) -> Result<Self, $crate::event::ParseError> {
+            pub fn new(value: String) -> Result<Self, $crate::legacy::ParseError> {
                 if value.is_empty() {
-                    Err($crate::event::ParseError::$err)
+                    Err($crate::legacy::ParseError::$err)
                 } else {
                     Ok(Self($crate::types::ArcVal::from_boxed(value.into())))
                 }
@@ -38,10 +38,10 @@ macro_rules! mk_scalar {
         }
 
         impl ::std::convert::TryFrom<&str> for $id {
-            type Error = $crate::event::ParseError;
-            fn try_from(value: &str) -> Result<Self, $crate::event::ParseError> {
+            type Error = $crate::legacy::ParseError;
+            fn try_from(value: &str) -> Result<Self, $crate::legacy::ParseError> {
                 if value.is_empty() {
-                    Err($crate::event::ParseError::$err)
+                    Err($crate::legacy::ParseError::$err)
                 } else {
                     Ok(Self($crate::types::ArcVal::clone_from_unsized(value)))
                 }
@@ -49,10 +49,10 @@ macro_rules! mk_scalar {
         }
 
         impl ::std::convert::TryFrom<::std::sync::Arc<str>> for $id {
-            type Error = $crate::event::ParseError;
-            fn try_from(value: ::std::sync::Arc<str>) -> Result<Self, $crate::event::ParseError> {
+            type Error = $crate::legacy::ParseError;
+            fn try_from(value: ::std::sync::Arc<str>) -> Result<Self, $crate::legacy::ParseError> {
                 if value.is_empty() {
-                    Err($crate::event::ParseError::$err)
+                    Err($crate::legacy::ParseError::$err)
                 } else {
                     Ok(Self($crate::types::ArcVal::from(value)))
                 }
@@ -60,8 +60,8 @@ macro_rules! mk_scalar {
         }
 
         impl ::std::str::FromStr for $id {
-            type Err = $crate::event::ParseError;
-            fn from_str(s: &str) -> Result<Self, $crate::event::ParseError> {
+            type Err = $crate::legacy::ParseError;
+            fn from_str(s: &str) -> Result<Self, $crate::legacy::ParseError> {
                 use std::convert::TryFrom;
                 Self::try_from(s)
             }

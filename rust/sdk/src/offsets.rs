@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use super::{Event, SourceId};
+use crate::tagged::Event;
 use crate::tagged::{EventKey, StreamId};
 use derive_more::{Display, From, Into};
 use libipld::cbor::DagCborCodec;
@@ -499,12 +499,7 @@ impl OffsetMap {
 
     /// Check whether the given Event’s offset and source ID are contained within this `OffsetMap`.
     pub fn contains<T>(&self, event: &Event<T>) -> bool {
-        self.0.get(&event.stream.source.into()).copied().unwrap_or_default() >= event.offset
-    }
-
-    /// Check whether the given source contributes to the set of events in this OffsetMap
-    pub fn contains_source(&self, source: &SourceId) -> bool {
-        self.0.contains_key(&source.into())
+        self.0.get(&event.key.stream).copied().unwrap_or_default() >= event.key.offset
     }
 
     /// Check whether the given stream contributes to the set of events in this OffsetMap
@@ -581,19 +576,9 @@ impl OffsetMap {
         self.0
     }
 
-    /// An iterator over all sources that contribute events to this OffsetMap
-    pub fn sources(&self) -> impl Iterator<Item = SourceId> + '_ {
-        self.0.keys().filter_map(|stream| stream.source_id().ok())
-    }
-
     /// An iterator over all streams that contribute events to this OffsetMap
     pub fn streams(&self) -> impl Iterator<Item = StreamId> + '_ {
         self.0.keys().copied()
-    }
-
-    /// An iterator over all sources that contribute events to this OffsetMap including their offset
-    pub fn source_iter(&self) -> impl Iterator<Item = (SourceId, Offset)> + '_ {
-        self.0.iter().filter_map(|(k, v)| k.source_id().ok().map(|k| (k, *v)))
     }
 
     /// An iterator over all streams that contribute events to this OffsetMap including their offset
@@ -663,26 +648,6 @@ impl Default for OffsetMap {
     }
 }
 
-impl From<BTreeMap<SourceId, Offset>> for OffsetMap {
-    fn from(map: BTreeMap<SourceId, Offset>) -> Self {
-        map.into_iter().collect()
-    }
-}
-
-impl From<BTreeMap<SourceId, OffsetOrMin>> for OffsetMap {
-    fn from(map: BTreeMap<SourceId, OffsetOrMin>) -> Self {
-        map.into_iter()
-            .filter_map(|(s, o)| Offset::from_offset_or_min(o).map(|o| (s, o)))
-            .collect()
-    }
-}
-
-impl FromIterator<(SourceId, Offset)> for OffsetMap {
-    fn from_iter<T: IntoIterator<Item = (SourceId, Offset)>>(iter: T) -> Self {
-        Self(iter.into_iter().map(|(s, o)| (s.into(), o)).collect())
-    }
-}
-
 impl From<BTreeMap<StreamId, Offset>> for OffsetMap {
     fn from(map: BTreeMap<StreamId, Offset>) -> Self {
         Self(map)
@@ -705,9 +670,9 @@ impl FromIterator<(StreamId, Offset)> for OffsetMap {
 
 impl<T> AddAssign<&Event<T>> for OffsetMap {
     fn add_assign(&mut self, other: &Event<T>) {
-        let off = self.0.entry(other.stream.source.into()).or_default();
-        if *off < other.offset {
-            *off = other.offset;
+        let off = self.0.entry(other.key.stream).or_default();
+        if *off < other.key.offset {
+            *off = other.key.offset;
         }
     }
 }
@@ -724,12 +689,12 @@ impl AddAssign<&EventKey> for OffsetMap {
 impl<T> SubAssign<&Event<T>> for OffsetMap {
     /// Ensure that the given event is no longer contained within this OffsetMap.
     fn sub_assign(&mut self, other: &Event<T>) {
-        let off = self.0.entry(other.stream.source.into()).or_default();
-        if *off >= other.offset {
-            if let Some(o) = other.offset.pred() {
+        let off = self.0.entry(other.key.stream).or_default();
+        if *off >= other.key.offset {
+            if let Some(o) = other.key.offset.pred() {
                 *off = o;
             } else {
-                self.0.remove(&other.stream.source.into());
+                self.0.remove(&other.key.stream);
             }
         }
     }
@@ -814,23 +779,32 @@ impl BitOrAssign for OffsetMap {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use crate::{
-        event::{LamportTimestamp, Payload, StreamInfo, TimeStamp},
-        fish_name, semantics, source_id,
+        payload::Payload,
+        tagged::{Metadata, NodeId},
+        tags,
+        timestamp::{LamportTimestamp, TimeStamp},
     };
-    use std::str::FromStr;
 
-    fn mk_event(source: &str, offset: u32) -> Event<Payload> {
+    const NODE: &str = "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA";
+
+    fn stream_id(stream_nr: u64) -> StreamId {
+        NodeId::try_from(NODE).unwrap().stream(stream_nr.into())
+    }
+
+    fn mk_event(stream_nr: u64, offset: u32) -> Event<Payload> {
         Event {
-            lamport: LamportTimestamp::new(1),
-            stream: StreamInfo {
-                semantics: semantics!("dummy"),
-                name: fish_name!("dummy"),
-                source: SourceId::from_str(source).unwrap(),
+            key: EventKey {
+                lamport: LamportTimestamp::new(1),
+                stream: stream_id(stream_nr),
+                offset: Offset::mk_test(offset),
             },
-            offset: Offset::mk_test(offset),
-            timestamp: TimeStamp::now(),
+            meta: Metadata {
+                timestamp: TimeStamp::now(),
+                tags: tags!("dummmy"),
+            },
             payload: Payload::default(),
         }
     }
@@ -838,9 +812,9 @@ mod tests {
     #[test]
     #[allow(clippy::eq_op)]
     pub fn must_calculate_offset_map() {
-        let ev1 = &mk_event("a", 1);
-        let ev2 = &mk_event("b", 2);
-        let ev3 = &mk_event("c", 1);
+        let ev1 = &mk_event(1, 1);
+        let ev2 = &mk_event(2, 2);
+        let ev3 = &mk_event(3, 1);
 
         let empty = &OffsetMap::default();
         let mut map1 = empty.clone();
@@ -874,10 +848,10 @@ mod tests {
     pub fn must_set_op() {
         let left = OffsetMap::from(
             [
-                (source_id!("a"), Offset::mk_test(1)),
-                (source_id!("b"), Offset::mk_test(2)),
-                (source_id!("c"), Offset::mk_test(3)),
-                (source_id!("d"), Offset::mk_test(4)),
+                (stream_id(1), Offset::mk_test(1)),
+                (stream_id(2), Offset::mk_test(2)),
+                (stream_id(3), Offset::mk_test(3)),
+                (stream_id(4), Offset::mk_test(4)),
             ]
             .iter()
             .copied()
@@ -886,10 +860,10 @@ mod tests {
 
         let right = OffsetMap::from(
             [
-                (source_id!("b"), Offset::mk_test(4)),
-                (source_id!("c"), Offset::mk_test(3)),
-                (source_id!("d"), Offset::mk_test(2)),
-                (source_id!("e"), Offset::mk_test(1)),
+                (stream_id(2), Offset::mk_test(4)),
+                (stream_id(3), Offset::mk_test(3)),
+                (stream_id(4), Offset::mk_test(2)),
+                (stream_id(5), Offset::mk_test(1)),
             ]
             .iter()
             .copied()
@@ -898,11 +872,11 @@ mod tests {
 
         let union = OffsetMap::from(
             [
-                (source_id!("a"), Offset::mk_test(1)),
-                (source_id!("b"), Offset::mk_test(4)),
-                (source_id!("c"), Offset::mk_test(3)),
-                (source_id!("d"), Offset::mk_test(4)),
-                (source_id!("e"), Offset::mk_test(1)),
+                (stream_id(1), Offset::mk_test(1)),
+                (stream_id(2), Offset::mk_test(4)),
+                (stream_id(3), Offset::mk_test(3)),
+                (stream_id(4), Offset::mk_test(4)),
+                (stream_id(5), Offset::mk_test(1)),
             ]
             .iter()
             .copied()
@@ -911,9 +885,9 @@ mod tests {
 
         let intersection = OffsetMap::from(
             [
-                (source_id!("b"), Offset::mk_test(2)),
-                (source_id!("c"), Offset::mk_test(3)),
-                (source_id!("d"), Offset::mk_test(2)),
+                (stream_id(2), Offset::mk_test(2)),
+                (stream_id(3), Offset::mk_test(3)),
+                (stream_id(4), Offset::mk_test(2)),
             ]
             .iter()
             .copied()
@@ -990,13 +964,14 @@ mod tests {
     fn must_serde_offset_map() {
         let mut map = OffsetMap::empty();
         ser(map.clone(), "{}");
-        map.update(source_id!("a"), Offset::mk_test(12));
-        ser(map.clone(), "{\"a\":12}");
+        let stream = NodeId::try_from(NODE).unwrap().stream(0.into());
+        map.update(stream, Offset::mk_test(12));
+        ser(map.clone(), format!("{{\"{}\":12}}", stream).as_str());
 
         de("{}", OffsetMap::empty());
-        de("{\"a\":12}", map.clone());
-        de("{\"a\":12,\"b\":-1}", map);
+        de(format!("{{\"{}\":-1}}", stream).as_str(), OffsetMap::empty());
+        de(format!("{{\"{}\":12}}", stream).as_str(), map);
 
-        err::<OffsetMap>("{\"a\":12,\"b\":-11}", "below -1");
+        err::<OffsetMap>(format!("{{\"{}\":-11}}", stream).as_str(), "below -1");
     }
 }

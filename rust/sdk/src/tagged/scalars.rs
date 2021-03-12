@@ -1,9 +1,8 @@
-use crate::event::scalars::{SourceId, MAX_SOURCEID_LENGTH};
 use anyhow::{anyhow, bail, Context, Result};
 use multibase::Base;
 use serde::{Deserialize, Serialize};
 use std::{
-    convert::{TryFrom, TryInto},
+    convert::TryFrom,
     fmt::{self, Debug, Display},
 };
 
@@ -117,19 +116,6 @@ impl NodeId {
         }
     }
 
-    pub fn is_from_source(&self) -> bool {
-        self.0[MAX_SOURCEID_LENGTH + 1..] == [0u8; 32 - MAX_SOURCEID_LENGTH - 1]
-    }
-
-    /// Extract a source id from a fake NodeId.
-    pub fn source_id(&self) -> anyhow::Result<SourceId> {
-        if self.is_from_source() {
-            Ok(SourceId(self.0[0..MAX_SOURCEID_LENGTH + 1].try_into().unwrap()))
-        } else {
-            Err(anyhow!("This nodeid was not created from a SourceId"))
-        }
-    }
-
     /// Creates a stream ID belonging to this node ID with the given non-zero stream number
     ///
     /// Stream number zero is reserved for embedding [`SourceId`](../event/struct.SourceId.html).
@@ -141,22 +127,6 @@ impl NodeId {
     }
 }
 
-impl From<SourceId> for NodeId {
-    fn from(value: SourceId) -> Self {
-        let mut bytes = [0u8; 32];
-        bytes[0..=MAX_SOURCEID_LENGTH].copy_from_slice(&value.0[..]);
-        NodeId(bytes)
-    }
-}
-
-impl TryFrom<NodeId> for SourceId {
-    fn try_from(value: NodeId) -> std::result::Result<Self, Self::Error> {
-        value.source_id()
-    }
-
-    type Error = anyhow::Error;
-}
-
 impl AsRef<[u8]> for NodeId {
     fn as_ref(&self) -> &[u8] {
         &self.0
@@ -165,11 +135,7 @@ impl AsRef<[u8]> for NodeId {
 
 impl Display for NodeId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Ok(source) = self.source_id() {
-            write!(f, "{}", source)
-        } else {
-            f.write_str(&self.to_multibase(Base::Base64Url))
-        }
+        f.write_str(&self.to_multibase(Base::Base64Url))
     }
 }
 
@@ -226,10 +192,6 @@ impl StreamId {
         self.stream_nr
     }
 
-    pub fn source_id(self) -> Result<SourceId, anyhow::Error> {
-        self.node_id().try_into()
-    }
-
     fn parse_str(value: &str) -> Result<Self> {
         let mut split = value.split('.');
         let node_str = split
@@ -252,11 +214,7 @@ impl StreamId {
 
 impl Display for StreamId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Ok(source_id) = self.source_id() {
-            f.write_str(source_id.as_str())
-        } else {
-            write!(f, "{}.{}", self.node_id, self.stream_nr)
-        }
+        write!(f, "{}.{}", self.node_id, self.stream_nr)
     }
 }
 
@@ -275,7 +233,7 @@ impl Into<String> for StreamId {
 impl TryFrom<&str> for StreamId {
     type Error = anyhow::Error;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Self::parse_str(value).or_else(|_| Ok(SourceId::try_from(value).context("parsing StreamId")?.into()))
+        Self::parse_str(value).context("parsing StreamId")
     }
 }
 
@@ -283,23 +241,6 @@ impl TryFrom<String> for StreamId {
     type Error = anyhow::Error;
     fn try_from(value: String) -> Result<Self, Self::Error> {
         Self::try_from(value.as_str())
-    }
-}
-
-impl From<SourceId> for StreamId {
-    fn from(src: SourceId) -> Self {
-        Self::from(&src)
-    }
-}
-
-impl From<&SourceId> for StreamId {
-    fn from(src: &SourceId) -> Self {
-        let mut bytes = [0u8; 32];
-        bytes[0..=MAX_SOURCEID_LENGTH].copy_from_slice(&src.0[..]);
-        StreamId {
-            node_id: NodeId(bytes),
-            stream_nr: 0.into(),
-        }
     }
 }
 #[cfg(feature = "sqlite")]

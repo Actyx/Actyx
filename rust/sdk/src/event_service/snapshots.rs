@@ -1,5 +1,5 @@
 use crate::{
-    event::{FishName, Semantics},
+    legacy::{FishName, Semantics},
     tagged::EventKey,
     OffsetMap,
 };
