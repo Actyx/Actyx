@@ -220,13 +220,13 @@ mod test {
         fn new(
             rx: channel::Receiver<ComponentRequest<SimpleRequest>>,
             err_notifier: Arc<Mutex<Option<channel::Sender<anyhow::Error>>>>,
-        ) -> Result<Self> {
-            Ok(Self {
+        ) -> Self {
+            Self {
                 rx,
                 random_config: false,
                 last_cnt: 0,
                 err_notifier,
-            })
+            }
         }
     }
     impl Component<SimpleRequest, SimpleSettings> for SimpleComponent {
@@ -269,7 +269,7 @@ mod test {
     #[test]
     fn lifecycle_shutdown() -> anyhow::Result<()> {
         let (tx, rx) = channel::bounded(42);
-        let c = SimpleComponent::new(rx, Default::default())?;
+        let c = SimpleComponent::new(rx, Default::default());
         let h = c.spawn()?;
         tx.send(ComponentRequest::Shutdown(ShutdownReason::TriggeredByHost))?;
         h.join().unwrap();
@@ -279,7 +279,7 @@ mod test {
     #[test]
     fn setup_start_shutdown() -> anyhow::Result<()> {
         let (tx, rx) = channel::bounded(42);
-        let c = SimpleComponent::new(rx, Default::default())?;
+        let c = SimpleComponent::new(rx, Default::default());
         let h = c.spawn()?;
         let (tx_supervisor, rx_supervisor) = channel::bounded(42);
         tx.send(ComponentRequest::RegisterSupervisor(tx_supervisor))?;
@@ -305,7 +305,7 @@ mod test {
     fn setup_start_runtime_error() -> anyhow::Result<()> {
         let (tx, rx) = channel::bounded(42);
         let err_notifier: Arc<Mutex<_>> = Default::default();
-        let c = SimpleComponent::new(rx, err_notifier.clone())?;
+        let c = SimpleComponent::new(rx, err_notifier.clone());
         let h = c.spawn()?;
         let (tx_supervisor, rx_supervisor) = channel::bounded(42);
         tx.send(ComponentRequest::RegisterSupervisor(tx_supervisor))?;
@@ -344,7 +344,7 @@ mod test {
     #[test]
     fn setup_start_configchange_shutdown() -> anyhow::Result<()> {
         let (tx, rx) = channel::bounded(42);
-        let c = SimpleComponent::new(rx, Default::default())?;
+        let c = SimpleComponent::new(rx, Default::default());
         let h = c.spawn()?;
         let (tx_supervisor, rx_supervisor) = channel::bounded(42);
         tx.send(ComponentRequest::RegisterSupervisor(tx_supervisor))?;
@@ -385,7 +385,7 @@ mod test {
     #[test]
     fn respond_to_individual_request() -> anyhow::Result<()> {
         let (tx, rx) = channel::bounded(42);
-        let c = SimpleComponent::new(rx, Default::default())?;
+        let c = SimpleComponent::new(rx, Default::default());
         let h = c.spawn()?;
         let (pong_tx, pong_rx) = channel::bounded(1);
 

@@ -151,7 +151,7 @@ impl Node {
         Ok(())
     }
 
-    fn handle_settings_request(&mut self, request: SettingsRequest) -> NodeProcessResult<()> {
+    fn handle_settings_request(&mut self, request: SettingsRequest) {
         match request {
             SettingsRequest::SetSettings {
                 scope,
@@ -198,9 +198,8 @@ impl Node {
                 let _ = response.send(res);
             }
         };
-        Ok(())
     }
-    fn handle_nodes_request(&self, request: NodesRequest) -> NodeProcessResult<()> {
+    fn handle_nodes_request(&self, request: NodesRequest) {
         match request {
             NodesRequest::Ls(sender) => {
                 let resp = actyxos_lib::formats::NodesLsResponse {
@@ -222,7 +221,6 @@ impl Node {
                 );
             }
         }
-        Ok(())
     }
     fn update_node_state(&mut self) -> ActyxOSResult<()> {
         let node_settings = self.settings_repo.get_settings(&system_scope(), false)?;
@@ -283,8 +281,14 @@ impl Node {
                 recv(self.rx) -> msg => {
                     let event = msg.internal()?;
                     let result = match event {
-                        ExternalEvent::NodesRequest(req) => self.handle_nodes_request(req),
-                        ExternalEvent::SettingsRequest(req) => self.handle_settings_request(req),
+                        ExternalEvent::NodesRequest(req) => {
+                            self.handle_nodes_request(req);
+                            Ok(())
+                        },
+                        ExternalEvent::SettingsRequest(req) => {
+                            self.handle_settings_request(req);
+                            Ok(())
+                        },
                         ExternalEvent::ShutdownRequested(r) => {
                             // Signal shutdown right away, otherwise the logging component might
                             // have already stopped
@@ -411,8 +415,7 @@ mod test {
                 scope: scope.clone(),
                 json: schema,
                 response,
-            })
-            .unwrap();
+            });
 
             rx.await.ax_internal()??;
         }
@@ -424,8 +427,7 @@ mod test {
                 json: json.clone(),
                 response,
                 ignore_errors: false,
-            })
-            .unwrap();
+            });
 
             assert_eq!(json, rx.await.ax_internal()??);
             assert_eq!(node.state.settings, serde_json::from_value(json).unwrap());
@@ -438,8 +440,7 @@ mod test {
                 scope: "com.actyx.os/general/displayName".parse().unwrap(),
                 no_defaults: false,
                 response,
-            })
-            .unwrap();
+            });
             assert_eq!("My Node", rx.await.ax_internal()??);
         }
         {
@@ -450,8 +451,7 @@ mod test {
                 json: changed.clone(),
                 response,
                 ignore_errors: false,
-            })
-            .unwrap();
+            });
 
             assert_eq!(
                 *rx.await
@@ -470,8 +470,7 @@ mod test {
                 json: invalid,
                 response,
                 ignore_errors: false, // <=========
-            })
-            .unwrap();
+            });
             assert_eq!(
                 rx.await.ax_internal()?,
                 Err(ActyxOSCode::ERR_SETTINGS_INVALID
@@ -487,8 +486,7 @@ mod test {
                 json: invalid,
                 response,
                 ignore_errors: true, // <=========
-            })
-            .unwrap();
+            });
             assert_eq!(
                 rx.await.ax_internal()?,
                 Err(ActyxOSCode::ERR_SETTINGS_INVALID
@@ -500,8 +498,7 @@ mod test {
             node.handle_settings_request(SettingsRequest::UnsetSettings {
                 scope: settings::Scope::root(),
                 response,
-            })
-            .unwrap();
+            });
             assert!(rx.await.ax_internal()?.is_ok());
         }
         {
@@ -512,8 +509,7 @@ mod test {
                 json,
                 response,
                 ignore_errors: false,
-            })
-            .unwrap();
+            });
             assert_eq!(
                 rx.await.ax_internal()?,
                 Err(ActyxOSCode::ERR_INVALID_INPUT

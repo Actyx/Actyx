@@ -97,14 +97,13 @@ impl AxPrivateKey {
         Self(private)
     }
     /// Convert into a key pair to be used with libp2p
-    pub(crate) fn to_libp2p_pair(&self) -> ActyxOSResult<identity::Keypair> {
+    pub(crate) fn to_libp2p_pair(&self) -> identity::Keypair {
         let crypto_kp: KeyPair = self.0.into();
         let mut bytes = crypto_kp.to_bytes();
-        let kp = identity::Keypair::Ed25519(
+        identity::Keypair::Ed25519(
             identity::ed25519::Keypair::decode(&mut bytes)
                 .expect("ed25519 encoding format changed between libp2p and crypto"),
-        );
-        Ok(kp)
+        )
     }
 }
 

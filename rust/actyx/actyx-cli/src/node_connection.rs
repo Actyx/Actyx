@@ -118,7 +118,7 @@ impl NodeConnection {
         key: &AxPrivateKey,
         request: AdminRequest,
     ) -> ActyxOSResult<(NodeInfo, AdminResponse)> {
-        let kp = key.to_libp2p_pair()?;
+        let kp = key.to_libp2p_pair();
         let Connected {
             remote_peer_id,
             mut swarm,
@@ -190,7 +190,7 @@ impl NodeConnection {
             remote_peer_id,
             mut swarm,
             ..
-        } = self.establish_connection(key.to_libp2p_pair()?).await?;
+        } = self.establish_connection(key.to_libp2p_pair()).await?;
         let query_mode = if all_entries {
             LogQueryMode::All
         } else {

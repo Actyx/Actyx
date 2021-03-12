@@ -245,6 +245,7 @@ fn testcase_8(dir: TempDir) -> TestResult {
     Ok(dir)
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn testcase_9(dir: TempDir) -> TestResult {
     let mut repo = repo(&dir);
     let schema = load_schema("tests/schemas/test1.schema.json".into());
@@ -252,6 +253,7 @@ fn testcase_9(dir: TempDir) -> TestResult {
     Ok(dir)
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn testcase_10(dir: TempDir) -> TestResult {
     let mut repo = repo(&dir);
     let schema = load_schema("tests/schemas/test7.schema.json".into());
