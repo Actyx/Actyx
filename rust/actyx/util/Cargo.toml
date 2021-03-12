@@ -1,0 +1,44 @@
+[package]
+name = "util"
+version = "0.1.0"
+authors = ["Actyx AG"]
+edition = "2018"
+
+[dependencies]
+serde = { version = "1.0.123", features = ["derive"] }
+serde_json = "1.0.61"
+serde_cbor = { version = "0.11.1", features = ["tags"] }
+futures = { version = "0.3.12", package = "futures" }
+tokio = { version = "1.2.0", features = ["full"], package = "tokio" }
+tracing = "0.1.25"
+rand = { version = "0.8.3", features = ["small_rng"] }
+clap = "2.33.3"
+crossbeam = "0.8.0"
+fnv = "1.0.7"
+parking_lot = "0.11.1"
+base64 = "0.13.0"
+pin-utils = "0.1.0"
+lru-cache = "0.1.2"
+num-traits = "0.2.14"
+winres = { git = "https://github.com/Actyx/winres", branch = "cross_compile" }
+anyhow = "1.0.38"
+parity-multiaddr = "0.11.0"
+tracing-subscriber = "0.2.16"
+actyxos_sdk = { path = "../../sdk" }
+libp2p-streaming-response = { path = "../libp2p-streaming-response" }
+chrono = { version = "0.4.19", features = ["serde"] }
+ax-os-settings = { path = "../ax-os-settings" }
+derive_more = "0.99.11"
+
+[target.'cfg(target_os = "android")'.dependencies]
+rogcat = "0.4.1"
+maplit = "1.0.2"
+
+[dev-dependencies]
+maplit = "1.0.2"
+futures-test = "0.3.12"
+pin-utils = "0.1.0"
+itertools = "0.10.0"
+quickcheck = "1.0.3"
+quickcheck_macros = "1.0.0"
+waker-fn = "1.1.0"

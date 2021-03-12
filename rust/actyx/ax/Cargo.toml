@@ -1,0 +1,51 @@
+[package]
+name = "ax"
+version = "2.0.0-dev"
+authors = ["Actyx AG"]
+edition = "2018"
+
+[[bin]]
+name = "ax"
+path = "src/main.rs"
+
+[dependencies]
+actyxos_sdk = { path = "../../sdk" }
+ax-os-settings = { path = "../ax-os-settings" }
+crypto = { path = "../crypto/" }
+ipfs-node = { path = "../ipfs-node" }
+libp2p-streaming-response = { path = "../libp2p-streaming-response" }
+swarm = { path = "../swarm" }
+util = { path = "../util" }
+
+anyhow = "1.0.38"
+base64= "0.13.0"
+bytes= "1.0.1"
+chrono = { version = "0.4.19", features = ["serde"] }
+clap = "2.33.3"
+derive_more = "0.99.11"
+dirs = "3.0.1"
+futures = { version = "0.3.12", features = ["compat"], package = "futures" }
+hex = "0.4.2"
+hyper = { version = "0.14.2", features = ["stream"], package = "hyper" }
+libp2p = { version = "0.35.0", default-features = false }
+maplit = "1.0.2"
+prettytable-rs = "0.8.0"
+rand= "0.8.3"
+serde = "1.0.123"
+serde_json = "1.0.61"
+serde_yaml = "0.8.15"
+structopt = "0.3.21"
+tempfile = "3.2.0"
+tokio = { version = "1.2.0", features = ["full"], package = "tokio" }
+tracing = { version = "0.1.22", features = ["max_level_trace", "release_max_level_debug"] }
+tracing-futures = "0.2.4"
+tracing-subscriber = "0.2.15"
+
+[dev-dependencies]
+assert_cmd= "1.0.2"
+predicates= "1.0.6"
+regex = "1.4.3"
+serde_json = "1.0.61"
+
+[build-dependencies]
+util = { path = "../util" }

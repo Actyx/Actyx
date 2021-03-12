@@ -1,0 +1,25 @@
+[package]
+name = "node-win"
+version = "2.0.0-dev"
+authors = ["Actyx AG"]
+edition = "2018"
+
+[[bin]]
+name = "actyx"
+path = "src/main.rs"
+
+[build-dependencies]
+util = { path = "../util" }
+
+[target."cfg(target_os = \"windows\")".dependencies]
+anyhow = "1.0.38"
+clap = "2.33.3"
+crossbeam = "0.8.0"
+named-lock = "0.1.1"
+structopt = "0.3.21"
+systray = "0.4.0"
+tracing = "0.1.22"
+wintrap = "0.3.0"
+
+[dependencies]
+node = { path = "../node" }
