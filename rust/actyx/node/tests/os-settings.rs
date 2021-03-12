@@ -36,9 +36,9 @@ fn default_settings() {
         )
     );
 
-    use actyxos_lib::LogSeverity::*;
     use maplit::{btreemap, btreeset};
     use node::os_settings::*;
+    use util::formats::LogSeverity::*;
     let settings: Settings = serde_json::from_value(json).unwrap();
     assert_eq!(
       settings,

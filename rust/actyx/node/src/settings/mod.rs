@@ -1,5 +1,5 @@
-use actyxos_lib::ActyxOSResult;
 use tokio::sync::oneshot::Sender;
+use util::formats::ActyxOSResult;
 
 pub const SYSTEM_SCOPE: &str = "com.actyx.os";
 

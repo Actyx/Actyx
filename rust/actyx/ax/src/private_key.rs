@@ -3,9 +3,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use actyxos_lib::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 use crypto::{KeyPair, PrivateKey, PublicKey};
 use libp2p::identity;
+use util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 
 use crate::cmd::get_data_dir;
 

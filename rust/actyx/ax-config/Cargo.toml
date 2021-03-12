@@ -5,7 +5,6 @@ authors = ["Actyx AG"]
 edition = "2018"
 
 [dependencies]
-actyxos-lib = { path = "../actyxos-lib" }
 util = { path = "../util" }
 
 anyhow = "1.0.38"

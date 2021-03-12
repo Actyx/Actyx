@@ -1,10 +1,3 @@
-#![deny(clippy::future_not_send)]
-
-pub mod chunkedresponse;
-pub mod formats;
-
-pub use formats::*;
-
 use std::io;
 use tracing_subscriber::EnvFilter;
 

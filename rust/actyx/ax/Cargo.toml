@@ -10,7 +10,6 @@ path = "src/main.rs"
 
 [dependencies]
 actyxos_sdk = { path = "../../sdk" }
-actyxos-lib = { path = "../actyxos-lib" }
 ax-os-settings = { path = "../ax-os-settings" }
 crypto = { path = "../crypto/" }
 ipfs-node = { path = "../ipfs-node" }

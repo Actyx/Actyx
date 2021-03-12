@@ -8,12 +8,12 @@ use crate::{
     DynamicConfig, LogConfig,
 };
 use ::util::pinned_resource_sync::PinnedResourceSync;
-use actyxos_lib::formats::logs::{LogEvent, LogRequest};
 use actyxos_sdk::tagged::NodeId;
 use chrono::Utc;
 use crossbeam::channel::{self, Receiver, Sender};
 use std::{ops::RangeInclusive, time::Duration};
 use tracing::*;
+use util::formats::logs::{LogEvent, LogRequest};
 
 // TODO: Maybe convert this crate to async
 #[derive(Debug)]

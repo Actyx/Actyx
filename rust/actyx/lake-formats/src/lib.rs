@@ -4,18 +4,15 @@ pub mod axtrees;
 mod bearer_token;
 pub mod block;
 pub mod cons_node;
-pub mod monitoring;
 pub mod offsetmap_or_default;
 pub mod pubsub;
 pub mod subscription;
 pub mod tag_index;
 #[cfg(test)]
 mod tests;
-pub mod wrapping_subscriber;
 
 pub use self::block::*;
 pub use self::cons_node::*;
-pub use self::monitoring::*;
 pub use self::offsetmap_or_default::*;
 pub use self::pubsub::*;
 pub use self::subscription::*;

@@ -1,7 +1,8 @@
-use crate::{ax_err, ActyxOSCode, ActyxOSError, ActyxOSResult};
+use super::{ax_err, ActyxOSCode, ActyxOSError, ActyxOSResult};
+use crate::wrapping_subscriber::ConvertEvent;
+
 use actyxos_sdk::tagged::NodeId;
 use chrono::{DateTime, Utc};
-use lake_formats::wrapping_subscriber::ConvertEvent;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,

@@ -1,21 +1,18 @@
+use ax_config::StoreConfig;
+use crypto::PublicKey;
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
 /// These type definitions need to be kept in sync with the ActyxOS
 /// node schema, as found in [0].
 /// There is a somewhat simple test case in here to make sure, that
 /// it's mostly in sync, but subtle bugs may be introduced by
 /// changing the schema w/o changing the types here.
-use actyxos_lib::{
-    formats::{ActyxOSResultExt, AppId},
-    ActyxOSResult, LogSeverity,
-};
-use ax_config::StoreConfig;
-use crypto::PublicKey;
-use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use util::formats::{ActyxOSResult, ActyxOSResultExt, LogSeverity};
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Licensing {
     pub os: String,
-    pub apps: BTreeMap<AppId, String>,
+    pub apps: BTreeMap<String, String>,
 }
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]

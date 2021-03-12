@@ -1,6 +1,6 @@
 use crate::storage::StorageWrapper;
-use actyxos_lib::logs::LogEvent;
 use std::ops::RangeInclusive;
+use util::formats::logs::LogEvent;
 
 pub(crate) struct StorageQuery<'a> {
     range: RangeInclusive<i64>,

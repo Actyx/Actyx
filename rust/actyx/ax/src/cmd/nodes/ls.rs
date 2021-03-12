@@ -4,11 +4,11 @@ use crate::{
     cmd::{formats::Result, AxCliCommand, KeyPathWrapper, NodeConnection},
     private_key::AxPrivateKey,
 };
-use actyxos_lib::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesLsResponse};
 use futures::{future::try_join_all, stream, Stream};
 use prettytable::{cell, format, row, Table};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
+use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesLsResponse};
 
 #[derive(StructOpt, Debug)]
 pub struct LsOpts {

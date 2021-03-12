@@ -56,9 +56,6 @@ fn build_cli() -> App<'static, 'static> {
         )
         .group(ArgGroup::with_name("clients").args(&["api", "use_dump"]))
         .subcommand(cmd::snapshot_listen::args())
-        .subcommand(cmd::logs::args())
-        .subcommand(cmd::logs_to_loki::args())
-        .subcommand(cmd::balena_logs_to_pubsub::args())
         .subcommand(cmd::pubsub_connect::args())
         .subcommand(cmd::monitor_pubsub::args())
         .subcommand(cmd::copy_pubsub::args())
@@ -68,9 +65,6 @@ fn build_cli() -> App<'static, 'static> {
 async fn run_app(mut app: App<'_, '_>, matches: ArgMatches<'_>, config: StoreConfig, store: BanyanStore) -> Result<()> {
     let subcommands: Vec<Box<dyn cmd::Command>> = vec![
         Box::new(cmd::snapshot_listen::Cmd),
-        Box::new(cmd::logs::Cmd),
-        Box::new(cmd::logs_to_loki::Cmd),
-        Box::new(cmd::balena_logs_to_pubsub::Cmd),
         Box::new(cmd::pubsub_connect::Cmd),
         Box::new(cmd::monitor_pubsub::Cmd),
         Box::new(cmd::copy_pubsub::Cmd),

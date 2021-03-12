@@ -22,37 +22,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "actyxos-lib"
-version = "0.1.0"
-dependencies = [
- "actyxos_sdk",
- "anyhow",
- "async-trait",
- "ax-os-settings",
- "chrono",
- "crossbeam",
- "derive_more",
- "ffi-support",
- "futures 0.3.13",
- "hyper 0.14.4",
- "lake-formats",
- "lazy_static 1.4.0",
- "libp2p",
- "libp2p-streaming-response",
- "maplit",
- "regex",
- "rogcat",
- "serde 1.0.123",
- "serde_cbor",
- "serde_json",
- "serde_yaml",
- "tokio 1.2.0",
- "tracing",
- "tracing-futures",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "actyxos_sdk"
 version = "0.5.0"
 dependencies = [
@@ -99,7 +68,6 @@ dependencies = [
 name = "ada-cli"
 version = "0.1.0"
 dependencies = [
- "actyxos-lib",
  "actyxos_sdk",
  "anyhow",
  "async-trait",
@@ -503,7 +471,6 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 name = "ax"
 version = "2.0.0-dev"
 dependencies = [
- "actyxos-lib",
  "actyxos_sdk",
  "anyhow",
  "assert_cmd",
@@ -543,7 +510,6 @@ dependencies = [
 name = "ax-config"
 version = "0.1.0"
 dependencies = [
- "actyxos-lib",
  "anyhow",
  "parity-multiaddr",
  "serde 1.0.123",
@@ -1377,6 +1343,7 @@ dependencies = [
  "serde 1.0.123",
  "serde_cbor",
  "sha2 0.9.3",
+ "util",
 ]
 
 [[package]]
@@ -3487,7 +3454,6 @@ dependencies = [
 name = "logsvcd"
 version = "0.2.0"
 dependencies = [
- "actyxos-lib",
  "actyxos_sdk",
  "android_log-sys",
  "android_logger",
@@ -3944,7 +3910,6 @@ dependencies = [
 name = "node"
 version = "2.0.0-dev"
 dependencies = [
- "actyxos-lib",
  "actyxos_sdk",
  "anyhow",
  "api",
@@ -6829,14 +6794,19 @@ checksum = "05e42f7c18b8f902290b009cde6d651262f956c98bc51bca4cd1d511c9cd85c7"
 name = "util"
 version = "0.1.0"
 dependencies = [
+ "actyxos_sdk",
  "anyhow",
+ "ax-os-settings",
  "base64 0.13.0",
+ "chrono",
  "clap",
  "crossbeam",
+ "derive_more",
  "fnv",
  "futures 0.3.13",
  "futures-test",
  "itertools 0.10.0",
+ "libp2p-streaming-response",
  "lru-cache",
  "maplit",
  "num-traits 0.2.14",
@@ -6851,6 +6821,7 @@ dependencies = [
  "serde_json",
  "tokio 1.2.0",
  "tracing",
+ "tracing-subscriber",
  "waker-fn",
  "winres",
 ]

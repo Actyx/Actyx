@@ -1,10 +1,9 @@
 use std::convert::TryInto;
 
 use crate::cmd::{AxCliCommand, ConsoleOpt};
-use actyxos_lib::formats::logs::LogEvent;
-use actyxos_lib::ActyxOSResult;
 use futures::{stream, Stream, TryStreamExt};
 use structopt::StructOpt;
+use util::formats::{ActyxOSResult, LogEvent};
 
 #[derive(StructOpt, Debug)]
 pub struct TailOpts {

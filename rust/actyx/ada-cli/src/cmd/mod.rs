@@ -4,10 +4,7 @@ use ax_config::StoreConfig;
 use clap::ArgMatches;
 use store_core::BanyanStore;
 
-pub mod balena_logs_to_pubsub;
 pub mod copy_pubsub;
-pub mod logs;
-pub mod logs_to_loki;
 pub mod monitor_pubsub;
 pub mod pubsub_connect;
 pub mod pubsub_to_pg;

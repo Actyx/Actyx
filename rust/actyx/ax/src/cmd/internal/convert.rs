@@ -1,8 +1,8 @@
 use crate::cmd::AxCliCommand;
-use actyxos_lib::{ActyxOSResult, ActyxOSResultExt};
 use futures::{prelude::*, stream, Stream};
 use store_core::convert::{convert_from_v1, ConversionOptions};
 use structopt::StructOpt;
+use util::formats::{ActyxOSResult, ActyxOSResultExt};
 
 #[derive(StructOpt, Debug)]
 pub struct ConvertFromV1Opts {

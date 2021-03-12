@@ -1,12 +1,12 @@
 use crate::cmd::formats::Result;
 use crate::cmd::AxCliCommand;
-use actyxos_lib::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 use futures::{stream, Stream, TryFutureExt};
 use rand::distributions::Alphanumeric;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use structopt::StructOpt;
+use util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
