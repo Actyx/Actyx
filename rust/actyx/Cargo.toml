@@ -1,0 +1,39 @@
+# Only have one member per line and the opening and ending on separate lines,
+# since this is used in build scripts to populate the docker image cache!
+[workspace]
+members = [
+  "actyx-cli",
+  "actyxos-lib",
+  "ada-cli",
+  "api",
+  "ax-config",
+  "ax-futures-util",
+  "ax-os-settings",
+  "crypto",
+  "ipfs-node",
+  "lake",
+  "lake-formats",
+  "libp2p-ax-bitswap",
+  "libp2p-broadcast",
+  "libp2p-streaming-response",
+  "logsvcd",
+  "node",
+  "node-ffi",
+  "node-win",
+  "store-core",
+  "tracing_win_event_log",
+  "util",
+  "wsrpc",
+]
+
+[profile.release]
+panic = "abort"
+
+[patch.crates-io]
+# TODO: Figure out how to build sqlite3 with the proper compile time flags for Android
+rusqlite = { git = "https://github.com/Actyx/rusqlite", rev = "55e4f2e352135e63c5a5619cf64e85febcf0bec6" }
+# banyan = { path = "../../banyan/banyan" }
+# wait for https://github.com/qdot/systray-rs/pull/51
+systray = { git = "https://github.com/wngr/systray-rs" }
+# wait for https://github.com/elizagamedev/wintrap-rs/pull/1
+wintrap = { git = "https://github.com/wngr/wintrap-rs" }

@@ -1,0 +1,47 @@
+[package]
+name = "ada-cli"
+version = "0.1.0"
+authors = ["Actyx AG"]
+edition = "2018"
+
+[dependencies]
+actyxos_sdk = { version = "0.5", features = ["postgresql"], path = "../../rust/sdk" }
+actyxos-lib = {path = "../actyxos-lib"}
+ax-config = { path = "../ax-config" }
+ipfs-node = { path = "../ipfs-node" }
+lake = { path = "../lake" }
+lake-formats = { path = "../lake-formats" }
+store-core = { path = "../store-core" }
+util = { path = "../util" }
+
+anyhow = "1.0.38"
+async-trait = "0.1.42"
+base64 = "0.13.0"
+bytes= "1.0.1"
+chrono = { version = "0.4.19", features = ["serde"] }
+clap = "2.33.3"
+futures = { version = "0.3.12", package = "futures" }
+hex = "0.4.2"
+hyper = { version = "0.14.2", features = ["stream"], package = "hyper" }
+itertools = "0.10.0"
+lazy_static = "1.4.0"
+libipld = { version = "0.11.0", default-features = false, features = ["dag-cbor", "dag-json"] }
+maplit = "1.0.2"
+num-traits = "0.2.14"
+postgres = { version = "0.19.0", features = ["with-serde_json-1"] }
+prometheus = "0.11.0"
+regex = "1.4.3"
+serde = "1.0.123"
+serde_cbor = { version = "0.11.1", features = ["tags"] }
+serde_json = "1.0.61"
+serde-value = "0.7.0"
+tokio = { version = "1.2.0", features = ["full"], package = "tokio" }
+tokio-postgres = { version = "0.7.0", features = ["with-serde_json-1"] }
+tracing = { version = "0.1.22", features = ["max_level_trace", "release_max_level_debug"] }
+tracing-futures = "0.2.4"
+tracing-subscriber = "0.2.15"
+warp = "0.3.0"
+
+[dev-dependencies]
+chrono = "0.4.19"
+regex = "1.4.3"

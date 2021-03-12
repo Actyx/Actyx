@@ -1,0 +1,80 @@
+[package]
+authors = ["Actyx AG"]
+edition = "2018"
+name = "node"
+version = "2.0.0-dev"
+
+[[bin]]
+name = "actyx-linux"
+path = "src/bin/linux.rs"
+
+[build-dependencies]
+prost-build = "0.7.0"
+
+[dependencies]
+actyxos_sdk = { version = "0.5", path = "../../rust/sdk" }
+actyxos-lib = { path = "../actyxos-lib" }
+api = { path = "../api" }
+ax-config = { path = "../ax-config" }
+ax-futures-util = { path = "../ax-futures-util" }
+ax-os-settings = { path = "../ax-os-settings" }
+crypto = { path = "../crypto/" }
+ipfs-node = { path = "../ipfs-node" }
+lake-formats = { path = "../lake-formats" }
+libp2p-streaming-response = { path = "../libp2p-streaming-response" }
+logsvcd = { path = "../logsvcd" }
+store-core = { path = "../store-core" }
+util = { path = "../util" }
+
+anyhow = "1.0.38"
+backtrace = "0.3.56"
+base64 = "0.13.0"
+bytes = "1.0.1"
+chrono = { features = ["serde"], version = "0.4.19" }
+crossbeam = "0.8.0"
+derive_more = "0.99.11"
+ffi-support = "0.4.2"
+futures = { version = "0.3.12", features = ["compat"], package = "futures" }
+libp2p = { version = "0.35.0", default-features = false, features = ["gossipsub", "ping"] }
+maplit = "1.0.2"
+multihash = "0.13.2"
+parking_lot = "0.11.1"
+prost = "0.7.0"
+prost-derive = "0.7.0"
+regex = "1.4.3"
+rusqlite = { features = ["bundled", "backup", "hooks"], version = "0.24.2" }
+serde = { features = ["derive"], version = "1.0.123" }
+serde_cbor = "0.11.1"
+serde_json = "1.0.61"
+serde_urlencoded = "0.7.0"
+signal-hook = "0.3.4"
+structopt = "0.3.21"
+tempfile = "3.2.0"
+thiserror = "1.0.23"
+tokio = { package = "tokio", version = "1.2.0" }
+tracing = "0.1.22"
+uuid = "0.8.2"
+void = "1.0.2"
+warp = "0.3.0"
+
+[target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies.jemallocator]
+version = "0.3.2"
+
+[lib]
+crate-type = ["lib"]
+name = "node"
+
+[dev-dependencies]
+actyxos_sdk = { version = "0.5", path = "../../rust/sdk", features = ["client"] }
+criterion = { version = "0.3.4", features = ["html_reports", "async_tokio" ] }
+maplit = "1.0.2"
+tracing-subscriber = "0.2.15"
+
+[target."cfg(target_os = \"windows\")".dependencies]
+systray = "0.4.0"
+wintrap = "0.3.0"
+named-lock = "0.1.1"
+
+[[bench]]
+name = "local_event_roundtrip"
+harness = false
