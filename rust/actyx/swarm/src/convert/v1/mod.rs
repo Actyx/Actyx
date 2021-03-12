@@ -5,9 +5,8 @@ pub use self::block::*;
 pub use self::cons_node::*;
 
 use actyxos_sdk::{
-    event::{FishName, Semantics},
-    tagged::TagSet,
-    LamportTimestamp, Offset, Payload, TimeStamp,
+    legacy::{FishName, Semantics},
+    LamportTimestamp, Offset, Payload, TagSet, TimeStamp,
 };
 use anyhow::Result;
 use serde::{ser::Serializer, Deserialize, Deserializer, Serialize};

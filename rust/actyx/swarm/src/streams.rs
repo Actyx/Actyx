@@ -1,8 +1,5 @@
 use crate::{AxTreeExt, Forest, Link, Tree};
-use actyxos_sdk::{
-    tagged::{NodeId, StreamId, StreamNr},
-    LamportTimestamp, Offset,
-};
+use actyxos_sdk::{LamportTimestamp, NodeId, Offset, StreamId, StreamNr};
 use ax_futures_util::stream::variable::{self, Variable};
 use fnv::FnvHashMap;
 use futures::{

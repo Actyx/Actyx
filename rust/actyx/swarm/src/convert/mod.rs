@@ -2,7 +2,7 @@ use crate::{
     sqlite::{SqliteStore, SqliteStoreWrite},
     StreamAlias,
 };
-use actyxos_sdk::{event::SourceId, tagged::StreamId, Payload};
+use actyxos_sdk::{legacy::SourceId, Payload, StreamId};
 use banyan::forest::{BranchCache, Forest, Transaction};
 use ipfs_sqlite_block_store::{BlockStore, Synchronous};
 use libipld::{
@@ -201,7 +201,7 @@ pub fn convert_from_v1(v1_index_path: &str, v2_index_path: &str, options: Conver
             match tree {
                 Ok(tree) => {
                     tracing::info!("Setting alias {} {:?}", source, tree);
-                    let stream_id = StreamId::from(source);
+                    let stream_id: StreamId = source.into();
                     db.lock()
                         .alias(StreamAlias::from(stream_id), tree.link().map(Cid::from).as_ref())?;
                     Ok((source, tree))

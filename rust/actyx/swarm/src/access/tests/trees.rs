@@ -1,4 +1,4 @@
-use actyxos_sdk::{tagged::TagSet, tags, LamportTimestamp, Payload, TimeStamp};
+use actyxos_sdk::{tags, LamportTimestamp, Payload, TagSet, TimeStamp};
 use banyan::{
     forest::{BranchCache, Config, CryptoConfig, Forest, Transaction},
     memstore::MemStore,

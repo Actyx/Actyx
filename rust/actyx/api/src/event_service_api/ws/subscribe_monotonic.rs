@@ -1,6 +1,6 @@
 use actyxos_sdk::{
-    event_service::{EventService, SubscribeMonotonicRequest, SubscribeMonotonicResponse},
-    tagged::AppId,
+    service::{EventService, SubscribeMonotonicRequest, SubscribeMonotonicResponse},
+    AppId,
 };
 use futures::{
     stream::{self, BoxStream},

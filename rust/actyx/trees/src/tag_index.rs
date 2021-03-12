@@ -1,7 +1,4 @@
-use actyxos_sdk::{
-    tagged::{Tag, TagSet},
-    Dnf,
-};
+use actyxos_sdk::{Dnf, Tag, TagSet};
 use libipld::cbor::{decode::read_u8, DagCborCodec};
 use libipld::codec::{Decode, Encode};
 use libipld::error::Error;

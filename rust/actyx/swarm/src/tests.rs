@@ -1,10 +1,7 @@
 use std::{collections::BTreeMap, convert::TryFrom, time::Duration};
 
 use super::{BanyanStore, Config, DbPath, SqliteIndexStore};
-use actyxos_sdk::{
-    tagged::{NodeId, StreamNr, Tag, TagSet},
-    Payload,
-};
+use actyxos_sdk::{NodeId, Payload, StreamNr, Tag, TagSet};
 use ax_futures_util::stream::interval;
 use banyan::query::AllQuery;
 use futures::prelude::*;

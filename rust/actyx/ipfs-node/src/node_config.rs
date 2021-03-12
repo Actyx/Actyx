@@ -1,5 +1,5 @@
 use crate::discovery::DiscoveryConfig;
-use actyxos_sdk::tagged::NodeId;
+use actyxos_sdk::NodeId;
 use anyhow::Result;
 use derive_more::{Display, Error, From};
 use libp2p::{

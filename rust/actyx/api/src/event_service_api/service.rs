@@ -1,13 +1,12 @@
 use std::convert::TryInto;
 
 use actyxos_sdk::{
-    event_service::{
+    service::{
         self, NodeIdResponse, Order, PublishEvent, PublishRequest, PublishResponse, PublishResponseKey, QueryRequest,
         QueryResponse, StartFrom, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest,
         SubscribeResponse,
     },
-    tagged::EventKey,
-    OffsetMap,
+    EventKey, OffsetMap,
 };
 use anyhow::Result;
 use async_trait::async_trait;
@@ -43,7 +42,7 @@ impl EventService {
 }
 
 #[async_trait]
-impl event_service::EventService for EventService {
+impl service::EventService for EventService {
     async fn node_id(&self) -> Result<NodeIdResponse> {
         Ok(NodeIdResponse {
             node_id: self.store.node_id(),

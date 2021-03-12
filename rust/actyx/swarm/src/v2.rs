@@ -1,5 +1,5 @@
 use crate::{BanyanStore, Link};
-use actyxos_sdk::tagged::{NodeId, StreamId, StreamNr};
+use actyxos_sdk::{NodeId, StreamId, StreamNr};
 use anyhow::Result;
 use ax_futures_util::stream::latest_channel;
 use futures::prelude::*;

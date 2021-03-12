@@ -1,4 +1,4 @@
-use actyxos_sdk::{tagged::AppId, TimeStamp};
+use actyxos_sdk::{AppId, TimeStamp};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq)]

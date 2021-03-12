@@ -1,8 +1,5 @@
 use crate::tag_index::IndexSet;
-use actyxos_sdk::{
-    tagged::{Tag, TagSet},
-    Dnf, LamportTimestamp, TimeStamp,
-};
+use actyxos_sdk::{Dnf, LamportTimestamp, Tag, TagSet, TimeStamp};
 use banyan::{
     forest::TreeTypes,
     index::{BranchIndex, CompactSeq, LeafIndex, Summarizable},

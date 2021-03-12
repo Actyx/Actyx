@@ -1,5 +1,5 @@
 use crate::{Block, EnvelopeList, Offset, TagIndex};
-use actyxos_sdk::event::{FishName, Semantics};
+use actyxos_sdk::legacy::{FishName, Semantics};
 use libipld::{DagCbor, Link};
 use std::collections::BTreeMap;
 use std::convert::TryInto;
@@ -81,10 +81,7 @@ impl BlockIndex {
 mod tests {
     use super::*;
     use crate::{BlockIndex, IpfsEnvelope};
-    use actyxos_sdk::{
-        event::{LamportTimestamp, Payload, TimeStamp},
-        fish_name, semantics, tags,
-    };
+    use actyxos_sdk::{fish_name, semantics, tags, LamportTimestamp, Payload, TimeStamp};
     use libipld::cbor::DagCborCodec;
     use libipld::codec::{Codec, Decode, Encode};
     use libipld::multihash::{Code, MultihashDigest};

@@ -3,9 +3,8 @@ use crate::access::{
 };
 use ::trees::{StreamHeartBeat, TagSubscriptions};
 use actyxos_sdk::{
-    event::{LamportTimestamp, Payload, TimeStamp},
-    tagged::{Event, EventKey, Metadata, NodeId, StreamId, Tag, TagSet},
-    tags, Expression, Offset, OffsetOrMin,
+    tags, Event, EventKey, Expression, LamportTimestamp, Metadata, NodeId, Offset, OffsetOrMin, Payload, StreamId, Tag,
+    TagSet, TimeStamp,
 };
 use ax_futures_util::{prelude::*, stream::Drainer};
 use futures::{
@@ -66,7 +65,7 @@ type StreamData = (
     Sender<BTreeSet<StreamId>>,
 );
 
-/// An EventStore that synthesizes event streams for source0 to source9,
+/// An EventStore that synthesizes event streams for stream0 to stream9,
 /// containing events from three semantics A, B, C with names a, b, c each.
 /// Each stream has events 0..10. Psns are allocated round-robin to names, then
 /// semantics.
@@ -76,8 +75,8 @@ type StreamData = (
 #[derive(Debug, Clone)]
 pub struct TestEventStore {
     evs: Vec<Event<Payload>>,
-    sources: Arc<Mutex<StreamData>>,
-    sources_rcv: Receiver<BTreeSet<StreamId>>,
+    streams: Arc<Mutex<StreamData>>,
+    streams_rcv: Receiver<BTreeSet<StreamId>>,
 }
 
 #[derive(Debug, Clone)]
@@ -91,7 +90,7 @@ impl TestEventStore {
     pub fn new() -> TestEventStore {
         let mut evs = Vec::new();
         let mut off = 0u32;
-        for stream in known_sources() {
+        for stream in known_streams() {
             for semantics in vec!["A", "B", "C"].iter().map(|x| format!("upper:{}", x)) {
                 for name in vec!["a", "b", "c"].iter().map(|x| format!("lower:{}", x)) {
                     evs.push(Event {
@@ -113,18 +112,18 @@ impl TestEventStore {
                 }
             }
         }
-        let (sources_snd, sources_rcv) = sampled_broadcast::new();
-        let source_set = known_sources().into_iter().collect::<BTreeSet<_>>();
-        let sources = Arc::new(Mutex::new((BTreeMap::new(), source_set, sources_snd)));
+        let (streams_snd, streams_rcv) = sampled_broadcast::new();
+        let stream_set = known_streams().into_iter().collect::<BTreeSet<_>>();
+        let streams = Arc::new(Mutex::new((BTreeMap::new(), stream_set, streams_snd)));
         TestEventStore {
             evs,
-            sources,
-            sources_rcv,
+            streams,
+            streams_rcv,
         }
     }
 
-    pub fn known_events(&self, source: StreamId, start: usize, stop: Option<usize>) -> Vec<Event<Payload>> {
-        (if !is_known_source(source) {
+    pub fn known_events(&self, stream_id: StreamId, start: usize, stop: Option<usize>) -> Vec<Event<Payload>> {
+        (if !is_known_stream(stream_id) {
             &[]
         } else if let Some(stop) = stop {
             &self.evs[start..stop]
@@ -134,25 +133,25 @@ impl TestEventStore {
         .iter()
         .cloned()
         .map(|mut ev| {
-            ev.key.stream = source;
+            ev.key.stream = stream_id;
             ev
         })
         .collect::<Vec<_>>()
     }
 
-    pub fn known_events_rev(&self, source: StreamId, start: usize, stop: Option<usize>) -> Vec<Event<Payload>> {
-        let mut res = self.known_events(source, start, stop);
+    pub fn known_events_rev(&self, stream_id: StreamId, start: usize, stop: Option<usize>) -> Vec<Event<Payload>> {
+        let mut res = self.known_events(stream_id, start, stop);
         res.reverse();
         res
     }
 
-    fn source_entry(&self, source: StreamId, sender: Option<UnboundedSender<Vec<Event<Payload>>>>) -> PerStream {
-        let mut sources = self.sources.lock().unwrap();
-        let (ref mut map, ref mut set, ref mut snd) = &mut *sources;
-        if set.insert(source) {
+    fn stream_entry(&self, stream_id: StreamId, sender: Option<UnboundedSender<Vec<Event<Payload>>>>) -> PerStream {
+        let mut streams = self.streams.lock().unwrap();
+        let (ref mut map, ref mut set, ref mut snd) = &mut *streams;
+        if set.insert(stream_id) {
             snd.update(set.clone());
         }
-        let entry = map.entry(source).or_insert_with(|| {
+        let entry = map.entry(stream_id).or_insert_with(|| {
             let (hb_sender, hb_receiver) = sampled_broadcast::new();
             PerStream {
                 event_senders: Vec::new(),
@@ -166,12 +165,12 @@ impl TestEventStore {
         entry.clone()
     }
 
-    /// Caveat emptor: sending only works for already known sources, so be sure to send a heartbeat first!
+    /// Caveat emptor: sending only works for already known streams, so be sure to send a heartbeat first!
     ///
-    /// You may use `store.introduce_source()` for that.
+    /// You may use `store.introduce_stream()` for that.
     pub fn send(&self, input: Input) {
         debug!("sending {:?}", input);
-        let mut entry = self.source_entry(input.to_stream(), None);
+        let mut entry = self.stream_entry(input.to_stream(), None);
         match input {
             Input::Events(evs) => {
                 for mut s in entry.event_senders {
@@ -186,33 +185,33 @@ impl TestEventStore {
         Offset::mk_test(self.evs.len() as u32 - 1)
     }
 
-    pub fn top_for_source(&self, src: StreamId) -> OffsetOrMin {
-        if is_known_source(src) {
+    pub fn top_for_stream(&self, stream_id: StreamId) -> OffsetOrMin {
+        if is_known_stream(stream_id) {
             self.top_offset().into()
         } else {
             OffsetOrMin::MIN
         }
     }
 
-    fn stream_contiguous_after(&self, offset: OffsetOrMin, source: StreamId) -> BoxStream<'static, Event<Payload>> {
+    fn stream_contiguous_after(&self, offset: OffsetOrMin, stream_id: StreamId) -> BoxStream<'static, Event<Payload>> {
         trace!(
             offset = offset - OffsetOrMin::ZERO,
-            // source = source.as_str(),
+            // stream = stream.as_str(),
             "starting stream"
         );
         let (snd, rcv) = mpsc::unbounded();
-        self.source_entry(source, Some(snd));
+        self.stream_entry(stream_id, Some(snd));
         rcv.map(stream::iter)
             .flatten()
             .inspect(move |e| {
                 trace!(
                     offset = offset - OffsetOrMin::ZERO,
-                    // stream = source.to_string(),
+                    // stream = stream.to_string(),
                     "received {:?}",
                     e
                 )
             })
-            .filter(move |ev| ready(ev.key.stream == source))
+            .filter(move |ev| ready(ev.key.stream == stream_id))
             .map({
                 let mut heap = BinaryHeap::<PsnOrder>::new();
                 let mut last_offset = offset;
@@ -267,7 +266,7 @@ impl PartialEq for LamportOrdering {
 
 impl Eq for LamportOrdering {}
 
-pub fn known_sources() -> Vec<StreamId> {
+pub fn known_streams() -> Vec<StreamId> {
     (0..5)
         .map(|x| std::iter::once(x).chain(0..31).collect::<Vec<u8>>())
         .map(|x| NodeId::from_bytes(&x[..]).unwrap())
@@ -275,12 +274,12 @@ pub fn known_sources() -> Vec<StreamId> {
         .collect()
 }
 
-pub fn is_known_source(src: StreamId) -> bool {
-    known_sources().contains(&src)
+pub fn is_known_stream(stream_id: StreamId) -> bool {
+    known_streams().contains(&stream_id)
 }
 
-pub fn source(i: usize) -> StreamId {
-    known_sources()[i]
+pub fn test_stream(i: usize) -> StreamId {
+    known_streams()[i]
 }
 
 impl EventStoreConsumerAccess for TestEventStore {
@@ -289,15 +288,15 @@ impl EventStoreConsumerAccess for TestEventStore {
     }
 
     fn stream_known_streams(&self) -> BoxStream<'static, StreamId> {
-        trace!("streaming known sources");
-        let mut sources = known_sources().into_iter().collect::<BTreeSet<_>>();
-        stream::iter(sources.clone())
+        trace!("streaming known streams");
+        let mut streams = known_streams().into_iter().collect::<BTreeSet<_>>();
+        stream::iter(streams.clone())
             .chain(
-                self.sources_rcv
+                self.streams_rcv
                     .stream()
                     .map(move |set| {
-                        let new = &set - &sources;
-                        sources = set;
+                        let new = &set - &streams;
+                        streams = set;
                         stream::iter(new)
                     })
                     .flatten(),
@@ -327,7 +326,7 @@ impl EventStoreConsumerAccess for TestEventStore {
         });
         let subs = subs;
         // does it reach into live territory?
-        if to_inclusive > self.top_for_source(stream_id) {
+        if to_inclusive > self.top_for_stream(stream_id) {
             let subs2 = subs.clone();
             ok(stream::iter(
                 evs.into_iter()
@@ -336,7 +335,7 @@ impl EventStoreConsumerAccess for TestEventStore {
             )
             .chain(stream::iter(hb))
             .chain(
-                self.stream_contiguous_after(self.top_for_source(stream_id), stream_id)
+                self.stream_contiguous_after(self.top_for_stream(stream_id), stream_id)
                     .skip_while(move |ev| ready(ev.key.offset <= from_exclusive))
                     .filter_map(move |ev| {
                         if matches(&subs2, &ev.meta.tags) {
@@ -347,7 +346,7 @@ impl EventStoreConsumerAccess for TestEventStore {
                     })
                     .take_until_condition(move |ev| ready(ev.offset() >= to_inclusive)),
             )
-            // .inspect(move |e| trace!(source = source.as_str(), "live emitting {:?}", e))
+            // .inspect(move |e| trace!(stream = stream.as_str(), "live emitting {:?}", e))
             .boxed())
             .boxed()
         } else {
@@ -355,7 +354,7 @@ impl EventStoreConsumerAccess for TestEventStore {
                 .filter(move |ev| ready(matches(&subs, &ev.meta.tags)))
                 .map(EventOrHeartbeat::Event)
                 .chain(stream::iter(hb))
-                // .inspect(move |e| trace!(source = source.as_str(), "cold emitting {:?}", e))
+                // .inspect(move |e| trace!(stream = stream.as_str(), "cold emitting {:?}", e))
                 .boxed())
             .boxed()
         }
@@ -391,7 +390,7 @@ impl EventStoreConsumerAccess for TestEventStore {
     }
 
     fn stream_last_seen(&self, stream_id: StreamId) -> BoxStream<'static, StreamHeartBeat> {
-        let entry = self.source_entry(stream_id, None);
+        let entry = self.stream_entry(stream_id, None);
         let mut last_lamport = LamportTimestamp::new(0);
         entry
             .hb_receiver
@@ -420,12 +419,12 @@ pub fn test_stream_id() -> StreamId {
 }
 
 /// Creates a test event with tags!("upper:A", "lower:a")
-pub fn mk_test_event(source: Option<StreamId>, offset: Offset, lamport: LamportTimestamp) -> Event<Payload> {
+pub fn mk_test_event(stream_id: StreamId, offset: Offset, lamport: LamportTimestamp) -> Event<Payload> {
     Event {
         key: EventKey {
             lamport,
             offset,
-            stream: source.unwrap_or_else(test_stream_id),
+            stream: stream_id,
         },
         meta: Metadata {
             tags: tags!("upper:A", "lower:a"),
@@ -435,13 +434,9 @@ pub fn mk_test_event(source: Option<StreamId>, offset: Offset, lamport: LamportT
     }
 }
 
-pub fn mk_test_heartbeat(
-    source: Option<StreamId>,
-    offset: Offset,
-    lamport: Option<LamportTimestamp>,
-) -> StreamHeartBeat {
+pub fn mk_test_heartbeat(stream_id: StreamId, offset: Offset, lamport: Option<LamportTimestamp>) -> StreamHeartBeat {
     StreamHeartBeat {
-        stream: source.unwrap_or_else(test_stream_id),
+        stream: stream_id,
         offset,
         lamport: lamport.unwrap_or_else(|| LamportTimestamp::new((offset - Offset::ZERO) as u64)),
     }
@@ -459,21 +454,21 @@ async fn drainer(e: EventOrHeartbeatStreamOrError) -> impl Iterator<Item = Vec<E
 }
 
 #[test]
-fn test_harness_should_deliver_known_sources() {
+fn test_harness_should_deliver_known_streams() {
     let store = TestEventStore::new();
 
     let stream = store.stream_known_streams();
     let mut iter = Drainer::new(stream);
-    assert_eq!(iter.next(), Some(known_sources()));
+    assert_eq!(iter.next(), Some(known_streams()));
 
-    let ev = mk_test_event(None, Offset::ZERO, LamportTimestamp::from(0));
+    let ev = mk_test_event(test_stream_id(), Offset::ZERO, LamportTimestamp::from(0));
     store.send(Input::Events(vec![ev.clone()]));
     assert_eq!(iter.next(), Some(vec![ev.key.stream]));
     store.send(Input::Events(vec![ev]));
     assert_eq!(iter.next(), Some(vec![]));
 
     let stream_id = test_stream_id();
-    let hb = mk_test_heartbeat(Some(stream_id), Offset::mk_test(0), None);
+    let hb = mk_test_heartbeat(stream_id, Offset::mk_test(0), None);
     store.send(Input::Heartbeat(hb.clone()));
     assert_eq!(iter.next(), Some(vec![stream_id]));
     store.send(Input::Heartbeat(hb));
@@ -483,7 +478,7 @@ fn test_harness_should_deliver_known_sources() {
 #[test]
 fn test_harness_should_deliver_last_seen() {
     let store = TestEventStore::new();
-    let ev = mk_test_event(None, Offset::ZERO, LamportTimestamp::from(0));
+    let ev = mk_test_event(test_stream_id(), Offset::ZERO, LamportTimestamp::from(0));
 
     let stream = store.stream_last_seen(ev.key.stream);
     let mut iter = Drainer::new(stream);
@@ -492,7 +487,7 @@ fn test_harness_should_deliver_last_seen() {
     store.send(Input::Events(vec![ev.clone()]));
     assert_eq!(iter.next(), Some(vec![]));
 
-    let hb = mk_test_heartbeat(Some(ev.key.stream), Offset::mk_test(1), None);
+    let hb = mk_test_heartbeat(ev.key.stream, Offset::mk_test(1), None);
     store.send(Input::Heartbeat(hb.clone()));
     assert_eq!(iter.next(), Some(vec![hb.clone()]));
     store.send(Input::Heartbeat(hb));
@@ -502,21 +497,20 @@ fn test_harness_should_deliver_last_seen() {
 #[tokio::test]
 async fn test_harness_should_filter_events_forward() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
     let subs: TagSubscriptions = "'upper:A' & ('lower:a' | 'lower:b')"
         .parse::<Expression>()
         .unwrap()
         .into();
 
-    let events = StreamEventSelection::new(source, OffsetOrMin::MIN, OffsetOrMin::MAX, subs.into());
+    let events = StreamEventSelection::new(stream_id, OffsetOrMin::MIN, OffsetOrMin::MAX, subs.into());
     let stream = store.stream_forward(events, true).await.unwrap();
     let mut iter = Drainer::new(stream);
 
-    let evs = store.known_events(source, 0, None);
+    let evs = store.known_events(stream_id, 0, None);
     let hb = EventOrHeartbeat::Heartbeat(StreamHeartBeat::from_event(evs.last().unwrap()));
     let mut expected = evs
         .into_iter()
-        // .filter(|ev| ev.semantics == semantics!("A") && (ev.name == fish_name!("a") || ev.name == fish_name!("b")))
         .filter(|ev| {
             [tags!("upper:A", "lower:a"), tags!("upper:A", "lower:b")]
                 .iter()
@@ -532,17 +526,17 @@ async fn test_harness_should_filter_events_forward() {
 #[tokio::test]
 async fn test_harness_should_filter_events_backward() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
     let subs: TagSubscriptions = "'upper:A' & ('lower:a' | 'lower:b')"
         .parse::<Expression>()
         .unwrap()
         .into();
 
-    let events = StreamEventSelection::new(source, OffsetOrMin::MIN, store.top_offset().into(), subs.into());
+    let events = StreamEventSelection::new(stream_id, OffsetOrMin::MIN, store.top_offset().into(), subs.into());
     let stream = store.stream_backward(events).await.unwrap();
     let mut iter = Drainer::new(stream);
 
-    let mut expected = store.known_events_rev(source, 0, None);
+    let mut expected = store.known_events_rev(stream_id, 0, None);
     expected.retain(|ev| {
         [tags!("upper:A", "lower:a"), tags!("upper:A", "lower:b")]
             .iter()
@@ -555,17 +549,17 @@ async fn test_harness_should_filter_events_backward() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_forward_min_max() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
     let subs: TagSubscriptions = "'upper:A' & ('lower:a' | 'lower:b')"
         .parse::<Expression>()
         .unwrap()
         .into();
 
-    let events = StreamEventSelection::new(source, OffsetOrMin::MIN, OffsetOrMin::MAX, subs.into());
+    let events = StreamEventSelection::new(stream_id, OffsetOrMin::MIN, OffsetOrMin::MAX, subs.into());
     let stream = store.stream_forward(events, true).await.unwrap();
     let mut iter = Drainer::new(stream);
 
-    let evs = store.known_events(source, 0, None);
+    let evs = store.known_events(stream_id, 0, None);
     let hb = EventOrHeartbeat::Heartbeat(StreamHeartBeat::from_event(evs.last().unwrap()));
     let mut expected = evs
         .into_iter()
@@ -580,17 +574,13 @@ async fn test_harness_should_deliver_events_forward_min_max() {
 
     assert_eq!(iter.next(), Some(expected));
 
-    store.send(Input::Heartbeat(mk_test_heartbeat(
-        Some(source),
-        Offset::mk_test(0),
-        None,
-    )));
+    store.send(Input::Heartbeat(mk_test_heartbeat(stream_id, Offset::mk_test(0), None)));
     assert_eq!(iter.next(), Some(vec![]));
 
     let lamport = |x: u64| LamportTimestamp::from((store.top_offset() - Offset::ZERO) as u64 + x);
-    let ev1 = mk_test_event(Some(source), store.top_offset() + 1, lamport(1));
-    let ev2 = mk_test_event(Some(source), store.top_offset() + 2, lamport(2));
-    let mut ev3 = mk_test_event(Some(source), store.top_offset() + 3, lamport(3));
+    let ev1 = mk_test_event(stream_id, store.top_offset() + 1, lamport(1));
+    let ev2 = mk_test_event(stream_id, store.top_offset() + 2, lamport(2));
+    let mut ev3 = mk_test_event(stream_id, store.top_offset() + 3, lamport(3));
     ev3.meta.tags = tags!("upper:B");
 
     // there should not be delivery with gaps, and no heartbeats derived from events
@@ -613,32 +603,28 @@ async fn test_harness_should_deliver_events_forward_min_max() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_forward_min_large() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
 
     let events = StreamEventSelection::new(
-        source,
+        stream_id,
         OffsetOrMin::MIN,
         (store.top_offset() + 2).into(),
         vec![TagSet::empty()],
     );
     let mut iter = drainer(store.stream_forward(events, true)).await;
 
-    assert_eq!(iter.next(), Some(store.known_events(source, 0, None)));
+    assert_eq!(iter.next(), Some(store.known_events(stream_id, 0, None)));
 
-    store.send(Input::Heartbeat(mk_test_heartbeat(
-        Some(source),
-        Offset::mk_test(0),
-        None,
-    )));
+    store.send(Input::Heartbeat(mk_test_heartbeat(stream_id, Offset::mk_test(0), None)));
     assert_eq!(iter.next(), Some(vec![]));
 
     let lamport = |x: u64| LamportTimestamp::from((store.top_offset() - Offset::ZERO) as u64 + x);
 
-    let ev2 = mk_test_event(Some(source), store.top_offset() + 2, lamport(2));
+    let ev2 = mk_test_event(stream_id, store.top_offset() + 2, lamport(2));
     store.send(Input::Events(vec![ev2.clone()]));
     assert_eq!(iter.next(), Some(vec![]));
 
-    let ev1 = mk_test_event(Some(source), store.top_offset() + 1, lamport(1));
+    let ev1 = mk_test_event(stream_id, store.top_offset() + 1, lamport(1));
     store.send(Input::Events(vec![ev1.clone()]));
     assert_eq!(iter.next(), Some(vec![ev1, ev2]));
 
@@ -648,17 +634,17 @@ async fn test_harness_should_deliver_events_forward_min_large() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_forward_min_edge() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
 
     let events = StreamEventSelection::new(
-        source,
+        stream_id,
         OffsetOrMin::MIN,
         store.top_offset().into(),
         vec![TagSet::empty()],
     );
     let mut iter = drainer(store.stream_forward(events, true)).await;
 
-    assert_eq!(iter.next(), Some(store.known_events(source, 0, None)));
+    assert_eq!(iter.next(), Some(store.known_events(stream_id, 0, None)));
 
     assert_eq!(iter.next(), None);
 }
@@ -666,10 +652,10 @@ async fn test_harness_should_deliver_events_forward_min_edge() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_forward_min_small() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
 
     let events = StreamEventSelection::new(
-        source,
+        stream_id,
         OffsetOrMin::MIN,
         store.top_offset().pred_or_min(),
         vec![TagSet::empty()],
@@ -678,7 +664,7 @@ async fn test_harness_should_deliver_events_forward_min_small() {
 
     assert_eq!(
         iter.next(),
-        Some(store.known_events(source, 0, Some((store.top_offset() - Offset::ZERO) as usize)))
+        Some(store.known_events(stream_id, 0, Some((store.top_offset() - Offset::ZERO) as usize)))
     );
 
     assert_eq!(iter.next(), None);
@@ -687,12 +673,17 @@ async fn test_harness_should_deliver_events_forward_min_small() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_forward_min_zero() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
 
-    let events = StreamEventSelection::new(source, OffsetOrMin::MIN, OffsetOrMin::mk_test(0), vec![TagSet::empty()]);
+    let events = StreamEventSelection::new(
+        stream_id,
+        OffsetOrMin::MIN,
+        OffsetOrMin::mk_test(0),
+        vec![TagSet::empty()],
+    );
     let mut iter = drainer(store.stream_forward(events, true)).await;
 
-    assert_eq!(iter.next(), Some(store.known_events(source, 0, Some(1))));
+    assert_eq!(iter.next(), Some(store.known_events(stream_id, 0, Some(1))));
 
     assert_eq!(iter.next(), None);
 }
@@ -700,9 +691,9 @@ async fn test_harness_should_deliver_events_forward_min_zero() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_forward_min_min() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
 
-    let events = StreamEventSelection::new(source, OffsetOrMin::MIN, OffsetOrMin::MIN, vec![TagSet::empty()]);
+    let events = StreamEventSelection::new(stream_id, OffsetOrMin::MIN, OffsetOrMin::MIN, vec![TagSet::empty()]);
     let mut iter = drainer(store.stream_forward(events, true)).await;
 
     assert_eq!(iter.next(), None);
@@ -711,9 +702,14 @@ async fn test_harness_should_deliver_events_forward_min_min() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_forward_zero_min() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
 
-    let events = StreamEventSelection::new(source, OffsetOrMin::mk_test(0), OffsetOrMin::MIN, vec![TagSet::empty()]);
+    let events = StreamEventSelection::new(
+        stream_id,
+        OffsetOrMin::mk_test(0),
+        OffsetOrMin::MIN,
+        vec![TagSet::empty()],
+    );
     let mut iter = drainer(store.stream_forward(events, true)).await;
 
     assert_eq!(iter.next(), None);
@@ -722,17 +718,17 @@ async fn test_harness_should_deliver_events_forward_zero_min() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_forward_zero_small() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
 
     let events = StreamEventSelection::new(
-        source,
+        stream_id,
         OffsetOrMin::mk_test(0),
         OffsetOrMin::mk_test(10),
         vec![TagSet::empty()],
     );
     let mut iter = drainer(store.stream_forward(events, true)).await;
 
-    assert_eq!(iter.next(), Some(store.known_events(source, 1, Some(11))));
+    assert_eq!(iter.next(), Some(store.known_events(stream_id, 1, Some(11))));
 
     assert_eq!(iter.next(), None);
 }
@@ -740,10 +736,10 @@ async fn test_harness_should_deliver_events_forward_zero_small() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_forward_zero_large() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
 
     let events = StreamEventSelection::new(
-        source,
+        stream_id,
         OffsetOrMin::mk_test(0),
         (store.top_offset() + 1).into(),
         vec![TagSet::empty()],
@@ -751,7 +747,7 @@ async fn test_harness_should_deliver_events_forward_zero_large() {
     let mut iter = drainer(store.stream_forward(events, true)).await;
 
     let ev = mk_test_event(
-        Some(source),
+        stream_id,
         store.top_offset() + 1,
         LamportTimestamp::from((store.top_offset() - Offset::ZERO) as u64 + 1),
     );
@@ -759,7 +755,7 @@ async fn test_harness_should_deliver_events_forward_zero_large() {
 
     assert_eq!(
         iter.next(),
-        Some(vec![store.known_events(source, 1, None), vec![ev]].concat())
+        Some(vec![store.known_events(stream_id, 1, None), vec![ev]].concat())
     );
 
     assert_eq!(iter.next(), None);
@@ -768,10 +764,10 @@ async fn test_harness_should_deliver_events_forward_zero_large() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_forward_large_large() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
 
     let events = StreamEventSelection::new(
-        source,
+        stream_id,
         (store.top_offset() + 2).into(),
         (store.top_offset() + 4).into(),
         vec![TagSet::empty()],
@@ -781,7 +777,7 @@ async fn test_harness_should_deliver_events_forward_large_large() {
     let evs = (1..6)
         .map(|x| {
             mk_test_event(
-                Some(source),
+                stream_id,
                 store.top_offset() + x,
                 LamportTimestamp::from((store.top_offset() - Offset::ZERO) as u64 + x as u64),
             )
@@ -804,10 +800,10 @@ async fn test_harness_should_deliver_events_forward_large_large() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_forward_large_large_evil() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
 
     let events = StreamEventSelection::new(
-        source,
+        stream_id,
         (store.top_offset() + 2).into(),
         (store.top_offset() + 4).into(),
         vec![TagSet::empty()],
@@ -817,7 +813,7 @@ async fn test_harness_should_deliver_events_forward_large_large_evil() {
     let evs = (1..6)
         .map(|x| {
             mk_test_event(
-                Some(source),
+                stream_id,
                 store.top_offset() + x,
                 LamportTimestamp::from((store.top_offset() - Offset::ZERO) as u64 + x as u64),
             )
@@ -839,10 +835,10 @@ async fn test_harness_should_deliver_events_forward_large_large_evil() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_backward_min_edge() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
 
     let events = StreamEventSelection::new(
-        source,
+        stream_id,
         OffsetOrMin::MIN,
         store.top_offset().into(),
         vec![TagSet::empty()],
@@ -850,7 +846,7 @@ async fn test_harness_should_deliver_events_backward_min_edge() {
     let stream = store.stream_backward(events).await.unwrap();
     let mut iter = Drainer::new(stream);
 
-    assert_eq!(iter.next(), Some(store.known_events_rev(source, 0, None)));
+    assert_eq!(iter.next(), Some(store.known_events_rev(stream_id, 0, None)));
 
     assert_eq!(iter.next(), None);
 }
@@ -858,10 +854,10 @@ async fn test_harness_should_deliver_events_backward_min_edge() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_backward_min_small() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
 
     let events = StreamEventSelection::new(
-        source,
+        stream_id,
         OffsetOrMin::MIN,
         store.top_offset().pred_or_min(),
         vec![TagSet::empty()],
@@ -871,7 +867,7 @@ async fn test_harness_should_deliver_events_backward_min_small() {
 
     assert_eq!(
         iter.next(),
-        Some(store.known_events_rev(source, 0, Some((store.top_offset() - Offset::ZERO) as usize)))
+        Some(store.known_events_rev(stream_id, 0, Some((store.top_offset() - Offset::ZERO) as usize)))
     );
 
     assert_eq!(iter.next(), None);
@@ -880,13 +876,18 @@ async fn test_harness_should_deliver_events_backward_min_small() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_backward_min_zero() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
 
-    let events = StreamEventSelection::new(source, OffsetOrMin::MIN, OffsetOrMin::mk_test(0), vec![TagSet::empty()]);
+    let events = StreamEventSelection::new(
+        stream_id,
+        OffsetOrMin::MIN,
+        OffsetOrMin::mk_test(0),
+        vec![TagSet::empty()],
+    );
     let stream = store.stream_backward(events).await.unwrap();
     let mut iter = Drainer::new(stream);
 
-    assert_eq!(iter.next(), Some(store.known_events_rev(source, 0, Some(1))));
+    assert_eq!(iter.next(), Some(store.known_events_rev(stream_id, 0, Some(1))));
 
     assert_eq!(iter.next(), None);
 }
@@ -894,9 +895,9 @@ async fn test_harness_should_deliver_events_backward_min_zero() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_backward_min_min() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
 
-    let events = StreamEventSelection::new(source, OffsetOrMin::MIN, OffsetOrMin::MIN, vec![TagSet::empty()]);
+    let events = StreamEventSelection::new(stream_id, OffsetOrMin::MIN, OffsetOrMin::MIN, vec![TagSet::empty()]);
     let stream = store.stream_backward(events).await.unwrap();
     let mut iter = Drainer::new(stream);
 
@@ -906,9 +907,14 @@ async fn test_harness_should_deliver_events_backward_min_min() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_backward_zero_min() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
 
-    let events = StreamEventSelection::new(source, OffsetOrMin::mk_test(0), OffsetOrMin::MIN, vec![TagSet::empty()]);
+    let events = StreamEventSelection::new(
+        stream_id,
+        OffsetOrMin::mk_test(0),
+        OffsetOrMin::MIN,
+        vec![TagSet::empty()],
+    );
     let stream = store.stream_backward(events).await.unwrap();
     let mut iter = Drainer::new(stream);
 
@@ -918,10 +924,10 @@ async fn test_harness_should_deliver_events_backward_zero_min() {
 #[tokio::test]
 async fn test_harness_should_deliver_events_backward_zero_small() {
     let store = TestEventStore::new();
-    let source = known_sources()[0];
+    let stream_id = known_streams()[0];
 
     let events = StreamEventSelection::new(
-        source,
+        stream_id,
         OffsetOrMin::mk_test(0),
         OffsetOrMin::mk_test(10),
         vec![TagSet::empty()],
@@ -929,7 +935,7 @@ async fn test_harness_should_deliver_events_backward_zero_small() {
     let stream = store.stream_backward(events).await.unwrap();
     let mut iter = Drainer::new(stream);
 
-    assert_eq!(iter.next(), Some(store.known_events_rev(source, 1, Some(11))));
+    assert_eq!(iter.next(), Some(store.known_events_rev(stream_id, 1, Some(11))));
 
     assert_eq!(iter.next(), None);
 }

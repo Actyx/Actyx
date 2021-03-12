@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use actyxos_sdk::{tagged::AppId, EventService};
+use actyxos_sdk::{AppId, EventService};
 use crypto::KeyStoreRef;
 use warp::*;
 

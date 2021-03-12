@@ -1,5 +1,5 @@
-use actyxos_sdk::tagged::{StreamNr, TagSet};
 use actyxos_sdk::Payload;
+use actyxos_sdk::{StreamNr, TagSet};
 use anyhow::Result;
 use ax_config::StoreConfig;
 use banyan::query::AllQuery;

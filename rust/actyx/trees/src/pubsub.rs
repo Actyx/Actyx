@@ -3,7 +3,7 @@
 //! This module contains the formats that are sent on the IPFS pubsub topic of an installation.
 
 use super::{ConsNode, FromStr, LamportTimestamp, TimeStamp};
-use actyxos_sdk::tagged::{NodeId, StreamId};
+use actyxos_sdk::{NodeId, StreamId};
 use libipld::{Cid, Link};
 use serde::{Deserialize, Serialize};
 use serde_json::Error;

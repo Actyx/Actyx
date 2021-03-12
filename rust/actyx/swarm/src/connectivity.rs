@@ -1,8 +1,5 @@
 use crate::BanyanStore;
-use actyxos_sdk::{
-    event::{SourceId, TimeStamp},
-    Offset,
-};
+use actyxos_sdk::{legacy::SourceId, Offset, TimeStamp};
 use parking_lot::Mutex;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::{

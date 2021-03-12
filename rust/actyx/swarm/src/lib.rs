@@ -22,11 +22,7 @@ use crate::connectivity::ConnectivityState;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
 use crate::streams::{OwnStreamInner, ReplicatedStreamInner, StreamAlias, StreamMaps};
-use actyxos_sdk::{
-    source_id,
-    tagged::{NodeId, StreamId, StreamNr, TagSet},
-    LamportTimestamp, Offset, Payload, TimeStamp,
-};
+use actyxos_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr, TagSet, TimeStamp};
 use anyhow::Result;
 use ax_futures_util::{prelude::*, stream::variable::Variable};
 use banyan::{
@@ -79,7 +75,7 @@ impl Config {
             crypto_config: Default::default(),
             forest_config: forest::Config::debug(),
             topic: "test".into(),
-            node_id: source_id!("test").into(),
+            node_id: NodeId::from_bytes(&(0..32).collect::<Vec<u8>>()).unwrap(),
         }
     }
 }

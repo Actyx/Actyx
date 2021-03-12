@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use actyxos_sdk::{event_service::EventService, tagged::AppId};
+use actyxos_sdk::{service::EventService, AppId};
 use crypto::KeyStoreRef;
 use maplit::btreemap;
 use warp::*;

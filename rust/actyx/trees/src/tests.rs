@@ -1,8 +1,5 @@
 use crate::axtrees::{AxKey, AxTree, AxTrees, LamportQuery, Sha256Digest, TagsQuery, TimeQuery};
-use actyxos_sdk::{
-    tagged::{Tag, TagSet},
-    tags, LamportTimestamp, Payload, TimeStamp,
-};
+use actyxos_sdk::{tags, LamportTimestamp, Payload, Tag, TagSet, TimeStamp};
 use banyan::{
     forest::{BranchCache, Config, CryptoConfig, Forest, Transaction},
     memstore::MemStore,

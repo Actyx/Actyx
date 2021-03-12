@@ -1,7 +1,7 @@
 use super::{ax_err, ActyxOSCode, ActyxOSError, ActyxOSResult};
 use crate::wrapping_subscriber::ConvertEvent;
 
-use actyxos_sdk::tagged::NodeId;
+use actyxos_sdk::NodeId;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::{

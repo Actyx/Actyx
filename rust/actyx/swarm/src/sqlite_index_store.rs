@@ -1,11 +1,10 @@
 use crate::connectivity::GossipAboutUs;
 use actyxos_sdk::{
-    event::{LamportTimestamp, SourceId, TimeStamp},
-    event_service::snapshots::{
+    legacy::SourceId,
+    service::snapshots::{
         InvalidateSnapshotsRequest, RetrieveSnapshotRequest, RetrieveSnapshotResponse, StoreSnapshotRequest,
     },
-    tagged::{EventKey, StreamId},
-    Offset,
+    EventKey, LamportTimestamp, Offset, StreamId, TimeStamp,
 };
 use anyhow::Result;
 use parking_lot::Mutex;
@@ -475,16 +474,16 @@ mod test {
             "entityType": "foo",
             "name": "bar",
             "key": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },
             "offsetMap": {
-                "a": 1,
-                "b": 2,
+                "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0": 1,
+                "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.1": 2,
             },
             "horizon": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },
@@ -497,18 +496,18 @@ mod test {
         let expected_result_json = json!({
             "cycle": 0,
             "horizon": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },
             "eventKey": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },
             "offsetMap": {
-                "a": 1,
-                "b": 2,
+              "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0": 1,
+              "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.1": 2,
             },
             "state": "this is the actual snapshot data!",
         });
@@ -523,7 +522,7 @@ mod test {
             "entityType": "foo",
             "name": "bar",
             "key": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },
@@ -580,16 +579,16 @@ mod test {
             "entityType": "foo",
             "name": "bar",
             "key": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },
             "offsetMap": {
-                "a": 1,
-                "b": 2,
+                "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0": 1,
+                "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.1": 2,
             },
             "horizon": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },
@@ -604,16 +603,16 @@ mod test {
             "entityType": "foo",
             "name": "bar",
             "key": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },
             "offsetMap": {
-                "a": 1,
-                "b": 2,
+              "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0": 1,
+              "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.1": 2,
             },
             "horizon": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },

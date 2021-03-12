@@ -1,6 +1,6 @@
 use actyxos_sdk::{
-    event_service::{EventService, PublishRequest, PublishResponse},
-    tagged::AppId,
+    service::{EventService, PublishRequest, PublishResponse},
+    AppId,
 };
 use futures::{stream::BoxStream, FutureExt, StreamExt};
 use wsrpc::Service;

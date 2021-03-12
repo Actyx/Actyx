@@ -4,11 +4,11 @@ use crate::access::{
 };
 use crate::{BanyanStore, TT};
 use actyxos_sdk::{
-    event_service::snapshots::{
+    service::snapshots::{
         InvalidateSnapshotsRequest, RetrieveSnapshotRequest, RetrieveSnapshotResponse, StoreSnapshotRequest,
     },
-    tagged::{Event, EventKey, Metadata, NodeId, StreamId, StreamNr, TagSet},
-    LamportTimestamp, Offset, OffsetOrMin, Payload, TimeStamp,
+    Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetOrMin, Payload, StreamId, StreamNr, TagSet,
+    TimeStamp,
 };
 use anyhow::Result;
 use banyan::{
@@ -252,7 +252,7 @@ fn last_lamport_from_index_ref(r: IndexRef<TT>) -> LamportTimestamp {
     }
 }
 
-/// Take a block of banyan events and convert them into ActyxOS 1.0 IpfsEnvelopeWithSourceId events
+/// Take a block of banyan events and convert them into events
 /// wrapped in EventOrHeartbeat.
 ///
 /// In case the last event was filtered out, a placeholder heartbeat is added.

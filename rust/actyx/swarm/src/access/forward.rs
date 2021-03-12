@@ -1,13 +1,9 @@
 use super::{ConsumerAccessError, EventOrHeartbeat, EventSelection, EventStoreConsumerAccess, EventStreamOrError};
-use actyxos_sdk::{
-    event::{LamportTimestamp, SourceId},
-    tagged::{Event, StreamId},
-    Payload,
-};
+use actyxos_sdk::{source_id, Event, LamportTimestamp, Payload, StreamId};
 use ax_futures_util::{prelude::*, stream::MergeOrdered};
 use futures::future::{ready, try_join_all, BoxFuture, Future, FutureExt, TryFutureExt};
 use futures::stream::{self, BoxStream, StreamExt};
-use std::{cmp::Ordering, collections::BTreeSet, str::FromStr};
+use std::{cmp::Ordering, collections::BTreeSet};
 use trees::StreamHeartBeat;
 
 #[derive(Debug, Clone)]
@@ -41,7 +37,7 @@ impl EnvelopeOrTick {
             EnvelopeOrTick::Envelope(env) => env.key.stream,
             EnvelopeOrTick::Tick(tick) => tick.stream,
             EnvelopeOrTick::Present(tick) => tick.stream,
-            EnvelopeOrTick::Stop => SourceId::from_str("").unwrap().into(),
+            EnvelopeOrTick::Stop => source_id!("!").into(),
         }
     }
 }
@@ -87,7 +83,7 @@ fn get_stream_for_stream_id(
                         .chain(stream::iter(vec![EnvelopeOrTick::Stop])),
                     store2.stream_last_seen(stream_id).map(EnvelopeOrTick::Tick),
                 )
-                // .inspect(move |x| println!("{} getting {:?}", source, x))
+                // .inspect(move |x| println!("{} getting {:?}", stream, x))
                 // need to stop when the actual event stream stops, last_seen keeps running
                 .take_while(move |x| ready(!x.is_stop()))
                 // now make sure that heartbeats are kept back until all their referenced
@@ -211,7 +207,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_hold_back_heartbeats_hb_first() {
-        let s = Some(source(0));
+        let s = test_stream(0);
         let mut f = hold_back_heartbeats_while_waiting_for_corresponding_events();
 
         // first heartbeat needs to be stored, waiting for first event
@@ -248,7 +244,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_hold_back_heartbeats_ev_first() {
-        let s = Some(source(0));
+        let s = test_stream(0);
         let mut f = hold_back_heartbeats_while_waiting_for_corresponding_events();
 
         // first event has Offset::mk_test(1) and Lamport(1)
@@ -268,23 +264,23 @@ mod tests {
         let events = EventSelection::create(
             "('upper:A' & 'lower:a') | 'upper:B'",
             &[
-                (source(1), OffsetOrMin::mk_test(40), OffsetOrMin::mk_test(70)),
-                (source(2), OffsetOrMin::MIN, OffsetOrMin::mk_test(62)),
+                (test_stream(1), OffsetOrMin::mk_test(40), OffsetOrMin::mk_test(70)),
+                (test_stream(2), OffsetOrMin::MIN, OffsetOrMin::mk_test(62)),
             ],
         )
         .expect("cannot construct selection");
         let mut iter = Drainer::new(stream(&store, events.clone()).await.unwrap());
 
         println!(
-            "expected sources {:?}",
+            "expected streams {:?}",
             events
                 .get_mentioned_streams(&store.local_stream_ids())
                 .collect::<Vec<_>>()
         );
         let mut expected = store
-            .known_events(source(1), 0, None)
+            .known_events(test_stream(1), 0, None)
             .into_iter()
-            .chain(store.known_events(source(2), 0, None))
+            .chain(store.known_events(test_stream(2), 0, None))
             .filter(move |ev| events.matches(ev))
             .map(LamportOrdering)
             .collect::<Vec<_>>();
@@ -304,19 +300,19 @@ mod tests {
         let events = EventSelection::create(
             "('upper:A' & 'lower:a') | 'upper:B'",
             &[
-                (source(0), OffsetOrMin::mk_test(4), OffsetOrMin::mk_test(39)),
-                (source(1), OffsetOrMin::mk_test(40), OffsetOrMin::MAX),
-                (source(2), OffsetOrMin::MIN, OffsetOrMin::MAX),
+                (test_stream(0), OffsetOrMin::mk_test(4), OffsetOrMin::mk_test(39)),
+                (test_stream(1), OffsetOrMin::mk_test(40), OffsetOrMin::MAX),
+                (test_stream(2), OffsetOrMin::MIN, OffsetOrMin::MAX),
             ],
         )
         .expect("cannot construct selection");
         let mut iter = Drainer::new(stream(&store, events.clone()).await.unwrap());
 
         let mut expected = store
-            .known_events(source(0), 0, None)
+            .known_events(test_stream(0), 0, None)
             .into_iter()
-            .chain(store.known_events(source(1), 0, None))
-            .chain(store.known_events(source(2), 0, None))
+            .chain(store.known_events(test_stream(1), 0, None))
+            .chain(store.known_events(test_stream(2), 0, None))
             .filter(move |ev| events.matches(ev))
             .map(LamportOrdering)
             .collect::<Vec<_>>();
@@ -328,37 +324,37 @@ mod tests {
             .unwrap();
         assert_eq!(res, expected);
 
-        // At this point source0 is finished, source1 has notified the merge of top_offset,
-        // source2 has done the same, so everything up to that point is delivered.
-        // Now we want to test that a heartbeat from source1 lets the live stream progress:
-        // fabricate one and send an event for source2 that should be emitted.
+        // At this point stream0 is finished, stream1 has notified the merge of top_offset,
+        // stream2 has done the same, so everything up to that point is delivered.
+        // Now we want to test that a heartbeat from stream1 lets the live stream progress:
+        // fabricate one and send an event for stream2 that should be emitted.
         let top = store.top_offset();
         let top_lamport = LamportTimestamp::from((top - Offset::ZERO) as u64);
 
         // at first the heartbeat is blocked
         let hb = mk_test_heartbeat(
-            Some(source(1)),
+            test_stream(1),
             top + 1,
             Some(LamportTimestamp::new((top - Offset::ZERO) as u64 + 5)),
         );
         store.send(Input::Heartbeat(hb));
-        // unblock heartbeat; the event is also blocked as there is nothing from source2
-        let ev1 = mk_test_event(Some(source(1)), top + 1, top_lamport + 1);
+        // unblock heartbeat; the event is also blocked as there is nothing from stream2
+        let ev1 = mk_test_event(test_stream(1), top + 1, top_lamport + 1);
         println!("ev1 {:?}", ev1);
         store.send(Input::Events(vec![ev1.clone()]));
         assert_eq!(iter.next(), Some(vec![]));
 
-        // now inject event from source2 that should unblock event from source 1
-        // and be unblocked by source1 heartbeat
-        let mut ev2 = mk_test_event(Some(source(2)), top + 1, top_lamport + 1);
+        // now inject event from stream2 that should unblock event from stream 1
+        // and be unblocked by stream1 heartbeat
+        let mut ev2 = mk_test_event(test_stream(2), top + 1, top_lamport + 1);
         ev2.meta.tags = tags!("upper:B");
         store.send(Input::Events(vec![ev2.clone()]));
         assert_eq!(iter.next(), Some(vec![ev1, ev2]));
 
-        // now check that source2 can still make progress while the source1 heartbeat
+        // now check that stream2 can still make progress while the stream1 heartbeat
         // remains large enough
         let mut ev2 = (2..8)
-            .map(|i| mk_test_event(Some(source(2)), top + i, top_lamport + i as u64))
+            .map(|i| mk_test_event(test_stream(2), top + i, top_lamport + i as u64))
             .collect::<Vec<_>>();
         for ev in &mut ev2 {
             ev.meta.tags = tags!("upper:B");
@@ -368,13 +364,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn should_bring_in_new_sources() {
+    async fn should_bring_in_new_streams() {
         let store = TestEventStore::new();
-        let source_a = test_stream_id(); // SourceId::from_str("sourceA").unwrap();
-        let source_b = test_stream_id(); //SourceId::from_str("sourceB").unwrap();
+        let stream_a = test_stream_id();
+        let stream_b = test_stream_id();
 
-        // only live events from sources 1 & 2 or unknown sources
-        let mut from = (0..10).map(|i| (source(i), OffsetOrMin::MAX)).collect::<Vec<_>>();
+        // only live events from streams 1 & 2 or unknown streams
+        let mut from = (0..10).map(|i| (test_stream(i), OffsetOrMin::MAX)).collect::<Vec<_>>();
         from[1].1 = store.top_offset().into();
         from[2].1 = store.top_offset().into();
 
@@ -391,71 +387,74 @@ mod tests {
             events
                 .get_mentioned_streams(&store.local_stream_ids())
                 .collect::<BTreeSet<_>>(),
-            [source(1), source(2)].iter().cloned().collect::<BTreeSet<_>>()
+            [test_stream(1), test_stream(2)]
+                .iter()
+                .cloned()
+                .collect::<BTreeSet<_>>()
         );
-        assert_eq!(events.for_stream(source_a, false).from_exclusive, OffsetOrMin::MIN);
-        assert_eq!(events.for_stream(source_a, false).to_inclusive, OffsetOrMin::MAX);
+        assert_eq!(events.for_stream(stream_a, false).from_exclusive, OffsetOrMin::MIN);
+        assert_eq!(events.for_stream(stream_a, false).to_inclusive, OffsetOrMin::MAX);
         let mut iter = Drainer::new(stream(&store, events).await.unwrap());
 
         let top_plus = |x: u32| store.top_offset() + x;
         let lamport = |x: u64| LamportTimestamp::new((store.top_offset() - Offset::ZERO) as u64 + x);
 
-        // should wait for source1 and source2 as per the subscription set
-        let ev1 = mk_test_event(Some(source(1)), top_plus(1), lamport(1));
+        // should wait for stream1 and stream2 as per the subscription set
+        let ev1 = mk_test_event(test_stream(1), top_plus(1), lamport(1));
         store.send(Input::Events(vec![ev1.clone()]));
         assert_eq!(iter.next(), Some(vec![]));
 
-        // prepare a heartbeat for source2, to be activated when ev2 is sent
-        let hb2 = mk_test_heartbeat(Some(source(2)), top_plus(1), Some(lamport(3)));
+        // prepare a heartbeat for stream2, to be activated when ev2 is sent
+        let hb2 = mk_test_heartbeat(test_stream(2), top_plus(1), Some(lamport(3)));
         store.send(Input::Heartbeat(hb2));
         assert_eq!(iter.next(), Some(vec![]));
 
-        // let’s introduce sourceA without sending an event, yet
-        let hb_a = mk_test_heartbeat(Some(source_a), Offset::mk_test(0), Some(lamport(3)));
+        // let’s introduce streamA without sending an event, yet
+        let hb_a = mk_test_heartbeat(stream_a, Offset::mk_test(0), Some(lamport(3)));
         store.send(Input::Heartbeat(hb_a));
         assert_eq!(iter.next(), Some(vec![]));
 
-        // should wait for sourceA now
-        let mut ev2 = mk_test_event(Some(source(2)), top_plus(1), lamport(1));
+        // should wait for streamA now
+        let mut ev2 = mk_test_event(test_stream(2), top_plus(1), lamport(1));
         ev2.meta.tags = tags!("upper:B");
         store.send(Input::Events(vec![ev2.clone()]));
         assert_eq!(iter.next(), Some(vec![]));
 
-        // // send for sourceA, unblock source1, sourceA has heartbeat queued
-        let ev_a = mk_test_event(Some(source_a), Offset::mk_test(0), lamport(1));
+        // // send for streamA, unblock stream1, streamA has heartbeat queued
+        let ev_a = mk_test_event(stream_a, Offset::mk_test(0), lamport(1));
         store.send(Input::Events(vec![ev_a.clone()]));
         assert_eq!(iter.next(), Some(vec![ev1]));
 
-        // send for source1, unblock source2, which will immediately get its heartbeat
-        // and unblock sourceA, which will immediately get its heartbeat and unblock source1
-        let ev1 = mk_test_event(Some(source(1)), top_plus(2), lamport(2));
+        // send for stream1, unblock stream2, which will immediately get its heartbeat
+        // and unblock streamA, which will immediately get its heartbeat and unblock stream1
+        let ev1 = mk_test_event(test_stream(1), top_plus(2), lamport(2));
         store.send(Input::Events(vec![ev1.clone()]));
         assert_eq!(iter.next(), Some(vec![ev2, ev_a, ev1]));
 
-        // At this point, source1 has nothing, source2 has its heartbeat for lamport(3),
-        // sourceA also has its heartbeat for lamport(3). We bring in sourceB with an
+        // At this point, stream1 has nothing, stream2 has its heartbeat for lamport(3),
+        // streamA also has its heartbeat for lamport(3). We bring in streamB with an
         // old event that should be dropped and then with a new event that should be emitted.
 
-        // NOTE: the TestEventStore does not support adding new sources by simply publishing
+        // NOTE: the TestEventStore does not support adding new streams by simply publishing
         // an event, we need to emit a heartbeat and then start at top_plus(1).
-        let hb_b = mk_test_heartbeat(Some(source_b), Offset::mk_test(0), None);
+        let hb_b = mk_test_heartbeat(stream_b, Offset::mk_test(0), None);
         store.send(Input::Heartbeat(hb_b));
         // need to let the stream run so it can set up the subscriptions ...
         assert_eq!(iter.next(), Some(vec![]));
 
-        // now inject old event from new sourceB
-        let mut ev_b = mk_test_event(Some(source_b), Offset::mk_test(0), lamport(1));
+        // now inject old event from new streamB
+        let mut ev_b = mk_test_event(stream_b, Offset::mk_test(0), lamport(1));
         ev_b.meta.tags = tags!("upper:C");
         store.send(Input::Events(vec![ev_b]));
         assert_eq!(iter.next(), Some(vec![]));
 
-        // hearbeat for source1 to unblock sourceB (but old will be dropped)
-        let hb1 = mk_test_heartbeat(Some(source(1)), top_plus(2), Some(lamport(3)));
+        // hearbeat for stream1 to unblock streamB (but old will be dropped)
+        let hb1 = mk_test_heartbeat(test_stream(1), top_plus(2), Some(lamport(3)));
         store.send(Input::Heartbeat(hb1));
         assert_eq!(iter.next(), Some(vec![]));
 
-        // and finally a new event from sourceB that is now the oldest
-        let mut ev_b = mk_test_event(Some(source_b), Offset::mk_test(1), lamport(2));
+        // and finally a new event from streamB that is now the oldest
+        let mut ev_b = mk_test_event(stream_b, Offset::mk_test(1), lamport(2));
         ev_b.meta.tags = tags!("upper:C");
         store.send(Input::Events(vec![ev_b.clone()]));
         assert_eq!(iter.next(), Some(vec![ev_b]));
