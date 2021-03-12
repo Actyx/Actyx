@@ -105,6 +105,7 @@ pub mod payload;
 pub mod scalars;
 pub mod service;
 pub mod tagged;
+pub mod tags;
 pub mod timestamp;
 pub mod types;
 
@@ -115,6 +116,7 @@ pub use offset::{Offset, OffsetMap, OffsetOrMin};
 pub use payload::{Opaque, Payload};
 pub use scalars::{AppId, NodeId, StreamId, StreamNr};
 pub use service::EventService;
+pub use tags::{Tag, TagSet};
 pub use timestamp::{LamportTimestamp, TimeStamp};
 
 #[cfg(test)]

@@ -22,8 +22,6 @@
 
 #[cfg(feature = "client")]
 mod client;
-mod tags;
 
 #[cfg(feature = "client")]
 pub use client::EventService as EventServiceHttpClient;
-pub use tags::{Tag, TagSet};

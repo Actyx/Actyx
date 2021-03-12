@@ -4,7 +4,7 @@ use crate::{
     event::{Event, EventKey, Metadata},
     expression::Expression,
     scalars::{NodeId, StreamId, StreamNr},
-    tagged::TagSet,
+    tags::TagSet,
     types::Binary,
     LamportTimestamp, Offset, OffsetMap, Payload, TimeStamp,
 };

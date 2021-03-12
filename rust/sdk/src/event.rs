@@ -17,7 +17,7 @@ use std::{cmp::Ordering, convert::TryFrom};
 
 use serde::{Deserialize, Serialize};
 
-use crate::{scalars::StreamId, tagged::TagSet, LamportTimestamp, Offset, Payload, TimeStamp};
+use crate::{scalars::StreamId, tags::TagSet, LamportTimestamp, Offset, Payload, TimeStamp};
 
 /// Events are delivered in this envelope together with their metadata
 ///

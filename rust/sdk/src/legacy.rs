@@ -8,7 +8,7 @@ use anyhow::anyhow;
 use derive_more::Display;
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{scalar::nonempty_string, tagged::TagSet};
+use crate::{scalar::nonempty_string, tags::TagSet};
 
 #[derive(Debug, Display, PartialEq)]
 pub enum ParseError {
