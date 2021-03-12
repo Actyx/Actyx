@@ -12,7 +12,6 @@ ipfs-node = { path = "../ipfs-node" }
 trees = { path = "../trees" }
 swarm = { path = "../swarm" }
 util = { path = "../util" }
-wsrpc = { path = "../wsrpc" }
 
 anyhow = "1.0.38"
 async-trait = "0.1.42"
@@ -36,6 +35,7 @@ tokio = "1.2.0"
 tracing = "0.1.22"
 tree_magic = "0.2.3"
 warp = "0.3.0"
+wsrpc = "0.1.0"
 
 [dev-dependencies]
 bytes = "1.0.1"

@@ -21,7 +21,6 @@ members = [
   "swarm",
   "tracing_win_event_log",
   "util",
-  "wsrpc",
 ]
 
 [profile.release]
