@@ -92,7 +92,7 @@ dependencies = [
  "serde-value",
  "serde_cbor",
  "serde_json",
- "store-core",
+ "swarm",
  "tokio 1.2.0",
  "tokio-postgres",
  "tracing",
@@ -283,7 +283,7 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "socket2",
- "store-core",
+ "swarm",
  "thiserror",
  "tokio 1.2.0",
  "tracing",
@@ -494,8 +494,8 @@ dependencies = [
  "serde 1.0.123",
  "serde_json",
  "serde_yaml",
- "store-core",
  "structopt",
+ "swarm",
  "tempfile",
  "tokio 1.2.0",
  "tracing",
@@ -3876,8 +3876,8 @@ dependencies = [
  "serde_json",
  "serde_urlencoded",
  "signal-hook",
- "store-core",
  "structopt",
+ "swarm",
  "systray",
  "tempfile",
  "thiserror",
@@ -5725,46 +5725,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
-name = "store-core"
-version = "0.1.0"
-dependencies = [
- "actyxos_sdk",
- "anyhow",
- "assert-json-diff",
- "ax-config",
- "ax-futures-util",
- "banyan",
- "derive_more",
- "fnv",
- "futures 0.3.13",
- "hex 0.4.2",
- "ipfs-node",
- "ipfs-sqlite-block-store",
- "itertools 0.10.0",
- "libipld",
- "maplit",
- "num-traits 0.2.14",
- "parking_lot 0.11.1",
- "pretty_assertions",
- "quickcheck 1.0.3",
- "rayon",
- "rstest",
- "rusqlite",
- "serde 1.0.123",
- "serde_bytes",
- "serde_cbor",
- "serde_json",
- "tempdir",
- "tokio 1.2.0",
- "tracing",
- "tracing-log",
- "tracing-subscriber",
- "trees",
- "util",
- "zstd",
-]
-
-[[package]]
 name = "stream-cipher"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5831,6 +5791,46 @@ name = "subtle"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e81da0851ada1f3e9d4312c704aa4f8806f0f9d69faaf8df2f3464b4a9437c2"
+
+[[package]]
+name = "swarm"
+version = "0.1.0"
+dependencies = [
+ "actyxos_sdk",
+ "anyhow",
+ "assert-json-diff",
+ "ax-config",
+ "ax-futures-util",
+ "banyan",
+ "derive_more",
+ "fnv",
+ "futures 0.3.13",
+ "hex 0.4.2",
+ "ipfs-node",
+ "ipfs-sqlite-block-store",
+ "itertools 0.10.0",
+ "libipld",
+ "maplit",
+ "num-traits 0.2.14",
+ "parking_lot 0.11.1",
+ "pretty_assertions",
+ "quickcheck 1.0.3",
+ "rayon",
+ "rstest",
+ "rusqlite",
+ "serde 1.0.123",
+ "serde_bytes",
+ "serde_cbor",
+ "serde_json",
+ "tempdir",
+ "tokio 1.2.0",
+ "tracing",
+ "tracing-log",
+ "tracing-subscriber",
+ "trees",
+ "util",
+ "zstd",
+]
 
 [[package]]
 name = "syn"

@@ -6,7 +6,7 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 use futures::StreamExt;
 use serde_value::Value as SValue;
 use std::default::Default;
-use store_core::BanyanStore;
+use swarm::BanyanStore;
 
 pub struct Cmd;
 

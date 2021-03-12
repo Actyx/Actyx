@@ -1,5 +1,5 @@
 [package]
-name = "store-core"
+name = "swarm"
 version = "0.1.0"
 authors = ["Actyx AG"]
 edition = "2018"

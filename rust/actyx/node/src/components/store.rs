@@ -8,7 +8,7 @@ use crypto::KeyStoreRef;
 use ipfs_node::NodeIdentity;
 use parking_lot::Mutex;
 use std::{path::PathBuf, sync::Arc};
-use store_core::BanyanStore;
+use swarm::BanyanStore;
 use tokio::sync::oneshot;
 use tracing::*;
 

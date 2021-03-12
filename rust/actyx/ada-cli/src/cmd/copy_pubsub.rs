@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use ax_config::StoreConfig;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use futures::StreamExt;
-use store_core::BanyanStore;
+use swarm::BanyanStore;
 
 pub struct Cmd;
 

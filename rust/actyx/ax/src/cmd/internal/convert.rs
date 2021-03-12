@@ -1,7 +1,7 @@
 use crate::cmd::AxCliCommand;
 use futures::{prelude::*, stream, Stream};
-use store_core::convert::{convert_from_v1, ConversionOptions};
 use structopt::StructOpt;
+use swarm::convert::{convert_from_v1, ConversionOptions};
 use util::formats::{ActyxOSResult, ActyxOSResultExt};
 
 #[derive(StructOpt, Debug)]

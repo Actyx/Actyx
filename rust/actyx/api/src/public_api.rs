@@ -5,7 +5,7 @@ use warp::{http::Method, Filter};
 use crate::hyper_serve::serve_it;
 use crate::{event_service_api, ipfs_file_gateway::create_gateway_route};
 use crypto::KeyStoreRef;
-use store_core::BanyanStore;
+use swarm::BanyanStore;
 
 pub async fn run(store: BanyanStore, bind_to: impl Iterator<Item = SocketAddr> + Send, key_store: KeyStoreRef) {
     let event_service = event_service_api::service::EventService::new(store.clone());

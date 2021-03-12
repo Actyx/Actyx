@@ -18,8 +18,8 @@ use futures::{
     TryFutureExt,
 };
 use num_traits::Bounded;
-use store_core::access::{ConsumerAccessError, EventSelection, EventStoreConsumerAccess};
-use store_core::{BanyanStore, EventStore, Present};
+use swarm::access::{ConsumerAccessError, EventSelection, EventStoreConsumerAccess};
+use swarm::{BanyanStore, EventStore, Present};
 use thiserror::Error;
 use trees::OffsetMapOrMax;
 

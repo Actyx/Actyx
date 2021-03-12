@@ -14,7 +14,7 @@ ax-os-settings = { path = "../ax-os-settings" }
 crypto = { path = "../crypto/" }
 ipfs-node = { path = "../ipfs-node" }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
-store-core = { path = "../store-core" }
+swarm = { path = "../swarm" }
 util = { path = "../util" }
 
 anyhow = "1.0.38"
