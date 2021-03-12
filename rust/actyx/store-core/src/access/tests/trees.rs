@@ -6,10 +6,10 @@ use banyan::{
     tree::Tree,
 };
 use futures::prelude::*;
-use lake_formats::axtrees::{AxKey, AxTree, AxTrees, Sha256Digest, TagsQuery};
 use parking_lot::Mutex;
 use serde_json::json;
 use std::sync::Arc;
+use trees::axtrees::{AxKey, AxTree, AxTrees, Sha256Digest, TagsQuery};
 
 const AX_EPOCH: u64 = 1451606400000000;
 

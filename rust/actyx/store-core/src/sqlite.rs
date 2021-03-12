@@ -3,10 +3,10 @@ use anyhow::{anyhow, Result};
 use banyan::store::{BlockWriter, ReadOnlyStore};
 use core::fmt;
 use ipfs_sqlite_block_store::{BlockStore, OwnedBlock, TempPin};
-use lake_formats::axtrees::Sha256Digest;
 use libipld::Cid;
 use parking_lot::Mutex;
 use std::{collections::BTreeSet, ops::DerefMut, sync::Arc};
+use trees::axtrees::Sha256Digest;
 
 #[derive(Clone)]
 pub struct SqliteStore(Arc<Mutex<BlockStore>>);

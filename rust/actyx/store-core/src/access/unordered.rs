@@ -64,9 +64,9 @@ mod tests {
     use crate::access::tests::*;
     use actyxos_sdk::{LamportTimestamp, Offset, OffsetOrMin};
     use ax_futures_util::stream::Drainer;
-    use lake_formats::{OffsetMapOrMax, TagSubscriptions};
     use num_traits::Bounded;
     use pretty_assertions::assert_eq;
+    use trees::{OffsetMapOrMax, TagSubscriptions};
 
     #[tokio::test]
     async fn should_deliver_requested_events_with_wildcard_subscription() {

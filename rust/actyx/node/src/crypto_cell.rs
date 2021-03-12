@@ -4,7 +4,7 @@ use actyxos_sdk::{
     TimeStamp,
 };
 use crypto::KeyStoreRef;
-use lake_formats::BearerToken;
+use trees::BearerToken;
 use util::formats::{ActyxOSResult, ActyxOSResultExt};
 
 pub(crate) struct CryptoCell {

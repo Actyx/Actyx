@@ -81,8 +81,6 @@ dependencies = [
  "hyper 0.14.4",
  "ipfs-node",
  "itertools 0.10.0",
- "lake",
- "lake-formats",
  "lazy_static 1.4.0",
  "libipld",
  "maplit",
@@ -100,6 +98,7 @@ dependencies = [
  "tracing",
  "tracing-futures",
  "tracing-subscriber",
+ "trees",
  "util",
  "warp",
 ]
@@ -273,8 +272,6 @@ dependencies = [
  "hyper 0.14.4",
  "ipfs-node",
  "itertools 0.10.0",
- "lake",
- "lake-formats",
  "libipld",
  "maplit",
  "mime_guess",
@@ -292,6 +289,7 @@ dependencies = [
  "tracing",
  "tracing-futures",
  "tree_magic",
+ "trees",
  "util",
  "warp",
  "wsrpc",
@@ -2759,73 +2757,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lake"
-version = "0.1.0"
-dependencies = [
- "actyxos_sdk",
- "anyhow",
- "ax-futures-util",
- "banyan",
- "base64 0.13.0",
- "derive_more",
- "futures 0.3.13",
- "ipfs-node",
- "lake-formats",
- "libipld",
- "maplit",
- "num-traits 0.2.14",
- "parking_lot 0.11.1",
- "pretty_assertions",
- "quickcheck 1.0.3",
- "serde 1.0.123",
- "serde_json",
- "thiserror",
- "tokio 1.2.0",
- "tracing",
- "tracing-subscriber",
- "util",
-]
-
-[[package]]
-name = "lake-formats"
-version = "0.1.0"
-dependencies = [
- "actyxos_sdk",
- "anyhow",
- "banyan",
- "base64 0.13.0",
- "chrono",
- "cid",
- "crossbeam",
- "derive_more",
- "futures 0.3.13",
- "hex 0.4.2",
- "itertools 0.10.0",
- "libipld",
- "maplit",
- "multibase 0.9.1",
- "multihash",
- "nom 6.1.2",
- "num-traits 0.2.14",
- "parking_lot 0.11.1",
- "quickcheck 1.0.3",
- "rand 0.8.3",
- "range-collections",
- "reduce",
- "rstest",
- "serde 1.0.123",
- "serde-transcode",
- "serde_cbor",
- "serde_json",
- "serde_with",
- "smallvec 1.6.1",
- "tokio 1.2.0",
- "tracing",
- "vec-collections",
- "zstd",
-]
-
-[[package]]
 name = "language-tags"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3464,7 +3395,6 @@ dependencies = [
  "derive_more",
  "futures 0.3.13",
  "ipfs-node",
- "lake-formats",
  "log-panics",
  "maplit",
  "percent-encoding 2.1.0",
@@ -3477,6 +3407,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tracing_win_event_log",
+ "trees",
  "util",
 ]
 
@@ -3928,7 +3859,6 @@ dependencies = [
  "futures 0.3.13",
  "ipfs-node",
  "jemallocator",
- "lake-formats",
  "libp2p",
  "libp2p-streaming-response",
  "logsvcd",
@@ -3954,6 +3884,7 @@ dependencies = [
  "tokio 1.2.0",
  "tracing",
  "tracing-subscriber",
+ "trees",
  "util",
  "uuid",
  "void",
@@ -5803,18 +5734,18 @@ dependencies = [
  "ax-config",
  "ax-futures-util",
  "banyan",
+ "derive_more",
  "fnv",
  "futures 0.3.13",
  "hex 0.4.2",
  "ipfs-node",
  "ipfs-sqlite-block-store",
  "itertools 0.10.0",
- "lake",
- "lake-formats",
  "libipld",
  "maplit",
  "num-traits 0.2.14",
  "parking_lot 0.11.1",
+ "pretty_assertions",
  "quickcheck 1.0.3",
  "rayon",
  "rstest",
@@ -5828,6 +5759,7 @@ dependencies = [
  "tracing",
  "tracing-log",
  "tracing-subscriber",
+ "trees",
  "util",
  "zstd",
 ]
@@ -6599,6 +6531,46 @@ name = "treeline"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7f741b240f1a48843f9b8e0444fb55fb2a4ff67293b50a9179dfd5ea67f8d41"
+
+[[package]]
+name = "trees"
+version = "0.1.0"
+dependencies = [
+ "actyxos_sdk",
+ "anyhow",
+ "ax-futures-util",
+ "banyan",
+ "base64 0.13.0",
+ "chrono",
+ "cid",
+ "crossbeam",
+ "derive_more",
+ "futures 0.3.13",
+ "hex 0.4.2",
+ "itertools 0.10.0",
+ "libipld",
+ "maplit",
+ "multibase 0.9.1",
+ "multihash",
+ "nom 6.1.2",
+ "num-traits 0.2.14",
+ "parking_lot 0.11.1",
+ "quickcheck 1.0.3",
+ "rand 0.8.3",
+ "range-collections",
+ "reduce",
+ "rstest",
+ "serde 1.0.123",
+ "serde-transcode",
+ "serde_cbor",
+ "serde_json",
+ "serde_with",
+ "smallvec 1.6.1",
+ "tokio 1.2.0",
+ "tracing",
+ "vec-collections",
+ "zstd",
+]
 
 [[package]]
 name = "try-lock"

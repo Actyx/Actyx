@@ -8,8 +8,7 @@ edition = "2018"
 actyxos_sdk = { version = "0.5", features = ["postgresql"], path = "../../sdk" }
 ax-config = { path = "../ax-config" }
 ipfs-node = { path = "../ipfs-node" }
-lake = { path = "../lake" }
-lake-formats = { path = "../lake-formats" }
+trees = { path = "../trees" }
 store-core = { path = "../store-core" }
 util = { path = "../util" }
 

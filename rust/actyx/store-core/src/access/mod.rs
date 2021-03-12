@@ -7,7 +7,7 @@ use actyxos_sdk::{
 use derive_more::Display;
 use futures::future::BoxFuture;
 use futures::stream::BoxStream;
-use lake_formats::StreamHeartBeat;
+use trees::StreamHeartBeat;
 
 mod backward;
 pub mod common;

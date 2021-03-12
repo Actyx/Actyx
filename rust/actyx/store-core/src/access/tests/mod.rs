@@ -1,6 +1,7 @@
 use crate::access::{
     EventOrHeartbeat, EventOrHeartbeatStreamOrError, EventStoreConsumerAccess, EventStreamOrError, StreamEventSelection,
 };
+use ::trees::{StreamHeartBeat, TagSubscriptions};
 use actyxos_sdk::{
     event::{LamportTimestamp, Payload, TimeStamp},
     tagged::{Event, EventKey, Metadata, NodeId, StreamId, Tag, TagSet},
@@ -12,7 +13,6 @@ use futures::{
     future::{ok, ready, FutureExt},
     stream::{self, BoxStream, StreamExt},
 };
-use lake_formats::{StreamHeartBeat, TagSubscriptions};
 use pretty_assertions::assert_eq;
 use std::{
     cmp::Ordering,

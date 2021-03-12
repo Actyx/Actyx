@@ -9,8 +9,7 @@ actyxos_sdk = { version = "0.5", features = ["sqlite", "arb"], path = "../../sdk
 ax-config = { path = "../ax-config" }
 ax-futures-util = { path = "../ax-futures-util" }
 ipfs-node = { path = "../ipfs-node" }
-lake = { path = "../lake" }
-lake-formats = { path = "../lake-formats" }
+trees = { path = "../trees" }
 util = { path = "../util" }
 
 anyhow = "1.0.38"
@@ -31,6 +30,7 @@ serde_cbor = "0.11.1"
 tokio = { version = "1.0.2", features = ["full"] }
 tracing = { version = "0.1.22", features = ["max_level_trace", "release_max_level_debug"] }
 zstd = "0.6.0"
+derive_more = "0.99.11"
 
 [dev-dependencies]
 assert-json-diff = "2.0.0"
@@ -41,3 +41,4 @@ serde_json = "1.0.62"
 tempdir = "0.3.7"
 tracing-log = "0.1.2"
 tracing-subscriber = "0.2.15"
+pretty_assertions = "0.6.1"

@@ -9,8 +9,7 @@ actyxos_sdk = { version = "0.5", path = "../../sdk" }
 ax-futures-util = { path = "../ax-futures-util" }
 crypto = { path = "../crypto" }
 ipfs-node = { path = "../ipfs-node" }
-lake = { path = "../lake" }
-lake-formats = { path = "../lake-formats" }
+trees = { path = "../trees" }
 store-core = { path = "../store-core" }
 util = { path = "../util" }
 wsrpc = { path = "../wsrpc" }

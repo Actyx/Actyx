@@ -3,7 +3,6 @@ use actyxos_sdk::{
     event::{SourceId, TimeStamp},
     Offset,
 };
-use lake_formats::{ConnectivityRequest, ConnectivityResponse, ConnectivityStatus};
 use parking_lot::Mutex;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::{
@@ -11,6 +10,7 @@ use std::sync::{
     Arc,
 };
 use tracing::debug;
+use trees::{ConnectivityRequest, ConnectivityResponse, ConnectivityStatus};
 
 #[derive(Clone)]
 pub struct ConnectivityState {
@@ -167,7 +167,7 @@ impl Connectivity for BanyanStore {
         special: Vec<SourceId>,
         now: TimeStamp,
         hb_hist_delay: u64,
-    ) -> lake_formats::ConnectivityStatus {
+    ) -> trees::ConnectivityStatus {
         crate::connectivity::connectivity_status(
             &*self.get_gossip().lock(),
             &*self.get_our_highest_offset().lock(),

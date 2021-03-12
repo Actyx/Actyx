@@ -5,7 +5,6 @@ use crate::{
 use actyxos_sdk::{event::SourceId, tagged::StreamId, Payload};
 use banyan::forest::{BranchCache, Forest, Transaction};
 use ipfs_sqlite_block_store::{BlockStore, Synchronous};
-use lake_formats::axtrees::{AxKey, AxTree, AxTrees};
 use libipld::{
     cbor::DagCborCodec,
     codec::{Codec, Decode},
@@ -15,6 +14,7 @@ use parking_lot::Mutex;
 use rayon::prelude::*;
 use rusqlite::{OpenFlags, NO_PARAMS};
 use std::{collections::BTreeMap, fs, str::FromStr, sync::Arc};
+use trees::axtrees::{AxKey, AxTree, AxTrees};
 
 mod v1;
 use v1::{Block, ConsNode, IpfsEnvelope};

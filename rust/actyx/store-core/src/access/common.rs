@@ -6,9 +6,9 @@ use futures::{
     future::ready,
     stream::{self, Stream, StreamExt},
 };
-use lake_formats::{OffsetMapOrMax, StreamHeartBeat, TagSubscriptions};
 use num_traits::Bounded;
 use std::collections::BTreeSet;
+use trees::{OffsetMapOrMax, StreamHeartBeat, TagSubscriptions};
 
 /// A precise selection of events, possibly unbounded in size.
 ///
@@ -250,9 +250,9 @@ mod tests {
     use super::*;
     use crate::access::tests::*;
     use actyxos_sdk::{tags, Expression};
-    use lake_formats::TagSubscription;
     use maplit::btreeset;
     use pretty_assertions::assert_eq;
+    use trees::TagSubscription;
 
     fn sources(range: &[usize]) -> BTreeSet<StreamId> {
         range.iter().map(|i| source(*i)).collect()

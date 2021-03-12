@@ -11,10 +11,10 @@ use futures::{
     stream::{Stream, StreamExt},
 };
 use ipfs_sqlite_block_store::TempPin;
-use lake_formats::{RootMap, RootMapEntry};
 use std::collections::BTreeMap;
 use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
+use trees::{RootMap, RootMapEntry};
 
 const PREFIX: u8 = b'S';
 
