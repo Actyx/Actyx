@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Actyx AG
+ * Copyright 2021 Actyx AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use chrono::{DateTime, TimeZone, Utc};
-use derive_more::{From, Into};
-use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Debug, Display, Formatter},
     ops::{Add, Sub},
     time::{SystemTime, UNIX_EPOCH},
 };
+
+use chrono::{DateTime, TimeZone, Utc};
+use derive_more::{From, Into};
+use serde::{Deserialize, Serialize};
 
 /// Microseconds since the UNIX epoch, without leap seconds and in UTC
 ///

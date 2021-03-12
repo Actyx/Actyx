@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Actyx AG
+ * Copyright 2021 Actyx AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,10 @@ use std::{
 };
 
 use derive_more::{Display, From, Into};
-use libipld::cbor::DagCborCodec;
-use libipld::codec::{Decode, Encode};
+use libipld::{
+    cbor::DagCborCodec,
+    codec::{Decode, Encode},
+};
 use num_traits::Bounded;
 use serde::{
     de::{Error, Visitor},
