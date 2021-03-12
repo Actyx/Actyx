@@ -1,12 +1,12 @@
 use super::{Component, ComponentRequest};
 use crate::os_settings::Settings;
-use actyxos_lib::{LogRequest, LogSeverity};
 use actyxos_sdk::tagged::NodeId;
 use anyhow::Result;
 use crossbeam::channel::{bounded, Receiver, Sender};
 use logsvcd::{DynamicConfig, GetLogRequest, LogConfig, LogServiceWrapper, LoggingSink};
 use parking_lot::Mutex;
 use std::{path::Path, sync::Arc};
+use util::formats::{LogRequest, LogSeverity};
 
 pub type LoggingTx = Sender<ComponentRequest<LoggingRequest>>;
 pub struct Logging {

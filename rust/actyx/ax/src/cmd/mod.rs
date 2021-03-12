@@ -1,9 +1,9 @@
-use actyxos_lib::{ActyxOSCode, ActyxOSError, ActyxOSResult};
 use formats::{ActyxCliResult, Result};
 use futures::{future, Future, Stream, StreamExt};
 use serde::Serialize;
 use std::{convert::TryInto, fmt, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
+use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult};
 
 use crate::{node_connection::NodeConnection, private_key::AxPrivateKey};
 
@@ -18,7 +18,7 @@ pub mod users;
 #[derive(StructOpt, Debug)]
 pub struct Verbosity {
     /// Verbosity level. Add more v for higher verbosity (-v, -vv, -vvv, etc.).
-    #[structopt(short, parse(from_occurrences = actyxos_lib::set_log_level), global = true)]
+    #[structopt(short, parse(from_occurrences = util::set_log_level), global = true)]
     verbosity: u64,
 }
 

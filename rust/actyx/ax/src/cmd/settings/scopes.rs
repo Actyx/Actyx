@@ -1,12 +1,9 @@
 use std::convert::TryInto;
 
 use crate::cmd::{formats::Result, AxCliCommand, ConsoleOpt};
-use actyxos_lib::{
-    formats::{AdminRequest, AdminResponse},
-    ActyxOSError, ActyxOSResult,
-};
 use futures::{stream, Stream, TryFutureExt};
 use structopt::StructOpt;
+use util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse};
 
 pub struct SettingsScopes();
 impl AxCliCommand for SettingsScopes {

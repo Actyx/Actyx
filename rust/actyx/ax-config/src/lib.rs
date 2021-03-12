@@ -1,10 +1,10 @@
-use actyxos_lib::LogSeverity;
 use anyhow::Result;
 use parity_multiaddr::Multiaddr;
 use serde::Deserialize;
 use serde_with::{serde_as, DurationMilliSeconds};
 use std::path::PathBuf;
 use std::time::Duration;
+use util::formats::LogSeverity;
 use util::SocketAddrHelper;
 
 #[serde_as]

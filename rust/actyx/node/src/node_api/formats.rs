@@ -1,6 +1,6 @@
-use actyxos_lib::{ActyxOSResult, NodesLsResponse};
 use actyxos_sdk::tagged::NodeId;
 use tokio::sync::oneshot::Sender;
+use util::formats::{ActyxOSResult, NodesLsResponse};
 #[derive(Debug)]
 pub enum NodesRequest {
     Ls(Sender<ActyxOSResult<NodesLsResponse>>),

@@ -1,8 +1,8 @@
 use crate::{node::NodeError, node_api::formats::NodesRequest, settings::SettingsRequest};
-use actyxos_lib::formats::NodeName;
 use actyxos_sdk::tagged::NodeId;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
+use util::formats::NodeName;
 
 pub mod os_settings;
 pub use os_settings::Settings;

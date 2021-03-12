@@ -1,7 +1,5 @@
-use crate::AppId;
 use axossettings::{repository, validation};
 use crossbeam::channel::{RecvError, SendError};
-use ffi_support::{ErrorCode, ExternError};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
@@ -14,36 +12,6 @@ macro_rules! ax_bail {
     ($code:expr, $fmt:expr, $($arg:tt)*) => {
         return ax_err($code, format!($fmt, $($arg)*));
     };
-}
-pub fn msg_deploy_enabled(app: &AppId) -> String {
-    format!(
-        "Unable to deploy app '{}' since it is currently enabled. Please stop the app first.",
-        app
-    )
-}
-pub fn msg_undeploy_enabled(app: &AppId) -> String {
-    format!(
-        "Unable to undeploy app '{}' since it is currently enabled. Please stop the app first.",
-        app
-    )
-}
-pub fn msg_change_settings_enabled(app: &AppId) -> String {
-    format!(
-        "Unable to change settings for app '{}' since it is currently enabled. Please stop the app first.",
-        app
-    )
-}
-pub fn msg_change_settings_stopping(app: &AppId) -> String {
-    format!(
-        "Unable to change settings for app '{}' since it is currently stopping. Please wait for the app to stop.",
-        app
-    )
-}
-pub fn msg_already_stopped(app: &AppId) -> String {
-    format!("Unable to stop app '{}' since it is already stopped.", app)
-}
-pub fn msg_already_started(app: &AppId) -> String {
-    format!("Unable to start app {}, it is already enabled", app)
 }
 pub trait ActyxOSResultExt<T> {
     fn ax_err(self, code: ActyxOSCode) -> ActyxOSResult<T>;
@@ -124,12 +92,7 @@ impl ActyxOSError {
         self.code
     }
 }
-impl Into<ExternError> for ActyxOSError {
-    fn into(self) -> ExternError {
-        // TODO
-        ExternError::new_error(ErrorCode::new(42), format!("{}", self))
-    }
-}
+
 impl From<RecvError> for ActyxOSError {
     fn from(err: RecvError) -> ActyxOSError {
         ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("{}", err))

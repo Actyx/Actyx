@@ -13,7 +13,6 @@ prost-build = "0.7.0"
 
 [dependencies]
 actyxos_sdk = { version = "0.5", path = "../../sdk" }
-actyxos-lib = { path = "../actyxos-lib" }
 api = { path = "../api" }
 ax-config = { path = "../ax-config" }
 ax-futures-util = { path = "../ax-futures-util" }

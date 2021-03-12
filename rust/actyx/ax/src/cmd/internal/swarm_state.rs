@@ -1,9 +1,9 @@
 use std::convert::TryInto;
 
 use crate::cmd::{AxCliCommand, ConsoleOpt};
-use actyxos_lib::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, InternalResponse};
 use futures::{stream, FutureExt, Stream};
 use structopt::StructOpt;
+use util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, InternalResponse};
 
 #[derive(StructOpt, Debug)]
 pub struct SwarmStateOpts {
@@ -23,7 +23,7 @@ impl AxCliCommand for SwarmState {
                 .authority
                 .request(
                     &opts.console_opt.identity.try_into()?,
-                    AdminRequest::Internal(actyxos_lib::InternalRequest::GetSwarmState),
+                    AdminRequest::Internal(util::formats::InternalRequest::GetSwarmState),
                 )
                 .await;
             match response {

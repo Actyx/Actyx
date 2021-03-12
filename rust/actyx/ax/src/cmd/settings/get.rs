@@ -1,12 +1,9 @@
 use crate::cmd::{formats::Result, AxCliCommand, ConsoleOpt};
-use actyxos_lib::{
-    formats::{AdminRequest, AdminResponse},
-    ActyxOSError, ActyxOSResult,
-};
 use futures::{stream, Stream, TryFutureExt};
 use serde::Serialize;
 use std::{convert::TryInto, str::FromStr};
 use structopt::StructOpt;
+use util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse};
 
 pub struct SettingsGet();
 impl AxCliCommand for SettingsGet {

@@ -6,7 +6,6 @@ version = "0.2.0"
 
 [dependencies]
 actyxos_sdk = { version = "0.5", path = "../../sdk" }
-actyxos-lib = { path = "../actyxos-lib" }
 ipfs-node = { path = "../ipfs-node" }
 trees = { path = "../trees" }
 util = { path = "../util" }

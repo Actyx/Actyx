@@ -1,5 +1,4 @@
 use crate::error::{LogsvcdError, Result};
-use actyxos_lib::formats::logs::*;
 use actyxos_sdk::tagged::NodeId;
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection, OpenFlags, NO_PARAMS};
@@ -8,6 +7,7 @@ use std::default::Default;
 use std::ops::Sub;
 use std::time::{Duration, UNIX_EPOCH};
 use tracing::*;
+use util::formats::logs::*;
 use util::pinned_resource_sync::PinnedResourceSync;
 
 pub type StorageWrapper = PinnedResourceSync<Storage>;

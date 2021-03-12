@@ -1,11 +1,11 @@
 use crate::{formats::ExternalEvent, node::NodeError, node_storage::NodeStorage};
-use actyxos_lib::{ActyxOSResult, ActyxOSResultExt};
 use anyhow::anyhow;
 use crossbeam::channel::Sender;
 use crypto::{KeyStore, KeyStoreRef};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use tracing::*;
+use util::formats::{ActyxOSResult, ActyxOSResultExt};
 
 pub(crate) fn make_keystore(storage: NodeStorage) -> ActyxOSResult<KeyStoreRef> {
     let ks = storage

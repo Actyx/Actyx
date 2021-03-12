@@ -1,4 +1,4 @@
-use crate::{ActyxOSResult, LogEvent};
+use super::{ActyxOSResult, LogEvent};
 use actyxos_sdk::tagged::NodeId;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

@@ -1,8 +1,10 @@
-use actyxos_lib::{ActyxOSResult, LogRequest, LogSeverity};
 use crossbeam::channel::Sender;
 use tracing::Subscriber;
 use tracing_subscriber::{layer::Layer, reload, reload::Handle, EnvFilter};
-use trees::wrapping_subscriber::WrappingSubscriber2;
+use util::{
+    formats::{ActyxOSResult, LogRequest, LogSeverity},
+    wrapping_subscriber::WrappingSubscriber2,
+};
 
 // Wrapper trait to contain the types
 trait ReloadHandle {

@@ -1,8 +1,8 @@
-use actyxos_lib::LogRequest;
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use crossbeam::channel;
 use logsvcd::{GetLogRequest, Query, QueryMode, Storage, SyncLogService};
 use std::time::Duration;
+use util::formats::LogRequest;
 use util::pinned_resource_sync::PinnedResourceSync;
 
 fn mem_store(c: &mut Criterion) {
@@ -18,7 +18,7 @@ fn mem_store(c: &mut Criterion) {
             message: i.to_string(),
             producer_name: "..".to_string(),
             producer_version: "..".to_string(),
-            severity: actyxos_lib::LogSeverity::Error,
+            severity: util::formats::LogSeverity::Error,
         });
     }
     let (tx, rx) = channel::bounded(256);

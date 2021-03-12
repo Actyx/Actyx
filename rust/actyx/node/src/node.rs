@@ -8,7 +8,6 @@ use crate::{
     settings::{SettingsRequest, SYSTEM_SCOPE},
     spawn_with_name,
 };
-use actyxos_lib::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 use axossettings as settings;
 use chrono::SecondsFormat;
 use crossbeam::{
@@ -18,6 +17,7 @@ use crossbeam::{
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::*;
+use util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 
 pub type ApiResult<T> = ActyxOSResult<T>;
 
@@ -202,7 +202,7 @@ impl Node {
     fn handle_nodes_request(&self, request: NodesRequest) {
         match request {
             NodesRequest::Ls(sender) => {
-                let resp = actyxos_lib::formats::NodesLsResponse {
+                let resp = util::formats::NodesLsResponse {
                     node_id: self.state.details.node_id,
                     display_name: self.state.details.node_name.to_string(),
                     version: env!("CARGO_PKG_VERSION").into(),
@@ -387,13 +387,13 @@ impl NodeWrapper {
 mod test {
     use super::*;
     use crate::components::Component;
-    use actyxos_lib::NodeName;
     use anyhow::Result;
     use axossettings as settings;
     use futures::executor::block_on;
     use serde_json::json;
     use tempfile::TempDir;
     use tokio::sync::oneshot::channel;
+    use util::formats::NodeName;
 
     #[tokio::test]
     async fn should_handle_settings_requests() -> ActyxOSResult<()> {

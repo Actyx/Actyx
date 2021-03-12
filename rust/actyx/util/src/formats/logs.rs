@@ -1,4 +1,6 @@
-use crate::{ax_err, ActyxOSCode, ActyxOSError, ActyxOSResult};
+use super::{ax_err, ActyxOSCode, ActyxOSError, ActyxOSResult};
+use crate::wrapping_subscriber::ConvertEvent;
+
 use actyxos_sdk::tagged::NodeId;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -11,7 +13,6 @@ use tracing::{
     field::{Field, Visit},
     Event,
 };
-use trees::wrapping_subscriber::ConvertEvent;
 /// Format of the incoming log messages from clients
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

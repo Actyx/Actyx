@@ -1,10 +1,6 @@
 use crate::cmd::formats::Result;
 use crate::cmd::AxCliCommand;
 use crate::cmd::ConsoleOpt;
-use actyxos_lib::{
-    formats::{AdminRequest, AdminResponse},
-    ActyxOSError, ActyxOSResult, ActyxOSResultExt,
-};
 use anyhow::anyhow;
 use futures::{stream, Stream, TryFutureExt};
 use serde::{Deserialize, Serialize};
@@ -13,6 +9,7 @@ use std::str::FromStr;
 use std::{convert::TryInto, fs::File};
 use structopt::StructOpt;
 use tracing::*;
+use util::formats::{ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -95,7 +92,7 @@ pub async fn run(mut opts: SetOpt) -> Result<Output> {
     info!("Parsed {:?}", settings);
     let scope = opts.actual_opts.scope.clone();
     let json = serde_json::to_value(settings)
-        .ax_err_ctx(actyxos_lib::ActyxOSCode::ERR_INTERNAL_ERROR, "Unexpected response")?;
+        .ax_err_ctx(util::formats::ActyxOSCode::ERR_INTERNAL_ERROR, "Unexpected response")?;
     match opts
         .console_opt
         .authority

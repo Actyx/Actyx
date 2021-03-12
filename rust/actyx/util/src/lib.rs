@@ -2,15 +2,19 @@
 
 pub mod base64_blob;
 pub mod build;
+pub mod formats;
 pub mod immutable_sync;
 pub mod keepalivestream3;
 pub mod pinned_resource;
 pub mod pinned_resource_sync;
 pub mod sampled_broadcast;
 pub mod serde_util;
+pub mod tracing_set_log_level;
 pub mod value_or_limit;
+pub mod wrapping_subscriber;
 
 pub use self::value_or_limit::*;
+pub use tracing_set_log_level::*;
 
 use anyhow::bail;
 use parity_multiaddr::{Multiaddr, Protocol};

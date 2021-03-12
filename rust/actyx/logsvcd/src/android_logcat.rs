@@ -2,7 +2,6 @@ use crate::{
     error::{LogsvcdError, Result},
     storage::StorageWrapper,
 };
-use actyxos_lib::{LogEvent, LogRequest, LogSeverity};
 use android_log_sys::LogPriority;
 use crossbeam::channel::Receiver;
 use rogcat::parser::Parser;
@@ -11,6 +10,7 @@ use std::{
     io::{BufRead, BufReader},
     process::{Command, Stdio},
 };
+use util::formats::{LogEvent, LogRequest, LogSeverity};
 static ANDROID_PACKAGE_PREFIX: &str = "com.actyx.os.android";
 static ANDROID_PACKAGE_PREFIX_SHORT: &str = "c.a.o.a";
 static ANDROID_NODE_LOG_PREFIX: &str = "com.actyx.os.node";

@@ -1,4 +1,4 @@
-use actyxos_lib::{ActyxOSError, ActyxOSResult};
+use util::formats::{ActyxOSError, ActyxOSResult};
 pub type Result<T> = ActyxOSResult<T>;
 use serde::{Deserialize, Serialize};
 

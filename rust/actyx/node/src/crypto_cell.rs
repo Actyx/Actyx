@@ -1,11 +1,11 @@
 use crate::node_storage::NodeStorage;
-use actyxos_lib::{ActyxOSResult, ActyxOSResultExt, AppId};
 use actyxos_sdk::{
-    tagged::{self, NodeId},
+    tagged::{AppId, NodeId},
     TimeStamp,
 };
 use crypto::KeyStoreRef;
 use trees::BearerToken;
+use util::formats::{ActyxOSResult, ActyxOSResultExt};
 
 pub(crate) struct CryptoCell {
     keystore: KeyStoreRef,
@@ -23,7 +23,7 @@ impl CryptoCell {
 
         let token = BearerToken {
             created: TimeStamp::now(),
-            app_id: tagged::AppId::new(app_id.into()).ax_internal()?,
+            app_id,
             cycles,
             version: env!("CARGO_PKG_VERSION").into(),
             validity: u32::MAX,
@@ -64,7 +64,7 @@ mod tests {
         let node_storage = NodeStorage::in_memory();
         let keystore = Arc::new(RwLock::new(KeyStore::default()));
         let cell = CryptoCell::new(keystore.clone(), node_storage.clone());
-        let token = cell.create_token("some.app".into()).unwrap();
+        let token = cell.create_token(app_id!("some.app")).unwrap();
         let decoded = base64::decode(token).unwrap();
         let signed_message = SignedMessage::try_from(&decoded[..]).unwrap();
         keystore
