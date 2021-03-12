@@ -22,10 +22,8 @@
 
 #[cfg(feature = "client")]
 mod client;
-mod snapshot;
 mod tags;
 
 #[cfg(feature = "client")]
 pub use client::EventService as EventServiceHttpClient;
-pub use snapshot::{Compression, SnapshotData};
 pub use tags::{Tag, TagSet};
