@@ -318,8 +318,8 @@ android_so_targets = i686-linux-android aarch64-linux-android armv7-linux-androi
 soTargetPatterns = $(foreach t,$(android_so_targets),rust/actyx/target/$(t)/release/libaxosnodeffi.so)
 
 # same principle as above for targetPatterns
-$(soTargetPatterns): TARGET = $(word 3,$(subst /, ,$@))
-$(soTargetPatterns): OS = $(word 3,$(subst -, ,$(TARGET)))
+$(soTargetPatterns): TARGET = $(word 4,$(subst /, ,$@))
+$(soTargetPatterns): OS = $(word 4,$(subst -, ,$(TARGET)))
 $(soTargetPatterns): cargo-init make-always
 	docker run \
 	  -u $(shell id -u) \
