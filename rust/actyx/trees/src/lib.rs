@@ -22,7 +22,7 @@ pub use bearer_token::BearerToken;
 
 use actyxos_sdk::{
     legacy::{FishName, Semantics, SourceId},
-    Event, LamportTimestamp, Offset, OffsetOrMin, Payload, StreamId, TagSet, TimeStamp,
+    Event, LamportTimestamp, Offset, OffsetOrMin, Payload, StreamId, TagSet, Timestamp,
 };
 use anyhow::{anyhow, Result};
 use serde::{ser::Serializer, Deserialize, Deserializer, Serialize};
@@ -44,7 +44,7 @@ pub struct IpfsEnvelope {
     #[serde(default, skip_serializing_if = "TagSet::is_empty")]
     pub tags: TagSet,
 
-    pub timestamp: TimeStamp,
+    pub timestamp: Timestamp,
     #[serde(rename = "psn")]
     pub offset: Offset,
     pub payload: Payload,
@@ -361,7 +361,7 @@ mod tests_v1 {
                 semantics: semantics!("semantics"),
                 name: fish_name!("name"),
                 tags: TagSet::empty(),
-                timestamp: TimeStamp::now(),
+                timestamp: Timestamp::now(),
                 offset: Offset::mk_test(i),
                 lamport: LamportTimestamp::new(i as u64),
                 payload: Payload::from_json_value(serde_json::Value::Null).unwrap(),
@@ -378,7 +378,7 @@ mod tests_v1 {
                 semantics: semantics!("semantics"),
                 name: fish_name!("name"),
                 tags: TagSet::empty(),
-                timestamp: TimeStamp::now(),
+                timestamp: Timestamp::now(),
                 offset: Offset::mk_test(i * 2),
                 lamport: LamportTimestamp::new(i as u64),
                 payload: Payload::from_json_value(serde_json::Value::Null).unwrap(),

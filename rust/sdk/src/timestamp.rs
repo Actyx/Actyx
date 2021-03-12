@@ -26,28 +26,28 @@ use serde::{Deserialize, Serialize};
 /// Microseconds since the UNIX epoch, without leap seconds and in UTC
 ///
 /// ```
-/// use actyxos_sdk::timestamp::TimeStamp;
+/// use actyxos_sdk::timestamp::Timestamp;
 /// use chrono::{DateTime, Utc, TimeZone};
 ///
-/// let timestamp = TimeStamp::now();
+/// let timestamp = Timestamp::now();
 /// let micros_since_epoch: u64 = timestamp.into();
 /// let date_time: DateTime<Utc> = timestamp.into();
 ///
 /// assert_eq!(timestamp.as_i64() * 1000, date_time.timestamp_nanos());
-/// assert_eq!(TimeStamp::from(date_time), timestamp);
+/// assert_eq!(Timestamp::from(date_time), timestamp);
 /// ```
 #[derive(Copy, Clone, Debug, Default, From, Into, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
-pub struct TimeStamp(u64);
+pub struct Timestamp(u64);
 
-impl TimeStamp {
+impl Timestamp {
     pub fn new(value: u64) -> Self {
         Self(value)
     }
-    pub fn now() -> TimeStamp {
+    pub fn now() -> Timestamp {
         let now = SystemTime::now();
         let duration = now.duration_since(UNIX_EPOCH).expect("Time went waaaay backwards");
-        TimeStamp::new(duration.as_micros() as u64)
+        Timestamp::new(duration.as_micros() as u64)
     }
     #[deprecated(since = "0.2.1", note = "use .into()")]
     pub fn as_u64(self) -> u64 {
@@ -58,34 +58,34 @@ impl TimeStamp {
     }
 }
 
-impl Into<DateTime<Utc>> for TimeStamp {
+impl Into<DateTime<Utc>> for Timestamp {
     fn into(self) -> DateTime<Utc> {
         Utc.timestamp((self.0 / 1_000_000) as i64, (self.0 % 1_000_000) as u32 * 1000)
     }
 }
 
-impl From<DateTime<Utc>> for TimeStamp {
+impl From<DateTime<Utc>> for Timestamp {
     fn from(dt: DateTime<Utc>) -> Self {
         Self(dt.timestamp_nanos() as u64 / 1000)
     }
 }
 
-impl Sub<u64> for TimeStamp {
-    type Output = TimeStamp;
+impl Sub<u64> for Timestamp {
+    type Output = Timestamp;
     fn sub(self, rhs: u64) -> Self::Output {
         Self(self.0 - rhs)
     }
 }
 
-impl Sub<TimeStamp> for TimeStamp {
+impl Sub<Timestamp> for Timestamp {
     type Output = i64;
-    fn sub(self, rhs: TimeStamp) -> Self::Output {
+    fn sub(self, rhs: Timestamp) -> Self::Output {
         self.0 as i64 - rhs.0 as i64
     }
 }
 
-impl Add<u64> for TimeStamp {
-    type Output = TimeStamp;
+impl Add<u64> for Timestamp {
+    type Output = Timestamp;
     fn add(self, rhs: u64) -> Self::Output {
         Self(self.0 + rhs)
     }

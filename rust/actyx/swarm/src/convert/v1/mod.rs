@@ -6,7 +6,7 @@ pub use self::cons_node::*;
 
 use actyxos_sdk::{
     legacy::{FishName, Semantics},
-    LamportTimestamp, Offset, Payload, TagSet, TimeStamp,
+    LamportTimestamp, Offset, Payload, TagSet, Timestamp,
 };
 use anyhow::Result;
 use serde::{ser::Serializer, Deserialize, Deserializer, Serialize};
@@ -22,7 +22,7 @@ pub struct IpfsEnvelope {
     #[serde(default, skip_serializing_if = "TagSet::is_empty")]
     pub tags: TagSet,
 
-    pub timestamp: TimeStamp,
+    pub timestamp: Timestamp,
     #[serde(rename = "psn")]
     pub offset: Offset,
     pub payload: Payload,

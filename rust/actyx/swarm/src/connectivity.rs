@@ -1,5 +1,5 @@
 use crate::BanyanStore;
-use actyxos_sdk::{legacy::SourceId, Offset, TimeStamp};
+use actyxos_sdk::{legacy::SourceId, Offset, Timestamp};
 use parking_lot::Mutex;
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::sync::{
@@ -30,7 +30,7 @@ impl ConnectivityState {
 pub struct GossipAboutUs {
     pub source_id: SourceId,
     pub offset: Offset,
-    pub received_at: TimeStamp,
+    pub received_at: Timestamp,
 }
 
 impl GossipAboutUs {
@@ -38,7 +38,7 @@ impl GossipAboutUs {
         GossipAboutUs {
             source_id,
             offset,
-            received_at: TimeStamp::now(), // the device's wall clock time at which offset was received (record created); used by connectivity info
+            received_at: Timestamp::now(), // the device's wall clock time at which offset was received (record created); used by connectivity info
         }
     }
 }
@@ -83,7 +83,7 @@ pub struct ConnectivityCalculator {
     history_delay: usize,
     offset_history: Vec<Option<Offset>>,
     previous_status: Option<ConnectivityStatus>,
-    previous_status_timestamp: TimeStamp,
+    previous_status_timestamp: Timestamp,
     in_current_status_for_ms: i64,
     request: ConnectivityRequest,
 }
@@ -98,7 +98,7 @@ impl ConnectivityCalculator {
             history_delay,
             offset_history: vec![None; history_delay + 1],
             previous_status: None,
-            previous_status_timestamp: TimeStamp::new(0),
+            previous_status_timestamp: Timestamp::new(0),
             in_current_status_for_ms: 0,
             request: req,
         }
@@ -116,11 +116,11 @@ impl ConnectivityCalculator {
             &*self.gossip_about_us.lock(),
             &past_highest_offset,
             self.request.special.clone(),
-            TimeStamp::now(),
+            Timestamp::now(),
             self.request.hb_hist_delay,
             self.events_to_read.load(Ordering::SeqCst),
         );
-        let current_timestamp = TimeStamp::now(); // this is in micros
+        let current_timestamp = Timestamp::now(); // this is in micros
         if self.previous_status.is_some()
             && std::mem::discriminant(self.previous_status.as_ref().unwrap()) == std::mem::discriminant(&current_status)
         {
@@ -141,7 +141,7 @@ impl ConnectivityCalculator {
 pub trait Connectivity: Clone + Send + Unpin + Sync + 'static {
     fn get_gossip(&self) -> Arc<Mutex<BTreeMap<SourceId, GossipAboutUs>>>;
     fn get_our_highest_offset(&self) -> Arc<Mutex<Option<Offset>>>;
-    fn connectivity_status(&self, special: Vec<SourceId>, now: TimeStamp, hb_hist_delay: u64) -> ConnectivityStatus;
+    fn connectivity_status(&self, special: Vec<SourceId>, now: Timestamp, hb_hist_delay: u64) -> ConnectivityStatus;
     fn events_to_read(&self) -> Arc<AtomicU64>;
 }
 
@@ -162,7 +162,7 @@ impl Connectivity for BanyanStore {
     fn connectivity_status(
         &self,
         special: Vec<SourceId>,
-        now: TimeStamp,
+        now: Timestamp,
         hb_hist_delay: u64,
     ) -> trees::ConnectivityStatus {
         crate::connectivity::connectivity_status(
@@ -181,7 +181,7 @@ pub fn connectivity_status(
     offset_gossip: &BTreeMap<SourceId, GossipAboutUs>,
     our_highest_offset: &Option<Offset>,
     special: Vec<SourceId>,
-    now: TimeStamp,
+    now: Timestamp,
     hb_hist_delay: u64,
     events_to_read: u64,
 ) -> ConnectivityStatus {

@@ -4,7 +4,7 @@ use crate::access::{
 use ::trees::{StreamHeartBeat, TagSubscriptions};
 use actyxos_sdk::{
     tags, Event, EventKey, Expression, LamportTimestamp, Metadata, NodeId, Offset, OffsetOrMin, Payload, StreamId, Tag,
-    TagSet, TimeStamp,
+    TagSet, Timestamp,
 };
 use ax_futures_util::{prelude::*, stream::Drainer};
 use futures::{
@@ -100,7 +100,7 @@ impl TestEventStore {
                             stream,
                         },
                         meta: Metadata {
-                            timestamp: TimeStamp::now(),
+                            timestamp: Timestamp::now(),
                             tags: vec![semantics.clone(), name.clone()]
                                 .into_iter()
                                 .map(|x| Tag::new(x).unwrap())
@@ -428,7 +428,7 @@ pub fn mk_test_event(stream_id: StreamId, offset: Offset, lamport: LamportTimest
         },
         meta: Metadata {
             tags: tags!("upper:A", "lower:a"),
-            timestamp: TimeStamp::new(1324),
+            timestamp: Timestamp::new(1324),
         },
         payload: Payload::empty(),
     }

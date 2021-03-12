@@ -778,7 +778,7 @@ mod tests {
         event::{Metadata, Payload},
         scalars::NodeId,
         tags,
-        timestamp::{LamportTimestamp, TimeStamp},
+        timestamp::{LamportTimestamp, Timestamp},
     };
 
     const NODE: &str = "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA";
@@ -795,7 +795,7 @@ mod tests {
                 offset: Offset::mk_test(offset),
             },
             meta: Metadata {
-                timestamp: TimeStamp::now(),
+                timestamp: Timestamp::now(),
                 tags: tags!("dummy"),
             },
             payload: Payload::default(),

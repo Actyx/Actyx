@@ -1,5 +1,5 @@
 use crate::axtrees::{AxKey, AxTree, AxTrees, LamportQuery, Sha256Digest, TagsQuery, TimeQuery};
-use actyxos_sdk::{tags, LamportTimestamp, Payload, Tag, TagSet, TimeStamp};
+use actyxos_sdk::{tags, LamportTimestamp, Payload, Tag, TagSet, Timestamp};
 use banyan::{
     forest::{BranchCache, Config, CryptoConfig, Forest, Transaction},
     memstore::MemStore,
@@ -43,8 +43,8 @@ impl Generator {
         LamportTimestamp::from(result)
     }
 
-    fn time(&self) -> TimeStamp {
-        TimeStamp::new(*self.time.lock())
+    fn time(&self) -> Timestamp {
+        Timestamp::new(*self.time.lock())
     }
 
     fn increase_time(&self, delta: u64) {
@@ -270,7 +270,7 @@ async fn events_banyan_tree_simple_queries_with(events: Vec<(AxKey, Payload)>) -
         assert_eq!(events0, events1);
     }
     // try time query, different ranges
-    for time_range in vec![TimeStamp::new(AX_EPOCH + 1_000_000)..TimeStamp::new(AX_EPOCH + 666_000_000)] {
+    for time_range in vec![Timestamp::new(AX_EPOCH + 1_000_000)..Timestamp::new(AX_EPOCH + 666_000_000)] {
         let time_range1 = time_range.clone();
         let events0 = events_with_offset()
             .filter(move |(_, key, _)| time_range1.contains(&key.time()))

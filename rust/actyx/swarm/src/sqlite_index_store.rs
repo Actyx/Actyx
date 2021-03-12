@@ -4,7 +4,7 @@ use actyxos_sdk::{
     service::snapshots::{
         InvalidateSnapshotsRequest, RetrieveSnapshotRequest, RetrieveSnapshotResponse, StoreSnapshotRequest,
     },
-    EventKey, LamportTimestamp, Offset, StreamId, TimeStamp,
+    EventKey, LamportTimestamp, Offset, StreamId, Timestamp,
 };
 use anyhow::Result;
 use parking_lot::Mutex;
@@ -334,7 +334,7 @@ VALUES
                 let raw_received_at: i64 = row.get(2)?;
 
                 let source_id = SourceId::from_str(&source).unwrap();
-                let received_at = TimeStamp::new(raw_received_at as u64);
+                let received_at = Timestamp::new(raw_received_at as u64);
 
                 let record = GossipAboutUs {
                     source_id,
@@ -418,12 +418,12 @@ mod test {
         let gossip_about_us = GossipAboutUs {
             source_id: src,
             offset: Offset::mk_test(5),
-            received_at: TimeStamp::new(5),
+            received_at: Timestamp::new(5),
         };
         let gossip_about_us2 = GossipAboutUs {
             source_id: src2,
             offset: Offset::mk_test(7),
-            received_at: TimeStamp::new(6),
+            received_at: Timestamp::new(6),
         };
         store.write_gossip_about_us(gossip_about_us).unwrap();
         store.write_gossip_about_us(gossip_about_us2).unwrap();
@@ -436,7 +436,7 @@ mod test {
         let gossip_about_us3 = GossipAboutUs {
             source_id: src,
             offset: Offset::mk_test(7),
-            received_at: TimeStamp::new(6),
+            received_at: Timestamp::new(6),
         };
         store.write_gossip_about_us(gossip_about_us3).unwrap();
         let expected2: BTreeMap<SourceId, GossipAboutUs> = vec![(src, gossip_about_us3), (src2, gossip_about_us2)]
@@ -457,7 +457,7 @@ mod test {
         let gossip_about_us = GossipAboutUs {
             source_id: src,
             offset: Offset::mk_test(5),
-            received_at: TimeStamp::new(5),
+            received_at: Timestamp::new(5),
         };
         store.write_gossip_about_us(gossip_about_us).unwrap();
         let backed_up = store.backup(DbPath::Memory).unwrap();

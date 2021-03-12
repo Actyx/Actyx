@@ -23,7 +23,7 @@ use crate::{
     scalars::StreamId,
     source_id,
     tags::TagSet,
-    timestamp::{LamportTimestamp, TimeStamp},
+    timestamp::{LamportTimestamp, Timestamp},
 };
 
 mod opaque;
@@ -120,7 +120,7 @@ impl<T> Event<T> {
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(rename_all = "camelCase")]
 pub struct Metadata {
-    pub timestamp: TimeStamp,
+    pub timestamp: Timestamp,
     pub tags: TagSet,
 }
 

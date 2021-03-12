@@ -8,7 +8,7 @@ use actyxos_sdk::{
         InvalidateSnapshotsRequest, RetrieveSnapshotRequest, RetrieveSnapshotResponse, StoreSnapshotRequest,
     },
     Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetOrMin, Payload, StreamId, StreamNr, TagSet,
-    TimeStamp,
+    Timestamp,
 };
 use anyhow::Result;
 use banyan::{
@@ -80,7 +80,7 @@ impl BanyanStore {
         let node = self.node_id();
         let lamport = LamportTimestamp::from(index_store.lamport());
         let roots = self.0.maps.lock().root_map(node);
-        let timestamp = TimeStamp::now();
+        let timestamp = Timestamp::now();
         let msg = PublishSnapshot {
             node,
             lamport,
@@ -97,7 +97,7 @@ impl BanyanStore {
         let last_lamport = self.0.index_store.lock().increase_lamport(n)?;
         let min_lamport = last_lamport - (n as u64) + 1;
         let stream_nr = StreamNr::from(0); // TODO
-        let timestamp = TimeStamp::now();
+        let timestamp = Timestamp::now();
         let kvs = events
             .into_iter()
             .enumerate()

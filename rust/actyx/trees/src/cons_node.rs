@@ -81,7 +81,7 @@ impl BlockIndex {
 mod tests {
     use super::*;
     use crate::{BlockIndex, IpfsEnvelope};
-    use actyxos_sdk::{fish_name, semantics, tags, LamportTimestamp, Payload, TimeStamp};
+    use actyxos_sdk::{fish_name, semantics, tags, LamportTimestamp, Payload, Timestamp};
     use libipld::cbor::DagCborCodec;
     use libipld::codec::{Codec, Decode, Encode};
     use libipld::multihash::{Code, MultihashDigest};
@@ -166,7 +166,7 @@ mod tests {
             tags: tags! { semantics, &name },
             semantics: semantics.clone(),
             name,
-            timestamp: TimeStamp::new(0),
+            timestamp: Timestamp::new(0),
             lamport: LamportTimestamp::new(0),
             offset: Offset::ZERO,
             payload: Payload::empty(),

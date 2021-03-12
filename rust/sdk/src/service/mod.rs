@@ -21,7 +21,7 @@ use crate::{
     scalars::{NodeId, StreamId, StreamNr},
     tags::TagSet,
     types::Binary,
-    LamportTimestamp, Offset, OffsetMap, Payload, TimeStamp,
+    LamportTimestamp, Offset, OffsetMap, Payload, Timestamp,
 };
 use serde::{Deserialize, Serialize};
 
@@ -88,7 +88,7 @@ pub struct EventResponse<T> {
     pub lamport: LamportTimestamp,
     pub stream: StreamId,
     pub offset: Offset,
-    pub timestamp: TimeStamp,
+    pub timestamp: Timestamp,
     pub tags: TagSet,
     pub payload: T,
 }

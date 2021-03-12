@@ -116,7 +116,7 @@ pub use offset::{Offset, OffsetMap, OffsetOrMin};
 pub use scalars::{AppId, NodeId, StreamId, StreamNr};
 pub use service::EventService;
 pub use tags::{Tag, TagSet};
-pub use timestamp::{LamportTimestamp, TimeStamp};
+pub use timestamp::{LamportTimestamp, Timestamp};
 
 #[cfg(test)]
 mod test_util;

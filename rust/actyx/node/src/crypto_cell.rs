@@ -1,5 +1,5 @@
 use crate::node_storage::NodeStorage;
-use actyxos_sdk::{AppId, NodeId, TimeStamp};
+use actyxos_sdk::{AppId, NodeId, Timestamp};
 use crypto::KeyStoreRef;
 use trees::BearerToken;
 use util::formats::{ActyxOSResult, ActyxOSResultExt};
@@ -19,7 +19,7 @@ impl CryptoCell {
         let cycles = self.storage.get_cycle_count()?;
 
         let token = BearerToken {
-            created: TimeStamp::now(),
+            created: Timestamp::now(),
             app_id,
             cycles,
             version: env!("CARGO_PKG_VERSION").into(),

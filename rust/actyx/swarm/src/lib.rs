@@ -22,7 +22,7 @@ use crate::connectivity::ConnectivityState;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
 use crate::streams::{OwnStreamInner, ReplicatedStreamInner, StreamAlias, StreamMaps};
-use actyxos_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr, TagSet, TimeStamp};
+use actyxos_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr, TagSet, Timestamp};
 use anyhow::Result;
 use ax_futures_util::{prelude::*, stream::variable::Variable};
 use banyan::{
@@ -206,7 +206,7 @@ impl BanyanStore {
     pub async fn append(&self, stream_nr: StreamNr, events: Vec<(TagSet, Event)>) -> Result<Option<Link>> {
         tracing::info!("publishing {} events on stream {}", events.len(), stream_nr);
         let lamport = self.0.index_store.lock().increment_lamport()?;
-        let timestamp = TimeStamp::now();
+        let timestamp = Timestamp::now();
         let events = events
             .into_iter()
             .map(move |(tags, event)| (Key::new(tags, lamport, timestamp), event));
