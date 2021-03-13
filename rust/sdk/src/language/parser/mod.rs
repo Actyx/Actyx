@@ -1,6 +1,7 @@
 #![allow(dead_code)]
-use super::{Expression, Operation, Query, SimpleExpr, TagExpr};
-use crate::tagged::Tag;
+use super::{Array, Expression, Index, Number, Object, Operation, Path, Query, SimpleExpr, TagExpr};
+use crate::{tagged::Tag, TimeStamp};
+use chrono::{TimeZone, Utc};
 use once_cell::sync::Lazy;
 use pest::{prec_climber::PrecClimber, Parser};
 use utils::*;
@@ -28,6 +29,24 @@ fn r_tag(p: P) -> Tag {
     }
 }
 
+enum FromTo {
+    From,
+    To,
+}
+fn r_tag_from_to(mut p: P, f: FromTo) -> TagExpr {
+    match p.rule() {
+        Rule::natural => match f {
+            FromTo::From => TagExpr::FromLamport(p.natural().into()),
+            FromTo::To => TagExpr::ToLamport(p.natural().into()),
+        },
+        Rule::isodate => match f {
+            FromTo::From => TagExpr::FromTime(r_timestamp(p)),
+            FromTo::To => TagExpr::ToTime(r_timestamp(p)),
+        },
+        x => unexpected!(x),
+    }
+}
+
 fn r_tag_expr(p: P) -> TagExpr {
     static CLIMBER: Lazy<PrecClimber<Rule>> = Lazy::new(|| {
         use pest::prec_climber::{Assoc::*, Operator};
@@ -40,6 +59,11 @@ fn r_tag_expr(p: P) -> TagExpr {
         |p| match p.rule() {
             Rule::tag => TagExpr::Tag(r_tag(p)),
             Rule::tag_expr => r_tag_expr(p),
+            Rule::all_events => TagExpr::AllEvents,
+            Rule::is_local => TagExpr::IsLocal,
+            Rule::tag_from => r_tag_from_to(p.single(), FromTo::From),
+            Rule::tag_to => r_tag_from_to(p.single(), FromTo::To),
+            Rule::tag_app => TagExpr::AppId(p.single().as_str().parse().unwrap()),
             x => unexpected!(x),
         },
         |lhs, op, rhs| match op.rule() {
@@ -68,6 +92,67 @@ fn r_string(p: P) -> String {
     }
 }
 
+fn r_path(p: P) -> Path {
+    let mut p = p.inner();
+    let mut ret = Path {
+        head: p.string(),
+        tail: vec![],
+    };
+    for mut i in p {
+        match i.rule() {
+            Rule::ident => ret.tail.push(Index::Ident(i.string())),
+            Rule::natural => ret.tail.push(Index::Number(i.natural())),
+            x => unexpected!(x),
+        }
+    }
+    ret
+}
+
+fn r_number(p: P) -> Number {
+    let mut p = p.single();
+    match p.rule() {
+        Rule::decimal => Number::Decimal(p.decimal()),
+        Rule::natural => Number::Natural(p.natural()),
+        x => unexpected!(x),
+    }
+}
+
+fn r_timestamp(p: P) -> TimeStamp {
+    let mut p = p.inner();
+    let year: i32 = p.string().parse().unwrap();
+    let month: u32 = p.string().parse().unwrap();
+    let day: u32 = p.string().parse().unwrap();
+    let hour: u32 = p.parse_or_default();
+    let min: u32 = p.parse_or_default();
+    let sec: u32 = p.parse_or_default();
+    let nano: u32 = if let Some(p) = p.next() {
+        match p.rule() {
+            Rule::millisecond => p.as_str().parse::<u32>().unwrap() * 1_000_000,
+            Rule::microsecond => p.as_str().parse::<u32>().unwrap() * 1_000,
+            Rule::nanosecond => p.as_str().parse::<u32>().unwrap(),
+            x => unexpected!(x),
+        }
+    } else {
+        0
+    };
+    Utc.ymd(year, month, day).and_hms_nano(hour, min, sec, nano).into()
+}
+
+fn r_object(p: P) -> Object {
+    let mut v = vec![];
+    let mut p = p.inner();
+    while p.peek().is_some() {
+        v.push((p.string(), r_simple_expr(p.next().unwrap())));
+    }
+    Object { props: v }
+}
+
+fn r_array(p: P) -> Array {
+    Array {
+        items: p.inner().map(r_simple_expr).collect(),
+    }
+}
+
 fn r_simple_expr(p: P) -> SimpleExpr {
     static CLIMBER: Lazy<PrecClimber<Rule>> = Lazy::new(|| {
         use pest::prec_climber::{Assoc::*, Operator};
@@ -87,11 +172,13 @@ fn r_simple_expr(p: P) -> SimpleExpr {
 
     fn primary(p: P) -> SimpleExpr {
         match p.rule() {
-            Rule::number => SimpleExpr::Number(p.as_str().parse().unwrap()),
-            Rule::ident => SimpleExpr::Ident(p.as_str().to_owned()),
+            Rule::number => SimpleExpr::Number(r_number(p)),
+            Rule::path => SimpleExpr::Path(r_path(p)),
             Rule::simple_expr => r_simple_expr(p),
             Rule::simple_not => SimpleExpr::Not(primary(p.single()).into()),
             Rule::string => SimpleExpr::String(r_string(p)),
+            Rule::object => SimpleExpr::Object(r_object(p)),
+            Rule::array => SimpleExpr::Array(r_array(p)),
             x => unexpected!(x),
         }
     }
@@ -118,11 +205,14 @@ fn r_simple_expr(p: P) -> SimpleExpr {
 
 fn r_query(p: P) -> Query {
     let mut p = p.inner();
-    let mut q = Query::new(r_tag_expr(p.next().unwrap()));
+    let mut q = Query {
+        from: r_tag_expr(p.next().unwrap()),
+        ops: vec![],
+    };
     for o in p {
         match o.rule() {
-            Rule::filter => q.push(Operation::Filter(r_simple_expr(o.single()))),
-            Rule::select => q.push(Operation::Select(r_simple_expr(o.single()))),
+            Rule::filter => q.ops.push(Operation::Filter(r_simple_expr(o.single()))),
+            Rule::select => q.ops.push(Operation::Select(r_simple_expr(o.single()))),
             x => unexpected!(x),
         }
     }
@@ -164,32 +254,54 @@ mod tests {
 
     #[test]
     fn simple_expr() {
+        use super::Number::*;
+        use super::Path;
         use SimpleExpr::*;
         let p = AQL::parse(Rule::simple_expr, "(x - 5.2 * 1234)^2 / 7 % 5").unwrap();
         assert_eq!(
             r_simple_expr(p.single()),
-            Ident("x".to_owned())
-                .sub(Number(5.2).mul(Number(1234.0)))
-                .pow(Number(2.0))
-                .div(Number(7.0))
-                .modulo(Number(5.0))
+            Path::ident("x")
+                .sub(Number(Decimal(5.2)).mul(Number(Natural(1234))))
+                .pow(Number(Natural(2)))
+                .div(Number(Natural(7)))
+                .modulo(Number(Natural(5)))
         )
     }
 
     #[test]
     fn expr() {
+        use super::Number::*;
+        use super::{Array, Object, Path};
+        use crate::app_id;
         use SimpleExpr::*;
-        use TagExpr::Tag;
+        use TagExpr::*;
         assert_eq!(
             expression("FROM 'machine' | 'user' END").unwrap(),
             Expression::Query(Query::new(Tag(tag!("machine")).or(Tag(tag!("user")))))
         );
         assert_eq!(
-            expression("FROM 'machine' | 'user' FILTER _ > 5 SELECT ! 'hello' END").unwrap(),
+            expression(
+                "FROM 'machine' |
+                -- or the other
+                  'user' & isLocal & from(2012-12-31) & to(12345678901234567) & appId( hello-5._x_ ) & allEvents
+                  FILTER _.x.42 > 5 SELECT { x: ! 'hello' y: 42 z: [1.3,_.x] } END --"
+            )
+            .unwrap(),
             Expression::Query(
-                Query::new(Tag(tag!("machine")).or(Tag(tag!("user"))))
-                    .with_op(Operation::Filter(Ident("_".to_owned()).gt(Number(5.0))))
-                    .with_op(Operation::Select(Not(String("hello".to_owned()).into())))
+                Query::new(
+                    Tag(tag!("machine")).or(Tag(tag!("user"))
+                        .and(IsLocal)
+                        .and(FromTime(1356912000000000.into()))
+                        .and(ToLamport(12345678901234567.into()))
+                        .and(AppId(app_id!("hello-5._x_")))
+                        .and(AllEvents))
+                )
+                .with_op(Operation::Filter(Path::with("_", &[&"x", &42]).gt(Number(Natural(5)))))
+                .with_op(Operation::Select(Object::with(&[
+                    ("x", Not(String("hello".to_owned()).into())),
+                    ("y", Number(Natural(42))),
+                    ("z", Array::with(&[Number(Decimal(1.3)), Path::with("_", &[&"x"])]))
+                ])))
             )
         );
     }
@@ -200,7 +312,7 @@ mod tests {
             parser: AQL,
             input: "FROM x",
             rule: Rule::expression,
-            positives: vec![Rule::nonempty_string],
+            positives: vec![Rule::tag_expr],
             negatives: vec![],
             pos: 5
         };
