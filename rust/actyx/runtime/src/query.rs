@@ -155,7 +155,7 @@ mod tests {
         let mut q = Query::new(expression("FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2").unwrap());
         assert_eq!(
             q.event_selection(),
-            TagSubscriptions::new(vec![TagSubscription::new(tags!("a")).local(),])
+            TagSubscriptions::new(vec![TagSubscription::new(tags!("a")).local()])
         );
 
         let v = Value::new(EventKey::default(), |b| b.encode_u64(3));

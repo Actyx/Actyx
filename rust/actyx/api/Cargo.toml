@@ -12,6 +12,7 @@ ipfs-node = { path = "../ipfs-node" }
 trees = { path = "../trees" }
 swarm = { path = "../swarm" }
 util = { path = "../util" }
+runtime = { path = "../runtime" }
 
 anyhow = "1.0.38"
 async-trait = "0.1.42"

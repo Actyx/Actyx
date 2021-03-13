@@ -11,6 +11,7 @@ pub enum Expression {
     Simple(SimpleExpr),
     Query(Query),
 }
+mod expression_impl;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Query {

@@ -14,10 +14,11 @@ use async_trait::async_trait;
 use ax_futures_util::prelude::*;
 use futures::{
     future,
-    stream::{BoxStream, StreamExt},
+    stream::{self, BoxStream, StreamExt},
     TryFutureExt,
 };
 use num_traits::Bounded;
+use runtime::{query::Query, value::Value};
 use swarm::access::{ConsumerAccessError, EventSelection, EventStoreConsumerAccess};
 use swarm::{BanyanStore, EventStore, Present};
 use thiserror::Error;
@@ -87,8 +88,9 @@ impl event_service::EventService for EventService {
     async fn query(&self, request: QueryRequest) -> Result<BoxStream<'static, QueryResponse>> {
         let from_offsets_excluding: OffsetMapOrMax = request.lower_bound.unwrap_or_default().into();
         let to_offsets_including: OffsetMapOrMax = request.upper_bound.into();
+        let query = Query::new(request.r#where);
         let selection = EventSelection {
-            subscription_set: request.r#where.clone().into(),
+            subscription_set: query.event_selection(),
             from_offsets_excluding,
             to_offsets_including,
         };
@@ -105,17 +107,23 @@ impl event_service::EventService for EventService {
 
     async fn subscribe(&self, request: SubscribeRequest) -> Result<BoxStream<'static, SubscribeResponse>> {
         let from_offsets_excluding: OffsetMapOrMax = request.offsets.unwrap_or_default().into();
+
+        let mut query = Query::new(request.r#where);
         let selection = EventSelection {
-            subscription_set: request.r#where.into(),
+            subscription_set: query.event_selection(),
             from_offsets_excluding,
             to_offsets_including: OffsetMapOrMax::max_value(),
         };
+
         let response = self
             .store
             .stream_events_source_ordered(selection)
             .await?
-            .map(Into::into)
-            .map(SubscribeResponse::Event);
+            .flat_map(move |e| {
+                let v = Value::from(e);
+                stream::iter(query.feed(v).into_iter())
+            })
+            .map(|v| SubscribeResponse::Event(v.into()));
         Ok(response.boxed())
     }
 
@@ -123,9 +131,11 @@ impl event_service::EventService for EventService {
         &self,
         request: SubscribeMonotonicRequest,
     ) -> Result<BoxStream<'static, SubscribeMonotonicResponse>> {
+        let query = Query::new(request.r#where);
+
         let initial_latest = if let StartFrom::Offsets(offsets) = &request.from {
             let selection = EventSelection {
-                subscription_set: request.r#where.clone().into(),
+                subscription_set: query.event_selection(),
                 from_offsets_excluding: OffsetMapOrMax::min_value(),
                 to_offsets_including: OffsetMapOrMax::from(offsets.clone()),
             };
@@ -140,7 +150,7 @@ impl event_service::EventService for EventService {
         };
 
         let selection = EventSelection {
-            subscription_set: request.r#where.into(),
+            subscription_set: query.event_selection(),
             from_offsets_excluding: request.from.min_offsets().into(),
             to_offsets_including: OffsetMapOrMax::max_value(),
         };

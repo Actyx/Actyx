@@ -1,5 +1,5 @@
 use crate::{
-    expression::Expression,
+    language::Expression,
     tagged::{Event, EventKey, Metadata, NodeId, StreamId, StreamNr, TagSet},
     types::Binary,
     LamportTimestamp, Offset, OffsetMap, Payload, TimeStamp,
