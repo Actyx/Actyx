@@ -105,17 +105,6 @@ impl<T> PartialEq for Event<T> {
 
 impl<T> Eq for Event<T> {}
 
-impl<T> Event<T> {
-    /// Replace the payload in this event with the given one, keeping the event key and metadata
-    pub fn with_payload<U>(self, u: U) -> Event<U> {
-        Event {
-            key: self.key,
-            meta: self.meta,
-            payload: u,
-        }
-    }
-}
-
 #[derive(Debug, Default, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(rename_all = "camelCase")]
