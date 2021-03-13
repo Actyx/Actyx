@@ -82,3 +82,30 @@ impl Into<TagSubscriptions> for Dnf {
         TagSubscriptions::new(ret)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actyxos_sdk::{language::expression, tags};
+
+    #[test]
+    fn parsing() {
+        let e = expression("FROM 'a' & isLocal | ('b' | 'c') & allEvents & 'd'").unwrap();
+        let q = Query::new(e);
+        assert_eq!(
+            q.event_selection(),
+            TagSubscriptions::new(vec![
+                TagSubscription::new(tags!("a")).local(),
+                TagSubscription::new(tags!("b", "d")),
+                TagSubscription::new(tags!("c", "d")),
+            ])
+        );
+    }
+
+    #[test]
+    fn all_events() {
+        let e = expression("FROM allEvents").unwrap();
+        let q = Query::new(e);
+        assert_eq!(q.event_selection(), TagSubscriptions::all());
+    }
+}
