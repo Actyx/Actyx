@@ -6,28 +6,33 @@ use crate::{
 mod parser;
 pub use parser::expression;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     Simple(SimpleExpr),
     Query(Query),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Query {
-    from: TagExpr,
-    ops: Vec<Operation>,
+    pub from: TagExpr,
+    pub ops: Vec<Operation>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Operation {
     Filter(SimpleExpr),
     Select(SimpleExpr),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum TagExpr {
     Or(Box<(TagExpr, TagExpr)>),
     And(Box<(TagExpr, TagExpr)>),
+    Atom(TagAtom),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum TagAtom {
     Tag(Tag),
     AllEvents,
     IsLocal,
@@ -62,18 +67,18 @@ pub enum Index {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Path {
-    head: String,
-    tail: Vec<Index>,
+    pub head: String,
+    pub tail: Vec<Index>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Object {
-    props: Vec<(String, SimpleExpr)>,
+    pub props: Vec<(String, SimpleExpr)>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Array {
-    items: Vec<SimpleExpr>,
+    pub items: Vec<SimpleExpr>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -165,6 +170,15 @@ mod for_tests {
             let Self { from, mut ops } = self;
             ops.push(op);
             Self { from, ops }
+        }
+    }
+
+    impl TagAtom {
+        pub fn and(self, other: TagAtom) -> TagExpr {
+            TagExpr::And(Box::new((TagExpr::Atom(self), TagExpr::Atom(other))))
+        }
+        pub fn or(self, other: TagAtom) -> TagExpr {
+            TagExpr::Or(Box::new((TagExpr::Atom(self), TagExpr::Atom(other))))
         }
     }
 

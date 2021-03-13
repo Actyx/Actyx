@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use super::{Array, Expression, Index, Number, Object, Operation, Path, Query, SimpleExpr, TagExpr};
+use super::{Array, Expression, Index, Number, Object, Operation, Path, Query, SimpleExpr, TagAtom, TagExpr};
 use crate::{tagged::Tag, TimeStamp};
 use chrono::{TimeZone, Utc};
 use once_cell::sync::Lazy;
@@ -34,20 +34,25 @@ enum FromTo {
     To,
 }
 fn r_tag_from_to(mut p: P, f: FromTo) -> TagExpr {
+    use TagAtom::*;
+    use TagExpr::Atom;
     match p.rule() {
         Rule::natural => match f {
-            FromTo::From => TagExpr::FromLamport(p.natural().into()),
-            FromTo::To => TagExpr::ToLamport(p.natural().into()),
+            FromTo::From => Atom(FromLamport(p.natural().into())),
+            FromTo::To => Atom(ToLamport(p.natural().into())),
         },
         Rule::isodate => match f {
-            FromTo::From => TagExpr::FromTime(r_timestamp(p)),
-            FromTo::To => TagExpr::ToTime(r_timestamp(p)),
+            FromTo::From => Atom(FromTime(r_timestamp(p))),
+            FromTo::To => Atom(ToTime(r_timestamp(p))),
         },
         x => unexpected!(x),
     }
 }
 
 fn r_tag_expr(p: P) -> TagExpr {
+    use TagAtom::*;
+    use TagExpr::Atom;
+
     static CLIMBER: Lazy<PrecClimber<Rule>> = Lazy::new(|| {
         use pest::prec_climber::{Assoc::*, Operator};
 
@@ -57,13 +62,13 @@ fn r_tag_expr(p: P) -> TagExpr {
     CLIMBER.climb(
         p.inner(),
         |p| match p.rule() {
-            Rule::tag => TagExpr::Tag(r_tag(p)),
+            Rule::tag => Atom(Tag(r_tag(p))),
             Rule::tag_expr => r_tag_expr(p),
-            Rule::all_events => TagExpr::AllEvents,
-            Rule::is_local => TagExpr::IsLocal,
+            Rule::all_events => Atom(AllEvents),
+            Rule::is_local => Atom(IsLocal),
             Rule::tag_from => r_tag_from_to(p.single(), FromTo::From),
             Rule::tag_to => r_tag_from_to(p.single(), FromTo::To),
-            Rule::tag_app => TagExpr::AppId(p.single().as_str().parse().unwrap()),
+            Rule::tag_app => Atom(AppId(p.single().as_str().parse().unwrap())),
             x => unexpected!(x),
         },
         |lhs, op, rhs| match op.rule() {
@@ -244,11 +249,16 @@ mod tests {
 
     #[test]
     fn tag_expr() {
+        use TagAtom::Tag;
         use TagExpr::*;
         let p = AQL::parse(Rule::tag_expr, "'x' |\t'y'\n&'z'").unwrap();
         assert_eq!(
             r_tag_expr(p.single()),
-            Or((Tag(tag!("x")), And((Tag(tag!("y")), Tag(tag!("z"))).into())).into())
+            Or((
+                Atom(Tag(tag!("x"))),
+                And((Atom(Tag(tag!("y"))), Atom(Tag(tag!("z")))).into())
+            )
+                .into())
         );
     }
 
@@ -274,7 +284,8 @@ mod tests {
         use super::{Array, Object, Path};
         use crate::app_id;
         use SimpleExpr::*;
-        use TagExpr::*;
+        use TagAtom::*;
+        use TagExpr::Atom;
         assert_eq!(
             expression("FROM 'machine' | 'user' END").unwrap(),
             Expression::Query(Query::new(Tag(tag!("machine")).or(Tag(tag!("user")))))
@@ -289,12 +300,12 @@ mod tests {
             .unwrap(),
             Expression::Query(
                 Query::new(
-                    Tag(tag!("machine")).or(Tag(tag!("user"))
+                    Atom(Tag(tag!("machine"))).or(Tag(tag!("user"))
                         .and(IsLocal)
-                        .and(FromTime(1356912000000000.into()))
-                        .and(ToLamport(12345678901234567.into()))
-                        .and(AppId(app_id!("hello-5._x_")))
-                        .and(AllEvents))
+                        .and(Atom(FromTime(1356912000000000.into())))
+                        .and(Atom(ToLamport(12345678901234567.into())))
+                        .and(Atom(AppId(app_id!("hello-5._x_"))))
+                        .and(Atom(AllEvents)))
                 )
                 .with_op(Operation::Filter(Path::with("_", &[&"x", &42]).gt(Number(Natural(5)))))
                 .with_op(Operation::Select(Object::with(&[
