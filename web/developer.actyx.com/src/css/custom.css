@@ -399,13 +399,14 @@ article > footer.row.margin-vert--lg {
   padding-left: var(--ifm-navbar-item-padding-horizontal);
   padding-right: var(--ifm-navbar-item-padding-horizontal);
   text-decoration: none;
+  font-weight: 700;
 }
 
 .navbar .navbar__link:hover,
 .navbar .navbar__link.navbar__link--active {
   color: var(--ifm-navbar-link-hover-color);
-  border-bottom: 1px solid var(--ifm-navbar-link-hover-color);
-  font-weight: 500;
+  border-bottom: 2px solid var(--ifm-navbar-link-hover-color);
+  font-weight: 700;
 }
 .navbar.navbar--dark {
   --ifm-navbar-background-color: #303846;
