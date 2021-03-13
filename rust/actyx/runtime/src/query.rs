@@ -1,18 +1,39 @@
+use crate::{
+    eval::Context,
+    operation::{Filter, Operation, Select},
+    value::Value,
+};
 use actyxos_sdk::{
     language::{Expression, TagAtom, TagExpr},
     tagged::TagSet,
 };
 use trees::{TagSubscription, TagSubscriptions};
 
-pub struct Query(Expression);
+pub struct Query {
+    expr: Expression,
+    stages: Vec<Operation>,
+}
 
 impl Query {
     pub fn new(expr: Expression) -> Self {
-        Self(expr)
+        let mut stages = vec![];
+        if let Expression::Query(q) = &expr {
+            for op in &q.ops {
+                match op {
+                    actyxos_sdk::language::Operation::Filter(f) => {
+                        stages.push(Operation::Filter(Filter::init(f.clone())))
+                    }
+                    actyxos_sdk::language::Operation::Select(s) => {
+                        stages.push(Operation::Select(Select::init(s.clone())))
+                    }
+                }
+            }
+        }
+        Self { expr, stages }
     }
 
     pub fn event_selection(&self) -> TagSubscriptions {
-        let query = match &self.0 {
+        let query = match &self.expr {
             Expression::Simple(_) => return TagSubscriptions::empty(),
             Expression::Query(q) => q,
         };
@@ -26,6 +47,18 @@ impl Query {
         }
 
         dnf(&query.from).into()
+    }
+
+    pub fn feed(&mut self, input: Value) -> Vec<Value> {
+        fn rec<'a>(cx: &'a Context, input: Value, mut ops: impl Iterator<Item = &'a Operation> + Clone) -> Vec<Value> {
+            if let Some(op) = ops.next() {
+                let (vs, cx) = op.apply(cx, input);
+                vs.into_iter().flat_map(|v| rec(cx, v, ops.clone())).collect()
+            } else {
+                vec![input]
+            }
+        }
+        rec(&Context::new(input.sort_key), input, self.stages.iter())
     }
 }
 
@@ -86,7 +119,8 @@ impl Into<TagSubscriptions> for Dnf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyxos_sdk::{language::expression, tags};
+    use actyxos_sdk::{language::expression, tagged::EventKey, tags};
+    use cbor_data::Encoder;
 
     #[test]
     fn parsing() {
@@ -107,5 +141,28 @@ mod tests {
         let e = expression("FROM allEvents").unwrap();
         let q = Query::new(e);
         assert_eq!(q.event_selection(), TagSubscriptions::all());
+    }
+
+    #[test]
+    fn empty() {
+        let e = expression("42").unwrap();
+        let q = Query::new(e);
+        assert_eq!(q.event_selection(), TagSubscriptions::empty())
+    }
+
+    #[test]
+    fn query() {
+        let mut q = Query::new(expression("FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2").unwrap());
+        assert_eq!(
+            q.event_selection(),
+            TagSubscriptions::new(vec![TagSubscription::new(tags!("a")).local(),])
+        );
+
+        let v = Value::new(EventKey::default(), |b| b.encode_u64(3));
+        assert_eq!(q.feed(v), vec![]);
+
+        let v = Value::new(EventKey::default(), |b| b.encode_u64(2));
+        let r = Value::new(EventKey::default(), |b| b.encode_u64(4));
+        assert_eq!(q.feed(v), vec![r]);
     }
 }

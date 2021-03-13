@@ -874,6 +874,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cbor-data"
+version = "0.4.0"
+dependencies = [
+ "base64",
+ "half",
+]
+
+[[package]]
 name = "cc"
 version = "1.0.67"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5051,6 +5059,9 @@ name = "runtime"
 version = "0.1.0"
 dependencies = [
  "actyxos_sdk",
+ "anyhow",
+ "cbor-data",
+ "tracing",
  "trees",
 ]
 

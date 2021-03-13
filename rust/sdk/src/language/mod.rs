@@ -58,6 +58,7 @@ pub enum Number {
     Decimal(f64),
     Natural(u64),
 }
+mod number_impl;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Index {
