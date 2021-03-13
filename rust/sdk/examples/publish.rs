@@ -25,7 +25,7 @@ fn counter() -> impl Stream<Item = i32> {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let service = HttpClient::default();
+    let service = HttpClient::default().await?;
     let mut results = counter().flat_map(|i| {
         service
             .publish(PublishRequest {

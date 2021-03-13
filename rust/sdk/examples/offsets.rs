@@ -23,7 +23,7 @@ use futures::stream::StreamExt;
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
     // client for locally running Actyx Event Service
-    let service = HttpClient::default();
+    let service = HttpClient::default().await?;
 
     // retrieve largest currently known event stream cursor
     let offsets = service.offsets().await?;

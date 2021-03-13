@@ -17,14 +17,20 @@ use anyhow::Result;
 use async_trait::async_trait;
 use bytes::Bytes;
 use derive_more::{Display, Error};
-use futures::{future, stream::iter, Stream, StreamExt};
+use futures::{
+    future,
+    stream::{iter, BoxStream, Stream, StreamExt},
+};
 use reqwest::{Client, RequestBuilder, Response};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::service::{
-    EventService, NodeIdResponse, PublishRequest, PublishResponse, QueryRequest, QueryResponse,
-    SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
+use crate::{
+    service::{
+        EventService, NodeIdResponse, PublishRequest, PublishResponse, QueryRequest, QueryResponse,
+        SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
+    },
+    OffsetMap,
 };
 
 /// Error type that is returned in the response body by the Event Service when requests fail
@@ -44,12 +50,54 @@ pub struct HttpClientError {
 #[derive(Clone)]
 pub struct HttpClient {
     client: Client,
-    url: Url,
+    url: Url, // cannot_be_a_base() ensured to be false
+    token_query: String,
+}
+
+const API_URI: &str = "http://localhost:4454/api/";
+const API_PATH: &str = "v2/events";
+
+fn ensure_base(url: Url) -> anyhow::Result<Url> {
+    anyhow::ensure!(!url.cannot_be_a_base(), "{} is not a valid base address", url);
+    Ok(url)
 }
 
 impl HttpClient {
+    /// This will configure a connection to the local Event Service, either an ActyxOS node in development
+    /// mode or the production ActyxOS node where the app is deployed (in particular, it will
+    /// inspect the `AX_API_URI` environment variable and fall back to
+    /// `http://localhost:4454/api/`).
+    pub async fn default() -> anyhow::Result<HttpClient> {
+        let client = Client::new();
+        let url = std::env::var("AX_API_URI").unwrap_or_else(|_| API_URI.to_string());
+        let url = Url::parse(url.as_str())?;
+        let mut url = ensure_base(url)?;
+        url.path_segments_mut().unwrap().push(API_PATH);
+        Self::new(client, url).await
+    }
+
+    pub async fn new(client: Client, url: Url) -> anyhow::Result<HttpClient> {
+        let mut auth_url = ensure_base(url.clone())?;
+        auth_url.path_segments_mut().unwrap().pop_if_empty().push("auth");
+        let token = async move {
+            // FIXME do request
+            "xxx"
+        }
+        .await;
+        let token_query = format!("token={}", token);
+
+        Ok(Self {
+            client,
+            url,
+            token_query,
+        })
+    }
+
     fn url(&self, path: &str) -> Url {
-        self.url.join(path).unwrap()
+        let mut url = self.url.clone();
+        url.path_segments_mut().unwrap().pop_if_empty().push(path); // unwrap() because of ensure_base()
+        url.set_query(Some(self.token_query.as_str()));
+        url
     }
 
     async fn do_request(
@@ -76,27 +124,6 @@ impl HttpClient {
     }
 }
 
-impl Default for HttpClient {
-    /// This will configure a connection to the local Event Service, either an ActyxOS node in development
-    /// mode or the production ActyxOS node where the app is deployed (in particular, it will
-    /// inspect the `AX_API_URI` environment variable and fall back to
-    /// `http://localhost:4454/api/`).
-    fn default() -> Self {
-        let client = Client::new();
-        let url = std::env::var("AX_API_URI")
-            .and_then(|mut uri| {
-                if !uri.ends_with('/') {
-                    uri.push('/')
-                };
-                Url::parse(&*uri).map_err(|_| std::env::VarError::NotPresent)
-            })
-            .unwrap_or_else(|_| Url::parse("http://localhost:4454/api/").unwrap())
-            .join("v2/events/")
-            .unwrap();
-        HttpClient { client, url }
-    }
-}
-
 #[async_trait]
 impl EventService for HttpClient {
     async fn node_id(&self) -> Result<NodeIdResponse> {
@@ -114,7 +141,7 @@ impl EventService for HttpClient {
         })?)
     }
 
-    async fn offsets(&self) -> Result<crate::OffsetMap> {
+    async fn offsets(&self) -> Result<OffsetMap> {
         let response = self.do_request(|c| c.get(self.url("offsets"))).await?;
         let bytes = response
             .bytes()
@@ -145,7 +172,7 @@ impl EventService for HttpClient {
         })?)
     }
 
-    async fn query(&self, request: QueryRequest) -> Result<futures::stream::BoxStream<'static, QueryResponse>> {
+    async fn query(&self, request: QueryRequest) -> Result<BoxStream<'static, QueryResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self.do_request(|c| c.post(self.url("query")).json(&body)).await?;
         let res = to_lines(response.bytes_stream())
@@ -155,10 +182,7 @@ impl EventService for HttpClient {
         Ok(res.boxed())
     }
 
-    async fn subscribe(
-        &self,
-        request: SubscribeRequest,
-    ) -> Result<futures::stream::BoxStream<'static, SubscribeResponse>> {
+    async fn subscribe(&self, request: SubscribeRequest) -> Result<BoxStream<'static, SubscribeResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self.do_request(|c| c.post(self.url("subscribe")).json(&body)).await?;
         let res = to_lines(response.bytes_stream())
@@ -171,7 +195,7 @@ impl EventService for HttpClient {
     async fn subscribe_monotonic(
         &self,
         request: SubscribeMonotonicRequest,
-    ) -> Result<futures::stream::BoxStream<'static, SubscribeMonotonicResponse>> {
+    ) -> Result<BoxStream<'static, SubscribeMonotonicResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
             .do_request(|c| c.post(self.url("subscribe_monotonic")).json(&body))
