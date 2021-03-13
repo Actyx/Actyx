@@ -61,6 +61,11 @@ module.exports = {
           to: 'blog',
           position: 'right',
         },
+        {
+          label: 'Community',
+          to: 'https://community.actyx.com/',
+          position: 'right',
+        },
       ],
     },
     footer: {

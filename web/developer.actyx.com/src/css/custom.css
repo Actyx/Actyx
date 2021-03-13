@@ -721,11 +721,12 @@ article > footer.row.margin-vert--lg {
 }
 .button.button--secondary {
   color: #222 !important;
-  border-radius: 120px;
   height: 60px;
   width: 60px;
   margin-right: 1rem;
-  box-shadow: 0px 0px 20px #aaa;
+  border-radius: 5px;
+  border: 1px solid #e1e5e8;
+  font-size: 24px;
 }
 .button.button--secondary.button--outline:not(.button--active):not(:hover) {
   color: #fff !important;
@@ -1445,8 +1446,9 @@ li {
   font-size: 13px;
   letter-spacing: 0.5px;
 }
-.menu .menu__link:hover {
-  background: #f5f6f7 !important;
+
+.sidebarMenuCloseIcon_node_modules-\@docusaurus-theme-classic-lib-next-theme-DocSidebar- {
+  font-size: 1.5rem;
 }
 
 .menu .menu__link {
@@ -1469,13 +1471,12 @@ li {
 }
 
 .menu .menu__link.menu__link--active:not(.menu__link--sublist) {
-  background: #f5f6f7;
   color: var(--ifm-menu-color-active);
 }
 
 .menu .menu__link.menu__link--active {
   color: #606770;
-  background: #f5f6f7;
+  background: none;
 }
 .menu.menu--responsive .menu__button {
   bottom: 2rem;
