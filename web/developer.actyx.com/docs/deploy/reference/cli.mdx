@@ -15,6 +15,8 @@ import { Divider } from '../../../src/components/Divider'
 
 ## ax nodes ls
 
+This command returns the current state of the specified node in form of a table.
+
 ### Usage
 
 `ax nodes ls [FLAGS] <NODE>...`
@@ -29,7 +31,7 @@ import { Divider } from '../../../src/components/Divider'
   description={`Verbosity level. Add more v for higher verbosity (-v, -vv, -vvv, etc.)`}
 />
 
-### Options
+### Arguments
 
 <CLIRef
   code={'`<NODE>...`'}
@@ -44,13 +46,15 @@ import { Divider } from '../../../src/components/Divider'
   body="If the node is reachable, the output of `ax nodes ls` will show you its status. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
 - Host unreachable
 - ActyxOS unreachable (this means the host was reachable but the TCP connection reset)"
-></Callout>
+/>
 
 ### Examples
 
 Get the status of all specified nodes in the local network:
 
-`ax nodes ls --local 10.2.3.23 10.2.3.24`
+```text
+$ ax nodes ls --local 10.2.3.23 10.2.3.24
+```
 
 ```text
 +------------+--------------+---------+----------+---------+---------------------------+---------+
@@ -62,7 +66,9 @@ Get the status of all specified nodes in the local network:
 
 Get the status of all specified nodes in the local network as a json object
 
-`ax --json nodes ls --local 10.2.3.23 10.2.3.24 10.2.3.25`
+```text
+$ ax --json nodes ls --local 10.2.3.23 10.2.3.24 10.2.3.25
+```
 
 ```json
 {
@@ -93,56 +99,88 @@ Get the status of all specified nodes in the local network as a json object
 }
 ```
 
----
+<Divider />
 
-:::info `ax nodes ls` only returns the state of the node
-
-Please keep in mind that **state**, **settings** and **license** in the `ax nodes ls` command **only** refer to the node itself. If you want more detailed information about the state of the apps on a node, you need to use [`ax apps ls`](#apps-ls).
-:::
-
-## `ax settings`
+## ax settings
 
 This is a placeholder text for this paragraph.
 
-### `ax settings get`
+### Usage
+
+`ax settings get [FLAGS] <SCOPE> <NODE>`
+
+### Flags
+
+<CLIRef code={'`-h, --help`'} description={'Prints help information'} />
+<CLIRef code={'`-V, --version`'} description={'Prints version information'} />
+<CLIRef code={'`-l, --local`'} description={'Process over local network'} />
+<CLIRef
+  code={'`-no-defaults`'}
+  description={'Only return settings explicitly set by the user and skip default values'}
+/>
+<CLIRef
+  code={'`-v`'}
+  description={`Verbosity level. Add more v for higher verbosity (-v, -vv, -vvv, etc.)`}
+/>
+
+### Arguments
+
+<CLIRef code={'`<SCOPE>`'} description={`Scope from which you want to get the settings`} />
+<CLIRef
+  code={'`<NODE>`'}
+  description={`Node ID or, if using \`--local\`, the IP address of the node to perform the operation on`}
+/>
+
+<Divider />
+
+<Callout
+  icon="⚠️"
+  headline="Null or schema-conformant"
+  body="The return value of this command will always be either null or schema-conformant, unless the `--no-defaults` flag is used."
+/>
+
+### Examples
+
+Get the settings for the node with settings scope com.actyx.os at 10.2.3.23
 
 ```text
-USAGE:
-    ax settings get [FLAGS] <SCOPE> <NODE>
-
-FLAGS:
-    -h, --help           Prints help information
-    -l, --local          Process over local network
-        --no-defaults    Only return settings explicitly set by the user and
-                         skip default values
-    -V, --version        Prints version information
-    -v                   Verbosity level. Add more v for higher verbosity
-                         (-v, -vv, -vvv, etc.)
-
-ARGS:
-    <SCOPE>    Scope from which you want to get the settings
-    <NODE>     Node ID or, if using `--local`, the IP address of the node to
-               perform the operation on
+$ ax settings get --local com.actyx.os 10.2.3.23
 ```
 
-> Null or schema-conformant
->
-> The return value of this command will always be either null or schema-conformant, unless the `--no-defaults` flag is used.
+```yaml
+---
+general:
+  announceAddresses: []
+  authorizedKeys: []
+  bootstrapNodes:
+    - /dns4/demo-bootstrap.actyx.net/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH
+  displayName: Sample Node
+  logLevels:
+    apps: INFO
+    os: INFO
+  requireAuthentication: false
+  swarmKey: L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCjU2NGE1MTM0MzE0ZTZlMzc1MjcyNGY3MTRiNTQzNDcxMzM3YTc0NTk0YTc2NTA0OTQ5NmQzNDU3NzY0NzMyNDc=
+licensing:
+  apps: {}
+  os: development
+services:
+  consoleService: {}
+  dockerRuntime: {}
+  eventService:
+    readOnly: false
+    topic: /chat/dev/1
+  webViewRuntime: {}
+```
 
-Here are some examples of using the `ax settings get` command:
+Just get the displayName setting
 
-```text title="Example Usage"
-# Get the settings for the node with settings scope com.actyx.os at 10.2.3.23
-ax settings get --local com.actyx.os 10.2.3.23
+```text
+$ ax settings get --local com.actyx.os/general/displayName 10.2.3.23
+```
 
-# Just get the displayName setting
-ax settings get --local com.actyx.os/general/displayName 10.2.3.23
-
-# Get the settings for the app with settings scope com.example.app from node at 10.2.3.23
-ax settings get --local com.example.app 10.2.3.23
-
-# Just get the specific setting setting1
-ax settings get --local com.example.app/setting1 10.2.3.23
+```yaml
+---
+Sample Node
 ```
 
 ### `ax settings set`

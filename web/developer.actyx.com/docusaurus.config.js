@@ -66,6 +66,11 @@ module.exports = {
           to: 'https://community.actyx.com/',
           position: 'right',
         },
+        {
+          label: 'Academy',
+          to: 'https://community.actyx.com/',
+          position: 'right',
+        },
       ],
     },
     footer: {

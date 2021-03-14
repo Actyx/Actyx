@@ -266,8 +266,24 @@
   notes:
     df2486ac8b186d528873680ac8f7d9865c85a144:
       original:
-        Releases:
+        🚀 New features:
           - Introducing automated nightly releases of Actyx Software.
+          - Major stability and reliability improvements
+          - Bug Fixes
+          - Refactoring the node structure
+          - Simplyfied the node lifecycle making it transparent in which state the node currently is
+        🐛 Bug Fixes:
+          - Fixed a bug where Actyx crashed on Android
+          - Windows event viewer now correctly displays node logs
+          - Actyx on Linux now does not crash when run on armv7
+          - Fixed a bug where the Node Manager froze up when trying to sign a manifest
+        📖 Documentation:
+          - Changed the explanation document about the node lifecycle
+          - clarified section on app manifest signing
+        💥 Breaking Changes:
+          - Breaking change 1
+          - Breaking change 2
+          - Breaking change 3
       amendments: {}
 - build: '1.11481'
   tag: build-1.11481

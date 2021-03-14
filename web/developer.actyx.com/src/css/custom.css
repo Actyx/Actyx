@@ -1412,6 +1412,9 @@ li {
   line-height: 1.5 !important;
 }
 
+.codeBlock_node_modules-\@docusaurus-theme-classic-lib-next-theme-CodeBlock- {
+  overflow-y: scroll;
+}
 .menu {
   font-weight: var(--ifm-font-weight-semibold);
   overflow-x: hidden;
