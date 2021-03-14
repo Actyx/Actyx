@@ -1419,6 +1419,7 @@ li {
   margin: 0;
   list-style-type: none;
   padding-left: 0;
+  background: none;
   transition: height var(--ifm-transition-fast) cubic-bezier(0.08, 0.52, 0.52, 1);
 }
 .menu .menu__list .menu__list {
@@ -1452,7 +1453,7 @@ li {
 }
 
 .menu .menu__link {
-  border-radius: 5rem;
+  border-radius: 4px;
   color: var(--ifm-menu-color);
   cursor: pointer;
   display: flex;
@@ -1477,6 +1478,11 @@ li {
 .menu .menu__link.menu__link--active {
   color: #606770;
   background: none;
+}
+
+.menu .menu__link:hover {
+  background: none;
+  color: var(--ifm-color-primary);
 }
 .menu.menu--responsive .menu__button {
   bottom: 2rem;

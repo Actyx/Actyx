@@ -2,7 +2,7 @@
 title: Actyx CLI
 id: cli
 hide_title: false
-hide_table_of_contents: true
+hide_table_of_contents: false
 sidebar_label: Actyx CLI
 keywords: [explanation, cli, actyx]
 description: Reference documentation on the Actyx CLI.
@@ -11,6 +11,7 @@ image: /images/defaults/default.svg
 
 import { CLIRef } from '../../../src/components/CLIRef'
 import { Callout } from '../../../src/components/Callout'
+import { Divider } from '../../../src/components/Divider'
 
 ## ax nodes ls
 
@@ -35,10 +36,10 @@ import { Callout } from '../../../src/components/Callout'
   description={`Node ID or, if using \`--local\`, the IP address of the node to perform the operation on`}
 />
 
----
+<Divider />
 
 <Callout
-  icon="🔥"
+  icon="⚠️"
   headline="Output of `ax nodes ls`"
   body="If the node is reachable, the output of `ax nodes ls` will show you its status. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
 - Host unreachable
