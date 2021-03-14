@@ -77,7 +77,7 @@ module.exports = {
       style: 'dark',
       links: [
         {
-          title: 'Reference Deep Dives',
+          title: 'Reference Docs',
           items: [
             {
               label: 'Actyx',

@@ -9,11 +9,13 @@ const IconStyled = styled.span<{
       fill: ${(p) =>
         p.color == 'lightgray'
           ? '#ebedf0'
-          : p.color == 'blue'
-          ? '#1998ff'
           : p.color == 'gray'
           ? '#586069'
-          : '#586069'};
+          : p.color == 'blue'
+          ? '#1998ff'
+          : p.color == 'black'
+          ? '#000000'
+          : '#ffffff'};
     }
     height: 21px;
     margin-right: 10px;
