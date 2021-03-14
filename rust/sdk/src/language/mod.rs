@@ -6,33 +6,33 @@ use crate::{
 mod parser;
 pub use parser::expression;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Expression {
     Simple(SimpleExpr),
     Query(Query),
 }
 mod expression_impl;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Query {
     pub from: TagExpr,
     pub ops: Vec<Operation>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Operation {
     Filter(SimpleExpr),
     Select(SimpleExpr),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum TagExpr {
     Or(Box<(TagExpr, TagExpr)>),
     And(Box<(TagExpr, TagExpr)>),
     Atom(TagAtom),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum TagAtom {
     Tag(Tag),
     AllEvents,
@@ -54,36 +54,36 @@ impl TagExpr {
 }
 
 // this will obviously need to be implemented for real sometime, with arbitrary precision
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub enum Number {
     Decimal(f64),
     Natural(u64),
 }
 mod number_impl;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Index {
     Ident(String),
     Number(u64),
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Path {
     pub head: String,
     pub tail: Vec<Index>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Object {
     pub props: Vec<(String, SimpleExpr)>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Array {
     pub items: Vec<SimpleExpr>,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum SimpleExpr {
     Path(Path),
     Number(Number),

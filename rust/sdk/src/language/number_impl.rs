@@ -1,4 +1,5 @@
 use super::Number;
+use std::cmp::Ordering;
 use Number::*;
 
 impl Number {
@@ -17,11 +18,98 @@ impl Number {
     }
 }
 
-impl PartialOrd for Number {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+impl PartialEq for Number {
+    fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Natural(l), Natural(r)) => l.partial_cmp(r),
-            (l, r) => l.as_f64().partial_cmp(&r.as_f64()),
+            (Natural(l), Natural(r)) => l.eq(r),
+            (l, r) => l.as_f64().eq(&r.as_f64()),
+        }
+    }
+}
+
+impl Eq for Number {}
+
+impl PartialOrd for Number {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Number {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Natural(l), Natural(r)) => l.cmp(r),
+            (l, r) => l.as_f64().partial_cmp(&r.as_f64()).unwrap(),
+        }
+    }
+}
+
+// what this asserts is that f64::partial_cmp is total when NaN is removed
+#[test]
+fn making_sure_i_am_not_dumb() {
+    let mut v = vec![];
+
+    // negative infinity
+    let n = f64::NEG_INFINITY;
+    assert!(f64::is_infinite(n));
+    assert!(f64::is_sign_negative(n));
+    v.push(n);
+
+    // negative number
+    let n = -1234.0;
+    assert!(f64::is_finite(n));
+    assert!(f64::is_sign_negative(n));
+    assert!(f64::is_normal(n));
+    v.push(n);
+
+    // negative subnormal number
+    let n = -f64::MIN_POSITIVE / 2.0;
+    assert!(f64::is_finite(n));
+    assert!(f64::is_sign_negative(n));
+    assert!(!f64::is_normal(n));
+    v.push(n);
+
+    // negative zero (because of course)
+    let n = -0.0;
+    assert!(f64::is_finite(n));
+    assert!(f64::is_sign_negative(n));
+    assert!(!f64::is_normal(n));
+    v.push(n);
+
+    // positive zero
+    let n = 0.0;
+    assert!(f64::is_finite(n));
+    assert!(f64::is_sign_positive(n));
+    assert!(!f64::is_normal(n));
+    v.push(n);
+
+    // positive subnormal number
+    let n = f64::MIN_POSITIVE / 2.0;
+    assert!(f64::is_finite(n));
+    assert!(f64::is_sign_positive(n));
+    assert!(!f64::is_normal(n));
+    v.push(n);
+
+    // positive number
+    let n = 1234.0;
+    assert!(f64::is_finite(n));
+    assert!(f64::is_sign_positive(n));
+    assert!(f64::is_normal(n));
+    v.push(n);
+
+    // positive infinity
+    let n = f64::INFINITY;
+    assert!(f64::is_infinite(n));
+    assert!(f64::is_sign_positive(n));
+    v.push(n);
+
+    for i in 0..v.len() {
+        for j in 0..v.len() {
+            if i == 3 && j == 4 || i == 4 && j == 3 {
+                assert_eq!(v[i].partial_cmp(&v[j]), Some(Ordering::Equal));
+            } else {
+                assert_eq!(v[i].partial_cmp(&v[j]), i.partial_cmp(&j), "i:{} j:{}", i, j);
+            }
         }
     }
 }

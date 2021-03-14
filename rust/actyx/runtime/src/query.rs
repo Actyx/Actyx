@@ -7,6 +7,7 @@ use actyxos_sdk::{
     language::{Expression, TagAtom, TagExpr},
     tagged::TagSet,
 };
+use std::collections::BTreeSet;
 use trees::{TagSubscription, TagSubscriptions};
 
 pub struct Query {
@@ -62,10 +63,15 @@ impl Query {
     }
 }
 
-struct Dnf(Vec<Vec<TagAtom>>);
+// invariant: none of the sets are ever empty
+struct Dnf(BTreeSet<BTreeSet<TagAtom>>);
 impl From<&TagAtom> for Dnf {
     fn from(a: &TagAtom) -> Self {
-        Self(vec![vec![a.clone()]])
+        let mut s = BTreeSet::new();
+        s.insert(a.clone());
+        let mut s2 = BTreeSet::new();
+        s2.insert(s);
+        Self(s2)
     }
 }
 impl Dnf {
@@ -75,17 +81,11 @@ impl Dnf {
         Dnf(o)
     }
     pub fn and(self, other: Dnf) -> Self {
-        if other.0.is_empty() {
-            return self;
-        }
-        let mut ret = vec![];
-        for mut a in self.0 {
-            let last = other.0.len() - 1;
-            for b in &other.0[0..last] {
-                ret.push(a.iter().chain(b.iter()).cloned().collect());
+        let mut ret = BTreeSet::new();
+        for a in self.0 {
+            for b in &other.0 {
+                ret.insert(a.union(b).cloned().collect());
             }
-            a.extend(other.0[last].clone());
-            ret.push(a);
         }
         Dnf(ret)
     }
