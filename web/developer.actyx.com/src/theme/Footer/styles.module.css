@@ -12,35 +12,3 @@
 .footerLogoLink:hover {
   opacity: 1;
 }
-
-.releasesLinkWrapper {
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  margin-bottom: 24px;
-  max-width: 210px;
-  text-align: center;
-  font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 13px;
-  padding-left: 12px;
-  padding-right: 12px;
-  padding-top: 4px;
-  padding-bottom: 4px;
-  border-radius: 5px;
-  background-color: #1e1e1e;
-}
-
-.build {
-  background-color: #1e1e1e;
-  color: #9cdcfe;
-  margin-right: 8px;
-}
-
-.no--hover {
-  text-decoration: none !important;
-}
-
-.buildNumber {
-  background-color: #1e1e1e;
-  color: #b5cea8;
-}

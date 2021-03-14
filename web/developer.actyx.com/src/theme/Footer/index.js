@@ -11,6 +11,7 @@ import { useThemeConfig } from '@docusaurus/theme-common'
 import useBaseUrl from '@docusaurus/useBaseUrl'
 import { BuildNumber } from '../../components/BuildNumber'
 import { IconLink } from '../../components/IconLink'
+import { Social } from '../../components/Social'
 
 function FooterLink({ to, href, label, prependBaseUrlToHref, ...props }) {
   const toUrl = useBaseUrl(to)
@@ -84,37 +85,25 @@ function Footer() {
             ))}
           </div>
         )}
-        <BuildNumber pre="Release: " build="build-1.17242" /> {/* {releases[0].tag} */}
-        <IconLink link="Past Releases" />
-        {(logo || copyright) && (
-          <div className="footer__bottom">
-            {/* {logo && logo.src && (
-              <div className="margin-bottom--sm">
-                {logo.href ? (
-                  <a
-                    href={logo.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={styles.footerLogoLink}
-                  >
-                    <FooterLogo alt={logo.alt} url={logoUrl} />
-                  </a>
-                ) : (
-                  <FooterLogo alt={logo.alt} url={logoUrl} />
-                )}
-              </div>
-            )} */}
-            {copyright ? (
-              <div
-                className="footer__copyright" // Developer provided the HTML, so assume it's safe.
-                // eslint-disable-next-line
-                dangerouslySetInnerHTML={{
-                  __html: copyright,
-                }}
-              />
-            ) : null}
-          </div>
-        )}
+        <div style={{ paddingLeft: '84px' }}>
+          <BuildNumber pre="Release: " build="build-1.17242" />{' '}
+          {/* TODO get latest release build */}
+          <IconLink link="Past Releases" />
+          <Social />
+          {(logo || copyright) && (
+            <div className="footer__bottom">
+              {copyright ? (
+                <div
+                  className="footer__copyright" // Developer provided the HTML, so assume it's safe.
+                  // eslint-disable-next-line
+                  dangerouslySetInnerHTML={{
+                    __html: copyright,
+                  }}
+                />
+              ) : null}
+            </div>
+          )}
+        </div>
       </div>
     </footer>
   )
