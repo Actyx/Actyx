@@ -13,6 +13,10 @@ import { CLIRef } from '../../../src/components/CLIRef'
 import { Callout } from '../../../src/components/Callout'
 import { Divider } from '../../../src/components/Divider'
 
+This document offers a detailed reference documentation for the commands and subcommands of the Actyx CLI.
+Additionally, you find examples of how to use each command when working with Actyx CLI.
+If you want to jump straight to a specific command, please use the table of contents on the right side.
+
 ## ax nodes ls
 
 This command returns the current state of the specified node in form of a table.
@@ -43,7 +47,7 @@ This command returns the current state of the specified node in form of a table.
 <Callout
   icon="⚠️"
   headline="Output of `ax nodes ls`"
-  body="If the node is reachable, the output of `ax nodes ls` will show you its status. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
+  body="If the node is reachable, the output of \`ax nodes ls\` will show you its status. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
 - Host unreachable
 - ActyxOS unreachable (this means the host was reachable but the TCP connection reset)"
 />
