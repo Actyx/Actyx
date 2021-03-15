@@ -7,7 +7,6 @@ use futures::{
     future,
     stream::{Stream, StreamExt},
 };
-use ipfs_sqlite_block_store::TempPin;
 use std::collections::BTreeMap;
 use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
@@ -106,7 +105,6 @@ pub struct RemoteNodeInner {
 /// Data for a single replicated stream, mutable state + constant data
 #[derive(Debug)]
 pub struct ReplicatedStreamInner {
-    pub temp_pin: TempPin,
     pub forest: Forest,
     pub validated: Variable<Tree>,
     pub incoming: Variable<Option<Link>>,
@@ -114,10 +112,9 @@ pub struct ReplicatedStreamInner {
 }
 
 impl ReplicatedStreamInner {
-    pub fn new(temp_pin: TempPin, forest: Forest) -> Self {
+    pub fn new(forest: Forest) -> Self {
         Self {
             forest,
-            temp_pin,
             validated: Variable::default(),
             incoming: Variable::default(),
             latest_seen: Variable::default(),

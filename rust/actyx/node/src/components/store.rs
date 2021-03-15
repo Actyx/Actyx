@@ -5,10 +5,9 @@ use anyhow::Result;
 use ax_config::StoreConfig;
 use crossbeam::channel::{Receiver, Sender};
 use crypto::KeyStoreRef;
-use ipfs_node::NodeIdentity;
 use parking_lot::Mutex;
 use std::{path::PathBuf, sync::Arc};
-use swarm::BanyanStore;
+use swarm::{BanyanStore, NodeIdentity};
 use tokio::sync::oneshot;
 use tracing::*;
 
@@ -29,18 +28,10 @@ impl Component<StoreRequest, StoreConfig> for Store {
     fn handle_request(&mut self, req: StoreRequest) -> Result<()> {
         match req {
             StoreRequest::GetSwarmState { tx } => {
-                if let Some(InternalStoreState { rt, store }) = self.state.as_ref() {
-                    let state = rt.block_on(store.ipfs().stats());
+                if let Some(InternalStoreState { rt: _, _store: _ }) = self.state.as_ref() {
                     // TODO: This should be stabilized and made into an official API
-                    let _ = tx.send(state.map_err(Into::into).map(|stats| {
-                        serde_json::json!({
-                            "swarm": stats.swarm,
-                            "repo": {
-                                "repo_size": stats.repo_size,
-                                "num_objects": stats.num_objects,
-                            }
-                        })
-                    }));
+                    //       Follow-up from ipfs-embed PR, readd api.
+                    let _ = tx.send(Ok(serde_json::json!({})));
                 } else {
                     let _ = tx.send(Err(anyhow::anyhow!("Store not running")));
                 }
@@ -72,7 +63,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
                 Ok::<BanyanStore, anyhow::Error>(store)
             })?;
 
-            self.state = Some(InternalStoreState { rt, store });
+            self.state = Some(InternalStoreState { rt, _store: store });
             Ok(())
         } else {
             anyhow::bail!("no config")
@@ -93,18 +84,15 @@ impl Component<StoreRequest, StoreConfig> for Store {
             .ok_or_else(|| anyhow::anyhow!("No KeyPair available for KeyId {}", self.node_id))?
             .into();
         let mut c = s.store_config(&self.working_dir)?;
-
-        c.ipfs_node.identity = Some(identity.to_string());
-
         c.api_addr = self.bind_to.api.clone();
+        c.ipfs_node.identity = Some(identity.to_string());
         c.ipfs_node.listen = self.bind_to.swarm.clone().to_multiaddrs().collect();
-
         Ok(c)
     }
 }
 struct InternalStoreState {
     rt: tokio::runtime::Runtime,
-    store: BanyanStore,
+    _store: BanyanStore,
 }
 /// Struct wrapping the store service and handling its lifecycle.
 pub(crate) struct Store {

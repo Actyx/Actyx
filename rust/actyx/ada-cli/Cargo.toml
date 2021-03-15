@@ -7,39 +7,38 @@ edition = "2018"
 [dependencies]
 actyxos_sdk = { version = "0.5", features = ["postgresql"], path = "../../sdk" }
 ax-config = { path = "../ax-config" }
-ipfs-node = { path = "../ipfs-node" }
-trees = { path = "../trees" }
 swarm = { path = "../swarm" }
+trees = { path = "../trees" }
 util = { path = "../util" }
 
 anyhow = "1.0.38"
-async-trait = "0.1.42"
+async-trait = "0.1.48"
 base64 = "0.13.0"
 bytes= "1.0.1"
 chrono = { version = "0.4.19", features = ["serde"] }
 clap = "2.33.3"
-futures = { version = "0.3.12", package = "futures" }
-hex = "0.4.2"
-hyper = { version = "0.14.2", features = ["stream"], package = "hyper" }
+futures = { version = "0.3.13", package = "futures" }
+hex = "0.4.3"
+hyper = { version = "0.14.4", features = ["stream"], package = "hyper" }
 itertools = "0.10.0"
 lazy_static = "1.4.0"
 libipld = { version = "0.11.0", default-features = false, features = ["dag-cbor", "dag-json"] }
 maplit = "1.0.2"
 num-traits = "0.2.14"
 postgres = { version = "0.19.0", features = ["with-serde_json-1"] }
-prometheus = "0.11.0"
-regex = "1.4.3"
-serde = "1.0.123"
+prometheus = "0.12.0"
+regex = "1.4.5"
+serde = "1.0.124"
 serde_cbor = { version = "0.11.1", features = ["tags"] }
-serde_json = "1.0.61"
+serde_json = "1.0.64"
 serde-value = "0.7.0"
-tokio = { version = "1.2.0", features = ["full"], package = "tokio" }
+tokio = { version = "1.3.0", features = ["full"], package = "tokio" }
 tokio-postgres = { version = "0.7.0", features = ["with-serde_json-1"] }
-tracing = { version = "0.1.22", features = ["max_level_trace", "release_max_level_debug"] }
-tracing-futures = "0.2.4"
-tracing-subscriber = "0.2.15"
+tracing = { version = "0.1.25", features = ["max_level_trace", "release_max_level_debug"] }
+tracing-futures = "0.2.5"
+tracing-subscriber = "0.2.17"
 warp = "0.3.0"
 
 [dev-dependencies]
 chrono = "0.4.19"
-regex = "1.4.3"
+regex = "1.4.5"

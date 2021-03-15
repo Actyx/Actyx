@@ -438,7 +438,7 @@ pub(crate) async fn start(swarm: WrappedBehaviour) {
 
 async fn mk_transport(id_keys: identity::Keypair) -> ActyxOSResult<(PeerId, Boxed<(PeerId, StreamMuxerBox)>)> {
     let peer_id = id_keys.public().into_peer_id();
-    let transport = ipfs_node::build_transport(id_keys, None, Duration::from_secs(20))
+    let transport = swarm::transport::build_transport(id_keys, None, Duration::from_secs(20))
         .await
         .ax_internal()?;
     Ok((peer_id, transport))

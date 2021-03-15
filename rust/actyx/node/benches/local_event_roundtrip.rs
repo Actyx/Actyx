@@ -1,11 +1,10 @@
 use actyxos_sdk::{
-    service::{self, Order, PublishEvent, PublishRequest, QueryRequest},
+    service::{EventService, Order, PublishEvent, PublishRequest, QueryRequest},
     tags, HttpClient, Payload,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use futures::StreamExt;
 use node::{BindTo, Runtime};
-use service::EventService;
 use std::time::Duration;
 use tempfile::tempdir;
 use util::SocketAddrHelper;
@@ -37,6 +36,7 @@ fn round_trip(c: &mut Criterion) {
         b.to_async(&rt).iter_batched(
             || (data.clone(), HttpClient::default()),
             |(input, service)| async move {
+                let service = service.await.unwrap();
                 let offsets_before = service.offsets().await.unwrap();
                 service
                     .publish(PublishRequest {

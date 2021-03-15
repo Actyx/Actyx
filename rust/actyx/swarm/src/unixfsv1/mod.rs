@@ -2,7 +2,7 @@
 //! recursive structures such as directories and files, returning a stream of raw bytes.
 //!
 //! Large files are supported. Extremely large directories are not yet supported
-use crate::IpfsNode;
+use crate::Ipfs;
 use anyhow::Result;
 use futures::future::{BoxFuture, Future};
 use futures::stream::Stream;
@@ -64,14 +64,14 @@ fn decode_unixfs_block(block: &[u8]) -> Result<UnixFsNode> {
 }
 
 pub struct UnixfsDecoder {
-    ipfs: IpfsNode,
+    ipfs: Ipfs,
     cids: VecDeque<Cid>,
     path: VecDeque<String>,
     index_html: bool,
 }
 
 impl UnixfsDecoder {
-    pub fn new(ipfs: IpfsNode, cid: Cid, path: VecDeque<String>) -> Self {
+    pub fn new(ipfs: Ipfs, cid: Cid, path: VecDeque<String>) -> Self {
         let mut cids = VecDeque::new();
         cids.push_back(cid);
         Self {
@@ -165,8 +165,9 @@ impl Stream for UnixfsStream {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Block;
+    use crate::{BanyanStore, Block, Config, DbPath, Ipfs, SqliteIndexStore};
     use futures::stream::StreamExt;
+    use ipfs_embed::Config as IpfsConfig;
     use libipld::multihash::{Code, MultihashDigest};
     use libipld::pb::DagPbCodec;
     use std::path::Path;
@@ -191,17 +192,19 @@ mod tests {
         "bafybeifecd74ibhpfk7mxdanj42dbd4jg76tzwvjbm7jixnzcwzb6qbvvi",
     ];
 
-    async fn setup() -> IpfsNode {
+    async fn setup() -> BanyanStore {
         setup_logger();
-        let client = IpfsNode::test().await.unwrap();
+        let ipfs = Ipfs::new(IpfsConfig::new(None, 0)).await.unwrap();
+        let index = SqliteIndexStore::open(DbPath::Memory).unwrap();
+        let store = BanyanStore::new(ipfs, Config::test(), index).unwrap();
         for cid in TEST_DATA {
             let data = std::fs::read(Path::new("./test-data").join(cid)).unwrap();
             let hash = Code::Sha2_256.digest(&data);
             let cid = Cid::new_v1(DagPbCodec.into(), hash);
             let block = Block::new_unchecked(cid, data);
-            client.insert(block).await.unwrap();
+            let _ = store.ipfs().insert(&block).unwrap();
         }
-        client
+        store
     }
 
     #[test]
@@ -261,7 +264,6 @@ mod tests {
     }
 
     #[tokio::test(flavor = "multi_thread")]
-    #[ignore]
     async fn directory_decode() -> Result<()> {
         // test traversing a path from a complex directory
         let ipfs = setup().await;
