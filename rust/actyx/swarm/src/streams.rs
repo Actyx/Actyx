@@ -55,6 +55,7 @@ impl TryFrom<StreamAlias> for StreamId {
         Ok(node_id.stream(stream_nr))
     }
 }
+
 /// Data for a single own stream, mutable state + constant data
 #[derive(Debug)]
 pub struct OwnStreamInner {

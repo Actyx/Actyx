@@ -18,13 +18,14 @@ mod v2;
 pub use crate::connectivity::{Connectivity, ConnectivityCalculator};
 pub use crate::node_identity::NodeIdentity;
 pub use crate::sqlite_index_store::DbPath;
+pub use crate::streams::StreamAlias;
 pub use crate::v1::{EventStore, HighestSeen, Present, SnapshotStore};
 pub use ax_config::StoreConfig;
 
 use crate::connectivity::ConnectivityState;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
-use crate::streams::{OwnStreamInner, ReplicatedStreamInner, StreamAlias, StreamMaps};
+use crate::streams::{OwnStreamInner, ReplicatedStreamInner, StreamMaps};
 use actyxos_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr, TagSet, Timestamp};
 use anyhow::Result;
 use ax_futures_util::{prelude::*, stream::variable::Variable};
