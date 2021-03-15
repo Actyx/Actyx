@@ -13,14 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use std::{
-    convert::TryFrom,
-    fmt::{self, Debug, Display},
-};
+use std::{convert::TryFrom, fmt::{self, Debug, Display}, io::{Read, Seek, Write}};
 
 use anyhow::{anyhow, bail, Context, Result};
 use multibase::Base;
 use serde::{Deserialize, Serialize};
+use libipld::{DagCbor, cbor::DagCborCodec, codec::{Decode, Encode}};
 
 use crate::ParseError;
 
@@ -155,6 +153,19 @@ impl TryFrom<String> for NodeId {
     }
 }
 
+impl Encode<DagCborCodec> for NodeId {
+    fn encode<W: Write>(&self, c: DagCborCodec, w: &mut W) -> anyhow::Result<()> {
+        self.0.encode(c, w)
+    }
+}
+
+impl Decode<DagCborCodec> for NodeId {
+    fn decode<R: Read + Seek>(c: DagCborCodec, r: &mut R) -> libipld::Result<Self> {
+        let raw  = Vec::<u8>::decode(c, r)?;
+        NodeId::from_bytes(&raw)
+    }
+}
+
 /// The unique identifier of a single event stream emitted by an ActyxOS node
 ///
 /// The emitting node — identified by its [`NodeId`](struct.NodeId.html) — may emit multiple
@@ -256,7 +267,9 @@ mod sqlite {
 }
 
 /// StreamNr. Newtype alias for u64
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Serialize, Deserialize)]
+#[derive(DagCbor)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct StreamNr(u64);
 

@@ -214,6 +214,21 @@ impl Bounded for OffsetOrMin {
     }
 }
 
+impl Encode<DagCborCodec> for OffsetOrMin {
+    fn encode<W: Write>(&self, c: DagCborCodec, w: &mut W) -> anyhow::Result<()> {
+        self.0.encode(c, w)
+    }
+}
+
+impl Decode<DagCborCodec> for OffsetOrMin {
+    fn decode<R: Read + Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
+        let raw = i64::decode(c, r)?;
+        anyhow::ensure!(raw >= -1, "number {} is below -1", raw);
+        anyhow::ensure!(raw <= MAX_SAFE_INT, "number {} is too large", raw);
+        Ok(OffsetOrMin(raw))
+    }
+}
+
 /// Event offset within a [`SourceId`](struct.SourceId.html)’s stream
 ///
 /// The event offset is not a number, it rather is an identifier that can be compared
