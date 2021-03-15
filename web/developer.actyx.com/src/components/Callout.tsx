@@ -9,7 +9,10 @@ const Wrapper = styled.div`
   min-height: 92px;
   background: #f7fafc;
   border: 1px solid #e3e8ee;
-  padding: 14px;
+  padding-left: 14px;
+  padding-right: 14px;
+  padding-top: 14px;
+  padding-bottom: 0px;
   display: grid;
   grid-template-columns: [first] 32px [line2] auto [end];
   grid-template-rows: [row1-start] 32px [row1-end] auto [row2-end];
