@@ -6,9 +6,14 @@ use banyan::{
 use banyan_utils::{create_salsa_key, dump};
 use futures::{prelude::*, stream, Stream};
 use ipfs_sqlite_block_store::BlockStore;
-use std::{path::PathBuf, sync::Arc};
+use libipld::{
+    cbor::DagCborCodec,
+    codec::{Codec, Decode},
+    json::DagJsonCodec,
+};
+use std::{io::Cursor, path::PathBuf, sync::Arc};
 use structopt::StructOpt;
-use trees::axtrees::{AxTrees, Sha256Digest};
+use trees::axtrees::{AxKeySeq, AxTrees, Sha256Digest};
 use util::formats::{ActyxOSResult, ActyxOSResultExt};
 
 use super::SqliteStore;
@@ -53,8 +58,26 @@ fn dump(opts: DumpTreeOpts) -> anyhow::Result<String> {
             for maybe_pair in forest.iter_from(&tree, 0) {
                 let (_, k, v) = maybe_pair?;
                 if opts.with_keys {
-                    // TODO: more structured output?
-                    println!("{:?} --> {}", k, v.json_string());
+                    // This is a bit of an indirection ..
+                    // DagCborEncode is only implemented for `AxKeySeq`
+                    let seq: AxKeySeq = std::iter::once(k).collect();
+                    let cbor = DagCborCodec.encode(&seq)?;
+                    // Go to JSON via IPLD AST
+                    let ipld = libipld::Ipld::decode(DagCborCodec, &mut Cursor::new(cbor))?;
+                    let json = DagJsonCodec.encode(&ipld)?;
+                    let key_seq: serde_json::Value = serde_json::from_slice(&json[..])?;
+                    // And the pull out the original `AxKey` again:
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "key":  {
+                                "time": key_seq["time"][0],
+                                "lamport": key_seq["lamport"][0],
+                                "tags": key_seq["tags"][0]
+                            },
+                            "value": v.json_value(),
+                        })
+                    );
                 } else {
                     println!("{}", v.json_string());
                 }
