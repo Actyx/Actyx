@@ -118,7 +118,8 @@ function DocSearch({ contextualSearch, ...props }) {
   )
 
   const cssStyle = {
-    width: '500px',
+    width: '600px',
+    height: '50px',
     background: 'white',
     borderRadius: '5px',
     border: '1px solid #e1e5e8',
