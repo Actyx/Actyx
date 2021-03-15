@@ -26,7 +26,7 @@ use serde::{Deserialize, Serialize};
 /// Microseconds since the UNIX epoch, without leap seconds and in UTC
 ///
 /// ```
-/// use actyxos_sdk::timestamp::Timestamp;
+/// use actyxos_sdk::Timestamp;
 /// use chrono::{DateTime, Utc, TimeZone};
 ///
 /// let timestamp = Timestamp::now();

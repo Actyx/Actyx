@@ -148,7 +148,7 @@ impl TagIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyxos_sdk::{expression::Expression, tags};
+    use actyxos_sdk::{tags, Expression};
     use quickcheck::quickcheck;
 
     fn l(x: &str) -> Expression {

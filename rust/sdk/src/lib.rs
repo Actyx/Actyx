@@ -33,8 +33,8 @@
 //!
 //! ```no_run
 //! use actyxos_sdk::{
+//!   HttpClient,
 //!   service::{EventService, Order, QueryRequest, QueryResponse},
-//!   http_client::HttpClient,
 //! };
 //! use futures::stream::StreamExt;
 //!
@@ -96,16 +96,16 @@ mod scalar;
 
 #[cfg(any(test, feature = "arb"))]
 pub mod arb;
-pub mod event;
-pub mod expression;
+mod event;
+mod expression;
 #[cfg(feature = "client")]
-pub mod http_client;
+mod http_client;
 pub mod legacy;
-pub mod offset;
-pub mod scalars;
+mod offset;
+mod scalars;
 pub mod service;
-pub mod tags;
-pub mod timestamp;
+mod tags;
+mod timestamp;
 pub mod types;
 
 pub use event::{Event, EventKey, Metadata, Opaque, Payload};
@@ -114,7 +114,6 @@ pub use expression::{Dnf, Expression};
 pub use http_client::HttpClient;
 pub use offset::{Offset, OffsetMap, OffsetOrMin};
 pub use scalars::{AppId, NodeId, StreamId, StreamNr};
-pub use service::EventService;
 pub use tags::{Tag, TagSet};
 pub use timestamp::{LamportTimestamp, Timestamp};
 

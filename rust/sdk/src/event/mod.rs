@@ -66,7 +66,7 @@ pub use payload::Payload;
 ///
 /// ```rust
 /// use serde::{Deserialize, Serialize};
-/// use actyxos_sdk::event::{Event, Payload};
+/// use actyxos_sdk::{Event, Payload};
 ///
 /// #[derive(Serialize, Deserialize, Debug, Clone)]
 /// struct MyPayload {

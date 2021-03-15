@@ -36,7 +36,7 @@ use crate::{types::ArcVal, ParseError};
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{tag, tags::Tag};
+/// use actyxos_sdk::{tag, Tag};
 /// let tag: Tag = tag!("abc");
 /// ```
 /// This does not compile:
@@ -50,7 +50,7 @@ macro_rules! tag {
         #[allow(dead_code)]
         type X = $crate::assert_len!($lit, 1..);
         use std::convert::TryFrom;
-        $crate::tags::Tag::try_from($lit).unwrap()
+        $crate::Tag::try_from($lit).unwrap()
     }};
 }
 
@@ -61,7 +61,7 @@ macro_rules! tag {
 ///  - normal expressions (enclosed in parens if multiple tokens)
 ///
 /// ```rust
-/// use actyxos_sdk::{tags::{Tag, TagSet}, semantics, tag, tags};
+/// use actyxos_sdk::{semantics, tag, Tag, tags, TagSet};
 /// use std::collections::BTreeSet;
 ///
 /// let tags: TagSet = tags!("a", "semantics:b");
@@ -72,7 +72,7 @@ macro_rules! tag {
 /// ```
 #[macro_export]
 macro_rules! tags {
-    () => { $crate::tags::TagSet::empty() };
+    () => { $crate::TagSet::empty() };
     ($($expr:expr),*) => {{
         let mut tags = Vec::new();
         $(
@@ -80,12 +80,12 @@ macro_rules! tags {
                 mod y {
                     $crate::assert_len! { $expr, 1..,
                         // if it is a string literal, then we know it is not empty
-                        pub fn x(z: &str) -> $crate::tags::Tag {
+                        pub fn x(z: &str) -> $crate::Tag {
                             use ::std::convert::TryFrom;
-                            $crate::tags::Tag::try_from(z).unwrap()
+                            $crate::Tag::try_from(z).unwrap()
                         },
                         // if it is not a string literal, require an infallible conversion
-                        pub fn x(z: impl Into<$crate::tags::Tag>) -> $crate::tags::Tag {
+                        pub fn x(z: impl Into<$crate::Tag>) -> $crate::Tag {
                             z.into()
                         }
                     }
@@ -93,7 +93,7 @@ macro_rules! tags {
                 tags.push(y::x($expr));
             }
         )*
-        $crate::tags::TagSet::from(tags)
+        $crate::TagSet::from(tags)
     }};
     ($($x:tt)*) => {
         compile_error!("This macro supports only string literals or expressions in parens.")
@@ -169,7 +169,7 @@ impl Encode<DagCborCodec> for Tag {
 /// Concatenate another part to this tag
 ///
 /// ```
-/// # use actyxos_sdk::{tag, tags::Tag};
+/// # use actyxos_sdk::{tag, Tag};
 /// let user_tag = tag!("user:") + "Bob";
 /// let machine_tag = tag!("machine:") + format!("{}-{}", "thing", 42);
 ///

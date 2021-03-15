@@ -1,8 +1,8 @@
 use super::ndjson;
 
 use actyxos_sdk::{
-    service::{PublishRequest, QueryRequest, SubscribeMonotonicRequest, SubscribeRequest},
-    AppId, EventService,
+    service::{EventService, PublishRequest, QueryRequest, SubscribeMonotonicRequest, SubscribeRequest},
+    AppId,
 };
 
 use derive_more::Display;
