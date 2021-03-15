@@ -1,8 +1,4 @@
-use actyxos_sdk::{
-    expression::Expression,
-    tagged::{Tag, TagSet},
-    tags,
-};
+use actyxos_sdk::{tags, Expression, Tag, TagSet};
 use serde::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut};
 

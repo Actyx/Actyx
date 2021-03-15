@@ -1,4 +1,4 @@
-use actyxos_sdk::EventService;
+use actyxos_sdk::service::EventService;
 use crypto::KeyStoreRef;
 use warp::*;
 

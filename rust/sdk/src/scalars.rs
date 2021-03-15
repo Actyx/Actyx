@@ -1,51 +1,39 @@
-use crate::event::scalars::{SourceId, MAX_SOURCEID_LENGTH};
-use anyhow::{anyhow, bail, Context, Result};
-use multibase::Base;
-use serde::{Deserialize, Serialize};
+/*
+ * Copyright 2021 Actyx AG
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 use std::{
-    convert::{TryFrom, TryInto},
+    convert::TryFrom,
     fmt::{self, Debug, Display},
 };
 
-/// The session identifier used in /subscribe_monotonic
-#[derive(Debug, Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
-pub struct SessionId(Box<str>);
+use anyhow::{anyhow, bail, Context, Result};
+use multibase::Base;
+use serde::{Deserialize, Serialize};
 
-impl Display for SessionId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&*self.0)
-    }
-}
-
-impl From<&str> for SessionId {
-    fn from(s: &str) -> Self {
-        Self(s.into())
-    }
-}
-
-impl From<String> for SessionId {
-    fn from(s: String) -> Self {
-        Self(s.into())
-    }
-}
-
-impl SessionId {
-    /// Extracts a string slice containing the entire session id
-    pub fn as_str(&self) -> &str {
-        &*self.0
-    }
-}
+use crate::ParseError;
 
 /// Macro for constructing an [`AppId`](tagging/struct.AppId.html) literal.
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{app_id, tagged::AppId};
+/// use actyxos_sdk::{app_id, AppId};
 /// let app_id: AppId = app_id!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyxos_sdk::{app_id, tagged::AppId};
+/// use actyxos_sdk::{app_id, AppId};
 /// let app_id: AppId = app_id!("");
 /// ```
 #[macro_export]
@@ -54,7 +42,7 @@ macro_rules! app_id {
         #[allow(dead_code)]
         type X = $crate::assert_len!($lit, 1..);
         use ::std::convert::TryFrom;
-        $crate::tagged::AppId::try_from($lit).unwrap()
+        $crate::AppId::try_from($lit).unwrap()
     }};
 }
 
@@ -62,7 +50,7 @@ mk_scalar!(
     /// The app ID denotes a specific app (sans versioning)
     ///
     /// This is used for marking the provenance of events as well as configuring access rights.
-    struct AppId, EmptyAppId
+    struct AppId, EmptyAppId, ParseError
 );
 
 /// The ActyxOS node identifier
@@ -117,19 +105,6 @@ impl NodeId {
         }
     }
 
-    pub fn is_from_source(&self) -> bool {
-        self.0[MAX_SOURCEID_LENGTH + 1..] == [0u8; 32 - MAX_SOURCEID_LENGTH - 1]
-    }
-
-    /// Extract a source id from a fake NodeId.
-    pub fn source_id(&self) -> anyhow::Result<SourceId> {
-        if self.is_from_source() {
-            Ok(SourceId(self.0[0..MAX_SOURCEID_LENGTH + 1].try_into().unwrap()))
-        } else {
-            Err(anyhow!("This nodeid was not created from a SourceId"))
-        }
-    }
-
     /// Creates a stream ID belonging to this node ID with the given non-zero stream number
     ///
     /// Stream number zero is reserved for embedding [`SourceId`](../event/struct.SourceId.html).
@@ -141,22 +116,6 @@ impl NodeId {
     }
 }
 
-impl From<SourceId> for NodeId {
-    fn from(value: SourceId) -> Self {
-        let mut bytes = [0u8; 32];
-        bytes[0..=MAX_SOURCEID_LENGTH].copy_from_slice(&value.0[..]);
-        NodeId(bytes)
-    }
-}
-
-impl TryFrom<NodeId> for SourceId {
-    fn try_from(value: NodeId) -> std::result::Result<Self, Self::Error> {
-        value.source_id()
-    }
-
-    type Error = anyhow::Error;
-}
-
 impl AsRef<[u8]> for NodeId {
     fn as_ref(&self) -> &[u8] {
         &self.0
@@ -165,11 +124,7 @@ impl AsRef<[u8]> for NodeId {
 
 impl Display for NodeId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Ok(source) = self.source_id() {
-            write!(f, "{}", source)
-        } else {
-            f.write_str(&self.to_multibase(Base::Base64Url))
-        }
+        f.write_str(&self.to_multibase(Base::Base64Url))
     }
 }
 
@@ -226,10 +181,6 @@ impl StreamId {
         self.stream_nr
     }
 
-    pub fn source_id(self) -> Result<SourceId, anyhow::Error> {
-        self.node_id().try_into()
-    }
-
     fn parse_str(value: &str) -> Result<Self> {
         let mut split = value.split('.');
         let node_str = split
@@ -252,11 +203,7 @@ impl StreamId {
 
 impl Display for StreamId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Ok(source_id) = self.source_id() {
-            f.write_str(source_id.as_str())
-        } else {
-            write!(f, "{}.{}", self.node_id, self.stream_nr)
-        }
+        write!(f, "{}.{}", self.node_id, self.stream_nr)
     }
 }
 
@@ -275,7 +222,7 @@ impl Into<String> for StreamId {
 impl TryFrom<&str> for StreamId {
     type Error = anyhow::Error;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Self::parse_str(value).or_else(|_| Ok(SourceId::try_from(value).context("parsing StreamId")?.into()))
+        Self::parse_str(value).context("parsing StreamId")
     }
 }
 
@@ -283,23 +230,6 @@ impl TryFrom<String> for StreamId {
     type Error = anyhow::Error;
     fn try_from(value: String) -> Result<Self, Self::Error> {
         Self::try_from(value.as_str())
-    }
-}
-
-impl From<SourceId> for StreamId {
-    fn from(src: SourceId) -> Self {
-        Self::from(&src)
-    }
-}
-
-impl From<&SourceId> for StreamId {
-    fn from(src: &SourceId) -> Self {
-        let mut bytes = [0u8; 32];
-        bytes[0..=MAX_SOURCEID_LENGTH].copy_from_slice(&src.0[..]);
-        StreamId {
-            node_id: NodeId(bytes),
-            stream_nr: 0.into(),
-        }
     }
 }
 #[cfg(feature = "sqlite")]
@@ -397,25 +327,6 @@ mod tests {
 
         fn stream_id_to_string(sid: StreamId) -> bool {
             serde_json::to_value(&sid).unwrap() == Value::String(sid.to_string())
-        }
-
-        fn source_id_serialization(src: SourceId) -> bool {
-            let stream = StreamId::from(src);
-            serde_json::to_string(&src).map_err(|_| "a") == serde_json::to_string(&stream).map_err(|_| "b")
-        }
-
-        fn source_id_deserialization(src: SourceId) -> bool {
-            let s = src.to_string();
-            SourceId::try_from(&*s).map_err(|_| "a").map(StreamId::from)
-              == StreamId::try_from(s).map_err(|_| "b")
-        }
-
-        fn source_id_roundtrip(src: SourceId) -> bool {
-            Ok(src) == StreamId::from(src).source_id().map_err(|_| ())
-        }
-
-        fn source_id_node_id_roundtrip(id: SourceId) -> bool {
-            Ok(id) == NodeId::from(id).source_id().map_err(|_| ())
         }
     }
 }

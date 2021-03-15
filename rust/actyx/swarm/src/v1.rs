@@ -4,11 +4,11 @@ use crate::access::{
 };
 use crate::{BanyanStore, TT};
 use actyxos_sdk::{
-    event_service::snapshots::{
+    service::snapshots::{
         InvalidateSnapshotsRequest, RetrieveSnapshotRequest, RetrieveSnapshotResponse, StoreSnapshotRequest,
     },
-    tagged::{Event, EventKey, Metadata, NodeId, StreamId, StreamNr, TagSet},
-    LamportTimestamp, Offset, OffsetOrMin, Payload, TimeStamp,
+    Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetOrMin, Payload, StreamId, StreamNr, TagSet,
+    Timestamp,
 };
 use anyhow::Result;
 use banyan::{
@@ -80,7 +80,7 @@ impl BanyanStore {
         let node = self.node_id();
         let lamport = LamportTimestamp::from(index_store.lamport());
         let roots = self.0.maps.lock().root_map(node);
-        let timestamp = TimeStamp::now();
+        let timestamp = Timestamp::now();
         let msg = PublishSnapshot {
             node,
             lamport,
@@ -97,7 +97,7 @@ impl BanyanStore {
         let last_lamport = self.0.index_store.lock().increase_lamport(n)?;
         let min_lamport = last_lamport - (n as u64) + 1;
         let stream_nr = StreamNr::from(0); // TODO
-        let timestamp = TimeStamp::now();
+        let timestamp = Timestamp::now();
         let kvs = events
             .into_iter()
             .enumerate()
@@ -252,7 +252,7 @@ fn last_lamport_from_index_ref(r: IndexRef<TT>) -> LamportTimestamp {
     }
 }
 
-/// Take a block of banyan events and convert them into ActyxOS 1.0 IpfsEnvelopeWithSourceId events
+/// Take a block of banyan events and convert them into events
 /// wrapped in EventOrHeartbeat.
 ///
 /// In case the last event was filtered out, a placeholder heartbeat is added.

@@ -1,11 +1,10 @@
 use crate::connectivity::GossipAboutUs;
 use actyxos_sdk::{
-    event::{LamportTimestamp, SourceId, TimeStamp},
-    event_service::snapshots::{
+    legacy::SourceId,
+    service::snapshots::{
         InvalidateSnapshotsRequest, RetrieveSnapshotRequest, RetrieveSnapshotResponse, StoreSnapshotRequest,
     },
-    tagged::{EventKey, StreamId},
-    Offset,
+    EventKey, LamportTimestamp, Offset, StreamId, Timestamp,
 };
 use anyhow::Result;
 use parking_lot::Mutex;
@@ -335,7 +334,7 @@ VALUES
                 let raw_received_at: i64 = row.get(2)?;
 
                 let source_id = SourceId::from_str(&source).unwrap();
-                let received_at = TimeStamp::new(raw_received_at as u64);
+                let received_at = Timestamp::new(raw_received_at as u64);
 
                 let record = GossipAboutUs {
                     source_id,
@@ -419,12 +418,12 @@ mod test {
         let gossip_about_us = GossipAboutUs {
             source_id: src,
             offset: Offset::mk_test(5),
-            received_at: TimeStamp::new(5),
+            received_at: Timestamp::new(5),
         };
         let gossip_about_us2 = GossipAboutUs {
             source_id: src2,
             offset: Offset::mk_test(7),
-            received_at: TimeStamp::new(6),
+            received_at: Timestamp::new(6),
         };
         store.write_gossip_about_us(gossip_about_us).unwrap();
         store.write_gossip_about_us(gossip_about_us2).unwrap();
@@ -437,7 +436,7 @@ mod test {
         let gossip_about_us3 = GossipAboutUs {
             source_id: src,
             offset: Offset::mk_test(7),
-            received_at: TimeStamp::new(6),
+            received_at: Timestamp::new(6),
         };
         store.write_gossip_about_us(gossip_about_us3).unwrap();
         let expected2: BTreeMap<SourceId, GossipAboutUs> = vec![(src, gossip_about_us3), (src2, gossip_about_us2)]
@@ -458,7 +457,7 @@ mod test {
         let gossip_about_us = GossipAboutUs {
             source_id: src,
             offset: Offset::mk_test(5),
-            received_at: TimeStamp::new(5),
+            received_at: Timestamp::new(5),
         };
         store.write_gossip_about_us(gossip_about_us).unwrap();
         let backed_up = store.backup(DbPath::Memory).unwrap();
@@ -475,16 +474,16 @@ mod test {
             "entityType": "foo",
             "name": "bar",
             "key": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },
             "offsetMap": {
-                "a": 1,
-                "b": 2,
+                "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0": 1,
+                "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.1": 2,
             },
             "horizon": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },
@@ -497,18 +496,18 @@ mod test {
         let expected_result_json = json!({
             "cycle": 0,
             "horizon": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },
             "eventKey": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },
             "offsetMap": {
-                "a": 1,
-                "b": 2,
+              "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0": 1,
+              "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.1": 2,
             },
             "state": "this is the actual snapshot data!",
         });
@@ -523,7 +522,7 @@ mod test {
             "entityType": "foo",
             "name": "bar",
             "key": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },
@@ -580,16 +579,16 @@ mod test {
             "entityType": "foo",
             "name": "bar",
             "key": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },
             "offsetMap": {
-                "a": 1,
-                "b": 2,
+                "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0": 1,
+                "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.1": 2,
             },
             "horizon": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },
@@ -604,16 +603,16 @@ mod test {
             "entityType": "foo",
             "name": "bar",
             "key": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },
             "offsetMap": {
-                "a": 1,
-                "b": 2,
+              "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0": 1,
+              "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.1": 2,
             },
             "horizon": {
-                "stream": "a",
+                "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.0",
                 "offset": 1234,
                 "lamport": 0
             },

@@ -1,5 +1,4 @@
-use actyxos_sdk::tagged::StreamNr;
-use actyxos_sdk::{tags, Payload};
+use actyxos_sdk::{tags, Payload, StreamNr};
 use anyhow::Result;
 use ax_config::StoreConfig;
 use futures::stream::StreamExt;

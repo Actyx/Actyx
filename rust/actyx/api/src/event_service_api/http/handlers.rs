@@ -1,10 +1,10 @@
 use super::ndjson;
 
 use actyxos_sdk::{
-    event_service::{PublishRequest, QueryRequest, SubscribeMonotonicRequest, SubscribeRequest},
-    tagged::AppId,
-    EventService,
+    service::{EventService, PublishRequest, QueryRequest, SubscribeMonotonicRequest, SubscribeRequest},
+    AppId,
 };
+
 use derive_more::Display;
 use warp::*;
 

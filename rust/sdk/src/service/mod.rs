@@ -1,8 +1,27 @@
+/*
+ * Copyright 2021 Actyx AG
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+use std::fmt::Display;
+
 use crate::{
+    event::{Event, EventKey, Metadata},
     expression::Expression,
-    tagged::{Event, EventKey, Metadata, NodeId, StreamId, StreamNr, TagSet},
+    scalars::{NodeId, StreamId, StreamNr},
+    tags::TagSet,
     types::Binary,
-    LamportTimestamp, Offset, OffsetMap, Payload, TimeStamp,
+    LamportTimestamp, Offset, OffsetMap, Payload, Timestamp,
 };
 use serde::{Deserialize, Serialize};
 
@@ -69,7 +88,7 @@ pub struct EventResponse<T> {
     pub lamport: LamportTimestamp,
     pub stream: StreamId,
     pub offset: Offset,
-    pub timestamp: TimeStamp,
+    pub timestamp: Timestamp,
     pub tags: TagSet,
     pub payload: T,
 }
@@ -201,7 +220,7 @@ impl StartFrom {
 #[derive(Debug, Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct SessionId(Box<str>);
 
-impl std::fmt::Display for SessionId {
+impl Display for SessionId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&*self.0)
     }
@@ -219,9 +238,9 @@ impl From<String> for SessionId {
     }
 }
 
-impl AsRef<str> for SessionId {
+impl SessionId {
     /// Extracts a string slice containing the entire session id
-    fn as_ref(&self) -> &str {
+    pub fn as_str(&self) -> &str {
         &*self.0
     }
 }

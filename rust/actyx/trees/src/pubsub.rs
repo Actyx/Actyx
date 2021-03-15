@@ -2,8 +2,8 @@
 //!
 //! This module contains the formats that are sent on the IPFS pubsub topic of an installation.
 
-use super::{ConsNode, FromStr, LamportTimestamp, TimeStamp};
-use actyxos_sdk::tagged::{NodeId, StreamId};
+use super::{ConsNode, FromStr, LamportTimestamp, Timestamp};
+use actyxos_sdk::{NodeId, StreamId};
 use libipld::{Cid, Link};
 use serde::{Deserialize, Serialize};
 use serde_json::Error;
@@ -15,7 +15,7 @@ use std::fmt::{Display, Formatter};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PublishSnapshot {
     pub node: NodeId,
-    pub timestamp: TimeStamp,
+    pub timestamp: Timestamp,
     pub lamport: LamportTimestamp,
     pub roots: RootMap,
 }

@@ -1,5 +1,5 @@
 use crate::error::{LogsvcdError, Result};
-use actyxos_sdk::tagged::NodeId;
+use actyxos_sdk::NodeId;
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection, OpenFlags, NO_PARAMS};
 use std::convert::TryInto;

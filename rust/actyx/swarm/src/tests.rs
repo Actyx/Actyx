@@ -1,14 +1,12 @@
+use std::{collections::BTreeMap, convert::TryFrom, time::Duration};
+
 use crate::{BanyanStore, Config, DbPath, Ipfs, SqliteIndexStore};
-use actyxos_sdk::{
-    tagged::{NodeId, StreamNr, Tag, TagSet},
-    Payload,
-};
+use actyxos_sdk::{NodeId, Payload, StreamNr, Tag, TagSet};
 use ax_futures_util::stream::interval;
 use banyan::query::AllQuery;
 use futures::prelude::*;
 use ipfs_embed::Config as IpfsConfig;
 use libipld::Cid;
-use std::{collections::BTreeMap, convert::TryFrom, time::Duration};
 
 struct Tagger(BTreeMap<&'static str, Tag>);
 

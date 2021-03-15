@@ -8,7 +8,7 @@ use crate::{
     DynamicConfig, LogConfig,
 };
 use ::util::pinned_resource_sync::PinnedResourceSync;
-use actyxos_sdk::tagged::NodeId;
+use actyxos_sdk::NodeId;
 use chrono::Utc;
 use crossbeam::channel::{self, Receiver, Sender};
 use std::{ops::RangeInclusive, time::Duration};

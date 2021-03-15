@@ -1,9 +1,6 @@
 use std::{collections::BTreeSet, convert::TryFrom, ops::Range};
 
-use actyxos_sdk::{
-    tagged::{Tag, TagSet},
-    LamportTimestamp, TimeStamp,
-};
+use actyxos_sdk::{LamportTimestamp, Tag, TagSet, Timestamp};
 use quickcheck::{Arbitrary, Gen};
 
 use crate::{
@@ -18,9 +15,9 @@ impl Arbitrary for AxKeySeq {
         let tags: Vec<String> = Arbitrary::arbitrary(g);
         tmp.into_iter()
             .map(|(time, lamport)| {
-                let time: TimeStamp = time.into();
+                let time: Timestamp = time.into();
                 let lamport: LamportTimestamp = lamport.into();
-                let mut key_tags = vec![];
+                let mut key_tags: Vec<Tag> = vec![];
                 for x in 0..*g.choose(&[0, 1, 2, 3]).unwrap() {
                     if x >= tags.len() {
                         break;
@@ -47,7 +44,7 @@ impl Arbitrary for AxSummarySeq {
         let tags: Vec<String> = Arbitrary::arbitrary(g);
         tmp.into_iter()
             .map(|(time, lamport)| {
-                let time: AxRange<TimeStamp> = AxRange::new(time.start.into(), time.end.into());
+                let time: AxRange<Timestamp> = AxRange::new(time.start.into(), time.end.into());
                 let lamport: AxRange<LamportTimestamp> = AxRange::new(lamport.start.into(), lamport.end.into());
                 let mut key_tags = vec![];
                 for x in 0..*g.choose(&[0, 1, 2, 3]).unwrap() {

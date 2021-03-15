@@ -1,16 +1,21 @@
-use crate::{
-    event::{FishName, Semantics},
-    types::ArcVal,
-};
-use libipld::{
-    cbor::DagCborCodec,
-    codec::{Decode, Encode},
-    DagCbor,
-};
-use serde::{Deserialize, Serialize};
+/*
+ * Copyright 2021 Actyx AG
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 use std::{
     collections::BTreeSet,
-    convert::{TryFrom, TryInto},
+    convert::TryFrom,
     fmt, io,
     iter::FromIterator,
     ops::{Add, AddAssign, BitAndAssign, SubAssign},
@@ -18,16 +23,25 @@ use std::{
     sync::Arc,
 };
 
+use libipld::{
+    cbor::DagCborCodec,
+    codec::{Decode, Encode},
+    DagCbor,
+};
+use serde::{Deserialize, Serialize};
+
+use crate::{types::ArcVal, ParseError};
+
 /// Macro for constructing a [`Tag`](event/struct.Tag.html) literal.
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{tag, tagged::Tag};
+/// use actyxos_sdk::{tag, Tag};
 /// let tag: Tag = tag!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyxos_sdk::{tag, tagged::Tag};
+/// use actyxos_sdk::{tag, tags::Tag};
 /// let tag: Tag = tag!("");
 /// ```
 #[macro_export]
@@ -36,7 +50,7 @@ macro_rules! tag {
         #[allow(dead_code)]
         type X = $crate::assert_len!($lit, 1..);
         use std::convert::TryFrom;
-        $crate::tagged::Tag::try_from($lit).unwrap()
+        $crate::Tag::try_from($lit).unwrap()
     }};
 }
 
@@ -47,12 +61,10 @@ macro_rules! tag {
 ///  - normal expressions (enclosed in parens if multiple tokens)
 ///
 /// ```rust
-/// use actyxos_sdk::{tag, tags, semantics, event::Semantics, tagged::{Tag, TagSet}};
+/// use actyxos_sdk::{semantics, tag, Tag, tags, TagSet};
 /// use std::collections::BTreeSet;
 ///
-/// let sem: Semantics = semantics!("b");
-/// let tags: TagSet = tags!("a", sem);
-///
+/// let tags: TagSet = tags!("a", "semantics:b");
 /// let mut expected = BTreeSet::new();
 /// expected.insert(tag!("a"));
 /// expected.insert(tag!("semantics:b"));
@@ -60,7 +72,7 @@ macro_rules! tag {
 /// ```
 #[macro_export]
 macro_rules! tags {
-    () => { $crate::tagged::TagSet::empty() };
+    () => { $crate::TagSet::empty() };
     ($($expr:expr),*) => {{
         let mut tags = Vec::new();
         $(
@@ -68,12 +80,12 @@ macro_rules! tags {
                 mod y {
                     $crate::assert_len! { $expr, 1..,
                         // if it is a string literal, then we know it is not empty
-                        pub fn x(z: &str) -> $crate::tagged::Tag {
+                        pub fn x(z: &str) -> $crate::Tag {
                             use ::std::convert::TryFrom;
-                            $crate::tagged::Tag::try_from(z).unwrap()
+                            $crate::Tag::try_from(z).unwrap()
                         },
                         // if it is not a string literal, require an infallible conversion
-                        pub fn x(z: impl Into<$crate::tagged::Tag>) -> $crate::tagged::Tag {
+                        pub fn x(z: impl Into<$crate::Tag>) -> $crate::Tag {
                             z.into()
                         }
                     }
@@ -81,7 +93,7 @@ macro_rules! tags {
                 tags.push(y::x($expr));
             }
         )*
-        $crate::tagged::TagSet::from(tags)
+        $crate::TagSet::from(tags)
     }};
     ($($x:tt)*) => {
         compile_error!("This macro supports only string literals or expressions in parens.")
@@ -94,9 +106,9 @@ pub struct Tag(#[serde(deserialize_with = "crate::scalar::nonempty_string")] Arc
 
 #[allow(clippy::len_without_is_empty)]
 impl Tag {
-    pub fn new(value: String) -> std::result::Result<Self, crate::event::ParseError> {
+    pub fn new(value: String) -> std::result::Result<Self, ParseError> {
         if value.is_empty() {
-            Err(crate::event::ParseError::EmptyTag)
+            Err(ParseError::EmptyTag)
         } else {
             Ok(Self(crate::types::ArcVal::from_boxed(value.into())))
         }
@@ -108,10 +120,10 @@ impl Tag {
 }
 
 impl TryFrom<&str> for Tag {
-    type Error = crate::event::ParseError;
-    fn try_from(value: &str) -> std::result::Result<Self, crate::event::ParseError> {
+    type Error = ParseError;
+    fn try_from(value: &str) -> std::result::Result<Self, ParseError> {
         if value.is_empty() {
-            Err(crate::event::ParseError::EmptyTag)
+            Err(ParseError::EmptyTag)
         } else {
             Ok(Self(crate::types::ArcVal::clone_from_unsized(value)))
         }
@@ -119,10 +131,10 @@ impl TryFrom<&str> for Tag {
 }
 
 impl TryFrom<Arc<str>> for Tag {
-    type Error = crate::event::ParseError;
-    fn try_from(value: Arc<str>) -> std::result::Result<Self, crate::event::ParseError> {
+    type Error = ParseError;
+    fn try_from(value: Arc<str>) -> std::result::Result<Self, ParseError> {
         if value.is_empty() {
-            Err(crate::event::ParseError::EmptyTag)
+            Err(ParseError::EmptyTag)
         } else {
             Ok(Self(crate::types::ArcVal::from(value)))
         }
@@ -130,8 +142,8 @@ impl TryFrom<Arc<str>> for Tag {
 }
 
 impl FromStr for Tag {
-    type Err = crate::event::ParseError;
-    fn from_str(s: &str) -> std::result::Result<Self, crate::event::ParseError> {
+    type Err = ParseError;
+    fn from_str(s: &str) -> std::result::Result<Self, ParseError> {
         Self::try_from(s)
     }
 }
@@ -154,34 +166,10 @@ impl Encode<DagCborCodec> for Tag {
     }
 }
 
-impl From<&Semantics> for Tag {
-    fn from(value: &Semantics) -> Self {
-        Tag::new(format!("semantics:{}", value.as_str())).unwrap()
-    }
-}
-
-impl From<Semantics> for Tag {
-    fn from(value: Semantics) -> Self {
-        Tag::from(&value)
-    }
-}
-
-impl From<&FishName> for Tag {
-    fn from(value: &FishName) -> Self {
-        Tag::new(format!("fish_name:{}", value.as_str())).unwrap()
-    }
-}
-
-impl From<FishName> for Tag {
-    fn from(value: FishName) -> Self {
-        Tag::from(&value)
-    }
-}
-
 /// Concatenate another part to this tag
 ///
 /// ```
-/// # use actyxos_sdk::{tag, tagged::Tag};
+/// # use actyxos_sdk::{tag, Tag};
 /// let user_tag = tag!("user:") + "Bob";
 /// let machine_tag = tag!("machine:") + format!("{}-{}", "thing", 42);
 ///
@@ -339,14 +327,6 @@ impl TagSet {
     pub fn is_subset(&self, rhs: &TagSet) -> bool {
         self.iter().all(|tag| rhs.contains(&tag))
     }
-
-    pub fn extract_semantics_or_default(&self) -> Semantics {
-        self.try_into().ok().unwrap_or_else(Semantics::unknown)
-    }
-
-    pub fn extract_fish_name_or_default(&self) -> FishName {
-        self.try_into().ok().unwrap_or_else(FishName::unknown)
-    }
 }
 
 impl Add for &TagSet {
@@ -432,30 +412,13 @@ impl BitAndAssign<&TagSet> for TagSet {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{fish_name, semantics};
-
-    #[test]
-    fn semantics_to_tag() {
-        let semantics = semantics!("test");
-
-        assert_eq!("semantics:test", Tag::from(&semantics).to_string());
-        assert_eq!("semantics:test", Tag::from(semantics).to_string());
-    }
-
-    #[test]
-    fn fish_name_to_tag() {
-        let fish_name = fish_name!("test");
-
-        assert_eq!("fish_name:test", Tag::from(&fish_name).to_string());
-        assert_eq!("fish_name:test", Tag::from(fish_name).to_string());
-    }
 
     #[test]
     fn make_tags() {
         let mut tags = BTreeSet::new();
         tags.insert(tag!("a"));
         tags.insert(tag!("semantics:b"));
-        assert_eq!(tags!("a", semantics!("b")), TagSet::from(tags));
+        assert_eq!(tags!("a", "semantics:b"), TagSet::from(tags));
     }
 
     #[test]

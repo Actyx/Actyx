@@ -12,7 +12,7 @@
 //!    that multiple other nodes can decrypt an event stream (given possession of
 //!    the private key for which the Salsa20 key was encrypted)
 
-use actyxos_sdk::tagged::NodeId;
+use actyxos_sdk::NodeId;
 use aesstream::{AesReader, AesWriter};
 use anyhow::{anyhow, bail, Context, Result};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};

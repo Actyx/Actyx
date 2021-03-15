@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Actyx AG
+ * Copyright 2021 Actyx AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,18 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use crate::{scalar::nonempty_string, tagged::TagSet};
-use anyhow::anyhow;
-use chrono::{DateTime, TimeZone, Utc};
-use derive_more::{Display, From, Into};
-use serde::de::Error;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     convert::TryFrom,
     fmt::{self, Debug, Display, Formatter},
-    ops::{Add, Sub},
     str::FromStr,
-    time::{SystemTime, UNIX_EPOCH},
+};
+
+use anyhow::anyhow;
+use derive_more::Display;
+use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
+
+use crate::{
+    scalar::nonempty_string,
+    scalars::{NodeId, StreamId},
+    tags::TagSet,
 };
 
 #[derive(Debug, Display, PartialEq)]
@@ -37,10 +39,6 @@ pub enum ParseError {
     EmptySemantics,
     #[display(fmt = "Empty string is not permissible for FishName")]
     EmptyFishName,
-    #[display(fmt = "Empty string is not permissible for Tag")]
-    EmptyTag,
-    #[display(fmt = "Empty string is not permissible for AppId")]
-    EmptyAppId,
 }
 impl std::error::Error for ParseError {}
 
@@ -48,12 +46,12 @@ impl std::error::Error for ParseError {}
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{semantics, event::Semantics};
+/// use actyxos_sdk::{semantics, legacy::Semantics};
 /// let semantics: Semantics = semantics!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyxos_sdk::{semantics, event::Semantics};
+/// use actyxos_sdk::{semantics, legacy::Semantics};
 /// let semantics: Semantics = semantics!("");
 /// ```
 #[macro_export]
@@ -62,7 +60,7 @@ macro_rules! semantics {
         #[allow(dead_code)]
         type X = $crate::assert_len!($lit, 1..);
         use ::std::convert::TryFrom;
-        $crate::event::Semantics::try_from($lit).unwrap()
+        $crate::legacy::Semantics::try_from($lit).unwrap()
     }};
 }
 
@@ -70,12 +68,12 @@ macro_rules! semantics {
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{fish_name, event::FishName};
+/// use actyxos_sdk::{fish_name, legacy::FishName};
 /// let fish_name: FishName = fish_name!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyxos_sdk::{fish_name, event::FishName};
+/// use actyxos_sdk::{fish_name, legacy::FishName};
 /// let fish_name: FishName = fish_name!("");
 /// ```
 #[macro_export]
@@ -84,7 +82,7 @@ macro_rules! fish_name {
         #[allow(dead_code)]
         type X = $crate::assert_len!($lit, 1..);
         use ::std::convert::TryFrom;
-        $crate::event::FishName::try_from($lit).unwrap()
+        $crate::legacy::FishName::try_from($lit).unwrap()
     }};
 }
 
@@ -92,12 +90,12 @@ macro_rules! fish_name {
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{source_id, event::SourceId};
+/// use actyxos_sdk::{source_id, legacy::SourceId};
 /// let source_id: SourceId = source_id!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyxos_sdk::{source_id, event::SourceId};
+/// use actyxos_sdk::{source_id, legacy::SourceId};
 /// let source_id: SourceId = source_id!("");
 /// ```
 #[macro_export]
@@ -106,7 +104,7 @@ macro_rules! source_id {
         #[allow(dead_code)]
         type X = $crate::assert_len!($lit, 1..=15);
         use ::std::convert::TryFrom;
-        $crate::event::SourceId::try_from($lit).unwrap()
+        $crate::legacy::SourceId::try_from($lit).unwrap()
     }};
 }
 
@@ -119,7 +117,7 @@ mk_scalar!(
     ///
     /// For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started).
     /// You may most conveniently construct values of this type with the [`semantics!`](../macro.semantics.html) macro.
-    struct Semantics, EmptySemantics
+    struct Semantics, EmptySemantics, ParseError
 );
 
 impl Semantics {
@@ -136,7 +134,7 @@ mk_scalar!(
     ///
     /// For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started).
     /// You may most conveniently construct values of this type with the [`fish_name!`](../macro.fish_name.html) macro.
-    struct FishName, EmptyFishName
+    struct FishName, EmptyFishName, ParseError
 );
 
 impl FishName {
@@ -187,111 +185,20 @@ impl TryFrom<&TagSet> for FishName {
     }
 }
 
-/// Microseconds since the UNIX epoch, without leap seconds and in UTC
+/// Hold provenance information for this event
 ///
-/// ```
-/// use actyxos_sdk::event::TimeStamp;
-/// use chrono::{DateTime, Utc, TimeZone};
-///
-/// let timestamp = TimeStamp::now();
-/// let micros_since_epoch: u64 = timestamp.into();
-/// let date_time: DateTime<Utc> = timestamp.into();
-///
-/// assert_eq!(timestamp.as_i64() * 1000, date_time.timestamp_nanos());
-/// assert_eq!(TimeStamp::from(date_time), timestamp);
-/// ```
-#[derive(Copy, Clone, Debug, Default, From, Into, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+/// Each event is published by one ActyxOS node whose source ID is stored in the `source` field.
+/// [`Semantics`](struct.Semantics.html) & [`FishName`](struct.FishName.html) are metadata tags
+/// that split the overall distributed event stream accessible by ActyxOS into smaller substreams
+/// containing information about kinds of things (like sensor readings) and specific instances of
+/// those things (like a thermometer’s name).
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
-pub struct TimeStamp(u64);
-
-impl TimeStamp {
-    pub fn new(value: u64) -> Self {
-        Self(value)
-    }
-    pub fn now() -> TimeStamp {
-        let now = SystemTime::now();
-        let duration = now.duration_since(UNIX_EPOCH).expect("Time went waaaay backwards");
-        TimeStamp::new(duration.as_micros() as u64)
-    }
-    #[deprecated(since = "0.2.1", note = "use .into()")]
-    pub fn as_u64(self) -> u64 {
-        self.0
-    }
-    pub fn as_i64(self) -> i64 {
-        self.0 as i64
-    }
-}
-
-impl Into<DateTime<Utc>> for TimeStamp {
-    fn into(self) -> DateTime<Utc> {
-        Utc.timestamp((self.0 / 1_000_000) as i64, (self.0 % 1_000_000) as u32 * 1000)
-    }
-}
-
-impl From<DateTime<Utc>> for TimeStamp {
-    fn from(dt: DateTime<Utc>) -> Self {
-        Self(dt.timestamp_nanos() as u64 / 1000)
-    }
-}
-
-impl Sub<u64> for TimeStamp {
-    type Output = TimeStamp;
-    fn sub(self, rhs: u64) -> Self::Output {
-        Self(self.0 - rhs)
-    }
-}
-
-impl Sub<TimeStamp> for TimeStamp {
-    type Output = i64;
-    fn sub(self, rhs: TimeStamp) -> Self::Output {
-        self.0 as i64 - rhs.0 as i64
-    }
-}
-
-impl Add<u64> for TimeStamp {
-    type Output = TimeStamp;
-    fn add(self, rhs: u64) -> Self::Output {
-        Self(self.0 + rhs)
-    }
-}
-
-/// A logical timestamp taken from a [`Lamport clock`](https://en.wikipedia.org/wiki/Lamport_timestamps)
-///
-/// The lamport clock in an ActyxOS system is increased by the ActyxOS node whenever:
-///
-/// - an event is emitted
-/// - a heartbeat is received
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default, From, Into)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
-pub struct LamportTimestamp(u64);
-
-impl LamportTimestamp {
-    pub fn new(value: u64) -> Self {
-        Self(value)
-    }
-    pub fn incr(self) -> Self {
-        LamportTimestamp::new(self.0 + 1)
-    }
-    #[deprecated(since = "0.2.1", note = "use .into()")]
-    pub fn as_u64(self) -> u64 {
-        self.0
-    }
-    pub fn as_i64(self) -> i64 {
-        self.0 as i64
-    }
-}
-
-impl Display for LamportTimestamp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "LT({})", Into::<u64>::into(*self))
-    }
-}
-
-impl Add<u64> for LamportTimestamp {
-    type Output = LamportTimestamp;
-    fn add(self, rhs: u64) -> Self::Output {
-        Self(self.0 + rhs)
-    }
+#[serde(rename_all = "camelCase")]
+pub struct StreamInfo {
+    pub semantics: Semantics,
+    pub name: FishName,
+    pub source: SourceId,
 }
 
 /// A source ID uniquely identifies one ActyxOS node
@@ -358,6 +265,23 @@ impl FromStr for SourceId {
         buf[MAX_SOURCEID_LENGTH] = bytes.len() as u8;
         buf[..bytes.len()].clone_from_slice(bytes);
         Result::Ok(SourceId(buf))
+    }
+}
+
+impl From<SourceId> for StreamId {
+    fn from(src: SourceId) -> Self {
+        Self::from(&src)
+    }
+}
+
+impl From<&SourceId> for StreamId {
+    fn from(src: &SourceId) -> Self {
+        let mut bytes = [0u8; 32];
+        bytes[0..=MAX_SOURCEID_LENGTH].copy_from_slice(&src.0[..]);
+        StreamId {
+            node_id: NodeId(bytes),
+            stream_nr: 0.into(),
+        }
     }
 }
 

@@ -1,5 +1,6 @@
-use crate::StreamAlias;
-use actyxos_sdk::{event::SourceId, tagged::StreamId, Payload};
+use std::{collections::BTreeMap, fs, str::FromStr, sync::Arc};
+
+use actyxos_sdk::{legacy::SourceId, Payload, StreamId, Tag};
 use anyhow::Result;
 use banyan::forest::{BranchCache, Forest, Transaction};
 use banyan::store::{BlockWriter, ReadOnlyStore};
@@ -12,8 +13,9 @@ use libipld::{
 use parking_lot::Mutex;
 use rayon::prelude::*;
 use rusqlite::{OpenFlags, NO_PARAMS};
-use std::{collections::BTreeMap, fs, str::FromStr, sync::Arc};
 use trees::axtrees::{AxKey, AxTree, AxTrees, Sha256Digest};
+
+use crate::StreamAlias;
 
 mod v1;
 use v1::{Block, ConsNode, IpfsEnvelope};
@@ -86,8 +88,8 @@ fn events_to_v2(envelopes: Vec<IpfsEnvelope>) -> Vec<(AxKey, Payload)> {
         .into_iter()
         .map(|event| {
             let mut tags = event.tags;
-            tags.insert(event.semantics.into());
-            tags.insert(event.name.into());
+            tags.insert(Tag::new(format!("semantics:{}", event.semantics.as_str())).unwrap());
+            tags.insert(Tag::new(format!("fish_name:{}", event.name.as_str())).unwrap());
             let key: AxKey = AxKey::new(tags, event.lamport, event.timestamp);
             (key, event.payload)
         })
@@ -200,7 +202,7 @@ pub fn convert_from_v1(v1_index_path: &str, v2_index_path: &str, options: Conver
             match tree {
                 Ok(tree) => {
                     tracing::info!("Setting alias {} {:?}", source, tree);
-                    let stream_id = StreamId::from(source);
+                    let stream_id: StreamId = source.into();
                     db.lock()
                         .alias(StreamAlias::from(stream_id), tree.link().map(Cid::from).as_ref())?;
                     Ok((source, tree))

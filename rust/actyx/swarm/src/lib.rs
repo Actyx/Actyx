@@ -25,11 +25,7 @@ use crate::connectivity::ConnectivityState;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
 use crate::streams::{OwnStreamInner, ReplicatedStreamInner, StreamAlias, StreamMaps};
-use actyxos_sdk::{
-    source_id,
-    tagged::{NodeId, StreamId, StreamNr, TagSet},
-    LamportTimestamp, Offset, Payload, TimeStamp,
-};
+use actyxos_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr, TagSet, Timestamp};
 use anyhow::Result;
 use ax_futures_util::{prelude::*, stream::variable::Variable};
 use banyan::{
@@ -94,7 +90,7 @@ impl Config {
             crypto_config: Default::default(),
             forest_config: forest::Config::debug(),
             topic: "test".into(),
-            node_id: source_id!("test").into(),
+            node_id: NodeId::from_bytes(&(0..32).collect::<Vec<u8>>()).unwrap(),
         }
     }
 }
@@ -294,7 +290,7 @@ impl BanyanStore {
     pub async fn append(&self, stream_nr: StreamNr, events: Vec<(TagSet, Event)>) -> Result<Option<Link>> {
         tracing::info!("publishing {} events on stream {}", events.len(), stream_nr);
         let lamport = self.0.index_store.lock().increment_lamport()?;
-        let timestamp = TimeStamp::now();
+        let timestamp = Timestamp::now();
         let events = events
             .into_iter()
             .map(move |(tags, event)| (Key::new(tags, lamport, timestamp), event));

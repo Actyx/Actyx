@@ -1,4 +1,4 @@
-use actyxos_sdk::{tagged::Tag, tags, Expression};
+use actyxos_sdk::{tags, Expression, Tag};
 use trees::tag_index::*;
 
 use serde::{de::DeserializeOwned, Serialize};

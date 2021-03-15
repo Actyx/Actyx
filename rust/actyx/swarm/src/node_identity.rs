@@ -1,4 +1,4 @@
-use actyxos_sdk::tagged::NodeId;
+use actyxos_sdk::NodeId;
 use anyhow::{Error, Result};
 use libp2p::{identity::ed25519, identity::Keypair};
 use serde::{Deserialize, Serialize};
