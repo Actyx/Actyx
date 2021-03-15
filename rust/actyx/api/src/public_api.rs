@@ -14,7 +14,7 @@ pub async fn run(store: BanyanStore, bind_to: impl Iterator<Item = SocketAddr> +
             .and(warp::path("events"))
             .and(event_service_api::routes(event_service, key_store)),
     );
-    let ipfs_file_gw = create_gateway_route(store.ipfs().clone());
+    let ipfs_file_gw = create_gateway_route(store.clone());
 
     let cors = warp::cors()
         .allow_any_origin()

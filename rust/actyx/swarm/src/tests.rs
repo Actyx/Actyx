@@ -1,6 +1,4 @@
-use std::{collections::BTreeMap, convert::TryFrom, time::Duration};
-
-use super::{BanyanStore, Config, DbPath, SqliteIndexStore};
+use crate::{BanyanStore, Config, DbPath, Ipfs, SqliteIndexStore};
 use actyxos_sdk::{
     tagged::{NodeId, StreamNr, Tag, TagSet},
     Payload,
@@ -8,8 +6,9 @@ use actyxos_sdk::{
 use ax_futures_util::stream::interval;
 use banyan::query::AllQuery;
 use futures::prelude::*;
-use ipfs_node::IpfsNode;
+use ipfs_embed::Config as IpfsConfig;
 use libipld::Cid;
+use std::{collections::BTreeMap, convert::TryFrom, time::Duration};
 
 struct Tagger(BTreeMap<&'static str, Tag>);
 
@@ -49,7 +48,7 @@ async fn smoke() -> anyhow::Result<()> {
     setup_logger();
     let mut tagger = Tagger::new();
     let mut ev = move |tag| (tagger.tags(&[tag]), Payload::empty());
-    let ipfs = IpfsNode::test().await?;
+    let ipfs = Ipfs::new(IpfsConfig::new(None, 0)).await?;
     let config = Config::test();
     let store = BanyanStore::new(ipfs.clone(), config, SqliteIndexStore::open(DbPath::Memory)?)?;
     tokio::task::spawn(store.stream_filtered_stream_ordered(AllQuery).for_each(|x| {

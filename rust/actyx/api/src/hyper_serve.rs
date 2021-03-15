@@ -11,9 +11,9 @@ use warp::Reply;
 fn make_listener<T: Into<SocketAddr>>(addr: T) -> Result<std::net::TcpListener, anyhow::Error> {
     let addr = addr.into();
     let is_ipv4 = addr.is_ipv4();
-    let domain = if is_ipv4 { Domain::ipv4() } else { Domain::ipv6() };
+    let domain = if is_ipv4 { Domain::IPV4 } else { Domain::IPV6 };
     let addr: SockAddr = addr.into();
-    let socket = Socket::new(domain, Type::stream(), Some(Protocol::tcp()))?;
+    let socket = Socket::new(domain, Type::STREAM, Some(Protocol::TCP))?;
     socket.set_reuse_address(true)?;
     // This effectively disables dual-stack usage. The standard behaviour
     // without enabling this flag varies depending on the operating system's IP
@@ -30,7 +30,7 @@ fn make_listener<T: Into<SocketAddr>>(addr: T) -> Result<std::net::TcpListener, 
     }
     socket.bind(&addr)?;
     socket.listen(1024)?;
-    Ok(socket.into_tcp_listener())
+    Ok(socket.into())
 }
 
 /// Create a hyper server with the provided `filter`, binding to `addr`. This also sets the

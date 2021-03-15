@@ -2,17 +2,13 @@
 # since this is used in build scripts to populate the docker image cache!
 [workspace]
 members = [
-  "ax",
   "ada-cli",
   "api",
+  "ax",
   "ax-config",
   "ax-futures-util",
   "ax-os-settings",
   "crypto",
-  "ipfs-node",
-  "trees",
-  "libp2p-ax-bitswap",
-  "libp2p-broadcast",
   "libp2p-streaming-response",
   "logsvcd",
   "node",
@@ -20,6 +16,7 @@ members = [
   "node-win",
   "swarm",
   "tracing_win_event_log",
+  "trees",
   "util",
 ]
 
@@ -29,7 +26,6 @@ panic = "abort"
 [patch.crates-io]
 # TODO: Figure out how to build sqlite3 with the proper compile time flags for Android
 rusqlite = { git = "https://github.com/Actyx/rusqlite", rev = "55e4f2e352135e63c5a5619cf64e85febcf0bec6" }
-# banyan = { path = "../../banyan/banyan" }
 # wait for https://github.com/qdot/systray-rs/pull/51
 systray = { git = "https://github.com/wngr/systray-rs" }
 # wait for https://github.com/elizagamedev/wintrap-rs/pull/1

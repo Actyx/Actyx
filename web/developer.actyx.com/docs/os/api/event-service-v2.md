@@ -451,7 +451,7 @@ If the `where` filter changes, a new session will be created regardless of the e
 :::
 
 TODO:
- 
+
 - Clarify what "resuming" a session implies.
 - What if the user makes to requests with same session ID but different subscription? -> hash both
 - Can't we keep this stateless by the client keeping track of the offsets and resume on error? We have to keep track of session ID already.

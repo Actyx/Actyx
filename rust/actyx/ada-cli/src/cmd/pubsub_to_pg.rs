@@ -5,10 +5,9 @@ use ax_config::StoreConfig;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use future::TryFutureExt;
 use futures::{future, stream};
-use ipfs_node::IpfsNode;
 use postgres::{Client, Config, NoTls};
 use stream::StreamExt;
-use swarm::BanyanStore;
+use swarm::{BanyanStore, Ipfs};
 use util::pinned_resource::PinnedResource;
 
 pub struct Cmd;
@@ -109,7 +108,7 @@ const DELETE_INTERVAL_S: u64 = 3600;
 
 async fn upload(
     conn: PinnedResource<Client>,
-    client: IpfsNode,
+    client: Ipfs,
     topic: String,
     insert_statement: String,
     delete_statement: Option<String>,

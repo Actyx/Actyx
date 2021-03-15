@@ -1,9 +1,9 @@
-use crate::{BanyanStore, Link};
+use crate::{BanyanStore, Block, Ipfs, Link};
 use actyxos_sdk::tagged::{NodeId, StreamId, StreamNr};
 use anyhow::Result;
 use ax_futures_util::stream::latest_channel;
 use futures::prelude::*;
-use ipfs_node::{Block, Cid, IpfsNode};
+use libipld::Cid;
 use serde::{Deserialize, Serialize};
 use serde_bytes::ByteBuf;
 use std::collections::BTreeSet;
@@ -57,7 +57,7 @@ impl TryFrom<RootUpdateIo> for RootUpdate {
         let blocks = value
             .blocks
             .into_iter()
-            .map(|(cid, data)| Ok(Block::new(cid.parse()?, data.to_vec())?))
+            .map(|(cid, data)| Block::new(cid.parse()?, data.to_vec()))
             .collect::<Result<Vec<Block>>>()?;
         Ok(Self { root, stream, blocks })
     }
@@ -69,7 +69,7 @@ pub struct GossipV2 {
 }
 
 impl GossipV2 {
-    pub fn new(ipfs: IpfsNode, node_id: NodeId, topic: String) -> Self {
+    pub fn new(ipfs: Ipfs, node_id: NodeId, topic: String) -> Self {
         let (tx, mut rx) = latest_channel::channel::<PublishUpdate>();
         let publish_task = async move {
             while let Some(update) = rx.next().await {
@@ -79,12 +79,12 @@ impl GossipV2 {
                 let mut blocks = Vec::with_capacity(100);
                 for link in update.links {
                     let cid = Cid::from(link);
-                    if let Ok(Some(data)) = ipfs.lock_store().get_block(&cid) {
-                        if size + data.len() > MAX_BROADCAST_BYTES {
+                    if let Ok(block) = ipfs.get(&cid) {
+                        if size + block.data().len() > MAX_BROADCAST_BYTES {
                             break;
                         } else {
-                            size += data.len();
-                            blocks.push(Block::new_unchecked(cid, data));
+                            size += block.data().len();
+                            blocks.push(block);
                         }
                     }
                 }
@@ -99,7 +99,7 @@ impl GossipV2 {
                 })
                 .unwrap();
                 tracing::info!("publish_blob {}", blob.len());
-                let _ = ipfs.publish(&topic, blob);
+                ipfs.publish(&topic, blob).ok();
             }
         };
         Self {
@@ -125,15 +125,19 @@ impl GossipV2 {
                                 root_update.root,
                                 root_update.blocks.len()
                             );
-                            let mut bs = store.ipfs().lock_store();
-                            let tmp = bs.temp_pin();
-                            bs.assign_temp_pin(&tmp, std::iter::once(root_update.root)).ok();
-                            bs.put_blocks(root_update.blocks, None).ok();
-                            drop(bs);
-                            if let Ok(root) = Link::try_from(root_update.root) {
-                                store.update_root(root_update.stream, root);
+                            if let Ok(tmp) = store.ipfs().create_temp_pin() {
+                                if let Err(err) = store.ipfs().temp_pin(&tmp, &root_update.root) {
+                                    tracing::error!("{}", err);
+                                }
+                                for block in &root_update.blocks {
+                                    if let Err(err) = store.ipfs().insert(block) {
+                                        tracing::error!("{}", err);
+                                    }
+                                }
+                                if let Ok(root) = Link::try_from(root_update.root) {
+                                    store.update_root(root_update.stream, root);
+                                }
                             }
-                            drop(tmp);
                         }
                         Err(err) => tracing::debug!("received invalid root update; skipping. {}", err),
                     }

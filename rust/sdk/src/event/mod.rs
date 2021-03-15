@@ -210,6 +210,10 @@ pub struct StreamInfo {
 pub struct Payload(Opaque);
 
 impl Payload {
+    pub fn from_slice(bytes: &[u8]) -> Self {
+        Self(Opaque::new(bytes.into()))
+    }
+
     pub fn from_json_str(s: &str) -> Result<Payload, String> {
         serde_json::from_str(s).map_err(|e| format!("{}", e))
     }

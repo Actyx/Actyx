@@ -35,6 +35,7 @@ use ::util::SocketAddrHelper;
 use crossbeam::channel::{bounded, Receiver, Sender};
 use std::{convert::TryInto, path::PathBuf, str::FromStr, thread};
 use structopt::StructOpt;
+use swarm::NodeIdentity;
 
 // Rust defaults to use the system allocator, which seemed to be the fastest
 // allocator generally available for our use case [0]. For production, the Actyx
@@ -106,7 +107,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
 
     // Component: NodeApi
     let node_api = {
-        let keypair: ipfs_node::NodeIdentity = keystore
+        let keypair: NodeIdentity = keystore
             .read()
             .get_pair(node_id.into())
             // Should have been created by the call to

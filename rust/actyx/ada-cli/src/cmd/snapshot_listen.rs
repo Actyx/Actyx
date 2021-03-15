@@ -4,7 +4,6 @@ use async_trait::async_trait;
 use ax_config::StoreConfig;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use futures::StreamExt;
-use swarm::live::{LiveEvents, Topic};
 use swarm::BanyanStore;
 use trees::PublishSnapshot;
 
@@ -29,18 +28,11 @@ impl cmd::Command for Cmd {
 
     async fn run(&self, matches: &ArgMatches<'_>, _config: StoreConfig, store: BanyanStore) -> Result<()> {
         let topic = matches.value_of("TOPIC").expect("Topic is mandatory");
-        let client = store.ipfs();
-        let live = LiveEvents::new(client);
-
-        let completion = live
-            .listen_on::<PublishSnapshot>(&Topic(topic.to_string()))
-            .unwrap()
-            .for_each(|snapshot| {
-                println!("{}", snapshot);
-                futures::future::ready(())
-            });
-
-        completion.await;
+        let mut subscription = store.ipfs().subscribe(&topic)?;
+        while let Some(msg) = subscription.next().await {
+            let snapshot: PublishSnapshot = serde_cbor::from_slice(&msg)?;
+            println!("{}", snapshot);
+        }
         Ok(())
     }
 }
