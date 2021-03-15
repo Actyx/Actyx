@@ -82,7 +82,8 @@ export const Hero: React.FC<Props> = ({ example }: Props) => (
     <LineWrapper>
       <HeroCopy>
         The place where you find everything you need to digitize factory processes and build
-        solutions on the Actyx platform.
+        <a href="https://local-first-cooperation.github.io/website/"> local-first </a> solutions on
+        the Actyx platform.
       </HeroCopy>
     </LineWrapper>
     <LineWrapper>
