@@ -22,6 +22,8 @@ use anyhow::{anyhow, bail, Context, Result};
 use multibase::Base;
 use serde::{Deserialize, Serialize};
 
+use crate::ParseError;
+
 /// Macro for constructing an [`AppId`](tagging/struct.AppId.html) literal.
 ///
 /// This is how it works:
@@ -48,7 +50,7 @@ mk_scalar!(
     /// The app ID denotes a specific app (sans versioning)
     ///
     /// This is used for marking the provenance of events as well as configuring access rights.
-    struct AppId, EmptyAppId
+    struct AppId, EmptyAppId, ParseError
 );
 
 /// The ActyxOS node identifier

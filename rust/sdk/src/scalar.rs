@@ -27,7 +27,7 @@ pub fn nonempty_string<'de, D: Deserializer<'de>>(d: D) -> Result<ArcVal<str>, D
 }
 
 macro_rules! mk_scalar {
-    ($(#[$attr:meta])* struct $id:ident, $err:ident) => {
+    ($(#[$attr:meta])* struct $id:ident, $err:ident, $parse_err:ident) => {
 
         $(#[$attr])*
         #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
@@ -38,9 +38,9 @@ macro_rules! mk_scalar {
         );
 
         impl $id {
-            pub fn new(value: String) -> Result<Self, $crate::legacy::ParseError> {
+            pub fn new(value: String) -> Result<Self, $parse_err> {
                 if value.is_empty() {
-                    Err($crate::legacy::ParseError::$err)
+                    Err($parse_err::$err)
                 } else {
                     Ok(Self($crate::types::ArcVal::from_boxed(value.into())))
                 }
@@ -54,10 +54,10 @@ macro_rules! mk_scalar {
         }
 
         impl ::std::convert::TryFrom<&str> for $id {
-            type Error = $crate::legacy::ParseError;
-            fn try_from(value: &str) -> Result<Self, $crate::legacy::ParseError> {
+            type Error = $parse_err;
+            fn try_from(value: &str) -> Result<Self, $parse_err> {
                 if value.is_empty() {
-                    Err($crate::legacy::ParseError::$err)
+                    Err($parse_err::$err)
                 } else {
                     Ok(Self($crate::types::ArcVal::clone_from_unsized(value)))
                 }
@@ -65,10 +65,10 @@ macro_rules! mk_scalar {
         }
 
         impl ::std::convert::TryFrom<::std::sync::Arc<str>> for $id {
-            type Error = $crate::legacy::ParseError;
-            fn try_from(value: ::std::sync::Arc<str>) -> Result<Self, $crate::legacy::ParseError> {
+            type Error = $parse_err;
+            fn try_from(value: ::std::sync::Arc<str>) -> Result<Self, $parse_err> {
                 if value.is_empty() {
-                    Err($crate::legacy::ParseError::$err)
+                    Err($parse_err::$err)
                 } else {
                     Ok(Self($crate::types::ArcVal::from(value)))
                 }
@@ -76,8 +76,8 @@ macro_rules! mk_scalar {
         }
 
         impl ::std::str::FromStr for $id {
-            type Err = $crate::legacy::ParseError;
-            fn from_str(s: &str) -> Result<Self, $crate::legacy::ParseError> {
+            type Err = $parse_err;
+            fn from_str(s: &str) -> Result<Self, $parse_err> {
                 use std::convert::TryFrom;
                 Self::try_from(s)
             }

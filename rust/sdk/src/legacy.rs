@@ -39,10 +39,6 @@ pub enum ParseError {
     EmptySemantics,
     #[display(fmt = "Empty string is not permissible for FishName")]
     EmptyFishName,
-    #[display(fmt = "Empty string is not permissible for Tag")]
-    EmptyTag,
-    #[display(fmt = "Empty string is not permissible for AppId")]
-    EmptyAppId,
 }
 impl std::error::Error for ParseError {}
 
@@ -121,7 +117,7 @@ mk_scalar!(
     ///
     /// For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started).
     /// You may most conveniently construct values of this type with the [`semantics!`](../macro.semantics.html) macro.
-    struct Semantics, EmptySemantics
+    struct Semantics, EmptySemantics, ParseError
 );
 
 impl Semantics {
@@ -138,7 +134,7 @@ mk_scalar!(
     ///
     /// For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started).
     /// You may most conveniently construct values of this type with the [`fish_name!`](../macro.fish_name.html) macro.
-    struct FishName, EmptyFishName
+    struct FishName, EmptyFishName, ParseError
 );
 
 impl FishName {

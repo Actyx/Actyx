@@ -81,7 +81,7 @@ impl BlockIndex {
 mod tests {
     use super::*;
     use crate::{BlockIndex, IpfsEnvelope};
-    use actyxos_sdk::{fish_name, semantics, tags, LamportTimestamp, Payload, Timestamp};
+    use actyxos_sdk::{fish_name, semantics, tags, LamportTimestamp, Payload, Tag, Timestamp};
     use libipld::cbor::DagCborCodec;
     use libipld::codec::{Codec, Decode, Encode};
     use libipld::multihash::{Code, MultihashDigest};
@@ -161,11 +161,14 @@ mod tests {
     }
 
     fn envelope(semantics: &Semantics, name: String) -> IpfsEnvelope {
-        let name = FishName::new(name).unwrap();
+        let tags = tags!(
+            Tag::new(format!("semantics:{}", semantics.as_str())).unwrap(),
+            Tag::new(format!("fish_name:{}", name.as_str())).unwrap()
+        );
         IpfsEnvelope {
-            tags: tags! { semantics, &name },
+            tags,
             semantics: semantics.clone(),
-            name,
+            name: FishName::new(name).unwrap(),
             timestamp: Timestamp::new(0),
             lamport: LamportTimestamp::new(0),
             offset: Offset::ZERO,

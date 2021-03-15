@@ -15,7 +15,7 @@
  */
 use std::{
     collections::BTreeSet,
-    convert::{TryFrom, TryInto},
+    convert::TryFrom,
     fmt, io,
     iter::FromIterator,
     ops::{Add, AddAssign, BitAndAssign, SubAssign},
@@ -30,10 +30,7 @@ use libipld::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    legacy::{FishName, Semantics},
-    types::ArcVal,
-};
+use crate::{types::ArcVal, ParseError};
 
 /// Macro for constructing a [`Tag`](event/struct.Tag.html) literal.
 ///
@@ -64,12 +61,10 @@ macro_rules! tag {
 ///  - normal expressions (enclosed in parens if multiple tokens)
 ///
 /// ```rust
-/// use actyxos_sdk::{tags::{Tag, TagSet}, semantics, tag, tags, legacy::Semantics};
+/// use actyxos_sdk::{tags::{Tag, TagSet}, semantics, tag, tags};
 /// use std::collections::BTreeSet;
 ///
-/// let sem: Semantics = semantics!("b");
-/// let tags: TagSet = tags!("a", sem);
-///
+/// let tags: TagSet = tags!("a", "semantics:b");
 /// let mut expected = BTreeSet::new();
 /// expected.insert(tag!("a"));
 /// expected.insert(tag!("semantics:b"));
@@ -111,9 +106,9 @@ pub struct Tag(#[serde(deserialize_with = "crate::scalar::nonempty_string")] Arc
 
 #[allow(clippy::len_without_is_empty)]
 impl Tag {
-    pub fn new(value: String) -> std::result::Result<Self, crate::legacy::ParseError> {
+    pub fn new(value: String) -> std::result::Result<Self, ParseError> {
         if value.is_empty() {
-            Err(crate::legacy::ParseError::EmptyTag)
+            Err(ParseError::EmptyTag)
         } else {
             Ok(Self(crate::types::ArcVal::from_boxed(value.into())))
         }
@@ -125,10 +120,10 @@ impl Tag {
 }
 
 impl TryFrom<&str> for Tag {
-    type Error = crate::legacy::ParseError;
-    fn try_from(value: &str) -> std::result::Result<Self, crate::legacy::ParseError> {
+    type Error = ParseError;
+    fn try_from(value: &str) -> std::result::Result<Self, ParseError> {
         if value.is_empty() {
-            Err(crate::legacy::ParseError::EmptyTag)
+            Err(ParseError::EmptyTag)
         } else {
             Ok(Self(crate::types::ArcVal::clone_from_unsized(value)))
         }
@@ -136,10 +131,10 @@ impl TryFrom<&str> for Tag {
 }
 
 impl TryFrom<Arc<str>> for Tag {
-    type Error = crate::legacy::ParseError;
-    fn try_from(value: Arc<str>) -> std::result::Result<Self, crate::legacy::ParseError> {
+    type Error = ParseError;
+    fn try_from(value: Arc<str>) -> std::result::Result<Self, ParseError> {
         if value.is_empty() {
-            Err(crate::legacy::ParseError::EmptyTag)
+            Err(ParseError::EmptyTag)
         } else {
             Ok(Self(crate::types::ArcVal::from(value)))
         }
@@ -147,8 +142,8 @@ impl TryFrom<Arc<str>> for Tag {
 }
 
 impl FromStr for Tag {
-    type Err = crate::legacy::ParseError;
-    fn from_str(s: &str) -> std::result::Result<Self, crate::legacy::ParseError> {
+    type Err = ParseError;
+    fn from_str(s: &str) -> std::result::Result<Self, ParseError> {
         Self::try_from(s)
     }
 }
@@ -168,30 +163,6 @@ impl Decode<DagCborCodec> for Tag {
 impl Encode<DagCborCodec> for Tag {
     fn encode<W: io::Write>(&self, c: DagCborCodec, w: &mut W) -> ::libipld::error::Result<()> {
         self.0.encode(c, w)
-    }
-}
-
-impl From<&Semantics> for Tag {
-    fn from(value: &Semantics) -> Self {
-        Tag::new(format!("semantics:{}", value.as_str())).unwrap()
-    }
-}
-
-impl From<Semantics> for Tag {
-    fn from(value: Semantics) -> Self {
-        Tag::from(&value)
-    }
-}
-
-impl From<&FishName> for Tag {
-    fn from(value: &FishName) -> Self {
-        Tag::new(format!("fish_name:{}", value.as_str())).unwrap()
-    }
-}
-
-impl From<FishName> for Tag {
-    fn from(value: FishName) -> Self {
-        Tag::from(&value)
     }
 }
 
@@ -356,14 +327,6 @@ impl TagSet {
     pub fn is_subset(&self, rhs: &TagSet) -> bool {
         self.iter().all(|tag| rhs.contains(&tag))
     }
-
-    pub fn extract_semantics_or_default(&self) -> Semantics {
-        self.try_into().ok().unwrap_or_else(Semantics::unknown)
-    }
-
-    pub fn extract_fish_name_or_default(&self) -> FishName {
-        self.try_into().ok().unwrap_or_else(FishName::unknown)
-    }
 }
 
 impl Add for &TagSet {
@@ -449,30 +412,13 @@ impl BitAndAssign<&TagSet> for TagSet {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{fish_name, semantics};
-
-    #[test]
-    fn semantics_to_tag() {
-        let semantics = semantics!("test");
-
-        assert_eq!("semantics:test", Tag::from(&semantics).to_string());
-        assert_eq!("semantics:test", Tag::from(semantics).to_string());
-    }
-
-    #[test]
-    fn fish_name_to_tag() {
-        let fish_name = fish_name!("test");
-
-        assert_eq!("fish_name:test", Tag::from(&fish_name).to_string());
-        assert_eq!("fish_name:test", Tag::from(fish_name).to_string());
-    }
 
     #[test]
     fn make_tags() {
         let mut tags = BTreeSet::new();
         tags.insert(tag!("a"));
         tags.insert(tag!("semantics:b"));
-        assert_eq!(tags!("a", semantics!("b")), TagSet::from(tags));
+        assert_eq!(tags!("a", "semantics:b"), TagSet::from(tags));
     }
 
     #[test]

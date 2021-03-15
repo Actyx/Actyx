@@ -123,3 +123,13 @@ mod test_util;
 
 #[cfg(test)]
 pub use test_util::*;
+
+use derive_more::Display;
+#[derive(Debug, Display, PartialEq)]
+pub enum ParseError {
+    #[display(fmt = "Empty string is not permissible for Tag")]
+    EmptyTag,
+    #[display(fmt = "Empty string is not permissible for AppId")]
+    EmptyAppId,
+}
+impl std::error::Error for ParseError {}

@@ -2,7 +2,7 @@ use crate::{
     sqlite::{SqliteStore, SqliteStoreWrite},
     StreamAlias,
 };
-use actyxos_sdk::{legacy::SourceId, Payload, StreamId};
+use actyxos_sdk::{legacy::SourceId, Payload, StreamId, Tag};
 use banyan::forest::{BranchCache, Forest, Transaction};
 use ipfs_sqlite_block_store::{BlockStore, Synchronous};
 use libipld::{
@@ -87,8 +87,8 @@ fn events_to_v2(envelopes: Vec<IpfsEnvelope>) -> Vec<(AxKey, Payload)> {
         .into_iter()
         .map(|event| {
             let mut tags = event.tags;
-            tags.insert(event.semantics.into());
-            tags.insert(event.name.into());
+            tags.insert(Tag::new(format!("semantics:{}", event.semantics.as_str())).unwrap());
+            tags.insert(Tag::new(format!("fish_name:{}", event.name.as_str())).unwrap());
             let key: AxKey = AxKey::new(tags, event.lamport, event.timestamp);
             (key, event.payload)
         })
