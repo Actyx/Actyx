@@ -504,6 +504,7 @@ mod postgresql {
 /// documented API endpoints.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, DagCbor)]
 #[serde(from = "BTreeMap<StreamId, OffsetOrMin>")]
+#[ipld(repr = "value")]
 pub struct OffsetMap(BTreeMap<StreamId, Offset>);
 
 impl OffsetMap {
@@ -800,9 +801,14 @@ impl BitOrAssign for OffsetMap {
 
 #[cfg(test)]
 mod tests {
-    use libipld::{codec::assert_roundtrip, ipld};
+    use libipld::{
+        codec::{assert_roundtrip, Codec},
+        ipld,
+    };
+    use maplit::btreemap;
 
     use super::*;
+    use crate::from_cbor_me;
     use crate::{
         event::{Metadata, Payload},
         scalars::NodeId,
@@ -1012,5 +1018,30 @@ mod tests {
         assert_roundtrip(DagCborCodec, &OffsetOrMin::from(0u32), &ipld!(0));
         assert_roundtrip(DagCborCodec, &OffsetOrMin::from(1u32), &ipld!(1));
         assert_roundtrip(DagCborCodec, &OffsetOrMin::MAX, &ipld!(MAX_SAFE_INT));
+    }
+
+    #[test]
+    fn offset_map_libipld() {
+        let map = OffsetMap::from(btreemap! {
+            stream_id(1) => Offset::from(1),
+            stream_id(2) => Offset::from(2),
+        });
+        let expected = from_cbor_me(
+r#"
+A2                                      # map(2)
+   82                                   # array(2)
+      58 20                             # bytes(32)
+         0102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F20 # "\x01\x02\x03\x04\x05\x06\a\b\t\n\v\f\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\e\x1C\x1D\x1E\x1F "
+      01                                # unsigned(1)
+   01                                   # unsigned(1)
+   82                                   # array(2)
+      58 20                             # bytes(32)
+         0102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F20 # "\x01\x02\x03\x04\x05\x06\a\b\t\n\v\f\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\e\x1C\x1D\x1E\x1F "
+      02                                # unsigned(2)
+   02                                   # unsigned(2)
+"#
+        ).unwrap();
+        let data = DagCborCodec.encode(&map).unwrap();
+        assert_eq!(data, expected);
     }
 }
