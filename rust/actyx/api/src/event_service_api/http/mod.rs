@@ -1,7 +1,6 @@
 mod filters;
 mod handlers;
 mod ndjson;
-mod rejection;
 
 use actyxos_sdk::service::EventService;
 use crypto::KeyStoreRef;
@@ -17,5 +16,4 @@ pub(crate) fn routes<S: EventService + Clone + Send + Sync + 'static>(
         .or(filters::query(event_service.clone(), key_store.clone()))
         .or(filters::subscribe(event_service.clone(), key_store.clone()))
         .or(filters::subscribe_monotonic(event_service, key_store))
-        .recover(|r| async { rejection::handle_rejection(r) })
 }

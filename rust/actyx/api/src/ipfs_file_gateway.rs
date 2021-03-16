@@ -59,7 +59,7 @@ async fn handle_query(store: BanyanStore, query: IpfsQuery) -> Result<Response<B
     Ok(resp)
 }
 
-pub fn create_gateway_route(store: BanyanStore) -> BoxedFilter<(impl Reply,)> {
+pub fn route(store: BanyanStore) -> BoxedFilter<(impl Reply,)> {
     path::tail()
         .and_then(|tail: warp::path::Tail| {
             future::ready(

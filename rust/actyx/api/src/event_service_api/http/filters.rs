@@ -2,12 +2,9 @@ use std::str::FromStr;
 
 use actyxos_sdk::{service::EventService, AppId};
 use crypto::KeyStoreRef;
-use futures::future;
 use warp::*;
 
 use crate::event_service_api::http::handlers;
-
-use super::rejection::NotAcceptable;
 
 #[derive(Debug)]
 struct AuthErr;
@@ -22,20 +19,8 @@ pub fn with_service(
     any().map(move || event_service.clone())
 }
 
-fn accept(mime: &'static str) -> impl Filter<Extract = (), Error = Rejection> + Clone {
-    header::optional("accept")
-        .and_then(move |accept: Option<String>| match accept {
-            Some(requested) if requested.as_str() != mime => future::err(reject::custom(NotAcceptable {
-                requested,
-                supported: mime.to_owned(),
-            })),
-            _ => future::ok(()),
-        })
-        .untuple_one()
-}
-
 fn accept_json() -> impl Filter<Extract = (), Error = Rejection> + Clone {
-    accept("application/json")
+    crate::util::filter::accept("application/json")
 }
 
 pub fn node_id(
