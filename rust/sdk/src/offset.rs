@@ -18,7 +18,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     convert::TryFrom,
     fmt::{self, Debug},
-    io::{Read, Seek, Write},
+    io::{Read, Seek, SeekFrom, Write},
     iter::FromIterator,
     ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
 };
@@ -217,16 +217,27 @@ impl Bounded for OffsetOrMin {
 
 impl Encode<DagCborCodec> for OffsetOrMin {
     fn encode<W: Write>(&self, c: DagCborCodec, w: &mut W) -> anyhow::Result<()> {
-        self.0.encode(c, w)
+        if self.0 < 0 {
+            (-1i64).encode(c, w)
+        } else {
+            u64::try_from(self.0)?.encode(c, w)
+        }
     }
 }
 
 impl Decode<DagCborCodec> for OffsetOrMin {
     fn decode<R: Read + Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
-        let raw = i64::decode(c, r)?;
-        anyhow::ensure!(raw >= -1, "number {} is below -1", raw);
-        anyhow::ensure!(raw <= MAX_SAFE_INT, "number {} is too large", raw);
-        Ok(OffsetOrMin(raw))
+        let p = r.seek(SeekFrom::Current(0))?;
+        Ok(if let Ok(value) = u64::decode(c, r) {
+            let value = i64::try_from(value)?;
+            anyhow::ensure!(value <= MAX_SAFE_INT);
+            OffsetOrMin(value)
+        } else {
+            r.seek(SeekFrom::Start(p))?;
+            let value = i64::decode(c, r)?;
+            anyhow::ensure!(value == -1);
+            OffsetOrMin::MIN
+        })
     }
 }
 
@@ -789,6 +800,8 @@ impl BitOrAssign for OffsetMap {
 
 #[cfg(test)]
 mod tests {
+    use libipld::{codec::assert_roundtrip, ipld};
+
     use super::*;
     use crate::{
         event::{Metadata, Payload},
@@ -982,5 +995,22 @@ mod tests {
         de(format!("{{\"{}\":12}}", stream).as_str(), map);
 
         err::<OffsetMap>(format!("{{\"{}\":-11}}", stream).as_str(), "below -1");
+    }
+
+    #[test]
+    fn offset_libipld() {
+        // check offset roundtrip for obvious values
+        assert_roundtrip(DagCborCodec, &Offset::from(0), &ipld!(0));
+        assert_roundtrip(DagCborCodec, &Offset::from(1), &ipld!(1));
+        assert_roundtrip(DagCborCodec, &Offset::MAX, &ipld!(MAX_SAFE_INT));
+    }
+
+    #[test]
+    fn offset_or_min_libipld() {
+        // check offsetormin roundtrip for obvious values
+        assert_roundtrip(DagCborCodec, &OffsetOrMin::MIN, &ipld!(-1));
+        assert_roundtrip(DagCborCodec, &OffsetOrMin::from(0u32), &ipld!(0));
+        assert_roundtrip(DagCborCodec, &OffsetOrMin::from(1u32), &ipld!(1));
+        assert_roundtrip(DagCborCodec, &OffsetOrMin::MAX, &ipld!(MAX_SAFE_INT));
     }
 }

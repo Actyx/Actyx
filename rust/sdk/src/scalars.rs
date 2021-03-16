@@ -23,7 +23,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use libipld::{
     cbor::DagCborCodec,
     codec::{Decode, Encode},
-    DagCbor,
+    DagCbor, Ipld,
 };
 use multibase::Base;
 use serde::{Deserialize, Serialize};
@@ -169,8 +169,11 @@ impl Encode<DagCborCodec> for NodeId {
 
 impl Decode<DagCborCodec> for NodeId {
     fn decode<R: Read + Seek>(c: DagCborCodec, r: &mut R) -> libipld::Result<Self> {
-        let raw = Vec::<u8>::decode(c, r)?;
-        NodeId::from_bytes(&raw)
+        if let Ipld::Bytes(raw) = Ipld::decode(c, r)? {
+            NodeId::from_bytes(&raw)
+        } else {
+            anyhow::bail!("unexpected cbor")
+        }
     }
 }
 
@@ -290,6 +293,7 @@ mod sqlite {
 /// StreamNr. Newtype alias for u64
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, DagCbor)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
+#[ipld(repr = "value")]
 pub struct StreamNr(u64);
 
 impl From<u64> for StreamNr {
@@ -315,12 +319,35 @@ mod tests {
     use std::convert::TryInto;
 
     use super::*;
+    use libipld::{codec::assert_roundtrip, ipld};
     use serde_json::Value;
 
     const BYTES: [u8; 32] = [
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
         31, 32,
     ];
+
+    #[test]
+    fn stream_nr_libipld() {
+        assert_roundtrip(DagCborCodec, &StreamNr::from(0), &ipld!(0));
+        assert_roundtrip(DagCborCodec, &StreamNr::from(1), &ipld!(1));
+    }
+
+    #[test]
+    fn node_id_libipld() {
+        let node_id = NodeId(BYTES);
+        assert_roundtrip(DagCborCodec, &node_id, &ipld!(BYTES.as_ref()));
+    }
+
+    #[test]
+    fn stream_id_libipld() {
+        let stream_id = NodeId(BYTES).stream(12.try_into().unwrap());
+        assert_roundtrip(
+            DagCborCodec,
+            &stream_id,
+            &Ipld::List(vec![Ipld::Bytes(BYTES.to_vec()), Ipld::Integer(12)]),
+        );
+    }
 
     #[test]
     fn node_id_serialization() {
