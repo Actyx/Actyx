@@ -13,12 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use std::{convert::TryFrom, fmt::{self, Debug, Display}, io::{Read, Seek, Write}};
+use std::{
+    convert::TryFrom,
+    fmt::{self, Debug, Display},
+    io::{Read, Seek, Write},
+};
 
 use anyhow::{anyhow, bail, Context, Result};
+use libipld::{
+    cbor::DagCborCodec,
+    codec::{Decode, Encode},
+    DagCbor,
+};
 use multibase::Base;
 use serde::{Deserialize, Serialize};
-use libipld::{DagCbor, cbor::DagCborCodec, codec::{Decode, Encode}};
 
 use crate::ParseError;
 
@@ -161,7 +169,7 @@ impl Encode<DagCborCodec> for NodeId {
 
 impl Decode<DagCborCodec> for NodeId {
     fn decode<R: Read + Seek>(c: DagCborCodec, r: &mut R) -> libipld::Result<Self> {
-        let raw  = Vec::<u8>::decode(c, r)?;
+        let raw = Vec::<u8>::decode(c, r)?;
         NodeId::from_bytes(&raw)
     }
 }
@@ -224,6 +232,19 @@ impl Debug for StreamId {
     }
 }
 
+impl Encode<DagCborCodec> for StreamId {
+    fn encode<W: Write>(&self, c: DagCborCodec, w: &mut W) -> libipld::Result<()> {
+        (self.node_id, self.stream_nr).encode(c, w)
+    }
+}
+
+impl Decode<DagCborCodec> for StreamId {
+    fn decode<R: Read + Seek>(c: DagCborCodec, r: &mut R) -> libipld::Result<Self> {
+        let (node_id, stream_nr) = <(NodeId, StreamNr)>::decode(c, r)?;
+        Ok(StreamId { node_id, stream_nr })
+    }
+}
+
 impl Into<String> for StreamId {
     fn into(self) -> String {
         self.to_string()
@@ -267,9 +288,7 @@ mod sqlite {
 }
 
 /// StreamNr. Newtype alias for u64
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[derive(Serialize, Deserialize)]
-#[derive(DagCbor)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, DagCbor)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct StreamNr(u64);
 

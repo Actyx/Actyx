@@ -27,6 +27,7 @@ use derive_more::{Display, From, Into};
 use libipld::{
     cbor::DagCborCodec,
     codec::{Decode, Encode},
+    DagCbor,
 };
 use num_traits::Bounded;
 use serde::{
@@ -490,7 +491,7 @@ mod postgresql {
 /// An OffsetMap only contains valid offsets (non-negative numbers), but during deserialization
 /// negative values are tolerated and ignored. This is to keep compatibility with previously
 /// documented API endpoints.
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, DagCbor)]
 #[serde(from = "BTreeMap<StreamId, OffsetOrMin>")]
 pub struct OffsetMap(BTreeMap<StreamId, Offset>);
 
