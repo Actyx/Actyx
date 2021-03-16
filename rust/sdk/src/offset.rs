@@ -18,7 +18,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     convert::TryFrom,
     fmt::{self, Debug},
-    io::{Read, Seek, Write},
+    io::{Read, Seek, SeekFrom, Write},
     iter::FromIterator,
     ops::{Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, Sub, SubAssign},
 };
@@ -27,6 +27,7 @@ use derive_more::{Display, From, Into};
 use libipld::{
     cbor::DagCborCodec,
     codec::{Decode, Encode},
+    DagCbor,
 };
 use num_traits::Bounded;
 use serde::{
@@ -211,6 +212,32 @@ impl Bounded for OffsetOrMin {
     }
     fn max_value() -> Self {
         OffsetOrMin::MAX
+    }
+}
+
+impl Encode<DagCborCodec> for OffsetOrMin {
+    fn encode<W: Write>(&self, c: DagCborCodec, w: &mut W) -> anyhow::Result<()> {
+        if self.0 < 0 {
+            (-1i64).encode(c, w)
+        } else {
+            u64::try_from(self.0)?.encode(c, w)
+        }
+    }
+}
+
+impl Decode<DagCborCodec> for OffsetOrMin {
+    fn decode<R: Read + Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
+        let p = r.seek(SeekFrom::Current(0))?;
+        Ok(if let Ok(value) = u64::decode(c, r) {
+            let value = i64::try_from(value)?;
+            anyhow::ensure!(value <= MAX_SAFE_INT);
+            OffsetOrMin(value)
+        } else {
+            r.seek(SeekFrom::Start(p))?;
+            let value = i64::decode(c, r)?;
+            anyhow::ensure!(value == -1);
+            OffsetOrMin::MIN
+        })
     }
 }
 
@@ -475,8 +502,9 @@ mod postgresql {
 /// An OffsetMap only contains valid offsets (non-negative numbers), but during deserialization
 /// negative values are tolerated and ignored. This is to keep compatibility with previously
 /// documented API endpoints.
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, DagCbor)]
 #[serde(from = "BTreeMap<StreamId, OffsetOrMin>")]
+#[ipld(repr = "value")]
 pub struct OffsetMap(BTreeMap<StreamId, Offset>);
 
 impl OffsetMap {
@@ -773,7 +801,14 @@ impl BitOrAssign for OffsetMap {
 
 #[cfg(test)]
 mod tests {
+    use libipld::{
+        codec::{assert_roundtrip, Codec},
+        ipld,
+    };
+    use maplit::btreemap;
+
     use super::*;
+    use crate::from_cbor_me;
     use crate::{
         event::{Metadata, Payload},
         scalars::NodeId,
@@ -966,5 +1001,47 @@ mod tests {
         de(format!("{{\"{}\":12}}", stream).as_str(), map);
 
         err::<OffsetMap>(format!("{{\"{}\":-11}}", stream).as_str(), "below -1");
+    }
+
+    #[test]
+    fn offset_libipld() {
+        // check offset roundtrip for obvious values
+        assert_roundtrip(DagCborCodec, &Offset::from(0), &ipld!(0));
+        assert_roundtrip(DagCborCodec, &Offset::from(1), &ipld!(1));
+        assert_roundtrip(DagCborCodec, &Offset::MAX, &ipld!(MAX_SAFE_INT));
+    }
+
+    #[test]
+    fn offset_or_min_libipld() {
+        // check offsetormin roundtrip for obvious values
+        assert_roundtrip(DagCborCodec, &OffsetOrMin::MIN, &ipld!(-1));
+        assert_roundtrip(DagCborCodec, &OffsetOrMin::from(0u32), &ipld!(0));
+        assert_roundtrip(DagCborCodec, &OffsetOrMin::from(1u32), &ipld!(1));
+        assert_roundtrip(DagCborCodec, &OffsetOrMin::MAX, &ipld!(MAX_SAFE_INT));
+    }
+
+    #[test]
+    fn offset_map_libipld() {
+        let map = OffsetMap::from(btreemap! {
+            stream_id(1) => Offset::from(1),
+            stream_id(2) => Offset::from(2),
+        });
+        let expected = from_cbor_me(
+r#"
+A2                                      # map(2)
+   82                                   # array(2)
+      58 20                             # bytes(32)
+         0102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F20 # "\x01\x02\x03\x04\x05\x06\a\b\t\n\v\f\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\e\x1C\x1D\x1E\x1F "
+      01                                # unsigned(1)
+   01                                   # unsigned(1)
+   82                                   # array(2)
+      58 20                             # bytes(32)
+         0102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F20 # "\x01\x02\x03\x04\x05\x06\a\b\t\n\v\f\r\x0E\x0F\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1A\e\x1C\x1D\x1E\x1F "
+      02                                # unsigned(2)
+   02                                   # unsigned(2)
+"#
+        ).unwrap();
+        let data = DagCborCodec.encode(&map).unwrap();
+        assert_eq!(data, expected);
     }
 }
