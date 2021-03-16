@@ -33,7 +33,9 @@ pub(crate) fn routes<S: EventService + Clone + Send + Sync + 'static>(
       "subscribe_monotonic" => subscribe_monotonic::service(event_service.clone()).boxed(),
       "publish"             => publish::service(event_service).boxed(),
     });
-    warp::ws()
+
+    warp::path::end()
+        .and(warp::ws())
         .and(warp::any().map(move || services.clone()))
         .and(authenticate(key_store))
         .and_then(wsrpc::serve)

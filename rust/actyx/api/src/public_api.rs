@@ -1,11 +1,11 @@
-use futures::future::try_join_all;
 use std::net::SocketAddr;
+
+use crypto::KeyStoreRef;
+use futures::future::try_join_all;
+use swarm::BanyanStore;
 use warp::{http::Method, Filter};
 
-use crate::hyper_serve::serve_it;
-use crate::{event_service_api, ipfs_file_gateway::create_gateway_route};
-use crypto::KeyStoreRef;
-use swarm::BanyanStore;
+use crate::{event_service_api, hyper_serve::serve_it, ipfs_file_gateway::create_gateway_route};
 
 pub async fn run(store: BanyanStore, bind_to: impl Iterator<Item = SocketAddr> + Send, key_store: KeyStoreRef) {
     let event_service = event_service_api::service::EventService::new(store.clone());
