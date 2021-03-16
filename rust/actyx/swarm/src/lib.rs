@@ -34,10 +34,9 @@ use banyan::{
     index::Index,
     query::Query,
 };
-use fnv::FnvHashSet;
 use forest::FilteredChunk;
 use futures::{channel::mpsc, prelude::*};
-use ipfs_embed::{BitswapConfig, Config as IpfsConfig, Multiaddr, NetworkConfig, StorageConfig, SyncEvent};
+use ipfs_embed::{BitswapConfig, Config as IpfsConfig, NetworkConfig, StorageConfig, SyncEvent};
 use libipld::Cid;
 use libp2p::{
     gossipsub::{GossipsubConfigBuilder, ValidationMode},
@@ -73,7 +72,6 @@ pub struct Config {
     forest_config: forest::Config,
     topic: String,
     node_id: NodeId,
-    external_addresses: FnvHashSet<Multiaddr>,
 }
 
 impl Config {
@@ -84,7 +82,6 @@ impl Config {
             forest_config: forest::Config::debug(),
             topic: topic.into(),
             node_id,
-            external_addresses: Default::default(),
         }
     }
 
@@ -95,7 +92,6 @@ impl Config {
             forest_config: forest::Config::debug(),
             topic: "test".into(),
             node_id: NodeId::from_bytes(&(0..32).collect::<Vec<u8>>()).unwrap(),
-            external_addresses: Default::default(),
         }
     }
 }
@@ -199,9 +195,24 @@ impl BanyanStore {
             },
         };
         let ipfs = Ipfs::new(config).await?;
-        let mut config = Config::new(&cfg.topic, identity.into());
-        config.external_addresses = cfg.ipfs_node.external_addresses.iter().cloned().collect();
+        for addr in cfg.ipfs_node.listen {
+            let bound_addr = ipfs.listen_on(addr).await?;
+            tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr);
+        }
+        for addr in cfg.ipfs_node.external_addresses {
+            ipfs.add_external_address(addr);
+        }
+        for mut addr in cfg.ipfs_node.bootstrap {
+            if let Some(Protocol::P2p(peer_id)) = addr.pop() {
+                let peer_id =
+                    PeerId::from_multihash(peer_id).map_err(|_| anyhow::anyhow!("invalid bootstrap peer id"))?;
+                ipfs.dial_address(&peer_id, addr)?;
+            } else {
+                return Err(anyhow::anyhow!("invalid bootstrap address"));
+            }
+        }
 
+        let config = Config::new(&cfg.topic, identity.into());
         let index_store = if let Some(con) = db {
             SqliteIndexStore::from_conn(con)?
         } else {
@@ -220,23 +231,6 @@ impl BanyanStore {
             &cfg.topic,
             &cfg.monitoring_topic,
         );
-        let ipfs = banyan.ipfs();
-        for addr in cfg.ipfs_node.listen {
-            let bound_addr = ipfs.listen_on(addr).await?;
-            tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr);
-        }
-        for addr in cfg.ipfs_node.external_addresses {
-            ipfs.add_external_address(addr);
-        }
-        for mut addr in cfg.ipfs_node.bootstrap {
-            if let Some(Protocol::P2p(peer_id)) = addr.pop() {
-                let peer_id =
-                    PeerId::from_multihash(peer_id).map_err(|_| anyhow::anyhow!("invalid bootstrap peer id"))?;
-                ipfs.dial_address(&peer_id, addr)?;
-            } else {
-                return Err(anyhow::anyhow!("invalid bootstrap address"));
-            }
-        }
         Ok(banyan)
     }
 
@@ -252,7 +246,7 @@ impl BanyanStore {
             maps: Mutex::new(StreamMaps::default()),
             index_store,
             node_id,
-            ipfs,
+            ipfs: ipfs.clone(),
             gossip_v2,
             lamport: Default::default(),
             present: Default::default(),
@@ -269,12 +263,8 @@ impl BanyanStore {
         me.spawn_task("compaction", me.clone().compaction_loop(Duration::from_secs(60)));
         me.spawn_task("v1_gossip_publish", me.clone().v1_gossip_publish(config.topic.clone()));
         me.spawn_task("v1_gossip_ingest", me.clone().v1_gossip_ingest(config.topic));
-        me.spawn_task("discovery_ingest", crate::discovery::discovery_ingest(me.clone()));
-        // TODO fix stream nr
-        me.spawn_task(
-            "discovery_publish",
-            crate::discovery::discovery_publish(me.clone(), 43.into(), config.external_addresses)?,
-        );
+        me.spawn_task("discovery_ingest", crate::discovery::discovery_ingest(ipfs.clone())?);
+        me.spawn_task("discovery_publish", crate::discovery::discovery_publish(ipfs));
         // TODO fix stream nr
         me.spawn_task(
             "metrics",
