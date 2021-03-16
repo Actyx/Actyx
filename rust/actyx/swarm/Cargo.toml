@@ -17,7 +17,7 @@ derive_more = "0.99.11"
 fnv = "1.0.7"
 futures = { version = "0.3.13", package = "futures" }
 hex = "0.4.3"
-ipfs-embed = "0.16.0"
+ipfs-embed = "0.17.0"
 ipfs-sqlite-block-store = "0.3.0"
 itertools = "0.10.0"
 libipld = { version = "0.11.0", default-features = false }

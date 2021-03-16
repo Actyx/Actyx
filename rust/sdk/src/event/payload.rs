@@ -33,6 +33,10 @@ impl Payload {
         Self(Opaque::new(bytes.into()))
     }
 
+    pub fn as_slice(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+
     pub fn from_json_str(s: &str) -> Result<Payload, String> {
         serde_json::from_str(s).map_err(|e| format!("{}", e))
     }
