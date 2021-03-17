@@ -56,59 +56,67 @@ fn routes(
         .with(cors)
 }
 
-const DOC_HINT: &str = "Refer to https://developer.actyx.com/ for more information.";
 fn handle_rejection(r: Rejection) -> Result<impl Reply, Rejection> {
     use crate::util::rejections::*;
-    println!("rejection: {:?}", r);
-    if let Some(NotAcceptable { requested, supported }) = r.find() {
-        Ok(reply::with_status(
-            format!(
-                "The requested resource is only capable of generating content of type '{}' but '{}' was requested.",
-                supported, requested
-            ),
+    if let Some(reject::MethodNotAllowed { .. }) = r.find() {
+        Ok((http::StatusCode::METHOD_NOT_ALLOWED, ApiError::MethodNotAllowed))
+    } else if let Some(NotAcceptable { requested, supported }) = r.find() {
+        Ok((
             http::StatusCode::NOT_ACCEPTABLE,
+            ApiError::NotAcceptable {
+                requested: requested.to_owned(),
+                supported: supported.to_owned(),
+            },
+        ))
+    } else if let Some(e) = r.find::<filters::body::BodyDeserializeError>() {
+        use std::error::Error;
+        Ok((
+            http::StatusCode::BAD_REQUEST,
+            ApiError::BadRequest {
+                cause: e.source().map_or("".to_string(), |e| e.to_string()),
+            },
         ))
     } else if let Some(Unauthorized::MissingToken(source)) = r.find() {
-        Ok(reply::with_status(
-            format!(
-                "Authorization token is missing. Please provide a valid auth token {}. {}",
-                source, DOC_HINT
-            ),
+        Ok((
             http::StatusCode::UNAUTHORIZED,
+            ApiError::MissingAuthToken {
+                source: source.to_owned(),
+            },
         ))
     } else if let Some(Unauthorized::TokenUnauthorized) = r.find() {
-        Ok(reply::with_status(
-            format!(
-                "Authorization request header contains an unauthorized token. {}",
-                DOC_HINT
-            ),
-            http::StatusCode::UNAUTHORIZED,
-        ))
+        Ok((http::StatusCode::UNAUTHORIZED, ApiError::TokenUnauthorized))
     } else if let Some(Unauthorized::UnsupportedAuthType(auth_type)) = r.find() {
-        Ok(reply::with_status(
-            format!(
-                "Unsupported Authorization header type '{}'. Please provide a Bearer token. {}",
-                auth_type, DOC_HINT
-            ),
+        Ok((
             http::StatusCode::UNAUTHORIZED,
+            ApiError::UnsupportedAuthType {
+                requested: auth_type.to_owned(),
+            },
         ))
     } else if let Some(Unauthorized::InvalidBearerToken(token)) = r.find() {
-        Ok(reply::with_status(
-            format!(
-                "Invalid token: '{}'. Please provide a valid Bearer token. {}",
-                token, DOC_HINT
-            ),
+        Ok((
             http::StatusCode::UNAUTHORIZED,
+            ApiError::TokenInvalid {
+                token: token.to_owned(),
+            },
         ))
     } else {
+        println!("unhandled rejection: {:?}", r);
         Err(r)
     }
+    .map(|(status, code)| {
+        let api_error: ApiErrorResponse = code.into();
+        let json = warp::reply::json(&api_error);
+        warp::reply::with_status(json, status)
+    })
 }
 
 #[cfg(test)]
 mod test {
+    use bytes::Bytes;
     use crypto::KeyStore;
+    use hyper::Response;
     use parking_lot::lock_api::RwLock;
+    use serde_json::*;
     use swarm::{BanyanStore, StoreConfig};
     use warp::*;
 
@@ -133,6 +141,11 @@ mod test {
         super::routes(store.node_id(), store, key_store).with(warp::trace::named("api_test"))
     }
 
+    fn assert_err_response(resp: Response<Bytes>, status: http::StatusCode, json: serde_json::Value) {
+        assert_eq!(resp.status(), status);
+        assert_eq!(serde_json::from_slice::<serde_json::Value>(resp.body()).unwrap(), json);
+    }
+
     #[tokio::test]
     async fn ok() {
         let resp = test::request()
@@ -148,8 +161,8 @@ mod test {
     async fn ok_accept() {
         let resp = test::request()
             .path("/api/v2/events/node_id")
-            .header("accept", "application/json")
             .header("Authorization", "Bearer ok")
+            .header("accept", "application/json")
             .reply(&test_routes().await)
             .await;
         assert_eq!(resp.status(), http::StatusCode::OK);
@@ -188,8 +201,14 @@ mod test {
             .header("Authorization", "Bearer disallow")
             .reply(&test_routes().await)
             .await;
-        assert_eq!(resp.status(), http::StatusCode::UNAUTHORIZED);
-        assert_eq!(resp.body(), "Authorization request header contains an unauthorized token. Refer to https://developer.actyx.com/ for more information.");
+        assert_err_response(
+            resp,
+            http::StatusCode::UNAUTHORIZED,
+            json!({
+              "code": "ERR_TOKEN_UNAUTHORIZED",
+              "message": "Authorization request header contains an unauthorized token."
+            }),
+        );
     }
 
     #[tokio::test]
@@ -198,8 +217,14 @@ mod test {
             .path("/api/v2/events/node_id")
             .reply(&test_routes().await)
             .await;
-        assert_eq!(resp.status(), http::StatusCode::UNAUTHORIZED);
-        assert_eq!(resp.body(), "Authorization token is missing. Please provide a valid auth token header. Refer to https://developer.actyx.com/ for more information.");
+        assert_err_response(
+            resp,
+            http::StatusCode::UNAUTHORIZED,
+            json!({
+              "code": "ERR_EMPTY_AUTH_HEADER",
+              "message": "Authorization token is missing. Please provide a valid auth token header."
+            }),
+        );
     }
 
     #[tokio::test]
@@ -209,8 +234,14 @@ mod test {
             .header("Authorization", "Foo hello")
             .reply(&test_routes().await)
             .await;
-        assert_eq!(resp.status(), http::StatusCode::UNAUTHORIZED);
-        assert_eq!(resp.body(), "Unsupported Authorization header type 'Foo'. Please provide a Bearer token. Refer to https://developer.actyx.com/ for more information.");
+        assert_err_response(
+            resp,
+            http::StatusCode::UNAUTHORIZED,
+            json!({
+              "code": "ERR_WRONG_AUTH_TYPE",
+              "message": "Unsupported Authorization header type 'Foo'. Please provide a Bearer token."
+            }),
+        );
     }
 
     #[tokio::test]
@@ -220,8 +251,14 @@ mod test {
             .header("Authorization", "Bearer invalid")
             .reply(&test_routes().await)
             .await;
-        assert_eq!(resp.status(), http::StatusCode::UNAUTHORIZED);
-        assert_eq!(resp.body(), "Invalid token: 'invalid'. Please provide a valid Bearer token. Refer to https://developer.actyx.com/ for more information.");
+        assert_err_response(
+            resp,
+            http::StatusCode::UNAUTHORIZED,
+            json!({
+              "code": "ERR_TOKEN_INVALID",
+              "message": "Invalid token: 'invalid'. Please provide a valid Bearer token."
+            }),
+        );
     }
 
     #[tokio::test]
@@ -238,7 +275,14 @@ mod test {
             .header("Authorization", "Bearer ok")
             .reply(&(test_routes().await))
             .await;
-        assert_eq!(resp.status(), http::StatusCode::METHOD_NOT_ALLOWED);
+        assert_err_response(
+            resp,
+            http::StatusCode::METHOD_NOT_ALLOWED,
+            json!({
+              "code": "ERR_METHOD_NOT_ALLOWED",
+              "message": "Method not supported."
+            }),
+        );
     }
 
     #[tokio::test]
@@ -249,11 +293,14 @@ mod test {
             .header("accept", "text/html")
             .reply(&(test_routes().await))
             .await;
-        assert_eq!(
-              resp.body(),
-              "The requested resource is only capable of generating content of type 'application/json' but 'text/html' was requested."
-            );
-        assert_eq!(resp.status(), http::StatusCode::NOT_ACCEPTABLE);
+        assert_err_response(
+            resp,
+            http::StatusCode::NOT_ACCEPTABLE,
+            json!({
+              "code": "ERR_NOT_ACCEPTABLE",
+              "message": "The requested resource is only capable of generating content of type 'application/json' but 'text/html' was requested."
+            }),
+        );
     }
 
     #[tokio::test]
@@ -262,13 +309,16 @@ mod test {
             .path("/api/v2/events/publish")
             .method("POST")
             .header("Authorization", "Bearer ok")
-            .body("me no json")
+            .body("Jason vs. Freddy")
             .reply(&(test_routes().await))
             .await;
-        assert_eq!(resp.status(), http::StatusCode::BAD_REQUEST);
-        assert_eq!(
-            resp.body(),
-            "Request body deserialize error: expected value at line 1 column 1"
+        assert_err_response(
+            resp,
+            http::StatusCode::BAD_REQUEST,
+            json!({
+              "code": "ERR_MALFORMED_REQUEST_SYNTAX",
+              "message": "Invalid request. expected value at line 1 column 1"
+            }),
         );
     }
 
@@ -281,10 +331,13 @@ mod test {
             .body("{}")
             .reply(&(test_routes().await))
             .await;
-        assert_eq!(resp.status(), http::StatusCode::BAD_REQUEST);
-        assert_eq!(
-            resp.body(),
-            "Request body deserialize error: missing field `data` at line 1 column 2"
+        assert_err_response(
+            resp,
+            http::StatusCode::BAD_REQUEST,
+            json!({
+              "code": "ERR_MALFORMED_REQUEST_SYNTAX",
+              "message": "Invalid request. missing field `data` at line 1 column 2"
+            }),
         );
     }
 
@@ -297,6 +350,13 @@ mod test {
             .json(&serde_json::json!({"offsets": null, "where": "here"}))
             .reply(&(test_routes().await))
             .await;
-        assert_eq!(resp.status(), http::StatusCode::BAD_REQUEST);
+        assert_err_response(
+            resp,
+            http::StatusCode::BAD_REQUEST,
+            json!({
+              "code": "ERR_MALFORMED_REQUEST_SYNTAX",
+              "message": "Invalid request. 0: at line 1:\nhere\n^\nexpected \'\'\', found h\n\n1: at line 1, in literal:\nhere\n^\n\n2: at line 1, in Alt:\nhere\n^\n\n3: at line 1, in and:\nhere\n^\n\n4: at line 1, in or:\nhere\n^\n\n at line 1 column 31"
+            }),
+        );
     }
 }

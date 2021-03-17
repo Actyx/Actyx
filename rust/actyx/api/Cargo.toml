@@ -10,7 +10,7 @@ ax-futures-util = { path = "../ax-futures-util" }
 crypto = { path = "../crypto" }
 swarm = { path = "../swarm" }
 trees = { path = "../trees" }
-util = { path = "../util" }
+actyx-util = { path = "../util", package = "util" }
 
 anyhow = "1.0.38"
 async-trait = "0.1.48"
