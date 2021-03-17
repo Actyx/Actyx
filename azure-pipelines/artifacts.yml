@@ -44,6 +44,8 @@ stages:
           - bash: |
               set -e
               build/bin/install-vault.sh
+              chmod -R 777 .
+              chmod -R 777 /root/.cargo
               make all-windows
             env:
               # Map secrets to env vars. This needs to be done manually
@@ -59,6 +61,8 @@ stages:
           - bash: |
               set -e
               build/bin/install-vault.sh
+              chmod -R 777 .
+              chmod -R 777 /root/.cargo
               make all-linux
             env:
               # Map secrets to env vars. This needs to be done manually
@@ -96,6 +100,8 @@ stages:
           - bash: |
               set -e
               build/bin/install-vault.sh
+              chmod -R 777 .
+              chmod -R 777 /root/.cargo
               make all-android
             env:
               # Map secrets to env vars. This needs to be done manually

@@ -15,6 +15,13 @@
 # You can use make prepare to update the docker images and install required tools.
 SHELL := /bin/bash
 
+MIN_MAKE_VERSION := 4.2
+# This checks the make version and aborts with an error if it's not at least MIN_MAKE_VERSION
+ok := $(filter $(MIN_MAKE_VERSION),$(firstword $(sort $(MAKE_VERSION) $(MIN_MAKE_VERSION))))
+ifndef ok
+$(error Please upgrade to GNU Make $(MIN_MAKE_VERSION) you are on: $(MAKE_VERSION))
+endif
+
 architectures = aarch64 x86_64 armv7 arm
 
 all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyx-linux ax,linux-$(arch)/$(bin)))
@@ -50,8 +57,12 @@ export CARGO_HOME ?= $(HOME)/.cargo
 # log in to vault and store the token in an environment variable
 # to run this locally, set the VAULT_TOKEN environment variable by running vault login with your dev role.
 # e.g. `export VAULT_TOKEN=`vault login -token-only -method aws role=dev-ruediger`
+# the current token is looked up and no login attempted if present - this suppresses warnings
+VAULT_TOKEN ?= $(vault token lookup -format=json | jq .data.id)
+ifndef VAULT_TOKEN
 export VAULT_ADDR ?= https://vault.actyx.net
 export VAULT_TOKEN ?= $(shell VAULT_ADDR=$(VAULT_ADDR) vault login -token-only -method aws role=ops-travis-ci)
+endif
 
 # The stable image version is the git commit hash inside `Actyx/Cosmos`, with
 # which the respective images was built. Whenever the build images (inside
@@ -207,7 +218,6 @@ validate-misc: validate-actyxos-node-manager validate-actyx-win-installer
 # run npm install. There don't seem to be any tests.
 validate-actyxos-node-manager:
 	docker run \
-	  -u $(shell id -u) \
 	  -v `pwd`:/src \
 	  -w /src/misc/actyxos-node-manager \
 	  --rm actyx/util:windowsinstallercreator-x64-latest \
@@ -297,7 +307,7 @@ targetPatterns = $(foreach t,$(targets),rust/actyx/target/$(t)/release/%)
 define mkBinaryRule =
 rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	docker run \
-	  -u $(shell id -u) \
+	  -u builder \
 	  -w /src/rust/actyx \
 	  -e CARGO_BUILD_TARGET=$(TARGET) \
 	  -e CARGO_BUILD_JOBS=$(CARGO_BUILD_JOBS) \
@@ -322,7 +332,7 @@ $(soTargetPatterns): TARGET = $(word 4,$(subst /, ,$@))
 $(soTargetPatterns): OS = $(word 4,$(subst -, ,$(TARGET)))
 $(soTargetPatterns): cargo-init make-always
 	docker run \
-	  -u $(shell id -u) \
+	  -u builder \
 	  -w /src/rust/actyx \
 	  -e CARGO_BUILD_TARGET=$(TARGET) \
 	  -e CARGO_BUILD_JOBS=$(CARGO_BUILD_JOBS) \
@@ -343,7 +353,7 @@ $(CARGO_HOME)/%:
 jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnodeffi make-always
 	jvm/os-android/bin/get-keystore.sh
 	docker run \
-	  -u $(shell id -u) \
+	  -u builder \
 	  -v `pwd`:/src \
 	  -w /src/jvm/os-android \
 	  --rm \
@@ -358,7 +368,6 @@ misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/windows-x
 	mkdir -p misc/actyxos-node-manager/bin/win32
 	cp dist/bin/windows-x86_64/ax.exe misc/actyxos-node-manager/bin/win32/
 	docker run \
-	  -u $(shell id -u) \
 	  -v `pwd`:/src \
 	  -w /src/misc/actyxos-node-manager \
 	  --rm actyx/util:windowsinstallercreator-x64-latest \
@@ -375,7 +384,6 @@ dist/bin/windows-x86_64/Actyx-Installer.exe: misc/actyxos-node-manager/out/Actyx
 	cp -r misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 misc/actyx-win-installer/node-manager
 	# ls -alh .
 	docker run \
-	  -u $(shell id -u) \
 	  -v `pwd`:/src \
 	  -w /src/misc/actyx-win-installer \
 	  -e DIST_DIR='/src/dist/bin/windows-x86_64' \
