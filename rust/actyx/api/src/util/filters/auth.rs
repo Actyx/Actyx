@@ -1,51 +1,56 @@
 use actyxos_sdk::{types::Binary, AppId};
 use crypto::{KeyStoreRef, PublicKey};
-use derive_more::Display;
 use std::convert::TryInto;
 use trees::BearerToken;
-use warp::{Filter, Rejection};
+use warp::{reject, Filter, Rejection};
 
-#[derive(Debug, Display)]
-pub enum BearerTokenError {
-    #[display(fmt = "Unexpected value of \"Authorization\" header: {}", _0)]
-    InvalidBearerToken(String),
-    #[display(fmt = "Signature of bearer token is invalid")]
-    InvalidSignature,
-}
-impl warp::reject::Reject for BearerTokenError {}
+use crate::util::Token;
+use crate::util::{
+    rejections::{TokenSource, Unauthorized},
+    Params,
+};
 
-#[derive(Debug, Display, serde::Deserialize)]
-pub struct Token(pub String);
-
-fn verify(token: Token, store: KeyStoreRef, my_key: PublicKey) -> Result<BearerToken, BearerTokenError> {
-    use BearerTokenError::*;
+fn verify(token: Token, store: KeyStoreRef, my_key: PublicKey) -> Result<BearerToken, Unauthorized> {
     let bin: Binary = token
         .0
         .parse()
-        .map_err(|_| InvalidBearerToken("cannot parse token bytes".into()))?;
+        .map_err(|_| Unauthorized::InvalidBearerToken("Cannot parse token bytes.".into()))?;
     let msg = bin
         .as_ref()
         .try_into()
-        .map_err(|_| InvalidBearerToken("not a signed token".into()))?;
-    store.read().verify(&msg, vec![my_key]).map_err(|_| InvalidSignature)?;
+        .map_err(|_| Unauthorized::InvalidBearerToken("Not a signed token.".into()))?;
+    store
+        .read()
+        .verify(&msg, vec![my_key])
+        .map_err(|_| Unauthorized::InvalidSignature)?;
     let bearer_token = serde_cbor::from_slice::<BearerToken>(msg.message())
-        .map_err(|_| InvalidBearerToken("cannot parse cbor".into()))?;
+        .map_err(|_| Unauthorized::InvalidBearerToken("Cannot parse CBOR.".into()))?;
     Ok(bearer_token)
 }
 
-pub fn header_token() -> impl Filter<Extract = (Token,), Error = warp::Rejection> + Clone {
-    warp::header("Authorization").and_then(|auth_header: String| async move {
-        let mut words = auth_header.split_whitespace();
-        words
-            .next()
-            .filter(|s| *s == "Bearer")
-            .ok_or_else(|| BearerTokenError::InvalidBearerToken("not a bearer token".into()))?;
-        if let Some(token) = words.next() {
-            Ok(Token(token.into()))
+pub fn query_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
+    warp::query()
+        .map(|p: Params| p.token)
+        .or_else(|_| async { Err(reject::custom(Unauthorized::MissingToken(TokenSource::QueryParam))) })
+}
+
+pub fn header_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
+    warp::filters::header::optional("Authorization").and_then(|auth_header: Option<String>| async move {
+        if let Some(auth_header) = auth_header {
+            let mut words = auth_header.split_whitespace();
+            let _ = match words.next() {
+                Some("Bearer") => Ok(()),
+                Some(auth_type) => Err(Unauthorized::UnsupportedAuthType(auth_type.to_string())),
+                _ => Err(Unauthorized::UnsupportedAuthType("".to_string())),
+            }?;
+            let res: Result<Token, Rejection> = if let Some(token) = words.next() {
+                Ok(Token(token.into()))
+            } else {
+                Err(Unauthorized::InvalidBearerToken("Missing token bytes.".into()).into())
+            };
+            res
         } else {
-            Err(warp::Rejection::from(BearerTokenError::InvalidBearerToken(
-                "missing token bytes".into(),
-            )))
+            Err(Unauthorized::MissingToken(TokenSource::Header).into())
         }
     })
 }
@@ -91,7 +96,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn should_work() {
+    async fn should_work_with_header() {
         let (store, key_id, bearer) = setup();
         let route = authenticate(header_token(), store, key_id)
             .and(warp::path("p"))

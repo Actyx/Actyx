@@ -58,7 +58,12 @@ impl Component<StoreRequest, StoreConfig> for Store {
                 let store = BanyanStore::from_axconfig_with_db(cfg.clone(), db).await?;
                 store.spawn_task(
                     "api",
-                    api::run(store.clone(), cfg.api_addr.clone().into_iter(), keystore),
+                    api::run(
+                        store.node_id(),
+                        store.clone(),
+                        cfg.api_addr.clone().into_iter(),
+                        keystore,
+                    ),
                 );
                 Ok::<BanyanStore, anyhow::Error>(store)
             })?;
