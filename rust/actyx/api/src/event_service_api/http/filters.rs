@@ -20,7 +20,7 @@ pub fn with_service(
 }
 
 fn accept_json() -> impl Filter<Extract = (), Error = Rejection> + Clone {
-    crate::util::filter::accept("application/json")
+    crate::util::filters::accept::accept("application/json")
 }
 
 pub fn node_id(
