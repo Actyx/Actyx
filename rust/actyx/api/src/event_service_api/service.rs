@@ -115,6 +115,11 @@ impl event_service::EventService for EventService {
             to_offsets_including: OffsetMapOrMax::max_value(),
         };
 
+        let initial = query
+            .initial_result()
+            .into_iter()
+            .map(|v| SubscribeResponse::Event(v.into()));
+
         let response = self
             .store
             .stream_events_source_ordered(selection)
@@ -124,7 +129,8 @@ impl event_service::EventService for EventService {
                 stream::iter(query.feed(v).into_iter())
             })
             .map(|v| SubscribeResponse::Event(v.into()));
-        Ok(response.boxed())
+
+        Ok(stream::iter(initial).chain(response).boxed())
     }
 
     async fn subscribe_monotonic(

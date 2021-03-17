@@ -5,8 +5,9 @@ use crate::{
 };
 use actyxos_sdk::{
     language::{Expression, TagAtom, TagExpr},
-    tagged::TagSet,
+    tagged::{EventKey, TagSet},
 };
+use cbor_data::Encoder;
 use std::collections::BTreeSet;
 use trees::{TagSubscription, TagSubscriptions};
 
@@ -48,6 +49,18 @@ impl Query {
         }
 
         dnf(&query.from).into()
+    }
+
+    pub fn initial_result(&self) -> Vec<Value> {
+        match &self.expr {
+            Expression::Simple(expr) => {
+                let ret = Context::new(EventKey::default())
+                    .eval(expr)
+                    .unwrap_or_else(|err| Value::new(EventKey::default(), |b| b.encode_str(&*err.to_string())));
+                vec![ret]
+            }
+            Expression::Query(_) => vec![],
+        }
     }
 
     pub fn feed(&mut self, input: Value) -> Vec<Value> {
