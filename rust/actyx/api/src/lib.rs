@@ -46,12 +46,16 @@ fn routes(
         .allow_headers(vec!["Content-Type", "content-type"])
         .allow_methods(&[http::Method::GET, http::Method::POST]);
 
+    let crash = path!("_crash")
+        .and_then(|| async move { Err::<String, _>(reject::custom(crate::util::rejections::ApiError::Internal)) });
+
     path("ipfs")
         .and(ipfs_file_gw)
         // Note: event_service_api has a explicit rejection handler, which also
         // returns 404 no route matched. Thus it needs to come last. This should
         // eventually be refactored as part of Event Service v2.
         .or(path("api").and(path("v2").and(path("events")).and(event_service_api)))
+        .or(crash)
         .recover(|r| async { handle_rejection(r) })
         .with(cors)
 }
@@ -59,54 +63,22 @@ fn routes(
 fn handle_rejection(r: Rejection) -> Result<impl Reply, Rejection> {
     use crate::util::rejections::*;
     if let Some(reject::MethodNotAllowed { .. }) = r.find() {
-        Ok((http::StatusCode::METHOD_NOT_ALLOWED, ApiError::MethodNotAllowed))
-    } else if let Some(NotAcceptable { requested, supported }) = r.find() {
-        Ok((
-            http::StatusCode::NOT_ACCEPTABLE,
-            ApiError::NotAcceptable {
-                requested: requested.to_owned(),
-                supported: supported.to_owned(),
-            },
-        ))
+        Ok(ApiError::MethodNotAllowed)
+    } else if let Some(e) = r.find::<ApiError>() {
+        Ok(e.to_owned())
     } else if let Some(e) = r.find::<filters::body::BodyDeserializeError>() {
         use std::error::Error;
-        Ok((
-            http::StatusCode::BAD_REQUEST,
-            ApiError::BadRequest {
-                cause: e.source().map_or("".to_string(), |e| e.to_string()),
-            },
-        ))
-    } else if let Some(Unauthorized::MissingToken(source)) = r.find() {
-        Ok((
-            http::StatusCode::UNAUTHORIZED,
-            ApiError::MissingAuthToken {
-                source: source.to_owned(),
-            },
-        ))
-    } else if let Some(Unauthorized::TokenUnauthorized) = r.find() {
-        Ok((http::StatusCode::UNAUTHORIZED, ApiError::TokenUnauthorized))
-    } else if let Some(Unauthorized::UnsupportedAuthType(auth_type)) = r.find() {
-        Ok((
-            http::StatusCode::UNAUTHORIZED,
-            ApiError::UnsupportedAuthType {
-                requested: auth_type.to_owned(),
-            },
-        ))
-    } else if let Some(Unauthorized::InvalidBearerToken(token)) = r.find() {
-        Ok((
-            http::StatusCode::UNAUTHORIZED,
-            ApiError::TokenInvalid {
-                token: token.to_owned(),
-            },
-        ))
+        Ok(ApiError::BadRequest {
+            cause: e.source().map_or("".to_string(), |e| e.to_string()),
+        })
     } else {
         println!("unhandled rejection: {:?}", r);
         Err(r)
     }
-    .map(|(status, code)| {
-        let api_error: ApiErrorResponse = code.into();
-        let json = warp::reply::json(&api_error);
-        warp::reply::with_status(json, status)
+    .map(|api_err| {
+        let err_resp: ApiErrorResponse = api_err.into();
+        let json = warp::reply::json(&err_resp);
+        warp::reply::with_status(json, err_resp.status)
     })
 }
 
@@ -138,7 +110,11 @@ mod test {
         let config = StoreConfig::new("event-service-api-test".to_string());
         let store = BanyanStore::from_axconfig(config.clone()).await.unwrap();
         let key_store = std::sync::Arc::new(RwLock::new(KeyStore::default()));
-        super::routes(store.node_id(), store, key_store).with(warp::trace::named("api_test"))
+        let crash = path!("crash")
+            .and_then(|| async move { Err::<String, _>(reject::custom(crate::util::rejections::ApiError::Internal)) });
+        super::routes(store.node_id(), store, key_store)
+            .with(warp::trace::named("api_test"))
+            .or(crash)
     }
 
     fn assert_err_response(resp: Response<Bytes>, status: http::StatusCode, json: serde_json::Value) {
@@ -192,6 +168,19 @@ mod test {
             .handshake(test_routes().await)
             .await
             .is_err());
+    }
+
+    #[tokio::test]
+    async fn internal_err() {
+        let resp = test::request().path("/_crash").reply(&test_routes().await).await;
+        assert_err_response(
+            resp,
+            http::StatusCode::INTERNAL_SERVER_ERROR,
+            json!({
+              "code": "ERR_INTERNAL",
+              "message": "Internal server error."
+            }),
+        );
     }
 
     #[tokio::test]
@@ -253,10 +242,10 @@ mod test {
             .await;
         assert_err_response(
             resp,
-            http::StatusCode::UNAUTHORIZED,
+            http::StatusCode::BAD_REQUEST,
             json!({
               "code": "ERR_TOKEN_INVALID",
-              "message": "Invalid token: 'invalid'. Please provide a valid Bearer token."
+              "message": "Invalid token: 'invalid'. Cannot parse token bytes. Please provide a valid Bearer token."
             }),
         );
     }

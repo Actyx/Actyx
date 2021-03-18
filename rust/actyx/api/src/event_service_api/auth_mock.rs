@@ -3,7 +3,7 @@ use crypto::{KeyStoreRef, PublicKey};
 use futures::future;
 use warp::*;
 
-use crate::util::{rejections, Token};
+use crate::util::{rejections::ApiError, Token};
 
 pub fn authenticate(
     token: impl Filter<Extract = (Token,), Error = Rejection> + Clone,
@@ -11,8 +11,11 @@ pub fn authenticate(
     _key: PublicKey,
 ) -> impl Filter<Extract = (AppId,), Error = Rejection> + Clone {
     token.and_then(move |t: Token| match t.0.as_str() {
-        "disallow" => future::err(warp::reject::custom(rejections::Unauthorized::TokenUnauthorized)),
-        "invalid" => future::err(warp::reject::custom(rejections::Unauthorized::InvalidBearerToken(t.0))),
+        "disallow" => future::err(reject::custom(ApiError::TokenUnauthorized)),
+        "invalid" => future::err(reject::custom(ApiError::TokenInvalid {
+            token: t.0,
+            msg: "Cannot parse token bytes.".to_owned(),
+        })),
         _ => future::ok(app_id!("placeholder.app")),
     })
 }

@@ -1,37 +1,44 @@
 use actyxos_sdk::{types::Binary, AppId};
-use crypto::{KeyStoreRef, PublicKey};
+use crypto::{KeyStoreRef, PublicKey, SignedMessage};
 use std::convert::TryInto;
 use trees::BearerToken;
 use warp::{reject, Filter, Rejection};
 
 use crate::util::Token;
 use crate::util::{
-    rejections::{TokenSource, Unauthorized},
+    rejections::{ApiError, TokenSource},
     Params,
 };
 
-fn verify(token: Token, store: KeyStoreRef, my_key: PublicKey) -> Result<BearerToken, Unauthorized> {
-    let bin: Binary = token
-        .0
-        .parse()
-        .map_err(|_| Unauthorized::InvalidBearerToken("Cannot parse token bytes.".into()))?;
-    let msg = bin
-        .as_ref()
-        .try_into()
-        .map_err(|_| Unauthorized::InvalidBearerToken("Not a signed token.".into()))?;
+#[allow(dead_code)]
+fn verify(token: Token, store: KeyStoreRef, my_key: PublicKey) -> Result<BearerToken, ApiError> {
+    let token = token.0;
+    let bin: Binary = token.parse().map_err(|_| ApiError::TokenInvalid {
+        token: token.clone(),
+        msg: "Cannot parse token bytes.".to_owned(),
+    })?;
+    let signed_msg: SignedMessage = bin.as_ref().try_into().map_err(|_| ApiError::TokenInvalid {
+        token: token.clone(),
+        msg: "Not a signed token.".to_owned(),
+    })?;
     store
         .read()
-        .verify(&msg, vec![my_key])
-        .map_err(|_| Unauthorized::InvalidSignature)?;
-    let bearer_token = serde_cbor::from_slice::<BearerToken>(msg.message())
-        .map_err(|_| Unauthorized::InvalidBearerToken("Cannot parse CBOR.".into()))?;
+        .verify(&signed_msg, vec![my_key])
+        .map_err(|_| ApiError::AppUnauthorized)?;
+    let bearer_token =
+        serde_cbor::from_slice::<BearerToken>(signed_msg.message()).map_err(|_| ApiError::TokenInvalid {
+            token,
+            msg: "Cannot parse CBOR.".to_owned(),
+        })?;
     Ok(bearer_token)
 }
 
 pub fn query_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
-    warp::query()
-        .map(|p: Params| p.token)
-        .or_else(|_| async { Err(reject::custom(Unauthorized::MissingToken(TokenSource::QueryParam))) })
+    warp::query().map(|p: Params| p.token).or_else(|_| async {
+        Err(reject::custom(ApiError::MissingAuthToken {
+            source: TokenSource::QueryParam,
+        }))
+    })
 }
 
 pub fn header_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
@@ -40,21 +47,33 @@ pub fn header_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Cl
             let mut words = auth_header.split_whitespace();
             let _ = match words.next() {
                 Some("Bearer") => Ok(()),
-                Some(auth_type) => Err(Unauthorized::UnsupportedAuthType(auth_type.to_string())),
-                _ => Err(Unauthorized::UnsupportedAuthType("".to_string())),
+                Some(auth_type) => Err(ApiError::UnsupportedAuthType {
+                    requested: auth_type.to_owned(),
+                }),
+                _ => Err(ApiError::UnsupportedAuthType {
+                    requested: "".to_owned(),
+                }),
             }?;
             let res: Result<Token, Rejection> = if let Some(token) = words.next() {
                 Ok(Token(token.into()))
             } else {
-                Err(Unauthorized::InvalidBearerToken("Missing token bytes.".into()).into())
+                Err(ApiError::TokenInvalid {
+                    token: "".to_owned(),
+                    msg: "Missing token bytes.".to_owned(),
+                }
+                .into())
             };
             res
         } else {
-            Err(Unauthorized::MissingToken(TokenSource::Header).into())
+            Err(ApiError::MissingAuthToken {
+                source: TokenSource::Header,
+            }
+            .into())
         }
     })
 }
 
+#[allow(dead_code)]
 pub fn authenticate(
     token: impl Filter<Extract = (Token,), Error = Rejection> + Clone,
     store: KeyStoreRef,
