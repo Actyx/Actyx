@@ -113,7 +113,7 @@ pub fn handle_rejection(r: Rejection) -> Result<impl Reply, Rejection> {
     } else if let Some(e) = r.find::<filters::body::BodyDeserializeError>() {
         use std::error::Error;
         ApiError::BadRequest {
-            cause: e.source().map_or("".to_string(), |e| e.to_string()),
+            cause: e.source().map_or("unknown".to_string(), |e| e.to_string()),
         }
     } else {
         warn!("unhandled rejection: {:?}", r);
