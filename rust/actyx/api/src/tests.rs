@@ -44,11 +44,23 @@ async fn ok() {
 }
 
 #[tokio::test]
-async fn ok_accept() {
+async fn ok_accept_json() {
     let resp = test::request()
         .path("/api/v2/events/node_id")
         .header("Authorization", "Bearer ok")
         .header("accept", "application/json")
+        .reply(&test_routes().await)
+        .await;
+    assert_eq!(resp.status(), http::StatusCode::OK);
+    assert_eq!(resp.headers()["content-type"], "application/json");
+}
+
+#[tokio::test]
+async fn ok_accept_star() {
+    let resp = test::request()
+        .path("/api/v2/events/node_id")
+        .header("Authorization", "Bearer ok")
+        .header("accept", "*/*")
         .reply(&test_routes().await)
         .await;
     assert_eq!(resp.status(), http::StatusCode::OK);
@@ -197,7 +209,7 @@ async fn not_acceptable() {
         http::StatusCode::NOT_ACCEPTABLE,
         json!({
           "code": "ERR_NOT_ACCEPTABLE",
-          "message": "The requested resource is only capable of generating content of type 'application/json' but 'text/html' was requested."
+          "message": "Conent with type 'text/html' was requested but the resource is only capable of generating content of the following type(s): */*, application/json."
         }),
     );
 }

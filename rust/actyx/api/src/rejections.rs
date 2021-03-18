@@ -21,9 +21,9 @@ pub enum ApiError {
     MethodNotAllowed,
 
     #[display(
-        fmt = "The requested resource is only capable of generating content of type '{}' but '{}' was requested.",
-        supported,
-        requested
+        fmt = "Conent with type '{}' was requested but the resource is only capable of generating content of the following type(s): {}.",
+        requested,
+        supported
     )]
     NotAcceptable { supported: String, requested: String },
 

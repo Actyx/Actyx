@@ -10,8 +10,9 @@ pub fn with_service(
     any().map(move || event_service.clone())
 }
 
+const ACCEPT_JSON: &[&str] = &["*/*", "application/json"];
 fn accept_json() -> impl Filter<Extract = (), Error = Rejection> + Clone {
-    crate::util::filters::accept("application/json")
+    crate::util::filters::accept(ACCEPT_JSON)
 }
 
 pub fn node_id(
