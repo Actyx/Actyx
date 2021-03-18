@@ -92,7 +92,6 @@ mod tests {
     use actyxos_sdk::{app_id, Timestamp};
     use crypto::KeyStore;
     use parking_lot::RwLock;
-    use serde_json::json;
     use std::sync::Arc;
 
     fn setup() -> (KeyStoreRef, PublicKey, Binary) {
@@ -114,16 +113,9 @@ mod tests {
     #[tokio::test]
     async fn should_work_with_header() {
         let (store, key_id, bearer) = setup();
-        let route = authenticate(header_token(), store, key_id)
-            .and(warp::path("p"))
-            .map(|a: AppId| warp::reply::json(&json!(a.as_str())));
-        let req = warp::test::request()
-            .method("GET")
-            .path("/p")
-            .header("Authorization", format!("Bearer {}", bearer));
-        let resp = req.reply(&route).await;
-        assert!(resp.status().is_success());
-        assert_eq!(resp.body(), "\"test-app\"");
+        let filter = authenticate(header_token(), store, key_id);
+        let req = warp::test::request().header("Authorization", format!("Bearer {}", bearer));
+        assert_eq!(req.filter(&filter).await.unwrap(), app_id!("test-app"));
     }
 
     #[derive(serde::Deserialize)]
@@ -134,15 +126,9 @@ mod tests {
     #[tokio::test]
     async fn should_work_with_query_param() {
         let (store, key_id, bearer) = setup();
-        let route = authenticate(warp::query().map(|x: Query| x.token), store, key_id)
-            .and(warp::path("p"))
-            .map(|a: AppId| warp::reply::json(&json!(a.as_str())));
-        let req = warp::test::request()
-            .method("GET")
-            .path(format!("/p?token={}", bearer).replace("+", "%2B").as_str());
-        let resp = req.reply(&route).await;
-        assert!(resp.status().is_success());
-        assert_eq!(resp.body(), "\"test-app\"");
+        let filter = authenticate(warp::query().map(|x: Query| x.token), store, key_id);
+        let req = warp::test::request().path(format!("/p?token={}", bearer).replace("+", "%2B").as_str());
+        assert_eq!(req.filter(&filter).await.unwrap(), app_id!("test-app"));
     }
 
     #[tokio::test]
@@ -151,14 +137,8 @@ mod tests {
         // the token always starts with a few 'A's since the first bytes are zero (size field)
         // so we can invalidate the signature like so:
         let bearer = bearer.to_string().replace('A', "B");
-        let route = authenticate(warp::header("Authorization").map(Token), store, key_id)
-            .and(warp::path("p"))
-            .map(|a: AppId| warp::reply::json(&json!(a.as_str())));
-        let req = warp::test::request()
-            .method("GET")
-            .path("/p")
-            .header("Authorization", bearer);
-        let resp = req.reply(&route).await;
-        assert!(resp.status().is_server_error()); // 500 unhandled rejection
+        let filter = authenticate(warp::header("Authorization").map(Token), store, key_id);
+        let req = warp::test::request().header("Authorization", bearer);
+        assert!(req.filter(&filter).await.is_err());
     }
 }
