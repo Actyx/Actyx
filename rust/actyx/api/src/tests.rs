@@ -209,7 +209,7 @@ async fn not_acceptable() {
         http::StatusCode::NOT_ACCEPTABLE,
         json!({
           "code": "ERR_NOT_ACCEPTABLE",
-          "message": "Conent with type 'text/html' was requested but the resource is only capable of generating content of the following type(s): */*, application/json."
+          "message": "Content with type 'text/html' was requested but the resource is only capable of generating content of the following type(s): */*, application/json."
         }),
     );
 }

@@ -21,7 +21,7 @@ pub enum ApiError {
     MethodNotAllowed,
 
     #[display(
-        fmt = "Conent with type '{}' was requested but the resource is only capable of generating content of the following type(s): {}.",
+        fmt = "Content with type '{}' was requested but the resource is only capable of generating content of the following type(s): {}.",
         requested,
         supported
     )]
@@ -100,7 +100,7 @@ impl From<ApiError> for ApiErrorResponse {
 
 /// Internal rejection used for testing purposes
 #[derive(Debug)]
-pub struct Crash;
+pub(crate) struct Crash;
 impl reject::Reject for Crash {}
 
 pub fn handle_rejection(r: Rejection) -> Result<impl Reply, Rejection> {
