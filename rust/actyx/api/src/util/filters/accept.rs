@@ -1,7 +1,7 @@
 use futures::future;
 use warp::*;
 
-use crate::util::rejections::ApiError;
+use crate::rejections::ApiError;
 
 pub fn accept(mime: &'static str) -> impl Filter<Extract = (), Error = Rejection> + Clone {
     header::optional("accept")

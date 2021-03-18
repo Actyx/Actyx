@@ -1,11 +1,11 @@
-use actyxos_sdk::{service::EventService, NodeId};
-use crypto::KeyStoreRef;
-use warp::*;
-
 mod auth_mock;
 mod http;
 pub mod service;
 mod ws;
+
+use actyxos_sdk::{service::EventService, NodeId};
+use crypto::KeyStoreRef;
+use warp::*;
 
 pub fn routes<S: EventService + Clone + Send + Sync + 'static>(
     node_id: NodeId,

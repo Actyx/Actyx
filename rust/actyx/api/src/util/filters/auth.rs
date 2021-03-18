@@ -4,11 +4,8 @@ use std::convert::TryInto;
 use trees::BearerToken;
 use warp::{reject, Filter, Rejection};
 
-use crate::util::Token;
-use crate::util::{
-    rejections::{ApiError, TokenSource},
-    Params,
-};
+use crate::rejections::{ApiError, TokenSource};
+use crate::util::{Params, Token};
 
 #[allow(dead_code)]
 fn verify(token: Token, store: KeyStoreRef, my_key: PublicKey) -> Result<BearerToken, ApiError> {

@@ -3,7 +3,7 @@ use crypto::{KeyStoreRef, PublicKey};
 use futures::future;
 use warp::*;
 
-use crate::util::{rejections::ApiError, Token};
+use crate::{rejections::ApiError, util::Token};
 
 pub fn authenticate(
     token: impl Filter<Extract = (Token,), Error = Rejection> + Clone,

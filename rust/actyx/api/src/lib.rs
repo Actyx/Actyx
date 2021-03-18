@@ -1,6 +1,7 @@
 mod event_service_api;
 mod ipfs_file_gateway;
 mod public_api;
+mod rejections;
 mod util;
 
 use std::net::SocketAddr;
@@ -46,40 +47,16 @@ fn routes(
         .allow_headers(vec!["Content-Type", "content-type"])
         .allow_methods(&[http::Method::GET, http::Method::POST]);
 
-    let crash = path!("_crash")
-        .and_then(|| async move { Err::<String, _>(reject::custom(crate::util::rejections::ApiError::Internal)) });
+    let crash = path!("_crash").and_then(|| async move { Err::<String, _>(reject::custom(rejections::Crash)) });
 
-    path("ipfs")
-        .and(ipfs_file_gw)
+    crash
+        .or(path("ipfs").and(ipfs_file_gw))
         // Note: event_service_api has a explicit rejection handler, which also
         // returns 404 no route matched. Thus it needs to come last. This should
         // eventually be refactored as part of Event Service v2.
         .or(path("api").and(path("v2").and(path("events")).and(event_service_api)))
-        .or(crash)
-        .recover(|r| async { handle_rejection(r) })
+        .recover(|r| async { rejections::handle_rejection(r) })
         .with(cors)
-}
-
-fn handle_rejection(r: Rejection) -> Result<impl Reply, Rejection> {
-    use crate::util::rejections::*;
-    if let Some(reject::MethodNotAllowed { .. }) = r.find() {
-        Ok(ApiError::MethodNotAllowed)
-    } else if let Some(e) = r.find::<ApiError>() {
-        Ok(e.to_owned())
-    } else if let Some(e) = r.find::<filters::body::BodyDeserializeError>() {
-        use std::error::Error;
-        Ok(ApiError::BadRequest {
-            cause: e.source().map_or("".to_string(), |e| e.to_string()),
-        })
-    } else {
-        println!("unhandled rejection: {:?}", r);
-        Err(r)
-    }
-    .map(|api_err| {
-        let err_resp: ApiErrorResponse = api_err.into();
-        let json = warp::reply::json(&err_resp);
-        warp::reply::with_status(json, err_resp.status)
-    })
 }
 
 #[cfg(test)]
@@ -92,7 +69,7 @@ mod test {
     use swarm::{BanyanStore, StoreConfig};
     use warp::*;
 
-    const TRACE: bool = false;
+    const TRACE: bool = true;
     static INIT: std::sync::Once = std::sync::Once::new();
     pub fn initialize() {
         if TRACE {
@@ -110,11 +87,7 @@ mod test {
         let config = StoreConfig::new("event-service-api-test".to_string());
         let store = BanyanStore::from_axconfig(config.clone()).await.unwrap();
         let key_store = std::sync::Arc::new(RwLock::new(KeyStore::default()));
-        let crash = path!("crash")
-            .and_then(|| async move { Err::<String, _>(reject::custom(crate::util::rejections::ApiError::Internal)) });
-        super::routes(store.node_id(), store, key_store)
-            .with(warp::trace::named("api_test"))
-            .or(crash)
+        super::routes(store.node_id(), store, key_store).with(warp::trace::named("api_test"))
     }
 
     fn assert_err_response(resp: Response<Bytes>, status: http::StatusCode, json: serde_json::Value) {

@@ -1,7 +1,8 @@
+use std::{collections::VecDeque, path::Path, pin::Pin, str::FromStr};
+
 use anyhow::Result;
 use futures::prelude::*;
 use libipld::cid::Cid;
-use std::{collections::VecDeque, path::Path, pin::Pin, str::FromStr};
 use swarm::BanyanStore;
 use tracing::*;
 use warp::{
