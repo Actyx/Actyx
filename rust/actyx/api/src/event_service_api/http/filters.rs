@@ -15,6 +15,11 @@ fn accept_json() -> impl Filter<Extract = (), Error = Rejection> + Clone {
     crate::util::filters::accept(ACCEPT_JSON)
 }
 
+const ACCEPT_NDJSON: &[&str] = &["*/*", "application/x-ndjson"];
+fn accept_ndjson() -> impl Filter<Extract = (), Error = Rejection> + Clone {
+    crate::util::filters::accept(ACCEPT_NDJSON)
+}
+
 pub fn node_id(
     event_service: impl EventService + Send + Sync + 'static,
     auth: impl Filter<Extract = (AppId,), Error = Rejection> + Clone,
@@ -55,7 +60,7 @@ pub fn query(
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     auth.and(path!("query"))
         .and(post())
-        .and(accept_json())
+        .and(accept_ndjson())
         .and(body::json())
         .and(with_service(event_service))
         .and_then(handlers::query)
@@ -67,7 +72,7 @@ pub fn subscribe(
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     auth.and(path!("subscribe"))
         .and(post())
-        .and(accept_json())
+        .and(accept_ndjson())
         .and(body::json())
         .and(with_service(event_service))
         .and_then(handlers::subscribe)
@@ -79,7 +84,7 @@ pub fn subscribe_monotonic(
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     auth.and(path!("subscribe_monotonic"))
         .and(post())
-        .and(accept_json())
+        .and(accept_ndjson())
         .and(body::json())
         .and(with_service(event_service))
         .and_then(handlers::subscribe_monotonic)

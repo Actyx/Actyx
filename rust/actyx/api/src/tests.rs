@@ -48,11 +48,43 @@ async fn ok_accept_json() {
     let resp = test::request()
         .path("/api/v2/events/node_id")
         .header("Authorization", "Bearer ok")
+        .reply(&test_routes().await)
+        .await;
+    assert_eq!(resp.status(), http::StatusCode::OK);
+    assert_eq!(resp.headers()["content-type"], "application/json");
+
+    let resp = test::request()
+        .path("/api/v2/events/node_id")
+        .header("Authorization", "Bearer ok")
         .header("accept", "application/json")
         .reply(&test_routes().await)
         .await;
     assert_eq!(resp.status(), http::StatusCode::OK);
     assert_eq!(resp.headers()["content-type"], "application/json");
+}
+
+#[tokio::test]
+async fn ok_accept_ndjson() {
+    let resp = test::request()
+        .path("/api/v2/events/query")
+        .method("POST")
+        .header("Authorization", "Bearer ok")
+        .json(&json!({"offsets": {}, "upperBound": {}, "where": "'a'", "order": "asc"}))
+        .reply(&test_routes().await)
+        .await;
+    assert_eq!(resp.status(), http::StatusCode::OK);
+    assert_eq!(resp.headers()["content-type"], "application/x-ndjson");
+
+    let resp = test::request()
+        .path("/api/v2/events/query")
+        .method("POST")
+        .header("Authorization", "Bearer ok")
+        .header("accept", "application/x-ndjson")
+        .json(&json!({"offsets": {}, "upperBound": {}, "where": "'a'", "order": "asc"}))
+        .reply(&test_routes().await)
+        .await;
+    assert_eq!(resp.status(), http::StatusCode::OK);
+    assert_eq!(resp.headers()["content-type"], "application/x-ndjson");
 }
 
 #[tokio::test]
