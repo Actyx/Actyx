@@ -528,9 +528,6 @@ article > footer.row.margin-vert--lg {
   margin-top: 25px !important;
 }
 
-.menu_node_modules-\@docusaurus-theme-classic-lib-next-theme-DocSidebar- {
-  overflow-y: scroll;
-}
 @media (max-width: 996px) {
   .navbar .navbar-sidebar {
     display: block;
