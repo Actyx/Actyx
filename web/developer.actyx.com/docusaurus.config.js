@@ -42,19 +42,19 @@ module.exports = {
       },
       items: [
         {
-          label: 'Start',
-          activeBasePath: 'docs/start/',
-          to: 'docs/start/overview',
+          label: 'How-to Guides',
+          activeBasePath: 'docs/how-to-guides',
+          to: 'docs/how-to-guides/overview',
         },
         {
-          label: 'Build',
-          activeBasePath: 'docs/build/',
-          to: 'docs/build/overview',
+          label: 'Conceptual Guides',
+          activeBasePath: 'docs/conceptual-guides',
+          to: 'docs/conceptual-guides/overview',
         },
         {
-          label: 'Deploy',
-          activeBasePath: 'docs/deploy/',
-          to: 'docs/deploy/overview',
+          label: 'Reference Docs',
+          activeBasePath: 'docs/reference',
+          to: 'docs/reference/overview',
         },
         {
           label: 'Blog',
