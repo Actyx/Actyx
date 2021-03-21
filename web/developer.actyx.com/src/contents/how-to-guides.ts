@@ -11,27 +11,27 @@ const createHowTos = () => {
       contents: [
         {
           title: 'Installing and starting Actyx',
-          link: '',
+          link: '/docs/how-to-guides/local-development/installing-actyx',
         },
         {
           title: 'Starting a new project',
-          link: '',
+          link: '/docs/how-to-guides/local-development/starting-a-new-project',
         },
         {
           title: 'Setting up your JS environment',
-          link: '',
+          link: '/docs/how-to-guides/local-development/setting-up-your-environment',
         },
         {
           title: 'Installing Actyx CLI and Node Manager',
-          link: '',
+          link: '/docs/how-to-guides/local-development/installing-cli-node-manager',
         },
         {
           title: 'Obtaining your development certificate',
-          link: '',
+          link: '/docs/how-to-guides/local-development/obtaining-a-development-certificate',
         },
         {
           title: 'Tips & tricks for common development errors',
-          link: '',
+          link: '/docs/how-to-guides/local-development/common-development-errors',
         },
       ],
     },
