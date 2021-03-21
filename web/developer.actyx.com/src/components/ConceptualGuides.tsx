@@ -21,6 +21,7 @@ const ConceptualGuideWrapper = styled.div`
   border-radius: 4px;
   border: 1px solid #e1e5e8;
   margin-bottom: 24px;
+  justify-content: space-between;
 `
 
 const Headline = styled.div`
@@ -30,6 +31,13 @@ const Headline = styled.div`
 const Description = styled.div`
   font-size: 15px;
   margin-bottom: 24px;
+  float: bottom;
+  align-self: flex-end;
+`
+
+const Body = styled.div`
+  align-items: flex-end;
+  align-self: flex-end;
 `
 
 type Props = Readonly<{
@@ -41,8 +49,10 @@ export const ConceptualGuides: React.FC<Props> = ({ guides }: Props) => (
     {conceptualGuides?.map((v, index) => (
       <ConceptualGuideWrapper>
         <Headline>{conceptualGuides[index].title}</Headline>
-        <Description>{conceptualGuides[index].description}</Description>
-        <Link link={conceptualGuides[index].link} title="Find out more" />
+        <Body>
+          <Description>{conceptualGuides[index].description}</Description>
+          <Link link={conceptualGuides[index].link} title="Find out more" />
+        </Body>
       </ConceptualGuideWrapper>
     ))}
   </Wrapper>

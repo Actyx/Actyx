@@ -517,7 +517,8 @@ article > footer.row.margin-vert--lg {
 }
 
 .docSidebarContainer_node_modules-\@docusaurus-theme-classic-src-theme-DocPage- {
-  border-right: 1px solid var(--ifm-contents-border-color);
+  border-right: none !important;
+  border: none !important;
   box-sizing: border-box;
   position: relative;
   top: calc(-1 * var(--ifm-navbar-height));
@@ -525,7 +526,29 @@ article > footer.row.margin-vert--lg {
 
 .docSidebarContainer_node_modules-\@docusaurus-theme-classic-lib-next-theme-DocPage- {
   border-right: none !important;
+  border: none !important;
   margin-top: 25px !important;
+}
+
+/*
+css classes are not correctly overwritten in a production build.
+Therefore we are using the substring matching selector.
+*/
+[class^='docSidebarContainer'] {
+  border: none !important;
+  margin-top: 25px !important;
+}
+
+.docSidebarContainer {
+  border: none !important;
+}
+
+.menu_node_modules-\@docusaurus-theme-classic-lib-next-theme-DocSidebar- {
+  border-right: none !important;
+}
+
+.sidebar_node_modules-\@docusaurus-theme-classic-lib-next-theme-DocSidebar- {
+  border-right: none !important;
 }
 
 @media (max-width: 996px) {
@@ -601,9 +624,7 @@ article > footer.row.margin-vert--lg {
   margin-bottom: 2px !important;
 }
 .contents.contents__left-border {
-  border-left-color: var(--ifm-contents-border-color);
-  border-left-style: solid;
-  border-left-width: 1px;
+  border-left: none;
 }
 
 .contents .contents__link:hover,
