@@ -1,125 +1,9 @@
 module.exports = {
-  startSidebar: [
-    {
-      type: 'category',
-      label: '🚀 Starting with Actyx',
-      collapsed: false,
-      items: ['start/overview'],
-    },
-    {
-      type: 'category',
-      label: '💬 Explanations',
-      collapsed: false,
-      items: [
-        'start/explanation/the-actyx-node',
-        'start/explanation/node-lifecycle',
-        'start/explanation/distributed-systems',
-        'start/explanation/event-sourcing',
-        'start/explanation/event-ordering',
-        'start/explanation/actyx-and-cap',
-      ],
-    },
-    {
-      type: 'category',
-      label: '📘 How-To-Guides',
-      collapsed: false,
-      items: [
-        'start/how-to/actyx-on-android',
-        'start/how-to/actyx-on-docker',
-        'start/how-to/actyx-on-linux',
-        'start/how-to/actyx-on-macos',
-        'start/how-to/actyx-on-windows',
-      ],
-    },
-    {
-      type: 'category',
-      label: '🤓 API Reference',
-      collapsed: false,
-      items: [],
-    },
-  ],
-  buildSidebar: [
-    {
-      type: 'category',
-      label: '👨‍💻 Building Solutions',
-      collapsed: false,
-      items: ['build/overview'],
-    },
-    {
-      type: 'category',
-      label: '💬 Explanations',
-      collapsed: false,
-      items: [
-        'build/explanation/local-twins',
-        'build/explanation/ui-apps',
-        'build/explanation/headless-apps',
-      ],
-    },
-    {
-      type: 'category',
-      label: '📘 How-To-Guides',
-      collapsed: false,
-      items: [
-        'build/how-to/actyx-sdk',
-        'build/how-to/web-apps',
-        'build/how-to/windows-native',
-        'build/how-to/android-native',
-        'build/how-to/app-licensing',
-      ],
-    },
-    {
-      type: 'category',
-      label: '🤓 API Reference',
-      collapsed: false,
-      items: [
-        'build/reference/actyx-api',
-        'build/reference/js-ts-sdk',
-        'build/reference/rust-sdk',
-        'build/reference/app-manifest',
-      ],
-    },
-  ],
-  deploySidebar: [
-    {
-      type: 'category',
-      label: '🏭 Deploying to Production',
-      collapsed: false,
-      items: ['deploy/overview'],
-    },
-    {
-      type: 'category',
-      label: '💬 Explanations',
-      collapsed: false,
-      items: ['deploy/explanation/swarms', 'deploy/explanation/peer-discovery'],
-    },
-    {
-      type: 'category',
-      label: '📘 How-To-Guides',
-      collapsed: false,
-      items: [
-        'deploy/how-to/app-configuration',
-        'deploy/how-to/node-configuration',
-        'deploy/how-to/logging',
-        'deploy/how-to/deployments',
-        'deploy/how-to/updating',
-      ],
-    },
-    {
-      type: 'category',
-      label: '🤓 API Reference',
-      collapsed: false,
-      items: [
-        'deploy/reference/cli',
-        'deploy/reference/node-manager',
-        'deploy/reference/node-settings-schema',
-      ],
-    },
-  ],
   howToSidebar: [
     {
       type: 'category',
       label: 'How-to Guides',
-      collapsed: true,
+      collapsed: false,
       items: ['how-to-guides/overview'],
     },
     {
@@ -216,33 +100,30 @@ module.exports = {
       ],
     },
   ],
-  localDevelopmentSiebar: [
+  conceptualSidebar: [
     {
       type: 'category',
-      label: 'Local Development',
+      label: 'Conceptual Guides',
       collapsed: false,
-      items: [
-        'how-to-guides/local-development/installing-actyx',
-        'how-to-guides/local-development/setting-up-your-environment',
-        'how-to-guides/local-development/starting-a-new-project',
-        'how-to-guides/local-development/obtaining-a-development-certificate',
-        'how-to-guides/local-development/common-development-errors',
-      ],
+      items: ['conceptual-guides/overview'],
     },
-  ],
-  processLogicSiebar: [
     {
       type: 'category',
-      label: 'Process Logic',
+      label: 'Contents',
       collapsed: false,
       items: [
-        'how-to-guides/process-logic/publishing-to-event-streams',
-        'how-to-guides/process-logic/subscribing-to-event-streams',
-        'how-to-guides/process-logic/computing-states-from-events',
-        'how-to-guides/process-logic/automating-decision-making',
-        'how-to-guides/process-logic/dealing-with-network-partitions',
-        'how-to-guides/process-logic/modelling-processes-in-twins',
-        'how-to-guides/process-logic/transferring-twins-into-code',
+        'conceptual-guides/event-based-systems',
+        'conceptual-guides/distributed-system-architectures',
+        'conceptual-guides/local-first-computing',
+        'conceptual-guides/thinking-in-actyx',
+        'conceptual-guides/actyx-jargon',
+        'conceptual-guides/actyx-vs-the-cloud',
+        'conceptual-guides/peer-discovery',
+        'conceptual-guides/performance-and-limits-of-actyx',
+        'conceptual-guides/security-in-actyx',
+        'conceptual-guides/the-actyx-node',
+        'conceptual-guides/actyx-node-lifecycle',
+        'conceptual-guides/apps-in-the-factory-context',
       ],
     },
   ],
