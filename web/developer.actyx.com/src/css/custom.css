@@ -505,7 +505,7 @@ article > footer.row.margin-vert--lg {
 @media (min-width: 997px) {
   .sidebar_node_modules-\@docusaurus-theme-classic-src-theme-DocSidebar- {
     height: 100vh;
-    overflow-y: auto;
+    overflow-y: scroll;
     position: -webkit-sticky;
     position: sticky;
     top: 0;
@@ -526,11 +526,10 @@ article > footer.row.margin-vert--lg {
 .docSidebarContainer_node_modules-\@docusaurus-theme-classic-lib-next-theme-DocPage- {
   border-right: none !important;
   margin-top: 25px !important;
-  overflow: hidden !important;
 }
 
 .menu_node_modules-\@docusaurus-theme-classic-lib-next-theme-DocSidebar- {
-  overflow-y: auto;
+  overflow-y: scroll;
 }
 @media (max-width: 996px) {
   .navbar .navbar-sidebar {
