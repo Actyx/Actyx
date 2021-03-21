@@ -8,3 +8,181 @@ keywords: [api, reference, cli]
 description: API Reference for the Actyx CLI.
 image: /images/os/js-sdk.png
 ---
+
+import { CLIRef } from '../../src/components/CLIRef'
+import { Callout } from '../../src/components/Callout'
+import { Divider } from '../../src/components/Divider'
+
+This document offers a detailed reference documentation for the commands and subcommands of the Actyx CLI.
+Additionally, you find examples of how to use each command when working with Actyx CLI.
+If you want to jump straight to a specific command, please use the table of contents on the right side.
+
+## ax nodes ls
+
+This command returns the current state of the specified node in form of a table.
+
+### Usage
+
+`ax nodes ls [FLAGS] <NODE>...`
+
+### Flags
+
+<CLIRef code={'`-h, --help`'} description={`Prints help information`} />
+<CLIRef code={'`-V, --version`'} description={`Prints version information`} />
+<CLIRef code={'`-l, --local`'} description={`Process over local network`} />
+<CLIRef
+  code={'`-v`'}
+  description={`Verbosity level. Add more v for higher verbosity (-v, -vv, -vvv, etc.)`}
+/>
+
+### Arguments
+
+<CLIRef
+  code={'`<NODE>...`'}
+  description={`Node ID or, if using \`--local\`, the IP address of the node to perform the operation on`}
+/>
+
+<Divider />
+
+<Callout
+  icon="⚠️"
+  headline="Output of `ax nodes ls`"
+  body="If the node is reachable, the output of \`ax nodes ls\` will show you its status. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
+- Host unreachable
+- ActyxOS unreachable (this means the host was reachable but the TCP connection reset)"
+/>
+
+### Examples
+
+Get the status of all specified nodes in the local network:
+
+```text
+$ ax nodes ls --local 10.2.3.23 10.2.3.24
+```
+
+```text
++------------+--------------+---------+----------+---------+---------------------------+---------+
+| NODE ID    | DISPLAY NAME | STATE   | SETTINGS | LICENSE | STARTED                   | VERSION |
++------------+--------------+---------+----------+---------+---------------------------+---------+
+| 10.2.3.23  | MY NODE      | running | valid    | valid   | 2020-08-31T09:00:00+00:00 | 1.0.0   |
++------------+--------------+---------+----------+---------+---------------------------+---------+
+```
+
+Get the status of all specified nodes in the local network as a json object
+
+```text
+$ ax --json nodes ls --local 10.2.3.23 10.2.3.24 10.2.3.25
+```
+
+```json
+{
+  "code": "OK",
+  "result": [
+    {
+      "connection": "reachable",
+      "nodeId": "10.2.3.23",
+      "displayName": "MY NODE",
+      "state": "running",
+      "settingsValid": true,
+      "licensed": true,
+      "appsDeployed": 23,
+      "appsRunning": 17,
+      "startedIso": "2020-05-19T07:52:26+00:00",
+      "startedUnix": 1589874746,
+      "version": "1.0.0"
+    },
+    {
+      "connection": "actyxosUnreachable",
+      "host": "10.2.3.24"
+    },
+    {
+      "connection": "hostUnreachable",
+      "host": "10.2.3.25"
+    }
+  ]
+}
+```
+
+<Divider />
+
+## ax settings
+
+This is a placeholder text for this paragraph.
+
+### Usage
+
+`ax settings get [FLAGS] <SCOPE> <NODE>`
+
+### Flags
+
+<CLIRef code={'`-h, --help`'} description={'Prints help information'} />
+<CLIRef code={'`-V, --version`'} description={'Prints version information'} />
+<CLIRef code={'`-l, --local`'} description={'Process over local network'} />
+<CLIRef
+  code={'`-no-defaults`'}
+  description={'Only return settings explicitly set by the user and skip default values'}
+/>
+<CLIRef
+  code={'`-v`'}
+  description={`Verbosity level. Add more v for higher verbosity (-v, -vv, -vvv, etc.)`}
+/>
+
+### Arguments
+
+<CLIRef code={'`<SCOPE>`'} description={`Scope from which you want to get the settings`} />
+<CLIRef
+  code={'`<NODE>`'}
+  description={`Node ID or, if using \`--local\`, the IP address of the node to perform the operation on`}
+/>
+
+<Divider />
+
+<Callout
+  icon="⚠️"
+  headline="Null or schema-conformant"
+  body="The return value of this command will always be either null or schema-conformant, unless the `--no-defaults` flag is used."
+/>
+
+### Examples
+
+Get the settings for the node with settings scope com.actyx.os at 10.2.3.23
+
+```text
+$ ax settings get --local com.actyx.os 10.2.3.23
+```
+
+```yaml
+---
+general:
+  announceAddresses: []
+  authorizedKeys: []
+  bootstrapNodes:
+    - /dns4/demo-bootstrap.actyx.net/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH
+  displayName: Sample Node
+  logLevels:
+    apps: INFO
+    os: INFO
+  requireAuthentication: false
+  swarmKey: L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCjU2NGE1MTM0MzE0ZTZlMzc1MjcyNGY3MTRiNTQzNDcxMzM3YTc0NTk0YTc2NTA0OTQ5NmQzNDU3NzY0NzMyNDc=
+licensing:
+  apps: {}
+  os: development
+services:
+  consoleService: {}
+  dockerRuntime: {}
+  eventService:
+    readOnly: false
+    topic: /chat/dev/1
+  webViewRuntime: {}
+```
+
+Just get the displayName setting
+
+```text
+$ ax settings get --local com.actyx.os/general/displayName 10.2.3.23
+```
+
+```yaml
+---
+Sample Node
+```
