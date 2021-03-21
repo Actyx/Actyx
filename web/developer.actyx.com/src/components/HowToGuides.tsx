@@ -12,9 +12,9 @@ const HowToGuideWrapper = styled.div`
   display: flex;
   flex-direction: column;
   width: 100%;
-  padding-bottom: 40px;
-  margin-top: 40px;
-  border-bottom: 1px solid #e1e5e8;
+  padding-top: 40px;
+  margin-bottom: 40px;
+  border-top: 1px solid #e1e5e8;
 `
 
 const Headline = styled.div`
