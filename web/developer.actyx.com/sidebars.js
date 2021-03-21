@@ -127,7 +127,7 @@ module.exports = {
       ],
     },
   ],
-  conceptualSidebar: [
+  referenceSidebar: [
     {
       type: 'category',
       label: 'Reference Documentation',
