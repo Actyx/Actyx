@@ -127,4 +127,24 @@ module.exports = {
       ],
     },
   ],
+  conceptualSidebar: [
+    {
+      type: 'category',
+      label: 'Reference Documentation',
+      collapsed: false,
+      items: ['reference/overview'],
+    },
+    {
+      type: 'category',
+      label: 'Contents',
+      collapsed: false,
+      items: [
+        'reference/actyx-api',
+        'reference/js-ts-sdk',
+        'reference/rust-sdk',
+        'reference/cli',
+        'reference/node-manager',
+      ],
+    },
+  ],
 }
