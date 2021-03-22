@@ -20,7 +20,12 @@ members = [
   "util",
 ]
 
+# This can only be set per workspace. In release, we rely on a setting a custom
+# panic hook (see `node/src/util.rs::init_panic_hook`), which safely brings
+# down the application after the stack has been wound down.
 [profile.release]
+panic = "unwind"
+[profile.dev]
 panic = "abort"
 
 [patch.crates-io]
