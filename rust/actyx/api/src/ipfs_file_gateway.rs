@@ -1,7 +1,8 @@
+use std::{collections::VecDeque, path::Path, pin::Pin, str::FromStr};
+
 use anyhow::Result;
 use futures::prelude::*;
 use libipld::cid::Cid;
-use std::{collections::VecDeque, path::Path, pin::Pin, str::FromStr};
 use swarm::BanyanStore;
 use tracing::*;
 use warp::{
@@ -59,7 +60,7 @@ async fn handle_query(store: BanyanStore, query: IpfsQuery) -> Result<Response<B
     Ok(resp)
 }
 
-pub fn create_gateway_route(store: BanyanStore) -> BoxedFilter<(impl Reply,)> {
+pub fn route(store: BanyanStore) -> BoxedFilter<(impl Reply,)> {
     path::tail()
         .and_then(|tail: warp::path::Tail| {
             future::ready(
