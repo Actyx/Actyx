@@ -21,33 +21,53 @@ The state of any given entity in an event-sourced system (a `Fish` in the `Pond`
 
 To prevent having to apply _all_ relevant events each time we want to look at the state, we employ [snapshots](https://developer.actyx.com/docs/pond/guides/snapshots). A snapshot is the persisted result of computing the state for a given point in time. Now, when we look at the state, we don't have to apply all events but only those that happened after the time the snapshot was taken.
 
-Actyx pond transparently manages snapshot creation, persistence and application during state computation for you. By default, a snapshot is taken about every 1000 events. Additionally, the Pond retains snapshots from the past to aid with [longer time travel distances](https://developer.actyx.com/docs/pond/guides/time-travel).
+Actyx pond transparently manages snapshot creation, persistence and application during state computation for you. By default, a snapshot is taken about every 1000 events. Additionally, the Pond retains snapshots from the past to aid with [longer time travel distances](https://developer.actyx.com/docs/pond/guides/time-travel). 
+In case an event leads to the state being completely replaced, you can let the Pond know by returning `true` from the fishes' `isReset` function. This prevents the Pond from unneccessarily going back further in time to compute the state. You can find an example in [Semantic Snapshots](https://developer.actyx.com/docs/pond/guides/snapshots).
 
-So, while the Pond already handles a lot of things for you, you still are cases in which you have or want to influence the default behaviour.
+So, while the Pond already takes care of a lot of things for you, there still are cases in which you have or want to influence the default behaviour.
 
-## Fish state size
+## Fish state size considerations
 
 One case that requires special care is if the size of a snapshot exceeds `128MB`. If it does happen, the Pond will let you know by throwing the message `Cxn error: Max payload size exceeded` at you.
-While it is uncommon for fishes to grow that large, there are cases in which it is required. In any case, you should consider the state's estimated size in your designs as not to be caught off guard.
+While it is uncommon for fishes to grow that large, there are cases in which it might be required. In any case, you should consider the state's estimated size over time in your designs as not to be caught off guard.
 
-You can easily review the sizes of existing snapshots by looking into the Actyx store.
+TODO: describe how to measure snap size in code, remove DB references
+
+In development, you can easily review the sizes of existing snapshots by hooking into the `deserializeState` function and logging the it:
+
+```js
+const snapshotSize = (snapshot: unknown) =>
+    (Buffer.byteLength(JSON.stringify(snapshot)) / 1024 / 1024)
+        .toPrecision(4)
+    + 'MB'
+
+export const SomeFish = {
+    of: (): Fish<S, E> => ({
+        // fish details omitted
+        deserializeState: (snapshot) => {
+            console.debug('Deserializing snapshot of size ' + snapshotSize(snapshot))
+            return snapshot as S
+        }
+    })
+}
+```
+
 To do so, you need to find the database file used by Actyx and connect to it using an SQLite client.
 The database is located at `<actyxos-data>/store/<topic>` directory.
 By default, `actyxos-data` is created in the directory from which you start ActyxOS on the first start.
 You can look up the topic in the node's settings using e.g. `ax settings get com.actyx.os/services/eventService/topic 127.0.0.1 --local`. So, assuming you're running actyx from your home and are using the topic `default-topic`, you'd connect with SQLite CLI using `sqlite3 ~/actyxos-data/store/default-topic`. Now you can query your snapshots using `select semantics, name, length(data) as size from snapshots`.
 
-### What's in a fish?
-
-When designing your system, you'll typically want to model one physical object, process or concept from your problem domain as one fish. This helps you reason and talk about your business domain without having to mentally map additional abstractions. Oftentimes, this quite naturally leads to reasonable sized fish states. With the next version, we're moving to the concept of `local twins` which communicates this 1:1 relationship more explicitly.
+When designing your system, you'll want to model one physical object, process or concept from your problem domain as one fish. This helps you reason and talk about your business domain without having to mentally map additional abstractions. Oftentimes, this quite naturally leads to reasonable sized fish states. With the next version, we're moving to the concept of `local twins` which communicates this 1:1 relationship more explicitly.
 
 ### Fat fishes
 
-Two scenarios tending to lead to large fish states are a) timeseries data and b) exports of aggregated data to external systems like databases for analytics, especially if the target systems are periodically not available.
+Two scenarios that tend to lead to large fish states are a) timeseries data and b) exports of aggregated data to external systems like databases for analytics, especially if the target systems are unavailable periodically.
 
-Regarding a), one typical use case is to visualize sensor / process logging data. From the external sink, these data can be vizualised using Grafana or similar.
-We'd recommend not to keep timeseries data around in your state for longer periods of time but to push them to external data sinks and flush them from your state once they have been committed. Delegate the vizualisation for timeseries to specialized systems and don't implement it yourself in an Actyx application. Not only does this circumvent the size limitation. It also provides you with specialized tooling for vizualisation instead of leaving you on your own to implement this with chart.js, highcharts or even vanilla js + SVG. I've seen this pay off over and over again once the first changes in charts were required.
+Regarding a), one use case is to visualize sensor logging data.
+We'd recommend not to keep timeseries data around in your state for longer periods of time but to push them to external data sinks and flush them from your state once they have been committed. From the external sink, these data can be vizualised using Grafana or similar. Delegate the vizualisation for timeseries to specialized systems and don't implement it yourself in an Actyx application. Not only does this circumvent the size limitation. It also provides you with specialized tooling for vizualisation instead of leaving you on your own to implement this with chart.js, highcharts or even vanilla js + SVG. I've seen this pay off over and over again once changes in charts have been requested.
 
-While exporting to exteral systems is common, the other pattern that can lead to large-ish fish states is exactly that. _If_ events map to database relations cleanly and _if_ the database is available, there should be no issues in terms of state size. But if the state you're looking to export is computed by a larger number of events over a larger period of time it may be required to replace large chunks of the DBs content up to a point where you drop and recreate/-populate complete tables. Of course this is amplified by the time the database is not available to the exporting node.
+While exporting to exteral systems is common, the other pattern that can lead to large-ish fish states relates to exactly that. _If_ data from events maps more or less directly to rows in database relations in a 1:1 fashion and _if_ the database is available most of the time, there should be no issues in terms of state size.
+But if the state you're looking to export is computed from a larger number of different event types over a larger period of time it may be required to keep more data around to figure out which parts of the database to update. This challenge and solution patterns are described in more detail in [Real-time dashboards and reports made efficient and resilient](https://www.actyx.com/news/2020/6/24/real-time_dashboards_and_reports_made_efficient_and_resilient).
 
 In this case, compressing the fish state's snapshots helps to avoid running into the `128MB` limitation.
 
