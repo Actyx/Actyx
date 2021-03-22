@@ -120,22 +120,29 @@ impl GossipV2 {
                 while let Some(message) = subscription.next().await {
                     match serde_cbor::from_slice::<RootUpdate>(&message) {
                         Ok(root_update) => {
-                            tracing::debug!(
-                                "received root update {} with {} blocks",
-                                root_update.root,
+                            tracing::info!(
+                                "{} received root update {} with {} blocks",
+                                store.ipfs().local_node_name(),
+                                root_update.stream,
                                 root_update.blocks.len()
                             );
-                            if let Ok(tmp) = store.ipfs().create_temp_pin() {
-                                if let Err(err) = store.ipfs().temp_pin(&tmp, &root_update.root) {
-                                    tracing::error!("{}", err);
-                                }
-                                for block in &root_update.blocks {
-                                    if let Err(err) = store.ipfs().insert(block) {
+                            match store.ipfs().create_temp_pin() {
+                                Ok(tmp) => {
+                                    if let Err(err) = store.ipfs().temp_pin(&tmp, &root_update.root) {
                                         tracing::error!("{}", err);
                                     }
+                                    for block in &root_update.blocks {
+                                        if let Err(err) = store.ipfs().insert(block) {
+                                            tracing::error!("{}", err);
+                                        }
+                                    }
+                                    match Link::try_from(root_update.root) {
+                                        Ok(root) => store.update_root(root_update.stream, root),
+                                        Err(err) => tracing::error!("failed to parse link {}", err),
+                                    }
                                 }
-                                if let Ok(root) = Link::try_from(root_update.root) {
-                                    store.update_root(root_update.stream, root);
+                                Err(err) => {
+                                    tracing::error!("failed to create temp pin {}", err);
                                 }
                             }
                         }

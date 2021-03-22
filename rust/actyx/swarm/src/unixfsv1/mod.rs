@@ -165,20 +165,11 @@ impl Stream for UnixfsStream {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{BanyanStore, Block, Config, DbPath, Ipfs, SqliteIndexStore};
+    use crate::{BanyanStore, Block};
     use futures::stream::StreamExt;
-    use ipfs_embed::Config as IpfsConfig;
     use libipld::multihash::{Code, MultihashDigest};
     use libipld::pb::DagPbCodec;
     use std::path::Path;
-
-    fn setup_logger() {
-        tracing_log::LogTracer::init().ok();
-        let subscriber = tracing_subscriber::FmtSubscriber::builder()
-            .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-            .finish();
-        tracing::subscriber::set_global_default(subscriber).ok();
-    }
 
     const TEST_DATA: &[&str] = &[
         // small file
@@ -193,10 +184,8 @@ mod tests {
     ];
 
     async fn setup() -> BanyanStore {
-        setup_logger();
-        let ipfs = Ipfs::new(IpfsConfig::new(None, 0)).await.unwrap();
-        let index = SqliteIndexStore::open(DbPath::Memory).unwrap();
-        let store = BanyanStore::new(ipfs, Config::test(), index).unwrap();
+        util::setup_logger();
+        let store = BanyanStore::test("local").await.unwrap();
         for cid in TEST_DATA {
             let data = std::fs::read(Path::new("./test-data").join(cid)).unwrap();
             let hash = Code::Sha2_256.digest(&data);

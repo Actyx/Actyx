@@ -5,30 +5,32 @@ authors = ["Actyx AG"]
 edition = "2018"
 
 [dependencies]
-serde = { version = "1.0.124", features = ["derive"] }
-serde_json = "1.0.64"
-serde_cbor = { version = "0.11.1", features = ["tags"] }
-futures = { version = "0.3.13", package = "futures" }
-tokio = { version = "1.3.0", features = ["full"], package = "tokio" }
-tracing = "0.1.25"
-rand = { version = "0.8.3", features = ["small_rng"] }
+actyxos_sdk = { path = "../../sdk" }
+anyhow = "1.0.38"
+ax-os-settings = { path = "../ax-os-settings" }
+base64 = "0.13.0"
+chrono = { version = "0.4.19", features = ["serde"] }
 clap = "2.33.3"
 crossbeam = "0.8.0"
+derive_more = "0.99.11"
 fnv = "1.0.7"
-parking_lot = "0.11.1"
-base64 = "0.13.0"
-pin-utils = "0.1.0"
+futures = { version = "0.3.13", package = "futures" }
+libp2p-streaming-response = { path = "../libp2p-streaming-response" }
+log-panics = "2.0.0"
 lru-cache = "0.1.2"
 num-traits = "0.2.14"
-winres = { git = "https://github.com/Actyx/winres", branch = "cross_compile" }
-anyhow = "1.0.38"
 parity-multiaddr = "0.11.1"
+parking_lot = "0.11.1"
+pin-utils = "0.1.0"
+rand = { version = "0.8.3", features = ["small_rng"] }
+serde = { version = "1.0.124", features = ["derive"] }
+serde_cbor = { version = "0.11.1", features = ["tags"] }
+serde_json = "1.0.64"
+tokio = { version = "1.3.0", features = ["full"], package = "tokio" }
+tracing = "0.1.25"
+tracing-log = "0.1.2"
 tracing-subscriber = "0.2.17"
-actyxos_sdk = { path = "../../sdk" }
-libp2p-streaming-response = { path = "../libp2p-streaming-response" }
-chrono = { version = "0.4.19", features = ["serde"] }
-ax-os-settings = { path = "../ax-os-settings" }
-derive_more = "0.99.11"
+winres = { git = "https://github.com/Actyx/winres", branch = "cross_compile" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 rogcat = "0.4.1"

@@ -29,6 +29,16 @@ use std::{
     vec,
 };
 
+/// Sets up a logging and a panic handler that logs panics.
+pub fn setup_logger() {
+    tracing_log::LogTracer::init().ok();
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).ok();
+    log_panics::init();
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct SocketAddrHelper {
     inner: HashSet<SocketAddr>,

@@ -6,14 +6,6 @@ use serde::{Deserialize, Serialize};
 use swarm::BanyanStore;
 use trees::axtrees::TagsQuery;
 
-fn setup_logger() {
-    tracing_log::LogTracer::init().ok();
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).ok();
-}
-
 #[derive(Serialize, Deserialize)]
 struct MyEvent {
     things_are_happening: Vec<String>,
@@ -21,7 +13,7 @@ struct MyEvent {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn banyan_multi_node() -> Result<()> {
-    setup_logger();
+    util::setup_logger();
     let config = StoreConfig::new("banyan-multi-node-test".to_string());
     let s1 = BanyanStore::from_axconfig(config.clone()).await?;
     let s2 = BanyanStore::from_axconfig(config.clone()).await?;

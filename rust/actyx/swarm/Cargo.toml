@@ -17,7 +17,7 @@ derive_more = "0.99.11"
 fnv = "1.0.7"
 futures = { version = "0.3.13", package = "futures" }
 hex = "0.4.3"
-ipfs-embed = "0.16.0"
+ipfs-embed = "0.18.0"
 ipfs-sqlite-block-store = "0.3.0"
 itertools = "0.10.0"
 libipld = { version = "0.11.0", default-features = false }
@@ -47,8 +47,6 @@ quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
 rstest = "0.6.4"
 tempdir = "0.3.7"
-tracing-log = "0.1.2"
-tracing-subscriber = "0.2.17"
 
 [build-dependencies]
 prost-build = "0.7.0"
