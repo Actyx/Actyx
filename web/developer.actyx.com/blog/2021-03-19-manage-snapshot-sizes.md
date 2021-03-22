@@ -21,7 +21,7 @@ The state of any given entity in an event-sourced system (a `Fish` in the `Pond`
 
 To prevent having to apply _all_ relevant events each time we want to look at the state, we employ [snapshots](https://developer.actyx.com/docs/pond/guides/snapshots). A snapshot is the persisted result of computing the state for a given point in time. Now, when we look at the state, we don't have to apply all events but only those that happened after the time the snapshot was taken.
 
-Actyx pond transparently manages snapshot creation, persistence and application during state computation for you. By default, a snapshot is taken about every 1000 events. Additionally, the Pond retains snapshots from the past to aid with [longer time travel distances](https://developer.actyx.com/docs/pond/guides/time-travel). 
+Actyx pond transparently manages snapshot creation, persistence and application for you. About every 1000 events, a snapshot is persisted, if the base event is older than one hour. Additionally, the Pond retains snapshots from the past to aid with [longer time travel distances](https://developer.actyx.com/docs/pond/guides/time-travel). 
 In case an event leads to the state being completely replaced, you can let the Pond know by returning `true` from the fishes' `isReset` function. This prevents the Pond from unneccessarily going back further in time to compute the state. You can find an example in [Semantic Snapshots](https://developer.actyx.com/docs/pond/guides/snapshots).
 
 So, while the Pond already takes care of a lot of things for you, there still are cases in which you have or want to influence the default behaviour.
@@ -31,7 +31,7 @@ So, while the Pond already takes care of a lot of things for you, there still ar
 One case that requires special care is if the size of a snapshot exceeds `128MB`. If it does happen, the Pond will let you know by throwing the message `Cxn error: Max payload size exceeded` at you.
 While it is uncommon for fishes to grow that large, there are cases in which it might be required. In any case, you should consider the state's estimated size over time in your designs as not to be caught off guard.
 
-In development, you can easily review the sizes of existing snapshots by hooking into the `deserializeState` function and logging the it:
+In development, you can easily review the sizes of existing snapshots by hooking into the `deserializeState` function and logging it. Just don't leave it enabled in production. State deserialization happens _a lot_.
 
 ```js
 const snapshotSize = (snapshot: unknown) =>
@@ -72,7 +72,7 @@ The Pond [documentation](https://developer.actyx.com/docs/pond/guides/snapshots)
 
 First, we need a suitable compression library. Our own [Benjamin Sieffert](https://github.com/benjamin-actyx) recommends [Pako](https://github.com/nodeca/pako), so we'll stick to that for now. However, there [are](https://github.com/rotemdan/lzutf8.js/) [others](https://pieroxy.net/blog/pages/lz-string/index.html) as well. If you do decide to evaluate them, it would be great if you could share the results.
 
-The following sample explores how to use Pako and how much it compresses some sample data. To generate a reasonable amount of random data, we use the popular [faker library](https://github.com/marak/Faker.js/). We'll compress and decompress a string and an array of objects, look at the compression ratio and make sure the roundtrip does not mess with our data.
+The following sample explores how to use Pako in isolation and how much it compresses some sample data. To generate a reasonable amount of random data, we use the popular [faker library](https://github.com/marak/Faker.js/). We'll compress and decompress a string and an array of objects, look at the compression ratio and make sure the roundtrip does not mess with our data.
 
 ```js
 /*
@@ -127,27 +127,112 @@ This should give us something akin to the following results. We can see that our
 
 ### Tying it all together
 
-As a test scenario, we'll emit an event with the current datetime each few milliseconds and subscribe to it once with and once without compressing the snapshots. After we keep that running for a few hours, we compare the snapshot sizes as described above.
+Now that we know how to use the compression library and what to expect from it, let's integrate it into our fish.
+
+As a test scenario, we'll emit an event with the current datetime every few milliseconds and subscribe to it once with and once without compressing the snapshots. After we keep that running for a few hours, we compare the snapshot sizes as described above.
 
 ```js
 import { Pond } from '@actyx/pond'
-import { CompressingFish, BoringFish, pushEventTag } from '../fish'
+import { CompressingFish, BoringFish } from '../fish'
+
+export type PushEvent = { content: string }
+export const pushEventTag = Tag<PushEvent>('pushed')
 
 Pond.default()
   .then(pond => {
     setInterval(() => pond.emit(pushEventTag, { content: Date() }), 150)
-    pond.observe(BoringFish.of(), state => console.log('boring', state.length + ' items'))
-    pond.observe(CompressingFish.of(), state => console.log('compressed', state.data.length + ' items'))
+    pond.observe(BoringFish.of(), state => console.log('BoringFish has ', state.length + ' items'))
+    pond.observe(CompressingFish.of(), state => console.log('CompressedFish has ', state.data.length + ' items'))
   })
   .catch(console.error)
 ```
 
-* Boring fish
-* compressing fish
+The `BoringFish` just aggregates stores all events it receives. We'll keep `deserializeState` from above to track the state's size.
+
+```js
+export const BoringFish = {
+    of: (): Fish<State, PushEvent> => ({
+        fishId: FishId.of('BoringFish', 'Carp', 0),
+        initialState: [],
+        where: pushEventTag,
+        onEvent: (state, event) => {
+            return [...state, event.content]
+        },
+        deserializeState: (snapshot) => {
+            console.debug('Deserializing RAW snapshot of size ' + snapshotSize(snapshot))
+            return snapshot as State
+        }
+    })
+}
+```
+
+In contrast, the `CompressingFish` implements compression using Pako by implementing `deserializeState` in the fish and `toJSON` in the state. `toJSON` will return the compressed data, which might be counter-intuitive. You can think of toJSON() as serialize.
+
+```js
+const pack = (data: any): string => Pako.deflate(JSON.stringify(data), { to: 'string' })
+const unpack: any = (zipped: string) => Pako.inflate(zipped as string, { to: 'string' })
+
+type CompressedState = {
+    data: string[]
+    toJSON: (data: string[]) => {}
+}
+
+const INITIAL_STATE = {
+    data: [],
+    toJSON: () => pack([])
+}
+
+export const CompressingFish = {
+    of: (): Fish<CompressedState, PushEvent> => ({
+        fishId: FishId.of('CompressingFish', 'Fugu', 0),
+        initialState: INITIAL_STATE,
+        where: pushEventTag,
+        onEvent: (state, event) => {
+            let data = [...state.data, event.content]
+            return {
+                data,
+                toJSON: () => pack(data)
+            }
+        },
+        deserializeState: (zipped) => { 
+            console.debug('Deserializing COMPRESSED snapshot of size ' + snapshotSize(zipped))
+            return { data: JSON.parse(unpack(zipped)) } as CompressedState 
+        }
+    })
+}
+```
+
+When we keep this running for some time, we should see that ...
+* ... both fishes have the same number of items in their state
+* ... the size of the compressed snapshot should be significantly smaller than the uncompressed one (well, d'uh!)
+
+And indeed, the logs confirm both assumptions.
+
+```
+CompressedFish has 92137 items
+Deserializing RAW snapshot of size 6.063MB
+BoringFish has 92138 items
+Deserializing COMPRESSED snapshot of size 1.002MB
+CompressedFish has 92138 items
+
+...
+
+
+```
+
+
+
+
+
 * wrapper
 * results
 
-If you assume you'll be running into this limitation, you can use a similar scenario to validate your assumption. Also, do not hesitate to get in touch. We're always curious to learn how you're using Actyx, what works for you and where your pain points are.
+
+## Wrapping up
+
+We looked at some ways to reason about the size of fish states and how influence the way snapshots are persisted.
+
+If you assume you'll be running into the `128MB` snapshot size limitation, you can use the code above to create similar scenario using your own data to validate it. Also, do not hesitate to get in touch. We're always curious to learn how you're using Actyx, what works for you and where your pain points are.
 
 ---
 Credits: pufferfish photo by [Brian Yurasits](https://unsplash.com/@brian_yuri?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText)
