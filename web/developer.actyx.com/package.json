@@ -44,7 +44,8 @@
     "svgo": "^1.3.2",
     "textlint-rule-no-empty-section": "^1.1.0",
     "typescript": "^4.1.3",
-    "typescript-eslint": "0.0.1-alpha.0"
+    "typescript-eslint": "0.0.1-alpha.0",
+    "xlsx": "^0.16.9"
   },
   "browserslist": {
     "production": [

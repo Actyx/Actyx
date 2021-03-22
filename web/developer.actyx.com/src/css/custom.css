@@ -163,8 +163,8 @@
 }
 
 h1 {
-  font-size: 32px !important;
-  margin-bottom: 1.5rem !important;
+  font-size: 32px;
+  margin-bottom: 1.5rem;
   font-weight: 500;
 }
 
@@ -180,7 +180,7 @@ h3 {
 
 h4,
 .tsd-index-panel h3 {
-  font-size: 15px !important;
+  font-size: 15px;
   font-weight: 500;
 }
 
@@ -195,17 +195,17 @@ h6 {
 }
 
 hr {
-  border: 1px solid #eee !important;
+  border: 1px solid #eee;
 }
 
 p,
 li {
-  font-size: 16px !important;
+  font-size: 16px;
 }
 
 code,
 span {
-  font-size: 13px !important;
+  font-size: 13px;
 }
 
 .navbar {
@@ -263,19 +263,15 @@ article > header > h2 > a:hover {
   text-decoration: none;
 }
 footer {
-  margin-bottom: 0px !important;
+  margin-bottom: 0px;
 }
 
 article > footer.row.margin-vert--lg {
   margin-bottom: 0px;
 }
 
-.blogPostTitle_node_modules-\@docusaurus-theme-classic-lib-next-theme-BlogPostItem- {
-  font-size: 24px !important;
-}
-
 .DocSearch-Button {
-  margin: 0px;
+  margin: 0px !important;
   border-radius: 5px !important;
   border: 1px solid #e1e5e8 !important;
   background-color: white !important;
@@ -352,7 +348,7 @@ article > footer.row.margin-vert--lg {
 .dropdown.dropdown--hoverable:hover .dropdown__menu,
 .dropdown.dropdown--show .dropdown__menu {
   display: block;
-  background-color: #fff !important;
+  background-color: #fff;
 }
 
 .dropdown.dropdown--right .dropdown__menu {
@@ -360,7 +356,7 @@ article > footer.row.margin-vert--lg {
 }
 
 .dropdown .dropdown__menu {
-  background-color: #fff !important;
+  background-color: #fff;
   border-radius: var(--ifm-global-radius);
   box-shadow: var(--ifm-global-shadow-md);
   display: none;
@@ -374,7 +370,7 @@ article > footer.row.margin-vert--lg {
 
 .dropdown .dropdown__menu .dropdown__link {
   border-radius: 0.375rem;
-  background-color: #fff !important;
+  background-color: #fff;
   color: var(--ifm-dropdown-link-color);
   display: block;
   font-size: 0.875rem;
@@ -382,9 +378,9 @@ article > footer.row.margin-vert--lg {
   white-space: nowrap;
 }
 .dropdown .dropdown__menu .dropdown__link:hover {
-  background-color: #fff !important;
+  background-color: #fff;
   text-decoration: none;
-  color: #1998ff !important;
+  color: #1998ff;
 }
 
 @media (max-width: 996px) {
@@ -502,34 +498,6 @@ article > footer.row.margin-vert--lg {
   width: var(--ifm-navbar-sidebar-width);
 }
 
-@media (min-width: 997px) {
-  .sidebar_node_modules-\@docusaurus-theme-classic-src-theme-DocSidebar- {
-    height: 100vh;
-    overflow-y: scroll;
-    position: -webkit-sticky;
-    position: sticky;
-    top: 0;
-    padding-top: var(--ifm-navbar-height);
-  }
-}
-.menu {
-  background: #f5f6f7;
-}
-
-.docSidebarContainer_node_modules-\@docusaurus-theme-classic-src-theme-DocPage- {
-  border-right: none !important;
-  border: none !important;
-  box-sizing: border-box;
-  position: relative;
-  top: calc(-1 * var(--ifm-navbar-height));
-}
-
-.docSidebarContainer_node_modules-\@docusaurus-theme-classic-lib-next-theme-DocPage- {
-  border-right: none !important;
-  border: none !important;
-  margin-top: 25px !important;
-}
-
 /*
 css classes are not correctly overwritten in a production build.
 Therefore we are using the substring matching selector.
@@ -537,18 +505,6 @@ Therefore we are using the substring matching selector.
 [class^='docSidebarContainer'] {
   border: none !important;
   margin-top: 25px !important;
-}
-
-.docSidebarContainer {
-  border: none !important;
-}
-
-.menu_node_modules-\@docusaurus-theme-classic-lib-next-theme-DocSidebar- {
-  border-right: none !important;
-}
-
-.sidebar_node_modules-\@docusaurus-theme-classic-lib-next-theme-DocSidebar- {
-  border-right: none !important;
 }
 
 @media (max-width: 996px) {
@@ -589,8 +545,8 @@ Therefore we are using the substring matching selector.
 
 .footer .footer__col {
   margin-bottom: calc(var(--ifm-spacing-vertical) * 3);
-  margin-left: auto !important;
-  margin-right: auto !important;
+  margin-left: auto;
+  margin-right: auto;
   padding-left: 100px;
 }
 
@@ -599,13 +555,13 @@ Therefore we are using the substring matching selector.
 }
 @media (max-width: 450px) {
   .container {
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 }
 .contents .contents__link {
   color: rgb(143, 143, 143);
-  font-size: 12px !important;
+  font-size: 12px;
 }
 
 .contents {
@@ -620,8 +576,8 @@ Therefore we are using the substring matching selector.
 }
 .contents li {
   margin: var(--ifm-contents-padding-vertical);
-  margin-top: 2px !important;
-  margin-bottom: 2px !important;
+  margin-top: 2px;
+  margin-bottom: 2px;
 }
 .contents.contents__left-border {
   border-left: none;
@@ -642,10 +598,6 @@ Therefore we are using the substring matching selector.
   width: 100%;
 }
 
-.blogPostDate_node_modules-\@docusaurus-theme-classic-src-theme-BlogPostItem- {
-  font-size: 0.9rem;
-}
-
 .row .col {
   --ifm-col-width: 100%;
 
@@ -656,10 +608,6 @@ Therefore we are using the substring matching selector.
   padding-left: var(--ifm-spacing-horizontal);
   padding-right: var(--ifm-spacing-horizontal);
   width: 100%;
-}
-
-.docusaurus-highlight-code-line {
-  background-color: #3c4055;
 }
 
 .button.button--link {
@@ -749,7 +697,7 @@ Therefore we are using the substring matching selector.
   width: 100%;
 }
 .button.button--secondary {
-  color: #222 !important;
+  color: #222;
   height: 60px;
   width: 60px;
   margin-right: 1rem;
@@ -758,7 +706,7 @@ Therefore we are using the substring matching selector.
   font-size: 24px;
 }
 .button.button--secondary.button--outline:not(.button--active):not(:hover) {
-  color: #fff !important;
+  color: #fff;
 }
 .button.button--primary {
   --ifm-button-border-color: var(--ifm-color-primary);
@@ -779,10 +727,10 @@ Therefore we are using the substring matching selector.
   border-color: var(--ifm-color-primary-darker);
 }
 .button.button--secondary {
-  --ifm-button-border-color: #fff !important;
+  --ifm-button-border-color: #fff;
 }
 .button.button--secondary:not(.button--outline) {
-  --ifm-button-background-color: #fff !important;
+  --ifm-button-background-color: #fff;
 }
 .button.button--secondary:not(.button--outline):hover {
   --ifm-button-background-color: var(--ifm-color-secondary-dark);
@@ -868,21 +816,6 @@ Therefore we are using the substring matching selector.
   background-color: var(--ifm-color-danger-darker);
   border-color: var(--ifm-color-danger-darker);
 }
-.docItemCol_node_modules-\@docusaurus-theme-classic-src-theme-DocItem- {
-  margin-left: 0rem !important;
-}
-
-@media only screen and (min-width: 997px) {
-  .docItemCol_node_modules-\@docusaurus-theme-classic-src-theme-DocItem- {
-    max-width: 75%;
-    float: left;
-  }
-}
-
-.docItemContainer_node_modules-\@docusaurus-theme-classic-src-theme-DocItem- {
-  margin-left: 0rem !important;
-  margin-top: 1rem !important;
-}
 
 @media (max-width: 996px) {
   .row .col.col.col {
@@ -942,14 +875,14 @@ Therefore we are using the substring matching selector.
 
 @media (max-width: 360px) {
   .search-bar {
-    width: 0 !important;
-    background: none !important;
-    padding: 0 !important;
-    transition: none !important;
+    width: 0;
+    background: none;
+    padding: 0;
+    transition: none;
   }
 
   .search-bar-expanded {
-    width: 20rem !important;
+    width: 20rem;
   }
 
   .search-icon {
@@ -1024,53 +957,12 @@ Therefore we are using the substring matching selector.
   }
 }
 
-.tableOfContents_node_modules-\@docusaurus-theme-classic-src-theme-DocItem- {
-  display: inherit;
-  max-height: calc(100vh - (var(--ifm-navbar-height) + 2rem));
-  overflow-y: auto;
-  position: -webkit-sticky;
-  position: sticky;
-  top: calc(var(--ifm-navbar-height) + 2rem);
-}
-
-.tableOfContents_node_modules-\@docusaurus-theme-classic-src-theme-DocItem-::-webkit-scrollbar {
-  width: 7px;
-}
-
-.tableOfContents_node_modules-\@docusaurus-theme-classic-src-theme-DocItem-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
-}
-
-.tableOfContents_node_modules-\@docusaurus-theme-classic-src-theme-DocItem-::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 10px;
-}
-
-.tableOfContents_node_modules-\@docusaurus-theme-classic-src-theme-DocItem-::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
 a.table-of-contents__link {
-  font-size: 13px !important;
+  font-size: 13px;
 }
 
 li {
-  margin: 0px !important;
-}
-
-@media only screen and (max-width: 996px) {
-  .tableOfContents_node_modules-\@docusaurus-theme-classic-src-theme-DocItem- {
-    display: none;
-  }
-
-  .docItemContainer_node_modules-\@docusaurus-theme-classic-src-theme-DocItem- {
-    padding: 0 0.3rem;
-  }
-}
-
-.docLastUpdatedAt_node_modules-\@docusaurus-theme-classic-src-theme-DocItem- {
-  font-weight: bold;
+  margin: 0px;
 }
 
 /* The following two make the tabs of nested tabs less strong */
@@ -1104,7 +996,7 @@ li {
 }
 
 .tabs > .tab-item:focus {
-  outline: none !important;
+  outline: none;
 }
 .tabs > .tab-item:hover {
   background-color: #fff;
@@ -1125,10 +1017,6 @@ li {
 
 .tabs > .tab-item.tab-item--active .tabs > .tab-item.tab-item--active {
   color: green;
-}
-
-.tabItem_node_modules-\@docusaurus-theme-classic-src-theme-Tabs-:focus {
-  background-color: #fff !important;
 }
 
 .alert {
@@ -1250,57 +1138,30 @@ li {
 }
 
 .alert.alert--secondary {
-  --ifm-alert-background-color: #e4eff7 !important;
+  --ifm-alert-background-color: #e4eff7;
   border: 1px solid #1998ff;
   --ifm-alert-color: #2b2b2b;
 }
 .alert.alert--success {
-  --ifm-alert-background-color: #eff5ee !important;
+  --ifm-alert-background-color: #eff5ee;
   border: 1px solid #79cc76;
   --ifm-alert-color: #2b2b2b;
 }
 .alert.alert--info {
-  --ifm-alert-background-color: #eef1f5 !important;
+  --ifm-alert-background-color: #eef1f5;
   border: 1px solid #b4ccdf;
   --ifm-alert-color: #2b2b2b;
 }
 .alert.alert--warning {
-  --ifm-alert-background-color: #fff2db !important;
+  --ifm-alert-background-color: #fff2db;
   border: 1px solid #ffaf01;
   --ifm-alert-color: #2b2b2b;
 }
 .alert.alert--danger {
-  --ifm-alert-background-color: #fae8ec !important;
+  --ifm-alert-background-color: #fae8ec;
   border: 1px solid #e41b4d;
   --ifm-alert-color: #2b2b2b;
 }
-/**
-   * Copyright (c) Facebook, Inc. and its affiliates.
-   *
-   * This source code is licensed under the MIT license found in the
-   * LICENSE file in the root directory of this source tree.
-   */
-
-.toggle_node_modules-\@docusaurus-theme-classic-src-theme-Toggle- {
-  align-items: center;
-  display: flex;
-  height: 10px;
-  justify-content: center;
-  position: relative;
-  width: 10px;
-}
-.toggle_node_modules-\@docusaurus-theme-classic-src-theme-Toggle-::before {
-  position: absolute;
-}
-.moon_node_modules-\@docusaurus-theme-classic-src-theme-Toggle-::before {
-  content: '\1F319' !important;
-  /*content: '' !important;*/
-}
-.sun_node_modules-\@docusaurus-theme-classic-src-theme-Toggle-::before {
-  content: '\2600' !important;
-  /* content: '' !important;*/
-}
-
 /**
    * styles for React Toggle
    * copied over because we want to allow user to swizzle it and modify the css
@@ -1345,7 +1206,7 @@ li {
   height: 24px;
   padding: 0;
   border-radius: 30px;
-  background-color: #1998ff !important;
+  background-color: #1998ff;
   transition: all 0.2s ease;
 }
 
@@ -1395,7 +1256,7 @@ li {
   left: 1px;
   width: 22px;
   height: 22px;
-  border: 1px solid #1998ff !important;
+  border: 1px solid #1998ff;
   border-radius: 50%;
   background-color: rgb(154, 188, 242);
   box-sizing: border-box;
@@ -1416,33 +1277,6 @@ li {
   box-shadow: 0px 0px 5px 5px #0099e0;
 }
 
-.codeBlock_node_modules-\@docusaurus-theme-classic-src-theme-CodeBlock- {
-  overflow: auto;
-  display: block;
-  padding: 0;
-  margin: 0;
-}
-
-.codeBlock_node_modules-\@docusaurus-theme-classic-src-theme-CodeBlock-:hover
-  > .copyButton_node_modules-\@docusaurus-theme-classic-src-theme-CodeBlock- {
-  visibility: visible;
-  opacity: 0.5 !important;
-}
-
-/* TODO */
-.codeBlockLines_node_modules-\@docusaurus-theme-classic-src-theme-CodeBlock- {
-  background-color: transparent;
-  border-radius: 0;
-  margin-bottom: 0;
-  float: left;
-  min-width: 100%;
-  padding: 0;
-  line-height: 1.5 !important;
-}
-
-.codeBlock_node_modules-\@docusaurus-theme-classic-lib-next-theme-CodeBlock- {
-  overflow-y: auto;
-}
 .menu {
   font-weight: var(--ifm-font-weight-semibold);
   overflow-x: auto;
@@ -1482,10 +1316,6 @@ li {
   margin-top: 4px;
   font-weight: 600;
   font-size: 15px;
-}
-
-.sidebarMenuCloseIcon_node_modules-\@docusaurus-theme-classic-lib-next-theme-DocSidebar- {
-  font-size: 1.5rem;
 }
 
 .menu .menu__link {
@@ -1578,17 +1408,6 @@ li {
   transition: opacity var(--ifm-transition-fast) linear;
 }
 
-.sidebarMenuCloseIcon_node_modules-\@docusaurus-theme-classic-src-theme-DocSidebar- {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  height: 24px;
-  font-size: 2.5rem !important;
-  font-weight: 100 !important;
-  color: black;
-  line-height: 0.9;
-  width: 24px;
-}
 code {
   background-color: var(--ifm-code-background);
   border-radius: var(--ifm-code-border-radius);
@@ -1620,7 +1439,7 @@ pre code {
   margin: 0;
   max-width: auto;
   overflow: visible;
-  padding: 0px !important;
+  padding: 0px;
   white-space: pre;
   word-break: normal;
   word-wrap: normal;
@@ -1630,28 +1449,4 @@ pre .line-numbers {
   position: relative;
   padding-left: 3.8em;
   counter-reset: linenumber;
-}
-
-.sidebarItemTitle_node_modules-\@docusaurus-theme-classic-lib-theme-BlogSidebar- {
-  font-size: 22px !important;
-  padding-top: 20px !important;
-}
-
-.sidebarItemLink_node_modules-\@docusaurus-theme-classic-lib-theme-BlogSidebar- {
-  color: #555 !important;
-}
-
-.sidebarItemLinkActive_node_modules-\@docusaurus-theme-classic-lib-theme-BlogSidebar- {
-  color: #1998ff !important;
-}
-
-.codeBlockTitle_node_modules-\@docusaurus-theme-classic-lib-theme-CodeBlock- {
-  font-size: 13px;
-  line-height: 140%;
-  font-family: var(--ifm-font-family-base) !important;
-  font-weight: 500 !important;
-  color: #aaaec2 !important;
-  background-color: #34394d !important;
-  border-bottom: none !important;
-  height: 40px;
 }
