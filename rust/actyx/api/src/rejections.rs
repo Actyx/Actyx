@@ -5,14 +5,6 @@ use tracing::*;
 use warp::{http::StatusCode, *};
 
 #[derive(Debug, Display, Clone)]
-pub enum TokenSource {
-    #[display(fmt = "query parameter")]
-    QueryParam,
-    #[display(fmt = "header")]
-    Header,
-}
-
-#[derive(Debug, Display, Clone)]
 pub enum ApiError {
     #[display(fmt = "The requested resource could not be found.")]
     NotFound,
@@ -39,20 +31,20 @@ pub enum ApiError {
     #[allow(dead_code)]
     AppUnauthenticated { app_id: AppId },
 
-    #[display(
-        fmt = "Authorization token is missing. Please provide a valid auth token {}.",
-        source
-    )]
-    MissingAuthToken { source: TokenSource },
+    #[display(fmt = "\"Authorization\" header is missing.")]
+    MissingAuthorizationHeader,
+
+    #[display(fmt = "\"token\" parameter is missing.")]
+    MissingTokenParameter,
 
     #[display(fmt = "Authorization request header contains an unauthorized token.")]
     TokenUnauthorized,
 
-    #[display(fmt = "Invalid token: '{}'. {} Please provide a valid Bearer token.", token, msg)]
+    #[display(fmt = "Invalid token: '{}'. {} Please provide a valid bearer token.", token, msg)]
     TokenInvalid { token: String, msg: String },
 
     #[display(
-        fmt = "Unsupported Authorization header type '{}'. Please provide a Bearer token.",
+        fmt = "Unsupported authentication type '{}'. Only \"Bearer\" is supported.",
         requested
     )]
     UnsupportedAuthType { requested: String },
@@ -83,7 +75,8 @@ impl From<ApiError> for ApiErrorResponse {
             ApiError::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "ERR_INTERNAL"),
             ApiError::InvalidManifest => (StatusCode::BAD_REQUEST, "ERR_MANIFEST_INVALID"),
             ApiError::MethodNotAllowed => (StatusCode::METHOD_NOT_ALLOWED, "ERR_METHOD_NOT_ALLOWED"),
-            ApiError::MissingAuthToken { .. } => (StatusCode::UNAUTHORIZED, "ERR_EMPTY_AUTH_HEADER"),
+            ApiError::MissingAuthorizationHeader => (StatusCode::UNAUTHORIZED, "ERR_MISSING_AUTH_HEADER"),
+            ApiError::MissingTokenParameter => (StatusCode::UNAUTHORIZED, "ERR_MISSING_TOKEN_PARAM"),
             ApiError::NotAcceptable { .. } => (StatusCode::NOT_ACCEPTABLE, "ERR_NOT_ACCEPTABLE"),
             ApiError::NotFound => (StatusCode::NOT_FOUND, "ERR_NOT_FOUND"),
             ApiError::TokenInvalid { .. } => (StatusCode::BAD_REQUEST, "ERR_TOKEN_INVALID"),

@@ -113,6 +113,11 @@ async fn ws() {
         .is_ok());
 
     assert!(test::ws()
+        .path("/api/v2/events")
+        .handshake(test_routes().await)
+        .await
+        .is_err()); // missing token
+    assert!(test::ws()
         .path("/api/v2/events?token=disallow")
         .handshake(test_routes().await)
         .await
@@ -155,7 +160,7 @@ async fn unauthorized() {
 }
 
 #[tokio::test]
-async fn unauthorized_missing_token() {
+async fn unauthorized_missing_header() {
     let resp = test::request()
         .path("/api/v2/events/node_id")
         .reply(&test_routes().await)
@@ -164,8 +169,8 @@ async fn unauthorized_missing_token() {
         resp,
         http::StatusCode::UNAUTHORIZED,
         json!({
-          "code": "ERR_EMPTY_AUTH_HEADER",
-          "message": "Authorization token is missing. Please provide a valid auth token header."
+          "code": "ERR_MISSING_AUTH_HEADER",
+          "message": "\"Authorization\" header is missing."
         }),
     );
 }
@@ -182,7 +187,7 @@ async fn unauthorized_unsupported() {
         http::StatusCode::UNAUTHORIZED,
         json!({
           "code": "ERR_WRONG_AUTH_TYPE",
-          "message": "Unsupported Authorization header type 'Foo'. Please provide a Bearer token."
+          "message": "Unsupported authentication type 'Foo'. Only \"Bearer\" is supported."
         }),
     );
 }
@@ -199,7 +204,7 @@ async fn unauthorized_invalid() {
         http::StatusCode::BAD_REQUEST,
         json!({
           "code": "ERR_TOKEN_INVALID",
-          "message": "Invalid token: 'invalid'. Cannot parse token bytes. Please provide a valid Bearer token."
+          "message": "Invalid token: 'invalid'. Cannot parse token bytes. Please provide a valid bearer token."
         }),
     );
 }

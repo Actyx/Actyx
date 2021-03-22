@@ -4,7 +4,7 @@ use std::convert::TryInto;
 use trees::BearerToken;
 use warp::{reject, Filter, Rejection};
 
-use crate::rejections::{ApiError, TokenSource};
+use crate::rejections::ApiError;
 use crate::util::{Params, Token};
 
 #[allow(dead_code)]
@@ -31,11 +31,9 @@ fn verify(token: Token, store: KeyStoreRef, my_key: PublicKey) -> Result<BearerT
 }
 
 pub fn query_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
-    warp::query().map(|p: Params| p.token).or_else(|_| async {
-        Err(reject::custom(ApiError::MissingAuthToken {
-            source: TokenSource::QueryParam,
-        }))
-    })
+    warp::query()
+        .map(|p: Params| p.token)
+        .or_else(|_| async { Err(reject::custom(ApiError::MissingTokenParameter)) })
 }
 
 pub fn header_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
@@ -62,10 +60,7 @@ pub fn header_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Cl
             };
             res
         } else {
-            Err(ApiError::MissingAuthToken {
-                source: TokenSource::Header,
-            }
-            .into())
+            Err(ApiError::MissingAuthorizationHeader.into())
         }
     })
 }
