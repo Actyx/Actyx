@@ -150,13 +150,15 @@ Pond.default()
 The `BoringFish` just aggregates stores all events it receives. We'll keep `deserializeState` from above to track the state's size.
 
 ```js
+type State = { data: string[] }
+
 export const BoringFish = {
     of: (): Fish<State, PushEvent> => ({
         fishId: FishId.of('BoringFish', 'Carp', 0),
         initialState: [],
         where: pushEventTag,
         onEvent: (state, event) => {
-            return [...state, event.content]
+            return { data: [...state.data, event.content] }
         },
         deserializeState: (snapshot) => {
             console.debug('Deserializing RAW snapshot of size ' + snapshotSize(snapshot))
@@ -214,18 +216,21 @@ Deserializing RAW snapshot of size 6.063MB
 BoringFish has 92138 items
 Deserializing COMPRESSED snapshot of size 1.002MB
 CompressedFish has 92138 items
-
 ...
-
-
+Deserializing COMPRESSED snapshot of size 1.025MB
+CompressedFish has  92781 items
+Deserializing uncompressed snapshot of size 6.105MB
+BoringFish has  92781 items
 ```
 
+### Cleaning up
 
+Now that we got it working, let's look at the code we've produced. Wrangling `toJSON` into our state in multiple locations is pretty ugly. We mixed up our business code (the state) with technical concerns (serialization). Let's see whether we can do better. Wouldn't it be nice to have a way to make existing fishes compress their state without us having to modify them?
 
+TODO: Add compressing wrapper
 
+Kudos to [Alex](https://github.com/Alexander89) for coming up with this.
 
-* wrapper
-* results
 
 
 ## Wrapping up
