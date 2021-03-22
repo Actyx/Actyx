@@ -64,13 +64,10 @@ const HeroCopy = styled.div`
   max-width: 450px;
   text-align: center;
   margin-top: 16px;
+  margin-bottom: 24px;
 `
 
-type Props = Readonly<{
-  example: string
-}>
-
-export const Hero: React.FC<Props> = ({ example }: Props) => (
+export const Hero: React.FC = () => (
   <Wrapper>
     <LineWrapper>
       <HeroHeadline>Hey there!</HeroHeadline>
