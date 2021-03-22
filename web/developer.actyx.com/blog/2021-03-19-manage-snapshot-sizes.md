@@ -31,8 +31,6 @@ So, while the Pond already takes care of a lot of things for you, there still ar
 One case that requires special care is if the size of a snapshot exceeds `128MB`. If it does happen, the Pond will let you know by throwing the message `Cxn error: Max payload size exceeded` at you.
 While it is uncommon for fishes to grow that large, there are cases in which it might be required. In any case, you should consider the state's estimated size over time in your designs as not to be caught off guard.
 
-TODO: describe how to measure snap size in code, remove DB references
-
 In development, you can easily review the sizes of existing snapshots by hooking into the `deserializeState` function and logging the it:
 
 ```js
@@ -51,11 +49,6 @@ export const SomeFish = {
     })
 }
 ```
-
-To do so, you need to find the database file used by Actyx and connect to it using an SQLite client.
-The database is located at `<actyxos-data>/store/<topic>` directory.
-By default, `actyxos-data` is created in the directory from which you start ActyxOS on the first start.
-You can look up the topic in the node's settings using e.g. `ax settings get com.actyx.os/services/eventService/topic 127.0.0.1 --local`. So, assuming you're running actyx from your home and are using the topic `default-topic`, you'd connect with SQLite CLI using `sqlite3 ~/actyxos-data/store/default-topic`. Now you can query your snapshots using `select semantics, name, length(data) as size from snapshots`.
 
 When designing your system, you'll want to model one physical object, process or concept from your problem domain as one fish. This helps you reason and talk about your business domain without having to mentally map additional abstractions. Oftentimes, this quite naturally leads to reasonable sized fish states. With the next version, we're moving to the concept of `local twins` which communicates this 1:1 relationship more explicitly.
 
