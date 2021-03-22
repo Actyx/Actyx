@@ -40,6 +40,10 @@ pub struct DumpTreeOpts {
     #[structopt(long)]
     /// When dumping all values from a tree, also include the keys.
     with_keys: bool,
+    /// Output dot. Sample usage: `ax _internal trees dump --block-store ..
+    /// --dot --root .. | dot -Tpng > out.png`
+    #[structopt(long)]
+    dot: bool,
 }
 
 fn dump(opts: DumpTreeOpts) -> anyhow::Result<String> {
@@ -54,32 +58,35 @@ fn dump(opts: DumpTreeOpts) -> anyhow::Result<String> {
             let ss = SqliteStore::new(bs)?;
             let forest = Forest::<AxTrees, Payload, _>::new(ss, BranchCache::new(1000), crypto_config, Config::debug());
             let tree = forest.load_tree(root)?;
-
-            for maybe_pair in forest.iter_from(&tree, 0) {
-                let (_, k, v) = maybe_pair?;
-                if opts.with_keys {
-                    // This is a bit of an indirection ..
-                    // DagCborEncode is only implemented for `AxKeySeq`
-                    let seq: AxKeySeq = std::iter::once(k).collect();
-                    let cbor = DagCborCodec.encode(&seq)?;
-                    // Go to JSON via IPLD AST
-                    let ipld = libipld::Ipld::decode(DagCborCodec, &mut Cursor::new(cbor))?;
-                    let json = DagJsonCodec.encode(&ipld)?;
-                    let key_seq: serde_json::Value = serde_json::from_slice(&json[..])?;
-                    // And the pull out the original `AxKey` again:
-                    println!(
-                        "{}",
-                        serde_json::json!({
-                            "key":  {
-                                "time": key_seq["time"][0],
-                                "lamport": key_seq["lamport"][0],
-                                "tags": key_seq["tags"][0]
-                            },
-                            "value": v.json_value(),
-                        })
-                    );
-                } else {
-                    println!("{}", v.json_string());
+            if opts.dot {
+                dump::graph(&forest, &tree, std::io::stdout())?;
+            } else {
+                for maybe_pair in forest.iter_from(&tree) {
+                    let (_, k, v) = maybe_pair?;
+                    if opts.with_keys {
+                        // This is a bit of an indirection ..
+                        // DagCborEncode is only implemented for `AxKeySeq`
+                        let seq: AxKeySeq = std::iter::once(k).collect();
+                        let cbor = DagCborCodec.encode(&seq)?;
+                        // Go to JSON via IPLD AST
+                        let ipld = libipld::Ipld::decode(DagCborCodec, &mut Cursor::new(cbor))?;
+                        let json = DagJsonCodec.encode(&ipld)?;
+                        let key_seq: serde_json::Value = serde_json::from_slice(&json[..])?;
+                        // And the pull out the original `AxKey` again:
+                        println!(
+                            "{}",
+                            serde_json::json!({
+                                "key":  {
+                                    "time": key_seq["time"][0],
+                                    "lamport": key_seq["lamport"][0],
+                                    "tags": key_seq["tags"][0]
+                                },
+                                "value": v.json_value(),
+                            })
+                        );
+                    } else {
+                        println!("{}", v.json_string());
+                    }
                 }
             }
         }
