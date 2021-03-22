@@ -654,9 +654,9 @@ dependencies = [
 
 [[package]]
 name = "banyan"
-version = "0.8.2"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d70f0cfb3b4f6e721c8df36a3aaf7c1f842037bb1f51ad2d1b2f9d385251fc9"
+checksum = "fa736524bf9f5abb4f15b96f2d857991df0fe4962fb84d1bea95a44c632a7e4a"
 dependencies = [
  "anyhow",
  "derive_more",
@@ -667,15 +667,16 @@ dependencies = [
  "maplit",
  "rand 0.8.3",
  "salsa20",
+ "smallvec 1.6.1",
  "tracing",
  "zstd",
 ]
 
 [[package]]
 name = "banyan-utils"
-version = "0.1.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "792dbd89e85bf75d63525cbddb1612ce54f01d63376d0f0caae94e6ce90255d8"
+checksum = "4607a1eccafe14317c993a395476414cd0801a9a3eb5273cf749536e73431fa8"
 dependencies = [
  "anyhow",
  "banyan",
