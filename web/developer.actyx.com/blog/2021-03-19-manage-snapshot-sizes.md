@@ -57,7 +57,7 @@ When designing your system, you'll want to model one physical object, process or
 Two scenarios that tend to lead to large fish states are a) timeseries data and b) exports of aggregated data to external systems like databases for analytics, especially if the target systems are unavailable periodically.
 
 Regarding a), one use case is to visualize sensor logging data.
-We'd recommend not to keep timeseries data around in your state for longer periods of time but to push them to external data sinks and flush them from your state once they have been committed. From the external sink, these data can be vizualised using Grafana or similar. Delegate the vizualisation for timeseries to specialized systems and don't implement it yourself in an Actyx application. Not only does this circumvent the size limitation. It also provides you with specialized tooling for vizualisation instead of leaving you on your own to implement this with chart.js, highcharts or even vanilla js + SVG. I've seen this pay off over and over again once changes in charts have been requested.
+We'd recommend not to keep timeseries data around in your state for longer periods of time but to push them to external data sinks and flush them from your state once they have been committed. From the external sink, these data can be vizualised using Grafana or similar. Delegate the vizualisation for timeseries to specialized systems and don't implement it yourself in an Actyx application. Not only does this circumvent the size limitation. It also provides you with specialized tooling for vizualisation instead of leaving you on your own to implement this with chart.js, highcharts or even vanilla JavaScript + SVG. I've seen this pay off over and over again once changes in charts have been requested.
 
 While exporting to exteral systems is common, the other pattern that can lead to large-ish fish states relates to exactly that. _If_ data from events maps more or less directly to rows in database relations in a 1:1 fashion and _if_ the database is available most of the time, there should be no issues in terms of state size.
 But if the state you're looking to export is computed from a larger number of different event types over a larger period of time it may be required to keep more data around to figure out which parts of the database to update. This challenge and solution patterns are described in more detail in [Real-time dashboards and reports made efficient and resilient](https://www.actyx.com/news/2020/6/24/real-time_dashboards_and_reports_made_efficient_and_resilient).
@@ -73,22 +73,9 @@ The Pond [documentation](https://developer.actyx.com/docs/pond/guides/snapshots)
 First, we need a suitable compression library. Our own [Benjamin Sieffert](https://github.com/benjamin-actyx) recommends [Pako](https://github.com/nodeca/pako), so we'll stick to that for now. However, there [are](https://github.com/rotemdan/lzutf8.js/) [others](https://pieroxy.net/blog/pages/lz-string/index.html) as well. If you do decide to evaluate them, it would be great if you could share the results.
 
 The following sample explores how to use Pako in isolation and how much it compresses some sample data. To generate a reasonable amount of random data, we use the popular [faker library](https://github.com/marak/Faker.js/). We'll compress and decompress a string and an array of objects, look at the compression ratio and make sure the roundtrip does not mess with our data.
+To install the required packages, run `npm install pako faker --save` and `npm install @types/pako @types/faker --save-dev` for the corresponding type definitions.
 
 ```ts
-/*
-  package.json:
-  "devDependencies": {
-    "@types/faker": "^5.1.7",
-    "@types/pako": "^1.0.1",
-   ...
-  },
-  "dependencies": {
-    "faker": "^5.4.0",
-    "pako": "^2.0.3"
-    ...
-  }
-*/
-
 import * as Pako from 'pako' // compression library
 import faker from 'faker' // test data generator
 
