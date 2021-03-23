@@ -3,16 +3,22 @@
 
 #[cfg(not(windows))]
 fn main() {
-    panic!("This program is only intended to run on Windows.");
+    panic!("This program is only intended to run on Windows. Maybe you were looking for \"actyx-linux\"?");
 }
 
 #[cfg(windows)]
 fn main() -> Result<(), anyhow::Error> {
-    win::run()
+    if let Err(e) = win::run() {
+        message_box::create("Actyx exited unexpectedly", &*format!("{}", e))?
+    }
+    Ok(())
 }
 
 #[cfg(windows)]
+mod message_box;
+#[cfg(windows)]
 mod win {
+    use crossbeam::channel::{RecvTimeoutError, TryRecvError};
     use node::{BindTo, BindToOpts};
     use std::{
         path::PathBuf,
@@ -124,7 +130,7 @@ mod win {
     pub(crate) fn run() -> Result<(), anyhow::Error> {
         use crossbeam::channel::{bounded, select, tick};
         use node::{ApplicationState, Runtime};
-        use std::{convert::TryInto, sync::Condvar};
+        use std::convert::TryInto;
         // Make sure, there's only one instance of Actyx running on the system.
         // On Windows this is implemented by creating named mutex with CreateMutexW.
         // On UNIX systems this is implemented by using files and flock. The path of the
@@ -133,11 +139,8 @@ mod win {
         // running without a console. Not much we can do about this at this point.
         let global_mutex = named_lock::NamedLock::create("Actyx")
             .map_err(|e| anyhow::anyhow!("Error creating global mutex: {}", e))?;
-        let _global_guard = global_mutex.try_lock().map_err(|e| {
-            anyhow::anyhow!(
-                "Error acquiring global mutex. Maybe another Actyx instance is already running? {}",
-                e
-            )
+        let _global_guard = global_mutex.try_lock().map_err(|_| {
+            anyhow::anyhow!("Error acquiring global mutex. Maybe another Actyx instance is already running?")
         })?;
         let Opts {
             working_dir: maybe_working_dir,
@@ -152,11 +155,10 @@ mod win {
 
         // Spawn Actyx as fast as possible, so the logging infrastructure is
         // set up.
-        let app_handle = ApplicationState::spawn(working_dir, Runtime::Windows, bind_to)?;
+        let mut app_handle = ApplicationState::spawn(working_dir, Runtime::Windows, bind_to)?;
+        // Receiver from node
+        let result_recv = app_handle.manager.rx_process.take().unwrap();
 
-        let pair = Arc::new((Mutex::new(true), Condvar::new()));
-        // If running in background, wait on this conditional variable
-        let pair2 = pair.clone();
         // If running in foreground (e.g. with tray), use this atomic bool to
         // signal shutdown
         let running = Arc::new(AtomicBool::new(true));
@@ -171,18 +173,18 @@ mod win {
             move |signal| {
                 // handle signal here
                 info!("Caught a signal: {:?}. Shutting down.", signal);
-                let &(ref lock, ref cvar) = &*pair2;
-                let mut run = lock.lock().unwrap();
-                *run = false;
-                cvar.notify_one();
                 running.store(false, Ordering::SeqCst);
             },
             || -> Result<(), anyhow::Error> {
                 if background {
-                    let &(ref lock, ref cvar) = &*pair;
-                    let mut run = lock.lock().unwrap();
-                    while *run {
-                        run = cvar.wait(run).unwrap();
+                    while running2.load(Ordering::SeqCst) {
+                        match result_recv.recv_timeout(Duration::from_millis(500)) {
+                            Ok(node_yielded) => return node_yielded.map_err(Into::into),
+                            Err(RecvTimeoutError::Disconnected) => {
+                                return Err(anyhow::anyhow!("Node vanished. Look for other logs."))
+                            }
+                            _ => {}
+                        }
                     }
                 } else {
                     let mut tray = TrayApp::try_new()?;
@@ -197,6 +199,15 @@ mod win {
                                 info!("Shutdown via GUI");
                                 return Ok(());
                             }
+                        }
+                        match result_recv.try_recv() {
+                            Ok(node_yielded) => {
+                                return node_yielded.map_err(Into::into);
+                            }
+                            Err(TryRecvError::Disconnected) => {
+                                return Err(anyhow::anyhow!("Node vanished. Look for other logs."))
+                            }
+                            _ => {}
                         }
                     }
                 }
