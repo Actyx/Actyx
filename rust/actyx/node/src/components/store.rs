@@ -28,10 +28,32 @@ impl Component<StoreRequest, StoreConfig> for Store {
     fn handle_request(&mut self, req: StoreRequest) -> Result<()> {
         match req {
             StoreRequest::GetSwarmState { tx } => {
-                if let Some(InternalStoreState { rt: _, _store: _ }) = self.state.as_ref() {
-                    // TODO: This should be stabilized and made into an official API
-                    //       Follow-up from ipfs-embed PR, readd api.
-                    let _ = tx.send(Ok(serde_json::json!({})));
+                if let Some(InternalStoreState { rt: _, store }) = self.state.as_ref() {
+                    let peer_id = store.ipfs().local_peer_id().to_string();
+                    let listen_addrs: Vec<_> = store
+                        .ipfs()
+                        .listeners()
+                        .into_iter()
+                        .map(|addr| addr.to_string())
+                        .collect();
+                    let external_addrs: Vec<_> = store
+                        .ipfs()
+                        .external_addresses()
+                        .into_iter()
+                        .map(|rec| rec.addr.to_string())
+                        .collect();
+                    let peers: Vec<_> = store
+                        .ipfs()
+                        .connections()
+                        .into_iter()
+                        .map(|(peer, addr)| (peer.to_string(), addr.to_string()))
+                        .collect();
+                    let _ = tx.send(Ok(serde_json::json!({
+                        "peer_id": peer_id,
+                        "listen_addrs": listen_addrs,
+                        "external_addrs": external_addrs,
+                        "peers": peers,
+                    })));
                 } else {
                     let _ = tx.send(Err(anyhow::anyhow!("Store not running")));
                 }
@@ -58,12 +80,17 @@ impl Component<StoreRequest, StoreConfig> for Store {
                 let store = BanyanStore::from_axconfig_with_db(cfg.clone(), db).await?;
                 store.spawn_task(
                     "api",
-                    api::run(store.clone(), cfg.api_addr.clone().into_iter(), keystore),
+                    api::run(
+                        store.node_id(),
+                        store.clone(),
+                        cfg.api_addr.clone().into_iter(),
+                        keystore,
+                    ),
                 );
                 Ok::<BanyanStore, anyhow::Error>(store)
             })?;
 
-            self.state = Some(InternalStoreState { rt, _store: store });
+            self.state = Some(InternalStoreState { rt, store });
             Ok(())
         } else {
             anyhow::bail!("no config")
@@ -92,7 +119,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
 }
 struct InternalStoreState {
     rt: tokio::runtime::Runtime,
-    _store: BanyanStore,
+    store: BanyanStore,
 }
 /// Struct wrapping the store service and handling its lifecycle.
 pub(crate) struct Store {
