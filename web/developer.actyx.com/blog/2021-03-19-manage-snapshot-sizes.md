@@ -42,7 +42,7 @@ const snapshotSize = (snapshot: unknown) =>
 export const SomeFish = {
     of: (): Fish<S, E> => ({
         // fish details omitted
-        deserializeState: (snapshot) => {
+        deserializeState: (snapshot: unknown) => {
             console.debug('Deserializing snapshot of size ' + snapshotSize(snapshot))
             return snapshot as S
         }
@@ -128,8 +128,8 @@ export const pushEventTag = Tag<PushEvent>('pushed')
 Pond.default()
   .then(pond => {
     setInterval(() => pond.emit(pushEventTag, { content: Date() }), 150)
-    pond.observe(BoringFish.of(), state => console.log('BoringFish has ', state.length + ' items'))
-    pond.observe(CompressingFish.of(), state => console.log('CompressedFish has ', state.data.length + ' items'))
+    pond.observe(BoringFish.of(), state => console.log(`BoringFish has ${state.data.length} items`))
+    pond.observe(CompressingFish.of(), state => console.log(`CompressedFish has ${state.data.length} items`))
   })
   .catch(console.error)
 ```
@@ -142,12 +142,12 @@ type State = { data: string[] }
 export const BoringFish = {
     of: (): Fish<State, PushEvent> => ({
         fishId: FishId.of('BoringFish', 'Carp', 0),
-        initialState: [],
+        initialState: { data: [] },
         where: pushEventTag,
         onEvent: (state, event) => {
             return { data: [...state.data, event.content] }
         },
-        deserializeState: (snapshot) => {
+        deserializeState: (snapshot: unknown) => {
             console.debug('Deserializing RAW snapshot of size ' + snapshotSize(snapshot))
             return snapshot as State
         }
@@ -183,7 +183,7 @@ export const CompressingFish = {
                 toJSON: () => pack(data)
             }
         },
-        deserializeState: (zipped) => { 
+        deserializeState: (zipped: unknown) => { 
             console.debug('Deserializing COMPRESSED snapshot of size ' + snapshotSize(zipped))
             return { data: JSON.parse(unpack(zipped)) } as CompressedState 
         }
@@ -192,12 +192,13 @@ export const CompressingFish = {
 ```
 
 When we keep this running for some time, we should see that ...
+
 * ... both fishes have the same number of items in their state
 * ... the size of the compressed snapshot should be significantly smaller than the uncompressed one (well, d'uh!)
 
 And indeed, the logs confirm both assumptions.
 
-```
+```sh
 CompressedFish has 92137 items
 Deserializing RAW snapshot of size 6.063MB
 BoringFish has 92138 items
