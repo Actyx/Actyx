@@ -9,7 +9,7 @@ fn main() {
 #[cfg(windows)]
 fn main() -> Result<(), anyhow::Error> {
     if let Err(e) = win::run() {
-        message_box::create("Actyx exited unexpectedly", &*format!("{}", e))?
+        message_box::create("Actyx stopped", &*format!("{}", e))?
     }
     Ok(())
 }

@@ -25,11 +25,11 @@ pub type NodeProcessResult<T> = std::result::Result<T, NodeError>;
 
 #[derive(Error, Debug, Clone)]
 pub enum NodeError {
-    #[error("Actyx shut down because Actyx services could not be started. Please refer to FIXME for more information. ({component}: {err:#})")]
+    #[error("NODE_STOPPED_BY_NODE\nActyx shut down because Actyx services could not be started. Please refer to FIXME for more information. ({component}: {err:#})")]
     ServicesStartup { component: String, err: Arc<anyhow::Error> },
-    #[error("Error: internal error. Please contact Actyx support. ({0})")]
+    #[error("NODE_STOPPED_BY_NODE\nError: internal error. Please contact Actyx support. ({0})")]
     InternalError(Arc<anyhow::Error>),
-    #[error("Actyx shut down because it could not bind to port {port}. Please specify a different port for {component}. Please refer to FIXME for more information.")]
+    #[error("ERR_PORT_COLLISION\nActyx shut down because it could not bind to port {port}. Please specify a different {component} port. Please refer to FIXME for more information.")]
     PortCollision { component: String, port: u16 },
 }
 impl From<Arc<anyhow::Error>> for NodeError {

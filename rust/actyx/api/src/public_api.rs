@@ -34,7 +34,7 @@ pub async fn run(store: BanyanStore, bind_to: impl Iterator<Item = SocketAddr> +
         .into_iter()
         .map(|i| {
             serve_it(i, api.clone().boxed()).map_err(move |e| {
-                e.context(node_error_context::Component("api".into()))
+                e.context(node_error_context::Component("API".into()))
                     .context(node_error_context::BindingFailed(i.port()))
             })
         })
