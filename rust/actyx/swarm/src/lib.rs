@@ -21,13 +21,14 @@ pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
 pub use crate::v1::{EventStore, HighestSeen, Present, SnapshotStore};
 pub use ax_config::StoreConfig;
+use util::formats::node_error_context;
 
 use crate::connectivity::ConnectivityState;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
 use crate::streams::{OwnStreamInner, ReplicatedStreamInner, StreamMaps};
 use actyxos_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr, TagSet, Timestamp};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use ax_futures_util::{prelude::*, stream::variable::Variable};
 use banyan::{
     forest::{self, BranchCache},
@@ -196,7 +197,17 @@ impl BanyanStore {
         };
         let ipfs = Ipfs::new(config).await?;
         for addr in cfg.ipfs_node.listen {
-            let bound_addr = ipfs.listen_on(addr).await?;
+            let bound_addr = ipfs.listen_on(addr.clone()).await.with_context(|| {
+                let port = addr
+                    .iter()
+                    .find_map(|x| match x {
+                        Protocol::Tcp(p) => Some(p),
+                        Protocol::Udp(p) => Some(p),
+                        _ => None,
+                    })
+                    .unwrap_or_default();
+                node_error_context::BindingFailed(port)
+            })?;
             tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr);
         }
         for addr in cfg.ipfs_node.external_addresses {

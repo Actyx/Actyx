@@ -17,7 +17,7 @@ use crossbeam::{
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::*;
-use util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
+use util::formats::{node_error_context, ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 
 pub type ApiResult<T> = ActyxOSResult<T>;
 
@@ -25,18 +25,36 @@ pub type NodeProcessResult<T> = std::result::Result<T, NodeError>;
 
 #[derive(Error, Debug, Clone)]
 pub enum NodeError {
-    #[error("Actyx shut down because Actyx services could not be started. Please refer to FIXME for more information. ({component}: {err})")]
-    ServicesStartup {
-        component: ComponentType,
-        err: Arc<anyhow::Error>,
-    },
+    #[error("Actyx shut down because Actyx services could not be started. Please refer to FIXME for more information. ({component}: {err:#})")]
+    ServicesStartup { component: String, err: Arc<anyhow::Error> },
     #[error("Error: internal error. Please contact Actyx support. ({0})")]
     InternalError(Arc<anyhow::Error>),
     #[error("Actyx shut down because it could not bind to port {port}. Please specify a different port for {component}. Please refer to FIXME for more information.")]
-    PortCollision { component: ComponentType, port: u16 },
+    PortCollision { component: String, port: u16 },
+}
+impl From<Arc<anyhow::Error>> for NodeError {
+    fn from(err: Arc<anyhow::Error>) -> Self {
+        use node_error_context::*;
+        match (err.downcast_ref::<Component>(), err.downcast_ref::<BindingFailed>()) {
+            (Some(Component(component)), Some(BindingFailed(port))) => NodeError::PortCollision {
+                component: component.into(),
+                port: *port,
+            },
+            (Some(Component(component)), None) => NodeError::ServicesStartup {
+                component: component.into(),
+                err,
+            },
+            _ => NodeError::InternalError(err),
+        }
+    }
+}
+impl From<anyhow::Error> for NodeError {
+    fn from(err: anyhow::Error) -> Self {
+        Arc::new(err).into()
+    }
 }
 
-pub trait NodeErrorResultExt<T> {
+trait NodeErrorResultExt<T> {
     fn internal(self) -> NodeProcessResult<T>;
 }
 impl<T, E: Into<anyhow::Error>> NodeErrorResultExt<T> for Result<T, E> {
@@ -276,7 +294,7 @@ impl Node {
         self.send(NodeEvent::StateUpdate(self.state.clone())).internal()?;
         tracing::info!(target: "NODE_STARTED_BY_HOST", "Actyx is running.");
 
-        loop {
+        let exit_result = loop {
             select! {
                 recv(self.rx) -> msg => {
                     let event = msg.internal()?;
@@ -292,20 +310,23 @@ impl Node {
                         ExternalEvent::ShutdownRequested(r) => {
                             // Signal shutdown right away, otherwise the logging component might
                             // have already stopped
-                            match r {
+                            let exit_result = match r {
                                 ShutdownReason::TriggeredByHost => {
                                     info!(target: "NODE_STOPPED_BY_HOST", "Actyx is stopped. The shutdown was either initiated automatically by the host or intentionally by the user. Please refer to FIXME for more information.");
+                                    Ok(())
                                 }
                                 ShutdownReason::TriggeredByUser => {
-                                    info!(target: "NODE_STOPPED_BY_NODEUI", "Actyx is stopped. The shutdown initiated by the user. Please refer to FIXME for more information.")
+                                    info!(target: "NODE_STOPPED_BY_NODEUI", "Actyx is stopped. The shutdown initiated by the user. Please refer to FIXME for more information.");
+                                    Ok(())
                                 }
-                                ShutdownReason::Internal(ref r) => {
-                                    error!(target: "NODE_STOPPED_BY_NODE", "{}", r);
+                                ShutdownReason::Internal(ref err) => {
+                                    error!(target: "NODE_STOPPED_BY_NODE", "{}", err);
+                                    Err(err.clone())
                                 }
-                            }
+                            };
                             // Notify all registered components
                             self.send(NodeEvent::Shutdown(r)).internal()?;
-                            break;
+                            break exit_result;
                         }
                     };
                     if let Err(e) = result {
@@ -318,17 +339,15 @@ impl Node {
                     debug!("Received component state transition: {} {:?}", from_component, new_state);
                     if let ComponentState::Errored(e) = new_state {
                         warn!("Shutting down because component {} errored: \"{}\"", from_component, e);
-                        let err = NodeError::ServicesStartup {
-                            component: from_component,
-                            err: Arc::new(e)
-                        };
+                        let err: NodeError = e.context(node_error_context::Component(format!("{}", from_component))).into();
+
                         error!(target: "NODE_STOPPED_BY_NODE", "{}", err);
                         self.send(NodeEvent::Shutdown(ShutdownReason::Internal(err.clone()))).internal()?;
                         return Err(err);
                     }
                 }
             }
-        }
+        };
 
         // Wait for registered components to stop, at most 500 ms
         let mut stopped_components = 0;
@@ -341,7 +360,7 @@ impl Node {
             }
         }
 
-        Ok(())
+        exit_result
     }
 }
 

@@ -8,6 +8,7 @@ use crate::{
     formats::ExternalEvent,
     settings::{SettingsRequest, SYSTEM_SCOPE},
 };
+use anyhow::Context;
 use crossbeam::channel::Sender;
 use crypto::PublicKey;
 use formats::NodesRequest;
@@ -15,12 +16,13 @@ use futures::{
     future::BoxFuture,
     pin_mut,
     stream::FuturesUnordered,
-    task::{Context, Poll},
+    task::{self, Poll},
     Future, FutureExt, StreamExt,
 };
 use libp2p::{
     core::{muxing::StreamMuxerBox, transport::Boxed},
     identity,
+    multiaddr::Protocol,
     ping::{Ping, PingConfig, PingEvent},
     swarm::{
         IntoProtocolsHandler, NetworkBehaviour, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters,
@@ -35,7 +37,8 @@ use std::{convert::TryFrom, pin::Pin, sync::Arc, time::Duration};
 use tracing::*;
 use util::formats::{
     admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
-    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, InternalRequest, InternalResponse, LogEvent,
+    node_error_context, ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, InternalRequest, InternalResponse,
+    LogEvent,
 };
 use util::SocketAddrHelper;
 
@@ -234,7 +237,7 @@ impl ApiBehaviour {
 
     /// The main purpose of this function is to shovel responses from any pending
     /// requests (for example logs or to the node) to libp2p.
-    fn poll(&mut self, cx: &mut Context,_: &mut impl PollParameters) ->
+    fn poll(&mut self, cx: &mut task::Context,_: &mut impl PollParameters) ->
     Poll<NetworkBehaviourAction<<<<Self as
     NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as
     ProtocolsHandler>::InEvent, ()>>{
@@ -358,7 +361,7 @@ pub(crate) async fn mk_swarm(
     logsvcd: LoggingTx,
     store: StoreTx,
     auth_info: Arc<Mutex<NodeApiSettings>>,
-) -> ActyxOSResult<(PeerId, WrappedBehaviour)> {
+) -> anyhow::Result<(PeerId, WrappedBehaviour)> {
     let (peer_id, transport) = mk_transport(keypair).await?;
     let protocol = ApiBehaviour::new(node_tx, logsvcd, store, auth_info);
 
@@ -374,7 +377,17 @@ pub(crate) async fn mk_swarm(
     // [0] https://github.com/libp2p/rust-libp2p/blob/master/transports/tcp/src/lib.rs#L322
     for addr in bind_to.to_multiaddrs() {
         debug!("Admin API trying to bind to {}", addr);
-        Swarm::listen_on(&mut swarm, addr.clone()).ax_err(ActyxOSCode::ERR_INVALID_INPUT)?;
+        Swarm::listen_on(&mut swarm, addr.clone()).with_context(|| {
+            let port = addr
+                .iter()
+                .find_map(|x| match x {
+                    Protocol::Tcp(p) => Some(p),
+                    Protocol::Udp(p) => Some(p),
+                    _ => None,
+                })
+                .unwrap_or_default();
+            node_error_context::BindingFailed(port)
+        })?;
     }
 
     Ok((peer_id, swarm))
@@ -395,7 +408,7 @@ impl SwarmFuture {
     }
 
     /// Poll the swarm once
-    pub(crate) fn poll_swarm(&mut self, cx: &mut Context) -> futures::task::Poll<SwarmEvent<(), TConnErr>> {
+    pub(crate) fn poll_swarm(&mut self, cx: &mut task::Context) -> futures::task::Poll<SwarmEvent<(), TConnErr>> {
         let fut = self.swarm().next_event();
         pin_mut!(fut);
         fut.poll(cx)
@@ -405,7 +418,7 @@ impl SwarmFuture {
 impl Future for SwarmFuture {
     type Output = ();
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut task::Context) -> Poll<Self::Output> {
         // poll the swarm until pending
         while let Poll::Ready(event) = self.poll_swarm(cx) {
             match event {

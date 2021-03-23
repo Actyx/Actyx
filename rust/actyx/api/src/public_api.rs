@@ -1,5 +1,6 @@
-use futures::future::try_join_all;
-use std::net::SocketAddr;
+use futures::{future::try_join_all, TryFutureExt};
+use std::{net::SocketAddr, sync::Arc};
+use util::{ax_panic, formats::node_error_context};
 use warp::{http::Method, Filter};
 
 use crate::hyper_serve::serve_it;
@@ -32,10 +33,20 @@ pub async fn run(store: BanyanStore, bind_to: impl Iterator<Item = SocketAddr> +
     let tasks = bind_to
         .into_iter()
         .map(|i| {
-            let (addr, task) = serve_it(i, api.clone().boxed()).unwrap();
+            serve_it(i, api.clone().boxed()).map_err(move |e| {
+                e.context(node_error_context::Component("api".into()))
+                    .context(node_error_context::BindingFailed(i.port()))
+            })
+        })
+        .map(|i| async move {
+            let (addr, task) = i?;
             tracing::info!(target: "API_BOUND", "API bound to {}.", addr);
-            task
+            task.await
         })
         .collect::<Vec<_>>();
-    try_join_all(tasks).await.unwrap();
+    // This error will be propagated by a `panic!`, so we have to wrap this into
+    // an `Arc` in order to properly extract it later in the node's panic hook
+    if let Err(e) = try_join_all(tasks).map_err(Arc::new).await {
+        ax_panic!(e);
+    }
 }
