@@ -33,7 +33,7 @@ While it is uncommon for fishes to grow that large, there are cases in which it 
 
 In development, you can easily review the sizes of existing snapshots by hooking into the `deserializeState` function and logging it. Just don't leave it enabled in production. State deserialization happens _a lot_.
 
-```js
+```ts
 const snapshotSize = (snapshot: unknown) =>
     (Buffer.byteLength(JSON.stringify(snapshot)) / 1024 / 1024)
         .toPrecision(4)
@@ -74,7 +74,7 @@ First, we need a suitable compression library. Our own [Benjamin Sieffert](https
 
 The following sample explores how to use Pako in isolation and how much it compresses some sample data. To generate a reasonable amount of random data, we use the popular [faker library](https://github.com/marak/Faker.js/). We'll compress and decompress a string and an array of objects, look at the compression ratio and make sure the roundtrip does not mess with our data.
 
-```js
+```ts
 /*
   package.json:
   "devDependencies": {
@@ -131,7 +131,7 @@ Now that we know how to use the compression library and what to expect from it, 
 
 As a test scenario, we'll emit an event with the current datetime every few milliseconds and subscribe to it once with and once without compressing the snapshots. After we keep that running for a few hours, we compare the snapshot sizes as described above.
 
-```js
+```ts
 import { Pond } from '@actyx/pond'
 import { CompressingFish, BoringFish } from '../fish'
 
@@ -149,7 +149,7 @@ Pond.default()
 
 The `BoringFish` just aggregates stores all events it receives. We'll keep `deserializeState` from above to track the state's size.
 
-```js
+```ts
 type State = { data: string[] }
 
 export const BoringFish = {
@@ -170,7 +170,7 @@ export const BoringFish = {
 
 In contrast, the `CompressingFish` implements compression using Pako by implementing `deserializeState` in the fish and `toJSON` in the state. `toJSON` will return the compressed data, which might be counter-intuitive. You can think of toJSON() as serialize.
 
-```js
+```ts
 const pack = (data: any): string => Pako.deflate(JSON.stringify(data), { to: 'string' })
 const unpack: any = (zipped: string) => Pako.inflate(zipped as string, { to: 'string' })
 
