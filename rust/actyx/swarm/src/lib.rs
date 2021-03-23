@@ -21,7 +21,7 @@ pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
 pub use crate::v1::{EventStore, HighestSeen, Present, SnapshotStore};
 pub use ax_config::StoreConfig;
-use util::formats::node_error_context;
+use util::formats::NodeErrorContext;
 
 use crate::connectivity::ConnectivityState;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
@@ -212,21 +212,20 @@ impl BanyanStore {
         );
         let ipfs = banyan.ipfs();
         for addr in cfg.ipfs_node.listen {
-            let bound_addr = ipfs
-                .listen_on(addr.clone())
-                .await
-                .with_context(|| {
-                    let port = addr
-                        .iter()
-                        .find_map(|x| match x {
-                            Protocol::Tcp(p) => Some(p),
-                            Protocol::Udp(p) => Some(p),
-                            _ => None,
-                        })
-                        .unwrap_or_default();
-                    node_error_context::BindingFailed(port)
-                })
-                .with_context(|| node_error_context::Component("swarm".into()))?;
+            let bound_addr = ipfs.listen_on(addr.clone()).await.with_context(|| {
+                let port = addr
+                    .iter()
+                    .find_map(|x| match x {
+                        Protocol::Tcp(p) => Some(p),
+                        Protocol::Udp(p) => Some(p),
+                        _ => None,
+                    })
+                    .unwrap_or_default();
+                NodeErrorContext::BindFailed {
+                    port,
+                    component: "Swarm".into(),
+                }
+            })?;
 
             tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr);
         }

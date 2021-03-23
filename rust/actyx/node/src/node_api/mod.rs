@@ -37,8 +37,8 @@ use std::{convert::TryFrom, pin::Pin, sync::Arc, time::Duration};
 use tracing::*;
 use util::formats::{
     admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
-    node_error_context, ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, InternalRequest, InternalResponse,
-    LogEvent,
+    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, InternalRequest, InternalResponse, LogEvent,
+    NodeErrorContext,
 };
 use util::SocketAddrHelper;
 
@@ -386,7 +386,10 @@ pub(crate) async fn mk_swarm(
                     _ => None,
                 })
                 .unwrap_or_default();
-            node_error_context::BindingFailed(port)
+            NodeErrorContext::BindFailed {
+                port,
+                component: "Admin".into(),
+            }
         })?;
     }
 

@@ -17,7 +17,7 @@ use crossbeam::{
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::*;
-use util::formats::{node_error_context, ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
+use util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt, NodeErrorContext};
 
 pub type ApiResult<T> = ActyxOSResult<T>;
 
@@ -34,17 +34,15 @@ pub enum NodeError {
 }
 impl From<Arc<anyhow::Error>> for NodeError {
     fn from(err: Arc<anyhow::Error>) -> Self {
-        use node_error_context::*;
-        match (err.downcast_ref::<Component>(), err.downcast_ref::<BindingFailed>()) {
-            (Some(Component(component)), Some(BindingFailed(port))) => NodeError::PortCollision {
-                component: component.into(),
-                port: *port,
-            },
-            (Some(Component(component)), None) => NodeError::ServicesStartup {
-                component: component.into(),
-                err,
-            },
-            _ => NodeError::InternalError(err),
+        if let Some(ctx) = err.downcast_ref::<NodeErrorContext>() {
+            match ctx {
+                NodeErrorContext::BindFailed { port, component } => Self::PortCollision {
+                    port: *port,
+                    component: component.into(),
+                },
+            }
+        } else {
+            NodeError::InternalError(err)
         }
     }
 }
@@ -339,7 +337,7 @@ impl Node {
                     debug!("Received component state transition: {} {:?}", from_component, new_state);
                     if let ComponentState::Errored(e) = new_state {
                         warn!("Shutting down because component {} errored: \"{}\"", from_component, e);
-                        let err: NodeError = e.context(node_error_context::Component(format!("{}", from_component))).into();
+                        let err: NodeError = e.into(); //FIXME .context(NodeErrorContext::Component(format!("{}", from_component))).into();
 
                         error!(target: "NODE_STOPPED_BY_NODE", "{}", err);
                         self.send(NodeEvent::Shutdown(ShutdownReason::Internal(err.clone()))).internal()?;

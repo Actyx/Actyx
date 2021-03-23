@@ -14,12 +14,10 @@ pub const ACTYXOS_ID: &str = "com.actyx.os";
 #[derive(Deserialize, PartialEq, Clone, Debug, From, Into, AsRef, Display)]
 pub struct NodeName(pub String);
 
-pub mod node_error_context {
-    use super::*;
-    #[derive(Debug, Display)]
-    pub struct BindingFailed(pub u16);
-    #[derive(Debug, Display)]
-    pub struct Component(pub String);
+#[derive(Debug, Display)]
+pub enum NodeErrorContext {
+    #[display(fmt = "Bind failed on port {} for {}", port, component)]
+    BindFailed { port: u16, component: String },
 }
 
 #[macro_export]

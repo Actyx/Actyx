@@ -7,7 +7,7 @@ mod util;
 
 use std::{net::SocketAddr, sync::Arc};
 
-use actyx_util::{ax_panic, formats::node_error_context};
+use actyx_util::{ax_panic, formats::NodeErrorContext};
 use actyxos_sdk::NodeId;
 use crypto::KeyStoreRef;
 use futures::{future::try_join_all, TryFutureExt};
@@ -27,8 +27,10 @@ pub async fn run(
         .into_iter()
         .map(|i| {
             serve_it(i, api.clone().boxed()).map_err(move |e| {
-                e.context(node_error_context::Component("API".into()))
-                    .context(node_error_context::BindingFailed(i.port()))
+                e.context(NodeErrorContext::BindFailed {
+                    port: i.port(),
+                    component: "API".into(),
+                })
             })
         })
         .map(|i| async move {
