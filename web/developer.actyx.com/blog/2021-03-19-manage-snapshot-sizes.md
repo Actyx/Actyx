@@ -28,7 +28,7 @@ So, while the Pond already takes care of a lot of things for you, there still ar
 
 ## Fish state size considerations
 
-One case that requires special care is if the size of a snapshot exceeds `128MB`. If it does happen, the Pond will let you know by throwing the message `Cxn error: Max payload size exceeded` at you. If this happens, you need to review your state management, implement mitigation measueres and increase the `FishId`'s version field afterwards.
+One case that requires special care is if the size of a snapshot exceeds `128MB`. If it does happen, the Pond will let you know by throwing the message `Cxn error: Max payload size exceeded` at you. Now it is up to you to review your state management, implement mitigation measueres and increase the `FishId`'s version field afterwards.
 While it is uncommon for fish to grow that large, there are cases in which it might be required. In any case, you should consider the state's estimated size over time in your designs as not to be caught off guard.
 
 In development, you can easily review the sizes of existing snapshots by hooking into the `deserializeState` function and logging it. Just don't leave it enabled in production. State deserialization happens _a lot_.
@@ -50,7 +50,7 @@ export const SomeFish = {
 }
 ```
 
-When designing your system, you'll want to model one physical object, process or concept from your problem domain as one fish. This helps you reason and talk about your business domain without having to mentally map additional abstractions. Oftentimes, this quite naturally leads to reasonable sized fish states. With the next version, we're moving to the concept of `local twins` which communicates this 1:1 relationship more explicitly.
+When designing your system, you'll want to model one physical object, process or concept from your problem domain as one fish. This helps you reason and talk about your business domain without having to mentally map additional abstractions. Oftentimes, this quite naturally leads to reasonable sized fish states. With the next version of Actyx, we're moving to the concept of `local twins` which communicates this 1:1 relationship more explicitly.
 
 ### Fat fish
 
@@ -59,8 +59,8 @@ Two scenarios that tend to lead to large fish states are a) timeseries data and 
 Regarding a), one use case is to visualize sensor logging data.
 We'd recommend not to keep timeseries data around in your state for longer periods of time but to push them to external data sinks and flush them from your state once they have been committed. From the external sink, these data can be vizualised using Grafana or similar. Delegate the vizualisation for timeseries to specialized systems and don't implement it yourself in an Actyx application. Not only does this circumvent the size limitation. It also provides you with specialized tooling for vizualisation instead of leaving you on your own to implement this with chart.js, highcharts or even vanilla JavaScript + SVG. I've seen this pay off over and over again once changes in charts have been requested.
 
-While exporting to exteral systems is common, the other pattern that can lead to large-ish fish states relates to exactly that. _If_ data from events maps more or less directly to rows in database relations in a 1:1 fashion and _if_ the database is available most of the time, there should be no issues in terms of state size.
-But if the state you're looking to export is computed from a larger number of different event types over a larger period of time it may be required to keep more data around to figure out which parts of the database to update. This challenge and solution patterns are described in more detail in [Real-time dashboards and reports made efficient and resilient](https://www.actyx.com/news/2020/6/24/real-time_dashboards_and_reports_made_efficient_and_resilient).
+While exporting to external systems is common, the other pattern that can lead to large-ish fish states relates to exactly that. _If_ data from events maps more or less directly to rows in database relations in a 1:1 fashion and _if_ the database is available most of the time, there should be no issues in terms of state size.
+But if the state you're looking to export is computed from a larger number of different event types over a larger period of time it may be required to keep more data around to figure out which parts of the database to update. This challenge and solution patterns are discussed in more detail in [Real-time dashboards and reports made efficient and resilient](https://www.actyx.com/news/2020/6/24/real-time_dashboards_and_reports_made_efficient_and_resilient).
 
 In this case, compressing the fish state's snapshots helps to avoid running into the `128MB` limitation.
 
@@ -215,7 +215,7 @@ BoringFish has 92781 items
 
 Now that we got it working, let's look at the code we've produced. Wrangling `toJSON` into our state in multiple locations is pretty ugly and could get out of hand quickly with growing numbers of fish. We mixed up our business code (the state) with technical concerns (serialization). Let's see whether we can do better. Wouldn't it be nice to have a way to make existing fish compress their state without us having to modify them?
 
-To do so, we can implement a fish that just wraps an existing one, providing the functions required for (de-)compression as decoration. This requires the following parts:
+To do so, we can implement a wrapper for existing fishes, providing the functions required for (de-)compression as decoration. This requires the following parts:
 
 * A generic wrapper for `State` types adding the `toJSON` function
 * A function accepting a fish and returning the decorated one
