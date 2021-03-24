@@ -17,7 +17,7 @@ The Actyx Pond ships with reasonable defaults for creating and retaining snapsho
 
 ## Recap: Events, State and Snapshots
 
-The state of any given entity in an event-sourced system (a `Fish` in the `Pond`, in our case) at any point in time is defined by the stream of events relevant this entity up to this time. The state is computed by applying these events one by one in chronological order. This means that, the larger the number of events to apply, the more computational resources are required to reach the resulting state.
+The state of any given entity in an event-sourced system (a `Fish` in the `Pond`, in our case) at any point in time is defined by the stream of events relevant to this entity up to this time. The state is computed by applying these events one by one in chronological order. This means, the larger the number of events to apply, the more computational resources are required to reach the resulting state.
 
 To prevent having to apply _all_ relevant events each time we want to look at the state, we employ [snapshots](https://developer.actyx.com/docs/pond/guides/snapshots). A snapshot is the persisted result of computing the state for a given point in time. Now, when we look at the state, we don't have to apply all events but only those that happened after the time the snapshot was taken.
 
