@@ -21,15 +21,15 @@ The state of any given entity in an event-sourced system (a `Fish` in the `Pond`
 
 To prevent having to apply _all_ relevant events each time we want to look at the state, we employ [snapshots](https://developer.actyx.com/docs/pond/guides/snapshots). A snapshot is the persisted result of computing the state for a given point in time. Now, when we look at the state, we don't have to apply all events but only those that happened after the time the snapshot was taken.
 
-Actyx pond transparently manages snapshot creation, persistence and application for you. About every 1000 events, a snapshot is persisted, if the base event is older than one hour. Additionally, the Pond retains snapshots from the past to aid with [longer time travel distances](https://developer.actyx.com/docs/pond/guides/time-travel). 
+Actyx pond transparently manages snapshot creation, persistence and application for you. About every 1000 events, a snapshot is persisted, if the base event is older than one hour. Additionally, the Pond retains snapshots from the past to aid with [longer time travel distances](https://developer.actyx.com/docs/pond/guides/time-travel).
 In case an event leads to the state being completely replaced, you can let the Pond know by returning `true` from the fishes' `isReset` function. This prevents the Pond from unneccessarily going back further in time to compute the state. You can find an example in [Semantic Snapshots](https://developer.actyx.com/docs/pond/guides/snapshots).
 
 So, while the Pond already takes care of a lot of things for you, there still are cases in which you have or want to influence the default behaviour.
 
 ## Fish state size considerations
 
-One case that requires special care is if the size of a snapshot exceeds `128MB`. If it does happen, the Pond will let you know by throwing the message `Cxn error: Max payload size exceeded` at you.
-While it is uncommon for fishes to grow that large, there are cases in which it might be required. In any case, you should consider the state's estimated size over time in your designs as not to be caught off guard.
+One case that requires special care is if the size of a snapshot exceeds `128MB`. If it does happen, the Pond will let you know by throwing the message `Cxn error: Max payload size exceeded` at you. If this happens, you need to review your state management, implement mitigation measueres and increase the `FishId`'s version field afterwards.
+While it is uncommon for fish to grow that large, there are cases in which it might be required. In any case, you should consider the state's estimated size over time in your designs as not to be caught off guard.
 
 In development, you can easily review the sizes of existing snapshots by hooking into the `deserializeState` function and logging it. Just don't leave it enabled in production. State deserialization happens _a lot_.
 
@@ -52,7 +52,7 @@ export const SomeFish = {
 
 When designing your system, you'll want to model one physical object, process or concept from your problem domain as one fish. This helps you reason and talk about your business domain without having to mentally map additional abstractions. Oftentimes, this quite naturally leads to reasonable sized fish states. With the next version, we're moving to the concept of `local twins` which communicates this 1:1 relationship more explicitly.
 
-### Fat fishes
+### Fat fish
 
 Two scenarios that tend to lead to large fish states are a) timeseries data and b) exports of aggregated data to external systems like databases for analytics, especially if the target systems are unavailable periodically.
 
@@ -193,7 +193,7 @@ export const CompressingFish = {
 
 When we keep this running for some time, we should see that ...
 
-* ... both fishes have the same number of items in their state
+* ... both fish have the same number of items in their state
 * ... the size of the compressed snapshot should be significantly smaller than the uncompressed one (well, d'uh!)
 
 And indeed, the logs confirm both assumptions.
@@ -207,25 +207,90 @@ CompressedFish has 92138 items
 ...
 Deserializing COMPRESSED snapshot of size 1.025MB
 CompressedFish has  92781 items
-Deserializing uncompressed snapshot of size 6.105MB
-BoringFish has  92781 items
+Deserializing RAW snapshot of size 6.105MB
+BoringFish has 92781 items
 ```
 
 ### Cleaning up
 
-Now that we got it working, let's look at the code we've produced. Wrangling `toJSON` into our state in multiple locations is pretty ugly. We mixed up our business code (the state) with technical concerns (serialization). Let's see whether we can do better. Wouldn't it be nice to have a way to make existing fishes compress their state without us having to modify them?
+Now that we got it working, let's look at the code we've produced. Wrangling `toJSON` into our state in multiple locations is pretty ugly and could get out of hand quickly with growing numbers of fish. We mixed up our business code (the state) with technical concerns (serialization). Let's see whether we can do better. Wouldn't it be nice to have a way to make existing fish compress their state without us having to modify them?
 
-TODO: Add compressing wrapper
+To do so, we can implement a fish that just wraps an existing one, providing the functions required for (de-)compression as decoration. This requires the following parts:
 
-Kudos to [Alex](https://github.com/Alexander89) for coming up with this.
+* A generic wrapper for `State` types adding the `toJSON` function
+* A function accepting a fish and returning the decorated one
 
+The decoration consists of the `toJSON` and `deserializeState` functions we discussed above. Additionally, we need to allow the system to discriminate between compressed and raw snapshots. Every other part is just delegated to the orignial fish.
 
+```ts
+type CompressingStateWrapper<S> = S & { toJSON: () => string } // base state type + toJSON
+
+export const asCompressingFish = <S, E>(fish: Fish<S, E>): Fish<CompressingStateWrapper<S>, E> => ({
+    fishId: FishId.of(
+        `${fish.fishId.entityType}.zip`, // discriminate between raw and compressed snapshots
+        fish.fishId.name, 
+        fish.fishId.version ),
+    where: fish.where,
+    initialState: {
+        ...fish.initialState,
+        toJSON: function () { return Pako.deflate(JSON.stringify(fish.initialState), { to: 'string' }) }
+    },
+    deserializeState: (zipped: unknown) => {
+        console.debug('Deserializing WRAPPED snapshot of size ' + snapshotSize(zipped))
+        return {
+            ...JSON.parse(Pako.inflate(zipped as string, { to: 'string' })),
+            toJSON: function () { 
+                const { toJSON: _, ...rest } = this
+                return Pako.deflate(JSON.stringify(rest), { to: 'string' })
+            },
+        } as CompressingStateWrapper<S>
+    },
+
+    isReset: fish.isReset,
+    onEvent: (state, event, metadata) => {
+        return {
+            ...fish.onEvent(state, event, metadata),
+            toJSON: function () { 
+                const { toJSON: _, ...rest } = this
+                return Pako.deflate(JSON.stringify(rest), { to: 'string' }) 
+            }
+        }
+    }
+})
+```
+
+Note that, if you observe the orginal fish alongside the wrapped instance, you will still get uncompressed snapshots as well.
+
+Kudos to [Alex](https://github.com/Alexander89) for coming up with this pattern.
+
+To see it in action, we just add a wrapped fish to our Pond from the test scenario.
+
+```ts
+pond.observe(
+    asCompressingFish(BoringFish.of()),
+    state => console.log(`Wrapped BoringFish has ${state.data.length} items`))
+```
+
+When looking at the logs now, we see that the size of the wrapped fishes' state corresponds to the one we manually added compression to.
+
+```sh
+Deserializing WRAPPED snapshot of size 0.1725MB
+Wrapped BoringFish has 18094 items
+Deserializing COMPRESSED snapshot of size 0.1725MB
+CompressedFish has 18094 items
+Deserializing RAW snapshot of size 1.191MB
+BoringFish has 18094 items
+```
 
 ## Wrapping up
 
-We looked at some ways to reason about the size of fish states and how influence the way snapshots are persisted.
+We looked at some ways to reason about the size of fish states and how to influence the way snapshots are persisted.
 
-If you assume you'll be running into the `128MB` snapshot size limitation, you can use the code above to create similar scenario using your own data to validate it. Also, do not hesitate to get in touch. We're always curious to learn how you're using Actyx, what works for you and where your pain points are.
+If you assume you'll be running into the `128MB` snapshot size limitation, your first impulse should be to validate whether this is really required. Check whether it is possible to segment and/or clean up state as part of its segmentation. Besides the size limitation, carrying around a lot of large state snapshots can have a negative impact on the system's performance. Also verify that, if you're pushing state to an external system, that it is not unavailable for longer periods of time.
+In case this does not mitigate the issue, you can use the compression wrapper to compress it.
+
+You can use the code above to create similar scenarios using your own data to validate it. Also, do not hesitate to get in touch. We're always curious to learn how you're using Actyx, what works for you and where your pain points are.
+
 
 ---
 Credits: pufferfish photo by [Brian Yurasits](https://unsplash.com/@brian_yuri?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText)
