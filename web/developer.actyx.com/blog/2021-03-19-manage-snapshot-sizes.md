@@ -21,8 +21,8 @@ The state of any given entity in an event-sourced system (a `Fish` in the `Pond`
 
 To prevent having to apply _all_ relevant events each time we want to look at the state, we employ [snapshots](https://developer.actyx.com/docs/pond/guides/snapshots). A snapshot is the persisted result of computing the state for a given point in time. Now, when we look at the state, we don't have to apply all events but only those that happened after the time the snapshot was taken.
 
-Actyx pond transparently manages snapshot creation, persistence and application for you. About every 1000 events, a snapshot is persisted, if the base event is older than one hour. Additionally, the Pond retains snapshots from the past to aid with [longer time travel distances](https://developer.actyx.com/docs/pond/guides/time-travel).
-In case an event leads to the state being completely replaced, you can let the Pond know by returning `true` from the fishes' `isReset` function. This prevents the Pond from unneccessarily going back further in time to compute the state. You can find an example in [Semantic Snapshots](https://developer.actyx.com/docs/pond/guides/snapshots).
+The Actyx Pond transparently manages snapshot creation, persistence and application for you. About every 1000 events, a snapshot is persisted, if the base event is older than one hour. Additionally, the Pond retains snapshots from the past to aid with [longer time travel distances](https://developer.actyx.com/docs/pond/guides/time-travel).
+If an event leads to the state being completely replaced, you can let the Pond know by returning `true` from the fish's `isReset` function. This prevents the Pond from unnecessarily going back further in time to compute the state. You can find an example in [Semantic Snapshots](https://developer.actyx.com/docs/pond/guides/snapshots).
 
 So, while the Pond already takes care of a lot of things for you, there still are cases in which you have or want to influence the default behaviour.
 
@@ -59,7 +59,7 @@ Two scenarios that tend to lead to large fish states are a) timeseries data and 
 Regarding a), one use case is to visualize sensor logging data.
 We'd recommend not to keep timeseries data around in your state for longer periods of time but to push them to external data sinks and flush them from your state once they have been committed. From the external sink, these data can be vizualised using Grafana or similar. Delegate the vizualisation for timeseries to specialized systems and don't implement it yourself in an Actyx application. Not only does this circumvent the size limitation. It also provides you with specialized tooling for vizualisation instead of leaving you on your own to implement this with chart.js, highcharts or even vanilla JavaScript + SVG. I've seen this pay off over and over again once changes in charts have been requested.
 
-While exporting to external systems is common, the other pattern that can lead to large-ish fish states relates to exactly that. _If_ data from events maps more or less directly to rows in database relations in a 1:1 fashion and _if_ the database is available most of the time, there should be no issues in terms of state size.
+While exporting to external systems is common, the other pattern that can lead to large-ish fish states relates to exactly that. _If_ data from events map more or less directly to rows in database relations in a 1:1 fashion and _if_ the database is available most of the time, there should be no issues in terms of state size.
 But if the state you're looking to export is computed from a larger number of different event types over a larger period of time it may be required to keep more data around to figure out which parts of the database to update. This challenge and solution patterns are discussed in more detail in [Real-time dashboards and reports made efficient and resilient](https://www.actyx.com/news/2020/6/24/real-time_dashboards_and_reports_made_efficient_and_resilient).
 
 In this case, compressing the fish state's snapshots helps to avoid running into the `128MB` limitation.
@@ -73,7 +73,7 @@ The Pond [documentation](https://developer.actyx.com/docs/pond/guides/snapshots)
 First, we need a suitable compression library. Our own [Benjamin Sieffert](https://github.com/benjamin-actyx) recommends [Pako](https://github.com/nodeca/pako), so we'll stick to that for now. However, there [are](https://github.com/rotemdan/lzutf8.js/) [others](https://pieroxy.net/blog/pages/lz-string/index.html) as well. If you do decide to evaluate them, it would be great if you could share the results.
 
 The following sample explores how to use Pako in isolation and how much it compresses some sample data. To generate a reasonable amount of random data, we use the popular [faker library](https://github.com/marak/Faker.js/). We'll compress and decompress a string and an array of objects, look at the compression ratio and make sure the roundtrip does not mess with our data.
-To install the required packages, run `npm install pako faker --save` and `npm install @types/pako @types/faker --save-dev` for the corresponding type definitions.
+To install the required packages, run `npm install pako faker` and `npm install @types/pako @types/faker --save-dev` for the corresponding type definitions.
 
 ```ts
 import * as Pako from 'pako' // compression library
@@ -155,7 +155,7 @@ export const BoringFish = {
 }
 ```
 
-In contrast, the `CompressingFish` implements compression using Pako by implementing `deserializeState` in the fish and `toJSON` in the state. `toJSON` will return the compressed data, which might be counter-intuitive. You can think of toJSON() as serialize.
+In contrast, the `CompressingFish` implements compression using Pako by implementing `deserializeState()` in the fish and `toJSON()` in the state. `toJSON()` will return the compressed data, which might be counter-intuitive. You can think of `toJSON()` as "serialize".
 
 ```ts
 const pack = (data: any): string => Pako.deflate(JSON.stringify(data), { to: 'string' })
@@ -199,7 +199,7 @@ When we keep this running for some time, we should see that ...
 And indeed, the logs confirm both assumptions.
 
 ```sh
-CompressedFish has 92137 items
+CompressedFish has 92138 items
 Deserializing RAW snapshot of size 6.063MB
 BoringFish has 92138 items
 Deserializing COMPRESSED snapshot of size 1.002MB
@@ -215,7 +215,7 @@ BoringFish has 92781 items
 
 Now that we got it working, let's look at the code we've produced. Wrangling `toJSON` into our state in multiple locations is pretty ugly and could get out of hand quickly with growing numbers of fish. We mixed up our business code (the state) with technical concerns (serialization). Let's see whether we can do better. Wouldn't it be nice to have a way to make existing fish compress their state without us having to modify them?
 
-To do so, we can implement a wrapper for existing fishes, providing the functions required for (de-)compression as decoration. This requires the following parts:
+To do so, we can implement a wrapper for existing fish, providing the functions required for (de-)compression as decoration. This requires the following parts:
 
 * A generic wrapper for `State` types adding the `toJSON` function
 * A function accepting a fish and returning the decorated one
@@ -271,7 +271,7 @@ pond.observe(
     state => console.log(`Wrapped BoringFish has ${state.data.length} items`))
 ```
 
-When looking at the logs now, we see that the size of the wrapped fishes' state corresponds to the one we manually added compression to.
+When looking at the logs now, we see that the size of the wrapped fish's state corresponds to the one we manually added compression to.
 
 ```sh
 Deserializing WRAPPED snapshot of size 0.1725MB
@@ -286,12 +286,10 @@ BoringFish has 18094 items
 
 We looked at some ways to reason about the size of fish states and how to influence the way snapshots are persisted.
 
-If you assume you'll be running into the `128MB` snapshot size limitation, your first impulse should be to validate whether this is really required. Check whether it is possible to segment and/or clean up state as part of its segmentation. Besides the size limitation, carrying around a lot of large state snapshots can have a negative impact on the system's performance. Also verify that, if you're pushing state to an external system, that it is not unavailable for longer periods of time.
+If you assume you'll be running into the `128MB` snapshot size limitation, your first impulse should be to validate whether this _really_ is required. Check whether it is possible to segment and/or clean up state as part of its segmentation. Besides the size limitation, carrying around a lot of large state snapshots can have a negative impact on the system's performance. Also verify that, if you're pushing state to an external system, that it is not unavailable for longer periods of time.
 In case this does not mitigate the issue, you can use the compression wrapper to compress it.
 
 You can use the code above to create similar scenarios using your own data to validate it. Also, do not hesitate to get in touch. We're always curious to learn how you're using Actyx, what works for you and where your pain points are.
 
-
 ---
 Credits: pufferfish photo by [Brian Yurasits](https://unsplash.com/@brian_yuri?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText)
-  
