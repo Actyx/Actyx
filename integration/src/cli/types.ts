@@ -220,8 +220,9 @@ export const Response_Users_Keygen = io.union([
     _OK,
     io.type({
       result: io.type({
-        pubKey: io.string,
-        keystorePath: io.string,
+        privateKeyPath: io.string,
+        publicKeyPath: io.string,
+        publicKey: io.string,
       }),
     }),
   ]),

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Actyx AG
+ * Copyright 2021 Actyx AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,31 +32,37 @@
 //! > _Note: this example needs the `client` feature to compile_
 //!
 //! ```no_run
-//! use actyxos_sdk::event_service::{EventService, EventServiceError, Order, Subscription};
-//! use actyxos_sdk::semantics;
+//! use actyxos_sdk::{
+//!   HttpClient,
+//!   service::{EventService, Order, QueryRequest, QueryResponse},
+//! };
 //! use futures::stream::StreamExt;
 //!
 //! #[tokio::main]
-//! pub async fn main() -> Result<(), EventServiceError> {
-//!     // client for locally running ActyxOS Event Service
-//!     let service = EventService::default();
+//! pub async fn main() -> anyhow::Result<()> {
+//!   // client for locally running Actyx Event Service
+//!   let service = HttpClient::default().await?;
 //!
-//!     // retrieve largest currently known event stream cursor
-//!     let offsets = service.get_offsets().await?;
+//!   // retrieve largest currently known event stream cursor
+//!   let offsets = service.offsets().await?;
 //!
-//!     // all events matching the given subscription
-//!     // sorted backwards, i.e. youngest to oldest
-//!     let sub = vec![Subscription::wildcard(semantics!("MyFish"))];
-//!     let mut events = service
-//!         .query_upto(offsets, sub, Order::LamportReverse)
-//!         .await?;
+//!   // all events matching the given subscription
+//!   // sorted backwards, i.e. youngest to oldest
+//!   let mut events = service
+//!       .query(QueryRequest {
+//!           lower_bound: None,
+//!           upper_bound: offsets,
+//!           r#where: "MyFish".parse()?,
+//!           order: Order::Desc,
+//!       })
+//!       .await?;
 //!
-//!     // print out the payload of each event
-//!     // (cf. Payload::extract for more options)
-//!     while let Some(event) = events.next().await {
-//!         println!("{}", event.payload.json_value());
-//!     }
-//!     Ok(())
+//!   // print out the payload of each event
+//!   // (cf. Payload::extract for more options)
+//!   while let Some(QueryResponse::Event(event)) = events.next().await {
+//!       println!("{}", event.payload.json_value());
+//!   }
+//!   Ok(())
 //! }
 //! ```
 //!
@@ -88,13 +94,41 @@ pub use actyxos_sdk_macros::*;
 #[macro_use]
 mod scalar;
 
-pub mod event;
-pub mod event_service;
-pub mod tagged;
+#[cfg(any(test, feature = "arb"))]
+pub mod arb;
+mod event;
+mod expression;
+#[cfg(feature = "client")]
+mod http_client;
+pub mod legacy;
+mod offset;
+mod scalars;
+pub mod service;
+mod tags;
+mod timestamp;
 pub mod types;
 
-pub use event::{LamportTimestamp, Offset, OffsetMap, OffsetOrMin, Opaque, ParseError, Payload, TimeStamp};
+pub use event::{Event, EventKey, Metadata, Opaque, Payload};
+pub use expression::{Dnf, Expression};
+#[cfg(feature = "client")]
+pub use http_client::HttpClient;
+pub use offset::{Offset, OffsetMap, OffsetOrMin};
+pub use scalars::{AppId, NodeId, StreamId, StreamNr};
+pub use tags::{Tag, TagSet};
+pub use timestamp::{LamportTimestamp, Timestamp};
 
-pub use event_service::Order;
+#[cfg(test)]
+mod test_util;
 
-pub use event_service::EventServiceError;
+#[cfg(test)]
+pub use test_util::*;
+
+use derive_more::Display;
+#[derive(Debug, Display, PartialEq)]
+pub enum ParseError {
+    #[display(fmt = "Empty string is not permissible for Tag")]
+    EmptyTag,
+    #[display(fmt = "Empty string is not permissible for AppId")]
+    EmptyAppId,
+}
+impl std::error::Error for ParseError {}

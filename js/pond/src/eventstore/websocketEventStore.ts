@@ -1,15 +1,15 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import * as t from 'io-ts'
-import { equals, partition } from 'ramda'
+import { equals } from 'ramda'
 import { Observable } from 'rxjs'
 import log from '../loggers'
 import { SubscriptionSetIO } from '../subscription'
-import { EventKey, EventKeyIO, Lamport, Psn, Semantics, SourceId } from '../types'
+import { EventKey, EventKeyIO, SourceId } from '../types'
 import {
   EventStore,
   RequestAllEvents,
@@ -87,9 +87,6 @@ export const ConnectivityRequest = t.readonly(
 export type ConnectivityRequest = t.TypeOf<typeof ConnectivityRequest>
 
 export class WebsocketEventStore implements EventStore {
-  /* Regarding jelly fish, cf. https://github.com/Actyx/Cosmos/issues/2797 */
-  jellyPsn = Psn.zero
-
   private _present: Observable<OffsetMapWithDefault>
   private _highestSeen: Observable<OffsetMapWithDefault>
 
@@ -175,49 +172,31 @@ export class WebsocketEventStore implements EventStore {
   persistEvents: RequestPersistEvents = events => {
     // extract jelly events, as they must not be sent
     // over the wire to the store
-    const [jellyEvents, publishEvents] = partition(
-      ({ semantics }) => Semantics.isJelly(semantics),
-      events,
-    )
-    // add source and fake psn to jelly events
-    const jellyEventsFromStore: Events = jellyEvents.map(e => ({
-      ...e,
-      lamport: Lamport.of(this.jellyPsn),
+    const publishEvents = events
 
-      psn: Psn.of(this.jellyPsn++),
-      sourceId: this.sourceId,
-    }))
-
-    return publishEvents.length === 0
-      ? Observable.of(jellyEventsFromStore)
-      : this.multiplexer
-          .request(
-            RequestTypes.PersistEvents,
-            PersistEventsRequest.encode({ events: publishEvents }),
+    return this.multiplexer
+      .request(RequestTypes.PersistEvents, PersistEventsRequest.encode({ events: publishEvents }))
+      .map(validateOrThrow(t.type({ events: Events })))
+      .map(({ events: persistedEvents }) => {
+        if (publishEvents.length !== persistedEvents.length) {
+          log.ws.error(
+            'PutEvents: Sent %d events, but only got %d PSNs back.',
+            publishEvents.length,
+            events.length,
           )
-          .map(validateOrThrow(t.type({ events: Events })))
-          .map(({ events: persistedEvents }) => {
-            if (publishEvents.length !== persistedEvents.length) {
-              log.ws.error(
-                'PutEvents: Sent %d events, but only got %d PSNs back.',
-                publishEvents.length,
-                events.length,
-              )
-              return []
-            }
-            return publishEvents
-              .map<Event>((ev, idx) => ({
-                sourceId: this.sourceId,
-                name: ev.name,
-                tags: ev.tags,
-                payload: ev.payload,
-                semantics: ev.semantics,
-                timestamp: persistedEvents[idx].timestamp,
-                lamport: persistedEvents[idx].lamport,
-                psn: persistedEvents[idx].psn,
-              }))
-              .concat(jellyEventsFromStore)
-          })
-          .defaultIfEmpty([])
+          return []
+        }
+        return publishEvents.map<Event>((ev, idx) => ({
+          sourceId: this.sourceId,
+          name: ev.name,
+          tags: ev.tags,
+          payload: ev.payload,
+          semantics: ev.semantics,
+          timestamp: persistedEvents[idx].timestamp,
+          lamport: persistedEvents[idx].lamport,
+          psn: persistedEvents[idx].psn,
+        }))
+      })
+      .defaultIfEmpty([])
   }
 }

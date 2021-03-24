@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Actyx AG
+ * Copyright 2021 Actyx AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,8 +37,9 @@ use std::ops::{
 /// will be [bounded to the valid number range](https://docs.rs/fixed/0.5.5/fixed/struct.FixedI128.html#method.saturating_from_num).
 /// `NaN` will be reported as a deserialization error.
 ///
-/// Example usage:
-/// ```rust
+/// > _Note: this example needs the `dataflow` feature to compile_
+///
+/// ```no_run
 /// # #[macro_use] extern crate abomonation_derive;
 /// use actyxos_sdk::types::FixNum;
 /// use actyxos_sdk::types::fixnum_types::*;

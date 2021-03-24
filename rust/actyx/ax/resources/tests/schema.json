@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "backgroundColor": {
+      "type": "string",
+      "default": "green"
+    },
+    "backgroundFill": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "backgroundColor",
+    "backgroundFill"
+  ]
+}

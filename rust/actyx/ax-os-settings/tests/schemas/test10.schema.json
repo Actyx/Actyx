@@ -1,0 +1,7 @@
+{
+  "type": "array",
+  "additionalProperties": false,
+  "items": {
+    "type": "number"
+  }
+}

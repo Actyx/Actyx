@@ -19,19 +19,19 @@ In this blog post we give an overview of the new functions and explain the motiv
 
 `Pond.observeAll()` takes three arguments and a callback.
 
-- `firstEvents: Where<F>` – A selector for events of type `F` – **F** is for **F**irst Event
+- `seedEvents: Where<F>` – A selector for events of type `F` – **F** is for **F**irst Event
 - `makeFish: (f: F) => Fish<S, any>` – A factory function that creates a `Fish<S, any>` from an event of type `F`
 - `opts: ObserveAllOpts` - An object containing optional arguments
 - `callback: (states: S[]) => void` – The callback receives an array of all known states!
 
 Hopefully the way this API works is almost self-explanatory.
-For each selected "first event" `F`, a `Fish` is spawned using the supplied factory function.
+For each selected "seed event" `F`, a `Fish` is spawned using the supplied factory function.
 Whenever the set of Fish changes (newfound `F`), or the state of a Fish inside the set changes (changed `S`), the callback is invoked with the updated array of all states.
 
 One question remains: How to keep the list of states from growing ever longer?  
 There is no clear cut answer. Depending on the scenario, different conditions make a Fish irrelevant: A task may be fulfilled, or a task may become too old.  
 This is where the `ObserveAllOpts` argument comes in. In the future it will enable a variety of pruning options.
-For now we start with the most simple one: `expireAfterFirst`, meaning Fish are dropped when their initial event `F` has become too old.
+For now we start with the most simple one: `expireAfterSeed`, meaning Fish are dropped when their initial event `F` has become too old.
 Using this setting, we may for example observe all tasks created in the last 24 hours:
 
 ```ts
@@ -71,7 +71,7 @@ const makeTaskFish = (taskCreated: TaskCreated): Fish<TaskState, TaskChanged> =>
 pond.observeAll(
   taskCreatedTag,
   makeTaskFish,
-  { expireAfterFirst: Milliseconds.fromDays(1) },
+  { expireAfterSeed: Milliseconds.fromDays(1) },
   (states: TaskState[]) => console.log('all tasks of the last 24 hours:', states)
 )
 ```
@@ -88,7 +88,7 @@ For the future we are envisioning an option allowing to specify
 which would retire Fish from the set as soon as they have consumed a `TaskFinished` event.
 The advantage over filtering manually would be that the Fish can actually be stopped internally, and will no longer take up resources.
 
-<!-- TODO: Add detailed docs and link here -->
+[Read our detailed documentation on observeAll.](/docs/pond/in-depth/observe-all)
 
 ## Observe One Specific Thing
 
@@ -98,10 +98,10 @@ If you’re looking to observe a specific task, you can re-use `makeTaskFish` an
 const taskCreatedTag = Tag<TaskCreated>('task-created')
 
 pond.observeOne(
-  // Find a specific first event F:
+  // Find a specific seed event F:
   taskCreatedTag.withId('specific-task-id'),
   makeTaskFish,
-  // Will only be called once the first event has been found:
+  // Will only be called once the seed event has been found:
   (state: TaskState) => console.log(state)
 )
 ```
@@ -110,7 +110,7 @@ The "One" in `observeOne` means that if there are multiple events matching the s
 So there should either be just one event matching the selector, or it should not matter which one is used.  
 In the example, we would assume that for this specific ID there is just a single `TaskCreated` event.
 
-<!-- TODO: Add detailed docs and link here -->
+[Read our detailed documentation on observeOne.](/docs/pond/in-depth/observe-one)
 
 ## What We’re Aiming to Improve
 
@@ -129,7 +129,7 @@ Often you would be modelling entities with clearly mandatory fields, e.g. "every
 But when you passed your `TaskFish` to `observe`, your code couldn’t know the description.
 Still it had to give an `initialState` for the `Fish`.
 There were elegant workarounds for this issue, but in the end, all of them added boilerplate.
-`observeOne` and `observeAll` both build the `initialState` from the first event;
+`observeOne` and `observeAll` both build the `initialState` from the seed event;
 so when your `TaskCreated` event contains the description, you can already put it into the `initialState`.
 
 ## Future Work

@@ -1,5 +1,21 @@
-use crate::types::ArcVal;
+/*
+ * Copyright 2021 Actyx AG
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 use serde::{de::Error, Deserialize, Deserializer};
+
+use crate::types::ArcVal;
 
 pub fn nonempty_string<'de, D: Deserializer<'de>>(d: D) -> Result<ArcVal<str>, D::Error> {
     let s = <String>::deserialize(d)?;
@@ -11,7 +27,7 @@ pub fn nonempty_string<'de, D: Deserializer<'de>>(d: D) -> Result<ArcVal<str>, D
 }
 
 macro_rules! mk_scalar {
-    ($(#[$attr:meta])* struct $id:ident, $err:ident) => {
+    ($(#[$attr:meta])* struct $id:ident, $err:ident, $parse_err:ident) => {
 
         $(#[$attr])*
         #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
@@ -22,9 +38,9 @@ macro_rules! mk_scalar {
         );
 
         impl $id {
-            pub fn new(value: String) -> Result<Self, $crate::event::ParseError> {
+            pub fn new(value: String) -> Result<Self, $parse_err> {
                 if value.is_empty() {
-                    Err($crate::event::ParseError::$err)
+                    Err($parse_err::$err)
                 } else {
                     Ok(Self($crate::types::ArcVal::from_boxed(value.into())))
                 }
@@ -38,10 +54,10 @@ macro_rules! mk_scalar {
         }
 
         impl ::std::convert::TryFrom<&str> for $id {
-            type Error = $crate::event::ParseError;
-            fn try_from(value: &str) -> Result<Self, $crate::event::ParseError> {
+            type Error = $parse_err;
+            fn try_from(value: &str) -> Result<Self, $parse_err> {
                 if value.is_empty() {
-                    Err($crate::event::ParseError::$err)
+                    Err($parse_err::$err)
                 } else {
                     Ok(Self($crate::types::ArcVal::clone_from_unsized(value)))
                 }
@@ -49,10 +65,10 @@ macro_rules! mk_scalar {
         }
 
         impl ::std::convert::TryFrom<::std::sync::Arc<str>> for $id {
-            type Error = $crate::event::ParseError;
-            fn try_from(value: ::std::sync::Arc<str>) -> Result<Self, $crate::event::ParseError> {
+            type Error = $parse_err;
+            fn try_from(value: ::std::sync::Arc<str>) -> Result<Self, $parse_err> {
                 if value.is_empty() {
-                    Err($crate::event::ParseError::$err)
+                    Err($parse_err::$err)
                 } else {
                     Ok(Self($crate::types::ArcVal::from(value)))
                 }
@@ -60,8 +76,8 @@ macro_rules! mk_scalar {
         }
 
         impl ::std::str::FromStr for $id {
-            type Err = $crate::event::ParseError;
-            fn from_str(s: &str) -> Result<Self, $crate::event::ParseError> {
+            type Err = $parse_err;
+            fn from_str(s: &str) -> Result<Self, $parse_err> {
                 use std::convert::TryFrom;
                 Self::try_from(s)
             }
@@ -77,19 +93,6 @@ macro_rules! mk_scalar {
         impl ::std::fmt::Display for $id {
             fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
                 write!(f, "{}", self.0)
-            }
-        }
-
-        impl ::libipld::cbor::decode::TryReadCbor for $id {
-            fn try_read_cbor<R: ::std::io::Read + ::std::io::Seek>(
-                r: &mut R,
-                major: u8,
-            ) -> ::libipld::error::Result<Option<Self>> {
-                if let Some(v) = String::try_read_cbor(r, major)? {
-                    Ok(Some(v.parse()?))
-                } else {
-                    Ok(None)
-                }
             }
         }
 

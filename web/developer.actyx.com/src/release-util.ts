@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 // There are copied over from cosmos-release since I can't get them to import
 // for some reason. Something to do with release being built with CommonJS
 // modules and that not being translated correctly by Docusaurus's Babel.

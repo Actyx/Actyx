@@ -1,0 +1,26 @@
+[package]
+name = "ax-os-settings"
+version = "0.1.0"
+authors = ["Actyx AG"]
+edition = "2018"
+
+[dependencies]
+anyhow = "1.0.38"
+log = "0.4.14"
+rusqlite = { version = "0.24.2", features = ["bundled", "backup"] }
+serde = { version = "1.0.124", features = ["derive"] }
+serde_json = "1.0.64"
+structopt = "0.3.21"
+thiserror = "1.0.24"
+treediff = { version = "4.0.0", features = ["with-serde-json"] }
+url = "2.2.1"
+valico = "3.6.0"
+
+[lib]
+name = "axossettings"
+crate-type = ["lib"]
+
+[dev-dependencies]
+maplit = "1.0.2"
+rand = "0.8.3"
+tempfile = "3.2.0"

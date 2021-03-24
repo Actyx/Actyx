@@ -1,0 +1,176 @@
+{
+  "ok exact match": {
+    "schema": {
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "value": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "input": {
+      "value": true
+    },
+    "result": {
+      "Ok": {
+        "value": true
+      }
+    }
+  },
+  "err wrong type": {
+    "schema": {
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "value": {
+          "type": "boolean"
+        }
+      }
+    },
+    "input": {
+      "value": "true"
+    },
+    "result": {
+      "Err": {
+        "ValidationFailed": {
+          "errors": [
+            {
+              "code": "wrong_type",
+              "path": "/value",
+              "title": "Type of the value is wrong",
+              "detail": "The value must be boolean"
+            }
+          ],
+          "missing": []
+        }
+      }
+    }
+  },
+  "err required": {
+    "schema": {
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "value": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "input": {},
+    "result": {
+      "Err": {
+        "ValidationFailed": {
+          "errors": [
+            {
+              "code": "required",
+              "path": "/value",
+              "title": "This property is required"
+            }
+          ],
+          "missing": []
+        }
+      }
+    }
+  },
+  "ok additional": {
+    "schema": {
+      "type": "object"
+    },
+    "input": {
+      "value": true
+    },
+    "result": {
+      "Ok": {
+        "value": true
+      }
+    }
+  },
+  "err additional": {
+    "schema": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "input": {
+      "value": true
+    },
+    "result": {
+      "Err": {
+        "ValidationFailed": {
+          "errors": [
+            {
+              "code": "properties",
+              "path": "",
+              "detail": "Additional property 'value' is not allowed",
+              "title": "Property conditions are not met"
+            }
+          ],
+          "missing": []
+        }
+      }
+    }
+  },
+  "ok defaults empty": {
+    "schema": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "input": {},
+    "result": {
+      "Ok": {
+        "value": true
+      }
+    }
+  },
+  "ok defaults partial": {
+    "schema": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "boolean",
+          "default": true
+        },
+        "other": {
+          "type": "number"
+        }
+      }
+    },
+    "input": {
+      "other": 1
+    },
+    "result": {
+      "Ok": {
+        "value": true,
+        "other": 1
+      }
+    }
+  },
+  "err no input no default": {
+    "schema": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "boolean"
+        }
+      }
+    },
+    "result": {
+      "Err": {
+        "MissingDefault": "."
+      }
+    }
+  }
+}

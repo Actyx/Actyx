@@ -111,7 +111,14 @@ type Props = Readonly<{
   button?: boolean
 }>
 
-export const SectionHero = ({ img, title, subtitle, cta, link, button }: Props) => (
+export const SectionHero: React.FC<Props> = ({
+  img,
+  title,
+  subtitle,
+  cta,
+  link,
+  button,
+}: Props) => (
   <Wrapper>
     <LeftCol>
       <ImageDiv>

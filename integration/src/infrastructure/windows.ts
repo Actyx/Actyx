@@ -22,7 +22,7 @@ export const mkNodeWinRM = async (
 ): Promise<ActyxOSNode | undefined> => {
   const absInstallerPath = await windowsActyxOsInstaller('x86_64')
   // Input to Ansible is the relative path to a folder in which
-  // `ActyxOS-Installer.exe` exists. The path needs to be relative to the sub
+  // `Actyx-Installer.exe` exists. The path needs to be relative to the sub
   // directory where the relevant ansible task lies.
   const relInstallerFolderPath = path.relative(
     'ansible/roles/prepare_windows',
@@ -101,7 +101,7 @@ function startActyxOS(
   nodeName: string,
   logger: (s: string) => void,
   ssh: Ssh,
-  command = 'C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyx.exe --working-dir C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyx-data --background',
+  command = 'C:\\Users\\Administrator\\AppData\\Local\\Actyx\\actyx.exe --working-dir C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyx-data --background',
 ): Promise<[execa.ExecaChildProcess<string>]> {
   // awaiting a Promise<Promise<T>> yields T (WTF?!?) so we need to put it into an array
   return new Promise((res, rej) => {

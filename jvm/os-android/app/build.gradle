@@ -1,12 +1,13 @@
-apply plugin: 'com.android.application'
-apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
-apply plugin: 'kotlinx-serialization'
-apply plugin: 'org.jlleitschuh.gradle.ktlint'
-apply plugin: 'com.gladed.androidgitversion'
-apply plugin: 'kotlin-kapt'
+plugins {
+  id 'com.android.application'
+  id 'kotlin-android'
+  id 'kotlinx-serialization'
+  id 'org.jlleitschuh.gradle.ktlint'
+  id 'com.gladed.androidgitversion'
+  id 'com.quittle.setup-android-sdk' version '2.1.0'
+}
+
 apply from: '../actyx-local/actyx.properties'
-apply plugin: 'com.google.protobuf'
 
 androidGitVersion {
   prefix 'os-android-'
@@ -17,7 +18,7 @@ androidGitVersion {
 }
 
 android {
-  compileSdkVersion 29
+  compileSdkVersion 30
   compileOptions {
     sourceCompatibility JavaVersion.VERSION_1_8
     targetCompatibility JavaVersion.VERSION_1_8
@@ -26,11 +27,11 @@ android {
   kotlinOptions {
     jvmTarget = "1.8"
   }
-  buildToolsVersion '29.0.3'
+  buildToolsVersion '30.0.3'
   defaultConfig {
-    applicationId 'com.actyx.os.android'
+    applicationId 'com.actyx.android'
     minSdkVersion 22
-    targetSdkVersion 29
+    targetSdkVersion 30
     versionCode androidGitVersion.code()
     versionName androidGitVersion.name()
     testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
@@ -51,77 +52,32 @@ android {
       proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
     }
   }
+  buildFeatures {
+    viewBinding true
+  }
   ktlint {
     android = true
   }
-    sourceSets {
-        main {
-            java.srcDirs += "${protobuf.generatedFilesBaseDir}/main/javalite"
-            proto {
-                srcDir '../../../protocols/protobuf'
-            }
-        }
-    }
 }
 
-protobuf {
-    protoc {
-        artifact = 'com.google.protobuf:protoc:3.0.0'
-    }
-    plugins {
-        javalite {
-            artifact = 'com.google.protobuf:protoc-gen-javalite:3.0.0'
-        }
-    }
-    generateProtoTasks {
-        all().each { task ->
-            task.builtins {
-                remove java
-            }
-            task.plugins {
-                javalite { }
-            }
-        }
-    }
-}
-
-def arrow_version = "0.10.4"
-def nav_version = "2.2.2"
 dependencies {
-  coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.0.9'
+  coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.1'
   compileOnly files('./libs/com.symbol.emdk.jar')
   implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-  implementation "org.jetbrains.kotlinx:kotlinx-serialization-runtime:0.14.0"
-  implementation 'androidx.appcompat:appcompat:1.1.0'
-  implementation 'androidx.recyclerview:recyclerview:1.1.0'
-  implementation 'androidx.core:core-ktx:1.3.0'
-  implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
-  implementation 'androidx.legacy:legacy-support-v4:1.0.0'
-  implementation "androidx.navigation:navigation-fragment-ktx:$nav_version"
-  implementation "androidx.navigation:navigation-ui-ktx:$nav_version"
-  implementation 'com.google.android.material:material:1.1.0'
-  implementation 'com.charleskorn.kaml:kaml:0.15.0'
-  implementation 'com.koushikdutta.async:androidasync:2.2.1'
-  implementation 'org.apache.commons:commons-compress:1.19'
-  implementation 'io.reactivex.rxjava2:rxkotlin:2.4.0'
-  implementation 'io.reactivex.rxjava2:rxandroid:2.1.1'
-  implementation 'com.github.davidmoten:rxjava2-extras:0.1.35'
-  implementation 'net.java.dev.jna:jna:5.4.0@aar'
-  implementation 'dnsjava:dnsjava:2.1.8'
+  implementation "org.jetbrains.kotlinx:kotlinx-serialization-core:1.0.1"
+  implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.1"
+  implementation 'androidx.appcompat:appcompat:1.2.0'
+  implementation 'androidx.core:core-ktx:1.3.2'
+  implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
+  implementation 'com.google.android.material:material:1.2.1'
+  implementation 'net.java.dev.jna:jna:5.6.0@aar'
   implementation 'org.slf4j:slf4j-api:1.7.25'
   implementation 'com.github.tony19:logback-android:2.0.0'
-  implementation 'com.google.protobuf:protobuf-lite:3.0.0'
   implementation 'org.mozilla.appservices:support:0.16.1'
-  implementation "io.arrow-kt:arrow-core:$arrow_version"
-  implementation "io.arrow-kt:arrow-syntax:$arrow_version"
-  kapt           "io.arrow-kt:arrow-meta:$arrow_version"
-  implementation 'com.squareup.okhttp3:okhttp:4.3.1'
-  testImplementation 'junit:junit:4.13'
+  testImplementation 'junit:junit:4.13.1'
   testImplementation 'io.kotlintest:kotlintest-runner-junit5:3.3.2'
-  androidTestImplementation 'androidx.test:runner:1.2.0'
-  androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
-  //  LEGACY USB
-  implementation 'com.github.felHR85:UsbSerial:6.1.0'
+  androidTestImplementation 'androidx.test:runner:1.3.0'
+  androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 }
 
 def archs = ["x86", "arm64-v8a", "armeabi-v7a"]
