@@ -12,7 +12,7 @@ use std::fmt::{Display, Formatter};
 
 /// A gossiped message that contains a specific node's view on the root nodes of
 /// all other streams it knows about.
-#[derive(Debug, Clone, Serialize, Deserialize, DagCbor)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Eq, DagCbor)]
 pub struct PublishSnapshot {
     pub node: NodeId,
     pub timestamp: Timestamp,

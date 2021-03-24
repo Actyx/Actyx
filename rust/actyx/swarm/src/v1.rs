@@ -17,8 +17,13 @@ use fnv::FnvHashSet;
 use forest::FilteredChunk;
 use futures::future::BoxFuture;
 use futures::stream::BoxStream;
-use futures::{channel::mpsc, prelude::*};
-use std::{collections::BTreeSet, convert::TryInto, ops::RangeInclusive, time::Duration};
+use libipld::{cbor::DagCborCodec, codec::Codec};
+use std::{
+    collections::BTreeSet,
+    convert::{TryFrom, TryInto},
+    ops::RangeInclusive,
+    time::Duration,
+};
 use trees::{
     axtrees::{AxKey, TagsQuery},
     OffsetMapOrMax, PublishSnapshot, RootMap, StreamHeartBeat,
@@ -65,7 +70,7 @@ impl BanyanStore {
             .ipfs
             .subscribe(&topic)
             .unwrap()
-            .filter_map(|msg| future::ready(serde_cbor::from_slice::<PublishSnapshot>(msg.as_slice()).ok()))
+            .filter_map(|msg| future::ready(DagCborCodec.decode::<PublishSnapshot>(msg.as_slice()).ok()))
             .for_each(move |heartbeat| {
                 tracing::debug!("{} received heartbeat", self.ipfs().local_node_name());
                 store.received_root_map(heartbeat.node, heartbeat.lamport, heartbeat.roots)
@@ -84,7 +89,7 @@ impl BanyanStore {
             timestamp,
             roots,
         };
-        let blob = serde_cbor::to_vec(&msg).unwrap();
+        let blob = DagCborCodec.encode(&msg).unwrap();
         let _ = self.0.ipfs.publish(topic, blob);
         future::ready(())
     }
