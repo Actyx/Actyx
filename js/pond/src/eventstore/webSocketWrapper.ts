@@ -6,14 +6,7 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventEmitter } from 'events'
-import {
-  AnonymousSubject,
-  Observable,
-  ReplaySubject,
-  Subject,
-  Subscriber,
-  Subscription,
-} from 'rxjs'
+import { Observable, ReplaySubject, Subject } from 'rxjs'
 import log from '../loggers'
 import { isNode } from '../util'
 import { root } from '../util/root'
@@ -22,19 +15,52 @@ if (isNode) {
   root.WebSocket = require('ws')
 }
 
+export interface WebSocketWrapper<TRequest, TResponse> {
+  readonly responses: Subject<TResponse>
+
+  sendRequest(req: TRequest): void
+
+  close(): void
+}
+
+export const WebSocketWrapper = <TRequest, TResponse>(
+  url: string,
+  protocol?: string | string[],
+  onConnectionLost?: () => void,
+  reconnectTimer: number = 1000,
+): WebSocketWrapperImpl<TRequest, TResponse> => {
+  return new WebSocketWrapperImpl<TRequest, TResponse>(
+    url,
+    protocol,
+    onConnectionLost,
+    reconnectTimer,
+  )
+}
+
 /**
  * Copied from `rxjs/observable/dom/WebSocketSubject.ts`
  * But the WebSocket and the Subscription is not connected any more.
  * So the Socket can connect later and the Subscriptions are still valid
  */
-export class WebSocketSubject<T> extends AnonymousSubject<T> {
+class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TRequest, TResponse> {
   socket?: WebSocket
   WebSocketCtor: { new (url: string, protocol?: string | string[]): WebSocket }
   binaryType?: 'blob' | 'arraybuffer'
   socketEvents = new EventEmitter()
 
-  private _output: Subject<T>
+  readonly responses: Subject<TResponse>
+
   private connected = false
+
+  private requests = new ReplaySubject()
+
+  sendRequest(req: TRequest): void {
+    this.requests.next(req)
+  }
+
+  close(): void {
+    this.requests.complete()
+  }
 
   constructor(
     private readonly url: string,
@@ -42,38 +68,43 @@ export class WebSocketSubject<T> extends AnonymousSubject<T> {
     private readonly onConnectionLost?: () => void,
     private readonly reconnectTimer: number = 1000,
   ) {
-    super()
     if (!root.WebSocket) {
       log.ws.error('WebSocket not supported on this plattform')
       throw new Error('no WebSocket constructor can be found')
     }
     this.WebSocketCtor = root.WebSocket
-    this._output = new Subject<T>()
+    this.responses = new Subject<TResponse>()
     this.url = url
 
-    this.destination = new ReplaySubject()
+    this.connect()
   }
 
-  resultSelector(e: MessageEvent): T {
-    return JSON.parse(e.data) as T
+  resultSelector(e: MessageEvent): TResponse {
+    return JSON.parse(e.data) as TResponse
   }
 
-  static create<T>(
+  static create<TRequest, TResponse>(
     url: string,
     protocol?: string | string[],
     onConnectionLost?: () => void,
     reconnectTimer: number = 1000,
-  ): WebSocketSubject<T> {
-    return new WebSocketSubject<T>(url, protocol, onConnectionLost, reconnectTimer)
+  ): WebSocketWrapperImpl<TRequest, TResponse> {
+    return new WebSocketWrapperImpl<TRequest, TResponse>(
+      url,
+      protocol,
+      onConnectionLost,
+      reconnectTimer,
+    )
   }
 
-  private _resetState(): void {
+  private resetState(): void {
+    const socket = this.socket
     this.socket = undefined
-
-    if (!this.source) {
-      this.destination = new ReplaySubject()
+    if (socket && socket.readyState === 1) {
+      socket.close()
     }
-    this._output = new Subject<T>()
+
+    this.requests = new ReplaySubject()
   }
 
   /**
@@ -96,7 +127,7 @@ export class WebSocketSubject<T> extends AnonymousSubject<T> {
       const msg = (err as any).message
       log.ws.error('WebSocket connection error -- is ActyxOS reachable?', msg)
       try {
-        this._output && this._output.error('Cxn error: ' + msg)
+        this.responses && this.responses.error('Cxn error: ' + msg)
       } catch (err) {
         log.ws.error('Error while passing websocket error up the chain!!', err)
       }
@@ -108,7 +139,8 @@ export class WebSocketSubject<T> extends AnonymousSubject<T> {
         if (this.onConnectionLost) {
           this.onConnectionLost()
         }
-        this._output && this._output.error('Connection lost with: ' + JSON.stringify(err))
+        this.responses &&
+          this.responses.error(`Connection lost with reason '${err.reason}', code ${err.code}`)
       } else {
         Observable.timer(this.reconnectTimer).subscribe(() =>
           this.createSocket(onMessage, binaryType),
@@ -124,11 +156,8 @@ export class WebSocketSubject<T> extends AnonymousSubject<T> {
     return socket
   }
 
-  /**
-   * create the Socket connection and wire the Subject to it
-   */
   private connect(): void {
-    const observer = this._output
+    const observer = this.responses
     try {
       const onmessage = (e: MessageEvent) => {
         try {
@@ -145,18 +174,7 @@ export class WebSocketSubject<T> extends AnonymousSubject<T> {
       return
     }
 
-    // create Subscription and close all connection when all subscriptions are gone
-    const subscription = new Subscription(() => {
-      const socket = this.socket
-      this.socket = undefined
-      if (socket && socket.readyState === 1) {
-        socket.close()
-      }
-    })
-
-    const existingQueue = this.destination
-
-    this.destination = Subscriber.create(
+    this.requests.subscribe(
       msg => {
         // send message to the existion socket, or wait till a connection is established to send the message out
         if (!this.socket) {
@@ -180,52 +198,11 @@ export class WebSocketSubject<T> extends AnonymousSubject<T> {
             ),
           )
         }
-        this._resetState()
+        this.resetState()
       },
       () => {
-        this.socket && this.socket.close()
-        this._resetState()
+        this.resetState()
       },
     )
-
-    if (existingQueue && existingQueue instanceof ReplaySubject) {
-      subscription.add((existingQueue as ReplaySubject<T>).subscribe(this.destination))
-    }
-  }
-
-  /** Copied from WebSocketSubject.ts */
-  _subscribe(subscriber: Subscriber<T>): Subscription {
-    const { source, _output } = this
-    if (source) {
-      return source.subscribe(subscriber)
-    }
-    if (!this.socket) {
-      this.connect()
-    }
-    const subscription = new Subscription()
-    subscription.add(_output.subscribe(subscriber))
-    subscription.add(() => {
-      const { socket } = this
-      if (_output.observers.length === 0) {
-        if (socket && socket.readyState === 1) {
-          socket.close()
-        }
-        this._resetState()
-      }
-    })
-    return subscription
-  }
-
-  /** Copied from WebSocketSubject.ts */
-  unsubscribe(): void {
-    const { source, socket } = this
-    if (socket && socket.readyState === 1) {
-      socket.close()
-      this._resetState()
-    }
-    super.unsubscribe()
-    if (!source) {
-      this.destination = new ReplaySubject()
-    }
   }
 }

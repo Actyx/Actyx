@@ -1,7 +1,7 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -13,6 +13,7 @@ import { SourceId } from '../types'
 import {
   MultiplexedWebsocket,
   Request,
+  RequestMessageType,
   ResponseMessage,
   ResponseMessageType,
 } from './multiplexedWebsocket'
@@ -93,7 +94,7 @@ describe('multiplexedWebsocket', () => {
       const { requestId } = socket.lastMessageSent
       // Assert initial request message has been sent
       const initialRequest: Request = {
-        type: 'request',
+        type: RequestMessageType.Request,
         requestId,
         serviceId: requestType,
         payload: { from: 1, to: 4 },
@@ -205,8 +206,12 @@ export class MockWebSocket {
       .map(f => f(JSON.parse(data)))
       .filter(res => res !== undefined)
       .getOrElseL(() => {
-        const request = JSON.parse(data)
-        if (request.serviceId === RequestTypes.SourceId) {
+        const request: Request = JSON.parse(data)
+
+        if (
+          request.type === RequestMessageType.Request &&
+          request.serviceId === RequestTypes.SourceId
+        ) {
           return {
             name: 'message',
             res: [
