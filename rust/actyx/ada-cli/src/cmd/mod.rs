@@ -8,7 +8,6 @@ pub mod copy_pubsub;
 pub mod monitor_pubsub;
 pub mod pubsub_connect;
 pub mod pubsub_to_pg;
-pub mod snapshot_listen;
 
 /// All subcommands implement this trait and then register themselves in `main`. When the
 /// app starts up, the matching subcommand is found ([name](Command::name) is used for this) then
