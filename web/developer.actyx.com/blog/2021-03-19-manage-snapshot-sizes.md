@@ -183,9 +183,9 @@ export const CompressingFish = {
                 toJSON: () => pack(data)
             }
         },
-        deserializeState: (zipped: unknown) => { 
+        deserializeState: (zipped: unknown) => {
             console.debug('Deserializing COMPRESSED snapshot of size ' + snapshotSize(zipped))
-            return { data: JSON.parse(unpack(zipped)) } as CompressedState 
+            return { data: JSON.parse(unpack(zipped)) } as CompressedState
         }
     })
 }
@@ -228,7 +228,7 @@ type CompressingStateWrapper<S> = S & { toJSON: () => string } // base state typ
 export const asCompressingFish = <S, E>(fish: Fish<S, E>): Fish<CompressingStateWrapper<S>, E> => ({
     fishId: FishId.of(
         `${fish.fishId.entityType}.zip`, // discriminate between raw and compressed snapshots
-        fish.fishId.name, 
+        fish.fishId.name,
         fish.fishId.version ),
     where: fish.where,
     initialState: {
@@ -239,7 +239,7 @@ export const asCompressingFish = <S, E>(fish: Fish<S, E>): Fish<CompressingState
         console.debug('Deserializing WRAPPED snapshot of size ' + snapshotSize(zipped))
         return {
             ...JSON.parse(Pako.inflate(zipped as string, { to: 'string' })),
-            toJSON: function () { 
+            toJSON: function () {
                 const { toJSON: _, ...rest } = this
                 return Pako.deflate(JSON.stringify(rest), { to: 'string' })
             },
@@ -250,9 +250,9 @@ export const asCompressingFish = <S, E>(fish: Fish<S, E>): Fish<CompressingState
     onEvent: (state, event, metadata) => {
         return {
             ...fish.onEvent(state, event, metadata),
-            toJSON: function () { 
+            toJSON: function () {
                 const { toJSON: _, ...rest } = this
-                return Pako.deflate(JSON.stringify(rest), { to: 'string' }) 
+                return Pako.deflate(JSON.stringify(rest), { to: 'string' })
             }
         }
     }
