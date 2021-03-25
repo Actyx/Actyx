@@ -20,7 +20,7 @@ pub(crate) type StoreTx = Sender<ComponentRequest<StoreRequest>>;
 
 impl Component<StoreRequest, StoreConfig> for Store {
     fn get_type(&self) -> &'static str {
-        "store"
+        "Swarm"
     }
     fn get_rx(&self) -> &Receiver<ComponentRequest<StoreRequest>> {
         &self.rx

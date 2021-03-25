@@ -19,6 +19,7 @@ named-lock = "0.1.1"
 structopt = "0.3.21"
 systray = "0.4.0"
 tracing = "0.1.25"
+winapi = "0.3.9"
 wintrap = "0.3.0"
 
 [dependencies]
