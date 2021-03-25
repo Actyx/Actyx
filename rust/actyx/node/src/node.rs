@@ -333,7 +333,7 @@ impl Node {
                 info!(target: "NODE_STOPPED_BY_HOST", "Actyx is stopped. The shutdown was either initiated automatically by the host or intentionally by the user. Please refer to FIXME for more information.");
             }
             ShutdownReason::TriggeredByUser => {
-                info!(target: "NODE_STOPPED_BY_NODEUI", "Actyx is stopped. The shutdown initiated by the user. Please refer to FIXME for more information.");
+                info!(target: "NODE_STOPPED_BY_NODEUI", "Actyx is stopped. The shutdown was initiated by the user. Please refer to FIXME for more information.");
             }
             ShutdownReason::Internal(ref err) => {
                 error!(target: "NODE_STOPPED_BY_NODE", "{}", err);
