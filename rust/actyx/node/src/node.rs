@@ -56,6 +56,14 @@ impl From<&Arc<anyhow::Error>> for NodeError {
         Arc::clone(err).into()
     }
 }
+impl From<ShutdownReason> for NodeProcessResult<()> {
+    fn from(r: ShutdownReason) -> Self {
+        match r {
+            ShutdownReason::Internal(r) => Err(r),
+            _ => Ok(()),
+        }
+    }
+}
 
 trait NodeErrorResultExt<T> {
     fn internal(self) -> NodeProcessResult<T>;
@@ -297,60 +305,42 @@ impl Node {
         self.send(NodeEvent::StateUpdate(self.state.clone())).internal()?;
         tracing::info!(target: "NODE_STARTED_BY_HOST", "Actyx is running.");
 
-        let exit_result = loop {
+        // Main node event loop (pun intended)
+        let shutdown_reason = loop {
             select! {
                 recv(self.rx) -> msg => {
                     let event = msg.internal()?;
-                    let result = match event {
-                        ExternalEvent::NodesRequest(req) => {
-                            self.handle_nodes_request(req);
-                            Ok(())
-                        },
-                        ExternalEvent::SettingsRequest(req) => {
-                            self.handle_settings_request(req);
-                            Ok(())
-                        },
-                        ExternalEvent::ShutdownRequested(r) => {
-                            // Signal shutdown right away, otherwise the logging component might
-                            // have already stopped
-                            let exit_result = match r {
-                                ShutdownReason::TriggeredByHost => {
-                                    info!(target: "NODE_STOPPED_BY_HOST", "Actyx is stopped. The shutdown was either initiated automatically by the host or intentionally by the user. Please refer to FIXME for more information.");
-                                    Ok(())
-                                }
-                                ShutdownReason::TriggeredByUser => {
-                                    info!(target: "NODE_STOPPED_BY_NODEUI", "Actyx is stopped. The shutdown initiated by the user. Please refer to FIXME for more information.");
-                                    Ok(())
-                                }
-                                ShutdownReason::Internal(ref err) => {
-                                    error!(target: "NODE_STOPPED_BY_NODE", "{}", err);
-                                    Err(err.clone())
-                                }
-                            };
-                            // Notify all registered components
-                            self.send(NodeEvent::Shutdown(r)).internal()?;
-                            break exit_result;
-                        }
+                    match event {
+                        ExternalEvent::NodesRequest(req) => self.handle_nodes_request(req),
+                        ExternalEvent::SettingsRequest(req) => self.handle_settings_request(req),
+                        ExternalEvent::ShutdownRequested(r) => break r,
                     };
-                    if let Err(e) = result {
-                        error!("Unrecoverable error, exiting ({})", e);
-                        return Err(e);
-                    }
                 },
                 recv(component_rx) -> msg => {
                     let (from_component, new_state) = msg.internal()?;
                     debug!("Received component state transition: {} {:?}", from_component, new_state);
                     if let ComponentState::Errored(e) = new_state {
                         warn!("Shutting down because component {} errored: \"{}\"", from_component, e);
-                        let err: NodeError = e.into(); //FIXME .context(NodeErrorContext::Component(format!("{}", from_component))).into();
-
-                        error!(target: "NODE_STOPPED_BY_NODE", "{}", err);
-                        self.send(NodeEvent::Shutdown(ShutdownReason::Internal(err.clone()))).internal()?;
-                        return Err(err);
+                        break ShutdownReason::Internal(e.into());
                     }
                 }
             }
         };
+
+        // Log reason for shutdown
+        match shutdown_reason {
+            ShutdownReason::TriggeredByHost => {
+                info!(target: "NODE_STOPPED_BY_HOST", "Actyx is stopped. The shutdown was either initiated automatically by the host or intentionally by the user. Please refer to FIXME for more information.");
+            }
+            ShutdownReason::TriggeredByUser => {
+                info!(target: "NODE_STOPPED_BY_NODEUI", "Actyx is stopped. The shutdown initiated by the user. Please refer to FIXME for more information.");
+            }
+            ShutdownReason::Internal(ref err) => {
+                error!(target: "NODE_STOPPED_BY_NODE", "{}", err);
+            }
+        }
+        // Inform all registered components
+        self.send(NodeEvent::Shutdown(shutdown_reason.clone())).internal()?;
 
         // Wait for registered components to stop, at most 500 ms
         let mut stopped_components = 0;
@@ -363,7 +353,7 @@ impl Node {
             }
         }
 
-        exit_result
+        shutdown_reason.into()
     }
 }
 
