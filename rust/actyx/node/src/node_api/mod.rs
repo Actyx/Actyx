@@ -237,7 +237,7 @@ impl ApiBehaviour {
 
     /// The main purpose of this function is to shovel responses from any pending
     /// requests (for example logs or to the node) to libp2p.
-    fn poll(&mut self, cx: &mut task::Context,_: &mut impl PollParameters) ->
+    fn poll(&mut self, cx: &mut task::Context, _: &mut impl PollParameters) ->
     Poll<NetworkBehaviourAction<<<<Self as
     NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as
     ProtocolsHandler>::InEvent, ()>>{

@@ -181,7 +181,7 @@ mod win {
                         match result_recv.recv_timeout(Duration::from_millis(500)) {
                             Ok(node_yielded) => return node_yielded.map_err(Into::into),
                             Err(RecvTimeoutError::Disconnected) => {
-                                return Err(anyhow::anyhow!("Node vanished. Look for other logs."))
+                                return Err(anyhow::anyhow!("Actyx node shut down without yielding an exit code."))
                             }
                             _ => {}
                         }

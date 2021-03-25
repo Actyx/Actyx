@@ -10,7 +10,7 @@ use std::{net::SocketAddr, sync::Arc};
 use actyx_util::{ax_panic, formats::NodeErrorContext};
 use actyxos_sdk::NodeId;
 use crypto::KeyStoreRef;
-use futures::{future::try_join_all, TryFutureExt};
+use futures::future::try_join_all;
 use swarm::BanyanStore;
 use warp::*;
 
@@ -39,9 +39,10 @@ pub async fn run(
             task.await
         })
         .collect::<Vec<_>>();
-    // This error will be propagated by a `panic!`, so we have to wrap this into
-    // an `Arc` in order to properly extract it later in the node's panic hook
-    if let Err(e) = try_join_all(tasks).map_err(Arc::new).await {
+    // This error will be propagated by a `panic!`, so we use the `ax_panic!`
+    // macro, which will wrap the error into an `Arc` in order to properly
+    // extract it later in the node's panic hook
+    if let Err(e) = try_join_all(tasks).await {
         ax_panic!(e);
     }
 }

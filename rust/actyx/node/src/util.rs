@@ -47,8 +47,8 @@ pub(crate) fn init_panic_hook(tx: Sender<ExternalEvent>) {
         let thread = thread.name().unwrap_or("unnamed");
 
         let err = if let Some(anyhow_err) = info.payload().downcast_ref::<Arc<anyhow::Error>>() {
-            // Try to extract `NodeError` directly from the `Arc<anyhow::Error>`
-            let err: NodeError = Arc::clone(anyhow_err).into();
+            // Try to extract `NodeError` directly from `&Arc<anyhow::Error>`
+            let err: NodeError = anyhow_err.into();
             err
         } else {
             let msg = match info.payload().downcast_ref::<&'static str>() {

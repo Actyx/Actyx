@@ -51,6 +51,11 @@ impl From<anyhow::Error> for NodeError {
         Arc::new(err).into()
     }
 }
+impl From<&Arc<anyhow::Error>> for NodeError {
+    fn from(err: &Arc<anyhow::Error>) -> Self {
+        Arc::clone(err).into()
+    }
+}
 
 trait NodeErrorResultExt<T> {
     fn internal(self) -> NodeProcessResult<T>;
