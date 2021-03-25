@@ -65,8 +65,8 @@ impl DerefMut for TagSubscriptions {
         &mut self.0
     }
 }
-impl Into<Vec<TagSet>> for TagSubscriptions {
-    fn into(self) -> Vec<TagSet> {
-        self.0.into_iter().map(|x| x.tags).collect()
+impl From<TagSubscriptions> for Vec<TagSet> {
+    fn from(ts: TagSubscriptions) -> Vec<TagSet> {
+        ts.0.into_iter().map(|x| x.tags).collect()
     }
 }

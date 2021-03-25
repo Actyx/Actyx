@@ -5,7 +5,7 @@ mod rejections;
 mod tests;
 mod util;
 
-use std::{net::SocketAddr, sync::Arc};
+use std::net::SocketAddr;
 
 use actyx_util::{ax_panic, formats::NodeErrorContext};
 use actyxos_sdk::NodeId;

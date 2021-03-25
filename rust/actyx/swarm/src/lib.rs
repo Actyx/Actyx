@@ -56,6 +56,7 @@ use trees::{
     OffsetMapOrMax,
 };
 
+#[allow(clippy::upper_case_acronyms)]
 type TT = AxTrees;
 type Key = AxKey;
 type Event = Payload;

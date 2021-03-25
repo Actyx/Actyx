@@ -58,9 +58,9 @@ impl Timestamp {
     }
 }
 
-impl Into<DateTime<Utc>> for Timestamp {
-    fn into(self) -> DateTime<Utc> {
-        Utc.timestamp((self.0 / 1_000_000) as i64, (self.0 % 1_000_000) as u32 * 1000)
+impl From<Timestamp> for DateTime<Utc> {
+    fn from(ts: Timestamp) -> DateTime<Utc> {
+        Utc.timestamp((ts.0 / 1_000_000) as i64, (ts.0 % 1_000_000) as u32 * 1000)
     }
 }
 

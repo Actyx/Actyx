@@ -1,3 +1,4 @@
+#![allow(clippy::upper_case_acronyms)]
 use axossettings::{repository, validation};
 use crossbeam::channel::{RecvError, SendError};
 use serde::{Deserialize, Serialize};
@@ -45,6 +46,7 @@ impl<T, E: Display> ActyxOSResultExt<T> for Result<T, E> {
 }
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, PartialEq)]
 #[allow(non_camel_case_types)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum ActyxOSCode {
     ERR_FILE_EXISTS,
     ERR_IO,

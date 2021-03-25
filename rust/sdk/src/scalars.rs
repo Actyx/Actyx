@@ -141,9 +141,9 @@ impl Debug for NodeId {
     }
 }
 
-impl Into<String> for NodeId {
-    fn into(self) -> String {
-        self.to_string()
+impl From<NodeId> for String {
+    fn from(node_id: NodeId) -> String {
+        node_id.to_string()
     }
 }
 
@@ -248,9 +248,9 @@ impl Decode<DagCborCodec> for StreamId {
     }
 }
 
-impl Into<String> for StreamId {
-    fn into(self) -> String {
-        self.to_string()
+impl From<StreamId> for String {
+    fn from(sid: StreamId) -> String {
+        sid.to_string()
     }
 }
 

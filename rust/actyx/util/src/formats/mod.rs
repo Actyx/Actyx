@@ -28,6 +28,31 @@ pub enum NodeErrorContext {
 macro_rules! ax_panic {
     ($x:expr) => {
         let y: anyhow::Error = $x;
-        panic!(Arc::new(y));
+        ::std::panic::panic_any(::std::sync::Arc::new(y));
     };
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::sync::Arc;
+
+    #[derive(Clone, Debug, Display, PartialEq)]
+    #[display(fmt = "Whatever")]
+    struct MyCustomError {
+        the_answer: usize,
+    }
+
+    #[test]
+    fn panic_err_roundtrip() {
+        let custom_error = MyCustomError { the_answer: 42 };
+        let error_from_panic = std::panic::catch_unwind(|| {
+            std::panic::panic_any(Arc::new(anyhow::anyhow!(custom_error.clone())));
+        })
+        .unwrap_err();
+
+        let extracted_anyhow = error_from_panic.downcast_ref::<Arc<anyhow::Error>>().unwrap();
+        let extracted_error = extracted_anyhow.downcast_ref::<MyCustomError>().unwrap();
+        assert_eq!(custom_error, *extracted_error);
+    }
 }
