@@ -135,8 +135,6 @@ mod win {
         // On Windows this is implemented by creating named mutex with CreateMutexW.
         // On UNIX systems this is implemented by using files and flock. The path of the
         // created lock file will be /tmp/<name>.lock.
-        // The user won't be notified on Windows about this, as this application is
-        // running without a console. Not much we can do about this at this point.
         let global_mutex = named_lock::NamedLock::create("Actyx")
             .map_err(|e| anyhow::anyhow!("Error creating global mutex: {}", e))?;
         let _global_guard = global_mutex.try_lock().map_err(|_| {
