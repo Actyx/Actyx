@@ -50,7 +50,7 @@ all-js: \
 make-always:
 	touch $@
 
-export BUILD_RUST_TOOLCHAIN := 1.50.0
+export BUILD_RUST_TOOLCHAIN := 1.51.0
 
 export CARGO_HOME ?= $(HOME)/.cargo
 
