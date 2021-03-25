@@ -79,9 +79,8 @@ impl BanyanStore {
     }
 
     pub(crate) fn publish_root_map(&self, topic: &str) -> impl Future<Output = ()> {
-        let index_store = self.0.index_store.lock();
         let node = self.node_id();
-        let lamport = LamportTimestamp::from(index_store.lamport());
+        let lamport = LamportTimestamp::from(self.0.index_store.lock().lamport());
         let roots = self.0.maps.lock().root_map(node);
         let timestamp = Timestamp::now();
         let msg = PublishSnapshot {
