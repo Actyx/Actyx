@@ -7404,7 +7404,7 @@ dependencies = [
 [[package]]
 name = "wintrap"
 version = "0.3.0"
-source = "git+https://github.com/wngr/wintrap-rs#ae5b2ed7a4ea324414ed260b37d4917dd183ecf1"
+source = "git+https://github.com/wngr/wintrap-rs#4b72e2b93aa41c061e3d5387f4765f2dc903e519"
 dependencies = [
  "crossbeam-channel 0.3.9",
  "lazy_static 1.4.0",
