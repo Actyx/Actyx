@@ -68,7 +68,7 @@ endif
 # which the respective images was built. Whenever the build images (inside
 # ops/docker/images/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 10b33c09855b08f6a6f9422deccef1a90f827ae5
+export LATEST_STABLE_IMAGE_VERSION := 7a5bf6a840c79ca57f0220e951038ba9a62169b0
 # Helper to try out local builds of Docker images
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))
 
