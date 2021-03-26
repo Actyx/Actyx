@@ -8,8 +8,8 @@ const Wrapper = styled.div`
   margin-left: auto;
   margin-right: auto;
   width: 100%;
-  padding-top: 36px;
-  padding-bottom: 36px;
+  padding-top: 60px;
+  padding-bottom: 60px;
   background-color: #ffffff;
   opacity: 1;
   background-image: radial-gradient(#c6cdd8 1px, #ffffff 1px);
@@ -80,7 +80,7 @@ const CardWrapper = styled.div`
   margin-right: auto;
   margin-top: 32px;
   display: flex;
-  max-width: 55%;
+  max-width: 800px;
   flex-direction: row;
   justify-content: center;
 `
