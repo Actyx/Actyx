@@ -2,11 +2,18 @@ import React from 'react'
 import styled from 'styled-components'
 import { keyframes } from 'styled-components'
 import SearchBarHomePage from '../theme/SearchBar-Homepage'
+import { Card } from '../components/Card'
 
 const Wrapper = styled.div`
   margin-left: auto;
   margin-right: auto;
-  padding-top: 64px;
+  width: 100%;
+  padding-top: 36px;
+  padding-bottom: 36px;
+  background-color: #ffffff;
+  opacity: 1;
+  background-image: radial-gradient(#c6cdd8 1px, #ffffff 1px);
+  background-size: 20px 20px;
 `
 
 const waveAnimation = keyframes`
@@ -57,6 +64,7 @@ const HeroHeadline = styled.div`
   font-size: 26px;
   font-weight: 900;
   text-align: center;
+  background: white;
 `
 
 const HeroCopy = styled.div`
@@ -65,6 +73,16 @@ const HeroCopy = styled.div`
   text-align: center;
   margin-top: 16px;
   margin-bottom: 24px;
+  background: white;
+`
+const CardWrapper = styled.div`
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 32px;
+  display: flex;
+  max-width: 55%;
+  flex-direction: row;
+  justify-content: center;
 `
 
 export const Hero: React.FC = () => (
@@ -86,5 +104,21 @@ export const Hero: React.FC = () => (
     <LineWrapper>
       <SearchBarHomePage />
     </LineWrapper>
+    <CardWrapper>
+      <Card
+        headline="Ready to get started?"
+        body="Write your first local twin in only 10 minutes!"
+        link="/"
+        color="purple"
+        cta="Quick Start"
+      />
+      <Card
+        headline="New to Actyx?"
+        body="Learn the basics of Actyx and see its benefits!"
+        link="/"
+        color="blue"
+        cta="How Actyx works"
+      />
+    </CardWrapper>
   </Wrapper>
 )

@@ -162,6 +162,7 @@
   --ifm-container-width: 1200px;
 }
 
+/* Headline classes*/
 h1 {
   font-size: 32px;
   margin-bottom: 1.5rem;
@@ -208,6 +209,7 @@ span {
   font-size: 13px;
 }
 
+/* Navbar classes */
 .navbar {
   background-color: var(--ifm-navbar-background-color);
   box-sizing: border-box;
@@ -240,41 +242,6 @@ span {
   flex-wrap: wrap;
   justify-content: space-between;
   width: 100%;
-}
-
-article {
-  padding-top: 0px;
-  padding-right: 24px;
-  padding-left: 0px;
-  padding-bottom: 24px;
-  margin: 0px;
-  border-bottom: #e1e5e8;
-}
-
-article > header > h2 > a {
-  font-size: 24px;
-  font-weight: 700;
-  color: #2a2f45;
-}
-
-article > header > h2 > a:hover {
-  font-size: 24px;
-  font-weight: 700;
-  text-decoration: none;
-}
-footer {
-  margin-bottom: 0px;
-}
-
-article > footer.row.margin-vert--lg {
-  margin-bottom: 0px;
-}
-
-.DocSearch-Button {
-  margin: 0px !important;
-  border-radius: 5px !important;
-  border: 1px solid #e1e5e8 !important;
-  background-color: white !important;
 }
 
 .navbar .navbar__brand {
@@ -504,7 +471,7 @@ Therefore we are using the substring matching selector.
 */
 [class^='docSidebarContainer'] {
   border: none !important;
-  margin-top: 25px !important;
+  margin-top: -34px !important;
 }
 
 @media (max-width: 996px) {
@@ -536,6 +503,43 @@ Therefore we are using the substring matching selector.
 .navbar .navbar-sidebar__items {
   padding: 0.5rem;
 }
+
+/* Blog article classes */
+article {
+  padding-top: 0px;
+  padding-right: 24px;
+  padding-left: 0px;
+  padding-bottom: 24px;
+  margin: 0px;
+  border-bottom: #e1e5e8;
+}
+
+article > header > h2 > a {
+  font-size: 24px;
+  font-weight: 700;
+  color: #2a2f45;
+}
+
+article > header > h2 > a:hover {
+  font-size: 24px;
+  font-weight: 700;
+  text-decoration: none;
+}
+footer {
+  margin-bottom: 0px;
+}
+
+article > footer.row.margin-vert--lg {
+  margin-bottom: 0px;
+}
+
+.DocSearch-Button {
+  margin: 0px !important;
+  border-radius: 5px !important;
+  border: 1px solid #e1e5e8 !important;
+  background-color: white !important;
+}
+
 .card {
   margin-top: 10px;
   margin-bottom: 10px;
@@ -1449,4 +1453,18 @@ pre .line-numbers {
   position: relative;
   padding-left: 3.8em;
   counter-reset: linenumber;
+}
+
+.table-of-contents {
+  margin: 0px;
+  font-size: 13px;
+}
+
+.table-of-contents li {
+  margin: 0px;
+}
+
+a.table-of-contents__link {
+  font-size: 15px;
+  padding-left: 12px;
 }
