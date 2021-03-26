@@ -15,7 +15,7 @@ const Wrapper = styled.div<{
   background-color: #ffffff;
   opacity: 1;
   background: url(${(props) => props.img}) no-repeat center;
-  background-size: 1100px;
+  background-size: 1240px;
 `
 
 const waveAnimation = keyframes`
@@ -77,7 +77,7 @@ const HeroCopy = styled.div`
   margin-bottom: 24px;
   background: white;
 `
-const CardWrapper = styled.div`
+const ButtonWrapper = styled.div`
   margin-left: auto;
   margin-right: auto;
   margin-top: 32px;
@@ -85,6 +85,37 @@ const CardWrapper = styled.div`
   max-width: 800px;
   flex-direction: row;
   justify-content: center;
+`
+const Button = styled.div<{
+  color: string
+}>`
+  border-radius: 4px;
+  border: 1px solid
+    ${(p) =>
+      p.color == 'green'
+        ? '#15BE53'
+        : p.color == 'blue'
+        ? '#369AFF'
+        : p.color == 'purple'
+        ? '#635BFF'
+        : p.color == 'orange'
+        ? '#FF9933'
+        : '#f5f5f5'};
+  font-weight: 600;
+  font-size: 15px;
+  padding: 8px;
+  color: ${(p) =>
+    p.color == 'green'
+      ? '#15BE53'
+      : p.color == 'blue'
+      ? '#369AFF'
+      : p.color == 'purple'
+      ? '#635BFF'
+      : p.color == 'orange'
+      ? '#FF9933'
+      : '#f5f5f5'};
+  margin-left: 16px;
+  margin-right: 16px;
 `
 
 type Props = Readonly<{
@@ -110,21 +141,9 @@ export const Hero: React.FC<Props> = ({ img }: Props) => (
     <LineWrapper>
       <SearchBarHomePage />
     </LineWrapper>
-    <CardWrapper>
-      <Card
-        headline="Ready to get started?"
-        body="Write your first local twin in only 10 minutes!"
-        link="/"
-        color="purple"
-        cta="Quick Start"
-      />
-      <Card
-        headline="New to Actyx?"
-        body="Learn the basics of Actyx and see its benefits!"
-        link="/"
-        color="blue"
-        cta="How Actyx works"
-      />
-    </CardWrapper>
+    <ButtonWrapper>
+      <Button color="green">Ready to dive in? Check out our Quick Start</Button>
+      <Button color="blue">New to Actyx? See how everything works</Button>
+    </ButtonWrapper>
   </Wrapper>
 )
