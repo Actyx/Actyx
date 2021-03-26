@@ -4,7 +4,9 @@ import { keyframes } from 'styled-components'
 import SearchBarHomePage from '../theme/SearchBar-Homepage'
 import { Card } from '../components/Card'
 
-const Wrapper = styled.div`
+const Wrapper = styled.div<{
+  img: string
+}>`
   margin-left: auto;
   margin-right: auto;
   width: 100%;
@@ -12,8 +14,8 @@ const Wrapper = styled.div`
   padding-bottom: 60px;
   background-color: #ffffff;
   opacity: 1;
-  background-image: radial-gradient(#c6cdd8 1px, #ffffff 1px);
-  background-size: 20px 20px;
+  background: url(${(props) => props.img}) no-repeat center;
+  background-size: 1100px;
 `
 
 const waveAnimation = keyframes`
@@ -85,8 +87,12 @@ const CardWrapper = styled.div`
   justify-content: center;
 `
 
-export const Hero: React.FC = () => (
-  <Wrapper>
+type Props = Readonly<{
+  img: string
+}>
+
+export const Hero: React.FC<Props> = ({ img }: Props) => (
+  <Wrapper img={img}>
     <LineWrapper>
       <HeroHeadline>Hey there!</HeroHeadline>
       <WaveAnimation>👋</WaveAnimation>

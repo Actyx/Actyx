@@ -1,13 +1,10 @@
 import React from 'react'
 import Layout from '@theme/Layout'
 import styled from 'styled-components'
-import { PageTag } from '../components/PageTag'
-import { APIReference } from '../components/APIReference'
-import { Callout } from '../components/Callout'
 import { Hero } from '../components/Hero'
-import { Card } from '../components/Card'
 import { HowPageIsStructured } from '../components/HowPageIsStructured'
 import { ActyxEssentials } from '../components/ActyxEssentials'
+import useBaseUrl from '@docusaurus/useBaseUrl'
 
 /* eslint-disable */
 const PageWrapper = styled.div`
@@ -75,7 +72,7 @@ const Form = styled.a`
 function Home() {
   return (
     <>
-      <Hero />
+      <Hero img={useBaseUrl('/images/homepage/hero-background.svg')} />
       <PageWrapper>
         <HowPageIsStructured />
         <ActyxEssentials />
