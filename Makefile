@@ -50,7 +50,7 @@ all-js: \
 make-always:
 	touch $@
 
-export BUILD_RUST_TOOLCHAIN := 1.50.0
+export BUILD_RUST_TOOLCHAIN := 1.51.0
 
 export CARGO_HOME ?= $(HOME)/.cargo
 
@@ -68,7 +68,7 @@ endif
 # which the respective images was built. Whenever the build images (inside
 # ops/docker/images/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := f543998d946f060af2837e97376e51aeaefcdf3f
+export LATEST_STABLE_IMAGE_VERSION := 7a5bf6a840c79ca57f0220e951038ba9a62169b0
 # Helper to try out local builds of Docker images
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))
 

@@ -103,9 +103,9 @@ impl ChannelId {
     }
 }
 
-impl Into<(PeerId, ConnectionId)> for ChannelId {
-    fn into(self) -> (PeerId, ConnectionId) {
-        (self.peer_id, self.con)
+impl From<ChannelId> for (PeerId, ConnectionId) {
+    fn from(c: ChannelId) -> Self {
+        (c.peer_id, c.con)
     }
 }
 
