@@ -116,6 +116,7 @@ const Button = styled.div<{
       : '#f5f5f5'};
   margin-left: 16px;
   margin-right: 16px;
+  cursor: pointer;
 `
 
 type Props = Readonly<{
@@ -142,8 +143,12 @@ export const Hero: React.FC<Props> = ({ img }: Props) => (
       <SearchBarHomePage />
     </LineWrapper>
     <ButtonWrapper>
-      <Button color="green">Ready to dive in? Check out our Quick Start</Button>
-      <Button color="blue">New to Actyx? See how everything works</Button>
+      <a style={{ textDecoration: 'none' }} href="/releases">
+        <Button color="green">Ready to dive in? Check out our Quick Start</Button>
+      </a>
+      <a style={{ textDecoration: 'none' }} href="/releases">
+        <Button color="blue">New to Actyx? See how everything works</Button>
+      </a>
     </ButtonWrapper>
   </Wrapper>
 )

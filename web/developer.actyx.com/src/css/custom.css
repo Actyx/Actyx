@@ -252,7 +252,7 @@ span {
   height: 2rem;
   width: calc(var(--doc-sidebar-width) - var(--ifm-navbar-padding-horizontal));
   text-decoration: none;
-  /*margin-right: auto; uncomment if navbar items should be centered*/
+  /* margin-right: auto; uncomment if navbar items should be centered*/
 }
 
 .navbar__brand {
@@ -305,6 +305,7 @@ span {
 .navbar .navbar__link:last-child {
   margin-right: auto;
 }
+
 .dropdown {
   display: inline-flex;
   font-weight: var(--ifm-dropdown-font-weight);
@@ -359,13 +360,13 @@ span {
 .navbar .navbar__link {
   color: var(--ifm-navbar-link-color);
   cursor: pointer;
-  font-weight: var(--ifm-font-weight-semibold);
   padding-top: 12px;
   padding-bottom: 12px;
   padding-left: var(--ifm-navbar-item-padding-horizontal);
   padding-right: var(--ifm-navbar-item-padding-horizontal);
   text-decoration: none;
-  font-weight: 700;
+  font-weight: 500;
+  font-size: 15px;
 }
 
 .navbar .navbar__link:hover,
@@ -536,8 +537,8 @@ article > footer.row.margin-vert--lg {
 .DocSearch-Button {
   margin: 0px !important;
   border-radius: 5px !important;
-  border: 1px solid #e1e5e8 !important;
-  background-color: white !important;
+  border: 1px solid white !important;
+  background-color: #f5f6f7 !important;
 }
 
 .card {
