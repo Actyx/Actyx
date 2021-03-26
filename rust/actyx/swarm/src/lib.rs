@@ -145,7 +145,7 @@ impl BanyanStore {
         if cfg.ipfs_node.enable_publish {
             tracing::debug!("Publishing is allowed to pubsub");
         } else {
-            tracing::info!("Publishing is disabled to pubsub");
+            tracing::debug!("Publishing is disabled to pubsub");
         }
 
         let identity = if let Some(identity) = cfg.ipfs_node.identity {
@@ -317,7 +317,7 @@ impl BanyanStore {
 
     /// Append events to a stream, publishing the new data.
     pub async fn append(&self, stream_nr: StreamNr, events: Vec<(TagSet, Event)>) -> Result<Option<Link>> {
-        tracing::info!("publishing {} events on stream {}", events.len(), stream_nr);
+        tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
         let lamport = self.0.index_store.lock().increment_lamport()?;
         let timestamp = Timestamp::now();
         let events = events
@@ -365,7 +365,7 @@ impl BanyanStore {
         range: RangeInclusive<u64>,
         query: Q,
     ) -> impl Stream<Item = Result<FilteredChunk<TT, Event, ()>>> {
-        tracing::info!("stream_filtered_chunked {}", stream_id);
+        tracing::debug!("stream_filtered_chunked {}", stream_id);
         let (trees, forest) = self.tree_stream(stream_id);
         forest.stream_trees_chunked(query, trees, range, &|_| {})
     }
@@ -392,12 +392,12 @@ impl BanyanStore {
     fn get_or_create_own_stream(&self, stream_nr: StreamNr) -> Arc<OwnStreamInner> {
         let mut maps = self.0.maps.lock();
         maps.own_streams.get(&stream_nr).cloned().unwrap_or_else(|| {
-            tracing::info!("creating new own stream {}", stream_nr);
+            tracing::debug!("creating new own stream {}", stream_nr);
             let forest = self.0.forest.clone();
             let stream_id = self.node_id().stream(stream_nr);
             // TODO: Maybe this fn should be fallible
             let _ = self.0.index_store.lock().add_stream(stream_id);
-            tracing::info!("publish new stream_id {}", stream_id);
+            tracing::debug!("publish new stream_id {}", stream_id);
             maps.publish_new_stream_id(stream_id);
             let stream = Arc::new(OwnStreamInner::new(forest));
             maps.own_streams.insert(stream_nr, stream.clone());
@@ -414,7 +414,7 @@ impl BanyanStore {
         if let Some(state) = remote_node.streams.get(&stream_nr).cloned() {
             state
         } else {
-            tracing::info!("creating new replicated stream {}", stream_id);
+            tracing::debug!("creating new replicated stream {}", stream_id);
             let forest = self.0.forest.clone();
             let state = Arc::new(ReplicatedStreamInner::new(forest));
             self.spawn_task(
@@ -422,7 +422,7 @@ impl BanyanStore {
                 self.clone().careful_ingestion(stream_id, state.clone()),
             );
             remote_node.streams.insert(stream_nr, state.clone());
-            tracing::info!("publish new stream_id {}", stream_id);
+            tracing::debug!("publish new stream_id {}", stream_id);
             maps.publish_new_stream_id(stream_id);
             state
         }
@@ -470,7 +470,7 @@ impl BanyanStore {
 
     fn update_root(&self, stream_id: StreamId, root: Link) {
         if stream_id.node_id() != self.node_id() {
-            tracing::info!("update_root {} {}", stream_id, root);
+            tracing::debug!("update_root {} {}", stream_id, root);
             self.get_or_create_replicated_stream(stream_id).set_incoming(root);
         }
     }
@@ -487,14 +487,14 @@ impl BanyanStore {
     async fn compact_once(&self) -> Result<()> {
         let stream_ids = self.0.maps.lock().own_streams.keys().cloned().collect::<Vec<_>>();
         for stream_id in stream_ids {
-            tracing::info!("compacting stream {}", stream_id);
+            tracing::debug!("compacting stream {}", stream_id);
             self.pack(stream_id).await?;
         }
         Ok(())
     }
 
     fn pack(&self, stream_nr: StreamNr) -> impl Future<Output = Result<Option<Link>>> {
-        tracing::info!("packing stream {}", stream_nr);
+        tracing::debug!("packing stream {}", stream_nr);
         self.transform_stream(stream_nr, |txn, tree| txn.pack(tree))
     }
 
@@ -523,11 +523,11 @@ impl BanyanStore {
         while let Some(event) = sync.next().await {
             match event {
                 SyncEvent::Progress { missing } => {
-                    tracing::info!("{} sync_one: {}/{}", node_name, n, n + missing);
+                    tracing::debug!("{} sync_one: {}/{}", node_name, n, n + missing);
                     n += 1;
                 }
                 SyncEvent::Complete(Err(err)) => {
-                    tracing::info!("{} {}", node_name, err);
+                    tracing::debug!("{} {}", node_name, err);
                     return Err(err);
                 }
                 SyncEvent::Complete(Ok(())) => {}

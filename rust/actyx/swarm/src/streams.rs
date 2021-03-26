@@ -197,7 +197,7 @@ impl StreamMaps {
 
     pub fn get_or_create_remote_node(&mut self, node_id: NodeId) -> &mut RemoteNodeInner {
         self.remote_nodes.entry(node_id).or_insert_with(|| {
-            tracing::info!("learned of new node {}", node_id);
+            tracing::debug!("learned of new node {}", node_id);
             Default::default()
         })
     }

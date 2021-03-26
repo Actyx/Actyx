@@ -655,21 +655,22 @@ dependencies = [
 
 [[package]]
 name = "banyan"
-version = "0.9.1"
+version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa736524bf9f5abb4f15b96f2d857991df0fe4962fb84d1bea95a44c632a7e4a"
+checksum = "8d38f59b0fdeeea6a57d1dc1838f2bcb9117b753fe100461e022c833f6ce75c9"
 dependencies = [
  "anyhow",
  "derive_more",
  "fnv",
  "futures 0.3.13",
  "libipld",
- "lru",
  "maplit",
+ "parking_lot 0.11.1",
  "rand 0.8.3",
  "salsa20",
  "smallvec 1.6.1",
  "tracing",
+ "weight-cache",
  "zstd",
 ]
 
@@ -7295,6 +7296,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82015b7e0b8bad8185994674a13a93306bea76cf5a16c5a181382fd3a5ec2376"
 dependencies = [
  "webpki",
+]
+
+[[package]]
+name = "weight-cache"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a6f50193a6f298172bed8afcbd853d5707a161222a2a673a7fb801806fb7201"
+dependencies = [
+ "linked-hash-map 0.5.4",
 ]
 
 [[package]]

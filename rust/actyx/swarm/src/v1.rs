@@ -72,7 +72,7 @@ impl BanyanStore {
             .unwrap()
             .filter_map(|msg| future::ready(serde_cbor::from_slice::<PublishSnapshot>(msg.as_slice()).ok()))
             .for_each(move |heartbeat| {
-                tracing::info!("{} received heartbeat", self.ipfs().local_node_name());
+                tracing::debug!("{} received heartbeat", self.ipfs().local_node_name());
                 store.received_root_map(heartbeat.node, heartbeat.lamport, heartbeat.roots)
             })
             .await
@@ -108,7 +108,7 @@ impl BanyanStore {
                 (key, payload)
             })
             .collect::<Vec<_>>();
-        tracing::info!("publishing {} events on stream {}", kvs.len(), stream_nr);
+        tracing::debug!("publishing {} events on stream {}", kvs.len(), stream_nr);
         let mut min_offset = 0u32;
         let _ = self
             .transform_stream(stream_nr, |txn, tree| {
