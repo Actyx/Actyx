@@ -12,11 +12,33 @@ const Wrapper = styled.div`
 
 const Header = styled.div`
   max-width: 50%;
-  padding: 24px;
+  padding-left: 0px;
+  padding-right: 24px;
+  padding-top: 24px;
+  padding-bottom: 24px;
 `
 const Cards = styled.div`
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: [start] 25% [line2] 25% [line3] 25% [line4] 25% [end];
+  grid-template-rows: auto;
+  column-gap: 24px;
+  row-gap: 24px;
+  &:first-child {
+    grid-column-start: start;
+    grid-column-end: line2;
+  }
+  &:nth-child(2) {
+    grid-column-start: line2;
+    grid-column-end: line3;
+  }
+  &:nth-child(3) {
+    grid-column-start: line3;
+    grid-column-end: line4;
+  }
+  &:nth-child(4) {
+    grid-column-start: line4;
+    grid-column-end: end;
+  }
 `
 
 type Props = Readonly<{

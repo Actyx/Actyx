@@ -75,7 +75,7 @@ function Home() {
       <Hero img={useBaseUrl('/images/homepage/hero-background.svg')} />
       <PageWrapper>
         <HowPageIsStructured />
-        <ActyxEssentials />
+        <ActyxEssentials img={useBaseUrl('/images/homepage/homepage-links.svg')} />
       </PageWrapper>
     </>
   )

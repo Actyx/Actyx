@@ -2,7 +2,6 @@ import React from 'react'
 import styled from 'styled-components'
 import { keyframes } from 'styled-components'
 import SearchBarHomePage from '../theme/SearchBar-Homepage'
-import { Card } from '../components/Card'
 
 const Wrapper = styled.div<{
   img: string

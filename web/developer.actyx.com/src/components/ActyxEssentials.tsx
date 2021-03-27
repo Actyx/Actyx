@@ -3,6 +3,7 @@ import styled from 'styled-components'
 import { Card } from '../components/Card'
 import { Headline } from '../components/Headline'
 import { Body } from '../components/Body'
+import { Link } from './Link'
 
 const Wrapper = styled.div`
   display: flex;
@@ -12,22 +13,89 @@ const Wrapper = styled.div`
 
 const Header = styled.div`
   max-width: 50%;
-  padding: 24px;
+  padding-left: 0px;
+  padding-right: 24px;
+  padding-top: 24px;
+  padding-bottom: 0px;
 `
-const Cards = styled.div`
-  display: flex;
-  flex-direction: row;
+const LinkWrapper = styled.div`
+  display: grid;
+  grid-template-columns: [start] 25% [line2] 25% [line3] 25% [line4] 25% [end];
+  grid-template-rows: auto;
+  column-gap: 24px;
+  row-gap: 24px;
+  &:first-child {
+    grid-column-start: start;
+    grid-column-end: line2;
+  }
+  &:nth-child(2) {
+    grid-column-start: line2;
+    grid-column-end: line3;
+  }
+  &:nth-child(3) {
+    grid-column-start: line3;
+    grid-column-end: line4;
+  }
+  &:nth-child(4) {
+    grid-column-start: line4;
+    grid-column-end: end;
+  }
 `
 
+const Links = styled.div<{
+  color?: string
+}>`
+  border-radius: 4px;
+  color: ${(p) =>
+    p.color == 'green'
+      ? '#15BE53'
+      : p.color == 'blue'
+      ? '#369AFF'
+      : p.color == 'purple'
+      ? '#635BFF'
+      : p.color == 'orange'
+      ? '#FF9933'
+      : '#f5f5f5'};
+  padding-bottom: 12px;
+  padding-top: 18px;
+`
+const Image = styled.div<{
+  img: string
+}>`
+  background: #15be53;
+  background: url(${(props) => props.img}) no-repeat center;
+  background-size: 260px;
+`
 type Props = Readonly<{
-  example: string
+  img: string
 }>
 
-export const ActyxEssentials: React.FC<Props> = ({ example }: Props) => (
+export const ActyxEssentials: React.FC<Props> = ({ img }: Props) => (
   <Wrapper>
     <Header>
       <Headline headline="Actyx essentials" />
       <Body body="Check out the following topics to learn the essentials to know how to build, run, and deploy your solution to your factory customers." />
     </Header>
+    <LinkWrapper>
+      <Links color="green">
+        <Link title="Event-based systems" link="" color="green" />
+        <Link title="Thinking in Actyx" link="" color="green" />
+        <Link title="Peer Discovery" link="" color="green" />
+        <Link title="Performance and Limitations" link="" color="green" />
+      </Links>
+      <Links color="blue">
+        <Link title="Installing and starting Actyx" link="" color="blue" />
+        <Link title="Modelling processes in local twins" link="" color="blue" />
+        <Link title="Some SDK Guide" link="" color="blue" />
+        <Link title="Packaging Front-End Apps" link="" color="blue" />
+      </Links>
+      <Links color="purple">
+        <Link title="Actyx API Reference" link="" color="purple" />
+        <Link title="Actyx SDK Reference" link="" color="purple" />
+        <Link title="CLI Commands Reference" link="" color="purple" />
+        <Link title="Node Manager Features" link="" color="purple" />
+      </Links>
+      <Image img={img} />
+    </LinkWrapper>
   </Wrapper>
 )

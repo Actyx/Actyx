@@ -20,8 +20,6 @@ const Wrapper = styled.div<{
   padding-right: 24px;
   padding-bottom: 12px;
   padding-top: 18px;
-  margin-left: 24px;
-  margin-right: 24px;
   flex-grow: 1;
 `
 

@@ -361,7 +361,7 @@ span {
   color: var(--ifm-navbar-link-color);
   cursor: pointer;
   padding-top: 12px;
-  padding-bottom: 12px;
+  padding-bottom: 14px;
   padding-left: var(--ifm-navbar-item-padding-horizontal);
   padding-right: var(--ifm-navbar-item-padding-horizontal);
   text-decoration: none;
@@ -537,10 +537,13 @@ article > footer.row.margin-vert--lg {
 .DocSearch-Button {
   margin: 0px !important;
   border-radius: 5px !important;
-  border: 1px solid white !important;
-  background-color: #f5f6f7 !important;
+  border: 1px solid #2a2f45 !important;
+  background-color: #ffffff !important;
 }
 
+.DocSearch-Button-Placeholder {
+  color: #2a2f45;
+}
 .card {
   margin-top: 10px;
   margin-bottom: 10px;

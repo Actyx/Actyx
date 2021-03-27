@@ -118,14 +118,15 @@ function DocSearch({ contextualSearch, ...props }) {
   )
 
   const cssStyle = {
-    width: '600px',
-    height: '50px',
+    width: '750px',
+    height: '60px',
     background: 'white',
     borderRadius: '5px',
     border: '1px solid #e1e5e8',
     marginLeft: '24px',
     marginRight: '24px',
     marginTop: '32px',
+    color: 'white',
   }
   const transformSearchClient = useCallback(
     (searchClient) => {

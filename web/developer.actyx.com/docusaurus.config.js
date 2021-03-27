@@ -56,21 +56,24 @@ module.exports = {
           activeBasePath: 'docs/reference',
           to: 'docs/reference/overview',
         },
-        {
-          label: 'Blog',
-          to: 'blog',
+        /* {
+          label: 'AA',
           position: 'right',
-        },
-        {
-          label: 'Community',
-          to: 'https://community.actyx.com/',
-          position: 'right',
-        },
-        {
-          label: 'Academy',
-          to: 'https://community.actyx.com/',
-          position: 'right',
-        },
+          items: [
+            {
+              label: 'Blog',
+              href: '/blog',
+            },
+            {
+              label: 'Community',
+              href: 'https://community.actyx.com/',
+            },
+            {
+              label: 'Academy',
+              href: 'https://community.actyx.com/',
+            },
+          ],
+        }, */
       ],
     },
     footer: {
