@@ -1,3 +1,5 @@
+const remarkCodeImport = require('remark-code-import');
+
 module.exports = {
   title: 'Actyx Developer',
   tagline: 'Documentation, guides and tools for building on the Actyx Platform',
@@ -206,6 +208,7 @@ module.exports = {
       {
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
+          remarkPlugins: [remarkCodeImport]
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
