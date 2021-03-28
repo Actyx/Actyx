@@ -1,0 +1,6 @@
+node_modules/
+*.tar.gz
+dist/
+.cache/
+index.js
+index.js.map

@@ -1,0 +1,9 @@
+manifestVersion: "1.0"
+type: web
+id: com.actyx.example.chat
+version: 1.0.0
+displayName: Chat
+description: "Peer-to-Peer Chat"
+dist: ./dist/
+main: ./dist/index.html
+settingsSchema: { default: { } }
