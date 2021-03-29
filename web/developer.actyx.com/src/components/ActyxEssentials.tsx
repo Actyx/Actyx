@@ -20,8 +20,8 @@ const Header = styled.div`
 `
 const LinkWrapper = styled.div`
   display: grid;
-  grid-template-columns: [start] 25% [line2] 25% [line3] 25% [line4] 25% [end];
-  grid-template-rows: auto;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
   column-gap: 24px;
   row-gap: 24px;
   &:first-child {
