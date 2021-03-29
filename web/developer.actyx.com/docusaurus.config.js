@@ -54,25 +54,39 @@ module.exports = {
           to: 'docs/conceptual-guides/overview',
         },
         {
-          label: 'Reference Docs',
+          label: 'Reference',
           activeBasePath: 'docs/reference',
           to: 'docs/reference/overview',
         },
         {
           label: 'Blog',
-          to: 'blog',
+          activeBasePath: '/blog',
           position: 'right',
+          to: '/blog',
         },
         {
+          label: 'Forum',
+          position: 'right',
+          to: 'https://community.actyx.com/',
+        },
+        /* {
           label: 'Community',
-          to: 'https://community.actyx.com/',
           position: 'right',
-        },
-        {
-          label: 'Academy',
-          to: 'https://community.actyx.com/',
-          position: 'right',
-        },
+          items: [
+            {
+              label: 'Blog',
+              href: '/blog',
+            },
+            {
+              label: 'Forum',
+              href: 'https://community.actyx.com/',
+            },
+            {
+              label: 'Academy',
+              href: 'https://community.actyx.com/',
+            },
+          ],
+        }, */
       ],
     },
     footer: {

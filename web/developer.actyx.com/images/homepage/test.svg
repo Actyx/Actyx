@@ -1,0 +1,13 @@
+<svg id="f11f8b45-c1d2-40ed-a03f-8e6730641790" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" width="1140" height="1080" viewBox="0 0 1140 1080">
+  <defs>
+    <style>
+      .b3b73492-80e2-4a7a-adbf-460f5427be04 {
+        fill: red;
+      }
+    </style>
+  </defs>
+  <g>
+    <rect class="b3b73492-80e2-4a7a-adbf-460f5427be04" x="24.5" y="46.5" width="1062" height="964"/>
+    <path d="M1086,47v963H25V47H1086m1-1H24v965H1087V46Z"/>
+  </g>
+</svg>

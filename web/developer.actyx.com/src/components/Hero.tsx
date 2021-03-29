@@ -3,10 +3,18 @@ import styled from 'styled-components'
 import { keyframes } from 'styled-components'
 import SearchBarHomePage from '../theme/SearchBar-Homepage'
 
-const Wrapper = styled.div`
+const Wrapper = styled.div<{
+  img: string
+}>`
   margin-left: auto;
   margin-right: auto;
-  padding-top: 64px;
+  width: 100%;
+  padding-top: 60px;
+  padding-bottom: 60px;
+  background-color: #ffffff;
+  opacity: 1;
+  background: url(${(props) => props.img}) no-repeat center;
+  background-size: 1240px;
 `
 
 const waveAnimation = keyframes`
@@ -57,6 +65,7 @@ const HeroHeadline = styled.div`
   font-size: 26px;
   font-weight: 900;
   text-align: center;
+  background: white;
 `
 
 const HeroCopy = styled.div`
@@ -65,10 +74,56 @@ const HeroCopy = styled.div`
   text-align: center;
   margin-top: 16px;
   margin-bottom: 24px;
+  background: white;
+`
+const ButtonWrapper = styled.div`
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 32px;
+  display: flex;
+  max-width: 800px;
+  flex-direction: row;
+  justify-content: center;
+`
+const Button = styled.div<{
+  color: string
+}>`
+  border-radius: 4px;
+  border: 1px solid
+    ${(p) =>
+      p.color == 'green'
+        ? '#15BE53'
+        : p.color == 'blue'
+        ? '#369AFF'
+        : p.color == 'purple'
+        ? '#635BFF'
+        : p.color == 'orange'
+        ? '#FF9933'
+        : '#f5f5f5'};
+  font-weight: 600;
+  font-size: 15px;
+  padding: 8px;
+  color: ${(p) =>
+    p.color == 'green'
+      ? '#15BE53'
+      : p.color == 'blue'
+      ? '#369AFF'
+      : p.color == 'purple'
+      ? '#635BFF'
+      : p.color == 'orange'
+      ? '#FF9933'
+      : '#f5f5f5'};
+  margin-left: 16px;
+  margin-right: 16px;
+  cursor: pointer;
 `
 
-export const Hero: React.FC = () => (
-  <Wrapper>
+type Props = Readonly<{
+  img: string
+}>
+
+export const Hero: React.FC<Props> = ({ img }: Props) => (
+  <Wrapper img={img}>
     <LineWrapper>
       <HeroHeadline>Hey there!</HeroHeadline>
       <WaveAnimation>👋</WaveAnimation>
@@ -86,5 +141,13 @@ export const Hero: React.FC = () => (
     <LineWrapper>
       <SearchBarHomePage />
     </LineWrapper>
+    <ButtonWrapper>
+      <a style={{ textDecoration: 'none' }} href="/releases">
+        <Button color="green">Ready to dive in? Check out our Quick Start</Button>
+      </a>
+      <a style={{ textDecoration: 'none' }} href="/releases">
+        <Button color="blue">New to Actyx? See how everything works</Button>
+      </a>
+    </ButtonWrapper>
   </Wrapper>
 )

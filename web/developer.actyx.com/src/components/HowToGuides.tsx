@@ -43,8 +43,10 @@ export const HowToGuides: React.FC<Props> = ({ guides }: Props) => (
         <LinkWrapper>
           {howToGuides[index]?.contents.map((u, idx) => (
             <Link
+              color="blue"
               title={howToGuides[index].contents[idx].title}
               link={howToGuides[index].contents[idx].link}
+              positive
             />
           ))}
         </LinkWrapper>
