@@ -1035,7 +1035,9 @@ dependencies = [
 
 [[package]]
 name = "cbor-data"
-version = "0.4.0"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4903d67ede1684cac68d346426d8ad90c973d0aa4f5a3106ecb2b770e4ea449f"
 dependencies = [
  "base64 0.13.0",
  "half",
@@ -2726,7 +2728,7 @@ dependencies = [
  "console",
  "lazy_static 1.4.0",
  "number_prefix",
- "parking_lot 0.9.0",
+ "parking_lot 0.11.1",
  "regex",
 ]
 
