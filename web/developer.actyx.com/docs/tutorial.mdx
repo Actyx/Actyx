@@ -1,0 +1,269 @@
+---
+title: 'Build a decentralized chat'
+id: tutorial
+sidebar_label: Tutorial
+hide_table_of_contents: false
+keywords: [tutorial]
+description: Tutorial
+image: /images/os/js-sdk.png
+---
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+<!-- markdownlint-disable MD025 -->
+
+In this tutorial, we are going to build a small chat app using Actyx. **You might be tempted to skip it because you are not building chats in real-life — give it a chance.** The techniques that you will learn in this tutorial are fundamental to building anything on the platform, and mastering them will give you a good understanding of its capabilities.
+
+## Before we start
+
+The tutorial is divided into three sections:
+
+- We will get [set up for the tutorial](#setup-for-the-tutorial)
+- We will quickly introduce [Actyx](#what-is-actyx)
+- We will get to it and [build the chat](#building-the-chat)
+
+You don’t have to complete all of the sections at once to get value out of this tutorial. Try to get as far as you can — even if it’s just one or two sections.
+
+### Prerequisites
+
+To get the most out of this tutorial, it is helpful if you have basic knowledge of HTML, CSS, and TypeScript. But since this is a fairly simple example you should be able to follow along even if you are coming from a different programming language.
+
+:::info Typescript in 5 minutes
+If you haven't worked in TypeScript before, we can recommend [this guide](https://www.typescriptlang.org/docs/handbook/typescript-in-5-minutes.html) to learn the basics.
+:::
+
+## Set up for the tutorial
+
+Now, let's get right to it. In this section, we will install Actyx and set up a basic project for our chat.
+
+### Install Actyx
+
+<Tabs
+  groupId="operating-systems"
+  defaultValue="windows"
+  values={[
+    { label: 'Windows', value: 'windows', },
+    { label: 'Linux', value: 'linux', },
+    { label: 'macOS', value: 'macos', },
+  ]
+}>
+<TabItem value="windows">
+
+
+- Download [Actyx for Windows](https://axartifacts.blob.core.windows.net/artifacts/e6ce4c267b1afde174b63745000127f725025750/windows-binaries/windows-x86_64/ActyxOS-Installer.exe)
+- Double click and run through the installer
+- Start Actyx via the Start Menu; a tray icon will appear
+
+:::info Problems installing?
+If you have any problems check out the [Windows installation guide](../os/advanced-guides/actyx-on-windows.md).
+:::
+
+</TabItem>
+<TabItem value="linux">
+
+
+- Download Actyx for Linux ([64 bit](https://axartifacts.blob.core.windows.net/artifacts/feea217d729d06224838c4d2fcf35ba51c87c64e/linux-binaries/linux-x86_64/actyxos-linux), [ARM 64 bit](https://axartifacts.blob.core.windows.net/artifacts/feea217d729d06224838c4d2fcf35ba51c87c64e/linux-binaries/linux-aarch64/actyxos-linux))
+- Open a terminal, navigate to your downloads folder and run the following command `chmod +x actyxos-linux; ./actyxos-linux`
+
+:::info Problems installing?
+If you have any problems check out the [Linux installation guides](../os/advanced-guides/actyx-on-linux.md).
+:::
+
+</TabItem>
+<TabItem value="macos">
+
+
+- Download [Actyx for Mac](https://axartifacts.blob.core.windows.net/artifacts/0010_manual_actyxos-mac-1.1.2/actyxos-mac)
+- Open a terminal and run the following command `cd ~/Downloads; chmod +x actyxos-mac; ./actyxos-mac`
+
+:::info Problems installing?
+If you have any problems check out the [macOS installation guides](../os/advanced-guides/actyx-on-macos.md).
+:::
+
+</TabItem>
+</Tabs>
+
+
+<br />
+
+### Set up the project
+
+In order to run, test and build the chat app you are going to need Node.js and npm, which you can install from [here](https://nodejs.org/en/).
+
+We are now going to set up a simple web app project using [Parcel](https://parceljs.org/). Somewhere on your computer create a directory called `chat`.
+
+In that directory create a file called `package.json` and add the following content:
+
+```json file=../samples/chat-app-tutorial/package.json
+
+```
+
+Create another file called `tsconfig.json` with the following content:
+
+```json file=../samples/chat-app-tutorial/tsconfig.json
+
+```
+
+Now create a file called `index.html` and add the following:
+
+```html file=../samples/chat-app-tutorial/index-1.html
+
+```
+
+Finally, create a file named `index.ts` with the following content:
+
+```ts file=../samples/chat-app-tutorial/index-1.ts
+
+```
+
+To test that everything works, open a terminal, navigate to the `chat` directory and run `npm install` and then `npm run start`. This is what you should see in your terminal.
+
+![npm run start](/images/tutorials/chat-tutorial/chat-npm-run-start-post-setup.png)
+
+If you now navigate to [http://localhost:1234](http://localhost:1234) in your browser and open the Developer Tools you should see this:
+
+![Chat in browser](/images/tutorials/chat-tutorial/chat-setup-in-browser.png)
+
+### Help, I’m stuck!
+
+If you get stuck, ping us on our [Discord Chat](https://discord.gg/262yJhc) or e-mail us at developer@actyx.io.
+
+## What is Actyx?
+
+Actyx is a platform for building highly resilient software systems distributed across a swarm of networked devices. Specifically you can:
+
+1. Implement business logic as low-code twins
+1. Include your twins in apps running on devices
+1. Forget about the network and data persistence
+
+Actyx enables a completely decentralized architecture that allows you to **build apps that always runs**. Your apps always run because they run locally on the device and only interact with the locally running Actyx software.
+
+![Twins and Apps](/images/tutorials/chat-tutorial/twins-and-apps.png)
+
+Enough theory! Let's jump right in.
+
+## Building the chat
+
+Let's now have a look at how Actyx makes it super simple to build a decentralized chat.
+
+To build and run our chat we need to do three things:
+
+1. ~~Install Actyx on each device~~ Already done!
+1. Implement our chat logic as a twin
+1. Integrate the twin into an app
+
+### Chat logic
+
+Our chat logic is simple. Anyone can send messages and receives messages sent by all others. When someone joins the chat, they receive all past messages that were sent before they joined.
+
+The way to implement this using Actyx is to write a so-called twin. A twin is a state-machine. It has a state which it updates when it receives information from elsewhere.
+
+Let's start by defining types for the chat twin's state and the events it can receive. In this case, we have one type of event which is simply a message (string). The state of the twin is an array of strings. In the `index.ts` file, add the following two lines of code:
+
+```ts file=../samples/chat-app-tutorial/index.ts#L3:L4
+
+```
+
+When a twin first starts up, it won't have any messages in memory. So let's give it an empty array as the initial state:
+
+```ts file=../samples/chat-app-tutorial/index.ts#L6
+
+```
+
+Now to the chat twin's logic, i.e. how to calculate the chat state, which we will show to the user, from the events we have received. We implement it as a so-called `onEvent` function. This function simply adds any message it received as a `ChatEvent` to our `ChatState`:
+
+```ts file=../samples/chat-app-tutorial/index.ts#L8:L11
+
+```
+
+This is the complete chat logic. Let's now turn this into a fish.
+
+### The chat fish
+
+:::note Twin == Fish
+The Actyx library that allows you to write twins, actually calls them Fishes. You will see below, but Twin == Fish!
+:::
+
+A _fish_, aka twin, is defined as an object with a couple of properties. You must provide the fish with an ID, an initial state, the `onEvent` function and information about where to get the chat messages from, a so-called _event stream tags_.
+
+First, add the following imports to the top of the `index.ts` file:
+
+```ts file=../samples/chat-app-tutorial/index.ts#L1
+
+```
+
+Now that we have done that, we create the tag for our chat messages and then define the fish itself:
+
+```ts file=../samples/chat-app-tutorial/index.ts#L13:L19
+
+```
+
+That's it. You can now import this fish into any application and it will automatically be synchronized across your network.
+
+### The user interface
+
+Lastly, we need to build a user interface and hook up our fish. Let's implement a very simple user interface showing the chat messages, an input field to type a message and a button to send the message.
+
+Open up the `index.html` file and adjust the contents of the `head` and `body` sections as follows:
+
+```html file=../samples/chat-app-tutorial/index.html
+
+```
+
+The last thing we have to do is to hook up the user interface to the fish. We want to
+
+1. Show all chat messages, i.e. fish's state in the `pre` element
+1. Send out a chat message event when the user clicks the _Send_ button
+
+In the `index.ts` file, add the following code:
+
+```ts file=../samples/chat-app-tutorial/index.ts#L21:L45
+
+```
+
+To test that everything works navigate to the `chat` directory, run `npm run start` and open [http://localhost:1234](http://localhost:1234). You should now see the chat app.
+
+At this point you are chatting by yourself. What's the point?
+
+## The power of local-first
+
+What Actyx allows you to do now is run this chat app on as many computers as you want in your network. Actyx will automatically synchronize the chat twin across all those devices.
+
+The power of this is that you do not have to worry about programming the network, nor about setting up some central database for storage. You only think: local-first.
+
+And, your user can use the app whenever his device is on. Even when he is in airplane mode. Actyx will sync the twin when he gets back into the network. This is local-first.
+
+And just like that you have built a decentralized app that would traditionally have required a web server and a shared database or pub-sub broker 🎉
+
+## Next steps
+
+Here is what you can try out now:
+
+- Run the chat app on another computer in the network
+- Restart the app: do you see the chat history?
+- Airplane mode: what happens if you chat while offline?
+- Reconnecting: what happens when you disable airplane mode again?
+
+We hope that you are now starting to experience the power of local-first cooperation and the Actyx Platform. If you are keen to dive a bit deeper, check out the following further resources.
+
+## Download the code
+
+You can download the complete code for this tutorial from GitHub.
+
+<DownloadLink
+  cta={'Download from GitHub'}
+  link={'https://github.com/Actyx/chat-app-tutorial.git'}
+/>
+
+## Further resources
+
+- Move onto the advanced tutorial to implement a factory use-case
+- Visit our how-to guides to get started immediately
+- Dive into how it works with the Conceptual Guides
+
+:::note Join our Discord chat
+Feel free to join our [Actyx Developer Chat](https://discord.gg/262yJhc) on Discord. We would love to hear about what you want to build on the Actyx platform.
+:::
+
+<!-- markdownlint-disable MD025 -->
