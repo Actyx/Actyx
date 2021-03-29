@@ -27,7 +27,7 @@ You don’t have to complete all of the sections at once to get value out of thi
 
 ### Prerequisites
 
-In order to get the most out of this tutorial, it is helpful if you have basic knowledge of HTML, CSS, and TypeScript. But since this is a fairly simple example you should be able to follow along even if you are coming from a different programming language.
+To get the most out of this tutorial, it is helpful if you have basic knowledge of HTML, CSS, and TypeScript. But since this is a fairly simple example you should be able to follow along even if you are coming from a different programming language.
 
 :::info Typescript in 5 minutes
 If you haven't worked in TypeScript before, we can recommend [this guide](https://www.typescriptlang.org/docs/handbook/typescript-in-5-minutes.html) to learn the basics.
@@ -35,7 +35,7 @@ If you haven't worked in TypeScript before, we can recommend [this guide](https:
 
 ## Set up for the tutorial
 
-Now, let's get right to it. In this section we will install Actyx and set up a basic project for our chat.
+Now, let's get right to it. In this section, we will install Actyx and set up a basic project for our chat.
 
 ### Install Actyx
 
@@ -89,9 +89,9 @@ If you have any problems check out the [macOS installation guides](../os/advance
 
 ### Set up the project
 
-In order to be able to run, test and build the chat app you are going to need Node.js and npm, which you can install from [here](https://nodejs.org/en/).
+In order to run, test and build the chat app you are going to need Node.js and npm, which you can install from [here](https://nodejs.org/en/).
 
-We are now going to setup a simple web app project using [Parcel](https://parceljs.org/). Somewhere on your computer create a directory called `chat`.
+We are now going to set up a simple web app project using [Parcel](https://parceljs.org/). Somewhere on your computer create a directory called `chat`.
 
 In that directory create a file called `package.json` and add the following content:
 
@@ -159,7 +159,7 @@ Our chat logic is simple. Anyone can send messages and receives messages sent by
 
 The way to implement this using Actyx is to write a so-called twin. A twin is a state-machine. It has a state which it updates when it receives information from elsewhere.
 
-Let's start by defining types for the chat twin's state and the events it can receive. In this case we have one type of event which is simply a message (string). The state of the twin is an array of strings. In the `index.ts` file, add the following two lines of code:
+Let's start by defining types for the chat twin's state and the events it can receive. In this case, we have one type of event which is simply a message (string). The state of the twin is an array of strings. In the `index.ts` file, add the following two lines of code:
 
 ```ts file=../samples/chat-app-tutorial/index.ts#L3:L4
 
@@ -260,7 +260,7 @@ You can download the complete code for this tutorial from GitHub.
 
 - Move onto the advanced tutorial to implement a factory use-case
 - Visit our how-to guides to get started immediately
-- Dive into how it actually works through the Conceptual Guides
+- Dive into how it works with the Conceptual Guides
 
 :::note Join our Discord chat
 Feel free to join our [Actyx Developer Chat](https://discord.gg/262yJhc) on Discord. We would love to hear about what you want to build on the Actyx platform.
