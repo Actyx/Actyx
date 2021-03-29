@@ -1,4 +1,4 @@
-# developer.actyx.com
+# Actyx Developer Documentation
 
 This directory contains the source used to build the [https://developer.actyx.com](https://developers.actyx.com) website. For more information about **contributing content**, please jump to [contributing content](#contributing-content). If you are interested in **how it works** or **developing** the site, please jump to [development](#development).
 
@@ -10,17 +10,27 @@ This directory contains the source used to build the [https://developer.actyx.co
 
 ### Content structure
 
-### Content format
+The content of our docs is grouped by 4 categories:
 
-Docusaurus uses standard Markdown syntax extended with MDX. To have a unified document structure, please download [this VS Code extension](). Using the extension, you can generate a few different files:
+#### Conceptual Guides
 
-- Explanation Guides
-- How-To-Guides
-- API Reference
+These <b>understanding-oriented</b> guides clarify a particular topic by giving context and a wider view.
 
-Depending on the kind you choose, the extension will generate a Markdown snippet with all necessary things already in place — now you only need to fill in the content :-)
+#### How-to Guides
 
-As you can see, a page is composed of so-called _header fields_ (enclosed by `---` above and below), followed by the actual content. The content can be any valid Markdown. Indeed, you can even use MDX. Please refer to [this page](https://v2.docusaurus.io/docs/markdown-features/) for more information.
+These <b>problem-oriented</b> guides take the reader through a series of steps required to solve a problem.
+
+#### API Reference Docs
+
+These <b>information-oriented</b> docs provide technical descriptions of the code and how to operate it.
+
+#### Tutorials
+
+These <b>learning-oriented</b> lessons take the reader by the hand to complete a small project. Note that all the tutorials are located in the Actyx Academy and ownership lies entirely with Developer Advocacy. The responsibility with the rest of the content lies within Product Management.
+
+### Markdown Pages
+
+A page is composed of so-called _frontmatter_ (enclosed by `---` above and below), followed by the actual content. Please make sure you fill in all fields in the frontmatter section. The content can be any valid Markdown. Indeed, you can even use MDX. Please refer to [this page](https://v2.docusaurus.io/docs/markdown-features/) for more information.
 
 #### Linking to other pages
 
@@ -69,22 +79,29 @@ If you want to change the content of existing pages, simply find the correspondi
 In order to add a new page you must do two things:
 
 1. Create the Markdown file
-1. Add the correct header field(s)
+1. Add the correct front matter fields
 1. Add the page to a corresponding sidebar.
 
-If you want to add new sidebars, or create new sections either (a) figure it out using the existing code or the [Docusaurus (v2) documentation](https://v2.docusaurus.io/docs/introduction); or (b) ask OST.
+If you want to add new sidebars, or create new sections either (a) figure it out using the existing code or the [Docusaurus (v2) documentation](https://v2.docusaurus.io/docs/introduction); or (b) ask Product Management.
 
 #### Create the page
 
-Create a new Markdown file in the correct directory, e.g. `/docs/os/further-information/great-question.md`.
+Create a new `.mdx` file in the correct directory, e.g. `/docs/conceptual-guides/`.
 
-#### Add required or optional header fields
+#### Add required or optional frontmatter
 
 At the top of the file add, at least, the following:
 
 ```md
 ---
-title: Great question.
+title: Title
+id: title
+hide_title: false
+hide_table_of_contents: false
+sidebar_label: Sidebar Title
+keywords: [some, fitting, keywords]
+description: Some description of the content of this document. This description will be shown in thumbnails when for example posting on Twitter.
+image: /images/os/js-sdk.png
 ---
 ```
 
