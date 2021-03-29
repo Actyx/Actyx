@@ -1,6 +1,6 @@
 import React from 'react'
 import styled from 'styled-components'
-import { ArrowBlue } from '../icons/icons'
+import { Arrow } from '../icons/icons'
 
 const Wrapper = styled.div`
   display: flex;
@@ -44,6 +44,7 @@ export const Link: React.FC<Props> = ({ title, link, color, positive }: Props) =
       <LinkContent positive={positive} color={color}>
         {title}
       </LinkContent>
+      <Arrow color={color} positive={positive} />
     </Wrapper>
   </a>
 )
