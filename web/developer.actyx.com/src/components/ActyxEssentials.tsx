@@ -78,24 +78,31 @@ export const ActyxEssentials: React.FC<Props> = ({ img }: Props) => (
     </Header>
     <LinkWrapper>
       <Links color="green">
-        <Link title="Event-based systems" link="" color="green" />
-        <Link title="Thinking in Actyx" link="" color="green" />
-        <Link title="Peer Discovery" link="" color="green" />
-        <Link title="Performance and Limitations" link="" color="green" />
+        <Link title="Event-based systems" link="" color="green" positive />
+        <Link title="Thinking in Actyx" link="" color="green" positive />
+        <Link title="Peer Discovery" link="" color="green" positive />
+        <Link title="Performance and Limitations" link="" color="green" positive />
       </Links>
       <Links color="blue">
-        <Link title="Installing and starting Actyx" link="" color="blue" />
-        <Link title="Modelling processes in local twins" link="" color="blue" />
-        <Link title="Some SDK Guide" link="" color="blue" />
-        <Link title="Packaging Front-End Apps" link="" color="blue" />
+        <Link title="Installing and starting Actyx" link="" color="blue" positive />
+        <Link title="Modelling processes in local twins" link="" color="blue" positive />
+        <Link title="Some SDK Guide" link="" color="blue" positive />
+        <Link title="Packaging Front-End Apps" link="" color="blue" positive />
       </Links>
       <Links color="purple">
-        <Link title="Actyx API Reference" link="" color="purple" />
-        <Link title="Actyx SDK Reference" link="" color="purple" />
-        <Link title="CLI Commands Reference" link="" color="purple" />
-        <Link title="Node Manager Features" link="" color="purple" />
+        <Link title="Actyx API Reference" link="" color="purple" positive />
+        <Link title="Actyx SDK Reference" link="" color="purple" positive />
+        <Link title="CLI Commands Reference" link="" color="purple" positive />
+        <Link title="Node Manager Features" link="" color="purple" positive />
       </Links>
-      <Image img={img} />
+      <Card
+        color="white"
+        headline="Actyx Community"
+        body="Join our developer community and discover our forum."
+        cta="Forum"
+        link="/"
+      />
+      {/* <Image img={img} /> */}
     </LinkWrapper>
   </Wrapper>
 )

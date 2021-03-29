@@ -76,7 +76,7 @@ export const HowPageIsStructured: React.FC<Props> = ({ example }: Props) => (
       <Card
         color="orange"
         headline="Tutorials"
-        body="These learning-oriented lessons take the reader by the hand through a series of steps to complete a project."
+        body="These learning-oriented lessons take the reader by the hand to complete a small project."
         cta="Find out more"
         link="/releases"
       />
