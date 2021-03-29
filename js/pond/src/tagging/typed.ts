@@ -4,8 +4,9 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { TagSubscription } from '../subscription'
 import { isString } from '../types'
+
+export type TagSubscription = Readonly<{ tags: ReadonlyArray<string>; local: boolean }>
 
 const namedSubSpace = (rawTag: string, sub: string): string[] => {
   return [rawTag, rawTag + ':' + sub]

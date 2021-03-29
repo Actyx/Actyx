@@ -8,7 +8,7 @@ import * as t from 'io-ts'
 import { equals } from 'ramda'
 import { Observable } from 'rxjs'
 import log from '../loggers'
-import { SubscriptionSetIO } from '../subscription'
+import { Where } from '../tagging'
 import { EventKey, EventKeyIO, SourceId } from '../types'
 import {
   EventStore,
@@ -20,6 +20,7 @@ import {
   RequestPresent,
 } from './eventStore'
 import { MultiplexedWebsocket, validateOrThrow } from './multiplexedWebsocket'
+import { OffsetMap, OffsetMapIO } from './offsetMap'
 import {
   AllEventsSortOrder,
   ConnectivityStatus,
@@ -31,24 +32,26 @@ import {
 } from './types'
 
 export const enum RequestTypes {
-  SourceId = '/ax/events/getSourceId',
-  Present = '/ax/events/requestPresent',
-  PersistedEvents = '/ax/events/requestPersistedEvents',
-  AllEvents = '/ax/events/requestAllEvents',
-  PersistEvents = '/ax/events/persistEvents',
+  NodeId = 'node_id',
+  Offsets = 'offsets',
+  Query = 'query',
+  Subscribe = 'subscribe',
+  Publish = 'publish',
+  // FIXME: These endpoints are not yet available in V2.
   HighestSeen = '/ax/events/highestSeenOffsets',
   Connectivity = '/ax/events/requestConnectivity',
 }
+
 const EventKeyOrNull = t.union([t.null, EventKeyIO])
 const ValueOrLimit = t.union([t.number, t.literal('min'), t.literal('max')])
 export type ValueOrLimit = t.TypeOf<typeof ValueOrLimit>
 export const PersistedEventsRequest = t.readonly(
   t.type({
     minEventKey: EventKeyOrNull,
-    fromPsnsExcluding: OffsetMapWithDefault,
-    toPsnsIncluding: OffsetMapWithDefault,
-    subscriptionSet: SubscriptionSetIO,
-    sortOrder: PersistedEventsSortOrder,
+    lowerBound: OffsetMapIO,
+    upperBound: OffsetMapIO,
+    where: t.string,
+    order: PersistedEventsSortOrder,
     count: ValueOrLimit,
   }),
 )
@@ -56,23 +59,26 @@ export type PersistedEventsRequest = t.TypeOf<typeof PersistedEventsRequest>
 
 export const AllEventsRequest = t.readonly(
   t.type({
-    fromPsnsExcluding: OffsetMapWithDefault,
+    lowerBound: OffsetMapIO,
     minEventKey: EventKeyOrNull,
-    toPsnsIncluding: OffsetMapWithDefault,
-    subscriptionSet: SubscriptionSetIO,
-    sortOrder: AllEventsSortOrder,
+    upperBound: OffsetMapIO,
+    where: t.string,
+    order: AllEventsSortOrder,
     count: ValueOrLimit,
   }),
 )
 export type AllEventsRequest = t.TypeOf<typeof AllEventsRequest>
 
-export const PersistEventsRequest = t.readonly(t.type({ events: UnstoredEvents }))
+export const PersistEventsRequest = t.readonly(t.type({ data: UnstoredEvents }))
 export type PersistEventsRequest = t.TypeOf<typeof PersistEventsRequest>
+
+const GetSourceIdResponse = t.type({ nodeId: SourceId.FromString })
 
 export const getSourceId = (multiplexedWebsocket: MultiplexedWebsocket): Promise<SourceId> =>
   multiplexedWebsocket
-    .request(RequestTypes.SourceId)
-    .map(validateOrThrow(SourceId.FromString))
+    .request(RequestTypes.NodeId)
+    .map(validateOrThrow(GetSourceIdResponse))
+    .map(response => response.nodeId)
     .first()
     .toPromise()
 
@@ -86,13 +92,20 @@ export const ConnectivityRequest = t.readonly(
 )
 export type ConnectivityRequest = t.TypeOf<typeof ConnectivityRequest>
 
+const toAql = (w: Where<unknown>) => w.toString()
+
+// FIXME: Downstream consumers expect arrays of Events, but endpoint is no longer sending chunks.
+const compat = (x: unknown) => {
+  return [x]
+}
+
 export class WebsocketEventStore implements EventStore {
-  private _present: Observable<OffsetMapWithDefault>
+  private _present: Observable<OffsetMap>
   private _highestSeen: Observable<OffsetMapWithDefault>
 
   constructor(private readonly multiplexer: MultiplexedWebsocket, readonly sourceId: SourceId) {
     this._present = Observable.defer(() =>
-      this.multiplexer.request(RequestTypes.Present).map(validateOrThrow(OffsetMapWithDefault)),
+      this.multiplexer.request(RequestTypes.Offsets).map(validateOrThrow(OffsetMapIO)),
     ).shareReplay(1)
 
     this._highestSeen = Observable.defer(() =>
@@ -100,7 +113,8 @@ export class WebsocketEventStore implements EventStore {
     ).shareReplay(1)
   }
 
-  present: RequestPresent = () => this._present
+  // FIXME: Change downstream type to only have "psns"
+  present: RequestPresent = () => this._present.map(psns => ({ psns, default: 'max' }))
 
   highestSeen: RequestHighestSeen = () => this._highestSeen
 
@@ -124,7 +138,7 @@ export class WebsocketEventStore implements EventStore {
   persistedEvents: RequestPersistedEvents = (
     fromPsnsExcluding,
     toPsnsIncluding,
-    subscriptionSet,
+    whereObj,
     sortOrder,
     minEventKey,
   ) => {
@@ -132,23 +146,24 @@ export class WebsocketEventStore implements EventStore {
       minEventKey === undefined || equals(minEventKey, EventKey.zero) ? null : minEventKey
     return this.multiplexer
       .request(
-        RequestTypes.PersistedEvents,
+        RequestTypes.Query,
         PersistedEventsRequest.encode({
-          fromPsnsExcluding,
-          toPsnsIncluding,
-          subscriptionSet,
+          lowerBound: fromPsnsExcluding.psns,
+          upperBound: toPsnsIncluding.psns,
+          where: toAql(whereObj),
           minEventKey: minEvKey,
-          sortOrder,
+          order: sortOrder,
           count: 'max',
         }),
       )
+      .map(compat)
       .map(validateOrThrow(Events))
   }
 
   allEvents: RequestAllEvents = (
     fromPsnsExcluding,
     toPsnsIncluding,
-    subscriptionSet,
+    whereObj,
     sortOrder,
     minEventKey,
   ) => {
@@ -156,16 +171,17 @@ export class WebsocketEventStore implements EventStore {
       minEventKey === undefined || equals(minEventKey, EventKey.zero) ? null : minEventKey
     return this.multiplexer
       .request(
-        RequestTypes.AllEvents,
+        RequestTypes.Subscribe,
         AllEventsRequest.encode({
-          fromPsnsExcluding,
-          toPsnsIncluding,
-          subscriptionSet,
+          lowerBound: fromPsnsExcluding.psns,
+          upperBound: toPsnsIncluding.psns,
+          where: toAql(whereObj),
           minEventKey: minEvKey,
-          sortOrder,
+          order: sortOrder,
           count: 'max',
         }),
       )
+      .map(compat)
       .map(validateOrThrow(Events))
   }
 
@@ -175,7 +191,7 @@ export class WebsocketEventStore implements EventStore {
     const publishEvents = events
 
     return this.multiplexer
-      .request(RequestTypes.PersistEvents, PersistEventsRequest.encode({ events: publishEvents }))
+      .request(RequestTypes.Publish, PersistEventsRequest.encode({ data: publishEvents }))
       .map(validateOrThrow(t.type({ events: Events })))
       .map(({ events: persistedEvents }) => {
         if (publishEvents.length !== persistedEvents.length) {
@@ -187,14 +203,14 @@ export class WebsocketEventStore implements EventStore {
           return []
         }
         return publishEvents.map<Event>((ev, idx) => ({
-          sourceId: this.sourceId,
+          stream: this.sourceId,
           name: ev.name,
           tags: ev.tags,
           payload: ev.payload,
           semantics: ev.semantics,
           timestamp: persistedEvents[idx].timestamp,
           lamport: persistedEvents[idx].lamport,
-          psn: persistedEvents[idx].psn,
+          offset: persistedEvents[idx].offset,
         }))
       })
       .defaultIfEmpty([])

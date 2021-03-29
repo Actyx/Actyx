@@ -7,14 +7,14 @@ import log from '../loggers'
 import { mkNoopPondStateTracker, PondStateTracker } from '../pond-state'
 import { SnapshotStore } from '../snapshotStore'
 import { SnapshotScheduler } from '../store/snapshotScheduler'
-import { SubscriptionSet } from '../subscription'
+import { Where } from '../tagging'
 import {
   EventKey,
+  FishErrorReporter,
   FishId,
   IsReset,
   LocalSnapshot,
   Metadata,
-  FishErrorReporter,
   StateWithProvenance,
   toMetadata,
 } from '../types'
@@ -95,7 +95,7 @@ export const observeMonotonic = (
   reportFishError: FishErrorReporter,
   pondStateTracker: PondStateTracker = mkNoopPondStateTracker(),
 ) => <S, E>(
-  subscriptionSet: SubscriptionSet,
+  where: Where<E>,
   initialState: S,
   onEvent: (state: S, event: E, metadata: Metadata) => S,
   fishId: FishId,
@@ -160,7 +160,7 @@ export const observeMonotonic = (
   // The stream of update messages. Should end with a time travel message.
   const monotonicUpdates = (from: Option<FixedStart>): Observable<EventsOrTimetravel> => {
     const stream = () =>
-      endpoint(fishId, subscriptionSet, from.toUndefined())
+      endpoint(fishId, where, from.toUndefined())
         // Run on a scheduler to avoid locking the program up if lots of data is coming in.
         .subscribeOn(Scheduler.queue)
 

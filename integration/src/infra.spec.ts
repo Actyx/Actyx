@@ -1,8 +1,8 @@
 import { Event, EventDraft } from '@actyx/os-sdk'
-import { allNodeNames, runOnAll, runOnEach } from './infrastructure/hosts'
-import * as PondV1 from 'pondV1'
 import { ConnectivityStatus, Pond } from '@actyx/pond'
+import * as PondV1 from 'pondV1'
 import { MultiplexedWebsocket } from 'pondV1/lib/eventstore/multiplexedWebsocket'
+import { allNodeNames, runOnAll, runOnEach } from './infrastructure/hosts'
 
 describe('the Infrastructure', () => {
   test('must create global nodes pool', async () => {
@@ -82,7 +82,8 @@ describe('the Infrastructure', () => {
     expect(ev2).toEqual(expected)
   })
 
-  test('must test Pond v1', async () => {
+  // FIXME: Pond V1 cannot talk to Event Service V2, this needs to test a V1-compat Pond eventually.
+  test.skip('must test Pond v1', async () => {
     const result = await runOnAll([{}], async ([node]) => {
       const pond = await PondV1.Pond.of(new MultiplexedWebsocket({ url: node._private.apiPond }))
       return pond.getNodeConnectivity().take(1).toPromise()
