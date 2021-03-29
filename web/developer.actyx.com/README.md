@@ -34,7 +34,7 @@ A page is composed of so-called _frontmatter_ (enclosed by `---` above and below
 
 #### Linking to other pages
 
-Link to other pages using relative links and include the `.md` file extension (it will automatically be removed at build time). Example:
+Link to other pages using relative links and include the `.mdx` file extension (it will automatically be removed at build time). Example:
 
 ```md
 Check out [this page](../pond/design-principles.md).
