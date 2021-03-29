@@ -46,6 +46,7 @@ export const HowToGuides: React.FC<Props> = ({ guides }: Props) => (
               color="blue"
               title={howToGuides[index].contents[idx].title}
               link={howToGuides[index].contents[idx].link}
+              positive
             />
           ))}
         </LinkWrapper>

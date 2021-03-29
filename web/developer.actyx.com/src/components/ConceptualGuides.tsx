@@ -51,7 +51,7 @@ export const ConceptualGuides: React.FC<Props> = ({ guides }: Props) => (
         <Headline>{conceptualGuides[index].title}</Headline>
         <Body>
           <Description>{conceptualGuides[index].description}</Description>
-          <Link color="green" link={conceptualGuides[index].link} title="Find out more" />
+          <Link positive color="green" link={conceptualGuides[index].link} title="Find out more" />
         </Body>
       </ConceptualGuideWrapper>
     ))}
