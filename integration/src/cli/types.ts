@@ -171,27 +171,10 @@ export const Response_Internal_Swarm_State = io.union([
     _OK,
     io.type({
       result: io.type({
-        swarm: io.type({
-          listen_addrs: io.array(io.string),
-          peer_id: io.string,
-          peers: io.record(
-            io.string,
-            io.type({
-              addresses: io.record(
-                io.string,
-                io.type({
-                  provenance: io.string,
-                  state: io.union([
-                    io.string,
-                    io.type({ Connected: io.type({ since: io.number }) }),
-                    io.type({ Disconnected: io.type({ since: io.number }) }),
-                  ]),
-                }),
-              ),
-              connection_state: io.string,
-            }),
-          ),
-        }),
+        listen_addrs: io.array(io.string),
+        peer_id: io.string,
+        peers: io.array(io.tuple([io.string, io.string])),
+        external_addrs: io.array(io.string),
       }),
     }),
   ]),
@@ -220,8 +203,9 @@ export const Response_Users_Keygen = io.union([
     _OK,
     io.type({
       result: io.type({
-        pubKey: io.string,
-        keystorePath: io.string,
+        privateKeyPath: io.string,
+        publicKeyPath: io.string,
+        publicKey: io.string,
       }),
     }),
   ]),

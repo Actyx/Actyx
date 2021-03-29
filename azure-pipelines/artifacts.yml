@@ -44,6 +44,8 @@ stages:
           - bash: |
               set -e
               build/bin/install-vault.sh
+              chmod -R 777 .
+              chmod -R 777 /root/.cargo
               make all-windows
             env:
               # Map secrets to env vars. This needs to be done manually
@@ -59,6 +61,8 @@ stages:
           - bash: |
               set -e
               build/bin/install-vault.sh
+              chmod -R 777 .
+              chmod -R 777 /root/.cargo
               make all-linux
             env:
               # Map secrets to env vars. This needs to be done manually
@@ -96,6 +100,8 @@ stages:
           - bash: |
               set -e
               build/bin/install-vault.sh
+              chmod -R 777 .
+              chmod -R 777 /root/.cargo
               make all-android
             env:
               # Map secrets to env vars. This needs to be done manually
@@ -163,41 +169,43 @@ stages:
     dependsOn:
       - upload
     jobs:
-      - job: integrationTest
-        displayName: Integration Test
-        steps:
-          - task: DownloadPipelineArtifact@2
-            inputs:
-              path: pipeline-artifacts
-          - bash: |
-              set -e
-              mkdir -p dist/bin 
-              cd pipeline-artifacts
-              for i in `ls`; do mv $i/* ../dist/bin/; done
-              cd ../dist
-              find -type f -exec chmod +x {} \;
-              cp -r bin/linux-x86_64 bin/current
-            displayName: Massage artifact directory structure
-            env:
-              BASH_ENV: "~/.bashrc"
-          - bash: |
-              set -e
-              build/bin/install-vault.sh
-              make prepare-js all-js
-              cd integration
-              source ~/.nvm/nvm.sh
-              nvm use
-              npm install
-              npm test
-            env:
-              # Map secrets to env vars. This needs to be done manually
-              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
-              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
-              BASH_ENV: "~/.bashrc"
-            displayName: npm test
-          - publish: $(System.DefaultWorkingDirectory)/integration/logs
-            condition: failed()
-            artifact: integration-test-logs-attempt$(System.JobAttempt)
+      # Integration tests are disabled for the moment, but will be enabled
+      # again once the banyan integration reaches a certain stability.
+      #      - job: integrationTest
+      #        displayName: Integration Test
+      #        steps:
+      #          - task: DownloadPipelineArtifact@2
+      #            inputs:
+      #              path: pipeline-artifacts
+      #          - bash: |
+      #              set -e
+      #              mkdir -p dist/bin
+      #              cd pipeline-artifacts
+      #              for i in `ls`; do mv $i/* ../dist/bin/; done
+      #              cd ../dist
+      #              find -type f -exec chmod +x {} \;
+      #              cp -r bin/linux-x86_64 bin/current
+      #            displayName: Massage artifact directory structure
+      #            env:
+      #              BASH_ENV: "~/.bashrc"
+      #          - bash: |
+      #              set -e
+      #              build/bin/install-vault.sh
+      #              make prepare-js all-js
+      #              cd integration
+      #              source ~/.nvm/nvm.sh
+      #              nvm use
+      #              npm install
+      #              npm test
+      #            env:
+      #              # Map secrets to env vars. This needs to be done manually
+      #              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+      #              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+      #              BASH_ENV: "~/.bashrc"
+      #            displayName: npm test
+      #          - publish: $(System.DefaultWorkingDirectory)/integration/logs
+      #            condition: failed()
+      #            artifact: integration-test-logs-attempt$(System.JobAttempt)
       - job: cleanup
         displayName: Integration test cleanup tasks
         condition: always()

@@ -1,0 +1,22 @@
+[package]
+name = "ax-futures-util"
+version = "0.1.0"
+authors = [ "Actyx AG" ]
+edition = "2018"
+
+[features]
+with_tokio = ["tokio"]
+default = ["with_tokio"]
+
+[dependencies]
+fnv = "1.0.7"
+futures = { version = "0.3.13", package = "futures" }
+itertools = "0.10.0"
+parking_lot = "0.11.1"
+pin-project-lite = "0.2.6"
+tokio = { version = "1.3.0", features = [ "time" ], optional = true, package = "tokio" }
+
+[dev-dependencies]
+anyhow = "1.0.38"
+rand = "0.8.3"
+tokio = { version = "1.3.0", features = [ "full" ], package = "tokio" }

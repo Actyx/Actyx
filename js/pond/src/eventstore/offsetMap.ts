@@ -6,11 +6,11 @@
  */
 import { fromNullable } from 'fp-ts/lib/Option'
 import * as t from 'io-ts'
-import { Psn } from '../types'
+import { Offset } from '../types'
 import { lookup } from '../util'
 import { Event } from './types'
 
-export const OffsetMapIO = t.readonly(t.record(t.string, Psn.FromNumber))
+export const OffsetMapIO = t.readonly(t.record(t.string, Offset.FromNumber))
 /**
  * A offset map stores the high water mark for each source.
  *
@@ -20,7 +20,8 @@ export const OffsetMapIO = t.readonly(t.record(t.string, Psn.FromNumber))
 export type OffsetMap = t.TypeOf<typeof OffsetMapIO>
 
 const emptyOffsetMap: OffsetMap = {}
-const offsetMapLookup = (m: OffsetMap, s: string): Psn => fromNullable(m[s]).getOrElse(Psn.min)
+const offsetMapLookup = (m: OffsetMap, s: string): Offset =>
+  fromNullable(m[s]).getOrElse(Offset.min)
 
 /**
  * Updates a given psn map with a new event.
@@ -30,10 +31,10 @@ const offsetMapLookup = (m: OffsetMap, s: string): Psn => fromNullable(m[s]).get
  * @param ev the event to include
  */
 const includeEvent = (psnMap: OffsetMapBuilder, ev: Event): OffsetMapBuilder => {
-  const { psn, sourceId } = ev
-  const current = lookup(psnMap, sourceId)
-  if (current === undefined || current < psn) {
-    psnMap[sourceId] = psn
+  const { offset, stream } = ev
+  const current = lookup(psnMap, stream)
+  if (current === undefined || current < offset) {
+    psnMap[stream] = offset
   }
   return psnMap
 }
@@ -42,12 +43,12 @@ const includeEvent = (psnMap: OffsetMapBuilder, ev: Event): OffsetMapBuilder => 
  * Relatively pointless attempt to distinguish between mutable and immutable psnmap
  * See https://github.com/Microsoft/TypeScript/issues/13347 for why this does not help much.
  */
-export type OffsetMapBuilder = Record<string, Psn>
+export type OffsetMapBuilder = Record<string, Offset>
 export type OffsetMapCompanion = Readonly<{
   empty: OffsetMap
   isEmpty: (m: OffsetMap) => boolean
-  lookup: (m: OffsetMap, s: string) => Psn
-  lookupOrUndefined: (m: OffsetMap, s: string) => Psn | undefined
+  lookup: (m: OffsetMap, s: string) => Offset
+  lookupOrUndefined: (m: OffsetMap, s: string) => Offset | undefined
   update: (m: OffsetMapBuilder, ev: Event) => OffsetMapBuilder
 }>
 

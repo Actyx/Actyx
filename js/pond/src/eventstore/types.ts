@@ -8,7 +8,7 @@ import { right } from 'fp-ts/lib/Either'
 import { Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
-import { FishName, isString, Lamport, Psn, Semantics, SourceId, Timestamp } from '../types'
+import { FishName, isString, Lamport, Offset, Semantics, SourceId, Timestamp } from '../types'
 import { OffsetMapIO } from './offsetMap'
 
 export { OffsetMap, OffsetMapBuilder } from './offsetMap'
@@ -32,10 +32,10 @@ export class EnumType<A> extends t.Type<A> {
 export const createEnumType = <T>(e: object, name?: string) => new EnumType<T>(e, name)
 
 /**
- * Basically adds -infinity and +infinity to a PSN
+ * Basically adds -infinity and +infinity to offsets
  */
-const PsnOrLimit = t.union([Psn.FromNumber, t.literal('min'), t.literal('max')])
-export type PsnOrLimit = t.TypeOf<typeof PsnOrLimit>
+const OffsetOrLimit = t.union([Offset.FromNumber, t.literal('min'), t.literal('max')])
+export type OffsetOrLimit = t.TypeOf<typeof OffsetOrLimit>
 
 /**
  * A psn map with a default value, so it is a tabulated total function from source to PsnOrLimit
@@ -43,7 +43,7 @@ export type PsnOrLimit = t.TypeOf<typeof PsnOrLimit>
 export const OffsetMapWithDefault = t.readonly(
   t.type({
     psns: t.readonly(OffsetMapIO),
-    default: PsnOrLimit,
+    default: OffsetOrLimit,
   }),
 )
 export type OffsetMapWithDefault = t.TypeOf<typeof OffsetMapWithDefault>
@@ -62,10 +62,8 @@ const Tags = new t.Type<Tags, TagsOnWire>(
 )
 
 export const EventIO = t.type({
-  psn: Psn.FromNumber,
-  semantics: Semantics.FromString,
-  sourceId: SourceId.FromString,
-  name: FishName.FromString,
+  offset: Offset.FromNumber,
+  stream: SourceId.FromString,
   timestamp: Timestamp.FromNumber,
   lamport: Lamport.FromNumber,
   tags: Tags,
@@ -77,16 +75,16 @@ const compareEvents = (a: Event, b: Event): Ordering => {
   if (lamportOrder !== 0) {
     return lamportOrder
   }
-  const sourceOrder = ordString.compare(a.sourceId, b.sourceId)
+  const sourceOrder = ordString.compare(a.stream, b.stream)
   if (sourceOrder !== 0) {
     return sourceOrder
   }
-  return ordNumber.compare(a.psn, b.psn)
+  return ordNumber.compare(a.offset, b.offset)
 }
 
 const eventsEqual = (a: Event, b: Event): boolean =>
   // compare numerical fields first since it should be faster
-  a.lamport === b.lamport && a.psn === b.psn && a.sourceId === b.sourceId
+  a.lamport === b.lamport && a.offset === b.offset && a.stream === b.stream
 /**
  * Order for events
  *
@@ -133,9 +131,9 @@ export type UnstoredEvents = t.TypeOf<typeof UnstoredEvents>
  * Sort order for perstisted events
  */
 export enum PersistedEventsSortOrders {
-  EventKey = 'eventKey',
-  ReverseEventKey = 'reverseEventKey',
-  Unsorted = 'unsorted',
+  Ascending = 'asc',
+  Descending = 'desc',
+  StreamAscending = 'stream-asc',
 }
 export const PersistedEventsSortOrder: EnumType<PersistedEventsSortOrders> = createEnumType<
   PersistedEventsSortOrders

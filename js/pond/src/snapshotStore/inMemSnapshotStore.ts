@@ -6,7 +6,7 @@
  */
 import { OffsetMap } from '../eventstore'
 import { SnapshotStore } from '../snapshotStore/snapshotStore'
-import { EventKey, FishName, Lamport, Psn, Semantics, SourceId } from '../types'
+import { EventKey, FishName, Lamport, Offset, Semantics, SourceId } from '../types'
 import {
   InvalidateAllSnapshots,
   InvalidateSnapshots,
@@ -28,7 +28,7 @@ type SnapshotRow = SnapshotKey &
   Readonly<{
     lamport: Lamport
     source: SourceId
-    psn: Psn
+    psn: Offset
     blob: string
     rootsPsn: OffsetMap
     horizon: EventKey | undefined
@@ -56,8 +56,8 @@ const toSnapshotRow = (
   semantics,
   name,
   lamport: key.lamport,
-  source: key.sourceId,
-  psn: key.psn,
+  source: key.stream,
+  psn: key.offset,
   version,
   tag,
   blob,
@@ -112,7 +112,10 @@ class Impl implements SnapshotStore {
 
   retrieveSnapshot: RetrieveSnapshot = (s: Semantics, n: FishName, v: number) => {
     const reverseKeyOrder = (l: SnapshotRow, r: SnapshotRow) =>
-      EventKey.ord.compare({ ...r, sourceId: r.source }, { ...l, sourceId: l.source })
+      EventKey.ord.compare(
+        { lamport: r.lamport, offset: r.psn, stream: r.source },
+        { lamport: l.lamport, offset: l.psn, stream: l.source },
+      )
     const values = Object.values(this.snapshots)
     const retrievedSnapshots = values
       .filter(
@@ -127,8 +130,8 @@ class Impl implements SnapshotStore {
         const snap = retrievedSnapshots[0]
         const eventKey: EventKey = {
           lamport: snap.lamport,
-          sourceId: snap.source,
-          psn: snap.psn,
+          stream: snap.source,
+          offset: snap.psn,
         }
         const psnMap: OffsetMap = snap.rootsPsn
         // psnMap is readonly in production.
@@ -145,10 +148,10 @@ class Impl implements SnapshotStore {
       const snapshotAfterOrOnEventKey = (
         lamport: Lamport,
         source: SourceId,
-        psn: Psn,
+        offset: Offset,
         eventKey: EventKey,
       ): boolean => {
-        const snapshotEventKey: EventKey = { lamport, sourceId: source, psn }
+        const snapshotEventKey: EventKey = { lamport, stream: source, offset }
         return EventKey.ord.compare(snapshotEventKey, eventKey) >= 0
       }
       const values = Object.values(this.snapshots)

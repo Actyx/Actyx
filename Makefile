@@ -15,6 +15,13 @@
 # You can use make prepare to update the docker images and install required tools.
 SHELL := /bin/bash
 
+MIN_MAKE_VERSION := 4.2
+# This checks the make version and aborts with an error if it's not at least MIN_MAKE_VERSION
+ok := $(filter $(MIN_MAKE_VERSION),$(firstword $(sort $(MAKE_VERSION) $(MIN_MAKE_VERSION))))
+ifndef ok
+$(error Please upgrade to GNU Make $(MIN_MAKE_VERSION) you are on: $(MAKE_VERSION))
+endif
+
 architectures = aarch64 x86_64 armv7 arm
 
 all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyx-linux ax,linux-$(arch)/$(bin)))
@@ -43,21 +50,25 @@ all-js: \
 make-always:
 	touch $@
 
-export BUILD_RUST_TOOLCHAIN := 1.49.0
+export BUILD_RUST_TOOLCHAIN := 1.51.0
 
 export CARGO_HOME ?= $(HOME)/.cargo
 
 # log in to vault and store the token in an environment variable
 # to run this locally, set the VAULT_TOKEN environment variable by running vault login with your dev role.
 # e.g. `export VAULT_TOKEN=`vault login -token-only -method aws role=dev-ruediger`
+# the current token is looked up and no login attempted if present - this suppresses warnings
+VAULT_TOKEN ?= $(vault token lookup -format=json | jq .data.id)
+ifndef VAULT_TOKEN
 export VAULT_ADDR ?= https://vault.actyx.net
 export VAULT_TOKEN ?= $(shell VAULT_ADDR=$(VAULT_ADDR) vault login -token-only -method aws role=ops-travis-ci)
+endif
 
 # The stable image version is the git commit hash inside `Actyx/Cosmos`, with
 # which the respective images was built. Whenever the build images (inside
 # ops/docker/images/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 34cc0175489887c2729bea392ddf79ef5b733880
+export LATEST_STABLE_IMAGE_VERSION := 7a5bf6a840c79ca57f0220e951038ba9a62169b0
 # Helper to try out local builds of Docker images
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))
 
@@ -69,7 +80,7 @@ print-%:
 # this does not need to be run from CI, since it always starts with a fresh checkout anyway.
 # use this locally to ensure a truly fresh build.
 clean:
-	rm -rf rt-master/target/*
+	rm -rf rust/actyx/target/*
 	rm -rf web/downloads.actyx.com/node_modules
 	rm -rf web/developer.actyx.com/node_modules
 	rm -rf js/pond/node_modules
@@ -118,7 +129,7 @@ validate: validate-os validate-rust validate-os-android validate-js validate-web
 # declare all the validate targets to be phony
 .PHONY: validate-os validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website validate-misc
 
-CARGO := cargo +$(BUILD_RUST_TOOLCHAIN)
+CARGO := RUST_BACKTRACE=1  cargo +$(BUILD_RUST_TOOLCHAIN)
 
 .PHONY: diagnostics
 
@@ -133,18 +144,18 @@ $(TARGET_NAME): cargo-init make-always
   $(eval TARGET_PATH:=rust/$(word 3, $(subst -, ,$(TARGET_NAME))))
 	cd $(TARGET_PATH) && $(CARGO) fmt --all -- --check
 	cd $(TARGET_PATH) && $(CARGO) --locked clippy --all-targets -- -D warnings
-	cd $(TARGET_PATH) && $(CARGO) test --all-features -j $(CARGO_TEST_JOBS)
+	cd $(TARGET_PATH) && $(CARGO) test --locked --all-features -j $(CARGO_TEST_JOBS)
 endef
 
 $(foreach TARGET_NAME,$(rust-validation),$(eval $(mkRustTestRule)))
 
 .PHONY: validate-os
-# execute fmt check, clippy and tests for rt-master
+# execute fmt check, clippy and tests for rust/actyx
 validate-os: diagnostics
-	cd rt-master && $(CARGO) fmt --all -- --check
-	cd rt-master && $(CARGO) --locked clippy -- -D warnings
-	cd rt-master && $(CARGO) --locked clippy --tests -- -D warnings
-	cd rt-master && $(CARGO) test --all-features -j $(CARGO_TEST_JOBS)
+	cd rust/actyx && $(CARGO) fmt --all -- --check
+	cd rust/actyx && $(CARGO) --locked clippy -- -D warnings
+	cd rust/actyx && $(CARGO) --locked clippy --tests -- -D warnings
+	cd rust/actyx && $(CARGO) test --all-features -j $(CARGO_TEST_JOBS)
 
 .PHONY: validate-os-android
 # execute linter for os-android
@@ -207,7 +218,6 @@ validate-misc: validate-actyxos-node-manager validate-actyx-win-installer
 # run npm install. There don't seem to be any tests.
 validate-actyxos-node-manager:
 	docker run \
-	  -u $(shell id -u) \
 	  -v `pwd`:/src \
 	  -w /src/misc/actyxos-node-manager \
 	  --rm actyx/util:windowsinstallercreator-x64-latest \
@@ -221,15 +231,15 @@ android-libaxosnodeffi: \
 	jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so \
 	jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so
 
-jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so: rt-master/target/i686-linux-android/release/libaxosnodeffi.so
+jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so: rust/actyx/target/i686-linux-android/release/libaxosnodeffi.so
 	mkdir -p $(dir $@)
 	cp $< $@
 
-jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so: rt-master/target/aarch64-linux-android/release/libaxosnodeffi.so
+jvm/os-android/app/src/main/jniLibs/arm64-v8a/libaxosnodeffi.so: rust/actyx/target/aarch64-linux-android/release/libaxosnodeffi.so
 	mkdir -p $(dir $@)
 	cp $< $@
 
-jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so: rt-master/target/armv7-linux-androideabi/release/libaxosnodeffi.so
+jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so: rust/actyx/target/armv7-linux-androideabi/release/libaxosnodeffi.so
 	mkdir -p $(dir $@)
 	cp $< $@
 
@@ -262,14 +272,14 @@ targets-nonmusl = $(sort $(foreach oa,$(osArch),$(target-nonmusl-$(oa))))
 
 # build rules for binaries on the current platform (i.e. no cross-building), like ax.exe
 # two-step process:
-#   - declare dependency from dist/bin/* to the right file in rt-master/target/...
-#   - declare how to build the file in rt-master/target/...
-dist/bin/current/%: rt-master/target/release/%
+#   - declare dependency from dist/bin/* to the right file in rust/actyx/target/...
+#   - declare how to build the file in rust/actyx/target/...
+dist/bin/current/%: rust/actyx/target/release/%
 	mkdir -p $(dir $@)
 	cp -a $< $@
 # here % (and thus $*) matches something like ax.exe, so we need to strip the suffix with `basename`
-rt-master/target/release/%: make-always
-	cd rt-master && cargo --locked build --release --bin $(basename $*)
+rust/actyx/target/release/%: make-always
+	cd rust/actyx && cargo --locked build --release --bin $(basename $*)
 
 # In the following the same two-step process is used as for the current os/arch above.
 # The difference is that %-patterns won’t works since there are two variables to fill:
@@ -279,7 +289,7 @@ rt-master/target/release/%: make-always
 # mkDistRule is the template that is then instantiated by the nested `foreach` below,
 # where $(1) and $(2) will be replaced by the loop values for os-arch and binary name, respectively.
 define mkDistRule =
-dist/bin/$(1)/$(2): rt-master/target/$(target-$(1))/release/$(2)
+dist/bin/$(1)/$(2): rust/actyx/target/$(target-$(1))/release/$(2)
 	mkdir -p $$(dir $$@)
 	cp -a $$< $$@
 endef
@@ -287,18 +297,18 @@ $(foreach oa,$(osArch),$(foreach bin,$(binaries),$(eval $(call mkDistRule,$(oa),
 $(foreach a,$(architectures),$(foreach bin,docker-logging-plugin,$(eval $(call mkDistRule,linux-$(a),$(bin)))))
 
 # Make a list of pattern rules (with %) for all possible rust binaries
-# containing e.g. rt-master/target/aarch64-unknown-linux-musl/release/%.
+# containing e.g. rust/actyx/target/aarch64-unknown-linux-musl/release/%.
 # These will be used below to define how to build all binaries for that target.
-targetPatterns = $(foreach t,$(targets),rt-master/target/$(t)/release/%)
+targetPatterns = $(foreach t,$(targets),rust/actyx/target/$(t)/release/%)
 
 # define a pattern rule for making any binary for a given target
 # where the build image is computed by first extracting the OS from the target string and then
 # looking into the image-* mapping - this requires the TARGET variable to be set while evaluating!
 define mkBinaryRule =
-rt-master/target/$(TARGET)/release/%: cargo-init make-always
+rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	docker run \
-	  -u $(shell id -u) \
-	  -w /src/rt-master \
+	  -u builder \
+	  -w /src/rust/actyx \
 	  -e CARGO_BUILD_TARGET=$(TARGET) \
 	  -e CARGO_BUILD_JOBS=$(CARGO_BUILD_JOBS) \
 	  -e HOME=/home/builder \
@@ -315,15 +325,15 @@ $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
 android_so_targets = i686-linux-android aarch64-linux-android armv7-linux-androideabi
 
 # make a list of pattern rules (with %) for all possible .so files needed for android
-soTargetPatterns = $(foreach t,$(android_so_targets),rt-master/target/$(t)/release/libaxosnodeffi.so)
+soTargetPatterns = $(foreach t,$(android_so_targets),rust/actyx/target/$(t)/release/libaxosnodeffi.so)
 
 # same principle as above for targetPatterns
-$(soTargetPatterns): TARGET = $(word 3,$(subst /, ,$@))
-$(soTargetPatterns): OS = $(word 3,$(subst -, ,$(TARGET)))
+$(soTargetPatterns): TARGET = $(word 4,$(subst /, ,$@))
+$(soTargetPatterns): OS = $(word 4,$(subst -, ,$(TARGET)))
 $(soTargetPatterns): cargo-init make-always
 	docker run \
-	  -u $(shell id -u) \
-	  -w /src/rt-master \
+	  -u builder \
+	  -w /src/rust/actyx \
 	  -e CARGO_BUILD_TARGET=$(TARGET) \
 	  -e CARGO_BUILD_JOBS=$(CARGO_BUILD_JOBS) \
 	  -e HOME=/home/builder \
@@ -343,7 +353,7 @@ $(CARGO_HOME)/%:
 jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnodeffi make-always
 	jvm/os-android/bin/get-keystore.sh
 	docker run \
-	  -u $(shell id -u) \
+	  -u builder \
 	  -v `pwd`:/src \
 	  -w /src/jvm/os-android \
 	  --rm \
@@ -358,7 +368,6 @@ misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/windows-x
 	mkdir -p misc/actyxos-node-manager/bin/win32
 	cp dist/bin/windows-x86_64/ax.exe misc/actyxos-node-manager/bin/win32/
 	docker run \
-	  -u $(shell id -u) \
 	  -v `pwd`:/src \
 	  -w /src/misc/actyxos-node-manager \
 	  --rm actyx/util:windowsinstallercreator-x64-latest \
@@ -375,7 +384,6 @@ dist/bin/windows-x86_64/Actyx-Installer.exe: misc/actyxos-node-manager/out/Actyx
 	cp -r misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 misc/actyx-win-installer/node-manager
 	# ls -alh .
 	docker run \
-	  -u $(shell id -u) \
 	  -v `pwd`:/src \
 	  -w /src/misc/actyx-win-installer \
 	  -e DIST_DIR='/src/dist/bin/windows-x86_64' \

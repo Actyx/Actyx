@@ -5,4 +5,4 @@
  * Copyright (C) 2020 Actyx AG
  */
 export * from './typed'
-export * from './wire'
+export * from './predicate'

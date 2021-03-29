@@ -71,10 +71,10 @@ export const mkNodeLocalProcess = async (
     _private: {
       shutdown,
       axBinaryPath,
-      axHost: 'localhost',
+      axHost: 'localhost:4458',
       apiConsole: opts.Endpoints.ConsoleService.BaseUrl,
       apiEvent: opts.Endpoints.EventService.BaseUrl,
-      apiPond: 'ws://localhost:4454/store_api',
+      apiPond: 'ws://localhost:4454/api/v2/events?token=ok',
     },
   }
 }
@@ -146,7 +146,7 @@ export const mkNodeLocalDocker = async (
         axHost,
         apiConsole,
         apiEvent,
-        apiPond: `ws://localhost:${port(4454)}/store_api`,
+        apiPond: `ws://localhost:${port(4454)}/api/v2/events?token=ok`,
       },
     }
   } catch (err) {

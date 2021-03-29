@@ -1,7 +1,7 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -10,7 +10,7 @@ import { Observable, Observer, Subscription } from 'rxjs'
 import log from '../loggers'
 import { unreachable } from '../util/typescript'
 import { WsStoreConfig } from './types'
-import { WebSocketSubject } from './webSocketSubject'
+import { WebSocketWrapper } from './webSocketWrapper'
 
 /**
  * Unique request id to be chosen by the client. 53 bit integer. Reusing existing request id will cancel the current
@@ -19,18 +19,26 @@ import { WebSocketSubject } from './webSocketSubject'
 const RequestId = t.number
 export type RequestId = t.TypeOf<typeof RequestId>
 
-export const RequestMessage = t.readonly(
-  t.intersection([
-    t.type({
-      type: t.string, // application specific identifier or 'cancelRequest'
-      requestId: RequestId, // service identifier
-      serviceId: t.string,
-    }),
-    t.partial({
-      payload: t.unknown,
-    }),
-  ]),
-)
+export const enum RequestMessageType {
+  Request = 'request',
+  Cancel = 'cancel',
+  Authenticate = 'authenticate',
+}
+
+const DoRequestMsg = t.type({
+  type: t.literal(RequestMessageType.Request),
+  requestId: RequestId,
+  serviceId: t.string, // Service the request is aimed at
+  payload: t.unknown,
+})
+
+const CancelMsg = t.type({
+  type: t.literal(RequestMessageType.Cancel),
+  requestId: RequestId,
+})
+
+export const RequestMessage = t.union([DoRequestMsg, CancelMsg])
+
 export type Request = t.TypeOf<typeof RequestMessage>
 
 export const enum ResponseMessageType {
@@ -92,48 +100,70 @@ export const validateOrThrow: <T>(decoder: t.Decoder<any, T>) => (value: any) =>
     : <T>(value: any) => value as T
 
 export class MultiplexedWebsocket {
-  private wsSubject: WebSocketSubject<ResponseMessage>
-  private keepAlive: Subscription
+  private wsSubject: WebSocketWrapper<Request, ResponseMessage>
+  private responseProcessor: Subscription
   private requestCounter: RequestId = 0
 
+  private listeners: Record<RequestId, Observer<ResponseMessage>> = {}
+
+  private error: unknown
+
+  private clearListeners = (action: (o: Observer<ResponseMessage>) => void): void => {
+    Object.values(this.listeners).forEach(action)
+    this.listeners = {}
+  }
+
   close = () => {
-    this.keepAlive.unsubscribe()
-    this.wsSubject.unsubscribe()
+    this.responseProcessor.unsubscribe()
+    this.wsSubject.close()
+
+    this.clearListeners(l => l.complete())
   }
 
   constructor({ url, protocol, onStoreConnectionClosed, reconnectTimeout }: WsStoreConfig) {
     log.ws.info('establishing Pond API WS', url)
-    this.wsSubject = WebSocketSubject.create(
-      url,
-      protocol,
-      onStoreConnectionClosed,
-      reconnectTimeout,
-    )
+    this.wsSubject = WebSocketWrapper(url, protocol, onStoreConnectionClosed, reconnectTimeout)
+
     /**
      * If there are no subscribers, the actual WS connection will be torn down. Keep it open.
      * MUST OVERRIDE the `error` function, because the default empty Observer will RETHROW errors,
      * which blows up the pipeline instead of bubbling the error up into user code.
      */
-    this.keepAlive = this.wsSubject.subscribe({
+    this.responseProcessor = this.wsSubject.responses.subscribe({
+      next: response => {
+        const listener = this.listeners[response.requestId]
+        if (listener) {
+          listener.next(response)
+        } else {
+          log.pond.warn('No listener registered for message ' + JSON.stringify(response))
+        }
+      },
       error: err => {
         log.ws.error('Raw websocket communication error:', err)
+
+        this.clearListeners(l => l.error(err))
+
+        this.error = err
       },
     })
   }
 
-  private handlers = (requestId: RequestId, serviceId: string, payload?: any) => ({
-    onSubscribe: () => ({
+  private handlers = (
+    requestId: RequestId,
+    serviceId: string,
+    payload?: any,
+  ): [t.TypeOf<typeof DoRequestMsg>, t.TypeOf<typeof CancelMsg>] => [
+    {
       serviceId,
-      type: 'request',
+      type: RequestMessageType.Request,
       requestId,
       payload: payload || null,
-    }),
-    onUnsubscribe: () => ({
-      type: 'cancel',
+    },
+    {
+      type: RequestMessageType.Cancel,
       requestId,
-    }),
-    messageFilter: (response: ResponseMessage) => response.requestId.valueOf() === requestId,
-  })
+    },
+  ]
 
   /**
    * Copied from `rxjs/observable/dom/WebSocketSubject.ts`, as it was not possible to
@@ -142,68 +172,60 @@ export class MultiplexedWebsocket {
   private multiplex = (
     requestType: string,
     payload: unknown,
-    unSubscribeHandler: (unsubscribe: () => any) => any,
+    shouldCancelUpstream: () => boolean,
   ) => {
     const wss = this.wsSubject
 
-    return new Observable((observer: Observer<any>) => {
-      // The assigning of the request id needs to be done inside the
-      // observer creation to make sure that it is not reused
-      const requestId = this.requestCounter++
-      const { onSubscribe, onUnsubscribe, messageFilter } = this.handlers(
-        requestId,
-        requestType,
-        payload,
-      )
+    const listeners = this.listeners
 
-      try {
-        // https://github.com/ReactiveX/rxjs/blob/5.x/src/observable/dom/WebSocketSubject.ts on rxjs 5, no serializer is provided.
-        // Therefore we provide one by hand. Caution caution when upgrading to rxjs 6, where this defaults to JSON.stringify.
-        // Also other places in this file (look for JSON.stringify's, they should be redundant on rxjs 6)
-        const subMsg = onSubscribe()
-        log.ws.debug('About to subscribe %j', subMsg)
-        wss.next(subMsg as ResponseMessage)
-      } catch (err) {
-        observer.error(err)
-      }
+    const requestId = this.requestCounter++
 
-      const subscription = wss.subscribe(
-        x => {
-          try {
-            if (messageFilter(x)) {
-              log.ws.debug('Received %o', x)
-              observer.next(x)
-            }
-          } catch (err) {
-            log.ws.error('Received error during message delivery %o', err)
-            observer.error(err)
-          }
-        },
-        err => observer.error(err),
-        () => observer.complete(),
-      )
+    const [doReq, cancelReq] = this.handlers(requestId, requestType, payload)
+
+    const res = new Observable((observer: Observer<ResponseMessage>) => {
+      listeners[requestId] = observer
 
       return () => {
         try {
           log.ws.debug('About to unsubscribe from requestId: %s', requestId)
-          const unsubMsg = unSubscribeHandler(onUnsubscribe)
-          if (unsubMsg) {
-            log.ws.debug('About to unsubscribe with %j', unsubMsg)
-            wss.next(unsubMsg as ResponseMessage)
+
+          if (shouldCancelUpstream()) {
+            log.ws.debug('About to unsubscribe with %j', cancelReq)
+            wss.sendRequest(cancelReq)
+          } else {
+            log.ws.debug(
+              'RequestId %s was cancelled by upstream, not sending a cancelMsg',
+              requestId,
+            )
           }
         } catch (err) {
           log.ws.debug('Unsubscribe error %o', err)
           observer.error(err)
         }
-        subscription.unsubscribe()
+        delete listeners[requestId]
       }
     })
+
+    try {
+      const subMsg = doReq
+      log.ws.debug('About to subscribe %j', subMsg)
+      wss.sendRequest(subMsg)
+    } catch (err) {
+      return Observable.throw(err)
+    }
+
+    return res
   }
 
   request: (requestType: string, payload?: unknown) => Observable<unknown> = (
     requestType,
     payload,
   ) => {
+    // WebSocket has been closed by some error, no further requests are possible.
+    if (this.error) {
+      return Observable.throw(this.error)
+    }
+
     /**
      *  If the WS stream _completes_, consumers always onunsubscribe from the underlying WsSubject, thus we can't
      *  use normal rxjs onUnsubscribe semantics. If the stream was cancelled downstream,
@@ -212,11 +234,7 @@ export class MultiplexedWebsocket {
      */
 
     let upstreamCompletedOrError = false
-    return this.multiplex(
-      requestType,
-      payload,
-      unSubscribe => (upstreamCompletedOrError ? undefined : unSubscribe()),
-    )
+    return this.multiplex(requestType, payload, () => !upstreamCompletedOrError)
       .map(validateOrThrow(ResponseMessage))
       .takeWhile(res => {
         const isComplete = res.type === ResponseMessageType.Complete

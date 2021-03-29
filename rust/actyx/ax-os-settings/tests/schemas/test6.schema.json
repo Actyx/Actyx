@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-06/schema#",
+  "$id": "https://developer.actyx.com/schemas/os/node-settings.schema.json",
+  "type": "object",
+  "required": [
+    "general",
+    "services"
+  ],
+  "properties": {
+    "general": {
+      "$ref": "#/definitions/General"
+    },
+    "services": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "eventService": {
+          "$ref": "#/definitions/Services/EventService"
+        },
+        "consoleService": {
+          "$ref": "#/definitions/Services/ConsoleService"
+        },
+        "dockerRuntime": {
+          "$ref": "#/definitions/Services/DockerRuntime"
+        },
+        "webViewRuntime": {
+          "$ref": "#/definitions/Services/WebViewRuntime"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "Basic": {
+      "Key": {
+        "type": "string",
+        "minLength": 64,
+        "maxLength": 64
+      },
+      "NonEmptyString": {
+        "type": "string",
+        "minLength": 1
+      },
+      "MultiAddr": {
+        "type": "string"
+      }
+    },
+    "Composite": {
+      "LogLevel": {
+        "type": "string",
+        "enum": [
+          "TRACE",
+          "DEBUG",
+          "WARN",
+          "INFO",
+          "ERROR",
+          "FATAL"
+        ],
+        "default": "INFO"
+      }
+    },
+    "General": {
+      "type": "object",
+      "required": [
+        "someVal",
+        "someObjects"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "someVal": {
+          "$ref": "#/definitions/Basic/Key"
+        },
+        "someObjects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "name": {
+          "$ref": "#/definitions/Basic/NonEmptyString"
+        },
+        "logLevels": {
+          "type": "object",
+          "properties": {
+            "os": {
+              "$ref": "#/definitions/Composite/LogLevel"
+            },
+            "apps": {
+              "$ref": "#/definitions/Composite/LogLevel"
+            }
+          }
+        }
+      }
+    },
+    "Services": {
+      "EventService": {
+        "type": "object",
+        "required": [
+          "topic"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "topic": {
+            "$ref": "#/definitions/Basic/NonEmptyString"
+          },
+          "readOnly": {
+            "type": "boolean",
+            "default": false
+          },
+          "_internal": {
+            "type": "object",
+            "required": [],
+            "additionalProperties": true
+          }
+        }
+      },
+      "BlobService": {
+        "type": "object",
+        "required": [],
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "ConsoleService": {
+        "type": "object",
+        "required": [],
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "DockerRuntime": {
+        "type": "object",
+        "required": [],
+        "additionalProperties": false,
+        "properties": {
+          "appRestartPolicy": {
+            "type": "string",
+            "enum": [
+              "no",
+              "on-failure",
+              "unless-stopped"
+            ],
+            "default": "unless-stopped"
+          }
+        }
+      },
+      "WebViewRuntime": {
+        "type": "object",
+        "required": [],
+        "additionalProperties": false,
+        "properties": {}
+      }
+    }
+  }
+}

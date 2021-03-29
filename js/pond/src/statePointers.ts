@@ -190,7 +190,7 @@ export class StatePointers<S> {
     }
 
     for (let i = events.length - 1; i > limit; i -= 1) {
-      const source = events[i].sourceId
+      const source = events[i].stream
 
       if (observedSources.has(source)) {
         continue

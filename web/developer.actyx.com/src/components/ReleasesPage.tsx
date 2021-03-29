@@ -8,6 +8,8 @@ import { Calendar, Commit, Laptop } from '../icons/icons'
 
 /* eslint-disable */
 
+/* eslint-disable */
+
 const PageWrapper = styled.div`
   max-width: 1140px;
   padding-left: 40px;

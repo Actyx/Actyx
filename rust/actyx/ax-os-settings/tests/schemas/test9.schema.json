@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "parent"
+  ],
+  "properties": {
+    "parent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "child": {
+          "type": "string",
+          "default": "<placeholder>"
+        }
+      }
+    }
+  }
+}

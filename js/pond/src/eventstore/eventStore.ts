@@ -5,7 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { Observable } from 'rxjs'
-import { SubscriptionSet } from '../subscription'
+import { Where } from '../tagging'
 import { EventKey, Milliseconds, SourceId } from '../types'
 import { mockEventStore } from './mockEventStore'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
@@ -71,7 +71,7 @@ export type RequestHighestSeen = () => Observable<OffsetMapWithDefault>
 export type RequestPersistedEvents = (
   fromPsnsExcluding: OffsetMapWithDefault, // 'from' is the lower bound, regardless of requested sort order.
   toPsnsIncluding: OffsetMapWithDefault,
-  subscriptionSet: SubscriptionSet,
+  subscriptionSet: Where<unknown>,
   sortOrder: PersistedEventsSortOrder,
   minEventKey?: EventKey,
 ) => Observable<Events>
@@ -97,7 +97,7 @@ export type RequestPersistedEvents = (
 export type RequestAllEvents = (
   fromPsnsExcluding: OffsetMapWithDefault, // 'from' is the lower bound, regardless of requested sort order.
   toPsnsIncluding: OffsetMapWithDefault,
-  subscriptionSet: SubscriptionSet,
+  subscriptionSet: Where<unknown>,
   sortOrder: AllEventsSortOrder,
   minEventKey?: EventKey,
 ) => Observable<Events>

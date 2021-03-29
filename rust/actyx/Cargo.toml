@@ -1,0 +1,38 @@
+# Only have one member per line and the opening and ending on separate lines,
+# since this is used in build scripts to populate the docker image cache!
+[workspace]
+members = [
+  "ada-cli",
+  "api",
+  "ax",
+  "ax-config",
+  "ax-futures-util",
+  "ax-os-settings",
+  "crypto",
+  "libp2p-streaming-response",
+  "logsvcd",
+  "node",
+  "node-ffi",
+  "node-win",
+  "swarm",
+  "tracing_win_event_log",
+  "trees",
+  "util",
+]
+resolver = "2"
+
+# This can only be set per workspace. In release, we rely on a setting a custom
+# panic hook (see `node/src/util.rs::init_panic_hook`), which safely brings
+# down the application after the stack has been wound down.
+[profile.release]
+panic = "unwind"
+[profile.dev]
+panic = "abort"
+
+[patch.crates-io]
+# TODO: Figure out how to build sqlite3 with the proper compile time flags for Android
+rusqlite = { git = "https://github.com/Actyx/rusqlite", rev = "55e4f2e352135e63c5a5619cf64e85febcf0bec6" }
+# wait for https://github.com/qdot/systray-rs/pull/51
+systray = { git = "https://github.com/wngr/systray-rs" }
+# wait for https://github.com/elizagamedev/wintrap-rs/pull/1
+wintrap = { git = "https://github.com/wngr/wintrap-rs" }

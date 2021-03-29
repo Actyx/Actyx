@@ -13,8 +13,7 @@ import { includeEvent } from '../eventstore/testEventStore'
 import { interleaveRandom } from '../eventstore/utils'
 import { SnapshotStore } from '../snapshotStore'
 import { SnapshotScheduler } from '../store/snapshotScheduler'
-import { toSubscriptionSet } from '../tagging'
-import { EventKey, FishErrorReporter, FishName, Metadata, Psn, Semantics } from '../types'
+import { EventKey, FishErrorReporter, Metadata, Offset } from '../types'
 import { shuffle } from '../util/array'
 
 const numberOfSources = 5
@@ -57,10 +56,8 @@ const onEvent = (state: State, event: Payload, metadata: Metadata) => {
 const timeScale = 1000000
 const generateEvents = (count: number) => (sourceId: SourceId): Events =>
   [...new Array(count)].map((_, i) => ({
-    psn: Psn.of(i),
-    semantics: Semantics.of('foo'),
-    sourceId,
-    name: FishName.of('foo'),
+    offset: Offset.of(i),
+    stream: sourceId,
     tags: [],
     timestamp: Timestamp.of(i * timeScale),
     lamport: Lamport.of(i),
@@ -136,7 +133,7 @@ const hydrate: Run = fish => async (sourceId, events, snapshotScheduler) => {
         snapshotScheduler,
         testReportFishError,
       )(
-        toSubscriptionSet(fish.where),
+        fish.where,
         fish.initialState,
         fish.onEvent,
         fish.fishId,
@@ -183,7 +180,7 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
 
   if (intermediates) {
     const states$ = observe(
-      toSubscriptionSet(fish.where),
+      fish.where,
       fish.initialState,
       fish.onEvent,
       fish.fishId,
@@ -206,7 +203,7 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
     }, Promise.resolve(fish.initialState))
   } else {
     const finalStatePromise = observe(
-      toSubscriptionSet(fish.where),
+      fish.where,
       fish.initialState,
       fish.onEvent,
       fish.fishId,

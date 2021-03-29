@@ -1,0 +1,49 @@
+[package]
+name = "trees"
+version = "0.1.0"
+authors = ["Actyx AG"]
+edition = "2018"
+
+[dependencies]
+actyxos_sdk = { version = "0.5", path = "../../sdk" }
+ax-futures-util = { path = "../ax-futures-util" }
+
+anyhow = "1.0.38"
+banyan = "0.9.1"
+base64 = "0.13.0"
+chrono = { version = "0.4.19", features = ["serde"] }
+cid = { version = "0.6.1", default-features = false, features = ["serde-codec"] }
+crossbeam = "0.8.0"
+derive_more = "0.99.11"
+libipld = { version = "0.11.0", default-features = false, features = ["dag-cbor", "derive"] }
+maplit = "1.0.2"
+multibase = "0.9.1"
+multihash = "0.13.2"
+nom = "6.1.2"
+num-traits = "0.2.14"
+quickcheck = { version = "1.0.3", optional = true }
+range-collections = "0.1.1"
+reduce = "0.1.4"
+serde = { version = "1.0.124", features = ["derive", "rc"] }
+serde_cbor = "0.11.1"
+serde_json = { version = "1.0.64", features = ["raw_value"] }
+serde_with = "1.6.4"
+serde-transcode = "1.1.0"
+smallvec = "1.6.1"
+tracing = "0.1.25"
+vec-collections = "0.3.5"
+zstd = "0.6.1"
+
+[dev-dependencies]
+futures = { version = "0.3.13", package = "futures" }
+hex = "0.4.3"
+itertools = "0.10.0"
+multihash = { version = "0.13.2", default-features = false, features = ["sha2"] }
+parking_lot = "0.11.1"
+quickcheck = "1.0.3"
+rand = "0.8.3"
+rstest = "0.6.4"
+tokio = { version = "1.3.0", features = ["full"], package = "tokio" }
+
+[features]
+arb = ["quickcheck"]

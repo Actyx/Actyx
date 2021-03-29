@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-06/schema#",
+  "$id": "https://developer.actyx.com/schemas/os/node-settings.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "parent"
+  ],
+  "properties": {
+    "parent": {
+      "$ref": "#/definitions/Parent"
+    }
+  },
+  "definitions": {
+    "Child1": {
+      "oneOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string",
+          "const": "<placeholder>"
+        }
+      ]
+    },
+    "Child2": {
+      "type": "object",
+      "default": {}
+    },
+    "Parent": {
+      "type": "object",
+      "required": [
+        "child1",
+        "child2"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "child1": {
+          "$ref": "#/definitions/Child1",
+          "default": "<placeholder>"
+        },
+        "child2": {
+          "$ref": "#/definitions/Child2"
+        }
+      }
+    }
+  }
+}

@@ -17,7 +17,7 @@ const neverSnapshotScheduler: SnapshotScheduler = {
   },
 }
 
-const mockEvent = (source: string) => ({ sourceId: source } as Event)
+const mockEvent = (source: string) => ({ stream: source } as Event)
 const mockState = ('mock-state' as unknown) as StateWithProvenance<undefined>
 
 const uniqTagged = (
@@ -228,7 +228,7 @@ describe('State Pointers', () => {
         getSnapshotLevels: (_, _ts) => [],
         isEligibleForStorage: (pending, _latest) => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          return emit && (pending as any).sourceId === 'A'
+          return emit && (pending as any).stream === 'A'
         },
       }
 
