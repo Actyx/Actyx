@@ -1,9 +1,5 @@
 use super::{ConsumerAccessError, EventSelection, EventStoreConsumerAccess, EventStreamOrError};
-use actyxos_sdk::{
-    event::LamportTimestamp,
-    tagged::{Event, StreamId},
-    Payload,
-};
+use actyxos_sdk::{Event, LamportTimestamp, Payload, StreamId};
 use ax_futures_util::stream::MergeOrdered;
 use futures::future::{err, try_join_all, BoxFuture, FutureExt, TryFutureExt};
 use futures::stream::{BoxStream, StreamExt};
@@ -86,30 +82,30 @@ mod tests {
 
     #[tokio::test]
     async fn should_deliver_requested_events() {
-        let store = TestEventStore::new();
+        let store = tests::TestEventStore::new();
         let events = EventSelection::create(
             "('upper:A' & 'lower:a') | 'upper:B'",
             &[
-                (source(1), OffsetOrMin::mk_test(40), OffsetOrMin::mk_test(70)),
-                (source(2), OffsetOrMin::MIN, OffsetOrMin::mk_test(62)),
+                (test_stream(1), OffsetOrMin::mk_test(40), OffsetOrMin::mk_test(70)),
+                (test_stream(2), OffsetOrMin::MIN, OffsetOrMin::mk_test(62)),
             ],
         )
         .expect("cannot construct selection");
         let mut iter = Drainer::new(stream(&store, events.clone()).await.unwrap());
 
         let mut expected = store
-            .known_events(source(1), 0, None)
+            .known_events(test_stream(1), 0, None)
             .into_iter()
-            .chain(store.known_events(source(2), 0, None))
+            .chain(store.known_events(test_stream(2), 0, None))
             .filter(move |ev| events.matches(ev))
-            .map(LamportOrdering)
+            .map(tests::LamportOrdering)
             .collect::<Vec<_>>();
         expected.sort();
         expected.reverse();
 
         let res = iter
             .next()
-            .map(|x| x.into_iter().map(LamportOrdering).collect::<Vec<_>>())
+            .map(|x| x.into_iter().map(tests::LamportOrdering).collect::<Vec<_>>())
             .unwrap();
         assert_eq!(res, expected);
         assert_eq!(iter.next(), None);

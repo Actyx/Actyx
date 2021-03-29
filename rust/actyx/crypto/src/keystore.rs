@@ -12,7 +12,7 @@
 //!    that multiple other nodes can decrypt an event stream (given possession of
 //!    the private key for which the Salsa20 key was encrypted)
 
-use actyxos_sdk::tagged::NodeId;
+use actyxos_sdk::NodeId;
 use aesstream::{AesReader, AesWriter};
 use anyhow::{anyhow, bail, Context, Result};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
@@ -60,15 +60,15 @@ impl From<PrivateKey> for ed25519::SecretKey {
     }
 }
 
-impl Into<KeyPair> for PrivateKey {
-    fn into(self) -> KeyPair {
-        let public: PublicKey = self.into();
-        KeyPair { public, private: self }
+impl From<PrivateKey> for KeyPair {
+    fn from(private: PrivateKey) -> KeyPair {
+        let public: PublicKey = private.into();
+        KeyPair { public, private }
     }
 }
-impl Into<PublicKey> for PrivateKey {
-    fn into(self) -> PublicKey {
-        let secret: ed25519::SecretKey = self.into();
+impl From<PrivateKey> for PublicKey {
+    fn from(private: PrivateKey) -> PublicKey {
+        let secret: ed25519::SecretKey = private.into();
         let public: ed25519::PublicKey = (&secret).into();
         public.into()
     }
@@ -161,9 +161,9 @@ impl PublicKey {
         self.to_ed25519().verify(message, &signature).is_ok()
     }
 }
-impl Into<libp2p::core::PeerId> for PublicKey {
-    fn into(self) -> libp2p::core::PeerId {
-        let public = self.into();
+impl From<PublicKey> for libp2p::core::PeerId {
+    fn from(pb: PublicKey) -> libp2p::core::PeerId {
+        let public = pb.into();
         libp2p::core::PeerId::from_public_key(public)
     }
 }
@@ -198,10 +198,10 @@ impl TryFrom<libp2p::core::PeerId> for PublicKey {
     }
 }
 
-impl Into<libp2p::core::identity::PublicKey> for PublicKey {
-    fn into(self) -> libp2p::core::identity::PublicKey {
+impl From<PublicKey> for libp2p::core::identity::PublicKey {
+    fn from(pk: PublicKey) -> libp2p::core::identity::PublicKey {
         libp2p::core::identity::PublicKey::Ed25519(
-            libp2p::core::identity::ed25519::PublicKey::decode(&self.0)
+            libp2p::core::identity::ed25519::PublicKey::decode(&pk.0)
                 .expect("ed25519 encoding format changed between libp2p and crypto"),
         )
     }
@@ -212,9 +212,9 @@ impl From<libp2p::core::identity::ed25519::PublicKey> for PublicKey {
     }
 }
 
-impl Into<libp2p::core::identity::ed25519::Keypair> for KeyPair {
-    fn into(self) -> libp2p::core::identity::ed25519::Keypair {
-        let mut bytes = self.to_bytes();
+impl From<KeyPair> for libp2p::core::identity::ed25519::Keypair {
+    fn from(kp: KeyPair) -> libp2p::core::identity::ed25519::Keypair {
+        let mut bytes = kp.to_bytes();
         libp2p::core::identity::ed25519::Keypair::decode(&mut bytes)
             .expect("ed25519 encoding format changed between libp2p and crypto")
     }
@@ -239,9 +239,9 @@ impl From<NodeId> for PublicKey {
         Self(res)
     }
 }
-impl Into<NodeId> for PublicKey {
-    fn into(self) -> NodeId {
-        NodeId::from_bytes(self.as_ref()).unwrap()
+impl From<PublicKey> for NodeId {
+    fn from(p: PublicKey) -> NodeId {
+        NodeId::from_bytes(p.as_ref()).unwrap()
     }
 }
 

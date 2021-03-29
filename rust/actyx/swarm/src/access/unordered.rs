@@ -25,7 +25,7 @@ pub fn stream(store: &impl EventStoreConsumerAccess, events: EventSelection) -> 
                     let events = events.for_stream(stream_id, local_stream_ids.contains(&stream_id));
                     store
                         .stream_forward(events, false)
-                        .map(|res| res.unwrap()) // fine since we know that the source exists
+                        .map(|res| res.unwrap()) // fine since we know that the stream exists
                         .flatten_stream()
                         .filter_map(|x| ready(x.into_event()))
                         .chain(stream::iter(vec![EventOrStop::Stop(stream_id)]))
@@ -42,7 +42,7 @@ pub fn stream(store: &impl EventStoreConsumerAccess, events: EventSelection) -> 
                 let events = events.for_stream(stream_id, store.local_stream_ids().contains(&stream_id));
                 store
                     .stream_forward(events, false)
-                    .map(|res| res.unwrap()) // fine since we know that the source exists
+                    .map(|res| res.unwrap()) // fine since we know that the stream exists
                     .flatten_stream()
                     .filter_map(|x| {
                         if let EventOrHeartbeat::Event(e) = x {
@@ -73,13 +73,13 @@ mod tests {
         let store = TestEventStore::new();
         let events = EventSelection::create(
             "'upper:A' & 'lower:a'",
-            &[(source(4), OffsetOrMin::MIN, OffsetOrMin::MAX)],
+            &[(test_stream(4), OffsetOrMin::MIN, OffsetOrMin::MAX)],
         )
         .expect("cannot construct selection");
         let mut iter = Drainer::new(stream(&store, events.clone()).await.unwrap());
 
         let expected = store
-            .known_events(source(4), 0, None)
+            .known_events(test_stream(4), 0, None)
             .into_iter()
             .filter(move |ev| events.matches(ev))
             .collect::<Vec<_>>();
@@ -87,7 +87,7 @@ mod tests {
         assert_eq!(iter.next(), Some(expected));
 
         let ev = mk_test_event(
-            Some(source(4)),
+            test_stream(4),
             store.top_offset() + 1,
             LamportTimestamp::from((store.top_offset() - Offset::ZERO) as u64 + 1),
         );
@@ -103,19 +103,19 @@ mod tests {
         let events = EventSelection::create(
             "'upper:A' & 'lower:a'",
             &[
-                (source(1), OffsetOrMin::MIN, top),
-                (source(2), OffsetOrMin::mk_test(10), top),
-                (source(5), OffsetOrMin::mk_test(50), top),
-                (source(7), (top_offset + 10).into(), top),
+                (test_stream(1), OffsetOrMin::MIN, top),
+                (test_stream(2), OffsetOrMin::mk_test(10), top),
+                (test_stream(5), OffsetOrMin::mk_test(50), top),
+                (test_stream(7), (top_offset + 10).into(), top),
             ],
         )
         .unwrap();
         let mut iter = Drainer::new(stream(&store, events.clone()).await.unwrap());
 
         let mut expected = vec![
-            store.known_events(source(1), 0, None),
-            store.known_events(source(2), 10, None),
-            store.known_events(source(5), 0, None),
+            store.known_events(test_stream(1), 0, None),
+            store.known_events(test_stream(2), 10, None),
+            store.known_events(test_stream(5), 0, None),
         ]
         .into_iter()
         .flatten()
@@ -140,17 +140,17 @@ mod tests {
         let events = EventSelection::create(
             "('upper:A' & 'lower:a') | 'upper:B'",
             &[
-                (source(1), OffsetOrMin::mk_test(40), OffsetOrMin::mk_test(70)),
-                (source(2), OffsetOrMin::MIN, OffsetOrMin::mk_test(62)),
+                (test_stream(1), OffsetOrMin::mk_test(40), OffsetOrMin::mk_test(70)),
+                (test_stream(2), OffsetOrMin::MIN, OffsetOrMin::mk_test(62)),
             ],
         )
         .expect("cannot construct selection");
         let mut iter = Drainer::new(stream(&store, events.clone()).await.unwrap());
 
         let mut expected = store
-            .known_events(source(1), 0, None)
+            .known_events(test_stream(1), 0, None)
             .into_iter()
-            .chain(store.known_events(source(2), 0, None))
+            .chain(store.known_events(test_stream(2), 0, None))
             .filter(move |ev| events.matches(ev))
             .map(LamportOrdering)
             .collect::<Vec<_>>();
@@ -166,11 +166,11 @@ mod tests {
         assert_eq!(result, expected);
         assert_eq!(iter.next(), None);
 
-        // check that per-source streams remain ordered
+        // check that per-stream streams remain ordered
         let s1 = other
             .iter()
             .cloned()
-            .filter(|LamportOrdering(ev)| ev.key.stream == source(1))
+            .filter(|LamportOrdering(ev)| ev.key.stream == test_stream(1))
             .collect::<Vec<_>>();
         let mut s1s = s1.clone();
         s1s.sort();
@@ -179,7 +179,7 @@ mod tests {
         let s2 = other
             .iter()
             .cloned()
-            .filter(|LamportOrdering(ev)| ev.key.stream == source(2))
+            .filter(|LamportOrdering(ev)| ev.key.stream == test_stream(2))
             .collect::<Vec<_>>();
         let mut s2s = s2.clone();
         s2s.sort();

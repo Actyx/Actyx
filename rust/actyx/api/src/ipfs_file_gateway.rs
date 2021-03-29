@@ -1,8 +1,9 @@
+use std::{collections::VecDeque, path::Path, pin::Pin, str::FromStr};
+
 use anyhow::Result;
 use futures::prelude::*;
-use ipfs_node::IpfsNode;
 use libipld::cid::Cid;
-use std::{collections::VecDeque, path::Path, pin::Pin, str::FromStr};
+use swarm::BanyanStore;
 use tracing::*;
 use warp::{
     filters::BoxedFilter,
@@ -46,9 +47,9 @@ fn content_type_from_first_chunk(chunk: Option<&Result<Vec<u8>>>) -> Option<Head
     HeaderValue::from_str(&mime).ok()
 }
 
-async fn handle_query(ipfs: IpfsNode, query: IpfsQuery) -> Result<Response<Body>, Rejection> {
+async fn handle_query(store: BanyanStore, query: IpfsQuery) -> Result<Response<Body>, Rejection> {
     let content_header_from_ext = content_type_from_ext(&query);
-    let mut stream = ipfs.cat(query.root, query.path).peekable();
+    let mut stream = store.cat(query.root, query.path).peekable();
     let chunk = Pin::new(&mut stream).peek().await;
     let content_header_from_content = content_type_from_first_chunk(chunk);
     let mut resp = Response::new(Body::wrap_stream(stream));
@@ -59,7 +60,7 @@ async fn handle_query(ipfs: IpfsNode, query: IpfsQuery) -> Result<Response<Body>
     Ok(resp)
 }
 
-pub fn create_gateway_route(client: IpfsNode) -> BoxedFilter<(impl Reply,)> {
+pub fn route(store: BanyanStore) -> BoxedFilter<(impl Reply,)> {
     path::tail()
         .and_then(|tail: warp::path::Tail| {
             future::ready(
@@ -68,6 +69,6 @@ pub fn create_gateway_route(client: IpfsNode) -> BoxedFilter<(impl Reply,)> {
                     .map_err(|_| warp::reject::not_found()),
             )
         })
-        .and_then(move |query: IpfsQuery| handle_query(client.clone(), query))
+        .and_then(move |query: IpfsQuery| handle_query(store.clone(), query))
         .boxed()
 }

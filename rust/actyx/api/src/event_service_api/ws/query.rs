@@ -1,6 +1,6 @@
 use actyxos_sdk::{
-    event_service::{EventService, QueryRequest, QueryResponse},
-    tagged::AppId,
+    service::{EventService, QueryRequest, QueryResponse},
+    AppId,
 };
 use futures::{
     stream::{self, BoxStream},

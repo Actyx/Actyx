@@ -1,8 +1,4 @@
-use actyxos_sdk::{
-    expression::Expression,
-    tagged::{Tag, TagSet},
-    tags,
-};
+use actyxos_sdk::{tags, Expression, Tag, TagSet};
 use serde::{Deserialize, Serialize};
 use std::ops::{Deref, DerefMut};
 
@@ -69,8 +65,8 @@ impl DerefMut for TagSubscriptions {
         &mut self.0
     }
 }
-impl Into<Vec<TagSet>> for TagSubscriptions {
-    fn into(self) -> Vec<TagSet> {
-        self.0.into_iter().map(|x| x.tags).collect()
+impl From<TagSubscriptions> for Vec<TagSet> {
+    fn from(ts: TagSubscriptions) -> Vec<TagSet> {
+        ts.0.into_iter().map(|x| x.tags).collect()
     }
 }

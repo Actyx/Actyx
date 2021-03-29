@@ -8,6 +8,7 @@ pub mod keepalivestream3;
 pub mod pinned_resource;
 pub mod pinned_resource_sync;
 pub mod sampled_broadcast;
+pub mod serde_support;
 pub mod serde_util;
 pub mod tracing_set_log_level;
 pub mod value_or_limit;
@@ -27,6 +28,16 @@ use std::{
     fmt::{Display, Formatter},
     vec,
 };
+
+/// Sets up a logging and a panic handler that logs panics.
+pub fn setup_logger() {
+    tracing_log::LogTracer::init().ok();
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).ok();
+    log_panics::init();
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SocketAddrHelper {

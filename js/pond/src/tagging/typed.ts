@@ -5,7 +5,8 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { isString } from '../types'
-import { TagSubscription } from '../subscription'
+
+export type TagSubscription = Readonly<{ tags: ReadonlyArray<string>; local: boolean }>
 
 const namedSubSpace = (rawTag: string, sub: string): string[] => {
   return [rawTag, rawTag + ':' + sub]
@@ -102,9 +103,15 @@ export interface Tag<E> extends Tags<E> {
   readonly rawTag: string
 
   /**
-   * This very tag, suffixed with an id. E.g. `Tag<RobotEvent>('robot').withId('robot500')`
-   * expresses robot events belonging to a *specific* robot. The suffix will be separated
-   * from the base name by a colon `:`.
+   * Returns two tags:
+   *
+   *  - this tag
+   *  - this tag suffixed with the given `name`, e.g. `Tag<RobotEvent>('robot').withId('robot500')`
+   *    expresses robot events belonging to a *specific* robot. The suffix will be separated
+   *    from the base name by a colon `:` like `robot:robot500`.
+   *
+   * The reason for preserving the base tag is to keep a notion of the whole event group,
+   * and enable selection of it all without knowing every individual specific ID.
    */
   withId(name: string): Tags<E>
 }

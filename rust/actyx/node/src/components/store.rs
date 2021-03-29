@@ -1,14 +1,13 @@
 use super::{Component, ComponentRequest};
 use crate::{os_settings::Settings, BindTo};
-use actyxos_sdk::tagged::NodeId;
+use actyxos_sdk::NodeId;
 use anyhow::Result;
 use ax_config::StoreConfig;
 use crossbeam::channel::{Receiver, Sender};
 use crypto::KeyStoreRef;
-use ipfs_node::NodeIdentity;
 use parking_lot::Mutex;
 use std::{path::PathBuf, sync::Arc};
-use swarm::BanyanStore;
+use swarm::{BanyanStore, NodeIdentity};
 use tokio::sync::oneshot;
 use tracing::*;
 
@@ -21,7 +20,7 @@ pub(crate) type StoreTx = Sender<ComponentRequest<StoreRequest>>;
 
 impl Component<StoreRequest, StoreConfig> for Store {
     fn get_type(&self) -> &'static str {
-        "store"
+        "Swarm"
     }
     fn get_rx(&self) -> &Receiver<ComponentRequest<StoreRequest>> {
         &self.rx
@@ -29,18 +28,32 @@ impl Component<StoreRequest, StoreConfig> for Store {
     fn handle_request(&mut self, req: StoreRequest) -> Result<()> {
         match req {
             StoreRequest::GetSwarmState { tx } => {
-                if let Some(InternalStoreState { rt, store }) = self.state.as_ref() {
-                    let state = rt.block_on(store.ipfs().stats());
-                    // TODO: This should be stabilized and made into an official API
-                    let _ = tx.send(state.map_err(Into::into).map(|stats| {
-                        serde_json::json!({
-                            "swarm": stats.swarm,
-                            "repo": {
-                                "repo_size": stats.repo_size,
-                                "num_objects": stats.num_objects,
-                            }
-                        })
-                    }));
+                if let Some(InternalStoreState { rt: _, store }) = self.state.as_ref() {
+                    let peer_id = store.ipfs().local_peer_id().to_string();
+                    let listen_addrs: Vec<_> = store
+                        .ipfs()
+                        .listeners()
+                        .into_iter()
+                        .map(|addr| addr.to_string())
+                        .collect();
+                    let external_addrs: Vec<_> = store
+                        .ipfs()
+                        .external_addresses()
+                        .into_iter()
+                        .map(|rec| rec.addr.to_string())
+                        .collect();
+                    let peers: Vec<_> = store
+                        .ipfs()
+                        .connections()
+                        .into_iter()
+                        .map(|(peer, addr)| (peer.to_string(), addr.to_string()))
+                        .collect();
+                    let _ = tx.send(Ok(serde_json::json!({
+                        "peer_id": peer_id,
+                        "listen_addrs": listen_addrs,
+                        "external_addrs": external_addrs,
+                        "peers": peers,
+                    })));
                 } else {
                     let _ = tx.send(Err(anyhow::anyhow!("Store not running")));
                 }
@@ -67,7 +80,12 @@ impl Component<StoreRequest, StoreConfig> for Store {
                 let store = BanyanStore::from_axconfig_with_db(cfg.clone(), db).await?;
                 store.spawn_task(
                     "api",
-                    api::run(store.clone(), cfg.api_addr.clone().into_iter(), keystore),
+                    api::run(
+                        store.node_id(),
+                        store.clone(),
+                        cfg.api_addr.clone().into_iter(),
+                        keystore,
+                    ),
                 );
                 Ok::<BanyanStore, anyhow::Error>(store)
             })?;
@@ -93,12 +111,9 @@ impl Component<StoreRequest, StoreConfig> for Store {
             .ok_or_else(|| anyhow::anyhow!("No KeyPair available for KeyId {}", self.node_id))?
             .into();
         let mut c = s.store_config(&self.working_dir)?;
-
-        c.ipfs_node.identity = Some(identity.to_string());
-
         c.api_addr = self.bind_to.api.clone();
+        c.ipfs_node.identity = Some(identity.to_string());
         c.ipfs_node.listen = self.bind_to.swarm.clone().to_multiaddrs().collect();
-
         Ok(c)
     }
 }

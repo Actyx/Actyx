@@ -1,8 +1,7 @@
 use actyxos_sdk::{
-    event_service::EventResponse,
     language::{Index, Number},
-    tagged::{Event, EventKey},
-    Payload,
+    service::EventResponse,
+    Event, EventKey, Payload,
 };
 use anyhow::{anyhow, Result};
 use cbor_data::{CborBuilder, CborOwned, CborValue, Encoder, WithOutput};

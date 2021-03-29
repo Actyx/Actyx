@@ -1,7 +1,4 @@
-use crate::{
-    tagged::{AppId, Tag},
-    LamportTimestamp, TimeStamp,
-};
+use crate::{tags::Tag, AppId, LamportTimestamp, Timestamp};
 
 mod parser;
 pub use parser::expression;
@@ -37,8 +34,8 @@ pub enum TagAtom {
     Tag(Tag),
     AllEvents,
     IsLocal,
-    FromTime(TimeStamp),
-    ToTime(TimeStamp),
+    FromTime(Timestamp),
+    ToTime(Timestamp),
     FromLamport(LamportTimestamp),
     ToLamport(LamportTimestamp),
     AppId(AppId),

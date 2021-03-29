@@ -36,9 +36,9 @@ impl TryFrom<i32> for ShutdownReason {
     }
 }
 
-impl Into<FfiMessage> for ShutdownReason {
-    fn into(self) -> FfiMessage {
-        let (code, message) = match self {
+impl From<ShutdownReason> for FfiMessage {
+    fn from(s: ShutdownReason) -> FfiMessage {
+        let (code, message) = match s {
             ShutdownReason::TriggeredByUser => (ffi_codes::NODE_STOPPED_BY_NODE_UI, "".to_string()),
 
             ShutdownReason::TriggeredByHost => (ffi_codes::NODE_STOPPED_BY_HOST, "".to_string()),
@@ -53,11 +53,11 @@ impl FfiMessage {
         Self { code, message }
     }
 }
-impl Into<(i32, *mut c_char)> for FfiMessage {
+impl From<FfiMessage> for (i32, *mut c_char) {
     // This will leak memory, so consumers need to make sure to eventually free
     // it again.
-    fn into(self) -> (i32, *mut c_char) {
-        (self.code, rust_string_to_c(self.message))
+    fn from(m: FfiMessage) -> (i32, *mut c_char) {
+        (m.code, rust_string_to_c(m.message))
     }
 }
 #[allow(dead_code)]

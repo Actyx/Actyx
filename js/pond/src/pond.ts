@@ -22,8 +22,7 @@ import { SnapshotStore } from './snapshotStore'
 import { SplashState, streamSplashState, WaitForSwarmConfig } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SnapshotScheduler } from './store/snapshotScheduler'
-import { SubscriptionSet, subscriptionsToEventPredicate } from './subscription'
-import { Tags, toSubscriptionSet, Where } from './tagging'
+import { Tags, toEventPredicate, Where } from './tagging'
 import {
   AddEmission,
   Caching,
@@ -344,7 +343,7 @@ const defaultReportFishError: FishErrorReporter = (err, fishId, detail) =>
 
 class Pond2Impl implements Pond {
   readonly hydrateV2: <S, E>(
-    subscriptionSet: SubscriptionSet,
+    subscriptionSet: Where<E>,
     initialState: S,
     onEvent: (state: S, event: E, metadata: Metadata) => S,
     fishId: FishId,
@@ -470,7 +469,7 @@ class Pond2Impl implements Pond {
   }
 
   private getCachedOrInitialize = <S, E>(
-    subscriptionSet: SubscriptionSet,
+    subscriptionSet: Where<E>,
     initialState: S,
     onEvent: Reduce<S, E>,
     fishId: FishId,
@@ -485,7 +484,7 @@ class Pond2Impl implements Pond {
 
   private observeTagBased0 = <S, E>(acc: Fish<S, E>): ActiveFish<S> => {
     return this.getCachedOrInitialize(
-      toSubscriptionSet(acc.where),
+      acc.where,
       acc.initialState,
       acc.onEvent,
       acc.fishId,
@@ -522,8 +521,6 @@ class Pond2Impl implements Pond {
   ): ((effect: StateEffectInternal<S, EWrite>) => Observable<void>) => {
     const handler = this.v2CommandHandler
 
-    const subscriptionSet = toSubscriptionSet(agg.where)
-
     const commandPipeline =
       cached.commandPipeline ||
       FishJar.commandPipeline<S, EmissionRequest<any>>(
@@ -533,7 +530,7 @@ class Pond2Impl implements Pond {
         agg.fishId.name,
         handler,
         cached.states,
-        subscriptionsToEventPredicate(subscriptionSet),
+        toEventPredicate(agg.where),
       )
     cached.commandPipeline = commandPipeline
 
@@ -622,7 +619,7 @@ class Pond2Impl implements Pond {
           default: 'min',
         },
         { psns: {}, default: 'max' },
-        toSubscriptionSet(seedEvent),
+        seedEvent,
         AllEventsSortOrders.Unsorted,
       )
       .first()
@@ -704,7 +701,8 @@ const mockSetup = (): Services => {
 const createServices = async (multiplexer: MultiplexedWebsocket): Promise<Services> => {
   const sourceId = await getSourceId(multiplexer)
   const eventStore = EventStore.ws(multiplexer, sourceId)
-  const snapshotStore = SnapshotStore.ws(multiplexer)
+  // FIXME: V2 support for snapshots
+  const snapshotStore = SnapshotStore.noop
   const commandInterface = CommandInterface.ws(multiplexer, sourceId)
   return { eventStore, snapshotStore, commandInterface, teardown: multiplexer.close }
 }
@@ -736,9 +734,10 @@ const mkTestPond = (opts?: PondOptions): TestPond => {
   }
 }
 const pondFromServices = (services: Services, opts: PondOptions): Pond => {
-  const { eventStore, snapshotStore, commandInterface, teardown } = services
+  const { eventStore, snapshotStore, teardown } = services
 
-  const monitoring = Monitoring.of(commandInterface, 10000)
+  // FIXME: V2 has no support for the Monitoring methods
+  const monitoring = Monitoring.mock()
 
   log.pond.debug('start pond with SourceID %s from store', eventStore.sourceId)
 

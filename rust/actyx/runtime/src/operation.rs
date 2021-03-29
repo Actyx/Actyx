@@ -54,7 +54,7 @@ mod tests {
     use super::*;
     use actyxos_sdk::{
         language::{expression, Expression},
-        tagged::EventKey,
+        EventKey,
     };
     use cbor_data::Encoder;
 

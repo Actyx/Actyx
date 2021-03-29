@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use super::Offset;
-use actyxos_sdk::{tagged::StreamId, OffsetMap, OffsetOrMin};
+use actyxos_sdk::{OffsetMap, OffsetOrMin, StreamId};
 use num_traits::Bounded;
 
 #[derive(Clone, PartialOrd, PartialEq, Debug)]

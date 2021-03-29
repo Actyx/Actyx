@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use actyxos_sdk::tagged::NodeId;
+use actyxos_sdk::NodeId;
 use anyhow::{anyhow, bail};
 use crypto::PublicKey;
 use parking_lot::Mutex;

@@ -1,9 +1,9 @@
-use crate::{
-    sqlite::{SqliteStore, SqliteStoreWrite},
-    StreamAlias,
-};
-use actyxos_sdk::{event::SourceId, tagged::StreamId, Payload};
+use std::{collections::BTreeMap, fs, str::FromStr, sync::Arc};
+
+use actyxos_sdk::{legacy::SourceId, Payload, StreamId, Tag};
+use anyhow::Result;
 use banyan::forest::{BranchCache, Forest, Transaction};
+use banyan::store::{BlockWriter, ReadOnlyStore};
 use ipfs_sqlite_block_store::{BlockStore, Synchronous};
 use libipld::{
     cbor::DagCborCodec,
@@ -13,8 +13,9 @@ use libipld::{
 use parking_lot::Mutex;
 use rayon::prelude::*;
 use rusqlite::{OpenFlags, NO_PARAMS};
-use std::{collections::BTreeMap, fs, str::FromStr, sync::Arc};
-use trees::axtrees::{AxKey, AxTree, AxTrees};
+use trees::axtrees::{AxKey, AxTree, AxTrees, Sha256Digest};
+
+use crate::StreamAlias;
 
 mod v1;
 use v1::{Block, ConsNode, IpfsEnvelope};
@@ -22,7 +23,7 @@ use v1::{Block, ConsNode, IpfsEnvelope};
 #[cfg(test)]
 mod tests;
 
-type AxTxn = Transaction<AxTrees, Payload, SqliteStore, SqliteStoreWrite>;
+type AxTxn = Transaction<AxTrees, Payload, Importer, Importer>;
 
 /// Get a block from a block store and decode it, with extensive logging
 fn get<T: Decode<DagCborCodec>>(db: &Arc<Mutex<BlockStore>>, link: &Link<T>) -> anyhow::Result<T> {
@@ -87,8 +88,8 @@ fn events_to_v2(envelopes: Vec<IpfsEnvelope>) -> Vec<(AxKey, Payload)> {
         .into_iter()
         .map(|event| {
             let mut tags = event.tags;
-            tags.insert(event.semantics.into());
-            tags.insert(event.name.into());
+            tags.insert(Tag::new(format!("semantics:{}", event.semantics.as_str())).unwrap());
+            tags.insert(Tag::new(format!("fish_name:{}", event.name.as_str())).unwrap());
             let key: AxKey = AxKey::new(tags, event.lamport, event.timestamp);
             (key, event.payload)
         })
@@ -183,7 +184,7 @@ pub fn convert_from_v1(v1_index_path: &str, v2_index_path: &str, options: Conver
         max_uncompressed_leaf_size: 1024 * 1024 * 4,
         zstd_level: 10,
     };
-    let ss = SqliteStore::wrap(db.clone());
+    let ss = Importer(db.clone());
     let forest = Forest::new(
         ss,
         BranchCache::new(1024),
@@ -195,13 +196,13 @@ pub fn convert_from_v1(v1_index_path: &str, v2_index_path: &str, options: Conver
         .par_iter()
         .map(|(source, cid)| {
             tracing::info!("converting tree {}", source);
-            let txn = AxTxn::new(forest.clone(), forest.store().write());
+            let txn = AxTxn::new(forest.clone(), forest.store().clone());
             let iter = iter_events_v1_chunked(&db, Link::new(*cid));
             let tree = build_banyan_tree(&txn, &source, iter);
             match tree {
                 Ok(tree) => {
                     tracing::info!("Setting alias {} {:?}", source, tree);
-                    let stream_id = StreamId::from(source);
+                    let stream_id: StreamId = source.into();
                     db.lock()
                         .alias(StreamAlias::from(stream_id), tree.link().map(Cid::from).as_ref())?;
                     Ok((source, tree))
@@ -227,4 +228,28 @@ pub fn convert_from_v1(v1_index_path: &str, v2_index_path: &str, options: Conver
     tracing::info!("Block store stats at end of conversion {:?}", stats);
 
     Ok(())
+}
+
+#[derive(Clone)]
+struct Importer(Arc<Mutex<BlockStore>>);
+
+impl ReadOnlyStore<Sha256Digest> for Importer {
+    fn get(&self, link: &Sha256Digest) -> Result<Box<[u8]>> {
+        let cid = Cid::from(*link);
+        if let Some(data) = self.0.lock().get_block(&cid)? {
+            Ok(data.into_boxed_slice())
+        } else {
+            Err(anyhow::anyhow!("block not found"))
+        }
+    }
+}
+
+impl BlockWriter<Sha256Digest> for Importer {
+    fn put(&self, data: Vec<u8>) -> Result<Sha256Digest> {
+        let digest = Sha256Digest::new(&data);
+        let cid = digest.into();
+        let block = crate::Block::new_unchecked(cid, data);
+        self.0.lock().put_block(&block, None)?;
+        Ok(digest)
+    }
 }

@@ -1,14 +1,10 @@
 use std::{collections::BTreeMap, convert::TryFrom, time::Duration};
 
-use super::{BanyanStore, Config, DbPath, SqliteIndexStore};
-use actyxos_sdk::{
-    tagged::{NodeId, StreamNr, Tag, TagSet},
-    Payload,
-};
+use crate::BanyanStore;
+use actyxos_sdk::{NodeId, Payload, StreamNr, Tag, TagSet};
 use ax_futures_util::stream::interval;
 use banyan::query::AllQuery;
 use futures::prelude::*;
-use ipfs_node::IpfsNode;
 use libipld::Cid;
 
 struct Tagger(BTreeMap<&'static str, Tag>);
@@ -35,23 +31,14 @@ fn cids_to_string(cids: Vec<Cid>) -> String {
     cids.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(",")
 }
 
-fn setup_logger() {
-    tracing_log::LogTracer::init().ok();
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).ok();
-}
-
 #[tokio::test]
 #[ignore]
 async fn smoke() -> anyhow::Result<()> {
-    setup_logger();
+    util::setup_logger();
     let mut tagger = Tagger::new();
     let mut ev = move |tag| (tagger.tags(&[tag]), Payload::empty());
-    let ipfs = IpfsNode::test().await?;
-    let config = Config::test();
-    let store = BanyanStore::new(ipfs.clone(), config, SqliteIndexStore::open(DbPath::Memory)?)?;
+    let store = BanyanStore::test("smoke").await?;
+    let ipfs = store.ipfs().clone();
     tokio::task::spawn(store.stream_filtered_stream_ordered(AllQuery).for_each(|x| {
         tracing::info!("got event {:?}", x);
         future::ready(())

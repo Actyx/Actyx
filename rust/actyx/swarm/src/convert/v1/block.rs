@@ -83,7 +83,7 @@ mod test {
             semantics: semantics!("semantics"),
             name: fish_name!("name"),
             tags: tags! { "foo", "bar" },
-            timestamp: TimeStamp::now(),
+            timestamp: Timestamp::now(),
             offset: Offset::mk_test(1),
             payload: Payload::from_json_value(json!([payload])).unwrap(),
             lamport: LamportTimestamp::new(0),

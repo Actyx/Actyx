@@ -49,7 +49,7 @@ pub struct NodeApiSettings {
 }
 impl Component<(), NodeApiSettings> for NodeApi {
     fn get_type(&self) -> &'static str {
-        "admin_api"
+        "Admin"
     }
     fn get_rx(&self) -> &Receiver<ComponentRequest<()>> {
         &self.rx

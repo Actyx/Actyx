@@ -13,3 +13,46 @@ pub const ACTYXOS_ID: &str = "com.actyx.os";
 
 #[derive(Deserialize, PartialEq, Clone, Debug, From, Into, AsRef, Display)]
 pub struct NodeName(pub String);
+
+#[derive(Debug, Display)]
+pub enum NodeErrorContext {
+    #[display(fmt = "Bind failed on port {} for {}", port, component)]
+    BindFailed { port: u16, component: String },
+}
+
+#[macro_export]
+/// Wrapper around `panic!` making sure that the passed in arg evalutes to
+/// `anyhow::Error`. This is to be used in conjunction with the panic hook
+/// handler installed inside the `node` crate in order to pass an error object
+/// via a panic without information loss ([`node::util::init_panic_hook`]).
+macro_rules! ax_panic {
+    ($x:expr) => {
+        let y: anyhow::Error = $x;
+        ::std::panic::panic_any(::std::sync::Arc::new(y));
+    };
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::sync::Arc;
+
+    #[derive(Clone, Debug, Display, PartialEq)]
+    #[display(fmt = "Whatever")]
+    struct MyCustomError {
+        the_answer: usize,
+    }
+
+    #[test]
+    fn panic_err_roundtrip() {
+        let custom_error = MyCustomError { the_answer: 42 };
+        let error_from_panic = std::panic::catch_unwind(|| {
+            std::panic::panic_any(Arc::new(anyhow::anyhow!(custom_error.clone())));
+        })
+        .unwrap_err();
+
+        let extracted_anyhow = error_from_panic.downcast_ref::<Arc<anyhow::Error>>().unwrap();
+        let extracted_error = extracted_anyhow.downcast_ref::<MyCustomError>().unwrap();
+        assert_eq!(custom_error, *extracted_error);
+    }
+}

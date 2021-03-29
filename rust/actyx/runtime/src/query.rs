@@ -5,7 +5,7 @@ use crate::{
 };
 use actyxos_sdk::{
     language::{Expression, TagAtom, TagExpr},
-    tagged::{EventKey, TagSet},
+    EventKey, TagSet,
 };
 use cbor_data::Encoder;
 use std::collections::BTreeSet;
@@ -132,7 +132,7 @@ impl Into<TagSubscriptions> for Dnf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyxos_sdk::{language::expression, tagged::EventKey, tags};
+    use actyxos_sdk::{language::expression, tags, EventKey};
     use cbor_data::Encoder;
 
     #[test]

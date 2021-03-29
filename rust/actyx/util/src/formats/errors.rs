@@ -1,3 +1,4 @@
+#![allow(clippy::upper_case_acronyms)]
 use axossettings::{repository, validation};
 use crossbeam::channel::{RecvError, SendError};
 use serde::{Deserialize, Serialize};

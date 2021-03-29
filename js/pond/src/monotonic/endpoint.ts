@@ -18,7 +18,7 @@ import {
 } from '../eventstore/types'
 import log from '../loggers'
 import { SnapshotStore } from '../snapshotStore'
-import { SubscriptionSet } from '../subscription'
+import { Where } from '../tagging'
 import { EventKey, FishId } from '../types'
 import { runStats, takeWhileInclusive } from '../util'
 import { getInsertionIndex } from '../util/binarySearch'
@@ -55,7 +55,7 @@ export type EventsOrTimetravel = StateMsg | EventsMsg | TimeTravelMsg
 
 export type SubscribeMonotonic = (
   fishId: FishId,
-  subscriptions: SubscriptionSet,
+  subscriptions: Where<unknown>,
   // Sending 'attemptStartFrom' means we DONT want a snapshot
   attemptStartFrom?: FixedStart,
 ) => Observable<EventsOrTimetravel>
@@ -81,7 +81,7 @@ export const eventsMonotonic = (
   // As soon as time-travel would occur, the stream terminates with a TimetravelMsg.
   const realtimeFrom = (
     fishId: FishId,
-    subscriptions: SubscriptionSet,
+    subscriptions: Where<unknown>,
     fixedStart: FixedStart,
   ): Observable<EventsOrTimetravel> => {
     const realtimeEvents = eventStore.allEvents(
@@ -141,7 +141,7 @@ export const eventsMonotonic = (
   // and then switch over to "realtime" streaming.
   const monotonicFrom = (
     fishId: FishId,
-    subscriptions: SubscriptionSet,
+    subscriptions: Where<unknown>,
     present: OffsetMap,
     fixedStart: FixedStart = {
       from: {},
@@ -155,7 +155,7 @@ export const eventsMonotonic = (
         { default: 'min', psns: fixedStart.from },
         { default: 'min', psns: present },
         subscriptions,
-        PersistedEventsSortOrders.EventKey,
+        PersistedEventsSortOrders.Ascending,
         fixedStart.horizon,
       )
       .filter(chunk => chunk.length > 0)
@@ -191,7 +191,7 @@ export const eventsMonotonic = (
   // Given a FixedStart point, check whether we can reach `present` without time travel.
   // If so, apply whenValid. Otherwise apply whenInvalid to the earliest chunk between start and present.
   const validateFixedStart = (
-    subscriptions: SubscriptionSet,
+    subscriptions: Where<unknown>,
     present: OffsetMap,
     attemptStartFrom: FixedStart,
     whenInvalid: (outdatedChunk: Events) => Observable<EventsOrTimetravel>,
@@ -202,7 +202,7 @@ export const eventsMonotonic = (
         { default: 'min', psns: attemptStartFrom.from },
         { default: 'min', psns: present },
         subscriptions,
-        PersistedEventsSortOrders.EventKey,
+        PersistedEventsSortOrders.Ascending,
         attemptStartFrom.horizon,
       )
       // testEventStore can send empty chunks, real store hopefully will not
@@ -222,7 +222,7 @@ export const eventsMonotonic = (
   // Client thinks it has valid offsets to start from -- it may be wrong, though!
   const startFromFixedOffsets = (
     fishId: FishId,
-    subscriptions: SubscriptionSet,
+    subscriptions: Where<unknown>,
     present: OffsetMap,
   ) => (attemptStartFrom: FixedStart): Observable<EventsOrTimetravel> => {
     const whenValid = () => monotonicFrom(fishId, subscriptions, present, attemptStartFrom)
@@ -257,11 +257,9 @@ export const eventsMonotonic = (
   }
 
   // Try start from a snapshot we have found. The snapshot may be outdated, though.
-  const startFromSnapshot = (
-    fishId: FishId,
-    subscriptions: SubscriptionSet,
-    present: OffsetMap,
-  ) => (snap: SerializedStateSnap): Observable<EventsOrTimetravel> => {
+  const startFromSnapshot = (fishId: FishId, subscriptions: Where<unknown>, present: OffsetMap) => (
+    snap: SerializedStateSnap,
+  ): Observable<EventsOrTimetravel> => {
     const fixedStart = {
       from: snap.psnMap,
       horizon: snap.horizon,
@@ -299,7 +297,7 @@ export const eventsMonotonic = (
 
   const observeMonotonicFromSnapshot = (
     fishId: FishId,
-    subscriptions: SubscriptionSet,
+    subscriptions: Where<unknown>,
   ): Observable<EventsOrTimetravel> => {
     return Observable.combineLatest(
       Observable.from(tryReadSnapshot(fishId)).first(),
@@ -315,7 +313,7 @@ export const eventsMonotonic = (
 
   return (
     fishId: FishId,
-    subscriptions: SubscriptionSet,
+    subscriptions: Where<unknown>,
     attemptStartFrom?: FixedStart,
   ): Observable<EventsOrTimetravel> => {
     if (attemptStartFrom) {

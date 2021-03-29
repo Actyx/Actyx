@@ -1,4 +1,4 @@
-use actyxos_sdk::{tagged::TagSet, tags, LamportTimestamp, Payload, TimeStamp};
+use actyxos_sdk::{tags, LamportTimestamp, Payload, TagSet, Timestamp};
 use banyan::{
     forest::{BranchCache, Config, CryptoConfig, Forest, Transaction},
     memstore::MemStore,
@@ -43,8 +43,8 @@ impl Generator {
         LamportTimestamp::from(result)
     }
 
-    fn time(&self) -> TimeStamp {
-        TimeStamp::new(*self.time.lock())
+    fn time(&self) -> Timestamp {
+        Timestamp::new(*self.time.lock())
     }
 
     fn increase_time(&self, delta: u64) {

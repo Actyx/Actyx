@@ -1,8 +1,5 @@
 use crate::{AxTreeExt, Forest, Link, Tree};
-use actyxos_sdk::{
-    tagged::{NodeId, StreamId, StreamNr},
-    LamportTimestamp, Offset,
-};
+use actyxos_sdk::{LamportTimestamp, NodeId, Offset, StreamId, StreamNr};
 use ax_futures_util::stream::variable::{self, Variable};
 use fnv::FnvHashMap;
 use futures::{
@@ -10,7 +7,6 @@ use futures::{
     future,
     stream::{Stream, StreamExt},
 };
-use ipfs_sqlite_block_store::TempPin;
 use std::collections::BTreeMap;
 use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
@@ -59,6 +55,7 @@ impl TryFrom<StreamAlias> for StreamId {
         Ok(node_id.stream(stream_nr))
     }
 }
+
 /// Data for a single own stream, mutable state + constant data
 #[derive(Debug)]
 pub struct OwnStreamInner {
@@ -109,7 +106,6 @@ pub struct RemoteNodeInner {
 /// Data for a single replicated stream, mutable state + constant data
 #[derive(Debug)]
 pub struct ReplicatedStreamInner {
-    pub temp_pin: TempPin,
     pub forest: Forest,
     pub validated: Variable<Tree>,
     pub incoming: Variable<Option<Link>>,
@@ -117,10 +113,9 @@ pub struct ReplicatedStreamInner {
 }
 
 impl ReplicatedStreamInner {
-    pub fn new(temp_pin: TempPin, forest: Forest) -> Self {
+    pub fn new(forest: Forest) -> Self {
         Self {
             forest,
-            temp_pin,
             validated: Variable::default(),
             incoming: Variable::default(),
             latest_seen: Variable::default(),

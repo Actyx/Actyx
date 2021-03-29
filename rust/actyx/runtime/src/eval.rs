@@ -1,7 +1,7 @@
 use crate::value::Value;
 use actyxos_sdk::{
     language::{Number, SimpleExpr},
-    tagged::EventKey,
+    EventKey,
 };
 use anyhow::{anyhow, bail, Result};
 use cbor_data::{CborBuilder, CborOwned, Encoder, WithOutput, Writer};

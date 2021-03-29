@@ -1,5 +1,5 @@
 use crate::private_key::AxPrivateKey;
-use actyxos_sdk::tagged::NodeId;
+use actyxos_sdk::NodeId;
 use crypto::PublicKey;
 use derive_more::From;
 use futures::{stream, Stream};
@@ -301,7 +301,7 @@ pub struct RequestBehaviour {
 
 async fn mk_transport(keypair: identity::Keypair) -> ActyxOSResult<(PeerId, Boxed<(PeerId, StreamMuxerBox)>)> {
     let peer_id = keypair.public().into_peer_id();
-    let transport = ipfs_node::build_transport(keypair, None, Duration::from_secs(20))
+    let transport = swarm::transport::build_transport(keypair, None, Duration::from_secs(20))
         .await
         .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error creating libp2p transport")?;
     Ok((peer_id, transport))

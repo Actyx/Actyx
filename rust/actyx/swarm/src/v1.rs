@@ -4,11 +4,11 @@ use crate::access::{
 };
 use crate::{BanyanStore, TT};
 use actyxos_sdk::{
-    event_service::snapshots::{
+    service::snapshots::{
         InvalidateSnapshotsRequest, RetrieveSnapshotRequest, RetrieveSnapshotResponse, StoreSnapshotRequest,
     },
-    tagged::{Event, EventKey, Metadata, NodeId, StreamId, StreamNr, TagSet},
-    LamportTimestamp, Offset, OffsetOrMin, Payload, TimeStamp,
+    Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetOrMin, Payload, StreamId, StreamNr, TagSet,
+    Timestamp,
 };
 use anyhow::Result;
 use banyan::{
@@ -71,16 +71,18 @@ impl BanyanStore {
             .subscribe(&topic)
             .unwrap()
             .filter_map(|msg| future::ready(serde_cbor::from_slice::<PublishSnapshot>(msg.as_slice()).ok()))
-            .for_each(move |heartbeat| store.received_root_map(heartbeat.node, heartbeat.lamport, heartbeat.roots))
+            .for_each(move |heartbeat| {
+                tracing::info!("{} received heartbeat", self.ipfs().local_node_name());
+                store.received_root_map(heartbeat.node, heartbeat.lamport, heartbeat.roots)
+            })
             .await
     }
 
     pub(crate) fn publish_root_map(&self, topic: &str) -> impl Future<Output = ()> {
-        let index_store = self.0.index_store.lock();
         let node = self.node_id();
-        let lamport = LamportTimestamp::from(index_store.lamport());
+        let lamport = LamportTimestamp::from(self.0.index_store.lock().lamport());
         let roots = self.0.maps.lock().root_map(node);
-        let timestamp = TimeStamp::now();
+        let timestamp = Timestamp::now();
         let msg = PublishSnapshot {
             node,
             lamport,
@@ -97,7 +99,7 @@ impl BanyanStore {
         let last_lamport = self.0.index_store.lock().increase_lamport(n)?;
         let min_lamport = last_lamport - (n as u64) + 1;
         let stream_nr = StreamNr::from(0); // TODO
-        let timestamp = TimeStamp::now();
+        let timestamp = Timestamp::now();
         let kvs = events
             .into_iter()
             .enumerate()
@@ -252,7 +254,7 @@ fn last_lamport_from_index_ref(r: IndexRef<TT>) -> LamportTimestamp {
     }
 }
 
-/// Take a block of banyan events and convert them into ActyxOS 1.0 IpfsEnvelopeWithSourceId events
+/// Take a block of banyan events and convert them into events
 /// wrapped in EventOrHeartbeat.
 ///
 /// In case the last event was filtered out, a placeholder heartbeat is added.

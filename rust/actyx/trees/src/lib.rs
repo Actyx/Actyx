@@ -21,21 +21,17 @@ pub use self::tag_index::*;
 pub use bearer_token::BearerToken;
 
 use actyxos_sdk::{
-    event::{self, FishName, Semantics, SourceId, StreamInfo},
-    fish_name, semantics,
-    tagged::{self, Event, StreamId, TagSet},
-    LamportTimestamp, Offset, OffsetOrMin, Payload, TimeStamp,
+    legacy::{FishName, Semantics, SourceId},
+    Event, LamportTimestamp, Offset, OffsetOrMin, Payload, StreamId, TagSet, Timestamp,
 };
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use serde::{ser::Serializer, Deserialize, Deserializer, Serialize};
 use std::{
     cmp::Ordering,
-    convert::{TryFrom, TryInto},
     fmt::Debug,
     str::{self, FromStr},
     sync::Arc,
 };
-use tagged::EventKey;
 use tracing::{error, warn};
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
@@ -48,7 +44,7 @@ pub struct IpfsEnvelope {
     #[serde(default, skip_serializing_if = "TagSet::is_empty")]
     pub tags: TagSet,
 
-    pub timestamp: TimeStamp,
+    pub timestamp: Timestamp,
     #[serde(rename = "psn")]
     pub offset: Offset,
     pub payload: Payload,
@@ -80,117 +76,6 @@ impl IpfsEnvelope {
         8 + // offset
         16 + // lamport
         self.payload.rough_size() + 8
-    }
-
-    pub fn with_source(self, source_id: SourceId) -> IpfsEnvelopeWithSourceId {
-        IpfsEnvelopeWithSourceId {
-            semantics: self.semantics,
-            name: self.name,
-            tags: self.tags,
-            timestamp: self.timestamp,
-            offset: self.offset,
-            lamport: self.lamport,
-            payload: self.payload,
-            source_id,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct IpfsEnvelopeWithSourceId {
-    pub semantics: Semantics,
-    pub name: FishName,
-
-    // Legacy compatibility: No value for field 'tags' means no tags.
-    #[serde(default, skip_serializing_if = "TagSet::is_empty")]
-    pub tags: TagSet,
-
-    pub timestamp: TimeStamp,
-    #[serde(rename = "psn")]
-    pub offset: Offset,
-    pub source_id: SourceId,
-    pub payload: Payload,
-    pub lamport: LamportTimestamp,
-}
-
-impl IpfsEnvelopeWithSourceId {
-    pub fn into_raw(self) -> IpfsEnvelope {
-        IpfsEnvelope {
-            semantics: self.semantics,
-            lamport: self.lamport,
-            name: self.name,
-            tags: self.tags,
-            timestamp: self.timestamp,
-            offset: self.offset,
-            payload: self.payload,
-        }
-    }
-
-    pub fn get_key(&self) -> EventKey {
-        EventKey {
-            lamport: self.lamport,
-            stream: self.source_id.into(),
-            offset: self.offset,
-        }
-    }
-
-    pub fn clear_payload(self) -> IpfsEnvelopeWithSourceId {
-        IpfsEnvelopeWithSourceId {
-            source_id: self.source_id,
-            semantics: self.semantics,
-            name: self.name,
-            tags: self.tags,
-            offset: self.offset,
-            timestamp: self.timestamp,
-            payload: Payload::empty(),
-            lamport: self.lamport,
-        }
-    }
-}
-
-impl Into<event::Event<Payload>> for IpfsEnvelopeWithSourceId {
-    fn into(self) -> event::Event<Payload> {
-        event::Event {
-            stream: StreamInfo {
-                semantics: self.semantics,
-                name: self.name,
-                source: self.source_id,
-            },
-            offset: self.offset,
-            lamport: self.lamport,
-            timestamp: self.timestamp,
-            payload: self.payload,
-        }
-    }
-}
-
-impl Into<Event<Payload>> for IpfsEnvelopeWithSourceId {
-    fn into(self) -> Event<Payload> {
-        Event {
-            key: self.get_key(),
-            meta: tagged::Metadata {
-                timestamp: self.timestamp,
-                tags: self.tags,
-            },
-            payload: self.payload,
-        }
-    }
-}
-
-impl TryFrom<tagged::Event<Payload>> for IpfsEnvelopeWithSourceId {
-    type Error = anyhow::Error;
-    fn try_from(ev: tagged::Event<Payload>) -> Result<Self> {
-        Ok(Self {
-            semantics: (&ev.meta.tags).try_into().ok().unwrap_or_else(|| semantics!("_t_")),
-            name: (&ev.meta.tags).try_into().ok().unwrap_or_else(|| fish_name!("_t_")),
-            tags: ev.meta.tags,
-            timestamp: ev.meta.timestamp,
-            offset: ev.key.offset,
-            source_id: ev.key.stream.source_id().context("converting into v1 event")?,
-            payload: ev.payload,
-            lamport: ev.key.lamport,
-        })
     }
 }
 
@@ -432,10 +317,18 @@ pub struct ConnectivityRequest {
 
 #[cfg(test)]
 mod tests_v1 {
+    use std::convert::TryFrom;
+
     use super::*;
-    use actyxos_sdk::{fish_name, semantics, source_id};
+    use actyxos_sdk::{fish_name, semantics, NodeId};
     use rstest::*;
     use serde_json::json;
+
+    const NODE: &str = "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA";
+
+    fn stream_id(stream_nr: u64) -> StreamId {
+        NodeId::try_from(NODE).unwrap().stream(stream_nr.into())
+    }
 
     #[test]
     fn parse_sourceid_successful() {
@@ -468,7 +361,7 @@ mod tests_v1 {
                 semantics: semantics!("semantics"),
                 name: fish_name!("name"),
                 tags: TagSet::empty(),
-                timestamp: TimeStamp::now(),
+                timestamp: Timestamp::now(),
                 offset: Offset::mk_test(i),
                 lamport: LamportTimestamp::new(i as u64),
                 payload: Payload::from_json_value(serde_json::Value::Null).unwrap(),
@@ -485,7 +378,7 @@ mod tests_v1 {
                 semantics: semantics!("semantics"),
                 name: fish_name!("name"),
                 tags: TagSet::empty(),
-                timestamp: TimeStamp::now(),
+                timestamp: Timestamp::now(),
                 offset: Offset::mk_test(i * 2),
                 lamport: LamportTimestamp::new(i as u64),
                 payload: Payload::from_json_value(serde_json::Value::Null).unwrap(),
@@ -639,27 +532,27 @@ mod tests_v1 {
     #[test]
     #[allow(clippy::eq_op)]
     fn stream_heartbeat_orders_correctly() {
-        let src1 = source_id!("1").into();
-        let src2 = source_id!("2").into();
+        let stream1 = stream_id(1);
+        let stream2 = stream_id(2);
 
         let s1a = StreamHeartBeat {
-            stream: src1,
+            stream: stream1,
             offset: Offset::mk_test(1),
             lamport: LamportTimestamp::new(1),
         };
         let s1b = StreamHeartBeat {
-            stream: src1,
+            stream: stream1,
             offset: Offset::mk_test(1),
             lamport: LamportTimestamp::new(5),
         };
         let s1c = StreamHeartBeat {
-            stream: src1,
+            stream: stream1,
             offset: Offset::mk_test(2),
             lamport: LamportTimestamp::new(5),
         };
 
         let s2 = StreamHeartBeat {
-            stream: src2,
+            stream: stream2,
             offset: Offset::mk_test(1),
             lamport: LamportTimestamp::new(1),
         };

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Actyx AG
+ * Copyright 2021 Actyx AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,46 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-//! Definition of the event envelope structure provided by ActyxOS
-//!
-//! When [publishing events](../event_service/struct.EventService.html#method.publish)
-//! you provide only the payload with the [`Semantics`](struct.Semantics.html) &
-//! [`FishName`](struct.FishName.html) meta-data. The Event Service will add administrative
-//! information on where the event came from and when it was published.
-//!
-//! Querying events delivers the full set of information within the [`Event`](struct.Event.html)
-//! data structure.
-//!
-//! # Payload definition
-//!
-//! You are free to define your own payload data types as you see fit, provided that they
-//! come with serialization and deserialization instances for [`serde`](https://docs.rs/serde)
-//! (and [`Abomonation`](https://docs.rs/abomonation) if you want to feed the
-//! payload into [`differential-dataflow`](https://docs.rs/differential-dataflow)).
-//!
-//! As JSON only supports `f64` floating point numbers, you may want to look into
-//! [`FixNum`](../types/struct.FixNum.html) or [`decorum`](https://docs.rs/decorum) for
-//! deserializing to a type that supports equality and total ordering.
 
-use chrono::{Local, SecondsFormat, TimeZone};
-use libipld::DagCbor;
-use serde::{de::Error, Deserialize, Serialize};
-use std::{
-    cmp::Ordering,
-    convert::TryFrom,
-    fmt::{self, Debug, Display, Formatter},
-    str::FromStr,
+use std::cmp::Ordering;
+
+use serde::{Deserialize, Serialize};
+
+use crate::{
+    offset::Offset,
+    scalars::StreamId,
+    source_id,
+    tags::TagSet,
+    timestamp::{LamportTimestamp, Timestamp},
 };
 
-#[cfg(any(test, feature = "arb"))]
-mod arb;
-mod offsets;
 mod opaque;
-pub(crate) mod scalars;
+mod payload;
 
-pub use offsets::{Offset, OffsetMap, OffsetOrMin};
 pub use opaque::Opaque;
-pub use scalars::{FishName, LamportTimestamp, ParseError, Semantics, SourceId, TimeStamp};
+pub use payload::Payload;
 
 /// Events are delivered in this envelope together with their metadata
 ///
@@ -88,7 +66,7 @@ pub use scalars::{FishName, LamportTimestamp, ParseError, Semantics, SourceId, T
 ///
 /// ```rust
 /// use serde::{Deserialize, Serialize};
-/// use actyxos_sdk::event::{Event, Payload};
+/// use actyxos_sdk::{Event, Payload};
 ///
 /// #[derive(Serialize, Deserialize, Debug, Clone)]
 /// struct MyPayload {
@@ -96,18 +74,43 @@ pub use scalars::{FishName, LamportTimestamp, ParseError, Semantics, SourceId, T
 ///     y: Option<f64>,
 /// }
 ///
-/// let event: Event<Payload> = Event::mk_test("semantics", "name", "{\"x\":42}").unwrap();
-/// let my_event: Event<MyPayload> = event.extract::<MyPayload>().expect("expected MyPayload");
+/// let payload = Payload::from_json_str(r#"{"x":1.3}"#).unwrap();
 /// ```
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(rename_all = "camelCase")]
 pub struct Event<T> {
-    pub lamport: LamportTimestamp,
-    pub stream: StreamInfo,
-    pub timestamp: TimeStamp,
-    pub offset: Offset,
+    pub key: EventKey,
+    pub meta: Metadata,
     pub payload: T,
+}
+
+impl<T> PartialOrd for Event<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.key.cmp(&other.key))
+    }
+}
+
+impl<T> Ord for Event<T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.key.cmp(&other.key)
+    }
+}
+
+impl<T> PartialEq for Event<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key
+    }
+}
+
+impl<T> Eq for Event<T> {}
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[cfg_attr(feature = "dataflow", derive(Abomonation))]
+#[serde(rename_all = "camelCase")]
+pub struct Metadata {
+    pub timestamp: Timestamp,
+    pub tags: TagSet,
 }
 
 impl Event<Payload> {
@@ -121,180 +124,35 @@ impl Event<Payload> {
     {
         let payload = self.payload.extract::<T>()?;
         Ok(Event {
-            lamport: self.lamport,
-            stream: self.stream.clone(),
-            timestamp: self.timestamp,
-            offset: self.offset,
+            key: self.key,
+            meta: self.meta.clone(),
             payload,
         })
     }
-
-    /// Create an Event instance for testing purposes.
-    ///
-    /// **Caveat emptor:** This will not generate proper
-    /// timestamps and two such events will compare equal to each other (so cannot be
-    /// put into collections without first making their Lamport timestamps unique).
-    pub fn mk_test(semantics: &str, name: &str, payload: &str) -> Result<Event<Payload>, serde_json::Error> {
-        Ok(Event {
-            lamport: Default::default(),
-            timestamp: Default::default(),
-            offset: Offset::default(),
-            stream: StreamInfo {
-                semantics: Semantics::try_from(semantics).map_err(serde_json::Error::custom)?,
-                name: FishName::try_from(name).map_err(serde_json::Error::custom)?,
-                source: SourceId::from_str("dummy").unwrap(),
-            },
-            payload: serde_json::from_str(payload)?,
-        })
-    }
 }
 
-impl<T> Ord for Event<T> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.lamport
-            .cmp(&other.lamport)
-            .then(self.stream.source.cmp(&other.stream.source))
-    }
-}
-
-impl<T> PartialOrd for Event<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl<T> PartialEq for Event<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.lamport == other.lamport && self.stream.source == other.stream.source
-    }
-}
-
-impl<T> Eq for Event<T> {}
-
-impl<T> Display for Event<T> {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let time = Local.timestamp_millis(self.timestamp.as_i64() / 1000);
-        write!(
-            f,
-            "Event at {} ({}, source ID {})",
-            time.to_rfc3339_opts(SecondsFormat::Millis, false),
-            self.lamport,
-            self.stream.source,
-        )
-    }
-}
-
-/// Hold provenance information for this event
+/// The sort key of an event
 ///
-/// Each event is published by one ActyxOS node whose source ID is stored in the `source` field.
-/// [`Semantics`](struct.Semantics.html) & [`FishName`](struct.FishName.html) are metadata tags
-/// that split the overall distributed event stream accessible by ActyxOS into smaller substreams
-/// containing information about kinds of things (like sensor readings) and specific instances of
-/// those things (like a thermometer’s name).
-#[derive(Debug, Serialize, Deserialize, Clone)]
+/// It is sorted first by Lamport timestamp and then by source ID; this combination is already
+/// unique. The offset is included to keep track of progress in [`OffsetMap`](struct.OffsetMap.html).
+#[derive(Copy, Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(rename_all = "camelCase")]
-pub struct StreamInfo {
-    pub semantics: Semantics,
-    pub name: FishName,
-    pub source: SourceId,
+pub struct EventKey {
+    pub lamport: LamportTimestamp,
+    pub stream: StreamId,
+    pub offset: Offset,
 }
 
-/// Compact binary storage of events created when they are received from the Event Service
-///
-/// see [`Event::extract`](struct.Event.html#method.extract) for supported ways of using the
-/// data
-#[derive(Clone, Serialize, Deserialize, PartialEq, Eq, Ord, PartialOrd, DagCbor)]
-#[cfg_attr(feature = "dataflow", derive(Abomonation))]
-#[ipld(repr = "value")]
-pub struct Payload(Opaque);
-
-impl Payload {
-    pub fn from_json_str(s: &str) -> Result<Payload, String> {
-        serde_json::from_str(s).map_err(|e| format!("{}", e))
-    }
-
-    /// Construct a new Payload from the supplied serializable value.
-    pub fn compact<T: Serialize>(t: &T) -> Result<Payload, serde_cbor::Error> {
-        serde_cbor::to_vec(t).map(|bytes| Payload(Opaque::new(bytes.into())))
-    }
-
-    /// Try to lift the desired type from this Payload’s bytes.
-    pub fn extract<'a, T: Deserialize<'a>>(&'a self) -> Result<T, serde_cbor::Error> {
-        serde_cbor::from_slice(self.0.as_ref())
-    }
-
-    /// Transform into a generic JSON structure that you can then traverse or query.
-    pub fn json_value(&self) -> serde_json::Value {
-        serde_json::to_value(self).unwrap()
-    }
-
-    /// Printable representation of this stored object as JSON — the stored Payload
-    /// bytes are encoded in the CBOR binary format.
-    pub fn json_string(&self) -> String {
-        serde_json::to_string(&self).unwrap()
-    }
-
-    /// Construct a Payload consisting only of the `null` value.
-    pub fn empty() -> Payload {
-        Payload(serde_json::from_str("null").unwrap())
-    }
-
-    /// Rough estimate of the in memory size of the contained opaque value
-    pub fn rough_size(&self) -> usize {
-        self.0.rough_size()
-    }
-
-    /// Only to be used from tests, since it has bad performance due to a serde bug/issue
-    pub fn from_json_value(v: serde_json::Value) -> Result<Payload, String> {
-        // weirdly we have to canonicalize this!
-        let text = serde_json::to_string(&v).unwrap();
-        Payload::from_json_str(&text)
-    }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-
-    pub fn from_bytes(bytes: &[u8]) -> Self {
-        Self(Opaque::from_bytes(bytes))
-    }
-}
-
-impl Default for Payload {
+/// The default value is the smallest key according to the EventKey order, and it should not be
+/// equal to any event key generated by a live system (because the first generated Lamport timestamp
+/// will be 1 while the default is 0).
+impl Default for EventKey {
     fn default() -> Self {
-        Payload::empty()
-    }
-}
-
-impl Debug for Payload {
-    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
-        write!(f, "{}", self.json_string())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::from_cbor_me;
-    use libipld::{cbor::DagCborCodec, codec::Codec};
-
-    #[test]
-    fn payload_dag_cbor_roundtrip() -> anyhow::Result<()> {
-        let text = "";
-        // using JSON value allows CBOR to use known-length array encoding
-        let p1: Payload = serde_json::from_value(json!([text]))?;
-        let tmp = DagCborCodec.encode(&p1)?;
-        let expected = from_cbor_me(
-            r#"
-81     # array(1)
-   60  # text(0)
-       # ""
-"#,
-        )?;
-        assert_eq!(tmp, expected);
-        let p2: Payload = DagCborCodec.decode(&tmp)?;
-        assert_eq!(p1, p2);
-        Ok(())
+        Self {
+            lamport: Default::default(),
+            stream: source_id!("!").into(),
+            offset: Default::default(),
+        }
     }
 }

@@ -3,7 +3,7 @@ import { CLI } from '../src/cli'
 import { SettingsInput } from '../src/cli/exec'
 import { createKey, deleteKey } from '../src/infrastructure/aws'
 import { ActyxOSNode, AwsKey, printTarget } from '../src/infrastructure/types'
-import { setupAnsible, setupTestProjects } from '../src/setup-projects'
+import { setupTestProjects } from '../src/setup-projects'
 import { promises as fs } from 'fs'
 import { Arch, Config, Host, OS, Settings } from './types'
 import YAML from 'yaml'
@@ -11,6 +11,7 @@ import { rightOrThrow } from '../src/infrastructure/rightOrThrow'
 import execa from 'execa'
 import { createNode } from '../src/infrastructure/create'
 import { retryTimes } from '../src/retry'
+import { setupAnsible } from '../src/setup-projects/ansible'
 
 export type LogEntry = {
   time: Date
@@ -63,7 +64,7 @@ const getPeerId = async (ax: CLI, retries = 10): Promise<string | undefined> => 
   if (state.code != 'OK') {
     return retries === 0 ? undefined : getPeerId(ax, retries - 1)
   } else {
-    return state.result.swarm.peer_id
+    return state.result.peer_id
   }
 }
 
@@ -160,9 +161,7 @@ const getNumPeersMax = async (nodes: ActyxOSNode[]): Promise<number> => {
       console.log(`error getting peers: ${state.message}`)
       return -1
     }
-    const numPeers = Object.values(state.result.swarm.peers).filter(
-      (peer) => peer.connection_state === 'Connected',
-    ).length
+    const numPeers = state.result.peers.length
     return numPeers
   }
   const res = await Promise.all(nodes.map((node) => getNumPeersOne(node.ax)))

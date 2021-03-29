@@ -1,10 +1,10 @@
 use super::ndjson;
 
 use actyxos_sdk::{
-    event_service::{PublishRequest, QueryRequest, SubscribeMonotonicRequest, SubscribeRequest},
-    tagged::AppId,
-    EventService,
+    service::{EventService, PublishRequest, QueryRequest, SubscribeMonotonicRequest, SubscribeRequest},
+    AppId,
 };
+
 use derive_more::Display;
 use warp::*;
 
@@ -19,7 +19,7 @@ fn reject(err: anyhow::Error) -> Rejection {
 
 type Result<T> = std::result::Result<T, Rejection>;
 
-pub async fn node_id(event_service: impl EventService, _app_id: AppId) -> Result<impl Reply> {
+pub async fn node_id(_app_id: AppId, event_service: impl EventService) -> Result<impl Reply> {
     event_service
         .node_id()
         .await
@@ -28,7 +28,7 @@ pub async fn node_id(event_service: impl EventService, _app_id: AppId) -> Result
         .map_err(reject)
 }
 
-pub async fn offsets(event_service: impl EventService, _app_id: AppId) -> Result<impl Reply> {
+pub async fn offsets(_app_id: AppId, event_service: impl EventService) -> Result<impl Reply> {
     event_service
         .offsets()
         .await
@@ -37,7 +37,7 @@ pub async fn offsets(event_service: impl EventService, _app_id: AppId) -> Result
         .map_err(reject)
 }
 
-pub async fn publish(request: PublishRequest, event_service: impl EventService, _app_id: AppId) -> Result<impl Reply> {
+pub async fn publish(_app_id: AppId, request: PublishRequest, event_service: impl EventService) -> Result<impl Reply> {
     event_service
         .publish(request)
         .await
@@ -45,7 +45,7 @@ pub async fn publish(request: PublishRequest, event_service: impl EventService, 
         .map_err(reject)
 }
 
-pub async fn query(request: QueryRequest, event_service: impl EventService, _app_id: AppId) -> Result<impl Reply> {
+pub async fn query(_app_id: AppId, request: QueryRequest, event_service: impl EventService) -> Result<impl Reply> {
     event_service
         .query(request)
         .await
@@ -54,9 +54,9 @@ pub async fn query(request: QueryRequest, event_service: impl EventService, _app
 }
 
 pub async fn subscribe(
+    _app_id: AppId,
     request: SubscribeRequest,
     event_service: impl EventService,
-    _app_id: AppId,
 ) -> Result<impl Reply> {
     event_service
         .subscribe(request)
@@ -66,9 +66,9 @@ pub async fn subscribe(
 }
 
 pub async fn subscribe_monotonic(
+    _app_id: AppId,
     request: SubscribeMonotonicRequest,
     event_service: impl EventService,
-    _app_id: AppId,
 ) -> Result<impl Reply> {
     event_service
         .subscribe_monotonic(request)

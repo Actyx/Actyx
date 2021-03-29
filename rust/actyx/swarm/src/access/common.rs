@@ -1,7 +1,4 @@
-use actyxos_sdk::{
-    tagged::{Event, StreamId, TagSet},
-    Expression, Offset, OffsetOrMin, Payload,
-};
+use actyxos_sdk::{Event, Expression, Offset, OffsetOrMin, Payload, StreamId, TagSet};
 use futures::{
     future::ready,
     stream::{self, Stream, StreamExt},
@@ -20,15 +17,15 @@ use trees::{OffsetMapOrMax, StreamHeartBeat, TagSubscriptions};
 /// These two parts are combined in an AND fashion, intersecting the two selected
 /// sets. If you want to filter logically, leave the PsnMaps open. If you want to
 /// filter physically, use TagSubscriptions::all(). If you want only certain events
-/// from a fixed set of sources (e.g. when building a fully ordered stream), combine
+/// from a fixed set of streams (e.g. when building a fully ordered stream), combine
 /// the two mechanisms.
 #[derive(Debug, Clone)]
 pub struct EventSelection {
-    /// Filtering events by semantics, name, sourceId, and possibly payload
+    /// Filtering events by tag subsciption
     pub subscription_set: TagSubscriptions,
-    /// Lower bound, exclusive, for all sources
+    /// Lower bound, exclusive, for all streams
     pub from_offsets_excluding: OffsetMapOrMax,
-    /// Upper bound, inclusive, for all sources
+    /// Upper bound, inclusive, for all streams
     pub to_offsets_including: OffsetMapOrMax,
 }
 
@@ -46,14 +43,14 @@ impl EventSelection {
     }
 
     /// Select events matching the given logical subscription, with an inclusive upper
-    /// bound in terms of Offset for each source. The upper bound should normally be the
+    /// bound in terms of Offset for each stream. The upper bound should normally be the
     /// “present” PsnMap obtained from the EventStore.
     pub fn upto(subscription_set: TagSubscriptions, to_including: OffsetMapOrMax) -> EventSelection {
         Self::new(subscription_set, OffsetMapOrMax::min_value(), to_including)
     }
 
     /// Select events matching the given logical subscription, with an exclusive lower
-    /// bound in terms of Offset for each source. The lower bound should normally be the
+    /// bound in terms of Offset for each stream. The lower bound should normally be the
     /// “present” PsnMap obtained from the EventStore.
     pub fn after(subscription_set: TagSubscriptions, from_excluding: OffsetMapOrMax) -> EventSelection {
         Self::new(subscription_set, from_excluding, OffsetMapOrMax::max_value())
@@ -79,7 +76,7 @@ impl EventSelection {
             ranges
                 .iter()
                 .cloned()
-                .map(|(source, from, _to)| (source, from))
+                .map(|(stream_id, from, _to)| (stream_id, from))
                 .collect::<Vec<_>>()
                 .as_ref(),
         );
@@ -87,7 +84,7 @@ impl EventSelection {
             ranges
                 .iter()
                 .cloned()
-                .map(|(source, _from, to)| (source, to))
+                .map(|(stream_id, _from, to)| (stream_id, to))
                 .collect::<Vec<_>>()
                 .as_ref(),
         );
@@ -113,37 +110,37 @@ impl EventSelection {
             && self.to_offsets_including.offset(event.key.stream) >= event.key.offset
     }
 
-    /// Get all explicitly mentioned sources from the PsnMaps and subscription
+    /// Get all explicitly mentioned streams from the offset maps and subscription
     /// set, filtering out those with empty delivery intervals.
     pub fn get_mentioned_streams(&self, local_stream_ids: &BTreeSet<StreamId>) -> impl Iterator<Item = StreamId> + '_ {
-        let mut sources = BTreeSet::new();
+        let mut stream_ids = BTreeSet::new();
 
         let from = &self.from_offsets_excluding;
         let to = &self.to_offsets_including;
 
-        for source in from.streams() {
-            sources.insert(source);
+        for stream_id in from.streams() {
+            stream_ids.insert(stream_id);
         }
-        for source in to.streams() {
-            sources.insert(source);
+        for stream_id in to.streams() {
+            stream_ids.insert(stream_id);
         }
 
         if self.subscription_set.iter().any(|x| x.local) {
-            sources.append(&mut local_stream_ids.clone());
+            stream_ids.append(&mut local_stream_ids.clone());
         }
 
-        sources.into_iter().filter(move |s| from.offset(*s) < to.offset(*s))
+        stream_ids.into_iter().filter(move |s| from.offset(*s) < to.offset(*s))
     }
 
-    /// Returns true if the `from` and `to` PsnMaps can only differ for a finite set of sources,
+    /// Returns true if the `from` and `to` offset maps can only differ for a finite set of streams,
     /// i.e. if their defaults do not permit positive event intervals.
     pub fn is_bounded(&self) -> bool {
         self.from_offsets_excluding.get_default() >= self.to_offsets_including.get_default()
     }
 
-    /// Get a finite set of sources if possible. This can be thwarted by wildcard
-    /// subscriptions coupled with wild-source PsnMaps (i.e. those that admit an unbounded
-    /// set of sources by having different default values).
+    /// Get a finite set of streams if possible. This can be thwarted by wildcard
+    /// subscriptions coupled with wild-stream offset maps (i.e. those that admit an unbounded
+    /// set of streams by having different default values).
     pub fn get_bounded_nonempty_streams(&self, local_stream_ids: &BTreeSet<StreamId>) -> Option<BTreeSet<StreamId>> {
         match (self.subscription_set.only_local(), self.is_bounded()) {
             (true, _) => Some(local_stream_ids.clone()),
@@ -233,7 +230,7 @@ pub fn stop_when_streams_exhausted(
         .take_while(move |eos| match eos {
             EventOrStop::Stop(stream_id) => {
                 streams_to_go.remove(&stream_id);
-                // the last Stop(source) will terminate the stream
+                // the last Stop will terminate the stream
                 ready(!streams_to_go.is_empty())
             }
             _ => ready(true),
@@ -254,73 +251,73 @@ mod tests {
     use pretty_assertions::assert_eq;
     use trees::TagSubscription;
 
-    fn sources(range: &[usize]) -> BTreeSet<StreamId> {
-        range.iter().map(|i| source(*i)).collect()
+    fn stream_ids(range: &[usize]) -> BTreeSet<StreamId> {
+        range.iter().map(|i| test_stream(*i)).collect()
     }
 
     #[test]
-    fn event_selection_must_list_sources_wildcard_bounded() {
+    fn event_selection_must_list_stream_ids_wildcard_bounded() {
         let events = EventSelection::create(
             "'upper:A' & 'lower:a'",
-            &[(source(0), OffsetOrMin::MIN, OffsetOrMin::MAX)],
+            &[(test_stream(0), OffsetOrMin::MIN, OffsetOrMin::MAX)],
         )
         .expect("cannot construct selection");
         let empty = BTreeSet::new();
-        let expected = sources(&[0]);
+        let expected = stream_ids(&[0]);
         assert_eq!(events.get_bounded_nonempty_streams(&empty), Some(expected.clone()));
         assert_eq!(events.get_mentioned_streams(&empty).collect::<BTreeSet<_>>(), expected);
     }
 
     #[test]
-    fn event_selection_must_list_sources_wildcard_unbounded() {
+    fn event_selection_must_list_stream_ids_wildcard_unbounded() {
         let events = EventSelection::tag_expr(
             "'upper:A' & 'lower:a'".into(),
             OffsetMapOrMax::from_entries(&[
-                (source(0), OffsetOrMin::MIN),
-                (source(1), OffsetOrMin::mk_test(50)),
-                (source(2), OffsetOrMin::MAX),
+                (test_stream(0), OffsetOrMin::MIN),
+                (test_stream(1), OffsetOrMin::mk_test(50)),
+                (test_stream(2), OffsetOrMin::MAX),
             ]),
             OffsetMapOrMax::max_value(),
         )
         .unwrap();
-        let expected = sources(&[1]);
+        let expected = stream_ids(&[1]);
         let empty = BTreeSet::new();
         assert_eq!(events.get_bounded_nonempty_streams(&empty), None);
         assert_eq!(events.get_mentioned_streams(&empty).collect::<BTreeSet<_>>(), expected);
     }
 
     #[test]
-    fn event_selection_must_list_sources_local_bounded() {
+    fn event_selection_must_list_stream_ids_local_bounded() {
         let events = EventSelection::create(
             "'upper:A' & 'lower:a'",
             &[
-                (source(0), OffsetOrMin::MIN, OffsetOrMin::MAX),
-                (source(1), OffsetOrMin::MIN, OffsetOrMin::MAX),
+                (test_stream(0), OffsetOrMin::MIN, OffsetOrMin::MAX),
+                (test_stream(1), OffsetOrMin::MIN, OffsetOrMin::MAX),
             ],
         )
         .expect("cannot construct selection")
         .only_local();
-        let local = btreeset! { source(0) };
-        assert_eq!(events.get_bounded_nonempty_streams(&local), Some(sources(&[0])));
+        let local = btreeset! { test_stream(0) };
+        assert_eq!(events.get_bounded_nonempty_streams(&local), Some(stream_ids(&[0])));
         assert_eq!(
             events.get_mentioned_streams(&local).collect::<BTreeSet<_>>(),
-            sources(&[0, 1])
+            stream_ids(&[0, 1])
         );
     }
 
     #[test]
-    fn event_selection_must_list_sources_local_unbounded() {
+    fn event_selection_must_list_stream_ids_local_unbounded() {
         let events = EventSelection::new(
             "'upper:A' & 'lower:a'".parse::<Expression>().unwrap().into(),
             OffsetMapOrMax::from_entries(&[
-                (source(0), OffsetOrMin::MIN),
-                (source(1), OffsetOrMin::MIN),
-                (source(2), OffsetOrMin::MAX),
+                (test_stream(0), OffsetOrMin::MIN),
+                (test_stream(1), OffsetOrMin::MIN),
+                (test_stream(2), OffsetOrMin::MAX),
             ]),
             OffsetMapOrMax::max_value(),
         )
         .only_local();
-        let local = sources(&[0]);
+        let local = stream_ids(&[0]);
         assert_eq!(events.get_bounded_nonempty_streams(&local), Some(local.clone()));
         assert_eq!(events.get_mentioned_streams(&local).collect::<BTreeSet<_>>(), local);
     }
@@ -335,20 +332,20 @@ mod tests {
         let events = EventSelection::new(
             subscription_set,
             OffsetMapOrMax::from_entries(&[
-                (source(0), OffsetOrMin::MIN),
-                (source(1), OffsetOrMin::MIN),
-                (source(2), OffsetOrMin::MAX),
+                (test_stream(0), OffsetOrMin::MIN),
+                (test_stream(1), OffsetOrMin::MIN),
+                (test_stream(2), OffsetOrMin::MAX),
             ]),
             OffsetMapOrMax::from_entries(&[
-                (source(0), OffsetOrMin::mk_test(50)),
-                (source(1), OffsetOrMin::MIN),
-                (source(2), OffsetOrMin::MAX),
+                (test_stream(0), OffsetOrMin::mk_test(50)),
+                (test_stream(1), OffsetOrMin::MIN),
+                (test_stream(2), OffsetOrMin::MAX),
             ]),
         );
         let set = vec![tags!("upper:B")];
-        let expected1 = StreamEventSelection::new(source(1), OffsetOrMin::MIN, OffsetOrMin::MIN, set.clone());
-        let expected2 = StreamEventSelection::new(source(2), OffsetOrMin::MAX, OffsetOrMin::MAX, set);
-        assert_eq!(events.for_stream(source(1), false), expected1);
-        assert_eq!(events.for_stream(source(2), false), expected2);
+        let expected1 = StreamEventSelection::new(test_stream(1), OffsetOrMin::MIN, OffsetOrMin::MIN, set.clone());
+        let expected2 = StreamEventSelection::new(test_stream(2), OffsetOrMin::MAX, OffsetOrMin::MAX, set);
+        assert_eq!(events.for_stream(test_stream(1), false), expected1);
+        assert_eq!(events.for_stream(test_stream(2), false), expected2);
     }
 }

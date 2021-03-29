@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Actyx AG
+ * Copyright 2021 Actyx AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+use std::{hash::Hash, sync::Arc};
+
 #[cfg(feature = "dataflow")]
 use abomonation::Abomonation;
 use intern_arc::*;
@@ -22,7 +24,6 @@ use serde::{
 };
 use std::fmt::{self, Formatter};
 use std::ops::Deref;
-use std::{hash::Hash, sync::Arc};
 
 /// Helper macro to create interned string types
 ///

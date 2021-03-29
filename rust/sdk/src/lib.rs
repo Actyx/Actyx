@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 Actyx AG
+ * Copyright 2021 Actyx AG
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,15 +33,15 @@
 //!
 //! ```no_run
 //! use actyxos_sdk::{
-//!   event_service::{EventService, Order, QueryRequest, QueryResponse},
-//!   tagged::EventServiceHttpClient,
+//!   HttpClient,
+//!   service::{EventService, Order, QueryRequest, QueryResponse},
 //! };
 //! use futures::stream::StreamExt;
 //!
 //! #[tokio::main]
 //! pub async fn main() -> anyhow::Result<()> {
 //!   // client for locally running Actyx Event Service
-//!   let service = EventServiceHttpClient::default();
+//!   let service = HttpClient::default().await?;
 //!
 //!   // retrieve largest currently known event stream cursor
 //!   let offsets = service.offsets().await?;
@@ -94,17 +94,29 @@ pub use actyxos_sdk_macros::*;
 #[macro_use]
 mod scalar;
 
-pub mod dnf;
-pub mod event;
-pub mod event_service;
-pub mod expression;
-pub mod tagged;
+#[cfg(any(test, feature = "arb"))]
+pub mod arb;
+mod event;
+mod expression;
+#[cfg(feature = "client")]
+mod http_client;
+pub mod language;
+pub mod legacy;
+mod offset;
+mod scalars;
+pub mod service;
+mod tags;
+mod timestamp;
 pub mod types;
 
-pub use dnf::Dnf;
-pub use event::{LamportTimestamp, Offset, OffsetMap, OffsetOrMin, Opaque, ParseError, Payload, TimeStamp};
-pub use event_service::EventService;
-pub use expression::Expression;
+pub use event::{Event, EventKey, Metadata, Opaque, Payload};
+pub use expression::{Dnf, Expression};
+#[cfg(feature = "client")]
+pub use http_client::HttpClient;
+pub use offset::{Offset, OffsetMap, OffsetOrMin};
+pub use scalars::{AppId, NodeId, StreamId, StreamNr};
+pub use tags::{Tag, TagSet};
+pub use timestamp::{LamportTimestamp, Timestamp};
 
 #[cfg(test)]
 mod test_util;
@@ -112,4 +124,12 @@ mod test_util;
 #[cfg(test)]
 pub use test_util::*;
 
-pub mod language;
+use derive_more::Display;
+#[derive(Debug, Display, PartialEq)]
+pub enum ParseError {
+    #[display(fmt = "Empty string is not permissible for Tag")]
+    EmptyTag,
+    #[display(fmt = "Empty string is not permissible for AppId")]
+    EmptyAppId,
+}
+impl std::error::Error for ParseError {}

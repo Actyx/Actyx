@@ -883,9 +883,9 @@ dependencies = [
 
 [[package]]
 name = "libipld-cbor"
-version = "0.11.1"
+version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7046a0fadddb99493a63bd6feaa89e48093b582353b18efd95541c8756c64a8"
+checksum = "d0786a9762c8f187d5671c8fb4a30300f00ee867553c7f136e384bf5a3afb64f"
 dependencies = [
  "byteorder",
  "libipld-core",

@@ -1,8 +1,5 @@
 use crate::tag_index::IndexSet;
-use actyxos_sdk::{
-    tagged::{Tag, TagSet},
-    Dnf, LamportTimestamp, TimeStamp,
-};
+use actyxos_sdk::{Dnf, LamportTimestamp, Tag, TagSet, Timestamp};
 use banyan::{
     forest::TreeTypes,
     index::{BranchIndex, CompactSeq, LeafIndex, Summarizable},
@@ -59,8 +56,8 @@ impl<A: smallvec::Array<Item = LamportTimestamp>> From<AxRange<LamportTimestamp>
     }
 }
 
-impl<A: smallvec::Array<Item = TimeStamp>> From<AxRange<TimeStamp>> for RangeSet<TimeStamp, A> {
-    fn from(r: AxRange<TimeStamp>) -> Self {
+impl<A: smallvec::Array<Item = Timestamp>> From<AxRange<Timestamp>> for RangeSet<Timestamp, A> {
+    fn from(r: AxRange<Timestamp>) -> Self {
         RangeSet::from(r.min..(r.max + 1))
     }
 }
@@ -71,12 +68,12 @@ impl<A: smallvec::Array<Item = TimeStamp>> From<AxRange<TimeStamp>> for RangeSet
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AxKey {
     pub(crate) tags: TagSet,
-    pub(crate) time: TimeStamp,
+    pub(crate) time: Timestamp,
     pub(crate) lamport: LamportTimestamp,
 }
 
 impl AxKey {
-    pub fn new(tags: TagSet, lamport: impl Into<LamportTimestamp>, time: impl Into<TimeStamp>) -> Self {
+    pub fn new(tags: TagSet, lamport: impl Into<LamportTimestamp>, time: impl Into<Timestamp>) -> Self {
         Self {
             tags,
             lamport: lamport.into(),
@@ -88,7 +85,7 @@ impl AxKey {
         &self.tags
     }
 
-    pub fn time(&self) -> TimeStamp {
+    pub fn time(&self) -> Timestamp {
         self.time
     }
 
@@ -109,7 +106,7 @@ impl AxKey {
 pub struct AxKeySeq {
     tags: TagIndex,
     lamport: Vec<LamportTimestamp>,
-    time: Vec<TimeStamp>,
+    time: Vec<Timestamp>,
 }
 
 impl AxKeySeq {
@@ -120,7 +117,7 @@ impl AxKeySeq {
         AxRange::new(*min_lamport, *max_lamport)
     }
 
-    pub fn time_range(&self) -> AxRange<TimeStamp> {
+    pub fn time_range(&self) -> AxRange<Timestamp> {
         // we could assume that lamports are ordered, but let's play it safe for now
         let min_time = self.time.iter().min().unwrap();
         let max_time = self.time.iter().max().unwrap();
@@ -137,7 +134,7 @@ impl Encode<DagCborCodec> for AxKeySeq {
 impl Decode<DagCborCodec> for AxKeySeq {
     fn decode<R: Read + Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
         let t: AxKeySeqIo = Decode::decode(c, r)?;
-        Ok(t.try_into()?)
+        t.try_into()
     }
 }
 
@@ -191,10 +188,10 @@ impl TryFrom<AxKeySeqIo> for AxKeySeq {
         delta_decode(&mut value.time);
         delta_decode(&mut value.lamport);
         let mut lamport: Vec<LamportTimestamp> = Vec::with_capacity(n);
-        let mut time: Vec<TimeStamp> = Vec::with_capacity(n);
+        let mut time: Vec<Timestamp> = Vec::with_capacity(n);
         for i in 0..n {
             lamport.push(LamportTimestamp::new(value.lamport[i]));
-            time.push(TimeStamp::new(value.time[i]));
+            time.push(Timestamp::new(value.time[i]));
         }
         Ok(Self {
             tags: value.tags,
@@ -375,13 +372,13 @@ impl From<TagIndex> for TagsSummaries {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AxSummary {
     pub(crate) tags: TagsSummary,
-    pub(crate) time: AxRange<TimeStamp>,
+    pub(crate) time: AxRange<Timestamp>,
     pub(crate) lamport: AxRange<LamportTimestamp>,
 }
 
 impl AxSummary {
     /// New key, for a single or multiple events
-    pub fn new(tags: TagsSummary, lamport: AxRange<LamportTimestamp>, time: AxRange<TimeStamp>) -> Self {
+    pub fn new(tags: TagsSummary, lamport: AxRange<LamportTimestamp>, time: AxRange<Timestamp>) -> Self {
         Self { tags, lamport, time }
     }
 }
@@ -394,7 +391,7 @@ impl AxSummary {
 pub struct AxSummarySeq {
     tags: TagsSummaries,
     lamport: Vec<AxRange<LamportTimestamp>>,
-    time: Vec<AxRange<TimeStamp>>,
+    time: Vec<AxRange<Timestamp>>,
 }
 
 impl Encode<DagCborCodec> for AxSummarySeq {
@@ -406,7 +403,7 @@ impl Encode<DagCborCodec> for AxSummarySeq {
 impl Decode<DagCborCodec> for AxSummarySeq {
     fn decode<R: Read + Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
         let t: AxSummarySeqIo = Decode::decode(c, r)?;
-        Ok(t.try_into()?)
+        t.try_into()
     }
 }
 
@@ -418,7 +415,7 @@ impl AxSummarySeq {
         AxRange::new(min_lamport, max_lamport)
     }
 
-    pub fn time_range(&self) -> AxRange<TimeStamp> {
+    pub fn time_range(&self) -> AxRange<Timestamp> {
         // we could assume that lamports are ordered, but let's play it safe for now
         let min_time = self.time.iter().map(|x| x.min).min().unwrap();
         let max_time = self.time.iter().map(|x| x.max).max().unwrap();
@@ -490,14 +487,14 @@ impl TryFrom<AxSummarySeqIo> for AxSummarySeq {
         delta_decode(&mut value.time);
         delta_decode(&mut value.lamport);
         let mut lamport: Vec<AxRange<LamportTimestamp>> = Vec::with_capacity(n);
-        let mut time: Vec<AxRange<TimeStamp>> = Vec::with_capacity(n);
+        let mut time: Vec<AxRange<Timestamp>> = Vec::with_capacity(n);
         for i in 0..n {
             let min = LamportTimestamp::new(value.lamport[i * 2]);
             let max = LamportTimestamp::new(value.lamport[i * 2 + 1]);
             lamport.push(AxRange::new(min, max));
 
-            let min = TimeStamp::new(value.time[i * 2]);
-            let max = TimeStamp::new(value.time[i * 2 + 1]);
+            let min = Timestamp::new(value.time[i * 2]);
+            let max = Timestamp::new(value.time[i * 2 + 1]);
             time.push(AxRange::new(min, max));
         }
         Ok(Self {
@@ -624,10 +621,10 @@ impl Query<AxTrees> for LamportQuery {
 }
 
 #[derive(Debug, Clone)]
-pub struct TimeQuery(RangeSet<TimeStamp>);
+pub struct TimeQuery(RangeSet<Timestamp>);
 
-impl From<Range<TimeStamp>> for TimeQuery {
-    fn from(value: Range<TimeStamp>) -> Self {
+impl From<Range<Timestamp>> for TimeQuery {
+    fn from(value: Range<Timestamp>) -> Self {
         Self(value.into())
     }
 }
@@ -807,8 +804,8 @@ mod tests {
                 let elements = ks.to_vec();
                 let mut lamport_min = LamportTimestamp::new(u64::max_value());
                 let mut lamport_max = LamportTimestamp::new(u64::min_value());
-                let mut time_min = TimeStamp::new(u64::max_value());
-                let mut time_max = TimeStamp::new(u64::min_value());
+                let mut time_min = Timestamp::new(u64::max_value());
+                let mut time_max = Timestamp::new(u64::min_value());
                 let tags = elements.iter().map(|e| e.tags.clone()).collect::<TagsSummary>();
                 for e in elements {
                     lamport_min = lamport_min.min(e.lamport.min);
@@ -835,8 +832,8 @@ mod tests {
             let elements = ks.to_vec();
             let mut lamport_min = LamportTimestamp::new(u64::max_value());
             let mut lamport_max = LamportTimestamp::new(u64::min_value());
-            let mut time_min = TimeStamp::new(u64::max_value());
-            let mut time_max = TimeStamp::new(u64::min_value());
+            let mut time_min = Timestamp::new(u64::max_value());
+            let mut time_max = Timestamp::new(u64::min_value());
             let tags = elements.iter().map(|e| TagsSummary::from(&e.tags)).collect::<TagsSummary>();
             for e in elements {
                 lamport_min = lamport_min.min(e.lamport);

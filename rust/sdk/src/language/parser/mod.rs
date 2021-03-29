@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use super::{Array, Expression, Index, Number, Object, Operation, Path, Query, SimpleExpr, TagAtom, TagExpr};
-use crate::{tagged::Tag, TimeStamp};
+use crate::{tags::Tag, Timestamp};
 use chrono::{TimeZone, Utc};
 use once_cell::sync::Lazy;
 use pest::{prec_climber::PrecClimber, Parser};
@@ -122,7 +122,7 @@ fn r_number(p: P) -> Number {
     }
 }
 
-fn r_timestamp(p: P) -> TimeStamp {
+fn r_timestamp(p: P) -> Timestamp {
     let mut p = p.inner();
     let year: i32 = p.string().parse().unwrap();
     let month: u32 = p.string().parse().unwrap();

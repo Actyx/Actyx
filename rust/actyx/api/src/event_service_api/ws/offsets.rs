@@ -1,4 +1,4 @@
-use actyxos_sdk::{event_service::EventService, tagged::AppId, OffsetMap};
+use actyxos_sdk::{service::EventService, AppId, OffsetMap};
 use futures::{
     stream::{BoxStream, StreamExt},
     FutureExt,

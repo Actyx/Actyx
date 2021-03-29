@@ -1,7 +1,4 @@
-use actyxos_sdk::{
-    tagged::{Tag, TagSet},
-    Dnf,
-};
+use actyxos_sdk::{Dnf, Tag, TagSet};
 use libipld::cbor::{decode::read_u8, DagCborCodec};
 use libipld::codec::{Decode, Encode};
 use libipld::error::Error;
@@ -151,7 +148,7 @@ impl TagIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyxos_sdk::{expression::Expression, tags};
+    use actyxos_sdk::{tags, Expression};
     use quickcheck::quickcheck;
 
     fn l(x: &str) -> Expression {

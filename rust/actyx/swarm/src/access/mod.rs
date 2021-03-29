@@ -1,9 +1,6 @@
 use std::collections::BTreeSet;
 
-use actyxos_sdk::{
-    tagged::{Event, StreamId},
-    Payload,
-};
+use actyxos_sdk::{Event, Payload, StreamId};
 use derive_more::Display;
 use futures::future::BoxFuture;
 use futures::stream::BoxStream;
