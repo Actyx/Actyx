@@ -17,13 +17,13 @@ type Props = Readonly<{
 export const Social: React.FC<Props> = ({ example }: Props) => (
   <Wrapper>
     <a href="https://github.com/actyx">
-      <GitHub />
+      <GitHub color="lightgray" positive />
     </a>
     <a href="https://www.linkedin.com/company/10114352">
-      <LinkedIn />
+      <LinkedIn color="lightgray" positive />
     </a>
     <a href="https://www.twitter.com/actyx">
-      <Twitter />
+      <Twitter color="lightgray" positive />
     </a>
   </Wrapper>
 )

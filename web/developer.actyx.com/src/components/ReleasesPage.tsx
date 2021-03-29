@@ -102,11 +102,11 @@ function ReleasesPage({ releases }) {
                 <Left>
                   <BuildNumber build={release.tag} pre="Release: " />
                   <MetaWrapperLeft>
-                    <Calendar />
+                    <Calendar color="lightgray" positive />
                     <Meta>{moment(release.meta.at).format('D MMM YYYY [at] HH:mm')}</Meta>
                   </MetaWrapperLeft>
                   <MetaWrapperLeft>
-                    <Commit />
+                    <Commit color="lightgray" positive />
                     <Meta>{toShortHash(release.commit)}</Meta>
                   </MetaWrapperLeft>
                 </Left>
@@ -133,7 +133,7 @@ function ReleasesPage({ releases }) {
                       {release.meta.sites.map((site, index) => (
                         <React.Fragment key={release.tag + site.name}>
                           <MetaWrapperRight>
-                            <Laptop />
+                            <Laptop color="blue" positive />
                             <Meta>
                               <Link
                                 style={{ color: 'inherit', textDecoration: 'inherit' }}

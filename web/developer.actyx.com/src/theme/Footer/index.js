@@ -10,7 +10,7 @@ import Link from '@docusaurus/Link'
 import { useThemeConfig } from '@docusaurus/theme-common'
 import useBaseUrl from '@docusaurus/useBaseUrl'
 import { BuildNumber } from '../../components/BuildNumber'
-import { IconLink } from '../../components/IconLink'
+import { Link as ReleasesLink } from '../../components/Link'
 import { Social } from '../../components/Social'
 
 function FooterLink({ to, href, label, prependBaseUrlToHref, ...props }) {
@@ -88,7 +88,7 @@ function Footer() {
         <div style={{ paddingLeft: '84px' }}>
           <BuildNumber pre="Release: " build="build-1.17242" />{' '}
           {/* TODO get latest release build */}
-          <IconLink link="Past Releases" />
+          <ReleasesLink title="Past Releases" link="/" color="lightgray" positive />
           <Social />
           {(logo || copyright) && (
             <div className="footer__bottom">

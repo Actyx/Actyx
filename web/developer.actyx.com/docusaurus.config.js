@@ -1,4 +1,4 @@
-const remarkCodeImport = require('remark-code-import');
+const remarkCodeImport = require('remark-code-import')
 
 module.exports = {
   title: 'Actyx Developer',
@@ -102,61 +102,61 @@ module.exports = {
           items: [
             {
               label: 'Actyx',
-              to: 'docs/build/reference/actyx-api',
+              to: 'docs/reference/actyx-api',
             },
             {
               label: 'SDK',
-              to: 'docs/build/reference/js-ts-sdk',
+              to: 'docs/reference/js-ts-sdk',
             },
             {
               label: 'CLI',
-              to: 'docs/deploy/reference/cli',
+              to: 'docs/reference/cli',
             },
             {
               label: 'Node Manager',
-              to: 'docs/deploy/reference/cli',
+              to: 'docs/reference/node-manager',
             },
           ],
         },
         {
-          title: 'Building Solutions',
+          title: 'Start Building',
           items: [
             {
-              label: 'Local Twins',
-              to: 'docs/build/explanation/local-twins',
+              label: 'Installing Actyx',
+              to: 'docs/how-to-guides/local-developmentlocal-twins',
             },
             {
-              label: 'UI Apps',
-              to: 'docs/build/explanation/ui-apps',
+              label: 'Modelling in Twins',
+              to: 'docs/how-to-guides/process-logic/modelling-processes-in-twins',
             },
             {
-              label: 'Headless Apps',
-              to: 'docs/build/explanation/headless-apps',
+              label: 'Packaging UI Apps',
+              to: 'docs/how-to-guides/configuring-and-packaging/front-end-apps',
             },
             {
               label: 'Actyx SDK',
-              to: 'docs/build/how-to/actyx-sdk',
+              to: 'docs/how-to-guides/sdk/placeholder',
             },
           ],
         },
         {
-          title: 'Quick Links',
+          title: 'Essential Concepts',
           items: [
             {
-              label: 'Actyx Node',
-              to: 'docs/start/explanation/the-actyx-node',
+              label: 'Event-based Systems',
+              to: 'docs/conceptual-guides/event-based-systems',
             },
             {
-              label: 'Typescript SDK',
-              to: 'docs/build/reference/js-ts-sdk',
+              label: 'Local First',
+              to: 'docs/conceptual-guides/local-first-computing',
             },
             {
-              label: 'Node Configuration',
-              to: 'docs/deploy/how-to/node-configuration',
+              label: 'Thinking in Actyx',
+              to: 'docs/conceptual-guides/thinking-in-actyx',
             },
             {
-              label: 'Deployments',
-              to: 'docs/deploy/how-to/deployments',
+              label: 'Apps in Factories',
+              to: 'docs/conceptual-guides/apps-in-the-factory-context',
             },
           ],
         },
@@ -165,15 +165,15 @@ module.exports = {
           items: [
             {
               label: 'Forum',
-              to: 'https://www.actyx.com',
+              to: 'https://www.community.actyx.com',
             },
             {
               label: 'Actyx Academy',
-              to: 'https://www.actyx.com/team',
+              to: 'https://www.actyx.com',
             },
             {
               label: 'Discord',
-              to: 'https://www.actyx.com/careers',
+              to: 'https://discord.gg/262yJhc',
             },
             {
               label: 'Blog',
@@ -222,7 +222,7 @@ module.exports = {
       {
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
-          remarkPlugins: [remarkCodeImport]
+          remarkPlugins: [remarkCodeImport],
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
