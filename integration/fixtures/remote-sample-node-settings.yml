@@ -1,0 +1,15 @@
+general:
+  bootstrapNodes:
+    - /ip4/3.125.108.42/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH
+  displayName: Remote Sample Node
+  swarmKey: L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCmQ3YjBmNDFjY2ZlYTEyM2FkYTJhYWI0MmY2NjRjOWUyNWUwZWYyZThmNGJjNjJlOTg3NmE3NDU1MTc3ZWQzOGIK
+licensing:
+  os: development
+  apps: {}
+services:
+  consoleService: {}
+  eventService:
+    readOnly: false
+    topic: SampleTopic
+  dockerRuntime: {}
+  webViewRuntime: {}
