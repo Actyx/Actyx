@@ -19,9 +19,9 @@ We will cover the following Actyx & Actyx CLI host platforms in our integration 
 
 These systems are tested on the following CPU architecture:
 
-- Linux/Docker: x86_64, aarch64, armv7, armv6
+- Linux/Docker: x86_64, aarch64, armv7, arm
 - Windows/macOS: x86_64
-- Android: x86, aarch64
+- Android: x86, aarch64, armv7
 
 ## Business context
 
@@ -37,7 +37,7 @@ ARM builds for Windows or macOS are currently left aside since these platforms a
 
 - suitable binaries need to be built during CI (requires private Docker image for building macOS binaries — their SDK has copyright restrictions)
 - suitable EC2 system images and host machines need to be identified (these exist for everything but Android) and integrated
-- the OS/arch matrix specified above has 13 entries, leading to correspondingly complex test setup
+- the OS/arch matrix specified above has 14 entries, leading to correspondingly complex test setup
 - macOS on Apple Silicon will require Rosetta to run Actyx
 - Windows on ARM is not supported at this time
 
@@ -46,6 +46,6 @@ The full list of OS/Arch strings we need to build native code for is thus (for c
 - linux-x86_64
 - linux-aarch64
 - linux-armv7
-- linux-armv6
+- linux-arm
 - windows-x86_64
 - macos-x86_64
