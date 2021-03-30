@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+#![allow(clippy::upper_case_acronyms)]
 use super::{Array, Expression, Index, Number, Object, Operation, Path, Query, SimpleExpr, TagAtom, TagExpr};
 use crate::{tags::Tag, Timestamp};
 use chrono::{TimeZone, Utc};
@@ -8,7 +9,7 @@ use utils::*;
 
 #[derive(pest_derive::Parser)]
 #[grammar = "language/aql.pest"]
-struct AQL;
+struct Aql;
 
 mod utils;
 
@@ -225,7 +226,7 @@ fn r_query(p: P) -> Query {
 }
 
 pub fn expression(input: &str) -> R<Expression> {
-    let p = AQL::parse(Rule::expression, input)?.single().single();
+    let p = Aql::parse(Rule::expression, input)?.single().single();
     match p.rule() {
         Rule::simple_expr => Ok(Expression::Simple(r_simple_expr(p))),
         Rule::query => Ok(Expression::Query(r_query(p))),
@@ -241,9 +242,9 @@ mod tests {
 
     #[test]
     fn tag() {
-        let p = AQL::parse(Rule::tag, "'hello''s revenge'").unwrap();
+        let p = Aql::parse(Rule::tag, "'hello''s revenge'").unwrap();
         assert_eq!(r_tag(p.single()), tag!("hello's revenge"));
-        let p = AQL::parse(Rule::tag, "\"hello\"\"s revenge\"").unwrap();
+        let p = Aql::parse(Rule::tag, "\"hello\"\"s revenge\"").unwrap();
         assert_eq!(r_tag(p.single()), tag!("hello\"s revenge"));
     }
 
@@ -251,7 +252,7 @@ mod tests {
     fn tag_expr() {
         use TagAtom::Tag;
         use TagExpr::*;
-        let p = AQL::parse(Rule::tag_expr, "'x' |\t'y'\n&'z'").unwrap();
+        let p = Aql::parse(Rule::tag_expr, "'x' |\t'y'\n&'z'").unwrap();
         assert_eq!(
             r_tag_expr(p.single()),
             Or((
@@ -267,7 +268,7 @@ mod tests {
         use super::Number::*;
         use super::Path;
         use SimpleExpr::*;
-        let p = AQL::parse(Rule::simple_expr, "(x - 5.2 * 1234)^2 / 7 % 5").unwrap();
+        let p = Aql::parse(Rule::simple_expr, "(x - 5.2 * 1234)^2 / 7 % 5").unwrap();
         assert_eq!(
             r_simple_expr(p.single()),
             Path::ident("x")
@@ -320,7 +321,7 @@ mod tests {
     #[test]
     fn negative() {
         fails_with! {
-            parser: AQL,
+            parser: Aql,
             input: "FROM x",
             rule: Rule::expression,
             positives: vec![Rule::tag_expr],
