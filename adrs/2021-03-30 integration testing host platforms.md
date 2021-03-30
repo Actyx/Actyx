@@ -40,3 +40,12 @@ ARM builds for Windows or macOS are currently left aside since these platforms a
 - the OS/arch matrix specified above has 13 entries, leading to correspondingly complex test setup
 - macOS on Apple Silicon will require Rosetta to run Actyx
 - Windows on ARM is not supported at this time
+
+The full list of OS/Arch strings we need to build native code for is thus (for corresponding Rust targets see top-level `Makefile`):
+
+- linux-x86_64
+- linux-aarch64
+- linux-armv7
+- linux-armv6
+- windows-x86_64
+- macos-x86_64
