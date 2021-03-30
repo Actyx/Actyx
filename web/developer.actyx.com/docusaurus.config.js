@@ -1,3 +1,5 @@
+const remarkCodeImport = require('remark-code-import')
+
 module.exports = {
   title: 'Actyx Developer',
   tagline: 'Documentation, guides and tools for building on the Actyx Platform',
@@ -5,7 +7,8 @@ module.exports = {
   baseUrl: '/',
   favicon: 'img/favicon.ico',
   organizationName: 'Actyx',
-  projectName: 'Actyx',
+  projectName: 'Actyx Developer Website',
+  onBrokenLinks: 'ignore',
   plugins: [
     [
       require.resolve('docusaurus-gtm-plugin'),
@@ -17,17 +20,16 @@ module.exports = {
     [
       require.resolve('./src/plugins/arm'),
       {
-	      releasesYml: './__auto-releases.yml',
+        releasesYml: './__auto-releases.yml',
       },
     ],
   ],
   themeConfig: {
     announcementBar: {
-      id: 'os-112',
-      content:
-        '🤩 We released version 1.1.2 of ActyxOS! Check out the <a rel="noopener noreferrer" href="https://developer.actyx.com/docs/os/release-notes">release notes</a> and <a rel="noopener noreferrer" href="https://downloads.actyx.com">download</a> the latest and greatest! 🤩',
-      backgroundColor: '#f5f6f7',
-      textColor: '#000',
+      id: 'test007',
+      content: 'Announcement Bar Content',
+      backgroundColor: '#373c40',
+      textColor: '#fff',
     },
     colorMode: {
       defaultMode: 'light',
@@ -42,45 +44,49 @@ module.exports = {
       },
       items: [
         {
-          label: 'ActyxOS',
-          activeBasePath: 'docs/os/',
-          to: 'docs/os/general/introduction',
+          label: 'How-to Guides',
+          activeBasePath: 'docs/how-to-guides',
+          to: 'docs/how-to-guides/overview',
         },
         {
-          label: 'Actyx\u00a0Pond',
-          activeBasePath: 'docs/pond/',
-          to: 'docs/pond/introduction',
+          label: 'Conceptual Guides',
+          activeBasePath: 'docs/conceptual-guides',
+          to: 'docs/conceptual-guides/overview',
         },
         {
-          label: 'Node\u00a0Management',
-          position: 'left',
+          label: 'Reference',
+          activeBasePath: 'docs/reference',
+          to: 'docs/reference/overview',
+        },
+        {
+          label: 'Blog',
+          activeBasePath: '/blog',
+          position: 'right',
+          to: '/blog',
+        },
+        {
+          label: 'Forum',
+          position: 'right',
+          to: 'https://community.actyx.com/',
+        },
+        /* {
+          label: 'Community',
+          position: 'right',
           items: [
             {
-              label: 'Actyx\u00a0CLI',
-              to: 'docs/cli/getting-started',
+              label: 'Blog',
+              href: '/blog',
             },
             {
-              label: 'ActyxOS\u00a0Node\u00a0Manager',
-              to: 'docs/node-manager/overview',
+              label: 'Forum',
+              href: 'https://community.actyx.com/',
+            },
+            {
+              label: 'Academy',
+              href: 'https://community.actyx.com/',
             },
           ],
-        },
-        {
-          to: 'docs/learn-actyx',
-          activeBasePath: 'learn-actyx',
-          label: 'Learn\u00a0Actyx',
-          position: 'left',
-        },
-        {
-          to: 'blog',
-          label: 'Blog',
-          position: 'right',
-        },
-        {
-          to: 'releases',
-          label: 'Releases',
-          position: 'right',
-        },
+        }, */
       ],
     },
     footer: {
@@ -89,57 +95,94 @@ module.exports = {
         src: 'img/header.svg',
         href: 'https://developer.actyx.com',
       },
-      style: 'light',
+      style: 'dark',
       links: [
         {
-          title: 'Product Documentation',
+          title: 'Reference Docs',
           items: [
             {
-              label: 'ActyxOS',
-              to: 'docs/os/general/introduction',
+              label: 'Actyx',
+              to: 'docs/reference/actyx-api',
             },
             {
-              label: 'Actyx Pond',
-              to: 'docs/pond/introduction',
+              label: 'SDK',
+              to: 'docs/reference/js-ts-sdk',
+            },
+            {
+              label: 'CLI',
+              to: 'docs/reference/cli',
+            },
+            {
+              label: 'Node Manager',
+              to: 'docs/reference/node-manager',
             },
           ],
         },
         {
-          title: 'Node Management',
+          title: 'Start Building',
           items: [
             {
-              label: 'Actyx CLI',
-              to: 'docs/cli/getting-started',
+              label: 'Installing Actyx',
+              to: 'docs/how-to-guides/local-developmentlocal-twins',
             },
             {
-              label: 'Actyx Node Manager',
-              to: 'docs/node-manager/overview',
-            }
-          ]
+              label: 'Modelling in Twins',
+              to: 'docs/how-to-guides/process-logic/modelling-processes-in-twins',
+            },
+            {
+              label: 'Packaging UI Apps',
+              to: 'docs/how-to-guides/configuring-and-packaging/front-end-apps',
+            },
+            {
+              label: 'Actyx SDK',
+              to: 'docs/how-to-guides/sdk/placeholder',
+            },
+          ],
         },
         {
-          title: 'Useful Links',
+          title: 'Essential Concepts',
           items: [
             {
-              label: 'FAQ',
-              to: 'docs/faq/supported-programming-languages',
+              label: 'Event-based Systems',
+              to: 'docs/conceptual-guides/event-based-systems',
             },
             {
-              label: 'Blog Posts',
-              to: 'blog',
+              label: 'Local First',
+              to: 'docs/conceptual-guides/local-first-computing',
             },
             {
-              label: 'Downloads',
-              to: 'https://downloads.actyx.com/',
+              label: 'Thinking in Actyx',
+              to: 'docs/conceptual-guides/thinking-in-actyx',
+            },
+            {
+              label: 'Apps in Factories',
+              to: 'docs/conceptual-guides/apps-in-the-factory-context',
+            },
+          ],
+        },
+        {
+          title: 'Community',
+          items: [
+            {
+              label: 'Forum',
+              to: 'https://www.community.actyx.com',
+            },
+            {
+              label: 'Actyx Academy',
+              to: 'https://www.actyx.com',
             },
             {
               label: 'Discord',
               to: 'https://discord.gg/262yJhc',
             },
+            {
+              label: 'Blog',
+              to: 'https://www.actyx.com/blog',
+            },
           ],
         },
         {
-          title: 'Actyx',
+          title: 'Company',
           items: [
             {
               label: 'Home',
@@ -147,15 +190,15 @@ module.exports = {
             },
             {
               label: 'Team',
-              to: 'https://www.actyx.com/company/team',
+              to: 'https://www.actyx.com/team',
             },
             {
-              label: 'Career',
-              to: 'https://careers.actyx.io/',
+              label: 'Careers',
+              to: 'https://www.actyx.com/careers',
             },
             {
               label: 'Press',
-              to: 'https://www.actyx.com/news',
+              to: 'https://www.actyx.com/blog',
             },
           ],
         },
@@ -163,7 +206,7 @@ module.exports = {
       copyright: `Copyright © ${new Date().getFullYear()} Actyx AG`,
     },
     prism: {
-      theme: require('prism-react-renderer/themes/palenight'),
+      theme: require('prism-react-renderer/themes/vsDark'),
       darkTheme: require('prism-react-renderer/themes/dracula'),
       additionalLanguages: ['rust', 'csharp'],
     },
@@ -179,11 +222,16 @@ module.exports = {
       {
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
+          remarkPlugins: [remarkCodeImport],
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
         },
+        blog: {
+          postsPerPage: 6,
+          blogSidebarTitle: 'Our latest posts',
+        },
       },
     ],
   ],
-};
+}
