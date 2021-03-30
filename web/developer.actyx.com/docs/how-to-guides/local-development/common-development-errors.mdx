@@ -57,38 +57,6 @@ instead of
 We are currently working on a fix for this.
 Check out our [blog](https://developer.actyx.com/blog) or [release notes](https://developer.actyx.com/releases) section for information on our new releases.
 
-## ActyxOS on Docker
-
-### Environment variables
-
-#### `AX_DEV_MODE`
-
-If you set this environment variable to 1, you can interact with all ActyxOS services from your Host machine.
-If you are running ActyxOS on Docker on Mac or Windows, which means you are not using `network=host`, you need to also pass the following options to forward the relevant ports:
-
-- `-p 4243:4243` for the Actyx Pond WebSocket endpoint
-- `-p 4454:4454` for the Event Service
-
-#### `ENABLE_DEBUG_LOGS`
-
-If you set this environment variable to 1, you will see debug logs from ActyxOS in your shell.
-
-### ActyxOS nodes not connecting to each other
-
-Your ActyxOS nodes running on Docker are not able connect to each other if
-
-- you are running ActyxOS without `network=host`; and
-- your ActyxOS Bootstrap Node is not running in the same local network as your ActyxOS nodes
-
-This is inherent in Docker, as a container has no access to the IP address of its host unless it is running with `network=host`. Therefore, you have to manually configure the address that your nodes are announcing via the `announceAddress` property in the node settings:
-
-```yml
-announceAddress: # Manually configured addresses to announce
-  - /ip4/192.168.1.101/tcp/4001
-  # These must be multiaddresses without peer id,
-  # i.e. ip4/<YOUR_IP>/tcp/4001
-```
-
 ## ActyxOS on Windows
 
 ### Error during Installation
@@ -117,3 +85,37 @@ If you couldn't a solution to your problem, please don't hesitate us.
 You can either open a support ticket in our [community forum](https://community.actyx.com), visit our [Discord server](https://discord.gg/262yJhc) and post your question there.
 Alernatively, you can always write us an [e-mail](mailto:developer@actyx.io).
 We'll do our best to get back to you with answers as fast as possible.
+
+## ActyxOS on Docker
+
+### Environment variables
+
+<!-- this can probably go -->
+
+#### `AX_DEV_MODE`
+
+If you set this environment variable to 1, you can interact with all ActyxOS services from your Host machine.
+If you are running ActyxOS on Docker on Mac or Windows, which means you are not using `network=host`, you need to also pass the following options to forward the relevant ports:
+
+- `-p 4243:4243` for the Actyx Pond WebSocket endpoint
+- `-p 4454:4454` for the Event Service
+
+#### `ENABLE_DEBUG_LOGS`
+
+If you set this environment variable to 1, you will see debug logs from ActyxOS in your shell.
+
+### ActyxOS nodes not connecting to each other
+
+Your ActyxOS nodes running on Docker are not able connect to each other if
+
+- you are running ActyxOS without `network=host`; and
+- your ActyxOS Bootstrap Node is not running in the same local network as your ActyxOS nodes
+
+This is inherent in Docker, as a container has no access to the IP address of its host unless it is running with `network=host`. Therefore, you have to manually configure the address that your nodes are announcing via the `announceAddress` property in the node settings:
+
+```yml
+announceAddress: # Manually configured addresses to announce
+  - /ip4/192.168.1.101/tcp/4001
+  # These must be multiaddresses without peer id,
+  # i.e. ip4/<YOUR_IP>/tcp/4001
+```
