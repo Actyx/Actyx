@@ -157,7 +157,7 @@ The request body must contain a JSON object with the following structure:
         "<string: stream ID>": "<integer: inclusive-upper-bound, e.g. 49>",
         "<string: stream ID>": "<integer: inclusive-upper-bound, e.g. 101>"
     },
-    "where": "<string: tag expression, e.g. «'tag1' & 'tag2'»>",
+    "query": "<string: AQL query, e.g. «FROM 'tag1' & 'tag2'»>",
     "order": "<string: 'asc' | 'desc' | 'stream-asc'"
 }
 ```
@@ -180,11 +180,11 @@ The `upperBound` is **required.** For every subscribed stream where no upper bou
 
 FIXME: reword (we don't subscribe to streams.) Can't we just stop at the current present and make this optional, too?
 
-#### Required: Filter (`where`)
+#### Required: Query (`query`)
 
-The `where` field specifies a tag expression for which events should be queried.
+The `query` field specifies an AQL query for which events should be queried.
 
-// TODO: Link to subscription docs.
+// TODO: Link to AQL docs.
 
 #### Required: Ordering (`order`)
 
@@ -248,7 +248,7 @@ echo '
         "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2": 57,
         "yjbwMjEteMT9Em8sGFwwde7kAGgJDxpTLJZZTxvduuKW.5": 60
     },
-    "where": "'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')",
+    "query": "FROM 'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')",
     "order": "desc"
 }
 ' \
@@ -303,7 +303,7 @@ The request body must contain a JSON object with the following structure:
         "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. 34>",
         "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. -1>"
     },
-    "where": "<string: tag expression, e.g. ['tag1' & 'tag2']>"
+    "query": "<string: AQL query, e.g. «FROM 'tag1' & 'tag2'»>"
 }
 ```
 
@@ -315,9 +315,9 @@ The `offsets` object specifies the lower bound offset for each stream with the n
 
 The `offsets` is optional. If none is set for one, multiple or all subscribed streams, the Event Store will assume a lower bound offset of `-1`, i.e. the beginning.
 
-#### Required: Filter (`where`)
+#### Required: Query (`query`)
 
-The `where` field specifies a tag expression for which events should be queried.
+The `query` field specifies an AQL query for which events should be filtered.
 
 ### Response
 
@@ -361,7 +361,7 @@ echo '
         "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2": 34,
         "yjbwMjEteMT9Em8sGFwwde7kAGgJDxpTLJZZTxvduuKW.5": -1
     },
-    "where": "'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')"
+    "query": "FROM 'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')"
 }
 ' \
 | curl -N \
@@ -412,7 +412,7 @@ The request body must contain a JSON object with one of the following structures
 ```js
 {
     "session": "<string: user supplied session ID>",
-    "where": "<string: tag expression, e.g. ['tag1' & 'tag2']>",
+    "query": "<string: AQL query, e.g. «FROM 'tag1' & 'tag2'»>",
     "offsets": {
         "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. 34>",
         "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. -1>"
@@ -427,7 +427,7 @@ The `offsets` object specifies the lower bound offset for each stream with the n
 ```js
 {
     "session": "<string: user supplied session ID>",
-    "where": "<string: tag expression, e.g. ['tag1' & 'tag2']>",
+    "query": "<string: AQL query, e.g. «FROM 'tag1' & 'tag2'»>",
     "snapshot": {
         "<string: compression>": "<string: 'none' | 'deflate'>"
     },
@@ -447,7 +447,7 @@ Specify additional details of your request as documented in the following.
 The session identifier is chosen by the client and must be used consistently by the client to resume an earlier session. For fishes this will usually be the fish id.
 
 :::info
-If the `where` filter changes, a new session will be created regardless of the existence of a session with the same ID.
+If the `query` changes, a new session will be created regardless of the existence of a session with the same ID.
 :::
 
 TODO:
@@ -457,9 +457,9 @@ TODO:
 - Can't we keep this stateless by the client keeping track of the offsets and resume on error? We have to keep track of session ID already.
 - What about expiration? How do we to communicate that to the client?
 
-#### Required: Filter (`where`)
+#### Required: Query (`query`)
 
-The `where` field specifies a tag expression for which events should be queried.
+The `query` field specifies an AQL for which events should be filtered.
 
 ### Response
 
@@ -533,7 +533,7 @@ See the following example using cURL:
 echo '
 {
     "session": "<my_session_id>",
-    "where": "'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')",
+    "query": "FROM 'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')",
     "offsets": {
         "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2": 34,
         "yjbwMjEteMT9Em8sGFwwde7kAGgJDxpTLJZZTxvduuKW.5": -1

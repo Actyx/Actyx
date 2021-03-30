@@ -52,7 +52,7 @@
 //!       .query(QueryRequest {
 //!           lower_bound: None,
 //!           upper_bound: offsets,
-//!           r#where: "MyFish".parse()?,
+//!           query: "MyFish".parse()?,
 //!           order: Order::Desc,
 //!       })
 //!       .await?;

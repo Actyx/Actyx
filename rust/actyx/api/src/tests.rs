@@ -69,7 +69,7 @@ async fn ok_accept_ndjson() {
         .path("/api/v2/events/query")
         .method("POST")
         .header("Authorization", "Bearer ok")
-        .json(&json!({"offsets": {}, "upperBound": {}, "where": "'a'", "order": "asc"}))
+        .json(&json!({"offsets": {}, "upperBound": {}, "query": "'a'", "order": "asc"}))
         .reply(&test_routes().await)
         .await;
     assert_eq!(resp.status(), http::StatusCode::OK);
@@ -80,7 +80,7 @@ async fn ok_accept_ndjson() {
         .method("POST")
         .header("Authorization", "Bearer ok")
         .header("accept", "application/x-ndjson")
-        .json(&json!({"offsets": {}, "upperBound": {}, "where": "'a'", "order": "asc"}))
+        .json(&json!({"offsets": {}, "upperBound": {}, "query": "'a'", "order": "asc"}))
         .reply(&test_routes().await)
         .await;
     assert_eq!(resp.status(), http::StatusCode::OK);
@@ -295,7 +295,7 @@ async fn bad_request_invalid_expression() {
         .path("/api/v2/events/subscribe")
         .method("POST")
         .header("Authorization", "Bearer ok")
-        .json(&serde_json::json!({"offsets": null, "where": "FROM x"}))
+        .json(&serde_json::json!({"offsets": null, "query": "FROM x"}))
         .reply(&(test_routes().await))
         .await;
     assert_err_response(

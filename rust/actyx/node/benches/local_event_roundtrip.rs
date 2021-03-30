@@ -57,7 +57,7 @@ fn round_trip(c: &mut Criterion) {
                         lower_bound: Some(offsets_before),
                         upper_bound: offsets_later,
                         order: Order::Asc,
-                        r#where: "'my_tag'".parse().unwrap(),
+                        query: "'my_tag'".parse().unwrap(),
                     })
                     .await
                     .unwrap()
