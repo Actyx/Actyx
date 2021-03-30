@@ -92,7 +92,7 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "swarm",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tokio-postgres",
  "tracing",
  "tracing-futures",
@@ -243,9 +243,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.38"
+version = "1.0.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afddf7f520a80dbf76e6f50a35bca42a2331ef227a28b3b6dc5c2e2338d114b1"
+checksum = "28b2cd92db5cbd74e8e5028f7e27dd7aa3090e89e4f2a197cc7c8dfb69c7063b"
 
 [[package]]
 name = "api"
@@ -277,7 +277,7 @@ dependencies = [
  "socket2 0.4.0",
  "swarm",
  "thiserror",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tracing",
  "tracing-futures",
  "tracing-subscriber",
@@ -364,7 +364,7 @@ dependencies = [
  "futures-core",
  "memchr 2.3.4",
  "pin-project-lite 0.2.6",
- "tokio 1.3.0",
+ "tokio 1.4.0",
 ]
 
 [[package]]
@@ -585,7 +585,7 @@ dependencies = [
  "structopt",
  "swarm",
  "tempfile",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tracing",
  "tracing-futures",
  "tracing-subscriber",
@@ -617,7 +617,7 @@ dependencies = [
  "parking_lot 0.11.1",
  "pin-project-lite 0.2.6",
  "rand 0.8.3",
- "tokio 1.3.0",
+ "tokio 1.4.0",
 ]
 
 [[package]]
@@ -704,7 +704,7 @@ dependencies = [
  "serde_json",
  "smol_str",
  "structopt",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tracing",
  "tracing-subscriber",
  "vec-collections",
@@ -1291,7 +1291,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "tinytemplate",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "walkdir",
 ]
 
@@ -2408,7 +2408,7 @@ dependencies = [
  "http",
  "indexmap",
  "slab",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tokio-util",
  "tracing",
 ]
@@ -2612,7 +2612,7 @@ dependencies = [
  "itoa",
  "pin-project 1.0.5",
  "socket2 0.3.19",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tower-service",
  "tracing",
  "want",
@@ -2627,7 +2627,7 @@ dependencies = [
  "bytes 1.0.1",
  "hyper",
  "native-tls",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tokio-native-tls",
 ]
 
@@ -2715,7 +2715,7 @@ dependencies = [
  "console",
  "lazy_static 1.4.0",
  "number_prefix",
- "parking_lot 0.9.0",
+ "parking_lot 0.11.1",
  "regex",
 ]
 
@@ -3477,7 +3477,7 @@ dependencies = [
  "libp2p-core",
  "log",
  "socket2 0.3.19",
- "tokio 1.3.0",
+ "tokio 1.4.0",
 ]
 
 [[package]]
@@ -3668,7 +3668,7 @@ dependencies = [
  "serde 1.0.124",
  "serde_cbor",
  "serde_json",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tracing",
  "tracing-subscriber",
  "tracing_win_event_log",
@@ -4134,7 +4134,7 @@ dependencies = [
  "systray",
  "tempfile",
  "thiserror",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tracing",
  "tracing-subscriber",
  "trees",
@@ -4158,7 +4158,7 @@ dependencies = [
  "node",
  "parking_lot 0.11.1",
  "serde_json",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tracing",
 ]
 
@@ -4753,7 +4753,7 @@ dependencies = [
  "fallible-iterator",
  "futures 0.3.13",
  "log",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tokio-postgres",
 ]
 
@@ -5309,7 +5309,7 @@ dependencies = [
  "serde 1.0.124",
  "serde_json",
  "serde_urlencoded",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tokio-native-tls",
  "tokio-util",
  "url 2.2.1",
@@ -6070,7 +6070,7 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "tempdir",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tracing",
  "trees",
  "util",
@@ -6184,6 +6184,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "tests"
+version = "0.1.0"
+dependencies = [
+ "actyxos_sdk",
+ "anyhow",
+ "crossbeam",
+ "futures 0.3.13",
+ "node",
+ "regex",
+ "tempfile",
+ "tokio 1.4.0",
+ "util",
+]
+
+[[package]]
 name = "textwrap"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6292,9 +6307,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.3.0"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d56477f6ed99e10225f38f9f75f872f29b8b8bd8c0b946f63345bb144e9eeda"
+checksum = "134af885d758d645f0f0505c9a8b3f9bf8a348fd822e112ab5248138348f1722"
 dependencies = [
  "autocfg",
  "bytes 1.0.1",
@@ -6381,7 +6396,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f7d995660bd2b7f8c1568414c1126076c13fbb725c40112dc0120b78eb9b717b"
 dependencies = [
  "native-tls",
- "tokio 1.3.0",
+ "tokio 1.4.0",
 ]
 
 [[package]]
@@ -6403,7 +6418,7 @@ dependencies = [
  "postgres-protocol",
  "postgres-types",
  "socket2 0.3.19",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tokio-util",
 ]
 
@@ -6497,7 +6512,7 @@ checksum = "c535f53c0cfa1acace62995a8994fc9cc1f12d202420da96ff306ee24d576469"
 dependencies = [
  "futures-core",
  "pin-project-lite 0.2.6",
- "tokio 1.3.0",
+ "tokio 1.4.0",
 ]
 
 [[package]]
@@ -6562,7 +6577,7 @@ dependencies = [
  "futures-util",
  "log",
  "pin-project 1.0.5",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tungstenite",
 ]
 
@@ -6610,7 +6625,7 @@ dependencies = [
  "futures-sink",
  "log",
  "pin-project-lite 0.2.6",
- "tokio 1.3.0",
+ "tokio 1.4.0",
 ]
 
 [[package]]
@@ -6794,7 +6809,7 @@ dependencies = [
  "serde_json",
  "serde_with",
  "smallvec 1.6.1",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tracing",
  "vec-collections",
  "zstd",
@@ -7012,7 +7027,7 @@ dependencies = [
  "serde 1.0.124",
  "serde_cbor",
  "serde_json",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tracing",
  "tracing-log",
  "tracing-subscriber",
@@ -7165,7 +7180,7 @@ dependencies = [
  "serde 1.0.124",
  "serde_json",
  "serde_urlencoded",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tokio-stream",
  "tokio-tungstenite",
  "tokio-util",
@@ -7442,7 +7457,7 @@ dependencies = [
  "pin-project-lite 0.2.6",
  "serde 1.0.124",
  "serde_json",
- "tokio 1.3.0",
+ "tokio 1.4.0",
  "tracing",
  "tracing-futures",
  "warp",

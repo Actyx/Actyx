@@ -357,6 +357,7 @@ impl Node {
     }
 }
 
+#[derive(Clone)]
 pub(crate) enum ComponentChannel {
     Store(Sender<ComponentRequest<StoreRequest>>),
     NodeApi(Sender<ComponentRequest<()>>),
