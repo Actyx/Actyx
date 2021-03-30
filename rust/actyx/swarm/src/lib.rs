@@ -49,7 +49,8 @@ use libp2p::{
 };
 use parking_lot::Mutex;
 use std::{
-    collections::VecDeque, fmt::Debug, num::NonZeroU32, ops::RangeInclusive, str::FromStr, sync::Arc, time::Duration,
+    collections::VecDeque, convert::TryInto, fmt::Debug, num::NonZeroU32, ops::RangeInclusive, str::FromStr, sync::Arc,
+    time::Duration,
 };
 use trees::{
     axtrees::{AxKey, AxTrees, Sha256Digest},
@@ -70,6 +71,7 @@ pub type Ipfs = ipfs_embed::Ipfs<libipld::DefaultParams>;
 
 #[derive(Debug, Clone)]
 pub struct Config {
+    /// max cache size [bytes]
     branch_cache: usize,
     crypto_config: forest::CryptoConfig,
     forest_config: forest::Config,
@@ -81,7 +83,7 @@ pub struct Config {
 impl Config {
     pub fn new(topic: &str, node_id: NodeId) -> Self {
         Self {
-            branch_cache: 1000,
+            branch_cache: 64 << 20,
             crypto_config: Default::default(),
             forest_config: forest::Config::debug(),
             topic: topic.into(),
@@ -266,11 +268,11 @@ impl BanyanStore {
             connectivity,
             tasks: Default::default(),
         }));
+        me.load_known_streams()?;
         me.spawn_task(
             "v2_gossip_ingest",
             me.0.gossip_v2.ingest(me.clone(), config.topic.clone())?,
         );
-        // TODO: me.load for own streams
         me.spawn_task("compaction", me.clone().compaction_loop(Duration::from_secs(60)));
         me.spawn_task("v1_gossip_publish", me.clone().v1_gossip_publish(config.topic.clone()));
         me.spawn_task("v1_gossip_ingest", me.clone().v1_gossip_ingest(config.topic));
@@ -286,6 +288,30 @@ impl BanyanStore {
             crate::metrics::metrics(me.clone(), 0.into(), Duration::from_secs(30))?,
         );
         Ok(me)
+    }
+
+    fn load_known_streams(&self) -> Result<()> {
+        let known_streams = self.0.index_store.lock().get_observed_streams()?;
+        for stream_id in known_streams {
+            tracing::debug!("Trying to load tree for {}", stream_id);
+            let cid = self
+                .ipfs()
+                .resolve(StreamAlias::from(stream_id))?
+                .ok_or_else(|| anyhow::anyhow!("No StreamAlias found for {}", stream_id))?;
+            let root = cid.try_into()?;
+            let tree = self.0.forest.load_tree(root)?;
+            if stream_id.node_id() == self.node_id() {
+                let s = self.get_or_create_own_stream(stream_id.stream_nr());
+                self.update_present(stream_id, tree.count() - 1)?;
+                s.set_latest(tree);
+            } else {
+                let s = self.get_or_create_replicated_stream(stream_id);
+                self.update_present(stream_id, tree.count() - 1)?;
+                s.set_latest(tree);
+            }
+        }
+
+        Ok(())
     }
 
     /// Creates an in memory [`BanyanStore`] for testing with mdns disabled.
@@ -455,6 +481,8 @@ impl BanyanStore {
                 );
                 // update the permanent alias
                 this.ipfs().alias(StreamAlias::from(stream_id), cid.as_ref())?;
+                // update present for stream
+                this.update_present(stream_id, tree.count() - 1)?;
                 // update latest
                 tracing::debug!("set_latest! {}", tree);
                 stream.set_latest(tree);
@@ -554,7 +582,7 @@ impl BanyanStore {
         ipfs.alias(&StreamAlias::from(stream_id), Some(&cid))?;
         self.0.index_store.lock().received_lamport(tree.last_lamport().into())?;
         tracing::debug!("sync_one complete {} => {}", stream_id, tree.count());
-        let offset = tree.count();
+        let offset = tree.count() - 1;
         stream.set_latest(tree);
         // update present. This can fail if stream_id is not a source_id.
         let _ = self.update_present(stream_id, offset);

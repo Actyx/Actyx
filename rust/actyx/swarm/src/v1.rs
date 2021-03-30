@@ -11,6 +11,7 @@ use actyxos_sdk::{
     Timestamp,
 };
 use anyhow::Result;
+use ax_futures_util::prelude::AxStreamExt;
 use banyan::{
     forest::{self},
     index::IndexRef,
@@ -18,8 +19,8 @@ use banyan::{
 use fnv::FnvHashSet;
 use forest::FilteredChunk;
 use futures::future::BoxFuture;
-use futures::prelude::*;
 use futures::stream::BoxStream;
+use futures::{channel::mpsc, prelude::*};
 use std::{
     collections::BTreeSet,
     convert::{TryFrom, TryInto},
@@ -112,7 +113,7 @@ impl BanyanStore {
         let mut min_offset = 0u32;
         let _ = self
             .transform_stream(stream_nr, |txn, tree| {
-                min_offset = tree.count() as u32;
+                min_offset = min_offset.max(tree.count() as u32 - 1);
                 txn.extend_unpacked(tree, kvs)
             })
             .await?;
@@ -175,6 +176,7 @@ impl EventStoreConsumerAccess for BanyanStore {
     }
 
     fn stream_forward(&self, events: StreamEventSelection, must_exist: bool) -> EventOrHeartbeatStreamOrError {
+        let to_inclusive = events.to_inclusive;
         let stream_id = events.stream_id;
         if must_exist && !self.has_stream(stream_id) {
             return future::err(ConsumerAccessError::UnknownStream(stream_id)).boxed();
@@ -182,18 +184,34 @@ impl EventStoreConsumerAccess for BanyanStore {
         let (trees, forest) = self.tree_stream(stream_id);
         let range = get_range_inclusive(&events);
         let query = TagsQuery::new(events.subscription_set);
+        let (mut tx, rx) = mpsc::channel(1);
+
         // stream the events in ascending order from the trees
         let events_and_heartbeats_from_trees = forest
             .stream_trees_chunked(query, trees, range, &last_lamport_from_index_ref)
-            .map_ok(move |chunk| stream::iter(events_or_heartbeat_from_chunk(stream_id, chunk)))
             .take_while(|x| future::ready(x.is_ok()))
             .filter_map(|x| future::ready(x.ok()))
+            .take_until_condition(move |chunk| {
+                let take_until = Into::<OffsetOrMin>::into(chunk.range.end as u32) >= to_inclusive;
+                if take_until {
+                    tx.try_send(()).unwrap();
+                }
+                future::ready(take_until)
+            })
+            .map(move |chunk| stream::iter(events_or_heartbeat_from_chunk(stream_id, chunk)))
             .flatten();
         // mix in heartbeats from latest so we can make progress even if we don't get events
         let heartbeats_from_latest = self.latest_stream(stream_id).map(move |(lamport, offset)| {
             EventOrHeartbeat::Heartbeat(StreamHeartBeat::new(stream_id, lamport, offset))
         });
-        future::ok(stream::select(events_and_heartbeats_from_trees, heartbeats_from_latest).boxed()).boxed()
+        future::ok(
+            stream::select(
+                events_and_heartbeats_from_trees,
+                heartbeats_from_latest.take_until_signaled(rx.into_future()),
+            )
+            .boxed(),
+        )
+        .boxed()
     }
 
     fn stream_backward(&self, events: StreamEventSelection) -> EventStreamOrError {
@@ -214,11 +232,9 @@ impl EventStoreConsumerAccess for BanyanStore {
     }
 
     fn stream_last_seen(&self, stream_id: StreamId) -> stream::BoxStream<'static, StreamHeartBeat> {
-        let stream = self.get_or_create_replicated_stream(stream_id);
+        let stream = self.latest_stream(stream_id);
+
         stream
-            .latest_seen
-            .new_observer()
-            .filter_map(|x| async move { x })
             .map(move |(lamport, offset)| StreamHeartBeat::new(stream_id, lamport, offset))
             .boxed()
     }
