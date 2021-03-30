@@ -4,7 +4,7 @@
 | --- | --- |
 | date | 2020-03-30 |
 | status | accepted |
-| persons | MHA, RKU |
+| persons | @mhaushofer, @rkuhn |
 
 ## Decision
 
