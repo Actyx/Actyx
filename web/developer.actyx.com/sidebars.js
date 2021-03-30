@@ -15,7 +15,7 @@ module.exports = {
         'how-to-guides/local-development/starting-a-new-project',
         'how-to-guides/local-development/setting-up-your-environment',
         'how-to-guides/local-development/installing-cli-node-manager',
-        'how-to-guides/local-development/obtaining-a-development-certificate',
+        // 'how-to-guides/local-development/obtaining-a-development-certificate',
         'how-to-guides/local-development/common-development-errors',
       ],
     },

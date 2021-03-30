@@ -612,6 +612,17 @@ a.table-of-contents__link {
   font-size: 13px;
 }
 
+.table-of-contents li {
+  line-height: 1.3;
+}
+
+.table-of-contents__link:hover,
+.table-of-contents__link:hover code,
+.table-of-contents__link--active,
+.table-of-contents__link--active code {
+  font-weight: 700;
+}
+
 li {
   margin: 0px;
 }
@@ -1100,18 +1111,4 @@ pre .line-numbers {
   position: relative;
   padding-left: 3.8em;
   counter-reset: linenumber;
-}
-
-.table-of-contents {
-  margin: 0px;
-  font-size: 13px;
-}
-
-.table-of-contents li {
-  margin: 0px;
-}
-
-a.table-of-contents__link {
-  font-size: 15px;
-  padding-left: 12px;
 }
