@@ -100,6 +100,18 @@ async fn ok_accept_star() {
 }
 
 #[tokio::test]
+async fn ok_accept_multiple() {
+    let resp = test::request()
+        .path("/api/v2/events/node_id")
+        .header("Authorization", "Bearer ok")
+        .header("Accept", "application/json, text/plain, */*") // this is what NodeJS sends
+        .reply(&test_routes().await)
+        .await;
+    assert_eq!(resp.status(), http::StatusCode::OK);
+    assert_eq!(resp.headers()["content-type"], "application/json");
+}
+
+#[tokio::test]
 async fn ok_cors() {
     let resp = test::request()
         .path("/api/v2/events/node_id")
