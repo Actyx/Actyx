@@ -25,10 +25,10 @@ const createHowTos = () => {
           title: 'Installing Actyx CLI and Node Manager',
           link: '/docs/how-to-guides/local-development/installing-cli-node-manager',
         },
-        {
+        /* {
           title: 'Obtaining your development certificate',
           link: '/docs/how-to-guides/local-development/obtaining-a-development-certificate',
-        },
+        }, */
         {
           title: 'Tips & tricks for common development errors',
           link: '/docs/how-to-guides/local-development/common-development-errors',

@@ -1,9 +1,9 @@
 ---
 title: How do you integrate with external software systems?
-sidebar_label: Integrating software 
+sidebar_label: Integrating software
 ---
 
-Write a connector app for the [Docker Runtime](../os/advanced-guides/app-runtimes.md#docker-runtime) to connect with external software systems.
+Write a connector app to connect with external software systems.
 
 _Connector apps_ are a type of ActyxOS app, whose purpose is to connect with equipment or software outside of the ActyxOS swarm. Fundamentally, there is nothing special about them, except that they always run in the Docker Runtime because interaction with the outside world does not happen via a user interface.
 
