@@ -2995,7 +2995,7 @@ body {
 .codeBlock_node_modules-\@docusaurus-theme-classic-src-theme-CodeBlock- {
   overflow: auto;
   display: block;
-  padding: 20px !important;
+  padding: 0px !important;
   margin: 0;
 }
 

@@ -1,0 +1,37 @@
+diff --git a/node_modules/remark-code-import/index.js b/node_modules/remark-code-import/index.js
+index 8d51a2d..7226a65 100644
+--- a/node_modules/remark-code-import/index.js
++++ b/node_modules/remark-code-import/index.js
+@@ -20,9 +20,22 @@ function codeImport(options = {}) {
+         continue;
+       }
+ 
+-      const filePath = fileMeta.slice('file='.length);
++      const res = /^file=(?<path>[^#]+)(?:#L(?<from>\d+))?(?::L(?<to>\d+))?$/.exec(fileMeta)
++      if (!res || !res.groups || !res.groups.path) {
++        throw new Error(`Unable to parse file path ${fileMeta}`)
++      }
++      const filePath = res.groups.path
++      const fromLine = res.groups.from ? parseInt(res.groups.from) : undefined
++      const toLine = res.groups.to ? parseInt(res.groups.to) : undefined
+       const fileAbsPath = path.resolve(file.dirname, filePath);
+ 
++      const extractLines = (content, fromLine, toLine) => {
++        if (fromLine === undefined && toLine === undefined) { return content }
++        if (toLine === undefined) toLine = fromLine
++        const lines = content.split(/\r?\n/)
++        return lines.slice(fromLine-1,toLine).join('\n')
++      }
++
+       if (options.async) {
+         promises.push(
+           new Promise((resolve, reject) => {
+@@ -40,7 +53,7 @@ function codeImport(options = {}) {
+       } else {
+         const fileContent = fs.readFileSync(fileAbsPath, 'utf8');
+ 
+-        node.value = fileContent.trim();
++        node.value = extractLines(fileContent,fromLine,toLine).trim();
+       }
+     }
+ 

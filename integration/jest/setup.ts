@@ -1,17 +1,16 @@
 import { EC2 } from 'aws-sdk'
+import execa from 'execa'
+import { promises as fs } from 'fs'
+import YAML from 'yaml'
 import { CLI } from '../src/cli'
 import { SettingsInput } from '../src/cli/exec'
 import { createKey, deleteKey } from '../src/infrastructure/aws'
-import { ActyxOSNode, AwsKey, printTarget } from '../src/infrastructure/types'
-import { setupTestProjects } from '../src/setup-projects'
-import { promises as fs } from 'fs'
-import { Arch, Config, Host, OS, Settings } from './types'
-import YAML from 'yaml'
-import { rightOrThrow } from '../src/infrastructure/rightOrThrow'
-import execa from 'execa'
 import { createNode } from '../src/infrastructure/create'
+import { rightOrThrow } from '../src/infrastructure/rightOrThrow'
+import { ActyxOSNode, AwsKey, printTarget } from '../src/infrastructure/types'
 import { retryTimes } from '../src/retry'
 import { setupAnsible } from '../src/setup-projects/ansible'
+import { Arch, Config, Host, OS, Settings } from './types'
 
 export type LogEntry = {
   time: Date
@@ -225,10 +224,6 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   const config = rightOrThrow(Config.decode(configObject), configObject)
   console.log('using %i hosts', config.hosts.length)
 
-  const projects = config.settings.skipTestProjectPreparation
-    ? Promise.resolve()
-    : setupTestProjects(config.settings.tempDir)
-
   await setupAnsible()
 
   // CRITICAL: axNodeSetup does not yet have all the fields of the NodeSetup type at this point
@@ -287,7 +282,6 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   )
 
   console.log('waiting for project setup to finish')
-  await projects
 
   try {
     await configureBoostrap(axNodeSetup.nodes)

@@ -56,7 +56,7 @@ async fn ok_accept_json() {
     let resp = test::request()
         .path("/api/v2/events/node_id")
         .header("Authorization", "Bearer ok")
-        .header("accept", "application/json")
+        .header("Accept", "application/json")
         .reply(&test_routes().await)
         .await;
     assert_eq!(resp.status(), http::StatusCode::OK);
@@ -79,7 +79,7 @@ async fn ok_accept_ndjson() {
         .path("/api/v2/events/query")
         .method("POST")
         .header("Authorization", "Bearer ok")
-        .header("accept", "application/x-ndjson")
+        .header("Accept", "application/x-ndjson")
         .json(&json!({"offsets": {}, "upperBound": {}, "query": "'a'", "order": "asc"}))
         .reply(&test_routes().await)
         .await;
@@ -92,11 +92,59 @@ async fn ok_accept_star() {
     let resp = test::request()
         .path("/api/v2/events/node_id")
         .header("Authorization", "Bearer ok")
-        .header("accept", "*/*")
+        .header("Accept", "*/*")
         .reply(&test_routes().await)
         .await;
     assert_eq!(resp.status(), http::StatusCode::OK);
     assert_eq!(resp.headers()["content-type"], "application/json");
+}
+
+#[tokio::test]
+async fn ok_accept_multiple() {
+    let resp = test::request()
+        .path("/api/v2/events/node_id")
+        .header("Authorization", "Bearer ok")
+        .header("Accept", "application/json, text/plain, */*") // this is what NodeJS sends
+        .reply(&test_routes().await)
+        .await;
+    assert_eq!(resp.status(), http::StatusCode::OK);
+    assert_eq!(resp.headers()["content-type"], "application/json");
+}
+
+#[tokio::test]
+async fn ok_cors() {
+    let resp = test::request()
+        .path("/api/v2/events/node_id")
+        .method("OPTIONS")
+        .header("Origin", "http://localhost")
+        .header("Access-Control-Request-Method", "GET")
+        .header("Access-Control-Request-Headers", "Authorization, Accept, Content-Type")
+        .reply(&test_routes().await)
+        .await;
+    assert_eq!(resp.status(), http::StatusCode::OK);
+}
+
+#[tokio::test]
+async fn forbidden_cors() {
+    let resp = test::request()
+        .path("/api/v2/events/node_id")
+        .method("OPTIONS")
+        .header("Origin", "http://localhost")
+        .header("Access-Control-Request-Method", "GET")
+        .header("Access-Control-Request-Headers", "X-Custom")
+        .reply(&test_routes().await)
+        .await;
+    assert_eq!(resp.status(), http::StatusCode::FORBIDDEN); // header not allowed
+
+    let resp = test::request()
+        .path("/api/v2/events/node_id")
+        .method("OPTIONS")
+        .header("Origin", "http://localhost")
+        .header("Access-Control-Request-Method", "XXX")
+        .header("Access-Control-Request-Headers", "Accept")
+        .reply(&test_routes().await)
+        .await;
+    assert_eq!(resp.status(), http::StatusCode::FORBIDDEN); // method not allowed
 }
 
 #[tokio::test]
@@ -238,7 +286,7 @@ async fn not_acceptable() {
     let resp = test::request()
         .path("/api/v2/events/node_id")
         .header("Authorization", "Bearer ok")
-        .header("accept", "text/html")
+        .header("Accept", "text/html")
         .reply(&(test_routes().await))
         .await;
     assert_err_response(

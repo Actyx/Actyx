@@ -59,7 +59,7 @@ fn routes(
 
     let cors = cors()
         .allow_any_origin()
-        .allow_headers(vec!["Content-Type", "content-type"])
+        .allow_headers(vec!["accept", "authorization", "content-type"])
         .allow_methods(&[http::Method::GET, http::Method::POST]);
 
     let crash = path!("_crash").and_then(|| async move { Err::<String, _>(reject::custom(rejections::Crash)) });
