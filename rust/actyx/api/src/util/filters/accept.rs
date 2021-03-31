@@ -8,7 +8,7 @@ pub fn accept(mime_types: &'static [&'static str]) -> impl Filter<Extract = (), 
     header::optional("accept")
         .and_then(move |accept: Option<String>| match accept {
             Some(requested)
-                // TODO full content negoatiation + q-factor weighting (preferably in warp)
+                // TODO full content negotiation + q-factor weighting (preferably in warp)
                 if !requested
                     .split(',')
                     .map(|s| s.trim().to_lowercase())
@@ -32,7 +32,7 @@ mod test {
         assert_eq!(
             pass,
             warp::test::request()
-                .header("Accept", requested) // this is what NodeJS sends
+                .header("Accept", requested)
                 .filter(&accept(supported))
                 .await
                 .is_ok()
