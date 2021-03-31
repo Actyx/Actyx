@@ -97,7 +97,7 @@ const createHowTos = () => {
         },
       ],
     },
-    {
+    /* {
       category: 'Getting data into and out of Actyx',
       description:
         'Implement processes by writing local twins. Execute these processes and integrate them into the real-world through apps.',
@@ -154,7 +154,7 @@ const createHowTos = () => {
           link: '',
         },
       ],
-    },
+    }, */
     {
       category: 'Configuring, Packaging & Deploying',
       description: 'Set up Actyx swarms. Package and deploy apps across nodes.',
