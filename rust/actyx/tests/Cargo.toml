@@ -1,5 +1,6 @@
 [package]
 name = "tests"
+description = "Accessible way to do tests on a workspace level"
 version = "0.1.0"
 authors = ["Actyx AG <developer@actyx.com>"]
 edition = "2018"

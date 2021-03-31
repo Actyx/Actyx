@@ -659,7 +659,7 @@ impl AxTreeExt for Tree {
             x => match u32::try_from(x) {
                 Ok(fits) => (fits - 1).into(),
                 Err(e) => {
-                    tracing::error!("Tree's count ({}) is too big too fit into an offset ({})", x, e);
+                    tracing::error!("Tree's count ({}) is too big to fit into an offset ({})", x, e);
                     OffsetOrMin::MAX
                 }
             },
