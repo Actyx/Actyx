@@ -306,14 +306,11 @@ impl BanyanStore {
                 .ok_or_else(|| anyhow::anyhow!("No StreamAlias found for {}", stream_id))?;
             let root = cid.try_into()?;
             let tree = self.0.forest.load_tree(root)?;
+            self.update_present(stream_id, tree.offset())?;
             if stream_id.node_id() == self.node_id() {
-                let s = self.get_or_create_own_stream(stream_id.stream_nr());
-                self.update_present(stream_id, tree.offset())?;
-                s.set_latest(tree);
+                self.get_or_create_own_stream(stream_id.stream_nr()).set_latest(tree);
             } else {
-                let s = self.get_or_create_replicated_stream(stream_id);
-                self.update_present(stream_id, tree.offset())?;
-                s.set_latest(tree);
+                self.get_or_create_replicated_stream(stream_id).set_latest(tree);
             }
         }
 
