@@ -103,9 +103,10 @@ impl Dnf {
         Dnf(ret)
     }
 }
-impl Into<TagSubscriptions> for Dnf {
-    fn into(self) -> TagSubscriptions {
-        let ret = self
+
+impl From<Dnf> for TagSubscriptions {
+    fn from(dnf: Dnf) -> Self {
+        let ret = dnf
             .0
             .into_iter()
             .map(|atoms| {

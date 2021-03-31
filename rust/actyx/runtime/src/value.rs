@@ -29,15 +29,15 @@ impl From<Event<Payload>> for Value {
     }
 }
 
-impl Into<EventResponse<Payload>> for Value {
-    fn into(self) -> EventResponse<Payload> {
+impl From<Value> for EventResponse<Payload> {
+    fn from(value: Value) -> EventResponse<Payload> {
         EventResponse {
-            lamport: self.sort_key.lamport,
-            stream: self.sort_key.stream,
-            offset: self.sort_key.offset,
+            lamport: value.sort_key.lamport,
+            stream: value.sort_key.stream,
+            offset: value.sort_key.offset,
             timestamp: Default::default(),
             tags: Default::default(),
-            payload: Payload::from_bytes(self.value.as_ref()),
+            payload: Payload::from_bytes(value.value.as_ref()),
         }
     }
 }
