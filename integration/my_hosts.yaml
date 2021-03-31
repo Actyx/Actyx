@@ -13,8 +13,6 @@ settings:
   # When set to true `npm test` will not terminate but keep SSH forwarding open
   # and the spawned hosts alive, so that you can investigate them. ctrl-C will kill them.
   keepNodesRunning: false
-  # Set this to true if you already have the test setup in tempDir and want to save time.
-  skipTestProjectPreparation: false
   # Set this to a specific hash instead of null to use Docker artifacts from that commit.
   gitHash: null
   # Rather than writing all logs to individual files, dump everything on stdout
