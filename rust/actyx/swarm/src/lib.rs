@@ -27,7 +27,7 @@ use crate::connectivity::ConnectivityState;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
 use crate::streams::{OwnStreamInner, ReplicatedStreamInner, StreamMaps};
-use actyxos_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr, TagSet, Timestamp};
+use actyxos_sdk::{LamportTimestamp, NodeId, Offset, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp};
 use anyhow::{Context, Result};
 use ax_futures_util::{prelude::*, stream::variable::Variable};
 use banyan::{
@@ -49,7 +49,13 @@ use libp2p::{
 };
 use parking_lot::Mutex;
 use std::{
-    collections::VecDeque, convert::TryInto, fmt::Debug, num::NonZeroU32, ops::RangeInclusive, str::FromStr, sync::Arc,
+    collections::VecDeque,
+    convert::{TryFrom, TryInto},
+    fmt::Debug,
+    num::NonZeroU32,
+    ops::RangeInclusive,
+    str::FromStr,
+    sync::Arc,
     time::Duration,
 };
 use trees::{
@@ -302,11 +308,11 @@ impl BanyanStore {
             let tree = self.0.forest.load_tree(root)?;
             if stream_id.node_id() == self.node_id() {
                 let s = self.get_or_create_own_stream(stream_id.stream_nr());
-                self.update_present(stream_id, tree.count() - 1)?;
+                self.update_present(stream_id, tree.offset())?;
                 s.set_latest(tree);
             } else {
                 let s = self.get_or_create_replicated_stream(stream_id);
-                self.update_present(stream_id, tree.count() - 1)?;
+                self.update_present(stream_id, tree.offset())?;
                 s.set_latest(tree);
             }
         }
@@ -482,7 +488,7 @@ impl BanyanStore {
                 // update the permanent alias
                 this.ipfs().alias(StreamAlias::from(stream_id), cid.as_ref())?;
                 // update present for stream
-                this.update_present(stream_id, tree.count() - 1)?;
+                this.update_present(stream_id, tree.offset())?;
                 // update latest
                 tracing::debug!("set_latest! {}", tree);
                 stream.set_latest(tree);
@@ -566,7 +572,7 @@ impl BanyanStore {
                 // check that the tree is better than the one we have, otherwise bail out
                 anyhow::ensure!(temp.last_lamport() > validated_lamport);
                 // get the offset
-                let offset = temp.count();
+                let offset = temp.offset();
                 // update present. This can fail if stream_id is not a source_id.
                 let _ = self.update_highest_seen(stream_id, offset);
                 tree = Some(temp);
@@ -581,8 +587,8 @@ impl BanyanStore {
         // assign the new root as validated
         ipfs.alias(&StreamAlias::from(stream_id), Some(&cid))?;
         self.0.index_store.lock().received_lamport(tree.last_lamport().into())?;
-        tracing::debug!("sync_one complete {} => {}", stream_id, tree.count());
-        let offset = tree.count() - 1;
+        tracing::debug!("sync_one complete {} => {}", stream_id, tree.offset());
+        let offset = tree.offset();
         stream.set_latest(tree);
         // update present. This can fail if stream_id is not a source_id.
         let _ = self.update_present(stream_id, offset);
@@ -639,6 +645,7 @@ impl BanyanStore {
 
 trait AxTreeExt {
     fn last_lamport(&self) -> LamportTimestamp;
+    fn offset(&self) -> OffsetOrMin;
 }
 
 impl AxTreeExt for Tree {
@@ -647,6 +654,18 @@ impl AxTreeExt for Tree {
             Some(Index::Branch(branch)) => branch.summaries.lamport_range().max,
             Some(Index::Leaf(leaf)) => leaf.keys.lamport_range().max,
             None => Default::default(),
+        }
+    }
+    fn offset(&self) -> OffsetOrMin {
+        match self.count() {
+            0 => OffsetOrMin::MIN,
+            x => match u32::try_from(x) {
+                Ok(fits) => (fits - 1).into(),
+                Err(e) => {
+                    tracing::error!("Tree's count ({}) is too big too fit into an offset ({})", x, e);
+                    OffsetOrMin::MAX
+                }
+            },
         }
     }
 }

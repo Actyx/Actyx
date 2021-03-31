@@ -80,12 +80,8 @@ impl OwnStreamInner {
     }
 
     pub fn offset(&self) -> Option<Offset> {
-        let count = self.tree.project(|tree| tree.count());
-        if count == 0 {
-            None
-        } else {
-            Some(Offset::try_from(count - 1).unwrap())
-        }
+        let offset_or_min = self.tree.project(|tree| tree.offset());
+        Offset::from_offset_or_min(offset_or_min)
     }
 
     pub fn set_latest(&self, value: Tree) {

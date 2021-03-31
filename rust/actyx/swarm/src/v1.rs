@@ -2,7 +2,7 @@ use crate::access::{
     common::StreamEventSelection, ConsumerAccessError, EventOrHeartbeat, EventOrHeartbeatStreamOrError,
     EventStoreConsumerAccess, EventStreamOrError,
 };
-use crate::{BanyanStore, TT};
+use crate::{AxTreeExt, BanyanStore, TT};
 use actyxos_sdk::{
     service::snapshots::{
         InvalidateSnapshotsRequest, RetrieveSnapshotRequest, RetrieveSnapshotResponse, StoreSnapshotRequest,
@@ -21,12 +21,7 @@ use forest::FilteredChunk;
 use futures::future::BoxFuture;
 use futures::stream::BoxStream;
 use futures::{channel::mpsc, prelude::*};
-use std::{
-    collections::BTreeSet,
-    convert::{TryFrom, TryInto},
-    ops::RangeInclusive,
-    time::Duration,
-};
+use std::{collections::BTreeSet, convert::TryInto, ops::RangeInclusive, time::Duration};
 use trees::{
     axtrees::{AxKey, TagsQuery},
     OffsetMapOrMax, PublishSnapshot, RootMap, StreamHeartBeat,
@@ -110,26 +105,29 @@ impl BanyanStore {
             })
             .collect::<Vec<_>>();
         tracing::debug!("publishing {} events on stream {}", kvs.len(), stream_nr);
-        let mut min_offset = 0u32;
+        let mut min_offset = OffsetOrMin::MIN;
         let _ = self
             .transform_stream(stream_nr, |txn, tree| {
-                min_offset = min_offset.max(tree.count() as u32 - 1);
+                min_offset = min_offset.max(tree.offset());
                 txn.extend_unpacked(tree, kvs)
             })
             .await?;
 
+        // We start iteration with 0 below, so this is effectively the offset of the first event.
+        let starting_offset = Offset::from_offset_or_min(min_offset)
+            .map(|x| x.succ())
+            .unwrap_or(Offset::ZERO);
         let keys = (0..n)
             .map(|i| {
                 let lamport = (min_lamport + (i as u64)).into();
-                let offset = (min_offset + (i as u32)).into();
+                let offset = starting_offset + i;
                 (lamport, offset, stream_nr)
             })
             .collect();
         Ok(keys)
     }
 
-    pub(crate) fn update_present(&self, stream_id: StreamId, offset: u64) -> anyhow::Result<()> {
-        let offset = actyxos_sdk::OffsetOrMin::from(i64::try_from(offset)?);
+    pub(crate) fn update_present(&self, stream_id: StreamId, offset: OffsetOrMin) -> anyhow::Result<()> {
         self.0.present.transform(|present| {
             let mut present = present.clone();
             present.update(stream_id, offset);
@@ -137,8 +135,7 @@ impl BanyanStore {
         })
     }
 
-    pub(crate) fn update_highest_seen(&self, stream_id: StreamId, offset: u64) -> anyhow::Result<()> {
-        let offset = actyxos_sdk::OffsetOrMin::from(i64::try_from(offset)?);
+    pub(crate) fn update_highest_seen(&self, stream_id: StreamId, offset: OffsetOrMin) -> anyhow::Result<()> {
         self.0.highest_seen.transform(|highest_seen| {
             Ok(if highest_seen.offset(stream_id) < offset {
                 let mut highest_seen = highest_seen.clone();
@@ -184,6 +181,8 @@ impl EventStoreConsumerAccess for BanyanStore {
         let (trees, forest) = self.tree_stream(stream_id);
         let range = get_range_inclusive(&events);
         let query = TagsQuery::new(events.subscription_set);
+        // Used to signal the mixed in `heartbeats_from_latest` stream down
+        // below to finish
         let (mut tx, rx) = mpsc::channel(1);
 
         // stream the events in ascending order from the trees
@@ -192,11 +191,11 @@ impl EventStoreConsumerAccess for BanyanStore {
             .take_while(|x| future::ready(x.is_ok()))
             .filter_map(|x| future::ready(x.ok()))
             .take_until_condition(move |chunk| {
-                let take_until = Into::<OffsetOrMin>::into(chunk.range.end as u32) >= to_inclusive;
-                if take_until {
+                let stop_here = Into::<OffsetOrMin>::into(chunk.range.end as u32) >= to_inclusive;
+                if stop_here {
                     tx.try_send(()).unwrap();
                 }
-                future::ready(take_until)
+                future::ready(stop_here)
             })
             .map(move |chunk| stream::iter(events_or_heartbeat_from_chunk(stream_id, chunk)))
             .flatten();
