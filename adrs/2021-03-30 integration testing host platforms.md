@@ -31,7 +31,10 @@ macOS is relevant for development, not only within Actyx.
 Android is relevant for mobile applications, especially on the phone form factor.
 
 iOS is out of scope for now, also due to insignificant usage on the factory shop-floor.
-ARM builds for Windows or macOS are currently left aside since these platforms are not yet technically established well enough in the Rust ecosystem — we cannot afford to innovate on this front
+ARM builds for Windows or macOS are currently left aside since these platforms are not yet technically established well enough in the Rust ecosystem — we cannot afford to innovate on this front.
+In case of Windows it would currently also not be worth it since the only available hardware with ARM processors are high-end notebook computers.
+
+_The last two points are likely to change in the future, at which point we will revisit this decision._
 
 ## Consequences
 
