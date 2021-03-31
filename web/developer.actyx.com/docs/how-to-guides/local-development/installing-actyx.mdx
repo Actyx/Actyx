@@ -26,55 +26,19 @@ The rest of this guide will then change according to your selection!
     { label: 'Docker', value: 'docker' },
   ]}
 >
-<TabItem value="android">
+
+
+<TabItem value="windows">
 
 
 ## Hardware Requirements
 
-In order to be able to run ActyxOS on Android, your device needs to meet the following requirements:
-
-- Android 6+
-- At least 2GB of RAM
-- `x86`, `arm64-v8a` or `armeabi-v7a` [ABI](https://developer.android.com/ndk/guides/abis.html#sa)
-
-You can find a list of devices that we know to work well [here](/faq/supported-edge-devices.md).
-
-## Installing Actyx
-
-ActyxOS is publicly available for Android in the [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android).
-Just open the Google Play Store on your device, search for ActyxOS and install it.
-In case you don't have access to the Play Store, please visit [our downloads page](https://www.downloads.actyx.com) and download it from there.
-Once downloaded, simply follow the instructions on your device to install ActyxOS.
-
-Congratulations, you have successfully installed ActyxOS on your Android device! 🎉
-
-## Starting and stopping ActyxOS
-
-By clicking on the Actyx icon on your home screen, you start ActyxOS.
-While ActyxOS is running, you can pull down from the top of your screen to bring up the notification area.
-You should now see that ActyxOS is running in your notifications.
-Please note that ActyxOS keeps running when you swipe away the app window in the app switcher.
-In order to properly stop ActyxOS, please force stop it in the system settings.
-
-:::info
-If ActyxOS was running on your Android device, it will automatically restart upon reboot.
-On some Android distributions you may need to explicitly permit the in the system settings.
-:::
-
-</TabItem>
-<TabItem value="windows">
-
-
-<!-- We use <h2> html tags here to avoid the headlines being repeated in the TOC -->
-
-<h2>Hardware Requirements</h2>
-
 In order to be able to run ActyxOS on Windows, your device needs to meet the following requirements:
 
-- Windows 10 or Windows Server 2019
-- `amd64` processor architecture
+- Windows 10
+- `x86_64` processor architecture
 
-<h2>Installing ActyxOS</h2>
+## Installing ActyxOS
 
 You can download the ActyxOS installer for Windows on our [downloads page](https://www.downloads.actyx.com).
 After opening the installer, you are guided through the setup process.
@@ -86,14 +50,48 @@ During this process, you can choose to install all or a subset of the following 
 
 Congratulations, you have now successfully installed ActyxOS on your Windows device! 🎉
 
-<h2>Starting and stopping ActyxOS</h2>
+## Starting and stopping ActyxOS
 
 To start ActyxOS, simply press the Windows key on your keyboard, search for ActyxOS and hit enter.
 You will now see an ActyxOS tray icon appear in your taskbar, indicating that ActyxOS is running.
-To check whether ActyxOS is running or not, check whether you see the ActyxOS tray icon in the lower right corner of your screen.
-A visible icon indicates that ActyxOS is running and functional.
 If you want to stop ActyxOS, simply right-click on the tray icon and choose _Exit_.
 ActyxOS is now shutting down.
+
+</TabItem>
+<TabItem value="android">
+
+
+<!-- We use <h2> html tags here to avoid the headlines being repeated in the TOC -->
+
+<h2>Hardware Requirements</h2>
+
+In order to be able to run ActyxOS on Android, your device needs to meet the following requirements:
+
+- Android 6+
+- At least 2GB of RAM
+- `x86`, `arm64-v8a` or `armeabi-v7a` [ABI](https://developer.android.com/ndk/guides/abis.html#sa)
+
+<h2>Installing ActyxOS</h2>
+
+ActyxOS is publicly available for Android in the [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android).
+Just open the Google Play Store on your device, search for ActyxOS and install it.
+In case you don't have access to the Play Store, please visit [our downloads page](https://www.downloads.actyx.com) and download it from there.
+Once downloaded, simply follow the instructions on your device to install ActyxOS.
+
+Congratulations, you have successfully installed ActyxOS on your Android device! 🎉
+
+<h2>Starting and stopping ActyxOS</h2>
+
+By clicking on the Actyx icon on your home screen, you start ActyxOS.
+While ActyxOS is running, you can pull down from the top of your screen to bring up the notification area.
+You should now see that ActyxOS is running in your notifications.
+Please note that ActyxOS keeps running when you swipe away the app window in the app switcher.
+In order to properly stop ActyxOS, navigate to the system settings -> apps -> ActyxOS and click on **Force Stop**.
+
+:::info
+If ActyxOS was running on your Android device, it will automatically restart upon reboot.
+On some Android distributions you may need to explicitly permit it by navigating to the system settings -> apps -> ActyxOS and then enabling _Autostart_.
+:::
 
 </TabItem>
 <TabItem value="linux">
@@ -103,7 +101,7 @@ ActyxOS is now shutting down.
 
 In order to be able to run ActyxOS on Linux, your device needs to meet the following requirements:
 
-- `amd64`, `aarch64`, `armv7` or `arm` processor architectures
+- `x86_64`, `aarch64`, `armv7` or `arm` processor architectures
 
 <h2>Installing ActyxOS</h2>
 
@@ -179,10 +177,11 @@ In order to be able to run ActyxOS on Docker, your device needs to meet the foll
 - Must have Docker installed
 - Must be able to run Docker in privileged mode
 - Must be able to run amd64 or arm64v8 Docker images
-- You can find a list of devices that we know to work well here.
 
 :::info
-Note that ActyxOS on Docker should only be used if there is no other way, as the Docker architecture poses problems with peer discovery mechanisms.
+Note that ActyxOS on Docker should only be used if you are familiar with Docker, as the Docker frequently poses problems that are hard to debug.
+If you want your ActyxOS on Docker node to connect to other nodes, you need to setup a bootstrap node.
+For more info, please refer to the conceptual guide on [peer discovery](../conceptual-guides/peer-discovery.mdx).
 :::
 
 <h2>Installing and running ActyxOS</h2>

@@ -1,11 +1,11 @@
 ---
-title: Common Development Errors
+title: Common Errors During Setup
 id: common-development-errors
 hide_title: false
 hide_table_of_contents: false
-sidebar_label: Common Development Errors
+sidebar_label: Common Errors during Setup
 keywords: [how-to-guide, development errors]
-description: How-to-guide for common development errors.
+description: Common errors when installing and starting ActyxOS
 image: /images/defaults/default.svg
 ---
 
@@ -20,15 +20,15 @@ In addition, we hope we can give a few tipps and tricks along the way that make 
 ActyxOS uses a few IP ports for node communication and internal services.
 In order for ActyxOS to run flawlessly, please make sure that the following ports are free:
 
-1. `4401`: Used for inter-node communication
+1. `4001`: Used for inter-node communication
 
-2. `4243`: Exposes a Websocket endpoint for Actyx Pond (only when running on localhost)
+2. `4243`: Exposes a Websocket endpoint for Actyx Pond (only on localhost)
 
-3. `4454`: Exposes the [Event Service](../../reference/actyx-api.mdx) (only when running on localhost)
+3. `4454`: Exposes the [Event Service](../../reference/actyx-api.mdx) (only on localhost)
 
-4. `4457`: Exposes the [Console Service](../../reference/actyx-api.mdx) (only when running on localhost)
+4. `4457`: Exposes the [Console Service](../../reference/actyx-api.mdx) (only on localhost)
 
-5. `8080`: Exposes an [IPFS Gateway](https://docs.ipfs.io/concepts/ipfs-gateway/) (only when running on localhost)
+5. `8080`: Exposes an [IPFS Gateway](https://docs.ipfs.io/concepts/ipfs-gateway/) (only on localhost)
 
 ### ActyxOS not responding
 
@@ -79,13 +79,6 @@ You can do this by following these few steps:
 
 ![Windows environment variable](../../../images/how-to-guides/local-development/windows-environment-variables.png)
 
-## Did not find what you were looking for?
-
-If you couldn't a solution to your problem, please don't hesitate us.
-You can either open a support ticket in our [community forum](https://community.actyx.com), visit our [Discord server](https://discord.gg/262yJhc) and post your question there.
-Alernatively, you can always write us an [e-mail](mailto:developer@actyx.io).
-We'll do our best to get back to you with answers as fast as possible.
-
 ## ActyxOS on Docker
 
 ### Environment variables
@@ -119,3 +112,10 @@ announceAddress: # Manually configured addresses to announce
   # These must be multiaddresses without peer id,
   # i.e. ip4/<YOUR_IP>/tcp/4001
 ```
+
+## Did not find what you were looking for?
+
+If you couldn't a solution to your problem, please don't hesitate us.
+You can either open a support ticket in our [community forum](https://community.actyx.com), visit our [Discord server](https://discord.gg/262yJhc) and post your question there.
+Alernatively, you can always write us an [e-mail](mailto:developer@actyx.io).
+We'll do our best to get back to you with answers as fast as possible.
