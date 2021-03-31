@@ -8,7 +8,8 @@ keywords: [explanation, actyx, node, lifecycle]
 description: Explanation guide for the Actyx node lifecycle.
 image: /images/defaults/default.svg
 ---
-
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
 This conceptual guide explains the lifecycle of Actyx nodes and apps deployed to Actyx runtimes.
 
 :::warning Running apps in ActyxOS runtimes is deprecated
@@ -91,7 +92,7 @@ The following illustration shows the lifecycle stages, states and events of an A
 
 A node starts its lifecycle once it is installed on its host system. At that point its states are **Stopped**, **LicenseInvalid**, **SettingsInvalid**.
 
-From this point only one event leading to a transition is possible:
+From this point on, only one event leading to a transition is possible:
 
 - **NodeStarted**: leads to the next lifecycle stage: **Misconfigured**
 
@@ -129,7 +130,7 @@ One event could happen that will not change the nodes lifecycle stage:
 
 - **NodeSettingsValidated**: caused by every successful `ax settings set` command. You could e.g. just change the display name of your node
 
-::: Interacting with node settings does not work?
+:::info Interacting with node settings does not work?
 If you want to interact with node settings (either via `ax settings set actyx.com.os` or `ax settings unset actyx.com.os`), all apps on your node must be stopped.
 :::
 
