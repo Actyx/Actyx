@@ -85,15 +85,15 @@ const createHowTos = () => {
         },
         {
           title: 'Learning to work with Actyx Pond in 10 Steps',
-          link: '/docs/how-to-guides/actyx-pond/guides/overview',
+          link: '/docs/how-to-guides/actyx-pond/guides/hello-world',
         },
         {
           title: 'Fish Parameters',
-          link: '/docs/how-to-guides/actyx-pond/fish-parameters/overview',
+          link: '/docs/how-to-guides/actyx-pond/fish-parameters/on-event',
         },
         {
           title: 'Pond in Depth Guides for advanced users',
-          link: '/docs/how-to-guides/actyx-pond/in-depth/overview',
+          link: '/docs/how-to-guides/actyx-pond/in-depth/tag-type-checking',
         },
       ],
     },
