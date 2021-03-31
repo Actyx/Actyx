@@ -6,8 +6,7 @@ const createConceptuals = () => {
   const conceptualGuides = [
     {
       title: 'Building Event-based Systems',
-      description:
-        'Fundamental principles that apply when working with event-based systems, such as event-sourcing and event ordering using Lamport clocks.',
+      description: 'Fundamental principles that apply when working with event-based systems.',
       link: '',
     },
     {
@@ -17,7 +16,7 @@ const createConceptuals = () => {
       link: '',
     },
     {
-      title: 'Local-First Computing Paradigm',
+      title: 'Local-First Cooperation Paradigm',
       description: 'How the LFC paradigm works and how its principles apply to factory automation.',
       link: '',
     },
@@ -47,24 +46,22 @@ const createConceptuals = () => {
     },
     {
       title: 'Performance and limits of Actyx',
-      description:
-        'Supported hardware, architectures and operating systems. Infrastructure limitations in real-world factory solutions.',
+      description: 'Performance limitations in real-world factory solutions.',
       link: '',
     },
     {
       title: 'Security in Actyx',
-      description: 'Security provided by Actyx for developers and IT admins.',
+      description: 'Basic netowrk security guarantees provided by ActyxOS.',
       link: '',
     },
     {
-      title: 'The Actyx node',
-      description: 'Architecture and key components of the Actyx node.',
+      title: 'ActyxOS components',
+      description: 'Architecture and components of ActyxOS.',
       link: '',
     },
     {
-      title: 'Actyx Lifecycle',
-      description:
-        'States, transitions and triggering events that can change the lifecycle of an Actyx node.',
+      title: 'ActyxOS node and app lifecycle',
+      description: 'Lifecycle of ActyxOS and apps deployed to ActyxOS runtimes.',
       link: '',
     },
     {

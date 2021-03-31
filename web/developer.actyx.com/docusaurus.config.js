@@ -17,12 +17,12 @@ module.exports = {
       },
     ],
     [require.resolve('./src/plugins/analytics'), {}],
-    [
-      require.resolve('./src/plugins/arm'),
-      {
-        releasesYml: './__auto-releases.yml',
-      },
-    ],
+    // [
+    //   require.resolve('./src/plugins/arm'),
+    //   {
+    //     releasesYml: './__auto-releases.yml',
+    //   },
+    // ],
   ],
   themeConfig: {
     announcementBar: {
@@ -148,7 +148,7 @@ module.exports = {
             },
             {
               label: 'Local First',
-              to: 'docs/conceptual-guides/local-first-computing',
+              to: 'docs/conceptual-guides/local-first-cooperation',
             },
             {
               label: 'Thinking in Actyx',

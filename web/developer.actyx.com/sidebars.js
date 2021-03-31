@@ -115,7 +115,7 @@ module.exports = {
       items: [
         'conceptual-guides/event-based-systems',
         'conceptual-guides/distributed-system-architectures',
-        'conceptual-guides/local-first-computing',
+        'conceptual-guides/local-first-cooperation',
         'conceptual-guides/thinking-in-actyx',
         'conceptual-guides/actyx-jargon',
         'conceptual-guides/actyx-vs-the-cloud',
