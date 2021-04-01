@@ -48,6 +48,11 @@ You can run Actyx on Windows on the following architectures:
 </TabItem>
 <TabItem value="linux">
 
+|Operating system|Minimum version|
+|----------------|---------------|
+|Ubuntu|18.04 (Bionic Beaver)|
+|AlpineOS|3.9|
+
 You can run Actyx on Linux on the following architectures:
 - `x86_64`, `aarch64`, `armv7` or `arm`
 
@@ -62,6 +67,23 @@ You can run Actyx on Docker on the following architectures:
 
 </TabItem>
 </Tabs>
+
+## Network requirements
+
+The local-area network and wireless network (if used) must
+
+- Allow UDP unicast connections
+- Not have client-isolation enabled
+- Not block ports 4001, 4450-4469 and 5001
+
+The edge devices must
+
+- Be connected to the same local-area network
+- Allow incoming/outgoing communication on ports 4001, 4450-4469 and 5001
+
+:::info one network = one swarm
+All devices in an ActyxOS swarm must be connected ot the same local-area network.
+:::
 
 ## Node Settings Schema
 

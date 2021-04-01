@@ -107,7 +107,7 @@ module.exports = {
         'how-to-guides/integrating-with-actyx/user-interface',
         'how-to-guides/integrating-with-actyx/other-software',
         'how-to-guides/integrating-with-actyx/front-end-frameworks',
-        'how-to-guides/integrating-with-actyx/plcs',
+        'how-to-guides/integrating-with-actyx/machines',
         'how-to-guides/integrating-with-actyx/erps',
         'how-to-guides/integrating-with-actyx/bi-analytics',
       ],

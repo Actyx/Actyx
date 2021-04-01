@@ -115,7 +115,7 @@ const createHowTos = () => {
           link: '',
         },
         {
-          title: 'Integrating with PLCs',
+          title: 'Integrating with machines',
           link: '',
         },
         {
