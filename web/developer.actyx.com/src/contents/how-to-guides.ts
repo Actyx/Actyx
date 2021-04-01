@@ -157,21 +157,21 @@ const createHowTos = () => {
     }, */
     {
       category: 'Swarms',
-      description: 'Setup swarms and configure your nodes.',
+      description: 'Setup swarms and connect nodes.',
       contents: [
         {
-          title: 'Connect nodes to each other',
-          link: '',
+          title: 'Setup a swarm and configure nodes to join it',
+          link: 'swarms/setup-swarm',
         },
         {
-          title: 'Setup a bootstrap node',
-          link: '',
+          title: 'Setup a bootstrap node to connect nodes to each other',
+          link: 'swarms/setup-bootstrap-node',
         },
       ],
     },
     {
       category: 'Configuring, Packaging & Deploying',
-      description: 'Set up Actyx swarms. Package and deploy apps across nodes.',
+      description: 'Package and deploy apps across nodes.',
       contents: [
         {
           title: 'Packaging front-end apps',
