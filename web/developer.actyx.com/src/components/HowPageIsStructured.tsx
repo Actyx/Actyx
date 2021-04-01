@@ -53,16 +53,16 @@ export const HowPageIsStructured: React.FC<Props> = ({ example }: Props) => (
     </Header>
     <Cards>
       <Card
-        color="green"
-        headline="Conceptual Guides"
-        body="These understanding-oriented guides clarify a particular topic by giving context and a wider view."
+        color="blue"
+        headline="How-to Guides"
+        body="These problem-oriented guides take the reader through a series of steps required to solve a problem."
         cta="Find out more"
         link="/releases"
       />
       <Card
-        color="blue"
-        headline="How-to Guides"
-        body="These problem-oriented guides take the reader through a series of steps required to solve a problem."
+        color="green"
+        headline="Conceptual Guides"
+        body="These understanding-oriented guides clarify a particular topic by giving context and a wider view."
         cta="Find out more"
         link="/releases"
       />
