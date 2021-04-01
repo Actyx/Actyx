@@ -140,7 +140,7 @@ module.exports = {
       label: 'Contents',
       collapsed: false,
       items: [
-        // 'reference/actyx-api',
+        'reference/actyx-reference',
         'reference/event-service',
         'reference/pond-api-reference',
         'reference/js-ts-sdk',
