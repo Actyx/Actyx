@@ -86,9 +86,9 @@ function Footer() {
           </div>
         )}
         <div style={{ paddingLeft: '84px' }}>
-          <BuildNumber pre="Release: " build="build-1.17242" />{' '}
-          {/* TODO get latest release build */}
-          <ReleasesLink title="Past Releases" link="/releases" color="lightgray" positive />
+          {/* <BuildNumber pre="Release: " build="build-1.17242" />{' '}
+          {/* TODO get latest release build 
+          <ReleasesLink title="Past Releases" link="/releases" color="lightgray" positive /> */}
           <Social />
           {(logo || copyright) && (
             <div className="footer__bottom">
