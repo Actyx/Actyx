@@ -573,7 +573,9 @@ article > footer.row.margin-vert--lg {
    * This source code is licensed under the MIT license found in the
    * LICENSE file in the root directory of this source tree.
    */
-
+.navbar__brand {
+  margin-right: 0px;
+}
 .search-icon {
   background-image: var(--ifm-navbar-search-input-icon);
   height: auto;

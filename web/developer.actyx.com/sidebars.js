@@ -202,6 +202,35 @@ module.exports = {
       ],
     },
   ],
+  tutorialSidebar: [
+    {
+      type: 'category',
+      label: 'Actyx Tutorials',
+      collapsed: false,
+      items: ['tutorials/overview'],
+    },
+    {
+      type: 'category',
+      label: 'Contents',
+      collapsed: false,
+      items: [
+        'tutorials/quickstart',
+        'tutorials/tutorial',
+        {
+          type: 'category',
+          label: 'Advanced Tutorial',
+          collapsed: false,
+          items: [
+            'tutorials/advanced-tutorial/introduction',
+            'tutorials/advanced-tutorial/solution-architecture',
+            'tutorials/advanced-tutorial/get-started',
+            'tutorials/advanced-tutorial/explore-the-apps',
+            'tutorials/advanced-tutorial/next-steps',
+          ],
+        },
+      ],
+    },
+  ],
   faqSidebar: [
     {
       type: 'category',

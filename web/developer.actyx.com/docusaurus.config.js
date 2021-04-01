@@ -59,6 +59,11 @@ module.exports = {
           to: 'docs/reference/overview',
         },
         {
+          label: 'Tutorials',
+          activeBasePath: 'docs/tutorials',
+          to: 'docs/tutorials/overview',
+        },
+        {
           label: 'Blog',
           activeBasePath: '/blog',
           position: 'right',

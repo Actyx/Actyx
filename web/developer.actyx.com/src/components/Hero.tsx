@@ -142,10 +142,10 @@ export const Hero: React.FC<Props> = ({ img }: Props) => (
       <SearchBarHomePage />
     </LineWrapper>
     <ButtonWrapper>
-      <a style={{ textDecoration: 'none' }} href="/releases">
+      <a style={{ textDecoration: 'none' }} href="docs/tutorials/quickstart">
         <Button color="green">Ready to dive in? Check out our Quick Start</Button>
       </a>
-      <a style={{ textDecoration: 'none' }} href="/releases">
+      <a style={{ textDecoration: 'none' }} href="docs/conceptual-guides/how-actyx-works">
         <Button color="blue">New to Actyx? See how everything works</Button>
       </a>
     </ButtonWrapper>
