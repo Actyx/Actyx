@@ -104,15 +104,15 @@ module.exports = {
       label: 'Data import and export',
       collapsed: true,
       items: [
-        'how-to-guides/integrating-with-actyx/user-interface',
+        // 'how-to-guides/integrating-with-actyx/user-interface',
         'how-to-guides/integrating-with-actyx/other-software',
-        'how-to-guides/integrating-with-actyx/front-end-frameworks',
+        // 'how-to-guides/integrating-with-actyx/front-end-frameworks',
         'how-to-guides/integrating-with-actyx/machines',
-        'how-to-guides/integrating-with-actyx/erps',
-        'how-to-guides/integrating-with-actyx/bi-analytics',
+        // 'how-to-guides/integrating-with-actyx/erps',
+        // 'how-to-guides/integrating-with-actyx/bi-analytics',
       ],
     },
-    {
+    /*     {
       type: 'category',
       label: 'Testing',
       collapsed: true,
@@ -123,10 +123,10 @@ module.exports = {
         'how-to-guides/testing/integration-testing',
         'how-to-guides/testing/ci-cd-pipeline',
       ],
-    },
+    }, */
     {
       type: 'category',
-      label: 'Packaging & Deployment',
+      label: 'Packaging',
       collapsed: true,
       items: [
         'how-to-guides/packaging/mobile-apps',
@@ -134,7 +134,7 @@ module.exports = {
         'how-to-guides/packaging/headless-apps',
       ],
     },
-    {
+    /*     {
       type: 'category',
       label: 'Monitoring & Debugging',
       collapsed: true,
@@ -156,7 +156,7 @@ module.exports = {
         'how-to-guides/common-use-cases/controlling-agvs',
         'how-to-guides/common-use-cases/parameterise-assembly-tool',
       ],
-    },
+    }, */
   ],
   conceptualSidebar: [
     {
