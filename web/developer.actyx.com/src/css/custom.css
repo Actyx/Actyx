@@ -1128,15 +1128,11 @@ pre .line-numbers {
   padding: 0.5rem 2rem;
   font-weight: normal;
   border-bottom-width: 1.5px;
-<<<<<<< HEAD
-}
-=======
 
   border-bottom-color: var(--ifm-toc-border-color);
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 .tabs__item.tabs__item--active {
-    border-bottom-color: var(--ifm-tabs-color-active) !important;
+  border-bottom-color: var(--ifm-tabs-color-active) !important;
 }
->>>>>>> c559de8ab9c8f6d9857728a79774653c0177be8e
