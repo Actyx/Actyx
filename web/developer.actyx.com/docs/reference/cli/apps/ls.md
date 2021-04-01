@@ -6,7 +6,6 @@ title: ax apps ls
 
 :::warning `ax apps` subcommand is deprecated
 Managing apps via the Actyx CLI is deprecated and will no longer be supported in future ActyxOS versions.
-For more information on this, please refer to [this guide](../../how-to-guides/configuring-and-packaging/actyx-swarms.mdx)
 :::
 
 ```text title="List apps deployed on an ActyxOS node"

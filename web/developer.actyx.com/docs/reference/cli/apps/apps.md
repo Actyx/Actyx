@@ -7,7 +7,6 @@ hide_table_of_contents: true
 
 :::warning `ax apps` subcommand is deprecated
 Managing apps via the Actyx CLI is deprecated and will no longer be supported in future ActyxOS versions.
-For more information on this, please refer to [this guide](../../how-to-guides/configuring-and-packaging/actyx-swarms.mdx)
 :::
 
 ## Manage ActyxOS apps
