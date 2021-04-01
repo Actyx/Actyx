@@ -170,6 +170,7 @@ module.exports = {
       label: 'Contents',
       collapsed: false,
       items: [
+        'conceptual-guides/how-actyx-works',
         'conceptual-guides/event-based-systems',
         'conceptual-guides/distributed-system-architectures',
         'conceptual-guides/local-first-cooperation',

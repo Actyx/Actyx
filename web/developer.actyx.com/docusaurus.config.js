@@ -17,12 +17,12 @@ module.exports = {
       },
     ],
     [require.resolve('./src/plugins/analytics'), {}],
-    [
+/*     [
       require.resolve('./src/plugins/arm'),
       {
         releasesYml: './__auto-releases.yml',
       },
-    ],
+    ], */
   ],
   themeConfig: {
     announcementBar: {
