@@ -52,7 +52,7 @@ impl<'a> Context<'a> {
                     .ok_or_else(|| anyhow!("variable '{}' is not bound", p.head))?;
                 let idx = v
                     .index(&p.tail)
-                    .ok_or_else(|| anyhow!("path {:?} does not exist in value {}", p.tail, v))?;
+                    .ok_or_else(|| anyhow!("path {:?} does not exist in value {}", p.tail, v.value()))?;
                 Ok(self.value(|b| b.write_trusting(idx.bytes)))
             }
             SimpleExpr::Number(n) => match n {
@@ -96,7 +96,7 @@ mod tests {
     }
 
     fn eval(cx: &Context, s: &str) -> Result<String> {
-        cx.eval(&expr(s)).map(|x| x.to_string())
+        cx.eval(&expr(s)).map(|x| x.value().to_string())
     }
 
     #[test]
@@ -111,23 +111,19 @@ mod tests {
             }),
         );
 
-        assert_eq!(eval(&cx, "5+2.1+x.y").unwrap(), "0@!: 49.1");
+        assert_eq!(eval(&cx, "5+2.1+x.y").unwrap(), "49.1");
 
-        assert_eq!(eval(&cx, "x").unwrap(), "0@!: {\"y\": 42}");
+        assert_eq!(eval(&cx, "x").unwrap(), "{\"y\": 42}");
 
         let err = eval(&cx, "5+x").unwrap_err().to_string();
-        assert!(
-            err.contains("0@!: {\"y\": 42} is not a number"),
-            "didn’t match: {}",
-            err
-        );
+        assert!(err.contains("{\"y\": 42} is not a number"), "didn’t match: {}", err);
 
         let err = eval(&cx, "y").unwrap_err().to_string();
         assert!(err.contains("variable 'y' is not bound"), "didn’t match: {}", err);
 
         let err = eval(&cx, "x.a").unwrap_err().to_string();
         assert!(
-            err.contains("path [Ident(\"a\")] does not exist in value 0@!: {\"y\": 42}"),
+            err.contains("path [Ident(\"a\")] does not exist in value {\"y\": 42}"),
             "didn’t match: {}",
             err
         );
