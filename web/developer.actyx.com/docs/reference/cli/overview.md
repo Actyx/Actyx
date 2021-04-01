@@ -1,0 +1,30 @@
+---
+title: Actyx CLI Overview
+id: cli-overview
+hide_title: false
+hide_table_of_contents: false
+sidebar_label: Overview
+keywords: [api, reference, cli]
+description: API Reference for the Actyx CLI.
+image: /images/defaults/default.svg
+---
+
+Actyx CLI is the command line interface that lets you interact with and mange your ActyxOS nodes.
+For installation instructions, please refer to [this how-to guide](../../how-to-guides/local-development/installing-cli-node-manager.mdx).
+
+<h2>Subcommands</h2>
+
+| Command                          | description                         |
+| -------------------------------- | ----------------------------------- |
+| [ax nodes](nodes/nodes)          | Manage ActyxOS nodes                |
+| [ax apps](apps/apps) ⚠️          | Manage ActyxOS apps                 |
+| [ax settings](settings/settings) | Manage ActyxOS node or app settings |
+| [ax logs](logs/logs)             | Manage ActyxOS node and app logs    |
+| [ax swarms](swarms/swarms)       | Manage ActyxOS swarms               |
+
+<!-- TODO NKI: replace with correct link -->
+
+:::warning `ax apps` subcommand is deprecated
+Managing apps via the Actyx CLI is deprecated and will no longer be supported in future ActyxOS versions.
+For more information on this, please refer to [this guide](../../how-to-guides/configuring-and-packaging/actyx-swarms.mdx)
+:::
