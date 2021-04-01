@@ -95,6 +95,15 @@ module.exports = {
     },
     {
       type: 'category',
+      label: 'Swarms',
+      collapsed: true,
+      items: [
+        'how-to-guides/swarms/setup-swarm',
+        'how-to-guides/swarms/setup-bootstrap-node',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Data import and export',
       collapsed: true,
       items: [

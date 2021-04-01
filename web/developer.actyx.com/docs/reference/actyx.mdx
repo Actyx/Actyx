@@ -9,86 +9,63 @@ description: API Reference for Actyx.
 image: /images/defaults/default.svg
 ---
 
-## Architecture Matrix
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
 
-The following table shows on which operating systems/architectures Actyx is supported.
+## Supported OS and architectures
 
-<!-- TODO: Fill compatability matrix -->
+Actyx is built for the following operating systems and architectures:
 
-| OS / Arch | 1   | 2   | 3   | 4   | 5   | 6   |
-| --------- | --- | --- | --- | --- | --- | --- |
-| Windows   | 🕑  | --- | --- | --- | --- | --- |
-| Android   | --- | ✅  | --- | --- | --- | --- |
-| Linux     | --- | --- | 🚫  | --- | --- | --- |
-| macOS     | --- | --- | --- | --- | --- | --- |
-| Docker    | --- | --- | --- | --- | --- | --- |
+<Tabs
+  defaultValue="windows"
+  values={[
+    { label: 'Windows', value: 'windows', },
+    { label: 'Android', value: 'android', },
+    { label: 'Linux', value: 'linux', },
+    { label: 'Docker', value: 'docker', },
+  ]
+}>
+<TabItem value="windows">
 
-- ✅ Full production support
-- 🕑 In Beta (development support only)
-- 🚫 Not supported
+Actyx supports the following Windows versions:
+- Windows 10
+
+You can run Actyx on Windows on the following architectures:
+
+- `x86_64`
+
+</TabItem>
+<TabItem value="android">
+
+Actyx supports the following Android versions:
+
+- Android 6+
+
+You can run Actyx on Windows on the following architectures:
+
+- `x86`, `arm64-v8a` or `armeabi-v7a` [ABI](https://developer.android.com/ndk/guides/abis.html#sa)
+
+</TabItem>
+<TabItem value="linux">
+
+You can run Actyx on Linux on the following architectures:
+- `x86_64`, `aarch64`, `armv7` or `arm`
+
+</TabItem>
+<TabItem value="docker">
+
+Actyx supports the following Windows versions:
+- Docker 20+
+
+You can run Actyx on Docker on the following architectures:
+- `x86_64`, `aarch64`
+
+</TabItem>
+</Tabs>
 
 ## Node Settings Schema
 
-ActyxOS needs a number of settings to be defined in order to work, and provides optional settings that you can use to configure your nodes' behavior.
 Which settings are available and which values they may have is defined in the so-called ActyxOS **Node Setting Schema**.
 The most recent version thereof is available for download at:
 
 [https://developer.actyx.com/schemas/os/node-settings.schema.json](pathname:///schemas/os/node-settings.schema.json)
-
-An ActyxOS node always comes with default settings that ensure an Actyx node is operational after installation.
-These default values are also defined in the node settings schema but can be overwritten anytime.
-
-Here are a couple of nodes settings and their corresponding schema:
-
-| Setting      | Type     | Permitted values       | Default value  |
-| ------------ | -------- | ---------------------- | -------------- |
-| Display name | `string` | _any non empty string_ | "Default Node" |
-
-This definition in the node settings schema:
-
-```json
-"displayName": {
-          "$ref": "#/definitions/Basic/NonEmptyString",
-          "default": "Default Node"
-},
-```
-
-| Setting         | Type    | Permitted values | Default value |
-| --------------- | ------- | ---------------- | ------------- |
-| Bootstrap Nodes | `array` | _MultiAddr_      | []            |
-
-This definition in the node settings schema:
-
-```json
-"bootstrapNodes": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Basic/MultiAddr"
-          },
-          "default": [],
-          "uniqueItems": true,
-          "description": "Addresses of peers to initially connect for bootstrapping. These must be multiaddresses containing a peer id. E.g. /dns4/demo-bootstrap.actyx.net/tcp/4001/p2p/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH"
-        },
-```
-
-Here is an example of schema-compliant node settings:
-
-```yaml
-general:
-  displayName: My Node
-  swarmKey: 4904199ec5e74cc5871cad1ddad4b9e636c9dfcc55269d954dd4048e336b5433
-  bootstrapNodes:
-    - /ip4/3.125.108.42/tcp/4001/ipfs/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH
-  logLevels:
-    OS: WARN
-    Apps: INFO
-licensing:
-  os: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-  apps:
-    com.example.app1: development
-    com.example.app2: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-services:
-  eventService:
-    topic: My Topic
-    readOnly: false
-```
