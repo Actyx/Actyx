@@ -160,20 +160,6 @@ module.exports = {
             },
             {
               type: 'category',
-              label: 'ax\u00a0apps',
-              collapsed: true,
-              items: [
-                'reference/cli/apps/ls',
-                'reference/cli/apps/validate',
-                'reference/cli/apps/package',
-                'reference/cli/apps/deploy',
-                'reference/cli/apps/undeploy',
-                'reference/cli/apps/start',
-                'reference/cli/apps/stop',
-              ],
-            },
-            {
-              type: 'category',
               label: 'ax\u00a0settings',
               collapsed: true,
               items: [
@@ -195,6 +181,20 @@ module.exports = {
               label: 'ax\u00a0swarms',
               collapsed: true,
               items: ['reference/cli/swarms/keygen'],
+            },
+            {
+              type: 'category',
+              label: 'ax\u00a0apps',
+              collapsed: true,
+              items: [
+                'reference/cli/apps/ls',
+                'reference/cli/apps/validate',
+                'reference/cli/apps/package',
+                'reference/cli/apps/deploy',
+                'reference/cli/apps/undeploy',
+                'reference/cli/apps/start',
+                'reference/cli/apps/stop',
+              ],
             },
           ],
         },
