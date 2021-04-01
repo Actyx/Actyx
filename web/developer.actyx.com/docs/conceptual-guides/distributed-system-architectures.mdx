@@ -24,36 +24,46 @@ A _distributed system_ is a system composed of multiple software components, run
 For a more formal definition and introduction, check out [this paper](https://link.springer.com/article/10.1007/s00607-016-0508-7).
 
 ## Benefits
+
 Distributed systems have several benefits that make them very useful in some scenarios.
 
 ### Scalability
+
 In a distributed system, computation on one node happens independently from computation on another node. This makes it easy to scale performance and add functionality. In both cases, you can scale the system by adding additional nodes that either duplicate existing or implement new functionality.
 
 ### Reliability
+
 Because computations are split over multiple nodes—vs. a single computer—distributed systems are significantly more reliable. When faults occur (it happens), only the functionality provided by the affected nodes is unavailable. Other nodes can continue working; there are no single-points-of-failure that can take down the entire system.
 
 ### Performance
+
 Distributed systems allow you to split your workload into multiple tasks and have nodes work on them in parallel. This allows you to increase the overall performance of your system. Additionally, you benefit from improved communication performance as individual groups of nodes communicate over the sub-network, without affecting communication in other parts of the network.
 
 ## Challenges
+
 Distributed systems pose a number of challenges to system architects and developers building software for them.
 
 ### Coordination
+
 Because computation is split amongst multiple nodes, additional effort needs to go into coordinating who does what and when. This is especially challenging because individual nodes may be disconnected or in a failure-state at any time. As a coordinator, you need to be able to deal with all these situations.
 
 ### Latency volatility
+
 With increased communication—some of it a pure overhead—and very dynamic system behavior, communication between nodes may at times be very fast, and at other times slow. This happens, for instance, when nodes coordinate complex tasks or synchronize amongst each other following downtime.
 
 ### Monitoring
+
 The behavior of a distributed system is significantly harder to reason about than a centralized, single-node system. Nodes may be up or down at any time, communication may be faster or slower, etc. This make monitoring a distributed system significanly harder than a centralized system.
 
 ## Distributed vs. decentralized
+
 A distributed system may be coordinated by a central node. Consider, for example, how map-reduce jobs are usually launched by a central node, the results computed in a distributed fashion, and the results reduced back into the central node.
 
 Decentralized systems are a special form of a distributed system where there is no such central coordination authority. ActyxOS is a distributed, but especially a completely decentralized system, with no central authority that distributes and coordinates work.
 
 ## Relevance to ActyxOS
-By building and running apps on ActyxOS you are building a decentralized, and thus also a distributed, system. Edge devices provide computing power and access to the underlying network. Apps run on nodes and communicate by passing messages (see [Event Streams](/docs/conceptual-guides/event-based-systems.mdx)). 
+
+By building and running apps on ActyxOS you are building a decentralized, and thus also a distributed, system. Edge devices provide computing power and access to the underlying network. Apps run on nodes and communicate by passing messages (see [Event Streams](/docs/conceptual-guides/event-based-systems)).
 
 With ActyxOS you get all the benefits of distributed systems: scalability, reliability, and performance. ActyxOS also tries to reduce the challenges associated with a distributed system to a minimum. If you build apps using the Actyx Pond – a framework for building always-available apps—many of the challenges are completely taken care of for you.
 
@@ -77,7 +87,7 @@ But is consistency essential? We would say the answer is "no". Some problems can
 
 ### The CAP theorem
 
-Now we are finally ready to discuss the so called [CAP theorem](https://en.wikipedia.org/wiki/CAP_theorem), also named Brewer's theorem after computer scientist [Eric Brewer](https://en.wikipedia.org/wiki/Eric_Brewer_(scientist)), who first stated it as a loose conjecture — it was proven in 2002 by Seth Gilbert and Nancy Lynch. This theorem states that it is impossible for a distributed application to simultaneously provide more than two out of the following three guarantees:
+Now we are finally ready to discuss the so called [CAP theorem](https://en.wikipedia.org/wiki/CAP_theorem), also named Brewer's theorem after computer scientist [Eric Brewer](<https://en.wikipedia.org/wiki/Eric_Brewer_(scientist)>), who first stated it as a loose conjecture — it was proven in 2002 by Seth Gilbert and Nancy Lynch. This theorem states that it is impossible for a distributed application to simultaneously provide more than two out of the following three guarantees:
 
 - Consistency: Every read receives the most recent write or an error
 - Availability: Every request receives a (non-error) response – without the guarantee that it contains the most recent write
@@ -93,10 +103,8 @@ The CAP theorem speaks only about systems that are consistent in a global manner
 
 We can continue further, and research is currently ongoing. An example of a further topic would be to allow reads to declare what writes they causally depend on, and if they would be able to see all the writes they need they can still make progress, despite the system not being consistent in the sense of the strong definition of the CAP theorem. One of the examples is the [CALM approach](https://blog.acolyer.org/2019/03/06/keeping-calm-when-distributed-consistency-is-easy/).
 
-
-
-
 ## Learn more
+
 Here are several resources that you can check out to dive deeper into distributed systems and the CAP theorem:
 
 - [Distributed systems: A quick and simple definition (O'Reilly)](https://www.oreilly.com/ideas/distributed-systems-a-quick-and-simple-definition)
