@@ -107,7 +107,7 @@ module.exports = {
           items: [
             {
               label: 'Actyx',
-              to: 'docs/reference/actyx-api',
+              to: 'docs/reference/actyx-reference',
             },
             {
               label: 'SDK',
@@ -115,7 +115,7 @@ module.exports = {
             },
             {
               label: 'CLI',
-              to: 'docs/reference/cli',
+              to: 'docs/reference/cli/cli-overview',
             },
             {
               label: 'Node Manager',
