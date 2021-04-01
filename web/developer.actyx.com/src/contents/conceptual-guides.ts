@@ -20,12 +20,24 @@ const createConceptuals = () => {
       description: 'How the LFC paradigm works and how its principles apply to factory automation.',
       link: 'local-first-cooperation',
     },
+/*     {
+      title: 'Thinking in Actyx',
+      description:
+        'How local twins are used conceptually to build resilient factory solutions and how they can be transferred to code.',
+      link: '',
+    }, */
     {
       title: 'Actyx Jargon',
       description:
         'Actyx has lots of amazing features that make factory automation easier. But, like any technology, that means there is some jargon that can be confusing to newcomers.',
       link: 'actyx-jargon',
     },
+/*     {
+      title: 'Actyx vs. the Cloud',
+      description:
+        'Key differences of edge and cloud computing and points where both technologies can effectively complement each other.',
+      link: '',
+    }, */
     {
       title: 'Peer Discovery',
       description:
@@ -52,6 +64,12 @@ const createConceptuals = () => {
       description: 'Lifecycle of ActyxOS and apps deployed to ActyxOS runtimes.',
       link: 'actyx-node-lifecycle',
     },
+/*     {
+      title: 'Apps in the factory context',
+      description:
+        'Key capabilities, use-cases, and differences of headless and front-end applications in the factory setting',
+      link: '',
+    }, */
   ]
   return conceptualGuides
 }
