@@ -202,6 +202,20 @@ module.exports = {
       ],
     },
   ],
+  tutorialSidebar: [
+    {
+      type: 'category',
+      label: 'Actyx Tutorials',
+      collapsed: false,
+      items: ['tutorials/overview'],
+    },
+    {
+      type: 'category',
+      label: 'Contents',
+      collapsed: false,
+      items: ['tutorials/tutorial'],
+    },
+  ],
   faqSidebar: [
     {
       type: 'category',
