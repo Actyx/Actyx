@@ -141,6 +141,7 @@ module.exports = {
       collapsed: false,
       items: [
         // 'reference/actyx-api',
+        'reference/event-service',
         'reference/pond-api-reference',
         'reference/js-ts-sdk',
         'reference/rust-sdk',
