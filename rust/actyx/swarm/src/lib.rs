@@ -300,17 +300,17 @@ impl BanyanStore {
         let known_streams = self.0.index_store.lock().get_observed_streams()?;
         for stream_id in known_streams {
             tracing::debug!("Trying to load tree for {}", stream_id);
-            let cid = self
-                .ipfs()
-                .resolve(StreamAlias::from(stream_id))?
-                .ok_or_else(|| anyhow::anyhow!("No StreamAlias found for {}", stream_id))?;
-            let root = cid.try_into()?;
-            let tree = self.0.forest.load_tree(root)?;
-            self.update_present(stream_id, tree.offset())?;
-            if stream_id.node_id() == self.node_id() {
-                self.get_or_create_own_stream(stream_id.stream_nr()).set_latest(tree);
+            if let Some(cid) = self.ipfs().resolve(StreamAlias::from(stream_id))? {
+                let root = cid.try_into()?;
+                let tree = self.0.forest.load_tree(root)?;
+                self.update_present(stream_id, tree.offset())?;
+                if stream_id.node_id() == self.node_id() {
+                    self.get_or_create_own_stream(stream_id.stream_nr()).set_latest(tree);
+                } else {
+                    self.get_or_create_replicated_stream(stream_id).set_latest(tree);
+                }
             } else {
-                self.get_or_create_replicated_stream(stream_id).set_latest(tree);
+                tracing::warn!("No alias found for StreamId \"{}\"", stream_id);
             }
         }
 
@@ -435,8 +435,9 @@ impl BanyanStore {
     }
 
     fn get_or_create_replicated_stream(&self, stream_id: StreamId) -> Arc<ReplicatedStreamInner> {
-        assert!(self.node_id() != stream_id.node_id());
+        debug_assert!(self.node_id() != stream_id.node_id());
         let mut maps = self.0.maps.lock();
+        let _ = self.0.index_store.lock().add_stream(stream_id);
         let node_id = stream_id.node_id();
         let stream_nr = stream_id.stream_nr();
         let remote_node = maps.get_or_create_remote_node(node_id);
