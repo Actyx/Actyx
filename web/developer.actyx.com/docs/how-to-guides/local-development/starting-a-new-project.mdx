@@ -33,11 +33,7 @@ The important thing is that **all of these entities rely on the same information
 The way events are emitted, queried and subscribed to with Actyx works by using our programming framework Actyx Pond.
 This framework provides the tools for you to create so called `Fishes`.
 And since these fishes are responsible for creating the event streams flowing between each entity on the shopfloor, we recommend to have all of them in one place.
-So let's go ahead and create a dedicated folder for them.
-
-```text
-mkdir fishes
-```
+So let's go ahead and create a dedicated folder for them called **fishes**.
 
 Now, as stated earlier, many different apps can be part of your project.
 And since each app will have different dependencies and needs, it makes sense to separate them.
@@ -62,4 +58,4 @@ Since the Actyx tools you are going to use are JS/TS-based, the app folders will
 - `tsconfig.json`
 
 However, since there are various ways to set up a Javascript project, the contents of the individual app folders may vary, depending on the application.
-For an example of how a project structure _could_ look like, please check out [this repository](https://github.com/Actyx/actyx-quickstart).
+For an example of how a project structure _could_ look like, please check out [this repository](https://github.com/Actyx/DemoMachineKit).
