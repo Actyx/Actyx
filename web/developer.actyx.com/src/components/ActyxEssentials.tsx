@@ -157,7 +157,7 @@ export const ActyxEssentials: React.FC = () => (
         headline="Actyx Community"
         body="Join our developer community and discover our forum."
         cta="Forum"
-        link="http://localhost:3000/"
+        link="https://community.actyx.com/"
       />
     </LinkWrapper>
   </Wrapper>
