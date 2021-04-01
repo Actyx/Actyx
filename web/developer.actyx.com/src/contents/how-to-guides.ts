@@ -35,7 +35,7 @@ const createHowTos = () => {
         },
       ],
     },
-    {
+    /* {
       category: 'Process Logic',
       description:
         'Implement processes by writing local twins. Execute these processes and integrate them into the real world through apps.',
@@ -69,39 +69,35 @@ const createHowTos = () => {
           link: '',
         },
       ],
-    },
+    }, */
     {
-      category: 'Using the SDK to its full potential',
+      category: 'Using Actyx Pond to its full potential',
       description:
-        'Actyx SDK is your toolbox for implementing processes and automating factory solutions.',
+        'Actyx Pond is your programming framework for implementing distributed processes and automating factory solutions.',
       contents: [
         {
-          title: 'SDK-Guide-01',
-          link: '',
+          title: 'Introduction',
+          link: '/docs/how-to-guides/actyx-pond/introduction',
         },
         {
-          title: 'SDK-Guide-02',
-          link: '',
+          title: 'Getting Started with the Pond',
+          link: '/docs/how-to-guides/actyx-pond/getting-started',
         },
         {
-          title: 'SDK-Guide-03',
-          link: '',
+          title: 'Learning to work with Actyx Pond in 10 Steps',
+          link: '/docs/how-to-guides/actyx-pond/guides/hello-world',
         },
         {
-          title: 'SDK-Guide-04',
-          link: '',
+          title: 'Fish Parameters',
+          link: '/docs/how-to-guides/actyx-pond/fish-parameters/on-event',
         },
         {
-          title: 'SDK-Guide-05',
-          link: '',
-        },
-        {
-          title: 'SDK-Guide-06',
-          link: '',
+          title: 'Pond in Depth Guides for advanced users',
+          link: '/docs/how-to-guides/actyx-pond/in-depth/tag-type-checking',
         },
       ],
     },
-    {
+    /* {
       category: 'Getting data into and out of Actyx',
       description:
         'Implement processes by writing local twins. Execute these processes and integrate them into the real-world through apps.',
@@ -158,7 +154,7 @@ const createHowTos = () => {
           link: '',
         },
       ],
-    },
+    }, */
     {
       category: 'Configuring, Packaging & Deploying',
       description: 'Set up Actyx swarms. Package and deploy apps across nodes.',

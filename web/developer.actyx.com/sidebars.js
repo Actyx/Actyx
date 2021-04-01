@@ -19,7 +19,7 @@ module.exports = {
         'how-to-guides/local-development/common-development-errors',
       ],
     },
-    {
+    /* {
       type: 'category',
       label: 'Process Logic',
       collapsed: true,
@@ -32,12 +32,66 @@ module.exports = {
         'how-to-guides/process-logic/modelling-processes-in-twins',
         'how-to-guides/process-logic/transferring-twins-into-code',
       ],
-    },
+    }, 
     {
       type: 'category',
       label: 'Actyx SDK',
       collapsed: true,
       items: ['how-to-guides/sdk/placeholder'],
+    },*/
+    {
+      type: 'category',
+      label: 'Actyx Pond',
+      collapsed: true,
+      items: [
+        'how-to-guides/actyx-pond/introduction',
+        'how-to-guides/actyx-pond/getting-started',
+        {
+          type: 'category',
+          label: 'Pond in 10 Steps',
+          collapsed: true,
+          items: [
+            'how-to-guides/actyx-pond/guides/events',
+            'how-to-guides/actyx-pond/guides/hello-world',
+            'how-to-guides/actyx-pond/guides/integrating-a-ui',
+            'how-to-guides/actyx-pond/guides/local-state',
+            'how-to-guides/actyx-pond/guides/snapshots',
+            'how-to-guides/actyx-pond/guides/state-effects',
+            'how-to-guides/actyx-pond/guides/subscriptions',
+            'how-to-guides/actyx-pond/guides/time-travel',
+            'how-to-guides/actyx-pond/guides/typed-tags',
+            'how-to-guides/actyx-pond/guides/types',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Fish Parameters',
+          collapsed: true,
+          items: [
+            'how-to-guides/actyx-pond/fish-parameters/deserialize-state',
+            'how-to-guides/actyx-pond/fish-parameters/fish-id',
+            'how-to-guides/actyx-pond/fish-parameters/initial-state',
+            'how-to-guides/actyx-pond/fish-parameters/is-reset',
+            'how-to-guides/actyx-pond/fish-parameters/on-event',
+            'how-to-guides/actyx-pond/fish-parameters/where',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Pond in-Depth',
+          collapsed: true,
+          items: [
+            'how-to-guides/actyx-pond/in-depth/cycling-states',
+            'how-to-guides/actyx-pond/in-depth/do-not-ignore-events',
+            'how-to-guides/actyx-pond/in-depth/eventual-consistency',
+            'how-to-guides/actyx-pond/in-depth/exception-handling',
+            'how-to-guides/actyx-pond/in-depth/observe-all',
+            'how-to-guides/actyx-pond/in-depth/observe-one',
+            'how-to-guides/actyx-pond/in-depth/tag-type-checking',
+          ],
+        },
+        'how-to-guides/actyx-pond/pond-extensions',
+      ],
     },
     {
       type: 'category',
