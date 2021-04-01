@@ -115,7 +115,7 @@ const createHowTos = () => {
           link: '',
         },
         {
-          title: 'Integrating with PLCs',
+          title: 'Integrating with machines',
           link: '',
         },
         {
@@ -157,15 +157,15 @@ const createHowTos = () => {
     }, */
     {
       category: 'Swarms',
-      description: 'Setup swarms and configure your nodes.',
+      description: 'Setup swarms and connect nodes.',
       contents: [
         {
-          title: 'Connect nodes to each other',
-          link: '',
+          title: 'Setup a swarm and configure nodes to join it',
+          link: 'swarms/setup-swarm',
         },
         {
-          title: 'Setup a bootstrap node',
-          link: '',
+          title: 'Setup a bootstrap node to connect nodes to each other',
+          link: 'swarms/setup-bootstrap-node',
         },
       ],
     },
