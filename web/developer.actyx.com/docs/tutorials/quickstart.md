@@ -1,16 +1,9 @@
 ---
 title: Quickstart
-id: quickstart
 sidebar_label: Quickstart
 hide_title: true
 description: Quickstart guide to learn the basics of ActyxOS
 ---
-
-<!--
-import {Strap} from '../../src/components/Strap.tsx'
-
-<Strap strap={"Quickstart Guide"} />
--->
 
 <!-- markdownlint-disable MD025 -->
 
