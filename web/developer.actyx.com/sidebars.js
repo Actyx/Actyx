@@ -140,7 +140,8 @@ module.exports = {
       label: 'Contents',
       collapsed: false,
       items: [
-        'reference/actyx-api',
+        // 'reference/actyx-api',
+        'reference/pond-api-reference',
         'reference/js-ts-sdk',
         'reference/rust-sdk',
         'reference/cli',
