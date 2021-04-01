@@ -25,6 +25,7 @@ pub struct LoggingSink {
     configured_level: LogSeverity,
     filter_handle: Box<dyn ReloadHandle + Send>,
 }
+
 impl LoggingSink {
     pub fn new(level: LogSeverity, log_tx: Sender<LogRequest>) -> Self {
         let filter = EnvFilter::new(level.to_string());

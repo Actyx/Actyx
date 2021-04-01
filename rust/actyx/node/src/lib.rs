@@ -14,6 +14,8 @@ pub use crate::node::NodeError;
 pub use crate::util::spawn_with_name;
 #[cfg(not(windows))]
 pub use crate::util::unix_shutdown::shutdown_ceremony;
+use ::util::formats::LogEvent;
+use components::{logging::LoggingRequest, ComponentRequest};
 pub use formats::{os_settings, ShutdownReason};
 
 use crate::{
@@ -58,6 +60,7 @@ pub enum Runtime {
 pub struct ApplicationState {
     pub join_handles: Vec<thread::JoinHandle<()>>,
     pub manager: NodeWrapper,
+    components: Vec<ComponentChannel>,
 }
 
 fn bounded_channel<T>() -> (Sender<T>, Receiver<T>) {
@@ -103,7 +106,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
 
     let db = host.get_db_handle();
     // THE node :-)
-    let node = NodeWrapper::new((node_tx, node_rx), components, host)?;
+    let node = NodeWrapper::new((node_tx, node_rx), components.clone(), host)?;
 
     // Component: NodeApi
     let node_api = {
@@ -135,6 +138,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     Ok(ApplicationState {
         join_handles,
         manager: node,
+        components,
     })
 }
 pub type NodeLifecycleResult = Receiver<NodeProcessResult<()>>;
@@ -152,6 +156,17 @@ impl Default for BindTo {
             admin: SocketAddrHelper::unspecified(4458),
             swarm: SocketAddrHelper::unspecified(4001),
             api: "localhost:4454".parse().unwrap(),
+        }
+    }
+}
+
+impl BindTo {
+    /// Uses port `0` for all services. Let the OS allocate a free port.
+    pub fn random() -> Self {
+        Self {
+            admin: SocketAddrHelper::unspecified(0),
+            swarm: SocketAddrHelper::unspecified(0),
+            api: "localhost:0".parse().unwrap(),
         }
     }
 }
@@ -270,6 +285,23 @@ impl ApplicationState {
             );
             h.join().unwrap();
         }
+    }
+
+    pub fn logs_tail(&self) -> anyhow::Result<crossbeam::channel::Receiver<Vec<LogEvent>>> {
+        let logging_tx = self
+            .components
+            .iter()
+            .filter_map(|x| match x {
+                ComponentChannel::Logging(tx) => Some(tx),
+                _ => None,
+            })
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("No logging component installed!"))?;
+
+        let (req, rx) = logsvcd::GetLogRequest::all_follow();
+        logging_tx.send(ComponentRequest::Individual(LoggingRequest::GetLogRequest(req)))?;
+
+        Ok(rx)
     }
 }
 

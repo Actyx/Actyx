@@ -89,7 +89,7 @@ impl GossipV2 {
                     }
                 }
                 let blob = serde_cbor::to_vec(&RootUpdate { root, stream, blocks }).unwrap();
-                tracing::info!("broadcast_blob {}", blob.len());
+                tracing::trace!("broadcast_blob {}", blob.len());
                 ipfs.broadcast(&topic, blob).ok();
 
                 let blob = serde_cbor::to_vec(&RootUpdate {
@@ -98,7 +98,7 @@ impl GossipV2 {
                     blocks: Default::default(),
                 })
                 .unwrap();
-                tracing::info!("publish_blob {}", blob.len());
+                tracing::trace!("publish_blob {}", blob.len());
                 ipfs.publish(&topic, blob).ok();
             }
         };
@@ -120,7 +120,7 @@ impl GossipV2 {
                 while let Some(message) = subscription.next().await {
                     match serde_cbor::from_slice::<RootUpdate>(&message) {
                         Ok(root_update) => {
-                            tracing::info!(
+                            tracing::debug!(
                                 "{} received root update {} with {} blocks",
                                 store.ipfs().local_node_name(),
                                 root_update.stream,

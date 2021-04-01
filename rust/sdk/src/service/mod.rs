@@ -299,7 +299,7 @@ pub enum SubscribeMonotonicResponse {
     TimeTravel { new_start: EventKey },
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum QueryResponse {
     #[serde(rename_all = "camelCase")]
