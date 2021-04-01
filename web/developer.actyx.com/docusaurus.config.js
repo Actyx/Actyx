@@ -148,7 +148,7 @@ module.exports = {
             },
             {
               label: 'Local First',
-              to: 'docs/conceptual-guides/local-first-computing',
+              to: 'docs/conceptual-guides/local-first-cooperation',
             },
             {
               label: 'Thinking in Actyx',
@@ -161,7 +161,7 @@ module.exports = {
           ],
         },
         {
-          title: 'Community',
+          title: 'For Developers',
           items: [
             {
               label: 'Forum',
@@ -172,8 +172,8 @@ module.exports = {
               to: 'https://www.actyx.com',
             },
             {
-              label: 'Discord',
-              to: 'https://discord.gg/262yJhc',
+              label: 'FAQ',
+              to: 'docs/faq/supported-programming-languages',
             },
             {
               label: 'Blog',

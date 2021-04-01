@@ -8,3 +8,49 @@ keywords: [explanation, performance, limitations]
 description: Explanation guide for performance and limitations of an Actyx solution.
 image: /images/defaults/default.svg
 ---
+
+This conceptual guide explains the limitations of ActyxOS in real-world factory solutions with regard to:
+
+- [Latency and performance](#latency-and-performance)
+- [Max. number of nodes](#max-number-of-nodes)
+- [Required disk space of devices](#required-disk-space)
+
+## Latency and performance
+Performance and communication latencies are extremely hard to predict. Hundreds of things play into this, from the hardware of your edge devices to a forklift passing in front of a Wireless Access Point. On average, the following statements are true:
+
+- ActyxOS can conistently achieve sub-second latency of approx. 200ms
+- ActyxOS has lower latency volatility than most centralized systems
+- ActyxOS is not deterministic in terms of latency (use a PLC if this is needed)
+ 
+:::tip Get in touch
+As a developer you can always build apps that will bring any system to its knees. If you follow best-practices you should not face any issues. If you do, please [get in touch with us and the Actyx community](https://community.actyx.com/)—we love optimizing!
+:::
+
+## Max. number of nodes
+
+It depends, but 100 nodes should work without issues.
+
+The amount of devices you can reliably run in a single ActyxOS swarm depends on a large number of factors, including the local-area network setup, the devices themselves and the apps running on them.
+
+Given current production systems and internal benchmarks, 100 devices should work without any issues.
+
+:::tip You need to connect 1'000s of edge devices?
+Please [get in touch with us and the Actyx community](https://community.actyx.com/): we we would love to hear about your use-case and figure out how to make it work with ActyxOS.
+:::
+
+## Required disk space of devices
+
+ActyxOS is a completely decentralized system dependent on the disk space of every single edge device. At runtime different types of data are generated and stored throughout the ActyxOS swarm.
+
+|Type|Size|Deletable?|
+|----|----|----------|
+|Event|max. 4KB|**No**, events have infinite lifespan unless you reset the swarm.|
+|Log|max. 4KB| Yes, the ActyxOS Console Service clears logs automatically when disk space is needed.|
+
+As logs are cleared automatically, they will not lead to running out of disk space. The point at which you will run out of disk space because of events depends on their number and size. 100 million events with an average size of 0.2KB will require a maximum of 20 GB of disk space.
+
+Currently, the only solution to running out of disk space because of events, is either clearing events from your swarm or increasing the disk space of your edge devices. We are already working on a functionality that lets you configure whether events can be forgotten after a certain amount of time, or before you run out of disk space.
+
+:::tip Your solution will produce 100s of millions of events?
+Please [get in touch with us and the Actyx community](https://community.actyx.com/): we we would love to hear about your use-case and figure out how to make it work with ActyxOS.
+:::

@@ -8,3 +8,15 @@ keywords: [explanation, security]
 description: Explanation guide for security in Actyx
 image: /images/defaults/default.svg
 ---
+
+This page details basic network security guarantees provided by ActyxOS.
+
+## Peer-to-Peer Communication
+
+Peer-to-peer communication has multiple layers of encryption. The most basic one is based on a pre-shared key (PSK), which ensures that only ActyxOS nodes configured to be in the same swarm can connect to each other. The mechanism employed here is based on this [libp2p specification](https://github.com/libp2p/specs/blob/master/pnet/Private-Networks-PSK-V1.md) using the [Salsa20 stream cipher](https://en.wikipedia.org/wiki/Salsa20).
+
+:::info
+This means, that whoever is in possession of said PSK is able to read all events published in a swarm. We're currently working on per-stream encryption, which will yield high granularity in permissions.
+:::
+
+Every connection between ActyxOS nodes is further encrypted using elliptic-curve cryptography (specifically Ed25519, using SHA2 and Curve25519). This means that every ActyxOS node holds an ed25519 key pair. That key pair is currently saved to an encrypted file on disk, we plan to add TPM-backed key stores in the future.

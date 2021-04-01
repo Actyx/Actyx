@@ -8,3 +8,34 @@ keywords: [explanation, actyx, jargon]
 description: Explanation guide for Actyx specific jargon.
 image: /images/defaults/default.svg
 ---
+
+Actyx has lots of amazing features that make factory automation easier. But, like any technology, that means there is some jargon that can be confusing to newcomers. 
+So let's define the basics so you find your way around our documentation.
+
+### ActyxOS
+
+ActyxOS is a piece of software that you deploy to your device. It is packaged in various formats, e.g. as a Linux binary or as an Android apk — check out our reference documentation for supported operating systems and architectures to find out more.
+
+### Node
+
+An ActyxOS node is a device that runs ActyxOS. The device can be physical, e.g. a tablet, or virtual, e.g. a virtual machine. There is one special type of node, see [bootstrap node](#bootstrap-node) below.
+
+### Swarm
+
+An ActyxOS swarm is a group of ActyxOS nodes that are configured with the same Swarm Key. Nodes inside a swarm are connected to each other and exchange events. For more information on how discovery inside a swarm works, check out our guide on [peer discovery](peer-discovery.mdx).
+
+### Bootstrap node
+
+A boostrap node is an ActyxOS node like any other with one exception: It does not store or distribute events. It only connects to other nodes and its purpose is to serve as a directory for all nodes that form a swarm. When a new node connects to the bootstrap node, it gets a list of all other nodes in the swarm which facilitates peer discovery. Check out our guide on [peer discovery](peer-discovery.mdx) for more information.
+
+### App
+
+An app is a piece of software that runs on a device that also runs ActyxOS. On that device, the app interacts locally with ActyxOS through ActyxOS's APIs. The packaging of the app (e.g. as a Docker container or Android apk) depends on the device it is running on.
+
+### Pond
+
+The Actyx Pond is a programming framework for writing apps for ActyxOS. It is available on [npm](http://npmjs.com/package/@actyx/pond). Check out our [how-to guides](/docs/how-to-guides/actyx-pond/introduction.mdx) for more information.
+
+### Fish
+
+A fish is a concept of the Actyx Pond. It is the main programming unit used when writing apps with the Actyx Pond. Check out our [how-to guides](/docs/how-to-guides/actyx-pond/introduction.mdx) for more information.

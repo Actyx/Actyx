@@ -5,7 +5,7 @@ This file contains all categories and their contents of how-to guides.
 const createHowTos = () => {
   const howToGuides = [
     {
-      category: 'Local Development',
+      category: 'Local Development Setup',
       description:
         'Get your local environment set up; install Actyx and the SDK, start a new project, setup your environment, and debug common errors.',
       contents: [
@@ -25,12 +25,12 @@ const createHowTos = () => {
           title: 'Installing Actyx CLI and Node Manager',
           link: '/docs/how-to-guides/local-development/installing-cli-node-manager',
         },
-        {
+        /* {
           title: 'Obtaining your development certificate',
           link: '/docs/how-to-guides/local-development/obtaining-a-development-certificate',
-        },
+        }, */
         {
-          title: 'Tips & tricks for common development errors',
+          title: 'Tips & tricks for common errors during setup',
           link: '/docs/how-to-guides/local-development/common-development-errors',
         },
       ],
