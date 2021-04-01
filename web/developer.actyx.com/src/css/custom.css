@@ -1116,9 +1116,6 @@ pre .line-numbers {
   counter-reset: linenumber;
 }
 
-
-
-
 .tabs-container {
   margin-bottom: 2rem;
   /* margin-left: 0.5rem;
@@ -1133,9 +1130,9 @@ pre .line-numbers {
   border-bottom-width: 1.5px;
 
   border-bottom-color: var(--ifm-toc-border-color);
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 .tabs__item.tabs__item--active {
-    border-bottom-color: var(--ifm-tabs-color-active) !important;
+  border-bottom-color: var(--ifm-tabs-color-active) !important;
 }
