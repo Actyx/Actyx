@@ -255,10 +255,16 @@ module.exports = {
   ],
   tutorialSidebar: [
     {
-      type: 'category',
-      label: 'Basic Tutorials',
-      collapsed: false,
-      items: ['tutorials/overview', 'tutorials/quickstart', 'tutorials/tutorial'],
+      type: 'doc',
+      id: 'tutorials/overview', // string - document id
+    },
+    {
+      type: 'doc',
+      id: 'tutorials/quickstart', // string - document id
+    },
+    {
+      type: 'doc',
+      id: 'tutorials/chat', // string - document id
     },
     {
       type: 'category',
