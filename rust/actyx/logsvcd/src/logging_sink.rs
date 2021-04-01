@@ -11,6 +11,7 @@ trait ReloadHandle {
     fn reload(&self, new_filter: EnvFilter) -> Result<(), reload::Error>;
 }
 
+const DEFAULT_ENV: &str = "RUST_LOG";
 impl<L, S> ReloadHandle for Handle<L, S>
 where
     L: From<EnvFilter> + Layer<S> + 'static,
@@ -23,11 +24,20 @@ where
 /// Convenience struct wrapping access to the installed log interceptor.
 pub struct LoggingSink {
     configured_level: LogSeverity,
+    level_from_env: bool,
     filter_handle: Box<dyn ReloadHandle + Send>,
 }
 impl LoggingSink {
     pub fn new(level: LogSeverity, log_tx: Sender<LogRequest>) -> Self {
-        let filter = EnvFilter::new(level.to_string());
+        // If the `RUST_LOG` env var is set, the filter is statically set to
+        // said value. This supports the common RUST_LOG syntax, see
+        // https://docs.rs/tracing-subscriber/0.2.17/tracing_subscriber/fmt/index.html#filtering-events-with-environment-variables
+        // Any overrides via `ax settings` will be ignored
+        let (filter, level_from_env) = if let Ok(filter) = EnvFilter::try_from_default_env() {
+            (filter, true)
+        } else {
+            (EnvFilter::new(level.to_string()), false)
+        };
         let builder = tracing_subscriber::FmtSubscriber::builder()
             .with_env_filter(filter)
             .with_filter_reloading();
@@ -49,16 +59,27 @@ impl LoggingSink {
         }
         Self {
             configured_level: level,
+            level_from_env,
             filter_handle,
         }
     }
     pub fn set_level(&mut self, level: LogSeverity) -> ActyxOSResult<()> {
         if self.configured_level != level {
+            // Still store the configured level, so that we don't spam the logs
             self.configured_level = level;
-            let new_filter = EnvFilter::new(level.to_string());
-            if let Err(e) = self.filter_handle.reload(new_filter) {
-                eprintln!("Error installing new EnvFilter with severity {}: {}", level, e);
-                tracing::error!("Error installing new EnvFilter with severity {}: {}", level, e);
+            if self.level_from_env {
+                tracing::info!(
+                    "Ignoring set log level \"{}\", as the log filter is set via the \"{}\" environment variable (\"{}\")",
+                    level,
+                    DEFAULT_ENV,
+                    std::env::var(DEFAULT_ENV).unwrap_or_else(|_| "".into())
+                );
+            } else {
+                let new_filter = EnvFilter::new(level.to_string());
+                if let Err(e) = self.filter_handle.reload(new_filter) {
+                    eprintln!("Error installing new EnvFilter with severity {}: {}", level, e);
+                    tracing::error!("Error installing new EnvFilter with severity {}: {}", level, e);
+                }
             }
         }
         Ok(())
