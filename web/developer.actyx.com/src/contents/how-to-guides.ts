@@ -170,33 +170,29 @@ const createHowTos = () => {
       ],
     },
     {
-      category: 'Configuring, Packaging & Deploying',
-      description: 'Set up Actyx swarms. Package and deploy apps across nodes.',
+      category: 'Packaging Apps for different platforms',
+      description: 'Discover the possibilities you have when packaging apps for Actyx.',
       contents: [
         {
-          title: 'Packaging front-end apps',
-          link: '',
+          title: 'Mobile apps',
+          link: '/docs/how-to-guides/packaging/mobile-apps',
         },
         {
-          title: 'Packaging headless apps',
-          link: '',
+          title: 'Desktop apps',
+          link: '/docs/how-to-guides/packaging/desktop-apps',
         },
         {
+          title: 'Headless apps',
+          link: '/docs/how-to-guides/packaging/headless-apps',
+        },
+        /* {
           title: 'Deploying to production',
           link: '',
         },
         {
           title: 'Updating an Actyx solution',
           link: '',
-        },
-        {
-          title: 'Turning your Actyx nodes into a swarm',
-          link: '',
-        },
-        {
-          title: 'Setting up a bootstrap node',
-          link: '',
-        },
+        }, */
       ],
     },
     {

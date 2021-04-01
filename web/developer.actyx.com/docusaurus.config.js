@@ -136,7 +136,7 @@ module.exports = {
             },
             {
               label: 'Packaging UI Apps',
-              to: 'docs/how-to-guides/configuring-and-packaging/front-end-apps',
+              to: 'docs/how-to-guides/packaging/mobile-apps',
             },
             {
               label: 'Actyx SDK',

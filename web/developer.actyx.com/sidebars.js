@@ -129,12 +129,9 @@ module.exports = {
       label: 'Packaging & Deployment',
       collapsed: true,
       items: [
-        'how-to-guides/configuring-and-packaging/front-end-apps',
-        'how-to-guides/configuring-and-packaging/headless-apps',
-        'how-to-guides/configuring-and-packaging/deployment-to-production',
-        'how-to-guides/configuring-and-packaging/updating-a-solution',
-        'how-to-guides/configuring-and-packaging/actyx-swarms',
-        'how-to-guides/configuring-and-packaging/bootstrap-node',
+        'how-to-guides/packaging/mobile-apps',
+        'how-to-guides/packaging/desktop-apps',
+        'how-to-guides/packaging/headless-apps',
       ],
     },
     {
