@@ -2,6 +2,13 @@
 title: ax apps ls
 ---
 
+<!-- TODO NKI: replace with correct link -->
+
+:::warning `ax apps` subcommand is deprecated
+Managing apps via the Actyx CLI is deprecated and will no longer be supported in future ActyxOS versions.
+For more information on this, please refer to [this guide](../../how-to-guides/configuring-and-packaging/actyx-swarms.mdx)
+:::
+
 ```text title="List apps deployed on an ActyxOS node"
 USAGE:
     ax apps ls [FLAGS] <NODE>
@@ -47,9 +54,9 @@ ax --json apps ls --local 10.2.3.23
         }
     ]
 }
-````
+```
 
 :::info`ax apps ls` only returns the state of the apps
 
-Please keep in mind that **state**, **settings** and **license** in the  `ax apps ls` command **only** refer to the apps deployed on a node. If you want more detailed information about the node itself, you need to use [`ax nodes ls`](../nodes/ls).
+Please keep in mind that **state**, **settings** and **license** in the `ax apps ls` command **only** refer to the apps deployed on a node. If you want more detailed information about the node itself, you need to use [`ax nodes ls`](../nodes/ls).
 :::
