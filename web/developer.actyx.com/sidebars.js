@@ -219,7 +219,7 @@ module.exports = {
         {
           type: 'category',
           label: 'Advanced Tutorial',
-          collapsed: false,
+          collapsed: true,
           items: [
             'tutorials/advanced-tutorial/introduction',
             'tutorials/advanced-tutorial/solution-architecture',
