@@ -27,7 +27,7 @@ use crate::connectivity::ConnectivityState;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
 use crate::streams::{OwnStreamInner, ReplicatedStreamInner, StreamMaps};
-use actyxos_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr, TagSet, Timestamp};
+use actyxos_sdk::{LamportTimestamp, NodeId, Offset, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp};
 use anyhow::{Context, Result};
 use ax_futures_util::{prelude::*, stream::variable::Variable};
 use banyan::{
@@ -49,7 +49,14 @@ use libp2p::{
 };
 use parking_lot::Mutex;
 use std::{
-    collections::VecDeque, fmt::Debug, num::NonZeroU32, ops::RangeInclusive, str::FromStr, sync::Arc, time::Duration,
+    collections::VecDeque,
+    convert::{TryFrom, TryInto},
+    fmt::Debug,
+    num::NonZeroU32,
+    ops::RangeInclusive,
+    str::FromStr,
+    sync::Arc,
+    time::Duration,
 };
 use trees::{
     axtrees::{AxKey, AxTrees, Sha256Digest},
@@ -70,6 +77,7 @@ pub type Ipfs = ipfs_embed::Ipfs<libipld::DefaultParams>;
 
 #[derive(Debug, Clone)]
 pub struct Config {
+    /// max cache size [bytes]
     branch_cache: usize,
     crypto_config: forest::CryptoConfig,
     forest_config: forest::Config,
@@ -81,7 +89,7 @@ pub struct Config {
 impl Config {
     pub fn new(topic: &str, node_id: NodeId) -> Self {
         Self {
-            branch_cache: 1000,
+            branch_cache: 64 << 20,
             crypto_config: Default::default(),
             forest_config: forest::Config::debug(),
             topic: topic.into(),
@@ -145,7 +153,7 @@ impl BanyanStore {
         if cfg.ipfs_node.enable_publish {
             tracing::debug!("Publishing is allowed to pubsub");
         } else {
-            tracing::info!("Publishing is disabled to pubsub");
+            tracing::debug!("Publishing is disabled to pubsub");
         }
 
         let identity = if let Some(identity) = cfg.ipfs_node.identity {
@@ -266,11 +274,11 @@ impl BanyanStore {
             connectivity,
             tasks: Default::default(),
         }));
+        me.load_known_streams()?;
         me.spawn_task(
             "v2_gossip_ingest",
             me.0.gossip_v2.ingest(me.clone(), config.topic.clone())?,
         );
-        // TODO: me.load for own streams
         me.spawn_task("compaction", me.clone().compaction_loop(Duration::from_secs(60)));
         me.spawn_task("v1_gossip_publish", me.clone().v1_gossip_publish(config.topic.clone()));
         me.spawn_task("v1_gossip_ingest", me.clone().v1_gossip_ingest(config.topic));
@@ -286,6 +294,27 @@ impl BanyanStore {
             crate::metrics::metrics(me.clone(), 0.into(), Duration::from_secs(30))?,
         );
         Ok(me)
+    }
+
+    fn load_known_streams(&self) -> Result<()> {
+        let known_streams = self.0.index_store.lock().get_observed_streams()?;
+        for stream_id in known_streams {
+            tracing::debug!("Trying to load tree for {}", stream_id);
+            if let Some(cid) = self.ipfs().resolve(StreamAlias::from(stream_id))? {
+                let root = cid.try_into()?;
+                let tree = self.0.forest.load_tree(root)?;
+                self.update_present(stream_id, tree.offset())?;
+                if stream_id.node_id() == self.node_id() {
+                    self.get_or_create_own_stream(stream_id.stream_nr()).set_latest(tree);
+                } else {
+                    self.get_or_create_replicated_stream(stream_id).set_latest(tree);
+                }
+            } else {
+                tracing::warn!("No alias found for StreamId \"{}\"", stream_id);
+            }
+        }
+
+        Ok(())
     }
 
     /// Creates an in memory [`BanyanStore`] for testing with mdns disabled.
@@ -317,7 +346,7 @@ impl BanyanStore {
 
     /// Append events to a stream, publishing the new data.
     pub async fn append(&self, stream_nr: StreamNr, events: Vec<(TagSet, Event)>) -> Result<Option<Link>> {
-        tracing::info!("publishing {} events on stream {}", events.len(), stream_nr);
+        tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
         let lamport = self.0.index_store.lock().increment_lamport()?;
         let timestamp = Timestamp::now();
         let events = events
@@ -365,7 +394,7 @@ impl BanyanStore {
         range: RangeInclusive<u64>,
         query: Q,
     ) -> impl Stream<Item = Result<FilteredChunk<TT, Event, ()>>> {
-        tracing::info!("stream_filtered_chunked {}", stream_id);
+        tracing::debug!("stream_filtered_chunked {}", stream_id);
         let (trees, forest) = self.tree_stream(stream_id);
         forest.stream_trees_chunked(query, trees, range, &|_| {})
     }
@@ -392,12 +421,12 @@ impl BanyanStore {
     fn get_or_create_own_stream(&self, stream_nr: StreamNr) -> Arc<OwnStreamInner> {
         let mut maps = self.0.maps.lock();
         maps.own_streams.get(&stream_nr).cloned().unwrap_or_else(|| {
-            tracing::info!("creating new own stream {}", stream_nr);
+            tracing::debug!("creating new own stream {}", stream_nr);
             let forest = self.0.forest.clone();
             let stream_id = self.node_id().stream(stream_nr);
             // TODO: Maybe this fn should be fallible
             let _ = self.0.index_store.lock().add_stream(stream_id);
-            tracing::info!("publish new stream_id {}", stream_id);
+            tracing::debug!("publish new stream_id {}", stream_id);
             maps.publish_new_stream_id(stream_id);
             let stream = Arc::new(OwnStreamInner::new(forest));
             maps.own_streams.insert(stream_nr, stream.clone());
@@ -406,15 +435,16 @@ impl BanyanStore {
     }
 
     fn get_or_create_replicated_stream(&self, stream_id: StreamId) -> Arc<ReplicatedStreamInner> {
-        assert!(self.node_id() != stream_id.node_id());
+        debug_assert!(self.node_id() != stream_id.node_id());
         let mut maps = self.0.maps.lock();
+        let _ = self.0.index_store.lock().add_stream(stream_id);
         let node_id = stream_id.node_id();
         let stream_nr = stream_id.stream_nr();
         let remote_node = maps.get_or_create_remote_node(node_id);
         if let Some(state) = remote_node.streams.get(&stream_nr).cloned() {
             state
         } else {
-            tracing::info!("creating new replicated stream {}", stream_id);
+            tracing::debug!("creating new replicated stream {}", stream_id);
             let forest = self.0.forest.clone();
             let state = Arc::new(ReplicatedStreamInner::new(forest));
             self.spawn_task(
@@ -422,7 +452,7 @@ impl BanyanStore {
                 self.clone().careful_ingestion(stream_id, state.clone()),
             );
             remote_node.streams.insert(stream_nr, state.clone());
-            tracing::info!("publish new stream_id {}", stream_id);
+            tracing::debug!("publish new stream_id {}", stream_id);
             maps.publish_new_stream_id(stream_id);
             state
         }
@@ -455,6 +485,8 @@ impl BanyanStore {
                 );
                 // update the permanent alias
                 this.ipfs().alias(StreamAlias::from(stream_id), cid.as_ref())?;
+                // update present for stream
+                this.update_present(stream_id, tree.offset())?;
                 // update latest
                 tracing::debug!("set_latest! {}", tree);
                 stream.set_latest(tree);
@@ -470,7 +502,7 @@ impl BanyanStore {
 
     fn update_root(&self, stream_id: StreamId, root: Link) {
         if stream_id.node_id() != self.node_id() {
-            tracing::info!("update_root {} {}", stream_id, root);
+            tracing::debug!("update_root {} {}", stream_id, root);
             self.get_or_create_replicated_stream(stream_id).set_incoming(root);
         }
     }
@@ -487,14 +519,14 @@ impl BanyanStore {
     async fn compact_once(&self) -> Result<()> {
         let stream_ids = self.0.maps.lock().own_streams.keys().cloned().collect::<Vec<_>>();
         for stream_id in stream_ids {
-            tracing::info!("compacting stream {}", stream_id);
+            tracing::debug!("compacting stream {}", stream_id);
             self.pack(stream_id).await?;
         }
         Ok(())
     }
 
     fn pack(&self, stream_nr: StreamNr) -> impl Future<Output = Result<Option<Link>>> {
-        tracing::info!("packing stream {}", stream_nr);
+        tracing::debug!("packing stream {}", stream_nr);
         self.transform_stream(stream_nr, |txn, tree| txn.pack(tree))
     }
 
@@ -523,11 +555,11 @@ impl BanyanStore {
         while let Some(event) = sync.next().await {
             match event {
                 SyncEvent::Progress { missing } => {
-                    tracing::info!("{} sync_one: {}/{}", node_name, n, n + missing);
+                    tracing::debug!("{} sync_one: {}/{}", node_name, n, n + missing);
                     n += 1;
                 }
                 SyncEvent::Complete(Err(err)) => {
-                    tracing::info!("{} {}", node_name, err);
+                    tracing::debug!("{} {}", node_name, err);
                     return Err(err);
                 }
                 SyncEvent::Complete(Ok(())) => {}
@@ -538,7 +570,7 @@ impl BanyanStore {
                 // check that the tree is better than the one we have, otherwise bail out
                 anyhow::ensure!(temp.last_lamport() > validated_lamport);
                 // get the offset
-                let offset = temp.count();
+                let offset = temp.offset();
                 // update present. This can fail if stream_id is not a source_id.
                 let _ = self.update_highest_seen(stream_id, offset);
                 tree = Some(temp);
@@ -553,8 +585,8 @@ impl BanyanStore {
         // assign the new root as validated
         ipfs.alias(&StreamAlias::from(stream_id), Some(&cid))?;
         self.0.index_store.lock().received_lamport(tree.last_lamport().into())?;
-        tracing::debug!("sync_one complete {} => {}", stream_id, tree.count());
-        let offset = tree.count();
+        tracing::debug!("sync_one complete {} => {}", stream_id, tree.offset());
+        let offset = tree.offset();
         stream.set_latest(tree);
         // update present. This can fail if stream_id is not a source_id.
         let _ = self.update_present(stream_id, offset);
@@ -611,6 +643,7 @@ impl BanyanStore {
 
 trait AxTreeExt {
     fn last_lamport(&self) -> LamportTimestamp;
+    fn offset(&self) -> OffsetOrMin;
 }
 
 impl AxTreeExt for Tree {
@@ -619,6 +652,18 @@ impl AxTreeExt for Tree {
             Some(Index::Branch(branch)) => branch.summaries.lamport_range().max,
             Some(Index::Leaf(leaf)) => leaf.keys.lamport_range().max,
             None => Default::default(),
+        }
+    }
+    fn offset(&self) -> OffsetOrMin {
+        match self.count() {
+            0 => OffsetOrMin::MIN,
+            x => match u32::try_from(x) {
+                Ok(fits) => (fits - 1).into(),
+                Err(e) => {
+                    tracing::error!("Tree's count ({}) is too big to fit into an offset ({})", x, e);
+                    OffsetOrMin::MAX
+                }
+            },
         }
     }
 }

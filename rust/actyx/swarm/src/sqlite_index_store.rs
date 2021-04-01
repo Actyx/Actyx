@@ -61,7 +61,7 @@ impl SqliteIndexStore {
 
     // #[instrument(level = "debug")]
     pub fn open(path: DbPath) -> Result<Self> {
-        info!("Creating database {:?}", path);
+        debug!("Creating database {:?}", path);
         // These are the same flags that the npm SQLite package has
         let flags =
             OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_FULL_MUTEX;
@@ -83,7 +83,7 @@ impl SqliteIndexStore {
             .query_row("SELECT lamport FROM meta", NO_PARAMS, |row| {
                 let lamport: i64 = row.get(0)?;
                 let lamport = lamport as u64;
-                info!("Found lamport = {}", lamport);
+                debug!("Found lamport = {}", lamport);
                 Ok(lamport)
             })
             .or_else(|_| -> Result<u64> {

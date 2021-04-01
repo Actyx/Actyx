@@ -54,8 +54,8 @@ pub struct HttpClient {
     token_query: String,
 }
 
-const API_URI: &str = "http://localhost:4454/api/";
-const API_PATH: &str = "v2/events";
+const API_URI: &str = "http://localhost:4454/api";
+const API_PATH: [&str; 2] = ["v2", "events"];
 
 fn ensure_base(url: Url) -> anyhow::Result<Url> {
     anyhow::ensure!(!url.cannot_be_a_base(), "{} is not a valid base address", url);
@@ -72,7 +72,14 @@ impl HttpClient {
         let url = std::env::var("AX_API_URI").unwrap_or_else(|_| API_URI.to_string());
         let url = Url::parse(url.as_str())?;
         let mut url = ensure_base(url)?;
-        url.path_segments_mut().unwrap().push(API_PATH);
+        url.path_segments_mut().unwrap().extend(&API_PATH);
+        Self::new(client, url).await
+    }
+
+    pub async fn new_with_url(url: &str) -> anyhow::Result<HttpClient> {
+        let client = Client::new();
+        let url = Url::parse(url)?;
+        let url = ensure_base(url)?;
         Self::new(client, url).await
     }
 
@@ -96,7 +103,7 @@ impl HttpClient {
     fn url(&self, path: &str) -> Url {
         let mut url = self.url.clone();
         url.path_segments_mut().unwrap().pop_if_empty().push(path); // unwrap() because of ensure_base()
-        url.set_query(Some(self.token_query.as_str()));
+                                                                    // url.set_query(Some(self.token_query.as_str()));
         url
     }
 
@@ -127,7 +134,9 @@ impl HttpClient {
 #[async_trait]
 impl EventService for HttpClient {
     async fn node_id(&self) -> Result<NodeIdResponse> {
-        let response = self.do_request(|c| c.get(self.url("node_id"))).await?;
+        let response = self
+            .do_request(|c| c.get(self.url("node_id")).header("Authorization", "Bearer FIXME"))
+            .await?;
         let bytes = response
             .bytes()
             .await
@@ -142,7 +151,9 @@ impl EventService for HttpClient {
     }
 
     async fn offsets(&self) -> Result<OffsetMap> {
-        let response = self.do_request(|c| c.get(self.url("offsets"))).await?;
+        let response = self
+            .do_request(|c| c.get(self.url("offsets")).header("Authorization", "Bearer FIXME"))
+            .await?;
         let bytes = response
             .bytes()
             .await
@@ -158,7 +169,13 @@ impl EventService for HttpClient {
 
     async fn publish(&self, request: PublishRequest) -> Result<PublishResponse> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
-        let response = self.do_request(|c| c.post(self.url("publish")).json(&body)).await?;
+        let response = self
+            .do_request(|c| {
+                c.post(self.url("publish"))
+                    .header("Authorization", "Bearer FIXME")
+                    .json(&body)
+            })
+            .await?;
         let bytes = response
             .bytes()
             .await
@@ -174,7 +191,13 @@ impl EventService for HttpClient {
 
     async fn query(&self, request: QueryRequest) -> Result<BoxStream<'static, QueryResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
-        let response = self.do_request(|c| c.post(self.url("query")).json(&body)).await?;
+        let response = self
+            .do_request(|c| {
+                c.post(self.url("query"))
+                    .header("Authorization", "Bearer FIXME")
+                    .json(&body)
+            })
+            .await?;
         let res = to_lines(response.bytes_stream())
             .map(|bs| serde_json::from_slice(bs.as_ref()))
             // FIXME this swallows deserialization errors, silently dropping event envelopes
@@ -184,7 +207,13 @@ impl EventService for HttpClient {
 
     async fn subscribe(&self, request: SubscribeRequest) -> Result<BoxStream<'static, SubscribeResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
-        let response = self.do_request(|c| c.post(self.url("subscribe")).json(&body)).await?;
+        let response = self
+            .do_request(|c| {
+                c.post(self.url("subscribe"))
+                    .header("Authorization", "Bearer FIXME")
+                    .json(&body)
+            })
+            .await?;
         let res = to_lines(response.bytes_stream())
             .map(|bs| serde_json::from_slice(bs.as_ref()))
             // FIXME this swallows deserialization errors, silently dropping event envelopes
@@ -198,7 +227,11 @@ impl EventService for HttpClient {
     ) -> Result<BoxStream<'static, SubscribeMonotonicResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
-            .do_request(|c| c.post(self.url("subscribe_monotonic")).json(&body))
+            .do_request(|c| {
+                c.post(self.url("subscribe_monotonic"))
+                    .header("Authorization", "Bearer FIXME")
+                    .json(&body)
+            })
             .await?;
         let res = to_lines(response.bytes_stream())
             .map(|bs| serde_json::from_slice(bs.as_ref()))

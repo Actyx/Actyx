@@ -47,6 +47,13 @@ impl GetLogRequest {
             rx,
         )
     }
+
+    pub fn all_follow() -> (Self, Receiver<Vec<LogEvent>>) {
+        Self::new(Query {
+            follow: true,
+            mode: QueryMode::All,
+        })
+    }
 }
 pub fn spawn_with_name<F, T>(name: String, f: F) -> std::thread::JoinHandle<T>
 where
