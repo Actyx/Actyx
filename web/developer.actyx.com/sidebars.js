@@ -11,10 +11,10 @@ module.exports = {
       label: 'Local Development',
       collapsed: true,
       items: [
-        'how-to-guides/local-development/installing-actyx',
+        'how-to-guides/local-development/install-actyx',
         'how-to-guides/local-development/starting-a-new-project',
         'how-to-guides/local-development/setting-up-your-environment',
-        'how-to-guides/local-development/installing-cli-node-manager',
+        'how-to-guides/local-development/install-cli-node-manager',
         // 'how-to-guides/local-development/obtaining-a-development-certificate',
         'how-to-guides/local-development/common-development-errors',
       ],
@@ -95,18 +95,24 @@ module.exports = {
     },
     {
       type: 'category',
+      label: 'Swarms',
+      collapsed: true,
+      items: ['how-to-guides/swarms/setup-swarm', 'how-to-guides/swarms/setup-bootstrap-node'],
+    },
+    {
+      type: 'category',
       label: 'Data import and export',
       collapsed: true,
       items: [
-        'how-to-guides/integrating-with-actyx/user-interface',
+        // 'how-to-guides/integrating-with-actyx/user-interface',
         'how-to-guides/integrating-with-actyx/other-software',
-        'how-to-guides/integrating-with-actyx/front-end-frameworks',
-        'how-to-guides/integrating-with-actyx/plcs',
-        'how-to-guides/integrating-with-actyx/erps',
-        'how-to-guides/integrating-with-actyx/bi-analytics',
+        // 'how-to-guides/integrating-with-actyx/front-end-frameworks',
+        'how-to-guides/integrating-with-actyx/machines',
+        // 'how-to-guides/integrating-with-actyx/erps',
+        // 'how-to-guides/integrating-with-actyx/bi-analytics',
       ],
     },
-    {
+    /*     {
       type: 'category',
       label: 'Testing',
       collapsed: true,
@@ -117,21 +123,18 @@ module.exports = {
         'how-to-guides/testing/integration-testing',
         'how-to-guides/testing/ci-cd-pipeline',
       ],
-    },
+    }, */
     {
       type: 'category',
-      label: 'Packaging & Deployment',
+      label: 'Packaging',
       collapsed: true,
       items: [
-        'how-to-guides/configuring-and-packaging/front-end-apps',
-        'how-to-guides/configuring-and-packaging/headless-apps',
-        'how-to-guides/configuring-and-packaging/deployment-to-production',
-        'how-to-guides/configuring-and-packaging/updating-a-solution',
-        'how-to-guides/configuring-and-packaging/actyx-swarms',
-        'how-to-guides/configuring-and-packaging/bootstrap-node',
+        'how-to-guides/packaging/mobile-apps',
+        'how-to-guides/packaging/desktop-apps',
+        'how-to-guides/packaging/headless-apps',
       ],
     },
-    {
+    /*     {
       type: 'category',
       label: 'Monitoring & Debugging',
       collapsed: true,
@@ -153,7 +156,7 @@ module.exports = {
         'how-to-guides/common-use-cases/controlling-agvs',
         'how-to-guides/common-use-cases/parameterise-assembly-tool',
       ],
-    },
+    }, */
   ],
   conceptualSidebar: [
     {
@@ -167,6 +170,7 @@ module.exports = {
       label: 'Contents',
       collapsed: false,
       items: [
+        'conceptual-guides/how-actyx-works',
         'conceptual-guides/event-based-systems',
         'conceptual-guides/distributed-system-architectures',
         'conceptual-guides/local-first-cooperation',
@@ -187,69 +191,64 @@ module.exports = {
       type: 'category',
       label: 'Reference Documentation',
       collapsed: false,
-      items: ['reference/overview'],
-    },
-    {
-      type: 'category',
-      label: 'Contents',
-      collapsed: false,
       items: [
+        'reference/overview',
         'reference/actyx-reference',
         'reference/event-service',
         'reference/pond-api-reference',
         'reference/js-ts-sdk',
         'reference/rust-sdk',
         'reference/node-manager',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Actyx CLI',
+      collapsed: false,
+      items: [
+        'reference/cli/cli-overview',
         {
           type: 'category',
-          label: 'Actyx CLI',
-          collapsed: false,
+          label: 'ax\u00a0nodes',
+          collapsed: true,
+          items: ['reference/cli/nodes/ls'],
+        },
+        {
+          type: 'category',
+          label: 'ax\u00a0settings',
+          collapsed: true,
           items: [
-            'reference/cli/cli-overview',
-            {
-              type: 'category',
-              label: 'ax\u00a0nodes',
-              collapsed: true,
-              items: ['reference/cli/nodes/ls'],
-            },
-            {
-              type: 'category',
-              label: 'ax\u00a0settings',
-              collapsed: true,
-              items: [
-                'reference/cli/settings/scopes',
-                'reference/cli/settings/schema',
-                'reference/cli/settings/get',
-                'reference/cli/settings/set',
-                'reference/cli/settings/unset',
-              ],
-            },
-            {
-              type: 'category',
-              label: 'ax\u00a0logs',
-              collapsed: true,
-              items: ['reference/cli/logs/tail'],
-            },
-            {
-              type: 'category',
-              label: 'ax\u00a0swarms',
-              collapsed: true,
-              items: ['reference/cli/swarms/keygen'],
-            },
-            {
-              type: 'category',
-              label: 'ax\u00a0apps',
-              collapsed: true,
-              items: [
-                'reference/cli/apps/ls',
-                'reference/cli/apps/validate',
-                'reference/cli/apps/package',
-                'reference/cli/apps/deploy',
-                'reference/cli/apps/undeploy',
-                'reference/cli/apps/start',
-                'reference/cli/apps/stop',
-              ],
-            },
+            'reference/cli/settings/scopes',
+            'reference/cli/settings/schema',
+            'reference/cli/settings/get',
+            'reference/cli/settings/set',
+            'reference/cli/settings/unset',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'ax\u00a0logs',
+          collapsed: true,
+          items: ['reference/cli/logs/tail'],
+        },
+        {
+          type: 'category',
+          label: 'ax\u00a0swarms',
+          collapsed: true,
+          items: ['reference/cli/swarms/keygen'],
+        },
+        {
+          type: 'category',
+          label: 'ax\u00a0apps',
+          collapsed: true,
+          items: [
+            'reference/cli/apps/ls',
+            'reference/cli/apps/validate',
+            'reference/cli/apps/package',
+            'reference/cli/apps/deploy',
+            'reference/cli/apps/undeploy',
+            'reference/cli/apps/start',
+            'reference/cli/apps/stop',
           ],
         },
       ],
@@ -257,30 +256,27 @@ module.exports = {
   ],
   tutorialSidebar: [
     {
-      type: 'category',
-      label: 'Actyx Tutorials',
-      collapsed: false,
-      items: ['tutorials/overview'],
+      type: 'doc',
+      id: 'tutorials/overview', // string - document id
+    },
+    {
+      type: 'doc',
+      id: 'tutorials/quickstart', // string - document id
+    },
+    {
+      type: 'doc',
+      id: 'tutorials/chat', // string - document id
     },
     {
       type: 'category',
-      label: 'Contents',
-      collapsed: false,
+      label: 'Advanced Tutorial',
+      collapsed: true,
       items: [
-        'tutorials/quickstart',
-        'tutorials/tutorial',
-        {
-          type: 'category',
-          label: 'Advanced Tutorial',
-          collapsed: false,
-          items: [
-            'tutorials/advanced-tutorial/introduction',
-            'tutorials/advanced-tutorial/solution-architecture',
-            'tutorials/advanced-tutorial/get-started',
-            'tutorials/advanced-tutorial/explore-the-apps',
-            'tutorials/advanced-tutorial/next-steps',
-          ],
-        },
+        'tutorials/advanced-tutorial/introduction',
+        'tutorials/advanced-tutorial/solution-architecture',
+        'tutorials/advanced-tutorial/get-started',
+        'tutorials/advanced-tutorial/explore-the-apps',
+        'tutorials/advanced-tutorial/next-steps',
       ],
     },
   ],

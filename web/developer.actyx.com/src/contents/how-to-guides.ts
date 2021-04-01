@@ -115,7 +115,7 @@ const createHowTos = () => {
           link: '',
         },
         {
-          title: 'Integrating with PLCs',
+          title: 'Integrating with machines',
           link: '',
         },
         {
@@ -156,33 +156,43 @@ const createHowTos = () => {
       ],
     }, */
     {
-      category: 'Configuring, Packaging & Deploying',
-      description: 'Set up Actyx swarms. Package and deploy apps across nodes.',
+      category: 'Swarms',
+      description: 'Setup swarms and connect nodes.',
       contents: [
         {
-          title: 'Packaging front-end apps',
-          link: '',
+          title: 'Setup a swarm and configure nodes to join it',
+          link: 'swarms/setup-swarm',
         },
         {
-          title: 'Packaging headless apps',
-          link: '',
+          title: 'Setup a bootstrap node to connect nodes to each other',
+          link: 'swarms/setup-bootstrap-node',
+        },
+      ],
+    },
+    {
+      category: 'Packaging Apps for different platforms',
+      description: 'Discover the possibilities you have when packaging apps for Actyx.',
+      contents: [
+        {
+          title: 'Mobile apps',
+          link: '/docs/how-to-guides/packaging/mobile-apps',
         },
         {
+          title: 'Desktop apps',
+          link: '/docs/how-to-guides/packaging/desktop-apps',
+        },
+        {
+          title: 'Headless apps',
+          link: '/docs/how-to-guides/packaging/headless-apps',
+        },
+        /* {
           title: 'Deploying to production',
           link: '',
         },
         {
           title: 'Updating an Actyx solution',
           link: '',
-        },
-        {
-          title: 'Turning your Actyx nodes into a swarm',
-          link: '',
-        },
-        {
-          title: 'Setting up a bootstrap node',
-          link: '',
-        },
+        }, */
       ],
     },
     {

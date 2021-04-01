@@ -8,3 +8,141 @@ keywords: [explanation, how actyx works]
 description: Conceptual guide on how Actyx works.
 image: /images/defaults/default.svg
 ---
+
+### The example process
+
+This conceptual guide explains how Actyx works with a simple example process: A workpiece is processed by a machine, and then packaged by a robot:
+
+![how-actyx-works-1](/images/conceptual-guides/how-actyx-works/how-actyx-works-1.png)
+
+### The traditional programming model
+
+Traditionally, you would write two apps, one dealing with each asset. These apps would then be connected to each other with a database or broker:
+
+![how-actyx-works-2](/images/conceptual-guides/how-actyx-works/how-actyx-works-2.png)
+
+### The local-twin programming model
+
+With the Actyx Platform, you program the process as autonomous _local twins_ that publish and consume events, and develop states based on these events:
+
+![how-actyx-works-3](/images/conceptual-guides/how-actyx-works/how-actyx-works-3.png)
+
+Local twins are implemented uin the Typescript programming language using APIs provided by the **Actyx Pond** library.
+We call these twins: __**fishes**__. The logic of a fish is defined by three things:
+
+1. The fish **state**, frequently implemented as a tagged union (ref. enum with data).
+
+```ts
+// Possible states of the machine
+export type Idle = 'disabled' | 'idle'
+export type Running = 'active' | 'interrupted'
+export type State = undefined | Idle | Running
+```
+
+2. The **events** that may influence this state, including those created by other fish.
+
+```ts
+// Event: machine state has changed
+export type SetStateEvent = {
+  eventType: 'stateChanged'
+  machine: string
+  state: State
+}
+
+// Event: a production order has been started
+export type OrderStartedEvent = {
+  eventType: 'started'
+  machine: string
+  order: Order
+}
+
+// Event: a production order has completed
+export type OrderFinishedEvent = {
+  eventType: 'finished'
+  machine: string
+  order: Order
+}
+```
+
+3. An **event reducer** that updates the fish's state when a new event is received.
+
+```ts
+onEvent: (state, event) => {
+  switch (event.eventType) {
+    case 'stateChanged':
+      state.stateType = event.state
+      break
+    case 'started':
+      state.stateType = 'active'
+      state.order = event.order
+      break
+    case 'finished':
+      if (state.order.id === event.order.id) {
+        state.stateType = 'idle'
+        state.order = undefined
+      }
+      break
+    default:
+      // future compatibility: ignore unknown events
+      break
+  }
+  // return state, whether modified or not
+  return state
+}
+```
+### The local computing environment
+
+After you have programmed the local twins, you create local computing environments using edge devices. The local computing environment provides the infrastructure necessary for running local twins. It is a hardware/software combination.
+
+The hardware can be any **mobile device**, **PLC**, or **PC** running Linux, Android, Windows or Docker:
+
+- Tablets: Panasonic, Zebra, Samsung
+- PLCs: Phoenix, Beckhoff, Weidmüller
+- PCs: any
+
+The software is **ActyxOS**. It runs on each device and acts as a decentralized infrastructure which provides data dissemination, data persistence, and runtimes.
+
+![how-actyx-works-4](/images/conceptual-guides/how-actyx-works/how-actyx-works-4.png)
+
+_**In this example, you could deploy ActyxOS to a small industrial PC that is connected to the machine (or directly to the machine's PLC) and deploy ActyxOS to a small industrial PC that you connect to the robot.**
+_
+### Deployment of twins as apps
+
+Twins are packaged into **apps** that are deployed to the edge devices. Apps are the unit of deployment and contain twins as well as code that interacts with them:
+
+- **User interfaces** for human interaction
+- **Machine integrations** (e.g. OPC UA, I/Os)
+- **Software integrations** (e.g. ERP, Cloud)
+
+![how-actyx-works-5](/images/conceptual-guides/how-actyx-works/how-actyx-works-5.png)
+
+### Local interaction
+
+After you have deployed the apps to the edge devices running ActyxOS, Twins interact and cooperate locally:
+
+![how-actyx-works-6](/images/conceptual-guides/how-actyx-works/how-actyx-works-6.png)
+
+Due to the local interaction of the twins, there is no dependency between environments.
+
+![how-actyx-works-7](/images/conceptual-guides/how-actyx-works/how-actyx-works-7.png)
+
+### Synchronization of local twins
+
+When edge devices are connected, ActyxOS automatically synchronizes the twins in real-time:
+
+![how-actyx-works-8](/images/conceptual-guides/how-actyx-works/how-actyx-works-8.png)
+
+The twins' history is consistent and forever accessible:
+
+![how-actyx-works-9](/images/conceptual-guides/how-actyx-works/how-actyx-works-9.png)
+
+### Add new twins to the process
+
+To extend or scale the process, you simply add new local twins:
+
+![how-actyx-works-10](/images/conceptual-guides/how-actyx-works/how-actyx-works-10.png)
+
+## Where next?
+
+- [Get started with the quickstart guide](../tutorials/quickstart)
+- [Check out our tutorials](../tutorials/overview)

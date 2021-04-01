@@ -66,43 +66,99 @@ const Image = styled.div<{
   background: url(${(props) => props.img}) no-repeat center;
   background-size: 260px;
 `
-type Props = Readonly<{
-  img: string
-}>
 
-export const ActyxEssentials: React.FC<Props> = ({ img }: Props) => (
+export const ActyxEssentials: React.FC = () => (
   <Wrapper>
     <Header>
-      <Headline headline="Actyx essentials" />
+      <Headline headline="Actyx Essentials" />
       <Body body="Check out the following topics to learn the essentials to know how to build, run, and deploy your solution to your factory customers." />
     </Header>
     <LinkWrapper>
-      <Links color="green">
-        <Link title="Event-based systems" link="" color="green" positive />
-        <Link title="Thinking in Actyx" link="" color="green" positive />
-        <Link title="Peer Discovery" link="" color="green" positive />
-        <Link title="Performance and Limitations" link="" color="green" positive />
-      </Links>
       <Links color="blue">
-        <Link title="Installing and starting Actyx" link="" color="blue" positive />
-        <Link title="Modelling processes in local twins" link="" color="blue" positive />
-        <Link title="Some SDK Guide" link="" color="blue" positive />
-        <Link title="Packaging Front-End Apps" link="" color="blue" positive />
+        <Link
+          title="Install and start Actyx"
+          link="/docs/how-to-guides/local-development/installing-actyx"
+          color="blue"
+          positive
+        />
+        <Link
+          title="Set up my Environment"
+          link="/docs/how-to-guides/local-development/setting-up-your-environment"
+          color="blue"
+          positive
+        />
+        <Link
+          title="Package Desktop Apps"
+          link="/docs/how-to-guides/packaging/desktop-apps"
+          color="blue"
+          positive
+        />
+        <Link
+          title="Set up a swarm"
+          link="/docs/how-to-guides/swarms/setup-swarm"
+          color="blue"
+          positive
+        />
+      </Links>
+      <Links color="green">
+        <Link
+          title="Event-based systems"
+          link="/docs/conceptual-guides/event-based-systems"
+          color="green"
+          positive
+        />
+        <Link
+          title="Actyx Jargon"
+          link="/docs/conceptual-guides/actyx-jargon"
+          color="green"
+          positive
+        />
+        <Link
+          title="The Actyx Node"
+          link="/docs/conceptual-guides/the-actyx-node"
+          color="green"
+          positive
+        />
+        <Link
+          title="Performance and Limitations"
+          link="/docs/conceptual-guides/performance-and-limits-of-actyx"
+          color="green"
+          positive
+        />
       </Links>
       <Links color="purple">
-        <Link title="Actyx API Reference" link="" color="purple" positive />
-        <Link title="Actyx SDK Reference" link="" color="purple" positive />
-        <Link title="CLI Commands Reference" link="" color="purple" positive />
-        <Link title="Node Manager Features" link="" color="purple" positive />
+        <Link
+          title="Actyx API Reference"
+          link="/docs/reference/actyx-reference"
+          color="purple"
+          positive
+        />
+        <Link
+          title="Event Service Reference"
+          link="/docs/reference/event-service"
+          color="purple"
+          positive
+        />
+        <Link
+          title="CLI Reference"
+          link="/docs/reference/cli/cli-overview"
+          color="purple"
+          positive
+        />
+        <Link
+          title="Node Manager Features"
+          link="/docs/reference/node-manager"
+          color="purple"
+          positive
+        />
       </Links>
       <Card
         color="white"
         headline="Actyx Community"
         body="Join our developer community and discover our forum."
         cta="Forum"
-        link="/"
+        link="https://community.actyx.com/"
       />
-      {/* <Image img={img} /> */}
     </LinkWrapper>
   </Wrapper>
 )

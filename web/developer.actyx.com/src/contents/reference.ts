@@ -6,7 +6,7 @@ const createReferences = () => {
   const references = [
     {
       title: 'ActyxOS Reference',
-      description: 'Supported architectures and operating systems and node settings schema.',
+      description: 'Supported operating systems, archiectures, and the node settings schema.',
       link: 'actyx-reference',
     },
     {

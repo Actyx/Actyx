@@ -17,12 +17,12 @@ module.exports = {
       },
     ],
     [require.resolve('./src/plugins/analytics'), {}],
-    [
+/*     [
       require.resolve('./src/plugins/arm'),
       {
         releasesYml: './__auto-releases.yml',
       },
-    ],
+    ], */
   ],
   themeConfig: {
     announcementBar: {
@@ -107,7 +107,7 @@ module.exports = {
           items: [
             {
               label: 'Actyx',
-              to: 'docs/reference/actyx-api',
+              to: 'docs/reference/actyx-reference',
             },
             {
               label: 'SDK',
@@ -115,7 +115,7 @@ module.exports = {
             },
             {
               label: 'CLI',
-              to: 'docs/reference/cli',
+              to: 'docs/reference/cli/cli-overview',
             },
             {
               label: 'Node Manager',
@@ -136,7 +136,7 @@ module.exports = {
             },
             {
               label: 'Packaging UI Apps',
-              to: 'docs/how-to-guides/configuring-and-packaging/front-end-apps',
+              to: 'docs/how-to-guides/packaging/mobile-apps',
             },
             {
               label: 'Actyx SDK',
@@ -173,8 +173,8 @@ module.exports = {
               to: 'https://www.community.actyx.com',
             },
             {
-              label: 'Actyx Academy',
-              to: 'https://www.actyx.com',
+              label: 'Discord',
+              to: 'https://discord.gg/262yJhc',
             },
             {
               label: 'FAQ',

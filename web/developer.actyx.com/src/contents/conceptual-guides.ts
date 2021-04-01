@@ -5,6 +5,11 @@ This file contains all categories and their contents of how-to guides.
 const createConceptuals = () => {
   const conceptualGuides = [
     {
+      title: 'How Actyx works',
+      description: 'A short introduction into how actyx works on a conceptual level.',
+      link: 'how-actyx-works',
+    },
+    {
       title: 'Building Event-based Systems',
       description: 'Fundamental principles that apply when working with event-based systems.',
       link: 'event-based-systems',

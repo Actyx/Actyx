@@ -1,0 +1,103 @@
+---
+title: Setup a swarm
+id: setup-swarm
+hide_title: false
+hide_table_of_contents: false
+sidebar_label: Setup a swarm
+keywords: [swarm, configuration]
+description: Swarm setup guide.
+image: /images/defaults/default.svg
+---
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+An ActyxOS swarm is a mesh of nodes communicating in a local network. A swarm may have 1 to N nodes in it.
+
+![swarms](/images/how-to-guides/swarms/swarms.svg)
+
+A swarm is defined by a single property, the so-called swarm key.
+In order to participate in a swarm, a node must have the secret swarm key.
+
+Note that yo can do all of the following steps either with the Actyx CLI, or the ActyxOS Node Manager.
+
+### Create a swarm key
+
+:::info Default configuration
+By default, Actyx nodes are configured with a public swarm key.
+However, in this case your swarm is not secure inside your network.
+For production usage, we advise to create your own swarm key.
+:::
+
+<Tabs
+  groupId="os"
+  defaultValue={"cli"}
+  values={[
+    { label: 'Actyx CLI', value: 'cli' },
+    { label: 'Node Manager', value: 'manager' },
+  ]}
+>
+
+
+<TabItem value="cli">
+
+
+You can create a swarm key with the Actyx CLI:
+
+```text
+ax swarms keygen
+Generating swarm key, it might take some seconds...
+L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCjZiNjkzNTQzNGM0Yzc5NjY2OTM4NTkzMjM0Njg0MTY5MzA3NzQ1NmU0MjVhMzk2ZDU3NmE3OTRmNTIzMTc3NTk=
+```
+
+</TabItem>
+<TabItem value="manager">
+
+
+In the Node Manager, you can create a swarm key in the Tools tab:
+
+![swarm-key-node-manager](/images/how-to-guides/swarms/swarm-key-node-manager.png)
+
+</TabItem>
+</Tabs>
+
+
+### Join the swarm with a node
+
+<Tabs
+  groupId="os"
+  defaultValue={"cli"}
+  values={[
+    { label: 'Actyx CLI', value: 'cli' },
+    { label: 'Node Manager', value: 'manager' },
+  ]}
+>
+
+
+<TabItem value="cli">
+
+
+The swarm key is a node setting. You can use `ax settings set` to configure it:
+
+```text
+ax settings set --local com.actyx.os/general/swarmKey L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCjZiNjkzNTQzNGM0Yzc5NjY2OTM4NTkzMjM0Njg0MTY5MzA3NzQ1NmU0MjVhMzk2ZDU3NmE3OTRmNTIzMTc3NTk= localhost
+```
+
+</TabItem>
+<TabItem value="manager">
+
+
+The swarm key is a node setting. Go to the settings tab, change the swarm key property, and press save:
+
+![swarm-key-node-manager](/images/how-to-guides/swarms/configure-swarm-key-node-manager.png)
+
+</TabItem>
+</Tabs>
+
+
+If you configure nodes in the same network with the same swarm key, they will automatically connect to each other via mDNS.
+If mDNS is disabled on your device or network, or you are running ActyxOS on Docker, you have to [setup a bootstrap node to connect your devices](setup-bootstrap-node.mdx).
+
+<!-- TODO write peer discovery
+For more information on how nodes discover and connect to each other, please check out our conceptual guide on peer discovery.
+-->
