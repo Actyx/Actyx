@@ -5,71 +5,41 @@ This file contains all categories and their contents of how-to guides.
 const createReferences = () => {
   const references = [
     {
-      title: 'Building Event-based Systems',
-      description: 'Fundamental principles that apply when working with event-based systems.',
-      link: 'event-based-systems',
+      title: 'ActyxOS Reference',
+      description: 'Supported architectures and operating systems and node settings schema.',
+      link: 'actyx-reference',
     },
     {
-      title: 'Distributed systems architectures and caveats',
+      title: 'Event Service API',
       description:
-        'Fundamental principles that apply when working in distributed systems, such as eventual consistency and the CAP theorem.',
-      link: 'distributed-system-architectures',
+        'The underlying HTTP API responsible for publishing, querying and subscribing to events.',
+      link: 'event-service',
     },
     {
-      title: 'Local-First Cooperation Paradigm',
-      description: 'How the LFC paradigm works and how its principles apply to factory automation.',
-      link: 'local-first-cooperation',
-    },
-    /*     {
-      title: 'Thinking in Actyx',
-      description:
-        'How local twins are used conceptually to build resilient factory solutions and how they can be transferred to code.',
-      link: '',
-    }, */
-    {
-      title: 'Actyx Jargon',
-      description:
-        'Actyx has lots of amazing features that make factory automation easier. But, like any technology, that means there is some jargon that can be confusing to newcomers.',
-      link: 'actyx-jargon',
-    },
-    /*     {
-      title: 'Actyx vs. the Cloud',
-      description:
-        'Key differences of edge and cloud computing and points where both technologies can effectively complement each other.',
-      link: '',
-    }, */
-    {
-      title: 'Peer Discovery',
-      description:
-        'In distributed systems, many nodes need to collaborate closely. How do they find and talk to each other?',
-      link: 'peer-discovery',
+      title: 'Actyx Pond',
+      description: 'A programming framework for writing distributed applications.',
+      link: 'pond-api-reference',
     },
     {
-      title: 'Performance and limits of Actyx',
-      description: 'Performance limitations in real-world factory solutions.',
-      link: 'performance-and-limits-of-actyx',
+      title: 'Javascript/Typescript SDK',
+      description: 'The Javascript/Typescript SDK for the Event Service HTTP API.',
+      link: 'js-ts-sdk',
     },
     {
-      title: 'Security in Actyx',
-      description: 'Basic netowrk security guarantees provided by ActyxOS.',
-      link: 'security-in-actyx',
+      title: 'Rust SDK',
+      description: 'The Rust SDK for the Event Service HTTP API.',
+      link: 'rust-sdk',
     },
     {
-      title: 'ActyxOS components',
-      description: 'Architecture and components of ActyxOS.',
-      link: 'the-actyx-node',
+      title: 'Actyx Node Manager',
+      description: 'An easy-to-use GUI application for managing ActyxOS nodes.',
+      link: 'node-manager',
     },
     {
-      title: 'ActyxOS node and app lifecycle',
-      description: 'Lifecycle of ActyxOS and apps deployed to ActyxOS runtimes.',
-      link: 'actyx-node-lifecycle',
+      title: 'Actyx CLI',
+      description: 'The command line interface for managing ActyxOS nodes.',
+      link: 'cli/cli-overview',
     },
-    /*     {
-      title: 'Apps in the factory context',
-      description:
-        'Key capabilities, use-cases, and differences of headless and front-end applications in the factory setting',
-      link: '',
-    }, */
   ]
   return references
 }
