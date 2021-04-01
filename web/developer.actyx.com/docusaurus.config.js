@@ -173,8 +173,8 @@ module.exports = {
               to: 'https://www.community.actyx.com',
             },
             {
-              label: 'Actyx Academy',
-              to: 'https://www.actyx.com',
+              label: 'Discord',
+              to: 'https://discord.gg/262yJhc',
             },
             {
               label: 'FAQ',
