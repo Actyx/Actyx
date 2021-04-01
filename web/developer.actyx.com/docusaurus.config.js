@@ -148,7 +148,7 @@ module.exports = {
             },
             {
               label: 'Local First',
-              to: 'docs/conceptual-guides/local-first-computing',
+              to: 'docs/conceptual-guides/local-first-cooperation',
             },
             {
               label: 'Thinking in Actyx',
