@@ -1114,3 +1114,20 @@ pre .line-numbers {
   padding-left: 3.8em;
   counter-reset: linenumber;
 }
+
+
+
+
+.tabs-container {
+  margin-bottom: 2rem;
+  /* margin-left: 0.5rem;
+  margin-right: 0.5rem; */
+  /* border: 1px solid var(--ifm-toc-border-color); */
+  /* padding: 1rem; */
+}
+
+.tabs__item {
+  padding: 0.5rem;
+  font-weight: normal;
+  border-bottom-width: 1.5px;
+}

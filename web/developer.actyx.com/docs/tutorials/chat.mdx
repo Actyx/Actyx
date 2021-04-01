@@ -8,9 +8,6 @@ keywords: [tutorial]
 image: /images/defaults/default.svg
 ---
 
-import Tabs from '@theme/Tabs'
-import TabItem from '@theme/TabItem'
-
 <!-- markdownlint-disable MD025 -->
 
 In this tutorial, we are going to build a small chat app using Actyx. **You might be tempted to skip it because you are not building chats in real-life — give it a chance.** The techniques that you will learn in this tutorial are fundamental to building anything on the platform, and mastering them will give you a good understanding of its capabilities.
@@ -39,16 +36,10 @@ Now, let's get right to it. In this section, we will install Actyx and set up a 
 
 ### Install Actyx
 
-<Tabs
-  groupId="operating-systems"
-  defaultValue="windows"
-  values={[
-    { label: 'Windows', value: 'windows', },
-    { label: 'Linux', value: 'linux', },
-    { label: 'macOS', value: 'macos', },
-  ]
-}>
-<TabItem value="windows">
+import { Tabs } from '../../src/components'
+
+<Tabs>
+<Windows>
 
 
 - Download [Actyx for Windows](https://axartifacts.blob.core.windows.net/artifacts/e6ce4c267b1afde174b63745000127f725025750/windows-binaries/windows-x86_64/ActyxOS-Installer.exe)
@@ -59,8 +50,8 @@ Now, let's get right to it. In this section, we will install Actyx and set up a 
 If you have any problems check out the [Actyx installation guide](../docs/how-to-guides/local-development/installing-actyx.mdx).
 :::
 
-</TabItem>
-<TabItem value="linux">
+</Windows>
+<Linux>
 
 
 - Download Actyx for Linux ([64 bit](https://axartifacts.blob.core.windows.net/artifacts/feea217d729d06224838c4d2fcf35ba51c87c64e/linux-binaries/linux-x86_64/actyxos-linux), [ARM 64 bit](https://axartifacts.blob.core.windows.net/artifacts/feea217d729d06224838c4d2fcf35ba51c87c64e/linux-binaries/linux-aarch64/actyxos-linux))
@@ -70,8 +61,8 @@ If you have any problems check out the [Actyx installation guide](../docs/how-to
 If you have any problems check out the [Actyx installation guide](../docs/how-to-guides/local-development/installing-actyx.mdx).
 :::
 
-</TabItem>
-<TabItem value="macos">
+</Linux>
+<Mac>
 
 
 - Download [Actyx for Mac](https://axartifacts.blob.core.windows.net/artifacts/0010_manual_actyxos-mac-1.1.2/actyxos-mac)
@@ -81,7 +72,7 @@ If you have any problems check out the [Actyx installation guide](../docs/how-to
 If you have any problems check out the [Actyx installation guide](../docs/how-to-guides/local-development/installing-actyx.mdx).
 :::
 
-</TabItem>
+</Mac>
 </Tabs>
 
 

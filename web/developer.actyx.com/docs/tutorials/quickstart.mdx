@@ -12,40 +12,76 @@ image: /images/defaults/default.svg
 
 This quickstart is intended for intermediate to advanced developers. It only gets you up and running with Actyx. For a gentler intro to Actyx, head to the [Chat Tutorial](chat.mdx).
 
-:::info Need help?
-If you have any issues, you are welcome to post in the [Community Forum](https://community.actyx.com/) or join our [Discord chat](https://discord.gg/262yJhc).
-:::
 
+_Before starting, make sure you have [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
+and [Node.js](https://nodejs.org/en/) installed on your computer._
 
-## Requirements
-
-- **Git**, which you can [install from here](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
-- **Node.js** and **npm**, which you can [install from here](https://nodejs.org/en/)
-
-## Install Actyx
+1. Install and start Actyx on your computer
 
 import { Tabs } from '../../src/components'
 
 <Tabs>
 <Windows>
 
-The way to install on XX is to do this.
-
-:::info
-asdasdasd
-:::
+- Download [Actyx for Windows](https://axartifacts.blob.core.windows.net/artifacts/e6ce4c267b1afde174b63745000127f725025750/windows-binaries/windows-x86_64/ActyxOS-Installer.exe)
+- Double click and run through the installer
+- Start Actyx via the Start Menu; a tray icon will appear
 
 </Windows>
-
-<Mac>
-
-This is some other tab!
-
-</Mac>
-
 <Linux>
 
-This is on Linux
-</Linux>
+- Download Actyx for Linux ([64 bit](https://axartifacts.blob.core.windows.net/artifacts/feea217d729d06224838c4d2fcf35ba51c87c64e/linux-binaries/linux-x86_64/actyxos-linux), [ARM 64 bit](https://axartifacts.blob.core.windows.net/artifacts/feea217d729d06224838c4d2fcf35ba51c87c64e/linux-binaries/linux-aarch64/actyxos-linux))
+- Open a terminal, navigate to your downloads folder and run the following command `chmod +x actyxos-linux; ./actyxos-linux`
 
+</Linux>
+<Mac>
+
+- Download [Actyx for Mac](https://axartifacts.blob.core.windows.net/artifacts/0010_manual_actyxos-mac-1.1.2/actyxos-mac)
+- Open a terminal and run the following command `cd ~/Downloads; chmod +x actyxos-mac; ./actyxos-mac`
+
+</Mac>
 </Tabs>
+
+2. Now download and set up the quickstart project by running `npm init actyx quickstart`
+
+```
+$ npm init actyx quickstart
+✔ Loaded starter project
+✔ Installed dependencies
+Type 'cd quickstart && npm run start' to run
+```
+
+3. Once the set up is done, navigate into the `quickstart` directory and run it with `npm run start`
+
+```
+$ cd quickstart
+$ npm run start
+
+> actyx-quickstart@1.0.0 start
+> ts-node index
+
+Hello, World!
+Hello 1!
+Hello 2!
+```
+
+If you see messages starting with "Hello" pop up, everything is working! Press Ctrl+C to shutdown the process.
+
+:::caution Error `ECONNREFUSED 127.0.0.1:4243`
+If you get this error please double-check that Actyx is actually running on your computer.
+:::
+
+4. Now you are ready to start programming on Actyx
+
+Try editing the code in the `index.ts` file. Then save your changes and restart the node process.
+
+## What's next?
+
+- Build an end-to-end system by following the [advanced tutorial](advanced-tutorial/introduction.mdx)
+- Figure out how to build on Actyx with practical [how-to guides](../how-to-guides/overview.mdx)
+- Learn about the fundamentals by reading the [conceptual guides](../conceptual-guides/overview.mdx)
+
+
+:::info Need help?
+If you have any issues, you are welcome to post in the [Community Forum](https://community.actyx.com/) or join our [Discord chat](https://discord.gg/262yJhc).
+:::
