@@ -76,12 +76,6 @@ export const ActyxEssentials: React.FC = () => (
           positive
         />
         <Link
-          title="Set up your environment"
-          link="/docs/how-to/local-development/set-up-your-environment"
-          color="blue"
-          positive
-        />
-        <Link
           title="Set up a new project"
           link="/docs/how-to/local-development/set-up-a-new-project"
           color="blue"

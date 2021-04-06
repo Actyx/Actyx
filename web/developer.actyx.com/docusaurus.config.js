@@ -17,7 +17,7 @@ module.exports = {
       },
     ],
     [require.resolve('./src/plugins/analytics'), {}],
-/*     [
+    /*     [
       require.resolve('./src/plugins/arm'),
       {
         releasesYml: './__auto-releases.yml',
@@ -34,7 +34,7 @@ module.exports = {
         out: 'reference/js-ts-sdk',
         sidebar: {
           sidebarFile: '__js-ts-sdk-sidebar.js',
-          fullNames: false
+          fullNames: false,
         },
       },
     ],
@@ -104,24 +104,6 @@ module.exports = {
           position: 'right',
           to: 'https://community.actyx.com/',
         },
-        /* {
-          label: 'Community',
-          position: 'right',
-          items: [
-            {
-              label: 'Blog',
-              href: '/blog',
-            },
-            {
-              label: 'Forum',
-              href: 'https://community.actyx.com/',
-            },
-            {
-              label: 'Academy',
-              href: 'https://community.actyx.com/',
-            },
-          ],
-        }, */
       ],
     },
     footer: {
@@ -133,6 +115,48 @@ module.exports = {
       style: 'dark',
       links: [
         {
+          title: 'Start Building',
+          items: [
+            {
+              label: 'Install and start Actyx',
+              to: 'docs/how-to/local-development/install-actyx',
+            },
+            {
+              label: 'Set up a new project',
+              to: 'docs/how-to/local-development/set-up-a-new-project',
+            },
+            {
+              label: 'Package mobile apps',
+              to: 'docs/how-to/packaging/mobile-apps',
+            },
+            {
+              label: 'Get started with Pond',
+              to: 'docs/how-to/actyx-pond/getting-started',
+            },
+          ],
+        },
+        {
+          title: 'Essential Concepts',
+          items: [
+            {
+              label: 'How Actyx works',
+              to: 'docs/conceptual/how-actyx-works',
+            },
+            {
+              label: 'Event-based systems',
+              to: 'docs/conceptual/event-based-systems',
+            },
+            {
+              label: 'Local First Cooperation',
+              to: 'docs/conceptual/local-first-cooperation',
+            },
+            {
+              label: 'Apps in the factory',
+              to: 'docs/conceptual/apps-in-the-factory-context',
+            },
+          ],
+        },
+        {
           title: 'Reference Docs',
           items: [
             {
@@ -140,7 +164,7 @@ module.exports = {
               to: 'docs/reference/actyx-reference',
             },
             {
-              label: 'SDK',
+              label: 'JS/TS SDK',
               to: 'docs/reference/js-ts-sdk',
             },
             {
@@ -150,48 +174,6 @@ module.exports = {
             {
               label: 'Node Manager',
               to: 'docs/reference/node-manager',
-            },
-          ],
-        },
-        {
-          title: 'Start Building',
-          items: [
-            {
-              label: 'Installing Actyx',
-              to: 'docs/how-to/local-development/install-actyx',
-            },
-            {
-              label: 'Modelling with Twins',
-              to: 'docs/how-to/process-logic/modelling-processes-in-twins',
-            },
-            {
-              label: 'Packaging mobile apps',
-              to: 'docs/how-to/packaging/mobile-apps',
-            },
-            {
-              label: 'Actyx SDK',
-              to: 'docs/how-to/sdk/placeholder',
-            },
-          ],
-        },
-        {
-          title: 'Essential Concepts',
-          items: [
-            {
-              label: 'Event-based Systems',
-              to: 'docs/conceptual/event-based-systems',
-            },
-            {
-              label: 'Local First',
-              to: 'docs/conceptual/local-first-cooperation',
-            },
-            {
-              label: 'Thinking in Actyx',
-              to: 'docs/conceptual/thinking-in-actyx',
-            },
-            {
-              label: 'Apps in Factories',
-              to: 'docs/conceptual/apps-in-the-factory-context',
             },
           ],
         },
@@ -224,7 +206,7 @@ module.exports = {
               to: 'https://www.actyx.com',
             },
             {
-              label: 'About',
+              label: 'Team',
               to: 'https://www.actyx.com/about',
             },
             {
