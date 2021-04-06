@@ -10,7 +10,7 @@ image: /images/defaults/default.svg
 ---
 
 Actyx CLI is the command line interface that lets you interact with and mange your ActyxOS nodes.
-For installation instructions, please refer to [this how-to guide](../../how-to/local-development/installing-cli-node-manager.mdx).
+For installation instructions, please refer to [this how-to guide](../../how-to/local-development/install-cli-node-manager.mdx).
 
 <h2>Subcommands</h2>
 
