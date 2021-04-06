@@ -21,8 +21,8 @@
     "lint": "eslint './src/**/*.{js,ts,tsx}' & prettier './src/**/*.{js,ts,tsx}' --check && npm run lint:md:check && npm run lint:txt:check",
     "lint:code:fix": "eslint './src/**/*.{js,ts,tsx}' --fix & prettier './src/**/*.{js,ts,tsx}' --write",
     "lint:fix": "npm run lint:code:fix && npm run lint:txt:fix && npm run lint:md:fix",
-    "check:spelling": "mdspell './docs/**/*.md' './docs/**/*.mdx' './blog/**/*.md' './blog/**/*.mdx' --ignore-numbers --ignore-acronyms --en-us --report",
-    "fix:spelling": "mdspell './docs/**/*.md' './docs/**/*.mdx' './blog/**/*.md' './blog/**/*.mdx' --ignore-numbers --ignore-acronyms --en-us",
+    "check:spelling": "mdspell './docs/**/*.md' './docs/**/*.mdx' './blog/**/*.md' './blog/**/*.mdx' '!./docs/reference/js-ts-sdk/**/*.md' --ignore-numbers --ignore-acronyms --en-us --report",
+    "fix:spelling": "mdspell './docs/**/*.md' './docs/**/*.mdx' './blog/**/*.md' './blog/**/*.mdx' '!./docs/reference/js-ts-sdk/**/*.md' --ignore-numbers --ignore-acronyms --en-us",
     "test": "npm run lint && npm run check:spelling",
     "serve": "docusaurus serve",
     "check:links": "blc -ro http://localhost:3000"
