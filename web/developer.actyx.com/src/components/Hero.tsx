@@ -121,6 +121,7 @@ const Button = styled.div<{
   margin-left: 16px;
   margin-right: 16px;
   cursor: pointer;
+  text-align: center;
 `
 
 type Props = Readonly<{
