@@ -5,4 +5,4 @@ sidebar_label: Pre-built apps
 
 No, but stay tuned!
 
-We currently do not offer any pre-built apps or components. But we have some ideas about this, so make sure you stay informed by checking our [blog](https://www.actyx.com/news) from time to time.
+We currently do not offer any prebuilt apps or components. But we have some ideas about this, so make sure you stay informed by checking our [blog](https://www.actyx.com/news) from time to time.

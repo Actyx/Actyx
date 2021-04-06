@@ -11,27 +11,27 @@ const createHowTos = () => {
       contents: [
         {
           title: 'Installing and starting Actyx',
-          link: '/docs/how-to-guides/local-development/installing-actyx',
+          link: '/docs/how-to/local-development/install-actyx',
         },
         {
           title: 'Starting a new project',
-          link: '/docs/how-to-guides/local-development/starting-a-new-project',
+          link: '/docs/how-to/local-development/starting-a-new-project',
         },
         {
           title: 'Setting up your JS environment',
-          link: '/docs/how-to-guides/local-development/setting-up-your-environment',
+          link: '/docs/how-to/local-development/setting-up-your-environment',
         },
         {
           title: 'Installing Actyx CLI and Node Manager',
-          link: '/docs/how-to-guides/local-development/installing-cli-node-manager',
+          link: '/docs/how-to/local-development/install-cli-node-manager',
         },
         /* {
           title: 'Obtaining your development certificate',
-          link: '/docs/how-to-guides/local-development/obtaining-a-development-certificate',
+          link: '/docs/how-to/local-development/obtaining-a-development-certificate',
         }, */
         {
           title: 'Tips & tricks for common errors during setup',
-          link: '/docs/how-to-guides/local-development/common-development-errors',
+          link: '/docs/how-to/local-development/common-development-errors',
         },
       ],
     },
@@ -77,23 +77,23 @@ const createHowTos = () => {
       contents: [
         {
           title: 'Introduction',
-          link: '/docs/how-to-guides/actyx-pond/introduction',
+          link: '/docs/how-to/actyx-pond/introduction',
         },
         {
           title: 'Getting Started with the Pond',
-          link: '/docs/how-to-guides/actyx-pond/getting-started',
+          link: '/docs/how-to/actyx-pond/getting-started',
         },
         {
           title: 'Learning to work with Actyx Pond in 10 Steps',
-          link: '/docs/how-to-guides/actyx-pond/guides/hello-world',
+          link: '/docs/how-to/actyx-pond/guides/hello-world',
         },
         {
           title: 'Fish Parameters',
-          link: '/docs/how-to-guides/actyx-pond/fish-parameters/on-event',
+          link: '/docs/how-to/actyx-pond/fish-parameters/on-event',
         },
         {
           title: 'Pond in Depth Guides for advanced users',
-          link: '/docs/how-to-guides/actyx-pond/in-depth/tag-type-checking',
+          link: '/docs/how-to/actyx-pond/in-depth/tag-type-checking',
         },
       ],
     },
@@ -175,15 +175,15 @@ const createHowTos = () => {
       contents: [
         {
           title: 'Mobile apps',
-          link: '/docs/how-to-guides/packaging/mobile-apps',
+          link: '/docs/how-to/packaging/mobile-apps',
         },
         {
           title: 'Desktop apps',
-          link: '/docs/how-to-guides/packaging/desktop-apps',
+          link: '/docs/how-to/packaging/desktop-apps',
         },
         {
           title: 'Headless apps',
-          link: '/docs/how-to-guides/packaging/headless-apps',
+          link: '/docs/how-to/packaging/headless-apps',
         },
         /* {
           title: 'Deploying to production',

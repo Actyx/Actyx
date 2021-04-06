@@ -14,11 +14,7 @@ a one-way integration: exporting data originating from the warehouse to the ERP 
 
 <!-- truncate -->
 
-In an earlier [blog post] we went through the process of designing event schemata for a warehouse logistics solution, and sketched the core functionality of the [`SkuFish`]. This fish’s main responsibility is to track the metadata and current
-location of an individual stockkeeping unit (SKU) inside a warehouse.
-
-[blog post]: /blog/2020/08/04/event-design-for-a-logistics-solution
-[`SkuFish`]: /blog/2020/08/04/event-design-for-a-logistics-solution#event-design-and-aggregation-into-fish
+In an earlier [blog post](/blog/2020/08/04/event-design-for-a-logistics-solution) we went through the process of designing event schemata for a warehouse logistics solution, and sketched the core functionality of the [`SkuFish`](/blog/2020/08/04/event-design-for-a-logistics-solution#event-design-and-aggregation-into-fish). This fish’s main responsibility is to track the meta data and current location of an individual stock keeping unit (SKU) inside a warehouse.
 
 As the ERP system shall remain the record of truth for material, we now extend our solution with the functionality to
 export material movements. In this post, we will implement an application designed to export bookings to an ERP
@@ -37,8 +33,8 @@ security considerations for the sake of this blog post.
 
 Each movement done by the warehouse workforce can be exported 1-1 to the ERP; let's illustrate this with an example:
 
-* SKU A (Articleno. 42), Quantity 500 has been moved from location X to Z
-* SKU B (Articleno. 42), Quantity 1000 has been moved from location Z to Y
+* SKU A (article no.. 42), Quantity 500 has been moved from location X to Z
+* SKU B (article no.. 42), Quantity 1000 has been moved from location Z to Y
 
 These two movements will result in quantity changes in locations X, Y, and Z for the article no. 42 in the state of the
 ERP system. However, this logic is encapsulated in the interface provided by the ERP system, and requires exactly one
@@ -148,14 +144,14 @@ const onEvent = (state: State, event: Event, metadata: Metadata) => {
 ```
 
 To get a predictable unique ID (remember: onEvent needs to be deterministic and pure) for each booking, we use the
-`eventId` field of the event's metadata.
+`eventId` field of the event's meta data.
 
 #### Tags
 
 With the release of the Actyx Pond Version 2 (check out this [post] for an overview), an event can have any number of
 tags, and can be queried using any combination of them. This means, an event is no longer bound to a single _event
 stream_ originating from one fish, but can belong to many streams, and individually consumed. Here, instead of stringly
-typed tages, we're using the `TypedTag` feature of the Actyx Pond to link event types to explicit tags.
+typed tags, we're using the `TypedTag` feature of the Actyx Pond to link event types to explicit tags.
 
 [post]: /blog/2020/07/24/pond-v2-release
 
@@ -267,5 +263,5 @@ Now, as we saw above, the API requests to the ERP system could fail because of d
 unavailability, we might just implement a retry mechanism. In other cases, where certain business rules might prohibit
 accepting a booking, this will need human intervention, usually by the warehouse logistics manager. For that, we may add
 a user interface displaying a log of the last exported bookings and their error state. In a future post, we will explore
-how to confidently extend an existing solution with such functionality, and deploy it as a new application running ontop
+how to confidently extend an existing solution with such functionality, and deploy it as a new application running on top
 of ActyxOS.

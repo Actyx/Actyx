@@ -21,9 +21,9 @@ ARGS:
                perform the operation on
 ```
 
-> Null or schema-conformant
+> Null or schema conformant
 >
-> The return value of this command will always be either null or schema-conformant, unless the `--no-defaults` flag is used.
+> The return value of this command will always be either null or schema conformant, unless the `--no-defaults` flag is used.
 
 Here are some examples of using the `ax settings get` command:
 

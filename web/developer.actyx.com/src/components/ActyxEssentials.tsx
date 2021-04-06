@@ -71,57 +71,53 @@ export const ActyxEssentials: React.FC = () => (
   <Wrapper>
     <Header>
       <Headline headline="Actyx Essentials" />
-      <Body body="Check out the following topics to learn the essentials to know how to build, run, and deploy your solution to your factory customers." />
+      <Body body="Check out the following topics to learn the essentials of building, running, and deploying systems using Actyx" />
     </Header>
     <LinkWrapper>
       <Links color="blue">
         <Link
           title="Install and start Actyx"
-          link="/docs/how-to-guides/local-development/installing-actyx"
+          link="/docs/how-to/local-development/install-actyx"
           color="blue"
           positive
         />
         <Link
-          title="Set up my Environment"
-          link="/docs/how-to-guides/local-development/setting-up-your-environment"
+          title="Set up your environment"
+          link="/docs/how-to/local-development/set-up-your-environment"
           color="blue"
           positive
         />
         <Link
-          title="Package Desktop Apps"
-          link="/docs/how-to-guides/packaging/desktop-apps"
+          title="Set up a new project"
+          link="/docs/how-to/local-development/set-up-a-new-project"
           color="blue"
           positive
         />
         <Link
-          title="Set up a swarm"
-          link="/docs/how-to-guides/swarms/setup-swarm"
+          title="Package for mobile"
+          link="/docs/how-to/packaging/mobile-apps"
           color="blue"
           positive
         />
+        <Link title="Set up a swarm" link="/docs/how-to/swarms/setup-swarm" color="blue" positive />
       </Links>
       <Links color="green">
         <Link
           title="Event-based systems"
-          link="/docs/conceptual-guides/event-based-systems"
+          link="/docs/conceptual/event-based-systems"
           color="green"
           positive
         />
-        <Link
-          title="Actyx Jargon"
-          link="/docs/conceptual-guides/actyx-jargon"
-          color="green"
-          positive
-        />
+        <Link title="Actyx Jargon" link="/docs/conceptual/actyx-jargon" color="green" positive />
         <Link
           title="The Actyx Node"
-          link="/docs/conceptual-guides/the-actyx-node"
+          link="/docs/conceptual/the-actyx-node"
           color="green"
           positive
         />
         <Link
           title="Performance and Limitations"
-          link="/docs/conceptual-guides/performance-and-limits-of-actyx"
+          link="/docs/conceptual/performance-and-limits-of-actyx"
           color="green"
           positive
         />

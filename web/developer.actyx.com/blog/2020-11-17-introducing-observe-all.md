@@ -125,7 +125,7 @@ It also has better performance: Where the Registry Fish will time travel like a 
 `observeAll` knows that the order of event application for "registry" logic is most of the time irrelevant.
 
 The second quirk we’re getting rid of is the problem of the empty initial state.
-Often you would be modelling entities with clearly mandatory fields, e.g. "every task has a description."
+Often you would be modeling entities with clearly mandatory fields, e.g. "every task has a description."
 But when you passed your `TaskFish` to `observe`, your code couldn’t know the description.
 Still it had to give an `initialState` for the `Fish`.
 There were elegant workarounds for this issue, but in the end, all of them added boilerplate.

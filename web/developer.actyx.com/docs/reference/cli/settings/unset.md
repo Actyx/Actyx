@@ -19,11 +19,11 @@ ARGS:
                perform the operation on
 ```
 
-:::cautionApp must be stopped in order to unset settings for it
+:::caution App must be stopped in order to unset settings for it
 Nodes will only unset an app's settings if the relevant app is not running. For example: unsetting settings for the scope `com.example.app` will only work if the app with ID `com.example.app` is not running on the node(s).
 :::
 
-:::cautionAll apps must be stopped in order to unset node settings
+:::caution All apps must be stopped in order to unset node settings
 Nodes will only unset settings for the `com.actyx.os` scope if all apps on the node(s) are not running.
 :::
 

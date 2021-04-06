@@ -47,10 +47,10 @@ its concepts.
 Envision yourself being the production manager of a contract packaging company,
 for example filling glue into tubes: To achieve a high Overall Equipment
 Efficiency (OEE) and delivery reliability, contract packaging companies require
-precise intralogistics, warehouse management, and a tight integration into the
+precise intra-logistics, warehouse management, and a tight integration into the
 actual production. The existing ERP-provided material management solution our
 customer had in use was lacking in several aspects: tracking of individual
-stockkeeping units (SKUs), real-time feedback from the production line about
+stock keeping units (SKUs), real-time feedback from the production line about
 current demand, and support of adequate mobile scanners in several high-bay
 warehouses with intermittent network connectivity.
 
@@ -63,7 +63,7 @@ The core set of requirements the solution had to fulfill were:
     locations within the different warehouses
 - Intuitive logging of material movements with support of quantity changes
 - Tracking of individual stock keeping units (SKUs): Internal and external batch number, quantity,
-QA protocol, etc. allowing tracking and tracing across the whole lifecycle of produced goods
+QA protocol, etc. allowing tracking and tracing across the whole like cycle of produced goods
 - Transparency about movements and inventory
 - Source of truth for any material quantities and location should remain to be the ERP system,
     as there are many business rules installed about e.g. which material types are allowed in which
@@ -165,8 +165,8 @@ export type SkuData = {
 ```
 
 For completeness, we also added the `SkuCreatedEvent`, whose origin is not discussed within this article. All events
-are combined into a single exported type for later consumption. The `SkuData` type represents metadata for each SKU.
-This metadata field `sku: SkuData` is added to every event, and represents the current state of the SKU as was known at
+are combined into a single exported type for later consumption. The `SkuData` type represents meta data for each SKU.
+This meta data field `sku: SkuData` is added to every event, and represents the current state of the SKU as was known at
 the source of the event.
 
 The process we have followed here looks simple, but it is applicable to a broad range of cases: we start by observing
@@ -223,10 +223,10 @@ await pond
 As the ERP system should remain the source of truth of all material movements, the events generated in the warehouse
 need to be fed into the ERP system. Because of various reasons (compliance, quantity not sufficient, system unavailable
 etc.) the ERP system might reject movements. In such cases, the state represented within the ERP system does not match
-the real world: there is a clash between the facts from the shop-floor and the business rules modelled in the ERP
-system. These clashes happened also with a paper-based system before the digitalisation and the resolution was obvious:
+the real world: there is a clash between the facts from the shop-floor and the business rules modeled in the ERP
+system. These clashes happened also with a paper-based system before the digitization and the resolution was obvious:
 someone needs to undo the erroneous movements or correct the erroneous ERP data that prevented the movement from being
-accepted. In keeping with the premises of digitalisation, such conflict resolution is also more widely accessible (to
+accepted. In keeping with the premises of digitization, such conflict resolution is also more widely accessible (to
 anyone with a suitable device), more quickly communicated and thus more efficiently performed.
 
 One important advantage of the approach shown above over a centralized solution where the scanners are integrated

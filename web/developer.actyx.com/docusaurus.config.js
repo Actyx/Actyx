@@ -23,14 +23,44 @@ module.exports = {
         releasesYml: './__auto-releases.yml',
       },
     ], */
+    [
+      'docusaurus-plugin-typedoc',
+
+      // Plugin / TypeDoc options
+      {
+        id: 'js-ts-sdk',
+        entryPoints: ['../../js/os-sdk/src/index.ts'],
+        tsconfig: '../../js/os-sdk/tsconfig.json',
+        out: 'reference/js-ts-sdk',
+        sidebar: {
+          sidebarFile: '__js-ts-sdk-sidebar.js',
+          fullNames: false
+        },
+      },
+    ],
+    //[
+    //  'docusaurus-plugin-typedoc',
+
+    //  // Plugin / TypeDoc options
+    //  {
+    //    id: 'pond',
+    //    entryPoints: ['../../js/pond/src/index.ts'],
+    //    tsconfig: '../../js/pond/tsconfig.json',
+    //    out: 'reference/pond',
+    //    sidebar: {
+    //      sidebarFile: '__pond-sidebar.js',
+    //      fullNames: false
+    //    },
+    //  },
+    //],
   ],
   themeConfig: {
-    announcementBar: {
-      id: 'test007',
-      content: 'Announcement Bar Content',
-      backgroundColor: '#373c40',
-      textColor: '#fff',
-    },
+    // announcementBar: {
+    //   id: 'test007',
+    //   content: 'Announcement Bar Content',
+    //   backgroundColor: '#373c40',
+    //   textColor: '#fff',
+    // },
     colorMode: {
       defaultMode: 'light',
       disableSwitch: true,
@@ -45,13 +75,13 @@ module.exports = {
       items: [
         {
           label: 'How-to Guides',
-          activeBasePath: 'docs/how-to-guides',
-          to: 'docs/how-to-guides/overview',
+          activeBasePath: 'docs/how-to',
+          to: 'docs/how-to/overview',
         },
         {
           label: 'Conceptual Guides',
-          activeBasePath: 'docs/conceptual-guides',
-          to: 'docs/conceptual-guides/overview',
+          activeBasePath: 'docs/conceptual',
+          to: 'docs/conceptual/overview',
         },
         {
           label: 'Reference',
@@ -128,19 +158,19 @@ module.exports = {
           items: [
             {
               label: 'Installing Actyx',
-              to: 'docs/how-to-guides/local-developmentlocal-twins',
+              to: 'docs/how-to/local-development/install-actyx',
             },
             {
-              label: 'Modelling in Twins',
-              to: 'docs/how-to-guides/process-logic/modelling-processes-in-twins',
+              label: 'Modelling with Twins',
+              to: 'docs/how-to/process-logic/modelling-processes-in-twins',
             },
             {
-              label: 'Packaging UI Apps',
-              to: 'docs/how-to-guides/packaging/mobile-apps',
+              label: 'Packaging mobile apps',
+              to: 'docs/how-to/packaging/mobile-apps',
             },
             {
               label: 'Actyx SDK',
-              to: 'docs/how-to-guides/sdk/placeholder',
+              to: 'docs/how-to/sdk/placeholder',
             },
           ],
         },
@@ -149,19 +179,19 @@ module.exports = {
           items: [
             {
               label: 'Event-based Systems',
-              to: 'docs/conceptual-guides/event-based-systems',
+              to: 'docs/conceptual/event-based-systems',
             },
             {
               label: 'Local First',
-              to: 'docs/conceptual-guides/local-first-cooperation',
+              to: 'docs/conceptual/local-first-cooperation',
             },
             {
               label: 'Thinking in Actyx',
-              to: 'docs/conceptual-guides/thinking-in-actyx',
+              to: 'docs/conceptual/thinking-in-actyx',
             },
             {
               label: 'Apps in Factories',
-              to: 'docs/conceptual-guides/apps-in-the-factory-context',
+              to: 'docs/conceptual/apps-in-the-factory-context',
             },
           ],
         },
@@ -170,7 +200,7 @@ module.exports = {
           items: [
             {
               label: 'Forum',
-              to: 'https://www.community.actyx.com',
+              to: 'https://community.actyx.com',
             },
             {
               label: 'Discord',
@@ -182,7 +212,7 @@ module.exports = {
             },
             {
               label: 'Blog',
-              to: 'https://www.actyx.com/blog',
+              to: 'blog',
             },
           ],
         },
@@ -194,16 +224,16 @@ module.exports = {
               to: 'https://www.actyx.com',
             },
             {
-              label: 'Team',
-              to: 'https://www.actyx.com/team',
+              label: 'About',
+              to: 'https://www.actyx.com/about',
             },
             {
               label: 'Careers',
-              to: 'https://www.actyx.com/careers',
+              to: 'https://careers.actyx.io/',
             },
             {
               label: 'Press',
-              to: 'https://www.actyx.com/blog',
+              to: 'https://www.actyx.com/news',
             },
           ],
         },

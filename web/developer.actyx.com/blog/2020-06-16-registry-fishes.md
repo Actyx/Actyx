@@ -33,7 +33,7 @@ There is a better way...
 
 ## The solution
 
-A fish should always be as small as possible (think of it as a digital twin). This pattern will lead you to a data model that is **scalable**, **reuseable**, **composable**, and **maintainable**. Keeping in line with this, we split the problem into two parts:
+A fish should always be as small as possible (think of it as a digital twin). This pattern will lead you to a data model that is **scalable**, **reusable**, **composable**, and **maintainable**. Keeping in line with this, we split the problem into two parts:
 
 <!-- markdownlint-disable MD029 -->
 1. **Implement state and logic of a single entity**

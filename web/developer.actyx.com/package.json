@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "private": true,
   "scripts": {
-    "prestart": "npm run copy-schemas && npm run lint",
+    "prestart": "npm run copy-schemas",
     "start": "docusaurus start --host 0.0.0.0",
     "copy-schemas": "node bin/copy-schemas.js",
     "build-with-lint": "npm run lint && docusaurus build",
@@ -21,8 +21,11 @@
     "lint": "eslint './src/**/*.{js,ts,tsx}' & prettier './src/**/*.{js,ts,tsx}' --check && npm run lint:md:check && npm run lint:txt:check",
     "lint:code:fix": "eslint './src/**/*.{js,ts,tsx}' --fix & prettier './src/**/*.{js,ts,tsx}' --write",
     "lint:fix": "npm run lint:code:fix && npm run lint:txt:fix && npm run lint:md:fix",
-    "test": "npm run lint",
-    "serve": "docusaurus serve"
+    "check:spelling": "mdspell './docs/**/*.md' './docs/**/*.mdx' './blog/**/*.md' './blog/**/*.mdx' --ignore-numbers --ignore-acronyms --en-us --report",
+    "fix:spelling": "mdspell './docs/**/*.md' './docs/**/*.mdx' './blog/**/*.md' './blog/**/*.mdx' --ignore-numbers --ignore-acronyms --en-us",
+    "test": "npm run lint && npm run check:spelling",
+    "serve": "docusaurus serve",
+    "check:links": "blc -ro http://localhost:3000"
   },
   "dependencies": {
     "@docusaurus/core": "^2.0.0-alpha.70",
@@ -69,10 +72,13 @@
     "@types/react-helmet": "^6.1.0",
     "@types/react-router-dom": "^5.1.7",
     "@types/styled-components": "^5.1.3",
+    "broken-link-checker": "^0.7.8",
     "copy-dir": "^1.2.0",
+    "docusaurus-plugin-typedoc": "^0.12.0",
     "eslint": "^7.15.0",
     "eslint-config-prettier": "^7.0.0",
     "eslint-plugin-prettier": "^3.2.0",
+    "markdown-spellcheck": "^1.3.1",
     "markdownlint-cli": "^0.23.2",
     "mkdirp": "^1.0.4",
     "nan": "^2.14.1",
@@ -86,6 +92,8 @@
     "textlint-rule-no-start-duplicated-conjunction": "^2.0.2",
     "textlint-rule-no-todo": "^2.0.1",
     "textlint-rule-period-in-list-item": "^0.3.2",
+    "typedoc": "^0.20.35",
+    "typedoc-plugin-markdown": "^3.6.0",
     "typescript": "^4.2.3"
   }
 }

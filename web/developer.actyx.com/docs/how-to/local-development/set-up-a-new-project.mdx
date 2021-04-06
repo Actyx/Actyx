@@ -1,0 +1,60 @@
+---
+title: Set up a new project
+id: set-up-a-new-project
+hide_title: false
+hide_table_of_contents: false
+keywords: [how-to-guide, new, project]
+description: How-to set up a new project
+image: /images/defaults/default.svg
+---
+
+In this guide, you will learn what things to consider when creating and setting up your first project with Actyx.
+However, please note that these are only best-practice recommendations that we think are the best way to do this.
+You can, of course, do it any way you like.
+
+So let's start by creating a folder for our project which will contain the code for the entire project.
+
+For the purpose of this guide, we will choose the — very creative — name **ExampleProject**.
+You can do this on your command line using the following commands:
+
+```text
+mkdir ExampleProject
+cd ExampleProject
+```
+
+With projects on the Actyx low-code platform, it is important to think about the holistic solution rather than a single isolated app.
+This has to do with the decentralized and event-based nature of Actyx.
+When digitizing factory processes directly on the shop floor, there are many players involved:
+Workers may have an application on tablets that show them configuration parameters for machines on a production line, while headless connector apps running on edge gateways collect data directly from machines and distribute it throughout the entire shop floor.
+Additionally, some dashboards apps running on industry PCs display critical production KPIs on dashboards for factory workers and managers to see.
+The important thing is that **all of these entities rely on the same information** and thus **the same events**.
+
+The way events are emitted, queried and subscribed to with Actyx works by using our programming framework Actyx Pond.
+This framework provides the tools for you to create so called `Fishes`.
+And since these fishes are responsible for creating the event streams flowing between each entity on the shop floor, we recommend to have all of them in one place.
+So let's go ahead and create a dedicated folder for them called **fishes**.
+
+Now, as stated earlier, many different apps can be part of your project.
+And since each app will have different dependencies and needs, it makes sense to separate them.
+Taking the above example, let's now create one folder for each app.
+In the end, your project structure could now look something like this:
+
+```text
+ExampleProject/
+├── img/
+├── src/
+│   ├── dashboard-app/
+│   ├── machine-connector-app/
+│   ├── worker-tablet-app/
+│   └── fishes/
+└── README.md
+```
+
+Since the Actyx tools you are going to use are JS/TS-based, the app folders will contain files typical for JS/TS-based projects, such as
+
+- `package.json`
+- `package-lock.json`
+- `tsconfig.json`
+
+However, since there are various ways to set up a Javascript project, the contents of the individual app folders may vary, depending on the application.
+For an example of how a project structure _could_ look like, please check out [this repository](https://github.com/Actyx/DemoMachineKit).

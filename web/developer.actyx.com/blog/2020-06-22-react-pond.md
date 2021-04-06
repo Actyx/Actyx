@@ -18,7 +18,7 @@ Are you starting to use React, or would you like to simplify your project?
 
 ## The problem
 
-Up to now, in nearly every factory on this planet, you will find humans. Sooner or later, these people will want to interact in a successful shop-floor digitalization project.
+Up to now, in nearly every factory on this planet, you will find humans. Sooner or later, these people will want to interact in a successful shop-floor digitization project.
 
 Even if you connect some machines, you will come to a point where you or your customer want to involve humans. It doesn't necessarily have to be a complex worker assistance application. I could be a maintenance assistant application or a small dashboard to see the machines' current state. Actyx provides you the **web-view runtime**, which can be installed via the [google play store](https://play.google.com/store/apps/details?id=com.actyx.os.android). As a developer, you can create any kind of **web-application** and package and deploy them to the edge-device.
 
@@ -36,10 +36,10 @@ Actyx is not bound to a specific framework. You can use Actyx with all of them, 
 
 ## 🛠️ Setup a new React project with parcel
 
-_<sub><sup>If you already have an existing project, just cherry-pick the new Pond stuff.</sup></sub>_
+_If you already have an existing project, just cherry-pick the new Pond stuff._
 
 Let's go into your folder of choice to set up a new React project based on TypeScript using Parcel as our build tool.  
-_A basic requirement is that [nodeJS](https://nodejs.org/en/download/) is installed on your PC_
+_A basic requirement is that [Node.js](https://nodejs.org/en/download/) is installed on your PC_
 
 ### 1. Setup React and Parcel
 
@@ -124,7 +124,7 @@ First we have to create our entry point. Therefore we create a new file `index.h
 
 ### Initialize React and Actyx-Pond
 
-Additionally we need the `root.tsx` file in the `src` directory. This is the TypeScript entry point defined in the html file above `<script src="root.tsx" [...]`. Here we can start to code our React application like this.
+Additionally we need the `root.tsx` file in the `src` directory. This is the TypeScript entry point defined in the HTML file above `<script src="root.tsx" [...]`. Here we can start to code our React application like this.
 
 ```typescript
 // src/root.tsx
@@ -143,7 +143,7 @@ ReactDOM.render(
 )
 ```
 
-- The `ReactDOM.render(..., document.getElementById('root'))` will render the html tags into a root div element made by React
+- The `ReactDOM.render(..., document.getElementById('root'))` will render the HTML tags into a root div element made by React
 - Best practice: `<React.StrictMode>` [React strict mode](https://reactjs.org/docs/strict-mode.html)
 - Initialize your `<Pond>` for the entire project
 - `<App />` will be our application what we will write
@@ -199,10 +199,10 @@ Add two scripts to the `package.json` in the root directory of your project. The
 
 ### The new scripts
 
-- `npm run dev` Spin up the dev-server that automatically rebuild your project
+- `npm run dev` Spin up the development server that automatically rebuild your project
 - `npm run build` Build your project and put it into `./build/release`. Later you can package this web-application and deploy it to the tablet
 
-Let's start the dev-server *(and ignore the warnings)*
+Let's start the development server *(and ignore the warnings)*
 
 ```bash
 npm run dev
@@ -220,7 +220,7 @@ Cool, now we should add some distributed data and logic to it.
 This blog post is **not about how to write a fish**. And I also assume that you already know how to do that. So, we just use the following example, which keeps the state of a material request and has the features to place a request, start it and finish it.
 
 ---
-**Node:** I suggest that you use the VSCode plugin [Actyx-Pond](https://marketplace.visualstudio.com/items?itemName=Actyx.actyx-pond) to create fish for your projects. It creates all the type definitions for you and helps to have a common pattern in your projects.
+**Node:** I suggest that you use the VS Code plugin [Actyx-Pond](https://marketplace.visualstudio.com/items?itemName=Actyx.actyx-pond) to create fish for your projects. It creates all the type definitions for you and helps to have a common pattern in your projects.
 
 ---
 
@@ -429,7 +429,7 @@ export const App = () => {
 
 ## 🎏 Use a registry fish in React
 
-Lists, checkboxes, or other data collection elements are essential for user interfaces. We will not dive too deeply into the registries ([registry fish pattern](https://developer.actyx.com/blog/2020/06/16/registry-fishes)), but we use the npm package `@actyx-contrib/registry` to create a registry fish for our material requests.
+Lists, check boxes, or other data collection elements are essential for user interfaces. We will not dive too deeply into the registries ([registry fish pattern](https://developer.actyx.com/blog/2020/06/16/registry-fishes)), but we use the npm package `@actyx-contrib/registry` to create a registry fish for our material requests.
 
 To install the registry package, run the install command in your project directory.
 
@@ -530,9 +530,9 @@ The React-Pond package has been developed with the philosophy that it is simple,
 - `useRegistryFishMap()`: Same as useRegistryFish() but with a map function for advanced registry fish
 - `useStream()`: Get the last value of an observable
 
-Within this couple of minutes we created a small application that can run on multiple nodes, is partition tolerant, and has a persistent storage without touching any server, network, or datastore. Isn't that amazing!?
+Within this couple of minutes we created a small application that can run on multiple nodes, is partition tolerant, and has a persistent storage without touching any server, network, or data store. Isn't that amazing!?
 
-The surface we have built together, however, is not yet suitable for the shop-floor environment. The requirements for component size and readability as well as the type of user interaction are often underestimated. We at actyx have combined all our learnings in one NPM packet to save you from this headache. [Checkout the actyx/industrial-ui](https://github.com/actyx/industrial-ui).
+The surface we have built together, however, is not yet suitable for the shop-floor environment. The requirements for component size and readability as well as the type of user interaction are often underestimated. We at Actyx have combined all our learnings in one NPM packet to save you from this headache. [Checkout the Actyx/industrial-ui](https://github.com/actyx/industrial-ui).
 
 And of course, you can download the finished project [here (zip)](/images/blog/react-pond/react-pond-demo.zip)
 
