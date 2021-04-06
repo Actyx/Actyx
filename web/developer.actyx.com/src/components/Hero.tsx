@@ -9,12 +9,17 @@ const Wrapper = styled.div<{
   margin-left: auto;
   margin-right: auto;
   width: 100%;
-  padding-top: 60px;
-  padding-bottom: 60px;
+  padding-top: 72px;
+  padding-bottom: 72px;
+  padding-left: 36px;
+  padding-right: 36px;
   background-color: #ffffff;
   opacity: 1;
   background: url(${(props) => props.img}) no-repeat center;
   background-size: 1240px;
+  @media (max-width: 996px) {
+    max-width: 100%;
+  }
 `
 
 const waveAnimation = keyframes`
@@ -116,6 +121,7 @@ const Button = styled.div<{
   margin-left: 16px;
   margin-right: 16px;
   cursor: pointer;
+  text-align: center;
 `
 
 type Props = Readonly<{

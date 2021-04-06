@@ -74,8 +74,9 @@ const Form = styled.a`
 function Home() {
   return (
     <>
-      <Hero img={useBaseUrl('/images/homepage/hero-background.svg')} />
       <PageWrapper>
+        <Hero img={useBaseUrl('/images/homepage/hero-background.svg')} />
+
         <HowPageIsStructured />
         <ActyxEssentials img={useBaseUrl('/images/homepage/homepage-links.svg')} />
       </PageWrapper>

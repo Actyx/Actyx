@@ -22,11 +22,11 @@ ARGS:
                perform the operation on
 ```
 
-:::caution App must be stopped in order to set settings for it
+:::caution An app must be stopped in order to set settings for it
 Nodes will only accept new settings if the relevant app is not running. For example: setting settings for the scope `com.example.app` will only work if the app with ID `com.example.app` is not running on the node(s).
 :::
 
-:::caution All app must be stopped in order to set node settings
+:::caution All apps must be stopped in order to set node settings
 Nodes will only accept new settings for the `com.actyx.os` scope if all apps on the node(s) are not running.
 :::
 
