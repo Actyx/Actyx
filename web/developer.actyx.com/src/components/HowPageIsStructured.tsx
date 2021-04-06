@@ -8,8 +8,8 @@ const Wrapper = styled.div`
   display: flex;
   flex-direction: column;
   margin-bottom: 36px;
-  padding-left: 36px;
-  padding-right: 36px;
+  padding-left: 24px;
+  padding-right: 24px;
 `
 
 const Header = styled.div`
@@ -18,6 +18,7 @@ const Header = styled.div`
   padding-right: 24px;
   padding-top: 24px;
   padding-bottom: 24px;
+  justify-items: stretch;
   @media (max-width: 996px) {
     max-width: 100%;
   }
@@ -49,7 +50,7 @@ export const HowPageIsStructured: React.FC<Props> = ({ example }: Props) => (
       <Card
         color="blue"
         headline="How-to Guides"
-        body="These problem-oriented guides take the reader through a series of steps required to solve a problem."
+        body="These problem-oriented guides take the reader through steps required to solve a problem."
         cta="Find out more"
         link="/docs/how-to/overview"
       />

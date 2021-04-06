@@ -1,6 +1,7 @@
 import React from 'react'
 import styled from 'styled-components'
 import { Link } from '../components/Link'
+import DLink from '@docusaurus/Link'
 
 const Wrapper = styled.div<{
   color?: string
@@ -26,6 +27,14 @@ const Wrapper = styled.div<{
   padding-bottom: 12px;
   padding-top: 18px;
   flex-grow: 1;
+  &:hover {
+    transform: translateY(-0.1rem);
+    transition: background 150ms ease-in-out;
+    transition-property: background;
+    transition-duration: 150ms;
+    transition-timing-function: ease-in-out;
+    transition-delay: 0s;
+  }
 `
 
 const Headline = styled.div<{
@@ -54,9 +63,11 @@ type Props = Readonly<{
 }>
 
 export const Card: React.FC<Props> = ({ color, headline, body, cta, link }: Props) => (
-  <Wrapper color={color}>
-    <Headline color={color}>{headline}</Headline>
-    <Body color={color}>{body}</Body>
-    <Link title={cta} link={link} color={color} positive={false}></Link>
-  </Wrapper>
+  <DLink to={link} style={{ textDecoration: 'none' }}>
+    <Wrapper color={color}>
+      <Headline color={color}>{headline}</Headline>
+      <Body color={color}>{body}</Body>
+      <Link title={cta} link={link} color={color} positive={false}></Link>
+    </Wrapper>
+  </DLink>
 )
