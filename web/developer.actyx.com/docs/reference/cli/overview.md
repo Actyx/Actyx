@@ -14,13 +14,13 @@ For installation instructions, please refer to [this how-to guide](../../how-to/
 
 <h2>Subcommands</h2>
 
-| Command                          | description                         |
-| -------------------------------- | ----------------------------------- |
-| [ax nodes](nodes/nodes)          | Manage ActyxOS nodes                |
-| [ax apps](apps/apps) ⚠️          | Manage ActyxOS apps                 |
-| [ax settings](settings/settings) | Manage ActyxOS node or app settings |
-| [ax logs](logs/logs)             | Manage ActyxOS node and app logs    |
-| [ax swarms](swarms/swarms)       | Manage ActyxOS swarms               |
+| Command      | description                         |
+| ------------ | ----------------------------------- |
+| ax nodes     | Manage ActyxOS nodes                |
+| ax apps ⚠️   | Manage ActyxOS apps                 |
+| ax settings] | Manage ActyxOS node or app settings |
+| ax logs      | Manage ActyxOS node and app logs    |
+| ax swarms    | Manage ActyxOS swarms               |
 
 <!-- TODO NKI: replace with correct link -->
 
