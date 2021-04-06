@@ -9,6 +9,8 @@ const Wrapper = styled.div`
   display: flex;
   flex-direction: column;
   margin-bottom: 36px;
+  padding-left: 36px;
+  padding-right: 36px;
 `
 
 const Header = styled.div`
@@ -17,6 +19,9 @@ const Header = styled.div`
   padding-right: 24px;
   padding-top: 24px;
   padding-bottom: 0px;
+  @media (max-width: 996px) {
+    max-width: 100%;
+  }
 `
 const LinkWrapper = styled.div`
   display: grid;
@@ -24,21 +29,10 @@ const LinkWrapper = styled.div`
   grid-auto-flow: column;
   column-gap: 24px;
   row-gap: 24px;
-  &:first-child {
+  @media (max-width: 996px) {
     grid-column-start: start;
-    grid-column-end: line2;
-  }
-  &:nth-child(2) {
-    grid-column-start: line2;
-    grid-column-end: line3;
-  }
-  &:nth-child(3) {
-    grid-column-start: line3;
-    grid-column-end: line4;
-  }
-  &:nth-child(4) {
-    grid-column-start: line4;
     grid-column-end: end;
+    grid-auto-flow: row;
   }
 `
 
