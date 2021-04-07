@@ -45,9 +45,9 @@ time | who | what
 Computers can help obtain such an audit trail, many of the entries can even be created automatically
 or with very little additional input from a worker like Fred. One thing we need to ensure, though,
 is that this reporting does not keep Fred nor the drill from performing their duty. The IT system
-must be as reliable as paper — while being much easier to analyse later. This is why
-[ActyxOS] uses a fully decentralised approach, recording
-the events from the table above on the edge devices and synchronising between devices whenever a
+must be as reliable as paper — while being much easier to analyze later. This is why
+[ActyxOS] uses a fully decentralized approach, recording
+the events from the table above on the edge devices and synchronizing between devices whenever a
 network connection is available.
 
 [ActyxOS]: http://developer.actyx.com/docs/os/general/introduction
@@ -59,7 +59,7 @@ where Fred is working:
 
 - a shop-floor dashboard shall show what is currently going on at Drill1 (analog for other
   workstations)
-- a reporting database should be filled with summary information, one row per timespan that the
+- a reporting database should be filled with summary information, one row per time span that the
   machine was working for an order
 - the ERP system should receive a booking for how much time Fred and Drill1 have spent working on
   this production step of order 4711 once Fred says that it is finished
@@ -74,7 +74,7 @@ Drill1 | working on order 4711 | 8:56
 Drill2 | idle | 8:12
 Drill3 | working on order 4712 | 8:33
 
-The second part can be implemented similarly, by adding a row to a table of timespans whenever a
+The second part can be implemented similarly, by adding a row to a table of time spans whenever a
 machine stops working on an order.
 
 machine | order | started | duration
@@ -293,7 +293,7 @@ impl DbRecord<SqliteDbMechanics> for UsageEntry {
 
 This implementation is specific to the kind of database we want to write to because the column types
 may depend on this information and the Rust data type for column values depends on the database
-driver. In this case we’re targeting [Sqlite3] because it doesn’t require setup. You’ll want to
+driver. In this case we’re targeting [SQLite 3] because it doesn’t require setup. You’ll want to
 switch to [PostgreSQL] or [Microsoft SQL Server] for feeding your dashboards and reports.
 
 [Sqlite3]: https://sqlite.org

@@ -23,3 +23,7 @@ yarn-error.log*
 OLD_CONTENT/
 __auto-releases.yml
 all.log
+__js-ts-sdk-sidebar.js
+docs/reference/js-ts-sdk/
+__pond-sidebar.js
+docs/reference/pond/

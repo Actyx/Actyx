@@ -9,6 +9,8 @@ const Wrapper = styled.div`
   display: flex;
   flex-direction: column;
   margin-bottom: 36px;
+  padding-left: 36px;
+  padding-right: 36px;
 `
 
 const Header = styled.div`
@@ -17,6 +19,9 @@ const Header = styled.div`
   padding-right: 24px;
   padding-top: 24px;
   padding-bottom: 0px;
+  @media (max-width: 996px) {
+    max-width: 100%;
+  }
 `
 const LinkWrapper = styled.div`
   display: grid;
@@ -24,21 +29,10 @@ const LinkWrapper = styled.div`
   grid-auto-flow: column;
   column-gap: 24px;
   row-gap: 24px;
-  &:first-child {
+  @media (max-width: 996px) {
     grid-column-start: start;
-    grid-column-end: line2;
-  }
-  &:nth-child(2) {
-    grid-column-start: line2;
-    grid-column-end: line3;
-  }
-  &:nth-child(3) {
-    grid-column-start: line3;
-    grid-column-end: line4;
-  }
-  &:nth-child(4) {
-    grid-column-start: line4;
     grid-column-end: end;
+    grid-auto-flow: row;
   }
 `
 
@@ -59,50 +53,94 @@ const Links = styled.div<{
   padding-bottom: 12px;
   padding-top: 18px;
 `
-const Image = styled.div<{
-  img: string
-}>`
-  background: #15be53;
-  background: url(${(props) => props.img}) no-repeat center;
-  background-size: 260px;
-`
-type Props = Readonly<{
-  img: string
-}>
-
-export const ActyxEssentials: React.FC<Props> = ({ img }: Props) => (
+export const ActyxEssentials: React.FC = () => (
   <Wrapper>
     <Header>
-      <Headline headline="Actyx essentials" />
-      <Body body="Check out the following topics to learn the essentials to know how to build, run, and deploy your solution to your factory customers." />
+      <Headline headline="Essentials" />
+      <Body body="Check out the following topics to learn the essentials of building, running, and deploying systems using Actyx" />
     </Header>
     <LinkWrapper>
-      <Links color="green">
-        <Link title="Event-based systems" link="" color="green" positive />
-        <Link title="Thinking in Actyx" link="" color="green" positive />
-        <Link title="Peer Discovery" link="" color="green" positive />
-        <Link title="Performance and Limitations" link="" color="green" positive />
-      </Links>
       <Links color="blue">
-        <Link title="Installing and starting Actyx" link="" color="blue" positive />
-        <Link title="Modelling processes in local twins" link="" color="blue" positive />
-        <Link title="Some SDK Guide" link="" color="blue" positive />
-        <Link title="Packaging Front-End Apps" link="" color="blue" positive />
+        <Link
+          title="Install and start Actyx"
+          link="/docs/how-to/local-development/install-actyx"
+          color="blue"
+          positive
+        />
+        <Link
+          title="Set up a new project"
+          link="/docs/how-to/local-development/set-up-a-new-project"
+          color="blue"
+          positive
+        />
+        <Link
+          title="Package for mobile"
+          link="/docs/how-to/packaging/mobile-apps"
+          color="blue"
+          positive
+        />
+        <Link title="Set up a swarm" link="/docs/how-to/swarms/setup-swarm" color="blue" positive />
+      </Links>
+      <Links color="green">
+        <Link
+          title="How Actyx works"
+          link="/docs/conceptual/how-actyx-works"
+          color="green"
+          positive
+        />
+        <Link
+          title="Event-based systems"
+          link="/docs/conceptual/event-sourcing"
+          color="green"
+          positive
+        />
+        <Link
+          title="Local First Cooperation"
+          link="/docs/conceptual/local-first-cooperation"
+          color="green"
+          positive
+        />
+
+        <Link
+          title="Performance and limits"
+          link="/docs/conceptual/performance-and-limits"
+          color="green"
+          positive
+        />
       </Links>
       <Links color="purple">
-        <Link title="Actyx API Reference" link="" color="purple" positive />
-        <Link title="Actyx SDK Reference" link="" color="purple" positive />
-        <Link title="CLI Commands Reference" link="" color="purple" positive />
-        <Link title="Node Manager Features" link="" color="purple" positive />
+        <Link
+          title="Event Service API"
+          link="/docs/reference/event-service"
+          color="purple"
+          positive
+        />
+        <Link
+          title="Actyx reference"
+          link="/docs/reference/actyx-reference"
+          color="purple"
+          positive
+        />
+        <Link
+          title="Actyx CLI reference"
+          link="/docs/reference/cli/cli-overview"
+          color="purple"
+          positive
+        />
+        <Link
+          title="Node Manager reference"
+          link="/docs/reference/node-manager"
+          color="purple"
+          positive
+        />
       </Links>
       <Card
         color="white"
         headline="Actyx Community"
         body="Join our developer community and discover our forum."
         cta="Forum"
-        link="/"
+        link="https://community.actyx.com/"
       />
-      {/* <Image img={img} /> */}
     </LinkWrapper>
   </Wrapper>
 )

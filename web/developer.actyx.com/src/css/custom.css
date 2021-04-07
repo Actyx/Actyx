@@ -151,7 +151,7 @@
   --ifm-font-family-base: 'Lato', system-ui, -apple-system, Helvetica;
   --ifm-font-family-monospace: SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
     'Courier New', monospace;
-  --ifm-menu-link-sublist-icon: url('data:image/svg+xml;utf8,<svg alt="Arrow" xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 32 24"><path fill="rgba(128,128,128,0.0)" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"></path></svg>');
+  --ifm-menu-link-sublist-icon: url('data:image/svg+xml;utf8,<svg alt="Arrow" xmlns="http://www.w3.org/2000/svg" width="16px" height="16px" viewBox="0 0 32 24"><path fill="rgba(128,128,128,0.6)" d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"></path></svg>');
   --ifm-menu-link-sublist-icon-before: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 12 16" style="enable-background:new 0 0 16 16;" xml:space="preserve"><path fill="rgba(96,103,112,0.8)" d="M9.1,9.1c0,0.2-0.1,0.3-0.2,0.5C8.6,9.8,8.2,9.8,8,9.5l-2-2l-2,2c-0.3,0.2-0.7,0.2-0.9,0c-0.2-0.3-0.2-0.7,0-0.9l2.4-2.4C5.8,6,6.2,6,6.4,6.2l2.4,2.4C9,8.7,9.1,8.9,9.1,9.1z"/></svg>');
   --ifm-menu-link-sublist-icon-rotated: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 12 16" style="enable-background:new 0 0 16 16;" xml:space="preserve"><path fill="rgba(96,103,112,0.8)" d="M9.1,9.1c0,0.2-0.1,0.3-0.2,0.5C8.6,9.8,8.2,9.8,8,9.5l-2-2l-2,2c-0.3,0.2-0.7,0.2-0.9,0c-0.2-0.3-0.2-0.7,0-0.9l2.4-2.4C5.8,6,6.2,6,6.4,6.2l2.4,2.4C9,8.7,9.1,8.9,9.1,9.1z"/></svg>');
   --ifm-navbar-search-input-icon: url('data:image/svg+xml;utf8,<svg fill="rgba(0,0,0,0.5)" alt="Search" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" height="16px" width="16px"><path d="M6.02945,10.20327a4.17382,4.17382,0,1,1,4.17382-4.17382A4.15609,4.15609,0,0,1,6.02945,10.20327Zm9.69195,4.2199L10.8989,9.59979A5.88021,5.88021,0,0,0,12.058,6.02856,6.00467,6.00467,0,1,0,9.59979,10.8989l4.82338,4.82338a.89729.89729,0,0,0,1.29912,0,.89749.89749,0,0,0-.00087-1.29909Z" /></svg>');
@@ -573,7 +573,9 @@ article > footer.row.margin-vert--lg {
    * This source code is licensed under the MIT license found in the
    * LICENSE file in the root directory of this source tree.
    */
-
+.navbar__brand {
+  margin-right: 0px;
+}
 .search-icon {
   background-image: var(--ifm-navbar-search-input-icon);
   height: auto;
@@ -610,6 +612,17 @@ article > footer.row.margin-vert--lg {
 
 a.table-of-contents__link {
   font-size: 13px;
+}
+
+.table-of-contents li {
+  line-height: 1.3;
+}
+
+.table-of-contents__link:hover,
+.table-of-contents__link:hover code,
+.table-of-contents__link--active,
+.table-of-contents__link--active code {
+  font-weight: 700;
 }
 
 li {
@@ -928,7 +941,7 @@ li {
   box-shadow: 0px 0px 5px 5px #0099e0;
 }
 
-.menu {
+/* .menu {
   font-weight: var(--ifm-font-weight-semibold);
   overflow-x: auto;
   background: none;
@@ -1007,17 +1020,18 @@ li {
 }
 
 /* text inside active category*/
-.menu .menu__link.menu__link--active:not(.menu__link--sublist) {
+/* .menu .menu__link.menu__link--active:not(.menu__link--sublist) {
   color: var(--ifm-menu-color-active);
   border-left: 1px solid var(--ifm-color-primary);
   padding-left: 10px;
   margin-left: 30px;
 }
 
+*/
 .menu .menu__link.menu__link--active {
-  color: #606770;
   background: none;
 }
+/*
 
 .menu .menu__link:hover {
   background: none;
@@ -1057,7 +1071,7 @@ li {
   display: inherit;
   opacity: 100;
   transition: opacity var(--ifm-transition-fast) linear;
-}
+} */
 
 code {
   background-color: var(--ifm-code-background);
@@ -1102,16 +1116,23 @@ pre .line-numbers {
   counter-reset: linenumber;
 }
 
-.table-of-contents {
-  margin: 0px;
-  font-size: 13px;
+.tabs-container {
+  margin-bottom: 2rem;
+  /* margin-left: 0.5rem;
+  margin-right: 0.5rem; */
+  /* border: 1px solid var(--ifm-toc-border-color); */
+  /* padding: 1rem; */
 }
 
-.table-of-contents li {
-  margin: 0px;
-}
+.tabs__item {
+  padding: 0.5rem 2rem;
+  font-weight: normal;
+  border-bottom-width: 1.5px;
 
-a.table-of-contents__link {
-  font-size: 15px;
-  padding-left: 12px;
+  border-bottom-color: var(--ifm-toc-border-color);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.tabs__item.tabs__item--active {
+  border-bottom-color: var(--ifm-tabs-color-active) !important;
 }

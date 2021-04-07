@@ -4,7 +4,7 @@ author: Maximilian Haushofer
 author_title: Product Manager at Actyx
 author_url: https://www.linkedin.com/in/maximilianhaushofer/
 author_image_url: https://images.ctfassets.net/55iqf6xnllwu/7exkxedRNkZNPjeWIJAJFy/7f238372c06ddfc64fa321d5e665dc62/maximilian-haushofer.jpg
-tags: [ActyxOS, arm64 ]
+tags: [ActyxOS, arm64]
 ---
 
 Want to deploy your Docker app to a device running on arm64? Check out this blog post.
@@ -16,9 +16,9 @@ As part of the ActyxOS 1.0.0-rc.2 release, we included support for devices runni
 If you want to follow the steps in this guide, you'll need a few things:
 
 - development machine running Docker
-- a device running an arm64 operating system, and ActyxOS on Docker ([check out our installation guide](/docs/os/advanced-guides/actyxos-on-docker#install-actyxos-on-your-edge-device))
+- a device running an arm64 operating system, and ActyxOS on Docker ([check out our installation guide](/docs/how-to/local-development/install-actyx))
 - a Dockerfile for the image(s) you want to package as an app
-- basic knowledge of how building ActyxOS apps works (check out our guide on [building apps](/docs/os/guides/building-apps))
+- basic knowledge of how building ActyxOS apps works
 
 :::note Terminology
 In our documentation, as well as in the Docker documentation, you will sometimes read different terms that actually refer to the same architecture. Be aware that, in this context, `x86_64` and `amd64` mean the same thing, and so do `arm64v8`, `arm64` and `aarch64`.
@@ -26,7 +26,7 @@ In our documentation, as well as in the Docker documentation, you will sometimes
 
 ### 1. Build your Docker image
 
-You first need to make sure that your Docker image(s) is actually built for the correct architecture. By default,  Docker images built on your development machine are built for the architecture of your development machine – which usually is `x86_64`.
+You first need to make sure that your Docker image(s) is actually built for the correct architecture. By default, Docker images built on your development machine are built for the architecture of your development machine – which usually is `x86_64`.
 
 If you are a proficient Docker user and running macOS or Linux, you can just use [docker buildx](https://docs.docker.com/buildx/working-with-buildx/) to build an image for another architecture.
 
@@ -52,14 +52,14 @@ If you want to check whether the Docker image was successfully loaded, just run 
 
 ### 2. Package your ActyxOS app
 
-After following the above steps, you can reference this image in the docker-compose file that you will need for packaging your ActyxOS app (check out [this guide](/docs/os/guides/building-apps) for more info). Your app manifest should now look similar to this:
+After following the above steps, you can reference this image in the docker-compose file that you will need for packaging your ActyxOS app. Your app manifest should now look similar to this:
 
 ```yml
-manifestVersion: "1.0"
+manifestVersion: '1.0'
 id: com.sample.myapp
 version: 1.0.0
 displayName: Sample Docker App
-description: "An Sample Docker app for arm64"
+description: 'An Sample Docker app for arm64'
 settingsSchema: ./settings-schema.json
 type: docker
 dockerCompose:
@@ -68,8 +68,8 @@ dockerCompose:
 
 After executing `ax apps package`, you can find the file `com.actyx.sample-docker-app-1.0.0-aarch64.tar.gz` in the folder from which you executed the command.
 
-**Your app is now** [**ready to be deployed on ActyxOS on Docker**](/docs/os/guides/running-apps) **running on arm64.**
+**Your app is now running on arm64.**
 
 :::tip Also packaging for x86_64 devices?
-The Actyx CLI allows you to package an app for multiple architectures at the same time – just specify the other docker-compose file in the same app manifest, and ax apps package will return two tarballs containing the same app for different architectures. Check out [this example](/docs/os/api/app-manifest-schema).
+The Actyx CLI allows you to package an app for multiple architectures at the same time – just specify the other docker-compose file in the same app manifest, and ax apps package will return two tarballs containing the same app for different architectures.
 :::

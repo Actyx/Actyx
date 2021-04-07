@@ -30,11 +30,7 @@ const LinkWrapper = styled.div`
   margin-top: 24px;
 `
 
-type Props = Readonly<{
-  guides: string
-}>
-
-export const HowToGuides: React.FC<Props> = ({ guides }: Props) => (
+export const HowToGuides: React.FC = () => (
   <Wrapper>
     {howToGuides?.map((v, index) => (
       <HowToGuideWrapper>

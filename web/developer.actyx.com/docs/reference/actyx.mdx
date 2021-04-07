@@ -1,0 +1,97 @@
+---
+title: Actyx Reference
+id: actyx-reference
+hide_title: false
+hide_table_of_contents: false
+sidebar_label: Actyx
+keywords: [api, reference, actyx, api, reference]
+description: API Reference for Actyx.
+image: /images/defaults/default.svg
+---
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+## Supported OS and architectures
+
+Actyx is built for the following operating systems and architectures:
+
+<Tabs
+  defaultValue="windows"
+  values={[
+    { label: 'Windows', value: 'windows', },
+    { label: 'Android', value: 'android', },
+    { label: 'Linux', value: 'linux', },
+    { label: 'Docker', value: 'docker', },
+  ]
+}>
+<TabItem value="windows">
+
+Actyx supports the following Windows versions:
+
+- Windows 10
+
+You can run Actyx on Windows on the following architectures:
+
+- `x86_64`
+
+</TabItem>
+<TabItem value="android">
+
+Actyx supports the following Android versions:
+
+- Android 6+
+
+You can run Actyx on Windows on the following architectures:
+
+- `x86`, `arm64-v8a` or `armeabi-v7a` [ABI](https://developer.android.com/ndk/guides/abis.html#sa)
+
+</TabItem>
+<TabItem value="linux">
+
+|Operating system|Minimum version|
+|----------------|---------------|
+|Ubuntu|18.04 (Bionic Beaver)|
+|AlpineOS|3.9|
+
+You can run Actyx on Linux on the following architectures:
+
+- `x86_64`, `aarch64`, `armv7` or `arm`
+
+</TabItem>
+<TabItem value="docker">
+
+Actyx supports the following Windows versions:
+
+- Docker 20+
+
+You can run Actyx on Docker on the following architectures:
+
+- `x86_64`, `aarch64`
+
+</TabItem>
+</Tabs>
+
+## Network requirements
+
+The local-area network and wireless network (if used) must
+
+- Allow UDP unicast connections
+- Not have client-isolation enabled
+- Not block ports 4001, 4450-4469 and 5001
+
+The edge devices must
+
+- Be connected to the same local-area network
+- Allow incoming/outgoing communication on ports 4001, 4450-4469 and 5001
+
+:::info one network = one swarm
+All devices in an ActyxOS swarm must be connected to the same local-area network.
+:::
+
+## Node Settings Schema
+
+Which settings are available and which values they may have is defined in the so-called ActyxOS **Node Setting Schema**.
+The most recent version thereof is available for download at:
+
+[https://developer.actyx.com/schemas/os/node-settings.schema.json](pathname:///schemas/os/node-settings.schema.json)

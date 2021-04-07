@@ -16,6 +16,7 @@ members = [
   "node-win",
   "runtime",
   "swarm",
+  "tests",
   "tracing_win_event_log",
   "trees",
   "util",

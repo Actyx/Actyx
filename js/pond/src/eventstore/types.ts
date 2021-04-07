@@ -8,7 +8,7 @@ import { right } from 'fp-ts/lib/Either'
 import { Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
-import { FishName, isString, Lamport, Offset, Semantics, SourceId, Timestamp } from '../types'
+import { isString, Lamport, Offset, SourceId, Timestamp } from '../types'
 import { OffsetMapIO } from './offsetMap'
 
 export { OffsetMap, OffsetMapBuilder } from './offsetMap'
@@ -112,11 +112,6 @@ export type Events = t.TypeOf<typeof Events>
  */
 export const UnstoredEvent = t.readonly(
   t.type({
-    /**
-     * the sequence nr of the first element in this chunk
-     */
-    semantics: Semantics.FromString,
-    name: FishName.FromString,
     timestamp: Timestamp.FromNumber,
     tags: Tags,
     payload: t.unknown,

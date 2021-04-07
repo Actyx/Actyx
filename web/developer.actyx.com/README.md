@@ -86,7 +86,7 @@ If you want to add new sidebars, or create new sections either (a) figure it out
 
 #### Create the page
 
-Create a new `.mdx` file in the correct directory, e.g. `/docs/conceptual-guides/`.
+Create a new `.mdx` file in the correct directory, e.g. `/docs/conceptual/`.
 
 #### Add required or optional frontmatter
 

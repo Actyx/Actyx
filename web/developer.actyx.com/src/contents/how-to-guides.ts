@@ -5,37 +5,33 @@ This file contains all categories and their contents of how-to guides.
 const createHowTos = () => {
   const howToGuides = [
     {
-      category: 'Local Development',
+      category: 'Local Development Setup',
       description:
         'Get your local environment set up; install Actyx and the SDK, start a new project, setup your environment, and debug common errors.',
       contents: [
         {
           title: 'Installing and starting Actyx',
-          link: '/docs/how-to-guides/local-development/installing-actyx',
+          link: '/docs/how-to/local-development/install-actyx',
         },
         {
           title: 'Starting a new project',
-          link: '/docs/how-to-guides/local-development/starting-a-new-project',
+          link: '/docs/how-to/local-development/starting-a-new-project',
         },
         {
           title: 'Setting up your JS environment',
-          link: '/docs/how-to-guides/local-development/setting-up-your-environment',
+          link: '/docs/how-to/local-development/setting-up-your-environment',
         },
         {
           title: 'Installing Actyx CLI and Node Manager',
-          link: '/docs/how-to-guides/local-development/installing-cli-node-manager',
+          link: '/docs/how-to/local-development/install-cli-node-manager',
         },
-        {
+        /* {
           title: 'Obtaining your development certificate',
-          link: '/docs/how-to-guides/local-development/obtaining-a-development-certificate',
-        },
-        {
-          title: 'Tips & tricks for common development errors',
-          link: '/docs/how-to-guides/local-development/common-development-errors',
-        },
+          link: '/docs/how-to/local-development/obtaining-a-development-certificate',
+        }, */
       ],
     },
-    {
+    /* {
       category: 'Process Logic',
       description:
         'Implement processes by writing local twins. Execute these processes and integrate them into the real world through apps.',
@@ -69,39 +65,35 @@ const createHowTos = () => {
           link: '',
         },
       ],
-    },
+    }, */
     {
-      category: 'Using the SDK to its full potential',
+      category: 'Using Actyx Pond to its full potential',
       description:
-        'Actyx SDK is your toolbox for implementing processes and automating factory solutions.',
+        'Actyx Pond is your programming framework for implementing distributed processes and automating factory solutions.',
       contents: [
         {
-          title: 'SDK-Guide-01',
-          link: '',
+          title: 'Introduction',
+          link: '/docs/how-to/actyx-pond/introduction',
         },
         {
-          title: 'SDK-Guide-02',
-          link: '',
+          title: 'Getting Started with the Pond',
+          link: '/docs/how-to/actyx-pond/getting-started',
         },
         {
-          title: 'SDK-Guide-03',
-          link: '',
+          title: 'Learning to work with Actyx Pond in 10 Steps',
+          link: '/docs/how-to/actyx-pond/guides/hello-world',
         },
         {
-          title: 'SDK-Guide-04',
-          link: '',
+          title: 'Fish Parameters',
+          link: '/docs/how-to/actyx-pond/fish-parameters/on-event',
         },
         {
-          title: 'SDK-Guide-05',
-          link: '',
-        },
-        {
-          title: 'SDK-Guide-06',
-          link: '',
+          title: 'Pond in Depth Guides for advanced users',
+          link: '/docs/how-to/actyx-pond/in-depth/tag-type-checking',
         },
       ],
     },
-    {
+    /* {
       category: 'Getting data into and out of Actyx',
       description:
         'Implement processes by writing local twins. Execute these processes and integrate them into the real-world through apps.',
@@ -119,7 +111,7 @@ const createHowTos = () => {
           link: '',
         },
         {
-          title: 'Integrating with PLCs',
+          title: 'Integrating with machines',
           link: '',
         },
         {
@@ -138,55 +130,65 @@ const createHowTos = () => {
         'Add unit and end-to-end tests for your twins and apps. Use well established tools such as Jest or Cypress. Set up a CI/CD pipeline.',
       contents: [
         {
-          title: 'Designing a testing pipeline',
+          title: 'Design a testing pipeline',
           link: '',
         },
         {
-          title: 'Unit-testing with Jest',
+          title: 'Unit-test with Jest',
           link: '',
         },
         {
-          title: 'Unit-testing with Cypress',
+          title: 'Unit-test with Cypress',
           link: '',
         },
         {
-          title: 'Setting up integration testing',
+          title: 'Set up integration testing',
           link: '',
         },
         {
-          title: 'Setting up a CI/CD pipeline',
+          title: 'Set up a CI/CD pipeline',
           link: '',
+        },
+      ],
+    }, */
+    {
+      category: 'Swarms',
+      description: 'Setup swarms and connect nodes.',
+      contents: [
+        {
+          title: 'Setup a swarm and configure nodes to join it',
+          link: 'swarms/setup-swarm',
+        },
+        {
+          title: 'Setup a bootstrap node to connect nodes to each other',
+          link: 'swarms/setup-bootstrap-node',
         },
       ],
     },
     {
-      category: 'Configuring, Packaging & Deploying',
-      description: 'Set up Actyx swarms. Package and deploy apps across nodes.',
+      category: 'Packaging Apps for different platforms',
+      description: 'Discover the possibilities you have when packaging apps for Actyx.',
       contents: [
         {
-          title: 'Packaging front-end apps',
-          link: '',
+          title: 'Mobile apps',
+          link: '/docs/how-to/packaging/mobile-apps',
         },
         {
-          title: 'Packaging headless apps',
-          link: '',
+          title: 'Desktop apps',
+          link: '/docs/how-to/packaging/desktop-apps',
         },
         {
+          title: 'Headless apps',
+          link: '/docs/how-to/packaging/headless-apps',
+        },
+        /* {
           title: 'Deploying to production',
           link: '',
         },
         {
           title: 'Updating an Actyx solution',
           link: '',
-        },
-        {
-          title: 'Turning your Actyx nodes into a swarm',
-          link: '',
-        },
-        {
-          title: 'Setting up a bootstrap node',
-          link: '',
-        },
+        }, */
       ],
     },
     {
@@ -222,7 +224,7 @@ const createHowTos = () => {
         'Implement common use-cases for Actyx. including dashboards, ERP integrations, control logic and tool connectivity.',
       contents: [
         {
-          title: 'Showing machine data on a dashboard',
+          title: 'Show machine data on a dashboard',
           link: '',
         },
         {
@@ -230,7 +232,7 @@ const createHowTos = () => {
           link: '',
         },
         {
-          title: 'Controlling AGVs delivering materials',
+          title: 'Control AGVs delivering materials',
           link: '',
         },
         {

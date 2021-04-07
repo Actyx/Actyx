@@ -10,16 +10,12 @@ const Wrapper = styled.div`
   margin-bottom: 8px;
 `
 
-type Props = Readonly<{
-  example: string
-}>
-
-export const Social: React.FC<Props> = ({ example }: Props) => (
+export const Social: React.FC = () => (
   <Wrapper>
     <a href="https://github.com/actyx">
       <GitHub color="lightgray" positive />
     </a>
-    <a href="https://www.linkedin.com/company/10114352">
+    <a href="https://de.linkedin.com/company/actyx">
       <LinkedIn color="lightgray" positive />
     </a>
     <a href="https://www.twitter.com/actyx">

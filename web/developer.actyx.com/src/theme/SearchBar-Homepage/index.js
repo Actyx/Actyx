@@ -187,6 +187,7 @@ function DocSearch({ contextualSearch, ...props }) {
   )
 }
 
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 function SearchBarHomePage() {
   const { siteConfig } = useDocusaurusContext()
   return <DocSearch {...siteConfig.themeConfig.algolia} />

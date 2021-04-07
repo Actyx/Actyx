@@ -9,12 +9,17 @@ const Wrapper = styled.div<{
   margin-left: auto;
   margin-right: auto;
   width: 100%;
-  padding-top: 60px;
-  padding-bottom: 60px;
+  padding-top: 72px;
+  padding-bottom: 72px;
+  padding-left: 36px;
+  padding-right: 36px;
   background-color: #ffffff;
   opacity: 1;
   background: url(${(props) => props.img}) no-repeat center;
   background-size: 1240px;
+  @media (max-width: 996px) {
+    max-width: 100%;
+  }
 `
 
 const waveAnimation = keyframes`
@@ -116,6 +121,7 @@ const Button = styled.div<{
   margin-left: 16px;
   margin-right: 16px;
   cursor: pointer;
+  text-align: center;
 `
 
 type Props = Readonly<{
@@ -129,23 +135,23 @@ export const Hero: React.FC<Props> = ({ img }: Props) => (
       <WaveAnimation>👋</WaveAnimation>
     </LineWrapper>
     <LineWrapper>
-      <HeroHeadline>Welcome to the Actyx developer documentation.</HeroHeadline>
+      <HeroHeadline>Welcome to the Actyx Developer Docs</HeroHeadline>
     </LineWrapper>
     <LineWrapper>
       <HeroCopy>
-        The place where you find everything you need to digitize factory processes and build
-        <a href="https://local-first-cooperation.github.io/website/"> local-first </a> solutions on
-        the Actyx platform.
+        The place where you find everything you need to build awesome{' '}
+        <a href="https://local-first-cooperation.github.io/website/"> local-first cooperative</a>{' '}
+        software on the Actyx Platform.
       </HeroCopy>
     </LineWrapper>
     <LineWrapper>
       <SearchBarHomePage />
     </LineWrapper>
     <ButtonWrapper>
-      <a style={{ textDecoration: 'none' }} href="/releases">
-        <Button color="green">Ready to dive in? Check out our Quick Start</Button>
+      <a style={{ textDecoration: 'none' }} href="docs/tutorials/quickstart">
+        <Button color="green">Ready to dive in? Check out the Quickstart</Button>
       </a>
-      <a style={{ textDecoration: 'none' }} href="/releases">
+      <a style={{ textDecoration: 'none' }} href="docs/conceptual/how-actyx-works">
         <Button color="blue">New to Actyx? See how everything works</Button>
       </a>
     </ButtonWrapper>

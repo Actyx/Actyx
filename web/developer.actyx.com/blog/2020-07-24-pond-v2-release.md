@@ -19,7 +19,7 @@ boilerplate and allowing more flexibility and elegance in your application archi
 The biggest change we’re rolling out to the Pond and the ActyxOS EventService in general with
 this version is that _events_ are now indexed based on _tags_ assigned by your application. There can be
 any number of tags given for an event. That means an event no longer belongs to one single _stream_
-identified by _semantics_ and _fishName_, but instead can belong to many streams – each identified by just a
+identified by _semantics_ and _fish name_, but instead can belong to many streams – each identified by just a
 string, as tags are nothing but strings.
 
 To retrieve events based on their tags, you can then employ logic like:
@@ -28,12 +28,12 @@ To retrieve events based on their tags, you can then employ logic like:
 - Events with tag 'foo' or Tag 'bar' (or both)
 - Events with both tags 'foo' and 'bar'
 
-Additional tags are always O.K., so if an event has tags `['foo', 'bar', 'baz']` it will also
+Additional tags are always ok, so if an event has tags `['foo', 'bar', 'baz']` it will also
 match, in all three cases.
 
 For the Pond, we are shipping multiple nice mechanisms for expressing your tag-based queries.
 
-A very quick demonstration ([detailed docs](/docs/pond/guides/typed-tags)):
+A very quick demonstration ([detailed docs](/docs/how-to/actyx-pond/guides/typed-tags)):
 
 ```typescript
 // Match events with both tag0 and tag1
@@ -46,7 +46,6 @@ const Tag2 = Tag<Type2>('tag2')
 
 // And get baked-in type-checking
 const where = tag2.or(tag0.and(tag1))
-
 ```
 
 <!-- Also be sure to check out [our guide on how to design your application architecture based on tags](LINKPLS). -->
@@ -119,7 +118,7 @@ A Fish is now a struct based on these fields:
   just like in
   [Array.reduce](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce)
 - `fishId`: A unique identifier for the Fish. This is used throughout several layers of caching, to make
-  your application extra-fast. [See our docs for details.](/docs/pond/programming-model)
+  your application extra-fast. [See our docs for details.](/docs/how-to/actyx-pond/introduction)
 - `where`: Which events to pass to this Fish; like the WHERE clause in SQL
 
 Note that in comparison to v1, this is no longer a "factory" – you set concrete values for all
@@ -137,12 +136,10 @@ type EarliestAndLatest = {
 }
 
 // For non-singleton Fish, constructor functions like this are good practice
-const makeEarliestAndLatestFish = (
-  tag: string,
-): Fish<EarliestAndLatest, unknown> => {
+const makeEarliestAndLatestFish = (tag: string): Fish<EarliestAndLatest, unknown> => {
   const initialState = {
     earliest: undefined,
-    latest: undefined
+    latest: undefined,
   }
 
   const onEvent = (state: EarliestAndLatest, payload: unknown) => {
@@ -167,14 +164,13 @@ const makeEarliestAndLatestFish = (
     where: Tag(tag),
     initialState,
     onEvent,
-    fishId
+    fishId,
   }
 }
 
 // Use like this:
-pond.observe(
-  makeEarliestAndLatestFish('my-tag'),
-  state => console.log('fish updated to new state', state)
+pond.observe(makeEarliestAndLatestFish('my-tag'), (state) =>
+  console.log('fish updated to new state', state),
 )
 ```
 
@@ -183,9 +179,10 @@ pond.observe(
 We have revamped the whole command system in order to make it much more straight-forward to
 use. As mentioned above, you can now emit events directly, so there is no longer a need for commands
 in the general case. You will only have to employ them in those cases where you need the local
-serialisation guarantee:
+serialization guarantee:
 
 <!-- fancy formatting maybe -->
+
 _Emit some events depending on locally known state of a Fish. Then do the same thing again, but
 guaranteed to see all formerly emitted events already applied to the state._
 
@@ -226,7 +223,6 @@ pond.keepRunning(fish, async (state, enqueue) => {
   // the next invocation of this function will see it already applied to `state`.
   enqueue(taskDoneEvent, tags)
 })
-
 ```
 
 The Pond will invoke the function you pass as argument whenever the Fish’s state changes. You can
@@ -235,10 +231,10 @@ invoked, all previously enqueued events will be part of the state already.
 
 If you don’t want your logic to keep running forever, you can:
 
-- Use `pond.run` to execute your logic just once, but serialised in regards to all previous local
+- Use `pond.run` to execute your logic just once, but serialized in regards to all previous local
   invocations of `pond.run`, and active `pond.keepRunning` effects
 - Or set the optional third argument to `pond.keepRunning`, called `autoCancel`. It can be used to cancel
-  your logic for good, once a certain state of the Fish is reached. For example, if you’re modelling
+  your logic for good, once a certain state of the Fish is reached. For example, if you’re modeling
   tasks as individual Fish requiring a number of steps, you may want to stop once the final state is
   reached: `autoCancel = (state) => state.type === 'Finished'`
 

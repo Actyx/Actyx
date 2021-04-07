@@ -78,32 +78,6 @@ impl NodeConnection {
             }))
             .build();
 
-        // Trying to bind to `/ip6/::0/tcp/0` (dual-stack) won't work, as
-        // rust-libp2p sets `IPV6_V6ONLY` (or the platform equivalent) [0]. This is
-        // why we have to to bind to ip4 and ip6 manually.
-        // [0] https://github.com/libp2p/rust-libp2p/blob/master/transports/tcp/src/lib.rs#L322
-        let maybe_err_ip4 = {
-            //ipv4
-            let addr = "/ip4/0.0.0.0/tcp/0".parse().unwrap();
-            info!("Node API trying to bind to {}", addr);
-            Swarm::listen_on(&mut swarm, addr).ax_internal()
-        };
-        if let Err(ref e) = maybe_err_ip4 {
-            error!("Error binding to ipv4 interface: {:?}", e);
-        }
-
-        {
-            // ipv6
-            let addr = "/ip6/::/tcp/0".parse().unwrap();
-            info!("Node API trying to bind to {}", addr);
-            // Seems ipv6 is not available
-            if let Err(e) = Swarm::listen_on(&mut swarm, addr) {
-                error!("Error binding to ipv6 interface: {:?}", e);
-                // If both binding attempts failed, it's fatal.
-                maybe_err_ip4.ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Neither IPv4 nor IPv6 available")?;
-            }
-        }
-
         let (remote_peer_id, connection) = poll_until_connected(&mut swarm, self.host.clone().to_multiaddrs()).await?;
 
         Ok(Connected {

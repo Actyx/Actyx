@@ -1,6 +1,7 @@
 import React from 'react'
 import styled from 'styled-components'
 import { Arrow } from '../icons/icons'
+import DLink from '@docusaurus/Link'
 
 const Wrapper = styled.div`
   display: flex;
@@ -39,12 +40,12 @@ type Props = Readonly<{
 }>
 
 export const Link: React.FC<Props> = ({ title, link, color, positive }: Props) => (
-  <a href={link}>
+  <DLink to={link}>
     <Wrapper>
       <LinkContent positive={positive} color={color}>
         {title}
       </LinkContent>
       <Arrow color={color} positive={positive} />
     </Wrapper>
-  </a>
+  </DLink>
 )

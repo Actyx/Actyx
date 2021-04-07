@@ -40,11 +40,7 @@ const Body = styled.div`
   align-self: flex-end;
 `
 
-type Props = Readonly<{
-  guides: string
-}>
-
-export const ConceptualGuides: React.FC<Props> = ({ guides }: Props) => (
+export const ConceptualGuides: React.FC = () => (
   <Wrapper>
     {conceptualGuides?.map((v, index) => (
       <ConceptualGuideWrapper>

@@ -221,6 +221,6 @@ interning in the pipelines reduces memory usage to less than 50% of original usa
 
 ## Summary
 
-We have shown how to create a simple analytics pipeline with ActyxOS and optimise its memory usage using advanced features present in ActyxOS Rust SDK.
+We have shown how to create a simple analytics pipeline with ActyxOS and optimize its memory usage using advanced features present in ActyxOS Rust SDK.
 The whole code for the examples can be found in the [ActyxOS Dataflow repository](https://github.com/Actyx/actyxos_data_flow) under `examples/finished-goods-1`
 and `examples/finished-goods-2`.
