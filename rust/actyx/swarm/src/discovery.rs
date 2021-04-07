@@ -159,7 +159,7 @@ pub async fn discovery_ingest(store: BanyanStore) {
         if *event.peer_id() == peer_id {
             continue;
         }
-        tracing::info!("discovery_ingest {} {:?}", node_name, event);
+        tracing::debug!("discovery_ingest {} {:?}", node_name, event);
         match event {
             Event::NewListenAddr(peer, addr)
             | Event::NewExternalAddr(peer, addr)
@@ -181,7 +181,7 @@ pub fn discovery_publish(
     let node_name = store.ipfs().local_node_name();
     Ok(async move {
         while let Some(event) = stream.next().await {
-            tracing::info!("discovery_publish {} {:?}", node_name, event);
+            tracing::debug!("discovery_publish {} {:?}", node_name, event);
             let event = match event {
                 ipfs_embed::Event::NewListenAddr(addr) => Event::NewListenAddr(peer_id, addr.into()),
                 ipfs_embed::Event::ExpiredListenAddr(addr) => Event::ExpiredListenAddr(peer_id, addr.into()),

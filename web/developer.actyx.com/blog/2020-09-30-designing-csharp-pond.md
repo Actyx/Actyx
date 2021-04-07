@@ -12,7 +12,7 @@ Pond V2](/blog/2020/07/24/pond-v2-release) from TypeScript to C#.
 
 C# and TypeScript build on very different foundations. Both are modern multi-paradigm languages;
 both have somewhat dynamic function dispatch mechanisms; but the typical C# program is still very much
-concerned with the _runtime type_ of objects, as modelled by the CLR. TypeScript meanwhile is
+concerned with the _runtime type_ of objects, as modeled by the CLR. TypeScript meanwhile is
 all about _type shapes_ (or duck typing): The type system itself is quite strong, but its _reality_ does
 not carry over into the (JavaScript) runtime.
 

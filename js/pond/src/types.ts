@@ -127,23 +127,23 @@ export const Lamport = {
   ),
 }
 
-export type Psn = number
-const mkPsn = (psn: number): Psn => psn as Psn
-export const Psn = {
-  of: mkPsn,
-  zero: mkPsn(0),
+export type Offset = number
+const mkOffset = (psn: number): Offset => psn as Offset
+export const Offset = {
+  of: mkOffset,
+  zero: mkOffset(0),
   /**
    * A value that is below any valid Psn
    */
-  min: mkPsn(-1),
+  min: mkOffset(-1),
   /**
    * A value that is above any valid Psn
    */
-  max: mkPsn(Number.MAX_SAFE_INTEGER),
-  FromNumber: new t.Type<Psn, number>(
+  max: mkOffset(Number.MAX_SAFE_INTEGER),
+  FromNumber: new t.Type<Offset, number>(
     'PsnFromNumber',
-    (x): x is Psn => isNumber(x),
-    (x, c) => t.number.validate(x, c).map(s => s as Psn),
+    (x): x is Offset => isNumber(x),
+    (x, c) => t.number.validate(x, c).map(s => s as Offset),
     x => x,
   ),
 }
@@ -224,19 +224,19 @@ export type Envelope<E> = {
 const zeroKey: EventKey = {
   lamport: Lamport.zero,
   // Cannot use empty source id, store rejects.
-  sourceId: SourceId.of('!'),
-  psn: Psn.of(0),
+  stream: SourceId.of('!'),
+  offset: Offset.of(0),
 }
 
 const keysEqual = (a: EventKey, b: EventKey): boolean =>
-  a.lamport === b.lamport && a.sourceId === b.sourceId
+  a.lamport === b.lamport && a.stream === b.stream
 
 const keysCompare = (a: EventKey, b: EventKey): Ordering => {
   const lamportOrder = ordNumber.compare(a.lamport, b.lamport)
   if (lamportOrder !== 0) {
     return lamportOrder
   }
-  return ordString.compare(a.sourceId, b.sourceId)
+  return ordString.compare(a.stream, b.stream)
 }
 
 /**
@@ -250,18 +250,19 @@ const ordEventKey: Ord<EventKey> = {
   compare: keysCompare,
 }
 
-const formatEventKey = (key: EventKey): string => `${key.lamport}/${key.sourceId}`
+const formatEventKey = (key: EventKey): string => `${key.lamport}/${key.stream}`
 
 export const EventKey = {
   zero: zeroKey,
   ord: ordEventKey,
   format: formatEventKey,
 }
+
 export const EventKeyIO = t.readonly(
   t.type({
     lamport: Lamport.FromNumber,
-    psn: Psn.FromNumber,
-    sourceId: SourceId.FromString,
+    offset: Offset.FromNumber,
+    stream: SourceId.FromString,
   }),
 )
 
@@ -403,12 +404,12 @@ export type Metadata = Readonly<{
 const maxLamportLength = String(Number.MAX_SAFE_INTEGER).length
 
 export const toMetadata = (sourceId: string) => (ev: Event): Metadata => ({
-  isLocalEvent: ev.sourceId === sourceId,
+  isLocalEvent: ev.stream === sourceId,
   tags: ev.tags,
   timestampMicros: ev.timestamp,
   timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
   lamport: ev.lamport,
-  eventId: String(ev.lamport).padStart(maxLamportLength, '0') + '/' + ev.sourceId,
+  eventId: String(ev.lamport).padStart(maxLamportLength, '0') + '/' + ev.stream,
 })
 
 /**

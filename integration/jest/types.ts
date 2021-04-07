@@ -68,7 +68,6 @@ export type HostConfig = t.TypeOf<typeof host>
 const settings = t.type({
   tempDir: t.string,
   keepNodesRunning: t.boolean,
-  skipTestProjectPreparation: t.boolean,
   gitHash: t.union([t.string, t.null]),
   // Rather than writing all logs to individual files, dump everything on stdout
   logToStdout: t.boolean,

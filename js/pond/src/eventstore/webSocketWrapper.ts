@@ -126,6 +126,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     socket.onerror = err => {
       const msg = (err as any).message
       log.ws.error('WebSocket connection error -- is ActyxOS reachable?', msg)
+      console.error(`Error: unable to connect to ActyxOS. Is it running?`)
       try {
         this.responses && this.responses.error('Cxn error: ' + msg)
       } catch (err) {

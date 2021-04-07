@@ -1,0 +1,50 @@
+---
+title: Publish to event streams
+id: publish-to-event-streams
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+<Tabs
+  groupId="sdk"
+  defaultValue={"pond"}
+  values={[
+    { label: 'Pond', value: 'pond' },
+    { label: 'JS/TS SDK', value: 'js-ts-sdk' },
+    { label: 'Rust SDK', value: 'rust-sdk' },
+  ]}
+>
+
+<TabItem value="pond">
+
+</TabItem>
+<TabItem value="js-ts-sdk">
+
+```typescript
+import { Client, EventDraft } from '@actyx/os-sdk'
+
+const ActyxOS = Client()
+
+// callback style
+ActyxOS.eventService.publish({
+  eventDrafts: EventDraft.make('mySemantics', 'myName', { foo: 'bar' }),
+  onDone: () => {
+    console.log(`Published`)
+  },
+})
+
+// promise style
+await ActyxOS.eventService.publishPromise({
+  eventDrafts: EventDraft.make('mySemantics', 'myName', { foo: 'bar' }),
+})
+```
+
+</TabItem>
+<TabItem value="rust-sdk">
+
+</TabItem>
+</Tabs>

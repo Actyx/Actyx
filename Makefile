@@ -27,18 +27,21 @@ architectures = aarch64 x86_64 armv7 arm
 all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyx-linux ax,linux-$(arch)/$(bin)))
 all-WINDOWS := $(foreach t,actyx.exe ax.exe Actyx-Installer.exe,windows-x86_64/$t)
 all-ANDROID := actyx.apk
+all-MACOS := $(foreach t,actyx-linux ax,macos-x86_64/$t)
 
 CARGO_TEST_JOBS := 8
 CARGO_BUILD_JOBS := 8
 
 # this needs to remain the first so it is the default target
-all: all-linux all-android all-windows all-js
+all: all-linux all-android all-windows all-macos all-js
 
 all-linux: $(patsubst %,dist/bin/%,$(all-LINUX))
 
 all-android: $(patsubst %,dist/bin/%,$(all-ANDROID))
 
 all-windows: $(patsubst %,dist/bin/%,$(all-WINDOWS))
+
+all-macos: $(patsubst %,dist/bin/%,$(all-MACOS))
 
 all-js: \
 	dist/js/pond \
@@ -50,7 +53,7 @@ all-js: \
 make-always:
 	touch $@
 
-export BUILD_RUST_TOOLCHAIN := 1.50.0
+export BUILD_RUST_TOOLCHAIN := 1.51.0
 
 export CARGO_HOME ?= $(HOME)/.cargo
 
@@ -68,7 +71,7 @@ endif
 # which the respective images was built. Whenever the build images (inside
 # ops/docker/images/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := f543998d946f060af2837e97376e51aeaefcdf3f
+export LATEST_STABLE_IMAGE_VERSION := 7a5bf6a840c79ca57f0220e951038ba9a62169b0
 # Helper to try out local builds of Docker images
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))
 
@@ -249,6 +252,7 @@ target-linux-x86_64 = x86_64-unknown-linux-musl
 target-linux-armv7 = armv7-unknown-linux-musleabihf
 target-linux-arm = arm-unknown-linux-musleabi
 target-windows-x86_64 = x86_64-pc-windows-gnu
+target-macos-x86_64 = x86_64-apple-darwin
 
 # non-musl targets
 target-nonmusl-linux-aarch64 = aarch64-unknown-linux-gnu
@@ -260,9 +264,11 @@ target-nonmusl-windows-x86_64 = x86_64-pc-windows-gnu
 # define mapping from os to builder image name
 image-linux = actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
+# see https://github.com/Actyx/osxbuilder
+image-darwin = actyx/osxbuilder:71159f9ba63817122f16bf0d1523d23241f423d1
 
 # list all os-arch and binary names
-osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64
+osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64
 binaries = ax ax.exe actyx-linux actyx.exe
 
 # compute list of all OSs (e.g. linux, windows) and rust targets (looking into the target-* vars)

@@ -1,6 +1,5 @@
 mod event_service_api;
 mod ipfs_file_gateway;
-mod public_api;
 mod rejections;
 #[cfg(test)]
 mod tests;
@@ -8,6 +7,7 @@ mod util;
 
 use std::net::SocketAddr;
 
+use actyx_util::{ax_panic, formats::NodeErrorContext};
 use actyxos_sdk::NodeId;
 use crypto::KeyStoreRef;
 use futures::future::try_join_all;
@@ -26,12 +26,25 @@ pub async fn run(
     let tasks = bind_to
         .into_iter()
         .map(|i| {
-            let (addr, task) = serve_it(i, api.clone().boxed()).unwrap();
+            serve_it(i, api.clone().boxed()).map_err(move |e| {
+                e.context(NodeErrorContext::BindFailed {
+                    port: i.port(),
+                    component: "API".into(),
+                })
+            })
+        })
+        .map(|i| async move {
+            let (addr, task) = i?;
             tracing::info!(target: "API_BOUND", "API bound to {}.", addr);
-            task
+            task.await
         })
         .collect::<Vec<_>>();
-    try_join_all(tasks).await.unwrap();
+    // This error will be propagated by a `panic!`, so we use the `ax_panic!`
+    // macro, which will wrap the error into an `Arc` in order to properly
+    // extract it later in the node's panic hook
+    if let Err(e) = try_join_all(tasks).await {
+        ax_panic!(e);
+    }
 }
 
 fn routes(
@@ -46,7 +59,7 @@ fn routes(
 
     let cors = cors()
         .allow_any_origin()
-        .allow_headers(vec!["Content-Type", "content-type"])
+        .allow_headers(vec!["accept", "authorization", "content-type"])
         .allow_methods(&[http::Method::GET, http::Method::POST]);
 
     let crash = path!("_crash").and_then(|| async move { Err::<String, _>(reject::custom(rejections::Crash)) });

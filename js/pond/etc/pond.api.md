@@ -431,8 +431,8 @@ export const Tags: <E>(...requiredTags: string[]) => Tags<E>;
 
 // @public
 export type TestEvent = {
-    psn: number;
-    sourceId: string;
+    offset: number;
+    stream: string;
     timestamp: Timestamp;
     lamport: Lamport;
     tags: ReadonlyArray<string>;

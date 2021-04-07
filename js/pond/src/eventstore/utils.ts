@@ -9,7 +9,7 @@ import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import { Event, Events, WsStoreConfig } from './types'
 
 const defaultConfig: WsStoreConfig = {
-  url: (isNode && process.env.AX_STORE_URI) || 'ws://localhost:4454/store_api',
+  url: (isNode && process.env.AX_STORE_URI) || 'ws://localhost:4454/api/v2/events?token=ok',
 }
 
 export const extendDefaultWsStoreConfig = (overrides: Partial<WsStoreConfig> = {}) => ({

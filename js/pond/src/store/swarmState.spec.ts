@@ -6,20 +6,20 @@
  */
 import { Observable } from 'rxjs'
 import { OffsetMap } from '../eventstore'
-import { Psn } from '../types'
+import { Offset } from '../types'
 import { swarmState } from './swarmState'
 
 describe('swarmState', () => {
   it('should aggregate info from ourselves', async () => {
     const ownMap: OffsetMap = {
-      myself: Psn.of(10),
-      a: Psn.of(10),
-      c: Psn.of(100), // only we know this guy
+      myself: Offset.of(10),
+      a: Offset.of(10),
+      c: Offset.of(100), // only we know this guy
     }
     const swarmMap: OffsetMap = {
-      myself: Psn.of(5), // swarm knows us, but with a lower PSN
-      a: Psn.of(20), // we have this, but with a lower PSN
-      b: Psn.of(30), // we don't have this at all
+      myself: Offset.of(5), // swarm knows us, but with a lower PSN
+      a: Offset.of(20), // we have this, but with a lower PSN
+      b: Offset.of(30), // we don't have this at all
     }
     const own = Observable.of(ownMap)
     const swarm = Observable.of(swarmMap)
@@ -52,18 +52,18 @@ Object {
   it('should only increase psns', async () => {
     const ownMaps: ReadonlyArray<OffsetMap> = [
       {
-        myself: Psn.of(10),
+        myself: Offset.of(10),
       },
       {
-        myself: Psn.of(5),
+        myself: Offset.of(5),
       },
     ]
     const swarmMaps: ReadonlyArray<OffsetMap> = [
       {
-        a: Psn.of(30),
+        a: Offset.of(30),
       },
       {
-        a: Psn.of(20),
+        a: Offset.of(20),
       },
     ]
     const own = Observable.from(ownMaps)

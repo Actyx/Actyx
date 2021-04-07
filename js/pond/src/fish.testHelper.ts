@@ -12,14 +12,14 @@ import { Event, Events, OffsetMap } from './eventstore/types'
 import { observeMonotonic } from './monotonic'
 import { SnapshotStore } from './snapshotStore'
 import { minSnapshotAge, SnapshotScheduler } from './store/snapshotScheduler'
-import { Tag, toSubscriptionSet, Where } from './tagging'
+import { Tag, Where } from './tagging'
 import {
   EventKey,
   FishErrorContext,
+  FishErrorReporter,
   FishName,
   Lamport,
-  Psn,
-  FishErrorReporter,
+  Offset,
   Semantics,
   SnapshotFormat,
   SourceId,
@@ -66,9 +66,9 @@ export const eventFactory = () => {
 
     const fullEvent = {
       timestamp: Timestamp.of(raw.timestamp),
-      sourceId: SourceId.of(raw.source),
+      stream: SourceId.of(raw.source),
       lamport: Lamport.of(raw.timestamp),
-      psn: Psn.of(offset),
+      offset: Offset.of(offset),
       payload: raw.payload,
       semantics: testFishSemantics,
       name: testFishName,
@@ -119,7 +119,7 @@ export type SnapshotData = Readonly<{
   semantics: Semantics
   name: FishName
   key: EventKey
-  psnMap: OffsetMap
+  offsets: OffsetMap
   horizon: EventKey | undefined
   cycle: number
   version: number
@@ -131,18 +131,18 @@ export const mkSnapshot = (
   state: NumberFishState,
   time: number,
   horizon?: number,
-  psnMap?: Record<string, Psn>,
+  offsetMap?: Record<string, Offset>,
   version?: number,
 ): SnapshotData => {
-  const psns = psnMap ? psnMap : { 'some-source': Psn.of(1) }
+  const offsets = offsetMap ? offsetMap : { 'some-source': Offset.of(1) }
 
   return {
     semantics: testFishSemantics,
     name: testFishName,
-    key: { psn: 1, sourceId: 'some-source', lamport: time } as EventKey,
-    psnMap: psns,
+    key: { offset: 1, stream: 'some-source', lamport: time } as EventKey,
+    offsets,
     horizon: horizon
-      ? ({ psn: 0, sourceId: 'some-source', lamport: horizon } as EventKey)
+      ? ({ offset: 0, stream: 'some-source', lamport: horizon } as EventKey)
       : undefined,
     cycle: 1,
     version: version || 1,
@@ -173,7 +173,7 @@ export const snapshotTestSetup = async <S>(
         snap.semantics,
         snap.name,
         snap.key,
-        snap.psnMap,
+        snap.offsets,
         snap.horizon,
         snap.cycle,
         snap.version,
@@ -193,7 +193,7 @@ export const snapshotTestSetup = async <S>(
   )
 
   const observe = hydrate(
-    toSubscriptionSet(fish.where),
+    fish.where,
     fish.initialState,
     fish.onEvent,
     fish.fishId,
@@ -344,7 +344,7 @@ export const mkTimeline = (...events: MkEvent[]): Timeline => {
 
   return {
     all: timeline,
-    of: (...sources: string[]) => timeline.filter(ev => sources.includes(ev.sourceId)),
+    of: (...sources: string[]) => timeline.filter(ev => sources.includes(ev.stream)),
   }
 }
 
@@ -354,7 +354,7 @@ export const offsets = (...eventsBySource: Events[]) => {
     const lastEvent = last(events)!
     return {
       ...acc,
-      [lastEvent.sourceId]: lastEvent.psn,
+      [lastEvent.stream]: lastEvent.offset,
     }
   }, {})
 }

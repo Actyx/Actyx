@@ -134,7 +134,7 @@ impl Encode<DagCborCodec> for AxKeySeq {
 impl Decode<DagCborCodec> for AxKeySeq {
     fn decode<R: Read + Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
         let t: AxKeySeqIo = Decode::decode(c, r)?;
-        Ok(t.try_into()?)
+        t.try_into()
     }
 }
 
@@ -403,7 +403,7 @@ impl Encode<DagCborCodec> for AxSummarySeq {
 impl Decode<DagCborCodec> for AxSummarySeq {
     fn decode<R: Read + Seek>(c: DagCborCodec, r: &mut R) -> anyhow::Result<Self> {
         let t: AxSummarySeqIo = Decode::decode(c, r)?;
-        Ok(t.try_into()?)
+        t.try_into()
     }
 }
 

@@ -112,10 +112,8 @@ describe('Milliseconds', () => {
 
 describe('toMetadata', () => {
   const ev: Event = {
-    psn: 5,
-    semantics: '_t_',
-    sourceId: 'src',
-    name: '_t_',
+    offset: 5,
+    stream: 'src',
     timestamp: 50_000,
     lamport: 12345,
     tags: ['tags'],
@@ -133,6 +131,6 @@ describe('toMetadata', () => {
 
   it('should set isLocalEvent', () => {
     expect(metadata(ev).isLocalEvent).toBeTruthy()
-    expect(metadata({ ...ev, sourceId: 'other' }).isLocalEvent).toBeFalsy()
+    expect(metadata({ ...ev, stream: 'other' }).isLocalEvent).toBeFalsy()
   })
 })

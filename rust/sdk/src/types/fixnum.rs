@@ -197,9 +197,9 @@ impl<T: LeEqU128> From<FixedI128<T>> for FixNum<T> {
     }
 }
 
-impl<T: LeEqU128> Into<FixedI128<T>> for FixNum<T> {
-    fn into(self) -> FixedI128<T> {
-        self.0
+impl<T: LeEqU128> From<FixNum<T>> for FixedI128<T> {
+    fn from(o: FixNum<T>) -> FixedI128<T> {
+        o.0
     }
 }
 

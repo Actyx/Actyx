@@ -8,8 +8,8 @@ import { chunksOf } from 'fp-ts/lib/Array'
 import { fromNullable } from 'fp-ts/lib/Option'
 import { Observable, ReplaySubject, Scheduler, Subject } from 'rxjs'
 import log from '../store/loggers'
-import { SubscriptionSet, subscriptionsToEventPredicate } from '../subscription'
-import { EventKey, Lamport, Psn, SourceId, Timestamp } from '../types'
+import { toEventPredicate, Where } from '../tagging'
+import { EventKey, Lamport, Offset, SourceId, Timestamp } from '../types'
 import { binarySearch, mergeSortedInto } from '../util'
 import {
   EventStore,
@@ -34,8 +34,8 @@ import {
  * @public
  */
 export type TestEvent = {
-  psn: number
-  sourceId: string
+  offset: number
+  stream: string
 
   timestamp: Timestamp
   lamport: Lamport
@@ -54,27 +54,27 @@ export type TestEventStore = EventStore & {
 const lookup = (offsets: OffsetMap, source: string) => fromNullable(offsets[source])
 
 export type HasPsnAndSource = {
-  psn: number
-  sourceId: string
+  offset: number
+  stream: string
 }
 
 export const includeEvent = (offsetsBuilder: OffsetMapBuilder, ev: HasPsnAndSource): OffsetMap => {
-  const { psn, sourceId } = ev
-  const current = lookup(offsetsBuilder, sourceId)
-  if (!current.exists(c => c >= psn)) {
-    offsetsBuilder[sourceId] = psn
+  const { offset, stream } = ev
+  const current = lookup(offsetsBuilder, stream)
+  if (!current.exists(c => c >= offset)) {
+    offsetsBuilder[stream] = offset
   }
   return offsetsBuilder
 }
 
 const isBetweenPsnLimits = (from: OffsetMapWithDefault, to: OffsetMapWithDefault) => (e: Event) => {
-  const source: string = e.sourceId
+  const source: string = e.stream
 
   const lower = lookup(from.psns, source)
   const upper = lookup(to.psns, source)
 
-  const passLower = lower.map(lw => e.psn > lw).getOrElse(from.default === 'min')
-  const passUpper = upper.map(up => e.psn <= up).getOrElse(to.default === 'max')
+  const passLower = lower.map(lw => e.offset > lw).getOrElse(from.default === 'min')
+  const passUpper = upper.map(up => e.offset <= up).getOrElse(to.default === 'max')
 
   return passLower && passUpper
 }
@@ -82,8 +82,8 @@ const isBetweenPsnLimits = (from: OffsetMapWithDefault, to: OffsetMapWithDefault
 /**
  * HERE BE DRAGONS: This function is just a draft of an optimisation we may do in a Rust-side impl
  * Take an offset map and a sorted array of events -> find an index that fully covers the offsetmap.
- * - Psn of event is smaller than in map -> Too low
- * - Psn of event is higher -> Too high
+ * - Offset of event is smaller than in map -> Too low
+ * - Offset of event is higher -> Too high
  * - Event’s source is not in offsets: Too high if offsets default is 'min'
  * - Psn eq: Too low, unless the next event is too high
  */
@@ -104,7 +104,7 @@ export const binSearchOffsets = (a: Events, offsets: OffsetMapWithDefault): numb
 // For use within `binSearchOffsets` -- very specialized comparison.
 const ordOffsetsEvent = (offsets: OffsetMapWithDefault, events: Events) => (i: number): number => {
   const ev = events[i]
-  const source = ev.sourceId
+  const source = ev.stream
 
   const offset = lookup(offsets.psns, source)
 
@@ -112,7 +112,7 @@ const ordOffsetsEvent = (offsets: OffsetMapWithDefault, events: Events) => (i: n
     // Unknown source: Too high.
     1,
     o => {
-      const d = ev.psn - o
+      const d = ev.offset - o
       if (d !== 0 || i + 1 === events.length) {
         return d
       }
@@ -127,7 +127,7 @@ const filterSortedEvents = (
   events: Events,
   from: OffsetMapWithDefault,
   to: OffsetMapWithDefault,
-  subs: SubscriptionSet,
+  subs: Where<unknown>,
   min?: EventKey,
 ): Event[] => {
   // If min is given, should be among the existing events
@@ -136,19 +136,19 @@ const filterSortedEvents = (
   return events
     .slice(sliceStart)
     .filter(isBetweenPsnLimits(from, to))
-    .filter(subscriptionsToEventPredicate(subs))
+    .filter(toEventPredicate(subs))
 }
 
 const filterUnsortedEvents = (
   from: OffsetMapWithDefault,
   to: OffsetMapWithDefault,
-  subs: SubscriptionSet,
+  subs: Where<unknown>,
   min?: EventKey,
 ) => (events: Events): Event[] => {
   return events
     .filter(ev => !min || EventKey.ord.compare(ev, min) > 0)
     .filter(isBetweenPsnLimits(from, to))
-    .filter(subscriptionsToEventPredicate(subs))
+    .filter(toEventPredicate(subs))
 }
 
 const persistence = () => {
@@ -226,8 +226,7 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
 
     const filtered = filterSortedEvents(events, from, to, subs, min)
 
-    const ret =
-      sortOrder === PersistedEventsSortOrders.ReverseEventKey ? filtered.reverse() : filtered
+    const ret = sortOrder === PersistedEventsSortOrders.Descending ? filtered.reverse() : filtered
 
     return Observable.from(chunksOf(ret, eventChunkSize)).defaultIfEmpty([])
   }
@@ -276,9 +275,9 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
       lamport = Lamport.of(lamport + 1)
       return {
         ...unstoredEvent,
-        sourceId,
+        stream: sourceId,
         lamport,
-        psn: Psn.of(psn++),
+        offset: Offset.of(psn++),
       }
     })
 

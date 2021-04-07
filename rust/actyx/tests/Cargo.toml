@@ -1,0 +1,17 @@
+[package]
+name = "tests"
+description = "Accessible way to do tests on a workspace level"
+version = "0.1.0"
+authors = ["Actyx AG <developer@actyx.com>"]
+edition = "2018"
+
+[dependencies]
+actyxos_sdk = { path = "../../sdk", features = ["client"] }
+anyhow = "1.0.39"
+crossbeam = "0.8.0"
+futures = "0.3.13"
+node = { path = "../node" }
+regex = "1.4.5"
+tempfile = "3.2.0"
+tokio = { version = "1.4.0", features = ["full"] }
+util = { path = "../util" }

@@ -210,7 +210,7 @@ export class MockWebSocket {
 
         if (
           request.type === RequestMessageType.Request &&
-          request.serviceId === RequestTypes.SourceId
+          request.serviceId === RequestTypes.NodeId
         ) {
           return {
             name: 'message',
@@ -218,7 +218,7 @@ export class MockWebSocket {
               MockWebSocket.mkResponse({
                 type: ResponseMessageType.Next,
                 requestId: request.requestId,
-                payload: SourceId.of('MOCK'),
+                payload: { nodeId: SourceId.of('MOCK') },
               }),
               MockWebSocket.mkResponse({
                 type: ResponseMessageType.Complete,

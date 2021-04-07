@@ -15,10 +15,12 @@ members = [
   "node-ffi",
   "node-win",
   "swarm",
+  "tests",
   "tracing_win_event_log",
   "trees",
   "util",
 ]
+resolver = "2"
 
 # This can only be set per workspace. In release, we rely on a setting a custom
 # panic hook (see `node/src/util.rs::init_panic_hook`), which safely brings

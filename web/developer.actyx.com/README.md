@@ -1,4 +1,4 @@
-# developer.actyx.com
+# Actyx Developer Documentation
 
 This directory contains the source used to build the [https://developer.actyx.com](https://developers.actyx.com) website. For more information about **contributing content**, please jump to [contributing content](#contributing-content). If you are interested in **how it works** or **developing** the site, please jump to [development](#development).
 
@@ -10,64 +10,31 @@ This directory contains the source used to build the [https://developer.actyx.co
 
 ### Content structure
 
-The site has four sections:
+The content of our docs is grouped by 4 categories:
 
-#### ActyxOS
+#### Conceptual Guides
 
-Documentation related to ActyxOS. All content can be found in `/docs/os`.
+These <b>understanding-oriented</b> guides clarify a particular topic by giving context and a wider view.
 
-The sidebar (left on the page) is defined in the `osSidebar` property in `/sidebars.js`.
+#### How-to Guides
 
-#### Actyx Pond
+These <b>problem-oriented</b> guides take the reader through a series of steps required to solve a problem.
 
-Documentation related to Actyx Pond. All content can be found in `/docs/pond`.
+#### API Reference Docs
 
-The sidebar (left on the page) is defined in the `pondSidebar` property in `/sidebars.js`.
+These <b>information-oriented</b> docs provide technical descriptions of the code and how to operate it.
 
-#### Actyx CLI
+#### Tutorials
 
-Documentation related to the Actyx CLI. All content can be found in `/docs/cli.md` (currently it is just a single page).
+These <b>learning-oriented</b> lessons take the reader by the hand to complete a small project. Note that all the tutorials are located in the Actyx Academy and ownership lies entirely with Developer Advocacy. The responsibility with the rest of the content lies within Product Management.
 
-The sidebar (left on the page) is defined in the `pondSidebar` property in `/sidebars.js`.
+### Markdown Pages
 
-#### FAQ
-
-Frequently asked questions. All content can be found in `/docs/faq`.
-
-The sidebar (left on the page) is defined in the `faqSidebar` property in `/sidebars.js`.
-
-### Content format
-
-Docusaurus uses standard Markdown syntax extended with MDX. Any page should have the following structure
-
-```bash
----
-property1: value
-property2: value
----
-
-My content
-
-## My first header
-
-More content
-
-## My second header
-
-Even more content
-```
-
-As you can see, a page is composed of so-called _header fields_ (enclosed by `---` above and below), followed by the actual content. The content can be any valid Markdown. Indeed, you can even use MDX. Please refer to [this page](https://v2.docusaurus.io/docs/markdown-features/) for more information.
-
-**Important**: do not use h1 headers (i.e. `#`). The highest-level header on the page should be a second-level header (`##`).
-
-#### Header fields
-
-At the very least, each page should have a `title` header field.
+A page is composed of so-called _frontmatter_ (enclosed by `---` above and below), followed by the actual content. Please make sure you fill in all fields in the frontmatter section. The content can be any valid Markdown. Indeed, you can even use MDX. Please refer to [this page](https://v2.docusaurus.io/docs/markdown-features/) for more information.
 
 #### Linking to other pages
 
-Link to other pages using relative links and include the `.md` file extension (it will automatically be removed at build time). Example:
+Link to other pages using relative links and include the `.mdx` file extension (it will automatically be removed at build time). Example:
 
 ```md
 Check out [this page](../pond/design-principles.md).
@@ -88,6 +55,8 @@ Note that the path does not include `static`. The fact that there is a differenc
 ```bash
 ln -s /static/images /images
 ```
+
+All .svg image files that are in the static or any inner folder will be optimized during `prebuild` using an [svg optimizer](https://www.npmjs.com/package/svgo) and saved back under their original name in the same folder.
 
 #### Callouts
 
@@ -110,22 +79,29 @@ If you want to change the content of existing pages, simply find the correspondi
 In order to add a new page you must do two things:
 
 1. Create the Markdown file
-1. Add the correct header field(s)
+1. Add the correct front matter fields
 1. Add the page to a corresponding sidebar.
 
-If you want to add new sidebars, or create new sections either (a) figure it out using the existing code or the [Docusaurus (v2) documentation](https://v2.docusaurus.io/docs/introduction); or (b) ask OST.
+If you want to add new sidebars, or create new sections either (a) figure it out using the existing code or the [Docusaurus (v2) documentation](https://v2.docusaurus.io/docs/introduction); or (b) ask Product Management.
 
 #### Create the page
 
-Create a new Markdown file in the correct directory, e.g. `/docs/os/further-information/great-question.md`.
+Create a new `.mdx` file in the correct directory, e.g. `/docs/conceptual/`.
 
-#### Add required or optional header fields
+#### Add required or optional frontmatter
 
 At the top of the file add, at least, the following:
 
 ```md
 ---
-title: Great question.
+title: Title
+id: title
+hide_title: false
+hide_table_of_contents: false
+sidebar_label: Sidebar Title
+keywords: [some, fitting, keywords]
+description: Some description of the content of this document. This description will be shown in thumbnails when for example posting on Twitter.
+image: /images/os/js-sdk.png
 ---
 ```
 

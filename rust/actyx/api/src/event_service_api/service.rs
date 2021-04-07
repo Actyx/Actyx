@@ -72,10 +72,11 @@ impl service::EventService for EventService {
             .map_ok(|keys| PublishResponse {
                 data: keys
                     .into_iter()
-                    .map(|(lamport, offset, stream_nr)| PublishResponseKey {
+                    .map(|(lamport, offset, stream_nr, timestamp)| PublishResponseKey {
                         lamport,
                         offset,
-                        stream_nr,
+                        stream: self.store.node_id().stream(stream_nr),
+                        timestamp,
                     })
                     .collect(),
             })

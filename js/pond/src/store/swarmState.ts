@@ -8,7 +8,7 @@ import * as immutable from 'immutable'
 import { Observable } from 'rxjs'
 import * as rx from 'rxjs/operators'
 import { OffsetMap } from '../eventstore'
-import { Psn } from '../types'
+import { Offset } from '../types'
 
 /**
  * All the info we got for a single node
@@ -69,7 +69,7 @@ const emptySwarmInfo: SwarmInfo = { nodes: immutable.Map() }
 const addPsnMap = (current: SwarmInfo, m: SourcedOffsetMap): SwarmInfo => {
   const nodes = Object.entries(m.roots).reduce((agg, [k, v]) => {
     const entry: NodeInfoEntry = agg.get(k, {})
-    const currentPsn = entry[m.from] || Psn.of(-1)
+    const currentPsn = entry[m.from] || Offset.of(-1)
     return v > currentPsn ? agg.set(k, { ...entry, [m.from]: v }) : agg
   }, current.nodes)
   return { nodes }

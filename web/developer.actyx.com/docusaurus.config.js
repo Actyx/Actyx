@@ -1,3 +1,5 @@
+const remarkCodeImport = require('remark-code-import')
+
 module.exports = {
   title: 'Actyx Developer',
   tagline: 'Documentation, guides and tools for building on the Actyx Platform',
@@ -5,7 +7,8 @@ module.exports = {
   baseUrl: '/',
   favicon: 'img/favicon.ico',
   organizationName: 'Actyx',
-  projectName: 'Actyx',
+  projectName: 'Actyx Developer Website',
+  onBrokenLinks: 'log',
   plugins: [
     [
       require.resolve('docusaurus-gtm-plugin'),
@@ -14,21 +17,48 @@ module.exports = {
       },
     ],
     [require.resolve('./src/plugins/analytics'), {}],
-    [
+    /*     [
       require.resolve('./src/plugins/arm'),
       {
-	      releasesYml: './__auto-releases.yml',
+        releasesYml: './__auto-releases.yml',
+      },
+    ], */
+    [
+      'docusaurus-plugin-typedoc',
+      {
+        id: 'js-ts-sdk',
+        entryPoints: ['../../js/os-sdk/src/index.ts'],
+        tsconfig: '../../js/os-sdk/tsconfig.json',
+        out: 'reference/js-ts-sdk',
+        disableSources: true,
+        sidebar: {
+          sidebarFile: '__js-ts-sdk-sidebar.js',
+          fullNames: false,
+        },
+      },
+    ],
+    [
+      'docusaurus-plugin-typedoc',
+      {
+        id: 'pond',
+        entryPoints: ['../../js/pond/src/index.ts'],
+        tsconfig: '../../js/pond/tsconfig.json',
+        out: 'reference/pond',
+        disableSources: true,
+        sidebar: {
+          sidebarFile: '__pond-sidebar.js',
+          fullNames: false,
+        },
       },
     ],
   ],
   themeConfig: {
-    announcementBar: {
-      id: 'os-112',
-      content:
-        '🤩 We released version 1.1.2 of ActyxOS! Check out the <a rel="noopener noreferrer" href="https://developer.actyx.com/docs/os/release-notes">release notes</a> and <a rel="noopener noreferrer" href="https://downloads.actyx.com">download</a> the latest and greatest! 🤩',
-      backgroundColor: '#f5f6f7',
-      textColor: '#000',
-    },
+    // announcementBar: {
+    //   id: 'test007',
+    //   content: 'Announcement Bar Content',
+    //   backgroundColor: '#373c40',
+    //   textColor: '#fff',
+    // },
     colorMode: {
       defaultMode: 'light',
       disableSwitch: true,
@@ -42,44 +72,35 @@ module.exports = {
       },
       items: [
         {
-          label: 'ActyxOS',
-          activeBasePath: 'docs/os/',
-          to: 'docs/os/general/introduction',
+          label: 'How-to Guides',
+          activeBasePath: 'docs/how-to',
+          to: 'docs/how-to/overview',
         },
         {
-          label: 'Actyx\u00a0Pond',
-          activeBasePath: 'docs/pond/',
-          to: 'docs/pond/introduction',
+          label: 'Conceptual Guides',
+          activeBasePath: 'docs/conceptual',
+          to: 'docs/conceptual/overview',
         },
         {
-          label: 'Node\u00a0Management',
-          position: 'left',
-          items: [
-            {
-              label: 'Actyx\u00a0CLI',
-              to: 'docs/cli/getting-started',
-            },
-            {
-              label: 'ActyxOS\u00a0Node\u00a0Manager',
-              to: 'docs/node-manager/overview',
-            },
-          ],
+          label: 'Reference',
+          activeBasePath: 'docs/reference',
+          to: 'docs/reference/overview',
         },
         {
-          to: 'docs/learn-actyx',
-          activeBasePath: 'learn-actyx',
-          label: 'Learn\u00a0Actyx',
-          position: 'left',
+          label: 'Tutorials',
+          activeBasePath: 'docs/tutorials',
+          to: 'docs/tutorials/overview',
         },
         {
-          to: 'blog',
           label: 'Blog',
+          activeBasePath: '/blog',
           position: 'right',
+          to: '/blog',
         },
         {
-          to: 'releases',
-          label: 'Releases',
+          label: 'Forum',
           position: 'right',
+          to: 'https://community.actyx.com/',
         },
       ],
     },
@@ -89,57 +110,90 @@ module.exports = {
         src: 'img/header.svg',
         href: 'https://developer.actyx.com',
       },
-      style: 'light',
+      style: 'dark',
       links: [
         {
-          title: 'Product Documentation',
+          title: 'Get started',
           items: [
             {
-              label: 'ActyxOS',
-              to: 'docs/os/general/introduction',
+              label: 'Install and start Actyx',
+              to: 'docs/how-to/local-development/install-actyx',
             },
             {
-              label: 'Actyx Pond',
-              to: 'docs/pond/introduction',
+              label: 'Set up a new project',
+              to: 'docs/how-to/local-development/set-up-a-new-project',
+            },
+            {
+              label: 'Jump into Actyx Pond',
+              to: 'docs/how-to/actyx-pond/getting-started',
+            },
+            {
+              label: 'Package for mobile',
+              to: 'docs/how-to/packaging/mobile-apps',
             },
           ],
         },
         {
-          title: 'Node Management',
+          title: 'Essential concepts',
           items: [
             {
-              label: 'Actyx CLI',
-              to: 'docs/cli/getting-started',
+              label: 'How Actyx works',
+              to: 'docs/conceptual/how-actyx-works',
             },
             {
-              label: 'Actyx Node Manager',
-              to: 'docs/node-manager/overview',
-            }
-          ]
+              label: 'Event-based systems',
+              to: 'docs/conceptual/event-sourcing',
+            },
+            {
+              label: 'Actyx jargon',
+              to: 'docs/conceptual/actyx-jargon',
+            },
+            {
+              label: 'Local First Cooperation',
+              to: 'docs/conceptual/local-first-cooperation',
+            },
+          ],
         },
         {
-          title: 'Useful Links',
+          title: 'Reference docs',
           items: [
             {
-              label: 'FAQ',
-              to: 'docs/faq/supported-programming-languages',
+              label: 'Actyx',
+              to: 'docs/reference/actyx-reference',
             },
             {
-              label: 'Blog Posts',
-              to: 'blog',
+              label: 'JS/TS SDK',
+              to: 'docs/reference/js-ts-sdk',
             },
             {
-              label: 'Downloads',
-              to: 'https://downloads.actyx.com/',
+              label: 'CLI',
+              to: 'docs/reference/cli/cli-overview',
+            },
+            {
+              label: 'Node Manager',
+              to: 'docs/reference/node-manager',
+            },
+          ],
+        },
+        {
+          title: 'For developers',
+          items: [
+            {
+              label: 'Forum',
+              to: 'https://community.actyx.com',
             },
             {
               label: 'Discord',
               to: 'https://discord.gg/262yJhc',
             },
+            {
+              label: 'Blog',
+              to: 'blog',
+            },
           ],
         },
         {
-          title: 'Actyx',
+          title: 'Company',
           items: [
             {
               label: 'Home',
@@ -147,15 +201,15 @@ module.exports = {
             },
             {
               label: 'Team',
-              to: 'https://www.actyx.com/company/team',
+              to: 'https://www.actyx.com/about',
             },
             {
-              label: 'Career',
-              to: 'https://careers.actyx.io/',
-            },
-            {
-              label: 'Press',
+              label: 'News',
               to: 'https://www.actyx.com/news',
+            },
+            {
+              label: 'Careers',
+              to: 'https://careers.actyx.io/',
             },
           ],
         },
@@ -163,7 +217,7 @@ module.exports = {
       copyright: `Copyright © ${new Date().getFullYear()} Actyx AG`,
     },
     prism: {
-      theme: require('prism-react-renderer/themes/palenight'),
+      theme: require('prism-react-renderer/themes/vsDark'),
       darkTheme: require('prism-react-renderer/themes/dracula'),
       additionalLanguages: ['rust', 'csharp'],
     },
@@ -179,11 +233,16 @@ module.exports = {
       {
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
+          remarkPlugins: [remarkCodeImport],
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
         },
+        blog: {
+          postsPerPage: 6,
+          blogSidebarTitle: 'Our latest posts',
+        },
       },
     ],
   ],
-};
+}

@@ -42,35 +42,43 @@ pub(crate) fn init_panic_hook(tx: Sender<ExternalEvent>) {
         // the backtrace library is the same lib that produces the dumps in std lib.
         let backtrace = backtrace::Backtrace::new();
 
-        // formatting code inspired by log-panics
+        // formatting code inspired by the `log-panics` crate
         let thread = std::thread::current();
         let thread = thread.name().unwrap_or("unnamed");
 
-        let msg = match info.payload().downcast_ref::<&'static str>() {
-            Some(s) => *s,
-            None => match info.payload().downcast_ref::<String>() {
-                Some(s) => &**s,
-                None => "Box<Any>",
-            },
-        };
+        let err = if let Some(anyhow_err) = info.payload().downcast_ref::<Arc<anyhow::Error>>() {
+            // Try to extract `NodeError` directly from `&Arc<anyhow::Error>`
+            let err: NodeError = anyhow_err.into();
+            err
+        } else {
+            let msg = match info.payload().downcast_ref::<&'static str>() {
+                Some(s) => *s,
+                None => match info.payload().downcast_ref::<String>() {
+                    Some(s) => &**s,
+                    None => "Box<Any>",
+                },
+            };
 
-        let message = match info.location() {
-            Some(location) => {
-                format!(
-                    "thread '{}' panicked at '{}': {}:{}{:?}",
-                    thread,
-                    msg,
-                    location.file(),
-                    location.line(),
-                    backtrace
-                )
-            }
-            None => format!("thread '{}' panicked at '{}'{:?}", thread, msg, backtrace),
+            let message = match info.location() {
+                Some(location) => {
+                    format!(
+                        "thread '{}' panicked at '{}': {}:{}{:?}",
+                        thread,
+                        msg,
+                        location.file(),
+                        location.line(),
+                        backtrace
+                    )
+                }
+                None => format!("thread '{}' panicked at '{}'{:?}", thread, msg, backtrace),
+            };
+            error!(target: "panic", "{}", message);
+
+            NodeError::InternalError(Arc::new(anyhow!(message)))
         };
-        error!(target: "panic", "{}", message);
         if tx
             .send(ExternalEvent::ShutdownRequested(
-                crate::formats::ShutdownReason::Internal(NodeError::InternalError(Arc::new(anyhow!(message)))),
+                crate::formats::ShutdownReason::Internal(err),
             ))
             .is_err()
         {

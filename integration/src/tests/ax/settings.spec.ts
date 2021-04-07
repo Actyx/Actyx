@@ -1,29 +1,29 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-var-requires */
 const nodeSettingSchema = require('../../../../../protocols/json-schema/os/node-settings.schema.json')
 
-import { stubs } from '../../stubs'
-import fetch from 'node-fetch'
-import { assertOK } from '../../assertOK'
-import { runOnEvery } from '../../infrastructure/hosts'
-import { ActyxOSNode } from '../../infrastructure/types'
-import { createTestNodeDockerLocal } from '../../test-node-factory'
 import { readFile, remove } from 'fs-extra'
-import { quickstartDirs } from '../../setup-projects/quickstart'
-import { settings } from '../../infrastructure/settings'
+import { writeFile } from 'fs/promises'
+import fetch from 'node-fetch'
 import path from 'path'
 import YAML from 'yaml'
-import { writeFile } from 'fs/promises'
+import { assertOK } from '../../assertOK'
 import { SettingsInput } from '../../cli/exec'
+import { runOnEvery } from '../../infrastructure/hosts'
+import { ActyxOSNode } from '../../infrastructure/types'
 import { waitForNodeToBeConfigured } from '../../retry'
+import { stubs } from '../../stubs'
+import { createTestNodeDockerLocal } from '../../test-node-factory'
 
 describe('ax settings (using quickstart ActyxOS default setting)', () => {
-  const workingDir = quickstartDirs(settings().tempDir).quickstart
-  const settingDefaultFilePath = path.resolve(workingDir, 'misc/local-sample-node-settings.yml')
+  const workingDir = '.'
+  const settingDefaultFilePath = path.resolve(workingDir, 'fixtures/local-sample-node-settings.yml')
   const scopeActyxOS = 'com.actyx.os'
 
   let testNode: ActyxOSNode
 
   beforeAll(async () => {
+    console.log('guess: ' + settingDefaultFilePath)
+
     // Node will be added to the global `thisEnvNodes` and eventually cleaned up
     testNode = await createTestNodeDockerLocal('settings')
   })
@@ -141,7 +141,10 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
     })
 
     test('return OK and show only properties added by the user on com.actyx.os setting --no-defaults', async () => {
-      const settingCustomFilePath = path.resolve(workingDir, 'misc/test-custom-actyxos-setting.yml')
+      const settingCustomFilePath = path.resolve(
+        workingDir,
+        'fixtures/test-custom-actyxos-setting.yml',
+      )
 
       await testNode.ax.settings.unset(scopeActyxOS)
 
