@@ -135,13 +135,13 @@ export const Hero: React.FC<Props> = ({ img }: Props) => (
       <WaveAnimation>👋</WaveAnimation>
     </LineWrapper>
     <LineWrapper>
-      <HeroHeadline>Welcome to the Actyx developer documentation.</HeroHeadline>
+      <HeroHeadline>Welcome to the Actyx Developer Docs</HeroHeadline>
     </LineWrapper>
     <LineWrapper>
       <HeroCopy>
-        The place where you find everything you need to digitize factory processes and build
-        <a href="https://local-first-cooperation.github.io/website/"> local-first </a> solutions on
-        the Actyx platform.
+        The place where you find everything you need to build awesome{' '}
+        <a href="https://local-first-cooperation.github.io/website/"> local-first cooperative</a>{' '}
+        software on the Actyx Platform.
       </HeroCopy>
     </LineWrapper>
     <LineWrapper>

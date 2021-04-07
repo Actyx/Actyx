@@ -39,7 +39,7 @@ const Cards = styled.div`
 export const HowPageIsStructured: React.FC = () => (
   <Wrapper>
     <Header>
-      <Headline headline="How this website is structured" />
+      <Headline headline="How this site is structured" />
       <Body body="Actyx has a lot of documentation and it is easy to get lost in them. This is why we organised our docs in a way that makes it easy for you to find exactly what you are looking for. This high-level overview will help you know where to look for certain docs. " />
     </Header>
     <Cards>

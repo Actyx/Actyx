@@ -103,12 +103,12 @@ module.exports = {
       label: 'Data import and export',
       collapsed: true,
       items: [
-        'how-to/integrating-with-actyx/user-interface',
-        'how-to/integrating-with-actyx/other-software',
-        'how-to/integrating-with-actyx/front-end-frameworks',
-        'how-to/integrating-with-actyx/machines',
-        'how-to/integrating-with-actyx/erps',
-        'how-to/integrating-with-actyx/bi-analytics',
+        'how-to/integrate-with-actyx/user-interface',
+        'how-to/integrate-with-actyx/other-software',
+        'how-to/integrate-with-actyx/front-end-frameworks',
+        'how-to/integrate-with-actyx/machines',
+        'how-to/integrate-with-actyx/erps',
+        'how-to/integrate-with-actyx/bi-analytics',
       ],
     }, */
     /*     {

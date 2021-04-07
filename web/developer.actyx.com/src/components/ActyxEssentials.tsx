@@ -56,7 +56,7 @@ const Links = styled.div<{
 export const ActyxEssentials: React.FC = () => (
   <Wrapper>
     <Header>
-      <Headline headline="Actyx Essentials" />
+      <Headline headline="Essentials" />
       <Body body="Check out the following topics to learn the essentials of building, running, and deploying systems using Actyx" />
     </Header>
     <LinkWrapper>

@@ -9,10 +9,10 @@ description: bootstrap node setup guide.
 image: /images/defaults/default.svg
 ---
 
+You need to setup an additional edge device as a bootstrap node if mDNS is disabled on your devices or network, or if you are running ActyxOS on Docker.
+
 import Tabs from '@theme/Tabs'
 import TabItem from '@theme/TabItem'
-
-You need to setup an additional edge device as a bootstrap node if mDNS is disabled on your devices or network, or if you are running ActyxOS on Docker.
 
 Instead of automatically finding other nodes via mDNS, your node will now first connect to the bootstrap node, get a list of all nodes in your swarm from the bootstrap node, and then connect to them.
 
@@ -55,7 +55,7 @@ Now that your bootstrap node is running, you can configure nodes in your swarm w
   defaultValue={"cli"}
   values={[
     { label: 'Actyx CLI', value: 'cli' },
-    { label: 'node Manager', value: 'manager' },
+    { label: 'Node Manager', value: 'manager' },
   ]}
 >
 
