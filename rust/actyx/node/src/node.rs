@@ -93,9 +93,9 @@ impl Node {
         #[cfg(not(test))]
         let settings_db = axossettings::Database::new(runtime_storage.working_dir().to_owned())?;
         let mut settings_repo = settings::Repository::new(settings_db)?;
-        // Apply the current schema for com.actyx.os (it might have changed). If this is
+        // Apply the current schema for com.actyx (it might have changed). If this is
         // unsuccessful, we panic.
-        apply_system_schema(&mut settings_repo).expect("Error applying system schema com.actyx.os.");
+        apply_system_schema(&mut settings_repo).expect("Error applying system schema com.actyx.");
 
         let sys_settings: Settings = settings_repo
             .get_settings(&system_scope(), false)
@@ -125,14 +125,14 @@ fn is_system_scope(scope: &settings::Scope) -> bool {
 
 /// Set the schema for the ActyxOS system settings.
 pub fn apply_system_schema(settings_repo: &mut settings::Repository) -> settings::repository::Result<()> {
-    debug!("setting current schema for com.actyx.os");
+    debug!("setting current schema for com.actyx");
     let schema: serde_json::Value = serde_json::from_slice(include_bytes!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../../protocols/json-schema/os/node-settings.schema.json"
+        "/../../../protocols/json-schema/node-settings.schema.json"
     )))
     .expect("embedded settings schema is not valid json");
-    // check that embedded schema for com.actyx.os is a valid schema. If not, there is no point in going on.
-    settings::Validator::new(schema.clone()).expect("Embedded schema for com.actyx.os is not a valid JSON schema.");
+    // check that embedded schema for com.actyx is a valid schema. If not, there is no point in going on.
+    settings::Validator::new(schema.clone()).expect("Embedded schema for com.actyx is not a valid JSON schema.");
 
     settings_repo.set_schema(&system_scope(), schema)?;
     Ok(())
@@ -415,7 +415,7 @@ mod test {
         let runtime = Host::new(temp_dir.path().to_path_buf());
         let mut node = Node::new(runtime_rx, vec![], runtime).unwrap();
         let schema = serde_json::from_slice(include_bytes!(
-            "../../../../protocols/json-schema/os/node-settings.schema.json"
+            "../../../../protocols/json-schema/node-settings.schema.json"
         ))
         .unwrap();
         let scope = system_scope();
@@ -455,7 +455,7 @@ mod test {
           }
         );
 
-        // Set the schema for `com.actyx.os`
+        // Set the schema for `com.actyx`
         {
             let (response, rx) = channel();
             node.handle_settings_request(SettingsRequest::SetSchema {
@@ -466,7 +466,7 @@ mod test {
 
             rx.await.ax_internal()??;
         }
-        // Set settings for `com.actyx.os`
+        // Set settings for `com.actyx`
         {
             let (response, rx) = channel();
             node.handle_settings_request(SettingsRequest::SetSettings {
@@ -480,11 +480,11 @@ mod test {
             assert_eq!(node.state.settings, serde_json::from_value(json).unwrap());
             assert_eq!(node.state.details.node_name, NodeName("My Node".into()));
         }
-        // Set settings for `com.actyx.os/general/displayName`
+        // Set settings for `com.actyx/general/displayName`
         {
             let (response, rx) = channel();
             node.handle_settings_request(SettingsRequest::GetSettings {
-                scope: "com.actyx.os/admin/displayName".parse().unwrap(),
+                scope: "com.actyx/admin/displayName".parse().unwrap(),
                 no_defaults: false,
                 response,
             });
@@ -494,7 +494,7 @@ mod test {
             let changed = serde_json::json!("changed");
             let (response, rx) = channel();
             node.handle_settings_request(SettingsRequest::SetSettings {
-                scope: "com.actyx.os/admin/displayName".parse().unwrap(),
+                scope: "com.actyx/admin/displayName".parse().unwrap(),
                 json: changed.clone(),
                 response,
                 ignore_errors: false,
@@ -513,7 +513,7 @@ mod test {
             let invalid = serde_json::json!("not_valid");
             let (response, rx) = channel();
             node.handle_settings_request(SettingsRequest::SetSettings {
-                scope: "com.actyx.os/licensing/node".parse().unwrap(),
+                scope: "com.actyx/licensing/node".parse().unwrap(),
                 json: invalid,
                 response,
                 ignore_errors: false, // <=========
@@ -525,11 +525,11 @@ mod test {
             );
         }
         {
-            // Setting invalid values for `com.actyx.os` is not allowed
+            // Setting invalid values for `com.actyx` is not allowed
             let invalid = serde_json::json!("not_valid");
             let (response, rx) = channel();
             node.handle_settings_request(SettingsRequest::SetSettings {
-                scope: "com.actyx.os/licensing/node".parse().unwrap(),
+                scope: "com.actyx/licensing/node".parse().unwrap(),
                 json: invalid,
                 response,
                 ignore_errors: true, // <=========

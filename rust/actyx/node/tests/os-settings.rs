@@ -1,7 +1,7 @@
 #[test]
 fn default_settings() {
     let schema = serde_json::from_reader(
-        std::fs::File::open("../../../protocols/json-schema/os/node-settings.schema.json").unwrap(),
+        std::fs::File::open("../../../protocols/json-schema/node-settings.schema.json").unwrap(),
     )
     .unwrap();
     let json = axossettings::Validator::new(schema)

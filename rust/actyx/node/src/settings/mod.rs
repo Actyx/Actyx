@@ -1,7 +1,7 @@
 use tokio::sync::oneshot::Sender;
 use util::formats::ActyxOSResult;
 
-pub const SYSTEM_SCOPE: &str = "com.actyx.os";
+pub const SYSTEM_SCOPE: &str = "com.actyx";
 
 pub type SettingsResponse<T> = ActyxOSResult<T>;
 

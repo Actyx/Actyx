@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-06/schema#",
-  "$id": "https://developer.actyx.com/schemas/os/node-settings.schema.json",
+  "$id": "https://developer.actyx.com/schemas/node-settings.schema.json",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -148,7 +148,7 @@
         },
         "authorizedUsers": {
           "type": "array",
-          "items":{
+          "items": {
             "$ref": "#/definitions/Basic/UserKey"
           },
           "default": [],

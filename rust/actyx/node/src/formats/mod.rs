@@ -39,7 +39,7 @@ pub enum ExternalEvent {
 #[derive(PartialEq, Clone, Debug)]
 pub(crate) struct NodeState {
     pub details: NodeDetails,
-    // This stores only the settings at scope com.actyx.os
+    // This stores only the settings at scope com.actyx
     pub settings: Settings,
     pub started_at: DateTime<Utc>,
 }

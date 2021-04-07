@@ -29,12 +29,12 @@ fn node_schema_in_sync() {
     };
     let current_schema: serde_json::Value = serde_json::from_slice(include_bytes!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../../protocols/json-schema/os/node-settings.schema.json"
+        "/../../../protocols/json-schema/node-settings.schema.json"
     )))
     .unwrap();
 
     let mut repo = Repository::new_in_memory();
-    let scope: axossettings::Scope = "com.actyx.os".parse().unwrap();
+    let scope: axossettings::Scope = "com.actyx".parse().unwrap();
     repo.set_schema(&scope, current_schema).unwrap();
     repo.update_settings(&scope, serde_json::to_value(&sample_settings).unwrap(), false)
         .unwrap();

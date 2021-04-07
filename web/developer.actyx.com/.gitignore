@@ -3,7 +3,7 @@
 
 # Production
 /build
-/static/schemas/os/*
+/static/schemas/*
 
 # Generated files
 .docusaurus
