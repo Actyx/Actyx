@@ -12,7 +12,7 @@ path = "src/main.rs"
 actyxos_sdk = { path = "../../sdk" }
 
 anyhow = "1.0.38"
-ax-os-settings = { path = "../ax-os-settings" }
+settings = { path = "../settings" }
 banyan = "0.9.1"
 banyan-utils = "0.2.1"
 base64= "0.13.0"

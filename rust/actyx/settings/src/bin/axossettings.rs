@@ -1,11 +1,11 @@
-use axossettings::{database::Database, repository::Repository, scope::Scope};
+use settings::{database::Database, repository::Repository, scope::Scope};
 use std::str::FromStr;
 use std::{fs::File, io::Read, path::PathBuf};
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
 #[structopt(
-    name = "axossettings",
+    name = "settings",
     about = "Interact with a local ActyxOS settings and schema repository"
 )]
 struct Opt {

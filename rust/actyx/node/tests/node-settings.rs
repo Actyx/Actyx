@@ -4,9 +4,9 @@ fn default_settings() {
         std::fs::File::open("../../../protocols/json-schema/node-settings.schema.json").unwrap(),
     )
     .unwrap();
-    let json = axossettings::Validator::new(schema)
+    let json = settings::Validator::new(schema)
         .unwrap()
-        .validate_with_defaults(None, &axossettings::Scope::root())
+        .validate_with_defaults(None, &settings::Scope::root())
         .unwrap();
     assert_eq!(
         json,

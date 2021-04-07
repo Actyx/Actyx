@@ -1,9 +1,9 @@
-use axossettings::{
+use serde_json::json;
+use settings::{
     repository::{Error, Repository},
     validation::{Error::ValidationFailed, ValidationError, ValidationState},
     Database, Scope,
 };
-use serde_json::json;
 use std::{fs, path::PathBuf, str::FromStr};
 use tempfile::{tempdir, TempDir};
 

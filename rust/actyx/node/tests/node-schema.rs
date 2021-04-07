@@ -1,5 +1,5 @@
-use axossettings::Repository;
 use node::os_settings::*;
+use settings::Repository;
 use std::collections::BTreeMap;
 #[test]
 fn node_schema_in_sync() {
@@ -34,7 +34,7 @@ fn node_schema_in_sync() {
     .unwrap();
 
     let mut repo = Repository::new_in_memory();
-    let scope: axossettings::Scope = "com.actyx".parse().unwrap();
+    let scope: settings::Scope = "com.actyx".parse().unwrap();
     repo.set_schema(&scope, current_schema).unwrap();
     repo.update_settings(&scope, serde_json::to_value(&sample_settings).unwrap(), false)
         .unwrap();

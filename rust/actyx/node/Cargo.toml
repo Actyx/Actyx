@@ -16,7 +16,7 @@ actyxos_sdk = { version = "0.5", path = "../../sdk" }
 api = { path = "../api" }
 ax-config = { path = "../ax-config" }
 ax-futures-util = { path = "../ax-futures-util" }
-ax-os-settings = { path = "../ax-os-settings" }
+settings = { path = "../settings" }
 crypto = { path = "../crypto/" }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
 logsvcd = { path = "../logsvcd" }

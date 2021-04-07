@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use axossettings::{Scope, Validator};
+use settings::{Scope, Validator};
 
 #[test]
 fn defaults() {

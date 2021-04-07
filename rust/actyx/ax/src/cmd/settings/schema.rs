@@ -37,8 +37,8 @@ pub struct SchemaOpt {
 #[serde(rename_all = "camelCase")]
 struct SchemaCommand {
     /// Scope from which you want to get the schema.
-    #[structopt(name = "SCOPE", parse(try_from_str = axossettings::Scope::from_str))]
-    scope: axossettings::Scope,
+    #[structopt(name = "SCOPE", parse(try_from_str = settings::Scope::from_str))]
+    scope: settings::Scope,
 }
 
 pub async fn run(mut opts: SchemaOpt) -> Result<serde_json::Value> {

@@ -8,7 +8,6 @@ use crate::{
     settings::{SettingsRequest, SYSTEM_SCOPE},
     spawn_with_name,
 };
-use axossettings as settings;
 use chrono::SecondsFormat;
 use crossbeam::{
     channel::{bounded, Receiver, Sender},
@@ -89,9 +88,9 @@ impl Node {
         runtime_storage: Host,
     ) -> anyhow::Result<Self> {
         #[cfg(test)]
-        let settings_db = axossettings::Database::in_memory()?;
+        let settings_db = settings::Database::in_memory()?;
         #[cfg(not(test))]
-        let settings_db = axossettings::Database::new(runtime_storage.working_dir().to_owned())?;
+        let settings_db = settings::Database::new(runtime_storage.working_dir().to_owned())?;
         let mut settings_repo = settings::Repository::new(settings_db)?;
         // Apply the current schema for com.actyx (it might have changed). If this is
         // unsuccessful, we panic.
@@ -401,9 +400,9 @@ mod test {
     use super::*;
     use crate::components::Component;
     use anyhow::Result;
-    use axossettings as settings;
     use futures::executor::block_on;
     use serde_json::json;
+    use settings;
     use tempfile::TempDir;
     use tokio::sync::oneshot::channel;
     use util::formats::NodeName;
