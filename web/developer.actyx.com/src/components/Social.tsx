@@ -10,11 +10,7 @@ const Wrapper = styled.div`
   margin-bottom: 8px;
 `
 
-type Props = Readonly<{
-  example: string
-}>
-
-export const Social: React.FC<Props> = ({ example }: Props) => (
+export const Social: React.FC = () => (
   <Wrapper>
     <a href="https://github.com/actyx">
       <GitHub color="lightgray" positive />

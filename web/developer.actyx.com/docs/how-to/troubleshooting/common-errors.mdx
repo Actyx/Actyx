@@ -1,10 +1,8 @@
 ---
-title: Deal with common errors
-id: common-development-errors
+title: Resolve common errors
+id: common-errors
 hide_title: false
 hide_table_of_contents: false
-keywords: [how-to-guide, development errors]
-description: How to deal with common errors
 image: /images/defaults/default.svg
 ---
 
@@ -12,7 +10,13 @@ In this section, we try to help you fix some of the most common errors that can 
 To quickly find answers to your problem, navigate to the specific section on your development platform in the table of contents to the right.
 In addition, we hope we can give a few tips and tricks along the way that make working with ActyxOS even better.
 
-## General
+## Installation errors
+
+If you receive the following error during installation, please close the Windows Event Viewer and press **Retry**:
+
+![windows-installation-error](../../../images/how-to/local-development/windows-installation-error.png)
+
+## Startup errors
 
 ### Blocked ports
 
@@ -29,7 +33,9 @@ In order for ActyxOS to run flawlessly, please make sure that the following port
 
 5. `8080`: Exposes an [IPFS Gateway](https://docs.ipfs.io/concepts/ipfs-gateway/) (only on localhost)
 
-### ActyxOS not responding
+On Windows, you can resolve this as follows:
+
+## Node to Actyx CLI connection error
 
 First, check that you entered the right IP in the ax command.
 If you still cannot connect, the output of ax nodes ls returns one of the two possible reasons (if you are using the ActyxOS Node Manager, you can find this info in the Status tab):
@@ -40,9 +46,11 @@ If you still cannot connect, the output of ax nodes ls returns one of the two po
 - **Host is not reachable**: This means that your development machine cannot connect to your node.
   Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port `4457`.
 
-## ActyxOS on Android
+## Node to node connection errors
 
-### Issues with your ActyxOS Bootstrap Node
+### on Android
+
+#### Check the configured bootstrap node address
 
 ActyxOS on Android is currently not able to resolve DNS names inside [`MultiAddrs`](https://multiformats.io/multiaddr/) fields and only supports `ip4` or `ip6` MultiAddrs.
 For example, if you want to connect to the public ActyxOS Bootstrap Node, you have to set the value
@@ -56,47 +64,9 @@ instead of
 We are currently working on a fix for this.
 Check out our [blog](https://developer.actyx.com/blog) or [release notes](https://developer.actyx.com/releases) section for information on our new releases.
 
-## ActyxOS on Windows
+### on Docker
 
-### Error during Installation
-
-If you receive the following error during installation, please close the Windows Event Viewer and press **Retry**:
-
-![windows-installation-error](../../../images/how-to/local-development/windows-installation-error.png)
-
-### Port collision on `8080`
-
-As port `8080` is sometimes already in use by other programs, you can change it by setting the `ACTYXOS_IPFS_NODE__GATEWAY_PORT` environment variable to a different port.
-You can do this by following these few steps:
-
-1. [Open the Windows Control Panel](https://support.microsoft.com/en-us/help/13764/windows-where-is-control-panel)
-2. Go to System and Security
-3. Go to System
-4. Go to Advanced System Settings
-5. Click on Environment Variables on the bottom right
-6. Add a new environment variable:
-
-![Windows environment variable](../../../images/how-to/local-development/windows-environment-variables.png)
-
-## ActyxOS on Docker
-
-### Environment variables
-
-<!-- this can probably go -->
-
-#### `AX_DEV_MODE`
-
-If you set this environment variable to 1, you can interact with all ActyxOS services from your Host machine.
-If you are running ActyxOS on Docker on Mac or Windows, which means you are not using `network=host`, you need to also pass the following options to forward the relevant ports:
-
-- `-p 4243:4243` for the Actyx Pond WebSocket endpoint
-- `-p 4454:4454` for the Event Service
-
-#### `ENABLE_DEBUG_LOGS`
-
-If you set this environment variable to 1, you will see debug logs from ActyxOS in your shell.
-
-### ActyxOS nodes not connecting to each other
+#### Docker-specific configurations
 
 Your ActyxOS nodes running on Docker are not able connect to each other if
 

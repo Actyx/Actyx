@@ -25,12 +25,12 @@ meaningful business events and aggregate these into clusters, which can be treat
 External systems are then characterized and a clear system boundary of the event sourced system is
 established. The post is rounded off with an outlook to future extensions to the system.
 
-[Actyx Pond]: https://www.npmjs.com/package/@actyx/pond
+[actyx pond]: https://www.npmjs.com/package/@actyx/pond
 
 :::note
 ActyxOS provides you with the basic tools you need to build a decentralized event sourcing system.
 For an introduction to the concept of event sourcing check out [this article].
-[this article]: /docs/os/theoretical-foundation/event-sourcing
+[this article]: /docs/conceptual/event-sourcing
 :::
 
 ## Domain and Requirements
@@ -40,7 +40,7 @@ research field. One widely applied methodology to model complex software systems
 Design ([DDD]), which goes well together with event sourcing. We're going to loosely borrow some of
 its concepts.
 
-[DDD]: https://domainlanguage.com/ddd/
+[ddd]: https://domainlanguage.com/ddd/
 
 ## The Goal
 
@@ -59,16 +59,16 @@ warehouses with intermittent network connectivity.
 The core set of requirements the solution had to fulfill were:
 
 - Support of ergonomic scanners for the warehouse workforce, to be used e.g. while driving forklifts.
-    Precise identification of material in up to six meters of height. Logging must be possible in all
-    locations within the different warehouses
+  Precise identification of material in up to six meters of height. Logging must be possible in all
+  locations within the different warehouses
 - Intuitive logging of material movements with support of quantity changes
 - Tracking of individual stock keeping units (SKUs): Internal and external batch number, quantity,
-QA protocol, etc. allowing tracking and tracing across the whole like cycle of produced goods
+  QA protocol, etc. allowing tracking and tracing across the whole like cycle of produced goods
 - Transparency about movements and inventory
 - Source of truth for any material quantities and location should remain to be the ERP system,
-    as there are many business rules installed about e.g. which material types are allowed in which
-    parts of the warehouse. This effort is not to be duplicated, but should stay encapsulated in the
-    ERP system
+  as there are many business rules installed about e.g. which material types are allowed in which
+  parts of the warehouse. This effort is not to be duplicated, but should stay encapsulated in the
+  ERP system
 
 In this blog post, we'll focus on a subset of the overall solution:
 
@@ -86,7 +86,7 @@ Understanding the domain, identifying the individual bits and describing this in
 language, are the core activities in event design.
 :::
 
-[Data Matrix]: https://en.wikipedia.org/wiki/Data_Matrix
+[data matrix]: https://en.wikipedia.org/wiki/Data_Matrix
 
 ## Relevant Domain Events
 
@@ -147,10 +147,7 @@ type SkuCreatedEvent = {
   sku: SkuData
 }
 
-export type Event =
-  | SkuCreatedEvent
-  | SkuMovedEvent
-  | QuantityChangedEvent
+export type Event = SkuCreatedEvent | SkuMovedEvent | QuantityChangedEvent
 
 export type SkuData = {
   sku: string
@@ -195,7 +192,7 @@ const forId = (id: string): SkuFish => ({
 })
 
 export const SkuFish = {
-  forId
+  forId,
 }
 ```
 
@@ -213,10 +210,11 @@ await pond
     }
     const tags = Tags(`barcode:${id}`, 'sku')
     return [{ tags, payload }]
-  }).toPromise()
+  })
+  .toPromise()
 ```
 
-[Fish]: /docs/pond/programming-model
+[fish]: /docs/how-to/actyx-pond/introduction
 
 ## System Boundary
 

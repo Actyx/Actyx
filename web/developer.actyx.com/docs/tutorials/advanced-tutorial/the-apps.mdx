@@ -2,14 +2,14 @@
 title: The apps
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import useBaseUrl from '@docusaurus/useBaseUrl';
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+import useBaseUrl from '@docusaurus/useBaseUrl'
 
 In this section, you will explore the implementation of the apps. The first part will briefly explain the overall project structure, and the second and third section will focus on the fishes used by the apps as well as the apps themselves.
 
 :::info Need help?
-If you run into problems or want to give feedback you are welcome to join our [community forum](https://community.actyx.com/),  [Discord chat](https://discord.gg/262yJhc), raise an issue in the [GitHub repo](https://github.com/Actyx/DemoMachineKit/issues) or write us an e-mail to developer@actyx.io.
+If you run into problems or want to give feedback you are welcome to join our [community forum](https://community.actyx.com/), [Discord chat](https://discord.gg/262yJhc), raise an issue in the [GitHub repo](https://github.com/Actyx/DemoMachineKit/issues) or write us an e-mail to developer@actyx.io.
 :::
 
 ## Project structure
@@ -43,7 +43,7 @@ You will find the implementation of the event and state types, as well as the ac
 
 ## Fishes
 
-As discussed in more detail in the [Actyx Pond documentation](/docs/pond/introduction), a fish is the main programming unit in the Actyx Pond framework. It always represents one entity of your business logic and should always have only a single responsibility – which means in this case, you need fishes to keep track of your machines, as well as your orders.
+As discussed in more detail in the [Actyx Pond documentation](../../how-to/actyx-pond/introduction.mdx), a fish is the main programming unit in the Actyx Pond framework. It always represents one entity of your business logic and should always have only a single responsibility – which means in this case, you need fishes to keep track of your machines, as well as your orders.
 
 ```text
 DemoMachineKit/src/fish/
@@ -95,8 +95,6 @@ Now that you have seen the business logic shared by all apps in the fishes, this
 - `settings-schema.json` describing the settings schema of the app
 
 In addition to the above, you will find files describing the logic itself.
-
-If you want to know more about the ActyxOS-specific parts, please visit our [guide on building apps](/docs/os/guides/building-apps).
 
 ### ERP Simulator App
 

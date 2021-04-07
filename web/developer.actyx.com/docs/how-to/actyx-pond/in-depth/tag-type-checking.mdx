@@ -4,7 +4,7 @@ title: Tag Type-Checking
 
 _All you ever wanted to know about tag-associated type-checking._
 
-In the [tutorial](/docs/pond/guides/typed-tags) on tag typing, we have motivated the system and shown briefly how to
+In the [tutorial](../guides/typed-tags.mdx) on tag typing, we have motivated the system and shown briefly how to
 use it. This guide covers all the tricks, corner-cases and design reasons.
 
 ## The Object Types: Tag, Tags and Where
@@ -24,12 +24,12 @@ enum EventType {
 }
 
 type EventFoo = {
-  eventType: EventType.foo,
-  someNumber: number,
+  eventType: EventType.foo
+  someNumber: number
 }
 
 type EventBar = {
-  eventType: EventType.bar,
+  eventType: EventType.bar
   someString: string
 }
 
@@ -47,11 +47,11 @@ pond.emit(fooBarTag, { eventType: EventType.foo, someNumber: 5 })
 const lastSeenType: Fish<EventType | undefined, Event> = {
   // Select all events with this Tag
   where: fooBarTag,
-  
+
   initialState: undefined,
-  
+
   onEvent: (_state, event) => event.eventType,
-  
+
   fishId: FishId.of('last-seen', 'foo-bar', 1),
 }
 ```
@@ -63,11 +63,9 @@ const lastSeenType: Fish<EventType | undefined, Event> = {
 A single tag may turn into `Tags` in two ways.
 
 - Calling `withId`, we create a set of tags that contains both the original tag, as well as a
-  postfixed version: `fooBarTag.withId('id')` gives `Tags('foo-or-bar-event',
-  'foo-or-bar-event:id')`. This is so that the set of _all_ foo-bar-events remains selectable via
+  postfixed version: `fooBarTag.withId('id')` gives `Tags('foo-or-bar-event', 'foo-or-bar-event:id')`. This is so that the set of _all_ foo-bar-events remains selectable via
   the general tag. There are no prefix-searches on tags – they can only be matched exactly. So we
   must attach both.
-  
 - Calling `and` gives a `Tags` object containing them all: `Tag('a').and(Tag('b'))` is equivalent to
   `Tags('a', 'b')`
 
@@ -76,7 +74,6 @@ A `Tags` object can be used both for emission and for event selection, just like
 - When used for selection, it will match events that have _all the tags_. `Tags('foo', 'bar')`
   requires _both_ `foo` and `bar` to be present on an event. (The event may have more tags than
   that and will still match.)
-  
 - When used for emission, all the tags are attached to the emitted event.
 
 ```typescript
@@ -89,11 +86,11 @@ pond.emit(FooTag.and(CountingTag), { eventType: EventType.foo, someNumber: 5 })
 const countingFoos: Fish<number, Event> = {
   // Select all events with both 'foo' and 'count-this-event'
   where: FooTag.and(CountingTag),
-  
+
   initialState: 0,
-  
+
   onEvent: (state, _event) => state + 1,
-  
+
   fishId: FishId.of('counting', 'foos', 1),
 }
 ```
@@ -156,11 +153,10 @@ Now let’s consider both sides of the event system, producer (`Pond.emit`) and 
   type more narrow than the type associated with `where`. Dropping `EventBar` from the type now
   makes the implementation easier: the impossible case of receiving an `EventBar` does not have to
   be considered anymore by `onEvent`.
-  
 - Events passed into`Pond.emit` must not be tagged with tags that do not declare a fitting type
   association. Emitting a `BarEvent` with a `fooTag` or `fooBarTag.and(fooTag)` fails because
   `BarEvent` has been dropped from the associated type.
-  
+
 ### OR
 
 The OR-case is somewhat the reverse of the AND-case. The type is widened instead of narrowed.
@@ -180,7 +176,7 @@ events of both associated types. A Fish running on this event set must handle bo
 A `Where` statement cannot be used for emission. The intent is unclear: What does it mean to emit
 an event tagged with one tag OR another tag? And also the type requirement does not match: Even though the
 associated type is `EventFoo | EventBar`, it’s actually incorrect to tag _either_ of the events with
-both tags!  `fooTag` may not tag `EventBar`, and `barTag` may not tag `EventFoo`.
+both tags! `fooTag` may not tag `EventBar`, and `barTag` may not tag `EventFoo`.
 
 (`fooTag.and(barTag)` fittingly infers `Tag<never>` in this case, meaning it will yield no events and
 allow no events to be emitted, either.)
@@ -229,7 +225,7 @@ type EventFoo = {
 // Desired new shape
 type EventFoo = {
   type: // ?
-  
+
   data: {
     mark: number
     details: string
@@ -245,7 +241,7 @@ not forget about `EventFoo` at all.
 // Desired new shape
 type EventFooV2 = {
   type: 'foo.v2'
-  
+
   data: {
     mark: number
     details: string
@@ -265,10 +261,9 @@ export const FooBarEvents: Where<EventFoo | EventBar | EventFooV2> = fooBarTag
 
 // For producers of FooEvent2
 export const emitFooEvent = (pond: Pond, mark: number, details: string) => {
-    const fooEvt: EventFooV2 = { type: 'foo.v2', data: { mark, details } }
-    return pond.emit(fooBarTag, fooEvt)
+  const fooEvt: EventFooV2 = { type: 'foo.v2', data: { mark, details } }
+  return pond.emit(fooBarTag, fooEvt)
 }
-
 ```
 
 If you want to spare new consumers the burden of supporting the old `EventFoo`, and those consumers
@@ -287,10 +282,9 @@ export const FooBarEventsV2: Where<EventBar | EventFooV2> = fooBarTagV2
 const backwardsCompatTags = fooBarTag.and(fooBarTagV2)
 
 export const emitFooEvent = (pond: Pond, mark: number, details: string) => {
-    const fooEvt: EventFoo2 = { type: 'foo.v2', data: { mark, details } }
-    return pond.emit(backwardsCompatTags, fooEvt)
+  const fooEvt: EventFoo2 = { type: 'foo.v2', data: { mark, details } }
+  return pond.emit(backwardsCompatTags, fooEvt)
 }
-
 ```
 
 Finally, stop exporting any old `emitFooEvent` function you may have offered.
@@ -305,7 +299,7 @@ compiler simply trusts you that things will work out.
 const compilesFine: Fish<string, MyEventType> = {
   // Compiler infers Where<MyEventType>
   where: Tags('foo', 'bar'),
-  
+
   // ... other parameters
 }
 
@@ -313,7 +307,7 @@ const failsToCompile: Fish<string, MyEventType> = {
   // If using operators, type inference will fail;
   // you could cast to the desired type manually: `... as Where<MyEventType>`
   where: Tag('foo').and(Tag('bar')),
-  
+
   // ... other parameters
 }
 ```

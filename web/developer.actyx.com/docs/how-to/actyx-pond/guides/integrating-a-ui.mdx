@@ -9,8 +9,8 @@ So far we have concentrated on the internals of a fish, on writing the business 
 An important aspect of many apps is the involvement of human operators, which requires the presentation of a UI that they can see and interact with.
 
 For a UI we need two things: a current state that determines what is shown, and a way to emit events for a fish to
-change its state.  We have seen how to observe a fish’s state in the [Hello world](/docs/pond/guides/hello-world) section already, and how
-to modify it when we discussed [emitting events](/docs/pond/guides/state-effects).
+change its state. We have seen how to observe a fish’s state in the [Hello world](hello-world.mdx) section already, and how
+to modify it when we discussed [emitting events](state-effects.mdx).
 
 ```typescript
 const myRoomTags = Tag('chatRoom').withId('my-room')
@@ -20,11 +20,9 @@ export const wireUI = (pond: Pond) => {
     pond.emit(myRoomTags, { type: 'messageAdded', message }).toPromise()
   const rootEl = document.getElementById('root')
 
-  pond
-    .observe(
-      mkChatRoomFish('my-room'),
-      state => ReactDOM.render(<Root msgs={state} sendToRoom={sendToRoom} />, rootEl)
-    )
+  pond.observe(mkChatRoomFish('my-room'), (state) =>
+    ReactDOM.render(<Root msgs={state} sendToRoom={sendToRoom} />, rootEl),
+  )
 }
 ```
 
@@ -46,7 +44,9 @@ const Root = (props: { msgs: string[]; sendToRoom: (msg: string) => void }) => {
   return (
     <div>
       <h1>Chat Room</h1>
-      {props.msgs.map((msg, idx) => <p key={`${idx}-${msg}`}>{msg}</p>)}
+      {props.msgs.map((msg, idx) => (
+        <p key={`${idx}-${msg}`}>{msg}</p>
+      ))}
       <input type="text" onKeyPress={handleKeyPress} />
     </div>
   )
@@ -72,7 +72,7 @@ const main = async () => {
   const pond = await Pond.default()
   wireUI(pond)
 }
-main().catch(x => console.log(x))
+main().catch((x) => console.log(x))
 ```
 
 ## And that’s it!

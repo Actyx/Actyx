@@ -1,15 +1,12 @@
 ---
-title: Event-based systems
-id: event-based-systems
+title: Event sourcing
+id: event-sourcing
 hide_title: false
 hide_table_of_contents: false
-sidebar_label: Event-based systems
-keywords: [explanation, event, based, systems]
-description: Explanation guide for event-based systems
 image: /images/defaults/default.svg
 ---
 
-This conceptual guide explains the fundamental principles that apply when working with event-based systems.
+This conceptual guide explains the fundamental principles that apply when working with event sourcing.
 
 ## Definition
 
@@ -21,21 +18,26 @@ _Event sourcing_ is an architectural pattern in which state is not stored direct
 
 By using an _append-only event log_, you have an easily auditable, and complete history of what has happened in your system. This means you can always understand exactly what happened and when.
 
-### Orthogonality 
+### Orthogonality
+
 By separating the fundamental store from the computed view (state), you separate the _what has happened_ concern from the _how to look at it_ concern.
 
 ### Extensibility
+
 Because you always know what has happened in the past, you can—from the future—change how to interpret the past. This is something you could never do with a traditional state-based system.
 
 ## Challenges
 
 ### Performance
+
 As the size of the event store increases, the amount of time it takes to compute a state may increase if you don't remember the previous state you computed. _Snapshots_ (link) can help mitigate this.
 
 ### Reasoning
+
 Because of the separation of events and state, reasoning about the system can be more difficult unless you compute the current state.
 
 ### Migrations
+
 Event schema migrations can pose serious challenges, especially if you want to migrate without deleting past events—which you can't do if they affect your state.
 
 ## Relevance to ActyxOS
@@ -47,6 +49,7 @@ Check out the Actyx Pond – an auxiliary product to ActyxOS—which provides yo
 :::
 
 ## Example
+
 Consider, for instance, a truck being loaded with shipping boxes. At any one point in time the truck will have a loading state. If we were to track this state programmatically we might write an object as follows:
 
 ```ts
@@ -109,7 +112,6 @@ const PackageUnloaded = {
 
 We would then build an event store—more precisely an _append-only event log_—that we append new events to whenever they happen:
 
-
 ```ts
 var eventLog = [] // initially nothing has happened
 
@@ -168,5 +170,6 @@ In reality, you would not implement your system this way. You would, rather, def
 :::
 
 ## Learn more
+
 - Martin Fowler's [introduction to event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html)
 - [Event Sourcing Pattern (Microsoft)](https://docs.microsoft.com/en-us/azure/architecture/patterns/event-sourcing)

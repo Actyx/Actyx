@@ -9,8 +9,6 @@ import clsx from 'clsx'
 import Link from '@docusaurus/Link'
 import { useThemeConfig } from '@docusaurus/theme-common'
 import useBaseUrl from '@docusaurus/useBaseUrl'
-import { BuildNumber } from '../../components/BuildNumber'
-import { Link as ReleasesLink } from '../../components/Link'
 import { Social } from '../../components/Social'
 
 function FooterLink({ to, href, label, prependBaseUrlToHref, ...props }) {
@@ -37,6 +35,7 @@ function FooterLink({ to, href, label, prependBaseUrlToHref, ...props }) {
   )
 }
 
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 function Footer() {
   const { footer } = useThemeConfig()
   const { copyright, links = [], logo = {} } = footer || {}

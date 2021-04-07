@@ -12,7 +12,7 @@ const createConceptuals = () => {
     {
       title: 'Building Event-based Systems',
       description: 'Fundamental principles that apply when working with event-based systems.',
-      link: 'event-based-systems',
+      link: 'event-sourcing',
     },
     {
       title: 'Distributed systems architectures and caveats',
@@ -52,7 +52,7 @@ const createConceptuals = () => {
     {
       title: 'Performance and limits of Actyx',
       description: 'Performance limitations in real-world factory solutions.',
-      link: 'performance-and-limits-of-actyx',
+      link: 'performance-and-limits',
     },
     {
       title: 'Security in Actyx',

@@ -15,24 +15,22 @@ where: Tag('chatRoom').withId('my-room')
 
 // Events from either `my-room` or `broadcast`
 // An explicit cast is needed in this case.
-where: Tag('chatRoom').withId('my-room').or(
-    Tag('chatRoom').withId('broadcast')
-) as Where<ChatRoomEvent>
+where: Tag('chatRoom').withId('my-room').or(Tag('chatRoom').withId('broadcast')) as Where<
+  ChatRoomEvent
+>
 
 // Events for a specific room, from a specific sender –
 // also needs an explicit cast
-where: Tag('chatRoom').withId('Melmac').and(
-    Tag('sender').withId('Alf')
-) as Where<ChatRoomEvent>
+where: Tag('chatRoom').withId('Melmac').and(Tag('sender').withId('Alf')) as Where<ChatRoomEvent>
 ```
 
 These events could be emitted as follows:
 
 ```typescript
-pond.emit(
-  Tag('chatRoom').withId('Melmac').and(Tag('sender').withId('Alf')),
-  { type: 'messageAdded', message: "If you love something, let it go." }
-)
+pond.emit(Tag('chatRoom').withId('Melmac').and(Tag('sender').withId('Alf')), {
+  type: 'messageAdded',
+  message: 'If you love something, let it go.',
+})
 ```
 
 :::note General and specific tags
@@ -91,10 +89,9 @@ Now, how will this help us?
 const tags = ChatRoom.tags
 
 // Will fail to compile:
-pond.emit(
-  tags.chatRoom.withId('Melmac').and(tags.sender.withId('Alf')),
-  { type: 'this type does not exist' }
-)
+pond.emit(tags.chatRoom.withId('Melmac').and(tags.sender.withId('Alf')), {
+  type: 'this type does not exist',
+})
 ```
 
 This will now actually fail to compile, because only a `ChatRoomEvent` is allowed to be passed to the `emit` function.
@@ -117,7 +114,6 @@ where: tags.chatRoom.withId('Melmac').and(tags.sender.withId('Alf'))
 ```
 
 :::tip The Definitive Guide
-If you want to learn about all the details, check out the [complete
-guide](/docs/pond/in-depth/tag-type-checking).
+If you want to learn about all the details, check out the [complete guide](../in-depth/tag-type-checking.mdx).
 It also contains important guidance on application architecture using tags!
 :::

@@ -29,10 +29,6 @@ const createHowTos = () => {
           title: 'Obtaining your development certificate',
           link: '/docs/how-to/local-development/obtaining-a-development-certificate',
         }, */
-        {
-          title: 'Tips & tricks for common errors during setup',
-          link: '/docs/how-to/local-development/common-development-errors',
-        },
       ],
     },
     /* {
@@ -134,23 +130,23 @@ const createHowTos = () => {
         'Add unit and end-to-end tests for your twins and apps. Use well established tools such as Jest or Cypress. Set up a CI/CD pipeline.',
       contents: [
         {
-          title: 'Designing a testing pipeline',
+          title: 'Design a testing pipeline',
           link: '',
         },
         {
-          title: 'Unit-testing with Jest',
+          title: 'Unit-test with Jest',
           link: '',
         },
         {
-          title: 'Unit-testing with Cypress',
+          title: 'Unit-test with Cypress',
           link: '',
         },
         {
-          title: 'Setting up integration testing',
+          title: 'Set up integration testing',
           link: '',
         },
         {
-          title: 'Setting up a CI/CD pipeline',
+          title: 'Set up a CI/CD pipeline',
           link: '',
         },
       ],
@@ -228,7 +224,7 @@ const createHowTos = () => {
         'Implement common use-cases for Actyx. including dashboards, ERP integrations, control logic and tool connectivity.',
       contents: [
         {
-          title: 'Showing machine data on a dashboard',
+          title: 'Show machine data on a dashboard',
           link: '',
         },
         {
@@ -236,7 +232,7 @@ const createHowTos = () => {
           link: '',
         },
         {
-          title: 'Controlling AGVs delivering materials',
+          title: 'Control AGVs delivering materials',
           link: '',
         },
         {

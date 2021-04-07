@@ -40,11 +40,7 @@ const Body = styled.div`
   align-self: flex-end;
 `
 
-type Props = Readonly<{
-  guides: string
-}>
-
-export const Tutorials: React.FC<Props> = ({ guides }: Props) => (
+export const Tutorials: React.FC = () => (
   <Wrapper>
     {tutorials?.map((v, index) => (
       <TutorialsWrapper>

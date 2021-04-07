@@ -36,11 +36,7 @@ const Cards = styled.div`
   }
 `
 
-type Props = Readonly<{
-  example: string
-}>
-
-export const HowPageIsStructured: React.FC<Props> = ({ example }: Props) => (
+export const HowPageIsStructured: React.FC = () => (
   <Wrapper>
     <Header>
       <Headline headline="How this website is structured" />

@@ -16,7 +16,7 @@ With this release, we bring you significant performance improvements, many, many
 
 ![actyxos-on-linux](../images/blog/1.1.0-release/actyxos-on-linux.png)
 
-We are excited to announce that with this release, ActyxOS now runs natively on Linux as a public beta version. Instead of having to use ActyxOS on Docker, you can now simply download the Linux binary from our [downloads website](https://downloads.actyx.com) and install it like you would install any other Linux application. For a more detailed guide on ActyxOS on Linux, please check out our [advanced guide for Linux](https://developer.actyx.com/docs/os/advanced-guides/actyxos-on-linux).
+We are excited to announce that with this release, ActyxOS now runs natively on Linux as a public beta version. Instead of having to use ActyxOS on Docker, you can now simply download the Linux binary from our [downloads website](https://downloads.actyx.com) and install it like you would install any other Linux application.
 
 ## Other improvements and bug fixes
 

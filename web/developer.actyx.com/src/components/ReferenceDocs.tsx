@@ -40,11 +40,7 @@ const Body = styled.div`
   align-self: flex-end;
 `
 
-type Props = Readonly<{
-  guides: string
-}>
-
-export const ReferenceDocs: React.FC<Props> = ({ guides }: Props) => (
+export const ReferenceDocs: React.FC = () => (
   <Wrapper>
     {references?.map((v, index) => (
       <ReferenceWrapper>

@@ -22,24 +22,21 @@ The first one is for sending messages into it (perhaps coming from the command l
 
 ```typescript
 const sendMessage = (pond: Pond, message: string) =>
-  pond.emit(
-    Tag('chatRoom').withId('my-room'),
-    { type: 'messageAdded', message }
-  )
+  pond.emit(Tag('chatRoom').withId('my-room'), { type: 'messageAdded', message })
 ```
 
 The second one observes the state of the chat room fish and prints the list of messages whenever it changes:
 
 ```typescript
 export const observeRoom = (pond: Pond) =>
-  pond.observe(mkChatRoomFish('my-room'), msgs => {
-    msgs.forEach(msg => console.log(msg))
+  pond.observe(mkChatRoomFish('my-room'), (msgs) => {
+    msgs.forEach((msg) => console.log(msg))
     console.log('---')
   })
 ```
 
 Running the observer on one node and the sender on two different nodes we should see the list of messages updating as we send new messages to the fish.
-([Learn how to set up a swarm of multiple nodes.](/docs/os/guides/swarms))
+([Learn how to set up a swarm of multiple nodes.](../../swarms/setup-swarm.mdx))
 
 The sequence of these messages corresponds to the sequence in which we send them from the two nodes.
 Now, if we detach one of the sender nodes from the network for a bit and send some messages from it, let’s say `msg_A_1` to `msg_A_3`, while also sending `msg_B_1` to `msg_B_3` from the still connected node, we will see only `msg_B_1` to `msg_B_3` showing up at our observer.

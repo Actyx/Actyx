@@ -33,7 +33,7 @@ match, in all three cases.
 
 For the Pond, we are shipping multiple nice mechanisms for expressing your tag-based queries.
 
-A very quick demonstration ([detailed docs](/docs/pond/guides/typed-tags)):
+A very quick demonstration ([detailed docs](/docs/how-to/actyx-pond/guides/typed-tags)):
 
 ```typescript
 // Match events with both tag0 and tag1
@@ -46,7 +46,6 @@ const Tag2 = Tag<Type2>('tag2')
 
 // And get baked-in type-checking
 const where = tag2.or(tag0.and(tag1))
-
 ```
 
 <!-- Also be sure to check out [our guide on how to design your application architecture based on tags](LINKPLS). -->
@@ -119,7 +118,7 @@ A Fish is now a struct based on these fields:
   just like in
   [Array.reduce](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/reduce)
 - `fishId`: A unique identifier for the Fish. This is used throughout several layers of caching, to make
-  your application extra-fast. [See our docs for details.](/docs/pond/programming-model)
+  your application extra-fast. [See our docs for details.](/docs/how-to/actyx-pond/introduction)
 - `where`: Which events to pass to this Fish; like the WHERE clause in SQL
 
 Note that in comparison to v1, this is no longer a "factory" – you set concrete values for all
@@ -137,12 +136,10 @@ type EarliestAndLatest = {
 }
 
 // For non-singleton Fish, constructor functions like this are good practice
-const makeEarliestAndLatestFish = (
-  tag: string,
-): Fish<EarliestAndLatest, unknown> => {
+const makeEarliestAndLatestFish = (tag: string): Fish<EarliestAndLatest, unknown> => {
   const initialState = {
     earliest: undefined,
-    latest: undefined
+    latest: undefined,
   }
 
   const onEvent = (state: EarliestAndLatest, payload: unknown) => {
@@ -167,14 +164,13 @@ const makeEarliestAndLatestFish = (
     where: Tag(tag),
     initialState,
     onEvent,
-    fishId
+    fishId,
   }
 }
 
 // Use like this:
-pond.observe(
-  makeEarliestAndLatestFish('my-tag'),
-  state => console.log('fish updated to new state', state)
+pond.observe(makeEarliestAndLatestFish('my-tag'), (state) =>
+  console.log('fish updated to new state', state),
 )
 ```
 
@@ -186,6 +182,7 @@ in the general case. You will only have to employ them in those cases where you 
 serialization guarantee:
 
 <!-- fancy formatting maybe -->
+
 _Emit some events depending on locally known state of a Fish. Then do the same thing again, but
 guaranteed to see all formerly emitted events already applied to the state._
 
@@ -226,7 +223,6 @@ pond.keepRunning(fish, async (state, enqueue) => {
   // the next invocation of this function will see it already applied to `state`.
   enqueue(taskDoneEvent, tags)
 })
-
 ```
 
 The Pond will invoke the function you pass as argument whenever the Fish’s state changes. You can

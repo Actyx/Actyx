@@ -8,7 +8,7 @@ module.exports = {
   favicon: 'img/favicon.ico',
   organizationName: 'Actyx',
   projectName: 'Actyx Developer Website',
-  onBrokenLinks: 'ignore',
+  onBrokenLinks: 'log',
   plugins: [
     [
       require.resolve('docusaurus-gtm-plugin'),
@@ -113,7 +113,7 @@ module.exports = {
       style: 'dark',
       links: [
         {
-          title: 'Start Building',
+          title: 'Get started',
           items: [
             {
               label: 'Install and start Actyx',
@@ -124,17 +124,17 @@ module.exports = {
               to: 'docs/how-to/local-development/set-up-a-new-project',
             },
             {
-              label: 'Package mobile apps',
-              to: 'docs/how-to/packaging/mobile-apps',
+              label: 'Jump into Actyx Pond',
+              to: 'docs/how-to/actyx-pond/getting-started',
             },
             {
-              label: 'Get started with Pond',
-              to: 'docs/how-to/actyx-pond/getting-started',
+              label: 'Package for mobile',
+              to: 'docs/how-to/packaging/mobile-apps',
             },
           ],
         },
         {
-          title: 'Essential Concepts',
+          title: 'Essential concepts',
           items: [
             {
               label: 'How Actyx works',
@@ -142,20 +142,20 @@ module.exports = {
             },
             {
               label: 'Event-based systems',
-              to: 'docs/conceptual/event-based-systems',
+              to: 'docs/conceptual/event-sourcing',
+            },
+            {
+              label: 'Actyx jargon',
+              to: 'docs/conceptual/actyx-jargon',
             },
             {
               label: 'Local First Cooperation',
               to: 'docs/conceptual/local-first-cooperation',
             },
-            {
-              label: 'Apps in the factory',
-              to: 'docs/conceptual/apps-in-the-factory-context',
-            },
           ],
         },
         {
-          title: 'Reference Docs',
+          title: 'Reference docs',
           items: [
             {
               label: 'Actyx',
@@ -176,7 +176,7 @@ module.exports = {
           ],
         },
         {
-          title: 'For Developers',
+          title: 'For developers',
           items: [
             {
               label: 'Forum',
@@ -185,10 +185,6 @@ module.exports = {
             {
               label: 'Discord',
               to: 'https://discord.gg/262yJhc',
-            },
-            {
-              label: 'FAQ',
-              to: 'docs/faq/supported-programming-languages',
             },
             {
               label: 'Blog',
@@ -208,12 +204,12 @@ module.exports = {
               to: 'https://www.actyx.com/about',
             },
             {
-              label: 'Careers',
-              to: 'https://careers.actyx.io/',
+              label: 'News',
+              to: 'https://www.actyx.com/news',
             },
             {
-              label: 'Press',
-              to: 'https://www.actyx.com/news',
+              label: 'Careers',
+              to: 'https://careers.actyx.io/',
             },
           ],
         },

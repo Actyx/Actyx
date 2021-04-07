@@ -53,14 +53,6 @@ const Links = styled.div<{
   padding-bottom: 12px;
   padding-top: 18px;
 `
-const Image = styled.div<{
-  img: string
-}>`
-  background: #15be53;
-  background: url(${(props) => props.img}) no-repeat center;
-  background-size: 260px;
-`
-
 export const ActyxEssentials: React.FC = () => (
   <Wrapper>
     <Header>
@@ -91,46 +83,52 @@ export const ActyxEssentials: React.FC = () => (
       </Links>
       <Links color="green">
         <Link
+          title="How Actyx works"
+          link="/docs/conceptual/how-actyx-works"
+          color="green"
+          positive
+        />
+        <Link
           title="Event-based systems"
-          link="/docs/conceptual/event-based-systems"
-          color="green"
-          positive
-        />
-        <Link title="Actyx Jargon" link="/docs/conceptual/actyx-jargon" color="green" positive />
-        <Link
-          title="The Actyx Node"
-          link="/docs/conceptual/the-actyx-node"
+          link="/docs/conceptual/event-sourcing"
           color="green"
           positive
         />
         <Link
-          title="Performance and Limitations"
-          link="/docs/conceptual/performance-and-limits-of-actyx"
+          title="Local First Cooperation"
+          link="/docs/conceptual/local-first-cooperation"
+          color="green"
+          positive
+        />
+
+        <Link
+          title="Performance and limits"
+          link="/docs/conceptual/performance-and-limits"
           color="green"
           positive
         />
       </Links>
       <Links color="purple">
         <Link
-          title="Actyx API Reference"
-          link="/docs/reference/actyx-reference"
-          color="purple"
-          positive
-        />
-        <Link
-          title="Event Service Reference"
+          title="Event Service API"
           link="/docs/reference/event-service"
           color="purple"
           positive
         />
         <Link
-          title="CLI Reference"
+          title="Actyx reference"
+          link="/docs/reference/actyx-reference"
+          color="purple"
+          positive
+        />
+        <Link
+          title="Actyx CLI reference"
           link="/docs/reference/cli/cli-overview"
           color="purple"
           positive
         />
         <Link
-          title="Node Manager Features"
+          title="Node Manager reference"
           link="/docs/reference/node-manager"
           color="purple"
           positive

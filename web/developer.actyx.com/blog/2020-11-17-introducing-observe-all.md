@@ -1,5 +1,5 @@
 ---
-title: "Introducing observeAll() and observeOne() for Actyx Pond"
+title: 'Introducing observeAll() and observeOne() for Actyx Pond'
 author: Benjamin Sieffert
 author_title: Distributed Systems Engineer at Actyx
 author_url: https://github.com/benjamin-actyx
@@ -13,6 +13,7 @@ Sneak peak:
 `pond.observeAll(taskCreatedTag, makeTaskFish, {}, x => console.log('all tasks:', x))`
 
 In this blog post we give an overview of the new functions and explain the motivation behind adding them.
+
 <!-- truncate -->
 
 ## Observe All Existing Things
@@ -80,7 +81,10 @@ If you want to filter out Fish depending on their state, you can just do so manu
 
 ```ts
 const callback = (states: TaskState[]) =>
-  console.log('all open tasks:', states.filter(state => state.status !== 'finished'))
+  console.log(
+    'all open tasks:',
+    states.filter((state) => state.status !== 'finished'),
+  )
 ```
 
 For the future we are envisioning an option allowing to specify  
@@ -88,11 +92,11 @@ For the future we are envisioning an option allowing to specify
 which would retire Fish from the set as soon as they have consumed a `TaskFinished` event.
 The advantage over filtering manually would be that the Fish can actually be stopped internally, and will no longer take up resources.
 
-[Read our detailed documentation on observeAll.](/docs/pond/in-depth/observe-all)
+[Read our detailed documentation on observeAll.](/docs/how-to/actyx-pond/in-depth/observe-all)
 
 ## Observe One Specific Thing
 
-If you’re looking to observe a specific task, you can re-use `makeTaskFish` and call `observeOne` instead of `observeAll`:  
+If you’re looking to observe a specific task, you can re-use `makeTaskFish` and call `observeOne` instead of `observeAll`:
 
 ```ts
 const taskCreatedTag = Tag<TaskCreated>('task-created')
@@ -102,7 +106,7 @@ pond.observeOne(
   taskCreatedTag.withId('specific-task-id'),
   makeTaskFish,
   // Will only be called once the seed event has been found:
-  (state: TaskState) => console.log(state)
+  (state: TaskState) => console.log(state),
 )
 ```
 
@@ -110,7 +114,7 @@ The "One" in `observeOne` means that if there are multiple events matching the s
 So there should either be just one event matching the selector, or it should not matter which one is used.  
 In the example, we would assume that for this specific ID there is just a single `TaskCreated` event.
 
-[Read our detailed documentation on observeOne.](/docs/pond/in-depth/observe-one)
+[Read our detailed documentation on observeOne](/docs/how-to/actyx-pond/in-depth/observe-one)
 
 ## What We’re Aiming to Improve
 

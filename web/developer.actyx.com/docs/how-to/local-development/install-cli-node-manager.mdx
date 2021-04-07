@@ -3,9 +3,6 @@ title: Install the CLI and Node Manager
 id: install-cli-node-manager
 hide_title: false
 hide_table_of_contents: false
-sidebar_label: Install the CLI and Node Manager
-keywords: [how-to-guide, cli, node manager]
-description: How-to install the Actyx CLI and the Actyx Node Manager
 image: /images/defaults/default.svg
 ---
 
@@ -32,7 +29,6 @@ Please choose your development platform in the tabs below and follow the instruc
 >
 <TabItem value="windows">
 
-
 ## Actyx CLI
 
 To run Actyx CLI on Windows you need to have the following prerequisites:
@@ -48,7 +44,7 @@ To install Actyx CLI, please follow these steps:
 
 3. To confirm the installation, use the `ax --version` command in PowerShell or a command prompt (open the Start menu and search for PowerShell or cmd to start them). You should see something like this:
 
-```
+```cmd
 C:\> ax --version
 Actyx CLI 1.5.0
 ```
@@ -69,7 +65,6 @@ If not, please follow these steps:
 </TabItem>
 <TabItem value="linux">
 
-
 <h2>Actyx CLI</h2>
 
 To run Actyx CLI on Linux you need to have the following prerequisites:
@@ -82,18 +77,21 @@ To install Actyx CLI, please follow these steps:
 
 2. Run the following command to move the Actyx CLI binary file:
 
-```text
-mv ~/Downloads/ax /usr/local/bin
-```
+<!-- prettier-ignore -->
+  ```text
+  mv ~/Downloads/ax /usr/local/bin
+  ```
 
 3. Make the Actyx CLI binary file executable:
 
-```text
-sudo chmod +x /usr/local/bin/ax
-```
+<!-- prettier-ignore -->
+  ```text
+  sudo chmod +x /usr/local/bin/ax
+  ```
 
 4. To confirm the installation, use the `ax --version` command. You should see something like this:
 
+<!-- prettier-ignore -->
 ```text
 ax --version
 Actyx CLI 1.5.0
@@ -118,7 +116,6 @@ Congratulations, you have successfully installed Actyx Node Manager! 🎉
 </TabItem>
 <TabItem value="mac">
 
-
 <h2>Actyx CLI</h2>
 
 To run Actyx CLI on macOS you need to have the following prerequisites:
@@ -131,15 +128,17 @@ To install Actyx CLI, please follow these steps:
 
 2. Run the following command to move the Actyx CLI binary file:
 
-```text
-mv ~/Downloads/ax /usr/local/bin
-```
+<!-- prettier-ignore -->
+  ```text
+  mv ~/Downloads/ax /usr/local/bin
+  ```
 
 3. Make the Actyx CLI binary file executable:
 
-```text
-chmod +x /usr/local/bin/ax
-```
+<!-- prettier-ignore -->
+  ```text
+  chmod +x /usr/local/bin/ax
+  ```
 
 Now, you only have to allow the Actyx CLI in two steps.
 First, go to **Settings** and then to **Security &amp; Privacy**.
@@ -148,10 +147,11 @@ Second, the first time you run an `ax` command, you will be prompted again to al
 
 4. To confirm the installation, use the `ax --version` command. You should see something like this:
 
-```text
- ax --version
-Actyx CLI 1.5.0
-```
+<!-- prettier-ignore -->
+  ```text
+  ax --version
+  Actyx CLI 1.5.0
+  ```
 
 Congratulations, you have successfully installed Actyx CLI! 🎉
 
@@ -164,19 +164,15 @@ Since Actyx is not yet listed as an App developer, you need to make a few change
 2. Double-click the Node Manager icon
 
 3. Click **OK** on the initial prompt after opening Node Manager for the first time.
-
-![installation-01](../../../images/how-to/local-development/installation-01.png)
+   ![installation-01](../../../images/how-to/local-development/installation-01.png)
 
 4. Navigate to the system preferences, then to **Security &amp; Privacy** and click on **Open Anyway**.
-
-![installation-02](../../../images/how-to/local-development/installation-02.png)
+   ![installation-02](../../../images/how-to/local-development/installation-02.png)
 
 5. Finally, open the app again and click **Open** when prompted with yet another dialogue.
-
-![installation-03](../../../images/how-to/local-development/installation-03.png)
+   ![installation-03](../../../images/how-to/local-development/installation-03.png)
 
 Congratulations, you have successfully installed Actyx Node Manager! 🎉
 
 </TabItem>
 </Tabs>
-

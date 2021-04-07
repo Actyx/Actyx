@@ -35,18 +35,16 @@ In development, you can easily review the sizes of existing snapshots by hooking
 
 ```ts
 const snapshotSize = (snapshot: unknown) =>
-    (Buffer.byteLength(JSON.stringify(snapshot)) / 1024 / 1024)
-        .toPrecision(4)
-    + 'MB'
+  (Buffer.byteLength(JSON.stringify(snapshot)) / 1024 / 1024).toPrecision(4) + 'MB'
 
 export const SomeFish = {
-    of: (): Fish<S, E> => ({
-        // fish details omitted
-        deserializeState: (snapshot: unknown) => {
-            console.debug('Deserializing snapshot of size ' + snapshotSize(snapshot))
-            return snapshot as S
-        }
-    })
+  of: (): Fish<S, E> => ({
+    // fish details omitted
+    deserializeState: (snapshot: unknown) => {
+      console.debug('Deserializing snapshot of size ' + snapshotSize(snapshot))
+      return snapshot as S
+    },
+  }),
 }
 ```
 
@@ -86,7 +84,7 @@ const compressed = Pako.deflate(raw) // compress data
 const decompressed = Pako.inflate(compressed, { to: 'string' }) // decompress data
 
 const rawO = Array.from({ length: 10000 }, () => faker.helpers.createCard()) // 10k user data objects
-const compressedO = Pako.deflate(JSON.stringify(rawO))  // we need to convert our JS to a JSON string for compression ...
+const compressedO = Pako.deflate(JSON.stringify(rawO)) // we need to convert our JS to a JSON string for compression ...
 const decompressedO = JSON.parse(Pako.inflate(compressedO, { to: 'string' })) // ... and back again
 console.table([
   {
@@ -94,23 +92,24 @@ console.table([
     rawSizeMB: toMb(Buffer.byteLength(raw)),
     compressedSizeMB: toMb(compressed.byteLength),
     ratio: (Buffer.byteLength(raw) / compressed.byteLength).toFixed(3),
-    roundtripOk: raw === decompressed
+    roundtripOk: raw === decompressed,
   },
   {
     type: 'object',
     rawSizeMB: toMb(Buffer.byteLength(JSON.stringify(rawO))),
     compressedSizeMB: toMb(compressedO.byteLength),
     ratio: (Buffer.byteLength(JSON.stringify(rawO)) / compressedO.byteLength).toFixed(3),
-    roundtripOk: JSON.stringify(rawO) === JSON.stringify(decompressedO)
-  }])
+    roundtripOk: JSON.stringify(rawO) === JSON.stringify(decompressedO),
+  },
+])
 ```
 
 This should give us something akin to the following results. We can see that our data is compressed roughly by the factor 3.5. The achievable compression ratio obviously depends on your input data, so I encourage you to run the example on sample data from your application.
 
-|type|rawSizeMB|compressedSizeMB|ratio|roundtripOk|
-|---|---|---|---|---|
-|string|9.739|2.624|3.711|true|
-|object|24.077|6.885|3.497|true|
+| type   | rawSizeMB | compressedSizeMB | ratio | roundtripOk |
+| ------ | --------- | ---------------- | ----- | ----------- |
+| string | 9.739     | 2.624            | 3.711 | true        |
+| object | 24.077    | 6.885            | 3.497 | true        |
 
 ### Tying it all together
 
@@ -126,10 +125,14 @@ export type PushEvent = { content: string }
 export const pushEventTag = Tag<PushEvent>('pushed')
 
 Pond.default()
-  .then(pond => {
+  .then((pond) => {
     setInterval(() => pond.emit(pushEventTag, { content: Date() }), 150)
-    pond.observe(BoringFish.of(), state => console.log(`BoringFish has ${state.data.length} items`))
-    pond.observe(CompressingFish.of(), state => console.log(`CompressedFish has ${state.data.length} items`))
+    pond.observe(BoringFish.of(), (state) =>
+      console.log(`BoringFish has ${state.data.length} items`),
+    )
+    pond.observe(CompressingFish.of(), (state) =>
+      console.log(`CompressedFish has ${state.data.length} items`),
+    )
   })
   .catch(console.error)
 ```
@@ -140,18 +143,18 @@ The `BoringFish` just aggregates stores all events it receives. We'll keep `dese
 type State = { data: string[] }
 
 export const BoringFish = {
-    of: (): Fish<State, PushEvent> => ({
-        fishId: FishId.of('BoringFish', 'Carp', 0),
-        initialState: { data: [] },
-        where: pushEventTag,
-        onEvent: (state, event) => {
-            return { data: [...state.data, event.content] }
-        },
-        deserializeState: (snapshot: unknown) => {
-            console.debug('Deserializing RAW snapshot of size ' + snapshotSize(snapshot))
-            return snapshot as State
-        }
-    })
+  of: (): Fish<State, PushEvent> => ({
+    fishId: FishId.of('BoringFish', 'Carp', 0),
+    initialState: { data: [] },
+    where: pushEventTag,
+    onEvent: (state, event) => {
+      return { data: [...state.data, event.content] }
+    },
+    deserializeState: (snapshot: unknown) => {
+      console.debug('Deserializing RAW snapshot of size ' + snapshotSize(snapshot))
+      return snapshot as State
+    },
+  }),
 }
 ```
 
@@ -162,39 +165,39 @@ const pack = (data: any): string => Pako.deflate(JSON.stringify(data), { to: 'st
 const unpack: any = (zipped: string) => Pako.inflate(zipped as string, { to: 'string' })
 
 type CompressedState = {
-    data: string[]
-    toJSON: (data: string[]) => {}
+  data: string[]
+  toJSON: (data: string[]) => {}
 }
 
 const INITIAL_STATE = {
-    data: [],
-    toJSON: () => pack([])
+  data: [],
+  toJSON: () => pack([]),
 }
 
 export const CompressingFish = {
-    of: (): Fish<CompressedState, PushEvent> => ({
-        fishId: FishId.of('CompressingFish', 'Fugu', 0),
-        initialState: INITIAL_STATE,
-        where: pushEventTag,
-        onEvent: (state, event) => {
-            let data = [...state.data, event.content]
-            return {
-                data,
-                toJSON: () => pack(data)
-            }
-        },
-        deserializeState: (zipped: unknown) => {
-            console.debug('Deserializing COMPRESSED snapshot of size ' + snapshotSize(zipped))
-            return { data: JSON.parse(unpack(zipped)) } as CompressedState
-        }
-    })
+  of: (): Fish<CompressedState, PushEvent> => ({
+    fishId: FishId.of('CompressingFish', 'Fugu', 0),
+    initialState: INITIAL_STATE,
+    where: pushEventTag,
+    onEvent: (state, event) => {
+      let data = [...state.data, event.content]
+      return {
+        data,
+        toJSON: () => pack(data),
+      }
+    },
+    deserializeState: (zipped: unknown) => {
+      console.debug('Deserializing COMPRESSED snapshot of size ' + snapshotSize(zipped))
+      return { data: JSON.parse(unpack(zipped)) } as CompressedState
+    },
+  }),
 }
 ```
 
 When we keep this running for some time, we should see that ...
 
-* ... both fish have the same number of items in their state
-* ... the size of the compressed snapshot should be significantly smaller than the uncompressed one (well, duh!)
+- ... both fish have the same number of items in their state
+- ... the size of the compressed snapshot should be significantly smaller than the uncompressed one (well, duh!)
 
 And indeed, the logs confirm both assumptions.
 
@@ -217,8 +220,8 @@ Now that we got it working, let's look at the code we've produced. Wrangling `to
 
 To do so, we can implement a wrapper for existing fish, providing the functions required for (de-)compression as decoration. This requires the following parts:
 
-* A generic wrapper for `State` types adding the `toJSON` function
-* A function accepting a fish and returning the decorated one
+- A generic wrapper for `State` types adding the `toJSON` function
+- A function accepting a fish and returning the decorated one
 
 The decoration consists of the `toJSON` and `deserializeState` functions we discussed above. Additionally, we need to allow the system to discriminate between compressed and raw snapshots. Every other part is just delegated to the original fish.
 
@@ -226,36 +229,39 @@ The decoration consists of the `toJSON` and `deserializeState` functions we disc
 type CompressingStateWrapper<S> = S & { toJSON: () => string } // base state type + toJSON
 
 export const asCompressingFish = <S, E>(fish: Fish<S, E>): Fish<CompressingStateWrapper<S>, E> => ({
-    fishId: FishId.of(
-        `${fish.fishId.entityType}.zip`, // discriminate between raw and compressed snapshots
-        fish.fishId.name,
-        fish.fishId.version ),
-    where: fish.where,
-    initialState: {
-        ...fish.initialState,
-        toJSON: function () { return Pako.deflate(JSON.stringify(fish.initialState), { to: 'string' }) }
+  fishId: FishId.of(
+    `${fish.fishId.entityType}.zip`, // discriminate between raw and compressed snapshots
+    fish.fishId.name,
+    fish.fishId.version,
+  ),
+  where: fish.where,
+  initialState: {
+    ...fish.initialState,
+    toJSON: function () {
+      return Pako.deflate(JSON.stringify(fish.initialState), { to: 'string' })
     },
-    deserializeState: (zipped: unknown) => {
-        console.debug('Deserializing WRAPPED snapshot of size ' + snapshotSize(zipped))
-        return {
-            ...JSON.parse(Pako.inflate(zipped as string, { to: 'string' })),
-            toJSON: function () {
-                const { toJSON: _, ...rest } = this
-                return Pako.deflate(JSON.stringify(rest), { to: 'string' })
-            },
-        } as CompressingStateWrapper<S>
-    },
+  },
+  deserializeState: (zipped: unknown) => {
+    console.debug('Deserializing WRAPPED snapshot of size ' + snapshotSize(zipped))
+    return {
+      ...JSON.parse(Pako.inflate(zipped as string, { to: 'string' })),
+      toJSON: function () {
+        const { toJSON: _, ...rest } = this
+        return Pako.deflate(JSON.stringify(rest), { to: 'string' })
+      },
+    } as CompressingStateWrapper<S>
+  },
 
-    isReset: fish.isReset,
-    onEvent: (state, event, metadata) => {
-        return {
-            ...fish.onEvent(state, event, metadata),
-            toJSON: function () {
-                const { toJSON: _, ...rest } = this
-                return Pako.deflate(JSON.stringify(rest), { to: 'string' })
-            }
-        }
+  isReset: fish.isReset,
+  onEvent: (state, event, metadata) => {
+    return {
+      ...fish.onEvent(state, event, metadata),
+      toJSON: function () {
+        const { toJSON: _, ...rest } = this
+        return Pako.deflate(JSON.stringify(rest), { to: 'string' })
+      },
     }
+  },
 })
 ```
 
@@ -266,9 +272,9 @@ Kudos to [Alex](https://github.com/Alexander89) for coming up with this pattern.
 To see it in action, we just add a wrapped fish to our Pond from the test scenario.
 
 ```ts
-pond.observe(
-    asCompressingFish(BoringFish.of()),
-    state => console.log(`Wrapped BoringFish has ${state.data.length} items`))
+pond.observe(asCompressingFish(BoringFish.of()), (state) =>
+  console.log(`Wrapped BoringFish has ${state.data.length} items`),
+)
 ```
 
 When looking at the logs now, we see that the size of the wrapped fish's state corresponds to the one we manually added compression to.
@@ -292,4 +298,5 @@ In case this does not mitigate the issue, you can use the compression wrapper to
 You can use the code above to create similar scenarios using your own data to validate it. Also, do not hesitate to get in touch. We're always curious to learn how you're using Actyx, what works for you and where your pain points are.
 
 ---
+
 Credits: pufferfish photo by [Brian Yurasits](https://unsplash.com/@brian_yuri?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText)

@@ -15,7 +15,7 @@ and again with very similar inputs. This is due to time travel. When an event _f
 arrives, it is inserted into its proper spot in the log of all relevant events. Then, in order to
 compute an updated correct state, the `onEvent` aggregation is run over the event log again.
 
-[Read a concrete example in our tutorial.](/docs/pond/guides/time-travel)
+[Read a concrete example in our tutorial.](../guides/time-travel.mdx)
 
 Due to this, it is very important that `onEvent` is a _pure function_. A pure function is a function
 where the output depends solely on the inputs.
@@ -26,7 +26,6 @@ The following are examples of code that is NOT pure and hence must be avoided in
 
 - Looking at the current time via `new Date()` or similar. If you need to get the time at which an
   event occurred, look at the `metadata`.
-  
 - Accessing dynamic global state.
 
 - Modifying anything that is not part of the output state, for example a variable captured by the
@@ -41,7 +40,7 @@ applied.
 Note that it will always just be the **locally known** previous events that have been applied. That
 is the exact point of time travel: Some previous events may always [be yet
 unknown](../in-depth/eventual-consistency).
-  
+
 ### `event: E`
 
 The current event to apply.
@@ -65,7 +64,6 @@ A collection of various meta data tied to the event.
 - `lamport` - Timestamp according to the [Lamport
   Clock](https://en.wikipedia.org/wiki/Lamport_timestamp). This is only useful for debugging. Events
   are fed ordered by Lamport timestamp ascending.
-  
 - `eventId` - A unique identifier for the event. Every event has exactly one `eventId` which is unique
   to it, guaranteed to not collide with any other event.
 

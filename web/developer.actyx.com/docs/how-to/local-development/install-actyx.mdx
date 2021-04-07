@@ -3,8 +3,6 @@ title: Install and start Actyx
 id: install-actyx
 hide_title: false
 hide_table_of_contents: false
-keywords: [how-to-guide, keyword]
-description: How to install and start Actyx
 image: /images/defaults/default.svg
 ---
 
@@ -26,9 +24,7 @@ The rest of this guide will then change according to your selection!
   ]}
 >
 
-
 <TabItem value="windows">
-
 
 ## Hardware Requirements
 
@@ -58,7 +54,6 @@ ActyxOS is now shutting down.
 
 </TabItem>
 <TabItem value="android">
-
 
 <!-- We use <h2> html tags here to avoid the headlines being repeated in the TOC -->
 
@@ -95,7 +90,6 @@ On some Android distributions you may need to explicitly permit it by navigating
 </TabItem>
 <TabItem value="linux">
 
-
 <h2>Hardware Requirements</h2>
 
 In order to be able to run ActyxOS on Linux, your device needs to meet the following requirements:
@@ -107,7 +101,7 @@ In order to be able to run ActyxOS on Linux, your device needs to meet the follo
 You can download the binary for ActyxOS on Linux on our [downloads page](https://downloads.actyx.com).
 For ActyxOS to start, please open your terminal, navigate to the directory where you saved the binary and type in the following:
 
-```
+```shell
 sudo chmod +x actyxos-linux
 ```
 
@@ -120,7 +114,7 @@ Congratulations, you have successfully installed an run ActyxOS on your Linux de
 
 To start ActyxOS, please execute the following command in your terminal from the directory where you saved the binary:
 
-```
+```shell
 ./actyxos-linux
 ```
 
@@ -132,7 +126,6 @@ After a few seconds, ActyxOS will be stopped.
 </TabItem>
 <TabItem value="mac">
 
-
 <h2>Hardware Requirements</h2>
 
 Your device must run a recent version of macOS (> 10.14 Mojave) to be able to run ActyxOS guaranteed, though earlier macOS versions may work as well.
@@ -143,7 +136,7 @@ New Apple devices with the ARM-based Apple M1 chip will use Rosetta to run the b
 You can download the binary for ActyxOS on macOS on our [downloads page](https://downloads.actyx.com).
 For ActyxOS to start, please open your terminal, navigate to the directory where you saved the binary and type in the following:
 
-```
+```shell
 chmod +x actyxos-mac
 ```
 
@@ -156,7 +149,7 @@ Congratulations, you have successfully installed an run ActyxOS on your Mac! ðŸŽ
 
 To start ActyxOS, please execute the following command in your terminal from the directory where you saved the binary:
 
-```
+```shell
 ./actyxos-mac
 ```
 
@@ -167,7 +160,6 @@ After a few seconds, ActyxOS will be stopped.
 
 </TabItem>
 <TabItem value="docker">
-
 
 <h2>Hardware Requirements</h2>
 
@@ -244,10 +236,8 @@ After a couple of seconds, ActyxOS will be stopped.
 </TabItem>
 </Tabs>
 
-
 ## Where next?
 
-- [Installation Guide for Actyx CLI and Node Manager](/docs/how-to/local-development/installing-cli-node-manager)
-- [Common Development Errors](/docs/how-to/local-development/common-development-errors)
+- [Installation Guide for Actyx CLI and Node Manager](../local-development/install-cli-node-manager.mdx)
+- [Common Development Errors](../troubleshooting/common-errors.mdx)
 - [Quickstart Guide](../../tutorials/quickstart.mdx)
-- [Frequently Asked Questions](/docs/faq/supported-programming-languages)

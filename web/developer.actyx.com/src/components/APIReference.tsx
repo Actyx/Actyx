@@ -1,4 +1,4 @@
-import React from 'react'
+/* import React from 'react'
 import styled from 'styled-components'
 import renderer from '../components/Renderer'
 import Markdown from 'react-markdown'
@@ -30,10 +30,9 @@ const CodeWrapper = styled.div`
 
 type Props = Readonly<{
   code: string
-  explanation: React.ReactNode
 }>
 
-export const APIReference: React.FC<Props> = ({ explanation, code }: Props) => (
+export const APIReference: React.FC<Props> = ({ code }: Props) => (
   <Wrapper>
     <ExplanationWrapper>
       <p>
@@ -67,3 +66,4 @@ export const APIReference: React.FC<Props> = ({ explanation, code }: Props) => (
     </CodeWrapper>
   </Wrapper>
 )
+ */
