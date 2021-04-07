@@ -18,7 +18,7 @@ use std::fmt::Display;
 use crate::{
     event::{Event, EventKey, Metadata},
     expression::Expression,
-    scalars::{NodeId, StreamId, StreamNr},
+    scalars::{NodeId, StreamId},
     tags::TagSet,
     types::Binary,
     LamportTimestamp, Offset, OffsetMap, Payload, Timestamp,
@@ -164,8 +164,9 @@ pub struct PublishRequest {
 #[serde(rename_all = "camelCase")]
 pub struct PublishResponseKey {
     pub lamport: LamportTimestamp,
-    pub stream_nr: StreamNr,
+    pub stream: StreamId,
     pub offset: Offset,
+    pub timestamp: Timestamp,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

@@ -92,6 +92,9 @@ export const ConnectivityRequest = t.readonly(
 )
 export type ConnectivityRequest = t.TypeOf<typeof ConnectivityRequest>
 
+const EventKeyWithTime = t.intersection([EventKeyIO, t.type({ timestamp: t.number })])
+const PublishEventsResponse = t.type({ data: t.readonlyArray(EventKeyWithTime) })
+
 const toAql = (w: Where<unknown>) => w.toString()
 
 // FIXME: Downstream consumers expect arrays of Events, but endpoint is no longer sending chunks.
@@ -186,14 +189,12 @@ export class WebsocketEventStore implements EventStore {
   }
 
   persistEvents: RequestPersistEvents = events => {
-    // extract jelly events, as they must not be sent
-    // over the wire to the store
     const publishEvents = events
 
     return this.multiplexer
       .request(RequestTypes.Publish, PersistEventsRequest.encode({ data: publishEvents }))
-      .map(validateOrThrow(t.type({ events: Events })))
-      .map(({ events: persistedEvents }) => {
+      .map(validateOrThrow(PublishEventsResponse))
+      .map(({ data: persistedEvents }) => {
         if (publishEvents.length !== persistedEvents.length) {
           log.ws.error(
             'PutEvents: Sent %d events, but only got %d PSNs back.',
@@ -203,14 +204,9 @@ export class WebsocketEventStore implements EventStore {
           return []
         }
         return publishEvents.map<Event>((ev, idx) => ({
-          stream: this.sourceId,
-          name: ev.name,
+          ...persistedEvents[idx],
           tags: ev.tags,
           payload: ev.payload,
-          semantics: ev.semantics,
-          timestamp: persistedEvents[idx].timestamp,
-          lamport: persistedEvents[idx].lamport,
-          offset: persistedEvents[idx].offset,
         }))
       })
       .defaultIfEmpty([])

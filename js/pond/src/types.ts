@@ -257,6 +257,7 @@ export const EventKey = {
   ord: ordEventKey,
   format: formatEventKey,
 }
+
 export const EventKeyIO = t.readonly(
   t.type({
     lamport: Lamport.FromNumber,

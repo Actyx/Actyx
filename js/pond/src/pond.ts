@@ -8,7 +8,7 @@
 
 import { Observable, ReplaySubject, Scheduler, Subject, Subscription } from 'rxjs'
 import { CommandInterface } from './commandInterface'
-import { EventStore, WsStoreConfig } from './eventstore'
+import { EventStore, UnstoredEvent, WsStoreConfig } from './eventstore'
 import { MultiplexedWebsocket } from './eventstore/multiplexedWebsocket'
 import { TestEvent } from './eventstore/testEventStore'
 import { AllEventsSortOrders, ConnectivityStatus, Events } from './eventstore/types'
@@ -30,14 +30,12 @@ import {
   Fish,
   FishErrorReporter,
   FishId,
-  FishName,
   IsReset,
   Metadata,
   Milliseconds,
   ObserveAllOpts,
   PendingEmission,
   Reduce,
-  Semantics,
   SourceId,
   StateEffect,
   StateWithProvenance,
@@ -437,9 +435,7 @@ class Pond2Impl implements Pond {
     const events = emit.map(({ tags, payload }) => {
       const timestamp = Timestamp.now()
 
-      const event = {
-        semantics: Semantics.none,
-        name: FishName.none,
+      const event: UnstoredEvent = {
         tags: isTyped(tags) ? tags.rawTags : tags,
         timestamp,
         payload,
@@ -462,8 +458,8 @@ class Pond2Impl implements Pond {
       .mapTo(void 0)
       .shareReplay(1)
 
-    // `o` is already (probably) hot, but we subscribe just in case.
-    o.subscribe()
+    // Maybe TODO: Subscribing here causes the request to be cancelled too early. What is the problem?
+    // o.subscribe()
 
     return pendingEmission(o)
   }

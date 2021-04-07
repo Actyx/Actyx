@@ -33,6 +33,8 @@ fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> 
     min..=max
 }
 
+pub type PersistenceMeta = (LamportTimestamp, Offset, StreamNr, Timestamp);
+
 impl BanyanStore {
     /// Tell the store that we have seen an unvalidated root map
     pub(crate) fn received_root_map(
@@ -90,7 +92,7 @@ impl BanyanStore {
         future::ready(())
     }
 
-    async fn persist0(self, events: Vec<(TagSet, Payload)>) -> Result<Vec<(LamportTimestamp, Offset, StreamNr)>> {
+    async fn persist0(self, events: Vec<(TagSet, Payload)>) -> Result<Vec<PersistenceMeta>> {
         let n = events.len() as u32;
         let last_lamport = self.0.index_store.lock().increase_lamport(n)?;
         let min_lamport = last_lamport - (n as u64) + 1;
@@ -121,7 +123,7 @@ impl BanyanStore {
             .map(|i| {
                 let lamport = (min_lamport + (i as u64)).into();
                 let offset = starting_offset + i;
-                (lamport, offset, stream_nr)
+                (lamport, offset, stream_nr, timestamp)
             })
             .collect();
         Ok(keys)
@@ -150,17 +152,11 @@ impl BanyanStore {
 
 pub trait EventStore: Clone + Send + Unpin + Sync + 'static {
     /// Persist events and assign offsets and lamports
-    fn persist<'a>(
-        &self,
-        events: Vec<(TagSet, Payload)>,
-    ) -> BoxFuture<'a, Result<Vec<(LamportTimestamp, Offset, StreamNr)>>>;
+    fn persist<'a>(&self, events: Vec<(TagSet, Payload)>) -> BoxFuture<'a, Result<Vec<PersistenceMeta>>>;
 }
 
 impl EventStore for BanyanStore {
-    fn persist<'a>(
-        &self,
-        events: Vec<(TagSet, Payload)>,
-    ) -> BoxFuture<'a, Result<Vec<(LamportTimestamp, Offset, StreamNr)>>> {
+    fn persist<'a>(&self, events: Vec<(TagSet, Payload)>) -> BoxFuture<'a, Result<Vec<PersistenceMeta>>> {
         self.clone().persist0(events).boxed()
     }
 }
