@@ -25,34 +25,32 @@ module.exports = {
     ], */
     [
       'docusaurus-plugin-typedoc',
-
-      // Plugin / TypeDoc options
       {
         id: 'js-ts-sdk',
         entryPoints: ['../../js/os-sdk/src/index.ts'],
         tsconfig: '../../js/os-sdk/tsconfig.json',
         out: 'reference/js-ts-sdk',
+        disableSources: true,
         sidebar: {
           sidebarFile: '__js-ts-sdk-sidebar.js',
           fullNames: false,
         },
       },
     ],
-    //[
-    //  'docusaurus-plugin-typedoc',
-
-    //  // Plugin / TypeDoc options
-    //  {
-    //    id: 'pond',
-    //    entryPoints: ['../../js/pond/src/index.ts'],
-    //    tsconfig: '../../js/pond/tsconfig.json',
-    //    out: 'reference/pond',
-    //    sidebar: {
-    //      sidebarFile: '__pond-sidebar.js',
-    //      fullNames: false
-    //    },
-    //  },
-    //],
+    [
+      'docusaurus-plugin-typedoc',
+      {
+        id: 'pond',
+        entryPoints: ['../../js/pond/src/index.ts'],
+        tsconfig: '../../js/pond/tsconfig.json',
+        out: 'reference/pond',
+        disableSources: true,
+        sidebar: {
+          sidebarFile: '__pond-sidebar.js',
+          fullNames: false,
+        },
+      },
+    ],
   ],
   themeConfig: {
     // announcementBar: {
