@@ -20,8 +20,7 @@ fn default_settings() {
             "admin": {
               "displayName": "Default Node",
               "logLevels": {
-                "node": "INFO",
-                "apps": {}
+                "node": "INFO"
               },
               "authorizedUsers": []
             },
@@ -39,7 +38,7 @@ fn default_settings() {
     );
 
     use maplit::{btreemap, btreeset};
-    use node::os_settings::*;
+    use node::node_settings::*;
     use util::formats::LogSeverity::*;
     let settings: Settings = serde_json::from_value(json).unwrap();
     assert_eq!(
@@ -55,7 +54,6 @@ fn default_settings() {
           display_name: "Default Node".to_string(),
           log_levels: LogLevels {
             node: Info,
-            apps: btreemap! {},
           },
           authorized_users: vec![]
 

@@ -2,7 +2,7 @@ use super::{logging::LoggingTx, store::StoreTx};
 use crate::{
     components::{Component, ComponentRequest},
     formats::ExternalEvent,
-    os_settings::Settings,
+    node_settings::Settings,
 };
 use anyhow::Result;
 use crossbeam::channel::{Receiver, Sender};

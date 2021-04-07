@@ -402,7 +402,6 @@ mod test {
     use anyhow::Result;
     use futures::executor::block_on;
     use serde_json::json;
-    use settings;
     use tempfile::TempDir;
     use tokio::sync::oneshot::channel;
     use util::formats::NodeName;
@@ -430,10 +429,7 @@ mod test {
               "displayName": "My Node",
               "authorizedUsers": [],
               "logLevels": {
-                "node": "WARN",
-                "apps": {
-                  "com.sample": "INFO"
-                }
+                "node": "WARN"
               }
             },
             "licensing": {

@@ -49,7 +49,6 @@ pub struct Api {
 #[serde(rename_all = "camelCase")]
 pub struct LogLevels {
     pub node: LogSeverity,
-    pub apps: BTreeMap<AppId, LogSeverity>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]

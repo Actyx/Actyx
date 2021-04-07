@@ -1,4 +1,4 @@
-use node::os_settings::*;
+use node::node_settings::*;
 use settings::Repository;
 use std::collections::BTreeMap;
 #[test]

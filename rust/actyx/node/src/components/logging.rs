@@ -1,5 +1,5 @@
 use super::{Component, ComponentRequest};
-use crate::os_settings::Settings;
+use crate::node_settings::Settings;
 use actyxos_sdk::NodeId;
 use anyhow::Result;
 use crossbeam::channel::{bounded, Receiver, Sender};

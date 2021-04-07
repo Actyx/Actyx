@@ -4,8 +4,8 @@ use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use util::formats::NodeName;
 
-pub mod os_settings;
-pub use os_settings::Settings;
+pub mod node_settings;
+pub use node_settings::Settings;
 
 #[derive(Deserialize, PartialEq, Clone, Debug)]
 pub struct NodeDetails {

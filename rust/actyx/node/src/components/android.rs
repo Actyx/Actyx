@@ -2,7 +2,7 @@ use super::Component;
 use crate::{
     components::ComponentRequest,
     formats::{ExternalEvent, ShutdownReason},
-    os_settings::Settings,
+    node_settings::Settings,
 };
 use anyhow::Result;
 use crossbeam::channel::{self, Receiver, Sender};
