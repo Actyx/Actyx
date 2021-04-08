@@ -1,7 +1,9 @@
-use crate::{tags::Tag, AppId, LamportTimestamp, Timestamp};
-
 mod parser;
+mod render;
+
 pub use parser::expression;
+
+use crate::{tags::Tag, AppId, LamportTimestamp, Timestamp};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Expression {

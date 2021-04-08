@@ -1,4 +1,4 @@
-use super::{expression, Expression};
+use super::{expression, render::render, Expression};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -17,7 +17,7 @@ impl Serialize for Expression {
     where
         S: serde::Serializer,
     {
-        serializer.serialize_str("not implemented")
+        serializer.serialize_str(self.to_string().as_str())
     }
 }
 
@@ -26,5 +26,11 @@ impl FromStr for Expression {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(expression(s)?)
+    }
+}
+
+impl std::fmt::Display for Expression {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        render(f, self)
     }
 }

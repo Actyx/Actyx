@@ -319,6 +319,20 @@ mod tests {
     }
 
     #[test]
+    fn roundtrips() {
+        let rt = |str: &'static str| {
+            let e = str.parse::<Expression>().unwrap();
+            let mut buf = String::new();
+            crate::language::render::render(&mut buf, &e).unwrap();
+            assert_eq!(buf.as_str(), str);
+        };
+        rt("FROM 'machine' | 'user' & isLocal & from(2012-12-31) & to(12345678901234567) & appId(hello-5._x_) & allEvents FILTER _.x.42 > 5 SELECT { x: !'hello', y: 42, z: [1.3, _.x] } END");
+        rt("FROM from(2012-12-31T09:30:32.007Z) & to(123) END");
+        rt("FROM from(2012-12-31T09:30:32Z) & to(123) END");
+        rt("FROM from(2012-12-31T09:30:32.007008Z) & to(123) END");
+    }
+
+    #[test]
     fn negative() {
         fails_with! {
             parser: Aql,
