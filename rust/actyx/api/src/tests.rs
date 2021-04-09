@@ -69,7 +69,7 @@ async fn ok_accept_ndjson() {
         .path("/api/v2/events/query")
         .method("POST")
         .header("Authorization", "Bearer ok")
-        .json(&json!({"offsets": {}, "upperBound": {}, "query": "'a'", "order": "asc"}))
+        .json(&json!({"offsets": {}, "upperBound": {}, "query": "FROM 'a'", "order": "asc"}))
         .reply(&test_routes().await)
         .await;
     assert_eq!(resp.status(), http::StatusCode::OK);
@@ -80,7 +80,7 @@ async fn ok_accept_ndjson() {
         .method("POST")
         .header("Authorization", "Bearer ok")
         .header("Accept", "application/x-ndjson")
-        .json(&json!({"offsets": {}, "upperBound": {}, "query": "'a'", "order": "asc"}))
+        .json(&json!({"offsets": {}, "upperBound": {}, "query": "FROM 'a'", "order": "asc"}))
         .reply(&test_routes().await)
         .await;
     assert_eq!(resp.status(), http::StatusCode::OK);
