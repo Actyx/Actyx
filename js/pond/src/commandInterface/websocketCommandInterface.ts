@@ -6,7 +6,7 @@
  */
 import * as t from 'io-ts'
 import { MultiplexedWebsocket, validateOrThrow } from '../eventstore/multiplexedWebsocket'
-import { SourceId, Timestamp } from '../types'
+import { NodeId, Timestamp } from '../types'
 import { CounterMap, DurationMap, GaugeMap } from '../util'
 import {
   AlertRequest,
@@ -67,7 +67,7 @@ const RunStatsData = t.readonly(
 type RunStatsData = t.TypeOf<typeof RunStatsData>
 
 export class WebsocketCommandInterface implements CommandInterface {
-  constructor(private readonly multiplexer: MultiplexedWebsocket, readonly sourceId: SourceId) {}
+  constructor(private readonly multiplexer: MultiplexedWebsocket, readonly sourceId: NodeId) {}
 
   alert: AlertRequest = (message: string, time: Timestamp) =>
     this.multiplexer

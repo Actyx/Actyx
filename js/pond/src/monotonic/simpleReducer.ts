@@ -24,7 +24,7 @@ export const simpleReducer = <S>(
     let i = fromIdx
 
     let { state, eventKey, cycle, horizon } = head
-    const offsets = { ...head.psnMap }
+    const offsets = { ...head.offsets }
 
     while (i <= toIdxInclusive) {
       const ev = events[i]
@@ -45,7 +45,7 @@ export const simpleReducer = <S>(
 
     head = {
       state,
-      psnMap: offsets,
+      offsets: offsets,
       cycle,
       eventKey,
       horizon,

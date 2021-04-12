@@ -9,7 +9,7 @@ import { equals } from 'ramda'
 import { Observable } from 'rxjs'
 import log from '../loggers'
 import { Where } from '../tagging'
-import { EventKey, EventKeyIO, SourceId } from '../types'
+import { EventKey, EventKeyIO, NodeId } from '../types'
 import {
   EventStore,
   RequestAllEvents,
@@ -72,9 +72,9 @@ export type AllEventsRequest = t.TypeOf<typeof AllEventsRequest>
 export const PersistEventsRequest = t.readonly(t.type({ data: UnstoredEvents }))
 export type PersistEventsRequest = t.TypeOf<typeof PersistEventsRequest>
 
-const GetSourceIdResponse = t.type({ nodeId: SourceId.FromString })
+const GetSourceIdResponse = t.type({ nodeId: NodeId.FromString })
 
-export const getSourceId = (multiplexedWebsocket: MultiplexedWebsocket): Promise<SourceId> =>
+export const getNodeId = (multiplexedWebsocket: MultiplexedWebsocket): Promise<NodeId> =>
   multiplexedWebsocket
     .request(RequestTypes.NodeId)
     .map(validateOrThrow(GetSourceIdResponse))
@@ -84,7 +84,7 @@ export const getSourceId = (multiplexedWebsocket: MultiplexedWebsocket): Promise
 
 export const ConnectivityRequest = t.readonly(
   t.type({
-    special: t.readonlyArray(SourceId.FromString),
+    special: t.readonlyArray(NodeId.FromString),
     hbHistDelay: t.number,
     reportEveryMs: t.number, // how frequently the connectivity service should report, recommended around 10_000
     currentPsnHistoryDelay: t.number, // this is u8 size! -- how many report_every_ms spans back we go for the our_psn value? recommended 6 to give 60s
@@ -106,7 +106,7 @@ export class WebsocketEventStore implements EventStore {
   private _present: Observable<OffsetMap>
   private _highestSeen: Observable<OffsetMapWithDefault>
 
-  constructor(private readonly multiplexer: MultiplexedWebsocket, readonly sourceId: SourceId) {
+  constructor(private readonly multiplexer: MultiplexedWebsocket, readonly nodeId: NodeId) {
     this._present = Observable.defer(() =>
       this.multiplexer.request(RequestTypes.Offsets).map(validateOrThrow(OffsetMapIO)),
     ).shareReplay(1)

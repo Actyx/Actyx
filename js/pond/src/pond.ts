@@ -13,7 +13,7 @@ import { MultiplexedWebsocket } from './eventstore/multiplexedWebsocket'
 import { TestEvent } from './eventstore/testEventStore'
 import { AllEventsSortOrders, ConnectivityStatus, Events } from './eventstore/types'
 import { extendDefaultWsStoreConfig, mkMultiplexer } from './eventstore/utils'
-import { getSourceId } from './eventstore/websocketEventStore'
+import { getNodeId } from './eventstore/websocketEventStore'
 import { CommandPipeline, FishJar, StartedFishMap } from './fishJar'
 import log from './loggers'
 import { observeMonotonic } from './monotonic'
@@ -33,10 +33,10 @@ import {
   IsReset,
   Metadata,
   Milliseconds,
+  NodeId,
   ObserveAllOpts,
   PendingEmission,
   Reduce,
-  SourceId,
   StateEffect,
   StateWithProvenance,
   Timestamp,
@@ -60,7 +60,7 @@ export type PondOptions = {
 
 /** Information concerning the running Pond. @public */
 export type PondInfo = {
-  sourceId: SourceId
+  nodeId: NodeId
 }
 
 const omitObservable = <S>(
@@ -127,7 +127,7 @@ type ActiveFish<S> = {
 /** Parameter object for the `Pond.getNodeConnectivity` call. @public */
 export type GetNodeConnectivityParams = Readonly<{
   callback: (newState: ConnectivityStatus) => void
-  specialSources?: ReadonlyArray<SourceId>
+  specialSources?: ReadonlyArray<NodeId>
 }>
 
 /** Parameter object for the `Pond.waitForSwarmSync` call. @public */
@@ -416,7 +416,7 @@ class Pond2Impl implements Pond {
 
   info = () => {
     return {
-      sourceId: this.eventStore.sourceId,
+      nodeId: this.eventStore.nodeId,
     }
   }
 
@@ -521,7 +521,6 @@ class Pond2Impl implements Pond {
       cached.commandPipeline ||
       FishJar.commandPipeline<S, EmissionRequest<any>>(
         this.pondStateTracker,
-        this.eventStore.sourceId,
         agg.fishId.entityType,
         agg.fishId.name,
         handler,
@@ -695,7 +694,7 @@ const mockSetup = (): Services => {
 }
 
 const createServices = async (multiplexer: MultiplexedWebsocket): Promise<Services> => {
-  const sourceId = await getSourceId(multiplexer)
+  const sourceId = await getNodeId(multiplexer)
   const eventStore = EventStore.ws(multiplexer, sourceId)
   // FIXME: V2 support for snapshots
   const snapshotStore = SnapshotStore.noop
@@ -721,7 +720,7 @@ export type TestPond = Pond & {
 }
 const mkTestPond = (opts?: PondOptions): TestPond => {
   const opts1: PondOptions = opts || {}
-  const eventStore = EventStore.test(SourceId.of('TEST'))
+  const eventStore = EventStore.test(NodeId.of('TEST'))
   const snapshotStore = SnapshotStore.inMem()
   const commandInterface = CommandInterface.mock()
   return {
@@ -735,7 +734,7 @@ const pondFromServices = (services: Services, opts: PondOptions): Pond => {
   // FIXME: V2 has no support for the Monitoring methods
   const monitoring = Monitoring.mock()
 
-  log.pond.debug('start pond with SourceID %s from store', eventStore.sourceId)
+  log.pond.debug('start pond with SourceID %s from store', eventStore.nodeId)
 
   const pondStateTracker = mkPondStateTracker(log.pond)
   const pond: Pond2Impl = new Pond2Impl(

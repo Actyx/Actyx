@@ -16,7 +16,7 @@ export type StoreSnapshot = (
   semantics: Semantics,
   name: FishName,
   key: EventKey,
-  psnMap: OffsetMap,
+  offsets: OffsetMap,
   horizon: EventKey | undefined,
   cycle: number,
   version: number,

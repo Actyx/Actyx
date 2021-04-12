@@ -7,7 +7,7 @@
 import { Observable, ReplaySubject } from 'rxjs'
 import log from '../store/loggers'
 import { toEventPredicate } from '../tagging'
-import { Lamport, Offset, SourceId } from '../types'
+import { Lamport, NodeId, Offset } from '../types'
 import {
   EventStore,
   RequestAllEvents,
@@ -17,7 +17,7 @@ import {
 import { ConnectivityStatus, Events, OffsetMapWithDefault } from './types'
 
 export const mockEventStore: () => EventStore = () => {
-  const sourceId = SourceId.of('MOCK')
+  const nodeId = NodeId.of('MOCK')
   const present = new ReplaySubject<OffsetMapWithDefault>(1)
   const events = new ReplaySubject<Events>(1e3)
   events.next([])
@@ -42,23 +42,26 @@ export const mockEventStore: () => EventStore = () => {
       .map(x => x.filter(toEventPredicate(ss)))
       .do(x => log.ws.debug('allEvents', x))
   }
+
+  const streamId = NodeId.streamNo(nodeId, 0)
+
   const persistEvents: RequestPersistEvents = x => {
     log.ws.debug('putEvents', x)
     const newEvents: Events = x.map(payload => ({
       payload: payload.payload,
       tags: [],
-      stream: sourceId,
+      stream: streamId,
       timestamp: payload.timestamp,
       lamport: Lamport.of(payload.timestamp),
       offset: Offset.of(psn++),
     }))
 
     events.next(newEvents)
-    present.next({ psns: { [sourceId]: psn }, default: 'max' })
+    present.next({ psns: { [streamId]: psn }, default: 'max' })
     return Observable.of(newEvents)
   }
   return {
-    sourceId,
+    nodeId,
     present: () => present.asObservable().do(() => log.ws.debug('present')),
     highestSeen: () => present.asObservable(),
     persistedEvents,

@@ -104,12 +104,12 @@ export const observeMonotonic = (
 ): Observable<StateWithProvenance<S>> => {
   const endpoint = eventsMonotonic(eventStore, snapshotStore)
 
-  const { sourceId } = eventStore
+  const { nodeId } = eventStore
 
   const initialStateAsString = JSON.stringify(initialState)
   const initialStateSnapshot: SerializedStateSnap = {
     state: initialStateAsString,
-    psnMap: OffsetMap.empty,
+    offsets: OffsetMap.empty,
     eventKey: EventKey.zero,
     horizon: undefined,
     cycle: 0,
@@ -121,7 +121,7 @@ export const observeMonotonic = (
       fishId.entityType,
       fishId.name,
       snap.eventKey,
-      snap.psnMap,
+      snap.offsets,
       snap.horizon,
       snap.cycle,
       fishId.version,
@@ -132,7 +132,7 @@ export const observeMonotonic = (
 
   const { onEventWrapped, isResetWrapped, deserializeStateWrapped } = withErrorHandling(
     fishId,
-    sourceId,
+    nodeId,
     reportFishError,
     onEvent,
     isReset,
@@ -143,7 +143,7 @@ export const observeMonotonic = (
     onEventWrapped,
     {
       state: clone(initialState),
-      psnMap: OffsetMap.empty,
+      offsets: OffsetMap.empty,
       eventKey: EventKey.zero,
       horizon: undefined,
       cycle: 0,
@@ -196,8 +196,8 @@ export const observeMonotonic = (
           log.pond.info(
             trackingId,
             'directly setting state.',
-            'Num sources:',
-            Object.keys(msg.snapshot.psnMap).length,
+            'Num streams:',
+            Object.keys(msg.snapshot.offsets).length,
             '- Cycle:',
             msg.snapshot.cycle,
           )
@@ -232,12 +232,12 @@ type TimeTravelToStateMsg = (timeTravel: TimeTravelMsg) => StateMsg
 type GetMonotonicUpdates = (from: Option<FixedStart>) => Observable<EventsOrTimetravel>
 
 const snapshotToFixedStart = (snapshot: LocalSnapshot<unknown>): Option<FixedStart> => {
-  if (OffsetMap.isEmpty(snapshot.psnMap)) {
+  if (OffsetMap.isEmpty(snapshot.offsets)) {
     return none
   }
 
   return some({
-    from: snapshot.psnMap,
+    from: snapshot.offsets,
     latestEventKey: snapshot.eventKey,
     horizon: snapshot.horizon,
   })

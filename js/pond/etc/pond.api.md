@@ -168,7 +168,7 @@ export type FullWaitForSwarmConfig = Readonly<{
 // @public
 export type GetNodeConnectivityParams = Readonly<{
     callback: (newState: ConnectivityStatus) => void;
-    specialSources?: ReadonlyArray<SourceId>;
+    specialSources?: ReadonlyArray<NodeId>;
 }>;
 
 // @beta
@@ -256,6 +256,17 @@ export type NoCaching = {
 };
 
 // @public
+export type NodeId = string;
+
+// @public
+export const NodeId: {
+    of: (text: string) => NodeId;
+    random: (digits?: number | undefined) => string;
+    FromString: t.Type<string, string, unknown>;
+    streamNo: (nodeId: NodeId, num: number) => string;
+};
+
+// @public
 export type NodeInfoEntry = Readonly<{
     own?: number;
     swarm?: number;
@@ -302,7 +313,7 @@ export const Pond: {
 
 // @public
 export type PondInfo = {
-    sourceId: SourceId;
+    nodeId: NodeId;
 };
 
 // @public
@@ -338,16 +349,6 @@ export type Progress = Readonly<{
 
 // @public
 export type Reduce<S, E> = (state: S, event: E, metadata: Metadata) => S;
-
-// @public
-export type SourceId = string;
-
-// @public
-export const SourceId: {
-    of: (text: string) => SourceId;
-    random: (digits?: number | undefined) => string;
-    FromString: t.Type<string, string, unknown>;
-};
 
 // @public
 export type SplashState = SplashStateDiscovery | SplashStateSync;

@@ -6,7 +6,7 @@
  */
 import { Observable } from 'rxjs'
 import { Where } from '../tagging'
-import { EventKey, Milliseconds, SourceId } from '../types'
+import { EventKey, Milliseconds, NodeId } from '../types'
 import { mockEventStore } from './mockEventStore'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import { testEventStore, TestEventStore } from './testEventStore'
@@ -23,14 +23,15 @@ import { WebsocketEventStore } from './websocketEventStore'
 /**
  * Get the store's source id.
  */
-export type RequestSourceId = () => Observable<SourceId>
+export type RequestNodeId = () => Observable<NodeId>
 
 /**
  * Get the store's swarm connectivity status.
  * That is: Do we know about other nodes receiving the events we create?
  */
 export type RequestConnectivity = (
-  specialSources: ReadonlyArray<SourceId>,
+  // FIXME: Rename this argument (if we keep it in v2)
+  specialSources: ReadonlyArray<NodeId>,
   hbHistDelayMicros: number,
   reportEvery: Milliseconds,
   currentPsnHistoryDelay: number,
@@ -112,7 +113,7 @@ export type RequestPersistEvents = (events: UnstoredEvents) => Observable<Events
  */
 
 export type EventStore = {
-  readonly sourceId: SourceId
+  readonly nodeId: NodeId
   readonly present: RequestPresent
   readonly highestSeen: RequestHighestSeen
   readonly persistedEvents: RequestPersistedEvents
@@ -127,19 +128,19 @@ const noopEventStore: EventStore = {
   present: () => Observable.of({ psns: {}, default: 'max' as 'max' }),
   highestSeen: () => Observable.of({ psns: {}, default: 'max' as 'max' }),
   persistEvents: () => Observable.empty(),
-  sourceId: SourceId.of('NoopSourceId'),
+  nodeId: NodeId.of('NoopSourceId'),
   connectivityStatus: () => Observable.empty(),
 }
 
 export const EventStore: {
   noop: EventStore
-  ws: (multiplexedWebsocket: MultiplexedWebsocket, sourceId: SourceId) => EventStore
+  ws: (multiplexedWebsocket: MultiplexedWebsocket, nodeId: NodeId) => EventStore
   mock: () => EventStore
-  test: (sourceId?: SourceId, eventChunkSize?: number) => TestEventStore
+  test: (nodeId?: NodeId, eventChunkSize?: number) => TestEventStore
 } = {
   noop: noopEventStore,
-  ws: (multiplexedWebsocket: MultiplexedWebsocket, sourceId: SourceId) =>
-    new WebsocketEventStore(multiplexedWebsocket, sourceId),
+  ws: (multiplexedWebsocket: MultiplexedWebsocket, nodeId: NodeId) =>
+    new WebsocketEventStore(multiplexedWebsocket, nodeId),
   mock: mockEventStore,
   test: testEventStore,
 }

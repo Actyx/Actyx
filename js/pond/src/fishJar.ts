@@ -27,8 +27,8 @@ import {
   FishId,
   Milliseconds,
   Offset,
-  SourceId,
   StateWithProvenance,
+  StreamId,
   Timestamp,
 } from './types'
 import { lookup } from './util'
@@ -65,12 +65,22 @@ export type CommandPipeline<S, I> = Readonly<{
 }>
 
 type CommandScanState = Readonly<{
-  waitFor: Offset
+  waitFor: Record<StreamId, Offset>
 }>
+
+const hasAllOffsets = (offsets: Record<StreamId, Offset>, waitFor: Record<StreamId, Offset>) => {
+  for (const [stream, offsetToWaitFor] of Object.entries(waitFor)) {
+    const latestSeen = lookup(offsets, stream)
+    if (latestSeen === undefined || offsetToWaitFor > latestSeen) {
+      return false
+    }
+  }
+
+  return true
+}
 
 const commandPipeline = <S, I>(
   pondStateTracker: PondStateTracker,
-  localSourceId: SourceId,
   semantics: string,
   name: string,
   handler: ((input: I) => Observable<Events>),
@@ -100,24 +110,17 @@ const commandPipeline = <S, I>(
 
     const result = stateSubject
       .filter(stateWithProvenance => {
-        if (current.waitFor < Offset.zero) {
-          return true
-        }
-
-        const latestSeen = lookup(stateWithProvenance.psnMap, localSourceId)
-        const pass = latestSeen !== undefined && latestSeen >= current.waitFor
+        const pass = hasAllOffsets(stateWithProvenance.offsets, current.waitFor)
 
         if (!pass) {
           log.pond.debug(
             semantics,
             '/',
             name,
-            '/',
-            localSourceId,
-            'waiting for',
-            current.waitFor,
+            ' waiting for',
+            JSON.stringify(current.waitFor),
             '; currently at:',
-            latestSeen,
+            JSON.stringify(stateWithProvenance.offsets),
           )
         }
         return pass
@@ -139,11 +142,19 @@ const commandPipeline = <S, I>(
             return Observable.of({ ...current })
           }
 
-          // We must wait for the final offset of our generated events
-          // to be applied to the state, before we may apply the next command.
-          const finalOffset = filtered[filtered.length - 1].offset
+          // We must wait for all of our generated events to be applied to the state,
+          // before we may apply the next command.
+          // The events may be in different streams.
+          const finalOffsets: Record<StreamId, Offset> = {}
 
-          return Observable.of({ waitFor: finalOffset })
+          for (const env of envelopes) {
+            // Since envelopes are returned in ascending order, we will
+            // just overwrite the same entry again and again with higher number
+            // in case the events all go into the same stream.
+            finalOffsets[env.stream] = env.offset
+          }
+
+          return Observable.of({ waitFor: finalOffsets })
         })
       })
 
@@ -160,7 +171,7 @@ const commandPipeline = <S, I>(
     )
   }
 
-  const subscription = commandIn.mergeScan(cmdScanAcc, { waitFor: Offset.min }, 1).subscribe()
+  const subscription = commandIn.mergeScan(cmdScanAcc, { waitFor: {} }, 1).subscribe()
 
   return {
     subject: commandIn,

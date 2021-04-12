@@ -7,7 +7,7 @@
 import * as t from 'io-ts'
 import { Observable } from 'rxjs'
 import { MultiplexedWebsocket } from '../eventstore/multiplexedWebsocket'
-import { SourceId, Timestamp } from '../types'
+import { NodeId, Timestamp } from '../types'
 import { CounterMap, DurationMap, GaugeMap, Loggers } from '../util'
 import { mockCommandInterface } from './mockCommandInterface'
 import { WebsocketCommandInterface } from './websocketCommandInterface'
@@ -70,7 +70,7 @@ export type RunStatsRequest = (
 export type SubscribeRequest = () => Observable<ControlCommand>
 
 export interface CommandInterface {
-  readonly sourceId: SourceId
+  readonly sourceId: NodeId
   alert: AlertRequest
   heartbeat: HeartbeatRequest
   logging: LoggingRequest
@@ -80,7 +80,7 @@ export interface CommandInterface {
 }
 
 const noopCommandInterface: CommandInterface = {
-  sourceId: SourceId.of('noop'),
+  sourceId: NodeId.of('noop'),
   alert: () => Promise.resolve(),
   heartbeat: () => Promise.resolve(),
   logging: () => Promise.resolve(),
@@ -92,6 +92,6 @@ const noopCommandInterface: CommandInterface = {
 export const CommandInterface = {
   noop: noopCommandInterface,
   mock: mockCommandInterface,
-  ws: (multiplexedWebsocket: MultiplexedWebsocket, sourceId: SourceId) =>
+  ws: (multiplexedWebsocket: MultiplexedWebsocket, sourceId: NodeId) =>
     new WebsocketCommandInterface(multiplexedWebsocket, sourceId),
 }

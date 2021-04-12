@@ -9,7 +9,7 @@ import { fromNullable } from 'fp-ts/lib/Option'
 import { Observable, ReplaySubject, Scheduler, Subject } from 'rxjs'
 import log from '../store/loggers'
 import { toEventPredicate, Where } from '../tagging'
-import { EventKey, Lamport, Offset, SourceId, Timestamp } from '../types'
+import { EventKey, Lamport, NodeId, Offset, Timestamp } from '../types'
 import { binarySearch, mergeSortedInto } from '../util'
 import {
   EventStore,
@@ -212,8 +212,8 @@ const persistence = () => {
   }
 }
 
-export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => TestEventStore = (
-  sourceId = SourceId.of('TEST'),
+export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestEventStore = (
+  nodeId = NodeId.of('TEST'),
   eventChunkSize = 4,
 ) => {
   const { persist, getPersistedPreFiltered, allPersisted } = persistence()
@@ -270,12 +270,14 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
   let offsets = {}
   present.next(offsets)
 
+  const streamId = NodeId.streamNo(nodeId, 0)
+
   const persistEvents: RequestPersistEvents = x => {
     const newEvents = x.map(unstoredEvent => {
       lamport = Lamport.of(lamport + 1)
       return {
         ...unstoredEvent,
-        stream: sourceId,
+        stream: streamId,
         lamport,
         offset: Offset.of(psn++),
       }
@@ -310,7 +312,7 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
   const toIo = (o: OffsetMap): OffsetMapWithDefault => ({ psns: o, default: 'max' })
 
   return {
-    sourceId,
+    nodeId,
     present: () =>
       present
         .asObservable()

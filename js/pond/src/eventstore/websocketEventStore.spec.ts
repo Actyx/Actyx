@@ -9,7 +9,7 @@
 import { EventStore } from '.'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import { MockWebSocket } from './multiplexedWebsocket.spec'
-import { getSourceId, WebsocketEventStore } from './websocketEventStore'
+import { getNodeId, WebsocketEventStore } from './websocketEventStore'
 
 let __ws: any
 declare const global: any
@@ -28,11 +28,11 @@ afterEach(() => {
 describe('websocketEventStore', () => {
   const createEventStore = async (): Promise<EventStore> => {
     const multiplexer = new MultiplexedWebsocket({ url: 'ws://mock' })
-    const sourceId = await getSourceId(multiplexer)
+    const sourceId = await getNodeId(multiplexer)
     return new WebsocketEventStore(multiplexer, sourceId)
   }
   it('request sourceId on create', async () => {
     const store = await createEventStore()
-    return expect(store.sourceId).toEqual('MOCK')
+    return expect(store.nodeId).toEqual('MOCK')
   })
 })

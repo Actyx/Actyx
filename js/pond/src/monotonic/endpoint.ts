@@ -261,7 +261,7 @@ export const eventsMonotonic = (
     snap: SerializedStateSnap,
   ): Observable<EventsOrTimetravel> => {
     const fixedStart = {
-      from: snap.psnMap,
+      from: snap.offsets,
       horizon: snap.horizon,
       latestEventKey: snap.eventKey,
     }
@@ -286,7 +286,7 @@ export const eventsMonotonic = (
       Observable.concat(
         Observable.of(stateMsg(fishId, snap)),
         monotonicFrom(fishId, subscriptions, present, {
-          from: snap.psnMap,
+          from: snap.offsets,
           latestEventKey: snap.eventKey,
           horizon: snap.horizon,
         }),
