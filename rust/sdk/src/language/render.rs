@@ -2,7 +2,7 @@ use std::fmt::{Result, Write};
 
 use super::*;
 
-fn render_simple_pair<W: Write>(w: &mut W, e: &(SimpleExpr, SimpleExpr), op: &'static str) -> Result {
+fn render_simple_pair(w: &mut impl Write, e: &(SimpleExpr, SimpleExpr), op: &'static str) -> Result {
     render_simple_expr(w, &(*e).0)?;
     w.write_char(' ')?;
     w.write_str(op)?;
@@ -10,7 +10,7 @@ fn render_simple_pair<W: Write>(w: &mut W, e: &(SimpleExpr, SimpleExpr), op: &'s
     render_simple_expr(w, &(*e).1)
 }
 
-fn render_path<W: Write>(w: &mut W, e: &Path) -> Result {
+fn render_path(w: &mut impl Write, e: &Path) -> Result {
     w.write_str(&e.head)?;
     for t in &e.tail {
         w.write_char('.')?;
@@ -19,14 +19,14 @@ fn render_path<W: Write>(w: &mut W, e: &Path) -> Result {
     Ok(())
 }
 
-fn render_index<W: Write>(w: &mut W, e: &Index) -> Result {
+fn render_index(w: &mut impl Write, e: &Index) -> Result {
     match e {
         Index::Ident(i) => w.write_str(&i),
         Index::Number(n) => render_to_string(w, n),
     }
 }
 
-fn render_number<W: Write>(w: &mut W, e: &Number) -> Result {
+fn render_number(w: &mut impl Write, e: &Number) -> Result {
     match e {
         Number::Decimal(d) => render_to_string(w, d),
         Number::Natural(n) => render_to_string(w, n),
@@ -37,7 +37,7 @@ fn render_to_string<W: Write, T: ToString>(w: &mut W, e: &T) -> Result {
     w.write_str(&e.to_string())
 }
 
-fn render_object<W: Write>(w: &mut W, e: &Object) -> Result {
+fn render_object(w: &mut impl Write, e: &Object) -> Result {
     w.write_str("{ ")?;
     for (i, (k, v)) in e.props.iter().enumerate() {
         if i > 0 {
@@ -50,7 +50,7 @@ fn render_object<W: Write>(w: &mut W, e: &Object) -> Result {
     w.write_str(" }")
 }
 
-fn render_array<W: Write>(w: &mut W, e: &Array) -> Result {
+fn render_array(w: &mut impl Write, e: &Array) -> Result {
     w.write_char('[')?;
     for (i, x) in e.items.iter().enumerate() {
         if i > 0 {
@@ -61,13 +61,13 @@ fn render_array<W: Write>(w: &mut W, e: &Array) -> Result {
     w.write_char(']')
 }
 
-fn render_string<W: Write>(w: &mut W, e: &str) -> Result {
+fn render_string(w: &mut impl Write, e: &str) -> Result {
     w.write_char('\'')?;
     w.write_str(&e.replace('\'', "''"))?;
     w.write_char('\'')
 }
 
-fn render_simple_expr<W: Write>(w: &mut W, e: &SimpleExpr) -> Result {
+fn render_simple_expr(w: &mut impl Write, e: &SimpleExpr) -> Result {
     match e {
         SimpleExpr::Path(p) => render_path(w, p),
         SimpleExpr::Number(n) => render_number(w, &n),
@@ -96,7 +96,7 @@ fn render_simple_expr<W: Write>(w: &mut W, e: &SimpleExpr) -> Result {
     }
 }
 
-fn render_operation<W: Write>(w: &mut W, e: &Operation) -> Result {
+fn render_operation(w: &mut impl Write, e: &Operation) -> Result {
     match e {
         Operation::Filter(f) => {
             w.write_str("FILTER ")?;
@@ -109,7 +109,7 @@ fn render_operation<W: Write>(w: &mut W, e: &Operation) -> Result {
     }
 }
 
-fn render_tag_expr<W: Write>(w: &mut W, e: &TagExpr) -> Result {
+fn render_tag_expr(w: &mut impl Write, e: &TagExpr) -> Result {
     match e {
         TagExpr::Or(or) => {
             render_tag_expr(w, &or.0)?;
@@ -125,7 +125,7 @@ fn render_tag_expr<W: Write>(w: &mut W, e: &TagExpr) -> Result {
     }
 }
 
-fn render_timestamp<W: Write>(w: &mut W, e: Timestamp) -> Result {
+fn render_timestamp(w: &mut impl Write, e: Timestamp) -> Result {
     use chrono::prelude::*;
     let dt: DateTime<Utc> = e.into();
     let str = if dt.hour() == 0 && dt.minute() == 0 && dt.second() == 0 && dt.nanosecond() == 0 {
@@ -136,7 +136,7 @@ fn render_timestamp<W: Write>(w: &mut W, e: Timestamp) -> Result {
     w.write_str(&str)
 }
 
-fn render_tag_atom<W: Write>(w: &mut W, e: &TagAtom) -> Result {
+fn render_tag_atom(w: &mut impl Write, e: &TagAtom) -> Result {
     match e {
         TagAtom::Tag(t) => render_string(w, &t.to_string()),
         TagAtom::AllEvents => w.write_str("allEvents"),
@@ -167,7 +167,7 @@ fn render_tag_atom<W: Write>(w: &mut W, e: &TagAtom) -> Result {
     }
 }
 
-fn render_query<W: Write>(w: &mut W, e: &Query) -> Result {
+fn render_query(w: &mut impl Write, e: &Query) -> Result {
     w.write_str("FROM ")?;
     render_tag_expr(w, &e.from)?;
     for op in &e.ops {
@@ -178,7 +178,7 @@ fn render_query<W: Write>(w: &mut W, e: &Query) -> Result {
     w.write_str(" END")
 }
 
-pub fn render<W: Write>(w: &mut W, e: &Expression) -> Result {
+pub fn render(w: &mut impl Write, e: &Expression) -> Result {
     match e {
         Expression::Simple(s) => render_simple_expr(w, s),
         Expression::Query(q) => render_query(w, q),
