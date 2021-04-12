@@ -17,7 +17,7 @@ mod v2;
 pub use crate::node_identity::NodeIdentity;
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
-pub use crate::v1::{EventStore, HighestSeen, Present, SnapshotStore};
+pub use crate::v1::{EventStore, HighestSeen, Present};
 pub use ax_config::StoreConfig;
 use util::formats::NodeErrorContext;
 
