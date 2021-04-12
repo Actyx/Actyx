@@ -5,10 +5,7 @@ use rusqlite::backup;
 use rusqlite::{params, Connection, OpenFlags, NO_PARAMS};
 use std::path::PathBuf;
 use std::time::Duration;
-use std::{
-    collections::BTreeSet,
-    sync::Arc,
-};
+use std::{collections::BTreeSet, sync::Arc};
 use tracing::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -157,7 +154,6 @@ impl SqliteIndexStore {
         }
         Ok(set)
     }
-
 
     /// current lamport timestamp
     pub fn lamport(&self) -> u64 {
