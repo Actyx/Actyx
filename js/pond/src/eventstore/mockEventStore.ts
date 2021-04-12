@@ -14,16 +14,16 @@ import {
   RequestPersistedEvents,
   RequestPersistEvents,
 } from './eventStore'
-import { ConnectivityStatus, Events, OffsetMapWithDefault } from './types'
+import { ConnectivityStatus, Events, OffsetMap } from './types'
 
 export const mockEventStore: () => EventStore = () => {
   const nodeId = NodeId.of('MOCK')
-  const present = new ReplaySubject<OffsetMapWithDefault>(1)
+  const present = new ReplaySubject<OffsetMap>(1)
   const events = new ReplaySubject<Events>(1e3)
   events.next([])
 
   let psn = Offset.of(0)
-  present.next({ psns: {}, default: 'max' })
+  present.next({})
 
   const persistedEvents: RequestPersistedEvents = (_from, _to, ss, _min, _sortOrder) => {
     return (
@@ -57,13 +57,21 @@ export const mockEventStore: () => EventStore = () => {
     }))
 
     events.next(newEvents)
-    present.next({ psns: { [streamId]: psn }, default: 'max' })
+    present.next({ [streamId]: psn })
     return Observable.of(newEvents)
   }
+
+  const getPresent = () =>
+    present
+      .asObservable()
+      .do(() => log.ws.debug('present'))
+      .take(1)
+      .toPromise()
+
   return {
     nodeId,
-    present: () => present.asObservable().do(() => log.ws.debug('present')),
-    highestSeen: () => present.asObservable(),
+    offsets: getPresent,
+    highestSeen: getPresent,
     persistedEvents,
     allEvents,
     persistEvents,

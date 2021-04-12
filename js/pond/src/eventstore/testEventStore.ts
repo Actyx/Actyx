@@ -7,7 +7,6 @@
 import { chunksOf } from 'fp-ts/lib/Array'
 import { fromNullable } from 'fp-ts/lib/Option'
 import { Observable, ReplaySubject, Scheduler, Subject } from 'rxjs'
-import log from '../store/loggers'
 import { toEventPredicate, Where } from '../tagging'
 import { EventKey, Lamport, NodeId, Offset, Timestamp } from '../types'
 import { binarySearch, mergeSortedInto } from '../util'
@@ -309,16 +308,16 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
     live.next(newEventsCompat)
   }
 
-  const toIo = (o: OffsetMap): OffsetMapWithDefault => ({ psns: o, default: 'max' })
+  const getPresent = () =>
+    present
+      .asObservable()
+      .first()
+      .toPromise()
 
   return {
     nodeId,
-    present: () =>
-      present
-        .asObservable()
-        .map(toIo)
-        .do(() => log.ws.debug('present')),
-    highestSeen: () => present.asObservable().map(toIo),
+    offsets: getPresent,
+    highestSeen: getPresent,
     persistedEvents,
     allEvents,
     persistEvents,

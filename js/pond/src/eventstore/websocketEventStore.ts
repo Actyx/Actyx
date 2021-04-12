@@ -6,7 +6,6 @@
  */
 import * as t from 'io-ts'
 import { equals } from 'ramda'
-import { Observable } from 'rxjs'
 import log from '../loggers'
 import { Where } from '../tagging'
 import { EventKey, EventKeyIO, NodeId } from '../types'
@@ -17,16 +16,15 @@ import {
   RequestHighestSeen,
   RequestPersistedEvents,
   RequestPersistEvents,
-  RequestPresent,
+  RequestOffsets,
 } from './eventStore'
 import { MultiplexedWebsocket, validateOrThrow } from './multiplexedWebsocket'
-import { OffsetMap, OffsetMapIO } from './offsetMap'
+import { OffsetMapIO } from './offsetMap'
 import {
   AllEventsSortOrder,
   ConnectivityStatus,
   Event,
   Events,
-  OffsetMapWithDefault,
   PersistedEventsSortOrder,
   UnstoredEvents,
 } from './types'
@@ -103,23 +101,21 @@ const compat = (x: unknown) => {
 }
 
 export class WebsocketEventStore implements EventStore {
-  private _present: Observable<OffsetMap>
-  private _highestSeen: Observable<OffsetMapWithDefault>
+  constructor(private readonly multiplexer: MultiplexedWebsocket, readonly nodeId: NodeId) {}
 
-  constructor(private readonly multiplexer: MultiplexedWebsocket, readonly nodeId: NodeId) {
-    this._present = Observable.defer(() =>
-      this.multiplexer.request(RequestTypes.Offsets).map(validateOrThrow(OffsetMapIO)),
-    ).shareReplay(1)
+  offsets: RequestOffsets = () =>
+    this.multiplexer
+      .request(RequestTypes.Offsets)
+      .map(validateOrThrow(OffsetMapIO))
+      .first()
+      .toPromise()
 
-    this._highestSeen = Observable.defer(() =>
-      this.multiplexer.request(RequestTypes.HighestSeen).map(validateOrThrow(OffsetMapWithDefault)),
-    ).shareReplay(1)
-  }
-
-  // FIXME: Change downstream type to only have "psns"
-  present: RequestPresent = () => this._present.map(psns => ({ psns, default: 'max' }))
-
-  highestSeen: RequestHighestSeen = () => this._highestSeen
+  highestSeen: RequestHighestSeen = () =>
+    this.multiplexer
+      .request(RequestTypes.HighestSeen)
+      .map(validateOrThrow(OffsetMapIO))
+      .first()
+      .toPromise()
 
   connectivityStatus: RequestConnectivity = (
     specialSources,

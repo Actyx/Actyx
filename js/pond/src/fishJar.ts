@@ -211,34 +211,25 @@ const observeAll = (
   makeFish: (seed: ESeed) => Fish<S, any> | undefined,
   expireAfterSeed?: Milliseconds,
 ): Observable<StartedFishMap<S>> => {
-  const fish$ = eventStore
-    .present()
-    .first()
-    .concatMap(present => {
-      const persisted = getEventsForwardChunked(eventStore, firstEvents, present.psns)
+  const fish$ = Observable.from(eventStore.offsets()).concatMap(present => {
+    const persisted = getEventsForwardChunked(eventStore, firstEvents, present)
 
-      // This step is only so that we don’t emit outdated collection while receiving chunks of old events
-      const initialFishs = persisted.reduce((acc: Record<string, StartedFish<S>>, chunk) => {
-        for (const evt of chunk) {
-          const fish = makeFish(evt.payload as ESeed)
+    // This step is only so that we don’t emit outdated collection while receiving chunks of old events
+    const initialFishs = persisted.reduce((acc: Record<string, StartedFish<S>>, chunk) => {
+      for (const evt of chunk) {
+        const fish = makeFish(evt.payload as ESeed)
 
-          if (fish !== undefined) {
-            acc[FishId.canonical(fish.fishId)] = { fish, startedFrom: evt }
-          }
+        if (fish !== undefined) {
+          acc[FishId.canonical(fish.fishId)] = { fish, startedFrom: evt }
         }
-        return acc
-      }, {})
+      }
+      return acc
+    }, {})
 
-      return initialFishs.concatMap(
-        observeAllStartWithInitial(
-          eventStore,
-          makeFish,
-          firstEvents,
-          present.psns,
-          expireAfterSeed,
-        ),
-      )
-    })
+    return initialFishs.concatMap(
+      observeAllStartWithInitial(eventStore, makeFish, firstEvents, present, expireAfterSeed),
+    )
+  })
 
   return fish$
 }
