@@ -9,7 +9,7 @@ actyxos_sdk = { version = "0.5", path = "../../sdk" }
 ax-futures-util = { path = "../ax-futures-util" }
 
 anyhow = "1.0.38"
-banyan = "0.9.1"
+banyan = "0.9.3"
 base64 = "0.13.0"
 chrono = { version = "0.4.19", features = ["serde"] }
 cid = { version = "0.6.1", default-features = false, features = ["serde-codec"] }

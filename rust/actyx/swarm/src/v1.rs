@@ -4,9 +4,6 @@ use crate::access::{
 };
 use crate::{AxTreeExt, BanyanStore, TT};
 use actyxos_sdk::{
-    service::snapshots::{
-        InvalidateSnapshotsRequest, RetrieveSnapshotRequest, RetrieveSnapshotResponse, StoreSnapshotRequest,
-    },
     Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetOrMin, Payload, StreamId, StreamNr, TagSet,
     Timestamp,
 };
@@ -327,39 +324,5 @@ pub trait HighestSeen: Clone + Send + Unpin + Sync + 'static {
 impl HighestSeen for BanyanStore {
     fn stream(&self) -> stream::BoxStream<'static, OffsetMapOrMax> {
         self.0.highest_seen.new_observer().boxed()
-    }
-}
-
-pub trait SnapshotStore: Clone + Send + Unpin + Sync + 'static {
-    fn store_snapshot<'a>(&self, req: StoreSnapshotRequest) -> BoxFuture<'a, Result<bool>>;
-
-    fn invalidate_snapshots<'a>(&self, req: InvalidateSnapshotsRequest) -> BoxFuture<'a, Result<()>>;
-
-    fn retrieve_snapshot<'a>(
-        &self,
-        req: RetrieveSnapshotRequest,
-    ) -> BoxFuture<'a, Result<Option<RetrieveSnapshotResponse>>>;
-
-    fn invalidate_all_snapshots<'a>(&self) -> BoxFuture<'a, Result<()>>;
-}
-
-impl SnapshotStore for BanyanStore {
-    fn store_snapshot<'a>(&self, req: StoreSnapshotRequest) -> BoxFuture<'a, Result<bool>> {
-        future::ready(self.0.index_store.lock().store_snapshot(req)).boxed()
-    }
-
-    fn invalidate_snapshots<'a>(&self, req: InvalidateSnapshotsRequest) -> BoxFuture<'a, Result<()>> {
-        future::ready(self.0.index_store.lock().invalidate_snapshots(req)).boxed()
-    }
-
-    fn retrieve_snapshot<'a>(
-        &self,
-        req: RetrieveSnapshotRequest,
-    ) -> BoxFuture<'a, Result<Option<RetrieveSnapshotResponse>>> {
-        future::ready(self.0.index_store.lock().retrieve_snapshot(req)).boxed()
-    }
-
-    fn invalidate_all_snapshots<'a>(&self) -> BoxFuture<'a, Result<()>> {
-        future::ready(self.0.index_store.lock().invalidate_all_snapshots()).boxed()
     }
 }
