@@ -327,9 +327,11 @@ mod tests {
             assert_eq!(buf.as_str(), str);
         };
         rt("FROM 'machine' | 'user' & isLocal & from(2012-12-31) & to(12345678901234567) & appId(hello-5._x_) & allEvents FILTER _.x.42 > 5 SELECT { x: !'hello', y: 42, z: [1.3, _.x] } END");
-        rt("FROM from(2012-12-31T09:30:32.007Z) & to(123) END");
-        rt("FROM from(2012-12-31T09:30:32Z) & to(123) END");
-        rt("FROM from(2012-12-31T09:30:32.007008Z) & to(123) END");
+        rt("FROM from(2012-12-31T09:30:32.007Z) END");
+        rt("FROM from(2012-12-31T09:30:32Z) END");
+        rt("FROM from(2012-12-31T09:30:32.007008Z) END");
+        rt("'hello''s revenge'");
+        rt("FROM 'hell''o' FILTER _.x = 'worl''d' END");
     }
 
     #[test]

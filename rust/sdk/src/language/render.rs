@@ -11,7 +11,7 @@ fn render_simple_pair<W: Write>(w: &mut W, e: &(SimpleExpr, SimpleExpr), op: &'s
 }
 
 fn render_path<W: Write>(w: &mut W, e: &Path) -> Result {
-    w.write_str(e.head.as_str())?;
+    w.write_str(&e.head)?;
     for t in &e.tail {
         w.write_char('.')?;
         render_index(w, t)?;
@@ -21,7 +21,7 @@ fn render_path<W: Write>(w: &mut W, e: &Path) -> Result {
 
 fn render_index<W: Write>(w: &mut W, e: &Index) -> Result {
     match e {
-        Index::Ident(i) => w.write_str(i.as_str()),
+        Index::Ident(i) => w.write_str(&i),
         Index::Number(n) => render_to_string(w, n),
     }
 }
@@ -34,7 +34,7 @@ fn render_number<W: Write>(w: &mut W, e: &Number) -> Result {
 }
 
 fn render_to_string<W: Write, T: ToString>(w: &mut W, e: &T) -> Result {
-    w.write_str(e.to_string().as_str())
+    w.write_str(&e.to_string())
 }
 
 fn render_object<W: Write>(w: &mut W, e: &Object) -> Result {
@@ -63,7 +63,7 @@ fn render_array<W: Write>(w: &mut W, e: &Array) -> Result {
 
 fn render_string<W: Write>(w: &mut W, e: &str) -> Result {
     w.write_char('\'')?;
-    w.write_str(e)?;
+    w.write_str(&e.replace('\'', "''"))?;
     w.write_char('\'')
 }
 
@@ -133,16 +133,12 @@ fn render_timestamp<W: Write>(w: &mut W, e: Timestamp) -> Result {
     } else {
         dt.to_rfc3339_opts(SecondsFormat::AutoSi, true)
     };
-    w.write_str(str.as_str())
+    w.write_str(&str)
 }
 
 fn render_tag_atom<W: Write>(w: &mut W, e: &TagAtom) -> Result {
     match e {
-        TagAtom::Tag(t) => {
-            w.write_char('\'')?;
-            render_to_string(w, t)?;
-            w.write_char('\'')
-        }
+        TagAtom::Tag(t) => render_string(w, &t.to_string()),
         TagAtom::AllEvents => w.write_str("allEvents"),
         TagAtom::IsLocal => w.write_str("isLocal"),
         TagAtom::FromTime(ft) => {
