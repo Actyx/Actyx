@@ -88,9 +88,9 @@ impl service::EventService for EventService {
     async fn query(&self, request: QueryRequest) -> Result<BoxStream<'static, QueryResponse>> {
         let from_offsets_excluding: OffsetMapOrMax = request.lower_bound.unwrap_or_default().into();
         let to_offsets_including: OffsetMapOrMax = request.upper_bound.into();
-        let query = Query::new(request.query);
+        let query = &Query::new(request.query);
         let selection = EventSelection {
-            subscription_set: query.event_selection(),
+            subscription_set: query.into(),
             from_offsets_excluding,
             to_offsets_including,
         };
@@ -110,7 +110,7 @@ impl service::EventService for EventService {
 
         let mut query = Query::new(request.query);
         let selection = EventSelection {
-            subscription_set: query.event_selection(),
+            subscription_set: (&query).into(),
             from_offsets_excluding,
             to_offsets_including: OffsetMapOrMax::max_value(),
         };
@@ -137,11 +137,11 @@ impl service::EventService for EventService {
         &self,
         request: SubscribeMonotonicRequest,
     ) -> Result<BoxStream<'static, SubscribeMonotonicResponse>> {
-        let query = Query::new(request.query);
+        let query = &Query::new(request.query);
 
         let initial_latest = if let StartFrom::Offsets(offsets) = &request.from {
             let selection = EventSelection {
-                subscription_set: query.event_selection(),
+                subscription_set: query.into(),
                 from_offsets_excluding: OffsetMapOrMax::min_value(),
                 to_offsets_including: OffsetMapOrMax::from(offsets.clone()),
             };
@@ -156,7 +156,7 @@ impl service::EventService for EventService {
         };
 
         let selection = EventSelection {
-            subscription_set: query.event_selection(),
+            subscription_set: query.into(),
             from_offsets_excluding: request.from.min_offsets().into(),
             to_offsets_including: OffsetMapOrMax::max_value(),
         };

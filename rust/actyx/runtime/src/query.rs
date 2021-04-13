@@ -3,23 +3,20 @@ use crate::{
     operation::{Filter, Operation, Select},
     value::Value,
 };
-use actyxos_sdk::{
-    language::{Expression, TagAtom, TagExpr},
-    EventKey, TagSet,
-};
+use actyxos_sdk::{language, EventKey, TagSet};
 use cbor_data::Encoder;
 use std::collections::BTreeSet;
 use trees::{TagSubscription, TagSubscriptions};
 
 pub struct Query {
-    expr: Expression,
+    expr: language::Expression,
     stages: Vec<Operation>,
 }
 
 impl Query {
-    pub fn new(expr: Expression) -> Self {
+    pub fn new(expr: language::Expression) -> Self {
         let mut stages = vec![];
-        if let Expression::Query(q) = &expr {
+        if let language::Expression::Query(q) = &expr {
             for op in &q.ops {
                 match op {
                     actyxos_sdk::language::Operation::Filter(f) => {
@@ -34,32 +31,15 @@ impl Query {
         Self { expr, stages }
     }
 
-    pub fn event_selection(&self) -> TagSubscriptions {
-        let query = match &self.expr {
-            Expression::Simple(_) => return TagSubscriptions::empty(),
-            Expression::Query(q) => q,
-        };
-
-        fn dnf(expr: &TagExpr) -> Dnf {
-            match expr {
-                TagExpr::Or(o) => dnf(&o.0).or(dnf(&o.1)),
-                TagExpr::And(a) => dnf(&a.0).and(dnf(&a.1)),
-                TagExpr::Atom(a) => a.into(),
-            }
-        }
-
-        dnf(&query.from).into()
-    }
-
     pub fn initial_result(&self) -> Vec<Value> {
         match &self.expr {
-            Expression::Simple(expr) => {
+            language::Expression::Simple(expr) => {
                 let ret = Context::new(EventKey::default())
                     .eval(expr)
                     .unwrap_or_else(|err| Value::new(EventKey::default(), |b| b.encode_str(&*err.to_string())));
                 vec![ret]
             }
-            Expression::Query(_) => vec![],
+            language::Expression::Query(_) => vec![],
         }
     }
 
@@ -77,9 +57,9 @@ impl Query {
 }
 
 // invariant: none of the sets are ever empty
-struct Dnf(BTreeSet<BTreeSet<TagAtom>>);
-impl From<&TagAtom> for Dnf {
-    fn from(a: &TagAtom) -> Self {
+struct Dnf(BTreeSet<BTreeSet<language::TagAtom>>);
+impl From<&language::TagAtom> for Dnf {
+    fn from(a: &language::TagAtom) -> Self {
         let mut s = BTreeSet::new();
         s.insert(a.clone());
         let mut s2 = BTreeSet::new();
@@ -104,6 +84,31 @@ impl Dnf {
     }
 }
 
+impl From<&language::Query> for Dnf {
+    fn from(q: &language::Query) -> Self {
+        fn dnf(expr: &language::TagExpr) -> Dnf {
+            match expr {
+                language::TagExpr::Or(o) => dnf(&o.0).or(dnf(&o.1)),
+                language::TagExpr::And(a) => dnf(&a.0).and(dnf(&a.1)),
+                language::TagExpr::Atom(a) => a.into(),
+            }
+        }
+        dnf(&q.from)
+    }
+}
+
+impl From<&Query> for TagSubscriptions {
+    fn from(q: &Query) -> Self {
+        match &q.expr {
+            language::Expression::Simple(_) => TagSubscriptions::empty(),
+            language::Expression::Query(q) => {
+                let dnf: Dnf = q.into();
+                dnf.into()
+            }
+        }
+    }
+}
+
 impl From<Dnf> for TagSubscriptions {
     fn from(dnf: Dnf) -> Self {
         let ret = dnf
@@ -113,14 +118,14 @@ impl From<Dnf> for TagSubscriptions {
                 let mut tags = TagSubscription::new(TagSet::empty());
                 for a in atoms {
                     match a {
-                        TagAtom::Tag(tag) => tags.tags.insert(tag),
-                        TagAtom::AllEvents => {}
-                        TagAtom::IsLocal => tags.local = true,
-                        TagAtom::FromTime(_) => {}
-                        TagAtom::ToTime(_) => {}
-                        TagAtom::FromLamport(_) => {}
-                        TagAtom::ToLamport(_) => {}
-                        TagAtom::AppId(_) => {}
+                        language::TagAtom::Tag(tag) => tags.tags.insert(tag),
+                        language::TagAtom::AllEvents => {}
+                        language::TagAtom::IsLocal => tags.local = true,
+                        language::TagAtom::FromTime(_) => {}
+                        language::TagAtom::ToTime(_) => {}
+                        language::TagAtom::FromLamport(_) => {}
+                        language::TagAtom::ToLamport(_) => {}
+                        language::TagAtom::AppId(_) => {}
                     }
                 }
                 tags
@@ -136,42 +141,44 @@ mod tests {
     use actyxos_sdk::{language::expression, tags, EventKey};
     use cbor_data::Encoder;
 
+    fn test_query(expr: &'static str, tag_subscriptions: TagSubscriptions) {
+        let e = expression(expr).unwrap();
+        let q = &Query::new(e);
+        let s: TagSubscriptions = (q).into();
+        assert_eq!(s, tag_subscriptions);
+    }
+
     #[test]
     fn parsing() {
-        let e = expression("FROM 'a' & isLocal | ('b' | 'c') & allEvents & 'd'").unwrap();
-        let q = Query::new(e);
-        assert_eq!(
-            q.event_selection(),
+        test_query(
+            "FROM 'a' & isLocal | ('b' | 'c') & allEvents & 'd'",
             TagSubscriptions::new(vec![
                 TagSubscription::new(tags!("a")).local(),
                 TagSubscription::new(tags!("b", "d")),
                 TagSubscription::new(tags!("c", "d")),
-            ])
+            ]),
         );
     }
 
     #[test]
     fn all_events() {
-        let e = expression("FROM allEvents").unwrap();
-        let q = Query::new(e);
-        assert_eq!(q.event_selection(), TagSubscriptions::all());
+        test_query("FROM allEvents", TagSubscriptions::all());
     }
 
     #[test]
     fn empty() {
-        let e = expression("42").unwrap();
-        let q = Query::new(e);
-        assert_eq!(q.event_selection(), TagSubscriptions::empty())
+        test_query("42", TagSubscriptions::empty())
     }
 
     #[test]
     fn query() {
-        let mut q = Query::new(expression("FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2").unwrap());
-        assert_eq!(
-            q.event_selection(),
-            TagSubscriptions::new(vec![TagSubscription::new(tags!("a")).local()])
+        let expr = "FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2";
+        test_query(
+            expr,
+            TagSubscriptions::new(vec![TagSubscription::new(tags!("a")).local()]),
         );
 
+        let mut q = Query::new(expression(expr).unwrap());
         let v = Value::new(EventKey::default(), |b| b.encode_u64(3));
         assert_eq!(q.feed(v), vec![]);
 
