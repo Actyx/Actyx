@@ -47,8 +47,8 @@
       },
       "UserKey": {
         "type": "string",
-        "minLength": 44,
-        "maxLength": 44
+        "minLength": 45,
+        "maxLength": 45
       }
     },
     "Composite": {
