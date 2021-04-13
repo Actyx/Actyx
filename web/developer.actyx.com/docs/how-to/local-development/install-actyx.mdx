@@ -185,23 +185,6 @@ To download and run the latest version execute one of the following commands.
 <h4>Windows / macOS</h4>
 
 ```text
-docker run --name actyxos -it --rm -v actyx-data:/data --privileged -p 4001:4001 -p 4457:4457 actyx/os
-```
-
-<h4>Linux</h4>
-
-```text
-docker run --name actyxos -it --rm -v actyx-data:/data --privileged --network=host actyx/os
-```
-
-<h3>Development Mode</h3>
-
-You need to run ActyxOS in development mode if you want to test an ActyxOS application locally without deploying.
-This way all the needed ActyxOS services are also exposed on `localhost` of the host.
-
-<h4>Windows / macOS</h4>
-
-```text
 docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyxos-data:/data --privileged -p 4001:4001 -p 4457:4457 -p 127.0.0.1:4243:4243 -p 127.0.0.1:4454:4454 actyx/os
 ```
 
@@ -213,7 +196,6 @@ docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyxos-data:/data --priv
 
 :::info Publishing docker ports
 Since `--network=host` is not supported on Windows and Mac you have to explicitly forward the needed network ports.
-This is also true for any ports your apps may want to expose, so you would need to add them to this list.
 Please refer to the [Docker Documentation](https://docs.docker.com/) for more information on how to run Docker containers.
 :::
 

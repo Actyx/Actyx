@@ -6,10 +6,9 @@
  */
 import * as t from 'io-ts'
 import { equals } from 'ramda'
-import { Observable } from 'rxjs'
 import log from '../loggers'
 import { Where } from '../tagging'
-import { EventKey, EventKeyIO, SourceId } from '../types'
+import { EventKey, EventKeyIO, NodeId } from '../types'
 import {
   EventStore,
   RequestAllEvents,
@@ -17,16 +16,15 @@ import {
   RequestHighestSeen,
   RequestPersistedEvents,
   RequestPersistEvents,
-  RequestPresent,
+  RequestOffsets,
 } from './eventStore'
 import { MultiplexedWebsocket, validateOrThrow } from './multiplexedWebsocket'
-import { OffsetMap, OffsetMapIO } from './offsetMap'
+import { OffsetMapIO } from './offsetMap'
 import {
   AllEventsSortOrder,
   ConnectivityStatus,
   Event,
   Events,
-  OffsetMapWithDefault,
   PersistedEventsSortOrder,
   UnstoredEvents,
 } from './types'
@@ -72,9 +70,9 @@ export type AllEventsRequest = t.TypeOf<typeof AllEventsRequest>
 export const PersistEventsRequest = t.readonly(t.type({ data: UnstoredEvents }))
 export type PersistEventsRequest = t.TypeOf<typeof PersistEventsRequest>
 
-const GetSourceIdResponse = t.type({ nodeId: SourceId.FromString })
+const GetSourceIdResponse = t.type({ nodeId: NodeId.FromString })
 
-export const getSourceId = (multiplexedWebsocket: MultiplexedWebsocket): Promise<SourceId> =>
+export const getNodeId = (multiplexedWebsocket: MultiplexedWebsocket): Promise<NodeId> =>
   multiplexedWebsocket
     .request(RequestTypes.NodeId)
     .map(validateOrThrow(GetSourceIdResponse))
@@ -84,7 +82,7 @@ export const getSourceId = (multiplexedWebsocket: MultiplexedWebsocket): Promise
 
 export const ConnectivityRequest = t.readonly(
   t.type({
-    special: t.readonlyArray(SourceId.FromString),
+    special: t.readonlyArray(NodeId.FromString),
     hbHistDelay: t.number,
     reportEveryMs: t.number, // how frequently the connectivity service should report, recommended around 10_000
     currentPsnHistoryDelay: t.number, // this is u8 size! -- how many report_every_ms spans back we go for the our_psn value? recommended 6 to give 60s
@@ -103,23 +101,21 @@ const compat = (x: unknown) => {
 }
 
 export class WebsocketEventStore implements EventStore {
-  private _present: Observable<OffsetMap>
-  private _highestSeen: Observable<OffsetMapWithDefault>
+  constructor(private readonly multiplexer: MultiplexedWebsocket, readonly nodeId: NodeId) {}
 
-  constructor(private readonly multiplexer: MultiplexedWebsocket, readonly sourceId: SourceId) {
-    this._present = Observable.defer(() =>
-      this.multiplexer.request(RequestTypes.Offsets).map(validateOrThrow(OffsetMapIO)),
-    ).shareReplay(1)
+  offsets: RequestOffsets = () =>
+    this.multiplexer
+      .request(RequestTypes.Offsets)
+      .map(validateOrThrow(OffsetMapIO))
+      .first()
+      .toPromise()
 
-    this._highestSeen = Observable.defer(() =>
-      this.multiplexer.request(RequestTypes.HighestSeen).map(validateOrThrow(OffsetMapWithDefault)),
-    ).shareReplay(1)
-  }
-
-  // FIXME: Change downstream type to only have "psns"
-  present: RequestPresent = () => this._present.map(psns => ({ psns, default: 'max' }))
-
-  highestSeen: RequestHighestSeen = () => this._highestSeen
+  highestSeen: RequestHighestSeen = () =>
+    this.multiplexer
+      .request(RequestTypes.HighestSeen)
+      .map(validateOrThrow(OffsetMapIO))
+      .first()
+      .toPromise()
 
   connectivityStatus: RequestConnectivity = (
     specialSources,

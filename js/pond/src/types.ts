@@ -70,11 +70,11 @@ export const FishName = {
 }
 
 /**
- * An ActyxOS source id.
+ * An Actyx source id.
  * @public
  */
-export type SourceId = string
-const mkSourceId = (text: string): SourceId => text as SourceId
+export type NodeId = string
+const mkNodeId = (text: string): NodeId => text as NodeId
 export const randomBase58: (digits: number) => string = (digits: number) => {
   const base58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'.split('')
 
@@ -92,19 +92,49 @@ export const randomBase58: (digits: number) => string = (digits: number) => {
  * `SourceId` associated functions.
  * @public
  */
-export const SourceId = {
+export const NodeId = {
   /**
-   * Creates a SourceId from a string
+   * Creates a NodeId from a string
    */
-  of: mkSourceId,
+  of: mkNodeId,
   /**
    * Creates a random SourceId with the given number of digits
    */
-  random: (digits?: number) => mkSourceId(randomBase58(digits || 11)),
-  FromString: new t.Type<SourceId, string>(
-    'SourceIdFromString',
-    (x): x is SourceId => isString(x),
-    (x, c) => t.string.validate(x, c).map(s => s as SourceId),
+  random: (digits?: number) => mkNodeId(randomBase58(digits || 11)),
+  FromString: new t.Type<NodeId, string>(
+    'NodeIdFromString',
+    (x): x is NodeId => isString(x),
+    (x, c) => t.string.validate(x, c).map(s => s as NodeId),
+    x => x,
+  ),
+
+  streamNo: (nodeId: NodeId, num: number) => nodeId + '.' + num,
+}
+
+/**
+ * An Actyx stream id.
+ * @public
+ */
+export type StreamId = string
+const mkStreamId = (text: string): StreamId => text as StreamId
+
+/**
+ * `SourceId` associated functions.
+ * @public
+ */
+export const StreamId = {
+  /**
+   * Creates a StreamId from a string
+   */
+  of: mkStreamId,
+  /**
+   * Creates a random StreamId off a random NodeId.
+   */
+  random: () => NodeId.streamNo(mkNodeId(randomBase58(11)), Math.floor(Math.random() * 100)),
+  FromString: new t.Type<NodeId, string>(
+    'StreamIdFromString',
+    (x): x is StreamId => isString(x),
+    (x, c) => t.string.validate(x, c).map(s => s as StreamId),
     x => x,
   ),
 }
@@ -211,7 +241,7 @@ export const Milliseconds = {
 export type Source = Readonly<{
   semantics: Semantics
   name: FishName
-  sourceId: SourceId
+  sourceId: NodeId
 }>
 
 export type Envelope<E> = {
@@ -224,7 +254,7 @@ export type Envelope<E> = {
 const zeroKey: EventKey = {
   lamport: Lamport.zero,
   // Cannot use empty source id, store rejects.
-  stream: SourceId.of('!'),
+  stream: NodeId.of('!'),
   offset: Offset.of(0),
 }
 
@@ -262,7 +292,7 @@ export const EventKeyIO = t.readonly(
   t.type({
     lamport: Lamport.FromNumber,
     offset: Offset.FromNumber,
-    stream: SourceId.FromString,
+    stream: NodeId.FromString,
   }),
 )
 
@@ -328,7 +358,7 @@ export type StateWithProvenance<S> = {
    * Minimum psn map that allow to reconstruct the state.
    * Only contains sources that contain events matching the filter.
    */
-  readonly psnMap: OffsetMap
+  readonly offsets: OffsetMap
 }
 
 export type LocalSnapshot<S> = StateWithProvenance<S> & {

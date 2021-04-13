@@ -45,7 +45,7 @@ export {
   PendingEmission,
   Reduce,
   FishErrorReporter,
-  SourceId,
+  NodeId,
   StateEffect,
   Timestamp,
 } from './types'

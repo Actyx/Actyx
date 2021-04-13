@@ -7,9 +7,8 @@
 import { chunksOf } from 'fp-ts/lib/Array'
 import { fromNullable } from 'fp-ts/lib/Option'
 import { Observable, ReplaySubject, Scheduler, Subject } from 'rxjs'
-import log from '../store/loggers'
 import { toEventPredicate, Where } from '../tagging'
-import { EventKey, Lamport, Offset, SourceId, Timestamp } from '../types'
+import { EventKey, Lamport, NodeId, Offset, Timestamp } from '../types'
 import { binarySearch, mergeSortedInto } from '../util'
 import {
   EventStore,
@@ -212,8 +211,8 @@ const persistence = () => {
   }
 }
 
-export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => TestEventStore = (
-  sourceId = SourceId.of('TEST'),
+export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestEventStore = (
+  nodeId = NodeId.of('TEST'),
   eventChunkSize = 4,
 ) => {
   const { persist, getPersistedPreFiltered, allPersisted } = persistence()
@@ -270,12 +269,14 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
   let offsets = {}
   present.next(offsets)
 
+  const streamId = NodeId.streamNo(nodeId, 0)
+
   const persistEvents: RequestPersistEvents = x => {
     const newEvents = x.map(unstoredEvent => {
       lamport = Lamport.of(lamport + 1)
       return {
         ...unstoredEvent,
-        stream: sourceId,
+        stream: streamId,
         lamport,
         offset: Offset.of(psn++),
       }
@@ -307,16 +308,16 @@ export const testEventStore: (sourceId?: SourceId, eventChunkSize?: number) => T
     live.next(newEventsCompat)
   }
 
-  const toIo = (o: OffsetMap): OffsetMapWithDefault => ({ psns: o, default: 'max' })
+  const getPresent = () =>
+    present
+      .asObservable()
+      .first()
+      .toPromise()
 
   return {
-    sourceId,
-    present: () =>
-      present
-        .asObservable()
-        .map(toIo)
-        .do(() => log.ws.debug('present')),
-    highestSeen: () => present.asObservable().map(toIo),
+    nodeId,
+    offsets: getPresent,
+    highestSeen: getPresent,
     persistedEvents,
     allEvents,
     persistEvents,

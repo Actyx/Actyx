@@ -8,7 +8,7 @@ import { right } from 'fp-ts/lib/Either'
 import { Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
-import { isString, Lamport, Offset, SourceId, Timestamp } from '../types'
+import { isString, Lamport, Offset, StreamId, Timestamp } from '../types'
 import { OffsetMapIO } from './offsetMap'
 
 export { OffsetMap, OffsetMapBuilder } from './offsetMap'
@@ -63,7 +63,7 @@ const Tags = new t.Type<Tags, TagsOnWire>(
 
 export const EventIO = t.type({
   offset: Offset.FromNumber,
-  stream: SourceId.FromString,
+  stream: StreamId.FromString,
   timestamp: Timestamp.FromNumber,
   lamport: Lamport.FromNumber,
   tags: Tags,

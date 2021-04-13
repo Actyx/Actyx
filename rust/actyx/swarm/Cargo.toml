@@ -10,7 +10,7 @@ actyxos_sdk = { version = "0.5", features = ["sqlite", "arb"], path = "../../sdk
 anyhow = "1.0.38"
 ax-config = { path = "../ax-config" }
 ax-futures-util = { path = "../ax-futures-util" }
-banyan = "0.9.1"
+banyan = "0.9.3"
 base64 = "0.13.0"
 crypto = { path = "../crypto" }
 derive_more = "0.99.11"

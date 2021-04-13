@@ -2,9 +2,11 @@ use std::convert::TryInto;
 
 use super::Offset;
 use actyxos_sdk::{OffsetMap, OffsetOrMin, StreamId};
+use libipld::DagCbor;
 use num_traits::Bounded;
 
-#[derive(Clone, PartialOrd, PartialEq, Debug)]
+#[derive(Clone, PartialOrd, PartialEq, Debug, DagCbor)]
+#[ipld(repr = "value")]
 /// Wrapper around an `OffsetMap` providing a default case
 pub struct OffsetMapOrMax {
     /// either an offset map or a synthetic value that is larger than any offset map
@@ -96,5 +98,17 @@ impl OffsetMapOrMax {
 impl From<OffsetMap> for OffsetMapOrMax {
     fn from(other: OffsetMap) -> OffsetMapOrMax {
         OffsetMapOrMax { map: Some(other) }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use libipld::{cbor::DagCborCodec, codec::assert_roundtrip, ipld, Ipld};
+
+    #[test]
+    fn offset_map_or_max_libipld() {
+        assert_roundtrip(DagCborCodec, &OffsetMapOrMax::max_value(), &Ipld::Null);
+        assert_roundtrip(DagCborCodec, &OffsetMapOrMax::from(OffsetMap::empty()), &ipld!({}));
     }
 }
