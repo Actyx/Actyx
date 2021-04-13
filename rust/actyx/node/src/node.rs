@@ -475,7 +475,7 @@ mod test {
             assert_eq!(node.state.settings, serde_json::from_value(json).unwrap());
             assert_eq!(node.state.details.node_name, NodeName("My Node".into()));
         }
-        // Set settings for `com.actyx/general/displayName`
+        // Set settings for `com.actyx/admin/displayName`
         {
             let (response, rx) = channel();
             node.handle_settings_request(SettingsRequest::GetSettings {
