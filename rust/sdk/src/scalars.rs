@@ -25,7 +25,6 @@ use libipld::{
     codec::{Decode, Encode},
     DagCbor, Ipld,
 };
-use multibase::Base;
 use serde::{Deserialize, Serialize};
 
 use crate::ParseError;
@@ -85,20 +84,6 @@ mk_scalar!(
 pub struct NodeId(pub(crate) [u8; 32]);
 
 impl NodeId {
-    pub fn to_multibase(&self, base: Base) -> String {
-        multibase::encode(base, self.0)
-    }
-
-    pub fn from_multibase(input: impl AsRef<str>) -> Result<NodeId> {
-        let (_base, bytes) = multibase::decode(input).context("deserializing NodeId")?;
-        if bytes.len() == 32 {
-            let mut id = [0u8; 32];
-            id.copy_from_slice(&bytes[..32]);
-            Ok(Self(id))
-        } else {
-            Err(anyhow!("invalid NodeId length: {}", bytes.len()))
-        }
-    }
     #[inline]
     pub fn from_bytes(bytes: &[u8]) -> Result<NodeId> {
         if bytes.len() == 32 {
@@ -120,6 +105,19 @@ impl NodeId {
             stream_nr,
         }
     }
+
+    /// parse a nodeid using the crypt alphabet, which is order preserving
+    fn parse(text: &str) -> Result<NodeId> {
+        let config = base64::Config::new(base64::CharacterSet::Crypt, false);
+        let bytes = base64::decode_config(text, config)?;
+        Self::from_bytes(&bytes)
+    }
+
+    /// format a nodeid using the crypt alphabet, which is order preserving
+    fn format(&self) -> String {
+        let config = base64::Config::new(base64::CharacterSet::Crypt, false);
+        base64::encode_config(self.0, config)
+    }
 }
 
 impl AsRef<[u8]> for NodeId {
@@ -130,7 +128,7 @@ impl AsRef<[u8]> for NodeId {
 
 impl Display for NodeId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.to_multibase(Base::Base64Url))
+        f.write_str(&self.format())
     }
 }
 
@@ -150,14 +148,14 @@ impl From<NodeId> for String {
 impl TryFrom<&str> for NodeId {
     type Error = anyhow::Error;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Self::from_multibase(value)
+        Self::parse(value)
     }
 }
 
 impl TryFrom<String> for NodeId {
     type Error = anyhow::Error;
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        Self::from_multibase(value)
+        Self::parse(&value)
     }
 }
 
@@ -204,7 +202,7 @@ impl StreamId {
     }
 
     fn parse_str(value: &str) -> Result<Self> {
-        let mut split = value.split('.');
+        let mut split = value.split('-');
         let node_str = split
             .next()
             .ok_or_else(|| anyhow!("no NodeId in serialized StreamId"))?;
@@ -225,7 +223,7 @@ impl StreamId {
 
 impl Display for StreamId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}.{}", self.node_id, self.stream_nr)
+        write!(f, "{}-{}", self.node_id, self.stream_nr)
     }
 }
 
@@ -352,13 +350,13 @@ mod tests {
     #[test]
     fn node_id_serialization() {
         let node_id = NodeId(BYTES);
-        assert_eq!(node_id.to_string(), "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA");
+        assert_eq!(node_id.to_string(), ".E61/.I4/kU70UgA1EsD2/2G2lEJ3VQM4FcP5/oS5m.");
     }
 
     #[test]
     fn stream_id_serialization() {
         let stream_id = NodeId(BYTES).stream(12.try_into().unwrap());
-        assert_eq!(stream_id.to_string(), "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.12");
+        assert_eq!(stream_id.to_string(), ".E61/.I4/kU70UgA1EsD2/2G2lEJ3VQM4FcP5/oS5m.-12");
     }
 
     #[test]
