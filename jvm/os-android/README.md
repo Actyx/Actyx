@@ -24,7 +24,7 @@ The version code is derived by the
 	* patch version (002),
 	* the number of commits since the last tag (002).
 
-The version of the app is derived from a git tag, prefixed with `actyx-android-`, e.g. `ax-osandroid-2.0.2`. **Please tag the last commit of your PR accordingly.**
+The version of the app is derived from a git tag, prefixed with `actyx-android-`, e.g. `actyx-android-2.0.2`. **Please tag the last commit of your PR accordingly.**
 
 The name is derived by:
 	* The version, as taken from the tag (2.0.1)
