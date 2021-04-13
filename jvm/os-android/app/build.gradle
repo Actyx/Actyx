@@ -10,7 +10,7 @@ plugins {
 apply from: '../actyx-local/actyx.properties'
 
 androidGitVersion {
-  prefix 'os-android-'
+  prefix 'actyx-android-'
   codeFormat 'MNNPPPBBB'
   format '%tag%%-count%%-commit%%-dirty%'
   hideBranches = ['master']
