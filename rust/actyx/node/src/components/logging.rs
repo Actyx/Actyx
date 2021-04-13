@@ -1,5 +1,5 @@
 use super::{Component, ComponentRequest};
-use crate::os_settings::Settings;
+use crate::node_settings::Settings;
 use actyxos_sdk::NodeId;
 use anyhow::Result;
 use crossbeam::channel::{bounded, Receiver, Sender};
@@ -45,7 +45,7 @@ impl Component<LoggingRequest, LoggingConfig> for Logging {
         Ok(())
     }
     fn extract_settings(&self, settings: Settings) -> Result<LoggingConfig> {
-        let node_name = settings.general.display_name;
+        let node_name = settings.admin.display_name;
 
         let dynamic = logsvcd::DynamicConfig {
             node_id: self.node_id,
@@ -53,7 +53,7 @@ impl Component<LoggingRequest, LoggingConfig> for Logging {
         };
         let cfg = LoggingConfig {
             dynamic,
-            log_level: settings.general.log_levels.os,
+            log_level: settings.admin.log_levels.node,
         };
         Ok(cfg)
     }

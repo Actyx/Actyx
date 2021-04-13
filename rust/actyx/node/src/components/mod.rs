@@ -1,5 +1,5 @@
 use crate::util::spawn_with_name;
-use crate::{formats::ShutdownReason, os_settings::Settings};
+use crate::{formats::ShutdownReason, node_settings::Settings};
 use anyhow::Result;
 use crossbeam::{channel, select};
 use derive_more::{Display, From};

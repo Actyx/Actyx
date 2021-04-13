@@ -2,7 +2,7 @@ use super::{logging::LoggingTx, store::StoreTx};
 use crate::{
     components::{Component, ComponentRequest},
     formats::ExternalEvent,
-    os_settings::Settings,
+    node_settings::Settings,
 };
 use anyhow::Result;
 use crossbeam::channel::{Receiver, Sender};
@@ -55,8 +55,10 @@ impl Component<(), NodeApiSettings> for NodeApi {
         &self.rx
     }
     fn extract_settings(&self, s: Settings) -> Result<NodeApiSettings> {
-        let authorized_keys = s.general.authorized_keys.iter().cloned().map(Into::into).collect();
-        Ok(NodeApiSettings { authorized_keys })
+        let authorized_users = s.admin.authorized_users.iter().cloned().map(Into::into).collect();
+        Ok(NodeApiSettings {
+            authorized_keys: authorized_users,
+        })
     }
     fn handle_request(&mut self, _: ()) -> Result<()> {
         Ok(())

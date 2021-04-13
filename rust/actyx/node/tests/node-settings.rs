@@ -1,34 +1,35 @@
 #[test]
 fn default_settings() {
     let schema = serde_json::from_reader(
-        std::fs::File::open("../../../protocols/json-schema/os/node-settings.schema.json").unwrap(),
+        std::fs::File::open("../../../protocols/json-schema/node-settings.schema.json").unwrap(),
     )
     .unwrap();
-    let json = axossettings::Validator::new(schema)
+    let json = settings::Validator::new(schema)
         .unwrap()
-        .validate_with_defaults(None, &axossettings::Scope::root())
+        .validate_with_defaults(None, &settings::Scope::root())
         .unwrap();
     assert_eq!(
         json,
         serde_json::json!({
-            "general": {
+            "swarm": {
+              "topic": "default-topic",
               "swarmKey": "L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCmQ3YjBmNDFjY2ZlYTEyM2FkYTJhYWI0MmY2NjRjOWUyNWUwZWYyZThmNGJjNjJlOTg3NmE3NDU1MTc3ZWQzOGIK",
               "bootstrapNodes": [],
-              "announceAddresses": [],
+              "announceAddresses": []
+            },
+            "admin": {
               "displayName": "Default Node",
               "logLevels": {
-                "os": "INFO",
-                "apps": "INFO"
+                "node": "INFO"
               },
-              "authorizedKeys": []
+              "authorizedUsers": []
             },
             "licensing": {
-              "os": "development",
+              "node": "development",
               "apps": {}
             },
-            "services": {
-              "eventService": {
-                "topic": "default-topic",
+            "api": {
+              "events": {
                 "readOnly": false
               }
             }
@@ -37,30 +38,32 @@ fn default_settings() {
     );
 
     use maplit::{btreemap, btreeset};
-    use node::os_settings::*;
+    use node::node_settings::*;
     use util::formats::LogSeverity::*;
     let settings: Settings = serde_json::from_value(json).unwrap();
     assert_eq!(
       settings,
       Settings {
-        general: General {
+        swarm: Swarm {
+          topic: "default-topic".to_string(),
           swarm_key: "L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCmQ3YjBmNDFjY2ZlYTEyM2FkYTJhYWI0MmY2NjRjOWUyNWUwZWYyZThmNGJjNjJlOTg3NmE3NDU1MTc3ZWQzOGIK".to_string(),
           bootstrap_nodes: btreeset! {},
           announce_addresses: btreeset! {},
+        },
+        admin: Admin {
           display_name: "Default Node".to_string(),
           log_levels: LogLevels {
-            os: Info,
-            apps: Info,
+            node: Info,
           },
-          authorized_keys: vec![]
+          authorized_users: vec![]
+
         },
         licensing: Licensing {
-          os: "development".to_string(),
+          node: "development".to_string(),
           apps: btreemap! {},
         },
-        services: Services {
-          event_service: EventService {
-            topic: "default-topic".to_string(),
+        api: Api {
+          events: Events {
             read_only: false,
             internal: None,
           }

@@ -116,14 +116,14 @@ impl ApiBehaviour {
 
     fn maybe_add_key(&self, peer: PeerId) -> BoxFuture<'static, ActyxOSResult<()>> {
         if self.state.auth_info.lock().authorized_keys.is_empty() {
-            debug!("Adding {} to authorized keys", peer);
+            debug!("Adding {} to authorized users", peer);
             let (tx, rx) = tokio::sync::oneshot::channel();
             match PublicKey::try_from(peer) {
                 Ok(key_id) => {
                     self.state
                         .node_tx
                         .send(ExternalEvent::SettingsRequest(SettingsRequest::SetSettings {
-                            scope: format!("{}/general/authorizedKeys", SYSTEM_SCOPE).parse().unwrap(),
+                            scope: format!("{}/admin/authorizedUsers", SYSTEM_SCOPE).parse().unwrap(),
                             ignore_errors: false,
                             json: serde_json::json!([format!("{}", key_id)]),
                             response: tx,

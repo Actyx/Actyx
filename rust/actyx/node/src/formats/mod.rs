@@ -4,8 +4,8 @@ use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use util::formats::NodeName;
 
-pub mod os_settings;
-pub use os_settings::Settings;
+pub mod node_settings;
+pub use node_settings::Settings;
 
 #[derive(Deserialize, PartialEq, Clone, Debug)]
 pub struct NodeDetails {
@@ -16,7 +16,7 @@ impl NodeDetails {
     pub fn from_settings(settings: &Settings, node_id: NodeId) -> Self {
         Self {
             node_id,
-            node_name: NodeName(settings.general.display_name.clone()),
+            node_name: NodeName(settings.admin.display_name.clone()),
         }
     }
 }
@@ -39,7 +39,7 @@ pub enum ExternalEvent {
 #[derive(PartialEq, Clone, Debug)]
 pub(crate) struct NodeState {
     pub details: NodeDetails,
-    // This stores only the settings at scope com.actyx.os
+    // This stores only the settings at scope com.actyx
     pub settings: Settings,
     pub started_at: DateTime<Utc>,
 }

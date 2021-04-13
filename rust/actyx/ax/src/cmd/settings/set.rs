@@ -14,7 +14,7 @@ use util::formats::{ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest,
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Output {
-    scope: axossettings::Scope,
+    scope: settings::Scope,
     settings: serde_json::Value,
 }
 pub struct SettingsSet();
@@ -48,9 +48,9 @@ pub struct SetOpt {
 #[derive(StructOpt, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SetSettingsCommand {
-    #[structopt(name = "SCOPE", parse(try_from_str = axossettings::Scope::from_str))]
+    #[structopt(name = "SCOPE", parse(try_from_str = settings::Scope::from_str))]
     /// Scope for which you want to set the given settings.
-    scope: axossettings::Scope,
+    scope: settings::Scope,
     #[structopt(name = "VALUE")]
     /// The value you want to set for the given scope as a YAML or JSON string.
     /// You may also pass in a file using the syntax `@file.yml` or have the

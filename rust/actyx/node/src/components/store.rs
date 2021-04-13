@@ -1,5 +1,5 @@
 use super::{Component, ComponentRequest};
-use crate::{os_settings::Settings, BindTo};
+use crate::{node_settings::Settings, BindTo};
 use actyxos_sdk::NodeId;
 use anyhow::Result;
 use ax_config::StoreConfig;

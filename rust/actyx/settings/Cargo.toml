@@ -1,5 +1,5 @@
 [package]
-name = "ax-os-settings"
+name = "settings"
 version = "0.1.0"
 authors = ["Actyx AG"]
 edition = "2018"
@@ -15,10 +15,6 @@ thiserror = "1.0.24"
 treediff = { version = "4.0.0", features = ["with-serde-json"] }
 url = "2.2.1"
 valico = "3.6.0"
-
-[lib]
-name = "axossettings"
-crate-type = ["lib"]
 
 [dev-dependencies]
 maplit = "1.0.2"

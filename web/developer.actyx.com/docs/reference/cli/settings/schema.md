@@ -22,10 +22,6 @@ ARGS:
 Here are some examples of using the `ax settings schema` command:
 
 ```text title="Example Usage"
-# Get the settings schema for the node with settings scope com.actyx.os at 10.2.3.23
-ax settings schema --local com.actyx.os 10.2.3.23
-
-# Get the settings schema for the app with settings scope com.example.app
-# from node at 10.2.3.23
-ax settings schema --local com.example.app 10.2.3.23
+# Get the settings schema for the node with settings scope com.actyx at 10.2.3.23
+ax settings schema --local com.actyx 10.2.3.23
 ```

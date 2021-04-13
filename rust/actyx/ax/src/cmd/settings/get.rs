@@ -32,9 +32,9 @@ struct GetSettingsCommand {
     #[structopt(long = "no-defaults")]
     /// Only return settings explicitly set by the user and skip default values.
     no_defaults: bool,
-    #[structopt(name = "SCOPE", parse(try_from_str = axossettings::Scope::from_str))]
+    #[structopt(name = "SCOPE", parse(try_from_str = settings::Scope::from_str))]
     /// Scope from which you want to get the settings.
-    scope: axossettings::Scope,
+    scope: settings::Scope,
 }
 
 pub async fn run(mut opts: GetOpt) -> Result<serde_json::Value> {

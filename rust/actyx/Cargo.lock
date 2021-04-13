@@ -557,7 +557,6 @@ dependencies = [
  "actyxos_sdk",
  "anyhow",
  "assert_cmd",
- "ax-os-settings",
  "banyan",
  "banyan-utils",
  "base64 0.13.0",
@@ -582,6 +581,7 @@ dependencies = [
  "serde 1.0.124",
  "serde_json",
  "serde_yaml",
+ "settings",
  "structopt",
  "swarm",
  "tempfile",
@@ -618,25 +618,6 @@ dependencies = [
  "pin-project-lite 0.2.6",
  "rand 0.8.3",
  "tokio 1.4.0",
-]
-
-[[package]]
-name = "ax-os-settings"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "log",
- "maplit",
- "rand 0.8.3",
- "rusqlite",
- "serde 1.0.124",
- "serde_json",
- "structopt",
- "tempfile",
- "thiserror",
- "treediff",
- "url 2.2.1",
- "valico",
 ]
 
 [[package]]
@@ -4100,7 +4081,6 @@ dependencies = [
  "api",
  "ax-config",
  "ax-futures-util",
- "ax-os-settings",
  "backtrace",
  "base64 0.13.0",
  "bytes 1.0.1",
@@ -4128,6 +4108,7 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "serde_urlencoded",
+ "settings",
  "signal-hook",
  "structopt",
  "swarm",
@@ -4150,7 +4131,6 @@ name = "node-ffi"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "ax-os-settings",
  "crossbeam",
  "ffi-support",
  "futures 0.3.13",
@@ -4158,6 +4138,7 @@ dependencies = [
  "node",
  "parking_lot 0.11.1",
  "serde_json",
+ "settings",
  "tokio 1.4.0",
  "tracing",
 ]
@@ -5740,6 +5721,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "settings"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "log",
+ "maplit",
+ "rand 0.8.3",
+ "rusqlite",
+ "serde 1.0.124",
+ "serde_json",
+ "structopt",
+ "tempfile",
+ "thiserror",
+ "treediff",
+ "url 2.2.1",
+ "valico",
+]
+
+[[package]]
 name = "sha-1"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7002,7 +7002,6 @@ version = "0.1.0"
 dependencies = [
  "actyxos_sdk",
  "anyhow",
- "ax-os-settings",
  "base64 0.13.0",
  "chrono",
  "clap",
@@ -7027,6 +7026,7 @@ dependencies = [
  "serde 1.0.124",
  "serde_cbor",
  "serde_json",
+ "settings",
  "tokio 1.4.0",
  "tracing",
  "tracing-log",

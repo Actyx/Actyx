@@ -1,7 +1,7 @@
 #![allow(clippy::upper_case_acronyms)]
-use axossettings::{repository, validation};
 use crossbeam::channel::{RecvError, SendError};
 use serde::{Deserialize, Serialize};
+use settings::{repository, validation};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
 pub type ActyxOSResult<T> = Result<T, ActyxOSError>;
