@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-var-requires */
-const nodeSettingSchema = require('../../../../../protocols/json-schema/os/node-settings.schema.json')
+const nodeSettingSchema = require('../../../../../protocols/json-schema/node-settings.schema.json')
 
 import { readFile, remove } from 'fs-extra'
 import { writeFile } from 'fs/promises'
@@ -17,7 +17,7 @@ import { createTestNodeDockerLocal } from '../../test-node-factory'
 describe('ax settings (using quickstart ActyxOS default setting)', () => {
   const workingDir = '.'
   const settingDefaultFilePath = path.resolve(workingDir, 'fixtures/local-sample-node-settings.yml')
-  const scopeActyxOS = 'com.actyx.os'
+  const scopeActyxOS = 'com.actyx'
 
   let testNode: ActyxOSNode
 
@@ -58,7 +58,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
       expect(response).toMatchErrNodeUnreachable()
     })
 
-    test('return OK with default for com.actyx.os', async () => {
+    test('return OK with default for com.actyx', async () => {
       await runOnEvery({}, async (node) => {
         const responses = assertOK(await node.ax.settings.scopes())
         expect(responses.result).toEqual(expect.arrayContaining([scopeActyxOS]))
@@ -96,7 +96,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
       expect(response).toMatchErrNodeUnreachable()
     })
 
-    test('return OK with default node settings for com.actyx.os', async () => {
+    test('return OK with default node settings for com.actyx', async () => {
       const response = await testNode.ax.settings.get(scopeActyxOS)
       const responseShape = {
         code: 'OK',
@@ -130,17 +130,17 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
       expect(response).toMatchObject(responseShape)
     })
 
-    test('return OK and get specific properties from com.actyx.os setting', async () => {
-      const responseDisplayName = await testNode.ax.settings.get('com.actyx.os/general/displayName')
+    test('return OK and get specific properties from com.actyx setting', async () => {
+      const responseDisplayName = await testNode.ax.settings.get('com.actyx/general/displayName')
       const responseDisplayNameeShape = { code: 'OK', result: 'Local Sample Node' }
       expect(responseDisplayName).toEqual(responseDisplayNameeShape)
 
-      const responseLicense = await testNode.ax.settings.get('com.actyx.os/licensing')
+      const responseLicense = await testNode.ax.settings.get('com.actyx/licensing')
       const responseLicenseShape = { code: 'OK', result: { apps: {}, os: 'development' } }
       expect(responseLicense).toEqual(responseLicenseShape)
     })
 
-    test('return OK and show only properties added by the user on com.actyx.os setting --no-defaults', async () => {
+    test('return OK and show only properties added by the user on com.actyx setting --no-defaults', async () => {
       const settingCustomFilePath = path.resolve(
         workingDir,
         'fixtures/test-custom-actyxos-setting.yml',
@@ -165,7 +165,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
       await testNode.ax.settings.set(scopeActyxOS, SettingsInput.FromFile(settingDefaultFilePath))
     })
 
-    test('return OK  with authorized key set if com.actyx.os has been unset', async () => {
+    test('return OK  with authorized key set if com.actyx has been unset', async () => {
       await testNode.ax.settings.unset(scopeActyxOS)
 
       const responseGet = await testNode.ax.settings.get(scopeActyxOS)
@@ -182,7 +182,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
       expect(response).toMatchErrNodeUnreachable()
     })
 
-    test('return OK after unset com.actyx.os', async () => {
+    test('return OK after unset com.actyx', async () => {
       const responseUnset = await testNode.ax.settings.unset(scopeActyxOS)
       const responseUnsetShape = { code: 'OK', result: {} }
       expect(responseUnset).toMatchObject(responseUnsetShape)
