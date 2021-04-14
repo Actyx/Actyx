@@ -816,7 +816,7 @@ mod tests {
         timestamp::{LamportTimestamp, Timestamp},
     };
 
-    const NODE: &str = "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA";
+    const NODE: &str = ".E61/.I4/kU70UgA1EsD2/2G2lEJ3VQM4FcP5/oS5m.";
 
     fn stream_id(stream_nr: u64) -> StreamId {
         NodeId::try_from(NODE).unwrap().stream(stream_nr.into())

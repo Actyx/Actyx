@@ -52,7 +52,7 @@ impl StorageConfig {
     pub fn random() -> Self {
         Self {
             node_name: "random really".into(),
-            node_id: "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA".try_into().unwrap(),
+            node_id: ".E61/.I4/kU70UgA1EsD2/2G2lEJ3VQM4FcP5/oS5m.".try_into().unwrap(),
             retention: RetentionStategy::default(),
         }
     }
