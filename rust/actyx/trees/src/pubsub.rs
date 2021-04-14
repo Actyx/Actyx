@@ -13,22 +13,22 @@ use std::fmt::{Display, Formatter};
 /// A gossiped message that contains a specific node's view on the root nodes of
 /// all other streams it knows about.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Eq, DagCbor)]
-pub struct PublishSnapshot {
+pub struct PublishHeartbeat {
     pub node: NodeId,
     pub timestamp: Timestamp,
     pub lamport: LamportTimestamp,
     pub roots: RootMap,
 }
 
-impl FromStr for PublishSnapshot {
+impl FromStr for PublishHeartbeat {
     type Err = Error;
 
-    fn from_str(json: &str) -> Result<PublishSnapshot, Error> {
+    fn from_str(json: &str) -> Result<PublishHeartbeat, Error> {
         serde_json::from_str(json)
     }
 }
 
-impl Display for PublishSnapshot {
+impl Display for PublishHeartbeat {
     fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
         let json = serde_json::to_string(self).unwrap();
         f.write_str(&*json)
