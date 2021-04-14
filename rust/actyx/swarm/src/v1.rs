@@ -15,13 +15,13 @@ use banyan::{
 };
 use fnv::FnvHashSet;
 use forest::FilteredChunk;
-use futures::future::BoxFuture;
 use futures::stream::BoxStream;
-use futures::{channel::mpsc, prelude::*};
+use futures::{channel::mpsc, future::BoxFuture, prelude::*};
+use libipld::{cbor::DagCborCodec, codec::Codec};
 use std::{collections::BTreeSet, convert::TryInto, ops::RangeInclusive, time::Duration};
 use trees::{
     axtrees::{AxKey, TagsQuery},
-    OffsetMapOrMax, PublishSnapshot, RootMap, StreamHeartBeat,
+    OffsetMapOrMax, PublishHeartbeat, RootMap, StreamHeartBeat,
 };
 
 fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> {
@@ -65,7 +65,7 @@ impl BanyanStore {
             .ipfs
             .subscribe(&topic)
             .unwrap()
-            .filter_map(|msg| future::ready(serde_cbor::from_slice::<PublishSnapshot>(msg.as_slice()).ok()))
+            .filter_map(|msg| future::ready(DagCborCodec.decode::<PublishHeartbeat>(msg.as_slice()).ok()))
             .for_each(move |heartbeat| {
                 tracing::debug!("{} received heartbeat", self.ipfs().local_node_name());
                 store.received_root_map(heartbeat.node, heartbeat.lamport, heartbeat.roots)
@@ -78,13 +78,13 @@ impl BanyanStore {
         let lamport = LamportTimestamp::from(self.0.index_store.lock().lamport());
         let roots = self.0.maps.lock().root_map(node);
         let timestamp = Timestamp::now();
-        let msg = PublishSnapshot {
+        let msg = PublishHeartbeat {
             node,
             lamport,
             timestamp,
             roots,
         };
-        let blob = serde_cbor::to_vec(&msg).unwrap();
+        let blob = DagCborCodec.encode(&msg).unwrap();
         let _ = self.0.ipfs.publish(topic, blob);
         future::ready(())
     }

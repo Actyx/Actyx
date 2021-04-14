@@ -3,9 +3,11 @@ use actyxos_sdk::{NodeId, StreamId, StreamNr};
 use anyhow::Result;
 use ax_futures_util::stream::latest_channel;
 use futures::prelude::*;
-use libipld::Cid;
-use serde::{Deserialize, Serialize};
-use serde_bytes::ByteBuf;
+use libipld::{
+    cbor::DagCborCodec,
+    codec::{Codec, Decode, Encode},
+    Cid, DagCbor,
+};
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 
@@ -19,30 +21,42 @@ struct PublishUpdate {
     links: BTreeSet<Link>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(into = "RootUpdateIo", try_from = "RootUpdateIo")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct RootUpdate {
     stream: StreamId,
     root: Cid,
     blocks: Vec<Block>,
 }
 
-#[derive(Serialize, Deserialize)]
-struct RootUpdateIo {
-    stream: String,
-    root: String,
-    blocks: Vec<(String, ByteBuf)>,
+impl Encode<DagCborCodec> for RootUpdate {
+    fn encode<W: std::io::Write>(&self, c: DagCborCodec, w: &mut W) -> Result<()> {
+        RootUpdateIo::from(self).encode(c, w)
+    }
 }
 
-impl From<RootUpdate> for RootUpdateIo {
-    fn from(value: RootUpdate) -> Self {
+impl Decode<DagCborCodec> for RootUpdate {
+    fn decode<R: std::io::Read + std::io::Seek>(c: DagCborCodec, r: &mut R) -> Result<Self> {
+        let tmp = RootUpdateIo::decode::<R>(c, r)?;
+        RootUpdate::try_from(tmp)
+    }
+}
+
+#[derive(DagCbor)]
+struct RootUpdateIo {
+    stream: StreamId,
+    root: Cid,
+    blocks: Vec<(Cid, Vec<u8>)>,
+}
+
+impl From<&RootUpdate> for RootUpdateIo {
+    fn from(value: &RootUpdate) -> Self {
         Self {
-            stream: value.stream.to_string(),
-            root: value.root.to_string(),
+            stream: value.stream,
+            root: value.root,
             blocks: value
                 .blocks
-                .into_iter()
-                .map(|block| (block.cid().to_string(), ByteBuf::from(block.data().to_vec())))
+                .iter()
+                .map(|block| (*block.cid(), block.data().to_vec()))
                 .collect(),
         }
     }
@@ -52,12 +66,12 @@ impl TryFrom<RootUpdateIo> for RootUpdate {
     type Error = anyhow::Error;
 
     fn try_from(value: RootUpdateIo) -> Result<Self, Self::Error> {
-        let root: Cid = value.root.parse()?;
-        let stream: StreamId = StreamId::try_from(value.stream)?;
+        let root: Cid = value.root;
+        let stream = value.stream;
         let blocks = value
             .blocks
             .into_iter()
-            .map(|(cid, data)| Block::new(cid.parse()?, data.to_vec()))
+            .map(|(cid, data)| Block::new(cid, data.to_vec()))
             .collect::<Result<Vec<Block>>>()?;
         Ok(Self { root, stream, blocks })
     }
@@ -88,16 +102,17 @@ impl GossipV2 {
                         }
                     }
                 }
-                let blob = serde_cbor::to_vec(&RootUpdate { root, stream, blocks }).unwrap();
-                tracing::trace!("broadcast_blob {}", blob.len());
+                let blob = DagCborCodec.encode(&RootUpdate { root, stream, blocks }).unwrap();
+                tracing::info!("broadcast_blob {}", blob.len());
                 ipfs.broadcast(&topic, blob).ok();
 
-                let blob = serde_cbor::to_vec(&RootUpdate {
-                    root,
-                    stream,
-                    blocks: Default::default(),
-                })
-                .unwrap();
+                let blob = DagCborCodec
+                    .encode(&RootUpdate {
+                        root,
+                        stream,
+                        blocks: Default::default(),
+                    })
+                    .unwrap();
                 tracing::trace!("publish_blob {}", blob.len());
                 ipfs.publish(&topic, blob).ok();
             }
@@ -118,7 +133,7 @@ impl GossipV2 {
         Ok(async move {
             loop {
                 while let Some(message) = subscription.next().await {
-                    match serde_cbor::from_slice::<RootUpdate>(&message) {
+                    match DagCborCodec.decode::<RootUpdate>(&message) {
                         Ok(root_update) => {
                             tracing::debug!(
                                 "{} received root update {} with {} blocks",
