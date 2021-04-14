@@ -18,10 +18,6 @@ The recommended IDE for developing Actyx Pond is [Visual Studio Code](https://co
 - [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) for live source code linting
 - [Actyx Pond](https://marketplace.visualstudio.com/items?itemName=Actyx.actyx-pond) for efficienly working with fishes
 
-### Recommended settings
-See [`settings-sample.json`](/js/pond/.vscode/settings-sample.json).
-
-
 ## License and Support
 
 For commercial licenses and support please email contact@actyx.io.

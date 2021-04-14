@@ -43,7 +43,7 @@
     "react-markdown": "^5.0.3",
     "react-syntax-highlighter": "^15.4.3",
     "react-youtube": "^7.9.0",
-    "remark-code-import": "^0.2.0",
+    "remark-code-import": "^0.3.0",
     "semver": "^7.3.5",
     "styled-components": "^5.1.1",
     "textlint-rule-no-empty-section": "^1.1.0",

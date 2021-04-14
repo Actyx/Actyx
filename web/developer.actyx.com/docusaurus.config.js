@@ -7,8 +7,9 @@ module.exports = {
   baseUrl: '/',
   favicon: 'img/favicon.ico',
   organizationName: 'Actyx',
-  projectName: 'Actyx Developer Website',
-  onBrokenLinks: 'log',
+  projectName: 'Actyx Developer Docs',
+  onBrokenLinks: 'throw',
+  onBrokenMarkdownLinks: 'throw',
   plugins: [
     [
       require.resolve('docusaurus-gtm-plugin'),
