@@ -3,7 +3,11 @@ use actyxos_sdk::{NodeId, StreamId, StreamNr};
 use anyhow::Result;
 use ax_futures_util::stream::latest_channel;
 use futures::prelude::*;
-use libipld::{Cid, DagCbor, cbor::DagCborCodec, codec::{Codec, Decode, Encode}};
+use libipld::{
+    cbor::DagCborCodec,
+    codec::{Codec, Decode, Encode},
+    Cid, DagCbor,
+};
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 
@@ -33,7 +37,7 @@ impl Encode<DagCborCodec> for RootUpdate {
 impl Decode<DagCborCodec> for RootUpdate {
     fn decode<R: std::io::Read + std::io::Seek>(c: DagCborCodec, r: &mut R) -> Result<Self> {
         let tmp = RootUpdateIo::decode::<R>(c, r)?;
-        Ok(RootUpdate::try_from(tmp)?)
+        RootUpdate::try_from(tmp)
     }
 }
 
@@ -63,7 +67,7 @@ impl TryFrom<RootUpdateIo> for RootUpdate {
 
     fn try_from(value: RootUpdateIo) -> Result<Self, Self::Error> {
         let root: Cid = value.root;
-        let stream= value.stream;
+        let stream = value.stream;
         let blocks = value
             .blocks
             .into_iter()
@@ -102,12 +106,13 @@ impl GossipV2 {
                 tracing::info!("broadcast_blob {}", blob.len());
                 ipfs.broadcast(&topic, blob).ok();
 
-                let blob = DagCborCodec.encode(&RootUpdate {
-                    root,
-                    stream,
-                    blocks: Default::default(),
-                })
-                .unwrap();
+                let blob = DagCborCodec
+                    .encode(&RootUpdate {
+                        root,
+                        stream,
+                        blocks: Default::default(),
+                    })
+                    .unwrap();
                 tracing::trace!("publish_blob {}", blob.len());
                 ipfs.publish(&topic, blob).ok();
             }

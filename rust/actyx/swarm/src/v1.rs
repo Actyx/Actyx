@@ -15,15 +15,10 @@ use banyan::{
 };
 use fnv::FnvHashSet;
 use forest::FilteredChunk;
-use futures::{prelude::*, future::BoxFuture, channel::mpsc};
 use futures::stream::BoxStream;
+use futures::{channel::mpsc, future::BoxFuture, prelude::*};
 use libipld::{cbor::DagCborCodec, codec::Codec};
-use std::{
-    collections::BTreeSet,
-    convert::TryInto,
-    ops::RangeInclusive,
-    time::Duration,
-};
+use std::{collections::BTreeSet, convert::TryInto, ops::RangeInclusive, time::Duration};
 use trees::{
     axtrees::{AxKey, TagsQuery},
     OffsetMapOrMax, PublishHeartbeat, RootMap, StreamHeartBeat,
