@@ -203,7 +203,7 @@ mod test {
         let mem = load_test_db("tests/node_v0.sqlite")?;
         assert_eq!(NodeStorage::version(&mem).unwrap(), 0);
         let storage = NodeStorage::from_conn(mem).unwrap();
-        let expected_node_id: NodeId = NodeId::try_from("uxNwSSy2PEjByy519zOEWi0nl8GsDUiOVebOpvpNDsOU").unwrap();
+        let expected_node_id: NodeId = NodeId::try_from("lBkGGmqD2X/mmtpxnC2KWobZw4g1IWCJSPCdjdB1gCI").unwrap();
         assert_eq!(NodeStorage::version(&storage.connection.lock()).unwrap(), 1);
         assert_eq!(NodeStorage::get_node_key(&storage).unwrap(), Some(expected_node_id));
         Ok(())
@@ -217,7 +217,7 @@ mod test {
         let mem = load_test_db("tests/node_v1.sqlite")?;
         assert_eq!(NodeStorage::version(&mem).unwrap(), 1);
         let storage = NodeStorage::from_conn(mem).unwrap();
-        let expected_node_id: NodeId = NodeId::try_from("uxNwSSy2PEjByy519zOEWi0nl8GsDUiOVebOpvpNDsOU").unwrap();
+        let expected_node_id: NodeId = NodeId::try_from("lBkGGmqD2X/mmtpxnC2KWobZw4g1IWCJSPCdjdB1gCI").unwrap();
         assert_eq!(NodeStorage::version(&storage.connection.lock()).unwrap(), 1);
         assert_eq!(NodeStorage::get_node_key(&storage).unwrap(), Some(expected_node_id));
         Ok(())
