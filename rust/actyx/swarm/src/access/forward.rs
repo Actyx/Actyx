@@ -429,13 +429,7 @@ mod tests {
         // and unblock streamA, which will immediately get its heartbeat and unblock stream1
         let ev1 = mk_test_event(test_stream(1), top_plus(2), lamport(2));
         store.send(Input::Events(vec![ev1.clone()]));
-        let elems = iter.next();
-        if let Some(elems) = &elems {
-            for i in 1..elems.len() {
-                assert!(elems[i - 1] < elems[i]);
-            }
-        }
-        assert_eq!(elems, Some(vec![ev2, ev_a, ev1]));
+        assert_eq!(iter.next(), Some(vec![ev2, ev_a, ev1]));
 
         // At this point, stream1 has nothing, stream2 has its heartbeat for lamport(3),
         // streamA also has its heartbeat for lamport(3). We bring in streamB with an

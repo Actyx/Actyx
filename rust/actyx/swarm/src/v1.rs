@@ -15,12 +15,12 @@ use banyan::{
 };
 use fnv::FnvHashSet;
 use forest::FilteredChunk;
-use futures::future::BoxFuture;
+use futures::{prelude::*, future::BoxFuture, channel::mpsc};
 use futures::stream::BoxStream;
 use libipld::{cbor::DagCborCodec, codec::Codec};
 use std::{
     collections::BTreeSet,
-    convert::{TryFrom, TryInto},
+    convert::TryInto,
     ops::RangeInclusive,
     time::Duration,
 };
