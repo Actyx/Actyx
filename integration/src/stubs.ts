@@ -26,6 +26,7 @@ const mkNodeStub = async (
       apiConsole: '',
       apiEvent: '',
       apiPond: '',
+      apiSwarmPort: 0,
     },
   }
 }
