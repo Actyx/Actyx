@@ -23,7 +23,11 @@ class MyEnvironment extends NodeEnvironment {
     // global objects must be serializable to copy into jest's test context, that's why we have to re-setup some things
     for (const node of axNodeSetup.nodes) {
       // Reuse the identity the node was set up with
-      node.ax = await CLI.buildWithIdentityPath(node._private.axHost, node._private.axBinaryPath, node.ax.identityPath)
+      node.ax = await CLI.buildWithIdentityPath(
+        node._private.axHost,
+        node._private.axBinaryPath,
+        node.ax.identityPath,
+      )
 
       const opts = DefaultClientOpts()
       opts.Endpoints.ConsoleService.BaseUrl = node._private.apiConsole
@@ -39,11 +43,6 @@ class MyEnvironment extends NodeEnvironment {
       await node._private.shutdown()
     }
     await super.teardown()
-  }
-
-  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-  runScript<T>(script: any): T | null {
-    return super.runScript(script)
   }
 }
 
