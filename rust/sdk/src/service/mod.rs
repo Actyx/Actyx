@@ -36,33 +36,20 @@ use futures::stream::BoxStream;
 /// Event streams can be request with different ordering requirements from the
 /// Event Service:
 ///
-///  - in strict forward Lamport order
-///  - in strict backwards Lamport order (only possible when requesting with an upper bound `OffsetMap`)
-///  - ordered in forward order per stream, but not between streams
+///  - in strict Asc Lamport order
+///  - in strict Desc Lamport order
+///  - ordered in Asc order per stream, but not between streams
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub enum Order {
     /// Events are sorted by ascending Lamport timestamp and stream ID, which defines a
-    /// total order. If the subscription does not restrict the set of stream
-    /// IDs then a new stream appearing with old events will lead to these old
-    /// events only being delivered if they are younger than the youngest already
-    /// delivered event.
-    ///
-    /// Requesting this order will stall the stream’s delivery while one of the contained
-    /// streams stops sending events (for example when it goes offline or is destroyed).
+    /// total order.
     Asc,
     /// Events are sorted by descending Lamport timestamp and descending stream ID,
-    /// which is the exact reverse of the `Lamport` ordering. Requests with this
-    /// ordering will only be successful if they include an upper bound `OffsetMap`
-    /// and if that map is less than or equal to the `OffsetMap` obtained via
-    /// the `offsets` endpoint.
+    /// which is the exact reverse of the `Asc` ordering.
     Desc,
     /// Events are sorted within each stream by ascending Lamport timestamp, with events
     /// from different streams interleaved in an undefined order.
-    ///
-    /// This is the preferred ordering for live streams as it permits new information
-    /// to be made available as soon as it is delivered to the node, without needing to
-    /// wait for all other streams to confirm the ordering first.
     StreamAsc,
 }
 
