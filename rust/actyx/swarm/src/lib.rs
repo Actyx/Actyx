@@ -237,10 +237,16 @@ impl BanyanStore {
             ipfs.add_external_address(addr);
         }
         for mut addr in cfg.ipfs_node.bootstrap {
+            let addr_orig = addr.clone();
             if let Some(Protocol::P2p(peer_id)) = addr.pop() {
                 let peer_id =
                     PeerId::from_multihash(peer_id).map_err(|_| anyhow::anyhow!("invalid bootstrap peer id"))?;
-                ipfs.dial_address(&peer_id, addr)?;
+                if peer_id == ipfs.local_peer_id() {
+                    tracing::warn!("Not dialing configured bootstrap node {} as it's myself", addr_orig);
+                } else {
+                    ipfs.dial_address(&peer_id, addr)
+                        .with_context(|| format!("Dialing bootstrap node {}", addr_orig))?;
+                }
             } else {
                 return Err(anyhow::anyhow!("invalid bootstrap address"));
             }
