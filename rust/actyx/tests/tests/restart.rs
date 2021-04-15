@@ -9,52 +9,45 @@ use actyxos_sdk::{
 };
 use crossbeam::channel::Receiver;
 use futures::StreamExt;
+use logsvcd::LoggingSink;
 use node::{ApplicationState, BindTo};
 use tempfile::tempdir;
-use tokio::time::sleep;
-use util::formats::LogEvent;
+use util::formats::LogRequest;
 
-fn get_eventservice_port(rx: Receiver<Vec<LogEvent>>) -> anyhow::Result<u16> {
+fn get_eventservice_port(rx: &Receiver<LogRequest>) -> anyhow::Result<u16> {
     let start = Instant::now();
     let regex = regex::Regex::new(r"(?:API bound to 127.0.0.1:)(\d*)").unwrap();
 
     loop {
-        let chunk = rx.recv_deadline(start.checked_add(Duration::from_millis(5000)).unwrap())?;
-        for ev in chunk {
-            if let Some(x) = regex.captures(&*ev.message).and_then(|c| c.get(1).map(|x| x.as_str())) {
-                return Ok(x.parse()?);
-            }
+        let ev = rx.recv_deadline(start.checked_add(Duration::from_millis(5000)).unwrap())?;
+        if let Some(x) = regex.captures(&*ev.message).and_then(|c| c.get(1).map(|x| x.as_str())) {
+            return Ok(x.parse()?);
         }
     }
 }
 
 async fn start_node(
     path: impl AsRef<Path>,
-    with_port: Option<u16>,
-) -> anyhow::Result<(ApplicationState, HttpClient, u16)> {
+    logging_rx: &Receiver<LogRequest>,
+) -> anyhow::Result<(ApplicationState, HttpClient)> {
     let node = ApplicationState::spawn(
         path.as_ref().into(),
         node::Runtime::Linux,
         BindTo {
-            api: format!("localhost:{}", with_port.unwrap_or(0)).parse().unwrap(),
+            api: "localhost:0".parse().unwrap(),
             ..BindTo::random()
         },
     )?;
-    let port = if let Some(p) = with_port {
-        p
-    } else {
-        get_eventservice_port(node.logs_tail()?)?
-    };
+    let port = get_eventservice_port(logging_rx)?;
     let es = HttpClient::new_with_url(&*format!("http://localhost:{}/api/v2/events", port)).await?;
-    // Some time for everything to be started up. The main issue here is on the
-    // second start, our connection to the logging systems is broken, thus we
-    // can't wait for the proper message to appear. FIXME
-    sleep(Duration::from_millis(1000)).await;
 
-    Ok((node, es, port))
+    Ok((node, es))
 }
 #[tokio::test]
 async fn persistence_across_restarts() -> anyhow::Result<()> {
+    // Install global subscriber before any app starts
+    let (tx, logs_rx) = crossbeam::channel::unbounded();
+    let _logging = LoggingSink::new(util::formats::LogSeverity::Debug, tx);
     let working_dir = tempdir()?;
 
     const BATCH_SIZE: usize = 2048;
@@ -64,7 +57,7 @@ async fn persistence_across_restarts() -> anyhow::Result<()> {
         data.push(i.to_string());
     }
 
-    let (mut node, es, es_port) = start_node(&working_dir, None).await?;
+    let (mut node, es) = start_node(&working_dir, &logs_rx).await?;
 
     let offsets_before = es.offsets().await?;
     es.publish(PublishRequest {
@@ -100,8 +93,8 @@ async fn persistence_across_restarts() -> anyhow::Result<()> {
     drop(es);
     let _ = rx.recv_timeout(Duration::from_millis(5000))?;
 
-    // And start it up again; reusing the same port
-    let (_node, es, _) = start_node(&working_dir, Some(es_port)).await?;
+    // And start it up again
+    let (_node, es) = start_node(&working_dir, &logs_rx).await?;
 
     let offsets_after_shutdown = es.offsets().await?;
     println!(

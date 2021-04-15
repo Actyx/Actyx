@@ -10,8 +10,10 @@ actyxos_sdk = { path = "../../sdk", features = ["client"] }
 anyhow = "1.0.39"
 crossbeam = "0.8.0"
 futures = "0.3.13"
+logsvcd = { path = "../logsvcd" }
 node = { path = "../node" }
 regex = "1.4.5"
 tempfile = "3.2.0"
 tokio = { version = "1.4.0", features = ["full"] }
+tracing = "0.1.25"
 util = { path = "../util" }

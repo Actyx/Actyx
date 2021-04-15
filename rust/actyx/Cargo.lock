@@ -6191,10 +6191,12 @@ dependencies = [
  "anyhow",
  "crossbeam",
  "futures 0.3.13",
+ "logsvcd",
  "node",
  "regex",
  "tempfile",
  "tokio 1.4.0",
+ "tracing",
  "util",
 ]
 
