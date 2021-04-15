@@ -3,8 +3,8 @@
 | key | value |
 | --- | --- |
 | date | 2021-04-12 |
-| status | proposed |
-| persons | @rkuhn, @o1iver |
+| status | accepted |
+| persons | @rkuhn, @o1iver, @gibbok, @mhaushofer |
 
 ## Decision
 
