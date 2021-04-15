@@ -103,7 +103,7 @@ const getBootstrapNodes = async (bootstrap: ActyxOSNode[]): Promise<string[]> =>
       addr.push(kind.privateAddress)
     }
     if (pid !== undefined) {
-      ret.push(...addr.map((a) => `/ip4/${a}/tcp/4001/p2p/${pid}`))
+      ret.push(...addr.map((a) => `/ip4/${a}/tcp/${node._private.apiSwarmPort}/p2p/${pid}`))
     }
   }
   return ret
@@ -238,6 +238,11 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   // Overwrite config from env vars
   const keepNodesRunning = config.settings.keepNodesRunning || process.env['AX_DEBUG'] !== undefined
   const gitHash = await getGitHash(config.settings)
+  try {
+    await fs.mkdir(config.settings.tempDir)
+  } catch (e) {
+    //ignore
+  }
   const key = await createKey(config, ec2)
   const axNodeSetupObject: NodeSetup = {
     ec2,

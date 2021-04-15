@@ -19,7 +19,7 @@ const isSortedAsc = (data: string[]): boolean => {
   return true
 }
 
-describe('Pond', () => {
+describe.skip('Pond', () => {
   // Assert that events are always fed to Fish in the correct order on every node, at any time,
   // and also assert that all events reach all Fish eventually.
   test('ordering / time travel', async () => {

@@ -18,7 +18,7 @@ module.exports = {
     },
     axNodeSetup: global.axNodeSetup,
   },
-  moduleFileExtensions: ['js', 'json', 'jsx'],
+  moduleFileExtensions: ['js', 'json', 'jsx', 'ts', 'tsx'],
   testPathIgnorePatterns: ['/node_modules/', '.+support\\.test\\.ts'],
   maxWorkers: '50%',
   // A list of paths to modules that run some code to configure or set up the
@@ -27,21 +27,21 @@ module.exports = {
   // environment, this script file presents you the opportunity of running some
   // code immediately after the test framework has been installed in the
   // environment.
-  setupFilesAfterEnv: ['./dist/src/jest-custom-matchers.js'],
+  setupFilesAfterEnv: ['./src/jest-custom-matchers.ts'],
   testTimeout: 120000,
   // This option allows the use of a custom global setup module which exports an
   // async function that is triggered once before all test suites. This function
   // gets Jest's globalConfig object as a parameter.
-  globalSetup: './dist/jest/setup.js',
+  globalSetup: './jest/setup.ts',
   //  This option allows the use of a custom global teardown module which exports
   //  an async function that is triggered once after all test suites. This function
   //  gets Jest's globalConfig object as a parameter.
-  globalTeardown: './dist/jest/teardown.js',
+  globalTeardown: './jest/teardown.ts',
   // The test environment that will be used for testing. [..] You can create
   // your own module that will be used for setting up the test environment. The
   // module must export a class with setup, teardown and runScript methods. You
   // can also pass variables from this module to your test suites by assigning
   // them to this.global object – this will make them available in your test
   // suites as global variables.
-  testEnvironment: './dist/jest/environment.js',
+  testEnvironment: './jest/environment.ts',
 }
