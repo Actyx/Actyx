@@ -4,7 +4,7 @@ import * as PondV1 from 'pondV1'
 import { MultiplexedWebsocket } from 'pondV1/lib/eventstore/multiplexedWebsocket'
 import { allNodeNames, runOnAll, runOnEach } from './infrastructure/hosts'
 
-describe('the Infrastructure', () => {
+describe.skip('the Infrastructure', () => {
   test('must create global nodes pool', async () => {
     const status = await runOnEach([{}], (node) => node.ax.nodes.ls())
     expect(status).toMatchObject([
