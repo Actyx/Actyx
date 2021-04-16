@@ -9,6 +9,7 @@ use std::{
     usize,
 };
 
+#[derive(Debug)]
 pub struct Observer<T> {
     id: usize,
     inner: Arc<Mutex<VariableInner<T>>>,
@@ -27,7 +28,7 @@ impl<T: Clone> Stream for Observer<T> {
     fn poll_next(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> std::task::Poll<Option<Self::Item>> {
         let id = self.id;
         let mut inner = self.inner.lock();
-        if inner.dropped {
+        if inner.writers == 0 {
             // if the sender is gone, make sure that the final value is delivered
             // (the .remove() ensures that next time will return None)
             if let Some(receiver) = inner.observers.remove(&id) {
@@ -55,8 +56,7 @@ impl<T: Clone> Stream for Observer<T> {
 
 impl<T: Clone> FusedStream for Observer<T> {
     fn is_terminated(&self) -> bool {
-        let inner = self.inner.lock();
-        inner.dropped && !inner.observers.contains_key(&self.id)
+        !self.inner.lock().observers.contains_key(&self.id)
     }
 }
 
@@ -81,7 +81,7 @@ impl<T> Drop for Observer<T> {
 ///
 /// Having zero observers is often useful, so setting the value will not fail
 /// even if there are no observers.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Variable<T> {
     inner: Arc<Mutex<VariableInner<T>>>,
 }
@@ -117,6 +117,22 @@ impl<T> Variable<T> {
         Ok(())
     }
 
+    /// Transform the current value in-place and notify observers if the function returns `true`.
+    ///
+    /// This does not allow a fallible operation because in case of error it is unclear which
+    /// state the variable’s value is in.
+    ///
+    /// Returns what the given transformation function returned.
+    pub fn transform_mut(&self, f: impl FnOnce(&mut T) -> bool) -> bool {
+        let mut inner = self.inner.lock();
+        if f(&mut inner.latest) {
+            inner.notify();
+            true
+        } else {
+            false
+        }
+    }
+
     /// Read and project out a value. This can be cheaper than using get_cloned()
     pub fn project<U>(&self, f: impl FnOnce(&T) -> U) -> U {
         f(&self.inner.lock().latest)
@@ -135,10 +151,18 @@ impl<T: Copy> Variable<T> {
     }
 }
 
+impl<T> Clone for Variable<T> {
+    fn clone(&self) -> Self {
+        self.inner.lock().writers += 1;
+        Self {
+            inner: self.inner.clone(),
+        }
+    }
+}
+
 impl<T> Drop for Variable<T> {
     fn drop(&mut self) {
-        let mut inner = self.inner.lock();
-        inner.dropped = true;
+        self.inner.lock().writers -= 1;
     }
 }
 
@@ -155,7 +179,7 @@ struct VariableInner<T> {
     next_id: usize,
     observers: FnvHashMap<usize, ReceiverInner>,
     latest: T,
-    dropped: bool,
+    writers: usize,
 }
 
 impl<T> VariableInner<T> {
@@ -164,13 +188,17 @@ impl<T> VariableInner<T> {
             next_id: 0,
             observers: Default::default(),
             latest: value,
-            dropped: false,
+            writers: 1,
         }
     }
 
     fn set(&mut self, value: T) {
         // we don't check for dupliates. You can send the same value twice.
         self.latest = value;
+        self.notify();
+    }
+
+    fn notify(&mut self) {
         for observer in self.observers.values_mut() {
             // reset received
             observer.received = false;
@@ -185,7 +213,7 @@ impl<T> VariableInner<T> {
         let id = self.next_id;
         self.next_id += 1;
         // If the sender is dropped, there is no point in storing a new receiver.
-        if !self.dropped {
+        if self.writers > 0 {
             self.observers.insert(id, ReceiverInner::new());
         }
         id
@@ -242,7 +270,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{prelude::AxStreamExt, stream::interval};
+    use crate::{
+        prelude::AxStreamExt,
+        stream::{interval, Drainer},
+    };
 
     use super::*;
     use tokio::time::Duration;
@@ -275,7 +306,7 @@ mod tests {
 
     #[tokio::test]
     async fn pipe() {
-        let s = Variable::<u8>::new(0);
+        let s = Variable::new(0u8);
         tokio::spawn(
             interval(Duration::from_millis(10))
                 .take(10)
@@ -285,9 +316,21 @@ mod tests {
                 .tee_variable(&s)
                 .drain(),
         );
-        let r = s.new_observer().collect::<Vec<_>>().await;
+        let obs = s.new_observer();
+        drop(s);
+        let r = obs.collect::<Vec<_>>().await;
         assert!(r.len() <= 10, "too many elements in {:?}", r);
         // timing-dependently may lose any element but the last
         assert_eq!(r[r.len() - 1], 9);
+    }
+
+    #[tokio::test]
+    async fn dropping() {
+        let v = Variable::new(0);
+        let v2 = v.clone();
+        drop(v);
+        let mut iter = Drainer::new(v2.new_observer());
+        assert_eq!(iter.next(), Some(vec![0]));
+        assert_eq!(iter.next(), Some(vec![]));
     }
 }
