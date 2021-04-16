@@ -6,7 +6,7 @@
  */
 import { OffsetMap } from '../eventstore'
 import { SnapshotStore } from '../snapshotStore/snapshotStore'
-import { EventKey, FishName, Lamport, Offset, Semantics, SourceId } from '../types'
+import { EventKey, FishName, Lamport, Offset, Semantics, StreamId } from '../types'
 import {
   InvalidateAllSnapshots,
   InvalidateSnapshots,
@@ -27,8 +27,8 @@ type SnapshotKey = Readonly<{
 type SnapshotRow = SnapshotKey &
   Readonly<{
     lamport: Lamport
-    source: SourceId
-    psn: Offset
+    stream: StreamId
+    offset: Offset
     blob: string
     rootsPsn: OffsetMap
     horizon: EventKey | undefined
@@ -49,19 +49,19 @@ const toSnapshotRow = (
   version: number,
   tag: string,
   blob: string,
-  psnMap: OffsetMap,
+  offsets: OffsetMap,
   horizon: EventKey | undefined,
   cycle: number,
 ): SnapshotRow => ({
   semantics,
   name,
   lamport: key.lamport,
-  source: key.stream,
-  psn: key.offset,
+  stream: key.stream,
+  offset: key.offset,
   version,
   tag,
   blob,
-  rootsPsn: psnMap,
+  rootsPsn: offsets,
   horizon,
   cycle,
 })
@@ -111,11 +111,7 @@ class Impl implements SnapshotStore {
   }
 
   retrieveSnapshot: RetrieveSnapshot = (s: Semantics, n: FishName, v: number) => {
-    const reverseKeyOrder = (l: SnapshotRow, r: SnapshotRow) =>
-      EventKey.ord.compare(
-        { lamport: r.lamport, offset: r.psn, stream: r.source },
-        { lamport: l.lamport, offset: l.psn, stream: l.source },
-      )
+    const reverseKeyOrder = (l: SnapshotRow, r: SnapshotRow) => EventKey.ord.compare(r, l)
     const values = Object.values(this.snapshots)
     const retrievedSnapshots = values
       .filter(
@@ -130,15 +126,15 @@ class Impl implements SnapshotStore {
         const snap = retrievedSnapshots[0]
         const eventKey: EventKey = {
           lamport: snap.lamport,
-          stream: snap.source,
-          offset: snap.psn,
+          stream: snap.stream,
+          offset: snap.offset,
         }
-        const psnMap: OffsetMap = snap.rootsPsn
+        const offsets: OffsetMap = snap.rootsPsn
         // psnMap is readonly in production.
-        Object.preventExtensions(psnMap)
+        Object.preventExtensions(offsets)
         const horizon = snap.horizon
         const cycle = snap.cycle
-        return { eventKey, state: snap.blob, psnMap, horizon, cycle }
+        return { eventKey, state: snap.blob, offsets, horizon, cycle }
       }
     })
   }
@@ -147,11 +143,11 @@ class Impl implements SnapshotStore {
     return later(() => {
       const snapshotAfterOrOnEventKey = (
         lamport: Lamport,
-        source: SourceId,
+        stream: StreamId,
         offset: Offset,
         eventKey: EventKey,
       ): boolean => {
-        const snapshotEventKey: EventKey = { lamport, stream: source, offset }
+        const snapshotEventKey: EventKey = { lamport, stream, offset }
         return EventKey.ord.compare(snapshotEventKey, eventKey) >= 0
       }
       const values = Object.values(this.snapshots)
@@ -160,7 +156,7 @@ class Impl implements SnapshotStore {
           !(
             sr.semantics === sem &&
             sr.name === name &&
-            snapshotAfterOrOnEventKey(sr.lamport, sr.source, sr.psn, key)
+            snapshotAfterOrOnEventKey(sr.lamport, sr.stream, sr.offset, key)
           ),
       )
 

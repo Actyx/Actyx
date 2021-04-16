@@ -218,9 +218,8 @@ export const streamSplashState = (
   const waitForSwarmMs = config.waitForSwarmMs || defaults.waitForSwarmMs
 
   const highestSeenRoots$ = Observable.interval(500)
-    .concatMapTo(eventStore.highestSeen())
+    .concatMapTo(Observable.from(eventStore.highestSeen()))
     .takeUntil(Observable.timer(waitForSwarmMs))
-    .map(x => x.psns)
 
   /**
    * Start with one call to present, then guarantee that at least one additional present
@@ -228,9 +227,9 @@ export const streamSplashState = (
    * into a `sync` one.
    */
   const present$ = Observable.merge(
-    eventStore.present().take(1),
-    Observable.timer(waitForSwarmMs).switchMapTo(Observable.defer(eventStore.present)),
-  ).map(x => x.psns)
+    Observable.from(eventStore.offsets()),
+    Observable.timer(waitForSwarmMs).switchMapTo(Observable.defer(eventStore.offsets)),
+  )
 
   const swarmInfo$ = Observable.combineLatest(highestSeenRoots$, present$).map(toSwarmInfo)
 

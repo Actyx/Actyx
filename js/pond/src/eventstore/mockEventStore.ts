@@ -7,23 +7,23 @@
 import { Observable, ReplaySubject } from 'rxjs'
 import log from '../store/loggers'
 import { toEventPredicate } from '../tagging'
-import { Lamport, Offset, SourceId } from '../types'
+import { Lamport, NodeId, Offset } from '../types'
 import {
   EventStore,
   RequestAllEvents,
   RequestPersistedEvents,
   RequestPersistEvents,
 } from './eventStore'
-import { ConnectivityStatus, Events, OffsetMapWithDefault } from './types'
+import { ConnectivityStatus, Events, OffsetMap } from './types'
 
 export const mockEventStore: () => EventStore = () => {
-  const sourceId = SourceId.of('MOCK')
-  const present = new ReplaySubject<OffsetMapWithDefault>(1)
+  const nodeId = NodeId.of('MOCK')
+  const present = new ReplaySubject<OffsetMap>(1)
   const events = new ReplaySubject<Events>(1e3)
   events.next([])
 
   let psn = Offset.of(0)
-  present.next({ psns: {}, default: 'max' })
+  present.next({})
 
   const persistedEvents: RequestPersistedEvents = (_from, _to, ss, _min, _sortOrder) => {
     return (
@@ -42,25 +42,36 @@ export const mockEventStore: () => EventStore = () => {
       .map(x => x.filter(toEventPredicate(ss)))
       .do(x => log.ws.debug('allEvents', x))
   }
+
+  const streamId = NodeId.streamNo(nodeId, 0)
+
   const persistEvents: RequestPersistEvents = x => {
     log.ws.debug('putEvents', x)
     const newEvents: Events = x.map(payload => ({
       payload: payload.payload,
       tags: [],
-      stream: sourceId,
+      stream: streamId,
       timestamp: payload.timestamp,
       lamport: Lamport.of(payload.timestamp),
       offset: Offset.of(psn++),
     }))
 
     events.next(newEvents)
-    present.next({ psns: { [sourceId]: psn }, default: 'max' })
+    present.next({ [streamId]: psn })
     return Observable.of(newEvents)
   }
+
+  const getPresent = () =>
+    present
+      .asObservable()
+      .do(() => log.ws.debug('present'))
+      .take(1)
+      .toPromise()
+
   return {
-    sourceId,
-    present: () => present.asObservable().do(() => log.ws.debug('present')),
-    highestSeen: () => present.asObservable(),
+    nodeId,
+    offsets: getPresent,
+    highestSeen: getPresent,
     persistedEvents,
     allEvents,
     persistEvents,

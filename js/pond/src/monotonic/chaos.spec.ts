@@ -7,13 +7,13 @@
 import { catOptions, chunksOf } from 'fp-ts/lib/Array'
 import { none, some } from 'fp-ts/lib/Option'
 import { observeMonotonic } from '.'
-import { allEvents, Fish, Lamport, SourceId, Timestamp, Where } from '..'
+import { allEvents, Fish, Lamport, Timestamp, Where } from '..'
 import { Event, Events, EventStore, OffsetMap } from '../eventstore'
 import { includeEvent } from '../eventstore/testEventStore'
 import { interleaveRandom } from '../eventstore/utils'
 import { SnapshotStore } from '../snapshotStore'
 import { SnapshotScheduler } from '../store/snapshotScheduler'
-import { EventKey, FishErrorReporter, Metadata, Offset } from '../types'
+import { EventKey, FishErrorReporter, Metadata, Offset, StreamId } from '../types'
 import { shuffle } from '../util/array'
 
 const numberOfSources = 5
@@ -26,7 +26,7 @@ const localSnapshotProbability = 0.05
 type SemanticSnapshot = (ev: Payload) => boolean
 
 type Payload = Readonly<{
-  sourceId: string
+  stream: string
   sequence: number
   isSemanticSnapshot: boolean
   isLocalSnapshot: boolean
@@ -40,29 +40,29 @@ type State = {
 }
 
 const onEvent = (state: State, event: Payload, metadata: Metadata) => {
-  const { sourceId, sequence } = event
+  const { stream, sequence } = event
 
   const { perSource, overall } = state
   overall.push(metadata.eventId)
-  if (perSource[sourceId] !== undefined) {
-    perSource[sourceId].push(sequence)
+  if (perSource[stream] !== undefined) {
+    perSource[stream].push(sequence)
   } else {
-    perSource[sourceId] = [sequence]
+    perSource[stream] = [sequence]
   }
 
   return state
 }
 
 const timeScale = 1000000
-const generateEvents = (count: number) => (sourceId: SourceId): Events =>
+const generateEvents = (count: number) => (stream: StreamId): Events =>
   [...new Array(count)].map((_, i) => ({
     offset: Offset.of(i),
-    stream: sourceId,
+    stream,
     tags: [],
     timestamp: Timestamp.of(i * timeScale),
     lamport: Lamport.of(i),
     payload: {
-      sourceId,
+      stream,
       sequence: i,
       isSemanticSnapshot: Math.random() < semanticSnapshotProbability,
       isLocalSnapshot: Math.random() < localSnapshotProbability,
@@ -114,7 +114,7 @@ type Run = <S>(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fish: Fish<S, any>,
 ) => (
-  sourceId: SourceId,
+  streamId: StreamId,
   events: ReadonlyArray<Events>,
   snapshotScheduler: SnapshotScheduler,
 ) => Promise<S>
@@ -238,20 +238,20 @@ const snapshotConfigs = {
 }
 
 describe(`the fish event store with randomized inter-source event ordering`, () => {
-  const sourceIds = [...new Array(numberOfSources)].map(() => SourceId.random())
-  const sourceId = sourceIds[0]
-  const events = sourceIds.map(generateEvents(eventsPerSource))
+  const streamIds = [...new Array(numberOfSources)].map(() => StreamId.random())
+  const firstStreamId = streamIds[0]
+  const events = streamIds.map(generateEvents(eventsPerSource))
   const sorted = [...events.reduce((acc, a) => acc.concat(a), [])].sort(EventKey.ord.compare)
 
   for (const [name, fish] of Object.entries(fishConfigs)) {
-    const expected = hydrate(fish)(sourceId, [sorted], neverSnapshotScheduler)
+    const expected = hydrate(fish)(firstStreamId, [sorted], neverSnapshotScheduler)
 
     if (name !== 'random') {
       it(`semantic=${name} expected should be filled`, async () => {
         const e = await expected
 
-        expect(Object.keys(e.perSource).sort()).toEqual([...sourceIds].sort())
-        expect(e.overall.length).toEqual(eventsPerSource * sourceIds.length)
+        expect(Object.keys(e.perSource).sort()).toEqual([...streamIds].sort())
+        expect(e.overall.length).toEqual(eventsPerSource * streamIds.length)
         for (const evs of Object.values(e.perSource)) {
           expect(evs.length).toEqual(eventsPerSource)
         }
@@ -266,7 +266,7 @@ describe(`the fish event store with randomized inter-source event ordering`, () 
           // skip ordered runs that are identical to expected
           if (snapCfgName !== 'no') {
             it(`${descr}, ordered=true`, async () => {
-              const result = await run(fish)(sourceId, [sorted], scheduler)
+              const result = await run(fish)(firstStreamId, [sorted], scheduler)
               expect(result).toEqual(await expected)
             })
           }
@@ -274,7 +274,7 @@ describe(`the fish event store with randomized inter-source event ordering`, () 
             return Promise.all(
               [...new Array(numberOfIterations)].map(async () => {
                 const input = chunksOf(interleaveRandom(events), batchSize)
-                const result = await run(fish)(sourceId, input, scheduler)
+                const result = await run(fish)(firstStreamId, input, scheduler)
                 expect(result).toEqual(await expected)
               }),
             )
@@ -285,7 +285,7 @@ describe(`the fish event store with randomized inter-source event ordering`, () 
                 // We assume that at least a single source will not timetravel;
                 // otherwise local snapshot functionality breaks.
                 const input = chunksOf(interleaveRandom(events), batchSize).map(shuffle)
-                const result = await run(fish)(sourceId, input, scheduler)
+                const result = await run(fish)(firstStreamId, input, scheduler)
                 expect(result).toEqual(await expected)
               }),
             )

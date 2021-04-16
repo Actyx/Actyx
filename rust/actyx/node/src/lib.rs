@@ -16,7 +16,7 @@ pub use crate::util::spawn_with_name;
 pub use crate::util::unix_shutdown::shutdown_ceremony;
 use ::util::formats::LogEvent;
 use components::{logging::LoggingRequest, ComponentRequest};
-pub use formats::{os_settings, ShutdownReason};
+pub use formats::{node_settings, ShutdownReason};
 
 use crate::{
     components::{

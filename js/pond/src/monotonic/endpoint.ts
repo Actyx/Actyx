@@ -261,7 +261,7 @@ export const eventsMonotonic = (
     snap: SerializedStateSnap,
   ): Observable<EventsOrTimetravel> => {
     const fixedStart = {
-      from: snap.psnMap,
+      from: snap.offsets,
       horizon: snap.horizon,
       latestEventKey: snap.eventKey,
     }
@@ -286,7 +286,7 @@ export const eventsMonotonic = (
       Observable.concat(
         Observable.of(stateMsg(fishId, snap)),
         monotonicFrom(fishId, subscriptions, present, {
-          from: snap.psnMap,
+          from: snap.offsets,
           latestEventKey: snap.eventKey,
           horizon: snap.horizon,
         }),
@@ -301,12 +301,12 @@ export const eventsMonotonic = (
   ): Observable<EventsOrTimetravel> => {
     return Observable.combineLatest(
       Observable.from(tryReadSnapshot(fishId)).first(),
-      eventStore.present().first(),
+      Observable.from(eventStore.offsets()),
     ).concatMap(([maybeSnapshot, present]) =>
       maybeSnapshot.fold(
         // No snapshot found -> start from scratch
-        monotonicFrom(fishId, subscriptions, present.psns),
-        startFromSnapshot(fishId, subscriptions, present.psns),
+        monotonicFrom(fishId, subscriptions, present),
+        startFromSnapshot(fishId, subscriptions, present),
       ),
     )
   }
@@ -318,12 +318,9 @@ export const eventsMonotonic = (
   ): Observable<EventsOrTimetravel> => {
     if (attemptStartFrom) {
       // Client explicitly requests us to start at a certain point
-      return eventStore
-        .present()
-        .first()
-        .concatMap(present =>
-          startFromFixedOffsets(fishId, subscriptions, present.psns)(attemptStartFrom),
-        )
+      return Observable.from(eventStore.offsets()).concatMap(present =>
+        startFromFixedOffsets(fishId, subscriptions, present)(attemptStartFrom),
+      )
     } else {
       // `from` NOT given -> try finding a snapshot
       return observeMonotonicFromSnapshot(fishId, subscriptions)

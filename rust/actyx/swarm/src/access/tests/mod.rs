@@ -6,7 +6,10 @@ use actyxos_sdk::{
     tags, Event, EventKey, Expression, LamportTimestamp, Metadata, NodeId, Offset, OffsetOrMin, Payload, StreamId, Tag,
     TagSet, Timestamp,
 };
-use ax_futures_util::{prelude::*, stream::Drainer};
+use ax_futures_util::{
+    prelude::*,
+    stream::{variable::Variable, Drainer},
+};
 use futures::{
     channel::mpsc::{self, UnboundedSender},
     future::{ok, ready, FutureExt},
@@ -19,7 +22,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 use tracing::{debug, trace};
-use util::sampled_broadcast::{self, Receiver, Sender};
 
 use quickcheck::Arbitrary;
 mod trees;
@@ -59,11 +61,7 @@ impl PartialEq for PsnOrder {
 }
 impl Eq for PsnOrder {}
 
-type StreamData = (
-    BTreeMap<StreamId, PerStream>,
-    BTreeSet<StreamId>,
-    Sender<BTreeSet<StreamId>>,
-);
+type StreamData = (BTreeMap<StreamId, PerStream>, Variable<BTreeSet<StreamId>>);
 
 /// An EventStore that synthesizes event streams for stream0 to stream9,
 /// containing events from three semantics A, B, C with names a, b, c each.
@@ -76,14 +74,12 @@ type StreamData = (
 pub struct TestEventStore {
     evs: Vec<Event<Payload>>,
     streams: Arc<Mutex<StreamData>>,
-    streams_rcv: Receiver<BTreeSet<StreamId>>,
 }
 
 #[derive(Debug, Clone)]
 struct PerStream {
     event_senders: Vec<UnboundedSender<Vec<Event<Payload>>>>,
-    hb_sender: Sender<StreamHeartBeat>,
-    hb_receiver: Receiver<StreamHeartBeat>,
+    hb_sender: Variable<Option<StreamHeartBeat>>,
 }
 
 impl TestEventStore {
@@ -112,14 +108,10 @@ impl TestEventStore {
                 }
             }
         }
-        let (streams_snd, streams_rcv) = sampled_broadcast::new();
         let stream_set = known_streams().into_iter().collect::<BTreeSet<_>>();
-        let streams = Arc::new(Mutex::new((BTreeMap::new(), stream_set, streams_snd)));
-        TestEventStore {
-            evs,
-            streams,
-            streams_rcv,
-        }
+        let streams_snd = Variable::new(stream_set);
+        let streams = Arc::new(Mutex::new((BTreeMap::new(), streams_snd)));
+        TestEventStore { evs, streams }
     }
 
     pub fn known_events(&self, stream_id: StreamId, start: usize, stop: Option<usize>) -> Vec<Event<Payload>> {
@@ -147,17 +139,11 @@ impl TestEventStore {
 
     fn stream_entry(&self, stream_id: StreamId, sender: Option<UnboundedSender<Vec<Event<Payload>>>>) -> PerStream {
         let mut streams = self.streams.lock().unwrap();
-        let (ref mut map, ref mut set, ref mut snd) = &mut *streams;
-        if set.insert(stream_id) {
-            snd.update(set.clone());
-        }
-        let entry = map.entry(stream_id).or_insert_with(|| {
-            let (hb_sender, hb_receiver) = sampled_broadcast::new();
-            PerStream {
-                event_senders: Vec::new(),
-                hb_sender,
-                hb_receiver,
-            }
+        let (ref mut map, ref mut snd) = &mut *streams;
+        snd.transform_mut(|set| set.insert(stream_id));
+        let entry = map.entry(stream_id).or_insert_with(|| PerStream {
+            event_senders: Vec::new(),
+            hb_sender: Variable::new(None),
         });
         if let Some(snd) = sender {
             entry.event_senders.push(snd);
@@ -170,14 +156,14 @@ impl TestEventStore {
     /// You may use `store.introduce_stream()` for that.
     pub fn send(&self, input: Input) {
         debug!("sending {:?}", input);
-        let mut entry = self.stream_entry(input.to_stream(), None);
+        let entry = self.stream_entry(input.to_stream(), None);
         match input {
             Input::Events(evs) => {
                 for mut s in entry.event_senders {
                     s.start_send(evs.clone()).unwrap();
                 }
             }
-            Input::Heartbeat(hb) => entry.hb_sender.update(hb),
+            Input::Heartbeat(hb) => entry.hb_sender.set(Some(hb)),
         }
     }
 
@@ -289,19 +275,15 @@ impl EventStoreConsumerAccess for TestEventStore {
 
     fn stream_known_streams(&self) -> BoxStream<'static, StreamId> {
         trace!("streaming known streams");
-        let mut streams = known_streams().into_iter().collect::<BTreeSet<_>>();
-        stream::iter(streams.clone())
-            .chain(
-                self.streams_rcv
-                    .stream()
-                    .map(move |set| {
-                        let new = &set - &streams;
-                        streams = set;
-                        stream::iter(new)
-                    })
-                    .flatten(),
-            )
-            .boxed()
+        let mut streams = BTreeSet::new();
+        let obs = self.streams.lock().unwrap().1.new_observer();
+        obs.map(move |set| {
+            let new = &set - &streams;
+            streams = set;
+            stream::iter(new)
+        })
+        .flatten()
+        .boxed()
     }
 
     fn stream_forward(&self, events: StreamEventSelection, _must_exist: bool) -> EventOrHeartbeatStreamOrError {
@@ -393,8 +375,9 @@ impl EventStoreConsumerAccess for TestEventStore {
         let entry = self.stream_entry(stream_id, None);
         let mut last_lamport = LamportTimestamp::new(0);
         entry
-            .hb_receiver
-            .stream()
+            .hb_sender
+            .new_observer()
+            .filter_map(ready)
             .filter(move |hb| {
                 if hb.lamport > last_lamport {
                     last_lamport = hb.lamport;

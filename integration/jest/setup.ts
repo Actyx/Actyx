@@ -71,13 +71,15 @@ const setInitialSettings = async (bootstrap: ActyxOSNode[], swarmKey: string): P
   for (const node of bootstrap) {
     const result = await node.ax.settings
       .set(
-        'com.actyx.os',
+        'com.actyx',
         SettingsInput.FromValue({
-          general: {
-            swarmKey,
+          admin: {
             displayName: 'initial',
           },
-          services: { eventService: { topic: 'a' } },
+          swarm: {
+            swarmKey,
+            topic: 'a',
+          },
         }),
       )
       .catch(console.error)
@@ -101,7 +103,7 @@ const getBootstrapNodes = async (bootstrap: ActyxOSNode[]): Promise<string[]> =>
       addr.push(kind.privateAddress)
     }
     if (pid !== undefined) {
-      ret.push(...addr.map((a) => `/ip4/${a}/tcp/4001/p2p/${pid}`))
+      ret.push(...addr.map((a) => `/ip4/${a}/tcp/${node._private.apiSwarmPort}/p2p/${pid}`))
     }
   }
   return ret
@@ -115,17 +117,19 @@ const setAllSettings = async (
   const bootstrapNodes = await getBootstrapNodes(bootstrap)
 
   const settings = (displayName: string) => ({
-    general: {
-      bootstrapNodes,
+    admin: {
       displayName,
-      logLevels: { apps: 'INFO', os: 'DEBUG' },
-      swarmKey,
+      logLevels: { node: 'DEBUG' },
     },
-    licensing: { apps: {}, os: 'development' },
-    services: {
-      eventService: {
+    swarm: {
+      bootstrapNodes,
+      swarmKey,
+      topic: 'Cosmos integration',
+    },
+    licensing: { apps: {}, node: 'development' },
+    api: {
+      events: {
         readOnly: false,
-        topic: 'Cosmos integration',
       },
     },
   })
@@ -137,7 +141,7 @@ const setAllSettings = async (
       while (result.code !== 'OK' && retry_cnt < 10) {
         await new Promise((res) => setTimeout(res, 1000))
         result = await node.ax.settings.set(
-          'com.actyx.os',
+          'com.actyx',
           SettingsInput.FromValue(settings(node.name)),
         )
 
@@ -234,6 +238,11 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   // Overwrite config from env vars
   const keepNodesRunning = config.settings.keepNodesRunning || process.env['AX_DEBUG'] !== undefined
   const gitHash = await getGitHash(config.settings)
+  try {
+    await fs.mkdir(config.settings.tempDir)
+  } catch (e) {
+    //ignore
+  }
   const key = await createKey(config, ec2)
   const axNodeSetupObject: NodeSetup = {
     ec2,

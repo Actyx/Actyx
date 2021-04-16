@@ -45,7 +45,7 @@ When creating tests, please follow the rules:
 
 - Using nodes from `hosts.ts` (e.g. with `runOnEvery`) needs to consider these as shared resources:
 
-  - no destructive actions like stopping all apps or changing `com.actyx.os` settings
+  - no destructive actions like stopping all apps or changing `com.actyx` settings
   - the test must assume that other tests use the same nodes at the same time, so don’t assert “no apps running” or similar
   - do not change the committed `hosts.yaml` file unless you intend to add to the CI runs
   - do not add `type: local` nodes to the `hosts.yaml`

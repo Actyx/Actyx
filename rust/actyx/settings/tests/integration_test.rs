@@ -1,9 +1,9 @@
-use axossettings::{
+use serde_json::json;
+use settings::{
     repository::{Error, Repository},
     validation::{Error::ValidationFailed, ValidationError, ValidationState},
     Database, Scope,
 };
-use serde_json::json;
 use std::{fs, path::PathBuf, str::FromStr};
 use tempfile::{tempdir, TempDir};
 
@@ -35,7 +35,7 @@ fn testcase_1(dir: TempDir) -> TestResult {
     let mut repo = repo(&dir);
     let root_settings = repo.get_settings(&Scope::root(), false)?;
     assert_eq!(root_settings, json!({}));
-    let scope = Scope::from_str("com.actyx.os/weird").unwrap();
+    let scope = Scope::from_str("com.actyx/weird").unwrap();
     assert_eq!(
         repo.get_settings(&scope, false),
         Err(Error::SchemaNotFound(scope.clone())),
@@ -138,7 +138,7 @@ fn testcase_5(dir: TempDir) -> TestResult {
     let mut repo = repo(&dir);
     let dir = testcase_2(dir)?;
     let second_schema = load_schema("tests/schemas/test2.schema.json".into());
-    let scope = Scope::from_str("com.actyx.os").unwrap();
+    let scope = Scope::from_str("com.actyx").unwrap();
     repo.set_schema(&scope, second_schema)?;
 
     assert_eq!(
@@ -208,7 +208,7 @@ fn testcase_7(dir: TempDir) -> TestResult {
 fn testcase_8(dir: TempDir) -> TestResult {
     let mut repo = repo(&dir);
     let schema = load_schema("tests/schemas/test6.schema.json".into());
-    let scope = Scope::from_str("com.actyx.os8").unwrap();
+    let scope = Scope::from_str("com.actyx8").unwrap();
     repo.set_schema(&scope, schema)?;
 
     let set_config = repo.update_settings(
@@ -269,7 +269,7 @@ fn testcase_10(dir: TempDir) -> TestResult {
 fn testcase_11(dir: TempDir) -> TestResult {
     let dir = testcase_8(dir)?;
     let mut repo = repo(&dir);
-    let scope = Scope::from_str("com.actyx.os8/general/logLevels/os").unwrap();
+    let scope = Scope::from_str("com.actyx8/general/logLevels/os").unwrap();
     repo.clear_settings(&scope).unwrap();
     let log_level = repo.get_settings(&scope, false).unwrap();
     assert_eq!(log_level.as_str().unwrap(), "INFO");

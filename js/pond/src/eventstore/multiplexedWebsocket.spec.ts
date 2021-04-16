@@ -9,7 +9,7 @@
 import { fromNullable } from 'fp-ts/lib/Option'
 import { range, takeWhile } from 'ramda'
 import { Observable } from 'rxjs'
-import { SourceId } from '../types'
+import { NodeId } from '../types'
 import {
   MultiplexedWebsocket,
   Request,
@@ -17,7 +17,7 @@ import {
   ResponseMessage,
   ResponseMessageType,
 } from './multiplexedWebsocket'
-import { getSourceId, RequestTypes } from './websocketEventStore'
+import { getNodeId, RequestTypes } from './websocketEventStore'
 
 let __ws: any
 declare const global: any
@@ -67,7 +67,7 @@ describe('multiplexedWebsocket', () => {
     const socket = MockWebSocket.lastSocket!
     socket.trigger('error', { message: 'destination unreachable' })
 
-    await expect(getSourceId(s)).rejects.toMatch('destination unreachable')
+    await expect(getNodeId(s)).rejects.toMatch('destination unreachable')
   })
 
   it('should just work', async () => {
@@ -218,7 +218,7 @@ export class MockWebSocket {
               MockWebSocket.mkResponse({
                 type: ResponseMessageType.Next,
                 requestId: request.requestId,
-                payload: { nodeId: SourceId.of('MOCK') },
+                payload: { nodeId: NodeId.of('MOCK') },
               }),
               MockWebSocket.mkResponse({
                 type: ResponseMessageType.Complete,

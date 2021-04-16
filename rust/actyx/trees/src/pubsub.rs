@@ -4,7 +4,7 @@
 
 use super::{ConsNode, FromStr, LamportTimestamp, Timestamp};
 use actyxos_sdk::{NodeId, StreamId};
-use libipld::{Cid, Link};
+use libipld::{Cid, DagCbor, Link};
 use serde::{Deserialize, Serialize};
 use serde_json::Error;
 use std::collections::btree_map::BTreeMap;
@@ -12,23 +12,23 @@ use std::fmt::{Display, Formatter};
 
 /// A gossiped message that contains a specific node's view on the root nodes of
 /// all other streams it knows about.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PublishSnapshot {
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Eq, DagCbor)]
+pub struct PublishHeartbeat {
     pub node: NodeId,
     pub timestamp: Timestamp,
     pub lamport: LamportTimestamp,
     pub roots: RootMap,
 }
 
-impl FromStr for PublishSnapshot {
+impl FromStr for PublishHeartbeat {
     type Err = Error;
 
-    fn from_str(json: &str) -> Result<PublishSnapshot, Error> {
+    fn from_str(json: &str) -> Result<PublishHeartbeat, Error> {
         serde_json::from_str(json)
     }
 }
 
-impl Display for PublishSnapshot {
+impl Display for PublishHeartbeat {
     fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
         let json = serde_json::to_string(self).unwrap();
         f.write_str(&*json)
@@ -36,7 +36,7 @@ impl Display for PublishSnapshot {
 }
 
 /// Represents the last known "head" of a given stream
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, DagCbor)]
 pub struct RootMapEntry {
     #[serde(with = "serde_with::rust::display_fromstr")]
     pub cid: Cid,
@@ -70,7 +70,7 @@ impl Display for RootMapEntry {
 
 /// A collection of the last known roots of a known set of clients and their last
 /// known lamports.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default, DagCbor)]
 pub struct RootMap(pub BTreeMap<StreamId, RootMapEntry>);
 
 impl RootMap {

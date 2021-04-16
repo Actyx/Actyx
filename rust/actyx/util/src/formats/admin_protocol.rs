@@ -39,20 +39,20 @@ pub enum AdminRequest {
     //        app_id: AppId,
     //    },
     SettingsGet {
-        scope: axossettings::Scope,
+        scope: settings::Scope,
         no_defaults: bool,
     },
     SettingsSet {
-        scope: axossettings::Scope,
+        scope: settings::Scope,
         json: serde_json::Value,
         ignore_errors: bool,
     },
     SettingsSchema {
-        scope: axossettings::Scope,
+        scope: settings::Scope,
     },
     SettingsScopes,
     SettingsUnset {
-        scope: axossettings::Scope,
+        scope: settings::Scope,
     },
     Internal(InternalRequest),
     Logs(LogQuery),

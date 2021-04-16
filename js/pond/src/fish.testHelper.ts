@@ -22,7 +22,7 @@ import {
   Offset,
   Semantics,
   SnapshotFormat,
-  SourceId,
+  NodeId,
   Timestamp,
 } from './types'
 
@@ -66,7 +66,7 @@ export const eventFactory = () => {
 
     const fullEvent = {
       timestamp: Timestamp.of(raw.timestamp),
-      stream: SourceId.of(raw.source),
+      stream: NodeId.of(raw.source),
       lamport: Lamport.of(raw.timestamp),
       offset: Offset.of(offset),
       payload: raw.payload,
@@ -156,7 +156,7 @@ export const snapshotTestSetup = async <S>(
   storedEvents?: ReadonlyArray<TestEvent>,
   storedSnapshots?: ReadonlyArray<SnapshotData>,
 ) => {
-  const sourceId = SourceId.of('LOCAL-test-source')
+  const sourceId = NodeId.of('LOCAL-test-source')
   const eventStore = EventStore.test(sourceId)
   if (storedEvents) eventStore.directlyPushEvents(storedEvents)
 

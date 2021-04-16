@@ -10,11 +10,10 @@ path = "src/main.rs"
 
 [dependencies]
 actyxos_sdk = { path = "../../sdk" }
-
 anyhow = "1.0.38"
-ax-os-settings = { path = "../ax-os-settings" }
-banyan = "0.9.1"
-banyan-utils = "0.2.1"
+settings = { path = "../settings" }
+banyan = "0.9.3"
+banyan-utils = "0.2.2"
 base64= "0.13.0"
 bytes= "1.0.1"
 chrono = { version = "0.4.19", features = ["serde"] }

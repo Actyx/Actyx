@@ -13,7 +13,7 @@ import {
   isString,
   Milliseconds,
   Semantics,
-  SourceId,
+  NodeId,
   Timestamp,
   toMetadata,
 } from './types'
@@ -25,7 +25,7 @@ describe('Semantics', () => {
 })
 
 describe('SourceId.random', () => {
-  it('must create a random SourceID', () => expect(SourceId.random(42)).toHaveLength(42))
+  it('must create a random SourceID', () => expect(NodeId.random(42)).toHaveLength(42))
 })
 
 describe('isString', () => {

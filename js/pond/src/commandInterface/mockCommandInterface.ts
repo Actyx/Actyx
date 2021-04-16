@@ -5,7 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { Observable, ReplaySubject } from 'rxjs'
-import { SourceId, Timestamp } from '../types'
+import { NodeId, Timestamp } from '../types'
 import { CounterMap, DurationMap, GaugeMap } from '../util'
 import {
   AlertRequest,
@@ -32,7 +32,7 @@ type RunStatsDataType = {
   gauges: GaugeMap
 }
 export const mockCommandInterface: () => CommandInterface = () => {
-  const sourceId = SourceId.of('MOCK')
+  const sourceId = NodeId.of('MOCK')
   const alertSubject = new ReplaySubject<AlertsDataType>(1e3)
   const heartbeatSubject = new ReplaySubject<Timestamp>(1e3)
   const logSubject = new ReplaySubject<LoggingEventDataType>(1e3)

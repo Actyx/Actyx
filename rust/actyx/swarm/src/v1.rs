@@ -4,9 +4,6 @@ use crate::access::{
 };
 use crate::{AxTreeExt, BanyanStore, TT};
 use actyxos_sdk::{
-    service::snapshots::{
-        InvalidateSnapshotsRequest, RetrieveSnapshotRequest, RetrieveSnapshotResponse, StoreSnapshotRequest,
-    },
     Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetOrMin, Payload, StreamId, StreamNr, TagSet,
     Timestamp,
 };
@@ -18,13 +15,13 @@ use banyan::{
 };
 use fnv::FnvHashSet;
 use forest::FilteredChunk;
-use futures::future::BoxFuture;
 use futures::stream::BoxStream;
-use futures::{channel::mpsc, prelude::*};
+use futures::{channel::mpsc, future::BoxFuture, prelude::*};
+use libipld::{cbor::DagCborCodec, codec::Codec};
 use std::{collections::BTreeSet, convert::TryInto, ops::RangeInclusive, time::Duration};
 use trees::{
     axtrees::{AxKey, TagsQuery},
-    OffsetMapOrMax, PublishSnapshot, RootMap, StreamHeartBeat,
+    OffsetMapOrMax, PublishHeartbeat, RootMap, StreamHeartBeat,
 };
 
 fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> {
@@ -68,7 +65,7 @@ impl BanyanStore {
             .ipfs
             .subscribe(&topic)
             .unwrap()
-            .filter_map(|msg| future::ready(serde_cbor::from_slice::<PublishSnapshot>(msg.as_slice()).ok()))
+            .filter_map(|msg| future::ready(DagCborCodec.decode::<PublishHeartbeat>(msg.as_slice()).ok()))
             .for_each(move |heartbeat| {
                 tracing::debug!("{} received heartbeat", self.ipfs().local_node_name());
                 store.received_root_map(heartbeat.node, heartbeat.lamport, heartbeat.roots)
@@ -81,13 +78,13 @@ impl BanyanStore {
         let lamport = LamportTimestamp::from(self.0.index_store.lock().lamport());
         let roots = self.0.maps.lock().root_map(node);
         let timestamp = Timestamp::now();
-        let msg = PublishSnapshot {
+        let msg = PublishHeartbeat {
             node,
             lamport,
             timestamp,
             roots,
         };
-        let blob = serde_cbor::to_vec(&msg).unwrap();
+        let blob = DagCborCodec.encode(&msg).unwrap();
         let _ = self.0.ipfs.publish(topic, blob);
         future::ready(())
     }
@@ -327,39 +324,5 @@ pub trait HighestSeen: Clone + Send + Unpin + Sync + 'static {
 impl HighestSeen for BanyanStore {
     fn stream(&self) -> stream::BoxStream<'static, OffsetMapOrMax> {
         self.0.highest_seen.new_observer().boxed()
-    }
-}
-
-pub trait SnapshotStore: Clone + Send + Unpin + Sync + 'static {
-    fn store_snapshot<'a>(&self, req: StoreSnapshotRequest) -> BoxFuture<'a, Result<bool>>;
-
-    fn invalidate_snapshots<'a>(&self, req: InvalidateSnapshotsRequest) -> BoxFuture<'a, Result<()>>;
-
-    fn retrieve_snapshot<'a>(
-        &self,
-        req: RetrieveSnapshotRequest,
-    ) -> BoxFuture<'a, Result<Option<RetrieveSnapshotResponse>>>;
-
-    fn invalidate_all_snapshots<'a>(&self) -> BoxFuture<'a, Result<()>>;
-}
-
-impl SnapshotStore for BanyanStore {
-    fn store_snapshot<'a>(&self, req: StoreSnapshotRequest) -> BoxFuture<'a, Result<bool>> {
-        future::ready(self.0.index_store.lock().store_snapshot(req)).boxed()
-    }
-
-    fn invalidate_snapshots<'a>(&self, req: InvalidateSnapshotsRequest) -> BoxFuture<'a, Result<()>> {
-        future::ready(self.0.index_store.lock().invalidate_snapshots(req)).boxed()
-    }
-
-    fn retrieve_snapshot<'a>(
-        &self,
-        req: RetrieveSnapshotRequest,
-    ) -> BoxFuture<'a, Result<Option<RetrieveSnapshotResponse>>> {
-        future::ready(self.0.index_store.lock().retrieve_snapshot(req)).boxed()
-    }
-
-    fn invalidate_all_snapshots<'a>(&self) -> BoxFuture<'a, Result<()>> {
-        future::ready(self.0.index_store.lock().invalidate_all_snapshots()).boxed()
     }
 }

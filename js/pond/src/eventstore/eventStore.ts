@@ -6,7 +6,7 @@
  */
 import { Observable } from 'rxjs'
 import { Where } from '../tagging'
-import { EventKey, Milliseconds, SourceId } from '../types'
+import { EventKey, Milliseconds, NodeId } from '../types'
 import { mockEventStore } from './mockEventStore'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import { testEventStore, TestEventStore } from './testEventStore'
@@ -14,6 +14,7 @@ import {
   AllEventsSortOrder,
   ConnectivityStatus,
   Events,
+  OffsetMap,
   OffsetMapWithDefault,
   PersistedEventsSortOrder,
   UnstoredEvents,
@@ -23,14 +24,15 @@ import { WebsocketEventStore } from './websocketEventStore'
 /**
  * Get the store's source id.
  */
-export type RequestSourceId = () => Observable<SourceId>
+export type RequestNodeId = () => Observable<NodeId>
 
 /**
  * Get the store's swarm connectivity status.
  * That is: Do we know about other nodes receiving the events we create?
  */
 export type RequestConnectivity = (
-  specialSources: ReadonlyArray<SourceId>,
+  // FIXME: Rename this argument (if we keep it in v2)
+  specialSources: ReadonlyArray<NodeId>,
   hbHistDelayMicros: number,
   reportEvery: Milliseconds,
   currentPsnHistoryDelay: number,
@@ -42,7 +44,7 @@ export type RequestConnectivity = (
  * If PSN=2 of some source never reaches our store, that source’s present will never progress beyond PSN=1 for our store.
  * Nor will it expose us to those events that lie after the gap.
  */
-export type RequestPresent = () => Observable<OffsetMapWithDefault>
+export type RequestOffsets = () => Promise<OffsetMap>
 
 /**
  * Request the highest seen offsets from the store, not all of which may be available (gapless) yet.
@@ -50,7 +52,7 @@ export type RequestPresent = () => Observable<OffsetMapWithDefault>
  * 'Highest seen' cannot be used to drive logic which queries events, because the store does not deliver
  * across PSN gaps, while 'highest seen' reports highest seen irregardless of gaps.
  */
-export type RequestHighestSeen = () => Observable<OffsetMapWithDefault>
+export type RequestHighestSeen = () => Promise<OffsetMap>
 
 /**
  * This method is only concerned with already persisted events, so it will always return a finite (but possibly large)
@@ -112,8 +114,8 @@ export type RequestPersistEvents = (events: UnstoredEvents) => Observable<Events
  */
 
 export type EventStore = {
-  readonly sourceId: SourceId
-  readonly present: RequestPresent
+  readonly nodeId: NodeId
+  readonly offsets: RequestOffsets
   readonly highestSeen: RequestHighestSeen
   readonly persistedEvents: RequestPersistedEvents
   readonly allEvents: RequestAllEvents
@@ -124,22 +126,22 @@ export type EventStore = {
 const noopEventStore: EventStore = {
   allEvents: () => Observable.empty(),
   persistedEvents: () => Observable.empty(),
-  present: () => Observable.of({ psns: {}, default: 'max' as 'max' }),
-  highestSeen: () => Observable.of({ psns: {}, default: 'max' as 'max' }),
+  offsets: () => Promise.resolve({}),
+  highestSeen: () => Promise.resolve({}),
   persistEvents: () => Observable.empty(),
-  sourceId: SourceId.of('NoopSourceId'),
+  nodeId: NodeId.of('NoopSourceId'),
   connectivityStatus: () => Observable.empty(),
 }
 
 export const EventStore: {
   noop: EventStore
-  ws: (multiplexedWebsocket: MultiplexedWebsocket, sourceId: SourceId) => EventStore
+  ws: (multiplexedWebsocket: MultiplexedWebsocket, nodeId: NodeId) => EventStore
   mock: () => EventStore
-  test: (sourceId?: SourceId, eventChunkSize?: number) => TestEventStore
+  test: (nodeId?: NodeId, eventChunkSize?: number) => TestEventStore
 } = {
   noop: noopEventStore,
-  ws: (multiplexedWebsocket: MultiplexedWebsocket, sourceId: SourceId) =>
-    new WebsocketEventStore(multiplexedWebsocket, sourceId),
+  ws: (multiplexedWebsocket: MultiplexedWebsocket, nodeId: NodeId) =>
+    new WebsocketEventStore(multiplexedWebsocket, nodeId),
   mock: mockEventStore,
   test: testEventStore,
 }

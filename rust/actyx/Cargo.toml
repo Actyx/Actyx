@@ -7,7 +7,7 @@ members = [
   "ax",
   "ax-config",
   "ax-futures-util",
-  "ax-os-settings",
+  "settings",
   "crypto",
   "libp2p-streaming-response",
   "logsvcd",

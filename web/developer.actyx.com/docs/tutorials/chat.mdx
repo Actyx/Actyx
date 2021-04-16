@@ -41,6 +41,7 @@ import { Tabs } from '../../src/components'
 <Tabs>
 <Windows>
 
+
 - Download [Actyx for Windows](https://axartifacts.blob.core.windows.net/artifacts/e6ce4c267b1afde174b63745000127f725025750/windows-binaries/windows-x86_64/ActyxOS-Installer.exe)
 - Double click and run through the installer
 - Start Actyx via the Start Menu; a tray icon will appear
@@ -52,6 +53,7 @@ If you have any problems check out the [Actyx installation guide](../how-to/loca
 </Windows>
 <Linux>
 
+
 - Download Actyx for Linux ([64 bit](https://axartifacts.blob.core.windows.net/artifacts/feea217d729d06224838c4d2fcf35ba51c87c64e/linux-binaries/linux-x86_64/actyxos-linux), [ARM 64 bit](https://axartifacts.blob.core.windows.net/artifacts/feea217d729d06224838c4d2fcf35ba51c87c64e/linux-binaries/linux-aarch64/actyxos-linux))
 - Open a terminal, navigate to your downloads folder and run the following command `chmod +x actyxos-linux; ./actyxos-linux`
 
@@ -61,6 +63,7 @@ If you have any problems check out the [Actyx installation guide](../how-to/loca
 
 </Linux>
 <Mac>
+
 
 - Download [Actyx for Mac](https://axartifacts.blob.core.windows.net/artifacts/0010_manual_actyxos-mac-1.1.2/actyxos-mac)
 - Open a terminal and run the following command `cd ~/Downloads; chmod +x actyxos-mac; ./actyxos-mac`
@@ -72,6 +75,7 @@ If you have any problems check out the [Actyx installation guide](../how-to/loca
 </Mac>
 </Tabs>
 
+
 <br />
 
 ### Set up the project
@@ -82,35 +86,27 @@ We are now going to set up a simple web app project using [Parcel](https://parce
 
 In that directory create a file called `package.json` and add the following content:
 
-<!--
-```json file=../samples/chat-app-tutorial/package.json
+```json file=../../samples/chat-app-tutorial/package.json
 
 ```
--->
 
 Create another file called `tsconfig.json` with the following content:
 
-<!--
-```json file=../samples/chat-app-tutorial/tsconfig.json
+```json file=../../samples/chat-app-tutorial/tsconfig.json
 
 ```
--->
 
 Now create a file called `index.html` and add the following:
 
-<!--
-```html file=../samples/chat-app-tutorial/index-1.html
+```html file=../../samples/chat-app-tutorial/index-1.html
 
 ```
--->
 
 Finally, create a file named `index.ts` with the following content:
 
-<!--
-```ts file=../samples/chat-app-tutorial/index-1.ts
+```ts file=../../samples/chat-app-tutorial/index-1.ts
 
 ```
--->
 
 To test that everything works, open a terminal, navigate to the `chat` directory and run `npm install` and then `npm run start`. This is what you should see in your terminal.
 
@@ -156,27 +152,21 @@ The way to implement this using Actyx is to write a so-called twin. A twin is a 
 
 Let's start by defining types for the chat twin's state and the events it can receive. In this case, we have one type of event which is simply a message (string). The state of the twin is an array of strings. In the `index.ts` file, add the following two lines of code:
 
-<!--
-```ts file=../samples/chat-app-tutorial/index.ts#L3:L4
+```ts file=../../samples/chat-app-tutorial/index.ts#L3-L4
 
 ```
--->
 
 When a twin first starts up, it won't have any messages in memory. So let's give it an empty array as the initial state:
 
-<!--
-```ts file=../samples/chat-app-tutorial/index.ts#L6
+```ts file=../../samples/chat-app-tutorial/index.ts#L6
 
 ```
--->
 
 Now to the chat twin's logic, i.e. how to calculate the chat state, which we will show to the user, from the events we have received. We implement it as a so-called `onEvent` function. This function simply adds any message it received as a `ChatEvent` to our `ChatState`:
 
-<!--
-```ts file=../samples/chat-app-tutorial/index.ts#L8:L11
+```ts file=../../samples/chat-app-tutorial/index.ts#L8-L11
 
 ```
--->
 
 This is the complete chat logic. Let's now turn this into a fish.
 
@@ -190,19 +180,15 @@ A _fish_, aka twin, is defined as an object with a couple of properties. You mus
 
 First, add the following imports to the top of the `index.ts` file:
 
-<!--
-```ts file=../samples/chat-app-tutorial/index.ts#L1
+```ts file=../../samples/chat-app-tutorial/index.ts#L1
 
 ```
--->
 
 Now that we have done that, we create the tag for our chat messages and then define the fish itself:
 
-<!--
-```ts file=../samples/chat-app-tutorial/index.ts#L13:L19
+```ts file=../../samples/chat-app-tutorial/index.ts#L13-L19
 
 ```
--->
 
 That's it. You can now import this fish into any application and it will automatically be synchronized across your network.
 
@@ -212,11 +198,9 @@ Lastly, we need to build a user interface and hook up our fish. Let's implement 
 
 Open up the `index.html` file and adjust the contents of the `head` and `body` sections as follows:
 
-<!--
-```html file=../samples/chat-app-tutorial/index.html
+```html file=../../samples/chat-app-tutorial/index.html
 
 ```
--->
 
 The last thing we have to do is to hook up the user interface to the fish. We want to
 
@@ -225,11 +209,9 @@ The last thing we have to do is to hook up the user interface to the fish. We wa
 
 In the `index.ts` file, add the following code:
 
-<!--
-```ts file=../samples/chat-app-tutorial/index.ts#L21:L45
+```ts file=../../samples/chat-app-tutorial/index.ts#L21-L45
 
 ```
--->
 
 To test that everything works navigate to the `chat` directory, run `npm run start` and open [http://localhost:1234](http://localhost:1234). You should now see the chat app.
 
@@ -258,7 +240,7 @@ We hope that you are now starting to experience the power of local-first coopera
 
 ## Download the code
 
-You can download the complete code for this tutorial from GitHub.
+You can download the complete code for this tutorial from GitHub [here](https://github.com/Actyx/chat-app-tutorial).
 
 <!-- TODO NKI fix this link
 <DownloadLink
@@ -275,7 +257,7 @@ You can download the complete code for this tutorial from GitHub.
 - Dive into how it works with the Conceptual Guides
 
 :::note Join our Discord chat
-Feel free to join our [Actyx Developer Chat](https://discord.gg/262yJhc) on Discord. We would love to hear about what you want to build on the Actyx platform.
+Feel free to join our [Actyx Developer Chat](https://discord.gg/262yJhc) on Discord. We would love to hear about what you want to build on the Actyx Platform.
 :::
 
 <!-- markdownlint-disable MD025 -->

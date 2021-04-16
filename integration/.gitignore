@@ -4,3 +4,4 @@
 !.vscode
 /temp
 /logs
+fixtures/test-custom-actyxos-setting.yml

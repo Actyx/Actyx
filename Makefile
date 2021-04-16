@@ -67,6 +67,9 @@ export VAULT_ADDR ?= https://vault.actyx.net
 export VAULT_TOKEN ?= $(shell VAULT_ADDR=$(VAULT_ADDR) vault login -token-only -method aws role=ops-travis-ci)
 endif
 
+# Use docker run -ti only if the input device is a TTY (so that Ctrl+C works)
+export DOCKER_FLAGS ?= $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
+
 # The stable image version is the git commit hash inside `Actyx/Cosmos`, with
 # which the respective images was built. Whenever the build images (inside
 # ops/docker/images/{buildrs,musl}/Dockerfile) are modified (meaning built and
@@ -224,6 +227,7 @@ validate-actyxos-node-manager:
 	  -v `pwd`:/src \
 	  -w /src/misc/actyxos-node-manager \
 	  --rm actyx/util:windowsinstallercreator-x64-latest \
+	  $(DOCKER_FLAGS) \
 	  bash -c "npm install"
 
 validate-actyx-win-installer: validate-actyxos-node-manager
@@ -322,6 +326,7 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
 	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  --rm \
+	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
 	  cargo --locked build --release --bin $$(basename $$*)
 endef
@@ -347,6 +352,7 @@ $(soTargetPatterns): cargo-init make-always
 	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
 	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  --rm \
+	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
 	  cargo --locked build -p node-ffi --lib --release --target $(TARGET)
 
@@ -363,6 +369,7 @@ jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnod
 	  -v `pwd`:/src \
 	  -w /src/jvm/os-android \
 	  --rm \
+	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
       ./gradlew ktlintCheck build assembleRelease androidGitVersion
 
@@ -376,7 +383,9 @@ misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/windows-x
 	docker run \
 	  -v `pwd`:/src \
 	  -w /src/misc/actyxos-node-manager \
-	  --rm actyx/util:windowsinstallercreator-x64-latest \
+	  --rm \
+	  $(DOCKER_FLAGS) \
+	  actyx/util:windowsinstallercreator-x64-latest \
 	  bash -c "npm install && npm run package -- --platform win32 --arch x64"
 
 dist/bin/windows-x86_64/actyxos-node-manager.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64
@@ -398,6 +407,7 @@ dist/bin/windows-x86_64/Actyx-Installer.exe: misc/actyxos-node-manager/out/Actyx
 	  -e PRODUCT_NAME=Actyx \
 	  -e INSTALLER_NAME='Actyx-Installer' \
 	  --rm \
+	  $(DOCKER_FLAGS) \
 	  actyx/util:windowsinstallercreator-x64-latest \
 	  ./build.sh
 

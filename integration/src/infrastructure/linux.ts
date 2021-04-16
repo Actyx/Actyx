@@ -220,6 +220,14 @@ export const forwardPortsAndBuildClients = async (
     proc.kill('SIGTERM')
   }
 
-  const _private = { shutdown, axBinaryPath, axHost, apiConsole, apiEvent, apiPond }
+  const _private = {
+    shutdown,
+    axBinaryPath,
+    axHost,
+    apiConsole,
+    apiEvent,
+    apiPond,
+    apiSwarmPort: 4001,
+  }
   return { ax, actyxOS, _private, name: nodeName, target, ...theRest }
 }

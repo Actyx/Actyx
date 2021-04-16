@@ -19,7 +19,7 @@ const isSortedAsc = (data: string[]): boolean => {
   return true
 }
 
-describe('Pond', () => {
+describe.skip('Pond', () => {
   // Assert that events are always fed to Fish in the correct order on every node, at any time,
   // and also assert that all events reach all Fish eventually.
   test('ordering / time travel', async () => {
@@ -147,7 +147,7 @@ const concurrentOrderingTest = async (
 ): Promise<string[]> => {
   const where = padSubWithDummies(streamTags)
 
-  const { sourceId } = pond.info()
+  const { nodeId } = pond.info()
 
   const f: Fish<string[], unknown> = {
     where,
@@ -156,7 +156,7 @@ const concurrentOrderingTest = async (
       state.push(metadata.eventId)
       return state
     },
-    fishId: FishId.of('orderingtest', fishName(sourceId, where), 1),
+    fishId: FishId.of('orderingtest', fishName(nodeId, where), 1),
   }
 
   const expectedSum = numNodes * eventsPerNode
@@ -198,7 +198,7 @@ const sequenceCausalityTest = (numNodes: number, streamName: string) => async (
 
   const where = padSubWithDummies(tags)
 
-  const { sourceId } = pond.info()
+  const { nodeId } = pond.info()
 
   const f: Fish<string[], Event> = {
     where,
@@ -216,7 +216,7 @@ const sequenceCausalityTest = (numNodes: number, streamName: string) => async (
       state.push(metadata.eventId)
       return state
     },
-    fishId: FishId.of('seqtest', fishName(sourceId, where), 1),
+    fishId: FishId.of('seqtest', fishName(nodeId, where), 1),
   }
 
   const eventsPerNode = 1000

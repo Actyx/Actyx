@@ -60,6 +60,7 @@ export type ActyxOSNode = {
     apiEvent: string
     apiConsole: string
     apiPond: string
+    apiSwarmPort: number
   }
 }
 

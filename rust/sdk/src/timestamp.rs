@@ -21,6 +21,7 @@ use std::{
 
 use chrono::{DateTime, TimeZone, Utc};
 use derive_more::{From, Into};
+use libipld::DagCbor;
 use serde::{Deserialize, Serialize};
 
 /// Microseconds since the UNIX epoch, without leap seconds and in UTC
@@ -36,8 +37,11 @@ use serde::{Deserialize, Serialize};
 /// assert_eq!(timestamp.as_i64() * 1000, date_time.timestamp_nanos());
 /// assert_eq!(Timestamp::from(date_time), timestamp);
 /// ```
-#[derive(Copy, Clone, Debug, Default, From, Into, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Copy, Clone, Debug, Default, From, Into, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, DagCbor,
+)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
+#[ipld(repr = "value")]
 pub struct Timestamp(u64);
 
 impl Timestamp {
@@ -97,8 +101,11 @@ impl Add<u64> for Timestamp {
 ///
 /// - an event is emitted
 /// - a heartbeat is received
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default, From, Into)]
+#[derive(
+    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default, From, Into, DagCbor,
+)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
+#[ipld(repr = "value")]
 pub struct LamportTimestamp(u64);
 
 impl LamportTimestamp {
@@ -127,5 +134,23 @@ impl Add<u64> for LamportTimestamp {
     type Output = LamportTimestamp;
     fn add(self, rhs: u64) -> Self::Output {
         Self(self.0 + rhs)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use libipld::{cbor::DagCborCodec, codec::assert_roundtrip, ipld};
+
+    #[test]
+    fn timestamp_libipld() {
+        assert_roundtrip(DagCborCodec, &Timestamp::from(0), &ipld!(0));
+        assert_roundtrip(DagCborCodec, &Timestamp::from(1), &ipld!(1));
+    }
+
+    #[test]
+    fn lamport_timestamp_libipld() {
+        assert_roundtrip(DagCborCodec, &LamportTimestamp::from(0), &ipld!(0));
+        assert_roundtrip(DagCborCodec, &LamportTimestamp::from(1), &ipld!(1));
     }
 }

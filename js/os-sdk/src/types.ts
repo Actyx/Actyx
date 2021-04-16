@@ -735,10 +735,6 @@ export enum LogSeverity {
  * data points such as the node's ID or display name. The Console Service also
  * adds the timestamp unless you have specifically provided it.
  *
- * Have a look at the Console Service's
- * [API documentation](/docs/os/api/console-service#structured-vs-unstructured-logs)
- * for more details, including how ActyxOS stores log entries internally.
- *
  * The most basic [[LogEntryDraft]] would look as follows:
  *
  * ```typescript
@@ -881,8 +877,7 @@ export type SimpleLoggerOpts = {
 
 /**
  * This interface specifies the functionality that this SDK offers for
- * interacting with the ActyxOS [Console Service](
- * https://developer.actyx.com/docs/os/api/console-service).
+ * interacting with the ActyxOS Console Service.
  */
 export interface ConsoleServiceClient {
   /**

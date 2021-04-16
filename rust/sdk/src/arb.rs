@@ -23,10 +23,10 @@ use quickcheck::{Arbitrary, Gen};
 
 impl Arbitrary for NodeId {
     fn arbitrary(g: &mut Gen) -> Self {
+        let x = u128::arbitrary(g);
         let mut bytes = [0u8; 32];
-        for b in &mut bytes {
-            *b = u8::arbitrary(g);
-        }
+        bytes[0..16].copy_from_slice(&x.to_be_bytes());
+        bytes[16..32].copy_from_slice(&x.to_le_bytes());
         NodeId(bytes)
     }
 }

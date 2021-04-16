@@ -1,5 +1,4 @@
 pub mod access;
-mod connectivity;
 pub mod convert;
 mod discovery;
 pub mod metrics;
@@ -15,15 +14,13 @@ mod tests;
 mod v1;
 mod v2;
 
-pub use crate::connectivity::{Connectivity, ConnectivityCalculator};
 pub use crate::node_identity::NodeIdentity;
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
-pub use crate::v1::{EventStore, HighestSeen, Present, SnapshotStore};
+pub use crate::v1::{EventStore, HighestSeen, Present};
 pub use ax_config::StoreConfig;
 use util::formats::NodeErrorContext;
 
-use crate::connectivity::ConnectivityState;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
 use crate::streams::{OwnStreamInner, ReplicatedStreamInner, StreamMaps};
@@ -117,8 +114,6 @@ struct BanyanStoreInner {
     highest_seen: Variable<OffsetMapOrMax>,
     /// lamport timestamp for publishing to internal streams
     lamport: Variable<LamportTimestamp>,
-    /// fields related to the connectivity mechanism
-    connectivity: ConnectivityState,
     /// tasks of the stream manager.
     tasks: Mutex<Vec<tokio::task::JoinHandle<()>>>,
 }
@@ -242,10 +237,16 @@ impl BanyanStore {
             ipfs.add_external_address(addr);
         }
         for mut addr in cfg.ipfs_node.bootstrap {
+            let addr_orig = addr.clone();
             if let Some(Protocol::P2p(peer_id)) = addr.pop() {
                 let peer_id =
                     PeerId::from_multihash(peer_id).map_err(|_| anyhow::anyhow!("invalid bootstrap peer id"))?;
-                ipfs.dial_address(&peer_id, addr)?;
+                if peer_id == ipfs.local_peer_id() {
+                    tracing::warn!("Not dialing configured bootstrap node {} as it's myself", addr_orig);
+                } else {
+                    ipfs.dial_address(&peer_id, addr)
+                        .with_context(|| format!("Dialing bootstrap node {}", addr_orig))?;
+                }
             } else {
                 return Err(anyhow::anyhow!("invalid bootstrap address"));
             }
@@ -257,7 +258,6 @@ impl BanyanStore {
     pub fn new(ipfs: Ipfs, config: Config, index_store: SqliteIndexStore) -> Result<Self> {
         let store = SqliteStore::wrap(ipfs.clone());
         let branch_cache = BranchCache::<TT>::new(config.branch_cache);
-        let connectivity = ConnectivityState::new();
         let node_id = config.node_id;
         let index_store = Mutex::new(index_store);
         let gossip_v2 = v2::GossipV2::new(ipfs.clone(), node_id, config.topic.clone());
@@ -271,7 +271,6 @@ impl BanyanStore {
             present: Default::default(),
             highest_seen: Default::default(),
             forest: Forest::new(store, branch_cache, config.crypto_config, config.forest_config),
-            connectivity,
             tasks: Default::default(),
         }));
         me.load_known_streams()?;

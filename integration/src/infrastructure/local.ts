@@ -3,40 +3,39 @@ import execa from 'execa'
 import { ensureDir, remove } from 'fs-extra'
 import path from 'path'
 import { CLI } from '../cli'
-import { portInUse } from './checkPort'
+import { getFreePort } from './checkPort'
 import { mkProcessLogger } from './mkProcessLogger'
 import { actyxOsDockerImage, currentActyxOsBinary, currentAxBinary, settings } from './settings'
 import { ActyxOSNode, Target } from './types'
-
-let alreadyRunning: string | undefined = undefined
 
 export const mkNodeLocalProcess = async (
   nodeName: string,
   target: Target,
   logger: (s: string) => void,
 ): Promise<ActyxOSNode> => {
-  const workingDir = path.resolve(settings().tempDir, 'actyx-data')
+  const workingDir = path.resolve(settings().tempDir, `${nodeName}-actyx-data`)
   await remove(workingDir)
   await ensureDir(workingDir)
   const binary = await currentActyxOsBinary()
-  if (alreadyRunning !== undefined) {
-    console.log(
-      'node %s cannot start: local ActyxOS process already running for node %s',
-      nodeName,
-      alreadyRunning,
-    )
-    throw new Error('duplicate usage of local process')
-  }
-  alreadyRunning = nodeName
+
   console.log('node %s starting locally: %s in %s', nodeName, binary, workingDir)
 
-  for (const port of [4001, 4454, 4458]) {
-    if (await portInUse(port)) {
-      throw new Error(`port ${port} is already in use`)
-    }
-  }
+  const [port4001, port4454, port4458] = await Promise.all([0, 0, 0].map(() => getFreePort()))
 
-  const proc = execa(binary, ['--working-dir', workingDir], { env: { RUST_BACKTRACE: '1' } })
+  const proc = execa(
+    binary,
+    [
+      '--working-dir',
+      workingDir,
+      '--bind-admin',
+      port4458.toString(),
+      '--bind-api',
+      port4454.toString(),
+      '--bind-swarm',
+      port4001.toString(),
+    ],
+    { env: { RUST_BACKTRACE: '1' } },
+  )
   const shutdown = async () => {
     console.log('node %s killing process', nodeName)
     proc.kill('SIGTERM')
@@ -66,15 +65,16 @@ export const mkNodeLocalProcess = async (
     name: nodeName,
     target,
     host: 'process',
-    ax: await CLI.build('localhost:4458', axBinaryPath),
+    ax: await CLI.build(`localhost:${port4458}`, axBinaryPath),
     actyxOS: Client(opts),
     _private: {
       shutdown,
       axBinaryPath,
-      axHost: 'localhost:4458',
+      axHost: `localhost:${port4458}`,
       apiConsole: opts.Endpoints.ConsoleService.BaseUrl,
       apiEvent: opts.Endpoints.EventService.BaseUrl,
-      apiPond: 'ws://localhost:4454/api/v2/events?token=ok',
+      apiPond: `ws://localhost:${port4454}/api/v2/events?token=ok`,
+      apiSwarmPort: port4001,
     },
   }
 }
@@ -147,6 +147,7 @@ export const mkNodeLocalDocker = async (
         apiConsole,
         apiEvent,
         apiPond: `ws://localhost:${port(4454)}/api/v2/events?token=ok`,
+        apiSwarmPort: 4001,
       },
     }
   } catch (err) {

@@ -28,15 +28,9 @@ The return value of this command will always be either null or schema conformant
 Here are some examples of using the `ax settings get` command:
 
 ```text title="Example Usage"
-# Get the settings for the node with settings scope com.actyx.os at 10.2.3.23
-ax settings get --local com.actyx.os 10.2.3.23
+# Get the settings for the node with settings scope com.actyx at 10.2.3.23
+ax settings get --local com.actyx 10.2.3.23
 
 # Just get the displayName setting
-ax settings get --local com.actyx.os/general/displayName 10.2.3.23
-
-# Get the settings for the app with settings scope com.example.app from node at 10.2.3.23
-ax settings get --local com.example.app 10.2.3.23
-
-# Just get the specific setting setting1
-ax settings get --local com.example.app/setting1 10.2.3.23
+ax settings get --local com.actyx/admin/displayName 10.2.3.23
 ```

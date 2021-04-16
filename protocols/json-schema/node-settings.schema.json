@@ -1,30 +1,24 @@
 {
   "$schema": "http://json-schema.org/draft-06/schema#",
-  "$id": "https://developer.actyx.com/schemas/os/node-settings.schema.json",
+  "$id": "https://developer.actyx.com/schemas/node-settings.schema.json",
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "general": {
-      "$ref": "#/definitions/General"
+    "swarm": {
+      "$ref": "#/definitions/Swarm"
     },
     "licensing": {
       "$ref": "#/definitions/Licensing"
     },
-    "services": {
+    "admin": {
+      "$ref": "#/definitions/Admin"
+    },
+    "api": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "eventService": {
-          "$ref": "#/definitions/Services/EventService"
-        },
-        "consoleService": {
-          "$ref": "#/definitions/Services/ConsoleService"
-        },
-        "dockerRuntime": {
-          "$ref": "#/definitions/Services/DockerRuntime"
-        },
-        "webViewRuntime": {
-          "$ref": "#/definitions/Services/WebViewRuntime"
+        "events": {
+          "$ref": "#/definitions/API/Events"
         }
       }
     }
@@ -43,44 +37,65 @@
       "MultiAddr": {
         "type": "string"
       },
-      "LicenseKey": {
+      "NodeLicenseKey": {
         "type": "string",
         "minLength": 64
+      },
+      "AppLicenseKey": {
+        "type": "string",
+        "minLength": 100
+      },
+      "UserKey": {
+        "type": "string",
+        "minLength": 45,
+        "maxLength": 45
       }
     },
     "Composite": {
       "LogLevel": {
         "type": "string",
         "enum": [
-          "TRACE",
           "DEBUG",
           "WARN",
           "INFO",
-          "ERROR",
-          "FATAL"
+          "ERROR"
         ],
         "default": "INFO"
       },
-      "License": {
+      "NodeLicense": {
         "oneOf": [
           {
-            "$ref": "#/definitions/Basic/LicenseKey"
+            "$ref": "#/definitions/Basic/NodeLicenseKey"
           },
           {
             "type": "string",
             "const": "development"
           }
-        ],
-        "default": "development"
+        ]
+      },
+      "AppLicense": {
+        "oneOf": [
+          {
+            "$ref": "#/definitions/Basic/AppLicenseKey"
+          },
+          {
+            "type": "string",
+            "const": "testing"
+          }
+        ]
       }
     },
-    "General": {
+    "Swarm": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "swarmKey": {
           "$ref": "#/definitions/Basic/Key",
           "default": "L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCmQ3YjBmNDFjY2ZlYTEyM2FkYTJhYWI0MmY2NjRjOWUyNWUwZWYyZThmNGJjNjJlOTg3NmE3NDU1MTc3ZWQzOGIK"
+        },
+        "topic": {
+          "$ref": "#/definitions/Basic/NonEmptyString",
+          "default": "default-topic"
         },
         "bootstrapNodes": {
           "type": "array",
@@ -100,7 +115,13 @@
           "uniqueItems": true,
           "default": [],
           "description": "Manually configured addresses to announce. These must be multiaddresses without peer id, e.g. /ip4/1.2.3.4/tcp/4001"
-        },
+        }
+      }
+    },
+    "Admin": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
         "displayName": {
           "$ref": "#/definitions/Basic/NonEmptyString",
           "default": "Default Node"
@@ -109,24 +130,19 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "os": {
-              "$ref": "#/definitions/Composite/LogLevel"
-            },
-            "apps": {
+            "node": {
               "$ref": "#/definitions/Composite/LogLevel"
             }
           }
         },
-        "authorizedKeys": {
+        "authorizedUsers": {
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 32,
-            "maxLength": 64
+            "$ref": "#/definitions/Basic/UserKey"
           },
-          "minItems": 0,
+          "default": [],
           "uniqueItems": true,
-          "default": []
+          "description": "Public keys of the users allowed to connect to the node."
         }
       }
     },
@@ -134,8 +150,8 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "os": {
-          "$ref": "#/definitions/Composite/License",
+        "node": {
+          "$ref": "#/definitions/Composite/NodeLicense",
           "default": "development"
         },
         "apps": {
@@ -144,22 +160,18 @@
             "pattern": "^(\\d|\\w|-|_)+(\\.(\\d|\\w|-|_)+)*$"
           },
           "additionalProperties": {
-            "$ref": "#/definitions/Composite/License"
+            "$ref": "#/definitions/Composite/AppLicense"
           },
           "description": "Key-value pairs where the key is an app's ID.",
           "default": {}
         }
       }
     },
-    "Services": {
-      "EventService": {
+    "API": {
+      "Events": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
-          "topic": {
-            "$ref": "#/definitions/Basic/NonEmptyString",
-            "default": "default-topic"
-          },
           "readOnly": {
             "type": "boolean",
             "default": false
@@ -169,28 +181,7 @@
             "additionalProperties": true
           }
         }
-      },
-      "BlobService": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {}
-      },
-      "ConsoleService": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {}
-      },
-      "DockerRuntime": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {}
-      },
-      "WebViewRuntime": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {}
       }
     }
   }
 }
-
