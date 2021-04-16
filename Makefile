@@ -228,7 +228,7 @@ validate-actyxos-node-manager:
 	  -w /src/misc/actyxos-node-manager \
 	  --rm actyx/util:windowsinstallercreator-x64-latest \
 	  $(DOCKER_FLAGS) \
-		bash -c "npm install"
+	  bash -c "npm install"
 
 validate-actyx-win-installer: validate-actyxos-node-manager
 
@@ -327,7 +327,7 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(DOCKER_FLAGS) \
-		$(image-$(word 3,$(subst -, ,$(TARGET)))) \
+	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
 	  cargo --locked build --release --bin $$(basename $$*)
 endef
 $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
@@ -353,7 +353,7 @@ $(soTargetPatterns): cargo-init make-always
 	  -v $(CARGO_HOME)/registry:/home/builder/.cargo/registry \
 	  --rm \
 	  $(DOCKER_FLAGS) \
-		actyx/util:buildrs-x64-$(IMAGE_VERSION) \
+	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
 	  cargo --locked build -p node-ffi --lib --release --target $(TARGET)
 
 # create these so that they belong to the current user (Docker would create as root)
@@ -370,7 +370,7 @@ jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnod
 	  -w /src/jvm/os-android \
 	  --rm \
 	  $(DOCKER_FLAGS) \
-		actyx/util:buildrs-x64-$(IMAGE_VERSION) \
+	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
       ./gradlew ktlintCheck build assembleRelease androidGitVersion
 
 dist/bin/actyx.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
@@ -384,8 +384,8 @@ misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/windows-x
 	  -v `pwd`:/src \
 	  -w /src/misc/actyxos-node-manager \
 	  --rm \
-		$(DOCKER_FLAGS) \
-		actyx/util:windowsinstallercreator-x64-latest \
+	  $(DOCKER_FLAGS) \
+	  actyx/util:windowsinstallercreator-x64-latest \
 	  bash -c "npm install && npm run package -- --platform win32 --arch x64"
 
 dist/bin/windows-x86_64/actyxos-node-manager.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64
@@ -408,7 +408,7 @@ dist/bin/windows-x86_64/Actyx-Installer.exe: misc/actyxos-node-manager/out/Actyx
 	  -e INSTALLER_NAME='Actyx-Installer' \
 	  --rm \
 	  $(DOCKER_FLAGS) \
-		actyx/util:windowsinstallercreator-x64-latest \
+	  actyx/util:windowsinstallercreator-x64-latest \
 	  ./build.sh
 
 # this will build the actyx docker image for all supported architectures. the
