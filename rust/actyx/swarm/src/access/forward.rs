@@ -1,5 +1,5 @@
 use super::{ConsumerAccessError, EventOrHeartbeat, EventSelection, EventStoreConsumerAccess, EventStreamOrError};
-use actyxos_sdk::{source_id, Event, LamportTimestamp, Payload, StreamId};
+use actyxos_sdk::{Event, LamportTimestamp, Payload, StreamId};
 use ax_futures_util::{prelude::*, stream::MergeOrdered};
 use futures::future::{ready, try_join_all, BoxFuture, Future, FutureExt, TryFutureExt};
 use futures::stream::{self, BoxStream, StreamExt};
@@ -15,29 +15,23 @@ enum EnvelopeOrTick {
 }
 
 impl EnvelopeOrTick {
-    pub fn from_store(ev: EventOrHeartbeat) -> Self {
-        match ev {
-            EventOrHeartbeat::Event(e) => EnvelopeOrTick::Envelope(e),
-            EventOrHeartbeat::Heartbeat(hb) => EnvelopeOrTick::Present(hb),
-        }
-    }
-    pub fn is_stop(&self) -> bool {
+    fn is_stop(&self) -> bool {
         matches!(self, EnvelopeOrTick::Stop)
     }
-    pub fn to_lamport(&self) -> LamportTimestamp {
+    fn to_lamport(&self) -> Option<LamportTimestamp> {
         match self {
-            EnvelopeOrTick::Envelope(env) => env.key.lamport,
-            EnvelopeOrTick::Tick(tick) => tick.lamport,
-            EnvelopeOrTick::Present(tick) => tick.lamport,
-            EnvelopeOrTick::Stop => LamportTimestamp::new(0),
+            EnvelopeOrTick::Envelope(env) => Some(env.key.lamport),
+            EnvelopeOrTick::Tick(tick) => Some(tick.lamport),
+            EnvelopeOrTick::Present(tick) => Some(tick.lamport),
+            EnvelopeOrTick::Stop => None,
         }
     }
-    pub fn to_stream_id(&self) -> StreamId {
+    fn to_stream_id(&self) -> Option<StreamId> {
         match self {
-            EnvelopeOrTick::Envelope(env) => env.key.stream,
-            EnvelopeOrTick::Tick(tick) => tick.stream,
-            EnvelopeOrTick::Present(tick) => tick.stream,
-            EnvelopeOrTick::Stop => source_id!("!").into(),
+            EnvelopeOrTick::Envelope(env) => Some(env.key.stream),
+            EnvelopeOrTick::Tick(tick) => Some(tick.stream),
+            EnvelopeOrTick::Present(tick) => Some(tick.stream),
+            EnvelopeOrTick::Stop => None,
         }
     }
 }
@@ -78,9 +72,11 @@ fn get_stream_for_stream_id(
                 // merge events and heartbeats from this stream
                 stream::select(
                     stream
-                        .map(EnvelopeOrTick::from_store)
-                        // inject stop token when done
-                        .chain(stream::iter(vec![EnvelopeOrTick::Stop])),
+                        .map(|eoh| match eoh {
+                            EventOrHeartbeat::Event(e) => EnvelopeOrTick::Envelope(e),
+                            EventOrHeartbeat::Heartbeat(hb) => EnvelopeOrTick::Present(hb),
+                        })
+                        .chain(stream::once(async { EnvelopeOrTick::Stop })), // inject stop token when done
                     store2.stream_last_seen(stream_id).map(EnvelopeOrTick::Tick),
                 )
                 // .inspect(move |x| println!("{} getting {:?}", stream, x))
@@ -103,10 +99,10 @@ fn hold_back_heartbeats_while_waiting_for_corresponding_events(
     let mut last_event: Option<StreamHeartBeat> = None;
     move |eot| {
         let mut res = Vec::<EnvelopeOrTick>::with_capacity(2);
-        match eot {
+        match &eot {
             EnvelopeOrTick::Envelope(env) => {
-                last_event = Some(StreamHeartBeat::from_event(&env));
-                res.push(EnvelopeOrTick::Envelope(env));
+                last_event = Some(StreamHeartBeat::from_event(env));
+                res.push(eot.clone());
             }
             // This is the store telling us that the subscribed event stream for this stream
             // has caught up with the “present”, we get this to account for the possibility
@@ -115,16 +111,16 @@ fn hold_back_heartbeats_while_waiting_for_corresponding_events(
             // including unblocking potentially waiting heartbeats.
             EnvelopeOrTick::Present(tick) => {
                 last_event = Some(tick.clone());
-                res.push(EnvelopeOrTick::Present(tick));
+                res.push(eot.clone());
             }
             EnvelopeOrTick::Tick(tick) => {
-                if last_heartbeat
-                    .as_ref()
-                    // always keep the newest heartbeat by Lamport, regardless of offset
-                    .map(|hb| hb.lamport < tick.lamport)
-                    .unwrap_or(true)
-                {
-                    last_heartbeat = Some(tick);
+                match last_heartbeat.as_ref() {
+                    Some(lhb) if lhb.lamport >= tick.lamport => {
+                        // always keep the newest heartbeat by Lamport, regardless of offset
+                    }
+                    _ => {
+                        last_heartbeat = Some(tick.clone());
+                    }
                 }
             }
             _ => (),
@@ -194,7 +190,7 @@ mod tests {
     use super::EnvelopeOrTick::*;
     use super::*;
     use crate::access::tests::*;
-    use actyxos_sdk::{tags, Expression, Offset, OffsetOrMin};
+    use actyxos_sdk::{language::Expression, tags, Offset, OffsetOrMin};
     use ax_futures_util::stream::Drainer;
     use futures::stream::Stream;
     use num_traits::Bounded;
@@ -262,7 +258,7 @@ mod tests {
     async fn should_deliver_bounded_stream() {
         let store = TestEventStore::new();
         let events = EventSelection::create(
-            "('upper:A' & 'lower:a') | 'upper:B'",
+            "FROM ('upper:A' & 'lower:a') | 'upper:B'",
             &[
                 (test_stream(1), OffsetOrMin::mk_test(40), OffsetOrMin::mk_test(70)),
                 (test_stream(2), OffsetOrMin::MIN, OffsetOrMin::mk_test(62)),
@@ -298,7 +294,7 @@ mod tests {
     async fn should_deliver_live_stream() {
         let store = TestEventStore::new();
         let events = EventSelection::create(
-            "('upper:A' & 'lower:a') | 'upper:B'",
+            "FROM ('upper:A' & 'lower:a') | 'upper:B'",
             &[
                 (test_stream(0), OffsetOrMin::mk_test(4), OffsetOrMin::mk_test(39)),
                 (test_stream(1), OffsetOrMin::mk_test(40), OffsetOrMin::MAX),
@@ -375,7 +371,7 @@ mod tests {
         from[2].1 = store.top_offset().into();
 
         let events = EventSelection::new(
-            "('upper:A' & 'lower:a') | 'upper:B' | 'upper:C'"
+            "FROM ('upper:A' & 'lower:a') | 'upper:B' | 'upper:C'"
                 .parse::<Expression>()
                 .unwrap()
                 .into(),

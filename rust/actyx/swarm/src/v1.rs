@@ -173,7 +173,7 @@ impl EventStoreConsumerAccess for BanyanStore {
         }
         let (trees, forest) = self.tree_stream(stream_id);
         let range = get_range_inclusive(&events);
-        let query = TagsQuery::new(events.subscription_set);
+        let query = TagsQuery::new(events.tag_subscriptions);
         // Used to signal the mixed in `heartbeats_from_latest` stream down
         // below to finish
         let (mut tx, rx) = mpsc::channel(1);
@@ -210,7 +210,7 @@ impl EventStoreConsumerAccess for BanyanStore {
         let stream_id = events.stream_id;
         let (trees, forest) = self.tree_stream(stream_id);
         let range = get_range_inclusive(&events);
-        let query = TagsQuery::new(events.subscription_set);
+        let query = TagsQuery::new(events.tag_subscriptions);
         future::ok(
             forest
                 .stream_trees_chunked_reverse(query, trees, range, &|_| {})

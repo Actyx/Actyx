@@ -8,7 +8,7 @@ pub fn stream(store: &impl EventStoreConsumerAccess, events: EventSelection) -> 
     let local_stream_ids = store.local_stream_ids();
     let maybe_limited_streams = events.get_bounded_nonempty_streams(&local_stream_ids);
 
-    let subs = events.subscription_set.clone();
+    let subs = events.tag_subscriptions.clone();
     // need our own clone of the store (lives 'static thanks to the trait’s bound)
     let store = store.clone();
 
@@ -37,7 +37,7 @@ pub fn stream(store: &impl EventStoreConsumerAccess, events: EventSelection) -> 
     } else {
         ready(Ok(store
             .stream_known_streams()
-            .filter(move |stream| ready(!(subs.only_local() && local_stream_ids.contains(stream))))
+            .filter(move |stream| ready(!subs.only_local() || local_stream_ids.contains(stream)))
             .map(move |stream_id| {
                 let events = events.for_stream(stream_id, store.local_stream_ids().contains(&stream_id));
                 store
@@ -72,7 +72,7 @@ mod tests {
     async fn should_deliver_requested_events_with_wildcard_subscription() {
         let store = TestEventStore::new();
         let events = EventSelection::create(
-            "'upper:A' & 'lower:a'",
+            "FROM 'upper:A' & 'lower:a'",
             &[(test_stream(4), OffsetOrMin::MIN, OffsetOrMin::MAX)],
         )
         .expect("cannot construct selection");
@@ -101,7 +101,7 @@ mod tests {
         let top_offset = store.top_offset();
         let top: OffsetOrMin = top_offset.into();
         let events = EventSelection::create(
-            "'upper:A' & 'lower:a'",
+            "FROM 'upper:A' & 'lower:a'",
             &[
                 (test_stream(1), OffsetOrMin::MIN, top),
                 (test_stream(2), OffsetOrMin::mk_test(10), top),
@@ -138,7 +138,7 @@ mod tests {
     async fn should_deliver_requested_events() {
         let store = TestEventStore::new();
         let events = EventSelection::create(
-            "('upper:A' & 'lower:a') | 'upper:B'",
+            "FROM ('upper:A' & 'lower:a') | 'upper:B'",
             &[
                 (test_stream(1), OffsetOrMin::mk_test(40), OffsetOrMin::mk_test(70)),
                 (test_stream(2), OffsetOrMin::MIN, OffsetOrMin::mk_test(62)),

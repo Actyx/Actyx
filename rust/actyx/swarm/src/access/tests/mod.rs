@@ -3,8 +3,8 @@ use crate::access::{
 };
 use ::trees::{StreamHeartBeat, TagSubscriptions};
 use actyxos_sdk::{
-    tags, Event, EventKey, Expression, LamportTimestamp, Metadata, NodeId, Offset, OffsetOrMin, Payload, StreamId, Tag,
-    TagSet, Timestamp,
+    language::Expression, tags, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetOrMin, Payload,
+    StreamId, Tag, TagSet, Timestamp,
 };
 use ax_futures_util::{
     prelude::*,
@@ -292,7 +292,7 @@ impl EventStoreConsumerAccess for TestEventStore {
             stream_id,
             from_exclusive,
             to_inclusive,
-            subscription_set: subs,
+            tag_subscriptions: subs,
         } = events;
 
         if from_exclusive >= to_inclusive {
@@ -347,7 +347,7 @@ impl EventStoreConsumerAccess for TestEventStore {
             stream_id,
             from_exclusive,
             to_inclusive,
-            subscription_set: subs,
+            tag_subscriptions: subs,
         } = events;
 
         if from_exclusive >= to_inclusive {
@@ -481,7 +481,7 @@ fn test_harness_should_deliver_last_seen() {
 async fn test_harness_should_filter_events_forward() {
     let store = TestEventStore::new();
     let stream_id = known_streams()[0];
-    let subs: TagSubscriptions = "'upper:A' & ('lower:a' | 'lower:b')"
+    let subs: TagSubscriptions = "FROM 'upper:A' & ('lower:a' | 'lower:b')"
         .parse::<Expression>()
         .unwrap()
         .into();
@@ -510,7 +510,7 @@ async fn test_harness_should_filter_events_forward() {
 async fn test_harness_should_filter_events_backward() {
     let store = TestEventStore::new();
     let stream_id = known_streams()[0];
-    let subs: TagSubscriptions = "'upper:A' & ('lower:a' | 'lower:b')"
+    let subs: TagSubscriptions = "FROM 'upper:A' & ('lower:a' | 'lower:b')"
         .parse::<Expression>()
         .unwrap()
         .into();
@@ -533,7 +533,7 @@ async fn test_harness_should_filter_events_backward() {
 async fn test_harness_should_deliver_events_forward_min_max() {
     let store = TestEventStore::new();
     let stream_id = known_streams()[0];
-    let subs: TagSubscriptions = "'upper:A' & ('lower:a' | 'lower:b')"
+    let subs: TagSubscriptions = "FROM 'upper:A' & ('lower:a' | 'lower:b')"
         .parse::<Expression>()
         .unwrap()
         .into();

@@ -3,43 +3,24 @@ use crate::{
     operation::{Filter, Operation, Select},
     value::Value,
 };
-use actyxos_sdk::{language, EventKey, TagSet};
+use actyxos_sdk::{language, EventKey};
 use cbor_data::Encoder;
-use std::collections::BTreeSet;
-use trees::{TagSubscription, TagSubscriptions};
 
-pub struct Query {
-    expr: language::Expression,
-    stages: Vec<Operation>,
+pub enum Query {
+    Expr(language::SimpleExpr),
+    Query(Vec<Operation>),
 }
 
 impl Query {
-    pub fn new(expr: language::Expression) -> Self {
-        let mut stages = vec![];
-        if let language::Expression::Query(q) = &expr {
-            for op in &q.ops {
-                match op {
-                    actyxos_sdk::language::Operation::Filter(f) => {
-                        stages.push(Operation::Filter(Filter::init(f.clone())))
-                    }
-                    actyxos_sdk::language::Operation::Select(s) => {
-                        stages.push(Operation::Select(Select::init(s.clone())))
-                    }
-                }
-            }
-        }
-        Self { expr, stages }
-    }
-
     pub fn initial_result(&self) -> Vec<Value> {
-        match &self.expr {
-            language::Expression::Simple(expr) => {
+        match &self {
+            Query::Expr(expr) => {
                 let ret = Context::new(EventKey::default())
                     .eval(expr)
                     .unwrap_or_else(|err| Value::new(EventKey::default(), |b| b.encode_str(&*err.to_string())));
                 vec![ret]
             }
-            language::Expression::Query(_) => vec![],
+            Query::Query(_) => vec![],
         }
     }
 
@@ -52,86 +33,32 @@ impl Query {
                 vec![input]
             }
         }
-        rec(&Context::new(input.sort_key), input, self.stages.iter())
-    }
-}
-
-// invariant: none of the sets are ever empty
-struct Dnf(BTreeSet<BTreeSet<language::TagAtom>>);
-impl From<&language::TagAtom> for Dnf {
-    fn from(a: &language::TagAtom) -> Self {
-        let mut s = BTreeSet::new();
-        s.insert(a.clone());
-        let mut s2 = BTreeSet::new();
-        s2.insert(s);
-        Self(s2)
-    }
-}
-impl Dnf {
-    pub fn or(self, other: Dnf) -> Self {
-        let mut o = self.0;
-        o.extend(other.0);
-        Dnf(o)
-    }
-    pub fn and(self, other: Dnf) -> Self {
-        let mut ret = BTreeSet::new();
-        for a in self.0 {
-            for b in &other.0 {
-                ret.insert(a.union(b).cloned().collect());
-            }
+        match self {
+            Query::Query(stages) => rec(&Context::new(input.sort_key), input, stages.iter()),
+            Query::Expr(_) => vec![input],
         }
-        Dnf(ret)
     }
 }
 
-impl From<&language::Query> for Dnf {
+impl From<&language::Expression> for Query {
+    fn from(expr: &language::Expression) -> Self {
+        match expr {
+            language::Expression::Query(q) => q.into(),
+            language::Expression::Simple(s) => Self::Expr(s.clone()),
+        }
+    }
+}
+
+impl From<&language::Query> for Query {
     fn from(q: &language::Query) -> Self {
-        fn dnf(expr: &language::TagExpr) -> Dnf {
-            match expr {
-                language::TagExpr::Or(o) => dnf(&o.0).or(dnf(&o.1)),
-                language::TagExpr::And(a) => dnf(&a.0).and(dnf(&a.1)),
-                language::TagExpr::Atom(a) => a.into(),
+        let mut stages = vec![];
+        for op in &q.ops {
+            match op {
+                actyxos_sdk::language::Operation::Filter(f) => stages.push(Operation::Filter(Filter::init(f.clone()))),
+                actyxos_sdk::language::Operation::Select(s) => stages.push(Operation::Select(Select::init(s.clone()))),
             }
         }
-        dnf(&q.from)
-    }
-}
-
-impl From<&Query> for TagSubscriptions {
-    fn from(q: &Query) -> Self {
-        match &q.expr {
-            language::Expression::Simple(_) => TagSubscriptions::empty(),
-            language::Expression::Query(q) => {
-                let dnf: Dnf = q.into();
-                dnf.into()
-            }
-        }
-    }
-}
-
-impl From<Dnf> for TagSubscriptions {
-    fn from(dnf: Dnf) -> Self {
-        let ret = dnf
-            .0
-            .into_iter()
-            .map(|atoms| {
-                let mut tags = TagSubscription::new(TagSet::empty());
-                for a in atoms {
-                    match a {
-                        language::TagAtom::Tag(tag) => tags.tags.insert(tag),
-                        language::TagAtom::AllEvents => {}
-                        language::TagAtom::IsLocal => tags.local = true,
-                        language::TagAtom::FromTime(_) => {}
-                        language::TagAtom::ToTime(_) => {}
-                        language::TagAtom::FromLamport(_) => {}
-                        language::TagAtom::ToLamport(_) => {}
-                        language::TagAtom::AppId(_) => {}
-                    }
-                }
-                tags
-            })
-            .collect::<Vec<_>>();
-        TagSubscriptions::new(ret)
+        Self::Query(stages)
     }
 }
 
@@ -140,11 +67,11 @@ mod tests {
     use super::*;
     use actyxos_sdk::{language::Expression, tags, EventKey};
     use cbor_data::Encoder;
+    use trees::{TagSubscription, TagSubscriptions};
 
     fn test_query(expr: &'static str, tag_subscriptions: TagSubscriptions) {
         let e: Expression = expr.parse().unwrap();
-        let q = &Query::new(e);
-        let s: TagSubscriptions = (q).into();
+        let s: TagSubscriptions = e.into();
         assert_eq!(s, tag_subscriptions);
     }
 
@@ -178,7 +105,7 @@ mod tests {
             TagSubscriptions::new(vec![TagSubscription::new(tags!("a")).local()]),
         );
 
-        let mut q = Query::new(expr.parse().unwrap());
+        let mut q: Query = (&expr.parse::<Expression>().unwrap()).into();
         let v = Value::new(EventKey::default(), |b| b.encode_u64(3));
         assert_eq!(q.feed(v), vec![]);
 

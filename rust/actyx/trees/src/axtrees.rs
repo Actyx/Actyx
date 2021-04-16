@@ -1,5 +1,5 @@
 use crate::tag_index::IndexSet;
-use actyxos_sdk::{Dnf, LamportTimestamp, Tag, TagSet, Timestamp};
+use actyxos_sdk::{LamportTimestamp, TagSet, Timestamp};
 use banyan::{
     forest::TreeTypes,
     index::{BranchIndex, CompactSeq, LeafIndex, Summarizable},
@@ -16,7 +16,6 @@ use range_collections::RangeSet;
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ord,
-    collections::BTreeSet,
     convert::{TryFrom, TryInto},
     fmt,
     io::{Read, Seek, Write},
@@ -564,37 +563,6 @@ impl TreeTypes for AxTrees {
     type Link = Sha256Digest;
 }
 
-fn set_matching(dnf: &Dnf, index: &TagIndex, matching: &mut [bool]) {
-    // lookup all strings and translate them into indices.
-    // if a single index does not match, the query can not match at all.
-    // FIXME Dnf should contain Tags
-    let lookup = |s: &BTreeSet<String>| -> Option<IndexSet> {
-        s.iter()
-            .filter_map(|x| Tag::try_from(&**x).ok())
-            .map(|t| index.tags.find(&t).map(|x| x as u32))
-            .collect::<Option<_>>()
-    };
-    // translate the query from strings to indices
-    let query = dnf.0.iter().filter_map(lookup).collect::<Vec<_>>();
-    // only look at bits that are currently set, set them to false if they do not match
-    for i in 0..index.elements.len().min(matching.len()) {
-        matching[i] = matching[i] && query.iter().any(|x| x.is_subset(&index.elements[i]));
-    }
-}
-
-impl Query<AxTrees> for Dnf {
-    fn containing(&self, _offset: u64, index: &LeafIndex<AxTrees>, matching: &mut [bool]) {
-        set_matching(&self, &index.keys.tags, matching);
-    }
-
-    fn intersecting(&self, _offset: u64, index: &BranchIndex<AxTrees>, matching: &mut [bool]) {
-        if let TagsSummaries::Complete(index) = &index.summaries.tags {
-            set_matching(&self, index, matching);
-        }
-        // for the TagsSummary::Any case we can not provide any restriction!
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct LamportQuery(RangeSet<LamportTimestamp>);
 
@@ -772,24 +740,46 @@ impl fmt::Debug for Sha256Digest {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyxos_sdk::tags;
-    use maplit::btreeset;
+    use actyxos_sdk::{
+        language::{TagAtom, TagExpr},
+        tags, Tag,
+    };
     use quickcheck::quickcheck;
 
-    #[test]
-    fn dnf_intersecting_containing_smoke() {
-        let query = btreeset! {btreeset!{ "a", "b" }, btreeset!{ "b", "c" }};
-        let query = query
-            .into_iter()
-            .map(|x| x.into_iter().map(|x| x.to_owned()).collect())
-            .collect();
-        let tags = [tags! {"a", "b"}, tags! {"b"}, tags! {"b", "c"}, tags! {"d"}];
-        let index = TagIndex::from_elements(&tags);
+    use crate::{axtrees::TagsQuery, TagSubscriptions};
 
-        let mut matching = [true, true, true, true];
-        let dnf = Dnf(query);
-        set_matching(&dnf, &index, &mut matching);
-        assert_eq!(matching, [true, false, true, false]);
+    fn l(tag: &'static str) -> TagExpr {
+        TagExpr::Atom(TagAtom::Tag(Tag::new(tag.to_owned()).unwrap()))
+    }
+
+    fn assert_match(index: &TagIndex, expr: &TagExpr, expected: Vec<bool>) {
+        let tag_subscriptions: TagSubscriptions = expr.into();
+        let query = TagsQuery::new(tag_subscriptions.as_tag_sets(true));
+        let mut matching = vec![true; expected.len()];
+        query.set_matching(index, &mut matching);
+        assert_eq!(matching, expected);
+    }
+
+    #[test]
+    fn test_matching_1() {
+        let index = TagIndex::from_elements(&[tags!("a"), tags!("a", "b"), tags!("a"), tags!("a", "b")]);
+        let expr = l("a") | l("b");
+        assert_match(&index, &expr, vec![true, true, true, true]);
+        let expr = l("a") & l("b");
+        assert_match(&index, &expr, vec![false, true, false, true]);
+        let expr = l("c") & l("d");
+        assert_match(&index, &expr, vec![false, false, false, false]);
+    }
+
+    #[test]
+    fn test_matching_2() {
+        let index = TagIndex::from_elements(&[tags!("a", "b"), tags!("b", "c"), tags!("c", "a"), tags!("a", "b")]);
+        let expr = l("a") | l("b") | l("c");
+        assert_match(&index, &expr, vec![true, true, true, true]);
+        let expr = l("a") & l("b");
+        assert_match(&index, &expr, vec![true, false, false, true]);
+        let expr = l("a") & l("b") & l("c");
+        assert_match(&index, &expr, vec![false, false, false, false]);
     }
 
     quickcheck! {

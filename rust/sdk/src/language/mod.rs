@@ -29,6 +29,29 @@ pub enum TagExpr {
     Atom(TagAtom),
 }
 
+impl TagExpr {
+    pub fn and(self, other: TagExpr) -> Self {
+        TagExpr::And(Box::new((self, other)))
+    }
+    pub fn or(self, other: TagExpr) -> Self {
+        TagExpr::Or(Box::new((self, other)))
+    }
+}
+
+impl std::ops::BitOr for TagExpr {
+    type Output = TagExpr;
+    fn bitor(self, that: Self) -> Self {
+        self.or(that)
+    }
+}
+
+impl std::ops::BitAnd for TagExpr {
+    type Output = TagExpr;
+    fn bitand(self, that: Self) -> Self {
+        self.and(that)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum TagAtom {
     Tag(Tag),
@@ -39,15 +62,6 @@ pub enum TagAtom {
     FromLamport(LamportTimestamp),
     ToLamport(LamportTimestamp),
     AppId(AppId),
-}
-
-impl TagExpr {
-    pub fn and(self, other: TagExpr) -> Self {
-        TagExpr::And(Box::new((self, other)))
-    }
-    pub fn or(self, other: TagExpr) -> Self {
-        TagExpr::Or(Box::new((self, other)))
-    }
 }
 
 // this will obviously need to be implemented for real sometime, with arbitrary precision
