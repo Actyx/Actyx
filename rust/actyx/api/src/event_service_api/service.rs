@@ -1,6 +1,7 @@
 use std::convert::TryInto;
 
 use actyxos_sdk::{
+    language::Expression,
     service::{
         self, NodeIdResponse, Order, PublishEvent, PublishRequest, PublishResponse, PublishResponseKey, QueryRequest,
         QueryResponse, StartFrom, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest,
@@ -88,7 +89,7 @@ impl service::EventService for EventService {
     async fn query(&self, request: QueryRequest) -> Result<BoxStream<'static, QueryResponse>> {
         let from_offsets_excluding: OffsetMapOrMax = request.lower_bound.unwrap_or_default().into();
         let to_offsets_including: OffsetMapOrMax = request.upper_bound.into();
-        let query = &Query::new(request.query);
+        let query = &Query::new(Expression::Query(request.query));
         let selection = EventSelection {
             subscription_set: query.into(),
             from_offsets_excluding,
@@ -108,17 +109,12 @@ impl service::EventService for EventService {
     async fn subscribe(&self, request: SubscribeRequest) -> Result<BoxStream<'static, SubscribeResponse>> {
         let from_offsets_excluding: OffsetMapOrMax = request.offsets.unwrap_or_default().into();
 
-        let mut query = Query::new(request.query);
+        let mut query = Query::new(Expression::Query(request.query));
         let selection = EventSelection {
             subscription_set: (&query).into(),
             from_offsets_excluding,
             to_offsets_including: OffsetMapOrMax::max_value(),
         };
-
-        let initial = query
-            .initial_result()
-            .into_iter()
-            .map(|v| SubscribeResponse::Event(v.into()));
 
         let response = self
             .store
@@ -130,14 +126,14 @@ impl service::EventService for EventService {
             })
             .map(|v| SubscribeResponse::Event(v.into()));
 
-        Ok(stream::iter(initial).chain(response).boxed())
+        Ok(response.boxed())
     }
 
     async fn subscribe_monotonic(
         &self,
         request: SubscribeMonotonicRequest,
     ) -> Result<BoxStream<'static, SubscribeMonotonicResponse>> {
-        let query = &Query::new(request.query);
+        let query = &Query::new(Expression::Query(request.query));
 
         let initial_latest = if let StartFrom::Offsets(offsets) = &request.from {
             let selection = EventSelection {

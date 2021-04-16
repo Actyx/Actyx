@@ -52,14 +52,11 @@ impl Select {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyxos_sdk::{
-        language::{expression, Expression},
-        EventKey,
-    };
+    use actyxos_sdk::{language::Expression, EventKey};
     use cbor_data::Encoder;
 
     fn expr(s: &str) -> SimpleExpr {
-        match expression(s).unwrap() {
+        match s.parse().unwrap() {
             Expression::Simple(s) => s,
             Expression::Query(_) => panic!("expected simple expression"),
         }

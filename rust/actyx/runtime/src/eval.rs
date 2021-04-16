@@ -84,12 +84,12 @@ impl<'a> Context<'a> {
 
 #[cfg(test)]
 mod tests {
-    use actyxos_sdk::language::{expression, Expression};
+    use actyxos_sdk::language::Expression;
 
     use super::*;
 
     fn expr(s: &str) -> SimpleExpr {
-        match expression(s).unwrap() {
+        match s.parse().unwrap() {
             Expression::Simple(s) => s,
             Expression::Query(_) => panic!("expected simple expression"),
         }

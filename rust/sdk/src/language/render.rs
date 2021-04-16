@@ -67,7 +67,7 @@ fn render_string(w: &mut impl Write, e: &str) -> Result {
     w.write_char('\'')
 }
 
-fn render_simple_expr(w: &mut impl Write, e: &SimpleExpr) -> Result {
+pub fn render_simple_expr(w: &mut impl Write, e: &SimpleExpr) -> Result {
     match e {
         SimpleExpr::Path(p) => render_path(w, p),
         SimpleExpr::Number(n) => render_number(w, &n),
@@ -167,7 +167,7 @@ fn render_tag_atom(w: &mut impl Write, e: &TagAtom) -> Result {
     }
 }
 
-fn render_query(w: &mut impl Write, e: &Query) -> Result {
+pub fn render_query(w: &mut impl Write, e: &Query) -> Result {
     w.write_str("FROM ")?;
     render_tag_expr(w, &e.from)?;
     for op in &e.ops {
@@ -178,7 +178,7 @@ fn render_query(w: &mut impl Write, e: &Query) -> Result {
     w.write_str(" END")
 }
 
-pub fn render(w: &mut impl Write, e: &Expression) -> Result {
+pub fn render_expr(w: &mut impl Write, e: &Expression) -> Result {
     match e {
         Expression::Simple(s) => render_simple_expr(w, s),
         Expression::Query(q) => render_query(w, q),

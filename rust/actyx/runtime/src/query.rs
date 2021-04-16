@@ -138,11 +138,11 @@ impl From<Dnf> for TagSubscriptions {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyxos_sdk::{language::expression, tags, EventKey};
+    use actyxos_sdk::{language::Expression, tags, EventKey};
     use cbor_data::Encoder;
 
     fn test_query(expr: &'static str, tag_subscriptions: TagSubscriptions) {
-        let e = expression(expr).unwrap();
+        let e: Expression = expr.parse().unwrap();
         let q = &Query::new(e);
         let s: TagSubscriptions = (q).into();
         assert_eq!(s, tag_subscriptions);
@@ -178,7 +178,7 @@ mod tests {
             TagSubscriptions::new(vec![TagSubscription::new(tags!("a")).local()]),
         );
 
-        let mut q = Query::new(expression(expr).unwrap());
+        let mut q = Query::new(expr.parse().unwrap());
         let v = Value::new(EventKey::default(), |b| b.encode_u64(3));
         assert_eq!(q.feed(v), vec![]);
 

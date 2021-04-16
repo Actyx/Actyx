@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 #![allow(clippy::upper_case_acronyms)]
+use std::str::FromStr;
+
 use super::{Array, Expression, Index, Number, Object, Operation, Path, Query, SimpleExpr, TagAtom, TagExpr};
 use crate::{tags::Tag, Timestamp};
 use chrono::{TimeZone, Utc};
@@ -225,12 +227,28 @@ fn r_query(p: P) -> Query {
     q
 }
 
-pub fn expression(input: &str) -> R<Expression> {
-    let p = Aql::parse(Rule::expression, input)?.single().single();
-    match p.rule() {
-        Rule::simple_expr => Ok(Expression::Simple(r_simple_expr(p))),
-        Rule::query => Ok(Expression::Query(r_query(p))),
-        x => unexpected!(x),
+impl FromStr for Expression {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let p = Aql::parse(Rule::expression, s)?.single().single();
+        match p.rule() {
+            Rule::simple_expr => Ok(Expression::Simple(r_simple_expr(p))),
+            Rule::query => Ok(Expression::Query(r_query(p))),
+            x => unexpected!(x),
+        }
+    }
+}
+
+impl FromStr for Query {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let p = Aql::parse(Rule::expression, s)?.single().single();
+        match p.rule() {
+            Rule::query => Ok(r_query(p)),
+            x => unexpected!(x),
+        }
     }
 }
 
@@ -287,18 +305,18 @@ mod tests {
         use SimpleExpr::*;
         use TagAtom::*;
         use TagExpr::Atom;
+
         assert_eq!(
-            expression("FROM 'machine' | 'user' END").unwrap(),
+            "FROM 'machine' | 'user' END".parse::<Expression>().unwrap(),
             Expression::Query(Query::new(Tag(tag!("machine")).or(Tag(tag!("user")))))
         );
         assert_eq!(
-            expression(
-                "FROM 'machine' |
+            "FROM 'machine' |
                 -- or the other
                   'user' & isLocal & from(2012-12-31) & to(12345678901234567) & appId( hello-5._x_ ) & allEvents
                   FILTER _.x.42 > 5 SELECT { x: ! 'hello' y: 42 z: [1.3,_.x] } END --"
-            )
-            .unwrap(),
+                .parse::<Expression>()
+                .unwrap(),
             Expression::Query(
                 Query::new(
                     Atom(Tag(tag!("machine"))).or(Tag(tag!("user"))
@@ -323,7 +341,7 @@ mod tests {
         let rt = |str: &'static str| {
             let e = str.parse::<Expression>().unwrap();
             let mut buf = String::new();
-            crate::language::render::render(&mut buf, &e).unwrap();
+            crate::language::render::render_expr(&mut buf, &e).unwrap();
             assert_eq!(buf.as_str(), str);
         };
         rt("FROM 'machine' | 'user' & isLocal & from(2012-12-31) & to(12345678901234567) & appId(hello-5._x_) & allEvents FILTER _.x.42 > 5 SELECT { x: !'hello', y: 42, z: [1.3, _.x] } END");

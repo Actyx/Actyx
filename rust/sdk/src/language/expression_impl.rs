@@ -1,6 +1,8 @@
-use super::{expression, render::render, Expression};
+use super::{
+    render::{render_expr, render_query},
+    Expression, Query,
+};
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 impl<'de> Deserialize<'de> for Expression {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -8,7 +10,7 @@ impl<'de> Deserialize<'de> for Expression {
         D: serde::Deserializer<'de>,
     {
         let s = String::deserialize(deserializer)?;
-        expression(&*s).map_err(serde::de::Error::custom)
+        s.parse().map_err(serde::de::Error::custom)
     }
 }
 
@@ -21,16 +23,33 @@ impl Serialize for Expression {
     }
 }
 
-impl FromStr for Expression {
-    type Err = anyhow::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(expression(s)?)
+impl std::fmt::Display for Expression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        render_expr(f, self)
     }
 }
 
-impl std::fmt::Display for Expression {
+impl<'de> Deserialize<'de> for Query {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        s.parse().map_err(serde::de::Error::custom)
+    }
+}
+
+impl Serialize for Query {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.to_string().as_str())
+    }
+}
+
+impl std::fmt::Display for Query {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        render(f, self)
+        render_query(f, self)
     }
 }
