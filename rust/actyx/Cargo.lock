@@ -1799,6 +1799,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "escargot"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44bb3f795fe1b9d34f089c7fab034c2b757998d65361d95ef008045b57665262"
+dependencies = [
+ "log",
+ "once_cell",
+ "serde 1.0.124",
+ "serde_json",
+]
+
+[[package]]
 name = "event-listener"
 version = "2.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6189,12 +6201,17 @@ version = "0.1.0"
 dependencies = [
  "actyxos_sdk",
  "anyhow",
+ "assert_cmd",
  "crossbeam",
+ "escargot",
  "futures 0.3.13",
  "node",
  "regex",
+ "serde_json",
  "tempfile",
  "tokio 1.4.0",
+ "tracing",
+ "tracing-subscriber",
  "util",
 ]
 
