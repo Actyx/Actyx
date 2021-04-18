@@ -12,427 +12,34 @@
 //!    that multiple other nodes can decrypt an event stream (given possession of
 //!    the private key for which the Salsa20 key was encrypted)
 
-use actyxos_sdk::NodeId;
-use aesstream::{AesReader, AesWriter};
-use anyhow::{anyhow, bail, Context, Result};
-use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use ed25519::{ExpandedSecretKey, Verifier};
-use ed25519_dalek as ed25519;
-use fmt::Debug;
+use crate::{
+    aes::{AesReader, AesWriter},
+    dh::{ed25519_to_x25519_pk, ed25519_to_x25519_sk},
+    pair::KeyPair,
+    private::PrivateKey,
+    public::PublicKey,
+    signature::SignedMessage,
+    EncryptWrite,
+};
+use anyhow::{anyhow, bail, Result};
+use byteorder::{BigEndian, WriteBytesExt};
 use parking_lot::RwLock;
 use rand::rngs::OsRng;
 use rust_crypto::aessafe::{AesSafe256Decryptor, AesSafe256Encryptor};
-use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
     convert::{Into, TryFrom},
-    fmt::{self, Display},
-    io::{Cursor, Read, Write},
+    io::{Read, Write},
     sync::Arc,
 };
-
-/// An ActyxOS private key.
-///
-/// Currently this is just a newtype wrapper around an ed25519 private key, but this may
-/// change if we ever have the need for another encryption standard.
-///
-/// It seems like SecretKey is often used in the context of symmetric encryption, so we
-/// call this PrivateKey, unlike the wrapped type.
-#[derive(Clone, Copy, Eq, PartialEq, Deserialize, Serialize)]
-#[serde(from = "ed25519::SecretKey", into = "ed25519::SecretKey")]
-pub struct PrivateKey([u8; 32]);
-
-impl Debug for PrivateKey {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "secret")
-    }
-}
-
-impl From<ed25519::SecretKey> for PrivateKey {
-    fn from(value: ed25519::SecretKey) -> Self {
-        PrivateKey(value.to_bytes())
-    }
-}
-
-impl From<PrivateKey> for ed25519::SecretKey {
-    fn from(value: PrivateKey) -> Self {
-        Self::from_bytes(&value.0).expect("wrong secret key value for ed25519::SecretKey")
-    }
-}
-
-impl From<PrivateKey> for KeyPair {
-    fn from(private: PrivateKey) -> KeyPair {
-        let public: PublicKey = private.into();
-        KeyPair { public, private }
-    }
-}
-impl From<PrivateKey> for PublicKey {
-    fn from(private: PrivateKey) -> PublicKey {
-        let secret: ed25519::SecretKey = private.into();
-        let public: ed25519::PublicKey = (&secret).into();
-        public.into()
-    }
-}
-
-impl PrivateKey {
-    pub fn to_ed25519(self) -> ed25519::SecretKey {
-        self.into()
-    }
-    pub fn to_bytes(&self) -> [u8; ed25519::SECRET_KEY_LENGTH] {
-        self.0
-    }
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        let ed25519 = ed25519::SecretKey::from_bytes(bytes)?;
-        Ok(ed25519.into())
-    }
-    pub fn generate() -> Self {
-        let mut csprng = OsRng::default();
-        let k = ed25519_dalek::Keypair::generate(&mut csprng);
-        k.secret.into()
-    }
-}
-
-/// Identifier for a public key (and thereby the corresponding private key)
-///
-/// It consists of 32 octets which are actually the same bytes as the underlying `ed25519::PublicKey`. Thus
-/// it's possible to derive all sorts of other identifier from this structure, like a `libp2p::PeerId`.
-///
-/// A general representation is achieved by base64-encoding the bytes, and prepending an identifier for
-/// the key type, which at the moment is only a literal '0' to identify it as an `ed25519::PublicKey`.
-#[derive(Clone, Copy, Ord, PartialOrd, Eq, PartialEq)]
-pub struct PublicKey([u8; 32]);
-impl Display for PublicKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let pub_key = self.0;
-        let b64 = base64::encode(pub_key);
-        write!(f, "0{}", b64)
-    }
-}
-impl Debug for PublicKey {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_string())
-    }
-}
-
-impl std::str::FromStr for PublicKey {
-    type Err = anyhow::Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut s = s.to_string();
-        if s.is_empty() {
-            bail!("empty string");
-        }
-        let key_type = s.remove(0);
-        if key_type != '0' {
-            bail!("Unexpected key type {}", key_type);
-        }
-        let v = base64::decode(s).context("error base64 decoding PubKey")?;
-        if v.len() != ed25519::PUBLIC_KEY_LENGTH {
-            bail!(
-                "Expected {} bytes, received {}",
-                ed25519_dalek::PUBLIC_KEY_LENGTH,
-                v.len()
-            );
-        }
-        let mut res = [0u8; ed25519::PUBLIC_KEY_LENGTH];
-        res.copy_from_slice(&v[..]);
-        Ok(Self(res))
-    }
-}
-impl PublicKey {
-    /// Gets the underlying ed25519 public key for interop with rust crypto libs
-    pub fn to_ed25519(&self) -> ed25519::PublicKey {
-        ed25519::PublicKey::from_bytes(&self.0[..]).unwrap()
-    }
-    pub fn to_bytes(&self) -> [u8; ed25519::PUBLIC_KEY_LENGTH] {
-        let mut bytes = [0u8; ed25519::PUBLIC_KEY_LENGTH];
-        bytes[..].copy_from_slice(&self.0[..]);
-        bytes
-    }
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        let ed25519 = ed25519::PublicKey::from_bytes(bytes)?;
-        Ok(ed25519.into())
-    }
-    fn verify(&self, message: &[u8], signature: &[u8]) -> bool {
-        let signature = if let Ok(sig) = ed25519::Signature::try_from(signature) {
-            sig
-        } else {
-            return false;
-        };
-        self.to_ed25519().verify(message, &signature).is_ok()
-    }
-}
-impl From<PublicKey> for libp2p::core::PeerId {
-    fn from(pb: PublicKey) -> libp2p::core::PeerId {
-        let public = pb.into();
-        libp2p::core::PeerId::from_public_key(public)
-    }
-}
-impl TryFrom<libp2p::core::PeerId> for PublicKey {
-    type Error = anyhow::Error;
-    // This only works if the multi_hash with this peer_id is encoded is the identity hash,
-    // and the underlying public key is ed25519
-    fn try_from(peer_id: libp2p::core::PeerId) -> Result<Self, Self::Error> {
-        match multihash::Multihash::from_bytes(&peer_id.to_bytes()) {
-            Ok(multihash) => {
-                if multihash.code() == u64::from(multihash::Code::Identity) {
-                    let bytes = multihash.digest();
-                    let libp2p_pubkey = libp2p::core::identity::PublicKey::from_protobuf_encoding(bytes)?;
-                    match libp2p_pubkey {
-                        libp2p::core::identity::PublicKey::Ed25519(ed25519_pub) => {
-                            let bytes = ed25519_pub.encode();
-
-                            let pub_key = ed25519::PublicKey::from_bytes(&bytes[..])
-                                .map_err(|e| anyhow!(e))
-                                .context("Not a valid ed25519_dalek::PublicKey")?;
-                            Ok(pub_key.into())
-                        }
-                        _ => bail!("Expected ed25519::PublicKey!"),
-                    }
-                } else {
-                    bail!("Only PeerIds encoded with identity hash can be decoded")
-                }
-            }
-
-            Err(err) => bail!(err),
-        }
-    }
-}
-
-impl From<PublicKey> for libp2p::core::identity::PublicKey {
-    fn from(pk: PublicKey) -> libp2p::core::identity::PublicKey {
-        libp2p::core::identity::PublicKey::Ed25519(
-            libp2p::core::identity::ed25519::PublicKey::decode(&pk.0)
-                .expect("ed25519 encoding format changed between libp2p and crypto"),
-        )
-    }
-}
-impl From<libp2p::core::identity::ed25519::PublicKey> for PublicKey {
-    fn from(o: libp2p::core::identity::ed25519::PublicKey) -> Self {
-        Self(o.encode())
-    }
-}
+use x25519_dalek::EphemeralSecret;
 
 impl From<KeyPair> for libp2p::core::identity::ed25519::Keypair {
     fn from(kp: KeyPair) -> libp2p::core::identity::ed25519::Keypair {
         let mut bytes = kp.to_bytes();
         libp2p::core::identity::ed25519::Keypair::decode(&mut bytes)
             .expect("ed25519 encoding format changed between libp2p and crypto")
-    }
-}
-
-impl From<KeyPair> for libp2p::core::identity::Keypair {
-    fn from(kp: KeyPair) -> libp2p::core::identity::Keypair {
-        libp2p::core::identity::Keypair::Ed25519(kp.into())
-    }
-}
-
-impl AsRef<[u8]> for PublicKey {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl From<ed25519::PublicKey> for PublicKey {
-    fn from(key: ed25519::PublicKey) -> Self {
-        Self(*key.as_bytes())
-    }
-}
-
-impl From<NodeId> for PublicKey {
-    fn from(node_id: NodeId) -> Self {
-        let mut res = [0u8; ed25519_dalek::PUBLIC_KEY_LENGTH];
-        res.copy_from_slice(node_id.as_ref());
-        Self(res)
-    }
-}
-impl From<PublicKey> for NodeId {
-    fn from(p: PublicKey) -> NodeId {
-        NodeId::from_bytes(p.as_ref()).unwrap()
-    }
-}
-
-/// A keypair.
-///
-/// Conceptually, this is a generic keypair. But currently we only support ed25519 encryption.
-#[derive(Deserialize, Serialize, Clone, Copy)]
-pub struct KeyPair {
-    public: PublicKey,
-    private: PrivateKey,
-}
-
-impl PartialEq for KeyPair {
-    fn eq(&self, other: &Self) -> bool {
-        self.public == other.public
-    }
-}
-impl Eq for KeyPair {}
-
-impl Debug for KeyPair {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("KeyPair").field("public", &self.public).finish()
-    }
-}
-
-impl From<KeyPair> for ed25519::Keypair {
-    fn from(kp: KeyPair) -> Self {
-        Self {
-            public: kp.public.to_ed25519(),
-            secret: kp.private.into(),
-        }
-    }
-}
-
-impl From<KeyPair> for NodeId {
-    fn from(kp: KeyPair) -> Self {
-        kp.public.into()
-    }
-}
-
-impl KeyPair {
-    pub fn generate() -> Self {
-        PrivateKey::generate().into()
-    }
-
-    pub fn pub_key(&self) -> PublicKey {
-        self.public
-    }
-
-    pub fn sign(&self, message: &[u8]) -> [u8; 64] {
-        let secret_key = self.private.to_ed25519();
-        ExpandedSecretKey::from(&secret_key)
-            .sign(message, &self.public.to_ed25519())
-            .to_bytes()
-    }
-
-    /// Convert this keypair to bytes.
-    ///
-    /// # Returns
-    //
-    /// An array of bytes, `[u8; KEYPAIR_LENGTH]`.  The first
-    /// `SECRET_KEY_LENGTH` of bytes is the `SecretKey`, and the next
-    /// `PUBLIC_KEY_LENGTH` bytes is the `PublicKey` (the same as other
-    /// libraries, such as [Adam Langley's ed25519 Golang
-    /// implementation](https://github.com/agl/ed25519/)).
-    ///
-    /// Copied from ed2559_dalek::KeyPair::to_bytes
-    pub fn to_bytes(&self) -> [u8; ed25519_dalek::PUBLIC_KEY_LENGTH + ed25519_dalek::SECRET_KEY_LENGTH] {
-        let mut bytes: [u8; 64] = [0u8; 64];
-
-        bytes[..ed25519_dalek::SECRET_KEY_LENGTH].copy_from_slice(&self.private.0);
-        bytes[ed25519_dalek::SECRET_KEY_LENGTH..].copy_from_slice(&self.public.0);
-        bytes
-    }
-}
-
-impl Serialize for PublicKey {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.to_string())
-    }
-}
-impl<'de> Deserialize<'de> for PublicKey {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct V;
-        impl<'de> Visitor<'de> for V {
-            type Value = PublicKey;
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                f.write_str("PublicKey")
-            }
-            fn visit_str<E: serde::de::Error>(self, string: &str) -> Result<Self::Value, E> {
-                use std::str::FromStr;
-                PublicKey::from_str(string).map_err(serde::de::Error::custom)
-            }
-        }
-        deserializer.deserialize_str(V)
-    }
-}
-
-// FIXME: do we need to change the signature format due to the `PubKey` type?
-/// Packed representation of message and signatures:
-///
-///  - u32 message length ( => LEN )
-///  - LEN bytes of message
-///  - signatures (1 or more) concatenated
-///
-/// Each signature starts with a scheme identifier of one octet:
-///
-///  - 1: Ed25519/SHA512
-///      - 32 bytes key ID
-///      - 64 bytes signature
-///
-/// Example:
-///
-/// ```rust
-/// use crypto::SignedMessage;
-/// use std::convert::TryFrom;
-///
-/// # let mut bytes = [0u8; 101];
-/// # bytes[4] = 1;
-/// let signed = SignedMessage::try_from(&bytes[..])?;
-/// # Ok::<(), anyhow::Error>(())
-/// ```
-#[derive(Debug)]
-pub struct SignedMessage(Box<[u8]>);
-
-impl SignedMessage {
-    /// Obtain a reference to the message octets that have been signed
-    pub fn message(&self) -> &[u8] {
-        let mut cursor = Cursor::new(&self.0);
-        let msg_len = cursor.read_u32::<BigEndian>().expect("reading from message array") as usize;
-        &self.0[4..msg_len + 4]
-    }
-
-    /// Extract a vector of key_id–signature pairs attached to this message
-    pub fn signatures(&self) -> Vec<(PublicKey, &[u8])> {
-        let mut cursor = Cursor::new(&self.0);
-        let msg_len = cursor.read_u32::<BigEndian>().expect("reading from message array") as u64;
-        cursor.set_position(msg_len + 4);
-        let mut res = Vec::new();
-        let end = self.0.len() as u64;
-        while cursor.position() < end {
-            let version = cursor.read_u8().expect("reading from message array");
-            assert!(version == 1);
-            // TODO: 32?
-            let mut key_bytes = [0u8; 32];
-            cursor.read_exact(&mut key_bytes).expect("reading from message array");
-            let pos = cursor.position() as usize;
-            res.push((PublicKey(key_bytes), &self.0[pos..pos + 64]));
-            cursor.set_position(cursor.position() + 64);
-        }
-        res
-    }
-}
-
-impl AsRef<[u8]> for SignedMessage {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-impl TryFrom<&[u8]> for SignedMessage {
-    type Error = anyhow::Error;
-    fn try_from(bytes: &[u8]) -> Result<Self> {
-        let mut cursor = Cursor::new(bytes);
-        let msg_len = cursor.read_u32::<BigEndian>().context("cannot read message length")? as u64;
-        let rest = bytes.len() as i64 - 4 - msg_len as i64;
-        if rest <= 0 || rest % 97 != 0 {
-            bail!("invalid signature length {}", rest);
-        }
-        cursor.set_position(msg_len + 4);
-        let end = bytes.len() as u64;
-        while cursor.position() < end {
-            let version = cursor.read_u8().expect("reading from message array");
-            if version != 1 {
-                bail!("invalid signature scheme {}", version);
-            }
-            cursor.set_position(cursor.position() + 96);
-        }
-        Ok(Self(bytes.into()))
     }
 }
 
@@ -451,12 +58,15 @@ pub struct KeyStore {
     #[serde(skip)]
     dump_after_modify: Option<DumpFn>,
 }
+
 impl std::cmp::PartialEq for KeyStore {
     fn eq(&self, other: &Self) -> bool {
         self.pairs == other.pairs && self.publics == other.publics
     }
 }
+
 impl std::cmp::Eq for KeyStore {}
+
 impl std::fmt::Debug for KeyStore {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("KeyStore")
@@ -523,7 +133,7 @@ impl KeyStore {
         Ok(key)
     }
 
-    /// Sign a message with a selection of keys
+    /// Sign a message with a selection of keys and return it in a SignedMessage envelope
     ///
     /// The message must not be larger than u32::MAX bytes and at least one key_id must
     /// be given.
@@ -555,6 +165,24 @@ impl KeyStore {
         Ok(SignedMessage(out.into()))
     }
 
+    /// Sign a message with the given key, returning only the signature bytes
+    ///
+    /// ```
+    /// let mut store = crypto::KeyStore::default();
+    /// let key = store.generate_key_pair().unwrap();
+    /// let message = b"hello world";
+    /// let signature = store.sign_detached(message, key).unwrap();
+    ///
+    /// // verify the signature like so:
+    /// assert!(key.verify(message, signature.as_ref()));
+    /// assert!(!key.verify(&message[1..], signature.as_ref()));
+    /// ```
+    pub fn sign_detached(&self, message: impl AsRef<[u8]>, key: PublicKey) -> Result<Vec<u8>> {
+        let key = self.get_pair(key).ok_or_else(|| anyhow!("key {} not found", key))?;
+        let signature = key.sign(message.as_ref());
+        Ok(signature.into())
+    }
+
     /// Verify a selection of signatures in the given signed message
     ///
     /// This operation fails if for at least one given key ID:
@@ -562,6 +190,8 @@ impl KeyStore {
     ///  - the key is not known
     ///  - there is no signature with this key on the message
     ///  - the signature is invalid
+    ///
+    /// See also [`PublicKey::verify`](struct.PublicKey.html#method.verify) for detached signatures.
     pub fn verify(&self, message: &SignedMessage, keys: impl IntoIterator<Item = PublicKey>) -> Result<()> {
         let msg = message.message();
         let sigs = message.signatures().into_iter().collect::<BTreeMap<_, _>>();
@@ -575,6 +205,55 @@ impl KeyStore {
             }
         }
         Ok(())
+    }
+
+    /// Encrypt such that the message can be decrypted with the corresponding PrivateKey
+    ///
+    /// ```
+    /// use std::io::{Read, Write};
+    /// use crypto::EncryptWrite;
+    ///
+    /// let mut store = crypto::KeyStore::default();
+    /// let key = store.generate_key_pair().unwrap();
+    /// let message = b"hello world";
+    /// let mut encoder = store.encrypt(key).unwrap();
+    /// encoder.write_all(message);
+    /// let ciphertext = encoder.finalise().unwrap();
+    ///
+    /// assert_eq!(ciphertext.len(), 64);
+    ///
+    /// // decrypt it like so:
+    /// let mut decoder = store.decrypt(key, &*ciphertext).unwrap();
+    /// let mut msg = Vec::new();
+    /// decoder.read_to_end(&mut msg).unwrap();
+    /// assert_eq!(msg, message);
+    /// ```
+    pub fn encrypt(&self, key: PublicKey) -> Result<impl EncryptWrite> {
+        // create a new ephemeral key for this particular message
+        let ephemeral = EphemeralSecret::new(OsRng);
+        let public = x25519_dalek::PublicKey::from(&ephemeral);
+
+        // write the public key at the beginning of the buffer
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(public.as_bytes());
+
+        let x25519 = ed25519_to_x25519_pk(&key.to_ed25519());
+        let shared = ephemeral.diffie_hellman(&x25519);
+        let aes = AesSafe256Encryptor::new(shared.as_bytes());
+        Ok(AesWriter::new(bytes, aes)?)
+    }
+
+    /// Decrypt a message obtained from `encrypt`
+    pub fn decrypt(&self, key: PublicKey, mut message: impl Read) -> Result<impl Read> {
+        let mut public = [0u8; 32];
+        message.read_exact(&mut public[..])?;
+        let public = x25519_dalek::PublicKey::from(public);
+
+        let private = self.pairs.get(&key).ok_or_else(|| anyhow!("key {} not known", key))?;
+        let private = ed25519_to_x25519_sk(&private.to_ed25519());
+        let shared = private.diffie_hellman(&public);
+        let aes = AesSafe256Decryptor::new(shared.as_bytes());
+        Ok(AesReader::new(message, aes)?)
     }
 
     pub fn get_pair(&self, public: PublicKey) -> Option<KeyPair> {
@@ -617,14 +296,6 @@ impl KeyStore {
         Ok(serde_cbor::from_reader(reader)?)
     }
 
-    /// recreate the keystore from v0 format (ActyxOS 1.0)
-    pub fn restore_v0(src: impl Read) -> Result<Self> {
-        let dec = AesSafe256Decryptor::new(Self::DUMP_KEY);
-        let reader = AesReader::new(src, dec)?;
-        let keystore_v0: v0::KeyStore = serde_cbor::from_reader(reader)?;
-        Ok(keystore_v0.into())
-    }
-
     /// Restores a KeyStore from a given file; starts out empty if the file doesn't exist.
     pub fn restore_or_empty<P: AsRef<std::path::Path>>(src: P) -> Result<Self> {
         use std::io::ErrorKind;
@@ -632,78 +303,6 @@ impl KeyStore {
             Ok(fd) => Self::restore(fd),
             Err(err) if err.kind() == ErrorKind::NotFound => Ok(Self::default()),
             Err(err) => Err(err.into()),
-        }
-    }
-}
-
-/// module for read compatibility with actyxos v1.0 keystores
-///
-/// this is mostly copied and stripped down from the actyxos 1.0 codebase.
-mod v0 {
-    use super::*;
-    use serde::de;
-
-    #[derive(Deserialize, Serialize)]
-    pub struct KeyPair {
-        pub public: ed25519::PublicKey,
-        pub private: PrivateKey, // our PrivateKey serializes the same as ed25519::SecretKey
-    }
-
-    impl From<KeyPair> for super::KeyPair {
-        fn from(value: KeyPair) -> Self {
-            Self {
-                public: value.public.into(),
-                private: value.private,
-            }
-        }
-    }
-
-    fn deserialize32<'de, D: Deserializer<'de>>(d: D) -> std::result::Result<[u8; 32], D::Error> {
-        struct X;
-        impl<'de> Visitor<'de> for X {
-            type Value = [u8; 32];
-            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                write!(f, "32 bytes")
-            }
-            fn visit_bytes<E: de::Error>(self, mut v: &[u8]) -> std::result::Result<Self::Value, E> {
-                if v.len() != 32 {
-                    return Err(de::Error::custom(format!("found {} bytes", v.len())));
-                }
-                let mut res = [0u8; 32];
-                v.read_exact(&mut res).expect("reading from slice");
-                Ok(res)
-            }
-        }
-        d.deserialize_bytes(X)
-    }
-
-    #[derive(Ord, PartialOrd, Eq, PartialEq, Deserialize)]
-    pub struct KeyId(#[serde(deserialize_with = "deserialize32")] [u8; 32]);
-
-    #[derive(Deserialize)]
-    pub struct KeyStore {
-        pub pairs: BTreeMap<KeyId, KeyPair>,
-        pub publics: BTreeMap<KeyId, ed25519::PublicKey>,
-    }
-
-    impl From<KeyStore> for super::KeyStore {
-        fn from(io: KeyStore) -> Self {
-            // forget the key ids and replace them with the keys
-            let pairs = io
-                .pairs
-                .into_iter()
-                .map(|(_, v)| (v.public.into(), v.private))
-                .collect::<BTreeMap<PublicKey, PrivateKey>>();
-            let publics = io
-                .publics
-                .into_iter()
-                .map(|(_, v)| v.into())
-                .collect::<BTreeSet<PublicKey>>();
-            Self {
-                pairs,
-                publics,
-                dump_after_modify: None,
-            }
         }
     }
 }
@@ -800,15 +399,6 @@ mod tests {
 
         let public_from_peer_id: PublicKey = peer_id.try_into().unwrap();
         assert_eq!(public, public_from_peer_id);
-    }
-
-    #[test]
-    fn must_read_v0_keystore() -> anyhow::Result<()> {
-        // base64 encoded v0 keystore
-        let base64 = "vyd2rbz4I2taT1dkZAW+E/ZtsdJ9nnjHvwooT6x1sXzrYho2C6UpkYAM3wENLth4mFqi3Ncqq06VDNOnmwtf+dwWoh9RP2Ozwp/+d56BHPyT14/3edfgPHWv4OYag8vixyvEqWdBU5T4u/y8m7yFjQ1GEci8Qep+DkRwRJcg4IwyjmVdESRTOjVeue1sVV7dzV0H7IPhWAt4g0fn1Tya4A==";
-        let bytes = base64::decode(base64)?;
-        let _ = KeyStore::restore_v0(&bytes[..])?;
-        Ok(())
     }
 
     #[test]

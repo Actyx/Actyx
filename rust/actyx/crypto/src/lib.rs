@@ -33,6 +33,20 @@
 //! and followed by a concatenation of signatures. Each signature is classified by the first
 //! byte such that its length can be deduced by consumers.
 
+mod aes;
+mod dh;
 mod keystore;
+mod pair;
+mod private;
+mod public;
+mod signature;
 
-pub use keystore::{KeyPair, KeyStore, KeyStoreRef, PrivateKey, PublicKey, SignedMessage};
+pub trait EncryptWrite: std::io::Write {
+    fn finalise(self) -> anyhow::Result<Vec<u8>>;
+}
+
+pub use keystore::{KeyStore, KeyStoreRef};
+pub use pair::KeyPair;
+pub use private::PrivateKey;
+pub use public::PublicKey;
+pub use signature::SignedMessage;
