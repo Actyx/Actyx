@@ -3,7 +3,7 @@ use crypto::KeyStore;
 use hyper::Response;
 use parking_lot::lock_api::RwLock;
 use serde_json::*;
-use swarm::{BanyanStore, StoreConfig};
+use swarm::BanyanStore;
 use warp::*;
 
 const TRACE: bool = false;
@@ -21,8 +21,7 @@ pub fn initialize() {
 
 async fn test_routes() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     initialize();
-    let config = StoreConfig::new("event-service-api-test".to_string());
-    let store = BanyanStore::from_axconfig(config.clone()).await.unwrap();
+    let store = BanyanStore::test("api").await.unwrap();
     let key_store = std::sync::Arc::new(RwLock::new(KeyStore::default()));
     super::routes(store.node_id(), store, key_store).with(warp::trace::named("api_test"))
 }

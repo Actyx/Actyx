@@ -1,7 +1,5 @@
 use anyhow::Result;
-use ax_config::StoreConfig;
 use clap::{App, Arg, ArgGroup, ArgMatches};
-use std::convert::TryFrom;
 use swarm::BanyanStore;
 use tracing_subscriber::EnvFilter;
 
@@ -18,17 +16,14 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    let mut config = StoreConfig::new("ada-cli".to_string());
-    config.log_verbosity = TryFrom::try_from(cmd_args::get_verbosity(&matches).as_str())?;
-
-    let filter = EnvFilter::new(config.log_verbosity.to_string());
+    let verbosity = cmd_args::get_verbosity(&matches);
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_env_filter(filter)
+        .with_env_filter(EnvFilter::new(verbosity))
         .finish();
     tracing::subscriber::set_global_default(subscriber).unwrap();
 
-    let store = BanyanStore::from_axconfig(config.clone()).await?;
-    run_app(app, matches, config, store).await?;
+    let store = BanyanStore::test("ada-cli").await?;
+    run_app(app, matches, store).await?;
 
     Ok(())
 }
@@ -61,7 +56,7 @@ fn build_cli() -> App<'static, 'static> {
         .subcommand(cmd::pubsub_to_pg::args())
 }
 
-async fn run_app(mut app: App<'_, '_>, matches: ArgMatches<'_>, config: StoreConfig, store: BanyanStore) -> Result<()> {
+async fn run_app(mut app: App<'_, '_>, matches: ArgMatches<'_>, store: BanyanStore) -> Result<()> {
     let subcommands: Vec<Box<dyn cmd::Command>> = vec![
         Box::new(cmd::pubsub_connect::Cmd),
         Box::new(cmd::monitor_pubsub::Cmd),
@@ -71,7 +66,7 @@ async fn run_app(mut app: App<'_, '_>, matches: ArgMatches<'_>, config: StoreCon
 
     for subcommand in subcommands {
         if let Some(matches) = matches.subcommand_matches(subcommand.name()) {
-            subcommand.run(&matches, config, store).await?;
+            subcommand.run(&matches, store).await?;
             return Ok(());
         }
     }

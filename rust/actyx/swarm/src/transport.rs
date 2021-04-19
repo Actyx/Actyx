@@ -23,7 +23,7 @@ pub async fn build_transport(
     psk: Option<PreSharedKey>,
     upgrade_timeout: Duration,
 ) -> anyhow::Result<Boxed<(PeerId, StreamMuxerBox)>> {
-    let base_transport = DnsConfig::new(TokioTcpConfig::new().nodelay(true))?;
+    let base_transport = DnsConfig::system(TokioTcpConfig::new().nodelay(true)).await?;
     let maybe_encrypted = match psk {
         Some(psk) => {
             EitherTransport::Left(base_transport.and_then(move |socket, _| PnetConfig::new(psk).handshake(socket)))

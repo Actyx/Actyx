@@ -12,7 +12,7 @@ use libipld::{
 };
 use parking_lot::Mutex;
 use rayon::prelude::*;
-use rusqlite::{OpenFlags, NO_PARAMS};
+use rusqlite::OpenFlags;
 use trees::axtrees::{AxKey, AxTree, AxTrees, Sha256Digest};
 
 use crate::StreamAlias;
@@ -130,7 +130,7 @@ fn roots_from_v1_store(path: &str) -> anyhow::Result<BTreeMap<SourceId, Cid>> {
     let conn = rusqlite::Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)?;
     let mut stmt = conn.prepare("SELECT source, cid FROM roots")?;
     let res = stmt
-        .query_map(NO_PARAMS, |row| Ok((row.get(0)?, row.get(1)?)))?
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
         .collect::<rusqlite::Result<Vec<(String, String)>>>()?;
     let res = res
         .into_iter()

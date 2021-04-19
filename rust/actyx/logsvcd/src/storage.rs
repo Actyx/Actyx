@@ -1,7 +1,7 @@
 use crate::error::{LogsvcdError, Result};
 use actyxos_sdk::NodeId;
 use chrono::{DateTime, Utc};
-use rusqlite::{params, Connection, OpenFlags, NO_PARAMS};
+use rusqlite::{params, Connection, OpenFlags};
 use std::convert::TryInto;
 use std::default::Default;
 use std::ops::Sub;
@@ -100,15 +100,15 @@ impl Storage {
         )?;
         // `PRAGMA journal_mode = WAL;` https://www.sqlite.org/wal.html
         // This PRAGMA statement returns the new journal mode, so we need to see if it succeeded
-        conn.query_row("PRAGMA journal_mode = WAL;", rusqlite::NO_PARAMS, |row| {
-            match row.get_raw(0).as_str().unwrap() {
+        conn.query_row("PRAGMA journal_mode = WAL;", [], |row| {
+            match row.get_ref_unwrap(0).as_str().unwrap() {
                 "wal" => Ok("wal"),
                 "memory" => Ok("memory"), // There is no WAL for memory databases TODO Rust error handling
                 _other => Err(rusqlite::Error::InvalidQuery),
             }
         })?;
         // `PRAGMA synchronous = NORMAL;` https://www.sqlite.org/pragma.html#pragma_synchronous
-        conn.execute("PRAGMA synchronous = NORMAL;", rusqlite::NO_PARAMS)?;
+        conn.execute("PRAGMA synchronous = NORMAL;", [])?;
         Ok(())
     }
 
@@ -159,8 +159,8 @@ impl Storage {
             log_name: row.get(1)?,
             severity: LogSeverity::from_level(row.get(2)?),
             message: row.get(3)?,
-            additional_data: serde_cbor::from_slice(row.get_raw(4).as_blob()?).unwrap(),
-            labels: serde_cbor::from_slice(row.get_raw(5).as_blob()?).unwrap(),
+            additional_data: serde_cbor::from_slice(row.get_ref_unwrap(4).as_blob()?).unwrap(),
+            labels: serde_cbor::from_slice(row.get_ref_unwrap(5).as_blob()?).unwrap(),
             sequence_number: row.get::<_, i64>(6)? as u64,
             producer_name: row.get(7)?,
             producer_version: row.get(8)?,
@@ -171,7 +171,7 @@ impl Storage {
         self.conn
             .query_row(
                 "SELECT MAX(sequence_number) from logs WHERE timestamp <= ?1",
-                &[timestamp.map(|x| x.timestamp_millis()).unwrap_or_else(|| std::i64::MAX)],
+                [timestamp.map(|x| x.timestamp_millis()).unwrap_or_else(|| std::i64::MAX)],
                 |row| row.get(0).or(Ok(-1)),
             )
             .map_err(LogsvcdError::RusqliteError)
@@ -252,7 +252,7 @@ impl Storage {
             // https://stackoverflow.com/a/52191503
             .query_row(
                 "SELECT page_count * page_size as size FROM pragma_page_count(), pragma_page_size()",
-                rusqlite::NO_PARAMS,
+                [],
                 |r| r.get(0).map(|x: i64| x.try_into().unwrap()),
             )
             .map_err(LogsvcdError::RusqliteError)
@@ -261,12 +261,10 @@ impl Storage {
     fn prune_logs(&self, older_than: DateTime<Utc>) -> Result<usize> {
         let rows = self
             .conn
-            .execute("DELETE FROM logs WHERE timestamp < ?", &[older_than.timestamp_millis()])
+            .execute("DELETE FROM logs WHERE timestamp < ?", [older_than.timestamp_millis()])
             .map_err(LogsvcdError::RusqliteError)?;
 
-        self.conn
-            .execute("VACUUM", NO_PARAMS)
-            .map_err(LogsvcdError::RusqliteError)?;
+        self.conn.execute("VACUUM", []).map_err(LogsvcdError::RusqliteError)?;
 
         Ok(rows)
     }

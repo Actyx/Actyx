@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 actyxos_sdk = { version = "0.5", features = ["postgresql"], path = "../../sdk" }
-ax-config = { path = "../ax-config" }
 swarm = { path = "../swarm" }
 trees = { path = "../trees" }
 util = { path = "../util" }

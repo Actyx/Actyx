@@ -1,8 +1,7 @@
 use crate::cmd::formats::Result;
 use crate::cmd::AxCliCommand;
 use futures::{stream, Stream, TryFutureExt};
-use rand::distributions::Alphanumeric;
-use rand::Rng;
+use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -37,12 +36,10 @@ pub struct KeygenOpts {
     pub(crate) output: Option<PathBuf>,
 }
 
-/// https://github.com/Kubuxu/go-ipfs-swarm-key-gen/blob/master/ipfs-swarm-key-gen/main.go
 pub fn generate_key() -> String {
-    let key_length = 32;
-    let key: Vec<u8> = rand::thread_rng().sample_iter(&Alphanumeric).take(key_length).collect();
-    let key = format!("/key/swarm/psk/1.0.0/\n/base16/\n{}", hex::encode(key));
-    base64::encode(&key.as_bytes())
+    let mut key = [0u8; 32];
+    rand::thread_rng().fill_bytes(&mut key);
+    base64::encode(&key)
 }
 
 pub fn store_key(key: String, mut path: PathBuf) -> Result<()> {
@@ -78,7 +75,7 @@ mod test {
     #[tokio::test]
     pub async fn should_store_swarm_key() -> Result<()> {
         let key = generate_key();
-        assert_eq!(128, key.len());
+        assert_eq!(44, key.len());
 
         let tempdir = tempfile::tempdir().unwrap();
         let mut p = tempdir.path().to_owned();
@@ -88,13 +85,8 @@ mod test {
         p.push("actyx-swarm.key");
         assert!(p.as_path().exists());
         let key = std::fs::read_to_string(&p).unwrap();
-        let key: String = String::from_utf8(base64::decode(&key).unwrap()).unwrap();
-        let key: Vec<&str> = key.lines().collect();
-
-        assert_eq!(3, key.len());
-        assert_eq!(key[0], "/key/swarm/psk/1.0.0/");
-        assert_eq!(key[1], "/base16/");
-        assert_eq!(key[2].len(), 64);
+        let key = base64::decode(&key).unwrap();
+        assert_eq!(key.len(), 32);
 
         let res = run(KeygenOpts { output: Some(p) }).await;
         // File already exists

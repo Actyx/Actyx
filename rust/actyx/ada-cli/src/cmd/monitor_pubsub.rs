@@ -1,7 +1,6 @@
 use crate::cmd;
 use anyhow::Result;
 use async_trait::async_trait;
-use ax_config::StoreConfig;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use futures::StreamExt;
 use serde_value::Value as SValue;
@@ -60,7 +59,7 @@ impl cmd::Command for Cmd {
         "monitorPubsub"
     }
 
-    async fn run(&self, matches: &ArgMatches<'_>, _config: StoreConfig, store: BanyanStore) -> Result<()> {
+    async fn run(&self, matches: &ArgMatches<'_>, store: BanyanStore) -> Result<()> {
         let topic = String::from(matches.value_of("TOPIC").expect("Topic is mandatory"));
         let pretty = matches.is_present("pretty");
         let client = store.ipfs();

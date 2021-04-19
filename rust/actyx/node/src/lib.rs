@@ -37,7 +37,6 @@ use ::util::SocketAddrHelper;
 use crossbeam::channel::{bounded, Receiver, Sender};
 use std::{convert::TryInto, path::PathBuf, str::FromStr, thread};
 use structopt::StructOpt;
-use swarm::NodeIdentity;
 
 // Rust defaults to use the system allocator, which seemed to be the fastest
 // allocator generally available for our use case [0]. For production, the Actyx
@@ -110,16 +109,15 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
 
     // Component: NodeApi
     let node_api = {
-        let keypair: NodeIdentity = keystore
+        let keypair = keystore
             .read()
             .get_pair(node_id.into())
             // Should have been created by the call to
             // `CryptoCell::get_or_create_node_id` within this bootstrap routine
             // earlier
-            .expect("No keypair registered for node")
-            .into();
+            .expect("No keypair registered for node");
         NodeApi::new(
-            keypair.to_keypair(),
+            keypair.into(),
             node.tx.clone(),
             bind_to.admin.clone(),
             nodeapi_rx,

@@ -54,6 +54,7 @@ async fn start_node(
     Ok((node, es, port))
 }
 #[tokio::test]
+#[ignore]
 async fn persistence_across_restarts() -> anyhow::Result<()> {
     let working_dir = tempdir()?;
 

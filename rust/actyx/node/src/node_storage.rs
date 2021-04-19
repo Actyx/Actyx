@@ -4,7 +4,7 @@ use actyxos_sdk::NodeId;
 use anyhow::{anyhow, bail};
 use crypto::PublicKey;
 use parking_lot::Mutex;
-use rusqlite::{Connection, OpenFlags, OptionalExtension, NO_PARAMS};
+use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use tracing::*;
 use util::formats::{ActyxOSResult, ActyxOSResultExt};
 
@@ -41,9 +41,7 @@ impl NodeStorage {
             warn!("Performing node db schema migration from v0 to v1");
             let txn = conn.transaction()?;
             let key_store: Option<String> = txn
-                .query_row("SELECT value FROM node WHERE name = 'key_store'", NO_PARAMS, |row| {
-                    row.get(0)
-                })
+                .query_row("SELECT value FROM node WHERE name = 'key_store'", [], |row| row.get(0))
                 .optional()?;
 
             if let Some(key_store) = key_store {
@@ -72,9 +70,9 @@ impl NodeStorage {
                 txn.execute("UPDATE node SET value = ? WHERE name = 'node_id'", &[&node_id_txt])?;
                 txn.execute("UPDATE node SET value = ? WHERE name = 'key_store'", &[&key_store_txt])?;
             }
-            txn.execute("INSERT INTO node VALUES ('database_version', 1)", NO_PARAMS)?;
+            txn.execute("INSERT INTO node VALUES ('database_version', 1)", [])?;
             txn.commit()?;
-            conn.execute("VACUUM", NO_PARAMS)?;
+            conn.execute("VACUUM", [])?;
             info!("Schema migration from v0 to v1 successful");
         }
         Ok(())
@@ -90,8 +88,7 @@ impl NodeStorage {
         .ax_internal()?;
         conn.execute_batch("PRAGMA journal_mode = WAL;").ax_internal()?;
         // `PRAGMA synchronous = EXTRA;` https://www.sqlite.org/pragma.html#pragma_synchronous
-        conn.execute("PRAGMA synchronous = EXTRA;", rusqlite::NO_PARAMS)
-            .ax_internal()?;
+        conn.execute("PRAGMA synchronous = EXTRA;", []).ax_internal()?;
 
         conn.execute_batch(
            "INSERT INTO node(name,value) SELECT 'cycle_count', -1 WHERE NOT EXISTS (SELECT 1 FROM node WHERE name = 'cycle_count');\n\
@@ -104,11 +101,9 @@ impl NodeStorage {
     /// version of the node storage. 0 for no version field.
     fn version(conn: &Connection) -> anyhow::Result<u32> {
         Ok(conn
-            .query_row(
-                "SELECT value FROM node WHERE name = 'database_version'",
-                NO_PARAMS,
-                |row| row.get(0),
-            )
+            .query_row("SELECT value FROM node WHERE name = 'database_version'", [], |row| {
+                row.get(0)
+            })
             .optional()
             .map(|x| x.unwrap_or_default())?)
     }
@@ -126,7 +121,7 @@ impl NodeStorage {
         if let Some(identity) = self
             .connection
             .lock()
-            .query_row("SELECT value FROM node WHERE name='node_id'", NO_PARAMS, |row| {
+            .query_row("SELECT value FROM node WHERE name='node_id'", [], |row| {
                 row.get::<_, String>(0)
             })
             .optional()
@@ -143,7 +138,7 @@ impl NodeStorage {
         if let Some(result) = self
             .connection
             .lock()
-            .query_row("SELECT value FROM node WHERE name='key_store'", NO_PARAMS, |row| {
+            .query_row("SELECT value FROM node WHERE name='key_store'", [], |row| {
                 row.get::<_, String>(0)
             })
             .optional()
@@ -168,7 +163,7 @@ impl NodeStorage {
     pub fn get_cycle_count(&self) -> ActyxOSResult<u64> {
         self.connection
             .lock()
-            .query_row("SELECT value FROM node where name = 'cycle_count'", NO_PARAMS, |row| {
+            .query_row("SELECT value FROM node where name = 'cycle_count'", [], |row| {
                 row.get::<_, i64>(0)
             })
             .map(|x| x as u64)

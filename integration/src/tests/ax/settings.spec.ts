@@ -122,8 +122,7 @@ describe('ax settings (using quickstart ActyxOS default setting)', () => {
             bootstrapNodes: [
               '/dns4/demo-bootstrap.actyx.net/tcp/4001/p2p/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH',
             ],
-            swarmKey:
-              'L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCmQ3YjBmNDFjY2ZlYTEyM2FkYTJhYWI0MmY2NjRjOWUyNWUwZWYyZThmNGJjNjJlOTg3NmE3NDU1MTc3ZWQzOGIK',
+            swarmKey: 'MDAwMDAwMDAxMTExMTExMTIyMjIyMjIyMzMzMzMzMzM=',
           },
         },
       }

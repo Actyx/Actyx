@@ -1,7 +1,6 @@
 use crate::cmd;
 use anyhow::Result;
 use async_trait::async_trait;
-use ax_config::StoreConfig;
 use clap::{App, ArgMatches, SubCommand};
 use swarm::BanyanStore;
 
@@ -18,7 +17,7 @@ impl cmd::Command for Cmd {
         "pubsubConnect"
     }
 
-    async fn run(&self, _matches: &ArgMatches<'_>, _config: StoreConfig, _store: BanyanStore) -> Result<()> {
+    async fn run(&self, _matches: &ArgMatches<'_>, _store: BanyanStore) -> Result<()> {
         println!("Connecting to all the peers ..");
         println!("Note: There won't be any additional output from this tool.\nYou can however run it with `-vv` to see what's happening.");
         Ok(())

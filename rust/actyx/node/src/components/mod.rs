@@ -82,7 +82,7 @@ pub struct ComponentType(String);
 pub trait Component<RequestType, ComponentSettings>
 where
     Self: Sized + Send + 'static,
-    ComponentSettings: PartialEq + Clone,
+    ComponentSettings: Clone + PartialEq,
 {
     /// Returns the type of the `Component`
     fn get_type(&self) -> &'static str;

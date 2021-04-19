@@ -24,9 +24,9 @@ dirs = "3.0.1"
 futures = { version = "0.3.13", features = ["compat"], package = "futures" }
 hex = "0.4.3"
 hyper = { version = "0.14.4", features = ["stream"], package = "hyper" }
-ipfs-sqlite-block-store = "0.3.0"
+ipfs-sqlite-block-store = "0.4.0"
 libipld = "0.11.0"
-libp2p = { version = "0.35.1", default-features = false }
+libp2p = { version = "0.37.0", default-features = false }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
 maplit = "1.0.2"
 prettytable-rs = "0.8.0"
