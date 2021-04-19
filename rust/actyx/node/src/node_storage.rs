@@ -40,6 +40,7 @@ impl NodeStorage {
             "BEGIN;\n\
             CREATE TABLE IF NOT EXISTS node \
             (name TEXT PRIMARY KEY, value BLOB) WITHOUT ROWID;\n\
+            INSERT INTO node VALUES ('database_version', 1) ON CONFLICT DO NOTHING;\n\
             COMMIT;",
         )
         .ax_internal()?;
@@ -152,19 +153,7 @@ mod test {
         Ok(())
     }
 
-    /// test that we can read a v0 node settings, migrate it to v1, and properly get the node id.
-    #[test]
-    fn should_migrate_v0() -> anyhow::Result<()> {
-        let mem = load_test_db("tests/node_v0.sqlite")?;
-        assert_eq!(NodeStorage::version(&mem).unwrap(), 0);
-        let storage = NodeStorage::from_conn(mem).unwrap();
-        let expected_node_id: NodeId = NodeId::try_from("lBkGGmqD2X/mmtpxnC2KWobZw4g1IWCJSPCdjdB1gCI").unwrap();
-        assert_eq!(NodeStorage::version(&storage.connection.lock()).unwrap(), 1);
-        assert_eq!(NodeStorage::get_node_key(&storage).unwrap(), Some(expected_node_id));
-        Ok(())
-    }
-
-    /// test that we can read a v0 node settings, migrate it to v1, and properly get the node id.
+    /// test that we can read a v1 node settings and properly get the node id.
     ///
     /// this is mostly so we have a v1 db in the tests for when we do v2.
     #[test]

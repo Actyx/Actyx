@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 actyxos_sdk = { path = "../../sdk" }
 
+aes-stream = "0.2.1"
 anyhow = "1.0.38"
 base64 = "0.13.0"
 byteorder = { version = "1.4.3", features = ["i128"] }

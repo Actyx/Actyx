@@ -161,6 +161,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "aes-stream"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8e2533cd0b6abfc7687517ba71d820f57945de2aeb7ca6cadfde8a53765328d"
+dependencies = [
+ "rand 0.3.23",
+ "rust-crypto",
+]
+
+[[package]]
 name = "aesni"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1386,6 +1396,7 @@ name = "crypto"
 version = "0.1.0"
 dependencies = [
  "actyxos_sdk",
+ "aes-stream",
  "anyhow",
  "base64",
  "byteorder",

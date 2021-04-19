@@ -13,14 +13,13 @@
 //!    the private key for which the Salsa20 key was encrypted)
 
 use crate::{
-    aes::{AesReader, AesWriter},
     dh::{ed25519_to_x25519_pk, ed25519_to_x25519_sk},
     pair::KeyPair,
     private::PrivateKey,
     public::PublicKey,
     signature::SignedMessage,
-    EncryptWrite,
 };
+use aesstream::{AesReader, AesWriter};
 use anyhow::{anyhow, bail, Result};
 use byteorder::{BigEndian, WriteBytesExt};
 use parking_lot::RwLock;
@@ -211,14 +210,15 @@ impl KeyStore {
     ///
     /// ```
     /// use std::io::{Read, Write};
-    /// use crypto::EncryptWrite;
     ///
     /// let mut store = crypto::KeyStore::default();
     /// let key = store.generate_key_pair().unwrap();
     /// let message = b"hello world";
-    /// let mut encoder = store.encrypt(key).unwrap();
+    ///
+    /// let mut ciphertext = Vec::new();
+    /// let mut encoder = store.encrypt(key, &mut ciphertext).unwrap();
     /// encoder.write_all(message);
-    /// let ciphertext = encoder.finalise().unwrap();
+    /// drop(encoder);
     ///
     /// assert_eq!(ciphertext.len(), 64);
     ///
@@ -228,19 +228,18 @@ impl KeyStore {
     /// decoder.read_to_end(&mut msg).unwrap();
     /// assert_eq!(msg, message);
     /// ```
-    pub fn encrypt(&self, key: PublicKey) -> Result<impl EncryptWrite> {
+    pub fn encrypt(&self, key: PublicKey, mut writer: impl Write) -> Result<impl Write> {
         // create a new ephemeral key for this particular message
         let ephemeral = EphemeralSecret::new(OsRng);
         let public = x25519_dalek::PublicKey::from(&ephemeral);
 
         // write the public key at the beginning of the buffer
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(public.as_bytes());
+        writer.write_all(public.as_bytes())?;
 
         let x25519 = ed25519_to_x25519_pk(&key.to_ed25519());
         let shared = ephemeral.diffie_hellman(&x25519);
         let aes = AesSafe256Encryptor::new(shared.as_bytes());
-        Ok(AesWriter::new(bytes, aes)?)
+        Ok(AesWriter::new(writer, aes)?)
     }
 
     /// Decrypt a message obtained from `encrypt`
