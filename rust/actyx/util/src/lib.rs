@@ -1,6 +1,7 @@
 #![deny(clippy::future_not_send)]
 
 pub mod base64_blob;
+#[cfg(windows)]
 pub mod build;
 pub mod formats;
 pub mod immutable_sync;
