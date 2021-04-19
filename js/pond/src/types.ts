@@ -108,7 +108,7 @@ export const NodeId = {
     x => x,
   ),
 
-  streamNo: (nodeId: NodeId, num: number) => nodeId + '.' + num,
+  streamNo: (nodeId: NodeId, num: number) => nodeId + '-' + num,
 }
 
 /**
