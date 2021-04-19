@@ -4,7 +4,7 @@ use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Debug};
 
-/// An ActyxOS private key.
+/// An Actyx private key.
 ///
 /// Currently this is just a newtype wrapper around an ed25519 private key, but this may
 /// change if we ever have the need for another encryption standard.
