@@ -2929,9 +2929,9 @@ dependencies = [
 
 [[package]]
 name = "jobserver"
-version = "0.1.21"
+version = "0.1.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5c71313ebb9439f74b00d9d2dcec36440beaf57a6aa0623068441dd7cd81a7f2"
+checksum = "972f5ae5d1cb9c6ae417789196c803205313edde988685da5e3aae0827b9e7fd"
 dependencies = [
  "libc",
 ]
@@ -3670,8 +3670,9 @@ dependencies = [
 
 [[package]]
 name = "libsqlite3-sys"
-version = "0.22.0"
-source = "git+https://github.com/rusqlite/rusqlite#3519aef29f7a23ea7d27944c74894941533e19d9"
+version = "0.22.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "19cb1effde5f834799ac5e5ef0e40d45027cd74f271b1de786ba8abb30e2164d"
 dependencies = [
  "cc",
  "pkg-config",
@@ -5544,8 +5545,9 @@ dependencies = [
 
 [[package]]
 name = "rusqlite"
-version = "0.25.0"
-source = "git+https://github.com/rusqlite/rusqlite#3519aef29f7a23ea7d27944c74894941533e19d9"
+version = "0.25.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fbc783b7ddae608338003bac1fa00b6786a75a9675fbd8e87243ecfdea3f6ed2"
 dependencies = [
  "bitflags 1.2.1",
  "fallible-iterator",
@@ -7768,18 +7770,18 @@ dependencies = [
 
 [[package]]
 name = "zeroize"
-version = "1.2.0"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81a974bcdd357f0dca4d41677db03436324d45a4c9ed2d0b873a5a360ce41c36"
+checksum = "4756f7db3f7b5574938c3eb1c117038b8e07f95ee6718c0efad4ac21508f1efd"
 dependencies = [
  "zeroize_derive",
 ]
 
 [[package]]
 name = "zeroize_derive"
-version = "1.0.1"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c3f369ddb18862aba61aa49bf31e74d29f0f162dec753063200e1dc084345d16"
+checksum = "a2c1e130bebaeab2f23886bf9acbaca14b092408c452543c857f66399cd6dab1"
 dependencies = [
  "proc-macro2",
  "quote",

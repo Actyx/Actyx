@@ -36,4 +36,3 @@ systray = { git = "https://github.com/wngr/systray-rs" }
 wintrap = { git = "https://github.com/wngr/wintrap-rs" }
 # TODO: wait for new releases
 ipfs-embed = { git = "https://github.com/ipfs-rust/ipfs-embed" }
-rusqlite = { git = "https://github.com/rusqlite/rusqlite" }
