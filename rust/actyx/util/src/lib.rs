@@ -1,13 +1,13 @@
 #![deny(clippy::future_not_send)]
 
 pub mod base64_blob;
+#[cfg(windows)]
 pub mod build;
 pub mod formats;
 pub mod immutable_sync;
 pub mod keepalivestream3;
 pub mod pinned_resource;
 pub mod pinned_resource_sync;
-pub mod sampled_broadcast;
 pub mod serde_support;
 pub mod serde_util;
 pub mod tracing_set_log_level;

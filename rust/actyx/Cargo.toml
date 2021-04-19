@@ -5,7 +5,6 @@ members = [
   "ada-cli",
   "api",
   "ax",
-  "ax-config",
   "ax-futures-util",
   "settings",
   "crypto",
@@ -31,9 +30,10 @@ panic = "unwind"
 panic = "abort"
 
 [patch.crates-io]
-# TODO: Figure out how to build sqlite3 with the proper compile time flags for Android
-rusqlite = { git = "https://github.com/Actyx/rusqlite", rev = "55e4f2e352135e63c5a5619cf64e85febcf0bec6" }
 # wait for https://github.com/qdot/systray-rs/pull/51
 systray = { git = "https://github.com/wngr/systray-rs" }
 # wait for https://github.com/elizagamedev/wintrap-rs/pull/1
 wintrap = { git = "https://github.com/wngr/wintrap-rs" }
+# TODO: wait for new releases
+ipfs-embed = { git = "https://github.com/ipfs-rust/ipfs-embed" }
+rusqlite = { git = "https://github.com/rusqlite/rusqlite" }

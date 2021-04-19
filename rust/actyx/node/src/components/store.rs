@@ -2,12 +2,11 @@ use super::{Component, ComponentRequest};
 use crate::{node_settings::Settings, BindTo};
 use actyxos_sdk::NodeId;
 use anyhow::Result;
-use ax_config::StoreConfig;
 use crossbeam::channel::{Receiver, Sender};
 use crypto::KeyStoreRef;
 use parking_lot::Mutex;
-use std::{path::PathBuf, sync::Arc};
-use swarm::{BanyanStore, NodeIdentity};
+use std::{convert::TryInto, path::PathBuf, sync::Arc};
+use swarm::{BanyanStore, SwarmConfig};
 use tokio::sync::oneshot;
 use tracing::*;
 
@@ -18,7 +17,7 @@ pub(crate) enum StoreRequest {
 }
 pub(crate) type StoreTx = Sender<ComponentRequest<StoreRequest>>;
 
-impl Component<StoreRequest, StoreConfig> for Store {
+impl Component<StoreRequest, SwarmConfig> for Store {
     fn get_type(&self) -> &'static str {
         "Swarm"
     }
@@ -61,30 +60,30 @@ impl Component<StoreRequest, StoreConfig> for Store {
         }
         Ok(())
     }
-    fn set_up(&mut self, settings: StoreConfig) -> bool {
+    fn set_up(&mut self, settings: SwarmConfig) -> bool {
         self.store_config = Some(settings);
         true
     }
     fn start(&mut self, _err_notifier: Sender<anyhow::Error>) -> Result<()> {
         debug_assert!(self.state.is_none());
-        if let Some(cfg) = self.store_config.as_ref() {
+        if let Some(cfg) = self.store_config.clone() {
             let rt = tokio::runtime::Builder::new_multi_thread()
-                .worker_threads(cfg.number_of_threads.unwrap_or(2))
+                .worker_threads(self.number_of_threads.unwrap_or(2))
                 .enable_all()
                 .build()?;
+            let bind_to = self.bind_to.clone();
+            let keystore = self.keystore.clone();
             // client creation is setting up some tokio timers and therefore
             // needs to be called with a tokio runtime
-            let keystore = self.keystore.clone();
-            let db = self.db.clone();
             let store = rt.block_on(async move {
-                let store = BanyanStore::from_axconfig_with_db(cfg.clone(), db).await?;
+                let store = BanyanStore::new(cfg).await?;
                 store.spawn_task(
                     "api",
                     api::run(
                         store.node_id(),
                         store.clone(),
-                        cfg.api_addr.clone().into_iter(),
-                        keystore,
+                        bind_to.clone().api.into_iter(),
+                        keystore.clone(),
                     ),
                 );
                 Ok::<BanyanStore, anyhow::Error>(store)
@@ -103,18 +102,41 @@ impl Component<StoreRequest, StoreConfig> for Store {
         }
         Ok(())
     }
-    fn extract_settings(&self, s: Settings) -> Result<StoreConfig> {
-        let identity: NodeIdentity = self
+    fn extract_settings(&self, s: Settings) -> Result<SwarmConfig> {
+        let keypair = self
             .keystore
             .read()
             .get_pair(self.node_id.into())
-            .ok_or_else(|| anyhow::anyhow!("No KeyPair available for KeyId {}", self.node_id))?
-            .into();
-        let mut c = s.store_config(&self.working_dir)?;
-        c.api_addr = self.bind_to.api.clone();
-        c.ipfs_node.identity = Some(identity.to_string());
-        c.ipfs_node.listen = self.bind_to.swarm.clone().to_multiaddrs().collect();
-        Ok(c)
+            .ok_or_else(|| anyhow::anyhow!("No KeyPair available for KeyId {}", self.node_id))?;
+        let psk: [u8; 32] = base64::decode(&s.swarm.swarm_key)?
+            .try_into()
+            .map_err(|_| anyhow::anyhow!("invalid psk"))?;
+        let topic = s.swarm.topic.replace('/', "_");
+        let db_path = self.working_dir.join(format!("{}.sqlite", topic));
+        let config = SwarmConfig {
+            topic,
+            index_store: Some(self.db.clone()),
+            enable_publish: !s.api.events.read_only,
+            enable_mdns: true,
+            keypair: Some(keypair),
+            psk: Some(psk),
+            node_name: Some(s.admin.display_name),
+            db_path: Some(db_path),
+            external_addresses: s
+                .swarm
+                .announce_addresses
+                .iter()
+                .map(|s| s.parse())
+                .collect::<Result<_, libp2p::multiaddr::Error>>()?,
+            listen_addresses: self.bind_to.swarm.clone().to_multiaddrs().collect(),
+            bootstrap_addresses: s
+                .swarm
+                .bootstrap_nodes
+                .iter()
+                .map(|s| s.parse())
+                .collect::<Result<_, libp2p::multiaddr::Error>>()?,
+        };
+        Ok(config)
     }
 }
 struct InternalStoreState {
@@ -124,13 +146,14 @@ struct InternalStoreState {
 /// Struct wrapping the store service and handling its lifecycle.
 pub(crate) struct Store {
     rx: Receiver<ComponentRequest<StoreRequest>>,
+    state: Option<InternalStoreState>,
+    store_config: Option<SwarmConfig>,
     working_dir: PathBuf,
     bind_to: BindTo,
     keystore: KeyStoreRef,
     node_id: NodeId,
-    store_config: Option<StoreConfig>,
-    state: Option<InternalStoreState>,
     db: Arc<Mutex<rusqlite::Connection>>,
+    number_of_threads: Option<usize>,
 }
 
 impl Store {
@@ -144,14 +167,15 @@ impl Store {
     ) -> anyhow::Result<Self> {
         std::fs::create_dir_all(working_dir.clone())?;
         Ok(Self {
-            state: None,
             rx,
+            state: None,
+            store_config: None,
             working_dir,
             bind_to,
             keystore,
             node_id,
-            store_config: None,
             db,
+            number_of_threads: None,
         })
     }
 }

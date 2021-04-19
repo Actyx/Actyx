@@ -220,6 +220,12 @@ impl From<KeyPair> for libp2p::core::identity::ed25519::Keypair {
     }
 }
 
+impl From<KeyPair> for libp2p::core::identity::Keypair {
+    fn from(kp: KeyPair) -> libp2p::core::identity::Keypair {
+        libp2p::core::identity::Keypair::Ed25519(kp.into())
+    }
+}
+
 impl AsRef<[u8]> for PublicKey {
     fn as_ref(&self) -> &[u8] {
         &self.0
@@ -267,7 +273,26 @@ impl Debug for KeyPair {
     }
 }
 
+impl From<KeyPair> for ed25519::Keypair {
+    fn from(kp: KeyPair) -> Self {
+        Self {
+            public: kp.public.to_ed25519(),
+            secret: kp.private.into(),
+        }
+    }
+}
+
+impl From<KeyPair> for NodeId {
+    fn from(kp: KeyPair) -> Self {
+        kp.public.into()
+    }
+}
+
 impl KeyPair {
+    pub fn generate() -> Self {
+        PrivateKey::generate().into()
+    }
+
     pub fn pub_key(&self) -> PublicKey {
         self.public
     }

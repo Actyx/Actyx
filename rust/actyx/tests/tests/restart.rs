@@ -44,6 +44,7 @@ async fn start_node(
     Ok((node, es))
 }
 #[tokio::test]
+#[ignore]
 async fn persistence_across_restarts() -> anyhow::Result<()> {
     // Install global subscriber before any app starts
     let (tx, logs_rx) = crossbeam::channel::unbounded();

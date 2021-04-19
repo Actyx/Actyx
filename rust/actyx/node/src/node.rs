@@ -420,7 +420,7 @@ mod test {
         let json = json!(
           {
             "swarm": {
-              "swarmKey": "L2tleS9zz2FybS9zz2zzzS4wLjAvCi9iYXNlMTYvCjRkNjMzzzzzNjQ0YzY3NDgzMjRjNzczNTM4NzIzMDU3NDQ0NDZjNTU2ODYyMzEzMzRjNzEzNjRmNzc2OTMzNjg=",
+              "swarmKey": "MDAwMDAwMDAxMTExMTExMTIyMjIyMjIyMzMzMzMzMzM=",
               "bootstrapNodes": [ "/ip4/127.0.0.1/tcp/4001/ipfs/QmaAxuktPMR3ESHe9Pru8kzzzSGvsUie7UFJPfCWqTzzzz" ],
               "announceAddresses": [],
               "topic": "My Topic"

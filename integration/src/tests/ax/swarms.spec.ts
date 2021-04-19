@@ -8,12 +8,12 @@ import { stubs } from '../../stubs'
 const FILE_PATH = path.resolve(settings().tempDir, 'temp-swarm-key')
 
 const isBase64 = (data: string) => Buffer.from(data, 'base64').toString('base64') === data
-const isLen128 = (data: string) => data.length === 128
-const isKeyValid = (key?: string) => key && isBase64(key) && isLen128(key)
+const isLen44 = (data: string) => data.length === 44
+const isKeyValid = (key?: string) => key && isBase64(key) && isLen44(key)
 
 describe('ax swarms', () => {
   describe('keygen', () => {
-    test('return valid swarmKeys (128 length and base64)', async () => {
+    test('return valid swarmKeys (44 length and base64)', async () => {
       const response = assertOK(await stubs.axOnly.ax.swarms.keyGen())
       const key = response.result.swarmKey
       expect(response.result).toMatchObject({

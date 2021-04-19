@@ -1,4 +1,4 @@
-use rusqlite::{params, Connection, OpenFlags, OptionalExtension, Transaction as RusqlTransaction, NO_PARAMS};
+use rusqlite::{params, Connection, OpenFlags, OptionalExtension, Transaction as RusqlTransaction};
 
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum Error {
@@ -50,7 +50,7 @@ impl Database {
         )?;
         conn.execute_batch("PRAGMA journal_mode = WAL;")?;
         // `PRAGMA synchronous = EXTRA;` https://www.sqlite.org/pragma.html#pragma_synchronous
-        conn.execute("PRAGMA synchronous = EXTRA;", NO_PARAMS)?;
+        conn.execute("PRAGMA synchronous = EXTRA;", [])?;
         Ok(())
     }
     pub fn exec<R>(&mut self, update: impl FnOnce(&mut Transaction) -> R) -> Result<R> {

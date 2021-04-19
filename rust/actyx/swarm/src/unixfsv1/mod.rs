@@ -90,7 +90,7 @@ impl UnixfsDecoder {
         loop {
             if let Some(cid) = self.cids.pop_front() {
                 let cid = Cid::new_v1(cid.codec(), *cid.hash());
-                let block = self.ipfs.fetch(&cid).await?;
+                let block = self.ipfs.fetch(&cid, self.ipfs.peers()).await?;
                 let node = decode_unixfs_block(block.data())?;
                 if let Some(path) = self.path.pop_front() {
                     if let UnixFsNode::Directory(mut children) = node {

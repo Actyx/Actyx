@@ -52,9 +52,7 @@ impl<T: Clone> Iterator for Drainer<T> {
         // now check what we find in the communication variables
         let mut acc_guard = self.acc.lock().unwrap();
         if !acc_guard.is_empty() {
-            let ret = (*acc_guard).clone();
-            acc_guard.clear();
-            return Some(ret);
+            return Some(acc_guard.drain(..).collect());
         }
         if self.done.load(Ordering::Acquire) {
             return None;

@@ -124,13 +124,19 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
       socket.binaryType = binaryType
     }
     socket.onerror = err => {
-      const msg = (err as any).message
-      log.ws.error('WebSocket connection error -- is ActyxOS reachable?', msg)
-      console.error(`Error: unable to connect to ActyxOS. Is it running?`)
+      const originalMsg = (err as any).message
+
+      const msg = originalMsg.includes('ECONNREFUSED')
+        ? 'Error: unable to connect to Actyx. Is it running? -- Error: ' + originalMsg
+        : 'Error in connection to Actyx service: ' + originalMsg
+
       try {
-        this.responses && this.responses.error('Cxn error: ' + msg)
+        log.ws.error(msg)
+        this.responses && this.responses.error(msg)
       } catch (err) {
-        log.ws.error('Error while passing websocket error up the chain!!', err)
+        const errMsg = `Error while passing websocket error message ${msg} up the chain!! -- ${err}`
+        console.error(errMsg)
+        log.ws.error(errMsg)
       }
     }
     socket.onmessage = onMessage

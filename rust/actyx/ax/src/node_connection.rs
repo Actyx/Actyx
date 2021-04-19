@@ -98,7 +98,7 @@ impl NodeConnection {
             mut swarm,
             connection,
         } = self.establish_connection(kp).await?;
-        swarm.admin_api.request(remote_peer_id, request);
+        swarm.behaviour_mut().admin_api.request(remote_peer_id, request);
         let node_info = NodeInfo {
             id: to_node_id(remote_peer_id),
             peer_id: remote_peer_id,
@@ -174,7 +174,10 @@ impl NodeConnection {
             mode: query_mode,
             follow,
         };
-        let outgoing_req_id = swarm.admin_api.request(remote_peer_id, AdminRequest::Logs(query));
+        let outgoing_req_id = swarm
+            .behaviour_mut()
+            .admin_api
+            .request(remote_peer_id, AdminRequest::Logs(query));
 
         let s = stream::unfold(swarm, move |mut swarm| async move {
             loop {

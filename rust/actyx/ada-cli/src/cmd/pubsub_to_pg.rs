@@ -1,7 +1,6 @@
 use crate::cmd;
 use anyhow::Result;
 use async_trait::async_trait;
-use ax_config::StoreConfig;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use future::TryFutureExt;
 use futures::{future, stream};
@@ -158,7 +157,7 @@ impl cmd::Command for Cmd {
         "pubsubToPg"
     }
 
-    async fn run(&self, matches: &ArgMatches<'_>, _config: StoreConfig, store: BanyanStore) -> Result<()> {
+    async fn run(&self, matches: &ArgMatches<'_>, store: BanyanStore) -> Result<()> {
         // https://www.postgresql.org/docs/9.3/libpq-envars.html
         let client = store.ipfs();
         let default_user = std::env::var("PGUSER").or_else(|_| std::env::var("USER")).ok();

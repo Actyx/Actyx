@@ -52,8 +52,13 @@ enum Event {
     ExpiredListenAddr(PeerId, Multiaddr),
     /// An external address was added with `Swarm::add_external_address`.
     NewExternalAddr(PeerId, Multiaddr),
+    /// An external address was removed with `Swarm::remove_external_address`.
+    ExpiredExternalAddr(PeerId, Multiaddr),
     /// A peer reported they observed an external address.
     NewObservedAddr(PeerId, Multiaddr),
+    /// Address dropped due to peers reporting different addresses. A maximum of
+    /// eight addresses are kept. This is implemented in libp2p-swarm.
+    ExpiredObservedAddr(PeerId, Multiaddr),
 }
 
 impl Event {
@@ -62,7 +67,9 @@ impl Event {
             Self::NewListenAddr(peer, _) => &peer.0,
             Self::ExpiredListenAddr(peer, _) => &peer.0,
             Self::NewExternalAddr(peer, _) => &peer.0,
+            Self::ExpiredExternalAddr(peer, _) => &peer.0,
             Self::NewObservedAddr(peer, _) => &peer.0,
+            Self::ExpiredObservedAddr(peer, _) => &peer.0,
         }
     }
 }
@@ -164,7 +171,9 @@ pub async fn discovery_ingest(store: BanyanStore) {
             Event::NewListenAddr(peer, addr)
             | Event::NewExternalAddr(peer, addr)
             | Event::NewObservedAddr(peer, addr) => store.ipfs().add_address(&peer.into(), addr.into()),
-            Event::ExpiredListenAddr(peer, addr) => store.ipfs().remove_address(&peer.into(), &addr.into()),
+            Event::ExpiredListenAddr(peer, addr)
+            | Event::ExpiredExternalAddr(peer, addr)
+            | Event::ExpiredObservedAddr(peer, addr) => store.ipfs().remove_address(&peer.into(), &addr.into()),
         }
     }
 }
@@ -183,13 +192,20 @@ pub fn discovery_publish(
         while let Some(event) = stream.next().await {
             tracing::debug!("discovery_publish {} {:?}", node_name, event);
             let event = match event {
-                ipfs_embed::Event::NewListenAddr(addr) => Event::NewListenAddr(peer_id, addr.into()),
-                ipfs_embed::Event::ExpiredListenAddr(addr) => Event::ExpiredListenAddr(peer_id, addr.into()),
+                ipfs_embed::Event::NewListenAddr(_, addr) => Event::NewListenAddr(peer_id, addr.into()),
+                ipfs_embed::Event::ExpiredListenAddr(_, addr) => Event::ExpiredListenAddr(peer_id, addr.into()),
                 ipfs_embed::Event::NewExternalAddr(addr) => {
                     if external.contains(&addr) {
                         Event::NewExternalAddr(peer_id, addr.into())
                     } else {
                         Event::NewObservedAddr(peer_id, addr.into())
+                    }
+                }
+                ipfs_embed::Event::ExpiredExternalAddr(addr) => {
+                    if external.contains(&addr) {
+                        Event::ExpiredExternalAddr(peer_id, addr.into())
+                    } else {
+                        Event::ExpiredObservedAddr(peer_id, addr.into())
                     }
                 }
                 ipfs_embed::Event::Discovered(peer) => {
@@ -200,6 +216,7 @@ pub fn discovery_publish(
                     }
                     continue;
                 }
+                _ => continue,
             };
             buffer.clear();
             if let Err(err) = event.encode(DagCborCodec, &mut buffer) {
@@ -230,12 +247,24 @@ mod tests {
         let a_id = a.ipfs().local_peer_id();
         let b_id = b.ipfs().local_peer_id();
         let c_id = c.ipfs().local_peer_id();
-        a.ipfs().listen_on("/ip4/127.0.0.1/tcp/0".parse()?).await?;
-        let b_addr = b.ipfs().listen_on("/ip4/127.0.0.1/tcp/0".parse()?).await?;
-        c.ipfs().listen_on("/ip4/127.0.0.1/tcp/0".parse()?).await?;
+        a.ipfs()
+            .listen_on("/ip4/127.0.0.1/tcp/0".parse()?)?
+            .next()
+            .await
+            .unwrap();
+        b.ipfs()
+            .listen_on("/ip4/127.0.0.1/tcp/0".parse()?)?
+            .next()
+            .await
+            .unwrap();
+        c.ipfs()
+            .listen_on("/ip4/127.0.0.1/tcp/0".parse()?)?
+            .next()
+            .await
+            .unwrap();
         tokio::time::sleep(Duration::from_millis(100)).await;
-        a.ipfs().add_address(&b_id, b_addr.clone());
-        c.ipfs().add_address(&b_id, b_addr);
+        a.ipfs().add_address(&b_id, b.ipfs().listeners()[0].clone());
+        c.ipfs().add_address(&b_id, b.ipfs().listeners()[0].clone());
         loop {
             if a.ipfs().is_connected(&c_id) && c.ipfs().is_connected(&a_id) {
                 break;
