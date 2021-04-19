@@ -12,6 +12,7 @@ assert_cmd = "1.0.3"
 crossbeam = "0.8.0"
 escargot = "0.5.2"
 futures = "0.3.13"
+logsvcd = { path = "../logsvcd" }
 node = { path = "../node" }
 regex = "1.4.5"
 serde_json = "1.0.64"

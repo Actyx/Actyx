@@ -6379,6 +6379,7 @@ dependencies = [
  "crossbeam",
  "escargot",
  "futures 0.3.14",
+ "logsvcd",
  "node",
  "regex",
  "serde_json",
