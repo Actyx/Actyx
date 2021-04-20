@@ -2814,10 +2814,9 @@ dependencies = [
 [[package]]
 name = "ipfs-embed"
 version = "0.19.0"
-source = "git+https://github.com/ipfs-rust/ipfs-embed#ebb17227a36b978d3616e8bae6626c732a62658c"
+source = "git+https://github.com/ipfs-rust/ipfs-embed#072b2ddf5bddd5e2823cccfa3500f8bef1e56d22"
 dependencies = [
  "anyhow",
- "async-global-executor",
  "async-io",
  "async-trait",
  "fnv",
@@ -2834,6 +2833,7 @@ dependencies = [
  "pin-project 1.0.7",
  "prometheus",
  "thiserror",
+ "tokio 1.5.0",
  "tracing",
  "void",
 ]
@@ -7028,6 +7028,7 @@ dependencies = [
  "smallvec 1.6.1",
  "thiserror",
  "tinyvec",
+ "tokio 1.5.0",
  "url 2.2.1",
 ]
 
@@ -7047,6 +7048,7 @@ dependencies = [
  "resolv-conf",
  "smallvec 1.6.1",
  "thiserror",
+ "tokio 1.5.0",
  "trust-dns-proto",
 ]
 
