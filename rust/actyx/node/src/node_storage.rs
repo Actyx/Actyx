@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use actyxos_sdk::NodeId;
-use anyhow::{anyhow, bail};
 use crypto::PublicKey;
 use parking_lot::Mutex;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
@@ -36,53 +35,12 @@ impl NodeStorage {
         })
     }
 
-    fn migrate_v0_v1(conn: &mut Connection) -> anyhow::Result<()> {
-        if NodeStorage::version(conn)? == 0 {
-            warn!("Performing node db schema migration from v0 to v1");
-            let txn = conn.transaction()?;
-            let key_store: Option<String> = txn
-                .query_row("SELECT value FROM node WHERE name = 'key_store'", [], |row| row.get(0))
-                .optional()?;
-
-            if let Some(key_store) = key_store {
-                // if there is no key store, there is nothing to do
-                let key_store = base64::decode(&key_store)?;
-                let key_store = crypto::KeyStore::restore_v0(&key_store[..])?;
-                // the old node id is a hash of the public key.
-                //
-                // To look up the keypair for the node id, we would have to search for a keypair
-                // for which the hash of the public key is the old node id.
-                //
-                // Instead we take advantage of the fact that there is always just a single keypair
-                // stored, and look up that keypair.
-                if key_store.get_pairs().len() != 1 {
-                    bail!("Expected key store to contain exactly 1 item.");
-                };
-                let node_id = key_store
-                    .get_pairs()
-                    .keys()
-                    .next()
-                    .ok_or_else(|| anyhow!("There must be exactly one keypair."))?;
-                let node_id_txt = node_id.to_string();
-                let mut tmp = Vec::new();
-                key_store.dump(&mut tmp)?;
-                let key_store_txt = base64::encode(&tmp);
-                txn.execute("UPDATE node SET value = ? WHERE name = 'node_id'", &[&node_id_txt])?;
-                txn.execute("UPDATE node SET value = ? WHERE name = 'key_store'", &[&key_store_txt])?;
-            }
-            txn.execute("INSERT INTO node VALUES ('database_version', 1)", [])?;
-            txn.commit()?;
-            conn.execute("VACUUM", [])?;
-            info!("Schema migration from v0 to v1 successful");
-        }
-        Ok(())
-    }
-
     fn initialize_db(conn: &mut Connection) -> ActyxOSResult<()> {
         conn.execute_batch(
             "BEGIN;\n\
             CREATE TABLE IF NOT EXISTS node \
             (name TEXT PRIMARY KEY, value BLOB) WITHOUT ROWID;\n\
+            INSERT INTO node VALUES ('database_version', 1) ON CONFLICT DO NOTHING;\n\
             COMMIT;",
         )
         .ax_internal()?;
@@ -94,10 +52,11 @@ impl NodeStorage {
            "INSERT INTO node(name,value) SELECT 'cycle_count', -1 WHERE NOT EXISTS (SELECT 1 FROM node WHERE name = 'cycle_count');\n\
                 UPDATE node SET value = value+1 WHERE name='cycle_count';").ax_internal()?;
 
-        NodeStorage::migrate_v0_v1(conn).ax_internal()?;
+        assert_eq!(NodeStorage::version(conn).ax_internal()?, 1);
 
         Ok(())
     }
+
     /// version of the node storage. 0 for no version field.
     fn version(conn: &Connection) -> anyhow::Result<u32> {
         Ok(conn
@@ -107,6 +66,7 @@ impl NodeStorage {
             .optional()
             .map(|x| x.unwrap_or_default())?)
     }
+
     pub fn set_node_id(&self, key_id: NodeId) -> ActyxOSResult<()> {
         let id: PublicKey = key_id.into();
         let id = id.to_string();
@@ -117,6 +77,7 @@ impl NodeStorage {
             .ax_internal()?;
         Ok(())
     }
+
     pub fn get_node_key(&self) -> ActyxOSResult<Option<NodeId>> {
         if let Some(identity) = self
             .connection
@@ -192,19 +153,7 @@ mod test {
         Ok(())
     }
 
-    /// test that we can read a v0 node settings, migrate it to v1, and properly get the node id.
-    #[test]
-    fn should_migrate_v0() -> anyhow::Result<()> {
-        let mem = load_test_db("tests/node_v0.sqlite")?;
-        assert_eq!(NodeStorage::version(&mem).unwrap(), 0);
-        let storage = NodeStorage::from_conn(mem).unwrap();
-        let expected_node_id: NodeId = NodeId::try_from("lBkGGmqD2X/mmtpxnC2KWobZw4g1IWCJSPCdjdB1gCI").unwrap();
-        assert_eq!(NodeStorage::version(&storage.connection.lock()).unwrap(), 1);
-        assert_eq!(NodeStorage::get_node_key(&storage).unwrap(), Some(expected_node_id));
-        Ok(())
-    }
-
-    /// test that we can read a v0 node settings, migrate it to v1, and properly get the node id.
+    /// test that we can read a v1 node settings and properly get the node id.
     ///
     /// this is mostly so we have a v1 db in the tests for when we do v2.
     #[test]
