@@ -92,14 +92,15 @@ impl service::EventService for EventService {
             from_offsets_excluding,
             to_offsets_including,
         };
+        let mut query: Query = (&request.query).into();
         let response = match request.order {
             Order::Asc => self.store.stream_events_forward(selection),
             Order::Desc => self.store.stream_events_backward(selection),
             Order::StreamAsc => self.store.stream_events_source_ordered(selection),
         }
         .await?
-        .map(Into::into)
-        .map(QueryResponse::Event);
+        .flat_map(move |e| stream::iter(query.feed(Value::from(e)).into_iter()))
+        .map(|v| QueryResponse::Event(v.into()));
         Ok(response.boxed())
     }
 
@@ -112,10 +113,7 @@ impl service::EventService for EventService {
             .store
             .stream_events_source_ordered(selection)
             .await?
-            .flat_map(move |e| {
-                let v = Value::from(e);
-                stream::iter(query.feed(v).into_iter())
-            })
+            .flat_map(move |e| stream::iter(query.feed(Value::from(e)).into_iter()))
             .map(|v| SubscribeResponse::Event(v.into()));
 
         Ok(response.boxed())
@@ -141,21 +139,24 @@ impl service::EventService for EventService {
 
         let from_offsets_excluding = request.from.min_offsets().into();
         let selection = EventSelection::after(tag_subscriptions, from_offsets_excluding);
+        let mut query: Query = (&request.query).into();
         let response = self
             .store
             .stream_events_source_ordered(selection)
             .await?
-            .map({
+            .flat_map({
                 let mut latest = initial_latest;
-                move |event| {
-                    if event.key > latest {
-                        latest = event.key;
-                        SubscribeMonotonicResponse::Event {
-                            event: event.into(),
-                            caught_up: true,
-                        }
+                move |e| {
+                    if e.key > latest {
+                        latest = e.key;
+                        stream::iter(query.feed(Value::from(e)).into_iter())
+                            .map(|ev| SubscribeMonotonicResponse::Event {
+                                event: ev.into(),
+                                caught_up: true,
+                            })
+                            .boxed()
                     } else {
-                        SubscribeMonotonicResponse::TimeTravel { new_start: event.key }
+                        stream::once(async move { SubscribeMonotonicResponse::TimeTravel { new_start: e.key } }).boxed()
                     }
                 }
             })
