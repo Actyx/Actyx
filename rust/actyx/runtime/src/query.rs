@@ -54,8 +54,8 @@ impl From<&language::Query> for Query {
         let mut stages = vec![];
         for op in &q.ops {
             match op {
-                actyxos_sdk::language::Operation::Filter(f) => stages.push(Operation::Filter(Filter::init(f.clone()))),
-                actyxos_sdk::language::Operation::Select(s) => stages.push(Operation::Select(Select::init(s.clone()))),
+                actyxos_sdk::language::Operation::Filter(f) => stages.push(Operation::Filter(Filter::new(f.clone()))),
+                actyxos_sdk::language::Operation::Select(s) => stages.push(Operation::Select(Select::new(s.clone()))),
             }
         }
         Self::Query(stages)

@@ -21,7 +21,7 @@ pub struct Filter {
 }
 
 impl Filter {
-    pub fn init(expr: SimpleExpr) -> Self {
+    pub fn new(expr: SimpleExpr) -> Self {
         Self { expr }
     }
 
@@ -38,7 +38,7 @@ pub struct Select {
 }
 
 impl Select {
-    pub fn init(expr: SimpleExpr) -> Self {
+    pub fn new(expr: SimpleExpr) -> Self {
         Self { expr }
     }
 
@@ -64,7 +64,7 @@ mod tests {
 
     #[test]
     fn filter() {
-        let f = Filter::init(expr("_ > 5 + a"));
+        let f = Filter::new(expr("_ > 5 + a"));
         let mut cx = Context::new(EventKey::default());
         cx.bind("a", cx.value(|b| b.encode_f64(3.0)));
 
@@ -76,7 +76,7 @@ mod tests {
 
     #[test]
     fn select() {
-        let s = Select::init(expr("_.x + a"));
+        let s = Select::new(expr("_.x + a"));
         let mut cx = Context::new(EventKey::default());
         cx.bind("a", cx.value(|b| b.encode_f64(0.5)));
 
