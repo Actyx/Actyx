@@ -36,6 +36,9 @@ The amount of devices you can reliably run in a single ActyxOS swarm depends on 
 With typical rugged tablets (CPU from around 2013) and Raspberry Pi 3 gateways, 100 devices should by themselves not pose a problem.
 If you start pushing performance limits (see below) then this number can be significantly lower, depending on the event data rate and the computational complexity of your business logic.
 
+In some cases it may be possible to split an overall system into several smaller ones that do not directly interact via event streams.
+You can use this approach in order to serve a larger factory while still staying within the 100 devices limit.
+
 :::tip You need to connect thousands of edge devices?
 Please [get in touch with us and the Actyx community](https://community.actyx.com/): we would love to hear about your use-case and figure out how to make it work with ActyxOS.
 :::
@@ -44,18 +47,22 @@ Please [get in touch with us and the Actyx community](https://community.actyx.co
 
 ActyxOS is a completely decentralized system dependent on the disk space of every single edge device.
 At runtime different types of data are generated and stored throughout the ActyxOS swarm.
-Current versions of ActyxOS store every event on all devices of the same swarm; in the future we will add the possibility to configure the replication as well as the lifespan of events. 
+Current versions of ActyxOS store every event on all devices of the same swarm; in the future we will add the possibility to configure the replication as well as the lifespan of events.
 This will allow you to configure when events should be deleted and on which devices events should be replicated.
+
+These are the currently implemented behaviors:
 
 |Type|Size|Lifespan|Replication|
 |----|----|--------|-----------|
-|Event|max. 4KB|Events have infinite lifespan unless you reset the swarm.|Events are replicated on all devices.|
+|Event|max. 4KB|Events have infinite lifespan within the swarm.|Events are replicated on all devices.|
 |Log|max. 4KB|Logs are cleared automatically when disk space is needed.|Logs are not replicated.|
 
-Until we add these configuration possibilities, the point at which you run out of disk space depends on the size, number, and  compressibility of your events. 
-For a normal factory use-case, here is an example based on real data from our customers:
+The listed maximal sizes are recommendations — neither events nor logs should be used to carry huge pieces of data (although larger events may be justified in some circumstances, e.g. defining a production process with many steps, where such definitions happen infrequently).
 
-|Type|With machine integrations|Without machine integrations|
+Until we make event retention and replication configurable, the point at which you run out of disk space depends on the size, number, and compressibility of your events. 
+For a normal factory use-case, here are two examples based on real data from our customers:
+
+|    |With machine integrations|Without machine integrations|
 |----|-----------------|----------------------------|
 |Number of nodes|8|10|
 |Operating time|1 year|1 year|
@@ -64,7 +71,7 @@ For a normal factory use-case, here is an example based on real data from our cu
 |Compression factor|0.03|0.03|
 |Disk space needed|135 MB|36MB|
 
-Currently, the only solution to running out of disk space because of events is either clearing events from your swarm or increasing the disk space of your edge devices. 
+Currently, the only solution to running out of disk space because of events is either clearing events from your swarm (effectively creating a new swarm and starting over) or increasing the disk space of your edge devices. 
 We are already working on the functionality to configure replication and lifespan of events.
 
 :::tip Your solution will produce 100s of millions of events?
@@ -84,6 +91,10 @@ If a Fish requires a large number of events for starting up then it will take a 
 Our recommendation is to structure your fishes such that each requires less than 1'000 events.
 This means that fishes are best used to model process workflows (which rarely have more than 1'000 steps).
 Fishes are not ideal for accumulating statistical data over long time periods; a better solution for that use-case is to export the events into a time-series database.
+
+:::tip
+If you need to create long-running fishes that accumulate many events — like a registry for currently open work orders — then you can mitigate the resulting issues with state snapshots as described below.
+:::
 
 ### The effect of semantic snapshots
 
@@ -118,6 +129,10 @@ Actual limits depend both on the runtime environment (which version of which bro
 
 We recommend to keep per Fish memory usage below 10MB.
 
+:::tip You are seeing much higher memory usage than expected?
+Keep in mind that starting with Pond version 2.1 you can directly modify the `state` parameter to the `onEvent` function, which will reduce memory pressure compared to making a copy.
+:::
+
 ### Latency implications of large number of fishes and sources
 
 With current ActyxOS versions the internal event dispatch latency is proportional to both the number of Fishes and the number of devices in the swarm.
@@ -125,6 +140,13 @@ The effect of this depends very much on the CPU that is running ActyxOS: for exa
 
 We are working on improving this characteristic starting with release 1.1.5 and expect to remove this bottleneck in a future release.
 Until then we recommend to keep the product of woken up Fishes and swarm sources below 1'000, at least on tablet computers.
+
+:::tip
+With current Pond versions, Fishes will never be stopped and their resources released (we are working on a feature in this direction).
+This may lead to exceeding the above recommended limit or exceeding the available main memory.
+
+Since this happens mostly on tablets with dynamic end-user workflows (like opening and closing work orders), an easy remedy is to restart the app — provided that after the restart less Fishes are woken up.
+:::
 
 ### Pathological time travel performance when reconnecting a device that was offline for a long time
 
@@ -138,3 +160,30 @@ The worst-case scenario would be that every chunk causes a time travel, with eac
 Thereby, the Fish would process some events potentially a hundred times, more likely ten times (since chunks are ordered per device they come from).
 
 To avoid this issue, we recommend using `Pond.waitForSwarmSync()` to delay app startup until ActyxOS is up-to-date with the rest of the swarm.
+
+## Illustrative Examples
+
+### Machine Connectors
+
+Machine connectors that only make machine state and counters available in the ActyxOS swarm can be made without running into the above-mentioned issues.
+The best way to do so is to emit all state and counter updates as events — typically a complete set is emitted every time.
+If for some reason you need to write partial updates (e.g. only a subset of counters) in some events, make sure to persist the full set within a single event at regular intervals and mark that as a semantic snapshot.
+This way starting up the machine connector’s related Fishes will always be quick.
+
+The only performance consideration for machine connectors is that they produce data at a steady rate that is often higher than the data rates produced by human operators.
+Therefore you need to plan the available disk space according to update frequency times event size for at least one year; we will release a future Actyx version with ephemeral event streams which will give you the possibility to place a fixed limit on disk usage and thus solve this issue permanently.
+
+### Production Data Acquisition
+
+This use-case includes the tracking of state as well as results (finished goods, waste) of production orders.
+Each of these orders has a finite lifespan, it becomes irrelevant typically after a few weeks.
+The most challenging part of writing such an app is to construct a process registry fish such that its state doesn’t grow too big — and this fish will typically need to make use of state snapshots because it is long-lived and consumes some events from each production order.
+
+We know from project experience that implementing production data acquisition with 50 workstations and 50 machine connectors (see above) works well if you keep the above recommendations in mind.
+
+### Data Exporters
+
+Exporting events or derived information into an ERP or BI system can be done using fishes if the overall workload is “human-scale”: we know from project experience that it works well for booking acquired production data into an ERP system.
+
+Exporting machine or sensor data into a time-series database for further analysis outside ActyxOS is best done using the HTTP API and writing the exporter in a language that is well-suited for connecting to your database and handling the required amount of streaming data.
+We know from project experience that this can be done with native code (like Rust, C++) for demanding applications that write many million data points per day, e.g. into PostgreSQL with the timescale extension.
