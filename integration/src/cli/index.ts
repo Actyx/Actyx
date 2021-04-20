@@ -12,6 +12,7 @@ export class CLI {
   public readonly logs
   public readonly swarms
   public readonly users
+  public readonly version
 
   public static async build(node: string, binaryPath: string): Promise<CLI> {
     const randIdentifier = Math.random().toString(36).substring(7)
@@ -38,11 +39,14 @@ export class CLI {
   private constructor(private readonly node: string, binaryPath: string, identityPath: string) {
     this.binaryPath = binaryPath
     this.identityPath = identityPath
+
     const exec = mkExec(this.binaryPath, this.node, this.identityPath)
+
     this.nodes = exec.nodes
     this.settings = exec.settings
     this.logs = exec.logs
     this.swarms = exec.swarms
     this.users = exec.users
+    this.version = exec.version
   }
 }

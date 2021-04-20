@@ -1,8 +1,8 @@
 import { Event, EventDraft } from '@actyx/os-sdk'
+import { allNodeNames, runOnAll, runOnEach } from '../../infrastructure/hosts'
 import { ConnectivityStatus, Pond } from '@actyx/pond'
 import * as PondV1 from 'pondV1'
 import { MultiplexedWebsocket } from 'pondV1/lib/eventstore/multiplexedWebsocket'
-import { allNodeNames, runOnAll, runOnEach } from './infrastructure/hosts'
 
 describe.skip('the Infrastructure', () => {
   test('must create global nodes pool', async () => {

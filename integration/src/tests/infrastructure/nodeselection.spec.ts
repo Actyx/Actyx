@@ -1,6 +1,6 @@
-import { stubs } from '../stubs'
-import { selectNodes } from './nodeselection'
-import { ActyxOSNode } from './types'
+import { selectNodes } from '../../infrastructure/nodeselection'
+import { ActyxOSNode } from '../../infrastructure/types'
+import { stubs } from '../../stubs'
 
 let n1: ActyxOSNode
 let n2: ActyxOSNode

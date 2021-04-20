@@ -14,7 +14,7 @@ import { waitForNodeToBeConfigured } from '../../retry'
 import { stubs } from '../../stubs'
 import { createTestNodeLocal } from '../../test-node-factory'
 
-describe('ax settings (using quickstart ActyxOS default setting)', () => {
+describe('ax settings', () => {
   const workingDir = '.'
   const settingDefaultFilePath = path.resolve(workingDir, 'fixtures/local-sample-node-settings.yml')
   const scopeActyx = 'com.actyx'

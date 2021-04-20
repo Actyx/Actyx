@@ -1,6 +1,6 @@
 import { Fish, FishId, Pond, Tag, Tags, Where } from '@actyx/pond'
 import { Observable } from 'rxjs'
-import { runConcurrentlyOnAll, withPond } from '../infrastructure/hosts'
+import { runConcurrentlyOnAll, withPond } from '../../infrastructure/hosts'
 
 const isSortedAsc = (data: string[]): boolean => {
   if (data.length < 2) {

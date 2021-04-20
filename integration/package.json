@@ -5,6 +5,7 @@
     "@actyx/os-sdk": "file:../js/os-sdk",
     "@actyx/pond": "file:../js/pond",
     "aws-sdk": "2.759.0",
+    "axios": "^0.21.1",
     "execa": "4.0.3",
     "fp-ts": "1.19.5",
     "fs-extra": "9.0.1",
