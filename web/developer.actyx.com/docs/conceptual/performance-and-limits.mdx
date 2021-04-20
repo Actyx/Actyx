@@ -44,16 +44,28 @@ Please [get in touch with us and the Actyx community](https://community.actyx.co
 
 ActyxOS is a completely decentralized system dependent on the disk space of every single edge device.
 At runtime different types of data are generated and stored throughout the ActyxOS swarm.
-Current versions of ActyxOS store every event on all devices of the same swarm; in the future we will add partial replication so that you can include devices with smaller disk that won’t replicate all the data.
+Current versions of ActyxOS store every event on all devices of the same swarm; in the future we will add the possibility to configure the replication as well as the lifespan of events. 
+This will allow you to configure when events should be deleted and on which devices events should be replicated.
 
-|Type|Size|Deletable?|
-|----|----|----------|
-|Event|max. 4KB|**No**, events have infinite lifespan unless you reset the swarm.|
-|Log|max. 4KB| Yes, the ActyxOS Console Service clears logs automatically when disk space is needed.|
+|Type|Size|Lifespan|Replication|
+|----|----|--------|-----------|
+|Event|max. 4KB|Events have infinite lifespan unless you reset the swarm.|Events are replicated on all devices.|
+|Log|max. 4KB|Logs are cleared automatically when disk space is needed.|Logs are not replicated.|
 
-As logs are cleared automatically, they will not lead to running out of disk space. The point at which you will run out of disk space because of events depends on their number and size. 100 million events with an average size of 0.2 KB will require a maximum of 20 GB of disk space.
+Until we add these configuration possibilities, the point at which you run out of disk space depends on the size, number, and  compressibility of your events. 
+For a normal factory use-case, here is an example based on real data from our customers:
 
-Currently, the only solution to running out of disk space because of events is either clearing events from your swarm or increasing the disk space of your edge devices. We are already working on a functionality that lets you configure whether events can be forgotten after a certain amount of time, or before you run out of disk space.
+|Type|With machine integrations|Without machine integrations|
+|----|-----------------|----------------------------|
+|Number of nodes|8|10|
+|Operating time|1 year|1 year|
+|Number of events|10000000|580000|
+|Uncompressed size of events|4500 MB|1200 MB|
+|Compression factor|0.03|0.03|
+|Disk space needed|135 MB|36MB|
+
+Currently, the only solution to running out of disk space because of events is either clearing events from your swarm or increasing the disk space of your edge devices. 
+We are already working on the functionality to configure replication and lifespan of events.
 
 :::tip Your solution will produce 100s of millions of events?
 Please [get in touch with us and the Actyx community](https://community.actyx.com/): we would love to hear about your use-case and figure out how to make it work with ActyxOS.
