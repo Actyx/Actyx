@@ -23,7 +23,7 @@ dependencies = [
 
 [[package]]
 name = "actyxos_sdk"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "actyxos_sdk_macros",
  "anyhow",
