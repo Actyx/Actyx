@@ -15,6 +15,7 @@
     "node-fetch": "2.6.1",
     "pondV1": "npm:@actyx/pond@^1.1.0",
     "rxjs": "5.5.12",
+    "ws": "^7.4.5",
     "yaml": "1.10.0"
   },
   "devDependencies": {
@@ -23,6 +24,7 @@
     "@types/node": "14.11.2",
     "@types/node-fetch": "2.5.7",
     "@types/promise-queue": "2.2.0",
+    "@types/ws": "^7.4.1",
     "@typescript-eslint/eslint-plugin": "4.2.0",
     "@typescript-eslint/parser": "4.2.0",
     "eslint": "7.9.0",

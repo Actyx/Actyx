@@ -47,10 +47,22 @@ export const runOnEach = async <T>(
  *
  * @param f the logic to be executed with all available nodes
  */
-export const runConcurrentlyOnAll = async <T>(
+export const runConcurrentlyOnAll = <T>(
   f: (nodes: ActyxOSNode[]) => ReadonlyArray<Promise<T>>,
 ): Promise<T[]> => {
   return runOnNodes('runOnAll', nodes, () => Promise.all(f(nodes)))
+}
+
+/**
+ * Run the given logic on each node and return the
+ * computed value.
+ *
+ * @param f the logic to be executed with all available nodes
+ */
+export const runConcurrentlyOnAllSameLogic = <T>(
+  f: (node: ActyxOSNode) => Promise<T>,
+): Promise<T[]> => {
+  return runConcurrentlyOnAll((nodes) => nodes.map(f))
 }
 
 export const withPond = async <T>(node: ActyxOSNode, f: (pond: Pond) => Promise<T>): Promise<T> => {
