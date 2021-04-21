@@ -2,10 +2,10 @@ mod filters;
 mod handlers;
 mod ndjson;
 
-use actyxos_sdk::{service::EventService};
+use actyxos_sdk::service::EventService;
 use warp::Filter;
 
-use crate::util::{AuthArgs, filters::header_token};
+use crate::util::{filters::header_token, AuthArgs};
 
 pub(crate) fn routes<S: EventService + Clone + Send + Sync + 'static>(
     auth_args: AuthArgs,

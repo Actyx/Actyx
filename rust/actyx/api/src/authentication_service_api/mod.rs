@@ -91,8 +91,8 @@ mod tests {
     use std::sync::Arc;
     use warp::{reject::MethodNotAllowed, test, Filter, Rejection, Reply};
 
-    use crate::{rejections::ApiError, util::filters::verify};
     use super::{route, validate_manifest, AppMode, AuthArgs, TokenResponse};
+    use crate::{rejections::ApiError, util::filters::verify};
 
     fn test_route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
         let mut key_store = KeyStore::default();

@@ -6,7 +6,6 @@ use warp::{reject, Filter, Rejection};
 use crate::util::{AuthArgs, Token};
 use crate::{rejections::ApiError, BearerToken};
 
-// FIXME: check cycles count
 pub(crate) fn verify(auth_args: AuthArgs, token: Token) -> Result<BearerToken, ApiError> {
     let token = token.to_string();
     let bin: Binary = token.parse().map_err(|_| ApiError::TokenInvalid {
@@ -27,7 +26,7 @@ pub(crate) fn verify(auth_args: AuthArgs, token: Token) -> Result<BearerToken, A
             token: token.clone(),
             msg: "Cannot parse CBOR.".to_owned(),
         })?;
-    match bearer_token.is_expired() {
+    match bearer_token.cycles != auth_args.cycles || bearer_token.is_expired() {
         true => Err(ApiError::TokenExpired),
         false => Ok(bearer_token),
     }
@@ -125,8 +124,25 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn should_fail_with_expired_token() {
+    async fn should_fail_when_token_has_expired() {
         let (auth_args, bearer) = setup(Some(0));
+        let filter = authenticate(auth_args, header_token());
+        let req = warp::test::request()
+            .header("Authorization", format!("Bearer {}", bearer))
+            .filter(&filter)
+            .await
+            .unwrap_err();
+        assert!(matches!(req.find::<ApiError>().unwrap(), ApiError::TokenExpired));
+    }
+
+    #[tokio::test]
+    async fn should_fail_when_node_is_cycled() {
+        let (auth_args, bearer) = setup(None);
+        let auth_args = AuthArgs {
+            // Simulate node restart
+            cycles: 1.into(),
+            ..auth_args
+        };
         let filter = authenticate(auth_args, header_token());
         let req = warp::test::request()
             .header("Authorization", format!("Bearer {}", bearer))

@@ -5,7 +5,7 @@ use maplit::btreemap;
 use warp::*;
 use wsrpc::Service;
 
-use crate::util::{AuthArgs, filters::query_token};
+use crate::util::{filters::query_token, AuthArgs};
 
 mod node_id;
 mod offsets;
