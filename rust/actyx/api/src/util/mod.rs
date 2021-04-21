@@ -5,9 +5,18 @@ use std::time::Duration;
 
 use actyx_util::formats::NodeCycleCount;
 use actyxos_sdk::{AppId, Timestamp};
+use crypto::{KeyStoreRef, PublicKey};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use warp::*;
+
+#[derive(Clone)]
+pub(crate) struct AuthArgs {
+    pub node_key: PublicKey,
+    pub key_store: KeyStoreRef,
+    pub token_validity: u32,
+    pub cycles: NodeCycleCount,
+}
 
 #[derive(Debug, Display, Deserialize)]
 pub struct Token(String);

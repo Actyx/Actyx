@@ -1,24 +1,14 @@
-use actyx_util::formats::NodeCycleCount;
 use actyxos_sdk::{AppId, AppManifest, Timestamp};
 use chrono::{DateTime, Utc};
-use crypto::{KeyStoreRef, PublicKey};
 use serde::{Deserialize, Serialize};
 use tracing::*;
 use warp::*;
 
 use crate::{
     rejections::ApiError,
-    util::{filters::accept_json, reject, Token},
+    util::{filters::accept_json, reject, AuthArgs, Token},
     AppMode, BearerToken,
 };
-
-#[derive(Clone)]
-pub(crate) struct AuthArgs {
-    pub node_key: PublicKey,
-    pub key_store: KeyStoreRef,
-    pub token_validity: u32,
-    pub cycles: NodeCycleCount,
-}
 
 fn mk_success_log_msg(token: BearerToken) -> String {
     let expiration_time: DateTime<Utc> = token.expiration().into();
