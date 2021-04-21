@@ -1,14 +1,12 @@
 use actyxos_sdk::{types::Binary, AppId};
 use crypto::{KeyStoreRef, PublicKey, SignedMessage};
 use std::convert::TryInto;
-use trees::BearerToken;
 use warp::{reject, Filter, Rejection};
 
-use crate::rejections::ApiError;
-use crate::util::{Params, Token};
+use crate::util::Token;
+use crate::{rejections::ApiError, util::BearerToken};
 
-#[allow(dead_code)]
-fn verify(token: Token, store: KeyStoreRef, my_key: PublicKey) -> Result<BearerToken, ApiError> {
+pub fn verify(token: Token, store: KeyStoreRef, my_key: PublicKey) -> Result<BearerToken, ApiError> {
     let token = token.0;
     let bin: Binary = token.parse().map_err(|_| ApiError::TokenInvalid {
         token: token.clone(),
@@ -21,18 +19,21 @@ fn verify(token: Token, store: KeyStoreRef, my_key: PublicKey) -> Result<BearerT
     store
         .read()
         .verify(&signed_msg, vec![my_key])
-        .map_err(|_| ApiError::AppUnauthorized)?;
+        .map_err(|_| ApiError::TokenUnauthorized)?;
     let bearer_token =
         serde_cbor::from_slice::<BearerToken>(signed_msg.message()).map_err(|_| ApiError::TokenInvalid {
-            token,
+            token: token.clone(),
             msg: "Cannot parse CBOR.".to_owned(),
         })?;
-    Ok(bearer_token)
+    match bearer_token.is_expired() {
+        true => Err(ApiError::TokenExpired),
+        false => Ok(bearer_token),
+    }
 }
 
 pub fn query_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Clone {
-    warp::query()
-        .map(|p: Params| p.token)
+    warp::query::raw()
+        .map(Token)
         .or_else(|_| async { Err(reject::custom(ApiError::MissingTokenParameter)) })
 }
 
@@ -65,17 +66,17 @@ pub fn header_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Cl
     })
 }
 
-#[allow(dead_code)]
 pub fn authenticate(
     token: impl Filter<Extract = (Token,), Error = Rejection> + Clone,
     store: KeyStoreRef,
-    my_key: PublicKey,
+    node_key: PublicKey,
 ) -> impl Filter<Extract = (AppId,), Error = Rejection> + Clone {
     token.and_then(move |t: Token| {
         let store = store.clone();
         async move {
-            verify(t, store, my_key)
+            verify(t, store, node_key)
                 .map(|bearer_token| bearer_token.app_id)
+                // TODO: add necessary checks for the flow from the PRD
                 .map_err(warp::reject::custom)
         }
     })
@@ -89,7 +90,7 @@ mod tests {
     use parking_lot::RwLock;
     use std::sync::Arc;
 
-    fn setup() -> (KeyStoreRef, PublicKey, Binary) {
+    fn setup(validity: Option<u32>) -> (KeyStoreRef, PublicKey, Binary) {
         let mut store = KeyStore::default();
         let key_id = store.generate_key_pair().unwrap();
         let token = BearerToken {
@@ -97,7 +98,8 @@ mod tests {
             app_id: app_id!("test-app"),
             cycles: 0,
             version: "1.0.0".into(),
-            validity: 300,
+            validity: validity.unwrap_or(300),
+            trial_mode: false,
         };
         let bytes = serde_cbor::to_vec(&token).unwrap();
         let msg = store.sign(bytes, vec![key_id]).unwrap();
@@ -107,28 +109,35 @@ mod tests {
 
     #[tokio::test]
     async fn should_work_with_header() {
-        let (store, key_id, bearer) = setup();
+        let (store, key_id, bearer) = setup(None);
         let filter = authenticate(header_token(), store, key_id);
         let req = warp::test::request().header("Authorization", format!("Bearer {}", bearer));
         assert_eq!(req.filter(&filter).await.unwrap(), app_id!("test-app"));
     }
 
-    #[derive(serde::Deserialize)]
-    struct Query {
-        token: Token,
+    #[tokio::test]
+    async fn should_fail_with_expired_token() {
+        let (store, key_id, bearer) = setup(Some(0));
+        let filter = authenticate(header_token(), store, key_id);
+        let req = warp::test::request()
+            .header("Authorization", format!("Bearer {}", bearer))
+            .filter(&filter)
+            .await
+            .unwrap_err();
+        assert!(matches!(req.find::<ApiError>().unwrap(), ApiError::TokenExpired));
     }
 
     #[tokio::test]
     async fn should_work_with_query_param() {
-        let (store, key_id, bearer) = setup();
-        let filter = authenticate(warp::query().map(|x: Query| x.token), store, key_id);
-        let req = warp::test::request().path(format!("/p?token={}", bearer).replace("+", "%2B").as_str());
+        let (store, key_id, bearer) = setup(None);
+        let filter = authenticate(query_token(), store, key_id);
+        let req = warp::test::request().path(&format!("/p?{}", bearer));
         assert_eq!(req.filter(&filter).await.unwrap(), app_id!("test-app"));
     }
 
     #[tokio::test]
     async fn should_not_work() {
-        let (store, key_id, bearer) = setup();
+        let (store, key_id, bearer) = setup(None);
         // the token always starts with a few 'A's since the first bytes are zero (size field)
         // so we can invalidate the signature like so:
         let bearer = bearer.to_string().replace('A', "B");

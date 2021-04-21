@@ -24,6 +24,16 @@ pub fn accept(mime_types: &'static [&'static str]) -> impl Filter<Extract = (), 
         .untuple_one()
 }
 
+const ACCEPT_JSON: &[&str] = &["*/*", "application/json"];
+pub fn accept_json() -> impl Filter<Extract = (), Error = Rejection> + Clone {
+    accept(ACCEPT_JSON)
+}
+
+const ACCEPT_NDJSON: &[&str] = &["*/*", "application/x-ndjson"];
+pub fn accept_ndjson() -> impl Filter<Extract = (), Error = Rejection> + Clone {
+    accept(ACCEPT_NDJSON)
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

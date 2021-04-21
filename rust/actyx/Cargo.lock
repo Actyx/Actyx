@@ -254,6 +254,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "ax-futures-util",
+ "base64",
  "bytes 1.0.1",
  "chrono",
  "crypto",
@@ -4032,6 +4033,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "trees",
+ "url 2.2.1",
  "util",
  "uuid",
  "void",
@@ -6127,6 +6129,7 @@ dependencies = [
  "tokio 1.5.0",
  "tracing",
  "tracing-subscriber",
+ "url 2.2.1",
  "util",
 ]
 

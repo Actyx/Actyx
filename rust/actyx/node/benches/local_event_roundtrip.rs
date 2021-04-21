@@ -1,13 +1,26 @@
 use actyxos_sdk::{
+    app_id,
     service::{EventService, Order, PublishEvent, PublishRequest, QueryRequest},
-    tags, HttpClient, Payload,
+    tags, AppManifest, HttpClient, Payload,
 };
 use criterion::{criterion_group, criterion_main, BatchSize, Criterion};
 use futures::StreamExt;
 use node::{BindTo, Runtime};
 use std::time::Duration;
 use tempfile::tempdir;
+use url::Url;
 use util::SocketAddrHelper;
+
+async fn mk_http_client() -> anyhow::Result<HttpClient> {
+    let app_manifest = AppManifest::new(
+        app_id!("com.example.trial-mode"),
+        "display name".into(),
+        "0.1.0".into(),
+        None,
+    );
+    let url = Url::parse("http://localhost:4454").unwrap();
+    HttpClient::new(url, app_manifest).await
+}
 
 // Note: This doesn't concern itself with any internals (like flushing the send
 // log etc). Just a simple and brute-force roundtrip test.
@@ -34,7 +47,7 @@ fn round_trip(c: &mut Criterion) {
     }
     c.bench_function("id", |b| {
         b.to_async(&rt).iter_batched(
-            || (data.clone(), HttpClient::default()),
+            || (data.clone(), mk_http_client()),
             |(input, service)| async move {
                 let service = service.await.unwrap();
                 let offsets_before = service.offsets().await.unwrap();

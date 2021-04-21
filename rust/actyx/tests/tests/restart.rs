@@ -1,48 +1,13 @@
-use std::{
-    path::Path,
-    time::{Duration, Instant},
-};
-
 use actyxos_sdk::{
     service::{EventService, Order, PublishEvent, PublishRequest, QueryRequest},
-    tags, HttpClient, Payload,
+    tags, Payload,
 };
-use crossbeam::channel::Receiver;
 use futures::StreamExt;
 use logsvcd::LoggingSink;
-use node::{ApplicationState, BindTo};
+use std::time::Duration;
 use tempfile::tempdir;
-use util::formats::LogRequest;
+use tests::start_node;
 
-fn get_eventservice_port(rx: &Receiver<LogRequest>) -> anyhow::Result<u16> {
-    let start = Instant::now();
-    let regex = regex::Regex::new(r"(?:API bound to 127.0.0.1:)(\d*)").unwrap();
-
-    loop {
-        let ev = rx.recv_deadline(start.checked_add(Duration::from_millis(5000)).unwrap())?;
-        if let Some(x) = regex.captures(&*ev.message).and_then(|c| c.get(1).map(|x| x.as_str())) {
-            return Ok(x.parse()?);
-        }
-    }
-}
-
-async fn start_node(
-    path: impl AsRef<Path>,
-    logging_rx: &Receiver<LogRequest>,
-) -> anyhow::Result<(ApplicationState, HttpClient)> {
-    let node = ApplicationState::spawn(
-        path.as_ref().into(),
-        node::Runtime::Linux,
-        BindTo {
-            api: "localhost:0".parse().unwrap(),
-            ..BindTo::random()
-        },
-    )?;
-    let port = get_eventservice_port(logging_rx)?;
-    let es = HttpClient::new_with_url(&*format!("http://localhost:{}/api/v2/events", port)).await?;
-
-    Ok((node, es))
-}
 #[tokio::test]
 #[ignore]
 async fn persistence_across_restarts() -> anyhow::Result<()> {

@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-mod auth;
-mod events;
-pub mod snapshots;
-
-pub use auth::*;
-pub use events::*;
+use serde::Deserialize;
+#[derive(Deserialize, Debug)]
+pub struct AuthenticationResponse {
+    pub token: String,
+}

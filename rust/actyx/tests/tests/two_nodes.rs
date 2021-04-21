@@ -11,6 +11,7 @@ use std::{
     time::{Duration, Instant},
 };
 use tempfile::tempdir;
+use tests::mk_http_client;
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 
 async fn start_node(id: &str, working_dir: impl AsRef<Path>) -> anyhow::Result<(Child, HttpClient)> {
@@ -48,7 +49,7 @@ async fn start_node(id: &str, working_dir: impl AsRef<Path>) -> anyhow::Result<(
             tracing::info!("Node {}: {}", id, line);
         }
     });
-    let es = HttpClient::new_with_url(&*format!("http://localhost:{}/api/v2/events", port)).await?;
+    let es = mk_http_client(port).await?;
 
     Ok((node_handle, es))
 }

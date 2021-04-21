@@ -33,15 +33,26 @@
 //!
 //! ```no_run
 //! use actyxos_sdk::{
-//!   HttpClient,
+//!   app_id, AppManifest, HttpClient,
 //!   service::{EventService, Order, QueryRequest, QueryResponse},
 //! };
 //! use futures::stream::StreamExt;
+//! use url::Url;
 //!
 //! #[tokio::main]
 //! pub async fn main() -> anyhow::Result<()> {
-//!   // client for locally running Actyx Event Service
-//!   let service = HttpClient::default().await?;
+//!   // add your app manifest, for brevity we will use one in trial mode
+//!   let app_manifest = AppManifest::new(
+//!       app_id!("com.example.my-awesome-app"),
+//!       "display name".into(),
+//!       "0.1.0".into(),
+//!       None,
+//!   );
+//!
+//!   // Url of the locally running Actyx node
+//!   let url = Url::parse("http://localhost:4454")?;
+//!   // client for
+//!   let service = HttpClient::new(url, app_manifest).await?;
 //!
 //!   // retrieve largest currently known event stream cursor
 //!   let offsets = service.offsets().await?;
@@ -94,6 +105,7 @@ pub use actyxos_sdk_macros::*;
 #[macro_use]
 mod scalar;
 
+mod app_manifest;
 #[cfg(any(test, feature = "arb"))]
 pub mod arb;
 mod event;
@@ -108,6 +120,7 @@ mod tags;
 mod timestamp;
 pub mod types;
 
+pub use app_manifest::AppManifest;
 pub use event::{Event, EventKey, Metadata, Opaque, Payload};
 pub use expression::{Dnf, Expression};
 #[cfg(feature = "client")]

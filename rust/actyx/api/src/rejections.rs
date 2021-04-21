@@ -20,12 +20,11 @@ pub enum ApiError {
     NotAcceptable { supported: String, requested: String },
 
     #[display(fmt = "Property <manifest property> is either missing or has an invalid value.")]
-    #[allow(dead_code)]
     InvalidManifest,
 
-    #[display(fmt = "Not authorized. Provide a valid app license to the node.")]
+    #[display(fmt = "'{}' is not authorized. Provide a valid app license to the node.", app_id)]
     #[allow(dead_code)]
-    AppUnauthorized,
+    AppUnauthorized { app_id: AppId },
 
     #[display(fmt = "'{}' is not authenticated. Provided signature is invalid.", app_id)]
     #[allow(dead_code)]
@@ -37,8 +36,11 @@ pub enum ApiError {
     #[display(fmt = "\"token\" parameter is missing.")]
     MissingTokenParameter,
 
-    #[display(fmt = "Authorization request header contains an unauthorized token.")]
+    #[display(fmt = "Unauthorized token.")]
     TokenUnauthorized,
+
+    #[display(fmt = "Expired token.")]
+    TokenExpired,
 
     #[display(fmt = "Invalid token: '{}'. {} Please provide a valid bearer token.", token, msg)]
     TokenInvalid { token: String, msg: String },
@@ -79,6 +81,7 @@ impl From<ApiError> for ApiErrorResponse {
             ApiError::MissingTokenParameter => (StatusCode::UNAUTHORIZED, "ERR_MISSING_TOKEN_PARAM"),
             ApiError::NotAcceptable { .. } => (StatusCode::NOT_ACCEPTABLE, "ERR_NOT_ACCEPTABLE"),
             ApiError::NotFound => (StatusCode::NOT_FOUND, "ERR_NOT_FOUND"),
+            ApiError::TokenExpired => (StatusCode::UNAUTHORIZED, "ERR_TOKEN_EXPIRED"),
             ApiError::TokenInvalid { .. } => (StatusCode::BAD_REQUEST, "ERR_TOKEN_INVALID"),
             ApiError::TokenUnauthorized => (StatusCode::UNAUTHORIZED, "ERR_TOKEN_UNAUTHORIZED"),
             ApiError::UnsupportedAuthType { .. } => (StatusCode::UNAUTHORIZED, "ERR_WRONG_AUTH_TYPE"),
@@ -99,9 +102,16 @@ impl reject::Reject for Crash {}
 pub fn handle_rejection(r: Rejection) -> Result<impl Reply, Rejection> {
     let api_err = if r.is_not_found() {
         ApiError::NotFound
-    } else if let Some(reject::MethodNotAllowed { .. }) = r.find() {
+    } else if r.find::<reject::MethodNotAllowed>().is_some() {
         ApiError::MethodNotAllowed
     } else if let Some(e) = r.find::<ApiError>() {
+        match e {
+            ApiError::AppUnauthenticated { app_id } => {
+                info!(target: "AUTH", "{}", format!("Rejected request from unauthenticated app {}", app_id))
+            }
+            ApiError::AppUnauthorized { app_id } => info!(target: "AUTH", "{}", format!("Unauthorized app {}", app_id)),
+            _ => (),
+        }
         e.to_owned()
     } else if let Some(e) = r.find::<filters::body::BodyDeserializeError>() {
         use std::error::Error;
@@ -112,6 +122,7 @@ pub fn handle_rejection(r: Rejection) -> Result<impl Reply, Rejection> {
         warn!("unhandled rejection: {:?}", r);
         ApiError::Internal
     };
+
     let err_resp: ApiErrorResponse = api_err.into();
     let json = warp::reply::json(&err_resp);
     Ok(warp::reply::with_status(json, err_resp.status))

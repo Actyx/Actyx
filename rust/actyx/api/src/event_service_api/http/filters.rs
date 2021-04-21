@@ -3,21 +3,12 @@ use warp::filters::*;
 use warp::*;
 
 use crate::event_service_api::http::handlers;
+use crate::util::filters::{accept_json, accept_ndjson};
 
 pub fn with_service(
     event_service: impl EventService + Send,
 ) -> impl Filter<Extract = (impl EventService,), Error = std::convert::Infallible> + Clone {
     any().map(move || event_service.clone())
-}
-
-const ACCEPT_JSON: &[&str] = &["*/*", "application/json"];
-fn accept_json() -> impl Filter<Extract = (), Error = Rejection> + Clone {
-    crate::util::filters::accept(ACCEPT_JSON)
-}
-
-const ACCEPT_NDJSON: &[&str] = &["*/*", "application/x-ndjson"];
-fn accept_ndjson() -> impl Filter<Extract = (), Error = Rejection> + Clone {
-    crate::util::filters::accept(ACCEPT_NDJSON)
 }
 
 pub fn node_id(

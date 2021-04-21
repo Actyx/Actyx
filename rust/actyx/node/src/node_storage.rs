@@ -121,6 +121,7 @@ impl NodeStorage {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn get_cycle_count(&self) -> ActyxOSResult<u64> {
         self.connection
             .lock()

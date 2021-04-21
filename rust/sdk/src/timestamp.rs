@@ -77,21 +77,35 @@ impl From<DateTime<Utc>> for Timestamp {
 impl Sub<u64> for Timestamp {
     type Output = Timestamp;
     fn sub(self, rhs: u64) -> Self::Output {
-        Self(self.0 - rhs)
+        Self(self.0.saturating_sub(rhs))
     }
 }
 
 impl Sub<Timestamp> for Timestamp {
     type Output = i64;
     fn sub(self, rhs: Timestamp) -> Self::Output {
-        self.0 as i64 - rhs.0 as i64
+        self.0.saturating_sub(rhs.0) as i64
+    }
+}
+
+impl Sub<std::time::Duration> for Timestamp {
+    type Output = Timestamp;
+    fn sub(self, duration: std::time::Duration) -> Self::Output {
+        Self(self.0.saturating_sub(duration.as_micros() as u64))
     }
 }
 
 impl Add<u64> for Timestamp {
     type Output = Timestamp;
     fn add(self, rhs: u64) -> Self::Output {
-        Self(self.0 + rhs)
+        Self(self.0.saturating_add(rhs))
+    }
+}
+
+impl Add<std::time::Duration> for Timestamp {
+    type Output = Timestamp;
+    fn add(self, duration: std::time::Duration) -> Self::Output {
+        Self(self.0.saturating_add(duration.as_micros() as u64))
     }
 }
 
@@ -133,7 +147,50 @@ impl Display for LamportTimestamp {
 impl Add<u64> for LamportTimestamp {
     type Output = LamportTimestamp;
     fn add(self, rhs: u64) -> Self::Output {
-        Self(self.0 + rhs)
+        Self(self.0.saturating_add(rhs))
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::time::Duration;
+
+    use super::*;
+
+    #[test]
+    fn timestamp_add_u64() {
+        assert_eq!(LamportTimestamp(3) + 3u64, LamportTimestamp(6));
+        assert_eq!(LamportTimestamp(u64::MAX) + 3u64, LamportTimestamp(u64::MAX));
+    }
+
+    #[test]
+    fn lamport_timestamp_add_u64() {
+        assert_eq!(Timestamp(3) + 3u64, Timestamp(6));
+        assert_eq!(Timestamp(u64::MAX) + 3u64, Timestamp(u64::MAX));
+    }
+
+    #[test]
+    fn lamport_timestamp_add_duration() {
+        assert_eq!(Timestamp(3) + Duration::from_micros(3), Timestamp(6));
+        assert_eq!(Timestamp(u64::MAX) + Duration::from_micros(3), Timestamp(u64::MAX));
+    }
+
+    #[test]
+    fn lamport_timestamp_sub_duration() {
+        assert_eq!(Timestamp(30) - Duration::from_micros(3), Timestamp(27));
+        assert_eq!(Timestamp(30) - Duration::from_micros(300), Timestamp(u64::MIN));
+    }
+
+    #[test]
+    fn lamport_timestamp_sub_u64() {
+        assert_eq!(Timestamp(30) - 3u64, Timestamp(27));
+        assert_eq!(Timestamp(30) - 300u64, Timestamp(u64::MIN));
+    }
+
+    #[test]
+    fn lamport_timestamp_sub_timestamp() {
+        assert_eq!(Timestamp(30) - Timestamp(3), 27);
+        assert_eq!(Timestamp(30) - Timestamp(300), 0);
     }
 }
 

@@ -2,7 +2,6 @@
 #[cfg(any(test, feature = "arb"))]
 mod arb;
 pub mod axtrees;
-mod bearer_token;
 pub mod block;
 pub mod cons_node;
 pub mod offsetmap_or_default;
@@ -18,7 +17,6 @@ pub use self::offsetmap_or_default::*;
 pub use self::pubsub::*;
 pub use self::subscription::*;
 pub use self::tag_index::*;
-pub use bearer_token::BearerToken;
 
 use actyxos_sdk::{
     legacy::{FishName, Semantics, SourceId},
