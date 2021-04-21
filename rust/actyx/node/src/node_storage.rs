@@ -5,7 +5,7 @@ use crypto::PublicKey;
 use parking_lot::Mutex;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use tracing::*;
-use util::formats::{ActyxOSResult, ActyxOSResultExt};
+use util::formats::{ActyxOSResult, ActyxOSResultExt, NodeCycleCount};
 
 #[derive(Clone)]
 pub struct NodeStorage {
@@ -121,15 +121,14 @@ impl NodeStorage {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    pub fn get_cycle_count(&self) -> ActyxOSResult<u64> {
+    pub fn get_cycle_count(&self) -> anyhow::Result<NodeCycleCount> {
         self.connection
             .lock()
             .query_row("SELECT value FROM node where name = 'cycle_count'", [], |row| {
                 row.get::<_, i64>(0)
             })
-            .map(|x| x as u64)
-            .ax_internal()
+            .map(|x| x.into())
+            .map_err(|x| x.into())
     }
 }
 

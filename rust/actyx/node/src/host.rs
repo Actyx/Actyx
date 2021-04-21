@@ -1,11 +1,12 @@
 use crate::{node_storage::NodeStorage, util::make_keystore};
+use actyxos_sdk::NodeId;
 use crypto::KeyStoreRef;
-use actyxos_sdk::{NodeId};
 use parking_lot::Mutex;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use util::formats::NodeCycleCount;
 
 pub(crate) struct Host {
     base_path: PathBuf,
@@ -47,5 +48,9 @@ impl Host {
 
     pub fn get_db_handle(&self) -> Arc<Mutex<rusqlite::Connection>> {
         self.storage.connection.clone()
+    }
+
+    pub fn get_cycle_count(&self) -> anyhow::Result<NodeCycleCount> {
+        self.storage.get_cycle_count()
     }
 }

@@ -8,8 +8,12 @@ mod util;
 
 use std::net::SocketAddr;
 
-use actyx_util::{ax_panic, formats::NodeErrorContext};
+use actyx_util::{
+    ax_panic,
+    formats::{NodeCycleCount, NodeErrorContext},
+};
 use actyxos_sdk::NodeId;
+use authentication_service_api::AuthArgs;
 use crypto::KeyStoreRef;
 use futures::future::try_join_all;
 use swarm::BanyanStore;
@@ -23,8 +27,9 @@ pub async fn run(
     store: BanyanStore,
     bind_to: impl Iterator<Item = SocketAddr> + Send,
     key_store: KeyStoreRef,
+    cycles: NodeCycleCount,
 ) {
-    let api = routes(node_id, store, key_store);
+    let api = routes(node_id, store, key_store, cycles);
     let tasks = bind_to
         .into_iter()
         .map(|i| {
@@ -49,24 +54,32 @@ pub async fn run(
     }
 }
 
-fn routes(
-    node_id: NodeId,
-    store: BanyanStore,
-    key_store: KeyStoreRef,
-) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    let token_validity: u32 = if cfg!(debug_assertions) {
+fn get_token_validity() -> u32 {
+    if cfg!(debug_assertions) {
         std::env::var("AX_API_TOKEN_VALIDITY")
             .ok()
             .and_then(|x| x.parse().ok())
             .unwrap_or(86400) // 1 day
     } else {
         86400
+    }
+}
+
+fn routes(
+    node_id: NodeId,
+    store: BanyanStore,
+    key_store: KeyStoreRef,
+    cycles: NodeCycleCount,
+) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+    let auth_args = AuthArgs {
+        cycles,
+        key_store: key_store.clone(),
+        node_key: node_id.into(),
+        token_validity: get_token_validity(),
     };
-
     let event_service = event_service_api::service::EventService::new(store.clone());
-
-    let events = event_service_api::routes(node_id, event_service, key_store.clone());
-    let auth = authentication_service_api::route(node_id.into(), key_store, token_validity);
+    let events = event_service_api::routes(node_id, event_service, key_store);
+    let auth = authentication_service_api::route(auth_args);
 
     let api_path = path!("api" / "v2" / ..);
     let cors = cors()

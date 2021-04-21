@@ -3,6 +3,7 @@ pub mod hyper_serve;
 
 use std::time::Duration;
 
+use actyx_util::formats::NodeCycleCount;
 use actyxos_sdk::{AppId, Timestamp};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -30,7 +31,7 @@ pub struct BearerToken {
     /// for whom
     pub app_id: AppId,
     /// restart cycle count of Actyx node that created it
-    pub cycles: u64,
+    pub cycles: NodeCycleCount,
     /// app version
     pub app_version: String,
     /// intended validity in seconds
@@ -62,17 +63,17 @@ pub type Result<T> = std::result::Result<T, Rejection>;
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
     use actyxos_sdk::{app_id, Timestamp};
+    use std::time::Duration;
 
-    use super::{BearerToken, AppMode};
+    use super::{AppMode, BearerToken};
 
     #[test]
     fn bearer_token_is_expired() {
         let token = BearerToken {
             created: Timestamp::now() - Duration::from_secs(2),
             app_id: app_id!("app id"),
-            cycles: 0,
+            cycles: 0.into(),
             app_version: "1.0.0".into(),
             validity: 1,
             app_mode: AppMode::Signed,
@@ -82,7 +83,7 @@ mod tests {
         let token = BearerToken {
             created: Timestamp::now(),
             app_id: app_id!("app id"),
-            cycles: 0,
+            cycles: 0.into(),
             app_version: "1.0.0".into(),
             validity: 300,
             app_mode: AppMode::Signed,
@@ -96,7 +97,7 @@ mod tests {
         let token = BearerToken {
             created: now,
             app_id: app_id!("app id"),
-            cycles: 0,
+            cycles: 0.into(),
             app_version: "1.0.0".into(),
             validity: 1,
             app_mode: AppMode::Signed,

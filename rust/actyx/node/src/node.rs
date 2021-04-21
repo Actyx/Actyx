@@ -255,10 +255,8 @@ impl Node {
         eprintln!("node_settings {}", node_settings);
         let settings = serde_json::from_value(node_settings).ax_internal()?;
         if settings != self.state.settings {
-            let details = NodeDetails::from_settings(
-                &settings,
-                self.runtime_storage.get_or_create_node_id().ax_internal()?,
-            );
+            let details =
+                NodeDetails::from_settings(&settings, self.runtime_storage.get_or_create_node_id().ax_internal()?);
             debug!("Setting node settings to: {:?}", settings);
             self.state.settings = settings;
             self.state.details = details;

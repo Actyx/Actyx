@@ -9,6 +9,7 @@ use std::{convert::TryInto, path::PathBuf, sync::Arc};
 use swarm::{BanyanStore, SwarmConfig};
 use tokio::sync::oneshot;
 use tracing::*;
+use util::formats::NodeCycleCount;
 
 pub(crate) enum StoreRequest {
     GetSwarmState {
@@ -73,6 +74,7 @@ impl Component<StoreRequest, SwarmConfig> for Store {
                 .build()?;
             let bind_to = self.bind_to.clone();
             let keystore = self.keystore.clone();
+            let cycles = self.node_cycle_count;
             // client creation is setting up some tokio timers and therefore
             // needs to be called with a tokio runtime
             let store = rt.block_on(async move {
@@ -84,6 +86,7 @@ impl Component<StoreRequest, SwarmConfig> for Store {
                         store.clone(),
                         bind_to.clone().api.into_iter(),
                         keystore.clone(),
+                        cycles,
                     ),
                 );
                 Ok::<BanyanStore, anyhow::Error>(store)
@@ -154,6 +157,7 @@ pub(crate) struct Store {
     node_id: NodeId,
     db: Arc<Mutex<rusqlite::Connection>>,
     number_of_threads: Option<usize>,
+    node_cycle_count: NodeCycleCount,
 }
 
 impl Store {
@@ -164,6 +168,7 @@ impl Store {
         keystore: KeyStoreRef,
         node_id: NodeId,
         db: Arc<Mutex<rusqlite::Connection>>,
+        node_cycle_count: NodeCycleCount,
     ) -> anyhow::Result<Self> {
         std::fs::create_dir_all(working_dir.clone())?;
         Ok(Self {
@@ -176,6 +181,7 @@ impl Store {
             node_id,
             db,
             number_of_threads: None,
+            node_cycle_count,
         })
     }
 }

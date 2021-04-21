@@ -97,7 +97,7 @@ mod tests {
         let token = BearerToken {
             created: Timestamp::now(),
             app_id: app_id!("test-app"),
-            cycles: 0,
+            cycles: 0.into(),
             app_version: "1.0.0".into(),
             validity: validity.unwrap_or(300),
             app_mode: AppMode::Signed,
