@@ -1,12 +1,13 @@
 use actyxos_sdk::{types::Binary, AppId};
-use crypto::{KeyStoreRef, PublicKey, SignedMessage};
+use crypto::SignedMessage;
 use std::convert::TryInto;
 use warp::{reject, Filter, Rejection};
 
-use crate::util::Token;
+use crate::util::{AuthArgs, Token};
 use crate::{rejections::ApiError, BearerToken};
 
-pub fn verify(token: Token, store: KeyStoreRef, my_key: PublicKey) -> Result<BearerToken, ApiError> {
+// FIXME: check cycles count
+pub(crate) fn verify(auth_args: AuthArgs, token: Token) -> Result<BearerToken, ApiError> {
     let token = token.to_string();
     let bin: Binary = token.parse().map_err(|_| ApiError::TokenInvalid {
         token: token.clone(),
@@ -16,9 +17,10 @@ pub fn verify(token: Token, store: KeyStoreRef, my_key: PublicKey) -> Result<Bea
         token: token.clone(),
         msg: "Not a signed token.".to_owned(),
     })?;
-    store
+    auth_args
+        .key_store
         .read()
-        .verify(&signed_msg, vec![my_key])
+        .verify(&signed_msg, vec![auth_args.node_key])
         .map_err(|_| ApiError::TokenUnauthorized)?;
     let bearer_token =
         serde_cbor::from_slice::<BearerToken>(signed_msg.message()).map_err(|_| ApiError::TokenInvalid {
@@ -66,15 +68,14 @@ pub fn header_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Cl
     })
 }
 
-pub fn authenticate(
+pub(crate) fn authenticate(
+    auth_args: AuthArgs,
     token: impl Filter<Extract = (Token,), Error = Rejection> + Clone,
-    store: KeyStoreRef,
-    node_key: PublicKey,
 ) -> impl Filter<Extract = (AppId,), Error = Rejection> + Clone {
     token.and_then(move |t: Token| {
-        let store = store.clone();
+        let auth_args = auth_args.clone();
         async move {
-            verify(t, store, node_key)
+            verify(auth_args, t)
                 .map(|bearer_token| bearer_token.app_id)
                 // TODO: add necessary checks for the flow from the PRD
                 .map_err(warp::reject::custom)
@@ -91,7 +92,7 @@ mod tests {
     use parking_lot::RwLock;
     use std::sync::Arc;
 
-    fn setup(validity: Option<u32>) -> (KeyStoreRef, PublicKey, Binary) {
+    fn setup(validity: Option<u32>) -> (AuthArgs, Binary) {
         let mut store = KeyStore::default();
         let key_id = store.generate_key_pair().unwrap();
         let token = BearerToken {
@@ -105,21 +106,28 @@ mod tests {
         let bytes = serde_cbor::to_vec(&token).unwrap();
         let msg = store.sign(bytes, vec![key_id]).unwrap();
         let bearer = Binary::from(msg.as_ref());
-        (Arc::new(RwLock::new(store)), key_id, bearer)
+        let auth_args = AuthArgs {
+            cycles: 0.into(),
+            key_store: Arc::new(RwLock::new(store)),
+            node_key: key_id,
+            token_validity: 300,
+        };
+
+        (auth_args, bearer)
     }
 
     #[tokio::test]
     async fn should_work_with_header() {
-        let (store, key_id, bearer) = setup(None);
-        let filter = authenticate(header_token(), store, key_id);
+        let (auth_args, bearer) = setup(None);
+        let filter = authenticate(auth_args, header_token());
         let req = warp::test::request().header("Authorization", format!("Bearer {}", bearer));
         assert_eq!(req.filter(&filter).await.unwrap(), app_id!("test-app"));
     }
 
     #[tokio::test]
     async fn should_fail_with_expired_token() {
-        let (store, key_id, bearer) = setup(Some(0));
-        let filter = authenticate(header_token(), store, key_id);
+        let (auth_args, bearer) = setup(Some(0));
+        let filter = authenticate(auth_args, header_token());
         let req = warp::test::request()
             .header("Authorization", format!("Bearer {}", bearer))
             .filter(&filter)
@@ -130,19 +138,19 @@ mod tests {
 
     #[tokio::test]
     async fn should_work_with_query_param() {
-        let (store, key_id, bearer) = setup(None);
-        let filter = authenticate(query_token(), store, key_id);
+        let (auth_args, bearer) = setup(None);
+        let filter = authenticate(auth_args, query_token());
         let req = warp::test::request().path(&format!("/p?{}", bearer));
         assert_eq!(req.filter(&filter).await.unwrap(), app_id!("test-app"));
     }
 
     #[tokio::test]
     async fn should_not_work() {
-        let (store, key_id, bearer) = setup(None);
+        let (auth_args, bearer) = setup(None);
         // the token always starts with a few 'A's since the first bytes are zero (size field)
         // so we can invalidate the signature like so:
         let bearer = bearer.to_string().replace('A', "B");
-        let filter = authenticate(warp::header("Authorization").map(Token), store, key_id);
+        let filter = authenticate(auth_args, warp::header("Authorization").map(Token));
         let req = warp::test::request().header("Authorization", bearer);
         assert!(req.filter(&filter).await.is_err());
     }

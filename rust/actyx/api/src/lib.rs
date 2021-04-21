@@ -72,12 +72,12 @@ fn routes(
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let auth_args = AuthArgs {
         cycles,
-        key_store: key_store.clone(),
+        key_store,
         node_key: node_id.into(),
         token_validity: get_token_validity(),
     };
     let event_service = event_service_api::service::EventService::new(store.clone());
-    let events = event_service_api::routes(node_id, event_service, key_store);
+    let events = event_service_api::routes(auth_args.clone(), event_service);
     let auth = authentication_service_api::route(auth_args);
 
     let api_path = path!("api" / "v2" / ..);

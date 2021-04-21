@@ -92,7 +92,6 @@ mod tests {
     use warp::{reject::MethodNotAllowed, test, Filter, Rejection, Reply};
 
     use crate::{rejections::ApiError, util::filters::verify};
-
     use super::{route, validate_manifest, AppMode, AuthArgs, TokenResponse};
 
     fn test_route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
@@ -129,14 +128,14 @@ mod tests {
         let resp = test::request()
             .method("POST")
             .json(&manifest)
-            .reply(&route(auth_args))
+            .reply(&route(auth_args.clone()))
             .await;
 
         assert_eq!(resp.status(), http::StatusCode::OK);
         assert_eq!(resp.headers()["content-type"], "application/json");
 
         let token: TokenResponse = serde_json::from_slice(resp.body()).unwrap();
-        assert!(verify(token.token.into(), key_store, node_key).is_ok())
+        assert!(verify(auth_args, token.token.into()).is_ok())
     }
 
     #[tokio::test]

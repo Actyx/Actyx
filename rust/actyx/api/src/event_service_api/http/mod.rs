@@ -2,18 +2,16 @@ mod filters;
 mod handlers;
 mod ndjson;
 
-use actyxos_sdk::{service::EventService, NodeId};
-use crypto::KeyStoreRef;
+use actyxos_sdk::{service::EventService};
 use warp::Filter;
 
-use crate::util::filters::header_token;
+use crate::util::{AuthArgs, filters::header_token};
 
 pub(crate) fn routes<S: EventService + Clone + Send + Sync + 'static>(
-    node_id: NodeId,
+    auth_args: AuthArgs,
     event_service: S,
-    key_store: KeyStoreRef,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-    let auth = crate::util::filters::authenticate(header_token(), key_store, node_id.into());
+    let auth = crate::util::filters::authenticate(auth_args, header_token());
 
     filters::node_id(event_service.clone(), auth.clone())
         .or(filters::offsets(event_service.clone(), auth.clone()))
