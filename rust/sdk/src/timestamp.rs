@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 use std::{
+    convert::{TryFrom, TryInto},
     fmt::{self, Debug, Display, Formatter},
     ops::{Add, Sub},
     time::{SystemTime, UNIX_EPOCH},
@@ -50,8 +51,7 @@ impl Timestamp {
     }
     pub fn now() -> Timestamp {
         let now = SystemTime::now();
-        let duration = now.duration_since(UNIX_EPOCH).expect("Time went waaaay backwards");
-        Timestamp::new(duration.as_micros() as u64)
+        now.try_into().expect("Time went waaaay backwards")
     }
     #[deprecated(since = "0.2.1", note = "use .into()")]
     pub fn as_u64(self) -> u64 {
@@ -59,6 +59,14 @@ impl Timestamp {
     }
     pub fn as_i64(self) -> i64 {
         self.0 as i64
+    }
+}
+
+impl TryFrom<SystemTime> for Timestamp {
+    type Error = anyhow::Error;
+    fn try_from(st: SystemTime) -> Result<Self, Self::Error> {
+        let duration = st.duration_since(UNIX_EPOCH)?;
+        Ok(Self::new(duration.as_micros() as u64))
     }
 }
 
