@@ -10,11 +10,14 @@
 
 # The banyan tree header
 
-The purpose of the banyan tree header is to store information that changes very infrequently over the lifetime of a banyan tree. This includes information that is needed to decode the tree, such as a version.
+The purpose of the banyan tree header is to store information that changes very infrequently over the lifetime of a banyan tree.
+This includes information that is needed to decode the tree, such as a version.
 
-We don't expect the version field to change any time soon, since small changes can be done by extending the existing CBOR format. Nevertheless it is good to have a way to migrate to an entirely new tree encoding, e.g. moving away from CBOR entirely in the future.
+We don't expect the version field to change any time soon, since small changes can be done by extending the existing CBOR format.
+Nevertheless it is good to have a way to migrate to an entirely new tree encoding, e.g. moving away from CBOR entirely in the future.
 
-It also includes cryptographic information that is needed to access the tree. This will be information that can be used to derive the salsa20 key for the banyan keys and values.
+It also includes cryptographic information that is needed to access the tree.
+This will be information that can be used to derive the salsa20 key for the banyan keys and values.
 
 We expect the tree header to be relatively small, < 1kb.
 
