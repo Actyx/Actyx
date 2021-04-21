@@ -16,6 +16,7 @@ use swarm::BanyanStore;
 use warp::*;
 
 use crate::util::hyper_serve::serve_it;
+pub use crate::util::{AppMode, BearerToken};
 
 pub async fn run(
     node_id: NodeId,

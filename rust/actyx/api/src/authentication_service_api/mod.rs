@@ -7,15 +7,16 @@ use warp::*;
 
 use crate::{
     rejections::ApiError,
-    util::{filters::accept_json, reject, BearerToken, Token},
+    util::{filters::accept_json, reject, Token},
+    AppMode, BearerToken,
 };
 
 fn mk_success_log_msg(token: BearerToken) -> String {
     let expiration_time: DateTime<Utc> = token.expiration().into();
-    let mode = match token.trial_mode {
-        true => "trial",
+    let mode = match token.app_mode {
+        AppMode::Trial => "trial",
         // TODO: replace <testing|production> with the right token when we have it
-        false => "<testing|production>",
+        AppMode::Signed => "<testing|production>",
     };
     format!(
         "Successfully authenticated and authorized {} for {} usage (auth token expires {})",
@@ -23,14 +24,12 @@ fn mk_success_log_msg(token: BearerToken) -> String {
     )
 }
 
-type IsTrial = bool;
-
 pub(crate) fn create_token(
     key: PublicKey,
     key_store: KeyStoreRef,
     app_id: AppId,
-    version: String,
-    trial_mode: IsTrial,
+    app_version: String,
+    app_mode: AppMode,
     validity: u32,
 ) -> anyhow::Result<Token> {
     let token = BearerToken {
@@ -38,9 +37,9 @@ pub(crate) fn create_token(
         app_id,
         // TODO: to be implemented at some later point in time
         cycles: 0,
-        version,
+        app_version,
         validity,
-        trial_mode,
+        app_mode,
     };
     let bytes = serde_cbor::to_vec(&token)?;
     let signed = key_store.read().sign(bytes, vec![key])?;
@@ -62,11 +61,11 @@ impl TokenResponse {
     }
 }
 
-fn validate_manifest(manifest: AppManifest) -> Result<IsTrial, ApiError> {
+fn validate_manifest(manifest: AppManifest) -> Result<AppMode, ApiError> {
     match (manifest.app_id.starts_with("com.example."), manifest.signature) {
-        (true, None) => Ok(true),
+        (true, None) => Ok(AppMode::Trial),
         // TODO: check manifest's signature
-        (false, Some(_)) => Ok(false),
+        (false, Some(_)) => Ok(AppMode::Signed),
         _ => Err(ApiError::InvalidManifest),
     }
 }
@@ -114,7 +113,7 @@ mod tests {
 
     use crate::{rejections::ApiError, util::filters::verify};
 
-    use super::{route, validate_manifest, TokenResponse};
+    use super::{route, validate_manifest, AppMode, TokenResponse};
 
     fn test_route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
         let mut key_store = KeyStore::default();
@@ -179,7 +178,7 @@ mod tests {
         };
 
         let result = validate_manifest(manifest.clone()).unwrap();
-        assert_eq!(result, false, "signed manifest");
+        assert_eq!(result, AppMode::Signed);
 
         let ex_app_id = app_id!("com.example.");
         let result = validate_manifest(AppManifest {
@@ -188,7 +187,7 @@ mod tests {
             ..manifest.clone()
         })
         .unwrap();
-        assert_eq!(result, true, "trial manifest");
+        assert_eq!(result, AppMode::Trial);
 
         let result = validate_manifest(AppManifest {
             app_id: ex_app_id,

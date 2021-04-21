@@ -18,6 +18,12 @@ impl From<String> for Token {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq)]
+pub enum AppMode {
+    Trial,
+    Signed,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq)]
 pub struct BearerToken {
     /// when it was created
     pub created: Timestamp,
@@ -25,12 +31,12 @@ pub struct BearerToken {
     pub app_id: AppId,
     /// restart cycle count of Actyx node that created it
     pub cycles: u64,
-    /// Actyx version
-    pub version: String,
+    /// app version
+    pub app_version: String,
     /// intended validity in seconds
     pub validity: u32,
-    /// Actyx trial mode?,
-    pub trial_mode: bool,
+    /// App mode,
+    pub app_mode: AppMode,
 }
 
 impl BearerToken {
@@ -57,10 +63,9 @@ pub type Result<T> = std::result::Result<T, Rejection>;
 #[cfg(test)]
 mod tests {
     use std::time::Duration;
-
     use actyxos_sdk::{app_id, Timestamp};
 
-    use super::BearerToken;
+    use super::{BearerToken, AppMode};
 
     #[test]
     fn bearer_token_is_expired() {
@@ -68,9 +73,9 @@ mod tests {
             created: Timestamp::now() - Duration::from_secs(2),
             app_id: app_id!("app id"),
             cycles: 0,
-            version: "1.0.0".into(),
+            app_version: "1.0.0".into(),
             validity: 1,
-            trial_mode: false,
+            app_mode: AppMode::Signed,
         };
         assert_eq!(token.is_expired(), true);
 
@@ -78,9 +83,9 @@ mod tests {
             created: Timestamp::now(),
             app_id: app_id!("app id"),
             cycles: 0,
-            version: "1.0.0".into(),
+            app_version: "1.0.0".into(),
             validity: 300,
-            trial_mode: false,
+            app_mode: AppMode::Signed,
         };
         assert_eq!(token.is_expired(), false);
     }
@@ -92,9 +97,9 @@ mod tests {
             created: now,
             app_id: app_id!("app id"),
             cycles: 0,
-            version: "1.0.0".into(),
+            app_version: "1.0.0".into(),
             validity: 1,
-            trial_mode: false,
+            app_mode: AppMode::Signed,
         };
         assert_eq!(token.expiration(), now + Duration::from_secs(token.validity as u64));
     }

@@ -4,7 +4,7 @@ use std::convert::TryInto;
 use warp::{reject, Filter, Rejection};
 
 use crate::util::Token;
-use crate::{rejections::ApiError, util::BearerToken};
+use crate::{rejections::ApiError, BearerToken, AppMode};
 
 pub fn verify(token: Token, store: KeyStoreRef, my_key: PublicKey) -> Result<BearerToken, ApiError> {
     let token = token.0;
@@ -97,9 +97,9 @@ mod tests {
             created: Timestamp::now(),
             app_id: app_id!("test-app"),
             cycles: 0,
-            version: "1.0.0".into(),
+            app_version: "1.0.0".into(),
             validity: validity.unwrap_or(300),
-            trial_mode: false,
+            app_mode: AppMode::Signed,
         };
         let bytes = serde_cbor::to_vec(&token).unwrap();
         let msg = store.sign(bytes, vec![key_id]).unwrap();
