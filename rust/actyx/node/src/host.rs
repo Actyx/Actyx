@@ -1,5 +1,6 @@
-use crate::{crypto_cell::CryptoCell, node_storage::NodeStorage, util::make_keystore};
+use crate::{node_storage::NodeStorage, util::make_keystore};
 use crypto::KeyStoreRef;
+use actyxos_sdk::{NodeId};
 use parking_lot::Mutex;
 use std::{
     path::{Path, PathBuf},
@@ -9,7 +10,6 @@ use std::{
 pub(crate) struct Host {
     base_path: PathBuf,
     keystore: KeyStoreRef,
-    crypto_cell: CryptoCell,
     storage: NodeStorage,
 }
 impl Host {
@@ -19,11 +19,9 @@ impl Host {
         #[cfg(not(test))]
         let storage = NodeStorage::new(base_path.join("node.sqlite")).expect("Error creating node.sqlite");
         let keystore = make_keystore(storage.clone()).unwrap();
-        let crypto_cell = CryptoCell::new(keystore.clone(), storage.clone());
         Self {
             base_path,
             keystore,
-            crypto_cell,
             storage,
         }
     }
@@ -32,8 +30,15 @@ impl Host {
         &self.base_path
     }
 
-    pub fn get_crypto_cell(&self) -> &CryptoCell {
-        &self.crypto_cell
+    /// Returns this node's NodeId
+    pub fn get_or_create_node_id(&self) -> anyhow::Result<NodeId> {
+        if let Some(key_id) = self.storage.get_node_key()? {
+            Ok(key_id)
+        } else {
+            let node_id: NodeId = self.keystore.write().generate_key_pair()?.into();
+            self.storage.set_node_id(node_id)?;
+            Ok(node_id)
+        }
     }
 
     pub fn get_keystore(&self) -> KeyStoreRef {

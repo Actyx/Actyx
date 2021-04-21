@@ -1,7 +1,6 @@
 #![deny(clippy::future_not_send)]
 
 mod components;
-mod crypto_cell;
 mod formats;
 mod host;
 mod node;
@@ -82,8 +81,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
 
     // Host interface
     let host = Host::new(working_dir.clone());
-    // Get or generate NodeId
-    let node_id = host.get_crypto_cell().get_or_create_node_id()?;
+    let node_id = host.get_or_create_node_id()?;
 
     // Component: Logging
     let logging = Logging::new(node_id, logs_rx, host.working_dir());
