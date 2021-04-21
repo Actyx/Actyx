@@ -4,10 +4,10 @@ use std::convert::TryInto;
 use warp::{reject, Filter, Rejection};
 
 use crate::util::Token;
-use crate::{rejections::ApiError, BearerToken, AppMode};
+use crate::{rejections::ApiError, BearerToken};
 
 pub fn verify(token: Token, store: KeyStoreRef, my_key: PublicKey) -> Result<BearerToken, ApiError> {
-    let token = token.0;
+    let token = token.to_string();
     let bin: Binary = token.parse().map_err(|_| ApiError::TokenInvalid {
         token: token.clone(),
         msg: "Cannot parse token bytes.".to_owned(),
@@ -85,6 +85,7 @@ pub fn authenticate(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::AppMode;
     use actyxos_sdk::{app_id, Timestamp};
     use crypto::KeyStore;
     use parking_lot::RwLock;
