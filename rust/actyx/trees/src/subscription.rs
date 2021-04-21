@@ -113,24 +113,47 @@ impl From<TagSubscriptions> for Vec<TagSet> {
 }
 
 // invariant: none of the sets are ever empty
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub(crate) struct Dnf(pub BTreeSet<BTreeSet<language::TagAtom>>);
 
 impl Dnf {
     pub fn or(self, other: Dnf) -> Self {
-        let mut o = self.0;
-        o.extend(other.0);
-        Dnf(o)
+        let mut ret = self.0;
+        for b in other.0 {
+            Self::insert_unless_redundant(&mut ret, b);
+        }
+        Dnf(ret)
     }
 
     pub fn and(self, other: Dnf) -> Self {
         let mut ret = BTreeSet::new();
         for a in self.0 {
             for b in &other.0 {
-                ret.insert(a.union(b).cloned().collect());
+                let mut r = BTreeSet::new();
+                r.extend(a.iter().cloned());
+                r.extend(b.iter().cloned());
+                Self::insert_unless_redundant(&mut ret, r);
             }
         }
         Dnf(ret)
+    }
+    fn insert_unless_redundant(aa: &mut BTreeSet<BTreeSet<language::TagAtom>>, b: BTreeSet<language::TagAtom>) {
+        let mut to_remove = None;
+        for a in aa.iter() {
+            if a.is_subset(&b) {
+                // a is larger than b. E.g. x | x&y
+                // keep a, b is redundant
+                return;
+            } else if a.is_superset(&b) {
+                // a is smaller than b, E.g. x&y | x
+                // remove a, keep b
+                to_remove = Some(a.clone());
+            }
+        }
+        if let Some(r) = to_remove {
+            aa.remove(&r);
+        }
+        aa.insert(b);
     }
 }
 
@@ -154,5 +177,67 @@ impl From<&language::TagExpr> for Dnf {
             }
         }
         dnf(&tag_expr)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use actyxos_sdk::{
+        language::{TagAtom, TagExpr},
+        Tag,
+    };
+
+    use super::*;
+
+    fn l(x: &'static str) -> TagExpr {
+        TagExpr::Atom(atom(x))
+    }
+
+    fn atom(x: &'static str) -> TagAtom {
+        TagAtom::Tag(Tag::new(x.to_owned()).unwrap())
+    }
+
+    fn assert_dnf(expr: TagExpr, dnf: &'static [&'static [&'static str]]) {
+        let expected = Dnf(dnf.iter().map(|conj| conj.iter().map(|c| atom(*c)).collect()).collect());
+        let actual: Dnf = (&expr).into();
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_dnf_intersection_1() {
+        let a = l("a");
+        let b = l("b");
+        let c = l("c");
+        assert_dnf(c & (a | b), &[&["a", "c"], &["b", "c"]]);
+    }
+
+    #[test]
+    fn test_dnf_intersection_2() {
+        let a = l("a");
+        let b = l("b");
+        let c = l("c");
+        let d = l("d");
+        assert_dnf((d | c) & (b | a), &[&["a", "c"], &["a", "d"], &["b", "c"], &["b", "d"]]);
+    }
+
+    #[test]
+    fn test_dnf_simplify_1() {
+        let a = l("a");
+        let b = l("b");
+        assert_dnf((a.clone() | b) & a, &[&["a"]]);
+    }
+
+    #[test]
+    fn test_dnf_simplify_2() {
+        let a = l("a");
+        let b = l("b");
+        assert_dnf((a.clone() & b) | a, &[&["a"]]);
+    }
+
+    #[test]
+    fn test_dnf_simplify_3() {
+        let a = l("a");
+        let b = l("b");
+        assert_dnf((a.clone() | b) | a, &[&["a"], &["b"]]);
     }
 }
