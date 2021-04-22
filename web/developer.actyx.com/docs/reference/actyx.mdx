@@ -14,79 +14,64 @@ import TabItem from '@theme/TabItem'
 
 ## Supported OS and architectures
 
-Actyx is built for the following operating systems and architectures:
 
-<Tabs
-  defaultValue="windows"
-  values={[
-    { label: 'Windows', value: 'windows', },
-    { label: 'Android', value: 'android', },
-    { label: 'Linux', value: 'linux', },
-    { label: 'Docker', value: 'docker', },
-  ]
-}>
-<TabItem value="windows">
+|Platform|Supported OS|Supported architecture|
+|--------|------------|----------------------|
+|Windows|Windows 10|x86_64|
+|Android|Android 6+|x86, arm64-v8a or armeabi-v7a [ABI](https://developer.android.com/ndk/guides/abis.html#sa)|
+|Linux|Ubuntu 18.04+ or Alpine 3.9+|x86_64, aarch64, armv7 or arm|
+|Docker|Docker 20+|x86_64 or aarch64|
+|macOS|Big Sur|x86_64|
 
-Actyx supports the following Windows versions:
 
-- Windows 10
+## Networking Requirements
 
-You can run Actyx on Windows on the following architectures:
-
-- `x86_64`
-
-</TabItem>
-<TabItem value="android">
-
-Actyx supports the following Android versions:
-
-- Android 6+
-
-You can run Actyx on Windows on the following architectures:
-
-- `x86`, `arm64-v8a` or `armeabi-v7a` [ABI](https://developer.android.com/ndk/guides/abis.html#sa)
-
-</TabItem>
-<TabItem value="linux">
-
-|Operating system|Minimum version|
-|----------------|---------------|
-|Ubuntu|18.04 (Bionic Beaver)|
-|AlpineOS|3.9|
-
-You can run Actyx on Linux on the following architectures:
-
-- `x86_64`, `aarch64`, `armv7` or `arm`
-
-</TabItem>
-<TabItem value="docker">
-
-Actyx supports the following Windows versions:
-
-- Docker 20+
-
-You can run Actyx on Docker on the following architectures:
-
-- `x86_64`, `aarch64`
-
-</TabItem>
-</Tabs>
-
-## Network requirements
-
-The local-area network and wireless network (if used) must
-
-- Allow UDP unicast connections
-- Not have client-isolation enabled
-- Not block ports 4001, 4450-4469 and 5001
-
-The edge devices must
-
-- Be connected to the same local-area network
-- Allow incoming/outgoing communication on ports 4001, 4450-4469 and 5001
+|Device|LAN/WLAN|
+|------|--------|
+| <ul><li>ports 4001, 4243, 4454, 4457, 8080 unused</li><li>Incoming/outgoing connections on ports 4001, 4243, 4454, 4457, 8080 allowed</li><li>All nodes connected to same LAN/WLAN</li></ul>| <ul><li>ports 4001, 4243, 4454, 4457, 8080 unblocked</li><li>UDP unicast connections allowed (mDNS protocol, port 5353, IPv4 224.0.0.251, IPv6 ff02::fb)</li><li>Client-isolation disabled</li></ul>|
 
 :::info one network = one swarm
-All devices in an ActyxOS swarm must be connected to the same local-area network.
+All devices in an ActyxOS swarm must be connected to the same local-area network. It is recommended to keep the IP addresses relatively stable, frequent changes will reduce performance of the system.
+:::
+
+## Performance
+
+A lot of different factors play into performance of Actyx and your apps:
+
+- local-area network setup and latency
+- runtime for your app
+- CPU architecture and characteristics
+- RAM
+- language your app is written in
+- runtime of your app
+- event data rate
+- complexity of your business logic
+
+Assuming a standard network setup, typical rugged tablets or other devices with relatively low computing power, and a standard factory use case, these are the limits:
+
+|Type|Performance|
+|----|-----|
+|Latency|max. 200ms|
+|No. of nodes|max. 100|
+
+:::info Conceptual guide on performance and limits
+These estimations are only true within the circumstances described above. If you are looking for guidande on a specific use case, please refer to our [conceptual guide](../conceptual/performance-and-limits) or contact us.
+:::
+
+## Disk space requirements
+
+The required disk space depends on the size, number, and compressibility of the events that are emitted by apps built on Actyx.
+These are example calculations for factory apps with (50% of nodes) and without machine integrations, based on real data, for a 1-year timeframe:
+
+| |With machine integrations|Without machine integrations|
+|-|-------------------------|---------------------------|
+|Number of nodes|8|10|
+|Number of events|10,000,000|580,000|
+|Disk space needed|135 MB| 36 MB|
+
+:::tip
+We are already working on the functionality to configure replication and lifespan of events.
+By configuring when events should be deleted or to which devices they should be replicated, you will be able to optimize for low disk space usage.
 :::
 
 ## Node Settings Schema
