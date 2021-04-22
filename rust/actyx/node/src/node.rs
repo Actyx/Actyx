@@ -16,7 +16,7 @@ use crossbeam::{
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::*;
-use util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt, NodeErrorContext};
+use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext};
 
 pub type ApiResult<T> = ActyxOSResult<T>;
 
@@ -244,8 +244,8 @@ impl Node {
                 let _ = sender.send(
                     self.runtime_storage
                         .get_or_create_node_id()
-                        .ax_internal()
-                        .map(Into::into),
+                        .map(Into::into)
+                        .map_err(|_| ActyxOSError::internal("Failed to get node id")),
                 );
             }
         }
@@ -255,8 +255,12 @@ impl Node {
         eprintln!("node_settings {}", node_settings);
         let settings = serde_json::from_value(node_settings).ax_internal()?;
         if settings != self.state.settings {
-            let details =
-                NodeDetails::from_settings(&settings, self.runtime_storage.get_or_create_node_id().ax_internal()?);
+            let details = NodeDetails::from_settings(
+                &settings,
+                self.runtime_storage
+                    .get_or_create_node_id()
+                    .map_err(|_| ActyxOSError::internal("Failed to get node id"))?,
+            );
             debug!("Setting node settings to: {:?}", settings);
             self.state.settings = settings;
             self.state.details = details;
