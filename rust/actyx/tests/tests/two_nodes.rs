@@ -55,6 +55,7 @@ async fn start_node(id: &str, working_dir: impl AsRef<Path>) -> anyhow::Result<(
 }
 
 #[tokio::test]
+#[ignore]
 /// Simple test, spawning up two local nodes, emitting events into one, getting
 /// them out via the other. Get output via:
 /// RUST_LOG=two_nodes=DEBUG cargo test -- --color always --nocapture two_nodes
