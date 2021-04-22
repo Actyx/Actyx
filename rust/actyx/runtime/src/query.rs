@@ -71,8 +71,7 @@ mod tests {
 
     fn test_query(expr: &'static str, tag_subscriptions: TagSubscriptions) {
         let e: Expression = expr.parse().unwrap();
-        let s: TagSubscriptions = e.into();
-        assert_eq!(s, tag_subscriptions);
+        assert_eq!(TagSubscriptions::from(e), tag_subscriptions);
     }
 
     #[test]
@@ -105,7 +104,7 @@ mod tests {
             TagSubscriptions::new(vec![TagSubscription::new(tags!("a")).local()]),
         );
 
-        let mut q: Query = (&expr.parse::<Expression>().unwrap()).into();
+        let mut q = Query::from(&expr.parse::<Expression>().unwrap());
         let v = Value::new(EventKey::default(), |b| b.encode_u64(3));
         assert_eq!(q.feed(v), vec![]);
 

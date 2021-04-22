@@ -85,14 +85,12 @@ impl From<language::Expression> for TagSubscriptions {
 }
 impl From<&language::Query> for TagSubscriptions {
     fn from(query: &language::Query) -> Self {
-        let dnf: Dnf = (&query.from).into();
-        dnf.into()
+        Dnf::from(&query.from).into()
     }
 }
 impl From<&language::TagExpr> for TagSubscriptions {
     fn from(tag_expr: &language::TagExpr) -> Self {
-        let dnf: Dnf = tag_expr.into();
-        dnf.into()
+        Dnf::from(tag_expr).into()
     }
 }
 impl Deref for TagSubscriptions {
@@ -199,8 +197,7 @@ mod tests {
 
     fn assert_dnf(expr: TagExpr, dnf: &'static [&'static [&'static str]]) {
         let expected = Dnf(dnf.iter().map(|conj| conj.iter().map(|c| atom(*c)).collect()).collect());
-        let actual: Dnf = (&expr).into();
-        assert_eq!(actual, expected);
+        assert_eq!(Dnf::from(&expr), expected);
     }
 
     #[test]

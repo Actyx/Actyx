@@ -92,7 +92,7 @@ impl service::EventService for EventService {
             from_offsets_excluding,
             to_offsets_including,
         };
-        let mut query: Query = (&request.query).into();
+        let mut query = Query::from(&request.query);
         let response = match request.order {
             Order::Asc => self.store.stream_events_forward(selection),
             Order::Desc => self.store.stream_events_backward(selection),
@@ -108,7 +108,7 @@ impl service::EventService for EventService {
         let tag_subscriptions: TagSubscriptions = (&request.query).into();
         let from_offsets_excluding: OffsetMapOrMax = request.offsets.unwrap_or_default().into();
         let selection = EventSelection::after(tag_subscriptions, from_offsets_excluding);
-        let mut query: Query = (&request.query).into();
+        let mut query = Query::from(&request.query);
         let response = self
             .store
             .stream_events_source_ordered(selection)
@@ -139,7 +139,7 @@ impl service::EventService for EventService {
 
         let from_offsets_excluding = request.from.min_offsets().into();
         let selection = EventSelection::after(tag_subscriptions, from_offsets_excluding);
-        let mut query: Query = (&request.query).into();
+        let mut query = Query::from(&request.query);
         let response = self
             .store
             .stream_events_source_ordered(selection)

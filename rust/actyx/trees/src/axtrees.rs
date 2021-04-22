@@ -753,7 +753,7 @@ mod tests {
     }
 
     fn assert_match(index: &TagIndex, expr: &TagExpr, expected: Vec<bool>) {
-        let tag_subscriptions: TagSubscriptions = expr.into();
+        let tag_subscriptions = TagSubscriptions::from(expr);
         let query = TagsQuery::new(tag_subscriptions.as_tag_sets(true));
         let mut matching = vec![true; expected.len()];
         query.set_matching(index, &mut matching);
