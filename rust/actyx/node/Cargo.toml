@@ -12,9 +12,8 @@ path = "src/bin/linux.rs"
 prost-build = "0.7.0"
 
 [dependencies]
-actyxos_sdk = { version = "0.5", path = "../../sdk" }
+actyxos_sdk = { version = "0.6", path = "../../sdk" }
 api = { path = "../api" }
-ax-config = { path = "../ax-config" }
 ax-futures-util = { path = "../ax-futures-util" }
 settings = { path = "../settings" }
 crypto = { path = "../crypto/" }
@@ -33,14 +32,14 @@ crossbeam = "0.8.0"
 derive_more = "0.99.11"
 ffi-support = "0.4.2"
 futures = { version = "0.3.13", features = ["compat"], package = "futures" }
-libp2p = { version = "0.35.1", default-features = false, features = ["gossipsub", "ping"] }
+libp2p = { version = "0.37.0", default-features = false, features = ["gossipsub", "ping"] }
 maplit = "1.0.2"
 multihash = "0.13.2"
 parking_lot = "0.11.1"
 prost = "0.7.0"
 prost-derive = "0.7.0"
 regex = "1.4.5"
-rusqlite = { features = ["bundled", "backup", "hooks"], version = "0.24.2" }
+rusqlite = { features = ["bundled", "backup", "hooks"], version = "0.25.0" }
 serde = { features = ["derive"], version = "1.0.124" }
 serde_cbor = "0.11.1"
 serde_json = "1.0.64"
@@ -63,10 +62,11 @@ crate-type = ["lib"]
 name = "node"
 
 [dev-dependencies]
-actyxos_sdk = { version = "0.5", path = "../../sdk", features = ["client"] }
+actyxos_sdk = { version = "0.6", path = "../../sdk", features = ["client"] }
 criterion = { version = "0.3.4", features = ["html_reports", "async_tokio" ] }
 maplit = "1.0.2"
 tracing-subscriber = "0.2.17"
+url = "2.2.0"
 
 [target."cfg(target_os = \"windows\")".dependencies]
 systray = "0.4.0"

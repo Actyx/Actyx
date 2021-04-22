@@ -5,7 +5,7 @@ authors = ["Actyx AG"]
 edition = "2018"
 
 [dependencies]
-actyxos_sdk = { version = "0.5", path = "../../sdk" }
+actyxos_sdk = { version = "0.6", path = "../../sdk" }
 ax-futures-util = { path = "../ax-futures-util" }
 crypto = { path = "../crypto" }
 swarm = { path = "../swarm" }
@@ -15,6 +15,7 @@ actyx-util = { path = "../util", package = "util" }
 
 anyhow = "1.0.38"
 async-trait = "0.1.48"
+base64 = "0.13.0"
 chrono = { version = "0.4.19", features = ["serde"] }
 derive_more = "0.99.11"
 futures = { version = "0.3.13", package = "futures" }

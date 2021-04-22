@@ -1,7 +1,6 @@
 use crate::cmd;
 use anyhow::Result;
 use async_trait::async_trait;
-use ax_config::StoreConfig;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use futures::StreamExt;
 use swarm::BanyanStore;
@@ -40,7 +39,7 @@ impl cmd::Command for Cmd {
         "copyPubSub"
     }
 
-    async fn run(&self, matches: &ArgMatches<'_>, _config: StoreConfig, store: BanyanStore) -> Result<()> {
+    async fn run(&self, matches: &ArgMatches<'_>, store: BanyanStore) -> Result<()> {
         let topic_from = String::from(matches.value_of("from").expect("Topic is mandatory"));
         let topic_to = String::from(matches.value_of("to").expect("Topic to send is mandatory"));
         let exclude = matches.value_of("exclude").map(|x| x.to_owned());

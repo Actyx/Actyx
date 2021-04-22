@@ -27,8 +27,8 @@
     "Basic": {
       "Key": {
         "type": "string",
-        "minLength": 128,
-        "maxLength": 128
+        "minLength": 44,
+        "maxLength": 44
       },
       "NonEmptyString": {
         "type": "string",
@@ -91,7 +91,7 @@
       "properties": {
         "swarmKey": {
           "$ref": "#/definitions/Basic/Key",
-          "default": "L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCmQ3YjBmNDFjY2ZlYTEyM2FkYTJhYWI0MmY2NjRjOWUyNWUwZWYyZThmNGJjNjJlOTg3NmE3NDU1MTc3ZWQzOGIK"
+          "default": "MDAwMDAwMDAxMTExMTExMTIyMjIyMjIyMzMzMzMzMzM="
         },
         "topic": {
           "$ref": "#/definitions/Basic/NonEmptyString",

@@ -1,4 +1,3 @@
-mod auth_mock;
 mod http;
 pub mod service;
 mod ws;

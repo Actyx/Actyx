@@ -1,3 +1,4 @@
+mod authentication_service_api;
 mod event_service_api;
 mod ipfs_file_gateway;
 mod rejections;
@@ -52,24 +53,30 @@ fn routes(
     store: BanyanStore,
     key_store: KeyStoreRef,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+    let token_validity: u32 = if cfg!(debug_assertions) {
+        std::env::var("AX_API_TOKEN_VALIDITY")
+            .ok()
+            .and_then(|x| x.parse().ok())
+            .unwrap_or(86400) // 1 day
+    } else {
+        86400
+    };
+
     let event_service = event_service_api::service::EventService::new(store.clone());
-    let event_service_api = event_service_api::routes(node_id, event_service, key_store);
 
-    let ipfs_file_gw = ipfs_file_gateway::route(store);
+    let events = event_service_api::routes(node_id, event_service, key_store.clone());
+    let auth = authentication_service_api::route(node_id.into(), key_store, token_validity);
 
+    let api_path = path!("api" / "v2" / ..);
     let cors = cors()
         .allow_any_origin()
         .allow_headers(vec!["accept", "authorization", "content-type"])
         .allow_methods(&[http::Method::GET, http::Method::POST]);
 
-    let crash = path!("_crash").and_then(|| async move { Err::<String, _>(reject::custom(rejections::Crash)) });
-
-    crash
-        .or(path("ipfs").and(ipfs_file_gw))
-        // Note: event_service_api has a explicit rejection handler, which also
-        // returns 404 no route matched. Thus it needs to come last. This should
-        // eventually be refactored as part of Event Service v2.
-        .or(path("api").and(path("v2").and(path("events")).and(event_service_api)))
+    path("ipfs")
+        .and(ipfs_file_gateway::route(store))
+        .or(api_path.and(path("events")).and(events))
+        .or(api_path.and(path("authenticate")).and(auth))
         .recover(|r| async { rejections::handle_rejection(r) })
         .with(cors)
 }

@@ -6,15 +6,15 @@ fn node_schema_in_sync() {
     use maplit::btreeset;
     let sample_settings = Settings {
         swarm: Swarm {
-          bootstrap_nodes: btreeset!["some bootstrap node".into()],
-          announce_addresses: btreeset![],
-          swarm_key: "L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCjY1YjM1NDhjYTg0YWZmMTkwZjlkYTkzZThkMjQ2YWU1NjU5ZDJlZGQ1M2ZjNjQ4MjdiOWM0NTdmNWY4MzAyNGIK".into(),
-          topic: "some topic".into(),
+            bootstrap_nodes: btreeset!["some bootstrap node".into()],
+            announce_addresses: btreeset![],
+            swarm_key: "MDAwMDAwMDAxMTExMTExMTIyMjIyMjIyMzMzMzMzMzM=".into(),
+            topic: "some topic".into(),
         },
         admin: Admin {
-          display_name: "some name".into(),
-          log_levels: LogLevels::default(),
-          authorized_users: vec![],
+            display_name: "some name".into(),
+            log_levels: LogLevels::default(),
+            authorized_users: vec![],
         },
         licensing: Licensing {
             node: "development".into(),

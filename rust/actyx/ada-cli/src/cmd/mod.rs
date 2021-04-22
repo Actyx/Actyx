@@ -1,6 +1,5 @@
 use anyhow::Result;
 use async_trait::async_trait;
-use ax_config::StoreConfig;
 use clap::ArgMatches;
 use swarm::BanyanStore;
 
@@ -21,5 +20,5 @@ pub trait Command {
 
     /// If the command line arguments match this subcommand, then this method will be called.
     /// This is where the actual task of the subcommand is performed.
-    async fn run(&self, matches: &ArgMatches<'_>, config: StoreConfig, store: BanyanStore) -> Result<()>;
+    async fn run(&self, matches: &ArgMatches<'_>, store: BanyanStore) -> Result<()>;
 }

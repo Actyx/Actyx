@@ -26,7 +26,7 @@ export const createTestNodeDockerLocal = async (nodeName: string): Promise<Actyx
 }
 
 export const createTestNodeLocal = async (nodeName: string): Promise<ActyxOSNode> => {
-  const prefix = 'test-node-local-docker'
+  const prefix = 'test-node-local-linux'
   const name = `${prefix}-${nodeName}`
   return createTestNode(name, 'linux')
 }

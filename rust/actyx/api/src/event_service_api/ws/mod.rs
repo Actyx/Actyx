@@ -20,8 +20,7 @@ pub(crate) fn routes<S: EventService + Clone + Send + Sync + 'static>(
     event_service: S,
     key_store: KeyStoreRef,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-    // TODO replace with crate::util::filters::authenticate
-    let auth = super::auth_mock::authenticate(query_token(), key_store, node_id.into());
+    let auth = crate::util::filters::authenticate(query_token(), key_store, node_id.into());
     let services = Arc::new(btreemap! {
       "node_id"             => node_id::service(event_service.clone()).boxed(),
       "offsets"             => offsets::service(event_service.clone()).boxed(),

@@ -5,7 +5,7 @@ name = "logsvcd"
 version = "0.2.0"
 
 [dependencies]
-actyxos_sdk = { version = "0.5", path = "../../sdk" }
+actyxos_sdk = { version = "0.6", path = "../../sdk" }
 trees = { path = "../trees" }
 util = { path = "../util" }
 
@@ -14,7 +14,7 @@ crossbeam = "0.8.0"
 derive_more = "0.99.11"
 futures = { version = "0.3.13", package = "futures" }
 percent-encoding = "2.1.0"
-rusqlite = { features = ["bundled", "backup", "hooks"], version = "0.24.2" }
+rusqlite = { features = ["bundled", "backup", "hooks"], version = "0.25.0" }
 serde = { features = ["derive"], version = "1.0.124" }
 serde_cbor = { version = "0.11.1", features = ["tags"] }
 serde_json = { features = ["raw_value"], version = "1.0.64" }

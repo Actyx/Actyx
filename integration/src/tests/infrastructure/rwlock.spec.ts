@@ -1,4 +1,4 @@
-import { RwLock } from './rwlock'
+import { RwLock } from '../../infrastructure/rwlock'
 
 const mkPromise = <T>(): [Promise<T>, (t: T) => void] => {
   // eslint-disable-next-line @typescript-eslint/no-empty-function

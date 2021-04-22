@@ -21,16 +21,20 @@ use futures::{
     future,
     stream::{iter, BoxStream, Stream, StreamExt},
 };
-use reqwest::{Client, RequestBuilder, Response};
+use reqwest::{Client, RequestBuilder, Response, StatusCode};
 use serde::{Deserialize, Serialize};
+use std::{
+    fmt::Debug,
+    sync::{Arc, RwLock},
+};
 use url::Url;
 
 use crate::{
     service::{
-        EventService, NodeIdResponse, PublishRequest, PublishResponse, QueryRequest, QueryResponse,
-        SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
+        AuthenticationResponse, EventService, NodeIdResponse, PublishRequest, PublishResponse, QueryRequest,
+        QueryResponse, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    OffsetMap,
+    AppManifest, OffsetMap,
 };
 
 /// Error type that is returned in the response body by the Event Service when requests fail
@@ -50,153 +54,161 @@ pub struct HttpClientError {
 #[derive(Clone)]
 pub struct HttpClient {
     client: Client,
-    url: Url, // cannot_be_a_base() ensured to be false
-    token_query: String,
+    base_url: Url,
+    token: Arc<RwLock<String>>,
+    app_manifest: AppManifest,
 }
 
-const API_URI: &str = "http://localhost:4454/api";
-const API_PATH: [&str; 2] = ["v2", "events"];
-
-fn ensure_base(url: Url) -> anyhow::Result<Url> {
-    anyhow::ensure!(!url.cannot_be_a_base(), "{} is not a valid base address", url);
-    Ok(url)
+async fn get_token(client: &Client, base_url: &Url, app_manifest: &AppManifest) -> anyhow::Result<String> {
+    let body = serde_json::to_value(app_manifest).context(|| format!("serializing {:?}", app_manifest))?;
+    let response = client.post(base_url.join("authenticate")?).json(&body).send().await?;
+    let bytes = response
+        .bytes()
+        .await
+        .context(|| "getting body for authentication response")?;
+    let token: AuthenticationResponse =
+        serde_json::from_slice(bytes.as_ref()).context(|| "deserializing authentication response")?;
+    Ok(token.token)
 }
 
 impl HttpClient {
-    /// This will configure a connection to the local Event Service, either an ActyxOS node in development
-    /// mode or the production ActyxOS node where the app is deployed (in particular, it will
-    /// inspect the `AX_API_URI` environment variable and fall back to
-    /// `http://localhost:4454/api/`).
-    pub async fn default() -> anyhow::Result<HttpClient> {
+    /// Configures connection to Actyx node with provided Url and AppManifest.
+    /// All path segments of the Url (if any) are discarded.
+    pub async fn new(origin: Url, app_manifest: AppManifest) -> anyhow::Result<Self> {
+        anyhow::ensure!(!origin.cannot_be_a_base(), "{} is not a valid base address", origin);
+        let mut base_url = origin;
+        base_url.set_path("api/v2/");
         let client = Client::new();
-        let url = std::env::var("AX_API_URI").unwrap_or_else(|_| API_URI.to_string());
-        let url = Url::parse(url.as_str())?;
-        let mut url = ensure_base(url)?;
-        url.path_segments_mut().unwrap().extend(&API_PATH);
-        Self::new(client, url).await
-    }
 
-    pub async fn new_with_url(url: &str) -> anyhow::Result<HttpClient> {
-        let client = Client::new();
-        let url = Url::parse(url)?;
-        let url = ensure_base(url)?;
-        Self::new(client, url).await
-    }
-
-    pub async fn new(client: Client, url: Url) -> anyhow::Result<HttpClient> {
-        let mut auth_url = ensure_base(url.clone())?;
-        auth_url.path_segments_mut().unwrap().pop_if_empty().push("auth");
-        let token = async move {
-            // FIXME do request
-            "xxx"
-        }
-        .await;
-        let token_query = format!("token={}", token);
+        let token = get_token(&client, &base_url, &app_manifest).await?;
 
         Ok(Self {
             client,
-            url,
-            token_query,
+            base_url,
+            token: Arc::new(RwLock::new(token)),
+            app_manifest,
         })
     }
 
-    fn url(&self, path: &str) -> Url {
-        let mut url = self.url.clone();
-        url.path_segments_mut().unwrap().pop_if_empty().push(path); // unwrap() because of ensure_base()
-                                                                    // url.set_query(Some(self.token_query.as_str()));
-        url
+    fn events_url(&self, path: &str) -> Url {
+        // Safe to unwrap, because we fully control path creation
+        self.base_url.join(&format!("events/{}", path)).unwrap()
     }
 
-    async fn do_request(
+    async fn re_authenticate(&self) -> anyhow::Result<String> {
+        let token = get_token(&self.client, &self.base_url, &self.app_manifest).await?;
+        let mut write_guard = self.token.write().unwrap();
+        *write_guard = token.clone();
+        Ok(token)
+    }
+
+    async fn send_request(
         &self,
         f: impl Fn(&Client) -> RequestBuilder,
+        token: &str,
     ) -> std::result::Result<Response, HttpClientError> {
-        let response = f(&self.client)
+        f(&self.client)
+            .header("Authorization", &format!("Bearer {}", token))
             .send()
             .await
-            .context(|| format!("sending {:?}", f(&self.client)))?;
+            .context(|| format!("sending {:?}", f(&self.client)))
+    }
+
+    /// Makes request to Actyx apis. On http authorization error tries to
+    /// re-authenticate and retries the request once.
+    async fn do_request(&self, f: impl Fn(&Client) -> RequestBuilder) -> anyhow::Result<Response> {
+        let token = {
+            let read_guard = self.token.read().unwrap();
+            let token = &*read_guard;
+            token.clone()
+        };
+
+        let mut response = self.send_request(&f, &token).await?;
+        if response.status() == StatusCode::UNAUTHORIZED {
+            let token = self.re_authenticate().await?;
+            response = self.send_request(&f, &token).await?;
+        }
+
         if response.status().is_success() {
             Ok(response)
         } else {
             let error_code = response.status().as_u16();
             Err(HttpClientError {
                 error: response
-                    .text()
+                    .json()
                     .await
                     .context(|| format!("getting body for {} reply to {:?}", error_code, f(&self.client)))?,
                 error_code,
                 context: format!("sending {:?}", f(&self.client)),
-            })
+            }
+            .into())
         }
+    }
+}
+
+impl Debug for HttpClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HttpClient")
+            .field("base_url", &self.base_url.as_str())
+            .field("app_manifest", &self.app_manifest)
+            .finish()
     }
 }
 
 #[async_trait]
 impl EventService for HttpClient {
-    async fn node_id(&self) -> Result<NodeIdResponse> {
-        let response = self
-            .do_request(|c| c.get(self.url("node_id")).header("Authorization", "Bearer FIXME"))
-            .await?;
+    async fn node_id(&self) -> anyhow::Result<NodeIdResponse> {
+        let response = self.do_request(|c| c.get(self.events_url("node_id"))).await?;
         let bytes = response
             .bytes()
             .await
-            .context(|| format!("getting body for GET {}", self.url("node_id")))?;
+            .context(|| format!("getting body for GET {}", self.events_url("node_id")))?;
         Ok(serde_json::from_slice(bytes.as_ref()).context(|| {
             format!(
                 "deserializing node_id response from {:?} received from GET {}",
                 bytes,
-                self.url("node_id")
+                self.events_url("node_id")
             )
         })?)
     }
 
-    async fn offsets(&self) -> Result<OffsetMap> {
-        let response = self
-            .do_request(|c| c.get(self.url("offsets")).header("Authorization", "Bearer FIXME"))
-            .await?;
+    async fn offsets(&self) -> anyhow::Result<OffsetMap> {
+        let response = self.do_request(|c| c.get(self.events_url("offsets"))).await?;
         let bytes = response
             .bytes()
             .await
-            .context(|| format!("getting body for GET {}", self.url("offsets")))?;
+            .context(|| format!("getting body for GET {}", self.events_url("offsets")))?;
         Ok(serde_json::from_slice(bytes.as_ref()).context(|| {
             format!(
                 "deserializing offsets response from {:?} received from GET {}",
                 bytes,
-                self.url("offsets")
+                self.events_url("offsets")
             )
         })?)
     }
 
-    async fn publish(&self, request: PublishRequest) -> Result<PublishResponse> {
+    async fn publish(&self, request: PublishRequest) -> anyhow::Result<PublishResponse> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
-            .do_request(|c| {
-                c.post(self.url("publish"))
-                    .header("Authorization", "Bearer FIXME")
-                    .json(&body)
-            })
+            .do_request(|c| c.post(self.events_url("publish")).json(&body))
             .await?;
         let bytes = response
             .bytes()
             .await
-            .context(|| format!("getting body for GET {}", self.url("publish")))?;
+            .context(|| format!("getting body for GET {}", self.events_url("publish")))?;
         Ok(serde_json::from_slice(bytes.as_ref()).context(|| {
             format!(
                 "deserializing publish response from {:?} received from GET {}",
                 bytes,
-                self.url("publish")
+                self.events_url("publish")
             )
         })?)
     }
 
-    async fn query(&self, request: QueryRequest) -> Result<BoxStream<'static, QueryResponse>> {
+    async fn query(&self, request: QueryRequest) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
-            .do_request(|c| {
-                c.post(self.url("query"))
-                    .header("Authorization", "Bearer FIXME")
-                    .json(&body)
-            })
+            .do_request(|c| c.post(self.events_url("query")).json(&body))
             .await?;
         let res = to_lines(response.bytes_stream())
             .map(|bs| serde_json::from_slice(bs.as_ref()))
@@ -205,14 +217,10 @@ impl EventService for HttpClient {
         Ok(res.boxed())
     }
 
-    async fn subscribe(&self, request: SubscribeRequest) -> Result<BoxStream<'static, SubscribeResponse>> {
+    async fn subscribe(&self, request: SubscribeRequest) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
-            .do_request(|c| {
-                c.post(self.url("subscribe"))
-                    .header("Authorization", "Bearer FIXME")
-                    .json(&body)
-            })
+            .do_request(|c| c.post(self.events_url("subscribe")).json(&body))
             .await?;
         let res = to_lines(response.bytes_stream())
             .map(|bs| serde_json::from_slice(bs.as_ref()))
@@ -224,14 +232,10 @@ impl EventService for HttpClient {
     async fn subscribe_monotonic(
         &self,
         request: SubscribeMonotonicRequest,
-    ) -> Result<BoxStream<'static, SubscribeMonotonicResponse>> {
+    ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
         let body = serde_json::to_value(&request).context(|| format!("serializing {:?}", &request))?;
         let response = self
-            .do_request(|c| {
-                c.post(self.url("subscribe_monotonic"))
-                    .header("Authorization", "Bearer FIXME")
-                    .json(&body)
-            })
+            .do_request(|c| c.post(self.events_url("subscribe_monotonic")).json(&body))
             .await?;
         let res = to_lines(response.bytes_stream())
             .map(|bs| serde_json::from_slice(bs.as_ref()))

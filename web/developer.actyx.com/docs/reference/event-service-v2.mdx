@@ -622,14 +622,16 @@ The response body will contain a JSON object of the following structure:
 {
     "data": [
         {
-            "streamNr": "<integer: stream number>",
+            "stream": "<string: stream id>",
             "lamport": "<integer>",
-            "offset": "<integer>"
+            "offset": "<integer>",
+            "timestamp": "<integer>"
         },
         {
-            "streamNr": "<integer: stream number>",
+            "stream": "<string: stream id>",
             "lamport": "<integer>",
-            "offset": "<integer>"
+            "offset": "<integer>",
+            "timestamp": "<integer>"
         }
     ]
 }

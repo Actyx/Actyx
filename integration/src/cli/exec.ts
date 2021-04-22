@@ -64,6 +64,7 @@ export const SettingsInput = {
 }
 
 type Exec = {
+  version: () => Promise<string>
   users: {
     keyGen: (file: string) => Promise<Response_Users_Keygen>
   }
@@ -91,6 +92,10 @@ type Exec = {
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export const mkExec = (binary: string, addr: string, identityPath: string): Exec => ({
+  version: async () => {
+    const response = await execa(path.resolve(binary), ['--version'])
+    return response.stdout
+  },
   users: {
     keyGen: async (file: string): Promise<Response_Users_Keygen> => {
       const response = await exec(binary, ['users', 'keygen', '--output', file])

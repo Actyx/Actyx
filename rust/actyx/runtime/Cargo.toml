@@ -5,7 +5,7 @@ authors = ["Actyx AG"]
 edition = "2018"
 
 [dependencies]
-actyxos_sdk = { version = "0.5.0", path = "../../sdk" }
+actyxos_sdk = { version = "0.6.0", path = "../../sdk" }
 anyhow = "1.0.38"
 cbor-data = "0.4.2"
 tracing = "0.1.25"

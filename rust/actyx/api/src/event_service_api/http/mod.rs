@@ -13,8 +13,7 @@ pub(crate) fn routes<S: EventService + Clone + Send + Sync + 'static>(
     event_service: S,
     key_store: KeyStoreRef,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-    // TODO replace with crate::util::filters::authenticate
-    let auth = super::auth_mock::authenticate(header_token(), key_store, node_id.into());
+    let auth = crate::util::filters::authenticate(header_token(), key_store, node_id.into());
 
     filters::node_id(event_service.clone(), auth.clone())
         .or(filters::offsets(event_service.clone(), auth.clone()))

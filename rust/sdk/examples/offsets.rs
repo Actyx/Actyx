@@ -13,34 +13,44 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#[allow(unused_imports)]
 use actyxos_sdk::{
+    app_id,
+    language::Query,
     service::{EventService, Order, QueryRequest, QueryResponse},
-    HttpClient,
+    AppManifest, HttpClient,
 };
 use futures::stream::StreamExt;
+use url::Url;
+
+async fn mk_http_client() -> anyhow::Result<HttpClient> {
+    let app_manifest = AppManifest::new(
+        app_id!("com.example.actyx-offsets"),
+        "Offsets Example".into(),
+        "0.1.0".into(),
+        None,
+    );
+    let url = Url::parse("http://localhost:4454").unwrap();
+    HttpClient::new(url, app_manifest).await
+}
 
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
-    // client for locally running Actyx Event Service
-    let service = HttpClient::default().await?;
+    let service = mk_http_client().await?;
 
     // retrieve largest currently known event stream cursor
     let offsets = service.offsets().await?;
+    println!("largest currently known event stream cursor {:#?}", offsets);
 
     // all events matching the given subscription
     // sorted backwards, i.e. youngest to oldest
-    let mut events = service
-        .query(QueryRequest {
-            lower_bound: None,
-            upper_bound: offsets,
-            query: "FROM 'MyFish'".parse()?,
-            order: Order::Desc,
-        })
-        .await?;
+    let request = QueryRequest {
+        lower_bound: None,
+        upper_bound: offsets,
+        query: "FROM 'sensor:temp-sensor1'".parse::<Query>()?,
+        order: Order::Desc,
+    };
+    let mut events = service.query(request).await?;
 
-    // print out the payload of each event
-    // (cf. Payload::extract for more options)
     while let Some(QueryResponse::Event(event)) = events.next().await {
         println!("{}", event.payload.json_value());
     }

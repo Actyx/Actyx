@@ -6,7 +6,7 @@ hosts:
 - name: local-docker
   prepare:
     type: local
-  install: docker
+  install: docker 
 settings:
   # Where folders and files will be created during a test run.
   tempDir: temp

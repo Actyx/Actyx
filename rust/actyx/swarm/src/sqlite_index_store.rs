@@ -2,7 +2,7 @@ use actyxos_sdk::StreamId;
 use anyhow::Result;
 use parking_lot::Mutex;
 use rusqlite::backup;
-use rusqlite::{params, Connection, OpenFlags, NO_PARAMS};
+use rusqlite::{params, Connection, OpenFlags};
 use std::path::PathBuf;
 use std::time::Duration;
 use std::{collections::BTreeSet, sync::Arc};
@@ -69,14 +69,14 @@ impl SqliteIndexStore {
         let locked = conn.lock();
         initialize_db(&locked)?;
         let lamport = locked
-            .query_row("SELECT lamport FROM meta", NO_PARAMS, |row| {
+            .query_row("SELECT lamport FROM meta", [], |row| {
                 let lamport: i64 = row.get(0)?;
                 let lamport = lamport as u64;
                 debug!("Found lamport = {}", lamport);
                 Ok(lamport)
             })
             .or_else(|_| -> Result<u64> {
-                locked.execute("INSERT INTO meta VALUES (0)", NO_PARAMS)?;
+                locked.execute("INSERT INTO meta VALUES (0)", [])?;
                 Ok(0)
             })?;
         drop(locked);
@@ -101,7 +101,7 @@ impl SqliteIndexStore {
         self.conn
             .lock()
             .prepare_cached("UPDATE meta SET lamport = lamport + 1")?
-            .execute(NO_PARAMS)?;
+            .execute([])?;
         // do this after the txn was successfully committed.
         self.lamport += 1;
         trace!("incremented lamport to {}", self.lamport);
@@ -143,7 +143,7 @@ impl SqliteIndexStore {
     pub fn get_observed_streams(&mut self) -> Result<BTreeSet<StreamId>> {
         let con = self.conn.lock();
         let mut stmt = con.prepare("SELECT * from streams")?;
-        let result = stmt.query_map(NO_PARAMS, |r| {
+        let result = stmt.query_map([], |r| {
             let stream_id: StreamId = r.get(0)?;
             Ok(stream_id)
         })?;

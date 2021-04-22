@@ -20,7 +20,7 @@ use std::{
     fmt,
     io::{Read, Seek, Write},
     iter::FromIterator,
-    ops::Range,
+    ops::{Range, RangeFrom, RangeTo},
     str::FromStr,
 };
 
@@ -597,6 +597,24 @@ impl From<Range<Timestamp>> for TimeQuery {
     }
 }
 
+impl From<RangeSet<Timestamp>> for TimeQuery {
+    fn from(value: RangeSet<Timestamp>) -> Self {
+        Self(value)
+    }
+}
+
+impl From<RangeFrom<Timestamp>> for TimeQuery {
+    fn from(value: RangeFrom<Timestamp>) -> Self {
+        Self(value.into())
+    }
+}
+
+impl From<RangeTo<Timestamp>> for TimeQuery {
+    fn from(value: RangeTo<Timestamp>) -> Self {
+        Self(value.into())
+    }
+}
+
 impl Query<AxTrees> for TimeQuery {
     fn intersecting(&self, _offset: u64, index: &BranchIndex<AxTrees>, matching: &mut [bool]) {
         let time = &index.summaries.time;
@@ -615,6 +633,29 @@ impl Query<AxTrees> for TimeQuery {
 
 #[derive(Debug, Clone)]
 pub struct OffsetQuery(RangeSet<u64>);
+
+impl From<Range<u64>> for OffsetQuery {
+    fn from(value: Range<u64>) -> Self {
+        Self(value.into())
+    }
+}
+impl From<RangeSet<u64>> for OffsetQuery {
+    fn from(value: RangeSet<u64>) -> Self {
+        Self(value)
+    }
+}
+
+impl From<RangeFrom<u64>> for OffsetQuery {
+    fn from(value: RangeFrom<u64>) -> Self {
+        Self(value.into())
+    }
+}
+
+impl From<RangeTo<u64>> for OffsetQuery {
+    fn from(value: RangeTo<u64>) -> Self {
+        Self(value.into())
+    }
+}
 
 impl Query<AxTrees> for OffsetQuery {
     fn intersecting(&self, offset: u64, index: &BranchIndex<AxTrees>, matching: &mut [bool]) {

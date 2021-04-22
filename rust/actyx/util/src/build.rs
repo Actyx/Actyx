@@ -1,11 +1,10 @@
 use std::env;
-use std::error::Error;
 use winres::WindowsResource;
 
-pub fn add_icon_to_bin_when_building_for_win(icon_path: &str) -> Result<(), Box<dyn Error>> {
-    if env::var("CARGO_CFG_TARGET_FAMILY")? == "windows" {
+pub fn add_icon_to_bin_when_building_for_win(icon_path: &str) {
+    if env::var("CARGO_CFG_TARGET_FAMILY").unwrap() == "windows" {
         let mut res = WindowsResource::new();
-        let target_env = std::env::var("CARGO_CFG_TARGET_ENV")?;
+        let target_env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap();
         match target_env.as_str() {
             "gnu" => res
                 .set_ar_path("x86_64-w64-mingw32-ar")
@@ -15,8 +14,6 @@ pub fn add_icon_to_bin_when_building_for_win(icon_path: &str) -> Result<(), Box<
             "msvc" => res.set_icon(icon_path),
             _ => panic!("Unsupported env: {}", target_env),
         };
-        res.compile()?;
+        res.compile().unwrap();
     }
-
-    Ok(())
 }

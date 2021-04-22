@@ -4,20 +4,9 @@ use actyxos_sdk::{
     service::{EventService, PublishRequest, QueryRequest, SubscribeMonotonicRequest, SubscribeRequest},
     AppId,
 };
-
-use derive_more::Display;
 use warp::*;
 
-#[derive(Debug, Display)]
-pub struct Error(anyhow::Error); // anyhow::Error is sealed so we wrap it
-impl std::error::Error for Error {}
-impl reject::Reject for Error {}
-
-fn reject(err: anyhow::Error) -> Rejection {
-    reject::custom(Error(err))
-}
-
-type Result<T> = std::result::Result<T, Rejection>;
+use crate::util::{reject, Result};
 
 pub async fn node_id(_app_id: AppId, event_service: impl EventService) -> Result<impl Reply> {
     event_service

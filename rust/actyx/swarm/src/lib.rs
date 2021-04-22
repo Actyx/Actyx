@@ -2,7 +2,7 @@ pub mod access;
 pub mod convert;
 mod discovery;
 pub mod metrics;
-mod node_identity;
+mod prune;
 mod sqlite;
 mod sqlite_index_store;
 mod streams;
@@ -14,13 +14,11 @@ mod tests;
 mod v1;
 mod v2;
 
-pub use crate::node_identity::NodeIdentity;
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
 pub use crate::v1::{EventStore, HighestSeen, Present};
-pub use ax_config::StoreConfig;
-use util::formats::NodeErrorContext;
 
+use crate::prune::RetainConfig;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
 use crate::streams::{OwnStreamInner, ReplicatedStreamInner, StreamMaps};
@@ -28,30 +26,32 @@ use actyxos_sdk::{LamportTimestamp, NodeId, Offset, OffsetOrMin, Payload, Stream
 use anyhow::{Context, Result};
 use ax_futures_util::{prelude::*, stream::variable::Variable};
 use banyan::{
-    forest::{self, BranchCache},
+    forest::{self, BranchCache, Config as ForestConfig, CryptoConfig},
     index::Index,
     query::Query,
 };
-use fnv::FnvHashSet;
+use crypto::KeyPair;
 use forest::FilteredChunk;
 use futures::{channel::mpsc, prelude::*};
-use ipfs_embed::{BitswapConfig, Config as IpfsConfig, Multiaddr, NetworkConfig, StorageConfig, SyncEvent};
-use libipld::Cid;
+use ipfs_embed::{
+    BitswapConfig, Cid, Config as IpfsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId, StorageConfig,
+    SyncEvent, ToLibp2p,
+};
 use libp2p::{
     gossipsub::{GossipsubConfigBuilder, ValidationMode},
+    identify::IdentifyConfig,
     multiaddr::Protocol,
     ping::PingConfig,
-    pnet::PreSharedKey,
-    PeerId,
 };
+use maplit::btreemap;
 use parking_lot::Mutex;
 use std::{
-    collections::VecDeque,
+    collections::{BTreeMap, VecDeque},
     convert::{TryFrom, TryInto},
     fmt::Debug,
     num::NonZeroU32,
     ops::RangeInclusive,
-    str::FromStr,
+    path::PathBuf,
     sync::Arc,
     time::Duration,
 };
@@ -59,6 +59,7 @@ use trees::{
     axtrees::{AxKey, AxTrees, Sha256Digest},
     OffsetMapOrMax,
 };
+use util::formats::NodeErrorContext;
 
 #[allow(clippy::upper_case_acronyms)]
 type TT = AxTrees;
@@ -72,27 +73,56 @@ type Tree = banyan::tree::Tree<TT>;
 pub type Block = libipld::Block<libipld::DefaultParams>;
 pub type Ipfs = ipfs_embed::Ipfs<libipld::DefaultParams>;
 
-#[derive(Debug, Clone)]
-pub struct Config {
-    /// max cache size [bytes]
-    branch_cache: usize,
-    crypto_config: forest::CryptoConfig,
-    forest_config: forest::Config,
-    topic: String,
-    node_id: NodeId,
-    external_addresses: FnvHashSet<Multiaddr>,
+// TODO fix stream nr
+static DISCOVERY_STREAM_NR: u64 = 1;
+static METRICS_STREAM_NR: u64 = 2;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EphemeralEventsConfig {
+    interval: Duration,
+    streams: BTreeMap<StreamNr, RetainConfig>,
+}
+impl Default for EphemeralEventsConfig {
+    fn default() -> Self {
+        Self {
+            interval: Duration::from_secs(30 * 60),
+            streams: btreemap! {
+                DISCOVERY_STREAM_NR.into() => RetainConfig::Events(1000),
+                METRICS_STREAM_NR.into() => RetainConfig::Events(1000)
+            },
+        }
+    }
 }
 
-impl Config {
-    pub fn new(topic: &str, node_id: NodeId) -> Self {
-        Self {
-            branch_cache: 64 << 20,
-            crypto_config: Default::default(),
-            forest_config: forest::Config::debug(),
-            topic: topic.into(),
-            node_id,
-            external_addresses: Default::default(),
-        }
+#[derive(Clone, Debug, Default)]
+pub struct SwarmConfig {
+    pub topic: String,
+    pub index_store: Option<Arc<Mutex<rusqlite::Connection>>>,
+    pub enable_publish: bool,
+    pub enable_mdns: bool,
+    pub keypair: Option<KeyPair>,
+    pub psk: Option<[u8; 32]>,
+    pub node_name: Option<String>,
+    pub db_path: Option<PathBuf>,
+    pub external_addresses: Vec<Multiaddr>,
+    pub listen_addresses: Vec<Multiaddr>,
+    pub bootstrap_addresses: Vec<Multiaddr>,
+    pub ephemeral_event_config: EphemeralEventsConfig,
+}
+
+impl PartialEq for SwarmConfig {
+    fn eq(&self, other: &Self) -> bool {
+        self.topic == other.topic
+            && self.enable_publish == other.enable_publish
+            && self.enable_mdns == other.enable_mdns
+            && self.keypair == other.keypair
+            && self.psk == other.psk
+            && self.node_name == other.node_name
+            && self.db_path == other.db_path
+            && self.external_addresses == other.external_addresses
+            && self.listen_addresses == other.listen_addresses
+            && self.bootstrap_addresses == other.bootstrap_addresses
+            && self.ephemeral_event_config == other.ephemeral_event_config
     }
 }
 
@@ -127,96 +157,122 @@ impl Drop for BanyanStoreInner {
 }
 
 impl BanyanStore {
-    /// Creates a new [`BanyanStore`] from a [`StoreConfig`].
-    pub async fn from_axconfig(cfg: ax_config::StoreConfig) -> Result<Self> {
-        Self::from_axconfig0(cfg, None).await
-    }
-
-    /// Creates a new [`BanyanStore`] from a [`StoreConfig`].
-    /// Irrespective of what's configured in [`StoreConfig`], the provided
-    /// [`rusqlite::Connection`] will be used for the index store.
-    pub async fn from_axconfig_with_db(
-        cfg: ax_config::StoreConfig,
-        db: Arc<Mutex<rusqlite::Connection>>,
-    ) -> Result<Self> {
-        Self::from_axconfig0(cfg, Some(db)).await
-    }
-
-    async fn from_axconfig0(cfg: ax_config::StoreConfig, db: Option<Arc<Mutex<rusqlite::Connection>>>) -> Result<Self> {
+    /// Creates a new [`BanyanStore`] from a [`SwarmConfig`].
+    pub async fn new(cfg: SwarmConfig) -> Result<Self> {
         tracing::debug!("client_from_config({:?})", cfg);
-        tracing::debug!("Starting up in IPFS full node mode");
-        if cfg.ipfs_node.enable_publish {
+        if cfg.enable_publish {
             tracing::debug!("Publishing is allowed to pubsub");
         } else {
             tracing::debug!("Publishing is disabled to pubsub");
         }
+        tracing::debug!("Start listening on topic '{}'", &cfg.topic);
 
-        let identity = if let Some(identity) = cfg.ipfs_node.identity {
-            NodeIdentity::from_str(&identity)?
-        } else {
-            NodeIdentity::generate()
-        };
+        let keypair = cfg.keypair.unwrap_or_else(KeyPair::generate);
+        let node_id = keypair.into();
+        let node_key: ipfs_embed::Keypair = keypair.into();
+        let public = node_key.to_public();
+        let node_name = cfg
+            .node_name
+            .unwrap_or_else(|| names::Generator::with_naming(names::Name::Numbered).next().unwrap());
 
-        let config = IpfsConfig {
+        let ipfs = Ipfs::new(IpfsConfig {
             network: NetworkConfig {
-                node_key: identity.to_keypair(),
-                node_name: names::Generator::with_naming(names::Name::Numbered).next().unwrap(),
-                enable_mdns: true,
-                enable_kad: false,
-                allow_non_globals_in_dht: false,
-                psk: if let Some(psk) = cfg.ipfs_node.pre_shared_key {
-                    let blob = base64::decode(psk)?;
-                    let decoded = String::from_utf8(blob)?;
-                    Some(PreSharedKey::from_str(&decoded)?)
+                node_key,
+                node_name,
+                psk: cfg.psk,
+                quic: Default::default(),
+                mdns: if cfg.enable_mdns {
+                    Some(Default::default())
                 } else {
                     None
                 },
-                ping: PingConfig::new()
-                    .with_keep_alive(true)
-                    .with_max_failures(NonZeroU32::new(2).unwrap()),
-                gossipsub: GossipsubConfigBuilder::default()
-                    .validation_mode(ValidationMode::Permissive)
-                    .build()
-                    .expect("valid gossipsub config"),
-                bitswap: BitswapConfig {
+                kad: None,
+                dns: None,
+                ping: Some(
+                    PingConfig::new()
+                        .with_keep_alive(true)
+                        .with_max_failures(NonZeroU32::new(2).unwrap()),
+                ),
+                identify: Some(IdentifyConfig::new("/actyx/2.0.0".to_string(), public)),
+                gossipsub: Some(
+                    GossipsubConfigBuilder::default()
+                        .validation_mode(ValidationMode::Permissive)
+                        .build()
+                        .expect("valid gossipsub config"),
+                ),
+                broadcast: Some(Default::default()),
+                bitswap: Some(BitswapConfig {
                     request_timeout: Duration::from_secs(10),
                     connection_keep_alive: Duration::from_secs(10),
-                },
+                }),
             },
             storage: StorageConfig {
-                path: cfg.ipfs_node.db_path,
+                path: cfg.db_path,
                 cache_size_blocks: u64::MAX,
-                cache_size_bytes: cfg.ipfs_node.db_size.unwrap_or(1024 * 1024 * 1024 * 4),
+                cache_size_bytes: 1024 * 1024 * 1024 * 4,
                 gc_interval: Duration::from_secs(10),
                 gc_min_blocks: 1000,
                 gc_target_duration: Duration::from_millis(10),
             },
-        };
-        let ipfs = Ipfs::new(config).await?;
-        let mut config = Config::new(&cfg.topic, identity.into());
-        config.external_addresses = cfg.ipfs_node.external_addresses.iter().cloned().collect();
+        })
+        .await?;
 
-        let index_store = if let Some(con) = db {
-            SqliteIndexStore::from_conn(con)?
+        let index_store = if let Some(conn) = cfg.index_store {
+            SqliteIndexStore::from_conn(conn)?
         } else {
-            let db_path = if let Some(path) = cfg.db_path {
-                tracing::debug!("Initializing SQLite index store: {}", path.display());
-                DbPath::File(path)
-            } else {
-                tracing::debug!("Initializing SQLite index store: IN MEMORY");
-                DbPath::Memory
-            };
-            SqliteIndexStore::open(db_path)?
+            SqliteIndexStore::open(DbPath::Memory)?
         };
-        let banyan = BanyanStore::new(ipfs, config, index_store)?;
-        tracing::debug!(
-            "Start listening on topic '{}' using monitoring topic '{}'",
-            &cfg.topic,
-            &cfg.monitoring_topic,
+        let forest = Forest::new(
+            SqliteStore::wrap(ipfs.clone()),
+            BranchCache::<TT>::new(64 << 20),
+            CryptoConfig::default(),
+            // TODO: add default implementation.
+            ForestConfig::debug(),
         );
+        let gossip_v2 = v2::GossipV2::new(ipfs.clone(), node_id, cfg.topic.clone());
+        let banyan = Self(Arc::new(BanyanStoreInner {
+            maps: Mutex::new(StreamMaps::default()),
+            index_store: Mutex::new(index_store),
+            node_id,
+            ipfs,
+            gossip_v2,
+            forest,
+            lamport: Default::default(),
+            present: Default::default(),
+            highest_seen: Default::default(),
+            tasks: Default::default(),
+        }));
+        banyan.load_known_streams()?;
+        banyan.spawn_task(
+            "v2_gossip_ingest",
+            banyan.0.gossip_v2.ingest(banyan.clone(), cfg.topic.clone())?,
+        );
+        banyan.spawn_task("compaction", banyan.clone().compaction_loop(Duration::from_secs(60)));
+        banyan.spawn_task("v1_gossip_publish", banyan.clone().v1_gossip_publish(cfg.topic.clone()));
+        banyan.spawn_task("v1_gossip_ingest", banyan.clone().v1_gossip_ingest(cfg.topic));
+        banyan.spawn_task("discovery_ingest", crate::discovery::discovery_ingest(banyan.clone()));
+        banyan.spawn_task(
+            "discovery_publish",
+            crate::discovery::discovery_publish(
+                banyan.clone(),
+                DISCOVERY_STREAM_NR.into(),
+                cfg.external_addresses.iter().cloned().collect(),
+            )?,
+        );
+        banyan.spawn_task(
+            "metrics",
+            crate::metrics::metrics(banyan.clone(), METRICS_STREAM_NR.into(), Duration::from_secs(30))?,
+        );
+        banyan.spawn_task(
+            "prune_events",
+            crate::prune::prune(banyan.clone(), cfg.ephemeral_event_config),
+        );
+
         let ipfs = banyan.ipfs();
-        for addr in cfg.ipfs_node.listen {
-            let bound_addr = ipfs.listen_on(addr.clone()).await.with_context(|| {
+        for addr in cfg.listen_addresses {
+            if let Some(ListenerEvent::NewListenAddr(bound_addr)) = ipfs.listen_on(addr.clone())?.next().await {
+                tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr);
+            } else {
                 let port = addr
                     .iter()
                     .find_map(|x| match x {
@@ -225,18 +281,16 @@ impl BanyanStore {
                         _ => None,
                     })
                     .unwrap_or_default();
-                NodeErrorContext::BindFailed {
+                return Err(anyhow::anyhow!("failed to bind address")).with_context(|| NodeErrorContext::BindFailed {
                     port,
                     component: "Swarm".into(),
-                }
-            })?;
-
-            tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr);
+                });
+            }
         }
-        for addr in cfg.ipfs_node.external_addresses {
+        for addr in cfg.external_addresses {
             ipfs.add_external_address(addr);
         }
-        for mut addr in cfg.ipfs_node.bootstrap {
+        for mut addr in cfg.bootstrap_addresses {
             let addr_orig = addr.clone();
             if let Some(Protocol::P2p(peer_id)) = addr.pop() {
                 let peer_id =
@@ -251,48 +305,21 @@ impl BanyanStore {
                 return Err(anyhow::anyhow!("invalid bootstrap address"));
             }
         }
+
         Ok(banyan)
     }
 
-    /// Creates a new [`BanyanStore`] from an [`Ipfs`] and [`Config`].
-    pub fn new(ipfs: Ipfs, config: Config, index_store: SqliteIndexStore) -> Result<Self> {
-        let store = SqliteStore::wrap(ipfs.clone());
-        let branch_cache = BranchCache::<TT>::new(config.branch_cache);
-        let node_id = config.node_id;
-        let index_store = Mutex::new(index_store);
-        let gossip_v2 = v2::GossipV2::new(ipfs.clone(), node_id, config.topic.clone());
-        let me = Self(Arc::new(BanyanStoreInner {
-            maps: Mutex::new(StreamMaps::default()),
-            index_store,
-            node_id,
-            ipfs,
-            gossip_v2,
-            lamport: Default::default(),
-            present: Default::default(),
-            highest_seen: Default::default(),
-            forest: Forest::new(store, branch_cache, config.crypto_config, config.forest_config),
-            tasks: Default::default(),
-        }));
-        me.load_known_streams()?;
-        me.spawn_task(
-            "v2_gossip_ingest",
-            me.0.gossip_v2.ingest(me.clone(), config.topic.clone())?,
-        );
-        me.spawn_task("compaction", me.clone().compaction_loop(Duration::from_secs(60)));
-        me.spawn_task("v1_gossip_publish", me.clone().v1_gossip_publish(config.topic.clone()));
-        me.spawn_task("v1_gossip_ingest", me.clone().v1_gossip_ingest(config.topic));
-        me.spawn_task("discovery_ingest", crate::discovery::discovery_ingest(me.clone()));
-        // TODO fix stream nr
-        me.spawn_task(
-            "discovery_publish",
-            crate::discovery::discovery_publish(me.clone(), 0.into(), config.external_addresses)?,
-        );
-        // TODO fix stream nr
-        me.spawn_task(
-            "metrics",
-            crate::metrics::metrics(me.clone(), 0.into(), Duration::from_secs(30))?,
-        );
-        Ok(me)
+    /// Creates a new [`BanyanStore`] for testing.
+    pub async fn test(node_name: &str) -> Result<Self> {
+        Self::new(SwarmConfig {
+            topic: "topic".into(),
+            enable_publish: true,
+            enable_mdns: true,
+            node_name: Some(node_name.into()),
+            listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse().unwrap()],
+            ..Default::default()
+        })
+        .await
     }
 
     fn load_known_streams(&self) -> Result<()> {
@@ -314,19 +341,6 @@ impl BanyanStore {
         }
 
         Ok(())
-    }
-
-    /// Creates an in memory [`BanyanStore`] for testing with mdns disabled.
-    pub async fn test(name: &str) -> Result<Self> {
-        let identity = NodeIdentity::generate();
-        let mut config = IpfsConfig::new(None, 0);
-        config.network.enable_mdns = false;
-        config.network.enable_kad = false;
-        config.network.node_name = name.to_string();
-        config.network.node_key = identity.to_keypair();
-        let ipfs = Ipfs::new(config).await?;
-        let config = Config::new("topic", identity.into());
-        BanyanStore::new(ipfs, config, SqliteIndexStore::open(DbPath::Memory)?)
     }
 
     /// Returns the [`NodeId`].
@@ -547,7 +561,7 @@ impl BanyanStore {
         // attempt to sync. This may take a while and is likely to be interrupted
         tracing::debug!("starting to sync {}", root);
         // create the sync stream, and log progress. Add an additional element.
-        let mut sync = ipfs.sync(&cid);
+        let mut sync = ipfs.sync(&cid, ipfs.peers());
         // during the sync, try to load the tree asap and abort in case it is not good
         let mut tree: Option<Tree> = None;
         let mut n: usize = 0;

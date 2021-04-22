@@ -11,6 +11,7 @@ use std::{
     time::{Duration, Instant},
 };
 use tempfile::tempdir;
+use tests::mk_http_client;
 use tracing_subscriber::prelude::__tracing_subscriber_SubscriberExt;
 
 async fn start_node(id: &str, working_dir: impl AsRef<Path>) -> anyhow::Result<(Child, HttpClient)> {
@@ -48,7 +49,7 @@ async fn start_node(id: &str, working_dir: impl AsRef<Path>) -> anyhow::Result<(
             tracing::info!("Node {}: {}", id, line);
         }
     });
-    let es = HttpClient::new_with_url(&*format!("http://localhost:{}/api/v2/events", port)).await?;
+    let es = mk_http_client(port).await?;
 
     Ok((node_handle, es))
 }
@@ -101,6 +102,8 @@ async fn two_nodes() -> anyhow::Result<()> {
             break offsets_observed_by_2;
         }
         if start.elapsed() > Duration::from_millis(30000) {
+            node_1.kill().unwrap();
+            node_2.kill().unwrap();
             panic!("Didn't gossip in more than 30 s, giving up");
         }
         std::thread::sleep(Duration::from_millis(300));
@@ -115,7 +118,6 @@ async fn two_nodes() -> anyhow::Result<()> {
         .await?
         .map(|q| {
             let QueryResponse::Event(e) = q;
-            assert_eq!(e.tags, tags!("my_tag"));
             let s: String = serde_json::from_value(e.payload.json_value()).unwrap();
             s
         })
@@ -123,10 +125,11 @@ async fn two_nodes() -> anyhow::Result<()> {
         .await;
 
     tracing::debug!("data {} data_via_2 {}", data.len(), data_via_2.len());
-    assert_eq!(data, data_via_2);
 
     node_1.kill().unwrap();
     node_2.kill().unwrap();
+
+    assert_eq!(data, data_via_2);
     Ok(())
 }
 
