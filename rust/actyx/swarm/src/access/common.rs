@@ -57,8 +57,9 @@ impl EventSelection {
     }
 
     #[cfg(test)]
-    pub fn create(query_expr: &str, ranges: &[(StreamId, OffsetOrMin, OffsetOrMin)]) -> anyhow::Result<EventSelection> {
-        let tag_subscriptions = query_expr.parse::<actyxos_sdk::language::Expression>()?.into();
+    pub fn create(query: &str, ranges: &[(StreamId, OffsetOrMin, OffsetOrMin)]) -> anyhow::Result<EventSelection> {
+        let query = &query.parse::<actyxos_sdk::language::Query>()?;
+        let tag_subscriptions = query.into();
         let from_offsets_excluding = OffsetMapOrMax::from_entries(
             ranges
                 .iter()
@@ -226,7 +227,7 @@ pub fn stop_when_streams_exhausted(
 mod tests {
     use super::*;
     use crate::access::tests::*;
-    use actyxos_sdk::{language::Expression, tags};
+    use actyxos_sdk::{language, tags};
     use maplit::btreeset;
     use pretty_assertions::assert_eq;
     use trees::TagSubscription;
@@ -253,8 +254,9 @@ mod tests {
 
     #[test]
     fn event_selection_must_list_stream_ids_wildcard_unbounded() {
+        let query = &"FROM 'upper:A' & 'lower:a'".parse::<language::Query>().unwrap();
         let selection = EventSelection {
-            tag_subscriptions: "FROM 'upper:A' & 'lower:a'".parse::<Expression>().unwrap().into(),
+            tag_subscriptions: query.into(),
             from_offsets_excluding: OffsetMapOrMax::from_entries(&[
                 (test_stream(0), OffsetOrMin::MIN),
                 (test_stream(1), OffsetOrMin::mk_test(50)),
@@ -291,8 +293,9 @@ mod tests {
 
     #[test]
     fn event_selection_must_list_stream_ids_local_unbounded() {
+        let query = &"FROM 'upper:A' & 'lower:a'".parse::<language::Query>().unwrap();
         let events = EventSelection::new(
-            "FROM 'upper:A' & 'lower:a'".parse::<Expression>().unwrap().into(),
+            query.into(),
             OffsetMapOrMax::from_entries(&[
                 (test_stream(0), OffsetOrMin::MIN),
                 (test_stream(1), OffsetOrMin::MIN),

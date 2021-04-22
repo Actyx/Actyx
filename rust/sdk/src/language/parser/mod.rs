@@ -1,8 +1,9 @@
 #![allow(dead_code)]
 #![allow(clippy::upper_case_acronyms)]
+
 use std::str::FromStr;
 
-use super::{Array, Expression, Index, Number, Object, Operation, Path, Query, SimpleExpr, TagAtom, TagExpr};
+use super::{Array, Index, Number, Object, Operation, Path, Query, SimpleExpr, TagAtom, TagExpr};
 use crate::{tags::Tag, Timestamp};
 use chrono::{TimeZone, Utc};
 use once_cell::sync::Lazy;
@@ -227,26 +228,25 @@ fn r_query(p: P) -> Query {
     q
 }
 
-impl FromStr for Expression {
+impl FromStr for Query {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let p = Aql::parse(Rule::expression, s)?.single().single();
+        let p = Aql::parse(Rule::query, s)?.single();
         match p.rule() {
-            Rule::simple_expr => Ok(Expression::Simple(r_simple_expr(p))),
-            Rule::query => Ok(Expression::Query(r_query(p))),
+            Rule::query => Ok(r_query(p)),
             x => unexpected!(x),
         }
     }
 }
 
-impl FromStr for Query {
+impl FromStr for SimpleExpr {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let p = Aql::parse(Rule::expression, s)?.single().single();
+        let p = Aql::parse(Rule::simple_expr, s)?.single();
         match p.rule() {
-            Rule::query => Ok(r_query(p)),
+            Rule::simple_expr => Ok(r_simple_expr(p)),
             x => unexpected!(x),
         }
     }
@@ -286,9 +286,8 @@ mod tests {
         use super::Number::*;
         use super::Path;
         use SimpleExpr::*;
-        let p = Aql::parse(Rule::simple_expr, "(x - 5.2 * 1234)^2 / 7 % 5").unwrap();
         assert_eq!(
-            r_simple_expr(p.single()),
+            "(x - 5.2 * 1234)^2 / 7 % 5".parse::<SimpleExpr>().unwrap(),
             Path::ident("x")
                 .sub(Number(Decimal(5.2)).mul(Number(Natural(1234))))
                 .pow(Number(Natural(2)))
@@ -298,7 +297,7 @@ mod tests {
     }
 
     #[test]
-    fn expr() {
+    fn query() {
         use super::Number::*;
         use super::{Array, Object, Path};
         use crate::app_id;
@@ -307,48 +306,46 @@ mod tests {
         use TagExpr::Atom;
 
         assert_eq!(
-            "FROM 'machine' | 'user' END".parse::<Expression>().unwrap(),
-            Expression::Query(Query::new(Tag(tag!("machine")).or(Tag(tag!("user")))))
+            "FROM 'machine' | 'user' END".parse::<Query>().unwrap(),
+            Query::new(Tag(tag!("machine")).or(Tag(tag!("user"))))
         );
         assert_eq!(
             "FROM 'machine' |
                 -- or the other
                   'user' & isLocal & from(2012-12-31) & to(12345678901234567) & appId( hello-5._x_ ) & allEvents
                   FILTER _.x.42 > 5 SELECT { x: ! 'hello' y: 42 z: [1.3,_.x] } END --"
-                .parse::<Expression>()
+                .parse::<Query>()
                 .unwrap(),
-            Expression::Query(
-                Query::new(
-                    Atom(Tag(tag!("machine"))).or(Tag(tag!("user"))
-                        .and(IsLocal)
-                        .and(Atom(FromTime(1356912000000000.into())))
-                        .and(Atom(ToLamport(12345678901234567.into())))
-                        .and(Atom(AppId(app_id!("hello-5._x_"))))
-                        .and(Atom(AllEvents)))
-                )
-                .with_op(Operation::Filter(Path::with("_", &[&"x", &42]).gt(Number(Natural(5)))))
-                .with_op(Operation::Select(Object::with(&[
-                    ("x", Not(String("hello".to_owned()).into())),
-                    ("y", Number(Natural(42))),
-                    ("z", Array::with(&[Number(Decimal(1.3)), Path::with("_", &[&"x"])]))
-                ])))
+            Query::new(
+                Atom(Tag(tag!("machine"))).or(Tag(tag!("user"))
+                    .and(IsLocal)
+                    .and(Atom(FromTime(1356912000000000.into())))
+                    .and(Atom(ToLamport(12345678901234567.into())))
+                    .and(Atom(AppId(app_id!("hello-5._x_"))))
+                    .and(Atom(AllEvents)))
             )
+            .with_op(Operation::Filter(Path::with("_", &[&"x", &42]).gt(Number(Natural(5)))))
+            .with_op(Operation::Select(Object::with(&[
+                ("x", Not(String("hello".to_owned()).into())),
+                ("y", Number(Natural(42))),
+                ("z", Array::with(&[Number(Decimal(1.3)), Path::with("_", &[&"x"])]))
+            ])))
         );
     }
 
     #[test]
     fn roundtrips() {
         let rt = |str: &'static str| {
-            let e = str.parse::<Expression>().unwrap();
+            let e = str.parse::<Query>().unwrap();
             let mut buf = String::new();
-            crate::language::render::render_expr(&mut buf, &e).unwrap();
+            crate::language::render::render_query(&mut buf, &e).unwrap();
             assert_eq!(buf.as_str(), str);
         };
         rt("FROM 'machine' | 'user' & isLocal & from(2012-12-31) & to(12345678901234567) & appId(hello-5._x_) & allEvents FILTER _.x.42 > 5 SELECT { x: !'hello', y: 42, z: [1.3, _.x] } END");
         rt("FROM from(2012-12-31T09:30:32.007Z) END");
         rt("FROM from(2012-12-31T09:30:32Z) END");
         rt("FROM from(2012-12-31T09:30:32.007008Z) END");
-        rt("'hello''s revenge'");
+        rt("FROM 'hello''s revenge' END");
         rt("FROM 'hell''o' FILTER _.x = 'worl''d' END");
     }
 
@@ -357,7 +354,7 @@ mod tests {
         fails_with! {
             parser: Aql,
             input: "FROM x",
-            rule: Rule::expression,
+            rule: Rule::query,
             positives: vec![Rule::tag_expr],
             negatives: vec![],
             pos: 5

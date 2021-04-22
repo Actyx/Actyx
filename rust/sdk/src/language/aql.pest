@@ -1,6 +1,3 @@
-expression = { SOI ~ expr ~ EOI }
-expr = _{ query | simple_expr }
-
 // queries
 query = { "FROM" ~ tag_expr ~ query_op* ~ "END"? }
 query_op = _{ filter | select }

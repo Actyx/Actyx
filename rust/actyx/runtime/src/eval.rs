@@ -84,19 +84,14 @@ impl<'a> Context<'a> {
 
 #[cfg(test)]
 mod tests {
-    use actyxos_sdk::language::Expression;
-
     use super::*;
 
-    fn expr(s: &str) -> SimpleExpr {
-        match s.parse().unwrap() {
-            Expression::Simple(s) => s,
-            Expression::Query(_) => panic!("expected simple expression"),
-        }
+    fn simple_expr(s: &str) -> SimpleExpr {
+        s.parse::<SimpleExpr>().unwrap()
     }
 
     fn eval(cx: &Context, s: &str) -> Result<String> {
-        cx.eval(&expr(s)).map(|x| x.value().to_string())
+        cx.eval(&simple_expr(s)).map(|x| x.value().to_string())
     }
 
     #[test]

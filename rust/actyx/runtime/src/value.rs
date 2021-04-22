@@ -1,7 +1,6 @@
 use actyxos_sdk::{
     language::{Index, Number},
-    service::EventResponse,
-    Event, EventKey, Payload,
+    EventKey, Payload,
 };
 use anyhow::{anyhow, Result};
 use cbor_data::{CborBuilder, CborOwned, CborValue, Encoder, WithOutput};
@@ -20,24 +19,12 @@ pub struct Value {
     value: CborOwned, // should later become InternedHash<[u8]>
 }
 
-impl From<Event<Payload>> for Value {
-    fn from(ev: Event<Payload>) -> Self {
+impl From<(EventKey, Payload)> for Value {
+    fn from(event: (EventKey, Payload)) -> Self {
+        let (key, payload) = event;
         Self {
-            sort_key: ev.key,
-            value: CborOwned::trusting(ev.payload.as_bytes()),
-        }
-    }
-}
-
-impl From<Value> for EventResponse<Payload> {
-    fn from(value: Value) -> EventResponse<Payload> {
-        EventResponse {
-            lamport: value.sort_key.lamport,
-            stream: value.sort_key.stream,
-            offset: value.sort_key.offset,
-            timestamp: Default::default(),
-            tags: Default::default(),
-            payload: Payload::from_bytes(value.value.as_ref()),
+            sort_key: key,
+            value: CborOwned::trusting(payload.as_bytes()),
         }
     }
 }
@@ -68,6 +55,10 @@ impl Value {
 
     pub fn value(&self) -> CborValue {
         self.value.value().unwrap()
+    }
+
+    pub fn payload(&self) -> Payload {
+        Payload::from_bytes(self.value.as_ref())
     }
 
     pub fn index<'a>(&'a self, path: &[Index]) -> Option<CborValue> {

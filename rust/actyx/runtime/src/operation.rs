@@ -52,19 +52,16 @@ impl Select {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyxos_sdk::{language::Expression, EventKey};
+    use actyxos_sdk::EventKey;
     use cbor_data::Encoder;
 
-    fn expr(s: &str) -> SimpleExpr {
-        match s.parse().unwrap() {
-            Expression::Simple(s) => s,
-            Expression::Query(_) => panic!("expected simple expression"),
-        }
+    fn simple_expr(s: &str) -> SimpleExpr {
+        s.parse::<SimpleExpr>().unwrap()
     }
 
     #[test]
     fn filter() {
-        let f = Filter::new(expr("_ > 5 + a"));
+        let f = Filter::new(simple_expr("_ > 5 + a"));
         let mut cx = Context::new(EventKey::default());
         cx.bind("a", cx.value(|b| b.encode_f64(3.0)));
 
@@ -76,7 +73,7 @@ mod tests {
 
     #[test]
     fn select() {
-        let s = Select::new(expr("_.x + a"));
+        let s = Select::new(simple_expr("_.x + a"));
         let mut cx = Context::new(EventKey::default());
         cx.bind("a", cx.value(|b| b.encode_f64(0.5)));
 

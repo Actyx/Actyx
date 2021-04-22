@@ -1,12 +1,13 @@
 use std::convert::TryInto;
 
 use actyxos_sdk::{
+    language,
     service::{
-        self, NodeIdResponse, Order, PublishEvent, PublishRequest, PublishResponse, PublishResponseKey, QueryRequest,
-        QueryResponse, StartFrom, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest,
-        SubscribeResponse,
+        self, EventResponse, NodeIdResponse, Order, PublishEvent, PublishRequest, PublishResponse, PublishResponseKey,
+        QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest, SubscribeMonotonicResponse,
+        SubscribeRequest, SubscribeResponse,
     },
-    EventKey, OffsetMap,
+    Event, EventKey, Metadata, OffsetMap, Payload,
 };
 use anyhow::Result;
 use async_trait::async_trait;
@@ -16,7 +17,7 @@ use futures::{
     stream::{self, BoxStream, StreamExt},
     TryFutureExt,
 };
-use runtime::{query::Query, value::Value};
+use runtime::value::Value;
 use swarm::access::{ConsumerAccessError, EventSelection, EventStoreConsumerAccess};
 use swarm::{BanyanStore, EventStore, Present};
 use thiserror::Error;
@@ -92,15 +93,14 @@ impl service::EventService for EventService {
             from_offsets_excluding,
             to_offsets_including,
         };
-        let mut query = Query::from(&request.query);
         let response = match request.order {
             Order::Asc => self.store.stream_events_forward(selection),
             Order::Desc => self.store.stream_events_backward(selection),
             Order::StreamAsc => self.store.stream_events_source_ordered(selection),
         }
         .await?
-        .flat_map(move |e| stream::iter(query.feed(Value::from(e)).into_iter()))
-        .map(|v| QueryResponse::Event(v.into()));
+        .flat_map(mk_feed(request.query))
+        .map(QueryResponse::Event);
         Ok(response.boxed())
     }
 
@@ -108,13 +108,12 @@ impl service::EventService for EventService {
         let tag_subscriptions: TagSubscriptions = (&request.query).into();
         let from_offsets_excluding: OffsetMapOrMax = request.offsets.unwrap_or_default().into();
         let selection = EventSelection::after(tag_subscriptions, from_offsets_excluding);
-        let mut query = Query::from(&request.query);
         let response = self
             .store
             .stream_events_source_ordered(selection)
             .await?
-            .flat_map(move |e| stream::iter(query.feed(Value::from(e)).into_iter()))
-            .map(|v| SubscribeResponse::Event(v.into()));
+            .flat_map(mk_feed(request.query))
+            .map(SubscribeResponse::Event);
 
         Ok(response.boxed())
     }
@@ -139,7 +138,7 @@ impl service::EventService for EventService {
 
         let from_offsets_excluding = request.from.min_offsets().into();
         let selection = EventSelection::after(tag_subscriptions, from_offsets_excluding);
-        let mut query = Query::from(&request.query);
+        let feed = mk_feed(request.query);
         let response = self
             .store
             .stream_events_source_ordered(selection)
@@ -149,11 +148,8 @@ impl service::EventService for EventService {
                 move |e| {
                     if e.key > latest {
                         latest = e.key;
-                        stream::iter(query.feed(Value::from(e)).into_iter())
-                            .map(|ev| SubscribeMonotonicResponse::Event {
-                                event: ev.into(),
-                                caught_up: true,
-                            })
+                        feed(e)
+                            .map(|event| SubscribeMonotonicResponse::Event { event, caught_up: true })
                             .left_stream()
                     } else {
                         stream::once(async move { SubscribeMonotonicResponse::TimeTravel { new_start: e.key } })
@@ -163,5 +159,30 @@ impl service::EventService for EventService {
             })
             .take_until_condition(|e| future::ready(matches!(e, SubscribeMonotonicResponse::TimeTravel { .. })));
         Ok(response.boxed())
+    }
+}
+
+fn mk_feed(query: language::Query) -> impl Fn(Event<Payload>) -> BoxStream<'static, EventResponse<Payload>> {
+    let query = runtime::query::Query::from(query);
+    move |event| {
+        let Event {
+            key,
+            meta: Metadata { timestamp, tags },
+            payload,
+        } = event;
+        stream::iter(
+            query
+                .feed(Value::from((key, payload)))
+                .into_iter()
+                .map(move |v| EventResponse {
+                    lamport: v.sort_key.lamport,
+                    stream: v.sort_key.stream,
+                    offset: v.sort_key.offset,
+                    timestamp,
+                    tags: tags.clone(),
+                    payload: v.payload(),
+                }),
+        )
+        .boxed()
     }
 }

@@ -3,28 +3,16 @@ use crate::{
     operation::{Filter, Operation, Select},
     value::Value,
 };
-use actyxos_sdk::{language, EventKey};
-use cbor_data::Encoder;
+use actyxos_sdk::language;
 
-pub enum Query {
-    Expr(language::SimpleExpr),
-    Query(Vec<Operation>),
+pub struct Query {
+    #[allow(dead_code)]
+    from: language::TagExpr,
+    stages: Vec<Operation>,
 }
 
 impl Query {
-    pub fn initial_result(&self) -> Vec<Value> {
-        match &self {
-            Query::Expr(expr) => {
-                let ret = Context::new(EventKey::default())
-                    .eval(expr)
-                    .unwrap_or_else(|err| Value::new(EventKey::default(), |b| b.encode_str(&*err.to_string())));
-                vec![ret]
-            }
-            Query::Query(_) => vec![],
-        }
-    }
-
-    pub fn feed(&mut self, input: Value) -> Vec<Value> {
+    pub fn feed(&self, input: Value) -> Vec<Value> {
         fn rec<'a>(cx: &'a Context, input: Value, mut ops: impl Iterator<Item = &'a Operation> + Clone) -> Vec<Value> {
             if let Some(op) = ops.next() {
                 let (vs, cx) = op.apply(cx, input);
@@ -33,51 +21,42 @@ impl Query {
                 vec![input]
             }
         }
-        match self {
-            Query::Query(stages) => rec(&Context::new(input.sort_key), input, stages.iter()),
-            Query::Expr(_) => vec![input],
-        }
+        rec(&Context::new(input.sort_key), input, self.stages.iter())
     }
 }
 
-impl From<&language::Expression> for Query {
-    fn from(expr: &language::Expression) -> Self {
-        match expr {
-            language::Expression::Query(q) => q.into(),
-            language::Expression::Simple(s) => Self::Expr(s.clone()),
-        }
-    }
-}
-
-impl From<&language::Query> for Query {
-    fn from(q: &language::Query) -> Self {
+impl From<language::Query> for Query {
+    fn from(q: language::Query) -> Self {
         let mut stages = vec![];
         for op in &q.ops {
             match op {
-                actyxos_sdk::language::Operation::Filter(f) => stages.push(Operation::Filter(Filter::new(f.clone()))),
-                actyxos_sdk::language::Operation::Select(s) => stages.push(Operation::Select(Select::new(s.clone()))),
+                language::Operation::Filter(f) => stages.push(Operation::Filter(Filter::new(f.clone()))),
+                language::Operation::Select(s) => stages.push(Operation::Select(Select::new(s.clone()))),
             }
         }
-        Self::Query(stages)
+        Self { from: q.from, stages }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyxos_sdk::{language::Expression, tags, EventKey};
+    use actyxos_sdk::{tags, EventKey};
     use cbor_data::Encoder;
     use trees::{TagSubscription, TagSubscriptions};
 
-    fn test_query(expr: &'static str, tag_subscriptions: TagSubscriptions) {
-        let e: Expression = expr.parse().unwrap();
-        assert_eq!(TagSubscriptions::from(e), tag_subscriptions);
+    fn q(query_str: &'static str) -> language::Query {
+        query_str.parse::<language::Query>().unwrap()
+    }
+
+    fn test_query(query: language::Query, expected: TagSubscriptions) {
+        assert_eq!(TagSubscriptions::from(&query), expected);
     }
 
     #[test]
     fn parsing() {
         test_query(
-            "FROM 'a' & isLocal | ('b' | 'c') & allEvents & 'd'",
+            q("FROM 'a' & isLocal | ('b' | 'c') & allEvents & 'd'"),
             TagSubscriptions::new(vec![
                 TagSubscription::new(tags!("a")).local(),
                 TagSubscription::new(tags!("b", "d")),
@@ -88,23 +67,18 @@ mod tests {
 
     #[test]
     fn all_events() {
-        test_query("FROM allEvents", TagSubscriptions::all());
-    }
-
-    #[test]
-    fn empty() {
-        test_query("42", TagSubscriptions::empty())
+        test_query(q("FROM allEvents"), TagSubscriptions::all());
     }
 
     #[test]
     fn query() {
-        let expr = "FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2";
+        let query_str = "FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2";
         test_query(
-            expr,
+            q(query_str),
             TagSubscriptions::new(vec![TagSubscription::new(tags!("a")).local()]),
         );
 
-        let mut q = Query::from(&expr.parse::<Expression>().unwrap());
+        let q = Query::from(q(query_str));
         let v = Value::new(EventKey::default(), |b| b.encode_u64(3));
         assert_eq!(q.feed(v), vec![]);
 

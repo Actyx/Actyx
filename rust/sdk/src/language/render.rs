@@ -177,10 +177,3 @@ pub fn render_query(w: &mut impl Write, e: &Query) -> Result {
 
     w.write_str(" END")
 }
-
-pub fn render_expr(w: &mut impl Write, e: &Expression) -> Result {
-    match e {
-        Expression::Simple(s) => render_simple_expr(w, s),
-        Expression::Query(q) => render_query(w, q),
-    }
-}

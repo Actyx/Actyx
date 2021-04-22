@@ -4,17 +4,11 @@ mod render;
 use crate::{tags::Tag, AppId, LamportTimestamp, Timestamp};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
-pub enum Expression {
-    Simple(SimpleExpr),
-    Query(Query),
-}
-mod expression_impl;
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Query {
     pub from: TagExpr,
     pub ops: Vec<Operation>,
 }
+mod query_impl;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Operation {

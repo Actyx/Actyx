@@ -190,7 +190,7 @@ mod tests {
     use super::EnvelopeOrTick::*;
     use super::*;
     use crate::access::tests::*;
-    use actyxos_sdk::{language::Expression, tags, Offset, OffsetOrMin};
+    use actyxos_sdk::{language, tags, Offset, OffsetOrMin};
     use ax_futures_util::stream::Drainer;
     use futures::stream::Stream;
     use num_traits::Bounded;
@@ -370,11 +370,11 @@ mod tests {
         from[1].1 = store.top_offset().into();
         from[2].1 = store.top_offset().into();
 
+        let query = &"FROM ('upper:A' & 'lower:a') | 'upper:B' | 'upper:C'"
+            .parse::<language::Query>()
+            .unwrap();
         let events = EventSelection::new(
-            "FROM ('upper:A' & 'lower:a') | 'upper:B' | 'upper:C'"
-                .parse::<Expression>()
-                .unwrap()
-                .into(),
+            query.into(),
             OffsetMapOrMax::from_entries(&*from),
             OffsetMapOrMax::max_value(),
         );

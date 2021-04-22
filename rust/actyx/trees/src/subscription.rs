@@ -75,14 +75,6 @@ impl From<Dnf> for TagSubscriptions {
         Self::new(ret)
     }
 }
-impl From<language::Expression> for TagSubscriptions {
-    fn from(e: language::Expression) -> Self {
-        match &e {
-            language::Expression::Simple(_) => TagSubscriptions::empty(),
-            language::Expression::Query(q) => q.into(),
-        }
-    }
-}
 impl From<&language::Query> for TagSubscriptions {
     fn from(query: &language::Query) -> Self {
         Dnf::from(&query.from).into()
