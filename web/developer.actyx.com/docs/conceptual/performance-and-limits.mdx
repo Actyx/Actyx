@@ -33,7 +33,7 @@ If you do, please [get in touch with us and the Actyx community](https://communi
 ## Max. number of nodes
 
 The amount of devices you can reliably run in a single ActyxOS swarm depends on a large number of factors, including the local-area network setup, the devices themselves, and the apps running on them.
-With typical rugged tablets (CPU from around 2013) and Raspberry Pi 3 gateways, 100 devices should by themselves not pose a problem.
+With typical rugged tablets (CPU from around 2013) or other devices with relatevely low computing power (e.g. Raspberry Pi 3), 100 devices should by themselves not pose a problem.
 If you start pushing performance limits (see below) then this number can be significantly lower, depending on the event data rate and the computational complexity of your business logic.
 
 In some cases it may be possible to split an overall system into several smaller ones that do not directly interact via event streams.
@@ -54,7 +54,7 @@ These are the currently implemented behaviors:
 
 |Type|Size|Lifespan|Replication|
 |----|----|--------|-----------|
-|Event|max. 4KB|Events have infinite lifespan within the swarm.|Events are replicated on all devices.|
+|Event|It is recommended to not exceed 4KB per event.|Events have infinite lifespan within the swarm.|Events are replicated on all devices.|
 |Log|max. 4KB|Logs are cleared automatically when disk space is needed.|Logs are not replicated.|
 
 The listed maximal sizes are recommendations — neither events nor logs should be used to carry huge pieces of data (although larger events may be justified in some circumstances, e.g. defining a production process with many steps, where such definitions happen infrequently).
