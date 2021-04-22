@@ -54,13 +54,13 @@ These are the currently implemented behaviors:
 
 |Type|Size|Lifespan|Replication|
 |----|----|--------|-----------|
-|Event|It is recommended to not exceed 4KB per event.|Events have infinite lifespan within the swarm.|Events are replicated on all devices.|
-|Log|max. 4KB|Logs are cleared automatically when disk space is needed.|Logs are not replicated.|
+|Event|max. 4KB per event|Events have infinite lifespan within the swarm.|Events are replicated on all devices.|
+|Log|max. 4KB per log|Logs are cleared automatically when disk space is needed.|Logs are not replicated.|
 
 The listed maximal sizes are recommendations — neither events nor logs should be used to carry huge pieces of data (although larger events may be justified in some circumstances, e.g. defining a production process with many steps, where such definitions happen infrequently).
 
 Until we make event retention and replication configurable, the point at which you run out of disk space depends on the size, number, and compressibility of your events. 
-For a normal factory use-case, here are two examples based on real data from our customers:
+This is always dependent on how you define events in your app(s), but here are two examples based on apps that are running at our customers:
 
 |    |With machine integrations|Without machine integrations|
 |----|-----------------|----------------------------|
