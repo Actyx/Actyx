@@ -233,10 +233,7 @@ impl FromStr for Query {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let p = Aql::parse(Rule::query, s)?.single();
-        match p.rule() {
-            Rule::query => Ok(r_query(p)),
-            x => unexpected!(x),
-        }
+        Ok(r_query(p))
     }
 }
 
@@ -245,10 +242,7 @@ impl FromStr for SimpleExpr {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let p = Aql::parse(Rule::simple_expr, s)?.single();
-        match p.rule() {
-            Rule::simple_expr => Ok(r_simple_expr(p)),
-            x => unexpected!(x),
-        }
+        Ok(r_simple_expr(p))
     }
 }
 
