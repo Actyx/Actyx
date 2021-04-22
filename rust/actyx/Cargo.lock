@@ -1438,6 +1438,7 @@ dependencies = [
  "anyhow",
  "base64",
  "byteorder",
+ "criterion",
  "curve25519-dalek",
  "ed25519-dalek",
  "libp2p",
