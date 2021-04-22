@@ -154,9 +154,10 @@ impl service::EventService for EventService {
                                 event: ev.into(),
                                 caught_up: true,
                             })
-                            .boxed()
+                            .left_stream()
                     } else {
-                        stream::once(async move { SubscribeMonotonicResponse::TimeTravel { new_start: e.key } }).boxed()
+                        stream::once(async move { SubscribeMonotonicResponse::TimeTravel { new_start: e.key } })
+                            .right_stream()
                     }
                 }
             })
