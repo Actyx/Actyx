@@ -44,17 +44,20 @@ A lot of different factors play into performance of Actyx and your apps. Assumin
 |No. of nodes|max. 100 nodes|
 |Event data rate|~1 event per node per 10 seconds|
 
-The following list shows the factors that influence performance, and the assumptions that are made for the above estimations:
+The following list shows the factors that influence performance. **Please note that these are not requirements, but assumptions made for the above performance characteristics:**
 
-- LAN setup and latency: standard / WiFi
-- App Runtimes: Webview (Node.js) and Docker
-- Devices: Rugged tablets or other devices with relatively low computing power (e.g. Raspberry Pi 3)
-- Device CPU: 1-2 GHz, x86/arm architecture
-- Device RAM: 1-4GB
-- Programming language: Typescript
-- Business logic complexity: Standard factory use case, production data and machine data acquisition
 
-:::info Conceptual guide on performance and limits
+|Factor|Assumption|
+|----|-----|
+|LAN setup and latency|standard / WiFi|
+|App runtimes|Webview (Node.js) and Docker|
+|Devices|Rugged tablets or other devices with relatively low computing power (e.g. Raspberry Pi 3)|
+|Device CPU|1-2 GHz, x86/arm architecture|
+|Device RAM|1-4GB|
+|Programming language|Typescript|
+|Business logic complexity|Standard factory use case, production data and machine data acquisition|
+
+:::info Assumptions do not fit your use case?
 The limits regarding performance and disk space descibed on this page are only true within the circumstances outlined above. If one of these factors changes, the limits for your solution might change. If you are looking for guidande on a specific use case, please refer to our [conceptual guide](../conceptual/performance-and-limits) or contact us.
 :::
 
