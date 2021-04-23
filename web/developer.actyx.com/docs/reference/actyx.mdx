@@ -36,26 +36,26 @@ All devices in an ActyxOS swarm must be connected to the same local-area network
 
 ## Performance
 
-A lot of different factors play into performance of Actyx and your apps:
-
-- local-area network setup and latency
-- runtime for your app
-- CPU architecture and characteristics
-- RAM
-- language your app is written in
-- runtime of your app
-- event data rate
-- complexity of your business logic
-
-Assuming a standard network setup, typical rugged tablets or other devices with relatively low computing power, and a standard factory use case, these are the limits:
+A lot of different factors play into performance of Actyx and your apps. Assuming a standard network setup, rugged tablets or other devices with relatively low computing power, and a standard factory use case, these are the limits:
 
 |Type|Performance|
 |----|-----|
-|Latency|max. 200ms|
-|No. of nodes|max. 100|
+|Latency|below 200ms, not guaranteed as dependent on several factors|
+|No. of nodes|max. 100 nodes|
+|Event data rate|~1 event per node per 10 seconds|
+
+The following list shows the factors that influence performance, and the assumptions that are made for the above estimations:
+
+- LAN setup and latency: standard / WiFi
+- App Runtimes: Webview (Node.js) and Docker
+- Devices: Rugged tablets or other devices with relatively low computing power (e.g. Raspberry Pi 3)
+- Device CPU: 1-2 GHz, x86/arm architecture
+- Device RAM: 1-4GB
+- Programming language: Typescript
+- Business logic complexity: Standard factory use case, production data and machine data acquisition
 
 :::info Conceptual guide on performance and limits
-These estimations are only true within the circumstances described above. If you are looking for guidande on a specific use case, please refer to our [conceptual guide](../conceptual/performance-and-limits) or contact us.
+The limits regarding performance and disk space descibed on this page are only true within the circumstances outlined above. If one of these factors changes, the limits for your solution might change. If you are looking for guidande on a specific use case, please refer to our [conceptual guide](../conceptual/performance-and-limits) or contact us.
 :::
 
 ## Disk space requirements
