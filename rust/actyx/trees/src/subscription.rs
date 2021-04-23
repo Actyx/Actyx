@@ -128,7 +128,7 @@ impl Dnf {
         Dnf(ret)
     }
     fn insert_unless_redundant(aa: &mut BTreeSet<BTreeSet<language::TagAtom>>, b: BTreeSet<language::TagAtom>) {
-        let mut to_remove = BTreeSet::new();
+        let mut to_remove = vec![];
         for a in aa.iter() {
             if a.is_subset(&b) {
                 // a is larger than b. E.g. x | x&y
@@ -137,7 +137,7 @@ impl Dnf {
             } else if a.is_superset(&b) {
                 // a is smaller than b, E.g. x&y | x
                 // remove a, keep b
-                to_remove.insert(a.clone());
+                to_remove.push(a.clone());
             }
         }
         for r in to_remove {
