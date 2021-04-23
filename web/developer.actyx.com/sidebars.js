@@ -96,7 +96,11 @@ module.exports = {
       type: 'category',
       label: 'Swarms',
       collapsed: true,
-      items: ['how-to/swarms/setup-swarm', 'how-to/swarms/setup-bootstrap-node'],
+      items: [
+        'how-to/swarms/setup-swarm',
+        'how-to/swarms/setup-bootstrap-node',
+        'how-to/swarms/configure-announced-addresses',
+      ],
     },
     /*     {
       type: 'category',
@@ -133,19 +137,22 @@ module.exports = {
         'how-to/packaging/headless-apps',
       ],
     },
-    /*     {
+    {
       type: 'category',
       label: 'Monitoring & Debugging',
       collapsed: true,
       items: [
-        'how-to/monitoring-debugging/node-logs',
-        'how-to/monitoring-debugging/app-logs',
-        'how-to/monitoring-debugging/connectivity-status',
-        'how-to/monitoring-debugging/mobile-device-management',
-        'how-to/monitoring-debugging/bash',
+        'how-to/monitoring-debugging/access-logs',
+        'how-to/monitoring-debugging/logging-levels',
+        'how-to/monitoring-debugging/network-requirements',
+        'how-to/monitoring-debugging/node-connections',
+        // 'how-to/monitoring-debugging/app-logs',
+        // 'how-to/monitoring-debugging/connectivity-status',
+        // 'how-to/monitoring-debugging/mobile-device-management',
+        // 'how-to/monitoring-debugging/bash',
       ],
     },
-    {
+    /*     {
       type: 'category',
       label: 'Common Use-Cases',
       collapsed: true,
@@ -160,7 +167,11 @@ module.exports = {
       type: 'category',
       label: 'Troubleshooting',
       collapsed: true,
-      items: ['how-to/troubleshooting/common-errors'],
+      items: [
+        'how-to/troubleshooting/installation-and-startup',
+        'how-to/troubleshooting/node-to-cli-communication',
+        'how-to/troubleshooting/node-synchronization',
+      ],
     },
   ],
   conceptualSidebar: [
@@ -231,6 +242,7 @@ module.exports = {
         'reference/cli/apps/stop',
       ],
     },
+    'reference/release-notes',
   ],
   tutorialSidebar: [
     {

@@ -27,6 +27,7 @@ Actyx is built for the following operating systems and architectures:
 }>
 <TabItem value="windows">
 
+
 Actyx supports the following Windows versions:
 
 - Windows 10
@@ -37,6 +38,7 @@ You can run Actyx on Windows on the following architectures:
 
 </TabItem>
 <TabItem value="android">
+
 
 Actyx supports the following Android versions:
 
@@ -49,10 +51,10 @@ You can run Actyx on Windows on the following architectures:
 </TabItem>
 <TabItem value="linux">
 
-|Operating system|Minimum version|
-|----------------|---------------|
-|Ubuntu|18.04 (Bionic Beaver)|
-|AlpineOS|3.9|
+| Operating system | Minimum version       |
+| ---------------- | --------------------- |
+| Ubuntu           | 18.04 (Bionic Beaver) |
+| AlpineOS         | 3.9                   |
 
 You can run Actyx on Linux on the following architectures:
 
@@ -71,6 +73,22 @@ You can run Actyx on Docker on the following architectures:
 
 </TabItem>
 </Tabs>
+
+## Required ports
+
+ActyxOS uses IP ports for node communication and internal services.
+In order for ActyxOS to run, please make sure that the following ports are free:
+
+1. `4001`: Used for inter-node communication
+
+2. `4243`: Exposes a WebSocket endpoint for Actyx Pond (only on localhost)
+
+3. `4454`: Exposes the [Event Service](./actyx-api.mdx) (only on localhost)
+
+4. `4457`: Used for communication with the Actyx CLI or Node Manager
+
+5. `8080`: Exposes an [IPFS Gateway](https://docs.ipfs.io/concepts/ipfs-gateway/) (only on localhost)
+
 
 ## Network requirements
 
@@ -94,4 +112,4 @@ All devices in an ActyxOS swarm must be connected to the same local-area network
 Which settings are available and which values they may have is defined in the so-called ActyxOS **Node Setting Schema**.
 The most recent version thereof is available for download at:
 
-[https://developer.actyx.com/schemas/os/node-settings.schema.json](pathname:///schemas/os/node-settings.schema.json)
+[https://developer.actyx.com/schemas/node-settings.schema.json](pathname:///schemas/node-settings.schema.json)

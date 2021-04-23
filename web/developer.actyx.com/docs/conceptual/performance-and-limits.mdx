@@ -187,3 +187,7 @@ Exporting events or derived information into an ERP or BI system can be done usi
 
 Exporting machine or sensor data into a time-series database for further analysis outside ActyxOS is best done using the HTTP API and writing the exporter in a language that is well-suited for connecting to your database and handling the required amount of streaming data.
 We know from project experience that this can be done with native code (like Rust, C++) for demanding applications that write many million data points per day, e.g. into PostgreSQL with the timescale extension.
+
+import { NPS } from '../../src/components/NPS'
+
+<NPS />

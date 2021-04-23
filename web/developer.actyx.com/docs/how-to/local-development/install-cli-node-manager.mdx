@@ -6,9 +6,6 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
-import Tabs from '@theme/Tabs'
-import TabItem from '@theme/TabItem'
-
 Actyx Node Manager and the Actyx Command Line Interface (CLI) are tools to manage your ActyxOS nodes and apps.
 While the Node Manager is an application that allows you to interact with the nodes in an easy-to-use user interface,
 with the CLI you can interact with your ActyxOS environment by running commands in your favorite terminal program:
@@ -17,6 +14,10 @@ with the CLI you can interact with your ActyxOS environment by running commands 
 - Windows: On Windows, run commands with the Windows command prompt or in PowerShell
 
 Please choose your development platform in the tabs below and follow the instructions.
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+import { NPS } from '../../../src/components/NPS'
 
 <Tabs
   groupId="os"
@@ -28,6 +29,7 @@ Please choose your development platform in the tabs below and follow the instruc
   ]}
 >
 <TabItem value="windows">
+
 
 ## Actyx CLI
 
@@ -64,6 +66,7 @@ If not, please follow these steps:
 
 </TabItem>
 <TabItem value="linux">
+
 
 <h2>Actyx CLI</h2>
 
@@ -115,6 +118,7 @@ Congratulations, you have successfully installed Actyx Node Manager! 🎉
 
 </TabItem>
 <TabItem value="mac">
+
 
 <h2>Actyx CLI</h2>
 
@@ -176,3 +180,6 @@ Congratulations, you have successfully installed Actyx Node Manager! 🎉
 
 </TabItem>
 </Tabs>
+
+
+<NPS />

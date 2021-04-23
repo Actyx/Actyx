@@ -13,12 +13,12 @@ import TabItem from '@theme/TabItem'
 
 This is the reference documentation for the ActyxOS **Event API**.
 
-The Event Service HTTP API provides local access to the Event Service, allowing you to
+The Event API provides local access to the Event Service, allowing you to
 
+- [publish events](#publish-events)
 - [get information about known offsets](#get-information-about-known-offsets),
 - [query event streams](#query-event-streams),
 - [subscribe to event streams](#subscribe-to-event-streams); and,
-- [publish events](#publish-events)
 
 It is reachable at the following base URI: `http://localhost:4454/api/v1/events`.
 
@@ -27,6 +27,79 @@ JSON used in the examples below is pretty-printed. This is only to make it more 
 :::
 
 <!-- markdownlint-disable MD024 -->
+
+## Publish events
+
+You can publish new events using the `publish` endpoint.
+
+### Request
+
+- Endpoint: `http://localhost:4454/api/v1/events/publish`
+- HTTP method: `POST`
+- HTTP headers:
+  - `Content-Type`, must be `application/json`, default: `application/json`
+
+The request body must contain a JSON object with the following structure:
+
+```json
+{
+  "data": [
+    {
+      "semantics": "<string: semantics>",
+      "name": "<string: name>",
+      "payload": "<object>"
+    },
+    {
+      "semantics": "<string: semantics>",
+      "name": "<string: name>",
+      "payload": "<object>"
+    }
+  ]
+}
+```
+
+You use the request body to provide the Event Service with the stream semantics, stream name and payload of the events to be published.
+
+### Response
+
+The response will provide feedback using HTTP status codes, with `201` signifying that the request was successfully processed and the events published.
+
+### Example
+
+See the following example using cURL:
+
+```text title="API Request"
+echo '{
+    "data": [
+        {
+            "semantics": "com.actyx.examples.temperature",
+            "name": "temperatureSensor1",
+            "payload": {
+                "foo": [1, 3, 4],
+                "bar": { "a": 1, "b": 103 }
+        }
+        },
+        {
+            "semantics": "com.actyx.examples.temperature",
+            "name": "temperatureSensor2",
+            "payload": {
+                "foo": [3, 1, 1],
+                "bar": { "a": 13, "b": 48 }
+        }
+        }
+    ]
+}
+'\
+| curl \
+    -X "POST" \
+    -d @- \
+    -H "Content-Type: application/json" \
+    http://localhost:4454/api/v1/events/publish
+```
+
+```text title="API Response"
+HTTP 201 | 500 | 400 with an invalid body
+```
 
 ## Get information about known offsets
 
@@ -61,17 +134,23 @@ The response body will contain a JSON object of the following structure:
 
 See the following example using cURL:
 
-```text
+```text title="API Request"
 curl \
     -s -X "GET" \
     -H "Accept: application/json" \
     http://localhost:4454/api/v1/events/offsets | jq .
->
+```
+
+```json title="API Respose"
 {
-    "db66a77f": 57,
-    "a263bad7": 60
+  "JAggoXUT7Bw": 57,
+  "a263bad7cMr": 60
 }
 ```
+
+:::info Source ID
+Note that in order to follow the examples below, you need to exchange the source ID from the example with one of the IDs you got as a response from the `offsets` query.
+:::
 
 ## Query event streams
 
@@ -101,20 +180,20 @@ The request body must contain a JSON object with the following structure:
     {
       "semantics": "<string: semantics | undefined>",
       "name": "<string: name | undefined>",
-      "source": "<string: sourceID> | undefined"
+      "source": "<string: sourceID | undefined>"
     },
     {
       "semantics": "<string: semantics | undefined>",
       "name": "<string: name | undefined>",
-      "source": "<string: sourceID> | undefined"
+      "source": "<string: sourceID | undefined>"
     },
     {
       "semantics": "<string: semantics | undefined>",
       "name": "<string: name | undefined>",
-      "source": "<string: sourceID> | undefined"
+      "source": "<string: sourceID | undefined>"
     }
   ],
-  "order": "<string: 'lamport' | 'lamport-reverse' | 'source-ordered'"
+  "order": "<string: 'lamport' | 'lamport-reverse' | 'source-ordered'>"
 }
 ```
 
@@ -154,26 +233,26 @@ The `order` object specifies in which order the events should be returned to the
 
 The response will be a stream of `<CR><LF>`-delimited event payloads of the following structure:
 
-```js
+```json
 {
-    "stream": {
-        "semantics": "<string: semantics>",
-        "name": "<string: name>",
-        "source": "<string: sourceID>"
-    },
-    "timestamp": "<integer>", // unix epoch in microseconds
-    "lamport": "<integer>",
-    "offset": "<integer>",
-    "payload": "<object>"
+  "stream": {
+    "semantics": "<string: semantics>",
+    "name": "<string: name>",
+    "source": "<string: sourceID>"
+  },
+  "timestamp": "<integer>", // unix epoch in microseconds
+  "lamport": "<integer>",
+  "offset": "<integer>",
+  "payload": "<object>"
 }
 ```
 
 If an error is encountered while processing the stream of events, the stream will terminate with a final error JSON object with the following structure:
 
-```js
+```json
 {
-    "error": "message",
-    "errorCode": 500
+  "error": "message",
+  "errorCode": 500
 }
 ```
 
@@ -181,31 +260,29 @@ If an error is encountered while processing the stream of events, the stream wil
 
 See the following example using cURL:
 
-```bash
+```text title="API Request"
 echo '
 {
     "lowerBound": {
-        "db66a77f": 34,
-        "a263bad7": -1
+        "JAggoXUT7Bw": 14
     },
     "upperBound": {
-        "db66a77f": 57,
-        "a263bad7": 60
+        "JAggoXUT7Bw": 47
     },
     "subscriptions": [
         {
             "semantics": "com.actyx.examples.temperature",
-            "name": "temp-sensor",
-            "source": "db66a77f"
+            "name": "temperatureSensor1",
+            "source": "JAggoXUT7Bw"
         },
         {
             "semantics": "com.actyx.examples.temperature",
             "name": "temperatureSensor1",
-            "source": "a263bad7"
+            "source": "JAggoXUT7Bw"
         },
         {
             "name": "temperatureSensor2",
-            "source": "a263bad7"
+            "source": "JAggoXUT7Bw"
         }
     ],
     "order": "lamport-reverse"
@@ -216,21 +293,26 @@ echo '
     -d @- \
     -H "Content-Type: application/json" \
     -H "Accept: application/x-ndjson" \
-    http://localhost:4454/api/v1/events/query
-    | jq
-> {
-    "stream": {
-        "semantics": "com.actyx.examples.temperature",
-        "name": "temp-sensor",
-        "source": "db66a77f"
-    },
-    "timestamp": 21323,
-    "lamport": 323,
-    "offset": 34,
-    "payload": {
-        "foo": "bar",
-        "fooArr": ["bar1", "bar2"]
+    http://localhost:4454/api/v1/events/query | jq
+```
+
+```json title="API Response"
+{
+  "lamport": 541,
+  "stream": {
+    "semantics": "com.actyx.examples.temperature",
+    "name": "temperatureSensor2",
+    "source": "JAggoXUT7Bw"
+  },
+  "timestamp": 1618924129607691,
+  "offset": 47,
+  "payload": {
+    "foo": [3, 1, 1],
+    "bar": {
+      "a": 13,
+      "b": 48
     }
+  }
 }
 ```
 
@@ -248,29 +330,29 @@ You can use the Event Service API to subscribe to event streams. The Event Servi
 
 The request body must contain a JSON object with the following structure:
 
-```js
+```json
 {
-    "lowerBound": {
-        "<string: sourceID>": "<integer: exclusive-lower-bound, e.g. 34>",
-        "<string: sourceID>": "<integer: exclusive-lower-bound, e.g. -1>"
+  "lowerBound": {
+    "<string: sourceID>": "<integer: exclusive-lower-bound, e.g. 34>",
+    "<string: sourceID>": "<integer: exclusive-lower-bound, e.g. -1>"
+  },
+  "subscriptions": [
+    {
+      "semantics": "<string: semantics | undefined>",
+      "name": "<string: name | undefined>",
+      "source": "<string: sourceID | undefined>"
     },
-    "subscriptions": [
-        {
-            "semantics": "<string: semantics | undefined>",
-            "name": "<string: name | undefined>",
-            "source": "<string: sourceID | undefined>"
-        },
-        {
-            "semantics": "<string: semantics | undefined>",
-            "name": "<string: name | undefined>",
-            "source": "<string: sourceID | undefined>"
-        },
-        {
-            "semantics": "<string: semantics | undefined>",
-            "name": "<string: name | undefined>",
-            "source": "<string: sourceID> | undefined"
-        }
-    ]
+    {
+      "semantics": "<string: semantics | undefined>",
+      "name": "<string: name | undefined>",
+      "source": "<string: sourceID | undefined>"
+    },
+    {
+      "semantics": "<string: semantics | undefined>",
+      "name": "<string: name | undefined>",
+      "source": "<string: sourceID | undefined>"
+    }
+  ]
 }
 ```
 
@@ -294,26 +376,26 @@ The `subscriptions` objects specifies which event streams should be queried, wit
 
 The response will be a stream of `<CR><LF>`-delimited event payloads of the following structure:
 
-```js
+```json
 {
-    "stream": {
-        "semantics": "<string: semantics>",
-        "name": "<string: name>",
-        "source": "<string: sourceID>"
-    },
-    "timestamp": "<integer>",
-    "lamport": "<integer>",
-    "offset": "<integer>",
-    "payload": "<object>"
+  "stream": {
+    "semantics": "<string: semantics>",
+    "name": "<string: name>",
+    "source": "<string: sourceID>"
+  },
+  "timestamp": "<integer>",
+  "lamport": "<integer>",
+  "offset": "<integer>",
+  "payload": "<object>"
 }
 ```
 
 If an error is encountered while processing the stream of events, the stream will terminate with a final error JSON object with the following structure:
 
-```js
+```json
 {
-    "error": "message",
-    "errorCode": 500
+  "error": "message",
+  "errorCode": 500
 }
 ```
 
@@ -321,29 +403,28 @@ If an error is encountered while processing the stream of events, the stream wil
 
 See the following example using cURL:
 
-```bash
+```text title="API Request"
 echo '
 {
     "lowerBound": {
-            "db66a77f": 34,
-        "a263bad7": -1
+        "JAggoXUT7Bw": 34,
+        "a263bad7cMr": -1
     },
     "subscriptions": [
         {
             "semantics": "com.actyx.examples.temperature",
-            "name": "temp-sensor",
-            "source": "db66a77f"
+            "name": "temperatureSensor1",
+            "source": "JAggoXUT7Bw"
         },
         {
             "semantics": "com.actyx.examples.temperature",
             "name": "temperatureSensor1",
-            "source": "a263bad7"
+            "source": "a263bad7cMr"
         },
         {
             "name": "temperatureSensor2",
-            "source": "a263bad7"
-        },
-        {}
+            "source": "a263bad7cMr"
+        }
     ]
 }
 '\
@@ -352,93 +433,24 @@ echo '
     -d @- \
     -H "Content-Type: application/json" \
     -H "Accept: application/x-ndjson" \
-    http://localhost:4454/api/v1/events/subscribe \
-| jq . \
->
-{
-    "stream": {
-        "semantics": "com.actyx.examples.temperature",
-        "name": "temp-sensor",
-        "source": "db66a77f"
-    },
-    "timestamp": 21323, // unix epoch microseconds
-    "lamport": 323,
-    "offset": 34,
-    "payload": {
-        "foo": "bar",
-        "fooArr": ["bar1", "bar2"]
-    }
-}
+    http://localhost:4454/api/v1/events/subscribe | jq
 ```
 
-## Publish events
-
-You can publish new events using the Event Service API.
-
-### Request
-
-- Endpoint: `http://localhost:4454/api/v1/events/publish`
-- HTTP method: `POST`
-- HTTP headers:
-  - `Content-Type`, must be `application/json`, default: `application/json`
-
-The request body must contain a JSON object with the following structure:
-
-```js
+```json title="API Response"
 {
-    "data": [
-        {
-            "semantics": "<string: semantics>",
-            "name": "<string: name>",
-            "payload": "<object>"
-        },
-        {
-            "semantics": "<string: semantics>",
-            "name": "<string: name>",
-            "payload": "<object>"
-        }
-    ]
+  "stream": {
+    "semantics": "com.actyx.examples.temperature",
+    "name": "temperatureSensor1",
+    "source": "JAggoXUT7Bw"
+  },
+  "timestamp": 21323,
+  "lamport": 323,
+  "offset": 34,
+  "payload": {
+    "foo": "bar",
+    "fooArr": ["bar1", "bar2"]
+  }
 }
-```
-
-You use the request body to provide the Event Service with the stream semantics, stream name and payload of the events to be published.
-
-### Response
-
-The response will provide feedback using HTTP status codes, with `201` signifying that the request was successfully processed and the events published.
-
-### Example
-
-See the following example using cURL:
-
-```bash
-echo '{
-    "data": [
-        {
-            "semantics": "com.actyx.examples.temperature",
-            "name": "temp-sensor-1",
-            "payload": {
-                "foo": [1, 3, 4],
-                "bar": { "a": 1, "b": 103 }
-        }
-        },
-        {
-            "semantics": "com.actyx.examples.temperature",
-            "name": "temp-sensor-2",
-            "payload": {
-                "foo": [3, 1, 1],
-                "bar": { "a": 13, "b": 48 }
-        }
-        }
-    ]
-}
-'\
-| curl \
-    -X "POST" \
-    -d @- \
-    -H "Content-Type: application/json" \
-    http://localhost:4454/api/v1/events/publish
-> Response: HTTP 201 | 500 | 400 with an invalid body
 ```
 
 ## Usage examples in different languages
@@ -455,7 +467,9 @@ The following examples show how you could interact with the event services from 
   ]}
 >
 
+
 <TabItem value="nodejs">
+
 
 ```js
 const { Transform } = require('stream')
@@ -512,6 +526,7 @@ req.end()
 
 </TabItem>
 <TabItem value="browser">
+
 
 ```js
 function ActyxDecoder(bodyStream) {
@@ -580,6 +595,7 @@ fetch('http://localhost:4454/api/v1/events/subscribe', {
 
 </TabItem>
 <TabItem value="csharp">
+
 
 ```csharp
 using System;
@@ -651,3 +667,4 @@ public class Application
 
 </TabItem>
 </Tabs>
+
