@@ -76,7 +76,7 @@ impl From<ApiError> for ApiErrorResponse {
         let (status, code) = match e {
             ApiError::AppUnauthenticated { .. } => (StatusCode::UNAUTHORIZED, "ERR_APP_UNAUTHENTICATED"),
             ApiError::AppUnauthorized { .. } => (StatusCode::UNAUTHORIZED, "ERR_APP_UNAUTHORIZED"),
-            ApiError::BadRequest { .. } => (StatusCode::BAD_REQUEST, "ERR_MALFORMED_REQUEST_SYNTAX"),
+            ApiError::BadRequest { .. } => (StatusCode::BAD_REQUEST, "ERR_BAD_REQUEST"),
             ApiError::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "ERR_INTERNAL"),
             ApiError::InvalidManifest => (StatusCode::BAD_REQUEST, "ERR_MANIFEST_INVALID"),
             ApiError::MethodNotAllowed => (StatusCode::METHOD_NOT_ALLOWED, "ERR_METHOD_NOT_ALLOWED"),
@@ -87,8 +87,8 @@ impl From<ApiError> for ApiErrorResponse {
             ApiError::TokenExpired => (StatusCode::UNAUTHORIZED, "ERR_TOKEN_EXPIRED"),
             ApiError::TokenInvalid { .. } => (StatusCode::BAD_REQUEST, "ERR_TOKEN_INVALID"),
             ApiError::TokenUnauthorized => (StatusCode::UNAUTHORIZED, "ERR_TOKEN_UNAUTHORIZED"),
-            ApiError::UnsupportedAuthType { .. } => (StatusCode::UNAUTHORIZED, "ERR_WRONG_AUTH_TYPE"),
-            ApiError::UnsupportedMediaType { .. } => (StatusCode::UNSUPPORTED_MEDIA_TYPE, "ERR_WRONG_MEDIA_TYPE"),
+            ApiError::UnsupportedAuthType { .. } => (StatusCode::UNAUTHORIZED, "ERR_UNSUPPORTED_AUTH_TYPE"),
+            ApiError::UnsupportedMediaType { .. } => (StatusCode::UNSUPPORTED_MEDIA_TYPE, "ERR_UNSUPPORTED_MEDIA_TYPE"),
         };
         ApiErrorResponse {
             code: code.to_string(),

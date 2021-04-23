@@ -335,7 +335,7 @@ async fn unauthorized_unsupported() {
         resp,
         http::StatusCode::UNAUTHORIZED,
         json!({
-          "code": "ERR_WRONG_AUTH_TYPE",
+          "code": "ERR_UNSUPPORTED_AUTH_TYPE",
           "message": "Unsupported authentication type 'Foo'. Only \"Bearer\" is supported."
         }),
     );
@@ -407,7 +407,7 @@ async fn unsupported_media_type() {
         resp,
         http::StatusCode::UNSUPPORTED_MEDIA_TYPE,
         json!({
-          "code": "ERR_WRONG_MEDIA_TYPE",
+          "code": "ERR_UNSUPPORTED_MEDIA_TYPE",
           "message": "The request's content-type is not supported."
         }),
     );
@@ -446,7 +446,7 @@ async fn bad_request_invalid_json() {
         resp,
         http::StatusCode::BAD_REQUEST,
         json!({
-          "code": "ERR_MALFORMED_REQUEST_SYNTAX",
+          "code": "ERR_BAD_REQUEST",
           "message": "Invalid request. expected value at line 1 column 1"
         }),
     );
@@ -466,7 +466,7 @@ async fn bad_request_invalid_request() {
         resp,
         http::StatusCode::BAD_REQUEST,
         json!({
-          "code": "ERR_MALFORMED_REQUEST_SYNTAX",
+          "code": "ERR_BAD_REQUEST",
           "message": "Invalid request. missing field `data` at line 1 column 2"
         }),
     );
@@ -486,7 +486,7 @@ async fn bad_request_invalid_expression() {
         resp,
         http::StatusCode::BAD_REQUEST,
         json!({
-          "code": "ERR_MALFORMED_REQUEST_SYNTAX",
+          "code": "ERR_BAD_REQUEST",
           "message": "Invalid request. 0: at line 1:\nhere\n^\nexpected \'\'\', found h\n\n1: at line 1, in literal:\nhere\n^\n\n2: at line 1, in Alt:\nhere\n^\n\n3: at line 1, in and:\nhere\n^\n\n4: at line 1, in or:\nhere\n^\n\n at line 1 column 31"
         }),
     );
