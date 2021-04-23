@@ -45,6 +45,9 @@ pub enum ApiError {
     #[display(fmt = "Invalid token: '{}'. {} Please provide a valid bearer token.", token, msg)]
     TokenInvalid { token: String, msg: String },
 
+    #[display(fmt = "{}.", msg)]
+    UnsupportedMediaType { msg: String },
+
     #[display(
         fmt = "Unsupported authentication type '{}'. Only \"Bearer\" is supported.",
         requested
@@ -85,6 +88,7 @@ impl From<ApiError> for ApiErrorResponse {
             ApiError::TokenInvalid { .. } => (StatusCode::BAD_REQUEST, "ERR_TOKEN_INVALID"),
             ApiError::TokenUnauthorized => (StatusCode::UNAUTHORIZED, "ERR_TOKEN_UNAUTHORIZED"),
             ApiError::UnsupportedAuthType { .. } => (StatusCode::UNAUTHORIZED, "ERR_WRONG_AUTH_TYPE"),
+            ApiError::UnsupportedMediaType { .. } => (StatusCode::UNSUPPORTED_MEDIA_TYPE, "ERR_WRONG_MEDIA_TYPE"),
         };
         ApiErrorResponse {
             code: code.to_string(),
@@ -104,6 +108,8 @@ pub fn handle_rejection(r: Rejection) -> Result<impl Reply, Rejection> {
         ApiError::NotFound
     } else if r.find::<reject::MethodNotAllowed>().is_some() {
         ApiError::MethodNotAllowed
+    } else if let Some(umt) = r.find::<reject::UnsupportedMediaType>() {
+        ApiError::UnsupportedMediaType { msg: umt.to_string() }
     } else if let Some(e) = r.find::<ApiError>() {
         match e {
             ApiError::AppUnauthenticated { app_id } => {

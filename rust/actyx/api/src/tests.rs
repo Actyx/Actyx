@@ -393,6 +393,27 @@ async fn method_not_allowed() {
 }
 
 #[tokio::test]
+async fn unsupported_media_type() {
+    let (route, token, ..) = test_routes().await;
+    let resp = test::request()
+        .path("/api/v2/events/query")
+        .method("POST")
+        .header("Authorization", format!("Bearer {}", token))
+        .header("Accept", "application/x-ndjson")
+        .header("Content-Type", "text/plain")
+        .reply(&route)
+        .await;
+    assert_err_response(
+        resp,
+        http::StatusCode::UNSUPPORTED_MEDIA_TYPE,
+        json!({
+          "code": "ERR_WRONG_MEDIA_TYPE",
+          "message": "The request's content-type is not supported."
+        }),
+    );
+}
+
+#[tokio::test]
 async fn not_acceptable() {
     let (route, token, ..) = test_routes().await;
     let resp = test::request()
