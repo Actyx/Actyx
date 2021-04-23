@@ -2,6 +2,7 @@ pub mod access;
 pub mod convert;
 mod discovery;
 pub mod metrics;
+mod prune;
 mod sqlite;
 mod sqlite_index_store;
 mod streams;
@@ -17,6 +18,7 @@ pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
 pub use crate::v1::{EventStore, HighestSeen, Present};
 
+use crate::prune::RetainConfig;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
 use crate::streams::{OwnStreamInner, ReplicatedStreamInner, StreamMaps};
@@ -41,9 +43,10 @@ use libp2p::{
     multiaddr::Protocol,
     ping::PingConfig,
 };
+use maplit::btreemap;
 use parking_lot::Mutex;
 use std::{
-    collections::VecDeque,
+    collections::{BTreeMap, VecDeque},
     convert::{TryFrom, TryInto},
     fmt::Debug,
     num::NonZeroU32,
@@ -70,6 +73,27 @@ type Tree = banyan::tree::Tree<TT>;
 pub type Block = libipld::Block<libipld::DefaultParams>;
 pub type Ipfs = ipfs_embed::Ipfs<libipld::DefaultParams>;
 
+// TODO fix stream nr
+static DISCOVERY_STREAM_NR: u64 = 1;
+static METRICS_STREAM_NR: u64 = 2;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct EphemeralEventsConfig {
+    interval: Duration,
+    streams: BTreeMap<StreamNr, RetainConfig>,
+}
+impl Default for EphemeralEventsConfig {
+    fn default() -> Self {
+        Self {
+            interval: Duration::from_secs(30 * 60),
+            streams: btreemap! {
+                DISCOVERY_STREAM_NR.into() => RetainConfig::Events(1000),
+                METRICS_STREAM_NR.into() => RetainConfig::Events(1000)
+            },
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct SwarmConfig {
     pub topic: String,
@@ -83,6 +107,7 @@ pub struct SwarmConfig {
     pub external_addresses: Vec<Multiaddr>,
     pub listen_addresses: Vec<Multiaddr>,
     pub bootstrap_addresses: Vec<Multiaddr>,
+    pub ephemeral_event_config: EphemeralEventsConfig,
 }
 
 impl PartialEq for SwarmConfig {
@@ -97,6 +122,7 @@ impl PartialEq for SwarmConfig {
             && self.external_addresses == other.external_addresses
             && self.listen_addresses == other.listen_addresses
             && self.bootstrap_addresses == other.bootstrap_addresses
+            && self.ephemeral_event_config == other.ephemeral_event_config
     }
 }
 
@@ -225,19 +251,21 @@ impl BanyanStore {
         banyan.spawn_task("v1_gossip_publish", banyan.clone().v1_gossip_publish(cfg.topic.clone()));
         banyan.spawn_task("v1_gossip_ingest", banyan.clone().v1_gossip_ingest(cfg.topic));
         banyan.spawn_task("discovery_ingest", crate::discovery::discovery_ingest(banyan.clone()));
-        // TODO fix stream nr
         banyan.spawn_task(
             "discovery_publish",
             crate::discovery::discovery_publish(
                 banyan.clone(),
-                0.into(),
+                DISCOVERY_STREAM_NR.into(),
                 cfg.external_addresses.iter().cloned().collect(),
             )?,
         );
-        // TODO fix stream nr
         banyan.spawn_task(
             "metrics",
-            crate::metrics::metrics(banyan.clone(), 0.into(), Duration::from_secs(30))?,
+            crate::metrics::metrics(banyan.clone(), METRICS_STREAM_NR.into(), Duration::from_secs(30))?,
+        );
+        banyan.spawn_task(
+            "prune_events",
+            crate::prune::prune(banyan.clone(), cfg.ephemeral_event_config),
         );
 
         let ipfs = banyan.ipfs();

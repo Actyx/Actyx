@@ -21,6 +21,7 @@ ipfs-sqlite-block-store = "0.4.0"
 itertools = "0.10.0"
 libipld = { version = "0.11.0", default-features = false }
 libp2p = { version = "0.37.0", default-features = false, features = ["tcp-tokio", "plaintext"] }
+maplit = "1.0.2"
 names = "0.11.0"
 num-traits = "0.2.14"
 parking_lot = "0.11.1"

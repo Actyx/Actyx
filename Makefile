@@ -161,7 +161,7 @@ validate-os: diagnostics
 	cd rust/actyx && $(CARGO) fmt --all -- --check
 	cd rust/actyx && $(CARGO) --locked clippy -- -D warnings
 	cd rust/actyx && $(CARGO) --locked clippy --tests -- -D warnings
-	cd rust/actyx && $(CARGO) test --all-features -j $(CARGO_TEST_JOBS)
+	cd rust/actyx && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
 
 .PHONY: validate-os-android
 # execute linter for os-android

@@ -138,6 +138,7 @@ impl Component<StoreRequest, SwarmConfig> for Store {
                 .iter()
                 .map(|s| s.parse())
                 .collect::<Result<_, libp2p::multiaddr::Error>>()?,
+            ephemeral_event_config: Default::default(),
         };
         Ok(config)
     }
