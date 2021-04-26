@@ -14,6 +14,8 @@ members = [
   "node-ffi",
   "node-win",
   "swarm",
+  "swarm/cli",
+  "swarm/harness",
   "tests",
   "tracing_win_event_log",
   "trees",

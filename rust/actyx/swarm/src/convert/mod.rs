@@ -8,7 +8,7 @@ use ipfs_sqlite_block_store::{BlockStore, Synchronous};
 use libipld::{
     cbor::DagCborCodec,
     codec::{Codec, Decode},
-    Cid, Link,
+    Cid, DefaultParams, Link,
 };
 use parking_lot::Mutex;
 use rayon::prelude::*;
@@ -26,7 +26,7 @@ mod tests;
 type AxTxn = Transaction<AxTrees, Payload, Importer, Importer>;
 
 /// Get a block from a block store and decode it, with extensive logging
-fn get<T: Decode<DagCborCodec>>(db: &Arc<Mutex<BlockStore>>, link: &Link<T>) -> anyhow::Result<T> {
+fn get<T: Decode<DagCborCodec>>(db: &Arc<Mutex<BlockStore<DefaultParams>>>, link: &Link<T>) -> anyhow::Result<T> {
     if let Some(data) = db.lock().get_block(link.cid())? {
         Ok(DagCborCodec.decode::<T>(&data).map_err(|e| {
             // log decode errors at error level, including a hexdump of the block
@@ -43,7 +43,7 @@ fn get<T: Decode<DagCborCodec>>(db: &Arc<Mutex<BlockStore>>, link: &Link<T>) -> 
 }
 
 fn iter_chain(
-    db: &Arc<Mutex<BlockStore>>,
+    db: &Arc<Mutex<BlockStore<DefaultParams>>>,
     root: Link<ConsNode>,
 ) -> impl Iterator<Item = anyhow::Result<Link<Block>>> + '_ {
     itertools::unfold(Some(root), move |prev| {
@@ -69,7 +69,7 @@ fn iter_chain(
 /// This will try to get as many events as possible, even if some blocks are missing.
 #[allow(clippy::needless_collect)]
 fn iter_events_v1_chunked(
-    db: &Arc<Mutex<BlockStore>>,
+    db: &Arc<Mutex<BlockStore<DefaultParams>>>,
     root: Link<ConsNode>,
 ) -> impl Iterator<Item = anyhow::Result<Vec<IpfsEnvelope>>> + '_ {
     let block_links = iter_chain(db, root).collect::<Vec<_>>();
@@ -231,7 +231,7 @@ pub fn convert_from_v1(v1_index_path: &str, v2_index_path: &str, options: Conver
 }
 
 #[derive(Clone)]
-struct Importer(Arc<Mutex<BlockStore>>);
+struct Importer(Arc<Mutex<BlockStore<DefaultParams>>>);
 
 impl ReadOnlyStore<Sha256Digest> for Importer {
     fn get(&self, link: &Sha256Digest) -> Result<Box<[u8]>> {
