@@ -1,7 +1,7 @@
 {
   "author": "Actyx AG",
   "bugs": {
-    "url": "https://support.actyx.io"
+    "url": "https://community.actyx.com/"
   },
   "dependencies": {
     "bufferutil": "4.0.1",

@@ -1,0 +1,276 @@
+---
+title: Release Notes
+id: release-notes
+hide_title: false
+hide_table_of_contents: false
+sidebar_label: Release Notes
+image: /images/defaults/default.svg
+---
+
+This page contains information about new features, bug fixes, deprecations and removals in ActyxOS releases. For a more extensive description of the changes, check out our [blog](https://developer.actyx.com/blog/).
+
+<!-- markdownlint-disable MD024 -->
+
+## Version 1.1.5
+
+Release date: 23.4.2021
+
+### ActyxOS
+
+Download:
+
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
+- [Actyx Downloads page](https://downloads.actyx.com/)
+
+#### New Features
+
+- Actyx on Docker now exposes all service ports also on localhost of the host so that you do not have to set the `AX_DEV_NODE` environment variable anymore
+- Improved readability through color-coded logs in `ax logs tail`
+- Improved performance by optimizing metrics events emission frequency
+- Several improvements of ActyxOS internals that significantly increase performance
+
+#### Bug fixes
+
+- Fixed a memory leak caused by Webview apps not being properly stopped after being swiped away on Android
+- Fixed a memory leak caused by ActyxOS internals
+- Fixed a bug that lead to potential loss of events due to compaction being executed too early
+- Fixed a bug that lead to ActyxOS crashing irrecoverably when trying that start from event offsets that have been lost
+- Fixed a bug in the Event Service that lead to ActyxOS crashing
+
+### Actyx CLI
+
+[Get it from our Downloads page](https://downloads.actyx.com/)
+
+#### New Features
+
+## Version 1.1.2
+
+Release date: 22.1.2021
+
+### ActyxOS
+
+:::info
+Version 1.1.2 of ActyxOS is not available on the Google Playstore. Please download this version from our [downloads page](https://downloads.actyx.com/).
+:::
+
+Download:
+
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
+- [Actyx Downloads page](https://downloads.actyx.com/)
+
+#### New features
+
+- Applications running on Android can now access the device camera
+
+#### Bug fixes
+
+- Many stability improvements around our core infrastructure
+
+### Actyx CLI
+
+[Get it from our Downloads page](https://downloads.actyx.com/)
+
+## Version 1.1.1
+
+Release date: 18.12.2020
+
+### ActyxOS
+
+Download:
+
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
+- [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
+- [Actyx Downloads page](https://downloads.actyx.com/)
+
+#### New features
+
+- `ax logs tail` now also works if you are running ActyxOS on Windows
+- ActyxOS on Windows is not a Windows system service anymore and now has a tray icon
+
+#### Bug fixes
+
+- Many stability improvements around our core infrastructure
+- Fixed an issue that resulted in a node crashing if certain settings (swarmKey or EventService settings) were changed on Windows
+- Fixed an issue that lead to the settings tab of the ActyxOS Node Manager not working because it did not display default values
+
+### Actyx CLI
+
+[Get it from our Downloads page](https://downloads.actyx.com/)
+
+## Version 1.1.0
+
+Release date: 11.12.2020
+
+### ActyxOS
+
+Download:
+
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
+- [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
+- [Actyx Downloads page](https://downloads.actyx.com/)
+
+#### New features
+
+- Introduced ActyxOS on Linux in beta version
+- ActyxOS nodes start up without the need to set settings by having default settings for all required values. You can find the new node settings schema [here](./actyx.mdx)
+- Many performance improvements
+
+#### Bug fixes
+
+- Many stability improvements around our core infrastructure
+- Fixed an issue that resulted in a node crash if there are gaps in event offsets
+- Fixed an issue that led to ActyxOS on Android crashing if started without available network interface
+- Fixed an issue that resulted in default node settings not being used after manually set settings were unset
+- Changed the node settings schema so that properties with default values are not required anymore
+- Fixed an issue that led to ActyxOS not validating apps if optional properties in the manifest were missing (`description` and `settingsSchema`)
+- Fixed an issue that resulted in the node crashing if configured with an invalid bootstrap node address
+- Fixed an issue that prohibited access to the Console Service logging API from the browser and Webview Runtime due to CORS restrictions
+- Fixed an issue where offset bounds were not properly respected for tag-based (Pond v2) queries
+- Fixed an issue that lead to `ax logs tail` not returning all log messages
+
+### Actyx CLI
+
+[Get it from our Downloads page](https://downloads.actyx.com/)
+
+#### Bug Fixes
+
+- fixed an issue that led to the Actyx CLI not validating or packaging apps if optional properties in the manifest were missing (`description` and `settingsSchema`)
+- fixed an issue that resulted in automatic invalidation of node settings after executing `ax settings unset` for any scope within `com.actyx.os`
+
+## Version 1.0.0
+
+Release date: 28.08.2020
+
+### ActyxOS
+
+Download:
+
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
+- [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
+- [Actyx Downloads page](https://downloads.actyx.com/)
+
+#### New features
+
+- Introduced ActyxOS on Windows in beta version
+- Introduced ActyxOS on Android support for `armeabi-v7a` [ABI](https://developer.android.com/ndk/guides/abis.html#sa) devices
+- Several performance improvements
+
+#### Bug fixes
+
+- Significant stability improvements
+
+### Actyx CLI
+
+[Get it from our Downloads page](https://downloads.actyx.com/)
+
+#### New features
+
+- Introduced support for `arm` and `armhf` devices
+
+#### Bug Fixes
+
+- Several stability improvements
+- Fixed a bug that did not allow you to inline the settings schema in the app manifest
+
+## Version 1.0.0-rc.4
+
+Release date: 03.07.2020
+
+### ActyxOS
+
+Download:
+
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
+- [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
+
+#### Bug fixes
+
+- Several internal stability and performance improvements
+- Fixed a bug in the Docker Runtime that led to apps on the same node being stopped if they contain the same docker-compose.yml
+
+### Actyx CLI
+
+[Get it from our Downloads page](https://downloads.actyx.com/)
+
+## Version 1.0.0-rc.3
+
+Release date: 12.06.2020
+
+### ActyxOS
+
+Download:
+
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
+- [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
+
+#### New features
+
+- Introduced configurable logging levels for ActyxOS nodes
+
+#### Bug fixes
+
+- Several internal stability and performance improvements
+
+### Actyx CLI
+
+[Download](https://downloads.actyx.com/)
+
+#### New features
+
+- On ActyxOS on Docker and on Android, all node and app logs are now available via `ax logs tail`
+- Added an installer for the Actyx CLI for Windows
+
+#### Bug Fixes
+
+- Fixed a bug that prevented packaging docker apps containing a "/" in their name
+- Fixed a bug where inlining the schema would corrupt the app package
+- Improved application packaging times
+
+-
+
+## Version 1.0.0-rc.2
+
+Release date: 25.05.2020
+
+### ActyxOS
+
+Download:
+
+- [Docker Hub](https://hub.docker.com/r/actyx/os)
+- [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.os.android)
+
+#### New features
+
+- Introduced ActyxOS on Docker support for arm64v8 devices
+- Removed the possibility to configure unknown scopes in ActyxOS node settings
+- Added possibility to inline the settings schema into the app manifest
+- Made the app icon property optional in the app manifest schema for webview apps
+- Added automatic restart of all apps after shutdown of the ActyxOS node
+- Added automatic restart of ActyxOS on Android after restart of Android
+- Added system info section in ActyxOS on Android
+
+#### Bug fixes
+
+- Fixed a bug that allowed apps to be running without valid node or app settings
+- Fixed an issue that caused apps to be visible in the app switcher on Android after they were stopped
+- Added proper handling of the back button on Android so that ActyxOS does not open the same app in multiple windows
+
+#### Removals and non-backwards compatible changes
+
+- ActyxOS 1.0.0-rc.2 is only compatible with the Actyx CLI 1.0.0-rc.2 and will not work with apps that were packaged with earlier versions of the Actyx CLI
+
+### Actyx CLI
+
+[Download](https://downloads.actyx.com/)
+
+#### New features
+
+- Added functionality to package Docker apps for amd64 and arm64v8 if specified in the app manifest
+- Introduced more understandable error messages
+- Added option to format the output as JSON
+
+#### Removals and non-backwards compatible changes
+
+- Removed the possibility to specify more than one node in all commands but `ax nodes ls`
+
+<!-- markdownlint-enable MD024 -->

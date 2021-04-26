@@ -33,7 +33,7 @@ JSON used in the examples below is pretty-printed with [jq](https://stedolan.git
 Communication with the Event Service needs to be authenticated. Therefore an authorization token which is associated with the requesting app needs to be retrieved by the node. This token then needs to be passed in the `Authorization` header with every request to the Event Service. In the following examples we will use the `$AUTH_TOKEN` environment variable which can be initialized with
 
 ```bash
-export AUTH_TOKEN="$(curl -s localhost:4457/api/v0/apps/example_app/token | jq -r '.Ok')"
+export AUTH_TOKEN="$(curl -s localhost:4454/api/v2/authenticate -d'{"appId": "com.example.my-app","displayName": "My Example App","version": "1.0.0"}' -H "Content-Type: application/json" | jq -r '.token')"
 ```
 
 While the following examples use [cURL](https://curl.se/) other command-line or graphical tools (e.g. [Postman](https://www.postman.com/product/api-client/)) would work as well.
@@ -151,7 +151,7 @@ You can query the Event Service for bounded sets of events in one or more event 
 - HTTP method: `POST`
 - HTTP headers:
   - `Authorization`, see [Prerequisites](#prerequisites)
-  - `Content-Type`, must be `application/json`
+  - (optional) `Content-Type`, must be `application/json`, default: `application/json`
   - (optional) `Accept`, must be `application/x-ndjson`, default: `application/x-ndjson`
 
 The request body must contain a JSON object with the following structure:
@@ -301,7 +301,7 @@ TODO: clarify ordering
 - HTTP method: `POST`
 - HTTP headers:
   - `Authorization`, see [Prerequisites](#prerequisites)
-  - `Content-Type`, must be `application/json`
+  - (optional) `Content-Type`, must be `application/json`, default: `application/json`
   - (optional) `Accept`, must be `application/x-ndjson`, default: `application/x-ndjson`
 
 The request body must contain a JSON object with the following structure:
@@ -411,7 +411,7 @@ You can use the Event Service API to subscribe to event streams with the guarant
 - HTTP method: `POST`
 - HTTP headers:
   - `Authorization`, see [Prerequisites](#prerequisites)
-  - `Content-Type`, must be `application/json`
+  - (optional) `Content-Type`, must be `application/json`, default: `application/json`
   - (optional) `Accept`, must be `application/x-ndjson`, default: `application/x-ndjson`
 
 The request body must contain a JSON object with one of the following structures:
@@ -590,7 +590,7 @@ You can publish new events using the Event Service API.
 - HTTP method: `POST`
 - HTTP headers:
   - `Authorization`, see [Prerequisites](#prerequisites)
-  - `Content-Type`, must be `application/json`
+  - (optional) `Content-Type`, must be `application/json`, default: `application/json`
 
 The request body must contain a JSON object with the following structure:
 
