@@ -15,7 +15,7 @@
     "utf-8-validate": "5.0.2",
     "ws": "7.2.1"
   },
-  "description": "Actyx Pond",
+  "description": "Actyx SDK",
   "devDependencies": {
     "@microsoft/api-extractor": "^7.9.4",
     "@types/cron": "1.3.0",
@@ -44,10 +44,11 @@
     "typedoc": "0.17.0-3",
     "typescript": "3.9.6"
   },
-  "homepage": "https://developer.actyx.com/docs/pond/introduction/",
+  "homepage": "https://developer.actyx.com/docs/",
   "keywords": [
     "actyx",
     "pond",
+    "sdk",
     "distributed-systems",
     "distributed apps",
     "distributed",
@@ -65,7 +66,7 @@
   ],
   "license": "GPL-3.0-only",
   "main": "./lib/index.js",
-  "name": "@actyx/pond",
+  "name": "@actyx/sdk",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Actyx/Cosmos.git"
@@ -91,5 +92,5 @@
     "build:docs": "rm -rf ../../web/developer.actyx.com/static/@actyx/pond/ && typedoc --mode library --options typedoc.json src/index.ts"
   },
   "types": "./lib/index.d.ts",
-  "version": "2.4.1"
+  "version": "0.0.1"
 }
