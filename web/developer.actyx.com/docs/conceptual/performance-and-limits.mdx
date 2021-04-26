@@ -10,8 +10,18 @@ This conceptual guide explains the limitations of ActyxOS in real-world factory 
 
 - [Latency](#latency)
 - [Max. number of nodes](#max-number-of-nodes)
-- [Required disk space of devices](#required-disk-space)
+- [Required disk space of devices](#required-disk-space-of-devices)
 - [Performance](#performance)
+  - [Application and Fish startup time](#application-and-fish-startup-time)
+  - [The effect of semantic snapshots](#the-effect-of-semantic-snapshots)
+  - [The effect of state snapshots](#the-effect-of-state-snapshots)
+  - [Large application state](#large-application-state)
+  - [Latency implications of large number of fishes and sources](#latency-implications-of-large-number-of-fishes-and-sources)
+  - [Pathological time travel performance when reconnecting a device that was offline for a long time](#pathological-time-travel-performance-when-reconnecting-a-device-that-was-offline-for-a-long-time)
+- [Illustrative Examples](#illustrative-examples)
+  - [Machine Connectors](#machine-connectors)
+  - [Production Data Acquisition](#production-data-acquisition)
+  - [Data Exporters](#data-exporters)
 
 ## Latency
 
@@ -52,24 +62,24 @@ This will allow you to configure when events should be deleted and on which devi
 
 These are the currently implemented behaviors:
 
-|Type|Size|Lifespan|Replication|
-|----|----|--------|-----------|
-|Event|max. 4KB per event|Events have infinite lifespan within the swarm.|Events are replicated on all devices.|
-|Log|max. 4KB per log|Logs are cleared automatically when disk space is needed.|Logs are not replicated.|
+| Type  | Size               | Lifespan                                                  | Replication                           |
+| ----- | ------------------ | --------------------------------------------------------- | ------------------------------------- |
+| Event | max. 4KB per event | Events have infinite lifespan within the swarm.           | Events are replicated on all devices. |
+| Log   | max. 4KB per log   | Logs are cleared automatically when disk space is needed. | Logs are not replicated.              |
 
 The listed maximal sizes are recommendations — neither events nor logs should be used to carry huge pieces of data (although larger events may be justified in some circumstances, e.g. defining a production process with many steps, where such definitions happen infrequently).
 
 Until we make event retention and replication configurable, the point at which you run out of disk space depends on the size, number, and compressibility of your events.
 This is always dependent on how you define events in your app(s), but here are two examples based on apps that are running at our customers:
 
-|    |With machine integrations|Without machine integrations|
-|----|-----------------|----------------------------|
-|Number of nodes|8|10|
-|Operating time|1 year|1 year|
-|Number of events|10,000,000|580,000|
-|Uncompressed size of events|4500 MB|1200 MB|
-|Compression factor|0.03|0.03|
-|Disk space needed|135 MB|36MB|
+|                             | With machine integrations | Without machine integrations |
+| --------------------------- | ------------------------- | ---------------------------- |
+| Number of nodes             | 8                         | 10                           |
+| Operating time              | 1 year                    | 1 year                       |
+| Number of events            | 10,000,000                | 580,000                      |
+| Uncompressed size of events | 4500 MB                   | 1200 MB                      |
+| Compression factor          | 0.03                      | 0.03                         |
+| Disk space needed           | 135 MB                    | 36MB                         |
 
 Currently, the only solution to running out of disk space because of events is either clearing events from your swarm (effectively creating a new swarm and starting over) or increasing the disk space of your edge devices.
 We are already working on the functionality to configure replication and lifespan of events.
@@ -98,7 +108,7 @@ If you need to create long-running fishes that accumulate many events — li
 
 ### The effect of semantic snapshots
 
-Semantics snapshots effectively truncate the event history: everything before the recognized snapshot event is ignored.
+Semantic snapshots effectively truncate the event history: everything before the recognized snapshot event is ignored.
 This still means that the snapshot event needs to be found (by searching backwards from the current end of the event log) and that all younger events need to be applied.
 
 Semantic snapshots help a lot if in typical cases:
