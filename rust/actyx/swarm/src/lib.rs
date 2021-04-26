@@ -60,8 +60,8 @@ use trees::{
     axtrees::{AxKey, AxTrees, Sha256Digest},
     OffsetMapOrMax,
 };
-use util::formats::NodeErrorContext;
 use trees::{RootMap, RootMapEntry};
+use util::formats::NodeErrorContext;
 
 #[allow(clippy::upper_case_acronyms)]
 type TT = AxTrees;
@@ -299,7 +299,7 @@ impl BanyanStore {
             ForestConfig::debug(),
         );
         let gossip_v2 = v2::GossipV2::new(ipfs.clone(), node_id, cfg.topic.clone());
-        let refs = Refs {            
+        let refs = Arc::new(Refs {
             node_id,
             ipfs,
             gossip_v2,
@@ -307,20 +307,20 @@ impl BanyanStore {
             lamport: Default::default(),
             present: Default::default(),
             highest_seen: Default::default(),
-        };
+        });
         let banyan = Self {
-            inner: Arc::new(Inner {
-                maps: Mutex::new(StreamMaps::default()),
-                index_store: Mutex::new(index_store),
+            inner: Arc::new(Mutex::new(Inner {
+                maps: StreamMaps::default(),
+                index_store,
                 refs: refs.clone(),
                 tasks: Default::default(),
-            }),
+            })),
             refs,
         };
         banyan.load_known_streams()?;
         banyan.spawn_task(
             "v2_gossip_ingest",
-            banyan.0.gossip_v2.ingest(banyan.clone(), cfg.topic.clone())?,
+            banyan.refs.gossip_v2.ingest(banyan.clone(), cfg.topic.clone())?,
         );
         banyan.spawn_task("compaction", banyan.clone().compaction_loop(Duration::from_secs(60)));
         banyan.spawn_task("v1_gossip_publish", banyan.clone().v1_gossip_publish(cfg.topic.clone()));
@@ -577,7 +577,6 @@ impl BanyanStore {
             let forest = self.refs.forest.clone();
             let state = Arc::new(ReplicatedStreamInner::new(forest));
             remote_node.streams.insert(stream_nr, state.clone());
-            drop(remote_node);
             inner.spawn_task(
                 "careful_ingestion",
                 self.clone().careful_ingestion(stream_id, state.clone()),
