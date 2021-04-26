@@ -19,7 +19,7 @@ Event communication latencies are extremely hard to predict.
 Hundreds of things play into this, from the hardware of your edge devices to a forklift passing in front of a wireless access point.
 The following statements hold under typical conditions most of the time:
 
-- event delivery latency is below 200ms unless you are pushing performance limits (see below)
+- event delivery latency is below 200 ms unless you are pushing performance limits (see below)
 - in general, ActyxOS has lower latency volatility than most centralized systems
 
 Keep in mind that ActyxOS does not offer deterministic real-time services; you should use a PLC for such cases.
@@ -33,7 +33,7 @@ If you do, please [get in touch with us and the Actyx community](https://communi
 ## Max. number of nodes
 
 The amount of devices you can reliably run in a single ActyxOS swarm depends on a large number of factors, including the local-area network setup, the devices themselves, and the apps running on them.
-With typical rugged tablets (CPU from around 2013) or other devices with relatevely low computing power (e.g. Raspberry Pi 3), 100 devices should by themselves not pose a problem.
+With typical rugged tablets (CPU from around 2013) or other devices with relatively low computing power (e.g. Raspberry Pi 3), 100 devices should by themselves not pose a problem.
 If you start pushing performance limits (see below) then this number can be significantly lower, depending on the event data rate and the computational complexity of your business logic.
 
 In some cases it may be possible to split an overall system into several smaller ones that do not directly interact via event streams.
@@ -88,8 +88,8 @@ While there are vast differences between languages, runtimes, CPU architectures,
 Bringing a Fish up to date for the first time in an application run (we say “hydrating” or “waking up” the Fish) requires a starting point (which can be a semantic or state snapshot) and the application of all following events.
 If a Fish requires a large number of events for starting up then it will take a correspondingly long time until the first state is available and the first command can be processed — the startup time is proportional to the number of events selected by the subscription (see below for the effect of snapshots).
 
-Our recommendation is to structure your fishes such that each requires less than 1'000 events.
-This means that fishes are best used to model process workflows (which rarely have more than 1'000 steps).
+Our recommendation is to structure your fishes such that each requires less than 1,000 events.
+This means that fishes are best used to model process workflows (which rarely have more than 1,000 steps).
 Fishes are not ideal for accumulating statistical data over long time periods; a better solution for that use-case is to export the events into a time-series database.
 
 :::tip
@@ -98,25 +98,25 @@ If you need to create long-running fishes that accumulate many events — li
 
 ### The effect of semantic snapshots
 
-Semantics snapshots effectively truncate the event history: everything before the recognised snapshot event is ignored.
+Semantics snapshots effectively truncate the event history: everything before the recognized snapshot event is ignored.
 This still means that the snapshot event needs to be found (by searching backwards from the current end of the event log) and that all younger events need to be applied.
 
 Semantic snapshots help a lot if in typical cases:
 
 - the previous snapshot event lies less than a month in the past
-- since the previous snapshot event the Fish in question only subscribes to less than 1'000 events
+- since the previous snapshot event the Fish in question only subscribes to less than 1,000 events
 
 As such, semantic snapshots can make a Fish viable even though it violates the recommendation in the previous section.
 
 ### The effect of state snapshots
 
-State snapshots are written when the Fish’s event history is longer than 1'000 events and snapshots are enabled by providing a corresponding (de)serialization config.
+State snapshots are written when the Fish’s event history is longer than 1,000 events and snapshots are enabled by providing a corresponding (de)serialization configuration.
 When starting a Fish, the most recent state snapshot is used, thereby limiting the number of events that need to be applied.
 This can help if the required events are large in number or dispersed over a long time range and many devices — which are both factors in requiring a longer time to find and deliver the events to the business logic.
 It can also help if the business logic is computationally expensive, by reusing previously computed results.
 
 One important aspect to keep in mind is that these snapshots are local to each device.
-Therefore they don’t help when waking up a Fish for the first time on a given device — plowing through 10'000'000 events will take a long time even when the events can be found and delivered quickly.
+Therefore they don’t help when waking up a Fish for the first time on a given device — plowing through 10,000,000 events will take a long time even when the events can be found and delivered quickly.
 
 ### Large application state
 
@@ -136,10 +136,10 @@ Keep in mind that starting with Pond version 2.1 you can directly modify the `st
 ### Latency implications of large number of fishes and sources
 
 With current ActyxOS versions the internal event dispatch latency is proportional to both the number of Fishes and the number of devices in the swarm.
-The effect of this depends very much on the CPU that is running ActyxOS: for example 100 sources times 500 Fishes on an Intel Atom processor (rugged Android tablet from around 2015) lead to an internal latency of 3sec (e.g. between button click and subsequent fish state update).
+The effect of this depends very much on the CPU that is running ActyxOS: for example 100 sources times 500 Fishes on an Intel Atom processor (rugged Android tablet from around 2015) lead to an internal latency of 3 sec (e.g. between button click and subsequent fish state update).
 
 We are working on improving this characteristic starting with release 1.1.5 and expect to remove this bottleneck in a future release.
-Until then we recommend to keep the product of woken up Fishes and swarm sources below 1'000, at least on tablet computers.
+Until then we recommend to keep the product of woken up Fishes and swarm sources below 1,000, at least on tablet computers.
 
 :::tip
 With current Pond versions, Fishes will never be stopped and their resources released (we are working on a feature in this direction).
@@ -152,7 +152,7 @@ Since this happens mostly on tablets with dynamic end-user workflows (like openi
 
 When reconnecting a device that was disconnected for a long time period, this device will need to ingest all new events from all other devices in the swarm to become up-to-date.
 If a Fish is running during this process of catching up with the swarm, then that Fish will experience a lot more time travel than it would if it were woken up after ActyxOS is up-to-date.
-ActyxOS optimises event delivery by doing it in chunks, nevertheless in pathological cases the amount of time travel is not linear in the number of such chunks but quadratic.
+ActyxOS optimizes event delivery by doing it in chunks, nevertheless in pathological cases the amount of time travel is not linear in the number of such chunks but quadratic.
 
 As an example: consider 10 devices to catch up with, each contributing 10 chunks of events for your Fish.
 The optimal scenario would be to first catch up and then insert all 100 chunks into the event history, then perform one time travel.
