@@ -21,8 +21,7 @@ import TabItem from '@theme/TabItem'
 |Android|Android 6+|x86, arm64-v8a or armeabi-v7a [ABI](https://developer.android.com/ndk/guides/abis.html#sa)|
 |Linux|Ubuntu 18.04+ or Alpine 3.9+|x86_64, aarch64, armv7 or arm|
 |Docker|Docker 20+|x86_64 or aarch64|
-|macOS|Big Sur|x86_64|
-
+|macOS|Big Sur|x86_64 oa aarch64 (via Rosetta emulation)|
 
 ## Networking Requirements
 
@@ -30,13 +29,13 @@ import TabItem from '@theme/TabItem'
 |------|--------|
 | <ul><li>ports 4001, 4243, 4454, 4457, 8080 unused</li><li>Incoming/outgoing connections on ports 4001, 4243, 4454, 4457, 8080 allowed</li><li>All nodes connected to same LAN/WLAN</li></ul>| <ul><li>ports 4001, 4243, 4454, 4457, 8080 unblocked</li><li>UDP unicast connections allowed (mDNS protocol, port 5353, IPv4 224.0.0.251, IPv6 ff02::fb)</li><li>Client-isolation disabled</li></ul>|
 
-:::info one network = one swarm
-All devices in an ActyxOS swarm must be connected to the same local-area network. It is recommended to keep the IP addresses relatively stable, frequent changes will reduce performance of the system.
-:::
+It is not recommended to put firewalls between devices of the same swarm.
+Wherever possible, devices should be placed within one broadcast domain.
+Placing devices of the same swarm across different broadcast domains requires [setting up a bootstrap node](../how-to/swarms/setup-bootstrap-node).
 
 ## Performance
 
-A lot of different factors play into performance of Actyx and your apps. Assuming a standard network setup, rugged tablets or other devices with relatively low computing power, and a standard factory use case, these are the limits:
+A lot of different factors play into performance of Actyx and your apps. Assuming a standard network setup, rugged tablets or other devices with relatively low computing power, and a standard factory use case, these are approximate limits:
 
 |Type|Performance|
 |----|-----|
@@ -45,7 +44,6 @@ A lot of different factors play into performance of Actyx and your apps. Assumin
 |Event data rate|~1 event per node per 10 seconds|
 
 The following list shows the factors that influence performance. **Please note that these are not requirements, but assumptions made for the above performance characteristics:**
-
 
 |Factor|Assumption|
 |----|-----|
