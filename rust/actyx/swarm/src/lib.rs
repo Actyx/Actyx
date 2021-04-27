@@ -298,15 +298,6 @@ impl BanyanStore {
             ForestConfig::debug(),
         );
         let gossip_v2 = v2::GossipV2::new(ipfs.clone(), node_id, cfg.topic.clone());
-        // let refs = Arc::new(Refs {
-        //     node_id,
-        //     ipfs,
-        //     gossip_v2,
-        //     forest,
-        //     lamport: Default::default(),
-        //     present: Default::default(),
-        //     highest_seen: Default::default(),
-        // });
         let banyan = Self(Arc::new(BanyanStoreData {
             node_id,
             ipfs,
@@ -400,55 +391,6 @@ impl BanyanStore {
         })
         .await
     }
-
-    // /// Creates a new [`BanyanStore`] from an [`Ipfs`] and [`Config`].
-    // pub fn new(ipfs: Ipfs, config: Config, index_store: SqliteIndexStore) -> Result<Self> {
-    //     let store = SqliteStore::wrap(ipfs.clone());
-    //     let branch_cache = BranchCache::<TT>::new(config.branch_cache);
-    //     let node_id = config.node_id;
-    //     let gossip_v2 = v2::GossipV2::new(ipfs.clone(), node_id, config.topic.clone());
-    //     let refs = Arc::new(Refs {
-    //         node_id,
-    //         ipfs,
-    //         gossip_v2,
-    //         lamport: Default::default(),
-    //         present: Default::default(),
-    //         highest_seen: Default::default(),
-    //         forest: Forest::new(store, branch_cache, config.crypto_config, config.forest_config),
-    //     });
-    //     let me = Self {
-    //         inner: Arc::new(Mutex::new(Inner {
-    //             refs: refs.clone(),
-    //             index_store,
-    //             maps: Default::default(),
-    //             tasks: Default::default(),
-    //         })),
-    //         refs: refs.clone(),
-    //     };
-    //     me.load_known_streams()?;
-    //     {
-    //         let mut inner = me.inner.lock();
-    //         inner.spawn_task(
-    //             "v2_gossip_ingest",
-    //             refs.gossip_v2.ingest(me.clone(), config.topic.clone())?,
-    //         );
-    //         inner.spawn_task("compaction", me.clone().compaction_loop(Duration::from_secs(60)));
-    //         inner.spawn_task("v1_gossip_publish", me.clone().v1_gossip_publish(config.topic.clone()));
-    //         inner.spawn_task("v1_gossip_ingest", me.clone().v1_gossip_ingest(config.topic));
-    //         inner.spawn_task("discovery_ingest", crate::discovery::discovery_ingest(me.clone()));
-    //         // TODO fix stream nr
-    //         inner.spawn_task(
-    //             "discovery_publish",
-    //             crate::discovery::discovery_publish(me.clone(), 0.into(), config.external_addresses)?,
-    //         );
-    //         // TODO fix stream nr
-    //         inner.spawn_task(
-    //             "metrics",
-    //             crate::metrics::metrics(me.clone(), 0.into(), Duration::from_secs(30))?,
-    //         );
-    //     }
-    //     Ok(me)
-    // }
 
     fn load_known_streams(&self) -> Result<()> {
         let known_streams = self.0.state.lock().index_store.get_observed_streams()?;
