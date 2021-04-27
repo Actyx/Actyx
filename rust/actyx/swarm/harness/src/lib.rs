@@ -1,3 +1,5 @@
+#![cfg(target_os = "linux")]
+
 use anyhow::Result;
 use futures::prelude::*;
 use netsim_embed::{Ipv4Range, Network, NetworkBuilder, Wire};

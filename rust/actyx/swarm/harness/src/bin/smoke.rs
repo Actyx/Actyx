@@ -1,8 +1,8 @@
-use actyxos_sdk::{tags, Payload};
-use anyhow::Result;
-use swarm_cli::{Command, Event};
+#[cfg(target_os = "linux")]
+fn main() -> anyhow::Result<()> {
+    use actyxos_sdk::{tags, Payload};
+    use swarm_cli::{Command, Event};
 
-fn main() -> Result<()> {
     swarm_harness::run_netsim(|mut network| async move {
         network
             .machine(0)
@@ -22,3 +22,6 @@ fn main() -> Result<()> {
         network
     })
 }
+
+#[cfg(not(target_os = "linux"))]
+fn main() {}
