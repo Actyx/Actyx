@@ -44,7 +44,7 @@ use libp2p::{
     ping::PingConfig,
 };
 use maplit::btreemap;
-use parking_lot::Mutex;
+use parking_lot::{Mutex, MutexGuard};
 use std::{
     collections::{BTreeMap, VecDeque},
     convert::{TryFrom, TryInto},
@@ -212,6 +212,13 @@ impl Drop for BanyanStoreState {
             task.abort();
         }
     }
+}
+
+struct BanyanStoreGuard<'a> {
+    /// the guard for the mutex
+    guard: MutexGuard<'a, BanyanStoreState>,
+    /// access to the state, rarely needed
+    data: Arc<BanyanStoreData>,
 }
 
 impl BanyanStoreState {
@@ -390,6 +397,14 @@ impl BanyanStore {
             ..Default::default()
         })
         .await
+    }
+
+    fn lock(&self) -> BanyanStoreGuard<'_> {
+        let guard = self.0.state.lock();
+        BanyanStoreGuard {
+            guard,
+            data: self.0.clone(),
+        }
     }
 
     fn load_known_streams(&self) -> Result<()> {
