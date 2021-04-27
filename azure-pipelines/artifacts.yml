@@ -164,7 +164,7 @@ stages:
     dependsOn:
       - upload
       - integration
-      - release
+      # - release
     jobs:
       - template: jobs-notify-success.yml
 
@@ -175,7 +175,7 @@ stages:
       - makeArtifacts
       - upload
       - integration
-      - release
+      # - release
     jobs:
       - template: slack-notify-failure.yml
 
