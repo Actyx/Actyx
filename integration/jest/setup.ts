@@ -13,7 +13,7 @@ import { SettingsInput } from '../src/cli/exec'
 import { createKey, deleteKey } from '../src/infrastructure/aws'
 import { createNode } from '../src/infrastructure/create'
 import { rightOrThrow } from '../src/infrastructure/rightOrThrow'
-import { ActyxOSNode, AwsKey, printTarget } from '../src/infrastructure/types'
+import { ActyxNode, AwsKey, printTarget } from '../src/infrastructure/types'
 import { retryTimes } from '../src/retry'
 import { setupAnsible } from '../src/setup-projects/ansible'
 import { Config, Settings } from './types'
@@ -24,7 +24,7 @@ export type LogEntry = {
 }
 
 export type NodeSetup = {
-  nodes: ActyxOSNode[]
+  nodes: ActyxNode[]
   ec2: EC2
   key: AwsKey
   settings: Settings
@@ -33,7 +33,7 @@ export type NodeSetup = {
   // files related to one run (a run being test suites sharing a common global
   // setup/teardown).
   runIdentifier: string
-  thisTestEnvNodes?: ActyxOSNode[]
+  thisTestEnvNodes?: ActyxNode[]
 }
 
 export type MyGlobal = typeof global & { axNodeSetup: NodeSetup }
@@ -66,7 +66,7 @@ const getPeerId = async (ax: CLI, retries = 10): Promise<string | undefined> => 
   }
 }
 
-const setInitialSettings = async (bootstrap: ActyxOSNode[], swarmKey: string): Promise<void> => {
+const setInitialSettings = async (bootstrap: ActyxNode[], swarmKey: string): Promise<void> => {
   for (const node of bootstrap) {
     const result = await node.ax.settings
       .set(
@@ -88,7 +88,7 @@ const setInitialSettings = async (bootstrap: ActyxOSNode[], swarmKey: string): P
   }
 }
 
-const getBootstrapNodes = async (bootstrap: ActyxOSNode[]): Promise<string[]> => {
+const getBootstrapNodes = async (bootstrap: ActyxNode[]): Promise<string[]> => {
   const ret = []
   for (const { node, pid } of await Promise.all(
     bootstrap.map(async (node) => ({ node, pid: await getPeerId(node.ax) })),
@@ -109,8 +109,8 @@ const getBootstrapNodes = async (bootstrap: ActyxOSNode[]): Promise<string[]> =>
 }
 
 const setAllSettings = async (
-  bootstrap: (ActyxOSNode & { host: 'process' })[],
-  nodes: ActyxOSNode[],
+  bootstrap: (ActyxNode & { host: 'process' })[],
+  nodes: ActyxNode[],
   swarmKey: string,
 ): Promise<void> => {
   const bootstrapNodes = await getBootstrapNodes(bootstrap)
@@ -156,7 +156,7 @@ const setAllSettings = async (
   }
 }
 
-const getNumPeersMax = async (nodes: ActyxOSNode[]): Promise<number> => {
+const getNumPeersMax = async (nodes: ActyxNode[]): Promise<number> => {
   const getNumPeersOne = async (ax: CLI) => {
     const state = await retryTimes(ax.swarms.state, 3)
     if (state.code != 'OK') {
@@ -170,10 +170,10 @@ const getNumPeersMax = async (nodes: ActyxOSNode[]): Promise<number> => {
   return res.reduce((a, b) => Math.max(a, b), 0)
 }
 
-const configureBootstrap = async (nodes: ActyxOSNode[]) => {
+const configureBootstrap = async (nodes: ActyxNode[]) => {
   // All process-hosted nodes can serve as bootstrap nodes
   const bootstrap = nodes.filter(
-    (node): node is ActyxOSNode & { host: 'process' } => node.host === 'process',
+    (node): node is ActyxNode & { host: 'process' } => node.host === 'process',
   )
   if (bootstrap.length === 0) {
     throw new Error('cannot find suitable bootstrap nodes')
@@ -214,7 +214,7 @@ const configureBootstrap = async (nodes: ActyxOSNode[]) => {
 }
 
 /**
- * Create and/or install ActyxOS nodes and wait until they form a swarm.
+ * Create and/or install Actyx nodes and wait until they form a swarm.
  * @param _config
  */
 const setupInternal = async (_config: Record<string, unknown>): Promise<void> => {

@@ -3,9 +3,10 @@ import execa from 'execa'
 import { Arch } from '../../jest/types'
 import { CLI } from '../cli'
 import { mkProcessLogger } from './mkProcessLogger'
-import { actyxOsDockerImage, actyxOsLinuxBinary, currentAxBinary } from './settings'
+import { actyxDockerImage, actyxLinuxBinary, currentAxBinary } from './settings'
 import { Ssh } from './ssh'
-import { ActyxOSNode, printTarget, SshAble, Target } from './types'
+import { ActyxNode, printTarget, SshAble, Target } from './types'
+import { mkLog } from './util'
 
 // determines frequency of retrying ssh operations like connect()
 const pollDelay = <T>(f: () => Promise<T>) => new Promise((res) => setTimeout(res, 2000)).then(f)
@@ -17,7 +18,7 @@ export const mkNodeSshProcess = async (
   target: Target,
   sshParams: SshAble,
   logger: (s: string) => void = console.log,
-): Promise<ActyxOSNode> => {
+): Promise<ActyxNode> => {
   console.log('setting up Actyx process: %s on %o', nodeName, printTarget(target))
 
   if (target.os !== 'linux') {
@@ -27,10 +28,10 @@ export const mkNodeSshProcess = async (
   const ssh = new Ssh(sshParams.host, sshParams.username, sshParams.privateKey)
   await connectSsh(ssh, nodeName, sshParams)
 
-  const binaryPath = await actyxOsLinuxBinary(target.arch)
-  await uploadActyxOS(nodeName, ssh, binaryPath)
+  const binaryPath = await actyxLinuxBinary(target.arch)
+  await uploadActyx(nodeName, ssh, binaryPath)
 
-  const proc = await startActyxOS(nodeName, logger, ssh)
+  const proc = await startActyx(nodeName, logger, ssh)
 
   return await forwardPortsAndBuildClients(ssh, nodeName, target, proc[0], {
     host: 'process',
@@ -43,7 +44,7 @@ export const mkNodeSshDocker = async (
   sshParams: SshAble,
   logger: (s: string) => void,
   gitHash: string,
-): Promise<ActyxOSNode> => {
+): Promise<ActyxNode> => {
   console.log('setting up Actyx on Docker: %s on %o', nodeName, printTarget(target))
 
   if (target.os !== 'linux') {
@@ -70,8 +71,8 @@ export const mkNodeSshDocker = async (
   const command =
     'docker run -i --rm -v /data ' +
     '-p 4001:4001 -p 127.0.0.1:4458:4458 -p 127.0.0.1:4454:4454 ' +
-    actyxOsDockerImage(target.arch, gitHash)
-  const proc = await startActyxOS(nodeName, logger, ssh, command)
+    actyxDockerImage(target.arch, gitHash)
+  const proc = await startActyx(nodeName, logger, ssh, command)
 
   return await forwardPortsAndBuildClients(ssh, nodeName, target, proc[0], {
     host: 'docker',
@@ -90,8 +91,6 @@ const archToDockerMoniker = (arch: Arch): string => {
       return 'amd64'
   }
 }
-
-const mkLog = (node: string) => (msg: string) => console.log(`node ${node} ${msg}`)
 
 /**
  * Install Docker. This procedure is dependant on the `ami` specified in hosts.yaml
@@ -113,7 +112,7 @@ async function ensureDocker(ssh: Ssh, node: string, user: string, arch: Arch) {
 
   // Procedure for installing https://docs.docker.com/engine/install/ubuntu/
   try {
-    await exec('sudo apt-get remove docker docker-engine docker.io containerd runc')
+    await exec('sudo apt-get remove --yes docker docker-engine docker.io containerd runc')
   } catch (x) {
     // It’s OK if apt-get reports that none of these packages are installed.
   }
@@ -184,16 +183,16 @@ async function connectSsh(ssh: Ssh, nodeName: string, sshParams: SshAble) {
   console.log('SSH connection open to %s', nodeName)
 }
 
-async function uploadActyxOS(nodeName: string, ssh: Ssh, binaryPath: string) {
+async function uploadActyx(nodeName: string, ssh: Ssh, binaryPath: string) {
   console.log('node %s installing Actyx', nodeName)
-  await ssh.scp(binaryPath, 'actyxos')
+  await ssh.scp(binaryPath, 'actyx')
 }
 
-function startActyxOS(
+function startActyx(
   nodeName: string,
   logger: (s: string) => void,
   ssh: Ssh,
-  command = 'RUST_BACKTRACE=1 ./actyxos',
+  command = 'RUST_BACKTRACE=1 ./actyx',
 ): Promise<[execa.ExecaChildProcess<string>]> {
   // awaiting a Promise<Promise<T>> yields T (WTF?!?) so we need to put it into an array
   return new Promise((res, rej) => {
@@ -230,9 +229,9 @@ export const forwardPortsAndBuildClients = async (
   ssh: Ssh,
   nodeName: string,
   target: Target,
-  actyxOsProc: execa.ExecaChildProcess<string> | undefined,
-  theRest: Omit<ActyxOSNode, 'ax' | 'httpApiClient' | '_private' | 'name' | 'target'>,
-): Promise<ActyxOSNode> => {
+  actyxProc: execa.ExecaChildProcess<string> | undefined,
+  theRest: Omit<ActyxNode, 'ax' | 'httpApiClient' | '_private' | 'name' | 'target'>,
+): Promise<ActyxNode> => {
   const [[port4454, port4458], proc] = await ssh.forwardPorts(4454, 4458)
 
   console.log('node %s admin reachable on port %i', nodeName, port4458)
@@ -252,14 +251,14 @@ export const forwardPortsAndBuildClients = async (
 
   const shutdown = async () => {
     console.log('node %s shutting down', nodeName)
-    actyxOsProc?.kill('SIGTERM')
+    actyxProc?.kill('SIGTERM')
     console.log('node %s ssh stopped', nodeName)
     await target._private.cleanup()
     console.log('node %s instance terminated', nodeName)
     proc.kill('SIGTERM')
   }
 
-  const result: ActyxOSNode = {
+  const result: ActyxNode = {
     name: nodeName,
     target,
     ax,

@@ -5,10 +5,10 @@ import { getPipEnv } from '../setup-projects'
 import { instanceToTarget } from './aws'
 import { forwardPortsAndBuildClients } from './linux'
 import { mkProcessLogger } from './mkProcessLogger'
-import { windowsActyxOsInstaller } from './settings'
+import { windowsActyxInstaller } from './settings'
 import { Ssh } from './ssh'
 import * as path from 'path'
-import { ActyxOSNode, AwsKey } from './types'
+import { ActyxNode, AwsKey } from './types'
 
 export const mkNodeWinRM = async (
   ec2: EC2,
@@ -19,8 +19,8 @@ export const mkNodeWinRM = async (
   adminPW: string,
   publicKeyPath: string,
   logger: (line: string) => void,
-): Promise<ActyxOSNode | undefined> => {
-  const absInstallerPath = await windowsActyxOsInstaller('x86_64')
+): Promise<ActyxNode | undefined> => {
+  const absInstallerPath = await windowsActyxInstaller('x86_64')
   // Input to Ansible is the relative path to a folder in which
   // `Actyx-Installer.exe` exists. The path needs to be relative to the sub
   // directory where the relevant ansible task lies.
@@ -91,17 +91,17 @@ export const mkNodeWinRM = async (
   const target = instanceToTarget(instance, prepare, key, ec2)
 
   const ssh = new Ssh(target.kind.host, target.kind.username, target.kind.privateKey)
-  const actyxOsProc = await startActyxOS(nodeName, logger, ssh)
-  return await forwardPortsAndBuildClients(ssh, nodeName, target, actyxOsProc[0], {
+  const actyxProc = await startActyx(nodeName, logger, ssh)
+  return await forwardPortsAndBuildClients(ssh, nodeName, target, actyxProc[0], {
     host: 'process',
   })
 }
 
-function startActyxOS(
+function startActyx(
   nodeName: string,
   logger: (s: string) => void,
   ssh: Ssh,
-  command = 'C:\\Users\\Administrator\\AppData\\Local\\Actyx\\actyx.exe --working-dir C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyx-data --background',
+  command = 'C:\\Users\\Administrator\\AppData\\Local\\Actyx\\actyx.exe --working-dir C:\\Users\\Administrator\\AppData\\Local\\Actyx\\actyx-data --background',
 ): Promise<[execa.ExecaChildProcess<string>]> {
   // awaiting a Promise<Promise<T>> yields T (WTF?!?) so we need to put it into an array
   return new Promise((res, rej) => {
@@ -115,15 +115,15 @@ function startActyxOS(
     proc.stderr?.on('data', (s: Buffer | string) => log('stderr', s))
     proc.on('close', () => {
       flush()
-      logger(`node ${nodeName} ActyxOS channel closed`)
+      logger(`node ${nodeName} Actyx channel closed`)
       rej('closed')
     })
     proc.on('error', (err: Error) => {
-      logger(`node ${nodeName} ActyxOS channel error: ${err}`)
+      logger(`node ${nodeName} Actyx channel error: ${err}`)
       rej(err)
     })
     proc.on('exit', (code: number, signal: string) => {
-      logger(`node ${nodeName} ActyxOS exited with code=${code} signal=${signal}`)
+      logger(`node ${nodeName} Actyx exited with code=${code} signal=${signal}`)
       rej('exited')
     })
   })

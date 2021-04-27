@@ -47,7 +47,7 @@ export type NodeSelection = {
   host?: Host
 }
 
-export type ActyxOSNode = Readonly<{
+export type ActyxNode = Readonly<{
   name: string
   target: Target
   host: Host

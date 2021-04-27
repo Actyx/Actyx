@@ -1,4 +1,4 @@
-import { ActyxOSNode } from './infrastructure/types'
+import { ActyxNode } from './infrastructure/types'
 
 const million = BigInt(1_000_000)
 const millisToBigInt = (n: number) => BigInt(n) * million
@@ -33,7 +33,7 @@ export const waitFor = <T>(
   })
 }
 
-export const waitForNodeToBeConfigured = async (node: ActyxOSNode): Promise<void> =>
+export const waitForNodeToBeConfigured = async (node: ActyxNode): Promise<void> =>
   await waitFor(async () => {
     const response = await node.ax.nodes.ls()
     if (response.code == 'OK') {
