@@ -24,3 +24,4 @@ wintrap = "0.3.0"
 
 [dependencies]
 node = { path = "../node" }
+util = { path = "../util"}

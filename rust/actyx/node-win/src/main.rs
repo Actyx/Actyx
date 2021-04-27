@@ -31,6 +31,7 @@ mod win {
     };
     use structopt::StructOpt;
     use tracing::*;
+    use util::version::NodeVersion;
 
     #[derive(StructOpt, Debug)]
     #[structopt(name = "actyx", about = "Actyx on Windows", rename_all = "kebab-case")]
@@ -46,6 +47,9 @@ mod win {
 
         #[structopt(flatten)]
         bind_options: BindToOpts,
+
+        #[structopt(long)]
+        version: bool,
     }
 
     struct TrayApp {
@@ -93,6 +97,8 @@ mod win {
                 })?;
                 trayicon_app.add_menu_separator()?;
             }
+
+            trayicon_app.add_menu_item(NodeVersion::get().to_string().as_str(), |_| Ok::<_, systray::Error>(()))?;
 
             trayicon_app.add_menu_item("Exit", |window| {
                 // This will result in `app.wait_for_message` returning at the
@@ -144,7 +150,14 @@ mod win {
             working_dir: maybe_working_dir,
             background,
             bind_options,
+            version,
         } = Opts::from_args();
+
+        if version {
+            info!("actyx-win {}", NodeVersion::get());
+            return Ok(());
+        }
+
         let bind_to: BindTo = bind_options.try_into()?;
 
         let working_dir = maybe_working_dir.unwrap_or_else(|| std::env::current_dir().unwrap().join("actyx-data"));
