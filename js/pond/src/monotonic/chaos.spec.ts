@@ -4,16 +4,17 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import { EventKey, Metadata, Offset, OffsetMap, StreamId } from '@actyx/sdk'
 import { catOptions, chunksOf } from 'fp-ts/lib/Array'
 import { none, some } from 'fp-ts/lib/Option'
 import { observeMonotonic } from '.'
 import { allEvents, Fish, Lamport, Timestamp, Where } from '..'
-import { Event, Events, EventStore, OffsetMap } from '../eventstore'
+import { Event, Events, EventStore } from '../eventstore'
 import { includeEvent } from '../eventstore/testEventStore'
 import { interleaveRandom } from '../eventstore/utils'
 import { SnapshotStore } from '../snapshotStore'
 import { SnapshotScheduler } from '../store/snapshotScheduler'
-import { EventKey, FishErrorReporter, Metadata, Offset, StreamId } from '../types'
+import { FishErrorReporter } from '../types'
 import { shuffle } from '../util/array'
 
 const numberOfSources = 5

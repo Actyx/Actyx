@@ -4,9 +4,10 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import { OffsetMap } from '@actyx/sdk'
 import * as immutable from 'immutable'
 import { Observable, Subject } from 'rxjs'
-import { EventStore, OffsetMap } from './eventstore'
+import { EventStore } from './eventstore'
 import { NodeInfoEntry, SwarmInfo, SwarmSummary } from './store/swarmState'
 import { takeWhileInclusive } from './util'
 

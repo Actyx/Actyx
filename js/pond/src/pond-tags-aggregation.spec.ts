@@ -316,3 +316,150 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
     })
   })
 })
+
+describe('Fish declarations Tag checking', () => {
+  type T0 = {
+    type: '0'
+    t0: object
+  }
+
+  type A = {
+    type: 'A'
+    data0: number
+  }
+
+  type B = {
+    type: 'B'
+    data1: string
+  }
+
+  type C = {
+    type: 'C'
+    data1: number
+  }
+
+  const tagA = Tag<A>('A')
+
+  // Tag that covers 3 types
+  const abcTag = Tag<A | B | C>('ABC')
+
+  // Satisfy TS (no unused var)
+  const ignoreUnusedVar = (_v: unknown) => undefined
+
+  const fishArgs = {
+    onEvent: (state: undefined, _payload: A | B) => state,
+    initialState: undefined,
+    fishId: FishId.of('f', 'a', 0),
+  }
+
+  it('should require fish to implement onEvent that can handle all incoming events', () => {
+    const fishWrong: Fish<undefined, A | B> = {
+      ...fishArgs,
+
+      // Expect error for too large subscription set
+      // @ts-expect-error
+      where: abcTag,
+    }
+
+    ignoreUnusedVar(fishWrong)
+  })
+
+  it('fish should accept direct Where<unknown> indicating untyped tag query', () => {
+    const fishRight1: Fish<undefined, A | B> = {
+      ...fishArgs,
+
+      // Automatically type-inferred to match Fish declaration
+      where: Tags('some', 'plain', 'tags'),
+    }
+
+    const fishRight2: Fish<undefined, A | B> = {
+      ...fishArgs,
+
+      // Automatically type-inferred to match Fish declaration
+      where: Tag('a-single-plain-tag'),
+    }
+
+    ignoreUnusedVar(fishRight1)
+    ignoreUnusedVar(fishRight2)
+  })
+
+  it('should accept OR-concatentation of untyped queries with explicit cast', () => {
+    const fishWrong: Fish<undefined, A | B> = {
+      ...fishArgs,
+
+      // Without cast, this will fail
+      // @ts-expect-error
+      where: Tags('1', '2').or(Tag('foo')),
+    }
+
+    ignoreUnusedVar(fishWrong)
+
+    const fishRight: Fish<undefined, A | B> = {
+      ...fishArgs,
+
+      // ... but adding an explicit cast solves the problem
+      where: Tags('1', '2').or(Tag('foo')) as Where<A | B>,
+    }
+
+    ignoreUnusedVar(fishRight)
+  })
+
+  it('should accept additional untyped tags on an intersection', () => {
+    const fishRight: Fish<undefined, A | B> = {
+      ...fishArgs,
+
+      // Type remains Tags<A>
+      where: tagA.and('some-other-tag'),
+    }
+
+    ignoreUnusedVar(fishRight)
+  })
+
+  it('should accept additional tags on an intersection', () => {
+    const fishRight: Fish<undefined, A | B> = {
+      ...fishArgs,
+
+      // Type remains Tags<A>
+      where: tagA.withId('n').and(Tag('some-other-tag').withId('foo')),
+    }
+
+    ignoreUnusedVar(fishRight)
+  })
+
+  it('should accept additional tags with explicit cast', () => {
+    const fishWrong: Fish<undefined, A | B> = {
+      ...fishArgs,
+
+      // Without cast, this will fail
+      // @ts-expect-error
+      where: Tag('q')
+        .withId('n')
+        .and(Tag('some-other-tag').withId('foo')),
+    }
+
+    const fishRight: Fish<undefined, A | B> = {
+      ...fishArgs,
+
+      // Casting works
+      where: Tag('q')
+        .withId('n')
+        .and(Tag('some-other-tag').withId('foo')) as Where<A>,
+    }
+
+    ignoreUnusedVar(fishWrong)
+    ignoreUnusedVar(fishRight)
+  })
+
+  it('should allow fish to handle more events than indicated by tags', () => {
+    const fishRight: Fish<undefined, A | B | C | T0> = {
+      onEvent: (state: undefined, _payload: A | B | C | T0) => state,
+      initialState: undefined,
+      fishId: FishId.of('f', 'a', 0),
+
+      // Fish declares it handles T0 also -> no problem.
+      where: abcTag,
+    }
+
+    ignoreUnusedVar(fishRight)
+  })
+})

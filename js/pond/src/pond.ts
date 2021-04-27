@@ -6,6 +6,17 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import {
+  CancelSubscription,
+  Metadata,
+  Milliseconds,
+  NodeId,
+  PendingEmission,
+  Tags,
+  Timestamp,
+  toEventPredicate,
+  Where,
+} from '@actyx/sdk'
 import { Observable, ReplaySubject, Scheduler, Subject, Subscription } from 'rxjs'
 import { CommandInterface } from './commandInterface'
 import { EventStore, UnstoredEvent, WsStoreConfig } from './eventstore'
@@ -22,24 +33,17 @@ import { SnapshotStore } from './snapshotStore'
 import { SplashState, streamSplashState, WaitForSwarmConfig } from './splashState'
 import { Monitoring } from './store/monitoring'
 import { SnapshotScheduler } from './store/snapshotScheduler'
-import { Tags, toEventPredicate, Where } from './tagging'
 import {
   AddEmission,
   Caching,
-  CancelSubscription,
   Fish,
   FishErrorReporter,
   FishId,
   IsReset,
-  Metadata,
-  Milliseconds,
-  NodeId,
   ObserveAllOpts,
-  PendingEmission,
   Reduce,
   StateEffect,
   StateWithProvenance,
-  Timestamp,
 } from './types'
 import { noop } from './util'
 

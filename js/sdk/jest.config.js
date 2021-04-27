@@ -3,7 +3,7 @@
 
 module.exports = {
   preset: 'ts-jest',
-  collectCoverage: true,
+  collectCoverage: false,
   coverageDirectory: 'coverage',
   coverageThreshold: {
     global: {

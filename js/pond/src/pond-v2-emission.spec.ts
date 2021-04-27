@@ -129,4 +129,68 @@ describe('application of commands in the pond', () => {
       pond.dispose()
     })
   })
+
+  describe('Pond emission type checking', () => {
+    type T0 = {
+      type: '0'
+      t0: object
+    }
+
+    type A = {
+      type: 'A'
+      data0: number
+    }
+
+    type B = {
+      type: 'B'
+      data1: string
+    }
+
+    type C = {
+      type: 'C'
+      data1: number
+    }
+
+    const tagA = Tag<A>('A')
+
+    // Tag that covers 3 types
+    const abcTag = Tag<A | B | C>('ABC')
+
+    const test = (_fn: (pond: Pond) => void) => {
+      // Just make it easy to write declarations that use a Pond.
+      // Since we only care about type-checks, we don’t actually execute anything.
+    }
+
+    it('should allow emission statements into larger tags', () => {
+      test(pond =>
+        pond.emit(abcTag, {
+          type: 'A',
+          data0: 5,
+        }),
+      )
+    })
+
+    it('should forbid emission statements for unknown types, known tags', () => {
+      test(pond =>
+        pond.emit(tagA, {
+          // @ts-expect-error
+          type: 'whatever',
+
+          // actually it would pass if we used the `data0` field here,
+          // due to some type-widening thingy
+          dataFoo: 5,
+        }),
+      )
+    })
+
+    it('should forbid emission statements into disconnected tags', () => {
+      const payload: T0 = {
+        type: '0',
+        t0: {},
+      }
+
+      // @ts-expect-error
+      test(pond => pond.emit(abcTag, payload))
+    })
+  })
 })

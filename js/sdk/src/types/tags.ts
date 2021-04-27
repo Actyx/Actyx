@@ -4,7 +4,7 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { isString } from '../types'
+import { isString } from './functions'
 
 export type TagSubscription = Readonly<{ tags: ReadonlyArray<string>; local: boolean }>
 
@@ -76,7 +76,8 @@ export interface Tags<E> extends Where<E> {
 
   /**
    * The actual included tags.
-   * @internal
+   * FIXME: Only public until enough things from Pond have been moved over.
+   * @public
    */
   readonly rawTags: ReadonlyArray<string>
 

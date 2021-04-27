@@ -7,7 +7,7 @@
 import * as t from 'io-ts'
 import { Observable } from 'rxjs'
 import { MultiplexedWebsocket } from '../eventstore/multiplexedWebsocket'
-import { NodeId, Timestamp } from '../types'
+import { NodeId, Timestamp } from '@actyx/sdk'
 import { CounterMap, DurationMap, GaugeMap, Loggers } from '../util'
 import { mockCommandInterface } from './mockCommandInterface'
 import { WebsocketCommandInterface } from './websocketCommandInterface'

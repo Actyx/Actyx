@@ -4,7 +4,8 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { FishName, Milliseconds, Semantics } from '../types'
+import { Milliseconds } from '@actyx/sdk'
+import { FishName, Semantics } from '../types'
 import { LoggersInternal } from '../util'
 import { PondState, PondStateTracker } from './pond-state'
 import { mkInitialState, mkPondStateTracker } from './pondStateTracker'

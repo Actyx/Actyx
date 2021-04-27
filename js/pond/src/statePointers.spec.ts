@@ -4,10 +4,11 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import { Timestamp } from '@actyx/sdk'
 import { Event } from './eventstore/types'
 import { getRecentPointers, StatePointers } from './statePointers'
 import { SnapshotScheduler } from './store/snapshotScheduler'
-import { StatePointer, StateWithProvenance, Timestamp } from './types'
+import { StatePointer, StateWithProvenance } from './types'
 
 const neverSnapshotScheduler: SnapshotScheduler = {
   minEventsForSnapshot: 1,
