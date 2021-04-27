@@ -61,7 +61,7 @@ impl BanyanStore {
     /// This should be launched only once, and the join handle should be stored.
     pub(crate) async fn v1_gossip_ingest(self, topic: String) {
         let store = self.clone();
-        self.0
+        self.data
             .ipfs
             .subscribe(&topic)
             .unwrap()
@@ -85,7 +85,7 @@ impl BanyanStore {
             roots,
         };
         let blob = DagCborCodec.encode(&msg).unwrap();
-        let _ = self.0.ipfs.publish(topic, blob);
+        let _ = self.ipfs().publish(topic, blob);
         future::ready(())
     }
 
@@ -127,7 +127,7 @@ impl BanyanStore {
     }
 
     pub(crate) fn update_present(&self, stream_id: StreamId, offset: OffsetOrMin) -> anyhow::Result<()> {
-        self.0.present.transform(|present| {
+        self.data.present.transform(|present| {
             let mut present = present.clone();
             present.update(stream_id, offset);
             Ok(Some(present))
@@ -135,7 +135,7 @@ impl BanyanStore {
     }
 
     pub(crate) fn update_highest_seen(&self, stream_id: StreamId, offset: OffsetOrMin) -> anyhow::Result<()> {
-        self.0.highest_seen.transform(|highest_seen| {
+        self.data.highest_seen.transform(|highest_seen| {
             Ok(if highest_seen.offset(stream_id) < offset {
                 let mut highest_seen = highest_seen.clone();
                 highest_seen.update(stream_id, offset);
@@ -165,7 +165,7 @@ impl EventStoreConsumerAccess for BanyanStore {
             .maps
             .own_streams
             .keys()
-            .map(|x| self.0.node_id.stream(*x))
+            .map(|x| self.data.node_id.stream(*x))
             .collect()
     }
 
@@ -314,7 +314,7 @@ pub trait Present: Clone + Send + Unpin + Sync + 'static {
 
 impl Present for BanyanStore {
     fn stream(&self) -> stream::BoxStream<'static, OffsetMapOrMax> {
-        self.0.present.new_observer().boxed()
+        self.data.present.new_observer().boxed()
     }
 }
 
@@ -327,6 +327,6 @@ pub trait HighestSeen: Clone + Send + Unpin + Sync + 'static {
 
 impl HighestSeen for BanyanStore {
     fn stream(&self) -> stream::BoxStream<'static, OffsetMapOrMax> {
-        self.0.highest_seen.new_observer().boxed()
+        self.data.highest_seen.new_observer().boxed()
     }
 }

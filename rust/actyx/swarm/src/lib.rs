@@ -130,11 +130,12 @@ impl PartialEq for SwarmConfig {
 
 /// Stream manager.
 #[derive(Clone)]
-pub struct BanyanStore(Arc<BanyanStoreData>);
-
-/// All data of the banyan store, both immutable and internally mutable parts and mutable parts
+pub struct BanyanStore {
+    data: Arc<BanyanStoreData>,
+    state: Arc<Mutex<BanyanStoreState>>,
+}
+/// All immutable or internally mutable parts of the banyan store
 struct BanyanStoreData {
-    state: Mutex<BanyanStoreState>,
     gossip_v2: v2::GossipV2,
     forest: Forest,
     ipfs: Ipfs,
@@ -217,8 +218,9 @@ impl Drop for BanyanStoreState {
 struct BanyanStoreGuard<'a> {
     /// the guard for the mutex
     guard: MutexGuard<'a, BanyanStoreState>,
-    /// access to the state, rarely needed
     data: Arc<BanyanStoreData>,
+    /// access to the state, here be dragons!
+    state: Arc<Mutex<BanyanStoreState>>,
 }
 
 impl<'a> Deref for BanyanStoreGuard<'a> {
@@ -235,15 +237,21 @@ impl<'a> DerefMut for BanyanStoreGuard<'a> {
 }
 
 impl<'a> BanyanStoreGuard<'a> {
-
     fn outer(&self) -> BanyanStore {
-        BanyanStore(self.data.clone())
+        BanyanStore {
+            data: self.data.clone(),
+            state: self.state.clone(),
+        }
     }
 
     fn node_id(&self) -> NodeId {
         self.data.node_id
     }
-    
+
+    fn ipfs(&self) -> &Ipfs {
+        &self.data.ipfs
+    }
+
     fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Arc<OwnStreamInner> {
         self.maps.own_streams.get(&stream_nr).cloned().unwrap_or_else(|| {
             tracing::debug!("creating new own stream {}", stream_nr);
@@ -273,13 +281,52 @@ impl<'a> BanyanStoreGuard<'a> {
             let state = Arc::new(ReplicatedStreamInner::new(forest));
             remote_node.streams.insert(stream_nr, state.clone());
             let store = self.outer();
-            self.spawn_task(
-                "careful_ingestion",
-                store.careful_ingestion(stream_id, state.clone()),
-            );
+            self.spawn_task("careful_ingestion", store.careful_ingestion(stream_id, state.clone()));
             tracing::debug!("publish new stream_id {}", stream_id);
             self.maps.publish_new_stream_id(stream_id);
             state
+        }
+    }
+
+    fn load_known_streams(&mut self) -> Result<()> {
+        let known_streams = self.index_store.get_observed_streams()?;
+        for stream_id in known_streams {
+            tracing::debug!("Trying to load tree for {}", stream_id);
+            if let Some(cid) = self.ipfs().resolve(StreamAlias::from(stream_id))? {
+                let root = cid.try_into()?;
+                let tree = self.data.forest.load_tree(root)?;
+                self.update_present(stream_id, tree.offset())?;
+                if stream_id.node_id() == self.node_id() {
+                    self.get_or_create_own_stream(stream_id.stream_nr()).set_latest(tree);
+                } else {
+                    self.get_or_create_replicated_stream(stream_id).set_latest(tree);
+                }
+            } else {
+                tracing::warn!("No alias found for StreamId \"{}\"", stream_id);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn update_present(&self, stream_id: StreamId, offset: OffsetOrMin) -> anyhow::Result<()> {
+        self.data.present.transform(|present| {
+            let mut present = present.clone();
+            present.update(stream_id, offset);
+            Ok(Some(present))
+        })
+    }
+
+    fn has_stream(&self, stream_id: StreamId) -> bool {
+        let me = stream_id.node_id() == self.node_id();
+        if me {
+            self.maps.own_streams.contains_key(&stream_id.stream_nr())
+        } else {
+            self.maps
+                .remote_nodes
+                .get(&stream_id.node_id())
+                .map(|node| node.streams.contains_key(&stream_id.stream_nr()))
+                .unwrap_or_default()
         }
     }
 }
@@ -368,24 +415,26 @@ impl BanyanStore {
             ForestConfig::debug(),
         );
         let gossip_v2 = v2::GossipV2::new(ipfs.clone(), node_id, cfg.topic.clone());
-        let banyan = Self(Arc::new(BanyanStoreData {
-            node_id,
-            ipfs,
-            gossip_v2,
-            forest,
-            lamport: Default::default(),
-            present: Default::default(),
-            highest_seen: Default::default(),
-            state: Mutex::new(BanyanStoreState {
+        let banyan = Self {
+            data: Arc::new(BanyanStoreData {
+                node_id,
+                ipfs,
+                gossip_v2,
+                forest,
+                lamport: Default::default(),
+                present: Default::default(),
+                highest_seen: Default::default(),
+            }),
+            state: Arc::new(Mutex::new(BanyanStoreState {
                 index_store,
                 maps: Default::default(),
                 tasks: Default::default(),
-            }),
-        }));
+            })),
+        };
         banyan.load_known_streams()?;
         banyan.spawn_task(
             "v2_gossip_ingest",
-            banyan.0.gossip_v2.ingest(banyan.clone(), cfg.topic.clone())?,
+            banyan.data.gossip_v2.ingest(banyan.clone(), cfg.topic.clone())?,
         );
         banyan.spawn_task("compaction", banyan.clone().compaction_loop(Duration::from_secs(60)));
         banyan.spawn_task("v1_gossip_publish", banyan.clone().v1_gossip_publish(cfg.topic.clone()));
@@ -463,42 +512,25 @@ impl BanyanStore {
     }
 
     fn lock(&self) -> BanyanStoreGuard<'_> {
-        let guard = self.0.state.lock();
         BanyanStoreGuard {
-            guard,
-            data: self.0.clone(),
+            data: self.data.clone(),
+            state: self.state.clone(),
+            guard: self.state.lock(),
         }
     }
 
     fn load_known_streams(&self) -> Result<()> {
-        let known_streams = self.lock().index_store.get_observed_streams()?;
-        for stream_id in known_streams {
-            tracing::debug!("Trying to load tree for {}", stream_id);
-            if let Some(cid) = self.ipfs().resolve(StreamAlias::from(stream_id))? {
-                let root = cid.try_into()?;
-                let tree = self.0.forest.load_tree(root)?;
-                self.update_present(stream_id, tree.offset())?;
-                if stream_id.node_id() == self.node_id() {
-                    self.get_or_create_own_stream(stream_id.stream_nr()).set_latest(tree);
-                } else {
-                    self.get_or_create_replicated_stream(stream_id).set_latest(tree);
-                }
-            } else {
-                tracing::warn!("No alias found for StreamId \"{}\"", stream_id);
-            }
-        }
-
-        Ok(())
+        self.lock().load_known_streams()
     }
 
     /// Returns the [`NodeId`].
     pub fn node_id(&self) -> NodeId {
-        self.0.node_id
+        self.data.node_id
     }
 
     /// Returns the underlying [`Ipfs`].
     pub fn ipfs(&self) -> &Ipfs {
-        &self.0.ipfs
+        &self.data.ipfs
     }
 
     pub fn cat(&self, cid: Cid, path: VecDeque<String>) -> impl Stream<Item = Result<Vec<u8>>> + Send {
@@ -521,7 +553,7 @@ impl BanyanStore {
     pub fn stream_known_streams(&self) -> impl Stream<Item = StreamId> + Send {
         let mut state = self.lock();
         let (s, r) = mpsc::unbounded();
-        for stream_id in state.maps.current_stream_ids(self.0.node_id) {
+        for stream_id in state.maps.current_stream_ids(self.node_id()) {
             let _ = s.unbounded_send(stream_id);
         }
         state.maps.known_streams.push(s);
@@ -575,7 +607,7 @@ impl BanyanStore {
         let mut state = self.lock();
         state.maps.own_streams.get(&stream_nr).cloned().unwrap_or_else(|| {
             tracing::debug!("creating new own stream {}", stream_nr);
-            let forest = self.0.forest.clone();
+            let forest = self.data.forest.clone();
             let stream_id = self.node_id().stream(stream_nr);
             // TODO: Maybe this fn should be fallible
             let _ = state.index_store.add_stream(stream_id);
@@ -598,7 +630,7 @@ impl BanyanStore {
             state
         } else {
             tracing::debug!("creating new replicated stream {}", stream_id);
-            let forest = self.0.forest.clone();
+            let forest = self.data.forest.clone();
             let state = Arc::new(ReplicatedStreamInner::new(forest));
             remote_node.streams.insert(stream_nr, state.clone());
             inner.spawn_task(
@@ -620,7 +652,7 @@ impl BanyanStore {
         async move {
             let stream = this.get_or_create_own_stream(stream_nr);
             let lock = stream.sequencer.lock().await;
-            let writer = this.0.forest.store().write()?;
+            let writer = this.data.forest.store().write()?;
             tracing::debug!("starting write transaction on stream {}", stream_nr);
             let txn = Transaction::new(stream.forest.clone(), writer);
             let curr = stream.latest();
@@ -645,7 +677,9 @@ impl BanyanStore {
                 stream.set_latest(tree);
                 let blocks = txn.into_writer().into_written();
                 // publish new blocks and root
-                this.0.gossip_v2.publish(stream_nr, root.expect("not None"), blocks)?;
+                this.data
+                    .gossip_v2
+                    .publish(stream_nr, root.expect("not None"), blocks)?;
             }
             tracing::debug!("ended write transaction on stream {}", stream_nr);
             drop(lock);
@@ -691,7 +725,7 @@ impl BanyanStore {
         // tokio::time::delay_for(Duration::from_millis(10)).await;
         tracing::debug!("starting to sync {} to {}", stream_id, root);
         let cid = Cid::from(root);
-        let ipfs = &self.0.ipfs;
+        let ipfs = &self.data.ipfs;
         let stream = self.get_or_create_replicated_stream(stream_id);
         let validated_lamport = stream.validated().last_lamport();
         // temporarily pin the new root
@@ -737,11 +771,7 @@ impl BanyanStore {
         tracing::debug!("updating alias {}", root);
         // assign the new root as validated
         ipfs.alias(&StreamAlias::from(stream_id), Some(&cid))?;
-        self.0
-            .state
-            .lock()
-            .index_store
-            .received_lamport(tree.last_lamport().into())?;
+        self.lock().index_store.received_lamport(tree.last_lamport().into())?;
         tracing::debug!("sync_one complete {} => {}", stream_id, tree.offset());
         let offset = tree.offset();
         stream.set_latest(tree);
@@ -752,18 +782,7 @@ impl BanyanStore {
     }
 
     fn has_stream(&self, stream_id: StreamId) -> bool {
-        let me = stream_id.node_id() == self.node_id();
-        let inner = self.lock();
-        if me {
-            inner.maps.own_streams.contains_key(&stream_id.stream_nr())
-        } else {
-            inner
-                .maps
-                .remote_nodes
-                .get(&stream_id.node_id())
-                .map(|node| node.streams.contains_key(&stream_id.stream_nr()))
-                .unwrap_or_default()
-        }
+        self.lock().has_stream(stream_id)
     }
 
     /// stream of latest updates from either gossip (for replicated streams) or internal updates
@@ -772,7 +791,7 @@ impl BanyanStore {
     fn latest_stream(&self, stream_id: StreamId) -> impl Stream<Item = (LamportTimestamp, Offset)> {
         if stream_id.node_id() == self.node_id() {
             let stream = self.get_or_create_own_stream(stream_id.stream_nr());
-            self.0
+            self.data
                 .lamport
                 .new_observer()
                 .filter_map(move |lamport| future::ready(stream.offset().map(|offset| (lamport, offset))))
