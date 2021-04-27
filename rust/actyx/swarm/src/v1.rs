@@ -75,8 +75,8 @@ impl BanyanStore {
 
     pub(crate) fn publish_root_map(&self, topic: &str) -> impl Future<Output = ()> {
         let node = self.node_id();
-        let lamport = LamportTimestamp::from(self.0.state.lock().index_store.lamport());
-        let roots = self.0.state.lock().maps.root_map(node);
+        let lamport = LamportTimestamp::from(self.lock().index_store.lamport());
+        let roots = self.lock().maps.root_map(node);
         let timestamp = Timestamp::now();
         let msg = PublishHeartbeat {
             node,
@@ -91,7 +91,7 @@ impl BanyanStore {
 
     async fn persist0(self, events: Vec<(TagSet, Payload)>) -> Result<Vec<PersistenceMeta>> {
         let n = events.len() as u32;
-        let last_lamport = self.0.state.lock().index_store.increase_lamport(n)?;
+        let last_lamport = self.lock().index_store.increase_lamport(n)?;
         let min_lamport = last_lamport - (n as u64) + 1;
         let stream_nr = StreamNr::from(0); // TODO
         let timestamp = Timestamp::now();
@@ -160,7 +160,7 @@ impl EventStore for BanyanStore {
 
 impl EventStoreConsumerAccess for BanyanStore {
     fn local_stream_ids(&self) -> BTreeSet<StreamId> {
-        let inner = self.0.state.lock();
+        let inner = self.lock();
         inner
             .maps
             .own_streams

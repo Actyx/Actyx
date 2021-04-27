@@ -50,7 +50,7 @@ use std::{
     convert::{TryFrom, TryInto},
     fmt::Debug,
     num::NonZeroU32,
-    ops::RangeInclusive,
+    ops::{Deref, DerefMut, RangeInclusive},
     path::PathBuf,
     sync::Arc,
     time::Duration,
@@ -219,6 +219,19 @@ struct BanyanStoreGuard<'a> {
     guard: MutexGuard<'a, BanyanStoreState>,
     /// access to the state, rarely needed
     data: Arc<BanyanStoreData>,
+}
+
+impl<'a> Deref for BanyanStoreGuard<'a> {
+    type Target = BanyanStoreState;
+    fn deref(&self) -> &BanyanStoreState {
+        self.guard.deref()
+    }
+}
+
+impl<'a> DerefMut for BanyanStoreGuard<'a> {
+    fn deref_mut(&mut self) -> &mut BanyanStoreState {
+        self.guard.deref_mut()
+    }
 }
 
 impl BanyanStoreState {
@@ -408,7 +421,7 @@ impl BanyanStore {
     }
 
     fn load_known_streams(&self) -> Result<()> {
-        let known_streams = self.0.state.lock().index_store.get_observed_streams()?;
+        let known_streams = self.lock().index_store.get_observed_streams()?;
         for stream_id in known_streams {
             tracing::debug!("Trying to load tree for {}", stream_id);
             if let Some(cid) = self.ipfs().resolve(StreamAlias::from(stream_id))? {
@@ -445,7 +458,7 @@ impl BanyanStore {
     /// Append events to a stream, publishing the new data.
     pub async fn append(&self, stream_nr: StreamNr, events: Vec<(TagSet, Event)>) -> Result<Option<Link>> {
         tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
-        let lamport = self.0.state.lock().index_store.increment_lamport()?;
+        let lamport = self.lock().index_store.increment_lamport()?;
         let timestamp = Timestamp::now();
         let events = events
             .into_iter()
@@ -456,7 +469,7 @@ impl BanyanStore {
 
     /// Returns a [`Stream`] of known [`StreamId`].
     pub fn stream_known_streams(&self) -> impl Stream<Item = StreamId> + Send {
-        let mut state = self.0.state.lock();
+        let mut state = self.lock();
         let (s, r) = mpsc::unbounded();
         for stream_id in state.maps.current_stream_ids(self.0.node_id) {
             let _ = s.unbounded_send(stream_id);
@@ -509,7 +522,7 @@ impl BanyanStore {
     }
 
     fn get_or_create_own_stream(&self, stream_nr: StreamNr) -> Arc<OwnStreamInner> {
-        let mut state = self.0.state.lock();
+        let mut state = self.lock();
         state.maps.own_streams.get(&stream_nr).cloned().unwrap_or_else(|| {
             tracing::debug!("creating new own stream {}", stream_nr);
             let forest = self.0.forest.clone();
@@ -526,7 +539,7 @@ impl BanyanStore {
 
     fn get_or_create_replicated_stream(&self, stream_id: StreamId) -> Arc<ReplicatedStreamInner> {
         debug_assert!(self.node_id() != stream_id.node_id());
-        let mut inner = self.0.state.lock();
+        let mut inner = self.lock();
         let _ = inner.index_store.add_stream(stream_id);
         let node_id = stream_id.node_id();
         let stream_nr = stream_id.stream_nr();
@@ -607,7 +620,7 @@ impl BanyanStore {
     }
 
     async fn compact_once(&self) -> Result<()> {
-        let stream_ids = self.0.state.lock().maps.own_streams.keys().cloned().collect::<Vec<_>>();
+        let stream_ids = self.lock().maps.own_streams.keys().cloned().collect::<Vec<_>>();
         for stream_id in stream_ids {
             tracing::debug!("compacting stream {}", stream_id);
             self.pack(stream_id).await?;
@@ -690,7 +703,7 @@ impl BanyanStore {
 
     fn has_stream(&self, stream_id: StreamId) -> bool {
         let me = stream_id.node_id() == self.node_id();
-        let inner = self.0.state.lock();
+        let inner = self.lock();
         if me {
             inner.maps.own_streams.contains_key(&stream_id.stream_nr())
         } else {
@@ -737,7 +750,7 @@ impl BanyanStore {
     }
 
     pub fn spawn_task(&self, name: &'static str, task: impl Future<Output = ()> + Send + 'static) {
-        self.0.state.lock().spawn_task(name, task)
+        self.lock().spawn_task(name, task)
     }
 }
 
