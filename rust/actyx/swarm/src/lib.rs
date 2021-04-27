@@ -604,43 +604,11 @@ impl BanyanStore {
     }
 
     fn get_or_create_own_stream(&self, stream_nr: StreamNr) -> Arc<OwnStreamInner> {
-        let mut state = self.lock();
-        state.maps.own_streams.get(&stream_nr).cloned().unwrap_or_else(|| {
-            tracing::debug!("creating new own stream {}", stream_nr);
-            let forest = self.data.forest.clone();
-            let stream_id = self.node_id().stream(stream_nr);
-            // TODO: Maybe this fn should be fallible
-            let _ = state.index_store.add_stream(stream_id);
-            tracing::debug!("publish new stream_id {}", stream_id);
-            state.maps.publish_new_stream_id(stream_id);
-            let stream = Arc::new(OwnStreamInner::new(forest));
-            state.maps.own_streams.insert(stream_nr, stream.clone());
-            stream
-        })
+        self.lock().get_or_create_own_stream(stream_nr)
     }
 
     fn get_or_create_replicated_stream(&self, stream_id: StreamId) -> Arc<ReplicatedStreamInner> {
-        debug_assert!(self.node_id() != stream_id.node_id());
-        let mut inner = self.lock();
-        let _ = inner.index_store.add_stream(stream_id);
-        let node_id = stream_id.node_id();
-        let stream_nr = stream_id.stream_nr();
-        let remote_node = inner.maps.get_or_create_remote_node(node_id);
-        if let Some(state) = remote_node.streams.get(&stream_nr).cloned() {
-            state
-        } else {
-            tracing::debug!("creating new replicated stream {}", stream_id);
-            let forest = self.data.forest.clone();
-            let state = Arc::new(ReplicatedStreamInner::new(forest));
-            remote_node.streams.insert(stream_nr, state.clone());
-            inner.spawn_task(
-                "careful_ingestion",
-                self.clone().careful_ingestion(stream_id, state.clone()),
-            );
-            tracing::debug!("publish new stream_id {}", stream_id);
-            inner.maps.publish_new_stream_id(stream_id);
-            state
-        }
+        self.lock().get_or_create_replicated_stream(stream_id)
     }
 
     fn transform_stream(
