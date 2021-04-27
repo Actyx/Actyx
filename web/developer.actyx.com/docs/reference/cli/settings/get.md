@@ -34,3 +34,7 @@ ax settings get --local com.actyx 10.2.3.23
 # Just get the displayName setting
 ax settings get --local com.actyx/admin/displayName 10.2.3.23
 ```
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

@@ -51,4 +51,6 @@ cd ../../../apps-packages
 ax apps package ../projects/actyx-os/apps/example-app-1
 ```
 
-:::
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

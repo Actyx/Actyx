@@ -59,3 +59,7 @@ ax --json apps ls --local 10.2.3.23
 
 Please keep in mind that **state**, **settings** and **license** in the `ax apps ls` command **only** refer to the apps deployed on a node. If you want more detailed information about the node itself, you need to use [`ax nodes ls`](../nodes/ls).
 :::
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

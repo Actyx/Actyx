@@ -44,7 +44,7 @@ const makeChatRoomFish = (e: ChatRoomMsg) => ({
   fishId: FishId.of('chat room', e.channel, 1),
   where: chatMsgTag.withId(e.channel),
   onEvent: (state, event) => state.push(event.message),
-  initialState: []
+  initialState: [],
 })
 
 pond.observeAll(
@@ -52,7 +52,7 @@ pond.observeAll(
   makeChatRoomFish,
   // We will only observe chat rooms that had a message posted within the last 2 days
   { expireAfterSeed: Milliseconds.fromDays(2) },
-  callback
+  callback,
 )
 ```
 
@@ -74,12 +74,12 @@ The seed event is still the logical first event: From it, the whole Fish is crea
 By default, the set of selected Fish will be reconstructed with every call to `observeAll()`.
 If you wish for the aggregation to keep on running in the background, so that later invocations are faster, there is the `caching` option:
 
-```ts  
+```ts
 pond.observeAll(
   chatMsgTag,
   makeChatRoomFish,
   { caching: Caching.InProcess('all-chat-rooms') },
-  callback
+  callback,
 )
 ```
 
@@ -92,3 +92,7 @@ All Fish created by `makeFish` pass through the normal Pond-internal cache of Fi
 As such, if a Fish is created that has the same `fishId` as one previously observed
 – even if it was observed via `observe` or `observeOne` –
 then the previously created Fish will be used.
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

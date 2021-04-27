@@ -2,10 +2,6 @@
 title: The apps
 ---
 
-import Tabs from '@theme/Tabs'
-import TabItem from '@theme/TabItem'
-import useBaseUrl from '@docusaurus/useBaseUrl'
-
 In this section, you will explore the implementation of the apps. The first part will briefly explain the overall project structure, and the second and third section will focus on the fishes used by the apps as well as the apps themselves.
 
 :::info Need help?
@@ -77,6 +73,8 @@ In the following sections, we will take a closer look on how the fishes that tra
 
 Open `machineFish.ts`. The following illustration should make it easier to understand `machineFish.ts`. It represents the state- and event types of the machine fish responsible for the state of a single machine:
 
+import useBaseUrl from '@docusaurus/useBaseUrl'
+
 <img src={useBaseUrl('images/tutorials/dx1-tutorial/machinefish.png')} />
 
 ### Order fish
@@ -113,3 +111,7 @@ The PLC used for this example is a [Wago PLC](https://www.wago.com/global/automa
 :::
 
 While this app is integrating with the above Wago PLC, the underlying logic is model-independent and would be similar for any other machine integration.
+
+import { NPS } from '../../../src/components/NPS'
+
+<NPS />
