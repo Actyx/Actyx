@@ -18,7 +18,7 @@ An Activity can be marked as Completed: All work done, no further work required.
 enum EventType {
   WorkStarted = 'WorkStarted',
   WorkStopped = 'WorkStopped',
-  Completed = 'Completed'
+  Completed = 'Completed',
 }
 
 type WorkStarted = {
@@ -71,7 +71,7 @@ const onEvent = (state, event) => {
 
 The important point is: _Even if the activity is Completed, WorkStarted events are still handled normally._
 
-Of course the application wants to avoid that users work on completed activities.  But an event is
+Of course the application wants to avoid that users work on completed activities. But an event is
 something that has already happened! An event is not about intention; it’s already _truth_. Ignoring
 the event does not accomplish anything, it does not stop the user from working on the activity.
 
@@ -85,3 +85,7 @@ Hence it is crucial that the application still offers the "Stop Working" button 
 that are working on completed activities. Or one might consider a more flashy alternative: A
 warning box popping up, saying "Please stop work on already completed activity! (tap HERE when you have
 stopped)"
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

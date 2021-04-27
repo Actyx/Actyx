@@ -31,3 +31,7 @@ Here is an example of using the `ax apps undeploy` command:
 # Undeploy app with ID com.example.app from node at 10.2.3.23
 ax apps undeploy --local com.example.app 10.2.3.23
 ```
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

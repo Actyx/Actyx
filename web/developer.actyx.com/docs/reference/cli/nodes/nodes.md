@@ -5,6 +5,10 @@ hide_table_of_contents: true
 
 ## Manage ActyxOS nodes
 
-Command                      | Functionality |
------------------------------|------------|
-[ax nodes ls](ls)            | Show node info and status |
+| Command           | Functionality             |
+| ----------------- | ------------------------- |
+| [ax nodes ls](ls) | Show node info and status |
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

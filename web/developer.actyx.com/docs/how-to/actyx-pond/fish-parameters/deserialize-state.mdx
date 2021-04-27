@@ -16,7 +16,7 @@ to implement `deserializeState`. The process is the following:
 - When transforming back from JSON, the Pond calls `deserializeState(JSON.parse(jsonString))`. So
   the input to `deserializeState` is the object returned by `toJSON`, and `deserializeState` must
   convert that back into the proper state type.
-  
+
 ## An Example with immutable-js
 
 [immutable-js](https://github.com/immutable-js/immutable-js) is a great library for performant
@@ -49,3 +49,7 @@ const fish = {
   deserializeState,
 }
 ```
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

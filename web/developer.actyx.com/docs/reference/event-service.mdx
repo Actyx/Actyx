@@ -8,9 +8,6 @@ description: Reference for the Actyx Event Service HTTP API
 image: /images/defaults/default.svg
 ---
 
-import Tabs from '@theme/Tabs'
-import TabItem from '@theme/TabItem'
-
 This is the reference documentation for the ActyxOS **Event API**.
 
 The Event API provides local access to the Event Service, allowing you to
@@ -457,6 +454,9 @@ echo '
 
 The following examples show how you could interact with the event services from different languages and environments.
 
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
 <Tabs
   groupId="lang"
   defaultValue={"nodejs"}
@@ -668,3 +668,7 @@ public class Application
 </TabItem>
 </Tabs>
 
+
+import { NPS } from '../../src/components/NPS'
+
+<NPS />

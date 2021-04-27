@@ -40,18 +40,18 @@ const lastMsgBySender = (sender: string): Fish<string, ChatRoomEvent> => ({
 })
 
 const sendChatMessage = (sender: string, message: string) => {
-
-  const checkAndEmit: StateEffect<string, ChatRoomEvent> =
-    (state, enqueue) => (state !== message) && enqueue(
-        Tag('sender').withId(sender).and(Tag('chatRoom').withId('my-room')),
-        { type: 'messageAdded', message }
-    )
+  const checkAndEmit: StateEffect<string, ChatRoomEvent> = (state, enqueue) =>
+    state !== message &&
+    enqueue(Tag('sender').withId(sender).and(Tag('chatRoom').withId('my-room')), {
+      type: 'messageAdded',
+      message,
+    })
 
   pond.run(lastMsgBySender(sender), checkAndEmit)
 }
 ```
 
-It must be noted that the validation is only guaranteed *locally*. This makes sense, because one user (sender) will probably not be using several devices at the same time.
+It must be noted that the validation is only guaranteed _locally_. This makes sense, because one user (sender) will probably not be using several devices at the same time.
 Still, if they were, and those devices were disconnected from each other for a while, then this sender may sneak in the same message multiple times in a row.
 
 The reason for this is as simple as it is fundamental: each fish can make decisions only based on the incomplete knowledge that it has.
@@ -88,3 +88,7 @@ Distributed systems research shows that it is impossible to make this consistent
 
 With this, we have discussed all concepts that are needed to master the distributed side of apps on ActyxOS with Actyx Pond.
 When creating multiple communicating fishes or evolving an existing app, the event schema needs to be kept compatible, thus we take a closer look at the type parameters of a `Fish` in the next section.
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

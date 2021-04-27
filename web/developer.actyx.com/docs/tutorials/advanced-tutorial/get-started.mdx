@@ -2,11 +2,6 @@
 title: Get started
 ---
 
-import Tabs from '@theme/Tabs'
-import TabItem from '@theme/TabItem'
-import useBaseUrl from '@docusaurus/useBaseUrl'
-import { DownloadLink } from '../../../src/components/DownloadLink.tsx'
-
 In this chapter, you will run all apps in development mode and interact with them.
 
 To get the sample project, you can either:
@@ -18,6 +13,9 @@ git clone https://github.com/Actyx/DemoMachineKit.git
 ```
 
 Alternatively, you can download the repository as a Zip file, unzip it, and open it in your IDE.
+
+import useBaseUrl from '@docusaurus/useBaseUrl'
+import { DownloadLink } from '../../../src/components/DownloadLink.tsx'
 
 <DownloadLink cta="Download" link="https://github.com/Actyx/DemoMachineKit/archive/master.zip" />
 
@@ -70,3 +68,7 @@ After placing the order, take another look at the dashboard – you should now 
 As the Wago Connector App running on your development machine is not connected to an actual Wago PLC, your machine will stay in the state `disabled`, and your order will stay in the state `idle`. If your Wago Connector App was connected to an actual Wago PLC, it would show its state and your order would change into a different state (such as `running` or `interrupted`), depending on the data it receives from the Wago PLC.
 
 Now that you have a basic understanding of the use case and how the apps work, we will take a closer look at the business logic in the next section.
+
+import { NPS } from '../../../src/components/NPS'
+
+<NPS />
