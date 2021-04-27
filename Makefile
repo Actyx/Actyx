@@ -44,6 +44,7 @@ all-windows: $(patsubst %,dist/bin/%,$(all-WINDOWS))
 all-macos: $(patsubst %,dist/bin/%,$(all-MACOS))
 
 all-js: \
+	dist/js/sdk \
 	dist/js/pond \
 	dist/js/os-sdk
 
@@ -192,6 +193,15 @@ validate-js-os-sdk:
 		npm install && \
 		npm run test && \
 		npm run build
+
+# make js sdk
+# this is running directly on the host container, so it needs to have nvm installed
+dist/js/sdk:
+	mkdir -p $@
+	cd js/sdk && source ~/.nvm/nvm.sh && nvm install && \
+		npm install && \
+		npm run build:prod && \
+		mv `npm pack` ../../$@/
 
 # make js pond
 # this is running directly on the host container, so it needs to have nvm installed
