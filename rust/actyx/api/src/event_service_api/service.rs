@@ -9,7 +9,6 @@ use actyxos_sdk::{
     },
     Event, EventKey, Metadata, OffsetMap, Payload,
 };
-use anyhow::Result;
 use async_trait::async_trait;
 use ax_futures_util::prelude::*;
 use futures::{
@@ -44,13 +43,13 @@ impl EventService {
 
 #[async_trait]
 impl service::EventService for EventService {
-    async fn node_id(&self) -> Result<NodeIdResponse> {
+    async fn node_id(&self) -> anyhow::Result<NodeIdResponse> {
         Ok(NodeIdResponse {
             node_id: self.store.node_id(),
         })
     }
 
-    async fn offsets(&self) -> Result<OffsetMap> {
+    async fn offsets(&self) -> anyhow::Result<OffsetMap> {
         let response = self
             .store
             .stream()
@@ -61,7 +60,7 @@ impl service::EventService for EventService {
         Ok(response)
     }
 
-    async fn publish(&self, request: PublishRequest) -> Result<PublishResponse> {
+    async fn publish(&self, request: PublishRequest) -> anyhow::Result<PublishResponse> {
         let events = request
             .data
             .into_iter()
@@ -81,11 +80,12 @@ impl service::EventService for EventService {
                     })
                     .collect(),
             })
-            .await?;
+            .await
+            .map_err(Error::StoreError)?;
         Ok(response)
     }
 
-    async fn query(&self, request: QueryRequest) -> Result<BoxStream<'static, QueryResponse>> {
+    async fn query(&self, request: QueryRequest) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
         let from_offsets_excluding: OffsetMapOrMax = request.lower_bound.unwrap_or_default().into();
         let to_offsets_including: OffsetMapOrMax = request.upper_bound.into();
         let selection = EventSelection {
@@ -98,20 +98,22 @@ impl service::EventService for EventService {
             Order::Desc => self.store.stream_events_backward(selection),
             Order::StreamAsc => self.store.stream_events_source_ordered(selection),
         }
-        .await?
+        .await
+        .map_err(Error::ConsumerAccesError)?
         .flat_map(mk_feed(request.query))
         .map(QueryResponse::Event);
         Ok(response.boxed())
     }
 
-    async fn subscribe(&self, request: SubscribeRequest) -> Result<BoxStream<'static, SubscribeResponse>> {
+    async fn subscribe(&self, request: SubscribeRequest) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
         let tag_subscriptions: TagSubscriptions = (&request.query).into();
         let from_offsets_excluding: OffsetMapOrMax = request.offsets.unwrap_or_default().into();
         let selection = EventSelection::after(tag_subscriptions, from_offsets_excluding);
         let response = self
             .store
             .stream_events_source_ordered(selection)
-            .await?
+            .await
+            .map_err(Error::ConsumerAccesError)?
             .flat_map(mk_feed(request.query))
             .map(SubscribeResponse::Event);
 
@@ -121,12 +123,18 @@ impl service::EventService for EventService {
     async fn subscribe_monotonic(
         &self,
         request: SubscribeMonotonicRequest,
-    ) -> Result<BoxStream<'static, SubscribeMonotonicResponse>> {
+    ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
         let tag_subscriptions: TagSubscriptions = (&request.query).into();
         let initial_latest = if let StartFrom::Offsets(offsets) = &request.from {
             let to_offsets_including = OffsetMapOrMax::from(offsets.clone());
             let selection = EventSelection::upto(tag_subscriptions.clone(), to_offsets_including);
-            let (youngest_opt, _) = self.store.stream_events_backward(selection).await?.into_future().await;
+            let (youngest_opt, _) = self
+                .store
+                .stream_events_backward(selection)
+                .await
+                .map_err(Error::ConsumerAccesError)?
+                .into_future()
+                .await;
             if let Some(youngest) = youngest_opt {
                 youngest.key
             } else {
@@ -142,7 +150,8 @@ impl service::EventService for EventService {
         let response = self
             .store
             .stream_events_source_ordered(selection)
-            .await?
+            .await
+            .map_err(Error::ConsumerAccesError)?
             .flat_map({
                 let mut latest = initial_latest;
                 move |e| {
