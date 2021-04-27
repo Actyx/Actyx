@@ -46,7 +46,7 @@ use libp2p::{
 use maplit::btreemap;
 use parking_lot::{Mutex, MutexGuard};
 use std::{
-    collections::{BTreeMap, VecDeque},
+    collections::{BTreeMap, BTreeSet, VecDeque},
     convert::{TryFrom, TryInto},
     fmt::Debug,
     num::NonZeroU32,
@@ -252,6 +252,26 @@ impl<'a> BanyanStoreGuard<'a> {
         &self.data.ipfs
     }
 
+    fn local_stream_nrs(&self) -> Vec<StreamNr> {
+        self.maps.own_streams.keys().cloned().collect::<Vec<_>>()
+    }
+
+    fn local_stream_ids(&self) -> BTreeSet<StreamId> {
+        self.maps
+            .own_streams
+            .keys()
+            .map(|x| self.data.node_id.stream(*x))
+            .collect()
+    }
+
+    fn increment_lamport(&mut self) -> anyhow::Result<u64> {
+        self.index_store.increment_lamport()
+    }
+
+    fn received_lamport(&mut self, lamport: u64) -> anyhow::Result<u64> {
+        self.index_store.received_lamport(lamport)
+    }
+
     fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Arc<OwnStreamInner> {
         self.maps.own_streams.get(&stream_nr).cloned().unwrap_or_else(|| {
             tracing::debug!("creating new own stream {}", stream_nr);
@@ -327,6 +347,39 @@ impl<'a> BanyanStoreGuard<'a> {
                 .get(&stream_id.node_id())
                 .map(|node| node.streams.contains_key(&stream_id.stream_nr()))
                 .unwrap_or_default()
+        }
+    }
+
+    /// stream of latest updates from either gossip (for replicated streams) or internal updates
+    ///
+    /// note that this does not include event updates
+    fn latest_stream(&mut self, stream_id: StreamId) -> impl Stream<Item = (LamportTimestamp, Offset)> {
+        if stream_id.node_id() == self.node_id() {
+            let stream = self.get_or_create_own_stream(stream_id.stream_nr());
+            self.data
+                .lamport
+                .new_observer()
+                .filter_map(move |lamport| future::ready(stream.offset().map(|offset| (lamport, offset))))
+                .left_stream()
+        } else {
+            self.get_or_create_replicated_stream(stream_id)
+                .latest_seen
+                .new_observer()
+                .filter_map(future::ready)
+                .right_stream()
+        }
+    }
+
+    /// Get a stream of trees for a given stream id
+    fn tree_stream(&mut self, stream_id: StreamId) -> (impl Stream<Item = Tree>, Forest) {
+        let me = stream_id.node_id() == self.node_id();
+        if me {
+            let stream_nr = stream_id.stream_nr();
+            let stream = self.get_or_create_own_stream(stream_nr);
+            (stream.tree_stream(), stream.forest.clone())
+        } else {
+            let stream = self.get_or_create_replicated_stream(stream_id);
+            (stream.tree_stream(), stream.forest.clone())
         }
     }
 }
@@ -540,7 +593,7 @@ impl BanyanStore {
     /// Append events to a stream, publishing the new data.
     pub async fn append(&self, stream_nr: StreamNr, events: Vec<(TagSet, Event)>) -> Result<Option<Link>> {
         tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
-        let lamport = self.lock().index_store.increment_lamport()?;
+        let lamport = self.lock().increment_lamport()?;
         let timestamp = Timestamp::now();
         let events = events
             .into_iter()
@@ -672,10 +725,10 @@ impl BanyanStore {
     }
 
     async fn compact_once(&self) -> Result<()> {
-        let stream_ids = self.lock().maps.own_streams.keys().cloned().collect::<Vec<_>>();
-        for stream_id in stream_ids {
-            tracing::debug!("compacting stream {}", stream_id);
-            self.pack(stream_id).await?;
+        let stream_nrs = self.lock().local_stream_nrs();
+        for stream_nr in stream_nrs {
+            tracing::debug!("compacting stream {}", stream_nr);
+            self.pack(stream_nr).await?;
         }
         Ok(())
     }
@@ -739,7 +792,7 @@ impl BanyanStore {
         tracing::debug!("updating alias {}", root);
         // assign the new root as validated
         ipfs.alias(&StreamAlias::from(stream_id), Some(&cid))?;
-        self.lock().index_store.received_lamport(tree.last_lamport().into())?;
+        self.lock().received_lamport(tree.last_lamport().into())?;
         tracing::debug!("sync_one complete {} => {}", stream_id, tree.offset());
         let offset = tree.offset();
         stream.set_latest(tree);
@@ -757,33 +810,12 @@ impl BanyanStore {
     ///
     /// note that this does not include event updates
     fn latest_stream(&self, stream_id: StreamId) -> impl Stream<Item = (LamportTimestamp, Offset)> {
-        if stream_id.node_id() == self.node_id() {
-            let stream = self.get_or_create_own_stream(stream_id.stream_nr());
-            self.data
-                .lamport
-                .new_observer()
-                .filter_map(move |lamport| future::ready(stream.offset().map(|offset| (lamport, offset))))
-                .left_stream()
-        } else {
-            self.get_or_create_replicated_stream(stream_id)
-                .latest_seen
-                .new_observer()
-                .filter_map(future::ready)
-                .right_stream()
-        }
+        self.lock().latest_stream(stream_id)
     }
 
     /// Get a stream of trees for a given stream id
     fn tree_stream(&self, stream_id: StreamId) -> (impl Stream<Item = Tree>, Forest) {
-        let me = stream_id.node_id() == self.node_id();
-        if me {
-            let stream_nr = stream_id.stream_nr();
-            let stream = self.get_or_create_own_stream(stream_nr);
-            (stream.tree_stream(), stream.forest.clone())
-        } else {
-            let stream = self.get_or_create_replicated_stream(stream_id);
-            (stream.tree_stream(), stream.forest.clone())
-        }
+        self.lock().tree_stream(stream_id)
     }
 
     pub fn spawn_task(&self, name: &'static str, task: impl Future<Output = ()> + Send + 'static) {

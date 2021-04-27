@@ -160,13 +160,7 @@ impl EventStore for BanyanStore {
 
 impl EventStoreConsumerAccess for BanyanStore {
     fn local_stream_ids(&self) -> BTreeSet<StreamId> {
-        let inner = self.lock();
-        inner
-            .maps
-            .own_streams
-            .keys()
-            .map(|x| self.data.node_id.stream(*x))
-            .collect()
+        self.lock().local_stream_ids()
     }
 
     fn stream_forward(&self, events: StreamEventSelection, must_exist: bool) -> EventOrHeartbeatStreamOrError {
