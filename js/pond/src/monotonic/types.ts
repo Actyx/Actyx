@@ -1,6 +1,7 @@
+import { EventKey, Timestamp } from '@actyx/sdk'
 import { Option } from 'fp-ts/lib/Option'
 import { Events } from '../eventstore/types'
-import { EventKey, LocalSnapshot, StateWithProvenance, Timestamp } from '../types'
+import { LocalSnapshot, StateWithProvenance } from '../types'
 
 // A local snapshot where the state has already been serialised
 export type SerializedStateSnap = LocalSnapshot<string>

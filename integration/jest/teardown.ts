@@ -16,9 +16,8 @@ const teardown = async (_config: Record<string, unknown>): Promise<void> => {
     console.log(axNodeSetup.key.privateKey)
     console.log('Node list:')
     for (const n of axNodeSetup.nodes) {
-      console.log(`  ${n.name} (${printTarget(n.target)})`)
-      console.log('    console:', n._private.apiConsole)
-      console.log('    event:', n._private.apiEvent)
+      console.log(`    ${n.name} (${printTarget(n.target)})`)
+      console.log('    http api origin:', n._private.httpApiOrigin)
       console.log('    pond:', n._private.apiPond)
     }
     process.stdout.write('\n')

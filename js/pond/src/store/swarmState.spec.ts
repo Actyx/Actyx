@@ -4,9 +4,8 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import { Offset, OffsetMap } from '@actyx/sdk'
 import { Observable } from 'rxjs'
-import { OffsetMap } from '../eventstore'
-import { Offset } from '../types'
 import { swarmState } from './swarmState'
 
 describe('swarmState', () => {

@@ -53,7 +53,7 @@ const prepare = t.union([createEC2, useLocal])
 const install = t.union([
   // deploy binaries or images
   t.keyof({ windows: 0, linux: 0, docker: 0 }),
-  // just use a running ActyxOS node
+  // just use a running Actyx node
   t.type({
     host: fromNullable(t.string)('localhost'),
     console: t.number,

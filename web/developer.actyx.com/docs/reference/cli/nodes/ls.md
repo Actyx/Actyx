@@ -24,7 +24,7 @@ If the node is reachable, the output of `ax nodes ls` will show you its status. 
 
 - Host unreachable
 - ActyxOS unreachable (this means the host was reachable but the TCP connection reset)
-:::
+  :::
 
 See the following examples of using the `ax nodes ls` command:
 
@@ -70,5 +70,9 @@ ax --json nodes ls --local 10.2.3.23 10.2.3.24 10.2.3.25
 
 :::info `ax nodes ls` only returns the state of the node
 
-Please keep in mind that **state**, **settings** and **license** in the  `ax nodes ls` command **only** refer to the node itself. If you want more detailed information about the state of the apps on a node, you need to use [`ax apps ls`](#apps-ls).
+Please keep in mind that **state**, **settings** and **license** in the `ax nodes ls` command **only** refer to the node itself. If you want more detailed information about the state of the apps on a node, you need to use [`ax apps ls`](#apps-ls).
 :::
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

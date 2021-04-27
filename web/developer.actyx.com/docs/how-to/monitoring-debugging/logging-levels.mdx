@@ -1,0 +1,61 @@
+---
+title: Change logging levels
+id: logging-levels
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+The logging level of a node is configured in the node settings. Actyx will emit logs at the configured and upper levels. You can configure the following levels:
+
+- `TRACE`
+- `DEBUG`
+- `WARN`
+- `INFO`
+- `ERROR`
+- `FATAL`
+
+By default, `INFO` is configured which means that Actyx emits `INFO`, `ERROR` and `FATAL` logs.
+
+### Change the log level
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+<Tabs
+  groupId="os"
+  defaultValue={"cli"}
+  values={[
+    { label: 'Actyx CLI', value: 'cli' },
+    { label: 'Node Manager', value: 'node-manager' },
+  ]}
+>
+
+
+<TabItem value="cli">
+
+
+You can change the configured log level with the [`ax settings set`](../../reference/cli/settings/set) command:
+
+```text
+ax settings set com.actyx/admin/logLevels/node "DEBUG" 192.168.2.1 --local
+```
+
+</TabItem>
+<TabItem value="node-manager">
+
+
+In the Node Manager, navigate to the settings tab, change the `os` logging level under `logLevels` and click save:
+
+<img
+  src="/images/how-to/monitoring-debugging/node-manager-logging-level.png"
+  style={{ maxWidth: '550px' }}
+/>
+
+</TabItem>
+</Tabs>
+
+
+import { NPS } from '../../../src/components/NPS'
+
+<NPS />

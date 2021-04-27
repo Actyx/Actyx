@@ -4,9 +4,8 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import { EventKey, Milliseconds, NodeId, OffsetMap, Where } from '@actyx/sdk'
 import { Observable } from 'rxjs'
-import { Where } from '../tagging'
-import { EventKey, Milliseconds, NodeId } from '../types'
 import { mockEventStore } from './mockEventStore'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import { testEventStore, TestEventStore } from './testEventStore'
@@ -14,7 +13,6 @@ import {
   AllEventsSortOrder,
   ConnectivityStatus,
   Events,
-  OffsetMap,
   OffsetMapWithDefault,
   PersistedEventsSortOrder,
   UnstoredEvents,

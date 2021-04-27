@@ -4,8 +4,8 @@ import { MyGlobal } from '../jest/setup'
 
 type Headers = Record<string, string>
 const mkHttpClient = (headers?: Headers) => {
-  const apiEvent = (<MyGlobal>global).axNodeSetup.nodes[0]._private.apiEvent
-  const baseURL = `${apiEvent}v2/events`
+  const origin = (<MyGlobal>global).axNodeSetup.nodes[0]._private.httpApiOrigin
+  const baseURL = `${origin}/api/v2/events`
   return axios.create({ baseURL, headers })
 }
 export const Authorization = 'Bearer TEST_TOKEN' //FIXME replace it with the a real token

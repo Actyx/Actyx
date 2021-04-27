@@ -170,7 +170,14 @@ validate-os-android: diagnostics
 	cd jvm/os-android/ && ./gradlew clean ktlintCheck
 
 # validate all js
-validate-js: diagnostics validate-js-pond validate-js-sdk
+validate-js: diagnostics validate-js-sdk validate-js-pond validate-js-os-sdk
+
+# validate js sdk
+validate-js-sdk:
+	cd js/sdk && source ~/.nvm/nvm.sh && nvm install && \
+		npm install && \
+		npm run test && \
+		npm run build
 
 # validate js pond
 validate-js-pond:
@@ -179,8 +186,8 @@ validate-js-pond:
 		npm run test && \
 		npm run build:prod
 
-# validate js sdk
-validate-js-sdk:
+# validate js-os-sdk
+validate-js-os-sdk:
 	cd js/os-sdk && source ~/.nvm/nvm.sh && nvm install && \
 		npm install && \
 		npm run test && \

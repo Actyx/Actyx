@@ -1,0 +1,108 @@
+---
+title: Access logs
+id: access-logs
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+In general, there are 2 ways to access Actyx logs. You can either use Actyx tools, or you can directly access them on your host.
+
+:::info
+You can only use the Actyx CLI and Node Manager to access logs once Actyx has successfully started. If you are investigating startup errors, you need to access logs directly from your host.
+:::
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+<Tabs
+  groupId="os"
+  defaultValue={"cli"}
+  values={[
+    { label: 'Actyx CLI', value: 'cli' },
+    { label: 'Windows', value: 'windows' },
+    { label: 'Linux/macOS', value: 'linux' },
+    { label: 'Docker', value: 'docker' },
+    { label: 'Node Manager', value: 'node-manager' },
+  ]}
+>
+
+
+<TabItem value="cli">
+
+
+Use the `ax logs tail` command to get the logs of a node:
+
+```text
+ax logs tail --local 192.168.2.10
+```
+
+If you want to specify how many logs `ax logs tail` should return, or just want to follow logs as they are created, check our [reference documentation](../../reference/cli/logs/tail) for usage examples.
+
+:::tip Use bash to automate collection of logs
+If you are familiar with bash, you can use it to automate the collection of logs:
+
+```bash
+for ip in <IP address list>; do ax logs tail --all-entries --local $ip > $ip.log; done`
+```
+
+As you can see in the above snippet, this will collect **all log entries** and save them in one file per node.
+:::
+
+Check our [reference documentation](../../reference/cli/logs/tail) for usage examples.
+
+</TabItem>
+<TabItem value="windows">
+
+
+You can access Actyx logs through the Windows Event Viewer. In the Event Viewer, you can create a custom view filtering for Actyx logs and a log level:
+
+<img
+  src="/images/how-to/monitoring-debugging/windows-event-viewer-1.png"
+  style={{ maxWidth: '550px' }}
+/>
+
+You can then see all Actyx logs in that view:
+
+<img
+  src="/images/how-to/monitoring-debugging/windows-event-viewer-2.png"
+  style={{ maxWidth: '550px' }}
+/>
+
+</TabItem>
+<TabItem value="linux">
+
+
+On Linux and macOS, Actyx automatically outputs logs into your terminal after startup:
+
+```text
+./actyxos-mac
+ActyxOS started.
+Apr 21 10:33:35.882  INFO axosnode::logs_handler: Sending new dynamic config for logsvcd: DynamicConfig { node_id: SourceId(FIXME), node_name: "Default Node", monitoring_topic: Some("default-topic/monitoring") }
+Apr 21 10:33:35.883  INFO logsvcd::sync: Received new dynamic config DynamicConfig { node_id: SourceId(FIXME), node_name: "Default Node", monitoring_topic: Some("default-topic/monitoring") }
+more logs...
+```
+
+</TabItem>
+<TabItem value="docker">
+
+
+To see logs after starting Actyx on Docker in your terminal, you need to set the `ENABLE_DEBUG_LOGS` environment variable when running it. Add `-e ENABLE_DEBUG_LOGS=1` to your `docker run` command, and you will see logs appearing in your terminal.
+
+In case the Actyx container is running in non-interactive mode the background, use `docker logs -f <container id>` to follow the logs as they are written.
+
+</TabItem>
+<TabItem value="node-manager">
+
+
+In the _Status_ tab of the Node Manager, you can see logs as they are created:
+
+<img src="/images/node-manager/node-manager-status.png" style={{ maxWidth: '550px' }} />
+
+</TabItem>
+</Tabs>
+
+
+import { NPS } from '../../../src/components/NPS'
+
+<NPS />

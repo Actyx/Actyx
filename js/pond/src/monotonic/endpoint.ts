@@ -5,21 +5,15 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { EventKey, OffsetMap, Where } from '@actyx/sdk'
 import { fromNullable, Option } from 'fp-ts/lib/Option'
 import { greaterThan } from 'fp-ts/lib/Ord'
 import { Observable } from 'rxjs'
 import { EventStore } from '../eventstore'
-import {
-  AllEventsSortOrders,
-  Event,
-  Events,
-  OffsetMap,
-  PersistedEventsSortOrders,
-} from '../eventstore/types'
+import { AllEventsSortOrders, Event, Events, PersistedEventsSortOrders } from '../eventstore/types'
 import log from '../loggers'
 import { SnapshotStore } from '../snapshotStore'
-import { Where } from '../tagging'
-import { EventKey, FishId } from '../types'
+import { FishId } from '../types'
 import { runStats, takeWhileInclusive } from '../util'
 import { getInsertionIndex } from '../util/binarySearch'
 import { SerializedStateSnap } from './types'

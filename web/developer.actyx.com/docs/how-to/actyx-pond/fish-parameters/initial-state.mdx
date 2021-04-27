@@ -55,7 +55,7 @@ const makeProcessFish = (id: string): Fish<ProcessFishState, ProcessEvent> => ({
   where: ProcessTag.withId(id),
 
   initialState: // Tough! Where to get name, description etc. from?
-  
+
   // etc.
 })
 ```
@@ -122,7 +122,11 @@ export const observeProcess = (id: string, pond: Pond, callback: Callback) => {
      callback(state)
     }
   }
-  
+
   return pond.observe(makeProcessFish(id), filteredCallback)
 }
 ```
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

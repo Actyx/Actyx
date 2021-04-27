@@ -6,7 +6,7 @@
  */
 import * as t from 'io-ts'
 import { MultiplexedWebsocket, validateOrThrow } from '../eventstore/multiplexedWebsocket'
-import { NodeId, Timestamp } from '../types'
+import { NodeId, Timestamp } from '@actyx/sdk'
 import { CounterMap, DurationMap, GaugeMap } from '../util'
 import {
   AlertRequest,

@@ -3,7 +3,8 @@ import { pathExists } from 'fs-extra'
 import { assertOK } from '../../assertOK'
 import path from 'path'
 import { settings } from '../../infrastructure/settings'
-import { stubs } from '../../stubs'
+import { mkAx } from '../../stubs'
+import { CLI } from '../../cli'
 
 const FILE_PATH = path.resolve(settings().tempDir, 'temp-swarm-key')
 
@@ -12,9 +13,14 @@ const isLen44 = (data: string) => data.length === 44
 const isKeyValid = (key?: string) => key && isBase64(key) && isLen44(key)
 
 describe('ax swarms', () => {
+  let ax: CLI
+
+  beforeAll(async () => {
+    ax = await mkAx()
+  })
   describe('keygen', () => {
     test('return valid swarmKeys (44 length and base64)', async () => {
-      const response = assertOK(await stubs.axOnly.ax.swarms.keyGen())
+      const response = assertOK(await ax.swarms.keyGen())
       const key = response.result.swarmKey
       expect(response.result).toMatchObject({
         swarmKey: expect.any(String),
@@ -24,8 +30,8 @@ describe('ax swarms', () => {
     })
 
     test('return a unique valid swarmKeys', async () => {
-      const response1 = assertOK(await stubs.axOnly.ax.swarms.keyGen())
-      const response2 = assertOK(await stubs.axOnly.ax.swarms.keyGen())
+      const response1 = assertOK(await ax.swarms.keyGen())
+      const response2 = assertOK(await ax.swarms.keyGen())
       const key1 = response1.result.swarmKey
       const key2 = response2.result.swarmKey
       expect(key1).not.toBe(key2)
@@ -36,7 +42,7 @@ describe('ax swarms', () => {
       if (fileExists) {
         await fs.unlink(FILE_PATH)
       }
-      assertOK(await stubs.axOnly.ax.swarms.keyGen(FILE_PATH))
+      assertOK(await ax.swarms.keyGen(FILE_PATH))
       const swarmKeyFile = await fs.readFile(FILE_PATH, 'utf-8')
       expect(isKeyValid(swarmKeyFile)).toBe(true)
 
@@ -55,8 +61,8 @@ describe('ax swarms', () => {
         await fs.unlink(file2)
       }
 
-      assertOK(await stubs.axOnly.ax.swarms.keyGen(file1))
-      assertOK(await stubs.axOnly.ax.swarms.keyGen(file2))
+      assertOK(await ax.swarms.keyGen(file1))
+      assertOK(await ax.swarms.keyGen(file2))
 
       const key1 = await fs.readFile(file1, 'utf-8')
       const key2 = await fs.readFile(file2, 'utf-8')
@@ -71,8 +77,8 @@ describe('ax swarms', () => {
       if (fileExists) {
         await fs.unlink(FILE_PATH)
       }
-      const response1 = await stubs.axOnly.ax.swarms.keyGen(FILE_PATH)
-      const response2 = await stubs.axOnly.ax.swarms.keyGen(FILE_PATH)
+      const response1 = await ax.swarms.keyGen(FILE_PATH)
+      const response2 = await ax.swarms.keyGen(FILE_PATH)
       expect(response1).toMatchCodeOk()
       expect(response2).toMatchErrInvalidInput()
 

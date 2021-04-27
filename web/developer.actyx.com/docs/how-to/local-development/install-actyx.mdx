@@ -6,11 +6,12 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
-import Tabs from '@theme/Tabs'
-import TabItem from '@theme/TabItem'
-
 In order to get you started with ActyxOS, please choose your development platform below.
 The rest of this guide will then change according to your selection!
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+import NPS from '../../../src/components/NPS'
 
 <Tabs
   groupId="os"
@@ -24,7 +25,9 @@ The rest of this guide will then change according to your selection!
   ]}
 >
 
+
 <TabItem value="windows">
+
 
 ## Hardware Requirements
 
@@ -54,6 +57,7 @@ ActyxOS is now shutting down.
 
 </TabItem>
 <TabItem value="android">
+
 
 <!-- We use <h2> html tags here to avoid the headlines being repeated in the TOC -->
 
@@ -89,6 +93,7 @@ On some Android distributions you may need to explicitly permit it by navigating
 
 </TabItem>
 <TabItem value="linux">
+
 
 <h2>Hardware Requirements</h2>
 
@@ -126,6 +131,7 @@ After a few seconds, ActyxOS will be stopped.
 </TabItem>
 <TabItem value="mac">
 
+
 <h2>Hardware Requirements</h2>
 
 Your device must run a recent version of macOS (> 10.14 Mojave) to be able to run ActyxOS guaranteed, though earlier macOS versions may work as well.
@@ -161,6 +167,7 @@ After a few seconds, ActyxOS will be stopped.
 </TabItem>
 <TabItem value="docker">
 
+
 <h2>Hardware Requirements</h2>
 
 In order to be able to run ActyxOS on Docker, your device needs to meet the following requirements:
@@ -185,13 +192,13 @@ To download and run the latest version execute one of the following commands.
 <h4>Windows / macOS</h4>
 
 ```text
-docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyxos-data:/data --privileged -p 4001:4001 -p 4457:4457 -p 127.0.0.1:4243:4243 -p 127.0.0.1:4454:4454 actyx/os
+docker run --name actyxos -it --rm -v actyxos-data:/data --privileged -p 4001:4001 -p 4457:4457 -p 127.0.0.1:4243:4243 -p 127.0.0.1:4454:4454 actyx/os
 ```
 
 <h4>Linux</h4>
 
 ```text
-docker run --name actyxos -it --rm -e AX_DEV_MODE=1 -v actyxos-data:/data --privileged --network=host actyx/os
+docker run --name actyxos -it --rm -v actyxos-data:/data --privileged --network=host actyx/os
 ```
 
 :::info Publishing docker ports
@@ -218,8 +225,11 @@ After a couple of seconds, ActyxOS will be stopped.
 </TabItem>
 </Tabs>
 
+
 ## Where next?
 
 - [Installation Guide for Actyx CLI and Node Manager](../local-development/install-cli-node-manager.mdx)
-- [Common Development Errors](../troubleshooting/common-errors.mdx)
+- [Common Installation and startup Errors](../troubleshooting/installation-and-startup.mdx)
 - [Quickstart Guide](../../tutorials/quickstart.mdx)
+
+<NPS />

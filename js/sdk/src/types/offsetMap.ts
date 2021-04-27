@@ -6,9 +6,8 @@
  */
 import { fromNullable } from 'fp-ts/lib/Option'
 import * as t from 'io-ts'
-import { Offset } from '../types'
 import { lookup } from '../util'
-import { Event } from './types'
+import { Offset } from './various'
 
 export const OffsetMapIO = t.readonly(t.record(t.string, Offset.FromNumber))
 /**
@@ -23,6 +22,11 @@ const emptyOffsetMap: OffsetMap = {}
 const offsetMapLookup = (m: OffsetMap, s: string): Offset =>
   fromNullable(m[s]).getOrElse(Offset.min)
 
+export type HasOffsetAndStream = {
+  offset: number
+  stream: string
+}
+
 /**
  * Updates a given psn map with a new event.
  * Note that the events need to be applied in event order
@@ -30,7 +34,7 @@ const offsetMapLookup = (m: OffsetMap, s: string): Offset =>
  * @param psnMap the psn map to update. WILL BE MODIFIED IN PLACE
  * @param ev the event to include
  */
-const includeEvent = (psnMap: OffsetMapBuilder, ev: Event): OffsetMapBuilder => {
+const includeEvent = (psnMap: OffsetMapBuilder, ev: HasOffsetAndStream): OffsetMapBuilder => {
   const { offset, stream } = ev
   const current = lookup(psnMap, stream)
   if (current === undefined || current < offset) {
@@ -49,7 +53,7 @@ export type OffsetMapCompanion = Readonly<{
   isEmpty: (m: OffsetMap) => boolean
   lookup: (m: OffsetMap, s: string) => Offset
   lookupOrUndefined: (m: OffsetMap, s: string) => Offset | undefined
-  update: (m: OffsetMapBuilder, ev: Event) => OffsetMapBuilder
+  update: (m: OffsetMapBuilder, ev: HasOffsetAndStream) => OffsetMapBuilder
 }>
 
 export const OffsetMap: OffsetMapCompanion = {

@@ -2,12 +2,13 @@ import { assertOK } from '../../assertOK'
 import { CLI } from '../../cli'
 import { runOnEvery } from '../../infrastructure/hosts'
 import { currentAxBinary } from '../../infrastructure/settings'
-import { stubs } from '../../stubs'
+import { mkAxWithUnreachableNode } from '../../stubs'
 
 describe('ax nodes', () => {
   describe('ls', () => {
     test('return Ok and result with connection hostUnreachable', async () => {
-      const response = await stubs.unreachable.ax.nodes.ls()
+      const ax = await mkAxWithUnreachableNode()
+      const response = await ax.nodes.ls()
       expect(response).toMatchObject({
         code: 'OK',
         result: [

@@ -23,14 +23,14 @@ The best part about this is that also the writing is done by Actyx Pond. This is
 If you're using custom data types, you only need to implement the `toJSON()` method on your state (like e.g. immutable.js provides for you), and then need to provide a custom `deserializeState` parameter in the fish's definition.
 :::note
 
-This is of course only possible if we keep the serialized format the same.  For this purpose the `fishId` has a version
+This is of course only possible if we keep the serialized format the same. For this purpose the `fishId` has a version
 number as well. Upon every change to the necessary interpretation of the serialized data format, the version number
 needs to be incremented:
 
 ```typescript
 export const chatRoomFish = {
   // ... same as before
-  fishId: FishId.of('ax.example.ChatRoomFish', 'my-room', 1)
+  fishId: FishId.of('ax.example.ChatRoomFish', 'my-room', 1),
 }
 ```
 
@@ -58,7 +58,7 @@ Actyx Pond can be informed about this by providing a function that recognizes su
 ```typescript
 export const chatRoomFish = {
   // ... same as before
-  isReset: event => event.type === 'messagesCleared',
+  isReset: (event) => event.type === 'messagesCleared',
 }
 ```
 
@@ -69,3 +69,7 @@ Whether an event constitutes a semantic snapshot lies in the eye of the beholder
 :::
 
 Both kinds of snapshots can be combined within the same fish as well.
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

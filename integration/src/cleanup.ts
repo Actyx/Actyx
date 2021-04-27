@@ -1,3 +1,6 @@
+/**
+ * Cleans up all leftover ec2 instances. Triggered regularly by CI
+ */
 import { EC2 } from 'aws-sdk'
 import { cleanUpInstances, cleanUpKeys } from './infrastructure/aws'
 

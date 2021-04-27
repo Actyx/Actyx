@@ -17,3 +17,7 @@ This means, that whoever is in possession of said PSK is able to read all events
 :::
 
 Every connection between ActyxOS nodes is further encrypted using elliptic-curve cryptography (specifically Ed25519, using SHA2 and Curve25519). This means that every ActyxOS node holds an ed25519 key pair. That key pair is currently saved to an encrypted file on disk, we plan to add TPM-backed key stores in the future.
+
+import { NPS } from '../../src/components/NPS'
+
+<NPS />

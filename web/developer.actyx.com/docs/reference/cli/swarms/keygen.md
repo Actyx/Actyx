@@ -26,3 +26,7 @@ ax swarms keygen
 # Generate a new swarm key, create file swarm.key and write the generated key to it
 ax swarms keygen -o swarm.key
 ```
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

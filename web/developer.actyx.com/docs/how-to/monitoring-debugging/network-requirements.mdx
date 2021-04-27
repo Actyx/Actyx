@@ -1,0 +1,78 @@
+---
+title: Test network requirements
+id: network-requirements
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+Actyx has several [network requirements](../../reference/actyx-reference#network-requirements). For swarm communication, i.e. communication between nodes, port 4001 is used. You therefore need to verify connections over port 4001 TCP. The below examples assume that you are either executing the command directly from the node, or from another device in the same network:
+
+:::info
+In the below examples, we always check port 4001. Which of [these ports](../../reference/actyx-reference#required-ports) you need to check depends on the issue you are debugging.
+:::
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+<Tabs
+  groupId="os"
+  defaultValue={"windows"}
+  values={[
+    { label: 'Windows', value: 'windows' },
+    { label: 'Linux/Mac', value: 'linux' },
+    { label: 'Docker', value: 'docker' },
+  ]}
+>
+
+
+<TabItem value="windows">
+
+
+On Windows, you can use the `telnet` command to test TCP connections. If `telnet` is not already installed, run this command in PowerShell to install it:
+
+```powershell
+install-windowsfeature "telnet-client"
+```
+
+After installing `telnet`, you can use PowerShell or the Command Prompt to test the connection by entering the IP and port of the node you want to test the connection to. Here is an example in which connection could not be established:
+
+<img src="/images/how-to/monitoring-debugging/windows-telnet.png" style={{ maxWidth: '550px' }} />
+
+</TabItem>
+<TabItem value="linux">
+
+
+On Linux and Mac, we recommend using `tcptraceroute` to test the connection. For example, if the node you want to connect to has the IP address 192.168.2.10, you would run this command:
+
+```text
+tcptraceroute 192.168.2.10 4001
+```
+
+:::info Using traceroute and telnet
+You could also use `traceroute` or `telnet` instead, but each has downsides. `traceroute` uses UDP which might be blocked/opened by a firewall even if the same is not true for TCP. `telnet` also uses TCP but will not show you where your packets are being lost or blocked.
+:::
+
+</TabItem>
+<TabItem value="docker">
+
+
+If you are running ActyxOS on Docker, it's best to test the connection from inside the container. As on Linux and Mac, we recommend using `tcptraceroute`. Assuming your container's name is `actyx`, run the following command to install it:
+
+```text
+docker exec actyx apk add tcptraceroute
+```
+
+After it is installed, you can now check connections from within the container. For example, if the node you want to connect to has the IP address 192.168.2.10, you would run this command:
+
+```text
+docker exec actyx tcptraceroute 192.168.2.10 4001
+```
+
+</TabItem>
+</Tabs>
+
+
+import { NPS } from '../../../src/components/NPS'
+
+<NPS />

@@ -1,0 +1,18 @@
+[package]
+name = "swarm-cli"
+version = "0.1.0"
+authors = ["Actyx AG"]
+edition = "2018"
+
+[dependencies]
+actyxos_sdk = { path = "../../../sdk" }
+anyhow = "1.0.40"
+futures = { version = "0.3.14", package = "futures" }
+serde_json = "1.0.64"
+structopt = "0.3.21"
+swarm = { path = ".." }
+tokio = { version = "1.5.0", package = "tokio" }
+tracing = "0.1.25"
+tracing-subscriber = "0.2.17"
+trees = { path = "../../trees" }
+util = { path = "../../util" }

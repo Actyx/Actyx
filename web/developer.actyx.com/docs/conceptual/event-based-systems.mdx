@@ -42,7 +42,7 @@ Event schema migrations can pose serious challenges, especially if you want to m
 
 ## Relevance to ActyxOS
 
-ActyxOS provides you with the basic tools you need to build a decentralized event sourcing system. The Event Service's persistent event streams allow you to model a distributed append-only log—indeed, that is what they were designed for. By interacting with the Event Service,  you can run apps that consume these event streams, thus allowing you to compute state.
+ActyxOS provides you with the basic tools you need to build a decentralized event sourcing system. The Event Service's persistent event streams allow you to model a distributed append-only log—indeed, that is what they were designed for. By interacting with the Event Service, you can run apps that consume these event streams, thus allowing you to compute state.
 
 :::tip Actyx Pond
 Check out the Actyx Pond – an auxiliary product to ActyxOS—which provides you with an always available, partition-tolerant event sourcing system out of the box. It also tries to mitigate some of the key associated challenges.
@@ -54,16 +54,16 @@ Consider, for instance, a truck being loaded with shipping boxes. At any one poi
 
 ```ts
 var loadingState = {
-    totalLoadedWeight: 753,
-    loadedPackages: [
-        {
-            id: "5b4f8ffd-4531-4b05-9268-a56b78a32cd2",
-            destination: "John Doe, 4540 1st Street, 10001 NY, USA",
-            weight: 3.2,
-        }
-        // more packages
-        // ...
-    ]
+  totalLoadedWeight: 753,
+  loadedPackages: [
+    {
+      id: '5b4f8ffd-4531-4b05-9268-a56b78a32cd2',
+      destination: 'John Doe, 4540 1st Street, 10001 NY, USA',
+      weight: 3.2,
+    },
+    // more packages
+    // ...
+  ],
 }
 ```
 
@@ -71,14 +71,14 @@ Now, whenever a package is loaded or unloaded from the truck by a worker (or rob
 
 ```ts
 var loadedPackaged = {
-    id: "dd274baf-09f4-4024-8081-bf74bb3f1715",
-    destination: "Jane Doe, 1001 Main Street, 34333 MI, USA",
-    weight: 12,
+  id: 'dd274baf-09f4-4024-8081-bf74bb3f1715',
+  destination: 'Jane Doe, 1001 Main Street, 34333 MI, USA',
+  weight: 12,
 }
 
 loadingState = {
-    totalLoadedWeight: loadingState.totalLoadedWeight.concat(loadedPackage.weight),
-    loadedPackages: loadingState.loadedPackaged.concat(loadedPackag)
+  totalLoadedWeight: loadingState.totalLoadedWeight.concat(loadedPackage.weight),
+  loadedPackages: loadingState.loadedPackaged.concat(loadedPackag),
 }
 ```
 
@@ -116,10 +116,10 @@ We would then build an event store—more precisely an _append-only event log_�
 var eventLog = [] // initially nothing has happened
 
 // First event happens
-eventLog.concat(firstEvent);
+eventLog.concat(firstEvent)
 
 // Second event happens
-eventLog.concat(secondEvent);
+eventLog.concat(secondEvent)
 
 // Etc...
 ```
@@ -133,33 +133,33 @@ What if we now want to find out the current loading state of our truck? We need 
 ```ts
 // The initial state
 const initialState = {
-    totalLoadedWeight: 0,
-    loadedPackages: []
+  totalLoadedWeight: 0,
+  loadedPackages: [],
 }
 
 // The function that computes the current state from the initial state and a list
 // of events, i.e. the event log
 function computeState(events) {
-    var state = initialState;
-    events.map(event => {
-        if (event.type === "PackageLoaded") {
-            // update the state
-            state = {
-                totalLoadedWeight: state.totalLoadedWeight + event.package.weight,
-                loadedPackages: state.loadedPackages.concat(event.package),
-            }
-        } else if (event.type === "PackageUnloaded") {
-            // remove the package from the list of packages
-            var loadedPackages = state.loadedPackaged;
-            var index = loadedPackages.indexOf(event.package);
-            if (index !== -1) loadedPackages.splice(index, 1);
-            // update the state
-            state = {
-                totalLoadedWeight: state.totalLoadedWeight - event.package.weight,
-                loadedPackages: loadedPackages
-            }
-        }
-    })
+  var state = initialState
+  events.map((event) => {
+    if (event.type === 'PackageLoaded') {
+      // update the state
+      state = {
+        totalLoadedWeight: state.totalLoadedWeight + event.package.weight,
+        loadedPackages: state.loadedPackages.concat(event.package),
+      }
+    } else if (event.type === 'PackageUnloaded') {
+      // remove the package from the list of packages
+      var loadedPackages = state.loadedPackaged
+      var index = loadedPackages.indexOf(event.package)
+      if (index !== -1) loadedPackages.splice(index, 1)
+      // update the state
+      state = {
+        totalLoadedWeight: state.totalLoadedWeight - event.package.weight,
+        loadedPackages: loadedPackages,
+      }
+    }
+  })
 }
 ```
 
@@ -173,3 +173,7 @@ In reality, you would not implement your system this way. You would, rather, def
 
 - Martin Fowler's [introduction to event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html)
 - [Event Sourcing Pattern (Microsoft)](https://docs.microsoft.com/en-us/azure/architecture/patterns/event-sourcing)
+
+import { NPS } from '../../src/components/NPS'
+
+<NPS />

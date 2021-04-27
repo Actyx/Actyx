@@ -29,15 +29,15 @@ pub fn run(opts: TreesOpts, json: bool) -> Box<dyn Future<Output = ()> + Unpin> 
 }
 
 use banyan::store::{BlockWriter, ReadOnlyStore};
-use ipfs_sqlite_block_store::{BlockStore, OwnedBlock};
-use libipld::Cid;
+use ipfs_sqlite_block_store::BlockStore;
+use libipld::{Block, Cid, DefaultParams};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone)]
-pub(crate) struct SqliteStore(Arc<Mutex<BlockStore>>);
+pub(crate) struct SqliteStore(Arc<Mutex<BlockStore<DefaultParams>>>);
 
 impl SqliteStore {
-    pub fn new(store: BlockStore) -> anyhow::Result<Self> {
+    pub fn new(store: BlockStore<DefaultParams>) -> anyhow::Result<Self> {
         Ok(SqliteStore(Arc::new(Mutex::new(store))))
     }
 }
@@ -58,7 +58,7 @@ impl BlockWriter<Sha256Digest> for SqliteStore {
     fn put(&self, data: Vec<u8>) -> anyhow::Result<Sha256Digest> {
         let digest = Sha256Digest::new(&data);
         let cid = digest.into();
-        let block = OwnedBlock::new(cid, data);
+        let block = Block::new_unchecked(cid, data);
         self.0.lock().unwrap().put_block(&block, None)?;
         Ok(digest)
     }

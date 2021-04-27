@@ -1,64 +1,69 @@
+# NB! `fn ensureDocker` from `linux.ts` might need to be adjusted if `ami` for Docker changes.
 hosts:
-- name: x86_64-linux-linux
-  prepare:
-    type: create-aws-ec2
-    # Debian 11 from Oct 5, 2020
-    ami: ami-0254f49f790a514ab
-    instance: t2.small
-    user: admin
-  install: linux
-- name: x86_64-linux-docker
-  prepare:
-    type: create-aws-ec2
-    ami: ami-0254f49f790a514ab
-    instance: t2.small
-    user: admin
-  install: docker
-- name: aarch64-linux-linux
-  prepare:
-    type: create-aws-ec2
-    # Ubuntu 20.04
-    ami: ami-0aa72f02ca1be5339
-    instance: a1.medium
-    user: ubuntu
-  install: linux
-- name: aarch64-linux-docker
-  prepare:
-    type: create-aws-ec2
-    ami: ami-0aa72f02ca1be5339
-    instance: a1.medium
-    user: ubuntu
-  install: docker
-- name: armv7-linux-linux
-  prepare:
-    type: create-aws-ec2
-    ami: ami-0aa72f02ca1be5339
-    instance: a1.medium
-    user: ubuntu
-    # There are no ARMv7 instances, but we can run ARMv7 binaries to test them
-    armv7: true
-  install: linux
-- name: armv7-linux-docker
-  prepare:
-    type: create-aws-ec2
-    ami: ami-0aa72f02ca1be5339
-    instance: a1.medium
-    user: ubuntu
-    armv7: true
-  install: docker
-- name: windows-1
-  prepare:
-    type: create-aws-ec2
-    # Windows Server 2019
-    # Note: This is a public AMI. The underlying image might be upgraded from
-    # time to time, thus the AMI's ID is going to change, and the old one is
-    # not accessible anymore.  If that happens, search for the current "Windows
-    # Server 2019 Base" Image in the AWS Marketplace
-    # https://aws.amazon.com/marketplace
-    ami: ami-05ced23e7b71d428c
-    instance: t2.large
-    user: Administrator
-  install: windows
+  - name: x86_64-linux-linux
+    prepare:
+      type: create-aws-ec2
+      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-0e793d1a6c23e9488
+      instance: t2.small
+      user: ubuntu
+    install: linux
+  - name: x86_64-linux-docker
+    prepare:
+      type: create-aws-ec2
+      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-0e793d1a6c23e9488
+      instance: t2.small
+      user: ubuntu
+    install: docker
+  - name: aarch64-linux-linux
+    prepare:
+      type: create-aws-ec2
+      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-07d86cfde3bba417d
+      instance: a1.medium
+      user: ubuntu
+    install: linux
+  - name: aarch64-linux-docker
+    prepare:
+      type: create-aws-ec2
+      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-07d86cfde3bba417d
+      instance: a1.medium
+      user: ubuntu
+    install: docker
+  - name: armv7-linux-linux
+    prepare:
+      type: create-aws-ec2
+      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-07d86cfde3bba417d
+      instance: a1.medium
+      user: ubuntu
+      # There are no ARMv7 instances, but we can run ARMv7 binaries to test them
+      armv7: true
+    install: linux
+  - name: armv7-linux-docker
+    prepare:
+      type: create-aws-ec2
+      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+      ami: ami-07d86cfde3bba417d
+      instance: a1.medium
+      user: ubuntu
+      armv7: true
+    install: docker
+  - name: windows-1
+    prepare:
+      type: create-aws-ec2
+      # Windows Server 2019
+      # Note: This is a public AMI. The underlying image might be upgraded from
+      # time to time, thus the AMI's ID is going to change, and the old one is
+      # not accessible anymore.  If that happens, search for the current "Windows
+      # Server 2019 Base" Image in the AWS Marketplace
+      # https://aws.amazon.com/marketplace
+      ami: ami-05ced23e7b71d428c
+      instance: t2.large
+      user: Administrator
+    install: windows
 settings:
   # Where folders and files will be created during a test run.
   tempDir: temp
