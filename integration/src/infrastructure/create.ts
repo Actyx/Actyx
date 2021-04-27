@@ -169,9 +169,9 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
     if (node === undefined) {
       console.error('no recipe to install node %s', host.name)
     } else {
-      const shutdown = node._private.shutdown
-      node._private.shutdown = async () => {
-        await shutdown().catch((error) =>
+      const orig_shutdown = node._private.shutdown
+      const shutdown = async () => {
+        await orig_shutdown().catch((error) =>
           console.error('node %s error while shutting down:', host.name, error),
         )
         const logFilePath = mkLogFilePath(runIdentifier, host)
@@ -190,6 +190,8 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
         flush()
         logs.length = 0
       }
+
+      node = { ...node, _private: { ...node._private, shutdown } }
     }
 
     if (thisTestEnvNodes !== undefined && node !== undefined) {

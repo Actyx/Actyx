@@ -7,11 +7,12 @@ import fetch from 'node-fetch'
 import path from 'path'
 import YAML from 'yaml'
 import { assertOK } from '../../assertOK'
+import { CLI } from '../../cli'
 import { SettingsInput } from '../../cli/exec'
 import { runOnEvery } from '../../infrastructure/hosts'
 import { ActyxOSNode } from '../../infrastructure/types'
 import { waitForNodeToBeConfigured } from '../../retry'
-import { stubs } from '../../stubs'
+import { mkAx, mkAxWithUnreachableNode } from '../../stubs'
 import { createTestNodeLocal } from '../../test-node-factory'
 
 describe('ax settings', () => {
@@ -20,12 +21,14 @@ describe('ax settings', () => {
   const scopeActyx = 'com.actyx'
 
   let testNode: ActyxOSNode
+  let ax: CLI
 
   beforeAll(async () => {
     console.log('guess: ' + settingDefaultFilePath)
 
     // Node will be added to the global `thisEnvNodes` and eventually cleaned up
     testNode = await createTestNodeLocal('settings')
+    ax = await mkAxWithUnreachableNode()
   })
 
   const resetSettingActyx = async () => {
@@ -54,7 +57,7 @@ describe('ax settings', () => {
 
   describe('scopes', () => {
     test('return ERR_NODE_UNREACHABLE if node host is unreachable', async () => {
-      const response = await stubs.unreachable.ax.settings.scopes()
+      const response = await ax.settings.scopes()
       expect(response).toMatchErrNodeUnreachable()
     })
 
@@ -68,7 +71,7 @@ describe('ax settings', () => {
 
   describe('schema', () => {
     test('return ERR_NODE_UNREACHABLE if node host is unreachable', async () => {
-      const response = await stubs.unreachable.ax.settings.schema(scopeActyx)
+      const response = await ax.settings.schema(scopeActyx)
       expect(response).toMatchErrNodeUnreachable()
     })
 
@@ -85,14 +88,15 @@ describe('ax settings', () => {
       const responseWeb = await fetch(urlSchemaWeb)
       const schemaWeb = await responseWeb.json()
 
-      const response = assertOK(await stubs.axOnly.ax.settings.schema(scopeActyx))
+      const axOnly = await mkAx()
+      const response = assertOK(await axOnly.settings.schema(scopeActyx))
       expect(response.result).toMatchObject(schemaWeb)
     })
   })
 
   describe('get', () => {
     test('return ERR_NODE_UNREACHABLE if node host is unreachable', async () => {
-      const response = await stubs.unreachable.ax.settings.get(scopeActyx)
+      const response = await ax.settings.get(scopeActyx)
       expect(response).toMatchErrNodeUnreachable()
     })
 
@@ -131,8 +135,8 @@ describe('ax settings', () => {
 
     test('return OK and get specific properties from com.actyx setting', async () => {
       const responseDisplayName = await testNode.ax.settings.get('com.actyx/admin/displayName')
-      const responseDisplayNameeShape = { code: 'OK', result: 'Local Sample Node' }
-      expect(responseDisplayName).toEqual(responseDisplayNameeShape)
+      const responseDisplayNamedShape = { code: 'OK', result: 'Local Sample Node' }
+      expect(responseDisplayName).toEqual(responseDisplayNamedShape)
 
       const responseLicense = await testNode.ax.settings.get('com.actyx/licensing')
       const responseLicenseShape = { code: 'OK', result: { apps: {}, node: 'development' } }
@@ -177,7 +181,7 @@ describe('ax settings', () => {
 
   describe('unset', () => {
     test('return ERR_NODE_UNREACHABLE if node host is unreachable', async () => {
-      const response = await stubs.unreachable.ax.settings.unset(scopeActyx)
+      const response = await ax.settings.unset(scopeActyx)
       expect(response).toMatchErrNodeUnreachable()
     })
 

@@ -2,7 +2,7 @@ import { OffsetsResponse } from '../../event-service-types'
 import { httpClient } from '../../httpClient'
 import { getNodeId, mkStreamId } from '../../util'
 
-describe('event service', () => {
+describe.skip('event service', () => {
   describe('get information about known offsets', () => {
     it('should return valid result for offset', async () => {
       const nodeId = await getNodeId()

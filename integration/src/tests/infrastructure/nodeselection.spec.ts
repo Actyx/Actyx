@@ -1,14 +1,14 @@
 import { selectNodes } from '../../infrastructure/nodeselection'
 import { ActyxOSNode } from '../../infrastructure/types'
-import { stubs } from '../../stubs'
+import { mkNodeStub } from '../../stubs'
 
 let n1: ActyxOSNode
 let n2: ActyxOSNode
 let n3: ActyxOSNode
 beforeAll(async () => {
-  n1 = await stubs.mkStub('android', 'aarch64', 'android', 'n0')
-  n2 = await stubs.mkStub('linux', 'x86_64', 'docker', 'n1')
-  n3 = await stubs.mkStub('windows', 'aarch64', 'process', 'n2')
+  n1 = await mkNodeStub('android', 'aarch64', 'android', 'n0')
+  n2 = await mkNodeStub('linux', 'x86_64', 'docker', 'n1')
+  n3 = await mkNodeStub('windows', 'aarch64', 'process', 'n2')
 })
 
 describe('NodeSelection', () => {

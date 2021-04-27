@@ -19,7 +19,7 @@ module.exports = {
     axNodeSetup: global.axNodeSetup,
   },
   moduleFileExtensions: ['js', 'json', 'jsx', 'ts', 'tsx'],
-  testPathIgnorePatterns: ['/node_modules/', '.+support\\.test\\.ts'],
+  testPathIgnorePatterns: ['/node_modules/', '.+support\\.test\\.ts', '/dist/'],
   maxWorkers: '50%',
   // A list of paths to modules that run some code to configure or set up the
   // testing framework before each test file in the suite is executed. Since

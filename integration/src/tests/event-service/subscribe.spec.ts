@@ -4,7 +4,7 @@ import { getNodeId, mkStreamId, publishEvent, randomString } from '../../util'
 
 const TIMEOUT_MS = 3000
 
-describe('event service', () => {
+describe.skip('event service', () => {
   describe('subscribe to event streams', () => {
     it('should publish event and find it an event stream', async () => {
       const FIND_VALUE = randomString()

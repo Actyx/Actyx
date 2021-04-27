@@ -1,3 +1,4 @@
+// TODO: convert to io-ts
 export type Event = Readonly<{
   type: string
   lamport: number

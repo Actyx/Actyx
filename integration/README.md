@@ -6,7 +6,7 @@ Test suites for combined Actyx products.
 
 Integration tests use primarily the artifacts built from the current commit, so you need to:
 
-- Make ActyxOS and related binaries (`actyx-linux` and `ax`) available by compiling them for the "current" platform as well as the platforms to be tested.
+- Make Actyx and related binaries (`actyx-linux` and `ax`) available by compiling them for the "current" platform as well as the platforms to be tested.
   The artifacts will be taken from `Cosmos/dist/bin/**` as well as DockerHub, use the `make all` command in the `Cosmos` folder
 - run `nvm use && npm install && npm run build` in `js/os-sdk` and `js/pond`
 
@@ -25,9 +25,14 @@ You can provide a dedicated git hash to test as an environment variable
 
 Use bash script `./docker-build-tag.sh` to automatically build Docker container with latest git hash commit and appropriate tag.
 
-| Environment variable               | Description                               |
-|------------------------------------|-------------------------------------------|
-| export AX_CI_HOSTS=your_hosts.yaml | Use a different selection of target hosts |
+### Environment variables
+
+```sh
+# Use different selection of target hosts
+export AX_CI_HOSTS=your_hosts.yaml 
+# Use different git hash to test          |
+export AX_GIT_HASH=18be8456847ec2a29ad53d30fa3ed9d533438cdf  
+```
 
 When developing test cases it is faster to use a copy of `hosts.yaml` that only uses local nodes by setting `type: local` (like one with `install: linux` and as many as needed with `install: docker`), an example can be found at `my_hosts.yaml` which can be used with `export AX_CI_HOSTS=my_hosts.yaml`.
 This way the turnaround time is pretty short, allowing you to quickly iterate on only a specific test or suite.

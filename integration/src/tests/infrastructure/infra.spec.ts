@@ -52,11 +52,11 @@ describe.skip('the Infrastructure', () => {
 
   test('must allow event communication', async () => {
     const events = await runOnEach([{}, {}], async (node) => {
-      await node.actyxOS.eventService.publishPromise({
+      await node.httpApiClient.eventService.publishPromise({
         eventDrafts: [EventDraft.make('the Infrastructure', node.name, 42)],
       })
       const events: Event[] = []
-      const sub = await node.actyxOS.eventService.subscribeStream({
+      const sub = await node.httpApiClient.eventService.subscribeStream({
         subscriptions: [{ streamSemantics: 'the Infrastructure' }],
       })
       for await (const event of sub) {

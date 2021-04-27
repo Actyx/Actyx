@@ -1,12 +1,12 @@
 hosts:
-- name: local-linux
-  prepare:
-    type: local
-  install: linux
-- name: local-docker
-  prepare:
-    type: local
-  install: docker 
+  - name: local-linux
+    prepare:
+      type: local
+    install: linux
+  - name: local-docker
+    prepare:
+      type: local
+    install: docker
 settings:
   # Where folders and files will be created during a test run.
   tempDir: temp
