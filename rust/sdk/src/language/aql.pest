@@ -1,3 +1,6 @@
+main_query = { SOI ~ (query) ~ EOI }
+main_simple_expr = { SOI ~ (simple_expr) ~ EOI }
+
 // queries
 query = { "FROM" ~ tag_expr ~ query_op* ~ "END"? }
 query_op = _{ filter | select }

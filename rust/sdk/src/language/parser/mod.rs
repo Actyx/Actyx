@@ -232,7 +232,7 @@ impl FromStr for Query {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let p = Aql::parse(Rule::query, s)?.single();
+        let p = Aql::parse(Rule::main_query, s)?.single().single();
         Ok(r_query(p))
     }
 }
@@ -241,7 +241,7 @@ impl FromStr for SimpleExpr {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let p = Aql::parse(Rule::simple_expr, s)?.single();
+        let p = Aql::parse(Rule::main_simple_expr, s)?.single().single();
         Ok(r_simple_expr(p))
     }
 }
@@ -287,7 +287,16 @@ mod tests {
                 .pow(Number(Natural(2)))
                 .div(Number(Natural(7)))
                 .modulo(Number(Natural(5)))
-        )
+        );
+
+        fails_with! {
+            parser: Aql,
+            input: "5+3!",
+            rule: Rule::main_simple_expr,
+            positives: vec![Rule::EOI, Rule::add, Rule::sub, Rule::mul, Rule::div, Rule::modulo, Rule::pow, Rule::and, Rule::or, Rule::xor, Rule::lt, Rule::le, Rule::gt, Rule::ge, Rule::eq, Rule::ne],
+            negatives: vec![],
+            pos: 3
+        };
     }
 
     #[test]
@@ -348,10 +357,26 @@ mod tests {
         fails_with! {
             parser: Aql,
             input: "FROM x",
-            rule: Rule::query,
+            rule: Rule::main_query,
             positives: vec![Rule::tag_expr],
             negatives: vec![],
             pos: 5
+        };
+        fails_with! {
+            parser: Aql,
+            input: "FROM 'x' ELECT 'x'",
+            rule: Rule::main_query,
+            positives: vec![Rule::EOI, Rule::filter, Rule::select, Rule::and, Rule::or],
+            negatives: vec![],
+            pos: 9
+        };
+        fails_with! {
+            parser: Aql,
+            input: "FROM 'x' FITTER 'x'",
+            rule: Rule::main_query,
+            positives: vec![Rule::EOI, Rule::filter, Rule::select, Rule::and, Rule::or],
+            negatives: vec![],
+            pos: 9
         };
     }
 }
