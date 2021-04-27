@@ -234,6 +234,56 @@ impl<'a> DerefMut for BanyanStoreGuard<'a> {
     }
 }
 
+impl<'a> BanyanStoreGuard<'a> {
+
+    fn outer(&self) -> BanyanStore {
+        BanyanStore(self.data.clone())
+    }
+
+    fn node_id(&self) -> NodeId {
+        self.data.node_id
+    }
+    
+    fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Arc<OwnStreamInner> {
+        self.maps.own_streams.get(&stream_nr).cloned().unwrap_or_else(|| {
+            tracing::debug!("creating new own stream {}", stream_nr);
+            let forest = self.data.forest.clone();
+            let stream_id = self.node_id().stream(stream_nr);
+            // TODO: Maybe this fn should be fallible
+            let _ = self.index_store.add_stream(stream_id);
+            tracing::debug!("publish new stream_id {}", stream_id);
+            self.maps.publish_new_stream_id(stream_id);
+            let stream = Arc::new(OwnStreamInner::new(forest));
+            self.maps.own_streams.insert(stream_nr, stream.clone());
+            stream
+        })
+    }
+
+    fn get_or_create_replicated_stream(&mut self, stream_id: StreamId) -> Arc<ReplicatedStreamInner> {
+        debug_assert!(self.node_id() != stream_id.node_id());
+        let _ = self.index_store.add_stream(stream_id);
+        let node_id = stream_id.node_id();
+        let stream_nr = stream_id.stream_nr();
+        let forest = self.data.forest.clone();
+        let remote_node = self.maps.get_or_create_remote_node(node_id);
+        if let Some(state) = remote_node.streams.get(&stream_nr).cloned() {
+            state
+        } else {
+            tracing::debug!("creating new replicated stream {}", stream_id);
+            let state = Arc::new(ReplicatedStreamInner::new(forest));
+            remote_node.streams.insert(stream_nr, state.clone());
+            let store = self.outer();
+            self.spawn_task(
+                "careful_ingestion",
+                store.careful_ingestion(stream_id, state.clone()),
+            );
+            tracing::debug!("publish new stream_id {}", stream_id);
+            self.maps.publish_new_stream_id(stream_id);
+            state
+        }
+    }
+}
+
 impl BanyanStoreState {
     /// Spawns a new task that will be shutdown when [`BanyanStore`] is dropped.
     pub fn spawn_task(&mut self, name: &'static str, task: impl Future<Output = ()> + Send + 'static) {
