@@ -61,7 +61,7 @@ impl BanyanStore {
     /// This should be launched only once, and the join handle should be stored.
     pub(crate) async fn v1_gossip_ingest(self, topic: String) {
         let store = self.clone();
-        self.refs
+        self.0
             .ipfs
             .subscribe(&topic)
             .unwrap()
@@ -75,8 +75,8 @@ impl BanyanStore {
 
     pub(crate) fn publish_root_map(&self, topic: &str) -> impl Future<Output = ()> {
         let node = self.node_id();
-        let lamport = LamportTimestamp::from(self.inner.lock().index_store.lamport());
-        let roots = self.inner.lock().maps.root_map(node);
+        let lamport = LamportTimestamp::from(self.0.state.lock().index_store.lamport());
+        let roots = self.0.state.lock().maps.root_map(node);
         let timestamp = Timestamp::now();
         let msg = PublishHeartbeat {
             node,
@@ -85,13 +85,13 @@ impl BanyanStore {
             roots,
         };
         let blob = DagCborCodec.encode(&msg).unwrap();
-        let _ = self.refs.ipfs.publish(topic, blob);
+        let _ = self.0.ipfs.publish(topic, blob);
         future::ready(())
     }
 
     async fn persist0(self, events: Vec<(TagSet, Payload)>) -> Result<Vec<PersistenceMeta>> {
         let n = events.len() as u32;
-        let last_lamport = self.inner.lock().index_store.increase_lamport(n)?;
+        let last_lamport = self.0.state.lock().index_store.increase_lamport(n)?;
         let min_lamport = last_lamport - (n as u64) + 1;
         let stream_nr = StreamNr::from(0); // TODO
         let timestamp = Timestamp::now();
@@ -127,7 +127,7 @@ impl BanyanStore {
     }
 
     pub(crate) fn update_present(&self, stream_id: StreamId, offset: OffsetOrMin) -> anyhow::Result<()> {
-        self.refs.present.transform(|present| {
+        self.0.present.transform(|present| {
             let mut present = present.clone();
             present.update(stream_id, offset);
             Ok(Some(present))
@@ -135,7 +135,7 @@ impl BanyanStore {
     }
 
     pub(crate) fn update_highest_seen(&self, stream_id: StreamId, offset: OffsetOrMin) -> anyhow::Result<()> {
-        self.refs.highest_seen.transform(|highest_seen| {
+        self.0.highest_seen.transform(|highest_seen| {
             Ok(if highest_seen.offset(stream_id) < offset {
                 let mut highest_seen = highest_seen.clone();
                 highest_seen.update(stream_id, offset);
@@ -160,12 +160,12 @@ impl EventStore for BanyanStore {
 
 impl EventStoreConsumerAccess for BanyanStore {
     fn local_stream_ids(&self) -> BTreeSet<StreamId> {
-        let inner = self.inner.lock();
+        let inner = self.0.state.lock();
         inner
             .maps
             .own_streams
             .keys()
-            .map(|x| self.refs.node_id.stream(*x))
+            .map(|x| self.0.node_id.stream(*x))
             .collect()
     }
 
@@ -314,7 +314,7 @@ pub trait Present: Clone + Send + Unpin + Sync + 'static {
 
 impl Present for BanyanStore {
     fn stream(&self) -> stream::BoxStream<'static, OffsetMapOrMax> {
-        self.refs.present.new_observer().boxed()
+        self.0.present.new_observer().boxed()
     }
 }
 
@@ -327,6 +327,6 @@ pub trait HighestSeen: Clone + Send + Unpin + Sync + 'static {
 
 impl HighestSeen for BanyanStore {
     fn stream(&self) -> stream::BoxStream<'static, OffsetMapOrMax> {
-        self.refs.highest_seen.new_observer().boxed()
+        self.0.highest_seen.new_observer().boxed()
     }
 }
