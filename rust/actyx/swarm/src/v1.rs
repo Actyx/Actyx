@@ -65,7 +65,7 @@ impl BanyanStore {
     /// This should be launched only once, and the join handle should be stored.
     pub(crate) async fn v1_gossip_ingest(self, topic: String) {
         let store = self.clone();
-        self.0
+        self.data
             .ipfs
             .subscribe(&topic)
             .unwrap()
@@ -79,8 +79,8 @@ impl BanyanStore {
 
     pub(crate) fn publish_root_map(&self, topic: &str) -> impl Future<Output = ()> {
         let node = self.node_id();
-        let lamport = LamportTimestamp::from(self.0.index_store.lock().lamport());
-        let roots = self.0.maps.lock().root_map(node);
+        let lamport = LamportTimestamp::from(self.lock().index_store.lamport());
+        let roots = self.lock().root_map(node);
         let timestamp = Timestamp::now();
         let msg = PublishHeartbeat {
             node,
@@ -89,13 +89,13 @@ impl BanyanStore {
             roots,
         };
         let blob = DagCborCodec.encode(&msg).unwrap();
-        let _ = self.0.ipfs.publish(topic, blob);
+        let _ = self.ipfs().publish(topic, blob);
         future::ready(())
     }
 
     async fn persist0(self, events: Vec<(TagSet, Payload)>) -> Result<Vec<PersistenceMeta>> {
         let n = events.len() as u32;
-        let last_lamport = self.0.index_store.lock().increase_lamport(n)?;
+        let last_lamport = self.lock().index_store.increase_lamport(n)?;
         let min_lamport = last_lamport - (n as u64) + 1;
         let stream_nr = StreamNr::from(0); // TODO
         let timestamp = Timestamp::now();
@@ -132,7 +132,7 @@ impl BanyanStore {
 
     pub(crate) fn update_present(&self, stream_id: StreamId, offset: OffsetOrMin) -> anyhow::Result<()> {
         if let Some(offset) = Offset::from_offset_or_min(offset) {
-            self.0.offsets.transform(|offsets| {
+            self.data.offsets.transform(|offsets| {
                 let mut offsets = offsets.clone();
                 offsets.present.update(stream_id, offset);
                 Ok(Some(offsets))
@@ -144,7 +144,7 @@ impl BanyanStore {
 
     pub(crate) fn update_highest_seen(&self, stream_id: StreamId, offset: OffsetOrMin) -> anyhow::Result<()> {
         if let Some(offset) = Offset::from_offset_or_min(offset) {
-            self.0.offsets.transform(|offsets| {
+            self.data.offsets.transform(|offsets| {
                 let ret = if offsets.replication_target.offset(stream_id) < offset {
                     let mut offsets = offsets.clone();
                     offsets.replication_target.update(stream_id, offset);
@@ -173,9 +173,7 @@ impl EventStore for BanyanStore {
 
 impl EventStoreConsumerAccess for BanyanStore {
     fn local_stream_ids(&self) -> BTreeSet<StreamId> {
-        let state = self.0.maps.lock();
-
-        state.own_streams.keys().map(|x| self.0.node_id.stream(*x)).collect()
+        self.lock().local_stream_ids()
     }
 
     fn stream_forward(&self, events: StreamEventSelection, must_exist: bool) -> EventOrHeartbeatStreamOrError {
@@ -344,7 +342,7 @@ impl From<SwarmOffsets> for OffsetsResponse {
 
 impl Present for BanyanStore {
     fn offsets(&self) -> stream::BoxStream<'static, OffsetsResponse> {
-        self.0.offsets.new_observer().map(Into::into).boxed()
+        self.data.offsets.new_observer().map(Into::into).boxed()
     }
 }
 
