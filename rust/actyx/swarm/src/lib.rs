@@ -148,61 +148,17 @@ struct BanyanStoreData {
     lamport: Variable<LamportTimestamp>,
 }
 
-// maps of own and replicated streams, plus notification mechanism when new streams are created
-#[derive(Default)]
-pub struct StreamMaps {
-    pub own_streams: BTreeMap<StreamNr, Arc<OwnStreamInner>>,
-    pub remote_nodes: BTreeMap<NodeId, RemoteNodeInner>,
-    pub known_streams: Vec<mpsc::UnboundedSender<StreamId>>,
-}
-
-impl StreamMaps {
-    pub fn publish_new_stream_id(&mut self, stream_id: StreamId) {
-        self.known_streams
-            .retain(|sender| sender.unbounded_send(stream_id).is_ok())
-    }
-
-    pub fn current_stream_ids(&self, node_id: NodeId) -> impl Iterator<Item = StreamId> + '_ {
-        let own_stream_ids = self.own_streams.keys().map(move |stream_id| node_id.stream(*stream_id));
-        let replicated_stream_ids = self.remote_nodes.iter().flat_map(|(node_id, node_info)| {
-            node_info
-                .streams
-                .keys()
-                .map(move |stream_nr| node_id.stream(*stream_nr))
-        });
-        own_stream_ids.chain(replicated_stream_ids)
-    }
-
-    /// Get a complete root map from both own and replicated streams
-    pub fn root_map(&self, own_node_id: NodeId) -> RootMap {
-        let own = self.own_streams.iter().filter_map(|(stream_nr, inner)| {
-            let (link, lamport) = inner.tree.project(|tree| (tree.link(), tree.last_lamport()));
-            let stream_id = own_node_id.stream(*stream_nr);
-            link.map(|link| (stream_id, RootMapEntry::new(&link.into(), lamport)))
-        });
-
-        let other = self.remote_nodes.iter().flat_map(|(node_id, remote_node)| {
-            remote_node.streams.iter().filter_map(move |(stream_nr, inner)| {
-                let stream_id = node_id.stream(*stream_nr);
-                inner.root_map_entry().map(|e| (stream_id, e))
-            })
-        });
-        RootMap(own.chain(other).collect())
-    }
-
-    pub fn get_or_create_remote_node(&mut self, node_id: NodeId) -> &mut RemoteNodeInner {
-        self.remote_nodes.entry(node_id).or_insert_with(|| {
-            tracing::debug!("learned of new node {}", node_id);
-            Default::default()
-        })
-    }
-}
-
 /// internal state of the stream manager
 struct BanyanStoreState {
-    maps: StreamMaps,
     /// the index store
     index_store: SqliteIndexStore,
+
+    own_streams: BTreeMap<StreamNr, Arc<OwnStreamInner>>,
+
+    remote_nodes: BTreeMap<NodeId, RemoteNodeInner>,
+
+    known_streams: Vec<mpsc::UnboundedSender<StreamId>>,
+
     /// tasks of the stream manager.
     tasks: Vec<tokio::task::JoinHandle<()>>,
 }
@@ -253,15 +209,11 @@ impl<'a> BanyanStoreGuard<'a> {
     }
 
     fn local_stream_nrs(&self) -> Vec<StreamNr> {
-        self.maps.own_streams.keys().cloned().collect::<Vec<_>>()
+        self.own_streams.keys().cloned().collect::<Vec<_>>()
     }
 
     fn local_stream_ids(&self) -> BTreeSet<StreamId> {
-        self.maps
-            .own_streams
-            .keys()
-            .map(|x| self.data.node_id.stream(*x))
-            .collect()
+        self.own_streams.keys().map(|x| self.data.node_id.stream(*x)).collect()
     }
 
     fn increment_lamport(&mut self) -> anyhow::Result<u64> {
@@ -273,16 +225,16 @@ impl<'a> BanyanStoreGuard<'a> {
     }
 
     fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Arc<OwnStreamInner> {
-        self.maps.own_streams.get(&stream_nr).cloned().unwrap_or_else(|| {
+        self.own_streams.get(&stream_nr).cloned().unwrap_or_else(|| {
             tracing::debug!("creating new own stream {}", stream_nr);
             let forest = self.data.forest.clone();
             let stream_id = self.node_id().stream(stream_nr);
             // TODO: Maybe this fn should be fallible
             let _ = self.index_store.add_stream(stream_id);
             tracing::debug!("publish new stream_id {}", stream_id);
-            self.maps.publish_new_stream_id(stream_id);
+            self.publish_new_stream_id(stream_id);
             let stream = Arc::new(OwnStreamInner::new(forest));
-            self.maps.own_streams.insert(stream_nr, stream.clone());
+            self.own_streams.insert(stream_nr, stream.clone());
             stream
         })
     }
@@ -293,7 +245,7 @@ impl<'a> BanyanStoreGuard<'a> {
         let node_id = stream_id.node_id();
         let stream_nr = stream_id.stream_nr();
         let forest = self.data.forest.clone();
-        let remote_node = self.maps.get_or_create_remote_node(node_id);
+        let remote_node = self.get_or_create_remote_node(node_id);
         if let Some(state) = remote_node.streams.get(&stream_nr).cloned() {
             state
         } else {
@@ -303,7 +255,7 @@ impl<'a> BanyanStoreGuard<'a> {
             let store = self.outer();
             self.spawn_task("careful_ingestion", store.careful_ingestion(stream_id, state.clone()));
             tracing::debug!("publish new stream_id {}", stream_id);
-            self.maps.publish_new_stream_id(stream_id);
+            self.publish_new_stream_id(stream_id);
             state
         }
     }
@@ -340,10 +292,9 @@ impl<'a> BanyanStoreGuard<'a> {
     fn has_stream(&self, stream_id: StreamId) -> bool {
         let me = stream_id.node_id() == self.node_id();
         if me {
-            self.maps.own_streams.contains_key(&stream_id.stream_nr())
+            self.own_streams.contains_key(&stream_id.stream_nr())
         } else {
-            self.maps
-                .remote_nodes
+            self.remote_nodes
                 .get(&stream_id.node_id())
                 .map(|node| node.streams.contains_key(&stream_id.stream_nr()))
                 .unwrap_or_default()
@@ -382,9 +333,47 @@ impl<'a> BanyanStoreGuard<'a> {
             (stream.tree_stream(), stream.forest.clone())
         }
     }
-}
 
-impl BanyanStoreState {
+    pub fn publish_new_stream_id(&mut self, stream_id: StreamId) {
+        self.known_streams
+            .retain(|sender| sender.unbounded_send(stream_id).is_ok())
+    }
+
+    pub fn current_stream_ids(&self, node_id: NodeId) -> impl Iterator<Item = StreamId> + '_ {
+        let own_stream_ids = self.own_streams.keys().map(move |stream_id| node_id.stream(*stream_id));
+        let replicated_stream_ids = self.remote_nodes.iter().flat_map(|(node_id, node_info)| {
+            node_info
+                .streams
+                .keys()
+                .map(move |stream_nr| node_id.stream(*stream_nr))
+        });
+        own_stream_ids.chain(replicated_stream_ids)
+    }
+
+    /// Get a complete root map from both own and replicated streams
+    pub fn root_map(&self, own_node_id: NodeId) -> RootMap {
+        let own = self.own_streams.iter().filter_map(|(stream_nr, inner)| {
+            let (link, lamport) = inner.tree.project(|tree| (tree.link(), tree.last_lamport()));
+            let stream_id = own_node_id.stream(*stream_nr);
+            link.map(|link| (stream_id, RootMapEntry::new(&link.into(), lamport)))
+        });
+
+        let other = self.remote_nodes.iter().flat_map(|(node_id, remote_node)| {
+            remote_node.streams.iter().filter_map(move |(stream_nr, inner)| {
+                let stream_id = node_id.stream(*stream_nr);
+                inner.root_map_entry().map(|e| (stream_id, e))
+            })
+        });
+        RootMap(own.chain(other).collect())
+    }
+
+    pub fn get_or_create_remote_node(&mut self, node_id: NodeId) -> &mut RemoteNodeInner {
+        self.remote_nodes.entry(node_id).or_insert_with(|| {
+            tracing::debug!("learned of new node {}", node_id);
+            Default::default()
+        })
+    }
+
     /// Spawns a new task that will be shutdown when [`BanyanStore`] is dropped.
     pub fn spawn_task(&mut self, name: &'static str, task: impl Future<Output = ()> + Send + 'static) {
         tracing::debug!("Spawning task '{}'!", name);
@@ -480,7 +469,9 @@ impl BanyanStore {
             }),
             state: Arc::new(Mutex::new(BanyanStoreState {
                 index_store,
-                maps: Default::default(),
+                own_streams: Default::default(),
+                remote_nodes: Default::default(),
+                known_streams: Default::default(),
                 tasks: Default::default(),
             })),
         };
@@ -606,10 +597,10 @@ impl BanyanStore {
     pub fn stream_known_streams(&self) -> impl Stream<Item = StreamId> + Send {
         let mut state = self.lock();
         let (s, r) = mpsc::unbounded();
-        for stream_id in state.maps.current_stream_ids(self.node_id()) {
+        for stream_id in state.current_stream_ids(self.node_id()) {
             let _ = s.unbounded_send(stream_id);
         }
-        state.maps.known_streams.push(s);
+        state.known_streams.push(s);
         r
     }
 
