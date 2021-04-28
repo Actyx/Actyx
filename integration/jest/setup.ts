@@ -15,7 +15,6 @@ import { createNode } from '../src/infrastructure/create'
 import { rightOrThrow } from '../src/infrastructure/rightOrThrow'
 import { ActyxOSNode, AwsKey, printTarget } from '../src/infrastructure/types'
 import { retryTimes } from '../src/retry'
-import { setupAnsible } from '../src/setup-projects/ansible'
 import { Config, Settings } from './types'
 
 export type LogEntry = {
@@ -226,8 +225,6 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   const configObject = YAML.parse(await fs.readFile(configFile, 'utf-8'))
   const config = rightOrThrow(Config.decode(configObject), configObject)
   console.log('using %i hosts', config.hosts.length)
-
-  await setupAnsible()
 
   // CRITICAL: axNodeSetup does not yet have all the fields of the NodeSetup type at this point
   // so we get the (partial) object’s reference, construct a fully type-checked NodeSetup, and

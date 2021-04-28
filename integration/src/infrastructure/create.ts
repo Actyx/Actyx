@@ -9,7 +9,7 @@ import { mkNodeLocalDocker, mkNodeLocalProcess } from './local'
 import { LogEntry, MyGlobal } from '../../jest/setup'
 import fs, { readFileSync } from 'fs'
 import path from 'path'
-import { mkWindowsSsh } from './windows2'
+import { mkWindowsSsh } from './windows'
 
 const createAwsInstance = async (
   ec2: EC2,
