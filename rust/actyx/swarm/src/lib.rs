@@ -1,3 +1,14 @@
+//! Code structure
+//!
+//! ## BanyanStore
+//! the externally visible interface
+//! ## BanyanStoreData
+//! the immutable and internally mutable part of the state - No logic implemented on this
+//! ## BanyanStoreState
+//! the mutable part of the state. No logic except drop implemented on this
+//! ## BanyanStoreGuard
+//! temporary struct that is created when acquiring mutable access to the state.
+//! inside this you have mutable access to the state - but if you lock again you will deadlock.
 pub mod access;
 pub mod convert;
 mod discovery;
@@ -134,6 +145,7 @@ pub struct BanyanStore {
     data: Arc<BanyanStoreData>,
     state: Arc<Mutex<BanyanStoreState>>,
 }
+
 /// All immutable or internally mutable parts of the banyan store
 struct BanyanStoreData {
     gossip_v2: v2::GossipV2,
@@ -148,15 +160,20 @@ struct BanyanStoreData {
     lamport: Variable<LamportTimestamp>,
 }
 
-/// internal state of the stream manager
+/// Internal mutable state of the stream manager
+///
+/// Logic to manipulate the state is mostly implemented in BanyanStoreGuard
 struct BanyanStoreState {
     /// the index store
     index_store: SqliteIndexStore,
 
+    /// our own streams
     own_streams: BTreeMap<StreamNr, Arc<OwnStreamInner>>,
 
+    /// all remote nodes we know of
     remote_nodes: BTreeMap<NodeId, RemoteNodeInner>,
 
+    /// dispatcher to tell interested parties of newly discovered streams
     known_streams: Vec<mpsc::UnboundedSender<StreamId>>,
 
     /// tasks of the stream manager.
@@ -172,8 +189,9 @@ impl Drop for BanyanStoreState {
 }
 
 struct BanyanStoreGuard<'a> {
-    /// the guard for the mutex
+    /// the guard for the mutex - this implies that we have write access to the state
     guard: MutexGuard<'a, BanyanStoreState>,
+    /// access to the immutable part of the store
     data: Arc<BanyanStoreData>,
     /// access to the state, here be dragons!
     state: Arc<Mutex<BanyanStoreState>>,
