@@ -196,8 +196,8 @@ const observeAll = (
   makeFish: (seed: ESeed) => Fish<S, any> | undefined,
   expireAfterSeed?: Milliseconds,
 ): Observable<StartedFishMap<S>> => {
-  const fish$ = Observable.from(eventStore.offsets()).concatMap(present => {
-    const persisted = getEventsForwardChunked(eventStore, firstEvents, present)
+  const fish$ = Observable.from(eventStore.offsets()).concatMap(offsets => {
+    const persisted = getEventsForwardChunked(eventStore, firstEvents, offsets.present)
 
     // This step is only so that we don’t emit outdated collection while receiving chunks of old events
     const initialFishs = persisted.reduce((acc: Record<string, StartedFish<S>>, chunk) => {
@@ -212,7 +212,13 @@ const observeAll = (
     }, {})
 
     return initialFishs.concatMap(
-      observeAllStartWithInitial(eventStore, makeFish, firstEvents, present, expireAfterSeed),
+      observeAllStartWithInitial(
+        eventStore,
+        makeFish,
+        firstEvents,
+        offsets.present,
+        expireAfterSeed,
+      ),
     )
   })
 

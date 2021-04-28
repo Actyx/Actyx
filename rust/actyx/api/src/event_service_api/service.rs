@@ -1,13 +1,11 @@
-use std::convert::TryInto;
-
 use actyxos_sdk::{
     language,
     service::{
-        self, EventResponse, NodeIdResponse, Order, PublishEvent, PublishRequest, PublishResponse, PublishResponseKey,
-        QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest, SubscribeMonotonicResponse,
-        SubscribeRequest, SubscribeResponse,
+        self, EventResponse, NodeIdResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse,
+        PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
+        SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    Event, EventKey, Metadata, OffsetMap, Payload,
+    Event, EventKey, Metadata, Payload,
 };
 use async_trait::async_trait;
 use ax_futures_util::prelude::*;
@@ -49,14 +47,8 @@ impl service::EventService for EventService {
         })
     }
 
-    async fn offsets(&self) -> anyhow::Result<OffsetMap> {
-        let response = self
-            .store
-            .stream()
-            .next()
-            .await
-            .and_then(|o| o.try_into().ok())
-            .unwrap_or_default();
+    async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
+        let response = self.store.offsets().next().await.unwrap_or_default();
         Ok(response)
     }
 

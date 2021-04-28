@@ -17,7 +17,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use futures::stream::BoxStream;
 use serde::{Deserialize, Serialize};
-use std::fmt::Display;
+use std::{collections::BTreeMap, fmt::Display, num::NonZeroU64};
 
 use crate::{
     event::{Event, EventKey, Metadata},
@@ -309,11 +309,21 @@ pub struct NodeIdResponse {
     pub node_id: NodeId,
 }
 
+/// Response to the `offsets` endpoint
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct OffsetsResponse {
+    /// Currently validated [`OffsetMap`] locally available
+    pub present: OffsetMap,
+    /// Number of events per [`StreamId`] pending replication to this node
+    pub to_replicate: BTreeMap<StreamId, NonZeroU64>,
+}
+
 #[async_trait]
 pub trait EventService: Clone + Send {
     async fn node_id(&self) -> Result<NodeIdResponse>;
 
-    async fn offsets(&self) -> Result<OffsetMap>;
+    async fn offsets(&self) -> Result<OffsetsResponse>;
 
     async fn publish(&self, request: PublishRequest) -> Result<PublishResponse>;
 

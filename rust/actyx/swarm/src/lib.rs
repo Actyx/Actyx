@@ -16,13 +16,15 @@ mod v2;
 
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
-pub use crate::v1::{EventStore, HighestSeen, Present};
+pub use crate::v1::{EventStore, Present};
 
 use crate::prune::RetainConfig;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
 use crate::streams::{OwnStreamInner, ReplicatedStreamInner, StreamMaps};
-use actyxos_sdk::{LamportTimestamp, NodeId, Offset, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp};
+use actyxos_sdk::{
+    LamportTimestamp, NodeId, Offset, OffsetMap, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp,
+};
 use anyhow::{Context, Result};
 use ax_futures_util::{prelude::*, stream::variable::Variable};
 use banyan::{
@@ -55,10 +57,7 @@ use std::{
     sync::Arc,
     time::Duration,
 };
-use trees::{
-    axtrees::{AxKey, AxTrees, Sha256Digest},
-    OffsetMapOrMax,
-};
+use trees::axtrees::{AxKey, AxTrees, Sha256Digest};
 use util::formats::NodeErrorContext;
 
 #[allow(clippy::upper_case_acronyms)]
@@ -130,6 +129,15 @@ impl PartialEq for SwarmConfig {
 #[derive(Clone)]
 pub struct BanyanStore(Arc<BanyanStoreInner>);
 
+#[derive(Clone, Debug, Default)]
+struct SwarmOffsets {
+    /// Currently validated OffsetMap
+    present: OffsetMap,
+    /// OffsetMap describing the replication target. Currently this is driven via `highest_seen`,
+    /// but should eventually be fed by the partial replication mechanism.
+    replication_target: OffsetMap,
+}
+
 /// internal state of the stream manager
 struct BanyanStoreInner {
     maps: Mutex<StreamMaps>,
@@ -138,10 +146,8 @@ struct BanyanStoreInner {
     ipfs: Ipfs,
     node_id: NodeId,
     index_store: Mutex<SqliteIndexStore>,
-    /// maximum ingested offset for each source (later: each stream)
-    present: Variable<OffsetMapOrMax>,
-    /// highest seen offset for each source (later: each stream)
-    highest_seen: Variable<OffsetMapOrMax>,
+    /// maximum ingested offset and highest seen for each stream
+    offsets: Variable<SwarmOffsets>,
     /// lamport timestamp for publishing to internal streams
     lamport: Variable<LamportTimestamp>,
     /// tasks of the stream manager.
@@ -238,8 +244,7 @@ impl BanyanStore {
             gossip_v2,
             forest,
             lamport: Default::default(),
-            present: Default::default(),
-            highest_seen: Default::default(),
+            offsets: Default::default(),
             tasks: Default::default(),
         }));
         banyan.load_known_streams()?;
@@ -584,7 +589,7 @@ impl BanyanStore {
                 anyhow::ensure!(temp.last_lamport() > validated_lamport);
                 // get the offset
                 let offset = temp.offset();
-                // update present. This can fail if stream_id is not a source_id.
+                // update present.
                 let _ = self.update_highest_seen(stream_id, offset);
                 tree = Some(temp);
             }

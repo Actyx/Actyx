@@ -31,10 +31,11 @@ use url::Url;
 
 use crate::{
     service::{
-        AuthenticationResponse, EventService, NodeIdResponse, PublishRequest, PublishResponse, QueryRequest,
-        QueryResponse, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
+        AuthenticationResponse, EventService, NodeIdResponse, OffsetsResponse, PublishRequest, PublishResponse,
+        QueryRequest, QueryResponse, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest,
+        SubscribeResponse,
     },
-    AppManifest, OffsetMap,
+    AppManifest,
 };
 
 /// Error type that is returned in the response body by the Event Service when requests fail
@@ -172,7 +173,7 @@ impl EventService for HttpClient {
         })?)
     }
 
-    async fn offsets(&self) -> anyhow::Result<OffsetMap> {
+    async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
         let response = self.do_request(|c| c.get(self.events_url("offsets"))).await?;
         let bytes = response
             .bytes()
