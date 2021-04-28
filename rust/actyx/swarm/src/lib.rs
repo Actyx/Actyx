@@ -33,7 +33,9 @@ use crate::prune::RetainConfig;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
 use crate::streams::{OwnStreamInner, ReplicatedStreamInner};
-use actyxos_sdk::{OffsetMap, LamportTimestamp, NodeId, Offset, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp};
+use actyxos_sdk::{
+    LamportTimestamp, NodeId, Offset, OffsetMap, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp,
+};
 use anyhow::{Context, Result};
 use ax_futures_util::{prelude::*, stream::variable::Variable};
 use banyan::{
@@ -67,9 +69,7 @@ use std::{
     time::Duration,
 };
 use streams::*;
-use trees::{
-    axtrees::{AxKey, AxTrees, Sha256Digest},
-};
+use trees::axtrees::{AxKey, AxTrees, Sha256Digest};
 use trees::{RootMap, RootMapEntry};
 use util::formats::NodeErrorContext;
 
