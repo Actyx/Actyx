@@ -63,7 +63,7 @@
 //!       .query(QueryRequest {
 //!           lower_bound: None,
 //!           upper_bound: offsets,
-//!           r#where: "MyFish".parse()?,
+//!           query: "FROM 'MyFish'".parse()?,
 //!           order: Order::Desc,
 //!       })
 //!       .await?;
@@ -109,9 +109,9 @@ mod app_manifest;
 #[cfg(any(test, feature = "arb"))]
 pub mod arb;
 mod event;
-mod expression;
 #[cfg(feature = "client")]
 mod http_client;
+pub mod language;
 pub mod legacy;
 mod offset;
 mod scalars;
@@ -122,7 +122,6 @@ pub mod types;
 
 pub use app_manifest::AppManifest;
 pub use event::{Event, EventKey, Metadata, Opaque, Payload};
-pub use expression::{Dnf, Expression};
 #[cfg(feature = "client")]
 pub use http_client::HttpClient;
 pub use offset::{Offset, OffsetMap, OffsetOrMin};

@@ -4,6 +4,7 @@ use std::io::Write;
 use structopt::StructOpt;
 use swarm::BanyanStore;
 use swarm_cli::{Command, Config, Event};
+use trees::{axtrees::TagsQuery, TagSubscriptions};
 
 #[tokio::main]
 async fn main() {
@@ -26,8 +27,10 @@ async fn run() -> Result<()> {
             Command::Append(nr, events) => {
                 swarm.append(nr, events).await?;
             }
-            Command::Query(expr) => {
-                let mut stream = swarm.stream_filtered_stream_ordered(expr.dnf());
+            Command::Query(q) => {
+                let subs = TagSubscriptions::from(&q);
+                let tags_query = TagsQuery::new(subs.as_tag_sets(false));
+                let mut stream = swarm.stream_filtered_stream_ordered(tags_query);
                 tokio::spawn(async move {
                     let mut stdout = std::io::stdout();
                     while let Some(res) = stream.next().await {

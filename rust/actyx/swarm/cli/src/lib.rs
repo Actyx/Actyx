@@ -1,4 +1,4 @@
-use actyxos_sdk::{Expression, Payload, StreamNr, TagSet};
+use actyxos_sdk::{language::Query, Payload, StreamNr, TagSet};
 use anyhow::Result;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -30,7 +30,7 @@ impl From<Config> for SwarmConfig {
 #[derive(Debug, Eq, PartialEq)]
 pub enum Command {
     Append(StreamNr, Vec<(TagSet, Payload)>),
-    Query(Expression),
+    Query(Query),
     Exit,
 }
 
@@ -108,7 +108,7 @@ mod tests {
                 42.into(),
                 vec![(tags!("a", "b"), Payload::from_json_str("{}").unwrap())],
             ),
-            Command::Query("'a' & 'b' | 'c'".parse().unwrap()),
+            Command::Query("FROM 'a' & 'b' | 'c'".parse().unwrap()),
             Command::Exit,
         ];
         for cmd in command.iter() {

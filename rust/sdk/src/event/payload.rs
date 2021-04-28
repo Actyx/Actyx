@@ -78,6 +78,14 @@ impl Payload {
         let text = serde_json::to_string(&v).unwrap();
         Payload::from_json_str(&text)
     }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        Self(Opaque::from_bytes(bytes))
+    }
 }
 
 impl Default for Payload {

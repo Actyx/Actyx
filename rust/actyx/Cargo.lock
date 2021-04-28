@@ -40,6 +40,9 @@ dependencies = [
  "multibase 0.9.1",
  "nom 6.1.2",
  "num-traits 0.2.14",
+ "once_cell",
+ "pest",
+ "pest_derive",
  "postgres-types",
  "quickcheck",
  "rand 0.8.3",
@@ -271,6 +274,7 @@ dependencies = [
  "num-traits 0.2.14",
  "parking_lot 0.11.1",
  "pin-project 1.0.7",
+ "runtime",
  "serde 1.0.125",
  "serde_cbor",
  "serde_json",
@@ -958,6 +962,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc38c385bfd7e444464011bb24820f40dd1c76bcdfa1b78611cb7c2e5cafab75"
 dependencies = [
  "rustc_version 0.2.3",
+]
+
+[[package]]
+name = "cbor-data"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4903d67ede1684cac68d346426d8ad90c973d0aa4f5a3106ecb2b770e4ea449f"
+dependencies = [
+ "base64",
+ "half",
 ]
 
 [[package]]
@@ -5448,6 +5462,17 @@ dependencies = [
  "quote",
  "rustc_version 0.3.3",
  "syn",
+]
+
+[[package]]
+name = "runtime"
+version = "0.1.0"
+dependencies = [
+ "actyxos_sdk",
+ "anyhow",
+ "cbor-data",
+ "tracing",
+ "trees",
 ]
 
 [[package]]

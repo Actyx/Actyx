@@ -44,7 +44,7 @@ async fn persistence_across_restarts() -> anyhow::Result<()> {
             lower_bound: Some(offsets_before.present.clone()),
             upper_bound: offsets_later.present.clone(),
             order: Order::Asc,
-            r#where: "'my_tag'".parse().unwrap(),
+            query: "FROM 'my_tag'".parse().unwrap(),
         })
         .await?
         .collect()
@@ -74,7 +74,7 @@ async fn persistence_across_restarts() -> anyhow::Result<()> {
             lower_bound: Some(offsets_before.present),
             upper_bound: offsets_later.present,
             order: Order::Asc,
-            r#where: "'my_tag'".parse().unwrap(),
+            query: "FROM 'my_tag'".parse().unwrap(),
         })
         .await?
         .collect()

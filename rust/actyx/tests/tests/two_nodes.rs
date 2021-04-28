@@ -114,7 +114,7 @@ async fn two_nodes() -> anyhow::Result<()> {
             lower_bound: None,
             upper_bound: offsets.present.clone(),
             order: Order::Asc,
-            r#where: "'my_tag'".parse().unwrap(),
+            query: "FROM 'my_tag'".parse().unwrap(),
         })
         .await?
         .map(|q| {

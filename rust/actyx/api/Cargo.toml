@@ -9,6 +9,7 @@ actyxos_sdk = { version = "0.6", path = "../../sdk" }
 ax-futures-util = { path = "../ax-futures-util" }
 crypto = { path = "../crypto" }
 swarm = { path = "../swarm" }
+runtime = { path = "../runtime" }
 trees = { path = "../trees" }
 actyx-util = { path = "../util", package = "util" }
 

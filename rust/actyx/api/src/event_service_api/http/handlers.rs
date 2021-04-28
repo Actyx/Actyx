@@ -6,7 +6,11 @@ use actyxos_sdk::{
 };
 use warp::*;
 
-use crate::util::{reject, Result};
+use crate::{
+    event_service_api::service,
+    rejections::ApiError,
+    util::{self, Result},
+};
 
 pub async fn node_id(_app_id: AppId, event_service: impl EventService) -> Result<impl Reply> {
     event_service
@@ -64,4 +68,11 @@ pub async fn subscribe_monotonic(
         .await
         .map(|events| ndjson::reply(ndjson::keep_alive().stream(events)))
         .map_err(reject)
+}
+
+fn reject(err: anyhow::Error) -> Rejection {
+    match err.downcast_ref::<service::Error>() {
+        Some(service::Error::ConsumerAccesError(_)) => reject::custom(ApiError::BadRequest { cause: err.to_string() }),
+        _ => util::reject(err), // internal server errors
+    }
 }

@@ -21,7 +21,7 @@ use std::{collections::BTreeMap, fmt::Display, num::NonZeroU64};
 
 use crate::{
     event::{Event, EventKey, Metadata},
-    expression::Expression,
+    language::Query,
     scalars::{NodeId, StreamId},
     tags::TagSet,
     types::Binary,
@@ -55,7 +55,7 @@ pub enum Order {
 pub struct QueryRequest {
     pub lower_bound: Option<OffsetMap>,
     pub upper_bound: OffsetMap,
-    pub r#where: Expression,
+    pub query: Query,
     pub order: Order,
 }
 
@@ -63,7 +63,7 @@ pub struct QueryRequest {
 #[serde(rename_all = "camelCase")]
 pub struct SubscribeRequest {
     pub offsets: Option<OffsetMap>,
-    pub r#where: Expression,
+    pub query: Query,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -249,7 +249,7 @@ pub struct SubscribeMonotonicRequest {
     pub session: SessionId,
     /// Definition of the events to be received by this session, i.e. a selection of
     /// tags coupled with other flags like “is local”.
-    pub r#where: Expression,
+    pub query: Query,
     /// The consumer may already have kept state and know at which point to resume a
     /// previously interrupted stream. In this case, StartFrom::Offsets is used,
     /// otherwise StartFrom::Snapshot indicates that the PondService shall figure
