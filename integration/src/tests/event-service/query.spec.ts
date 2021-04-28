@@ -6,7 +6,7 @@ import { AxiosError } from 'axios'
 
 const QUERY_TIMEOUT = 500
 
-describe('event service', () => {
+describe.skip('event service', () => {
   describe('query event streams', () => {
     it('should return error if stream is not valid', async () => {
       await httpClient

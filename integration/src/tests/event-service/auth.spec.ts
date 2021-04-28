@@ -1,7 +1,8 @@
 import fetch from 'node-fetch'
-import { getToken, getNodeId, mkEventsPath } from '../../infrastructure/ax-http-client'
+import { getToken, getNodeId, mkEventsPath } from '../../ax-http-client'
 import { runConcurrentlyOnAllSameLogic } from '../../infrastructure/hosts'
 import WebSocket from 'ws'
+import { ActyxOSNode } from '../../infrastructure/types'
 
 const UNAUTHORIZED_TOKEN =
   'AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ=='
@@ -12,11 +13,9 @@ const trialManifest = {
   version: '1.0.0',
 }
 
+const getHttpApi = (x: ActyxOSNode) => x._private.httpApiOrigin
 const run = <T>(f: (httpApi: string) => Promise<T>): Promise<T[]> =>
-  runConcurrentlyOnAllSameLogic((node) => {
-    const httpApi = new URL(node._private.apiEvent).origin
-    return f(httpApi)
-  })
+  runConcurrentlyOnAllSameLogic((node) => f(getHttpApi(node)))
 
 describe('auth http', () => {
   it('should get token for a trial manifest and successfully use it', () =>
@@ -59,7 +58,7 @@ describe('auth http', () => {
         .then((x) => x.json())
         .then((x) =>
           expect(x).toEqual({
-            code: 'ERR_WRONG_AUTH_TYPE',
+            code: 'ERR_UNSUPPORTED_AUTH_TYPE',
             message: 'Unsupported authentication type \'Foo\'. Only "Bearer" is supported.',
           }),
         ),

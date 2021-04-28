@@ -12,7 +12,7 @@ const getEndPoints = [['node_id'], ['offsets']]
 
 const allEndPoints = [...postEndPoints, ...getEndPoints]
 
-describe('event service', () => {
+describe.skip('event service', () => {
   describe('errors for endpoints', () => {
     describe('user gets ERR_MALFORMED_REQUEST_SYNTAX', () => {
       it.each([...postEndPoints])(

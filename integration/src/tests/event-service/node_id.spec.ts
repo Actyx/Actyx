@@ -1,7 +1,7 @@
 import { NodeIdResponse } from '../../event-service-types'
 import { httpClient } from '../../httpClient'
 
-describe('event service', () => {
+describe.skip('event service', () => {
   describe('get node id', () => {
     it('should return node id information', async () => {
       await httpClient.get<NodeIdResponse>('node_id').then((response) => {

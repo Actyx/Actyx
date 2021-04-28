@@ -1,7 +1,7 @@
 import axios, { AxiosError } from 'axios'
 import { ErrorResponse } from '../../event-service-types'
 
-describe('event service', () => {
+describe.skip('event service', () => {
   describe('others', () => {
     it('should return proper error if endpoint does no exist', async () => {
       await axios

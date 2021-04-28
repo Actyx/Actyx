@@ -4,8 +4,9 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import { Milliseconds } from '@actyx/sdk'
 import { BehaviorSubject, Observable } from 'rxjs'
-import { FishName, Milliseconds, Semantics } from '../types'
+import { FishName, Semantics } from '../types'
 import { Loggers } from '../util'
 import { PondState, PondStateTracker } from './pond-state'
 

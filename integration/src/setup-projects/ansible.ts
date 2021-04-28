@@ -19,7 +19,7 @@ const checkBinaryInstalled = async (binaryName: string) => {
     await execa.command(`which ${binaryName}`)
   } catch (err) {
     console.error(err)
-    throw `${binaryName} is required, please intall the latest version`
+    throw `${binaryName} is required, please install the latest version`
   }
 }
 

@@ -26,7 +26,7 @@ const onEvent = (_previousTemperature: number, current: TemperatureEvent) => cur
 const currentTemperatureFish = {
   initialState: NaN,
   onEvent,
-  isReset: (current: TemperatureEvent) => true
+  isReset: (current: TemperatureEvent) => true,
   // etc.
 }
 ```
@@ -38,3 +38,7 @@ Without defining `isReset`, we would lose a lot of performance due to
 - time traveling when events occur out of order
 
 By defining `isReset`, we disregard historic events and avoid unnecessary time travel.
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

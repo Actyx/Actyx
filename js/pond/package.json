@@ -4,6 +4,7 @@
     "url": "https://community.actyx.com/"
   },
   "dependencies": {
+    "@actyx/sdk": "file://../sdk",
     "bufferutil": "4.0.1",
     "cron": "1.5.0",
     "debug": "3.2.6",

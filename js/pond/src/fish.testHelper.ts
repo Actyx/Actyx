@@ -4,27 +4,16 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import { EventKey, Lamport, NodeId, Offset, OffsetMap, Tag, Timestamp, Where } from '@actyx/sdk'
 import { last } from 'ramda'
 import { Observable, Scheduler } from 'rxjs'
 import { Fish, FishId, TestEvent } from '.'
 import { EventStore } from './eventstore'
-import { Event, Events, OffsetMap } from './eventstore/types'
+import { Event, Events } from './eventstore/types'
 import { observeMonotonic } from './monotonic'
 import { SnapshotStore } from './snapshotStore'
 import { minSnapshotAge, SnapshotScheduler } from './store/snapshotScheduler'
-import { Tag, Where } from './tagging'
-import {
-  EventKey,
-  FishErrorContext,
-  FishErrorReporter,
-  FishName,
-  Lamport,
-  Offset,
-  Semantics,
-  SnapshotFormat,
-  NodeId,
-  Timestamp,
-} from './types'
+import { FishErrorContext, FishErrorReporter, FishName, Semantics, SnapshotFormat } from './types'
 
 export type NumberFishEvent = number | 'padding'
 export type NumberFishState = number[]

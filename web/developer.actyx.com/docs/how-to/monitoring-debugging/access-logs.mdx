@@ -6,14 +6,14 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
-import Tabs from '@theme/Tabs'
-import TabItem from '@theme/TabItem'
-
 In general, there are 2 ways to access Actyx logs. You can either use Actyx tools, or you can directly access them on your host.
 
 :::info
 You can only use the Actyx CLI and Node Manager to access logs once Actyx has successfully started. If you are investigating startup errors, you need to access logs directly from your host.
 :::
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
 
 <Tabs
   groupId="os"
@@ -102,3 +102,7 @@ In the _Status_ tab of the Node Manager, you can see logs as they are created:
 </TabItem>
 </Tabs>
 
+
+import { NPS } from '../../../src/components/NPS'
+
+<NPS />

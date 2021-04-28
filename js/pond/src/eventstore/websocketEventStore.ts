@@ -4,22 +4,20 @@
  *
  * Copyright (C) 2020 Actyx AG
  */
+import { EventKey, EventKeyIO, NodeId, OffsetMapIO, Where } from '@actyx/sdk'
 import * as t from 'io-ts'
 import { equals } from 'ramda'
 import log from '../loggers'
-import { Where } from '../tagging'
-import { EventKey, EventKeyIO, NodeId } from '../types'
 import {
   EventStore,
   RequestAllEvents,
   RequestConnectivity,
   RequestHighestSeen,
+  RequestOffsets,
   RequestPersistedEvents,
   RequestPersistEvents,
-  RequestOffsets,
 } from './eventStore'
 import { MultiplexedWebsocket, validateOrThrow } from './multiplexedWebsocket'
-import { OffsetMapIO } from './offsetMap'
 import {
   AllEventsSortOrder,
   ConnectivityStatus,

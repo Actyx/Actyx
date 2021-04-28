@@ -12,7 +12,7 @@ path = "src/main.rs"
 util = { path = "../util" }
 
 [target."cfg(target_os = \"windows\")".dependencies]
-anyhow = "1.0.38"
+anyhow = "1.0.40"
 clap = "2.33.3"
 crossbeam = "0.8.0"
 named-lock = "0.1.1"

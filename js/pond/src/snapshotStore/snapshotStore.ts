@@ -4,9 +4,9 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { OffsetMap } from '../eventstore'
+import { EventKey, OffsetMap } from '@actyx/sdk'
 import { MultiplexedWebsocket } from '../eventstore/multiplexedWebsocket'
-import { EventKey, FishName, LocalSnapshot, Semantics } from '../types'
+import { FishName, LocalSnapshot, Semantics } from '../types'
 import { InMemSnapshotStore } from './inMemSnapshotStore'
 import { WebsocketSnapshotStore } from './websocketSnapshotStore'
 

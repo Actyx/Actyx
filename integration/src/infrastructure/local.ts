@@ -42,7 +42,7 @@ export const mkNodeLocalProcess = async (
   }
   const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
 
-  await new Promise((res, rej) => {
+  await new Promise<void>((res, rej) => {
     proc.stdout?.on('data', (s: Buffer | string) => log('stdout', s) && res())
     proc.stderr?.on('data', (s: Buffer | string) => log('stderr', s))
     proc.on('close', (code: number, signal: string) =>
@@ -57,22 +57,23 @@ export const mkNodeLocalProcess = async (
     flush()
     return Promise.reject(err)
   })
-  console.log('node %s ActyxOS started', nodeName)
+  console.log('node %s Actyx started', nodeName)
 
+  const httpApiOrigin = `http://localhost:${port4454}`
   const opts = DefaultClientOpts()
+  opts.Endpoints.EventService.BaseUrl = httpApiOrigin
   const axBinaryPath = await currentAxBinary()
   return {
     name: nodeName,
     target,
     host: 'process',
     ax: await CLI.build(`localhost:${port4458}`, axBinaryPath),
-    actyxOS: Client(opts),
+    httpApiClient: Client(opts),
     _private: {
       shutdown,
       axBinaryPath,
       axHost: `localhost:${port4458}`,
-      apiConsole: opts.Endpoints.ConsoleService.BaseUrl,
-      apiEvent: opts.Endpoints.EventService.BaseUrl,
+      httpApiOrigin,
       apiPond: `ws://localhost:${port4454}/api/v2/events?token=ok`,
       apiSwarmPort: port4001,
     },
@@ -90,7 +91,7 @@ export const mkNodeLocalDocker = async (
 
   // exposing the ports and then using -P to use random (free) ports, avoiding trouble
   const command =
-    'docker run -d --rm -v /data ' + '--expose 4001 --expose 4458 --expose 4454 -P ' + image
+    'docker run -d --rm -v /data --expose 4001 --expose 4458 --expose 4454 -P ' + image
 
   const dockerRun = await execa.command(command)
   const container = dockerRun.stdout
@@ -104,7 +105,7 @@ export const mkNodeLocalDocker = async (
     const proc = execa('docker', ['logs', '--follow', container])
     const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
 
-    await new Promise((res, rej) => {
+    await new Promise<void>((res, rej) => {
       proc.stdout?.on('data', (s: Buffer | string) => log('stdout', s) && res())
       proc.stderr?.on('data', (s: Buffer | string) => log('stderr', s))
       proc.on('close', (code: number, signal: string) =>
@@ -127,11 +128,9 @@ export const mkNodeLocalDocker = async (
 
     const port = (original: number): string => ports[`${original}/tcp`][0].HostPort
     const axHost = `localhost:${port(4458)}`
-    const apiConsole = `http://localhost:${port(4454)}/api/`
-    const apiEvent = `http://localhost:${port(4454)}/api/`
+    const httpApiOrigin = `http://localhost:${port(4454)}`
     const opts = DefaultClientOpts()
-    opts.Endpoints.ConsoleService.BaseUrl = apiConsole
-    opts.Endpoints.EventService.BaseUrl = apiEvent
+    opts.Endpoints.EventService.BaseUrl = httpApiOrigin
 
     const axBinaryPath = await currentAxBinary()
     return {
@@ -139,13 +138,12 @@ export const mkNodeLocalDocker = async (
       target,
       host: 'docker',
       ax: await CLI.build(axHost, axBinaryPath),
-      actyxOS: Client(opts),
+      httpApiClient: Client(opts),
       _private: {
         shutdown,
         axBinaryPath,
         axHost,
-        apiConsole,
-        apiEvent,
+        httpApiOrigin,
         apiPond: `ws://localhost:${port(4454)}/api/v2/events?token=ok`,
         apiSwarmPort: 4001,
       },

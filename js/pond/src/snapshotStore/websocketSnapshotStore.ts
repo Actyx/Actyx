@@ -4,11 +4,11 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import { EventKeyIO, OffsetMapIO } from '@actyx/sdk'
 import * as t from 'io-ts'
 import { MultiplexedWebsocket, validateOrThrow } from '../eventstore/multiplexedWebsocket'
-import { OffsetMapIO } from '../eventstore/offsetMap'
 import { SnapshotStore } from '../snapshotStore'
-import { EventKeyIO, FishName, Semantics } from '../types'
+import { FishName, Semantics } from '../types'
 import {
   InvalidateAllSnapshots,
   InvalidateSnapshots,

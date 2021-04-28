@@ -3,7 +3,6 @@ import { Client, DefaultClientOpts } from '@actyx/os-sdk'
 import { EC2 } from 'aws-sdk'
 import NodeEnvironment from 'jest-environment-node'
 import { CLI } from '../src/cli'
-import { setupStubs } from '../src/stubs'
 import { MyGlobal } from './setup'
 
 class MyEnvironment extends NodeEnvironment {
@@ -20,22 +19,31 @@ class MyEnvironment extends NodeEnvironment {
     axNodeSetup.ec2 = new EC2({ region: 'eu-central-1' })
     axNodeSetup.thisTestEnvNodes = []
 
-    // global objects must be serializable to copy into jest's test context, that's why we have to re-setup some things
+    /**
+     * Global objects must be serializable to copy into jest's test context.
+     * That's why we have to re-setup some things re-creating functions.
+     */
     for (const node of axNodeSetup.nodes) {
       // Reuse the identity the node was set up with
-      node.ax = await CLI.buildWithIdentityPath(
+      const ax = await CLI.buildWithIdentityPath(
         node._private.axHost,
         node._private.axBinaryPath,
         node.ax.identityPath,
       )
 
       const opts = DefaultClientOpts()
-      opts.Endpoints.ConsoleService.BaseUrl = node._private.apiConsole
-      opts.Endpoints.EventService.BaseUrl = node._private.apiEvent
-      node.actyxOS = Client(opts)
-    }
+      opts.Endpoints.EventService.BaseUrl = node._private.httpApiOrigin
+      // TODO: use ts-sdk v2
+      const httpApiClient = Client(opts)
 
-    this.global.stubs = await setupStubs()
+      /** Objects that have functions */
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      node.ax = ax
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      node.httpApiClient = httpApiClient
+    }
   }
 
   async teardown(): Promise<void> {

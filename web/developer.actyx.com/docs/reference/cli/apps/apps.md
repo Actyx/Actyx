@@ -20,3 +20,7 @@ Managing apps via the Actyx CLI is deprecated and will no longer be supported in
 | [ax apps undeploy](undeploy.md) | Undeploy an app from an ActyxOS node  |
 | [ax apps start](start.md)       | Start an app on an ActyxOS node       |
 | [ax apps stop](stop.md)         | Stop an app on an ActyxOS node        |
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

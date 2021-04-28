@@ -4,9 +4,9 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { OffsetMap } from '../eventstore'
+import { EventKey, Lamport, Offset, OffsetMap, StreamId } from '@actyx/sdk'
 import { SnapshotStore } from '../snapshotStore/snapshotStore'
-import { EventKey, FishName, Lamport, Offset, Semantics, StreamId } from '../types'
+import { FishName, Semantics } from '../types'
 import {
   InvalidateAllSnapshots,
   InvalidateSnapshots,

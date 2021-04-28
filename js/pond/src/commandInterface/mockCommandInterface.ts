@@ -5,7 +5,7 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { Observable, ReplaySubject } from 'rxjs'
-import { NodeId, Timestamp } from '../types'
+import { NodeId, Timestamp } from '@actyx/sdk'
 import { CounterMap, DurationMap, GaugeMap } from '../util'
 import {
   AlertRequest,

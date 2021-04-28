@@ -1,4 +1,4 @@
-# Setup of EC2 Windows nodes with ActyxOS
+# Setup of EC2 Windows nodes with Actyx
 
 ## Getting Started
 

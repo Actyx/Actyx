@@ -1,0 +1,17 @@
+[package]
+name = "swarm-harness"
+version = "0.1.0"
+authors = ["Actyx AG"]
+edition = "2018"
+
+[dependencies]
+actyxos_sdk = { path = "../../../sdk" }
+anyhow = "1.0.40"
+async-global-executor = "2.0.2"
+async-process = "1.0.2"
+futures = { version = "0.3.14", package = "futures" }
+netsim-embed = "0.2.6"
+structopt = "0.3.21"
+swarm-cli = { path = "../cli" }
+tempdir = "0.3.7"
+util = { path = "../../util" }

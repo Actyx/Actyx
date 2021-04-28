@@ -3,52 +3,34 @@ import { CLI } from './cli'
 import { ActyxOSNode } from './infrastructure/types'
 import { Arch, Host, OS } from '../jest/types'
 import { currentAxBinary } from './infrastructure/settings'
-import { MyGlobal, Stubs } from '../jest/setup'
 
-const mkNodeStub = async (
-  axBinaryPath: string,
+export const mkNodeStub = (
   os: OS,
   arch: Arch,
   host: Host,
   name: string,
   addr = 'localhost',
-): Promise<ActyxOSNode> => {
-  return {
-    name,
-    host,
-    target: { os, arch, kind: { type: 'test' }, _private: { cleanup: () => Promise.resolve() } },
-    ax: await CLI.build(addr, axBinaryPath),
-    actyxOS: Client(),
-    _private: {
-      shutdown: () => Promise.resolve(),
-      axBinaryPath: '',
-      axHost: '',
-      apiConsole: '',
-      apiEvent: '',
-      apiPond: '',
-      apiSwarmPort: 0,
-    },
-  }
-}
+): Promise<ActyxOSNode> =>
+  currentAxBinary()
+    .then((x) => CLI.build(addr, x))
+    .then((ax) => ({
+      name,
+      host,
+      target: { os, arch, kind: { type: 'test' }, _private: { cleanup: () => Promise.resolve() } },
+      ax,
+      httpApiClient: Client(),
+      _private: {
+        shutdown: () => Promise.resolve(),
+        axBinaryPath: '',
+        axHost: '',
+        httpApiOrigin: '',
+        apiPond: '',
+        apiSwarmPort: 0,
+      },
+    }))
 
-export const stubs = (<MyGlobal>global).stubs
+export const mkAx = (): Promise<CLI> =>
+  mkNodeStub('android', 'aarch64', 'android', 'foo').then((x) => x.ax)
 
-// To be called in Jest's TestEnvironment prepration procedure: `environment.ts`
-export const setupStubs = async (): Promise<Stubs> => {
-  const axBinaryPath = await currentAxBinary()
-  const def = await mkNodeStub(axBinaryPath, 'android', 'aarch64', 'android', 'foo', 'localhost')
-  const unreachable = await mkNodeStub(
-    axBinaryPath,
-    'android',
-    'aarch64',
-    'android',
-    'foo',
-    '10.42.42.21',
-  )
-
-  return {
-    axOnly: def,
-    unreachable,
-    mkStub: (a, b, c, d) => mkNodeStub(axBinaryPath, a, b, c, d, 'localhost'),
-  }
-}
+export const mkAxWithUnreachableNode = (): Promise<CLI> =>
+  mkNodeStub('android', 'aarch64', 'android', 'foo', '10.42.42.21').then((x) => x.ax)

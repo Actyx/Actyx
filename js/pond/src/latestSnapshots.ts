@@ -4,11 +4,12 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import { EventKey } from '@actyx/sdk'
 import * as assert from 'assert'
 import { none, Option } from 'fp-ts/lib/Option'
 import { contramap, Ord } from 'fp-ts/lib/Ord'
 import { Event } from './eventstore/types'
-import { EventKey, LocalSnapshot } from './types'
+import { LocalSnapshot } from './types'
 
 const assertNewer = <T>(newVal: Option<T>, oldVal: Option<T>, ord: Ord<T>) => {
   if (newVal.isSome() && oldVal.isSome()) {

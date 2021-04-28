@@ -65,7 +65,7 @@ impl<A: smallvec::Array<Item = Timestamp>> From<AxRange<Timestamp>> for RangeSet
 /// A single key. This represents the queryable part of an event
 ///
 /// Typically you deal not with individual keys but with sequences of keys. See [AxKeySeq]
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct AxKey {
     pub(crate) tags: TagSet,
     pub(crate) time: Timestamp,

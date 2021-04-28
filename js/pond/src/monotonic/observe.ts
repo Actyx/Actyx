@@ -1,23 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { EventKey, Metadata, OffsetMap, toMetadata, Where } from '@actyx/sdk'
 import { none, Option, some } from 'fp-ts/lib/Option'
 import { clone } from 'ramda'
 import { Observable, Scheduler, Subject } from 'rxjs'
-import { Event, EventStore, OffsetMap } from '../eventstore'
+import { Event, EventStore } from '../eventstore'
 import log from '../loggers'
 import { mkNoopPondStateTracker, PondStateTracker } from '../pond-state'
 import { SnapshotStore } from '../snapshotStore'
 import { SnapshotScheduler } from '../store/snapshotScheduler'
-import { Where } from '../tagging'
-import {
-  EventKey,
-  FishErrorReporter,
-  FishId,
-  IsReset,
-  LocalSnapshot,
-  Metadata,
-  StateWithProvenance,
-  toMetadata,
-} from '../types'
+import { FishErrorReporter, FishId, IsReset, LocalSnapshot, StateWithProvenance } from '../types'
 import { cachingReducer } from './cachingReducer'
 import {
   eventsMonotonic,

@@ -5,7 +5,7 @@ import { EventDelivered } from '../../event-service-types'
 
 const TIMEOUT_MS = 3000
 
-describe('event service', () => {
+describe.skip('event service', () => {
   describe.skip('subscribe to event streams monotonically', () => {
     it('sould publish event and find it in a monotonic event stream', async () => {
       const FIND_VALUE = randomString()

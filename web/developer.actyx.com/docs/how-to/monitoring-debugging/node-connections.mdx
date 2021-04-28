@@ -6,14 +6,14 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
-import Tabs from '@theme/Tabs'
-import TabItem from '@theme/TabItem'
-
 :::caution Experimental feature
 Please note that this is an experimental feature. Experimental features have full functionality (i.e. _they work_), but the user experience is a little complex and will change in the next releases.
 :::
 
 You can get a list of all connected nodes by sending an HTTP request. The following command will returns a list of all nodes that the node with IP address 192.168.2.10 is connected to:
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
 
 <Tabs
   groupId="os"
@@ -98,3 +98,7 @@ get important debugging information:
 - `provenenance`: shows how the connection was established, e.g. if it is a bootstrap node or was discovered through mDNS
 - `since`: shows the duration of the connection in seconds
 - `connection_state`: shows whether the nodes are currently connected
+
+import { NPS } from '../../../src/components/NPS'
+
+<NPS />

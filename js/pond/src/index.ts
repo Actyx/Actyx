@@ -4,6 +4,7 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+export * from '@actyx/sdk'
 export { TestEvent } from './eventstore/testEventStore'
 export {
   ConnectivityStatus,
@@ -24,30 +25,19 @@ export {
 } from './splashState'
 export { Config as StoreConfig } from './store/config'
 export { Counters, CountersMut, NodeInfoEntry, SwarmInfo, SwarmSummary } from './store/swarmState'
-export { allEvents, noEvents, Tag, Tags, Where } from './tagging'
 export {
   AddEmission,
   Caching,
-  CancelSubscription,
   Fish,
   FishErrorContext,
+  FishErrorReporter,
   FishId,
   InProcessCaching,
-  isBoolean,
-  isNumber,
   IsReset,
-  isString,
-  Lamport,
-  Metadata,
-  Milliseconds,
   NoCaching,
   ObserveAllOpts,
-  PendingEmission,
   Reduce,
-  FishErrorReporter,
-  NodeId,
   StateEffect,
-  Timestamp,
 } from './types'
 export {
   enableAllLoggersExcept,
