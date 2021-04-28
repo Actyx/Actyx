@@ -27,13 +27,13 @@ mod v2;
 
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
-pub use crate::v1::{EventStore, HighestSeen, Present};
+pub use crate::v1::{EventStore, Present};
 
 use crate::prune::RetainConfig;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
 use crate::streams::{OwnStreamInner, ReplicatedStreamInner};
-use actyxos_sdk::{LamportTimestamp, NodeId, Offset, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp};
+use actyxos_sdk::{OffsetMap, LamportTimestamp, NodeId, Offset, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp};
 use anyhow::{Context, Result};
 use ax_futures_util::{prelude::*, stream::variable::Variable};
 use banyan::{
@@ -69,7 +69,6 @@ use std::{
 use streams::*;
 use trees::{
     axtrees::{AxKey, AxTrees, Sha256Digest},
-    OffsetMapOrMax,
 };
 use trees::{RootMap, RootMapEntry};
 use util::formats::NodeErrorContext;
@@ -146,16 +145,23 @@ pub struct BanyanStore {
     state: Arc<Mutex<BanyanStoreState>>,
 }
 
+#[derive(Clone, Debug, Default)]
+struct SwarmOffsets {
+    /// Currently validated OffsetMap
+    present: OffsetMap,
+    /// OffsetMap describing the replication target. Currently this is driven via `highest_seen`,
+    /// but should eventually be fed by the partial replication mechanism.
+    replication_target: OffsetMap,
+}
+
 /// All immutable or internally mutable parts of the banyan store
 struct BanyanStoreData {
     gossip_v2: v2::GossipV2,
     forest: Forest,
     ipfs: Ipfs,
     node_id: NodeId,
-    /// maximum ingested offset for each source (later: each stream)
-    present: Variable<OffsetMapOrMax>,
-    /// highest seen offset for each source (later: each stream)
-    highest_seen: Variable<OffsetMapOrMax>,
+    /// maximum ingested offset and highest seen for each stream
+    offsets: Variable<SwarmOffsets>,
     /// lamport timestamp for publishing to internal streams
     lamport: Variable<LamportTimestamp>,
 }
@@ -222,10 +228,6 @@ impl<'a> BanyanStoreGuard<'a> {
         self.data.node_id
     }
 
-    fn ipfs(&self) -> &Ipfs {
-        &self.data.ipfs
-    }
-
     fn local_stream_nrs(&self) -> Vec<StreamNr> {
         self.own_streams.keys().cloned().collect::<Vec<_>>()
     }
@@ -276,35 +278,6 @@ impl<'a> BanyanStoreGuard<'a> {
             self.publish_new_stream_id(stream_id);
             state
         }
-    }
-
-    fn load_known_streams(&mut self) -> Result<()> {
-        let known_streams = self.index_store.get_observed_streams()?;
-        for stream_id in known_streams {
-            tracing::debug!("Trying to load tree for {}", stream_id);
-            if let Some(cid) = self.ipfs().resolve(StreamAlias::from(stream_id))? {
-                let root = cid.try_into()?;
-                let tree = self.data.forest.load_tree(root)?;
-                self.update_present(stream_id, tree.offset())?;
-                if stream_id.node_id() == self.node_id() {
-                    self.get_or_create_own_stream(stream_id.stream_nr()).set_latest(tree);
-                } else {
-                    self.get_or_create_replicated_stream(stream_id).set_latest(tree);
-                }
-            } else {
-                tracing::warn!("No alias found for StreamId \"{}\"", stream_id);
-            }
-        }
-
-        Ok(())
-    }
-
-    fn update_present(&self, stream_id: StreamId, offset: OffsetOrMin) -> anyhow::Result<()> {
-        self.data.present.transform(|present| {
-            let mut present = present.clone();
-            present.update(stream_id, offset);
-            Ok(Some(present))
-        })
     }
 
     fn has_stream(&self, stream_id: StreamId) -> bool {
@@ -482,8 +455,7 @@ impl BanyanStore {
                 gossip_v2,
                 forest,
                 lamport: Default::default(),
-                present: Default::default(),
-                highest_seen: Default::default(),
+                offsets: Default::default(),
             }),
             state: Arc::new(Mutex::new(BanyanStoreState {
                 index_store,
@@ -582,7 +554,24 @@ impl BanyanStore {
     }
 
     fn load_known_streams(&self) -> Result<()> {
-        self.lock().load_known_streams()
+        let known_streams = self.lock().index_store.get_observed_streams()?;
+        for stream_id in known_streams {
+            tracing::debug!("Trying to load tree for {}", stream_id);
+            if let Some(cid) = self.ipfs().resolve(StreamAlias::from(stream_id))? {
+                let root = cid.try_into()?;
+                let tree = self.data.forest.load_tree(root)?;
+                self.update_present(stream_id, tree.offset())?;
+                if stream_id.node_id() == self.node_id() {
+                    self.get_or_create_own_stream(stream_id.stream_nr()).set_latest(tree);
+                } else {
+                    self.get_or_create_replicated_stream(stream_id).set_latest(tree);
+                }
+            } else {
+                tracing::warn!("No alias found for StreamId \"{}\"", stream_id);
+            }
+        }
+
+        Ok(())
     }
 
     /// Returns the [`NodeId`].
@@ -788,7 +777,7 @@ impl BanyanStore {
                 anyhow::ensure!(temp.last_lamport() > validated_lamport);
                 // get the offset
                 let offset = temp.offset();
-                // update present. This can fail if stream_id is not a source_id.
+                // update present.
                 let _ = self.update_highest_seen(stream_id, offset);
                 tree = Some(temp);
             }

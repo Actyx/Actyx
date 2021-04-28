@@ -1,4 +1,7 @@
-use actyxos_sdk::{service::EventService, AppId, OffsetMap};
+use actyxos_sdk::{
+    service::{EventService, OffsetsResponse},
+    AppId,
+};
 use futures::{
     stream::{BoxStream, StreamExt},
     FutureExt,
@@ -11,7 +14,7 @@ pub struct Offsets<S: EventService + Send> {
 
 impl<S: EventService + Send + Sync + 'static> Service for Offsets<S> {
     type Req = ();
-    type Resp = OffsetMap;
+    type Resp = OffsetsResponse;
     type Error = ();
     type Ctx = AppId;
 

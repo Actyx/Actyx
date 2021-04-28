@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 actyxos_sdk = { version = "0.6", features = ["sqlite", "arb"], path = "../../sdk" }
-
 anyhow = "1.0.40"
 ax-futures-util = { path = "../ax-futures-util" }
 banyan = "0.10.0"

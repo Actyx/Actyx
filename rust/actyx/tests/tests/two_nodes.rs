@@ -99,7 +99,7 @@ async fn two_nodes() -> anyhow::Result<()> {
         let offsets_observed_by_2 = es_2.offsets().await?;
         tracing::debug!("offsets_observed_by_2 {:?}", offsets_observed_by_2);
         // TODO: use actual stream id of node_1
-        if offsets_observed_by_2.streams().count() >= 2 {
+        if offsets_observed_by_2.present.streams().count() >= 2 {
             break offsets_observed_by_2;
         }
         if start.elapsed() > Duration::from_millis(30000) {
@@ -112,7 +112,7 @@ async fn two_nodes() -> anyhow::Result<()> {
     let data_via_2: Vec<_> = es_2
         .query(QueryRequest {
             lower_bound: None,
-            upper_bound: offsets.clone(),
+            upper_bound: offsets.present.clone(),
             order: Order::Asc,
             r#where: "'my_tag'".parse().unwrap(),
         })

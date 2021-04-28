@@ -103,7 +103,7 @@ impl GossipV2 {
                     }
                 }
                 let blob = DagCborCodec.encode(&RootUpdate { root, stream, blocks }).unwrap();
-                tracing::info!("broadcast_blob {}", blob.len());
+                tracing::debug!("broadcast_blob to pubsub {} {}", topic, blob.len());
                 ipfs.broadcast(&topic, blob).ok();
 
                 let blob = DagCborCodec
