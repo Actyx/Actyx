@@ -51,20 +51,19 @@ hosts:
       user: ubuntu
       armv7: true
     install: docker
-    # Disabled until Windows setup is stable https://github.com/Actyx/Cosmos/issues/6420
-    #  - name: windows-1
-    #    prepare:
-    #      type: create-aws-ec2
-    #      # Windows Server 2019
-    #      # Note: This is a public AMI. The underlying image might be upgraded from
-    #      # time to time, thus the AMI's ID is going to change, and the old one is
-    #      # not accessible anymore.  If that happens, search for the current "Windows
-    #      # Server 2019 Base" Image in the AWS Marketplace
-    #      # https://aws.amazon.com/marketplace
-    #      ami: ami-05ced23e7b71d428c
-    #      instance: t2.large
-    #      user: Administrator
-    #    install: windows
+  - name: windows-1
+    prepare:
+      type: create-aws-ec2
+      # Windows Server 2019
+      # Note: This is a public AMI. The underlying image might be upgraded from
+      # time to time, thus the AMI's ID is going to change, and the old one is
+      # not accessible anymore.  If that happens, search for the current "Windows
+      # Server 2019 Base" Image in the AWS Marketplace
+      # https://aws.amazon.com/marketplace
+      ami: ami-05ced23e7b71d428c
+      instance: t2.large
+      user: Administrator
+    install: windows
 settings:
   # Where folders and files will be created during a test run.
   tempDir: temp
