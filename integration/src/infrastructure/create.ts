@@ -94,15 +94,13 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
 
   let target: Target | undefined = undefined
 
-  // if (host.install !== 'windows')
-  {
-    const { prepare, name: hostname } = host
-    switch (prepare.type) {
-      case 'create-aws-ec2': {
-        if (host.install === 'windows') {
-          const pubKey = readFileSync(key.publicKeyPath)
-          // https://www.mirantis.com/blog/today-i-learned-how-to-enable-ssh-with-keypair-login-on-windows-server-2019/
-          const str = String.raw`<powershell>
+  const { prepare, name: hostname } = host
+  switch (prepare.type) {
+    case 'create-aws-ec2': {
+      if (host.install === 'windows') {
+        const pubKey = readFileSync(key.publicKeyPath)
+        // https://www.mirantis.com/blog/today-i-learned-how-to-enable-ssh-with-keypair-login-on-windows-server-2019/
+        const str = String.raw`<powershell>
           Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
           Set-Service -Name sshd -StartupType ‘Automatic’
           Start-Service sshd
@@ -119,24 +117,23 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
           New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -PropertyType String -Force
           restart-service sshd
           </powershell>`
-          const userData = Buffer.from(str).toString('base64')
-          target = await createAwsInstance(ec2, prepare, key, hostname, runIdentifier, userData)
-        } else {
-          target = await createAwsInstance(ec2, prepare, key, hostname, runIdentifier)
-        }
-        break
+        const userData = Buffer.from(str).toString('base64')
+        target = await createAwsInstance(ec2, prepare, key, hostname, runIdentifier, userData)
+      } else {
+        target = await createAwsInstance(ec2, prepare, key, hostname, runIdentifier)
       }
-      case 'local': {
-        console.log('node %s using the local system', host.name)
-        const shutdown = () => Promise.resolve()
-        target = {
-          os: currentOS(),
-          arch: currentArch(),
-          _private: { cleanup: shutdown },
-          kind: { type: 'local' },
-        }
-        break
+      break
+    }
+    case 'local': {
+      console.log('node %s using the local system', host.name)
+      const shutdown = () => Promise.resolve()
+      target = {
+        os: currentOS(),
+        arch: currentArch(),
+        _private: { cleanup: shutdown },
+        kind: { type: 'local' },
       }
+      break
     }
   }
 

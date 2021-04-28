@@ -38,7 +38,6 @@ function startActyxOS(
   nodeName: string,
   logger: (s: string) => void,
   ssh: Ssh,
-  // command = 'C:\\Users\\Administrator\\AppData\\Local\\Actyx\\actyx.exe --working-dir C:\\Users\\Administrator\\AppData\\Local\\ActyxOS\\actyx-data --background',
   command = String.raw`Start-Process -Wait -NoNewWindow -FilePath C:\Users\Administrator\AppData\Local\Actyx\actyx.exe -ArgumentList '--working-dir','C:\Users\Administrator\AppData\Local\Actyx\actyx-data','--background'`,
 ): Promise<[execa.ExecaChildProcess<string>]> {
   // awaiting a Promise<Promise<T>> yields T (WTF?!?) so we need to put it into an array
