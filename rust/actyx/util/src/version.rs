@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::formats::os_arch::OsArch;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeVersion {
@@ -13,7 +15,7 @@ impl NodeVersion {
     pub fn get() -> NodeVersion {
         NodeVersion {
             profile: env!("PROFILE").to_string(),
-            target: env!("TARGET").to_string(),
+            target: OsArch::current().into(),
             version: env!("VERSION").to_string(),
             git_hash: env!("GIT_HASH").to_string(),
         }

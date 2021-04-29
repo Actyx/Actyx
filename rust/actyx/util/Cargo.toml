@@ -29,6 +29,7 @@ rand = { version = "0.8.3", features = ["small_rng"] }
 serde = { version = "1.0.125", features = ["derive"] }
 serde_cbor = { version = "0.11.1", features = ["tags"] }
 serde_json = "1.0.64"
+serde_yaml = "~0.8"
 tokio = { version = "1.5.0", features = ["full"], package = "tokio" }
 tracing = "0.1.25"
 tracing-log = "0.1.2"

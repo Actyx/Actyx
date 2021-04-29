@@ -7379,6 +7379,7 @@ dependencies = [
  "serde 1.0.125",
  "serde_cbor",
  "serde_json",
+ "serde_yaml",
  "settings",
  "tokio 1.5.0",
  "tracing",
