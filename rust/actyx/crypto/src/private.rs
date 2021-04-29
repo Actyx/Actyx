@@ -26,15 +26,15 @@ impl Display for PrivateKey {
 impl std::str::FromStr for PrivateKey {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut s = s.to_string();
         if s.is_empty() {
             bail!("empty string");
         }
-        let key_type = s.remove(0);
-        if key_type != '0' {
+        let s = s.as_bytes();
+        let key_type = s[0];
+        if key_type != b'0' {
             bail!("Unexpected key type {}", key_type);
         }
-        let v = base64::decode(s).context("error base64 decoding PrivateKey")?;
+        let v = base64::decode(&s[1..]).context("error base64 decoding PrivateKey")?;
         if v.len() != ed25519_dalek::SECRET_KEY_LENGTH {
             bail!(
                 "Expected {} bytes, received {}",
@@ -93,5 +93,18 @@ impl PrivateKey {
     pub fn generate() -> Self {
         let k = ed25519_dalek::Keypair::generate(&mut OsRng);
         k.secret.into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PrivateKey;
+    use std::str::FromStr;
+    #[test]
+    fn str_roundtrip() {
+        let p = PrivateKey::generate();
+        let str = format!("{}", p);
+        let round_tripped = PrivateKey::from_str(&str).unwrap();
+        assert_eq!(p, round_tripped);
     }
 }
