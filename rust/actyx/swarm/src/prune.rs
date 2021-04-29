@@ -172,7 +172,6 @@ mod test {
         let cfg: SwarmConfig = SwarmConfig {
             node_name: Some("ephemeral".to_owned()),
             topic: "topic".into(),
-            enable_publish: true,
             enable_mdns: false,
             listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse().unwrap()],
             ephemeral_event_config: EphemeralEventsConfig {
@@ -180,6 +179,9 @@ mod test {
                 interval: Duration::from_secs(300_000_000),
                 streams: BTreeMap::default(),
             },
+            enable_fast_path: true,
+            enable_slow_path: true,
+            enable_root_map: true,
             ..Default::default()
         };
         BanyanStore::new(cfg).await

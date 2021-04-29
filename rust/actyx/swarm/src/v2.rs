@@ -83,7 +83,7 @@ pub struct GossipV2 {
 }
 
 impl GossipV2 {
-    pub fn new(ipfs: Ipfs, node_id: NodeId, topic: String) -> Self {
+    pub fn new(ipfs: Ipfs, node_id: NodeId, topic: String, enable_fast_path: bool, enable_slow_path: bool) -> Self {
         let (tx, mut rx) = latest_channel::channel::<PublishUpdate>();
         let publish_task = async move {
             while let Some(update) = rx.next().await {
@@ -102,19 +102,24 @@ impl GossipV2 {
                         }
                     }
                 }
-                let blob = DagCborCodec.encode(&RootUpdate { root, stream, blocks }).unwrap();
-                tracing::debug!("broadcast_blob to pubsub {} {}", topic, blob.len());
-                ipfs.broadcast(&topic, blob).ok();
 
-                let blob = DagCborCodec
-                    .encode(&RootUpdate {
-                        root,
-                        stream,
-                        blocks: Default::default(),
-                    })
-                    .unwrap();
-                tracing::trace!("publish_blob {}", blob.len());
-                ipfs.publish(&topic, blob).ok();
+                if enable_fast_path {
+                    let blob = DagCborCodec.encode(&RootUpdate { root, stream, blocks }).unwrap();
+                    tracing::trace!("broadcast_blob {}", blob.len());
+                    ipfs.broadcast(&topic, blob).ok();
+                }
+
+                if enable_slow_path {
+                    let blob = DagCborCodec
+                        .encode(&RootUpdate {
+                            root,
+                            stream,
+                            blocks: Default::default(),
+                        })
+                        .unwrap();
+                    tracing::trace!("publish_blob {}", blob.len());
+                    ipfs.publish(&topic, blob).ok();
+                }
             }
         };
         Self {

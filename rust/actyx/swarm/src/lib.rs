@@ -110,7 +110,6 @@ impl Default for EphemeralEventsConfig {
 pub struct SwarmConfig {
     pub topic: String,
     pub index_store: Option<Arc<Mutex<rusqlite::Connection>>>,
-    pub enable_publish: bool,
     pub enable_mdns: bool,
     pub keypair: Option<KeyPair>,
     pub psk: Option<[u8; 32]>,
@@ -120,12 +119,29 @@ pub struct SwarmConfig {
     pub listen_addresses: Vec<Multiaddr>,
     pub bootstrap_addresses: Vec<Multiaddr>,
     pub ephemeral_event_config: EphemeralEventsConfig,
+    pub enable_fast_path: bool,
+    pub enable_slow_path: bool,
+    pub enable_root_map: bool,
+}
+
+impl SwarmConfig {
+    pub fn test(node_name: &str) -> Self {
+        Self {
+            topic: "topic".into(),
+            enable_mdns: true,
+            node_name: Some(node_name.into()),
+            listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse().unwrap()],
+            enable_fast_path: true,
+            enable_slow_path: true,
+            enable_root_map: true,
+            ..Default::default()
+        }
+    }
 }
 
 impl PartialEq for SwarmConfig {
     fn eq(&self, other: &Self) -> bool {
         self.topic == other.topic
-            && self.enable_publish == other.enable_publish
             && self.enable_mdns == other.enable_mdns
             && self.keypair == other.keypair
             && self.psk == other.psk
@@ -135,6 +151,9 @@ impl PartialEq for SwarmConfig {
             && self.listen_addresses == other.listen_addresses
             && self.bootstrap_addresses == other.bootstrap_addresses
             && self.ephemeral_event_config == other.ephemeral_event_config
+            && self.enable_fast_path == other.enable_fast_path
+            && self.enable_slow_path == other.enable_slow_path
+            && self.enable_root_map == other.enable_root_map
     }
 }
 
@@ -378,11 +397,6 @@ impl BanyanStore {
     /// Creates a new [`BanyanStore`] from a [`SwarmConfig`].
     pub async fn new(cfg: SwarmConfig) -> Result<Self> {
         tracing::debug!("client_from_config({:?})", cfg);
-        if cfg.enable_publish {
-            tracing::debug!("Publishing is allowed to pubsub");
-        } else {
-            tracing::debug!("Publishing is disabled to pubsub");
-        }
         tracing::debug!("Start listening on topic '{}'", &cfg.topic);
 
         let keypair = cfg.keypair.unwrap_or_else(KeyPair::generate);
@@ -412,13 +426,21 @@ impl BanyanStore {
                         .with_max_failures(NonZeroU32::new(2).unwrap()),
                 ),
                 identify: Some(IdentifyConfig::new("/actyx/2.0.0".to_string(), public)),
-                gossipsub: Some(
-                    GossipsubConfigBuilder::default()
-                        .validation_mode(ValidationMode::Permissive)
-                        .build()
-                        .expect("valid gossipsub config"),
-                ),
-                broadcast: Some(Default::default()),
+                gossipsub: if cfg.enable_root_map || cfg.enable_slow_path {
+                    Some(
+                        GossipsubConfigBuilder::default()
+                            .validation_mode(ValidationMode::Permissive)
+                            .build()
+                            .expect("valid gossipsub config"),
+                    )
+                } else {
+                    None
+                },
+                broadcast: if cfg.enable_fast_path {
+                    Some(Default::default())
+                } else {
+                    None
+                },
                 bitswap: Some(BitswapConfig {
                     request_timeout: Duration::from_secs(10),
                     connection_keep_alive: Duration::from_secs(10),
@@ -447,7 +469,13 @@ impl BanyanStore {
             // TODO: add default implementation.
             ForestConfig::debug(),
         );
-        let gossip_v2 = v2::GossipV2::new(ipfs.clone(), node_id, cfg.topic.clone());
+        let gossip_v2 = v2::GossipV2::new(
+            ipfs.clone(),
+            node_id,
+            cfg.topic.clone(),
+            cfg.enable_fast_path,
+            cfg.enable_slow_path,
+        );
         let banyan = Self {
             data: Arc::new(BanyanStoreData {
                 node_id,
@@ -471,8 +499,10 @@ impl BanyanStore {
             banyan.data.gossip_v2.ingest(banyan.clone(), cfg.topic.clone())?,
         );
         banyan.spawn_task("compaction", banyan.clone().compaction_loop(Duration::from_secs(60)));
-        banyan.spawn_task("v1_gossip_publish", banyan.clone().v1_gossip_publish(cfg.topic.clone()));
-        banyan.spawn_task("v1_gossip_ingest", banyan.clone().v1_gossip_ingest(cfg.topic));
+        if cfg.enable_root_map {
+            banyan.spawn_task("v1_gossip_publish", banyan.clone().v1_gossip_publish(cfg.topic.clone()));
+            banyan.spawn_task("v1_gossip_ingest", banyan.clone().v1_gossip_ingest(cfg.topic));
+        }
         banyan.spawn_task("discovery_ingest", crate::discovery::discovery_ingest(banyan.clone()));
         banyan.spawn_task(
             "discovery_publish",
@@ -534,15 +564,7 @@ impl BanyanStore {
 
     /// Creates a new [`BanyanStore`] for testing.
     pub async fn test(node_name: &str) -> Result<Self> {
-        Self::new(SwarmConfig {
-            topic: "topic".into(),
-            enable_publish: true,
-            enable_mdns: true,
-            node_name: Some(node_name.into()),
-            listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse().unwrap()],
-            ..Default::default()
-        })
-        .await
+        Self::new(SwarmConfig::test(node_name)).await
     }
 
     fn lock(&self) -> BanyanStoreGuard<'_> {

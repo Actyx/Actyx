@@ -116,7 +116,9 @@ impl Component<StoreRequest, SwarmConfig> for Store {
         let config = SwarmConfig {
             topic,
             index_store: Some(self.db.clone()),
-            enable_publish: !s.api.events.read_only,
+            enable_fast_path: true,
+            enable_slow_path: true,
+            enable_root_map: true,
             enable_mdns: true,
             keypair: Some(keypair),
             psk: Some(psk),
