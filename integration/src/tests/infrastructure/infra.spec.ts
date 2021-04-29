@@ -109,3 +109,35 @@ describe.skip('the Infrastructure', () => {
     expect(typeof result.status).toBe('string')
   })
 })
+
+describe('scripts', () => {
+  test('must allow running sh scripts on linux', async () => {
+    await runOnEach([{ os: 'linux' }], async (node) => {
+      const script = String.raw`if [[ $(expr 1 + 1) -eq 2 ]]
+then
+  echo "yay"
+  exit 0
+else
+  exit 1
+fi`
+      const result = await node.target.execute(script)
+      expect(result.exitCode).toBe(0)
+      expect(result.stdOut).toBe('yay')
+      expect(result.stdErr).toBe('')
+    })
+  })
+  test('must allow running powershell scripts on windows', async () => {
+    await runOnEach([{ os: 'windows' }], async (node) => {
+      const script = String.raw`$val = 0
+while ($val -lt 10) {
+  $val++
+}
+$val + 32
+exit 0`
+      const result = await node.target.execute(script)
+      expect(result.exitCode).toBe(0)
+      expect(result.stdOut).toBe('42')
+      expect(result.stdErr).toBe('')
+    })
+  })
+})

@@ -9,7 +9,8 @@ import { mkNodeLocalDocker, mkNodeLocalProcess } from './local'
 import { LogEntry, MyGlobal } from '../../jest/setup'
 import fs, { readFileSync } from 'fs'
 import path from 'path'
-import { mkWindowsSsh } from './windows'
+import { makeWindowsSsh, mkWindowsSsh } from './windows'
+import { mkExecute } from '.'
 
 const createAwsInstance = async (
   ec2: EC2,
@@ -99,25 +100,8 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
     case 'create-aws-ec2': {
       if (host.install === 'windows') {
         const pubKey = readFileSync(key.publicKeyPath)
-        // https://www.mirantis.com/blog/today-i-learned-how-to-enable-ssh-with-keypair-login-on-windows-server-2019/
-        const str = String.raw`<powershell>
-          Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
-          Set-Service -Name sshd -StartupType ‘Automatic’
-          Start-Service sshd
-          $key = "${pubKey}"
-          $key | Set-Content C:\ProgramData\ssh\administrators_authorized_keys
-          $acl = Get-Acl C:\ProgramData\ssh\administrators_authorized_keys
-          $acl.SetAccessRuleProtection($true, $false)
-          $acl.Access | %{$acl.RemoveAccessRule($_)} # strip everything
-          $administratorRule = New-Object system.security.accesscontrol.filesystemaccessrule("Administrator","FullControl","Allow")
-          $acl.SetAccessRule($administratorRule)
-          $administratorsRule = New-Object system.security.accesscontrol.filesystemaccessrule("Administrators","FullControl","Allow")
-          $acl.SetAccessRule($administratorsRule)
-          (Get-Item 'C:\ProgramData\ssh\administrators_authorized_keys').SetAccessControl($acl)
-          New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -PropertyType String -Force
-          restart-service sshd
-          </powershell>`
-        const userData = Buffer.from(str).toString('base64')
+        const enableSshScript = makeWindowsSsh(pubKey.toString('utf8'))
+        const userData = Buffer.from(enableSshScript).toString('base64')
         target = await createAwsInstance(ec2, prepare, key, hostname, runIdentifier, userData)
       } else {
         target = await createAwsInstance(ec2, prepare, key, hostname, runIdentifier)
@@ -127,11 +111,18 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
     case 'local': {
       console.log('node %s using the local system', host.name)
       const shutdown = () => Promise.resolve()
+      const os = currentOS()
+      const kind = { type: 'local' as const }
+      const execute = mkExecute(os, kind)
+
       target = {
-        os: currentOS(),
+        os,
         arch: currentArch(),
-        _private: { cleanup: shutdown },
-        kind: { type: 'local' },
+        execute,
+        _private: {
+          cleanup: shutdown,
+        },
+        kind,
       }
       break
     }

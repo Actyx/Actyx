@@ -16,7 +16,13 @@ export const mkNodeStub = (
     .then((ax) => ({
       name,
       host,
-      target: { os, arch, kind: { type: 'test' }, _private: { cleanup: () => Promise.resolve() } },
+      target: {
+        os,
+        arch,
+        kind: { type: 'test' },
+        execute: () => Promise.resolve({ exitCode: 0, stdOut: '', stdErr: '' }),
+        _private: { cleanup: () => Promise.resolve() },
+      },
       ax,
       httpApiClient: Client(),
       _private: {

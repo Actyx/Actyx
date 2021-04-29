@@ -65,3 +65,26 @@ function startActyxOS(
     })
   })
 }
+
+// Create a PowerShell script which enables OpenSSH and adds `pubKey` to
+// `authorized_keys`
+// https://www.mirantis.com/blog/today-i-learned-how-to-enable-ssh-with-keypair-login-on-windows-server-2019/
+export function makeWindowsSsh(pubKey: string): string {
+  return String.raw`<powershell>
+          Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+          Set-Service -Name sshd -StartupType ‘Automatic’
+          Start-Service sshd
+          $key = "${pubKey}"
+          $key | Set-Content C:\ProgramData\ssh\administrators_authorized_keys
+          $acl = Get-Acl C:\ProgramData\ssh\administrators_authorized_keys
+          $acl.SetAccessRuleProtection($true, $false)
+          $acl.Access | %{$acl.RemoveAccessRule($_)} # strip everything
+          $administratorRule = New-Object system.security.accesscontrol.filesystemaccessrule("Administrator","FullControl","Allow")
+          $acl.SetAccessRule($administratorRule)
+          $administratorsRule = New-Object system.security.accesscontrol.filesystemaccessrule("Administrators","FullControl","Allow")
+          $acl.SetAccessRule($administratorsRule)
+          (Get-Item 'C:\ProgramData\ssh\administrators_authorized_keys').SetAccessControl($acl)
+          New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -PropertyType String -Force
+          restart-service sshd
+          </powershell>`
+}
