@@ -5,7 +5,7 @@ use std::process::Command;
 fn main() {
     let (version, git_hash) = match env::var("ACTYX_VERSION") {
         Ok(v) => {
-            let components: Vec<&str> = v.split(' ').collect();
+            let components: Vec<&str> = v.split('-').collect();
 
             if components.len() != 2 {
                 panic!(

@@ -15,6 +15,8 @@
 # You can use make prepare to update the docker images and install required tools.
 SHELL := /bin/bash
 
+VERSION ?= 2.0.0_dev
+
 MIN_MAKE_VERSION := 4.2
 # This checks the make version and aborts with an error if it's not at least MIN_MAKE_VERSION
 ok := $(filter $(MIN_MAKE_VERSION),$(firstword $(sort $(MAKE_VERSION) $(MIN_MAKE_VERSION))))
@@ -28,9 +30,12 @@ all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyx-linux ax,linux-
 all-WINDOWS := $(foreach t,actyx.exe ax.exe Actyx-Installer.exe,windows-x86_64/$t)
 all-ANDROID := actyx.apk
 all-MACOS := $(foreach t,actyx-linux ax,macos-x86_64/$t)
+LINUX-x86_64 := $(foreach bin,actyx-linux ax,linux-x86_64/$(bin))
 
 CARGO_TEST_JOBS := 8
 CARGO_BUILD_JOBS := 8
+
+export ACTYX_VERSION ?= ${VERSION}-$(shell git rev-parse --short HEAD)$(shell [ -n "$(shell git status --porcelain)" ] && echo _dirty)
 
 # this needs to remain the first so it is the default target
 all: all-linux all-android all-windows all-macos all-js
@@ -42,6 +47,8 @@ all-android: $(patsubst %,dist/bin/%,$(all-ANDROID))
 all-windows: $(patsubst %,dist/bin/%,$(all-WINDOWS))
 
 all-macos: $(patsubst %,dist/bin/%,$(all-MACOS))
+
+linux-x86_64: $(patsubst %,dist/bin/%,$(LINUX-x86_64))
 
 all-js: \
 	dist/js/sdk \
@@ -69,7 +76,7 @@ export VAULT_TOKEN ?= $(shell VAULT_ADDR=$(VAULT_ADDR) vault login -token-only -
 endif
 
 # Use docker run -ti only if the input device is a TTY (so that Ctrl+C works)
-export DOCKER_FLAGS ?= $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
+export DOCKER_FLAGS ?= -e "ACTYX_VERSION=${ACTYX_VERSION}" $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
 
 # The stable image version is the git commit hash inside `Actyx/Cosmos`, with
 # which the respective images was built. Whenever the build images (inside
@@ -388,7 +395,7 @@ jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnod
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
-      ./gradlew ktlintCheck build assembleRelease androidGitVersion
+      ./gradlew --stacktrace ktlintCheck build assembleRelease androidGitVersion
 
 dist/bin/actyx.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
 	mkdir -p $(dir $@)
@@ -420,7 +427,7 @@ dist/bin/windows-x86_64/Actyx-Installer.exe: misc/actyxos-node-manager/out/Actyx
 	  -w /src/misc/actyx-win-installer \
 	  -e DIST_DIR='/src/dist/bin/windows-x86_64' \
 	  -e SRC_DIR='/src/misc/actyx-win-installer' \
-	  -e PRODUCT_VERSION=1.1.1 \
+	  -e PRODUCT_VERSION='win-installer $(ACTYX_VERSION)' \
 	  -e PRODUCT_NAME=Actyx \
 	  -e INSTALLER_NAME='Actyx-Installer' \
 	  --rm \

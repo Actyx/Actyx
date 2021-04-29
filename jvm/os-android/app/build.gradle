@@ -1,3 +1,5 @@
+import java.util.Date
+
 plugins {
   id 'com.android.application'
   id 'kotlin-android'
@@ -9,10 +11,16 @@ plugins {
 
 apply from: '../actyx-local/actyx.properties'
 
+// versionCode is a monotonically-increasing 32-bit positive integer. A one-second granularity is probably OK.
+// it must be above the latest in v1.x (11xxxxxxxx) so users don't have problems updating
+// this will break in 2038
+def verCode = (System.currentTimeMillis() / 1000) as Integer
+def verName = "${(System.getenv('ACTYX_VERSION') ?: androidGitVersion.name())}-android"
+
 androidGitVersion {
-  prefix 'actyx-android-'
+  prefix 'actyx-'
   codeFormat 'MNNPPPBBB'
-  format '%tag%%-count%%-commit%%-dirty%'
+  format '%tag%%-commit%%-dirty%-android-'
   hideBranches = ['master']
   baseCode 3000
 }
@@ -32,8 +40,8 @@ android {
     applicationId 'com.actyx.android'
     minSdkVersion 22
     targetSdkVersion 30
-    versionCode androidGitVersion.code()
-    versionName androidGitVersion.name()
+    versionCode verCode
+    versionName verName
     testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     buildConfigField "int", "MIN_SDK_API_LEVEL", "$minSdkVersion.apiLevel"
   }
@@ -50,6 +58,10 @@ android {
       signingConfig signingConfigs.release
       minifyEnabled true
       proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+      versionNameSuffix '-release'
+    }
+    debug {
+      versionNameSuffix '-debug'
     }
   }
   buildFeatures {
