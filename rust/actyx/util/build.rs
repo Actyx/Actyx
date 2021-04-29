@@ -50,7 +50,7 @@ fn main() {
                 .output()
                 .expect("Error running git rev-parse --short HEAD");
 
-            let hash = String::from_utf8_lossy(&out.stdout).to_string();
+            let hash = String::from_utf8_lossy(&out.stdout).trim().to_string();
 
             let git_hash = format!("{}{}", hash, dirty);
 

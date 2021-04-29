@@ -428,7 +428,7 @@ dist/bin/windows-x86_64/Actyx-Installer.exe: misc/actyxos-node-manager/out/Actyx
 	  -w /src/misc/actyx-win-installer \
 	  -e DIST_DIR='/src/dist/bin/windows-x86_64' \
 	  -e SRC_DIR='/src/misc/actyx-win-installer' \
-	  -e PRODUCT_VERSION='win-installer $(ACTYX_VERSION)' \
+	  -e PRODUCT_VERSION='$(ACTYX_VERSION)' \
 	  -e PRODUCT_NAME=Actyx \
 	  -e INSTALLER_NAME='Actyx-Installer' \
 	  --rm \
