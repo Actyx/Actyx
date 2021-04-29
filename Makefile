@@ -250,8 +250,9 @@ validate-actyxos-node-manager:
 	docker run \
 	  -v `pwd`:/src \
 	  -w /src/misc/actyxos-node-manager \
-	  --rm actyx/util:windowsinstallercreator-x64-latest \
+	  --rm \
 	  $(DOCKER_FLAGS) \
+		actyx/util:windowsinstallercreator-x64-latest \
 	  bash -c "npm install"
 
 validate-actyx-win-installer: validate-actyxos-node-manager
