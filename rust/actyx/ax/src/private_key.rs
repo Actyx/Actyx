@@ -1,6 +1,7 @@
 use std::{
     fmt, fs,
     path::{Path, PathBuf},
+    str::FromStr,
 };
 
 use crypto::{KeyPair, PrivateKey, PublicKey};
@@ -14,14 +15,14 @@ pub(crate) const DEFAULT_PRIVATE_KEY_FILE_NAME: &str = "id";
 
 impl fmt::Display for AxPrivateKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let pub_hex = self.to_base64().1;
+        let pub_hex = self.encode().1;
         write!(f, "{}", pub_hex)
     }
 }
 
 #[derive(Debug, PartialEq, Clone)]
 /// Wrapper around `crypto::PrivateKey` for use inside ax's context. Most notably
-/// is the on disk format, which differs from the `crypto` crate.
+/// is the on disk format, which differs from [`crypto::Keystore::dump`].
 pub(crate) struct AxPrivateKey(PrivateKey);
 impl AxPrivateKey {
     fn default_user_identity_dir() -> ActyxOSResult<PathBuf> {
@@ -40,14 +41,13 @@ impl AxPrivateKey {
         std::fs::create_dir_all(p.clone())?;
         Ok(p)
     }
-    /// Write the private key base64 encoded with a trailing newline into `path`,
-    /// and the public key into `path`.pub. Files will be created, if they don't
-    /// exist. If they do exist already, they will be truncated. Returns the
-    /// absolte paths to the private and public key.
+    /// Write the private key encoded with a trailing newline into `path`, and the public key into
+    /// `path`.pub. Files will be created, if they don't exist. If they do exist already, they will
+    /// be truncated. Returns the absolte paths to the private and public key.
     pub(crate) fn to_file(&self, path: impl AsRef<Path>) -> ActyxOSResult<(PathBuf, PathBuf)> {
         let priv_path: PathBuf = path.as_ref().into();
         let pub_path: PathBuf = path.as_ref().with_extension(PUB_KEY_FILE_EXTENSION);
-        let (priv_hex, pub_hex) = self.to_base64();
+        let (priv_hex, pub_hex) = self.encode();
         fs::write(priv_path.clone(), format!("{}\n", priv_hex))
             .ax_err_ctx(ActyxOSCode::ERR_IO, format!("Error writing to {}", priv_path.display()))?;
         fs::write(pub_path.clone(), format!("{}\n", pub_hex))
@@ -70,7 +70,7 @@ impl AxPrivateKey {
                 s.pop();
             }
         }
-        Self::from_base64(s).ax_err_ctx(
+        Self::decode(s).ax_err_ctx(
             ActyxOSCode::ERR_INVALID_INPUT,
             format!("Error reading from {}", path.as_ref().display()),
         )
@@ -80,15 +80,15 @@ impl AxPrivateKey {
         self.0.into()
     }
 
-    fn to_base64(&self) -> (String, String) {
-        let private = self.0.to_bytes();
-        let public = self.to_public().to_bytes();
-        (base64::encode(private), base64::encode(public))
+    /// Encodes both the private and the associated public key
+    fn encode(&self) -> (String, String) {
+        let private = format!("{}", self.0);
+        let public = format!("{}", self.to_public());
+        (private, public)
     }
 
-    fn from_base64(hex: String) -> ActyxOSResult<Self> {
-        let bytes = base64::decode(hex).ax_err_ctx(ActyxOSCode::ERR_INVALID_INPUT, "Error base64 decoding")?;
-        let private = PrivateKey::from_bytes(&bytes[..]).ax_invalid_input()?;
+    fn decode(hex: String) -> ActyxOSResult<Self> {
+        let private = PrivateKey::from_str(&hex).ax_invalid_input()?;
         Ok(Self(private))
     }
     /// Generate a new private key
@@ -99,11 +99,7 @@ impl AxPrivateKey {
     /// Convert into a key pair to be used with libp2p
     pub(crate) fn to_libp2p_pair(&self) -> identity::Keypair {
         let crypto_kp: KeyPair = self.0.into();
-        let mut bytes = crypto_kp.to_bytes();
-        identity::Keypair::Ed25519(
-            identity::ed25519::Keypair::decode(&mut bytes)
-                .expect("ed25519 encoding format changed between libp2p and crypto"),
-        )
+        identity::Keypair::from(crypto_kp)
     }
 }
 
@@ -128,6 +124,6 @@ mod tests {
 
         // assert written public key
         let public_hex = fs::read_to_string(key_path.with_extension(PUB_KEY_FILE_EXTENSION)).unwrap();
-        assert_eq!(public_hex, format!("{}\n", private.to_base64().1));
+        assert_eq!(public_hex, format!("{}\n", private.encode().1));
     }
 }
