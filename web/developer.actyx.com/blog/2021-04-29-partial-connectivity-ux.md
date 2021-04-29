@@ -28,26 +28,30 @@ We describe the examples in terms of _local twins_, which are the basic idea beh
 More precisely:
 
 :::info Definition
-A **local twin** is the active shared virtual representation of a physical object or concept on a set of edge devices.
+A **local twin** is the **active shared virtual** representation of a physical object or concept on a set of edge devices.
 :::
 
 You can picture a local twin as a piece of code, a program that you can summon on any computer where you need it — this is why it is called _local_.
 On your local computer the local twin reflects the state of something, for example a machine or a manufacturing order, it is like a digital _twin_ of that thing.
+
 The knowledge or state of the local twin is derived from the events that are available on the local computer where it is summoned.
+Events flow between all computers running Actyx in the network, which is how local twins learn of things that happened on other computers.
 The same local twin can be summoned on different computers at the same time and show possibly different states, depending on whether all events have already been disseminated between those computers.
-For local twins representing a physical object, there is usually one computer with special significance: the local twin of a machine has the special power of interacting with that machine (like switching it on and off) when it is summoned on the computer that is attached to that machine.
 
-Let’s stretch our legs (or rather: minds) with this model before diving into the examples:
+For local twins representing a physical object, there is usually one computer with special significance: the local twin of a machine has the special power of interacting with that machine (like reading sensors or switching it on and off) when it is summoned on the computer that is attached to that machine.
 
-- the local twin of a machine, summoned on the machine controller, records its operational state, it is currently producing according to order 4711
-- the local twin of that machine, summoned on a mobile phone, shows that state
-- on the controller, the local twin records that production is finished, enough pieces were made
+Let’s stretch our legs (or rather: minds) with this model by looking at a simple example:
+
+- the local twin of a machine, summoned on the machine controller, records its operational state; let us assume that it is currently producing according to some hypothetical order with number 4711
+- the local twin of that machine, summoned on a mobile phone, shows that state as well
+- on the controller, the local twin records that production is finished because enough pieces were made
 - eventually, the recorded event propagates and the local twin on the phone will show this, too
 - the human operator tells the local twin on their phone to stop the machine
-- eventually, the local twin on the controller learns of this request (also via an Actyx event)
+- again eventually, the local twin on the controller learns of this request (also via an Actyx event)
 - soon thereafter, the local twin on the controller has switched off the machine and records an event that says “machine has stopped”
 
-When I think about local twins, my mental image is a mixture of Doctor Manhatten and Batman’s Alfred: an assistant and middleman who can run across computer networks to make things happen — and split himself into many copies to be in many places at once (but without magical communication; one copy needs to “run to” another copy to tell them about new developments).
+When I think about local twins, my mental image is a mixture of Doctor Manhatten and Alfred, Batman’s devoted butler.
+A local twin is like an assistant and middleman who can run across computer networks to make things happen — and split himself into many copies to be in many places at once (albeit but without magical communication; one copy needs to “run to” another copy to tell them about new developments).
 
 :::tip A word on naming
 Local twins are implemented by writing Fishes in ActyxOS version 1 and Actyx Pond version 1 or 2.
@@ -58,6 +62,8 @@ We will phase out the term “fish” in the next major versions.
 
 The first example is a technician with a mobile phone app for performing maintenance on an injection moulding machine.
 The app uses Actyx to communicate with the machine’s local twin, also built on Actyx and connected to the machine by an app running on the machine PLC’s non-realtime core.
+
+![local cooperation](../images/blog/partial-connectivity/blog-rku-scenario-a.svg)
 
 In this scenario picture Sara, the technician, walking up to the machine based on her maintenance schedule.
 She has checked the machine’s status and sensor readings on the app already, and after a quick visual confirmation concludes that maintenance can begin.
@@ -71,7 +77,7 @@ In summary, scenario A illustrates the close collaboration of a human and a mach
 
 How do we implement this in software?
 Without knowing anything about how Actyx — or any other technology — works, it is obvious that Sara has sent a command to some other computer and is now waiting for that other computer to respond.
-Sara has merely told the local twin on her phone what she wants, but the local twin has not yet done it.
+Sara has merely told the local twin on her phone what she wants, but the local twin has not yet done it, the machine is still in normal operating mode.
 
 This tiny workflow step can be completed by the local twin changing into a state that says “the machine controller is now in maintenance mode, as requested.”
 In order to do so, the machine connector app — which also has that local twin running — must send a command to the PLC to change mode and then update the local twin’s state with subsequent updates from the PLC.
@@ -95,14 +101,15 @@ Doing it this way gives Sara all the information she needs to get her job done.
 ### Scenario B: cooperation over a distance
 
 The second example is the transport of pallets of finished goods from a production line to the shipping area.
+
+![local cooperation](../images/blog/partial-connectivity/blog-rku-scenario-b.svg)
+
 Eva, the line supervisor, has just registered in the production data acquisition (PDA) app that one more pallet has been produced.
-
 The Actyx system is used to make this information available on the tablet of intralogistics worker Michael.
-The tablet is running an app that uses the local twin of the intralogistics order dispatcher.
-This local twin listens for events like Eva’s to create new transport orders with all the details that Michael will need.
+The tablet is running an app that uses the local twins of transport orders that Michael shall carry out.
+Eva’s action of logging finished goods has led to the creation of one such new order, which pops up on Michael’s screen with all relevant information.
 
-As soon as Eva’s event has been seen and the dispatcher has done its job, Michael will see a new transport order pop up, its details filled in with the information Eva logged.
-Michael will finish his current transport order, thereby informing the local twin of that previous order that it has been done.
+Michael is currently busy and will finish his current transport order, thereby informing the local twin of that previous order that it has been done.
 He will then drive the forklift to Eva’s line to pick up the pallet and perform his new order.
 
 When Michael arrives in the shipping area, he’ll deliver the pallet to Oleg, who is responsible for the quality assurance checks that need to be done before shipping the goods to the customer.
@@ -112,10 +119,12 @@ the QA system’s checklist, the precise product and packaging description from 
 In summary, scenario B illustrates how information from many places needs to flow together at one time and place, so that the factory workflow can proceed correctly.
 This is especially interesting when parts of the information need to be retrieved from non-Actyx systems that don’t have local twins (yet).
 
+:::info How could this look in the future?
 Depending on the degree of workflow automation in the factory we look at, there are several ways in which we can implement the above process.
 In the future we may have outfitted every person, machine, and piece of material with some tiny computer that can store or run local twins.
-In that case, the preferred solution is to transport all required data with the pallet, so that the finished goods “know” everything that is needed to properly finish the manufacturing order.
+In that case, the preferred solution is to transport all required data with the pallet, so that the produced goods “know” everything that is needed to properly finish the manufacturing order.
 Eva’s PDA terminal would already have the full workflow description and pass that along to an RFID chip on the pallet, so that Oleg’s logistics scanner would just read the information from that chip and display it on his augmented reality glasses.
+:::
 
 But alas, we have not yet reached such a high degree of digital integration, we are just getting started on this journey.
 A typical case today is that all information about the production process and its individual workflow steps is stored in the central ERP system.
@@ -128,9 +137,9 @@ Taking Eva’s PDA terminal as an example, this means that the booking of finish
 Since Oleg will depend on the information, the ERP system is in this case the point of collaboration between Eva and Oleg.
 There are many ways to implement this, but we need to keep in mind that Eva has other priorities as well, so we need to find a solution that minimises her effort spent on information transfer.
 
-The easiest and most intuitive solution is to make sure that the information has reached the ERP system before Michael has picked up the pallet;
+The easiest and most intuitive solution is to make sure that the information has reached the ERP system before Michael picks up the pallet;
 in fact, Eva could forget about this whole duty even earlier if the information was transferred before she created the transport order.
-So from Eva’s perspective the workflow is as follows:
+So from Eva’s perspective the desired workflow is as follows:
 
 - notice that a new pallet is full according to the packaging schema
 - log finished goods using the PDA terminal
@@ -138,8 +147,10 @@ So from Eva’s perspective the workflow is as follows:
 - create transport order to send the pallet on its way to the shipping area
 
 We can optimize all of the above into a single button tap on the PDA terminal in the usual case, when everything works.
-Logging the finished goods changes the local twin of the manufacturing order, this change is detected by the ERP connector app, the booking is made, the local twin is updated again that the booking was successful, at which point the PDA app can go ahead and create the local twin of a new transport order and thereby send the pallet on its way.
-All this could be shown on the PDA terminal with a small status icon next to the manufacturing order, but usually Eva will not keep looking because she has other work to do.
+Logging the finished goods changes the local twin of the manufacturing order (illustrated again below), this change is detected by the ERP connector app, the booking is made, the local twin is updated again that the booking was successful, at which point the PDA app can go ahead and create the local twin of a new transport order and thereby send the pallet on its way.
+All this could be shown on the PDA terminal with a small status icon next to the manufacturing order, though usually Eva will not keep looking because she has other work to do.
+
+![local cooperation](../images/blog/partial-connectivity/blog-rku-scenario-b.svg)
 
 But what if the PDA terminal is currently unable to talk to the central IT systems where the ERP connector app runs?
 (e.g. because the PDA terminal is out of network coverage, or the ERP connector is not running)
