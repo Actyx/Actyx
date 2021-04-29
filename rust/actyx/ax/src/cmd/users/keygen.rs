@@ -36,8 +36,12 @@ impl AxCliCommand for UsersKeygen {
                 let mut reader = tokio::io::BufReader::new(io);
                 let mut buf = String::new();
                 reader.read_line(&mut buf).await?;
-                // pop '\n'
-                buf.pop();
+                if buf.ends_with('\n') {
+                    buf.pop();
+                    if buf.ends_with('\r') {
+                        buf.pop();
+                    }
+                }
                 if buf.is_empty() {
                     default
                 } else {
