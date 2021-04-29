@@ -1,7 +1,0 @@
----
-pw_package_file: Actyx-Installer.exe
-pw_package_path: ../../../../dist/bin/windows-x86_64/
-pw_package_id: ActyxOS
-pw_package_args: "/S /background"
-pw_openssh_version: 8.0.0.1
-pw_winssh_pubkey: files/sample.pub

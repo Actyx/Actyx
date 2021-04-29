@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import { Client, DefaultClientOpts } from '@actyx/os-sdk'
 import execa from 'execa'
 import { Arch } from '../../jest/types'
@@ -142,7 +143,7 @@ async function ensureDocker(ssh: Ssh, node: string, user: string, arch: Arch) {
   log('Docker installed')
 }
 
-function execSsh(ssh: Ssh) {
+export function execSsh(ssh: Ssh) {
   return async (cmd: string) => {
     const result = await ssh.exec(cmd)
     if (result.exitCode !== 0) {
@@ -152,12 +153,12 @@ function execSsh(ssh: Ssh) {
   }
 }
 
-async function connectSsh(ssh: Ssh, nodeName: string, sshParams: SshAble) {
+export async function connectSsh(ssh: Ssh, nodeName: string, sshParams: SshAble, maxAttempts = 15) {
   let connected = false
-  let attempts = 15
+  let attempts = maxAttempts
   while (!connected && attempts-- > 0) {
     try {
-      await pollDelay(() => execSsh(ssh)('true'))
+      await pollDelay(() => execSsh(ssh)('whoami'))
       connected = true
     } catch (error) {
       if (
