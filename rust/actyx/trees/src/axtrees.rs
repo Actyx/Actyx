@@ -9,9 +9,9 @@ use banyan::{
 use libipld::{
     cbor::DagCborCodec,
     codec::{Decode, Encode},
+    multihash::{Code, Multihash, MultihashDigest},
     Cid, DagCbor,
 };
-use multihash::MultihashDigest;
 use range_collections::RangeSet;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -723,7 +723,7 @@ pub struct Sha256Digest([u8; 32]);
 
 impl Sha256Digest {
     pub fn new(data: &[u8]) -> Self {
-        let mh = multihash::Code::Sha2_256.digest(data);
+        let mh = Code::Sha2_256.digest(data);
         Sha256Digest(mh.digest().try_into().unwrap())
     }
 }
@@ -742,7 +742,7 @@ impl Encode<DagCborCodec> for Sha256Digest {
 impl From<Sha256Digest> for Cid {
     fn from(value: Sha256Digest) -> Self {
         // https://github.com/multiformats/multicodec/blob/master/table.csv
-        let mh = multihash::Multihash::wrap(0x12, &value.0).unwrap();
+        let mh = Multihash::wrap(0x12, &value.0).unwrap();
         Cid::new_v1(0x71, mh)
     }
 }

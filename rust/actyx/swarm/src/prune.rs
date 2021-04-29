@@ -45,7 +45,7 @@ async fn retain_events_up_to(
     let stream = store.get_or_create_own_stream(stream_nr);
     let emit_from = {
         let tree = stream.latest();
-        let mut iter = stream.forest.iter_index_reverse(&tree, banyan::query::AllQuery);
+        let mut iter = stream.forest().iter_index_reverse(&tree, banyan::query::AllQuery);
         let mut bytes = 0u64;
         let mut current_offset = tree.count();
         loop {

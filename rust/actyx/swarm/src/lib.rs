@@ -12,6 +12,7 @@
 pub mod access;
 pub mod convert;
 mod discovery;
+mod gossip;
 pub mod metrics;
 mod prune;
 mod sqlite;
@@ -23,12 +24,12 @@ mod unixfsv1;
 #[cfg(test)]
 mod tests;
 mod v1;
-mod v2;
 
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
 pub use crate::v1::{EventStore, Present};
 
+use crate::gossip::Gossip;
 use crate::prune::RetainConfig;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
@@ -70,7 +71,6 @@ use std::{
 };
 use streams::*;
 use trees::axtrees::{AxKey, AxTrees, Sha256Digest};
-use trees::{RootMap, RootMapEntry};
 use util::formats::NodeErrorContext;
 
 #[allow(clippy::upper_case_acronyms)]
@@ -122,6 +122,8 @@ pub struct SwarmConfig {
     pub enable_fast_path: bool,
     pub enable_slow_path: bool,
     pub enable_root_map: bool,
+    pub enable_discovery: bool,
+    pub enable_metrics: bool,
 }
 
 impl SwarmConfig {
@@ -134,6 +136,8 @@ impl SwarmConfig {
             enable_fast_path: true,
             enable_slow_path: true,
             enable_root_map: true,
+            enable_discovery: true,
+            enable_metrics: true,
             ..Default::default()
         }
     }
@@ -154,6 +158,8 @@ impl PartialEq for SwarmConfig {
             && self.enable_fast_path == other.enable_fast_path
             && self.enable_slow_path == other.enable_slow_path
             && self.enable_root_map == other.enable_root_map
+            && self.enable_discovery == other.enable_discovery
+            && self.enable_metrics == other.enable_metrics
     }
 }
 
@@ -175,7 +181,7 @@ struct SwarmOffsets {
 
 /// All immutable or internally mutable parts of the banyan store
 struct BanyanStoreData {
-    gossip_v2: v2::GossipV2,
+    gossip: Gossip,
     forest: Forest,
     ipfs: Ipfs,
     node_id: NodeId,
@@ -324,7 +330,7 @@ impl<'a> BanyanStoreGuard<'a> {
                 .left_stream()
         } else {
             self.get_or_create_replicated_stream(stream_id)
-                .latest_seen
+                .latest_seen()
                 .new_observer()
                 .filter_map(future::ready)
                 .right_stream()
@@ -337,10 +343,10 @@ impl<'a> BanyanStoreGuard<'a> {
         if me {
             let stream_nr = stream_id.stream_nr();
             let stream = self.get_or_create_own_stream(stream_nr);
-            (stream.tree_stream(), stream.forest.clone())
+            (stream.tree_stream(), stream.forest().clone())
         } else {
             let stream = self.get_or_create_replicated_stream(stream_id);
-            (stream.tree_stream(), stream.forest.clone())
+            (stream.tree_stream(), stream.forest().clone())
         }
     }
 
@@ -361,20 +367,19 @@ impl<'a> BanyanStoreGuard<'a> {
     }
 
     /// Get a complete root map from both own and replicated streams
-    pub fn root_map(&self, own_node_id: NodeId) -> RootMap {
+    pub fn root_map(&self) -> BTreeMap<StreamId, Cid> {
         let own = self.own_streams.iter().filter_map(|(stream_nr, inner)| {
-            let (link, lamport) = inner.tree.project(|tree| (tree.link(), tree.last_lamport()));
-            let stream_id = own_node_id.stream(*stream_nr);
-            link.map(|link| (stream_id, RootMapEntry::new(&link.into(), lamport)))
+            let stream_id = self.node_id().stream(*stream_nr);
+            inner.root().map(|root| (stream_id, root))
         });
 
         let other = self.remote_nodes.iter().flat_map(|(node_id, remote_node)| {
             remote_node.streams.iter().filter_map(move |(stream_nr, inner)| {
                 let stream_id = node_id.stream(*stream_nr);
-                inner.root_map_entry().map(|e| (stream_id, e))
+                inner.root().map(|root| (stream_id, root))
             })
         });
-        RootMap(own.chain(other).collect())
+        own.chain(other).collect()
     }
 
     pub fn get_or_create_remote_node(&mut self, node_id: NodeId) -> &mut RemoteNodeInner {
@@ -469,7 +474,7 @@ impl BanyanStore {
             // TODO: add default implementation.
             ForestConfig::debug(),
         );
-        let gossip_v2 = v2::GossipV2::new(
+        let gossip = Gossip::new(
             ipfs.clone(),
             node_id,
             cfg.topic.clone(),
@@ -480,7 +485,7 @@ impl BanyanStore {
             data: Arc::new(BanyanStoreData {
                 node_id,
                 ipfs,
-                gossip_v2,
+                gossip,
                 forest,
                 lamport: Default::default(),
                 offsets: Default::default(),
@@ -495,27 +500,37 @@ impl BanyanStore {
         };
         banyan.load_known_streams()?;
         banyan.spawn_task(
-            "v2_gossip_ingest",
-            banyan.data.gossip_v2.ingest(banyan.clone(), cfg.topic.clone())?,
+            "gossip_ingest",
+            banyan.data.gossip.ingest(banyan.clone(), cfg.topic.clone())?,
         );
-        banyan.spawn_task("compaction", banyan.clone().compaction_loop(Duration::from_secs(60)));
         if cfg.enable_root_map {
-            banyan.spawn_task("v1_gossip_publish", banyan.clone().v1_gossip_publish(cfg.topic.clone()));
-            banyan.spawn_task("v1_gossip_ingest", banyan.clone().v1_gossip_ingest(cfg.topic));
+            banyan.spawn_task(
+                "gossip_publish_root_map",
+                banyan
+                    .data
+                    .gossip
+                    .publish_root_map(banyan.clone(), cfg.topic.clone(), Duration::from_secs(10)),
+            );
         }
-        banyan.spawn_task("discovery_ingest", crate::discovery::discovery_ingest(banyan.clone()));
+        banyan.spawn_task("compaction", banyan.clone().compaction_loop(Duration::from_secs(60)));
+        if cfg.enable_discovery {
+            banyan.spawn_task("discovery_ingest", crate::discovery::discovery_ingest(banyan.clone()));
+        }
         banyan.spawn_task(
             "discovery_publish",
             crate::discovery::discovery_publish(
                 banyan.clone(),
                 DISCOVERY_STREAM_NR.into(),
                 cfg.external_addresses.iter().cloned().collect(),
+                cfg.enable_discovery,
             )?,
         );
-        banyan.spawn_task(
-            "metrics",
-            crate::metrics::metrics(banyan.clone(), METRICS_STREAM_NR.into(), Duration::from_secs(30))?,
-        );
+        if cfg.enable_metrics {
+            banyan.spawn_task(
+                "metrics",
+                crate::metrics::metrics(banyan.clone(), METRICS_STREAM_NR.into(), Duration::from_secs(30))?,
+            );
+        }
         banyan.spawn_task(
             "prune_events",
             crate::prune::prune(banyan.clone(), cfg.ephemeral_event_config),
@@ -692,10 +707,10 @@ impl BanyanStore {
         let this = self.clone();
         async move {
             let stream = this.get_or_create_own_stream(stream_nr);
-            let lock = stream.sequencer.lock().await;
+            let lock = stream.sequencer().lock().await;
             let writer = this.data.forest.store().write()?;
             tracing::debug!("starting write transaction on stream {}", stream_nr);
-            let txn = Transaction::new(stream.forest.clone(), writer);
+            let txn = Transaction::new(stream.forest().clone(), writer);
             let curr = stream.latest();
             let tree = f(&txn, &curr)?;
             // root of the new tree
@@ -718,9 +733,7 @@ impl BanyanStore {
                 stream.set_latest(tree);
                 let blocks = txn.into_writer().into_written();
                 // publish new blocks and root
-                this.data
-                    .gossip_v2
-                    .publish(stream_nr, root.expect("not None"), blocks)?;
+                this.data.gossip.publish(stream_nr, root.expect("not None"), blocks)?;
             }
             tracing::debug!("ended write transaction on stream {}", stream_nr);
             drop(lock);
@@ -730,7 +743,7 @@ impl BanyanStore {
 
     fn update_root(&self, stream_id: StreamId, root: Link) {
         if stream_id.node_id() != self.node_id() {
-            tracing::debug!("update_root {} {}", stream_id, root);
+            tracing::trace!("update_root {} {}", stream_id, root);
             self.get_or_create_replicated_stream(stream_id).set_incoming(root);
         }
     }
@@ -794,7 +807,7 @@ impl BanyanStore {
             }
             if tree.is_none() {
                 // load the tree as soon as possible. If this fails, bail out.
-                let temp = stream.forest.load_tree(root)?;
+                let temp = stream.forest().load_tree(root)?;
                 // check that the tree is better than the one we have, otherwise bail out
                 anyhow::ensure!(temp.last_lamport() > validated_lamport);
                 // get the offset

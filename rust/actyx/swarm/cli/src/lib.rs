@@ -31,6 +31,8 @@ impl From<Config> for SwarmConfig {
             enable_fast_path: config.enable_fast_path,
             enable_slow_path: config.enable_slow_path,
             enable_root_map: config.enable_root_map,
+            enable_discovery: false,
+            enable_metrics: false,
             ..Default::default()
         }
     }

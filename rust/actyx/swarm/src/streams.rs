@@ -1,4 +1,4 @@
-use crate::{AxTreeExt, Forest, Link, Tree};
+use crate::{AxTreeExt, Cid, Forest, Link, Tree};
 use actyxos_sdk::{LamportTimestamp, NodeId, Offset, StreamId, StreamNr};
 use ax_futures_util::stream::variable::{self, Variable};
 use fnv::FnvHashMap;
@@ -8,7 +8,6 @@ use futures::{
 };
 use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
-use trees::RootMapEntry;
 
 const PREFIX: u8 = b'S';
 
@@ -57,10 +56,9 @@ impl TryFrom<StreamAlias> for StreamId {
 /// Data for a single own stream, mutable state + constant data
 #[derive(Debug)]
 pub struct OwnStreamInner {
-    pub forest: Forest,
-    pub sequencer: tokio::sync::Mutex<()>,
-    pub tree: Variable<Tree>,
-    pub latest_seen: Variable<Option<(LamportTimestamp, Offset)>>,
+    forest: Forest,
+    sequencer: tokio::sync::Mutex<()>,
+    tree: Variable<Tree>,
 }
 
 impl OwnStreamInner {
@@ -69,25 +67,36 @@ impl OwnStreamInner {
             forest,
             sequencer: tokio::sync::Mutex::new(()),
             tree: Variable::default(),
-            latest_seen: Variable::default(),
         }
+    }
+
+    pub fn forest(&self) -> &Forest {
+        &self.forest
+    }
+
+    pub fn sequencer(&self) -> &tokio::sync::Mutex<()> {
+        &self.sequencer
+    }
+
+    pub fn root(&self) -> Option<Cid> {
+        self.tree.project(|tree| tree.link().map(|link| link.into()))
+    }
+
+    pub fn tree_stream(&self) -> variable::Observer<Tree> {
+        self.tree.new_observer()
     }
 
     pub fn latest(&self) -> Tree {
         self.tree.get_cloned()
     }
 
-    pub fn offset(&self) -> Option<Offset> {
-        let offset_or_min = self.tree.project(|tree| tree.offset());
-        Offset::from_offset_or_min(offset_or_min)
-    }
-
     pub fn set_latest(&self, value: Tree) {
         self.tree.set(value)
     }
 
-    pub fn tree_stream(&self) -> variable::Observer<Tree> {
-        self.tree.new_observer()
+    pub fn offset(&self) -> Option<Offset> {
+        let offset_or_min = self.tree.project(|tree| tree.offset());
+        Offset::from_offset_or_min(offset_or_min)
     }
 }
 
@@ -100,10 +109,10 @@ pub struct RemoteNodeInner {
 /// Data for a single replicated stream, mutable state + constant data
 #[derive(Debug)]
 pub struct ReplicatedStreamInner {
-    pub forest: Forest,
-    pub validated: Variable<Tree>,
-    pub incoming: Variable<Option<Link>>,
-    pub latest_seen: Variable<Option<(LamportTimestamp, Offset)>>,
+    forest: Forest,
+    validated: Variable<Tree>,
+    incoming: Variable<Option<Link>>,
+    latest_seen: Variable<Option<(LamportTimestamp, Offset)>>,
 }
 
 impl ReplicatedStreamInner {
@@ -116,11 +125,12 @@ impl ReplicatedStreamInner {
         }
     }
 
-    pub fn root_map_entry(&self) -> Option<RootMapEntry> {
-        self.validated.project(|tree| {
-            let lamport = tree.last_lamport();
-            tree.link().map(|link| RootMapEntry::new(&link.into(), lamport))
-        })
+    pub fn forest(&self) -> &Forest {
+        &self.forest
+    }
+
+    pub fn root(&self) -> Option<Cid> {
+        self.validated.project(|tree| tree.link().map(|link| link.into()))
     }
 
     /// set the latest validated root
@@ -144,5 +154,9 @@ impl ReplicatedStreamInner {
 
     pub fn incoming_root_stream(&self) -> impl Stream<Item = Link> {
         self.incoming.new_observer().filter_map(future::ready)
+    }
+
+    pub fn latest_seen(&self) -> &Variable<Option<(LamportTimestamp, Offset)>> {
+        &self.latest_seen
     }
 }

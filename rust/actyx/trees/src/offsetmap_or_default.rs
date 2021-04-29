@@ -1,9 +1,7 @@
-use std::convert::TryInto;
-
-use super::Offset;
-use actyxos_sdk::{OffsetMap, OffsetOrMin, StreamId};
+use actyxos_sdk::{Offset, OffsetMap, OffsetOrMin, StreamId};
 use libipld::DagCbor;
 use num_traits::Bounded;
+use std::convert::TryInto;
 
 #[derive(Clone, PartialOrd, PartialEq, Debug, DagCbor)]
 #[ipld(repr = "value")]

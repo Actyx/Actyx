@@ -5,8 +5,8 @@ use crate::access::{
 use crate::SwarmOffsets;
 use crate::{AxTreeExt, BanyanStore, TT};
 use actyxos_sdk::{
-    service::OffsetsResponse, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetOrMin, Payload,
-    StreamId, StreamNr, TagSet, Timestamp,
+    service::OffsetsResponse, Event, EventKey, LamportTimestamp, Metadata, Offset, OffsetOrMin, Payload, StreamId,
+    StreamNr, TagSet, Timestamp,
 };
 use anyhow::Result;
 use ax_futures_util::prelude::AxStreamExt;
@@ -15,17 +15,15 @@ use fnv::FnvHashSet;
 use forest::FilteredChunk;
 use futures::stream::BoxStream;
 use futures::{channel::mpsc, future::BoxFuture, prelude::*};
-use libipld::{cbor::DagCborCodec, codec::Codec};
 use std::{
     collections::BTreeSet,
     convert::{TryFrom, TryInto},
     num::NonZeroU64,
     ops::RangeInclusive,
-    time::Duration,
 };
 use trees::{
     axtrees::{AxKey, TagsQuery},
-    PublishHeartbeat, RootMap, StreamHeartBeat,
+    StreamHeartBeat,
 };
 
 fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> {
@@ -37,62 +35,6 @@ fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> 
 pub type PersistenceMeta = (LamportTimestamp, Offset, StreamNr, Timestamp);
 
 impl BanyanStore {
-    /// Tell the store that we have seen an unvalidated root map
-    pub(crate) fn received_root_map(
-        &self,
-        _node_id: NodeId,
-        _lamport: LamportTimestamp,
-        root_map: RootMap,
-    ) -> impl Future<Output = ()> {
-        for (stream_id, entry) in root_map.0 {
-            if let Ok(root) = entry.cid.try_into() {
-                self.update_root(stream_id, root);
-            } else {
-                tracing::warn!("Cid that is not SHA2-256")
-            }
-        }
-        future::ready(())
-    }
-
-    pub(crate) async fn v1_gossip_publish(self, topic: String) {
-        ax_futures_util::stream::interval(Duration::from_secs(10))
-            .for_each(move |_| self.publish_root_map(&topic))
-            .await
-    }
-
-    /// Start V1 gossip ingest. This reads heartbeats from a gossipsub topic and ingests them.
-    ///
-    /// This should be launched only once, and the join handle should be stored.
-    pub(crate) async fn v1_gossip_ingest(self, topic: String) {
-        let store = self.clone();
-        self.data
-            .ipfs
-            .subscribe(&topic)
-            .unwrap()
-            .filter_map(|msg| future::ready(DagCborCodec.decode::<PublishHeartbeat>(msg.as_slice()).ok()))
-            .for_each(move |heartbeat| {
-                tracing::debug!("{} received heartbeat", self.ipfs().local_node_name());
-                store.received_root_map(heartbeat.node, heartbeat.lamport, heartbeat.roots)
-            })
-            .await
-    }
-
-    pub(crate) fn publish_root_map(&self, topic: &str) -> impl Future<Output = ()> {
-        let node = self.node_id();
-        let lamport = LamportTimestamp::from(self.lock().index_store.lamport());
-        let roots = self.lock().root_map(node);
-        let timestamp = Timestamp::now();
-        let msg = PublishHeartbeat {
-            node,
-            lamport,
-            timestamp,
-            roots,
-        };
-        let blob = DagCborCodec.encode(&msg).unwrap();
-        let _ = self.ipfs().publish(topic, blob);
-        future::ready(())
-    }
-
     async fn persist0(self, events: Vec<(TagSet, Payload)>) -> Result<Vec<PersistenceMeta>> {
         let n = events.len() as u32;
         let last_lamport = self.lock().index_store.increase_lamport(n)?;
@@ -349,13 +291,16 @@ impl Present for BanyanStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SwarmConfig;
     use ax_futures_util::stream::Drainer;
     use maplit::btreemap;
     use quickcheck::Arbitrary;
 
     #[tokio::test]
-    async fn should_stream_offsets() -> anyhow::Result<()> {
-        let store = BanyanStore::test("offsets_stream").await?;
+    async fn should_stream_offsets() -> Result<()> {
+        let mut cfg = SwarmConfig::test("offset_stream");
+        cfg.enable_mdns = false;
+        let store = BanyanStore::new(cfg).await?;
         let store_node_id = store.node_id();
         let mut offsets = Drainer::new(store.offsets());
 
@@ -374,13 +319,13 @@ mod tests {
             } else {
                 Offset::arbitrary(&mut gen)
             };
-            test_offsets(&store, stream, offset).await?;
+            test_offsets(&store, stream, offset)?;
         }
 
         Ok(())
     }
 
-    async fn test_offsets(store: &BanyanStore, stream: StreamId, offset: Offset) -> anyhow::Result<()> {
+    fn test_offsets(store: &BanyanStore, stream: StreamId, offset: Offset) -> Result<()> {
         let mut offsets = Drainer::new(store.offsets());
 
         // Inject root update from `stream`
