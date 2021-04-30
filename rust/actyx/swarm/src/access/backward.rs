@@ -84,7 +84,7 @@ mod tests {
     async fn should_deliver_requested_events() {
         let store = tests::TestEventStore::new();
         let events = EventSelection::create(
-            "('upper:A' & 'lower:a') | 'upper:B'",
+            "FROM ('upper:A' & 'lower:a') | 'upper:B'",
             &[
                 (test_stream(1), OffsetOrMin::mk_test(40), OffsetOrMin::mk_test(70)),
                 (test_stream(2), OffsetOrMin::MIN, OffsetOrMin::mk_test(62)),

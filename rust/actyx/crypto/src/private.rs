@@ -1,8 +1,8 @@
 use crate::{pair::KeyPair, public::PublicKey};
-use anyhow::Result;
+use anyhow::{bail, Context, Result};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
-use std::fmt::{self, Debug};
+use std::fmt::{self, Debug, Display};
 
 /// An Actyx private key.
 ///
@@ -15,6 +15,38 @@ use std::fmt::{self, Debug};
 #[serde(from = "ed25519_dalek::SecretKey", into = "ed25519_dalek::SecretKey")]
 pub struct PrivateKey(pub(crate) [u8; 32]);
 
+impl Display for PrivateKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let priv_key = self.0;
+        let b64 = base64::encode(priv_key);
+        write!(f, "0{}", b64)
+    }
+}
+
+impl std::str::FromStr for PrivateKey {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.is_empty() {
+            bail!("empty string");
+        }
+        let s = s.as_bytes();
+        let key_type = s[0];
+        if key_type != b'0' {
+            bail!("Unexpected key type {}", key_type);
+        }
+        let v = base64::decode(&s[1..]).context("error base64 decoding PrivateKey")?;
+        if v.len() != ed25519_dalek::SECRET_KEY_LENGTH {
+            bail!(
+                "Expected {} bytes, received {}",
+                ed25519_dalek::SECRET_KEY_LENGTH,
+                v.len()
+            );
+        }
+        let mut res = [0u8; ed25519_dalek::SECRET_KEY_LENGTH];
+        res.copy_from_slice(&v[..]);
+        Ok(Self(res))
+    }
+}
 impl Debug for PrivateKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "secret")
@@ -61,5 +93,18 @@ impl PrivateKey {
     pub fn generate() -> Self {
         let k = ed25519_dalek::Keypair::generate(&mut OsRng);
         k.secret.into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PrivateKey;
+    use std::str::FromStr;
+    #[test]
+    fn str_roundtrip() {
+        let p = PrivateKey::generate();
+        let str = format!("{}", p);
+        let round_tripped = PrivateKey::from_str(&str).unwrap();
+        assert_eq!(p, round_tripped);
     }
 }

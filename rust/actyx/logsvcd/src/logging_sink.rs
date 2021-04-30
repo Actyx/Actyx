@@ -50,7 +50,7 @@ impl LoggingSink {
         // Windows event log
         let subscriber = {
             use tracing_subscriber::layer::SubscriberExt;
-            subscriber.with(tracing_win_event_log::layer("ActyxOS").unwrap())
+            subscriber.with(tracing_win_event_log::layer("Actyx").unwrap())
         };
         // Ignore this crates' logs (deadly loops are lurking here ..)
         let subscriber = WrappingSubscriber2::new(subscriber, log_tx, env!("CARGO_PKG_NAME").to_string());

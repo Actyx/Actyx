@@ -12,7 +12,6 @@ import {
   EventStore,
   RequestAllEvents,
   RequestConnectivity,
-  RequestHighestSeen,
   RequestOffsets,
   RequestPersistedEvents,
   RequestPersistEvents,
@@ -25,6 +24,7 @@ import {
   Events,
   PersistedEventsSortOrder,
   UnstoredEvents,
+  OffsetsResponse,
 } from './types'
 
 export const enum RequestTypes {
@@ -104,14 +104,7 @@ export class WebsocketEventStore implements EventStore {
   offsets: RequestOffsets = () =>
     this.multiplexer
       .request(RequestTypes.Offsets)
-      .map(validateOrThrow(OffsetMapIO))
-      .first()
-      .toPromise()
-
-  highestSeen: RequestHighestSeen = () =>
-    this.multiplexer
-      .request(RequestTypes.HighestSeen)
-      .map(validateOrThrow(OffsetMapIO))
+      .map(validateOrThrow(OffsetsResponse))
       .first()
       .toPromise()
 

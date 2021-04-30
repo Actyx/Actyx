@@ -1,11 +1,10 @@
-use actyxos_sdk::{Dnf, Tag, TagSet};
+use actyxos_sdk::TagSet;
 use libipld::cbor::{decode::read_u8, DagCborCodec};
 use libipld::codec::{Decode, Encode};
 use libipld::error::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     collections::BTreeSet,
-    convert::TryFrom,
     io::{Read, Seek, Write},
 };
 use vec_collections::VecSet;
@@ -84,37 +83,6 @@ impl TagIndex {
         self.elements.len()
     }
 
-    /// given a query expression in Dnf form, returns all matching indices
-    pub fn matching(&self, query: Dnf) -> Vec<usize> {
-        // lookup all strings and translate them into indices.
-        // if a single index does not match, the query can not match at all.
-        // FIXME Dnf should contain Tags
-        let lookup = |s: &BTreeSet<String>| -> Option<IndexSet> {
-            s.iter()
-                .filter_map(|x| Tag::try_from(&**x).ok())
-                .map(|t| self.tags.find(&t).map(|x| x as u32))
-                .collect::<Option<_>>()
-        };
-        // translate the query from strings to indices
-        let query = query.0.iter().filter_map(lookup).collect::<Vec<_>>();
-        // not a single query can possibly match, no need to iterate.
-        if query.is_empty() {
-            return Vec::new();
-        }
-        // check the remaining queries
-        self.elements
-            .iter()
-            .enumerate()
-            .filter_map(|(i, e)| {
-                if query.iter().any(|x| x.is_subset(e)) {
-                    Some(i)
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
     pub fn as_elements(&self) -> Vec<TagSet> {
         self.iter_elements().collect()
     }
@@ -148,34 +116,7 @@ impl TagIndex {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyxos_sdk::{tags, Expression};
     use quickcheck::quickcheck;
-
-    fn l(x: &str) -> Expression {
-        Expression::literal(x.into())
-    }
-
-    #[test]
-    fn test_matching_1() {
-        let index = TagIndex::from_elements(&[tags! {"a"}, tags! {"a", "b"}, tags! {"a"}, tags! {"a", "b"}]);
-        let expr = l("a") | l("b");
-        assert_eq!(index.matching(expr.dnf()), vec![0, 1, 2, 3]);
-        let expr = l("a") & l("b");
-        assert_eq!(index.matching(expr.dnf()), vec![1, 3]);
-        let expr = l("c") & l("d");
-        assert!(index.matching(expr.dnf()).is_empty());
-    }
-
-    #[test]
-    fn test_matching_2() {
-        let index = TagIndex::from_elements(&[tags! {"a", "b"}, tags! {"b", "c"}, tags! {"c", "a"}, tags! {"a", "b"}]);
-        let expr = l("a") | l("b") | l("c");
-        assert_eq!(index.matching(expr.dnf()), vec![0, 1, 2, 3]);
-        let expr = l("a") & l("b");
-        assert_eq!(index.matching(expr.dnf()), vec![0, 3]);
-        let expr = l("a") & l("b") & l("c");
-        assert!(index.matching(expr.dnf()).is_empty());
-    }
 
     #[test]
     fn test_deser_error() {

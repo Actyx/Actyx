@@ -10,8 +10,11 @@ anyhow = "1.0.40"
 async-global-executor = "2.0.2"
 async-process = "1.0.2"
 futures = { version = "0.3.14", package = "futures" }
-netsim-embed = "0.2.6"
 structopt = "0.3.21"
 swarm-cli = { path = "../cli" }
 tempdir = "0.3.7"
+tracing = "0.1.25"
 util = { path = "../../util" }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+netsim-embed = "0.3.0"

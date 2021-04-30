@@ -8,11 +8,11 @@ describe.skip('event service', () => {
       const nodeId = await getNodeId()
       const offsetsRes = await httpClient.get<OffsetsResponse>('offsets')
       const streamId = mkStreamId(nodeId)
-      const hasSomeStreamIdsWhichStartWithNodeId = Object.keys(offsetsRes.data).some((x) =>
+      const hasSomeStreamIdsWhichStartWithNodeId = Object.keys(offsetsRes.data.present).some((x) =>
         x.startsWith(streamId),
       )
       expect(offsetsRes.status).toBe(200)
-      expect(typeof offsetsRes.data[streamId]).toBe('number')
+      expect(typeof offsetsRes.data.present[streamId]).toBe('number')
       expect(hasSomeStreamIdsWhichStartWithNodeId).toBeTruthy()
     })
   })

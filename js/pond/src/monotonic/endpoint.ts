@@ -295,7 +295,7 @@ export const eventsMonotonic = (
   ): Observable<EventsOrTimetravel> => {
     return Observable.combineLatest(
       Observable.from(tryReadSnapshot(fishId)).first(),
-      Observable.from(eventStore.offsets()),
+      Observable.from(eventStore.offsets()).map(({ present }) => present),
     ).concatMap(([maybeSnapshot, present]) =>
       maybeSnapshot.fold(
         // No snapshot found -> start from scratch
@@ -312,8 +312,8 @@ export const eventsMonotonic = (
   ): Observable<EventsOrTimetravel> => {
     if (attemptStartFrom) {
       // Client explicitly requests us to start at a certain point
-      return Observable.from(eventStore.offsets()).concatMap(present =>
-        startFromFixedOffsets(fishId, subscriptions, present)(attemptStartFrom),
+      return Observable.from(eventStore.offsets()).concatMap(offsets =>
+        startFromFixedOffsets(fishId, subscriptions, offsets.present)(attemptStartFrom),
       )
     } else {
       // `from` NOT given -> try finding a snapshot

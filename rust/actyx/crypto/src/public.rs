@@ -33,15 +33,15 @@ impl Debug for PublicKey {
 impl std::str::FromStr for PublicKey {
     type Err = anyhow::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let mut s = s.to_string();
         if s.is_empty() {
             bail!("empty string");
         }
-        let key_type = s.remove(0);
-        if key_type != '0' {
+        let s = s.as_bytes();
+        let key_type = s[0];
+        if key_type != b'0' {
             bail!("Unexpected key type {}", key_type);
         }
-        let v = base64::decode(s).context("error base64 decoding PubKey")?;
+        let v = base64::decode(&s[1..]).context("error base64 decoding PubKey")?;
         if v.len() != ed25519_dalek::PUBLIC_KEY_LENGTH {
             bail!(
                 "Expected {} bytes, received {}",
@@ -185,5 +185,20 @@ impl<'de> Deserialize<'de> for PublicKey {
             }
         }
         deserializer.deserialize_str(V)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PublicKey;
+    use crate::PrivateKey;
+    use std::str::FromStr;
+    #[test]
+    fn str_roundtrip() {
+        let private = PrivateKey::generate();
+        let p: PublicKey = private.into();
+        let str = format!("{}", p);
+        let round_tripped = PublicKey::from_str(&str).unwrap();
+        assert_eq!(p, round_tripped);
     }
 }

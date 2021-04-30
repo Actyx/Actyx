@@ -182,6 +182,7 @@ pub fn discovery_publish(
     store: BanyanStore,
     nr: StreamNr,
     external: FnvHashSet<ipfs_embed::Multiaddr>,
+    enable_discovery: bool,
 ) -> Result<impl Future<Output = ()>> {
     let mut stream = store.ipfs().swarm_events();
     let mut buffer = vec![];
@@ -218,16 +219,18 @@ pub fn discovery_publish(
                 }
                 _ => continue,
             };
-            buffer.clear();
-            if let Err(err) = event.encode(DagCborCodec, &mut buffer) {
-                tracing::warn!("{}", err);
-                continue;
-            }
-            if let Err(err) = store
-                .append(nr, vec![(tags.clone(), Payload::from_slice(&buffer))])
-                .await
-            {
-                tracing::warn!("error appending discovery: {}", err);
+            if enable_discovery {
+                buffer.clear();
+                if let Err(err) = event.encode(DagCborCodec, &mut buffer) {
+                    tracing::warn!("{}", err);
+                    continue;
+                }
+                if let Err(err) = store
+                    .append(nr, vec![(tags.clone(), Payload::from_slice(&buffer))])
+                    .await
+                {
+                    tracing::warn!("error appending discovery: {}", err);
+                }
             }
         }
     })
