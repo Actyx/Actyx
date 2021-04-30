@@ -17,7 +17,7 @@ export const mkProcessLogger = (
     lines[where] = l.pop() || ''
     const matchedLines = []
     for (const line of l) {
-      logger(`node ${nodeName} ActyxOS ${where}: ${line}`)
+      logger(`node ${nodeName} Actyx ${where}: ${line}`)
       if (triggers.some((s) => line.indexOf(s) >= 0)) {
         matchedLines.push(line)
       }

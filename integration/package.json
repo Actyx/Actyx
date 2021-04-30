@@ -40,7 +40,7 @@
   },
   "license": "ISC",
   "main": "index.js",
-  "name": "actyxos-integration",
+  "name": "actyx-integration",
   "scripts": {
     "tsc": "tsc",
     "build": "rimraf dist && npm run tsc",

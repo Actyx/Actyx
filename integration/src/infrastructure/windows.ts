@@ -1,23 +1,23 @@
 import execa from 'execa'
 import { mkProcessLogger } from './mkProcessLogger'
-import { windowsActyxOsInstaller } from './settings'
+import { windowsActyxInstaller } from './settings'
 import { Ssh } from './ssh'
 import { connectSsh, execSsh, forwardPortsAndBuildClients } from './linux'
-import { ActyxOSNode, printTarget, SshAble, Target } from './types'
+import { ActyxNode, printTarget, SshAble, Target } from './types'
 
 export const mkWindowsSsh = async (
   nodeName: string,
   target: Target,
   sshParams: SshAble,
   logger: (s: string) => void = console.log,
-): Promise<ActyxOSNode> => {
+): Promise<ActyxNode> => {
   console.log('setting up Actyx process: %s on %o', nodeName, printTarget(target))
 
   const ssh = new Ssh(sshParams.host, sshParams.username, sshParams.privateKey)
   // Takes about 300 secs for ssh to be reachable
   await connectSsh(ssh, nodeName, sshParams, 150)
 
-  const binaryPath = await windowsActyxOsInstaller(target.arch)
+  const binaryPath = await windowsActyxInstaller(target.arch)
   const installerPath = String.raw`C:\Actyx-Installer.exe`
   console.log(`${nodeName}: Copying ${binaryPath} ${installerPath}`)
   await ssh.scp(binaryPath, installerPath)
@@ -28,13 +28,13 @@ export const mkWindowsSsh = async (
   )
 
   console.log(`${nodeName}: Starting Actyx`)
-  const actyxOsProc = await startActyxOS(nodeName, logger, ssh)
-  return await forwardPortsAndBuildClients(ssh, nodeName, target, actyxOsProc[0], {
+  const actyxProc = await startActyx(nodeName, logger, ssh)
+  return await forwardPortsAndBuildClients(ssh, nodeName, target, actyxProc[0], {
     host: 'process',
   })
 }
 
-function startActyxOS(
+function startActyx(
   nodeName: string,
   logger: (s: string) => void,
   ssh: Ssh,
@@ -52,15 +52,15 @@ function startActyxOS(
     proc.stderr?.on('data', (s: Buffer | string) => log('stderr', s))
     proc.on('close', () => {
       flush()
-      logger(`node ${nodeName} ActyxOS channel closed`)
+      logger(`node ${nodeName} Actyx channel closed`)
       rej('closed')
     })
     proc.on('error', (err: Error) => {
-      logger(`node ${nodeName} ActyxOS channel error: ${err}`)
+      logger(`node ${nodeName} Actyx channel error: ${err}`)
       rej(err)
     })
     proc.on('exit', (code: number, signal: string) => {
-      logger(`node ${nodeName} ActyxOS exited with code=${code} signal=${signal}`)
+      logger(`node ${nodeName} Actyx exited with code=${code} signal=${signal}`)
       rej('exited')
     })
   })

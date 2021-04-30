@@ -1,12 +1,12 @@
 import { Pond } from '@actyx/pond'
 import { MyGlobal } from '../../jest/setup'
-import { nodeMatches, selectNodes } from './nodeselection'
+import { selectNodes } from './nodeselection'
 import { getTestName } from './settings'
-import { ActyxOSNode, NodeSelection } from './types'
+import { ActyxNode, NodeSelection } from './types'
 
 // This is provided by jest/setup.ts and passed by jest to our worker (serialised)
 // therefore any contained functions will not work.
-const nodes: ActyxOSNode[] = (<MyGlobal>global).axNodeSetup.nodes
+const nodes: ActyxNode[] = (<MyGlobal>global).axNodeSetup.nodes
 
 const ts = () => new Date().toISOString()
 
@@ -17,12 +17,12 @@ export const allNodeNames = (): string[] => nodes.map((n) => n.name)
  * an array of results, in the same order that the selections were given.
  *
  * @param selection list of node selectors
- * @param exclusive when true, the given logic has exclusive access to the ActyxOS node
+ * @param exclusive when true, the given logic has exclusive access to the Actyx node
  * @param f the logic to be executed for each node
  */
 export const runOnEach = async <T>(
   selection: NodeSelection[],
-  f: (node: ActyxOSNode) => Promise<T>,
+  f: (node: ActyxNode) => Promise<T>,
 ): Promise<T[]> => {
   const n = selectNodes(selection, nodes)
   if (n === null) {
@@ -48,24 +48,12 @@ export const runOnEach = async <T>(
  * @param f the logic to be executed with all available nodes
  */
 export const runConcurrentlyOnAll = <T>(
-  f: (nodes: ActyxOSNode[]) => ReadonlyArray<Promise<T>>,
+  f: (nodes: ActyxNode[]) => ReadonlyArray<Promise<T>>,
 ): Promise<T[]> => {
   return runOnNodes('runOnAll', nodes, () => Promise.all(f(nodes)))
 }
 
-/**
- * Run the given logic on each node and return the
- * computed value.
- *
- * @param f the logic to be executed with all available nodes
- */
-export const runConcurrentlyOnAllSameLogic = <T>(
-  f: (node: ActyxOSNode) => Promise<T>,
-): Promise<T[]> => {
-  return runConcurrentlyOnAll((nodes) => nodes.map(f))
-}
-
-export const withPond = async <T>(node: ActyxOSNode, f: (pond: Pond) => Promise<T>): Promise<T> => {
+export const withPond = async <T>(node: ActyxNode, f: (pond: Pond) => Promise<T>): Promise<T> => {
   const pond = await Pond.of({ url: node._private.apiPond }, {})
   try {
     return await f(pond)
@@ -83,7 +71,7 @@ export const withPond = async <T>(node: ActyxOSNode, f: (pond: Pond) => Promise<
  */
 export const runOnAll = async <T>(
   selection: NodeSelection[],
-  f: (nodes: ActyxOSNode[]) => Promise<T>,
+  f: (nodes: ActyxNode[]) => Promise<T>,
 ): Promise<T> => {
   const n = selectNodes(selection, nodes)
   if (n === null) {
@@ -93,15 +81,15 @@ export const runOnAll = async <T>(
   return runOnNodes('runOnAll', n, () => f(n))
 }
 
-export const runOnEvery = async <T>(
-  selection: NodeSelection,
-  f: (node: ActyxOSNode) => Promise<T>,
-): Promise<T[]> => {
-  const n = nodes.filter(nodeMatches(selection))
-
-  return runOnNodes('runOnEvery', n, () =>
+/**
+ * Run given logic on each node and return the computed value.
+ *
+ * @param f the logic to be executed with all available nodes
+ */
+export const runOnEvery = <T>(f: (node: ActyxNode) => Promise<T>): Promise<T[]> =>
+  runOnNodes('runOnEvery', nodes, () =>
     Promise.all(
-      n.map((node) =>
+      nodes.map((node) =>
         f(node).catch((error) => {
           error.message += '\n\n... while testing node ' + node.name
           throw error
@@ -109,9 +97,8 @@ export const runOnEvery = async <T>(
       ),
     ),
   )
-}
 
-const runOnNodes = async <T>(label: string, n: ActyxOSNode[], f: () => Promise<T>): Promise<T> => {
+const runOnNodes = async <T>(label: string, n: ActyxNode[], f: () => Promise<T>): Promise<T> => {
   const ns = n.map((x) => x.name).join(', ')
   const testName = getTestName()
   process.stdout.write(`${ts()} ${testName} ${label} on nodes [${ns}]\n`)

@@ -3,7 +3,7 @@ import { ensureDirSync } from 'fs-extra'
 import { EC2 } from 'aws-sdk'
 import { createInstance, instanceToTarget } from './aws'
 import { mkNodeSshDocker, mkNodeSshProcess } from './linux'
-import { ActyxOSNode, AwsKey, Target } from './types'
+import { ActyxNode, AwsKey, Target } from './types'
 import { CreateEC2, currentArch, currentOS, HostConfig } from '../../jest/types'
 import { mkNodeLocalDocker, mkNodeLocalProcess } from './local'
 import { LogEntry, MyGlobal } from '../../jest/setup'
@@ -82,7 +82,7 @@ const installDocker = async (
  *
  * @param host
  */
-export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefined> => {
+export const createNode = async (host: HostConfig): Promise<ActyxNode | undefined> => {
   const {
     ec2,
     key,
@@ -143,7 +143,7 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
   }
 
   try {
-    let node: ActyxOSNode | undefined
+    let node: ActyxNode | undefined
     switch (host.install) {
       case 'linux':
       case 'windows':
