@@ -11,10 +11,8 @@ plugins {
 
 apply from: '../actyx-local/actyx.properties'
 
-// versionCode is a monotonically-increasing 32-bit positive integer. A one-second granularity is probably OK.
-// it must be above the latest in v1.x (11xxxxxxxx) so users don't have problems updating
-// this will break in 2038
-def verCode = (System.currentTimeMillis() / 1000) as Integer
+// 102000000 is the version code that would have been applied to ActyxOS 1.2
+def verCode = { -> ("git log --oneline".execute().text.readLines().size() + 102000000) as Integer }
 def verName = "${(System.getenv('ACTYX_VERSION') ?: androidGitVersion.name())}-android"
 
 androidGitVersion {
@@ -40,7 +38,7 @@ android {
     applicationId 'com.actyx.android'
     minSdkVersion 22
     targetSdkVersion 30
-    versionCode verCode
+    versionCode verCode()
     versionName verName
     testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     buildConfigField "int", "MIN_SDK_API_LEVEL", "$minSdkVersion.apiLevel"
