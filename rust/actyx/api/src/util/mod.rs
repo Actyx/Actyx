@@ -4,18 +4,39 @@ pub mod hyper_serve;
 use std::time::Duration;
 
 use actyx_util::formats::NodeCycleCount;
-use actyxos_sdk::{AppId, Timestamp};
-use crypto::{KeyStoreRef, PublicKey};
+use actyxos_sdk::{AppId, NodeId, Timestamp};
+use crypto::KeyStoreRef;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use warp::*;
 
 #[derive(Clone)]
-pub(crate) struct AuthArgs {
-    pub node_key: PublicKey,
+pub struct NodeInfo {
+    pub node_id: NodeId,
     pub key_store: KeyStoreRef,
     pub token_validity: u32,
     pub cycles: NodeCycleCount,
+}
+
+impl NodeInfo {
+    pub fn new(node_id: NodeId, key_store: KeyStoreRef, cycles: NodeCycleCount) -> Self {
+        Self {
+            node_id,
+            key_store,
+            cycles,
+            token_validity: get_token_validity(),
+        }
+    }
+}
+fn get_token_validity() -> u32 {
+    if cfg!(debug_assertions) {
+        std::env::var("AX_API_TOKEN_VALIDITY")
+            .ok()
+            .and_then(|x| x.parse().ok())
+            .unwrap_or(86400) // 1 day
+    } else {
+        86400
+    }
 }
 
 #[derive(Debug, Display, Deserialize)]

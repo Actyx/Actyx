@@ -2,6 +2,7 @@ use super::{Component, ComponentRequest};
 use crate::{node_settings::Settings, BindTo};
 use actyxos_sdk::NodeId;
 use anyhow::Result;
+use api::NodeInfo;
 use crossbeam::channel::{Receiver, Sender};
 use crypto::KeyStoreRef;
 use parking_lot::Mutex;
@@ -73,21 +74,15 @@ impl Component<StoreRequest, SwarmConfig> for Store {
                 .enable_all()
                 .build()?;
             let bind_to = self.bind_to.clone();
-            let keystore = self.keystore.clone();
-            let cycles = self.node_cycle_count;
+            let node_info = NodeInfo::new(self.node_id, self.keystore.clone(), self.node_cycle_count);
             // client creation is setting up some tokio timers and therefore
             // needs to be called with a tokio runtime
             let store = rt.block_on(async move {
                 let store = BanyanStore::new(cfg).await?;
+
                 store.spawn_task(
                     "api",
-                    api::run(
-                        store.node_id(),
-                        store.clone(),
-                        bind_to.clone().api.into_iter(),
-                        keystore.clone(),
-                        cycles,
-                    ),
+                    api::run(node_info, store.clone(), bind_to.clone().api.into_iter()),
                 );
                 Ok::<BanyanStore, anyhow::Error>(store)
             })?;

@@ -5,7 +5,7 @@ use maplit::btreemap;
 use warp::*;
 use wsrpc::Service;
 
-use crate::util::{filters::query_token, AuthArgs};
+use crate::util::{filters::query_token, NodeInfo};
 
 mod node_id;
 mod offsets;
@@ -15,7 +15,7 @@ mod subscribe;
 mod subscribe_monotonic;
 
 pub(crate) fn routes<S: EventService + Clone + Send + Sync + 'static>(
-    auth_args: AuthArgs,
+    auth_args: NodeInfo,
     event_service: S,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     let auth = crate::util::filters::authenticate(auth_args, query_token());

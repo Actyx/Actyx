@@ -3,10 +3,10 @@ use crypto::SignedMessage;
 use std::convert::TryInto;
 use warp::{reject, Filter, Rejection};
 
-use crate::util::{AuthArgs, Token};
+use crate::util::{NodeInfo, Token};
 use crate::{rejections::ApiError, BearerToken};
 
-pub(crate) fn verify(auth_args: AuthArgs, token: Token) -> Result<BearerToken, ApiError> {
+pub(crate) fn verify(auth_args: NodeInfo, token: Token) -> Result<BearerToken, ApiError> {
     let token = token.to_string();
     let bin: Binary = token.parse().map_err(|_| ApiError::TokenInvalid {
         token: token.clone(),
@@ -19,7 +19,7 @@ pub(crate) fn verify(auth_args: AuthArgs, token: Token) -> Result<BearerToken, A
     auth_args
         .key_store
         .read()
-        .verify(&signed_msg, vec![auth_args.node_key])
+        .verify(&signed_msg, vec![auth_args.node_id.into()])
         .map_err(|_| ApiError::TokenUnauthorized)?;
     let bearer_token =
         serde_cbor::from_slice::<BearerToken>(signed_msg.message()).map_err(|_| ApiError::TokenInvalid {
@@ -68,7 +68,7 @@ pub fn header_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Cl
 }
 
 pub(crate) fn authenticate(
-    auth_args: AuthArgs,
+    auth_args: NodeInfo,
     token: impl Filter<Extract = (Token,), Error = Rejection> + Clone,
 ) -> impl Filter<Extract = (AppId,), Error = Rejection> + Clone {
     token.and_then(move |t: Token| {
@@ -91,7 +91,7 @@ mod tests {
     use parking_lot::RwLock;
     use std::sync::Arc;
 
-    fn setup(validity: Option<u32>) -> (AuthArgs, Binary) {
+    fn setup(validity: Option<u32>) -> (NodeInfo, Binary) {
         let mut store = KeyStore::default();
         let key_id = store.generate_key_pair().unwrap();
         let token = BearerToken {
@@ -105,10 +105,10 @@ mod tests {
         let bytes = serde_cbor::to_vec(&token).unwrap();
         let msg = store.sign(bytes, vec![key_id]).unwrap();
         let bearer = Binary::from(msg.as_ref());
-        let auth_args = AuthArgs {
+        let auth_args = NodeInfo {
             cycles: 0.into(),
             key_store: Arc::new(RwLock::new(store)),
-            node_key: key_id,
+            node_id: key_id.into(),
             token_validity: 300,
         };
 
@@ -138,7 +138,7 @@ mod tests {
     #[tokio::test]
     async fn should_fail_when_node_is_cycled() {
         let (auth_args, bearer) = setup(None);
-        let auth_args = AuthArgs {
+        let auth_args = NodeInfo {
             // Simulate node restart
             cycles: 1.into(),
             ..auth_args

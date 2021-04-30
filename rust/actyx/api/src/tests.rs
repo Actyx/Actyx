@@ -7,7 +7,7 @@ use serde_json::*;
 use swarm::BanyanStore;
 use warp::*;
 
-use crate::{authentication_service_api::create_token, rejections, util::AuthArgs, AppMode};
+use crate::{authentication_service_api::create_token, rejections, util::NodeInfo, AppMode};
 
 const UNAUTHORIZED_TOKEN: &str = "AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ==";
 
@@ -34,14 +34,14 @@ async fn test_routes() -> (
     let key_store = std::sync::Arc::new(RwLock::new(KeyStore::default()));
     let node_key = key_store.write().generate_key_pair().unwrap();
     let store = BanyanStore::test("api").await.unwrap();
-    let route = super::routes(node_key.into(), store, key_store.clone(), 0.into()).with(warp::trace::named("api_test"));
-
-    let auth_args = AuthArgs {
+    let auth_args = NodeInfo {
         cycles: 0.into(),
         key_store: key_store.clone(),
-        node_key,
+        node_id: node_key.into(),
         token_validity: 300,
     };
+    let route = super::routes(auth_args.clone(), store).with(warp::trace::named("api_test"));
+
     let token = create_token(
         auth_args,
         app_id!("com.example.my-app"),

@@ -5,10 +5,10 @@ mod ndjson;
 use actyxos_sdk::service::EventService;
 use warp::Filter;
 
-use crate::util::{filters::header_token, AuthArgs};
+use crate::util::{filters::header_token, NodeInfo};
 
 pub(crate) fn routes<S: EventService + Clone + Send + Sync + 'static>(
-    auth_args: AuthArgs,
+    auth_args: NodeInfo,
     event_service: S,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     let auth = crate::util::filters::authenticate(auth_args, header_token());

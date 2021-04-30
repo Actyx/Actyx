@@ -6,11 +6,11 @@ use warp::*;
 
 use crate::{
     rejections::ApiError,
-    util::{filters::accept_json, reject, AuthArgs, Token},
+    util::{filters::accept_json, reject, NodeInfo, Token},
     AppMode, BearerToken,
 };
 
-fn mk_success_log_msg(token: BearerToken) -> String {
+fn mk_success_log_msg(token: &BearerToken) -> String {
     let expiration_time: DateTime<Utc> = token.expiration().into();
     let mode = match token.app_mode {
         AppMode::Trial => "trial",
@@ -24,7 +24,7 @@ fn mk_success_log_msg(token: BearerToken) -> String {
 }
 
 pub(crate) fn create_token(
-    args: AuthArgs,
+    args: NodeInfo,
     app_id: AppId,
     app_version: String,
     app_mode: AppMode,
@@ -38,9 +38,8 @@ pub(crate) fn create_token(
         app_mode,
     };
     let bytes = serde_cbor::to_vec(&token)?;
-    let signed = args.key_store.read().sign(bytes, vec![args.node_key])?;
-    let log_msg = mk_success_log_msg(token);
-    info!(target: "AUTH", "{}", log_msg);
+    let signed = args.key_store.read().sign(bytes, vec![args.node_id.into()])?;
+    info!(target: "AUTH", "{}", mk_success_log_msg(&token));
     Ok(base64::encode(signed).into())
 }
 
@@ -66,7 +65,7 @@ fn validate_manifest(manifest: AppManifest) -> Result<AppMode, ApiError> {
     }
 }
 
-async fn handle_auth(args: AuthArgs, manifest: AppManifest) -> Result<impl Reply, Rejection> {
+async fn handle_auth(args: NodeInfo, manifest: AppManifest) -> Result<impl Reply, Rejection> {
     match validate_manifest(manifest.clone()) {
         Ok(is_trial) => create_token(args, manifest.app_id, manifest.version, is_trial)
             .map(|token| reply::json(&TokenResponse::new(token)))
@@ -75,7 +74,7 @@ async fn handle_auth(args: AuthArgs, manifest: AppManifest) -> Result<impl Reply
     }
 }
 
-pub(crate) fn route(args: AuthArgs) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+pub(crate) fn route(args: NodeInfo) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     post()
         .and(accept_json())
         .and(body::json())
@@ -91,17 +90,17 @@ mod tests {
     use std::sync::Arc;
     use warp::{reject::MethodNotAllowed, test, Filter, Rejection, Reply};
 
-    use super::{route, validate_manifest, AppMode, AuthArgs, TokenResponse};
+    use super::{route, validate_manifest, AppMode, NodeInfo, TokenResponse};
     use crate::{rejections::ApiError, util::filters::verify};
 
     fn test_route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
         let mut key_store = KeyStore::default();
         let node_key = key_store.generate_key_pair().unwrap();
         let key_store = Arc::new(RwLock::new(key_store));
-        let auth_args = AuthArgs {
+        let auth_args = NodeInfo {
             cycles: 0.into(),
             key_store,
-            node_key,
+            node_id: node_key.into(),
             token_validity: 300,
         };
         route(auth_args)
@@ -118,10 +117,10 @@ mod tests {
             "1.0.0".to_string(),
             None,
         );
-        let auth_args = AuthArgs {
+        let auth_args = NodeInfo {
             cycles: 0.into(),
             key_store: key_store.clone(),
-            node_key,
+            node_id: node_key.into(),
             token_validity: 300,
         };
 
