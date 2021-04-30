@@ -65,12 +65,12 @@ export const mockEventStore: () => EventStore = () => {
       .asObservable()
       .do(() => log.ws.debug('present'))
       .take(1)
+      .map(present => ({ present, toReplicate: {} }))
       .toPromise()
 
   return {
     nodeId,
     offsets: getPresent,
-    highestSeen: getPresent,
     persistedEvents,
     allEvents,
     persistEvents,

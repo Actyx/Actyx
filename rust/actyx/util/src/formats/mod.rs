@@ -1,5 +1,5 @@
 use derive_more::{AsRef, Display, From, Into};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 pub mod admin_protocol;
 pub mod errors;
@@ -10,6 +10,10 @@ pub mod os_arch;
 pub use admin_protocol::*;
 pub use errors::*;
 pub use logs::*;
+
+/// Keeps track of how many times a node was restarted
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, From)]
+pub struct NodeCycleCount(u64);
 
 #[derive(Deserialize, PartialEq, Clone, Debug, From, Into, AsRef, Display)]
 pub struct NodeName(pub String);

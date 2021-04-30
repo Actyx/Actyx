@@ -17,7 +17,7 @@ use std::sync::Arc;
 use thiserror::Error;
 use tracing::*;
 use util::{
-    formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt, NodeErrorContext},
+    formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext},
     version::NodeVersion,
 };
 
@@ -105,7 +105,7 @@ impl Node {
             .and_then(|s| serde_json::from_value(s).ax_internal())
             .inspect_err(|err| debug!("Unable to get initial system settings: {}", err))?;
 
-        let node_id = runtime_storage.get_crypto_cell().get_or_create_node_id()?;
+        let node_id = runtime_storage.get_or_create_node_id()?;
         let state = NodeState::new(node_id, sys_settings);
         Ok(Self {
             settings_repo,
@@ -246,9 +246,9 @@ impl Node {
             NodesRequest::GetNodeId(sender) => {
                 let _ = sender.send(
                     self.runtime_storage
-                        .get_crypto_cell()
                         .get_or_create_node_id()
-                        .map(Into::into),
+                        .map(Into::into)
+                        .map_err(|_| ActyxOSError::internal("Failed to get node id")),
                 );
             }
         }
@@ -260,7 +260,9 @@ impl Node {
         if settings != self.state.settings {
             let details = NodeDetails::from_settings(
                 &settings,
-                self.runtime_storage.get_crypto_cell().get_or_create_node_id()?,
+                self.runtime_storage
+                    .get_or_create_node_id()
+                    .map_err(|_| ActyxOSError::internal("Failed to get node id"))?,
             );
             debug!("Setting node settings to: {:?}", settings);
             self.state.settings = settings;

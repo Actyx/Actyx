@@ -319,12 +319,12 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
     present
       .asObservable()
       .first()
+      .map(present => ({ present, toReplicate: {} }))
       .toPromise()
 
   return {
     nodeId,
     offsets: getPresent,
-    highestSeen: getPresent,
     persistedEvents,
     allEvents,
     persistEvents,

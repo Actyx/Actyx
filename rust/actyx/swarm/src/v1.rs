@@ -2,26 +2,28 @@ use crate::access::{
     common::StreamEventSelection, ConsumerAccessError, EventOrHeartbeat, EventOrHeartbeatStreamOrError,
     EventStoreConsumerAccess, EventStreamOrError,
 };
+use crate::SwarmOffsets;
 use crate::{AxTreeExt, BanyanStore, TT};
 use actyxos_sdk::{
-    Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetOrMin, Payload, StreamId, StreamNr, TagSet,
-    Timestamp,
+    service::OffsetsResponse, Event, EventKey, LamportTimestamp, Metadata, Offset, OffsetOrMin, Payload, StreamId,
+    StreamNr, TagSet, Timestamp,
 };
 use anyhow::Result;
 use ax_futures_util::prelude::AxStreamExt;
-use banyan::{
-    forest::{self},
-    index::IndexRef,
-};
+use banyan::{forest, index::IndexRef};
 use fnv::FnvHashSet;
 use forest::FilteredChunk;
 use futures::stream::BoxStream;
 use futures::{channel::mpsc, future::BoxFuture, prelude::*};
-use libipld::{cbor::DagCborCodec, codec::Codec};
-use std::{collections::BTreeSet, convert::TryInto, ops::RangeInclusive, time::Duration};
+use std::{
+    collections::BTreeSet,
+    convert::{TryFrom, TryInto},
+    num::NonZeroU64,
+    ops::RangeInclusive,
+};
 use trees::{
     axtrees::{AxKey, TagsQuery},
-    OffsetMapOrMax, PublishHeartbeat, RootMap, StreamHeartBeat,
+    StreamHeartBeat,
 };
 
 fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> {
@@ -33,65 +35,9 @@ fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> 
 pub type PersistenceMeta = (LamportTimestamp, Offset, StreamNr, Timestamp);
 
 impl BanyanStore {
-    /// Tell the store that we have seen an unvalidated root map
-    pub(crate) fn received_root_map(
-        &self,
-        _node_id: NodeId,
-        _lamport: LamportTimestamp,
-        root_map: RootMap,
-    ) -> impl Future<Output = ()> {
-        for (stream_id, entry) in root_map.0 {
-            if let Ok(root) = entry.cid.try_into() {
-                self.update_root(stream_id, root);
-            } else {
-                tracing::warn!("Cid that is not SHA2-256")
-            }
-        }
-        future::ready(())
-    }
-
-    pub(crate) async fn v1_gossip_publish(self, topic: String) {
-        ax_futures_util::stream::interval(Duration::from_secs(10))
-            .for_each(move |_| self.publish_root_map(&topic))
-            .await
-    }
-
-    /// Start V1 gossip ingest. This reads heartbeats from a gossipsub topic and ingests them.
-    ///
-    /// This should be launched only once, and the join handle should be stored.
-    pub(crate) async fn v1_gossip_ingest(self, topic: String) {
-        let store = self.clone();
-        self.0
-            .ipfs
-            .subscribe(&topic)
-            .unwrap()
-            .filter_map(|msg| future::ready(DagCborCodec.decode::<PublishHeartbeat>(msg.as_slice()).ok()))
-            .for_each(move |heartbeat| {
-                tracing::debug!("{} received heartbeat", self.ipfs().local_node_name());
-                store.received_root_map(heartbeat.node, heartbeat.lamport, heartbeat.roots)
-            })
-            .await
-    }
-
-    pub(crate) fn publish_root_map(&self, topic: &str) -> impl Future<Output = ()> {
-        let node = self.node_id();
-        let lamport = LamportTimestamp::from(self.0.index_store.lock().lamport());
-        let roots = self.0.maps.lock().root_map(node);
-        let timestamp = Timestamp::now();
-        let msg = PublishHeartbeat {
-            node,
-            lamport,
-            timestamp,
-            roots,
-        };
-        let blob = DagCborCodec.encode(&msg).unwrap();
-        let _ = self.0.ipfs.publish(topic, blob);
-        future::ready(())
-    }
-
     async fn persist0(self, events: Vec<(TagSet, Payload)>) -> Result<Vec<PersistenceMeta>> {
         let n = events.len() as u32;
-        let last_lamport = self.0.index_store.lock().increase_lamport(n)?;
+        let last_lamport = self.lock().index_store.increase_lamport(n)?;
         let min_lamport = last_lamport - (n as u64) + 1;
         let stream_nr = StreamNr::from(0); // TODO
         let timestamp = Timestamp::now();
@@ -127,23 +73,32 @@ impl BanyanStore {
     }
 
     pub(crate) fn update_present(&self, stream_id: StreamId, offset: OffsetOrMin) -> anyhow::Result<()> {
-        self.0.present.transform(|present| {
-            let mut present = present.clone();
-            present.update(stream_id, offset);
-            Ok(Some(present))
-        })
+        if let Some(offset) = Offset::from_offset_or_min(offset) {
+            self.data.offsets.transform(|offsets| {
+                let mut offsets = offsets.clone();
+                offsets.present.update(stream_id, offset);
+                Ok(Some(offsets))
+            })
+        } else {
+            Ok(())
+        }
     }
 
     pub(crate) fn update_highest_seen(&self, stream_id: StreamId, offset: OffsetOrMin) -> anyhow::Result<()> {
-        self.0.highest_seen.transform(|highest_seen| {
-            Ok(if highest_seen.offset(stream_id) < offset {
-                let mut highest_seen = highest_seen.clone();
-                highest_seen.update(stream_id, offset);
-                Some(highest_seen)
-            } else {
-                None
+        if let Some(offset) = Offset::from_offset_or_min(offset) {
+            self.data.offsets.transform(|offsets| {
+                let ret = if offsets.replication_target.offset(stream_id) < offset {
+                    let mut offsets = offsets.clone();
+                    offsets.replication_target.update(stream_id, offset);
+                    Some(offsets)
+                } else {
+                    None
+                };
+                Ok(ret)
             })
-        })
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -160,9 +115,7 @@ impl EventStore for BanyanStore {
 
 impl EventStoreConsumerAccess for BanyanStore {
     fn local_stream_ids(&self) -> BTreeSet<StreamId> {
-        let state = self.0.maps.lock();
-
-        state.own_streams.keys().map(|x| self.0.node_id.stream(*x)).collect()
+        self.lock().local_stream_ids()
     }
 
     fn stream_forward(&self, events: StreamEventSelection, must_exist: bool) -> EventOrHeartbeatStreamOrError {
@@ -173,7 +126,7 @@ impl EventStoreConsumerAccess for BanyanStore {
         }
         let (trees, forest) = self.tree_stream(stream_id);
         let range = get_range_inclusive(&events);
-        let query = TagsQuery::new(events.subscription_set);
+        let query = TagsQuery::new(events.tag_subscriptions);
         // Used to signal the mixed in `heartbeats_from_latest` stream down
         // below to finish
         let (mut tx, rx) = mpsc::channel(1);
@@ -210,7 +163,7 @@ impl EventStoreConsumerAccess for BanyanStore {
         let stream_id = events.stream_id;
         let (trees, forest) = self.tree_stream(stream_id);
         let range = get_range_inclusive(&events);
-        let query = TagsQuery::new(events.subscription_set);
+        let query = TagsQuery::new(events.tag_subscriptions);
         future::ok(
             forest
                 .stream_trees_chunked_reverse(query, trees, range, &|_| {})
@@ -302,27 +255,108 @@ fn events_from_chunk_rev(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, 
         .collect()
 }
 
-/// Provides the current highest validated offsets as a sampled stream
-/// without back pressure, where the latest element is always available.
 pub trait Present: Clone + Send + Unpin + Sync + 'static {
-    fn stream(&self) -> BoxStream<'static, OffsetMapOrMax>;
+    /// Provides both the the currently highest validated offsets (`present`) and the number of
+    /// events per Stream which are not yet validated, but were observed within the swarm
+    /// (`to_replicate`) as a sampled stream without back pressure, where the latest element is
+    /// always available.
+    fn offsets(&self) -> BoxStream<'static, OffsetsResponse>;
 }
 
-impl Present for BanyanStore {
-    fn stream(&self) -> stream::BoxStream<'static, OffsetMapOrMax> {
-        self.0.present.new_observer().boxed()
+impl From<SwarmOffsets> for OffsetsResponse {
+    fn from(o: SwarmOffsets) -> Self {
+        let to_replicate = o
+            .replication_target
+            .stream_iter()
+            .filter_map(|(stream, target)| {
+                let actual = o.present.offset(stream);
+                let diff = OffsetOrMin::from(target) - actual;
+                u64::try_from(diff).ok().and_then(NonZeroU64::new).map(|o| (stream, o))
+            })
+            .collect();
+
+        Self {
+            present: o.present,
+            to_replicate,
+        }
     }
 }
 
-/// Provides the highest seen, but not necessarily validated RootMap as a
-/// sampled stream without back pressure, where the latest element is always
-/// available.
-pub trait HighestSeen: Clone + Send + Unpin + Sync + 'static {
-    fn stream(&self) -> BoxStream<'static, OffsetMapOrMax>;
+impl Present for BanyanStore {
+    fn offsets(&self) -> stream::BoxStream<'static, OffsetsResponse> {
+        self.data.offsets.new_observer().map(Into::into).boxed()
+    }
 }
 
-impl HighestSeen for BanyanStore {
-    fn stream(&self) -> stream::BoxStream<'static, OffsetMapOrMax> {
-        self.0.highest_seen.new_observer().boxed()
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::SwarmConfig;
+    use ax_futures_util::stream::Drainer;
+    use maplit::btreemap;
+    use quickcheck::Arbitrary;
+
+    #[tokio::test]
+    async fn should_stream_offsets() -> Result<()> {
+        let mut cfg = SwarmConfig::test("offset_stream");
+        cfg.enable_mdns = false;
+        let store = BanyanStore::new(cfg).await?;
+        let store_node_id = store.node_id();
+        let mut offsets = Drainer::new(store.offsets());
+
+        // Initially only own streams
+        let nxt = offsets.next().unwrap().last().cloned().unwrap();
+        assert!(nxt.present.streams().all(|x| x.node_id() == store_node_id));
+        assert_eq!(nxt.to_replicate, Default::default());
+
+        let mut gen = quickcheck::Gen::new(64);
+        let streams: BTreeSet<StreamId> = Arbitrary::arbitrary(&mut gen);
+
+        for (idx, stream) in streams.into_iter().enumerate() {
+            let offset = if idx == 0 {
+                // Explicitly test the 0 case
+                Offset::from(0)
+            } else {
+                Offset::arbitrary(&mut gen)
+            };
+            test_offsets(&store, stream, offset)?;
+        }
+
+        Ok(())
+    }
+
+    fn test_offsets(store: &BanyanStore, stream: StreamId, offset: Offset) -> Result<()> {
+        let mut offsets = Drainer::new(store.offsets());
+
+        // Inject root update from `stream`
+        store.update_highest_seen(stream, offset.into())?;
+
+        let nxt = offsets.next().unwrap().last().cloned().unwrap();
+        assert!(nxt.present.streams().all(|x| x != stream));
+        assert_eq!(
+            nxt.to_replicate,
+            btreemap! {
+                stream => NonZeroU64::new(u64::from(offset) + 1).unwrap()
+            }
+        );
+
+        // Inject validation of `stream` with `offset - 1`
+        if let Some(pred) = offset.pred() {
+            store.update_present(stream, pred.into())?;
+            let nxt = offsets.next().unwrap().last().cloned().unwrap();
+            assert_eq!(nxt.present.offset(stream), OffsetOrMin::from(pred));
+            assert_eq!(
+                nxt.to_replicate,
+                std::iter::once((stream, NonZeroU64::new(1u64).unwrap())).collect()
+            );
+        }
+
+        // Inject validation of `stream` with `offset`
+        store.update_present(stream, offset.into())?;
+        let nxt = offsets.next().unwrap().last().cloned().unwrap();
+        assert_eq!(nxt.present.offset(stream), OffsetOrMin::from(offset));
+        assert_eq!(nxt.to_replicate, Default::default());
+
+        Ok(())
     }
 }

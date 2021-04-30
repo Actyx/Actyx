@@ -82,13 +82,18 @@ curl \
 
 ```js
 {
-    "nodeId": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA"
+    "nodeId": "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s"
 }
 ```
 
 ## Get information about known offsets
 
 You can get information from the Event Service about known offsets, i.e. what the event service believes to be the latest offset for each stream.
+This request returns the currently validated `present` as observed by this node, meaning that all events described by this offset map are available for querying.
+
+It further returns a map in `toReplicate`, which describes the number of events that are available in the swarm and should eventually become available on this local node.
+Fully replicated streams are omitted from this map.
+
 
 Take a look at the [Event Streams guide](https://developer.actyx.com/docs/os/guides/event-streams/#offsets-and-partitions) to learn more about the role of offsets.
 
@@ -112,8 +117,14 @@ The response body will contain a JSON object of the following structure:
 
 ```js
 {
+  "present": {
     "<string: stream ID>": "<integer: last-known-offset>",
     "<string: stream ID>": "<integer: last-known-offset>"
+  },
+  "toReplicate": {
+    "<string: stream ID>": "<unsigned integer > 0: number of events pending replication to this node>",
+    "<string: stream ID>": "<unsigned integer > 0: number of events pending replication to this node>"
+  }
 }
 ```
 
@@ -134,10 +145,15 @@ curl \
     http://localhost:4454/api/v2/events/offsets | jq .
 ```
 
-```text
+```js
 {
-    "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2": 57,
-    "yjbwMjEteMT9Em8sGFwwde7kAGgJDxpTLJZZTxvduuKW.5": 60
+  "present": {
+    "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 56,
+    "f.bEi0RbPe4X3e7bzu5nrRrncTxbcVOXcKtb7vXE0Ok-5": 60
+  },
+  "toReplicate": {
+    "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 1
+  }
 }
 ```
 
@@ -250,12 +266,12 @@ See the following example using cURL:
 echo '
 {
     "lowerBound": {
-        "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2": 34,
-        "yjbwMjEteMT9Em8sGFwwde7kAGgJDxpTLJZZTxvduuKW.5": -1
+        "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34,
+        "f.bEi0RbPe4X3e7bzu5nrRrncTxbcVOXcKtb7vXE0Ok-5": -1
     },
     "upperBound": {
-        "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2": 57,
-        "yjbwMjEteMT9Em8sGFwwde7kAGgJDxpTLJZZTxvduuKW.5": 60
+        "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 57,
+        "f.bEi0RbPe4X3e7bzu5nrRrncTxbcVOXcKtb7vXE0Ok-5": 60
     },
     "query": "FROM 'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')",
     "order": "desc"
@@ -274,7 +290,7 @@ echo '
 ```js
 {
     "key": {
-        "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2",
+        "stream": "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2",
         "lamport": 323,
         "offset": 34
     },
@@ -367,8 +383,8 @@ See the following example using cURL:
 echo '
 {
     "offsets": {
-        "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2": 34,
-        "yjbwMjEteMT9Em8sGFwwde7kAGgJDxpTLJZZTxvduuKW.5": -1
+        "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34,
+        "f.bEi0RbPe4X3e7bzu5nrRrncTxbcVOXcKtb7vXE0Ok-5": -1
     },
     "query": "FROM 'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')"
 }
@@ -386,7 +402,7 @@ echo '
 ```js
 {
     "key": {
-        "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2",
+        "stream": "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2",
         "lamport": 323,
         "offset": 34
     },
@@ -544,8 +560,8 @@ echo '
     "session": "<my_session_id>",
     "query": "FROM 'com.actyx.examples.temperature' & ('sensor:temp-sensor1' | 'sensor:temp-sensor2')",
     "offsets": {
-        "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2": 34,
-        "yjbwMjEteMT9Em8sGFwwde7kAGgJDxpTLJZZTxvduuKW.5": -1
+        "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34,
+        "f.bEi0RbPe4X3e7bzu5nrRrncTxbcVOXcKtb7vXE0Ok-5": -1
     }
 }
 ' \
@@ -564,7 +580,7 @@ echo '
     "type": "event",
     "key": {
         "lamport": 323,
-        "stream": "uAQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA.2",
+        "stream": "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2",
         "offset": 34,
 
     },

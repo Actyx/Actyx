@@ -10,7 +10,7 @@ import { assertOK } from '../../assertOK'
 import { CLI } from '../../cli'
 import { SettingsInput } from '../../cli/exec'
 import { runOnEvery } from '../../infrastructure/hosts'
-import { ActyxOSNode } from '../../infrastructure/types'
+import { ActyxNode } from '../../infrastructure/types'
 import { waitForNodeToBeConfigured } from '../../retry'
 import { mkAx, mkAxWithUnreachableNode } from '../../stubs'
 import { createTestNodeLocal } from '../../test-node-factory'
@@ -20,7 +20,7 @@ describe('ax settings', () => {
   const settingDefaultFilePath = path.resolve(workingDir, 'fixtures/local-sample-node-settings.yml')
   const scopeActyx = 'com.actyx'
 
-  let testNode: ActyxOSNode
+  let testNode: ActyxNode
   let ax: CLI
 
   beforeAll(async () => {
@@ -50,7 +50,7 @@ describe('ax settings', () => {
   beforeEach(async () => {
     await resetSettingActyx()
     // wait for node to be configured. If we don't, restarting relevant services
-    // inside the ActyxOS node might take too long on a busy test host,
+    // inside the Actyx node might take too long on a busy test host,
     // otherwise deploying etc might not work below
     await waitForNodeToBeConfigured(testNode)
   })
@@ -62,7 +62,7 @@ describe('ax settings', () => {
     })
 
     test('return OK with default for com.actyx', async () => {
-      await runOnEvery({}, async (node) => {
+      await runOnEvery(async (node) => {
         const responses = assertOK(await node.ax.settings.scopes())
         expect(responses.result).toEqual(expect.arrayContaining([scopeActyx]))
       })
@@ -76,7 +76,7 @@ describe('ax settings', () => {
     })
 
     test('return OK for a valid ax schema for node', async () => {
-      await runOnEvery({}, async (node) => {
+      await runOnEvery(async (node) => {
         const response = assertOK(await node.ax.settings.schema(scopeActyx))
         expect(response.result).toMatchObject(nodeSettingSchema)
       })
@@ -146,7 +146,7 @@ describe('ax settings', () => {
     test.skip('return OK and show only properties added by the user on com.actyx setting --no-defaults', async () => {
       const settingCustomFilePath = path.resolve(
         workingDir,
-        'fixtures/test-custom-actyxos-setting.yml',
+        'fixtures/test-custom-actyx-setting.yml',
       )
 
       await testNode.ax.settings.unset(scopeActyx)

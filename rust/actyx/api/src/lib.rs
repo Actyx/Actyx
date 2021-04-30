@@ -6,24 +6,18 @@ mod rejections;
 mod tests;
 mod util;
 
-use std::net::SocketAddr;
-
 use actyx_util::{ax_panic, formats::NodeErrorContext};
-use actyxos_sdk::NodeId;
-use crypto::KeyStoreRef;
 use futures::future::try_join_all;
+use std::net::SocketAddr;
 use swarm::BanyanStore;
 use warp::*;
 
 use crate::util::hyper_serve::serve_it;
+pub use crate::util::NodeInfo;
+pub use crate::util::{AppMode, BearerToken, Token};
 
-pub async fn run(
-    node_id: NodeId,
-    store: BanyanStore,
-    bind_to: impl Iterator<Item = SocketAddr> + Send,
-    key_store: KeyStoreRef,
-) {
-    let api = routes(node_id, store, key_store);
+pub async fn run(node_info: NodeInfo, store: BanyanStore, bind_to: impl Iterator<Item = SocketAddr> + Send) {
+    let api = routes(node_info, store);
     let tasks = bind_to
         .into_iter()
         .map(|i| {
@@ -48,24 +42,10 @@ pub async fn run(
     }
 }
 
-fn routes(
-    node_id: NodeId,
-    store: BanyanStore,
-    key_store: KeyStoreRef,
-) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    let token_validity: u32 = if cfg!(debug_assertions) {
-        std::env::var("AX_API_TOKEN_VALIDITY")
-            .ok()
-            .and_then(|x| x.parse().ok())
-            .unwrap_or(86400) // 1 day
-    } else {
-        86400
-    };
-
+fn routes(node_info: NodeInfo, store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let event_service = event_service_api::service::EventService::new(store.clone());
-
-    let events = event_service_api::routes(node_id, event_service, key_store.clone());
-    let auth = authentication_service_api::route(node_id.into(), key_store, token_validity);
+    let events = event_service_api::routes(node_info.clone(), event_service);
+    let auth = authentication_service_api::route(node_info);
 
     let api_path = path!("api" / "v2" / ..);
     let cors = cors()

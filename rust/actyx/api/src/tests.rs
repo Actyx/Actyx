@@ -7,8 +7,7 @@ use serde_json::*;
 use swarm::BanyanStore;
 use warp::*;
 
-use crate::authentication_service_api::create_token;
-use crate::rejections;
+use crate::{authentication_service_api::create_token, rejections, util::NodeInfo, AppMode};
 
 const UNAUTHORIZED_TOKEN: &str = "AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ==";
 
@@ -35,14 +34,19 @@ async fn test_routes() -> (
     let key_store = std::sync::Arc::new(RwLock::new(KeyStore::default()));
     let node_key = key_store.write().generate_key_pair().unwrap();
     let store = BanyanStore::test("api").await.unwrap();
-    let route = super::routes(node_key.into(), store, key_store.clone()).with(warp::trace::named("api_test"));
+    let auth_args = NodeInfo {
+        cycles: 0.into(),
+        key_store: key_store.clone(),
+        node_id: node_key.into(),
+        token_validity: 300,
+    };
+    let route = super::routes(auth_args.clone(), store).with(warp::trace::named("api_test"));
+
     let token = create_token(
-        node_key,
-        key_store.clone(),
+        auth_args,
         app_id!("com.example.my-app"),
         "1.0.0".into(),
-        false,
-        300,
+        AppMode::Signed,
     )
     .unwrap();
     (route, token.to_string(), node_key, key_store)
@@ -120,7 +124,7 @@ async fn ok_accept_ndjson() {
         .path("/api/v2/events/query")
         .method("POST")
         .header("Authorization", format!("Bearer {}", token))
-        .json(&json!({"offsets": {}, "upperBound": {}, "where": "'a'", "order": "asc"}))
+        .json(&json!({"offsets": {}, "upperBound": {}, "query": "FROM 'a'", "order": "asc"}))
         .reply(&route)
         .await;
     assert_eq!(resp.status(), http::StatusCode::OK);
@@ -131,7 +135,7 @@ async fn ok_accept_ndjson() {
         .method("POST")
         .header("Authorization", format!("Bearer {}", token))
         .header("Accept", "application/x-ndjson")
-        .json(&json!({"offsets": {}, "upperBound": {}, "where": "'a'", "order": "asc"}))
+        .json(&json!({"offsets": {}, "upperBound": {}, "query": "FROM 'a'", "order": "asc"}))
         .reply(&route)
         .await;
     assert_eq!(resp.status(), http::StatusCode::OK);
@@ -479,7 +483,7 @@ async fn bad_request_invalid_expression() {
         .path("/api/v2/events/subscribe")
         .method("POST")
         .header("Authorization", format!("Bearer {}", token))
-        .json(&serde_json::json!({"offsets": null, "where": "here"}))
+        .json(&serde_json::json!({"offsets": null, "query": "FROM x"}))
         .reply(&route)
         .await;
     assert_err_response(
@@ -487,7 +491,31 @@ async fn bad_request_invalid_expression() {
         http::StatusCode::BAD_REQUEST,
         json!({
           "code": "ERR_BAD_REQUEST",
-          "message": "Invalid request. 0: at line 1:\nhere\n^\nexpected \'\'\', found h\n\n1: at line 1, in literal:\nhere\n^\n\n2: at line 1, in Alt:\nhere\n^\n\n3: at line 1, in and:\nhere\n^\n\n4: at line 1, in or:\nhere\n^\n\n at line 1 column 31"
+          "message": "Invalid request.  --> 1:6\n  |\n1 | FROM x\n  |      ^---\n  |\n  = expected tag_expr at line 1 column 33"
+        }),
+    );
+}
+
+#[tokio::test]
+async fn bad_request_unknown_stream() {
+    let (route, token, ..) = test_routes().await;
+    let resp = test::request()
+        .path("/api/v2/events/query")
+        .method("POST")
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&serde_json::json!({
+          "upperBound": {"4Rf5nier.0HWMLwRm32Nbgx8pkkOMCahfEmRtHCWaSs-0": 42},
+          "query": "FROM 'x'",
+          "order": "asc"
+        }))
+        .reply(&route)
+        .await;
+    assert_err_response(
+        resp,
+        http::StatusCode::BAD_REQUEST,
+        json!({
+          "code": "ERR_BAD_REQUEST",
+          "message": "Invalid request. Access error: Cannot stream 4Rf5nier.0HWMLwRm32Nbgx8pkkOMCahfEmRtHCWaSs-0 since it is not known."
         }),
     );
 }

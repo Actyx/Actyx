@@ -18,12 +18,10 @@ mod tests;
 
 #[derive(Clone, Debug, Display)]
 pub enum ConsumerAccessError {
-    #[display(fmt = "invalid stream back with unbounded set of sources {:?}", _0)]
+    #[display(fmt = "Invalid stream back with unbounded set of sources {:?}.", _0)]
     UnboundedStreamBack(EventSelection),
-    #[display(fmt = "cannot stream {} since it is not known", _0)]
+    #[display(fmt = "Cannot stream {} since it is not known.", _0)]
     UnknownStream(StreamId),
-    #[display(fmt = "failed to parse tag expr with reason: {}", _0)]
-    FailedToParseTagExpr(String),
 }
 
 impl std::error::Error for ConsumerAccessError {}

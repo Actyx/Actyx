@@ -5,20 +5,22 @@ import path from 'path'
 import { CLI } from '../cli'
 import { getFreePort } from './checkPort'
 import { mkProcessLogger } from './mkProcessLogger'
-import { actyxOsDockerImage, currentActyxOsBinary, currentAxBinary, settings } from './settings'
-import { ActyxOSNode, Target } from './types'
+import { actyxDockerImage, currentActyxBinary, currentAxBinary, settings } from './settings'
+import { ActyxNode, Target } from './types'
+import { mkLog } from './util'
 
 export const mkNodeLocalProcess = async (
   nodeName: string,
   target: Target,
   logger: (s: string) => void,
-): Promise<ActyxOSNode> => {
+): Promise<ActyxNode> => {
+  const clog = mkLog(nodeName)
   const workingDir = path.resolve(settings().tempDir, `${nodeName}-actyx-data`)
   await remove(workingDir)
   await ensureDir(workingDir)
-  const binary = await currentActyxOsBinary()
+  const binary = await currentActyxBinary()
 
-  console.log('node %s starting locally: %s in %s', nodeName, binary, workingDir)
+  clog(`starting locally: ${binary} in ${workingDir}`)
 
   const [port4001, port4454, port4458] = await Promise.all([0, 0, 0].map(() => getFreePort()))
 
@@ -37,7 +39,7 @@ export const mkNodeLocalProcess = async (
     { env: { RUST_BACKTRACE: '1' } },
   )
   const shutdown = async () => {
-    console.log('node %s killing process', nodeName)
+    clog('killing process')
     proc.kill('SIGTERM')
   }
   const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
@@ -57,7 +59,9 @@ export const mkNodeLocalProcess = async (
     flush()
     return Promise.reject(err)
   })
-  console.log('node %s Actyx started', nodeName)
+  clog('Actyx started')
+  clog(`admin reachable on port ${port4458}`)
+  clog(`http api reachable on port ${port4454}`)
 
   const httpApiOrigin = `http://localhost:${port4454}`
   const opts = DefaultClientOpts()
@@ -85,9 +89,10 @@ export const mkNodeLocalDocker = async (
   target: Target,
   gitHash: string,
   logger: (s: string) => void,
-): Promise<ActyxOSNode> => {
-  const image = actyxOsDockerImage(target.arch, gitHash)
-  console.log('node %s starting on local Docker: %s', nodeName, image)
+): Promise<ActyxNode> => {
+  const clog = mkLog(nodeName)
+  const image = actyxDockerImage(target.arch, gitHash)
+  clog(`starting on local Docker: ${image}`)
 
   // exposing the ports and then using -P to use random (free) ports, avoiding trouble
   const command =
@@ -97,7 +102,7 @@ export const mkNodeLocalDocker = async (
   const container = dockerRun.stdout
 
   const shutdown = async () => {
-    console.log('node %s shutting down container %s', nodeName, container)
+    clog(`shutting down container ${container}`)
     await execa('docker', ['stop', container])
   }
 
@@ -119,7 +124,7 @@ export const mkNodeLocalDocker = async (
       flush()
       return Promise.reject(err)
     })
-    console.log('node %s ActyxOS started in container %s', nodeName, container)
+    clog(`Actyx started in container ${container}`)
 
     const dockerInspect = await execa('docker', ['inspect', container])
     const ports: { [p: string]: { HostIp: string; HostPort: string }[] } = JSON.parse(

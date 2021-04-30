@@ -11,12 +11,12 @@ export const settings = (): Settings => (<MyGlobal>global).axNodeSetup.settings
 // .exe will be appended in case target is windows
 export const enum Binary {
   ax = 'ax',
-  actyxOsLinux = 'actyx-linux',
-  actyxOsInstaller = 'Actyx-Installer',
+  actyxLinux = 'actyx-linux',
+  actyxInstaller = 'Actyx-Installer',
 }
 
 export const currentAxBinary = (): Promise<string> => getCurrent(Binary.ax)
-export const currentActyxOsBinary = (): Promise<string> => getCurrent(Binary.actyxOsLinux)
+export const currentActyxBinary = (): Promise<string> => getCurrent(Binary.actyxLinux)
 
 const getCurrent = (bin: Binary) =>
   settings().gitHash == null
@@ -24,15 +24,15 @@ const getCurrent = (bin: Binary) =>
       ensureBinaryExists(`../dist/bin/current/${bin}`)
     : getOrDownload(currentOS(), currentArch(), bin, settings().gitHash)
 
-export const actyxOsLinuxBinary = async (arch: Arch): Promise<string> =>
-  getOrDownload('linux', arch, Binary.actyxOsLinux, settings().gitHash)
+export const actyxLinuxBinary = async (arch: Arch): Promise<string> =>
+  getOrDownload('linux', arch, Binary.actyxLinux, settings().gitHash)
 
 // multiarch manifest, so it should Do The Right Thing (TM)
-export const actyxOsDockerImage = (arch: Arch, version: string): string =>
+export const actyxDockerImage = (arch: Arch, version: string): string =>
   `actyx/cosmos:actyx-${version}`
 
-export const windowsActyxOsInstaller = async (arch: Arch): Promise<string> =>
-  getOrDownload('windows', arch, Binary.actyxOsInstaller, settings().gitHash)
+export const windowsActyxInstaller = async (arch: Arch): Promise<string> =>
+  getOrDownload('windows', arch, Binary.actyxInstaller, settings().gitHash)
 
 const ensureBinaryExists = async (p: string): Promise<string> => {
   if (!fs.existsSync(p)) {

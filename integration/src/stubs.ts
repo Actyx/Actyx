@@ -1,6 +1,6 @@
 import { Client } from '@actyx/os-sdk'
 import { CLI } from './cli'
-import { ActyxOSNode } from './infrastructure/types'
+import { ActyxNode } from './infrastructure/types'
 import { Arch, Host, OS } from '../jest/types'
 import { currentAxBinary } from './infrastructure/settings'
 
@@ -10,7 +10,7 @@ export const mkNodeStub = (
   host: Host,
   name: string,
   addr = 'localhost',
-): Promise<ActyxOSNode> =>
+): Promise<ActyxNode> =>
   currentAxBinary()
     .then((x) => CLI.build(addr, x))
     .then((ax) => ({

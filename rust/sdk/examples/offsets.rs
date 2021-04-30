@@ -15,8 +15,9 @@
  */
 use actyxos_sdk::{
     app_id,
+    language::Query,
     service::{EventService, Order, QueryRequest, QueryResponse},
-    AppManifest, Expression, HttpClient,
+    AppManifest, HttpClient,
 };
 use futures::stream::StreamExt;
 use url::Url;
@@ -37,7 +38,7 @@ pub async fn main() -> anyhow::Result<()> {
     let service = mk_http_client().await?;
 
     // retrieve largest currently known event stream cursor
-    let offsets = service.offsets().await?;
+    let offsets = service.offsets().await?.present;
     println!("largest currently known event stream cursor {:#?}", offsets);
 
     // all events matching the given subscription
@@ -45,7 +46,7 @@ pub async fn main() -> anyhow::Result<()> {
     let request = QueryRequest {
         lower_bound: None,
         upper_bound: offsets,
-        r#where: "'sensor:temp-sensor1'".parse::<Expression>()?,
+        query: "FROM 'sensor:temp-sensor1'".parse::<Query>()?,
         order: Order::Desc,
     };
     let mut events = service.query(request).await?;

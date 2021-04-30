@@ -45,6 +45,15 @@ export const OffsetMapWithDefault = t.readonly(
 )
 export type OffsetMapWithDefault = t.TypeOf<typeof OffsetMapWithDefault>
 
+export const OffsetsResponse = t.readonly(
+  t.type({
+    present: t.readonly(OffsetMapIO),
+    toReplicate: t.record(StreamId.FromString, t.number),
+  }),
+)
+
+export type OffsetsResponse = t.TypeOf<typeof OffsetsResponse>
+
 const stringRA = t.readonlyArray(t.string)
 
 type Tags = ReadonlyArray<string>
