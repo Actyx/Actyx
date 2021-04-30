@@ -1,21 +1,21 @@
 use actyxos_sdk::{AppId, AppManifest, Timestamp};
 use chrono::{DateTime, Utc};
-use crypto::{KeyStoreRef, PublicKey};
 use serde::{Deserialize, Serialize};
 use tracing::*;
 use warp::*;
 
 use crate::{
     rejections::ApiError,
-    util::{filters::accept_json, reject, BearerToken, Token},
+    util::{filters::accept_json, reject, NodeInfo, Token},
+    AppMode, BearerToken,
 };
 
-fn mk_success_log_msg(token: BearerToken) -> String {
+fn mk_success_log_msg(token: &BearerToken) -> String {
     let expiration_time: DateTime<Utc> = token.expiration().into();
-    let mode = match token.trial_mode {
-        true => "trial",
+    let mode = match token.app_mode {
+        AppMode::Trial => "trial",
         // TODO: replace <testing|production> with the right token when we have it
-        false => "<testing|production>",
+        AppMode::Signed => "<testing|production>",
     };
     format!(
         "Successfully authenticated and authorized {} for {} usage (auth token expires {})",
@@ -23,29 +23,23 @@ fn mk_success_log_msg(token: BearerToken) -> String {
     )
 }
 
-type IsTrial = bool;
-
 pub(crate) fn create_token(
-    key: PublicKey,
-    key_store: KeyStoreRef,
+    args: NodeInfo,
     app_id: AppId,
-    version: String,
-    trial_mode: IsTrial,
-    validity: u32,
+    app_version: String,
+    app_mode: AppMode,
 ) -> anyhow::Result<Token> {
     let token = BearerToken {
         created: Timestamp::now(),
         app_id,
-        // TODO: to be implemented at some later point in time
-        cycles: 0,
-        version,
-        validity,
-        trial_mode,
+        cycles: args.cycles,
+        app_version,
+        validity: args.token_validity,
+        app_mode,
     };
     let bytes = serde_cbor::to_vec(&token)?;
-    let signed = key_store.read().sign(bytes, vec![key])?;
-    let log_msg = mk_success_log_msg(token);
-    info!(target: "AUTH", "{}", log_msg);
+    let signed = args.key_store.read().sign(bytes, vec![args.node_id.into()])?;
+    info!(target: "AUTH", "{}", mk_success_log_msg(&token));
     Ok(base64::encode(signed).into())
 }
 
@@ -62,45 +56,29 @@ impl TokenResponse {
     }
 }
 
-fn validate_manifest(manifest: AppManifest) -> Result<IsTrial, ApiError> {
+fn validate_manifest(manifest: AppManifest) -> Result<AppMode, ApiError> {
     match (manifest.app_id.starts_with("com.example."), manifest.signature) {
-        (true, None) => Ok(true),
+        (true, None) => Ok(AppMode::Trial),
         // TODO: check manifest's signature
-        (false, Some(_)) => Ok(false),
+        (false, Some(_)) => Ok(AppMode::Signed),
         _ => Err(ApiError::InvalidManifest),
     }
 }
 
-async fn handle_auth(
-    node_key: PublicKey,
-    key_store: KeyStoreRef,
-    manifest: AppManifest,
-    token_validity: u32,
-) -> Result<impl Reply, Rejection> {
+async fn handle_auth(args: NodeInfo, manifest: AppManifest) -> Result<impl Reply, Rejection> {
     match validate_manifest(manifest.clone()) {
-        Ok(is_trial) => create_token(
-            node_key,
-            key_store,
-            manifest.app_id,
-            manifest.version,
-            is_trial,
-            token_validity,
-        )
-        .map(|token| reply::json(&TokenResponse::new(token)))
-        .map_err(reject),
+        Ok(is_trial) => create_token(args, manifest.app_id, manifest.version, is_trial)
+            .map(|token| reply::json(&TokenResponse::new(token)))
+            .map_err(reject),
         Err(x) => Err(reject::custom(x)),
     }
 }
 
-pub fn route(
-    node_key: PublicKey,
-    key_store: KeyStoreRef,
-    token_validity: u32,
-) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+pub(crate) fn route(args: NodeInfo) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     post()
         .and(accept_json())
         .and(body::json())
-        .and_then(move |manifest: AppManifest| handle_auth(node_key, key_store.clone(), manifest, token_validity))
+        .and_then(move |manifest: AppManifest| handle_auth(args.clone(), manifest))
 }
 
 #[cfg(test)]
@@ -112,15 +90,20 @@ mod tests {
     use std::sync::Arc;
     use warp::{reject::MethodNotAllowed, test, Filter, Rejection, Reply};
 
+    use super::{route, validate_manifest, AppMode, NodeInfo, TokenResponse};
     use crate::{rejections::ApiError, util::filters::verify};
-
-    use super::{route, validate_manifest, TokenResponse};
 
     fn test_route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
         let mut key_store = KeyStore::default();
         let node_key = key_store.generate_key_pair().unwrap();
         let key_store = Arc::new(RwLock::new(key_store));
-        route(node_key, key_store, 300)
+        let auth_args = NodeInfo {
+            cycles: 0.into(),
+            key_store,
+            node_id: node_key.into(),
+            token_validity: 300,
+        };
+        route(auth_args)
     }
 
     #[tokio::test]
@@ -134,18 +117,24 @@ mod tests {
             "1.0.0".to_string(),
             None,
         );
+        let auth_args = NodeInfo {
+            cycles: 0.into(),
+            key_store: key_store.clone(),
+            node_id: node_key.into(),
+            token_validity: 300,
+        };
 
         let resp = test::request()
             .method("POST")
             .json(&manifest)
-            .reply(&route(node_key, key_store.clone(), 300))
+            .reply(&route(auth_args.clone()))
             .await;
 
         assert_eq!(resp.status(), http::StatusCode::OK);
         assert_eq!(resp.headers()["content-type"], "application/json");
 
         let token: TokenResponse = serde_json::from_slice(resp.body()).unwrap();
-        assert!(verify(token.token.into(), key_store, node_key).is_ok())
+        assert!(verify(auth_args, token.token.into()).is_ok())
     }
 
     #[tokio::test]
@@ -179,7 +168,7 @@ mod tests {
         };
 
         let result = validate_manifest(manifest.clone()).unwrap();
-        assert_eq!(result, false, "signed manifest");
+        assert_eq!(result, AppMode::Signed);
 
         let ex_app_id = app_id!("com.example.");
         let result = validate_manifest(AppManifest {
@@ -188,7 +177,7 @@ mod tests {
             ..manifest.clone()
         })
         .unwrap();
-        assert_eq!(result, true, "trial manifest");
+        assert_eq!(result, AppMode::Trial);
 
         let result = validate_manifest(AppManifest {
             app_id: ex_app_id,

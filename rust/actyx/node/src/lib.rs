@@ -1,7 +1,6 @@
 #![deny(clippy::future_not_send)]
 
 mod components;
-mod crypto_cell;
 mod formats;
 mod host;
 mod node;
@@ -82,8 +81,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
 
     // Host interface
     let host = Host::new(working_dir.clone());
-    // Get or generate NodeId
-    let node_id = host.get_crypto_cell().get_or_create_node_id()?;
+    let node_id = host.get_or_create_node_id()?;
 
     // Component: Logging
     let logging = Logging::new(node_id, logs_rx, host.working_dir());
@@ -104,6 +102,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     let keystore = host.get_keystore();
 
     let db = host.get_db_handle();
+    let node_cycle_count = host.get_cycle_count()?;
     // THE node :-)
     let node = NodeWrapper::new((node_tx, node_rx), components.clone(), host)?;
 
@@ -128,7 +127,15 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     join_handles.push(node_api.spawn()?);
 
     // Component: Store
-    let store = Store::new(store_rx, working_dir.join("store"), bind_to, keystore, node_id, db)?;
+    let store = Store::new(
+        store_rx,
+        working_dir.join("store"),
+        bind_to,
+        keystore,
+        node_id,
+        db,
+        node_cycle_count,
+    )?;
     join_handles.push(store.spawn()?);
 
     init_panic_hook(node.tx.clone());

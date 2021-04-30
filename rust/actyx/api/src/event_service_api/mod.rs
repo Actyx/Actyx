@@ -2,14 +2,14 @@ mod http;
 pub mod service;
 mod ws;
 
-use actyxos_sdk::{service::EventService, NodeId};
-use crypto::KeyStoreRef;
+use actyxos_sdk::service::EventService;
 use warp::*;
 
-pub fn routes<S: EventService + Clone + Send + Sync + 'static>(
-    node_id: NodeId,
+use crate::util::NodeInfo;
+
+pub(crate) fn routes<S: EventService + Clone + Send + Sync + 'static>(
+    auth_args: NodeInfo,
     event_service: S,
-    key_store: KeyStoreRef,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    http::routes(node_id, event_service.clone(), key_store.clone()).or(ws::routes(node_id, event_service, key_store))
+    http::routes(auth_args.clone(), event_service.clone()).or(ws::routes(auth_args, event_service))
 }

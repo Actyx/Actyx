@@ -1,11 +1,11 @@
-use std::sync::Arc;
+use std::{convert::TryFrom, sync::Arc};
 
 use actyxos_sdk::NodeId;
 use crypto::PublicKey;
 use parking_lot::Mutex;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use tracing::*;
-use util::formats::{ActyxOSResult, ActyxOSResultExt};
+use util::formats::{ActyxOSResult, ActyxOSResultExt, NodeCycleCount};
 
 #[derive(Clone)]
 pub struct NodeStorage {
@@ -121,15 +121,15 @@ impl NodeStorage {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    pub fn get_cycle_count(&self) -> ActyxOSResult<u64> {
-        self.connection
+    pub fn get_cycle_count(&self) -> anyhow::Result<NodeCycleCount> {
+        let cc = self
+            .connection
             .lock()
             .query_row("SELECT value FROM node where name = 'cycle_count'", [], |row| {
                 row.get::<_, i64>(0)
-            })
-            .map(|x| x as u64)
-            .ax_internal()
+            })?;
+        let res = u64::try_from(cc).map(Into::into)?;
+        Ok(res)
     }
 }
 

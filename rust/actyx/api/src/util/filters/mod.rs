@@ -1,5 +1,7 @@
 mod accept;
 mod auth;
 
-pub use accept::{accept_json, accept_ndjson};
-pub use auth::{authenticate, header_token, query_token, verify};
+pub(crate) use accept::{accept_json, accept_ndjson};
+#[cfg(test)]
+pub(crate) use auth::verify;
+pub(crate) use auth::{authenticate, header_token, query_token};

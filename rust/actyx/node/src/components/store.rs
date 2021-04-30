@@ -2,6 +2,7 @@ use super::{Component, ComponentRequest};
 use crate::{node_settings::Settings, BindTo};
 use actyxos_sdk::NodeId;
 use anyhow::Result;
+use api::NodeInfo;
 use crossbeam::channel::{Receiver, Sender};
 use crypto::KeyStoreRef;
 use parking_lot::Mutex;
@@ -9,6 +10,7 @@ use std::{convert::TryInto, path::PathBuf, sync::Arc};
 use swarm::{BanyanStore, SwarmConfig};
 use tokio::sync::oneshot;
 use tracing::*;
+use util::formats::NodeCycleCount;
 
 pub(crate) enum StoreRequest {
     GetSwarmState {
@@ -72,19 +74,15 @@ impl Component<StoreRequest, SwarmConfig> for Store {
                 .enable_all()
                 .build()?;
             let bind_to = self.bind_to.clone();
-            let keystore = self.keystore.clone();
+            let node_info = NodeInfo::new(self.node_id, self.keystore.clone(), self.node_cycle_count);
             // client creation is setting up some tokio timers and therefore
             // needs to be called with a tokio runtime
             let store = rt.block_on(async move {
                 let store = BanyanStore::new(cfg).await?;
+
                 store.spawn_task(
                     "api",
-                    api::run(
-                        store.node_id(),
-                        store.clone(),
-                        bind_to.clone().api.into_iter(),
-                        keystore.clone(),
-                    ),
+                    api::run(node_info, store.clone(), bind_to.clone().api.into_iter()),
                 );
                 Ok::<BanyanStore, anyhow::Error>(store)
             })?;
@@ -159,6 +157,7 @@ pub(crate) struct Store {
     node_id: NodeId,
     db: Arc<Mutex<rusqlite::Connection>>,
     number_of_threads: Option<usize>,
+    node_cycle_count: NodeCycleCount,
 }
 
 impl Store {
@@ -169,6 +168,7 @@ impl Store {
         keystore: KeyStoreRef,
         node_id: NodeId,
         db: Arc<Mutex<rusqlite::Connection>>,
+        node_cycle_count: NodeCycleCount,
     ) -> anyhow::Result<Self> {
         std::fs::create_dir_all(working_dir.clone())?;
         Ok(Self {
@@ -181,6 +181,7 @@ impl Store {
             node_id,
             db,
             number_of_threads: None,
+            node_cycle_count,
         })
     }
 }
