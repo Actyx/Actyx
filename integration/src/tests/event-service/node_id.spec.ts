@@ -1,16 +1,15 @@
-import { NodeIdResponse } from '../../event-service-types'
-import { httpClient } from '../../httpClient'
+import { mkEventService, mkTrialHttpClient } from '../../http-client'
+import { run } from '../../util'
 
-describe.skip('event service', () => {
-  describe('get node id', () => {
-    it('should return node id information', async () => {
-      await httpClient.get<NodeIdResponse>('node_id').then((response) => {
-        expect(response.status).toBe(200)
-        expect(response.data).toMatchObject({
-          nodeId: expect.any(String),
-        })
-        expect(response.data.nodeId).toHaveLength(43)
-      })
-    })
+describe('event service', () => {
+  describe('node_id', () => {
+    it('should return node id', () =>
+      run((x) =>
+        mkTrialHttpClient(x)
+          .then((x) => mkEventService(x).nodeId())
+          .then((x) => {
+            expect(x.nodeId).toHaveLength(43)
+          }),
+      ))
   })
 })
