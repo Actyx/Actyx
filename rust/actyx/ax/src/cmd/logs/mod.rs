@@ -5,7 +5,7 @@ use futures::Future;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-/// Manage ActyxOS node and app logs
+/// Manage node and app logs
 pub enum LogsOpts {
     #[structopt(name = "tail")]
     /// Get logs from a node

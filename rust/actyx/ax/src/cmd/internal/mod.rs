@@ -10,7 +10,7 @@ use self::convert::ConvertFromV1Opts;
 use self::trees::TreesOpts;
 
 #[derive(StructOpt, Debug)]
-/// Manage ActyxOS nodes
+/// Internal commands
 pub enum InternalOpts {
     #[structopt(name = "swarm")]
     /// Show swarm and connectivity state

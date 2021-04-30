@@ -5,7 +5,7 @@ use ls::LsOpts;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-/// Manage ActyxOS nodes
+/// Manage nodes
 pub enum NodesOpts {
     #[structopt(name = "ls")]
     /// Show node info and status
