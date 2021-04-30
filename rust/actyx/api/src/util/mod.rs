@@ -49,12 +49,14 @@ impl From<String> for Token {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub enum AppMode {
     Trial,
     Signed,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct BearerToken {
     /// when it was created
     pub created: Timestamp,
@@ -133,5 +135,42 @@ mod tests {
             app_mode: AppMode::Signed,
         };
         assert_eq!(token.expiration(), now + Duration::from_secs(token.validity as u64));
+    }
+
+    #[test]
+    fn bearer_round_trip() {
+        let token = BearerToken {
+            created: Timestamp::now(),
+            app_id: app_id!("app id"),
+            cycles: 0.into(),
+            app_version: "1.0.0".into(),
+            validity: 1,
+            app_mode: AppMode::Signed,
+        };
+        let json = serde_json::to_string(&token).unwrap();
+        let round_tripped = serde_json::from_str(&json).unwrap();
+        assert_eq!(token, round_tripped);
+    }
+
+    #[test]
+    fn bearer_wire_format() {
+        let json = r#"{
+              "created": 1619769229417484,
+              "appId": "app id",
+              "cycles": 42,
+              "appVersion": "1.4.2",
+              "validity": 10,
+              "appMode": "signed"
+            }"#;
+        let des: BearerToken = serde_json::from_str(json).unwrap();
+        let token = BearerToken {
+            created: Timestamp::from(1619769229417484),
+            app_id: app_id!("app id"),
+            cycles: 42.into(),
+            app_version: "1.4.2".into(),
+            validity: 10,
+            app_mode: AppMode::Signed,
+        };
+        assert_eq!(des, token);
     }
 }
