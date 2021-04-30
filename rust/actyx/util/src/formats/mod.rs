@@ -10,14 +10,8 @@ pub use errors::*;
 pub use logs::*;
 
 /// Keeps track of how many times a node was restarted
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, From)]
 pub struct NodeCycleCount(u64);
-
-impl From<i64> for NodeCycleCount {
-    fn from(x: i64) -> Self {
-        Self(x as u64)
-    }
-}
 
 #[derive(Deserialize, PartialEq, Clone, Debug, From, Into, AsRef, Display)]
 pub struct NodeName(pub String);

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{convert::TryFrom, sync::Arc};
 
 use actyxos_sdk::NodeId;
 use crypto::PublicKey;
@@ -122,13 +122,14 @@ impl NodeStorage {
     }
 
     pub fn get_cycle_count(&self) -> anyhow::Result<NodeCycleCount> {
-        self.connection
+        let cc = self
+            .connection
             .lock()
             .query_row("SELECT value FROM node where name = 'cycle_count'", [], |row| {
                 row.get::<_, i64>(0)
-            })
-            .map(|x| x.into())
-            .map_err(|x| x.into())
+            })?;
+        let res = u64::try_from(cc).map(Into::into)?;
+        Ok(res)
     }
 }
 
