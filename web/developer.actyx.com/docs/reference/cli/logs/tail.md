@@ -36,3 +36,7 @@ ax --json logs tail --local 10.2.3.23
 # Keep running and output log entries as they are created
 ax logs tail --local --follow 10.2.3.23
 ```
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

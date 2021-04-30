@@ -1,0 +1,41 @@
+---
+title: Node synchronization errors
+id: node-synchronization
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+Synchronization problems between nodes manifest in the observation that apps on different nodes show inconsistent information, i.e. the events of nodes have not been synchronized properly.
+
+This is mostly caused by communication errors between nodes. To debug and resolve them, you can try these steps:
+
+## Configuration errors
+
+**If your nodes were synchronizing previously, you can skip this step**. If your nodes were never synchronizing, please check the following:
+
+- Check that you have configured the same swarm key [as described in this guide](../swarms/setup-swarm)
+- Check that your nodes are publishing events to the same topic. The topic can be configured in the node settings. To query the topic with the CLI, use `ax settings get com.actyx/api/swarm/topic <node>`.
+- Check that your nodes are **not** configured as `readOnly`. This can be configured in the node settings
+- If mDNS is disabled on your device or network, or you are running Actyx on Docker, check that you have configured the right bootstrap node on all devices [as described in this guide](../swarms/setup-bootstrap-node)
+- If you are running Actyx on Docker without `network=host` and your bootstrap node is not running in the same local network as your other nodes, check that you have configured the `announceAddresses` settings on your Docker nodes [as described in this guide](../swarms/configure-announced-addresses)
+
+If you fixed any configuration issues and your nodes are still not synchronizing, go through the steps below.
+
+## Connection errors
+
+### Test the network requirements
+
+Next, check if the nodes cannot connect due to firewall issues as described in [this guide](../monitoring-debugging/network-requirements). If, after following the described steps, you either found no issues or fixed issues with your firewall, check if the nodes are peered.
+
+### Test if the nodes are peered
+
+Next, check if your nodes are actually connected to each other as described in [this guide](../monitoring-debugging/network-requirements).
+
+## Did not find what you were looking for?
+
+If you couldn't a solution to your problem, please don't hesitate to contact us in our [community forum](https://community.actyx.com) or on our [Discord server](https://discord.gg/262yJhc). We'll do our best to get back to you with answers as fast as possible.
+
+import { NPS } from '../../../src/components/NPS'
+
+<NPS />

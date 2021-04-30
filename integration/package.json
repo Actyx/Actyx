@@ -1,6 +1,6 @@
 {
   "author": "Actyx AG",
-  "description": "ActyxOS integration test suite",
+  "description": "Actyx integration test suite",
   "dependencies": {
     "@actyx/os-sdk": "file:../js/os-sdk",
     "@actyx/pond": "file:../js/pond",

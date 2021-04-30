@@ -4,22 +4,19 @@
  *
  * Copyright (C) 2020 Actyx AG
  */
+import { EventKey, EventKeyIO, NodeId, OffsetMapIO, Where } from '@actyx/sdk'
 import * as t from 'io-ts'
 import { equals } from 'ramda'
 import log from '../loggers'
-import { Where } from '../tagging'
-import { EventKey, EventKeyIO, NodeId } from '../types'
 import {
   EventStore,
   RequestAllEvents,
   RequestConnectivity,
-  RequestHighestSeen,
+  RequestOffsets,
   RequestPersistedEvents,
   RequestPersistEvents,
-  RequestOffsets,
 } from './eventStore'
 import { MultiplexedWebsocket, validateOrThrow } from './multiplexedWebsocket'
-import { OffsetMapIO } from './offsetMap'
 import {
   AllEventsSortOrder,
   ConnectivityStatus,
@@ -27,6 +24,7 @@ import {
   Events,
   PersistedEventsSortOrder,
   UnstoredEvents,
+  OffsetsResponse,
 } from './types'
 
 export const enum RequestTypes {
@@ -106,14 +104,7 @@ export class WebsocketEventStore implements EventStore {
   offsets: RequestOffsets = () =>
     this.multiplexer
       .request(RequestTypes.Offsets)
-      .map(validateOrThrow(OffsetMapIO))
-      .first()
-      .toPromise()
-
-  highestSeen: RequestHighestSeen = () =>
-    this.multiplexer
-      .request(RequestTypes.HighestSeen)
-      .map(validateOrThrow(OffsetMapIO))
+      .map(validateOrThrow(OffsetsResponse))
       .first()
       .toPromise()
 

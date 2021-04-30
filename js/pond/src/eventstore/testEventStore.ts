@@ -7,8 +7,17 @@
 import { chunksOf } from 'fp-ts/lib/Array'
 import { fromNullable } from 'fp-ts/lib/Option'
 import { Observable, ReplaySubject, Scheduler, Subject } from 'rxjs'
-import { toEventPredicate, Where } from '../tagging'
-import { EventKey, Lamport, NodeId, Offset, Timestamp } from '../types'
+import {
+  EventKey,
+  Lamport,
+  NodeId,
+  Offset,
+  Timestamp,
+  toEventPredicate,
+  Where,
+  OffsetMap,
+  OffsetMapBuilder,
+} from '@actyx/sdk'
 import { binarySearch, mergeSortedInto } from '../util'
 import {
   EventStore,
@@ -21,8 +30,6 @@ import {
   ConnectivityStatus,
   Event,
   Events,
-  OffsetMap,
-  OffsetMapBuilder,
   OffsetMapWithDefault,
   PersistedEventsSortOrder,
   PersistedEventsSortOrders,
@@ -312,12 +319,12 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
     present
       .asObservable()
       .first()
+      .map(present => ({ present, toReplicate: {} }))
       .toPromise()
 
   return {
     nodeId,
     offsets: getPresent,
-    highestSeen: getPresent,
     persistedEvents,
     allEvents,
     persistEvents,

@@ -1,16 +1,13 @@
-use crate::{AxTreeExt, Forest, Link, Tree};
+use crate::{AxTreeExt, Cid, Forest, Link, Tree};
 use actyxos_sdk::{LamportTimestamp, NodeId, Offset, StreamId, StreamNr};
 use ax_futures_util::stream::variable::{self, Variable};
 use fnv::FnvHashMap;
 use futures::{
-    channel::mpsc,
     future,
     stream::{Stream, StreamExt},
 };
-use std::collections::BTreeMap;
 use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
-use trees::{RootMap, RootMapEntry};
 
 const PREFIX: u8 = b'S';
 
@@ -59,10 +56,9 @@ impl TryFrom<StreamAlias> for StreamId {
 /// Data for a single own stream, mutable state + constant data
 #[derive(Debug)]
 pub struct OwnStreamInner {
-    pub forest: Forest,
-    pub sequencer: tokio::sync::Mutex<()>,
-    pub tree: Variable<Tree>,
-    pub latest_seen: Variable<Option<(LamportTimestamp, Offset)>>,
+    forest: Forest,
+    sequencer: tokio::sync::Mutex<()>,
+    tree: Variable<Tree>,
 }
 
 impl OwnStreamInner {
@@ -71,25 +67,36 @@ impl OwnStreamInner {
             forest,
             sequencer: tokio::sync::Mutex::new(()),
             tree: Variable::default(),
-            latest_seen: Variable::default(),
         }
+    }
+
+    pub fn forest(&self) -> &Forest {
+        &self.forest
+    }
+
+    pub fn sequencer(&self) -> &tokio::sync::Mutex<()> {
+        &self.sequencer
+    }
+
+    pub fn root(&self) -> Option<Cid> {
+        self.tree.project(|tree| tree.link().map(|link| link.into()))
+    }
+
+    pub fn tree_stream(&self) -> variable::Observer<Tree> {
+        self.tree.new_observer()
     }
 
     pub fn latest(&self) -> Tree {
         self.tree.get_cloned()
     }
 
-    pub fn offset(&self) -> Option<Offset> {
-        let offset_or_min = self.tree.project(|tree| tree.offset());
-        Offset::from_offset_or_min(offset_or_min)
-    }
-
     pub fn set_latest(&self, value: Tree) {
         self.tree.set(value)
     }
 
-    pub fn tree_stream(&self) -> variable::Observer<Tree> {
-        self.tree.new_observer()
+    pub fn offset(&self) -> Option<Offset> {
+        let offset_or_min = self.tree.project(|tree| tree.offset());
+        Offset::from_offset_or_min(offset_or_min)
     }
 }
 
@@ -102,10 +109,10 @@ pub struct RemoteNodeInner {
 /// Data for a single replicated stream, mutable state + constant data
 #[derive(Debug)]
 pub struct ReplicatedStreamInner {
-    pub forest: Forest,
-    pub validated: Variable<Tree>,
-    pub incoming: Variable<Option<Link>>,
-    pub latest_seen: Variable<Option<(LamportTimestamp, Offset)>>,
+    forest: Forest,
+    validated: Variable<Tree>,
+    incoming: Variable<Option<Link>>,
+    latest_seen: Variable<Option<(LamportTimestamp, Offset)>>,
 }
 
 impl ReplicatedStreamInner {
@@ -118,11 +125,12 @@ impl ReplicatedStreamInner {
         }
     }
 
-    pub fn root_map_entry(&self) -> Option<RootMapEntry> {
-        self.validated.project(|tree| {
-            let lamport = tree.last_lamport();
-            tree.link().map(|link| RootMapEntry::new(&link.into(), lamport))
-        })
+    pub fn forest(&self) -> &Forest {
+        &self.forest
+    }
+
+    pub fn root(&self) -> Option<Cid> {
+        self.validated.project(|tree| tree.link().map(|link| link.into()))
     }
 
     /// set the latest validated root
@@ -147,54 +155,8 @@ impl ReplicatedStreamInner {
     pub fn incoming_root_stream(&self) -> impl Stream<Item = Link> {
         self.incoming.new_observer().filter_map(future::ready)
     }
-}
 
-// maps of own and replicated streams, plus notification mechanism when new streams are created
-#[derive(Default)]
-pub struct StreamMaps {
-    pub own_streams: BTreeMap<StreamNr, Arc<OwnStreamInner>>,
-    pub remote_nodes: BTreeMap<NodeId, RemoteNodeInner>,
-    pub known_streams: Vec<mpsc::UnboundedSender<StreamId>>,
-}
-
-impl StreamMaps {
-    pub fn publish_new_stream_id(&mut self, stream_id: StreamId) {
-        self.known_streams
-            .retain(|sender| sender.unbounded_send(stream_id).is_ok())
-    }
-
-    pub fn current_stream_ids(&self, node_id: NodeId) -> impl Iterator<Item = StreamId> + '_ {
-        let own_stream_ids = self.own_streams.keys().map(move |stream_id| node_id.stream(*stream_id));
-        let replicated_stream_ids = self.remote_nodes.iter().flat_map(|(node_id, node_info)| {
-            node_info
-                .streams
-                .keys()
-                .map(move |stream_nr| node_id.stream(*stream_nr))
-        });
-        own_stream_ids.chain(replicated_stream_ids)
-    }
-
-    /// Get a complete root map from both own and replicated streams
-    pub fn root_map(&self, own_node_id: NodeId) -> RootMap {
-        let own = self.own_streams.iter().filter_map(|(stream_nr, inner)| {
-            let (link, lamport) = inner.tree.project(|tree| (tree.link(), tree.last_lamport()));
-            let stream_id = own_node_id.stream(*stream_nr);
-            link.map(|link| (stream_id, RootMapEntry::new(&link.into(), lamport)))
-        });
-
-        let other = self.remote_nodes.iter().flat_map(|(node_id, remote_node)| {
-            remote_node.streams.iter().filter_map(move |(stream_nr, inner)| {
-                let stream_id = node_id.stream(*stream_nr);
-                inner.root_map_entry().map(|e| (stream_id, e))
-            })
-        });
-        RootMap(own.chain(other).collect())
-    }
-
-    pub fn get_or_create_remote_node(&mut self, node_id: NodeId) -> &mut RemoteNodeInner {
-        self.remote_nodes.entry(node_id).or_insert_with(|| {
-            tracing::debug!("learned of new node {}", node_id);
-            Default::default()
-        })
+    pub fn latest_seen(&self) -> &Variable<Option<(LamportTimestamp, Offset)>> {
+        &self.latest_seen
     }
 }

@@ -1,11 +1,7 @@
-use actyxos_sdk::{tags, Expression, Tag};
+use actyxos_sdk::{tags, Tag};
 use trees::tag_index::*;
 
 use serde::{de::DeserializeOwned, Serialize};
-
-fn l(x: &str) -> Expression {
-    Expression::literal(x.into())
-}
 
 fn compresss_zstd_cbor<T: Serialize>(value: &T) -> std::result::Result<Vec<u8>, Box<dyn std::error::Error>> {
     let cbor = serde_cbor::to_vec(&value)?;
@@ -45,14 +41,10 @@ fn main() {
     println!("index cbor {}", serde_cbor::to_vec(&large).unwrap().len());
     println!("compressed {}", compressed.len());
 
-    let index = TagIndex::from_elements(&[tags! {"a"}, tags! {"a", "b"}, tags! {"a"}, tags! {"a", "b"}]);
+    let index = TagIndex::from_elements(&[tags!("a"), tags!("a", "b"), tags!("a"), tags!("a", "b")]);
     let text = serde_json::to_string(&index).unwrap();
     println!("{:?}", index);
     println!("{}", text);
-    let expr = l("a") | l("b");
-    println!("{:?}", index.matching(expr.dnf()));
-    let expr = l("a") & l("b");
-    println!("{:?}", index.matching(expr.dnf()));
-    let expr = l("c") & l("d");
-    println!("{:?}", index.matching(expr.dnf()));
+
+    // TODO run queries
 }

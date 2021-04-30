@@ -4,8 +4,6 @@ title: Architecture
 
 An Actyx solution always consists of several physical devices that each run an instance of ActyxOS. These devices are called ActyxOS nodes. Your Actyx apps will be deployed on the ActyxOS nodes. The example use case in this tutorial entails developing 3 apps:
 
-import Tabs from '@theme/Tabs'
-import TabItem from '@theme/TabItem'
 import useBaseUrl from '@docusaurus/useBaseUrl'
 
 import { ThreeElementRow } from '../../../src/components/ThreeElementRow.tsx'
@@ -34,3 +32,7 @@ Don't worry in case you do not have Android phones, a machine gateway and a Wago
 :::info Running ActyxOS in development mode
 During development, you usually run ActyxOS in development mode. This means that all ActyxOS APIs are exposed on your development machine. Instead of packaging and deploying your app to an ActyxOS runtime, you can then just run it on your PC.
 :::
+
+import { NPS } from '../../../src/components/NPS'
+
+<NPS />

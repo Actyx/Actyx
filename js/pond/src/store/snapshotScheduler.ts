@@ -4,7 +4,8 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { TaggedIndex, Timestamp } from '../types'
+import { Timestamp } from '@actyx/sdk'
+import { TaggedIndex } from '../types'
 import { RWPartialRecord, valuesOf } from '../util'
 
 export type SnapshotLevels = ReadonlyArray<TaggedIndex>

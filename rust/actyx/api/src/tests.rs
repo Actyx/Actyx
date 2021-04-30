@@ -124,7 +124,7 @@ async fn ok_accept_ndjson() {
         .path("/api/v2/events/query")
         .method("POST")
         .header("Authorization", format!("Bearer {}", token))
-        .json(&json!({"offsets": {}, "upperBound": {}, "where": "'a'", "order": "asc"}))
+        .json(&json!({"offsets": {}, "upperBound": {}, "query": "FROM 'a'", "order": "asc"}))
         .reply(&route)
         .await;
     assert_eq!(resp.status(), http::StatusCode::OK);
@@ -135,7 +135,7 @@ async fn ok_accept_ndjson() {
         .method("POST")
         .header("Authorization", format!("Bearer {}", token))
         .header("Accept", "application/x-ndjson")
-        .json(&json!({"offsets": {}, "upperBound": {}, "where": "'a'", "order": "asc"}))
+        .json(&json!({"offsets": {}, "upperBound": {}, "query": "FROM 'a'", "order": "asc"}))
         .reply(&route)
         .await;
     assert_eq!(resp.status(), http::StatusCode::OK);
@@ -339,7 +339,7 @@ async fn unauthorized_unsupported() {
         resp,
         http::StatusCode::UNAUTHORIZED,
         json!({
-          "code": "ERR_WRONG_AUTH_TYPE",
+          "code": "ERR_UNSUPPORTED_AUTH_TYPE",
           "message": "Unsupported authentication type 'Foo'. Only \"Bearer\" is supported."
         }),
     );
@@ -397,6 +397,27 @@ async fn method_not_allowed() {
 }
 
 #[tokio::test]
+async fn unsupported_media_type() {
+    let (route, token, ..) = test_routes().await;
+    let resp = test::request()
+        .path("/api/v2/events/query")
+        .method("POST")
+        .header("Authorization", format!("Bearer {}", token))
+        .header("Accept", "application/x-ndjson")
+        .header("Content-Type", "text/plain")
+        .reply(&route)
+        .await;
+    assert_err_response(
+        resp,
+        http::StatusCode::UNSUPPORTED_MEDIA_TYPE,
+        json!({
+          "code": "ERR_UNSUPPORTED_MEDIA_TYPE",
+          "message": "The request's content-type is not supported."
+        }),
+    );
+}
+
+#[tokio::test]
 async fn not_acceptable() {
     let (route, token, ..) = test_routes().await;
     let resp = test::request()
@@ -429,7 +450,7 @@ async fn bad_request_invalid_json() {
         resp,
         http::StatusCode::BAD_REQUEST,
         json!({
-          "code": "ERR_MALFORMED_REQUEST_SYNTAX",
+          "code": "ERR_BAD_REQUEST",
           "message": "Invalid request. expected value at line 1 column 1"
         }),
     );
@@ -449,7 +470,7 @@ async fn bad_request_invalid_request() {
         resp,
         http::StatusCode::BAD_REQUEST,
         json!({
-          "code": "ERR_MALFORMED_REQUEST_SYNTAX",
+          "code": "ERR_BAD_REQUEST",
           "message": "Invalid request. missing field `data` at line 1 column 2"
         }),
     );
@@ -462,15 +483,39 @@ async fn bad_request_invalid_expression() {
         .path("/api/v2/events/subscribe")
         .method("POST")
         .header("Authorization", format!("Bearer {}", token))
-        .json(&serde_json::json!({"offsets": null, "where": "here"}))
+        .json(&serde_json::json!({"offsets": null, "query": "FROM x"}))
         .reply(&route)
         .await;
     assert_err_response(
         resp,
         http::StatusCode::BAD_REQUEST,
         json!({
-          "code": "ERR_MALFORMED_REQUEST_SYNTAX",
-          "message": "Invalid request. 0: at line 1:\nhere\n^\nexpected \'\'\', found h\n\n1: at line 1, in literal:\nhere\n^\n\n2: at line 1, in Alt:\nhere\n^\n\n3: at line 1, in and:\nhere\n^\n\n4: at line 1, in or:\nhere\n^\n\n at line 1 column 31"
+          "code": "ERR_BAD_REQUEST",
+          "message": "Invalid request.  --> 1:6\n  |\n1 | FROM x\n  |      ^---\n  |\n  = expected tag_expr at line 1 column 33"
+        }),
+    );
+}
+
+#[tokio::test]
+async fn bad_request_unknown_stream() {
+    let (route, token, ..) = test_routes().await;
+    let resp = test::request()
+        .path("/api/v2/events/query")
+        .method("POST")
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&serde_json::json!({
+          "upperBound": {"4Rf5nier.0HWMLwRm32Nbgx8pkkOMCahfEmRtHCWaSs-0": 42},
+          "query": "FROM 'x'",
+          "order": "asc"
+        }))
+        .reply(&route)
+        .await;
+    assert_err_response(
+        resp,
+        http::StatusCode::BAD_REQUEST,
+        json!({
+          "code": "ERR_BAD_REQUEST",
+          "message": "Invalid request. Access error: Cannot stream 4Rf5nier.0HWMLwRm32Nbgx8pkkOMCahfEmRtHCWaSs-0 since it is not known."
         }),
     );
 }

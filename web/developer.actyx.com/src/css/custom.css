@@ -182,7 +182,7 @@ h3 {
 h4,
 .tsd-index-panel h3 {
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 h5 {
@@ -212,6 +212,12 @@ span {
 [class^='docSidebarContainer'] {
   border: none !important;
   margin-top: -34px !important;
+}
+
+[class^='codeBlockTitle'] {
+  background-color: rgb(43, 43, 43) !important;
+  color: rgb(177, 195, 201) !important;
+  border-bottom: none !important;
 }
 
 /* Blog article classes */

@@ -36,6 +36,10 @@ impl Opaque {
         Opaque(bytes.into())
     }
 
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        Opaque(ArcVal::clone_from_unsized(bytes))
+    }
+
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }

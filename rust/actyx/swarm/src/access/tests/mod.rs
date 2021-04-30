@@ -3,7 +3,7 @@ use crate::access::{
 };
 use ::trees::{StreamHeartBeat, TagSubscriptions};
 use actyxos_sdk::{
-    tags, Event, EventKey, Expression, LamportTimestamp, Metadata, NodeId, Offset, OffsetOrMin, Payload, StreamId, Tag,
+    language, tags, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetOrMin, Payload, StreamId, Tag,
     TagSet, Timestamp,
 };
 use ax_futures_util::{
@@ -292,7 +292,7 @@ impl EventStoreConsumerAccess for TestEventStore {
             stream_id,
             from_exclusive,
             to_inclusive,
-            subscription_set: subs,
+            tag_subscriptions: subs,
         } = events;
 
         if from_exclusive >= to_inclusive {
@@ -347,7 +347,7 @@ impl EventStoreConsumerAccess for TestEventStore {
             stream_id,
             from_exclusive,
             to_inclusive,
-            subscription_set: subs,
+            tag_subscriptions: subs,
         } = events;
 
         if from_exclusive >= to_inclusive {
@@ -436,6 +436,10 @@ async fn drainer(e: EventOrHeartbeatStreamOrError) -> impl Iterator<Item = Vec<E
     })
 }
 
+fn tag_subs(query_str: &'static str) -> TagSubscriptions {
+    TagSubscriptions::from(&query_str.parse::<language::Query>().unwrap())
+}
+
 #[test]
 fn test_harness_should_deliver_known_streams() {
     let store = TestEventStore::new();
@@ -481,11 +485,7 @@ fn test_harness_should_deliver_last_seen() {
 async fn test_harness_should_filter_events_forward() {
     let store = TestEventStore::new();
     let stream_id = known_streams()[0];
-    let subs: TagSubscriptions = "'upper:A' & ('lower:a' | 'lower:b')"
-        .parse::<Expression>()
-        .unwrap()
-        .into();
-
+    let subs = tag_subs("FROM 'upper:A' & ('lower:a' | 'lower:b')");
     let events = StreamEventSelection::new(stream_id, OffsetOrMin::MIN, OffsetOrMin::MAX, subs.into());
     let stream = store.stream_forward(events, true).await.unwrap();
     let mut iter = Drainer::new(stream);
@@ -510,11 +510,7 @@ async fn test_harness_should_filter_events_forward() {
 async fn test_harness_should_filter_events_backward() {
     let store = TestEventStore::new();
     let stream_id = known_streams()[0];
-    let subs: TagSubscriptions = "'upper:A' & ('lower:a' | 'lower:b')"
-        .parse::<Expression>()
-        .unwrap()
-        .into();
-
+    let subs = tag_subs("FROM 'upper:A' & ('lower:a' | 'lower:b')");
     let events = StreamEventSelection::new(stream_id, OffsetOrMin::MIN, store.top_offset().into(), subs.into());
     let stream = store.stream_backward(events).await.unwrap();
     let mut iter = Drainer::new(stream);
@@ -533,11 +529,7 @@ async fn test_harness_should_filter_events_backward() {
 async fn test_harness_should_deliver_events_forward_min_max() {
     let store = TestEventStore::new();
     let stream_id = known_streams()[0];
-    let subs: TagSubscriptions = "'upper:A' & ('lower:a' | 'lower:b')"
-        .parse::<Expression>()
-        .unwrap()
-        .into();
-
+    let subs = tag_subs("FROM 'upper:A' & ('lower:a' | 'lower:b')");
     let events = StreamEventSelection::new(stream_id, OffsetOrMin::MIN, OffsetOrMin::MAX, subs.into());
     let stream = store.stream_forward(events, true).await.unwrap();
     let mut iter = Drainer::new(stream);

@@ -12,3 +12,7 @@ hide_table_of_contents: true
 | [ax settings get](get.md)       | Get settings from an ActyxOS node        |
 | [ax settings set](set.md)       | Configure settings of an ActyxOS node    |
 | [ax settings unset](unset.md)   | Remove settings from an ActyxOS node     |
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

@@ -1,7 +1,7 @@
 import axios, { AxiosError } from 'axios'
 import { ErrorResponse } from '../../event-service-types'
 
-describe('event service', () => {
+describe.skip('event service', () => {
   describe('access v1', () => {
     it('should return error when user try to run v1', async () => {
       await axios

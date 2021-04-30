@@ -5,32 +5,17 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { EventKey, Milliseconds, Offset, OffsetMap, StreamId, Timestamp, Where } from '@actyx/sdk'
 import { lessThan } from 'fp-ts/lib/Ord'
 import { Map } from 'immutable'
 import { Observable, Subject, Subscription as RxSubscription } from 'rxjs'
 import { catchError, tap } from 'rxjs/operators'
 import { EventStore } from './eventstore'
-import {
-  AllEventsSortOrders,
-  Event,
-  Events,
-  OffsetMap,
-  PersistedEventsSortOrders,
-} from './eventstore/types'
+import { AllEventsSortOrders, Event, Events, PersistedEventsSortOrders } from './eventstore/types'
 import log from './loggers'
 import { PondStateTracker } from './pond-state'
 import { SnapshotStore } from './snapshotStore'
-import { Where } from './tagging'
-import {
-  EventKey,
-  Fish,
-  FishId,
-  Milliseconds,
-  Offset,
-  StateWithProvenance,
-  StreamId,
-  Timestamp,
-} from './types'
+import { Fish, FishId, StateWithProvenance } from './types'
 import { lookup } from './util'
 
 // I is an intermediate value that is consumed by the specialized command handling logic.
@@ -211,8 +196,8 @@ const observeAll = (
   makeFish: (seed: ESeed) => Fish<S, any> | undefined,
   expireAfterSeed?: Milliseconds,
 ): Observable<StartedFishMap<S>> => {
-  const fish$ = Observable.from(eventStore.offsets()).concatMap(present => {
-    const persisted = getEventsForwardChunked(eventStore, firstEvents, present)
+  const fish$ = Observable.from(eventStore.offsets()).concatMap(offsets => {
+    const persisted = getEventsForwardChunked(eventStore, firstEvents, offsets.present)
 
     // This step is only so that we don’t emit outdated collection while receiving chunks of old events
     const initialFishs = persisted.reduce((acc: Record<string, StartedFish<S>>, chunk) => {
@@ -227,7 +212,13 @@ const observeAll = (
     }, {})
 
     return initialFishs.concatMap(
-      observeAllStartWithInitial(eventStore, makeFish, firstEvents, present, expireAfterSeed),
+      observeAllStartWithInitial(
+        eventStore,
+        makeFish,
+        firstEvents,
+        offsets.present,
+        expireAfterSeed,
+      ),
     )
   })
 

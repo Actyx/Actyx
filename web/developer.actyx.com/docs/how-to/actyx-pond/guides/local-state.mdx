@@ -21,7 +21,7 @@ const chatRoomOnEvent: Reduce<string[], ChatRoomEvent> = (state, event) => {
       return state
     }
     default:
-    // Assert we have not forgotten any case
+      // Assert we have not forgotten any case
       return unreachableOrElse(event.type, state)
   }
 }
@@ -35,7 +35,7 @@ The only event our chat room fish knows is of type `messageAdded`, so we need to
 Usually you will have a couple of different types, which is when the `switch` approach comes in handy.
 
 The `onEvent` handler computes a new state from the old state and the event; you are free to choose whether to mutate
-the passed in state or return a new copy, depending on your preference.  The `unreachableOrElse` helper function
+the passed in state or return a new copy, depending on your preference. The `unreachableOrElse` helper function
 ensures that we don’t forget to handle a case in the switch statement.
 
 What remains to be done is to hook this new `onEvent` handler into a fish definition:
@@ -48,7 +48,7 @@ export const chatRoomFish: Fish<string[], ChatRoomEvent> = {
   where: Tag('chatRoom').withId('lobby'),
 }
 
-pond.observe(chatRoomFish, state => console.log('Full list of messages:', state))
+pond.observe(chatRoomFish, (state) => console.log('Full list of messages:', state))
 ```
 
 :::note Selecting only local events
@@ -63,3 +63,7 @@ node. Simply use the `.local()` transformation, as in `Tag('chatRoom').withId('l
 With this we have seen all important triggers for a fish: it reacts to events by computing a new
 state, plus its state is observable from the outside world. In the next section we start looking
 into the distributed aspects of writing fishes.
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

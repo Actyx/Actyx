@@ -1,7 +1,7 @@
 use actyxos_sdk::StreamId;
 use futures::{prelude::*, stream, Stream};
 use ipfs_sqlite_block_store::BlockStore;
-use libipld::Cid;
+use libipld::{Cid, DefaultParams};
 use std::{convert::TryFrom, path::PathBuf};
 use structopt::StructOpt;
 use swarm::StreamAlias;
@@ -30,7 +30,7 @@ pub struct ExploreTreeOpts {
 }
 
 fn run(opts: ExploreTreeOpts) -> anyhow::Result<()> {
-    let mut bs = BlockStore::open(opts.block_store.clone(), Default::default())?;
+    let mut bs = BlockStore::<DefaultParams>::open(opts.block_store.clone(), Default::default())?;
     match opts.command {
         List::Aliases => {
             let aliases: Vec<(Vec<u8>, Cid)> = bs.aliases()?;

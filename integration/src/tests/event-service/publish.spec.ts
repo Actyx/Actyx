@@ -1,6 +1,6 @@
 import { publishEvent, randomString } from '../../util'
 
-describe('event service', () => {
+describe.skip('event service', () => {
   describe('publish events', () => {
     it('should publish event', async () => {
       const publishRes = await publishEvent(randomString())

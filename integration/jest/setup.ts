@@ -1,3 +1,9 @@
+/**
+ * Responsibilities:
+ *   - Read hosts.yaml
+ *   - Create nodes as separate ec2 instances or locally
+ *   - Bootstrap all nodes in the same swarm
+ */
 import { EC2 } from 'aws-sdk'
 import execa from 'execa'
 import { promises as fs } from 'fs'
@@ -9,8 +15,7 @@ import { createNode } from '../src/infrastructure/create'
 import { rightOrThrow } from '../src/infrastructure/rightOrThrow'
 import { ActyxOSNode, AwsKey, printTarget } from '../src/infrastructure/types'
 import { retryTimes } from '../src/retry'
-import { setupAnsible } from '../src/setup-projects/ansible'
-import { Arch, Config, Host, OS, Settings } from './types'
+import { Config, Settings } from './types'
 
 export type LogEntry = {
   time: Date
@@ -30,12 +35,9 @@ export type NodeSetup = {
   thisTestEnvNodes?: ActyxOSNode[]
 }
 
-export type Stubs = {
-  axOnly: ActyxOSNode
-  unreachable: ActyxOSNode
-  mkStub: (os: OS, arch: Arch, host: Host, name: string) => Promise<ActyxOSNode>
-}
-export type MyGlobal = typeof global & { axNodeSetup: NodeSetup; stubs: Stubs }
+export type MyGlobal = typeof global & { axNodeSetup: NodeSetup }
+
+const currentHead = () => execa.command('git rev-parse HEAD').then((x) => x.stdout)
 
 const getGitHash = async (settings: Settings) => {
   const maybeEnv = process.env['AX_GIT_HASH']
@@ -52,11 +54,7 @@ const getGitHash = async (settings: Settings) => {
   return result
 }
 
-const currentHead = async () => {
-  const result = await execa.command('git rev-parse HEAD')
-  return result.stdout
-}
-
+// TODO: Do we need a peer id or we can just specify the ip for the bootstrap node
 const getPeerId = async (ax: CLI, retries = 10): Promise<string | undefined> => {
   await new Promise((res) => setTimeout(res, 1000))
   const state = await retryTimes(ax.swarms.state, 3)
@@ -171,7 +169,7 @@ const getNumPeersMax = async (nodes: ActyxOSNode[]): Promise<number> => {
   return res.reduce((a, b) => Math.max(a, b), 0)
 }
 
-const configureBoostrap = async (nodes: ActyxOSNode[]) => {
+const configureBootstrap = async (nodes: ActyxOSNode[]) => {
   // All process-hosted nodes can serve as bootstrap nodes
   const bootstrap = nodes.filter(
     (node): node is ActyxOSNode & { host: 'process' } => node.host === 'process',
@@ -228,8 +226,6 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   const config = rightOrThrow(Config.decode(configObject), configObject)
   console.log('using %i hosts', config.hosts.length)
 
-  await setupAnsible()
-
   // CRITICAL: axNodeSetup does not yet have all the fields of the NodeSetup type at this point
   // so we get the (partial) object’s reference, construct a fully type-checked NodeSetup, and
   // then make the global.axNodeSetup complete by copying the type-checked properties into it.
@@ -278,14 +274,14 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
       axNodeSetup.nodes.push(node)
     }
   } catch (e) {
-    // any error have already been logged inside `createNode`
-    console.log('error during node creation, shutting down ..')
+    console.log('Error during node creation (might have been logged already):\n', e)
+    console.log('Shutting down ...')
     await Promise.all(axNodeSetup.nodes.map((node) => node._private.shutdown()))
     throw new Error('node creation failed')
   }
 
   console.log(
-    '\n*** ActyxOS nodes started ***\n\n- ' +
+    '\n*** Actyx nodes started ***\n\n- ' +
       axNodeSetup.nodes.map((node) => `${node.name} on ${printTarget(node.target)}`).join('\n- ') +
       '\n',
   )
@@ -293,7 +289,7 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   console.log('waiting for project setup to finish')
 
   try {
-    await configureBoostrap(axNodeSetup.nodes)
+    await configureBootstrap(axNodeSetup.nodes)
   } catch (error) {
     console.log('error while setting up bootstrap:', error)
     await Promise.all(axNodeSetup.nodes.map((node) => node._private.shutdown()))

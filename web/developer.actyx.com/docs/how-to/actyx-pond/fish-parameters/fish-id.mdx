@@ -30,7 +30,7 @@ username or user-id.
 
 Sometimes there is just one Fish of an `entityType`. In that case the name might be "singleton" or
 similar.
-  
+
 ### `version: number`
 
 A counter for logic changes in the Fish. Caching for Fish is persistent on disk. So when the
@@ -38,3 +38,7 @@ _program code_ of a Fish is changed, it must also be considered a different Fish
 and "name" will still be the same, there is a plain version counter to identify code changes.
 
 You should never lower the version number.
+
+import { NPS } from '../../../../src/components/NPS'
+
+<NPS />

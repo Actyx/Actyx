@@ -7,10 +7,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // #region impl
 
+import { Timestamp } from '@actyx/sdk'
 import * as debug from 'debug'
 import { Observable } from 'rxjs'
 import { format } from 'util'
-import { Timestamp } from '../types'
 import {
   CommandInterface,
   ControlCommand,

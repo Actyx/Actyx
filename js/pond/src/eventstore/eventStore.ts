@@ -4,9 +4,8 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import { EventKey, Milliseconds, NodeId, Where } from '@actyx/sdk'
 import { Observable } from 'rxjs'
-import { Where } from '../tagging'
-import { EventKey, Milliseconds, NodeId } from '../types'
 import { mockEventStore } from './mockEventStore'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import { testEventStore, TestEventStore } from './testEventStore'
@@ -14,10 +13,10 @@ import {
   AllEventsSortOrder,
   ConnectivityStatus,
   Events,
-  OffsetMap,
   OffsetMapWithDefault,
   PersistedEventsSortOrder,
   UnstoredEvents,
+  OffsetsResponse,
 } from './types'
 import { WebsocketEventStore } from './websocketEventStore'
 
@@ -43,16 +42,9 @@ export type RequestConnectivity = (
  * The store will NEVER deliver events across PSN gaps. So the 'present' signifies that which the store is willing to deliver to us.
  * If PSN=2 of some source never reaches our store, that source’s present will never progress beyond PSN=1 for our store.
  * Nor will it expose us to those events that lie after the gap.
+ * This also returns the events per source which are pending replication to this node.
  */
-export type RequestOffsets = () => Promise<OffsetMap>
-
-/**
- * Request the highest seen offsets from the store, not all of which may be available (gapless) yet.
- * Note that this is purely for diagnostical purposes combined with the 'present'.
- * 'Highest seen' cannot be used to drive logic which queries events, because the store does not deliver
- * across PSN gaps, while 'highest seen' reports highest seen irregardless of gaps.
- */
-export type RequestHighestSeen = () => Promise<OffsetMap>
+export type RequestOffsets = () => Promise<OffsetsResponse>
 
 /**
  * This method is only concerned with already persisted events, so it will always return a finite (but possibly large)
@@ -116,7 +108,6 @@ export type RequestPersistEvents = (events: UnstoredEvents) => Observable<Events
 export type EventStore = {
   readonly nodeId: NodeId
   readonly offsets: RequestOffsets
-  readonly highestSeen: RequestHighestSeen
   readonly persistedEvents: RequestPersistedEvents
   readonly allEvents: RequestAllEvents
   readonly persistEvents: RequestPersistEvents
@@ -126,8 +117,7 @@ export type EventStore = {
 const noopEventStore: EventStore = {
   allEvents: () => Observable.empty(),
   persistedEvents: () => Observable.empty(),
-  offsets: () => Promise.resolve({}),
-  highestSeen: () => Promise.resolve({}),
+  offsets: () => Promise.resolve({ present: {}, toReplicate: {} }),
   persistEvents: () => Observable.empty(),
   nodeId: NodeId.of('NoopSourceId'),
   connectivityStatus: () => Observable.empty(),

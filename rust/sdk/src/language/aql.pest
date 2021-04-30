@@ -1,0 +1,82 @@
+main_query = { SOI ~ query ~ EOI }
+main_simple_expr = { SOI ~ simple_expr ~ EOI }
+
+// queries
+query = { "FROM" ~ tag_expr ~ query_op* ~ "END"? }
+query_op = _{ filter | select }
+filter = { "FILTER" ~ simple_expr }
+select = { "SELECT" ~ simple_expr }
+
+// strings
+single_quoted = @{ "'" ~ ( !"'" ~ ANY | "''" )+ ~ "'" }
+double_quoted = @{ "\"" ~ ( !"\"" ~ ANY | "\"\"" )+ ~ "\"" }
+nonempty_string = { single_quoted | double_quoted }
+empty_string = { "\"\"" | "''" }
+string = { nonempty_string | empty_string }
+
+// literals
+null = { "null" }
+bool = { "true" | "false" }
+number = { decimal | natural }
+decimal = @{ "-"? ~ digit+ ~ "." ~ digit+ }
+natural = @{ digit+ }
+digit = { '0'..'9' }
+// This currently permits { a:1 b:2 }, which I’d like to try; comma is available for disambiguation
+object = { "{" ~ ( ident ~ ":" ~ simple_expr ~ ","? )* ~ "}" }
+array = { "[" ~ "]" | "[" ~ simple_expr ~ ( "," ~ simple_expr )* ~ "]" }
+app_id = @{ app_id_char+ ~ ( "." ~ app_id_char+ )* }
+app_id_char = _{ '0'..'9' | 'a'..'z' | 'A'..'Z' | "-" | "_" }
+
+// identifiers
+ident = @{ "_" | LOWERCASE_LETTER ~ ( LOWERCASE_LETTER | NUMBER | "_" )* }
+path = { ident ~ ( "." ~ ( ident | natural ) )* }
+
+// ISO8601 timestamp
+year = { '0'..'9'{4} }
+month = { ( "0" ~ '1'..'9' ) | ("1" ~ '1'..'2') }
+day = { ( "0" ~ '1'..'9' ) | ( "1" ~ '0'..'9' ) | ( "2" ~ '0'..'9' ) | "30" | "31" }
+hour = { ( '0'..'1' ~ '0'..'9' ) | ( "2" ~ '0' .. '3' ) }
+minute = { ( '0'..'5' ~ '0'..'9' ) }
+second = { ( '0'..'5' ~ '0'..'9' ) }
+millisecond = { ( '0'..'9'{3} ) }
+microsecond = { ( '0'..'9'{6} ) }
+nanosecond = { ( '0'..'9'{9} ) }
+isodate = ${ year ~ "-" ~ month ~ "-" ~ day ~ ("T" ~ hour ~ ":" ~ minute ~ (":" ~ second ~ ("." ~ (nanosecond|microsecond|millisecond))?)? ~ "Z")? }
+
+// tags
+tag_expr = { tag_atom ~ ( tag_op ~ tag_atom )* }
+tag_atom = _{ tag | "(" ~ tag_expr ~ ")" | all_events | is_local | tag_from | tag_to | tag_app }
+tag_op = _{ and | or }
+tag = { nonempty_string }
+all_events = { "allEvents" }
+is_local = { "isLocal" }
+tag_from = { "from(" ~ ( isodate | natural ) ~ ")" }
+tag_to = { "to(" ~ ( isodate | natural ) ~ ")" }
+tag_app = { "appId(" ~ app_id ~ ")" }
+
+// expressions
+simple_expr = { simple_atom ~ ( simple_op ~ simple_atom )* }
+simple_op = _{ add | sub | mul | div | modulo | pow | and | or | xor | lt | le | gt | ge | eq | ne }
+simple_atom = _{ number | path | string | "(" ~ simple_expr ~ ")" | simple_not | object | array }
+simple_not = { "!" ~ simple_atom }
+
+// operators
+add = { "+" }
+sub = { "-" }
+mul = { "*" | "×" }
+div = { "/" | "÷" | "⁄" }
+modulo = { "%" }
+pow = { "^" }
+and = { "&" | "∧" }
+or = { "|" | "∨" }
+not = { "!" | "¬" }
+xor = { "~" | "⊻" }
+lt = { "<" }
+le = { "<=" | "≤" }
+gt = { ">" }
+ge = { ">=" | "≥" }
+eq = { "=" }
+ne = { "!=" | "≠" }
+
+WHITESPACE = _{ WHITE_SPACE }
+COMMENT = _{ "--" ~ ( !("\n"|"\r") ~ ANY )* }

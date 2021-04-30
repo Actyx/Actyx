@@ -4,14 +4,11 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import { isString, Lamport, Offset, OffsetMapIO, StreamId, Timestamp } from '@actyx/sdk'
 import { right } from 'fp-ts/lib/Either'
 import { Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
-import { isString, Lamport, Offset, StreamId, Timestamp } from '../types'
-import { OffsetMapIO } from './offsetMap'
-
-export { OffsetMap, OffsetMapBuilder } from './offsetMap'
 
 // EnumType Class
 export class EnumType<A> extends t.Type<A> {
@@ -47,6 +44,15 @@ export const OffsetMapWithDefault = t.readonly(
   }),
 )
 export type OffsetMapWithDefault = t.TypeOf<typeof OffsetMapWithDefault>
+
+export const OffsetsResponse = t.readonly(
+  t.type({
+    present: t.readonly(OffsetMapIO),
+    toReplicate: t.record(StreamId.FromString, t.number),
+  }),
+)
+
+export type OffsetsResponse = t.TypeOf<typeof OffsetsResponse>
 
 const stringRA = t.readonlyArray(t.string)
 

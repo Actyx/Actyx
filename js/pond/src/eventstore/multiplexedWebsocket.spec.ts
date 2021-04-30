@@ -6,10 +6,10 @@
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { NodeId } from '@actyx/sdk'
 import { fromNullable } from 'fp-ts/lib/Option'
 import { range, takeWhile } from 'ramda'
 import { Observable } from 'rxjs'
-import { NodeId } from '../types'
 import {
   MultiplexedWebsocket,
   Request,

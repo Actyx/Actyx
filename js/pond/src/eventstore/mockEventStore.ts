@@ -6,15 +6,14 @@
  */
 import { Observable, ReplaySubject } from 'rxjs'
 import log from '../store/loggers'
-import { toEventPredicate } from '../tagging'
-import { Lamport, NodeId, Offset } from '../types'
+import { Lamport, NodeId, toEventPredicate, Offset, OffsetMap } from '@actyx/sdk'
 import {
   EventStore,
   RequestAllEvents,
   RequestPersistedEvents,
   RequestPersistEvents,
 } from './eventStore'
-import { ConnectivityStatus, Events, OffsetMap } from './types'
+import { ConnectivityStatus, Events } from './types'
 
 export const mockEventStore: () => EventStore = () => {
   const nodeId = NodeId.of('MOCK')
@@ -66,12 +65,12 @@ export const mockEventStore: () => EventStore = () => {
       .asObservable()
       .do(() => log.ws.debug('present'))
       .take(1)
+      .map(present => ({ present, toReplicate: {} }))
       .toPromise()
 
   return {
     nodeId,
     offsets: getPresent,
-    highestSeen: getPresent,
     persistedEvents,
     allEvents,
     persistEvents,

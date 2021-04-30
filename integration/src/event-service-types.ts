@@ -1,3 +1,4 @@
+// TODO: convert to io-ts
 export type Event = Readonly<{
   type: string
   lamport: number
@@ -22,7 +23,10 @@ export type NodeIdResponse = Readonly<{
   nodeId: string
 }>
 
-export type OffsetsResponse = Readonly<Record<string, number>>
+export type OffsetsResponse = Readonly<{
+  present: Record<string, number>
+  toReplicate: Record<string, number>
+}>
 
 export type PublishResponse = Readonly<{
   data: ReadonlyArray<{

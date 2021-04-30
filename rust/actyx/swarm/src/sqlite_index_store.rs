@@ -156,6 +156,7 @@ impl SqliteIndexStore {
     }
 
     /// current lamport timestamp
+    #[cfg(test)]
     pub fn lamport(&self) -> u64 {
         self.lamport
     }
@@ -177,28 +178,27 @@ pub fn initialize_db(conn: &Connection) -> Result<()> {
 mod test {
     use super::*;
     use quickcheck::{Arbitrary, Gen};
-    use rstest::*;
     use tempdir::TempDir;
 
     fn get_shared_memory_index_store(path: &str) -> Result<SqliteIndexStore> {
         SqliteIndexStore::open(DbPath::File(path.into()))
     }
 
-    #[fixture]
     fn empty_store() -> SqliteIndexStore {
         SqliteIndexStore::open(DbPath::Memory).unwrap()
     }
 
-    #[rstest]
-    fn received_lamport_should_take_the_max_and_increment(mut empty_store: SqliteIndexStore) {
+    #[test]
+    fn received_lamport_should_take_the_max_and_increment() {
+        let mut empty_store = empty_store();
         empty_store.received_lamport(5).unwrap();
         assert_eq!(empty_store.lamport, 6);
         empty_store.received_lamport(3).unwrap();
         assert_eq!(empty_store.lamport, 6);
     }
 
-    #[rstest]
-    fn creating_a_new_store_should_grab_lamport_from_the_db() -> anyhow::Result<()> {
+    #[test]
+    fn creating_a_new_store_should_grab_lamport_from_the_db() -> Result<()> {
         let dir = TempDir::new("grab_lamport_from_db").expect("cannot create TempDir");
         let db = dir.path().join("db").to_str().expect("illegal filename").to_owned();
         let mut store = get_shared_memory_index_store(&db)?;
@@ -211,9 +211,9 @@ mod test {
         Ok(())
     }
 
-    #[rstest]
-    fn backup_test(empty_store: SqliteIndexStore) -> anyhow::Result<()> {
-        let mut store = empty_store;
+    #[test]
+    fn backup_test() -> Result<()> {
+        let mut store = empty_store();
         // write some stuff
         for _ in 0..1000 {
             store.increment_lamport()?;
@@ -224,9 +224,9 @@ mod test {
         Ok(())
     }
 
-    #[rstest]
-    fn stream_id_persistence(empty_store: SqliteIndexStore) {
-        let mut s = empty_store;
+    #[test]
+    fn stream_id_persistence() {
+        let mut s = empty_store();
         let mut g = Gen::new(42);
         let streams: BTreeSet<StreamId> = Arbitrary::arbitrary(&mut g);
 

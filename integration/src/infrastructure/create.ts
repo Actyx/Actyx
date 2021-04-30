@@ -7,9 +7,9 @@ import { ActyxOSNode, AwsKey, Target } from './types'
 import { CreateEC2, currentArch, currentOS, HostConfig } from '../../jest/types'
 import { mkNodeLocalDocker, mkNodeLocalProcess } from './local'
 import { LogEntry, MyGlobal } from '../../jest/setup'
-import fs from 'fs'
+import fs, { readFileSync } from 'fs'
 import path from 'path'
-import { mkNodeWinRM } from './windows'
+import { mkWindowsSsh } from './windows'
 
 const createAwsInstance = async (
   ec2: EC2,
@@ -17,6 +17,7 @@ const createAwsInstance = async (
   key: AwsKey,
   hostname: string,
   runIdentifier: string,
+  userData?: string,
 ): Promise<Target> => {
   const instance = await createInstance(ec2, {
     InstanceType: prepare.instance,
@@ -31,6 +32,7 @@ const createAwsInstance = async (
         ],
       },
     ],
+    UserData: userData,
   })
   return instanceToTarget(instance, prepare, key, ec2)
 }
@@ -40,7 +42,11 @@ const installProcess = async (target: Target, host: HostConfig, logger: (line: s
   switch (kind.type) {
     case 'aws':
     case 'ssh':
-      return await mkNodeSshProcess(host.name, target, kind, logger)
+      if (host.install === 'windows') {
+        return await mkWindowsSsh(host.name, target, kind, logger)
+      } else {
+        return await mkNodeSshProcess(host.name, target, kind, logger)
+      }
 
     case 'local':
       return await mkNodeLocalProcess(host.name, target, logger)
@@ -70,20 +76,6 @@ const installDocker = async (
   }
 }
 
-const installWindows = async (
-  ec2: EC2,
-  prepare: CreateEC2,
-  key: AwsKey,
-  host: HostConfig,
-  ciRun: string,
-  publicKeyPath: string,
-  logger: (line: string) => void,
-) => {
-  // create some random string of at least 20 characters
-  const adminPW = Math.random().toString(36).substring(2) + Math.random().toString(36).substring(2)
-  return await mkNodeWinRM(ec2, prepare, key, ciRun, host.name, adminPW, publicKeyPath, logger)
-}
-
 /**
  * Create a new node from the HostConfig that describes it. This can entail spinning up an EC2
  * host or it can mean using locally available resources like a Docker daemon.
@@ -102,24 +94,46 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
 
   let target: Target | undefined = undefined
 
-  if (host.install !== 'windows') {
-    const { prepare, name: hostname } = host
-    switch (prepare.type) {
-      case 'create-aws-ec2': {
+  const { prepare, name: hostname } = host
+  switch (prepare.type) {
+    case 'create-aws-ec2': {
+      if (host.install === 'windows') {
+        const pubKey = readFileSync(key.publicKeyPath)
+        // https://www.mirantis.com/blog/today-i-learned-how-to-enable-ssh-with-keypair-login-on-windows-server-2019/
+        const str = String.raw`<powershell>
+          Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+          Set-Service -Name sshd -StartupType ‘Automatic’
+          Start-Service sshd
+          $key = "${pubKey}"
+          $key | Set-Content C:\ProgramData\ssh\administrators_authorized_keys
+          $acl = Get-Acl C:\ProgramData\ssh\administrators_authorized_keys
+          $acl.SetAccessRuleProtection($true, $false)
+          $acl.Access | %{$acl.RemoveAccessRule($_)} # strip everything
+          $administratorRule = New-Object system.security.accesscontrol.filesystemaccessrule("Administrator","FullControl","Allow")
+          $acl.SetAccessRule($administratorRule)
+          $administratorsRule = New-Object system.security.accesscontrol.filesystemaccessrule("Administrators","FullControl","Allow")
+          $acl.SetAccessRule($administratorsRule)
+          (Get-Item 'C:\ProgramData\ssh\administrators_authorized_keys').SetAccessControl($acl)
+          New-ItemProperty -Path "HKLM:\SOFTWARE\OpenSSH" -Name DefaultShell -Value "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -PropertyType String -Force
+          restart-service sshd
+          </powershell>`
+        const userData = Buffer.from(str).toString('base64')
+        target = await createAwsInstance(ec2, prepare, key, hostname, runIdentifier, userData)
+      } else {
         target = await createAwsInstance(ec2, prepare, key, hostname, runIdentifier)
-        break
       }
-      case 'local': {
-        console.log('node %s using the local system', host.name)
-        const shutdown = () => Promise.resolve()
-        target = {
-          os: currentOS(),
-          arch: currentArch(),
-          _private: { cleanup: shutdown },
-          kind: { type: 'local' },
-        }
-        break
+      break
+    }
+    case 'local': {
+      console.log('node %s using the local system', host.name)
+      const shutdown = () => Promise.resolve()
+      target = {
+        os: currentOS(),
+        arch: currentArch(),
+        _private: { cleanup: shutdown },
+        kind: { type: 'local' },
       }
+      break
     }
   }
 
@@ -132,6 +146,7 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
     let node: ActyxOSNode | undefined
     switch (host.install) {
       case 'linux':
+      case 'windows':
         if (target === undefined) {
           console.error('no recipe to prepare node %s', host.name)
           return
@@ -145,23 +160,7 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
         }
         node = await installDocker(target, host, logger, gitHash)
         break
-      case 'windows': {
-        const { prepare } = host
-        if (prepare.type !== 'create-aws-ec2') {
-          console.error('can only install windows on EC2, not', prepare)
-          return
-        }
-        node = await installWindows(
-          ec2,
-          prepare,
-          key,
-          host,
-          runIdentifier,
-          key.publicKeyPath,
-          logger,
-        )
-        break
-      }
+
       default:
         return
     }
@@ -169,9 +168,9 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
     if (node === undefined) {
       console.error('no recipe to install node %s', host.name)
     } else {
-      const shutdown = node._private.shutdown
-      node._private.shutdown = async () => {
-        await shutdown().catch((error) =>
+      const orig_shutdown = node._private.shutdown
+      const shutdown = async () => {
+        await orig_shutdown().catch((error) =>
           console.error('node %s error while shutting down:', host.name, error),
         )
         const logFilePath = mkLogFilePath(runIdentifier, host)
@@ -190,6 +189,8 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
         flush()
         logs.length = 0
       }
+
+      node = { ...node, _private: { ...node._private, shutdown } }
     }
 
     if (thisTestEnvNodes !== undefined && node !== undefined) {

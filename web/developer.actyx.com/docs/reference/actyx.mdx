@@ -9,84 +9,68 @@ description: API Reference for Actyx.
 image: /images/defaults/default.svg
 ---
 
-import Tabs from '@theme/Tabs'
-import TabItem from '@theme/TabItem'
-
 ## Supported OS and architectures
 
-Actyx is built for the following operating systems and architectures:
+| Platform | Supported OS                 | Supported architecture                                                                     |
+| -------- | ---------------------------- | ------------------------------------------------------------------------------------------ |
+| Windows  | Windows 10                   | x86_64                                                                                     |
+| Android  | Android 6+                   | x86, arm64-v8a or armeabi-v7a [ABI](https://developer.android.com/ndk/guides/abis.html#sa) |
+| Linux    | Ubuntu 18.04+ or Alpine 3.9+ | x86_64, aarch64, armv7 or arm                                                              |
+| Docker   | Docker 20+                   | x86_64 or aarch64                                                                          |
+| macOS    | Big Sur                      | x86_64 or aarch64 (via Rosetta emulation)                                                  |
 
-<Tabs
-  defaultValue="windows"
-  values={[
-    { label: 'Windows', value: 'windows', },
-    { label: 'Android', value: 'android', },
-    { label: 'Linux', value: 'linux', },
-    { label: 'Docker', value: 'docker', },
-  ]
-}>
-<TabItem value="windows">
+## Networking Requirements
 
-Actyx supports the following Windows versions:
+| Device                                                                                                                                                                                       | LAN/WLAN                                                                                                                                                                                             |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| <ul><li>ports 4001, 4243, 4454, 4457, 8080 unused</li><li>Incoming/outgoing connections on ports 4001, 4243, 4454, 4457, 8080 allowed</li><li>All nodes connected to same LAN/WLAN</li></ul> | <ul><li>ports 4001, 4243, 4454, 4457, 8080 unblocked</li><li>UDP unicast connections allowed (mDNS protocol, port 5353, IPv4 224.0.0.251, IPv6 ff02::fb)</li><li>Client-isolation disabled</li></ul> |
 
-- Windows 10
+It is **not** supported to put firewalls between devices of the same swarm.
+Wherever possible, devices should be placed within one broadcast domain.
+Placing devices of the same swarm across different broadcast domains requires [setting up a bootstrap node](../how-to/swarms/setup-bootstrap-node) and configuring communication between these broadcast domains accordingly.
 
-You can run Actyx on Windows on the following architectures:
+## Performance
 
-- `x86_64`
+A lot of different factors play into performance of Actyx and your apps. Assuming a standard network setup, rugged tablets or other devices with relatively low computing power, and a standard factory use case, these are approximate limits:
 
-</TabItem>
-<TabItem value="android">
+| Type            | Performance                                                  |
+| --------------- | ------------------------------------------------------------ |
+| Latency         | below 200 ms, not guaranteed as dependent on several factors |
+| No. of nodes    | max. 100 nodes                                               |
+| Event data rate | ~1 event per node per 10 seconds                             |
 
-Actyx supports the following Android versions:
+The following list shows the factors that influence performance. **Please note that these are not requirements, but assumptions made for the above performance characteristics:**
 
-- Android 6+
+| Factor                    | Assumption                                                                                |
+| ------------------------- | ----------------------------------------------------------------------------------------- |
+| LAN setup and latency     | standard / WiFi                                                                           |
+| App runtimes              | Webview (Node.js) and Docker                                                              |
+| Devices                   | Rugged tablets or other devices with relatively low computing power (e.g. Raspberry Pi 3) |
+| Device CPU                | 1-2 GHz, x86/arm architecture                                                             |
+| Device RAM                | 1-4 GB                                                                                    |
+| Programming language      | Typescript                                                                                |
+| Business logic complexity | Standard factory use case, production data and machine data acquisition                   |
 
-You can run Actyx on Windows on the following architectures:
+:::info Assumptions do not fit your use case?
+The limits regarding performance and disk space described on this page are only true within the circumstances outlined above. If one of these factors changes, the limits for your solution might change. If you are looking for guidance on a specific use case, please refer to our [conceptual guide](../conceptual/performance-and-limits) or contact us.
+:::
 
-- `x86`, `arm64-v8a` or `armeabi-v7a` [ABI](https://developer.android.com/ndk/guides/abis.html#sa)
+## Disk space requirements
 
-</TabItem>
-<TabItem value="linux">
+The required disk space depends on the size, number, and compressibility of the events that are emitted by apps built on Actyx.
+These are example calculations for factory apps, either with or without machine integrations, based on our project experience and for a 1-year time frame:
 
-|Operating system|Minimum version|
-|----------------|---------------|
-|Ubuntu|18.04 (Bionic Beaver)|
-|AlpineOS|3.9|
+|                   | With machine integrations | Without machine integrations |
+| ----------------- | ------------------------- | ---------------------------- |
+| Number of nodes   | 8                         | 10                           |
+| Number of events  | 10,000,000                | 580,000                      |
+| Disk space needed | 135 MB                    | 36 MB                        |
 
-You can run Actyx on Linux on the following architectures:
+The events used for the above examples contained information on orders and their progress, or machine values (~10) read from a OPC UA interface.
 
-- `x86_64`, `aarch64`, `armv7` or `arm`
-
-</TabItem>
-<TabItem value="docker">
-
-Actyx supports the following Windows versions:
-
-- Docker 20+
-
-You can run Actyx on Docker on the following architectures:
-
-- `x86_64`, `aarch64`
-
-</TabItem>
-</Tabs>
-
-## Network requirements
-
-The local-area network and wireless network (if used) must
-
-- Allow UDP unicast connections
-- Not have client-isolation enabled
-- Not block ports 4001, 4450-4469 and 5001
-
-The edge devices must
-
-- Be connected to the same local-area network
-- Allow incoming/outgoing communication on ports 4001, 4450-4469 and 5001
-
-:::info one network = one swarm
-All devices in an ActyxOS swarm must be connected to the same local-area network.
+:::tip
+We are already working on the functionality to configure replication and lifespan of events.
+By configuring when events should be deleted or to which devices they should be replicated, you will be able to optimize for low disk space usage.
 :::
 
 ## Node Settings Schema
@@ -94,4 +78,8 @@ All devices in an ActyxOS swarm must be connected to the same local-area network
 Which settings are available and which values they may have is defined in the so-called ActyxOS **Node Setting Schema**.
 The most recent version thereof is available for download at:
 
-[https://developer.actyx.com/schemas/os/node-settings.schema.json](pathname:///schemas/os/node-settings.schema.json)
+[https://developer.actyx.com/schemas/node-settings.schema.json](pathname:///schemas/node-settings.schema.json)
+
+import { NPS } from '../../src/components/NPS'
+
+<NPS />

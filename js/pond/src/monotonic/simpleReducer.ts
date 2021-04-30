@@ -1,5 +1,6 @@
+import { OffsetMap } from '@actyx/sdk'
 import { clone } from 'ramda'
-import { Event, Events, OffsetMap } from '../eventstore/types'
+import { Event, Events } from '../eventstore/types'
 import { LocalSnapshot } from '../types'
 import { SimpleReducer } from './types'
 

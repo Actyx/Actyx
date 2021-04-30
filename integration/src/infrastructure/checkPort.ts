@@ -1,16 +1,5 @@
 import net from 'net'
 
-export const portInUse = (port: number): Promise<boolean> =>
-  new Promise((res) => {
-    const server = net.createServer()
-    server.once('error', () => res(true))
-    server.once('listening', () => {
-      server.close()
-      res(false)
-    })
-    server.listen(port)
-  })
-
 export const getFreePort = (): Promise<number> =>
   new Promise((res, rej) => {
     const server = net.createServer()

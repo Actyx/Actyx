@@ -36,8 +36,12 @@ impl AxCliCommand for UsersKeygen {
                 let mut reader = tokio::io::BufReader::new(io);
                 let mut buf = String::new();
                 reader.read_line(&mut buf).await?;
-                // pop '\n'
-                buf.pop();
+                if buf.ends_with('\n') {
+                    buf.pop();
+                    if buf.ends_with('\r') {
+                        buf.pop();
+                    }
+                }
                 if buf.is_empty() {
                     default
                 } else {
@@ -73,5 +77,7 @@ impl AxCliCommand for UsersKeygen {
 #[derive(StructOpt, Debug)]
 pub struct KeygenOpts {
     #[structopt(short, long)]
+    /// Path in which to save the private key. The public key will be generated in the same
+    /// directory with the `.pub` suffix.
     output: Option<PathBuf>,
 }

@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import { Client, DefaultClientOpts } from '@actyx/os-sdk'
 import execa from 'execa'
+import { Arch } from '../../jest/types'
 import { CLI } from '../cli'
 import { mkProcessLogger } from './mkProcessLogger'
 import { actyxOsDockerImage, actyxOsLinuxBinary, currentAxBinary } from './settings'
@@ -17,10 +19,10 @@ export const mkNodeSshProcess = async (
   sshParams: SshAble,
   logger: (s: string) => void = console.log,
 ): Promise<ActyxOSNode> => {
-  console.log('setting up ActyxOS process: %s on %o', nodeName, printTarget(target))
+  console.log('setting up Actyx process: %s on %o', nodeName, printTarget(target))
 
   if (target.os !== 'linux') {
-    throw new Error(`mkNodeSshProces cannot install on OS ${target.os}`)
+    throw new Error(`mkNodeSshProcess cannot install on OS ${target.os}`)
   }
 
   const ssh = new Ssh(sshParams.host, sshParams.username, sshParams.privateKey)
@@ -43,7 +45,7 @@ export const mkNodeSshDocker = async (
   logger: (s: string) => void,
   gitHash: string,
 ): Promise<ActyxOSNode> => {
-  console.log('settings up ActyxOS on Docker: %s on %o', nodeName, printTarget(target))
+  console.log('setting up Actyx on Docker: %s on %o', nodeName, printTarget(target))
 
   if (target.os !== 'linux') {
     throw new Error(`mkNodeSshDocker cannot install on OS ${target.os}`)
@@ -52,7 +54,7 @@ export const mkNodeSshDocker = async (
   const ssh = new Ssh(sshParams.host, sshParams.username, sshParams.privateKey)
   await connectSsh(ssh, nodeName, sshParams)
 
-  await ensureDocker(ssh, nodeName, sshParams.username)
+  await ensureDocker(ssh, nodeName, sshParams.username, target.arch)
   const userPass = await execa('vault', [
     'kv',
     'get',
@@ -77,52 +79,92 @@ export const mkNodeSshDocker = async (
   })
 }
 
-async function ensureDocker(ssh: Ssh, node: string, user: string) {
+const archToDockerMoniker = (arch: Arch): string => {
+  switch (arch) {
+    case 'aarch64':
+      return 'arm64'
+    case 'arm':
+      throw new Error('Arm is not supported')
+    case 'armv7':
+      return 'arm64'
+    case 'x86_64':
+      return 'amd64'
+  }
+}
+
+const mkLog = (node: string) => (msg: string) => console.log(`node ${node} ${msg}`)
+
+/**
+ * Install Docker. This procedure is dependant on the `ami` specified in hosts.yaml
+ */
+async function ensureDocker(ssh: Ssh, node: string, user: string, arch: Arch) {
+  const log = mkLog(node)
   try {
     const result = await ssh.exec('docker --version')
     if (result.exitCode === 0) {
-      console.log('node %s Docker already installed', node)
+      log('Docker already installed')
       return
     }
   } catch (error) {
     // ignore and start installing
   }
 
-  console.log('node %s installing Docker', node)
+  log('installing Docker')
   const exec = execSsh(ssh)
 
-  await exec('sudo apt update')
-  console.log('node %s packages updated', node)
+  // Procedure for installing https://docs.docker.com/engine/install/ubuntu/
+  try {
+    await exec('sudo apt-get remove docker docker-engine docker.io containerd runc')
+  } catch (x) {
+    // It’s OK if apt-get reports that none of these packages are installed.
+  }
+  await exec('sudo apt-get update')
+  await exec(
+    'sudo apt-get --yes install apt-transport-https ca-certificates curl gnupg lsb-release',
+  )
+  await exec(
+    'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg',
+  )
+  await exec(
+    `echo "deb [arch=${archToDockerMoniker(
+      arch,
+    )} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null`,
+  )
+  await exec('sudo apt-get update')
+  // Test against well known versions
+  const dckr_v = '5:20.10.6~3-0~ubuntu-hirsute'
+  const cntnrd_v = '1.4.4-1'
+  await exec(
+    `sudo apt-get --yes install docker-ce=${dckr_v} docker-ce-cli=${dckr_v} containerd.io=${cntnrd_v}`,
+  )
 
-  await exec('sudo apt install -y docker.io')
-  console.log('node %s Docker package installed', node)
-
+  // Fix `Got permission denied while trying to connect to the Docker daemon socket`
   await exec(`sudo chgrp ${user} /var/run/docker.sock`)
-  console.log('node %s permissions fixed', node)
+  log('Docker installed')
 }
 
-function execSsh(ssh: Ssh) {
+export function execSsh(ssh: Ssh) {
   return async (cmd: string) => {
     const result = await ssh.exec(cmd)
     if (result.exitCode !== 0) {
-      console.error(result)
       throw result
     }
     return result.stdout
   }
 }
 
-async function connectSsh(ssh: Ssh, nodeName: string, sshParams: SshAble) {
+export async function connectSsh(ssh: Ssh, nodeName: string, sshParams: SshAble, maxAttempts = 15) {
   let connected = false
-  let attempts = 15
+  let attempts = maxAttempts
   while (!connected && attempts-- > 0) {
     try {
-      await pollDelay(() => execSsh(ssh)('true'))
+      await pollDelay(() => execSsh(ssh)('whoami'))
       connected = true
     } catch (error) {
       if (
         error.stderr.indexOf('Connection refused') >= 0 ||
-        error.stderr.indexOf('Connection timed out') >= 0
+        error.stderr.indexOf('Connection timed out') >= 0 ||
+        error.stderr.indexOf('Operation timed out') >= 0
       ) {
         // this is expected
       } else {
@@ -144,7 +186,7 @@ async function connectSsh(ssh: Ssh, nodeName: string, sshParams: SshAble) {
 }
 
 async function uploadActyxOS(nodeName: string, ssh: Ssh, binaryPath: string) {
-  console.log('node %s installing ActyxOS', nodeName)
+  console.log('node %s installing Actyx', nodeName)
   await ssh.scp(binaryPath, 'actyxos')
 }
 
@@ -158,7 +200,7 @@ function startActyxOS(
   return new Promise((res, rej) => {
     setTimeout(
       () =>
-        rej(new Error(`node ${nodeName}: ActyxOS did not start within ${START_TIMEOUT / 1000}sec`)),
+        rej(new Error(`node ${nodeName}: Actyx did not start within ${START_TIMEOUT / 1000}sec`)),
       START_TIMEOUT,
     )
     const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
@@ -171,15 +213,15 @@ function startActyxOS(
     proc.stderr?.on('data', (s: Buffer | string) => log('stderr', s))
     proc.on('close', () => {
       flush()
-      logger(`node ${nodeName} ActyxOS channel closed`)
+      logger(`node ${nodeName} Actyx channel closed`)
       rej('closed')
     })
     proc.on('error', (err: Error) => {
-      logger(`node ${nodeName} ActyxOS channel error: ${err}`)
+      logger(`node ${nodeName} Actyx channel error: ${err}`)
       rej(err)
     })
     proc.on('exit', (code: number, signal: string) => {
-      logger(`node ${nodeName} ActyxOS exited with code=${code} signal=${signal}`)
+      logger(`node ${nodeName} Actyx exited with code=${code} signal=${signal}`)
       rej('exited')
     })
   })
@@ -190,24 +232,22 @@ export const forwardPortsAndBuildClients = async (
   nodeName: string,
   target: Target,
   actyxOsProc: execa.ExecaChildProcess<string> | undefined,
-  theRest: Omit<ActyxOSNode, 'ax' | 'actyxOS' | '_private' | 'name' | 'target'>,
+  theRest: Omit<ActyxOSNode, 'ax' | 'httpApiClient' | '_private' | 'name' | 'target'>,
 ): Promise<ActyxOSNode> => {
   const [[port4454, port4458], proc] = await ssh.forwardPorts(4454, 4458)
 
-  console.log('node %s console reachable on port %i', nodeName, port4458)
-  console.log('node %s event service reachable on port %i', nodeName, port4454)
+  console.log('node %s admin reachable on port %i', nodeName, port4458)
+  console.log('node %s http api reachable on port %i', nodeName, port4454)
 
   const axBinaryPath = await currentAxBinary()
   const axHost = `localhost:${port4458}`
   console.error('created cli w/ ', axHost)
   const ax = await CLI.build(axHost, axBinaryPath)
 
-  const apiConsole = `http://localhost:${port4458}/api/`
-  const apiEvent = `http://localhost:${port4454}/api/`
+  const httpApiOrigin = `http://localhost:${port4454}`
   const opts = DefaultClientOpts()
-  opts.Endpoints.ConsoleService.BaseUrl = apiConsole
-  opts.Endpoints.EventService.BaseUrl = apiEvent
-  const actyxOS = Client(opts)
+  opts.Endpoints.EventService.BaseUrl = httpApiOrigin
+  const httpApiClient = Client(opts)
 
   const apiPond = `ws://localhost:${port4454}/store_api`
 
@@ -220,14 +260,21 @@ export const forwardPortsAndBuildClients = async (
     proc.kill('SIGTERM')
   }
 
-  const _private = {
-    shutdown,
-    axBinaryPath,
-    axHost,
-    apiConsole,
-    apiEvent,
-    apiPond,
-    apiSwarmPort: 4001,
+  const result: ActyxOSNode = {
+    name: nodeName,
+    target,
+    ax,
+    httpApiClient,
+    _private: {
+      shutdown,
+      axBinaryPath,
+      axHost,
+      httpApiOrigin,
+      apiPond,
+      apiSwarmPort: 4001,
+    },
+    ...theRest,
   }
-  return { ax, actyxOS, _private, name: nodeName, target, ...theRest }
+
+  return result
 }

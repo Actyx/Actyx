@@ -5,21 +5,15 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { EventKey, OffsetMap, Where } from '@actyx/sdk'
 import { fromNullable, Option } from 'fp-ts/lib/Option'
 import { greaterThan } from 'fp-ts/lib/Ord'
 import { Observable } from 'rxjs'
 import { EventStore } from '../eventstore'
-import {
-  AllEventsSortOrders,
-  Event,
-  Events,
-  OffsetMap,
-  PersistedEventsSortOrders,
-} from '../eventstore/types'
+import { AllEventsSortOrders, Event, Events, PersistedEventsSortOrders } from '../eventstore/types'
 import log from '../loggers'
 import { SnapshotStore } from '../snapshotStore'
-import { Where } from '../tagging'
-import { EventKey, FishId } from '../types'
+import { FishId } from '../types'
 import { runStats, takeWhileInclusive } from '../util'
 import { getInsertionIndex } from '../util/binarySearch'
 import { SerializedStateSnap } from './types'
@@ -301,7 +295,7 @@ export const eventsMonotonic = (
   ): Observable<EventsOrTimetravel> => {
     return Observable.combineLatest(
       Observable.from(tryReadSnapshot(fishId)).first(),
-      Observable.from(eventStore.offsets()),
+      Observable.from(eventStore.offsets()).map(({ present }) => present),
     ).concatMap(([maybeSnapshot, present]) =>
       maybeSnapshot.fold(
         // No snapshot found -> start from scratch
@@ -318,8 +312,8 @@ export const eventsMonotonic = (
   ): Observable<EventsOrTimetravel> => {
     if (attemptStartFrom) {
       // Client explicitly requests us to start at a certain point
-      return Observable.from(eventStore.offsets()).concatMap(present =>
-        startFromFixedOffsets(fishId, subscriptions, present)(attemptStartFrom),
+      return Observable.from(eventStore.offsets()).concatMap(offsets =>
+        startFromFixedOffsets(fishId, subscriptions, offsets.present)(attemptStartFrom),
       )
     } else {
       // `from` NOT given -> try finding a snapshot

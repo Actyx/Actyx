@@ -4,11 +4,10 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import { Offset, OffsetMap } from '@actyx/sdk'
 import * as immutable from 'immutable'
 import { Observable } from 'rxjs'
 import * as rx from 'rxjs/operators'
-import { OffsetMap } from '../eventstore'
-import { Offset } from '../types'
 
 /**
  * All the info we got for a single node
