@@ -40,24 +40,27 @@ impl BanyanStore {
         let timestamp = Timestamp::now();
         let n = events.len() as u32;
         let stream = self.get_or_create_own_stream(stream_nr);
-        let guard = stream.sequencer().lock();
-        let last_lamport = self.lock().index_store.increase_lamport(n)?;
-        let min_lamport = last_lamport - (n as u64) + 1;
-        let kvs = events
-            .into_iter()
-            .enumerate()
-            .map(move |(i, (tags, payload))| {
-                let key = AxKey::new(tags, min_lamport + (i as u64), timestamp);
-                (key, payload)
+        let (min_lamport, min_offset) = stream
+            .locked(|| -> anyhow::Result<(u64, OffsetOrMin)> {
+                let last_lamport = self.lock().index_store.increase_lamport(n)?;
+                let min_lamport = last_lamport - (n as u64) + 1;
+                let kvs = events
+                    .into_iter()
+                    .enumerate()
+                    .map(move |(i, (tags, payload))| {
+                        let key = AxKey::new(tags, min_lamport + (i as u64), timestamp);
+                        (key, payload)
+                    })
+                    .collect::<Vec<_>>();
+                tracing::debug!("publishing {} events on stream {}", kvs.len(), stream_nr);
+                let mut min_offset = OffsetOrMin::MIN;
+                let _ = self.transform_stream(stream_nr, &stream, |txn, tree| {
+                    min_offset = min_offset.max(tree.offset());
+                    txn.extend_unpacked(tree, kvs)
+                })?;
+                Ok((min_lamport, min_offset))
             })
-            .collect::<Vec<_>>();
-        tracing::debug!("publishing {} events on stream {}", kvs.len(), stream_nr);
-        let mut min_offset = OffsetOrMin::MIN;
-        let _ = self.transform_stream(stream_nr, |txn, tree| {
-            min_offset = min_offset.max(tree.offset());
-            txn.extend_unpacked(tree, kvs)
-        })?;
-        drop(guard);
+            .await?;
 
         // We start iteration with 0 below, so this is effectively the offset of the first event.
         let starting_offset = Offset::from_offset_or_min(min_offset)

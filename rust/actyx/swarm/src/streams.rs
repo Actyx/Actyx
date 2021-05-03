@@ -74,8 +74,12 @@ impl OwnStream {
         &self.forest
     }
 
-    pub fn sequencer(&self) -> &tokio::sync::Mutex<()> {
-        &self.sequencer
+    /// Acquire an async lock to modify this stream
+    pub async fn locked<T>(&self, f: impl FnOnce() -> T) -> T {
+        let guard = self.sequencer.lock().await;
+        let result = f();
+        drop(guard);
+        result
     }
 
     pub fn root(&self) -> Option<Cid> {

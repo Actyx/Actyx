@@ -28,11 +28,16 @@ async fn retain_events_after(
     stream_nr: StreamNr,
     emit_after: Timestamp,
 ) -> anyhow::Result<Option<Link>> {
-    store.transform_stream(stream_nr, |txn, tree| {
-        let query = TimeQuery::from(emit_after..);
-        tracing::debug!("Prune events on {}; retain {:?}", stream_nr, query);
-        txn.retain(tree, &query)
-    })
+    let stream = store.get_or_create_own_stream(stream_nr);
+    stream
+        .locked(|| {
+            store.transform_stream(stream_nr, &stream, |txn, tree| {
+                let query = TimeQuery::from(emit_after..);
+                tracing::debug!("Prune events on {}; retain {:?}", stream_nr, query);
+                txn.retain(tree, &query)
+            })
+        })
+        .await
 }
 
 async fn retain_events_up_to(
@@ -82,15 +87,16 @@ async fn retain_events_up_to(
 
     if emit_from > 0u64 {
         let stream = store.get_or_create_own_stream(stream_nr);
-        let guard = stream.sequencer().lock().await;
-        let result = store.transform_stream(stream_nr, |txn, tree| {
-            // lower bound is inclusive, so increment
-            let query = OffsetQuery::from(emit_from..);
-            tracing::debug!("Prune events on {}; retain {:?}", stream_nr, query);
-            txn.retain(tree, &query)
-        });
-        drop(guard);
-        result
+        // lower bound is inclusive, so increment
+        let query = OffsetQuery::from(emit_from..);
+        stream
+            .locked(|| {
+                store.transform_stream(stream_nr, &stream, |txn, tree| {
+                    tracing::debug!("Prune events on {}; retain {:?}", stream_nr, query);
+                    txn.retain(tree, &query)
+                })
+            })
+            .await
     } else {
         // No need to update the tree.
         // (Returned digest is not evaluated anyway)
@@ -113,21 +119,22 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
                 match cfg {
                     RetainConfig::Events(keep) => {
                         let stream = store.get_or_create_own_stream(*stream_nr);
-                        let guard = stream.sequencer().lock();
-                        let result = store.transform_stream(*stream_nr, |txn, tree| {
-                            let max = tree.count();
-                            let lower_bound = max.saturating_sub(*keep);
-                            if lower_bound > 0 {
-                                let query = OffsetQuery::from(lower_bound..);
-                                tracing::debug!("Ephemeral events on {}; retain {:?}", stream_nr, query);
-                                txn.retain(tree, &query)
-                            } else {
-                                // No need to update the tree.
-                                Ok(tree.clone())
-                            }
-                        });
-                        drop(guard);
-                        result
+                        stream
+                            .locked(|| {
+                                store.transform_stream(*stream_nr, &stream, |txn, tree| {
+                                    let max = tree.count();
+                                    let lower_bound = max.saturating_sub(*keep);
+                                    if lower_bound > 0 {
+                                        let query = OffsetQuery::from(lower_bound..);
+                                        tracing::debug!("Ephemeral events on {}; retain {:?}", stream_nr, query);
+                                        txn.retain(tree, &query)
+                                    } else {
+                                        // No need to update the tree.
+                                        Ok(tree.clone())
+                                    }
+                                })
+                            })
+                            .await
                     }
                     RetainConfig::Age(duration) => {
                         let emit_after: Timestamp = SystemTime::now()

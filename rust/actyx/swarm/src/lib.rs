@@ -632,15 +632,16 @@ impl BanyanStore {
     pub async fn append(&self, stream_nr: StreamNr, events: Vec<(TagSet, Event)>) -> Result<Option<Link>> {
         tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
         let stream = self.get_or_create_own_stream(stream_nr);
-        let guard = stream.sequencer().lock().await;
-        let lamport = self.lock().increment_lamport()?;
-        let timestamp = Timestamp::now();
-        let events = events
-            .into_iter()
-            .map(move |(tags, event)| (Key::new(tags, lamport, timestamp), event));
-        let result = self.transform_stream(stream_nr, |txn, tree| txn.extend_unpacked(tree, events));
-        drop(guard);
-        result
+        stream
+            .locked(|| {
+                let lamport = self.lock().increment_lamport()?;
+                let timestamp = Timestamp::now();
+                let events = events
+                    .into_iter()
+                    .map(move |(tags, event)| (Key::new(tags, lamport, timestamp), event));
+                self.transform_stream(stream_nr, &stream, |txn, tree| txn.extend_unpacked(tree, events))
+            })
+            .await
     }
 
     /// Returns a [`Stream`] of known [`StreamId`].
@@ -708,9 +709,9 @@ impl BanyanStore {
     fn transform_stream(
         &self,
         stream_nr: StreamNr,
+        stream: &OwnStream,
         f: impl FnOnce(&Transaction, &Tree) -> Result<Tree> + Send,
     ) -> Result<Option<Link>> {
-        let stream = self.get_or_create_own_stream(stream_nr);
         let writer = self.data.forest.store().write()?;
         tracing::debug!("starting write transaction on stream {}", stream_nr);
         let txn = Transaction::new(stream.forest().clone(), writer);
@@ -770,10 +771,9 @@ impl BanyanStore {
     async fn pack(&self, stream_nr: StreamNr) -> Result<Option<Link>> {
         tracing::debug!("packing stream {}", stream_nr);
         let stream = self.get_or_create_own_stream(stream_nr);
-        let guard = stream.sequencer().lock().await;
-        let result = self.transform_stream(stream_nr, |txn, tree| txn.pack(tree));
-        drop(guard);
-        result
+        stream
+            .locked(|| self.transform_stream(stream_nr, &stream, |txn, tree| txn.pack(tree)))
+            .await
     }
 
     /// attempt to sync one stream to a new root.
