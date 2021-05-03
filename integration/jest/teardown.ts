@@ -8,12 +8,16 @@ const teardown = async (_config: Record<string, unknown>): Promise<void> => {
 
   process.stdout.write('****\n\nSHUTTING DOWN\n\n')
 
-  await deleteKey(axNodeSetup.ec2, axNodeSetup.key.keyName).catch(console.error)
+  if (typeof axNodeSetup.ec2 !== 'undefined' && typeof axNodeSetup.key !== 'undefined') {
+    await deleteKey(axNodeSetup.ec2, axNodeSetup.key.keyName).catch(console.error)
+  }
 
   if (axNodeSetup.settings.keepNodesRunning) {
     console.log('as per your request: NOT terminating instances')
-    console.log('private SSH key file:')
-    console.log(axNodeSetup.key.privateKey)
+    if (typeof axNodeSetup.key !== 'undefined') {
+      console.log('private SSH key file:')
+      console.log(axNodeSetup.key.privateKey)
+    }
     console.log('Node list:')
     for (const n of axNodeSetup.nodes) {
       console.log(`    ${n.name} (${printTarget(n.target)})`)

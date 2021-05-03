@@ -98,6 +98,9 @@ export const createNode = async (host: HostConfig): Promise<ActyxNode | undefine
   const { prepare, name: hostname } = host
   switch (prepare.type) {
     case 'create-aws-ec2': {
+      if (typeof key === 'undefined' || typeof ec2 === 'undefined') {
+        throw 'No AWS EC2 Keypair was created. Are you authenticated with AWS?'
+      }
       if (host.install === 'windows') {
         const pubKey = readFileSync(key.publicKeyPath)
         const enableSshScript = makeWindowsInstallScript(pubKey.toString('utf8'))

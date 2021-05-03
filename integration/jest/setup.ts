@@ -24,8 +24,8 @@ export type LogEntry = {
 
 export type NodeSetup = {
   nodes: ActyxNode[]
-  ec2: EC2
-  key: AwsKey
+  ec2?: EC2
+  key?: AwsKey
   settings: Settings
   gitHash: string
   // Unique identifier for this particular run. This is used to group all logs
@@ -230,7 +230,16 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   // so we get the (partial) object’s reference, construct a fully type-checked NodeSetup, and
   // then make the global.axNodeSetup complete by copying the type-checked properties into it.
   const axNodeSetup = (<MyGlobal>global).axNodeSetup
-  const ec2 = new EC2({ region: 'eu-central-1' })
+  let ec2: EC2 | undefined = undefined
+  let key: AwsKey | undefined = undefined
+  let runIdentifier = 'local-run'
+  try {
+    ec2 = new EC2({ region: 'eu-central-1' })
+    key = await createKey(config, ec2)
+    runIdentifier = key.keyName
+  } catch (e) {
+    console.error('skipping aws setup due to ' + e)
+  }
   // Overwrite config from env vars
   const keepNodesRunning = config.settings.keepNodesRunning || process.env['AX_DEBUG'] !== undefined
   const gitHash = await getGitHash(config.settings)
@@ -239,7 +248,6 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   } catch (e) {
     //ignore
   }
-  const key = await createKey(config, ec2)
   const axNodeSetupObject: NodeSetup = {
     ec2,
     key,
@@ -254,13 +262,15 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
       gitHash: gitHash === (await currentHead()) ? null : gitHash,
     },
     gitHash,
-    runIdentifier: key.keyName,
+    runIdentifier,
   }
   Object.assign(axNodeSetup, axNodeSetupObject)
 
   process.on('SIGINT', () => {
     axNodeSetup.nodes.forEach((node) => node._private.shutdown())
-    deleteKey(ec2, axNodeSetup.key.keyName)
+    if (typeof axNodeSetup.key !== 'undefined' && typeof ec2 !== 'undefined') {
+      deleteKey(ec2, axNodeSetup.key.keyName)
+    }
   })
 
   /*
