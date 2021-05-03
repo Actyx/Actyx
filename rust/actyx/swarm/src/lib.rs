@@ -33,7 +33,7 @@ use crate::gossip::Gossip;
 use crate::prune::RetainConfig;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
-use crate::streams::{OwnStreamInner, ReplicatedStreamInner};
+use crate::streams::{OwnStream, ReplicatedStreamInner};
 use actyxos_sdk::{
     LamportTimestamp, NodeId, Offset, OffsetMap, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp,
 };
@@ -202,7 +202,7 @@ struct BanyanStoreState {
     index_store: SqliteIndexStore,
 
     /// our own streams
-    own_streams: BTreeMap<StreamNr, Arc<OwnStreamInner>>,
+    own_streams: BTreeMap<StreamNr, Arc<OwnStream>>,
 
     /// all remote nodes we know of
     remote_nodes: BTreeMap<NodeId, RemoteNodeInner>,
@@ -272,7 +272,7 @@ impl<'a> BanyanStoreGuard<'a> {
         self.index_store.received_lamport(lamport)
     }
 
-    fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Arc<OwnStreamInner> {
+    fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Arc<OwnStream> {
         self.own_streams.get(&stream_nr).cloned().unwrap_or_else(|| {
             tracing::debug!("creating new own stream {}", stream_nr);
             let forest = self.data.forest.clone();
@@ -281,7 +281,7 @@ impl<'a> BanyanStoreGuard<'a> {
             let _ = self.index_store.add_stream(stream_id);
             tracing::debug!("publish new stream_id {}", stream_id);
             self.publish_new_stream_id(stream_id);
-            let stream = Arc::new(OwnStreamInner::new(forest));
+            let stream = Arc::new(OwnStream::new(forest));
             self.own_streams.insert(stream_nr, stream.clone());
             stream
         })
@@ -631,13 +631,16 @@ impl BanyanStore {
     /// Append events to a stream, publishing the new data.
     pub async fn append(&self, stream_nr: StreamNr, events: Vec<(TagSet, Event)>) -> Result<Option<Link>> {
         tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
+        let stream = self.get_or_create_own_stream(stream_nr);
+        let guard = stream.sequencer().lock().await;
         let lamport = self.lock().increment_lamport()?;
         let timestamp = Timestamp::now();
         let events = events
             .into_iter()
             .map(move |(tags, event)| (Key::new(tags, lamport, timestamp), event));
-        self.transform_stream(stream_nr, |txn, tree| txn.extend_unpacked(tree, events))
-            .await
+        let result = self.transform_stream(stream_nr, |txn, tree| txn.extend_unpacked(tree, events));
+        drop(guard);
+        result
     }
 
     /// Returns a [`Stream`] of known [`StreamId`].
@@ -694,7 +697,7 @@ impl BanyanStore {
             .await
     }
 
-    fn get_or_create_own_stream(&self, stream_nr: StreamNr) -> Arc<OwnStreamInner> {
+    fn get_or_create_own_stream(&self, stream_nr: StreamNr) -> Arc<OwnStream> {
         self.lock().get_or_create_own_stream(stream_nr)
     }
 
@@ -706,42 +709,37 @@ impl BanyanStore {
         &self,
         stream_nr: StreamNr,
         f: impl FnOnce(&Transaction, &Tree) -> Result<Tree> + Send,
-    ) -> impl Future<Output = Result<Option<Link>>> {
-        let this = self.clone();
-        async move {
-            let stream = this.get_or_create_own_stream(stream_nr);
-            let lock = stream.sequencer().lock().await;
-            let writer = this.data.forest.store().write()?;
-            tracing::debug!("starting write transaction on stream {}", stream_nr);
-            let txn = Transaction::new(stream.forest().clone(), writer);
-            let curr = stream.latest();
-            let tree = f(&txn, &curr)?;
-            // root of the new tree
-            let root: Option<Link> = tree.link();
-            // check for change
-            if root != curr.link() {
-                let cid: Option<Cid> = root.map(Into::into);
-                let stream_id = this.node_id().stream(stream_nr);
-                tracing::debug!(
-                    "updating alias for stream {} to {:?}",
-                    stream_nr,
-                    cid.map(|x: Cid| x.to_string())
-                );
-                // update the permanent alias
-                this.ipfs().alias(StreamAlias::from(stream_id), cid.as_ref())?;
-                // update present for stream
-                this.update_present(stream_id, tree.offset());
-                // update latest
-                tracing::debug!("set_latest! {}", tree);
-                stream.set_latest(tree);
-                let blocks = txn.into_writer().into_written();
-                // publish new blocks and root
-                this.data.gossip.publish(stream_nr, root.expect("not None"), blocks)?;
-            }
-            tracing::debug!("ended write transaction on stream {}", stream_nr);
-            drop(lock);
-            Ok(root)
+    ) -> Result<Option<Link>> {
+        let stream = self.get_or_create_own_stream(stream_nr);
+        let writer = self.data.forest.store().write()?;
+        tracing::debug!("starting write transaction on stream {}", stream_nr);
+        let txn = Transaction::new(stream.forest().clone(), writer);
+        let curr = stream.latest();
+        let tree = f(&txn, &curr)?;
+        // root of the new tree
+        let root: Option<Link> = tree.link();
+        // check for change
+        if root != curr.link() {
+            let cid: Option<Cid> = root.map(Into::into);
+            let stream_id = self.node_id().stream(stream_nr);
+            tracing::debug!(
+                "updating alias for stream {} to {:?}",
+                stream_nr,
+                cid.map(|x: Cid| x.to_string())
+            );
+            // update the permanent alias
+            self.ipfs().alias(StreamAlias::from(stream_id), cid.as_ref())?;
+            // update present for stream
+            self.update_present(stream_id, tree.offset());
+            // update latest
+            tracing::debug!("set_latest! {}", tree);
+            stream.set_latest(tree);
+            let blocks = txn.into_writer().into_written();
+            // publish new blocks and root
+            self.data.gossip.publish(stream_nr, root.expect("not None"), blocks)?;
         }
+        tracing::debug!("ended write transaction on stream {}", stream_nr);
+        Ok(root)
     }
 
     fn update_root(&self, stream_id: StreamId, root: Link) {
@@ -769,9 +767,13 @@ impl BanyanStore {
         Ok(())
     }
 
-    fn pack(&self, stream_nr: StreamNr) -> impl Future<Output = Result<Option<Link>>> {
+    async fn pack(&self, stream_nr: StreamNr) -> Result<Option<Link>> {
         tracing::debug!("packing stream {}", stream_nr);
-        self.transform_stream(stream_nr, |txn, tree| txn.pack(tree))
+        let stream = self.get_or_create_own_stream(stream_nr);
+        let guard = stream.sequencer().lock().await;
+        let result = self.transform_stream(stream_nr, |txn, tree| txn.pack(tree));
+        drop(guard);
+        result
     }
 
     /// attempt to sync one stream to a new root.

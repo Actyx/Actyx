@@ -55,13 +55,13 @@ impl TryFrom<StreamAlias> for StreamId {
 
 /// Data for a single own stream, mutable state + constant data
 #[derive(Debug)]
-pub struct OwnStreamInner {
+pub struct OwnStream {
     forest: Forest,
     sequencer: tokio::sync::Mutex<()>,
     tree: Variable<Tree>,
 }
 
-impl OwnStreamInner {
+impl OwnStream {
     pub fn new(forest: Forest) -> Self {
         Self {
             forest,
