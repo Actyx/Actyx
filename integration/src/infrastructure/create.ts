@@ -9,7 +9,7 @@ import { mkNodeLocalDocker, mkNodeLocalProcess } from './local'
 import { LogEntry, MyGlobal } from '../../jest/setup'
 import fs, { readFileSync } from 'fs'
 import path from 'path'
-import { makeWindowsSsh, mkWindowsSsh } from './windows'
+import { makeWindowsInstallScript, mkWindowsSsh } from './windows'
 import { mkExecute } from '.'
 
 const createAwsInstance = async (
@@ -100,7 +100,7 @@ export const createNode = async (host: HostConfig): Promise<ActyxOSNode | undefi
     case 'create-aws-ec2': {
       if (host.install === 'windows') {
         const pubKey = readFileSync(key.publicKeyPath)
-        const enableSshScript = makeWindowsSsh(pubKey.toString('utf8'))
+        const enableSshScript = makeWindowsInstallScript(pubKey.toString('utf8'))
         const userData = Buffer.from(enableSshScript).toString('base64')
         target = await createAwsInstance(ec2, prepare, key, hostname, runIdentifier, userData)
       } else {

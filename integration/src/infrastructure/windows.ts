@@ -69,7 +69,7 @@ function startActyxOS(
 // Create a PowerShell script which enables OpenSSH and adds `pubKey` to
 // `authorized_keys`
 // https://www.mirantis.com/blog/today-i-learned-how-to-enable-ssh-with-keypair-login-on-windows-server-2019/
-export function makeWindowsSsh(pubKey: string): string {
+export function makeWindowsInstallScript(pubKey: string): string {
   return String.raw`<powershell>
           Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
           Set-Service -Name sshd -StartupType ‘Automatic’
