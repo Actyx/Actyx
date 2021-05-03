@@ -3,6 +3,7 @@ import { Client, DefaultClientOpts } from '@actyx/os-sdk'
 import { EC2 } from 'aws-sdk'
 import NodeEnvironment from 'jest-environment-node'
 import { CLI } from '../src/cli'
+import { mkExecute } from '../src/infrastructure'
 import { MyGlobal } from './setup'
 
 class MyEnvironment extends NodeEnvironment {
@@ -30,6 +31,7 @@ class MyEnvironment extends NodeEnvironment {
         node._private.axBinaryPath,
         node.ax.identityPath,
       )
+      node.target.execute = mkExecute(node.target.os, node.target.kind)
 
       const opts = DefaultClientOpts()
       opts.Endpoints.EventService.BaseUrl = node._private.httpApiOrigin
