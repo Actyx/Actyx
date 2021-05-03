@@ -69,7 +69,7 @@ describe('event service', () => {
 
     describe('user gets ERR_NOT_ACCEPTABLE', () => {
       const mk = (method: 'post' | 'get') =>
-        expectErr('ERR_METHOD_NOT_ALLOWED', {
+        expectErr('ERR_NOT_ACCEPTABLE', {
           method,
           headers: {
             Accept: 'invalid',
