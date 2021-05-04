@@ -58,7 +58,7 @@ use libp2p::{
     ping::PingConfig,
 };
 use maplit::btreemap;
-use parking_lot::{Mutex, MutexGuard};
+use parking_lot::Mutex;
 use std::{
     collections::{BTreeMap, BTreeSet, VecDeque},
     convert::{TryFrom, TryInto},
@@ -71,7 +71,10 @@ use std::{
 };
 use streams::*;
 use trees::axtrees::{AxKey, AxTrees, Sha256Digest};
-use util::formats::NodeErrorContext;
+use util::{
+    formats::NodeErrorContext,
+    reentrant_safe_mutex::{ReentrantSafeMutex, ReentrantSafeMutexGuard},
+};
 
 #[allow(clippy::upper_case_acronyms)]
 type TT = AxTrees;
@@ -167,7 +170,7 @@ impl PartialEq for SwarmConfig {
 #[derive(Clone)]
 pub struct BanyanStore {
     data: Arc<BanyanStoreData>,
-    state: Arc<Mutex<BanyanStoreState>>,
+    state: Arc<ReentrantSafeMutex<BanyanStoreState>>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -221,11 +224,11 @@ impl Drop for BanyanStoreState {
 
 struct BanyanStoreGuard<'a> {
     /// the guard for the mutex - this implies that we have write access to the state
-    guard: MutexGuard<'a, BanyanStoreState>,
+    guard: ReentrantSafeMutexGuard<'a, BanyanStoreState>,
     /// access to the immutable part of the store
     data: Arc<BanyanStoreData>,
     /// access to the state, here be dragons!
-    state: Arc<Mutex<BanyanStoreState>>,
+    state: Arc<ReentrantSafeMutex<BanyanStoreState>>,
 }
 
 impl<'a> Deref for BanyanStoreGuard<'a> {
@@ -490,7 +493,7 @@ impl BanyanStore {
                 lamport: Default::default(),
                 offsets: Default::default(),
             }),
-            state: Arc::new(Mutex::new(BanyanStoreState {
+            state: Arc::new(ReentrantSafeMutex::new(BanyanStoreState {
                 index_store,
                 own_streams: Default::default(),
                 remote_nodes: Default::default(),

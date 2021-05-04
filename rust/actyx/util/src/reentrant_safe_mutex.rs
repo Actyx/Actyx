@@ -96,6 +96,7 @@ mod tests {
         drop(g2);
     }
 
+    /// Hammer the mutex with small ops from several threads to make sure it does the job.
     #[test]
     fn works_as_a_mutex() {
         let m = Arc::new(ReentrantSafeMutex::new(0));
