@@ -52,7 +52,11 @@ impl<'a, T> Drop for ReentrantSafeMutexGuard<'a, T> {
     fn drop(&mut self) {
         // need to first let go of the inner guard, otherwise deadlock!
         self.guard = None;
-        *self.thread.lock() = None
+        let mut thread = self.thread.lock();
+        // no not clear the thread if it is not ourselves
+        if *thread == Some(std::thread::current().id()) {
+            *thread = None;
+        }
     }
 }
 
