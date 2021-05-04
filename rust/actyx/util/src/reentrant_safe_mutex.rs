@@ -1,6 +1,7 @@
 //! A mutex that panics instead of deadlocking when used in a reentrant way
-use parking_lot::{Mutex, MutexGuard};
+use parking_lot::{Condvar, Mutex};
 use std::{
+    cell::UnsafeCell,
     ops::{Deref, DerefMut},
     thread::ThreadId,
 };
@@ -8,55 +9,49 @@ use std::{
 /// A mutex that safely panics on reentrant use instead of deadlocking
 ///
 /// Other than that, it behaves exactly like a parking_lot mutex.
-pub struct ReentrantSafeMutex<T> {
-    /// The thread that currently holds the main mutex
-    ///
-    /// This can be replaced by an atomic once https://github.com/rust-lang/rust/issues/67939 is solved
+pub struct ReentrantSafeMutex<T: ?Sized> {
     thread: Mutex<Option<ThreadId>>,
-
-    /// the inner mutex
-    inner: Mutex<T>,
+    condvar: Condvar,
+    value: UnsafeCell<T>,
 }
 
 pub struct ReentrantSafeMutexGuard<'a, T> {
-    /// reference to the thread, so we can clear it.
-    thread: &'a Mutex<Option<ThreadId>>,
-    /// the guard itself, wrapped in an option so we can control drop order. Yuck!
-    guard: Option<MutexGuard<'a, T>>,
+    mutex: &'a ReentrantSafeMutex<T>,
 }
 
 impl<T> ReentrantSafeMutex<T> {
     pub fn new(value: T) -> Self {
         Self {
             thread: Mutex::new(None),
-            inner: Mutex::new(value),
+            condvar: Condvar::new(),
+            value: UnsafeCell::new(value),
         }
     }
 
     pub fn lock(&self) -> ReentrantSafeMutexGuard<'_, T> {
         let current_thread_id = std::thread::current().id();
         let mut thread = self.thread.lock();
-        if *thread == Some(current_thread_id) {
-            panic!("Reentrant locking attempt!")
+        while let Some(id) = *thread {
+            assert!(id != current_thread_id, "Reentrant locking attempt");
+            self.condvar.wait(&mut thread);
         }
-        let guard = Some(self.inner.lock());
+        // the only way to get here is that either thread was None in the first place,
+        // or that we had to wait and were woken up by the notify_one that is called in the
+        // Drop instance of another guard. In both cases *thread is None.
+        //
+        // if we get a spurious wakeup of the condvar, this assertion might fail.
+        // https://docs.rs/parking_lot/0.11.1/parking_lot/struct.Condvar.html#differences-from-the-standard-library-condvar
+        debug_assert!(*thread == None);
         *thread = Some(current_thread_id);
-        ReentrantSafeMutexGuard {
-            thread: &self.thread,
-            guard,
-        }
+        ReentrantSafeMutexGuard { mutex: &self }
     }
 }
 
 impl<'a, T> Drop for ReentrantSafeMutexGuard<'a, T> {
     fn drop(&mut self) {
-        // need to first let go of the inner guard, otherwise deadlock!
-        self.guard = None;
-        let mut thread = self.thread.lock();
-        // no not clear the thread if it is not ourselves
-        if *thread == Some(std::thread::current().id()) {
-            *thread = None;
-        }
+        let mut thread = self.mutex.thread.lock();
+        *thread = None;
+        self.mutex.condvar.notify_one();
     }
 }
 
@@ -64,15 +59,18 @@ impl<'a, T> Deref for ReentrantSafeMutexGuard<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
-        self.guard.as_ref().unwrap().deref()
+        unsafe { &*self.mutex.value.get() }
     }
 }
 
 impl<'a, T> DerefMut for ReentrantSafeMutexGuard<'a, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.guard.as_mut().unwrap().deref_mut()
+        unsafe { &mut *self.mutex.value.get() }
     }
 }
+
+unsafe impl<T: ?Sized + Send> Send for ReentrantSafeMutex<T> {}
+unsafe impl<T: ?Sized + Send> Sync for ReentrantSafeMutex<T> {}
 
 #[cfg(test)]
 mod tests {
