@@ -78,7 +78,7 @@ export const mkNodeLocalProcess = async (
       axBinaryPath,
       axHost: `localhost:${port4458}`,
       httpApiOrigin,
-      apiPond: `ws://localhost:${port4454}/api/v2/events?token=ok`,
+      apiPond: `ws://localhost:${port4454}/api/v2/events`,
       apiSwarmPort: port4001,
     },
   }
@@ -149,7 +149,7 @@ export const mkNodeLocalDocker = async (
         axBinaryPath,
         axHost,
         httpApiOrigin,
-        apiPond: `ws://localhost:${port(4454)}/api/v2/events?token=ok`,
+        apiPond: `ws://localhost:${port(4454)}/api/v2/events`,
         apiSwarmPort: 4001,
       },
     }

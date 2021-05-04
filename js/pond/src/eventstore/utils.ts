@@ -4,12 +4,13 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
+import fetch from 'node-fetch'
 import { isNode } from '../util'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import { Event, Events, WsStoreConfig } from './types'
 
 const defaultConfig: WsStoreConfig = {
-  url: (isNode && process.env.AX_STORE_URI) || 'ws://localhost:4454/api/v2/events?token=ok',
+  url: (isNode && process.env.AX_STORE_URI) || 'ws://localhost:4454/api/v2/events',
 }
 
 export const extendDefaultWsStoreConfig = (overrides: Partial<WsStoreConfig> = {}) => ({
@@ -17,10 +18,38 @@ export const extendDefaultWsStoreConfig = (overrides: Partial<WsStoreConfig> = {
   ...overrides,
 })
 
-export const mkMultiplexer = (config: Partial<WsStoreConfig> = {}): MultiplexedWebsocket => {
+const getToken = async (authUrl: string): Promise<string> => {
+  const res = await fetch(authUrl, {
+    method: 'post',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      appId: 'com.example.dev-Pond',
+      displayName: 'Pond dev',
+      version: '1.0.0',
+    }),
+  })
+
+  const jsonContent = await res.json()
+  return (jsonContent as { token: string }).token
+}
+
+export const mkMultiplexer = async (
+  config: Partial<WsStoreConfig> = {},
+): Promise<MultiplexedWebsocket> => {
   const c: WsStoreConfig = extendDefaultWsStoreConfig(config)
 
-  return new MultiplexedWebsocket(c)
+  // FIXME obviously...
+  const authUrl = c.url.replace('ws://', 'http://').replace('/events', '/authenticate')
+
+  const cAdjusted = {
+    ...c,
+    url: c.url + '?' + (await getToken(authUrl)),
+  }
+
+  return new MultiplexedWebsocket(cAdjusted)
 }
 
 /**

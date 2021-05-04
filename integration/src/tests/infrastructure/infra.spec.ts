@@ -1,10 +1,10 @@
 import { Event, EventDraft } from '@actyx/os-sdk'
-import { allNodeNames, runOnAll, runOnEach } from '../../infrastructure/hosts'
-import { ConnectivityStatus, Pond } from '@actyx/pond'
+import { Pond } from '@actyx/pond'
 import * as PondV1 from 'pondV1'
 import { MultiplexedWebsocket } from 'pondV1/lib/eventstore/multiplexedWebsocket'
+import { allNodeNames, runOnAll, runOnEach } from '../../infrastructure/hosts'
 
-describe.skip('the Infrastructure', () => {
+describe('the Infrastructure', () => {
   test('must create global nodes pool', async () => {
     const status = await runOnEach([{}], (node) => node.ax.nodes.ls())
     expect(status).toMatchObject([
@@ -50,7 +50,7 @@ describe.skip('the Infrastructure', () => {
     expect(settings).toHaveLength(1)
   })
 
-  test('must allow event communication', async () => {
+  test.skip('must allow event communication', async () => {
     const events = await runOnEach([{}, {}], async (node) => {
       await node.httpApiClient.eventService.publishPromise({
         eventDrafts: [EventDraft.make('the Infrastructure', node.name, 42)],
@@ -96,17 +96,9 @@ describe.skip('the Infrastructure', () => {
   test('must test Pond v2', async () => {
     const result = await runOnAll([{}], async ([node]) => {
       const pond = await Pond.of({ url: node._private.apiPond }, {})
-      return new Promise<ConnectivityStatus>((res) => {
-        const cancel = pond.getNodeConnectivity({
-          callback: (conn) => {
-            cancel()
-            res(conn)
-          },
-        })
-      })
+      return pond.info().nodeId
     })
-    // cannot assert connected or not connected since we don’t know when this case is run
-    expect(typeof result.status).toBe('string')
+    expect(typeof result).toBe('string')
   })
 })
 

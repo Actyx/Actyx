@@ -1,6 +1,7 @@
 use actyxos_sdk::{types::Binary, AppId};
 use crypto::SignedMessage;
 use std::convert::TryInto;
+use tracing::{debug, info};
 use warp::{reject, Filter, Rejection};
 
 use crate::util::{NodeInfo, Token};
@@ -74,10 +75,16 @@ pub(crate) fn authenticate(
     token.and_then(move |t: Token| {
         let auth_args = auth_args.clone();
         async move {
-            verify(auth_args, t)
+            let res = verify(auth_args, t)
                 .map(|bearer_token| bearer_token.app_id)
                 // TODO: add necessary checks for the flow from the PRD
-                .map_err(warp::reject::custom)
+                .map_err(warp::reject::custom);
+            if res.is_err() {
+                info!("Auth failed: {:?}", res);
+            } else {
+                debug!("Auth succeeded: {:?}", res);
+            }
+            res
         }
     })
 }

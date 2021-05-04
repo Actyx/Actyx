@@ -5,7 +5,6 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
 import {
   CancelSubscription,
   Metadata,
@@ -707,8 +706,8 @@ const createServices = async (multiplexer: MultiplexedWebsocket): Promise<Servic
 }
 
 const mkPond = async (connectionOpts: Partial<WsStoreConfig>, opts: PondOptions): Promise<Pond> => {
-  const multiplexer = mkMultiplexer(extendDefaultWsStoreConfig(connectionOpts))
-  const services = await createServices(multiplexer || mkMultiplexer())
+  const multiplexer = await mkMultiplexer(extendDefaultWsStoreConfig(connectionOpts))
+  const services = await createServices(multiplexer)
   return pondFromServices(services, opts)
 }
 

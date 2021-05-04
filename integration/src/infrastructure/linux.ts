@@ -248,7 +248,7 @@ export const forwardPortsAndBuildClients = async (
   opts.Endpoints.EventService.BaseUrl = httpApiOrigin
   const httpApiClient = Client(opts)
 
-  const apiPond = `ws://localhost:${port4454}/store_api`
+  const apiPond = `ws://localhost:${port4454}/api/v2/events`
 
   const shutdown = async () => {
     console.log('node %s shutting down', nodeName)
