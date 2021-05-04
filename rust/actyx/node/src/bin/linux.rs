@@ -26,7 +26,7 @@ fn main() -> anyhow::Result<()> {
     } = Opts::from_args();
 
     if version {
-        eprintln!("actyx-linux {}", NodeVersion::get());
+        println!("actyx-linux {}", NodeVersion::get());
     } else {
         let bind_to: BindTo = bind_options.try_into()?;
         let working_dir = maybe_working_dir.unwrap_or_else(|| std::env::current_dir().unwrap().join("actyx-data"));

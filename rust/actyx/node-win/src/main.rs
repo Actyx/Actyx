@@ -98,7 +98,9 @@ mod win {
                 trayicon_app.add_menu_separator()?;
             }
 
-            trayicon_app.add_menu_item(NodeVersion::get().to_string().as_str(), |_| Ok::<_, systray::Error>(()))?;
+            trayicon_app.add_menu_item(format!("actyx {}", NodeVersion::get()).as_str(), |_| {
+                Ok::<_, systray::Error>(())
+            })?;
 
             trayicon_app.add_menu_item("Exit", |window| {
                 // This will result in `app.wait_for_message` returning at the
