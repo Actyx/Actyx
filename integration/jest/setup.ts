@@ -230,6 +230,14 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   // so we get the (partial) object’s reference, construct a fully type-checked NodeSetup, and
   // then make the global.axNodeSetup complete by copying the type-checked properties into it.
   const axNodeSetup = (<MyGlobal>global).axNodeSetup
+  // Overwrite config from env vars
+  const keepNodesRunning = config.settings.keepNodesRunning || process.env['AX_DEBUG'] !== undefined
+  const gitHash = await getGitHash(config.settings)
+  try {
+    await fs.mkdir(config.settings.tempDir)
+  } catch (e) {
+    //ignore
+  }
   let ec2: EC2 | undefined = undefined
   let key: AwsKey | undefined = undefined
   let runIdentifier = 'local-run'
@@ -239,14 +247,6 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
     runIdentifier = key.keyName
   } catch (e) {
     console.error('skipping aws setup due to ' + e)
-  }
-  // Overwrite config from env vars
-  const keepNodesRunning = config.settings.keepNodesRunning || process.env['AX_DEBUG'] !== undefined
-  const gitHash = await getGitHash(config.settings)
-  try {
-    await fs.mkdir(config.settings.tempDir)
-  } catch (e) {
-    //ignore
   }
   const axNodeSetupObject: NodeSetup = {
     ec2,
