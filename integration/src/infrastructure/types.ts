@@ -6,6 +6,7 @@ export type Target = {
   os: OS
   arch: Arch
   kind: TargetKind
+  execute: (script: string) => Promise<{ exitCode: number; stdOut: string; stdErr: string }>
   _private: {
     cleanup: () => Promise<void>
   }

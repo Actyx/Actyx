@@ -1,23 +1,22 @@
-import { REQUEST_OPTIONS_SUBSCRIBE } from '../../httpClient'
-import { findEventsInStream } from '../../stream'
-import { getNodeId, mkStreamId, publishEvent, randomString } from '../../util'
+import { mkESFromTrial, SubscribeResponse } from '../../http-client'
+import { run } from '../../util'
+import { integrationTag, publishRandom } from './utils.support.test'
 
-const TIMEOUT_MS = 3000
-
-describe.skip('event service', () => {
+describe('event service', () => {
   describe('subscribe to event streams', () => {
-    it('should publish event and find it an event stream', async () => {
-      const FIND_VALUE = randomString()
+    it('should publish event and find it an event stream', () =>
+      run(async (x) => {
+        const es = await mkESFromTrial(x)
+        const pub1 = await publishRandom(es)
 
-      const nodeId = await getNodeId()
-      await publishEvent(FIND_VALUE)
-      const streamId = mkStreamId(nodeId)
-      const postData = JSON.stringify({
-        offsets: { [streamId]: 0 },
-        where: "'integration' & 'test:1'",
-      })
+        const data: SubscribeResponse[] = []
+        await new Promise((resolve) => {
+          es.subscribe({ query: `FROM '${integrationTag}' & 'test:1'` }, (x) => data.push(x))
+          setTimeout(resolve, 500)
+        })
 
-      await findEventsInStream(REQUEST_OPTIONS_SUBSCRIBE, TIMEOUT_MS, FIND_VALUE, postData)
-    })
+        const ev = data.find((x) => x.lamport === pub1.lamport)
+        expect(ev).toMatchObject(pub1)
+      }))
   })
 })

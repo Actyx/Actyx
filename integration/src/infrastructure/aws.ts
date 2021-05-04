@@ -4,6 +4,7 @@ import execa from 'execa'
 import { promises as fs, createWriteStream } from 'fs'
 import { remove } from 'fs-extra'
 import path from 'path'
+import { mkExecute } from '.'
 import { MyGlobal } from '../../jest/setup'
 import { Arch, Config, CreateEC2 } from '../../jest/types'
 import { AwsKey, SshAble, Target, TargetKind } from './types'
@@ -138,7 +139,8 @@ export const instanceToTarget = (
     privateKey: key.privateKey,
   }
   const shutdown = () => terminateInstance(ec2, instance.InstanceId!)
-  return { os, arch, kind, _private: { cleanup: shutdown } }
+  const execute = mkExecute(os, kind)
+  return { os, arch, kind, execute, _private: { cleanup: shutdown } }
 }
 
 export const cleanUpInstances = async (ec2: EC2, cutoff: number): Promise<void> => {

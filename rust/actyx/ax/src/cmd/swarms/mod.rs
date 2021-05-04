@@ -6,10 +6,10 @@ use futures::Future;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-/// Manage ActyxOS swarms
+/// Manage swarms
 pub enum SwarmsOpts {
     #[structopt(name = "keygen")]
-    /// Generate a new ActyxOS swarm key.
+    /// Generate a new swarm key.
     Keygen(KeygenOpts),
 }
 

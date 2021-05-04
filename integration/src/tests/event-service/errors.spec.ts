@@ -1,96 +1,89 @@
-import { AxiosError } from 'axios'
-import { ErrorResponse } from '../../event-service-types'
+import { RequestInit } from 'node-fetch'
 import {
-  httpClient,
-  httpClientInvalidAccept,
-  httpClientInvalidToken,
-  httpClientNoHeaders,
-} from '../../httpClient'
+  mkEventsPath,
+  mkTrialHttpClient,
+  NODE_ID_SEG,
+  OFFSETS_SEG,
+  PUBLISH_SEG,
+  QUERY_SEG,
+  SUBSCRIBE_MONOTONIC_SEG,
+  SUBSCRIBE_SEG,
+} from '../../http-client'
+import { run } from '../../util'
 
-const postEndPoints = [['publish'], ['query'], ['subscribe_monotonic'], ['subscribe']]
-const getEndPoints = [['node_id'], ['offsets']]
+const postEndPoints = [[PUBLISH_SEG], [QUERY_SEG], [SUBSCRIBE_MONOTONIC_SEG], [SUBSCRIBE_SEG]]
+const getEndPoints = [[NODE_ID_SEG], [OFFSETS_SEG]]
 
-const allEndPoints = [...postEndPoints, ...getEndPoints]
+const expectErr = (errorCode: string, req: RequestInit) => async (segment: string) => {
+  const runTest = async (httpEndpoint: string) => {
+    const client = await mkTrialHttpClient(httpEndpoint)
 
-describe.skip('event service', () => {
+    const response = client.fetch(mkEventsPath(segment), req)
+
+    await expect(response).rejects.toEqual({
+      code: errorCode,
+      message: expect.any(String),
+    })
+  }
+
+  await run(runTest)
+}
+
+// TODO: move tests to dedicated endpoint tests and assert messages
+describe('event service', () => {
   describe('errors for endpoints', () => {
-    describe('user gets ERR_MALFORMED_REQUEST_SYNTAX', () => {
+    describe('user gets ERR_BAD_REQUEST', () => {
       it.each([...postEndPoints])(
         'should return error if body request is malformed for %p',
-        async (path) => {
-          await httpClient
-            .post(path, { 'malformed-body-key': 'malformed-body-value' })
-            .catch((error: AxiosError<ErrorResponse>) =>
-              expect(error).toMatchErrorMalformedRequestSytantax(),
-            )
-        },
-      )
-    })
-
-    describe('user gets ERR_MISSING_AUTH_HEADER', () => {
-      it.each([...allEndPoints])(
-        'should return error if Authorization header is missing for %p',
-        async (path) => {
-          await httpClientNoHeaders
-            .get(path)
-            .catch((error: AxiosError<ErrorResponse>) =>
-              expect(error).toMatchErrorMissingAuthHeader(),
-            )
-        },
+        expectErr('ERR_BAD_REQUEST', {
+          headers: {
+            Accept: 'application/json, application/x-ndjson',
+            'Content-Type': 'application/json',
+          },
+          method: 'post',
+          body: JSON.stringify({ 'malformed-body-key': 'malformed-body-value' }),
+        }),
       )
     })
 
     describe('user gets ERR_METHOD_NOT_ALLOWED', () => {
+      const mk = (method: 'post' | 'get') =>
+        expectErr('ERR_METHOD_NOT_ALLOWED', {
+          method,
+          headers: {
+            Accept: 'application/json, application/x-ndjson',
+            'Content-Type': 'application/json',
+          },
+        })
+
       it.each(getEndPoints)(
         'should return error if endpoint method is GET and instead user uses POST for %p',
-        async (path) => {
-          await httpClient
-            .post(path)
-            .catch((error: AxiosError<ErrorResponse>) =>
-              expect(error).toMatchErrorMethodNotAllowed(),
-            )
-        },
+        mk('post'),
       )
 
       it.each(postEndPoints)(
         'should return error if endpoint method is POST and instead user uses GET for %p',
-        async (path) => {
-          await httpClient
-            .get(path)
-            .catch((error: AxiosError<ErrorResponse>) =>
-              expect(error).toMatchErrorMethodNotAllowed(),
-            )
-        },
+        mk('get'),
       )
     })
 
     describe('user gets ERR_NOT_ACCEPTABLE', () => {
+      const mk = (method: 'post' | 'get') =>
+        expectErr('ERR_NOT_ACCEPTABLE', {
+          method,
+          headers: {
+            Accept: 'invalid',
+            'Content-Type': 'application/json',
+          },
+        })
+
       it.each([...getEndPoints])(
         'should return error if server cannot produce a response matching the list of acceptable values defined in the request for %p',
-        async (path) => {
-          await httpClientInvalidAccept
-            .get(path)
-            .catch((error: AxiosError<ErrorResponse>) => expect(error).toMatchErrorNotAcceptable())
-        },
+        mk('get'),
       )
       it.each([...postEndPoints])(
         'should return error if server cannot produce a response matching the list of acceptable values defined in the request for %p',
-        async (path) => {
-          await httpClientInvalidAccept
-            .post(path)
-            .catch((error: AxiosError<ErrorResponse>) => expect(error).toMatchErrorNotAcceptable())
-        },
-      )
-    })
-
-    describe('user gets ERR_TOKEN_INVALID', () => {
-      it.each([...allEndPoints])(
-        'should return error if user does not provide a valid bearer token for %p',
-        async (path) => {
-          await httpClientInvalidToken
-            .get(path)
-            .catch((error: AxiosError<ErrorResponse>) => expect(error).toMatchErrorTokenInvalid())
-        },
+        mk('post'),
       )
     })
   })

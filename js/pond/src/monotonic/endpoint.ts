@@ -102,6 +102,15 @@ export const eventsMonotonic = (
         const nextIsOlderThanLatest = eventKeyGreater(latest, nextKey)
 
         if (nextIsOlderThanLatest) {
+          log.submono.debug(
+            'started from',
+            fixedStart.from,
+            'got triggered by stream',
+            nextKey.stream,
+            'offset',
+            nextKey.offset,
+          )
+
           return Observable.from(
             snapshotStore
               .invalidateSnapshots(fishId.entityType, fishId.name, nextKey)

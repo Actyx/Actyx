@@ -14,7 +14,7 @@ use structopt::StructOpt;
 use unset::UnsetOpt;
 
 #[derive(StructOpt, Debug)]
-/// Manage ActyxOS node or app settings
+/// Manage node or app settings
 pub enum SettingsOpts {
     #[structopt(name = "set")]
     /// Configure settings of a node

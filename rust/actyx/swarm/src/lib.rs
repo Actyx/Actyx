@@ -597,7 +597,7 @@ impl BanyanStore {
             if let Some(cid) = self.ipfs().resolve(StreamAlias::from(stream_id))? {
                 let root = cid.try_into()?;
                 let tree = self.data.forest.load_tree(root)?;
-                self.update_present(stream_id, tree.offset())?;
+                self.update_present(stream_id, tree.offset());
                 if stream_id.node_id() == self.node_id() {
                     self.get_or_create_own_stream(stream_id.stream_nr()).set_latest(tree);
                 } else {
@@ -727,7 +727,7 @@ impl BanyanStore {
                 // update the permanent alias
                 this.ipfs().alias(StreamAlias::from(stream_id), cid.as_ref())?;
                 // update present for stream
-                this.update_present(stream_id, tree.offset())?;
+                this.update_present(stream_id, tree.offset());
                 // update latest
                 tracing::debug!("set_latest! {}", tree);
                 stream.set_latest(tree);

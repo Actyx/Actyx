@@ -19,7 +19,7 @@ serde = { features = ["derive"], version = "1.0.125" }
 serde_cbor = { version = "0.11.1", features = ["tags"] }
 serde_json = { features = ["raw_value"], version = "1.0.64" }
 tokio = { version = "1.5.0", package = "tokio" }
-tracing = { features = ["log", "max_level_trace", "release_max_level_debug"], version = "0.1.25" }
+tracing = { features = ["log", "max_level_trace", "release_max_level_trace"], version = "0.1.25" }
 tracing-subscriber = "0.2.17"
 
 [dev-dependencies]

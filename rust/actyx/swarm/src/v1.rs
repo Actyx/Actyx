@@ -72,32 +72,25 @@ impl BanyanStore {
         Ok(keys)
     }
 
-    pub(crate) fn update_present(&self, stream_id: StreamId, offset: OffsetOrMin) -> anyhow::Result<()> {
+    pub(crate) fn update_present(&self, stream_id: StreamId, offset: OffsetOrMin) {
         if let Some(offset) = Offset::from_offset_or_min(offset) {
-            self.data.offsets.transform(|offsets| {
-                let mut offsets = offsets.clone();
+            self.data.offsets.transform_mut(|offsets| {
                 offsets.present.update(stream_id, offset);
-                Ok(Some(offsets))
-            })
-        } else {
-            Ok(())
+                true
+            });
         }
     }
 
-    pub(crate) fn update_highest_seen(&self, stream_id: StreamId, offset: OffsetOrMin) -> anyhow::Result<()> {
+    pub(crate) fn update_highest_seen(&self, stream_id: StreamId, offset: OffsetOrMin) {
         if let Some(offset) = Offset::from_offset_or_min(offset) {
-            self.data.offsets.transform(|offsets| {
-                let ret = if offsets.replication_target.offset(stream_id) < offset {
-                    let mut offsets = offsets.clone();
+            self.data.offsets.transform_mut(|offsets| {
+                if offsets.replication_target.offset(stream_id) < offset {
                     offsets.replication_target.update(stream_id, offset);
-                    Some(offsets)
+                    true
                 } else {
-                    None
-                };
-                Ok(ret)
-            })
-        } else {
-            Ok(())
+                    false
+                }
+            });
         }
     }
 }
@@ -319,17 +312,17 @@ mod tests {
             } else {
                 Offset::arbitrary(&mut gen)
             };
-            test_offsets(&store, stream, offset)?;
+            test_offsets(&store, stream, offset);
         }
 
         Ok(())
     }
 
-    fn test_offsets(store: &BanyanStore, stream: StreamId, offset: Offset) -> Result<()> {
+    fn test_offsets(store: &BanyanStore, stream: StreamId, offset: Offset) {
         let mut offsets = Drainer::new(store.offsets());
 
         // Inject root update from `stream`
-        store.update_highest_seen(stream, offset.into())?;
+        store.update_highest_seen(stream, offset.into());
 
         let nxt = offsets.next().unwrap().last().cloned().unwrap();
         assert!(nxt.present.streams().all(|x| x != stream));
@@ -342,7 +335,7 @@ mod tests {
 
         // Inject validation of `stream` with `offset - 1`
         if let Some(pred) = offset.pred() {
-            store.update_present(stream, pred.into())?;
+            store.update_present(stream, pred.into());
             let nxt = offsets.next().unwrap().last().cloned().unwrap();
             assert_eq!(nxt.present.offset(stream), OffsetOrMin::from(pred));
             assert_eq!(
@@ -352,11 +345,9 @@ mod tests {
         }
 
         // Inject validation of `stream` with `offset`
-        store.update_present(stream, offset.into())?;
+        store.update_present(stream, offset.into());
         let nxt = offsets.next().unwrap().last().cloned().unwrap();
         assert_eq!(nxt.present.offset(stream), OffsetOrMin::from(offset));
         assert_eq!(nxt.to_replicate, Default::default());
-
-        Ok(())
     }
 }

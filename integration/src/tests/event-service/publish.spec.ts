@@ -1,32 +1,34 @@
-import { publishEvent, randomString } from '../../util'
+import { mkESFromTrial } from '../../http-client'
+import { run } from '../../util'
+import { publishRandom } from './utils.support.test'
 
-describe.skip('event service', () => {
-  describe('publish events', () => {
-    it('should publish event', async () => {
-      const publishRes = await publishEvent(randomString())
+describe('event service', () => {
+  describe('publish', () => {
+    it('should publish event', () =>
+      run(async (x) => {
+        const es = await mkESFromTrial(x)
+        const result = await es.publish({ data: [{ tags: ['tag'], payload: { foo: 'bar' } }] })
 
-      expect(publishRes.status).toBe(200)
-      expect(publishRes.data).toMatchObject({
-        data: [
-          {
-            lamport: expect.any(Number),
-            stream: expect.any(String),
-            offset: expect.any(Number),
-          },
-        ],
-      })
-    })
+        expect(result).toMatchObject({
+          data: [
+            {
+              lamport: expect.any(Number),
+              stream: expect.any(String),
+              offset: expect.any(Number),
+              timestamp: expect.any(Number),
+            },
+          ],
+        })
+      }))
 
-    it('should increase offset for new published event', async () => {
-      const publishRes1 = await publishEvent(randomString())
-      expect(publishRes1.status).toBe(200)
-
-      const publishRes2 = await publishEvent(randomString())
-      expect(publishRes2.status).toBe(200)
-
-      const offsetEvent1 = publishRes1.data.data[0].offset
-      const offsetEvent2 = publishRes2.data.data[0].offset
-      expect(offsetEvent2 > offsetEvent1).toBeTruthy()
-    })
+    it('should increase offset for new published event', () =>
+      run(async (x) => {
+        const es = await mkESFromTrial(x)
+        const result1 = await publishRandom(es)
+        const result2 = await publishRandom(es)
+        const offsetEvent1 = result1.offset
+        const offsetEvent2 = result2.offset
+        expect(offsetEvent2 > offsetEvent1).toBeTruthy()
+      }))
   })
 })

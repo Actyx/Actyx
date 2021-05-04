@@ -22,9 +22,9 @@ import {
   ConnectivityStatus,
   Event,
   Events,
+  OffsetsResponse,
   PersistedEventsSortOrder,
   UnstoredEvents,
-  OffsetsResponse,
 } from './types'
 
 export const enum RequestTypes {
@@ -46,7 +46,7 @@ export const PersistedEventsRequest = t.readonly(
     minEventKey: EventKeyOrNull,
     lowerBound: OffsetMapIO,
     upperBound: OffsetMapIO,
-    where: t.string,
+    query: t.string,
     order: PersistedEventsSortOrder,
     count: ValueOrLimit,
   }),
@@ -55,10 +55,10 @@ export type PersistedEventsRequest = t.TypeOf<typeof PersistedEventsRequest>
 
 export const AllEventsRequest = t.readonly(
   t.type({
-    lowerBound: OffsetMapIO,
+    offsets: OffsetMapIO,
     minEventKey: EventKeyOrNull,
     upperBound: OffsetMapIO,
-    where: t.string,
+    query: t.string,
     order: AllEventsSortOrder,
     count: ValueOrLimit,
   }),
@@ -91,7 +91,7 @@ export type ConnectivityRequest = t.TypeOf<typeof ConnectivityRequest>
 const EventKeyWithTime = t.intersection([EventKeyIO, t.type({ timestamp: t.number })])
 const PublishEventsResponse = t.type({ data: t.readonlyArray(EventKeyWithTime) })
 
-const toAql = (w: Where<unknown>) => w.toString()
+const toAql = (w: Where<unknown>) => 'FROM ' + w.toString()
 
 // FIXME: Downstream consumers expect arrays of Events, but endpoint is no longer sending chunks.
 const compat = (x: unknown) => {
@@ -140,7 +140,7 @@ export class WebsocketEventStore implements EventStore {
         PersistedEventsRequest.encode({
           lowerBound: fromPsnsExcluding.psns,
           upperBound: toPsnsIncluding.psns,
-          where: toAql(whereObj),
+          query: toAql(whereObj),
           minEventKey: minEvKey,
           order: sortOrder,
           count: 'max',
@@ -163,9 +163,9 @@ export class WebsocketEventStore implements EventStore {
       .request(
         RequestTypes.Subscribe,
         AllEventsRequest.encode({
-          lowerBound: fromPsnsExcluding.psns,
+          offsets: fromPsnsExcluding.psns,
           upperBound: toPsnsIncluding.psns,
-          where: toAql(whereObj),
+          query: toAql(whereObj),
           minEventKey: minEvKey,
           order: sortOrder,
           count: 'max',

@@ -1,38 +1,25 @@
 import fetch from 'node-fetch'
-import { getToken, getNodeId, mkEventsPath } from '../../ax-http-client'
-import { runOnEvery } from '../../infrastructure/hosts'
+import { getToken, mkEventsPath, trialManifest, NODE_ID_SEG } from '../../http-client'
 import WebSocket from 'ws'
-import { ActyxNode } from '../../infrastructure/types'
+import { run } from '../../util'
 
 const UNAUTHORIZED_TOKEN =
   'AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ=='
 
-const trialManifest = {
-  appId: 'com.example.my-app',
-  displayName: 'My Example App',
-  version: '1.0.0',
-}
-
-const getHttpApi = (x: ActyxNode) => x._private.httpApiOrigin
-const run = <T>(f: (httpApi: string) => Promise<T>): Promise<T[]> =>
-  runOnEvery((node) => f(getHttpApi(node)))
+const getId = (httpApi: string, authHeaderValue?: string) =>
+  fetch(httpApi + mkEventsPath(NODE_ID_SEG), {
+    method: 'get',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...(authHeaderValue ? { Authorization: authHeaderValue } : {}),
+    },
+  })
 
 describe('auth http', () => {
-  it('should get token for a trial manifest and successfully use it', () =>
-    run((httpApi) =>
-      getToken(trialManifest, httpApi)
-        .then((authResponse) => authResponse.json())
-        .then((x) => {
-          expect(x).toEqual({ token: expect.any(String) })
-          return getNodeId(x.token, httpApi)
-        })
-        .then((nodeIdResponse) => nodeIdResponse.json())
-        .then((x) => expect(x).toEqual({ nodeId: expect.any(String) })),
-    ))
-
   it('should fail when token not authorized', () =>
     run((httpApi) =>
-      getNodeId(UNAUTHORIZED_TOKEN, httpApi)
+      getId(httpApi, 'Bearer ' + UNAUTHORIZED_TOKEN)
         .then((nodeIdResponse) => nodeIdResponse.json())
         .then((x) =>
           expect(x).toEqual({
@@ -41,16 +28,6 @@ describe('auth http', () => {
           }),
         ),
     ))
-
-  const getId = (httpApi: string, authHeaderValue?: string) =>
-    fetch(mkEventsPath(httpApi)('/node_id'), {
-      method: 'get',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-        ...(authHeaderValue ? { Authorization: authHeaderValue } : {}),
-      },
-    })
 
   it('should fail when auth header has wrong value', () =>
     run((httpApi) =>
@@ -96,7 +73,7 @@ describe('auth http', () => {
 describe('auth ws', () => {
   const mkWs = (path: string, f: (ws: WebSocket, resolve: () => void) => void): Promise<void[]> =>
     run((httpApi) => {
-      const ws = new WebSocket(mkEventsPath(httpApi)(path))
+      const ws = new WebSocket(httpApi + mkEventsPath(path))
       return new Promise<void>((resolve) => {
         f(ws, resolve)
       })
@@ -121,7 +98,7 @@ describe('auth ws', () => {
       getToken(trialManifest, httpApi)
         .then((authResponse) => authResponse.json())
         .then((x) => {
-          const ws = new WebSocket(mkEventsPath(httpApi)(`?${x.token}`))
+          const ws = new WebSocket(httpApi + mkEventsPath(`?${x.token}`))
           const message = {
             type: 'request',
             serviceId: 'node_id',
