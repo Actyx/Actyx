@@ -405,6 +405,8 @@ dist/bin/actyx.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
 misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/windows-x86_64/ax.exe make-always
 	mkdir -p misc/actyxos-node-manager/bin/win32
 	cp dist/bin/windows-x86_64/ax.exe misc/actyxos-node-manager/bin/win32/
+	cp misc/actyxos-node-manager/package.json /tmp/package.json
+	jq '.actyx.version="$(ACTYX_VERSION)"' /tmp/package.json > misc/actyxos-node-manager/package.json
 	docker run \
 	  -v `pwd`:/src \
 	  -w /src/misc/actyxos-node-manager \
