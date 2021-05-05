@@ -569,8 +569,7 @@ impl BanyanStore {
                 if peer_id == ipfs.local_peer_id() {
                     tracing::warn!("Not dialing configured bootstrap node {} as it's myself", addr_orig);
                 } else {
-                    ipfs.dial_address(&peer_id, addr)
-                        .with_context(|| format!("Dialing bootstrap node {}", addr_orig))?;
+                    ipfs.dial_address(&peer_id, addr);
                 }
             } else {
                 return Err(anyhow::anyhow!("invalid bootstrap address"));
@@ -685,15 +684,6 @@ impl BanyanStore {
         forest.stream_trees_chunked_reverse(query, trees, range, &|_| {})
     }
 
-    /// careful ingestion - basically just call sync_one on each new ingested root
-    async fn careful_ingestion(self, stream_id: StreamId, state: Arc<ReplicatedStreamInner>) {
-        state
-            .incoming_root_stream()
-            .switch_map(move |root| self.clone().sync_one(stream_id, root).into_stream())
-            .for_each(|_| future::ready(()))
-            .await
-    }
-
     fn get_or_create_own_stream(&self, stream_nr: StreamNr) -> Arc<OwnStreamInner> {
         self.lock().get_or_create_own_stream(stream_nr)
     }
@@ -753,25 +743,30 @@ impl BanyanStore {
 
     async fn compaction_loop(self, interval: Duration) {
         loop {
-            if let Err(err) = self.compact_once().await {
-                tracing::error!("{}", err);
+            let stream_nrs = self.lock().local_stream_nrs();
+            for stream_nr in stream_nrs {
+                tracing::debug!("compacting stream {}", stream_nr);
+                if let Err(err) = self.transform_stream(stream_nr, |txn, tree| txn.pack(tree)).await {
+                    tracing::error!("Error compacting stream {}: {}", stream_nr, err);
+                    break;
+                }
             }
             tokio::time::sleep(interval).await;
         }
     }
 
-    async fn compact_once(&self) -> Result<()> {
-        let stream_nrs = self.lock().local_stream_nrs();
-        for stream_nr in stream_nrs {
-            tracing::debug!("compacting stream {}", stream_nr);
-            self.pack(stream_nr).await?;
-        }
-        Ok(())
-    }
-
-    fn pack(&self, stream_nr: StreamNr) -> impl Future<Output = Result<Option<Link>>> {
-        tracing::debug!("packing stream {}", stream_nr);
-        self.transform_stream(stream_nr, |txn, tree| txn.pack(tree))
+    /// careful ingestion - basically just call sync_one on each new ingested root
+    async fn careful_ingestion(self, stream_id: StreamId, state: Arc<ReplicatedStreamInner>) {
+        state
+            .incoming_root_stream()
+            .switch_map(move |root| self.clone().sync_one(stream_id, root).into_stream())
+            .for_each(|res| {
+                if let Err(err) = res {
+                    tracing::error!("careful_ingestion: {}", err);
+                }
+                future::ready(())
+            })
+            .await
     }
 
     /// attempt to sync one stream to a new root.
@@ -789,10 +784,11 @@ impl BanyanStore {
         tracing::debug!("assigning temp pin to {}", root);
         let temp_pin = ipfs.create_temp_pin()?;
         ipfs.temp_pin(&temp_pin, &cid)?;
+        let peers = ipfs.peers();
         // attempt to sync. This may take a while and is likely to be interrupted
-        tracing::debug!("starting to sync {}", root);
+        tracing::debug!("starting to sync {} from {} peers", root, peers.len());
         // create the sync stream, and log progress. Add an additional element.
-        let mut sync = ipfs.sync(&cid, ipfs.peers());
+        let mut sync = ipfs.sync(&cid, peers);
         // during the sync, try to load the tree asap and abort in case it is not good
         let mut tree: Option<Tree> = None;
         let mut n: usize = 0;
