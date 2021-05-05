@@ -1,6 +1,6 @@
 # Rust crate structure
 
-All data types used across serialisation boundaries as well as AQL parsing should be found in the [`SDK`](../rust/sdk), which removes the need for `*-formats` crates.
+All public data types used across serialisation boundaries as well as AQL parsing should be found in the [`SDK`](../rust/sdk), which removes the need for `*-formats` crates; the only private case at this point is the communication between Actyx CLI and Actyx, the formats for which are defined in the `util::formats` module.
 Local storage is managed by the [`ipfs-sqlite-block-store`](https://github.com/Actyx/ipfs-sqlite-block-store) crate.
 Replicated storage is managed by the [`banyan`](https://github.com/Actyx/banyan) crate.
 
