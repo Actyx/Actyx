@@ -264,10 +264,6 @@ impl<'a> BanyanStoreGuard<'a> {
         self.own_streams.keys().map(|x| self.data.node_id.stream(*x)).collect()
     }
 
-    fn increment_lamport(&mut self) -> anyhow::Result<u64> {
-        self.index_store.increment_lamport()
-    }
-
     fn received_lamport(&mut self, lamport: u64) -> anyhow::Result<u64> {
         self.index_store.received_lamport(lamport)
     }
@@ -630,15 +626,23 @@ impl BanyanStore {
     /// Append events to a stream, publishing the new data.
     pub async fn append(&self, stream_nr: StreamNr, events: Vec<(TagSet, Event)>) -> Result<Option<Link>> {
         tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
+        let timestamp = Timestamp::now();
         let stream = self.get_or_create_own_stream(stream_nr);
         stream
             .locked(|| {
-                let lamport = self.lock().increment_lamport()?;
-                let timestamp = Timestamp::now();
-                let events = events
+                let n = events.len() as u64;
+                let mut store = self.lock();
+                let last_lamport = store.index_store.increase_lamport(n)?;
+                let min_lamport = last_lamport - n + 1;
+                let kvs = events
                     .into_iter()
-                    .map(move |(tags, event)| (Key::new(tags, lamport, timestamp), event));
-                self.transform_stream(stream_nr, &stream, |txn, tree| txn.extend_unpacked(tree, events))
+                    .enumerate()
+                    .map(move |(i, (tags, payload))| {
+                        let key = AxKey::new(tags, min_lamport + (i as u64), timestamp);
+                        (key, payload)
+                    })
+                    .collect::<Vec<_>>();
+                self.transform_stream(stream_nr, &stream, |txn, tree| txn.extend_unpacked(tree, kvs))
             })
             .await
     }

@@ -96,20 +96,8 @@ impl SqliteIndexStore {
         Ok(self.lamport)
     }
 
-    /// Increment the lamport and return the new value
-    pub fn increment_lamport(&mut self) -> Result<u64> {
-        self.conn
-            .lock()
-            .prepare_cached("UPDATE meta SET lamport = lamport + 1")?
-            .execute([])?;
-        // do this after the txn was successfully committed.
-        self.lamport += 1;
-        trace!("incremented lamport to {}", self.lamport);
-        Ok(self.lamport)
-    }
-
     /// Increase the lamport by `increment` and return the new value
-    pub fn increase_lamport(&mut self, increment: u32) -> Result<u64> {
+    pub fn increase_lamport(&mut self, increment: u64) -> Result<u64> {
         self.conn
             .lock()
             .prepare_cached("UPDATE meta SET lamport = lamport + ?")?
@@ -203,7 +191,7 @@ mod test {
         let db = dir.path().join("db").to_str().expect("illegal filename").to_owned();
         let mut store = get_shared_memory_index_store(&db)?;
         for _ in 0..4 {
-            store.increment_lamport()?;
+            store.increase_lamport(1)?;
         }
         let other_store = get_shared_memory_index_store(&db)?;
 
@@ -216,7 +204,7 @@ mod test {
         let mut store = empty_store();
         // write some stuff
         for _ in 0..1000 {
-            store.increment_lamport()?;
+            store.increase_lamport(1)?;
         }
         let backed_up = store.backup(DbPath::Memory).unwrap();
         let backed_up_store = SqliteIndexStore::from_conn(Arc::new(Mutex::new(backed_up))).unwrap();

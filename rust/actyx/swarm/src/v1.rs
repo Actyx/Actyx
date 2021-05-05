@@ -38,13 +38,13 @@ impl BanyanStore {
     async fn persist0(self, events: Vec<(TagSet, Payload)>) -> Result<Vec<PersistenceMeta>> {
         let stream_nr = StreamNr::from(0); // TODO
         let timestamp = Timestamp::now();
-        let n = events.len() as u32;
+        let n = events.len() as u64;
         let stream = self.get_or_create_own_stream(stream_nr);
         let (min_lamport, min_offset) = stream
             .locked(|| -> anyhow::Result<(u64, OffsetOrMin)> {
                 let mut store = self.lock();
                 let last_lamport = store.index_store.increase_lamport(n)?;
-                let min_lamport = last_lamport - (n as u64) + 1;
+                let min_lamport = last_lamport - n + 1;
                 let kvs = events
                     .into_iter()
                     .enumerate()
@@ -70,8 +70,8 @@ impl BanyanStore {
             .unwrap_or(Offset::ZERO);
         let keys = (0..n)
             .map(|i| {
-                let lamport = (min_lamport + (i as u64)).into();
-                let offset = starting_offset + i;
+                let lamport = (min_lamport + i).into();
+                let offset = starting_offset.add(i).unwrap();
                 (lamport, offset, stream_nr, timestamp)
             })
             .collect();
