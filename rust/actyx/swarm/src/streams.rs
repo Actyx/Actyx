@@ -55,13 +55,13 @@ impl TryFrom<StreamAlias> for StreamId {
 
 /// Data for a single own stream, mutable state + constant data
 #[derive(Debug)]
-pub struct OwnStreamInner {
+pub struct OwnStream {
     forest: Forest,
     sequencer: tokio::sync::Mutex<()>,
     tree: Variable<Tree>,
 }
 
-impl OwnStreamInner {
+impl OwnStream {
     pub fn new(forest: Forest) -> Self {
         Self {
             forest,
@@ -74,8 +74,12 @@ impl OwnStreamInner {
         &self.forest
     }
 
-    pub fn sequencer(&self) -> &tokio::sync::Mutex<()> {
-        &self.sequencer
+    /// Acquire an async lock to modify this stream
+    pub async fn locked<T>(&self, f: impl FnOnce() -> T) -> T {
+        let guard = self.sequencer.lock().await;
+        let result = f();
+        drop(guard);
+        result
     }
 
     pub fn root(&self) -> Option<Cid> {

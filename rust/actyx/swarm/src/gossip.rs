@@ -137,7 +137,7 @@ impl Gossip {
                     let blob = DagCborCodec.encode(&GossipMessage::RootUpdate(root_update)).unwrap();
                     tracing::trace!("publish_blob {} {}", stream, blob.len());
                     if let Err(err) = ipfs.publish(&topic, blob) {
-                        tracing::error!("publish failed: {}", err);
+                        log_publish_error(err);
                     }
                 }
             }
@@ -220,6 +220,15 @@ impl Gossip {
 impl Drop for Gossip {
     fn drop(&mut self) {
         self.publish_handle.abort();
+    }
+}
+
+fn log_publish_error(err: anyhow::Error) {
+    let txt = err.to_string();
+    if txt.ends_with("InsufficientPeers") {
+        tracing::debug!("publish impossible - no peers");
+    } else {
+        tracing::error!("publish failed: {}", err);
     }
 }
 
