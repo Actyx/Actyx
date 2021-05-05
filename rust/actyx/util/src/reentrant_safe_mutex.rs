@@ -31,19 +31,19 @@ impl<T> ReentrantSafeMutex<T> {
     pub fn lock(&self) -> ReentrantSafeMutexGuard<'_, T> {
         let current_thread_id = std::thread::current().id();
         let mut thread = self.thread.lock();
+        // parking_lot supposedly has no spurious wakeups.
+        // https://docs.rs/parking_lot/0.11.1/parking_lot/struct.Condvar.html#differences-from-the-standard-library-condvar
+        // But in tests I have seen the wait exiting with the thread not being None.
+        // Hence the while loop to be safe against spurious wakeups.
+        // since when coming out of the wait we already have the lock, just checking one more time
+        // will be extremely cheap.
         while let Some(id) = *thread {
             assert!(id != current_thread_id, "Reentrant locking attempt");
             self.condvar.wait(&mut thread);
         }
-        // the only way to get here is that either thread was None in the first place,
-        // or that we had to wait and were woken up by the notify_one that is called in the
-        // Drop instance of another guard. In both cases *thread is None.
-        //
-        // if we get a spurious wakeup of the condvar, this assertion might fail.
-        // https://docs.rs/parking_lot/0.11.1/parking_lot/struct.Condvar.html#differences-from-the-standard-library-condvar
         debug_assert!(*thread == None);
         *thread = Some(current_thread_id);
-        ReentrantSafeMutexGuard { mutex: &self }
+        ReentrantSafeMutexGuard { mutex: self }
     }
 }
 
