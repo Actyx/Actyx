@@ -707,6 +707,7 @@ impl BanyanStore {
         let txn = Transaction::new(stream.forest().clone(), writer);
         let curr = stream.latest();
         let tree = f(&txn, &curr)?;
+        anyhow::ensure!(tree.count() >= curr.count(), "tree rejected because it lost events!");
         // root of the new tree
         let root: Option<Link> = tree.link();
         // check for change
