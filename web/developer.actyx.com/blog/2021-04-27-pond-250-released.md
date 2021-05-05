@@ -15,12 +15,12 @@ Read on for a quick overview.
 <!-- truncate -->
 
 In order to get an instance of the new APIs, either call `events()` on your `Pond`,
-or initialise directly by calling `EventFns.default()` or `EventFns.of(options)` where the connection parameters are the same as for the `Pond.of` call.
+or initialize directly by calling `EventFns.default()` or `EventFns.of(options)` where the connection parameters are the same as for the `Pond.of` call.
 
 ### Querying Known Events
 
 Event streams on Actyx never end: New events keep being appended to them.
-By calling `offsets()`, the current event numbers (offets, like in an array) per stream can be retrieved.
+By calling `offsets()`, the current event numbers (offsets, like in an array) per stream can be retrieved.
 
 The function `queryKnownRange` can then be used to get a finite set of events, where `upperBound` is at most equal to the current `offsets`.
 This is useful for periodically reading all new events, and exporting them to another DB.
@@ -56,7 +56,7 @@ setInterval(exportEvents, 60_000)
 
 ### Chunking
 
-`queryKnownRangeChunked` and `queryAllKnownChunked` can be used on devices where memory may be unsufficient to hold the full result.
+`queryKnownRangeChunked` and `queryAllKnownChunked` can be used on devices where memory may be insufficient to hold the full result.
 
 ```ts
 let lowerBound = await readUpperBoundFromDB()
@@ -93,6 +93,7 @@ Often you will be interested just in the latest piece of a certain information, 
 Using a `Fish` for that is more complex than needed.
 
 Hence we now offer a dedicated function:
+
 ```ts
 const MachineTag = Tag('machine')
 const CountersChangedTag = Tag<CountersChanged>('counters-changed')
@@ -128,6 +129,7 @@ eventFns.observeUnorderedReduce(
 ### Emitting Events
 
 Finally, there is now a second way to emit events. `emit()` on `EventFns` can be used to directly pass objects with combined tags and payload:
+
 ```ts
 eventFns.emit([
   {
@@ -142,6 +144,7 @@ eventFns.emit([
 ```
 
 The recommended usage, though, is to still use the typed `Tag` functions:
+
 ```ts
 const MyTags = Tags<string | string[]>('foo', 'bar')
 
