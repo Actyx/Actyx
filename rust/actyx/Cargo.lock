@@ -2825,7 +2825,7 @@ dependencies = [
 [[package]]
 name = "ipfs-embed"
 version = "0.19.0"
-source = "git+https://github.com/ipfs-rust/ipfs-embed#6ad368815bbe53349a9f528fd495a1d36edb420c"
+source = "git+https://github.com/ipfs-rust/ipfs-embed#d2654f6a4a67aaef0ddbe82e5c518d60e8df46db"
 dependencies = [
  "anyhow",
  "async-global-executor",
