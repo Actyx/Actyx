@@ -55,7 +55,7 @@ impl BanyanStore {
                     .collect::<Vec<_>>();
                 tracing::debug!("publishing {} events on stream {}", kvs.len(), stream_nr);
                 let mut min_offset = OffsetOrMin::MIN;
-                let _ = self.transform_stream(stream_nr, &stream, |txn, tree| {
+                self.transform_stream(stream_nr, &stream, |txn, tree| {
                     min_offset = min_offset.max(tree.offset());
                     txn.extend_unpacked(tree, kvs)
                 })?;
