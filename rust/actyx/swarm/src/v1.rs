@@ -42,7 +42,8 @@ impl BanyanStore {
         let stream = self.get_or_create_own_stream(stream_nr);
         let (min_lamport, min_offset) = stream
             .locked(|| -> anyhow::Result<(u64, OffsetOrMin)> {
-                let last_lamport = self.lock().index_store.increase_lamport(n)?;
+                let mut store = self.lock();
+                let last_lamport = store.index_store.increase_lamport(n)?;
                 let min_lamport = last_lamport - (n as u64) + 1;
                 let kvs = events
                     .into_iter()
@@ -58,6 +59,7 @@ impl BanyanStore {
                     min_offset = min_offset.max(tree.offset());
                     txn.extend_unpacked(tree, kvs)
                 })?;
+                drop(store);
                 Ok((min_lamport, min_offset))
             })
             .await?;
