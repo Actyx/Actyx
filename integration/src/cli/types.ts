@@ -48,7 +48,12 @@ export const Response_Nodes_Ls = io.union([
             displayName: io.union([io.null, io.string]),
             startedIso: io.string,
             startedUnix: io.Integer,
-            version: io.string,
+            version: io.type({
+              profile: io.string,
+              target: io.string,
+              version: io.string,
+              gitHash: io.string,
+            }),
           }),
           io.type({
             connection: io.literal('unreachable'),

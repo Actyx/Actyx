@@ -13,7 +13,12 @@ describe('the Infrastructure', () => {
         result: [
           {
             connection: 'reachable',
-            version: '2.0.0-dev',
+            version: {
+              profile: 'release',
+              target: expect.any(String),
+              version: '2.0.0_dev',
+              gitHash: expect.any(String)
+            },
           },
         ],
       },

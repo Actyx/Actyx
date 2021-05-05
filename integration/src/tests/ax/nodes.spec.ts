@@ -31,7 +31,12 @@ describe('ax nodes', () => {
             displayName: node.name,
             startedIso: expect.any(String),
             startedUnix: expect.any(Number),
-            version: '2.0.0-dev',
+            version: {
+              profile: expect.any(String),
+              target: expect.any(String),
+              version: expect.any(String),
+              gitHash: expect.any(String)
+            },
           },
         ]
         expect(response.result).toMatchObject(responseShape)
