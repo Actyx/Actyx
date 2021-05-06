@@ -73,7 +73,9 @@ string_enum! {
     pub enum Arch {
         #[cfg(target_arch = "x86_64")] x86_64,
         #[cfg(target_arch = "aarch64")] aarch64,
-        #[cfg(target_os = "android")] webview,
+        #[cfg(target_arch = "android")] android,
+        // We cannot seem to distinguish between arm and armv7
+        #[cfg(target_arch = "arm")] arm,
     }
     "Unsupported architecture"
 }
@@ -119,9 +121,7 @@ impl OsArch {
     }
 
     pub fn is_supported(arch: Arch) -> bool {
-        (Arch::current() == arch) // arch matches
-        // is webview
-         || (arch == Arch::webview && (OS::current() == OS::android || OS::current() == OS::windows))
+        Arch::current() == arch
     }
 }
 

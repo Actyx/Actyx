@@ -148,7 +148,7 @@ mod win {
         } = Opts::from_args();
 
         if version {
-            println!("actyx-win {}", NodeVersion::get());
+            println!("actyx {}", NodeVersion::get());
             return Ok(());
         }
 

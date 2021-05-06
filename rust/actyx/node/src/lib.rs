@@ -32,6 +32,7 @@ use crate::{
     settings::SettingsRequest,
     util::init_panic_hook,
 };
+use ::util::version::NodeVersion;
 use ::util::SocketAddrHelper;
 use crossbeam::channel::{bounded, Receiver, Sender};
 use std::{convert::TryInto, path::PathBuf, str::FromStr, thread};
@@ -273,6 +274,7 @@ impl PortOrHostPort {
 impl ApplicationState {
     /// Bootstraps the application, and returns a handle structure.
     pub fn spawn(base_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Result<Self> {
+        tracing::info!("actyx {}", NodeVersion::get());
         spawn(base_dir, runtime, bind_to)
     }
 
