@@ -87,7 +87,7 @@ describe('the Infrastructure', () => {
   test.skip('must test Pond v1', async () => {
     const result = await runOnAll([{}], async ([node]) => {
       const pond = await PondV1.Pond.of(new MultiplexedWebsocket({ url: node._private.apiPond }))
-      return pond.getNodeConnectivity().take(1).toPromise()
+      return pond.getNodeConnectivity().first().toPromise()
     })
     // cannot assert connected or not connected since we don’t know when this case is run
     expect(typeof result.status).toBe('string')

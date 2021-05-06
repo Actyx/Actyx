@@ -40,7 +40,7 @@ const teardown = async (_config: Record<string, unknown>): Promise<void> => {
     }).catch(console.error)
   }
 
-  process.stdout.write('\n')
+  process.stdout.write('teardown complete\n')
 }
 
 export default teardown

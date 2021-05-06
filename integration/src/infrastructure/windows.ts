@@ -29,7 +29,7 @@ export const mkWindowsSsh = async (
 
   console.log(`${nodeName}: Starting Actyx`)
   const actyxProc = await startActyx(nodeName, logger, ssh)
-  return await forwardPortsAndBuildClients(ssh, nodeName, target, actyxProc[0], {
+  return await forwardPortsAndBuildClients(ssh, nodeName, target, actyxProc, {
     host: 'process',
   })
 }

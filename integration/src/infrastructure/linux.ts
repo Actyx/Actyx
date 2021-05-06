@@ -34,7 +34,7 @@ export const mkNodeSshProcess = async (
 
   const proc = await startActyx(nodeName, logger, ssh)
 
-  return await forwardPortsAndBuildClients(ssh, nodeName, target, proc[0], {
+  return await forwardPortsAndBuildClients(ssh, nodeName, target, proc, {
     host: 'process',
   })
 }
@@ -75,7 +75,7 @@ export const mkNodeSshDocker = async (
     actyxDockerImage(target.arch, gitHash)
   const proc = await startActyx(nodeName, logger, ssh, command)
 
-  return await forwardPortsAndBuildClients(ssh, nodeName, target, proc[0], {
+  return await forwardPortsAndBuildClients(ssh, nodeName, target, proc, {
     host: 'docker',
   })
 }
@@ -189,7 +189,7 @@ async function uploadActyx(nodeName: string, ssh: Ssh, binaryPath: string) {
   await ssh.scp(binaryPath, 'actyx')
 }
 
-function startActyx(
+export function startActyx(
   nodeName: string,
   logger: (s: string) => void,
   ssh: Ssh,
@@ -230,7 +230,7 @@ export const forwardPortsAndBuildClients = async (
   ssh: Ssh,
   nodeName: string,
   target: Target,
-  actyxProc: execa.ExecaChildProcess<string> | undefined,
+  actyxProc: execa.ExecaChildProcess<string>[],
   theRest: Omit<ActyxNode, 'ax' | 'httpApiClient' | '_private' | 'name' | 'target'>,
 ): Promise<ActyxNode> => {
   const [[port4454, port4458], proc] = await ssh.forwardPorts(4454, 4458)
@@ -252,7 +252,7 @@ export const forwardPortsAndBuildClients = async (
 
   const shutdown = async () => {
     console.log('node %s shutting down', nodeName)
-    actyxProc?.kill('SIGTERM')
+    actyxProc.forEach((x) => x.kill('SIGTERM'))
     console.log('node %s ssh stopped', nodeName)
     await target._private.cleanup()
     console.log('node %s instance terminated', nodeName)

@@ -5,6 +5,8 @@ import fs from 'fs'
 import path from 'path'
 import https from 'https'
 import { ensureDirSync } from 'fs-extra'
+import { Observable } from 'rxjs'
+import { tmpdir } from 'os'
 
 export const settings = (): Settings => (<MyGlobal>global).axNodeSetup.settings
 
@@ -13,6 +15,7 @@ export const enum Binary {
   ax = 'ax',
   actyxLinux = 'actyx-linux',
   actyxInstaller = 'Actyx-Installer',
+  actyxAndroid = 'actyx.apk',
 }
 
 export const currentAxBinary = (): Promise<string> => getCurrent(Binary.ax)
@@ -34,6 +37,9 @@ export const actyxDockerImage = (arch: Arch, version: string): string =>
 export const windowsActyxInstaller = async (arch: Arch): Promise<string> =>
   getOrDownload('windows', arch, Binary.actyxInstaller, settings().gitHash)
 
+export const actyxAndroidApk = async (): Promise<string> =>
+  getOrDownload('android', 'x86_64', Binary.actyxAndroid, settings().gitHash)
+
 const ensureBinaryExists = async (p: string): Promise<string> => {
   if (!fs.existsSync(p)) {
     const cmd = `make ${path.relative('..', p)}`
@@ -53,7 +59,9 @@ const getOrDownload = async (
 ): Promise<string> => {
   const bin = os == 'windows' ? `${binary}.exe` : binary
   const id = `${gitHash != null ? `${gitHash}-` : ''}${os}-${arch}`
-  const localPath = `../dist/bin/${id}/${bin}`
+  // actyx.apk sits in the root
+  const p = os == 'android' ? '' : `/${id}`
+  const localPath = `../dist/bin${p}/${bin}`
 
   if (!fs.existsSync(localPath)) {
     await (gitHash != null
@@ -71,7 +79,9 @@ const download = (
   targetFile: string,
 ): Promise<string> => {
   const bin = os == 'windows' ? `${binary}.exe` : binary
-  const url = `https://axartifacts.blob.core.windows.net/artifacts/${hash}/${os}-binaries/${os}-${arch}/${bin}`
+  // actyx.apk sits in the root
+  const p = os == 'android' ? '' : `/${os}-${arch}`
+  const url = `https://axartifacts.blob.core.windows.net/artifacts/${hash}/${os}-binaries${p}/${bin}`
 
   console.log('Downloading binary "%s" from "%s"', bin, url)
 
