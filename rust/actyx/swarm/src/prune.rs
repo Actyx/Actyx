@@ -37,7 +37,8 @@ async fn retain_events_after(
                 txn.retain(tree, &query)
             })
         })
-        .await
+        .await?;
+    Ok(stream.link())
 }
 
 async fn retain_events_up_to(
@@ -96,7 +97,8 @@ async fn retain_events_up_to(
                     txn.retain(tree, &query)
                 })
             })
-            .await
+            .await?;
+        Ok(stream.link())
     } else {
         // No need to update the tree.
         // (Returned digest is not evaluated anyway)
@@ -134,7 +136,8 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
                                     }
                                 })
                             })
-                            .await
+                            .await?;
+                        Ok(stream.link())
                     }
                     RetainConfig::Age(duration) => {
                         let emit_after: Timestamp = SystemTime::now()

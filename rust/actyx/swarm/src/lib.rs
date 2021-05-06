@@ -395,6 +395,13 @@ impl<'a> BanyanStoreGuard<'a> {
             tokio::spawn(task.map(move |_| tracing::error!("Fatal: Task '{}' unexpectedly terminated!", name)));
         self.tasks.push(handle);
     }
+
+    /// reserve a number of lamport timestamps
+    pub fn reserve_lamports(&mut self, n: usize) -> anyhow::Result<impl Iterator<Item = LamportTimestamp>> {
+        let n = u64::try_from(n)?;
+        let last_lamport = self.index_store.increase_lamport(n)?;
+        Ok((last_lamport - n + 1..=last_lamport).map(|x| LamportTimestamp::from(x)))
+    }
 }
 
 impl BanyanStore {
@@ -630,21 +637,15 @@ impl BanyanStore {
         let stream = self.get_or_create_own_stream(stream_nr);
         stream
             .locked(|| {
-                let n = events.len() as u64;
                 let mut store = self.lock();
-                let last_lamport = store.index_store.increase_lamport(n)?;
-                let min_lamport = last_lamport - n + 1;
-                let kvs = events
-                    .into_iter()
-                    .enumerate()
-                    .map(move |(i, (tags, payload))| {
-                        let key = AxKey::new(tags, min_lamport + (i as u64), timestamp);
-                        (key, payload)
-                    })
-                    .collect::<Vec<_>>();
+                let lamports = store.reserve_lamports(events.len())?;
+                let kvs = lamports
+                    .zip(events)
+                    .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
                 self.transform_stream(stream_nr, &stream, |txn, tree| txn.extend_unpacked(tree, kvs))
             })
-            .await
+            .await?;
+        Ok(stream.link())
     }
 
     /// Returns a [`Stream`] of known [`StreamId`].
@@ -705,7 +706,7 @@ impl BanyanStore {
         stream_nr: StreamNr,
         stream: &OwnStream,
         f: impl FnOnce(&Transaction, &Tree) -> Result<Tree> + Send,
-    ) -> Result<Option<Link>> {
+    ) -> Result<()> {
         let writer = self.data.forest.store().write()?;
         tracing::debug!("starting write transaction on stream {}", stream_nr);
         let txn = Transaction::new(stream.forest().clone(), writer);
@@ -735,7 +736,7 @@ impl BanyanStore {
             self.data.gossip.publish(stream_nr, root.expect("not None"), blocks)?;
         }
         tracing::debug!("ended write transaction on stream {}", stream_nr);
-        Ok(root)
+        Ok(())
     }
 
     fn update_root(&self, stream_id: StreamId, root: Link) {

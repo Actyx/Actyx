@@ -38,22 +38,17 @@ impl BanyanStore {
     async fn persist0(self, events: Vec<(TagSet, Payload)>) -> Result<Vec<PersistenceMeta>> {
         let stream_nr = StreamNr::from(0); // TODO
         let timestamp = Timestamp::now();
-        let n = events.len() as u64;
         let stream = self.get_or_create_own_stream(stream_nr);
+        let n = events.len();
         let (min_lamport, min_offset) = stream
-            .locked(|| -> anyhow::Result<(u64, OffsetOrMin)> {
+            .locked(|| -> anyhow::Result<(LamportTimestamp, OffsetOrMin)> {
                 let mut store = self.lock();
-                let last_lamport = store.index_store.increase_lamport(n)?;
-                let min_lamport = last_lamport - n + 1;
-                let kvs = events
-                    .into_iter()
-                    .enumerate()
-                    .map(move |(i, (tags, payload))| {
-                        let key = AxKey::new(tags, min_lamport + (i as u64), timestamp);
-                        (key, payload)
-                    })
-                    .collect::<Vec<_>>();
-                tracing::debug!("publishing {} events on stream {}", kvs.len(), stream_nr);
+                let mut lamports = store.reserve_lamports(events.len())?.peekable();
+                let min_lamport = *lamports.peek().unwrap();
+                let kvs = lamports
+                    .zip(events)
+                    .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
+                tracing::debug!("publishing {} events on stream {}", n, stream_nr);
                 let mut min_offset = OffsetOrMin::MIN;
                 self.transform_stream(stream_nr, &stream, |txn, tree| {
                     min_offset = min_offset.max(tree.offset());
@@ -70,6 +65,7 @@ impl BanyanStore {
             .unwrap_or(Offset::ZERO);
         let keys = (0..n)
             .map(|i| {
+                let i = i as u64;
                 let lamport = (min_lamport + i).into();
                 let offset = starting_offset.add(i).unwrap();
                 (lamport, offset, stream_nr, timestamp)

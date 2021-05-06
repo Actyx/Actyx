@@ -82,6 +82,10 @@ impl OwnStream {
         result
     }
 
+    pub fn link(&self) -> Option<Link> {
+        self.tree.project(|tree| tree.link())
+    }
+
     pub fn root(&self) -> Option<Cid> {
         self.tree.project(|tree| tree.link().map(|link| link.into()))
     }
