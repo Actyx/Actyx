@@ -23,6 +23,26 @@ pub(crate) enum RetainConfig {
     Size(u64),
 }
 
+async fn retain_last_events(store: BanyanStore, stream_nr: StreamNr, keep: u64) -> anyhow::Result<Option<Link>> {
+    let stream = store.get_or_create_own_stream(stream_nr);
+    let guard = stream.lock().await;
+    store.transform_stream(&guard, |txn, tree| {
+        let max = tree.count();
+        let lower_bound = max.saturating_sub(keep);
+        if lower_bound > 0 {
+            let query = OffsetQuery::from(lower_bound..);
+            tracing::debug!("Ephemeral events on {}; retain {:?}", stream_nr, query);
+            txn.retain(tree, &query)
+        } else {
+            // No need to update the tree.
+            Ok(tree.clone())
+        }
+    })?;
+    let result = stream.link();
+    drop(guard);
+    Ok(result)
+}
+
 async fn retain_events_after(
     store: BanyanStore,
     stream_nr: StreamNr,
@@ -117,25 +137,7 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
             tracing::debug!("Checking ephemeral event conditions for {}", stream_nr);
             let fut = async move {
                 match cfg {
-                    RetainConfig::Events(keep) => {
-                        let stream = store.get_or_create_own_stream(*stream_nr);
-                        let guard = stream.lock().await;
-                        store.transform_stream(&guard, |txn, tree| {
-                            let max = tree.count();
-                            let lower_bound = max.saturating_sub(*keep);
-                            if lower_bound > 0 {
-                                let query = OffsetQuery::from(lower_bound..);
-                                tracing::debug!("Ephemeral events on {}; retain {:?}", stream_nr, query);
-                                txn.retain(tree, &query)
-                            } else {
-                                // No need to update the tree.
-                                Ok(tree.clone())
-                            }
-                        })?;
-                        let result = stream.link();
-                        drop(guard);
-                        Ok(result)
-                    }
+                    RetainConfig::Events(keep) => retain_last_events(store, *stream_nr, *keep).await,
                     RetainConfig::Age(duration) => {
                         let emit_after: Timestamp = SystemTime::now()
                             .checked_sub(*duration)
