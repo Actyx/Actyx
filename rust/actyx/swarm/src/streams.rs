@@ -1,4 +1,4 @@
-use crate::{AxTreeExt, Cid, Forest, Link, Tree};
+use crate::{Cid, Forest, Link, Tree};
 use actyxos_sdk::{LamportTimestamp, NodeId, Offset, StreamId, StreamNr};
 use ax_futures_util::stream::variable::{self, Variable};
 use fnv::FnvHashMap;
@@ -83,25 +83,18 @@ impl OwnStream {
         self.stream_nr
     }
 
-    pub fn link(&self) -> Option<Link> {
-        self.tree.project(|tree| tree.link())
-    }
-
-    pub fn root(&self) -> Option<Cid> {
-        self.tree.project(|tree| tree.link().map(|link| link.into()))
-    }
-
     pub fn tree_stream(&self) -> variable::Observer<Tree> {
         self.tree.new_observer()
     }
 
-    pub fn latest(&self) -> Tree {
+    /// The current root of the own stream
+    ///
+    /// Note that if you want to do something more complex with a tree, like transform it,
+    /// using this will probably lead to a race condition.
+    ///
+    /// Use lock to get exclusive access to the tree in that case.
+    pub fn snapshot(&self) -> Tree {
         self.tree.get_cloned()
-    }
-
-    pub fn offset(&self) -> Option<Offset> {
-        let offset_or_min = self.tree.project(|tree| tree.offset());
-        Offset::from_offset_or_min(offset_or_min)
     }
 
     /// Acquire an async lock to modify this stream
@@ -115,6 +108,14 @@ pub struct OwnStreamGuard<'a>(&'a OwnStream, tokio::sync::MutexGuard<'a, ()>);
 impl<'a> OwnStreamGuard<'a> {
     pub fn set_latest(&self, value: Tree) {
         self.0.tree.set(value)
+    }
+
+    pub fn link(&self) -> Option<Link> {
+        self.tree.project(|tree| tree.link())
+    }
+
+    pub fn latest(&self) -> Tree {
+        self.tree.get_cloned()
     }
 }
 

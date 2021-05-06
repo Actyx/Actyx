@@ -325,7 +325,11 @@ impl<'a> BanyanStoreGuard<'a> {
             self.data
                 .lamport
                 .new_observer()
-                .filter_map(move |lamport| future::ready(stream.offset().map(|offset| (lamport, offset))))
+                .filter_map(move |lamport| {
+                    future::ready(
+                        Offset::from_offset_or_min(stream.snapshot().offset()).map(|offset| (lamport, offset)),
+                    )
+                })
                 .left_stream()
         } else {
             self.get_or_create_replicated_stream(stream_id)
@@ -369,7 +373,7 @@ impl<'a> BanyanStoreGuard<'a> {
     pub fn root_map(&self) -> BTreeMap<StreamId, Cid> {
         let own = self.own_streams.iter().filter_map(|(stream_nr, inner)| {
             let stream_id = self.node_id().stream(*stream_nr);
-            inner.root().map(|root| (stream_id, root))
+            inner.snapshot().cid().map(|root| (stream_id, root))
         });
 
         let other = self.remote_nodes.iter().flat_map(|(node_id, remote_node)| {
@@ -644,9 +648,7 @@ impl BanyanStore {
             .zip(events)
             .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
         self.transform_stream(&guard, |txn, tree| txn.extend_unpacked(tree, kvs))?;
-        let result = stream.link();
-        drop(guard);
-        Ok(result)
+        Ok(guard.link())
     }
 
     /// Returns a [`Stream`] of known [`StreamId`].
@@ -867,9 +869,13 @@ impl BanyanStore {
 trait AxTreeExt {
     fn last_lamport(&self) -> LamportTimestamp;
     fn offset(&self) -> OffsetOrMin;
+    fn cid(&self) -> Option<Cid>;
 }
 
 impl AxTreeExt for Tree {
+    fn cid(&self) -> Option<Cid> {
+        self.link().map(Into::into)
+    }
     fn last_lamport(&self) -> LamportTimestamp {
         match self.as_index_ref() {
             Some(Index::Branch(branch)) => branch.summaries.lamport_range().max,
