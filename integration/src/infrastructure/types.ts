@@ -14,8 +14,8 @@ export type Target = {
 
 export type SshAble = {
   host: string
-  username: string
-  privateKey: string
+  username?: string
+  privateKey?: string
 }
 
 export type TargetKind =

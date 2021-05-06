@@ -26,7 +26,7 @@ export const mkNodeSshProcess = async (
     throw new Error(`mkNodeSshProcess cannot install on OS ${target.os}`)
   }
 
-  const ssh = new Ssh(sshParams.host, sshParams.username, sshParams.privateKey)
+  const ssh = Ssh.new(sshParams.host, sshParams.username, sshParams.privateKey)
   await connectSsh(ssh, nodeName, sshParams)
 
   const binaryPath = await actyxLinuxBinary(target.arch)
@@ -52,10 +52,10 @@ export const mkNodeSshDocker = async (
     throw new Error(`mkNodeSshDocker cannot install on OS ${target.os}`)
   }
 
-  const ssh = new Ssh(sshParams.host, sshParams.username, sshParams.privateKey)
+  const ssh = Ssh.new(sshParams.host, sshParams.username, sshParams.privateKey)
   await connectSsh(ssh, nodeName, sshParams)
 
-  await ensureDocker(ssh, nodeName, sshParams.username, target.arch)
+  await ensureDocker(ssh, nodeName, target.arch)
   const userPass = await execa('vault', [
     'kv',
     'get',
@@ -96,7 +96,7 @@ const archToDockerMoniker = (arch: Arch): string => {
 /**
  * Install Docker. This procedure is dependant on the `ami` specified in hosts.yaml
  */
-async function ensureDocker(ssh: Ssh, node: string, user: string, arch: Arch) {
+export async function ensureDocker(ssh: Ssh, node: string, arch: Arch) {
   const log = mkLog(node)
   try {
     const result = await ssh.exec('docker --version')
@@ -138,7 +138,7 @@ async function ensureDocker(ssh: Ssh, node: string, user: string, arch: Arch) {
   )
 
   // Fix `Got permission denied while trying to connect to the Docker daemon socket`
-  await exec(`sudo chgrp ${user} /var/run/docker.sock`)
+  await exec(`sudo chgrp $USER /var/run/docker.sock`)
   log('Docker installed')
 }
 

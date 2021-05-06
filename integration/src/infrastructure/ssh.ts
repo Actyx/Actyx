@@ -9,20 +9,35 @@ import { settings } from './settings'
 export class Ssh {
   private commonOpts: string[]
 
-  constructor(host: string, user: string, key: string) {
+  private constructor(opts: string[]) {
+    this.commonOpts = opts
+  }
+  public static new(host: string, user?: string, key?: string): Ssh {
+    if (user !== undefined && key !== undefined) {
+      return Ssh.newWithKey(host, user, key)
+    } else {
+      return Ssh.newWithHost(host)
+    }
+  }
+
+  static newWithKey(host: string, user: string, key: string): Ssh {
     const tempDir = settings().tempDir
     const keyFile = path.resolve(tempDir, 'keyFile.pem')
     const knownHosts = path.resolve(tempDir, 'known_hosts')
     removeSync(keyFile)
     fs.writeFileSync(keyFile, key, { mode: 0o400 })
     // it is important that user@host comes last, see scp
-    this.commonOpts = [
+    return new Ssh([
       '-oConnectTimeout=5',
       `-oUserKnownHostsFile=${knownHosts}`,
       '-oStrictHostKeyChecking=off',
       `-i${keyFile}`,
       `${user}@${host}`,
-    ]
+    ])
+  }
+
+  static newWithHost(host: string): Ssh {
+    return new Ssh(['-oConnectTimeout=5', host])
   }
 
   exec(command: string): execa.ExecaChildProcess<string> {

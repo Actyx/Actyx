@@ -13,7 +13,7 @@ export const mkWindowsSsh = async (
 ): Promise<ActyxNode> => {
   console.log('setting up Actyx process: %s on %o', nodeName, printTarget(target))
 
-  const ssh = new Ssh(sshParams.host, sshParams.username, sshParams.privateKey)
+  const ssh = Ssh.new(sshParams.host, sshParams.username, sshParams.privateKey)
   // Takes about 300 secs for ssh to be reachable
   await connectSsh(ssh, nodeName, sshParams, 150)
 
