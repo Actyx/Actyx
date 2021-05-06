@@ -56,7 +56,6 @@ async fn smoke() -> anyhow::Result<()> {
     tracing::info!("update_root !!!");
     let stream2 = node1.stream(StreamNr::try_from(2)?);
     store.update_root(stream2, root);
-    store.compact_once().await?;
     tokio::task::spawn(interval(Duration::from_secs(1)).for_each(move |_| {
         let store = store.clone();
         let mut tagger = Tagger::new();

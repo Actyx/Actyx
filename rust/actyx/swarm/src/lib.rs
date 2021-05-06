@@ -33,7 +33,7 @@ use crate::gossip::Gossip;
 use crate::prune::RetainConfig;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
-use crate::streams::{OwnStreamInner, ReplicatedStreamInner};
+use crate::streams::{OwnStream, ReplicatedStreamInner};
 use actyxos_sdk::{
     LamportTimestamp, NodeId, Offset, OffsetMap, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp,
 };
@@ -58,7 +58,7 @@ use libp2p::{
     ping::PingConfig,
 };
 use maplit::btreemap;
-use parking_lot::{Mutex, MutexGuard};
+use parking_lot::Mutex;
 use std::{
     collections::{BTreeMap, BTreeSet, VecDeque},
     convert::{TryFrom, TryInto},
@@ -71,7 +71,10 @@ use std::{
 };
 use streams::*;
 use trees::axtrees::{AxKey, AxTrees, Sha256Digest};
-use util::formats::NodeErrorContext;
+use util::{
+    formats::NodeErrorContext,
+    reentrant_safe_mutex::{ReentrantSafeMutex, ReentrantSafeMutexGuard},
+};
 
 #[allow(clippy::upper_case_acronyms)]
 type TT = AxTrees;
@@ -167,7 +170,7 @@ impl PartialEq for SwarmConfig {
 #[derive(Clone)]
 pub struct BanyanStore {
     data: Arc<BanyanStoreData>,
-    state: Arc<Mutex<BanyanStoreState>>,
+    state: Arc<ReentrantSafeMutex<BanyanStoreState>>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -199,7 +202,7 @@ struct BanyanStoreState {
     index_store: SqliteIndexStore,
 
     /// our own streams
-    own_streams: BTreeMap<StreamNr, Arc<OwnStreamInner>>,
+    own_streams: BTreeMap<StreamNr, Arc<OwnStream>>,
 
     /// all remote nodes we know of
     remote_nodes: BTreeMap<NodeId, RemoteNodeInner>,
@@ -221,11 +224,11 @@ impl Drop for BanyanStoreState {
 
 struct BanyanStoreGuard<'a> {
     /// the guard for the mutex - this implies that we have write access to the state
-    guard: MutexGuard<'a, BanyanStoreState>,
+    guard: ReentrantSafeMutexGuard<'a, BanyanStoreState>,
     /// access to the immutable part of the store
     data: Arc<BanyanStoreData>,
     /// access to the state, here be dragons!
-    state: Arc<Mutex<BanyanStoreState>>,
+    state: Arc<ReentrantSafeMutex<BanyanStoreState>>,
 }
 
 impl<'a> Deref for BanyanStoreGuard<'a> {
@@ -269,7 +272,7 @@ impl<'a> BanyanStoreGuard<'a> {
         self.index_store.received_lamport(lamport)
     }
 
-    fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Arc<OwnStreamInner> {
+    fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Arc<OwnStream> {
         self.own_streams.get(&stream_nr).cloned().unwrap_or_else(|| {
             tracing::debug!("creating new own stream {}", stream_nr);
             let forest = self.data.forest.clone();
@@ -278,7 +281,7 @@ impl<'a> BanyanStoreGuard<'a> {
             let _ = self.index_store.add_stream(stream_id);
             tracing::debug!("publish new stream_id {}", stream_id);
             self.publish_new_stream_id(stream_id);
-            let stream = Arc::new(OwnStreamInner::new(forest));
+            let stream = Arc::new(OwnStream::new(forest));
             self.own_streams.insert(stream_nr, stream.clone());
             stream
         })
@@ -490,7 +493,7 @@ impl BanyanStore {
                 lamport: Default::default(),
                 offsets: Default::default(),
             }),
-            state: Arc::new(Mutex::new(BanyanStoreState {
+            state: Arc::new(ReentrantSafeMutex::new(BanyanStoreState {
                 index_store,
                 own_streams: Default::default(),
                 remote_nodes: Default::default(),
@@ -566,8 +569,7 @@ impl BanyanStore {
                 if peer_id == ipfs.local_peer_id() {
                     tracing::warn!("Not dialing configured bootstrap node {} as it's myself", addr_orig);
                 } else {
-                    ipfs.dial_address(&peer_id, addr)
-                        .with_context(|| format!("Dialing bootstrap node {}", addr_orig))?;
+                    ipfs.dial_address(&peer_id, addr);
                 }
             } else {
                 return Err(anyhow::anyhow!("invalid bootstrap address"));
@@ -628,12 +630,16 @@ impl BanyanStore {
     /// Append events to a stream, publishing the new data.
     pub async fn append(&self, stream_nr: StreamNr, events: Vec<(TagSet, Event)>) -> Result<Option<Link>> {
         tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
-        let lamport = self.lock().increment_lamport()?;
-        let timestamp = Timestamp::now();
-        let events = events
-            .into_iter()
-            .map(move |(tags, event)| (Key::new(tags, lamport, timestamp), event));
-        self.transform_stream(stream_nr, |txn, tree| txn.extend_unpacked(tree, events))
+        let stream = self.get_or_create_own_stream(stream_nr);
+        stream
+            .locked(|| {
+                let lamport = self.lock().increment_lamport()?;
+                let timestamp = Timestamp::now();
+                let events = events
+                    .into_iter()
+                    .map(move |(tags, event)| (Key::new(tags, lamport, timestamp), event));
+                self.transform_stream(stream_nr, &stream, |txn, tree| txn.extend_unpacked(tree, events))
+            })
             .await
     }
 
@@ -682,16 +688,7 @@ impl BanyanStore {
         forest.stream_trees_chunked_reverse(query, trees, range, &|_| {})
     }
 
-    /// careful ingestion - basically just call sync_one on each new ingested root
-    async fn careful_ingestion(self, stream_id: StreamId, state: Arc<ReplicatedStreamInner>) {
-        state
-            .incoming_root_stream()
-            .switch_map(move |root| self.clone().sync_one(stream_id, root).into_stream())
-            .for_each(|_| future::ready(()))
-            .await
-    }
-
-    fn get_or_create_own_stream(&self, stream_nr: StreamNr) -> Arc<OwnStreamInner> {
+    fn get_or_create_own_stream(&self, stream_nr: StreamNr) -> Arc<OwnStream> {
         self.lock().get_or_create_own_stream(stream_nr)
     }
 
@@ -702,43 +699,39 @@ impl BanyanStore {
     fn transform_stream(
         &self,
         stream_nr: StreamNr,
+        stream: &OwnStream,
         f: impl FnOnce(&Transaction, &Tree) -> Result<Tree> + Send,
-    ) -> impl Future<Output = Result<Option<Link>>> {
-        let this = self.clone();
-        async move {
-            let stream = this.get_or_create_own_stream(stream_nr);
-            let lock = stream.sequencer().lock().await;
-            let writer = this.data.forest.store().write()?;
-            tracing::debug!("starting write transaction on stream {}", stream_nr);
-            let txn = Transaction::new(stream.forest().clone(), writer);
-            let curr = stream.latest();
-            let tree = f(&txn, &curr)?;
-            // root of the new tree
-            let root: Option<Link> = tree.link();
-            // check for change
-            if root != curr.link() {
-                let cid: Option<Cid> = root.map(Into::into);
-                let stream_id = this.node_id().stream(stream_nr);
-                tracing::debug!(
-                    "updating alias for stream {} to {:?}",
-                    stream_nr,
-                    cid.map(|x: Cid| x.to_string())
-                );
-                // update the permanent alias
-                this.ipfs().alias(StreamAlias::from(stream_id), cid.as_ref())?;
-                // update present for stream
-                this.update_present(stream_id, tree.offset());
-                // update latest
-                tracing::debug!("set_latest! {}", tree);
-                stream.set_latest(tree);
-                let blocks = txn.into_writer().into_written();
-                // publish new blocks and root
-                this.data.gossip.publish(stream_nr, root.expect("not None"), blocks)?;
-            }
-            tracing::debug!("ended write transaction on stream {}", stream_nr);
-            drop(lock);
-            Ok(root)
+    ) -> Result<Option<Link>> {
+        let writer = self.data.forest.store().write()?;
+        tracing::debug!("starting write transaction on stream {}", stream_nr);
+        let txn = Transaction::new(stream.forest().clone(), writer);
+        let curr = stream.latest();
+        let tree = f(&txn, &curr)?;
+        anyhow::ensure!(tree.count() >= curr.count(), "tree rejected because it lost events!");
+        // root of the new tree
+        let root: Option<Link> = tree.link();
+        // check for change
+        if root != curr.link() {
+            let cid: Option<Cid> = root.map(Into::into);
+            let stream_id = self.node_id().stream(stream_nr);
+            tracing::debug!(
+                "updating alias for stream {} to {:?}",
+                stream_nr,
+                cid.map(|x: Cid| x.to_string())
+            );
+            // update the permanent alias
+            self.ipfs().alias(StreamAlias::from(stream_id), cid.as_ref())?;
+            // update present for stream
+            self.update_present(stream_id, tree.offset());
+            // update latest
+            tracing::debug!("set_latest! {}", tree);
+            stream.set_latest(tree);
+            let blocks = txn.into_writer().into_written();
+            // publish new blocks and root
+            self.data.gossip.publish(stream_nr, root.expect("not None"), blocks)?;
         }
+        tracing::debug!("ended write transaction on stream {}", stream_nr);
+        Ok(root)
     }
 
     fn update_root(&self, stream_id: StreamId, root: Link) {
@@ -750,25 +743,34 @@ impl BanyanStore {
 
     async fn compaction_loop(self, interval: Duration) {
         loop {
-            if let Err(err) = self.compact_once().await {
-                tracing::error!("{}", err);
+            let stream_nrs = self.lock().local_stream_nrs();
+            for stream_nr in stream_nrs {
+                tracing::debug!("compacting stream {}", stream_nr);
+                let stream = self.get_or_create_own_stream(stream_nr);
+                let result = stream
+                    .locked(|| self.transform_stream(stream_nr, &stream, |txn, tree| txn.pack(tree)))
+                    .await;
+                if let Err(err) = result {
+                    tracing::error!("Error compacting stream {}: {}", stream_nr, err);
+                    break;
+                }
             }
             tokio::time::sleep(interval).await;
         }
     }
 
-    async fn compact_once(&self) -> Result<()> {
-        let stream_nrs = self.lock().local_stream_nrs();
-        for stream_nr in stream_nrs {
-            tracing::debug!("compacting stream {}", stream_nr);
-            self.pack(stream_nr).await?;
-        }
-        Ok(())
-    }
-
-    fn pack(&self, stream_nr: StreamNr) -> impl Future<Output = Result<Option<Link>>> {
-        tracing::debug!("packing stream {}", stream_nr);
-        self.transform_stream(stream_nr, |txn, tree| txn.pack(tree))
+    /// careful ingestion - basically just call sync_one on each new ingested root
+    async fn careful_ingestion(self, stream_id: StreamId, state: Arc<ReplicatedStreamInner>) {
+        state
+            .incoming_root_stream()
+            .switch_map(move |root| self.clone().sync_one(stream_id, root).into_stream())
+            .for_each(|res| {
+                if let Err(err) = res {
+                    tracing::error!("careful_ingestion: {}", err);
+                }
+                future::ready(())
+            })
+            .await
     }
 
     /// attempt to sync one stream to a new root.
@@ -786,10 +788,11 @@ impl BanyanStore {
         tracing::debug!("assigning temp pin to {}", root);
         let temp_pin = ipfs.create_temp_pin()?;
         ipfs.temp_pin(&temp_pin, &cid)?;
+        let peers = ipfs.peers();
         // attempt to sync. This may take a while and is likely to be interrupted
-        tracing::debug!("starting to sync {}", root);
+        tracing::debug!("starting to sync {} from {} peers", root, peers.len());
         // create the sync stream, and log progress. Add an additional element.
-        let mut sync = ipfs.sync(&cid, ipfs.peers());
+        let mut sync = ipfs.sync(&cid, peers);
         // during the sync, try to load the tree asap and abort in case it is not good
         let mut tree: Option<Tree> = None;
         let mut n: usize = 0;

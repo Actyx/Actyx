@@ -36,25 +36,31 @@ pub type PersistenceMeta = (LamportTimestamp, Offset, StreamNr, Timestamp);
 
 impl BanyanStore {
     async fn persist0(self, events: Vec<(TagSet, Payload)>) -> Result<Vec<PersistenceMeta>> {
-        let n = events.len() as u32;
-        let last_lamport = self.lock().index_store.increase_lamport(n)?;
-        let min_lamport = last_lamport - (n as u64) + 1;
         let stream_nr = StreamNr::from(0); // TODO
         let timestamp = Timestamp::now();
-        let kvs = events
-            .into_iter()
-            .enumerate()
-            .map(move |(i, (tags, payload))| {
-                let key = AxKey::new(tags, min_lamport + (i as u64), timestamp);
-                (key, payload)
-            })
-            .collect::<Vec<_>>();
-        tracing::debug!("publishing {} events on stream {}", kvs.len(), stream_nr);
-        let mut min_offset = OffsetOrMin::MIN;
-        let _ = self
-            .transform_stream(stream_nr, |txn, tree| {
-                min_offset = min_offset.max(tree.offset());
-                txn.extend_unpacked(tree, kvs)
+        let n = events.len() as u32;
+        let stream = self.get_or_create_own_stream(stream_nr);
+        let (min_lamport, min_offset) = stream
+            .locked(|| -> anyhow::Result<(u64, OffsetOrMin)> {
+                let mut store = self.lock();
+                let last_lamport = store.index_store.increase_lamport(n)?;
+                let min_lamport = last_lamport - (n as u64) + 1;
+                let kvs = events
+                    .into_iter()
+                    .enumerate()
+                    .map(move |(i, (tags, payload))| {
+                        let key = AxKey::new(tags, min_lamport + (i as u64), timestamp);
+                        (key, payload)
+                    })
+                    .collect::<Vec<_>>();
+                tracing::debug!("publishing {} events on stream {}", kvs.len(), stream_nr);
+                let mut min_offset = OffsetOrMin::MIN;
+                self.transform_stream(stream_nr, &stream, |txn, tree| {
+                    min_offset = min_offset.max(tree.offset());
+                    txn.extend_unpacked(tree, kvs)
+                })?;
+                drop(store);
+                Ok((min_lamport, min_offset))
             })
             .await?;
 
