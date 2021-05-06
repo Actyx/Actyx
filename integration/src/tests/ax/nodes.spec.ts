@@ -3,6 +3,7 @@ import { CLI } from '../../cli'
 import { runOnEvery } from '../../infrastructure/hosts'
 import { currentAxBinary } from '../../infrastructure/settings'
 import { mkAxWithUnreachableNode } from '../../stubs'
+import { MyGlobal } from '../../../jest/setup'
 
 describe('ax nodes', () => {
   describe('ls', () => {
@@ -23,6 +24,9 @@ describe('ax nodes', () => {
     test('return OK and result with connection reachable', async () => {
       await runOnEvery(async (node) => {
         const response = assertOK(await node.ax.nodes.ls())
+        const axNodeSetup = (<MyGlobal>global).axNodeSetup
+        const gitHash = axNodeSetup.gitHash.slice(0, 9)
+
         const responseShape = [
           {
             connection: 'reachable',
@@ -32,10 +36,10 @@ describe('ax nodes', () => {
             startedIso: expect.any(String),
             startedUnix: expect.any(Number),
             version: {
-              profile: expect.any(String),
-              target: expect.any(String),
-              version: expect.any(String),
-              gitHash: expect.any(String)
+              profile: 'release',
+              target: `${node.target.os}-${node.target.arch}`,
+              version: await node.ax.shortVersion,
+              gitHash,
             },
           },
         ]

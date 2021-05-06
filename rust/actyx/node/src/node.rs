@@ -307,7 +307,7 @@ impl Node {
         self.register_with_components(tx).internal()?;
 
         self.send(NodeEvent::StateUpdate(self.state.clone())).internal()?;
-        tracing::info!(target: "NODE_STARTED_BY_HOST", "Actyx is running.");
+        tracing::info!(target: "NODE_STARTED_BY_HOST", "Actyx {} is running.", NodeVersion::get());
 
         // Main node event loop (pun intended)
         let shutdown_reason = loop {

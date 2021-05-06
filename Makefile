@@ -25,12 +25,11 @@ $(error Please upgrade to GNU Make $(MIN_MAKE_VERSION) you are on: $(MAKE_VERSIO
 endif
 
 architectures = aarch64 x86_64 armv7 arm
+unix-bins = actyx-linux ax
 
-all-LINUX := $(foreach arch,$(architectures),$(foreach bin,actyx-linux ax,linux-$(arch)/$(bin)))
 all-WINDOWS := $(foreach t,actyx.exe ax.exe Actyx-Installer.exe,windows-x86_64/$t)
 all-ANDROID := actyx.apk
-all-MACOS := $(foreach t,actyx-linux ax,macos-x86_64/$t)
-LINUX-x86_64 := $(foreach bin,actyx-linux ax,linux-x86_64/$(bin))
+all-MACOS := $(foreach t,$(unix-bins),macos-x86_64/$t)
 
 CARGO_TEST_JOBS := 8
 CARGO_BUILD_JOBS := 8
@@ -40,15 +39,19 @@ export ACTYX_VERSION ?= ${VERSION}-$(shell git rev-parse --short HEAD)$(shell [ 
 # this needs to remain the first so it is the default target
 all: all-linux all-android all-windows all-macos all-js
 
-all-linux: $(patsubst %,dist/bin/%,$(all-LINUX))
-
 all-android: $(patsubst %,dist/bin/%,$(all-ANDROID))
 
 all-windows: $(patsubst %,dist/bin/%,$(all-WINDOWS))
 
 all-macos: $(patsubst %,dist/bin/%,$(all-MACOS))
 
-linux-x86_64: $(patsubst %,dist/bin/%,$(LINUX-x86_64))
+all-linux: $(foreach arch,$(architectures),linux-$(arch))
+
+define mkLinuxRule =
+linux-$(1): $(foreach bin,$(unix-bins),dist/bin/linux-$(1)/$(bin))
+endef
+
+$(foreach arch,$(architectures),$(eval $(call mkLinuxRule,$(arch))))
 
 all-js: \
 	dist/js/sdk \
@@ -405,8 +408,10 @@ dist/bin/actyx.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
 misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/windows-x86_64/ax.exe make-always
 	mkdir -p misc/actyxos-node-manager/bin/win32
 	cp dist/bin/windows-x86_64/ax.exe misc/actyxos-node-manager/bin/win32/
-	cp misc/actyxos-node-manager/package.json /tmp/package.json
-	jq '.actyx.version="$(ACTYX_VERSION)"' /tmp/package.json > misc/actyxos-node-manager/package.json
+
+	jq '.actyx.version="$(ACTYX_VERSION)"' < misc/actyxos-node-manager/package.json > misc/actyxos-node-manager/package.json.new \
+	  && mv misc/actyxos-node-manager/package.json.new misc/actyxos-node-manager/package.json
+
 	docker run \
 	  -v `pwd`:/src \
 	  -w /src/misc/actyxos-node-manager \
