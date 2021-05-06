@@ -51,6 +51,8 @@ const ensureBinaryExists = async (p: string): Promise<string> => {
   return p
 }
 
+const mutex: { [_: string]: boolean | undefined } = {}
+
 const getOrDownload = async (
   os: OS,
   arch: Arch,
@@ -63,10 +65,17 @@ const getOrDownload = async (
   const p = os == 'android' ? '' : `/${id}`
   const localPath = `../dist/bin${p}/${bin}`
 
-  if (!fs.existsSync(localPath)) {
-    await (gitHash != null
-      ? download(gitHash, os, arch, binary, localPath)
-      : ensureBinaryExists(localPath))
+  while (!fs.existsSync(localPath)) {
+    if (mutex[localPath]) {
+      // `localPath` is already being downloaded or created. Waiting ..
+      await Observable.timer(500).first().toPromise()
+    } else {
+      mutex[localPath] = true
+      await (gitHash != null
+        ? download(gitHash, os, arch, binary, localPath)
+        : ensureBinaryExists(localPath))
+      delete mutex[localPath]
+    }
   }
   return Promise.resolve(localPath)
 }
@@ -85,8 +94,8 @@ const download = (
 
   console.log('Downloading binary "%s" from "%s"', bin, url)
 
-  ensureDirSync(path.dirname(targetFile))
-  const file = fs.createWriteStream(targetFile, { mode: 0o755 })
+  const tmpFile = path.join(tmpdir(), `integration-${Math.random().toString(36).substring(7)}`)
+  const file = fs.createWriteStream(tmpFile, { mode: 0o755 })
   return new Promise((resolve, reject) =>
     https.get(url, (response) => {
       if (response.statusCode !== 200) {
@@ -98,10 +107,15 @@ const download = (
           file.close()
         })
         .on('error', (err) => {
-          fs.unlink(targetFile, () => ({})) // ignore error, file might have not existed in the first place
+          fs.unlinkSync(tmpFile)
           reject(err)
         })
-        .on('close', resolve)
+        .on('close', () => {
+          ensureDirSync(path.dirname(targetFile))
+          fs.copyFileSync(tmpFile, targetFile)
+          fs.unlinkSync(tmpFile)
+          resolve()
+        })
     }),
   )
 }
