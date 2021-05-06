@@ -23,9 +23,7 @@ describe('event service', () => {
       }))
 
     /**
-     * TODO: when query is in ASC lower and upper bounds are exclusive, when
-     * in DESC it is lower exclusive and upper inclusive and the query never
-     * completes
+     * TODO: DESC query does not complete by itself, even though it delivers all data
      */
     it('should return events in ascending order and complete', () =>
       run(async (x) => {
@@ -34,7 +32,7 @@ describe('event service', () => {
         const pub2 = await publishRandom(es)
         const request: QueryRequest = {
           lowerBound: { [pub2.stream]: pub1.offset - 1 },
-          upperBound: { [pub2.stream]: pub2.offset + 1 },
+          upperBound: { [pub2.stream]: pub2.offset },
           query: `FROM '${integrationTag}'`,
           order: Order.Asc,
         }

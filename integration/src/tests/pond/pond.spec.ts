@@ -19,7 +19,7 @@ const isSortedAsc = (data: string[]): boolean => {
   return true
 }
 
-describe.skip('Pond', () => {
+describe('Pond', () => {
   // Assert that events are always fed to Fish in the correct order on every node, at any time,
   // and also assert that all events reach all Fish eventually.
   test('ordering / time travel', async () => {
@@ -51,11 +51,11 @@ describe.skip('Pond', () => {
         Promise.all([
           // Some different ways in which tags might be combined.
           // We run all of these in parallel, to assert their events are not accidentally mixed up.
-          concurrentOrderingTest(nodes.length, 300, base.withId('/1'), pond),
-          concurrentOrderingTest(nodes.length, 300, base.and('/2'), pond),
-          concurrentOrderingTest(nodes.length, 300, Tag(':3:').and(base).and('::3'), pond),
-          concurrentOrderingTest(nodes.length, 300, Tag('xxx').and(base.withId('___4___')), pond),
-          concurrentOrderingTest(nodes.length, 300, Tag('5').withId(randomId), pond),
+          concurrentOrderingTest(nodes.length, 100, base.withId('/1'), pond),
+          concurrentOrderingTest(nodes.length, 100, base.and('/2'), pond),
+          concurrentOrderingTest(nodes.length, 100, Tag(':3:').and(base).and('::3'), pond),
+          concurrentOrderingTest(nodes.length, 100, Tag('xxx').and(base.withId('___4___')), pond),
+          concurrentOrderingTest(nodes.length, 100, Tag('5').withId(randomId), pond),
         ])
       return nodes.map((node) => withPond(node, t))
     })

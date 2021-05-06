@@ -127,7 +127,8 @@ impl EventStoreConsumerAccess for BanyanStore {
             .take_while(|x| future::ready(x.is_ok()))
             .filter_map(|x| future::ready(x.ok()))
             .take_until_condition(move |chunk| {
-                let stop_here = Into::<OffsetOrMin>::into(chunk.range.end as u32) >= to_inclusive;
+                // FIXME: Will this only be triggered once an event outside the queried bounds becomes known?
+                let stop_here = Into::<OffsetOrMin>::into(chunk.range.end as u32) > to_inclusive;
                 if stop_here {
                     tx.try_send(()).unwrap();
                 }
