@@ -265,10 +265,6 @@ impl<'a> BanyanStoreGuard<'a> {
         self.own_streams.keys().map(|x| self.data.node_id.stream(*x)).collect()
     }
 
-    fn received_lamport(&mut self, lamport: u64) -> anyhow::Result<u64> {
-        self.index_store.received_lamport(lamport)
-    }
-
     fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Arc<OwnStream> {
         self.own_streams.get(&stream_nr).cloned().unwrap_or_else(|| {
             tracing::debug!("creating new own stream {}", stream_nr);
@@ -402,10 +398,17 @@ impl<'a> BanyanStoreGuard<'a> {
     }
 
     /// reserve a number of lamport timestamps
-    pub fn reserve_lamports(&mut self, n: usize) -> anyhow::Result<impl Iterator<Item = LamportTimestamp>> {
+    fn reserve_lamports(&mut self, n: usize) -> anyhow::Result<impl Iterator<Item = LamportTimestamp>> {
         let n = u64::try_from(n)?;
         let last_lamport = self.index_store.increase_lamport(n)?;
+        self.data.lamport.set(last_lamport.into());
         Ok((last_lamport - n + 1..=last_lamport).map(LamportTimestamp::from))
+    }
+
+    fn received_lamport(&mut self, lamport: u64) -> anyhow::Result<u64> {
+        let result = self.index_store.received_lamport(lamport)?;
+        self.data.lamport.set(result.into());
+        Ok(result)
     }
 }
 
@@ -754,8 +757,11 @@ impl BanyanStore {
             tracing::debug!("set_latest! {}", tree);
             stream.set_latest(tree);
             let blocks = txn.into_writer().into_written();
+            let lamport = self.data.lamport.get();
             // publish new blocks and root
-            self.data.gossip.publish(stream_nr, root.expect("not None"), blocks)?;
+            self.data
+                .gossip
+                .publish(stream_nr, root.expect("not None"), blocks, lamport)?;
         }
         tracing::debug!("ended write transaction on stream {}", stream_nr);
         Ok(())

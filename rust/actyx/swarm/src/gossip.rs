@@ -1,5 +1,5 @@
 use crate::{BanyanStore, Block, Ipfs, Link};
-use actyxos_sdk::{NodeId, StreamId, StreamNr};
+use actyxos_sdk::{LamportTimestamp, NodeId, StreamId, StreamNr};
 use anyhow::Result;
 use ax_futures_util::stream::latest_channel;
 use futures::prelude::*;
@@ -22,6 +22,7 @@ struct PublishUpdate {
     stream: StreamNr,
     root: Link,
     links: BTreeSet<Link>,
+    lamport: LamportTimestamp,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -29,6 +30,7 @@ struct RootUpdate {
     stream: StreamId,
     root: Cid,
     blocks: Vec<Block>,
+    lamport: LamportTimestamp,
 }
 
 impl Encode<DagCborCodec> for RootUpdate {
@@ -50,6 +52,7 @@ struct RootUpdateIo {
     stream: StreamId,
     root: Cid,
     blocks: Vec<(Cid, Vec<u8>)>,
+    lamport: LamportTimestamp,
 }
 
 impl From<&RootUpdate> for RootUpdateIo {
@@ -62,6 +65,7 @@ impl From<&RootUpdate> for RootUpdateIo {
                 .iter()
                 .map(|block| (*block.cid(), block.data().to_vec()))
                 .collect(),
+            lamport: value.lamport,
         }
     }
 }
@@ -72,12 +76,18 @@ impl TryFrom<RootUpdateIo> for RootUpdate {
     fn try_from(value: RootUpdateIo) -> Result<Self, Self::Error> {
         let root: Cid = value.root;
         let stream = value.stream;
+        let lamport = value.lamport;
         let blocks = value
             .blocks
             .into_iter()
             .map(|(cid, data)| Block::new(cid, data.to_vec()))
             .collect::<Result<Vec<Block>>>()?;
-        Ok(Self { root, stream, blocks })
+        Ok(Self {
+            root,
+            stream,
+            blocks,
+            lamport,
+        })
     }
 }
 
@@ -100,6 +110,7 @@ impl Gossip {
         let (tx, mut rx) = latest_channel::channel::<PublishUpdate>();
         let publish_task = async move {
             while let Some(update) = rx.next().await {
+                let lamport = update.lamport;
                 let root = Cid::from(update.root);
                 let stream = node_id.stream(update.stream);
                 let mut size = 0;
@@ -117,7 +128,12 @@ impl Gossip {
                 }
 
                 if enable_fast_path {
-                    let root_update = RootUpdate { root, stream, blocks };
+                    let root_update = RootUpdate {
+                        root,
+                        stream,
+                        blocks,
+                        lamport,
+                    };
                     let blob = DagCborCodec.encode(&GossipMessage::RootUpdate(root_update)).unwrap();
                     tracing::trace!("broadcast_blob {} {}", stream, blob.len());
                     if let Err(err) = ipfs.broadcast(&topic, blob) {
@@ -132,6 +148,7 @@ impl Gossip {
                     let root_update = RootUpdate {
                         root,
                         stream,
+                        lamport,
                         blocks: Default::default(),
                     };
                     let blob = DagCborCodec.encode(&GossipMessage::RootUpdate(root_update)).unwrap();
@@ -148,8 +165,19 @@ impl Gossip {
         }
     }
 
-    pub fn publish(&self, stream: StreamNr, root: Link, links: BTreeSet<Link>) -> Result<()> {
-        self.tx.send(PublishUpdate { stream, root, links })?;
+    pub fn publish(
+        &self,
+        stream: StreamNr,
+        root: Link,
+        links: BTreeSet<Link>,
+        lamport: LamportTimestamp,
+    ) -> Result<()> {
+        self.tx.send(PublishUpdate {
+            stream,
+            root,
+            links,
+            lamport,
+        })?;
         Ok(())
     }
 
@@ -234,7 +262,7 @@ mod tests {
         let cbor = [
             0x82, // array(2)
                 0x00, // unsigned(0)
-                0x83, // array(3)
+                0x84, // array(4)
                     0x82, // array(2)
                         0x58, 0x20, // bytes(32)
                             0xff, 0xff, 0xff, 0xff,
@@ -258,11 +286,13 @@ mod tests {
                             0x4C, 0xA4, 0x95, 0x99,
                             0x1B, 0x78, 0x52, 0xB8, 0x55,
                     0x80, // array(0)
+                    0x00, // unsigned(0)
         ];
         let root_update = GossipMessage::RootUpdate(RootUpdate {
             stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(42.into()),
             root: Cid::new_v1(0x00, Code::Sha2_256.digest(&[])),
             blocks: Default::default(),
+            lamport: Default::default(),
         });
         let msg = DagCborCodec.encode(&root_update).unwrap();
         assert_eq!(msg, cbor);

@@ -146,8 +146,8 @@ impl SqliteIndexStore {
 
     /// current lamport timestamp
     #[cfg(test)]
-    pub fn lamport(&self) -> u64 {
-        self.lamport
+    pub fn lamport(&self) -> actyxos_sdk::LamportTimestamp {
+        self.lamport.into()
     }
 }
 
