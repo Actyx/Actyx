@@ -100,7 +100,8 @@ impl Node {
         let sys_settings_json = settings_repo
             .get_settings(&system_scope(), false)
             .context("Unable to get initial system settings")?;
-        let sys_settings: Settings = serde_json::from_value(sys_settings_json)?;
+        let sys_settings: Settings =
+            serde_json::from_value(sys_settings_json).context("Deserializing system settings json")?;
 
         let node_id = runtime_storage.get_or_create_node_id()?;
         let state = NodeState::new(node_id, sys_settings);
