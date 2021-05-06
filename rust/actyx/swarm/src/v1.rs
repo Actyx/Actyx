@@ -274,6 +274,7 @@ impl From<&SwarmOffsets> for OffsetsResponse {
 
 impl Present for BanyanStore {
     fn offsets(&self) -> stream::BoxStream<'static, OffsetsResponse> {
+        #[allow(clippy::redundant_closure)]
         self.data.offsets.new_projection(|x| OffsetsResponse::from(x)).boxed()
     }
 }
