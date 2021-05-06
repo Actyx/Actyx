@@ -11,7 +11,6 @@ use std::{
     process::{Command, Stdio},
 };
 use util::formats::{LogEvent, LogRequest, LogSeverity};
-static ANDROID_PACKAGE_PREFIX: &str = "com.actyx.android";
 static ANDROID_NODE_LOG_PREFIX: &str = "com.actyx.node";
 static ANDROID_NODE_LOG_PREFIX_SHORT: &str = "c.a.n";
 
@@ -36,14 +35,17 @@ pub fn logcat_loop(storage: StorageWrapper, filter: String) -> Result<()> {
     let mut parser = Parser::default();
 
     for line in reader.lines() {
-        let line = line?;
-        let record = parser.parse(&line);
-        // avoid loops ..
-        if !(record.tag.starts_with(ANDROID_NODE_LOG_PREFIX) || record.tag.starts_with(ANDROID_NODE_LOG_PREFIX_SHORT)) {
-            let log: LogRequest = record.into();
-            storage
-                .spawn_mut(|s| s.add_logs(vec![log]))
-                .map_err(|e| format!("Unable to spawn into DB thread {}", e))??;
+        if let Ok(line) = line {
+            let record = parser.parse(&line);
+            // avoid loops ..
+            if !(record.tag.starts_with(ANDROID_NODE_LOG_PREFIX)
+                || record.tag.starts_with(ANDROID_NODE_LOG_PREFIX_SHORT))
+            {
+                let log: LogRequest = record.into();
+                storage
+                    .spawn_mut(|s| s.add_logs(vec![log]))
+                    .map_err(|e| format!("Unable to spawn into DB thread {}", e))??;
+            }
         }
     }
 
@@ -57,7 +59,6 @@ fn android_log(record: AndroidLog) {
         LogSeverity::Info => LogPriority::INFO,
         LogSeverity::Warn => LogPriority::WARN,
         LogSeverity::Error => LogPriority::ERROR,
-        LogSeverity::Fatal => LogPriority::FATAL,
     } as i32;
     let tag = CString::new(record.tag).unwrap().into_raw();
     let msg = CString::new(record.message).unwrap().into_raw();
@@ -84,7 +85,7 @@ pub fn logs_to_logcat(rx: Receiver<Vec<LogEvent>>) {
     loop {
         if let Ok(logs) = rx.recv() {
             for val in logs {
-                if !val.producer_name.starts_with(ANDROID_PACKAGE_PREFIX) {
+                if !val.producer_name.starts_with(util::formats::ANDROID_PRODUCER_PREFIX) {
                     android_log(val.into());
                 }
             }

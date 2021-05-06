@@ -104,7 +104,7 @@ impl LogServiceWrapper {
             let lc_filter = opt._static.logcat_filter.clone();
             spawn_with_name("logcat_read_loop".into(), || {
                 if let Err(e) = android_logcat::logcat_loop(storage, lc_filter) {
-                    panic!("Error reading for logcat: {}", e);
+                    panic!("Error reading from logcat: {}", e);
                 }
             });
         }
