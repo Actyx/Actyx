@@ -1,6 +1,6 @@
 use actyxos_sdk::{language::Query, Payload, StreamNr, TagSet};
 use anyhow::Result;
-use libp2p::PeerId;
+use libp2p::{Multiaddr, PeerId};
 use std::path::PathBuf;
 use structopt::StructOpt;
 use swarm::SwarmConfig;
@@ -12,6 +12,12 @@ pub struct Config {
     pub path: Option<PathBuf>,
     #[structopt(long)]
     pub node_name: Option<String>,
+    #[structopt(long)]
+    pub enable_mdns: bool,
+    #[structopt(long)]
+    pub enable_discovery: bool,
+    #[structopt(long)]
+    pub enable_metrics: bool,
     #[structopt(long)]
     pub enable_fast_path: bool,
     #[structopt(long)]
@@ -25,14 +31,14 @@ impl From<Config> for SwarmConfig {
         Self {
             db_path: config.path,
             node_name: config.node_name,
-            enable_mdns: true,
+            enable_mdns: config.enable_mdns,
             topic: "swarm-cli".into(),
-            listen_addresses: vec!["/ip4/0.0.0.0/tcp/0".parse().unwrap()],
+            listen_addresses: vec!["/ip4/0.0.0.0/tcp/30000".parse().unwrap()],
             enable_fast_path: config.enable_fast_path,
             enable_slow_path: config.enable_slow_path,
             enable_root_map: config.enable_root_map,
-            enable_discovery: false,
-            enable_metrics: false,
+            enable_discovery: config.enable_discovery,
+            enable_metrics: config.enable_metrics,
             ..Default::default()
         }
     }
@@ -40,6 +46,7 @@ impl From<Config> for SwarmConfig {
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Command {
+    AddAddress(PeerId, Multiaddr),
     Append(StreamNr, Vec<(TagSet, Payload)>),
     Query(Query),
     Exit,
@@ -48,9 +55,8 @@ pub enum Command {
 impl std::fmt::Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Self::Append(nr, events) => {
-                write!(f, ">append {} {}", nr, serde_json::to_string(events).unwrap())?;
-            }
+            Self::AddAddress(peer, addr) => write!(f, ">add-address {} {}", peer, addr)?,
+            Self::Append(nr, events) => write!(f, ">append {} {}", nr, serde_json::to_string(events).unwrap())?,
             Self::Query(expr) => write!(f, ">query {}", expr)?,
             Self::Exit => write!(f, ">exit")?,
         }
@@ -62,24 +68,32 @@ impl std::str::FromStr for Command {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self> {
-        if s.starts_with(">query ") {
-            Ok(Self::Query(s.split_at(7).1.parse()?))
-        } else if s.starts_with(">append ") {
-            let s = s.split_at(8).1;
-            let mut iter = s.splitn(2, ' ');
-            let nr: u64 = iter.next().unwrap().parse()?;
-            let events = serde_json::from_str(iter.next().unwrap())?;
-            Ok(Self::Append(nr.into(), events))
-        } else if s.starts_with(">exit") {
-            Ok(Self::Exit)
-        } else {
-            Err(anyhow::anyhow!("invalid command '{}'", s))
-        }
+        let mut parts = s.split_whitespace();
+        Ok(match parts.next() {
+            Some(">add-address") => {
+                let peer: PeerId = parts.next().unwrap().parse()?;
+                let addr: Multiaddr = parts.next().unwrap().parse()?;
+                Self::AddAddress(peer, addr)
+            }
+            Some(">query") => Self::Query(s.split_at(7).1.parse()?),
+            Some(">append") => {
+                let s = s.split_at(8).1;
+                let mut iter = s.splitn(2, ' ');
+                let nr: u64 = iter.next().unwrap().parse()?;
+                let events = serde_json::from_str(iter.next().unwrap())?;
+                Self::Append(nr.into(), events)
+            }
+            Some(">exit") => Self::Exit,
+            _ => {
+                return Err(anyhow::anyhow!("invalid command '{}'", s));
+            }
+        })
     }
 }
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Event {
+    PeerId(PeerId),
     Connected(PeerId),
     Subscribed(PeerId, String),
     Result((u64, AxKey, Payload)),
@@ -88,6 +102,9 @@ pub enum Event {
 impl std::fmt::Display for Event {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            Self::PeerId(peer_id) => {
+                write!(f, "<peer-id {}", peer_id)?;
+            }
             Self::Connected(peer_id) => {
                 write!(f, "<connected {}", peer_id)?;
             }
@@ -108,6 +125,7 @@ impl std::str::FromStr for Event {
     fn from_str(s: &str) -> Result<Self> {
         let mut parts = s.split_whitespace();
         Ok(match parts.next() {
+            Some("<peer-id") => Self::PeerId(parts.next().unwrap().parse()?),
             Some("<connected") => Self::Connected(parts.next().unwrap().parse()?),
             Some("<subscribed") => {
                 let peer_id = parts.next().unwrap().parse()?;

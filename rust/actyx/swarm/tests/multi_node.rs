@@ -15,6 +15,8 @@ async fn banyan_multi_node() -> Result<()> {
     util::setup_logger();
     let s1 = BanyanStore::test("a").await?;
     let s2 = BanyanStore::test("b").await?;
+    s1.ipfs()
+        .add_address(&s2.ipfs().local_peer_id(), s2.ipfs().listeners()[0].clone());
 
     let tags = tags!("event");
     let query = TagsQuery::new(vec![tags.clone()]);

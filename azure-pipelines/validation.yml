@@ -37,11 +37,11 @@ stages:
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
       - job:
-        displayName: make validate-os validate-rust-sdk
+        displayName: make validate-os validate-rust-sdk validate-netsim
         steps:
           - bash: |
               set -e
-              make validate-os validate-rust-sdk validate-rust-sdk-macros
+              make validate-os validate-rust-sdk validate-rust-sdk-macros validate-netsim
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)

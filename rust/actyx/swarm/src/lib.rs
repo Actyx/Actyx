@@ -133,7 +133,7 @@ impl SwarmConfig {
     pub fn test(node_name: &str) -> Self {
         Self {
             topic: "topic".into(),
-            enable_mdns: true,
+            enable_mdns: false,
             node_name: Some(node_name.into()),
             listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse().unwrap()],
             enable_fast_path: true,
