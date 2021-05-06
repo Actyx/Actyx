@@ -1,5 +1,6 @@
 import { Client, DefaultClientOpts } from '@actyx/os-sdk'
 import execa from 'execa'
+import { Observable } from 'rxjs'
 import { CLI } from '../cli'
 import { connectSsh, ensureDocker, execSsh } from './linux'
 import { mkProcessLogger } from './mkProcessLogger'
@@ -82,6 +83,7 @@ export const mkNodeSshAndroid = async (
   // properly.  Not sure yet whether this is a fluke with the emulator or with
   // Actyx
   await execAdb('shell am force-stop com.actyx.android')
+  await Observable.timer(1000).first().toPromise()
   await execAdb('shell am start -n com.actyx.android/com.actyx.android.MainActivity')
   ;(
     await runProcess(nodeName, logger, ssh, `adb -s localhost:${adbPort} logcat | grep -i actyx`, [
@@ -104,12 +106,14 @@ export const mkNodeSshAndroid = async (
     await target._private.cleanup()
   }
 
+  const executeInContainer = (script: string) =>
+    target.execute(`adb -s localhost:${adbPort} ${script}`)
   return {
     name: nodeName,
-    target,
+    target: { ...target, executeInContainer },
     ax: await CLI.build(axHost, axBinaryPath),
     httpApiClient: Client(opts),
-    host: 'docker',
+    host: 'android',
     _private: {
       shutdown,
       axBinaryPath,
