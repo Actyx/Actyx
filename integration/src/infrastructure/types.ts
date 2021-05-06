@@ -16,6 +16,9 @@ export type Target = {
   ) => Promise<{ exitCode: number; stdOut: string; stdErr: string }>
   _private: {
     cleanup: () => Promise<void>
+    // Helper to get `executeInContainer` over the process boundary. This is a
+    // prefix, with which `executeInContainer` can be reconstructed.
+    executeInContainerPrefix?: string
   }
 }
 

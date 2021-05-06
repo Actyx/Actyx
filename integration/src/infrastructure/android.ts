@@ -106,11 +106,16 @@ export const mkNodeSshAndroid = async (
     await target._private.cleanup()
   }
 
+  const executeInContainerPrefix = `adb -s localhost:${adbPort} `
   const executeInContainer = (script: string) =>
-    target.execute(`adb -s localhost:${adbPort} ${script}`)
+    target.execute(`${executeInContainerPrefix}${script}`)
   return {
     name: nodeName,
-    target: { ...target, executeInContainer },
+    target: {
+      ...target,
+      _private: { ...target._private, executeInContainerPrefix },
+      executeInContainer,
+    },
     ax: await CLI.build(axHost, axBinaryPath),
     httpApiClient: Client(opts),
     host: 'android',
