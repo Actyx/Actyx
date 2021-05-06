@@ -93,13 +93,9 @@ impl<T, F, R> Projection<T, F>
 where
     F: FnOnce(&T) -> R,
 {
-    fn new(v: &Variable<T>, f: F) -> Self {
-        let id = v.inner.lock().new_observer_id();
-        Self {
-            inner: v.inner.clone(),
-            f,
-            id,
-        }
+    fn new(inner: Arc<Mutex<VariableInner<T>>>, f: F) -> Self {
+        let id = inner.lock().new_observer_id();
+        Self { inner, f, id }
     }
 }
 
@@ -213,7 +209,7 @@ impl<T> Variable<T> {
     where
         F: Fn(&T) -> U,
     {
-        Projection::new(self, f)
+        Projection::new(self.inner.clone(), f)
     }
 }
 
