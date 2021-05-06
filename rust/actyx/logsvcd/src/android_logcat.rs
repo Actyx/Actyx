@@ -11,10 +11,9 @@ use std::{
     process::{Command, Stdio},
 };
 use util::formats::{LogEvent, LogRequest, LogSeverity};
-static ANDROID_PACKAGE_PREFIX: &str = "com.actyx.os.android";
-static ANDROID_PACKAGE_PREFIX_SHORT: &str = "c.a.o.a";
-static ANDROID_NODE_LOG_PREFIX: &str = "com.actyx.os.node";
-static ANDROID_NODE_LOG_PREFIX_SHORT: &str = "c.a.o.n";
+static ANDROID_PACKAGE_PREFIX: &str = "com.actyx.android";
+static ANDROID_NODE_LOG_PREFIX: &str = "com.actyx.node";
+static ANDROID_NODE_LOG_PREFIX_SHORT: &str = "c.a.n";
 
 /// Polls logcat according to the supplied `filter` and inserts new log into the DB
 /// This is a blocking operation.
@@ -85,9 +84,7 @@ pub fn logs_to_logcat(rx: Receiver<Vec<LogEvent>>) {
     loop {
         if let Ok(logs) = rx.recv() {
             for val in logs {
-                if !(val.log_name.starts_with(ANDROID_PACKAGE_PREFIX)
-                    || val.log_name.starts_with(ANDROID_PACKAGE_PREFIX_SHORT))
-                {
+                if !val.producer_name.starts_with(ANDROID_PACKAGE_PREFIX) {
                     android_log(val.into());
                 }
             }

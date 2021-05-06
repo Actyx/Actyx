@@ -76,7 +76,10 @@ macro_rules! request_oneshot {
                 error!("Error adding initial key {}", e);
             }
 
-            let result = rx.await.ax_internal().and_then(|x| x.map($result));
+            let result = rx
+                .await
+                .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error waiting for response")
+                .and_then(|x| x.map($result));
 
             ($channel_id, result)
         }
@@ -115,11 +118,16 @@ impl ApiBehaviour {
     }
 
     fn maybe_add_key(&self, peer: PeerId) -> BoxFuture<'static, ActyxOSResult<()>> {
-        if self.state.auth_info.lock().authorized_keys.is_empty() {
-            debug!("Adding {} to authorized users", peer);
-            let (tx, rx) = tokio::sync::oneshot::channel();
+        let mut auth_info = self.state.auth_info.lock();
+        if auth_info.authorized_keys.is_empty() {
             match PublicKey::try_from(peer) {
                 Ok(key_id) => {
+                    debug!("Adding {} (peer {}) to authorized users", key_id, peer);
+                    // Directly add the peer. This will be overridden as soon as the settings round
+                    // tripped.
+                    auth_info.authorized_keys.push(peer);
+                    drop(auth_info);
+                    let (tx, rx) = tokio::sync::oneshot::channel();
                     self.state
                         .node_tx
                         .send(ExternalEvent::SettingsRequest(SettingsRequest::SetSettings {
@@ -130,14 +138,16 @@ impl ApiBehaviour {
                         }))
                         .unwrap();
                     async move {
-                        rx.await.ax_internal().and_then(|x| {
-                            x.map(|_| {
-                                info!(
-                                    "User with public key {} has been added as the first authorized user.",
-                                    key_id
-                                );
+                        rx.await
+                            .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error waiting for response")
+                            .and_then(|x| {
+                                x.map(|_| {
+                                    info!(
+                                        "User with public key {} has been added as the first authorized user.",
+                                        key_id
+                                    );
+                                })
                             })
-                        })
                     }
                     .boxed()
                 }
@@ -223,10 +233,13 @@ impl ApiBehaviour {
                     if let Err(e) = maybe_add_key.await {
                         error!("Error adding initial key {}", e);
                     }
-                    let res = rx.await.ax_internal().and_then(|x| {
-                        x.ax_internal()
-                            .map(|r| AdminResponse::Internal(InternalResponse::GetSwarmStateResponse(r)))
-                    });
+                    let res = rx
+                        .await
+                        .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error waiting for response")
+                        .and_then(|x| {
+                            x.ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error getting swarm state")
+                                .map(|r| AdminResponse::Internal(InternalResponse::GetSwarmStateResponse(r)))
+                        });
                     (channel_id, res)
                 }
                 .boxed();
@@ -452,10 +465,10 @@ pub(crate) async fn start(swarm: WrappedBehaviour) {
     driver.await;
 }
 
-async fn mk_transport(id_keys: identity::Keypair) -> ActyxOSResult<(PeerId, Boxed<(PeerId, StreamMuxerBox)>)> {
+async fn mk_transport(id_keys: identity::Keypair) -> anyhow::Result<(PeerId, Boxed<(PeerId, StreamMuxerBox)>)> {
     let peer_id = id_keys.public().into_peer_id();
     let transport = swarm::transport::build_transport(id_keys, None, Duration::from_secs(20))
         .await
-        .ax_internal()?;
+        .context("Building libp2p transport")?;
     Ok((peer_id, transport))
 }

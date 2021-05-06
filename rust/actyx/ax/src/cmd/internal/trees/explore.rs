@@ -63,7 +63,9 @@ impl AxCliCommand for ExploreTree {
     type Opt = ExploreTreeOpts;
     type Output = ();
     fn run(opts: ExploreTreeOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
-        Box::new(stream::once(async move { run(opts).ax_internal() }.boxed()))
+        Box::new(stream::once(
+            async move { run(opts).ax_err_ctx(util::formats::ActyxOSCode::ERR_INTERNAL_ERROR, "run failed") }.boxed(),
+        ))
     }
 
     fn pretty(_: Self::Output) -> String {

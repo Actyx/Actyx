@@ -55,7 +55,7 @@ impl ConvertEvent for LogRequest {
             log_name: tag,
             additional_data: None,
             labels: None,
-            producer_name: "com.actyx.os".into(),
+            producer_name: "com.actyx".into(),
             producer_version: "2.0.0-dev".into(),
         }
     }
@@ -105,7 +105,7 @@ impl From<rogcat::record::Record> for LogRequest {
                 "thread".to_string() => r.thread,
                 "tag".to_string() => r.tag
             }),
-            producer_name: "com.actyx.os.android".to_string(),
+            producer_name: "com.actyx.android".to_string(),
             // TODO
             producer_version: "1.0.0".to_string(),
         }

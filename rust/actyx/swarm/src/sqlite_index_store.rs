@@ -1,5 +1,5 @@
 use actyxos_sdk::StreamId;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use parking_lot::Mutex;
 use rusqlite::backup;
 use rusqlite::{params, Connection, OpenFlags};
@@ -36,7 +36,8 @@ impl SqliteIndexStore {
         let mut target = match path {
             DbPath::File(path) => Connection::open_with_flags(path, flags),
             DbPath::Memory => Connection::open(":memory:"),
-        }?;
+        }
+        .context("Open sqlite for SqliteIndexStore")?;
         {
             let con = self.conn.lock();
             let backup = backup::Backup::new(&con, &mut target)?;

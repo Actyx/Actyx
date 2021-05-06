@@ -5,12 +5,10 @@ use crypto::{KeyStore, KeyStoreRef};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use tracing::*;
-use util::formats::{ActyxOSResult, ActyxOSResultExt};
 
-pub(crate) fn make_keystore(storage: NodeStorage) -> ActyxOSResult<KeyStoreRef> {
+pub(crate) fn make_keystore(storage: NodeStorage) -> anyhow::Result<KeyStoreRef> {
     let ks = storage
-        .get_keystore()
-        .ax_internal()?
+        .get_keystore()?
         .map(|dump| KeyStore::restore(&dump[..]).unwrap())
         .unwrap_or_default();
     let ks = ks.with_cb(Box::new(move |vec| {
