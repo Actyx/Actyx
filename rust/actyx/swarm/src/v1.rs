@@ -254,8 +254,8 @@ pub trait Present: Clone + Send + Unpin + Sync + 'static {
     fn offsets(&self) -> BoxStream<'static, OffsetsResponse>;
 }
 
-impl From<SwarmOffsets> for OffsetsResponse {
-    fn from(o: SwarmOffsets) -> Self {
+impl From<&SwarmOffsets> for OffsetsResponse {
+    fn from(o: &SwarmOffsets) -> Self {
         let to_replicate = o
             .replication_target
             .stream_iter()
@@ -267,7 +267,7 @@ impl From<SwarmOffsets> for OffsetsResponse {
             .collect();
 
         Self {
-            present: o.present,
+            present: o.present.clone(),
             to_replicate,
         }
     }
@@ -275,7 +275,8 @@ impl From<SwarmOffsets> for OffsetsResponse {
 
 impl Present for BanyanStore {
     fn offsets(&self) -> stream::BoxStream<'static, OffsetsResponse> {
-        self.data.offsets.new_observer().map(Into::into).boxed()
+        #[allow(clippy::redundant_closure)]
+        self.data.offsets.new_projection(|x| OffsetsResponse::from(x)).boxed()
     }
 }
 
