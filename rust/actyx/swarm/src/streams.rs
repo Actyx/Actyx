@@ -6,8 +6,11 @@ use futures::{
     future,
     stream::{Stream, StreamExt},
 };
-use std::convert::{TryFrom, TryInto};
 use std::sync::Arc;
+use std::{
+    convert::{TryFrom, TryInto},
+    ops::Deref,
+};
 
 const PREFIX: u8 = b'S';
 
@@ -58,13 +61,15 @@ impl TryFrom<StreamAlias> for StreamId {
 pub struct OwnStream {
     forest: Forest,
     sequencer: tokio::sync::Mutex<()>,
+    stream_nr: StreamNr,
     tree: Variable<Tree>,
 }
 
 impl OwnStream {
-    pub fn new(forest: Forest) -> Self {
+    pub fn new(forest: Forest, stream_nr: StreamNr) -> Self {
         Self {
             forest,
+            stream_nr,
             sequencer: tokio::sync::Mutex::new(()),
             tree: Variable::default(),
         }
@@ -74,12 +79,8 @@ impl OwnStream {
         &self.forest
     }
 
-    /// Acquire an async lock to modify this stream
-    pub async fn locked<T>(&self, f: impl FnOnce() -> T) -> T {
-        let guard = self.sequencer.lock().await;
-        let result = f();
-        drop(guard);
-        result
+    pub fn stream_nr(&self) -> StreamNr {
+        self.stream_nr
     }
 
     pub fn link(&self) -> Option<Link> {
@@ -98,13 +99,30 @@ impl OwnStream {
         self.tree.get_cloned()
     }
 
-    pub fn set_latest(&self, value: Tree) {
-        self.tree.set(value)
-    }
-
     pub fn offset(&self) -> Option<Offset> {
         let offset_or_min = self.tree.project(|tree| tree.offset());
         Offset::from_offset_or_min(offset_or_min)
+    }
+
+    /// Acquire an async lock to modify this stream
+    pub async fn lock(&self) -> OwnStreamGuard<'_> {
+        OwnStreamGuard(self, self.sequencer.lock().await)
+    }
+}
+
+pub struct OwnStreamGuard<'a>(&'a OwnStream, tokio::sync::MutexGuard<'a, ()>);
+
+impl<'a> OwnStreamGuard<'a> {
+    pub fn set_latest(&self, value: Tree) {
+        self.0.tree.set(value)
+    }
+}
+
+impl<'a> Deref for OwnStreamGuard<'a> {
+    type Target = OwnStream;
+
+    fn deref(&self) -> &OwnStream {
+        self.0
     }
 }
 

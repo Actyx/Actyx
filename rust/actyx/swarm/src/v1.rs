@@ -40,24 +40,20 @@ impl BanyanStore {
         let timestamp = Timestamp::now();
         let stream = self.get_or_create_own_stream(stream_nr);
         let n = events.len();
-        let (min_lamport, min_offset) = stream
-            .locked(|| -> anyhow::Result<(LamportTimestamp, OffsetOrMin)> {
-                let mut store = self.lock();
-                let mut lamports = store.reserve_lamports(events.len())?.peekable();
-                let min_lamport = *lamports.peek().unwrap();
-                let kvs = lamports
-                    .zip(events)
-                    .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
-                tracing::debug!("publishing {} events on stream {}", n, stream_nr);
-                let mut min_offset = OffsetOrMin::MIN;
-                self.transform_stream(stream_nr, &stream, |txn, tree| {
-                    min_offset = min_offset.max(tree.offset());
-                    txn.extend_unpacked(tree, kvs)
-                })?;
-                drop(store);
-                Ok((min_lamport, min_offset))
-            })
-            .await?;
+        let guard = stream.lock().await;
+        let mut store = self.lock();
+        let mut lamports = store.reserve_lamports(events.len())?.peekable();
+        let min_lamport = *lamports.peek().unwrap();
+        let kvs = lamports
+            .zip(events)
+            .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
+        tracing::debug!("publishing {} events on stream {}", n, stream_nr);
+        let mut min_offset = OffsetOrMin::MIN;
+        self.transform_stream(&guard, |txn, tree| {
+            min_offset = min_offset.max(tree.offset());
+            txn.extend_unpacked(tree, kvs)
+        })?;
+        drop(guard);
 
         // We start iteration with 0 below, so this is effectively the offset of the first event.
         let starting_offset = Offset::from_offset_or_min(min_offset)

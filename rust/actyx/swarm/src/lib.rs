@@ -277,7 +277,7 @@ impl<'a> BanyanStoreGuard<'a> {
             let _ = self.index_store.add_stream(stream_id);
             tracing::debug!("publish new stream_id {}", stream_id);
             self.publish_new_stream_id(stream_id);
-            let stream = Arc::new(OwnStream::new(forest));
+            let stream = Arc::new(OwnStream::new(forest, stream_nr));
             self.own_streams.insert(stream_nr, stream.clone());
             stream
         })
@@ -504,7 +504,7 @@ impl BanyanStore {
                 tasks: Default::default(),
             })),
         };
-        banyan.load_known_streams()?;
+        banyan.load_known_streams().await?;
         banyan.spawn_task(
             "gossip_ingest",
             banyan.data.gossip.ingest(banyan.clone(), cfg.topic.clone())?,
@@ -595,7 +595,7 @@ impl BanyanStore {
         }
     }
 
-    fn load_known_streams(&self) -> Result<()> {
+    async fn load_known_streams(&self) -> Result<()> {
         let known_streams = self.lock().index_store.get_observed_streams()?;
         for stream_id in known_streams {
             tracing::debug!("Trying to load tree for {}", stream_id);
@@ -604,7 +604,9 @@ impl BanyanStore {
                 let tree = self.data.forest.load_tree(root)?;
                 self.update_present(stream_id, tree.offset());
                 if stream_id.node_id() == self.node_id() {
-                    self.get_or_create_own_stream(stream_id.stream_nr()).set_latest(tree);
+                    let stream = self.get_or_create_own_stream(stream_id.stream_nr());
+                    let guard = stream.lock().await;
+                    guard.set_latest(tree);
                 } else {
                     self.get_or_create_replicated_stream(stream_id).set_latest(tree);
                 }
@@ -635,17 +637,16 @@ impl BanyanStore {
         tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
         let timestamp = Timestamp::now();
         let stream = self.get_or_create_own_stream(stream_nr);
-        stream
-            .locked(|| {
-                let mut store = self.lock();
-                let lamports = store.reserve_lamports(events.len())?;
-                let kvs = lamports
-                    .zip(events)
-                    .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
-                self.transform_stream(stream_nr, &stream, |txn, tree| txn.extend_unpacked(tree, kvs))
-            })
-            .await?;
-        Ok(stream.link())
+        let guard = stream.lock().await;
+        let mut store = self.lock();
+        let lamports = store.reserve_lamports(events.len())?;
+        let kvs = lamports
+            .zip(events)
+            .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
+        self.transform_stream(&guard, |txn, tree| txn.extend_unpacked(tree, kvs))?;
+        let result = stream.link();
+        drop(guard);
+        Ok(result)
     }
 
     /// Returns a [`Stream`] of known [`StreamId`].
@@ -703,11 +704,11 @@ impl BanyanStore {
 
     fn transform_stream(
         &self,
-        stream_nr: StreamNr,
-        stream: &OwnStream,
+        stream: &OwnStreamGuard,
         f: impl FnOnce(&Transaction, &Tree) -> Result<Tree> + Send,
     ) -> Result<()> {
         let writer = self.data.forest.store().write()?;
+        let stream_nr = stream.stream_nr();
         tracing::debug!("starting write transaction on stream {}", stream_nr);
         let txn = Transaction::new(stream.forest().clone(), writer);
         let curr = stream.latest();
@@ -752,13 +753,13 @@ impl BanyanStore {
             for stream_nr in stream_nrs {
                 tracing::debug!("compacting stream {}", stream_nr);
                 let stream = self.get_or_create_own_stream(stream_nr);
-                let result = stream
-                    .locked(|| self.transform_stream(stream_nr, &stream, |txn, tree| txn.pack(tree)))
-                    .await;
+                let guard = stream.lock().await;
+                let result = self.transform_stream(&guard, |txn, tree| txn.pack(tree));
                 if let Err(err) = result {
                     tracing::error!("Error compacting stream {}: {}", stream_nr, err);
                     break;
                 }
+                drop(guard);
             }
             tokio::time::sleep(interval).await;
         }
