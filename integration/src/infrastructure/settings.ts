@@ -5,7 +5,6 @@ import fs from 'fs'
 import path from 'path'
 import https from 'https'
 import { ensureDirSync } from 'fs-extra'
-import { Observable } from 'rxjs'
 import { tmpdir } from 'os'
 
 export const settings = (): Settings => (<MyGlobal>global).axNodeSetup.settings
@@ -51,7 +50,7 @@ const ensureBinaryExists = async (p: string): Promise<string> => {
   return p
 }
 
-const mutex: { [_: string]: boolean | undefined } = {}
+const mutex: { [_: string]: Promise<unknown> | undefined } = {}
 
 const getOrDownload = async (
   os: OS,
@@ -59,22 +58,30 @@ const getOrDownload = async (
   binary: Binary,
   gitHash: string | null,
 ): Promise<string> => {
+  let localPath: string
   const bin = os == 'windows' ? `${binary}.exe` : binary
-  const id = `${gitHash != null ? `${gitHash}-` : ''}${os}-${arch}`
   // actyx.apk sits in the root
-  const p = os == 'android' ? '' : `/${id}`
-  const localPath = `../dist/bin${p}/${bin}`
+  const id = os == 'android' ? '' : `/${os}-${arch}`
+  if (gitHash !== null) {
+    localPath = `../dist/bin/${gitHash}${id}/${bin}`
+  } else {
+    localPath = `../dist/bin${id}/${bin}`
+  }
 
   while (!fs.existsSync(localPath)) {
     if (mutex[localPath]) {
       // `localPath` is already being downloaded or created. Waiting ..
-      await Observable.timer(500).first().toPromise()
+      await mutex[localPath]
     } else {
-      mutex[localPath] = true
-      await (gitHash != null
-        ? download(gitHash, os, arch, binary, localPath)
-        : ensureBinaryExists(localPath))
-      delete mutex[localPath]
+      const p = new Promise((res, rej) => {
+        ;(gitHash != null
+          ? download(gitHash, os, arch, binary, localPath)
+          : ensureBinaryExists(localPath)
+        )
+          .then(() => res())
+          .catch((err) => rej(err))
+      })
+      mutex[localPath] = p
     }
   }
   return Promise.resolve(localPath)
