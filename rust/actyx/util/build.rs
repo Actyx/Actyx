@@ -58,8 +58,6 @@ fn main() {
         }
     };
 
-    let target = env::var("TARGET").expect("TARGET not set").replace("-", "_");
-
     let profile = env::var("PROFILE").expect("PROFILE not set");
 
     println!("cargo:rustc-env=AX_VERSION={}", version);
