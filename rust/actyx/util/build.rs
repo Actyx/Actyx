@@ -9,7 +9,7 @@ fn main() {
 
             if components.len() != 2 {
                 panic!(
-                    "Wrong format for ACTYX_VERSION. Should be \"<version> <commit>\" is \"{}\"",
+                    "Wrong format for ACTYX_VERSION. Should be \"<version>-<commit>\" is \"{}\"",
                     v
                 );
             }
@@ -62,8 +62,7 @@ fn main() {
 
     let profile = env::var("PROFILE").expect("PROFILE not set");
 
-    println!("cargo:rustc-env=VERSION={}", version);
-    println!("cargo:rustc-env=GIT_HASH={}", git_hash);
-    println!("cargo:rustc-env=TARGET={}", target);
-    println!("cargo:rustc-env=PROFILE={}", profile);
+    println!("cargo:rustc-env=AX_VERSION={}", version);
+    println!("cargo:rustc-env=AX_GIT_HASH={}", git_hash);
+    println!("cargo:rustc-env=AX_PROFILE={}", profile);
 }

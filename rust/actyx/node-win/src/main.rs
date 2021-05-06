@@ -139,6 +139,19 @@ mod win {
         use crossbeam::channel::{bounded, select, tick};
         use node::{ApplicationState, Runtime};
         use std::convert::TryInto;
+
+        let Opts {
+            working_dir: maybe_working_dir,
+            background,
+            bind_options,
+            version,
+        } = Opts::from_args();
+
+        if version {
+            println!("actyx-win {}", NodeVersion::get());
+            return Ok(());
+        }
+
         // Make sure, there's only one instance of Actyx running on the system.
         // On Windows this is implemented by creating named mutex with CreateMutexW.
         // On UNIX systems this is implemented by using files and flock. The path of the
@@ -148,17 +161,6 @@ mod win {
         let _global_guard = global_mutex.try_lock().map_err(|_| {
             anyhow::anyhow!("Error acquiring global mutex. Maybe another Actyx instance is already running?")
         })?;
-        let Opts {
-            working_dir: maybe_working_dir,
-            background,
-            bind_options,
-            version,
-        } = Opts::from_args();
-
-        if version {
-            info!("actyx-win {}", NodeVersion::get());
-            return Ok(());
-        }
 
         let bind_to: BindTo = bind_options.try_into()?;
 

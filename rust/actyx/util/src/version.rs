@@ -14,10 +14,10 @@ pub struct NodeVersion {
 impl NodeVersion {
     pub fn get() -> NodeVersion {
         NodeVersion {
-            profile: env!("PROFILE").to_string(),
+            profile: env!("AX_PROFILE").to_string(),
             target: OsArch::current().into(),
-            version: env!("VERSION").to_string(),
-            git_hash: env!("GIT_HASH").to_string(),
+            version: env!("AX_VERSION").to_string(),
+            git_hash: env!("AX_GIT_HASH").to_string(),
         }
     }
 }
