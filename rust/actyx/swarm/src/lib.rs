@@ -400,7 +400,7 @@ impl<'a> BanyanStoreGuard<'a> {
     pub fn reserve_lamports(&mut self, n: usize) -> anyhow::Result<impl Iterator<Item = LamportTimestamp>> {
         let n = u64::try_from(n)?;
         let last_lamport = self.index_store.increase_lamport(n)?;
-        Ok((last_lamport - n + 1..=last_lamport).map(|x| LamportTimestamp::from(x)))
+        Ok((last_lamport - n + 1..=last_lamport).map(LamportTimestamp::from))
     }
 }
 
@@ -759,7 +759,6 @@ impl BanyanStore {
                     tracing::error!("Error compacting stream {}: {}", stream_nr, err);
                     break;
                 }
-                drop(guard);
             }
             tokio::time::sleep(interval).await;
         }

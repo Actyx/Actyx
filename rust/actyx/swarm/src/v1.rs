@@ -53,7 +53,6 @@ impl BanyanStore {
             min_offset = min_offset.max(tree.offset());
             txn.extend_unpacked(tree, kvs)
         })?;
-        drop(guard);
 
         // We start iteration with 0 below, so this is effectively the offset of the first event.
         let starting_offset = Offset::from_offset_or_min(min_offset)
@@ -62,8 +61,8 @@ impl BanyanStore {
         let keys = (0..n)
             .map(|i| {
                 let i = i as u64;
-                let lamport = (min_lamport + i).into();
-                let offset = starting_offset.add(i).unwrap();
+                let lamport = min_lamport + i;
+                let offset = starting_offset.increase(i).unwrap();
                 (lamport, offset, stream_nr, timestamp)
             })
             .collect();

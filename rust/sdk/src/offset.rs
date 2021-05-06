@@ -328,7 +328,7 @@ impl Offset {
         }
     }
 
-    pub fn add(self, value: u64) -> anyhow::Result<Offset> {
+    pub fn increase(self, value: u64) -> anyhow::Result<Offset> {
         let value = i64::try_from(value)?;
         let sum = self.0.checked_add(value).ok_or_else(|| anyhow::anyhow!("overflow"))?;
         Offset::try_from(sum).map_err(|e| anyhow::anyhow!("overflow {}", e))
