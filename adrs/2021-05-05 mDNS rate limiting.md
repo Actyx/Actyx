@@ -30,6 +30,18 @@ Our customers do not appreciate using a significant portion of their available n
 Therefore we must limit broadcast bandwidth usage while still keeping discovery working properly.
 The latter implies that we must regularly perform a basic discovery procedure which also needs to have decent chances of finding previously unknown nodes, otherwise partitions won’t heal reliably.
 
+## Technical background
+
+The described algorithm is not compliant with mDNS per se, it is an mDNS-inspired algorithm for device discovery.
+Strictly speaking it is still compliant with mDNS in the sense that some choice of arbitrary packet loss could lead to the same observable behaviour.
+
+Query sending occurs after a randomised timeout to make it less likely that multiple devices send queries concurrently, leading to duplicate network traffic.
+The underlying problem stems from the choice to start the timer upon reception of the previous query, which should occur within close propinquity on all live nodes.
+The solution is borrowed/stolen from early ethernet standards that implemented collision avoidance on a shared medium.
+
+The algorithm doesn’t guarantee fixed rates or timings, but it makes it quite improbable that the targets are missed by an order of magnitude or more.
+In case of severe packet loss (i.e. a saturated or broken network), discovery capabilities will degrade while this protocol’s bandwidth usage should not increase significantly.
+
 ## Consequences
 
 With the above approach we should get (re)discovery latency down to the order of τ (which could for example be 10sec) without incurring any coordination overhead.
