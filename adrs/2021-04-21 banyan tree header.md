@@ -2,50 +2,35 @@
 
 | key | value |
 | --- | --- |
-| date | 2021-04-21 |
-| status | draft |
-| persons | @rklaehn |
-
-## Options
-
-# The banyan tree header
-
-The purpose of the banyan tree header is to store information that changes very infrequently over the lifetime of a banyan tree.
-This includes information that is needed to decode the tree, such as a version.
-
-We don't expect the version field to change any time soon, since small changes can be done by extending the existing CBOR format.
-Nevertheless it is good to have a way to migrate to an entirely new tree encoding, e.g. moving away from CBOR entirely in the future.
-
-It also includes cryptographic information that is needed to access the tree.
-This will be information that can be used to derive the salsa20 key for the banyan keys and values.
-
-We expect the tree header to be relatively small, < 1kb.
-
-# Referencing the banyan tree header
-
-## Options
-
-- banyan tree header contains hash of banyan tree root. Consequences:
-  - tree header needs to be rewritten and resent after each tree update, be it event appending, expiry of events, or compaction
-  - tree header can contain a signature of the tree content
-- banyan tree header sits next to tree root. Consequences:
-  - tree header remains unchanged over a long time. Will change only when the salsa20 key is changed or when the banyan tree format changes
-  - tree header does not have to be sent every time
-  - integrity of updates needs to be ensured by other means, or left out for now
-
-For option 1, the implementation is pretty straightforward. The tree header is the root of the dag.
-For option 2, there are two ways to associate a tree header with a tree:
-  - create a dag root node that just has a reference to a banyan tree root and the associated tree header, and include that in each update
-    - (-) each fast path update will contain an extra ~80 bytes
-    - (+) gossipsub dissemination protocol still contains just a single root, so the minimum amount of data is sent via gossipsub, which has amplification
-  - extend the gossip protocol to contain a pair (banyan tree root, tree header cid)
-    - (-) gossipsub dissemination protocol contains tuples, so gossipsub messages grow significantly
-    - (+) fast path messages do not contain the extra ~80 bytes of the dag root
+| date | 2021-05-05 |
+| status | accepted |
+| persons | @rkuhn, @rklaehn |
 
 ## Decision
 
+For now we leave out the tree header completely, and we name this scheme Version 0.
+In this scheme, all keys are all-zeros and we don’t provide signatures.
+Data blocks sent between nodes are just raw Banyan tree blocks.
+The CID in a gossip heartbeat message refers directly to the Banyan tree root.
+
 ## Business Context
 
-The business purpose of the tree header is to allow individual encryption of banyan trees, and to provide for a clean migration path for format changes in the future.
+Our current customers and deployments are sufficiently well served by
+
+- assuming that a deployment also constitutes a single, contiguous trust domain
+- assuming that network transport encryption by swarm key is sufficient
+- assuming that we don’t need to treat groups of nodes differently
+
+We foresee that this will change over time.
+We will want to distinguish multiple trust domains within a single factory, and we will eventually want to allow events to flow across factory boundaries in a controlled fashion.
+We also foresee that we will make further changes to our data storage format, e.g. in terms of encryption at rest.
 
 ## Consequences
+
+When adding signatures, we will have to wrap the Banyan tree root in a package (the **tree header**) that contains the signature bits.
+This can be done in a multitude of ways, but most importantly we can recognise this wrapping by trying to decode a block as CBOR and checking its structure;
+we could for example use a dict with a `header` key that contains the protocol version number.
+
+When adding proper encryption, we will have to refer to the (encrypted) key material from the gossiped block.
+We will at that point weigh the performance and resource usage to figure out whether to include the material in the header or put it into a linked block.
+Notably, the fast path sent over a long-standing inter-node connection does not need to resend this material unless it actually changes.
