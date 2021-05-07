@@ -13,9 +13,28 @@
 # - the various docker images used for the build should be up to date
 #
 # You can use make prepare to update the docker images and install required tools.
-SHELL := /bin/bash
+#
+# Useful make targets (<arch> should be replaced by one of the values in the `architectures`
+# variable):
+#   Prepare your environment:
+#     prepare
+#
+#   Validate code (unit tests):
+#     validate
+#     validate-{actyxos-node-manager,actyx-win-installer,js,js-os-sdk,js-pond,js-sdk,misc,os,os-android,website,website-developer,website-downloads}
+#
+#   Generate artifacts (stored in dist/):
+#     all (default target)
+#     all-{windows,android,macos,linux,js}
+#     linux-<arch>
+#
+#   Build Actyx Docker images
+#     docker-<arch>
+#     docker-all
+#     docker-multiarch
+#     docker-current
 
-VERSION ?= 2.0.0_dev
+SHELL := /bin/bash
 
 MIN_MAKE_VERSION := 4.2
 # This checks the make version and aborts with an error if it's not at least MIN_MAKE_VERSION
@@ -24,17 +43,93 @@ ifndef ok
 $(error Please upgrade to GNU Make $(MIN_MAKE_VERSION) you are on: $(MAKE_VERSION))
 endif
 
+#############################
+##### Configuration variables
+#############################
 architectures = aarch64 x86_64 armv7 arm
 unix-bins = actyx-linux ax
-
-all-WINDOWS := $(foreach t,actyx.exe ax.exe Actyx-Installer.exe,windows-x86_64/$t)
-all-ANDROID := actyx.apk
-all-MACOS := $(foreach t,$(unix-bins),macos-x86_64/$t)
+windows-bins = actyx.exe ax.exe Actyx-Installer.exe
+android-bins = actyx.apk
 
 CARGO_TEST_JOBS := 8
 CARGO_BUILD_JOBS := 8
 
-export ACTYX_VERSION ?= ${VERSION}-$(shell git rev-parse --short HEAD)$(shell [ -n "$(shell git status --porcelain)" ] && echo _dirty)
+export BUILD_RUST_TOOLCHAIN := 1.51.0
+
+# The stable image version is the git commit hash inside `Actyx/Cosmos`, with
+# which the respective images was built. Whenever the build images (inside
+# ops/docker/images/{buildrs,musl}/Dockerfile) are modified (meaning built and
+# pushed), this needs to be changed.
+export LATEST_STABLE_IMAGE_VERSION := 91d2744dfb87621c93940e32b1f183897eeec967
+
+# Mapping from os-arch to target
+target-linux-aarch64 = aarch64-unknown-linux-musl
+target-linux-x86_64 = x86_64-unknown-linux-musl
+target-linux-armv7 = armv7-unknown-linux-musleabihf
+target-linux-arm = arm-unknown-linux-musleabi
+target-windows-x86_64 = x86_64-pc-windows-gnu
+target-macos-x86_64 = x86_64-apple-darwin
+
+# non-musl targets
+target-nonmusl-linux-aarch64 = aarch64-unknown-linux-gnu
+target-nonmusl-linux-x86_64 = x86_64-unknown-linux-gnu
+target-nonmusl-linux-armv7 = armv7-unknown-linux-gnueabihf
+target-nonmusl-linux-arm = arm-unknown-linux-gnueabi
+target-nonmusl-windows-x86_64 = x86_64-pc-windows-gnu
+
+# Mapping from arch to Docker buildx platform
+docker-platform-x86_64 = linux/amd64
+docker-platform-aarch64 = linux/arm64/v8
+docker-platform-armv7 = linux/arm/v7
+docker-platform-arm = linux/arm/v6
+
+# Mapping from os to builder image name
+image-linux = actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION)
+image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
+# see https://github.com/Actyx/osxbuilder
+image-darwin = actyx/osxbuilder:71159f9ba63817122f16bf0d1523d23241f423d1
+
+# list all os-arch and binary names
+osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64
+binaries = ax ax.exe actyx-linux actyx.exe
+
+# targets for which we need a .so file for android
+android_so_targets = i686-linux-android aarch64-linux-android armv7-linux-androideabi
+
+CARGO := RUST_BACKTRACE=1  cargo +$(BUILD_RUST_TOOLCHAIN)
+
+#################################
+##### END Configuration variables
+#################################
+
+export GIT_COMMIT = $(shell git rev-parse --short HEAD)$(shell [ -n "$(shell git status --porcelain)" ] && echo _dirty)
+export ACTYX_VERSION ?= $(shell cat ACTYX_VERSION)-$(GIT_COMMIT)
+
+all-WINDOWS := $(foreach t,$(windows-bins),windows-x86_64/$t)
+all-ANDROID := $(android-bins)
+all-MACOS := $(foreach t,$(unix-bins),macos-x86_64/$t)
+
+docker-platforms = $(foreach arch,$(architectures),$(docker-platform-$(arch)))
+docker-multiarch-build-args = --build-arg ACTYX_VERSION=$(ACTYX_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --platform $(shell echo $(docker-platforms) | sed 's/ /,/g') 
+
+export CARGO_HOME ?= $(HOME)/.cargo
+export DOCKER_CLI_EXPERIMENTAL := enabled
+
+# log in to vault and store the token in an environment variable
+# to run this locally, set the VAULT_TOKEN environment variable by running vault login with your dev role.
+# e.g. `export VAULT_TOKEN=`vault login -token-only -method aws role=dev-ruediger`
+# the current token is looked up and no login attempted if present - this suppresses warnings
+VAULT_TOKEN ?= $(vault token lookup -format=json | jq .data.id)
+ifndef VAULT_TOKEN
+export VAULT_ADDR ?= https://vault.actyx.net
+export VAULT_TOKEN ?= $(shell VAULT_ADDR=$(VAULT_ADDR) vault login -token-only -method aws role=ops-travis-ci)
+endif
+
+# Use docker run -ti only if the input device is a TTY (so that Ctrl+C works)
+export DOCKER_FLAGS ?= -e "ACTYX_VERSION=${ACTYX_VERSION}" $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
+
+# Helper to try out local builds of Docker images
+export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))
 
 # this needs to remain the first so it is the default target
 all: all-linux all-android all-windows all-macos all-js
@@ -63,31 +158,6 @@ all-js: \
 .PHONY: make-always
 make-always:
 	touch $@
-
-export BUILD_RUST_TOOLCHAIN := 1.51.0
-
-export CARGO_HOME ?= $(HOME)/.cargo
-
-# log in to vault and store the token in an environment variable
-# to run this locally, set the VAULT_TOKEN environment variable by running vault login with your dev role.
-# e.g. `export VAULT_TOKEN=`vault login -token-only -method aws role=dev-ruediger`
-# the current token is looked up and no login attempted if present - this suppresses warnings
-VAULT_TOKEN ?= $(vault token lookup -format=json | jq .data.id)
-ifndef VAULT_TOKEN
-export VAULT_ADDR ?= https://vault.actyx.net
-export VAULT_TOKEN ?= $(shell VAULT_ADDR=$(VAULT_ADDR) vault login -token-only -method aws role=ops-travis-ci)
-endif
-
-# Use docker run -ti only if the input device is a TTY (so that Ctrl+C works)
-export DOCKER_FLAGS ?= -e "ACTYX_VERSION=${ACTYX_VERSION}" $(shell if test -t 0; then echo "-ti"; else echo ""; fi)
-
-# The stable image version is the git commit hash inside `Actyx/Cosmos`, with
-# which the respective images was built. Whenever the build images (inside
-# ops/docker/images/{buildrs,musl}/Dockerfile) are modified (meaning built and
-# pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 91d2744dfb87621c93940e32b1f183897eeec967
-# Helper to try out local builds of Docker images
-export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))
 
 # Debug helpers
 print-%:
@@ -119,7 +189,6 @@ prepare-docker:
 	docker pull actyx/cosmos:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
 
-export DOCKER_CLI_EXPERIMENTAL := enabled
 prepare-docker-crosscompile:
 	./bin/check-docker-requirements.sh check_docker_version
 	./bin/check-docker-requirements.sh enable_multi_arch_support
@@ -145,8 +214,6 @@ validate: validate-os validate-rust validate-os-android validate-js validate-web
 
 # declare all the validate targets to be phony
 .PHONY: validate-os validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website validate-misc
-
-CARGO := RUST_BACKTRACE=1  cargo +$(BUILD_RUST_TOOLCHAIN)
 
 .PHONY: diagnostics
 
@@ -278,31 +345,6 @@ jvm/os-android/app/src/main/jniLibs/armeabi-v7a/libaxosnodeffi.so: rust/actyx/ta
 	mkdir -p $(dir $@)
 	cp $< $@
 
-# define mapping from os-arch to target
-target-linux-aarch64 = aarch64-unknown-linux-musl
-target-linux-x86_64 = x86_64-unknown-linux-musl
-target-linux-armv7 = armv7-unknown-linux-musleabihf
-target-linux-arm = arm-unknown-linux-musleabi
-target-windows-x86_64 = x86_64-pc-windows-gnu
-target-macos-x86_64 = x86_64-apple-darwin
-
-# non-musl targets
-target-nonmusl-linux-aarch64 = aarch64-unknown-linux-gnu
-target-nonmusl-linux-x86_64 = x86_64-unknown-linux-gnu
-target-nonmusl-linux-armv7 = armv7-unknown-linux-gnueabihf
-target-nonmusl-linux-arm = arm-unknown-linux-gnueabi
-target-nonmusl-windows-x86_64 = x86_64-pc-windows-gnu
-
-# define mapping from os to builder image name
-image-linux = actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION)
-image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
-# see https://github.com/Actyx/osxbuilder
-image-darwin = actyx/osxbuilder:71159f9ba63817122f16bf0d1523d23241f423d1
-
-# list all os-arch and binary names
-osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64
-binaries = ax ax.exe actyx-linux actyx.exe
-
 # compute list of all OSs (e.g. linux, windows) and rust targets (looking into the target-* vars)
 os = $(sort $(foreach oa,$(osArch),$(word 1,$(subst -, ,$(oa)))))
 targets = $(sort $(foreach oa,$(osArch),$(target-$(oa))))
@@ -359,9 +401,6 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  cargo --locked build --release --bin $$(basename $$*)
 endef
 $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
-
-# targets for which we need a .so file for android
-android_so_targets = i686-linux-android aarch64-linux-android armv7-linux-androideabi
 
 # make a list of pattern rules (with %) for all possible .so files needed for android
 soTargetPatterns = $(foreach t,$(android_so_targets),rust/actyx/target/$(t)/release/libaxosnodeffi.so)
@@ -443,14 +482,38 @@ dist/bin/windows-x86_64/Actyx-Installer.exe: misc/actyxos-node-manager/out/Actyx
 	  actyx/util:windowsinstallercreator-x64-latest \
 	  ./build.sh
 
+define mkDockerRule =
+docker-$(1):
+	docker buildx build \
+	  --platform $(docker-platform-$(1)) \
+	  --build-arg ACTYX_VERSION=$(ACTYX_VERSION) \
+	  --build-arg GIT_COMMIT=$(GIT_COMMIT) \
+	  -f ops/docker/images/actyx/Dockerfile \
+	  --tag actyx/cosmos:actyx-$(1)-$(GIT_COMMIT) \
+	  --load \
+	  .
+endef
+
+$(foreach arch,$(architectures),$(eval $(call mkDockerRule,$(arch))))
+
+docker-all: $(foreach arch,$(architectures),docker-$(arch))
+
 # this will build the actyx docker image for all supported architectures. the
 # resulting images won't be loaded into the local docker daemon, because that
-# is not supported yet by docker, but will just remain in the build cache. one
+# is not supported yet by docker, but will just remain in the build cache. One
 # can either load a single one of them providing the appropriate `--platform`
-# and `--load`, or `--push` them to a remote registry
-docker-build-actyx:
-	docker buildx build --platform linux/amd64,linux/arm/v6,linux/arm/v7,linux/aarch64 -f ops/docker/images/actyx/Dockerfile .
+# and `--load`, or `--push` them to a remote registry (or use the appropriate
+# `make docker-build-actyx-<arch>` target)
+docker-multiarch:
+	docker buildx build \
+	  $(docker-multiarch-build-args) \
+	  -f ops/docker/images/actyx/Dockerfile \
+	  .
 
 # build for local architecture and load into docker daemon
-docker-build-actyx-current:
-	docker buildx build --load -f ops/docker/images/actyx/Dockerfile .
+docker-current:
+	docker buildx build --load $(docker-multiarch-build-args) -f ops/docker/images/actyx/Dockerfile .
+
+# This is here to ensure that we use the same build-args here and in artifacts.yml
+docker-multiarch-build-args:
+	@echo $(docker-multiarch-build-args)
