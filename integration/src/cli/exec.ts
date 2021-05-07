@@ -197,7 +197,7 @@ export const mkExec = (binary: string, addr: string, identityPath: string): Exec
       try {
         //console.log(`starting ax process`)
         const process = execa(
-          `ax`,
+          binary,
           [`-j`, `logs`, `tail`, `-f`, `--local`, addr, '-i', identityPath],
           {
             buffer: false,
