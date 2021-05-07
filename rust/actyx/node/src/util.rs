@@ -11,9 +11,7 @@ pub(crate) fn make_keystore(storage: NodeStorage) -> anyhow::Result<KeyStoreRef>
         .get_keystore()?
         .map(|dump| KeyStore::restore(&dump[..]).unwrap())
         .unwrap_or_default();
-    let ks = ks.with_cb(Box::new(move |vec| {
-        storage.dump_keystore(vec).map_err(|e| anyhow!("{}", e))
-    }));
+    let ks = ks.with_cb(Box::new(move |vec| storage.dump_keystore(vec)));
     Ok(Arc::new(RwLock::new(ks)))
 }
 
