@@ -1,6 +1,11 @@
 import { mkESFromTrial, Order, QueryRequest, QueryResponse } from '../../http-client'
 import { run } from '../../util'
-import { integrationTag, publishRandom, throwOnCb } from './utils.support.test'
+import {
+  genericCommunicationTimeout,
+  integrationTag,
+  publishRandom,
+  throwOnCb,
+} from './utils.support.test'
 
 describe('event service', () => {
   describe('query', () => {
@@ -60,7 +65,7 @@ describe('event service', () => {
         //TODO: remove work around desc not completing
         await new Promise((resolve) => {
           es.query(request, (x) => data.push(x))
-          setTimeout(resolve, 500)
+          setTimeout(resolve, genericCommunicationTimeout)
         })
         const pub1Idx = data.findIndex((x) => x.lamport === pub1.lamport)
         const pub2Idx = data.findIndex((x) => x.lamport === pub2.lamport)
@@ -82,7 +87,7 @@ describe('event service', () => {
         const data: QueryResponse[] = []
         await new Promise((resolve) => {
           es.query(request, (x) => data.push(x))
-          setTimeout(resolve, 500)
+          setTimeout(resolve, genericCommunicationTimeout)
         })
         expect(data.length).toBe(0)
       }))
