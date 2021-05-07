@@ -20,13 +20,18 @@ const isSortedAsc = (data: string[]): boolean => {
 }
 
 describe('Pond', () => {
+  // FIXME: Parameters should be so high that these tests run for minutes on CI.
+  const eventsLinear = 100
+  const eventsConcurrent = 20
+
   // Assert that events are always fed to Fish in the correct order on every node, at any time,
   // and also assert that all events reach all Fish eventually.
   test('ordering / time travel', async () => {
     const randomId = String(Math.random())
 
     const results = await runConcurrentlyOnAll<string[]>((nodes) => {
-      const t = (pond: Pond) => concurrentOrderingTest(nodes.length, 1000, Tag(randomId), pond)
+      const t = (pond: Pond) =>
+        concurrentOrderingTest(nodes.length, eventsLinear, Tag(randomId), pond)
       return nodes.map((node) => withPond(node, t))
     })
 
@@ -51,11 +56,21 @@ describe('Pond', () => {
         Promise.all([
           // Some different ways in which tags might be combined.
           // We run all of these in parallel, to assert their events are not accidentally mixed up.
-          concurrentOrderingTest(nodes.length, 100, base.withId('/1'), pond),
-          concurrentOrderingTest(nodes.length, 100, base.and('/2'), pond),
-          concurrentOrderingTest(nodes.length, 100, Tag(':3:').and(base).and('::3'), pond),
-          concurrentOrderingTest(nodes.length, 100, Tag('xxx').and(base.withId('___4___')), pond),
-          concurrentOrderingTest(nodes.length, 100, Tag('5').withId(randomId), pond),
+          concurrentOrderingTest(nodes.length, eventsConcurrent, base.withId('/1'), pond),
+          concurrentOrderingTest(nodes.length, eventsConcurrent, base.and('/2'), pond),
+          concurrentOrderingTest(
+            nodes.length,
+            eventsConcurrent,
+            Tag(':3:').and(base).and('::3'),
+            pond,
+          ),
+          concurrentOrderingTest(
+            nodes.length,
+            eventsConcurrent,
+            Tag('xxx').and(base.withId('___4___')),
+            pond,
+          ),
+          concurrentOrderingTest(nodes.length, eventsConcurrent, Tag('5').withId(randomId), pond),
         ])
       return nodes.map((node) => withPond(node, t))
     })
