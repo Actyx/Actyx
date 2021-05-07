@@ -144,22 +144,25 @@ fn keep_only_envelopes(eot: EnvelopeOrTick) -> impl Future<Output = Option<Event
 
 pub fn stream(store: &impl EventStoreConsumerAccess, events: EventSelection) -> EventStreamOrError {
     let local_stream_ids = store.local_stream_ids();
-    let mk_stream = get_stream_for_stream_id(store, events.clone(), true);
     if let Some(expected_streams) = events.get_bounded_nonempty_streams(&local_stream_ids) {
-        let initials = expected_streams.iter().copied().map(mk_stream);
-        try_join_all(initials)
-            .map_ok(|initials| {
-                MergeOrdered::new_fixed(initials)
-                    // .inspect(|x| println!("emitting {:?}", x))
-                    .filter_map(keep_only_envelopes)
-                    .boxed()
-            })
-            .boxed()
+        try_join_all(
+            expected_streams
+                .iter()
+                .copied()
+                .map(get_stream_for_stream_id(store, events.clone(), true)),
+        )
+        .map_ok(|initials| {
+            MergeOrdered::new_fixed(initials)
+                // .inspect(|x| println!("emitting {:?}", x))
+                .filter_map(keep_only_envelopes)
+                .boxed()
+        })
+        .boxed()
     } else {
         let expected_streams = events.get_mentioned_streams(&local_stream_ids).collect::<BTreeSet<_>>();
         let initials = events
             .get_mentioned_streams(&local_stream_ids)
-            .map(mk_stream)
+            .map(get_stream_for_stream_id(store, events.clone(), true))
             .collect::<Vec<_>>();
 
         let mk_stream = get_stream_for_stream_id(store, events, false);

@@ -11,6 +11,8 @@ pub mod common;
 mod forward;
 mod unordered;
 
+mod new;
+
 pub use common::{EventOrHeartbeat, EventSelection, StreamEventSelection};
 
 #[cfg(test)]
@@ -22,6 +24,8 @@ pub enum ConsumerAccessError {
     UnboundedStreamBack(EventSelection),
     #[display(fmt = "Cannot stream {} since it is not known.", _0)]
     UnknownStream(StreamId),
+    #[display(fmt = "The upper bound for {} must not be greater than present.", _0)]
+    UpperBoundGreaterThanPresent(StreamId),
 }
 
 impl std::error::Error for ConsumerAccessError {}
