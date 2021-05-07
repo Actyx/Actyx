@@ -59,7 +59,7 @@ describe('Logging on Android', () => {
           }),
         ),
       )
-      await Observable.timer(1000).first().toPromise()
+      await Observable.timer(3000).first().toPromise()
       matchers.forEach((m) => expect(logs.findIndex((entry) => m(entry)) >= 0).toBeTruthy())
       stop()
     })
