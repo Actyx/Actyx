@@ -4,7 +4,7 @@ import {
   SubscribeMonotonicResponse,
 } from '../../http-client'
 import { run } from '../../util'
-import { integrationTag, publishRandom } from './utils.support.test'
+import { genericCommunicationTimeout, integrationTag, publishRandom } from './utils.support.test'
 
 // TODO: make this work or find the bug
 describe.skip('event service', () => {
@@ -23,7 +23,7 @@ describe.skip('event service', () => {
         const data: SubscribeMonotonicResponse[] = []
         await new Promise((resolve) => {
           es.subscribeMonotonic(request, (x) => data.push(x))
-          setTimeout(resolve, 500)
+          setTimeout(resolve, genericCommunicationTimeout)
         })
 
         console.log(data)
