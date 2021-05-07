@@ -33,6 +33,12 @@
 #     docker-all
 #     docker-multiarch
 #     docker-current
+#
+# Useful environment variable overrides:
+#   CARGO_TEST_JOBS (default 8) will set the number of threads that cargo will use for testing
+#   CARGO_BUILD_JOBS (default 8) will set the number of threads that cargo will use for compiling
+#   BUILD_RUST_TOOLCHAIN set to test building with a different toolchain than the default
+#   LOCAL_IMAGE_VERSION set to change the Git commit to be used for the musl and buildrs images
 
 SHELL := /bin/bash
 
@@ -51,10 +57,10 @@ unix-bins = actyx-linux ax
 windows-bins = actyx.exe ax.exe Actyx-Installer.exe
 android-bins = actyx.apk
 
-CARGO_TEST_JOBS := 8
-CARGO_BUILD_JOBS := 8
+CARGO_TEST_JOBS ?= 8
+CARGO_BUILD_JOBS ?= 8
 
-export BUILD_RUST_TOOLCHAIN := 1.51.0
+export BUILD_RUST_TOOLCHAIN ?= 1.51.0
 
 # The stable image version is the git commit hash inside `Actyx/Cosmos`, with
 # which the respective images was built. Whenever the build images (inside

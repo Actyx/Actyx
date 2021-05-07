@@ -59,8 +59,17 @@ fn main() {
     };
 
     let profile = env::var("PROFILE").expect("PROFILE not set");
+    let arch = env::var("TARGET")
+        .expect("TARGET not set")
+        .split('-')
+        .next()
+        .expect("TARGET has the wrong format")
+        .to_string();
 
     println!("cargo:rustc-env=AX_VERSION={}", version);
     println!("cargo:rustc-env=AX_GIT_HASH={}", git_hash);
     println!("cargo:rustc-env=AX_PROFILE={}", profile);
+
+    // Since target_arch armv7 does not exist, we add our own cfg parameter
+    println!("cargo:rustc-cfg=AX_ARCH=\"{}\"", arch);
 }
