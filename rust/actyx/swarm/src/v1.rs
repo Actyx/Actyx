@@ -111,13 +111,23 @@ impl EventStoreConsumerAccess for BanyanStore {
         self.lock().local_stream_ids()
     }
 
-    fn stream_forward(&self, events: StreamEventSelection, must_exist: bool) -> EventOrHeartbeatStreamOrError {
+    fn stream_forward(
+        &self,
+        events: StreamEventSelection,
+        must_exist: bool,
+        bounded: bool,
+    ) -> EventOrHeartbeatStreamOrError {
         let to_inclusive = events.to_inclusive;
         let stream_id = events.stream_id;
         if must_exist && !self.has_stream(stream_id) {
             return future::err(ConsumerAccessError::UnknownStream(stream_id)).boxed();
         }
         let (trees, forest) = self.tree_stream(stream_id);
+        let trees = if bounded {
+            trees.take(1).left_stream()
+        } else {
+            trees.right_stream()
+        };
         let range = get_range_inclusive(&events);
         let query = TagsQuery::new(events.tag_subscriptions);
         // Used to signal the mixed in `heartbeats_from_latest` stream down
@@ -159,7 +169,7 @@ impl EventStoreConsumerAccess for BanyanStore {
         let query = TagsQuery::new(events.tag_subscriptions);
         future::ok(
             forest
-                .stream_trees_chunked_reverse(query, trees, range, &|_| {})
+                .stream_trees_chunked_reverse(query, trees.take(1), range, &|_| {})
                 .map_ok(move |chunk| stream::iter(events_from_chunk_rev(stream_id, chunk)))
                 .take_while(|x| future::ready(x.is_ok()))
                 .filter_map(|x| future::ready(x.ok()))

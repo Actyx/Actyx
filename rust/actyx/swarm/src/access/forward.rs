@@ -67,7 +67,7 @@ fn get_stream_for_stream_id(
         let events = events.for_stream(stream_id, local_stream_ids.contains(&stream_id));
         let store2 = store.clone();
         store
-            .stream_forward(events, must_exist)
+            .stream_forward(events, must_exist, true)
             .map_ok(move |stream| {
                 // merge events and heartbeats from this stream
                 stream::select(
