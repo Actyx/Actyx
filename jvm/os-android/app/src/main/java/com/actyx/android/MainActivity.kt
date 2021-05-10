@@ -73,7 +73,11 @@ class MainActivity : AppCompatActivity() {
     Toast.makeText(this, getString(R.string.actyx_is_stopping), Toast.LENGTH_SHORT).show()
     Intent(this@MainActivity, AxNodeService::class.java).also {
       it.action = AxNodeService.STOPFOREGROUND_ACTION
-      startService(it)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        startForegroundService(it)
+      } else {
+        startService(it)
+      }
     }
   }
 
