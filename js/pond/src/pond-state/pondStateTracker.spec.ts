@@ -5,8 +5,8 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { Milliseconds } from '@actyx/sdk'
+import { mkTestLoggers } from '@actyx/sdk/lib/util/logging'
 import { FishName, Semantics } from '../types'
-import { LoggersInternal } from '../util'
 import { PondState, PondStateTracker } from './pond-state'
 import { mkInitialState, mkPondStateTracker } from './pondStateTracker'
 
@@ -23,7 +23,7 @@ const mkTestTime = () => {
 }
 
 const mk = () => {
-  const log = LoggersInternal.testLoggers()
+  const log = mkTestLoggers()
   const tracker = mkPondStateTracker(log, mkTestTime())
   return { log, tracker }
 }

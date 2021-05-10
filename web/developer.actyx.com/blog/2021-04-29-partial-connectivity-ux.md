@@ -50,7 +50,7 @@ Let’s stretch our legs (or rather: minds) with this model by looking at a simp
 - again eventually, the local twin on the controller learns of this request (also via an Actyx event)
 - soon thereafter, the local twin on the controller has switched off the machine and records an event that says “machine has stopped”
 
-When I think about local twins, my mental image is a mixture of Doctor Manhatten and Alfred, Batman’s devoted butler.
+When I think about local twins, my mental image is a mixture of Doctor Manhattan and Alfred, Batman’s devoted butler.
 A local twin is like an assistant and middleman who can run across computer networks to make things happen — and split himself into many copies to be in many places at once (albeit but without magical communication; one copy needs to “run to” another copy to tell them about new developments).
 
 :::tip A word on naming
@@ -60,7 +60,7 @@ We will phase out the term “fish” in the next major versions.
 
 ### Scenario A: local cooperation
 
-The first example is a technician with a mobile phone app for performing maintenance on an injection moulding machine.
+The first example is a technician with a mobile phone app for performing maintenance on an injection molding machine.
 The app uses Actyx to communicate with the machine’s local twin, also built on Actyx and connected to the machine by an app running on the machine PLC’s non-realtime core.
 
 ![local cooperation](../images/blog/partial-connectivity/blog-rku-scenario-a.svg)
@@ -81,7 +81,7 @@ Sara has merely told the local twin on her phone what she wants, but the local t
 
 This tiny workflow step can be completed by the local twin changing into a state that says “the machine controller is now in maintenance mode, as requested.”
 In order to do so, the machine connector app — which also has that local twin running — must send a command to the PLC to change mode and then update the local twin’s state with subsequent updates from the PLC.
-Eventually, maintenance mode will be active and that fact will also be synchronised to Sara’s phone.
+Eventually, maintenance mode will be active and that fact will also be synchronized to Sara’s phone.
 
 Usually, this only takes a few milliseconds, so Sara will see the changed operational mode immediately after having tapped the button in the UI.
 But sometimes there may be a network hiccup or some other issue.
@@ -135,7 +135,7 @@ Therefore, Eva’s production data and Michael’s material movement need to be 
 
 Taking Eva’s PDA terminal as an example, this means that the booking of finished goods needs to have found its way from the terminal to the ERP connector app and into the ERP database.
 Since Oleg will depend on the information, the ERP system is in this case the point of collaboration between Eva and Oleg.
-There are many ways to implement this, but we need to keep in mind that Eva has other priorities as well, so we need to find a solution that minimises her effort spent on information transfer.
+There are many ways to implement this, but we need to keep in mind that Eva has other priorities as well, so we need to find a solution that minimizes her effort spent on information transfer.
 
 The easiest and most intuitive solution is to make sure that the information has reached the ERP system before Michael picks up the pallet;
 in fact, Eva could forget about this whole duty even earlier if the information was transferred before she created the transport order.
@@ -159,7 +159,7 @@ As long as this state change hasn’t arrived at Eva’s terminal, she still nee
 
 UX-wise this could be implemented by having the PDA terminal beep when the answer has not arrived after a set timeout interval, interrupting Eva’s normal flow and basically asking her for help.
 She’ll probably look at the screen for a few seconds to see if the booking goes through, but if it doesn’t she’ll either need to call a supervisor or technician, or do something about the situation herself.
-The choice at this point depends on the factory in question and how you want to organise its processes.
+The choice at this point depends on the factory in question and how you want to organize its processes.
 Eva could for example check the ERP system on a different computer to see whether the booking actually made it, in which case the PDA app might allow her to manually confirm the creation of the transport order.
 Or she could defer the transport until later if there is some buffer space at her workstation where the pallet can stay for a few minutes longer.
 
@@ -177,7 +177,7 @@ The second example shows a higher-level form of collaboration, mediated for exam
 In that case, the details still need to be recorded on the level of local twins, but only to present a suitably boiled down view to a person whose primary concern is a different workflow — the communication is merely a detail of one small workflow step that usually requires no attention at all.
 
 The key takeaway is that the progress information that needs to be shared between collaborating parties is specific to the process that these parties work together on.
-All progress of a digitised process needs to be reflected in that process’ local twin, for example by writing events that record ERP bookings.
+All progress of a digitized process needs to be reflected in that process’ local twin, for example by writing events that record ERP bookings.
 You can use the event tagging capabilities of Actyx, which have been designed specifically to allow such fine-grained usage:
 some local twin may process and represent more detailed information about a workflow than another, and you can use either one in an app based on necessity.
 

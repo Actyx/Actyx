@@ -5,13 +5,6 @@
  * Copyright (C) 2020 Actyx AG
  */
 export * from '@actyx/sdk'
-export { TestEvent } from './eventstore/testEventStore'
-export {
-  ConnectivityStatus,
-  ConnectivityStatusType,
-  StoreConnectionClosedHook,
-  WsStoreConfig,
-} from './eventstore/types'
 export * from './pond'
 export { FishProcessInfo, PondState } from './pond-state'
 export {
@@ -39,11 +32,4 @@ export {
   Reduce,
   StateEffect,
 } from './types'
-export {
-  enableAllLoggersExcept,
-  LogFunction,
-  Logger,
-  Loggers,
-  unreachable,
-  unreachableOrElse,
-} from './util'
+export { unreachable, unreachableOrElse } from './util'

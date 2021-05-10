@@ -4,12 +4,11 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { OffsetMap } from '@actyx/sdk'
+import { Actyx, OffsetMap } from '@actyx/sdk'
+import { takeWhileInclusive } from '@actyx/sdk/lib/util'
 import * as immutable from 'immutable'
 import { Observable, Subject } from 'rxjs'
-import { EventStore } from './eventstore'
 import { NodeInfoEntry, SwarmInfo, SwarmSummary } from './store/swarmState'
-import { takeWhileInclusive } from './util'
 
 /** Configure how to wait for swarm. @public */
 export type FullWaitForSwarmConfig = Readonly<{
@@ -212,14 +211,19 @@ const toSwarmInfo = ([seen, own]: [OffsetMap, OffsetMap]): SwarmInfo => {
   }
 }
 
+// FIXME: add the actual offsets() API to Actyx
+const emptyToReplicate: Record<string, number> = {}
+
 export const streamSplashState = (
-  eventStore: EventStore,
+  actyx: Actyx,
   config: WaitForSwarmConfig,
 ): Observable<SplashState> => {
   const waitForSwarmMs = config.waitForSwarmMs || defaults.waitForSwarmMs
 
   const swarmInfo$ = Observable.interval(500)
-    .concatMapTo(Observable.from(eventStore.offsets()))
+    .concatMapTo(Observable.from(actyx.currentOffsets()))
+    // FIXME: add the actual offsets() API to Actyx
+    .map(x => ({ present: x, toReplicate: emptyToReplicate }))
     .takeUntil(Observable.timer(waitForSwarmMs))
     .map(({ present, toReplicate }) => {
       const seen = Object.entries(toReplicate).reduce(

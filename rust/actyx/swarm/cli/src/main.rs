@@ -1,6 +1,5 @@
 use anyhow::Result;
 use futures::stream::StreamExt;
-use std::io::Write;
 use structopt::StructOpt;
 use swarm::BanyanStore;
 use swarm_cli::{Command, Config, Event};
@@ -21,12 +20,16 @@ async fn run() -> Result<()> {
 
     let config = Config::from_args();
     tracing::info!(
-        "fast_path: {} slow_path: {} root_map: {}",
+        "mdns: {} fast_path: {} slow_path: {} root_map: {} discovery: {} metrics: {}",
+        config.enable_mdns,
         config.enable_fast_path,
         config.enable_slow_path,
-        config.enable_root_map
+        config.enable_root_map,
+        config.enable_discovery,
+        config.enable_metrics,
     );
     let swarm = BanyanStore::new(config.into()).await?;
+    println!("{}", Event::PeerId(swarm.ipfs().local_peer_id()));
     let mut stream = swarm.ipfs().swarm_events();
     tokio::spawn(async move {
         while let Some(event) = stream.next().await {
@@ -36,8 +39,7 @@ async fn run() -> Result<()> {
                 _ => None,
             };
             if let Some(event) = event {
-                let mut stdout = std::io::stdout();
-                writeln!(stdout, "{}", event).unwrap();
+                println!("{}", event);
             }
         }
     });
@@ -46,6 +48,7 @@ async fn run() -> Result<()> {
         line.clear();
         stdin.read_line(&mut line).await?;
         match line.parse()? {
+            Command::AddAddress(peer, addr) => swarm.ipfs().add_address(&peer, addr),
             Command::Append(nr, events) => {
                 swarm.append(nr, events).await?;
             }
@@ -54,9 +57,8 @@ async fn run() -> Result<()> {
                 let tags_query = TagsQuery::new(subs.as_tag_sets(false));
                 let mut stream = swarm.stream_filtered_stream_ordered(tags_query);
                 tokio::spawn(async move {
-                    let mut stdout = std::io::stdout();
                     while let Some(res) = stream.next().await {
-                        writeln!(stdout, "{}", Event::Result(res.unwrap())).unwrap();
+                        println!("{}", Event::Result(res.unwrap()));
                     }
                 });
             }

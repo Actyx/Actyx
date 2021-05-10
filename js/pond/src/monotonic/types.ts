@@ -1,7 +1,5 @@
-import { EventKey, Timestamp } from '@actyx/sdk'
+import { ActyxEvent, EventKey, LocalSnapshot, StateWithProvenance, Timestamp } from '@actyx/sdk'
 import { Option } from 'fp-ts/lib/Option'
-import { Events } from '../eventstore/types'
-import { LocalSnapshot, StateWithProvenance } from '../types'
 
 // A local snapshot where the state has already been serialised
 export type SerializedStateSnap = LocalSnapshot<string>
@@ -18,7 +16,7 @@ export type PendingSnapshot = Readonly<{
 // - can apply event chunks within bounds
 export type SimpleReducer<S> = {
   // Apply the events between fromIdx and toIdxInclusive to the state
-  appendEvents: (events: Events, fromIdx: number, toIdxInclusive: number) => LocalSnapshot<S>
+  appendEvents: (events: ActyxEvent[], fromIdx: number, toIdxInclusive: number) => LocalSnapshot<S>
 
   // Directly set the state
   setState: (state: LocalSnapshot<S>) => void
@@ -30,7 +28,7 @@ export type SimpleReducer<S> = {
 export type CachingReducer<S> = {
   // Apply the given events to the state and return the new latest state.
   // Internally, this will queue up snapshots and persist them async (persistence can be awaited via awaitPendingPersistence)
-  appendEvents: (events: Events) => StateWithProvenance<S>
+  appendEvents: (events: ActyxEvent[]) => StateWithProvenance<S>
 
   // Just directly set a certain state.
   // Will invalidate all later cached states.

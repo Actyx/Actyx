@@ -210,11 +210,7 @@ pub fn discovery_publish(
                     }
                 }
                 ipfs_embed::Event::Discovered(peer) => {
-                    if let Err(err) = store.ipfs().dial(&peer) {
-                        // this can be due to no known address for a peer that is supported
-                        // by the underlying transport.
-                        tracing::warn!("no supported address for peer {}", err);
-                    }
+                    store.ipfs().dial(&peer);
                     continue;
                 }
                 _ => continue,

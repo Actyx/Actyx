@@ -1142,3 +1142,10 @@ pre .line-numbers {
 .tabs__item.tabs__item--active {
   border-bottom-color: var(--ifm-tabs-color-active) !important;
 }
+
+.docusaurus-highlight-code-line {
+  background-color: rgb(69, 72, 80);
+  display: block;
+  margin: 0 calc(-1 * var(--ifm-pre-padding));
+  padding: 0 var(--ifm-pre-padding);
+}

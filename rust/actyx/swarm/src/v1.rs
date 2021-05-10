@@ -36,27 +36,23 @@ pub type PersistenceMeta = (LamportTimestamp, Offset, StreamNr, Timestamp);
 
 impl BanyanStore {
     async fn persist0(self, events: Vec<(TagSet, Payload)>) -> Result<Vec<PersistenceMeta>> {
-        let n = events.len() as u32;
-        let last_lamport = self.lock().index_store.increase_lamport(n)?;
-        let min_lamport = last_lamport - (n as u64) + 1;
         let stream_nr = StreamNr::from(0); // TODO
         let timestamp = Timestamp::now();
-        let kvs = events
-            .into_iter()
-            .enumerate()
-            .map(move |(i, (tags, payload))| {
-                let key = AxKey::new(tags, min_lamport + (i as u64), timestamp);
-                (key, payload)
-            })
-            .collect::<Vec<_>>();
-        tracing::debug!("publishing {} events on stream {}", kvs.len(), stream_nr);
+        let stream = self.get_or_create_own_stream(stream_nr);
+        let n = events.len();
+        let guard = stream.lock().await;
+        let mut store = self.lock();
+        let mut lamports = store.reserve_lamports(events.len())?.peekable();
+        let min_lamport = *lamports.peek().unwrap();
+        let kvs = lamports
+            .zip(events)
+            .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
+        tracing::debug!("publishing {} events on stream {}", n, stream_nr);
         let mut min_offset = OffsetOrMin::MIN;
-        let _ = self
-            .transform_stream(stream_nr, |txn, tree| {
-                min_offset = min_offset.max(tree.offset());
-                txn.extend_unpacked(tree, kvs)
-            })
-            .await?;
+        self.transform_stream(&guard, |txn, tree| {
+            min_offset = min_offset.max(tree.offset());
+            txn.extend_unpacked(tree, kvs)
+        })?;
 
         // We start iteration with 0 below, so this is effectively the offset of the first event.
         let starting_offset = Offset::from_offset_or_min(min_offset)
@@ -64,8 +60,9 @@ impl BanyanStore {
             .unwrap_or(Offset::ZERO);
         let keys = (0..n)
             .map(|i| {
-                let lamport = (min_lamport + (i as u64)).into();
-                let offset = starting_offset + i;
+                let i = i as u64;
+                let lamport = min_lamport + i;
+                let offset = starting_offset.increase(i).unwrap();
                 (lamport, offset, stream_nr, timestamp)
             })
             .collect();
@@ -140,7 +137,8 @@ impl EventStoreConsumerAccess for BanyanStore {
             .take_while(|x| future::ready(x.is_ok()))
             .filter_map(|x| future::ready(x.ok()))
             .take_until_condition(move |chunk| {
-                let stop_here = Into::<OffsetOrMin>::into(chunk.range.end as u32) >= to_inclusive;
+                // FIXME: Will this only be triggered once an event outside the queried bounds becomes known?
+                let stop_here = Into::<OffsetOrMin>::into(chunk.range.end as u32) > to_inclusive;
                 if stop_here {
                     tx.try_send(()).unwrap();
                 }
@@ -266,8 +264,8 @@ pub trait Present: Clone + Send + Unpin + Sync + 'static {
     fn offsets(&self) -> BoxStream<'static, OffsetsResponse>;
 }
 
-impl From<SwarmOffsets> for OffsetsResponse {
-    fn from(o: SwarmOffsets) -> Self {
+impl From<&SwarmOffsets> for OffsetsResponse {
+    fn from(o: &SwarmOffsets) -> Self {
         let to_replicate = o
             .replication_target
             .stream_iter()
@@ -279,7 +277,7 @@ impl From<SwarmOffsets> for OffsetsResponse {
             .collect();
 
         Self {
-            present: o.present,
+            present: o.present.clone(),
             to_replicate,
         }
     }
@@ -287,7 +285,8 @@ impl From<SwarmOffsets> for OffsetsResponse {
 
 impl Present for BanyanStore {
     fn offsets(&self) -> stream::BoxStream<'static, OffsetsResponse> {
-        self.data.offsets.new_observer().map(Into::into).boxed()
+        #[allow(clippy::redundant_closure)]
+        self.data.offsets.new_projection(|x| OffsetsResponse::from(x)).boxed()
     }
 }
 

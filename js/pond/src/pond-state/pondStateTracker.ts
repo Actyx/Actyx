@@ -5,9 +5,9 @@
  * Copyright (C) 2020 Actyx AG
  */
 import { Milliseconds } from '@actyx/sdk'
+import { Loggers } from '@actyx/sdk/lib/util/logging'
 import { BehaviorSubject, Observable } from 'rxjs'
 import { FishName, Semantics } from '../types'
-import { Loggers } from '../util'
 import { PondState, PondStateTracker } from './pond-state'
 
 export const mkInitialState = (): PondState => ({

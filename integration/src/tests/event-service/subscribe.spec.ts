@@ -1,6 +1,6 @@
 import { mkESFromTrial, SubscribeResponse } from '../../http-client'
 import { run } from '../../util'
-import { integrationTag, publishRandom } from './utils.support.test'
+import { genericCommunicationTimeout, integrationTag, publishRandom } from './utils.support.test'
 
 describe('event service', () => {
   describe('subscribe to event streams', () => {
@@ -12,7 +12,7 @@ describe('event service', () => {
         const data: SubscribeResponse[] = []
         await new Promise((resolve) => {
           es.subscribe({ query: `FROM '${integrationTag}' & 'test:1'` }, (x) => data.push(x))
-          setTimeout(resolve, 500)
+          setTimeout(resolve, genericCommunicationTimeout)
         })
 
         const ev = data.find((x) => x.lamport === pub1.lamport)

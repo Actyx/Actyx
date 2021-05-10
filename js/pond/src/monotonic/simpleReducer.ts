@@ -1,13 +1,11 @@
-import { OffsetMap } from '@actyx/sdk'
+import { ActyxEvent, LocalSnapshot, OffsetMap } from '@actyx/sdk'
 import { clone } from 'ramda'
-import { Event, Events } from '../eventstore/types'
-import { LocalSnapshot } from '../types'
 import { SimpleReducer } from './types'
 
 export const simpleReducer = <S>(
-  onEvent: (oldState: S, event: Event) => S,
+  onEvent: (oldState: S, event: ActyxEvent) => S,
   initialState: LocalSnapshot<S>,
-  isReset: (event: Event) => boolean,
+  isReset: (event: ActyxEvent) => boolean,
 ): SimpleReducer<S> => {
   const backupState = clone(initialState.state)
 
@@ -17,7 +15,7 @@ export const simpleReducer = <S>(
   // Advance the head by applying the given event array between (i ..= iToInclusive)
   // without modifying the existing head; WILL modify the `state` inside `head`, though!
   // State is serialized upstream by cachingReducer, hence later modifications are OK.
-  const appendEvents = (events: Events, fromIdx: number, toIdxInclusive: number) => {
+  const appendEvents = (events: ActyxEvent[], fromIdx: number, toIdxInclusive: number) => {
     if (fromIdx > toIdxInclusive) {
       return head
     }
@@ -31,14 +29,14 @@ export const simpleReducer = <S>(
       const ev = events[i]
 
       if (isReset(ev)) {
-        horizon = ev
+        horizon = ev.meta
         state = clone(backupState)
         cycle = 0
       }
 
       state = onEvent(state, ev)
-      OffsetMap.update(offsets, ev)
-      eventKey = ev
+      OffsetMap.update(offsets, ev.meta)
+      eventKey = ev.meta
 
       i += 1
       cycle += 1

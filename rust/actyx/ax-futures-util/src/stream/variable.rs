@@ -1,6 +1,6 @@
 use fnv::FnvHashMap;
 use futures::{prelude::*, stream::FusedStream};
-use parking_lot::Mutex;
+use parking_lot::{Mutex, MutexGuard};
 use pin_project_lite::pin_project;
 use std::{
     pin::Pin,
@@ -22,35 +22,42 @@ impl<T> Observer<T> {
     }
 }
 
+fn poll_next_impl<'a, T, U>(
+    mut inner: MutexGuard<'a, VariableInner<T>>,
+    id: usize,
+    cx: &mut Context<'_>,
+    f: &impl Fn(&T) -> U,
+) -> std::task::Poll<Option<U>> {
+    if inner.writers == 0 {
+        // if the sender is gone, make sure that the final value is delivered
+        // (the .remove() ensures that next time will return None)
+        if let Some(receiver) = inner.observers.remove(&id) {
+            if !receiver.received {
+                return Poll::Ready(Some(f(&inner.latest)));
+            }
+        }
+        Poll::Ready(None)
+    } else if let Some(receiver) = inner.observers.get_mut(&id) {
+        if receiver.received {
+            receiver.waker = Some(cx.waker().clone());
+            // we have already received this value
+            Poll::Pending
+        } else {
+            // got a value, make sure we don't get it again and return it
+            receiver.received = true;
+            Poll::Ready(Some(f(&inner.latest)))
+        }
+    } else {
+        // this means that the sender was dropped, so end the stream
+        Poll::Ready(None)
+    }
+}
+
 impl<T: Clone> Stream for Observer<T> {
     type Item = T;
 
     fn poll_next(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> std::task::Poll<Option<Self::Item>> {
-        let id = self.id;
-        let mut inner = self.inner.lock();
-        if inner.writers == 0 {
-            // if the sender is gone, make sure that the final value is delivered
-            // (the .remove() ensures that next time will return None)
-            if let Some(receiver) = inner.observers.remove(&id) {
-                if !receiver.received {
-                    return Poll::Ready(Some(inner.latest.clone()));
-                }
-            }
-            Poll::Ready(None)
-        } else if let Some(receiver) = inner.observers.get_mut(&id) {
-            if receiver.received {
-                receiver.waker = Some(cx.waker().clone());
-                // we have already received this value
-                Poll::Pending
-            } else {
-                // got a value, make sure we don't get it again and return it
-                receiver.received = true;
-                Poll::Ready(Some(inner.latest.clone()))
-            }
-        } else {
-            // this means that the sender was dropped, so end the stream
-            Poll::Ready(None)
-        }
+        poll_next_impl(self.inner.lock(), self.id, cx, &|x: &T| x.clone())
     }
 }
 
@@ -75,6 +82,62 @@ impl<T> Drop for Observer<T> {
     }
 }
 
+#[derive(Debug)]
+pub struct Projection<T, F> {
+    inner: Arc<Mutex<VariableInner<T>>>,
+    f: F,
+    id: usize,
+}
+
+impl<T, F, R> Projection<T, F>
+where
+    F: FnOnce(&T) -> R,
+{
+    fn new(inner: Arc<Mutex<VariableInner<T>>>, f: F) -> Self {
+        let id = inner.lock().new_observer_id();
+        Self { inner, f, id }
+    }
+}
+
+impl<T, F, R> Stream for Projection<T, F>
+where
+    F: Fn(&T) -> R,
+{
+    type Item = R;
+
+    fn poll_next(self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> std::task::Poll<Option<Self::Item>> {
+        poll_next_impl(self.inner.lock(), self.id, cx, &self.f)
+    }
+}
+
+impl<T, F, R> FusedStream for Projection<T, F>
+where
+    F: Fn(&T) -> R,
+{
+    fn is_terminated(&self) -> bool {
+        !self.inner.lock().observers.contains_key(&self.id)
+    }
+}
+
+impl<T, F> Clone for Projection<T, F>
+where
+    F: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+            f: self.f.clone(),
+            id: self.id,
+        }
+    }
+}
+
+impl<T, F> Drop for Projection<T, F> {
+    fn drop(&mut self) {
+        self.inner.lock().observers.remove(&self.id);
+    }
+}
+
 /// A variable that can be observed by an arbitrary number of observer streams
 ///
 /// Observer streams will only get the most recent variable value.
@@ -90,11 +153,6 @@ impl<T> Variable<T> {
     pub fn new(value: T) -> Self {
         let inner = Arc::new(Mutex::new(VariableInner::new(value)));
         Self { inner }
-    }
-
-    /// One way of creating a new observer. The other is to clone an existing observer.
-    pub fn new_observer(&self) -> Observer<T> {
-        Observer::new(self.inner.clone())
     }
 
     /// Number of current observers.
@@ -134,14 +192,30 @@ impl<T> Variable<T> {
     }
 
     /// Read and project out a value. This can be cheaper than using get_cloned()
-    pub fn project<U>(&self, f: impl FnOnce(&T) -> U) -> U {
+    pub fn project<F, U>(&self, f: F) -> U
+    where
+        F: Fn(&T) -> U,
+    {
         f(&self.inner.lock().latest)
+    }
+
+    /// One way of creating a new observer. The other is to clone an existing observer.
+    pub fn new_observer(&self) -> Observer<T> {
+        Observer::new(self.inner.clone())
+    }
+
+    /// a stream of a projection
+    pub fn new_projection<F, U>(&self, f: F) -> Projection<T, F>
+    where
+        F: Fn(&T) -> U,
+    {
+        Projection::new(self.inner.clone(), f)
     }
 }
 
 impl<T: Clone> Variable<T> {
     pub fn get_cloned(&self) -> T {
-        self.inner.lock().latest.clone()
+        self.project(|x| x.clone())
     }
 }
 
@@ -331,6 +405,24 @@ mod tests {
         drop(v);
         let mut iter = Drainer::new(v2.new_observer());
         assert_eq!(iter.next(), Some(vec![0]));
+        assert_eq!(iter.next(), Some(vec![]));
+    }
+
+    #[tokio::test]
+    async fn projection() {
+        let v = Variable::new((0, 0));
+        let mut iter = Drainer::new(v.new_projection(|x| x.0));
+        assert_eq!(iter.next(), Some(vec![0]));
+        v.transform_mut(|x| {
+            x.0 = 1;
+            true
+        });
+        assert_eq!(iter.next(), Some(vec![1]));
+        v.transform_mut(|x| {
+            x.1 = 1;
+            true
+        });
+        assert_eq!(iter.next(), Some(vec![1]));
         assert_eq!(iter.next(), Some(vec![]));
     }
 }

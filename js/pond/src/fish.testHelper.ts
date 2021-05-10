@@ -4,14 +4,24 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { EventKey, Lamport, NodeId, Offset, OffsetMap, Tag, Timestamp, Where } from '@actyx/sdk'
+import {
+  Actyx,
+  EventKey,
+  Lamport,
+  LocalSnapshot,
+  NodeId,
+  Offset,
+  OffsetMap,
+  Tag,
+  TestEvent,
+  Timestamp,
+  Where,
+} from '@actyx/sdk'
+import { SnapshotStore } from '@actyx/sdk/lib/snapshotStore'
 import { last } from 'ramda'
 import { Observable, Scheduler } from 'rxjs'
-import { Fish, FishId, TestEvent } from '.'
-import { EventStore } from './eventstore'
-import { Event, Events } from './eventstore/types'
+import { Fish, FishId } from '.'
 import { observeMonotonic } from './monotonic'
-import { SnapshotStore } from './snapshotStore'
 import { minSnapshotAge, SnapshotScheduler } from './store/snapshotScheduler'
 import { FishErrorContext, FishErrorReporter, FishName, Semantics, SnapshotFormat } from './types'
 
@@ -37,14 +47,14 @@ export const testFishName = FishName.of('test-fishname')
 export const testFishId = FishId.of(testFishSemantics, testFishName, 1)
 
 export type EventFactory = {
-  mkEvent: (raw: RawEvent) => Event
-  mkEvents: (raw: RawEvent[]) => Events
+  mkEvent: (raw: RawEvent) => TestEvent[]
+  mkEvents: (raw: RawEvent[]) => TestEvent[]
 }
 
 export const eventFactory = () => {
   const lastPublishedForSources: Record<string, LastPublished> = {}
 
-  const mkEvent: (raw: RawEvent) => Event = raw => {
+  const mkEvent: (raw: RawEvent) => TestEvent = raw => {
     const lastPublished = lastPublishedForSources[raw.source]
     // Choosing random starting psns for sources should never change test outcomes.
     const offset = lastPublished ? lastPublished.psn : Math.round(Math.random() * 1000)
@@ -73,7 +83,7 @@ export const eventFactory = () => {
     return fullEvent
   }
 
-  const mkEvents: (raw: RawEvent[]) => Events = raw => raw.map(mkEvent)
+  const mkEvents: (raw: RawEvent[]) => TestEvent[] = raw => raw.map(mkEvent)
 
   return {
     mkEvent,
@@ -146,8 +156,8 @@ export const snapshotTestSetup = async <S>(
   storedSnapshots?: ReadonlyArray<SnapshotData>,
 ) => {
   const sourceId = NodeId.of('LOCAL-test-source')
-  const eventStore = EventStore.test(sourceId)
-  if (storedEvents) eventStore.directlyPushEvents(storedEvents)
+  const actyx = Actyx.test({ nodeId: sourceId })
+  if (storedEvents) actyx.directlyPushEvents(storedEvents)
 
   let lastErr: FishErrorContext | null = null
   const testReportFishError: FishErrorReporter = (_err, _fishId, detail) => {
@@ -155,7 +165,7 @@ export const snapshotTestSetup = async <S>(
   }
   const latestErr = () => lastErr
 
-  const snapshotStore = SnapshotStore.inMem()
+  const snapshotStore = SnapshotStore.noop // actyx.snapshotStore
   await Observable.from(storedSnapshots || [])
     .concatMap(snap => {
       return snapshotStore.storeSnapshot(
@@ -175,7 +185,7 @@ export const snapshotTestSetup = async <S>(
     .toPromise()
 
   const hydrate = observeMonotonic(
-    eventStore,
+    actyx,
     snapshotStore,
     SnapshotScheduler.create(10),
     testReportFishError,
@@ -192,7 +202,7 @@ export const snapshotTestSetup = async <S>(
     .map(x => x.state)
     .shareReplay(1)
 
-  const pubEvents = eventStore.directlyPushEvents
+  const pubEvents = actyx.directlyPushEvents
 
   const applyAndGetState = async (events: ReadonlyArray<TestEvent>) => {
     // adding events may or may not emit a new state, depending on whether the events
@@ -207,9 +217,10 @@ export const snapshotTestSetup = async <S>(
   }
 
   const latestSnap = async () =>
-    snapshotStore
-      .retrieveSnapshot('test-semantics', 'test-fishname', 1)
-      .then(x => (x ? { ...x, state: JSON.parse(x.state) } : undefined))
+    snapshotStore.retrieveSnapshot('test-semantics', 'test-fishname', 1).then(x => {
+      const c = x as LocalSnapshot<string> | undefined
+      return c ? { ...c, state: JSON.parse(c.state) } : undefined
+    })
 
   const wakeup = () => observe.take(1).toPromise()
 
@@ -295,15 +306,15 @@ export const emitter = (source: string) => {
 }
 
 export type Timeline = {
-  all: Events
-  of: (...sources: string[]) => Events
+  all: TestEvent[]
+  of: (...sources: string[]) => TestEvent[]
 }
 
 export const mkTimeline = (...events: MkEvent[]): Timeline => {
   const { mkEvent } = eventFactory()
 
   let t = Timestamp.of(100)
-  const timeline: Event[] = []
+  const timeline: TestEvent[] = []
 
   for (const e of events) {
     t = e.tAdd(t)
@@ -337,7 +348,7 @@ export const mkTimeline = (...events: MkEvent[]): Timeline => {
   }
 }
 
-export const offsets = (...eventsBySource: Events[]) => {
+export const offsets = (...eventsBySource: TestEvent[][]) => {
   return eventsBySource.reduce((acc, events) => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const lastEvent = last(events)!
