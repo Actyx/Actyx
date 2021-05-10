@@ -4,16 +4,16 @@
 | --- | --- |
 | date | 2021-04-30 |
 | status | proposed |
-| persons | @rkuhn, @benjamin-actyx |
+| persons | @rkuhn, @benjamin-actyx, @o1iver |
 
 ## Decision
 
 We assume a TypeScript app packaged for the WebView runtime and using Actyx Pond (in a 2.x version before 2.5.0) or `@actyx/os-sdk`.
 The migration procedure has the following steps:
 
-1. migrate from `@actyx/pond` to `@actyx/sdk` using its legacy Pond (API compatible with Pond v2.5 apart from requiring manifest for construction)
-2. replace `@actyx/os-sdk` usage with the new SDK’s API for events, logging
-3. replace settings access from injected `ax` object to corresponding SDK function
+1. upgrade `@actyx/pond` version to 3.0 (not yet available: shall be v2.5 but based on `@actyx/sdk` and requiring manifest in constructor)
+2. replace `@actyx/os-sdk` usage with `@actyx/sdk`; this implies migrating from Event Service v1 to the tag-based Event Service v2
+3. remove usage of Actyx-provided settings; use host system settings or normal app events for this purpose instead
 4. deploy the app on Actyx v2 (this document does not describe Actyx node migration)
 
 The important point is that after step 3 the app is compatible with both major Actyx versions.
@@ -35,6 +35,4 @@ We provide compatibility on the SDK level instead, also supporting the functiona
 ## Consequences
 
 - the Actyx SDK (initially only for TypeScript) will need to contain clients for both old and new service APIs
-- Actyx v2.1 will need to have all features that are required to support all previous `@actyx/os-sdk` features, including logging and settings
 - it is the app author’s responsibility to ensure event log compatibility with old versions by using the `semantics:*` and `fish_name:*` tags if required
-- the TypeScript Pond leaks into the Actyx SDK, which may lead to a difference in feature set between the TypeScript and C# SDKs (the latter won’t need to support old Pond APIs)
