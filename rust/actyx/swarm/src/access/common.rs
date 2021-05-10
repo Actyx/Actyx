@@ -7,8 +7,6 @@ use num_traits::Bounded;
 use std::collections::BTreeSet;
 use trees::{OffsetMapOrMax, StreamHeartBeat, TagSubscriptions};
 
-use super::EventStoreConsumerAccess;
-
 /// A precise selection of events, possibly unbounded in size.
 ///
 /// Event selections consist of two parts:
@@ -132,14 +130,21 @@ impl EventSelection {
 
     pub fn bounded_streams(
         &self,
-        store: &impl EventStoreConsumerAccess,
+        store: &impl crate::event_store::EventStore,
     ) -> impl Iterator<Item = StreamEventSelection> + '_ {
+        debug_assert!({
+            self.to_offsets_including.streams().all(|s| {
+                let from = self.from_offsets_excluding.offset(s);
+                let to = self.to_offsets_including.offset(s);
+                from < to
+            })
+        });
         let only_local = self.tag_subscriptions.only_local();
-        let local_stream_ids = store.local_stream_ids();
+        let store = store.clone();
         self.to_offsets_including.streams().filter_map(move |stream_id| {
             let to = self.to_offsets_including.offset(stream_id);
             let from = self.from_offsets_excluding.offset(stream_id);
-            let local = local_stream_ids.contains(&stream_id);
+            let local = store.is_local(stream_id);
 
             if from < to && (!only_local || local) {
                 Some(StreamEventSelection {
@@ -156,20 +161,18 @@ impl EventSelection {
 
     pub fn unbounded_stream(
         &self,
-        store: &impl EventStoreConsumerAccess,
+        store: &impl crate::event_store::EventStore,
         stream_id: StreamId,
     ) -> Option<StreamEventSelection> {
         let only_local = self.tag_subscriptions.only_local();
-        let local_stream_ids = store.local_stream_ids();
         let from = self.from_offsets_excluding.offset(stream_id);
-        let local = local_stream_ids.contains(&stream_id);
+        let local = store.is_local(stream_id);
 
         if !only_local || local {
             Some(StreamEventSelection {
                 stream_id,
                 from_exclusive: from,
                 to_inclusive: OffsetOrMin::MAX,
-
                 tag_subscriptions: self.tag_subscriptions.as_tag_sets(local),
             })
         } else {

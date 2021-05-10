@@ -12,6 +12,7 @@
 pub mod access;
 pub mod convert;
 mod discovery;
+mod event_store;
 mod gossip;
 pub mod metrics;
 mod prune;
@@ -25,9 +26,9 @@ mod unixfsv1;
 mod tests;
 mod v1;
 
+pub use crate::event_store::{EventStore, EventStoreError};
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
-pub use crate::v1::{EventStore, Present};
 
 use crate::gossip::Gossip;
 use crate::prune::RetainConfig;
@@ -304,9 +305,12 @@ impl<'a> BanyanStoreGuard<'a> {
         }
     }
 
+    fn is_local(&self, stream_id: StreamId) -> bool {
+        stream_id.node_id() == self.node_id()
+    }
+
     fn has_stream(&self, stream_id: StreamId) -> bool {
-        let me = stream_id.node_id() == self.node_id();
-        if me {
+        if self.is_local(stream_id) {
             self.own_streams.contains_key(&stream_id.stream_nr())
         } else {
             self.remote_nodes
@@ -320,7 +324,7 @@ impl<'a> BanyanStoreGuard<'a> {
     ///
     /// note that this does not include event updates
     fn latest_stream(&mut self, stream_id: StreamId) -> impl Stream<Item = (LamportTimestamp, Offset)> {
-        if stream_id.node_id() == self.node_id() {
+        if self.is_local(stream_id) {
             let stream = self.get_or_create_own_stream(stream_id.stream_nr());
             self.data
                 .lamport
@@ -342,8 +346,7 @@ impl<'a> BanyanStoreGuard<'a> {
 
     /// Get a stream of trees for a given stream id
     fn tree_stream(&mut self, stream_id: StreamId) -> (impl Stream<Item = Tree>, Forest) {
-        let me = stream_id.node_id() == self.node_id();
-        if me {
+        if self.is_local(stream_id) {
             let stream_nr = stream_id.stream_nr();
             let stream = self.get_or_create_own_stream(stream_nr);
             (stream.tree_stream(), stream.forest().clone())
@@ -607,7 +610,7 @@ impl BanyanStore {
                 let root = cid.try_into()?;
                 let tree = self.data.forest.load_tree(root)?;
                 self.update_present(stream_id, tree.offset());
-                if stream_id.node_id() == self.node_id() {
+                if self.lock().is_local(stream_id) {
                     let stream = self.get_or_create_own_stream(stream_id.stream_nr());
                     let guard = stream.lock().await;
                     guard.set_latest(tree);
@@ -625,6 +628,10 @@ impl BanyanStore {
     /// Returns the [`NodeId`].
     pub fn node_id(&self) -> NodeId {
         self.data.node_id
+    }
+
+    pub fn is_local(&self, stream_id: StreamId) -> bool {
+        self.lock().is_local(stream_id)
     }
 
     /// Returns the underlying [`Ipfs`].

@@ -15,8 +15,8 @@ use futures::{
     TryFutureExt,
 };
 use runtime::value::Value;
-use swarm::access::{ConsumerAccessError, EventSelection, EventStoreConsumerAccess};
-use swarm::{BanyanStore, EventStore, Present};
+use swarm::access::EventSelection;
+use swarm::{BanyanStore, EventStore, EventStoreError};
 use thiserror::Error;
 use trees::{OffsetMapOrMax, TagSubscriptions};
 
@@ -25,7 +25,7 @@ pub enum Error {
     #[error("Store error: {0}")]
     StoreError(#[from] anyhow::Error),
     #[error("Access error: {0}")]
-    ConsumerAccesError(#[from] ConsumerAccessError),
+    EventStoreError(#[from] EventStoreError),
 }
 
 #[derive(Clone)]
@@ -86,12 +86,12 @@ impl service::EventService for EventService {
             to_offsets_including,
         };
         let response = match request.order {
-            Order::Asc => self.store.stream_events_forward(selection),
-            Order::Desc => self.store.stream_events_backward(selection),
-            Order::StreamAsc => self.store.stream_events_source_ordered(selection),
+            Order::Asc => self.store.bounded_forward(&selection),
+            Order::Desc => self.store.bounded_backward(&selection),
+            Order::StreamAsc => self.store.bounded_forward_per_stream(&selection),
         }
         .await
-        .map_err(Error::ConsumerAccesError)?
+        .map_err(Error::EventStoreError)?
         .flat_map(mk_feed(request.query))
         .map(QueryResponse::Event);
         Ok(response.boxed())
@@ -99,17 +99,27 @@ impl service::EventService for EventService {
 
     async fn subscribe(&self, request: SubscribeRequest) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
         let tag_subscriptions: TagSubscriptions = (&request.query).into();
-        let from_offsets_excluding: OffsetMapOrMax = request.offsets.unwrap_or_default().into();
-        let selection = EventSelection::after(tag_subscriptions, from_offsets_excluding);
-        let response = self
-            .store
-            .stream_events_source_ordered(selection)
-            .await
-            .map_err(Error::ConsumerAccesError)?
-            .flat_map(mk_feed(request.query))
-            .map(SubscribeResponse::Event);
+        let present = OffsetMapOrMax::from(self.store.offsets().next().await.unwrap_or_default().present);
 
-        Ok(response.boxed())
+        let selection_bounded = EventSelection {
+            tag_subscriptions: tag_subscriptions.clone(),
+            from_offsets_excluding: OffsetMapOrMax::from(request.offsets.unwrap_or_default()),
+            to_offsets_including: present.clone(),
+        };
+        let bounded = self
+            .store
+            .bounded_forward(&selection_bounded)
+            .await
+            .map_err(Error::EventStoreError)?;
+
+        let selection_unbounded = EventSelection::after(tag_subscriptions, present);
+        let unbounded = self.store.unbounded_forward_per_stream(&selection_unbounded);
+
+        Ok(bounded
+            .chain(unbounded)
+            .flat_map(mk_feed(request.query))
+            .map(SubscribeResponse::Event)
+            .boxed())
     }
 
     async fn subscribe_monotonic(
@@ -117,33 +127,40 @@ impl service::EventService for EventService {
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
         let tag_subscriptions: TagSubscriptions = (&request.query).into();
+        let present = OffsetMapOrMax::from(self.store.offsets().next().await.unwrap_or_default().present);
+
         let initial_latest = if let StartFrom::Offsets(offsets) = &request.from {
             let to_offsets_including = OffsetMapOrMax::from(offsets.clone());
             let selection = EventSelection::upto(tag_subscriptions.clone(), to_offsets_including);
-            let (youngest_opt, _) = self
-                .store
-                .stream_events_backward(selection)
+            self.store
+                .bounded_backward(&selection)
                 .await
-                .map_err(Error::ConsumerAccesError)?
-                .into_future()
-                .await;
-            if let Some(youngest) = youngest_opt {
-                youngest.key
-            } else {
-                EventKey::default()
-            }
+                .map_err(Error::EventStoreError)?
+                .next()
+                .await
+                .map(|event| event.key)
+                .unwrap_or_default()
         } else {
             EventKey::default()
         };
 
-        let from_offsets_excluding = request.from.min_offsets().into();
-        let selection = EventSelection::after(tag_subscriptions, from_offsets_excluding);
-        let feed = mk_feed(request.query);
-        let response = self
+        let selection_bounded = EventSelection {
+            tag_subscriptions: tag_subscriptions.clone(),
+            from_offsets_excluding: request.from.min_offsets().into(),
+            to_offsets_including: present.clone(),
+        };
+        let bounded = self
             .store
-            .stream_events_source_ordered(selection)
+            .bounded_forward(&selection_bounded)
             .await
-            .map_err(Error::ConsumerAccesError)?
+            .map_err(Error::EventStoreError)?;
+
+        let selection_unbounded = EventSelection::after(tag_subscriptions.clone(), present);
+        let unbounded = self.store.unbounded_forward_per_stream(&selection_unbounded);
+
+        let feed = mk_feed(request.query);
+        let response = bounded
+            .chain(unbounded)
             .flat_map({
                 let mut latest = initial_latest;
                 move |e| {

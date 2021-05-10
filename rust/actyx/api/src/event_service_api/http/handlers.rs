@@ -72,7 +72,7 @@ pub async fn subscribe_monotonic(
 
 fn reject(err: anyhow::Error) -> Rejection {
     match err.downcast_ref::<service::Error>() {
-        Some(service::Error::ConsumerAccesError(_)) => reject::custom(ApiError::BadRequest { cause: err.to_string() }),
+        Some(service::Error::EventStoreError(_)) => reject::custom(ApiError::BadRequest { cause: err.to_string() }),
         _ => util::reject(err), // internal server errors
     }
 }

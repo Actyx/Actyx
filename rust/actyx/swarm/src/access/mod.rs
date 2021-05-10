@@ -11,8 +11,6 @@ pub mod common;
 mod forward;
 mod unordered;
 
-mod new;
-
 pub use common::{EventOrHeartbeat, EventSelection, StreamEventSelection};
 
 #[cfg(test)]

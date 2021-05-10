@@ -2,6 +2,7 @@ use crate::access::{
     common::StreamEventSelection, ConsumerAccessError, EventOrHeartbeat, EventOrHeartbeatStreamOrError,
     EventStoreConsumerAccess, EventStreamOrError,
 };
+use crate::event_store;
 use crate::SwarmOffsets;
 use crate::{AxTreeExt, BanyanStore, TT};
 use actyxos_sdk::{
@@ -16,6 +17,7 @@ use forest::FilteredChunk;
 use futures::stream::BoxStream;
 use futures::{channel::mpsc, future::BoxFuture, prelude::*};
 use std::{
+    cmp::Reverse,
     collections::BTreeSet,
     convert::{TryFrom, TryInto},
     num::NonZeroU64,
@@ -92,14 +94,85 @@ impl BanyanStore {
     }
 }
 
-pub trait EventStore: Clone + Send + Unpin + Sync + 'static {
+pub trait EventStoreX: Clone + Send + Unpin + Sync + 'static {
     /// Persist events and assign offsets and lamports
     fn persist<'a>(&self, events: Vec<(TagSet, Payload)>) -> BoxFuture<'a, Result<Vec<PersistenceMeta>>>;
 }
 
-impl EventStore for BanyanStore {
+impl EventStoreX for BanyanStore {
     fn persist<'a>(&self, events: Vec<(TagSet, Payload)>) -> BoxFuture<'a, Result<Vec<PersistenceMeta>>> {
         self.clone().persist0(events).boxed()
+    }
+}
+
+impl event_store::EventStore for BanyanStore {
+    fn is_local(&self, stream_id: StreamId) -> bool {
+        self.is_local(stream_id)
+    }
+
+    fn has_stream(&self, stream_id: StreamId) -> bool {
+        self.has_stream(stream_id)
+    }
+
+    fn known_streams(&self) -> BoxStream<'static, StreamId> {
+        let mut seen = FnvHashSet::default();
+        self.stream_known_streams()
+            .filter_map(move |stream_id| future::ready(if seen.insert(stream_id) { Some(stream_id) } else { None }))
+            .boxed()
+    }
+
+    fn offsets(&self) -> stream::BoxStream<'static, OffsetsResponse> {
+        #[allow(clippy::redundant_closure)]
+        self.data.offsets.new_projection(|x| OffsetsResponse::from(x)).boxed()
+    }
+
+    fn persist<'a>(
+        &self,
+        events: Vec<(TagSet, Payload)>,
+    ) -> BoxFuture<'a, anyhow::Result<Vec<event_store::PersistenceMeta>>> {
+        self.clone().persist0(events).boxed()
+    }
+
+    fn forward_stream(&self, stream_selection: StreamEventSelection) -> event_store::EventStreamOrError {
+        assert!(stream_selection.from_exclusive < stream_selection.to_inclusive);
+        let stream_id = stream_selection.stream_id;
+        if !self.has_stream(stream_id) {
+            return future::err(event_store::EventStoreError::UnknownStream(stream_id)).boxed();
+        }
+        let (trees, forest) = self.tree_stream(stream_id);
+        let range = get_range_inclusive(&stream_selection);
+        let query = TagsQuery::new(stream_selection.tag_subscriptions);
+        future::ok(
+            forest
+                .stream_trees_chunked(query, trees, range, &|_| ())
+                .map_ok(move |chunk| stream::iter(events_from_chunk(stream_id, chunk)))
+                .take_while(|x| future::ready(x.is_ok()))
+                .filter_map(|x| future::ready(x.ok()))
+                .flatten()
+                .boxed(),
+        )
+        .boxed()
+    }
+
+    fn backward_stream(&self, stream_selection: StreamEventSelection) -> event_store::EventStreamReverseOrError {
+        assert!(stream_selection.from_exclusive < stream_selection.to_inclusive);
+        let stream_id = stream_selection.stream_id;
+        if !self.has_stream(stream_id) {
+            return future::err(event_store::EventStoreError::UnknownStream(stream_id)).boxed();
+        }
+        let (trees, forest) = self.tree_stream(stream_id);
+        let range = get_range_inclusive(&stream_selection);
+        let query = TagsQuery::new(stream_selection.tag_subscriptions);
+        future::ok(
+            forest
+                .stream_trees_chunked_reverse(query, trees, range, &|_| ())
+                .map_ok(move |chunk| stream::iter(events_from_chunk_rev(stream_id, chunk)))
+                .take_while(|x| future::ready(x.is_ok()))
+                .filter_map(|x| future::ready(x.ok()))
+                .flatten()
+                .boxed(),
+        )
+        .boxed()
     }
 }
 
@@ -158,7 +231,7 @@ impl EventStoreConsumerAccess for BanyanStore {
         future::ok(
             forest
                 .stream_trees_chunked_reverse(query, trees, range, &|_| {})
-                .map_ok(move |chunk| stream::iter(events_from_chunk_rev(stream_id, chunk)))
+                .map_ok(move |chunk| stream::iter(events_from_chunk_rev_xxx(stream_id, chunk)))
                 .take_while(|x| future::ready(x.is_ok()))
                 .filter_map(|x| future::ready(x.ok()))
                 .flatten()
@@ -168,9 +241,7 @@ impl EventStoreConsumerAccess for BanyanStore {
     }
 
     fn stream_last_seen(&self, stream_id: StreamId) -> stream::BoxStream<'static, StreamHeartBeat> {
-        let stream = self.latest_stream(stream_id);
-
-        stream
+        self.latest_stream(stream_id)
             .map(move |(lamport, offset)| StreamHeartBeat::new(stream_id, lamport, offset))
             .boxed()
     }
@@ -236,8 +307,30 @@ fn events_or_heartbeat_from_chunk(
     result
 }
 
+/// Take a block of banyan events and convert them into events
+/// wrapped in EventOrHeartbeat.
+///
+/// In case the last event was filtered out, a placeholder heartbeat is added.
+fn events_from_chunk(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, ()>) -> Vec<Event<Payload>> {
+    chunk
+        .data
+        .into_iter()
+        .map(move |(offset, key, payload)| to_ev(offset, key, stream_id, payload))
+        .collect()
+}
+
 /// Take a block of banyan events and convert them into ActyxOS Event<Payload> events, reversing them
-fn events_from_chunk_rev(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, ()>) -> Vec<Event<Payload>> {
+fn events_from_chunk_rev(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, ()>) -> Vec<Reverse<Event<Payload>>> {
+    chunk
+        .data
+        .into_iter()
+        .rev()
+        .map(move |(offset, key, payload)| Reverse(to_ev(offset, key, stream_id, payload)))
+        .collect()
+}
+
+/// Take a block of banyan events and convert them into ActyxOS Event<Payload> events, reversing them
+fn events_from_chunk_rev_xxx(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, ()>) -> Vec<Event<Payload>> {
     chunk
         .data
         .into_iter()
