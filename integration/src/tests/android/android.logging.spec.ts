@@ -25,26 +25,11 @@ describe('Logging on Android', () => {
       // Can't use `adb shell run-as com.actyx.android` as the APK does not have
       // the `debuggable` flag set in release mode. So we work around this by
       // using `su`, meaning that this only works on devices where root is
-      // available. Fortunately the emulator provide `su`.
+      // available. Fortunately the emulator provides `su`.
       const uid = (await execAdb('shell pm list packages -U | grep com.actyx.android')).stdOut
         // Sample output: package:com.actyx.android uid:10077
         .split(' ')[1]
         .split(':')[1]
-
-      const logs: LogLine[] = []
-      const stop = node.ax.logs.tailFollow(
-        (entry) => {
-          const x = assertOK(entry)
-          x.result.forEach((line) => {
-            logs.push(line)
-          })
-        },
-        (err) => {
-          if (err) {
-            throw new Error(err)
-          }
-        },
-      )
 
       const matchers = await Promise.all(
         logLevels.flatMap(([androidLevel, actyxLevel]) =>
@@ -59,9 +44,15 @@ describe('Logging on Android', () => {
           }),
         ),
       )
-      await Observable.timer(3000).first().toPromise()
+      await Observable.timer(5000).first().toPromise()
+      const logs = await node.ax.logs
+        .tailFollow(true, 20, false)
+        .map(assertOK)
+        .flatMap((x) => x.result)
+        .toArray()
+        .toPromise()
+
       matchers.forEach((m) => expect(logs.findIndex((entry) => m(entry)) >= 0).toBeTruthy())
-      stop()
     })
   })
 })

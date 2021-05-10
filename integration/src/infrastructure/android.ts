@@ -1,6 +1,5 @@
 import { Client, DefaultClientOpts } from '@actyx/os-sdk'
 import execa from 'execa'
-import { Observable } from 'rxjs'
 import { CLI } from '../cli'
 import { connectSsh, ensureDocker, execSsh } from './linux'
 import { mkProcessLogger } from './mkProcessLogger'
@@ -77,19 +76,22 @@ export const mkNodeSshAndroid = async (
   log('http api reachable on port %i', port4454)
 
   log('Starting Actyx on Android')
+  const waitForIt = runProcess(nodeName, logger, ssh, `docker logs --follow ${container}`, [
+    'NODE_STARTED_BY_HOST',
+  ]).then((x) => {
+    x.forEach((p) => p.kill('SIGTERM'))
+  })
   await execAdb(`install ${apk}`)
+  await new Promise((r) => setTimeout(r, 2000))
   await execAdb('shell am start -n com.actyx.android/com.actyx.android.MainActivity')
   // TODO: On first start, it seems the background service is not started
   // properly.  Not sure yet whether this is a fluke with the emulator or with
   // Actyx
+  await new Promise((r) => setTimeout(r, 1000))
   await execAdb('shell am force-stop com.actyx.android')
-  await Observable.timer(1000).first().toPromise()
+  await new Promise((r) => setTimeout(r, 1000))
   await execAdb('shell am start -n com.actyx.android/com.actyx.android.MainActivity')
-  ;(
-    await runProcess(nodeName, logger, ssh, `adb -s localhost:${adbPort} logcat | grep -i actyx`, [
-      'NODE_STARTED_BY_HOST',
-    ])
-  )[0].kill('SIGTERM')
+  await waitForIt
   log('Actyx on Android started')
 
   const axHost = `localhost:${port4458}`

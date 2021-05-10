@@ -142,6 +142,7 @@ const LogLine = io.type({
   nodeId: io.string,
   nodeName: io.string,
   severity: io.union([
+    io.literal('TRACE'),
     io.literal('DEBUG'),
     io.literal('WARN'),
     io.literal('INFO'),

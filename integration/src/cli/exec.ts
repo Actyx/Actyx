@@ -17,6 +17,7 @@ import { StringDecoder } from 'string_decoder'
 import { Transform } from 'stream'
 import * as path from 'path'
 import { rightOrThrow } from '../infrastructure/rightOrThrow'
+import { Observable } from 'rxjs'
 
 const exec = async (binaryPath: string, args: string[], cwd?: string) => {
   try {
@@ -84,9 +85,10 @@ type Exec = {
   }
   logs: {
     tailFollow: (
-      onEntry: (entry: Response_Logs_Tail_Entry) => void,
-      onError: (error: string) => void,
-    ) => () => void
+      all_entries: boolean,
+      entries: number,
+      follow: boolean,
+    ) => Observable<Response_Logs_Tail_Entry>
   }
 }
 
@@ -191,105 +193,102 @@ export const mkExec = (binary: string, addr: string, identityPath: string): Exec
   },
   logs: {
     tailFollow: (
-      onEntry: (entry: Response_Logs_Tail_Entry) => void,
-      onError: (error: string) => void,
-    ): (() => void) => {
-      try {
-        //console.log(`starting ax process`)
-        const process = execa(
-          binary,
-          [`-j`, `logs`, `tail`, `-f`, `--local`, addr, '-i', identityPath],
-          {
-            buffer: false,
-          },
-        )
-        if (process.stdout === null) {
-          onError(`stdout is null`)
-          // eslint-disable-next-line @typescript-eslint/no-empty-function
-          return () => {}
-        }
-        //console.log(`got non-null stdout`)
-
-        const utf8Decoder = new StringDecoder('utf8')
-
-        let last = ''
-
-        //console.log(`creating decoder`)
-        const entryDecoder = new Transform({
-          readableObjectMode: true,
-          transform(chunk, _, cb) {
-            let lines: string[] = []
-            try {
-              last += utf8Decoder.write(chunk)
-              const list = last.split(/\r?\n/)
-              const p = list.pop()
-              last = p === undefined ? '' : p
-              lines = list.filter((x) => x.length > 0)
-            } catch (err) {
-              cb(err)
-              return
-            }
-
-            if (lines.length > 0) {
-              lines.forEach((l) => this.push(l))
-              cb(null)
-            } else {
-              cb()
-            }
-          },
-        })
-
-        // This is set to non-null if the request has an error. Otherwise
-        // if returns none (this happens only when the connection is
-        // manually aborted using the returned function).
-        let error: string | null = null
-        //console.log(`piping stdout to decoder`)
-        process.stdout.pipe(entryDecoder).on('data', (str) => {
-          //console.log(`got data: '${str}'`)
-          const val = JSON.parse(str)
-          const entry = Response_Logs_Tail_Entry.decode(val)
-          if (isLeft(entry)) {
-            //console.log(`error decoding log entry: ${PathReporter.report(entry).join(', ')}`)
-            error = `error decoding log entry response: ${PathReporter.report(entry).join(', ')}`
-            process.kill()
-          } else if (entry.value.code !== 'OK') {
-            onError(`${entry.value.code}: ${entry.value.message}`)
+      allEntries: boolean,
+      entries: number,
+      follow: boolean,
+    ): Observable<Response_Logs_Tail_Entry> => {
+      let process: execa.ExecaChildProcess<string>
+      return new Observable((observer) => {
+        try {
+          const a = allEntries ? ['--all-entries'] : []
+          const e = ['--entries', entries.toString()]
+          const f = follow ? ['--follow'] : []
+          //console.log(`starting ax process`)
+          process = execa(
+            binary,
+            ['-j', 'logs', 'tail']
+              .concat(f)
+              .concat(e)
+              .concat(a)
+              .concat([`--local`, addr, '-i', identityPath]),
+            {
+              buffer: false,
+            },
+          )
+          if (process.stdout === null) {
+            observer.error(`stdout is null`)
           } else {
-            onEntry(entry.value)
-          }
-        })
+            const utf8Decoder = new StringDecoder('utf8')
 
-        const killProcess = () => {
-          //console.log(`killing process`)
-          process.kill()
-          // TODO
+            let last = ''
+
+            const entryDecoder = new Transform({
+              readableObjectMode: true,
+              transform(chunk, _, cb) {
+                let lines: string[] = []
+                try {
+                  last += utf8Decoder.write(chunk)
+                  const list = last.split(/\r?\n/)
+                  const p = list.pop()
+                  last = p === undefined ? '' : p
+                  lines = list.filter((x) => x.length > 0)
+                } catch (err) {
+                  observer.error(new Error(err.toString()))
+                }
+
+                if (lines.length > 0) {
+                  lines.forEach((l) => this.push(l))
+                  cb(null)
+                } else {
+                  cb()
+                }
+              },
+            })
+
+            // This is set to non-null if the request has an error. Otherwise
+            // if returns none (this happens only when the connection is
+            // manually aborted using the returned function).
+            let error: string | null = null
+            //console.log(`piping stdout to decoder`)
+            process.stdout.pipe(entryDecoder).on('data', (str) => {
+              //console.log(`got data: '${str}'`)
+              const val = JSON.parse(str)
+              const entry = Response_Logs_Tail_Entry.decode(val)
+              if (isLeft(entry)) {
+                //console.log(`error decoding log entry: ${PathReporter.report(entry).join(', ')}`)
+                error = `error decoding log entry response: ${PathReporter.report(entry).join(
+                  ', ',
+                )}`
+                observer.error(new Error(error))
+              } else {
+                observer.next(entry.value)
+              }
+            })
+
+            process.stdout.on('error', (err: string) => {
+              //console.log(`got error: ${err}`)
+              error = err
+            })
+            process.stdout.on('close', (err: string) => {
+              //console.log(`stream closing (err: ${err})`)
+              if (error === null) {
+                // Nothing happens here
+              } else if (err !== '' && err !== undefined && err !== null) {
+                observer.error(new Error(err))
+              } else {
+                observer.error(new Error(error))
+              }
+              observer.complete()
+            })
+          }
+        } catch (error) {
+          //console.log(`caught error (err: ${error})`)
+          observer.error(new Error(error.toString()))
         }
-
-        process.stdout.on('error', (err: string) => {
-          //console.log(`got error: ${err}`)
-          error = err
-        })
-        process.stdout.on('close', (err: string) => {
-          //console.log(`stream closing (err: ${err})`)
-          process.kill()
-          if (error === null) {
-            // Nothing happens here
-          } else if (err !== '' && err !== undefined && err !== null) {
-            onError(err)
-          } else {
-            onError(error as string)
-          }
-        })
-
         return () => {
-          killProcess()
+          process?.kill()
         }
-      } catch (error) {
-        //console.log(`caught error (err: ${error})`)
-        onError(error.toString())
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        return () => {}
-      }
+      })
     },
   },
 })
