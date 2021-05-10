@@ -5,6 +5,20 @@ import fs from 'fs'
 import path from 'path'
 import https from 'https'
 import { ensureDirSync } from 'fs-extra'
+import * as t from 'io-ts'
+import { DockerPlatform, archToDockerPlatform } from './linux'
+import { rightOrThrow } from './rightOrThrow'
+
+const DockerSingleManifest = t.type({
+  digest: t.string,
+  platform: DockerPlatform,
+})
+type DockerSingleManifest = t.TypeOf<typeof DockerSingleManifest>
+
+const DockerManifest = t.type({
+  manifests: t.array(DockerSingleManifest),
+})
+type DockerManifest = t.TypeOf<typeof DockerManifest>
 
 export const settings = (): Settings => (<MyGlobal>global).axNodeSetup.settings
 
@@ -27,9 +41,23 @@ const getCurrent = (bin: Binary) =>
 export const actyxLinuxBinary = async (arch: Arch): Promise<string> =>
   getOrDownload('linux', arch, Binary.actyxLinux, settings().gitHash)
 
-// multiarch manifest, so it should Do The Right Thing (TM)
-export const actyxDockerImage = (arch: Arch, version: string): string =>
-  `actyx/cosmos:actyx-${version}`
+// Extract the image for the architecture we want to test from the multiarch manifest. This is due to
+// the fact that we have to use `aarch64` hosts to test `armv7` images.
+export const actyxDockerImage = async (arch: Arch, version: string): Promise<string> => {
+  const inspect = await execa.command(`docker manifest inspect actyx/cosmos:actyx-${version}`)
+  const json = JSON.parse(inspect.stdout)
+  const manifest = rightOrThrow(DockerManifest.decode(json), json)
+
+  const targetPlatform = archToDockerPlatform(arch)
+
+  const sha = manifest.manifests.filter(
+    ({ platform }: DockerSingleManifest) =>
+      platform.architecture === targetPlatform.architecture &&
+      platform.variant === targetPlatform.variant,
+  )[0].digest
+
+  return `actyx/cosmos@${sha}`
+}
 
 export const windowsActyxInstaller = async (arch: Arch): Promise<string> =>
   getOrDownload('windows', arch, Binary.actyxInstaller, settings().gitHash)
