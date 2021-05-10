@@ -84,7 +84,7 @@ type Exec = {
     schema: (scope: string) => Promise<Response_Settings_Schema>
   }
   logs: {
-    tailFollow: (
+    tail: (
       all_entries: boolean,
       entries: number,
       follow: boolean,
@@ -192,7 +192,7 @@ export const mkExec = (binary: string, addr: string, identityPath: string): Exec
     },
   },
   logs: {
-    tailFollow: (
+    tail: (
       allEntries: boolean,
       entries: number,
       follow: boolean,

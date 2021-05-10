@@ -46,12 +46,13 @@ describe('Logging on Android', () => {
       )
       await Observable.timer(5000).first().toPromise()
       const logs = await node.ax.logs
-        .tailFollow(true, 20, false)
+        .tail(true, 20, false)
         .map(assertOK)
         .flatMap((x) => x.result)
         .toArray()
         .toPromise()
 
+      console.log('Got back %n logs', logs.length)
       matchers.forEach((m) => expect(logs.findIndex((entry) => m(entry)) >= 0).toBeTruthy())
     })
   })
