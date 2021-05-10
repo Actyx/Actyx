@@ -227,8 +227,9 @@ stages:
         steps:
           - bash: |
               set -e
-              source ~/.nvm/nvm.sh
+              make prepare-js all-js
               cd integration
+              source ~/.nvm/nvm.sh
               nvm use
               npm install
               npm run cleanup 43200
