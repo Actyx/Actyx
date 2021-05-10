@@ -32,6 +32,10 @@ class MyEnvironment extends NodeEnvironment {
         node.ax.identityPath,
       )
       node.target.execute = mkExecute(node.target.os, node.target.kind)
+      if (node.target._private.executeInContainerPrefix !== undefined) {
+        node.target.executeInContainer = (script: string) =>
+          node.target.execute(`${node.target._private.executeInContainerPrefix}${script}`)
+      }
 
       const opts = DefaultClientOpts()
       opts.Endpoints.EventService.BaseUrl = node._private.httpApiOrigin

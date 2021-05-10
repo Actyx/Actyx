@@ -136,29 +136,32 @@ export const Response_Settings_Unset = io.union([
 
 export type Response_Settings_Unset = io.TypeOf<typeof Response_Settings_Unset>
 
+const LogLine = io.type({
+  sequenceNumber: io.number,
+  logTimestamp: io.string,
+  nodeId: io.string,
+  nodeName: io.string,
+  severity: io.union([
+    io.literal('TRACE'),
+    io.literal('DEBUG'),
+    io.literal('WARN'),
+    io.literal('INFO'),
+    io.literal('ERROR'),
+  ]),
+  message: io.string,
+  logName: io.string,
+  additionalData: io.unknown,
+  labels: io.union([io.null, io.record(io.string, io.string)]),
+  producerName: io.string,
+  producerVersion: io.string,
+})
+export type LogLine = io.TypeOf<typeof LogLine>
 export const Response_Logs_Tail_Entry = io.union([
   ERR_NODE_UNREACHABLE,
   io.intersection([
     _OK,
     io.type({
-      result: io.type({
-        sequenceNumber: io.number,
-        logTimestamp: io.string,
-        nodeId: io.string,
-        nodeName: io.string,
-        severity: io.union([
-          io.literal('DEBUG'),
-          io.literal('WARN'),
-          io.literal('INFO'),
-          io.literal('ERROR'),
-        ]),
-        message: io.string,
-        logName: io.string,
-        additionalData: io.unknown,
-        labels: io.union([io.null, io.record(io.string, io.string)]),
-        producerName: io.string,
-        producerVersion: io.string,
-      }),
+      result: io.array(LogLine),
     }),
   ]),
 ])

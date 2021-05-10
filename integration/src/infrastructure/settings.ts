@@ -5,6 +5,7 @@ import fs from 'fs'
 import path from 'path'
 import https from 'https'
 import { ensureDirSync } from 'fs-extra'
+import { tmpdir } from 'os'
 
 export const settings = (): Settings => (<MyGlobal>global).axNodeSetup.settings
 
@@ -13,6 +14,7 @@ export const enum Binary {
   ax = 'ax',
   actyxLinux = 'actyx-linux',
   actyxInstaller = 'Actyx-Installer',
+  actyxAndroid = 'actyx.apk',
 }
 
 export const currentAxBinary = (): Promise<string> => getCurrent(Binary.ax)
@@ -34,6 +36,9 @@ export const actyxDockerImage = (arch: Arch, version: string): string =>
 export const windowsActyxInstaller = async (arch: Arch): Promise<string> =>
   getOrDownload('windows', arch, Binary.actyxInstaller, settings().gitHash)
 
+export const actyxAndroidApk = async (): Promise<string> =>
+  getOrDownload('android', 'x86_64', Binary.actyxAndroid, settings().gitHash)
+
 const ensureBinaryExists = async (p: string): Promise<string> => {
   if (!fs.existsSync(p)) {
     const cmd = `make ${path.relative('..', p)}`
@@ -45,20 +50,39 @@ const ensureBinaryExists = async (p: string): Promise<string> => {
   return p
 }
 
+const mutex: { [_: string]: Promise<unknown> | undefined } = {}
+
 const getOrDownload = async (
   os: OS,
   arch: Arch,
   binary: Binary,
   gitHash: string | null,
 ): Promise<string> => {
+  let localPath: string
   const bin = os == 'windows' ? `${binary}.exe` : binary
-  const id = `${gitHash != null ? `${gitHash}-` : ''}${os}-${arch}`
-  const localPath = `../dist/bin/${id}/${bin}`
+  // actyx.apk sits in the root
+  const id = os == 'android' ? '' : `/${os}-${arch}`
+  if (gitHash !== null) {
+    localPath = `../dist/bin/${gitHash}${id}/${bin}`
+  } else {
+    localPath = `../dist/bin${id}/${bin}`
+  }
 
-  if (!fs.existsSync(localPath)) {
-    await (gitHash != null
-      ? download(gitHash, os, arch, binary, localPath)
-      : ensureBinaryExists(localPath))
+  while (!fs.existsSync(localPath)) {
+    if (mutex[localPath]) {
+      // `localPath` is already being downloaded or created. Waiting ..
+      await mutex[localPath]
+    } else {
+      const p = new Promise((res, rej) => {
+        ;(gitHash != null
+          ? download(gitHash, os, arch, binary, localPath)
+          : ensureBinaryExists(localPath)
+        )
+          .then(() => res())
+          .catch((err) => rej(err))
+      })
+      mutex[localPath] = p
+    }
   }
   return Promise.resolve(localPath)
 }
@@ -71,12 +95,14 @@ const download = (
   targetFile: string,
 ): Promise<string> => {
   const bin = os == 'windows' ? `${binary}.exe` : binary
-  const url = `https://axartifacts.blob.core.windows.net/artifacts/${hash}/${os}-binaries/${os}-${arch}/${bin}`
+  // actyx.apk sits in the root
+  const p = os == 'android' ? '' : `/${os}-${arch}`
+  const url = `https://axartifacts.blob.core.windows.net/artifacts/${hash}/${os}-binaries${p}/${bin}`
 
   console.log('Downloading binary "%s" from "%s"', bin, url)
 
-  ensureDirSync(path.dirname(targetFile))
-  const file = fs.createWriteStream(targetFile, { mode: 0o755 })
+  const tmpFile = path.join(tmpdir(), `integration-${Math.random().toString(36).substring(7)}`)
+  const file = fs.createWriteStream(tmpFile, { mode: 0o755 })
   return new Promise((resolve, reject) =>
     https.get(url, (response) => {
       if (response.statusCode !== 200) {
@@ -88,10 +114,15 @@ const download = (
           file.close()
         })
         .on('error', (err) => {
-          fs.unlink(targetFile, () => ({})) // ignore error, file might have not existed in the first place
+          fs.unlinkSync(tmpFile)
           reject(err)
         })
-        .on('close', resolve)
+        .on('close', () => {
+          ensureDirSync(path.dirname(targetFile))
+          fs.copyFileSync(tmpFile, targetFile)
+          fs.unlinkSync(tmpFile)
+          resolve()
+        })
     }),
   )
 }

@@ -21,8 +21,9 @@ const teardown = async (_config: Record<string, unknown>): Promise<void> => {
     console.log('Node list:')
     for (const n of axNodeSetup.nodes) {
       console.log(`    ${n.name} (${printTarget(n.target)})`)
-      console.log('    http api origin:', n._private.httpApiOrigin)
-      console.log('    pond:', n._private.apiPond)
+      console.log('      http api origin:', n._private.httpApiOrigin)
+      console.log('      pond:', n._private.apiPond)
+      console.log('      admin: %s (key %s)', n._private.axHost, n.ax.identityPath)
     }
     process.stdout.write('\n')
     console.log('process will not end since SSH forwarding remains active')
@@ -40,7 +41,7 @@ const teardown = async (_config: Record<string, unknown>): Promise<void> => {
     }).catch(console.error)
   }
 
-  process.stdout.write('\n')
+  process.stdout.write('teardown complete\n')
 }
 
 export default teardown

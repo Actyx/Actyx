@@ -19,7 +19,7 @@ export class CLI {
     const identityPath = path.resolve(settings().tempDir, `${node}-${randIdentifier}`)
     const cli = new CLI(node, binaryPath, identityPath)
 
-    // Make sure a local keypair is available; ignore if the file already exists
+    // Generate local key pair
     await cli.users.keyGen(cli.identityPath)
     return cli
   }

@@ -7,15 +7,25 @@ export type Target = {
   arch: Arch
   kind: TargetKind
   execute: (script: string) => Promise<{ exitCode: number; stdOut: string; stdErr: string }>
+  // Run in the virtualization layer in which the actyx process runs, if it
+  // doesn't run directly on the host. For Actyx on Docker, this provides direct
+  // access to the Docker container in which Actyx is running via `docker exec`.
+  // For an Android emulator, this provides adb access.
+  executeInContainer?: (
+    script: string,
+  ) => Promise<{ exitCode: number; stdOut: string; stdErr: string }>
   _private: {
     cleanup: () => Promise<void>
+    // Helper to get `executeInContainer` over the process boundary. This is a
+    // prefix, with which `executeInContainer` can be reconstructed.
+    executeInContainerPrefix?: string
   }
 }
 
 export type SshAble = {
   host: string
-  username: string
-  privateKey: string
+  username?: string
+  privateKey?: string
 }
 
 export type TargetKind =

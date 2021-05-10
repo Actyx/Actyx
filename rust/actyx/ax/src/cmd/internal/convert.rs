@@ -30,7 +30,7 @@ impl AxCliCommand for ConvertFromV1 {
         };
         let result = convert_from_v1(&opts.source, &opts.target, conversion_options)
             .map(|_| format!("Conversion done. Target db at {}", opts.target))
-            .ax_internal();
+            .ax_err_ctx(util::formats::ActyxOSCode::ERR_NODE_UNREACHABLE, "Convert failed");
         Box::new(stream::once(future::ready(result)))
     }
 

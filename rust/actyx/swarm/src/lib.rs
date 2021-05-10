@@ -48,10 +48,11 @@ use crypto::KeyPair;
 use forest::FilteredChunk;
 use futures::{channel::mpsc, prelude::*};
 use ipfs_embed::{
-    BitswapConfig, Cid, Config as IpfsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId, StorageConfig,
-    SyncEvent, ToLibp2p,
+    BitswapConfig, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId,
+    StorageConfig, SyncEvent, ToLibp2p,
 };
 use libp2p::{
+    dns::ResolverConfig,
     gossipsub::{GossipsubConfigBuilder, ValidationMode},
     identify::IdentifyConfig,
     multiaddr::Protocol,
@@ -434,7 +435,16 @@ impl BanyanStore {
                     None
                 },
                 kad: None,
-                dns: None,
+                dns: if cfg!(target_os = "android") {
+                    // No official support for DNS on Android.
+                    // see https://github.com/Actyx/Cosmos/issues/6582
+                    Some(DnsConfig {
+                        config: ResolverConfig::cloudflare(),
+                        opts: Default::default(),
+                    })
+                } else {
+                    None
+                },
                 ping: Some(
                     PingConfig::new()
                         .with_keep_alive(true)
@@ -548,17 +558,26 @@ impl BanyanStore {
 
         let ipfs = banyan.ipfs();
         for addr in cfg.listen_addresses {
-            if let Some(ListenerEvent::NewListenAddr(bound_addr)) = ipfs.listen_on(addr.clone())?.next().await {
+            let port = addr
+                .iter()
+                .find_map(|x| match x {
+                    Protocol::Tcp(p) => Some(p),
+                    Protocol::Udp(p) => Some(p),
+                    _ => None,
+                })
+                .unwrap_or_default();
+
+            if let Some(ListenerEvent::NewListenAddr(bound_addr)) = ipfs
+                .listen_on(addr.clone())
+                .with_context(|| NodeErrorContext::BindFailed {
+                    port,
+                    component: "Swarm".into(),
+                })?
+                .next()
+                .await
+            {
                 tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr);
             } else {
-                let port = addr
-                    .iter()
-                    .find_map(|x| match x {
-                        Protocol::Tcp(p) => Some(p),
-                        Protocol::Udp(p) => Some(p),
-                        _ => None,
-                    })
-                    .unwrap_or_default();
                 return Err(anyhow::anyhow!("failed to bind address")).with_context(|| NodeErrorContext::BindFailed {
                     port,
                     component: "Swarm".into(),

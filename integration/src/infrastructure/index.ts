@@ -15,7 +15,7 @@ export function mkExecute(os: OS, kind: TargetKind): ExecuteFn {
   switch (kind.type) {
     case 'aws':
     case 'ssh': {
-      const mkSsh = () => new Ssh(kind.host, kind.username, kind.privateKey)
+      const mkSsh = () => Ssh.new(kind.host, kind.username, kind.privateKey)
       return async (script: string) => {
         const res = await mkSsh().exec(script)
         return {

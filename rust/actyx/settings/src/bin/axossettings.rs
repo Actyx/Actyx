@@ -1,3 +1,4 @@
+use anyhow::Context;
 use settings::{database::Database, repository::Repository, scope::Scope};
 use std::str::FromStr;
 use std::{fs::File, io::Read, path::PathBuf};
@@ -52,8 +53,8 @@ enum Command {
 
 fn main() -> anyhow::Result<()> {
     let opt: Opt = Opt::from_args();
-    let disk_store = Database::new(opt.path)?;
-    let mut repo = Repository::new(disk_store)?;
+    let disk_store = Database::new(opt.path).context("Opening settings db")?;
+    let mut repo = Repository::new(disk_store).context("Creating settings repo")?;
     match opt.cmd {
         Command::SetSchema { scope, schema } => {
             let schema = serde_json::from_reader(File::open(schema)?)?;

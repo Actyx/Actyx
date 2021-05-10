@@ -3,7 +3,7 @@ import { ensureDirSync } from 'fs-extra'
 import { EC2 } from 'aws-sdk'
 import { createInstance, instanceToTarget } from './aws'
 import { mkNodeSshDocker, mkNodeSshProcess } from './linux'
-import { ActyxNode, AwsKey, Target } from './types'
+import { ActyxNode, AwsKey, SshAble, Target, TargetKind } from './types'
 import { CreateEC2, currentArch, currentOS, HostConfig } from '../../jest/types'
 import { mkNodeLocalDocker, mkNodeLocalProcess } from './local'
 import { LogEntry, MyGlobal } from '../../jest/setup'
@@ -11,6 +11,7 @@ import fs, { readFileSync } from 'fs'
 import path from 'path'
 import { makeWindowsInstallScript, mkWindowsSsh } from './windows'
 import { mkExecute } from '.'
+import { mkNodeSshAndroid } from './android'
 
 const createAwsInstance = async (
   ec2: EC2,
@@ -18,6 +19,7 @@ const createAwsInstance = async (
   key: AwsKey,
   hostname: string,
   runIdentifier: string,
+  volumeSizeGib?: number,
   userData?: string,
 ): Promise<Target> => {
   const instance = await createInstance(ec2, {
@@ -34,6 +36,12 @@ const createAwsInstance = async (
       },
     ],
     UserData: userData,
+    BlockDeviceMappings: [
+      {
+        DeviceName: '/dev/sda1',
+        Ebs: { VolumeSize: volumeSizeGib, DeleteOnTermination: true },
+      },
+    ],
   })
   return instanceToTarget(instance, prepare, key, ec2)
 }
@@ -77,13 +85,28 @@ const installDocker = async (
   }
 }
 
+const installAndroidEmulator = async (
+  target: Target,
+  host: HostConfig,
+  logger: (line: string) => void,
+) => {
+  const kind = target.kind
+  switch (kind.type) {
+    case 'aws':
+    case 'ssh':
+      return await mkNodeSshAndroid(host.name, target, kind, logger)
+
+    default:
+      console.error('unsupported kind: ', kind)
+  }
+}
 /**
  * Create a new node from the HostConfig that describes it. This can entail spinning up an EC2
  * host or it can mean using locally available resources like a Docker daemon.
  *
- * @param host
+ * @param hostConfig
  */
-export const createNode = async (host: HostConfig): Promise<ActyxNode | undefined> => {
+export const createNode = async (hostConfig: HostConfig): Promise<ActyxNode | undefined> => {
   const {
     ec2,
     key,
@@ -95,24 +118,60 @@ export const createNode = async (host: HostConfig): Promise<ActyxNode | undefine
 
   let target: Target | undefined = undefined
 
-  const { prepare, name: hostname } = host
+  const { prepare, name: hostname } = hostConfig
   switch (prepare.type) {
     case 'create-aws-ec2': {
       if (typeof key === 'undefined' || typeof ec2 === 'undefined') {
         throw 'No AWS EC2 Keypair was created. Are you authenticated with AWS?'
       }
-      if (host.install === 'windows') {
-        const pubKey = readFileSync(key.publicKeyPath)
-        const enableSshScript = makeWindowsInstallScript(pubKey.toString('utf8'))
-        const userData = Buffer.from(enableSshScript).toString('base64')
-        target = await createAwsInstance(ec2, prepare, key, hostname, runIdentifier, userData)
-      } else {
-        target = await createAwsInstance(ec2, prepare, key, hostname, runIdentifier)
+      switch (hostConfig.install) {
+        case 'windows': {
+          const pubKey = readFileSync(key.publicKeyPath)
+          const enableSshScript = makeWindowsInstallScript(pubKey.toString('utf8'))
+          const userData = Buffer.from(enableSshScript).toString('base64')
+          target = await createAwsInstance(
+            ec2,
+            prepare,
+            key,
+            hostname,
+            runIdentifier,
+            undefined,
+            userData,
+          )
+          break
+        }
+        case 'android': {
+          target = await createAwsInstance(ec2, prepare, key, hostname, runIdentifier, 32)
+          break
+        }
+        case 'linux':
+        case 'docker': {
+          target = await createAwsInstance(ec2, prepare, key, hostname, runIdentifier)
+          break
+        }
+      }
+      break
+    }
+    case 'ssh': {
+      const { os, arch, user, privateKeyPath, host } = prepare
+      const sshable: SshAble = {
+        host,
+        privateKey: privateKeyPath,
+        username: user,
+      }
+      const kind: TargetKind = { type: 'ssh', ...sshable }
+      const execute = mkExecute(os, kind)
+      target = {
+        arch,
+        os,
+        execute,
+        kind,
+        _private: { cleanup: () => Promise.resolve() },
       }
       break
     }
     case 'local': {
-      console.log('node %s using the local system', host.name)
+      console.log('node %s using the local system', hostConfig.name)
       const shutdown = () => Promise.resolve()
       const os = currentOS()
       const kind = { type: 'local' as const }
@@ -138,21 +197,29 @@ export const createNode = async (host: HostConfig): Promise<ActyxNode | undefine
 
   try {
     let node: ActyxNode | undefined
-    switch (host.install) {
+    switch (hostConfig.install) {
       case 'linux':
       case 'windows':
         if (target === undefined) {
-          console.error('no recipe to prepare node %s', host.name)
+          console.error('no recipe to prepare node %s', hostConfig.name)
           return
         }
-        node = await installProcess(target, host, logger)
+        node = await installProcess(target, hostConfig, logger)
         break
       case 'docker':
         if (target === undefined) {
-          console.error('no recipe to prepare node %s', host.name)
+          console.error('no recipe to prepare node %s', hostConfig.name)
           return
         }
-        node = await installDocker(target, host, logger, gitHash)
+        node = await installDocker(target, hostConfig, logger, gitHash)
+        break
+
+      case 'android':
+        if (target === undefined) {
+          console.error('no recipe to prepare node %s', hostConfig.name)
+          return
+        }
+        node = await installAndroidEmulator(target, hostConfig, logger)
         break
 
       default:
@@ -160,27 +227,29 @@ export const createNode = async (host: HostConfig): Promise<ActyxNode | undefine
     }
 
     if (node === undefined) {
-      console.error('no recipe to install node %s', host.name)
+      console.error('no recipe to install node %s', hostConfig.name)
     } else {
       const orig_shutdown = node._private.shutdown
       const shutdown = async () => {
         await orig_shutdown().catch((error) =>
-          console.error('node %s error while shutting down:', host.name, error),
+          console.error('node %s error while shutting down:', hostConfig.name, error),
         )
-        const logFilePath = mkLogFilePath(runIdentifier, host)
+        const logFilePath = mkLogFilePath(runIdentifier, hostConfig)
         const [logSink, flush] = logToStdout
           ? [process.stdout.write, () => ({})]
           : appendToFile(logFilePath)
 
         process.stdout.write(
-          `\n****\nlogs for node ${host.name}${
+          `\n****\nlogs for node ${hostConfig.name}${
             logToStdout ? '' : ` redirected to "${logFilePath}"`
           }\n****\n\n`,
         )
+        console.log('node %s: Flushing logs', hostConfig.name)
         for (const entry of logs) {
           logSink(`${entry.time.toISOString()} ${entry.line}\n`)
         }
         flush()
+        console.log('node %s: Flushed logs', hostConfig.name)
         logs.length = 0
       }
 
@@ -193,7 +262,7 @@ export const createNode = async (host: HostConfig): Promise<ActyxNode | undefine
 
     return node
   } catch (e) {
-    console.error('node %s error while setting up:', host.name, e)
+    console.error('node %s error while setting up:', hostConfig.name, e)
     for (const entry of logs) {
       process.stdout.write(`${entry.time.toISOString()} ${entry.line}\n`)
     }
