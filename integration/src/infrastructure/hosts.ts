@@ -26,7 +26,10 @@ export const runOnEach = async <T>(
 ): Promise<T[]> => {
   const n = selectNodes(selection, nodes)
   if (n === null) {
-    throw new Error('cannot satisfy node selection ' + JSON.stringify(selection))
+    console.warn(
+      `Can not satisfy node selection ${JSON.stringify(selection)}. Skipping ${getTestName()}`,
+    )
+    return Promise.resolve([])
   }
 
   return runOnNodes('runOnEach', n, () =>
