@@ -286,12 +286,7 @@ impl EventStoreConsumerAccess for TestEventStore {
         .boxed()
     }
 
-    fn stream_forward(
-        &self,
-        events: StreamEventSelection,
-        _must_exist: bool,
-        _bounded: bool,
-    ) -> EventOrHeartbeatStreamOrError {
+    fn stream_forward(&self, events: StreamEventSelection, _must_exist: bool) -> EventOrHeartbeatStreamOrError {
         trace!("stream_forward {:?}", events);
         let StreamEventSelection {
             stream_id,
@@ -492,7 +487,7 @@ async fn test_harness_should_filter_events_forward() {
     let stream_id = known_streams()[0];
     let subs = tag_subs("FROM 'upper:A' & ('lower:a' | 'lower:b')");
     let events = StreamEventSelection::new(stream_id, OffsetOrMin::MIN, OffsetOrMin::MAX, subs.into());
-    let stream = store.stream_forward(events, true, true).await.unwrap();
+    let stream = store.stream_forward(events, true).await.unwrap();
     let mut iter = Drainer::new(stream);
 
     let evs = store.known_events(stream_id, 0, None);
@@ -536,7 +531,7 @@ async fn test_harness_should_deliver_events_forward_min_max() {
     let stream_id = known_streams()[0];
     let subs = tag_subs("FROM 'upper:A' & ('lower:a' | 'lower:b')");
     let events = StreamEventSelection::new(stream_id, OffsetOrMin::MIN, OffsetOrMin::MAX, subs.into());
-    let stream = store.stream_forward(events, true, true).await.unwrap();
+    let stream = store.stream_forward(events, true).await.unwrap();
     let mut iter = Drainer::new(stream);
 
     let evs = store.known_events(stream_id, 0, None);
@@ -591,7 +586,7 @@ async fn test_harness_should_deliver_events_forward_min_large() {
         (store.top_offset() + 2).into(),
         vec![TagSet::empty()],
     );
-    let mut iter = drainer(store.stream_forward(events, true, true)).await;
+    let mut iter = drainer(store.stream_forward(events, true)).await;
 
     assert_eq!(iter.next(), Some(store.known_events(stream_id, 0, None)));
 
@@ -622,7 +617,7 @@ async fn test_harness_should_deliver_events_forward_min_edge() {
         store.top_offset().into(),
         vec![TagSet::empty()],
     );
-    let mut iter = drainer(store.stream_forward(events, true, true)).await;
+    let mut iter = drainer(store.stream_forward(events, true)).await;
 
     assert_eq!(iter.next(), Some(store.known_events(stream_id, 0, None)));
 
@@ -640,7 +635,7 @@ async fn test_harness_should_deliver_events_forward_min_small() {
         store.top_offset().pred_or_min(),
         vec![TagSet::empty()],
     );
-    let mut iter = drainer(store.stream_forward(events, true, true)).await;
+    let mut iter = drainer(store.stream_forward(events, true)).await;
 
     assert_eq!(
         iter.next(),
@@ -661,7 +656,7 @@ async fn test_harness_should_deliver_events_forward_min_zero() {
         OffsetOrMin::mk_test(0),
         vec![TagSet::empty()],
     );
-    let mut iter = drainer(store.stream_forward(events, true, true)).await;
+    let mut iter = drainer(store.stream_forward(events, true)).await;
 
     assert_eq!(iter.next(), Some(store.known_events(stream_id, 0, Some(1))));
 
@@ -674,7 +669,7 @@ async fn test_harness_should_deliver_events_forward_min_min() {
     let stream_id = known_streams()[0];
 
     let events = StreamEventSelection::new(stream_id, OffsetOrMin::MIN, OffsetOrMin::MIN, vec![TagSet::empty()]);
-    let mut iter = drainer(store.stream_forward(events, true, true)).await;
+    let mut iter = drainer(store.stream_forward(events, true)).await;
 
     assert_eq!(iter.next(), None);
 }
@@ -690,7 +685,7 @@ async fn test_harness_should_deliver_events_forward_zero_min() {
         OffsetOrMin::MIN,
         vec![TagSet::empty()],
     );
-    let mut iter = drainer(store.stream_forward(events, true, true)).await;
+    let mut iter = drainer(store.stream_forward(events, true)).await;
 
     assert_eq!(iter.next(), None);
 }
@@ -706,7 +701,7 @@ async fn test_harness_should_deliver_events_forward_zero_small() {
         OffsetOrMin::mk_test(10),
         vec![TagSet::empty()],
     );
-    let mut iter = drainer(store.stream_forward(events, true, true)).await;
+    let mut iter = drainer(store.stream_forward(events, true)).await;
 
     assert_eq!(iter.next(), Some(store.known_events(stream_id, 1, Some(11))));
 
@@ -724,7 +719,7 @@ async fn test_harness_should_deliver_events_forward_zero_large() {
         (store.top_offset() + 1).into(),
         vec![TagSet::empty()],
     );
-    let mut iter = drainer(store.stream_forward(events, true, true)).await;
+    let mut iter = drainer(store.stream_forward(events, true)).await;
 
     let ev = mk_test_event(
         stream_id,
@@ -752,7 +747,7 @@ async fn test_harness_should_deliver_events_forward_large_large() {
         (store.top_offset() + 4).into(),
         vec![TagSet::empty()],
     );
-    let mut iter = drainer(store.stream_forward(events, true, true)).await;
+    let mut iter = drainer(store.stream_forward(events, true)).await;
 
     let evs = (1..6)
         .map(|x| {
@@ -788,7 +783,7 @@ async fn test_harness_should_deliver_events_forward_large_large_evil() {
         (store.top_offset() + 4).into(),
         vec![TagSet::empty()],
     );
-    let mut iter = drainer(store.stream_forward(events, true, true)).await;
+    let mut iter = drainer(store.stream_forward(events, true)).await;
 
     let evs = (1..6)
         .map(|x| {

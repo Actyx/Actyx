@@ -59,12 +59,7 @@ pub trait EventStoreConsumerAccess: Clone + Sized + Sync + Send + 'static {
     /// `from` should be less than `to` for the stream to be non-empty, the stream
     /// starts with the event right after `from` and ends with the event at `to`.
     // per stream_id
-    fn stream_forward(
-        &self,
-        events: StreamEventSelection,
-        must_exist: bool,
-        bounded: bool,
-    ) -> EventOrHeartbeatStreamOrError;
+    fn stream_forward(&self, events: StreamEventSelection, must_exist: bool) -> EventOrHeartbeatStreamOrError;
 
     /// Stream events for the given stream id between start and stop in reverse;
     /// returns error if stop is not contained in the currently known “present”.

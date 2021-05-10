@@ -24,7 +24,7 @@ pub fn stream(store: &impl EventStoreConsumerAccess, events: EventSelection) -> 
                 .map(move |stream_id| {
                     let events = events.for_stream(stream_id, local_stream_ids.contains(&stream_id));
                     store
-                        .stream_forward(events, false, true)
+                        .stream_forward(events, false)
                         .map(|res| res.unwrap()) // fine since we know that the stream exists
                         .flatten_stream()
                         .filter_map(|x| ready(x.into_event()))
@@ -41,7 +41,7 @@ pub fn stream(store: &impl EventStoreConsumerAccess, events: EventSelection) -> 
             .map(move |stream_id| {
                 let events = events.for_stream(stream_id, store.local_stream_ids().contains(&stream_id));
                 store
-                    .stream_forward(events, false, true)
+                    .stream_forward(events, false)
                     .map(|res| res.unwrap()) // fine since we know that the stream exists
                     .flatten_stream()
                     .filter_map(|x| {
