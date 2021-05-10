@@ -52,7 +52,7 @@ describe('Logging on Android', () => {
         .toArray()
         .toPromise()
 
-      console.log('Got back %n logs', logs.length)
+      console.log(`Got back ${logs.length} logs`)
       matchers.forEach((m) => expect(logs.findIndex((entry) => m(entry)) >= 0).toBeTruthy())
     })
   })
