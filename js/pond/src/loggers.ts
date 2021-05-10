@@ -4,7 +4,7 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Loggers } from './util/logging'
+import { Loggers } from '@actyx/sdk/lib/util/logging'
 /**
  * Scope for things related to the pond
  */

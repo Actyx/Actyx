@@ -1,0 +1,123 @@
+---
+title: The Business Logic
+---
+
+An app's business logic is implemented using our programming framework [Actyx Pond](../../how-to/actyx-pond/introduction.mdx) and in particular using **local twins**, we call **fishes**.
+A fish is the main programming unit in Actyx Pond and provides you with a structure to implement your business logic.
+It always represents one entity of your logic and should always have only a single responsibility – which means in the case of this tutorial, you need one local twin to keep track of your machines, and one that keeps track of your orders.
+
+:::note Twin == Fish
+The Actyx library that allows you to write local twins, actually calls them Fishes. You will see throughout the tutorial, but Twin == Fish!
+:::
+
+Before diving into the code, have a look at the illustration below. It shows the events and states that will be modeled in these local twins.
+
+<img src={useBaseUrl('images/tutorials/advanced-tutorial/statemachine.svg')} />
+
+You will find the implementation of the event and state types, as well as the actual state machine, in the local twins. Event emission is triggered in the apps.
+
+## Using Local Twins
+
+As explained above, we need two local twins for this example.
+Let's explain the structure and contents of a local twin.
+The `machineFish.ts` and `orderFish.ts` code is structured the same way, so let's look at one in a little bit more detail as we learn how local twins that track a single machine or order work.
+
+### Order Fish
+
+The following illustration should make it easier to understand `orderFish.ts`.
+It represents the state- and event types of the order fish responsible for the state of a single order:
+
+import useBaseUrl from '@docusaurus/useBaseUrl'
+
+<img src={useBaseUrl('images/tutorials/advanced-tutorial/orderfish.svg')} />
+
+As you can see in `orderfish.ts` , `DefinedState` can be – depending on the event – either `idle`, `active`, or `done`.
+Written in code, these state types are defined as follows:
+
+```ts title="Definition of state types"
+export type UndefineState = {
+  stateType: 'undefined'
+}
+
+export type DefinedState = {
+  stateType: 'idle' | 'active' | 'done'
+  name: string
+  duration: number
+  machine: string
+}
+```
+
+The corresponding events are defined as follows:
+
+```ts title="Definition of event types"
+export type PlacedEvent = {
+  eventType: 'placed'
+  name: string
+  duration: number
+  machine: string
+}
+
+export type StartedEvent = {
+  eventType: 'started'
+  name: string
+  machine: string
+}
+
+export type FinishedEvent = {
+  eventType: 'finished'
+  name: string
+}
+```
+
+Another important part of the order fish is the `onEvent` function:
+
+```ts title="onEvent function"
+onEvent: (state, event) => {
+    switch (event.eventType) {
+    case 'setState':
+        return {
+            stateType: event.state,
+            name,
+          }
+    case 'started':
+        return {
+            stateType: 'active',
+            order: event.order,
+            name,
+          }
+    case 'finished':
+        return {
+            stateType: 'finish',
+            order: event.order,
+            name,
+        }
+    default:
+        break
+    }
+    return state
+},
+```
+
+The onEvent function reduces all incoming events to the state of the machine.
+In this case the `setState` will overwrite the machine state and set it to the state in the event.
+There is no reason to validate this event, because it happened in the real world and we cannot reject it.
+
+The started and the finished event is handled the same way.
+The fact that the machine starts the order and finished the order cannot be rejected. It happened.
+
+The finish case is a perfect example for the need to add the order to the event.
+If you use the `state.order` in this case, it could be wrong.
+
+### Machine Fish
+
+The `machineFish` is very similar.
+The following illustration should make it easier to understand `machineFish.ts`.
+It represents the state- and event types of the machine fish responsible for the state of a single machine:
+
+<img src={useBaseUrl('images/tutorials/advanced-tutorial/machinefish.svg')} />
+
+Feel free to examine the `machineFish.ts` file a little bit more and see if you understood everything (there are a plenty of comments in the code helping you to understand it 🙂 ).
+
+:::info Need help?
+If you run into problems or want to give feedback, you are welcome to join our [Discord chat](https://discord.gg/262yJhc), visit our [community forum](https://community.actyx.com/), raise an issue in the [GitHub repo](https://github.com/Actyx/DemoMachineKit/issues) or write us an e-mail to developer@actyx.io.
+:::

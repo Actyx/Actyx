@@ -133,7 +133,7 @@ impl SwarmConfig {
     pub fn test(node_name: &str) -> Self {
         Self {
             topic: "topic".into(),
-            enable_mdns: true,
+            enable_mdns: false,
             node_name: Some(node_name.into()),
             listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse().unwrap()],
             enable_fast_path: true,
@@ -264,10 +264,6 @@ impl<'a> BanyanStoreGuard<'a> {
         self.own_streams.keys().map(|x| self.data.node_id.stream(*x)).collect()
     }
 
-    fn increment_lamport(&mut self) -> anyhow::Result<u64> {
-        self.index_store.increment_lamport()
-    }
-
     fn received_lamport(&mut self, lamport: u64) -> anyhow::Result<u64> {
         self.index_store.received_lamport(lamport)
     }
@@ -281,7 +277,7 @@ impl<'a> BanyanStoreGuard<'a> {
             let _ = self.index_store.add_stream(stream_id);
             tracing::debug!("publish new stream_id {}", stream_id);
             self.publish_new_stream_id(stream_id);
-            let stream = Arc::new(OwnStream::new(forest));
+            let stream = Arc::new(OwnStream::new(forest, stream_nr));
             self.own_streams.insert(stream_nr, stream.clone());
             stream
         })
@@ -329,7 +325,11 @@ impl<'a> BanyanStoreGuard<'a> {
             self.data
                 .lamport
                 .new_observer()
-                .filter_map(move |lamport| future::ready(stream.offset().map(|offset| (lamport, offset))))
+                .filter_map(move |lamport| {
+                    future::ready(
+                        Offset::from_offset_or_min(stream.snapshot().offset()).map(|offset| (lamport, offset)),
+                    )
+                })
                 .left_stream()
         } else {
             self.get_or_create_replicated_stream(stream_id)
@@ -373,7 +373,7 @@ impl<'a> BanyanStoreGuard<'a> {
     pub fn root_map(&self) -> BTreeMap<StreamId, Cid> {
         let own = self.own_streams.iter().filter_map(|(stream_nr, inner)| {
             let stream_id = self.node_id().stream(*stream_nr);
-            inner.root().map(|root| (stream_id, root))
+            inner.snapshot().cid().map(|root| (stream_id, root))
         });
 
         let other = self.remote_nodes.iter().flat_map(|(node_id, remote_node)| {
@@ -398,6 +398,13 @@ impl<'a> BanyanStoreGuard<'a> {
         let handle =
             tokio::spawn(task.map(move |_| tracing::error!("Fatal: Task '{}' unexpectedly terminated!", name)));
         self.tasks.push(handle);
+    }
+
+    /// reserve a number of lamport timestamps
+    pub fn reserve_lamports(&mut self, n: usize) -> anyhow::Result<impl Iterator<Item = LamportTimestamp>> {
+        let n = u64::try_from(n)?;
+        let last_lamport = self.index_store.increase_lamport(n)?;
+        Ok((last_lamport - n + 1..=last_lamport).map(LamportTimestamp::from))
     }
 }
 
@@ -501,7 +508,7 @@ impl BanyanStore {
                 tasks: Default::default(),
             })),
         };
-        banyan.load_known_streams()?;
+        banyan.load_known_streams().await?;
         banyan.spawn_task(
             "gossip_ingest",
             banyan.data.gossip.ingest(banyan.clone(), cfg.topic.clone())?,
@@ -592,7 +599,7 @@ impl BanyanStore {
         }
     }
 
-    fn load_known_streams(&self) -> Result<()> {
+    async fn load_known_streams(&self) -> Result<()> {
         let known_streams = self.lock().index_store.get_observed_streams()?;
         for stream_id in known_streams {
             tracing::debug!("Trying to load tree for {}", stream_id);
@@ -601,7 +608,9 @@ impl BanyanStore {
                 let tree = self.data.forest.load_tree(root)?;
                 self.update_present(stream_id, tree.offset());
                 if stream_id.node_id() == self.node_id() {
-                    self.get_or_create_own_stream(stream_id.stream_nr()).set_latest(tree);
+                    let stream = self.get_or_create_own_stream(stream_id.stream_nr());
+                    let guard = stream.lock().await;
+                    guard.set_latest(tree);
                 } else {
                     self.get_or_create_replicated_stream(stream_id).set_latest(tree);
                 }
@@ -630,17 +639,16 @@ impl BanyanStore {
     /// Append events to a stream, publishing the new data.
     pub async fn append(&self, stream_nr: StreamNr, events: Vec<(TagSet, Event)>) -> Result<Option<Link>> {
         tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
+        let timestamp = Timestamp::now();
         let stream = self.get_or_create_own_stream(stream_nr);
-        stream
-            .locked(|| {
-                let lamport = self.lock().increment_lamport()?;
-                let timestamp = Timestamp::now();
-                let events = events
-                    .into_iter()
-                    .map(move |(tags, event)| (Key::new(tags, lamport, timestamp), event));
-                self.transform_stream(stream_nr, &stream, |txn, tree| txn.extend_unpacked(tree, events))
-            })
-            .await
+        let guard = stream.lock().await;
+        let mut store = self.lock();
+        let lamports = store.reserve_lamports(events.len())?;
+        let kvs = lamports
+            .zip(events)
+            .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
+        self.transform_stream(&guard, |txn, tree| txn.extend_unpacked(tree, kvs))?;
+        Ok(guard.link())
     }
 
     /// Returns a [`Stream`] of known [`StreamId`].
@@ -698,11 +706,11 @@ impl BanyanStore {
 
     fn transform_stream(
         &self,
-        stream_nr: StreamNr,
-        stream: &OwnStream,
+        stream: &OwnStreamGuard,
         f: impl FnOnce(&Transaction, &Tree) -> Result<Tree> + Send,
-    ) -> Result<Option<Link>> {
+    ) -> Result<()> {
         let writer = self.data.forest.store().write()?;
+        let stream_nr = stream.stream_nr();
         tracing::debug!("starting write transaction on stream {}", stream_nr);
         let txn = Transaction::new(stream.forest().clone(), writer);
         let curr = stream.latest();
@@ -731,7 +739,7 @@ impl BanyanStore {
             self.data.gossip.publish(stream_nr, root.expect("not None"), blocks)?;
         }
         tracing::debug!("ended write transaction on stream {}", stream_nr);
-        Ok(root)
+        Ok(())
     }
 
     fn update_root(&self, stream_id: StreamId, root: Link) {
@@ -747,9 +755,8 @@ impl BanyanStore {
             for stream_nr in stream_nrs {
                 tracing::debug!("compacting stream {}", stream_nr);
                 let stream = self.get_or_create_own_stream(stream_nr);
-                let result = stream
-                    .locked(|| self.transform_stream(stream_nr, &stream, |txn, tree| txn.pack(tree)))
-                    .await;
+                let guard = stream.lock().await;
+                let result = self.transform_stream(&guard, |txn, tree| txn.pack(tree));
                 if let Err(err) = result {
                     tracing::error!("Error compacting stream {}: {}", stream_nr, err);
                     break;
@@ -862,9 +869,13 @@ impl BanyanStore {
 trait AxTreeExt {
     fn last_lamport(&self) -> LamportTimestamp;
     fn offset(&self) -> OffsetOrMin;
+    fn cid(&self) -> Option<Cid>;
 }
 
 impl AxTreeExt for Tree {
+    fn cid(&self) -> Option<Cid> {
+        self.link().map(Into::into)
+    }
     fn last_lamport(&self) -> LamportTimestamp {
         match self.as_index_ref() {
             Some(Index::Branch(branch)) => branch.summaries.lamport_range().max,

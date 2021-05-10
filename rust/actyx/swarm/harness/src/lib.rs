@@ -17,6 +17,9 @@ pub struct HarnessOpts {
     pub delay_ms: u64,
 
     #[structopt(long)]
+    pub enable_mdns: bool,
+
+    #[structopt(long)]
     pub enable_fast_path: bool,
 
     #[structopt(long)]
@@ -24,6 +27,12 @@ pub struct HarnessOpts {
 
     #[structopt(long)]
     pub enable_root_map: bool,
+
+    #[structopt(long)]
+    pub enable_discovery: bool,
+
+    #[structopt(long)]
+    pub enable_metrics: bool,
 }
 
 pub fn run_netsim<F, F2>(mut f: F) -> Result<()>
@@ -51,6 +60,9 @@ where
             wire.set_delay(Duration::from_millis(opts.delay_ms));
             let mut cmd = async_process::Command::new(swarm_cli);
             cmd.arg("--path").arg(path);
+            if opts.enable_mdns {
+                cmd.arg("--enable-mdns");
+            }
             if opts.enable_fast_path {
                 cmd.arg("--enable-fast-path");
             }
@@ -59,6 +71,12 @@ where
             }
             if opts.enable_root_map {
                 cmd.arg("--enable-root-map");
+            }
+            if opts.enable_discovery {
+                cmd.arg("--enable-discovery");
+            }
+            if opts.enable_metrics {
+                cmd.arg("--enable-metrics");
             }
             builder.spawn_machine_with_command(wire, cmd);
         }

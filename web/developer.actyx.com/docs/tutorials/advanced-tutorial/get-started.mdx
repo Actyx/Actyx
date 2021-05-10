@@ -2,30 +2,26 @@
 title: Get started
 ---
 
-In this chapter, you will run all apps in development mode and interact with them.
+In this chapter, you will run all apps on your development machine and interact with them.
+To do this, you need to download the sample project we have prepared for you. To get the sample project, you can either...
 
-To get the sample project, you can either:
-
-Clone the repository from GitHub by running:
+...clone the repository from GitHub by running
 
 ```text
 git clone https://github.com/Actyx/DemoMachineKit.git
 ```
 
-Alternatively, you can download the repository as a Zip file, unzip it, and open it in your IDE.
+...or alternatively, you can download the repository as a `.zip` file, unzip it, and open it in the editor of your choice.
 
-import useBaseUrl from '@docusaurus/useBaseUrl'
 import { DownloadLink } from '../../../src/components/DownloadLink.tsx'
 
 <DownloadLink cta="Download" link="https://github.com/Actyx/DemoMachineKit/archive/master.zip" />
 
-### Run the apps
+---
 
-Before you can run the apps, make sure that ActyxOS is running, for a detailed installation guide, please refer to [this guide](../../how-to/local-development/install-actyx.mdx).
+## Run the apps
 
-:::info Need help?
-If you run into problems or want to give feedback, you are welcome to join our [Discord chat](https://discord.gg/262yJhc), raise an issue in the [GitHub repo](https://github.com/Actyx/DemoMachineKit/issues) or write us an e-mail to developer@actyx.io.
-:::
+Before you can run the apps, make sure that Actyx is running, for a detailed installation guide, please refer to [this guide](../../how-to/local-development/install-actyx.mdx).
 
 Before you start any apps, run `npm install` from the root directory.
 
@@ -37,13 +33,14 @@ npm run ui:dashboard:start
 
 After visiting `localhost:1234` you should see an empty dashboard that only displays "Machines" and "Orders".
 
-For creating orders, lets first start the ERP Simulator App:
+For creating orders, lets first start the Order Management App:
 
 ```text
-npm run ui:erp-simulator:start
+npm run ui:order-management:start
 ```
 
-In a different browser window, navigate to `localhost:1235`. You should now be able to create an order and associate the following information with it:
+In a different browser window, navigate to `localhost:1235`.
+You should now be able to create an order and associate the following information with it:
 
 - a name
 - a planned duration
@@ -57,18 +54,24 @@ In order to let your system know of a new machine, start the Wago Connector App:
 npm run node:wago-connector:start
 ```
 
-Now a field with your machine `Wago` should appear, allowing you to click on `Place order`:
+Since this app would normally run on a PLC mounted onto a machine, it does not have a user interface.
+To check whether everything is working, check the output in your terminal or make sure that a new field with your machine `Wago Connector` appears in the **Order Management App**, allowing you to click on the button to place an order.
 
-<img src={useBaseUrl('images/tutorials/dx1-tutorial/erpsimulator.png')} />
+import useBaseUrl from '@docusaurus/useBaseUrl'
 
-After placing the order, take another look at the dashboard – you should now see a machine, as well as an order:
+<img src={useBaseUrl('images/tutorials/advanced-tutorial/erp-ui.png')} />
 
-<img src={useBaseUrl('images/tutorials/dx1-tutorial/dashboard1.png')} />
+After placing an order, take another look at the dashboard – you should now see newly created order:
 
-As the Wago Connector App running on your development machine is not connected to an actual Wago PLC, your machine will stay in the state `disabled`, and your order will stay in the state `idle`. If your Wago Connector App was connected to an actual Wago PLC, it would show its state and your order would change into a different state (such as `running` or `interrupted`), depending on the data it receives from the Wago PLC.
+<img src={useBaseUrl('images/tutorials/advanced-tutorial/dashboard-ui.png')} />
 
-Now that you have a basic understanding of the use case and how the apps work, we will take a closer look at the business logic in the next section.
+As the Wago Connector App running on your development machine is not connected to an actual Wago PLC, your machine will stay in the state `disabled`, and your order will stay in the state `idle`.
+If your Wago Connector App was connected to an actual Wago PLC, it would show its state and your order would change into a different state (such as `running` or `interrupted`), depending on the data it receives from the Wago PLC.
 
-import { NPS } from '../../../src/components/NPS'
+To get a feel for what each app is doing, feel free to play around with them. For example create a few new orders, or stop the **Wago Connector App** and see how the system behaves.
 
-<NPS />
+Now that you have a basic understanding of the use case and how the apps work, we will take a closer look at the project structure and the apps in the next section.
+
+:::info Need help?
+If you run into problems or want to give feedback, you are welcome to join our [Discord chat](https://discord.gg/262yJhc), visit our [community forum](https://community.actyx.com/), raise an issue in the [GitHub repo](https://github.com/Actyx/DemoMachineKit/issues) or write us an e-mail to developer@actyx.io.
+:::

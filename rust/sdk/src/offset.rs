@@ -278,19 +278,23 @@ impl TryFrom<u64> for Offset {
     }
 }
 
-fn validate_offset(o: i64) -> Result<Offset, &'static str> {
-    if o < 0 {
-        Err("negative number")
-    } else if o > MAX_SAFE_INT {
-        Err("number too large")
-    } else {
-        Ok(Offset(o))
+impl TryFrom<i64> for Offset {
+    type Error = &'static str;
+
+    fn try_from(value: i64) -> Result<Self, Self::Error> {
+        if value < 0 {
+            Err("negative number")
+        } else if value > MAX_SAFE_INT {
+            Err("number too large")
+        } else {
+            Ok(Offset(value))
+        }
     }
 }
 
 fn offset_i64<'de, D: Deserializer<'de>>(d: D) -> Result<i64, D::Error> {
     let o = i64::deserialize(d)?;
-    validate_offset(o).map(|o| o - Offset::ZERO).map_err(D::Error::custom)
+    Offset::try_from(o).map(|o| o - Offset::ZERO).map_err(D::Error::custom)
 }
 
 impl Offset {
@@ -322,6 +326,12 @@ impl Offset {
         } else {
             None
         }
+    }
+
+    pub fn increase(self, value: u64) -> anyhow::Result<Offset> {
+        let value = i64::try_from(value)?;
+        let sum = self.0.checked_add(value).ok_or_else(|| anyhow::anyhow!("overflow"))?;
+        Offset::try_from(sum).map_err(|e| anyhow::anyhow!("overflow {}", e))
     }
 
     /// Return the successor to this offset
@@ -372,6 +382,7 @@ impl Sub for Offset {
     }
 }
 
+/// This is mostly for convenient testing. It should not be used otherwise, since it can panic.
 impl Add<u32> for Offset {
     type Output = Self;
     fn add(self, rhs: u32) -> Self {
@@ -400,7 +411,7 @@ impl Encode<DagCborCodec> for Offset {
 impl Decode<DagCborCodec> for Offset {
     fn decode<R: Read + Seek>(c: DagCborCodec, r: &mut R) -> libipld::Result<Self> {
         let raw = u64::decode(c, r)?;
-        let validated = validate_offset(i64::try_from(raw)?).map_err(|e| anyhow::anyhow!("{}", e))?;
+        let validated = Offset::try_from(raw).map_err(|e| anyhow::anyhow!("{}", e))?;
         Ok(validated)
     }
 }
@@ -417,7 +428,7 @@ mod sqlite {
         fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
             value
                 .as_i64()
-                .and_then(|o| validate_offset(o).map_err(|_| FromSqlError::OutOfRange(o)))
+                .and_then(|o| Offset::try_from(o).map_err(|_| FromSqlError::OutOfRange(o)))
         }
     }
 
@@ -436,7 +447,7 @@ mod postgresql {
 
     impl<'a> FromSql<'a> for Offset {
         fn from_sql(ty: &Type, raw: &'a [u8]) -> Result<Self, Box<dyn std::error::Error + Sync + Send>> {
-            i64::from_sql(ty, raw).and_then(|o| validate_offset(o).map_err(|e| e.into()))
+            i64::from_sql(ty, raw).and_then(|o| Offset::try_from(o).map_err(|e| e.into()))
         }
         fn accepts(ty: &Type) -> bool {
             <i64 as FromSql>::accepts(ty)

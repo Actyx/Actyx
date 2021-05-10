@@ -1,10 +1,21 @@
+/*
+ * Actyx SDK: Functions for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2021 Actyx AG
+ */
 import {
   ActyxEvent,
   CancelSubscription,
+  EventChunk,
+  EventsOrTimetravel,
+  FixedStart,
   Metadata,
+  NodeId,
   OffsetMap,
   PendingEmission,
   TaggedEvent,
+  TestEvent,
   Where,
 } from './types'
 
@@ -82,6 +93,22 @@ export type EventSubscription = {
   maxChunkSize?: number
 }
 
+/**
+ * Subscribe to a stream of events that will never go backwards in time, but rather terminate with a timetravel-message.
+ *
+ * @alpha
+ */
+export type MonotonicSubscription<E> = {
+  /** User-chosen session id, used to find cached intermediate states aka local snapshots. */
+  sessionId: string
+
+  /** Statement to select specific events. */
+  query: Where<E>
+
+  /** Sending 'attemptStartFrom' means we DONT want a snapshot sent as initial message. */
+  attemptStartFrom?: FixedStart
+}
+
 /** Query for observeEarliest. @beta  */
 export type EarliestQuery<E> = {
   /** Statement to select specific events. */
@@ -101,24 +128,10 @@ export type EarliestQuery<E> = {
 /** Query for observeLatest. @beta  */
 export type LatestQuery<E> = EarliestQuery<E>
 
-/**
- * A chunk of events, with lower and upper bound.
- * A call to `queryKnownRange` with the included bounds is guaranteed to return exactly the contained set of events.
- * A call to `subscribe` with the included `lowerBound`, however, may find new events from sources not included in the bounds.
- */
-export type EventChunk = {
-  /** The event data. Sorting depends on the request which produced this chunk. */
-  events: ActyxEvent[]
-
-  /** The lower bound of the event chunk, independent of its sorting in memory. */
-  lowerBound: OffsetMap
-
-  /** The upper bound of the event chunk, independent of its sorting in memory. */
-  upperBound: OffsetMap
-}
-
 /** Functions that operate directly on Events. @public  */
 export interface EventFns {
+  readonly nodeId: NodeId
+
   /** Get the current latest offsets known locally. */
   currentOffsets: () => Promise<OffsetMap>
 
@@ -188,6 +201,17 @@ export interface EventFns {
   subscribe: (
     query: EventSubscription,
     onChunk: (chunk: EventChunk) => Promise<void> | void,
+  ) => CancelSubscription
+
+  /**
+   * Subscribe to a stream of events until this would go back in time.
+   * Instead of going back in time, receive a TimeTravelMsg and terminate the stream.
+   *
+   * @alpha
+   */
+  subscribeMonotonic: <E>(
+    query: MonotonicSubscription<E>,
+    callback: (data: EventsOrTimetravel<E>) => Promise<void> | void,
   ) => CancelSubscription
 
   /**
@@ -269,4 +293,10 @@ export interface EventFns {
    * @returns        A `PendingEmission` object that can be used to register callbacks with the emission’s completion.
    */
   emit: (events: ReadonlyArray<TaggedEvent>) => PendingEmission
+}
+
+/** EventFns for unit-tests. @public */
+export type TestEventFns = EventFns & {
+  /** Inject an event as if it arrived from anywhere. @public */
+  directlyPushEvents: (events: ReadonlyArray<TestEvent>) => void
 }

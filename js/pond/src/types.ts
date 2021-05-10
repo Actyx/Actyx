@@ -5,20 +5,18 @@
  * Copyright (C) 2020 Actyx AG
  */
 import {
-  EventKey,
   isString,
   Lamport,
   Metadata,
   Milliseconds,
   NodeId,
-  OffsetMap,
+  StateWithProvenance,
   Tags,
   Timestamp,
   Where,
 } from '@actyx/sdk'
 import { contramap, ordNumber } from 'fp-ts/lib/Ord'
 import * as t from 'io-ts'
-import { Event } from './eventstore/types'
 
 export type Semantics = string
 
@@ -124,42 +122,6 @@ export const SnapshotFormat = {
     serialize: x => x,
     deserialize: x => x,
   }),
-}
-
-/**
- * A state and its corresponding psn map
- */
-export type StateWithProvenance<S> = {
-  readonly state: S
-  /**
-   * Minimum psn map that allow to reconstruct the state.
-   * Only contains sources that contain events matching the filter.
-   */
-  readonly offsets: OffsetMap
-}
-
-export type LocalSnapshot<S> = StateWithProvenance<S> & {
-  /**
-   * eventKey of the last event according to event order that went into the state.
-   * This can be used to detect shattering of the state due to time travel.
-   */
-  eventKey: EventKey
-
-  /**
-   * Oldest event key we are interested in. This is defined for a local snapshot
-   * that is based on a semantic snapshot. All events before the semantic snapshot
-   * that the local snapshot is based on are not relevant and can be discarded.
-   *
-   * Not discarding these events will lead to unnecessary shattering.
-   */
-  horizon: EventKey | undefined
-
-  /**
-   * Number of events since the beginning of time or the last semantic snapshot (which is
-   * kind of the same thing as far as the fish is concerned). This can be used as a measure
-   * how useful the snapshot is, and also for count-based snapshot scheduling
-   */
-  cycle: number
 }
 
 export type TaggedIndex = {

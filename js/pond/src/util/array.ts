@@ -138,3 +138,26 @@ export const andCombine = <T>(predicates: ReadonlyArray<Predicate<T>>) => {
     }
   }
 }
+
+/**
+ * Randomly interleaves several arrays so that the order within each array is preserved.
+ */
+export const interleaveRandom = <T>(arrays: ReadonlyArray<ReadonlyArray<T>>): T[] => {
+  const length = arrays.reduce((acc, a) => acc + a.length, 0)
+  const result: T[] = new Array(length)
+
+  const nonEmpty = arrays.filter(x => x.length > 0)
+  const offsets = new Array(nonEmpty.length).fill(0)
+  for (let i = 0; i < length; i++) {
+    const pick = Math.floor(Math.random() * nonEmpty.length)
+    result[i] = nonEmpty[pick][offsets[pick]]
+    if (offsets[pick] + 1 === nonEmpty[pick].length) {
+      nonEmpty.splice(pick, 1)
+      offsets.splice(pick, 1)
+    } else {
+      offsets[pick]++
+    }
+  }
+
+  return result
+}

@@ -33,3 +33,7 @@ export const publishRandom = (
 export const throwOnCb = (msg: string) => (...rest: unknown[]): void => {
   throw new Error(`Unexpected callback invocation. ${msg}\n ${JSON.stringify(rest)}`)
 }
+
+// How long we are going to wait for the remote event service endpoint to answer our requests.
+// This applies for tests that assert "nothing emitted" as well as for tests that look for single items inside response streams that do not end.
+export const genericCommunicationTimeout = 20_000

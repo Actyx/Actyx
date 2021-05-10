@@ -248,6 +248,12 @@ validate-os: diagnostics
 	cd rust/actyx && $(CARGO) --locked clippy --tests -- -D warnings
 	cd rust/actyx && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
 
+validate-netsim: diagnostics
+	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness
+	RUST_LOG=info rust/actyx/target/debug/smoke --n-nodes 10 --enable-fast-path
+	RUST_LOG=info rust/actyx/target/debug/smoke --n-nodes 10 --enable-slow-path
+	RUST_LOG=info rust/actyx/target/debug/smoke --n-nodes 10 --enable-root-map
+
 .PHONY: validate-os-android
 # execute linter for os-android
 validate-os-android: diagnostics

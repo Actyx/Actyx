@@ -1,4 +1,15 @@
-/**
- * Avoids lint false positives like "Expression is always false. (strict-type-predicates)"
+/*
+ * Actyx SDK: Functions for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2021 Actyx AG
  */
-export const lookup = <V>(m: { [k: string]: V }, k: string): V | undefined => m[k]
+export * from './binarySearch'
+export * from './io'
+export * from './logging'
+export * from './mergeSortedInto'
+export * from './observable'
+export * from './root'
+export * from './runStats'
+export * from './runtime'
+export * from './typescript'
