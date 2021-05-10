@@ -4,17 +4,15 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { EventKey, Metadata, Offset, OffsetMap, StreamId } from '@actyx/sdk'
+import { Actyx, EventKey, Metadata, Offset, OffsetMap, StreamId, TestEvent } from '@actyx/sdk'
+import { SnapshotStore } from '@actyx/sdk/lib/snapshotStore'
 import { catOptions, chunksOf } from 'fp-ts/lib/Array'
 import { none, some } from 'fp-ts/lib/Option'
 import { observeMonotonic } from '.'
 import { allEvents, Fish, Lamport, Timestamp, Where } from '..'
-import { Event, Events, EventStore } from '../eventstore'
-import { includeEvent } from '../eventstore/testEventStore'
-import { interleaveRandom } from '../eventstore/utils'
-import { SnapshotStore } from '../snapshotStore'
 import { SnapshotScheduler } from '../store/snapshotScheduler'
 import { FishErrorReporter } from '../types'
+import { interleaveRandom } from '../util'
 import { shuffle } from '../util/array'
 
 const numberOfSources = 5
@@ -55,7 +53,7 @@ const onEvent = (state: State, event: Payload, metadata: Metadata) => {
 }
 
 const timeScale = 1000000
-const generateEvents = (count: number) => (stream: StreamId): Events =>
+const generateEvents = (count: number) => (stream: StreamId): TestEvent[] =>
   [...new Array(count)].map((_, i) => ({
     offset: Offset.of(i),
     stream,
@@ -86,7 +84,7 @@ const mkSnapshotScheduler: (
   getSnapshotLevels: (_, ts, limit) =>
     catOptions(
       ts.map((t, i) => {
-        const { payload } = (t as unknown) as Event
+        const { payload } = (t as unknown) as TestEvent
         if (f(payload as Payload)) {
           return some({ tag: 'x' + i, i, persistAsLocalSnapshot: true })
         } else {
@@ -116,7 +114,7 @@ type Run = <S>(
   fish: Fish<S, any>,
 ) => (
   streamId: StreamId,
-  events: ReadonlyArray<Events>,
+  events: ReadonlyArray<ReadonlyArray<TestEvent>>,
   snapshotScheduler: SnapshotScheduler,
 ) => Promise<S>
 
@@ -124,7 +122,7 @@ const hydrate: Run = fish => async (sourceId, events, snapshotScheduler) => {
   const { state: finalState } = await events.reduce(
     async (acc, batch) => {
       const { eventStore, snapshotStore, offsetMap } = await acc
-      const offsetMap1 = batch.reduce(includeEvent, { ...offsetMap })
+      const offsetMap1 = batch.reduce(OffsetMap.update, { ...offsetMap })
 
       eventStore.directlyPushEvents(batch)
 
@@ -148,13 +146,13 @@ const hydrate: Run = fish => async (sourceId, events, snapshotScheduler) => {
       return { state: await state1, offsetMap: offsetMap1, eventStore, snapshotStore }
     },
     Promise.resolve({
-      eventStore: EventStore.test(
-        sourceId,
+      eventStore: Actyx.test({
+        nodeId: sourceId,
         // In production, our chunk size is 500.
         // Using small chunks slows down streaming hydration a lot,
         // hence we settle on a rather large number that will still lead to chunking in some cases.
-        (eventsPerSource * numberOfSources) / 3,
-      ),
+        eventChunkSize: (eventsPerSource * numberOfSources) / 3,
+      }),
       snapshotStore: SnapshotStore.inMem(),
       offsetMap: OffsetMap.empty,
       state: fish.initialState,
@@ -169,7 +167,7 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
   events,
   snapshotScheduler,
 ) => {
-  const eventStore = EventStore.test(sourceId) // todo inmem?
+  const eventStore = Actyx.test({ nodeId: sourceId })
   const snapshotStore = SnapshotStore.inMem()
 
   const observe = observeMonotonic(

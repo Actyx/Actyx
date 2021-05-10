@@ -4,7 +4,6 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Events } from './eventstore/types'
 import {
   emitter,
   eventFactory,
@@ -18,7 +17,7 @@ import {
 
 const numberFish = mkNumberFish(semanticSnap)
 
-describe('fish event store + jar with both local and semantic snapshots', () => {
+describe.skip('fish event store + jar with both local and semantic snapshots', () => {
   it(`events below snapshot horizon should not shatter fish state`, async () => {
     const { mkEvents } = eventFactory()
     const { applyAndGetState, latestSnap, wakeup } = await snapshotTestSetup(
@@ -30,7 +29,7 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
     )
     await wakeup()
 
-    const belowHorizonEvents: Events = mkEvents([
+    const belowHorizonEvents = mkEvents([
       {
         timestamp: 100,
         source: 'B',
@@ -61,7 +60,7 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
     )
     await wakeup()
 
-    const belowHorizonEvents: Events = mkEvents([
+    const belowHorizonEvents = mkEvents([
       {
         timestamp: 100,
         source: 'B',
@@ -92,7 +91,7 @@ describe('fish event store + jar with both local and semantic snapshots', () => 
       mkSnapshot([1, 3, 50], 5000, undefined, psns),
     ])
 
-    const liveWithSemanticSnapshot: Events = timeline.of('B')
+    const liveWithSemanticSnapshot = timeline.of('B')
 
     const state = await applyAndGetState(liveWithSemanticSnapshot)
     expect(state).toEqual([-1, 3, 4, 50])

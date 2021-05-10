@@ -4,16 +4,15 @@
 
 ```ts
 
+import { ActyxOpts } from '@actyx/sdk';
 import { CancelSubscription } from '@actyx/sdk';
 import * as immutable from 'immutable';
-import { Lamport } from '@actyx/sdk';
 import { Metadata } from '@actyx/sdk';
 import { Milliseconds } from '@actyx/sdk';
 import { NodeId } from '@actyx/sdk';
 import { PendingEmission } from '@actyx/sdk';
-import * as t from 'io-ts';
 import { Tags } from '@actyx/sdk';
-import { Timestamp } from '@actyx/sdk';
+import { TestEvent } from '@actyx/sdk';
 import { Where } from '@actyx/sdk';
 
 // @public
@@ -35,37 +34,6 @@ export const Caching: {
 };
 
 // @public
-export const ConnectivityStatus: t.UnionC<[t.ReadonlyC<t.TypeC<{
-    status: t.LiteralC<ConnectivityStatusType.FullyConnected>;
-    inCurrentStatusForMs: t.NumberC;
-}>>, t.ReadonlyC<t.TypeC<{
-    status: t.LiteralC<ConnectivityStatusType.PartiallyConnected>;
-    inCurrentStatusForMs: t.NumberC;
-    specialsDisconnected: t.ReadonlyArrayC<t.StringC>;
-    swarmConnectivityLevel: t.NumberC;
-    eventsToRead: t.NumberC;
-    eventsToSend: t.NumberC;
-}>>, t.ReadonlyC<t.TypeC<{
-    status: t.LiteralC<ConnectivityStatusType.NotConnected>;
-    inCurrentStatusForMs: t.NumberC;
-    eventsToRead: t.NumberC;
-    eventsToSend: t.NumberC;
-}>>]>;
-
-// @public
-export type ConnectivityStatus = t.TypeOf<typeof ConnectivityStatus>;
-
-// @public
-export enum ConnectivityStatusType {
-    // (undocumented)
-    FullyConnected = "FullyConnected",
-    // (undocumented)
-    NotConnected = "NotConnected",
-    // (undocumented)
-    PartiallyConnected = "PartiallyConnected"
-}
-
-// @public
 export type Counters = Readonly<CountersMut>;
 
 // @public
@@ -74,9 +42,6 @@ export type CountersMut = {
     swarm: number;
     both: number;
 };
-
-// @public
-export const enableAllLoggersExcept: (excludeModules: string[]) => void;
 
 // @public
 export type Fish<S, E> = Readonly<{
@@ -170,7 +135,7 @@ export type FullWaitForSwarmConfig = Readonly<{
 
 // @public
 export type GetNodeConnectivityParams = Readonly<{
-    callback: (newState: ConnectivityStatus) => void;
+    callback: (newState: unknown) => void;
     specialSources?: ReadonlyArray<NodeId>;
 }>;
 
@@ -182,30 +147,6 @@ export type InProcessCaching = Readonly<{
 
 // @public
 export type IsReset<E> = (event: E, metadata: Metadata) => boolean;
-
-// @public
-export type LogFunction = ((first: any, ...rest: any[]) => void);
-
-// @public
-export interface Logger extends LogFunction {
-    // (undocumented)
-    readonly enabled: boolean;
-    // (undocumented)
-    readonly namespace: string;
-}
-
-// @public
-export type Loggers = {
-    error: Logger;
-    warn: Logger;
-    debug: Logger;
-    info: Logger;
-};
-
-// @public
-export const Loggers: {
-    of: (topic: string) => Loggers;
-};
 
 // @beta
 export type NoCaching = {
@@ -226,12 +167,18 @@ export type ObserveAllOpts = Partial<{
 }>;
 
 // @public
+export type PendingCommand = {
+    subscribe: (whenEmitted: () => void) => void;
+    toPromise: () => Promise<void>;
+};
+
+// @public
 export type Pond = {
     emit<E>(tags: Tags<E>, event: E): PendingEmission;
     observe<S, E>(fish: Fish<S, E>, callback: (newState: S) => void, stoppedByError?: (err: unknown) => void): CancelSubscription;
     observeAll<ESeed, S>(seedEventsSelector: Where<ESeed>, makeFish: (seedEvent: ESeed) => Fish<S, any> | undefined, opts: ObserveAllOpts, callback: (states: S[]) => void): CancelSubscription;
     observeOne<ESeed, S>(seedEventSelector: Where<ESeed>, makeFish: (seedEvent: ESeed) => Fish<S, any>, callback: (newState: S) => void, stoppedByError?: (err: unknown) => void): CancelSubscription;
-    run<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>): PendingEmission;
+    run<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>): PendingCommand;
     keepRunning<S, EWrite>(fish: Fish<S, any>, fn: StateEffect<S, EWrite>, autoCancel?: (state: S) => boolean): CancelSubscription;
     dispose(): void;
     info(): PondInfo;
@@ -243,8 +190,7 @@ export type Pond = {
 // @public
 export const Pond: {
     default: () => Promise<Pond>;
-    of: (connectionOpts: Partial<WsStoreConfig>, opts: PondOptions) => Promise<Pond>;
-    mock: (opts?: PondOptions | undefined) => Pond;
+    of: (connectionOpts: ActyxOpts, opts: PondOptions) => Promise<Pond>;
     test: (opts?: PondOptions | undefined) => TestPond;
 };
 
@@ -317,9 +263,6 @@ export type StoreConfig = Readonly<{
 }>;
 
 // @public
-export type StoreConnectionClosedHook = () => void;
-
-// @public
 export type SwarmInfo = Readonly<{
     nodes: immutable.Map<string, NodeInfoEntry>;
 }>;
@@ -346,16 +289,6 @@ export type SyncProgress = Readonly<{
     sources: Progress;
     events: Progress;
 }>;
-
-// @public
-export type TestEvent = {
-    offset: number;
-    stream: string;
-    timestamp: Timestamp;
-    lamport: Lamport;
-    tags: ReadonlyArray<string>;
-    payload: unknown;
-};
 
 // @public
 export type TestPond = Pond & {
@@ -386,14 +319,6 @@ export const WaitForSwarmConfig: {
 export type WaitForSwarmSyncParams = WaitForSwarmConfig & Readonly<{
     onSyncComplete: () => void;
     onProgress?: (newState: SplashState) => void;
-}>;
-
-// @public
-export type WsStoreConfig = Readonly<{
-    url: string;
-    protocol?: string;
-    onStoreConnectionClosed?: StoreConnectionClosedHook;
-    reconnectTimeout?: number;
 }>;
 
 
