@@ -116,7 +116,8 @@ all-ANDROID := $(android-bins)
 all-MACOS := $(foreach t,$(unix-bins),macos-x86_64/$t)
 
 docker-platforms = $(foreach arch,$(architectures),$(docker-platform-$(arch)))
-docker-multiarch-build-args = --build-arg ACTYX_VERSION=$(ACTYX_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT) --platform $(shell echo $(docker-platforms) | sed 's/ /,/g') 
+docker-build-args = --build-arg ACTYX_VERSION=$(ACTYX_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT)
+docker-multiarch-build-args = $(docker-build-args) --platform $(shell echo $(docker-platforms) | sed 's/ /,/g') 
 
 export CARGO_HOME ?= $(HOME)/.cargo
 export DOCKER_CLI_EXPERIMENTAL := enabled
@@ -492,8 +493,7 @@ define mkDockerRule =
 docker-$(1):
 	docker buildx build \
 	  --platform $(docker-platform-$(1)) \
-	  --build-arg ACTYX_VERSION=$(ACTYX_VERSION) \
-	  --build-arg GIT_COMMIT=$(GIT_COMMIT) \
+	  $(docker-build-args) \
 	  -f ops/docker/images/actyx/Dockerfile \
 	  --tag actyx/cosmos:actyx-$(1)-$(GIT_COMMIT) \
 	  --load \
@@ -518,7 +518,7 @@ docker-multiarch:
 
 # build for local architecture and load into docker daemon
 docker-current:
-	docker buildx build --load $(docker-multiarch-build-args) -f ops/docker/images/actyx/Dockerfile .
+	docker buildx build --load $(docker-build-args) -f ops/docker/images/actyx/Dockerfile .
 
 # This is here to ensure that we use the same build-args here and in artifacts.yml
 docker-multiarch-build-args:
