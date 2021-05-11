@@ -4,29 +4,43 @@ const fs = require('fs')
 
 const installAndBuild = async (cwd) => {
   if (!fs.existsSync(path.join(cwd, 'node_modules'))) {
-    console.log(`Installing ${cwd} dependencies ...`)
-    await execa('npm', ['install'], {
-      cwd,
-      shell: true,
-    })
+    console.log(`[${cwd}] installing dependencies ...`)
+    try {
+      await execa('npm', ['install'], {
+        cwd,
+        shell: true,
+      })
+    } catch (error) {
+      console.log(`[${cwd}] error installing dependencies (errors below)`)
+      console.log(error)
+      return
+    }
   } else {
-    console.log(`Dependencies already installed (node_modules found)`)
+    console.log(`[${cwd}] dependencies already installed (found node_modules)`)
   }
   if (!fs.existsSync(path.join(cwd, 'lib'))) {
     console.log(`Building ${cwd} ...`)
-    await execa('npm', ['run', 'build'], {
-      cwd,
-      shell: true,
-    })
+    try {
+      await execa('npm', ['run', 'build'], {
+        cwd,
+        shell: true,
+      })
+    } catch (error) {
+      console.log(`[${cwd}] error building package (see errors below)`)
+      console.log(error)
+      return
+    }
   } else {
-    console.log(`Package already build (lib found)`)
+    console.log(`[${cwd}] package already built (found lib)`)
   }
-  console.log(`Done!`)
+  console.log(`[${cwd}] done!`)
 }
 
 ;(async () => {
-  const deps = ['pond', 'os-sdk']
-  console.log(`Building monorepo dependencies (${deps.join(', ')})`)
-  await installAndBuild(path.join('..', '..', 'js', deps[0]))
-  await installAndBuild(path.join('..', '..', 'js', deps[1]))
+  const deps = [
+    ['..', '..', 'js', 'sdk'],
+    ['..', '..', 'js', 'pond'],
+    ['..', '..', 'js', 'os-sdk'],
+  ]
+  Promise.all(deps.map((d) => installAndBuild(path.join(...d))))
 })()

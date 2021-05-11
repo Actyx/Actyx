@@ -38,7 +38,3 @@ ax apps validate myApp/another-manifest.yml
 # Validate multiple apps in the specified directories with default manifest ax-manifest.yml
 ax apps validate myApp1/ myApp2/ ../specialApp
 ```
-
-import { NPS } from '../../../../src/components/NPS'
-
-<NPS />

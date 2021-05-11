@@ -50,7 +50,3 @@ The `ax apps package` command always stores its output in the directory from whi
 cd ../../../apps-packages
 ax apps package ../projects/actyx-os/apps/example-app-1
 ```
-
-import { NPS } from '../../../../src/components/NPS'
-
-<NPS />

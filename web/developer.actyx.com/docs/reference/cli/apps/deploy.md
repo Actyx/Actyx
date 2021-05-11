@@ -41,7 +41,3 @@ See the following example usages of the `ax apps deploy` command:
 # Deploy a packaged app tarball to a node
 ax apps deploy --local myApp1-1.0.0.tar.gz 10.2.3.23
 ```
-
-import { NPS } from '../../../../src/components/NPS'
-
-<NPS />

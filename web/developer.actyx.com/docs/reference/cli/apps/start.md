@@ -31,7 +31,3 @@ Here is an example of using the `ax apps start` command:
 # Start app with ID com.example.app on node at 10.2.3.23
 ax apps start --local com.example.app 10.2.3.23
 ```
-
-import { NPS } from '../../../../src/components/NPS'
-
-<NPS />
