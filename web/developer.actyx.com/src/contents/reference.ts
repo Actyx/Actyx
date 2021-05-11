@@ -13,7 +13,7 @@ const createReferences = () => {
       title: 'Event Service API',
       description:
         'The underlying HTTP API responsible for publishing, querying and subscribing to events.',
-      link: 'event-service',
+      link: 'events-api',
     },
     {
       title: 'Actyx Pond',

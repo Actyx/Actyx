@@ -1,0 +1,60 @@
+---
+title: Set up user keys 
+id: set-up-user-keys
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+In order to be able to interact with a node, you need user keys (i.e. a keypair consisting of a public and private key) to authenticate.
+
+You can use the CLI or Node Manager to generate your keys:
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+import NPS from '../../../src/components/NPS'
+
+<Tabs
+  groupId="os"
+  defaultValue={"cli"}
+  values={[
+    { label: 'Actyx CLI', value: 'cli' },
+    { label: 'Node Manager', value: 'node-manager' },
+  ]}
+>
+
+<TabItem value="cli">
+
+```text
+ax1 users keygen
+Generating public/private key pair ..
+Enter path in which to save the key (/Users/user/Library/Application Support/actyx/keys/users/id): 
+Your private key has been saved at /Users/user/Library/Application Support/actyx/keys/users/id
+Your public key has been saved at /Users/user/Library/Application Support/actyx/keys/users/id.pub
+The key's fingerprint is: 0WBOOWqi2Ub5SPi5btKN5H5BzFPcjyULwUKUN2dWVsMI=
+```
+
+Note that the default directory in which the keys are saved depends on your operating system.
+You can also specify a path for saving them, please refer to the [reference documentation](../../reference/cli/users/keygen) for more details.
+
+The CLI or Node Manager automatically try to authenticate with user keys in the default path.
+If you are not storing your keys in the default path, you need to use the `-i` or `--identity` option each time you execute a CLI command that targets a node.
+
+</TabItem>
+<TabItem value="node-manager">
+
+TODO
+
+</TabItem>
+</Tabs>
+
+If a node has no authorized users yet, **the first user to interact with a node is automatically added to its authorized users**.
+If you want to manage which users are authorized to manage a node, [you can do so adding the user's public key the node's settings](./manage-authorized-users).
+
+
+## Where next?
+
+- [Mange authorized users](./manage-authorized-users)
+- [Quickstart Guide](../../tutorials/quickstart.mdx)
+
+<NPS />

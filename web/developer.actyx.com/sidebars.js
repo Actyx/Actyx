@@ -1,11 +1,6 @@
 module.exports = {
   howToSidebar: [
-    {
-      type: 'category',
-      label: 'How-to Guides',
-      collapsed: false,
-      items: ['how-to/overview'],
-    },
+    'how-to/overview',
     {
       type: 'category',
       label: 'Local development',
@@ -94,6 +89,18 @@ module.exports = {
     },
     {
       type: 'category',
+      label: 'Auth',
+      collapsed: true,
+      items: [
+        'how-to/auth/set-up-user-keys',
+        'how-to/auth/manage-authorized-users',
+        'how-to/auth/sign-app-manifest',
+        'how-to/auth/authenticate-with-app-manifest',
+        'how-to/auth/manage-authorized-apps',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Swarms',
       collapsed: true,
       items: [
@@ -173,55 +180,68 @@ module.exports = {
         'how-to/troubleshooting/node-synchronization',
       ],
     },
+    {
+      type: 'category',
+      label: 'Migration from v1',
+      collapsed: true,
+      items: [
+        'how-to/migration/migration-overview',
+        {
+          type: 'category',
+          label: 'Apps',
+          items:[
+            'how-to/migration/migrate-business-logic',
+            'how-to/migration/migrate-app-manifest',
+            'how-to/migration/migrate-app-logs-and-settings',
+            'how-to/migration/migrate-app-packaging',
+          ]
+        }
+      ],
+    },
   ],
   conceptualSidebar: [
-    {
-      type: 'category',
-      label: 'Conceptual Guides',
-      collapsed: false,
-      items: [
-        'conceptual/overview',
-        'conceptual/how-actyx-works',
-        'conceptual/event-sourcing',
-        'conceptual/distributed-systems',
-        'conceptual/local-first-cooperation',
-        'conceptual/actyx-jargon',
-        // 'conceptual/actyx-vs-the-cloud',
-        // 'conceptual/peer-discovery',
-        'conceptual/performance-and-limits',
-        'conceptual/security',
-        // 'conceptual/apps-in-the-factory-context',
-      ],
-    },
+    'conceptual/overview',
+    'conceptual/how-actyx-works',
+    'conceptual/event-sourcing',
+    'conceptual/distributed-systems',
+    'conceptual/local-first-cooperation',
+    'conceptual/actyx-jargon',
+    // 'conceptual/actyx-vs-the-cloud',
+    // 'conceptual/peer-discovery',
+    'conceptual/performance-and-limits',
+    'conceptual/authentication-and-authorization',
+    'conceptual/security',
+    // 'conceptual/apps-in-the-factory-context',
   ],
   referenceSidebar: [
+    'reference/overview',
+    'reference/actyx-reference',
     {
+
       type: 'category',
-      label: 'Reference Documentation',
-      collapsed: false,
+      label: 'Actyx API',
+      collapsed: true,
       items: [
-        'reference/overview',
-        'reference/actyx-reference',
-        'reference/event-service',
-        {
-          type: 'category',
-          label: 'ActyxOS SDK (JS/TS)',
-          collapsed: true,
-          items: require('./__js-ts-sdk-sidebar'),
-        },
-        {
-          type: 'category',
-          label: 'Actyx Pond (JS/TS)',
-          collapsed: true,
-          items: require('./__pond-sidebar'),
-        },
-        'reference/rust-sdk',
-        'reference/node-manager',
+        'reference/events-api',
+        'reference/auth-api'
       ],
     },
     {
       type: 'category',
-      label: 'Actyx CLI commands',
+      label: 'Actyx SDK (JS/TS)',
+      collapsed: true,
+      items: require('./__js-ts-sdk-sidebar'),
+    },
+    {
+      type: 'category',
+      label: 'Actyx Pond (JS/TS)',
+      collapsed: true,
+      items: require('./__pond-sidebar'),
+    },
+    'reference/node-manager',
+    {
+      type: 'category',
+      label: 'Actyx CLI',
       collapsed: true,
       items: [
         'reference/cli/cli-overview',
@@ -233,13 +253,7 @@ module.exports = {
         'reference/cli/settings/unset',
         'reference/cli/logs/tail',
         'reference/cli/swarms/keygen',
-        'reference/cli/apps/ls',
-        'reference/cli/apps/validate',
-        'reference/cli/apps/package',
-        'reference/cli/apps/deploy',
-        'reference/cli/apps/undeploy',
-        'reference/cli/apps/start',
-        'reference/cli/apps/stop',
+        'reference/cli/users/keygen',
       ],
     },
     'reference/release-notes',

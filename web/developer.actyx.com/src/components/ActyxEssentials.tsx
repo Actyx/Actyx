@@ -111,7 +111,7 @@ export const ActyxEssentials: React.FC = () => (
       <Links color="purple">
         <Link
           title="Event Service API"
-          link="/docs/reference/event-service"
+          link="/docs/reference/events-api"
           color="purple"
           positive
         />
