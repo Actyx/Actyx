@@ -14,7 +14,7 @@ import Tabs from '@theme/Tabs'
 import TabItem from '@theme/TabItem'
 
 <Tabs
-  groupId="os"
+  groupId="tool"
   defaultValue={"cli"}
   values={[
     { label: 'Actyx CLI', value: 'cli' },
@@ -25,7 +25,7 @@ import TabItem from '@theme/TabItem'
 <TabItem value="cli">
 
 ```text
-ax1 users keygen
+ax users keygen
 Generating public/private key pair ..
 Enter path in which to save the key (/Users/user/Library/Application Support/actyx/keys/users/id): 
 Your private key has been saved at /Users/user/Library/Application Support/actyx/keys/users/id
@@ -48,7 +48,7 @@ TODO
 </Tabs>
 
 If a node has no authorized users yet, **the first user to interact with a node is automatically added to its authorized users**.
-If you want to manage which users are authorized to manage a node, [you can do so adding the user's public key the node's settings](./manage-authorized-users).
+If you want to manage which users are authorized to manage a node, [you can do so by adding the user's public key to the node's settings](./manage-authorized-users).
 
 
 ## Where next?

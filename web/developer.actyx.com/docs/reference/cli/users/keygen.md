@@ -22,7 +22,7 @@ Please see the following usage examples for the `ax users keygen` command:
 
 ```text title="Example Usage"
 # Generate a new user keys in default location
-ax1 users keygen
+ax users keygen
 Generating public/private key pair ..
 Enter path in which to save the key (<OS-specific default path>/actyx/keys/users): 
 Your private key has been saved at <OS-specific default path>/actyx/keys/users/id
