@@ -9,13 +9,13 @@
 //! ## BanyanStoreGuard
 //! temporary struct that is created when acquiring mutable access to the state.
 //! inside this you have mutable access to the state - but if you lock again you will deadlock.
-pub mod access;
 pub mod convert;
 mod discovery;
 mod event_store;
 mod gossip;
 pub mod metrics;
 mod prune;
+pub mod selection;
 mod sqlite;
 mod sqlite_index_store;
 mod streams;
@@ -35,9 +35,7 @@ use crate::prune::RetainConfig;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
 use crate::streams::{OwnStream, ReplicatedStreamInner};
-use actyxos_sdk::{
-    LamportTimestamp, NodeId, Offset, OffsetMap, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp,
-};
+use actyxos_sdk::{LamportTimestamp, NodeId, OffsetMap, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp};
 use anyhow::{Context, Result};
 use ax_futures_util::{prelude::*, stream::variable::Variable};
 use banyan::{
@@ -61,7 +59,7 @@ use libp2p::{
 use maplit::btreemap;
 use parking_lot::Mutex;
 use std::{
-    collections::{BTreeMap, BTreeSet, VecDeque},
+    collections::{BTreeMap, VecDeque},
     convert::{TryFrom, TryInto},
     fmt::Debug,
     num::NonZeroU32,
@@ -191,8 +189,6 @@ struct BanyanStoreData {
     node_id: NodeId,
     /// maximum ingested offset and highest seen for each stream
     offsets: Variable<SwarmOffsets>,
-    /// lamport timestamp for publishing to internal streams
-    lamport: Variable<LamportTimestamp>,
 }
 
 /// Internal mutable state of the stream manager
@@ -261,10 +257,6 @@ impl<'a> BanyanStoreGuard<'a> {
         self.own_streams.keys().cloned().collect::<Vec<_>>()
     }
 
-    fn local_stream_ids(&self) -> BTreeSet<StreamId> {
-        self.own_streams.keys().map(|x| self.data.node_id.stream(*x)).collect()
-    }
-
     fn received_lamport(&mut self, lamport: u64) -> anyhow::Result<u64> {
         self.index_store.received_lamport(lamport)
     }
@@ -317,30 +309,6 @@ impl<'a> BanyanStoreGuard<'a> {
                 .get(&stream_id.node_id())
                 .map(|node| node.streams.contains_key(&stream_id.stream_nr()))
                 .unwrap_or_default()
-        }
-    }
-
-    /// stream of latest updates from either gossip (for replicated streams) or internal updates
-    ///
-    /// note that this does not include event updates
-    fn latest_stream(&mut self, stream_id: StreamId) -> impl Stream<Item = (LamportTimestamp, Offset)> {
-        if self.is_local(stream_id) {
-            let stream = self.get_or_create_own_stream(stream_id.stream_nr());
-            self.data
-                .lamport
-                .new_observer()
-                .filter_map(move |lamport| {
-                    future::ready(
-                        Offset::from_offset_or_min(stream.snapshot().offset()).map(|offset| (lamport, offset)),
-                    )
-                })
-                .left_stream()
-        } else {
-            self.get_or_create_replicated_stream(stream_id)
-                .latest_seen()
-                .new_observer()
-                .filter_map(future::ready)
-                .right_stream()
         }
     }
 
@@ -500,7 +468,6 @@ impl BanyanStore {
                 ipfs,
                 gossip,
                 forest,
-                lamport: Default::default(),
                 offsets: Default::default(),
             }),
             state: Arc::new(ReentrantSafeMutex::new(BanyanStoreState {
@@ -854,13 +821,6 @@ impl BanyanStore {
 
     fn has_stream(&self, stream_id: StreamId) -> bool {
         self.lock().has_stream(stream_id)
-    }
-
-    /// stream of latest updates from either gossip (for replicated streams) or internal updates
-    ///
-    /// note that this does not include event updates
-    fn latest_stream(&self, stream_id: StreamId) -> impl Stream<Item = (LamportTimestamp, Offset)> {
-        self.lock().latest_stream(stream_id)
     }
 
     /// Get a stream of trees for a given stream id

@@ -495,27 +495,3 @@ async fn bad_request_invalid_expression() {
         }),
     );
 }
-
-#[tokio::test]
-async fn bad_request_unknown_stream() {
-    let (route, token, ..) = test_routes().await;
-    let resp = test::request()
-        .path("/api/v2/events/query")
-        .method("POST")
-        .header("Authorization", format!("Bearer {}", token))
-        .json(&serde_json::json!({
-          "upperBound": {"4Rf5nier.0HWMLwRm32Nbgx8pkkOMCahfEmRtHCWaSs-0": 42},
-          "query": "FROM 'x'",
-          "order": "asc"
-        }))
-        .reply(&route)
-        .await;
-    assert_err_response(
-        resp,
-        http::StatusCode::BAD_REQUEST,
-        json!({
-          "code": "ERR_BAD_REQUEST",
-          "message": "Invalid request. Access error: Cannot stream 4Rf5nier.0HWMLwRm32Nbgx8pkkOMCahfEmRtHCWaSs-0 since it is not known."
-        }),
-    );
-}

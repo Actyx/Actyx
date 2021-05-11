@@ -1,32 +1,23 @@
-use crate::access::{
-    common::StreamEventSelection, ConsumerAccessError, EventOrHeartbeat, EventOrHeartbeatStreamOrError,
-    EventStoreConsumerAccess, EventStreamOrError,
-};
-use crate::event_store;
 use crate::SwarmOffsets;
+use crate::{event_store, selection::StreamEventSelection};
 use crate::{AxTreeExt, BanyanStore, TT};
 use actyxos_sdk::{
     service::OffsetsResponse, Event, EventKey, LamportTimestamp, Metadata, Offset, OffsetOrMin, Payload, StreamId,
     StreamNr, TagSet, Timestamp,
 };
 use anyhow::Result;
-use ax_futures_util::prelude::AxStreamExt;
-use banyan::{forest, index::IndexRef};
+use banyan::forest;
 use fnv::FnvHashSet;
 use forest::FilteredChunk;
 use futures::stream::BoxStream;
-use futures::{channel::mpsc, future::BoxFuture, prelude::*};
+use futures::{future::BoxFuture, prelude::*};
 use std::{
     cmp::Reverse,
-    collections::BTreeSet,
     convert::{TryFrom, TryInto},
     num::NonZeroU64,
     ops::RangeInclusive,
 };
-use trees::{
-    axtrees::{AxKey, TagsQuery},
-    StreamHeartBeat,
-};
+use trees::axtrees::{AxKey, TagsQuery};
 
 fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> {
     let min = (selection.from_exclusive - OffsetOrMin::MIN) as u64;
@@ -94,17 +85,6 @@ impl BanyanStore {
     }
 }
 
-pub trait EventStoreX: Clone + Send + Unpin + Sync + 'static {
-    /// Persist events and assign offsets and lamports
-    fn persist<'a>(&self, events: Vec<(TagSet, Payload)>) -> BoxFuture<'a, Result<Vec<PersistenceMeta>>>;
-}
-
-impl EventStoreX for BanyanStore {
-    fn persist<'a>(&self, events: Vec<(TagSet, Payload)>) -> BoxFuture<'a, Result<Vec<PersistenceMeta>>> {
-        self.clone().persist0(events).boxed()
-    }
-}
-
 impl event_store::EventStore for BanyanStore {
     fn is_local(&self, stream_id: StreamId) -> bool {
         self.is_local(stream_id)
@@ -126,19 +106,17 @@ impl event_store::EventStore for BanyanStore {
         self.data.offsets.new_projection(|x| OffsetsResponse::from(x)).boxed()
     }
 
-    fn persist<'a>(
+    fn persist(
         &self,
         events: Vec<(TagSet, Payload)>,
-    ) -> BoxFuture<'a, anyhow::Result<Vec<event_store::PersistenceMeta>>> {
+    ) -> BoxFuture<'static, anyhow::Result<Vec<event_store::PersistenceMeta>>> {
         self.clone().persist0(events).boxed()
     }
 
     fn forward_stream(&self, stream_selection: StreamEventSelection) -> event_store::EventStreamOrError {
-        assert!(stream_selection.from_exclusive < stream_selection.to_inclusive);
         let stream_id = stream_selection.stream_id;
-        if !self.has_stream(stream_id) {
-            return future::err(event_store::EventStoreError::UnknownStream(stream_id)).boxed();
-        }
+        debug_assert!(self.has_stream(stream_id));
+        debug_assert!(stream_selection.from_exclusive < stream_selection.to_inclusive);
         let (trees, forest) = self.tree_stream(stream_id);
         let range = get_range_inclusive(&stream_selection);
         let query = TagsQuery::new(stream_selection.tag_subscriptions);
@@ -155,11 +133,9 @@ impl event_store::EventStore for BanyanStore {
     }
 
     fn backward_stream(&self, stream_selection: StreamEventSelection) -> event_store::EventStreamReverseOrError {
-        assert!(stream_selection.from_exclusive < stream_selection.to_inclusive);
         let stream_id = stream_selection.stream_id;
-        if !self.has_stream(stream_id) {
-            return future::err(event_store::EventStoreError::UnknownStream(stream_id)).boxed();
-        }
+        debug_assert!(stream_selection.from_exclusive < stream_selection.to_inclusive);
+        debug_assert!(self.has_stream(stream_id));
         let (trees, forest) = self.tree_stream(stream_id);
         let range = get_range_inclusive(&stream_selection);
         let query = TagsQuery::new(stream_selection.tag_subscriptions);
@@ -173,84 +149,6 @@ impl event_store::EventStore for BanyanStore {
                 .boxed(),
         )
         .boxed()
-    }
-}
-
-impl EventStoreConsumerAccess for BanyanStore {
-    fn local_stream_ids(&self) -> BTreeSet<StreamId> {
-        self.lock().local_stream_ids()
-    }
-
-    fn stream_forward(&self, events: StreamEventSelection, must_exist: bool) -> EventOrHeartbeatStreamOrError {
-        let to_inclusive = events.to_inclusive;
-        let stream_id = events.stream_id;
-        if must_exist && !self.has_stream(stream_id) {
-            return future::err(ConsumerAccessError::UnknownStream(stream_id)).boxed();
-        }
-        let (trees, forest) = self.tree_stream(stream_id);
-        let range = get_range_inclusive(&events);
-        let query = TagsQuery::new(events.tag_subscriptions);
-        // Used to signal the mixed in `heartbeats_from_latest` stream down
-        // below to finish
-        let (mut tx, rx) = mpsc::channel(1);
-
-        // stream the events in ascending order from the trees
-        let events_and_heartbeats_from_trees = forest
-            .stream_trees_chunked(query, trees, range, &last_lamport_from_index_ref)
-            .take_while(|x| future::ready(x.is_ok()))
-            .filter_map(|x| future::ready(x.ok()))
-            .take_until_condition(move |chunk| {
-                // FIXME: Will this only be triggered once an event outside the queried bounds becomes known?
-                let stop_here = Into::<OffsetOrMin>::into(chunk.range.end as u32) > to_inclusive;
-                if stop_here {
-                    tx.try_send(()).unwrap();
-                }
-                future::ready(stop_here)
-            })
-            .map(move |chunk| stream::iter(events_or_heartbeat_from_chunk(stream_id, chunk)))
-            .flatten();
-        // mix in heartbeats from latest so we can make progress even if we don't get events
-        let heartbeats_from_latest = self.latest_stream(stream_id).map(move |(lamport, offset)| {
-            EventOrHeartbeat::Heartbeat(StreamHeartBeat::new(stream_id, lamport, offset))
-        });
-        future::ok(
-            stream::select(
-                events_and_heartbeats_from_trees,
-                heartbeats_from_latest.take_until_signaled(rx.into_future()),
-            )
-            .boxed(),
-        )
-        .boxed()
-    }
-
-    fn stream_backward(&self, events: StreamEventSelection) -> EventStreamOrError {
-        let stream_id = events.stream_id;
-        let (trees, forest) = self.tree_stream(stream_id);
-        let range = get_range_inclusive(&events);
-        let query = TagsQuery::new(events.tag_subscriptions);
-        future::ok(
-            forest
-                .stream_trees_chunked_reverse(query, trees, range, &|_| {})
-                .map_ok(move |chunk| stream::iter(events_from_chunk_rev_xxx(stream_id, chunk)))
-                .take_while(|x| future::ready(x.is_ok()))
-                .filter_map(|x| future::ready(x.ok()))
-                .flatten()
-                .boxed(),
-        )
-        .boxed()
-    }
-
-    fn stream_last_seen(&self, stream_id: StreamId) -> stream::BoxStream<'static, StreamHeartBeat> {
-        self.latest_stream(stream_id)
-            .map(move |(lamport, offset)| StreamHeartBeat::new(stream_id, lamport, offset))
-            .boxed()
-    }
-
-    fn stream_known_streams(&self) -> stream::BoxStream<'static, StreamId> {
-        let mut seen = FnvHashSet::default();
-        self.stream_known_streams()
-            .filter_map(move |stream_id| future::ready(if seen.insert(stream_id) { Some(stream_id) } else { None }))
-            .boxed()
     }
 }
 
@@ -269,48 +167,7 @@ fn to_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<P
     }
 }
 
-/// Given an ax index ref, extract the last lamport timestamp
-fn last_lamport_from_index_ref(r: IndexRef<TT>) -> LamportTimestamp {
-    match r {
-        IndexRef::Branch(branch) => branch.summaries.lamport_range().max,
-        IndexRef::Leaf(leaf) => leaf.keys.lamport_range().max,
-    }
-}
-
-/// Take a block of banyan events and convert them into events
-/// wrapped in EventOrHeartbeat.
-///
-/// In case the last event was filtered out, a placeholder heartbeat is added.
-fn events_or_heartbeat_from_chunk(
-    stream_id: StreamId,
-    chunk: FilteredChunk<TT, Payload, LamportTimestamp>,
-) -> Vec<EventOrHeartbeat> {
-    let last_offset = chunk.range.end - 1;
-    let has_last = chunk
-        .data
-        .last()
-        .map(|(offset, _, _)| *offset == last_offset)
-        .unwrap_or_default();
-    let last_lamport = chunk.extra;
-    let mut result = chunk
-        .data
-        .into_iter()
-        .map(move |(offset, key, payload)| EventOrHeartbeat::Event(to_ev(offset, key, stream_id, payload)))
-        .collect::<Vec<EventOrHeartbeat>>();
-    if !has_last {
-        result.push(EventOrHeartbeat::Heartbeat(StreamHeartBeat::new(
-            stream_id,
-            last_lamport,
-            last_offset.try_into().unwrap(),
-        )))
-    }
-    result
-}
-
-/// Take a block of banyan events and convert them into events
-/// wrapped in EventOrHeartbeat.
-///
-/// In case the last event was filtered out, a placeholder heartbeat is added.
+/// Take a block of banyan events and convert them into events.
 fn events_from_chunk(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, ()>) -> Vec<Event<Payload>> {
     chunk
         .data
@@ -319,7 +176,7 @@ fn events_from_chunk(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, ()>)
         .collect()
 }
 
-/// Take a block of banyan events and convert them into ActyxOS Event<Payload> events, reversing them
+/// Take a block of banyan events and convert them into events, reversing them.
 fn events_from_chunk_rev(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, ()>) -> Vec<Reverse<Event<Payload>>> {
     chunk
         .data
@@ -327,24 +184,6 @@ fn events_from_chunk_rev(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, 
         .rev()
         .map(move |(offset, key, payload)| Reverse(to_ev(offset, key, stream_id, payload)))
         .collect()
-}
-
-/// Take a block of banyan events and convert them into ActyxOS Event<Payload> events, reversing them
-fn events_from_chunk_rev_xxx(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, ()>) -> Vec<Event<Payload>> {
-    chunk
-        .data
-        .into_iter()
-        .rev()
-        .map(move |(offset, key, payload)| to_ev(offset, key, stream_id, payload))
-        .collect()
-}
-
-pub trait Present: Clone + Send + Unpin + Sync + 'static {
-    /// Provides both the the currently highest validated offsets (`present`) and the number of
-    /// events per Stream which are not yet validated, but were observed within the swarm
-    /// (`to_replicate`) as a sampled stream without back pressure, where the latest element is
-    /// always available.
-    fn offsets(&self) -> BoxStream<'static, OffsetsResponse>;
 }
 
 impl From<&SwarmOffsets> for OffsetsResponse {
@@ -366,17 +205,12 @@ impl From<&SwarmOffsets> for OffsetsResponse {
     }
 }
 
-impl Present for BanyanStore {
-    fn offsets(&self) -> stream::BoxStream<'static, OffsetsResponse> {
-        #[allow(clippy::redundant_closure)]
-        self.data.offsets.new_projection(|x| OffsetsResponse::from(x)).boxed()
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+
     use super::*;
-    use crate::SwarmConfig;
+    use crate::{EventStore, SwarmConfig};
     use ax_futures_util::stream::Drainer;
     use maplit::btreemap;
     use quickcheck::Arbitrary;

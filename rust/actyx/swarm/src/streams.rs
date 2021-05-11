@@ -182,8 +182,4 @@ impl ReplicatedStreamInner {
     pub fn incoming_root_stream(&self) -> impl Stream<Item = Link> {
         self.incoming.new_observer().filter_map(future::ready)
     }
-
-    pub fn latest_seen(&self) -> &Variable<Option<(LamportTimestamp, Offset)>> {
-        &self.latest_seen
-    }
 }

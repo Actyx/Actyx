@@ -15,7 +15,7 @@ use futures::{
     TryFutureExt,
 };
 use runtime::value::Value;
-use swarm::access::EventSelection;
+use swarm::selection::EventSelection;
 use swarm::{BanyanStore, EventStore, EventStoreError};
 use thiserror::Error;
 use trees::{OffsetMapOrMax, TagSubscriptions};
@@ -86,9 +86,9 @@ impl service::EventService for EventService {
             to_offsets_including,
         };
         let response = match request.order {
-            Order::Asc => self.store.bounded_forward(&selection),
-            Order::Desc => self.store.bounded_backward(&selection),
-            Order::StreamAsc => self.store.bounded_forward_per_stream(&selection),
+            Order::Asc => self.store.bounded_forward(selection),
+            Order::Desc => self.store.bounded_backward(selection),
+            Order::StreamAsc => self.store.bounded_forward_per_stream(selection),
         }
         .await
         .map_err(Error::EventStoreError)?
@@ -108,12 +108,12 @@ impl service::EventService for EventService {
         };
         let bounded = self
             .store
-            .bounded_forward(&selection_bounded)
+            .bounded_forward(selection_bounded)
             .await
             .map_err(Error::EventStoreError)?;
 
         let selection_unbounded = EventSelection::after(tag_subscriptions, present);
-        let unbounded = self.store.unbounded_forward_per_stream(&selection_unbounded);
+        let unbounded = self.store.unbounded_forward_per_stream(selection_unbounded);
 
         Ok(bounded
             .chain(unbounded)
@@ -133,7 +133,7 @@ impl service::EventService for EventService {
             let to_offsets_including = OffsetMapOrMax::from(offsets.clone());
             let selection = EventSelection::upto(tag_subscriptions.clone(), to_offsets_including);
             self.store
-                .bounded_backward(&selection)
+                .bounded_backward(selection)
                 .await
                 .map_err(Error::EventStoreError)?
                 .next()
@@ -151,12 +151,12 @@ impl service::EventService for EventService {
         };
         let bounded = self
             .store
-            .bounded_forward(&selection_bounded)
+            .bounded_forward(selection_bounded)
             .await
             .map_err(Error::EventStoreError)?;
 
         let selection_unbounded = EventSelection::after(tag_subscriptions.clone(), present);
-        let unbounded = self.store.unbounded_forward_per_stream(&selection_unbounded);
+        let unbounded = self.store.unbounded_forward_per_stream(selection_unbounded);
 
         let feed = mk_feed(request.query);
         let response = bounded

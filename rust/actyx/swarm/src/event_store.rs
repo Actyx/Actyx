@@ -11,18 +11,12 @@ use futures::{
     stream::{self, BoxStream},
     FutureExt, StreamExt, TryFutureExt,
 };
+use trees::OffsetMapOrMax;
 
-use crate::access::common::{EventSelection, StreamEventSelection};
+use crate::selection::{EventSelection, StreamEventSelection};
 
 #[derive(Clone, Debug, Display)]
-pub enum EventStoreError {
-    #[display(fmt = "Invalid stream back with unbounded set of sources {:?}.", _0)]
-    UnboundedStreamBack(EventSelection),
-    #[display(fmt = "Cannot stream {} since it is not known.", _0)]
-    UnknownStream(StreamId),
-    #[display(fmt = "The upper bound for {} must not be greater than present.", _0)]
-    UpperBoundGreaterThanPresent(StreamId),
-}
+pub struct EventStoreError;
 impl std::error::Error for EventStoreError {}
 
 pub type EventStreamOrError = BoxFuture<'static, Result<BoxStream<'static, Event<Payload>>, EventStoreError>>;
@@ -37,51 +31,117 @@ pub trait EventStore: Clone + Sized + Sync + Send + 'static {
 
     fn known_streams(&self) -> BoxStream<'static, StreamId>;
 
-    fn offsets(&self) -> BoxStream<'static, OffsetsResponse>;
-
-    fn persist<'a>(&self, events: Vec<(TagSet, Payload)>) -> BoxFuture<'a, anyhow::Result<Vec<PersistenceMeta>>>;
-
     fn forward_stream(&self, stream_selection: StreamEventSelection) -> EventStreamOrError;
 
     fn backward_stream(&self, stream_selection: StreamEventSelection) -> EventStreamReverseOrError;
 
-    fn bounded_forward(&self, selection: &EventSelection) -> EventStreamOrError {
-        future::try_join_all(
-            selection
-                .bounded_streams(self)
-                .map(|stream_selection| self.forward_stream(stream_selection)),
-        )
-        .map_ok(|event_streams| MergeOrdered::new_fixed(event_streams).boxed())
-        .boxed()
+    fn bounded_streams(&self, selection: EventSelection, present: OffsetMapOrMax) -> Vec<StreamEventSelection> {
+        let EventSelection {
+            from_offsets_excluding,
+            to_offsets_including,
+            tag_subscriptions,
+        } = selection;
+        let only_local = tag_subscriptions.only_local();
+        to_offsets_including
+            .streams()
+            .filter_map(|stream_id| {
+                let from = from_offsets_excluding.offset(stream_id);
+                let to = to_offsets_including.offset(stream_id).min(present.offset(stream_id));
+                let local = self.is_local(stream_id);
+
+                if from < to && (!only_local || local) {
+                    Some(StreamEventSelection {
+                        stream_id,
+                        from_exclusive: from,
+                        to_inclusive: to,
+                        tag_subscriptions: tag_subscriptions.as_tag_sets(local),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 
-    fn bounded_forward_per_stream(&self, selection: &EventSelection) -> EventStreamOrError {
-        future::try_join_all(
-            selection
-                .bounded_streams(self)
-                .map(|stream_selection| self.forward_stream(stream_selection)),
-        )
-        .map_ok(|event_streams| stream::iter(event_streams).flatten().boxed())
-        .boxed()
+    fn unbounded_stream(&self, selection: &EventSelection, stream_id: StreamId) -> Option<StreamEventSelection> {
+        let only_local = selection.tag_subscriptions.only_local();
+        let from = selection.from_offsets_excluding.offset(stream_id);
+        let local = self.is_local(stream_id);
+
+        if !only_local || local {
+            Some(StreamEventSelection {
+                stream_id,
+                from_exclusive: from,
+                to_inclusive: OffsetOrMin::MAX,
+                tag_subscriptions: selection.tag_subscriptions.as_tag_sets(local),
+            })
+        } else {
+            None
+        }
     }
 
-    fn bounded_backward(&self, selection: &EventSelection) -> EventStreamOrError {
-        future::try_join_all(
-            selection
-                .bounded_streams(self)
-                .map(|stream_selection| self.backward_stream(stream_selection)),
-        )
-        .map_ok(|event_streams| MergeOrdered::new_fixed(event_streams).map(|reverse| reverse.0).boxed())
-        .boxed()
+    fn offsets(&self) -> BoxStream<'static, OffsetsResponse>;
+
+    fn present(&self) -> BoxFuture<'static, OffsetMapOrMax> {
+        self.offsets()
+            .into_future()
+            .map(move |(offsets, _)| OffsetMapOrMax::from(offsets.unwrap_or_default().present))
+            .boxed()
     }
 
-    fn unbounded_forward_per_stream(&self, selection: &EventSelection) -> BoxStream<'static, Event<Payload>> {
+    fn persist(&self, events: Vec<(TagSet, Payload)>) -> BoxFuture<'static, anyhow::Result<Vec<PersistenceMeta>>>;
+
+    fn bounded_forward(&self, selection: EventSelection) -> EventStreamOrError {
+        let this = self.clone();
+        self.present()
+            .then(move |present| {
+                future::try_join_all(
+                    this.bounded_streams(selection, present)
+                        .into_iter()
+                        .map(|stream_selection| this.forward_stream(stream_selection)),
+                )
+                .map_ok(|event_streams| MergeOrdered::new_fixed(event_streams).boxed())
+                .boxed()
+            })
+            .boxed()
+    }
+
+    fn bounded_forward_per_stream(&self, selection: EventSelection) -> EventStreamOrError {
+        let this = self.clone();
+        self.present()
+            .then(move |present| {
+                future::try_join_all(
+                    this.bounded_streams(selection, present)
+                        .into_iter()
+                        .map(|stream_selection| this.forward_stream(stream_selection)),
+                )
+                .map_ok(|event_streams| stream::iter(event_streams).flatten().boxed())
+                .boxed()
+            })
+            .boxed()
+    }
+
+    fn bounded_backward(&self, selection: EventSelection) -> EventStreamOrError {
+        let this = self.clone();
+        self.present()
+            .then(move |present| {
+                future::try_join_all(
+                    this.bounded_streams(selection, present)
+                        .into_iter()
+                        .map(|stream_selection| this.backward_stream(stream_selection)),
+                )
+                .map_ok(|event_streams| MergeOrdered::new_fixed(event_streams).map(|reverse| reverse.0).boxed())
+                .boxed()
+            })
+            .boxed()
+    }
+
+    fn unbounded_forward_per_stream(&self, selection: EventSelection) -> BoxStream<'static, Event<Payload>> {
         debug_assert!(selection.to_offsets_including.get_default() == OffsetOrMin::MAX);
         let this = self.clone();
         let this2 = self.clone();
-        let selection = selection.clone();
         self.known_streams()
-            .filter_map(move |stream_id| future::ready(selection.unbounded_stream(&this, stream_id)))
+            .filter_map(move |stream_id| future::ready(this.unbounded_stream(&selection, stream_id)))
             .then(move |stream_selection| this2.forward_stream(stream_selection))
             .map(|res| res.unwrap())
             .merge_unordered()
@@ -91,15 +151,15 @@ pub trait EventStore: Clone + Sized + Sync + Send + 'static {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::BTreeMap, convert::TryFrom};
+    use std::collections::BTreeMap;
 
-    use actyxos_sdk::{service::Order, tags, NodeId, OffsetOrMin, StreamId};
+    use actyxos_sdk::{service::Order, tags, OffsetOrMin, StreamId};
     use ax_futures_util::stream::Drainer;
     use num_traits::Bounded;
     use trees::{OffsetMapOrMax, TagSubscription, TagSubscriptions};
 
     use super::*;
-    use crate::{access::EventSelection, BanyanStore};
+    use crate::BanyanStore;
 
     pub async fn await_stream_offsets(store: &BanyanStore, other_stores: &[&BanyanStore], offsets: &OffsetMapOrMax) {
         for other in other_stores {
@@ -300,24 +360,42 @@ mod tests {
         let sel_all = EventSelection::create("FROM 'test'", &ranges).unwrap();
         let _ = await_stream_offsets(&store1, &[&store2], &sel_all.to_offsets_including).await;
 
-        assert_forward_completed(store1.bounded_forward(&sel_all).await.unwrap(), &sel_all, 6);
+        assert_forward_completed(store1.bounded_forward(sel_all.clone()).await.unwrap(), &sel_all, 6);
+
+        let sel_all_max = EventSelection::create(
+            "FROM 'test'",
+            &[
+                (stream_id1, OffsetOrMin::MIN, OffsetOrMin::MAX),
+                (stream_id2, OffsetOrMin::MIN, OffsetOrMin::MAX),
+            ],
+        )
+        .unwrap();
+        assert_forward_completed(
+            store1.bounded_forward(sel_all_max.clone()).await.unwrap(),
+            &sel_all_max,
+            6,
+        );
 
         // stream1
         let sel_expr_local = EventSelection::create("FROM isLocal", &ranges).unwrap();
         assert_forward_completed(
-            store1.bounded_forward(&sel_expr_local).await.unwrap(),
+            store1.bounded_forward(sel_expr_local.clone()).await.unwrap(),
             &sel_expr_local,
             3,
         );
 
         let sel_stream1 =
             EventSelection::create("FROM 'test'", &[(stream_id1, OffsetOrMin::MIN, 2u32.into())]).unwrap();
-        assert_forward_completed(store1.bounded_forward(&sel_stream1).await.unwrap(), &sel_stream1, 3);
+        assert_forward_completed(
+            store1.bounded_forward(sel_stream1.clone()).await.unwrap(),
+            &sel_stream1,
+            3,
+        );
 
         let sel_stream1_single =
             EventSelection::create("FROM 'test'", &[(stream_id1, OffsetOrMin::ZERO, 1u32.into())]).unwrap();
         assert_forward_completed(
-            store1.bounded_forward(&sel_stream1_single).await.unwrap(),
+            store1.bounded_forward(sel_stream1_single.clone()).await.unwrap(),
             &sel_stream1_single,
             1,
         );
@@ -325,38 +403,26 @@ mod tests {
         // stream2
         let sel_expr_stream2 = EventSelection::create("FROM 'test:stream2'", &ranges).unwrap();
         assert_forward_completed(
-            store1.bounded_forward(&sel_expr_stream2).await.unwrap(),
+            store1.bounded_forward(sel_expr_stream2.clone()).await.unwrap(),
             &sel_expr_stream2,
             3,
         );
 
         let sel_stream_2 =
             EventSelection::create("FROM 'test'", &[(stream_id2, OffsetOrMin::MIN, 2u32.into())]).unwrap();
-        assert_forward_completed(store1.bounded_forward(&sel_stream_2).await.unwrap(), &sel_stream_2, 3);
+        assert_forward_completed(
+            store1.bounded_forward(sel_stream_2.clone()).await.unwrap(),
+            &sel_stream_2,
+            3,
+        );
 
         let sel_stream2_single =
             EventSelection::create("FROM 'test'", &[(stream_id2, OffsetOrMin::ZERO, 1u32.into())]).unwrap();
         assert_forward_completed(
-            store1.bounded_forward(&sel_stream2_single).await.unwrap(),
+            store1.bounded_forward(sel_stream2_single.clone()).await.unwrap(),
             &sel_stream2_single,
             1,
         );
-
-        let unknown = EventSelection::create(
-            "FROM 'test'",
-            &[(
-                NodeId::try_from("F71z5SVr2cJ.GYu3WGYZAg1pR7R7LAn6dXuwB3CU9V.")
-                    .unwrap()
-                    .stream(0.into()),
-                OffsetOrMin::ZERO,
-                1u32.into(),
-            )],
-        )
-        .unwrap();
-        assert!(matches!(
-            store1.bounded_forward(&unknown).await,
-            Err(EventStoreError::UnknownStream(_))
-        ));
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -400,24 +466,42 @@ mod tests {
         let sel_all = EventSelection::create("FROM 'test'", &ranges).unwrap();
         let _ = await_stream_offsets(&store1, &[&store2], &sel_all.to_offsets_including).await;
 
-        assert_backward_completed(store1.bounded_backward(&sel_all).await.unwrap(), &sel_all, 6);
+        assert_backward_completed(store1.bounded_backward(sel_all.clone()).await.unwrap(), &sel_all, 6);
+
+        let sel_all_max = EventSelection::create(
+            "FROM 'test'",
+            &[
+                (stream_id1, OffsetOrMin::MIN, OffsetOrMin::MAX),
+                (stream_id2, OffsetOrMin::MIN, OffsetOrMin::MAX),
+            ],
+        )
+        .unwrap();
+        assert_backward_completed(
+            store1.bounded_backward(sel_all_max.clone()).await.unwrap(),
+            &sel_all_max,
+            6,
+        );
 
         // stream1
         let sel_expr_local = EventSelection::create("FROM isLocal", &ranges).unwrap();
         assert_backward_completed(
-            store1.bounded_backward(&sel_expr_local).await.unwrap(),
+            store1.bounded_backward(sel_expr_local.clone()).await.unwrap(),
             &sel_expr_local,
             3,
         );
 
         let sel_stream1 =
             EventSelection::create("FROM 'test'", &[(stream_id1, OffsetOrMin::MIN, 2u32.into())]).unwrap();
-        assert_backward_completed(store1.bounded_backward(&sel_stream1).await.unwrap(), &sel_stream1, 3);
+        assert_backward_completed(
+            store1.bounded_backward(sel_stream1.clone()).await.unwrap(),
+            &sel_stream1,
+            3,
+        );
 
         let sel_stream1_single =
             EventSelection::create("FROM 'test'", &[(stream_id1, OffsetOrMin::ZERO, 1u32.into())]).unwrap();
         assert_backward_completed(
-            store1.bounded_backward(&sel_stream1_single).await.unwrap(),
+            store1.bounded_backward(sel_stream1_single.clone()).await.unwrap(),
             &sel_stream1_single,
             1,
         );
@@ -425,39 +509,26 @@ mod tests {
         // stream2
         let sel_expr_stream2 = EventSelection::create("FROM 'test:stream2'", &ranges).unwrap();
         assert_backward_completed(
-            store1.bounded_backward(&sel_expr_stream2).await.unwrap(),
+            store1.bounded_backward(sel_expr_stream2.clone()).await.unwrap(),
             &sel_expr_stream2,
             3,
         );
 
         let sel_stream_2 =
             EventSelection::create("FROM 'test'", &[(stream_id2, OffsetOrMin::MIN, 2u32.into())]).unwrap();
-        assert_backward_completed(store1.bounded_backward(&sel_stream_2).await.unwrap(), &sel_stream_2, 3);
+        assert_backward_completed(
+            store1.bounded_backward(sel_stream_2.clone()).await.unwrap(),
+            &sel_stream_2,
+            3,
+        );
 
         let sel_stream2_single =
             EventSelection::create("FROM 'test'", &[(stream_id2, OffsetOrMin::ZERO, 1u32.into())]).unwrap();
         assert_backward_completed(
-            store1.bounded_backward(&sel_stream2_single).await.unwrap(),
+            store1.bounded_backward(sel_stream2_single.clone()).await.unwrap(),
             &sel_stream2_single,
             1,
         );
-
-        // FIXME: always assert exists inside ESCA::stream_{forward|backward}()
-        // let unknown = EventSelection::create(
-        //     "FROM 'test'",
-        //     &[(
-        //         NodeId::try_from("F71z5SVr2cJ.GYu3WGYZAg1pR7R7LAn6dXuwB3CU9V.")
-        //             .unwrap()
-        //             .stream(0.into()),
-        //         OffsetOrMin::MIN,
-        //         OffsetOrMin::ZERO,
-        //     )],
-        // )
-        // .unwrap();
-        // assert!(matches!(
-        //     store1.bounded_backward(&unknown).await,
-        //     Err(ConsumerAccessError::UnknownStream(_))
-        // ));
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -499,7 +570,7 @@ mod tests {
             let target = [(stream_id1, 1u32.into()), (stream_id2, 0u32.into())];
             let selection = after(&offsets);
             // stream1 is below range and stream2 non-existant at this point
-            let stream = store_rx.unbounded_forward_per_stream(&selection);
+            let stream = store_rx.unbounded_forward_per_stream(selection.clone());
             let _ = await_stream_offsets(
                 &store_rx,
                 &[&store1_clone, &store2_clone],
@@ -507,6 +578,12 @@ mod tests {
             )
             .await;
             assert_forward_not_completed(stream, &selection, 2);
+
+            // let unknown = after(&[(non_existant(), OffsetOrMin::MIN)]);
+            // assert!(matches!(
+            //     store_rx.unbounded_forward_per_stream(&unknown),
+            //     Err(EventStoreError::UnknownStream(_))
+            // ));
         });
 
         store1
