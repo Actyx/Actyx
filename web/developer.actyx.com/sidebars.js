@@ -89,14 +89,22 @@ module.exports = {
     },
     {
       type: 'category',
-      label: 'Auth',
+      label: 'User Auth',
       collapsed: true,
       items: [
-        'how-to/auth/set-up-user-keys',
-        'how-to/auth/manage-authorized-users',
-        'how-to/auth/sign-app-manifest',
-        'how-to/auth/authenticate-with-app-manifest',
-        'how-to/auth/manage-authorized-apps',
+        'how-to/user-auth/set-up-user-keys',
+        'how-to/user-auth/manage-authorized-users',
+        'how-to/user-auth/get-developer-certificate',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'App Auth',
+      collapsed: true,
+      items: [
+        'how-to/app-auth/sign-app-manifest',
+        'how-to/app-auth/authenticate-with-app-manifest',
+        'how-to/app-auth/manage-authorized-apps',
       ],
     },
     {
@@ -193,7 +201,6 @@ module.exports = {
             'how-to/migration/migrate-business-logic',
             'how-to/migration/migrate-app-manifest',
             'how-to/migration/migrate-app-logs-and-settings',
-            'how-to/migration/migrate-app-packaging',
           ]
         }
       ],

@@ -173,6 +173,23 @@ armeabi-v7a
 IPv4
 IPv6
 https
+v1-compatible
+v1
+1.x
+jq
+rxpond
+registryfish
+statechanged
+non-realtime
+intralogistics
+oleg
+barcode
+ux-wise
+maintenancemoderequested
+modechangestarted
+modechangecompleted
+finishedgoodslogged
+finishedgoodsbooked
  - blog/2020-06-09-building-docker-apps-for-arm64v8.md
 arm64
 ActyxOS

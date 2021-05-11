@@ -26,11 +26,6 @@ const createReferences = () => {
       link: 'js-ts-sdk',
     },
     {
-      title: 'Rust SDK',
-      description: 'The Rust SDK for the Event Service HTTP API.',
-      link: 'rust-sdk',
-    },
-    {
       title: 'Actyx Node Manager',
       description: 'An easy-to-use GUI application for managing ActyxOS nodes.',
       link: 'node-manager',
