@@ -97,7 +97,14 @@ enum GossipMessage {
     #[ipld(repr = "value")]
     RootUpdate(RootUpdate),
     #[ipld(repr = "value")]
-    RootMap(BTreeMap<StreamId, Cid>),
+    RootMap(RootMap),
+}
+
+#[derive(Debug, Eq, PartialEq, DagCbor, Default)]
+#[ipld(repr = "tuple")]
+pub struct RootMap {
+    entries: BTreeMap<StreamId, Cid>,
+    lamport: LamportTimestamp,
 }
 
 pub struct Gossip {
@@ -185,8 +192,11 @@ impl Gossip {
         async move {
             loop {
                 tokio::time::sleep(interval).await;
-                let roots = store.lock().root_map();
-                let msg = GossipMessage::RootMap(roots);
+                let guard = store.lock();
+                let entries = guard.root_map();
+                let lamport = guard.data.lamport.get();
+                drop(guard);
+                let msg = GossipMessage::RootMap(RootMap { entries, lamport });
                 let blob = DagCborCodec.encode(&msg).unwrap();
                 if let Err(err) = store.ipfs().publish(&topic, blob) {
                     tracing::error!("publish root map failed: {}", err);
@@ -230,7 +240,7 @@ impl Gossip {
                         }
                         Ok(GossipMessage::RootMap(root_map)) => {
                             tracing::debug!("{} received root map", store.ipfs().local_node_name());
-                            for (stream, root) in root_map {
+                            for (stream, root) in root_map.entries {
                                 match Link::try_from(root) {
                                     Ok(root) => store.update_root(stream, root),
                                     Err(err) => tracing::error!("failed to parse link {}", err),
@@ -306,7 +316,9 @@ mod tests {
         let cbor = [
             0x82, // array(2)
                 0x01, // unsigned(1)
-                0xa0, // map(0)
+                0x82, // array(2)
+                    0xa0, // map(0)
+                    0x00, // unsigned(0)
         ];
         let root_map = GossipMessage::RootMap(Default::default());
         let msg = DagCborCodec.encode(&root_map).unwrap();
