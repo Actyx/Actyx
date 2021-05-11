@@ -1,6 +1,7 @@
 use node::{shutdown_ceremony, ApplicationState, BindTo, BindToOpts, Runtime};
 use std::{convert::TryInto, path::PathBuf};
 use structopt::StructOpt;
+use util::version::NodeVersion;
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "actyx", about = "Actyx on Linux", rename_all = "kebab-case")]
@@ -12,20 +13,29 @@ struct Opts {
 
     #[structopt(flatten)]
     bind_options: BindToOpts,
+
+    #[structopt(long)]
+    version: bool,
 }
 
 fn main() -> anyhow::Result<()> {
     let Opts {
         working_dir: maybe_working_dir,
         bind_options,
+        version,
     } = Opts::from_args();
 
-    let bind_to: BindTo = bind_options.try_into()?;
-    let working_dir = maybe_working_dir.unwrap_or_else(|| std::env::current_dir().unwrap().join("actyx-data"));
-    std::fs::create_dir_all(working_dir.clone())?;
+    if version {
+        println!("actyx {}", NodeVersion::get());
+    } else {
+        let bind_to: BindTo = bind_options.try_into()?;
+        let working_dir = maybe_working_dir.unwrap_or_else(|| std::env::current_dir().unwrap().join("actyx-data"));
+        std::fs::create_dir_all(working_dir.clone())?;
 
-    let app_handle = ApplicationState::spawn(working_dir, Runtime::Linux, bind_to)?;
+        let app_handle = ApplicationState::spawn(working_dir, Runtime::Linux, bind_to)?;
 
-    shutdown_ceremony(app_handle);
+        shutdown_ceremony(app_handle);
+    }
+
     Ok(())
 }

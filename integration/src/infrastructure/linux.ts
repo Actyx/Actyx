@@ -8,11 +8,18 @@ import { actyxDockerImage, actyxLinuxBinary, currentAxBinary } from './settings'
 import { Ssh } from './ssh'
 import { ActyxNode, printTarget, SshAble, Target } from './types'
 import { mkLog } from './util'
+import * as t from 'io-ts'
 
 // determines frequency of retrying ssh operations like connect()
 const pollDelay = <T>(f: () => Promise<T>) => new Promise((res) => setTimeout(res, 2000)).then(f)
 
 const START_TIMEOUT = 60_000
+
+export const DockerPlatform = t.type({
+  architecture: t.string,
+  variant: t.union([t.string, t.undefined]),
+})
+export type DockerPlatform = t.TypeOf<typeof DockerPlatform>
 
 export const mkNodeSshProcess = async (
   nodeName: string,
@@ -72,7 +79,7 @@ export const mkNodeSshDocker = async (
   const command =
     'docker run -i --rm -v /data ' +
     '-p 4001:4001 -p 127.0.0.1:4458:4458 -p 127.0.0.1:4454:4454 ' +
-    actyxDockerImage(target.arch, gitHash)
+    (await actyxDockerImage(target.arch, gitHash))
   const proc = await startActyx(nodeName, logger, ssh, command)
 
   // TODO: Support multiple containers on the same host, and fill
@@ -82,7 +89,7 @@ export const mkNodeSshDocker = async (
   })
 }
 
-const archToDockerMoniker = (arch: Arch): string => {
+const archToDockerHostType = (arch: Arch): string => {
   switch (arch) {
     case 'aarch64':
       return 'arm64'
@@ -92,6 +99,19 @@ const archToDockerMoniker = (arch: Arch): string => {
       return 'arm64'
     case 'x86_64':
       return 'amd64'
+  }
+}
+
+export const archToDockerPlatform = (arch: Arch): DockerPlatform => {
+  switch (arch) {
+    case 'aarch64':
+      return { architecture: 'arm64', variant: undefined }
+    case 'arm':
+      return { architecture: 'arm', variant: 'v6' }
+    case 'armv7':
+      return { architecture: 'arm', variant: 'v7' }
+    case 'x86_64':
+      return { architecture: 'amd64', variant: undefined }
   }
 }
 
@@ -127,7 +147,7 @@ export async function ensureDocker(ssh: Ssh, node: string, arch: Arch) {
     'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg',
   )
   await exec(
-    `echo "deb [arch=${archToDockerMoniker(
+    `echo "deb [arch=${archToDockerHostType(
       arch,
     )} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null`,
   )
@@ -187,7 +207,7 @@ export async function connectSsh(ssh: Ssh, nodeName: string, sshParams: SshAble,
 }
 
 async function uploadActyx(nodeName: string, ssh: Ssh, binaryPath: string) {
-  console.log('node %s installing Actyx', nodeName)
+  console.log('node %s installing Actyx %s', nodeName, binaryPath)
   await ssh.scp(binaryPath, 'actyx')
 }
 

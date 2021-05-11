@@ -17,7 +17,10 @@ use crossbeam::{
 use std::sync::Arc;
 use thiserror::Error;
 use tracing::*;
-use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext};
+use util::{
+    formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext},
+    version::NodeVersion,
+};
 
 pub type ApiResult<T> = ActyxOSResult<T>;
 
@@ -234,7 +237,7 @@ impl Node {
                 let resp = util::formats::NodesLsResponse {
                     node_id: self.state.details.node_id,
                     display_name: self.state.details.node_name.to_string(),
-                    version: env!("CARGO_PKG_VERSION").into(),
+                    version: NodeVersion::get(),
                     started_unix: self.state.started_at.timestamp(),
                     started_iso: self.state.started_at.to_rfc3339_opts(SecondsFormat::Secs, false),
                 };
@@ -306,7 +309,7 @@ impl Node {
         self.register_with_components(tx).internal()?;
 
         self.send(NodeEvent::StateUpdate(self.state.clone())).internal()?;
-        tracing::info!(target: "NODE_STARTED_BY_HOST", "Actyx is running.");
+        tracing::info!(target: "NODE_STARTED_BY_HOST", "Actyx {} is running.", NodeVersion::get());
 
         // Main node event loop (pun intended)
         let shutdown_reason = loop {

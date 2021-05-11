@@ -253,6 +253,7 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   } catch (e) {
     console.error('skipping aws setup due to ' + e)
   }
+
   const axNodeSetupObject: NodeSetup = {
     ec2,
     key,
