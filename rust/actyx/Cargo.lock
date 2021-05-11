@@ -606,11 +606,12 @@ dependencies = [
 
 [[package]]
 name = "banyan"
-version = "0.10.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a1c097cbaeaf2bdfd8d6cc9169d8331220d5f8645e9966472b9e0d6c3cae724"
+checksum = "7d177d8487335e9a5a9a2dc93a24bca58be34e176fba2b57d8af9db19c178187"
 dependencies = [
  "anyhow",
+ "chacha20 0.7.1",
  "derive_more",
  "fnv",
  "futures 0.3.14",
@@ -618,7 +619,6 @@ dependencies = [
  "maplit",
  "parking_lot 0.11.1",
  "rand 0.8.3",
- "salsa20",
  "smallvec 1.6.1",
  "tracing",
  "weight-cache",
@@ -627,13 +627,14 @@ dependencies = [
 
 [[package]]
 name = "banyan-utils"
-version = "0.3.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a17fd799f9191930d79538959a662fb1f0ca9275e6f8a23a47fd2073076cab4"
+checksum = "18934dd2fdcfdc44b4074a9da9fb74f9babec867b3a8c030681fdc8af9163e88"
 dependencies = [
  "anyhow",
  "banyan",
  "base64",
+ "chacha20 0.7.1",
  "derive_more",
  "dot",
  "env_logger 0.8.3",
@@ -650,7 +651,6 @@ dependencies = [
  "rand 0.8.3",
  "reduce",
  "reqwest",
- "salsa20",
  "serde 1.0.125",
  "serde_json",
  "smol_str",
