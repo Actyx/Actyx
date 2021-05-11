@@ -2,8 +2,8 @@
 
 |  |  |
 | --- | --- |
-| date | 2020-05-05 |
-| status | accepted |
+| date | 2020-05-10 |
+| status | proposed (pending validation by implementation) |
 | persons | @rkuhn, @dvc94ch |
 
 ## Decision
