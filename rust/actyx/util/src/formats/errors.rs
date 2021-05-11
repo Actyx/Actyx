@@ -16,7 +16,6 @@ macro_rules! ax_bail {
 }
 pub trait ActyxOSResultExt<T> {
     fn ax_err(self, code: ActyxOSCode) -> ActyxOSResult<T>;
-    fn ax_internal(self) -> ActyxOSResult<T>;
     fn ax_invalid_input(self) -> ActyxOSResult<T>;
     fn ax_err_ctx(self, code: ActyxOSCode, ctx: impl Into<String>) -> ActyxOSResult<T>;
 }
@@ -25,12 +24,6 @@ impl<T, E: Display> ActyxOSResultExt<T> for Result<T, E> {
     fn ax_err(self, code: ActyxOSCode) -> ActyxOSResult<T> {
         self.map_err(|e| ActyxOSError {
             code,
-            message: e.to_string(),
-        })
-    }
-    fn ax_internal(self) -> ActyxOSResult<T> {
-        self.map_err(|e| ActyxOSError {
-            code: ERR_INTERNAL_ERROR,
             message: e.to_string(),
         })
     }
@@ -85,7 +78,6 @@ impl ActyxOSError {
             message: message.into(),
         }
     }
-    /// Shortcut to create an internal error, since this is very common
     pub fn internal(message: impl Into<String>) -> Self {
         Self::new(ActyxOSCode::ERR_INTERNAL_ERROR, message)
     }
@@ -96,21 +88,15 @@ impl ActyxOSError {
 
 impl From<RecvError> for ActyxOSError {
     fn from(err: RecvError) -> ActyxOSError {
-        ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("{}", err))
+        ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("Error waiting on channel: {}", err))
     }
 }
 impl<T> From<SendError<T>> for ActyxOSError {
     fn from(err: SendError<T>) -> ActyxOSError {
-        ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("{}", err))
+        ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("Error sending on channel: {}", err))
     }
 }
 
-impl From<std::io::Error> for ActyxOSError {
-    fn from(err: std::io::Error) -> ActyxOSError {
-        // TODO: improve error message
-        ActyxOSCode::ERR_INTERNAL_ERROR.with_message(format!("{}", err))
-    }
-}
 impl From<repository::Error> for ActyxOSError {
     fn from(err: repository::Error) -> ActyxOSError {
         let code = match err {
@@ -122,7 +108,11 @@ impl From<repository::Error> for ActyxOSError {
                 validation::Error::ValidationFailed(_) => ActyxOSCode::ERR_SETTINGS_INVALID,
                 validation::Error::MissingDefault(_) => ActyxOSCode::ERR_SETTINGS_INVALID,
             },
-            _ => ActyxOSCode::ERR_INTERNAL_ERROR,
+            repository::Error::ScopeNotFound(_) => ActyxOSCode::ERR_SETTINGS_INVALID_AT_SCOPE,
+            repository::Error::JsonError(_) => ActyxOSCode::ERR_SETTINGS_INVALID,
+            repository::Error::DatabaseError(_) => ActyxOSCode::ERR_IO,
+            repository::Error::UpdateError(_) => ActyxOSCode::ERR_IO,
+            repository::Error::RootScopeNotAllowed => ActyxOSCode::ERR_UNAUTHORIZED,
         };
         code.with_message(format!("{}", err))
     }

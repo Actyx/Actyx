@@ -107,7 +107,9 @@ impl AxCliCommand for DumpTree {
     type Opt = DumpTreeOpts;
     type Output = String;
     fn run(opts: DumpTreeOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
-        Box::new(stream::once(async move { dump(opts).ax_internal() }.boxed()))
+        Box::new(stream::once(
+            async move { dump(opts).ax_err_ctx(util::formats::ActyxOSCode::ERR_INTERNAL_ERROR, "Dump failed") }.boxed(),
+        ))
     }
 
     fn pretty(result: Self::Output) -> String {

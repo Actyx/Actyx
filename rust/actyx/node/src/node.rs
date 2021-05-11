@@ -8,6 +8,7 @@ use crate::{
     settings::{SettingsRequest, SYSTEM_SCOPE},
     spawn_with_name,
 };
+use anyhow::Context;
 use chrono::SecondsFormat;
 use crossbeam::{
     channel::{bounded, Receiver, Sender},
@@ -29,7 +30,7 @@ pub type NodeProcessResult<T> = std::result::Result<T, NodeError>;
 pub enum NodeError {
     #[error("NODE_STOPPED_BY_NODE\nActyx shut down because Actyx services could not be started. Please refer to FIXME for more information. ({component}: {err:#})")]
     ServicesStartup { component: String, err: Arc<anyhow::Error> },
-    #[error("NODE_STOPPED_BY_NODE\nError: internal error. Please contact Actyx support. ({0})")]
+    #[error("NODE_STOPPED_BY_NODE\nError: internal error. Please contact Actyx support. ({0:#})")]
     InternalError(Arc<anyhow::Error>),
     #[error("ERR_PORT_COLLISION\nActyx shut down because it could not bind to port {port}. Please specify a different {component} port. Please refer to FIXME for more information.")]
     PortCollision { component: String, port: u16 },
@@ -99,11 +100,11 @@ impl Node {
         // unsuccessful, we panic.
         apply_system_schema(&mut settings_repo).expect("Error applying system schema com.actyx.");
 
-        let sys_settings: Settings = settings_repo
+        let sys_settings_json = settings_repo
             .get_settings(&system_scope(), false)
-            .ax_internal()
-            .and_then(|s| serde_json::from_value(s).ax_internal())
-            .inspect_err(|err| debug!("Unable to get initial system settings: {}", err))?;
+            .context("Unable to get initial system settings")?;
+        let sys_settings: Settings =
+            serde_json::from_value(sys_settings_json).context("Deserializing system settings json")?;
 
         let node_id = runtime_storage.get_or_create_node_id()?;
         let state = NodeState::new(node_id, sys_settings);
@@ -177,7 +178,7 @@ impl Node {
 
     fn handle_unset_settings_request(&mut self, scope: &settings::Scope) -> ApiResult<()> {
         debug!("Trying to unset settings for {}", scope);
-        self.settings_repo.clear_settings(scope).ax_internal()?;
+        self.settings_repo.clear_settings(scope)?;
         self.update_node_state()?;
         Ok(())
     }
@@ -256,7 +257,8 @@ impl Node {
     fn update_node_state(&mut self) -> ActyxOSResult<()> {
         let node_settings = self.settings_repo.get_settings(&system_scope(), false)?;
         eprintln!("node_settings {}", node_settings);
-        let settings = serde_json::from_value(node_settings).ax_internal()?;
+        let settings = serde_json::from_value(node_settings)
+            .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error deserializing system settings")?;
         if settings != self.state.settings {
             let details = NodeDetails::from_settings(
                 &settings,
@@ -324,8 +326,8 @@ impl Node {
                     let (from_component, new_state) = msg.internal()?;
                     debug!("Received component state transition: {} {:?}", from_component, new_state);
                     if let ComponentState::Errored(e) = new_state {
-                        warn!("Shutting down because component {} errored: \"{}\"", from_component, e);
-                        break ShutdownReason::Internal(e.into());
+                        warn!("Shutting down because component {} errored: \"{:#}\"", from_component, e);
+                        break ShutdownReason::Internal(e.context(format!("Component {}", from_component)).into());
                     }
                 }
             }
@@ -412,7 +414,7 @@ mod test {
     use util::formats::NodeName;
 
     #[tokio::test]
-    async fn should_handle_settings_requests() -> ActyxOSResult<()> {
+    async fn should_handle_settings_requests() -> anyhow::Result<()> {
         let (_runtime_tx, runtime_rx) = crossbeam::channel::bounded(8);
         let temp_dir = TempDir::new().unwrap();
         let runtime = Host::new(temp_dir.path().to_path_buf());
@@ -464,7 +466,7 @@ mod test {
                 response,
             });
 
-            rx.await.ax_internal()??;
+            rx.await??;
         }
         // Set settings for `com.actyx`
         {
@@ -476,7 +478,7 @@ mod test {
                 ignore_errors: false,
             });
 
-            assert_eq!(json, rx.await.ax_internal()??);
+            assert_eq!(json, rx.await??);
             assert_eq!(node.state.settings, serde_json::from_value(json).unwrap());
             assert_eq!(node.state.details.node_name, NodeName("My Node".into()));
         }
@@ -488,7 +490,7 @@ mod test {
                 no_defaults: false,
                 response,
             });
-            assert_eq!("My Node", rx.await.ax_internal()??);
+            assert_eq!("My Node", rx.await??);
         }
         {
             let changed = serde_json::json!("changed");
@@ -500,14 +502,7 @@ mod test {
                 ignore_errors: false,
             });
 
-            assert_eq!(
-                *rx.await
-                    .ax_internal()??
-                    .pointer("/admin/displayName")
-                    .to_owned()
-                    .unwrap(),
-                changed
-            );
+            assert_eq!(*rx.await??.pointer("/admin/displayName").to_owned().unwrap(), changed);
         }
         {
             let invalid = serde_json::json!("not_valid");
@@ -519,7 +514,7 @@ mod test {
                 ignore_errors: false, // <=========
             });
             assert_eq!(
-                rx.await.ax_internal()?,
+                rx.await?,
                 Err(ActyxOSCode::ERR_SETTINGS_INVALID
                     .with_message("Validation failed.\n\tErrors:\n\t\t/licensing/node: OneOf conditions are not met."))
             );
@@ -535,7 +530,7 @@ mod test {
                 ignore_errors: true, // <=========
             });
             assert_eq!(
-                rx.await.ax_internal()?,
+                rx.await?,
                 Err(ActyxOSCode::ERR_SETTINGS_INVALID
                     .with_message("Validation failed.\n\tErrors:\n\t\t/licensing/node: OneOf conditions are not met."))
             )
@@ -546,7 +541,7 @@ mod test {
                 scope: settings::Scope::root(),
                 response,
             });
-            assert!(rx.await.ax_internal()?.is_ok());
+            assert!(rx.await?.is_ok());
         }
         {
             let json = serde_json::json!(null);
@@ -558,7 +553,7 @@ mod test {
                 ignore_errors: false,
             });
             assert_eq!(
-                rx.await.ax_internal()?,
+                rx.await?,
                 Err(ActyxOSCode::ERR_INVALID_INPUT
                     .with_message("You cannot set settings for the root scope. Please specify a settings scope."))
             );

@@ -38,7 +38,7 @@ impl AxPrivateKey {
     /// doesn't exist.
     pub(crate) fn get_and_create_default_user_identity_dir() -> ActyxOSResult<PathBuf> {
         let p = Self::default_user_identity_dir()?;
-        std::fs::create_dir_all(p.clone())?;
+        std::fs::create_dir_all(p.clone()).ax_err_ctx(ActyxOSCode::ERR_IO, "Error creating user identity directory")?;
         Ok(p)
     }
     /// Write the private key encoded with a trailing newline into `path`, and the public key into

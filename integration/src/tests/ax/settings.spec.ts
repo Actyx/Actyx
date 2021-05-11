@@ -24,8 +24,6 @@ describe('ax settings', () => {
   let ax: CLI
 
   beforeAll(async () => {
-    console.log('guess: ' + settingDefaultFilePath)
-
     // Node will be added to the global `thisEnvNodes` and eventually cleaned up
     testNode = await createTestNodeLocal('settings')
     ax = await mkAxWithUnreachableNode()

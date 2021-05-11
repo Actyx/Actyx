@@ -48,11 +48,20 @@ const useLocal = t.type({
   type: t.literal('local'),
 })
 
-const prepare = t.union([createEC2, useLocal])
+const useSsh = t.type({
+  type: t.literal('ssh'),
+  host: t.string,
+  user: t.union([t.string, t.undefined]),
+  privateKeyPath: t.union([t.string, t.undefined]),
+  arch: Arch,
+  os: OS,
+})
+
+const prepare = t.union([createEC2, useLocal, useSsh])
 
 const install = t.union([
   // deploy binaries or images
-  t.keyof({ windows: 0, linux: 0, docker: 0 }),
+  t.keyof({ windows: 0, linux: 0, docker: 0, android: 0 }),
   // just use a running Actyx node
   t.type({
     host: fromNullable(t.string)('localhost'),

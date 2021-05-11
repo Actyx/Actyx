@@ -138,9 +138,11 @@ export const mkNodeLocalDocker = async (
     opts.Endpoints.EventService.BaseUrl = httpApiOrigin
 
     const axBinaryPath = await currentAxBinary()
+    const executeInContainer = (script: string) =>
+      target.execute(`docker exec ${container} ${script}`)
     return {
       name: nodeName,
-      target,
+      target: { ...target, executeInContainer },
       host: 'docker',
       ax: await CLI.build(axHost, axBinaryPath),
       httpApiClient: Client(opts),

@@ -42,6 +42,9 @@ android {
     versionName verName
     testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     buildConfigField "int", "MIN_SDK_API_LEVEL", "$minSdkVersion.apiLevel"
+    ndk {
+      abiFilters 'x86', 'arm64-v8a', 'armeabi-v7a'
+    }
   }
   signingConfigs {
     release {

@@ -44,7 +44,7 @@
     "tsc": "tsc",
     "build": "rimraf dist && npm run tsc",
     "test": "TZ=UTC jest --config=jest.config.js",
-    "test:debug": "npm run build && node --inspect-brk node_modules/.bin/jest --runInBand && TZ=UTC jest --config=jest.config.js",
+    "test:debug": "TZ=UTC node --inspect-brk node_modules/.bin/jest --runInBand --config=jest.config.js",
     "lint:fix": "eslint './{src,jest}/**/*.{js,ts,tsx}' --fix & prettier './{src,jest}/**/*.{js,ts,tsx}' --write",
     "lint": "eslint './{src,jest}/**/*.{js,ts,tsx}' & prettier './{src,jest}/**/*.{js,ts,tsx}' --check",
     "cleanup": "ts-node --project ./tsconfig.json ./src/cleanup.ts"

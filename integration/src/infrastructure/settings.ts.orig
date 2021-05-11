@@ -5,10 +5,10 @@ import fs from 'fs'
 import path from 'path'
 import https from 'https'
 import { ensureDirSync } from 'fs-extra'
+<<<<<<< HEAD
 import * as t from 'io-ts'
 import { DockerPlatform, archToDockerPlatform } from './linux'
 import { rightOrThrow } from './rightOrThrow'
-import { tmpdir } from 'os'
 
 const DockerSingleManifest = t.type({
   digest: t.string,
@@ -20,6 +20,9 @@ const DockerManifest = t.type({
   manifests: t.array(DockerSingleManifest),
 })
 type DockerManifest = t.TypeOf<typeof DockerManifest>
+=======
+import { tmpdir } from 'os'
+>>>>>>> master
 
 export const settings = (): Settings => (<MyGlobal>global).axNodeSetup.settings
 
