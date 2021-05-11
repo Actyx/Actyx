@@ -7,7 +7,7 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
-With Actyx v2, the format of the app manifest changes, as well as the way you provide it to Actyx. Let's use the following v1-compatible app manifest as an example for this migration guide:
+With Actyx 2.0, the format of the app manifest changes, as well as the way you provide it to Actyx. Let's use the following v1-compatible app manifest as an example for this migration guide:
 
 ```json
 {
@@ -24,7 +24,7 @@ With Actyx v2, the format of the app manifest changes, as well as the way you pr
 ```
 
 The new manifest only requires an app's id, version, and display name.
-Making the above example v2-compatible looks as follows:
+Making the above example compatible with version 2 looks as follows:
 
 ```json
 {
@@ -34,7 +34,7 @@ Making the above example v2-compatible looks as follows:
 }
 ```
 
-Now that you have a v2-compatible manifest, you need to do 2 more things:
+Now that you have a new manifest, you need to do 2 more things:
 
 1. Sign the app manifest. Please follow the steps in the [how-to guide for signing app manifests](../app-auth/sign-app-manifest).
 2. Instead of packaging the manifest together with the app, you now provide it to Actyx via the SDK or Pond. Please follow the steps in the [how-to guide on authenticating with an app manifest](../app-auth/authenticate-with-app-manifest).
