@@ -36,7 +36,3 @@ Your private key has been saved at mykeys
 Your public key has been saved at mykeys.pub
 The key's fingerprint is: 09a36bJYYYSusZuQoum6x2zgqtHxYP31ov0RHRWIzwVo=
 ```
-
-import { NPS } from '../../../../src/components/NPS'
-
-<NPS />
