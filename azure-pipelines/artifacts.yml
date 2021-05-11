@@ -90,22 +90,22 @@ stages:
             artifact: macos-binaries
             condition: succeeded()
       - job: makeActyxDocker
-        displayName: actyx multiarch docker images
+        displayName: actyx multiarch docker image
         steps:
           - bash: |
               set -e
-              GIT_COMMIT=`git log -1 --pretty=%H`
-              MASTER_TAG=
+              GIT_COMMIT=`git rev-parse HEAD`
               head_of_master=`git rev-parse origin/master`
+
               MASTER_TAG=""
               if [ "$GIT_COMMIT" == "$head_of_master" ]; then
                   echo "Running on HEAD of master ($head_of_master), tagging image as latest"
                   MASTER_TAG="--tag actyx/cosmos:actyx-latest"
               fi
+
               docker buildx build \
+                $(make docker-multiarch-build-args) \
                 --push \
-                --platform linux/arm64/v8,linux/amd64,linux/arm/v6,linux/arm/v7 \
-                --build-arg GIT_COMMIT=$GIT_COMMIT \
                 --tag actyx/cosmos:actyx-$GIT_COMMIT $MASTER_TAG \
                 -f ops/docker/images/actyx/Dockerfile \
                 .
@@ -227,8 +227,9 @@ stages:
         steps:
           - bash: |
               set -e
-              source ~/.nvm/nvm.sh
+              make prepare-js all-js
               cd integration
+              source ~/.nvm/nvm.sh
               nvm use
               npm install
               npm run cleanup 43200

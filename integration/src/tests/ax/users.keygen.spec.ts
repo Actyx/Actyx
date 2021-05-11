@@ -1,4 +1,9 @@
-import { runOnEach } from '../../infrastructure/hosts'
+import { readFileSync } from 'fs-extra'
+import { assertOK } from '../../assertOK'
+import { CLI } from '../../cli'
+import { SettingsInput } from '../../cli/exec'
+import { runOnEach, runOnEvery } from '../../infrastructure/hosts'
+import { currentAxBinary } from '../../infrastructure/settings'
 
 describe('ax', () => {
   describe('users keygen', () => {
@@ -18,6 +23,36 @@ describe('ax', () => {
         expect(response.stdOut.split('\n').length).toBe(5)
         expect(response.stdErr).toBe('Generating public/private key pair ..')
       })
+    })
+  })
+})
+
+describe('authorizing users', () => {
+  test('add and remove an additional user', async () => {
+    await runOnEvery(async (node) => {
+      // This will generate a CLI with a different than private key the node
+      // was setup with
+      const secondCli = await CLI.build(node._private.axHost, await currentAxBinary())
+      const err = assertOK(await secondCli.nodes.ls())
+      expect(err.result[0].connection).toBe('unauthorized')
+
+      const key = readFileSync(secondCli.identityPath + '.pub')
+        .toString('utf8')
+        .trim()
+      const scope = 'com.actyx/admin/authorizedUsers'
+      const existing: string[] = assertOK(await node.ax.settings.get(scope)).result as string[]
+
+      const authorizedUsers = existing.concat([key])
+      assertOK(await node.ax.settings.set(scope, SettingsInput.FromValue(authorizedUsers)))
+
+      const ok = assertOK(await secondCli.nodes.ls())
+      expect(ok.result[0].connection).toBe('reachable')
+
+      // Remove the user again
+      assertOK(await node.ax.settings.set(scope, SettingsInput.FromValue(existing)))
+
+      const err0 = assertOK(await secondCli.nodes.ls())
+      expect(err0.result[0].connection).toBe('unauthorized')
     })
   })
 })

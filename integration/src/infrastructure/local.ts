@@ -91,7 +91,7 @@ export const mkNodeLocalDocker = async (
   logger: (s: string) => void,
 ): Promise<ActyxNode> => {
   const clog = mkLog(nodeName)
-  const image = actyxDockerImage(target.arch, gitHash)
+  const image = await actyxDockerImage(target.arch, gitHash)
   clog(`starting on local Docker: ${image}`)
 
   // exposing the ports and then using -P to use random (free) ports, avoiding trouble
@@ -138,9 +138,11 @@ export const mkNodeLocalDocker = async (
     opts.Endpoints.EventService.BaseUrl = httpApiOrigin
 
     const axBinaryPath = await currentAxBinary()
+    const executeInContainer = (script: string) =>
+      target.execute(`docker exec ${container} ${script}`)
     return {
       name: nodeName,
-      target,
+      target: { ...target, executeInContainer },
       host: 'docker',
       ax: await CLI.build(axHost, axBinaryPath),
       httpApiClient: Client(opts),

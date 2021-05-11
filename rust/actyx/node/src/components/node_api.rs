@@ -74,6 +74,7 @@ impl Component<(), NodeApiSettings> for NodeApi {
             .worker_threads(2)
             .enable_all()
             .build()?;
+
         let (_, swarm) = rt.block_on(crate::node_api::mk_swarm(
             self.keypair.clone(),
             self.sender.clone(),

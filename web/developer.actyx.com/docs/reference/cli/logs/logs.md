@@ -8,7 +8,3 @@ hide_table_of_contents: true
 | Command                 | Functionality        |
 | ----------------------- | -------------------- |
 | [ax logs tail](tail.md) | Get logs from a node |
-
-import { NPS } from '../../../../src/components/NPS'
-
-<NPS />

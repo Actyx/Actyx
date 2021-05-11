@@ -1,6 +1,11 @@
 import { mkESFromTrial, Order, QueryRequest, QueryResponse } from '../../http-client'
 import { run } from '../../util'
-import { integrationTag, publishRandom, throwOnCb } from './utils.support.test'
+import {
+  genericCommunicationTimeout,
+  integrationTag,
+  publishRandom,
+  throwOnCb,
+} from './utils.support.test'
 
 describe('event service', () => {
   describe('query', () => {
@@ -23,9 +28,7 @@ describe('event service', () => {
       }))
 
     /**
-     * TODO: when query is in ASC lower and upper bounds are exclusive, when
-     * in DESC it is lower exclusive and upper inclusive and the query never
-     * completes
+     * TODO: DESC query does not complete by itself, even though it delivers all data
      */
     it('should return events in ascending order and complete', () =>
       run(async (x) => {
@@ -34,7 +37,7 @@ describe('event service', () => {
         const pub2 = await publishRandom(es)
         const request: QueryRequest = {
           lowerBound: { [pub2.stream]: pub1.offset - 1 },
-          upperBound: { [pub2.stream]: pub2.offset + 1 },
+          upperBound: { [pub2.stream]: pub2.offset },
           query: `FROM '${integrationTag}'`,
           order: Order.Asc,
         }
@@ -62,7 +65,7 @@ describe('event service', () => {
         //TODO: remove work around desc not completing
         await new Promise((resolve) => {
           es.query(request, (x) => data.push(x))
-          setTimeout(resolve, 500)
+          setTimeout(resolve, genericCommunicationTimeout)
         })
         const pub1Idx = data.findIndex((x) => x.lamport === pub1.lamport)
         const pub2Idx = data.findIndex((x) => x.lamport === pub2.lamport)
@@ -84,7 +87,7 @@ describe('event service', () => {
         const data: QueryResponse[] = []
         await new Promise((resolve) => {
           es.query(request, (x) => data.push(x))
-          setTimeout(resolve, 500)
+          setTimeout(resolve, genericCommunicationTimeout)
         })
         expect(data.length).toBe(0)
       }))

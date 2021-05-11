@@ -1,3 +1,4 @@
+use anyhow::Context;
 use libp2p::{
     core::{
         either::EitherTransport,
@@ -5,7 +6,7 @@ use libp2p::{
         transport::{Boxed, MemoryTransport},
         upgrade::Version,
     },
-    dns::TokioDnsConfig,
+    dns::{ResolverConfig, TokioDnsConfig},
     identity, noise,
     plaintext::PlainText2Config,
     pnet::{PnetConfig, PreSharedKey},
@@ -23,7 +24,15 @@ pub async fn build_transport(
     psk: Option<PreSharedKey>,
     upgrade_timeout: Duration,
 ) -> anyhow::Result<Boxed<(PeerId, StreamMuxerBox)>> {
-    let base_transport = TokioDnsConfig::system(TokioTcpConfig::new().nodelay(true))?;
+    let tcp = TokioTcpConfig::new().nodelay(true);
+    let base_transport = if cfg!(target_os = "android") {
+        // No official support for DNS on Android.
+        // see https://github.com/Actyx/Cosmos/issues/6582
+        TokioDnsConfig::custom(tcp, ResolverConfig::cloudflare(), Default::default())
+            .context("Creating TokioDnsConfig")?
+    } else {
+        TokioDnsConfig::system(tcp).context("Creating TokioDnsConfig")?
+    };
     let maybe_encrypted = match psk {
         Some(psk) => {
             EitherTransport::Left(base_transport.and_then(move |socket, _| PnetConfig::new(psk).handshake(socket)))

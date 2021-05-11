@@ -2,6 +2,7 @@ package com.actyx.android
 
 import android.app.Application
 import android.content.Intent
+import android.os.Build
 import com.actyx.android.util.Logger
 import org.slf4j.Logger
 import java.io.File
@@ -22,8 +23,11 @@ class ActyxApplication : Application() {
       log.error("Unhandled exception thrown from thread $thread", throwable)
       exitProcess(2)
     }
-
-    startService(Intent(this, AxNodeService::class.java))
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      startForegroundService(Intent(this, AxNodeService::class.java))
+    } else {
+      startService(Intent(this, AxNodeService::class.java))
+    }
   }
 
   override fun onLowMemory() {

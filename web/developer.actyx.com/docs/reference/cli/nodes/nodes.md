@@ -8,7 +8,3 @@ hide_table_of_contents: true
 | Command           | Functionality             |
 | ----------------- | ------------------------- |
 | [ax nodes ls](ls) | Show node info and status |
-
-import { NPS } from '../../../../src/components/NPS'
-
-<NPS />

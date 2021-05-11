@@ -1,11 +1,19 @@
 /*
+ * Actyx SDK: Functions for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2021 Actyx AG
+ */
+/*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
  * 
  * Copyright (C) 2020 Actyx AG
  */
 import { isString } from './functions'
+import { TaggedEvent } from './various'
 
+/** V1 tag subscription wire format. @internal */
 export type TagSubscription = Readonly<{ tags: ReadonlyArray<string>; local: boolean }>
 
 const namedSubSpace = (rawTag: string, sub: string): string[] => {
@@ -73,6 +81,11 @@ export interface Tags<E> extends Where<E> {
    * E.g. `Tags('my-tag').local()` selects all locally emitted events tagged with 'my-tag'.
    */
   local(): Tags<E>
+
+  /**
+   * Apply these tags to a bunch of events that can be legally emitted.
+   */
+  apply(...events: E[]): ReadonlyArray<TaggedEvent>
 
   /**
    * The actual included tags.
@@ -148,6 +161,8 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): Tags<E> => {
     },
 
     local: () => req<E>(true, rawTags),
+
+    apply: (...events) => events.map(event => ({ event, tags: rawTags })),
 
     onlyLocalEvents,
 

@@ -4,7 +4,6 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Events } from './eventstore/types'
 import {
   emitter,
   mkNumberFish,
@@ -34,7 +33,7 @@ describe('fish event store + jar semantic snapshot functionality', () => {
     const { applyAndGetState } = await setup()
 
     const srcA = emitter('A')
-    const events: Events = mkTimeline(srcA(3), srcA(7), srcA(-1), srcA(8)).all
+    const events = mkTimeline(srcA(3), srcA(7), srcA(-1), srcA(8)).all
     expect(await applyAndGetState(events)).toEqual([-1, 8])
   })
 

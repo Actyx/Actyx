@@ -119,6 +119,8 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
         await pond.emit(Tag('t1'), 't1 event 1').toPromise()
         await pond.emit(Tag('t1'), 'error').toPromise()
         await pond.emit(Tag('t1'), 't1 event 2').toPromise()
+
+        await new Promise(resolve => setTimeout(resolve, 1)) // yield a bit, since there are multiple rx pipelines in play now.
       }
 
       return {
@@ -141,7 +143,7 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
       pond.observe(brokenFish, s => {
         latestState2 = s
       })
-      await Observable.timer(0).toPromise() // yield
+      await new Promise(resolve => setTimeout(resolve, 0)) // yield
       expect(latestState2).toEqual('t1 event 1')
 
       pond.dispose()

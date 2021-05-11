@@ -1,3 +1,5 @@
+import java.util.Date
+
 plugins {
   id 'com.android.application'
   id 'kotlin-android'
@@ -9,10 +11,14 @@ plugins {
 
 apply from: '../actyx-local/actyx.properties'
 
+// 102000000 is the version code that would have been applied to ActyxOS 1.2
+def verCode = { -> ("git log --oneline".execute().text.readLines().size() + 102000000) as Integer }
+def verName = "${(System.getenv('ACTYX_VERSION') ?: androidGitVersion.name())}-android"
+
 androidGitVersion {
-  prefix 'actyx-android-'
+  prefix 'actyx-'
   codeFormat 'MNNPPPBBB'
-  format '%tag%%-count%%-commit%%-dirty%'
+  format '%tag%%-commit%%-dirty%-android-'
   hideBranches = ['master']
   baseCode 3000
 }
@@ -32,10 +38,13 @@ android {
     applicationId 'com.actyx.android'
     minSdkVersion 22
     targetSdkVersion 30
-    versionCode androidGitVersion.code()
-    versionName androidGitVersion.name()
+    versionCode verCode()
+    versionName verName
     testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     buildConfigField "int", "MIN_SDK_API_LEVEL", "$minSdkVersion.apiLevel"
+    ndk {
+      abiFilters 'x86', 'arm64-v8a', 'armeabi-v7a'
+    }
   }
   signingConfigs {
     release {
@@ -50,6 +59,10 @@ android {
       signingConfig signingConfigs.release
       minifyEnabled true
       proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+      versionNameSuffix '-release'
+    }
+    debug {
+      versionNameSuffix '-debug'
     }
   }
   buildFeatures {

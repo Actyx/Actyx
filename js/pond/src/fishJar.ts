@@ -5,17 +5,25 @@
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { EventKey, Milliseconds, Offset, OffsetMap, StreamId, Timestamp, Where } from '@actyx/sdk'
+import {
+  ActyxEvent,
+  EventFns,
+  Metadata,
+  Milliseconds,
+  Offset,
+  OffsetMap,
+  StateWithProvenance,
+  StreamId,
+  Timestamp,
+  Where,
+} from '@actyx/sdk'
 import { lessThan } from 'fp-ts/lib/Ord'
 import { Map } from 'immutable'
 import { Observable, Subject, Subscription as RxSubscription } from 'rxjs'
 import { catchError, tap } from 'rxjs/operators'
-import { EventStore } from './eventstore'
-import { AllEventsSortOrders, Event, Events, PersistedEventsSortOrders } from './eventstore/types'
 import log from './loggers'
 import { PondStateTracker } from './pond-state'
-import { SnapshotStore } from './snapshotStore'
-import { Fish, FishId, StateWithProvenance } from './types'
+import { Fish, FishId } from './types'
 import { lookup } from './util'
 
 // I is an intermediate value that is consumed by the specialized command handling logic.
@@ -68,9 +76,9 @@ const commandPipeline = <S, I>(
   pondStateTracker: PondStateTracker,
   semantics: string,
   name: string,
-  handler: ((input: I) => Observable<Events>),
+  handler: ((input: I) => Promise<Metadata[]>),
   stateSubject: Observable<StateWithProvenance<S>>,
-  eventFilter: ((t: Event) => boolean),
+  eventFilter: ((t: Metadata) => boolean),
 ): CommandPipeline<S, I> => {
   const commandIn: Subject<CommandInput<S, I>> = new Subject()
 
@@ -114,7 +122,7 @@ const commandPipeline = <S, I>(
       .take(1)
       .concatMap(s => {
         const onCommandResult = command(s)
-        const stored = handler(onCommandResult)
+        const stored = Observable.from(handler(onCommandResult))
 
         return stored.concatMap(envelopes => {
           if (envelopes.length === 0) {
@@ -165,39 +173,45 @@ const commandPipeline = <S, I>(
 }
 
 const getEventsForwardChunked = (
-  eventStore: EventStore,
+  fns: EventFns,
   subscriptionSet: Where<unknown>,
   present: OffsetMap,
-): Observable<Events> => {
-  const chunks = eventStore.persistedEvents(
-    { default: 'min', psns: {} },
-    { default: 'min', psns: present },
-    subscriptionSet,
-    PersistedEventsSortOrders.Ascending,
-    undefined, // No semantic snapshots means no horizon, ever.
-  )
+): Observable<ActyxEvent[]> => {
+  const chunks = new Observable<ActyxEvent[]>(o => {
+    let cancelled = false
+    fns
+      .queryKnownRangeChunked(
+        {
+          upperBound: present,
+          query: subscriptionSet,
+        },
+        1,
+        chunk => (cancelled ? undefined : o.next(chunk.events)),
+      )
+      .then(() => o.complete())
+    return () => {
+      /* cannot really tear this down */
+      cancelled = true
+    }
+  })
 
   return chunks
 }
 
 type StartedFish<S> = {
   fish: Fish<S, any>
-  startedFrom: Event
+  startedFrom: ActyxEvent
 }
 
 export type StartedFishMap<S> = Map<string, StartedFish<S>>
 
-const observeAll = (
-  eventStore: EventStore,
-  _snapshotStore: SnapshotStore,
-  _pondStateTracker: PondStateTracker,
-) => <ESeed, S>(
+const observeAll = (eventStore: EventFns, _pondStateTracker: PondStateTracker) => <ESeed, S>(
   firstEvents: Where<ESeed>,
   makeFish: (seed: ESeed) => Fish<S, any> | undefined,
   expireAfterSeed?: Milliseconds,
 ): Observable<StartedFishMap<S>> => {
-  const fish$ = Observable.from(eventStore.offsets()).concatMap(offsets => {
-    const persisted = getEventsForwardChunked(eventStore, firstEvents, offsets.present)
+  const fish$ = Observable.from(eventStore.currentOffsets()).concatMap(present => {
+    const persisted = getEventsForwardChunked(eventStore, firstEvents, present)
 
     // This step is only so that we don’t emit outdated collection while receiving chunks of old events
     const initialFishs = persisted.reduce((acc: Record<string, StartedFish<S>>, chunk) => {
@@ -212,20 +226,14 @@ const observeAll = (
     }, {})
 
     return initialFishs.concatMap(
-      observeAllStartWithInitial(
-        eventStore,
-        makeFish,
-        firstEvents,
-        offsets.present,
-        expireAfterSeed,
-      ),
+      observeAllStartWithInitial(eventStore, makeFish, firstEvents, present, expireAfterSeed),
     )
   })
 
   return fish$
 }
 
-const earlier = lessThan(EventKey.ord)
+const earlier = lessThan(ActyxEvent.ord)
 
 const mkPrune = (timeout?: Milliseconds) => {
   if (!timeout) return <S>(cur: Map<string, StartedFish<S>>) => cur
@@ -234,12 +242,12 @@ const mkPrune = (timeout?: Milliseconds) => {
 
   return <S>(cur: Map<string, StartedFish<S>>) => {
     const now = Timestamp.now()
-    return cur.filter(started => started.startedFrom.timestamp + timeoutMicros > now)
+    return cur.filter(started => started.startedFrom.meta.timestampMicros + timeoutMicros > now)
   }
 }
 
 const observeAllStartWithInitial = <ESeed, S>(
-  eventStore: EventStore,
+  eventStore: EventFns,
   makeFish: (seed: ESeed) => Fish<S, any> | undefined,
   subscriptionSet: Where<unknown>,
   present: OffsetMap,
@@ -248,14 +256,14 @@ const observeAllStartWithInitial = <ESeed, S>(
   // Switch to immutable representation so as to not screw over downstream consumers
   let immutableFishSet = Map(init)
 
-  const liveEvents = eventStore.allEvents(
-    {
-      psns: present,
-      default: 'min',
-    },
-    { psns: {}, default: 'max' },
-    subscriptionSet,
-    AllEventsSortOrders.Unsorted,
+  const liveEvents = new Observable<ActyxEvent[]>(o =>
+    eventStore.subscribe(
+      {
+        lowerBound: present,
+        query: subscriptionSet,
+      },
+      chunk => o.next(chunk.events),
+    ),
   )
 
   const prune = mkPrune(expireAfterSeed)

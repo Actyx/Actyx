@@ -1,9 +1,9 @@
 use actyxos_sdk::Payload;
 use banyan::{
+    chacha20,
     forest::{BranchCache, Config, CryptoConfig, Forest},
-    salsa20,
 };
-use banyan_utils::{create_salsa_key, dump};
+use banyan_utils::{create_chacha_key, dump};
 use futures::{prelude::*, stream, Stream};
 use ipfs_sqlite_block_store::BlockStore;
 use libipld::{
@@ -50,8 +50,8 @@ fn dump(opts: DumpTreeOpts) -> anyhow::Result<String> {
     match (opts.root, opts.block) {
         (Some(root), None) => {
             let crypto_config = {
-                let index_key: salsa20::Key = opts.index_pass.map(create_salsa_key).unwrap_or_default();
-                let value_key: salsa20::Key = opts.value_pass.map(create_salsa_key).unwrap_or_default();
+                let index_key: chacha20::Key = opts.index_pass.map(create_chacha_key).unwrap_or_default();
+                let value_key: chacha20::Key = opts.value_pass.map(create_chacha_key).unwrap_or_default();
                 CryptoConfig { index_key, value_key }
             };
             let bs = BlockStore::open(opts.block_store, Default::default())?;
@@ -93,7 +93,7 @@ fn dump(opts: DumpTreeOpts) -> anyhow::Result<String> {
         (None, Some(block_hash)) => {
             let bs = BlockStore::open(opts.block_store, Default::default())?;
             let ss = SqliteStore::new(bs)?;
-            let value_key: salsa20::Key = opts.value_pass.map(create_salsa_key).unwrap_or_default();
+            let value_key: chacha20::Key = opts.value_pass.map(create_chacha_key).unwrap_or_default();
             dump::dump_json(Arc::new(ss), block_hash, value_key, &mut std::io::stdout())?;
         }
         _ => anyhow::bail!("Provide either root or block hash"),
@@ -107,7 +107,9 @@ impl AxCliCommand for DumpTree {
     type Opt = DumpTreeOpts;
     type Output = String;
     fn run(opts: DumpTreeOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
-        Box::new(stream::once(async move { dump(opts).ax_internal() }.boxed()))
+        Box::new(stream::once(
+            async move { dump(opts).ax_err_ctx(util::formats::ActyxOSCode::ERR_INTERNAL_ERROR, "Dump failed") }.boxed(),
+        ))
     }
 
     fn pretty(result: Self::Output) -> String {

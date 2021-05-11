@@ -27,3 +27,6 @@ __js-ts-sdk-sidebar.js
 docs/reference/js-ts-sdk/
 __pond-sidebar.js
 docs/reference/pond/
+
+# Local Netlify folder
+.netlify

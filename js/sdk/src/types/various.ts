@@ -1,7 +1,14 @@
-import { Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
+/*
+ * Actyx SDK: Functions for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2021 Actyx AG
+ */
+import { contramap, Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
 import { isNumber, isString } from './functions'
+import { OffsetMap } from './offsetMap'
 
 /**
  * An Actyx source id.
@@ -9,7 +16,7 @@ import { isNumber, isString } from './functions'
  */
 export type NodeId = string
 const mkNodeId = (text: string): NodeId => text as NodeId
-export const randomBase58: (digits: number) => string = (digits: number) => {
+const randomBase58: (digits: number) => string = (digits: number) => {
   const base58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'.split('')
 
   let result = ''
@@ -91,8 +98,11 @@ export const Lamport = {
   ),
 }
 
+/** Offset within an Actyx event stream. @public */
 export type Offset = number
 const mkOffset = (psn: number): Offset => psn as Offset
+
+/** Functions related to Offsets. @public */
 export const Offset = {
   of: mkOffset,
   zero: mkOffset(0),
@@ -168,6 +178,12 @@ export const Milliseconds = {
   ),
 }
 
+/**
+ * Triple that Actyx events are sorted and identified by.
+ * Wire format.
+ *
+ * @public
+ */
 export const EventKeyIO = t.readonly(
   t.type({
     lamport: Lamport.FromNumber,
@@ -176,6 +192,11 @@ export const EventKeyIO = t.readonly(
   }),
 )
 
+/**
+ * Triple that Actyx events are sorted and identified by.
+ *
+ * @public
+ */
 export type EventKey = t.TypeOf<typeof EventKeyIO>
 
 const zeroKey: EventKey = {
@@ -209,6 +230,7 @@ const ordEventKey: Ord<EventKey> = {
 
 const formatEventKey = (key: EventKey): string => `${key.lamport}/${key.stream}`
 
+/** Functions related to EventKey. @public */
 export const EventKey = {
   zero: zeroKey,
   ord: ordEventKey,
@@ -236,17 +258,27 @@ export type Metadata = Readonly<{
   // Every event has exactly one eventId which is unique to it, guaranteed to not collide with any other event.
   // Events are *sorted* based on the eventId by ActyxOS: For a given event, all later events also have a higher eventId according to simple string-comparison.
   eventId: string
+
+  // Stream this event belongs to
+  stream: StreamId
+
+  // Offset of this event inside its stream
+  offset: Offset
 }>
 
+/** Max length of a lamport timestamp as string. @internal */
 export const maxLamportLength = String(Number.MAX_SAFE_INTEGER).length
 
+/** Anthing that has metadata. @internal */
 export type HasMetadata = Readonly<{
   timestamp: Timestamp
   lamport: Lamport
   stream: StreamId
   tags: ReadonlyArray<string>
+  offset: Offset
 }>
 
+/** Make a function that makes metadata from an Event as received over the wire. @internal */
 export const toMetadata = (sourceId: string) => (ev: HasMetadata): Metadata => ({
   isLocalEvent: ev.stream === sourceId,
   tags: ev.tags,
@@ -254,6 +286,8 @@ export const toMetadata = (sourceId: string) => (ev: HasMetadata): Metadata => (
   timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
   lamport: ev.lamport,
   eventId: String(ev.lamport).padStart(maxLamportLength, '0') + '/' + ev.stream,
+  stream: ev.stream,
+  offset: ev.offset,
 })
 
 /**
@@ -268,9 +302,9 @@ export type CancelSubscription = () => void
  */
 export type PendingEmission = {
   // Add another callback; if emission has already completed, the callback will be executed straight-away.
-  subscribe: (whenEmitted: () => void) => void
+  subscribe: (whenEmitted: (meta: Metadata[]) => void) => void
   // Convert to a Promise which resolves once emission has completed.
-  toPromise: () => Promise<void>
+  toPromise: () => Promise<Metadata[]>
 }
 
 /** An event with tags attached. @public */
@@ -284,3 +318,60 @@ export type ActyxEvent<E = unknown> = {
   meta: Metadata
   payload: E
 }
+
+/** Things related to ActyxEvent. @public */
+export const ActyxEvent = {
+  // TODO: Maybe improve this by just comparing the lamport -> stream combo
+  ord: contramap((e: ActyxEvent) => e.meta.eventId, ordString),
+}
+
+/**
+ * A raw Actyx event to be emitted by the TestEventStore, as if it really arrived from the outside.
+ * @public
+ */
+export type TestEvent = {
+  offset: number
+  stream: string
+
+  timestamp: Timestamp
+  lamport: Lamport
+  tags: ReadonlyArray<string>
+
+  payload: unknown
+}
+
+/**
+ * A chunk of events, with lower and upper bound.
+ * A call to `queryKnownRange` with the included bounds is guaranteed to return exactly the contained set of events.
+ * A call to `subscribe` with the included `lowerBound`, however, may find new events from sources not included in the bounds.
+ *
+ * @public
+ */
+export type EventChunk = {
+  /** The event data. Sorting depends on the request which produced this chunk. */
+  events: ActyxEvent[]
+
+  /** The lower bound of the event chunk, independent of its sorting in memory. */
+  lowerBound: OffsetMap
+
+  /** The upper bound of the event chunk, independent of its sorting in memory. */
+  upperBound: OffsetMap
+}
+
+/** Options used when creating a new `Actyx` instance. @public */
+export type ActyxOpts = Readonly<{
+  /** url of the Actxy service */
+  url?: string
+
+  /** Hook, when the connection to the store is closed */
+  onConnectionLost?: () => void
+}>
+
+/** Options used when creating a new TEST `Actyx` instance. @public */
+export type ActyxTestOpts = Readonly<{
+  /** Local node id to use @public */
+  nodeId?: NodeId
+
+  /** Maximum chunk size in which events will be delivered. @public */
+  eventChunkSize?: number
+}>

@@ -8,8 +8,8 @@ edition = "2018"
 actyxos_sdk = { path = "../../../sdk" }
 anyhow = "1.0.40"
 futures = { version = "0.3.14", package = "futures" }
-ipfs-embed = "0.19.0"
-libp2p = "0.37.1"
+ipfs-embed = { version = "0.20.0", default-features = false, features = ["tokio"] }
+libp2p = { version = "0.37.1", default-features = false }
 serde_json = "1.0.64"
 structopt = "0.3.21"
 swarm = { path = ".." }

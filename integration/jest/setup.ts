@@ -142,6 +142,11 @@ const setAllSettings = async (
           'com.actyx',
           SettingsInput.FromValue(settings(node.name)),
         )
+        if (result.code === 'OK') {
+          // authorizedKeys were overwritten to be empty, so add this cli's
+          // public key one more time
+          await node.ax.nodes.ls()
+        }
 
         retry_cnt += 1
       }
@@ -248,6 +253,7 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
   } catch (e) {
     console.error('skipping aws setup due to ' + e)
   }
+
   const axNodeSetupObject: NodeSetup = {
     ec2,
     key,

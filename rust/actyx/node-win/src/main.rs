@@ -31,6 +31,7 @@ mod win {
     };
     use structopt::StructOpt;
     use tracing::*;
+    use util::version::NodeVersion;
 
     #[derive(StructOpt, Debug)]
     #[structopt(name = "actyx", about = "Actyx on Windows", rename_all = "kebab-case")]
@@ -46,6 +47,9 @@ mod win {
 
         #[structopt(flatten)]
         bind_options: BindToOpts,
+
+        #[structopt(long)]
+        version: bool,
     }
 
     struct TrayApp {
@@ -94,6 +98,10 @@ mod win {
                 trayicon_app.add_menu_separator()?;
             }
 
+            trayicon_app.add_menu_item(format!("actyx {}", NodeVersion::get()).as_str(), |_| {
+                Ok::<_, systray::Error>(())
+            })?;
+
             trayicon_app.add_menu_item("Exit", |window| {
                 // This will result in `app.wait_for_message` returning at the
                 // end of this function, which may end the `tray.try_wait` in
@@ -131,6 +139,19 @@ mod win {
         use crossbeam::channel::{bounded, select, tick};
         use node::{ApplicationState, Runtime};
         use std::convert::TryInto;
+
+        let Opts {
+            working_dir: maybe_working_dir,
+            background,
+            bind_options,
+            version,
+        } = Opts::from_args();
+
+        if version {
+            println!("actyx {}", NodeVersion::get());
+            return Ok(());
+        }
+
         // Make sure, there's only one instance of Actyx running on the system.
         // On Windows this is implemented by creating named mutex with CreateMutexW.
         // On UNIX systems this is implemented by using files and flock. The path of the
@@ -140,11 +161,7 @@ mod win {
         let _global_guard = global_mutex.try_lock().map_err(|_| {
             anyhow::anyhow!("Error acquiring global mutex. Maybe another Actyx instance is already running?")
         })?;
-        let Opts {
-            working_dir: maybe_working_dir,
-            background,
-            bind_options,
-        } = Opts::from_args();
+
         let bind_to: BindTo = bind_options.try_into()?;
 
         let working_dir = maybe_working_dir.unwrap_or_else(|| std::env::current_dir().unwrap().join("actyx-data"));

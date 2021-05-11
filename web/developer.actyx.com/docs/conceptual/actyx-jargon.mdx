@@ -19,11 +19,11 @@ An ActyxOS node is a device that runs ActyxOS. The device can be physical, e.g. 
 
 ### Swarm
 
-An ActyxOS swarm is a group of ActyxOS nodes that are configured with the same Swarm Key. Nodes inside a swarm are connected to each other and exchange events. For more information on how discovery inside a swarm works, check out our guide on [peer discovery](peer-discovery.mdx).
+An ActyxOS swarm is a group of ActyxOS nodes that are configured with the same Swarm Key. Nodes inside a swarm are connected to each other and exchange events.
 
 ### Bootstrap node
 
-A boostrap node is an ActyxOS node like any other with one exception: It does not store or distribute events. It only connects to other nodes and its purpose is to serve as a directory for all nodes that form a swarm. When a new node connects to the bootstrap node, it gets a list of all other nodes in the swarm which facilitates peer discovery. Check out our guide on [peer discovery](peer-discovery.mdx) for more information.
+A boostrap node is an ActyxOS node like any other with one exception: It does not store or distribute events. It only connects to other nodes and its purpose is to serve as a directory for all nodes that form a swarm. When a new node connects to the bootstrap node, it gets a list of all other nodes in the swarm which facilitates peer discovery.
 
 ### App
 
@@ -36,7 +36,3 @@ The Actyx Pond is a programming framework for writing apps for ActyxOS. It is av
 ### Fish
 
 A fish is a concept of the Actyx Pond. It is the main programming unit used when writing apps with the Actyx Pond. Check out our [how-to guides](/docs/how-to/actyx-pond/introduction) for more information.
-
-import { NPS } from '../../src/components/NPS'
-
-<NPS />

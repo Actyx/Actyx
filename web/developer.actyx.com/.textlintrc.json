@@ -7,9 +7,6 @@
     "no-start-duplicated-conjunction": {
       "interval": 2
     },
-    "max-comma": {
-      "max": 4
-    },
     "no-empty-section": true,
     "period-in-list-item": false,
     "date-weekday-mismatch": true,
@@ -18,9 +15,7 @@
   },
   "plugins": {
     "@textlint/markdown": {
-      "extensions": [
-        ".mdx"
-      ]
+      "extensions": [".mdx"]
     }
   }
 }

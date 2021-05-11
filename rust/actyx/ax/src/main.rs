@@ -10,6 +10,7 @@ use cmd::{
     users::UsersOpts, Verbosity,
 };
 use structopt::StructOpt;
+use util::version::NodeVersion;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
@@ -17,13 +18,16 @@ use structopt::StructOpt;
     about = "The Actyx Command Line Interface (CLI) is a unified tool to manage your Actyx nodes"
 )]
 struct Opt {
+    // unless("version") gives "methods in attributes are not allowed for subcommand"
     #[structopt(subcommand)]
-    commands: CommandsOpt,
+    commands: Option<CommandsOpt>,
     /// Format output as JSON
     #[structopt(long, short, global = true)]
     json: bool,
     #[structopt(flatten)]
     verbosity: Verbosity,
+    #[structopt(long)]
+    version: bool,
 }
 
 #[derive(StructOpt, Debug)]
@@ -42,12 +46,30 @@ enum CommandsOpt {
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     let opt = Opt::from_args();
-    match opt.commands {
-        CommandsOpt::Nodes(opts) => cmd::nodes::run(opts, opt.json).await,
-        CommandsOpt::Logs(opts) => cmd::logs::run(opts, opt.json).await,
-        CommandsOpt::Settings(opts) => cmd::settings::run(opts, opt.json).await,
-        CommandsOpt::Swarms(opts) => cmd::swarms::run(opts, opt.json).await,
-        CommandsOpt::Users(opts) => cmd::users::run(opts, opt.json).await,
-        CommandsOpt::Internal(opts) => cmd::internal::run(opts, opt.json).await,
-    };
+
+    // Since we can't tell StructOpt that the subcommand is optional when --version is specified, we have to do this
+    // rigmarole
+    match opt {
+        Opt { version: true, .. } => {
+            println!("Actyx CLI {}", NodeVersion::get());
+        }
+        Opt {
+            commands: Some(cmd),
+            json,
+            ..
+        } => {
+            match cmd {
+                CommandsOpt::Nodes(opts) => cmd::nodes::run(opts, json).await,
+                CommandsOpt::Logs(opts) => cmd::logs::run(opts, json).await,
+                CommandsOpt::Settings(opts) => cmd::settings::run(opts, json).await,
+                CommandsOpt::Swarms(opts) => cmd::swarms::run(opts, json).await,
+                CommandsOpt::Users(opts) => cmd::users::run(opts, json).await,
+                CommandsOpt::Internal(opts) => cmd::internal::run(opts, json).await,
+            };
+        }
+        _ => {
+            let mut app = Opt::clap();
+            app.write_long_help(&mut std::io::stderr()).unwrap();
+        }
+    }
 }

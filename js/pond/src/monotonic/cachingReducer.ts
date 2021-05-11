@@ -1,10 +1,9 @@
-import { EventKey, Timestamp } from '@actyx/sdk'
+import { EventKey, LocalSnapshot, Timestamp } from '@actyx/sdk'
 import { last, partition } from 'fp-ts/lib/Array'
 import { none, Option, some } from 'fp-ts/lib/Option'
 import { gt } from 'fp-ts/lib/Ord'
 import log from '../loggers'
 import { SnapshotScheduler } from '../store/snapshotScheduler'
-import { LocalSnapshot } from '../types'
 import { CachingReducer, PendingSnapshot, SerializedStateSnap, SimpleReducer } from './types'
 
 const eventKeyGreater = gt(EventKey.ord)
@@ -45,7 +44,8 @@ export const cachingReducer = <S>(
     // FIXME: Arguments are a bit questionable, but we can’t change the scheduler yet, otherwise the FES-based tests start failing.
     const statesToStore = snapshotScheduler.getSnapshotLevels(
       latestStateSerialized.map(x => x.cycle).getOrElse(0),
-      events,
+      // FIXME: We only put payload in here for chaos.spec.ts hacky custom scheduling
+      events.map(x => ({ timestamp: x.meta.timestampMicros, payload: x.payload })),
       0,
     )
 
@@ -57,7 +57,7 @@ export const cachingReducer = <S>(
       queue.addPending({
         snap: serialize(headState),
         tag: toStore.tag,
-        timestamp: events[toStore.i].timestamp,
+        timestamp: events[toStore.i].meta.timestampMicros,
       })
     }
 
@@ -65,7 +65,9 @@ export const cachingReducer = <S>(
 
     const snapshotsToPersist =
       events.length > 0
-        ? queue.getSnapshotsToStore(snapshotEligible(events[events.length - 1].timestamp))
+        ? queue.getSnapshotsToStore(
+            snapshotEligible(events[events.length - 1].meta.timestampMicros),
+          )
         : []
 
     if (snapshotsToPersist.length > 0) {

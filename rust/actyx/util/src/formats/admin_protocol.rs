@@ -1,3 +1,5 @@
+use crate::version::NodeVersion;
+
 use super::{ActyxOSResult, LogEvent};
 use actyxos_sdk::NodeId;
 use chrono::{DateTime, Utc};
@@ -90,7 +92,7 @@ pub struct NodesLsResponse {
     pub display_name: String,
     pub started_iso: String,
     pub started_unix: i64,
-    pub version: String,
+    pub version: NodeVersion,
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SetSettingsRequest {

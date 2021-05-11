@@ -5,6 +5,8 @@ pub mod admin_protocol;
 pub mod errors;
 pub mod logs;
 
+pub mod os_arch;
+
 pub use admin_protocol::*;
 pub use errors::*;
 pub use logs::*;

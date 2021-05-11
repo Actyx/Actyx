@@ -42,7 +42,3 @@ swarm:
     - /ipfs/10.24.24.2
     - /ipfs/10.24.24.3" | ax settings set --local com.actyx @- 10.2.3.23
 ```
-
-import { NPS } from '../../../../src/components/NPS'
-
-<NPS />

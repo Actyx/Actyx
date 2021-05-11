@@ -4,7 +4,6 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Events } from './eventstore/types'
 import {
   eventFactory,
   forFishes,
@@ -34,7 +33,7 @@ const setup = (fish: Fish<NumberFishState, NumberFishEvent>) => snapshotTestSetu
 
 describe('fish event store + jar snapshot agnostic behaviour', () => {
   const { mkEvents } = eventFactory()
-  const aEvents: Events = mkEvents([
+  const aEvents = mkEvents([
     {
       timestamp: 100,
       source: 'A',
@@ -47,7 +46,7 @@ describe('fish event store + jar snapshot agnostic behaviour', () => {
     },
   ])
 
-  const bEvents: Events = mkEvents([
+  const bEvents = mkEvents([
     {
       timestamp: 200,
       source: 'B',
