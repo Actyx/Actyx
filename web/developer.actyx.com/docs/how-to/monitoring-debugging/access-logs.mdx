@@ -21,8 +21,7 @@ import TabItem from '@theme/TabItem'
   values={[
     { label: 'Actyx CLI', value: 'cli' },
     { label: 'Windows', value: 'windows' },
-    { label: 'Linux/macOS', value: 'linux' },
-    { label: 'Docker', value: 'docker' },
+    { label: 'Linux/macOS/Docker', value: 'linux' },
     { label: 'Node Manager', value: 'node-manager' },
   ]}
 >
@@ -73,23 +72,15 @@ You can then see all Actyx logs in that view:
 <TabItem value="linux">
 
 
-On Linux and macOS, Actyx automatically outputs logs into your terminal after startup:
+On Linux, macOS, and Docker, Actyx automatically outputs logs into your terminal after startup:
 
 ```text
-./actyxos-mac
-ActyxOS started.
+./actyx-mac
+Actyx started.
 Apr 21 10:33:35.882  INFO axosnode::logs_handler: Sending new dynamic config for logsvcd: DynamicConfig { node_id: SourceId(FIXME), node_name: "Default Node", monitoring_topic: Some("default-topic/monitoring") }
 Apr 21 10:33:35.883  INFO logsvcd::sync: Received new dynamic config DynamicConfig { node_id: SourceId(FIXME), node_name: "Default Node", monitoring_topic: Some("default-topic/monitoring") }
 more logs...
 ```
-
-</TabItem>
-<TabItem value="docker">
-
-
-To see logs after starting Actyx on Docker in your terminal, you need to set the `ENABLE_DEBUG_LOGS` environment variable when running it. Add `-e ENABLE_DEBUG_LOGS=1` to your `docker run` command, and you will see logs appearing in your terminal.
-
-In case the Actyx container is running in non-interactive mode the background, use `docker logs -f <container id>` to follow the logs as they are written.
 
 </TabItem>
 <TabItem value="node-manager">

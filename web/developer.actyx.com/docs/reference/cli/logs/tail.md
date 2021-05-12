@@ -3,7 +3,7 @@ title: ax logs tail
 hide_table_of_contents: true
 ---
 
-```text title="Get logs from an ActyxOS node"
+```text title="Get logs from an Actyx node"
 USAGE:
     ax logs tail [FLAGS] [OPTIONS] <NODE>
 

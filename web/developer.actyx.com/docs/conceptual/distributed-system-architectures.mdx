@@ -56,15 +56,15 @@ The behavior of a distributed system is significantly harder to reason about tha
 
 A distributed system may be coordinated by a central node. Consider, for example, how map-reduce jobs are usually launched by a central node, the results computed in a distributed fashion, and the results reduced back into the central node.
 
-Decentralized systems are a special form of a distributed system where there is no such central coordination authority. ActyxOS is a distributed, but especially a completely decentralized system, with no central authority that distributes and coordinates work.
+Decentralized systems are a special form of a distributed system where there is no such central coordination authority. Actyx is a distributed, but especially a completely decentralized system, with no central authority that distributes and coordinates work.
 
-## Relevance to ActyxOS
+## Relevance to Actyx
 
-By building and running apps on ActyxOS you are building a decentralized, and thus also a distributed, system. Edge devices provide computing power and access to the underlying network. Apps run on nodes and communicate by passing messages (see [Event Streams](/docs/conceptual/event-sourcing)).
+By building apps for Actyx you are building a decentralized, and thus also a distributed, system. Edge devices provide computing power and access to the underlying network. Apps run on nodes and communicate by passing messages (see [Event Streams](/docs/conceptual/event-sourcing)).
 
-With ActyxOS you get all the benefits of distributed systems: scalability, reliability, and performance. ActyxOS also tries to reduce the challenges associated with a distributed system to a minimum. If you build apps using the Actyx Pond – a framework for building always-available apps—many of the challenges are completely taken care of for you.
+With Actyx you get all the benefits of distributed systems: scalability, reliability, and performance. Actyx also tries to reduce the challenges associated with a distributed system to a minimum. If you build apps using the Actyx Pond – a framework for building always-available apps—many of the challenges are completely taken care of for you.
 
-### ActyxOS and the CAP theorem
+### Actyx and the CAP theorem
 
 As discussed above, systems that span more than one node (computer, tablet, etc.) connected over the network are called distributed systems. More formally, a system is called distributed if parts of it can fail while others continue to operate, i.e. they exhibit so-called partial failure. Such systems suffer from a host of problems unknown by systems that run on a single machine. A nice introduction to this topic can be found in [fallacies of distributed computing](https://en.wikipedia.org/wiki/Fallacies_of_distributed_computing#The_fallacies). The first false claim is that the network is reliable. And this is very false indeed; computer networks are not very reliable. Therefore every device connected over a network can experience temporary disconnects, even on an ideally otherwise functioning network. Network Partition is the terminology we use to describe the state of one or more temporarily disconnected nodes in a cohesive distributed system.
 

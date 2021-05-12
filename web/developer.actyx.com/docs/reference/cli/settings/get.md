@@ -2,7 +2,7 @@
 title: ax settings get
 ---
 
-```text title="Get settings from an ActyxOS node"
+```text title="Get settings from a node"
 USAGE:
     ax settings get [FLAGS] <SCOPE> <NODE>
 

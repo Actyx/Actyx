@@ -56,17 +56,17 @@ const createConceptuals = () => {
     },
     {
       title: 'Security in Actyx',
-      description: 'Basic netowrk security guarantees provided by ActyxOS.',
+      description: 'Basic netowrk security guarantees provided by Actyx.',
       link: 'security-in-actyx',
     },
     {
-      title: 'ActyxOS components',
-      description: 'Architecture and components of ActyxOS.',
+      title: 'Actyx components',
+      description: 'Architecture and components of Actyx.',
       link: 'the-actyx-node',
     },
     {
-      title: 'ActyxOS node and app lifecycle',
-      description: 'Lifecycle of ActyxOS and apps deployed to ActyxOS runtimes.',
+      title: 'Actyx node and app lifecycle',
+      description: 'Lifecycle of Actyx and apps deployed to Actyx runtimes.',
       link: 'actyx-node-lifecycle',
     },
     /*     {

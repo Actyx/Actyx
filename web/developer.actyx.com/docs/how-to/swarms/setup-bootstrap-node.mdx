@@ -6,7 +6,7 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
-You need to setup an additional edge device as a bootstrap node if mDNS is disabled on your devices or network, or if you are running ActyxOS on Docker.
+You need to setup an additional edge device as a bootstrap node if mDNS is disabled on your devices or network, or if you are running Actyx on Docker.
 
 import Tabs from '@theme/Tabs'
 import TabItem from '@theme/TabItem'
@@ -21,26 +21,26 @@ We advise to always use bootstrap nodes in production deployments to make sure a
 
 Any physical or virtual edge device in your local network can serve as a bootstrap node.
 
-The ActyxOS bootstrap node is [publicly available on Docker Hub](https://hub.docker.com/repository/docker/actyx/actyxos-bootstrap-node). You can download and run an ActyxOS bootstrap node with the following command:
+The Actyx bootstrap node is [publicly available on Docker Hub](https://hub.docker.com/repository/docker/actyx/actyx-bootstrap-node). You can download and run an Actyx bootstrap node with the following command:
 
 ```text
 # Start the bootstrap node with your swarm key
-docker run --name actyxos_bootstrap_node --rm --env SWARM_KEY=L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCjRkNWEzODQ3NGY1MjYzNDc1MjY2NTY3NTMwNTM0NjRkNGUzNzUyNDQ3ODY1NjIzMzRhMzg3MDU4NjU2MTcxNGQ= -p 4001:4001 -v actyxos-bootstrap-data:/data actyx/actyxos-bootstrap-node
-Starting ActyxOS bootstrap node
+docker run --name actyx_bootstrap_node --rm --env SWARM_KEY=L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCjRkNWEzODQ3NGY1MjYzNDc1MjY2NTY3NTMwNTM0NjRkNGUzNzUyNDQ3ODY1NjIzMzRhMzg3MDU4NjU2MTcxNGQ= -p 4001:4001 -v actyx-bootstrap-data:/data actyx/actyx-bootstrap-node
+Starting Actyx bootstrap node
 
-ActyxOS bootstrap node running
+Actyx bootstrap node running
 
 bootstrap node address: /ip4/<YOUR_IP>/tcp/4001/p2p/QmQ3iynxmtZUSNF5dvzQQEYhqnB4sqySRej3A2FgiAMBMH
 
 Set the bootstrap node address using the `ax settings set` command on your
-ActyxOS nodes (see https://actyx.com/os/docs/node-settings-schema.html for
+Actyx nodes (see https://actyx.com/os/docs/node-settings-schema.html for
 more information). Replace <YOUR_IP> above with the IP address of this host.
 
 Press Ctrl+C twice to shutdown this bootstrap node.
 ```
 
 :::caution Run the bootstrap node with a persistent volume
-It is highly recommended to use a persistent volume, as you will otherwise have to change the settings of all your ActyxOS nodes in this swarm each time you start the bootstrap node. If you want the node's identity to be preserved between runs, you need add a persistent volume with `-v` for storage of the node's identity. If you do so, the `SWARM_KEY` environment variable will be ignored in subsequent runs.
+It is highly recommended to use a persistent volume, as you will otherwise have to change the settings of all your Actyx nodes in this swarm each time you start the bootstrap node. If you want the node's identity to be preserved between runs, you need add a persistent volume with `-v` for storage of the node's identity. If you do so, the `SWARM_KEY` environment variable will be ignored in subsequent runs.
 :::
 
 ### Configure your nodes to connect to the bootstrap node
@@ -77,7 +77,7 @@ The swarm key is a node setting. Copy the bootstrap node address from the output
 </TabItem>
 </Tabs>
 
-In case you are running ActyxOS on Docker **without** `network=host` , and your bootstrap node is **not** running in the same local network as your other nodes, you need to [configure the `announceAdresses` setting on these nodes](./configure-announced-addresses).
+In case you are running Actyx on Docker **without** `network=host` , and your bootstrap node is **not** running in the same local network as your other nodes, you need to [configure the `announceAdresses` setting on these nodes](./configure-announced-addresses).
 
 <!-- TODO write peer discovery
 For more information on how nodes discover and connect to each other, please check out our conceptual guide on peer discovery

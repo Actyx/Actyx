@@ -2,7 +2,7 @@
 title: ax swarms keygen
 ---
 
-```text title="Generate a new ActyxOS swarm key"
+```text title="Generate a new swarm key"
 USAGE:
     ax swarms keygen [FLAGS] [OPTIONS]
 

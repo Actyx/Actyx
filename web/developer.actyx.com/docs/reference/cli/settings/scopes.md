@@ -2,7 +2,7 @@
 title: ax settings scopes
 ---
 
-```text title="Get setting scopes from an ActyxOS node"
+```text title="Get setting scopes from a node"
 USAGE:
     ax settings scopes [FLAGS] <NODE>
 
