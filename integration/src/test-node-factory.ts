@@ -9,9 +9,6 @@ const createTestNode = async (name: string, install: 'docker' | 'linux'): Promis
     install: { type: install },
     prepare: { type: 'local' },
   })
-  if (testNode === undefined) {
-    throw new Error(`could not create ${name}`)
-  }
   return testNode
 }
 
