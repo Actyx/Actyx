@@ -77,7 +77,7 @@ const ESSENTIALS = [
   [
     {
       title: 'Event Service API',
-      link: '/docs/reference/event-service',
+      link: '/docs/reference/events-api',
     },
     {
       title: 'Actyx reference',
