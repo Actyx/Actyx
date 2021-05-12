@@ -13,7 +13,7 @@ const createReferences = () => {
       title: 'Event Service API',
       description:
         'The underlying HTTP API responsible for publishing, querying and subscribing to events.',
-      link: 'event-service',
+      link: 'events-api',
     },
     {
       title: 'Actyx Pond',
@@ -24,11 +24,6 @@ const createReferences = () => {
       title: 'Javascript/Typescript SDK',
       description: 'The Javascript/Typescript SDK for the Event Service HTTP API.',
       link: 'js-ts-sdk',
-    },
-    {
-      title: 'Rust SDK',
-      description: 'The Rust SDK for the Event Service HTTP API.',
-      link: 'rust-sdk',
     },
     {
       title: 'Actyx Node Manager',
