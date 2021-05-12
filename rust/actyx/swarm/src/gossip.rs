@@ -330,9 +330,9 @@ mod tests {
     fn test_decode_root_map() {
         #[rustfmt::skip]
         let cbor = [
-            0x82, // array(3)
+            0x82, // array(2)
                 0x01, // unsigned(1)
-                0x83, // array(2)
+                0x83, // array(3)
                     0xa0, // map(0)
                     0x00, // unsigned(0)
                     0x00, // unsigned(0)
