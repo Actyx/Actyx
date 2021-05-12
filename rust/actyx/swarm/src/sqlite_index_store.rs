@@ -4,9 +4,9 @@ use ax_futures_util::stream::variable::{Observer, Variable};
 use parking_lot::Mutex;
 use rusqlite::backup;
 use rusqlite::{params, Connection, OpenFlags};
-use std::path::PathBuf;
 use std::time::Duration;
 use std::{collections::BTreeSet, sync::Arc};
+use std::{convert::TryFrom, path::PathBuf};
 use tracing::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -88,13 +88,10 @@ impl SqliteIndexStore {
     /// we received a lamport from an external source
     pub fn received_lamport(&mut self, lamport: LamportTimestamp) -> Result<()> {
         let conn = self.conn.lock();
-        conn.prepare_cached("UPDATE meta SET lamport = MAX(lamport, ?) + 1")?
-            .execute(params![u64::from(lamport) as i64])?;
-        // do this after the txn was successfully committed, but while holding the db lock.
-        self.lamport.transform_mut(|current| {
-            *current = lamport.max(*current) + 1;
-            true
-        });
+        let res: i64 = conn
+            .prepare_cached("UPDATE meta SET lamport = MAX(lamport, ?) + 1 RETURNING lamport")?
+            .query_row(params![u64::from(lamport) as i64], |x| x.get(0))?;
+        self.lamport.set(u64::try_from(res).expect("negative lamport").into());
         drop(conn);
         Ok(())
     }
@@ -102,14 +99,11 @@ impl SqliteIndexStore {
     /// Increase the lamport by `increment` and return the *initial* value
     pub fn increase_lamport(&mut self, increment: u64) -> Result<LamportTimestamp> {
         let conn = self.conn.lock();
-        conn.prepare_cached("UPDATE meta SET lamport = lamport + ?")?
-            .execute(params![&(increment as i64)])?;
-        let mut initial = LamportTimestamp::default();
-        self.lamport.transform_mut(|current| {
-            initial = *current;
-            *current = *current + increment;
-            true
-        });
+        let res: i64 = conn
+            .prepare_cached("UPDATE meta SET lamport = lamport + ? RETURNING lamport")?
+            .query_row(params![&(increment as i64)], |x| x.get(0))?;
+        let initial = self.lamport.get();
+        self.lamport.set(u64::try_from(res).expect("negative lamport").into());
         drop(conn);
         trace!("increased lamport by {}", increment);
         Ok(initial)
