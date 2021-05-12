@@ -224,6 +224,10 @@ impl Gossip {
                                 root_update.stream,
                                 root_update.blocks.len()
                             );
+                            store
+                                .lock()
+                                .received_lamport(root_update.lamport)
+                                .expect("unable to update lamport");
                             match store.ipfs().create_temp_pin() {
                                 Ok(tmp) => {
                                     if let Err(err) = store.ipfs().temp_pin(&tmp, &root_update.root) {
@@ -246,6 +250,10 @@ impl Gossip {
                         }
                         Ok(GossipMessage::RootMap(root_map)) => {
                             tracing::debug!("{} received root map", store.ipfs().local_node_name());
+                            store
+                                .lock()
+                                .received_lamport(root_map.lamport)
+                                .expect("unable to update lamport");
                             for (stream, root) in root_map.entries {
                                 match Link::try_from(root) {
                                     Ok(root) => store.update_root(stream, root),

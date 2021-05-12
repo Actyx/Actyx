@@ -1,5 +1,6 @@
-use actyxos_sdk::StreamId;
+use actyxos_sdk::{LamportTimestamp, StreamId};
 use anyhow::{Context, Result};
+use ax_futures_util::stream::variable::{Observer, Variable};
 use parking_lot::Mutex;
 use rusqlite::backup;
 use rusqlite::{params, Connection, OpenFlags};
@@ -18,10 +19,7 @@ pub struct SqliteIndexStore {
     conn: Arc<Mutex<Connection>>,
     /// local copy of the lamport timestamp for quick access
     /// This must be ensured to be always in sync with the db value
-    ///
-    /// We do not use the newtype here, since we need to perform operations with it
-    /// that are not supported by the newtype.
-    lamport: u64,
+    lamport: Variable<LamportTimestamp>,
 }
 
 /// Implementation of IpfsIndexStore for sqlite. Please note that for this implementation
@@ -81,32 +79,40 @@ impl SqliteIndexStore {
                 Ok(0)
             })?;
         drop(locked);
-        Ok(Self { conn, lamport })
+        Ok(Self {
+            conn,
+            lamport: Variable::new(lamport.into()),
+        })
     }
 
     /// we received a lamport from an external source
-    pub fn received_lamport(&mut self, lamport: u64) -> Result<u64> {
-        let lamport = lamport + 1;
-        self.conn
-            .lock()
-            .prepare_cached("UPDATE meta SET lamport = MAX(lamport, ?)")?
-            .execute(params![&(lamport as i64)])?;
-        // do this after the txn was successfully committed.
-        self.lamport = self.lamport.max(lamport);
-        trace!("received lamport {}, current lamport is {}", lamport, self.lamport);
-        Ok(self.lamport)
+    pub fn received_lamport(&mut self, lamport: LamportTimestamp) -> Result<()> {
+        let conn = self.conn.lock();
+        conn.prepare_cached("UPDATE meta SET lamport = MAX(lamport, ?) + 1")?
+            .execute(params![u64::from(lamport) as i64])?;
+        // do this after the txn was successfully committed, but while holding the db lock.
+        self.lamport.transform_mut(|current| {
+            *current = lamport.max(*current) + 1;
+            true
+        });
+        drop(conn);
+        Ok(())
     }
 
-    /// Increase the lamport by `increment` and return the new value
-    pub fn increase_lamport(&mut self, increment: u64) -> Result<u64> {
-        self.conn
-            .lock()
-            .prepare_cached("UPDATE meta SET lamport = lamport + ?")?
+    /// Increase the lamport by `increment` and return the *initial* value
+    pub fn increase_lamport(&mut self, increment: u64) -> Result<LamportTimestamp> {
+        let conn = self.conn.lock();
+        conn.prepare_cached("UPDATE meta SET lamport = lamport + ?")?
             .execute(params![&(increment as i64)])?;
-        // do this after the txn was successfully committed.
-        self.lamport += increment as u64;
-        trace!("increased lamport by {} to {}", increment, self.lamport);
-        Ok(self.lamport)
+        let mut initial = LamportTimestamp::default();
+        self.lamport.transform_mut(|current| {
+            initial = *current;
+            *current = *current + increment;
+            true
+        });
+        drop(conn);
+        trace!("increased lamport by {}", increment);
+        Ok(initial)
     }
 
     pub fn add_stream(&mut self, stream: StreamId) -> Result<()> {
@@ -144,10 +150,14 @@ impl SqliteIndexStore {
         Ok(set)
     }
 
-    /// current lamport timestamp
+    pub fn observe_lamport(&self) -> Observer<LamportTimestamp> {
+        self.lamport.new_observer()
+    }
+
+    /// current lamport timestamp, for testing
     #[cfg(test)]
     pub fn lamport(&self) -> actyxos_sdk::LamportTimestamp {
-        self.lamport.into()
+        self.lamport.get()
     }
 }
 
@@ -180,10 +190,10 @@ mod test {
     #[test]
     fn received_lamport_should_take_the_max_and_increment() {
         let mut empty_store = empty_store();
-        empty_store.received_lamport(5).unwrap();
-        assert_eq!(empty_store.lamport, 6);
-        empty_store.received_lamport(3).unwrap();
-        assert_eq!(empty_store.lamport, 6);
+        empty_store.received_lamport(5.into()).unwrap();
+        assert_eq!(empty_store.lamport.get(), LamportTimestamp::from(6));
+        empty_store.received_lamport(3.into()).unwrap();
+        assert_eq!(empty_store.lamport.get(), LamportTimestamp::from(7));
     }
 
     #[test]
@@ -196,7 +206,7 @@ mod test {
         }
         let other_store = get_shared_memory_index_store(&db)?;
 
-        assert_eq!(store.lamport, other_store.lamport);
+        assert_eq!(store.lamport.get(), other_store.lamport.get());
         Ok(())
     }
 
