@@ -9,14 +9,16 @@ import { actyxDockerImage, currentActyxBinary, currentAxBinary, settings } from 
 import { ActyxNode, Target } from './types'
 import { mkLog } from './util'
 
-export const mkNodeLocalProcess = async (
+export const mkNodeLocalProcess = (
   nodeName: string,
   target: Target,
-  logger: (s: string) => void,
-): Promise<ActyxNode> => {
+  reuseWorkingDirIfExists?: boolean,
+) => async (logger: (s: string) => void): Promise<ActyxNode> => {
   const clog = mkLog(nodeName)
   const workingDir = path.resolve(settings().tempDir, `${nodeName}-actyx-data`)
-  await remove(workingDir)
+  if (reuseWorkingDirIfExists !== true) {
+    await remove(workingDir)
+  }
   await ensureDir(workingDir)
   const binary = await currentActyxBinary()
 
