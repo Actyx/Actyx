@@ -40,10 +40,6 @@ export const mkNodeLocalProcess = (
     ],
     { env: { RUST_BACKTRACE: '1' } },
   )
-  const shutdown = async () => {
-    clog('killing process')
-    proc.kill('SIGTERM')
-  }
   const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
 
   await new Promise<void>((res, rej) => {
@@ -57,24 +53,38 @@ export const mkNodeLocalProcess = (
       rej(`channel closed, code: ${code}, signal: '${signal}'`),
     )
   }).catch((err) => {
-    shutdown()
+    clog('killing process due to error')
+    proc.kill('SIGTERM')
     flush()
     return Promise.reject(err)
   })
+
+  proc.removeAllListeners('exit')
+  const shutdown = (): Promise<void> => {
+    clog('shutdown process')
+    proc.kill('SIGTERM')
+    return new Promise<void>((resolve) =>
+      proc.on('exit', (code: number, signal: string) => {
+        clog(`channel closed, code: ${code}, signal: '${signal}'`)
+        resolve()
+      }),
+    )
+  }
+
   clog('Actyx started')
   clog(`admin reachable on port ${port4458}`)
   clog(`http api reachable on port ${port4454}`)
 
   const httpApiOrigin = `http://localhost:${port4454}`
-  const opts = DefaultClientOpts()
-  opts.Endpoints.EventService.BaseUrl = httpApiOrigin
+  const clientOpts = DefaultClientOpts()
+  clientOpts.Endpoints.EventService.BaseUrl = httpApiOrigin
   const axBinaryPath = await currentAxBinary()
   return {
     name: nodeName,
     target,
     host: 'process',
     ax: await CLI.build(`localhost:${port4458}`, axBinaryPath),
-    httpApiClient: Client(opts),
+    httpApiClient: Client(clientOpts),
     _private: {
       shutdown,
       axBinaryPath,
