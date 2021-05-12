@@ -89,7 +89,7 @@ impl SqliteIndexStore {
     pub fn received_lamport(&mut self, lamport: LamportTimestamp) -> Result<()> {
         let conn = self.conn.lock();
         let res: i64 = conn
-            .prepare_cached("UPDATE meta SET lamport = MAX(lamport, ?) + 1 RETURNING lamport")?
+            .prepare_cached("UPDATE meta SET lamport = MAX(lamport + 1, ?) RETURNING lamport")?
             .query_row(params![u64::from(lamport) as i64], |x| x.get(0))?;
         self.lamport.set(u64::try_from(res).expect("negative lamport").into());
         drop(conn);
