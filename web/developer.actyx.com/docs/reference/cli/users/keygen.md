@@ -2,7 +2,7 @@
 title: ax users keygen
 ---
 
-```text title="Generate a new user key pair for interacting with an Actyx node"
+```text title="Generate a new user key pair"
 USAGE:
     ax users keygen [FLAGS] [OPTIONS]
 

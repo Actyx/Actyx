@@ -2,7 +2,7 @@
 title: ax settings set
 ---
 
-```text title="Configure settings of an ActyxOS node"
+```text title="Configure settings of a node"
 USAGE:
     ax settings set [FLAGS] <SCOPE> <VALUE> <NODE>
 

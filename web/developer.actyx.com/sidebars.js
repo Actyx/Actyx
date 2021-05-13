@@ -235,12 +235,6 @@ module.exports = {
     },
     {
       type: 'category',
-      label: 'Actyx SDK (JS/TS)',
-      collapsed: true,
-      items: require('./__js-ts-sdk-sidebar'),
-    },
-    {
-      type: 'category',
       label: 'Actyx Pond (JS/TS)',
       collapsed: true,
       items: require('./__pond-sidebar'),
