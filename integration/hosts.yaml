@@ -57,33 +57,34 @@ hosts:
       armv7: true
     install:
       type: docker
-  - name: windows-1
-    prepare:
-      type: create-aws-ec2
-      # Windows Server 2019
-      # Note: This is a public AMI. The underlying image might be upgraded from
-      # time to time, thus the AMI's ID is going to change, and the old one is
-      # not accessible anymore.  If that happens, search for the current "Windows
-      # Server 2019 Base" Image in the AWS Marketplace
-      # https://aws.amazon.com/marketplace
-      ami: ami-05ced23e7b71d428c
-      instance: t2.large
-      user: Administrator
-    install:
-      type: windows
-    # Disabled until Android setup is less flaky ..
-    # https://github.com/Actyx/Cosmos/issues/6651
-    #  - name: x86_64-android-emulator
-    #    prepare:
-    #      type: create-aws-ec2
-    #      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
-    #      ami: ami-0e793d1a6c23e9488
-    #      # cheapest aws bare metal instance
-    #      # needed to have direct access to /dev/kvm
-    #      instance: c5n.metal
-    #      user: ubuntu
-    #    install:
-    #      type: android
+  # Disabled due to https://github.com/Actyx/Cosmos/issues/6660
+  # - name: windows-1
+  #   prepare:
+  #     type: create-aws-ec2
+  #     # Windows Server 2019
+  #     # Note: This is a public AMI. The underlying image might be upgraded from
+  #     # time to time, thus the AMI's ID is going to change, and the old one is
+  #     # not accessible anymore.  If that happens, search for the current "Windows
+  #     # Server 2019 Base" Image in the AWS Marketplace
+  #     # https://aws.amazon.com/marketplace
+  #     ami: ami-05ced23e7b71d428c
+  #     instance: t2.large
+  #     user: Administrator
+  #   install:
+  #     type: windows
+  # Disabled until Android setup is less flaky ..
+  # https://github.com/Actyx/Cosmos/issues/6651
+  #  - name: x86_64-android-emulator
+  #    prepare:
+  #      type: create-aws-ec2
+  #      # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
+  #      ami: ami-0e793d1a6c23e9488
+  #      # cheapest aws bare metal instance
+  #      # needed to have direct access to /dev/kvm
+  #      instance: c5n.metal
+  #      user: ubuntu
+  #    install:
+  #      type: android
 settings:
   # Where folders and files will be created during a test run.
   tempDir: temp
