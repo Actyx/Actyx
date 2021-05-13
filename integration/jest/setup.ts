@@ -284,9 +284,6 @@ const setupInternal = async (_config: Record<string, unknown>): Promise<void> =>
    */
   try {
     for (const node of await Promise.all(config.hosts.map(createNode))) {
-      if (node === undefined) {
-        continue
-      }
       axNodeSetup.nodes.push(node)
     }
   } catch (e) {

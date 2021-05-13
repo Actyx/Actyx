@@ -2,6 +2,7 @@ import fetch from 'node-fetch'
 import { getToken, mkEventsPath, trialManifest, NODE_ID_SEG } from '../../http-client'
 import WebSocket from 'ws'
 import { run } from '../../util'
+import { createTestNodeLocal } from '../../test-node-factory'
 
 const UNAUTHORIZED_TOKEN =
   'AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ=='
@@ -65,6 +66,25 @@ describe('auth http', () => {
           }),
         ),
     ))
+
+  it('should fail for a valid token when node is cycled', async () => {
+    const nodeName = 'es-auth'
+    let testNode = await createTestNodeLocal(nodeName)
+    const token = await getToken(trialManifest, testNode._private.httpApiOrigin)
+      .then((x) => x.json())
+      .then((x) => x.token)
+    const gId = (origin: string) => getId(origin, 'Bearer ' + token).then((x) => x.json())
+
+    // assert we can access event service
+    const response = await gId(testNode._private.httpApiOrigin)
+    expect(response).toEqual({ nodeId: expect.any(String) })
+    await testNode._private.shutdown()
+
+    // start the node again and assert that we can't reuse previous token
+    testNode = await createTestNodeLocal(nodeName, true)
+    const result = await gId(testNode._private.httpApiOrigin)
+    expect(result).toEqual({ code: 'ERR_TOKEN_EXPIRED', message: 'Expired token.' })
+  })
 
   // TODO: test expired token response, for that node's AX_API_TOKEN_VALIDITY
   // env value needs to be set to 1s. What is the best way to do so.
