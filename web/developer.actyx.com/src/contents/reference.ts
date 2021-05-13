@@ -21,11 +21,6 @@ const createReferences = () => {
       link: 'pond-api-reference',
     },
     {
-      title: 'Javascript/Typescript SDK',
-      description: 'The Javascript/Typescript SDK for the Event Service HTTP API.',
-      link: 'js-ts-sdk',
-    },
-    {
       title: 'Actyx Node Manager',
       description: 'An easy-to-use GUI application for managing nodes.',
       link: 'node-manager',
