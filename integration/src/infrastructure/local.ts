@@ -61,6 +61,9 @@ export const mkNodeLocalProcess = (
 
   proc.removeAllListeners('exit')
   const shutdown = (): Promise<void> => {
+    if (proc.killed) {
+      return Promise.resolve()
+    }
     clog('shutdown process')
     proc.kill('SIGTERM')
     return new Promise<void>((resolve) =>

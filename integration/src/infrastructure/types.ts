@@ -30,7 +30,7 @@ export type SshAble = {
 
 export type LocalTargetKind = Readonly<{
   type: 'local'
-  reuseWorkingDirIfExists?: boolean
+  reuseWorkingDirIfExists: boolean
 }>
 
 export type TargetKind =

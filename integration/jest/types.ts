@@ -46,6 +46,7 @@ export type CreateEC2 = t.TypeOf<typeof createEC2>
 
 const useLocal = t.type({
   type: t.literal('local'),
+  reuseWorkingDirIfExists: fromNullable(t.boolean)(false),
 })
 
 const useSsh = t.type({

@@ -59,10 +59,13 @@ const installProcess = (
         ? mkWindowsSsh(host.name, target, kind, logger)
         : mkNodeSshProcess(host.name, target, kind, logger)
     }
-    case 'local':
-      return mkNodeLocalProcess(host.name, target)(logger)
-    case 'test':
+    case 'local': {
+      const { reuseWorkingDirIfExists } = kind
+      return mkNodeLocalProcess(host.name, target, reuseWorkingDirIfExists)(logger)
+    }
+    case 'test': {
       throw new Error(`${kind.type} is not supported as proc`)
+    }
   }
 }
 
@@ -101,7 +104,7 @@ const installAndroidEmulator = (
   }
 }
 
-export const mkLocalTarget = (hostname: string, reuseWorkingDirIfExists?: boolean): Target => {
+const mkLocalTarget = (hostname: string, reuseWorkingDirIfExists: boolean): Target => {
   console.log('node %s using the local system', hostname)
   const shutdown = () => Promise.resolve()
   const os = currentOS()
@@ -191,7 +194,7 @@ const mkTarget = (
       return Promise.resolve(mkSshTarget(prepare))
     }
     case 'local': {
-      return Promise.resolve(mkLocalTarget(host.name))
+      return Promise.resolve(mkLocalTarget(host.name, prepare.reuseWorkingDirIfExists))
     }
   }
 }
