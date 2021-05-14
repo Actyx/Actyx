@@ -37,3 +37,6 @@ panic = "abort"
 systray = { git = "https://github.com/wngr/systray-rs" }
 # wait for https://github.com/elizagamedev/wintrap-rs/pull/1
 wintrap = { git = "https://github.com/wngr/wintrap-rs" }
+
+banyan = { git = "https://github.com/actyx/banyan" }
+banyan-utils = { git = "https://github.com/actyx/banyan" }

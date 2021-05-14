@@ -1,9 +1,8 @@
 use actyxos_sdk::{tags, LamportTimestamp, Payload, TagSet, Timestamp};
 use banyan::{
-    forest::{BranchCache, Config, CryptoConfig, Forest, Transaction},
-    memstore::MemStore,
     query::{AllQuery, Query},
-    tree::Tree,
+    store::{BranchCache, MemStore},
+    Forest, StreamBuilder, Transaction,
 };
 use futures::prelude::*;
 use parking_lot::Mutex;
@@ -101,9 +100,7 @@ type AxTxn = Transaction<AxTrees, Payload, MemStore<Sha256Digest>, MemStore<Sha2
 fn test_txn() -> AxTxn {
     let store = MemStore::new(usize::max_value(), Sha256Digest::new);
     let branch_cache = BranchCache::new(1000);
-    let config = Config::debug();
-    let crypto_config = CryptoConfig::default();
-    AxTxn::new(Forest::new(store.clone(), branch_cache, crypto_config, config), store)
+    AxTxn::new(Forest::new(store.clone(), branch_cache), store)
 }
 
 fn generate_events(n: usize) -> Vec<(AxKey, Payload)> {
@@ -154,7 +151,9 @@ async fn events_banyan_tree_subscription_set() -> anyhow::Result<()> {
     // create a transaction so we can write banyan trees
     let txn = test_txn();
     // create a tree
-    let tree = txn.extend(&Tree::default(), events.clone())?;
+    let mut builder = StreamBuilder::debug();
+    txn.extend(&mut builder, events.clone())?;
+    let tree = builder.snapshot();
     // try all query
     {
         let query = AllQuery;

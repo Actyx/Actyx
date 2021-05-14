@@ -1,10 +1,9 @@
 use crate::tag_index::IndexSet;
 use actyxos_sdk::{LamportTimestamp, TagSet, Timestamp};
 use banyan::{
-    forest::TreeTypes,
     index::{BranchIndex, CompactSeq, LeafIndex, Summarizable},
     query::Query,
-    tree::Tree,
+    Tree, TreeTypes,
 };
 use libipld::{
     cbor::DagCborCodec,

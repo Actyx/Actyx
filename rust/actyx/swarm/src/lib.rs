@@ -39,13 +39,8 @@ use actyxos_sdk::{
 };
 use anyhow::{Context, Result};
 use ax_futures_util::{prelude::*, stream::variable::Variable};
-use banyan::{
-    forest::{self, BranchCache, Config as ForestConfig, CryptoConfig},
-    index::Index,
-    query::Query,
-};
+use banyan::{index::Index, query::Query, store::BranchCache, FilteredChunk, Secrets, StreamBuilder};
 use crypto::KeyPair;
-use forest::FilteredChunk;
 use futures::{channel::mpsc, prelude::*};
 use ipfs_embed::{
     BitswapConfig, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId,
@@ -81,10 +76,11 @@ use util::{
 type TT = AxTrees;
 type Key = AxKey;
 type Event = Payload;
-type Forest = banyan::forest::Forest<TT, Event, SqliteStore>;
-type Transaction = banyan::forest::Transaction<TT, Event, SqliteStore, SqliteStoreWrite>;
+type Forest = banyan::Forest<TT, Event, SqliteStore>;
+type Transaction = banyan::Transaction<TT, Event, SqliteStore, SqliteStoreWrite>;
+type Tree = banyan::Tree<TT>;
+type AxStreamBuilder = banyan::StreamBuilder<TT>;
 type Link = Sha256Digest;
-type Tree = banyan::tree::Tree<TT>;
 
 pub type Block = libipld::Block<libipld::DefaultParams>;
 pub type Ipfs = ipfs_embed::Ipfs<libipld::DefaultParams>;
@@ -272,13 +268,12 @@ impl<'a> BanyanStoreGuard<'a> {
     fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Arc<OwnStream> {
         self.own_streams.get(&stream_nr).cloned().unwrap_or_else(|| {
             tracing::debug!("creating new own stream {}", stream_nr);
-            let forest = self.data.forest.clone();
             let stream_id = self.node_id().stream(stream_nr);
             // TODO: Maybe this fn should be fallible
             let _ = self.index_store.add_stream(stream_id);
             tracing::debug!("publish new stream_id {}", stream_id);
             self.publish_new_stream_id(stream_id);
-            let stream = Arc::new(OwnStream::new(forest, stream_nr));
+            let stream = Arc::new(OwnStream::new(stream_nr));
             self.own_streams.insert(stream_nr, stream.clone());
             stream
         })
@@ -289,13 +284,12 @@ impl<'a> BanyanStoreGuard<'a> {
         let _ = self.index_store.add_stream(stream_id);
         let node_id = stream_id.node_id();
         let stream_nr = stream_id.stream_nr();
-        let forest = self.data.forest.clone();
         let remote_node = self.get_or_create_remote_node(node_id);
         if let Some(state) = remote_node.streams.get(&stream_nr).cloned() {
             state
         } else {
             tracing::debug!("creating new replicated stream {}", stream_id);
-            let state = Arc::new(ReplicatedStreamInner::new(forest));
+            let state = Arc::new(ReplicatedStreamInner::new());
             remote_node.streams.insert(stream_nr, state.clone());
             let store = self.outer();
             self.spawn_task("careful_ingestion", store.careful_ingestion(stream_id, state.clone()));
@@ -347,10 +341,10 @@ impl<'a> BanyanStoreGuard<'a> {
         if me {
             let stream_nr = stream_id.stream_nr();
             let stream = self.get_or_create_own_stream(stream_nr);
-            (stream.tree_stream(), stream.forest().clone())
+            (stream.tree_stream(), self.data.forest.clone())
         } else {
             let stream = self.get_or_create_replicated_stream(stream_id);
-            (stream.tree_stream(), stream.forest().clone())
+            (stream.tree_stream(), self.data.forest.clone())
         }
     }
 
@@ -487,13 +481,7 @@ impl BanyanStore {
         } else {
             SqliteIndexStore::open(DbPath::Memory)?
         };
-        let forest = Forest::new(
-            SqliteStore::wrap(ipfs.clone()),
-            BranchCache::<TT>::new(64 << 20),
-            CryptoConfig::default(),
-            // TODO: add default implementation.
-            ForestConfig::debug(),
-        );
+        let forest = Forest::new(SqliteStore::wrap(ipfs.clone()), BranchCache::<TT>::new(64 << 20));
         let gossip = Gossip::new(
             ipfs.clone(),
             node_id,
@@ -624,13 +612,15 @@ impl BanyanStore {
             tracing::debug!("Trying to load tree for {}", stream_id);
             if let Some(cid) = self.ipfs().resolve(StreamAlias::from(stream_id))? {
                 let root = cid.try_into()?;
-                let tree = self.data.forest.load_tree(root)?;
-                self.update_present(stream_id, tree.offset());
                 if stream_id.node_id() == self.node_id() {
-                    let stream = self.get_or_create_own_stream(stream_id.stream_nr());
-                    let guard = stream.lock().await;
-                    guard.set_latest(tree);
+                    let _ = self.get_or_create_own_stream(stream_id.stream_nr());
+                    // let builder = self.data.forest.load_stream_builder(Secrets::default(), Config::debug(),root)?;
+                    // self.update_present(stream_id, builder.offset());
+                    // let stream = self.get_or_create_own_stream(stream_id.stream_nr());
+                    // let guard = stream.lock().await;
+                    // guard.set_latest(tree);
                 } else {
+                    let tree = self.data.forest.load_tree(Secrets::default(), root)?;
                     self.get_or_create_replicated_stream(stream_id).set_latest(tree);
                 }
             } else {
@@ -660,14 +650,14 @@ impl BanyanStore {
         tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
         let timestamp = Timestamp::now();
         let stream = self.get_or_create_own_stream(stream_nr);
-        let guard = stream.lock().await;
+        let mut guard = stream.lock().await;
         let mut store = self.lock();
         let lamports = store.reserve_lamports(events.len())?;
         let kvs = lamports
             .zip(events)
             .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
-        self.transform_stream(&guard, |txn, tree| txn.extend_unpacked(tree, kvs))?;
-        Ok(guard.link())
+        self.transform_stream(&mut guard, |txn, tree| txn.extend_unpacked(tree, kvs))?;
+        Ok(guard.snapshot().link())
     }
 
     /// Returns a [`Stream`] of known [`StreamId`].
@@ -723,42 +713,48 @@ impl BanyanStore {
         self.lock().get_or_create_replicated_stream(stream_id)
     }
 
-    fn transform_stream(
+    fn transform_stream<T>(
         &self,
-        stream: &OwnStreamGuard,
-        f: impl FnOnce(&Transaction, &Tree) -> Result<Tree> + Send,
-    ) -> Result<()> {
+        stream: &mut OwnStreamGuard,
+        f: impl FnOnce(&Transaction, &mut StreamBuilder<AxTrees>) -> Result<T> + Send,
+    ) -> Result<T> {
         let writer = self.data.forest.store().write()?;
         let stream_nr = stream.stream_nr();
+        let stream_id = self.node_id().stream(stream_nr);
+        let prev = stream.snapshot();
         tracing::debug!("starting write transaction on stream {}", stream_nr);
-        let txn = Transaction::new(stream.forest().clone(), writer);
-        let curr = stream.latest();
-        let tree = f(&txn, &curr)?;
-        anyhow::ensure!(tree.count() >= curr.count(), "tree rejected because it lost events!");
-        // root of the new tree
-        let root: Option<Link> = tree.link();
-        // check for change
-        if root != curr.link() {
-            let cid: Option<Cid> = root.map(Into::into);
-            let stream_id = self.node_id().stream(stream_nr);
-            tracing::debug!(
-                "updating alias for stream {} to {:?}",
-                stream_nr,
-                cid.map(|x: Cid| x.to_string())
-            );
-            // update the permanent alias
-            self.ipfs().alias(StreamAlias::from(stream_id), cid.as_ref())?;
-            // update present for stream
-            self.update_present(stream_id, tree.offset());
-            // update latest
-            tracing::debug!("set_latest! {}", tree);
-            stream.set_latest(tree);
+        let txn = Transaction::new(self.data.forest.clone(), writer);
+        // take a snapshot of the initial state
+        let mut guard = stream.transaction();
+        let res = f(&txn, &mut guard);
+        let curr = guard.snapshot();
+        if res.is_err() {
+            // stream builder state will be reverted, except for the cipher offset
+            return res;
+        }
+        if curr.link() == prev.link() {
+            // nothing to do, return
+            return res;
+        }
+        // make sure we did not lose events. If we did, return a failure
+        anyhow::ensure!(curr.count() >= prev.count(), "tree rejected because it lost events!");
+        let cid = curr.link().map(Cid::from);
+        // update the permanent alias. If this fails, we will revert the builder.
+        self.ipfs().alias(StreamAlias::from(stream_id), cid.as_ref())?;
+        // this concludes the things we want to fail the transaction
+        guard.commit();
+        // set the latest
+        stream.latest().set(curr.clone());
+        // update resent for the stream
+        self.update_present(stream_id, curr.offset());
+        // publish only non-empty trees
+        if let Some(root) = curr.link() {
+            // publish the update
             let blocks = txn.into_writer().into_written();
             // publish new blocks and root
-            self.data.gossip.publish(stream_nr, root.expect("not None"), blocks)?;
+            self.data.gossip.publish(stream_nr, root, blocks)?;
         }
-        tracing::debug!("ended write transaction on stream {}", stream_nr);
-        Ok(())
+        res
     }
 
     fn update_root(&self, stream_id: StreamId, root: Link) {
@@ -774,8 +770,8 @@ impl BanyanStore {
             for stream_nr in stream_nrs {
                 tracing::debug!("compacting stream {}", stream_nr);
                 let stream = self.get_or_create_own_stream(stream_nr);
-                let guard = stream.lock().await;
-                let result = self.transform_stream(&guard, |txn, tree| txn.pack(tree));
+                let mut guard = stream.lock().await;
+                let result = self.transform_stream(&mut guard, |txn, tree| txn.pack(tree));
                 if let Err(err) = result {
                     tracing::error!("Error compacting stream {}: {}", stream_nr, err);
                     break;
@@ -836,7 +832,7 @@ impl BanyanStore {
             }
             if tree.is_none() {
                 // load the tree as soon as possible. If this fails, bail out.
-                let temp = stream.forest().load_tree(root)?;
+                let temp = self.data.forest.load_tree(Secrets::default(), root)?;
                 // check that the tree is better than the one we have, otherwise bail out
                 anyhow::ensure!(temp.last_lamport() > validated_lamport);
                 // get the offset
