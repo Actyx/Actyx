@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, convert::TryFrom, time::Duration};
+use std::{collections::BTreeMap, convert::TryFrom, str::FromStr, time::Duration};
 
 use crate::BanyanStore;
 use actyxos_sdk::{NodeId, Payload, StreamNr, Tag, TagSet};
@@ -17,7 +17,7 @@ impl Tagger {
     pub fn tag(&mut self, name: &'static str) -> Tag {
         self.0
             .entry(name)
-            .or_insert_with(|| Tag::new(name.into()).unwrap())
+            .or_insert_with(|| Tag::from_str(name).unwrap())
             .clone()
     }
 

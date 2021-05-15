@@ -2,6 +2,7 @@ use actyxos_sdk::{tags, Tag};
 use trees::tag_index::*;
 
 use serde::{de::DeserializeOwned, Serialize};
+use std::str::FromStr;
 
 fn compresss_zstd_cbor<T: Serialize>(value: &T) -> std::result::Result<Vec<u8>, Box<dyn std::error::Error>> {
     let cbor = serde_cbor::to_vec(&value)?;
@@ -28,7 +29,7 @@ fn main() {
             } else if buzz {
                 tags! {"buzz", "factory.provider.interface.adapter"}
             } else {
-                let tag = Tag::new(format!("{}", i % 11)).unwrap();
+                let tag = Tag::from_str(&*format!("{}", i % 11)).unwrap();
                 tags! { tag, "we.like.long.identifiers.because.they.seem.professional" }
             }
         })

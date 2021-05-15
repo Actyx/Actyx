@@ -19,6 +19,7 @@ use pretty_assertions::assert_eq;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, BTreeSet, BinaryHeap},
+    str::FromStr,
     sync::{Arc, Mutex},
 };
 use tracing::{debug, trace};
@@ -99,7 +100,7 @@ impl TestEventStore {
                             timestamp: Timestamp::now(),
                             tags: vec![semantics.clone(), name.clone()]
                                 .into_iter()
-                                .map(|x| Tag::new(x).unwrap())
+                                .map(|x| Tag::from_str(&*x).unwrap())
                                 .collect::<TagSet>(),
                         },
                         payload: Payload::from_json_str(&*format!("{}", off)).unwrap(),

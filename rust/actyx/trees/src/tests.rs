@@ -1,5 +1,5 @@
 use crate::axtrees::{AxKey, AxTree, AxTrees, LamportQuery, Sha256Digest, TagsQuery, TimeQuery};
-use actyxos_sdk::{tags, LamportTimestamp, Payload, Tag, TagSet, Timestamp};
+use actyxos_sdk::{tag, tags, LamportTimestamp, Payload, TagSet, Timestamp};
 use banyan::{
     forest::{BranchCache, Config, CryptoConfig, Forest, Transaction},
     memstore::MemStore,
@@ -98,7 +98,7 @@ impl Generator {
             move |index| {
                 let id = index / 2;
                 let mut tags = base_tags.clone();
-                tags += Tag::new(format!("article_id:{}", id)).unwrap();
+                tags += tag!("article_id:") + id.to_string();
                 tags
             },
             move |index| {
