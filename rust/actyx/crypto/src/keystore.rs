@@ -12,19 +12,15 @@
 //!    that multiple other nodes can decrypt an event stream (given possession of
 //!    the private key for which the Salsa20 key was encrypted)
 
-use crate::{
-    dh::{ed25519_to_x25519_pk, ed25519_to_x25519_sk},
-    pair::KeyPair,
-    private::PrivateKey,
-    public::PublicKey,
-    signature::SignedMessage,
+use crate::{pair::KeyPair, private::PrivateKey, public::PublicKey, signature::SignedMessage};
+use aes_gcm::{
+    aead::{self, Aead, NewAead},
+    AeadInPlace,
 };
-use aesstream::{AesReader, AesWriter};
 use anyhow::{anyhow, bail, Result};
 use byteorder::{BigEndian, WriteBytesExt};
 use parking_lot::RwLock;
-use rand::rngs::OsRng;
-use rust_crypto::aessafe::{AesSafe256Decryptor, AesSafe256Encryptor};
+use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -32,7 +28,6 @@ use std::{
     io::{Read, Write},
     sync::Arc,
 };
-use x25519_dalek::EphemeralSecret;
 
 impl From<KeyPair> for libp2p::core::identity::ed25519::Keypair {
     fn from(kp: KeyPair) -> libp2p::core::identity::ed25519::Keypair {
@@ -206,55 +201,6 @@ impl KeyStore {
         Ok(())
     }
 
-    /// Encrypt such that the message can be decrypted with the corresponding PrivateKey
-    ///
-    /// ```
-    /// use std::io::{Read, Write};
-    ///
-    /// let mut store = crypto::KeyStore::default();
-    /// let key = store.generate_key_pair().unwrap();
-    /// let message = b"hello world";
-    ///
-    /// let mut ciphertext = Vec::new();
-    /// let mut encoder = store.encrypt(key, &mut ciphertext).unwrap();
-    /// encoder.write_all(message);
-    /// drop(encoder);
-    ///
-    /// assert_eq!(ciphertext.len(), 64);
-    ///
-    /// // decrypt it like so:
-    /// let mut decoder = store.decrypt(key, &*ciphertext).unwrap();
-    /// let mut msg = Vec::new();
-    /// decoder.read_to_end(&mut msg).unwrap();
-    /// assert_eq!(msg, message);
-    /// ```
-    pub fn encrypt(&self, key: PublicKey, mut writer: impl Write) -> Result<impl Write> {
-        // create a new ephemeral key for this particular message
-        let ephemeral = EphemeralSecret::new(OsRng);
-        let public = x25519_dalek::PublicKey::from(&ephemeral);
-
-        // write the public key at the beginning of the buffer
-        writer.write_all(public.as_bytes())?;
-
-        let x25519 = ed25519_to_x25519_pk(&key.to_ed25519());
-        let shared = ephemeral.diffie_hellman(&x25519);
-        let aes = AesSafe256Encryptor::new(shared.as_bytes());
-        Ok(AesWriter::new(writer, aes)?)
-    }
-
-    /// Decrypt a message obtained from `encrypt`
-    pub fn decrypt(&self, key: PublicKey, mut message: impl Read) -> Result<impl Read> {
-        let mut public = [0u8; 32];
-        message.read_exact(&mut public[..])?;
-        let public = x25519_dalek::PublicKey::from(public);
-
-        let private = self.pairs.get(&key).ok_or_else(|| anyhow!("key {} not known", key))?;
-        let private = ed25519_to_x25519_sk(&private.to_ed25519());
-        let shared = private.diffie_hellman(&public);
-        let aes = AesSafe256Decryptor::new(shared.as_bytes());
-        Ok(AesReader::new(message, aes)?)
-    }
-
     pub fn get_pair(&self, public: PublicKey) -> Option<KeyPair> {
         self.pairs.get(&public).map(|private| KeyPair {
             public,
@@ -275,24 +221,32 @@ impl KeyStore {
     }
 
     // dumps are obfuscated with this key (this does not provide much security since the key
-    // can be extracted from ActyxOS binaries without much hassle, but it does make it a bit
+    // can be extracted from Actyx binaries without much hassle, but it does make it a bit
     // less obvious to prying eyes)
-    const DUMP_KEY: &'static [u8] = b"uqTmyHA4*G!KQQ@77QMu_xhTg@!o*DnP";
+    const DUMP_KEY: &'static [u8; 32] = b"uqTmyHA4*G!KQQ@77QMu_xhTg@!o*DnP";
 
     /// Write the state of this store into the given writer
-    pub fn dump(&self, dst: impl Write) -> Result<()> {
-        let enc = AesSafe256Encryptor::new(Self::DUMP_KEY);
-        let mut writer = AesWriter::new(dst, enc)?;
-        serde_cbor::to_writer(&mut writer, self)?;
-        writer.flush()?;
+    pub fn dump(&self, mut dst: impl Write) -> Result<()> {
+        let plain = serde_cbor::to_vec(self)?;
+        let cipher = aes_gcm::Aes256Gcm::new(KeyStore::DUMP_KEY.into());
+        let mut nonce = [0u8; 12];
+        OsRng.fill_bytes(&mut nonce[..]);
+        dst.write_all(&nonce[..])?;
+        let crypted = cipher.encrypt((&nonce[..]).into(), &*plain)?;
+        dst.write_all(&*crypted)?;
         Ok(())
     }
 
     /// Recreate a store from a reader that yields the bytes previously written by `dump()`
-    pub fn restore(src: impl Read) -> Result<Self> {
-        let dec = AesSafe256Decryptor::new(Self::DUMP_KEY);
-        let reader = AesReader::new(src, dec)?;
-        Ok(serde_cbor::from_reader(reader)?)
+    pub fn restore(mut src: impl Read) -> Result<Self> {
+        let mut nonce = [0u8; 12];
+        src.read_exact(&mut nonce[..])?;
+        let cipher = aes_gcm::Aes256Gcm::new(KeyStore::DUMP_KEY.into());
+        let mut bytes = Vec::new();
+        src.read_to_end(&mut bytes)?;
+        let aad = aead::Payload::from(&*bytes).aad;
+        cipher.decrypt_in_place((&nonce[..]).into(), aad, &mut bytes)?;
+        Ok(serde_cbor::from_slice(&*bytes)?)
     }
 
     /// Restores a KeyStore from a given file; starts out empty if the file doesn't exist.
@@ -398,15 +352,6 @@ mod tests {
 
         let public_from_peer_id: PublicKey = peer_id.try_into().unwrap();
         assert_eq!(public, public_from_peer_id);
-    }
-
-    #[test]
-    fn must_read_v1_keystore() -> anyhow::Result<()> {
-        // base64 encoded v0 keystore
-        let base64 = "V9DuJKgD3E7GEypiWNdV2Ugx6e6W2E87BYeWkvPTXhczxIwRL3dcbHlYYTBq/j5zP0rD7IdSpCuKQqOiJ09aYTxwLfOpf/zhjEWeQkvJJqJxe8LY8vLq++RASTNu1pB2WLM0Xro7Il/TNpizH0gMcbzZFyTbye2NWOXiejbBPAU=";
-        let bytes = base64::decode(base64)?;
-        let _ = KeyStore::restore(&bytes[..])?;
-        Ok(())
     }
 
     #[test]
