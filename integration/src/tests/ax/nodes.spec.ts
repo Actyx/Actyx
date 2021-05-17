@@ -27,6 +27,12 @@ describe('ax nodes', () => {
         const axNodeSetup = (<MyGlobal>global).axNodeSetup
         const gitHash = axNodeSetup.gitHash.slice(0, 9)
 
+        // Android is running inside an emulator, currently hardcoded to x86
+        const target =
+          node.host === 'android'
+            ? expect.stringContaining('android')
+            : `${node.target.os}-${node.target.arch}`
+
         const responseShape = [
           {
             connection: 'reachable',
@@ -37,7 +43,7 @@ describe('ax nodes', () => {
             startedUnix: expect.any(Number),
             version: {
               profile: 'release',
-              target: `${node.target.os}-${node.target.arch}`,
+              target,
               version: await node.ax.shortVersion,
               gitHash,
             },
