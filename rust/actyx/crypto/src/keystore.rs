@@ -13,12 +13,13 @@
 //!    the private key for which the Salsa20 key was encrypted)
 
 use crate::{pair::KeyPair, private::PrivateKey, public::PublicKey, signature::SignedMessage};
-use aes_gcm::{
-    aead::{self, Aead, NewAead},
-    AeadInPlace,
-};
 use anyhow::{anyhow, bail, Result};
-use byteorder::{BigEndian, WriteBytesExt};
+use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
+use chacha20poly1305::{
+    aead::{AeadInPlace, NewAead},
+    XChaCha20Poly1305,
+};
+use derive_more::{Display, Error};
 use parking_lot::RwLock;
 use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
@@ -79,6 +80,10 @@ impl Default for KeyStore {
         }
     }
 }
+
+#[derive(Debug, Display, Error)]
+#[display(fmt = "unknown KeyStore version {}", _0)]
+pub struct UnknownVersion(#[error(ignore)] u8);
 
 impl KeyStore {
     /// Installs a callback, which is called after every mutation to the held keys
@@ -224,29 +229,39 @@ impl KeyStore {
     // can be extracted from Actyx binaries without much hassle, but it does make it a bit
     // less obvious to prying eyes)
     const DUMP_KEY: &'static [u8; 32] = b"uqTmyHA4*G!KQQ@77QMu_xhTg@!o*DnP";
+    const VERSION_1: u8 = 1;
 
     /// Write the state of this store into the given writer
     pub fn dump(&self, mut dst: impl Write) -> Result<()> {
-        let plain = serde_cbor::to_vec(self)?;
-        let cipher = aes_gcm::Aes256Gcm::new(KeyStore::DUMP_KEY.into());
-        let mut nonce = [0u8; 12];
-        OsRng.fill_bytes(&mut nonce[..]);
-        dst.write_all(&nonce[..])?;
-        let crypted = cipher.encrypt((&nonce[..]).into(), &*plain)?;
-        dst.write_all(&*crypted)?;
+        let mut bytes = serde_cbor::to_vec(self)?;
+        let cipher = XChaCha20Poly1305::new(Self::DUMP_KEY.into());
+        let mut version_and_nonce = [0u8; 25];
+        let (version, nonce) = version_and_nonce.split_at_mut(1);
+        // store one byte of version information before the nonce:
+        version[0] = Self::VERSION_1;
+        // fill the rest with the nonce
+        OsRng.fill_bytes(nonce);
+        // add the version info as authenticated data
+        cipher.encrypt_in_place((&*nonce).into(), version, &mut bytes)?;
+        dst.write_all(&version_and_nonce[..])?;
+        dst.write_all(&*bytes)?;
         Ok(())
     }
 
     /// Recreate a store from a reader that yields the bytes previously written by `dump()`
     pub fn restore(mut src: impl Read) -> Result<Self> {
-        let mut nonce = [0u8; 12];
-        src.read_exact(&mut nonce[..])?;
-        let cipher = aes_gcm::Aes256Gcm::new(KeyStore::DUMP_KEY.into());
-        let mut bytes = Vec::new();
-        src.read_to_end(&mut bytes)?;
-        let aad = aead::Payload::from(&*bytes).aad;
-        cipher.decrypt_in_place((&nonce[..]).into(), aad, &mut bytes)?;
-        Ok(serde_cbor::from_slice(&*bytes)?)
+        match src.read_u8()? {
+            Self::VERSION_1 => {
+                let mut nonce = [0u8; 24];
+                src.read_exact(&mut nonce[..])?;
+                let cipher = XChaCha20Poly1305::new(Self::DUMP_KEY.into());
+                let mut bytes = Vec::new();
+                src.read_to_end(&mut bytes)?;
+                cipher.decrypt_in_place((&nonce[..]).into(), &[Self::VERSION_1], &mut bytes)?;
+                Ok(serde_cbor::from_slice(&*bytes)?)
+            }
+            v => Err(UnknownVersion(v).into()),
+        }
     }
 
     /// Restores a KeyStore from a given file; starts out empty if the file doesn't exist.
@@ -263,6 +278,7 @@ impl KeyStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chacha20poly1305::aead;
     use std::convert::TryInto;
 
     #[test]
@@ -366,8 +382,25 @@ mod tests {
         // encrypt/serialize and deserialize/decrypt
         let mut data = Vec::new();
         local.dump(&mut data)?;
+
+        // check successful case
         let local_restored = KeyStore::restore(&data[..])?;
         assert_eq!(local, local_restored);
+
+        // check corruption
+        let last = data.len() - 1;
+        data[last] += 1;
+        let err = KeyStore::restore(&data[..]).unwrap_err();
+        err.downcast_ref::<aead::Error>()
+            .unwrap_or_else(|| panic!("found wrong error: {}", err));
+
+        // check unknown version
+        data[0] = 0;
+        let err = KeyStore::restore(&data[..]).unwrap_err();
+        err.downcast_ref::<UnknownVersion>()
+            .unwrap_or_else(|| panic!("found wrong error: {}", err));
+        assert_eq!(err.to_string(), "unknown KeyStore version 0");
+
         Ok(())
     }
 }

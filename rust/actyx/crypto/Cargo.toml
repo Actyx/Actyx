@@ -7,11 +7,12 @@ edition = "2018"
 [dependencies]
 actyxos_sdk = { path = "../../sdk" }
 
-aes-gcm = { version = "0.9.1", features = ["std"] }
 anyhow = "1.0.40"
 base64 = "0.13.0"
 byteorder = { version = "1.4.3", features = ["i128"] }
+chacha20poly1305 = { version = "0.8.0", features = ["std"] }
 curve25519-dalek = "3.1.0"
+derive_more = "0.99.14"
 ed25519-dalek = { version = "1.0.1", features = ["serde"] }
 libp2p = { version = "0.37.1", default-features = false }
 multihash = { version = "0.13.2", features = ["identity"] }

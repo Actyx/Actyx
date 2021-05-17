@@ -149,41 +149,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "aes"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32380222440685202b62f23002e668519a6bf2d8df5e7655ed96223b6482b4be"
-dependencies = [
- "cfg-if 1.0.0",
- "cipher 0.3.0",
- "cpufeatures",
- "opaque-debug 0.3.0",
-]
-
-[[package]]
 name = "aes-gcm"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0301c9e9c443494d970a07885e8cf3e587bae8356a1d5abd0999068413f7205f"
 dependencies = [
  "aead 0.3.2",
- "aes 0.5.0",
+ "aes",
  "block-cipher",
- "ghash 0.3.1",
- "subtle 2.4.0",
-]
-
-[[package]]
-name = "aes-gcm"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ee2263805ba4537ccbb19db28525a7b1ebc7284c228eb5634c3124ca63eb03f"
-dependencies = [
- "aead 0.4.1",
- "aes 0.7.1",
- "cipher 0.3.0",
- "ctr",
- "ghash 0.4.1",
+ "ghash",
  "subtle 2.4.0",
 ]
 
@@ -1474,12 +1448,13 @@ name = "crypto"
 version = "0.1.0"
 dependencies = [
  "actyxos_sdk",
- "aes-gcm 0.9.1",
  "anyhow",
  "base64",
  "byteorder",
+ "chacha20poly1305 0.8.0",
  "criterion",
  "curve25519-dalek",
+ "derive_more",
  "ed25519-dalek",
  "libp2p",
  "multihash",
@@ -1556,15 +1531,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ctr"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a232f92a03f37dd7d7dd2adc67166c77e9cd88de5b019b9a9eecfaeaf7bfd481"
-dependencies = [
- "cipher 0.3.0",
-]
-
-[[package]]
 name = "curve25519-dalek"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1616,9 +1582,9 @@ dependencies = [
 
 [[package]]
 name = "derive_more"
-version = "0.99.13"
+version = "0.99.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f82b1b72f1263f214c0f823371768776c4f5841b942c9883aa8e5ec584fd0ba6"
+checksum = "5cc7b9cef1e351660e5443924e4f43ab25fbbed3e9a5f052df3677deb4d6b320"
 dependencies = [
  "convert_case",
  "proc-macro2",
@@ -2236,17 +2202,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97304e4cd182c3846f7575ced3890c53012ce534ad9114046b0a9e00bb30a375"
 dependencies = [
  "opaque-debug 0.3.0",
- "polyval 0.4.5",
-]
-
-[[package]]
-name = "ghash"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f6fb2a26dd2ebd268a68bc8e9acc9e67e487952f33384055a1cbe697514c64e"
-dependencies = [
- "opaque-debug 0.3.0",
- "polyval 0.5.0",
+ "polyval",
 ]
 
 [[package]]
@@ -4798,17 +4754,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "polyval"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "864231b0b86ce05168a8e6da0fea2e67275dacf25f75b00a62cfd341aab904a9"
-dependencies = [
- "cpufeatures",
- "opaque-debug 0.3.0",
- "universal-hash",
-]
-
-[[package]]
 name = "postgres"
 version = "0.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5982,7 +5927,7 @@ version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "795dd7aeeee24468e5a32661f6d27f7b5cbed802031b2d7640c7b10f8fb2dd50"
 dependencies = [
- "aes-gcm 0.7.0",
+ "aes-gcm",
  "blake2",
  "chacha20poly1305 0.6.0",
  "rand 0.7.3",
