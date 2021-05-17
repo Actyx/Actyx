@@ -417,8 +417,22 @@ mod tests {
     fn make_tags() {
         let mut tags = BTreeSet::new();
         tags.insert(tag!("a"));
-        tags.insert(tag!("semantics:b"));
-        assert_eq!(tags!("a", "semantics:b"), TagSet::from(tags));
+        tags.insert(tag!("a:b"));
+        assert_eq!(tags!("a", "a:b"), TagSet::from(tags));
+    }
+
+    #[test]
+    fn tagset_is_subset() {
+        assert!(!tags!("a").is_subset(&tags!()));
+        assert!(!tags!("a", "b").is_subset(&tags!()));
+        assert!(!tags!("a", "b").is_subset(&tags!("a")));
+        assert!(!tags!("a", "b").is_subset(&tags!("c")));
+
+        assert!(tags!().is_subset(&tags!()));
+        assert!(tags!().is_subset(&tags!("a")));
+        assert!(tags!("a").is_subset(&tags!("a")));
+        assert!(tags!("a").is_subset(&tags!("a", "b")));
+        assert!(tags!("a", "b").is_subset(&tags!("a", "b")));
     }
 
     #[test]
