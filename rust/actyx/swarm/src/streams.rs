@@ -1,7 +1,7 @@
 use crate::{AxStreamBuilder, Cid, Link, Tree};
 use actyxos_sdk::{LamportTimestamp, NodeId, Offset, StreamId, StreamNr};
 use ax_futures_util::stream::variable::Variable;
-use banyan::{Config, Secrets, StreamBuilder, StreamBuilderTransaction};
+use banyan::{StreamBuilder, StreamBuilderTransaction};
 use fnv::FnvHashMap;
 use futures::{
     future,
@@ -12,7 +12,7 @@ use std::{
     convert::{TryFrom, TryInto},
     ops::Deref,
 };
-use trees::axtrees::AxTrees;
+use trees::axtrees::{AxTree, AxTrees};
 
 const PREFIX: u8 = b'S';
 
@@ -70,10 +70,10 @@ pub struct OwnStream {
 }
 
 impl OwnStream {
-    pub fn new(stream_nr: StreamNr) -> Self {
+    pub fn new(stream_nr: StreamNr, builder: AxStreamBuilder) -> Self {
         Self {
             stream_nr,
-            builder: tokio::sync::Mutex::new(StreamBuilder::new(Config::debug(), Secrets::default())),
+            builder: tokio::sync::Mutex::new(builder),
             latest: Default::default(),
         }
     }
@@ -137,9 +137,9 @@ pub struct ReplicatedStreamInner {
 }
 
 impl ReplicatedStreamInner {
-    pub fn new() -> Self {
+    pub fn new(tree: AxTree) -> Self {
         Self {
-            validated: Variable::default(),
+            validated: Variable::new(tree),
             incoming: Variable::default(),
             latest_seen: Variable::default(),
         }

@@ -39,7 +39,7 @@ use actyxos_sdk::{
 };
 use anyhow::{Context, Result};
 use ax_futures_util::{prelude::*, stream::variable::Variable};
-use banyan::{index::Index, query::Query, store::BranchCache, FilteredChunk, Secrets, StreamBuilder};
+use banyan::{index::Index, query::Query, store::BranchCache, Config, FilteredChunk, Secrets, StreamBuilder};
 use crypto::KeyPair;
 use futures::{channel::mpsc, prelude::*};
 use ipfs_embed::{
@@ -57,7 +57,7 @@ use maplit::btreemap;
 use parking_lot::Mutex;
 use std::{
     collections::{BTreeMap, BTreeSet, VecDeque},
-    convert::{TryFrom, TryInto},
+    convert::TryFrom,
     fmt::Debug,
     num::NonZeroU32,
     ops::{Deref, DerefMut, RangeInclusive},
@@ -266,37 +266,59 @@ impl<'a> BanyanStoreGuard<'a> {
     }
 
     fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Arc<OwnStream> {
-        self.own_streams.get(&stream_nr).cloned().unwrap_or_else(|| {
-            tracing::debug!("creating new own stream {}", stream_nr);
-            let stream_id = self.node_id().stream(stream_nr);
-            // TODO: Maybe this fn should be fallible
-            let _ = self.index_store.add_stream(stream_id);
-            tracing::debug!("publish new stream_id {}", stream_id);
-            self.publish_new_stream_id(stream_id);
-            let stream = Arc::new(OwnStream::new(stream_nr));
-            self.own_streams.insert(stream_nr, stream.clone());
-            stream
-        })
+        if let Some(result) = self.own_streams.get(&stream_nr).cloned() {
+            return result;
+        }
+        tracing::debug!("creating new own stream {}", stream_nr);
+        let stream_id = self.node_id().stream(stream_nr);
+        self.index_store
+            .add_stream(stream_id)
+            .expect("unable to write stream id");
+        let stream = if let Some(root) = self.data.ipfs.resolve(&StreamAlias::from(stream_id)).unwrap() {
+            let root = Link::try_from(root).expect("wrong link format");
+            self.data
+                .forest
+                .load_stream_builder(Secrets::default(), Config::debug(), root)
+                .expect("unable to load banyan tree")
+        } else {
+            StreamBuilder::new(Config::debug(), Secrets::default())
+        };
+        let stream = Arc::new(OwnStream::new(stream_nr, stream));
+        self.own_streams.insert(stream_nr, stream.clone());
+        tracing::debug!("publish new stream_id {}", stream_id);
+        self.publish_new_stream_id(stream_id);
+        stream
     }
 
     fn get_or_create_replicated_stream(&mut self, stream_id: StreamId) -> Arc<ReplicatedStreamInner> {
         debug_assert!(self.node_id() != stream_id.node_id());
-        let _ = self.index_store.add_stream(stream_id);
+        self.index_store
+            .add_stream(stream_id)
+            .expect("unable to write stream id");
         let node_id = stream_id.node_id();
         let stream_nr = stream_id.stream_nr();
-        let remote_node = self.get_or_create_remote_node(node_id);
-        if let Some(state) = remote_node.streams.get(&stream_nr).cloned() {
-            state
-        } else {
-            tracing::debug!("creating new replicated stream {}", stream_id);
-            let state = Arc::new(ReplicatedStreamInner::new());
-            remote_node.streams.insert(stream_nr, state.clone());
-            let store = self.outer();
-            self.spawn_task("careful_ingestion", store.careful_ingestion(stream_id, state.clone()));
-            tracing::debug!("publish new stream_id {}", stream_id);
-            self.publish_new_stream_id(stream_id);
-            state
+        if let Some(stream) = self.get_or_create_remote_node(node_id).streams.get(&stream_nr).cloned() {
+            return stream;
         }
+        let tree = if let Some(root) = self.data.ipfs.resolve(&StreamAlias::from(stream_id)).unwrap() {
+            let root = Link::try_from(root).expect("wrong link format");
+            self.data
+                .forest
+                .load_tree(Secrets::default(), root)
+                .expect("unable to load banyan tree")
+        } else {
+            Tree::default()
+        };
+        tracing::debug!("creating new replicated stream {}", stream_id);
+        let stream = Arc::new(ReplicatedStreamInner::new(tree));
+        self.get_or_create_remote_node(node_id)
+            .streams
+            .insert(stream_nr, stream.clone());
+        let store = self.outer();
+        self.spawn_task("careful_ingestion", store.careful_ingestion(stream_id, stream.clone()));
+        tracing::debug!("publish new stream_id {}", stream_id);
+        self.publish_new_stream_id(stream_id);
+        stream
     }
 
     fn has_stream(&self, stream_id: StreamId) -> bool {
@@ -506,7 +528,7 @@ impl BanyanStore {
                 tasks: Default::default(),
             })),
         };
-        banyan.load_known_streams().await?;
+        banyan.load_known_streams()?;
         banyan.spawn_task(
             "gossip_ingest",
             banyan.data.gossip.ingest(banyan.clone(), cfg.topic.clone())?,
@@ -606,28 +628,16 @@ impl BanyanStore {
         }
     }
 
-    async fn load_known_streams(&self) -> Result<()> {
+    fn load_known_streams(&self) -> Result<()> {
         let known_streams = self.lock().index_store.get_observed_streams()?;
         for stream_id in known_streams {
-            tracing::debug!("Trying to load tree for {}", stream_id);
-            if let Some(cid) = self.ipfs().resolve(StreamAlias::from(stream_id))? {
-                let root = cid.try_into()?;
-                if stream_id.node_id() == self.node_id() {
-                    let _ = self.get_or_create_own_stream(stream_id.stream_nr());
-                    // let builder = self.data.forest.load_stream_builder(Secrets::default(), Config::debug(),root)?;
-                    // self.update_present(stream_id, builder.offset());
-                    // let stream = self.get_or_create_own_stream(stream_id.stream_nr());
-                    // let guard = stream.lock().await;
-                    // guard.set_latest(tree);
-                } else {
-                    let tree = self.data.forest.load_tree(Secrets::default(), root)?;
-                    self.get_or_create_replicated_stream(stream_id).set_latest(tree);
-                }
+            // just trigger loading of the stream from the alias
+            if stream_id.node_id() == self.node_id() {
+                let _ = self.get_or_create_own_stream(stream_id.stream_nr());
             } else {
-                tracing::warn!("No alias found for StreamId \"{}\"", stream_id);
+                let _ = self.get_or_create_replicated_stream(stream_id);
             }
         }
-
         Ok(())
     }
 
