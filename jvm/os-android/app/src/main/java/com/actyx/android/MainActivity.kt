@@ -32,7 +32,7 @@ class MainActivity : AppCompatActivity() {
     findViewById<Button>(R.id.quit_actyx)?.setOnClickListener {
       AlertDialog.Builder(this)
         .setMessage(getString(R.string.quit_ax_confirm_message))
-        .setPositiveButton(getString(R.string.quit)) { _, _ -> signalShutdown() }
+        .setPositiveButton(getString(R.string.quit)) { _, _ -> signalOrForceShutdown() }
         .setNegativeButton(getString(R.string.cancel)) { dialog, _ -> dialog.cancel() }
         .create().apply {
           setTitle(getString(R.string.quit_ax_confirm_title))
@@ -68,7 +68,16 @@ class MainActivity : AppCompatActivity() {
     }
   }
 
-  private fun signalShutdown() {
+  private fun signalOrForceShutdown() {
+    if (shutdownPending) {
+      // Shutdown is already pending, maybe the background service is not responsive.
+      Toast.makeText(this, getString(R.string.actyx_is_force_stopping), Toast.LENGTH_SHORT).show()
+      Intent(this@MainActivity, AxNodeService::class.java).also {
+        stopService(it)
+      }
+      finish()
+      System.exit(1)
+    }
     shutdownPending = true
     Toast.makeText(this, getString(R.string.actyx_is_stopping), Toast.LENGTH_SHORT).show()
     Intent(this@MainActivity, AxNodeService::class.java).also {
