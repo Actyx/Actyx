@@ -11,7 +11,7 @@
 //! inside this you have mutable access to the state - but if you lock again you will deadlock.
 pub mod convert;
 mod discovery;
-mod event_store;
+pub mod event_store;
 mod gossip;
 pub mod metrics;
 mod prune;
@@ -26,7 +26,6 @@ mod unixfsv1;
 mod tests;
 mod v1;
 
-pub use crate::event_store::{EventStore, EventStoreError};
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
 

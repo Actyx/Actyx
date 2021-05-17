@@ -1,5 +1,4 @@
 use actyxos_sdk::{OffsetOrMin, StreamId, TagSet};
-use num_traits::Bounded;
 use trees::{OffsetMapOrMax, TagSubscriptions};
 
 /// A precise selection of events, possibly unbounded in size.

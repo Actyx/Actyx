@@ -210,7 +210,7 @@ mod tests {
     use std::collections::BTreeSet;
 
     use super::*;
-    use crate::{EventStore, SwarmConfig};
+    use crate::{event_store::EventStore, SwarmConfig};
     use ax_futures_util::stream::Drainer;
     use maplit::btreemap;
     use quickcheck::Arbitrary;

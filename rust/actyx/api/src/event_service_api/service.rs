@@ -15,7 +15,10 @@ use futures::{
     TryFutureExt,
 };
 use runtime::value::Value;
-use swarm::{BanyanStore, EventStore, EventStoreError};
+use swarm::{
+    event_store::{self, EventStore},
+    BanyanStore,
+};
 use thiserror::Error;
 use trees::TagSubscriptions;
 
@@ -24,7 +27,7 @@ pub enum Error {
     #[error("Store error: {0}")]
     StoreError(#[from] anyhow::Error),
     #[error("Access error: {0}")]
-    EventStoreError(#[from] EventStoreError),
+    EventStoreError(#[from] event_store::Error),
 }
 
 #[derive(Clone)]

@@ -16,14 +16,14 @@ use trees::{OffsetMapOrMax, TagSubscriptions};
 use crate::selection::StreamEventSelection;
 
 #[derive(Clone, Debug, Display)]
-pub enum EventStoreError {
+pub enum Error {
+    #[display(fmt = "Upper bounds must be within the current offsets' present.")]
     InvalidUpperBounds,
 }
-impl std::error::Error for EventStoreError {}
+impl std::error::Error for Error {}
 
-pub type EventStreamOrError = BoxFuture<'static, Result<BoxStream<'static, Event<Payload>>, EventStoreError>>;
-pub type EventStreamReverseOrError =
-    BoxFuture<'static, Result<BoxStream<'static, Reverse<Event<Payload>>>, EventStoreError>>;
+pub type EventStreamOrError = BoxFuture<'static, Result<BoxStream<'static, Event<Payload>>, Error>>;
+pub type EventStreamReverseOrError = BoxFuture<'static, Result<BoxStream<'static, Reverse<Event<Payload>>>, Error>>;
 pub type PersistenceMeta = (LamportTimestamp, Offset, StreamNr, Timestamp);
 
 pub trait EventStore: Clone + Sized + Sync + Send + 'static {
@@ -42,13 +42,13 @@ pub trait EventStore: Clone + Sized + Sync + Send + 'static {
         tag_subscriptions: TagSubscriptions,
         from_offsets_excluding: Option<OffsetMap>,
         to_offsets_including: OffsetMap,
-    ) -> BoxFuture<'static, Result<Vec<StreamEventSelection>, EventStoreError>> {
+    ) -> BoxFuture<'static, Result<Vec<StreamEventSelection>, Error>> {
         let only_local = tag_subscriptions.only_local();
         let this = self.clone();
         self.present()
             .then(move |present| {
                 if present.union(&to_offsets_including) != present {
-                    return future::err(EventStoreError::InvalidUpperBounds).boxed();
+                    return future::err(Error::InvalidUpperBounds).boxed();
                 }
                 let from_or_min = from_offsets_excluding.map(OffsetMapOrMax::from).unwrap_or_default();
                 let res: Vec<_> = to_offsets_including
@@ -189,7 +189,7 @@ pub trait EventStore: Clone + Sized + Sync + Send + 'static {
 mod tests {
     use std::collections::BTreeMap;
 
-    use actyxos_sdk::{service::Order, tags, OffsetOrMin, StreamId};
+    use actyxos_sdk::{language::TagExpr, service::Order, tags, OffsetOrMin, StreamId};
     use ax_futures_util::stream::Drainer;
     use num_traits::Bounded;
     use trees::{OffsetMapOrMax, TagSubscription, TagSubscriptions};
@@ -242,8 +242,8 @@ mod tests {
         order: Order,
         completed: bool,
     ) {
-        let query = &expr.parse::<actyxos_sdk::language::Query>().unwrap();
-        let tag_subscriptions = query.into();
+        let tag_expr = &expr.parse::<TagExpr>().unwrap();
+        let tag_subscriptions = tag_expr.into();
         let selection = EventSelection {
             tag_subscriptions,
             from_offsets_excluding,
@@ -381,6 +381,7 @@ mod tests {
 
         let stream_id1 = store1.node_id().stream(0.into());
         let stream_id2 = store2.node_id().stream(0.into());
+        println!("1: {}, 2: {}", stream_id1, stream_id2);
 
         store1
             .persist(vec![
@@ -408,8 +409,8 @@ mod tests {
         ) {
             let from: Option<OffsetMap> = from.map(offset_map).map(Into::into);
             let to: OffsetMap = offset_map(to).into();
-            let query = &expr.parse::<actyxos_sdk::language::Query>().unwrap();
-            let tag_subscriptions: TagSubscriptions = query.into();
+            let tag_expr = &expr.parse::<TagExpr>().unwrap();
+            let tag_subscriptions: TagSubscriptions = tag_expr.into();
 
             let forward = store
                 .bounded_forward(tag_subscriptions.clone(), from.clone(), to.clone())
@@ -444,19 +445,41 @@ mod tests {
         let _ = await_stream_offsets(&store1, &[&store2], &max).await;
 
         // all
-        assert_bounded(&store1, "FROM 'test'", None, &max, 6).await;
+        assert_bounded(&store1, "'test'", None, &max, 6).await;
 
         // stream1
-        assert_bounded(&store1, "FROM isLocal", None, &max, 3).await;
-        assert_bounded(&store1, "FROM 'test'", None, &[(stream_id1, 2)], 3).await;
-        assert_bounded(&store1, "FROM 'test'", Some(&[(stream_id1, 0)]), &[(stream_id1, 1)], 1).await;
+        assert_bounded(&store1, "isLocal", None, &max, 3).await;
+        assert_bounded(&store1, "'test'", None, &[(stream_id1, 2)], 3).await;
+        assert_bounded(&store1, "'test'", Some(&[(stream_id1, 0)]), &[(stream_id1, 1)], 1).await;
 
         // stream2
-        assert_bounded(&store1, "FROM 'test:stream2'", None, &max, 3).await;
-        assert_bounded(&store1, "FROM 'test'", None, &[(stream_id2, 2)], 3).await;
-        assert_bounded(&store1, "FROM 'test'", Some(&[(stream_id2, 0)]), &[(stream_id2, 1)], 1).await;
+        assert_bounded(&store1, "'test:stream2'", None, &max, 3).await;
+        assert_bounded(&store1, "'test'", None, &[(stream_id2, 2)], 3).await;
+        assert_bounded(&store1, "'test'", Some(&[(stream_id2, 0)]), &[(stream_id2, 1)], 1).await;
 
-        // fixme exceed upper bounds
+        let unknown = store1
+            .bounded_forward(
+                (&"'test'".parse::<TagExpr>().unwrap()).into(),
+                None,
+                offset_map(&[(
+                    "Kh8od22U1f.2S7wHoVCnmJaKWX/6.e2dSlEk2K3Jia6-0"
+                        .parse::<StreamId>()
+                        .unwrap(),
+                    0,
+                )])
+                .into(),
+            )
+            .await;
+        assert!(matches!(unknown, Err(Error::InvalidUpperBounds)));
+
+        let exceeding_present = store1
+            .bounded_forward(
+                (&"'test'".parse::<TagExpr>().unwrap()).into(),
+                None,
+                offset_map(&[(stream_id1, 42)]).into(),
+            )
+            .await;
+        assert!(matches!(exceeding_present, Err(Error::InvalidUpperBounds)));
     }
 
     #[tokio::test(flavor = "multi_thread")]
@@ -478,12 +501,12 @@ mod tests {
             from: Option<&'a [(StreamId, u32)]>,
             len: usize,
         ) {
-            let from: OffsetMap = from.map(|entries| offset_map(entries).into()).unwrap_or_default();
-
             assert_stream(
                 stream,
                 expr,
-                from.into(),
+                from.map(|entries| OffsetMap::from(offset_map(entries)))
+                    .unwrap_or_default()
+                    .into(),
                 OffsetMapOrMax::max_value(),
                 len,
                 Order::StreamAsc,
@@ -496,9 +519,8 @@ mod tests {
         let handle = tokio::spawn(async move {
             let store_rx = BanyanStore::test("swarm_test_rx").await.unwrap();
             let tag_subscriptions = TagSubscriptions::new(vec![TagSubscription::new(tags!("test:unbounded:forward"))]);
-            // stream1 is below range and stream2 non-existant at this point
-            // let selection = EventSelection::after(tag_subscriptions, from.clone().into());
             let from = [(stream_id1, 0)];
+            // stream1 is below range and stream2 non-existant at this point
             let stream = store_rx.unbounded_forward_per_stream(tag_subscriptions, Some(offset_map(&from).into()));
             let _ = await_stream_offsets(
                 &store_rx,
@@ -506,13 +528,7 @@ mod tests {
                 &[(stream_id1, 1), (stream_id2, 0)],
             )
             .await;
-            assert_unbounded(stream, "FROM 'test:unbounded:forward'", Some(&from), 2).await;
-
-            // let unknown = after(&[(non_existant(), OffsetOrMin::MIN)]);
-            // assert!(matches!(
-            //     store_rx.unbounded_forward_per_stream(&unknown),
-            //     Err(EventStoreError::UnknownStream(_))
-            // ));
+            assert_unbounded(stream, "'test:unbounded:forward'", Some(&from), 2).await;
         });
 
         store1
