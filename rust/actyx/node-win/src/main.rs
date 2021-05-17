@@ -9,9 +9,12 @@ fn main() {
 #[cfg(windows)]
 fn main() -> Result<(), anyhow::Error> {
     if let Err(e) = win::run() {
-        message_box::create("Actyx stopped", &*format!("{}", e))?
+        eprintln!("Actyx returned with an error: {}", e);
+        message_box::create("Actyx stopped", &*format!("{}", e))?;
+        Err(e)
+    } else {
+        Ok(())
     }
-    Ok(())
 }
 
 #[cfg(windows)]
