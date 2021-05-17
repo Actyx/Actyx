@@ -25,60 +25,6 @@ pub struct EventSelection {
 }
 
 impl EventSelection {
-    pub fn new(
-        tag_subscriptions: TagSubscriptions,
-        from_offsets_excluding: OffsetMapOrMax,
-        to_offsets_including: OffsetMapOrMax,
-    ) -> EventSelection {
-        EventSelection {
-            tag_subscriptions,
-            from_offsets_excluding,
-            to_offsets_including,
-        }
-    }
-
-    /// Select events matching the given logical subscription, with an inclusive upper
-    /// bound in terms of Offset for each stream. The upper bound should normally be the
-    /// “present” PsnMap obtained from the EventStore.
-    pub fn upto(tag_subscriptions: TagSubscriptions, to_including: OffsetMapOrMax) -> EventSelection {
-        Self::new(tag_subscriptions, OffsetMapOrMax::min_value(), to_including)
-    }
-
-    /// Select events matching the given logical subscription, with an exclusive lower
-    /// bound in terms of Offset for each stream. The lower bound should normally be the
-    /// “present” PsnMap obtained from the EventStore.
-    pub fn after(tag_subscriptions: TagSubscriptions, from_excluding: OffsetMapOrMax) -> EventSelection {
-        Self::new(tag_subscriptions, from_excluding, OffsetMapOrMax::max_value())
-    }
-
-    #[cfg(test)]
-    pub fn create(query: &str, ranges: &[(StreamId, OffsetOrMin, OffsetOrMin)]) -> anyhow::Result<EventSelection> {
-        let query = &query.parse::<actyxos_sdk::language::Query>()?;
-        let tag_subscriptions = query.into();
-        let from_offsets_excluding = OffsetMapOrMax::from_entries(
-            ranges
-                .iter()
-                .cloned()
-                .map(|(stream_id, from, _to)| (stream_id, from))
-                .collect::<Vec<_>>()
-                .as_ref(),
-        );
-        let to_offsets_including = OffsetMapOrMax::from_entries(
-            ranges
-                .iter()
-                .cloned()
-                .map(|(stream_id, _from, to)| (stream_id, to))
-                .collect::<Vec<_>>()
-                .as_ref(),
-        );
-
-        Ok(EventSelection {
-            tag_subscriptions,
-            from_offsets_excluding,
-            to_offsets_including,
-        })
-    }
-
     #[cfg(test)]
     pub fn matches<T>(&self, event: &actyxos_sdk::Event<T>) -> bool {
         self.tag_subscriptions
@@ -95,19 +41,4 @@ pub struct StreamEventSelection {
     pub from_exclusive: OffsetOrMin,
     pub to_inclusive: OffsetOrMin,
     pub tag_subscriptions: Vec<TagSet>,
-}
-impl StreamEventSelection {
-    pub fn new(
-        stream_id: StreamId,
-        from_exclusive: OffsetOrMin,
-        to_inclusive: OffsetOrMin,
-        tag_subscriptions: Vec<TagSet>,
-    ) -> StreamEventSelection {
-        StreamEventSelection {
-            stream_id,
-            from_exclusive,
-            to_inclusive,
-            tag_subscriptions,
-        }
-    }
 }
