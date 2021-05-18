@@ -24,7 +24,6 @@ mod unixfsv1;
 
 #[cfg(test)]
 mod tests;
-mod v1;
 
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
@@ -174,12 +173,12 @@ pub struct BanyanStore {
 }
 
 #[derive(Clone, Debug, Default)]
-struct SwarmOffsets {
+pub struct SwarmOffsets {
     /// Currently validated OffsetMap
-    present: OffsetMap,
+    pub present: OffsetMap,
     /// OffsetMap describing the replication target. Currently this is driven via `highest_seen`,
     /// but should eventually be fed by the partial replication mechanism.
-    replication_target: OffsetMap,
+    pub replication_target: OffsetMap,
 }
 
 /// All immutable or internally mutable parts of the banyan store

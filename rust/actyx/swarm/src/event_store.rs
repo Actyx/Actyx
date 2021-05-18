@@ -1,8 +1,8 @@
 use std::{cmp::Reverse, convert::TryInto, ops::RangeInclusive};
 
 use actyxos_sdk::{
-    service::OffsetsResponse, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin,
-    Payload, StreamId, StreamNr, TagSet, Timestamp,
+    Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin, Payload, StreamId, StreamNr,
+    TagSet, Timestamp,
 };
 use ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered};
 use banyan::forest::FilteredChunk;
@@ -14,7 +14,7 @@ use trees::{
     OffsetMapOrMax, TagSubscriptions,
 };
 
-use crate::{selection::StreamEventSelection, AxTreeExt, BanyanStore, TT};
+use crate::{selection::StreamEventSelection, AxTreeExt, BanyanStore, SwarmOffsets, TT};
 
 #[derive(Clone, Debug, Display)]
 pub enum Error {
@@ -131,12 +131,9 @@ impl EventStore {
         }
     }
 
-    pub fn offsets(&self) -> impl Stream<Item = OffsetsResponse> {
+    pub fn offsets(&self) -> impl Stream<Item = SwarmOffsets> {
         #[allow(clippy::redundant_closure)]
-        self.banyan_store
-            .data
-            .offsets
-            .new_projection(|x| OffsetsResponse::from(x))
+        self.banyan_store.data.offsets.new_observer()
     }
 
     pub async fn present(&self) -> OffsetMap {
@@ -286,10 +283,7 @@ fn events_from_chunk_rev(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, 
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        collections::{BTreeMap, BTreeSet},
-        num::NonZeroU64,
-    };
+    use std::collections::{BTreeMap, BTreeSet};
 
     use actyxos_sdk::{language::TagExpr, service::Order, tags, OffsetOrMin, StreamId};
     use ax_futures_util::stream::Drainer;
@@ -305,18 +299,17 @@ mod tests {
         EventStore::new(BanyanStore::test(name).await.unwrap())
     }
 
-    fn offset_map(entries: &[(StreamId, u32)]) -> BTreeMap<StreamId, Offset> {
-        entries
-            .iter()
-            .copied()
-            .map(|(stream_id, offset)| (stream_id, offset.into()))
-            .collect()
+    fn offset_map(map: &BTreeMap<StreamId, u32>) -> OffsetMap {
+        map.iter()
+            .map(|(stream_id, offset)| (*stream_id, Offset::from(*offset)))
+            .collect::<BTreeMap<_, _>>()
+            .into()
     }
 
     async fn await_stream_offsets<'a>(
         store: &'a EventStore,
         other_stores: &'a [&EventStore],
-        offsets: &'a [(StreamId, u32)],
+        offsets: &BTreeMap<StreamId, u32>,
     ) {
         for other in other_stores {
             store.banyan_store.ipfs().add_address(
@@ -325,13 +318,13 @@ mod tests {
             );
         }
 
-        let mut waiting_for = offset_map(offsets);
+        let mut waiting_for = offsets.clone();
         let mut present = store.offsets().map(|o| o.present);
         while let Some(incoming) = present.next().await {
             // waiting_for.retain(|stream_id, offset| offset < incoming.offset(stream_id.clone())); // "1.53.0"
             incoming.streams().for_each(|stream_id| {
-                if let Some(o) = waiting_for.get(&stream_id) {
-                    if o <= &incoming.offset(stream_id) {
+                if let Some(offset) = waiting_for.get(&stream_id) {
+                    if OffsetOrMin::from(*offset) <= incoming.offset(stream_id) {
                         waiting_for.remove(&stream_id);
                     }
                 }
@@ -482,12 +475,12 @@ mod tests {
         async fn assert_bounded<'a>(
             store: &'a EventStore,
             expr: &'static str,
-            from: Option<&'a [(StreamId, u32)]>,
-            to: &'a [(StreamId, u32)],
+            from: Option<&'a BTreeMap<StreamId, u32>>,
+            to: &'a BTreeMap<StreamId, u32>,
             len: usize,
         ) {
             let from: Option<OffsetMap> = from.map(offset_map).map(Into::into);
-            let to: OffsetMap = offset_map(to).into();
+            let to: OffsetMap = offset_map(to);
             let tag_expr = &expr.parse::<TagExpr>().unwrap();
             let tag_subscriptions: TagSubscriptions = tag_expr.into();
 
@@ -520,7 +513,10 @@ mod tests {
             );
         }
 
-        let max = [(stream_id1, 2), (stream_id2, 2u32)];
+        let max = btreemap! {
+          stream_id1 => 2,
+          stream_id2 => 2,
+        };
         let _ = await_stream_offsets(&store1, &[&store2], &max).await;
 
         // all
@@ -528,25 +524,35 @@ mod tests {
 
         // stream1
         assert_bounded(&store1, "isLocal", None, &max, 3).await;
-        assert_bounded(&store1, "'test'", None, &[(stream_id1, 2)], 3).await;
-        assert_bounded(&store1, "'test'", Some(&[(stream_id1, 0)]), &[(stream_id1, 1)], 1).await;
+        assert_bounded(&store1, "'test'", None, &btreemap! { stream_id1 => 2 }, 3).await;
+        assert_bounded(
+            &store1,
+            "'test'",
+            Some(&btreemap! { stream_id1 => 0u32 }),
+            &btreemap! { stream_id1 => 1u32 },
+            1,
+        )
+        .await;
 
         // stream2
         assert_bounded(&store1, "'test:stream2'", None, &max, 3).await;
-        assert_bounded(&store1, "'test'", None, &[(stream_id2, 2)], 3).await;
-        assert_bounded(&store1, "'test'", Some(&[(stream_id2, 0)]), &[(stream_id2, 1)], 1).await;
+        assert_bounded(&store1, "'test'", None, &btreemap! { stream_id2 => 2 }, 3).await;
+        assert_bounded(
+            &store1,
+            "'test'",
+            Some(&btreemap! { stream_id2 => 0u32 }),
+            &btreemap! { stream_id2 => 1u32 },
+            1,
+        )
+        .await;
 
         let unknown = store1
             .bounded_forward(
                 (&"'test'".parse::<TagExpr>().unwrap()).into(),
                 None,
-                offset_map(&[(
-                    "Kh8od22U1f.2S7wHoVCnmJaKWX/6.e2dSlEk2K3Jia6-0"
-                        .parse::<StreamId>()
-                        .unwrap(),
-                    0,
-                )])
-                .into(),
+                offset_map(&btreemap! {
+                    "Kh8od22U1f.2S7wHoVCnmJaKWX/6.e2dSlEk2K3Jia6-0".parse::<StreamId>().unwrap() => 0
+                }),
             )
             .await;
         assert!(matches!(unknown, Err(Error::InvalidUpperBounds)));
@@ -555,7 +561,7 @@ mod tests {
             .bounded_forward(
                 (&"'test'".parse::<TagExpr>().unwrap()).into(),
                 None,
-                offset_map(&[(stream_id1, 42)]).into(),
+                offset_map(&btreemap! { stream_id1 => 42 }),
             )
             .await;
         assert!(matches!(exceeding_present, Err(Error::InvalidUpperBounds)));
@@ -577,15 +583,13 @@ mod tests {
         async fn assert_unbounded<'a>(
             stream: impl Stream<Item = Event<Payload>> + 'static,
             expr: &'static str,
-            from: Option<&'a [(StreamId, u32)]>,
+            from: Option<&'a BTreeMap<StreamId, u32>>,
             len: usize,
         ) {
             assert_stream(
                 stream,
                 expr,
-                from.map(|entries| OffsetMap::from(offset_map(entries)))
-                    .unwrap_or_default()
-                    .into(),
+                from.map(|entries| offset_map(entries)).unwrap_or_default().into(),
                 OffsetMapOrMax::max_value(),
                 len,
                 Order::StreamAsc,
@@ -598,13 +602,13 @@ mod tests {
         let handle = tokio::spawn(async move {
             let store_rx = mk_store("swarm_test_rx").await;
             let tag_subscriptions = TagSubscriptions::new(vec![TagSubscription::new(tags!("test:unbounded:forward"))]);
-            let from = [(stream_id1, 0)];
+            let from = btreemap! { stream_id1 => 0 };
             // stream1 is below range and stream2 non-existant at this point
-            let stream = store_rx.unbounded_forward_per_stream(tag_subscriptions, Some(offset_map(&from).into()));
+            let stream = store_rx.unbounded_forward_per_stream(tag_subscriptions, Some(offset_map(&from)));
             let _ = await_stream_offsets(
                 &store_rx,
                 &[&store1_clone, &store2_clone],
-                &[(stream_id1, 1), (stream_id2, 0)],
+                &btreemap! {stream_id1 => 1, stream_id2 => 0 },
             )
             .await;
             assert_unbounded(stream, "'test:unbounded:forward'", Some(&from), 2).await;
@@ -633,7 +637,7 @@ mod tests {
         // Initially only own streams
         let nxt = offsets.next().unwrap().last().cloned().unwrap();
         assert!(nxt.present.streams().all(|x| x.node_id() == store_node_id));
-        assert_eq!(nxt.to_replicate, Default::default());
+        assert_eq!(nxt.replication_target, Default::default());
 
         let mut gen = quickcheck::Gen::new(64);
         let streams: BTreeSet<StreamId> = Arbitrary::arbitrary(&mut gen);
@@ -659,28 +663,20 @@ mod tests {
 
         let nxt = offsets.next().unwrap().last().cloned().unwrap();
         assert!(nxt.present.streams().all(|x| x != stream));
-        assert_eq!(
-            nxt.to_replicate,
-            btreemap! {
-                stream => NonZeroU64::new(u64::from(offset) + 1).unwrap()
-            }
-        );
+        assert_eq!(nxt.replication_target.offset(stream), OffsetOrMin::from(offset));
 
         // Inject validation of `stream` with `offset - 1`
         if let Some(pred) = offset.pred() {
             store.banyan_store.update_present(stream, pred.into());
             let nxt = offsets.next().unwrap().last().cloned().unwrap();
             assert_eq!(nxt.present.offset(stream), OffsetOrMin::from(pred));
-            assert_eq!(
-                nxt.to_replicate,
-                std::iter::once((stream, NonZeroU64::new(1u64).unwrap())).collect()
-            );
+            assert_eq!(nxt.replication_target.offset(stream), OffsetOrMin::from(offset));
         }
 
         // Inject validation of `stream` with `offset`
         store.banyan_store.update_present(stream, offset.into());
         let nxt = offsets.next().unwrap().last().cloned().unwrap();
         assert_eq!(nxt.present.offset(stream), OffsetOrMin::from(offset));
-        assert_eq!(nxt.to_replicate, Default::default());
+        assert_eq!(nxt.replication_target.offset(stream), OffsetOrMin::from(offset));
     }
 }

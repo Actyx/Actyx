@@ -1,3 +1,5 @@
+use std::{convert::TryFrom, num::NonZeroU64};
+
 use actyxos_sdk::{
     language,
     service::{
@@ -5,7 +7,7 @@ use actyxos_sdk::{
         PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
         SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    Event, EventKey, Metadata, Payload,
+    Event, EventKey, Metadata, OffsetOrMin, Payload,
 };
 use async_trait::async_trait;
 use ax_futures_util::prelude::*;
@@ -14,7 +16,10 @@ use futures::{
     stream::{self, BoxStream, StreamExt},
 };
 use runtime::value::Value;
-use swarm::event_store::{self, EventStore};
+use swarm::{
+    event_store::{self, EventStore},
+    SwarmOffsets,
+};
 use thiserror::Error;
 use trees::TagSubscriptions;
 
@@ -46,8 +51,19 @@ impl service::EventService for EventService {
     }
 
     async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
-        let response = self.store.offsets().next().await.unwrap_or_default();
-        Ok(response)
+        let SwarmOffsets {
+            present,
+            replication_target,
+        } = self.store.offsets().next().await.unwrap_or_default();
+        let to_replicate = replication_target
+            .stream_iter()
+            .filter_map(|(stream, target)| {
+                let actual = present.offset(stream);
+                let diff = OffsetOrMin::from(target) - actual;
+                u64::try_from(diff).ok().and_then(NonZeroU64::new).map(|o| (stream, o))
+            })
+            .collect();
+        Ok(OffsetsResponse { present, to_replicate })
     }
 
     async fn publish(&self, request: PublishRequest) -> anyhow::Result<PublishResponse> {
@@ -100,7 +116,7 @@ impl service::EventService for EventService {
 
     async fn subscribe(&self, request: SubscribeRequest) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
         let tag_subscriptions: TagSubscriptions = (&request.query).into();
-        let present = self.store.offsets().next().await.unwrap_or_default().present;
+        let present = self.store.present().await;
 
         let bounded = self
             .store
