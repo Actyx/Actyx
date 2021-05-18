@@ -10,9 +10,8 @@ use actyxos_sdk::{
 };
 use anyhow::Result;
 use ax_futures_util::prelude::AxStreamExt;
-use banyan::{forest, index::IndexRef};
+use banyan::{index::IndexRef, FilteredChunk};
 use fnv::FnvHashSet;
-use forest::FilteredChunk;
 use futures::stream::BoxStream;
 use futures::{channel::mpsc, future::BoxFuture, prelude::*};
 use std::{
@@ -40,7 +39,7 @@ impl BanyanStore {
         let timestamp = Timestamp::now();
         let stream = self.get_or_create_own_stream(stream_nr);
         let n = events.len();
-        let guard = stream.lock().await;
+        let mut guard = stream.lock().await;
         let mut store = self.lock();
         let mut lamports = store.reserve_lamports(events.len())?.peekable();
         let min_lamport = *lamports.peek().unwrap();
@@ -48,10 +47,10 @@ impl BanyanStore {
             .zip(events)
             .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
         tracing::debug!("publishing {} events on stream {}", n, stream_nr);
-        let mut min_offset = OffsetOrMin::MIN;
-        self.transform_stream(&guard, |txn, tree| {
-            min_offset = min_offset.max(tree.offset());
-            txn.extend_unpacked(tree, kvs)
+        let min_offset = self.transform_stream(&mut guard, |txn, tree| {
+            let result = tree.snapshot().offset();
+            txn.extend_unpacked(tree, kvs)?;
+            Ok(result)
         })?;
 
         // We start iteration with 0 below, so this is effectively the offset of the first event.
