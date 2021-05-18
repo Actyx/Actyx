@@ -32,7 +32,7 @@ pub use crate::v1::{EventStore, Present};
 use crate::gossip::Gossip;
 use crate::prune::RetainConfig;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
-use crate::streams::{OwnStream, ReplicatedStreamInner};
+use crate::streams::{OwnStream, ReplicatedStream};
 use actyxos_sdk::{
     LamportTimestamp, NodeId, Offset, OffsetMap, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp,
 };
@@ -44,7 +44,7 @@ use ax_futures_util::{
 use banyan::{
     index::Index,
     query::Query,
-    store::{BlockWriter, BranchCache},
+    store::{BlockWriter, BranchCache, ReadOnlyStore},
     Config, FilteredChunk, Secrets, StreamBuilder,
 };
 use crypto::KeyPair;
@@ -282,28 +282,32 @@ impl<'a> BanyanStoreGuard<'a> {
         self.index_store
             .add_stream(stream_id)
             .expect("unable to write stream id");
-        let stream = if let Some(root) = self
+        let state = if let Some(root) = self
             .data
             .ipfs
             .resolve(&StreamAlias::from(stream_id))
             .expect("no alias for stream id")
         {
             let root = Link::try_from(root).expect("wrong link format");
-            self.data
+            let header = self.data.forest.store().get(&root).expect("header not found");
+            let header: AxTreeHeader = DagCborCodec.decode(&header).expect("invalid header");
+            let builder = self
+                .data
                 .forest
-                .load_stream_builder(Secrets::default(), Config::debug(), root)
-                .expect("unable to load banyan tree")
+                .load_stream_builder(Secrets::default(), Config::debug(), header.root)
+                .expect("unable to load banyan tree");
+            OwnStreamState::new(root, header, builder)
         } else {
-            StreamBuilder::new(Config::debug(), Secrets::default())
+            OwnStreamState::from_builder(StreamBuilder::new(Config::debug(), Secrets::default()))
         };
-        let stream = Arc::new(OwnStream::new(stream_nr, stream));
+        let stream = Arc::new(OwnStream::new(stream_nr, state));
         self.own_streams.insert(stream_nr, stream.clone());
         tracing::debug!("publish new stream_id {}", stream_id);
         self.publish_new_stream_id(stream_id);
         stream
     }
 
-    fn get_or_create_replicated_stream(&mut self, stream_id: StreamId) -> Arc<ReplicatedStreamInner> {
+    fn get_or_create_replicated_stream(&mut self, stream_id: StreamId) -> Arc<ReplicatedStream> {
         debug_assert!(self.node_id() != stream_id.node_id());
         self.index_store
             .add_stream(stream_id)
@@ -313,17 +317,21 @@ impl<'a> BanyanStoreGuard<'a> {
         if let Some(stream) = self.get_or_create_remote_node(node_id).streams.get(&stream_nr).cloned() {
             return stream;
         }
-        let tree = if let Some(root) = self.data.ipfs.resolve(&StreamAlias::from(stream_id)).unwrap() {
+        let state = if let Some(root) = self.data.ipfs.resolve(&StreamAlias::from(stream_id)).unwrap() {
             let root = Link::try_from(root).expect("wrong link format");
-            self.data
+            let header = self.data.forest.store().get(&root).expect("header not found");
+            let header: AxTreeHeader = DagCborCodec.decode(&header).expect("invalid header");
+            let tree = self
+                .data
                 .forest
-                .load_tree(Secrets::default(), root)
-                .expect("unable to load banyan tree")
+                .load_tree(Secrets::default(), header.root)
+                .expect("unable to load banyan tree");
+            Some(ReplicatedStreamState::new(root, header, tree))
         } else {
-            Tree::default()
+            None
         };
         tracing::debug!("creating new replicated stream {}", stream_id);
-        let stream = Arc::new(ReplicatedStreamInner::new(tree));
+        let stream = Arc::new(ReplicatedStream::new(state));
         self.get_or_create_remote_node(node_id)
             .streams
             .insert(stream_nr, stream.clone());
@@ -404,7 +412,7 @@ impl<'a> BanyanStoreGuard<'a> {
     pub fn root_map(&self) -> BTreeMap<StreamId, Cid> {
         let own = self.own_streams.iter().filter_map(|(stream_nr, inner)| {
             let stream_id = self.node_id().stream(*stream_nr);
-            inner.snapshot().cid().map(|root| (stream_id, root))
+            inner.root().map(|root| (stream_id, root))
         });
 
         let other = self.remote_nodes.iter().flat_map(|(node_id, remote_node)| {
@@ -685,7 +693,7 @@ impl BanyanStore {
             .zip(events)
             .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
         self.transform_stream(&mut guard, |txn, tree| txn.extend_unpacked(tree, kvs))?;
-        Ok(guard.snapshot().link())
+        Ok(guard.builder.snapshot().link())
     }
 
     /// Returns a [`Stream`] of known [`StreamId`].
@@ -737,7 +745,7 @@ impl BanyanStore {
         self.lock().get_or_create_own_stream(stream_nr)
     }
 
-    fn get_or_create_replicated_stream(&self, stream_id: StreamId) -> Arc<ReplicatedStreamInner> {
+    fn get_or_create_replicated_stream(&self, stream_id: StreamId) -> Arc<ReplicatedStream> {
         self.lock().get_or_create_replicated_stream(stream_id)
     }
 
@@ -749,11 +757,11 @@ impl BanyanStore {
         let writer = self.data.forest.store().write()?;
         let stream_nr = stream.stream_nr();
         let stream_id = self.node_id().stream(stream_nr);
-        let prev = stream.snapshot();
+        let prev = stream.builder.snapshot();
         tracing::debug!("starting write transaction on stream {}", stream_nr);
         let txn = Transaction::new(self.data.forest.clone(), writer);
         // take a snapshot of the initial state
-        let mut guard = stream.transaction();
+        let mut guard = stream.builder.transaction();
         let res = f(&txn, &mut guard);
         if res.is_err() {
             // stream builder state will be reverted, except for the cipher offset
@@ -777,7 +785,9 @@ impl BanyanStore {
         // this concludes the things we want to fail the transaction
         guard.commit();
         // set the latest
-        stream.latest().set(curr.clone());
+        stream
+            .latest()
+            .set(Some(ReplicatedStreamState::new(root, header, curr.clone())));
         // update resent for the stream
         self.update_present(stream_id, curr.offset());
         // publish the update - including the header
@@ -812,7 +822,7 @@ impl BanyanStore {
     }
 
     /// careful ingestion - basically just call sync_one on each new ingested root
-    async fn careful_ingestion(self, stream_id: StreamId, state: Arc<ReplicatedStreamInner>) {
+    async fn careful_ingestion(self, stream_id: StreamId, state: Arc<ReplicatedStream>) {
         state
             .incoming_root_stream()
             .switch_map(move |root| self.clone().sync_one(stream_id, root).into_stream())
@@ -846,7 +856,8 @@ impl BanyanStore {
         // create the sync stream, and log progress. Add an additional element.
         let mut sync = ipfs.sync(&cid, peers);
         // during the sync, try to load the tree asap and abort in case it is not good
-        let mut tree: Option<Tree> = None;
+        let mut header: Option<AxTreeHeader> = None;
+        // let mut tree: Option<Tree> = None;
         let mut n: usize = 0;
         while let Some(event) = sync.next().await {
             match event {
@@ -860,19 +871,23 @@ impl BanyanStore {
                 }
                 SyncEvent::Complete(Ok(())) => {}
             }
-            if tree.is_none() {
-                // load the tree as soon as possible. If this fails, bail out.
-                let temp = self.data.forest.load_tree(Secrets::default(), root)?;
-                // check that the tree is better than the one we have, otherwise bail out
-                anyhow::ensure!(temp.count() >= prev.count());
-                // get the offset
-                let offset = temp.offset();
-                // update present.
-                let _ = self.update_highest_seen(stream_id, offset);
-                tree = Some(temp);
+            if header.is_none() {
+                let blob = self.data.forest.store().get(&root)?;
+                let temp: AxTreeHeader = DagCborCodec.decode(&blob)?;
+                // // load the tree as soon as possible. If this fails, bail out.
+                // let temp = self.data.forest.load_tree(Secrets::default(), root)?;
+                // // check that the tree is better than the one we have, otherwise bail out
+                // anyhow::ensure!(temp.count() >= prev.count());
+                // // get the offset
+                // let offset = temp.offset();
+                // // update present.
+                // let _ = self.update_highest_seen(stream_id, offset);
+                header = Some(temp);
             }
         }
-        let tree = tree.ok_or_else(|| anyhow::anyhow!("unable to load tree"))?;
+        let header = header.unwrap();
+        let tree = self.data.forest.load_tree(Secrets::default(), header.root)?;
+        let state = ReplicatedStreamState::new(root, header, tree.clone());
 
         // if we get here, we already know that the new tree is better than its predecessor
         tracing::debug!("completed sync of {}", root);
@@ -882,7 +897,7 @@ impl BanyanStore {
         ipfs.alias(&StreamAlias::from(stream_id), Some(&cid))?;
         tracing::debug!("sync_one complete {} => {}", stream_id, tree.offset());
         let offset = tree.offset();
-        stream.set_latest(tree);
+        stream.set_latest(state);
         // update present. This can fail if stream_id is not a source_id.
         let _ = self.update_present(stream_id, offset);
         // done

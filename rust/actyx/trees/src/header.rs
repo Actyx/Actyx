@@ -1,5 +1,6 @@
-use crate::axtrees::Sha256Digest;
+use crate::axtrees::{AxTrees, Sha256Digest};
 use actyxos_sdk::LamportTimestamp;
+use banyan::Tree;
 use libipld::{
     cbor::DagCborCodec,
     codec::{Decode, Encode},
@@ -12,8 +13,8 @@ use std::io;
 /// This is v0, which just contains a lamport timestamp. Later there will also be a signature.
 #[derive(Debug, Clone)]
 pub struct Header {
-    root: Sha256Digest,
-    lamport: LamportTimestamp,
+    pub root: Sha256Digest,
+    pub lamport: LamportTimestamp,
 }
 
 impl Header {
