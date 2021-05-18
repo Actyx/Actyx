@@ -1,0 +1,57 @@
+---
+title: Operating production systems
+id: operations
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+This guide provides best practices, as well as important considerations for operating production systems. It covers the following topics:
+
+- Device access and management
+- Network access
+
+## Device access and management
+
+For operating production deployments, we strongly recommend using software to manage your fleet of physical or virtual devices.
+We will refer to this as Unified Endpoint Management (UEM).
+Depending on where you look and the exact use case, such software may also be referred to as Mobile Device Management (MDM) or Enterprise Mobility Management (EMM).
+UEM systems offer a lot of features, such as remotely accessing or configuring devices.
+In the following sections, you can find an overview of the operational aspects that cause this recommendation.
+
+### Update apps and Actyx
+
+In a production environment, there are several situations that will require you to update your app(s), or Actyx. 
+As most solutions run on several devices, physically going to one after another to do updates is not a viable solution. 
+With UEM systems, you can roll out updates of your app(s) or Actyx remotely, and automatically.
+
+### Access logs from apps, Actyx, and the host system
+
+If things go wrong, you need a way to access the logs of your app, logs of Actyx, and logs of the device host system. 
+Without a proper setup, you again have to go to a device and wire your laptop to it to get these logs. 
+A UEM allows you to remotely collect device logs.
+
+### Host configuration
+
+UEM systems allow you to remotely configure devices and standardize device configurations across your fleets. 
+This helps you when adding or removing devices and facilitates standardization (e.g. network configurations).
+
+With regard to host configuration, it is particularly important to configure device clocks correctly.
+With a UEM, you can also enforce configurations and make sure the device clocks are not changed.
+Bugs, or rather unexpected app behavior has often been traced back to incorrect device clocks leading to misinterpretations of event timestamps.
+Also, when interpreting any logs (app, Actyx or host) from your device, incorrect clocks will lead to problems.
+
+### Troubleshoot network issues
+
+We have experienced production incidents that were caused by network or firewall changes that did not comply with Actyx network requirements.
+As MDM systems allow you to remotely access devices, they allow you to remotely test network requirements (see a guide for testing network requirements [here](../how-to/monitoring-debugging/network-requirements.mdx)).
+
+:::info
+For practical advice on choosing a mobile device management system, check out our [how-to guide](../how-to/operations/device-management.mdx).
+:::
+
+## Network access
+
+In addition to using an MDM, it is also recommended to have remote access to the devices' network.
+You can either remotely access the network from your PC (e.g. via VPN), or have remote access to a PC in the device network.
+For configuring Actyx nodes, or for troubleshooting certain issues, you will then need to connect to nodes via the Actyx CLI / Node Manager.

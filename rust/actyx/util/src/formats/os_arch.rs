@@ -71,6 +71,7 @@ macro_rules!  string_enum {
 
 string_enum! {
     pub enum Arch {
+        #[cfg(AX_ARCH = "i686")] x86,
         #[cfg(AX_ARCH = "x86_64")] x86_64,
         #[cfg(AX_ARCH = "aarch64")] aarch64,
         #[cfg(AX_ARCH = "android")] android,

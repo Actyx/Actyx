@@ -154,6 +154,14 @@ module.exports = {
     },
     {
       type: 'category',
+      label: 'Operations',
+      collapsed: true,
+      items: [
+        'how-to/operations/device-management',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Monitoring & Debugging',
       collapsed: true,
       items: [
@@ -217,6 +225,7 @@ module.exports = {
     // 'conceptual/peer-discovery',
     'conceptual/performance-and-limits',
     'conceptual/authentication-and-authorization',
+    'conceptual/operations',
     'conceptual/security',
     // 'conceptual/apps-in-the-factory-context',
   ],

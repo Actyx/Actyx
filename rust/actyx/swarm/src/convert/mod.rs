@@ -2,8 +2,8 @@ use std::{collections::BTreeMap, fs, str::FromStr, sync::Arc};
 
 use actyxos_sdk::{legacy::SourceId, Payload, StreamId, Tag};
 use anyhow::Result;
-use banyan::forest::{BranchCache, Forest, Transaction};
 use banyan::store::{BlockWriter, ReadOnlyStore};
+use banyan::{store::BranchCache, Config, Forest, StreamBuilder, Transaction};
 use ipfs_sqlite_block_store::{BlockStore, Synchronous};
 use libipld::{
     cbor::DagCborCodec,
@@ -104,8 +104,9 @@ fn build_banyan_tree<'a>(
     txn: &'a AxTxn,
     source: &'a SourceId,
     iter: impl Iterator<Item = anyhow::Result<Vec<IpfsEnvelope>>> + Send + 'a,
+    config: Config,
 ) -> anyhow::Result<AxTree> {
-    let tree = AxTree::empty();
+    let mut builder = StreamBuilder::<AxTrees>::new(config, Default::default());
     let mut count: usize = 0;
     let mut errors = Vec::new();
     let iter = iter
@@ -122,7 +123,8 @@ fn build_banyan_tree<'a>(
             .unwrap_or_default()
         })
         .flatten();
-    txn.extend(&tree, iter)
+    txn.extend(&mut builder, iter)?;
+    Ok(builder.snapshot())
 }
 
 /// Read a v1 index store and get all roots. Keys are source ids, not stream ids.
@@ -177,7 +179,7 @@ pub fn convert_from_v1(v1_index_path: &str, v2_index_path: &str, options: Conver
     let stats = db.lock().get_store_stats()?;
     tracing::info!("Block store stats at start of conversion {:?}", stats);
 
-    let config = banyan::forest::Config {
+    let config = banyan::Config {
         max_leaf_count: 1 << 16,
         max_branch_count: 32,
         target_leaf_size: 1 << 18,
@@ -185,12 +187,7 @@ pub fn convert_from_v1(v1_index_path: &str, v2_index_path: &str, options: Conver
         zstd_level: 10,
     };
     let ss = Importer(db.clone());
-    let forest = Forest::new(
-        ss,
-        BranchCache::new(1024),
-        banyan::forest::CryptoConfig::default(),
-        config,
-    );
+    let forest = Forest::new(ss, BranchCache::new(1024));
 
     let _result = roots
         .par_iter()
@@ -198,7 +195,7 @@ pub fn convert_from_v1(v1_index_path: &str, v2_index_path: &str, options: Conver
             tracing::info!("converting tree {}", source);
             let txn = AxTxn::new(forest.clone(), forest.store().clone());
             let iter = iter_events_v1_chunked(&db, Link::new(*cid));
-            let tree = build_banyan_tree(&txn, &source, iter);
+            let tree = build_banyan_tree(&txn, &source, iter, config.clone());
             match tree {
                 Ok(tree) => {
                     tracing::info!("Setting alias {} {:?}", source, tree);

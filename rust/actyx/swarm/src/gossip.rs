@@ -1,5 +1,5 @@
 use crate::{BanyanStore, Block, Ipfs, Link};
-use actyxos_sdk::{NodeId, StreamId, StreamNr};
+use actyxos_sdk::{LamportTimestamp, NodeId, StreamId, StreamNr, Timestamp};
 use anyhow::Result;
 use ax_futures_util::stream::latest_channel;
 use futures::prelude::*;
@@ -22,6 +22,7 @@ struct PublishUpdate {
     stream: StreamNr,
     root: Link,
     links: BTreeSet<Link>,
+    lamport: LamportTimestamp,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -29,6 +30,8 @@ struct RootUpdate {
     stream: StreamId,
     root: Cid,
     blocks: Vec<Block>,
+    lamport: LamportTimestamp,
+    time: Timestamp,
 }
 
 impl Encode<DagCborCodec> for RootUpdate {
@@ -50,6 +53,8 @@ struct RootUpdateIo {
     stream: StreamId,
     root: Cid,
     blocks: Vec<(Cid, Vec<u8>)>,
+    lamport: LamportTimestamp,
+    time: Timestamp,
 }
 
 impl From<&RootUpdate> for RootUpdateIo {
@@ -62,6 +67,8 @@ impl From<&RootUpdate> for RootUpdateIo {
                 .iter()
                 .map(|block| (*block.cid(), block.data().to_vec()))
                 .collect(),
+            lamport: value.lamport,
+            time: value.time,
         }
     }
 }
@@ -70,14 +77,18 @@ impl TryFrom<RootUpdateIo> for RootUpdate {
     type Error = anyhow::Error;
 
     fn try_from(value: RootUpdateIo) -> Result<Self, Self::Error> {
-        let root: Cid = value.root;
-        let stream = value.stream;
         let blocks = value
             .blocks
             .into_iter()
             .map(|(cid, data)| Block::new(cid, data.to_vec()))
             .collect::<Result<Vec<Block>>>()?;
-        Ok(Self { root, stream, blocks })
+        Ok(Self {
+            root: value.root,
+            stream: value.stream,
+            lamport: value.lamport,
+            time: value.time,
+            blocks,
+        })
     }
 }
 
@@ -87,7 +98,15 @@ enum GossipMessage {
     #[ipld(repr = "value")]
     RootUpdate(RootUpdate),
     #[ipld(repr = "value")]
-    RootMap(BTreeMap<StreamId, Cid>),
+    RootMap(RootMap),
+}
+
+#[derive(Debug, Eq, PartialEq, DagCbor, Default)]
+#[ipld(repr = "tuple")]
+pub struct RootMap {
+    entries: BTreeMap<StreamId, Cid>,
+    lamport: LamportTimestamp,
+    time: Timestamp,
 }
 
 pub struct Gossip {
@@ -100,6 +119,8 @@ impl Gossip {
         let (tx, mut rx) = latest_channel::channel::<PublishUpdate>();
         let publish_task = async move {
             while let Some(update) = rx.next().await {
+                let time = Timestamp::now();
+                let lamport = update.lamport;
                 let root = Cid::from(update.root);
                 let stream = node_id.stream(update.stream);
                 let mut size = 0;
@@ -117,7 +138,13 @@ impl Gossip {
                 }
 
                 if enable_fast_path {
-                    let root_update = RootUpdate { root, stream, blocks };
+                    let root_update = RootUpdate {
+                        root,
+                        stream,
+                        blocks,
+                        lamport,
+                        time,
+                    };
                     let blob = DagCborCodec.encode(&GossipMessage::RootUpdate(root_update)).unwrap();
                     tracing::trace!("broadcast_blob {} {}", stream, blob.len());
                     if let Err(err) = ipfs.broadcast(&topic, blob) {
@@ -132,6 +159,8 @@ impl Gossip {
                     let root_update = RootUpdate {
                         root,
                         stream,
+                        lamport,
+                        time,
                         blocks: Default::default(),
                     };
                     let blob = DagCborCodec.encode(&GossipMessage::RootUpdate(root_update)).unwrap();
@@ -148,8 +177,19 @@ impl Gossip {
         }
     }
 
-    pub fn publish(&self, stream: StreamNr, root: Link, links: BTreeSet<Link>) -> Result<()> {
-        self.tx.send(PublishUpdate { stream, root, links })?;
+    pub fn publish(
+        &self,
+        stream: StreamNr,
+        root: Link,
+        links: BTreeSet<Link>,
+        lamport: LamportTimestamp,
+    ) -> Result<()> {
+        self.tx.send(PublishUpdate {
+            stream,
+            root,
+            links,
+            lamport,
+        })?;
         Ok(())
     }
 
@@ -157,8 +197,12 @@ impl Gossip {
         async move {
             loop {
                 tokio::time::sleep(interval).await;
-                let roots = store.lock().root_map();
-                let msg = GossipMessage::RootMap(roots);
+                let guard = store.lock();
+                let entries = guard.root_map();
+                let lamport = guard.data.lamport.get();
+                drop(guard);
+                let time = Timestamp::now();
+                let msg = GossipMessage::RootMap(RootMap { entries, lamport, time });
                 let blob = DagCborCodec.encode(&msg).unwrap();
                 if let Err(err) = store.ipfs().publish(&topic, blob) {
                     tracing::error!("publish root map failed: {}", err);
@@ -180,6 +224,10 @@ impl Gossip {
                                 root_update.stream,
                                 root_update.blocks.len()
                             );
+                            store
+                                .lock()
+                                .received_lamport(root_update.lamport)
+                                .expect("unable to update lamport");
                             match store.ipfs().create_temp_pin() {
                                 Ok(tmp) => {
                                     if let Err(err) = store.ipfs().temp_pin(&tmp, &root_update.root) {
@@ -202,7 +250,11 @@ impl Gossip {
                         }
                         Ok(GossipMessage::RootMap(root_map)) => {
                             tracing::debug!("{} received root map", store.ipfs().local_node_name());
-                            for (stream, root) in root_map {
+                            store
+                                .lock()
+                                .received_lamport(root_map.lamport)
+                                .expect("unable to update lamport");
+                            for (stream, root) in root_map.entries {
                                 match Link::try_from(root) {
                                     Ok(root) => store.update_root(stream, root),
                                     Err(err) => tracing::error!("failed to parse link {}", err),
@@ -234,7 +286,7 @@ mod tests {
         let cbor = [
             0x82, // array(2)
                 0x00, // unsigned(0)
-                0x83, // array(3)
+                0x85, // array(5)
                     0x82, // array(2)
                         0x58, 0x20, // bytes(32)
                             0xff, 0xff, 0xff, 0xff,
@@ -258,11 +310,15 @@ mod tests {
                             0x4C, 0xA4, 0x95, 0x99,
                             0x1B, 0x78, 0x52, 0xB8, 0x55,
                     0x80, // array(0)
+                    0x00, // unsigned(0)
+                    0x00, // unsigned(0)
         ];
         let root_update = GossipMessage::RootUpdate(RootUpdate {
             stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(42.into()),
             root: Cid::new_v1(0x00, Code::Sha2_256.digest(&[])),
             blocks: Default::default(),
+            lamport: Default::default(),
+            time: Default::default(),
         });
         let msg = DagCborCodec.encode(&root_update).unwrap();
         assert_eq!(msg, cbor);
@@ -276,7 +332,10 @@ mod tests {
         let cbor = [
             0x82, // array(2)
                 0x01, // unsigned(1)
-                0xa0, // map(0)
+                0x83, // array(3)
+                    0xa0, // map(0)
+                    0x00, // unsigned(0)
+                    0x00, // unsigned(0)
         ];
         let root_map = GossipMessage::RootMap(Default::default());
         let msg = DagCborCodec.encode(&root_map).unwrap();

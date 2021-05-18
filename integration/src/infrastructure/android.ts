@@ -76,22 +76,38 @@ export const mkNodeSshAndroid = async (
   log('http api reachable on port %i', port4454)
 
   log('Starting Actyx on Android')
-  const waitForIt = runProcess(nodeName, logger, ssh, `docker logs --follow ${container}`, [
-    'NODE_STARTED_BY_HOST',
-  ]).then((x) => {
-    x.forEach((p) => p.kill('SIGTERM'))
-  })
   await execAdb(`install ${apk}`)
   await new Promise((r) => setTimeout(r, 2000))
-  await execAdb('shell am start -n com.actyx.android/com.actyx.android.MainActivity')
-  // TODO: On first start, it seems the background service is not started
-  // properly.  Not sure yet whether this is a fluke with the emulator or with
-  // Actyx
-  await new Promise((r) => setTimeout(r, 1000))
-  await execAdb('shell am force-stop com.actyx.android')
-  await new Promise((r) => setTimeout(r, 1000))
-  await execAdb('shell am start -n com.actyx.android/com.actyx.android.MainActivity')
-  await waitForIt
+
+  let retry = 0
+  while (retry < 10) {
+    const waitForIt = runProcess(
+      nodeName,
+      logger,
+      ssh,
+      `docker logs -n 1 --follow ${container}`,
+      ['NODE_STARTED_BY_HOST'],
+      10000,
+    ).then((x) => {
+      x.forEach((p) => p.kill('SIGTERM'))
+    })
+    await execAdb('shell am start -n com.actyx.android/com.actyx.android.MainActivity')
+    try {
+      await waitForIt
+      break
+    } catch (e) {
+      // TODO: On first start, it seems the background service is not started
+      // properly.  Not sure yet whether this is a fluke with the emulator or with
+      // Actyx
+      await new Promise((r) => setTimeout(r, 1000))
+      await execAdb('shell am force-stop com.actyx.android')
+      await new Promise((r) => setTimeout(r, 1000))
+      retry++
+      if (retry++ > 5) {
+        throw e
+      }
+    }
+  }
   log('Actyx on Android started')
 
   const axHost = `localhost:${port4458}`
@@ -137,13 +153,14 @@ export function runProcess(
   ssh: Ssh,
   command: string,
   signal: string[],
+  startTimeoutMs = 180000,
 ): Promise<[execa.ExecaChildProcess<string>]> {
   // awaiting a Promise<Promise<T>> yields T (WTF?!?) so we need to put it into an array
-  const START_TIMEOUT = 180000
   return new Promise((res, rej) => {
     setTimeout(
-      () => rej(new Error(`node ${nodeName}: cmd did not yield within ${START_TIMEOUT / 1000}sec`)),
-      START_TIMEOUT,
+      () =>
+        rej(new Error(`node ${nodeName}: cmd did not yield within ${startTimeoutMs / 1000}sec`)),
+      startTimeoutMs,
     )
     const { log, flush } = mkProcessLogger(logger, nodeName, signal)
     const proc = ssh.exec(command)
