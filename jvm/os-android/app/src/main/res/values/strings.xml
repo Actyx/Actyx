@@ -17,5 +17,6 @@
     <string name="quit_ax_confirm_title">Are you sure you want to quit?</string>
     <string name="actyx_is_stopped">Actyx is stopped</string>
     <string name="actyx_is_stopping">Actyx is stopping…</string>
+    <string name="actyx_is_force_stopping">Actyx is force stopping…</string>
     <string name="ok">OK</string>
 </resources>
