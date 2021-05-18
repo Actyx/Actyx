@@ -41,13 +41,19 @@ use ax_futures_util::{
     prelude::*,
     stream::variable::{Observer, Variable},
 };
-use banyan::{index::Index, query::Query, store::BranchCache, Config, FilteredChunk, Secrets, StreamBuilder};
+use banyan::{
+    index::Index,
+    query::Query,
+    store::{BlockWriter, BranchCache},
+    Config, FilteredChunk, Secrets, StreamBuilder,
+};
 use crypto::KeyPair;
 use futures::{channel::mpsc, prelude::*};
 use ipfs_embed::{
     BitswapConfig, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId,
     StorageConfig, SyncEvent, ToLibp2p,
 };
+use libipld::{cbor::DagCborCodec, codec::Codec};
 use libp2p::{
     dns::ResolverConfig,
     gossipsub::{GossipsubConfigBuilder, ValidationMode},
@@ -69,7 +75,10 @@ use std::{
     time::Duration,
 };
 use streams::*;
-use trees::axtrees::{AxKey, AxTrees, Sha256Digest};
+use trees::{
+    axtrees::{AxKey, AxTrees, Sha256Digest},
+    AxTreeHeader,
+};
 use util::{
     formats::NodeErrorContext,
     reentrant_safe_mutex::{ReentrantSafeMutex, ReentrantSafeMutexGuard},
@@ -757,24 +766,24 @@ impl BanyanStore {
         }
         // make sure we did not lose events. If we did, return a failure
         anyhow::ensure!(curr.count() >= prev.count(), "tree rejected because it lost events!");
-        let cid = curr.link().map(Cid::from);
+
+        // grab the latest lamport
+        let lamport = self.data.lamport.get();
+        let header = AxTreeHeader::new(curr.link().unwrap(), lamport);
+        let root = txn.writer().put(DagCborCodec.encode(&header)?)?;
+        let cid = Cid::from(root);
         // update the permanent alias. If this fails, we will revert the builder.
-        self.ipfs().alias(StreamAlias::from(stream_id), cid.as_ref())?;
+        self.ipfs().alias(StreamAlias::from(stream_id), Some(&cid))?;
         // this concludes the things we want to fail the transaction
         guard.commit();
         // set the latest
         stream.latest().set(curr.clone());
         // update resent for the stream
         self.update_present(stream_id, curr.offset());
-        // publish only non-empty trees
-        if let Some(root) = curr.link() {
-            // publish the update
-            let blocks = txn.into_writer().into_written();
-            // grab the latest lamport, as late as possible
-            let lamport = self.data.lamport.get();
-            // publish new blocks and root
-            self.data.gossip.publish(stream_nr, root, blocks, lamport)?;
-        }
+        // publish the update - including the header
+        let blocks = txn.into_writer().into_written();
+        // publish new blocks and root
+        self.data.gossip.publish(stream_nr, root, blocks, lamport)?;
         res
     }
 
