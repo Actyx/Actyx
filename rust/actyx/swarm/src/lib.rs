@@ -274,7 +274,7 @@ impl<'a> BanyanStoreGuard<'a> {
         self.index_store
             .add_stream(stream_id)
             .expect("unable to write stream id");
-        let stream = if let Some(root) = self.data.ipfs.resolve(&StreamAlias::from(stream_id)).unwrap() {
+        let stream = if let Some(root) = self.data.ipfs.resolve(&StreamAlias::from(stream_id)).expect("no alias for stream id") {
             let root = Link::try_from(root).expect("wrong link format");
             self.data
                 .forest
@@ -375,7 +375,8 @@ impl<'a> BanyanStoreGuard<'a> {
             .retain(|sender| sender.unbounded_send(stream_id).is_ok())
     }
 
-    pub fn current_stream_ids(&self, node_id: NodeId) -> impl Iterator<Item = StreamId> + '_ {
+    pub fn current_stream_ids(&self) -> impl Iterator<Item = StreamId> + '_ {
+        let node_id = self.data.node_id;
         let own_stream_ids = self.own_streams.keys().map(move |stream_id| node_id.stream(*stream_id));
         let replicated_stream_ids = self.remote_nodes.iter().flat_map(|(node_id, node_info)| {
             node_info
@@ -674,7 +675,7 @@ impl BanyanStore {
     pub fn stream_known_streams(&self) -> impl Stream<Item = StreamId> + Send {
         let mut state = self.lock();
         let (s, r) = mpsc::unbounded();
-        for stream_id in state.current_stream_ids(self.node_id()) {
+        for stream_id in state.current_stream_ids() {
             let _ = s.unbounded_send(stream_id);
         }
         state.known_streams.push(s);
