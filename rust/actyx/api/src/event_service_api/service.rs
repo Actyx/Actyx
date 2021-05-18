@@ -12,13 +12,9 @@ use ax_futures_util::prelude::*;
 use futures::{
     future,
     stream::{self, BoxStream, StreamExt},
-    TryFutureExt,
 };
 use runtime::value::Value;
-use swarm::{
-    event_store::{self, EventStore},
-    BanyanStore,
-};
+use swarm::event_store::{self, EventStore};
 use thiserror::Error;
 use trees::TagSubscriptions;
 
@@ -32,11 +28,11 @@ pub enum Error {
 
 #[derive(Clone)]
 pub struct EventService {
-    store: BanyanStore,
+    store: EventStore,
 }
 
 impl EventService {
-    pub fn new(store: BanyanStore) -> EventService {
+    pub fn new(store: EventStore) -> EventService {
         EventService { store }
     }
 }
@@ -60,44 +56,46 @@ impl service::EventService for EventService {
             .into_iter()
             .map(|PublishEvent { tags, payload }| (tags, payload))
             .collect();
-        let response = self
-            .store
-            .persist(events)
-            .map_ok(|keys| PublishResponse {
-                data: keys
-                    .into_iter()
-                    .map(|(lamport, offset, stream_nr, timestamp)| PublishResponseKey {
-                        lamport,
-                        offset,
-                        stream: self.store.node_id().stream(stream_nr),
-                        timestamp,
-                    })
-                    .collect(),
-            })
-            .await
-            .map_err(Error::StoreError)?;
+        let meta = self.store.persist(events).await.map_err(Error::StoreError)?;
+        let response = PublishResponse {
+            data: meta
+                .into_iter()
+                .map(|(lamport, offset, stream_nr, timestamp)| PublishResponseKey {
+                    lamport,
+                    offset,
+                    stream: self.store.node_id().stream(stream_nr),
+                    timestamp,
+                })
+                .collect(),
+        };
         Ok(response)
     }
 
     async fn query(&self, request: QueryRequest) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
         let tag_subscriptions = TagSubscriptions::from(&request.query);
-        let response = match request.order {
+        let stream = match request.order {
             Order::Asc => self
                 .store
-                .bounded_forward(tag_subscriptions, request.lower_bound, request.upper_bound),
+                .bounded_forward(tag_subscriptions, request.lower_bound, request.upper_bound)
+                .await
+                .map(|s| s.boxed()),
             Order::Desc => self
                 .store
-                .bounded_backward(tag_subscriptions, request.lower_bound, request.upper_bound),
-            Order::StreamAsc => {
-                self.store
-                    .bounded_forward_per_stream(tag_subscriptions, request.lower_bound, request.upper_bound)
-            }
-        }
-        .await
-        .map_err(Error::EventStoreError)?
-        .flat_map(mk_feed(request.query))
-        .map(QueryResponse::Event);
-        Ok(response.boxed())
+                .bounded_backward(tag_subscriptions, request.lower_bound, request.upper_bound)
+                .await
+                .map(|s| s.boxed()),
+            Order::StreamAsc => self
+                .store
+                .bounded_forward_per_stream(tag_subscriptions, request.lower_bound, request.upper_bound)
+                .await
+                .map(|s| s.boxed()),
+        };
+        let response = stream
+            .map_err(Error::EventStoreError)?
+            .flat_map(mk_feed(request.query))
+            .map(QueryResponse::Event)
+            .boxed();
+        Ok(response)
     }
 
     async fn subscribe(&self, request: SubscribeRequest) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {

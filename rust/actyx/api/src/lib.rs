@@ -9,7 +9,7 @@ mod util;
 use actyx_util::{ax_panic, formats::NodeErrorContext};
 use futures::future::try_join_all;
 use std::net::SocketAddr;
-use swarm::BanyanStore;
+use swarm::{event_store::EventStore, BanyanStore};
 use warp::*;
 
 use crate::util::hyper_serve::serve_it;
@@ -43,7 +43,8 @@ pub async fn run(node_info: NodeInfo, store: BanyanStore, bind_to: impl Iterator
 }
 
 fn routes(node_info: NodeInfo, store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    let event_service = event_service_api::service::EventService::new(store.clone());
+    let event_store = EventStore::new(store.clone());
+    let event_service = event_service_api::service::EventService::new(event_store);
     let events = event_service_api::routes(node_info.clone(), event_service);
     let auth = authentication_service_api::route(node_info);
 

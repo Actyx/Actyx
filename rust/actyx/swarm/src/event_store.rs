@@ -1,19 +1,20 @@
-use std::cmp::Reverse;
+use std::{cmp::Reverse, convert::TryInto, ops::RangeInclusive};
 
 use actyxos_sdk::{
-    service::OffsetsResponse, Event, LamportTimestamp, Offset, OffsetMap, OffsetOrMin, Payload, StreamId, StreamNr,
-    TagSet, Timestamp,
+    service::OffsetsResponse, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin,
+    Payload, StreamId, StreamNr, TagSet, Timestamp,
 };
 use ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered};
+use banyan::forest::FilteredChunk;
 use derive_more::Display;
-use futures::{
-    future::{self, BoxFuture},
-    stream::{self, BoxStream},
-    FutureExt, StreamExt, TryFutureExt,
+use fnv::FnvHashSet;
+use futures::{future, stream, Stream, StreamExt, TryStreamExt};
+use trees::{
+    axtrees::{AxKey, TagsQuery},
+    OffsetMapOrMax, TagSubscriptions,
 };
-use trees::{OffsetMapOrMax, TagSubscriptions};
 
-use crate::selection::StreamEventSelection;
+use crate::{selection::StreamEventSelection, AxTreeExt, BanyanStore, TT};
 
 #[derive(Clone, Debug, Display)]
 pub enum Error {
@@ -22,57 +23,92 @@ pub enum Error {
 }
 impl std::error::Error for Error {}
 
-pub type EventStreamOrError = BoxFuture<'static, Result<BoxStream<'static, Event<Payload>>, Error>>;
-pub type EventStreamReverseOrError = BoxFuture<'static, Result<BoxStream<'static, Reverse<Event<Payload>>>, Error>>;
 pub type PersistenceMeta = (LamportTimestamp, Offset, StreamNr, Timestamp);
 
-pub trait EventStore: Clone + Sized + Sync + Send + 'static {
-    fn is_local(&self, stream_id: StreamId) -> bool;
+#[derive(Clone)]
+pub struct EventStore {
+    banyan_store: BanyanStore,
+}
 
-    fn has_stream(&self, stream_id: StreamId) -> bool;
+impl EventStore {
+    pub fn new(banyan_store: BanyanStore) -> EventStore {
+        EventStore { banyan_store }
+    }
 
-    fn known_streams(&self) -> BoxStream<'static, StreamId>;
+    pub fn node_id(&self) -> NodeId {
+        self.banyan_store.node_id()
+    }
 
-    fn forward_stream(&self, stream_selection: StreamEventSelection) -> EventStreamOrError;
+    fn known_streams(&self) -> impl Stream<Item = StreamId> {
+        let mut seen = FnvHashSet::default();
+        self.banyan_store
+            .stream_known_streams()
+            .filter_map(move |stream_id| future::ready(if seen.insert(stream_id) { Some(stream_id) } else { None }))
+    }
 
-    fn backward_stream(&self, stream_selection: StreamEventSelection) -> EventStreamReverseOrError;
+    fn forward_stream(&self, stream_selection: StreamEventSelection) -> impl Stream<Item = Event<Payload>> {
+        let stream_id = stream_selection.stream_id;
+        debug_assert!(self.banyan_store.has_stream(stream_id));
+        debug_assert!(stream_selection.from_exclusive < stream_selection.to_inclusive);
+        let (trees, forest) = self.banyan_store.tree_stream(stream_id);
+        let range = get_range_inclusive(&stream_selection);
+        let query = TagsQuery::new(stream_selection.tag_subscriptions);
+        forest
+            .stream_trees_chunked(query, trees, range, &|_| ())
+            .map_ok(move |chunk| stream::iter(events_from_chunk(stream_id, chunk)))
+            .take_while(|x| future::ready(x.is_ok()))
+            .filter_map(|x| future::ready(x.ok()))
+            .flatten()
+    }
 
-    fn bounded_streams(
+    fn backward_stream(&self, stream_selection: StreamEventSelection) -> impl Stream<Item = Reverse<Event<Payload>>> {
+        let stream_id = stream_selection.stream_id;
+        debug_assert!(stream_selection.from_exclusive < stream_selection.to_inclusive);
+        debug_assert!(self.banyan_store.has_stream(stream_id));
+        let (trees, forest) = self.banyan_store.tree_stream(stream_id);
+        let range = get_range_inclusive(&stream_selection);
+        let query = TagsQuery::new(stream_selection.tag_subscriptions);
+        forest
+            .stream_trees_chunked_reverse(query, trees, range, &|_| ())
+            .map_ok(move |chunk| stream::iter(events_from_chunk_rev(stream_id, chunk)))
+            .take_while(|x| future::ready(x.is_ok()))
+            .filter_map(|x| future::ready(x.ok()))
+            .flatten()
+    }
+
+    async fn bounded_streams(
         &self,
         tag_subscriptions: TagSubscriptions,
         from_offsets_excluding: Option<OffsetMap>,
         to_offsets_including: OffsetMap,
-    ) -> BoxFuture<'static, Result<Vec<StreamEventSelection>, Error>> {
+    ) -> Result<Vec<StreamEventSelection>, Error> {
         let only_local = tag_subscriptions.only_local();
         let this = self.clone();
-        self.present()
-            .then(move |present| {
-                if present.union(&to_offsets_including) != present {
-                    return future::err(Error::InvalidUpperBounds).boxed();
-                }
-                let from_or_min = from_offsets_excluding.map(OffsetMapOrMax::from).unwrap_or_default();
-                let res: Vec<_> = to_offsets_including
-                    .streams()
-                    .filter_map(|stream_id| {
-                        let from = from_or_min.offset(stream_id);
-                        let to = to_offsets_including.offset(stream_id).min(present.offset(stream_id));
-                        let local = this.is_local(stream_id);
+        let present = self.present().await;
+        if present.union(&to_offsets_including) != present {
+            return Err(Error::InvalidUpperBounds);
+        }
+        let from_or_min = from_offsets_excluding.map(OffsetMapOrMax::from).unwrap_or_default();
+        let res: Vec<_> = to_offsets_including
+            .streams()
+            .filter_map(|stream_id| {
+                let from = from_or_min.offset(stream_id);
+                let to = to_offsets_including.offset(stream_id).min(present.offset(stream_id));
+                let local = this.banyan_store.is_local(stream_id);
 
-                        if from < to && (!only_local || local) {
-                            Some(StreamEventSelection {
-                                stream_id,
-                                from_exclusive: from,
-                                to_inclusive: to,
-                                tag_subscriptions: tag_subscriptions.as_tag_sets(local),
-                            })
-                        } else {
-                            None
-                        }
+                if from < to && (!only_local || local) {
+                    Some(StreamEventSelection {
+                        stream_id,
+                        from_exclusive: from,
+                        to_inclusive: to,
+                        tag_subscriptions: tag_subscriptions.as_tag_sets(local),
                     })
-                    .collect();
-                future::ok(res).boxed()
+                } else {
+                    None
+                }
             })
-            .boxed()
+            .collect();
+        Ok(res)
     }
 
     fn unbounded_stream(
@@ -82,7 +118,7 @@ pub trait EventStore: Clone + Sized + Sync + Send + 'static {
         from_exclusive: OffsetOrMin,
     ) -> Option<StreamEventSelection> {
         let only_local = tag_subscriptions.only_local();
-        let local = self.is_local(stream_id);
+        let local = self.banyan_store.is_local(stream_id);
         if !only_local || local {
             Some(StreamEventSelection {
                 stream_id,
@@ -95,82 +131,106 @@ pub trait EventStore: Clone + Sized + Sync + Send + 'static {
         }
     }
 
-    fn offsets(&self) -> BoxStream<'static, OffsetsResponse>;
-
-    fn present(&self) -> BoxFuture<'static, OffsetMap> {
-        self.offsets()
-            .into_future()
-            .map(move |(offsets, _)| offsets.unwrap_or_default().present)
-            .boxed()
+    pub fn offsets(&self) -> impl Stream<Item = OffsetsResponse> {
+        #[allow(clippy::redundant_closure)]
+        self.banyan_store
+            .data
+            .offsets
+            .new_projection(|x| OffsetsResponse::from(x))
     }
 
-    fn persist(&self, events: Vec<(TagSet, Payload)>) -> BoxFuture<'static, anyhow::Result<Vec<PersistenceMeta>>>;
+    pub async fn present(&self) -> OffsetMap {
+        self.offsets().next().await.unwrap_or_default().present
+    }
 
-    fn bounded_forward(
+    pub async fn persist(&self, events: Vec<(TagSet, Payload)>) -> anyhow::Result<Vec<PersistenceMeta>> {
+        let stream_nr = StreamNr::from(0); // TODO
+        let timestamp = Timestamp::now();
+        let stream = self.banyan_store.get_or_create_own_stream(stream_nr);
+        let n = events.len();
+        let guard = stream.lock().await;
+        let mut store = self.banyan_store.lock();
+        let mut lamports = store.reserve_lamports(events.len())?.peekable();
+        let min_lamport = *lamports.peek().unwrap();
+        let kvs = lamports
+            .zip(events)
+            .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
+        tracing::debug!("publishing {} events on stream {}", n, stream_nr);
+        let mut min_offset = OffsetOrMin::MIN;
+        self.banyan_store.transform_stream(&guard, |txn, tree| {
+            min_offset = min_offset.max(tree.offset());
+            txn.extend_unpacked(tree, kvs)
+        })?;
+
+        // We start iteration with 0 below, so this is effectively the offset of the first event.
+        let starting_offset = Offset::from_offset_or_min(min_offset)
+            .map(|x| x.succ())
+            .unwrap_or(Offset::ZERO);
+        let keys = (0..n)
+            .map(|i| {
+                let i = i as u64;
+                let lamport = min_lamport + i;
+                let offset = starting_offset.increase(i).unwrap();
+                (lamport, offset, stream_nr, timestamp)
+            })
+            .collect();
+        Ok(keys)
+    }
+
+    pub async fn bounded_forward(
         &self,
         tag_subscriptions: TagSubscriptions,
         from_offsets_excluding: Option<OffsetMap>,
         to_offsets_including: OffsetMap,
-    ) -> EventStreamOrError {
+    ) -> Result<impl Stream<Item = Event<Payload>>, Error> {
         let this = self.clone();
-        self.bounded_streams(tag_subscriptions, from_offsets_excluding, to_offsets_including)
-            .and_then(move |stream_selections| {
-                future::try_join_all(
-                    stream_selections
-                        .into_iter()
-                        .map(|stream_selection| this.forward_stream(stream_selection)),
-                )
-                .map_ok(|event_streams| MergeOrdered::new_fixed(event_streams).boxed())
-                .boxed()
-            })
-            .boxed()
+        let stream_selections = self
+            .bounded_streams(tag_subscriptions, from_offsets_excluding, to_offsets_including)
+            .await?;
+        let event_streams = stream_selections
+            .into_iter()
+            .map(|stream_selection| this.forward_stream(stream_selection));
+        Ok(MergeOrdered::new_fixed(event_streams))
     }
 
-    fn bounded_forward_per_stream(
+    pub async fn bounded_forward_per_stream(
         &self,
         tag_subscriptions: TagSubscriptions,
         from_offsets_excluding: Option<OffsetMap>,
         to_offsets_including: OffsetMap,
-    ) -> EventStreamOrError {
+    ) -> Result<impl Stream<Item = Event<Payload>>, Error> {
         let this = self.clone();
-        self.bounded_streams(tag_subscriptions, from_offsets_excluding, to_offsets_including)
-            .and_then(move |stream_selections| {
-                future::try_join_all(
-                    stream_selections
-                        .into_iter()
-                        .map(|stream_selection| this.forward_stream(stream_selection)),
-                )
-                .map_ok(|event_streams| stream::iter(event_streams).merge_unordered().boxed())
-                .boxed()
-            })
-            .boxed()
+        let stream_selections = self
+            .bounded_streams(tag_subscriptions, from_offsets_excluding, to_offsets_including)
+            .await?;
+        let event_streams = stream_selections
+            .into_iter()
+            .map(move |stream_selection| this.forward_stream(stream_selection));
+        Ok(stream::iter(event_streams).merge_unordered())
     }
 
-    fn bounded_backward(
+    pub async fn bounded_backward(
         &self,
         tag_subscriptions: TagSubscriptions,
         from_offsets_excluding: Option<OffsetMap>,
         to_offsets_including: OffsetMap,
-    ) -> EventStreamOrError {
+    ) -> Result<impl Stream<Item = Event<Payload>>, Error> {
         let this = self.clone();
-        self.bounded_streams(tag_subscriptions, from_offsets_excluding, to_offsets_including)
-            .and_then(move |stream_selections| {
-                future::try_join_all(
-                    stream_selections
-                        .into_iter()
-                        .map(|stream_selection| this.backward_stream(stream_selection)),
-                )
-                .map_ok(|event_streams| MergeOrdered::new_fixed(event_streams).map(|reverse| reverse.0).boxed())
-                .boxed()
-            })
-            .boxed()
+        let stream_selections = self
+            .bounded_streams(tag_subscriptions, from_offsets_excluding, to_offsets_including)
+            .await?;
+        let event_streams = stream_selections
+            .into_iter()
+            .map(|stream_selection| this.backward_stream(stream_selection));
+
+        Ok(MergeOrdered::new_fixed(event_streams).map(|reverse| reverse.0))
     }
 
-    fn unbounded_forward_per_stream(
+    pub fn unbounded_forward_per_stream(
         &self,
         tag_subscriptions: TagSubscriptions,
         from_offsets_excluding: Option<OffsetMap>,
-    ) -> BoxStream<'static, Event<Payload>> {
+    ) -> impl Stream<Item = Event<Payload>> {
         let this = self.clone();
         let this2 = self.clone();
         let from_or_min = from_offsets_excluding.map(OffsetMapOrMax::from).unwrap_or_default();
@@ -178,24 +238,72 @@ pub trait EventStore: Clone + Sized + Sync + Send + 'static {
             .filter_map(move |stream_id| {
                 future::ready(this.unbounded_stream(stream_id, &tag_subscriptions, from_or_min.offset(stream_id)))
             })
-            .then(move |stream_selection| this2.forward_stream(stream_selection))
-            .map(|res| res.unwrap())
+            .map(move |stream_selection| this2.forward_stream(stream_selection))
             .merge_unordered()
             .boxed()
     }
 }
 
+fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> {
+    let min = (selection.from_exclusive - OffsetOrMin::MIN) as u64;
+    let max = (selection.to_inclusive - OffsetOrMin::ZERO) as u64;
+    min..=max
+}
+
+fn to_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<Payload> {
+    Event {
+        payload,
+        key: EventKey {
+            lamport: key.lamport(),
+            offset: offset.try_into().expect("TODO"),
+            stream,
+        },
+        meta: Metadata {
+            timestamp: key.time(),
+            tags: key.into_tags(),
+        },
+    }
+}
+
+/// Take a block of banyan events and convert them into events.
+fn events_from_chunk(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, ()>) -> Vec<Event<Payload>> {
+    chunk
+        .data
+        .into_iter()
+        .map(move |(offset, key, payload)| to_ev(offset, key, stream_id, payload))
+        .collect()
+}
+
+/// Take a block of banyan events and convert them into events, reversing them.
+fn events_from_chunk_rev(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, ()>) -> Vec<Reverse<Event<Payload>>> {
+    chunk
+        .data
+        .into_iter()
+        .rev()
+        .map(move |(offset, key, payload)| Reverse(to_ev(offset, key, stream_id, payload)))
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
+    use std::{
+        collections::{BTreeMap, BTreeSet},
+        num::NonZeroU64,
+    };
 
     use actyxos_sdk::{language::TagExpr, service::Order, tags, OffsetOrMin, StreamId};
     use ax_futures_util::stream::Drainer;
+    use maplit::btreemap;
     use num_traits::Bounded;
+    use quickcheck::Arbitrary;
     use trees::{OffsetMapOrMax, TagSubscription, TagSubscriptions};
 
     use super::*;
-    use crate::{selection::EventSelection, BanyanStore};
+    use crate::{selection::EventSelection, BanyanStore, SwarmConfig};
+
+    async fn mk_store(name: &'static str) -> EventStore {
+        EventStore::new(BanyanStore::test(name).await.unwrap())
+    }
 
     fn offset_map(entries: &[(StreamId, u32)]) -> BTreeMap<StreamId, Offset> {
         entries
@@ -206,14 +314,15 @@ mod tests {
     }
 
     async fn await_stream_offsets<'a>(
-        store: &'a BanyanStore,
-        other_stores: &'a [&BanyanStore],
+        store: &'a EventStore,
+        other_stores: &'a [&EventStore],
         offsets: &'a [(StreamId, u32)],
     ) {
         for other in other_stores {
-            store
-                .ipfs()
-                .add_address(&other.ipfs().local_peer_id(), other.ipfs().listeners()[0].clone());
+            store.banyan_store.ipfs().add_address(
+                &other.banyan_store.ipfs().local_peer_id(),
+                other.banyan_store.ipfs().listeners()[0].clone(),
+            );
         }
 
         let mut waiting_for = offset_map(offsets);
@@ -234,7 +343,7 @@ mod tests {
     }
 
     fn assert_stream(
-        stream: BoxStream<'static, Event<Payload>>,
+        stream: impl Stream<Item = Event<Payload>> + 'static,
         expr: &'static str,
         from_offsets_excluding: OffsetMapOrMax,
         to_offsets_including: OffsetMapOrMax,
@@ -274,65 +383,45 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_forward_stream() {
-        let store = BanyanStore::test("swarm_test").await.unwrap();
+        let store = mk_store("swarm_test").await;
         let stream_id = store.node_id().stream(0.into());
 
         store.persist(vec![(tags!(), Payload::empty())]).await.unwrap();
 
-        let mut stream = Drainer::new(
-            store
-                .forward_stream(StreamEventSelection {
-                    stream_id,
-                    from_exclusive: OffsetOrMin::MIN,
-                    to_inclusive: OffsetOrMin::ZERO,
-                    tag_subscriptions: vec![tags!()],
-                })
-                .await
-                .unwrap(),
-        );
+        let mut stream = Drainer::new(store.forward_stream(StreamEventSelection {
+            stream_id,
+            from_exclusive: OffsetOrMin::MIN,
+            to_inclusive: OffsetOrMin::ZERO,
+            tag_subscriptions: vec![tags!()],
+        }));
         let res = stream.next().unwrap();
         assert_eq!(res.len(), 1);
         assert_eq!(stream.next(), None);
 
-        let mut stream = Drainer::new(
-            store
-                .forward_stream(StreamEventSelection {
-                    stream_id,
-                    from_exclusive: OffsetOrMin::MIN,
-                    to_inclusive: OffsetOrMin::ZERO,
-                    tag_subscriptions: vec![tags!("nothing")],
-                })
-                .await
-                .unwrap(),
-        );
+        let mut stream = Drainer::new(store.forward_stream(StreamEventSelection {
+            stream_id,
+            from_exclusive: OffsetOrMin::MIN,
+            to_inclusive: OffsetOrMin::ZERO,
+            tag_subscriptions: vec![tags!("nothing")],
+        }));
         assert_eq!(stream.next(), None);
 
-        let mut stream = Drainer::new(
-            store
-                .forward_stream(StreamEventSelection {
-                    stream_id,
-                    from_exclusive: OffsetOrMin::MIN,
-                    to_inclusive: OffsetOrMin::ZERO,
-                    tag_subscriptions: vec![tags!()],
-                })
-                .await
-                .unwrap(),
-        );
+        let mut stream = Drainer::new(store.forward_stream(StreamEventSelection {
+            stream_id,
+            from_exclusive: OffsetOrMin::MIN,
+            to_inclusive: OffsetOrMin::ZERO,
+            tag_subscriptions: vec![tags!()],
+        }));
         let res = stream.next().unwrap();
         assert_eq!(res.len(), 1);
         assert_eq!(stream.next(), None); // bounded -> complete
 
-        let mut stream = Drainer::new(
-            store
-                .forward_stream(StreamEventSelection {
-                    stream_id,
-                    from_exclusive: OffsetOrMin::MIN,
-                    to_inclusive: OffsetOrMin::MAX,
-                    tag_subscriptions: vec![tags!()],
-                })
-                .await
-                .unwrap(),
-        );
+        let mut stream = Drainer::new(store.forward_stream(StreamEventSelection {
+            stream_id,
+            from_exclusive: OffsetOrMin::MIN,
+            to_inclusive: OffsetOrMin::MAX,
+            tag_subscriptions: vec![tags!()],
+        }));
         let res = stream.next().unwrap();
         assert_eq!(res.len(), 1);
         assert_eq!(stream.next(), Some(vec![])); // unbounded -> keep running
@@ -340,44 +429,34 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_backward_stream() {
-        let store = BanyanStore::test("swarm_test").await.unwrap();
+        let store = mk_store("swarm_test").await;
         let stream_id = store.node_id().stream(0.into());
 
         store.persist(vec![(tags!(), Payload::empty())]).await.unwrap();
 
-        let mut stream = Drainer::new(
-            store
-                .backward_stream(StreamEventSelection {
-                    stream_id,
-                    from_exclusive: OffsetOrMin::MIN,
-                    to_inclusive: OffsetOrMin::ZERO,
-                    tag_subscriptions: vec![tags!()],
-                })
-                .await
-                .unwrap(),
-        );
+        let mut stream = Drainer::new(store.backward_stream(StreamEventSelection {
+            stream_id,
+            from_exclusive: OffsetOrMin::MIN,
+            to_inclusive: OffsetOrMin::ZERO,
+            tag_subscriptions: vec![tags!()],
+        }));
         let res = stream.next().unwrap();
         assert_eq!(res.len(), 1);
         assert_eq!(stream.next(), None);
 
-        let mut stream = Drainer::new(
-            store
-                .backward_stream(StreamEventSelection {
-                    stream_id,
-                    from_exclusive: OffsetOrMin::MIN,
-                    to_inclusive: OffsetOrMin::ZERO,
-                    tag_subscriptions: vec![tags!("nothing")],
-                })
-                .await
-                .unwrap(),
-        );
+        let mut stream = Drainer::new(store.backward_stream(StreamEventSelection {
+            stream_id,
+            from_exclusive: OffsetOrMin::MIN,
+            to_inclusive: OffsetOrMin::ZERO,
+            tag_subscriptions: vec![tags!("nothing")],
+        }));
         assert_eq!(stream.next(), None);
     }
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_bounded() {
-        let store1 = BanyanStore::test("swarm_test1").await.unwrap();
-        let store2 = BanyanStore::test("swarm_test2").await.unwrap();
+        let store1 = mk_store("swarm_test1").await;
+        let store2 = mk_store("swarm_test2").await;
 
         let stream_id1 = store1.node_id().stream(0.into());
         let stream_id2 = store2.node_id().stream(0.into());
@@ -401,7 +480,7 @@ mod tests {
             .unwrap();
 
         async fn assert_bounded<'a>(
-            store: &'a BanyanStore,
+            store: &'a EventStore,
             expr: &'static str,
             from: Option<&'a [(StreamId, u32)]>,
             to: &'a [(StreamId, u32)],
@@ -484,8 +563,8 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_unbounded_forward() {
-        let store1 = BanyanStore::test("swarm_test1").await.unwrap();
-        let store2 = BanyanStore::test("swarm_test2").await.unwrap();
+        let store1 = mk_store("swarm_test1").await;
+        let store2 = mk_store("swarm_test2").await;
 
         let stream_id1 = store1.node_id().stream(0.into());
         let stream_id2 = store2.node_id().stream(0.into());
@@ -496,7 +575,7 @@ mod tests {
             .unwrap();
 
         async fn assert_unbounded<'a>(
-            stream: BoxStream<'static, Event<Payload>>,
+            stream: impl Stream<Item = Event<Payload>> + 'static,
             expr: &'static str,
             from: Option<&'a [(StreamId, u32)]>,
             len: usize,
@@ -517,7 +596,7 @@ mod tests {
         let store1_clone = store1.clone();
         let store2_clone = store2.clone();
         let handle = tokio::spawn(async move {
-            let store_rx = BanyanStore::test("swarm_test_rx").await.unwrap();
+            let store_rx = mk_store("swarm_test_rx").await;
             let tag_subscriptions = TagSubscriptions::new(vec![TagSubscription::new(tags!("test:unbounded:forward"))]);
             let from = [(stream_id1, 0)];
             // stream1 is below range and stream2 non-existant at this point
@@ -541,5 +620,67 @@ mod tests {
             .unwrap();
 
         handle.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn should_stream_offsets() -> anyhow::Result<()> {
+        let mut cfg = SwarmConfig::test("offset_stream");
+        cfg.enable_mdns = false;
+        let store = EventStore::new(BanyanStore::new(cfg).await?);
+        let store_node_id = store.node_id();
+        let mut offsets = Drainer::new(store.offsets());
+
+        // Initially only own streams
+        let nxt = offsets.next().unwrap().last().cloned().unwrap();
+        assert!(nxt.present.streams().all(|x| x.node_id() == store_node_id));
+        assert_eq!(nxt.to_replicate, Default::default());
+
+        let mut gen = quickcheck::Gen::new(64);
+        let streams: BTreeSet<StreamId> = Arbitrary::arbitrary(&mut gen);
+
+        for (idx, stream) in streams.into_iter().enumerate() {
+            let offset = if idx == 0 {
+                // Explicitly test the 0 case
+                Offset::from(0)
+            } else {
+                Offset::arbitrary(&mut gen)
+            };
+            test_offsets(&store, stream, offset);
+        }
+
+        Ok(())
+    }
+
+    fn test_offsets(store: &EventStore, stream: StreamId, offset: Offset) {
+        let mut offsets = Drainer::new(store.offsets());
+
+        // Inject root update from `stream`
+        store.banyan_store.update_highest_seen(stream, offset.into());
+
+        let nxt = offsets.next().unwrap().last().cloned().unwrap();
+        assert!(nxt.present.streams().all(|x| x != stream));
+        assert_eq!(
+            nxt.to_replicate,
+            btreemap! {
+                stream => NonZeroU64::new(u64::from(offset) + 1).unwrap()
+            }
+        );
+
+        // Inject validation of `stream` with `offset - 1`
+        if let Some(pred) = offset.pred() {
+            store.banyan_store.update_present(stream, pred.into());
+            let nxt = offsets.next().unwrap().last().cloned().unwrap();
+            assert_eq!(nxt.present.offset(stream), OffsetOrMin::from(pred));
+            assert_eq!(
+                nxt.to_replicate,
+                std::iter::once((stream, NonZeroU64::new(1u64).unwrap())).collect()
+            );
+        }
+
+        // Inject validation of `stream` with `offset`
+        store.banyan_store.update_present(stream, offset.into());
+        let nxt = offsets.next().unwrap().last().cloned().unwrap();
+        assert_eq!(nxt.present.offset(stream), OffsetOrMin::from(offset));
+        assert_eq!(nxt.to_replicate, Default::default());
     }
 }

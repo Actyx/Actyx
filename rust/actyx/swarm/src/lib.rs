@@ -34,7 +34,9 @@ use crate::prune::RetainConfig;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::sqlite_index_store::SqliteIndexStore;
 use crate::streams::{OwnStream, ReplicatedStreamInner};
-use actyxos_sdk::{LamportTimestamp, NodeId, OffsetMap, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp};
+use actyxos_sdk::{
+    LamportTimestamp, NodeId, Offset, OffsetMap, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp,
+};
 use anyhow::{Context, Result};
 use ax_futures_util::{prelude::*, stream::variable::Variable};
 use banyan::{
@@ -816,6 +818,28 @@ impl BanyanStore {
         let _ = self.update_present(stream_id, offset);
         // done
         Ok(())
+    }
+
+    fn update_present(&self, stream_id: StreamId, offset: OffsetOrMin) {
+        if let Some(offset) = Offset::from_offset_or_min(offset) {
+            self.data.offsets.transform_mut(|offsets| {
+                offsets.present.update(stream_id, offset);
+                true
+            });
+        }
+    }
+
+    fn update_highest_seen(&self, stream_id: StreamId, offset: OffsetOrMin) {
+        if let Some(offset) = Offset::from_offset_or_min(offset) {
+            self.data.offsets.transform_mut(|offsets| {
+                if offsets.replication_target.offset(stream_id) < offset {
+                    offsets.replication_target.update(stream_id, offset);
+                    true
+                } else {
+                    false
+                }
+            });
+        }
     }
 
     fn has_stream(&self, stream_id: StreamId) -> bool {
