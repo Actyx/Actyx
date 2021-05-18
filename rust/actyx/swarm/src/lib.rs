@@ -32,13 +32,15 @@ pub use crate::v1::{EventStore, Present};
 use crate::gossip::Gossip;
 use crate::prune::RetainConfig;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
-use crate::sqlite_index_store::SqliteIndexStore;
 use crate::streams::{OwnStream, ReplicatedStreamInner};
 use actyxos_sdk::{
     LamportTimestamp, NodeId, Offset, OffsetMap, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp,
 };
 use anyhow::{Context, Result};
-use ax_futures_util::{prelude::*, stream::variable::Variable};
+use ax_futures_util::{
+    prelude::*,
+    stream::variable::{Observer, Variable},
+};
 use banyan::{index::Index, query::Query, store::BranchCache, Config, FilteredChunk, Secrets, StreamBuilder};
 use crypto::KeyPair;
 use futures::{channel::mpsc, prelude::*};
@@ -55,6 +57,7 @@ use libp2p::{
 };
 use maplit::btreemap;
 use parking_lot::Mutex;
+use sqlite_index_store::SqliteIndexStore;
 use std::{
     collections::{BTreeMap, BTreeSet, VecDeque},
     convert::TryFrom,
@@ -188,7 +191,7 @@ struct BanyanStoreData {
     /// maximum ingested offset and highest seen for each stream
     offsets: Variable<SwarmOffsets>,
     /// lamport timestamp for publishing to internal streams
-    lamport: Variable<LamportTimestamp>,
+    lamport: Observer<LamportTimestamp>,
 }
 
 /// Internal mutable state of the stream manager
@@ -259,10 +262,6 @@ impl<'a> BanyanStoreGuard<'a> {
 
     fn local_stream_ids(&self) -> BTreeSet<StreamId> {
         self.own_streams.keys().map(|x| self.data.node_id.stream(*x)).collect()
-    }
-
-    fn received_lamport(&mut self, lamport: u64) -> anyhow::Result<u64> {
-        self.index_store.received_lamport(lamport)
     }
 
     fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Arc<OwnStream> {
@@ -346,7 +345,7 @@ impl<'a> BanyanStoreGuard<'a> {
             let stream = self.get_or_create_own_stream(stream_id.stream_nr());
             self.data
                 .lamport
-                .new_observer()
+                .clone()
                 .filter_map(move |lamport| {
                     future::ready(
                         Offset::from_offset_or_min(stream.snapshot().offset()).map(|offset| (lamport, offset)),
@@ -424,10 +423,14 @@ impl<'a> BanyanStoreGuard<'a> {
     }
 
     /// reserve a number of lamport timestamps
-    pub fn reserve_lamports(&mut self, n: usize) -> anyhow::Result<impl Iterator<Item = LamportTimestamp>> {
+    fn reserve_lamports(&mut self, n: usize) -> anyhow::Result<impl Iterator<Item = LamportTimestamp>> {
         let n = u64::try_from(n)?;
-        let last_lamport = self.index_store.increase_lamport(n)?;
-        Ok((last_lamport - n + 1..=last_lamport).map(LamportTimestamp::from))
+        let initial = self.index_store.increase_lamport(n)?;
+        Ok((u64::from(initial)..u64::from(initial + n)).map(LamportTimestamp::from))
+    }
+
+    fn received_lamport(&mut self, lamport: LamportTimestamp) -> anyhow::Result<()> {
+        self.index_store.received_lamport(lamport)
     }
 }
 
@@ -523,7 +526,7 @@ impl BanyanStore {
                 ipfs,
                 gossip,
                 forest,
-                lamport: Default::default(),
+                lamport: index_store.observe_lamport(),
                 offsets: Default::default(),
             }),
             state: Arc::new(ReentrantSafeMutex::new(BanyanStoreState {
@@ -767,8 +770,10 @@ impl BanyanStore {
         if let Some(root) = curr.link() {
             // publish the update
             let blocks = txn.into_writer().into_written();
+            // grab the latest lamport, as late as possible
+            let lamport = self.data.lamport.get();
             // publish new blocks and root
-            self.data.gossip.publish(stream_nr, root, blocks)?;
+            self.data.gossip.publish(stream_nr, root, blocks, lamport)?;
         }
         res
     }
@@ -821,7 +826,7 @@ impl BanyanStore {
         let cid = Cid::from(root);
         let ipfs = &self.data.ipfs;
         let stream = self.get_or_create_replicated_stream(stream_id);
-        let validated_lamport = stream.validated().last_lamport();
+        let prev = stream.validated();
         // temporarily pin the new root
         tracing::debug!("assigning temp pin to {}", root);
         let temp_pin = ipfs.create_temp_pin()?;
@@ -850,7 +855,7 @@ impl BanyanStore {
                 // load the tree as soon as possible. If this fails, bail out.
                 let temp = self.data.forest.load_tree(Secrets::default(), root)?;
                 // check that the tree is better than the one we have, otherwise bail out
-                anyhow::ensure!(temp.last_lamport() > validated_lamport);
+                anyhow::ensure!(temp.count() >= prev.count());
                 // get the offset
                 let offset = temp.offset();
                 // update present.
@@ -866,7 +871,6 @@ impl BanyanStore {
         tracing::debug!("updating alias {}", root);
         // assign the new root as validated
         ipfs.alias(&StreamAlias::from(stream_id), Some(&cid))?;
-        self.lock().received_lamport(tree.last_lamport().into())?;
         tracing::debug!("sync_one complete {} => {}", stream_id, tree.offset());
         let offset = tree.offset();
         stream.set_latest(tree);
