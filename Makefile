@@ -75,6 +75,7 @@ target-linux-armv7 = armv7-unknown-linux-musleabihf
 target-linux-arm = arm-unknown-linux-musleabi
 target-windows-x86_64 = x86_64-pc-windows-gnu
 target-macos-x86_64 = x86_64-apple-darwin
+target-macos-aarch64 = aarch64-apple-darwin
 
 # non-musl targets
 target-nonmusl-linux-aarch64 = aarch64-unknown-linux-gnu
@@ -93,10 +94,10 @@ docker-platform-arm = linux/arm/v6
 image-linux = actyx/cosmos:musl-$(TARGET)-$(IMAGE_VERSION)
 image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
-image-darwin = actyx/osxbuilder:71159f9ba63817122f16bf0d1523d23241f423d1
+image-darwin = actyx/osxbuilder:90af262c037444c4da6d981f8a885ac510a79bb6
 
 # list all os-arch and binary names
-osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64
+osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64 macos-aarch64
 binaries = ax ax.exe actyx-linux actyx.exe
 
 # targets for which we need a .so file for android
@@ -113,7 +114,7 @@ export ACTYX_VERSION ?= $(shell cat ACTYX_VERSION)-$(GIT_COMMIT)
 
 all-WINDOWS := $(foreach t,$(windows-bins),windows-x86_64/$t)
 all-ANDROID := $(android-bins)
-all-MACOS := $(foreach t,$(unix-bins),macos-x86_64/$t)
+all-MACOS := $(foreach t,$(unix-bins),macos-x86_64/$t macos-aarch64/$t)
 
 docker-platforms = $(foreach arch,$(architectures),$(docker-platform-$(arch)))
 docker-build-args = --build-arg ACTYX_VERSION=$(ACTYX_VERSION) --build-arg GIT_COMMIT=$(GIT_COMMIT)

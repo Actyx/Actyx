@@ -185,9 +185,9 @@ mod test {
     fn received_lamport_should_take_the_max_and_increment() {
         let mut empty_store = empty_store();
         empty_store.received_lamport(5.into()).unwrap();
-        assert_eq!(empty_store.lamport.get(), LamportTimestamp::from(6));
+        assert_eq!(empty_store.lamport.get(), LamportTimestamp::from(5));
         empty_store.received_lamport(3.into()).unwrap();
-        assert_eq!(empty_store.lamport.get(), LamportTimestamp::from(7));
+        assert_eq!(empty_store.lamport.get(), LamportTimestamp::from(6));
     }
 
     #[test]

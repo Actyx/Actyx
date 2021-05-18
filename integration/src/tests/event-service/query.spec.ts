@@ -28,9 +28,11 @@ describe('event service', () => {
       }))
 
     /**
-     * TODO: DESC query does not complete by itself, even though it delivers all data
+     * TODO: DESC query does not complete by itself, even though it delivers all data.
      */
-    it('should return events in ascending order and complete', () =>
+
+    // FIXME: Query endpoint misbehave. Added comment to https://github.com/Actyx/Cosmos/issues/6452#issuecomment-840377060
+    it.skip('should return events in ascending order and complete', () =>
       run(async (x) => {
         const es = await mkESFromTrial(x)
         const pub1 = await publishRandom(es)

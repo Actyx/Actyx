@@ -2,7 +2,7 @@
 title: ax settings unset
 ---
 
-```text title="Remove settings from an ActyxOS node"
+```text title="Remove settings from a node"
 USAGE:
     ax settings unset [FLAGS] <SCOPE> <NODE>
 

@@ -28,10 +28,15 @@ export type SshAble = {
   privateKey?: string
 }
 
+export type LocalTargetKind = Readonly<{
+  type: 'local'
+  reuseWorkingDirIfExists: boolean
+}>
+
 export type TargetKind =
   | ({ type: 'aws'; instance: string; privateAddress: string } & SshAble)
   | ({ type: 'ssh' } & SshAble)
-  | { type: 'local' }
+  | LocalTargetKind
   | { type: 'test' }
 
 export const printTarget = (t: Target): string => {

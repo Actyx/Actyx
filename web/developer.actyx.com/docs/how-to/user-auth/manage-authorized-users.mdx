@@ -1,0 +1,63 @@
+---
+title: Manage authorized node users
+id: manage-authorized-users
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+
+If a node has no authorized users yet, **the first user to interact with a node is automatically added to its authorized users**.
+If you want to manage which users are authorized to manage a node, you can do so by adding the user's public key to the `authorizedUsers` property in the node settings:
+
+```yaml
+authorizedUsers:
+    - 0WBOOWqi2Ub5SPi5btKN5H5BzFPcjyULwUKUN2dWVsMI= ## Public key of an authorized user
+```
+
+The following example assumes that you are already authorized and now want to add a user with the public key `09a36bJYYYSusZuQoum6x2zgqtHxYP31ov0RHRWIzwVo=`
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+<Tabs
+  groupId="tool"
+  defaultValue={"cli"}
+  values={[
+    { label: 'Actyx CLI', value: 'cli' },
+    { label: 'Node Manager', value: 'node-manager' },
+  ]}
+>
+
+<TabItem value="cli">
+
+The following command creates a file called `example` that lists the currently authorized users on your node running at `localhost`:
+
+```text
+ax settings get --local com.actyx/admin/authorizedUsers localhost > example
+```
+
+Now open the file, and add the public keys of the users you want to authorize:
+
+```yaml
+- 0WBOOWqi2Ub5SPi5btKN5H5BzFPcjyULwUKUN2dWVsMI= # Public key that was already authorized
+- 09a36bJYYYSusZuQoum6x2zgqtHxYP31ov0RHRWIzwVo= # Public key you want to authorize
+```
+
+You can then use this file to configure the list of authorized users:
+
+```text
+ax settings set --local com.actyx/admin/authorizedUsers @example localhost
+```
+
+</TabItem>
+<TabItem value="node-manager">
+
+TODO
+
+</TabItem>
+</Tabs>
+
+## Where next?
+
+- [Quickstart Guide](../../tutorials/quickstart.mdx)

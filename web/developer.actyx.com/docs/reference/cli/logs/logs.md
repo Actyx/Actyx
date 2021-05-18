@@ -3,7 +3,7 @@ title: ax logs
 hide_table_of_contents: true
 ---
 
-## Manage ActyxOS node and app logs
+## Manage Actyx node logs
 
 | Command                 | Functionality        |
 | ----------------------- | -------------------- |

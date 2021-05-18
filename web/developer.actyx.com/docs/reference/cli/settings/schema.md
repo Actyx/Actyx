@@ -2,7 +2,7 @@
 title: ax settings schema
 ---
 
-```text title="Get setting schemas from an ActyxOS node"
+```text title="Get setting schemas from a node"
 USAGE:
     ax settings schema [FLAGS] <SCOPE> <NODE>
 

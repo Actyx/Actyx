@@ -40,6 +40,7 @@ mod private;
 mod public;
 mod signature;
 
+pub use dh::*;
 pub use keystore::{KeyStore, KeyStoreRef};
 pub use pair::KeyPair;
 pub use private::PrivateKey;

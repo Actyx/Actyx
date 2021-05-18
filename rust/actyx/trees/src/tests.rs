@@ -1,10 +1,9 @@
 use crate::axtrees::{AxKey, AxTree, AxTrees, LamportQuery, Sha256Digest, TagsQuery, TimeQuery};
 use actyxos_sdk::{tags, LamportTimestamp, Payload, Tag, TagSet, Timestamp};
 use banyan::{
-    forest::{BranchCache, Config, CryptoConfig, Forest, Transaction},
-    memstore::MemStore,
     query::{AllQuery, OffsetRangeQuery, Query},
-    tree::Tree,
+    store::{BranchCache, MemStore},
+    Forest, StreamBuilder, Transaction,
 };
 use futures::prelude::*;
 use parking_lot::Mutex;
@@ -132,9 +131,7 @@ type AxTxn = Transaction<AxTrees, Payload, MemStore<Sha256Digest>, MemStore<Sha2
 fn test_txn() -> AxTxn {
     let store = MemStore::new(usize::max_value(), Sha256Digest::new);
     let branch_cache = BranchCache::new(1000);
-    let config = Config::debug();
-    let crypto_config = CryptoConfig::default();
-    AxTxn::new(Forest::new(store.clone(), branch_cache, crypto_config, config), store)
+    AxTxn::new(Forest::new(store.clone(), branch_cache), store)
 }
 
 fn generate_events(n: usize) -> Vec<(AxKey, Payload)> {
@@ -209,9 +206,14 @@ fn events_banyan_tree_roundtrip_with(events: Vec<(AxKey, Payload)>) -> anyhow::R
     // create a transaction so we can write banyan trees
     let txn = test_txn();
     // create a tree
-    let tree = txn.extend(&Tree::default(), events.clone())?;
+    let mut builder = StreamBuilder::debug();
+    txn.extend(&mut builder, events.clone())?;
     // get back the events
-    let events1 = txn.collect(&tree)?.into_iter().filter_map(|x| x).collect::<Vec<_>>();
+    let events1 = txn
+        .collect(&builder.snapshot())?
+        .into_iter()
+        .filter_map(|x| x)
+        .collect::<Vec<_>>();
     // check that they are the same
     assert_eq!(events, events1);
     Ok(())
@@ -234,7 +236,9 @@ async fn events_banyan_tree_simple_queries_with(events: Vec<(AxKey, Payload)>) -
     let txn = test_txn();
     // create a tree
     // this is pretty expensive, since the tree is configured to have a complex structure.
-    let tree = txn.extend(&Tree::default(), events.clone())?;
+    let mut builder = StreamBuilder::debug();
+    txn.extend(&mut builder, events.clone())?;
+    let tree = builder.snapshot();
     // try all query
     {
         let query = AllQuery;
