@@ -515,7 +515,7 @@ async fn bad_request_unknown_stream() {
         http::StatusCode::BAD_REQUEST,
         json!({
           "code": "ERR_BAD_REQUEST",
-          "message": "Invalid request. Access error: Upper bounds must be within the current offsets' present."
+          "message": "Invalid request. Store error while reading: Upper bounds must be within the current offsets’ present."
         }),
     );
 }

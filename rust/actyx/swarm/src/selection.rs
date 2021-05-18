@@ -9,7 +9,7 @@ use trees::{OffsetMapOrMax, TagSubscriptions};
 ///  - logical selection restricting which tags to admit, possibly also describing only from local streams
 ///
 /// These two parts are combined in an AND fashion, intersecting the two selected
-/// sets. If you want to filter logically, leave the PsnMaps open. If you want to
+/// sets. If you want to filter logically, leave the OffsetMaps open. If you want to
 /// filter physically, use TagSubscriptions::all(). If you want only certain events
 /// from a fixed set of streams (e.g. when building a fully ordered stream), combine
 /// the two mechanisms.

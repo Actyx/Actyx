@@ -6,7 +6,7 @@ use actyxos_sdk::{
 };
 use ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered};
 use banyan::forest::FilteredChunk;
-use derive_more::Display;
+use derive_more::{Display, Error};
 use fnv::FnvHashSet;
 use futures::{future, stream, Stream, StreamExt, TryStreamExt};
 use trees::{
@@ -16,12 +16,11 @@ use trees::{
 
 use crate::{selection::StreamEventSelection, AxTreeExt, BanyanStore, SwarmOffsets, TT};
 
-#[derive(Clone, Debug, Display)]
+#[derive(Clone, Debug, Display, Error)]
 pub enum Error {
-    #[display(fmt = "Upper bounds must be within the current offsets' present.")]
+    #[display(fmt = "Upper bounds must be within the current offsets’ present.")]
     InvalidUpperBounds,
 }
-impl std::error::Error for Error {}
 
 pub type PersistenceMeta = (LamportTimestamp, Offset, StreamNr, Timestamp);
 
@@ -93,7 +92,7 @@ impl EventStore {
             .streams()
             .filter_map(|stream_id| {
                 let from = from_or_min.offset(stream_id);
-                let to = to_offsets_including.offset(stream_id).min(present.offset(stream_id));
+                let to = to_offsets_including.offset(stream_id);
                 let local = this.banyan_store.is_local(stream_id);
 
                 if from < to && (!only_local || local) {
@@ -132,7 +131,6 @@ impl EventStore {
     }
 
     pub fn offsets(&self) -> impl Stream<Item = SwarmOffsets> {
-        #[allow(clippy::redundant_closure)]
         self.banyan_store.data.offsets.new_observer()
     }
 
@@ -160,9 +158,7 @@ impl EventStore {
         })?;
 
         // We start iteration with 0 below, so this is effectively the offset of the first event.
-        let starting_offset = Offset::from_offset_or_min(min_offset)
-            .map(|x| x.succ())
-            .unwrap_or(Offset::ZERO);
+        let starting_offset = min_offset.succ();
         let keys = (0..n)
             .map(|i| {
                 let i = i as u64;

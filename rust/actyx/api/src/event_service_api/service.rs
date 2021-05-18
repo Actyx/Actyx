@@ -25,10 +25,10 @@ use trees::TagSubscriptions;
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Store error: {0}")]
-    StoreError(#[from] anyhow::Error),
-    #[error("Access error: {0}")]
-    EventStoreError(#[from] event_store::Error),
+    #[error("Store error while writing: {0}")]
+    StoreWriteError(#[from] anyhow::Error),
+    #[error("Store error while reading: {0}")]
+    StoreReadError(#[from] event_store::Error),
 }
 
 #[derive(Clone)]
@@ -72,7 +72,7 @@ impl service::EventService for EventService {
             .into_iter()
             .map(|PublishEvent { tags, payload }| (tags, payload))
             .collect();
-        let meta = self.store.persist(events).await.map_err(Error::StoreError)?;
+        let meta = self.store.persist(events).await.map_err(Error::StoreWriteError)?;
         let response = PublishResponse {
             data: meta
                 .into_iter()
@@ -107,7 +107,7 @@ impl service::EventService for EventService {
                 .map(|s| s.boxed()),
         };
         let response = stream
-            .map_err(Error::EventStoreError)?
+            .map_err(Error::StoreReadError)?
             .flat_map(mk_feed(request.query))
             .map(QueryResponse::Event)
             .boxed();
@@ -122,7 +122,7 @@ impl service::EventService for EventService {
             .store
             .bounded_forward(tag_subscriptions.clone(), request.offsets, present.clone())
             .await
-            .map_err(Error::EventStoreError)?;
+            .map_err(Error::StoreReadError)?;
 
         let unbounded = self
             .store
@@ -146,7 +146,7 @@ impl service::EventService for EventService {
             self.store
                 .bounded_backward(tag_subscriptions.clone(), None, offsets.clone())
                 .await
-                .map_err(Error::EventStoreError)?
+                .map_err(Error::StoreReadError)?
                 .next()
                 .await
                 .map(|event| event.key)
@@ -163,7 +163,7 @@ impl service::EventService for EventService {
                 present.clone(),
             )
             .await
-            .map_err(Error::EventStoreError)?;
+            .map_err(Error::StoreReadError)?;
 
         let unbounded = self
             .store
