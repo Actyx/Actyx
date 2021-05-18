@@ -140,7 +140,7 @@ pub trait EventStore: Clone + Sized + Sync + Send + 'static {
                         .into_iter()
                         .map(|stream_selection| this.forward_stream(stream_selection)),
                 )
-                .map_ok(|event_streams| stream::iter(event_streams).flatten().boxed())
+                .map_ok(|event_streams| stream::iter(event_streams).merge_unordered().boxed())
                 .boxed()
             })
             .boxed()
