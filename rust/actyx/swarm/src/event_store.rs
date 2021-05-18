@@ -7,7 +7,6 @@ use actyxos_sdk::{
 use ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered};
 use banyan::forest::FilteredChunk;
 use derive_more::{Display, Error};
-use fnv::FnvHashSet;
 use futures::{future, stream, Stream, StreamExt, TryStreamExt};
 use trees::{
     axtrees::{AxKey, TagsQuery},
@@ -36,13 +35,6 @@ impl EventStore {
 
     pub fn node_id(&self) -> NodeId {
         self.banyan_store.node_id()
-    }
-
-    fn known_streams(&self) -> impl Stream<Item = StreamId> {
-        let mut seen = FnvHashSet::default();
-        self.banyan_store
-            .stream_known_streams()
-            .filter_map(move |stream_id| future::ready(if seen.insert(stream_id) { Some(stream_id) } else { None }))
     }
 
     fn forward_stream(&self, stream_selection: StreamEventSelection) -> impl Stream<Item = Event<Payload>> {
@@ -227,7 +219,8 @@ impl EventStore {
         let this = self.clone();
         let this2 = self.clone();
         let from_or_min = from_offsets_excluding.map(OffsetMapOrMax::from).unwrap_or_default();
-        self.known_streams()
+        self.banyan_store
+            .stream_known_streams()
             .filter_map(move |stream_id| {
                 future::ready(this.unbounded_stream(stream_id, &tag_subscriptions, from_or_min.offset(stream_id)))
             })
@@ -289,7 +282,7 @@ mod tests {
     use trees::{OffsetMapOrMax, TagSubscription, TagSubscriptions};
 
     use super::*;
-    use crate::{selection::EventSelection, BanyanStore, SwarmConfig};
+    use crate::{selection::EventSelection, BanyanStore};
 
     async fn mk_store(name: &'static str) -> EventStore {
         EventStore::new(BanyanStore::test(name).await.unwrap())
@@ -449,7 +442,6 @@ mod tests {
 
         let stream_id1 = store1.node_id().stream(0.into());
         let stream_id2 = store2.node_id().stream(0.into());
-        println!("1: {}, 2: {}", stream_id1, stream_id2);
 
         store1
             .persist(vec![
@@ -624,9 +616,32 @@ mod tests {
 
     #[tokio::test]
     async fn should_stream_offsets() -> anyhow::Result<()> {
-        let mut cfg = SwarmConfig::test("offset_stream");
-        cfg.enable_mdns = false;
-        let store = EventStore::new(BanyanStore::new(cfg).await?);
+        fn test_offsets(store: &EventStore, stream: StreamId, offset: Offset) {
+            let mut offsets = Drainer::new(store.offsets());
+
+            // Inject root update from `stream`
+            store.banyan_store.update_highest_seen(stream, offset.into());
+
+            let nxt = offsets.next().unwrap().last().cloned().unwrap();
+            assert!(nxt.present.streams().all(|x| x != stream));
+            assert_eq!(nxt.replication_target.offset(stream), OffsetOrMin::from(offset));
+
+            // Inject validation of `stream` with `offset - 1`
+            if let Some(pred) = offset.pred() {
+                store.banyan_store.update_present(stream, pred.into());
+                let nxt = offsets.next().unwrap().last().cloned().unwrap();
+                assert_eq!(nxt.present.offset(stream), OffsetOrMin::from(pred));
+                assert_eq!(nxt.replication_target.offset(stream), OffsetOrMin::from(offset));
+            }
+
+            // Inject validation of `stream` with `offset`
+            store.banyan_store.update_present(stream, offset.into());
+            let nxt = offsets.next().unwrap().last().cloned().unwrap();
+            assert_eq!(nxt.present.offset(stream), OffsetOrMin::from(offset));
+            assert_eq!(nxt.replication_target.offset(stream), OffsetOrMin::from(offset));
+        }
+
+        let store = mk_store("offset_stream").await;
         let store_node_id = store.node_id();
         let mut offsets = Drainer::new(store.offsets());
 
@@ -649,30 +664,5 @@ mod tests {
         }
 
         Ok(())
-    }
-
-    fn test_offsets(store: &EventStore, stream: StreamId, offset: Offset) {
-        let mut offsets = Drainer::new(store.offsets());
-
-        // Inject root update from `stream`
-        store.banyan_store.update_highest_seen(stream, offset.into());
-
-        let nxt = offsets.next().unwrap().last().cloned().unwrap();
-        assert!(nxt.present.streams().all(|x| x != stream));
-        assert_eq!(nxt.replication_target.offset(stream), OffsetOrMin::from(offset));
-
-        // Inject validation of `stream` with `offset - 1`
-        if let Some(pred) = offset.pred() {
-            store.banyan_store.update_present(stream, pred.into());
-            let nxt = offsets.next().unwrap().last().cloned().unwrap();
-            assert_eq!(nxt.present.offset(stream), OffsetOrMin::from(pred));
-            assert_eq!(nxt.replication_target.offset(stream), OffsetOrMin::from(offset));
-        }
-
-        // Inject validation of `stream` with `offset`
-        store.banyan_store.update_present(stream, offset.into());
-        let nxt = offsets.next().unwrap().last().cloned().unwrap();
-        assert_eq!(nxt.present.offset(stream), OffsetOrMin::from(offset));
-        assert_eq!(nxt.replication_target.offset(stream), OffsetOrMin::from(offset));
     }
 }
