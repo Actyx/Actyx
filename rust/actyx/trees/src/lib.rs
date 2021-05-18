@@ -2,12 +2,14 @@
 #[cfg(any(test, feature = "arb"))]
 mod arb;
 pub mod axtrees;
+mod header;
 pub mod offsetmap_or_default;
 pub mod subscription;
 pub mod tag_index;
 #[cfg(test)]
 mod tests;
 
+pub use self::header::Header as AxTreeHeader;
 pub use self::offsetmap_or_default::*;
 pub use self::subscription::*;
 pub use self::tag_index::*;
