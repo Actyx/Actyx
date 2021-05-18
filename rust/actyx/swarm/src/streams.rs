@@ -1,7 +1,7 @@
 use crate::{AxStreamBuilder, Cid, Link, Tree};
 use actyxos_sdk::{LamportTimestamp, NodeId, Offset, StreamId, StreamNr};
 use ax_futures_util::stream::variable::Variable;
-use banyan::{StreamBuilder, StreamBuilderTransaction};
+use banyan::{StreamBuilder, StreamTransaction};
 use fnv::FnvHashMap;
 use futures::{
     future,
@@ -109,7 +109,7 @@ impl<'a> OwnStreamGuard<'a> {
         &self.0.latest
     }
 
-    pub fn transaction(&mut self) -> StreamBuilderTransaction<'_, AxTrees> {
+    pub fn transaction(&mut self) -> StreamTransaction<'_, AxTrees> {
         self.1.transaction()
     }
 }

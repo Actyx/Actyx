@@ -69,7 +69,7 @@ fn retain_events_up_to(
                 // If we want to be a bit smarter here, we need to extend
                 // `banyan` for a more elaborated traversal API. For now a plain
                 // iterator is enough, and will be for a long time.
-                if let banyan::index::Index::Leaf(l) = index.as_ref() {
+                if let banyan::index::Index::Leaf(l) = index {
                     // Only the value bytes are taken into account
                     bytes += l.value_bytes;
                     current_offset -= l.keys().count() as u64;
