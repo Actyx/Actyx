@@ -380,15 +380,15 @@ impl<'a> BanyanStoreGuard<'a> {
     }
 
     /// Get a stream of trees for a given stream id
-    fn tree_stream(&mut self, stream_id: StreamId) -> (impl Stream<Item = Tree>, Forest) {
+    fn tree_stream(&mut self, stream_id: StreamId) -> impl Stream<Item = Tree> {
         let me = stream_id.node_id() == self.node_id();
         if me {
             let stream_nr = stream_id.stream_nr();
             let stream = self.get_or_create_own_stream(stream_nr).unwrap();
-            (stream.tree_stream(), self.data.forest.clone())
+            stream.tree_stream()
         } else {
             let stream = self.get_or_create_replicated_stream(stream_id).unwrap();
-            (stream.tree_stream(), self.data.forest.clone())
+            stream.tree_stream()
         }
     }
 
@@ -728,8 +728,8 @@ impl BanyanStore {
         query: Q,
     ) -> impl Stream<Item = Result<FilteredChunk<TT, Event, ()>>> {
         tracing::debug!("stream_filtered_chunked {}", stream_id);
-        let (trees, forest) = self.tree_stream(stream_id);
-        forest.stream_trees_chunked(query, trees, range, &|_| {})
+        let trees = self.tree_stream(stream_id);
+        self.data.forest.stream_trees_chunked(query, trees, range, &|_| {})
     }
 
     pub fn stream_filtered_chunked_reverse<Q: Query<TT> + Clone + 'static>(
@@ -738,8 +738,10 @@ impl BanyanStore {
         range: RangeInclusive<u64>,
         query: Q,
     ) -> impl Stream<Item = Result<FilteredChunk<TT, Event, ()>>> {
-        let (trees, forest) = self.tree_stream(stream_id);
-        forest.stream_trees_chunked_reverse(query, trees, range, &|_| {})
+        let trees = self.tree_stream(stream_id);
+        self.data
+            .forest
+            .stream_trees_chunked_reverse(query, trees, range, &|_| {})
     }
 
     fn get_or_create_own_stream(&self, stream_nr: StreamNr) -> Result<Arc<OwnStream>> {
@@ -931,7 +933,7 @@ impl BanyanStore {
     }
 
     /// Get a stream of trees for a given stream id
-    fn tree_stream(&self, stream_id: StreamId) -> (impl Stream<Item = Tree>, Forest) {
+    fn tree_stream(&self, stream_id: StreamId) -> impl Stream<Item = Tree> {
         self.lock().tree_stream(stream_id)
     }
 
