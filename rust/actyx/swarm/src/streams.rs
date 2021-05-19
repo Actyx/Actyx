@@ -1,5 +1,5 @@
 use crate::{AxStreamBuilder, Cid, Link, Tree};
-use actyxos_sdk::{LamportTimestamp, NodeId, Offset, OffsetOrMin, StreamId, StreamNr};
+use actyxos_sdk::{LamportTimestamp, NodeId, Offset, StreamId, StreamNr};
 use ax_futures_util::stream::variable::Variable;
 use fnv::FnvHashMap;
 use futures::{
@@ -168,6 +168,10 @@ impl PublishedTree {
 
     pub fn offset(&self) -> Offset {
         Offset::try_from(self.tree.count()).unwrap()
+    }
+
+    pub fn root(&self) -> Link {
+        self.root
     }
 }
 
