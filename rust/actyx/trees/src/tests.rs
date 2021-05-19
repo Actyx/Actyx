@@ -198,7 +198,7 @@ async fn filter_tree_streamed(
 
 /// brute force check if a key matches a dnf query consisting of n tag sets
 fn matches(key: &AxKey, dnf: &[TagSet]) -> bool {
-    dnf.iter().any(|set| set.is_subset(key.tags()))
+    dnf.is_empty() || dnf.iter().any(|set| set.is_subset(key.tags()))
 }
 
 /// Roundtrip test from events to banyan tree and back, for the given events

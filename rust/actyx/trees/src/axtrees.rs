@@ -687,11 +687,6 @@ impl TagsQuery {
     }
 
     fn set_matching(&self, index: &TagIndex, matching: &mut [bool]) {
-        if self.0.is_empty() {
-            matching.fill(true);
-            return;
-        }
-
         // lookup all strings and translate them into indices.
         // if a single index does not match, the query can not match at all.
         let lookup = |s: &TagSet| -> Option<IndexSet> {
@@ -712,12 +707,16 @@ impl TagsQuery {
 
 impl Query<AxTrees> for TagsQuery {
     fn containing(&self, _offset: u64, index: &LeafIndex<AxTrees>, matching: &mut [bool]) {
-        self.set_matching(&index.keys.tags, matching);
+        if !self.0.is_empty() {
+            self.set_matching(&index.keys.tags, matching);
+        }
     }
 
     fn intersecting(&self, _offset: u64, index: &BranchIndex<AxTrees>, matching: &mut [bool]) {
-        if let TagsSummaries::Complete(index) = &index.summaries.tags {
-            self.set_matching(index, matching);
+        if !self.0.is_empty() {
+            if let TagsSummaries::Complete(index) = &index.summaries.tags {
+                self.set_matching(index, matching);
+            }
         }
     }
 }
