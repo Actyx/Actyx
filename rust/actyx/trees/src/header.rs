@@ -10,7 +10,7 @@ use std::io;
 /// Actyx tree header.
 ///
 /// This is v0, which just contains a lamport timestamp. Later there will also be a signature.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Header {
     pub root: Sha256Digest,
     pub lamport: LamportTimestamp,
@@ -52,4 +52,30 @@ impl From<HeaderIo> for Header {
 #[ipld(repr = "int-tuple")]
 enum HeaderIo {
     V1(Sha256Digest, LamportTimestamp),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use libipld::{codec::assert_roundtrip, ipld, Cid};
+
+    #[test]
+    fn header_roundtrip_1() {
+        let root = Sha256Digest::new(b"thisisatest");
+        let cid = Cid::from(root);
+        let lamport = 1234.into();
+        let header = Header::new(root, lamport);
+        let expected = ipld! {
+            [0,
+                // version 0
+                [
+                    // root
+                    cid,
+                    // lamport
+                    1234,
+                ]
+            ]
+        };
+        assert_roundtrip(DagCborCodec, &header, &expected);
+    }
 }

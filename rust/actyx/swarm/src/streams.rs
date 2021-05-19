@@ -8,9 +8,9 @@ use futures::{
 };
 use std::{
     convert::{TryFrom, TryInto},
-    ops::Deref,
+    ops::{Deref, DerefMut},
+    sync::Arc,
 };
-use std::{ops::DerefMut, sync::Arc};
 use trees::{axtrees::AxTree, AxTreeHeader};
 
 const PREFIX: u8 = b'S';

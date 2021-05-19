@@ -757,7 +757,7 @@ impl BanyanStore {
     fn transform_stream<T>(
         &self,
         stream: &mut OwnStreamGuard,
-        f: impl FnOnce(&Transaction, &mut StreamBuilder<AxTrees>) -> Result<T> + Send,
+        f: impl FnOnce(&Transaction, &mut AxStreamBuilder) -> Result<T> + Send,
     ) -> Result<T> {
         let writer = self.data.forest.store().write()?;
         let stream_nr = stream.stream_nr();
@@ -919,7 +919,7 @@ impl BanyanStore {
         let offset = tree.offset();
         stream.set_latest(state);
         // update present. This can fail if stream_id is not a source_id.
-        let _ = self.update_present(stream_id, offset);
+        self.update_present(stream_id, offset);
         // done
         Ok(SyncOutcome::Success)
     }
