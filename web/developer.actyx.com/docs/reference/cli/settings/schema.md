@@ -2,7 +2,7 @@
 title: ax settings schema
 ---
 
-```text title="Get setting schemas from an ActyxOS node"
+```text title="Get setting schemas from a node"
 USAGE:
     ax settings schema [FLAGS] <SCOPE> <NODE>
 
@@ -25,7 +25,3 @@ Here are some examples of using the `ax settings schema` command:
 # Get the settings schema for the node with settings scope com.actyx at 10.2.3.23
 ax settings schema --local com.actyx 10.2.3.23
 ```
-
-import { NPS } from '../../../../src/components/NPS'
-
-<NPS />

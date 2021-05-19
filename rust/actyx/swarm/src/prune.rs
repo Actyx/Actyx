@@ -23,44 +23,44 @@ pub(crate) enum RetainConfig {
     Size(u64),
 }
 
-fn retain_last_events(store: &BanyanStore, stream: &OwnStreamGuard<'_>, keep: u64) -> anyhow::Result<Option<Link>> {
-    store.transform_stream(&stream, |txn, tree| {
+fn retain_last_events(store: &BanyanStore, stream: &mut OwnStreamGuard<'_>, keep: u64) -> anyhow::Result<Option<Link>> {
+    let stream_nr = stream.stream_nr();
+    store.transform_stream(stream, |txn, tree| {
         let max = tree.count();
         let lower_bound = max.saturating_sub(keep);
         if lower_bound > 0 {
             let query = OffsetQuery::from(lower_bound..);
-            tracing::debug!("Ephemeral events on {}; retain {:?}", stream.stream_nr(), query);
-            txn.retain(tree, &query)
-        } else {
-            // No need to update the tree.
-            Ok(tree.clone())
+            tracing::debug!("Ephemeral events on {}; retain {:?}", stream_nr, query);
+            txn.retain(tree, &query)?;
         }
+        Ok(())
     })?;
-    Ok(stream.link())
+    Ok(stream.snapshot().link())
 }
 
 fn retain_events_after(
     store: &BanyanStore,
-    stream: &OwnStreamGuard<'_>,
+    stream: &mut OwnStreamGuard<'_>,
     emit_after: Timestamp,
 ) -> anyhow::Result<Option<Link>> {
-    store.transform_stream(&stream, |txn, tree| {
+    let stream_nr = stream.stream_nr();
+    store.transform_stream(stream, |txn, tree| {
         let query = TimeQuery::from(emit_after..);
-        tracing::debug!("Prune events on {}; retain {:?}", stream.stream_nr(), query);
+        tracing::debug!("Prune events on {}; retain {:?}", stream_nr, query);
         txn.retain(tree, &query)
     })?;
-    Ok(stream.link())
+    Ok(stream.snapshot().link())
 }
 
 fn retain_events_up_to(
     store: &BanyanStore,
-    stream: &OwnStreamGuard<'_>,
+    stream: &mut OwnStreamGuard<'_>,
     target_bytes: u64,
 ) -> anyhow::Result<Option<Link>> {
     let stream_nr = stream.stream_nr();
     let emit_from = {
-        let tree = stream.latest();
-        let mut iter = stream.forest().iter_index_reverse(&tree, banyan::query::AllQuery);
+        let tree = stream.snapshot();
+        let mut iter = store.data.forest.iter_index_reverse(&tree, banyan::query::AllQuery);
         let mut bytes = 0u64;
         let mut current_offset = tree.count();
         loop {
@@ -69,7 +69,7 @@ fn retain_events_up_to(
                 // If we want to be a bit smarter here, we need to extend
                 // `banyan` for a more elaborated traversal API. For now a plain
                 // iterator is enough, and will be for a long time.
-                if let banyan::index::Index::Leaf(l) = index.as_ref() {
+                if let banyan::index::Index::Leaf(l) = index {
                     // Only the value bytes are taken into account
                     bytes += l.value_bytes;
                     current_offset -= l.keys().count() as u64;
@@ -100,11 +100,11 @@ fn retain_events_up_to(
     if emit_from > 0u64 {
         // lower bound is inclusive, so increment
         let query = OffsetQuery::from(emit_from..);
-        store.transform_stream(&stream, |txn, tree| {
+        store.transform_stream(stream, |txn, tree| {
             tracing::debug!("Prune events on {}; retain {:?}", stream_nr, query);
             txn.retain(tree, &query)
         })?;
-        Ok(stream.link())
+        Ok(stream.snapshot().link())
     } else {
         // No need to update the tree.
         // (Returned digest is not evaluated anyway)
@@ -125,17 +125,17 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
             tracing::debug!("Checking ephemeral event conditions for {}", stream_nr);
             let fut = async move {
                 let stream = store.get_or_create_own_stream(*stream_nr);
-                let guard = stream.lock().await;
+                let mut guard = stream.lock().await;
                 match cfg {
-                    RetainConfig::Events(keep) => retain_last_events(&store, &guard, *keep),
+                    RetainConfig::Events(keep) => retain_last_events(&store, &mut guard, *keep),
                     RetainConfig::Age(duration) => {
                         let emit_after: Timestamp = SystemTime::now()
                             .checked_sub(*duration)
                             .with_context(|| format!("Invalid duration configured for {}: {:?}", stream_nr, duration))?
                             .try_into()?;
-                        retain_events_after(&store, &guard, emit_after)
+                        retain_events_after(&store, &mut guard, emit_after)
                     }
-                    RetainConfig::Size(max_retain_size) => retain_events_up_to(&store, &guard, *max_retain_size),
+                    RetainConfig::Size(max_retain_size) => retain_events_up_to(&store, &mut guard, *max_retain_size),
                 }
             };
             fut.map(move |res| match res {
@@ -298,7 +298,7 @@ mod test {
 
     async fn test_retain_age(percentage_to_keep: usize) -> anyhow::Result<()> {
         let event_count = 1024;
-        let max_leaf_count = banyan::forest::Config::debug().max_leaf_count as usize;
+        let max_leaf_count = banyan::Config::debug().max_leaf_count as usize;
         util::setup_logger();
         let test_stream = 42.into();
 
@@ -335,8 +335,8 @@ mod test {
 
         // Test this fn directly in order to avoid messing around with the `SystemTime`
         let stream = store.get_or_create_own_stream(test_stream);
-        let guard = stream.lock().await;
-        super::retain_events_after(&store, &guard, cut_off)?;
+        let mut guard = stream.lock().await;
+        super::retain_events_after(&store, &mut guard, cut_off)?;
 
         let round_tripped = store
             .stream_filtered_chunked(

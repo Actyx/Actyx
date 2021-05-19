@@ -9,18 +9,14 @@ image: /images/defaults/default.svg
 ## Node to Actyx CLI connection error
 
 First, check that you entered the right IP in the ax command.
-If you still cannot connect, the output of ax nodes ls returns one of the two possible reasons (if you are using the ActyxOS Node Manager, you can find this info in the Status tab):
+If you still cannot connect, the output of the command you entered or the Node Manager returns one of the following errors:
 
-- **ActyxOS is not reachable**: This means that ActyxOS is not running on your node.
-  Please start ActyxOS described in [this guide](../local-development/install-actyx.mdx).
+- **ERR_USER_UNAUTHENTICATED** or **ERR_PATH_INVALID** indicates an authentication error. You either have not set up a user key, or you specified the wrong path to your user keys. Please refer to our [guide on user keys](../user-auth/set-up-user-keys.mdx) for more information.
 
-- **Host is not reachable**: This means that your development machine cannot connect to your node.
-  Please check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port `4457`. You can debug the connection as explained in [this guide](../monitoring-debugging/network-requirements).
+- **ERR_USER_UNAUTHORIZED** indicates that you are not authorized on the node you are trying to interact with. Please refer to our [guide on managing authorized users](../user-auth/manage-authorized-users.mdx) for more information.
+
+- **ERR_NODE_UNREACHABLE**: This means that Actyx is not running on your node, or you cannot connect to that node. Please start Actyx as described in [this guide](../local-development/install-actyx.mdx). Please also check that your development machine and your node are in the same network, and your firewall(s) allows them to connect via port `4458`. You can debug the connection as explained in [this guide](../monitoring-debugging/network-requirements).
 
 ## Did not find what you were looking for?
 
 If you couldn't a solution to your problem, please don't hesitate to contact us in our [community forum](https://community.actyx.com) or on our [Discord server](https://discord.gg/262yJhc). We'll do our best to get back to you with answers as fast as possible.
-
-import { NPS } from '../../../src/components/NPS'
-
-<NPS />

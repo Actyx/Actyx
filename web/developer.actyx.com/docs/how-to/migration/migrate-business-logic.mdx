@@ -1,0 +1,39 @@
+---
+title: Migrate business logic
+id: migrate-business-logic
+sidebar_label: Business logic
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+Most of your apps' business logic will work almost out-of-the-box.
+Depending on how your app was built, you need to do the following:
+
+1. Upgrade Actyx Pond
+2. Upgrade Actyx SDK (TypeScript)
+3. Ensure compatibility with an event log that identifies event streams by `semantics`
+
+### Actyx Pond
+
+Upgrade `@actyx/pond` to version 3. 
+If you were using version 2, the business logic you wrote will still work.
+
+### Actyx SDK
+
+Replace `@actyx/os-sdk` with `@actyx/sdk`.
+As the `@actyx/os-sdk` was using the Events API v1 (based on `semantics` and `name`), this entails updating to the tag-based Events API v2 that was already used in the Actyx Pond 2.x.
+
+### Ensure compatibility with an old event log
+
+This step is only required if your apps need to be compatible with "old" data, i.e. events that were created directly through the Events HTTP API, or through the `@actyx/os-sdk`.
+To be compatible with these events, you can use the following tags:
+
+- `semantics:*`
+- `fish_name:*`
+
+:::tip Problems migrating?
+If you have any problems with migrating your apps, please don't hesitate to contact us in our [community forum](https://community.actyx.com) or on our [Discord server](https://discord.gg/262yJhc). We'll do our best to get back to you with answers as fast as possible.
+:::
+
+After you have updated your business logic, the next step is to [migrate your app manifest](./migrate-app-manifest).

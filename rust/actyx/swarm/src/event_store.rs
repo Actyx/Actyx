@@ -5,7 +5,7 @@ use actyxos_sdk::{
     TagSet, Timestamp,
 };
 use ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered};
-use banyan::forest::FilteredChunk;
+use banyan::FilteredChunk;
 use derive_more::{Display, Error};
 use futures::{future, stream, Stream, StreamExt, TryStreamExt};
 use trees::{
@@ -135,7 +135,7 @@ impl EventStore {
         let timestamp = Timestamp::now();
         let stream = self.banyan_store.get_or_create_own_stream(stream_nr);
         let n = events.len();
-        let guard = stream.lock().await;
+        let mut guard = stream.lock().await;
         let mut store = self.banyan_store.lock();
         let mut lamports = store.reserve_lamports(events.len())?.peekable();
         let min_lamport = *lamports.peek().unwrap();
@@ -143,10 +143,10 @@ impl EventStore {
             .zip(events)
             .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
         tracing::debug!("publishing {} events on stream {}", n, stream_nr);
-        let mut min_offset = OffsetOrMin::MIN;
-        self.banyan_store.transform_stream(&guard, |txn, tree| {
-            min_offset = min_offset.max(tree.offset());
-            txn.extend_unpacked(tree, kvs)
+        let min_offset = self.banyan_store.transform_stream(&mut guard, |txn, tree| {
+            let result = tree.snapshot().offset();
+            txn.extend_unpacked(tree, kvs)?;
+            Ok(result)
         })?;
 
         // We start iteration with 0 below, so this is effectively the offset of the first event.

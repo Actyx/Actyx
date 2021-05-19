@@ -9,14 +9,16 @@ import { actyxDockerImage, currentActyxBinary, currentAxBinary, settings } from 
 import { ActyxNode, Target } from './types'
 import { mkLog } from './util'
 
-export const mkNodeLocalProcess = async (
+export const mkNodeLocalProcess = (
   nodeName: string,
   target: Target,
-  logger: (s: string) => void,
-): Promise<ActyxNode> => {
+  reuseWorkingDirIfExists?: boolean,
+) => async (logger: (s: string) => void): Promise<ActyxNode> => {
   const clog = mkLog(nodeName)
   const workingDir = path.resolve(settings().tempDir, `${nodeName}-actyx-data`)
-  await remove(workingDir)
+  if (reuseWorkingDirIfExists !== true) {
+    await remove(workingDir)
+  }
   await ensureDir(workingDir)
   const binary = await currentActyxBinary()
 
@@ -38,10 +40,6 @@ export const mkNodeLocalProcess = async (
     ],
     { env: { RUST_BACKTRACE: '1' } },
   )
-  const shutdown = async () => {
-    clog('killing process')
-    proc.kill('SIGTERM')
-  }
   const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
 
   await new Promise<void>((res, rej) => {
@@ -55,24 +53,41 @@ export const mkNodeLocalProcess = async (
       rej(`channel closed, code: ${code}, signal: '${signal}'`),
     )
   }).catch((err) => {
-    shutdown()
+    clog('killing process due to error')
+    proc.kill('SIGTERM')
     flush()
     return Promise.reject(err)
   })
+
+  proc.removeAllListeners('exit')
+  const shutdown = (): Promise<void> => {
+    if (proc.killed) {
+      return Promise.resolve()
+    }
+    clog('shutdown process')
+    proc.kill('SIGTERM')
+    return new Promise<void>((resolve) =>
+      proc.on('exit', (code: number, signal: string) => {
+        clog(`channel closed, code: ${code}, signal: '${signal}'`)
+        resolve()
+      }),
+    )
+  }
+
   clog('Actyx started')
   clog(`admin reachable on port ${port4458}`)
   clog(`http api reachable on port ${port4454}`)
 
   const httpApiOrigin = `http://localhost:${port4454}`
-  const opts = DefaultClientOpts()
-  opts.Endpoints.EventService.BaseUrl = httpApiOrigin
+  const clientOpts = DefaultClientOpts()
+  clientOpts.Endpoints.EventService.BaseUrl = httpApiOrigin
   const axBinaryPath = await currentAxBinary()
   return {
     name: nodeName,
     target,
     host: 'process',
     ax: await CLI.build(`localhost:${port4458}`, axBinaryPath),
-    httpApiClient: Client(opts),
+    httpApiClient: Client(clientOpts),
     _private: {
       shutdown,
       axBinaryPath,
@@ -91,7 +106,7 @@ export const mkNodeLocalDocker = async (
   logger: (s: string) => void,
 ): Promise<ActyxNode> => {
   const clog = mkLog(nodeName)
-  const image = actyxDockerImage(target.arch, gitHash)
+  const image = await actyxDockerImage(target.arch, gitHash)
   clog(`starting on local Docker: ${image}`)
 
   // exposing the ports and then using -P to use random (free) ports, avoiding trouble
@@ -138,9 +153,11 @@ export const mkNodeLocalDocker = async (
     opts.Endpoints.EventService.BaseUrl = httpApiOrigin
 
     const axBinaryPath = await currentAxBinary()
+    const executeInContainer = (script: string) =>
+      target.execute(`docker exec ${container} ${script}`)
     return {
       name: nodeName,
-      target,
+      target: { ...target, executeInContainer },
       host: 'docker',
       ax: await CLI.build(axHost, axBinaryPath),
       httpApiClient: Client(opts),

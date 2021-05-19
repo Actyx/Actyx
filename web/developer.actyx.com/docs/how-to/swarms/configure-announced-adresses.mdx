@@ -9,7 +9,7 @@ image: /images/defaults/default.svg
 import Tabs from '@theme/Tabs'
 import TabItem from '@theme/TabItem'
 
-You need to configure the `announceAddresses` settings if you are running ActyxOS on Docker **without** `network=host` and your bootstrap node is **not** running in the same local network as your other nodes.
+You need to configure the `announceAddresses` settings if you are running Actyx on Docker **without** `network=host` and your bootstrap node is **not** running in the same local network as your other nodes.
 
 This is inherent in Docker, as a container has no access to the IP address of its host unless it is running with `network=host`. Therefore, you have to manually configure the address that your nodes are announcing via the `announceAddress` property in the node settings:
 
@@ -50,8 +50,3 @@ Go to the settings tab change the `announceAddresses` property and press save:
 
 </TabItem>
 </Tabs>
-
-
-import { NPS } from '../../../src/components/NPS'
-
-<NPS />

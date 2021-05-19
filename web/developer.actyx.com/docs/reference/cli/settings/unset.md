@@ -2,7 +2,7 @@
 title: ax settings unset
 ---
 
-```text title="Remove settings from an ActyxOS node"
+```text title="Remove settings from a node"
 USAGE:
     ax settings unset [FLAGS] <SCOPE> <NODE>
 
@@ -25,7 +25,3 @@ Please see the following usage examples for the `ax settings unset` command:
 # Unset the settings for the node with settings scope com.actyx at 10.2.3.23
 ax settings unset --local com.actyx 10.2.3.23
 ```
-
-import { NPS } from '../../../../src/components/NPS'
-
-<NPS />

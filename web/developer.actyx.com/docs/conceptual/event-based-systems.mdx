@@ -40,12 +40,12 @@ Because of the separation of events and state, reasoning about the system can be
 
 Event schema migrations can pose serious challenges, especially if you want to migrate without deleting past events—which you can't do if they affect your state.
 
-## Relevance to ActyxOS
+## Relevance to Actyx
 
-ActyxOS provides you with the basic tools you need to build a decentralized event sourcing system. The Event Service's persistent event streams allow you to model a distributed append-only log—indeed, that is what they were designed for. By interacting with the Event Service, you can run apps that consume these event streams, thus allowing you to compute state.
+Actyx provides you with the basic tools you need to build a decentralized event sourcing system. The Event Service's persistent event streams allow you to model a distributed append-only log—indeed, that is what they were designed for. By interacting with the Event Service, you can run apps that consume these event streams, thus allowing you to compute state.
 
 :::tip Actyx Pond
-Check out the Actyx Pond – an auxiliary product to ActyxOS—which provides you with an always available, partition-tolerant event sourcing system out of the box. It also tries to mitigate some of the key associated challenges.
+Check out the Actyx Pond – an auxiliary product to Actyx—which provides you with an always available, partition-tolerant event sourcing system out of the box. It also tries to mitigate some of the key associated challenges.
 :::
 
 ## Example
@@ -173,7 +173,3 @@ In reality, you would not implement your system this way. You would, rather, def
 
 - Martin Fowler's [introduction to event sourcing](https://martinfowler.com/eaaDev/EventSourcing.html)
 - [Event Sourcing Pattern (Microsoft)](https://docs.microsoft.com/en-us/azure/architecture/patterns/event-sourcing)
-
-import { NPS } from '../../src/components/NPS'
-
-<NPS />

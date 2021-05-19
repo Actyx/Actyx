@@ -3,12 +3,8 @@ title: ax logs
 hide_table_of_contents: true
 ---
 
-## Manage ActyxOS node and app logs
+## Manage Actyx node logs
 
 | Command                 | Functionality        |
 | ----------------------- | -------------------- |
 | [ax logs tail](tail.md) | Get logs from a node |
-
-import { NPS } from '../../../../src/components/NPS'
-
-<NPS />

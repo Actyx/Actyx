@@ -2,7 +2,7 @@
 title: ax settings scopes
 ---
 
-```text title="Get setting scopes from an ActyxOS node"
+```text title="Get setting scopes from a node"
 USAGE:
     ax settings scopes [FLAGS] <NODE>
 
@@ -24,7 +24,3 @@ Here is an example of using the `ax settings scopes` command:
 # Get all the settings scopes from node at 10.2.3.23
 ax settings scopes --local 10.2.3.23
 ```
-
-import { NPS } from '../../../../src/components/NPS'
-
-<NPS />

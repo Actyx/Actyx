@@ -1,16 +1,18 @@
-use crate::{Cid, Forest, Link, Tree};
+use crate::{AxStreamBuilder, Cid, Link, Tree};
 use actyxos_sdk::{LamportTimestamp, NodeId, Offset, StreamId, StreamNr};
-use ax_futures_util::stream::variable::{self, Variable};
+use ax_futures_util::stream::variable::Variable;
+use banyan::{StreamBuilder, StreamTransaction};
 use fnv::FnvHashMap;
 use futures::{
     future,
-    stream::{Stream, StreamExt},
+    stream::{BoxStream, Stream, StreamExt},
 };
 use std::sync::Arc;
 use std::{
     convert::{TryFrom, TryInto},
     ops::Deref,
 };
+use trees::axtrees::{AxTree, AxTrees};
 
 const PREFIX: u8 = b'S';
 
@@ -59,32 +61,29 @@ impl TryFrom<StreamAlias> for StreamId {
 /// Data for a single own stream, mutable state + constant data
 #[derive(Debug)]
 pub struct OwnStream {
-    forest: Forest,
-    sequencer: tokio::sync::Mutex<()>,
+    /// the stream number, just for convenience
     stream_nr: StreamNr,
-    tree: Variable<Tree>,
+    /// the builder, wrapped into an async mutex
+    builder: tokio::sync::Mutex<AxStreamBuilder>,
+    /// the latest tree, for publishing
+    latest: Variable<Tree>,
 }
 
 impl OwnStream {
-    pub fn new(forest: Forest, stream_nr: StreamNr) -> Self {
+    pub fn new(stream_nr: StreamNr, builder: AxStreamBuilder) -> Self {
         Self {
-            forest,
             stream_nr,
-            sequencer: tokio::sync::Mutex::new(()),
-            tree: Variable::default(),
+            builder: tokio::sync::Mutex::new(builder),
+            latest: Default::default(),
         }
-    }
-
-    pub fn forest(&self) -> &Forest {
-        &self.forest
     }
 
     pub fn stream_nr(&self) -> StreamNr {
         self.stream_nr
     }
 
-    pub fn tree_stream(&self) -> variable::Observer<Tree> {
-        self.tree.new_observer()
+    pub fn tree_stream(&self) -> BoxStream<'static, Tree> {
+        self.latest.new_observer().boxed()
     }
 
     /// The current root of the own stream
@@ -94,28 +93,24 @@ impl OwnStream {
     ///
     /// Use lock to get exclusive access to the tree in that case.
     pub fn snapshot(&self) -> Tree {
-        self.tree.get_cloned()
+        self.latest.get_cloned()
     }
 
     /// Acquire an async lock to modify this stream
     pub async fn lock(&self) -> OwnStreamGuard<'_> {
-        OwnStreamGuard(self, self.sequencer.lock().await)
+        OwnStreamGuard(self, self.builder.lock().await)
     }
 }
 
-pub struct OwnStreamGuard<'a>(&'a OwnStream, tokio::sync::MutexGuard<'a, ()>);
+pub struct OwnStreamGuard<'a>(&'a OwnStream, tokio::sync::MutexGuard<'a, StreamBuilder<AxTrees>>);
 
 impl<'a> OwnStreamGuard<'a> {
-    pub fn set_latest(&self, value: Tree) {
-        self.0.tree.set(value)
+    pub fn latest(&self) -> &Variable<Tree> {
+        &self.0.latest
     }
 
-    pub fn link(&self) -> Option<Link> {
-        self.tree.project(|tree| tree.link())
-    }
-
-    pub fn latest(&self) -> Tree {
-        self.tree.get_cloned()
+    pub fn transaction(&mut self) -> StreamTransaction<'_, AxTrees> {
+        self.1.transaction()
     }
 }
 
@@ -136,24 +131,18 @@ pub struct RemoteNodeInner {
 /// Data for a single replicated stream, mutable state + constant data
 #[derive(Debug)]
 pub struct ReplicatedStreamInner {
-    forest: Forest,
     validated: Variable<Tree>,
     incoming: Variable<Option<Link>>,
     latest_seen: Variable<Option<(LamportTimestamp, Offset)>>,
 }
 
 impl ReplicatedStreamInner {
-    pub fn new(forest: Forest) -> Self {
+    pub fn new(tree: AxTree) -> Self {
         Self {
-            forest,
-            validated: Variable::default(),
+            validated: Variable::new(tree),
             incoming: Variable::default(),
             latest_seen: Variable::default(),
         }
-    }
-
-    pub fn forest(&self) -> &Forest {
-        &self.forest
     }
 
     pub fn root(&self) -> Option<Cid> {
@@ -175,8 +164,8 @@ impl ReplicatedStreamInner {
         self.incoming.set(Some(value));
     }
 
-    pub fn tree_stream(&self) -> variable::Observer<Tree> {
-        self.validated.new_observer()
+    pub fn tree_stream(&self) -> BoxStream<'static, Tree> {
+        self.validated.new_observer().boxed()
     }
 
     pub fn incoming_root_stream(&self) -> impl Stream<Item = Link> {

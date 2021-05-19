@@ -2,7 +2,7 @@
 title: ax settings get
 ---
 
-```text title="Get settings from an ActyxOS node"
+```text title="Get settings from a node"
 USAGE:
     ax settings get [FLAGS] <SCOPE> <NODE>
 
@@ -34,7 +34,3 @@ ax settings get --local com.actyx 10.2.3.23
 # Just get the displayName setting
 ax settings get --local com.actyx/admin/displayName 10.2.3.23
 ```
-
-import { NPS } from '../../../../src/components/NPS'
-
-<NPS />

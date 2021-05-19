@@ -55,7 +55,7 @@ impl ConvertEvent for LogRequest {
             log_name: tag,
             additional_data: None,
             labels: None,
-            producer_name: "com.actyx.os".into(),
+            producer_name: "com.actyx".into(),
             producer_version: "2.0.0-dev".into(),
         }
     }
@@ -82,15 +82,17 @@ impl From<rogcat::record::Level> for LogSeverity {
             Level::Debug => LogSeverity::Debug,
             Level::Info => LogSeverity::Info,
             Level::Warn => LogSeverity::Warn,
-            Level::Error => LogSeverity::Error,
-            Level::Fatal | Level::Assert => LogSeverity::Fatal,
+            Level::Error | Level::Fatal | Level::Assert => LogSeverity::Error,
         }
     }
 }
 #[cfg(target_os = "android")]
+pub const ANDROID_PRODUCER_PREFIX: &str = "android.logcat";
+#[cfg(target_os = "android")]
 impl From<rogcat::record::Record> for LogRequest {
     fn from(r: rogcat::record::Record) -> Self {
         use maplit::btreemap;
+        let producer_name = format!("{}.{}", ANDROID_PRODUCER_PREFIX, r.tag);
         Self {
             // we only get local timestamps in the form of `12-12 10:54:34.891`
             // which makes it very hard to parse correctly, especially as these
@@ -105,7 +107,7 @@ impl From<rogcat::record::Record> for LogRequest {
                 "thread".to_string() => r.thread,
                 "tag".to_string() => r.tag
             }),
-            producer_name: "com.actyx.os.android".to_string(),
+            producer_name,
             // TODO
             producer_version: "1.0.0".to_string(),
         }
@@ -136,7 +138,6 @@ pub enum LogSeverity {
     Info,
     Warn,
     Error,
-    Fatal,
 }
 impl<'de> serde::de::Deserialize<'de> for LogSeverity {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -157,7 +158,6 @@ impl TryFrom<&str> for LogSeverity {
             "info" => LogSeverity::Info,
             "warn" => LogSeverity::Warn,
             "error" => LogSeverity::Error,
-            "fatal" => LogSeverity::Fatal,
             _ => {
                 return ax_err(
                     ActyxOSCode::ERR_INVALID_INPUT,
@@ -181,7 +181,6 @@ impl fmt::Display for LogSeverity {
             LogSeverity::Info => "INFO",
             LogSeverity::Warn => "WARN",
             LogSeverity::Error => "ERROR",
-            LogSeverity::Fatal => "FATAL",
         };
         write!(f, "{}", name)
     }
@@ -193,8 +192,7 @@ impl LogSeverity {
             1 => LogSeverity::Debug,
             2 => LogSeverity::Info,
             3 => LogSeverity::Warn,
-            4 => LogSeverity::Error,
-            _ => LogSeverity::Fatal,
+            _ => LogSeverity::Error,
         }
     }
     pub fn to_level(self) -> i8 {
@@ -204,7 +202,6 @@ impl LogSeverity {
             LogSeverity::Info => 2,
             LogSeverity::Warn => 3,
             LogSeverity::Error => 4,
-            LogSeverity::Fatal => 5,
         }
     }
 }

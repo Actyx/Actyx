@@ -13,7 +13,7 @@ needed. To observe the current state, always use `Pond.observe()`.
 Coming up with an initial state can be tricky.
 
 Often you model entities that have a lot of mandatory information to them. In a traditional database, you
-would mark the corresponding column as `NOT NULL`. In an event-based system like ActyxOS, you will
+would mark the corresponding column as `NOT NULL`. In an event-based system like Actyx, you will
 translate this into a "Creation Event" with a type that contains a field for each piece of mandatory
 information:
 
@@ -126,7 +126,3 @@ export const observeProcess = (id: string, pond: Pond, callback: Callback) => {
   return pond.observe(makeProcessFish(id), filteredCallback)
 }
 ```
-
-import { NPS } from '../../../../src/components/NPS'
-
-<NPS />

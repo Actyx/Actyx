@@ -173,16 +173,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "aes-stream"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8e2533cd0b6abfc7687517ba71d820f57945de2aeb7ca6cadfde8a53765328d"
-dependencies = [
- "rand 0.3.23",
- "rust-crypto",
-]
-
-[[package]]
 name = "aesni"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -606,9 +596,9 @@ dependencies = [
 
 [[package]]
 name = "banyan"
-version = "0.12.0"
+version = "0.13.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d177d8487335e9a5a9a2dc93a24bca58be34e176fba2b57d8af9db19c178187"
+checksum = "84c3e7d1c0baebca15a140523464075a367f493259a7004a2fb187e0db45e688"
 dependencies = [
  "anyhow",
  "chacha20 0.7.1",
@@ -618,7 +608,6 @@ dependencies = [
  "libipld",
  "maplit",
  "parking_lot 0.11.1",
- "rand 0.8.3",
  "smallvec 1.6.1",
  "tracing",
  "weight-cache",
@@ -627,9 +616,9 @@ dependencies = [
 
 [[package]]
 name = "banyan-utils"
-version = "0.5.0"
+version = "0.6.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18934dd2fdcfdc44b4074a9da9fb74f9babec867b3a8c030681fdc8af9163e88"
+checksum = "48df9a8e1b8b8e737cc351a7db5deeaf06f1af88bf4b0b6a7f7e02b7dc1f0173"
 dependencies = [
  "anyhow",
  "banyan",
@@ -1458,18 +1447,18 @@ name = "crypto"
 version = "0.1.0"
 dependencies = [
  "actyxos_sdk",
- "aes-stream",
  "anyhow",
  "base64",
  "byteorder",
+ "chacha20poly1305 0.8.0",
  "criterion",
  "curve25519-dalek",
+ "derive_more",
  "ed25519-dalek",
  "libp2p",
  "multihash",
  "parking_lot 0.11.1",
  "rand 0.7.3",
- "rust-crypto",
  "serde 1.0.125",
  "serde_cbor",
  "sha2 0.9.4",
@@ -1592,9 +1581,9 @@ dependencies = [
 
 [[package]]
 name = "derive_more"
-version = "0.99.13"
+version = "0.99.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f82b1b72f1263f214c0f823371768776c4f5841b942c9883aa8e5ec584fd0ba6"
+checksum = "5cc7b9cef1e351660e5443924e4f43ab25fbbed3e9a5f052df3677deb4d6b320"
 dependencies = [
  "convert_case",
  "proc-macro2",
@@ -2099,12 +2088,6 @@ dependencies = [
  "proc-macro-nested",
  "slab",
 ]
-
-[[package]]
-name = "gcc"
-version = "0.3.55"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
 
 [[package]]
 name = "gdk"
@@ -5486,19 +5469,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rust-crypto"
-version = "0.2.36"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f76d05d3993fd5f4af9434e8e436db163a12a9d40e1a58a726f27a01dfd12a2a"
-dependencies = [
- "gcc",
- "libc",
- "rand 0.3.23",
- "rustc-serialize",
- "time",
-]
-
-[[package]]
 name = "rust-ini"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7191,7 +7161,7 @@ checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
 
 [[package]]
 name = "util"
-version = "0.1.0"
+version = "2.0.0-dev"
 dependencies = [
  "actyxos_sdk",
  "anyhow",
@@ -7215,10 +7185,12 @@ dependencies = [
  "quickcheck",
  "quickcheck_macros",
  "rand 0.8.3",
+ "regex",
  "rogcat",
  "serde 1.0.125",
  "serde_cbor",
  "serde_json",
+ "serde_yaml",
  "settings",
  "tokio 1.5.0",
  "tracing",

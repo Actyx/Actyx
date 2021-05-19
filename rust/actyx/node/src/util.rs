@@ -1,21 +1,24 @@
 use crate::{formats::ExternalEvent, node::NodeError, node_storage::NodeStorage};
-use anyhow::anyhow;
+use anyhow::{anyhow, Context};
 use crossbeam::channel::Sender;
 use crypto::{KeyStore, KeyStoreRef};
 use parking_lot::RwLock;
 use std::sync::Arc;
 use tracing::*;
-use util::formats::{ActyxOSResult, ActyxOSResultExt};
 
-pub(crate) fn make_keystore(storage: NodeStorage) -> ActyxOSResult<KeyStoreRef> {
+pub(crate) fn make_keystore(storage: NodeStorage) -> anyhow::Result<KeyStoreRef> {
     let ks = storage
-        .get_keystore()
-        .ax_internal()?
-        .map(|dump| KeyStore::restore(&dump[..]).unwrap())
+        .get_keystore()?
+        .map(|dump| {
+            KeyStore::restore(&dump[..])
+                .context(
+                    "Error reading KeyStore (data corruption or invalid version)\n\n\
+                    You may try to remove the `key_store` property from the `node` table in `actyx-data/node.sqlite`.",
+                )
+                .unwrap()
+        })
         .unwrap_or_default();
-    let ks = ks.with_cb(Box::new(move |vec| {
-        storage.dump_keystore(vec).map_err(|e| anyhow!("{}", e))
-    }));
+    let ks = ks.with_cb(Box::new(move |vec| storage.dump_keystore(vec)));
     Ok(Arc::new(RwLock::new(ks)))
 }
 

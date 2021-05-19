@@ -46,15 +46,29 @@ export type CreateEC2 = t.TypeOf<typeof createEC2>
 
 const useLocal = t.type({
   type: t.literal('local'),
+  reuseWorkingDirIfExists: fromNullable(t.boolean)(false),
 })
 
-const prepare = t.union([createEC2, useLocal])
+const useSsh = t.type({
+  type: t.literal('ssh'),
+  host: t.string,
+  user: t.union([t.string, t.undefined]),
+  privateKeyPath: t.union([t.string, t.undefined]),
+  arch: Arch,
+  os: OS,
+})
+export type UseSsh = t.TypeOf<typeof useSsh>
+
+const prepare = t.union([createEC2, useLocal, useSsh])
 
 const install = t.union([
   // deploy binaries or images
-  t.keyof({ windows: 0, linux: 0, docker: 0 }),
+  t.type({
+    type: t.keyof({ windows: 0, linux: 0, docker: 0, android: 0 }),
+  }),
   // just use a running Actyx node
   t.type({
+    type: t.literal('just-use-a-running-actyx-node'),
     host: fromNullable(t.string)('localhost'),
     console: t.number,
     services: t.number,

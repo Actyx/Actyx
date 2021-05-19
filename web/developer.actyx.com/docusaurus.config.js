@@ -27,20 +27,6 @@ module.exports = {
     [
       'docusaurus-plugin-typedoc',
       {
-        id: 'js-ts-sdk',
-        entryPoints: ['../../js/os-sdk/src/index.ts'],
-        tsconfig: '../../js/os-sdk/tsconfig.json',
-        out: 'reference/js-ts-sdk',
-        disableSources: true,
-        sidebar: {
-          sidebarFile: '__js-ts-sdk-sidebar.js',
-          fullNames: false,
-        },
-      },
-    ],
-    [
-      'docusaurus-plugin-typedoc',
-      {
         id: 'pond',
         entryPoints: ['../../js/pond/src/index.ts'],
         tsconfig: '../../js/pond/tsconfig.json',
@@ -161,10 +147,6 @@ module.exports = {
             {
               label: 'Actyx',
               to: 'docs/reference/actyx-reference',
-            },
-            {
-              label: 'JS/TS SDK',
-              to: 'docs/reference/js-ts-sdk',
             },
             {
               label: 'CLI',

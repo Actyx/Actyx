@@ -10,18 +10,14 @@ This page lists common installation and startup errors and solutions for them. I
 
 ### Startup errors
 
-ActyxOS uses a few IP ports for node communication and internal services.
-In order for ActyxOS to run flawlessly, please make sure that the following ports are free:
+Actyx uses a few IP ports for node communication and internal services.
+In order for Actyx to run flawlessly, please make sure that the following ports are free:
 
 1. `4001`: Used for inter-node communication
 
-2. `4243`: Exposes a WebSocket endpoint for Actyx Pond (only on localhost)
+3. `4454`: Exposes the [Event Service](../../reference/events-api) (only on localhost)
 
-3. `4454`: Exposes the [Event Service](../../reference/actyx-api.mdx) (only on localhost)
-
-4. `4457`: Used for communication with the Actyx CLI or Node Manager
-
-5. `8080`: Exposes an [IPFS Gateway](https://docs.ipfs.io/concepts/ipfs-gateway/) (only on localhost)
+4. `4458`: Used for communication with the Actyx CLI or Node Manager
 
 ### Installation errors on Windows
 
@@ -32,7 +28,3 @@ If you receive the following error during installation, please close the Windows
 ## Did not find what you were looking for?
 
 If you couldn't a solution to your problem, please don't hesitate to contact us in our [community forum](https://community.actyx.com) or on our [Discord server](https://discord.gg/262yJhc). We'll do our best to get back to you with answers as fast as possible.
-
-import { NPS } from '../../../src/components/NPS'
-
-<NPS />

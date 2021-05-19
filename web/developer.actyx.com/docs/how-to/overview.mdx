@@ -34,6 +34,26 @@ Use the Actyx Pond to implement business logic across a swarm of devices.
 
 ---
 
+## User Auth
+
+Manage authentication and authorization for users.
+
+- [Set up user keys](./user-auth/set-up-user-keys)
+- [Manage authorized users](./user-auth/manage-authorized-users)
+- [Get a developer certificate](./user-auth/get-developer-certificate)
+
+---
+
+## App Auth
+
+Manage authentication and authorization for apps.
+
+- [Sign app manifest](./app-auth/sign-app-manifest)
+- [Authenticate with app manifest](./app-auth/authenticate-with-app-manifest)
+- [Manage authorized apps](./app-auth/manage-authorized-apps)
+
+---
+
 ## Swarms
 
 Set up your swarm of networked devices running Actyx.
@@ -62,21 +82,6 @@ Monitor and debug Actyx and your apps.
 - [Change logging levels](./monitoring-debugging/logging-levels)
 - [Test connection requirements](./monitoring-debugging/network-requirements)
 - [Test connection between nodes](./monitoring-debugging/node-connections)
-  <!-- - [Publish and access logs from your apps](./monitoring-debugging/app-logs.mdx) -->
-  <!-- - [Use the Actyx connectivity status for debugging](./monitoring-debugging/connectivity-status.mdx) -->
-  <!-- - [Use 3rd party deployment tools to monitoring](./monitoring-debugging/mobile-device-management.mdx) -->
-  <!-- - [Accelerate your workflow with bash](./monitoring-debugging/bash.mdx) -->
-
----
-
-## Common use-cases
-
-Implement common use-cases for Actyx including dashboards, ERP integrations, control logic and tool connectivity.
-
-- [Show machine data on a dashboard](./common-use-cases/show-data-on-a-dashboard.mdx)
-- [Display ERP orders on tablets](./common-use-cases/display-erp-orders-on-tablets.mdx)
-- [Control AGVs delivering materials](./common-use-cases/control-agvs.mdx)
-- [Parameterize an assembly tool](./common-use-cases/parameterise-assembly-tool.mdx)
 
 ---
 
@@ -88,6 +93,13 @@ Figure out what's wrong and quickly resolve any issues you may face.
 - [Node-to-CLI communication errors](./troubleshooting/node-to-cli-communication)
 - [Node synchronization errors](./troubleshooting/node-synchronization)
 
-import { NPS } from '../../src/components/NPS'
+---
 
-<NPS />
+## Migration from Actyx 1.x
+
+Migrate your apps or production installations from 1.x to 2.x.
+
+- [Overview](./migration/migration-overview)
+- [App manifest](./migration/migrate-app-manifest)
+- [Business logic](./migration/migrate-business-logic)
+- [App logs and settings](./migration/migrate-app-logs-and-settings)

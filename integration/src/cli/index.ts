@@ -13,13 +13,14 @@ export class CLI {
   public readonly swarms
   public readonly users
   public readonly version
+  public readonly shortVersion
 
   public static async build(node: string, binaryPath: string): Promise<CLI> {
     const randIdentifier = Math.random().toString(36).substring(7)
     const identityPath = path.resolve(settings().tempDir, `${node}-${randIdentifier}`)
     const cli = new CLI(node, binaryPath, identityPath)
 
-    // Make sure a local keypair is available; ignore if the file already exists
+    // Generate local key pair
     await cli.users.keyGen(cli.identityPath)
     return cli
   }
@@ -41,6 +42,7 @@ export class CLI {
     this.identityPath = identityPath
 
     const exec = mkExec(this.binaryPath, this.node, this.identityPath)
+    const shortVersion = exec.version().then((v) => v.replace('Actyx CLI ', '').split('-')[0])
 
     this.nodes = exec.nodes
     this.settings = exec.settings
@@ -48,5 +50,6 @@ export class CLI {
     this.swarms = exec.swarms
     this.users = exec.users
     this.version = exec.version
+    this.shortVersion = shortVersion
   }
 }

@@ -57,7 +57,7 @@ You could also use `traceroute` or `telnet` instead, but each has downsides. `tr
 <TabItem value="docker">
 
 
-If you are running ActyxOS on Docker, it's best to test the connection from inside the container. As on Linux and Mac, we recommend using `tcptraceroute`. Assuming your container's name is `actyx`, run the following command to install it:
+If you are running Actyx on Docker, it's best to test the connection from inside the container. As on Linux and Mac, we recommend using `tcptraceroute`. Assuming your container's name is `actyx`, run the following command to install it:
 
 ```text
 docker exec actyx apk add tcptraceroute
@@ -71,8 +71,3 @@ docker exec actyx tcptraceroute 192.168.2.10 4001
 
 </TabItem>
 </Tabs>
-
-
-import { NPS } from '../../../src/components/NPS'
-
-<NPS />

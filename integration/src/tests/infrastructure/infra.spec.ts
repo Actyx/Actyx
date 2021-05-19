@@ -2,22 +2,33 @@ import { Event, EventDraft } from '@actyx/os-sdk'
 import { Pond } from '@actyx/pond'
 import * as PondV1 from 'pondV1'
 import { MultiplexedWebsocket } from 'pondV1/lib/eventstore/multiplexedWebsocket'
+import { assertOK } from '../../assertOK'
 import { allNodeNames, runOnAll, runOnEach } from '../../infrastructure/hosts'
+import { MyGlobal } from '../../../jest/setup'
 
 describe('the Infrastructure', () => {
   test('must create global nodes pool', async () => {
-    const status = await runOnEach([{}], (node) => node.ax.nodes.ls())
-    expect(status).toMatchObject([
-      {
+    const status = await runOnEach([{}], async (node) => {
+      const response = assertOK(await node.ax.nodes.ls())
+      const axNodeSetup = (<MyGlobal>global).axNodeSetup
+      const gitHash = axNodeSetup.gitHash.slice(0, 9)
+
+      expect(response).toMatchObject({
         code: 'OK',
         result: [
           {
             connection: 'reachable',
-            version: '2.0.0-dev',
+            version: {
+              profile: 'release',
+              target: `${node.target.os}-${node.target.arch}`,
+              version: await node.ax.shortVersion,
+              gitHash,
+            },
           },
         ],
-      },
-    ])
+      })
+    })
+
     expect(status).toHaveLength(1)
   })
 
@@ -87,7 +98,7 @@ describe('the Infrastructure', () => {
   test.skip('must test Pond v1', async () => {
     const result = await runOnAll([{}], async ([node]) => {
       const pond = await PondV1.Pond.of(new MultiplexedWebsocket({ url: node._private.apiPond }))
-      return pond.getNodeConnectivity().take(1).toPromise()
+      return pond.getNodeConnectivity().first().toPromise()
     })
     // cannot assert connected or not connected since we don’t know when this case is run
     expect(typeof result.status).toBe('string')

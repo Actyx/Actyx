@@ -53,6 +53,18 @@ fn poll_next_impl<'a, T, U>(
     }
 }
 
+impl<T: Copy> Observer<T> {
+    pub fn get(&self) -> T {
+        self.inner.lock().latest
+    }
+}
+
+impl<T: Clone> Observer<T> {
+    pub fn get_cloned(&self) -> T {
+        self.inner.lock().latest.clone()
+    }
+}
+
 impl<T: Clone> Stream for Observer<T> {
     type Item = T;
 
@@ -164,15 +176,6 @@ impl<T> Variable<T> {
     /// This will not fail even if all receivers are dropped. It will just go into nirvana.
     pub fn set(&self, value: T) {
         self.inner.lock().set(value)
-    }
-
-    /// Transform the current value and send an update if the transform is successful and returns a new value
-    pub fn transform<E>(&self, f: impl FnOnce(&T) -> std::result::Result<Option<T>, E>) -> std::result::Result<(), E> {
-        let mut inner = self.inner.lock();
-        if let Some(value) = f(&inner.latest)? {
-            inner.set(value);
-        }
-        Ok(())
     }
 
     /// Transform the current value in-place and notify observers if the function returns `true`.

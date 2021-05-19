@@ -88,7 +88,7 @@ states are passed to the observation callback.
 
 ## The Order of Events - What does "previous" mean?
 
-ActyxOS uses a specialized mechanism called [Lamport
+Actyx uses a specialized mechanism called [Lamport
 Clock](https://en.wikipedia.org/wiki/Lamport_timestamp) to sort events. Effectively this works like
 sorting by time, only better. Sorting by wall clock time would run into issues when clocks on devices
 are off: It would require a robust NTP setup to keep time in sync.
@@ -99,7 +99,3 @@ useful, logical order even when network partitions happen.
 In the rare case that lamport timestamp of two events should be identical, other factors are used to
 decide on a consistent ordering. Ultimately, the ordering of `eventId` (inside `metadata`) is
 what decides the ordering of events.
-
-import { NPS } from '../../../../src/components/NPS'
-
-<NPS />

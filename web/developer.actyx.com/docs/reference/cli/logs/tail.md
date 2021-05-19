@@ -3,7 +3,7 @@ title: ax logs tail
 hide_table_of_contents: true
 ---
 
-```text title="Get logs from an ActyxOS node"
+```text title="Get logs from a node"
 USAGE:
     ax logs tail [FLAGS] [OPTIONS] <NODE>
 
@@ -36,7 +36,3 @@ ax --json logs tail --local 10.2.3.23
 # Keep running and output log entries as they are created
 ax logs tail --local --follow 10.2.3.23
 ```
-
-import { NPS } from '../../../../src/components/NPS'
-
-<NPS />

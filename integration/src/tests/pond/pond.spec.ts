@@ -19,7 +19,7 @@ const isSortedAsc = (data: string[]): boolean => {
   return true
 }
 
-describe('Pond', () => {
+describe.skip('Pond', () => {
   // FIXME: Parameters should be so high that these tests run for minutes on CI.
   const eventsLinear = 100
   const eventsConcurrent = 20

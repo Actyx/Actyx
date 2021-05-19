@@ -1,8 +1,5 @@
 use actyxos_sdk::Payload;
-use banyan::{
-    chacha20,
-    forest::{BranchCache, Config, CryptoConfig, Forest},
-};
+use banyan::{chacha20, store::BranchCache, Forest, Secrets};
 use banyan_utils::{create_chacha_key, dump};
 use futures::{prelude::*, stream, Stream};
 use ipfs_sqlite_block_store::BlockStore;
@@ -49,15 +46,15 @@ pub struct DumpTreeOpts {
 fn dump(opts: DumpTreeOpts) -> anyhow::Result<String> {
     match (opts.root, opts.block) {
         (Some(root), None) => {
-            let crypto_config = {
+            let secrets = {
                 let index_key: chacha20::Key = opts.index_pass.map(create_chacha_key).unwrap_or_default();
                 let value_key: chacha20::Key = opts.value_pass.map(create_chacha_key).unwrap_or_default();
-                CryptoConfig { index_key, value_key }
+                Secrets::new(index_key, value_key)
             };
             let bs = BlockStore::open(opts.block_store, Default::default())?;
             let ss = SqliteStore::new(bs)?;
-            let forest = Forest::<AxTrees, Payload, _>::new(ss, BranchCache::new(1000), crypto_config, Config::debug());
-            let tree = forest.load_tree(root)?;
+            let forest = Forest::<AxTrees, Payload, _>::new(ss, BranchCache::new(1000));
+            let tree = forest.load_tree(secrets, root)?;
             if opts.dot {
                 dump::graph(&forest, &tree, std::io::stdout())?;
             } else {
@@ -107,7 +104,9 @@ impl AxCliCommand for DumpTree {
     type Opt = DumpTreeOpts;
     type Output = String;
     fn run(opts: DumpTreeOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
-        Box::new(stream::once(async move { dump(opts).ax_internal() }.boxed()))
+        Box::new(stream::once(
+            async move { dump(opts).ax_err_ctx(util::formats::ActyxOSCode::ERR_INTERNAL_ERROR, "Dump failed") }.boxed(),
+        ))
     }
 
     fn pretty(result: Self::Output) -> String {

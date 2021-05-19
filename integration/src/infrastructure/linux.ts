@@ -8,11 +8,18 @@ import { actyxDockerImage, actyxLinuxBinary, currentAxBinary } from './settings'
 import { Ssh } from './ssh'
 import { ActyxNode, printTarget, SshAble, Target } from './types'
 import { mkLog } from './util'
+import * as t from 'io-ts'
 
 // determines frequency of retrying ssh operations like connect()
 const pollDelay = <T>(f: () => Promise<T>) => new Promise((res) => setTimeout(res, 2000)).then(f)
 
 const START_TIMEOUT = 60_000
+
+export const DockerPlatform = t.type({
+  architecture: t.string,
+  variant: t.union([t.string, t.undefined]),
+})
+export type DockerPlatform = t.TypeOf<typeof DockerPlatform>
 
 export const mkNodeSshProcess = async (
   nodeName: string,
@@ -26,7 +33,7 @@ export const mkNodeSshProcess = async (
     throw new Error(`mkNodeSshProcess cannot install on OS ${target.os}`)
   }
 
-  const ssh = new Ssh(sshParams.host, sshParams.username, sshParams.privateKey)
+  const ssh = Ssh.new(sshParams.host, sshParams.username, sshParams.privateKey)
   await connectSsh(ssh, nodeName, sshParams)
 
   const binaryPath = await actyxLinuxBinary(target.arch)
@@ -34,7 +41,7 @@ export const mkNodeSshProcess = async (
 
   const proc = await startActyx(nodeName, logger, ssh)
 
-  return await forwardPortsAndBuildClients(ssh, nodeName, target, proc[0], {
+  return await forwardPortsAndBuildClients(ssh, nodeName, target, proc, {
     host: 'process',
   })
 }
@@ -52,10 +59,10 @@ export const mkNodeSshDocker = async (
     throw new Error(`mkNodeSshDocker cannot install on OS ${target.os}`)
   }
 
-  const ssh = new Ssh(sshParams.host, sshParams.username, sshParams.privateKey)
+  const ssh = Ssh.new(sshParams.host, sshParams.username, sshParams.privateKey)
   await connectSsh(ssh, nodeName, sshParams)
 
-  await ensureDocker(ssh, nodeName, sshParams.username, target.arch)
+  await ensureDocker(ssh, nodeName, target.arch)
   const userPass = await execa('vault', [
     'kv',
     'get',
@@ -72,15 +79,17 @@ export const mkNodeSshDocker = async (
   const command =
     'docker run -i --rm -v /data ' +
     '-p 4001:4001 -p 127.0.0.1:4458:4458 -p 127.0.0.1:4454:4454 ' +
-    actyxDockerImage(target.arch, gitHash)
+    (await actyxDockerImage(target.arch, gitHash))
   const proc = await startActyx(nodeName, logger, ssh, command)
 
-  return await forwardPortsAndBuildClients(ssh, nodeName, target, proc[0], {
+  // TODO: Support multiple containers on the same host, and fill
+  // `target.executeInContainer`
+  return await forwardPortsAndBuildClients(ssh, nodeName, target, proc, {
     host: 'docker',
   })
 }
 
-const archToDockerMoniker = (arch: Arch): string => {
+const archToDockerHostType = (arch: Arch): string => {
   switch (arch) {
     case 'aarch64':
       return 'arm64'
@@ -93,10 +102,23 @@ const archToDockerMoniker = (arch: Arch): string => {
   }
 }
 
+export const archToDockerPlatform = (arch: Arch): DockerPlatform => {
+  switch (arch) {
+    case 'aarch64':
+      return { architecture: 'arm64', variant: undefined }
+    case 'arm':
+      return { architecture: 'arm', variant: 'v6' }
+    case 'armv7':
+      return { architecture: 'arm', variant: 'v7' }
+    case 'x86_64':
+      return { architecture: 'amd64', variant: undefined }
+  }
+}
+
 /**
  * Install Docker. This procedure is dependant on the `ami` specified in hosts.yaml
  */
-async function ensureDocker(ssh: Ssh, node: string, user: string, arch: Arch) {
+export async function ensureDocker(ssh: Ssh, node: string, arch: Arch) {
   const log = mkLog(node)
   try {
     const result = await ssh.exec('docker --version')
@@ -125,7 +147,7 @@ async function ensureDocker(ssh: Ssh, node: string, user: string, arch: Arch) {
     'curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg',
   )
   await exec(
-    `echo "deb [arch=${archToDockerMoniker(
+    `echo "deb [arch=${archToDockerHostType(
       arch,
     )} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null`,
   )
@@ -138,7 +160,7 @@ async function ensureDocker(ssh: Ssh, node: string, user: string, arch: Arch) {
   )
 
   // Fix `Got permission denied while trying to connect to the Docker daemon socket`
-  await exec(`sudo chgrp ${user} /var/run/docker.sock`)
+  await exec(`sudo chgrp $USER /var/run/docker.sock`)
   log('Docker installed')
 }
 
@@ -185,11 +207,11 @@ export async function connectSsh(ssh: Ssh, nodeName: string, sshParams: SshAble,
 }
 
 async function uploadActyx(nodeName: string, ssh: Ssh, binaryPath: string) {
-  console.log('node %s installing Actyx', nodeName)
+  console.log('node %s installing Actyx %s', nodeName, binaryPath)
   await ssh.scp(binaryPath, 'actyx')
 }
 
-function startActyx(
+export function startActyx(
   nodeName: string,
   logger: (s: string) => void,
   ssh: Ssh,
@@ -230,7 +252,7 @@ export const forwardPortsAndBuildClients = async (
   ssh: Ssh,
   nodeName: string,
   target: Target,
-  actyxProc: execa.ExecaChildProcess<string> | undefined,
+  actyxProc: execa.ExecaChildProcess<string>[],
   theRest: Omit<ActyxNode, 'ax' | 'httpApiClient' | '_private' | 'name' | 'target'>,
 ): Promise<ActyxNode> => {
   const [[port4454, port4458], proc] = await ssh.forwardPorts(4454, 4458)
@@ -252,7 +274,7 @@ export const forwardPortsAndBuildClients = async (
 
   const shutdown = async () => {
     console.log('node %s shutting down', nodeName)
-    actyxProc?.kill('SIGTERM')
+    actyxProc.forEach((x) => x.kill('SIGTERM'))
     console.log('node %s ssh stopped', nodeName)
     await target._private.cleanup()
     console.log('node %s instance terminated', nodeName)

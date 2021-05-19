@@ -7,7 +7,7 @@ use structopt::StructOpt;
 use tokio::io::AsyncBufReadExt;
 use util::{
     ax_bail,
-    formats::{ax_err, ActyxOSResult},
+    formats::{ax_err, ActyxOSCode, ActyxOSResult, ActyxOSResultExt},
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -35,7 +35,10 @@ impl AxCliCommand for UsersKeygen {
                 let io = tokio::io::stdin();
                 let mut reader = tokio::io::BufReader::new(io);
                 let mut buf = String::new();
-                reader.read_line(&mut buf).await?;
+                reader
+                    .read_line(&mut buf)
+                    .await
+                    .ax_err_ctx(ActyxOSCode::ERR_IO, "Error reading from stdin")?;
                 if buf.ends_with('\n') {
                     buf.pop();
                     if buf.ends_with('\r') {

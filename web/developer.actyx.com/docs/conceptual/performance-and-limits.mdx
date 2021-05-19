@@ -6,7 +6,7 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
-This conceptual guide explains the limitations of ActyxOS in real-world factory solutions with regard to:
+This conceptual guide explains the limitations of Actyx in real-world factory solutions with regard to:
 
 - [Latency](#latency)
 - [Max. number of nodes](#max-number-of-nodes)
@@ -30,9 +30,9 @@ Hundreds of things play into this, from the hardware of your edge devices to a f
 The following statements hold under typical conditions most of the time:
 
 - event delivery latency is below 200 ms unless you are pushing performance limits (see below)
-- in general, ActyxOS has lower latency volatility than most centralized systems
+- in general, Actyx has lower latency volatility than most centralized systems
 
-Keep in mind that ActyxOS does not offer deterministic real-time services; you should use a PLC for such cases.
+Keep in mind that Actyx does not offer deterministic real-time services; you should use a PLC for such cases.
 
 :::tip Get in touch
 As a developer you can always build apps that will bring any system to its knees.
@@ -42,7 +42,7 @@ If you do, please [get in touch with us and the Actyx community](https://communi
 
 ## Max. number of nodes
 
-The amount of devices you can reliably run in a single ActyxOS swarm depends on a large number of factors, including the local-area network setup, the devices themselves, and the apps running on them.
+The amount of devices you can reliably run in a single Actyx swarm depends on a large number of factors, including the local-area network setup, the devices themselves, and the apps running on them.
 With typical rugged tablets (CPU from around 2013) or other devices with relatively low computing power (e.g. Raspberry Pi 3), 100 devices should by themselves not pose a problem.
 If you start pushing performance limits (see below) then this number can be significantly lower, depending on the event data rate and the computational complexity of your business logic.
 
@@ -50,14 +50,14 @@ In some cases it may be possible to split an overall system into several smaller
 You can use this approach in order to serve a larger factory while still staying within the 100 devices limit.
 
 :::tip You need to connect thousands of edge devices?
-Please [get in touch with us and the Actyx community](https://community.actyx.com/): we would love to hear about your use-case and figure out how to make it work with ActyxOS.
+Please [get in touch with us and the Actyx community](https://community.actyx.com/): we would love to hear about your use-case and figure out how to make it work with Actyx.
 :::
 
 ## Required disk space of devices
 
-ActyxOS is a completely decentralized system dependent on the disk space of every single edge device.
-At runtime different types of data are generated and stored throughout the ActyxOS swarm.
-Current versions of ActyxOS store every event on all devices of the same swarm; in the future we will add the possibility to configure the replication as well as the lifespan of events.
+Actyx is a completely decentralized system dependent on the disk space of every single edge device.
+At runtime different types of data are generated and stored throughout the Actyx swarm.
+Current versions of Actyx store every event on all devices of the same swarm; in the future we will add the possibility to configure the replication as well as the lifespan of events.
 This will allow you to configure when events should be deleted and on which devices events should be replicated.
 
 These are the currently implemented behaviors:
@@ -85,7 +85,7 @@ Currently, the only solution to running out of disk space because of events is e
 We are already working on the functionality to configure replication and lifespan of events.
 
 :::tip Your solution will produce 100s of millions of events?
-Please [get in touch with us and the Actyx community](https://community.actyx.com/): we would love to hear about your use-case and figure out how to make it work with ActyxOS.
+Please [get in touch with us and the Actyx community](https://community.actyx.com/): we would love to hear about your use-case and figure out how to make it work with Actyx.
 :::
 
 ## Performance
@@ -131,7 +131,7 @@ Therefore they don’t help when waking up a Fish for the first time on a given 
 ### Large application state
 
 State snapshots can be problematic when the business logic state is large.
-If for example a Fish holds data structures with a volume of 100MB in memory, then storing a snapshot requires serializing this live data structure to JSON (which may separately take more than 100MB) and then sending it to ActyxOS for safe keeping.
+If for example a Fish holds data structures with a volume of 100MB in memory, then storing a snapshot requires serializing this live data structure to JSON (which may separately take more than 100MB) and then sending it to Actyx for safe keeping.
 Restoring a snapshot also requires both the serialized and the in-memory data structures to be live at the same time.
 
 The above characteristics can cause problems especially in browser apps, where such memory usage spikes may lead to the app getting killed by the Javascript runtime.
@@ -145,8 +145,8 @@ Keep in mind that starting with Pond version 2.1 you can directly modify the `st
 
 ### Latency implications of large number of fishes and sources
 
-With current ActyxOS versions the internal event dispatch latency is proportional to both the number of Fishes and the number of devices in the swarm.
-The effect of this depends very much on the CPU that is running ActyxOS: for example 100 sources times 500 Fishes on an Intel Atom processor (rugged Android tablet from around 2015) lead to an internal latency of 3 sec (e.g. between button click and subsequent fish state update).
+With current Actyx versions the internal event dispatch latency is proportional to both the number of Fishes and the number of devices in the swarm.
+The effect of this depends very much on the CPU that is running Actyx: for example 100 sources times 500 Fishes on an Intel Atom processor (rugged Android tablet from around 2015) lead to an internal latency of 3 sec (e.g. between button click and subsequent fish state update).
 
 We are working on improving this characteristic starting with release 1.1.5 and expect to remove this bottleneck in a future release.
 Until then we recommend to keep the product of woken up Fishes and swarm sources below 1,000, at least on tablet computers.
@@ -161,21 +161,21 @@ Since this happens mostly on tablets with dynamic end-user workflows (like openi
 ### Pathological time travel performance when reconnecting a device that was offline for a long time
 
 When reconnecting a device that was disconnected for a long time period, this device will need to ingest all new events from all other devices in the swarm to become up-to-date.
-If a Fish is running during this process of catching up with the swarm, then that Fish will experience a lot more time travel than it would if it were woken up after ActyxOS is up-to-date.
-ActyxOS optimizes event delivery by doing it in chunks, nevertheless in pathological cases the amount of time travel is not linear in the number of such chunks but quadratic.
+If a Fish is running during this process of catching up with the swarm, then that Fish will experience a lot more time travel than it would if it were woken up after Actyx is up-to-date.
+Actyx optimizes event delivery by doing it in chunks, nevertheless in pathological cases the amount of time travel is not linear in the number of such chunks but quadratic.
 
 As an example: consider 10 devices to catch up with, each contributing 10 chunks of events for your Fish.
 The optimal scenario would be to first catch up and then insert all 100 chunks into the event history, then perform one time travel.
 The worst-case scenario would be that every chunk causes a time travel, with each subsequent time travel being more costly than the previous (due to added events).
 Thereby, the Fish would process some events potentially a hundred times, more likely ten times (since chunks are ordered per device they come from).
 
-To avoid this issue, we recommend using `Pond.waitForSwarmSync()` to delay app startup until ActyxOS is up-to-date with the rest of the swarm.
+To avoid this issue, we recommend using `Pond.waitForSwarmSync()` to delay app startup until Actyx is up-to-date with the rest of the swarm.
 
 ## Illustrative Examples
 
 ### Machine Connectors
 
-Machine connectors that only make machine state and counters available in the ActyxOS swarm can be made without running into the above-mentioned issues.
+Machine connectors that only make machine state and counters available in the Actyx swarm can be made without running into the above-mentioned issues.
 The best way to do so is to emit all state and counter updates as events — typically a complete set is emitted every time.
 If for some reason you need to write partial updates (e.g. only a subset of counters) in some events, make sure to persist the full set within a single event at regular intervals and mark that as a semantic snapshot.
 This way starting up the machine connector’s related Fishes will always be quick.
@@ -195,9 +195,5 @@ We know from project experience that implementing production data acquisition wi
 
 Exporting events or derived information into an ERP or BI system can be done using fishes if the overall workload is “human-scale”: we know from project experience that it works well for booking acquired production data into an ERP system.
 
-Exporting machine or sensor data into a time-series database for further analysis outside ActyxOS is best done using the HTTP API and writing the exporter in a language that is well-suited for connecting to your database and handling the required amount of streaming data.
+Exporting machine or sensor data into a time-series database for further analysis outside Actyx is best done using the HTTP API and writing the exporter in a language that is well-suited for connecting to your database and handling the required amount of streaming data.
 We know from project experience that this can be done with native code (like Rust, C++) for demanding applications that write many million data points per day, e.g. into PostgreSQL with the timescale extension.
-
-import { NPS } from '../../src/components/NPS'
-
-<NPS />
