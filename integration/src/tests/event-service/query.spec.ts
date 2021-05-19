@@ -63,8 +63,10 @@ describe('event service', () => {
         }
         const data: QueryResponse[] = []
         //TODO: remove work around desc not completing
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
           es.query(request, (x) => data.push(x))
+            .then(resolve)
+            .catch(reject)
           setTimeout(resolve, genericCommunicationTimeout)
         })
         const pub1Idx = data.findIndex((x) => x.lamport === pub1.lamport)
@@ -85,8 +87,10 @@ describe('event service', () => {
           order: Order.Desc,
         }
         const data: QueryResponse[] = []
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
           es.query(request, (x) => data.push(x))
+            .then(resolve)
+            .catch(reject)
           setTimeout(resolve, genericCommunicationTimeout)
         })
         expect(data.length).toBe(0)
