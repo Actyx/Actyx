@@ -282,7 +282,7 @@ impl<'a> BanyanStoreGuard<'a> {
         self.index_store
             .add_stream(stream_id)
             .context("unable to write stream id")?;
-        let state = if let Some(root) = self
+        let (builder, latest) = if let Some(root) = self
             .data
             .ipfs
             .resolve(&StreamAlias::from(stream_id))
@@ -296,11 +296,13 @@ impl<'a> BanyanStoreGuard<'a> {
                 .forest
                 .load_stream_builder(Secrets::default(), Config::debug(), header.root)
                 .context("unable to load banyan tree")?;
-            OwnStreamState::new(root, header, builder)
+            let published = PublishedTree::new(root, header, builder.snapshot());
+            (builder, Some(published))
         } else {
-            OwnStreamState::from_builder(StreamBuilder::new(Config::debug(), Secrets::default()))
+            let builder = StreamBuilder::new(Config::debug(), Secrets::default());
+            (builder, None)
         };
-        let stream = Arc::new(OwnStream::new(stream_nr, state));
+        let stream = Arc::new(OwnStream::new(stream_nr, builder, latest));
         self.own_streams.insert(stream_nr, stream.clone());
         tracing::debug!("publish new stream_id {}", stream_id);
         self.publish_new_stream_id(stream_id);
@@ -694,7 +696,7 @@ impl BanyanStore {
             .zip(events)
             .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
         self.transform_stream(&mut guard, |txn, tree| txn.extend_unpacked(tree, kvs))?;
-        Ok(guard.builder.snapshot().link())
+        Ok(guard.snapshot().link())
     }
 
     /// Returns a [`Stream`] of known [`StreamId`].
@@ -760,11 +762,11 @@ impl BanyanStore {
         let writer = self.data.forest.store().write()?;
         let stream_nr = stream.stream_nr();
         let stream_id = self.node_id().stream(stream_nr);
-        let prev = stream.builder.snapshot();
+        let prev = stream.snapshot();
         tracing::debug!("starting write transaction on stream {}", stream_nr);
         let txn = Transaction::new(self.data.forest.clone(), writer);
         // take a snapshot of the initial state
-        let mut guard = stream.builder.transaction();
+        let mut guard = stream.transaction();
         let res = f(&txn, &mut guard);
         if res.is_err() {
             // stream builder state will be reverted, except for the cipher offset
@@ -791,7 +793,8 @@ impl BanyanStore {
         stream
             .latest()
             .set(Some(PublishedTree::new(root, header, curr.clone())));
-        // update resent for the stream
+        // update resent and highest_seen for the stream
+        self.update_highest_seen(stream_id, curr.offset());
         self.update_present(stream_id, curr.offset());
         // publish the update - including the header
         let blocks = txn.into_writer().into_written();

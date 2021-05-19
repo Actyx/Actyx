@@ -35,7 +35,7 @@ fn retain_last_events(store: &BanyanStore, stream: &mut OwnStreamGuard<'_>, keep
         }
         Ok(())
     })?;
-    Ok(stream.builder.snapshot().link())
+    Ok(stream.snapshot().link())
 }
 
 fn retain_events_after(
@@ -49,7 +49,7 @@ fn retain_events_after(
         tracing::debug!("Prune events on {}; retain {:?}", stream_nr, query);
         txn.retain(tree, &query)
     })?;
-    Ok(stream.builder.snapshot().link())
+    Ok(stream.snapshot().link())
 }
 
 fn retain_events_up_to(
@@ -59,7 +59,7 @@ fn retain_events_up_to(
 ) -> anyhow::Result<Option<Link>> {
     let stream_nr = stream.stream_nr();
     let emit_from = {
-        let tree = stream.builder.snapshot();
+        let tree = stream.snapshot();
         let mut iter = store.data.forest.iter_index_reverse(&tree, banyan::query::AllQuery);
         let mut bytes = 0u64;
         let mut current_offset = tree.count();
@@ -104,7 +104,7 @@ fn retain_events_up_to(
             tracing::debug!("Prune events on {}; retain {:?}", stream_nr, query);
             txn.retain(tree, &query)
         })?;
-        Ok(stream.builder.snapshot().link())
+        Ok(stream.snapshot().link())
     } else {
         // No need to update the tree.
         // (Returned digest is not evaluated anyway)

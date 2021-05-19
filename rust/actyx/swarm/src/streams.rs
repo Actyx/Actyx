@@ -63,39 +63,17 @@ pub struct OwnStream {
     /// the stream number, just for convenience
     stream_nr: StreamNr,
     /// the builder, wrapped into an async mutex
-    builder: tokio::sync::Mutex<OwnStreamState>,
+    builder: tokio::sync::Mutex<AxStreamBuilder>,
     /// the latest published tree
     latest: Variable<Option<PublishedTree>>,
 }
 
-#[derive(Debug)]
-pub struct OwnStreamState {
-    pub builder: AxStreamBuilder,
-    pub persisted: Option<(Link, AxTreeHeader)>,
-}
-
-impl OwnStreamState {
-    pub fn new(link: Link, header: AxTreeHeader, builder: AxStreamBuilder) -> Self {
-        Self {
-            builder,
-            persisted: Some((link, header)),
-        }
-    }
-
-    pub fn from_builder(builder: AxStreamBuilder) -> Self {
-        Self {
-            builder,
-            persisted: None,
-        }
-    }
-}
-
 impl OwnStream {
-    pub fn new(stream_nr: StreamNr, state: OwnStreamState) -> Self {
+    pub fn new(stream_nr: StreamNr, builder: AxStreamBuilder, latest: Option<PublishedTree>) -> Self {
         Self {
             stream_nr,
-            builder: tokio::sync::Mutex::new(state),
-            latest: Default::default(),
+            builder: tokio::sync::Mutex::new(builder),
+            latest: Variable::new(latest),
         }
     }
 
@@ -126,7 +104,7 @@ impl OwnStream {
     }
 }
 
-pub struct OwnStreamGuard<'a>(&'a OwnStream, tokio::sync::MutexGuard<'a, OwnStreamState>);
+pub struct OwnStreamGuard<'a>(&'a OwnStream, tokio::sync::MutexGuard<'a, AxStreamBuilder>);
 
 impl<'a> OwnStreamGuard<'a> {
     pub fn latest(&self) -> &Variable<Option<PublishedTree>> {
@@ -138,15 +116,15 @@ impl<'a> OwnStreamGuard<'a> {
 }
 
 impl<'a> Deref for OwnStreamGuard<'a> {
-    type Target = OwnStreamState;
+    type Target = AxStreamBuilder;
 
-    fn deref(&self) -> &OwnStreamState {
+    fn deref(&self) -> &AxStreamBuilder {
         self.1.deref()
     }
 }
 
 impl<'a> DerefMut for OwnStreamGuard<'a> {
-    fn deref_mut(&mut self) -> &mut OwnStreamState {
+    fn deref_mut(&mut self) -> &mut AxStreamBuilder {
         self.1.deref_mut()
     }
 }
@@ -204,7 +182,8 @@ impl ReplicatedStream {
         self.validated.project(|x| x.as_ref().map(|x| Cid::from(x.root)))
     }
 
-    /// lamport and count of the header of the last validated tree. Will default to (0, 0) if there is no header yet.
+    /// lamport of the header and count of the last validated tree.
+    /// Will default to (0, 0) if there is no header yet.
     pub fn validated_tree_counters(&self) -> (LamportTimestamp, u64) {
         self.validated.project(|x| {
             x.as_ref()
