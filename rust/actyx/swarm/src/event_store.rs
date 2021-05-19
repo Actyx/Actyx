@@ -169,10 +169,9 @@ impl EventStore {
         to_offsets_including: OffsetMap,
     ) -> Result<impl Stream<Item = Event<Payload>>, Error> {
         let this = self.clone();
-        let stream_selections = self
+        let event_streams = self
             .bounded_streams(tag_subscriptions, from_offsets_excluding, to_offsets_including)
-            .await?;
-        let event_streams = stream_selections
+            .await?
             .into_iter()
             .map(|stream_selection| this.forward_stream(stream_selection));
         Ok(MergeOrdered::new_fixed(event_streams))
@@ -185,10 +184,9 @@ impl EventStore {
         to_offsets_including: OffsetMap,
     ) -> Result<impl Stream<Item = Event<Payload>>, Error> {
         let this = self.clone();
-        let stream_selections = self
+        let event_streams = self
             .bounded_streams(tag_subscriptions, from_offsets_excluding, to_offsets_including)
-            .await?;
-        let event_streams = stream_selections
+            .await?
             .into_iter()
             .map(move |stream_selection| this.forward_stream(stream_selection));
         Ok(stream::iter(event_streams).merge_unordered())
@@ -201,13 +199,11 @@ impl EventStore {
         to_offsets_including: OffsetMap,
     ) -> Result<impl Stream<Item = Event<Payload>>, Error> {
         let this = self.clone();
-        let stream_selections = self
+        let event_streams = self
             .bounded_streams(tag_subscriptions, from_offsets_excluding, to_offsets_including)
-            .await?;
-        let event_streams = stream_selections
+            .await?
             .into_iter()
             .map(|stream_selection| this.backward_stream(stream_selection));
-
         Ok(MergeOrdered::new_fixed(event_streams).map(|reverse| reverse.0))
     }
 
