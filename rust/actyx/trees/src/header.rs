@@ -1,6 +1,5 @@
-use crate::axtrees::{AxTrees, Sha256Digest};
+use crate::axtrees::Sha256Digest;
 use actyxos_sdk::LamportTimestamp;
-use banyan::Tree;
 use libipld::{
     cbor::DagCborCodec,
     codec::{Decode, Encode},

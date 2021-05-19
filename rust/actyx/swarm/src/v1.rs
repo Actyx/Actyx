@@ -37,7 +37,7 @@ impl BanyanStore {
     async fn persist0(self, events: Vec<(TagSet, Payload)>) -> Result<Vec<PersistenceMeta>> {
         let stream_nr = StreamNr::from(0); // TODO
         let timestamp = Timestamp::now();
-        let stream = self.get_or_create_own_stream(stream_nr);
+        let stream = self.get_or_create_own_stream(stream_nr)?;
         let n = events.len();
         let mut guard = stream.lock().await;
         let mut store = self.lock();
