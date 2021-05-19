@@ -1,5 +1,5 @@
 use crate::{AxStreamBuilder, Cid, Link, Tree};
-use actyxos_sdk::{LamportTimestamp, NodeId, Offset, StreamId, StreamNr};
+use actyxos_sdk::{LamportTimestamp, NodeId, Offset, OffsetOrMin, StreamId, StreamNr};
 use ax_futures_util::stream::variable::Variable;
 use fnv::FnvHashMap;
 use futures::{
@@ -83,6 +83,10 @@ impl OwnStream {
             .boxed()
     }
 
+    pub fn published_tree(&self) -> Option<PublishedTree> {
+        self.latest.get_cloned()
+    }
+
     /// The current root of the own stream
     ///
     /// Note that if you want to do something more complex with a tree, like transform it,
@@ -147,7 +151,7 @@ pub struct ReplicatedStream {
 }
 
 /// Trees are published including a tree header.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PublishedTree {
     /// hash of the tree header
     root: Link,
@@ -160,6 +164,10 @@ pub struct PublishedTree {
 impl PublishedTree {
     pub fn new(root: Link, header: AxTreeHeader, tree: AxTree) -> Self {
         Self { root, header, tree }
+    }
+
+    pub fn offset(&self) -> Offset {
+        Offset::try_from(self.tree.count()).unwrap()
     }
 }
 
@@ -175,6 +183,10 @@ impl ReplicatedStream {
     /// set the latest validated root
     pub fn set_latest(&self, value: PublishedTree) {
         self.validated.set(Some(value));
+    }
+
+    pub fn latest(&self) -> Option<PublishedTree> {
+        self.validated.get_cloned()
     }
 
     /// root of the tree. This is the hash of the header.

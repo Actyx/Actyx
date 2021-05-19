@@ -381,6 +381,22 @@ impl<'a> BanyanStoreGuard<'a> {
         }
     }
 
+    /// Get the last PublishedTree for a stream_id, only if it already exists
+    fn published_tree(&self, stream_id: StreamId) -> Option<PublishedTree> {
+        let me = stream_id.node_id() == self.node_id();
+        if me {
+            let stream_nr = stream_id.stream_nr();
+            let stream = self.own_streams.get(&stream_nr)?;
+            stream.published_tree()
+        } else {
+            let node_id = stream_id.node_id();
+            let stream_nr = stream_id.stream_nr();
+            let remote = self.remote_nodes.get(&node_id)?;
+            let stream = remote.streams.get(&stream_nr)?;
+            stream.latest()
+        }
+    }
+
     /// Get a stream of trees for a given stream id
     fn tree_stream(&mut self, stream_id: StreamId) -> impl Stream<Item = Tree> {
         let me = stream_id.node_id() == self.node_id();
@@ -657,6 +673,21 @@ impl BanyanStore {
         }
     }
 
+    /// Compute the swarm offsets from scratch based on the in memory headers and trees
+    fn compute_swarm_offsets(&self) -> SwarmOffsets {
+        let state = self.lock();
+        let mut present = OffsetMap::empty();
+        for stream_id in state.current_stream_ids() {
+            if let Some(tree) = state.published_tree(stream_id) {
+                present.update(stream_id, tree.offset());
+            }
+        }
+        SwarmOffsets {
+            replication_target: present.clone(),
+            present,
+        }
+    }
+
     fn load_known_streams(&self) -> Result<()> {
         let known_streams = self.lock().index_store.get_observed_streams()?;
         for stream_id in known_streams {
@@ -667,6 +698,7 @@ impl BanyanStore {
                 let _ = self.get_or_create_replicated_stream(stream_id);
             }
         }
+        self.data.offsets.set(self.compute_swarm_offsets());
         Ok(())
     }
 
