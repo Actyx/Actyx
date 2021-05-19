@@ -34,13 +34,20 @@ impl TagSubscriptions {
         Self(vec![])
     }
     pub fn as_tag_sets(&self, is_local: bool) -> Vec<TagSet> {
-        self.0
+        let tag_sets: Vec<_> = self
+            .0
             .iter()
             // If is_local ist set, we can just use all subscriptions. Otherwise, only non-local subscriptions.
             .filter(|x| is_local || !x.local)
             .cloned()
             .map(|x| x.tags)
-            .collect()
+            .collect();
+
+        if tag_sets.iter().any(|tag_set| tag_set.is_empty()) {
+            vec![]
+        } else {
+            tag_sets
+        }
     }
     pub fn new(s: Vec<TagSubscription>) -> Self {
         Self(s)

@@ -615,6 +615,49 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_unbounded_streams() {
+        let local = mk_store("unbounded_streams_local").await;
+        let remote = mk_store("unbounded_streams_remote").await;
+
+        // create dummy streams
+        local.persist(vec![(tags!(), Payload::empty())]).await.unwrap();
+        remote.persist(vec![(tags!(), Payload::empty())]).await.unwrap();
+
+        let local_stream = local.node_id().stream(0.into());
+        let remote_stream = remote.node_id().stream(0.into());
+
+        await_stream_offsets(
+            &local,
+            &[&remote],
+            &btreemap! {
+              local_stream => 0,
+              remote_stream => 0,
+            },
+        )
+        .await;
+
+        let test_selection = |stream_id: StreamId, tag_expr: &'static str, expected: Option<Vec<TagSet>>| {
+            let tag_subscriptions = TagSubscriptions::from(&tag_expr.parse::<TagExpr>().unwrap());
+            let actual = local
+                .unbounded_stream(stream_id, &tag_subscriptions, OffsetOrMin::MIN)
+                .map(|selection| selection.tag_subscriptions);
+            assert_eq!(actual, expected, "tag_expr: {:?}", tag_expr);
+        };
+
+        test_selection(local_stream, "isLocal", Some(vec![]));
+        test_selection(local_stream, "isLocal & 'a'", Some(vec![tags!("a")]));
+        test_selection(local_stream, "isLocal | 'a'", Some(vec![]));
+        test_selection(local_stream, "isLocal & 'b' | 'a'", Some(vec![tags!("a"), tags!("b")]));
+        test_selection(local_stream, "'a'", Some(vec![tags!("a")]));
+
+        test_selection(remote_stream, "isLocal", None);
+        test_selection(remote_stream, "isLocal & 'a'", None);
+        test_selection(remote_stream, "isLocal | 'a'", Some(vec![tags!("a")]));
+        test_selection(remote_stream, "isLocal & 'b' | 'a'", Some(vec![tags!("a")]));
+        test_selection(remote_stream, "'a'", Some(vec![tags!("a")]));
+    }
+
+    #[tokio::test]
     async fn should_stream_offsets() -> anyhow::Result<()> {
         fn test_offsets(store: &EventStore, stream: StreamId, offset: Offset) {
             let mut offsets = Drainer::new(store.offsets());
