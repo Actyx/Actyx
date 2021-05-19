@@ -687,6 +687,11 @@ impl TagsQuery {
     }
 
     fn set_matching(&self, index: &TagIndex, matching: &mut [bool]) {
+        if self.0.is_empty() {
+            matching.fill(true);
+            return;
+        }
+
         // lookup all strings and translate them into indices.
         // if a single index does not match, the query can not match at all.
         let lookup = |s: &TagSet| -> Option<IndexSet> {
