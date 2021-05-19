@@ -62,8 +62,8 @@ impl AxCliCommand for UsersKeygen {
             let public_key = key.to_string();
             Ok(Output {
                 private_key_path,
-                public_key,
                 public_key_path,
+                public_key,
             })
         });
         Box::new(stream::once(r))

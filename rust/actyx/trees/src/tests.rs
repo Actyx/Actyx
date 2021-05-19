@@ -212,7 +212,7 @@ fn events_banyan_tree_roundtrip_with(events: Vec<(AxKey, Payload)>) -> anyhow::R
     let events1 = txn
         .collect(&builder.snapshot())?
         .into_iter()
-        .filter_map(|x| x)
+        .flatten()
         .collect::<Vec<_>>();
     // check that they are the same
     assert_eq!(events, events1);

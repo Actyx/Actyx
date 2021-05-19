@@ -377,7 +377,7 @@ pub struct AxSummary {
 impl AxSummary {
     /// New key, for a single or multiple events
     pub fn new(tags: TagsSummary, lamport: AxRange<LamportTimestamp>, time: AxRange<Timestamp>) -> Self {
-        Self { tags, lamport, time }
+        Self { tags, time, lamport }
     }
 }
 

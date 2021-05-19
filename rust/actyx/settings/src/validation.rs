@@ -62,7 +62,7 @@ impl From<validators::ValidationState> for ValidationState {
                 let title = e.get_title().to_string();
                 let path = e.get_path().to_string();
                 let detail = e.get_detail().map(|d| d.to_string());
-                ValidationError { title, path, detail }
+                ValidationError { path, title, detail }
             })
             .collect();
         let missing = s.missing.iter().map(|url| url.to_string()).collect();
