@@ -213,7 +213,6 @@ impl EventStore {
             })
             .map(move |selection| this.forward_stream(selection))
             .merge_unordered()
-            .boxed()
     }
 }
 
