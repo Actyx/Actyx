@@ -1,8 +1,6 @@
-use crate::tag_index::IndexSet;
 use actyxos_sdk::{LamportTimestamp, TagSet, Timestamp};
 use banyan::{
-    index::{BranchIndex, CompactSeq, LeafIndex, Summarizable},
-    query::Query,
+    index::{CompactSeq, Summarizable},
     Tree, TreeTypes,
 };
 use libipld::{
@@ -19,7 +17,6 @@ use std::{
     fmt,
     io::{Read, Seek, Write},
     iter::FromIterator,
-    ops::{Range, RangeFrom, RangeTo},
     str::FromStr,
 };
 
@@ -102,9 +99,9 @@ impl AxKey {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "AxKeySeqIo", into = "AxKeySeqIo")]
 pub struct AxKeySeq {
-    tags: TagIndex,
-    lamport: Vec<LamportTimestamp>,
-    time: Vec<Timestamp>,
+    pub(crate) tags: TagIndex,
+    pub(crate) lamport: Vec<LamportTimestamp>,
+    pub(crate) time: Vec<Timestamp>,
 }
 
 impl AxKeySeq {
@@ -387,9 +384,9 @@ impl AxSummary {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "AxSummarySeqIo", into = "AxSummarySeqIo")]
 pub struct AxSummarySeq {
-    tags: TagsSummaries,
-    lamport: Vec<AxRange<LamportTimestamp>>,
-    time: Vec<AxRange<Timestamp>>,
+    pub(crate) tags: TagsSummaries,
+    pub(crate) lamport: Vec<AxRange<LamportTimestamp>>,
+    pub(crate) time: Vec<AxRange<Timestamp>>,
 }
 
 impl Encode<DagCborCodec> for AxSummarySeq {
@@ -562,165 +559,6 @@ impl TreeTypes for AxTrees {
     type Link = Sha256Digest;
 }
 
-#[derive(Debug, Clone)]
-pub struct LamportQuery(RangeSet<LamportTimestamp>);
-
-impl From<Range<LamportTimestamp>> for LamportQuery {
-    fn from(value: Range<LamportTimestamp>) -> Self {
-        Self(value.into())
-    }
-}
-
-impl Query<AxTrees> for LamportQuery {
-    fn intersecting(&self, _offset: u64, index: &BranchIndex<AxTrees>, matching: &mut [bool]) {
-        let lamport = &index.summaries.lamport;
-        for i in 0..lamport.len().min(matching.len()) {
-            matching[i] = matching[i] && !self.0.is_disjoint(&lamport[i].clone().into());
-        }
-    }
-
-    fn containing(&self, _offset: u64, index: &LeafIndex<AxTrees>, matching: &mut [bool]) {
-        let lamport = &index.keys.lamport;
-        for i in 0..lamport.len().min(matching.len()) {
-            matching[i] = matching[i] && self.0.contains(&lamport[i]);
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct TimeQuery(RangeSet<Timestamp>);
-
-impl From<Range<Timestamp>> for TimeQuery {
-    fn from(value: Range<Timestamp>) -> Self {
-        Self(value.into())
-    }
-}
-
-impl From<RangeSet<Timestamp>> for TimeQuery {
-    fn from(value: RangeSet<Timestamp>) -> Self {
-        Self(value)
-    }
-}
-
-impl From<RangeFrom<Timestamp>> for TimeQuery {
-    fn from(value: RangeFrom<Timestamp>) -> Self {
-        Self(value.into())
-    }
-}
-
-impl From<RangeTo<Timestamp>> for TimeQuery {
-    fn from(value: RangeTo<Timestamp>) -> Self {
-        Self(value.into())
-    }
-}
-
-impl Query<AxTrees> for TimeQuery {
-    fn intersecting(&self, _offset: u64, index: &BranchIndex<AxTrees>, matching: &mut [bool]) {
-        let time = &index.summaries.time;
-        for i in 0..time.len().min(matching.len()) {
-            matching[i] = matching[i] && !self.0.is_disjoint(&time[i].clone().into());
-        }
-    }
-
-    fn containing(&self, _offset: u64, index: &LeafIndex<AxTrees>, matching: &mut [bool]) {
-        let time = &index.keys.time;
-        for i in 0..time.len().min(matching.len()) {
-            matching[i] = matching[i] && self.0.contains(&time[i]);
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct OffsetQuery(RangeSet<u64>);
-
-impl From<Range<u64>> for OffsetQuery {
-    fn from(value: Range<u64>) -> Self {
-        Self(value.into())
-    }
-}
-impl From<RangeSet<u64>> for OffsetQuery {
-    fn from(value: RangeSet<u64>) -> Self {
-        Self(value)
-    }
-}
-
-impl From<RangeFrom<u64>> for OffsetQuery {
-    fn from(value: RangeFrom<u64>) -> Self {
-        Self(value.into())
-    }
-}
-
-impl From<RangeTo<u64>> for OffsetQuery {
-    fn from(value: RangeTo<u64>) -> Self {
-        Self(value.into())
-    }
-}
-
-impl Query<AxTrees> for OffsetQuery {
-    fn intersecting(&self, offset: u64, index: &BranchIndex<AxTrees>, matching: &mut [bool]) {
-        let range = offset..offset + index.count;
-        if self.0.is_disjoint(&range.into()) {
-            for e in matching.iter_mut() {
-                *e = false;
-            }
-        }
-    }
-
-    fn containing(&self, mut offset: u64, index: &LeafIndex<AxTrees>, matching: &mut [bool]) {
-        for i in 0..index.keys.len().min(matching.len()) {
-            matching[i] = matching[i] && self.0.contains(&offset);
-            offset += 1;
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct TagsQuery(Vec<TagSet>);
-
-impl TagsQuery {
-    pub fn new(dnf: Vec<TagSet>) -> Self {
-        Self(dnf)
-    }
-
-    pub fn tags(&self) -> &[TagSet] {
-        self.0.as_slice()
-    }
-
-    fn set_matching(&self, index: &TagIndex, matching: &mut [bool]) {
-        // lookup all strings and translate them into indices.
-        // if a single index does not match, the query can not match at all.
-        let lookup = |s: &TagSet| -> Option<IndexSet> {
-            s.iter()
-                .map(|t| index.tags.find(&t).map(|x| x as u32))
-                .collect::<Option<_>>()
-        };
-        // translate the query from strings to indices
-        let query = self.0.iter().filter_map(lookup).collect::<Vec<_>>();
-        // only look at bits that are currently set, set them to false if they do not match
-        for i in 0..index.elements.len().min(matching.len()) {
-            if matching[i] {
-                matching[i] = query.iter().any(|x| x.is_subset(&index.elements[i]));
-            }
-        }
-    }
-}
-
-impl Query<AxTrees> for TagsQuery {
-    fn containing(&self, _offset: u64, index: &LeafIndex<AxTrees>, matching: &mut [bool]) {
-        if !self.0.is_empty() {
-            self.set_matching(&index.keys.tags, matching);
-        }
-    }
-
-    fn intersecting(&self, _offset: u64, index: &BranchIndex<AxTrees>, matching: &mut [bool]) {
-        if !self.0.is_empty() {
-            if let TagsSummaries::Complete(index) = &index.summaries.tags {
-                self.set_matching(index, matching);
-            }
-        }
-    }
-}
-
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Sha256Digest([u8; 32]);
 
@@ -784,47 +622,7 @@ impl fmt::Debug for Sha256Digest {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyxos_sdk::{
-        language::{TagAtom, TagExpr},
-        tags, Tag,
-    };
     use quickcheck::quickcheck;
-
-    use crate::{axtrees::TagsQuery, TagSubscriptions};
-
-    fn l(tag: &'static str) -> TagExpr {
-        TagExpr::Atom(TagAtom::Tag(Tag::new(tag.to_owned()).unwrap()))
-    }
-
-    fn assert_match(index: &TagIndex, expr: &TagExpr, expected: Vec<bool>) {
-        let tag_subscriptions = TagSubscriptions::from(expr);
-        let query = TagsQuery::new(tag_subscriptions.as_tag_sets(true));
-        let mut matching = vec![true; expected.len()];
-        query.set_matching(index, &mut matching);
-        assert_eq!(matching, expected);
-    }
-
-    #[test]
-    fn test_matching_1() {
-        let index = TagIndex::from_elements(&[tags!("a"), tags!("a", "b"), tags!("a"), tags!("a", "b")]);
-        let expr = l("a") | l("b");
-        assert_match(&index, &expr, vec![true, true, true, true]);
-        let expr = l("a") & l("b");
-        assert_match(&index, &expr, vec![false, true, false, true]);
-        let expr = l("c") & l("d");
-        assert_match(&index, &expr, vec![false, false, false, false]);
-    }
-
-    #[test]
-    fn test_matching_2() {
-        let index = TagIndex::from_elements(&[tags!("a", "b"), tags!("b", "c"), tags!("c", "a"), tags!("a", "b")]);
-        let expr = l("a") | l("b") | l("c");
-        assert_match(&index, &expr, vec![true, true, true, true]);
-        let expr = l("a") & l("b");
-        assert_match(&index, &expr, vec![true, false, false, true]);
-        let expr = l("a") & l("b") & l("c");
-        assert_match(&index, &expr, vec![false, false, false, false]);
-    }
 
     quickcheck! {
             fn summaryseq_serde_roundtrip(ks: AxSummarySeq) -> bool {

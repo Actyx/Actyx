@@ -21,7 +21,6 @@ use swarm::{
     SwarmOffsets,
 };
 use thiserror::Error;
-use trees::TagSubscriptions;
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -88,21 +87,21 @@ impl service::EventService for EventService {
     }
 
     async fn query(&self, request: QueryRequest) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
-        let tag_subscriptions = TagSubscriptions::from(&request.query);
+        let tag_expr = &request.query.from;
         let stream = match request.order {
             Order::Asc => self
                 .store
-                .bounded_forward(tag_subscriptions, request.lower_bound, request.upper_bound)
+                .bounded_forward(tag_expr, request.lower_bound, request.upper_bound)
                 .await
                 .map(|s| s.boxed()),
             Order::Desc => self
                 .store
-                .bounded_backward(tag_subscriptions, request.lower_bound, request.upper_bound)
+                .bounded_backward(tag_expr, request.lower_bound, request.upper_bound)
                 .await
                 .map(|s| s.boxed()),
             Order::StreamAsc => self
                 .store
-                .bounded_forward_per_stream(tag_subscriptions, request.lower_bound, request.upper_bound)
+                .bounded_forward_per_stream(tag_expr, request.lower_bound, request.upper_bound)
                 .await
                 .map(|s| s.boxed()),
         };
@@ -115,18 +114,16 @@ impl service::EventService for EventService {
     }
 
     async fn subscribe(&self, request: SubscribeRequest) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
-        let tag_subscriptions: TagSubscriptions = (&request.query).into();
+        let tag_expr = &request.query.from;
         let present = self.store.present().await;
 
         let bounded = self
             .store
-            .bounded_forward(tag_subscriptions.clone(), request.offsets, present.clone())
+            .bounded_forward(tag_expr, request.offsets, present.clone())
             .await
             .map_err(Error::StoreReadError)?;
 
-        let unbounded = self
-            .store
-            .unbounded_forward_per_stream(tag_subscriptions, Some(present));
+        let unbounded = self.store.unbounded_forward_per_stream(tag_expr, Some(present));
 
         Ok(bounded
             .chain(unbounded)
@@ -139,12 +136,12 @@ impl service::EventService for EventService {
         &self,
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
-        let tag_subscriptions: TagSubscriptions = (&request.query).into();
+        let tag_expr = &request.query.from;
         let present = self.store.offsets().next().await.unwrap_or_default().present;
 
         let initial_latest = if let StartFrom::Offsets(offsets) = &request.from {
             self.store
-                .bounded_backward(tag_subscriptions.clone(), None, offsets.clone())
+                .bounded_backward(tag_expr, None, offsets.clone())
                 .await
                 .map_err(Error::StoreReadError)?
                 .next()
@@ -157,17 +154,11 @@ impl service::EventService for EventService {
 
         let bounded = self
             .store
-            .bounded_forward(
-                tag_subscriptions.clone(),
-                Some(request.from.min_offsets()),
-                present.clone(),
-            )
+            .bounded_forward(tag_expr, Some(request.from.min_offsets()), present.clone())
             .await
             .map_err(Error::StoreReadError)?;
 
-        let unbounded = self
-            .store
-            .unbounded_forward_per_stream(tag_subscriptions.clone(), Some(present));
+        let unbounded = self.store.unbounded_forward_per_stream(tag_expr, Some(present));
 
         let feed = mk_feed(request.query);
         let response = bounded

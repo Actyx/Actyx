@@ -1,5 +1,5 @@
-use actyxos_sdk::{OffsetOrMin, StreamId, TagSet};
-use trees::{OffsetMapOrMax, TagSubscriptions};
+use actyxos_sdk::{language::TagExpr, OffsetOrMin};
+use trees::{query::TagsQuery, OffsetMapOrMax};
 
 /// A precise selection of events, possibly unbounded in size.
 ///
@@ -15,8 +15,8 @@ use trees::{OffsetMapOrMax, TagSubscriptions};
 /// the two mechanisms.
 #[derive(Debug, Clone)]
 pub struct EventSelection {
-    /// Filtering events by tag subsciption
-    pub tag_subscriptions: TagSubscriptions,
+    /// Filtering events by tags
+    pub tag_expr: TagExpr,
     /// Lower bound, exclusive, for all streams
     pub from_offsets_excluding: OffsetMapOrMax,
     /// Upper bound, inclusive, for all streams
@@ -25,19 +25,21 @@ pub struct EventSelection {
 
 impl EventSelection {
     #[cfg(test)]
-    pub fn matches<T>(&self, event: &actyxos_sdk::Event<T>) -> bool {
-        self.tag_subscriptions
-            .iter()
-            .any(|t| t.tags.is_subset(&event.meta.tags))
-            && self.from_offsets_excluding.offset(event.key.stream) < event.key.offset
-            && self.to_offsets_including.offset(event.key.stream) >= event.key.offset
+    pub fn matches<T>(&self, local: bool, event: &actyxos_sdk::Event<T>) -> bool {
+        TagsQuery::from_expr(&self.tag_expr, local)
+            .map(|query| {
+                query.tags().iter().any(|t| t.is_subset(&event.meta.tags))
+                    && self.from_offsets_excluding.offset(event.key.stream) < event.key.offset
+                    && self.to_offsets_including.offset(event.key.stream) >= event.key.offset
+            })
+            .unwrap_or(false)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamEventSelection {
-    pub stream_id: StreamId,
+    // pub stream_id: StreamId,
     pub from_exclusive: OffsetOrMin,
     pub to_inclusive: OffsetOrMin,
-    pub tag_subscriptions: Vec<TagSet>,
+    pub tags_query: TagsQuery,
 }

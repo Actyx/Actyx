@@ -3,7 +3,7 @@ use anyhow::Result;
 use futures::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use swarm::BanyanStore;
-use trees::axtrees::TagsQuery;
+use trees::query::TagsQuery;
 
 #[derive(Serialize, Deserialize)]
 struct MyEvent {
