@@ -20,6 +20,8 @@ pub enum Error {
 
 pub type PersistenceMeta = (LamportTimestamp, Offset, StreamNr, Timestamp);
 
+/// Wraps a [BanyanStore] and provides functionality for persisting events as well as receiving bounded and
+/// unbounded sets of events for queries across multiple streams with varying order guarantees.
 #[derive(Clone)]
 pub struct EventStore {
     banyan_store: BanyanStore,
