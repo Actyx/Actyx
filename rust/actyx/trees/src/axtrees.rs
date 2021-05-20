@@ -1,5 +1,5 @@
 use crate::tag_index::IndexSet;
-use actyxos_sdk::{LamportTimestamp, TagSet, Timestamp};
+use actyxos_sdk::{LamportTimestamp, Payload, TagSet, Timestamp};
 use banyan::{
     index::{BranchIndex, CompactSeq, LeafIndex, Summarizable},
     query::Query,
@@ -25,7 +25,7 @@ use std::{
 
 use crate::TagIndex;
 
-pub type AxTree = Tree<AxTrees>;
+pub type AxTree = Tree<AxTrees, Payload>;
 
 const MAX_TAGSET_SIZE: usize = 4096;
 

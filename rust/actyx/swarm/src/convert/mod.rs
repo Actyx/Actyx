@@ -3,7 +3,7 @@ use std::{collections::BTreeMap, fs, str::FromStr, sync::Arc};
 use actyxos_sdk::{legacy::SourceId, Payload, StreamId, Tag};
 use anyhow::Result;
 use banyan::store::{BlockWriter, ReadOnlyStore};
-use banyan::{store::BranchCache, Config, Forest, StreamBuilder, Transaction};
+use banyan::{store::BranchCache, Config, Forest, Transaction};
 use ipfs_sqlite_block_store::{BlockStore, Synchronous};
 use libipld::{
     cbor::DagCborCodec,
@@ -15,7 +15,7 @@ use rayon::prelude::*;
 use rusqlite::OpenFlags;
 use trees::axtrees::{AxKey, AxTree, AxTrees, Sha256Digest};
 
-use crate::StreamAlias;
+use crate::{AxStreamBuilder, StreamAlias};
 
 mod v1;
 use v1::{Block, ConsNode, IpfsEnvelope};
@@ -23,7 +23,7 @@ use v1::{Block, ConsNode, IpfsEnvelope};
 #[cfg(test)]
 mod tests;
 
-type AxTxn = Transaction<AxTrees, Payload, Importer, Importer>;
+type AxTxn = Transaction<AxTrees, Importer, Importer>;
 
 /// Get a block from a block store and decode it, with extensive logging
 fn get<T: Decode<DagCborCodec>>(db: &Arc<Mutex<BlockStore<DefaultParams>>>, link: &Link<T>) -> anyhow::Result<T> {
@@ -106,7 +106,7 @@ fn build_banyan_tree<'a>(
     iter: impl Iterator<Item = anyhow::Result<Vec<IpfsEnvelope>>> + Send + 'a,
     config: Config,
 ) -> anyhow::Result<AxTree> {
-    let mut builder = StreamBuilder::<AxTrees>::new(config, Default::default());
+    let mut builder = AxStreamBuilder::new(config, Default::default());
     let mut count: usize = 0;
     let mut errors = Vec::new();
     let iter = iter
@@ -181,7 +181,8 @@ pub fn convert_from_v1(v1_index_path: &str, v2_index_path: &str, options: Conver
 
     let config = banyan::Config {
         max_leaf_count: 1 << 16,
-        max_branch_count: 32,
+        max_summary_branches: 32,
+        max_key_branches: 32,
         target_leaf_size: 1 << 18,
         max_uncompressed_leaf_size: 1024 * 1024 * 4,
         zstd_level: 10,

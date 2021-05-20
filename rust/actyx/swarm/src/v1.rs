@@ -211,7 +211,7 @@ fn last_lamport_from_index_ref(r: IndexRef<TT>) -> LamportTimestamp {
 /// In case the last event was filtered out, a placeholder heartbeat is added.
 fn events_or_heartbeat_from_chunk(
     stream_id: StreamId,
-    chunk: FilteredChunk<TT, Payload, LamportTimestamp>,
+    chunk: FilteredChunk<(u64, AxKey, Payload), LamportTimestamp>,
 ) -> Vec<EventOrHeartbeat> {
     let last_offset = chunk.range.end - 1;
     let has_last = chunk
@@ -236,7 +236,7 @@ fn events_or_heartbeat_from_chunk(
 }
 
 /// Take a block of banyan events and convert them into ActyxOS Event<Payload> events, reversing them
-fn events_from_chunk_rev(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, ()>) -> Vec<Event<Payload>> {
+fn events_from_chunk_rev(stream_id: StreamId, chunk: FilteredChunk<(u64, AxKey, Payload), ()>) -> Vec<Event<Payload>> {
     chunk
         .data
         .into_iter()

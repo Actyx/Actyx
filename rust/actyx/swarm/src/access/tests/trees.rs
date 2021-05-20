@@ -95,7 +95,7 @@ impl Generator {
     }
 }
 
-type AxTxn = Transaction<AxTrees, Payload, MemStore<Sha256Digest>, MemStore<Sha256Digest>>;
+type AxTxn = Transaction<AxTrees, MemStore<Sha256Digest>, MemStore<Sha256Digest>>;
 
 fn test_txn() -> AxTxn {
     let store = MemStore::new(usize::max_value(), Sha256Digest::new);

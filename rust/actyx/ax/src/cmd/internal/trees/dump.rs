@@ -8,7 +8,7 @@ use libipld::{
     codec::{Codec, Decode},
     json::DagJsonCodec,
 };
-use std::{io::Cursor, path::PathBuf, sync::Arc};
+use std::{io::Cursor, path::PathBuf};
 use structopt::StructOpt;
 use trees::axtrees::{AxKeySeq, AxTrees, Sha256Digest};
 use util::formats::{ActyxOSResult, ActyxOSResultExt};
@@ -53,8 +53,8 @@ fn dump(opts: DumpTreeOpts) -> anyhow::Result<String> {
             };
             let bs = BlockStore::open(opts.block_store, Default::default())?;
             let ss = SqliteStore::new(bs)?;
-            let forest = Forest::<AxTrees, Payload, _>::new(ss, BranchCache::new(1000));
-            let tree = forest.load_tree(secrets, root)?;
+            let forest = Forest::<AxTrees, _>::new(ss, BranchCache::new(1000));
+            let tree = forest.load_tree::<Payload>(secrets, root)?;
             if opts.dot {
                 dump::graph(&forest, &tree, std::io::stdout())?;
             } else {
@@ -91,7 +91,7 @@ fn dump(opts: DumpTreeOpts) -> anyhow::Result<String> {
             let bs = BlockStore::open(opts.block_store, Default::default())?;
             let ss = SqliteStore::new(bs)?;
             let value_key: chacha20::Key = opts.value_pass.map(create_chacha_key).unwrap_or_default();
-            dump::dump_json(Arc::new(ss), block_hash, value_key, &mut std::io::stdout())?;
+            dump::dump_json(ss, block_hash, value_key, &mut std::io::stdout())?;
         }
         _ => anyhow::bail!("Provide either root or block hash"),
     }
