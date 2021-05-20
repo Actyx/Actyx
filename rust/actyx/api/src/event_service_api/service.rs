@@ -1,19 +1,20 @@
 use std::{convert::TryFrom, num::NonZeroU64};
 
 use actyxos_sdk::{
-    language,
+    language::{self, TagExpr},
     service::{
         self, EventResponse, NodeIdResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse,
         PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
         SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    Event, EventKey, Metadata, OffsetOrMin, Payload,
+    Event, EventKey, Metadata, OffsetMap, OffsetOrMin, Payload,
 };
 use async_trait::async_trait;
 use ax_futures_util::prelude::*;
 use futures::{
     future,
     stream::{self, BoxStream, StreamExt},
+    Stream,
 };
 use runtime::value::Value;
 use swarm::event_store::{self, EventStore};
@@ -110,19 +111,8 @@ impl service::EventService for EventService {
     }
 
     async fn subscribe(&self, request: SubscribeRequest) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
-        let tag_expr = &request.query.from;
-        let present = self.store.present().await;
-
-        let bounded = self
-            .store
-            .bounded_forward(tag_expr, request.offsets, present.clone())
-            .await
-            .map_err(Error::StoreReadError)?;
-
-        let unbounded = self.store.unbounded_forward_per_stream(tag_expr, Some(present));
-
-        Ok(bounded
-            .chain(unbounded)
+        Ok(subscribe0(&self.store, &request.query.from, request.offsets)
+            .await?
             .flat_map(mk_feed(request.query))
             .map(SubscribeResponse::Event)
             .boxed())
@@ -133,7 +123,6 @@ impl service::EventService for EventService {
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
         let tag_expr = &request.query.from;
-        let present = self.store.present().await;
 
         let initial_latest = if let StartFrom::Offsets(offsets) = &request.from {
             self.store
@@ -148,17 +137,9 @@ impl service::EventService for EventService {
             EventKey::default()
         };
 
-        let bounded = self
-            .store
-            .bounded_forward(tag_expr, Some(request.from.min_offsets()), present.clone())
-            .await
-            .map_err(Error::StoreReadError)?;
-
-        let unbounded = self.store.unbounded_forward_per_stream(tag_expr, Some(present));
-
+        let stream = subscribe0(&self.store, &tag_expr, Some(request.from.min_offsets())).await?;
         let feed = mk_feed(request.query);
-        let response = bounded
-            .chain(unbounded)
+        let response = stream
             .flat_map({
                 let mut latest = initial_latest;
                 move |e| {
@@ -176,6 +157,20 @@ impl service::EventService for EventService {
             .take_until_condition(|e| future::ready(matches!(e, SubscribeMonotonicResponse::TimeTravel { .. })));
         Ok(response.boxed())
     }
+}
+
+async fn subscribe0(
+    store: &EventStore,
+    tag_expr: &TagExpr,
+    offsets: Option<OffsetMap>,
+) -> anyhow::Result<impl Stream<Item = Event<Payload>>> {
+    let present = store.present().await;
+    let bounded = store
+        .bounded_forward(tag_expr, offsets, present.clone())
+        .await
+        .map_err(Error::StoreReadError)?;
+    let unbounded = store.unbounded_forward_per_stream(tag_expr, Some(present));
+    Ok(bounded.chain(unbounded))
 }
 
 fn mk_feed(query: language::Query) -> impl Fn(Event<Payload>) -> BoxStream<'static, EventResponse<Payload>> {
