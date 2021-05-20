@@ -156,6 +156,8 @@ endef
 
 $(foreach arch,$(architectures),$(eval $(call mkLinuxRule,$(arch))))
 
+current: dist/bin/current/ax dist/bin/current/actyx-linux
+
 all-js: \
 	dist/js/sdk \
 	dist/js/pond \

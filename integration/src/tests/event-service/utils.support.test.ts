@@ -36,4 +36,4 @@ export const throwOnCb = (msg: string) => (...rest: unknown[]): void => {
 
 // How long we are going to wait for the remote event service endpoint to answer our requests.
 // This applies for tests that assert "nothing emitted" as well as for tests that look for single items inside response streams that do not end.
-export const genericCommunicationTimeout = 20_000
+export const genericCommunicationTimeout = 10_000

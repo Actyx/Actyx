@@ -31,6 +31,7 @@ use libipld::{
 use serde::{Deserialize, Serialize};
 
 use crate::{types::ArcVal, ParseError};
+use unicode_normalization::UnicodeNormalization;
 
 /// Macro for constructing a [`Tag`](event/struct.Tag.html) literal.
 ///
@@ -100,20 +101,17 @@ macro_rules! tags {
     }
 }
 
+/// A Tag that semantically characterises an event.
+///
+/// Tags are non-empty unicode strings in NFC representation (i.e. normalized by canonical decomposition
+/// followed by composition). Thus, `ℌ` and `H` are different tags while the various encodings of `é` are
+/// all represented by the codepoint E9.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
-pub struct Tag(#[serde(deserialize_with = "crate::scalar::nonempty_string")] ArcVal<str>);
+pub struct Tag(#[serde(deserialize_with = "crate::scalar::nonempty_string_canonical")] ArcVal<str>);
 
 #[allow(clippy::len_without_is_empty)]
 impl Tag {
-    pub fn new(value: String) -> std::result::Result<Self, ParseError> {
-        if value.is_empty() {
-            Err(ParseError::EmptyTag)
-        } else {
-            Ok(Self(crate::types::ArcVal::from_boxed(value.into())))
-        }
-    }
-
     pub fn len(&self) -> usize {
         self.0.len()
     }
@@ -122,29 +120,33 @@ impl Tag {
 impl TryFrom<&str> for Tag {
     type Error = ParseError;
     fn try_from(value: &str) -> std::result::Result<Self, ParseError> {
-        if value.is_empty() {
-            Err(ParseError::EmptyTag)
-        } else {
-            Ok(Self(crate::types::ArcVal::clone_from_unsized(value)))
-        }
+        Self::from_str(value)
     }
 }
 
 impl TryFrom<Arc<str>> for Tag {
     type Error = ParseError;
     fn try_from(value: Arc<str>) -> std::result::Result<Self, ParseError> {
-        if value.is_empty() {
-            Err(ParseError::EmptyTag)
-        } else {
-            Ok(Self(crate::types::ArcVal::from(value)))
-        }
+        Self::from_str(value.as_ref())
     }
 }
 
 impl FromStr for Tag {
     type Err = ParseError;
     fn from_str(s: &str) -> std::result::Result<Self, ParseError> {
-        Self::try_from(s)
+        if s.is_empty() {
+            Err(ParseError::EmptyTag)
+        } else {
+            Ok(Self(crate::types::ArcVal::from_boxed(
+                s.nfc().collect::<String>().into_boxed_str(),
+            )))
+        }
+    }
+}
+
+impl AsRef<str> for Tag {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
     }
 }
 
@@ -181,7 +183,7 @@ impl Encode<DagCborCodec> for Tag {
 impl<T: Into<String>> Add<T> for Tag {
     type Output = Tag;
     fn add(self, rhs: T) -> Self::Output {
-        Tag::new(self.0.to_string() + rhs.into().as_str()).unwrap()
+        Tag::from_str(&*(self.0.to_string() + rhs.into().as_str())).unwrap()
     }
 }
 
@@ -412,6 +414,7 @@ impl BitAndAssign<&TagSet> for TagSet {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use quickcheck::{quickcheck, TestResult};
 
     #[test]
     fn make_tags() {
@@ -419,6 +422,26 @@ mod tests {
         tags.insert(tag!("a"));
         tags.insert(tag!("semantics:b"));
         assert_eq!(tags!("a", "semantics:b"), TagSet::from(tags));
+    }
+
+    quickcheck! {
+        fn canonicalise(s: String) -> TestResult {
+            if s.is_empty() {
+                TestResult::discard()
+            } else {
+                TestResult::from_bool(Tag::from_str(&*s).unwrap().to_string() == s.nfc().collect::<String>())
+            }
+        }
+
+        fn canonicalise_serde(s: String) -> TestResult {
+            if s.is_empty() {
+                TestResult::discard()
+            } else {
+                let bytes = serde_json::to_vec(&s).unwrap();
+                let t: Tag = serde_json::from_slice(&*bytes).unwrap();
+                TestResult::from_bool(t.to_string() == s.nfc().collect::<String>())
+            }
+        }
     }
 
     #[test]

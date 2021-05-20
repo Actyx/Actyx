@@ -789,7 +789,7 @@ mod tests {
     use crate::{axtrees::TagsQuery, TagSubscriptions};
 
     fn l(tag: &'static str) -> TagExpr {
-        TagExpr::Atom(TagAtom::Tag(Tag::new(tag.to_owned()).unwrap()))
+        TagExpr::Atom(TagAtom::Tag(Tag::from_str(tag).unwrap()))
     }
 
     fn assert_match(index: &TagIndex, expr: &TagExpr, expected: Vec<bool>) {

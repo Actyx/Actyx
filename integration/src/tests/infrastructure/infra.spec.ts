@@ -5,13 +5,18 @@ import { MultiplexedWebsocket } from 'pondV1/lib/eventstore/multiplexedWebsocket
 import { assertOK } from '../../assertOK'
 import { allNodeNames, runOnAll, runOnEach } from '../../infrastructure/hosts'
 import { MyGlobal } from '../../../jest/setup'
+import execa from 'execa'
 
 describe('the Infrastructure', () => {
   test('must create global nodes pool', async () => {
     const status = await runOnEach([{}], async (node) => {
       const response = assertOK(await node.ax.nodes.ls())
       const axNodeSetup = (<MyGlobal>global).axNodeSetup
-      const gitHash = axNodeSetup.gitHash.slice(0, 9)
+      let gitHash = axNodeSetup.gitHash.slice(0, 9)
+      const dirty = await execa.command('git status --porcelain').then((x) => x.stdout)
+      if (dirty !== '') {
+        gitHash = `${gitHash}_dirty`
+      }
 
       expect(response).toMatchObject({
         code: 'OK',

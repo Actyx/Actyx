@@ -27,8 +27,8 @@ fn r_tag(p: P) -> Tag {
     let s = quoted.as_str();
     let s = &s[1..s.len() - 1];
     match quoted.as_rule() {
-        Rule::single_quoted => Tag::new(s.replace("''", "'")).unwrap(),
-        Rule::double_quoted => Tag::new(s.replace("\"\"", "\"")).unwrap(),
+        Rule::single_quoted => Tag::from_str(s.replace("''", "'").as_ref()).unwrap(),
+        Rule::double_quoted => Tag::from_str(s.replace("\"\"", "\"").as_ref()).unwrap(),
         x => unexpected!(x),
     }
 }
