@@ -217,8 +217,9 @@ impl EventStore {
 }
 
 fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> {
-    let min = (selection.from_exclusive - OffsetOrMin::MIN) as u64;
-    let max = (selection.to_inclusive - OffsetOrMin::ZERO) as u64;
+    use std::convert::TryFrom;
+    let min = u64::try_from(selection.from_exclusive - OffsetOrMin::MIN).expect("negative value");
+    let max = u64::try_from(selection.to_inclusive - OffsetOrMin::ZERO).expect("negative value");
     min..=max
 }
 
@@ -227,7 +228,7 @@ fn to_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<P
         payload,
         key: EventKey {
             lamport: key.lamport(),
-            offset: offset.try_into().expect("TODO"),
+            offset: offset.try_into().expect("invalid offset value"),
             stream,
         },
         meta: Metadata {
