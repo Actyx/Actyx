@@ -137,7 +137,7 @@ impl service::EventService for EventService {
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
         let tag_expr = &request.query.from;
-        let present = self.store.offsets().next().await.unwrap_or_default().present;
+        let present = self.store.present().await;
 
         let initial_latest = if let StartFrom::Offsets(offsets) = &request.from {
             self.store

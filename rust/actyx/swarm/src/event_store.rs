@@ -104,7 +104,7 @@ impl EventStore {
     }
 
     pub async fn present(&self) -> OffsetMap {
-        self.offsets().next().await.unwrap_or_default().present
+        self.offsets().next().await.expect("offset stream stopped").present
     }
 
     pub async fn persist(&self, events: Vec<(TagSet, Payload)>) -> anyhow::Result<Vec<PersistenceMeta>> {
