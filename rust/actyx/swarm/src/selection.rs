@@ -1,4 +1,4 @@
-use actyxos_sdk::{language::TagExpr, OffsetOrMin};
+use actyxos_sdk::{language::TagExpr, OffsetOrMin, StreamId};
 use trees::{query::TagsQuery, OffsetMapOrMax};
 
 /// A precise selection of events, possibly unbounded in size.
@@ -26,19 +26,17 @@ pub struct EventSelection {
 impl EventSelection {
     #[cfg(test)]
     pub fn matches<T>(&self, local: bool, event: &actyxos_sdk::Event<T>) -> bool {
-        TagsQuery::from_expr(&self.tag_expr, local)
-            .map(|query| {
-                query.tags().iter().any(|t| t.is_subset(&event.meta.tags))
-                    && self.from_offsets_excluding.offset(event.key.stream) < event.key.offset
-                    && self.to_offsets_including.offset(event.key.stream) >= event.key.offset
-            })
-            .unwrap_or(false)
+        let query = TagsQuery::from_expr(&self.tag_expr)(local);
+        query.is_all()
+            || query.tags().iter().any(|t| t.is_subset(&event.meta.tags))
+                && self.from_offsets_excluding.offset(event.key.stream) < event.key.offset
+                && self.to_offsets_including.offset(event.key.stream) >= event.key.offset
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamEventSelection {
-    // pub stream_id: StreamId,
+    pub stream_id: StreamId,
     pub from_exclusive: OffsetOrMin,
     pub to_inclusive: OffsetOrMin,
     pub tags_query: TagsQuery,

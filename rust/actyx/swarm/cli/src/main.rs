@@ -53,7 +53,7 @@ async fn run() -> Result<()> {
                 swarm.append(nr, events).await?;
             }
             Command::Query(q) => {
-                let tags_query = TagsQuery::from_expr(&q.from, true).unwrap();
+                let tags_query = TagsQuery::from_expr(&q.from)(true);
                 let mut stream = swarm.stream_filtered_stream_ordered(tags_query);
                 tokio::spawn(async move {
                     while let Some(res) = stream.next().await {

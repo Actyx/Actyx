@@ -34,34 +34,28 @@ impl EventStore {
         self.banyan_store.node_id()
     }
 
-    fn forward_stream(
-        &self,
-        stream_id: StreamId,
-        stream_selection: StreamEventSelection,
-    ) -> impl Stream<Item = Event<Payload>> {
+    fn forward_stream(&self, selection: StreamEventSelection) -> impl Stream<Item = Event<Payload>> {
+        let stream_id = selection.stream_id;
         debug_assert!(self.banyan_store.has_stream(stream_id));
-        debug_assert!(stream_selection.from_exclusive < stream_selection.to_inclusive);
+        debug_assert!(selection.from_exclusive < selection.to_inclusive);
         let (trees, forest) = self.banyan_store.tree_stream(stream_id);
-        let range = get_range_inclusive(&stream_selection);
+        let range = get_range_inclusive(&selection);
         forest
-            .stream_trees_chunked(stream_selection.tags_query, trees, range, &|_| ())
+            .stream_trees_chunked(selection.tags_query, trees, range, &|_| ())
             .map_ok(move |chunk| stream::iter(events_from_chunk(stream_id, chunk)))
             .take_while(|x| future::ready(x.is_ok()))
             .filter_map(|x| future::ready(x.ok()))
             .flatten()
     }
 
-    fn backward_stream(
-        &self,
-        stream_id: StreamId,
-        stream_selection: StreamEventSelection,
-    ) -> impl Stream<Item = Reverse<Event<Payload>>> {
-        debug_assert!(stream_selection.from_exclusive < stream_selection.to_inclusive);
+    fn backward_stream(&self, selection: StreamEventSelection) -> impl Stream<Item = Reverse<Event<Payload>>> {
+        let stream_id = selection.stream_id;
+        debug_assert!(selection.from_exclusive < selection.to_inclusive);
         debug_assert!(self.banyan_store.has_stream(stream_id));
         let (trees, forest) = self.banyan_store.tree_stream(stream_id);
-        let range = get_range_inclusive(&stream_selection);
+        let range = get_range_inclusive(&selection);
         forest
-            .stream_trees_chunked_reverse(stream_selection.tags_query, trees, range, &|_| ())
+            .stream_trees_chunked_reverse(selection.tags_query, trees, range, &|_| ())
             .map_ok(move |chunk| stream::iter(events_from_chunk_rev(stream_id, chunk)))
             .take_while(|x| future::ready(x.is_ok()))
             .filter_map(|x| future::ready(x.ok()))
@@ -73,20 +67,33 @@ impl EventStore {
         tag_expr: &TagExpr,
         from_offsets_excluding: Option<OffsetMap>,
         to_offsets_including: OffsetMap,
-    ) -> Result<Vec<(StreamId, StreamEventSelection)>, Error> {
+    ) -> Result<Vec<StreamEventSelection>, Error> {
         let this = self.clone();
         let present = self.present().await;
         if present.union(&to_offsets_including) != present {
             return Err(Error::InvalidUpperBounds);
         }
         let from_or_min = from_offsets_excluding.map(OffsetMapOrMax::from).unwrap_or_default();
+        let mk_tags_query = TagsQuery::from_expr(tag_expr);
         let res: Vec<_> = to_offsets_including
             .streams()
             .filter_map(|stream_id| {
                 let local = this.banyan_store.is_local(stream_id);
-                let from = from_or_min.offset(stream_id);
-                let to = to_offsets_including.offset(stream_id);
-                bounded_selection(local, tag_expr, from, to).map(|selection| (stream_id, selection))
+                let from_exclusive = from_or_min.offset(stream_id);
+                let to_inclusive = to_offsets_including.offset(stream_id);
+                if from_exclusive >= to_inclusive {
+                    return None;
+                }
+                let tags_query = mk_tags_query(local);
+                if tags_query.is_empty() {
+                    return None;
+                }
+                Some(StreamEventSelection {
+                    stream_id,
+                    from_exclusive,
+                    to_inclusive,
+                    tags_query,
+                })
             })
             .collect();
         Ok(res)
@@ -143,7 +150,7 @@ impl EventStore {
             .bounded_streams(tag_expr, from_offsets_excluding, to_offsets_including)
             .await?
             .into_iter()
-            .map(|(stream_id, selection)| this.forward_stream(stream_id, selection));
+            .map(|selection| this.forward_stream(selection));
         Ok(MergeOrdered::new_fixed(event_streams))
     }
 
@@ -158,7 +165,7 @@ impl EventStore {
             .bounded_streams(tag_expr, from_offsets_excluding, to_offsets_including)
             .await?
             .into_iter()
-            .map(move |(stream_id, selection)| this.forward_stream(stream_id, selection));
+            .map(move |selection| this.forward_stream(selection));
         Ok(stream::iter(event_streams).merge_unordered())
     }
 
@@ -173,7 +180,7 @@ impl EventStore {
             .bounded_streams(tag_expr, from_offsets_excluding, to_offsets_including)
             .await?
             .into_iter()
-            .map(|(stream_id, selection)| this.backward_stream(stream_id, selection));
+            .map(|selection| this.backward_stream(selection));
         Ok(MergeOrdered::new_fixed(event_streams).map(|reverse| reverse.0))
     }
 
@@ -183,46 +190,29 @@ impl EventStore {
         from_offsets_excluding: Option<OffsetMap>,
     ) -> impl Stream<Item = Event<Payload>> {
         let this = self.clone();
-        let tag_expr = tag_expr.clone();
+        let mk_tags_query = TagsQuery::from_expr(&tag_expr);
         let banyan_store = self.banyan_store.clone();
         let from_or_min = from_offsets_excluding.map(OffsetMapOrMax::from).unwrap_or_default();
         self.banyan_store
             .stream_known_streams()
             .filter_map(move |stream_id| {
                 let local = banyan_store.is_local(stream_id);
-                future::ready(
-                    unbounded_selection(local, &tag_expr, from_or_min.offset(stream_id))
-                        .map(|selection| (stream_id, selection)),
-                )
+                let tags_query = mk_tags_query(local);
+                future::ready(if tags_query.is_empty() {
+                    None
+                } else {
+                    Some(StreamEventSelection {
+                        stream_id,
+                        from_exclusive: from_or_min.offset(stream_id),
+                        to_inclusive: OffsetOrMin::MAX,
+                        tags_query,
+                    })
+                })
             })
-            .map(move |(stream_id, selection)| this.forward_stream(stream_id, selection))
+            .map(move |selection| this.forward_stream(selection))
             .merge_unordered()
             .boxed()
     }
-}
-
-fn bounded_selection(
-    local: bool,
-    tag_expr: &TagExpr,
-    from_exclusive: OffsetOrMin,
-    to_inclusive: OffsetOrMin,
-) -> Option<StreamEventSelection> {
-    if from_exclusive >= to_inclusive {
-        return None;
-    }
-    TagsQuery::from_expr(&tag_expr, local).map(|tags_query| StreamEventSelection {
-        from_exclusive,
-        to_inclusive,
-        tags_query,
-    })
-}
-
-fn unbounded_selection(local: bool, tag_expr: &TagExpr, from_exclusive: OffsetOrMin) -> Option<StreamEventSelection> {
-    TagsQuery::from_expr(tag_expr, local).map(|tags_query| StreamEventSelection {
-        from_exclusive,
-        to_inclusive: OffsetOrMin::MAX,
-        tags_query,
-    })
 }
 
 fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> {
@@ -364,48 +354,40 @@ mod tests {
 
         store.persist(vec![(tags!(), Payload::empty())]).await.unwrap();
 
-        let mut stream = Drainer::new(store.forward_stream(
+        let mut stream = Drainer::new(store.forward_stream(StreamEventSelection {
             stream_id,
-            StreamEventSelection {
-                from_exclusive: OffsetOrMin::MIN,
-                to_inclusive: OffsetOrMin::ZERO,
-                tags_query: TagsQuery::all(),
-            },
-        ));
+            from_exclusive: OffsetOrMin::MIN,
+            to_inclusive: OffsetOrMin::ZERO,
+            tags_query: TagsQuery::all(),
+        }));
         let res = stream.next().unwrap();
         assert_eq!(res.len(), 1);
         assert_eq!(stream.next(), None);
 
-        let mut stream = Drainer::new(store.forward_stream(
+        let mut stream = Drainer::new(store.forward_stream(StreamEventSelection {
             stream_id,
-            StreamEventSelection {
-                from_exclusive: OffsetOrMin::MIN,
-                to_inclusive: OffsetOrMin::ZERO,
-                tags_query: TagsQuery::empty(),
-            },
-        ));
+            from_exclusive: OffsetOrMin::MIN,
+            to_inclusive: OffsetOrMin::ZERO,
+            tags_query: TagsQuery::empty(),
+        }));
         assert_eq!(stream.next(), None);
 
-        let mut stream = Drainer::new(store.forward_stream(
+        let mut stream = Drainer::new(store.forward_stream(StreamEventSelection {
             stream_id,
-            StreamEventSelection {
-                from_exclusive: OffsetOrMin::MIN,
-                to_inclusive: OffsetOrMin::ZERO,
-                tags_query: TagsQuery::all(),
-            },
-        ));
+            from_exclusive: OffsetOrMin::MIN,
+            to_inclusive: OffsetOrMin::ZERO,
+            tags_query: TagsQuery::all(),
+        }));
         let res = stream.next().unwrap();
         assert_eq!(res.len(), 1);
         assert_eq!(stream.next(), None); // bounded -> complete
 
-        let mut stream = Drainer::new(store.forward_stream(
+        let mut stream = Drainer::new(store.forward_stream(StreamEventSelection {
             stream_id,
-            StreamEventSelection {
-                from_exclusive: OffsetOrMin::MIN,
-                to_inclusive: OffsetOrMin::MAX,
-                tags_query: TagsQuery::all(),
-            },
-        ));
+            from_exclusive: OffsetOrMin::MIN,
+            to_inclusive: OffsetOrMin::MAX,
+            tags_query: TagsQuery::all(),
+        }));
         let res = stream.next().unwrap();
         assert_eq!(res.len(), 1);
         assert_eq!(stream.next(), Some(vec![])); // unbounded -> keep running
@@ -418,26 +400,22 @@ mod tests {
 
         store.persist(vec![(tags!(), Payload::empty())]).await.unwrap();
 
-        let mut stream = Drainer::new(store.backward_stream(
+        let mut stream = Drainer::new(store.backward_stream(StreamEventSelection {
             stream_id,
-            StreamEventSelection {
-                from_exclusive: OffsetOrMin::MIN,
-                to_inclusive: OffsetOrMin::ZERO,
-                tags_query: TagsQuery::all(),
-            },
-        ));
+            from_exclusive: OffsetOrMin::MIN,
+            to_inclusive: OffsetOrMin::ZERO,
+            tags_query: TagsQuery::all(),
+        }));
         let res = stream.next().unwrap();
         assert_eq!(res.len(), 1);
         assert_eq!(stream.next(), None);
 
-        let mut stream = Drainer::new(store.backward_stream(
+        let mut stream = Drainer::new(store.backward_stream(StreamEventSelection {
             stream_id,
-            StreamEventSelection {
-                from_exclusive: OffsetOrMin::MIN,
-                to_inclusive: OffsetOrMin::ZERO,
-                tags_query: TagsQuery::empty(),
-            },
-        ));
+            from_exclusive: OffsetOrMin::MIN,
+            to_inclusive: OffsetOrMin::ZERO,
+            tags_query: TagsQuery::empty(),
+        }));
         assert_eq!(stream.next(), None);
     }
 

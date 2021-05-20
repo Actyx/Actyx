@@ -1,6 +1,5 @@
 use std::{
     cmp::Ord,
-    collections::BTreeSet,
     iter::FromIterator,
     ops::{Range, RangeFrom, RangeTo},
 };
@@ -10,7 +9,6 @@ use banyan::{
     index::{BranchIndex, CompactSeq, LeafIndex},
     query::Query,
 };
-use maplit::btreeset;
 use range_collections::RangeSet;
 
 use crate::{
@@ -140,64 +138,55 @@ impl TagsQuery {
         Self(dnf)
     }
 
-    pub fn from_expr(tag_expr: &language::TagExpr, local: bool) -> Option<Self> {
-        let dnf = Dnf::from(tag_expr);
-
-        if dnf
-            .0
-            .iter()
-            .any(|atoms| atoms == &btreeset!(language::TagAtom::AllEvents))
-        {
-            return Some(TagsQuery::all());
-        }
-
-        if !local && dnf.0.iter().all(|atoms| atoms.contains(&language::TagAtom::IsLocal)) {
-            return None;
-        }
-
-        let tag_set = |atoms: BTreeSet<language::TagAtom>| {
-            if atoms == btreeset!(language::TagAtom::AllEvents) {
-                return Some(TagSet::empty());
-            }
-
-            let mut tags = TagSet::empty();
-            let mut is_local = false;
-            for atom in atoms {
-                match atom {
-                    language::TagAtom::Tag(tag) => tags.insert(tag),
-                    language::TagAtom::AllEvents => {}
-                    language::TagAtom::IsLocal => is_local = true,
-                    language::TagAtom::FromTime(_) => {}
-                    language::TagAtom::ToTime(_) => {}
-                    language::TagAtom::FromLamport(_) => {}
-                    language::TagAtom::ToLamport(_) => {}
-                    language::TagAtom::AppId(_) => {}
+    pub fn from_expr(tag_expr: &language::TagExpr) -> impl Fn(bool) -> Self {
+        let dnf = Dnf::from(tag_expr).0;
+        move |local| {
+            let mut res = vec![];
+            for tag_set in &dnf {
+                let mut tags = TagSet::empty();
+                let mut is_local = false;
+                for atom in tag_set {
+                    match atom {
+                        language::TagAtom::Tag(tag) => tags.insert(tag.clone()),
+                        language::TagAtom::AllEvents => {}
+                        language::TagAtom::IsLocal => is_local = true,
+                        language::TagAtom::FromTime(_) => {}
+                        language::TagAtom::ToTime(_) => {}
+                        language::TagAtom::FromLamport(_) => {}
+                        language::TagAtom::ToLamport(_) => {}
+                        language::TagAtom::AppId(_) => {}
+                    }
+                }
+                if !is_local || local {
+                    if tags.is_empty() {
+                        return Self(vec![tags]);
+                    } else {
+                        res.push(tags);
+                    }
                 }
             }
-            if !is_local || local {
-                Some(tags)
-            } else {
-                None
-            }
-        };
-
-        let res: TagsQuery = dnf.0.into_iter().filter_map(tag_set).collect();
-        Some(if res.tags().contains(&TagSet::empty()) {
-            Self::all()
-        } else {
-            res
-        })
+            Self(res)
+        }
     }
 
     pub fn all() -> Self {
         Self(vec![TagSet::empty()])
     }
+
     pub fn empty() -> Self {
         Self(vec![])
     }
 
     pub fn tags(&self) -> &[TagSet] {
         self.0.as_slice()
+    }
+
+    pub fn is_all(&self) -> bool {
+        self.0.len() == 1 && self.0[0].is_empty()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     fn set_matching(&self, index: &TagIndex, matching: &mut [bool]) {
@@ -250,7 +239,7 @@ mod tests {
     }
 
     fn assert_match(index: &TagIndex, expr: &TagExpr, expected: Vec<bool>) {
-        let query = TagsQuery::from_expr(expr, true).unwrap();
+        let query = TagsQuery::from_expr(expr)(true);
         let mut matching = vec![true; expected.len()];
         query.set_matching(index, &mut matching);
         assert_eq!(matching, expected);
@@ -280,26 +269,30 @@ mod tests {
 
     #[test]
     fn test_from_expr() {
-        let test_expr = |local: bool, tag_expr: &'static str, expected: Option<Vec<TagSet>>| {
+        let test_expr = |local: bool, tag_expr: &'static str, expected: TagsQuery| {
             let tag_expr = tag_expr.parse::<TagExpr>().unwrap();
-            let actual = TagsQuery::from_expr(&tag_expr, local).map(|q| q.tags().to_vec());
+            let actual = TagsQuery::from_expr(&tag_expr)(local);
             assert_eq!(actual, expected, "tag_expr: {:?}", tag_expr);
         };
 
-        test_expr(true, "allEvents", Some(vec![tags!()]));
-        test_expr(true, "allEvents | 'a'", Some(vec![tags!()]));
-        test_expr(true, "isLocal", Some(vec![tags!()]));
-        test_expr(true, "isLocal & 'a'", Some(vec![tags!("a")]));
-        test_expr(true, "isLocal | 'a'", Some(vec![tags!()]));
-        test_expr(true, "isLocal & 'b' | 'a'", Some(vec![tags!("a"), tags!("b")]));
-        test_expr(true, "'a'", Some(vec![tags!("a")]));
+        test_expr(true, "allEvents", TagsQuery::all());
+        test_expr(true, "allEvents | 'a'", TagsQuery::all());
+        test_expr(true, "allEvents | isLocal", TagsQuery::all());
+        test_expr(true, "allEvents & isLocal", TagsQuery::all());
+        test_expr(true, "isLocal", TagsQuery::all());
+        test_expr(true, "isLocal & 'a'", TagsQuery(vec![tags!("a")]));
+        test_expr(true, "isLocal | 'a'", TagsQuery::all());
+        test_expr(true, "isLocal & 'b' | 'a'", TagsQuery(vec![tags!("a"), tags!("b")]));
+        test_expr(true, "'a'", TagsQuery(vec![tags!("a")]));
 
-        test_expr(false, "allEvents", Some(vec![tags!()]));
-        test_expr(false, "allEvents | 'a'", Some(vec![tags!()]));
-        test_expr(false, "isLocal", None);
-        test_expr(false, "isLocal & 'a'", None);
-        test_expr(false, "isLocal | 'a'", Some(vec![tags!("a")]));
-        test_expr(false, "isLocal & 'b' | 'a'", Some(vec![tags!("a")]));
-        test_expr(false, "'a'", Some(vec![tags!("a")]));
+        test_expr(false, "allEvents", TagsQuery::all());
+        test_expr(false, "allEvents | 'a'", TagsQuery::all());
+        test_expr(false, "allEvents | isLocal", TagsQuery::all());
+        test_expr(false, "allEvents & isLocal", TagsQuery::empty());
+        test_expr(false, "isLocal", TagsQuery::empty());
+        test_expr(false, "isLocal & 'a'", TagsQuery::empty());
+        test_expr(false, "isLocal | 'a'", TagsQuery(vec![tags!("a")]));
+        test_expr(false, "isLocal & 'b' | 'a'", TagsQuery(vec![tags!("a")]));
+        test_expr(false, "'a'", TagsQuery(vec![tags!("a")]));
     }
 }
