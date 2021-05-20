@@ -287,7 +287,7 @@ validate-js-os-sdk:
 
 # make js sdk
 # this is running directly on the host container, so it needs to have nvm installed
-dist/js/sdk:
+dist/js/sdk: make-always
 	mkdir -p $@
 	cd js/sdk && source ~/.nvm/nvm.sh && nvm install && \
 		npm install && \
@@ -296,7 +296,7 @@ dist/js/sdk:
 
 # make js pond
 # this is running directly on the host container, so it needs to have nvm installed
-dist/js/pond:
+dist/js/pond: make-always
 	mkdir -p $@
 	cd js/pond && source ~/.nvm/nvm.sh && nvm install && \
 		npm install && \
@@ -305,7 +305,7 @@ dist/js/pond:
 
 # make js sdk
 # this is running directly on the host container, so it needs to have nvm installed
-dist/js/os-sdk:
+dist/js/os-sdk: make-always
 	mkdir -p $@
 	cd js/os-sdk && source ~/.nvm/nvm.sh && nvm install && \
 		npm install && \

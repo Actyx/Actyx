@@ -127,7 +127,7 @@ export type SubscribeMonotonicRequestStartFrom =
 
 export type SubscribeMonotonicRequest = {
   session: string
-  where: string
+  query: string
 } & SubscribeMonotonicRequestStartFrom
 
 export type AxEventService = Readonly<{
