@@ -174,11 +174,21 @@ pub struct BanyanStore {
 
 #[derive(Clone, Debug, Default)]
 pub struct SwarmOffsets {
+    present: OffsetMap,
+    replication_target: OffsetMap,
+}
+
+impl SwarmOffsets {
     /// Currently validated OffsetMap
-    pub present: OffsetMap,
+    pub fn present(&self) -> OffsetMap {
+        self.present.clone()
+    }
+
     /// OffsetMap describing the replication target. Currently this is driven via `highest_seen`,
     /// but should eventually be fed by the partial replication mechanism.
-    pub replication_target: OffsetMap,
+    pub fn replication_target(&self) -> OffsetMap {
+        self.replication_target.clone()
+    }
 }
 
 /// All immutable or internally mutable parts of the banyan store

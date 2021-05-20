@@ -16,10 +16,7 @@ use futures::{
     stream::{self, BoxStream, StreamExt},
 };
 use runtime::value::Value;
-use swarm::{
-    event_store::{self, EventStore},
-    SwarmOffsets,
-};
+use swarm::event_store::{self, EventStore};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -50,11 +47,10 @@ impl service::EventService for EventService {
     }
 
     async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
-        let SwarmOffsets {
-            present,
-            replication_target,
-        } = self.store.offsets().next().await.unwrap_or_default();
-        let to_replicate = replication_target
+        let offsets = self.store.offsets().next().await.expect("offset stream stopped");
+        let present = offsets.present();
+        let to_replicate = offsets
+            .replication_target()
             .stream_iter()
             .filter_map(|(stream, target)| {
                 let actual = present.offset(stream);
