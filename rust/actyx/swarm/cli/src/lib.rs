@@ -39,7 +39,7 @@ pub struct Config {
 
 impl From<Config> for async_process::Command {
     fn from(config: Config) -> Self {
-        let swarm_cli = std::env::current_exe().unwrap().parent().unwrap().join("swarm-cli");
+        let swarm_cli = target_dir().join("swarm-cli");
         if !swarm_cli.exists() {
             panic!("failed to find the swarm-cli binary at {}", swarm_cli.display());
         }
@@ -230,6 +230,18 @@ impl std::str::FromStr for Event {
     }
 }
 
+fn target_dir() -> std::path::PathBuf {
+    std::env::current_exe()
+        .ok()
+        .map(|mut path| {
+            path.pop();
+            if path.ends_with("deps") {
+                path.pop();
+            }
+            path
+        })
+        .unwrap()
+}
 #[cfg(test)]
 mod tests {
     use super::*;
