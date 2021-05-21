@@ -1,4 +1,7 @@
-use crate::axtrees::{AxKey, AxTree, AxTrees, LamportQuery, Sha256Digest, TagsQuery, TimeQuery};
+use crate::{
+    axtrees::{AxKey, AxTree, AxTrees, Sha256Digest},
+    query::{LamportQuery, TagsQuery, TimeQuery},
+};
 use actyxos_sdk::{tag, tags, LamportTimestamp, Payload, TagSet, Timestamp};
 use banyan::{
     query::{AllQuery, OffsetRangeQuery, Query},
@@ -198,7 +201,7 @@ async fn filter_tree_streamed(
 
 /// brute force check if a key matches a dnf query consisting of n tag sets
 fn matches(key: &AxKey, dnf: &[TagSet]) -> bool {
-    dnf.iter().any(|set| set.is_subset(key.tags()))
+    dnf == vec![TagSet::empty()] || dnf.iter().any(|set| set.is_subset(key.tags()))
 }
 
 /// Roundtrip test from events to banyan tree and back, for the given events
@@ -212,7 +215,7 @@ fn events_banyan_tree_roundtrip_with(events: Vec<(AxKey, Payload)>) -> anyhow::R
     let events1 = txn
         .collect(&builder.snapshot())?
         .into_iter()
-        .filter_map(|x| x)
+        .flatten()
         .collect::<Vec<_>>();
     // check that they are the same
     assert_eq!(events, events1);

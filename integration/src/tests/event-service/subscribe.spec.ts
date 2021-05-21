@@ -10,10 +10,35 @@ describe('event service', () => {
         const pub1 = await publishRandom(es)
 
         const data: SubscribeResponse[] = []
-        await new Promise((resolve) => {
-          es.subscribe({ query: `FROM '${integrationTag}' & 'test:1'` }, (x) => data.push(x))
+        await new Promise((resolve, reject) => {
+          es.subscribe({ query: `FROM '${integrationTag}' & 'test:1' & isLocal` }, (x) =>
+            data.push(x),
+          )
+            .then(resolve)
+            .catch(reject)
           setTimeout(resolve, genericCommunicationTimeout)
         })
+
+        const ev = data.find((x) => x.lamport === pub1.lamport)
+        expect(ev).toMatchObject(pub1)
+      }))
+
+    it('should start an event stream and find a published event', () =>
+      run(async (x) => {
+        const es = await mkESFromTrial(x)
+
+        const data: SubscribeResponse[] = []
+        const done = new Promise((resolve, reject) => {
+          es.subscribe({ query: `FROM '${integrationTag}' & 'test:1' & isLocal` }, (x) =>
+            data.push(x),
+          )
+            .then(resolve)
+            .catch(reject)
+          setTimeout(resolve, genericCommunicationTimeout)
+        })
+
+        const pub1 = await publishRandom(es)
+        await done
 
         const ev = data.find((x) => x.lamport === pub1.lamport)
         expect(ev).toMatchObject(pub1)

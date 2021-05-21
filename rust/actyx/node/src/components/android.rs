@@ -73,7 +73,7 @@ impl Android {
         rx: Receiver<ComponentRequest<()>>,
         android_tx: Sender<FfiMessage>,
     ) -> Self {
-        Self { android_tx, rx, sender }
+        Self { rx, android_tx, sender }
     }
 }
 

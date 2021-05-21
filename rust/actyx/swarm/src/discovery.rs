@@ -41,7 +41,7 @@ use libipld::codec::{Codec, Decode, Encode};
 use libipld::DagCbor;
 use std::future::Future;
 use std::io::{Read, Seek, Write};
-use trees::axtrees::TagsQuery;
+use trees::query::TagsQuery;
 
 #[derive(DagCbor, Debug)]
 #[allow(clippy::enum_variant_names)]

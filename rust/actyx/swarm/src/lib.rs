@@ -9,12 +9,13 @@
 //! ## BanyanStoreGuard
 //! temporary struct that is created when acquiring mutable access to the state.
 //! inside this you have mutable access to the state - but if you lock again you will deadlock.
-pub mod access;
 pub mod convert;
 mod discovery;
+pub mod event_store;
 mod gossip;
 pub mod metrics;
 mod prune;
+pub mod selection;
 mod sqlite;
 mod sqlite_index_store;
 mod streams;
@@ -23,11 +24,9 @@ mod unixfsv1;
 
 #[cfg(test)]
 mod tests;
-mod v1;
 
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
-pub use crate::v1::{EventStore, Present};
 
 use crate::gossip::Gossip;
 use crate::prune::RetainConfig;
@@ -59,7 +58,7 @@ use maplit::btreemap;
 use parking_lot::Mutex;
 use sqlite_index_store::SqliteIndexStore;
 use std::{
-    collections::{BTreeMap, BTreeSet, VecDeque},
+    collections::{BTreeMap, VecDeque},
     convert::TryFrom,
     fmt::Debug,
     num::NonZeroU32,
@@ -174,12 +173,22 @@ pub struct BanyanStore {
 }
 
 #[derive(Clone, Debug, Default)]
-struct SwarmOffsets {
-    /// Currently validated OffsetMap
+pub struct SwarmOffsets {
     present: OffsetMap,
+    replication_target: OffsetMap,
+}
+
+impl SwarmOffsets {
+    /// Currently validated OffsetMap
+    pub fn present(&self) -> OffsetMap {
+        self.present.clone()
+    }
+
     /// OffsetMap describing the replication target. Currently this is driven via `highest_seen`,
     /// but should eventually be fed by the partial replication mechanism.
-    replication_target: OffsetMap,
+    pub fn replication_target(&self) -> OffsetMap {
+        self.replication_target.clone()
+    }
 }
 
 /// All immutable or internally mutable parts of the banyan store
@@ -260,10 +269,6 @@ impl<'a> BanyanStoreGuard<'a> {
         self.own_streams.keys().cloned().collect::<Vec<_>>()
     }
 
-    fn local_stream_ids(&self) -> BTreeSet<StreamId> {
-        self.own_streams.keys().map(|x| self.data.node_id.stream(*x)).collect()
-    }
-
     fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Arc<OwnStream> {
         if let Some(result) = self.own_streams.get(&stream_nr).cloned() {
             return result;
@@ -325,9 +330,12 @@ impl<'a> BanyanStoreGuard<'a> {
         stream
     }
 
+    fn is_local(&self, stream_id: StreamId) -> bool {
+        stream_id.node_id() == self.node_id()
+    }
+
     fn has_stream(&self, stream_id: StreamId) -> bool {
-        let me = stream_id.node_id() == self.node_id();
-        if me {
+        if self.is_local(stream_id) {
             self.own_streams.contains_key(&stream_id.stream_nr())
         } else {
             self.remote_nodes
@@ -337,34 +345,9 @@ impl<'a> BanyanStoreGuard<'a> {
         }
     }
 
-    /// stream of latest updates from either gossip (for replicated streams) or internal updates
-    ///
-    /// note that this does not include event updates
-    fn latest_stream(&mut self, stream_id: StreamId) -> impl Stream<Item = (LamportTimestamp, Offset)> {
-        if stream_id.node_id() == self.node_id() {
-            let stream = self.get_or_create_own_stream(stream_id.stream_nr());
-            self.data
-                .lamport
-                .clone()
-                .filter_map(move |lamport| {
-                    future::ready(
-                        Offset::from_offset_or_min(stream.snapshot().offset()).map(|offset| (lamport, offset)),
-                    )
-                })
-                .left_stream()
-        } else {
-            self.get_or_create_replicated_stream(stream_id)
-                .latest_seen()
-                .new_observer()
-                .filter_map(future::ready)
-                .right_stream()
-        }
-    }
-
     /// Get a stream of trees for a given stream id
     fn tree_stream(&mut self, stream_id: StreamId) -> (impl Stream<Item = Tree>, Forest) {
-        let me = stream_id.node_id() == self.node_id();
-        if me {
+        if self.is_local(stream_id) {
             let stream_nr = stream_id.stream_nr();
             let stream = self.get_or_create_own_stream(stream_nr);
             (stream.tree_stream(), self.data.forest.clone())
@@ -641,7 +624,7 @@ impl BanyanStore {
         let known_streams = self.lock().index_store.get_observed_streams()?;
         for stream_id in known_streams {
             // just trigger loading of the stream from the alias
-            if stream_id.node_id() == self.node_id() {
+            if self.is_local(stream_id) {
                 let _ = self.get_or_create_own_stream(stream_id.stream_nr());
             } else {
                 let _ = self.get_or_create_replicated_stream(stream_id);
@@ -653,6 +636,10 @@ impl BanyanStore {
     /// Returns the [`NodeId`].
     pub fn node_id(&self) -> NodeId {
         self.data.node_id
+    }
+
+    pub fn is_local(&self, stream_id: StreamId) -> bool {
+        self.lock().is_local(stream_id)
     }
 
     /// Returns the underlying [`Ipfs`].
@@ -880,15 +867,30 @@ impl BanyanStore {
         Ok(())
     }
 
-    fn has_stream(&self, stream_id: StreamId) -> bool {
-        self.lock().has_stream(stream_id)
+    fn update_present(&self, stream_id: StreamId, offset: OffsetOrMin) {
+        if let Some(offset) = Offset::from_offset_or_min(offset) {
+            self.data.offsets.transform_mut(|offsets| {
+                offsets.present.update(stream_id, offset);
+                true
+            });
+        }
     }
 
-    /// stream of latest updates from either gossip (for replicated streams) or internal updates
-    ///
-    /// note that this does not include event updates
-    fn latest_stream(&self, stream_id: StreamId) -> impl Stream<Item = (LamportTimestamp, Offset)> {
-        self.lock().latest_stream(stream_id)
+    fn update_highest_seen(&self, stream_id: StreamId, offset: OffsetOrMin) {
+        if let Some(offset) = Offset::from_offset_or_min(offset) {
+            self.data.offsets.transform_mut(|offsets| {
+                if offsets.replication_target.offset(stream_id) < offset {
+                    offsets.replication_target.update(stream_id, offset);
+                    true
+                } else {
+                    false
+                }
+            });
+        }
+    }
+
+    fn has_stream(&self, stream_id: StreamId) -> bool {
+        self.lock().has_stream(stream_id)
     }
 
     /// Get a stream of trees for a given stream id

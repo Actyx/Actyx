@@ -70,7 +70,7 @@ impl std::fmt::Debug for Block {
 mod test {
     use super::super::{Block, Compression, EnvelopeList, IpfsEnvelope};
     use crate::*;
-    use actyxos_sdk::{fish_name, semantics, tags};
+    use actyxos_sdk::{fish_name, semantics, tags, Offset};
     use itertools::Itertools;
     use libipld::cbor::DagCborCodec;
     use libipld::codec::Codec;
