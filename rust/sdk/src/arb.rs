@@ -18,6 +18,7 @@ use std::collections::BTreeMap;
 use crate::{
     offset::{Offset, OffsetMap, OffsetOrMin},
     scalars::{NodeId, StreamId, StreamNr},
+    Tag, TagSet,
 };
 use quickcheck::{Arbitrary, Gen};
 
@@ -68,5 +69,32 @@ impl Arbitrary for OffsetMap {
     fn arbitrary(g: &mut Gen) -> Self {
         let inner: BTreeMap<StreamId, Offset> = Arbitrary::arbitrary(g);
         Self::from(inner)
+    }
+}
+
+impl Arbitrary for Tag {
+    fn arbitrary(g: &mut Gen) -> Self {
+        let size = g.size().max(1);
+        let inner: String = (0..size).map(|_| char::arbitrary(g)).collect();
+        inner.parse().expect("non empty string")
+    }
+    fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+        let str: String = self.to_string();
+        Box::new(
+            str.shrink()
+                .filter(|x| !x.is_empty())
+                .map(|x| x.parse().expect("non empty")),
+        )
+    }
+}
+
+impl Arbitrary for TagSet {
+    fn arbitrary(g: &mut Gen) -> Self {
+        let inner: Vec<Tag> = Arbitrary::arbitrary(g);
+        inner.into()
+    }
+    fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+        let tags: Vec<Tag> = self.iter().collect();
+        Box::new(tags.shrink().map(Into::into))
     }
 }
