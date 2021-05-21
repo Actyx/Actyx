@@ -69,6 +69,7 @@ fn main() {
     println!("cargo:rustc-env=AX_VERSION={}", version);
     println!("cargo:rustc-env=AX_GIT_HASH={}", git_hash);
     println!("cargo:rustc-env=AX_PROFILE={}", profile);
+    println!("cargo:rerun-if-env-changed=ACTYX_VERSION");
 
     // Since target_arch armv7 does not exist, we add our own cfg parameter
     println!("cargo:rustc-cfg=AX_ARCH=\"{}\"", arch);

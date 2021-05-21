@@ -1,13 +1,15 @@
 import { mkESFromTrial } from '../../http-client'
 import { run } from '../../util'
-import { publishRandom } from './utils.support.test'
+import { mySuite, publishRandom, testName } from './utils.support.test'
 
 describe('event service', () => {
   describe('publish', () => {
     it('should publish event', () =>
       run(async (x) => {
         const es = await mkESFromTrial(x)
-        const result = await es.publish({ data: [{ tags: ['tag'], payload: { foo: 'bar' } }] })
+        const result = await es.publish({
+          data: [{ tags: [mySuite(), testName(), 'tag'], payload: { foo: 'bar' } }],
+        })
 
         expect(result).toMatchObject({
           data: [
@@ -24,11 +26,11 @@ describe('event service', () => {
     it('should increase offset for new published event', () =>
       run(async (x) => {
         const es = await mkESFromTrial(x)
-        const result1 = await publishRandom(es)
-        const result2 = await publishRandom(es)
-        const offsetEvent1 = result1.offset
-        const offsetEvent2 = result2.offset
-        expect(offsetEvent2 > offsetEvent1).toBeTruthy()
+        const ev1 = await publishRandom(es)
+        const ev2 = await publishRandom(es)
+        expect(ev1.lamport).toBeLessThan(ev2.lamport)
+        expect(ev1.offset).toBeLessThan(ev2.offset)
+        expect(ev1.timestamp).toBeLessThan(ev2.timestamp)
       }))
   })
 })

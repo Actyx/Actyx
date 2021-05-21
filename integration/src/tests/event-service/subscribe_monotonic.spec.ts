@@ -4,7 +4,7 @@ import {
   SubscribeMonotonicResponse,
 } from '../../http-client'
 import { run } from '../../util'
-import { genericCommunicationTimeout, integrationTag, publishRandom } from './utils.support.test'
+import { genericCommunicationTimeout, mySuite, publishRandom, testName } from './utils.support.test'
 
 describe('event service', () => {
   describe('subscribe_monotonic', () => {
@@ -15,7 +15,7 @@ describe('event service', () => {
 
         const request: SubscribeMonotonicRequest = {
           session: 'test-session',
-          query: `FROM '${integrationTag}' & isLocal`,
+          query: `FROM '${mySuite()}' & '${testName()}' & isLocal`,
           offsets: {},
         }
 
@@ -28,16 +28,19 @@ describe('event service', () => {
         })
 
         const ev = data.find((x) => x.type === 'event' && x.lamport === pub1.lamport)
+        if (ev === undefined) {
+          console.log(data)
+        }
         expect(ev).toMatchObject(pub1)
       }))
 
-    it.skip('should start a monotonic event stream and find published event', () =>
+    it('should start a monotonic event stream and find published event', () =>
       run(async (x) => {
         const es = await mkESFromTrial(x)
 
         const request: SubscribeMonotonicRequest = {
           session: 'test-session',
-          query: `FROM '${integrationTag} & isLocal'`,
+          query: `FROM '${mySuite()}' & '${testName()}' & isLocal`,
           offsets: {},
         }
 
@@ -53,6 +56,9 @@ describe('event service', () => {
         await done
 
         const ev = data.find((x) => x.type === 'event' && x.lamport === pub1.lamport)
+        if (ev === undefined) {
+          console.log(data)
+        }
         expect(ev).toMatchObject(pub1)
       }))
   })

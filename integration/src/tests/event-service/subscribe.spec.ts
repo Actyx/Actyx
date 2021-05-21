@@ -1,6 +1,6 @@
 import { mkESFromTrial, SubscribeResponse } from '../../http-client'
 import { run } from '../../util'
-import { genericCommunicationTimeout, integrationTag, publishRandom } from './utils.support.test'
+import { genericCommunicationTimeout, mySuite, publishRandom, testName } from './utils.support.test'
 
 describe('event service', () => {
   describe('subscribe to event streams', () => {
@@ -11,7 +11,7 @@ describe('event service', () => {
 
         const data: SubscribeResponse[] = []
         await new Promise((resolve, reject) => {
-          es.subscribe({ query: `FROM '${integrationTag}' & 'test:1' & isLocal` }, (x) =>
+          es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, (x) =>
             data.push(x),
           )
             .then(resolve)
@@ -20,6 +20,9 @@ describe('event service', () => {
         })
 
         const ev = data.find((x) => x.lamport === pub1.lamport)
+        if (ev === undefined) {
+          console.log(data)
+        }
         expect(ev).toMatchObject(pub1)
       }))
 
@@ -29,7 +32,7 @@ describe('event service', () => {
 
         const data: SubscribeResponse[] = []
         const done = new Promise((resolve, reject) => {
-          es.subscribe({ query: `FROM '${integrationTag}' & 'test:1' & isLocal` }, (x) =>
+          es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, (x) =>
             data.push(x),
           )
             .then(resolve)
@@ -41,6 +44,9 @@ describe('event service', () => {
         await done
 
         const ev = data.find((x) => x.lamport === pub1.lamport)
+        if (ev === undefined) {
+          console.log(data)
+        }
         expect(ev).toMatchObject(pub1)
       }))
   })
