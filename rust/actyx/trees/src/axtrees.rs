@@ -621,8 +621,10 @@ impl fmt::Debug for Sha256Digest {
 
 #[cfg(test)]
 mod tests {
+    use std::io::Cursor;
+
     use super::*;
-    use quickcheck::quickcheck;
+    use quickcheck::{quickcheck, TestResult};
 
     quickcheck! {
             fn summaryseq_serde_roundtrip(ks: AxSummarySeq) -> bool {
@@ -679,6 +681,28 @@ mod tests {
                 time: AxRange::new(time_min, time_max),
             };
             summary == reference
+        }
+
+        fn keyseq_io_roundtrip(ks: AxKeySeq) -> bool {
+            let io: AxKeySeqIo = ks.clone().into();
+            let rt: AxKeySeq = AxKeySeq::try_from(io).unwrap();
+            rt == ks
+        }
+
+         fn keyseq_io_roundtrip_from_single_keys(kss: Vec<AxKey>) -> TestResult{
+            if kss.is_empty () {
+                return TestResult::discard();
+            }
+            let key_seq: AxKeySeq = kss.into_iter().collect();
+            let io: AxKeySeqIo = key_seq.clone().into();
+            let key_seq2: AxKeySeq = AxKeySeq::try_from(io).unwrap();
+            let first_test = key_seq == key_seq2;
+
+            let mut buf = vec![];
+            key_seq2.encode(DagCborCodec, &mut buf).unwrap();
+            let after_cbor = AxKeySeq::decode(DagCborCodec, &mut Cursor::new(buf.as_slice())).unwrap();
+            let second_test = key_seq2 == after_cbor;
+            TestResult::from_bool(first_test & second_test)
         }
     }
 }
