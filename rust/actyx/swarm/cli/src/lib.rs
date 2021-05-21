@@ -2,7 +2,7 @@ use actyxos_sdk::{language::Query, Payload, StreamNr, TagSet};
 use anyhow::Result;
 use crypto::{KeyPair, PrivateKey};
 pub use libp2p::{multiaddr, Multiaddr, PeerId};
-use std::path::PathBuf;
+use std::{net::SocketAddr, path::PathBuf};
 use structopt::StructOpt;
 use swarm::SwarmConfig;
 use trees::axtrees::AxKey;
@@ -33,6 +33,8 @@ pub struct Config {
     pub bootstrap: Vec<Multiaddr>,
     #[structopt(long)]
     pub external: Vec<Multiaddr>,
+    #[structopt(long)]
+    pub enable_api: Option<SocketAddr>,
 }
 
 impl From<Config> for async_process::Command {
@@ -77,6 +79,9 @@ impl From<Config> for async_process::Command {
         }
         if config.enable_root_map {
             cmd.arg("--enable-root-map");
+        }
+        if let Some(api) = config.enable_api {
+            cmd.arg("--enable-api").arg(api.to_string());
         }
         cmd
     }

@@ -103,6 +103,7 @@ where
                 enable_root_map: opts.enable_root_map,
                 enable_discovery: opts.enable_discovery,
                 enable_metrics: opts.enable_metrics,
+                enable_api: None,
             };
             let mut delay = DelayBuffer::new();
             delay.set_delay(Duration::from_millis(opts.delay_ms));

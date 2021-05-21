@@ -1,7 +1,10 @@
+use actyxos_sdk::NodeId;
 use anyhow::Result;
+use api::NodeInfo;
+use crypto::KeyStoreRef;
 use futures::stream::StreamExt;
 use structopt::StructOpt;
-use swarm::BanyanStore;
+use swarm::{BanyanStore, SwarmConfig};
 use swarm_cli::{Command, Config, Event};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use trees::query::TagsQuery;
@@ -20,16 +23,36 @@ async fn run() -> Result<()> {
 
     let mut config = Config::from_args();
     tracing::info!(
-        "mdns: {} fast_path: {} slow_path: {} root_map: {} discovery: {} metrics: {}",
+        "mdns: {} fast_path: {} slow_path: {} root_map: {} discovery: {} metrics: {} api: {:?}",
         config.enable_mdns,
         config.enable_fast_path,
         config.enable_slow_path,
         config.enable_root_map,
         config.enable_discovery,
         config.enable_metrics,
+        config.enable_api
     );
     let listen_addresses = std::mem::replace(&mut config.listen_on, vec![]);
-    let swarm = BanyanStore::new(config.into()).await?;
+    let swarm = if let Some(addr) = config.enable_api {
+        let key_store: KeyStoreRef = Default::default();
+        let public_key = key_store.write().generate_key_pair()?;
+        let keypair = key_store.read().get_pair(public_key).unwrap();
+        let node_id: NodeId = public_key.into();
+        let mut swarm_config: SwarmConfig = config.into();
+        swarm_config.keypair = Some(keypair);
+        let swarm = BanyanStore::new(swarm_config).await?;
+        tracing::info!("Binding api to {:?}", addr);
+        let node_info = NodeInfo {
+            node_id,
+            key_store,
+            token_validity: u32::MAX,
+            cycles: 0.into(),
+        };
+        swarm.spawn_task("api", api::run(node_info, swarm.clone(), std::iter::once(addr)));
+        swarm
+    } else {
+        BanyanStore::new(config.into()).await?
+    };
     let mut stream = swarm.ipfs().swarm_events();
     // make sure we don't lose `NewListenAddr` events.
     for listen_addr in listen_addresses {

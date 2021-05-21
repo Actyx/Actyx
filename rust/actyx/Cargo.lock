@@ -6040,6 +6040,7 @@ version = "0.1.0"
 dependencies = [
  "actyxos_sdk",
  "anyhow",
+ "api",
  "async-process",
  "crypto",
  "futures 0.3.15",

@@ -27,6 +27,7 @@ fn main() -> anyhow::Result<()> {
             enable_root_map: true,
             enable_discovery: true,
             enable_metrics: false,
+            enable_api: None,
         };
         let bootstrap = sim.spawn_machine(cfg.clone().into(), None).await;
         sim.plug(bootstrap, net_a, None).await;
