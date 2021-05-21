@@ -228,6 +228,8 @@ impl FromIterator<TagSet> for TagsQuery {
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
     use actyxos_sdk::{
         language::{TagAtom, TagExpr},
@@ -235,7 +237,7 @@ mod tests {
     };
 
     fn l(tag: &'static str) -> TagExpr {
-        TagExpr::Atom(TagAtom::Tag(Tag::new(tag.to_owned()).unwrap()))
+        TagExpr::Atom(TagAtom::Tag(Tag::from_str(tag).unwrap()))
     }
 
     fn assert_match(index: &TagIndex, expr: &TagExpr, expected: Vec<bool>) {

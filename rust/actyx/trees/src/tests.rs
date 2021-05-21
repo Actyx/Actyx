@@ -2,7 +2,7 @@ use crate::{
     axtrees::{AxKey, AxTree, AxTrees, Sha256Digest},
     query::{LamportQuery, TagsQuery, TimeQuery},
 };
-use actyxos_sdk::{tags, LamportTimestamp, Payload, Tag, TagSet, Timestamp};
+use actyxos_sdk::{tag, tags, LamportTimestamp, Payload, TagSet, Timestamp};
 use banyan::{
     query::{AllQuery, OffsetRangeQuery, Query},
     store::{BranchCache, MemStore},
@@ -100,7 +100,7 @@ impl Generator {
             move |index| {
                 let id = index / 2;
                 let mut tags = base_tags.clone();
-                tags += Tag::new(format!("article_id:{}", id)).unwrap();
+                tags += tag!("article_id:") + id.to_string();
                 tags
             },
             move |index| {

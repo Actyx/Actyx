@@ -78,13 +78,14 @@ mod tests {
     };
 
     use super::*;
+    use std::str::FromStr;
 
     fn l(x: &'static str) -> TagExpr {
         TagExpr::Atom(atom(x))
     }
 
     fn atom(x: &'static str) -> TagAtom {
-        TagAtom::Tag(Tag::new(x.to_owned()).unwrap())
+        TagAtom::Tag(Tag::from_str(x).unwrap())
     }
 
     fn assert_dnf(expr: TagExpr, dnf: &'static [&'static [&'static str]]) {

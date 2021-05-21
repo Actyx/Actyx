@@ -1,4 +1,10 @@
-import { mkESFromTrial, Order, QueryRequest, QueryResponse } from '../../http-client'
+import {
+  AxEventService,
+  mkESFromTrial,
+  Order,
+  QueryRequest,
+  QueryResponse,
+} from '../../http-client'
 import { run } from '../../util'
 import {
   genericCommunicationTimeout,
@@ -6,6 +12,19 @@ import {
   publishRandom,
   throwOnCb,
 } from './utils.support.test'
+
+const query = async (es: AxEventService, query: string): Promise<unknown[]> => {
+  const result: unknown[] = []
+  const offsets = await es.offsets()
+  await new Promise((res) => {
+    es.query({ upperBound: offsets.present, query, order: Order.Desc }, (data) =>
+      result.push(data.payload),
+    ).then(res)
+    setTimeout(res, genericCommunicationTimeout)
+  })
+  // FIXME switch to Order.Asc as soon as that starts working
+  return result.reverse()
+}
 
 describe('event service', () => {
   describe('query', () => {
@@ -96,6 +115,27 @@ describe('event service', () => {
           setTimeout(resolve, genericCommunicationTimeout)
         })
         expect(data.length).toBe(0)
+      }))
+
+    it('should canonicalise tags correctly', () =>
+      run(async (api) => {
+        const es = await mkESFromTrial(api)
+        await es.publish({
+          data: [
+            { tags: ['query-canon', '\u{e9}'], payload: 1 },
+            { tags: ['query-canon', 'e\u{301}'], payload: 2 },
+            { tags: ['query-canon', 'ℌ'], payload: 3 },
+            { tags: ['query-canon', 'H'], payload: 4 },
+            { tags: ['query-canon', 'ﬁ'], payload: 5 },
+            { tags: ['query-canon', 'fi'], payload: 6 },
+          ],
+        })
+        expect(await query(es, 'FROM "query-canon" & "\u{e9}"')).toEqual([1, 2])
+        expect(await query(es, 'FROM "query-canon" & "e\u{301}"')).toEqual([1, 2])
+        expect(await query(es, 'FROM "query-canon" & "ℌ"')).toEqual([3])
+        expect(await query(es, 'FROM "query-canon" & "H"')).toEqual([4])
+        expect(await query(es, 'FROM "query-canon" & "ﬁ"')).toEqual([5])
+        expect(await query(es, 'FROM "query-canon" & "fi"')).toEqual([6])
       }))
   })
 })
