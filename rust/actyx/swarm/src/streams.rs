@@ -1,18 +1,17 @@
 use crate::{AxStreamBuilder, Cid, Link, Tree};
 use actyxos_sdk::{LamportTimestamp, NodeId, Offset, StreamId, StreamNr};
 use ax_futures_util::stream::variable::Variable;
-use banyan::{StreamBuilder, StreamTransaction};
 use fnv::FnvHashMap;
 use futures::{
     future,
     stream::{BoxStream, Stream, StreamExt},
 };
-use std::sync::Arc;
 use std::{
     convert::{TryFrom, TryInto},
-    ops::Deref,
+    ops::{Deref, DerefMut},
+    sync::Arc,
 };
-use trees::axtrees::{AxTree, AxTrees};
+use trees::{axtrees::AxTree, AxTreeHeader};
 
 const PREFIX: u8 = b'S';
 
@@ -65,35 +64,27 @@ pub struct OwnStream {
     stream_nr: StreamNr,
     /// the builder, wrapped into an async mutex
     builder: tokio::sync::Mutex<AxStreamBuilder>,
-    /// the latest tree, for publishing
-    latest: Variable<Tree>,
+    /// the latest published tree
+    latest: Variable<Option<PublishedTree>>,
 }
 
 impl OwnStream {
-    pub fn new(stream_nr: StreamNr, builder: AxStreamBuilder) -> Self {
+    pub fn new(stream_nr: StreamNr, builder: AxStreamBuilder, latest: Option<PublishedTree>) -> Self {
         Self {
             stream_nr,
             builder: tokio::sync::Mutex::new(builder),
-            latest: Default::default(),
+            latest: Variable::new(latest),
         }
     }
 
-    pub fn stream_nr(&self) -> StreamNr {
-        self.stream_nr
-    }
-
     pub fn tree_stream(&self) -> BoxStream<'static, Tree> {
-        self.latest.new_observer().boxed()
+        self.latest
+            .new_projection(|x| x.as_ref().map(|x| x.tree.clone()).unwrap_or_default())
+            .boxed()
     }
 
-    /// The current root of the own stream
-    ///
-    /// Note that if you want to do something more complex with a tree, like transform it,
-    /// using this will probably lead to a race condition.
-    ///
-    /// Use lock to get exclusive access to the tree in that case.
-    pub fn snapshot(&self) -> Tree {
-        self.latest.get_cloned()
+    pub fn root(&self) -> Option<Cid> {
+        self.latest.project(|x| x.as_ref().map(|x| Cid::from(x.root)))
     }
 
     /// Acquire an async lock to modify this stream
@@ -102,61 +93,92 @@ impl OwnStream {
     }
 }
 
-pub struct OwnStreamGuard<'a>(&'a OwnStream, tokio::sync::MutexGuard<'a, StreamBuilder<AxTrees>>);
+pub struct OwnStreamGuard<'a>(&'a OwnStream, tokio::sync::MutexGuard<'a, AxStreamBuilder>);
 
 impl<'a> OwnStreamGuard<'a> {
-    pub fn latest(&self) -> &Variable<Tree> {
+    pub fn latest(&self) -> &Variable<Option<PublishedTree>> {
         &self.0.latest
     }
-
-    pub fn transaction(&mut self) -> StreamTransaction<'_, AxTrees> {
-        self.1.transaction()
+    pub fn stream_nr(&self) -> StreamNr {
+        self.0.stream_nr
     }
 }
 
 impl<'a> Deref for OwnStreamGuard<'a> {
-    type Target = OwnStream;
+    type Target = AxStreamBuilder;
 
-    fn deref(&self) -> &OwnStream {
-        self.0
+    fn deref(&self) -> &AxStreamBuilder {
+        self.1.deref()
+    }
+}
+
+impl<'a> DerefMut for OwnStreamGuard<'a> {
+    fn deref_mut(&mut self) -> &mut AxStreamBuilder {
+        self.1.deref_mut()
     }
 }
 
 #[derive(Debug, Default)]
 pub struct RemoteNodeInner {
     pub last_seen: Variable<(LamportTimestamp, Offset)>,
-    pub streams: FnvHashMap<StreamNr, Arc<ReplicatedStreamInner>>,
+    pub streams: FnvHashMap<StreamNr, Arc<ReplicatedStream>>,
 }
 
 /// Data for a single replicated stream, mutable state + constant data
 #[derive(Debug)]
-pub struct ReplicatedStreamInner {
-    validated: Variable<Tree>,
+pub struct ReplicatedStream {
+    // this is an option to cover the situation where we learn of a remote stream
+    // but have not yet validated it
+    validated: Variable<Option<PublishedTree>>,
+    // stream of incoming roots
     incoming: Variable<Option<Link>>,
     latest_seen: Variable<Option<(LamportTimestamp, Offset)>>,
 }
 
-impl ReplicatedStreamInner {
-    pub fn new(tree: AxTree) -> Self {
+/// Trees are published including a tree header.
+#[derive(Debug)]
+pub struct PublishedTree {
+    /// hash of the tree header
+    root: Link,
+    /// the tree header
+    header: AxTreeHeader,
+    /// the actual tree
+    tree: AxTree,
+}
+
+impl PublishedTree {
+    pub fn new(root: Link, header: AxTreeHeader, tree: AxTree) -> Self {
+        Self { root, header, tree }
+    }
+}
+
+impl ReplicatedStream {
+    pub fn new(state: Option<PublishedTree>) -> Self {
         Self {
-            validated: Variable::new(tree),
+            validated: Variable::new(state),
             incoming: Variable::default(),
             latest_seen: Variable::default(),
         }
     }
 
-    pub fn root(&self) -> Option<Cid> {
-        self.validated.project(|tree| tree.link().map(|link| link.into()))
-    }
-
     /// set the latest validated root
-    pub fn set_latest(&self, value: Tree) {
-        self.validated.set(value);
+    pub fn set_latest(&self, value: PublishedTree) {
+        self.validated.set(Some(value));
     }
 
-    /// latest validated root
-    pub fn validated(&self) -> Tree {
-        self.validated.get_cloned()
+    /// root of the tree. This is the hash of the header.
+    pub fn root(&self) -> Option<Cid> {
+        self.validated.project(|x| x.as_ref().map(|x| Cid::from(x.root)))
+    }
+
+    /// lamport of the header and count of the last validated tree.
+    /// Will default to (0, 0) if there is no header yet.
+    pub fn validated_tree_counters(&self) -> (LamportTimestamp, u64) {
+        self.validated.project(|x| {
+            x.as_ref()
+                .map(|x| (x.header.lamport, x.tree.count()))
+                .unwrap_or_default()
+        })
     }
 
     /// set the latest incoming root. This will trigger validation
@@ -165,7 +187,9 @@ impl ReplicatedStreamInner {
     }
 
     pub fn tree_stream(&self) -> BoxStream<'static, Tree> {
-        self.validated.new_observer().boxed()
+        self.validated
+            .new_projection(|x| x.as_ref().map(|x| x.tree.clone()).unwrap_or_default())
+            .boxed()
     }
 
     pub fn incoming_root_stream(&self) -> impl Stream<Item = Link> {

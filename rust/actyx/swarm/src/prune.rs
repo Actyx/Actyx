@@ -124,7 +124,7 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
             let store = store.clone();
             tracing::debug!("Checking ephemeral event conditions for {}", stream_nr);
             let fut = async move {
-                let stream = store.get_or_create_own_stream(*stream_nr);
+                let stream = store.get_or_create_own_stream(*stream_nr).unwrap();
                 let mut guard = stream.lock().await;
                 match cfg {
                     RetainConfig::Events(keep) => retain_last_events(&store, &mut guard, *keep),
@@ -332,7 +332,7 @@ mod test {
         });
 
         // Test this fn directly in order to avoid messing around with the `SystemTime`
-        let stream = store.get_or_create_own_stream(test_stream);
+        let stream = store.get_or_create_own_stream(test_stream)?;
         let mut guard = stream.lock().await;
         super::retain_events_after(&store, &mut guard, cut_off)?;
 
