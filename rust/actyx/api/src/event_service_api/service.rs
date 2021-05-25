@@ -1,40 +1,40 @@
+use std::{convert::TryFrom, num::NonZeroU64};
+
 use actyxos_sdk::{
-    language,
+    language::{self, TagExpr},
     service::{
         self, EventResponse, NodeIdResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse,
         PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
         SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    Event, EventKey, Metadata, Payload,
+    Event, EventKey, Metadata, OffsetMap, OffsetOrMin, Payload,
 };
 use async_trait::async_trait;
 use ax_futures_util::prelude::*;
 use futures::{
     future,
     stream::{self, BoxStream, StreamExt},
-    TryFutureExt,
+    Stream,
 };
 use runtime::value::Value;
-use swarm::access::{ConsumerAccessError, EventSelection, EventStoreConsumerAccess};
-use swarm::{BanyanStore, EventStore, Present};
+use swarm::event_store::{self, EventStore};
 use thiserror::Error;
-use trees::{OffsetMapOrMax, TagSubscriptions};
 
 #[derive(Debug, Error)]
 pub enum Error {
-    #[error("Store error: {0}")]
-    StoreError(#[from] anyhow::Error),
-    #[error("Access error: {0}")]
-    ConsumerAccesError(#[from] ConsumerAccessError),
+    #[error("Store error while writing: {0}")]
+    StoreWriteError(#[from] anyhow::Error),
+    #[error("Store error while reading: {0}")]
+    StoreReadError(#[from] event_store::Error),
 }
 
 #[derive(Clone)]
 pub struct EventService {
-    store: BanyanStore,
+    store: EventStore,
 }
 
 impl EventService {
-    pub fn new(store: BanyanStore) -> EventService {
+    pub fn new(store: EventStore) -> EventService {
         EventService { store }
     }
 }
@@ -48,8 +48,18 @@ impl service::EventService for EventService {
     }
 
     async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
-        let response = self.store.offsets().next().await.unwrap_or_default();
-        Ok(response)
+        let offsets = self.store.offsets().next().await.expect("offset stream stopped");
+        let present = offsets.present();
+        let to_replicate = offsets
+            .replication_target()
+            .stream_iter()
+            .filter_map(|(stream, target)| {
+                let actual = present.offset(stream);
+                let diff = OffsetOrMin::from(target) - actual;
+                u64::try_from(diff).ok().and_then(NonZeroU64::new).map(|o| (stream, o))
+            })
+            .collect();
+        Ok(OffsetsResponse { present, to_replicate })
     }
 
     async fn publish(&self, request: PublishRequest) -> anyhow::Result<PublishResponse> {
@@ -58,92 +68,78 @@ impl service::EventService for EventService {
             .into_iter()
             .map(|PublishEvent { tags, payload }| (tags, payload))
             .collect();
-        let response = self
-            .store
-            .persist(events)
-            .map_ok(|keys| PublishResponse {
-                data: keys
-                    .into_iter()
-                    .map(|(lamport, offset, stream_nr, timestamp)| PublishResponseKey {
-                        lamport,
-                        offset,
-                        stream: self.store.node_id().stream(stream_nr),
-                        timestamp,
-                    })
-                    .collect(),
-            })
-            .await
-            .map_err(Error::StoreError)?;
+        let meta = self.store.persist(events).await.map_err(Error::StoreWriteError)?;
+        let response = PublishResponse {
+            data: meta
+                .into_iter()
+                .map(|(lamport, offset, stream_nr, timestamp)| PublishResponseKey {
+                    lamport,
+                    offset,
+                    stream: self.store.node_id().stream(stream_nr),
+                    timestamp,
+                })
+                .collect(),
+        };
         Ok(response)
     }
 
     async fn query(&self, request: QueryRequest) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
-        let from_offsets_excluding: OffsetMapOrMax = request.lower_bound.unwrap_or_default().into();
-        let to_offsets_including: OffsetMapOrMax = request.upper_bound.into();
-        let selection = EventSelection {
-            tag_subscriptions: (&request.query).into(),
-            from_offsets_excluding,
-            to_offsets_including,
+        let tag_expr = &request.query.from;
+        let stream = match request.order {
+            Order::Asc => self
+                .store
+                .bounded_forward(tag_expr, request.lower_bound, request.upper_bound)
+                .await
+                .map(|s| s.boxed()),
+            Order::Desc => self
+                .store
+                .bounded_backward(tag_expr, request.lower_bound, request.upper_bound)
+                .await
+                .map(|s| s.boxed()),
+            Order::StreamAsc => self
+                .store
+                .bounded_forward_per_stream(tag_expr, request.lower_bound, request.upper_bound)
+                .await
+                .map(|s| s.boxed()),
         };
-        let response = match request.order {
-            Order::Asc => self.store.stream_events_forward(selection),
-            Order::Desc => self.store.stream_events_backward(selection),
-            Order::StreamAsc => self.store.stream_events_source_ordered(selection),
-        }
-        .await
-        .map_err(Error::ConsumerAccesError)?
-        .flat_map(mk_feed(request.query))
-        .map(QueryResponse::Event);
-        Ok(response.boxed())
+        let response = stream
+            .map_err(Error::StoreReadError)?
+            .flat_map(mk_feed(request.query))
+            .map(QueryResponse::Event)
+            .boxed();
+        Ok(response)
     }
 
     async fn subscribe(&self, request: SubscribeRequest) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
-        let tag_subscriptions: TagSubscriptions = (&request.query).into();
-        let from_offsets_excluding: OffsetMapOrMax = request.offsets.unwrap_or_default().into();
-        let selection = EventSelection::after(tag_subscriptions, from_offsets_excluding);
-        let response = self
-            .store
-            .stream_events_source_ordered(selection)
-            .await
-            .map_err(Error::ConsumerAccesError)?
+        Ok(subscribe0(&self.store, &request.query.from, request.offsets)
+            .await?
             .flat_map(mk_feed(request.query))
-            .map(SubscribeResponse::Event);
-
-        Ok(response.boxed())
+            .map(SubscribeResponse::Event)
+            .boxed())
     }
 
     async fn subscribe_monotonic(
         &self,
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
-        let tag_subscriptions: TagSubscriptions = (&request.query).into();
+        let tag_expr = &request.query.from;
+
         let initial_latest = if let StartFrom::Offsets(offsets) = &request.from {
-            let to_offsets_including = OffsetMapOrMax::from(offsets.clone());
-            let selection = EventSelection::upto(tag_subscriptions.clone(), to_offsets_including);
-            let (youngest_opt, _) = self
-                .store
-                .stream_events_backward(selection)
+            self.store
+                .bounded_backward(tag_expr, None, offsets.clone())
                 .await
-                .map_err(Error::ConsumerAccesError)?
-                .into_future()
-                .await;
-            if let Some(youngest) = youngest_opt {
-                youngest.key
-            } else {
-                EventKey::default()
-            }
+                .map_err(Error::StoreReadError)?
+                .next()
+                .await
+                .map(|event| event.key)
+                .unwrap_or_default()
         } else {
             EventKey::default()
         };
 
-        let from_offsets_excluding = request.from.min_offsets().into();
-        let selection = EventSelection::after(tag_subscriptions, from_offsets_excluding);
+        let stream = subscribe0(&self.store, &tag_expr, Some(request.from.min_offsets())).await?;
         let feed = mk_feed(request.query);
-        let response = self
-            .store
-            .stream_events_source_ordered(selection)
-            .await
-            .map_err(Error::ConsumerAccesError)?
+        let response = stream
             .flat_map({
                 let mut latest = initial_latest;
                 move |e| {
@@ -161,6 +157,20 @@ impl service::EventService for EventService {
             .take_until_condition(|e| future::ready(matches!(e, SubscribeMonotonicResponse::TimeTravel { .. })));
         Ok(response.boxed())
     }
+}
+
+async fn subscribe0(
+    store: &EventStore,
+    tag_expr: &TagExpr,
+    offsets: Option<OffsetMap>,
+) -> anyhow::Result<impl Stream<Item = Event<Payload>>> {
+    let present = store.present().await;
+    let bounded = store
+        .bounded_forward(tag_expr, offsets, present.clone())
+        .await
+        .map_err(Error::StoreReadError)?;
+    let unbounded = store.unbounded_forward_per_stream(tag_expr, Some(present));
+    Ok(bounded.chain(unbounded))
 }
 
 fn mk_feed(query: language::Query) -> impl Fn(Event<Payload>) -> BoxStream<'static, EventResponse<Payload>> {

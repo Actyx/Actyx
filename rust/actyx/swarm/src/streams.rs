@@ -1,6 +1,6 @@
 use crate::{AxStreamBuilder, Cid, Link, Tree};
 use actyxos_sdk::{LamportTimestamp, NodeId, Offset, StreamId, StreamNr};
-use ax_futures_util::stream::variable::Variable;
+use ax_futures_util::stream::variable::{Observer, Variable};
 use fnv::FnvHashMap;
 use futures::{
     future,
@@ -207,7 +207,7 @@ impl ReplicatedStream {
         self.incoming.new_observer().filter_map(future::ready)
     }
 
-    pub fn latest_seen(&self) -> &Variable<Option<(LamportTimestamp, Offset)>> {
-        &self.latest_seen
+    pub fn latest_seen(&self) -> impl Stream<Item = (LamportTimestamp, Offset)> {
+        self.latest_seen.new_observer().filter_map(future::ready)
     }
 }

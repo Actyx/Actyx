@@ -252,17 +252,18 @@ impl From<StreamId> for String {
     }
 }
 
-impl TryFrom<&str> for StreamId {
-    type Error = anyhow::Error;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Self::parse_str(value).context("parsing StreamId")
+impl std::str::FromStr for StreamId {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse_str(s).context("parsing StreamId")
     }
 }
 
 impl TryFrom<String> for StreamId {
     type Error = anyhow::Error;
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        Self::try_from(value.as_str())
+        Self::parse_str(&value).context("parsing StreamId")
     }
 }
 #[cfg(feature = "sqlite")]
@@ -277,7 +278,7 @@ mod sqlite {
         fn column_result(value: ValueRef<'_>) -> FromSqlResult<Self> {
             value
                 .as_str()
-                .and_then(|s| StreamId::try_from(s).map_err(|_| FromSqlError::InvalidType))
+                .and_then(|s| s.parse::<StreamId>().map_err(|_| FromSqlError::InvalidType))
         }
     }
 

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 use serde::{de::Error, Deserialize, Deserializer};
+use unicode_normalization::UnicodeNormalization;
 
 use crate::types::ArcVal;
 
@@ -23,6 +24,15 @@ pub fn nonempty_string<'de, D: Deserializer<'de>>(d: D) -> Result<ArcVal<str>, D
         Err(D::Error::custom("expected non-empty string"))
     } else {
         Ok(ArcVal::from_boxed(s.into()))
+    }
+}
+
+pub fn nonempty_string_canonical<'de, D: Deserializer<'de>>(d: D) -> Result<ArcVal<str>, D::Error> {
+    let s = <String>::deserialize(d)?;
+    if s.is_empty() {
+        Err(D::Error::custom("expected non-empty string"))
+    } else {
+        Ok(ArcVal::from_boxed(s.nfc().collect::<String>().into()))
     }
 }
 

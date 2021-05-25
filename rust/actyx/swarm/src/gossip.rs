@@ -139,8 +139,8 @@ impl Gossip {
 
                 if enable_fast_path {
                     let root_update = RootUpdate {
-                        root,
                         stream,
+                        root,
                         blocks,
                         lamport,
                         time,

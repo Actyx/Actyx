@@ -388,8 +388,15 @@ mod tests {
         assert_eq!(local, local_restored);
 
         // check corruption
-        let last = data.len() - 1;
-        data[last] += 1;
+        let n = data.len() - 1;
+        let last = data.get_mut(n).unwrap();
+        loop {
+            let corrupt = rand::random::<u8>();
+            if corrupt != *last {
+                *last = corrupt;
+                break;
+            }
+        }
         let err = KeyStore::restore(&data[..]).unwrap_err();
         err.downcast_ref::<aead::Error>()
             .unwrap_or_else(|| panic!("found wrong error: {}", err));
