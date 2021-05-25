@@ -36,14 +36,14 @@ impl Encode<DagCborCodec> for Header {
 
 impl From<&Header> for HeaderIo {
     fn from(value: &Header) -> Self {
-        HeaderIo::V1(value.root, value.lamport)
+        HeaderIo::V0(value.root, value.lamport)
     }
 }
 
 impl From<HeaderIo> for Header {
     fn from(value: HeaderIo) -> Self {
         match value {
-            HeaderIo::V1(root, lamport) => Self { root, lamport },
+            HeaderIo::V0(root, lamport) => Self { root, lamport },
         }
     }
 }
@@ -51,7 +51,7 @@ impl From<HeaderIo> for Header {
 #[derive(DagCbor)]
 #[ipld(repr = "int-tuple")]
 enum HeaderIo {
-    V1(Sha256Digest, LamportTimestamp),
+    V0(Sha256Digest, LamportTimestamp),
 }
 
 #[cfg(test)]

@@ -9,12 +9,13 @@
 //! ## BanyanStoreGuard
 //! temporary struct that is created when acquiring mutable access to the state.
 //! inside this you have mutable access to the state - but if you lock again you will deadlock.
-pub mod access;
 pub mod convert;
 mod discovery;
+pub mod event_store;
 mod gossip;
 pub mod metrics;
 mod prune;
+pub mod selection;
 mod sqlite;
 mod sqlite_index_store;
 mod streams;
@@ -23,11 +24,9 @@ mod unixfsv1;
 
 #[cfg(test)]
 mod tests;
-mod v1;
 
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
-pub use crate::v1::{EventStore, Present};
 
 use crate::gossip::Gossip;
 use crate::prune::RetainConfig;
@@ -65,7 +64,7 @@ use maplit::btreemap;
 use parking_lot::Mutex;
 use sqlite_index_store::SqliteIndexStore;
 use std::{
-    collections::{BTreeMap, BTreeSet, VecDeque},
+    collections::{BTreeMap, VecDeque},
     convert::TryFrom,
     fmt::{Debug, Display},
     num::NonZeroU32,
@@ -183,12 +182,22 @@ pub struct BanyanStore {
 }
 
 #[derive(Clone, Debug, Default)]
-struct SwarmOffsets {
-    /// Currently validated OffsetMap
+pub struct SwarmOffsets {
     present: OffsetMap,
+    replication_target: OffsetMap,
+}
+
+impl SwarmOffsets {
+    /// Currently validated OffsetMap
+    pub fn present(&self) -> OffsetMap {
+        self.present.clone()
+    }
+
     /// OffsetMap describing the replication target. Currently this is driven via `highest_seen`,
     /// but should eventually be fed by the partial replication mechanism.
-    replication_target: OffsetMap,
+    pub fn replication_target(&self) -> OffsetMap {
+        self.replication_target.clone()
+    }
 }
 
 /// All immutable or internally mutable parts of the banyan store
@@ -269,10 +278,6 @@ impl<'a> BanyanStoreGuard<'a> {
         self.own_streams.keys().cloned().collect::<Vec<_>>()
     }
 
-    fn local_stream_ids(&self) -> BTreeSet<StreamId> {
-        self.own_streams.keys().map(|x| self.data.node_id.stream(*x)).collect()
-    }
-
     fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Result<Arc<OwnStream>> {
         if let Some(result) = self.own_streams.get(&stream_nr).cloned() {
             return Ok(result);
@@ -344,40 +349,18 @@ impl<'a> BanyanStoreGuard<'a> {
         Ok(stream)
     }
 
+    fn is_local(&self, stream_id: StreamId) -> bool {
+        stream_id.node_id() == self.node_id()
+    }
+
     fn has_stream(&self, stream_id: StreamId) -> bool {
-        let me = stream_id.node_id() == self.node_id();
-        if me {
+        if self.is_local(stream_id) {
             self.own_streams.contains_key(&stream_id.stream_nr())
         } else {
             self.remote_nodes
                 .get(&stream_id.node_id())
                 .map(|node| node.streams.contains_key(&stream_id.stream_nr()))
                 .unwrap_or_default()
-        }
-    }
-
-    /// stream of latest updates from either gossip (for replicated streams) or internal updates
-    ///
-    /// note that this does not include event updates
-    fn latest_stream(&mut self, stream_id: StreamId) -> impl Stream<Item = (LamportTimestamp, Offset)> {
-        if stream_id.node_id() == self.node_id() {
-            let stream = self.get_or_create_own_stream(stream_id.stream_nr()).unwrap();
-            self.data
-                .lamport
-                .clone()
-                .filter_map(move |lamport| {
-                    future::ready(
-                        Offset::from_offset_or_min(stream.snapshot().offset()).map(|offset| (lamport, offset)),
-                    )
-                })
-                .left_stream()
-        } else {
-            self.get_or_create_replicated_stream(stream_id)
-                .unwrap()
-                .latest_seen()
-                .new_observer()
-                .filter_map(future::ready)
-                .right_stream()
         }
     }
 
@@ -708,6 +691,10 @@ impl BanyanStore {
         self.data.node_id
     }
 
+    pub fn is_local(&self, stream_id: StreamId) -> bool {
+        self.lock().is_local(stream_id)
+    }
+
     /// Returns the underlying [`Ipfs`].
     pub fn ipfs(&self) -> &Ipfs {
         &self.data.ipfs
@@ -868,8 +855,9 @@ impl BanyanStore {
             .incoming_root_stream()
             .switch_map(move |root| self.clone().sync_one(stream_id, root).into_stream())
             .for_each(|res| {
-                if let Err(err) = res {
-                    tracing::error!("careful_ingestion: {}", err);
+                match res {
+                    Err(err) => tracing::error!("careful_ingestion: {}", err),
+                    Ok(outcome) => tracing::trace!("sync completed {:?}", outcome),
                 }
                 future::ready(())
             })
@@ -882,18 +870,18 @@ impl BanyanStore {
     async fn sync_one(self, stream_id: StreamId, root: Link) -> Result<SyncOutcome> {
         let node_name = self.ipfs().local_node_name();
         // tokio::time::delay_for(Duration::from_millis(10)).await;
-        tracing::debug!("starting to sync {} to {}", stream_id, root);
+        tracing::trace!("starting to sync {} to {}", stream_id, root);
         let cid = Cid::from(root);
         let ipfs = &self.data.ipfs;
         let stream = self.get_or_create_replicated_stream(stream_id)?;
         let (validated_header_lamport, validated_header_count) = stream.validated_tree_counters();
         // temporarily pin the new root
-        tracing::debug!("assigning temp pin to {}", root);
+        tracing::trace!("assigning temp pin to {}", root);
         let temp_pin = ipfs.create_temp_pin()?;
         ipfs.temp_pin(&temp_pin, &cid)?;
         let peers = ipfs.peers();
         // attempt to sync. This may take a while and is likely to be interrupted
-        tracing::debug!("starting to sync {} from {} peers", root, peers.len());
+        tracing::trace!("starting to sync {} from {} peers", root, peers.len());
         // create the sync stream, and log progress. Add an additional element.
         let mut sync = ipfs.sync(&cid, peers);
         // during the sync, try to load the tree asap and abort in case it is not good
@@ -903,11 +891,11 @@ impl BanyanStore {
         while let Some(event) = sync.next().await {
             match event {
                 SyncEvent::Progress { missing } => {
-                    tracing::debug!("{} sync_one: {}/{}", node_name, n, n + missing);
+                    tracing::trace!("{} sync_one: {}/{}", node_name, n, n + missing);
                     n += 1;
                 }
                 SyncEvent::Complete(Err(err)) => {
-                    tracing::debug!("{} {}", node_name, err);
+                    tracing::trace!("{} {}", node_name, err);
                     return Err(err);
                 }
                 SyncEvent::Complete(Ok(())) => {}
@@ -943,15 +931,15 @@ impl BanyanStore {
         let state = PublishedTree::new(root, header, tree.clone());
 
         // if we get here, we already know that the new tree is better than its predecessor
-        tracing::debug!("completed sync of {}", root);
+        tracing::trace!("completed sync of {}", root);
         // once sync is successful, permanently move the alias
-        tracing::debug!("updating alias {}", root);
+        tracing::trace!("updating alias {}", root);
         // assign the new root as validated
         ipfs.alias(&StreamAlias::from(stream_id), Some(&cid))?;
-        tracing::debug!("sync_one complete {} => {}", stream_id, tree.offset());
+        tracing::trace!("sync_one complete {} => {}", stream_id, tree.offset());
         let offset = tree.offset();
         stream.set_latest(state);
-        // update present. This can fail if stream_id is not a source_id.
+        // update present.
         self.update_present(stream_id, offset);
         // done
         Ok(SyncOutcome::Success)
@@ -994,15 +982,30 @@ impl BanyanStore {
         Ok(())
     }
 
-    fn has_stream(&self, stream_id: StreamId) -> bool {
-        self.lock().has_stream(stream_id)
+    fn update_present(&self, stream_id: StreamId, offset: OffsetOrMin) {
+        if let Some(offset) = Offset::from_offset_or_min(offset) {
+            self.data.offsets.transform_mut(|offsets| {
+                offsets.present.update(stream_id, offset);
+                true
+            });
+        }
     }
 
-    /// stream of latest updates from either gossip (for replicated streams) or internal updates
-    ///
-    /// note that this does not include event updates
-    fn latest_stream(&self, stream_id: StreamId) -> impl Stream<Item = (LamportTimestamp, Offset)> {
-        self.lock().latest_stream(stream_id)
+    fn update_highest_seen(&self, stream_id: StreamId, offset: OffsetOrMin) {
+        if let Some(offset) = Offset::from_offset_or_min(offset) {
+            self.data.offsets.transform_mut(|offsets| {
+                if offsets.replication_target.offset(stream_id) < offset {
+                    offsets.replication_target.update(stream_id, offset);
+                    true
+                } else {
+                    false
+                }
+            });
+        }
+    }
+
+    fn has_stream(&self, stream_id: StreamId) -> bool {
+        self.lock().has_stream(stream_id)
     }
 
     /// Get a stream of trees for a given stream id

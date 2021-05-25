@@ -1,4 +1,5 @@
 main_query = { SOI ~ query ~ EOI }
+main_tag_expr = { SOI ~ tag_expr ~ EOI }
 main_simple_expr = { SOI ~ simple_expr ~ EOI }
 
 // queries

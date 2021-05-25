@@ -25,7 +25,7 @@ where
 {
     pub fn new(inner: St, f: F) -> (Self, UnboundedReceiver<U>) {
         let (sender, receiver) = mpsc::unbounded();
-        (Self { inner, f, sender }, receiver)
+        (Self { inner, sender, f }, receiver)
     }
 }
 

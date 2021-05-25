@@ -87,17 +87,6 @@ impl OwnStream {
         self.latest.get_cloned()
     }
 
-    /// The current root of the own stream
-    ///
-    /// Note that if you want to do something more complex with a tree, like transform it,
-    /// using this will probably lead to a race condition.
-    ///
-    /// Use lock to get exclusive access to the tree in that case.
-    pub fn snapshot(&self) -> Tree {
-        self.latest
-            .project(|x| x.as_ref().map(|x| x.tree.clone()).unwrap_or_default())
-    }
-
     pub fn root(&self) -> Option<Cid> {
         self.latest.project(|x| x.as_ref().map(|x| Cid::from(x.root)))
     }
@@ -221,9 +210,5 @@ impl ReplicatedStream {
 
     pub fn incoming_root_stream(&self) -> impl Stream<Item = Link> {
         self.incoming.new_observer().filter_map(future::ready)
-    }
-
-    pub fn latest_seen(&self) -> &Variable<Option<(LamportTimestamp, Offset)>> {
-        &self.latest_seen
     }
 }

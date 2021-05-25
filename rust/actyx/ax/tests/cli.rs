@@ -89,7 +89,7 @@ fn cli_users_keygen_err_on_existing_file() {
     let identity_path = file.display().to_string();
     std::fs::write(file, "yay").unwrap();
     let expected = format!(
-        "[ERR_FILE_EXISTS] Error: File {} already exits in the specified path. Specify a different file name or path.\n",
+        "[ERR_FILE_EXISTS] Error: File {} already exists in the specified path. Specify a different file name or path.\n",
         identity_path
     );
     cli()

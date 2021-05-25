@@ -86,10 +86,10 @@ impl Logging {
             log.publish_tx.clone(),
         )));
         Self {
-            node_id,
             log,
             rx,
             tx_logsvcd_cfg,
+            node_id,
             logging_sink,
         }
     }

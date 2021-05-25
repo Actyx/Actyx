@@ -27,8 +27,8 @@ fn r_tag(p: P) -> Tag {
     let s = quoted.as_str();
     let s = &s[1..s.len() - 1];
     match quoted.as_rule() {
-        Rule::single_quoted => Tag::new(s.replace("''", "'")).unwrap(),
-        Rule::double_quoted => Tag::new(s.replace("\"\"", "\"")).unwrap(),
+        Rule::single_quoted => Tag::from_str(s.replace("''", "'").as_ref()).unwrap(),
+        Rule::double_quoted => Tag::from_str(s.replace("\"\"", "\"").as_ref()).unwrap(),
         x => unexpected!(x),
     }
 }
@@ -237,6 +237,15 @@ impl FromStr for Query {
     }
 }
 
+impl FromStr for TagExpr {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let p = Aql::parse(Rule::main_tag_expr, s)?.single().single();
+        Ok(r_tag_expr(p))
+    }
+}
+
 impl FromStr for SimpleExpr {
     type Err = anyhow::Error;
 
@@ -264,9 +273,8 @@ mod tests {
     fn tag_expr() {
         use TagAtom::Tag;
         use TagExpr::*;
-        let p = Aql::parse(Rule::tag_expr, "'x' |\t'y'\n&'z'").unwrap();
         assert_eq!(
-            r_tag_expr(p.single()),
+            "'x' |\t'y'\n&'z'".parse::<TagExpr>().unwrap(),
             Or((
                 Atom(Tag(tag!("x"))),
                 And((Atom(Tag(tag!("y"))), Atom(Tag(tag!("z")))).into())

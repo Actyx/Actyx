@@ -4,6 +4,7 @@ import { runOnEvery } from '../../infrastructure/hosts'
 import { currentAxBinary } from '../../infrastructure/settings'
 import { mkAxWithUnreachableNode } from '../../stubs'
 import { MyGlobal } from '../../../jest/setup'
+import execa from 'execa'
 
 describe('ax nodes', () => {
   describe('ls', () => {
@@ -25,7 +26,17 @@ describe('ax nodes', () => {
       await runOnEvery(async (node) => {
         const response = assertOK(await node.ax.nodes.ls())
         const axNodeSetup = (<MyGlobal>global).axNodeSetup
-        const gitHash = axNodeSetup.gitHash.slice(0, 9)
+        let gitHash = axNodeSetup.gitHash.slice(0, 9)
+        const dirty = await execa.command('git status --porcelain').then((x) => x.stdout)
+        if (dirty !== '') {
+          gitHash = `${gitHash}_dirty`
+        }
+
+        // Android is running inside an emulator, currently hardcoded to x86
+        const target =
+          node.host === 'android'
+            ? expect.stringContaining('android')
+            : `${node.target.os}-${node.target.arch}`
 
         const responseShape = [
           {
@@ -37,7 +48,7 @@ describe('ax nodes', () => {
             startedUnix: expect.any(Number),
             version: {
               profile: 'release',
-              target: `${node.target.os}-${node.target.arch}`,
+              target,
               version: await node.ax.shortVersion,
               gitHash,
             },
