@@ -968,8 +968,10 @@ impl BanyanStore {
             .collect::<Vec<_>>();
         let results = futures::future::join_all(futures).await;
         // log the results
+        let mut errors = Vec::new();
         for (stream_id, result) in &results {
             if let Err(cause) = result {
+                errors.push(*stream_id);
                 tracing::error!("incomplete alias for stream id {}: {}", stream_id, cause);
             } else {
                 tracing::debug!("validated alias for stream_id {}", stream_id);
@@ -979,7 +981,11 @@ impl BanyanStore {
         let _ = results
             .into_iter()
             .map(|(_, r)| r)
-            .collect::<anyhow::Result<Vec<_>>>()?;
+            .collect::<anyhow::Result<Vec<_>>>()
+            .context(format!(
+                "Found {} streams with missing events, giving up.",
+                errors.len()
+            ))?;
         Ok(())
     }
 
