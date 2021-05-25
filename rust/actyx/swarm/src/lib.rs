@@ -822,8 +822,9 @@ impl BanyanStore {
             .incoming_root_stream()
             .switch_map(move |root| self.clone().sync_one(stream_id, root).into_stream())
             .for_each(|res| {
-                if let Err(err) = res {
-                    tracing::error!("careful_ingestion: {}", err);
+                match res {
+                    Err(err) => tracing::error!("careful_ingestion: {}", err),
+                    Ok(outcome) => tracing::trace!("sync completed {:?}", outcome),
                 }
                 future::ready(())
             })
@@ -836,18 +837,18 @@ impl BanyanStore {
     async fn sync_one(self, stream_id: StreamId, root: Link) -> Result<SyncOutcome> {
         let node_name = self.ipfs().local_node_name();
         // tokio::time::delay_for(Duration::from_millis(10)).await;
-        tracing::debug!("starting to sync {} to {}", stream_id, root);
+        tracing::trace!("starting to sync {} to {}", stream_id, root);
         let cid = Cid::from(root);
         let ipfs = &self.data.ipfs;
         let stream = self.get_or_create_replicated_stream(stream_id)?;
         let (validated_header_lamport, validated_header_count) = stream.validated_tree_counters();
         // temporarily pin the new root
-        tracing::debug!("assigning temp pin to {}", root);
+        tracing::trace!("assigning temp pin to {}", root);
         let temp_pin = ipfs.create_temp_pin()?;
         ipfs.temp_pin(&temp_pin, &cid)?;
         let peers = ipfs.peers();
         // attempt to sync. This may take a while and is likely to be interrupted
-        tracing::debug!("starting to sync {} from {} peers", root, peers.len());
+        tracing::trace!("starting to sync {} from {} peers", root, peers.len());
         // create the sync stream, and log progress. Add an additional element.
         let mut sync = ipfs.sync(&cid, peers);
         // during the sync, try to load the tree asap and abort in case it is not good
@@ -857,11 +858,11 @@ impl BanyanStore {
         while let Some(event) = sync.next().await {
             match event {
                 SyncEvent::Progress { missing } => {
-                    tracing::debug!("{} sync_one: {}/{}", node_name, n, n + missing);
+                    tracing::trace!("{} sync_one: {}/{}", node_name, n, n + missing);
                     n += 1;
                 }
                 SyncEvent::Complete(Err(err)) => {
-                    tracing::debug!("{} {}", node_name, err);
+                    tracing::trace!("{} {}", node_name, err);
                     return Err(err);
                 }
                 SyncEvent::Complete(Ok(())) => {}
@@ -897,15 +898,15 @@ impl BanyanStore {
         let state = PublishedTree::new(root, header, tree.clone());
 
         // if we get here, we already know that the new tree is better than its predecessor
-        tracing::debug!("completed sync of {}", root);
+        tracing::trace!("completed sync of {}", root);
         // once sync is successful, permanently move the alias
-        tracing::debug!("updating alias {}", root);
+        tracing::trace!("updating alias {}", root);
         // assign the new root as validated
         ipfs.alias(&StreamAlias::from(stream_id), Some(&cid))?;
-        tracing::debug!("sync_one complete {} => {}", stream_id, tree.offset());
+        tracing::trace!("sync_one complete {} => {}", stream_id, tree.offset());
         let offset = tree.offset();
         stream.set_latest(state);
-        // update present. This can fail if stream_id is not a source_id.
+        // update present.
         self.update_present(stream_id, offset);
         // done
         Ok(SyncOutcome::Success)
