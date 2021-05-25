@@ -1,3 +1,4 @@
+use anyhow::Context;
 use node::{shutdown_ceremony, ApplicationState, BindTo, BindToOpts, Runtime};
 use std::{convert::TryInto, path::PathBuf};
 use structopt::StructOpt;
@@ -30,7 +31,10 @@ fn main() -> anyhow::Result<()> {
     } else {
         let bind_to: BindTo = bind_options.try_into()?;
         let working_dir = maybe_working_dir.unwrap_or_else(|| std::env::current_dir().unwrap().join("actyx-data"));
-        std::fs::create_dir_all(working_dir.clone())?;
+        std::fs::create_dir_all(working_dir.clone())
+            .with_context(|| format!("creating working directory `{}`", working_dir.display()))?;
+        // printed by hand since things can fail before logging is set up and we want the user to know this
+        eprintln!("INFO using data directory `{}`", working_dir.display());
 
         let app_handle = ApplicationState::spawn(working_dir, Runtime::Linux, bind_to)?;
 

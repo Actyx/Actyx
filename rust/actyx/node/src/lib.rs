@@ -33,6 +33,7 @@ use crate::{
     util::init_panic_hook,
 };
 use ::util::SocketAddrHelper;
+use anyhow::Context;
 use crossbeam::channel::{bounded, Receiver, Sender};
 use std::{convert::TryInto, path::PathBuf, str::FromStr, thread};
 use structopt::StructOpt;
@@ -80,12 +81,12 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     ];
 
     // Host interface
-    let host = Host::new(working_dir.clone());
-    let node_id = host.get_or_create_node_id()?;
+    let host = Host::new(working_dir.clone()).context("creating host interface")?;
+    let node_id = host.get_or_create_node_id().context("getting node ID")?;
 
     // Component: Logging
     let logging = Logging::new(node_id, logs_rx, host.working_dir());
-    join_handles.push(logging.spawn()?);
+    join_handles.push(logging.spawn().context("spawning logger")?);
     tracing::debug!("NodeID: {}", node_id);
 
     // Runtime specifics
@@ -102,9 +103,9 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     let keystore = host.get_keystore();
 
     let db = host.get_db_handle();
-    let node_cycle_count = host.get_cycle_count()?;
+    let node_cycle_count = host.get_cycle_count().context("getting cycle count")?;
     // THE node :-)
-    let node = NodeWrapper::new((node_tx, node_rx), components.clone(), host)?;
+    let node = NodeWrapper::new((node_tx, node_rx), components.clone(), host).context("creating node core")?;
 
     // Component: NodeApi
     let node_api = {
@@ -114,7 +115,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
             // Should have been created by the call to
             // `CryptoCell::get_or_create_node_id` within this bootstrap routine
             // earlier
-            .expect("No keypair registered for node");
+            .context("No keypair registered for node")?;
         NodeApi::new(
             keypair.into(),
             node.tx.clone(),
@@ -124,7 +125,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
             store_tx,
         )
     };
-    join_handles.push(node_api.spawn()?);
+    join_handles.push(node_api.spawn().context("spawning node API")?);
 
     // Component: Store
     let store = Store::new(
@@ -135,8 +136,9 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
         node_id,
         db,
         node_cycle_count,
-    )?;
-    join_handles.push(store.spawn()?);
+    )
+    .context("creating event store")?;
+    join_handles.push(store.spawn().context("spawning event store")?);
 
     init_panic_hook(node.tx.clone());
 
@@ -273,7 +275,7 @@ impl PortOrHostPort {
 impl ApplicationState {
     /// Bootstraps the application, and returns a handle structure.
     pub fn spawn(base_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Result<Self> {
-        spawn(base_dir, runtime, bind_to)
+        spawn(base_dir, runtime, bind_to).context("spawning core infrastructure")
     }
 
     pub fn handle_settings_request(&self, message: SettingsRequest) {
