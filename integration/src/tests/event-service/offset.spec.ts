@@ -8,9 +8,10 @@ describe('event service', () => {
         const es = mkEventService(await mkTrialHttpClient(x))
         const { nodeId } = await es.nodeId()
         const { present } = await es.offsets()
-        const streamId = Object.keys(present).find((x) => x.startsWith(nodeId))
-        expect(streamId).toEqual(expect.any(String))
-        expect(present[streamId || '']).toEqual(expect.any(Number))
+        // stream 1 is for discovery events, which is the only stream guaranteed to have events from the start
+        // (there are at least two addresses bound: primary interface and localhost, so at least two events)
+        console.log(present, nodeId)
+        expect(present[`${nodeId}-1`]).toBeGreaterThan(0)
       }))
   })
 })

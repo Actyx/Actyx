@@ -12,6 +12,7 @@ import path from 'path'
 import { makeWindowsInstallScript, mkWindowsSsh } from './windows'
 import { mkExecute } from '.'
 import { mkNodeSshAndroid } from './android'
+import { mkLog } from './util'
 
 const createAwsInstance = async (
   ec2: EC2,
@@ -105,7 +106,7 @@ const installAndroidEmulator = (
 }
 
 const mkLocalTarget = (hostname: string, reuseWorkingDirIfExists: boolean): Target => {
-  console.log('node %s using the local system', hostname)
+  mkLog(hostname)('using the local system')
   const shutdown = () => Promise.resolve()
   const os = currentOS()
   const kind: TargetKind = { type: 'local', reuseWorkingDirIfExists }
@@ -252,10 +253,8 @@ export const mkActyxNodeWithLogging = async (
           logToStdout ? '' : ` redirected to "${logFilePath}"`
         }\n****\n\n`,
       )
-      console.log('node %s: Flushing logs', nodeName)
       logs.forEach((x) => logSink(logEntryToStr(x)))
       flush()
-      console.log('node %s: Flushed logs', nodeName)
       logs.length = 0
     }
 
