@@ -1,6 +1,6 @@
 use crate::{AxStreamBuilder, Cid, Link, Tree};
 use actyxos_sdk::{LamportTimestamp, NodeId, Offset, StreamId, StreamNr};
-use ax_futures_util::stream::variable::{Observer, Variable};
+use ax_futures_util::stream::variable::Variable;
 use fnv::FnvHashMap;
 use futures::{
     future,
@@ -81,17 +81,6 @@ impl OwnStream {
         self.latest
             .new_projection(|x| x.as_ref().map(|x| x.tree.clone()).unwrap_or_default())
             .boxed()
-    }
-
-    /// The current root of the own stream
-    ///
-    /// Note that if you want to do something more complex with a tree, like transform it,
-    /// using this will probably lead to a race condition.
-    ///
-    /// Use lock to get exclusive access to the tree in that case.
-    pub fn snapshot(&self) -> Tree {
-        self.latest
-            .project(|x| x.as_ref().map(|x| x.tree.clone()).unwrap_or_default())
     }
 
     pub fn root(&self) -> Option<Cid> {
@@ -205,9 +194,5 @@ impl ReplicatedStream {
 
     pub fn incoming_root_stream(&self) -> impl Stream<Item = Link> {
         self.incoming.new_observer().filter_map(future::ready)
-    }
-
-    pub fn latest_seen(&self) -> impl Stream<Item = (LamportTimestamp, Offset)> {
-        self.latest_seen.new_observer().filter_map(future::ready)
     }
 }

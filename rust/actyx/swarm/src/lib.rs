@@ -64,7 +64,7 @@ use maplit::btreemap;
 use parking_lot::Mutex;
 use sqlite_index_store::SqliteIndexStore;
 use std::{
-    collections::{BTreeMap, BTreeSet, VecDeque},
+    collections::{BTreeMap, VecDeque},
     convert::TryFrom,
     fmt::{Debug, Display},
     num::NonZeroU32,
@@ -278,10 +278,6 @@ impl<'a> BanyanStoreGuard<'a> {
         self.own_streams.keys().cloned().collect::<Vec<_>>()
     }
 
-    fn local_stream_ids(&self) -> BTreeSet<StreamId> {
-        self.own_streams.keys().map(|x| self.data.node_id.stream(*x)).collect()
-    }
-
     fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Result<Arc<OwnStream>> {
         if let Some(result) = self.own_streams.get(&stream_nr).cloned() {
             return Ok(result);
@@ -365,29 +361,6 @@ impl<'a> BanyanStoreGuard<'a> {
                 .get(&stream_id.node_id())
                 .map(|node| node.streams.contains_key(&stream_id.stream_nr()))
                 .unwrap_or_default()
-        }
-    }
-
-    /// stream of latest updates from either gossip (for replicated streams) or internal updates
-    ///
-    /// note that this does not include event updates
-    fn latest_stream(&mut self, stream_id: StreamId) -> impl Stream<Item = (LamportTimestamp, Offset)> {
-        if self.is_local(stream_id) {
-            let stream = self.get_or_create_own_stream(stream_id.stream_nr()).unwrap();
-            self.data
-                .lamport
-                .clone()
-                .filter_map(move |lamport| {
-                    future::ready(
-                        Offset::from_offset_or_min(stream.snapshot().offset()).map(|offset| (lamport, offset)),
-                    )
-                })
-                .left_stream()
-        } else {
-            self.get_or_create_replicated_stream(stream_id)
-                .unwrap()
-                .latest_seen()
-                .right_stream()
         }
     }
 
