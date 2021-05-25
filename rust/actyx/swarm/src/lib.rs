@@ -9,12 +9,13 @@
 //! ## BanyanStoreGuard
 //! temporary struct that is created when acquiring mutable access to the state.
 //! inside this you have mutable access to the state - but if you lock again you will deadlock.
-pub mod access;
 pub mod convert;
 mod discovery;
+pub mod event_store;
 mod gossip;
 pub mod metrics;
 mod prune;
+pub mod selection;
 mod sqlite;
 mod sqlite_index_store;
 mod streams;
@@ -23,16 +24,14 @@ mod unixfsv1;
 
 #[cfg(test)]
 mod tests;
-mod v1;
 
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
-pub use crate::v1::{EventStore, Present};
 
 use crate::gossip::Gossip;
 use crate::prune::RetainConfig;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
-use crate::streams::{OwnStream, ReplicatedStreamInner};
+use crate::streams::{OwnStream, ReplicatedStream};
 use actyxos_sdk::{
     LamportTimestamp, NodeId, Offset, OffsetMap, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp,
 };
@@ -41,13 +40,19 @@ use ax_futures_util::{
     prelude::*,
     stream::variable::{Observer, Variable},
 };
-use banyan::{index::Index, query::Query, store::BranchCache, Config, FilteredChunk, Secrets, StreamBuilder};
+use banyan::{
+    index::Index,
+    query::Query,
+    store::{BlockWriter, BranchCache, ReadOnlyStore},
+    Config, FilteredChunk, Secrets, StreamBuilder,
+};
 use crypto::KeyPair;
 use futures::{channel::mpsc, prelude::*};
 use ipfs_embed::{
     BitswapConfig, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId,
     StorageConfig, SyncEvent, ToLibp2p,
 };
+use libipld::{cbor::DagCborCodec, codec::Codec, error::BlockNotFound};
 use libp2p::{
     dns::ResolverConfig,
     gossipsub::{GossipsubConfigBuilder, ValidationMode},
@@ -59,9 +64,9 @@ use maplit::btreemap;
 use parking_lot::Mutex;
 use sqlite_index_store::SqliteIndexStore;
 use std::{
-    collections::{BTreeMap, BTreeSet, VecDeque},
+    collections::{BTreeMap, VecDeque},
     convert::TryFrom,
-    fmt::Debug,
+    fmt::{Debug, Display},
     num::NonZeroU32,
     ops::{Deref, DerefMut, RangeInclusive},
     path::PathBuf,
@@ -69,7 +74,10 @@ use std::{
     time::Duration,
 };
 use streams::*;
-use trees::axtrees::{AxKey, AxTrees, Sha256Digest};
+use trees::{
+    axtrees::{AxKey, AxTree, AxTrees, Sha256Digest},
+    AxTreeHeader,
+};
 use util::{
     formats::NodeErrorContext,
     reentrant_safe_mutex::{ReentrantSafeMutex, ReentrantSafeMutexGuard},
@@ -174,12 +182,22 @@ pub struct BanyanStore {
 }
 
 #[derive(Clone, Debug, Default)]
-struct SwarmOffsets {
-    /// Currently validated OffsetMap
+pub struct SwarmOffsets {
     present: OffsetMap,
+    replication_target: OffsetMap,
+}
+
+impl SwarmOffsets {
+    /// Currently validated OffsetMap
+    pub fn present(&self) -> OffsetMap {
+        self.present.clone()
+    }
+
     /// OffsetMap describing the replication target. Currently this is driven via `highest_seen`,
     /// but should eventually be fed by the partial replication mechanism.
-    replication_target: OffsetMap,
+    pub fn replication_target(&self) -> OffsetMap {
+        self.replication_target.clone()
+    }
 }
 
 /// All immutable or internally mutable parts of the banyan store
@@ -260,61 +278,67 @@ impl<'a> BanyanStoreGuard<'a> {
         self.own_streams.keys().cloned().collect::<Vec<_>>()
     }
 
-    fn local_stream_ids(&self) -> BTreeSet<StreamId> {
-        self.own_streams.keys().map(|x| self.data.node_id.stream(*x)).collect()
-    }
-
-    fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Arc<OwnStream> {
+    fn get_or_create_own_stream(&mut self, stream_nr: StreamNr) -> Result<Arc<OwnStream>> {
         if let Some(result) = self.own_streams.get(&stream_nr).cloned() {
-            return result;
+            return Ok(result);
         }
         tracing::debug!("creating new own stream {}", stream_nr);
         let stream_id = self.node_id().stream(stream_nr);
         self.index_store
             .add_stream(stream_id)
-            .expect("unable to write stream id");
-        let stream = if let Some(root) = self
+            .context("unable to write stream id")?;
+        let (builder, latest) = if let Some(root) = self
             .data
             .ipfs
             .resolve(&StreamAlias::from(stream_id))
-            .expect("no alias for stream id")
+            .context("no alias for stream id")?
         {
-            let root = Link::try_from(root).expect("wrong link format");
-            self.data
+            let root = Link::try_from(root).context("wrong link format")?;
+            let header = self.data.forest.store().get(&root).context("header not found")?;
+            let header: AxTreeHeader = DagCborCodec.decode(&header).context("invalid header")?;
+            let builder = self
+                .data
                 .forest
-                .load_stream_builder(Secrets::default(), Config::debug(), root)
-                .expect("unable to load banyan tree")
+                .load_stream_builder(Secrets::default(), Config::debug(), header.root)
+                .context("unable to load banyan tree")?;
+            let published = PublishedTree::new(root, header, builder.snapshot());
+            (builder, Some(published))
         } else {
-            StreamBuilder::new(Config::debug(), Secrets::default())
+            let builder = StreamBuilder::new(Config::debug(), Secrets::default());
+            (builder, None)
         };
-        let stream = Arc::new(OwnStream::new(stream_nr, stream));
+        let stream = Arc::new(OwnStream::new(stream_nr, builder, latest));
         self.own_streams.insert(stream_nr, stream.clone());
         tracing::debug!("publish new stream_id {}", stream_id);
         self.publish_new_stream_id(stream_id);
-        stream
+        Ok(stream)
     }
 
-    fn get_or_create_replicated_stream(&mut self, stream_id: StreamId) -> Arc<ReplicatedStreamInner> {
+    fn get_or_create_replicated_stream(&mut self, stream_id: StreamId) -> Result<Arc<ReplicatedStream>> {
         debug_assert!(self.node_id() != stream_id.node_id());
         self.index_store
             .add_stream(stream_id)
-            .expect("unable to write stream id");
+            .context("unable to write stream id")?;
         let node_id = stream_id.node_id();
         let stream_nr = stream_id.stream_nr();
         if let Some(stream) = self.get_or_create_remote_node(node_id).streams.get(&stream_nr).cloned() {
-            return stream;
+            return Ok(stream);
         }
-        let tree = if let Some(root) = self.data.ipfs.resolve(&StreamAlias::from(stream_id)).unwrap() {
-            let root = Link::try_from(root).expect("wrong link format");
-            self.data
+        let state = if let Some(root) = self.data.ipfs.resolve(&StreamAlias::from(stream_id)).unwrap() {
+            let root = Link::try_from(root).context("wrong link format")?;
+            let header = self.data.forest.store().get(&root).context("header not found")?;
+            let header: AxTreeHeader = DagCborCodec.decode(&header).context("invalid header")?;
+            let tree = self
+                .data
                 .forest
-                .load_tree(Secrets::default(), root)
-                .expect("unable to load banyan tree")
+                .load_tree(Secrets::default(), header.root)
+                .context("unable to load banyan tree")?;
+            Some(PublishedTree::new(root, header, tree))
         } else {
-            Tree::default()
+            None
         };
         tracing::debug!("creating new replicated stream {}", stream_id);
-        let stream = Arc::new(ReplicatedStreamInner::new(tree));
+        let stream = Arc::new(ReplicatedStream::new(state));
         self.get_or_create_remote_node(node_id)
             .streams
             .insert(stream_nr, stream.clone());
@@ -322,12 +346,15 @@ impl<'a> BanyanStoreGuard<'a> {
         self.spawn_task("careful_ingestion", store.careful_ingestion(stream_id, stream.clone()));
         tracing::debug!("publish new stream_id {}", stream_id);
         self.publish_new_stream_id(stream_id);
-        stream
+        Ok(stream)
+    }
+
+    fn is_local(&self, stream_id: StreamId) -> bool {
+        stream_id.node_id() == self.node_id()
     }
 
     fn has_stream(&self, stream_id: StreamId) -> bool {
-        let me = stream_id.node_id() == self.node_id();
-        if me {
+        if self.is_local(stream_id) {
             self.own_streams.contains_key(&stream_id.stream_nr())
         } else {
             self.remote_nodes
@@ -337,40 +364,32 @@ impl<'a> BanyanStoreGuard<'a> {
         }
     }
 
-    /// stream of latest updates from either gossip (for replicated streams) or internal updates
-    ///
-    /// note that this does not include event updates
-    fn latest_stream(&mut self, stream_id: StreamId) -> impl Stream<Item = (LamportTimestamp, Offset)> {
-        if stream_id.node_id() == self.node_id() {
-            let stream = self.get_or_create_own_stream(stream_id.stream_nr());
-            self.data
-                .lamport
-                .clone()
-                .filter_map(move |lamport| {
-                    future::ready(
-                        Offset::from_offset_or_min(stream.snapshot().offset()).map(|offset| (lamport, offset)),
-                    )
-                })
-                .left_stream()
+    /// Get the last PublishedTree for a stream_id, only if it already exists
+    fn published_tree(&self, stream_id: StreamId) -> Option<PublishedTree> {
+        let me = stream_id.node_id() == self.node_id();
+        if me {
+            let stream_nr = stream_id.stream_nr();
+            let stream = self.own_streams.get(&stream_nr)?;
+            stream.published_tree()
         } else {
-            self.get_or_create_replicated_stream(stream_id)
-                .latest_seen()
-                .new_observer()
-                .filter_map(future::ready)
-                .right_stream()
+            let node_id = stream_id.node_id();
+            let stream_nr = stream_id.stream_nr();
+            let remote = self.remote_nodes.get(&node_id)?;
+            let stream = remote.streams.get(&stream_nr)?;
+            stream.latest()
         }
     }
 
     /// Get a stream of trees for a given stream id
-    fn tree_stream(&mut self, stream_id: StreamId) -> (impl Stream<Item = Tree>, Forest) {
+    fn tree_stream(&mut self, stream_id: StreamId) -> impl Stream<Item = Tree> {
         let me = stream_id.node_id() == self.node_id();
         if me {
             let stream_nr = stream_id.stream_nr();
-            let stream = self.get_or_create_own_stream(stream_nr);
-            (stream.tree_stream(), self.data.forest.clone())
+            let stream = self.get_or_create_own_stream(stream_nr).unwrap();
+            stream.tree_stream()
         } else {
-            let stream = self.get_or_create_replicated_stream(stream_id);
-            (stream.tree_stream(), self.data.forest.clone())
+            let stream = self.get_or_create_replicated_stream(stream_id).unwrap();
+            stream.tree_stream()
         }
     }
 
@@ -395,7 +414,7 @@ impl<'a> BanyanStoreGuard<'a> {
     pub fn root_map(&self) -> BTreeMap<StreamId, Cid> {
         let own = self.own_streams.iter().filter_map(|(stream_nr, inner)| {
             let stream_id = self.node_id().stream(*stream_nr);
-            inner.snapshot().cid().map(|root| (stream_id, root))
+            inner.root().map(|root| (stream_id, root))
         });
 
         let other = self.remote_nodes.iter().flat_map(|(node_id, remote_node)| {
@@ -431,6 +450,34 @@ impl<'a> BanyanStoreGuard<'a> {
 
     fn received_lamport(&mut self, lamport: LamportTimestamp) -> anyhow::Result<()> {
         self.index_store.received_lamport(lamport)
+    }
+
+    /// Compute the swarm offsets from scratch based on the in memory headers and trees
+    fn compute_swarm_offsets(&self) -> SwarmOffsets {
+        let mut present = OffsetMap::empty();
+        for stream_id in self.current_stream_ids() {
+            if let Some(tree) = self.published_tree(stream_id) {
+                present.update(stream_id, tree.offset());
+            }
+        }
+        SwarmOffsets {
+            replication_target: present.clone(),
+            present,
+        }
+    }
+
+    fn load_known_streams(&mut self) -> Result<()> {
+        let known_streams = self.index_store.get_observed_streams()?;
+        for stream_id in known_streams {
+            // just trigger loading of the stream from the alias
+            if stream_id.node_id() == self.node_id() {
+                let _ = self.get_or_create_own_stream(stream_id.stream_nr());
+            } else {
+                let _ = self.get_or_create_replicated_stream(stream_id);
+            }
+        }
+        self.data.offsets.set(self.compute_swarm_offsets());
+        Ok(())
     }
 }
 
@@ -537,7 +584,9 @@ impl BanyanStore {
                 tasks: Default::default(),
             })),
         };
-        banyan.load_known_streams()?;
+        banyan.lock().load_known_streams()?;
+        // check that all known streams are indeed completely present
+        banyan.validate_known_streams().await?;
         banyan.spawn_task(
             "gossip_ingest",
             banyan.data.gossip.ingest(banyan.clone(), cfg.topic.clone())?,
@@ -637,22 +686,13 @@ impl BanyanStore {
         }
     }
 
-    fn load_known_streams(&self) -> Result<()> {
-        let known_streams = self.lock().index_store.get_observed_streams()?;
-        for stream_id in known_streams {
-            // just trigger loading of the stream from the alias
-            if stream_id.node_id() == self.node_id() {
-                let _ = self.get_or_create_own_stream(stream_id.stream_nr());
-            } else {
-                let _ = self.get_or_create_replicated_stream(stream_id);
-            }
-        }
-        Ok(())
-    }
-
     /// Returns the [`NodeId`].
     pub fn node_id(&self) -> NodeId {
         self.data.node_id
+    }
+
+    pub fn is_local(&self, stream_id: StreamId) -> bool {
+        self.lock().is_local(stream_id)
     }
 
     /// Returns the underlying [`Ipfs`].
@@ -668,7 +708,7 @@ impl BanyanStore {
     pub async fn append(&self, stream_nr: StreamNr, events: Vec<(TagSet, Event)>) -> Result<Option<Link>> {
         tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
         let timestamp = Timestamp::now();
-        let stream = self.get_or_create_own_stream(stream_nr);
+        let stream = self.get_or_create_own_stream(stream_nr)?;
         let mut guard = stream.lock().await;
         let mut store = self.lock();
         let lamports = store.reserve_lamports(events.len())?;
@@ -710,8 +750,8 @@ impl BanyanStore {
         query: Q,
     ) -> impl Stream<Item = Result<FilteredChunk<(u64, AxKey, Payload), ()>>> {
         tracing::debug!("stream_filtered_chunked {}", stream_id);
-        let (trees, forest) = self.tree_stream(stream_id);
-        forest.stream_trees_chunked(query, trees, range, &|_| {})
+        let trees = self.tree_stream(stream_id);
+        self.data.forest.stream_trees_chunked(query, trees, range, &|_| {})
     }
 
     pub fn stream_filtered_chunked_reverse<Q: Query<TT> + Clone + 'static>(
@@ -719,16 +759,18 @@ impl BanyanStore {
         stream_id: StreamId,
         range: RangeInclusive<u64>,
         query: Q,
-    ) -> impl Stream<Item = Result<FilteredChunk<(u64, AxKey, Event), ()>>> {
-        let (trees, forest) = self.tree_stream(stream_id);
-        forest.stream_trees_chunked_reverse(query, trees, range, &|_| {})
+    ) -> impl Stream<Item = Result<FilteredChunk<(u64, AxKey, Payload), ()>>> {
+        let trees = self.tree_stream(stream_id);
+        self.data
+            .forest
+            .stream_trees_chunked_reverse(query, trees, range, &|_| {})
     }
 
-    fn get_or_create_own_stream(&self, stream_nr: StreamNr) -> Arc<OwnStream> {
+    fn get_or_create_own_stream(&self, stream_nr: StreamNr) -> Result<Arc<OwnStream>> {
         self.lock().get_or_create_own_stream(stream_nr)
     }
 
-    fn get_or_create_replicated_stream(&self, stream_id: StreamId) -> Arc<ReplicatedStreamInner> {
+    fn get_or_create_replicated_stream(&self, stream_id: StreamId) -> Result<Arc<ReplicatedStream>> {
         self.lock().get_or_create_replicated_stream(stream_id)
     }
 
@@ -757,31 +799,36 @@ impl BanyanStore {
         }
         // make sure we did not lose events. If we did, return a failure
         anyhow::ensure!(curr.count() >= prev.count(), "tree rejected because it lost events!");
-        let cid = curr.link().map(Cid::from);
+
+        // grab the latest lamport
+        let lamport = self.data.lamport.get();
+        let header = AxTreeHeader::new(curr.link().unwrap(), lamport);
+        let root = txn.writer().put(DagCborCodec.encode(&header)?)?;
+        let cid = Cid::from(root);
         // update the permanent alias. If this fails, we will revert the builder.
-        self.ipfs().alias(StreamAlias::from(stream_id), cid.as_ref())?;
+        self.ipfs().alias(StreamAlias::from(stream_id), Some(&cid))?;
         // this concludes the things we want to fail the transaction
         guard.commit();
         // set the latest
-        stream.latest().set(curr.clone());
-        // update resent for the stream
+        stream
+            .latest()
+            .set(Some(PublishedTree::new(root, header, curr.clone())));
+        // update resent and highest_seen for the stream
+        self.update_highest_seen(stream_id, curr.offset());
         self.update_present(stream_id, curr.offset());
-        // publish only non-empty trees
-        if let Some(root) = curr.link() {
-            // publish the update
-            let blocks = txn.into_writer().into_written();
-            // grab the latest lamport, as late as possible
-            let lamport = self.data.lamport.get();
-            // publish new blocks and root
-            self.data.gossip.publish(stream_nr, root, blocks, lamport)?;
-        }
+        // publish the update - including the header
+        let blocks = txn.into_writer().into_written();
+        // publish new blocks and root
+        self.data.gossip.publish(stream_nr, root, blocks, lamport)?;
         res
     }
 
     fn update_root(&self, stream_id: StreamId, root: Link) {
         if stream_id.node_id() != self.node_id() {
             tracing::trace!("update_root {} {}", stream_id, root);
-            self.get_or_create_replicated_stream(stream_id).set_incoming(root);
+            self.get_or_create_replicated_stream(stream_id)
+                .unwrap()
+                .set_incoming(root);
         }
     }
 
@@ -790,7 +837,7 @@ impl BanyanStore {
             let stream_nrs = self.lock().local_stream_nrs();
             for stream_nr in stream_nrs {
                 tracing::debug!("compacting stream {}", stream_nr);
-                let stream = self.get_or_create_own_stream(stream_nr);
+                let stream = self.get_or_create_own_stream(stream_nr).unwrap();
                 let mut guard = stream.lock().await;
                 let result = self.transform_stream(&mut guard, |txn, tree| txn.pack(tree));
                 if let Err(err) = result {
@@ -803,13 +850,14 @@ impl BanyanStore {
     }
 
     /// careful ingestion - basically just call sync_one on each new ingested root
-    async fn careful_ingestion(self, stream_id: StreamId, state: Arc<ReplicatedStreamInner>) {
+    async fn careful_ingestion(self, stream_id: StreamId, state: Arc<ReplicatedStream>) {
         state
             .incoming_root_stream()
             .switch_map(move |root| self.clone().sync_one(stream_id, root).into_stream())
             .for_each(|res| {
-                if let Err(err) = res {
-                    tracing::error!("careful_ingestion: {}", err);
+                match res {
+                    Err(err) => tracing::error!("careful_ingestion: {}", err),
+                    Ok(outcome) => tracing::trace!("sync completed {:?}", outcome),
                 }
                 future::ready(())
             })
@@ -819,85 +867,184 @@ impl BanyanStore {
     /// attempt to sync one stream to a new root.
     ///
     /// this future may be interrupted at any time when an even newer root comes along.
-    async fn sync_one(self, stream_id: StreamId, root: Link) -> Result<()> {
+    async fn sync_one(self, stream_id: StreamId, root: Link) -> Result<SyncOutcome> {
         let node_name = self.ipfs().local_node_name();
         // tokio::time::delay_for(Duration::from_millis(10)).await;
-        tracing::debug!("starting to sync {} to {}", stream_id, root);
+        tracing::trace!("starting to sync {} to {}", stream_id, root);
         let cid = Cid::from(root);
         let ipfs = &self.data.ipfs;
-        let stream = self.get_or_create_replicated_stream(stream_id);
-        let prev = stream.validated();
+        let stream = self.get_or_create_replicated_stream(stream_id)?;
+        let (validated_header_lamport, validated_header_count) = stream.validated_tree_counters();
         // temporarily pin the new root
-        tracing::debug!("assigning temp pin to {}", root);
+        tracing::trace!("assigning temp pin to {}", root);
         let temp_pin = ipfs.create_temp_pin()?;
         ipfs.temp_pin(&temp_pin, &cid)?;
         let peers = ipfs.peers();
         // attempt to sync. This may take a while and is likely to be interrupted
-        tracing::debug!("starting to sync {} from {} peers", root, peers.len());
+        tracing::trace!("starting to sync {} from {} peers", root, peers.len());
         // create the sync stream, and log progress. Add an additional element.
         let mut sync = ipfs.sync(&cid, peers);
         // during the sync, try to load the tree asap and abort in case it is not good
-        let mut tree: Option<Tree> = None;
+        let mut header: Option<AxTreeHeader> = None;
+        let mut tree: Option<AxTree> = None;
         let mut n: usize = 0;
         while let Some(event) = sync.next().await {
             match event {
                 SyncEvent::Progress { missing } => {
-                    tracing::debug!("{} sync_one: {}/{}", node_name, n, n + missing);
+                    tracing::trace!("{} sync_one: {}/{}", node_name, n, n + missing);
                     n += 1;
                 }
                 SyncEvent::Complete(Err(err)) => {
-                    tracing::debug!("{} {}", node_name, err);
+                    tracing::trace!("{} {}", node_name, err);
                     return Err(err);
                 }
                 SyncEvent::Complete(Ok(())) => {}
             }
-            if tree.is_none() {
-                // load the tree as soon as possible. If this fails, bail out.
-                let temp = self.data.forest.load_tree(Secrets::default(), root)?;
-                // check that the tree is better than the one we have, otherwise bail out
-                anyhow::ensure!(temp.count() >= prev.count());
-                // get the offset
-                let offset = temp.offset();
-                // update present.
-                let _ = self.update_highest_seen(stream_id, offset);
-                tree = Some(temp);
+            if header.is_none() {
+                // try to load the header. It should be one of the first things being synced
+                if let Ok(blob) = self.data.forest.store().get(&root).surface::<BlockNotFound>()? {
+                    let temp: AxTreeHeader = DagCborCodec.decode(&blob)?;
+                    if temp.lamport <= validated_header_lamport {
+                        // this is not unexpected and should not be logged as an error
+                        return Ok(SyncOutcome::OldHeader);
+                    }
+                    header = Some(temp);
+                }
+            }
+            if let Some(header) = header.as_ref() {
+                // try to load the tree. It should come immediately after the header
+                if let Ok(temp) = self
+                    .data
+                    .forest
+                    .load_tree(Secrets::default(), header.root)
+                    .surface::<BlockNotFound>()?
+                {
+                    // sanity check: we must never lose events.
+                    anyhow::ensure!(temp.count() >= validated_header_count);
+                    self.update_highest_seen(stream_id, temp.offset());
+                    tree = Some(temp);
+                }
             }
         }
-        let tree = tree.ok_or_else(|| anyhow::anyhow!("unable to load tree"))?;
+        let header = header.ok_or_else(|| anyhow::anyhow!("header was not loaded during sync"))?;
+        let tree = tree.ok_or_else(|| anyhow::anyhow!("tree was not loaded during sync"))?;
+        let state = PublishedTree::new(root, header, tree.clone());
 
         // if we get here, we already know that the new tree is better than its predecessor
-        tracing::debug!("completed sync of {}", root);
+        tracing::trace!("completed sync of {}", root);
         // once sync is successful, permanently move the alias
-        tracing::debug!("updating alias {}", root);
+        tracing::trace!("updating alias {}", root);
         // assign the new root as validated
         ipfs.alias(&StreamAlias::from(stream_id), Some(&cid))?;
-        tracing::debug!("sync_one complete {} => {}", stream_id, tree.offset());
+        tracing::trace!("sync_one complete {} => {}", stream_id, tree.offset());
         let offset = tree.offset();
-        stream.set_latest(tree);
-        // update present. This can fail if stream_id is not a source_id.
-        let _ = self.update_present(stream_id, offset);
+        stream.set_latest(state);
+        // update present.
+        self.update_present(stream_id, offset);
         // done
+        Ok(SyncOutcome::Success)
+    }
+
+    /// Validate that all known streams are completely present
+    ///
+    /// We could have a lenient mode where this is just logged, or a recovery mode
+    /// where it tries to acquire the data on startup, but for now this will just
+    /// return an error if anything is missing.
+    #[allow(clippy::needless_collect)]
+    async fn validate_known_streams(&self) -> Result<()> {
+        let state = self.lock();
+        let headers = state
+            .current_stream_ids()
+            .filter_map(|stream_id| state.published_tree(stream_id).map(|p| (stream_id, p.root())))
+            .collect::<Vec<_>>();
+        drop(state);
+        let futures = headers
+            .into_iter()
+            .map(|(stream_id, root)| async move {
+                // sync with 0 peers to just check if we have the data
+                let result = self.data.ipfs.sync(&root.into(), vec![]).await;
+                (stream_id, result)
+            })
+            .collect::<Vec<_>>();
+        let results = futures::future::join_all(futures).await;
+        // log the results
+        let mut errors = Vec::new();
+        for (stream_id, result) in &results {
+            if let Err(cause) = result {
+                errors.push(*stream_id);
+                tracing::error!("incomplete alias for stream id {}: {}", stream_id, cause);
+            } else {
+                tracing::debug!("validated alias for stream_id {}", stream_id);
+            }
+        }
+        // fail the entire method in case there is just one failure
+        let _ = results
+            .into_iter()
+            .map(|(_, r)| r)
+            .collect::<anyhow::Result<Vec<_>>>()
+            .context(format!(
+                "Found {} streams with missing events, giving up.",
+                errors.len()
+            ))?;
         Ok(())
+    }
+
+    fn update_present(&self, stream_id: StreamId, offset: OffsetOrMin) {
+        if let Some(offset) = Offset::from_offset_or_min(offset) {
+            self.data.offsets.transform_mut(|offsets| {
+                offsets.present.update(stream_id, offset);
+                true
+            });
+        }
+    }
+
+    fn update_highest_seen(&self, stream_id: StreamId, offset: OffsetOrMin) {
+        if let Some(offset) = Offset::from_offset_or_min(offset) {
+            self.data.offsets.transform_mut(|offsets| {
+                if offsets.replication_target.offset(stream_id) < offset {
+                    offsets.replication_target.update(stream_id, offset);
+                    true
+                } else {
+                    false
+                }
+            });
+        }
     }
 
     fn has_stream(&self, stream_id: StreamId) -> bool {
         self.lock().has_stream(stream_id)
     }
 
-    /// stream of latest updates from either gossip (for replicated streams) or internal updates
-    ///
-    /// note that this does not include event updates
-    fn latest_stream(&self, stream_id: StreamId) -> impl Stream<Item = (LamportTimestamp, Offset)> {
-        self.lock().latest_stream(stream_id)
-    }
-
     /// Get a stream of trees for a given stream id
-    fn tree_stream(&self, stream_id: StreamId) -> (impl Stream<Item = Tree>, Forest) {
+    fn tree_stream(&self, stream_id: StreamId) -> impl Stream<Item = Tree> {
         self.lock().tree_stream(stream_id)
     }
 
     pub fn spawn_task(&self, name: &'static str, task: impl Future<Output = ()> + Send + 'static) {
         self.lock().spawn_task(name, task)
+    }
+}
+
+#[derive(Debug)]
+enum SyncOutcome {
+    OldHeader,
+    Success,
+}
+
+trait AnyhowResultExt<T>: Sized {
+    /// surface an error out of an anyhow::Error
+    fn surface<E: Display + Debug + Send + Sync + 'static>(self) -> anyhow::Result<std::result::Result<T, E>>;
+}
+
+impl<T> AnyhowResultExt<T> for anyhow::Result<T> {
+    fn surface<E: Display + Debug + Send + Sync + 'static>(self) -> anyhow::Result<std::result::Result<T, E>> {
+        match self {
+            Ok(result) => Ok(Ok(result)),
+            Err(cause) => match cause.downcast::<E>() {
+                Ok(cause) => Ok(Err(cause)),
+                Err(cause) => Err(cause),
+            },
+        }
     }
 }
 

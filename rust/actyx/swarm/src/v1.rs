@@ -37,7 +37,7 @@ impl BanyanStore {
     async fn persist0(self, events: Vec<(TagSet, Payload)>) -> Result<Vec<PersistenceMeta>> {
         let stream_nr = StreamNr::from(0); // TODO
         let timestamp = Timestamp::now();
-        let stream = self.get_or_create_own_stream(stream_nr);
+        let stream = self.get_or_create_own_stream(stream_nr)?;
         let n = events.len();
         let mut guard = stream.lock().await;
         let mut store = self.lock();
@@ -113,7 +113,7 @@ impl EventStoreConsumerAccess for BanyanStore {
         if must_exist && !self.has_stream(stream_id) {
             return future::err(ConsumerAccessError::UnknownStream(stream_id)).boxed();
         }
-        let (trees, forest) = self.tree_stream(stream_id);
+        let trees = self.tree_stream(stream_id);
         let range = get_range_inclusive(&events);
         let query = TagsQuery::new(events.tag_subscriptions);
         // Used to signal the mixed in `heartbeats_from_latest` stream down
@@ -121,7 +121,9 @@ impl EventStoreConsumerAccess for BanyanStore {
         let (mut tx, rx) = mpsc::channel(1);
 
         // stream the events in ascending order from the trees
-        let events_and_heartbeats_from_trees = forest
+        let events_and_heartbeats_from_trees = self
+            .data
+            .forest
             .stream_trees_chunked(query, trees, range, &last_lamport_from_index_ref)
             .take_while(|x| future::ready(x.is_ok()))
             .filter_map(|x| future::ready(x.ok()))
@@ -151,11 +153,12 @@ impl EventStoreConsumerAccess for BanyanStore {
 
     fn stream_backward(&self, events: StreamEventSelection) -> EventStreamOrError {
         let stream_id = events.stream_id;
-        let (trees, forest) = self.tree_stream(stream_id);
+        let trees = self.tree_stream(stream_id);
         let range = get_range_inclusive(&events);
         let query = TagsQuery::new(events.tag_subscriptions);
         future::ok(
-            forest
+            self.data
+                .forest
                 .stream_trees_chunked_reverse(query, trees, range, &|_| {})
                 .map_ok(move |chunk| stream::iter(events_from_chunk_rev(stream_id, chunk)))
                 .take_while(|x| future::ready(x.is_ok()))

@@ -106,7 +106,7 @@ pub async fn run(mut opts: SetOpt) -> Result<Output> {
         )
         .await
     {
-        Ok((_, AdminResponse::SettingsSetResponse(settings))) => Ok(Output { settings, scope }),
+        Ok((_, AdminResponse::SettingsSetResponse(settings))) => Ok(Output { scope, settings }),
         Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
         Err(err) => Err(err),
     }

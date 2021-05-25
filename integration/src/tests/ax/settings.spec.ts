@@ -166,7 +166,7 @@ describe('ax settings', () => {
       await testNode.ax.settings.set(scopeActyx, SettingsInput.FromFile(settingDefaultFilePath))
     })
 
-    test('return OK  with authorized key set if com.actyx has been unset', async () => {
+    test('return OK with authorized key set if com.actyx has been unset', async () => {
       await testNode.ax.settings.unset(scopeActyx)
 
       const responseGet = await testNode.ax.settings.get(scopeActyx)

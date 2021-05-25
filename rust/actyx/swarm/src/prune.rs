@@ -6,7 +6,7 @@ use std::{
     convert::TryInto,
     time::{Duration, SystemTime},
 };
-use trees::axtrees::{OffsetQuery, TimeQuery};
+use trees::query::{OffsetQuery, TimeQuery};
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
@@ -124,7 +124,7 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
             let store = store.clone();
             tracing::debug!("Checking ephemeral event conditions for {}", stream_nr);
             let fut = async move {
-                let stream = store.get_or_create_own_stream(*stream_nr);
+                let stream = store.get_or_create_own_stream(*stream_nr).unwrap();
                 let mut guard = stream.lock().await;
                 match cfg {
                     RetainConfig::Events(keep) => retain_last_events(&store, &mut guard, *keep),
@@ -154,17 +154,15 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
 
 #[cfg(test)]
 mod test {
-    use crate::{BanyanStore, EphemeralEventsConfig, RetainConfig, SwarmConfig};
+    use std::collections::BTreeMap;
+
     use actyxos_sdk::{tags, Payload, StreamNr};
-    use ax_futures_util::stream::AxStreamExt;
-    use futures::{future::ready, stream::StreamExt};
+    use ax_futures_util::prelude::AxStreamExt;
+    use futures::{future, StreamExt};
     use maplit::btreemap;
-    use std::{
-        collections::BTreeMap,
-        convert::TryInto,
-        time::{Duration, SystemTime},
-    };
-    use trees::axtrees::OffsetQuery;
+
+    use super::*;
+    use crate::SwarmConfig;
 
     async fn create_store() -> anyhow::Result<BanyanStore> {
         util::setup_logger();
@@ -218,7 +216,7 @@ mod test {
                 0..=u64::MAX,
                 OffsetQuery::from(0..),
             )
-            .take_until_condition(|x| ready(x.as_ref().unwrap().range.end >= event_count))
+            .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= event_count))
             .collect::<Vec<_>>()
             .await
             .into_iter()
@@ -254,7 +252,7 @@ mod test {
                 0..=u64::MAX,
                 OffsetQuery::from(0..),
             )
-            .take_until_condition(|x| ready(x.as_ref().unwrap().range.end >= upper_bound))
+            .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= upper_bound))
             .collect::<Vec<_>>()
             .await
             .into_iter()
@@ -311,7 +309,7 @@ mod test {
                 0..=u64::MAX,
                 OffsetQuery::from(0..),
             )
-            .take_until_condition(|x| ready(x.as_ref().unwrap().range.end >= event_count))
+            .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= event_count))
             .collect::<Vec<_>>()
             .await
             .into_iter()
@@ -334,7 +332,7 @@ mod test {
         });
 
         // Test this fn directly in order to avoid messing around with the `SystemTime`
-        let stream = store.get_or_create_own_stream(test_stream);
+        let stream = store.get_or_create_own_stream(test_stream)?;
         let mut guard = stream.lock().await;
         super::retain_events_after(&store, &mut guard, cut_off)?;
 
@@ -344,7 +342,7 @@ mod test {
                 0..=u64::MAX,
                 OffsetQuery::from(0..),
             )
-            .take_until_condition(|x| ready(x.as_ref().unwrap().range.end >= event_count))
+            .take_until_condition(|x| future::ready(x.as_ref().unwrap().range.end >= event_count))
             .collect::<Vec<_>>()
             .await
             .into_iter()

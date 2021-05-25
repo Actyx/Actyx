@@ -109,11 +109,11 @@ impl Node {
         let node_id = runtime_storage.get_or_create_node_id()?;
         let state = NodeState::new(node_id, sys_settings);
         Ok(Self {
-            settings_repo,
-            runtime_storage,
-            state,
-            components,
             rx,
+            state,
+            runtime_storage,
+            settings_repo,
+            components,
         })
     }
 }

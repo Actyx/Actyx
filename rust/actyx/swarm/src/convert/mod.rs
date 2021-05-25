@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fs, str::FromStr, sync::Arc};
 
-use actyxos_sdk::{legacy::SourceId, Payload, StreamId, Tag};
+use actyxos_sdk::{legacy::SourceId, tag, Payload, StreamId};
 use anyhow::Result;
 use banyan::store::{BlockWriter, ReadOnlyStore};
 use banyan::{store::BranchCache, Config, Forest, Transaction};
@@ -88,8 +88,8 @@ fn events_to_v2(envelopes: Vec<IpfsEnvelope>) -> Vec<(AxKey, Payload)> {
         .into_iter()
         .map(|event| {
             let mut tags = event.tags;
-            tags.insert(Tag::new(format!("semantics:{}", event.semantics.as_str())).unwrap());
-            tags.insert(Tag::new(format!("fish_name:{}", event.name.as_str())).unwrap());
+            tags.insert(tag!("semantics:") + event.semantics.as_str());
+            tags.insert(tag!("fish_name:") + event.name.as_str());
             let key: AxKey = AxKey::new(tags, event.lamport, event.timestamp);
             (key, event.payload)
         })
