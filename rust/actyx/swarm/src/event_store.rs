@@ -252,7 +252,10 @@ fn events_from_chunk(stream_id: StreamId, chunk: FilteredChunk<(u64, AxKey, Payl
 }
 
 /// Take a block of banyan events and convert them into events, reversing them.
-fn events_from_chunk_rev(stream_id: StreamId, chunk: FilteredChunk<(u64, AxKey, Payload), ()>) -> Vec<Reverse<Event<Payload>>> {
+fn events_from_chunk_rev(
+    stream_id: StreamId,
+    chunk: FilteredChunk<(u64, AxKey, Payload), ()>,
+) -> Vec<Reverse<Event<Payload>>> {
     chunk
         .data
         .into_iter()

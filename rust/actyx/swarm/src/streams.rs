@@ -12,7 +12,10 @@ use std::{
     ops::{Deref, DerefMut},
     sync::Arc,
 };
-use trees::{AxTreeHeader, axtrees::{AxTree, AxTrees}};
+use trees::{
+    axtrees::{AxTree, AxTrees},
+    AxTreeHeader,
+};
 
 const PREFIX: u8 = b'S';
 
