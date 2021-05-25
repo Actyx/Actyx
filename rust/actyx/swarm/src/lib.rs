@@ -950,6 +950,7 @@ impl BanyanStore {
     /// We could have a lenient mode where this is just logged, or a recovery mode
     /// where it tries to acquire the data on startup, but for now this will just
     /// return an error if anything is missing.
+    #[allow(clippy::needless_collect)]
     async fn validate_known_streams(&self) -> Result<()> {
         let state = self.lock();
         let headers = state
