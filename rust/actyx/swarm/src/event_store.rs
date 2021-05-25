@@ -625,7 +625,8 @@ mod tests {
         // Initially only own streams
         let nxt = offsets.next().unwrap().last().cloned().unwrap();
         assert!(nxt.present.streams().all(|x| x.node_id() == store_node_id));
-        assert_eq!(nxt.replication_target, Default::default());
+        // TODO: enforce present vs. replication target invariants https://github.com/Actyx/Cosmos/issues/6720
+        // assert_eq!(nxt.replication_target, Default::default());
 
         let mut gen = quickcheck::Gen::new(64);
         let streams: BTreeSet<StreamId> = Arbitrary::arbitrary(&mut gen);
