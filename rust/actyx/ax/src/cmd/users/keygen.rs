@@ -54,7 +54,7 @@ impl AxCliCommand for UsersKeygen {
             if store_to.exists() {
                 ax_bail!(
                     util::formats::ActyxOSCode::ERR_FILE_EXISTS,
-                    "File {} already exits in the specified path. Specify a different file name or path.",
+                    "File {} already exists in the specified path. Specify a different file name or path.",
                     store_to.display()
                 );
             }
