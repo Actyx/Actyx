@@ -364,6 +364,22 @@ impl<'a> BanyanStoreGuard<'a> {
         }
     }
 
+    /// Get the last PublishedTree for a stream_id, only if it already exists
+    fn published_tree(&self, stream_id: StreamId) -> Option<PublishedTree> {
+        let me = stream_id.node_id() == self.node_id();
+        if me {
+            let stream_nr = stream_id.stream_nr();
+            let stream = self.own_streams.get(&stream_nr)?;
+            stream.published_tree()
+        } else {
+            let node_id = stream_id.node_id();
+            let stream_nr = stream_id.stream_nr();
+            let remote = self.remote_nodes.get(&node_id)?;
+            let stream = remote.streams.get(&stream_nr)?;
+            stream.latest()
+        }
+    }
+
     /// Get a stream of trees for a given stream id
     fn tree_stream(&mut self, stream_id: StreamId) -> impl Stream<Item = Tree> {
         let me = stream_id.node_id() == self.node_id();
@@ -434,6 +450,34 @@ impl<'a> BanyanStoreGuard<'a> {
 
     fn received_lamport(&mut self, lamport: LamportTimestamp) -> anyhow::Result<()> {
         self.index_store.received_lamport(lamport)
+    }
+
+    /// Compute the swarm offsets from scratch based on the in memory headers and trees
+    fn compute_swarm_offsets(&self) -> SwarmOffsets {
+        let mut present = OffsetMap::empty();
+        for stream_id in self.current_stream_ids() {
+            if let Some(tree) = self.published_tree(stream_id) {
+                present.update(stream_id, tree.offset());
+            }
+        }
+        SwarmOffsets {
+            replication_target: present.clone(),
+            present,
+        }
+    }
+
+    fn load_known_streams(&mut self) -> Result<()> {
+        let known_streams = self.index_store.get_observed_streams()?;
+        for stream_id in known_streams {
+            // just trigger loading of the stream from the alias
+            if stream_id.node_id() == self.node_id() {
+                let _ = self.get_or_create_own_stream(stream_id.stream_nr());
+            } else {
+                let _ = self.get_or_create_replicated_stream(stream_id);
+            }
+        }
+        self.data.offsets.set(self.compute_swarm_offsets());
+        Ok(())
     }
 }
 
@@ -540,7 +584,9 @@ impl BanyanStore {
                 tasks: Default::default(),
             })),
         };
-        banyan.load_known_streams()?;
+        banyan.lock().load_known_streams()?;
+        // check that all known streams are indeed completely present
+        banyan.validate_known_streams().await?;
         banyan.spawn_task(
             "gossip_ingest",
             banyan.data.gossip.ingest(banyan.clone(), cfg.topic.clone())?,
@@ -638,19 +684,6 @@ impl BanyanStore {
             state: self.state.clone(),
             guard: self.state.lock(),
         }
-    }
-
-    fn load_known_streams(&self) -> Result<()> {
-        let known_streams = self.lock().index_store.get_observed_streams()?;
-        for stream_id in known_streams {
-            // just trigger loading of the stream from the alias
-            if self.is_local(stream_id) {
-                let _ = self.get_or_create_own_stream(stream_id.stream_nr());
-            } else {
-                let _ = self.get_or_create_replicated_stream(stream_id);
-            }
-        }
-        Ok(())
     }
 
     /// Returns the [`NodeId`].
@@ -910,6 +943,50 @@ impl BanyanStore {
         self.update_present(stream_id, offset);
         // done
         Ok(SyncOutcome::Success)
+    }
+
+    /// Validate that all known streams are completely present
+    ///
+    /// We could have a lenient mode where this is just logged, or a recovery mode
+    /// where it tries to acquire the data on startup, but for now this will just
+    /// return an error if anything is missing.
+    #[allow(clippy::needless_collect)]
+    async fn validate_known_streams(&self) -> Result<()> {
+        let state = self.lock();
+        let headers = state
+            .current_stream_ids()
+            .filter_map(|stream_id| state.published_tree(stream_id).map(|p| (stream_id, p.root())))
+            .collect::<Vec<_>>();
+        drop(state);
+        let futures = headers
+            .into_iter()
+            .map(|(stream_id, root)| async move {
+                // sync with 0 peers to just check if we have the data
+                let result = self.data.ipfs.sync(&root.into(), vec![]).await;
+                (stream_id, result)
+            })
+            .collect::<Vec<_>>();
+        let results = futures::future::join_all(futures).await;
+        // log the results
+        let mut errors = Vec::new();
+        for (stream_id, result) in &results {
+            if let Err(cause) = result {
+                errors.push(*stream_id);
+                tracing::error!("incomplete alias for stream id {}: {}", stream_id, cause);
+            } else {
+                tracing::debug!("validated alias for stream_id {}", stream_id);
+            }
+        }
+        // fail the entire method in case there is just one failure
+        let _ = results
+            .into_iter()
+            .map(|(_, r)| r)
+            .collect::<anyhow::Result<Vec<_>>>()
+            .context(format!(
+                "Found {} streams with missing events, giving up.",
+                errors.len()
+            ))?;
+        Ok(())
     }
 
     fn update_present(&self, stream_id: StreamId, offset: OffsetOrMin) {

@@ -83,6 +83,10 @@ impl OwnStream {
             .boxed()
     }
 
+    pub fn published_tree(&self) -> Option<PublishedTree> {
+        self.latest.get_cloned()
+    }
+
     pub fn root(&self) -> Option<Cid> {
         self.latest.project(|x| x.as_ref().map(|x| Cid::from(x.root)))
     }
@@ -136,7 +140,7 @@ pub struct ReplicatedStream {
 }
 
 /// Trees are published including a tree header.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PublishedTree {
     /// hash of the tree header
     root: Link,
@@ -149,6 +153,14 @@ pub struct PublishedTree {
 impl PublishedTree {
     pub fn new(root: Link, header: AxTreeHeader, tree: AxTree) -> Self {
         Self { root, header, tree }
+    }
+
+    pub fn offset(&self) -> Offset {
+        Offset::try_from(self.tree.count()).unwrap()
+    }
+
+    pub fn root(&self) -> Link {
+        self.root
     }
 }
 
@@ -164,6 +176,10 @@ impl ReplicatedStream {
     /// set the latest validated root
     pub fn set_latest(&self, value: PublishedTree) {
         self.validated.set(Some(value));
+    }
+
+    pub fn latest(&self) -> Option<PublishedTree> {
+        self.validated.get_cloned()
     }
 
     /// root of the tree. This is the hash of the header.
