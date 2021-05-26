@@ -156,9 +156,7 @@ module.exports = {
       type: 'category',
       label: 'Operations',
       collapsed: true,
-      items: [
-        'how-to/operations/device-management',
-      ],
+      items: ['how-to/operations/device-management'],
     },
     {
       type: 'category',
@@ -205,12 +203,12 @@ module.exports = {
         {
           type: 'category',
           label: 'Apps',
-          items:[
+          items: [
             'how-to/migration/migrate-business-logic',
             'how-to/migration/migrate-app-manifest',
             'how-to/migration/migrate-app-logs-and-settings',
-          ]
-        }
+          ],
+        },
       ],
     },
   ],
@@ -233,14 +231,10 @@ module.exports = {
     'reference/overview',
     'reference/actyx-reference',
     {
-
       type: 'category',
       label: 'Actyx API',
       collapsed: true,
-      items: [
-        'reference/events-api',
-        'reference/auth-api'
-      ],
+      items: ['reference/events-api', 'reference/auth-api'],
     },
     {
       type: 'category',
@@ -261,7 +255,6 @@ module.exports = {
         'reference/cli/settings/get',
         'reference/cli/settings/set',
         'reference/cli/settings/unset',
-        'reference/cli/logs/tail',
         'reference/cli/swarms/keygen',
         'reference/cli/users/keygen',
       ],

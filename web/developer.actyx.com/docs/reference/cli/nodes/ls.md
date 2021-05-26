@@ -18,57 +18,45 @@ ARGS:
                  to perform the operation on
 ```
 
-:::tip Output of `ax nodes ls`
-
-If the node is reachable, the output of `ax nodes ls` will show you its status. If the node is unreachable, the output contains information why the node could not be reached. The Actyx CLI distinguishes 2 cases:
-
-- Host unreachable
-- Actyx unreachable (this means the host was reachable but the TCP connection reset)
-  :::
-
+If the node is reachable, the output of `ax nodes ls` will show you its status. If the node is unreachable, it is displayed as such in the output.
 See the following examples of using the `ax nodes ls` command:
 
 ```text title="Example Usage"
-# Get the status of all specified nodes in the local network
-ax nodes ls --local 10.2.3.23 10.2.3.24
-+-------------------------------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
-| NODE ID                             | DISPLAY NAME | STATE   | SETTINGS | LICENSE | APPS DEPLOYED | APPS RUNNING | STARTED                   | VERSION |
-+-------------------------------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
-| 10.2.3.23                           | MY NODE      | running | valid    | valid   | 1             | 0            | 2020-08-31T09:00:00+00:00 | 1.0.0   |
-| Host was unreachable: 10.2.3.24     |              |         |          |         |               |              |                           |         |
-+-------------------------------------+--------------+---------+----------+---------+---------------+--------------+---------------------------+---------+
+# Get the status of a specified node in the local network
+[17:50][~:]$ ax nodes ls -l localhost
++---------------------------------------------+--------------+-------------------------+---------------------------+---------+
+| NODE ID                                     | DISPLAY NAME | HOST                    | STARTED                   | VERSION |
++---------------------------------------------+--------------+-------------------------+---------------------------+---------+
+| GMRqsWDid4CrnGDbEVBul4biaaLYgBfz3Ou/5INDVFI | Default Node | /ip4/127.0.0.1/tcp/4458 | 2021-05-25T15:49:54+00:00 | 2.0.0   |
++---------------------------------------------+--------------+-------------------------+---------------------------+---------+
 
 # Get the status of all specified nodes in the local network as a json object
-ax --json nodes ls --local 10.2.3.23 10.2.3.24 10.2.3.25
+[17:51][~:]$ ax --json nodes ls -l localhost 192.168.2.185 192.168.1.212 | jq
 {
-    "code":"OK",
-    "result": [
-        {
-            "connection":"reachable",
-            "nodeId":"10.2.3.23",
-            "displayName":"MY NODE",
-            "state":"running",
-            "settingsValid":true,
-            "licensed":true,
-            "appsDeployed":23,
-            "appsRunning":17,
-            "startedIso":"2020-05-19T07:52:26+00:00",
-            "startedUnix":1589874746,
-            "version":"1.0.0"
-        },
-        {
-            "connection":"actyxUnreachable",
-            "host":"10.2.3.24"
-        },
-        {
-            "connection":"hostUnreachable",
-            "host":"10.2.3.25"
-        }
-    ]
+  "code": "OK",
+  "result": [
+    {
+      "connection": "reachable",
+      "host": "/ip4/127.0.0.1/tcp/4458",
+      "nodeId": "GMRqsWDid4CrnGDbEVBul4biaaLYgBfz3Ou/5INDVFI",
+      "displayName": "Default Node",
+      "startedIso": "2021-05-25T15:49:54+00:00",
+      "startedUnix": 1621957794,
+      "version": {
+        "profile": "release",
+        "target": "macos-x86_64",
+        "version": "2.0.0_dev",
+        "gitHash": "b877bc357"
+      }
+    },
+    {
+      "connection": "unreachable",
+      "host": "[192.168.2.185:4458]"
+    },
+    {
+      "connection": "unreachable",
+      "host": "[192.168.1.212:4458]"
+    }
+  ]
 }
 ```
-
-:::info `ax nodes ls` only returns the state of the node
-
-Please keep in mind that **state**, **settings** and **license** in the `ax nodes ls` command **only** refer to the node itself. If you want more detailed information about the state of the apps on a node, you need to use [`ax apps ls`](#apps-ls).
-:::

@@ -14,10 +14,9 @@ For installation instructions, please refer to [this how-to guide](../../how-to/
 
 <h2>Subcommands</h2>
 
-| Command      | description                 |
-| ------------ | --------------------------- |
-| ax nodes     | Manage nodes                |
-| ax settings  | Manage node settings        |
-| ax logs      | Manage node logs            |
-| ax swarms    | Manage swarms               |
-| ax users     | Manage users                |
+| Command     | description          |
+| ----------- | -------------------- |
+| ax nodes    | Manage nodes         |
+| ax settings | Manage node settings |
+| ax swarms   | Manage swarms        |
+| ax users    | Manage users         |
