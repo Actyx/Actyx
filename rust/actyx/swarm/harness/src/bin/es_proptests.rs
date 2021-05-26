@@ -26,7 +26,9 @@ async fn await_stream_offsets(stores: &[HttpClient], target_offsets: &OffsetMap)
     for store in stores {
         loop {
             let o = store.offsets().await?.present;
-            if o >= target_offsets { break; }
+            if o >= *target_offsets {
+                break;
+            }
         }
     }
     Ok(())
@@ -68,46 +70,61 @@ fn test(tags_per_node: Vec<Vec<TagSet>>) -> anyhow::Result<TestResult> {
 
             let mut present = OffsetMap::empty();
             let mut expected = BTreeMap::default();
-            for (client, tags) in clients.iter().zip(tags_per_node) {
-                let events = to_events(tags);
-                let meta = client.publish(to_publish(events.clone())).await?;
-                let stream_0 = client.node_id().await?.node_id.stream(0.into());
-                if let Some(offset) = meta.data.last().map(|x| x.offset) {
+            let mut publish = clients
+                .iter()
+                .zip(tags_per_node)
+                .map(|(client, tags)| async move {
+                    let events = to_events(tags);
+                    let meta = client.publish(to_publish(events.clone())).await?;
+                    let stream_0 = client.node_id().await?.node_id.stream(0.into());
+                    Result::<_, anyhow::Error>::Ok((stream_0, meta.data.last().map(|x| x.offset), events))
+                })
+                .collect::<FuturesUnordered<_>>();
+            while let Some(x) = publish.next().await {
+                let (stream_0, last_offset, evs) = x?;
+
+                if let Some(offset) = last_offset {
                     present.update(stream_0, offset);
-                    expected.insert(stream_0, events);
+                    expected.insert(stream_0, evs);
                 }
             }
+
             tracing::debug!("offsets {:?}", present);
             await_stream_offsets(&clients[..], &present).await?;
-            for client in clients {
-                let request = QueryRequest {
-                    lower_bound: None,
-                    upper_bound: present.clone(),
-                    query: "FROM allEvents".parse()?,
-                    order: actyxos_sdk::service::Order::Asc,
-                };
+            let mut queries = clients
+                .iter()
+                .map(|client| {
+                    let request = QueryRequest {
+                        lower_bound: None,
+                        upper_bound: present.clone(),
+                        query: "FROM allEvents".parse().unwrap(),
+                        order: actyxos_sdk::service::Order::Asc,
+                    };
 
-                let cur_offsets = client.offsets().await?;
+                    async move {
+                        let round_tripped = client
+                            .query(request)
+                            .await?
+                            .map(|x| {
+                                let QueryResponse::Event(EventResponse {
+                                    tags, payload, stream, ..
+                                }) = x;
+                                (stream, (tags, payload))
+                            })
+                            .collect::<Vec<_>>()
+                            .await
+                            .into_iter()
+                            .fold(BTreeMap::default(), |mut acc, (stream, payload)| {
+                                acc.entry(stream).or_insert_with(Vec::new).push(payload);
+                                acc
+                            });
 
-                tracing::debug!("Query {:?} {:?}", request, cur_offsets);
-
-                let round_tripped = client
-                    .query(request)
-                    .await?
-                    .map(|x| {
-                        let QueryResponse::Event(EventResponse {
-                            tags, payload, stream, ..
-                        }) = x;
-                        (stream, (tags, payload))
-                    })
-                    .collect::<Vec<_>>()
-                    .await
-                    .into_iter()
-                    .fold(BTreeMap::default(), |mut acc, (stream, payload)| {
-                        acc.entry(stream).or_insert_with(Vec::new).push(payload);
-                        acc
-                    });
-
+                        Result::<_, anyhow::Error>::Ok(round_tripped)
+                    }
+                })
+                .collect::<FuturesUnordered<_>>();
+            while let Some(x) = queries.next().await {
+                let round_tripped = x?;
                 if expected != round_tripped {
                     return Ok(TestResult::error(format!("{:?} != {:?}", expected, round_tripped)));
                 }
