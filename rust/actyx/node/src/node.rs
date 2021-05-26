@@ -417,7 +417,7 @@ mod test {
     async fn should_handle_settings_requests() -> anyhow::Result<()> {
         let (_runtime_tx, runtime_rx) = crossbeam::channel::bounded(8);
         let temp_dir = TempDir::new().unwrap();
-        let runtime = Host::new(temp_dir.path().to_path_buf());
+        let runtime = Host::new(temp_dir.path().to_path_buf())?;
         let mut node = Node::new(runtime_rx, vec![], runtime).unwrap();
         let schema = serde_json::from_slice(include_bytes!(
             "../../../../protocols/json-schema/node-settings.schema.json"
@@ -593,7 +593,7 @@ mod test {
         // Bootstrap
         let (node_tx, node_rx) = crossbeam::channel::bounded(512);
         let (component_tx, component_rx) = crossbeam::channel::bounded(512);
-        let host = Host::new(std::env::current_dir()?);
+        let host = Host::new(std::env::current_dir()?)?;
         let node = NodeWrapper::new(
             (node_tx.clone(), node_rx),
             vec![ComponentChannel::Test(component_tx)],
@@ -626,7 +626,7 @@ mod test {
         // Bootstrap
         let (node_tx, node_rx) = crossbeam::channel::bounded(512);
         let (component_tx, component_rx) = crossbeam::channel::bounded(512);
-        let host = Host::new(std::env::current_dir()?);
+        let host = Host::new(std::env::current_dir()?)?;
         let node = NodeWrapper::new((node_tx, node_rx), vec![ComponentChannel::Test(component_tx)], host)?;
 
         // should register with Component
@@ -655,7 +655,7 @@ mod test {
         // Bootstrap
         let (node_tx, node_rx) = crossbeam::channel::bounded(512);
         let (component_tx, component_rx) = crossbeam::channel::bounded(512);
-        let host = Host::new(std::env::current_dir()?);
+        let host = Host::new(std::env::current_dir()?)?;
         let node = NodeWrapper::new((node_tx, node_rx), vec![ComponentChannel::Test(component_tx)], host)?;
 
         // should register with Component

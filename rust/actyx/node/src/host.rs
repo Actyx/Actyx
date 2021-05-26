@@ -1,5 +1,7 @@
 use crate::{node_storage::NodeStorage, util::make_keystore};
 use actyxos_sdk::NodeId;
+#[allow(unused_imports)]
+use anyhow::{Context, Result};
 use crypto::KeyStoreRef;
 use parking_lot::Mutex;
 use std::{
@@ -14,17 +16,17 @@ pub(crate) struct Host {
     storage: NodeStorage,
 }
 impl Host {
-    pub fn new(base_path: PathBuf) -> Self {
+    pub fn new(base_path: PathBuf) -> Result<Self> {
         #[cfg(test)]
         let storage = NodeStorage::in_memory();
         #[cfg(not(test))]
-        let storage = NodeStorage::new(base_path.join("node.sqlite")).expect("Error creating node.sqlite");
-        let keystore = make_keystore(storage.clone()).unwrap();
-        Self {
+        let storage = NodeStorage::new(base_path.join("node.sqlite")).context("Error opening node.sqlite")?;
+        let keystore = make_keystore(storage.clone())?;
+        Ok(Self {
             base_path,
             keystore,
             storage,
-        }
+        })
     }
 
     pub fn working_dir(&self) -> &Path {
