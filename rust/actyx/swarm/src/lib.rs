@@ -99,6 +99,7 @@ pub type Ipfs = ipfs_embed::Ipfs<libipld::DefaultParams>;
 // TODO fix stream nr
 static DISCOVERY_STREAM_NR: u64 = 1;
 static METRICS_STREAM_NR: u64 = 2;
+const MAX_TREE_LEVEL: i32 = 1000;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct EphemeralEventsConfig {
@@ -715,7 +716,14 @@ impl BanyanStore {
         let kvs = lamports
             .zip(events)
             .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
-        self.transform_stream(&mut guard, |txn, tree| txn.extend_unpacked(tree, kvs))?;
+        self.transform_stream(&mut guard, |txn, tree| {
+            if tree.level() > MAX_TREE_LEVEL {
+                txn.extend(tree, kvs)?;
+            } else {
+                txn.extend_unpacked(tree, kvs)?;
+            }
+            Ok(())
+        })?;
         Ok(guard.snapshot().link())
     }
 

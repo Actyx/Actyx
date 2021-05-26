@@ -10,7 +10,7 @@ use derive_more::{Display, Error};
 use futures::{future, stream, Stream, StreamExt, TryStreamExt};
 use trees::{axtrees::AxKey, query::TagsQuery, OffsetMapOrMax};
 
-use crate::{selection::StreamEventSelection, AxTreeExt, BanyanStore, SwarmOffsets};
+use crate::{selection::StreamEventSelection, AxTreeExt, BanyanStore, SwarmOffsets, MAX_TREE_LEVEL};
 
 #[derive(Clone, Debug, Display, Error)]
 pub enum Error {
@@ -127,9 +127,13 @@ impl EventStore {
             .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
         tracing::debug!("publishing {} events on stream {}", n, stream_nr);
         let min_offset = self.banyan_store.transform_stream(&mut guard, |txn, tree| {
-            let result = tree.snapshot().offset();
-            txn.extend_unpacked(tree, kvs)?;
-            Ok(result)
+            let snapshot = tree.snapshot();
+            if snapshot.level() > MAX_TREE_LEVEL {
+                txn.extend(tree, kvs)?;
+            } else {
+                txn.extend_unpacked(tree, kvs)?;
+            }
+            Ok(snapshot.offset())
         })?;
 
         // We start iteration with 0 below, so this is effectively the offset of the first event.
