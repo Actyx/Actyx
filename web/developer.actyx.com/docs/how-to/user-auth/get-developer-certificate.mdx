@@ -6,5 +6,12 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
+In order to be able to [sign an app manifest](../app-auth/sign-app-manifest.mdx), you need a developer certificate.
 
-TODO
+:::tip only for production usage
+You need a developer certificate for signing apps which we only advise to do for production usage. During development, you can just use the appId `com.example.*` in your manifest and do not need to sign your app. Check out [this guide for more information on signing apps](../app-auth/sign-app-manifest.mdx).
+:::
+
+If you want to receive a developer certificate, please just enter your e-mail address [here](https://oliver454918.typeform.com/to/gqSIzIwm) and we will send you one within 24 hours.
+
+The developer certificate is linked to the domain name of your e-mail address. You can therefore only use it for signing app manifests with an appId that match your reverse domain name. For example, if your e-mail address was `developer@actyx.com`, you could use the certificate for signing app manifests with `com.actyx.*` appIds.
