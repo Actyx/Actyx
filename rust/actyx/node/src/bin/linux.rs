@@ -1,5 +1,7 @@
 use anyhow::Context;
-use node::{shutdown_ceremony, ApplicationState, BindTo, BindToOpts, Runtime};
+#[cfg(not(windows))]
+use node::shutdown_ceremony;
+use node::{ApplicationState, BindTo, BindToOpts, Runtime};
 use std::{convert::TryInto, path::PathBuf};
 use structopt::StructOpt;
 use util::version::NodeVersion;
@@ -19,6 +21,7 @@ struct Opts {
     version: bool,
 }
 
+#[cfg(not(windows))]
 fn main() -> anyhow::Result<()> {
     let Opts {
         working_dir: maybe_working_dir,
@@ -42,4 +45,9 @@ fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(windows)]
+fn main() {
+    panic!("This program is not intended to run on Windows. Maybe you were looking for \"actyx\"?");
 }
