@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import { Client, DefaultClientOpts } from '@actyx/os-sdk'
 import execa from 'execa'
+import * as t from 'io-ts'
 import { Arch } from '../../jest/types'
 import { CLI } from '../cli'
 import { mkProcessLogger } from './mkProcessLogger'
@@ -8,7 +9,6 @@ import { actyxDockerImage, actyxLinuxBinary, currentAxBinary } from './settings'
 import { Ssh } from './ssh'
 import { ActyxNode, printTarget, SshAble, Target } from './types'
 import { mkLog } from './util'
-import * as t from 'io-ts'
 
 // determines frequency of retrying ssh operations like connect()
 const pollDelay = <T>(f: () => Promise<T>) => new Promise((res) => setTimeout(res, 2000)).then(f)
@@ -293,6 +293,7 @@ export const forwardPortsAndBuildClients = async (
       httpApiOrigin,
       apiPond,
       apiSwarmPort: 4001,
+      apiEventsPort: port4454,
     },
     ...theRest,
   }

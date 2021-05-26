@@ -6,7 +6,7 @@
  */
 import { EventFns, TestEventFns } from './event-fns'
 import { SnapshotStore } from './snapshotStore'
-import { ActyxOpts, ActyxTestOpts } from './types'
+import { ActyxOpts, ActyxTestOpts, AppManifest } from './types'
 import { EventFnsFromEventStoreV2, EventStoreV2, makeWsMultiplexerV2 } from './v2'
 
 /** Access all sorts of functionality related to the Actyx system! @public */
@@ -31,9 +31,9 @@ export type TestActyx = TestEventFns & {
 
 /** Function for creating `Actyx` instances. @public */
 export const Actyx = {
-  /** Create an `Actyx` instance that talk to a running `Actyx` system. @public */
-  of: async (_manifest: unknown, opts: ActyxOpts = {}): Promise<Actyx> => {
-    const [ws, nodeId] = await makeWsMultiplexerV2(opts)
+  /** Create an `Actyx` instance that talks to a running `Actyx` system. @public */
+  of: async (manifest: AppManifest, opts: ActyxOpts = {}): Promise<Actyx> => {
+    const [ws, nodeId] = await makeWsMultiplexerV2(manifest, opts)
     const eventStore = EventStoreV2.ws(ws, nodeId)
     // No snapshotstore impl available for V2 prod
     const fns = EventFnsFromEventStoreV2(eventStore, SnapshotStore.noop)
@@ -44,7 +44,11 @@ export const Actyx = {
     }
   },
 
-  /** Create an `Actyx` instance that mocks all functionality in TS. Useful for unit-tests. @public */
+  /**
+   * Create an `Actyx` instance that mocks all APIs within TypeScript. Useful for unit-tests.
+   * Will not talk to other nodes, but rather that can be simulated via `directlyPushEvents`.
+   * @public
+   */
   test: (opts: ActyxTestOpts = {}): TestActyx => {
     const store = EventStoreV2.test(opts.nodeId, opts.eventChunkSize)
     const snaps = SnapshotStore.inMem()

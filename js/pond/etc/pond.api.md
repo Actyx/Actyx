@@ -5,6 +5,7 @@
 ```ts
 
 import { ActyxOpts } from '@actyx/sdk';
+import { AppManifest } from '@actyx/sdk';
 import { CancelSubscription } from '@actyx/sdk';
 import * as immutable from 'immutable';
 import { Metadata } from '@actyx/sdk';
@@ -189,8 +190,8 @@ export type Pond = {
 
 // @public
 export const Pond: {
-    default: () => Promise<Pond>;
-    of: (connectionOpts: ActyxOpts, opts: PondOptions) => Promise<Pond>;
+    default: (manifest: AppManifest) => Promise<Pond>;
+    of: (manifest: AppManifest, connectionOpts: ActyxOpts, opts: PondOptions) => Promise<Pond>;
     test: (opts?: PondOptions | undefined) => TestPond;
 };
 

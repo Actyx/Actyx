@@ -1,7 +1,8 @@
+import { AppManifest } from '@actyx/sdk'
 import fetch, { RequestInit, Response } from 'node-fetch'
 import { API_V2_PATH, AUTH_SEG } from './const'
 import { decodeOrThrow } from './decode-or-throw'
-import { AppManifest, ErrorResponse } from './types'
+import { ErrorResponse } from './types'
 
 const mkHeaders = (token: string, xndjson?: boolean) => ({
   Accept: xndjson ? 'application/x-ndjson' : 'application/json',

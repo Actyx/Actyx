@@ -9,6 +9,7 @@ import {
   Actyx,
   ActyxEvent,
   ActyxOpts,
+  AppManifest,
   CancelSubscription,
   Metadata,
   Milliseconds,
@@ -649,8 +650,12 @@ type Services = Readonly<{
   snapshotStore: SnapshotStore
 }>
 
-const mkPond = async (connectionOpts: ActyxOpts, opts: PondOptions): Promise<Pond> => {
-  const actyx = await Actyx.of('manifest', connectionOpts)
+const mkPond = async (
+  manifest: AppManifest,
+  connectionOpts: ActyxOpts,
+  opts: PondOptions,
+): Promise<Pond> => {
+  const actyx = await Actyx.of(manifest, connectionOpts)
   return pondFromServices(
     {
       actyx,
@@ -688,7 +693,7 @@ const pondFromServices = (services: Services, opts: PondOptions): Pond => {
 /** Static methods for constructing Pond instances. @public */
 export const Pond = {
   /** Start Pond with default parameters. @public */
-  default: async (): Promise<Pond> => Pond.of({}, {}),
+  default: async (manifest: AppManifest): Promise<Pond> => Pond.of(manifest, {}, {}),
   /** Start Pond with custom parameters. @public */
   of: mkPond,
   /**

@@ -11,7 +11,11 @@ type Event = string
 type State = ReadonlyArray<Event>
 
 export const start = async () => {
-  const pond = await Pond.default().catch(ex => {
+  const pond = await Pond.default({
+    appId: 'com.example.dev-Pond',
+    displayName: 'Pond dev',
+    version: '1.0.0',
+  }).catch(ex => {
     console.log('cannot start Pond, is ActyxOS running in development mode on this computer?', ex)
     process.exit(1)
   })

@@ -2,6 +2,7 @@
   "author": "Actyx AG",
   "description": "Actyx integration test suite",
   "dependencies": {
+    "@actyx/sdk": "file:../js/sdk",
     "@actyx/os-sdk": "file:../js/os-sdk",
     "@actyx/pond": "file:../js/pond",
     "aws-sdk": "2.759.0",

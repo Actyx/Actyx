@@ -144,6 +144,7 @@ export const mkNodeSshAndroid = async (
       httpApiOrigin,
       apiPond: `ws://localhost:${port4454}/api/v2/events`,
       apiSwarmPort: remotePort4001,
+      apiEventsPort: port4454,
     },
   }
 }

@@ -3,6 +3,7 @@ import { MyGlobal } from '../../jest/setup'
 import { selectNodes } from './nodeselection'
 import { getTestName } from './settings'
 import { ActyxNode, NodeSelection } from './types'
+import { trialManifest } from '../http-client'
 
 // This is provided by jest/setup.ts and passed by jest to our worker (serialised)
 // therefore any contained functions will not work.
@@ -57,7 +58,7 @@ export const runConcurrentlyOnAll = <T>(
 }
 
 export const withPond = async <T>(node: ActyxNode, f: (pond: Pond) => Promise<T>): Promise<T> => {
-  const pond = await Pond.of({ url: node._private.apiPond }, {})
+  const pond = await Pond.of(trialManifest, { actyxHost: node._private.apiPond }, {})
   try {
     return await f(pond)
   } finally {

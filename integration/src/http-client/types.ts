@@ -1,12 +1,5 @@
 import * as t from 'io-ts'
 
-export type AppManifest = Readonly<{
-  appId: string
-  displayName: string
-  version: string
-  signature?: string
-}>
-
 export const NodeIdResponse = t.type({
   nodeId: t.string,
 })

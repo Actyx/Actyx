@@ -1,6 +1,6 @@
-import { CLI } from '../cli'
 import { ApiClient } from '@actyx/os-sdk'
 import { Arch, Host, OS } from '../../jest/types'
+import { CLI } from '../cli'
 
 export type Target = {
   os: OS
@@ -76,6 +76,7 @@ export type ActyxNode = Readonly<{
     httpApiOrigin: string
     apiPond: string
     apiSwarmPort: number
+    apiEventsPort: number
   }>
 }>
 

@@ -1,11 +1,11 @@
 import { Event, EventDraft } from '@actyx/os-sdk'
 import { Pond } from '@actyx/pond'
+import execa from 'execa'
 import * as PondV1 from 'pondV1'
 import { MultiplexedWebsocket } from 'pondV1/lib/eventstore/multiplexedWebsocket'
+import { MyGlobal } from '../../../jest/setup'
 import { assertOK } from '../../assertOK'
 import { allNodeNames, runOnAll, runOnEach } from '../../infrastructure/hosts'
-import { MyGlobal } from '../../../jest/setup'
-import execa from 'execa'
 
 describe('the Infrastructure', () => {
   test('must create global nodes pool', async () => {
@@ -111,7 +111,15 @@ describe('the Infrastructure', () => {
 
   test('must test Pond v2', async () => {
     const result = await runOnAll([{}], async ([node]) => {
-      const pond = await Pond.of({ url: node._private.apiPond }, {})
+      const pond = await Pond.of(
+        {
+          appId: 'com.example.infra-test',
+          displayName: 'Our Infra Test',
+          version: '1.0.0',
+        },
+        { actyxPort: node._private.apiEventsPort },
+        {},
+      )
       return pond.info().nodeId
     })
     expect(typeof result).toBe('string')

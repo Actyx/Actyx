@@ -1,6 +1,7 @@
+import { AppManifest } from '@actyx/sdk'
 import { mkAuthHttpClient } from './ax-http-client'
 import { mkEventService } from './event-service'
-import { AppManifest, AxEventService } from './types'
+import { AxEventService } from './types'
 
 export const trialManifest: AppManifest = {
   appId: 'com.example.my-app',

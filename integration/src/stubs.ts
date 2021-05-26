@@ -1,8 +1,8 @@
 import { Client } from '@actyx/os-sdk'
-import { CLI } from './cli'
-import { ActyxNode } from './infrastructure/types'
 import { Arch, Host, OS } from '../jest/types'
+import { CLI } from './cli'
 import { currentAxBinary } from './infrastructure/settings'
+import { ActyxNode } from './infrastructure/types'
 
 export const mkNodeStub = (
   os: OS,
@@ -32,6 +32,7 @@ export const mkNodeStub = (
         httpApiOrigin: '',
         apiPond: '',
         apiSwarmPort: 0,
+        apiEventsPort: 0,
       },
     }))
 

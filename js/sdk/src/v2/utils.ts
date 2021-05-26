@@ -11,33 +11,30 @@
  * Copyright (C) 2020 Actyx AG
  */
 import fetch from 'node-fetch'
-import { NodeId } from '../types'
+import { ActyxOpts, AppManifest, NodeId } from '../types'
 import { isNode } from '../util'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
-import { Event, Events, WsStoreConfig } from './types'
+import { Event, Events } from './types'
 import { getNodeId } from './websocketEventStore'
 
-const defaultConfig: WsStoreConfig = {
-  url: (isNode && process.env.AX_STORE_URI) || 'ws://localhost:4454/api/v2/events',
+const defaultApiLocation = (isNode && process.env.AX_STORE_URI) || 'localhost:4454/api/v2'
+
+const getApiLocation = (host?: string, port?: number) => {
+  if (host || port) {
+    return (host || 'localhost') + ':' + (port || 4454) + '/api/v2'
+  }
+
+  return defaultApiLocation
 }
 
-export const extendDefaultWsStoreConfig = (overrides: Partial<WsStoreConfig> = {}) => ({
-  ...defaultConfig,
-  ...overrides,
-})
-
-const getToken = async (authUrl: string): Promise<string> => {
+const getToken = async (authUrl: string, manifest: AppManifest): Promise<string> => {
   const res = await fetch(authUrl, {
     method: 'post',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      appId: 'com.example.dev-Pond',
-      displayName: 'Pond dev',
-      version: '1.0.0',
-    }),
+    body: JSON.stringify(manifest),
   })
 
   const jsonContent = await res.json()
@@ -45,16 +42,18 @@ const getToken = async (authUrl: string): Promise<string> => {
 }
 
 export const mkMultiplexer = async (
-  config: Partial<WsStoreConfig> = {},
+  manifest: AppManifest,
+  config: ActyxOpts,
 ): Promise<[MultiplexedWebsocket, NodeId]> => {
-  const c: WsStoreConfig = extendDefaultWsStoreConfig(config)
+  const apiLocation = getApiLocation(config.actyxHost, config.actyxPort)
 
   // FIXME obviously...
-  const authUrl = c.url.replace('ws://', 'http://').replace('/events', '/authenticate')
+  const authUrl = 'http://' + apiLocation + '/authenticate'
 
+  const wsUrl = 'ws://' + apiLocation + '/events'
   const cAdjusted = {
-    ...c,
-    url: c.url + '?' + (await getToken(authUrl)),
+    ...config,
+    url: wsUrl + '?' + (await getToken(authUrl, manifest)),
   }
 
   const ws = new MultiplexedWebsocket(cAdjusted)

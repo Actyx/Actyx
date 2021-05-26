@@ -95,6 +95,7 @@ export const mkNodeLocalProcess = (
       httpApiOrigin,
       apiPond: `ws://localhost:${port4454}/api/v2/events`,
       apiSwarmPort: port4001,
+      apiEventsPort: port4454,
     },
   }
 }
@@ -168,6 +169,7 @@ export const mkNodeLocalDocker = async (
         httpApiOrigin,
         apiPond: `ws://localhost:${port(4454)}/api/v2/events`,
         apiSwarmPort: 4001,
+        apiEventsPort: Number(port(4454)),
       },
     }
   } catch (err) {
