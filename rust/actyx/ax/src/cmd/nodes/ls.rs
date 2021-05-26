@@ -62,7 +62,7 @@ fn format_output(output: Vec<Output>) -> String {
                 ]);
             }
             Output::Unreachable { host } => {
-                table.add_row(row![format!("ActyxOS was unreachable on host: {}", host)]);
+                table.add_row(row![format!("Actyx was unreachable on host: {}", host)]);
             }
             Output::Unauthorized { host } => {
                 table.add_row(row![format!("Unauthorized: {}", host)]);
