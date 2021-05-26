@@ -7521,8 +7521,9 @@ dependencies = [
 
 [[package]]
 name = "wintrap"
-version = "0.3.0"
-source = "git+https://github.com/wngr/wintrap-rs#4b72e2b93aa41c061e3d5387f4765f2dc903e519"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a2eab0a7812c0e4567d865ee6d419f87b16ef70e1639a5ff90234ef7f717ae5"
 dependencies = [
  "crossbeam-channel 0.3.9",
  "lazy_static 1.4.0",
