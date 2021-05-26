@@ -24,9 +24,9 @@ fn main() -> anyhow::Result<()> {
 }
 async fn await_stream_offsets(stores: &[HttpClient], target_offsets: &OffsetMap) -> anyhow::Result<()> {
     for store in stores {
-        let mut o = store.offsets().await?.present;
-        while o.union(target_offsets) != o {
-            o = store.offsets().await?.present;
+        loop {
+            let o = store.offsets().await?.present;
+            if o >= target_offsets { break; }
         }
     }
     Ok(())
@@ -125,8 +125,7 @@ fn to_events(tags: Vec<TagSet>) -> Vec<(TagSet, Payload)> {
 fn to_publish(events: Vec<(TagSet, Payload)>) -> PublishRequest {
     PublishRequest {
         data: events
-            .iter()
-            .cloned()
+            .into_iter()
             .map(|(tags, payload)| PublishEvent { tags, payload })
             .collect(),
     }
