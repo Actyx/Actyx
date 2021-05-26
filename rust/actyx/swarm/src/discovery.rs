@@ -34,13 +34,14 @@
 use crate::BanyanStore;
 use actyxos_sdk::{tags, Payload, StreamNr};
 use anyhow::Result;
-use fnv::FnvHashSet;
+use fnv::{FnvHashMap, FnvHashSet};
 use futures::stream::StreamExt;
 use libipld::cbor::DagCborCodec;
 use libipld::codec::{Codec, Decode, Encode};
 use libipld::DagCbor;
 use std::future::Future;
 use std::io::{Read, Seek, Write};
+use std::time::Duration;
 use trees::query::TagsQuery;
 
 #[derive(DagCbor, Debug)]
@@ -181,6 +182,7 @@ pub async fn discovery_ingest(store: BanyanStore) {
 pub fn discovery_publish(
     store: BanyanStore,
     nr: StreamNr,
+    bootstrap: FnvHashMap<ipfs_embed::PeerId, Vec<ipfs_embed::Multiaddr>>,
     external: FnvHashSet<ipfs_embed::Multiaddr>,
     enable_discovery: bool,
 ) -> Result<impl Future<Output = ()>> {
@@ -209,8 +211,26 @@ pub fn discovery_publish(
                         Event::ExpiredObservedAddr(peer_id, addr.into())
                     }
                 }
-                ipfs_embed::Event::Discovered(peer) => {
+                ipfs_embed::Event::Discovered(peer) | ipfs_embed::Event::Disconnected(peer) => {
+                    // dialing on disconnected ensures the unreachable event fires.
                     store.ipfs().dial(&peer);
+                    continue;
+                }
+                ipfs_embed::Event::Unreachable(peer) => {
+                    // when an address is unreachable it is removed. once all addresses have
+                    // been found to be unreachable an unreachable event is emitted. we add
+                    // back the bootstrap addresses which cause a discovered event and redialing
+                    // of the bootstrap nodes.
+                    if let Some(addrs) = bootstrap.get(&peer) {
+                        let ipfs = store.ipfs().clone();
+                        let addrs = addrs.clone();
+                        tokio::spawn(async move {
+                            tokio::time::sleep(Duration::from_secs(1)).await;
+                            for addr in addrs {
+                                ipfs.add_address(&peer, addr.clone());
+                            }
+                        });
+                    }
                     continue;
                 }
                 _ => continue,

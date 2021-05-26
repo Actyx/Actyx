@@ -47,6 +47,7 @@ use banyan::{
     Config, FilteredChunk, Secrets, StreamBuilder,
 };
 use crypto::KeyPair;
+use fnv::FnvHashMap;
 use futures::{channel::mpsc, prelude::*};
 use ipfs_embed::{
     BitswapConfig, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId,
@@ -602,14 +603,26 @@ impl BanyanStore {
             );
         }
         banyan.spawn_task("compaction", banyan.clone().compaction_loop(Duration::from_secs(60)));
+
         if cfg.enable_discovery {
             banyan.spawn_task("discovery_ingest", crate::discovery::discovery_ingest(banyan.clone()));
+        }
+        let mut bootstrap: FnvHashMap<PeerId, Vec<Multiaddr>> = FnvHashMap::default();
+        for mut addr in cfg.bootstrap_addresses {
+            if let Some(Protocol::P2p(peer_id)) = addr.pop() {
+                let peer_id =
+                    PeerId::from_multihash(peer_id).map_err(|_| anyhow::anyhow!("invalid bootstrap peer id"))?;
+                bootstrap.entry(peer_id).or_default().push(addr);
+            } else {
+                return Err(anyhow::anyhow!("invalid bootstrap address"));
+            }
         }
         banyan.spawn_task(
             "discovery_publish",
             crate::discovery::discovery_publish(
                 banyan.clone(),
                 DISCOVERY_STREAM_NR.into(),
+                bootstrap.clone(),
                 cfg.external_addresses.iter().cloned().collect(),
                 cfg.enable_discovery,
             )?,
@@ -656,18 +669,9 @@ impl BanyanStore {
         for addr in cfg.external_addresses {
             ipfs.add_external_address(addr);
         }
-        for mut addr in cfg.bootstrap_addresses {
-            let addr_orig = addr.clone();
-            if let Some(Protocol::P2p(peer_id)) = addr.pop() {
-                let peer_id =
-                    PeerId::from_multihash(peer_id).map_err(|_| anyhow::anyhow!("invalid bootstrap peer id"))?;
-                if peer_id == ipfs.local_peer_id() {
-                    tracing::warn!("Not dialing configured bootstrap node {} as it's myself", addr_orig);
-                } else {
-                    ipfs.dial_address(&peer_id, addr);
-                }
-            } else {
-                return Err(anyhow::anyhow!("invalid bootstrap address"));
+        for (peer, addrs) in bootstrap {
+            for addr in addrs {
+                ipfs.add_address(&peer, addr);
             }
         }
 

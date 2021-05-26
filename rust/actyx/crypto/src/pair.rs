@@ -46,6 +46,12 @@ impl From<KeyPair> for NodeId {
     }
 }
 
+impl From<KeyPair> for libp2p::PeerId {
+    fn from(kp: KeyPair) -> Self {
+        libp2p::core::identity::Keypair::from(kp).public().into_peer_id()
+    }
+}
+
 impl KeyPair {
     pub fn generate() -> Self {
         PrivateKey::generate().into()

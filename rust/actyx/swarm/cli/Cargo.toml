@@ -7,6 +7,8 @@ edition = "2018"
 [dependencies]
 actyxos_sdk = { path = "../../../sdk" }
 anyhow = "1.0.40"
+async-process = "1.1.0"
+crypto = { path = "../../crypto" }
 futures = { version = "0.3.14", package = "futures" }
 ipfs-embed = { version = "0.20.0", default-features = false, features = ["tokio"] }
 libp2p = { version = "0.37.1", default-features = false }
