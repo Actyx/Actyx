@@ -34,13 +34,53 @@ export const chatRoomFish = {
 }
 ```
 
-When the Pond sees this fish waking up with the new version, all old snapshots are invalidated and the newly written ones will have the new version number.
+When the Pond sees this fish waking up with the new version, all old snapshots are invalidated, and the newly written ones will have the new version number.
 
-By default, Actyx Pond will take snapshots about every 1000 events consumed by the fish.
 
-In addition to the latest one, the Pond will retain a snapshot each from last week, last month, and last year.
-This helps with the occasional very long time travel: it may happen that a node that still has event stored for this fish lies disconnected in a drawer for a month, and when it comes back online it will synchronize these events, leading the fish to time travel to a state before those events.
-The state from a month ago will probably no longer be cached in memory, so a full replay is started, taking advantage of any snapshot that is older than the event that caused the time travel.
+## Snapshot Thresholds
+
+By default, Actyx Pond will take snapshots about every 1024 events consumed by the fish.
+This can be changed by setting `defaultSnapshotThreshold` on the `PondOptions` or providing an individual `snapshotThreshold` with a specific Fish.
+
+While this default works just fine in most scenarios, some cases benefit from custom snapshot thresholds:
+
+* Using many fish, each subscribed to a stream with many events, in a single application. We have seen this impacting application startup time noticeably. This scenario benefits from a smaller threshold, as fewer events need to be considered for computation on average in that case.
+* The fish's subscription yields a low amount of events over longer periods of time. Lowering the threshold avoids having to look far into the past.
+* Your application uses fish with large numbers of events as well as fish with few events. In this case, it can make sense to use a higher threshold for the first and a lower one for the second type of fish.
+
+When adjusting the snapshot thresholds, keep in mind that lowering the threshold makes the Pond take snapshots more often.
+Thus, the number of events being considered when computing the state is lower, which makes - especially initial - state computation faster.
+As the latest snapshots are kept in RAM, you're essentially trading state computation time for memory.
+
+Also note, that this will be no longer an issue in Actyx v2, as retrieving events from streams will be _significantly_ faster.
+
+:::info
+We recommend sticking to the defaults and only start tweaking the default value in case you're experiencing performance issues in scenarios similar to the ones described above.
+To come up with a reasonable threshold consider the number of events in the subscription and experiment with representative data.
+:::
+
+Using `Pond.default().then(pond => {...})` constructs a `Pond` with the default threshold of `1024`. To create a default `Pond` with only the threshold configuration overwritten, use the `defaultSnapshotThreshold` option as shown below.
+
+```ts
+Pond.of(
+    {},                                // use default connection options
+    {defaultSnapshotThreshold: 500}    // set pond default threshold
+  )
+  .then(pond => {...})
+```
+
+
+To override the default threshold of the `Pond` for individual fish, use the fish's `snapshotThreshold` property:
+
+```ts
+export const MyFish: Fish<State, Event> = {
+        fishId: FishId.of(...),
+        initialState: undefined,
+        where: ...,
+        onEvent: (state, event) => { ... },
+        snapshotThreshold: 900 // set fish threshold
+    }
+```
 
 ## Semantic snapshots
 

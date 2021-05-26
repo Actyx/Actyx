@@ -68,6 +68,7 @@ module.exports = {
             'how-to/actyx-pond/fish-parameters/fish-id',
             'how-to/actyx-pond/fish-parameters/deserialize-state',
             'how-to/actyx-pond/fish-parameters/is-reset',
+            'how-to/actyx-pond/fish-parameters/snapshot-threshold',
           ],
         },
         {
