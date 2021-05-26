@@ -87,10 +87,10 @@ use util::{
 type TT = AxTrees;
 type Key = AxKey;
 type Event = Payload;
-type Forest = banyan::Forest<TT, Event, SqliteStore>;
-type Transaction = banyan::Transaction<TT, Event, SqliteStore, SqliteStoreWrite>;
-type Tree = banyan::Tree<TT>;
-type AxStreamBuilder = banyan::StreamBuilder<TT>;
+type Forest = banyan::Forest<TT, SqliteStore>;
+type Transaction = banyan::Transaction<TT, SqliteStore, SqliteStoreWrite>;
+type Tree = banyan::Tree<TT, Event>;
+type AxStreamBuilder = banyan::StreamBuilder<TT, Event>;
 type Link = Sha256Digest;
 
 pub type Block = libipld::Block<libipld::DefaultParams>;
@@ -748,7 +748,7 @@ impl BanyanStore {
         stream_id: StreamId,
         range: RangeInclusive<u64>,
         query: Q,
-    ) -> impl Stream<Item = Result<FilteredChunk<TT, Event, ()>>> {
+    ) -> impl Stream<Item = Result<FilteredChunk<(u64, AxKey, Payload), ()>>> {
         tracing::debug!("stream_filtered_chunked {}", stream_id);
         let trees = self.tree_stream(stream_id);
         self.data.forest.stream_trees_chunked(query, trees, range, &|_| {})
@@ -759,7 +759,7 @@ impl BanyanStore {
         stream_id: StreamId,
         range: RangeInclusive<u64>,
         query: Q,
-    ) -> impl Stream<Item = Result<FilteredChunk<TT, Event, ()>>> {
+    ) -> impl Stream<Item = Result<FilteredChunk<(u64, AxKey, Payload), ()>>> {
         let trees = self.tree_stream(stream_id);
         self.data
             .forest

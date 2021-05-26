@@ -596,9 +596,9 @@ dependencies = [
 
 [[package]]
 name = "banyan"
-version = "0.13.0-rc.1"
+version = "0.13.0-rc.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "84c3e7d1c0baebca15a140523464075a367f493259a7004a2fb187e0db45e688"
+checksum = "8b309a424298d76eacaf14091f6aa6115ad96d3c8096f3d95aa31f83f57e375e"
 dependencies = [
  "anyhow",
  "chacha20 0.7.1",
@@ -616,9 +616,9 @@ dependencies = [
 
 [[package]]
 name = "banyan-utils"
-version = "0.6.0-rc.1"
+version = "0.6.0-rc.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48df9a8e1b8b8e737cc351a7db5deeaf06f1af88bf4b0b6a7f7e02b7dc1f0173"
+checksum = "a432aa6e40bf86b8ac68ed2b0dae2e9d2e10e17fafb5a7f737cb40ef09e6ad42"
 dependencies = [
  "anyhow",
  "banyan",

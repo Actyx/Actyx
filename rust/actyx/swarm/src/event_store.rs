@@ -10,7 +10,7 @@ use derive_more::{Display, Error};
 use futures::{future, stream, Stream, StreamExt, TryStreamExt};
 use trees::{axtrees::AxKey, query::TagsQuery, OffsetMapOrMax};
 
-use crate::{selection::StreamEventSelection, AxTreeExt, BanyanStore, SwarmOffsets, TT};
+use crate::{selection::StreamEventSelection, AxTreeExt, BanyanStore, SwarmOffsets};
 
 #[derive(Clone, Debug, Display, Error)]
 pub enum Error {
@@ -243,7 +243,7 @@ fn to_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<P
 }
 
 /// Take a block of banyan events and convert them into events.
-fn events_from_chunk(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, ()>) -> Vec<Event<Payload>> {
+fn events_from_chunk(stream_id: StreamId, chunk: FilteredChunk<(u64, AxKey, Payload), ()>) -> Vec<Event<Payload>> {
     chunk
         .data
         .into_iter()
@@ -252,7 +252,10 @@ fn events_from_chunk(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, ()>)
 }
 
 /// Take a block of banyan events and convert them into events, reversing them.
-fn events_from_chunk_rev(stream_id: StreamId, chunk: FilteredChunk<TT, Payload, ()>) -> Vec<Reverse<Event<Payload>>> {
+fn events_from_chunk_rev(
+    stream_id: StreamId,
+    chunk: FilteredChunk<(u64, AxKey, Payload), ()>,
+) -> Vec<Reverse<Event<Payload>>> {
     chunk
         .data
         .into_iter()

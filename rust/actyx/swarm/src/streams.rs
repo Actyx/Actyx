@@ -1,6 +1,7 @@
 use crate::{AxStreamBuilder, Cid, Link, Tree};
-use actyxos_sdk::{LamportTimestamp, NodeId, Offset, StreamId, StreamNr};
+use actyxos_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr};
 use ax_futures_util::stream::variable::Variable;
+use banyan::StreamTransaction;
 use fnv::FnvHashMap;
 use futures::{
     future,
@@ -11,7 +12,10 @@ use std::{
     ops::{Deref, DerefMut},
     sync::Arc,
 };
-use trees::{axtrees::AxTree, AxTreeHeader};
+use trees::{
+    axtrees::{AxTree, AxTrees},
+    AxTreeHeader,
+};
 
 const PREFIX: u8 = b'S';
 
@@ -103,6 +107,11 @@ impl<'a> OwnStreamGuard<'a> {
     pub fn latest(&self) -> &Variable<Option<PublishedTree>> {
         &self.0.latest
     }
+
+    pub fn transaction(&mut self) -> StreamTransaction<'_, AxTrees, Payload> {
+        self.1.transaction()
+    }
+
     pub fn stream_nr(&self) -> StreamNr {
         self.0.stream_nr
     }
