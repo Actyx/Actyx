@@ -12,6 +12,8 @@ use structopt::StructOpt;
 use swarm_cli::{multiaddr, Command, Config, Event, Multiaddr, PeerId};
 use tempdir::TempDir;
 
+pub mod util;
+
 #[derive(StructOpt)]
 pub struct HarnessOpts {
     #[structopt(long, default_value = "2")]
@@ -80,7 +82,7 @@ where
     F: FnMut(Netsim<Command, Event>) -> F2,
     F2: Future<Output = Result<()>> + Send,
 {
-    util::setup_logger();
+    ::util::setup_logger();
     let opts = HarnessOpts::from_args();
     let temp_dir = TempDir::new("swarm-harness")?;
     netsim_embed::unshare_user()?;
@@ -127,7 +129,7 @@ where
     F: FnOnce(Vec<SocketAddrV4>) -> F2,
     F2: Future<Output = Result<TestResult>>,
 {
-    util::setup_logger();
+    ::util::setup_logger();
     let temp_dir = TempDir::new("swarm-harness")?;
     async_global_executor::block_on(async move {
         let api_addr = opts.enable_api.expect("API required");
