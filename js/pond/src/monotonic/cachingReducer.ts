@@ -3,7 +3,7 @@ import { last, partition } from 'fp-ts/lib/Array'
 import { none, Option, some } from 'fp-ts/lib/Option'
 import { gt } from 'fp-ts/lib/Ord'
 import log from '../loggers'
-import { SnapshotScheduler } from '../store/snapshotScheduler'
+import { SnapshotScheduler } from './snapshotScheduler'
 import { CachingReducer, PendingSnapshot, SerializedStateSnap, SimpleReducer } from './types'
 
 const eventKeyGreater = gt(EventKey.ord)

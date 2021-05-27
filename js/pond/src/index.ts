@@ -16,8 +16,7 @@ export {
   SyncProgress,
   WaitForSwarmConfig,
 } from './splashState'
-export { Config as StoreConfig } from './store/config'
-export { Counters, CountersMut, NodeInfoEntry, SwarmInfo, SwarmSummary } from './store/swarmState'
+export { Counters, CountersMut, NodeInfoEntry, SwarmInfo, SwarmSummary } from './swarmState'
 export {
   AddEmission,
   Caching,

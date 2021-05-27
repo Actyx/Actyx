@@ -26,9 +26,9 @@ import { Observable, ReplaySubject, Scheduler, Subject, Subscription } from 'rxj
 import { CommandPipeline, FishJar, StartedFishMap } from './fishJar'
 import log from './loggers'
 import { observeMonotonic } from './monotonic'
+import { SnapshotScheduler } from './monotonic/snapshotScheduler'
 import { mkPondStateTracker, PondState, PondStateTracker } from './pond-state'
 import { SplashState, streamSplashState, WaitForSwarmConfig } from './splashState'
-import { SnapshotScheduler } from './store/snapshotScheduler'
 import {
   AddEmission,
   Caching,

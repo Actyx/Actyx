@@ -22,7 +22,7 @@ import { last } from 'ramda'
 import { Observable, Scheduler } from 'rxjs'
 import { Fish, FishId } from '.'
 import { observeMonotonic } from './monotonic'
-import { minSnapshotAge, SnapshotScheduler } from './store/snapshotScheduler'
+import { minSnapshotAge, SnapshotScheduler } from './monotonic/snapshotScheduler'
 import { FishErrorContext, FishErrorReporter, FishName, Semantics, SnapshotFormat } from './types'
 
 export type NumberFishEvent = number | 'padding'
