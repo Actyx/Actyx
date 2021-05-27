@@ -1,4 +1,4 @@
-import { AppManifest } from '@actyx/sdk'
+import { AppManifest } from '@actyx/pond'
 import { mkAuthHttpClient } from './ax-http-client'
 import { mkEventService } from './event-service'
 import { AxEventService } from './types'
