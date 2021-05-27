@@ -278,9 +278,11 @@ mod tests {
         tag, tags, OffsetOrMin, StreamId,
     };
     use ax_futures_util::stream::Drainer;
+    use futures::future::try_join_all;
     use maplit::btreemap;
     use num_traits::Bounded;
     use quickcheck::Arbitrary;
+    use rand::{thread_rng, Rng};
     use trees::OffsetMapOrMax;
 
     use super::*;
@@ -596,6 +598,58 @@ mod tests {
             .unwrap();
 
         handle.await.unwrap();
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_pubsub() {
+        fn payload(i: i32) -> Payload {
+            Payload::from_json_value(serde_json::json!(i)).unwrap()
+        }
+
+        let n = 200;
+        let payloads: Vec<_> = (0..n).into_iter().map(payload).collect();
+        let store = mk_store("pubsub").await;
+        let stream_id = store.node_id().stream(0.into());
+        store.persist(vec![(tags!(), payload(0))]).await.unwrap(); // create stream
+        let mut handles = Vec::new();
+
+        for i in 1..n {
+            let store_sub = store.clone();
+            let expected = payloads.clone();
+            let handle_sub = tokio::spawn(async move {
+                let i1 = thread_rng().gen_range(0..n) as usize;
+                let i2 = thread_rng().gen_range(0..n) as usize;
+
+                let from = i1.min(i2);
+                let to = i1.max(i2);
+
+                let from_exclusive = OffsetOrMin::from(from as i64 - 1);
+                let to_inclusive = OffsetOrMin::from(to as i64);
+                let res = store_sub
+                    .forward_stream(StreamEventSelection {
+                        stream_id,
+                        from_exclusive,
+                        to_inclusive,
+                        tags_query: TagsQuery::all(),
+                    })
+                    .map(|e| e.payload)
+                    .collect::<Vec<_>>()
+                    .await;
+
+                assert_eq!(res, expected[from..=to]);
+                println!("i{}: {:?} ✔", i, from..=to);
+            });
+            handles.push(handle_sub);
+
+            let store_pub = store.clone();
+            let handle_pub = tokio::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(i as u64 * 100)).await;
+                let (_, offset, _, _) = store_pub.persist(vec![(tags!(), payload(i as i32))]).await.unwrap()[0];
+                assert_eq!(offset, Offset::from(i as u32))
+            });
+            handles.push(handle_pub);
+        }
+        try_join_all(handles).await.unwrap();
     }
 
     #[tokio::test]
