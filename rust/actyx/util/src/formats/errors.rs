@@ -1,7 +1,7 @@
 #![allow(clippy::upper_case_acronyms)]
 use crossbeam::channel::{RecvError, SendError};
 use serde::{Deserialize, Serialize};
-use settings::{repository, validation};
+use settings::{RepositoryError, ValidationError};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
 pub type ActyxOSResult<T> = Result<T, ActyxOSError>;
@@ -97,22 +97,22 @@ impl<T> From<SendError<T>> for ActyxOSError {
     }
 }
 
-impl From<repository::Error> for ActyxOSError {
-    fn from(err: repository::Error) -> ActyxOSError {
+impl From<RepositoryError> for ActyxOSError {
+    fn from(err: RepositoryError) -> ActyxOSError {
         let code = match err {
-            repository::Error::SchemaNotFound(_) => ActyxOSCode::ERR_SETTINGS_UNKNOWN_SCOPE,
-            repository::Error::NoValidSettings(_) => ActyxOSCode::ERR_SETTINGS_INVALID_AT_SCOPE,
-            repository::Error::NoSettingsAtScope(_) => ActyxOSCode::ERR_SETTINGS_NOT_FOUND_AT_SCOPE,
-            repository::Error::ValidationError(ref validation_err) => match validation_err {
-                validation::Error::InvalidSchema(_) => ActyxOSCode::ERR_SETTINGS_INVALID_SCHEMA,
-                validation::Error::ValidationFailed(_) => ActyxOSCode::ERR_SETTINGS_INVALID,
-                validation::Error::MissingDefault(_) => ActyxOSCode::ERR_SETTINGS_INVALID,
+            RepositoryError::SchemaNotFound(_) => ActyxOSCode::ERR_SETTINGS_UNKNOWN_SCOPE,
+            RepositoryError::NoValidSettings(_) => ActyxOSCode::ERR_SETTINGS_INVALID_AT_SCOPE,
+            RepositoryError::NoSettingsAtScope(_) => ActyxOSCode::ERR_SETTINGS_NOT_FOUND_AT_SCOPE,
+            RepositoryError::ValidationError(ref validation_err) => match validation_err {
+                ValidationError::InvalidSchema(_) => ActyxOSCode::ERR_SETTINGS_INVALID_SCHEMA,
+                ValidationError::ValidationFailed(_) => ActyxOSCode::ERR_SETTINGS_INVALID,
+                ValidationError::MissingDefault(_) => ActyxOSCode::ERR_SETTINGS_INVALID,
             },
-            repository::Error::ScopeNotFound(_) => ActyxOSCode::ERR_SETTINGS_INVALID_AT_SCOPE,
-            repository::Error::JsonError(_) => ActyxOSCode::ERR_SETTINGS_INVALID,
-            repository::Error::DatabaseError(_) => ActyxOSCode::ERR_IO,
-            repository::Error::UpdateError(_) => ActyxOSCode::ERR_IO,
-            repository::Error::RootScopeNotAllowed => ActyxOSCode::ERR_UNAUTHORIZED,
+            RepositoryError::ScopeNotFound(_) => ActyxOSCode::ERR_SETTINGS_INVALID_AT_SCOPE,
+            RepositoryError::JsonError(_) => ActyxOSCode::ERR_SETTINGS_INVALID,
+            RepositoryError::DatabaseError(_) => ActyxOSCode::ERR_IO,
+            RepositoryError::UpdateError(_) => ActyxOSCode::ERR_IO,
+            RepositoryError::RootScopeNotAllowed => ActyxOSCode::ERR_UNAUTHORIZED,
         };
         code.with_message(format!("{}", err))
     }

@@ -5712,6 +5712,7 @@ dependencies = [
  "anyhow",
  "log",
  "maplit",
+ "parity-multiaddr",
  "rand 0.8.3",
  "rusqlite",
  "serde 1.0.126",

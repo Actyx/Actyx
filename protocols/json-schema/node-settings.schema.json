@@ -35,7 +35,12 @@
         "minLength": 1
       },
       "MultiAddr": {
-        "type": "string"
+          "type": "string",
+          "format": "multiaddr-without-peer-id"
+      },
+      "MultiAddrWithPeerId": {
+        "type": "string",
+        "format": "multiaddr-with-peer-id"
       },
       "NodeLicenseKey": {
         "type": "string",
@@ -100,7 +105,7 @@
         "bootstrapNodes": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Basic/MultiAddr"
+            "$ref": "#/definitions/Basic/MultiAddrWithPeerId"
           },
           "default": [],
           "uniqueItems": true,

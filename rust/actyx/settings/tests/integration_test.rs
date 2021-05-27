@@ -1,8 +1,6 @@
 use serde_json::json;
 use settings::{
-    repository::{Error, Repository},
-    validation::{Error::ValidationFailed, ValidationError, ValidationState},
-    Database, Scope,
+    Database, Repository, RepositoryError as Error, Scope, ValidationError, ValidationErrorDescr, ValidationState,
 };
 use std::{fs, path::PathBuf, str::FromStr};
 use tempfile::{tempdir, TempDir};
@@ -77,14 +75,16 @@ fn testcase_3(dir: TempDir) -> TestResult {
     let invalid_config = json!({ "backgroundColor": 42 });
     assert_eq!(
         repo.update_settings(&scope, invalid_config, false),
-        Err(Error::ValidationError(ValidationFailed(ValidationState {
-            errors: vec![ValidationError {
-                path: "/backgroundColor".to_string(),
-                title: "Type of the value is wrong".to_string(),
-                detail: Some("The value must be string".to_string())
-            }],
-            missing: vec![]
-        })))
+        Err(Error::ValidationError(ValidationError::ValidationFailed(
+            ValidationState {
+                errors: vec![ValidationErrorDescr {
+                    path: "/backgroundColor".to_string(),
+                    title: "Type of the value is wrong".to_string(),
+                    detail: Some("The value must be string".to_string())
+                }],
+                missing: vec![]
+            }
+        )))
     );
 
     Ok(dir)

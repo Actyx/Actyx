@@ -1,0 +1,4 @@
+{
+    "type": "string",
+    "format": "multiaddr-with-peer-id"
+}

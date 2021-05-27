@@ -12,7 +12,7 @@ pub enum Error {
 }
 
 #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct ValidationError {
+pub struct ValidationErrorDescr {
     pub path: String,
     pub title: String,
     pub detail: Option<String>,
@@ -20,7 +20,7 @@ pub struct ValidationError {
 
 #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ValidationState {
-    pub errors: Vec<ValidationError>,
+    pub errors: Vec<ValidationErrorDescr>,
     pub missing: Vec<String>,
 }
 
@@ -30,7 +30,7 @@ impl std::fmt::Display for ValidationState {
         let errors: Vec<String> = errors
             .iter()
             .map(|e| {
-                let ValidationError { path, title, detail } = e;
+                let ValidationErrorDescr { path, title, detail } = e;
                 let detail = detail
                     .to_owned()
                     .map(|d| format!(" ({}.)", d))
@@ -62,7 +62,7 @@ impl From<validators::ValidationState> for ValidationState {
                 let title = e.get_title().to_string();
                 let path = e.get_path().to_string();
                 let detail = e.get_detail().map(|d| d.to_string());
-                ValidationError { path, title, detail }
+                ValidationErrorDescr { path, title, detail }
             })
             .collect();
         let missing = s.missing.iter().map(|url| url.to_string()).collect();
@@ -78,7 +78,7 @@ pub struct Validator {
 }
 impl Validator {
     pub fn new(schema: serde_json::Value) -> Result<Self> {
-        let mut scope = json_schema::Scope::new().supply_defaults();
+        let mut scope = json_schema::Scope::with_formats(crate::formats::extra_formats).supply_defaults();
         let url = scope
             .compile(schema, false)
             .map_err(|err| Error::InvalidSchema(format!("{}", err)))?;
@@ -132,7 +132,8 @@ impl Validator {
 #[cfg(test)]
 mod test {
     use super::*;
-    use serde_json::Value;
+    use serde_json::{json, Value};
+    use std::fs::File;
 
     #[derive(Debug, PartialEq, serde::Deserialize)]
     struct Spec {
@@ -164,5 +165,35 @@ mod test {
             let result = validator.validate_with_defaults(input.as_ref(), &".".into());
             assert_eq!(result, expected, "spec: \"{}\"", name);
         }
+    }
+
+    #[test]
+    fn should_work_with_extra_formats() {
+        let schema_json: serde_json::Value =
+            serde_json::from_reader(File::open("tests/schemas/multiaddr.schema.json").unwrap()).unwrap();
+        let validator = Validator::new(schema_json).unwrap();
+
+        let res = validator.validate_with_defaults(Some(&json!(1)), &".".into());
+        if let Err(Error::ValidationFailed(err)) = res {
+            assert_eq!(err.errors.len(), 2);
+        } else {
+            panic!("Expected ValidationFailed, got {:?}", res);
+        }
+
+        let res = validator.validate_with_defaults(Some(&json!("foo")), &".".into());
+        if let Err(Error::ValidationFailed(err)) = res {
+            assert_eq!(err.errors.len(), 1);
+            assert_eq!(err.errors[0].title, "Format is wrong");
+        } else {
+            panic!("Expected ValidationFailed, got {:?}", res);
+        }
+
+        let res = validator.validate_with_defaults(
+            Some(&json!(
+                "/ip4/3.121.252.117/tcp/4001/p2p/QmaWM8pMoMYkJrdbUZkxHyUavH3tCxRdCC9NYCnXRfQ4Eg"
+            )),
+            &".".into(),
+        );
+        assert!(res.is_ok(), "got Err: {:?}", res.err());
     }
 }
