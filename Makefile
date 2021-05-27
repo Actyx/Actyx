@@ -252,14 +252,14 @@ validate-os: diagnostics
 	cd rust/actyx && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
 
 validate-netsim: diagnostics
-	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness
-	RUST_LOG=info rust/actyx/target/debug/gossip --n-nodes 10 --enable-fast-path
-	RUST_LOG=info rust/actyx/target/debug/gossip --n-nodes 10 --enable-slow-path
-	RUST_LOG=info rust/actyx/target/debug/gossip --n-nodes 10 --enable-root-map
-	RUST_LOG=info rust/actyx/target/debug/root_map --n-nodes 10 --enable-root-map
-	RUST_LOG=info rust/actyx/target/debug/discovery --n-bootstrap 1 --enable-root-map
-	RUST_LOG=info rust/actyx/target/debug/discovery_multi_net
-	RUST_LOG=info rust/actyx/target/debug/discovery_external
+	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness --release
+	RUST_LOG=info rust/actyx/target/release/gossip --n-nodes 10 --enable-fast-path
+	RUST_LOG=info rust/actyx/target/release/gossip --n-nodes 10 --enable-slow-path
+	RUST_LOG=info rust/actyx/target/release/gossip --n-nodes 10 --enable-root-map
+	RUST_LOG=info rust/actyx/target/release/root_map --n-nodes 10 --enable-root-map
+	RUST_LOG=info rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
+	RUST_LOG=info rust/actyx/target/release/discovery_multi_net
+	RUST_LOG=info rust/actyx/target/release/discovery_external
 
 .PHONY: validate-os-android
 # execute linter for os-android
