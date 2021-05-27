@@ -5,9 +5,6 @@
  * Copyright (C) 2020 Actyx AG
  */
 export * from './array'
-export * from './assert'
-export * from './fetch'
 export * from './misc'
 export * from './runtime'
 export * from './typescript'
-export * from './url'

@@ -1,5 +1,5 @@
 use anyhow::Context;
-use settings::{database::Database, repository::Repository, scope::Scope};
+use settings::{Database, Repository, Scope};
 use std::str::FromStr;
 use std::{fs::File, io::Read, path::PathBuf};
 use structopt::StructOpt;

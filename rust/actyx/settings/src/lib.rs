@@ -3,14 +3,15 @@
 #[macro_use]
 extern crate log;
 
-pub mod database;
-pub mod json_differ;
-pub mod json_value;
-pub mod repository;
-pub mod scope;
-pub mod validation;
+mod database;
+mod formats;
+mod json_differ;
+mod json_value;
+mod repository;
+mod scope;
+mod validation;
 
-pub use database::Database;
-pub use repository::Repository;
-pub use scope::Scope;
-pub use validation::Validator;
+pub use crate::database::Database;
+pub use crate::repository::{Error as RepositoryError, Repository};
+pub use crate::scope::Scope;
+pub use crate::validation::{Error as ValidationError, ValidationErrorDescr, ValidationState, Validator};

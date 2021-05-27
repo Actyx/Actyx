@@ -127,7 +127,7 @@ fn is_system_scope(scope: &settings::Scope) -> bool {
 }
 
 /// Set the schema for the ActyxOS system settings.
-pub fn apply_system_schema(settings_repo: &mut settings::Repository) -> settings::repository::Result<()> {
+pub fn apply_system_schema(settings_repo: &mut settings::Repository) -> Result<(), settings::RepositoryError> {
     debug!("setting current schema for com.actyx");
     let schema: serde_json::Value = serde_json::from_slice(include_bytes!(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -428,7 +428,7 @@ mod test {
           {
             "swarm": {
               "swarmKey": "MDAwMDAwMDAxMTExMTExMTIyMjIyMjIyMzMzMzMzMzM=",
-              "bootstrapNodes": [ "/ip4/127.0.0.1/tcp/4001/ipfs/QmaAxuktPMR3ESHe9Pru8kzzzSGvsUie7UFJPfCWqTzzzz" ],
+              "bootstrapNodes": [ "/ip4/127.0.0.1/tcp/4001/p2p/QmaAxuktPMR3ESHe9Pru8kzzzSGvsUie7UFJPfCWqTzzzz" ],
               "announceAddresses": [],
               "topic": "My Topic"
             },

@@ -8,7 +8,7 @@ import { Actyx, OffsetMap } from '@actyx/sdk'
 import { takeWhileInclusive } from '@actyx/sdk/lib/util'
 import * as immutable from 'immutable'
 import { Observable, Subject } from 'rxjs'
-import { NodeInfoEntry, SwarmInfo, SwarmSummary } from './store/swarmState'
+import { NodeInfoEntry, SwarmInfo, SwarmSummary } from './swarmState'
 
 /** Configure how to wait for swarm. @public */
 export type FullWaitForSwarmConfig = Readonly<{

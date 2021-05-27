@@ -257,13 +257,6 @@ export type SplashStateSync = Readonly<{
 export type StateEffect<S, EWrite> = (state: S, enqueue: AddEmission<EWrite>) => void | Promise<void>;
 
 // @public
-export type StoreConfig = Readonly<{
-    monitoringMeta?: object;
-    metaMs: number;
-    runStatsPeriodMs: number;
-}>;
-
-// @public
 export type SwarmInfo = Readonly<{
     nodes: immutable.Map<string, NodeInfoEntry>;
 }>;
