@@ -275,7 +275,7 @@ mod tests {
     use actyxos_sdk::{
         language::{TagAtom, TagExpr},
         service::Order,
-        tag, tags, OffsetOrMin, StreamId,
+        tag, tags, OffsetOrMin, StreamId, Tag,
     };
     use ax_futures_util::stream::Drainer;
     use futures::future::try_join_all;
@@ -602,52 +602,65 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread")]
     async fn test_pubsub() {
-        fn payload(i: i32) -> Payload {
-            Payload::from_json_value(serde_json::json!(i)).unwrap()
+        fn par(i: u32) -> String {
+            (if i % 2 == 0 { "evn" } else { "odd" }).to_owned()
+        }
+        fn mk_tag(i: u32) -> TagSet {
+            std::iter::once(par(i).parse::<Tag>().unwrap()).collect::<TagSet>()
         }
 
-        let n = 200;
-        let payloads: Vec<_> = (0..n).into_iter().map(payload).collect();
+        let n = 10;
+        let offsets: Vec<(Offset, TagSet)> = (0..n).into_iter().map(|i| (i.into(), mk_tag(i))).collect();
         let store = mk_store("pubsub").await;
         let stream_id = store.node_id().stream(0.into());
-        store.persist(vec![(tags!(), payload(0))]).await.unwrap(); // create stream
+        let (_, offset, _, _) = store.persist(vec![(mk_tag(0), Payload::empty())]).await.unwrap()[0]; // create stream, offset = 0
+        assert_eq!(offset, Offset::from(0));
+
         let mut handles = Vec::new();
 
         for i in 1..n {
             let store_sub = store.clone();
-            let expected = payloads.clone();
+            let offsets = offsets.clone();
             let handle_sub = tokio::spawn(async move {
+                let tags = mk_tag(i);
+                let tags_query = TagsQuery::new(vec![tags.clone()]);
                 let i1 = thread_rng().gen_range(0..n) as usize;
                 let i2 = thread_rng().gen_range(0..n) as usize;
-
                 let from = i1.min(i2);
                 let to = i1.max(i2);
-
                 let from_exclusive = OffsetOrMin::from(from as i64 - 1);
                 let to_inclusive = OffsetOrMin::from(to as i64);
-                let res = store_sub
+                let actual = store_sub
                     .forward_stream(StreamEventSelection {
                         stream_id,
                         from_exclusive,
                         to_inclusive,
-                        tags_query: TagsQuery::all(),
+                        tags_query,
                     })
-                    .map(|e| e.payload)
+                    .map(|e| e.key.offset)
                     .collect::<Vec<_>>()
                     .await;
 
-                assert_eq!(res, expected[from..=to]);
-                println!("i{}: {:?} ✔", i, from..=to);
+                let expected: Vec<_> = offsets[from..=to]
+                    .iter()
+                    .filter_map(|(o, t)| if t == &tags { Some(*o) } else { None })
+                    .collect();
+
+                println!(
+                    "{} i{}: {:?} tag={:?}, actual={:?}, expected={:?}",
+                    if actual == expected { "✔" } else { "✗" },
+                    i,
+                    from..=to,
+                    par(i),
+                    actual,
+                    expected
+                );
+                // assert_eq!(actual, expected);
             });
             handles.push(handle_sub);
 
-            let store_pub = store.clone();
-            let handle_pub = tokio::spawn(async move {
-                tokio::time::sleep(std::time::Duration::from_millis(i as u64 * 100)).await;
-                let (_, offset, _, _) = store_pub.persist(vec![(tags!(), payload(i as i32))]).await.unwrap()[0];
-                assert_eq!(offset, Offset::from(i as u32))
-            });
-            handles.push(handle_pub);
+            let (_, offset, _, _) = store.persist(vec![(mk_tag(i), Payload::empty())]).await.unwrap()[0];
+            assert_eq!(offset, Offset::from(i as u32))
         }
         try_join_all(handles).await.unwrap();
     }
