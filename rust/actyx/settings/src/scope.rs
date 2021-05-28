@@ -11,7 +11,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Ord, Eq, PartialOrd, PartialEq, Clone, Debug)]
 pub struct Scope {
-    tokens: Vec<String>,
+    pub tokens: Vec<String>,
 }
 
 impl std::convert::TryFrom<String> for Scope {

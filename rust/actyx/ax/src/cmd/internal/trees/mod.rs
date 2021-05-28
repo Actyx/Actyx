@@ -21,6 +21,7 @@ pub enum TreesOpts {
     ExploreTree(ExploreTreeOpts),
 }
 
+#[allow(dead_code)]
 pub fn run(opts: TreesOpts, json: bool) -> Box<dyn Future<Output = ()> + Unpin> {
     match opts {
         DumpTree(opts) => dump::DumpTree::output(opts, json),

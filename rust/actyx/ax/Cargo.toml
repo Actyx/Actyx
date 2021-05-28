@@ -8,6 +8,10 @@ edition = "2018"
 name = "ax"
 path = "src/main.rs"
 
+[lib]
+name = "axlib"
+path = "src/lib.rs"
+
 [dependencies]
 actyxos_sdk = { path = "../../sdk" }
 anyhow = "1.0.40"
