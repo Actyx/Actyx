@@ -16,7 +16,7 @@ path = "src/lib.rs"
 actyxos_sdk = { path = "../../sdk" }
 anyhow = "1.0.40"
 settings = { path = "../settings" }
-banyan = "0.13.1"
+banyan = "0.13.2"
 banyan-utils = "0.6.1"
 base64= "0.13.0"
 bytes= "1.0.1"
