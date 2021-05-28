@@ -31,9 +31,8 @@ use url::Url;
 
 use crate::{
     service::{
-        AuthenticationResponse, EventService, NodeIdResponse, OffsetsResponse, PublishRequest, PublishResponse,
-        QueryRequest, QueryResponse, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest,
-        SubscribeResponse,
+        AuthenticationResponse, EventService, OffsetsResponse, PublishRequest, PublishResponse, QueryRequest,
+        QueryResponse, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
     AppManifest,
 };
@@ -158,21 +157,6 @@ impl Debug for HttpClient {
 
 #[async_trait]
 impl EventService for HttpClient {
-    async fn node_id(&self) -> anyhow::Result<NodeIdResponse> {
-        let response = self.do_request(|c| c.get(self.events_url("node_id"))).await?;
-        let bytes = response
-            .bytes()
-            .await
-            .context(|| format!("getting body for GET {}", self.events_url("node_id")))?;
-        Ok(serde_json::from_slice(bytes.as_ref()).context(|| {
-            format!(
-                "deserializing node_id response from {:?} received from GET {}",
-                bytes,
-                self.events_url("node_id")
-            )
-        })?)
-    }
-
     async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
         let response = self.do_request(|c| c.get(self.events_url("offsets"))).await?;
         let bytes = response

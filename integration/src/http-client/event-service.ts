@@ -15,6 +15,7 @@ import { decodeOrThrow } from './decode-or-throw'
 import { mkLinesSplitter } from './line-splitter'
 import {
   AxEventService,
+  AxNodeService,
   NodeIdResponse,
   OffsetsResponse,
   PublishRequest,
@@ -55,37 +56,38 @@ const handleStreamResponse = async <T>(
   }
 }
 
-export const mkEventService = (httpClient: AxHttpClient): AxEventService => {
-  return {
-    nodeId: () =>
-      httpClient
-        .get(mkEventsPath(NODE_ID_SEG))
-        .then((x) => x.json())
-        .then((x) => decodeOrThrow(NodeIdResponse)(x)),
-    offsets: () =>
-      httpClient
-        .get(mkEventsPath(OFFSETS_SEG))
-        .then((x) => x.json())
-        .then((x) => decodeOrThrow(OffsetsResponse)(x)),
-    publish: (request: PublishRequest) =>
-      httpClient
-        .post(mkEventsPath(PUBLISH_SEG), request)
-        .then((x) => x.json())
-        .then((x) => decodeOrThrow(PublishResponse)(x)),
-    query: async (request: QueryRequest, onData: (response: QueryResponse) => void) => {
-      const res = await httpClient.post(mkEventsPath(QUERY_SEG), request, true)
-      await handleStreamResponse(QueryResponse, onData, res)
-    },
-    subscribe: async (request: SubscribeRequest, onData: (response: SubscribeResponse) => void) => {
-      const res = await httpClient.post(mkEventsPath(SUBSCRIBE_SEG), request, true)
-      await handleStreamResponse(SubscribeResponse, onData, res)
-    },
-    subscribeMonotonic: async (
-      request: SubscribeMonotonicRequest,
-      onData: (response: SubscribeMonotonicResponse) => void,
-    ) => {
-      const res = await httpClient.post(mkEventsPath(SUBSCRIBE_MONOTONIC_SEG), request, true)
-      await handleStreamResponse(SubscribeMonotonicResponse, onData, res)
-    },
-  }
-}
+export const mkNodeIdService = (httpClient: AxHttpClient): AxNodeService => ({
+  nodeId: () =>
+    httpClient
+      .get(API_V2_PATH + NODE_ID_SEG)
+      .then((x) => x.json())
+      .then((x) => decodeOrThrow(NodeIdResponse)(x)),
+})
+
+export const mkEventService = (httpClient: AxHttpClient): AxEventService => ({
+  offsets: () =>
+    httpClient
+      .get(mkEventsPath(OFFSETS_SEG))
+      .then((x) => x.json())
+      .then((x) => decodeOrThrow(OffsetsResponse)(x)),
+  publish: (request: PublishRequest) =>
+    httpClient
+      .post(mkEventsPath(PUBLISH_SEG), request)
+      .then((x) => x.json())
+      .then((x) => decodeOrThrow(PublishResponse)(x)),
+  query: async (request: QueryRequest, onData: (response: QueryResponse) => void) => {
+    const res = await httpClient.post(mkEventsPath(QUERY_SEG), request, true)
+    await handleStreamResponse(QueryResponse, onData, res)
+  },
+  subscribe: async (request: SubscribeRequest, onData: (response: SubscribeResponse) => void) => {
+    const res = await httpClient.post(mkEventsPath(SUBSCRIBE_SEG), request, true)
+    await handleStreamResponse(SubscribeResponse, onData, res)
+  },
+  subscribeMonotonic: async (
+    request: SubscribeMonotonicRequest,
+    onData: (response: SubscribeMonotonicResponse) => void,
+  ) => {
+    const res = await httpClient.post(mkEventsPath(SUBSCRIBE_MONOTONIC_SEG), request, true)
+    await handleStreamResponse(SubscribeMonotonicResponse, onData, res)
+  },
+})

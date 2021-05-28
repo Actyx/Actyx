@@ -12,15 +12,6 @@ use crate::{
     util::{self, Result},
 };
 
-pub async fn node_id(_app_id: AppId, event_service: impl EventService) -> Result<impl Reply> {
-    event_service
-        .node_id()
-        .await
-        .map(|reply| reply::json(&reply))
-        .map(|reply| reply::with_header(reply, http::header::CACHE_CONTROL, "no-cache"))
-        .map_err(reject)
-}
-
 pub async fn offsets(_app_id: AppId, event_service: impl EventService) -> Result<impl Reply> {
     event_service
         .offsets()

@@ -1,8 +1,8 @@
-import { assertOK } from '../../assertOK'
-import { mkEventService, mkTrialHttpClient } from '../../http-client'
-import { runOnEvery } from '../../infrastructure/hosts'
+import { assertOK } from '../assertOK'
+import { mkNodeIdService as mkNodeService, mkTrialHttpClient } from '../http-client'
+import { runOnEvery } from '../infrastructure/hosts'
 
-describe('event service', () => {
+describe('node service', () => {
   describe('node_id', () => {
     it('should return node id', () =>
       runOnEvery(async (x) => {
@@ -10,7 +10,7 @@ describe('event service', () => {
         const nodeId =
           nodeInfo.connection === 'reachable' ? nodeInfo.nodeId : fail('node not reachable')
         const result = await mkTrialHttpClient(x._private.httpApiOrigin).then((x) =>
-          mkEventService(x).nodeId(),
+          mkNodeService(x).nodeId(),
         )
         expect(result.nodeId).toBe(nodeId)
       }))

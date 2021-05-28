@@ -1,5 +1,5 @@
 import fetch from 'node-fetch'
-import { getToken, mkEventsPath, trialManifest, NODE_ID_SEG } from '../../http-client'
+import { getToken, mkEventsPath, trialManifest, NODE_ID_SEG, API_V2_PATH } from '../../http-client'
 import WebSocket from 'ws'
 import { run } from '../../util'
 import { createTestNodeLocal } from '../../test-node-factory'
@@ -8,7 +8,7 @@ const UNAUTHORIZED_TOKEN =
   'AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ=='
 
 const getId = (httpApi: string, authHeaderValue?: string) =>
-  fetch(httpApi + mkEventsPath(NODE_ID_SEG), {
+  fetch(httpApi + API_V2_PATH + NODE_ID_SEG, {
     method: 'get',
     headers: {
       Accept: 'application/json',
@@ -121,7 +121,7 @@ describe('auth ws', () => {
           const ws = new WebSocket(httpApi + mkEventsPath(`?${x.token}`))
           const message = {
             type: 'request',
-            serviceId: 'node_id',
+            serviceId: 'offsets',
             requestId: 1,
             payload: null,
           }
@@ -131,7 +131,11 @@ describe('auth ws', () => {
               responses.push(JSON.parse(x.toString()))
               if (responses.length === 2) {
                 expect(responses).toEqual([
-                  { type: 'next', requestId: 1, payload: { nodeId: expect.any(String) } },
+                  {
+                    type: 'next',
+                    requestId: 1,
+                    payload: { present: expect.any(Object), toReplicate: expect.any(Object) },
+                  },
                   { type: 'complete', requestId: 1 },
                 ])
                 ws.terminate()

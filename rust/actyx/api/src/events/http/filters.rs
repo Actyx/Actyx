@@ -2,24 +2,15 @@ use actyxos_sdk::{service::EventService, AppId};
 use warp::filters::*;
 use warp::*;
 
-use crate::events::http::handlers;
-use crate::util::filters::{accept_json, accept_ndjson};
+use crate::{
+    events::http::handlers,
+    util::filters::{accept_json, accept_ndjson},
+};
 
-pub fn with_service(
+fn with_service(
     event_service: impl EventService + Send,
 ) -> impl Filter<Extract = (impl EventService,), Error = std::convert::Infallible> + Clone {
     any().map(move || event_service.clone())
-}
-
-pub fn node_id(
-    event_service: impl EventService + Send + Sync + 'static,
-    auth: impl Filter<Extract = (AppId,), Error = Rejection> + Clone,
-) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    auth.and(path!("node_id"))
-        .and(get())
-        .and(accept_json())
-        .and(with_service(event_service))
-        .and_then(handlers::node_id)
 }
 
 pub fn offsets(

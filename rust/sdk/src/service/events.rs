@@ -303,7 +303,7 @@ pub enum SubscribeResponse {
 }
 
 /// Response to the `node_id` endpoint
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeIdResponse {
     pub node_id: NodeId,
@@ -321,8 +321,6 @@ pub struct OffsetsResponse {
 
 #[async_trait]
 pub trait EventService: Clone + Send {
-    async fn node_id(&self) -> Result<NodeIdResponse>;
-
     async fn offsets(&self) -> Result<OffsetsResponse>;
 
     async fn publish(&self, request: PublishRequest) -> Result<PublishResponse>;
