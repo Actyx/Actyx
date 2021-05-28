@@ -1,5 +1,5 @@
-mod authentication_service_api;
-mod event_service_api;
+mod auth;
+mod events;
 mod ipfs_file_gateway;
 mod rejections;
 #[cfg(test)]
@@ -44,9 +44,9 @@ pub async fn run(node_info: NodeInfo, store: BanyanStore, bind_to: impl Iterator
 
 fn routes(node_info: NodeInfo, store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let event_store = EventStore::new(store.clone());
-    let event_service = event_service_api::service::EventService::new(event_store);
-    let events = event_service_api::routes(node_info.clone(), event_service);
-    let auth = authentication_service_api::route(node_info);
+    let event_service = events::service::EventService::new(event_store);
+    let events = events::routes(node_info.clone(), event_service);
+    let auth = auth::route(node_info);
 
     let api_path = path!("api" / "v2" / ..);
     let cors = cors()

@@ -7,7 +7,7 @@ use serde_json::*;
 use swarm::BanyanStore;
 use warp::*;
 
-use crate::{authentication_service_api::create_token, rejections, util::NodeInfo, AppMode};
+use crate::{auth::create_token, rejections, util::NodeInfo, AppMode};
 
 const UNAUTHORIZED_TOKEN: &str = "AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ==";
 

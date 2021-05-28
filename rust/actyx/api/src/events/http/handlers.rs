@@ -7,7 +7,7 @@ use actyxos_sdk::{
 use warp::*;
 
 use crate::{
-    event_service_api::service,
+    events::service,
     rejections::ApiError,
     util::{self, Result},
 };

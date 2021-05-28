@@ -2,7 +2,7 @@ use actyxos_sdk::{service::EventService, AppId};
 use warp::filters::*;
 use warp::*;
 
-use crate::event_service_api::http::handlers;
+use crate::events::http::handlers;
 use crate::util::filters::{accept_json, accept_ndjson};
 
 pub fn with_service(
