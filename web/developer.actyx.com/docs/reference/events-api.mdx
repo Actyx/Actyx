@@ -36,7 +36,7 @@ This token then needs to be passed in the `Authorization` header with every requ
 In the following examples we will use the `$AUTH_TOKEN` environment variable which can be initialized with
 
 ```bash
-export AUTH_TOKEN="$(curl -s localhost:4454/api/v2/authenticate -d'{"appId": "com.example.app","displayName": "Example App","version": "1.0"}' -H "Content-Type: application/json" | jq -r '.token')"
+export AUTH_TOKEN="$(curl -s localhost:4454/api/v2/auth -d'{"appId": "com.example.app","displayName": "Example App","version": "1.0"}' -H "Content-Type: application/json" | jq -r '.token')"
 ```
 
 While the following examples use [cURL](https://curl.se/), other command-line or graphical tools (e.g. [Postman](https://www.postman.com/product/api-client/)) would work as well.
@@ -140,7 +140,6 @@ Take a look at the [event streams guide](../conceptual/event-streams.mdx) to lea
 
 
 <TabItem value="ref">
-
 
 ### Request
 
