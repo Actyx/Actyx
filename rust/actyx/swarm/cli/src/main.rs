@@ -1,7 +1,6 @@
-use actyxos_sdk::NodeId;
 use anyhow::Result;
 use api::NodeInfo;
-use crypto::KeyStoreRef;
+use crypto::{KeyPair, KeyStore};
 use futures::stream::StreamExt;
 use structopt::StructOpt;
 use swarm::{BanyanStore, SwarmConfig};
@@ -34,24 +33,21 @@ async fn run() -> Result<()> {
     );
     let listen_addresses = std::mem::replace(&mut config.listen_on, vec![]);
     let swarm = if let Some(addr) = config.enable_api {
-        let key_store: KeyStoreRef = Default::default();
-        let public_key = key_store.write().generate_key_pair()?;
-        let keypair = key_store.read().get_pair(public_key).unwrap();
-        let node_id: NodeId = public_key.into();
-        let mut swarm_config: SwarmConfig = config.into();
-        swarm_config.keypair = Some(keypair);
-        let swarm = BanyanStore::new(swarm_config).await?;
+        let cfg = SwarmConfig::from(config.clone());
+        let mut key_store = KeyStore::default();
+        key_store.add_key_pair_ed25519(cfg.keypair.unwrap_or_else(KeyPair::generate).into())?;
+        let swarm = BanyanStore::new(cfg).await?;
         tracing::info!("Binding api to {:?}", addr);
         let node_info = NodeInfo {
-            node_id,
-            key_store,
-            token_validity: u32::MAX,
+            node_id: swarm.node_id(),
+            key_store: key_store.into_ref(),
+            token_validity: 300,
             cycles: 0.into(),
         };
         swarm.spawn_task("api", api::run(node_info, swarm.clone(), std::iter::once(addr)));
         swarm
     } else {
-        BanyanStore::new(config.into()).await?
+        BanyanStore::new(config.clone().into()).await?
     };
     let mut stream = swarm.ipfs().swarm_events();
     // make sure we don't lose `NewListenAddr` events.
@@ -92,6 +88,9 @@ async fn run() -> Result<()> {
                         println!("{}", Event::Result(res.unwrap()));
                     }
                 });
+            }
+            Command::ApiPort => {
+                println!("{}", Event::ApiPort(config.enable_api.map(|a| a.port())));
             }
         }
     }

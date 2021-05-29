@@ -9,6 +9,8 @@ actyxos_sdk = { path = "../../../sdk", features = ["client", "arb"] }
 anyhow = "1.0.40"
 async-global-executor = { version = "2.0.2", features = ["tokio"] }
 async-process = "1.0.2"
+async-std = "1.9.0"
+async-trait = "0.1.50"
 futures = { version = "0.3.14", package = "futures" }
 quickcheck = "1.0.3"
 structopt = "0.3.21"
@@ -19,4 +21,4 @@ tracing = "0.1.25"
 util = { path = "../../util" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-netsim-embed = "0.4.0"
+netsim-embed = { version = "0.4.0", path = "../../../../../netsim-embed" }

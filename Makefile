@@ -253,14 +253,15 @@ validate-os: diagnostics
 
 validate-netsim: diagnostics
 	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness --release
-	RUST_LOG=info rust/actyx/target/release/gossip --n-nodes 10 --enable-fast-path
-	RUST_LOG=info rust/actyx/target/release/gossip --n-nodes 10 --enable-slow-path
-	RUST_LOG=info rust/actyx/target/release/gossip --n-nodes 10 --enable-root-map
-	RUST_LOG=info rust/actyx/target/release/root_map --n-nodes 10 --enable-root-map
-	RUST_LOG=info rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
-	RUST_LOG=info rust/actyx/target/release/discovery_multi_net
-	RUST_LOG=info rust/actyx/target/release/discovery_external
-	RUST_LOG=info rust/actyx/target/release/es_proptests
+	rust/actyx/target/release/gossip --n-nodes 10 --enable-fast-path
+	rust/actyx/target/release/gossip --n-nodes 10 --enable-slow-path
+	rust/actyx/target/release/gossip --n-nodes 10 --enable-root-map
+	rust/actyx/target/release/root_map --n-nodes 10 --enable-root-map
+	rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
+	rust/actyx/target/release/discovery_multi_net
+	rust/actyx/target/release/discovery_external
+	rust/actyx/target/release/es_proptests
+	rust/actyx/target/release/subscribe --n-nodes 10
 
 .PHONY: validate-os-android
 # execute linter for os-android

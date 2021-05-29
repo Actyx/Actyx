@@ -1,9 +1,10 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
+    use structopt::StructOpt;
     use swarm_cli::{Command, Event, Multiaddr, PeerId};
-    use swarm_harness::MachineExt;
+    use swarm_harness::{HarnessOpts, MachineExt};
 
-    swarm_harness::run_netsim(|mut network| async move {
+    swarm_harness::run_netsim(HarnessOpts::from_args(), |mut network| async move {
         let mut peers: Vec<(PeerId, Multiaddr)> = Vec::with_capacity(network.machines().len());
         for machine in network.machines_mut() {
             peers.push((machine.peer_id(), machine.multiaddr()));
