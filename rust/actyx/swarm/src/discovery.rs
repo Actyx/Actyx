@@ -31,6 +31,12 @@
 //! A non bootstrap node needs to have at least one bootstrap node configured if mdns doesn't work
 //! due to a firewall. If mdns does work it will discover it's local network bootstrap node
 //! automatically.
+//!
+//! In some cases you will want to configure an `announceAddress` or `externalAddress`. The purpose
+//! of the `announceAddress` is to ease the configuration of a network when dealing with multiple
+//! NATs. When configuring a bootstrap node you are telling the node how to reach another peer,
+//! while when configuring an external address you are telling other peers how to reach you, given
+//! you have a bootstrap node in common.
 use crate::BanyanStore;
 use actyxos_sdk::{tags, Payload, StreamNr};
 use anyhow::Result;
