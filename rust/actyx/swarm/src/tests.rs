@@ -45,9 +45,9 @@ async fn smoke() -> anyhow::Result<()> {
     }));
     let stream_nr = StreamNr::try_from(1)?;
     tracing::info!("append first event!");
-    let _ = store.append(stream_nr, vec![ev("a")]).await?.unwrap();
+    let _ = store.append(stream_nr, vec![ev("a")]).await?;
     tracing::info!("append second event!");
-    let root = store.append(stream_nr, vec![ev("b")]).await?.unwrap();
+    let root = store.append(stream_nr, vec![ev("b")]).await?.link;
     tracing::info!("done!");
     let node1 = NodeId::from_bytes(&[1u8; 32])?;
     let stream1 = node1.stream(StreamNr::try_from(1)?);

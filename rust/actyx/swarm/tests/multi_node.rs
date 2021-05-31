@@ -42,11 +42,9 @@ async fn banyan_multi_node() -> Result<()> {
     });
 
     s1.append(StreamNr::from(11), vec![(tags.clone(), Payload::compact(&event)?)])
-        .await?
-        .unwrap();
+        .await?;
     s1.append(StreamNr::from(11), vec![(tags, Payload::compact(&event)?)])
-        .await?
-        .unwrap();
+        .await?;
 
     handle.await?;
 

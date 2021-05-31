@@ -10,7 +10,7 @@ use derive_more::{Display, Error};
 use futures::{future, stream, Stream, StreamExt, TryStreamExt};
 use trees::{axtrees::AxKey, query::TagsQuery, OffsetMapOrMax};
 
-use crate::{selection::StreamEventSelection, AxTreeExt, BanyanStore, SwarmOffsets, MAX_TREE_LEVEL};
+use crate::{selection::StreamEventSelection, AppendMeta, BanyanStore, SwarmOffsets};
 
 #[derive(Clone, Debug, Display, Error)]
 pub enum Error {
@@ -115,34 +115,21 @@ impl EventStore {
 
     pub async fn persist(&self, events: Vec<(TagSet, Payload)>) -> anyhow::Result<Vec<PersistenceMeta>> {
         let stream_nr = StreamNr::from(0); // TODO
-        let timestamp = Timestamp::now();
-        let stream = self.banyan_store.get_or_create_own_stream(stream_nr)?;
         let n = events.len();
-        let mut guard = stream.lock().await;
-        let mut store = self.banyan_store.lock();
-        let mut lamports = store.reserve_lamports(events.len())?.peekable();
-        let min_lamport = *lamports.peek().unwrap();
-        let kvs = lamports
-            .zip(events)
-            .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
-        tracing::debug!("publishing {} events on stream {}", n, stream_nr);
-        let min_offset = self.banyan_store.transform_stream(&mut guard, |txn, tree| {
-            let snapshot = tree.snapshot();
-            if snapshot.level() > MAX_TREE_LEVEL {
-                txn.extend(tree, kvs)?;
-            } else {
-                txn.extend_unpacked(tree, kvs)?;
-            }
-            Ok(snapshot.offset())
-        })?;
-
-        // We start iteration with 0 below, so this is effectively the offset of the first event.
-        let starting_offset = min_offset.succ();
+        if n == 0 {
+            return Ok(vec![]);
+        }
+        let AppendMeta {
+            min_lamport,
+            min_offset,
+            timestamp,
+            ..
+        } = self.banyan_store.append(stream_nr, events).await?;
         let keys = (0..n)
             .map(|i| {
                 let i = i as u64;
                 let lamport = min_lamport + i;
-                let offset = starting_offset.increase(i).unwrap();
+                let offset = min_offset.increase(i).unwrap();
                 (lamport, offset, stream_nr, timestamp)
             })
             .collect();
@@ -604,7 +591,7 @@ mod tests {
             let mut offsets = Drainer::new(store.offsets());
 
             // Inject root update from `stream`
-            store.banyan_store.update_highest_seen(stream, offset.into());
+            store.banyan_store.update_highest_seen(stream, offset);
 
             let nxt = offsets.next().unwrap().last().cloned().unwrap();
             assert!(nxt.present.streams().all(|x| x != stream));
@@ -612,14 +599,14 @@ mod tests {
 
             // Inject validation of `stream` with `offset - 1`
             if let Some(pred) = offset.pred() {
-                store.banyan_store.update_present(stream, pred.into());
+                store.banyan_store.update_present(stream, pred);
                 let nxt = offsets.next().unwrap().last().cloned().unwrap();
                 assert_eq!(nxt.present.offset(stream), OffsetOrMin::from(pred));
                 assert_eq!(nxt.replication_target.offset(stream), OffsetOrMin::from(offset));
             }
 
             // Inject validation of `stream` with `offset`
-            store.banyan_store.update_present(stream, offset.into());
+            store.banyan_store.update_present(stream, offset);
             let nxt = offsets.next().unwrap().last().cloned().unwrap();
             assert_eq!(nxt.present.offset(stream), OffsetOrMin::from(offset));
             assert_eq!(nxt.replication_target.offset(stream), OffsetOrMin::from(offset));
