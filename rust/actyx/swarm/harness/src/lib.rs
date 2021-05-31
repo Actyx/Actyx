@@ -86,6 +86,15 @@ impl MultiaddrExt for Multiaddr {
     }
 }
 
+pub fn run_netsim_in_user_namespace<F, F2, E>(opts: HarnessOpts, f: F) -> Result<()>
+where
+    F: FnOnce(Netsim<Command, E>) -> F2,
+    F2: Future<Output = Result<()>> + Send,
+    E: FromStr<Err = anyhow::Error> + Send + 'static,
+{
+    netsim_embed::unshare_user()?;
+    run_netsim(opts, f)
+}
 pub fn run_netsim<F, F2, E>(opts: HarnessOpts, f: F) -> Result<()>
 where
     F: FnOnce(Netsim<Command, E>) -> F2,
@@ -94,7 +103,6 @@ where
 {
     ::util::setup_logger_level(|e| e.add_directive("info".parse().unwrap()));
     let temp_dir = TempDir::new("swarm-harness")?;
-    netsim_embed::unshare_user()?;
     async_global_executor::block_on(async move {
         let mut sim = Netsim::new();
         let net = sim.spawn_network(Ipv4Range::random_local_subnet());

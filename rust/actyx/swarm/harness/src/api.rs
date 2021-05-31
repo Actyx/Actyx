@@ -46,9 +46,9 @@ impl Api {
         Ok(Self { machines })
     }
 
-    pub async fn run<F, T, Fut>(&self, machine: MachineId, mut f: F) -> Result<T>
+    pub async fn run<F, T, Fut>(&self, machine: MachineId, f: F) -> Result<T>
     where
-        F: FnMut(ApiClient) -> Fut,
+        F: FnOnce(ApiClient) -> Fut,
         Fut: Future<Output = Result<T>> + Send,
     {
         f(ApiClient(self.machines[&machine].clone())).await
@@ -57,6 +57,11 @@ impl Api {
 
 #[derive(Clone)]
 pub struct ApiClient(PinnedResource<HttpClient>);
+impl ApiClient {
+    pub fn new(pr: PinnedResource<HttpClient>) -> Self {
+        Self(pr)
+    }
+}
 
 #[async_trait::async_trait]
 impl EventService for ApiClient {
