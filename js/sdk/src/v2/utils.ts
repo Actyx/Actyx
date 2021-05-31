@@ -48,7 +48,7 @@ export const mkMultiplexer = async (
   const apiLocation = getApiLocation(config.actyxHost, config.actyxPort)
 
   // FIXME obviously...
-  const authUrl = 'http://' + apiLocation + '/authenticate'
+  const authUrl = 'http://' + apiLocation + '/auth'
 
   const wsUrl = 'ws://' + apiLocation + '/events'
   const cAdjusted = {
