@@ -321,7 +321,7 @@ impl<'a> BanyanStoreGuard<'a> {
     }
 
     fn get_or_create_replicated_stream(&mut self, stream_id: StreamId) -> Result<Arc<ReplicatedStream>> {
-        debug_assert!(self.node_id() != stream_id.node_id());
+        debug_assert!(!self.is_local(stream_id));
         self.index_store
             .add_stream(stream_id)
             .context("unable to write stream id")?;
@@ -372,8 +372,7 @@ impl<'a> BanyanStoreGuard<'a> {
 
     /// Get the last PublishedTree for a stream_id, only if it already exists
     fn published_tree(&self, stream_id: StreamId) -> Option<PublishedTree> {
-        let me = stream_id.node_id() == self.node_id();
-        if me {
+        if self.is_local(stream_id) {
             let stream_nr = stream_id.stream_nr();
             let stream = self.own_streams.get(&stream_nr)?;
             stream.published_tree()
@@ -388,8 +387,7 @@ impl<'a> BanyanStoreGuard<'a> {
 
     /// Get a stream of trees for a given stream id
     fn tree_stream(&mut self, stream_id: StreamId) -> impl Stream<Item = Tree> {
-        let me = stream_id.node_id() == self.node_id();
-        if me {
+        if self.is_local(stream_id) {
             let stream_nr = stream_id.stream_nr();
             let stream = self.get_or_create_own_stream(stream_nr).unwrap();
             stream.tree_stream()
@@ -476,7 +474,7 @@ impl<'a> BanyanStoreGuard<'a> {
         let known_streams = self.index_store.get_observed_streams()?;
         for stream_id in known_streams {
             // just trigger loading of the stream from the alias
-            if stream_id.node_id() == self.node_id() {
+            if self.is_local(stream_id) {
                 let _ = self.get_or_create_own_stream(stream_id.stream_nr());
             } else {
                 let _ = self.get_or_create_replicated_stream(stream_id);
@@ -852,7 +850,7 @@ impl BanyanStore {
     }
 
     fn update_root(&self, stream_id: StreamId, root: Link) {
-        if stream_id.node_id() != self.node_id() {
+        if !self.is_local(stream_id) {
             tracing::trace!("update_root {} {}", stream_id, root);
             self.get_or_create_replicated_stream(stream_id)
                 .unwrap()
