@@ -410,6 +410,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-lock"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6a8ea61bf9947a1007c5cada31e647dbc77b103c679858150003ba697ea798b"
+dependencies = [
+ "event-listener",
+]
+
+[[package]]
 name = "async-mutex"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -433,6 +442,33 @@ dependencies = [
  "once_cell",
  "signal-hook",
  "winapi 0.3.9",
+]
+
+[[package]]
+name = "async-std"
+version = "1.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9f06685bad74e0570f5213741bea82158279a4103d988e57bfada11ad230341"
+dependencies = [
+ "async-channel",
+ "async-global-executor",
+ "async-io",
+ "async-lock",
+ "crossbeam-utils 0.8.4",
+ "futures-channel",
+ "futures-core",
+ "futures-io",
+ "futures-lite",
+ "gloo-timers",
+ "kv-log-macro",
+ "log",
+ "memchr 2.4.0",
+ "num_cpus",
+ "once_cell",
+ "pin-project-lite",
+ "pin-utils",
+ "slab",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -2256,6 +2292,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 
 [[package]]
+name = "gloo-timers"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47204a46aaff920a1ea58b11d03dec6f704287d27561724a4631e450654a891f"
+dependencies = [
+ "futures-channel",
+ "futures-core",
+ "js-sys",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "gobject-sys"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2858,6 +2907,15 @@ checksum = "7507624b29483431c0ba2d82aece8ca6cdba9382bff4ddd0f7490560c056098d"
 dependencies = [
  "winapi 0.2.8",
  "winapi-build",
+]
+
+[[package]]
+name = "kv-log-macro"
+version = "1.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0de8b303297635ad57c9f5059fd9cee7a47f8e8daa09df0fcd07dd39fb22977f"
+dependencies = [
+ "log",
 ]
 
 [[package]]
@@ -3521,6 +3579,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "51b9bbe6c47d51fc3e1a9b945965946b4c44142ab8792c50835a980d362c2710"
 dependencies = [
  "cfg-if 1.0.0",
+ "value-bag",
 ]
 
 [[package]]
@@ -3955,8 +4014,6 @@ dependencies = [
 [[package]]
 name = "netsim-embed"
 version = "0.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b7156dcd13b1c6bd616da2b8053b08a2a2124ea5120dbb7f3870902294ebdf45"
 dependencies = [
  "async-global-executor",
  "async-process",
@@ -3972,8 +4029,6 @@ dependencies = [
 [[package]]
 name = "netsim-embed-core"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a392eb891633c8c4cf6733549d91a4ecc98c5217138361ca8a46413fcab9e8fa"
 dependencies = [
  "async-global-executor",
  "async-io",
@@ -3986,8 +4041,6 @@ dependencies = [
 [[package]]
 name = "netsim-embed-machine"
 version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e1938136ae9301762d6bcb7ed39da2bfeaf15d4f57ef01f970457d3a236d082"
 dependencies = [
  "async-global-executor",
  "async-io",
@@ -4002,8 +4055,6 @@ dependencies = [
 [[package]]
 name = "netsim-embed-nat"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16ed574c766222e406102cd45e6464f8b09978ce9f036dbccaf6e3b670db43f4"
 dependencies = [
  "futures 0.3.15",
  "log",
@@ -4014,8 +4065,6 @@ dependencies = [
 [[package]]
 name = "netsim-embed-router"
 version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7abda929a5789e3732c10df26277dc45cdb619212ca91ebe708121865146001f"
 dependencies = [
  "async-global-executor",
  "futures 0.3.15",
@@ -6066,6 +6115,8 @@ dependencies = [
  "anyhow",
  "async-global-executor",
  "async-process",
+ "async-std",
+ "async-trait",
  "futures 0.3.15",
  "netsim-embed",
  "quickcheck",
@@ -7107,6 +7158,16 @@ dependencies = [
  "uritemplate-next",
  "url 2.2.2",
  "uuid",
+]
+
+[[package]]
+name = "value-bag"
+version = "1.0.0-alpha.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dd320e1520f94261153e96f7534476ad869c14022aee1e59af7c778075d840ae"
+dependencies = [
+ "ctor",
+ "version_check 0.9.3",
 ]
 
 [[package]]

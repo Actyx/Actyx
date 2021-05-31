@@ -1,8 +1,8 @@
-use actyxos_sdk::{language::Query, Payload, StreamNr, TagSet};
+use actyxos_sdk::{language::Query, Payload, StreamNr, TagSet, Timestamp};
 use anyhow::Result;
 use crypto::{KeyPair, PrivateKey};
 pub use libp2p::{multiaddr, Multiaddr, PeerId};
-use std::{net::SocketAddr, path::PathBuf};
+use std::{borrow::Borrow, net::SocketAddr, path::PathBuf};
 use structopt::StructOpt;
 use swarm::SwarmConfig;
 use trees::axtrees::AxKey;
@@ -119,6 +119,7 @@ pub enum Command {
     AddAddress(PeerId, Multiaddr),
     Append(StreamNr, Vec<(TagSet, Payload)>),
     SubscribeQuery(Query),
+    ApiPort,
 }
 
 impl std::fmt::Display for Command {
@@ -127,6 +128,7 @@ impl std::fmt::Display for Command {
             Self::AddAddress(peer, addr) => write!(f, ">add-address {} {}", peer, addr)?,
             Self::Append(nr, events) => write!(f, ">append {} {}", nr, serde_json::to_string(events).unwrap())?,
             Self::SubscribeQuery(expr) => write!(f, ">query {}", expr)?,
+            Self::ApiPort => write!(f, ">api-port")?,
         }
         Ok(())
     }
@@ -151,6 +153,7 @@ impl std::str::FromStr for Command {
                 let events = serde_json::from_str(iter.next().unwrap())?;
                 Self::Append(nr.into(), events)
             }
+            Some(">api-port") => Self::ApiPort,
             _ => {
                 return Err(anyhow::anyhow!("invalid command '{}'", s));
             }
@@ -168,6 +171,7 @@ pub enum Event {
     Disconnected(PeerId),
     Subscribed(PeerId, String),
     Result((u64, AxKey, Payload)),
+    ApiPort(Option<u16>),
 }
 
 impl std::fmt::Display for Event {
@@ -197,6 +201,13 @@ impl std::fmt::Display for Event {
             Self::Result(res) => {
                 write!(f, "<result {}", serde_json::to_string(res).unwrap())?;
             }
+            Self::ApiPort(port) => {
+                if let Some(port) = port {
+                    write!(f, "<api-port {}", port)?;
+                } else {
+                    write!(f, "<api-port none")?;
+                }
+            }
         }
         Ok(())
     }
@@ -223,10 +234,44 @@ impl std::str::FromStr for Event {
                 let json: String = parts.collect();
                 Self::Result(serde_json::from_str(&json)?)
             }
+            Some("<api-port") => {
+                let token = parts.next().unwrap();
+                let port: Option<u16> = if token == "none" { None } else { Some(token.parse()?) };
+                Self::ApiPort(port)
+            }
             _ => {
                 return Err(anyhow::anyhow!("invalid event '{}'", s));
             }
         })
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TimedEvent {
+    pub event: Event,
+    pub timestamp: Timestamp,
+}
+
+impl std::str::FromStr for TimedEvent {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self {
+            event: Event::from_str(s)?,
+            timestamp: Timestamp::now(),
+        })
+    }
+}
+
+impl std::fmt::Display for TimedEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?} {}", self.timestamp, self.event)
+    }
+}
+
+impl Borrow<Event> for TimedEvent {
+    fn borrow(&self) -> &Event {
+        &self.event
     }
 }
 
