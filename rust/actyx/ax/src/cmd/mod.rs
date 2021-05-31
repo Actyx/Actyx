@@ -39,7 +39,7 @@ pub struct ConsoleOpt {
 #[derive(Debug)]
 /// Newtype wrapper around a path to key material, to be used with
 /// structopt/clap.
-struct KeyPathWrapper(PathBuf);
+pub struct KeyPathWrapper(PathBuf);
 
 impl FromStr for KeyPathWrapper {
     type Err = ActyxOSError;

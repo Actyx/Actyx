@@ -10,7 +10,7 @@ You need to pass a valid token along each request to the [Events API](./events-a
 In case you are using our SDK, you only have to supply the manifest, and the rest is automatically taken care of.
 Otherwise, please follow this guide to manually using the Auth API.
 
-The Auth API is reachable at the following base URI: `http://localhost:4454/api/v2/authenticate`.
+The Auth API is reachable at the following base URI: `http://localhost:4454/api/v2/auth`.
 
 :::info Pretty printed JSON
 JSON used in the examples below is pretty-printed with [jq](https://stedolan.github.io/jq/). This is only to make it more readable here. In reality, the Auth API does not return pretty-printed JSON but the usual compact JSON you know from any other service.
@@ -24,7 +24,7 @@ You can request an auth token from the Auth API in exchange for a valid JSON pay
 
 ### Request
 
-- Endpoint: `http://localhost:4454/api/v2/authenticate`
+- Endpoint: `http://localhost:4454/api/v2/auth`
 - HTTP method: `POST`
 - HTTP headers:
   - `Content-Type`, must be `application/json`
@@ -104,7 +104,7 @@ echo '
     -d @- \
     -H "Content-Type: application/json" \
     -H "Accept: application/json" \
-    http://localhost:4454/api/v2/authenticate \
+    http://localhost:4454/api/v2/auth \
 | jq .
 ```
 
@@ -116,7 +116,7 @@ curl \
     -d @manifest.json \
     -H "Content-Type: application/json" \
     -H "Accept: application/json" \
-    http://localhost:4454/api/v2/authenticate \
+    http://localhost:4454/api/v2/auth \
 | jq .
 ```
 

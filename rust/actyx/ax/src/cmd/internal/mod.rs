@@ -22,6 +22,7 @@ pub enum InternalOpts {
     Trees(TreesOpts),
 }
 
+#[allow(dead_code)]
 pub fn run(opts: InternalOpts, json: bool) -> Box<dyn Future<Output = ()> + Unpin> {
     match opts {
         InternalOpts::SwarmState(opts) => swarm_state::SwarmState::output(opts, json),

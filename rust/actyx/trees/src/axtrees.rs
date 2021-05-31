@@ -96,8 +96,7 @@ impl AxKey {
 /// The in memory representation of a sequence of ax keys
 ///
 /// This is optimized for fast querying
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(try_from = "AxKeySeqIo", into = "AxKeySeqIo")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AxKeySeq {
     pub(crate) tags: TagIndex,
     pub(crate) lamport: Vec<LamportTimestamp>,
@@ -137,7 +136,7 @@ impl Decode<DagCborCodec> for AxKeySeq {
 ///
 /// This shuffles the data around a little bit so that once serialized via CBOR,
 /// it can be better compressed
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, DagCbor)]
+#[derive(Debug, Clone, PartialEq, Eq, DagCbor)]
 struct AxKeySeqIo {
     tags: TagIndex,
     time: Vec<u64>,
@@ -310,7 +309,7 @@ impl FromIterator<TagsSummary> for TagsSummary {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize, DagCbor)]
+#[derive(Debug, PartialEq, Eq, Clone, DagCbor)]
 pub enum TagsSummaries {
     /// The complete set of tags in the tree
     Complete(TagIndex),
@@ -381,8 +380,7 @@ impl AxSummary {
 /// The in memory representation of a sequence of ax summaries
 ///
 /// This is optimized for fast querying
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(try_from = "AxSummarySeqIo", into = "AxSummarySeqIo")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AxSummarySeq {
     pub(crate) tags: TagsSummaries,
     pub(crate) lamport: Vec<AxRange<LamportTimestamp>>,
@@ -422,7 +420,7 @@ impl AxSummarySeq {
 ///
 /// This shuffles the data around a little bit so that once serialized via CBOR,
 /// it can be better compressed
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, DagCbor)]
+#[derive(Debug, Clone, PartialEq, Eq, DagCbor)]
 struct AxSummarySeqIo {
     tags: TagsSummaries,
     time: Vec<u64>,
@@ -624,12 +622,13 @@ mod tests {
     use std::io::Cursor;
 
     use super::*;
+    use libipld::codec::Codec;
     use quickcheck::{quickcheck, TestResult};
 
     quickcheck! {
-            fn summaryseq_serde_roundtrip(ks: AxSummarySeq) -> bool {
-                let cbor = serde_cbor::to_vec(&ks).expect("ks must be serializable");
-                let ks1: AxSummarySeq = serde_cbor::from_slice(&cbor).expect("ks must be deserializable");
+            fn summaryseq_cbor_roundtrip(ks: AxSummarySeq) -> bool {
+                let cbor = DagCborCodec.encode(&ks).expect("ks must be serializable");
+                let ks1: AxSummarySeq = DagCborCodec.decode(&cbor).expect("ks must be deserializable");
                 ks == ks1
             }
 
@@ -656,8 +655,8 @@ mod tests {
             }
 
         fn keyseq_serde_roundtrip(ks: AxKeySeq) -> bool {
-            let cbor = serde_cbor::to_vec(&ks).expect("ks must be serializable");
-            let ks1: AxKeySeq = serde_cbor::from_slice(&cbor).expect("ks must be deserializable");
+            let cbor = DagCborCodec.encode(&ks).expect("ks must be serializable");
+            let ks1: AxKeySeq = DagCborCodec.decode(&cbor).expect("ks must be deserializable");
             ks == ks1
         }
 
