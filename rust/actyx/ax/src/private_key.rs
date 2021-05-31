@@ -11,7 +11,7 @@ use util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 use crate::cmd::get_data_dir;
 
 const PUB_KEY_FILE_EXTENSION: &str = "pub";
-pub(crate) const DEFAULT_PRIVATE_KEY_FILE_NAME: &str = "id";
+pub const DEFAULT_PRIVATE_KEY_FILE_NAME: &str = "id";
 
 impl fmt::Display for AxPrivateKey {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -23,7 +23,7 @@ impl fmt::Display for AxPrivateKey {
 #[derive(Debug, PartialEq, Clone)]
 /// Wrapper around `crypto::PrivateKey` for use inside ax's context. Most notably
 /// is the on disk format, which differs from [`crypto::Keystore::dump`].
-pub(crate) struct AxPrivateKey(PrivateKey);
+pub struct AxPrivateKey(PrivateKey);
 impl AxPrivateKey {
     fn default_user_identity_dir() -> ActyxOSResult<PathBuf> {
         let p = get_data_dir()?;
@@ -36,7 +36,7 @@ impl AxPrivateKey {
     }
     /// Returns the default for path for storing user keys and creates it, if it
     /// doesn't exist.
-    pub(crate) fn get_and_create_default_user_identity_dir() -> ActyxOSResult<PathBuf> {
+    pub fn get_and_create_default_user_identity_dir() -> ActyxOSResult<PathBuf> {
         let p = Self::default_user_identity_dir()?;
         std::fs::create_dir_all(p.clone()).ax_err_ctx(ActyxOSCode::ERR_IO, "Error creating user identity directory")?;
         Ok(p)
@@ -44,7 +44,7 @@ impl AxPrivateKey {
     /// Write the private key encoded with a trailing newline into `path`, and the public key into
     /// `path`.pub. Files will be created, if they don't exist. If they do exist already, they will
     /// be truncated. Returns the absolte paths to the private and public key.
-    pub(crate) fn to_file(&self, path: impl AsRef<Path>) -> ActyxOSResult<(PathBuf, PathBuf)> {
+    pub fn to_file(&self, path: impl AsRef<Path>) -> ActyxOSResult<(PathBuf, PathBuf)> {
         let priv_path: PathBuf = path.as_ref().into();
         let pub_path: PathBuf = path.as_ref().with_extension(PUB_KEY_FILE_EXTENSION);
         let (priv_hex, pub_hex) = self.encode();
@@ -92,7 +92,7 @@ impl AxPrivateKey {
         Ok(Self(private))
     }
     /// Generate a new private key
-    pub(crate) fn generate() -> Self {
+    pub fn generate() -> Self {
         let private = PrivateKey::generate();
         Self(private)
     }

@@ -65,7 +65,7 @@ async fn authenticate() {
 
     let (route, ..) = test_routes().await;
     let resp = test::request()
-        .path("/api/v2/authenticate")
+        .path("/api/v2/auth")
         .method("POST")
         .json(&payload)
         .reply(&route)

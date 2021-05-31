@@ -1,4 +1,4 @@
-import { AppManifest } from '@actyx/sdk'
+import { AppManifest } from '@actyx/pond'
 import fetch, { RequestInit, Response } from 'node-fetch'
 import { API_V2_PATH, AUTH_SEG } from './const'
 import { decodeOrThrow } from './decode-or-throw'

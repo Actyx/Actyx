@@ -19,7 +19,7 @@ use util::formats::{
 };
 use util::SocketAddrHelper;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NodeConnection {
     pub host: SocketAddrHelper,
     peer_id: Option<PeerId>,
@@ -87,7 +87,7 @@ impl NodeConnection {
         })
     }
 
-    pub(crate) async fn request(
+    pub async fn request(
         &mut self,
         key: &AxPrivateKey,
         request: AdminRequest,
@@ -236,7 +236,7 @@ impl NodeConnection {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct NodeInfo {
     pub id: NodeId,
     pub peer_id: PeerId,

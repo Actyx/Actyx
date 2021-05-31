@@ -62,7 +62,7 @@ pub struct HttpClient {
 
 async fn get_token(client: &Client, base_url: &Url, app_manifest: &AppManifest) -> anyhow::Result<String> {
     let body = serde_json::to_value(app_manifest).context(|| format!("serializing {:?}", app_manifest))?;
-    let response = client.post(base_url.join("authenticate")?).json(&body).send().await?;
+    let response = client.post(base_url.join("auth")?).json(&body).send().await?;
     let bytes = response
         .bytes()
         .await

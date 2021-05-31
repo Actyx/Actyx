@@ -57,7 +57,7 @@ fn routes(node_info: NodeInfo, store: BanyanStore) -> impl Filter<Extract = (imp
     path("ipfs")
         .and(ipfs_file_gateway::route(store))
         .or(api_path.and(path("events")).and(events))
-        .or(api_path.and(path("authenticate")).and(auth))
+        .or(api_path.and(path("auth")).and(auth))
         .recover(|r| async { rejections::handle_rejection(r) })
         .with(cors)
 }
