@@ -230,6 +230,32 @@ impl FromIterator<Tag> for TagSet {
     }
 }
 
+impl IntoIterator for TagSet {
+    type Item = Tag;
+
+    type IntoIter = std::vec::IntoIter<Tag>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a TagSet {
+    type Item = &'a Tag;
+
+    type IntoIter = std::slice::Iter<'a, Tag>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
+impl AsRef<[Tag]> for TagSet {
+    fn as_ref(&self) -> &[Tag] {
+        &self.0
+    }
+}
+
 impl Default for TagSet {
     fn default() -> Self {
         Self::empty()
