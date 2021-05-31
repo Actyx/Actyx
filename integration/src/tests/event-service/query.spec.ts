@@ -6,23 +6,14 @@ import {
   QueryResponse,
 } from '../../http-client'
 import { run } from '../../util'
-import {
-  genericCommunicationTimeout,
-  mySuite,
-  publishRandom,
-  testName,
-  throwOnCb,
-} from './utils.support.test'
+import { mySuite, publishRandom, testName, throwOnCb } from './utils.support.test'
 
 const query = async (es: AxEventService, query: string): Promise<unknown[]> => {
   const result: unknown[] = []
   const offsets = await es.offsets()
-  await new Promise((res) => {
-    es.query({ upperBound: offsets.present, query, order: Order.Asc }, (data) =>
-      result.push(data.payload),
-    ).then(res)
-    setTimeout(res, genericCommunicationTimeout)
-  })
+  await es.query({ upperBound: offsets.present, query, order: Order.Asc }, (data) =>
+    result.push(data.payload),
+  )
   return result
 }
 
@@ -126,12 +117,7 @@ describe('event service', () => {
           order: Order.Desc,
         }
         const data: QueryResponse[] = []
-        await new Promise((resolve, reject) => {
-          es.query(request, (x) => data.push(x))
-            .then(resolve)
-            .catch(reject)
-          setTimeout(resolve, genericCommunicationTimeout)
-        })
+        await es.query(request, (x) => data.push(x))
         expect(data.length).toBe(0)
       }))
 
