@@ -6,7 +6,7 @@ use actyxos_sdk::{tags, Payload};
 use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
 use netsim_embed::unshare_user;
 use quickcheck::{QuickCheck, TestResult};
-use std::convert::TryFrom;
+use std::{convert::TryFrom, time::Duration};
 use swarm_cli::Event;
 use swarm_harness::{api::ApiClient, util::app_manifest, HarnessOpts};
 
@@ -119,7 +119,7 @@ fn stress_single_store(
                         .subscribe(request)
                         .then(move |req| async move {
                             let mut req = req?;
-                            while let Some(x) = req.next().await {
+                            while let Some(x) = tokio::time::timeout(Duration::from_secs(10), req.next()).await? {
                                 let SubscribeResponse::Event(EventResponse { offset, .. }) = x;
                                 if offset >= max_offset {
                                     return Ok(());

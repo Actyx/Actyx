@@ -7,7 +7,7 @@ use futures::{stream::FuturesUnordered, StreamExt};
 use netsim_embed::unshare_user;
 use quickcheck::{Gen, QuickCheck, TestResult};
 use std::collections::BTreeMap;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use swarm_cli::Event;
 use swarm_harness::api::Api;
 use swarm_harness::util::app_manifest;
@@ -76,6 +76,7 @@ fn publish_all_subscribe_all(tags_per_node: Vec<Vec<TagSet>>) -> TestResult {
         }
 
         tracing::debug!("offsets {:?}", present);
+        let start = Instant::now();
         for m in sim.machines() {
             let id = m.id();
             loop {
@@ -83,6 +84,8 @@ fn publish_all_subscribe_all(tags_per_node: Vec<Vec<TagSet>>) -> TestResult {
                 if o >= present {
                     break;
                 }
+                anyhow::ensure!(start.elapsed() < Duration::from_secs(60));
+                tokio::time::sleep(Duration::from_millis(50)).await;
             }
         }
 

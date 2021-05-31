@@ -14,7 +14,7 @@ use swarm_harness::api::ApiClient;
 use swarm_harness::util::app_manifest;
 use swarm_harness::{fully_meshed, HarnessOpts};
 
-const MAX_NODES: usize = 20;
+const MAX_NODES: usize = 15;
 
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
@@ -200,9 +200,7 @@ fn interleaved(input: TestInput) -> TestResult {
                 TestCommand::Publish { tags, node } => {
                     let id = machines[node % n_nodes];
                     let client = ApiClient::from_machine(sim.machine(id), app_manifest()).unwrap();
-
                     let events = to_events(tags);
-
                     tracing::debug!("Cmd {} / Node {}: Publishing {} events", cmd_id, node, events.len());
                     async move {
                         client.publish(to_publish(events.clone())).await?;
@@ -227,7 +225,10 @@ fn interleaved(input: TestInput) -> TestResult {
                         let mut req = client.subscribe(request).await?;
                         let mut actual = 0;
                         if expected_cnt > 0 {
-                            while req.next().await.is_some() {
+                            while tokio::time::timeout(Duration::from_secs(10), req.next())
+                                .await?
+                                .is_some()
+                            {
                                 actual += 1;
                                 tracing::debug!("Cmd {} / Node {}: {}/{}", cmd_id, node, actual, expected_cnt,);
                                 if actual >= expected_cnt {
