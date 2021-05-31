@@ -90,7 +90,7 @@ fn main() -> anyhow::Result<()> {
             sim.machine(client),
             Duration::from_secs(3),
             vec![
-                selector(|ev| m!(ev, Event::NewListenAddr(addr) => assert_eq!(addr, &client_addr_new))),
+                selector(|ev| m!(ev, Event::NewListenAddr(addr) if !addr.is_loopback() => assert_eq!(addr, &client_addr_new))),
                 selector(|ev| m!(ev, Event::ExpiredListenAddr(addr) => assert_eq!(addr, &client_addr))),
                 selector(|ev| m!(ev, Event::NewExternalAddr(addr) => assert_eq!(addr, &client_addr_new))),
             ],
