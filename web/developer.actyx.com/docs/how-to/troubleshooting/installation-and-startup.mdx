@@ -6,18 +6,70 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
 This page lists common installation and startup errors and solutions for them. If you face different issues, please contact us in our [Discord chat](https://discord.gg/262yJhc) or open an issue in our [community forum](https://community.actyx.com/).
 
 ### Startup errors
 
-Actyx uses a few IP ports for node communication and internal services.
-In order for Actyx to run flawlessly, please make sure that the following ports are free:
+#### ERR_PORT_COLLISION
 
-1. `4001`: Used for inter-node communication
+`ERR_PORT_COLLISION` is a fatal error that occurs if one of the ports that Actyx binds by default is already in use:
 
-3. `4454`: Exposes the [Event Service](../../reference/events-api) (only on localhost)
+1. `4001`: Swarm (used for inter-node communication)
 
-4. `4458`: Used for communication with the Actyx CLI or Node Manager
+3. `4454`: API (exposes the [Events](../../reference/events-api) and [Auth](../../reference/auth-api) API; only on localhost)
+
+4. `4458`: Admin (used for communication with the CLI or Node Manager)
+
+The error message states which port could not be bound.
+Besides stopping the process that is currently using the port, you can also change the port on which Actyx is running with the command line option `--bind-swarm`, `--bind-api` or `--bind-admin`.
+This works as follows:
+
+:::caution
+Depending on the default port you change, please also consider the following:
+- Swarm (4001): If you configure this node as an `initialPeer` in another node's settings, or if you configure this node's `announceAddress` setting, you have to use the port you specified instead of 4001.
+- Admin (4458): When using the the CLI or Node Manager, you have to add the specified port (instead of e.g. `192.168.2.1`, your command would use `192.168.2.1:4460` as the node argument).
+- API (4454): Make sure to set the right environment variable if you are using the Actyx Pond, or specify to correct port if you are doing a direct HTTP API request.
+:::
+
+<Tabs
+  groupId="os"
+  defaultValue={"cli"}
+  values={[
+    { label: 'Windows', value: 'windows' },
+    { label: 'Android', value: 'android' },
+    { label: 'macOS/Linux', value: 'macos' }
+  ]}
+>
+
+
+<TabItem value="windows">
+
+1. Right-click on Actyx, and select `Properties`
+2. Go to the `Shortcut` tab, and add the command line option in the `Target` input field:
+
+![windows-installation-error](../../../images/how-to/troubleshooting/windows-change-port.png)
+
+The next time you start Actyx, it will bind to the specified port.
+
+</TabItem>
+<TabItem value="android">
+
+On Android, you cannot change the ports used by Actyx. Please make sure that the required ports are not in use.
+
+</TabItem>
+<TabItem value="macos">
+
+On macOS or Linux, you can specify the ports when starting Actyx:
+
+```text
+./actyx-linux --bind-swarm 4002 --bind-api 4457 --bind-admin 4460
+```
+
+</TabItem>
+</Tabs>
 
 ### Installation errors on Windows
 
