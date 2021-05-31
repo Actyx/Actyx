@@ -237,6 +237,16 @@ where
     Box::new(move |ev| f(ev).into())
 }
 
+/// Like `matches!()` but allows you to extract a result from the matched pattern.
+/// Also supports `if` guard after the pattern and before the `=>`.
+/// The result is wrapped in an option, which is `None` if the pattern & guard didn’t match.
+///
+/// ```
+/// use swarm_harness::m;
+///
+/// let x: Result<&str, ()> = Ok("hello");
+/// let s: Option<&str> = m!(x, Ok(s) => s);
+/// ```
 #[macro_export]
 macro_rules! m {
     ($v:expr, $p:pat => $e:expr) => {
@@ -264,6 +274,9 @@ where
         .remove(0)
 }
 
+/// run multiple selections where you don’t know the order in advance (or don’t care)
+///
+/// The individual things to check are most conveniently constructed using the `selector()` function.
 pub async fn select_multi<T>(
     machine: &mut Machine<Command, Event>,
     timeout: Duration,

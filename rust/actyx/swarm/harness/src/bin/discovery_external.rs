@@ -61,12 +61,13 @@ fn main() -> anyhow::Result<()> {
             |ev| m!(ev, Event::Connected(peer) if *peer == client_id => ()),
         )
         .await;
-        select_single(
+        let addr = select_single(
             sim.machine(client),
             Duration::from_secs(3),
-            |ev| m!(ev, Event::NewExternalAddr(addr) => assert_eq!(addr, &client_addr)),
+            |ev| m!(ev, Event::NewExternalAddr(addr) => addr.clone()),
         )
         .await;
+        assert_eq!(addr, client_addr);
 
         sim.plug(client, net_c, None).await;
         let client_addr_new = sim.machine(client).multiaddr();
