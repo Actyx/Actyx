@@ -20,7 +20,7 @@ fn main() -> anyhow::Result<()> {
     unshare_user()?;
     let res = QuickCheck::new()
         .gen(Gen::new(30))
-        .tests(5)
+        .tests(2)
         .quicktest(publish_all_subscribe_all as fn(Vec<Vec<TagSet>>) -> TestResult);
     if let Err(e) = res {
         panic!("{:?}", e);

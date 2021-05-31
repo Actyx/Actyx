@@ -15,7 +15,7 @@ fn main() -> anyhow::Result<()> {
     util::setup_logger();
     unshare_user()?;
     let res = QuickCheck::new()
-        .tests(5)
+        .tests(2)
         .quicktest(stress_single_store as fn(u8, u8, u8, u8) -> TestResult);
     if let Err(e) = res {
         if e.is_failure() {

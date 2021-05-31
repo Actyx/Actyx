@@ -20,7 +20,7 @@ fn main() -> anyhow::Result<()> {
     unshare_user()?;
 
     let res = QuickCheck::new()
-        .tests(5)
+        .tests(2)
         .gen(Gen::new(200))
         .quicktest(interleaved as fn(TestInput) -> TestResult);
     if let Err(e) = res {
