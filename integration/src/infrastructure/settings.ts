@@ -9,6 +9,7 @@ import * as t from 'io-ts'
 import { DockerPlatform, archToDockerPlatform } from './linux'
 import { rightOrThrow } from './rightOrThrow'
 import { tmpdir } from 'os'
+import { randIdentifier } from './util'
 
 const DockerSingleManifest = t.type({
   digest: t.string,
@@ -130,7 +131,7 @@ const download = (
 
   console.log('Downloading binary "%s" from "%s"', bin, url)
 
-  const tmpFile = path.join(tmpdir(), `integration-${Math.random().toString(36).substring(7)}`)
+  const tmpFile = path.join(tmpdir(), `integration-${randIdentifier()}`)
   const file = fs.createWriteStream(tmpFile, { mode: 0o755 })
   return new Promise((resolve, reject) =>
     https.get(url, (response) => {

@@ -4183,7 +4183,6 @@ dependencies = [
  "anyhow",
  "clap",
  "crossbeam",
- "named-lock",
  "node",
  "structopt",
  "systray",
