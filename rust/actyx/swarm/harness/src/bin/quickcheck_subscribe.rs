@@ -31,10 +31,8 @@ fn main() -> anyhow::Result<()> {
 
 /// Publish arbitrary events on all nodes, subscribe to all of them on all nodes.
 fn publish_all_subscribe_all(tags_per_node: Vec<Vec<TagSet>>) -> TestResult {
-    let n_nodes = tags_per_node.len().max(2).min(MAX_NODES);
-    if n_nodes < 2 {
-        return TestResult::discard();
-    }
+    let n_nodes = tags_per_node.len().clamp(2, MAX_NODES);
+
     let opts = HarnessOpts {
         n_nodes,
         n_bootstrap: 1,

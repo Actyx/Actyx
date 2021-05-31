@@ -8,11 +8,10 @@ use futures::{
     future::{select, Either},
     prelude::*,
 };
-use netsim_embed::{DelayBuffer, Ipv4Range, Machine, Namespace, Netsim};
-use quickcheck::TestResult;
+use netsim_embed::{DelayBuffer, Ipv4Range, Machine, Netsim};
 use std::{
     borrow::Borrow,
-    net::{SocketAddr, SocketAddrV4},
+    net::SocketAddr,
     pin::Pin,
     str::FromStr,
     time::{Duration, Instant},
@@ -149,63 +148,6 @@ where
             );
         }
         f(sim).await
-    })
-}
-
-/// Runs a closure `f` within the network's namespace.
-pub fn run_netsim_quickcheck<F, F2>(opts: HarnessOpts, f: F) -> Result<TestResult>
-where
-    F: FnOnce(Vec<SocketAddrV4>) -> F2,
-    F2: Future<Output = Result<TestResult>>,
-{
-    ::util::setup_logger();
-    let temp_dir = TempDir::new("swarm-harness")?;
-    async_global_executor::block_on(async move {
-        let api_addr = opts.enable_api.expect("API required");
-        let mut sim = Netsim::<Command, Event>::new();
-        let net = sim.spawn_network(Ipv4Range::random_local_subnet());
-        let mut addrs = Vec::with_capacity(opts.n_bootstrap);
-        let mut bootstrap = Vec::with_capacity(opts.n_bootstrap);
-        for i in 0..opts.n_bootstrap {
-            let peer_id: PeerId = swarm_cli::keypair(i as u64).into();
-            let addr = sim.network(net).random_addr();
-            let maddr = format!("/ip4/{}/tcp/30000/p2p/{}", addr, peer_id);
-            addrs.push(addr);
-            bootstrap.push(maddr.parse().unwrap());
-        }
-        for i in 0..opts.n_nodes {
-            let cfg = Config {
-                path: Some(temp_dir.path().join(i.to_string())),
-                node_name: None,
-                keypair: i as _,
-                listen_on: vec!["/ip4/0.0.0.0/tcp/30000".parse().unwrap()],
-                bootstrap: bootstrap.clone(),
-                external: vec![],
-                enable_mdns: opts.enable_mdns,
-                enable_fast_path: opts.enable_fast_path,
-                enable_slow_path: opts.enable_slow_path,
-                enable_root_map: opts.enable_root_map,
-                enable_discovery: opts.enable_discovery,
-                enable_metrics: opts.enable_metrics,
-                enable_api: opts.enable_api,
-            };
-            let mut delay = DelayBuffer::new();
-            delay.set_delay(Duration::from_millis(opts.delay_ms));
-            let machine = sim.spawn_machine(cfg.into(), Some(delay)).await;
-            sim.plug(machine, net, addrs.get(i).copied()).await;
-        }
-
-        let api_addrs = sim
-            .machines()
-            .iter()
-            .map(|x| SocketAddrV4::new(x.addr(), api_addr.port()))
-            .collect();
-        let prior = Namespace::current()?;
-        sim.machines().first().unwrap().namespace().enter()?;
-
-        let result = f(api_addrs).await;
-        prior.enter()?;
-        result
     })
 }
 

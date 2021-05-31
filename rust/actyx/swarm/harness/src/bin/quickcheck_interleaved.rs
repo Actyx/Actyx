@@ -7,13 +7,15 @@ use actyxos_sdk::{
 use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
 use netsim_embed::unshare_user;
 use quickcheck::{Arbitrary, Gen, QuickCheck, TestResult};
+use std::time::Duration;
 use std::{collections::BTreeMap, str::FromStr};
 use swarm_cli::Event;
 use swarm_harness::api::ApiClient;
 use swarm_harness::util::app_manifest;
-use swarm_harness::HarnessOpts;
+use swarm_harness::{fully_meshed, HarnessOpts};
 
 const MAX_NODES: usize = 20;
+
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
     util::setup_logger();
@@ -71,15 +73,14 @@ fn cnt_per_tag(cmds: &[TestCommand]) -> BTreeMap<TagSet, usize> {
 impl Arbitrary for TestInput {
     fn arbitrary(g: &mut Gen) -> Self {
         let n = (Vec::<bool>::arbitrary(g).len() % MAX_NODES).max(1); // 0 < nodes <= MAX_NODES
-        let nodes: Vec<usize> = (0..n).into_iter().enumerate().map(|(i, _)| i).collect();
+        let nodes: Vec<usize> = (0..n).collect();
         // fancy tagset don't really matter here
         let possible_tagsets = Vec::<Vec<bool>>::arbitrary(g)
             .into_iter()
-            .enumerate()
-            .map(|(idx, v)| {
+            .map(|v| {
                 v.into_iter()
                     .enumerate()
-                    .map(|(idx2, _)| Tag::from_str(&*format!("{}-{}", idx, idx2)).unwrap())
+                    .map(|(idx, _)| Tag::from_str(&*format!("{}", idx)).unwrap())
                     .collect::<TagSet>()
             })
             .collect::<Vec<_>>();
@@ -189,6 +190,7 @@ fn interleaved(input: TestInput) -> TestResult {
     };
 
     let t = swarm_harness::run_netsim::<_, _, Event>(opts, move |mut sim| async move {
+        fully_meshed::<Event>(&mut sim, Duration::from_secs(60)).await;
         let machines = sim.machines().iter().map(|m| m.id()).collect::<Vec<_>>();
         assert_eq!(machines.len(), n_nodes);
         let mut futs = commands
