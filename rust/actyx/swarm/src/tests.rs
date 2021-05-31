@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, convert::TryFrom, str::FromStr, time::Duration};
 
 use crate::BanyanStore;
-use actyxos_sdk::{NodeId, Payload, StreamNr, Tag, TagSet};
+use actyxos_sdk::{Payload, StreamNr, Tag, TagSet};
 use ax_futures_util::stream::interval;
 use banyan::query::AllQuery;
 use futures::prelude::*;
@@ -32,7 +32,7 @@ fn cids_to_string(cids: Vec<Cid>) -> String {
 }
 
 #[tokio::test]
-#[ignore]
+// #[ignore]
 async fn smoke() -> anyhow::Result<()> {
     util::setup_logger();
     let mut tagger = Tagger::new();
@@ -47,15 +47,6 @@ async fn smoke() -> anyhow::Result<()> {
     tracing::info!("append first event!");
     let _ = store.append(stream_nr, vec![ev("a")]).await?;
     tracing::info!("append second event!");
-    let root = store.append(stream_nr, vec![ev("b")]).await?.link;
-    tracing::info!("done!");
-    let node1 = NodeId::from_bytes(&[1u8; 32])?;
-    let stream1 = node1.stream(StreamNr::try_from(1)?);
-    tracing::info!("update_root !!!");
-    store.update_root(stream1, root);
-    tracing::info!("update_root !!!");
-    let stream2 = node1.stream(StreamNr::try_from(2)?);
-    store.update_root(stream2, root);
     tokio::task::spawn(interval(Duration::from_secs(1)).for_each(move |_| {
         let store = store.clone();
         let mut tagger = Tagger::new();
@@ -65,7 +56,7 @@ async fn smoke() -> anyhow::Result<()> {
         }
     }));
     tokio::task::spawn(ipfs.subscribe("test").unwrap().for_each(|msg| {
-        tracing::error!("XXXX msg {:?}", msg);
+        tracing::error!("event {:?}", msg);
         future::ready(())
     }));
     tokio::time::sleep(Duration::from_secs(1000)).await;

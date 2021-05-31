@@ -203,7 +203,6 @@ pub struct AppendMeta {
     min_lamport: LamportTimestamp,
     min_offset: Offset,
     timestamp: Timestamp,
-    link: Link,
 }
 
 /// All immutable or internally mutable parts of the banyan store
@@ -733,14 +732,12 @@ impl BanyanStore {
             }
             Ok(snapshot.offset())
         })?;
-        let link = guard.snapshot().link().unwrap();
         let min_offset = min_offset.map(|o| o + 1).unwrap_or(Offset::ZERO);
 
         Ok(AppendMeta {
             min_lamport,
             min_offset,
             timestamp,
-            link,
         })
     }
 
@@ -1072,20 +1069,16 @@ impl<T> AnyhowResultExt<T> for anyhow::Result<T> {
 
 trait AxTreeExt {
     fn offset(&self) -> Option<Offset>;
-    fn cid(&self) -> Option<Cid>;
 }
 
 impl AxTreeExt for Tree {
-    fn cid(&self) -> Option<Cid> {
-        self.link().map(Into::into)
-    }
     fn offset(&self) -> Option<Offset> {
         match self.count() {
             0 => None,
             x => match Offset::try_from(x) {
                 Ok(offset) => Some(offset),
                 Err(e) => {
-                    panic!("Tree's count ({}) is too big to fit into an offset ({})", x, e);
+                    panic!("Tree's count ({}) does not fit into an offset. ({})", x, e);
                 }
             },
         }
