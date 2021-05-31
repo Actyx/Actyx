@@ -35,3 +35,4 @@ panic = "abort"
 [patch.crates-io]
 # wait for https://github.com/qdot/systray-rs/pull/51
 systray = { git = "https://github.com/wngr/systray-rs" }
+netsim-embed = { git = "https://github.com/ipfs-rust/netsim-embed" }

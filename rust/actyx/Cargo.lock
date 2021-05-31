@@ -2696,7 +2696,7 @@ dependencies = [
  "console",
  "lazy_static 1.4.0",
  "number_prefix",
- "parking_lot 0.9.0",
+ "parking_lot 0.11.1",
  "regex",
 ]
 
@@ -4014,6 +4014,7 @@ dependencies = [
 [[package]]
 name = "netsim-embed"
 version = "0.4.2"
+source = "git+https://github.com/ipfs-rust/netsim-embed#1af3e455bd5ab0bbd49395d5e7d7e2a2f3ef6f01"
 dependencies = [
  "async-global-executor",
  "async-process",
@@ -4029,6 +4030,7 @@ dependencies = [
 [[package]]
 name = "netsim-embed-core"
 version = "0.4.0"
+source = "git+https://github.com/ipfs-rust/netsim-embed#1af3e455bd5ab0bbd49395d5e7d7e2a2f3ef6f01"
 dependencies = [
  "async-global-executor",
  "async-io",
@@ -4041,6 +4043,7 @@ dependencies = [
 [[package]]
 name = "netsim-embed-machine"
 version = "0.4.1"
+source = "git+https://github.com/ipfs-rust/netsim-embed#1af3e455bd5ab0bbd49395d5e7d7e2a2f3ef6f01"
 dependencies = [
  "async-global-executor",
  "async-io",
@@ -4055,6 +4058,7 @@ dependencies = [
 [[package]]
 name = "netsim-embed-nat"
 version = "0.4.0"
+source = "git+https://github.com/ipfs-rust/netsim-embed#1af3e455bd5ab0bbd49395d5e7d7e2a2f3ef6f01"
 dependencies = [
  "futures 0.3.15",
  "log",
@@ -4065,6 +4069,7 @@ dependencies = [
 [[package]]
 name = "netsim-embed-router"
 version = "0.4.0"
+source = "git+https://github.com/ipfs-rust/netsim-embed#1af3e455bd5ab0bbd49395d5e7d7e2a2f3ef6f01"
 dependencies = [
  "async-global-executor",
  "futures 0.3.15",
