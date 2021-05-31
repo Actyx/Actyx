@@ -33,16 +33,20 @@ You can still get a negative duration if you subtract the first event’s timest
 if the clock of the first node is ahead or the second node’s clock is lagging, then the timestamps may order differently than the events.
 :::
 
+While the above immediately and easily applies to linear workflows, there are some things to watch out for when your workflow [contains cycles](/docs/how-to/actyx-pond/in-depth/cycling-states).
+A typical case would be that a production step can be started and stopped multiple times before being finished.
+In such cases, it is best to tag each cycle with a unique ID (like a UUID) so that each stop event can be associated with the corresponding start event — otherwise the interpretation of the recorded event history may get confused when multiple start–stop cycles happened concurrently.
+
 ## Intuitive ordering between different apps
 
 When events are combined that do not stem from the same logical workflow, things get a bit trickier.
-Imagine a machine that does its job, logging performance data and interruptions as events for display on dashboards or later analysis.
-Now imagine a worker logging production data for a manufacturing order, starting and finishing production steps and logging scrap as well as good pieces;
+Imagine a machine that does its job, with an app logging performance data and interruptions as Actyx events for display on dashboards or later analysis.
+Now imagine a worker using an app for production data acquisition, starting and finishing production steps and logging scrap as well as good pieces;
 these data are used for production management and booked into the ERP.
 
 Each of these apps makes sense on its own, they may be programmed by different software vendors.
 Since events from one app never depend on events from the other, there are no causal relationships in play here.
-Actyx may order events in some arbitrary fashion, interleaving them in some way.
+Actyx may therefore order these events in some arbitrary fashion, interleaving the streams from both apps.
 
 If you then want to subscribe to both of these event streams in order to extract even more valuable data (like the frequency of interruptions depending on which article is being produced), you need to associate the events and put them into each others’ contexts.
 For example you may want to get all machine interruption events between a pair of start & finish events from the worker’s production data acquisition.
