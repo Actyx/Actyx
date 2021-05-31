@@ -7,6 +7,7 @@
 import { ActyxOpts } from '@actyx/sdk';
 import { AppManifest } from '@actyx/sdk';
 import { CancelSubscription } from '@actyx/sdk';
+import { EventFns } from '@actyx/sdk';
 import * as immutable from 'immutable';
 import { Metadata } from '@actyx/sdk';
 import { Milliseconds } from '@actyx/sdk';
@@ -186,6 +187,7 @@ export type Pond = {
     getPondState(callback: (newState: PondState) => void): CancelSubscription;
     getNodeConnectivity(params: GetNodeConnectivityParams): CancelSubscription;
     waitForSwarmSync(params: WaitForSwarmSyncParams): void;
+    events(): EventFns;
 };
 
 // @public
