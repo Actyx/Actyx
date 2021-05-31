@@ -199,7 +199,7 @@ fn interleaved(input: TestInput) -> TestResult {
                     let id = machines[node % n_nodes];
                     let client = ApiClient::from_machine(sim.machine(id), app_manifest()).unwrap();
 
-                    let events = to_events(tags.clone());
+                    let events = to_events(tags);
 
                     tracing::debug!("Cmd {} / Node {}: Publishing {} events", cmd_id, node, events.len());
                     async move {
@@ -219,7 +219,7 @@ fn interleaved(input: TestInput) -> TestResult {
 
                     let id = machines[node % n_nodes];
                     let client = ApiClient::from_machine(sim.machine(id), app_manifest()).unwrap();
-                    let query = to_query(tags.clone());
+                    let query = to_query(tags);
                     let request = SubscribeRequest { offsets: None, query };
                     async move {
                         let mut req = client.subscribe(request).await?;
