@@ -128,6 +128,8 @@ pub use offset::{Offset, OffsetMap, OffsetOrMin};
 pub use scalars::{AppId, NodeId, StreamId, StreamNr};
 pub use tags::{Tag, TagSet};
 pub use timestamp::{LamportTimestamp, Timestamp};
+#[cfg(feature = "client")]
+pub use url::Url;
 
 #[cfg(test)]
 mod test_util;

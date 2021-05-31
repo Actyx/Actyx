@@ -31,6 +31,7 @@ fn main() -> anyhow::Result<()> {
                 enable_root_map: true,
                 enable_discovery: true,
                 enable_metrics: false,
+                enable_api: None,
             };
             let machine = sim.spawn_machine(cfg.into(), None).await;
             sim.plug(machine, *net, None).await;

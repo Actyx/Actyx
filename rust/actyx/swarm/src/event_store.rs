@@ -114,6 +114,9 @@ impl EventStore {
     }
 
     pub async fn persist(&self, events: Vec<(TagSet, Payload)>) -> anyhow::Result<Vec<PersistenceMeta>> {
+        if events.is_empty() {
+            return Ok(vec![]);
+        }
         let stream_nr = StreamNr::from(0); // TODO
         let timestamp = Timestamp::now();
         let stream = self.banyan_store.get_or_create_own_stream(stream_nr)?;
