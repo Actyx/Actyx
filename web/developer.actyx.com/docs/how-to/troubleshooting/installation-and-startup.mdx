@@ -40,7 +40,8 @@ Depending on the default port you change, please also consider the following:
   values={[
     { label: 'Windows', value: 'windows' },
     { label: 'Android', value: 'android' },
-    { label: 'macOS/Linux', value: 'macos' }
+    { label: 'macOS/Linux', value: 'macos' },
+    { label: 'Docker', value: 'docker' }
   ]}
 >
 
@@ -66,6 +67,15 @@ On macOS or Linux, you can specify the ports when starting Actyx:
 
 ```text
 ./actyx-linux --bind-swarm 4002 --bind-api 4457 --bind-admin 4460
+```
+
+</TabItem>
+<TabItem value="docker">
+
+On Docker, you can use the [-p option of the docker run command](https://docs.docker.com/engine/reference/run/#expose-incoming-ports). For example, this command would expose the standard ports and 4002 on your host instead of 4001:
+
+```text
+docker run --name actyx -it --rm -v actyx-data:/data -p 4002:4001 -p 4458:4458 -p 127.0.0.1:4454:4454 actyx/os
 ```
 
 </TabItem>
