@@ -7,9 +7,11 @@ use actyxos_sdk::{
 use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
 use netsim_embed::unshare_user;
 use quickcheck::{Arbitrary, Gen, QuickCheck, TestResult};
-use std::{collections::BTreeMap, str::FromStr, time::Duration};
+use std::{collections::BTreeMap, str::FromStr};
 use swarm_cli::Event;
-use swarm_harness::{api::Api, fully_meshed, util::app_manifest, HarnessOpts};
+use swarm_harness::api::ApiClient;
+use swarm_harness::util::app_manifest;
+use swarm_harness::HarnessOpts;
 
 const MAX_NODES: usize = 20;
 #[cfg(target_os = "linux")]
@@ -186,10 +188,8 @@ fn interleaved(input: TestInput) -> TestResult {
         enable_api: Some("0.0.0.0:30001".parse().unwrap()),
     };
 
-    let t = swarm_harness::run_netsim(opts, move |mut sim| async move {
-        let api = Api::new(&mut sim, app_manifest())?;
+    let t = swarm_harness::run_netsim::<_, _, Event>(opts, move |mut sim| async move {
         let machines = sim.machines().iter().map(|m| m.id()).collect::<Vec<_>>();
-        fully_meshed::<Event>(&mut sim, Duration::from_secs(60)).await;
         assert_eq!(machines.len(), n_nodes);
         let mut futs = commands
             .into_iter()
@@ -197,51 +197,47 @@ fn interleaved(input: TestInput) -> TestResult {
             .map(|(cmd_id, cmd)| match cmd {
                 TestCommand::Publish { tags, node } => {
                     let id = machines[node % n_nodes];
-                    api.run(id, move |client| {
-                        let events = to_events(tags.clone());
+                    let client = ApiClient::from_machine(sim.machine(id), app_manifest()).unwrap();
 
-                        tracing::debug!("Cmd {} / Node {}: Publishing {} events", cmd_id, node, events.len());
-                        async move {
-                            client.publish(to_publish(events.clone())).await?;
-                            Result::<_, anyhow::Error>::Ok(())
-                        }
-                    })
+                    let events = to_events(tags.clone());
+
+                    tracing::debug!("Cmd {} / Node {}: Publishing {} events", cmd_id, node, events.len());
+                    async move {
+                        client.publish(to_publish(events.clone())).await?;
+                        Result::<_, anyhow::Error>::Ok(())
+                    }
                     .boxed()
                 }
                 TestCommand::Subscribe { node, tags, .. } => {
                     let expected_cnt = *cnt_per_tagset.get(&tags).unwrap_or(&0);
-                    // let expected_cnt = query.from
-                    let id = machines[node % n_nodes];
                     tracing::debug!(
                         "Cmd {} / Node {}: subscribing, expecting {} events",
                         cmd_id,
                         node,
                         expected_cnt
                     );
-                    api.run(id, move |client| {
-                        let query = to_query(tags.clone());
-                        let request = SubscribeRequest { offsets: None, query };
-                        async move {
-                            let mut req = client.subscribe(request).await?;
-                            let mut actual = 0;
-                            if expected_cnt > 0 {
-                                while tokio::time::timeout(Duration::from_millis(10_000), req.next())
-                                    .await?
-                                    .is_some()
-                                {
-                                    actual += 1;
-                                    tracing::debug!("Cmd {} / Node {}: {}/{}", cmd_id, node, actual, expected_cnt,);
-                                    if actual >= expected_cnt {
-                                        tracing::debug!("Cmd {} / Node {}: Done", cmd_id, node);
-                                        break;
-                                    }
+
+                    let id = machines[node % n_nodes];
+                    let client = ApiClient::from_machine(sim.machine(id), app_manifest()).unwrap();
+                    let query = to_query(tags.clone());
+                    let request = SubscribeRequest { offsets: None, query };
+                    async move {
+                        let mut req = client.subscribe(request).await?;
+                        let mut actual = 0;
+                        if expected_cnt > 0 {
+                            while req.next().await.is_some() {
+                                actual += 1;
+                                tracing::debug!("Cmd {} / Node {}: {}/{}", cmd_id, node, actual, expected_cnt,);
+                                if actual >= expected_cnt {
+                                    tracing::debug!("Cmd {} / Node {}: Done", cmd_id, node);
+                                    break;
                                 }
                             }
-                            Result::<_, anyhow::Error>::Ok(())
                         }
-                    })
-                    .boxed()
+                        Result::<_, anyhow::Error>::Ok(())
+                    }
                 }
+                .boxed(),
             })
             .collect::<FuturesUnordered<_>>();
 
@@ -253,7 +249,10 @@ fn interleaved(input: TestInput) -> TestResult {
 
     match t {
         Ok(()) => TestResult::passed(),
-        Err(e) => TestResult::error(format!("{:#?}", e)),
+        Err(e) => {
+            tracing::error!("Error from run: {:#?}", e);
+            TestResult::error(format!("{:#?}", e))
+        }
     }
 }
 

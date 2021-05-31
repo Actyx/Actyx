@@ -2,6 +2,7 @@ use crate::m;
 use actyxos_sdk::{service::EventService, AppManifest, HttpClient, Url};
 use anyhow::{anyhow, Result};
 use async_std::task::block_on;
+use netsim_embed::{Machine, Namespace};
 use netsim_embed::{MachineId, Netsim};
 use std::borrow::Borrow;
 use std::collections::BTreeMap;
@@ -11,7 +12,7 @@ use swarm_cli::{Command, Event};
 use util::pinned_resource::PinnedResource;
 
 pub struct Api {
-    machines: BTreeMap<MachineId, PinnedResource<HttpClient>>,
+    machines: BTreeMap<MachineId, ApiClient>,
 }
 
 impl Api {
@@ -22,25 +23,10 @@ impl Api {
         let machines = sim
             .machines_mut()
             .iter_mut()
-            .map(|machine| {
-                machine.send(Command::ApiPort);
-                let api_port = block_on(machine.select(|ev| m!(ev.borrow(), Event::ApiPort(port) => *port)))
-                    .ok_or_else(|| anyhow!("machine died"))?
-                    .ok_or_else(|| anyhow!("api endpoint not configured"))?;
-
-                let origin = Url::parse(&*format!("http://{}:{}", machine.addr(), api_port))?;
-                let namespace = machine.namespace();
-                let app_manifest = app_manifest.clone();
-                Ok((
-                    machine.id(),
-                    PinnedResource::new(move || {
-                        if let Err(e) = namespace.enter() {
-                            tracing::error!("cannot enter namespace {}: {}", namespace, e);
-                            panic!();
-                        }
-                        block_on(HttpClient::new(origin, app_manifest)).expect("cannot create")
-                    }),
-                ))
+            .map(move |machine| {
+                let id = machine.id();
+                let client = ApiClient::from_machine(machine, app_manifest.clone())?;
+                Ok((id, client))
             })
             .collect::<Result<_>>()?;
         Ok(Self { machines })
@@ -51,15 +37,34 @@ impl Api {
         F: FnOnce(ApiClient) -> Fut,
         Fut: Future<Output = Result<T>> + Send,
     {
-        f(ApiClient(self.machines[&machine].clone())).await
+        f(self.machines[&machine].clone()).await
     }
 }
 
 #[derive(Clone)]
 pub struct ApiClient(PinnedResource<HttpClient>);
 impl ApiClient {
-    pub fn new(pr: PinnedResource<HttpClient>) -> Self {
-        Self(pr)
+    pub fn new(origin: Url, app_manifest: AppManifest, namespace: Namespace) -> Self {
+        Self(PinnedResource::new(move || {
+            if let Err(e) = namespace.enter() {
+                tracing::error!("cannot enter namespace {}: {}", namespace, e);
+                panic!();
+            }
+            block_on(HttpClient::new(origin, app_manifest)).expect("cannot create")
+        }))
+    }
+    pub fn from_machine<E: Borrow<Event> + FromStr<Err = anyhow::Error> + Send + 'static>(
+        machine: &mut Machine<Command, E>,
+        app_manifest: AppManifest,
+    ) -> Result<Self> {
+        machine.send(Command::ApiPort);
+        let api_port = block_on(machine.select(|ev| m!(ev.borrow(), Event::ApiPort(port) => *port)))
+            .ok_or_else(|| anyhow!("machine died"))?
+            .ok_or_else(|| anyhow!("api endpoint not configured"))?;
+
+        let origin = Url::parse(&*format!("http://{}:{}", machine.addr(), api_port))?;
+        let namespace = machine.namespace();
+        Ok(ApiClient::new(origin, app_manifest, namespace))
     }
 }
 

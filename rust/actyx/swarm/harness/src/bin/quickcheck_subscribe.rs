@@ -5,7 +5,7 @@ use actyxos_sdk::{
 };
 use futures::{stream::FuturesUnordered, StreamExt};
 use netsim_embed::unshare_user;
-use quickcheck::{QuickCheck, TestResult};
+use quickcheck::{Gen, QuickCheck, TestResult};
 use std::collections::BTreeMap;
 use std::time::Duration;
 use swarm_cli::Event;
@@ -19,6 +19,7 @@ fn main() -> anyhow::Result<()> {
     util::setup_logger();
     unshare_user()?;
     let res = QuickCheck::new()
+        .gen(Gen::new(30))
         .tests(5)
         .quicktest(publish_all_subscribe_all as fn(Vec<Vec<TagSet>>) -> TestResult);
     if let Err(e) = res {
@@ -133,7 +134,10 @@ fn publish_all_subscribe_all(tags_per_node: Vec<Vec<TagSet>>) -> TestResult {
     });
     match t {
         Ok(()) => TestResult::passed(),
-        Err(e) => TestResult::error(format!("{:#?}", e)),
+        Err(e) => {
+            tracing::error!("Error from run: {:#?}", e);
+            TestResult::error(format!("{:#?}", e))
+        }
     }
 }
 

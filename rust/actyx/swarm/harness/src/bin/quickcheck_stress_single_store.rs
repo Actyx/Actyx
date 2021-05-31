@@ -1,24 +1,22 @@
 use actyxos_sdk::{
     service::{EventResponse, EventService, PublishEvent, PublishRequest, SubscribeRequest, SubscribeResponse},
-    HttpClient, Offset, TagSet, Url,
+    Offset, TagSet, Url,
 };
 use actyxos_sdk::{tags, Payload};
-use async_std::task::block_on;
 use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
-use netsim_embed::{unshare_user, Namespace};
+use netsim_embed::unshare_user;
 use quickcheck::{QuickCheck, TestResult};
-use std::{convert::TryFrom, num::NonZeroU8};
+use std::convert::TryFrom;
 use swarm_cli::Event;
 use swarm_harness::{api::ApiClient, util::app_manifest, HarnessOpts};
-use util::pinned_resource::PinnedResource;
 
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
     util::setup_logger();
     unshare_user()?;
     let res = QuickCheck::new()
-        .tests(1)
-        .quicktest(stress_single_store as fn(u8, u8, NonZeroU8, u8) -> TestResult);
+        .tests(5)
+        .quicktest(stress_single_store as fn(u8, u8, u8, u8) -> TestResult);
     if let Err(e) = res {
         if e.is_failure() {
             panic!("{:?}", e);
@@ -26,22 +24,18 @@ fn main() -> anyhow::Result<()> {
     }
     Ok(())
 }
-fn mk_client(origin: Url, namespace: Namespace) -> ApiClient {
-    let pr = PinnedResource::new(move || {
-        if let Err(e) = namespace.enter() {
-            tracing::error!("cannot enter namespace {}: {}", namespace, e);
-            panic!();
-        }
-        block_on(HttpClient::new(origin, app_manifest())).expect("cannot create")
-    });
-    ApiClient::new(pr)
-}
+
 fn stress_single_store(
     concurrent_publishes: u8,
     publish_chunk_size: u8,
-    publish_chunks_per_client: NonZeroU8,
+    publish_chunks_per_client: u8,
     concurrent_subscribes: u8,
 ) -> TestResult {
+    let concurrent_publishes = (concurrent_publishes >> 4).max(1);
+    let publish_chunks_per_client = (publish_chunks_per_client >> 2).max(1);
+    let concurrent_subscribes = (concurrent_subscribes >> 4).max(1);
+    let publish_chunk_size = publish_chunk_size.max(1);
+
     let opts = HarnessOpts {
         n_nodes: 1,
         n_bootstrap: 0,
@@ -63,10 +57,10 @@ fn stress_single_store(
             publish_chunks_per_client,
             concurrent_subscribes
         );
-        let maybe_max =
-            (concurrent_publishes as u32 * publish_chunk_size as u32 * publish_chunks_per_client.get() as u32)
-                .checked_sub(1)
-                .map(|x| Offset::try_from(x).unwrap());
+        let max_offset = Offset::try_from(
+            (concurrent_publishes as u32 * publish_chunk_size as u32 * publish_chunks_per_client as u32) - 1,
+        )
+        .unwrap();
 
         let machine = &mut sim.machines_mut()[0];
         machine.send(swarm_cli::Command::ApiPort);
@@ -80,11 +74,11 @@ fn stress_single_store(
         let namespace = machine.namespace();
 
         let publish_clients = (0..concurrent_publishes)
-            .map(|_| mk_client(origin.clone(), namespace))
+            .map(|_| ApiClient::new(origin.clone(), app_manifest(), namespace))
             .collect::<Vec<_>>();
 
         let subscription_clients = (0..concurrent_subscribes)
-            .map(|_| mk_client(origin.clone(), namespace))
+            .map(|_| ApiClient::new(origin.clone(), app_manifest(), namespace))
             .collect::<Vec<_>>();
 
         let stream_0 = publish_clients[0].node_id().await?.node_id.stream(0.into());
@@ -96,7 +90,7 @@ fn stress_single_store(
                 async move {
                     let tags = (0..publish_chunk_size).map(|_| tags!("my_test")).collect::<Vec<_>>();
                     let events = to_events(tags.clone());
-                    for c in 0..publish_chunks_per_client.get() {
+                    for c in 0..publish_chunks_per_client {
                         tracing::debug!(
                             "Client {}/{}: Chunk {}/{} (chunk size {})",
                             i + 1,
@@ -113,32 +107,30 @@ fn stress_single_store(
             })
             .collect::<FuturesUnordered<_>>();
 
-        if let Some(max_offset) = maybe_max {
-            let request = SubscribeRequest {
-                offsets: None,
-                query: "FROM 'my_test'".parse().unwrap(),
-            };
-            for client in subscription_clients {
-                let request = request.clone();
-                futs.push(
-                    async move {
-                        client
-                            .subscribe(request)
-                            .then(move |req| async move {
-                                let mut req = req?;
-                                while let Some(x) = req.next().await {
-                                    let SubscribeResponse::Event(EventResponse { offset, .. }) = x;
-                                    if offset >= max_offset {
-                                        return Ok(());
-                                    }
+        let request = SubscribeRequest {
+            offsets: None,
+            query: "FROM 'my_test'".parse().unwrap(),
+        };
+        for client in subscription_clients {
+            let request = request.clone();
+            futs.push(
+                async move {
+                    client
+                        .subscribe(request)
+                        .then(move |req| async move {
+                            let mut req = req?;
+                            while let Some(x) = req.next().await {
+                                let SubscribeResponse::Event(EventResponse { offset, .. }) = x;
+                                if offset >= max_offset {
+                                    return Ok(());
                                 }
-                                anyhow::bail!("Stream ended")
-                            })
-                            .await
-                    }
-                    .boxed(),
-                )
-            }
+                            }
+                            anyhow::bail!("Stream ended")
+                        })
+                        .await
+                }
+                .boxed(),
+            )
         }
 
         while let Some(res) = futs.next().await {
@@ -149,15 +141,18 @@ fn stress_single_store(
 
         let present = publish_clients[0].offsets().await?;
         let actual = present.present.get(stream_0);
-        if actual != maybe_max {
-            anyhow::bail!("{:?} != {:?}", actual, maybe_max)
+        if actual != Some(max_offset) {
+            anyhow::bail!("{:?} != {:?}", actual, max_offset)
         } else {
             Ok(())
         }
     });
     match t {
         Ok(()) => TestResult::passed(),
-        Err(e) => TestResult::error(format!("{:#?}", e)),
+        Err(e) => {
+            tracing::error!("Error from run: {:#?}", e);
+            TestResult::error(format!("{:#?}", e))
+        }
     }
 }
 fn to_events(tags: Vec<TagSet>) -> Vec<(TagSet, Payload)> {
