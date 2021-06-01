@@ -1,6 +1,5 @@
 use crate::{
     components::{
-        logging::{LoggingRequest, LoggingTx},
         node_api::NodeApiSettings,
         store::{StoreRequest, StoreTx},
         ComponentRequest,
@@ -31,14 +30,12 @@ use libp2p::{
     NetworkBehaviour, PeerId,
 };
 use libp2p_streaming_response::{ChannelId, StreamingResponse, StreamingResponseConfig};
-use logsvcd::GetLogRequest;
 use parking_lot::Mutex;
 use std::{convert::TryFrom, pin::Pin, sync::Arc, time::Duration};
 use tracing::*;
 use util::formats::{
     admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
-    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, InternalRequest, InternalResponse, LogEvent,
-    NodeErrorContext,
+    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, InternalRequest, InternalResponse, NodeErrorContext,
 };
 use util::SocketAddrHelper;
 
@@ -49,10 +46,7 @@ type PendingRequest = BoxFuture<'static, (ChannelId, ActyxOSResult<AdminResponse
 struct State {
     node_tx: Sender<ExternalEvent>,
     auth_info: Arc<Mutex<NodeApiSettings>>,
-    logsvcd: LoggingTx,
     store: StoreTx,
-    /// Pending log requests
-    pending_log_requests: Vec<(ChannelId, tokio::sync::mpsc::Receiver<Vec<LogEvent>>)>,
     /// Pending inflight requests to Node.
     pending_oneshot: FuturesUnordered<PendingRequest>,
 }
@@ -89,19 +83,12 @@ macro_rules! request_oneshot {
 }
 
 impl ApiBehaviour {
-    fn new(
-        node_tx: Sender<ExternalEvent>,
-        logsvcd: LoggingTx,
-        store: StoreTx,
-        auth_info: Arc<Mutex<NodeApiSettings>>,
-    ) -> Self {
+    fn new(node_tx: Sender<ExternalEvent>, store: StoreTx, auth_info: Arc<Mutex<NodeApiSettings>>) -> Self {
         let state = State {
             node_tx,
-            logsvcd,
             store,
             auth_info,
             pending_oneshot: FuturesUnordered::new(),
-            pending_log_requests: vec![],
         };
         Self {
             ping: Ping::new(PingConfig::new().with_keep_alive(true)),
@@ -163,14 +150,6 @@ impl ApiBehaviour {
     // Assumes peer is authorized
     fn enqueue(&mut self, channel_id: ChannelId, request: AdminRequest) {
         match request {
-            AdminRequest::Logs(query) => {
-                let (request, rx) = GetLogRequest::new_async(query);
-                self.state
-                    .logsvcd
-                    .send(ComponentRequest::Individual(LoggingRequest::GetLogRequest(request)))
-                    .expect("Connection to logsvcd must work");
-                self.state.pending_log_requests.push((channel_id, rx));
-            }
             AdminRequest::NodesLs => request_oneshot!(
                 channel_id,
                 self,
@@ -248,8 +227,8 @@ impl ApiBehaviour {
         }
     }
 
-    /// The main purpose of this function is to shovel responses from any pending
-    /// requests (for example logs or to the node) to libp2p.
+    /// The main purpose of this function is to shovel responses from any
+    /// pending requests to libp2p.
     fn poll(&mut self, cx: &mut task::Context, _: &mut impl PollParameters) ->
     Poll<NetworkBehaviourAction<<<<Self as
     NetworkBehaviour>::ProtocolsHandler as IntoProtocolsHandler>::Handler as
@@ -262,41 +241,6 @@ impl ApiBehaviour {
                 debug!("Client dropped request");
             }
             wake_me_up = true;
-        }
-
-        // Handle pending logging requests
-        let mut i = 0;
-        while i != self.state.pending_log_requests.len() {
-            let (channel_id, stream) = self.state.pending_log_requests.get_mut(i).expect("i < vec.len()");
-
-            let mut stream_finished = false;
-            loop {
-                match stream.poll_recv(cx) {
-                    Poll::Ready(Some(logs)) => {
-                        // Cleanup if sending the response fails
-                        stream_finished = self
-                            .admin
-                            .respond(channel_id.clone(), Ok(AdminResponse::Logs(logs)))
-                            .is_err();
-                        wake_me_up = true;
-                    }
-                    Poll::Ready(None) => {
-                        stream_finished = true;
-                        let _ = self.admin.finish_response(channel_id.clone());
-
-                        wake_me_up = true;
-                        break;
-                    }
-                    Poll::Pending => break,
-                }
-            }
-
-            if stream_finished {
-                // remove from pending requests
-                self.state.pending_log_requests.remove(i);
-            } else {
-                i += 1;
-            }
         }
 
         // This `poll` function is the last in the derived NetworkBehaviour.
@@ -334,26 +278,8 @@ impl NetworkBehaviourEventProcess<libp2p_streaming_response::StreamingResponseEv
 
                 self.enqueue(channel_id, payload);
             }
-            libp2p_streaming_response::StreamingResponseEvent::<AdminProtocol>::CancelledRequest {
-                channel_id,
-                reason,
-            } => {
-                let mut i = 0;
-                while i != self.state.pending_log_requests.len() {
-                    match self.state.pending_log_requests.get(i) {
-                        Some((c, _)) if *c == channel_id => {
-                            debug!(
-                                "Removed pending log request for disconnected channel {:?}: {:?}",
-                                channel_id, reason
-                            );
-                            let _ = self.admin.finish_response(channel_id.clone());
-                            self.state.pending_log_requests.remove(i);
-                        }
-                        _ => {
-                            i += 1;
-                        }
-                    }
-                }
+            libp2p_streaming_response::StreamingResponseEvent::<AdminProtocol>::CancelledRequest { .. } => {
+                // all responses are one-shot at the moment, no need to cancel anything ongoing.
             }
             libp2p_streaming_response::StreamingResponseEvent::<AdminProtocol>::ResponseReceived { .. } => {}
             libp2p_streaming_response::StreamingResponseEvent::<AdminProtocol>::ResponseFinished { .. } => {}
@@ -371,12 +297,11 @@ pub(crate) async fn mk_swarm(
     keypair: libp2p::core::identity::Keypair,
     node_tx: Sender<ExternalEvent>,
     bind_to: SocketAddrHelper,
-    logsvcd: LoggingTx,
     store: StoreTx,
     auth_info: Arc<Mutex<NodeApiSettings>>,
 ) -> anyhow::Result<(PeerId, WrappedBehaviour)> {
     let (peer_id, transport) = mk_transport(keypair).await?;
-    let protocol = ApiBehaviour::new(node_tx, logsvcd, store, auth_info);
+    let protocol = ApiBehaviour::new(node_tx, store, auth_info);
 
     let mut swarm = SwarmBuilder::new(transport, protocol, peer_id)
         .executor(Box::new(|fut| {

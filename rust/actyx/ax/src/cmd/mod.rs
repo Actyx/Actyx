@@ -9,7 +9,6 @@ use crate::{node_connection::NodeConnection, private_key::AxPrivateKey};
 
 mod formats;
 pub(crate) mod internal;
-pub mod logs;
 pub mod nodes;
 pub mod settings;
 pub mod swarms;

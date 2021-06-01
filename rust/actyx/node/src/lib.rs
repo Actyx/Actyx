@@ -13,8 +13,6 @@ pub use crate::node::NodeError;
 pub use crate::util::spawn_with_name;
 #[cfg(not(windows))]
 pub use crate::util::unix_shutdown::shutdown_ceremony;
-use ::util::formats::LogEvent;
-use components::{logging::LoggingRequest, ComponentRequest};
 pub use formats::{node_settings, ShutdownReason};
 
 use crate::{
@@ -59,7 +57,6 @@ pub enum Runtime {
 pub struct ApplicationState {
     pub join_handles: Vec<thread::JoinHandle<()>>,
     pub manager: NodeWrapper,
-    components: Vec<ComponentChannel>,
 }
 
 fn bounded_channel<T>() -> (Sender<T>, Receiver<T>) {
@@ -77,7 +74,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     let mut components = vec![
         ComponentChannel::Store(store_tx.clone()),
         ComponentChannel::NodeApi(nodeapi_tx),
-        ComponentChannel::Logging(logs_tx.clone()),
+        ComponentChannel::Logging(logs_tx),
     ];
 
     // Host interface
@@ -105,7 +102,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     let db = host.get_db_handle();
     let node_cycle_count = host.get_cycle_count().context("getting cycle count")?;
     // THE node :-)
-    let node = NodeWrapper::new((node_tx, node_rx), components.clone(), host).context("creating node core")?;
+    let node = NodeWrapper::new((node_tx, node_rx), components, host).context("creating node core")?;
 
     // Component: NodeApi
     let node_api = {
@@ -121,7 +118,6 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
             node.tx.clone(),
             bind_to.admin.clone(),
             nodeapi_rx,
-            logs_tx,
             store_tx,
         )
     };
@@ -145,7 +141,6 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     Ok(ApplicationState {
         join_handles,
         manager: node,
-        components,
     })
 }
 pub type NodeLifecycleResult = Receiver<NodeProcessResult<()>>;
@@ -292,23 +287,6 @@ impl ApplicationState {
             );
             h.join().unwrap();
         }
-    }
-
-    pub fn logs_tail(&self) -> anyhow::Result<crossbeam::channel::Receiver<Vec<LogEvent>>> {
-        let logging_tx = self
-            .components
-            .iter()
-            .filter_map(|x| match x {
-                ComponentChannel::Logging(tx) => Some(tx),
-                _ => None,
-            })
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("No logging component installed!"))?;
-
-        let (req, rx) = logsvcd::GetLogRequest::all_follow();
-        logging_tx.send(ComponentRequest::Individual(LoggingRequest::GetLogRequest(req)))?;
-
-        Ok(rx)
     }
 }
 

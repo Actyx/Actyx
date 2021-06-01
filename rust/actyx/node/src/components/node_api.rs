@@ -1,4 +1,4 @@
-use super::{logging::LoggingTx, store::StoreTx};
+use super::store::StoreTx;
 use crate::{
     components::{Component, ComponentRequest},
     formats::ExternalEvent,
@@ -17,7 +17,6 @@ impl NodeApi {
         sender: Sender<ExternalEvent>,
         bind_to: SocketAddrHelper,
         rx: Receiver<ComponentRequest<()>>,
-        logsvcd: LoggingTx,
         store: StoreTx,
     ) -> Self {
         Self {
@@ -25,7 +24,6 @@ impl NodeApi {
             keypair,
             bind_to,
             sender,
-            logsvcd,
             rt: None,
             settings: Default::default(),
             store,
@@ -38,7 +36,6 @@ pub struct NodeApi {
     keypair: libp2p::core::identity::Keypair,
     bind_to: SocketAddrHelper,
     sender: Sender<ExternalEvent>,
-    logsvcd: LoggingTx,
     rt: Option<tokio::runtime::Runtime>,
     settings: Arc<Mutex<NodeApiSettings>>,
     store: StoreTx,
@@ -79,7 +76,6 @@ impl Component<(), NodeApiSettings> for NodeApi {
             self.keypair.clone(),
             self.sender.clone(),
             self.bind_to.clone(),
-            self.logsvcd.clone(),
             self.store.clone(),
             self.settings.clone(),
         ))?;
