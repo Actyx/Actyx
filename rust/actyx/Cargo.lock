@@ -970,9 +970,9 @@ dependencies = [
 
 [[package]]
 name = "cbor-tag-index"
-version = "0.1.3"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "075ac981de58026b2734cdcadc90ed390fb87bafc26b3877aeb90490002292b6"
+checksum = "67c5b761fb4b5fd81665ba5cc962861bd9990351bb19099490e52d0b520a36ff"
 dependencies = [
  "anyhow",
  "fnv",
