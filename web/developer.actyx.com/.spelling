@@ -204,6 +204,7 @@ err_user_unauthorized
 err_node_unreachable
 stdout
 auth-api
+macos
 err_port_collision
 macos
 misconfiguration

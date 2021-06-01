@@ -1,0 +1,100 @@
+---
+title: Clear events and reset your node
+id: reset-your-node
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+For several reasons, you will get to the point at which you want to reset your node during development.
+Depending on what exactly you want to do, you can either only switch to a new event store, retaining the node's configuration and keeping a copy of your "old" events, or you completely reset the node including all events and configuration.
+
+### Switch to a new event store
+
+By changing the node's topic setting, you switch to a new event store.
+Your node keeps the events for each topic in a separate database.
+You are able to access the old events again by switching back to your previous topic.
+
+:::tip nodes with different topics don't exchange events
+If your setup includes multiple nodes, make sure to change the topic on each device. While nodes can connect to each other provided they have the same swarm key, they only exchange events if they are configured with the same topic.
+:::
+
+As the topic is a node setting, you can change it with the CLI or Node Manager:
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+<Tabs
+  groupId="tool"
+  defaultValue={"cli"}
+  values={[
+    { label: 'Actyx CLI', value: 'cli' },
+    { label: 'Node Manager', value: 'node-manager' },
+  ]}
+>
+
+<TabItem value="cli">
+
+You can change the topic with the [`ax settings set`](../../reference/cli/settings/set) command:
+
+```text
+ax settings set com.actyx/swarm/topic "new-topic" 192.168.2.1 --local
+```
+
+</TabItem>
+<TabItem value="node-manager">
+
+In the Node Manager, navigate to the settings tab in the node details view, change the `topic` property and click save:
+
+![node-manager-logging-levels](/images/how-to/swarms/swarm-key-configuration.png)
+
+</TabItem>
+</Tabs>
+
+### Reset your node
+
+If you want to completely reset node (=delete all events and configurations), you need to delete its data directory. This works differently depending on your operating system:
+
+<Tabs
+  groupId="os"
+  defaultValue={"windows"}
+  values={[
+    { label: 'Windows', value: 'windows' },
+    { label: 'Android', value: 'android' },
+    { label: 'macOS/Linux', value: 'macos' },
+    { label: 'Docker', value: 'docker' },
+  ]}
+>
+
+
+<TabItem value="windows">
+
+1. Stop Actyx
+2. Delete the `actyx-data` directory. By default, it is located at `C:\Users\<your username>\AppData\Local\Actyx`
+3. Start Actyx
+
+</TabItem>
+<TabItem value="android">
+
+1. Go to Settings -> Apps -> Actyx -> Storage
+2. Select `Clear Storage`
+3. Start Actyx
+
+</TabItem>
+<TabItem value="macos">
+
+1. Stop Actyx
+2. Delete the `actyx-data` directory. By default, it is located in the directory from which you ran the Actyx binary
+3. Start Actyx
+
+</TabItem>
+<TabItem value="docker">
+
+1. Stop the Actyx container
+2. [Remove the Docker volume](https://docs.docker.com/engine/reference/commandline/volume_rm/) that the Actyx container used
+3. Start the Actyx image
+
+Instead of removing the old volume, you can also just start the Actyx image on a new volume and keep the previous one.
+
+</TabItem>
+</Tabs>
