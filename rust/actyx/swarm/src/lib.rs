@@ -1075,10 +1075,10 @@ impl AxTreeExt for Tree {
     fn offset(&self) -> Option<Offset> {
         match self.count() {
             0 => None,
-            x => match Offset::try_from(x) {
+            n => match Offset::try_from(n - 1) {
                 Ok(offset) => Some(offset),
                 Err(e) => {
-                    panic!("Tree's count ({}) does not fit into an offset. ({})", x, e);
+                    panic!("Tree's count ({}) does not fit into an offset. ({})", n, e);
                 }
             },
         }

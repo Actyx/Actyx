@@ -32,7 +32,7 @@ fn cids_to_string(cids: Vec<Cid>) -> String {
 }
 
 #[tokio::test]
-// #[ignore]
+#[ignore]
 async fn smoke() -> anyhow::Result<()> {
     util::setup_logger();
     let mut tagger = Tagger::new();
