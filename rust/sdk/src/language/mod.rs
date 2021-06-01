@@ -67,11 +67,7 @@ impl TagAtom {
         }
     }
     pub fn is_local(&self) -> bool {
-        if let Self::IsLocal = self {
-            true
-        } else {
-            false
-        }
+        matches!(self, Self::IsLocal)
     }
 }
 

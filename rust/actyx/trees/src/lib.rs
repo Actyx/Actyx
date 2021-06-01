@@ -4,13 +4,11 @@ mod arb;
 pub mod axtrees;
 mod dnf;
 mod header;
-mod offsetmap_or_max;
 pub mod query;
 #[cfg(test)]
 mod tests;
 
 pub use self::header::Header as AxTreeHeader;
-pub use self::offsetmap_or_max::OffsetMapOrMax;
 
 type TagIndex = cbor_tag_index::TagIndex<actyxos_sdk::Tag>;
 
