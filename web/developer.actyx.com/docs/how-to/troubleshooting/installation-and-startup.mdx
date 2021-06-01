@@ -6,9 +6,6 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
-import Tabs from '@theme/Tabs'
-import TabItem from '@theme/TabItem'
-
 This page lists common installation and startup errors and solutions for them. If you face different issues, please contact us in our [Discord chat](https://discord.gg/262yJhc) or open an issue in our [community forum](https://community.actyx.com/).
 
 ### Startup errors
@@ -33,6 +30,9 @@ Depending on the default port you change, please also consider the following:
 - Admin (4458): When using the CLI or Node Manager, you have to add the specified port (instead of e.g. `192.168.2.1`, your command would use `192.168.2.1:4460` as the node argument).
 - API (4454): Make sure to set the right environment variable if you are using Actyx Pond, or specify the correct port if you are doing a direct HTTP API request.
 :::
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
 
 <Tabs
   groupId="os"
