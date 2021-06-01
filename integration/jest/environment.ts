@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Client, DefaultClientOpts } from '@actyx/os-sdk'
 import { EC2 } from 'aws-sdk'
 import NodeEnvironment from 'jest-environment-node'
 import { CLI } from '../src/cli'
@@ -39,11 +38,6 @@ class MyEnvironment extends NodeEnvironment {
         node.target.executeInContainer = (script: string) =>
           node.target.execute(`${node.target._private.executeInContainerPrefix}${script}`, [], {})
       }
-
-      const opts = DefaultClientOpts()
-      opts.Endpoints.EventService.BaseUrl = node._private.httpApiOrigin
-      // TODO: use ts-sdk v2
-      const httpApiClient = Client(opts)
 
       /** Objects that have functions */
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment

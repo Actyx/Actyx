@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import { Client, DefaultClientOpts } from '@actyx/os-sdk'
 import execa from 'execa'
 import * as t from 'io-ts'
 import { Arch } from '../../jest/types'
@@ -276,9 +275,6 @@ export const forwardPortsAndBuildClients = async (
   const ax = await CLI.build(axHost, axBinaryPath)
 
   const httpApiOrigin = `http://localhost:${port4454}`
-  const opts = DefaultClientOpts()
-  opts.Endpoints.EventService.BaseUrl = httpApiOrigin
-  const httpApiClient = Client(opts)
 
   const apiPond = `ws://localhost:${port4454}/api/v2/events`
 
@@ -295,7 +291,6 @@ export const forwardPortsAndBuildClients = async (
     name: nodeName,
     target,
     ax,
-    httpApiClient,
     _private: {
       shutdown,
       actyxBinaryPath: './actyx',
