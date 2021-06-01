@@ -1,0 +1,10 @@
+# Last releases of all Actyx products
+# Each line contains <commit-hash> <release>
+# The machine-readable product names are: actyx, node-manager,
+# cli, pond, ts-sdk, rust-sdk, docs
+dca63e3c72 actyx-1.1.5
+dca63e3c72 pond-2.7.0
+dca63e3c72 cli-1.1.5
+dca63e3c72 node-manager-1.0.0
+dca63e3c72 ts-sdk-0.0.0
+dca63e3c72 rust-sdk-0.5.0
