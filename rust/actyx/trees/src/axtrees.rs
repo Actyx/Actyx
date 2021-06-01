@@ -1,4 +1,4 @@
-use actyxos_sdk::{LamportTimestamp, Payload, TagSet, Timestamp};
+use actyxos_sdk::{LamportTimestamp, Payload, Tag, TagSet, Timestamp};
 use banyan::{
     index::{CompactSeq, Summarizable},
     Tree, TreeTypes,
@@ -168,7 +168,7 @@ impl TryFrom<AxKeySeqIo> for AxKeySeq {
     type Error = anyhow::Error;
     fn try_from(mut value: AxKeySeqIo) -> Result<Self, Self::Error> {
         // reject unexpected blocks
-        let n = value.tags.elements.len();
+        let n = value.tags.len();
         if n == 0 {
             anyhow::bail!("must not be empty");
         }
@@ -207,7 +207,9 @@ impl FromIterator<AxKey> for AxKeySeq {
             lamport.push(key.lamport);
             time.push(key.time);
         }
-        let tags = TagIndex::from_elements(&tags);
+        // We can not use the TagSummary::Complete bailout here, since the level 0 branches
+        // store the *actual key data*, so bailing out would mean throwing away data.
+        let tags = TagIndex::new(tags).expect("> u32::max_value() tags");
         Self { tags, lamport, time }
     }
 }
@@ -236,14 +238,14 @@ impl Summarizable<AxSummary> for AxKeySeq {
         let min_lamport = self.lamport.iter().min().unwrap();
         let max_lamport = self.lamport.iter().max().unwrap();
         AxSummary {
-            tags: TagsSummary::from(&self.tags.tags),
+            tags: TagsSummary::from_index(&self.tags),
             time: AxRange::new(*min_time, *max_time),
             lamport: AxRange::new(*min_lamport, *max_lamport),
         }
     }
 }
 
-fn tags_too_large(tags: &TagSet) -> bool {
+fn tags_too_large(tags: &[Tag]) -> bool {
     let size: usize = tags.iter().map(|tag| tag.len() + 4).sum();
     size > MAX_TAGSET_SIZE
 }
@@ -261,6 +263,34 @@ pub enum TagsSummary {
 }
 
 impl TagsSummary {
+    pub(crate) fn from_slice(tags: &[Tag]) -> Self {
+        if !tags_too_large(tags) {
+            Self::Complete(tags.iter().cloned().collect())
+        } else {
+            Self::Unrestricted
+        }
+    }
+
+    /// Create a summary from an index.
+    ///
+    /// Conveniently, the index already contains the distinct tags. So all this is doing
+    /// is to take these as a summary, and bail out with Unrestricted in case it is too much.
+    pub fn from_index(index: &TagIndex) -> Self {
+        Self::from_slice(index.distinct_tags())
+    }
+
+    /// Create a summary a tag set.
+    ///
+    /// The only thing this does is to bail out in case
+    /// the tag set is too large, otherwise store it.
+    pub fn from_tags(tags: TagSet) -> Self {
+        if !tags_too_large(tags.as_ref()) {
+            Self::Complete(tags)
+        } else {
+            Self::Unrestricted
+        }
+    }
+
     fn into_tags(self) -> Option<TagSet> {
         if let Self::Complete(tags) = self {
             Some(tags)
@@ -276,32 +306,15 @@ impl Default for TagsSummary {
     }
 }
 
-impl From<TagSet> for TagsSummary {
-    fn from(tags: TagSet) -> Self {
-        if !tags_too_large(&tags) {
-            Self::Complete(tags)
-        } else {
-            Self::Unrestricted
-        }
-    }
-}
-
-impl From<&TagSet> for TagsSummary {
-    fn from(tags: &TagSet) -> Self {
-        if !tags_too_large(&tags) {
-            Self::Complete(tags.clone())
-        } else {
-            Self::Unrestricted
-        }
-    }
-}
-
 impl FromIterator<TagsSummary> for TagsSummary {
     fn from_iter<T: IntoIterator<Item = TagsSummary>>(iter: T) -> Self {
+        // summarize the summaries, bailing out as soon as we are over the limit.
+        //
+        // todo: optimize so we don't call tags_too_large on every operation.
         iter.into_iter().fold(TagsSummary::default(), |summary, item| {
             if let (TagsSummary::Complete(mut a), TagsSummary::Complete(b)) = (summary, item) {
                 a += b;
-                TagsSummary::from(a)
+                TagsSummary::from_tags(a)
             } else {
                 TagsSummary::Unrestricted
             }
@@ -336,7 +349,7 @@ impl TagsSummaries {
 impl Summarizable<TagsSummary> for TagsSummaries {
     fn summarize(&self) -> TagsSummary {
         match self {
-            Self::Complete(tags) => TagsSummary::Complete(tags.tags.clone()),
+            Self::Complete(tags) => TagsSummary::from_index(tags),
             Self::Unrestricted => TagsSummary::Unrestricted,
         }
     }
@@ -344,15 +357,18 @@ impl Summarizable<TagsSummary> for TagsSummaries {
 
 impl FromIterator<TagsSummary> for TagsSummaries {
     fn from_iter<T: IntoIterator<Item = TagsSummary>>(iter: T) -> Self {
+        // this will be None if a single TagSummary is unrestricted
         let tags = iter.into_iter().map(|x| x.into_tags()).collect::<Option<Vec<TagSet>>>();
-        tags.map(|tags| TagsSummaries::from(TagIndex::from_elements(&tags)))
-            .unwrap_or(Self::Unrestricted)
+        match tags {
+            Some(tags) => TagsSummaries::Complete(TagIndex::new(tags).unwrap()),
+            None => Self::Unrestricted,
+        }
     }
 }
 
 impl From<TagIndex> for TagsSummaries {
     fn from(index: TagIndex) -> Self {
-        if !tags_too_large(&index.tags) {
+        if !tags_too_large(index.distinct_tags()) {
             Self::Complete(index)
         } else {
             Self::Unrestricted
@@ -626,7 +642,7 @@ mod tests {
     use quickcheck::{quickcheck, TestResult};
 
     quickcheck! {
-            fn summaryseq_cbor_roundtrip(ks: AxSummarySeq) -> bool {
+            fn summaryseq_libipld_roundtrip(ks: AxSummarySeq) -> bool {
                 let cbor = DagCborCodec.encode(&ks).expect("ks must be serializable");
                 let ks1: AxSummarySeq = DagCborCodec.decode(&cbor).expect("ks must be deserializable");
                 ks == ks1
@@ -654,7 +670,7 @@ mod tests {
                 summary == reference
             }
 
-        fn keyseq_serde_roundtrip(ks: AxKeySeq) -> bool {
+        fn keyseq_libipld_roundtrip(ks: AxKeySeq) -> bool {
             let cbor = DagCborCodec.encode(&ks).expect("ks must be serializable");
             let ks1: AxKeySeq = DagCborCodec.decode(&cbor).expect("ks must be deserializable");
             ks == ks1
@@ -667,7 +683,7 @@ mod tests {
             let mut lamport_max = LamportTimestamp::new(u64::min_value());
             let mut time_min = Timestamp::new(u64::max_value());
             let mut time_max = Timestamp::new(u64::min_value());
-            let tags = elements.iter().map(|e| TagsSummary::from(&e.tags)).collect::<TagsSummary>();
+            let tags = elements.iter().map(|e| TagsSummary::from_tags(e.tags.clone())).collect::<TagsSummary>();
             for e in elements {
                 lamport_min = lamport_min.min(e.lamport);
                 lamport_max = lamport_max.max(e.lamport);

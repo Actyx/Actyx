@@ -4,17 +4,17 @@ use std::{
     ops::{Range, RangeFrom, RangeTo},
 };
 
-use actyxos_sdk::{language, LamportTimestamp, TagSet, Timestamp};
+use actyxos_sdk::{language, LamportTimestamp, Tag, TagSet, Timestamp};
 use banyan::{
     index::{BranchIndex, CompactSeq, LeafIndex},
     query::Query,
 };
+use cbor_tag_index::DnfQuery;
 use range_collections::RangeSet;
 
 use crate::{
     axtrees::{AxTrees, TagsSummaries},
     dnf::Dnf,
-    tag_index::IndexSet,
     TagIndex,
 };
 
@@ -131,11 +131,11 @@ impl Query<AxTrees> for OffsetQuery {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TagsQuery(Vec<TagSet>);
+pub struct TagsQuery(DnfQuery<Tag>);
 
 impl TagsQuery {
-    pub fn new(dnf: Vec<TagSet>) -> Self {
-        Self(dnf)
+    pub fn new(terms: impl IntoIterator<Item = TagSet>) -> Self {
+        Self(DnfQuery::new(terms).expect("> u32::max_value() tags"))
     }
 
     pub fn from_expr(tag_expr: &language::TagExpr) -> impl Fn(bool) -> Self {
@@ -159,30 +159,30 @@ impl TagsQuery {
                 }
                 if !is_local || local {
                     if tags.is_empty() {
-                        return Self(vec![tags]);
+                        return Self::all();
                     } else {
                         res.push(tags);
                     }
                 }
             }
-            Self(res)
+            Self::new(res)
         }
     }
 
     pub fn all() -> Self {
-        Self(vec![TagSet::empty()])
+        Self(DnfQuery::all())
     }
 
     pub fn empty() -> Self {
-        Self(vec![])
+        Self(DnfQuery::empty())
     }
 
-    pub fn tags(&self) -> &[TagSet] {
-        self.0.as_slice()
+    pub fn terms(&self) -> impl Iterator<Item = impl IntoIterator<Item = &Tag>> {
+        self.0.terms()
     }
 
     pub fn is_all(&self) -> bool {
-        self.0.len() == 1 && self.0[0].is_empty()
+        self.0.is_all()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -190,21 +190,7 @@ impl TagsQuery {
     }
 
     fn set_matching(&self, index: &TagIndex, matching: &mut [bool]) {
-        // lookup all strings and translate them into indices.
-        // if a single index does not match, the query can not match at all.
-        let lookup = |s: &TagSet| -> Option<IndexSet> {
-            s.iter()
-                .map(|t| index.tags.find(&t).map(|x| x as u32))
-                .collect::<Option<_>>()
-        };
-        // translate the query from strings to indices
-        let query = self.0.iter().filter_map(lookup).collect::<Vec<_>>();
-        // only look at bits that are currently set, set them to false if they do not match
-        for i in 0..index.elements.len().min(matching.len()) {
-            if matching[i] {
-                matching[i] = query.iter().any(|x| x.is_subset(&index.elements[i]));
-            }
-        }
+        self.0.set_matching(index, matching);
     }
 }
 
@@ -222,7 +208,7 @@ impl Query<AxTrees> for TagsQuery {
 
 impl FromIterator<TagSet> for TagsQuery {
     fn from_iter<T: IntoIterator<Item = TagSet>>(iter: T) -> Self {
-        Self(iter.into_iter().collect())
+        Self::new(iter)
     }
 }
 
@@ -249,7 +235,7 @@ mod tests {
 
     #[test]
     fn test_matching_1() {
-        let index = TagIndex::from_elements(&[tags!("a"), tags!("a", "b"), tags!("a"), tags!("a", "b")]);
+        let index = TagIndex::new(vec![tags!("a"), tags!("a", "b"), tags!("a"), tags!("a", "b")]).unwrap();
         let expr = l("a") | l("b");
         assert_match(&index, &expr, vec![true, true, true, true]);
         let expr = l("a") & l("b");
@@ -260,7 +246,7 @@ mod tests {
 
     #[test]
     fn test_matching_2() {
-        let index = TagIndex::from_elements(&[tags!("a", "b"), tags!("b", "c"), tags!("c", "a"), tags!("a", "b")]);
+        let index = TagIndex::new(vec![tags!("a", "b"), tags!("b", "c"), tags!("c", "a"), tags!("a", "b")]).unwrap();
         let expr = l("a") | l("b") | l("c");
         assert_match(&index, &expr, vec![true, true, true, true]);
         let expr = l("a") & l("b");
@@ -282,10 +268,14 @@ mod tests {
         test_expr(true, "allEvents | isLocal", TagsQuery::all());
         test_expr(true, "allEvents & isLocal", TagsQuery::all());
         test_expr(true, "isLocal", TagsQuery::all());
-        test_expr(true, "isLocal & 'a'", TagsQuery(vec![tags!("a")]));
+        test_expr(true, "isLocal & 'a'", TagsQuery::new(vec![tags!("a")]));
         test_expr(true, "isLocal | 'a'", TagsQuery::all());
-        test_expr(true, "isLocal & 'b' | 'a'", TagsQuery(vec![tags!("a"), tags!("b")]));
-        test_expr(true, "'a'", TagsQuery(vec![tags!("a")]));
+        test_expr(
+            true,
+            "isLocal & 'b' | 'a'",
+            TagsQuery::new(vec![tags!("a"), tags!("b")]),
+        );
+        test_expr(true, "'a'", TagsQuery::new(vec![tags!("a")]));
 
         test_expr(false, "allEvents", TagsQuery::all());
         test_expr(false, "allEvents | 'a'", TagsQuery::all());
@@ -293,8 +283,8 @@ mod tests {
         test_expr(false, "allEvents & isLocal", TagsQuery::empty());
         test_expr(false, "isLocal", TagsQuery::empty());
         test_expr(false, "isLocal & 'a'", TagsQuery::empty());
-        test_expr(false, "isLocal | 'a'", TagsQuery(vec![tags!("a")]));
-        test_expr(false, "isLocal & 'b' | 'a'", TagsQuery(vec![tags!("a")]));
-        test_expr(false, "'a'", TagsQuery(vec![tags!("a")]));
+        test_expr(false, "isLocal | 'a'", TagsQuery::new(vec![tags!("a")]));
+        test_expr(false, "isLocal & 'b' | 'a'", TagsQuery::new(vec![tags!("a")]));
+        test_expr(false, "'a'", TagsQuery::new(vec![tags!("a")]));
     }
 }

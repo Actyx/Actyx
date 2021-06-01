@@ -26,9 +26,12 @@ pub struct EventSelection {
 impl EventSelection {
     #[cfg(test)]
     pub fn matches<T>(&self, local: bool, event: &actyxos_sdk::Event<T>) -> bool {
+        use actyxos_sdk::TagSet;
         let query = TagsQuery::from_expr(&self.tag_expr)(local);
         query.is_all()
-            || query.tags().iter().any(|t| t.is_subset(&event.meta.tags))
+            || query
+                .terms()
+                .any(|t| t.into_iter().cloned().collect::<TagSet>().is_subset(&event.meta.tags))
                 && self.from_offsets_excluding.offset(event.key.stream) < event.key.offset
                 && self.to_offsets_including.offset(event.key.stream) >= event.key.offset
     }

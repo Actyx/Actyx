@@ -969,6 +969,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "cbor-tag-index"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "075ac981de58026b2734cdcadc90ed390fb87bafc26b3877aeb90490002292b6"
+dependencies = [
+ "anyhow",
+ "fnv",
+ "libipld",
+ "libipld-cbor",
+ "vec-collections",
+]
+
+[[package]]
 name = "cc"
 version = "1.0.68"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6760,6 +6773,7 @@ dependencies = [
  "actyxos_sdk",
  "anyhow",
  "banyan",
+ "cbor-tag-index",
  "futures 0.3.15",
  "libipld",
  "multihash 0.14.0",
