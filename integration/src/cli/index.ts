@@ -1,6 +1,7 @@
 import { settings } from '../infrastructure/settings'
 import * as path from 'path'
 import { mkExec } from './exec'
+import { randIdentifier } from '../infrastructure/util'
 
 export * from './types'
 
@@ -9,15 +10,13 @@ export class CLI {
   public readonly identityPath: string
   public readonly nodes
   public readonly settings
-  public readonly logs
   public readonly swarms
   public readonly users
   public readonly version
   public readonly shortVersion
 
   public static async build(node: string, binaryPath: string): Promise<CLI> {
-    const randIdentifier = Math.random().toString(36).substring(7)
-    const identityPath = path.resolve(settings().tempDir, `${node}-${randIdentifier}`)
+    const identityPath = path.resolve(settings().tempDir, `${node}-${randIdentifier()}`)
     const cli = new CLI(node, binaryPath, identityPath)
 
     // Generate local key pair
@@ -46,7 +45,6 @@ export class CLI {
 
     this.nodes = exec.nodes
     this.settings = exec.settings
-    this.logs = exec.logs
     this.swarms = exec.swarms
     this.users = exec.users
     this.version = exec.version

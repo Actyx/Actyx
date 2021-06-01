@@ -1,9 +1,12 @@
+use std::time::Duration;
+use swarm_harness::{m, select_single, selector};
+
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
     use netsim_embed::{Ipv4Range, Netsim};
     use std::net::Ipv4Addr;
     use swarm_cli::{Command, Config, Event};
-    use swarm_harness::{MachineExt, MultiaddrExt};
+    use swarm_harness::{select_multi, MachineExt, MultiaddrExt};
 
     util::setup_logger();
     netsim_embed::unshare_user()?;
@@ -27,6 +30,7 @@ fn main() -> anyhow::Result<()> {
             enable_root_map: true,
             enable_discovery: true,
             enable_metrics: false,
+            enable_api: None,
         };
         let bootstrap = sim.spawn_machine(cfg.clone().into(), None).await;
         sim.plug(bootstrap, net_a, None).await;
@@ -35,13 +39,12 @@ fn main() -> anyhow::Result<()> {
         sim.plug(client, net_b, None).await;
 
         for machine in sim.machines_mut() {
-            loop {
-                if let Some(Event::NewListenAddr(addr)) = machine.recv().await {
-                    if !addr.is_loopback() {
-                        break;
-                    }
-                }
-            }
+            select_single(
+                machine,
+                Duration::from_secs(1),
+                |ev| m!(ev, Event::NewListenAddr(addr) if !addr.is_loopback() => ()),
+            )
+            .await;
         }
 
         let bootstrap_id = sim.machine(bootstrap).peer_id();
@@ -52,58 +55,47 @@ fn main() -> anyhow::Result<()> {
         sim.machine(client)
             .send(Command::AddAddress(bootstrap_id, bootstrap_addr));
 
-        loop {
-            if let Some(Event::Connected(peer)) = sim.machine(bootstrap).recv().await {
-                if peer == client_id {
-                    break;
-                }
-            }
-        }
-
-        loop {
-            if let Some(Event::NewExternalAddr(addr)) = sim.machine(client).recv().await {
-                assert_eq!(addr, client_addr);
-                break;
-            }
-        }
+        select_single(
+            sim.machine(bootstrap),
+            Duration::from_secs(3),
+            |ev| m!(ev, Event::Connected(peer) if *peer == client_id => ()),
+        )
+        .await;
+        let addr = select_single(
+            sim.machine(client),
+            Duration::from_secs(3),
+            |ev| m!(ev, Event::NewExternalAddr(addr) => addr.clone()),
+        )
+        .await;
+        assert_eq!(addr, client_addr);
 
         sim.plug(client, net_c, None).await;
         let client_addr_new = sim.machine(client).multiaddr();
 
-        loop {
-            if let Some(Event::Disconnected(peer)) = sim.machine(bootstrap).recv().await {
-                if peer == client_id {
-                    break;
-                }
-            }
-        }
+        select_single(
+            sim.machine(bootstrap),
+            Duration::from_secs(90),
+            |ev| m!(ev, Event::Disconnected(peer) if *peer == client_id => ()),
+        )
+        .await;
 
-        loop {
-            if let Some(Event::Connected(peer)) = sim.machine(bootstrap).recv().await {
-                if peer == client_id {
-                    break;
-                }
-            }
-        }
+        select_single(
+            sim.machine(bootstrap),
+            Duration::from_secs(3),
+            |ev| m!(ev, Event::Connected(peer) if *peer == client_id => ()),
+        )
+        .await;
 
-        let mut i = 0;
-        while i < 3 {
-            match sim.machine(client).recv().await {
-                Some(Event::NewListenAddr(addr)) => {
-                    assert_eq!(addr, client_addr_new);
-                    i += 1;
-                }
-                Some(Event::ExpiredListenAddr(addr)) => {
-                    assert_eq!(addr, client_addr);
-                    i += 1;
-                }
-                Some(Event::NewExternalAddr(addr)) => {
-                    assert_eq!(addr, client_addr_new);
-                    i += 1;
-                }
-                _ => {}
-            }
-        }
+        select_multi(
+            sim.machine(client),
+            Duration::from_secs(3),
+            vec![
+                selector(|ev| m!(ev, Event::NewListenAddr(addr) if !addr.is_loopback() => assert_eq!(addr, &client_addr_new))),
+                selector(|ev| m!(ev, Event::ExpiredListenAddr(addr) => assert_eq!(addr, &client_addr))),
+                selector(|ev| m!(ev, Event::NewExternalAddr(addr) => assert_eq!(addr, &client_addr_new))),
+            ],
+        )
+        .await;
     });
     Ok(())
 }

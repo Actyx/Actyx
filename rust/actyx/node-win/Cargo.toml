@@ -15,7 +15,6 @@ util = { path = "../util" }
 anyhow = "1.0.40"
 clap = "2.33.3"
 crossbeam = "0.8.0"
-named-lock = "0.1.1"
 structopt = "0.3.21"
 systray = "0.4.0"
 tracing = "0.1.25"

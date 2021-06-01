@@ -11,6 +11,7 @@ import {
   ActyxOpts,
   AppManifest,
   CancelSubscription,
+  EventFns,
   Metadata,
   Milliseconds,
   NodeId,
@@ -313,6 +314,8 @@ export type Pond = {
    * To obtain progress information about the sync, the onProgress callback can be supplied.
    */
   waitForSwarmSync(params: WaitForSwarmSyncParams): void
+
+  events(): EventFns
 }
 
 type ActiveObserveAll<S> = Readonly<{
@@ -640,6 +643,8 @@ class Pond2Impl implements Pond {
 
     return () => (cancelled = true)
   }
+
+  events = () => this.actyx
 }
 
 /**

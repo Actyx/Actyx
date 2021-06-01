@@ -44,6 +44,19 @@ export class Ssh {
     return execa('ssh', [...this.commonOpts, command])
   }
 
+  execFile(
+    file: string,
+    params: string[],
+    env?: { [_: string]: string },
+  ): execa.ExecaChildProcess<string> {
+    const e = Object.entries(env || {}).reduce(
+      (acc, [k, v]) => acc.concat([`${k}=${v}`]),
+      [] as string[],
+    )
+
+    return execa('ssh', [...this.commonOpts, ...e, file, ...params])
+  }
+
   async forwardPorts(...ports: number[]): Promise<[number[], execa.ExecaChildProcess<string>]> {
     const ret = ports.map(() => 0)
     const fwd = await Promise.all(

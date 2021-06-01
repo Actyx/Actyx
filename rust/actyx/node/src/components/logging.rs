@@ -8,7 +8,6 @@ use parking_lot::Mutex;
 use std::{path::Path, sync::Arc};
 use util::formats::{LogRequest, LogSeverity};
 
-pub type LoggingTx = Sender<ComponentRequest<LoggingRequest>>;
 pub struct Logging {
     log: LogServiceWrapper,
     rx: Receiver<ComponentRequest<LoggingRequest>>,

@@ -6,25 +6,15 @@ import {
   QueryResponse,
 } from '../../http-client'
 import { run } from '../../util'
-import {
-  genericCommunicationTimeout,
-  mySuite,
-  publishRandom,
-  testName,
-  throwOnCb,
-} from './utils.support.test'
+import { mySuite, publishRandom, testName, throwOnCb } from './utils.support.test'
 
 const query = async (es: AxEventService, query: string): Promise<unknown[]> => {
   const result: unknown[] = []
   const offsets = await es.offsets()
-  await new Promise((res) => {
-    es.query({ upperBound: offsets.present, query, order: Order.Desc }, (data) =>
-      result.push(data.payload),
-    ).then(res)
-    setTimeout(res, genericCommunicationTimeout)
-  })
-  // FIXME switch to Order.Asc as soon as that starts working
-  return result.reverse()
+  await es.query({ upperBound: offsets.present, query, order: Order.Asc }, (data) =>
+    result.push(data.payload),
+  )
+  return result
 }
 
 describe('event service', () => {
@@ -76,8 +66,7 @@ describe('event service', () => {
           })
       }))
 
-    // FIXME: Query endpoint misbehave. Added comment to https://github.com/Actyx/Cosmos/issues/6452#issuecomment-840377060
-    it.skip('should return events in ascending order and complete', () =>
+    it('should return events in ascending order and complete', () =>
       run(async (x) => {
         const es = await mkESFromTrial(x)
         const pub1 = await publishRandom(es)
@@ -109,13 +98,7 @@ describe('event service', () => {
           order: Order.Desc,
         }
         const data: QueryResponse[] = []
-        //TODO: remove work around desc not completing
-        await new Promise((resolve, reject) => {
-          es.query(request, (x) => data.push(x))
-            .then(resolve)
-            .catch(reject)
-          setTimeout(resolve, genericCommunicationTimeout)
-        })
+        await es.query(request, (x) => data.push(x))
         const pub1Idx = data.findIndex((x) => x.lamport === pub1.lamport)
         const pub2Idx = data.findIndex((x) => x.lamport === pub2.lamport)
         expect(data[pub1Idx]).toMatchObject(pub1)
@@ -134,12 +117,7 @@ describe('event service', () => {
           order: Order.Desc,
         }
         const data: QueryResponse[] = []
-        await new Promise((resolve, reject) => {
-          es.query(request, (x) => data.push(x))
-            .then(resolve)
-            .catch(reject)
-          setTimeout(resolve, genericCommunicationTimeout)
-        })
+        await es.query(request, (x) => data.push(x))
         expect(data.length).toBe(0)
       }))
 

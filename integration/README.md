@@ -8,7 +8,7 @@ Integration tests use primarily the artifacts built from the current commit, so 
 
 - Make Actyx and related binaries (`actyx-linux` and `ax`) available by compiling them for the "current" platform as well as the platforms to be tested.
   The artifacts will be taken from `Cosmos/dist/bin/**` as well as DockerHub, use the `make all` command in the `Cosmos` folder
-- run `nvm use && npm install && npm run build` in `js/os-sdk` and `js/pond` (or run `make all-js`) in the `Cosmos` directory)
+- run `nvm use && npm install && npm run build` in `js/sdk` and `js/pond` (or run `make all-js`) in the `Cosmos` directory)
 
 Then you can `nvm use`, `npm install`, and `npm test` in this project.
 

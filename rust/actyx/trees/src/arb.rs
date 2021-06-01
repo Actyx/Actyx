@@ -8,6 +8,22 @@ use crate::{
     TagIndex,
 };
 
+impl Arbitrary for AxKey {
+    fn arbitrary(g: &mut Gen) -> Self {
+        let tags = TagSet::arbitrary(g);
+        Self {
+            tags,
+            lamport: u64::arbitrary(g).into(),
+            time: u64::arbitrary(g).into(),
+        }
+    }
+    fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+        let Self { lamport, tags, time } = self.clone();
+        // Let's assume only tags matter..
+        Box::new(tags.shrink().map(move |tags| Self { tags, lamport, time }))
+    }
+}
+
 impl Arbitrary for AxKeySeq {
     fn arbitrary(g: &mut Gen) -> Self {
         let mut tmp: Vec<(u64, u64)> = Arbitrary::arbitrary(g);
