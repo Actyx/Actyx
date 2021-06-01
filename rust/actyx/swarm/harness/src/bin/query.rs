@@ -12,8 +12,8 @@ fn main() -> anyhow::Result<()> {
         time::Duration,
     };
     use structopt::StructOpt;
-    use swarm_cli::{Command, Event};
-    use swarm_harness::{api::Api, m, select_single, HarnessOpts, MachineExt};
+    use swarm_cli::Event;
+    use swarm_harness::{api::Api, fully_meshed, HarnessOpts};
 
     fn make_events(n: usize) -> Vec<PublishEvent> {
         (0..n)
@@ -38,6 +38,8 @@ fn main() -> anyhow::Result<()> {
     opts.enable_fast_path = true;
     opts.enable_slow_path = true;
     opts.enable_root_map = true;
+    opts.enable_discovery = true;
+    opts.n_bootstrap = 1;
 
     swarm_harness::setup_env()?;
     swarm_harness::run_netsim(opts, move |mut sim| async move {
@@ -68,22 +70,7 @@ fn main() -> anyhow::Result<()> {
             .await?;
         }
 
-        let (first, rest) = sim.machines_mut().split_at_mut(1);
-        let first = &mut first[0];
-        for machine in rest.iter_mut() {
-            machine.send(Command::AddAddress(first.peer_id(), first.multiaddr()));
-        }
-        for machine in rest.iter_mut() {
-            select_single(
-                machine,
-                Duration::from_secs(3),
-                |ev| m!(ev, Event::Connected(peer) if *peer == first.peer_id() => ()),
-            )
-            .await;
-        }
-        for _ in 0..rest.len() {
-            select_single(first, Duration::from_secs(3), |ev| matches!(ev, Event::Connected(_))).await;
-        }
+        fully_meshed::<Event>(&mut sim, Duration::from_secs(30)).await;
 
         let expected = N * sim.machines().len();
         let mut tries = 10i32;
