@@ -43,9 +43,6 @@ class MyEnvironment extends NodeEnvironment {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       node.ax = ax
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      node.httpApiClient = httpApiClient
     }
   }
 
