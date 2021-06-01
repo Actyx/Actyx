@@ -132,10 +132,10 @@ mod tests {
     }
 
     quickcheck! {
-        fn serde_json_roundtrip(index: TagIndex) -> bool {
-            let json = serde_json::to_string(&index).unwrap();
-            let index2: TagIndex = serde_json::from_str(&json).unwrap();
-            index == index2
-        }
+    fn serde_json_roundtrip(index: TagIndex) -> bool {
+        let json = serde_json::to_string(&index).unwrap();
+        let index2: TagIndex = serde_json::from_str(&json).unwrap();
+        index == index2
+    }
     }
 }

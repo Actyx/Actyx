@@ -28,17 +28,31 @@ export const mkWindowsSsh = async (
   )
 
   console.log(`${nodeName}: Starting Actyx`)
-  const actyxProc = await startActyx(nodeName, logger, ssh)
-  return await forwardPortsAndBuildClients(ssh, nodeName, target, actyxProc, {
+  const defaultExeLocation = String.raw`C:\Users\Administrator\AppData\Local\Actyx\actyx.exe `
+
+  const cmd = mkCmd(defaultExeLocation, [
+    '--working-dir',
+    String.raw`C:\Users\Administrator\AppData\Local\Actyx\actyx-data`,
+  ])
+  console.log('cmd to execute', cmd)
+  const actyxProc = await startActyx(nodeName, logger, ssh, cmd)
+  const node = await forwardPortsAndBuildClients(ssh, nodeName, target, actyxProc, {
     host: 'process',
   })
+  return { ...node, _private: { ...node._private, actyxBinaryPath: defaultExeLocation } }
 }
+
+export const mkCmd = (exe: string, params: string[]): string =>
+  String.raw`Start-Process -Wait -NoNewWindow -FilePath ${exe} -ArgumentList ${params
+    .concat(['--background'])
+    .map((x) => `'${x}'`)
+    .join(',')}`
 
 function startActyx(
   nodeName: string,
   logger: (s: string) => void,
   ssh: Ssh,
-  command = String.raw`Start-Process -Wait -NoNewWindow -FilePath C:\Users\Administrator\AppData\Local\Actyx\actyx.exe -ArgumentList '--working-dir','C:\Users\Administrator\AppData\Local\Actyx\actyx-data','--background'`,
+  command: string,
 ): Promise<[execa.ExecaChildProcess<string>]> {
   // awaiting a Promise<Promise<T>> yields T (WTF?!?) so we need to put it into an array
   return new Promise((res, rej) => {

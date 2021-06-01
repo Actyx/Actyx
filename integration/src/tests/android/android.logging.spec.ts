@@ -12,7 +12,7 @@ describe('Logging on Android', () => {
   test('should read stuff from logcat', async () => {
     await runOnEach([{ host: 'android' }], async (node) => {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const execAdb = node.target.executeInContainer!
+      const execAdb = (s: string) => node.target.executeInContainer!(s, [])
       // Trace is not exposed via ax settings (??)
       const logLevels = [
         ['d', 'DEBUG'],
@@ -26,7 +26,7 @@ describe('Logging on Android', () => {
       // the `debuggable` flag set in release mode. So we work around this by
       // using `su`, meaning that this only works on devices where root is
       // available. Fortunately the emulator provides `su`.
-      const uid = (await execAdb('shell pm list packages -U | grep com.actyx.android')).stdOut
+      const uid = (await execAdb('shell pm list packages -U | grep com.actyx.android')).stdout
         // Sample output: package:com.actyx.android uid:10077
         .split(' ')[1]
         .split(':')[1]

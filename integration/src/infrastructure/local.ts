@@ -90,6 +90,7 @@ export const mkNodeLocalProcess = (
     httpApiClient: Client(clientOpts),
     _private: {
       shutdown,
+      actyxBinaryPath: binary,
       axBinaryPath,
       axHost: `localhost:${port4458}`,
       httpApiOrigin,
@@ -155,7 +156,7 @@ export const mkNodeLocalDocker = async (
 
     const axBinaryPath = await currentAxBinary()
     const executeInContainer = (script: string) =>
-      target.execute(`docker exec ${container} ${script}`)
+      target.execute(`docker exec ${container} ${script}`, [])
     return {
       name: nodeName,
       target: { ...target, executeInContainer },
@@ -165,6 +166,7 @@ export const mkNodeLocalDocker = async (
       _private: {
         shutdown,
         axBinaryPath,
+        actyxBinaryPath: 'actyx',
         axHost,
         httpApiOrigin,
         apiPond: `ws://localhost:${port(4454)}/api/v2/events`,

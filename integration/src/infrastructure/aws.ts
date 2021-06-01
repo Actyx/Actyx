@@ -7,6 +7,8 @@ import path from 'path'
 import { mkExecute } from '.'
 import { MyGlobal } from '../../jest/setup'
 import { Arch, Config, CreateEC2 } from '../../jest/types'
+import { execSsh } from './linux'
+import { Ssh } from './ssh'
 import { AwsKey, SshAble, Target, TargetKind } from './types'
 
 // determines frequency of polling AWS APIs (e.g. waiting for instance start)
@@ -228,4 +230,23 @@ export const cleanUpKeys = async (ec2: EC2, cutoff: number): Promise<void> => {
 export const terminateInstance = async (ec2: EC2, instance: string): Promise<void> => {
   console.log('terminating instance %s', instance)
   await ec2.terminateInstances({ InstanceIds: [instance] }).promise()
+}
+
+// Turns out that cloud-init modifies `/etc/apt/sources.list` after the first
+// boot of an AWS ubuntu AMI. However, we already have ssh access before that.
+// So interacting with `apt` is racy before that.  This doesn't throw on
+// purpose; maybe there's no cloud-init on the other side, so we just wait and
+// nothing bad happens.
+export const awaitCloudInitSetup = async (ssh: Ssh): Promise<void> => {
+  const exec = execSsh(ssh)
+  const max = 5
+  let tries = 1
+  while (tries <= max) {
+    const sources = await exec('sudo cat /etc/apt/sources.list')
+    if (sources.includes('cloud-init')) {
+      return
+    }
+    tries++
+    await new Promise((res) => setTimeout(res, 2000))
+  }
 }

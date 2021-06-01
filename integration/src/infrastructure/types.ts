@@ -1,19 +1,18 @@
 import { ApiClient } from '@actyx/os-sdk'
 import { Arch, Host, OS } from '../../jest/types'
+import { ExecuteFn } from '.'
 import { CLI } from '../cli'
 
 export type Target = {
   os: OS
   arch: Arch
   kind: TargetKind
-  execute: (script: string) => Promise<{ exitCode: number; stdOut: string; stdErr: string }>
+  execute: ExecuteFn
   // Run in the virtualization layer in which the actyx process runs, if it
   // doesn't run directly on the host. For Actyx on Docker, this provides direct
   // access to the Docker container in which Actyx is running via `docker exec`.
   // For an Android emulator, this provides adb access.
-  executeInContainer?: (
-    script: string,
-  ) => Promise<{ exitCode: number; stdOut: string; stdErr: string }>
+  executeInContainer?: ExecuteFn
   _private: {
     cleanup: () => Promise<void>
     // Helper to get `executeInContainer` over the process boundary. This is a
@@ -71,6 +70,7 @@ export type ActyxNode = Readonly<{
   httpApiClient: ApiClient
   _private: Readonly<{
     shutdown: () => Promise<void>
+    actyxBinaryPath: string
     axBinaryPath: string
     axHost: string
     httpApiOrigin: string

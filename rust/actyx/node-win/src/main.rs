@@ -155,16 +155,6 @@ mod win {
             return Ok(());
         }
 
-        // Make sure, there's only one instance of Actyx running on the system.
-        // On Windows this is implemented by creating named mutex with CreateMutexW.
-        // On UNIX systems this is implemented by using files and flock. The path of the
-        // created lock file will be /tmp/<name>.lock.
-        let global_mutex = named_lock::NamedLock::create("Actyx")
-            .map_err(|e| anyhow::anyhow!("Error creating global mutex: {}", e))?;
-        let _global_guard = global_mutex.try_lock().map_err(|_| {
-            anyhow::anyhow!("Error acquiring global mutex. Maybe another Actyx instance is already running?")
-        })?;
-
         let bind_to: BindTo = bind_options.try_into()?;
 
         let working_dir = maybe_working_dir.unwrap_or_else(|| std::env::current_dir().unwrap().join("actyx-data"));

@@ -19,10 +19,10 @@ const isSortedAsc = (data: string[]): boolean => {
   return true
 }
 
-describe.skip('Pond', () => {
+describe('Pond', () => {
   // FIXME: Parameters should be so high that these tests run for minutes on CI.
-  const eventsLinear = 100
-  const eventsConcurrent = 20
+  const roundsPerNodeLinear = 64
+  const roundsPerNodeConcurrent = roundsPerNodeLinear / 4
 
   // Assert that events are always fed to Fish in the correct order on every node, at any time,
   // and also assert that all events reach all Fish eventually.
@@ -31,11 +31,13 @@ describe.skip('Pond', () => {
 
     const results = await runConcurrentlyOnAll<string[]>((nodes) => {
       const t = (pond: Pond) =>
-        concurrentOrderingTest(nodes.length, eventsLinear, Tag(randomId), pond)
+        concurrentOrderingTest(nodes.length, roundsPerNodeLinear, Tag(randomId), pond)
       return nodes.map((node) => withPond(node, t))
     })
 
-    expect(results.length).toBeGreaterThan(1)
+    if (results.length === 1) {
+      console.warn('Pond spec ran with just 1 node')
+    }
 
     const firstResult = results[0]
     expect(isSortedAsc(firstResult)).toBeTruthy()
@@ -43,7 +45,7 @@ describe.skip('Pond', () => {
     for (const res of results) {
       expect(res).toEqual(firstResult)
     }
-  }, 180_000)
+  }, 300_000)
 
   // Assert that Fish only receive exactly those events that they are subscribed to,
   // and always in the proper order.
@@ -56,21 +58,26 @@ describe.skip('Pond', () => {
         Promise.all([
           // Some different ways in which tags might be combined.
           // We run all of these in parallel, to assert their events are not accidentally mixed up.
-          concurrentOrderingTest(nodes.length, eventsConcurrent, base.withId('/1'), pond),
-          concurrentOrderingTest(nodes.length, eventsConcurrent, base.and('/2'), pond),
+          concurrentOrderingTest(nodes.length, roundsPerNodeConcurrent, base.withId('/1'), pond),
+          concurrentOrderingTest(nodes.length, roundsPerNodeConcurrent, base.and('/2'), pond),
           concurrentOrderingTest(
             nodes.length,
-            eventsConcurrent,
+            roundsPerNodeConcurrent,
             Tag(':3:').and(base).and('::3'),
             pond,
           ),
           concurrentOrderingTest(
             nodes.length,
-            eventsConcurrent,
+            roundsPerNodeConcurrent,
             Tag('xxx').and(base.withId('___4___')),
             pond,
           ),
-          concurrentOrderingTest(nodes.length, eventsConcurrent, Tag('5').withId(randomId), pond),
+          concurrentOrderingTest(
+            nodes.length,
+            roundsPerNodeConcurrent,
+            Tag('5').withId(randomId),
+            pond,
+          ),
         ])
       return nodes.map((node) => withPond(node, t))
     })
@@ -80,7 +87,9 @@ describe.skip('Pond', () => {
     for (const resNumber in allResults[0]) {
       const results = allResults.map((r) => r[resNumber])
 
-      expect(results.length).toBeGreaterThan(1)
+      if (results.length === 1) {
+        console.warn('Pond spec ran with just 1 node')
+      }
 
       const firstResult = results[0]
       expect(isSortedAsc(firstResult)).toBeTruthy()
@@ -89,7 +98,7 @@ describe.skip('Pond', () => {
         expect(res).toEqual(firstResult)
       }
     }
-  })
+  }, 300_000)
 
   // Roughly assert causal consistency, by asserting that for every event we see in the Fish,
   // we have already seen at least as many events as the writer of that event.
@@ -105,7 +114,7 @@ describe.skip('Pond', () => {
     for (const res of results) {
       expect(isSortedAsc(res)).toBeTruthy()
     }
-  })
+  }, 300_000)
 })
 
 const randomTags = (prefix: string) => (c: number): Tags<never> => {
@@ -156,7 +165,7 @@ const fishName = (source: string, subs: Where<unknown>) =>
 // and the final state (all events from all participants) is reached.
 const concurrentOrderingTest = async (
   numNodes: number,
-  eventsPerNode: number,
+  roundsPerNode: number,
   streamTags: Tags<unknown>,
   pond: Pond,
 ): Promise<string[]> => {
@@ -174,7 +183,7 @@ const concurrentOrderingTest = async (
     fishId: FishId.of('orderingtest', fishName(nodeId, where), 1),
   }
 
-  const expectedSum = numNodes * eventsPerNode
+  const expectedSum = numNodes * roundsPerNode * 4 // Each round emits 4 events
 
   const state = new Promise<string[]>((resolve, reject) =>
     pond.observe(
@@ -194,9 +203,12 @@ const concurrentOrderingTest = async (
   )
 
   const emissionTags = padEmitWithDummies(streamTags)
-  for (let i = 0; i < eventsPerNode; i++) {
-    await pond.emit(emissionTags, { hello: 'world' }).toPromise()
-    await Observable.timer(10 * Math.random()).toPromise()
+  const e = pond.events()
+  for (let i = 0; i < roundsPerNode; i++) {
+    await pond.emit(emissionTags, { hello: 'world0' }).toPromise()
+    await pond.emit(emissionTags, { hello: 'world1' }).toPromise()
+    await e.emit(emissionTags.apply({ hello: 'world2' }, { hello: 'world3' }))
+    await new Promise((res) => setTimeout(res, 10 * Math.random())) // Sleep 0-10ms
   }
 
   return state

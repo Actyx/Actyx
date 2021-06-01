@@ -104,6 +104,10 @@ impl KeyStore {
         }
     }
 
+    pub fn into_ref(self) -> KeyStoreRef {
+        Arc::new(RwLock::new(self))
+    }
+
     /// Generate a new Ed25519 key pair and return its key_id
     ///
     /// The key pair is stored in this KeyStore. Callers should make sure to persist the

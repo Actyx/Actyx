@@ -4,6 +4,7 @@ import execa from 'execa'
 import * as t from 'io-ts'
 import { Arch } from '../../jest/types'
 import { CLI } from '../cli'
+import { awaitCloudInitSetup } from './aws'
 import { mkProcessLogger } from './mkProcessLogger'
 import { actyxDockerImage, actyxLinuxBinary, currentAxBinary } from './settings'
 import { Ssh } from './ssh'
@@ -36,6 +37,12 @@ export const mkNodeSshProcess = async (
   const ssh = Ssh.new(sshParams.host, sshParams.username, sshParams.privateKey)
   await connectSsh(ssh, nodeName, sshParams)
 
+  // Install test dependencies
+  if (target.kind.type === 'aws') {
+    await awaitCloudInitSetup(ssh)
+  }
+  await execSsh(ssh)('sudo apt update && sudo apt install ncat -y ')
+
   const binaryPath = await actyxLinuxBinary(target.arch)
   await uploadActyx(nodeName, ssh, binaryPath)
 
@@ -62,6 +69,9 @@ export const mkNodeSshDocker = async (
   const ssh = Ssh.new(sshParams.host, sshParams.username, sshParams.privateKey)
   await connectSsh(ssh, nodeName, sshParams)
 
+  if (target.kind.type === 'aws') {
+    await awaitCloudInitSetup(ssh)
+  }
   await ensureDocker(ssh, nodeName, target.arch)
   const userPass = await execa('vault', [
     'kv',
@@ -288,6 +298,7 @@ export const forwardPortsAndBuildClients = async (
     httpApiClient,
     _private: {
       shutdown,
+      actyxBinaryPath: './actyx',
       axBinaryPath,
       axHost,
       httpApiOrigin,

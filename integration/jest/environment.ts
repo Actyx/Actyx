@@ -22,7 +22,10 @@ class MyEnvironment extends NodeEnvironment {
 
     /**
      * Global objects must be serializable to copy into jest's test context.
-     * That's why we have to re-setup some things re-creating functions.
+     * That's why we have to re-setup some things re-creating functions.  Note:
+     * If any code relies on `instanceof` comparison (like for example rxjs
+     * does), this won't work, as this code is executed not within the new VM
+     * (https://github.com/facebook/jest/issues/7246).
      */
     for (const node of axNodeSetup.nodes) {
       // Reuse the identity the node was set up with
@@ -34,7 +37,7 @@ class MyEnvironment extends NodeEnvironment {
       node.target.execute = mkExecute(node.target.os, node.target.kind)
       if (node.target._private.executeInContainerPrefix !== undefined) {
         node.target.executeInContainer = (script: string) =>
-          node.target.execute(`${node.target._private.executeInContainerPrefix}${script}`)
+          node.target.execute(`${node.target._private.executeInContainerPrefix}${script}`, [], {})
       }
 
       const opts = DefaultClientOpts()

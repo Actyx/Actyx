@@ -136,10 +136,10 @@ then
 else
   exit 1
 fi`
-      const result = await node.target.execute(script)
+      const result = await node.target.execute(script, [])
       expect(result.exitCode).toBe(0)
-      expect(result.stdOut).toBe('yay')
-      expect(result.stdErr).toBe('')
+      expect(result.stdout).toBe('yay')
+      expect(result.stderr).toBe('')
     })
   })
   test('must allow running powershell scripts on windows', async () => {
@@ -150,10 +150,10 @@ while ($val -lt 10) {
 }
 $val + 32
 exit 0`
-      const result = await node.target.execute(script)
+      const result = await node.target.execute(script, [])
       expect(result.exitCode).toBe(0)
-      expect(result.stdOut).toBe('42')
-      expect(result.stdErr).toBe('')
+      expect(result.stdout).toBe('42')
+      expect(result.stderr).toBe('')
     })
   })
 })

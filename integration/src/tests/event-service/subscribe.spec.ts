@@ -11,9 +11,10 @@ describe('event service', () => {
 
         const data: SubscribeResponse[] = []
         await new Promise((resolve, reject) => {
-          es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, (x) =>
-            data.push(x),
-          )
+          es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, (x) => {
+            data.push(x)
+            resolve()
+          })
             .then(resolve)
             .catch(reject)
           setTimeout(resolve, genericCommunicationTimeout)
@@ -32,9 +33,10 @@ describe('event service', () => {
 
         const data: SubscribeResponse[] = []
         const done = new Promise((resolve, reject) => {
-          es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, (x) =>
-            data.push(x),
-          )
+          es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, (x) => {
+            data.push(x)
+            resolve()
+          })
             .then(resolve)
             .catch(reject)
           setTimeout(resolve, genericCommunicationTimeout)
