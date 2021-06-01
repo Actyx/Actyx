@@ -128,10 +128,7 @@ where
             };
             let mut delay = DelayBuffer::new();
             delay.set_delay(Duration::from_millis(opts.delay_ms));
-            let mut cmd = async_process::Command::from(cfg);
-            if std::env::var_os("RUST_LOG").is_none() {
-                cmd.env("RUST_LOG", "info");
-            }
+            let cmd = async_process::Command::from(cfg);
             let machine = sim.spawn_machine(cmd, Some(delay)).await;
             sim.plug(machine, net, addrs.get(i).copied()).await;
             let m = sim.machine(machine);
