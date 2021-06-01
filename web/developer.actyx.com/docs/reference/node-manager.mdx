@@ -9,81 +9,160 @@ description: API Reference for the Actyx Node Manager.
 image: /images/defaults/default.svg
 ---
 
-The main elements of the applications are the status bar and 5 tabs, which will be explained in more detail in the following.
+The Actyx Node Manager is an app that lets you manage and interact with local and remote Actyx nodes through an easy-to-use graphical user interface.
+This document describes the main navigation elements and the features of the Actyx Node Manager.
 
-<img
-  src="/images/node-manager/node-manager-header.png"
-  style={{ maxWidth: '550px', marginBottom: '1rem' }}
-/>
+## General UX
 
-### Status Bar
+![no-nodes](../../static/images/node-manager/no-nodes.png)
 
-The status bar lets you connect to your nodes by entering the IP address of the node you want to connect to into the text field and hitting the _Connect_ button.
-In addition, the bar displays the current connection status of your node at all times on the left.
+The main navigation elements of the application are the top bar including the node search and the left panel leading to the different features of the Actyx Node Manager.
 
-### Status Tab
+### 1 Top Bar
 
-The _Status Tab_ displays general information about the node you are currently connected to:
+The search bar lets you connect to your nodes by entering the IP address of the node you want to connect to into the search field.
+Right next to the search bar, the selected nodes can be removed with the click of a button.
+The dot menu to the very right provides contact and help links.
 
-<img src="/images/node-manager/node-manager-status.png" style={{ maxWidth: '550px' }} />
+### 2 Left Panel
 
-- **Connection state**: `unreachable` or `reachable`
-- **Node ID**: `<IP address>` or `localhost`
-- **Display name**: The display name you defined in the node settings
-- **State**: `Stopped` or `Running`
-- **Settings**: `Invalid` or `Valid`
-- **License**: `Invalid` or `Valid`
-- **Apps deployed**: Number of apps that are currently deployed to the node
-- **Apps running**: Number of apps that are currently running on the node
-- **Started**: Date and time when Actyx was started on the node
-- **Version**: Version number of Actyx running on the node
+The left panel is the main entry point to the node overview and all features of the Node Manager.
+The node overview displays all nodes that you are currently connected to and your favored nodes.
+The features are:
 
-Additionally, the _Status Tab_ also displays the logs emitted by the Actyx node.
+- User key generation
+- App manifest signing
+- Swarm key generation
+- Diagnostics
 
-### Apps Tab
+## Nodes Overview
 
-<!-- TODO NKI: replace with correct link -->
+![node-overview](../../static/images/node-manager/node-overview.png)
 
-:::warning `ax apps` subcommand is deprecated
-Managing apps via the Actyx CLI is deprecated and will no longer be supported in future Actyx versions.
-:::
+The Node Overview screen displays all nodes that were added since opening the app.
 
-The _Apps Tab_ gives an overview of all applications that are installed on the node at a glance:
+### 1 Connected node
 
-<img src="/images/node-manager/node-manager-apps.png" style={{ maxWidth: '550px' }} />
+Upon adding a note via the search bar, it appears in _Node Overview_.
+For each node, the display name, the connection status, as well as the IP address is displayed.
+Additionally, you can jump into the node details, remove the node or mark the node as a favorite using the start in the top right corner.
 
-- **App ID**: The ID you specify in the apps `manifest.yml`. This is also the settings scope of this application
-- **Version**: Version number of the application
-- **Enabled**: Status of the application (_Disabled_ or _Enabled_)
-- **State**: `Stopped` or `Running`
-- **Settings**: `Invalid` or `Valid`
-- **License**: `Invalid` or `Valid`
-- **Started**: Date and time when the application was started
-- **Actions**: Options to start, stop and undeploy the application
+### 2 Disconnected node
 
-Moreover, the _Apps Tab_ offers the capability to validate and package an application and deploy applications to nodes.
-In case you want to validate or package an application, please enter the path to the app directory into the text field.
-If you want to deploy an application, please enter the path to the packaged tar.gz file into the text field.
+Once a node is marked as a favorite, it can no longer be removed and will be saved across sessions.
+This means that all favorite nodes are still there when you reopen the app, even if there is no connection.
+Once the node establishes a connection, it will be reflected in the UI.
 
-### Settings Tab
+### 3 Unauthorized node
 
-The _Settings Tab_ displays all settings scopes that are deployed to the node and their respective settings in an interactive code editor.
-The scope of the node is `com.actyx`.
+If a node is displayed as _Not authorized_, it means that the Node Manager could establish a connection to that node but your [public user key is not listed under that node's `authorizedUsers`](../how-to/user-auth/manage-authorized-users.mdx).
 
-<img src="/images/node-manager/node-manager-settings.png" style={{ maxWidth: '550px' }} />
+## Node Details
 
-You can simply edit the JSON file in the editor to change the settings for your node or for an app.
-Every time you edit the settings, your changes will be validated against the JSON schema and can only be saved when settings comply with the schema.
-You can view the settings schema by ticking the check box in the bottom right corner.
+The _Node Details_ view provides additional information on the selected node.
 
-### Tools Tab
+### 1 Info
 
-The _Tools Tab_ lets you generate a new swarm key and lets you copy it to the clipboard.
-A [swarm](../how-to/swarms/setup-swarm.mdx) is defined by a single property, the so-called swarm key.
-In order to participate in a swarm, a node must have the secret swarm key.
-The swarm key is a setting that must be set for a node to function correctly.
+![node-info](../../static/images/node-manager/node-info.png)
 
-### About Tab
+The _Info_ view displays meta info on the selected node.
+It contains:
 
-The _About Tab_ displays the Actyx CLI version that the node manager is based on.
-Additionally you can see the Software License Agreement and links to our support channels.
+- Display name: The display name from the node settings
+- Bind address: The IP address of the node that is used to connect to it
+- Node ID: The node ID defined by Actyx
+- Running since: Timestamp since node was started
+- Version: Version number of Actyx installed on this node
+
+### 2 Addresses
+
+![node-addresses](../../static/images/node-manager/node-addresses.png)
+
+The _Addresses_ view provides network details of the node.
+
+#### Listen Addresses
+
+The listen addresses are all network interfaces on which port 4001 is bound.
+Unless configured otherwise, the listen addresses contain all active network interfaces as Actyx binds to `0.0.0.0` by default.
+
+#### Announce Addresses
+
+The announce addresses display the addresses defined in the node settings.
+For more information on `announceAddresses`, please refer to our [how-to guide](../how-to/swarms/configure-announced-adresses.mdx).
+
+### 3 Peers
+
+![node-peers](../../static/images/node-manager/node-peers.png)
+
+The _Peers_ view displays all peers of the selected node.
+
+### 4 Settings
+
+![settings](../../static/images/node-manager/settings.png)
+
+The _Settings_ view provides an editor where you can manage the node settings.
+The settings are constantly validated against the node settings schema.
+If you want to revert the changes you made since they were last saved, simply press the _Restore_ button.
+
+## Setting up user keys
+
+Actyx Node Manager lets you create user keys so that you can establish an authorized connection to the node.
+For more information on user keys, please refer to our [how-to guide](../how-to/user-auth/set-up-user-keys.mdx).
+
+### 1 No user keys found
+
+![auth-01](../../static/images/node-manager/auth-01.png)
+
+If you open the Node Manager and it cannot find user keys in the default location, it will ask you to create a pair of user keys.
+
+### 2 User key pair created
+
+![auth-02](../../static/images/node-manager/auth-02.png)
+
+Once you have created the keys, Node Manager displays the location on your device where it saved the user keys as well as your public key.
+
+### 3 Create additional keys
+
+![auth-03](../../static/images/node-manager/auth-03.png)
+
+You can at any time create additional user keys by defining a name and a location where to save the key pair.
+On button click, another key pair is generated.
+
+## Signing an app manifest
+
+Actyx Node Manager lets you sign app manifests so that you can authenticate your app with the node and access its APIs.
+For more information on app signing, please refer to our [how-to guide](../how-to/app-auth/sign-app-manifest.mdx).
+
+### 1 Selecting necessary files
+
+![signing-01](../../static/images/node-manager/signing-01.png)
+
+To sign an app manifest, you need to select two files from your disc.
+The first one is the manifest you want to sign, the second one is your Actyx developer certificate.
+
+### 2 Signing
+
+![signing-02](../../static/images/node-manager/signing-02.png)
+
+Signing your manifest updates the existing manifest file.
+If it already contained a signature, signing the manifest again overrides the existing signature.
+Note that the app ID in the manifest must use the namespace you used to obtain your developer certificate.
+
+## Creating a swarm key
+
+![swarm-key](../../static/images/node-manager/swarm-key.png)
+
+Actyx Node Manager lets you create swarm keys.
+For more information on what a swarm is and what you need the swarm key for, please refer to our [how-to guide](../how-to/swarms/setup-swarm.mdx).
+
+## Diagnostics
+
+The _Diagnostics_ view gives insights into the swarm connectivity and provides additional data such as the app state, or the node settings schema.
+
+### 1 Swarm Connectivity
+
+![diagnostics-01](../../static/images/node-manager/diagnostics-01.png)
+
+### 2 Node Manager
+
+![diagnostics-02](../../static/images/node-manager/diagnostics-02.png)
