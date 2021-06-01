@@ -39,6 +39,7 @@ fn main() -> anyhow::Result<()> {
     opts.enable_slow_path = true;
     opts.enable_root_map = true;
 
+    swarm_harness::setup_env()?;
     swarm_harness::run_netsim(opts, move |mut sim| async move {
         let api = Api::new(&mut sim, app_manifest)?;
 

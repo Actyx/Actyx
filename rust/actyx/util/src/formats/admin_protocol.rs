@@ -40,6 +40,7 @@ pub enum AdminRequest {
     //    AppsToken {
     //        app_id: AppId,
     //    },
+    NodesInspect,
     SettingsGet {
         scope: settings::Scope,
         no_defaults: bool,
@@ -56,30 +57,18 @@ pub enum AdminRequest {
     SettingsUnset {
         scope: settings::Scope,
     },
-    Internal(InternalRequest),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum AdminResponse {
     NodesLsResponse(NodesLsResponse),
+    NodesInspectResponse(NodesInspectResponse),
     // AppsTokenResponse(String),
     SettingsGetResponse(serde_json::Value),
     SettingsSetResponse(serde_json::Value),
     SettingsSchemaResponse(serde_json::Value),
     SettingsScopesResponse(Vec<String>),
     SettingsUnsetResponse,
-    Internal(InternalResponse),
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-/// Internal requests, subject to change, undocumented, use at your own risk
-pub enum InternalRequest {
-    GetSwarmState,
-}
-#[derive(Clone, Debug, Serialize, Deserialize)]
-/// Internal requests, subject to change, undocumented, use at your own risk
-pub enum InternalResponse {
-    GetSwarmStateResponse(serde_json::Value),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -94,4 +83,20 @@ pub struct NodesLsResponse {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SetSettingsRequest {
     pub settings: serde_json::Value,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct NodesInspectResponse {
+    pub peer_id: String,
+    pub listen_addrs: Vec<String>,
+    pub announce_addrs: Vec<String>,
+    pub peers: Vec<Peer>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Peer {
+    pub peer_id: String,
+    pub addr: String,
 }

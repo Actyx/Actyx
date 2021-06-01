@@ -6,9 +6,8 @@ fn main() -> anyhow::Result<()> {
     use swarm_harness::{MachineExt, MultiaddrExt};
     use tempdir::TempDir;
 
-    util::setup_logger();
+    swarm_harness::setup_env()?;
     let temp_dir = TempDir::new("swarm-harness")?;
-    netsim_embed::unshare_user()?;
     async_global_executor::block_on(async move {
         let mut sim = Netsim::new();
         let net_a = sim.spawn_network(Ipv4Range::new(Ipv4Addr::new(192, 168, 0, 0), 24));

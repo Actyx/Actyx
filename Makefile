@@ -259,9 +259,9 @@ validate-netsim: diagnostics
 	rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
 	rust/actyx/target/release/discovery_multi_net
 	rust/actyx/target/release/discovery_external
-	rust/actyx/target/release/subscribe --n-nodes 10
+	#rust/actyx/target/release/subscribe --n-nodes 10
 	rust/actyx/target/release/query --n-nodes 10
-	rust/actyx/target/release/quickcheck_subscribe
+	#rust/actyx/target/release/quickcheck_subscribe
 	rust/actyx/target/release/quickcheck_interleaved
 	rust/actyx/target/release/quickcheck_stress_single_store
 

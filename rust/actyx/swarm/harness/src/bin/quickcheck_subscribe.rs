@@ -4,7 +4,6 @@ use actyxos_sdk::{
     OffsetMap, TagSet,
 };
 use futures::{stream::FuturesUnordered, StreamExt};
-use netsim_embed::unshare_user;
 use quickcheck::{Gen, QuickCheck, TestResult};
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
@@ -16,8 +15,7 @@ use swarm_harness::{fully_meshed, HarnessOpts};
 const MAX_NODES: usize = 15;
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
-    util::setup_logger();
-    unshare_user()?;
+    swarm_harness::setup_env()?;
     let res = QuickCheck::new()
         .gen(Gen::new(30))
         .tests(2)

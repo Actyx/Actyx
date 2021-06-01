@@ -8,8 +8,8 @@ edition = "2018"
 actyxos_sdk = { version = "0.6", path = "../../sdk", features = ["arb"] }
 
 anyhow = "1.0.40"
-banyan = "0.13.2"
-libipld = { version = "0.11.0", default-features = false, features = ["dag-cbor", "derive"] }
+banyan = "0.14.0"
+libipld = { version = "0.12.0", default-features = false, features = ["dag-cbor", "derive"] }
 num-traits = "0.2.14"
 quickcheck = { version = "1.0.3", optional = true }
 range-collections = "0.1.1"
@@ -19,7 +19,7 @@ vec-collections = "0.3.5"
 
 [dev-dependencies]
 futures = { version = "0.3.14", package = "futures" }
-multihash = { version = "0.13.2", default-features = false, features = ["sha2"] }
+multihash = { version = "0.14.0", default-features = false, features = ["sha2"] }
 parking_lot = "0.11.1"
 quickcheck = "1.0.3"
 serde_cbor = "0.11.1"

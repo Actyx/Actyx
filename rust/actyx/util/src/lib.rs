@@ -33,12 +33,9 @@ use tracing_subscriber::EnvFilter;
 
 /// Sets up a logging and a panic handler that logs panics.
 pub fn setup_logger() {
-    setup_logger_level(|x| x);
-}
-pub fn setup_logger_level(f: impl FnOnce(EnvFilter) -> EnvFilter) {
     tracing_log::LogTracer::init().ok();
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_env_filter(f(EnvFilter::from_default_env()))
+        .with_env_filter(EnvFilter::from_default_env())
         .finish();
     tracing::subscriber::set_global_default(subscriber).ok();
     log_panics::init();

@@ -37,7 +37,7 @@ dependencies = [
  "intern-arc",
  "libipld",
  "maplit",
- "multibase 0.9.1",
+ "multibase",
  "num-traits 0.2.14",
  "once_cell",
  "pest",
@@ -121,15 +121,6 @@ checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 
 [[package]]
 name = "aead"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fc95d1bdb8e6666b2b217308eeeb09f2d6728d104be3e31916cc74d15420331"
-dependencies = [
- "generic-array 0.14.4",
-]
-
-[[package]]
-name = "aead"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "922b33332f54fc0ad13fa3e514601e8d30fb54e1f3eadc36643f6526db645621"
@@ -139,47 +130,28 @@ dependencies = [
 
 [[package]]
 name = "aes"
-version = "0.5.0"
+version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dd2bc6d3f370b5666245ff421e231cba4353df936e26986d2918e61a8fd6aef6"
+checksum = "b2333ac5777aaa1beb8589f5374976ae7dc8aa4f09fd21ae3d8662ca97f5247d"
 dependencies = [
- "aes-soft",
- "aesni",
- "block-cipher",
+ "cfg-if 1.0.0",
+ "cipher",
+ "cpufeatures",
+ "opaque-debug 0.3.0",
 ]
 
 [[package]]
 name = "aes-gcm"
-version = "0.7.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0301c9e9c443494d970a07885e8cf3e587bae8356a1d5abd0999068413f7205f"
+checksum = "1ee2263805ba4537ccbb19db28525a7b1ebc7284c228eb5634c3124ca63eb03f"
 dependencies = [
- "aead 0.3.2",
+ "aead",
  "aes",
- "block-cipher",
+ "cipher",
+ "ctr",
  "ghash",
  "subtle 2.4.0",
-]
-
-[[package]]
-name = "aes-soft"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63dd91889c49327ad7ef3b500fd1109dbd3c509a03db0d4a9ce413b79f575cb6"
-dependencies = [
- "block-cipher",
- "byteorder",
- "opaque-debug 0.3.0",
-]
-
-[[package]]
-name = "aesni"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a6fe808308bb07d393e2ea47780043ec47683fcf19cf5efc8ca51c50cc8c68a"
-dependencies = [
- "block-cipher",
- "opaque-debug 0.3.0",
 ]
 
 [[package]]
@@ -280,7 +252,7 @@ dependencies = [
  "libipld",
  "maplit",
  "mime_guess",
- "multihash",
+ "multihash 0.14.0",
  "num-traits 0.2.14",
  "parking_lot 0.11.1",
  "pin-project 1.0.7",
@@ -580,7 +552,7 @@ dependencies = [
  "hyper",
  "ipfs-sqlite-block-store",
  "libipld",
- "libp2p",
+ "libp2p 0.38.0",
  "libp2p-streaming-response",
  "maplit",
  "predicates",
@@ -617,6 +589,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "az"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "822d7d63e0c0260a050f6b1f0d316f5c79b9eab830aca526ed904e1011bd64ca"
+
+[[package]]
 name = "backtrace"
 version = "0.3.59"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -633,12 +611,12 @@ dependencies = [
 
 [[package]]
 name = "banyan"
-version = "0.13.2"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf5c6eac60895836dd0975f1652a54d546d9239f42657215bd34b1c61c55ade6"
+checksum = "41529197e031712cbce095124ce379e5f4003e51528432e25e502f0bbb6664f7"
 dependencies = [
  "anyhow",
- "chacha20 0.7.1",
+ "chacha20",
  "derive_more",
  "fnv",
  "futures 0.3.15",
@@ -653,14 +631,14 @@ dependencies = [
 
 [[package]]
 name = "banyan-utils"
-version = "0.6.1"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3aa2da24113252e54552552584890ae36b21d0899b391cae5561e5d1df481124"
+checksum = "27394daa11fdabc32c398cb64aa10bfa30e932911c9e48dc35bb19a9f1372fa3"
 dependencies = [
  "anyhow",
  "banyan",
  "base64",
- "chacha20 0.7.1",
+ "chacha20",
  "derive_more",
  "dot",
  "env_logger 0.8.3",
@@ -671,7 +649,7 @@ dependencies = [
  "libipld",
  "lru",
  "maplit",
- "multihash",
+ "multihash 0.14.0",
  "parking_lot 0.11.1",
  "percent-encoding 2.1.0",
  "rand 0.8.3",
@@ -807,15 +785,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "block-cipher"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f337a3e6da609650eb74e02bc9fac7b735049f7623ab12f2e4c719316fcc7e80"
-dependencies = [
- "generic-array 0.14.4",
-]
-
-[[package]]
 name = "block-padding"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -889,6 +858,12 @@ name = "byte-tools"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
+
+[[package]]
+name = "bytemuck"
+version = "1.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bed57e2090563b83ba8f83366628ce535a7584c9afa4c9fc0612a03925c6df58"
 
 [[package]]
 name = "byteorder"
@@ -1025,36 +1000,13 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "chacha20"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "244fbce0d47e97e8ef2f63b81d5e05882cb518c68531eb33194990d7b7e85845"
-dependencies = [
- "stream-cipher",
- "zeroize",
-]
-
-[[package]]
-name = "chacha20"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fee7ad89dc1128635074c268ee661f90c3f7e83d9fd12910608c36b47d6c3412"
 dependencies = [
  "cfg-if 1.0.0",
- "cipher 0.3.0",
+ "cipher",
  "cpufeatures",
- "zeroize",
-]
-
-[[package]]
-name = "chacha20poly1305"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9bf18d374d66df0c05cdddd528a7db98f78c28e2519b120855c4f84c5027b1f5"
-dependencies = [
- "aead 0.3.2",
- "chacha20 0.5.0",
- "poly1305 0.6.2",
- "stream-cipher",
  "zeroize",
 ]
 
@@ -1064,10 +1016,10 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1580317203210c517b6d44794abfbe600698276db18127e37ad3e69bf5e848e5"
 dependencies = [
- "aead 0.4.1",
- "chacha20 0.7.1",
- "cipher 0.3.0",
- "poly1305 0.7.0",
+ "aead",
+ "chacha20",
+ "cipher",
+ "poly1305",
  "zeroize",
 ]
 
@@ -1087,22 +1039,13 @@ dependencies = [
 
 [[package]]
 name = "cid"
-version = "0.6.1"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff0e3bc0b6446b3f9663c1a6aba6ef06c5aeaa1bc92bd18077be337198ab9768"
+checksum = "f6b8976b33648136e969aafa6eb33d58ff0d301fa0b4e8d513db58fd32cd81aa"
 dependencies = [
- "multibase 0.8.0",
- "multihash",
- "unsigned-varint 0.5.1",
-]
-
-[[package]]
-name = "cipher"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12f8e7987cbd042a63249497f41aed09f8e65add917ea6566effbc56578d6801"
-dependencies = [
- "generic-array 0.14.4",
+ "multibase",
+ "multihash 0.14.0",
+ "unsigned-varint 0.7.0",
 ]
 
 [[package]]
@@ -1247,12 +1190,6 @@ checksum = "ed00c67cb5d0a7d64a44f6ad2668db7e7530311dd53ea79bcd4fb022c64911c8"
 dependencies = [
  "libc",
 ]
-
-[[package]]
-name = "cpuid-bool"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dcb25d077389e53838a8158c8e99174c5a9d902dee4904320db714f3c653ffba"
 
 [[package]]
 name = "crc"
@@ -1468,13 +1405,13 @@ dependencies = [
  "anyhow",
  "base64",
  "byteorder",
- "chacha20poly1305 0.8.0",
+ "chacha20poly1305",
  "criterion",
  "curve25519-dalek",
  "derive_more",
  "ed25519-dalek",
- "libp2p",
- "multihash",
+ "libp2p 0.38.0",
+ "multihash 0.14.0",
  "parking_lot 0.11.1",
  "rand 0.7.3",
  "serde 1.0.126",
@@ -1545,6 +1482,15 @@ checksum = "5e98e2ad1a782e33928b96fc3948e7c355e5af34ba4de7670fe8bac2a3b2006d"
 dependencies = [
  "quote",
  "syn",
+]
+
+[[package]]
+name = "ctr"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a232f92a03f37dd7d7dd2adc67166c77e9cd88de5b019b9a9eecfaeaf7bfd481"
+dependencies = [
+ "cipher",
 ]
 
 [[package]]
@@ -1859,10 +1805,13 @@ dependencies = [
 
 [[package]]
 name = "fixed"
-version = "0.5.7"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f32ca1abdbb21d63a3e02a658a9e3001b172f13c8b46724299e21190c5ee5041"
+checksum = "c97cabfe1ce0db024d64e9f688469e80a8e2b36cb792b09ba33e1ee8d21d00ae"
 dependencies = [
+ "az",
+ "bytemuck",
+ "half",
  "typenum",
 ]
 
@@ -2199,9 +2148,9 @@ dependencies = [
 
 [[package]]
 name = "ghash"
-version = "0.3.1"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97304e4cd182c3846f7575ced3890c53012ce534ad9114046b0a9e00bb30a375"
+checksum = "5f6fb2a26dd2ebd268a68bc8e9acc9e67e487952f33384055a1cbe697514c64e"
 dependencies = [
  "opaque-debug 0.3.0",
  "polyval",
@@ -2744,9 +2693,9 @@ dependencies = [
 
 [[package]]
 name = "ipfs-embed"
-version = "0.20.1"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0224b48311a00f1c4005675601fdbd1d2046c7deb5dad0ceef846fd46fef66e9"
+checksum = "5ff63ab9f650147b922436522e72a2de6fcbd1b4bd8806471f574190b8857164"
 dependencies = [
  "anyhow",
  "async-io",
@@ -2756,7 +2705,7 @@ dependencies = [
  "ipfs-sqlite-block-store",
  "lazy_static 1.4.0",
  "libipld",
- "libp2p",
+ "libp2p 0.38.0",
  "libp2p-bitswap",
  "libp2p-broadcast",
  "libp2p-quic",
@@ -2772,9 +2721,9 @@ dependencies = [
 
 [[package]]
 name = "ipfs-sqlite-block-store"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d85467d8dad270f292a9e31b1135d7fd15795bb27792fd751f88bac2cc93530"
+checksum = "d4359b2e5e7f48f54351d668c2f423de61a0e6a0e581c4732f3169579f3bd64d"
 dependencies = [
  "anyhow",
  "derive_more",
@@ -2955,9 +2904,9 @@ checksum = "789da6d93f1b866ffe175afc5322a4d76c038605a1c3319bb57b06967ca98a36"
 
 [[package]]
 name = "libipld"
-version = "0.11.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d59307d95e7c706e1604be291bee73840751b6bb7dc7b0a7fc3e915e74a8c23"
+checksum = "373a32b8d77bf13d6d5552b068e55991cc26f6f43edae25409fec5f555494438"
 dependencies = [
  "async-trait",
  "cached",
@@ -2969,16 +2918,16 @@ dependencies = [
  "libipld-macro",
  "libipld-pb",
  "log",
- "multihash",
+ "multihash 0.14.0",
  "parking_lot 0.11.1",
  "thiserror",
 ]
 
 [[package]]
 name = "libipld-cbor"
-version = "0.11.4"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cef71f3888e4fcc0d8102f4f58a39e3b95d83ea91567189dd7865a1ce1b9e1a"
+checksum = "54633e08c320221eebaf2052b09390a6bca26227258be65222e23fc86840839a"
 dependencies = [
  "byteorder",
  "libipld-core",
@@ -2987,9 +2936,9 @@ dependencies = [
 
 [[package]]
 name = "libipld-cbor-derive"
-version = "0.11.1"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f676e94329033adb8cbf3e8a64af60a4f5d5724e291a72f5766b5bfb9ca4b6a"
+checksum = "80cf5eeddac31280a924ac77ad90df98887ccc8c351c324b11d15b620f8cf74f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2999,44 +2948,44 @@ dependencies = [
 
 [[package]]
 name = "libipld-core"
-version = "0.11.3"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11f5bf4f0b05d9e7b752b481bcbb8c7e6f6ab403b655ac09e9e71b6febc1e67f"
+checksum = "f29a8a4ac024d51f15cc7b71d888b51bf3ab5d26a502e3f48fc9df33d7fd02ac"
 dependencies = [
  "anyhow",
  "cid",
- "multibase 0.9.1",
- "multihash",
+ "multibase",
+ "multihash 0.14.0",
  "thiserror",
 ]
 
 [[package]]
 name = "libipld-json"
-version = "0.11.2"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "440c519cdc397b6c091f18548a71df06195a28f2d47e5cb51d1c20d744fde90a"
+checksum = "3cf3a6d0e65a5b3f48774f99951d063bc28f7fd799be0a3891de4b10939434e3"
 dependencies = [
  "base64",
  "libipld-core",
- "multihash",
+ "multihash 0.14.0",
  "serde 1.0.126",
  "serde_json",
 ]
 
 [[package]]
 name = "libipld-macro"
-version = "0.11.0"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6a2bdd797b0abb80a52c0b215d8721e31c4162216a7930f41af70517f0ed5193"
+checksum = "2d553f07747f7cb5e62d15de5fb416bf0e22968b2ee685226e91faaffd43a464"
 dependencies = [
  "libipld-core",
 ]
 
 [[package]]
 name = "libipld-pb"
-version = "0.11.1"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65bafd670ca677df2d1c093b4bd47013876926215d980586fe95eaa9a1486fd5"
+checksum = "0ddbe8356b2bb59c6875d329b3f28cb323d3c0cd07a2b9804a7008e1856e4727"
 dependencies = [
  "libipld-core",
  "prost",
@@ -3059,6 +3008,26 @@ name = "libp2p"
 version = "0.37.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08053fbef67cd777049ef7a95ebaca2ece370b4ed7712c3fa404d69a88cb741b"
+dependencies = [
+ "atomic",
+ "bytes 1.0.1",
+ "futures 0.3.15",
+ "lazy_static 1.4.0",
+ "libp2p-core",
+ "libp2p-swarm",
+ "libp2p-swarm-derive",
+ "parity-multiaddr",
+ "parking_lot 0.11.1",
+ "pin-project 1.0.7",
+ "smallvec 1.6.1",
+ "wasm-timer",
+]
+
+[[package]]
+name = "libp2p"
+version = "0.38.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebbb17eece4aec5bb970880c73825c16ca59ca05a4e41803751e68c7e5f0c618"
 dependencies = [
  "atomic",
  "bytes 1.0.1",
@@ -3089,16 +3058,16 @@ dependencies = [
 
 [[package]]
 name = "libp2p-bitswap"
-version = "0.17.2"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b38375a875370c1c7b0a9acc1aa0522ed16558c19eb94eb76c047561446cfad0"
+checksum = "873b525ea4700128f1531be92859e1a673e0ea476879b7b9df83a4939526cf4e"
 dependencies = [
  "async-trait",
  "fnv",
  "futures 0.3.15",
  "lazy_static 1.4.0",
  "libipld",
- "libp2p",
+ "libp2p 0.38.0",
  "prometheus",
  "thiserror",
  "tracing",
@@ -3107,13 +3076,13 @@ dependencies = [
 
 [[package]]
 name = "libp2p-broadcast"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0fe7c97bf67797476358a7fd0945fd7227fcdaf916e50672f4a33db896fba39"
+checksum = "72cb0e39c68735f5b5f81e61a9b2ce99fa5ff47c2bb69208764d3548dc3d37e8"
 dependencies = [
  "fnv",
  "futures 0.3.15",
- "libp2p",
+ "libp2p 0.38.0",
 ]
 
 [[package]]
@@ -3132,7 +3101,7 @@ dependencies = [
  "lazy_static 1.4.0",
  "libsecp256k1",
  "log",
- "multihash",
+ "multihash 0.13.2",
  "multistream-select",
  "parity-multiaddr",
  "parking_lot 0.11.1",
@@ -3165,9 +3134,9 @@ dependencies = [
 
 [[package]]
 name = "libp2p-gossipsub"
-version = "0.30.1"
+version = "0.31.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7b0c8506a6ec3344b9e706d7c7a6dba826f8ede735cfe13dde12a8c263c4af9"
+checksum = "e562308761818b0c52f2a81a0544b9c22d0cf56d7b2d928a0ff61382404498ce"
 dependencies = [
  "asynchronous-codec",
  "base64",
@@ -3272,9 +3241,9 @@ dependencies = [
 
 [[package]]
 name = "libp2p-noise"
-version = "0.30.0"
+version = "0.31.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36db0f0db3b0433f5b9463f1c0cd9eadc0a3734a9170439ce501ff99733a88bd"
+checksum = "57a2aa6fc4e6855eaf9ea1941a14f7ec4df35636fb6b85951e17481df8dcecf6"
 dependencies = [
  "bytes 1.0.1",
  "curve25519-dalek",
@@ -3284,7 +3253,7 @@ dependencies = [
  "log",
  "prost",
  "prost-build",
- "rand 0.7.3",
+ "rand 0.8.3",
  "sha2 0.9.5",
  "snow",
  "static_assertions",
@@ -3326,9 +3295,9 @@ dependencies = [
 
 [[package]]
 name = "libp2p-pnet"
-version = "0.20.0"
+version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ce3374f3b28162db9d3442c9347c4f14cb01e8290052615c7d341d40eae0599"
+checksum = "07cb4dd4b917e5b40ddefe49b96b07adcd8d342e0317011d175b7b2bb1dcc974"
 dependencies = [
  "futures 0.3.15",
  "log",
@@ -3351,8 +3320,8 @@ dependencies = [
  "fnv",
  "futures 0.3.15",
  "if-watch",
- "libp2p",
- "multihash",
+ "libp2p 0.37.1",
+ "multihash 0.13.2",
  "parking_lot 0.11.1",
  "quinn-noise",
  "quinn-proto",
@@ -3388,7 +3357,7 @@ version = "0.1.0"
 dependencies = [
  "derive_more",
  "futures 0.3.15",
- "libp2p",
+ "libp2p 0.38.0",
  "serde 1.0.126",
  "serde_cbor",
  "thiserror",
@@ -3856,17 +3825,6 @@ dependencies = [
 
 [[package]]
 name = "multibase"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b78c60039650ff12e140ae867ef5299a58e19dded4d334c849dc7177083667e2"
-dependencies = [
- "base-x",
- "data-encoding",
- "data-encoding-macro",
-]
-
-[[package]]
-name = "multibase"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b3539ec3c1f04ac9748a260728e855f261b4977f5c3406612c884564f329404"
@@ -3882,6 +3840,19 @@ version = "0.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4dac63698b887d2d929306ea48b63760431ff8a24fac40ddb22f9c7f49fb7cab"
 dependencies = [
+ "digest 0.9.0",
+ "generic-array 0.14.4",
+ "multihash-derive",
+ "sha2 0.9.5",
+ "unsigned-varint 0.5.1",
+]
+
+[[package]]
+name = "multihash"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "752a61cd890ff691b4411423d23816d5866dd5621e4d1c5687a53b94b5a979d8"
+dependencies = [
  "blake2b_simd",
  "blake2s_simd",
  "blake3",
@@ -3890,7 +3861,7 @@ dependencies = [
  "multihash-derive",
  "sha2 0.9.5",
  "sha3",
- "unsigned-varint 0.5.1",
+ "unsigned-varint 0.7.0",
 ]
 
 [[package]]
@@ -4111,11 +4082,11 @@ dependencies = [
  "ffi-support",
  "futures 0.3.15",
  "jemallocator",
- "libp2p",
+ "libp2p 0.38.0",
  "libp2p-streaming-response",
  "logsvcd",
  "maplit",
- "multihash",
+ "multihash 0.14.0",
  "named-lock",
  "parking_lot 0.11.1",
  "prost",
@@ -4395,7 +4366,7 @@ dependencies = [
  "bs58",
  "byteorder",
  "data-encoding",
- "multihash",
+ "multihash 0.13.2",
  "percent-encoding 2.1.0",
  "serde 1.0.126",
  "static_assertions",
@@ -4694,16 +4665,6 @@ dependencies = [
 
 [[package]]
 name = "poly1305"
-version = "0.6.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b7456bc1ad2d4cf82b3a016be4c2ac48daf11bf990c1603ebd447fe6f30fca8"
-dependencies = [
- "cpuid-bool",
- "universal-hash",
-]
-
-[[package]]
-name = "poly1305"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4fe800695325da85083cd23b56826fccb2e2dc29b218e7811a6f33bc93f414be"
@@ -4715,11 +4676,11 @@ dependencies = [
 
 [[package]]
 name = "polyval"
-version = "0.4.5"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eebcc4aa140b9abd2bc40d9c3f7ccec842679cd79045ac3a7ac698c1a064b7cd"
+checksum = "864231b0b86ce05168a8e6da0fea2e67275dacf25f75b00a62cfd341aab904a9"
 dependencies = [
- "cpuid-bool",
+ "cpufeatures",
  "opaque-debug 0.3.0",
  "universal-hash",
 ]
@@ -5002,7 +4963,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6aa4e9d7a44d7723a4a6e66eefda3a39df41760c7912e0ad3b05eba3d64849bd"
 dependencies = [
  "bytes 1.0.1",
- "chacha20poly1305 0.8.0",
+ "chacha20poly1305",
  "curve25519-dalek",
  "ed25519-dalek",
  "quinn-proto",
@@ -5509,11 +5470,11 @@ checksum = "ef703b7cb59335eae2eb93ceb664c0eb7ea6bf567079d843e09420219668e072"
 
 [[package]]
 name = "salsa20"
-version = "0.7.2"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "399f290ffc409596022fce5ea5d4138184be4784f2b28c62c59f0d8389059a15"
+checksum = "1c7c5f10864beba947e1a1b43f3ef46c8cc58d1c2ae549fa471713e8ff60787a"
 dependencies = [
- "cipher 0.2.5",
+ "cipher",
 ]
 
 [[package]]
@@ -5911,17 +5872,17 @@ dependencies = [
 
 [[package]]
 name = "snow"
-version = "0.7.2"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "795dd7aeeee24468e5a32661f6d27f7b5cbed802031b2d7640c7b10f8fb2dd50"
+checksum = "6142f7c25e94f6fd25a32c3348ec230df9109b463f59c8c7acc4bd34936babb7"
 dependencies = [
  "aes-gcm",
  "blake2",
- "chacha20poly1305 0.6.0",
- "rand 0.7.3",
- "rand_core 0.5.1",
+ "chacha20poly1305",
+ "rand 0.8.3",
+ "rand_core 0.6.2",
  "ring",
- "rustc_version 0.2.3",
+ "rustc_version 0.3.3",
  "sha2 0.9.5",
  "subtle 2.4.0",
  "x25519-dalek",
@@ -5978,16 +5939,6 @@ name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
-
-[[package]]
-name = "stream-cipher"
-version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c80e15f898d8d8f25db24c253ea615cc14acf418ff307822995814e7d42cfa89"
-dependencies = [
- "block-cipher",
- "generic-array 0.14.4",
-]
 
 [[package]]
 name = "stringprep"
@@ -6058,7 +6009,7 @@ dependencies = [
  "ipfs-sqlite-block-store",
  "itertools 0.10.0",
  "libipld",
- "libp2p",
+ "libp2p 0.38.0",
  "maplit",
  "names",
  "num-traits 0.2.14",
@@ -6093,7 +6044,7 @@ dependencies = [
  "crypto",
  "futures 0.3.15",
  "ipfs-embed",
- "libp2p",
+ "libp2p 0.38.0",
  "serde_json",
  "structopt",
  "swarm",
@@ -6811,7 +6762,7 @@ dependencies = [
  "banyan",
  "futures 0.3.15",
  "libipld",
- "multihash",
+ "multihash 0.14.0",
  "num-traits 0.2.14",
  "parking_lot 0.11.1",
  "quickcheck",

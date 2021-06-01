@@ -4,7 +4,6 @@ use actyxos_sdk::{
 };
 use actyxos_sdk::{tags, Payload};
 use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
-use netsim_embed::unshare_user;
 use quickcheck::{QuickCheck, TestResult};
 use std::{convert::TryFrom, time::Duration};
 use swarm_cli::Event;
@@ -12,8 +11,7 @@ use swarm_harness::{api::ApiClient, util::app_manifest, HarnessOpts};
 
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
-    util::setup_logger();
-    unshare_user()?;
+    swarm_harness::setup_env()?;
     let res = QuickCheck::new()
         .tests(2)
         .quicktest(stress_single_store as fn(u8, u8, u8, u8) -> TestResult);
