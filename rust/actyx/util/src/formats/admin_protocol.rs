@@ -1,6 +1,6 @@
 use crate::version::NodeVersion;
 
-use super::{ActyxOSResult, LogEvent};
+use super::ActyxOSResult;
 use actyxos_sdk::NodeId;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -57,21 +57,18 @@ pub enum AdminRequest {
         scope: settings::Scope,
     },
     Internal(InternalRequest),
-    Logs(LogQuery),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum AdminResponse {
     NodesLsResponse(NodesLsResponse),
     // AppsTokenResponse(String),
-    LogsTailResponse,
     SettingsGetResponse(serde_json::Value),
     SettingsSetResponse(serde_json::Value),
     SettingsSchemaResponse(serde_json::Value),
     SettingsScopesResponse(Vec<String>),
     SettingsUnsetResponse,
     Internal(InternalResponse),
-    Logs(Vec<LogEvent>),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

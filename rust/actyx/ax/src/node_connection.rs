@@ -2,7 +2,6 @@ use crate::private_key::AxPrivateKey;
 use actyxos_sdk::NodeId;
 use crypto::PublicKey;
 use derive_more::From;
-use futures::{stream, Stream};
 use libp2p::{
     core::{multiaddr::Protocol, muxing::StreamMuxerBox, transport::Boxed, ConnectedPoint, Multiaddr, PeerId},
     identity,
@@ -14,8 +13,8 @@ use libp2p_streaming_response::StreamingResponse;
 use std::{convert::TryFrom, fmt, str::FromStr, time::Duration};
 use tracing::*;
 use util::formats::{
-    admin_protocol::{AdminRequest, AdminResponse, LogQuery, LogQueryMode},
-    ax_err, ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminProtocol, LogEvent,
+    admin_protocol::{AdminRequest, AdminResponse},
+    ax_err, ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminProtocol,
 };
 use util::SocketAddrHelper;
 
@@ -151,88 +150,6 @@ impl NodeConnection {
                 }
             }
         }
-    }
-
-    pub(crate) async fn stream_logs(
-        &mut self,
-        key: &AxPrivateKey,
-        entries: usize,
-        follow: bool,
-        all_entries: bool,
-    ) -> ActyxOSResult<impl Stream<Item = ActyxOSResult<Vec<LogEvent>>>> {
-        let Connected {
-            remote_peer_id,
-            mut swarm,
-            ..
-        } = self.establish_connection(key.to_libp2p_pair()).await?;
-        let query_mode = if all_entries {
-            LogQueryMode::All
-        } else {
-            LogQueryMode::MostRecent { count: entries }
-        };
-        let query = LogQuery {
-            mode: query_mode,
-            follow,
-        };
-        let outgoing_req_id = swarm
-            .behaviour_mut()
-            .admin_api
-            .request(remote_peer_id, AdminRequest::Logs(query));
-
-        let s = stream::unfold(swarm, move |mut swarm| async move {
-            loop {
-                match swarm.next_event().await {
-                    SwarmEvent::Behaviour(ev) => match ev {
-                        OutEvent::Ping(p) => {
-                            debug!("Ping event {:?}", p);
-                        }
-
-                        OutEvent::Admin(x) => match x {
-                            libp2p_streaming_response::StreamingResponseEvent::ResponseReceived {
-                                request_id,
-                                payload,
-                                ..
-                            } => {
-                                debug_assert_eq!(request_id, outgoing_req_id);
-                                match payload {
-                                    Ok(AdminResponse::Logs(logs)) => break Some((Ok(logs), swarm)),
-                                    Ok(other) => {
-                                        error!("Unexpected response {:?}", other);
-                                    }
-                                    Err(e) => break (Some((Err(e), swarm))),
-                                }
-                            }
-                            libp2p_streaming_response::StreamingResponseEvent::ResponseFinished {
-                                request_id,
-                                sequence_no,
-                            } => {
-                                debug_assert_eq!(request_id, outgoing_req_id);
-                                debug!("stream will end at seq_no {:?}", sequence_no);
-                                debug!("Stream finished");
-                                break None;
-                            }
-                            libp2p_streaming_response::StreamingResponseEvent::ReceivedRequest { .. }
-                            | libp2p_streaming_response::StreamingResponseEvent::CancelledRequest { .. } => {
-                                //ignored
-                            }
-                        },
-                    },
-                    SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
-                        error!("Connection closed to {} ({:?})", peer_id, cause);
-                        // Stream consumer will terminate
-                        break Some((
-                            Err(ActyxOSCode::ERR_NODE_UNREACHABLE
-                                .with_message(format!("Connection closed to {} ({:?})", peer_id, cause))),
-                            swarm,
-                        ));
-                    }
-                    m => {
-                        debug!("Other swarm event: {:?}", m)
-                    }
-                }
-            }
-        });
-        Ok(s)
     }
 }
 

@@ -10,7 +10,6 @@ export class CLI {
   public readonly identityPath: string
   public readonly nodes
   public readonly settings
-  public readonly logs
   public readonly swarms
   public readonly users
   public readonly version
@@ -46,7 +45,6 @@ export class CLI {
 
     this.nodes = exec.nodes
     this.settings = exec.settings
-    this.logs = exec.logs
     this.swarms = exec.swarms
     this.users = exec.users
     this.version = exec.version

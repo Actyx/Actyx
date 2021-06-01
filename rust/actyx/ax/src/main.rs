@@ -6,8 +6,7 @@ mod node_connection;
 mod private_key;
 
 use cmd::{
-    internal::InternalOpts, logs::LogsOpts, nodes::NodesOpts, settings::SettingsOpts, swarms::SwarmsOpts,
-    users::UsersOpts, Verbosity,
+    internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts, swarms::SwarmsOpts, users::UsersOpts, Verbosity,
 };
 use structopt::StructOpt;
 use util::version::NodeVersion;
@@ -36,7 +35,6 @@ enum CommandsOpt {
     // structopt will use the enum variant name in lowercase as a subcommand
     Settings(SettingsOpts),
     Swarms(SwarmsOpts),
-    Logs(LogsOpts),
     Nodes(NodesOpts),
     Users(UsersOpts),
     #[structopt(setting(structopt::clap::AppSettings::Hidden), name = "_internal")]
@@ -60,7 +58,6 @@ async fn main() {
         } => {
             match cmd {
                 CommandsOpt::Nodes(opts) => cmd::nodes::run(opts, json).await,
-                CommandsOpt::Logs(opts) => cmd::logs::run(opts, json).await,
                 CommandsOpt::Settings(opts) => cmd::settings::run(opts, json).await,
                 CommandsOpt::Swarms(opts) => cmd::swarms::run(opts, json).await,
                 CommandsOpt::Users(opts) => cmd::users::run(opts, json).await,

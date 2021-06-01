@@ -3603,7 +3603,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tracing_win_event_log",
- "trees",
  "util",
 ]
 
@@ -7072,7 +7071,6 @@ dependencies = [
  "anyhow",
  "base64",
  "chrono",
- "clap",
  "crossbeam",
  "derive_more",
  "fnv",
@@ -7081,7 +7079,6 @@ dependencies = [
  "itertools 0.10.0",
  "libp2p-streaming-response",
  "log-panics",
- "lru-cache",
  "maplit",
  "num-traits 0.2.14",
  "parity-multiaddr",
