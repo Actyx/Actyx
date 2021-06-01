@@ -45,7 +45,7 @@ describe('Pond', () => {
     for (const res of results) {
       expect(res).toEqual(firstResult)
     }
-  }, 300_000)
+  }, 600_000)
 
   // Assert that Fish only receive exactly those events that they are subscribed to,
   // and always in the proper order.
@@ -98,7 +98,7 @@ describe('Pond', () => {
         expect(res).toEqual(firstResult)
       }
     }
-  }, 300_000)
+  }, 600_000)
 
   // Roughly assert causal consistency, by asserting that for every event we see in the Fish,
   // we have already seen at least as many events as the writer of that event.

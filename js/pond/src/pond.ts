@@ -45,12 +45,10 @@ import { noop } from './util'
 
 /** Advanced configuration options for the Pond. @public */
 export type PondOptions = {
-  hbHistDelay?: number
-  currentPsnHistoryDelay?: number
-  updateConnectivityEvery?: Milliseconds
-
-  stateEffectDebounce?: number
-
+  /**
+   * Callback that is invoked whenever Fish execution encounters an error.
+   * If none is supplied, errors will be logged to the console.
+   */
   fishErrorReporter?: FishErrorReporter
 }
 
@@ -315,6 +313,9 @@ export type Pond = {
    */
   waitForSwarmSync(params: WaitForSwarmSyncParams): void
 
+  /**
+   * Get an object that offers a number of functions related purely to events (no Fish).
+   */
   events(): EventFns
 }
 
