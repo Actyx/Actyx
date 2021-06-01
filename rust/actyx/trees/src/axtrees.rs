@@ -24,7 +24,7 @@ use crate::TagIndex;
 
 pub type AxTree = Tree<AxTrees, Payload>;
 
-const MAX_TAGSET_SIZE: usize = 4096;
+const MAX_TAGSET_COUNT: usize = 512;
 
 /// An inclusive range, not called RangeInclusive in order to not mix it up with the stdlib type
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -246,8 +246,7 @@ impl Summarizable<AxSummary> for AxKeySeq {
 }
 
 fn tags_too_large(tags: &[Tag]) -> bool {
-    let size: usize = tags.iter().map(|tag| tag.len() + 4).sum();
-    size > MAX_TAGSET_SIZE
+    tags.len() > MAX_TAGSET_COUNT
 }
 
 /// A summary of all tags in a tree.
