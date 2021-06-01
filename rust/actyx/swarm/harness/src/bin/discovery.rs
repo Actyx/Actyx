@@ -4,6 +4,7 @@ fn main() -> anyhow::Result<()> {
     use swarm_cli::{Command, Event, Multiaddr, PeerId};
     use swarm_harness::{HarnessOpts, MachineExt};
 
+    swarm_harness::setup_env()?;
     swarm_harness::run_netsim(HarnessOpts::from_args(), |mut network| async move {
         let mut peers: Vec<(PeerId, Multiaddr)> = Vec::with_capacity(network.machines().len());
         for machine in network.machines_mut() {

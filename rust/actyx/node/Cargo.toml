@@ -32,9 +32,9 @@ crossbeam = "0.8.0"
 derive_more = "0.99.13"
 ffi-support = "0.4.2"
 futures = { version = "0.3.14", features = ["compat"], package = "futures" }
-libp2p = { version = "0.37.1", default-features = false, features = ["gossipsub", "ping"] }
+libp2p = { version = "0.38.0", default-features = false, features = ["gossipsub", "ping"] }
 maplit = "1.0.2"
-multihash = "0.13.2"
+multihash = "0.14.0"
 parking_lot = "0.11.1"
 prost = "0.7.0"
 prost-derive = "0.7.0"

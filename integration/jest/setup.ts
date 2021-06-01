@@ -57,11 +57,11 @@ const getGitHash = async (settings: Settings) => {
 // TODO: Do we need a peer id or we can just specify the ip for the bootstrap node
 const getPeerId = async (ax: CLI, retries = 10): Promise<string | undefined> => {
   await new Promise((res) => setTimeout(res, 1000))
-  const state = await retryTimes(ax.swarms.state, 3)
+  const state = await retryTimes(ax.nodes.inspect, 3)
   if (state.code != 'OK') {
     return retries === 0 ? undefined : getPeerId(ax, retries - 1)
   } else {
-    return state.result.peer_id
+    return state.result.peerId
   }
 }
 
@@ -162,7 +162,7 @@ const setAllSettings = async (
 
 const getNumPeersMax = async (nodes: ActyxNode[]): Promise<number> => {
   const getNumPeersOne = async (ax: CLI) => {
-    const state = await retryTimes(ax.swarms.state, 3)
+    const state = await retryTimes(ax.nodes.inspect, 3)
     if (state.code != 'OK') {
       console.log(`error getting peers: ${state.message}`)
       return -1

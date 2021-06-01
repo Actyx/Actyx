@@ -8,8 +8,7 @@ fn main() -> anyhow::Result<()> {
     use swarm_cli::{Command, Config, Event};
     use swarm_harness::{select_multi, MachineExt, MultiaddrExt};
 
-    util::setup_logger();
-    netsim_embed::unshare_user()?;
+    swarm_harness::setup_env()?;
     async_global_executor::block_on(async move {
         let mut sim = Netsim::new();
         let net_a = sim.spawn_network(Ipv4Range::new(Ipv4Addr::new(192, 168, 0, 0), 24));
