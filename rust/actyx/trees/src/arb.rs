@@ -1,12 +1,9 @@
-use std::{collections::BTreeSet, convert::TryFrom, ops::Range};
+use std::{convert::TryFrom, ops::Range};
 
 use actyxos_sdk::{LamportTimestamp, Tag, TagSet, Timestamp};
 use quickcheck::{Arbitrary, Gen};
 
-use crate::{
-    axtrees::{AxKey, AxKeySeq, AxRange, AxSummary, AxSummarySeq, TagsSummary},
-    TagIndex,
-};
+use crate::axtrees::{AxKey, AxKeySeq, AxRange, AxSummary, AxSummarySeq, TagsSummary};
 
 impl Arbitrary for AxKey {
     fn arbitrary(g: &mut Gen) -> Self {
@@ -75,7 +72,7 @@ impl Arbitrary for AxSummarySeq {
                 AxSummary {
                     time,
                     lamport,
-                    tags: TagsSummary::from(&key_tags.into()),
+                    tags: TagsSummary::from_slice(key_tags.as_ref()),
                 }
             })
             .collect()
@@ -90,16 +87,5 @@ struct IndexString(&'static str);
 impl Arbitrary for IndexString {
     fn arbitrary(g: &mut Gen) -> Self {
         IndexString(g.choose(STRINGS).unwrap())
-    }
-}
-
-impl Arbitrary for TagIndex {
-    fn arbitrary(g: &mut Gen) -> Self {
-        let xs: Vec<BTreeSet<IndexString>> = Arbitrary::arbitrary(g);
-        let xs: Vec<TagSet> = xs
-            .iter()
-            .map(|e| e.iter().map(|x| Tag::try_from(x.0).unwrap()).collect())
-            .collect();
-        Self::from_elements(&xs)
     }
 }
