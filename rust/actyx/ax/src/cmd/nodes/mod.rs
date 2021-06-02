@@ -13,6 +13,7 @@ pub enum NodesOpts {
     /// Show node info and status
     Ls(LsOpts),
     #[structopt(name = "inspect")]
+    /// Show node details and connections
     Inspect(InspectOpts),
 }
 
