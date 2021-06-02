@@ -164,10 +164,10 @@ const getNumPeersMax = async (nodes: ActyxNode[]): Promise<number> => {
   const getNumPeersOne = async (ax: CLI) => {
     const state = await retryTimes(ax.nodes.inspect, 3)
     if (state.code != 'OK') {
-      console.log(`error getting peers: ${state.message}`)
+      console.log(`error getting connections: ${state.message}`)
       return -1
     }
-    const numPeers = state.result.peers.length
+    const numPeers = state.result.connections.length
     return numPeers
   }
   const res = await Promise.all(nodes.map((node) => getNumPeersOne(node.ax)))

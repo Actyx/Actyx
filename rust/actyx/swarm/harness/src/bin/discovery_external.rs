@@ -1,8 +1,8 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
-    use std::{net::Ipv4Addr, time::Duration};
-
+    use libp2p::multiaddr::Protocol;
     use netsim_embed::{Ipv4Range, Netsim};
+    use std::{net::Ipv4Addr, time::Duration};
     use swarm_cli::{Command, Config, Event};
     use swarm_harness::{m, select_multi, select_single, selector, MachineExt, MultiaddrExt};
 
@@ -48,6 +48,8 @@ fn main() -> anyhow::Result<()> {
         let bootstrap_addr = sim.machine(bootstrap).multiaddr();
         let client_id = sim.machine(client).peer_id();
         let client_addr = sim.machine(client).multiaddr();
+        let mut client_addr_p2p = client_addr.clone();
+        client_addr_p2p.push(Protocol::P2p(client_id.into()));
 
         sim.machine(client)
             .send(Command::AddAddress(bootstrap_id, bootstrap_addr));
@@ -64,10 +66,12 @@ fn main() -> anyhow::Result<()> {
             |ev| m!(ev, Event::NewExternalAddr(addr) => addr.clone()),
         )
         .await;
-        assert_eq!(addr, client_addr);
+        assert_eq!(addr, client_addr_p2p);
 
         sim.plug(client, net_c, None).await;
         let client_addr_new = sim.machine(client).multiaddr();
+        let mut client_addr_new_p2p = client_addr_new.clone();
+        client_addr_new_p2p.push(Protocol::P2p(client_id.into()));
 
         select_single(
             sim.machine(bootstrap),
@@ -89,7 +93,7 @@ fn main() -> anyhow::Result<()> {
             vec![
                 selector(|ev| m!(ev, Event::NewListenAddr(addr) if !addr.is_loopback() => assert_eq!(addr, &client_addr_new))),
                 selector(|ev| m!(ev, Event::ExpiredListenAddr(addr) => assert_eq!(addr, &client_addr))),
-                selector(|ev| m!(ev, Event::NewExternalAddr(addr) => assert_eq!(addr, &client_addr_new))),
+                selector(|ev| m!(ev, Event::NewExternalAddr(addr) => assert_eq!(addr, &client_addr_new_p2p))),
             ],
         )
         .await;
