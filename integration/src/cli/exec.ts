@@ -1,9 +1,9 @@
 import {
   Response_Nodes_Ls,
+  Response_Nodes_Inspect,
   Response_Settings_Get,
   Response_Settings_Set,
   Response_Settings_Unset,
-  Response_Internal_Swarm_State,
   Response_Settings_Scopes,
   Response_Settings_Schema,
   Response_Swarms_Keygen,
@@ -65,10 +65,10 @@ type Exec = {
   }
   swarms: {
     keyGen: (file?: string) => Promise<Response_Swarms_Keygen>
-    state: () => Promise<Response_Internal_Swarm_State>
   }
   nodes: {
     ls: () => Promise<Response_Nodes_Ls>
+    inspect: () => Promise<Response_Nodes_Inspect>
   }
   settings: {
     scopes: () => Promise<Response_Settings_Scopes>
@@ -97,10 +97,6 @@ export const mkExec = (binary: string, addr: string, identityPath: string): Exec
       const response = await exec(binary, ['swarms', 'keygen', ...fileArgs])
       return rightOrThrow(Response_Swarms_Keygen.decode(response), response)
     },
-    state: async (): Promise<Response_Internal_Swarm_State> => {
-      const json = await exec(binary, ['_internal', 'swarm', '--local', addr, '-i', identityPath])
-      return rightOrThrow(Response_Internal_Swarm_State.decode(json), json)
-    },
   },
   nodes: {
     ls: async (): Promise<Response_Nodes_Ls> => {
@@ -113,6 +109,10 @@ export const mkExec = (binary: string, addr: string, identityPath: string): Exec
         identityPath,
       ])
       return rightOrThrow(Response_Nodes_Ls.decode(response), response)
+    },
+    inspect: async (): Promise<Response_Nodes_Inspect> => {
+      const json = await exec(binary, ['nodes', 'inspect', '--local', addr, '-i', identityPath])
+      return rightOrThrow(Response_Nodes_Inspect.decode(json), json)
     },
   },
   settings: {

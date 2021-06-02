@@ -1,4 +1,3 @@
-import { Client, DefaultClientOpts } from '@actyx/os-sdk'
 import execa from 'execa'
 import { CLI } from '../cli'
 import { awaitCloudInitSetup } from './aws'
@@ -116,8 +115,6 @@ export const mkNodeSshAndroid = async (
 
   const axHost = `localhost:${port4458}`
   const httpApiOrigin = `http://localhost:${port4454}`
-  const opts = DefaultClientOpts()
-  opts.Endpoints.EventService.BaseUrl = httpApiOrigin
 
   const axBinaryPath = await currentAxBinary()
   const shutdown = async () => {
@@ -139,7 +136,6 @@ export const mkNodeSshAndroid = async (
       executeInContainer,
     },
     ax: await CLI.build(axHost, axBinaryPath),
-    httpApiClient: Client(opts),
     host: 'android',
     _private: {
       shutdown,

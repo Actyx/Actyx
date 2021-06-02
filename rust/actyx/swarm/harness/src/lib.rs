@@ -12,7 +12,6 @@ use netsim_embed::{DelayBuffer, Ipv4Range, Machine, Netsim};
 use std::{
     borrow::Borrow,
     net::SocketAddr,
-    pin::Pin,
     str::FromStr,
     time::{Duration, Instant},
 };
@@ -85,22 +84,18 @@ impl MultiaddrExt for Multiaddr {
     }
 }
 
-pub fn run_netsim_in_user_namespace<F, F2, E>(opts: HarnessOpts, f: F) -> Result<()>
-where
-    F: FnOnce(Netsim<Command, E>) -> F2,
-    F2: Future<Output = Result<()>> + Send,
-    E: FromStr<Err = anyhow::Error> + Send + 'static,
-{
+pub fn setup_env() -> Result<()> {
+    ::util::setup_logger();
     netsim_embed::unshare_user()?;
-    run_netsim(opts, f)
+    Ok(())
 }
+
 pub fn run_netsim<F, F2, E>(opts: HarnessOpts, f: F) -> Result<()>
 where
     F: FnOnce(Netsim<Command, E>) -> F2,
     F2: Future<Output = Result<()>> + Send,
     E: FromStr<Err = anyhow::Error> + Send + 'static,
 {
-    ::util::setup_logger_level(|e| e.add_directive("info".parse().unwrap()));
     let temp_dir = TempDir::new("swarm-harness")?;
     async_global_executor::block_on(async move {
         let mut sim = Netsim::new();
@@ -110,7 +105,7 @@ where
         let mut bootstrap = Vec::with_capacity(opts.n_bootstrap);
         for i in 0..opts.n_bootstrap {
             let peer_id: PeerId = swarm_cli::keypair(i as u64).into();
-            let addr = sim.network(net).random_addr();
+            let addr = sim.network_mut(net).unique_addr();
             let maddr = format!("/ip4/{}/tcp/30000/p2p/{}", addr, peer_id);
             addrs.push(addr);
             bootstrap.push(maddr.parse().unwrap());
@@ -133,10 +128,7 @@ where
             };
             let mut delay = DelayBuffer::new();
             delay.set_delay(Duration::from_millis(opts.delay_ms));
-            let mut cmd = async_process::Command::from(cfg);
-            if std::env::var_os("RUST_LOG").is_none() {
-                cmd.env("RUST_LOG", "info");
-            }
+            let cmd = async_process::Command::from(cfg);
             let machine = sim.spawn_machine(cmd, Some(delay)).await;
             sim.plug(machine, net, addrs.get(i).copied()).await;
             let m = sim.machine(machine);
@@ -269,19 +261,16 @@ pub async fn fully_meshed<E>(sim: &mut Netsim<Command, E>, timeout: Duration)
 where
     E: Borrow<Event> + FromStr<Err = anyhow::Error> + Send + 'static,
 {
-    let mut deadline = task::sleep(timeout);
-    // select() below requires Unpin, so we need to pin to the stack.
-    // The unsafe is there because we must promise to not move the above deadline value around later.
-    // This is achieved by shadowing the name (pin-utils’ macro does the very same thing).
-    let mut deadline = unsafe { Pin::new_unchecked(&mut deadline) };
+    let deadline = task::sleep(timeout);
+    futures::pin_mut!(deadline);
     let peers = sim.machines().iter().map(|m| m.peer_id()).collect::<Vec<_>>();
     for (idx, machine) in sim.machines_mut().iter_mut().enumerate() {
         let mut peers = peers.clone();
         peers.remove(idx);
         for peer in peers {
-            let mut f = machine.select(|ev| m!(ev.borrow(), Event::Connected(p) if *p == peer => ()));
+            let f = machine.select(|ev| m!(ev.borrow(), Event::Connected(p) if *p == peer => ()));
             // same as for deadline
-            let f = unsafe { Pin::new_unchecked(&mut f) };
+            futures::pin_mut!(f);
             match select(deadline.as_mut(), f).await {
                 Either::Left(_) => panic!("timed out after {:.1}", timeout.as_secs_f64()),
                 Either::Right(_) => {}

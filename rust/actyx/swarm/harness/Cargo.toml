@@ -12,6 +12,7 @@ async-process = "1.0.2"
 async-std = "1.9.0"
 async-trait = "0.1.50"
 futures = { version = "0.3.14", package = "futures" }
+libp2p = { version = "0.38.0", default-features = false }
 quickcheck = "1.0.3"
 structopt = "0.3.21"
 swarm-cli = { path = "../cli" }
@@ -21,4 +22,4 @@ tracing = "0.1.25"
 util = { path = "../../util" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-netsim-embed = { version = "0.4.0" }
+netsim-embed = "0.5.0"

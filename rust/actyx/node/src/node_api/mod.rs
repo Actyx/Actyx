@@ -35,7 +35,7 @@ use std::{convert::TryFrom, pin::Pin, sync::Arc, time::Duration};
 use tracing::*;
 use util::formats::{
     admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
-    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, InternalRequest, InternalResponse, NodeErrorContext,
+    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext,
 };
 use util::SocketAddrHelper;
 
@@ -200,12 +200,11 @@ impl ApiBehaviour {
                 |tx| ExternalEvent::SettingsRequest(SettingsRequest::UnsetSettings { scope, response: tx }),
                 |_| AdminResponse::SettingsUnsetResponse
             ),
-
-            AdminRequest::Internal(InternalRequest::GetSwarmState) => {
+            AdminRequest::NodesInspect => {
                 let (tx, rx) = tokio::sync::oneshot::channel();
                 self.state
                     .store
-                    .send(ComponentRequest::Individual(StoreRequest::GetSwarmState { tx }))
+                    .send(ComponentRequest::Individual(StoreRequest::NodesInspect { tx }))
                     .unwrap();
                 let maybe_add_key = self.maybe_add_key(channel_id.peer());
                 let fut = async move {
@@ -217,7 +216,7 @@ impl ApiBehaviour {
                         .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error waiting for response")
                         .and_then(|x| {
                             x.ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error getting swarm state")
-                                .map(|r| AdminResponse::Internal(InternalResponse::GetSwarmStateResponse(r)))
+                                .map(AdminResponse::NodesInspectResponse)
                         });
                     (channel_id, res)
                 }

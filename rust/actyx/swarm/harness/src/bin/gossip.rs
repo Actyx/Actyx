@@ -5,6 +5,7 @@ fn main() -> anyhow::Result<()> {
     use swarm_cli::{Command, Event};
     use swarm_harness::{HarnessOpts, MachineExt, MultiaddrExt};
 
+    swarm_harness::setup_env()?;
     swarm_harness::run_netsim(HarnessOpts::from_args(), |mut network| async move {
         for machine in network.machines_mut() {
             loop {

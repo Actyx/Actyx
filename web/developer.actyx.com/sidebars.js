@@ -10,6 +10,7 @@ module.exports = {
         'how-to/local-development/set-up-your-environment',
         'how-to/local-development/set-up-a-new-project',
         'how-to/local-development/install-cli-node-manager',
+        'how-to/local-development/reset-your-node',
         // 'how-to/local-development/obtaining-a-development-certificate',
       ],
     },
@@ -114,7 +115,7 @@ module.exports = {
       collapsed: true,
       items: [
         'how-to/swarms/setup-swarm',
-        'how-to/swarms/setup-bootstrap-node',
+        'how-to/swarms/connect-nodes',
         'how-to/swarms/configure-announced-addresses',
       ],
     },
@@ -157,7 +158,10 @@ module.exports = {
       type: 'category',
       label: 'Operations',
       collapsed: true,
-      items: ['how-to/operations/device-management'],
+      items: [
+        'how-to/operations/device-management',
+        'how-to/operations/discovery-helper-node'
+      ],
     },
     {
       type: 'category',
@@ -221,7 +225,7 @@ module.exports = {
     'conceptual/local-first-cooperation',
     'conceptual/actyx-jargon',
     // 'conceptual/actyx-vs-the-cloud',
-    // 'conceptual/peer-discovery',
+    'conceptual/discovery',
     'conceptual/performance-and-limits',
     'conceptual/authentication-and-authorization',
     'conceptual/operations',

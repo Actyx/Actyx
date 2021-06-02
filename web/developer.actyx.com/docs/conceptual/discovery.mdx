@@ -1,0 +1,65 @@
+---
+title: Node discovery
+id: discovery
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+This guide explains how node discovery works, and what its limitations are.
+
+:::caution
+For discovery and other features of Actyx to work as expected out of the box, there must not be NAT between nodes of the same swarm. If your solution requires NAT, please [get in touch with us and the Actyx community](https://community.actyx.com/): we would love to hear about your use-case and figure out how to make it work with Actyx.
+:::
+
+## Automatic discovery
+
+After you [configured your nodes to be in the same swarm](../how-to/swarms/setup-swarm.mdx), they use mDNS to discover and connect to each other.
+Automatic discovery should always work, unless
+
+- mDNS is not supported on your device. This is, for example, the case if you are running Actyx on Docker.
+- mDNS is disabled on your device. This is usually a network setting.
+- mDNS is blocked in your network. This is, for example, the case if the required UDP ports or multicast IPs are blocked.
+- your nodes are not in the same local network.
+
+In these cases, you need to manually configure nodes to connect to each other.
+
+## Configured discovery
+
+Instead of automatically connecting to each other via mDNS (using UDP), you can [configure your node to use TCP to discover and connect to another node](../how-to/swarms/connect-nodes.mdx).
+Let's say, you want to discover node B with node A.
+In this case, you need to add node B's IP address to the settings of node A to initiate the connection.
+
+Manual configuration works sufficiently well during development.
+When deploying production systems however, there are two potential problems with it:
+
+- Complexity due to a high number of nodes. If you, for example, have a 30 node deployment, you would have to configure the other 29 nodes in each node's settings.
+- Complexity due to DHCP. Configuration complexity gets even worse if your nodes do not have fixed IP addresses.
+
+For these reasons, we advise to set up a central discovery helper node in production systems.
+
+### Discovery with a discovery helper node
+
+Once nodes connect to each other, they share an address list of other nodes that are in the same swarm with each other.
+This behavior allows you to set up a central discovery helper node.
+It is configured in each node's settings so that all nodes initiate a connection to it.
+Consequently, the discovery helper node has an address list of all nodes that it shares with each node.
+
+:::tip
+A discovery helper node is just a normal Actyx node.
+The difference is its purpose–instead of running apps, the discovery helper node is used to enable and facilitate discovery between nodes.
+:::
+
+Technically, your discovery helper node is only needed when you set up a new node.
+For practical reasons, we nevertheless advise to deploy your discovery helper node so that it is always reachable.
+Usually, that means running Actyx on a VM in your data center.
+Check out [this guide](../how-to/operations/discovery-helper-node.mdx) for more practical information on discovery helper nodes.
+
+There is one limitation with regard to discovery helper nodes that only manifests if both of the following statements are true:
+
+- there is NAT between the discovery helper node and your other nodes (please note that we strongly advise against this), **and**
+- one (or more) of your nodes is a Docker node, and the Actyx container is running without the `--network=host` option
+
+In this case, Actyx on Docker does not know the IP address of its host and, as there is NAT between the discovery helper node and the Docker node, the discovery helper node can also not observe the correct IP address of the Docker node.
+The address of the Docker node that would be distributed by the discovery helper node would be incorrect–therefore, you need to tell the node its host's IP address by [configuring the `announceAddresses` setting](../how-to/swarms/configure-announced-addresses.mdx).
+Please note that, for this and many other reasons, we strongly advise against using NAT between nodes of the same swarm.

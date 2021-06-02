@@ -204,10 +204,6 @@ export type PondInfo = {
 
 // @public
 export type PondOptions = {
-    hbHistDelay?: number;
-    currentPsnHistoryDelay?: number;
-    updateConnectivityEvery?: Milliseconds;
-    stateEffectDebounce?: number;
     fishErrorReporter?: FishErrorReporter;
 };
 

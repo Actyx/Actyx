@@ -21,7 +21,7 @@
 #
 #   Validate code (unit tests):
 #     validate
-#     validate-{actyxos-node-manager,actyx-win-installer,js,js-os-sdk,js-pond,js-sdk,misc,os,os-android,website,website-developer,website-downloads}
+#     validate-{actyxos-node-manager,actyx-win-installer,js,js-pond,js-sdk,misc,os,os-android,website,website-developer,website-downloads}
 #
 #   Generate artifacts (stored in dist/):
 #     all (default target)
@@ -160,8 +160,7 @@ current: dist/bin/current/ax dist/bin/current/actyx-linux
 
 all-js: \
 	dist/js/sdk \
-	dist/js/pond \
-	dist/js/os-sdk
+	dist/js/pond
 
 # Create a `make-always` target that always has the current timestamp.
 # Depending on this ensures that the rule is always executed.
@@ -180,8 +179,8 @@ clean:
 	rm -rf rust/actyx/target/*
 	rm -rf web/downloads.actyx.com/node_modules
 	rm -rf web/developer.actyx.com/node_modules
+	rm -rf js/sdk/node_modules
 	rm -rf js/pond/node_modules
-	rm -rf js/os-sdk/node_modules
 	rm -rf jvm/os-android/gradle/build
 	rm -rf dist
 
@@ -260,9 +259,9 @@ validate-netsim: diagnostics
 	rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
 	rust/actyx/target/release/discovery_multi_net
 	rust/actyx/target/release/discovery_external
-	rust/actyx/target/release/subscribe --n-nodes 10
+	#rust/actyx/target/release/subscribe --n-nodes 10
 	rust/actyx/target/release/query --n-nodes 10
-	rust/actyx/target/release/quickcheck_subscribe
+	#rust/actyx/target/release/quickcheck_subscribe
 	rust/actyx/target/release/quickcheck_interleaved
 	rust/actyx/target/release/quickcheck_stress_single_store
 
@@ -273,7 +272,7 @@ validate-os-android: diagnostics
 	cd jvm/os-android/ && ./gradlew clean ktlintCheck
 
 # validate all js
-validate-js: diagnostics validate-js-sdk validate-js-pond validate-js-os-sdk
+validate-js: diagnostics validate-js-sdk validate-js-pond
 
 # validate js sdk
 validate-js-sdk:
@@ -288,13 +287,6 @@ validate-js-pond:
 		npm install && \
 		npm run test && \
 		npm run build:prod
-
-# validate js-os-sdk
-validate-js-os-sdk:
-	cd js/os-sdk && source ~/.nvm/nvm.sh && nvm install && \
-		npm install && \
-		npm run test && \
-		npm run build
 
 # make js sdk
 # this is running directly on the host container, so it needs to have nvm installed
@@ -313,16 +305,6 @@ dist/js/pond: make-always
 		npm install && \
 		npm run build:prod && \
 		mv `npm pack` ../../$@/
-
-# make js sdk
-# this is running directly on the host container, so it needs to have nvm installed
-dist/js/os-sdk: make-always
-	mkdir -p $@
-	cd js/os-sdk && source ~/.nvm/nvm.sh && nvm install && \
-		npm install && \
-		npm run build && \
-		npm pack && \
-		mv actyx-os-sdk-*.tgz ../../$@/
 
 # validate all websites
 validate-website: diagnostics validate-website-developer validate-website-downloads

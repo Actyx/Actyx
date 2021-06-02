@@ -1,18 +1,19 @@
-use actyxos_sdk::{
-    app_id,
-    service::{EventService, PublishEvent, PublishRequest},
-    tags, AppManifest, Payload, Timestamp,
-};
-use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    time::Duration,
-};
-use structopt::StructOpt;
-use swarm_cli::{Command, Event, TimedEvent};
-use swarm_harness::{api::Api, fully_meshed, m, HarnessOpts};
-
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
+    use std::{
+        net::{IpAddr, Ipv4Addr, SocketAddr},
+        time::Duration,
+    };
+
+    use actyxos_sdk::{
+        app_id,
+        service::{EventService, PublishEvent, PublishRequest},
+        tags, AppManifest, Payload, Timestamp,
+    };
+    use structopt::StructOpt;
+    use swarm_cli::{Command, Event, TimedEvent};
+    use swarm_harness::{api::Api, fully_meshed, m, HarnessOpts};
+
     fn event(n: usize) -> PublishRequest {
         PublishRequest {
             data: vec![PublishEvent {
@@ -49,6 +50,7 @@ fn main() -> anyhow::Result<()> {
     opts.enable_discovery = true;
     opts.n_bootstrap = 1;
 
+    swarm_harness::setup_env()?;
     swarm_harness::run_netsim(opts, move |mut sim| async move {
         let api = Api::new(&mut sim, app_manifest)?;
 

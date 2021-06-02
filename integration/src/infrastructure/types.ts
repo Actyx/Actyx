@@ -1,4 +1,3 @@
-import { ApiClient } from '@actyx/os-sdk'
 import { Arch, Host, OS } from '../../jest/types'
 import { ExecuteFn } from '.'
 import { CLI } from '../cli'
@@ -67,7 +66,6 @@ export type ActyxNode = Readonly<{
   target: Target
   host: Host
   ax: CLI
-  httpApiClient: ApiClient
   _private: Readonly<{
     shutdown: () => Promise<void>
     actyxBinaryPath: string
