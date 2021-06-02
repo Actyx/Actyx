@@ -121,7 +121,7 @@ describe('ax settings', () => {
           },
           swarm: {
             announceAddresses: [],
-            bootstrapNodes: [
+            initialPeers: [
               '/dns4/demo-bootstrap.actyx.net/tcp/4001/p2p/QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH',
             ],
             swarmKey: 'MDAwMDAwMDAxMTExMTExMTIyMjIyMjIyMzMzMzMzMzM=',

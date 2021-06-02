@@ -87,7 +87,7 @@ const setInitialSettings = async (bootstrap: ActyxNode[], swarmKey: string): Pro
   }
 }
 
-const getBootstrapNodes = async (bootstrap: ActyxNode[]): Promise<string[]> => {
+const getInitialPeers = async (bootstrap: ActyxNode[]): Promise<string[]> => {
   const ret = []
   for (const { node, pid } of await Promise.all(
     bootstrap.map(async (node) => ({ node, pid: await getPeerId(node.ax) })),
@@ -112,7 +112,7 @@ const setAllSettings = async (
   nodes: ActyxNode[],
   swarmKey: string,
 ): Promise<void> => {
-  const bootstrapNodes = await getBootstrapNodes(bootstrap)
+  const initialPeers = await getInitialPeers(bootstrap)
 
   const settings = (displayName: string) => ({
     admin: {
@@ -120,7 +120,7 @@ const setAllSettings = async (
       logLevels: { node: 'DEBUG' },
     },
     swarm: {
-      bootstrapNodes,
+      initialPeers,
       swarmKey,
       topic: 'Cosmos integration',
     },
