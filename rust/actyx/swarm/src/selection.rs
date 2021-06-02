@@ -28,7 +28,7 @@ impl EventSelection {
     #[cfg(test)]
     pub fn matches<T>(&self, local: bool, event: &actyxos_sdk::Event<T>) -> bool {
         use actyxos_sdk::TagSet;
-        let query = TagsQuery::from_expr(&self.tag_expr, "")(local);
+        let query = TagsQuery::from_expr(&self.tag_expr, trees::query::TagScope::Raw)(local);
         query.is_all()
             || query
                 .terms()

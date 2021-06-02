@@ -8,12 +8,13 @@ use ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered};
 use banyan::FilteredChunk;
 use derive_more::{Display, Error};
 use futures::{future, stream, Stream, StreamExt, TryStreamExt};
-use trees::{axtrees::AxKey, query::TagsQuery};
+use trees::{
+    axtrees::AxKey,
+    query::{TagScope, TagsQuery},
+};
 use util::offsetmap_or_max::OffsetMapOrMax;
 
 use crate::{selection::StreamEventSelection, AppendMeta, BanyanStore, SwarmOffsets};
-
-const APP_PREFIX: &str = "_";
 
 #[derive(Clone, Debug, Display, Error)]
 pub enum Error {
@@ -83,7 +84,7 @@ impl EventStore {
             return Err(Error::InvalidUpperBounds);
         }
         let from_or_min = from_offsets_excluding.map(OffsetMapOrMax::from).unwrap_or_default();
-        let mk_tags_query = TagsQuery::from_expr(tag_expr, APP_PREFIX);
+        let mk_tags_query = TagsQuery::from_expr(tag_expr, TagScope::App);
         let res: Vec<_> = to_offsets_including
             .streams()
             .filter_map(|stream_id| {
@@ -126,7 +127,7 @@ impl EventStore {
             return Ok(vec![]);
         }
         for (tags, _) in events.iter_mut() {
-            tags.prepend(APP_PREFIX);
+            tags.prepend(TagScope::App.prefix());
         }
         let AppendMeta {
             min_lamport,
@@ -196,7 +197,7 @@ impl EventStore {
         from_offsets_excluding: Option<OffsetMap>,
     ) -> impl Stream<Item = Event<Payload>> {
         let this = self.clone();
-        let mk_tags_query = TagsQuery::from_expr(&tag_expr, "_");
+        let mk_tags_query = TagsQuery::from_expr(&tag_expr, TagScope::App);
         let banyan_store = self.banyan_store.clone();
         let from_or_min = from_offsets_excluding.map(OffsetMapOrMax::from).unwrap_or_default();
         self.banyan_store
@@ -231,7 +232,7 @@ fn to_app_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Eve
     let timestamp = key.time();
     let lamport = key.lamport();
     let mut tags = key.into_tags();
-    tags.filter_prefix(APP_PREFIX);
+    tags.filter_prefix(TagScope::App.prefix());
     Event {
         payload,
         key: EventKey {
@@ -635,7 +636,7 @@ mod tests {
                 let tags = mk_tag(i);
                 // internal tags with prefix, as they actually appear on the tree
                 let mut internal_tags = tags.clone();
-                internal_tags.prepend(APP_PREFIX);
+                internal_tags.prepend(TagScope::App.prefix());
                 let tags_query = TagsQuery::new(vec![internal_tags.clone()]);
                 let range = random_range();
                 let actual = store

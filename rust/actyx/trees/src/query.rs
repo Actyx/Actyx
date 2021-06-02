@@ -133,12 +133,33 @@ impl Query<AxTrees> for OffsetQuery {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TagsQuery(DnfQuery<Tag>);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TagScope {
+    /// Raw scope, '' prefix, can be used to match both
+    Raw,
+    /// App scope,'_' prefix
+    App,
+    /// Internal scope, '!' prefix
+    Internal,
+}
+
+impl TagScope {
+    /// Get the prefix for a scope.
+    pub const fn prefix(&self) -> &str {
+        match self {
+            Self::Raw => "",
+            Self::App => "_",
+            Self::Internal => "!",
+        }
+    }
+}
+
 impl TagsQuery {
     pub fn new(terms: impl IntoIterator<Item = TagSet>) -> Self {
         Self(DnfQuery::new(terms).expect("> u32::max_value() tags"))
     }
 
-    pub fn from_expr(tag_expr: &language::TagExpr, prefix: &'static str) -> impl Fn(bool) -> Self {
+    pub fn from_expr(tag_expr: &language::TagExpr, scope: TagScope) -> impl Fn(bool) -> Self {
         let dnf = Dnf::from(tag_expr).0;
         move |local| {
             let mut res = vec![];
@@ -147,7 +168,7 @@ impl TagsQuery {
                 let tags: TagSet = tag_set
                     .iter()
                     .filter_map(|x| x.tag())
-                    .map(|tag| tag.prepend(prefix))
+                    .map(|tag| tag.prepend(scope.prefix()))
                     .collect();
                 if !is_local || local {
                     if tags.is_empty() {
@@ -219,7 +240,7 @@ mod tests {
     }
 
     fn assert_match(index: &TagIndex, expr: &TagExpr, expected: Vec<bool>) {
-        let query = TagsQuery::from_expr(expr, "")(true);
+        let query = TagsQuery::from_expr(expr, TagScope::Raw)(true);
         let mut matching = vec![true; expected.len()];
         query.set_matching(index, &mut matching);
         assert_eq!(matching, expected);
@@ -251,7 +272,7 @@ mod tests {
     fn test_from_expr() {
         let test_expr = |local: bool, tag_expr: &'static str, expected: TagsQuery| {
             let tag_expr = tag_expr.parse::<TagExpr>().unwrap();
-            let actual = TagsQuery::from_expr(&tag_expr, "")(local);
+            let actual = TagsQuery::from_expr(&tag_expr, TagScope::Raw)(local);
             assert_eq!(actual, expected, "tag_expr: {:?}", tag_expr);
         };
 
