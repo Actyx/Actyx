@@ -22,6 +22,7 @@ ARGS:
 ```
 
 The output will show you:
+
 - `PeerId`: Peer ID of your node
 - `ListenAddrs`: Addresses that the Swarm API bound to
 - `AnnounceAddrs`: Addresses that your node is announcing to other nodes for connecting to it
