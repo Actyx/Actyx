@@ -1,10 +1,12 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
     use actyxos_sdk::{tags, Payload};
+    use structopt::StructOpt;
     use swarm_cli::{Command, Event};
-    use swarm_harness::MachineExt;
+    use swarm_harness::{HarnessOpts, MachineExt};
 
-    swarm_harness::run_netsim(|mut network| async move {
+    swarm_harness::setup_env()?;
+    swarm_harness::run_netsim(HarnessOpts::from_args(), |mut network| async move {
         let (s, r) = network.machines_mut().split_at_mut(1);
         let s = &mut s[0];
 

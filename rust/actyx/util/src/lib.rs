@@ -29,12 +29,14 @@ use std::{
     fmt::{Display, Formatter},
     vec,
 };
+use tracing_subscriber::EnvFilter;
 
 /// Sets up a logging and a panic handler that logs panics.
 pub fn setup_logger() {
     tracing_log::LogTracer::init().ok();
+    let env = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or_else(|_| "info".to_owned());
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_env_filter(EnvFilter::new(env))
         .finish();
     tracing::subscriber::set_global_default(subscriber).ok();
     log_panics::init();

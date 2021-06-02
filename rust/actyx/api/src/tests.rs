@@ -1,6 +1,7 @@
 use actyxos_sdk::{
     app_id,
     service::{AuthenticationResponse, NodeIdResponse},
+    NodeId,
 };
 use bytes::Bytes;
 use crypto::{KeyStore, KeyStoreRef, PublicKey};
@@ -526,6 +527,31 @@ async fn bad_request_unknown_stream() {
         .header("Authorization", format!("Bearer {}", token))
         .json(&serde_json::json!({
           "upperBound": {"4Rf5nier.0HWMLwRm32Nbgx8pkkOMCahfEmRtHCWaSs-0": 42},
+          "query": "FROM 'x'",
+          "order": "asc"
+        }))
+        .reply(&route)
+        .await;
+    assert_err_response(
+        resp,
+        http::StatusCode::BAD_REQUEST,
+        json!({
+          "code": "ERR_BAD_REQUEST",
+          "message": "Invalid request. Store error while reading: Upper bounds must be within the current offsets’ present."
+        }),
+    );
+}
+
+#[tokio::test]
+async fn bad_request_invalid_upper_bounds() {
+    let (route, token, node_key, ..) = test_routes().await;
+    let stream_id = NodeId::from(node_key).stream(0.into()).to_string();
+    let resp = test::request()
+        .path("/api/v2/events/query")
+        .method("POST")
+        .header("Authorization", format!("Bearer {}", token))
+        .json(&serde_json::json!({
+          "upperBound": {stream_id: 42},
           "query": "FROM 'x'",
           "order": "asc"
         }))

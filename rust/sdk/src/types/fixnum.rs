@@ -130,7 +130,7 @@ macro_rules! op2 {
         }
         impl<T: LeEqU128, U: ToFixed> $Op<U> for FixNum<T> {
             fn $fun(&mut self, other: U) {
-                (&mut self.0).$fun(FixedI128::saturating_from_num(other));
+                (&mut self.0).$fun(FixedI128::<T>::saturating_from_num(other));
             }
         }
     };

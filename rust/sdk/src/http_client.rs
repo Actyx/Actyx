@@ -46,7 +46,7 @@ use crate::{
 #[display(fmt = "error {} while {}: {}", error_code, context, error)]
 #[serde(rename_all = "camelCase")]
 pub struct HttpClientError {
-    pub error: String,
+    pub error: serde_json::Value,
     pub error_code: u16,
     pub context: String,
 }
@@ -282,7 +282,7 @@ where
 impl From<(String, reqwest::Error)> for HttpClientError {
     fn from(e: (String, reqwest::Error)) -> Self {
         Self {
-            error: format!("{:?}", e.1),
+            error: serde_json::json!(format!("{:?}", e.1)),
             error_code: 101,
             context: e.0,
         }
@@ -292,7 +292,7 @@ impl From<(String, reqwest::Error)> for HttpClientError {
 impl From<(String, serde_json::Error)> for HttpClientError {
     fn from(e: (String, serde_json::Error)) -> Self {
         Self {
-            error: format!("{:?}", e.1),
+            error: serde_json::json!(format!("{:?}", e.1)),
             error_code: 102,
             context: e.0,
         }
@@ -302,7 +302,7 @@ impl From<(String, serde_json::Error)> for HttpClientError {
 impl From<(String, serde_cbor::Error)> for HttpClientError {
     fn from(e: (String, serde_cbor::Error)) -> Self {
         Self {
-            error: format!("{:?}", e.1),
+            error: serde_json::json!(format!("{:?}", e.1)),
             error_code: 102,
             context: e.0,
         }

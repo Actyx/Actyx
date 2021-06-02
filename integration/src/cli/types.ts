@@ -141,54 +141,29 @@ export const Response_Settings_Unset = io.union([
 
 export type Response_Settings_Unset = io.TypeOf<typeof Response_Settings_Unset>
 
-const LogLine = io.type({
-  sequenceNumber: io.number,
-  logTimestamp: io.string,
-  nodeId: io.string,
-  nodeName: io.string,
-  severity: io.union([
-    io.literal('TRACE'),
-    io.literal('DEBUG'),
-    io.literal('WARN'),
-    io.literal('INFO'),
-    io.literal('ERROR'),
-  ]),
-  message: io.string,
-  logName: io.string,
-  additionalData: io.unknown,
-  labels: io.union([io.null, io.record(io.string, io.string)]),
-  producerName: io.string,
-  producerVersion: io.string,
-})
-export type LogLine = io.TypeOf<typeof LogLine>
-export const Response_Logs_Tail_Entry = io.union([
-  ERR_NODE_UNREACHABLE,
-  io.intersection([
-    _OK,
-    io.type({
-      result: io.array(LogLine),
-    }),
-  ]),
-])
-
-export type Response_Logs_Tail_Entry = io.TypeOf<typeof Response_Logs_Tail_Entry>
-
-export const Response_Internal_Swarm_State = io.union([
+export const Response_Nodes_Inspect = io.union([
   ERR_INVALID_INPUT,
   io.intersection([
     _OK,
     io.type({
       result: io.type({
-        listen_addrs: io.array(io.string),
-        peer_id: io.string,
-        peers: io.array(io.tuple([io.string, io.string])),
-        external_addrs: io.array(io.string),
+        peerId: io.string,
+        listenAddrs: io.array(io.string),
+        announceAddrs: io.array(io.string),
+        connections: io.array(io.type({
+            peerId: io.string,
+            addr: io.string,
+        })),
+        knownPeers: io.array(io.type({
+            peerId: io.string,
+            addrs: io.array(io.string),
+        })),
       }),
     }),
   ]),
 ])
 
-export type Response_Internal_Swarm_State = io.TypeOf<typeof Response_Internal_Swarm_State>
+export type Response_Nodes_Inspect = io.TypeOf<typeof Response_Nodes_Inspect>
 
 export const Response_Swarms_Keygen = io.union([
   ERR_INVALID_INPUT,

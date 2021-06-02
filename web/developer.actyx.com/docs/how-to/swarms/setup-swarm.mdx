@@ -3,9 +3,7 @@ title: Setup a swarm
 id: setup-swarm
 hide_title: false
 hide_table_of_contents: false
-sidebar_label: Setup a swarm
 keywords: [swarm, configuration]
-description: Swarm setup guide.
 image: /images/defaults/default.svg
 ---
 
@@ -56,7 +54,7 @@ L2tleS9zd2FybS9wc2svMS4wLjAvCi9iYXNlMTYvCjZiNjkzNTQzNGM0Yzc5NjY2OTM4NTkzMjM0Njg0
 
 In the Node Manager, you can create a swarm key in the Tools tab:
 
-![swarm-key-node-manager](/images/how-to/swarms/swarm-key-node-manager.png)
+![swarm-key-node-manager](../../../static/images/node-manager/swarm-key.png)
 
 </TabItem>
 </Tabs>
@@ -89,15 +87,13 @@ ax settings set --local com.actyx/swarm/swarmKey L2tleS9zd2FybS9wc2svMS4wLjAvCi9
 
 The swarm key is a node setting. Go to the settings tab, change the swarm key property, and press save:
 
-![swarm-key-node-manager](/images/how-to/swarms/configure-swarm-key-node-manager.png)
+![swarm-key-configuration](../../../static/images/how-to/swarms/swarm-key-configuration.png)
 
 </TabItem>
 </Tabs>
 
 
 If you configure nodes in the same network with the same swarm key, they will automatically connect to each other via mDNS.
-If mDNS is disabled on your device or network, or you are running Actyx on Docker, you have to [setup a bootstrap node to connect your devices](setup-bootstrap-node.mdx).
+If mDNS is disabled on your device or network, or you are running Actyx on Docker, you have to [manually configure initial peers](connect-nodes.mdx).
 
-<!-- TODO write peer discovery
-For more information on how nodes discover and connect to each other, please check out our conceptual guide on peer discovery.
--->
+For more information on how nodes discover and connect to each other, please check out our [conceptual guide on discovery](../../conceptual/discovery.mdx).

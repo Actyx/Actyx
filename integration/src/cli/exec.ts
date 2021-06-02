@@ -1,23 +1,17 @@
 import {
   Response_Nodes_Ls,
+  Response_Nodes_Inspect,
   Response_Settings_Get,
   Response_Settings_Set,
   Response_Settings_Unset,
-  Response_Logs_Tail_Entry,
-  Response_Internal_Swarm_State,
   Response_Settings_Scopes,
   Response_Settings_Schema,
   Response_Swarms_Keygen,
   Response_Users_Keygen,
 } from './types'
-import { isLeft } from 'fp-ts/lib/Either'
-import { PathReporter } from 'io-ts/lib/PathReporter'
 import execa from 'execa'
-import { StringDecoder } from 'string_decoder'
-import { Transform } from 'stream'
 import * as path from 'path'
 import { rightOrThrow } from '../infrastructure/rightOrThrow'
-import { Observable } from 'rxjs'
 
 const exec = async (binaryPath: string, args: string[], cwd?: string) => {
   try {
@@ -71,10 +65,10 @@ type Exec = {
   }
   swarms: {
     keyGen: (file?: string) => Promise<Response_Swarms_Keygen>
-    state: () => Promise<Response_Internal_Swarm_State>
   }
   nodes: {
     ls: () => Promise<Response_Nodes_Ls>
+    inspect: () => Promise<Response_Nodes_Inspect>
   }
   settings: {
     scopes: () => Promise<Response_Settings_Scopes>
@@ -82,13 +76,6 @@ type Exec = {
     set: (scope: string, input: SettingsInput) => Promise<Response_Settings_Set>
     unset: (scope: string) => Promise<Response_Settings_Unset>
     schema: (scope: string) => Promise<Response_Settings_Schema>
-  }
-  logs: {
-    tail: (
-      all_entries: boolean,
-      entries: number,
-      follow: boolean,
-    ) => Observable<Response_Logs_Tail_Entry>
   }
 }
 
@@ -110,10 +97,6 @@ export const mkExec = (binary: string, addr: string, identityPath: string): Exec
       const response = await exec(binary, ['swarms', 'keygen', ...fileArgs])
       return rightOrThrow(Response_Swarms_Keygen.decode(response), response)
     },
-    state: async (): Promise<Response_Internal_Swarm_State> => {
-      const json = await exec(binary, ['_internal', 'swarm', '--local', addr, '-i', identityPath])
-      return rightOrThrow(Response_Internal_Swarm_State.decode(json), json)
-    },
   },
   nodes: {
     ls: async (): Promise<Response_Nodes_Ls> => {
@@ -126,6 +109,10 @@ export const mkExec = (binary: string, addr: string, identityPath: string): Exec
         identityPath,
       ])
       return rightOrThrow(Response_Nodes_Ls.decode(response), response)
+    },
+    inspect: async (): Promise<Response_Nodes_Inspect> => {
+      const json = await exec(binary, ['nodes', 'inspect', '--local', addr, '-i', identityPath])
+      return rightOrThrow(Response_Nodes_Inspect.decode(json), json)
     },
   },
   settings: {
@@ -189,106 +176,6 @@ export const mkExec = (binary: string, addr: string, identityPath: string): Exec
         identityPath,
       ])
       return rightOrThrow(Response_Settings_Schema.decode(response), response)
-    },
-  },
-  logs: {
-    tail: (
-      allEntries: boolean,
-      entries: number,
-      follow: boolean,
-    ): Observable<Response_Logs_Tail_Entry> => {
-      let process: execa.ExecaChildProcess<string>
-      return new Observable((observer) => {
-        try {
-          const a = allEntries ? ['--all-entries'] : []
-          const e = ['--entries', entries.toString()]
-          const f = follow ? ['--follow'] : []
-          //console.log(`starting ax process`)
-          process = execa(
-            binary,
-            ['-j', 'logs', 'tail']
-              .concat(f)
-              .concat(e)
-              .concat(a)
-              .concat([`--local`, addr, '-i', identityPath]),
-            {
-              buffer: false,
-            },
-          )
-          if (process.stdout === null) {
-            observer.error(`stdout is null`)
-          } else {
-            const utf8Decoder = new StringDecoder('utf8')
-
-            let last = ''
-
-            const entryDecoder = new Transform({
-              readableObjectMode: true,
-              transform(chunk, _, cb) {
-                let lines: string[] = []
-                try {
-                  last += utf8Decoder.write(chunk)
-                  const list = last.split(/\r?\n/)
-                  const p = list.pop()
-                  last = p === undefined ? '' : p
-                  lines = list.filter((x) => x.length > 0)
-                } catch (err) {
-                  observer.error(new Error(err.toString()))
-                }
-
-                if (lines.length > 0) {
-                  lines.forEach((l) => this.push(l))
-                  cb(null)
-                } else {
-                  cb()
-                }
-              },
-            })
-
-            // This is set to non-null if the request has an error. Otherwise
-            // if returns none (this happens only when the connection is
-            // manually aborted using the returned function).
-            let error: string | null = null
-            //console.log(`piping stdout to decoder`)
-            process.stdout.pipe(entryDecoder).on('data', (str) => {
-              //console.log(`got data: '${str}'`)
-              const val = JSON.parse(str)
-              const entry = Response_Logs_Tail_Entry.decode(val)
-              if (isLeft(entry)) {
-                //console.log(`error decoding log entry: ${PathReporter.report(entry).join(', ')}`)
-                error = `error decoding log entry response: ${PathReporter.report(entry).join(
-                  ', ',
-                )}`
-                observer.error(new Error(error))
-              } else {
-                observer.next(entry.value)
-              }
-            })
-
-            process.stdout.on('error', (err: string) => {
-              //console.log(`got error: ${err}`)
-              error = err
-            })
-            process.stdout.on('close', (err: string) => {
-              //console.log(`stream closing (err: ${err})`)
-              if (error === null) {
-                // Nothing happens here
-              } else if (err !== '' && err !== undefined && err !== null) {
-                observer.error(new Error(err))
-              } else {
-                observer.error(new Error(error))
-              }
-              observer.complete()
-            })
-          }
-        } catch (error) {
-          //console.log(`caught error (err: ${error})`)
-          observer.error(new Error(error.toString()))
-        }
-        return () => {
-          process?.kill()
-        }
-      })
     },
   },
 })

@@ -9,7 +9,8 @@ describe('ax', () => {
   describe('users keygen', () => {
     it('should work on Windows', async () => {
       await runOnEach([{ os: 'windows' }], async (node) => {
-        const response = await node.target.execute(String.raw`
+        const response = await node.target.execute(
+          String.raw`
         $tempFolderPath = Join-Path $Env:Temp $(New-Guid)
         New-Item -Type Directory -Path $tempFolderPath | Out-Null
         $out = Join-Path $tempFolderPath id
@@ -17,11 +18,13 @@ describe('ax', () => {
         Get-Content stdout.txt
         Get-Content $out
         $pub = Join-Path $tempFolderPath id.pub
-        Get-Content $pub`)
+        Get-Content $pub`,
+          [],
+        )
         expect(response.exitCode).toBe(0)
-        expect(response.stdOut.startsWith('Your private key has been saved at')).toBeTruthy()
-        expect(response.stdOut.split('\n').length).toBe(5)
-        expect(response.stdErr).toBe('Generating public/private key pair ..')
+        expect(response.stdout.startsWith('Your private key has been saved at')).toBeTruthy()
+        expect(response.stdout.split('\n').length).toBe(5)
+        expect(response.stderr).toBe('Generating public/private key pair ..')
       })
     })
   })

@@ -32,8 +32,8 @@ import TabItem from '@theme/TabItem'
 
 In order to be able to run Actyx on Windows, your device needs to meet the following requirements:
 
-- Windows 10
-- `x86_64` processor architecture
+- Windows 10 or Windows Server 2019
+- `x64` processor architecture
 
 ## Installing Actyx
 
@@ -98,7 +98,7 @@ On some Android distributions you may need to explicitly permit it by navigating
 
 In order to be able to run Actyx on Linux, your device needs to meet the following requirements:
 
-- `x86_64`, `aarch64`, `armv7` or `arm` processor architectures
+- `amd64`, `arm64`, `armhf` or `arm` processor architectures
 
 <h2>Installing Actyx</h2>
 
@@ -133,8 +133,9 @@ After a few seconds, Actyx will be stopped.
 
 <h2>Hardware Requirements</h2>
 
-Your device must run a recent version of macOS (> 10.14 Mojave) to be able to run Actyx guaranteed, though earlier macOS versions may work as well.
-New Apple devices with the ARM-based Apple M1 chip will use Rosetta to run the binary (an ARM build will be released in the future).
+In order to be able to run Actyx on macOS, your device needs to meet the following requirements:
+
+- macOS Big Sur (earlier versions may work as well, are not officially supported though)
 
 <h2>Installing Actyx</h2>
 
@@ -172,26 +173,29 @@ After a few seconds, Actyx will be stopped.
 In order to be able to run Actyx on Docker, your device needs to meet the following requirements:
 
 - Must have Docker installed
-- Must be able to run Docker in privileged mode
-- Must be able to run amd64 or arm64v8 Docker images
+- Must be able to run amd64 or arm64, armv7 or arm Docker images
 
 <h2>Installing and running Actyx</h2>
 
-Actyx on Docker is published on [DockerHub](https://hub.docker.com/r/actyx/os).
+Actyx on Docker is published on [DockerHub](https://hub.docker.com/r/actyx/actyx).
 To download and run the latest version execute one of the following commands.
 
 <h3>Production Mode</h3>
 
-<h4>Windows / macOS</h4>
-
-```text
-docker run --name actyx -it --rm -v actyx-data:/data -p 4001:4001 -p 4458:4458 -p 127.0.0.1:4454:4454 actyx/os
-```
-
 <h4>Linux</h4>
 
 ```text
-docker run --name actyx -it --rm -v actyx-data:/data --network=host actyx/os
+docker run --name actyx -it --rm -v actyx-data:/data --network=host actyx/actyx
+```
+
+:::warning Running Actyx on Docker on Windows or macOS
+It is not recommended to run Actyx on Docker on Windows or macOS. We strongly recommend using the native Actyx binaries on those systems.
+:::
+
+<h4>Windows / macOS</h4>
+
+```text
+docker run --name actyx -it --rm -v actyx-data:/data -p 4001:4001 -p 4458:4458 -p 127.0.0.1:4454:4454 actyx/actyx
 ```
 
 :::info Publishing docker ports

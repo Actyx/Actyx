@@ -1,7 +1,7 @@
-import { Client } from '@actyx/os-sdk'
 import { Arch, Host, OS } from '../jest/types'
 import { CLI } from './cli'
 import { currentAxBinary } from './infrastructure/settings'
+import execa from 'execa'
 import { ActyxNode } from './infrastructure/types'
 
 export const mkNodeStub = (
@@ -20,13 +20,13 @@ export const mkNodeStub = (
         os,
         arch,
         kind: { type: 'test' },
-        execute: () => Promise.resolve({ exitCode: 0, stdOut: '', stdErr: '' }),
+        execute: () => execa.command('whoami'),
         _private: { cleanup: () => Promise.resolve() },
       },
       ax,
-      httpApiClient: Client(),
       _private: {
         shutdown: () => Promise.resolve(),
+        actyxBinaryPath: '',
         axBinaryPath: '',
         axHost: '',
         httpApiOrigin: '',
@@ -34,6 +34,7 @@ export const mkNodeStub = (
         apiSwarmPort: 0,
         apiEventsPort: 0,
       },
+      startEphemeralNode: () => Promise.reject('Not supported on stubs'),
     }))
 
 export const mkAx = (): Promise<CLI> =>

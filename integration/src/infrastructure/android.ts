@@ -1,6 +1,6 @@
-import { Client, DefaultClientOpts } from '@actyx/os-sdk'
 import execa from 'execa'
 import { CLI } from '../cli'
+import { awaitCloudInitSetup } from './aws'
 import { connectSsh, ensureDocker, execSsh } from './linux'
 import { mkProcessLogger } from './mkProcessLogger'
 import { actyxAndroidApk, currentAxBinary } from './settings'
@@ -27,6 +27,9 @@ export const mkNodeSshAndroid = async (
   const ssh = Ssh.new(sshParams.host, sshParams.username, sshParams.privateKey)
   await connectSsh(ssh, nodeName, sshParams, 150)
 
+  if (target.kind.type === 'aws') {
+    await awaitCloudInitSetup(ssh)
+  }
   await ensureDocker(ssh, nodeName, target.arch)
 
   const exec = execSsh(ssh)
@@ -112,8 +115,6 @@ export const mkNodeSshAndroid = async (
 
   const axHost = `localhost:${port4458}`
   const httpApiOrigin = `http://localhost:${port4454}`
-  const opts = DefaultClientOpts()
-  opts.Endpoints.EventService.BaseUrl = httpApiOrigin
 
   const axBinaryPath = await currentAxBinary()
   const shutdown = async () => {
@@ -126,7 +127,7 @@ export const mkNodeSshAndroid = async (
 
   const executeInContainerPrefix = `adb -s localhost:${adbPort} `
   const executeInContainer = (script: string) =>
-    target.execute(`${executeInContainerPrefix}${script}`)
+    target.execute(`${executeInContainerPrefix}${script}`, [], {})
   return {
     name: nodeName,
     target: {
@@ -135,10 +136,10 @@ export const mkNodeSshAndroid = async (
       executeInContainer,
     },
     ax: await CLI.build(axHost, axBinaryPath),
-    httpApiClient: Client(opts),
     host: 'android',
     _private: {
       shutdown,
+      actyxBinaryPath: '',
       axBinaryPath,
       axHost,
       httpApiOrigin,

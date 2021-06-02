@@ -31,11 +31,17 @@
 //! A non bootstrap node needs to have at least one bootstrap node configured if mdns doesn't work
 //! due to a firewall. If mdns does work it will discover it's local network bootstrap node
 //! automatically.
+//!
+//! In some cases you will want to configure an `announceAddress` or `externalAddress`. The purpose
+//! of the `announceAddress` is to ease the configuration of a network when dealing with multiple
+//! NATs. When configuring a bootstrap node you are telling the node how to reach another peer,
+//! while when configuring an external address you are telling other peers how to reach you, given
+//! you have a bootstrap node in common.
 use crate::BanyanStore;
 use actyxos_sdk::{tags, Payload, StreamNr};
 use anyhow::Result;
 use fnv::{FnvHashMap, FnvHashSet};
-use futures::stream::StreamExt;
+use futures::stream::{Stream, StreamExt};
 use libipld::cbor::DagCborCodec;
 use libipld::codec::{Codec, Decode, Encode};
 use libipld::DagCbor;
@@ -181,12 +187,12 @@ pub async fn discovery_ingest(store: BanyanStore) {
 
 pub fn discovery_publish(
     store: BanyanStore,
+    mut stream: impl Stream<Item = ipfs_embed::Event> + Unpin,
     nr: StreamNr,
     bootstrap: FnvHashMap<ipfs_embed::PeerId, Vec<ipfs_embed::Multiaddr>>,
     external: FnvHashSet<ipfs_embed::Multiaddr>,
     enable_discovery: bool,
 ) -> Result<impl Future<Output = ()>> {
-    let mut stream = store.ipfs().swarm_events();
     let mut buffer = vec![];
     let tags = tags!("discovery");
     let peer_id: PeerId = store.ipfs().local_peer_id().into();

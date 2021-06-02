@@ -1,10 +1,12 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
     use actyxos_sdk::{tags, Payload};
+    use structopt::StructOpt;
     use swarm_cli::{Command, Event};
-    use swarm_harness::{MachineExt, MultiaddrExt};
+    use swarm_harness::{HarnessOpts, MachineExt, MultiaddrExt};
 
-    swarm_harness::run_netsim(|mut network| async move {
+    swarm_harness::setup_env()?;
+    swarm_harness::run_netsim(HarnessOpts::from_args(), |mut network| async move {
         for machine in network.machines_mut() {
             loop {
                 if let Some(Event::NewListenAddr(addr)) = machine.recv().await {
