@@ -105,7 +105,7 @@ where
         let mut bootstrap = Vec::with_capacity(opts.n_bootstrap);
         for i in 0..opts.n_bootstrap {
             let peer_id: PeerId = swarm_cli::keypair(i as u64).into();
-            let addr = sim.network(net).random_addr();
+            let addr = sim.network_mut(net).unique_addr();
             let maddr = format!("/ip4/{}/tcp/30000/p2p/{}", addr, peer_id);
             addrs.push(addr);
             bootstrap.push(maddr.parse().unwrap());
