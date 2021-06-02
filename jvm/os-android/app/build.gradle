@@ -13,7 +13,7 @@ apply from: '../actyx-local/actyx.properties'
 
 // 102000000 is the version code that would have been applied to ActyxOS 1.2
 def verCode = { -> ("git log --oneline".execute().text.readLines().size() + 102000000) as Integer }
-def verName = "${(System.getenv('ACTYX_VERSION') ?: androidGitVersion.name())}-android"
+def verName = System.getenv('ACTYX_VERSION') ?: androidGitVersion.name()
 
 androidGitVersion {
   prefix 'actyx-'
@@ -39,7 +39,7 @@ android {
     minSdkVersion 22
     targetSdkVersion 30
     versionCode verCode()
-    versionName verName
+    versionName "$verName-android"
     testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     buildConfigField "int", "MIN_SDK_API_LEVEL", "$minSdkVersion.apiLevel"
     ndk {
@@ -55,6 +55,9 @@ android {
     }
   }
   buildTypes {
+    buildTypes.each {
+      it.resValue 'string', 'actyx_version', "Version $verName"
+    }
     release {
       signingConfig signingConfigs.release
       minifyEnabled true
