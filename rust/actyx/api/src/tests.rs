@@ -1,8 +1,4 @@
-use actyxos_sdk::{
-    app_id,
-    service::{AuthenticationResponse, NodeIdResponse},
-    NodeId,
-};
+use actyxos_sdk::{app_id, service::AuthenticationResponse, NodeId};
 use bytes::Bytes;
 use crypto::{KeyStore, KeyStoreRef, PublicKey};
 use hyper::Response;
@@ -90,20 +86,11 @@ async fn authenticate() {
 
 #[tokio::test]
 async fn node_id() {
-    let (route, token, node_key, ..) = test_routes().await;
-    let resp = test::request()
-        .path("/api/v2/node_id")
-        .header("Authorization", format!("Bearer {}", token))
-        .reply(&route)
-        .await;
+    let (route, _, node_key, ..) = test_routes().await;
+    let resp = test::request().path("/api/v2/node/id").reply(&route).await;
     assert_eq!(resp.status(), http::StatusCode::OK);
-    assert_eq!(resp.headers()["content-type"], "application/json");
-    assert_eq!(
-        serde_json::from_slice::<NodeIdResponse>(&resp.body()).unwrap(),
-        NodeIdResponse {
-            node_id: node_key.into()
-        }
-    )
+    assert_eq!(resp.headers()["content-type"], "text/plain; charset=utf-8");
+    assert_eq!(resp.body(), &NodeId::from(node_key).to_string())
 }
 
 #[tokio::test]

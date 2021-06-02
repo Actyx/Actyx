@@ -1,7 +1,7 @@
 mod auth;
 mod events;
 mod ipfs_file_gateway;
-mod node_id;
+mod node;
 mod rejections;
 #[cfg(test)]
 mod tests;
@@ -47,7 +47,7 @@ fn routes(node_info: NodeInfo, store: BanyanStore) -> impl Filter<Extract = (imp
     let event_store = EventStore::new(store.clone());
     let event_service = events::service::EventService::new(event_store);
     let events = events::routes(node_info.clone(), event_service);
-    let node_id = node_id::route(node_info.clone());
+    let node_id = node::route(node_info.clone());
     let auth = auth::route(node_info);
 
     let api_path = path!("api" / "v2" / ..);
@@ -59,7 +59,7 @@ fn routes(node_info: NodeInfo, store: BanyanStore) -> impl Filter<Extract = (imp
     path("ipfs")
         .and(ipfs_file_gateway::route(store))
         .or(api_path.and(path("events")).and(events))
-        .or(api_path.and(path("node_id")).and(node_id))
+        .or(api_path.and(path!("node" / "id")).and(node_id))
         .or(api_path.and(path("auth")).and(auth))
         .recover(|r| async { rejections::handle_rejection(r) })
         .with(cors)

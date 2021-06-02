@@ -1,7 +1,7 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
 import { chunksOf } from 'fp-ts/lib/Array'
@@ -33,6 +33,7 @@ import {
   Timestamp,
   toMetadata,
   Where,
+  NodeId,
 } from '../types'
 import { EventStore } from './eventStore'
 import { eventsMonotonic, EventsOrTimetravel as EventsOrTtInternal } from './subscribe_monotonic'
@@ -45,10 +46,11 @@ const ordByTimestamp = contramap(
 const ordByKey = contramap((e: ActyxEvent) => e.meta.eventId, ordString)
 
 export const EventFnsFromEventStoreV2 = (
+  nodeId: NodeId,
   eventStore: EventStore,
   snapshotStore: SnapshotStore,
 ): EventFns => {
-  const mkMeta = toMetadata(eventStore.nodeId)
+  const mkMeta = toMetadata(nodeId)
 
   const wrap = <E>(e: Event): ActyxEvent<E> => ({
     payload: e.payload as E,
@@ -508,7 +510,7 @@ export const EventFnsFromEventStoreV2 = (
   }
 
   return {
-    nodeId: eventStore.nodeId,
+    nodeId,
     currentOffsets,
     queryKnownRange,
     queryKnownRangeChunked,

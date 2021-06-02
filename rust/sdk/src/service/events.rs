@@ -22,7 +22,7 @@ use std::{collections::BTreeMap, fmt::Display, num::NonZeroU64};
 use crate::{
     event::{Event, EventKey, Metadata},
     language::Query,
-    scalars::{NodeId, StreamId},
+    scalars::StreamId,
     tags::TagSet,
     types::Binary,
     LamportTimestamp, Offset, OffsetMap, Payload, Timestamp,
@@ -300,13 +300,6 @@ pub enum SubscribeResponse {
     Event(EventResponse<Payload>),
     // #[serde(rename_all = "camelCase")]
     // Offset(OffsetMap),
-}
-
-/// Response to the `node_id` endpoint
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct NodeIdResponse {
-    pub node_id: NodeId,
 }
 
 /// Response to the `offsets` endpoint

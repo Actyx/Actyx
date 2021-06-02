@@ -3,7 +3,7 @@ import { mkNodeIdService as mkNodeService, mkTrialHttpClient } from '../http-cli
 import { runOnEvery } from '../infrastructure/hosts'
 
 describe('node service', () => {
-  describe('node_id', () => {
+  describe('node/id', () => {
     it('should return node id', () =>
       runOnEvery(async (x) => {
         const nodeInfo = assertOK(await x.ax.nodes.ls()).result[0]
