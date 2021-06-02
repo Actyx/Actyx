@@ -76,8 +76,8 @@ use std::{
 };
 use streams::*;
 use trees::{
-    axtrees::{AxKey, AxTree, AxTrees, Sha256Digest},
-    AxTreeHeader,
+    axtrees::{AxKey, AxTrees, Sha256Digest},
+    AxTree, AxTreeHeader,
 };
 use util::{
     formats::NodeErrorContext,

@@ -143,20 +143,8 @@ impl TagsQuery {
         move |local| {
             let mut res = vec![];
             for tag_set in &dnf {
-                let mut tags = TagSet::empty();
-                let mut is_local = false;
-                for atom in tag_set {
-                    match atom {
-                        language::TagAtom::Tag(tag) => tags.insert(tag.clone()),
-                        language::TagAtom::AllEvents => {}
-                        language::TagAtom::IsLocal => is_local = true,
-                        language::TagAtom::FromTime(_) => {}
-                        language::TagAtom::ToTime(_) => {}
-                        language::TagAtom::FromLamport(_) => {}
-                        language::TagAtom::ToLamport(_) => {}
-                        language::TagAtom::AppId(_) => {}
-                    }
-                }
+                let is_local = tag_set.iter().any(|x| x.is_local());
+                let tags: TagSet = tag_set.iter().filter_map(|x| x.tag()).cloned().collect();
                 if !is_local || local {
                     if tags.is_empty() {
                         return Self::all();
