@@ -17,7 +17,7 @@
           "$ref": "#/definitions/Basic/Key"
         },
         "someObject": {
-          "$ref": "#/definitions/Composite/BootstrapNode"
+          "$ref": "#/definitions/Composite/InitialPeer"
         },
         "name": {
           "type": "string",
@@ -38,7 +38,7 @@
       }
     },
     "Composite": {
-      "BootstrapNode": {
+      "InitialPeer": {
         "type": "object",
         "required": [
           "ip",

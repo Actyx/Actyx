@@ -38,7 +38,7 @@ admin:
   displayName: My Node
 swarm:
   swarmKey: 4245c0e542a4f89985a92de178d2169dc7f3596a382828aa8381bc13370e9880
-  bootstrapNodes:
+  initialPeers:
     - /ipfs/10.24.24.2
     - /ipfs/10.24.24.3" | ax settings set --local com.actyx @- 10.2.3.23
 ```
