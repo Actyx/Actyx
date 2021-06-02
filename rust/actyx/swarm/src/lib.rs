@@ -9,6 +9,7 @@
 //! ## BanyanStoreGuard
 //! temporary struct that is created when acquiring mutable access to the state.
 //! inside this you have mutable access to the state - but if you lock again you will deadlock.
+#[macro_use]
 pub mod convert;
 mod discovery;
 pub mod event_store;
@@ -114,6 +115,15 @@ impl Default for EphemeralEventsConfig {
             },
         }
     }
+}
+
+#[macro_export]
+macro_rules! internal_tags {
+    ($($args:tt)*) => {{
+        let mut res = ::actyxos_sdk::tags!($($args)*);
+        res.prepend(::trees::query::TagScope::Internal.prefix());
+        res
+    }};
 }
 
 #[derive(Clone, Debug, Default)]

@@ -125,12 +125,8 @@ impl Tag {
     }
 
     pub fn filter_prefix(&self, prefix: &str) -> Option<Tag> {
-        let txt = self.as_ref();
-        if txt.starts_with(prefix) {
-            Tag::try_from(&txt[prefix.len()..]).ok()
-        } else {
-            None
-        }
+        let remaining = self.as_ref().strip_prefix(prefix)?;
+        Tag::try_from(remaining).ok()
     }
 }
 
