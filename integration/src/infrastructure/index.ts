@@ -16,9 +16,9 @@ export function mkExecute(os: OS, kind: TargetKind): ExecuteFn {
   switch (kind.type) {
     case 'aws':
     case 'ssh': {
-      const mkSsh = () => Ssh.new(kind.host, kind.username, kind.privateKey)
+      const ssh = Ssh.new(kind.host, kind.username, kind.privateKey)
       return (file: string, params: string[], env?: { [_: string]: string }) =>
-        mkSsh().execFile(file, params, env)
+        ssh.execFile(file, params, env)
     }
     case 'local':
     case 'test': {

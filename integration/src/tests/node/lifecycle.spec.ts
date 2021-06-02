@@ -1,7 +1,7 @@
 import { Observable } from 'rxjs'
 import { startEphemeralNode, startEphemeralProcess } from '../../infrastructure'
 import { getFreeRemotePort, occupyRemotePort } from '../../infrastructure/checkPort'
-import { runOnEvery } from '../../infrastructure/hosts'
+import { runOnEach, runOnEvery } from '../../infrastructure/hosts'
 import { ActyxNode } from '../../infrastructure/types'
 
 const adminExtract = (s: string): [string, number] | undefined => {
@@ -149,11 +149,8 @@ describe('node lifecycle', () => {
     }))
 
   it('should error on occupied ports', () =>
-    runOnEvery(async (n) => {
-      if (skipTarget(n) || n.target.os === 'windows') {
-        // Tracking issue for Windows: https://github.com/Actyx/Cosmos/issues/5850
-        return
-      }
+    runOnEach([{ host: 'process', os: 'linux' }], async (n) => {
+      // Tracking issue for Windows: https://github.com/Actyx/Cosmos/issues/5850
       const services = ['Admin', 'API', 'Swarm']
       await Promise.all(
         services.map(async (x) => {
