@@ -1,23 +1,22 @@
 use actyxos_sdk::{tags, Tag};
-use trees::tag_index::*;
-
-use serde::{de::DeserializeOwned, Serialize};
+use cbor_tag_index::TagIndex;
+use libipld::{cbor::DagCbor, cbor::DagCborCodec, codec::Codec, Ipld};
 use std::str::FromStr;
 
-fn compresss_zstd_cbor<T: Serialize>(value: &T) -> std::result::Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let cbor = serde_cbor::to_vec(&value)?;
+fn compresss_zstd_cbor<T: DagCbor>(value: &T) -> std::result::Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let cbor = DagCborCodec.encode(value)?;
     let mut compressed: Vec<u8> = Vec::new();
     zstd::stream::copy_encode(std::io::Cursor::new(cbor), &mut compressed, 10)?;
     Ok(compressed)
 }
 
-fn decompress_zstd_cbor<T: DeserializeOwned>(compressed: &[u8]) -> std::result::Result<T, Box<dyn std::error::Error>> {
+fn decompress_zstd_cbor<T: DagCbor>(compressed: &[u8]) -> std::result::Result<T, Box<dyn std::error::Error>> {
     let mut decompressed: Vec<u8> = Vec::new();
     zstd::stream::copy_decode(compressed, &mut decompressed)?;
-    Ok(serde_cbor::from_slice(&decompressed)?)
+    Ok(DagCborCodec.decode(&decompressed)?)
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     let tags = (0..5000)
         .map(|i| {
             let fizz = i % 3 == 0;
@@ -34,18 +33,20 @@ fn main() {
             }
         })
         .collect::<Vec<_>>();
-    let large = TagIndex::from_elements(&tags);
+    let large = TagIndex::new(tags.clone()).unwrap();
     let compressed = compresss_zstd_cbor(&large).unwrap();
-    let large1: TagIndex = decompress_zstd_cbor(&compressed).unwrap();
+    let large1: TagIndex<Tag> = decompress_zstd_cbor(&compressed).unwrap();
     assert_eq!(large, large1);
-    println!("naive cbor {}", serde_cbor::to_vec(&tags).unwrap().len());
-    println!("index cbor {}", serde_cbor::to_vec(&large).unwrap().len());
+    println!("naive cbor {}", DagCborCodec.encode(&tags).unwrap().len());
+    println!("index cbor {}", DagCborCodec.encode(&large).unwrap().len());
     println!("compressed {}", compressed.len());
 
-    let index = TagIndex::from_elements(&[tags!("a"), tags!("a", "b"), tags!("a"), tags!("a", "b")]);
-    let text = serde_json::to_string(&index).unwrap();
+    let index = TagIndex::new(vec![tags!("a"), tags!("a", "b"), tags!("a"), tags!("a", "b")])?;
+    let cbor = DagCborCodec.encode(&index)?;
+    let text: Ipld = DagCborCodec.decode(&cbor)?;
     println!("{:?}", index);
-    println!("{}", text);
+    println!("{:?}", text);
 
     // TODO run queries
+    Ok(())
 }

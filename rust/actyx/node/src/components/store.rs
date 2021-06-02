@@ -10,7 +10,7 @@ use std::{convert::TryInto, path::PathBuf, sync::Arc};
 use swarm::{BanyanStore, SwarmConfig};
 use tokio::sync::oneshot;
 use tracing::*;
-use util::formats::{NodeCycleCount, NodesInspectResponse, Peer};
+use util::formats::{Connection, NodeCycleCount, NodesInspectResponse, Peer};
 
 pub(crate) enum StoreRequest {
     NodesInspect {
@@ -43,20 +43,33 @@ impl Component<StoreRequest, SwarmConfig> for Store {
                         .into_iter()
                         .map(|rec| rec.addr.to_string())
                         .collect();
-                    let peers: Vec<_> = store
+                    let connections: Vec<_> = store
                         .ipfs()
                         .connections()
                         .into_iter()
-                        .map(|(peer, addr)| Peer {
+                        .map(|(peer, addr)| Connection {
                             peer_id: peer.to_string(),
                             addr: addr.to_string(),
+                        })
+                        .collect();
+                    let known_peers: Vec<_> = store
+                        .ipfs()
+                        .peers()
+                        .into_iter()
+                        .filter_map(|peer| {
+                            let info = store.ipfs().peer_info(&peer)?;
+                            Some(Peer {
+                                peer_id: peer.to_string(),
+                                addrs: info.addresses().map(|(addr, _)| addr.to_string()).collect(),
+                            })
                         })
                         .collect();
                     let _ = tx.send(Ok(NodesInspectResponse {
                         peer_id,
                         listen_addrs,
                         announce_addrs,
-                        peers,
+                        connections,
+                        known_peers,
                     }));
                 } else {
                     let _ = tx.send(Err(anyhow::anyhow!("Store not running")));

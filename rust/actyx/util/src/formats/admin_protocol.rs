@@ -91,12 +91,20 @@ pub struct NodesInspectResponse {
     pub peer_id: String,
     pub listen_addrs: Vec<String>,
     pub announce_addrs: Vec<String>,
-    pub peers: Vec<Peer>,
+    pub connections: Vec<Connection>,
+    pub known_peers: Vec<Peer>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct Connection {
+    pub peer_id: String,
+    pub addr: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Peer {
     pub peer_id: String,
-    pub addr: String,
+    pub addrs: Vec<String>,
 }

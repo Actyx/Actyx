@@ -150,9 +150,13 @@ export const Response_Nodes_Inspect = io.union([
         peerId: io.string,
         listenAddrs: io.array(io.string),
         announceAddrs: io.array(io.string),
-        peers: io.array(io.type({
+        connections: io.array(io.type({
             peerId: io.string,
             addr: io.string,
+        })),
+        knownPeers: io.array(io.type({
+            peerId: io.string,
+            addrs: io.array(io.string),
         })),
       }),
     }),
