@@ -6,95 +6,62 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
-:::caution Experimental feature
-Please note that this is an experimental feature. Experimental features have full functionality (i.e. _they work_), but the user experience is a little complex and will change in the next releases.
-:::
-
-You can get a list of all connected nodes by sending an HTTP request. The following command will returns a list of all nodes that the node with IP address 192.168.2.10 is connected to:
+You can get a list of all connected nodes by running [`ax nodes inspect`](../../reference/cli/nodes/inspect) or selecting the `Peers` tab in the Node Manager.
 
 import Tabs from '@theme/Tabs'
 import TabItem from '@theme/TabItem'
 
 <Tabs
-  groupId="os"
-  defaultValue={"windows"}
+  groupId="tool"
+  defaultValue={"node-manager"}
   values={[
-    { label: 'Windows', value: 'windows' },
-    { label: 'Linux/Mac', value: 'linux' },
+    { label: 'Node Manager', value: 'node-manager' },
+    { label: 'CLI', value: 'cli' },
   ]}
 >
 
 
-<TabItem value="windows">
+<TabItem value="node-manager">
 
+![node-peers](../../../static/images/node-manager/node-peers.png)
 
-```powershell
-Invoke-WebRequest 'http://192.168.2.10:4457/_internal/swarm/state' | Select-Object -Expand Content
-```
-
-The above command returns a JSON object. Unfortunately, there is no easy way to make JSON objects readable in PowerShell, we advise that you copy it into Visual Studio Code and format it there.
+The _Peers_ view displays all peers of the selected node.
 
 </TabItem>
-<TabItem value="linux">
+<TabItem value="cli">
 
+```text title="Example Usage"
+ax nodes inspect --local 192.168.1.219
+PeerId: 12D3KooWSgvc3hzrsuExYazNDB1BU3gevUPTzaumnwHWv5yFBNzH
+ListenAddrs:
+    /ip4/192.168.1.219/tcp/4001
+    /ip4/127.0.0.1/tcp/4001
+    /ip6/::1/tcp/4001
+AnnounceAddrs:
+    /ip4/192.168.1.219/tcp/4001/p2p/12D3KooWSgvc3hzrsuExYazNDB1BU3gevUPTzaumnwHWv5yFBNzH
+Connections:
++------------------------------------------------------+--------------------------------------------------------------------------------------+
+| PEERID                                               | ADDRESS                                                                              |
++------------------------------------------------------+--------------------------------------------------------------------------------------+
+| 12D3KooWSVZEwAqdcJEG2T3wR8CZZoneWFyPqpRsxSzVB3WLwtVt | /ip4/192.168.1.165/tcp/4001/p2p/12D3KooWSVZEwAqdcJEG2T3wR8CZZoneWFyPqpRsxSzVB3WLwtVt |
++------------------------------------------------------+--------------------------------------------------------------------------------------+
 
-```text
-curl 192.168.2.10:4457/_internal/swarm/state | jq
+Addresses:
++------------------------------------------------------+--------------------------------------------------------------------------------------+
+| PEERID                                               | ADDRESS                                                                              |
++------------------------------------------------------+--------------------------------------------------------------------------------------+
+| 12D3KooWSVZEwAqdcJEG2T3wR8CZZoneWFyPqpRsxSzVB3WLwtVt | /ip6/::1/tcp/4001/p2p/12D3KooWSVZEwAqdcJEG2T3wR8CZZoneWFyPqpRsxSzVB3WLwtVt           |
+|                                                      | /ip4/192.168.1.165/tcp/4001/p2p/12D3KooWSVZEwAqdcJEG2T3wR8CZZoneWFyPqpRsxSzVB3WLwtVt |
+|                                                      | /ip4/127.0.0.1/tcp/4001/p2p/12D3KooWSVZEwAqdcJEG2T3wR8CZZoneWFyPqpRsxSzVB3WLwtVt     |
++------------------------------------------------------+--------------------------------------------------------------------------------------+
 ```
+
+The output above shows you:
+- `PeerId`: Peer ID of your node
+- `ListenAddrs`: Addresses that the Swarm API bound to
+- `AnnounceAddrs`: Addresses that your node is announcing to other nodes for connecting to it
+- `Connections`: List of active connections to peers, identified by peer ID and address
+- `knownPeers`: List of all peers, identified by peer ID and address, that your node knows
 
 </TabItem>
 </Tabs>
-
-
-This is an example answer:
-
-```json
-{
-  "Ok": {
-    "store": {
-      "count": 0,
-      "size": 0
-    },
-    "swarm": {
-      "listen_addrs": ["/ip4/10.0.0.5/tcp/4001", "/ip4/127.0.0.1/tcp/4001"],
-      "peer_id": "12D3KooWFTwsQQwYYDKX4JingSJqEhs2QEa7gkfzBst6mniSYBRD",
-      "peers": {
-        "12D3KooWFBDaJZD3CPadPy9fMr29mbKtMsy4U1w5s7TnEvHQGRi9": {
-          "addresses": {
-            "/ip4/127.0.0.1/tcp/4001": {
-              "provenance": "Swarm",
-              "state": "Initial"
-            },
-            "/ip4/172.26.0.1/tcp/4001": {
-              "provenance": "Swarm",
-              "state": "Initial"
-            }
-          },
-          "connection_state": "Disconnected"
-        },
-        "QmUD1mA3Y8qSQB34HmgSNcxDss72UHW2kzQy7RdVstN2hH": {
-          "addresses": {
-            "/ip4/3.125.108.42/tcp/4001": {
-              "provenance": "Bootstrap",
-              "state": {
-                "Connected": {
-                  "since": 5
-                }
-              }
-            }
-          },
-          "connection_state": "Connected"
-        }
-      }
-    }
-  }
-}
-```
-
-In the `peers` object, you get a list of all peers that the node has been connected to. For each of the peers, you
-get important debugging information:
-
-- `adresses`: lists all network interfaces of the peer, and over which interface they are connected
-- `provenenance`: shows how the connection was established, e.g. if it is a bootstrap node or was discovered through mDNS
-- `since`: shows the duration of the connection in seconds
-- `connection_state`: shows whether the nodes are currently connected
