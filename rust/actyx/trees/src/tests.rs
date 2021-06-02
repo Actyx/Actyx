@@ -1,6 +1,7 @@
 use crate::{
-    axtrees::{AxKey, AxTree, AxTrees, Sha256Digest},
+    axtrees::{AxKey, AxTrees, Sha256Digest},
     query::{LamportQuery, TagsQuery, TimeQuery},
+    AxTree,
 };
 use actyxos_sdk::{tag, tags, LamportTimestamp, Payload, TagSet, Timestamp};
 use banyan::{

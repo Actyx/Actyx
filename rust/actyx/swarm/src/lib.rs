@@ -73,8 +73,8 @@ use std::{
 };
 use streams::*;
 use trees::{
-    axtrees::{AxKey, AxTree, AxTrees, Sha256Digest},
-    AxTreeHeader,
+    axtrees::{AxKey, AxTrees, Sha256Digest},
+    AxTree, AxTreeHeader,
 };
 use util::{
     formats::NodeErrorContext,
@@ -556,6 +556,54 @@ impl BanyanStore {
             },
         })
         .await?;
+        // call as soon as possible to avoid missed events
+        let swarm_events = ipfs.swarm_events();
+        let mut bootstrap: FnvHashMap<PeerId, Vec<Multiaddr>> = FnvHashMap::default();
+        for mut addr in cfg.bootstrap_addresses {
+            if let Some(Protocol::P2p(peer_id)) = addr.pop() {
+                let peer_id =
+                    PeerId::from_multihash(peer_id).map_err(|_| anyhow::anyhow!("invalid bootstrap peer id"))?;
+                bootstrap.entry(peer_id).or_default().push(addr);
+            } else {
+                return Err(anyhow::anyhow!("invalid bootstrap address"));
+            }
+        }
+        for addr in cfg.listen_addresses {
+            let port = addr
+                .iter()
+                .find_map(|x| match x {
+                    Protocol::Tcp(p) => Some(p),
+                    Protocol::Udp(p) => Some(p),
+                    _ => None,
+                })
+                .unwrap_or_default();
+
+            if let Some(ListenerEvent::NewListenAddr(bound_addr)) = ipfs
+                .listen_on(addr.clone())
+                .with_context(|| NodeErrorContext::BindFailed {
+                    port,
+                    component: "Swarm".into(),
+                })?
+                .next()
+                .await
+            {
+                tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr);
+            } else {
+                return Err(anyhow::anyhow!("failed to bind address")).with_context(|| NodeErrorContext::BindFailed {
+                    port,
+                    component: "Swarm".into(),
+                });
+            }
+        }
+        let external_addrs = cfg.external_addresses.iter().cloned().collect();
+        for addr in cfg.external_addresses {
+            ipfs.add_external_address(addr);
+        }
+        for (peer, addrs) in &bootstrap {
+            for addr in addrs {
+                ipfs.add_address(peer, addr.clone());
+            }
+        }
 
         let index_store = if let Some(conn) = cfg.index_store {
             SqliteIndexStore::from_conn(conn)?
@@ -604,27 +652,17 @@ impl BanyanStore {
             );
         }
         banyan.spawn_task("compaction", banyan.clone().compaction_loop(Duration::from_secs(60)));
-
         if cfg.enable_discovery {
             banyan.spawn_task("discovery_ingest", crate::discovery::discovery_ingest(banyan.clone()));
-        }
-        let mut bootstrap: FnvHashMap<PeerId, Vec<Multiaddr>> = FnvHashMap::default();
-        for mut addr in cfg.bootstrap_addresses {
-            if let Some(Protocol::P2p(peer_id)) = addr.pop() {
-                let peer_id =
-                    PeerId::from_multihash(peer_id).map_err(|_| anyhow::anyhow!("invalid bootstrap peer id"))?;
-                bootstrap.entry(peer_id).or_default().push(addr);
-            } else {
-                return Err(anyhow::anyhow!("invalid bootstrap address"));
-            }
         }
         banyan.spawn_task(
             "discovery_publish",
             crate::discovery::discovery_publish(
                 banyan.clone(),
+                swarm_events,
                 DISCOVERY_STREAM_NR.into(),
-                bootstrap.clone(),
-                cfg.external_addresses.iter().cloned().collect(),
+                bootstrap,
+                external_addrs,
                 cfg.enable_discovery,
             )?,
         );
@@ -638,44 +676,6 @@ impl BanyanStore {
             "prune_events",
             crate::prune::prune(banyan.clone(), cfg.ephemeral_event_config),
         );
-
-        let ipfs = banyan.ipfs();
-        for addr in cfg.listen_addresses {
-            let port = addr
-                .iter()
-                .find_map(|x| match x {
-                    Protocol::Tcp(p) => Some(p),
-                    Protocol::Udp(p) => Some(p),
-                    _ => None,
-                })
-                .unwrap_or_default();
-
-            if let Some(ListenerEvent::NewListenAddr(bound_addr)) = ipfs
-                .listen_on(addr.clone())
-                .with_context(|| NodeErrorContext::BindFailed {
-                    port,
-                    component: "Swarm".into(),
-                })?
-                .next()
-                .await
-            {
-                tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr);
-            } else {
-                return Err(anyhow::anyhow!("failed to bind address")).with_context(|| NodeErrorContext::BindFailed {
-                    port,
-                    component: "Swarm".into(),
-                });
-            }
-        }
-        for addr in cfg.external_addresses {
-            ipfs.add_external_address(addr);
-        }
-        for (peer, addrs) in bootstrap {
-            for addr in addrs {
-                ipfs.add_address(&peer, addr);
-            }
-        }
-
         Ok(banyan)
     }
 

@@ -1,4 +1,3 @@
-import { Client } from '@actyx/os-sdk'
 import { Arch, Host, OS } from '../jest/types'
 import { CLI } from './cli'
 import { currentAxBinary } from './infrastructure/settings'
@@ -25,7 +24,6 @@ export const mkNodeStub = (
         _private: { cleanup: () => Promise.resolve() },
       },
       ax,
-      httpApiClient: Client(),
       _private: {
         shutdown: () => Promise.resolve(),
         actyxBinaryPath: '',

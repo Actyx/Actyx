@@ -13,7 +13,10 @@ use libipld::{
 use parking_lot::Mutex;
 use rayon::prelude::*;
 use rusqlite::OpenFlags;
-use trees::axtrees::{AxKey, AxTree, AxTrees, Sha256Digest};
+use trees::{
+    axtrees::{AxKey, AxTrees, Sha256Digest},
+    AxTree,
+};
 
 use crate::{AxStreamBuilder, StreamAlias};
 

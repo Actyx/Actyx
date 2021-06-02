@@ -428,7 +428,7 @@ mod test {
           {
             "swarm": {
               "swarmKey": "MDAwMDAwMDAxMTExMTExMTIyMjIyMjIyMzMzMzMzMzM=",
-              "bootstrapNodes": [ "/ip4/127.0.0.1/tcp/4001/p2p/QmaAxuktPMR3ESHe9Pru8kzzzSGvsUie7UFJPfCWqTzzzz" ],
+              "initialPeers": [ "/ip4/127.0.0.1/tcp/4001/p2p/QmaAxuktPMR3ESHe9Pru8kzzzSGvsUie7UFJPfCWqTzzzz" ],
               "announceAddresses": [],
               "topic": "My Topic"
             },

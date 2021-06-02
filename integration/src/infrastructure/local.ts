@@ -1,4 +1,3 @@
-import { Client, DefaultClientOpts } from '@actyx/os-sdk'
 import execa from 'execa'
 import { ensureDir, remove } from 'fs-extra'
 import path from 'path'
@@ -79,15 +78,12 @@ export const mkNodeLocalProcess = (
   clog(`http api reachable on port ${port4454}`)
 
   const httpApiOrigin = `http://localhost:${port4454}`
-  const clientOpts = DefaultClientOpts()
-  clientOpts.Endpoints.EventService.BaseUrl = httpApiOrigin
   const axBinaryPath = await currentAxBinary()
   return {
     name: nodeName,
     target,
     host: 'process',
     ax: await CLI.build(`localhost:${port4458}`, axBinaryPath),
-    httpApiClient: Client(clientOpts),
     _private: {
       shutdown,
       actyxBinaryPath: binary,
@@ -151,8 +147,6 @@ export const mkNodeLocalDocker = async (
     const port = (original: number): string => ports[`${original}/tcp`][0].HostPort
     const axHost = `localhost:${port(4458)}`
     const httpApiOrigin = `http://localhost:${port(4454)}`
-    const opts = DefaultClientOpts()
-    opts.Endpoints.EventService.BaseUrl = httpApiOrigin
 
     const axBinaryPath = await currentAxBinary()
     const executeInContainer = (script: string) =>
@@ -162,7 +156,6 @@ export const mkNodeLocalDocker = async (
       target: { ...target, executeInContainer },
       host: 'docker',
       ax: await CLI.build(axHost, axBinaryPath),
-      httpApiClient: Client(opts),
       _private: {
         shutdown,
         axBinaryPath,

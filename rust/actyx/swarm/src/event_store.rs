@@ -8,7 +8,8 @@ use ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered};
 use banyan::FilteredChunk;
 use derive_more::{Display, Error};
 use futures::{future, stream, Stream, StreamExt, TryStreamExt};
-use trees::{axtrees::AxKey, query::TagsQuery, OffsetMapOrMax};
+use trees::{axtrees::AxKey, query::TagsQuery};
+use util::offsetmap_or_max::OffsetMapOrMax;
 
 use crate::{selection::StreamEventSelection, AppendMeta, BanyanStore, SwarmOffsets};
 
@@ -273,7 +274,6 @@ mod tests {
     use num_traits::Bounded;
     use quickcheck::Arbitrary;
     use rand::{thread_rng, Rng};
-    use trees::OffsetMapOrMax;
 
     use super::*;
     use crate::{selection::EventSelection, BanyanStore};

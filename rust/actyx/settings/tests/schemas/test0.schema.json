@@ -26,7 +26,7 @@
       }
     },
     "Composite": {
-      "BootstrapNode": {
+      "initialPeer": {
         "type": "object",
         "required": [
           "ip",
@@ -65,7 +65,7 @@
             "$ref": "#/definitions/Basic/Key"
           },
           "someObject": {
-            "$ref": "#/definitions/Composite/BootstrapNode"
+            "$ref": "#/definitions/Composite/InitialPeer"
           },
           "name": {
             "type": "string",

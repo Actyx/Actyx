@@ -10,11 +10,11 @@ use std::{convert::TryInto, path::PathBuf, sync::Arc};
 use swarm::{BanyanStore, SwarmConfig};
 use tokio::sync::oneshot;
 use tracing::*;
-use util::formats::NodeCycleCount;
+use util::formats::{Connection, NodeCycleCount, NodesInspectResponse, Peer};
 
 pub(crate) enum StoreRequest {
-    GetSwarmState {
-        tx: oneshot::Sender<Result<serde_json::Value>>,
+    NodesInspect {
+        tx: oneshot::Sender<Result<NodesInspectResponse>>,
     },
 }
 pub(crate) type StoreTx = Sender<ComponentRequest<StoreRequest>>;
@@ -28,7 +28,7 @@ impl Component<StoreRequest, SwarmConfig> for Store {
     }
     fn handle_request(&mut self, req: StoreRequest) -> Result<()> {
         match req {
-            StoreRequest::GetSwarmState { tx } => {
+            StoreRequest::NodesInspect { tx } => {
                 if let Some(InternalStoreState { rt: _, store }) = self.state.as_ref() {
                     let peer_id = store.ipfs().local_peer_id().to_string();
                     let listen_addrs: Vec<_> = store
@@ -37,24 +37,40 @@ impl Component<StoreRequest, SwarmConfig> for Store {
                         .into_iter()
                         .map(|addr| addr.to_string())
                         .collect();
-                    let external_addrs: Vec<_> = store
+                    let announce_addrs: Vec<_> = store
                         .ipfs()
                         .external_addresses()
                         .into_iter()
                         .map(|rec| rec.addr.to_string())
                         .collect();
-                    let peers: Vec<_> = store
+                    let connections: Vec<_> = store
                         .ipfs()
                         .connections()
                         .into_iter()
-                        .map(|(peer, addr)| (peer.to_string(), addr.to_string()))
+                        .map(|(peer, addr)| Connection {
+                            peer_id: peer.to_string(),
+                            addr: addr.to_string(),
+                        })
                         .collect();
-                    let _ = tx.send(Ok(serde_json::json!({
-                        "peer_id": peer_id,
-                        "listen_addrs": listen_addrs,
-                        "external_addrs": external_addrs,
-                        "peers": peers,
-                    })));
+                    let known_peers: Vec<_> = store
+                        .ipfs()
+                        .peers()
+                        .into_iter()
+                        .filter_map(|peer| {
+                            let info = store.ipfs().peer_info(&peer)?;
+                            Some(Peer {
+                                peer_id: peer.to_string(),
+                                addrs: info.addresses().map(|(addr, _)| addr.to_string()).collect(),
+                            })
+                        })
+                        .collect();
+                    let _ = tx.send(Ok(NodesInspectResponse {
+                        peer_id,
+                        listen_addrs,
+                        announce_addrs,
+                        connections,
+                        known_peers,
+                    }));
                 } else {
                     let _ = tx.send(Err(anyhow::anyhow!("Store not running")));
                 }
@@ -133,7 +149,7 @@ impl Component<StoreRequest, SwarmConfig> for Store {
             listen_addresses: self.bind_to.swarm.clone().to_multiaddrs().collect(),
             bootstrap_addresses: s
                 .swarm
-                .bootstrap_nodes
+                .initial_peers
                 .iter()
                 .map(|s| s.parse())
                 .collect::<Result<_, libp2p::multiaddr::Error>>()?,
