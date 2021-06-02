@@ -13,6 +13,8 @@ use util::offsetmap_or_max::OffsetMapOrMax;
 
 use crate::{selection::StreamEventSelection, AppendMeta, BanyanStore, SwarmOffsets};
 
+const APP_PREFIX: &str = "_";
+
 #[derive(Clone, Debug, Display, Error)]
 pub enum Error {
     #[display(fmt = "Upper bounds must be within the current offsets’ present.")]
@@ -47,7 +49,7 @@ impl EventStore {
             .data
             .forest
             .stream_trees_chunked(selection.tags_query, trees, range, &|_| ())
-            .map_ok(move |chunk| stream::iter(events_from_chunk(stream_id, chunk)))
+            .map_ok(move |chunk| stream::iter(app_events_from_chunk(stream_id, chunk)))
             .take_while(|x| future::ready(x.is_ok()))
             .filter_map(|x| future::ready(x.ok()))
             .flatten()
@@ -63,7 +65,7 @@ impl EventStore {
             .data
             .forest
             .stream_trees_chunked_reverse(selection.tags_query, trees, range, &|_| ())
-            .map_ok(move |chunk| stream::iter(events_from_chunk_rev(stream_id, chunk)))
+            .map_ok(move |chunk| stream::iter(app_events_from_chunk_rev(stream_id, chunk)))
             .take_while(|x| future::ready(x.is_ok()))
             .filter_map(|x| future::ready(x.ok()))
             .flatten()
@@ -81,7 +83,7 @@ impl EventStore {
             return Err(Error::InvalidUpperBounds);
         }
         let from_or_min = from_offsets_excluding.map(OffsetMapOrMax::from).unwrap_or_default();
-        let mk_tags_query = TagsQuery::from_expr(tag_expr);
+        let mk_tags_query = TagsQuery::from_expr(tag_expr, APP_PREFIX);
         let res: Vec<_> = to_offsets_including
             .streams()
             .filter_map(|stream_id| {
@@ -114,7 +116,7 @@ impl EventStore {
         self.offsets().next().await.expect("offset stream stopped").present
     }
 
-    pub async fn persist(&self, events: Vec<(TagSet, Payload)>) -> anyhow::Result<Vec<PersistenceMeta>> {
+    pub async fn persist(&self, mut events: Vec<(TagSet, Payload)>) -> anyhow::Result<Vec<PersistenceMeta>> {
         if events.is_empty() {
             return Ok(vec![]);
         }
@@ -122,6 +124,9 @@ impl EventStore {
         let n = events.len();
         if n == 0 {
             return Ok(vec![]);
+        }
+        for (tags, _) in events.iter_mut() {
+            tags.prepend(APP_PREFIX);
         }
         let AppendMeta {
             min_lamport,
@@ -191,7 +196,7 @@ impl EventStore {
         from_offsets_excluding: Option<OffsetMap>,
     ) -> impl Stream<Item = Event<Payload>> {
         let this = self.clone();
-        let mk_tags_query = TagsQuery::from_expr(&tag_expr);
+        let mk_tags_query = TagsQuery::from_expr(&tag_expr, "_");
         let banyan_store = self.banyan_store.clone();
         let from_or_min = from_offsets_excluding.map(OffsetMapOrMax::from).unwrap_or_default();
         self.banyan_store
@@ -222,32 +227,33 @@ fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> 
     min..=max
 }
 
-fn to_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<Payload> {
+fn to_app_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<Payload> {
+    let timestamp = key.time();
+    let lamport = key.lamport();
+    let mut tags = key.into_tags();
+    tags.filter_prefix(APP_PREFIX);
     Event {
         payload,
         key: EventKey {
-            lamport: key.lamport(),
+            lamport,
             offset: offset.try_into().expect("invalid offset value"),
             stream,
         },
-        meta: Metadata {
-            timestamp: key.time(),
-            tags: key.into_tags(),
-        },
+        meta: Metadata { timestamp, tags },
     }
 }
 
 /// Take a block of banyan events and convert them into events.
-fn events_from_chunk(stream_id: StreamId, chunk: FilteredChunk<(u64, AxKey, Payload), ()>) -> Vec<Event<Payload>> {
+fn app_events_from_chunk(stream_id: StreamId, chunk: FilteredChunk<(u64, AxKey, Payload), ()>) -> Vec<Event<Payload>> {
     chunk
         .data
         .into_iter()
-        .map(move |(offset, key, payload)| to_ev(offset, key, stream_id, payload))
+        .map(move |(offset, key, payload)| to_app_ev(offset, key, stream_id, payload))
         .collect()
 }
 
 /// Take a block of banyan events and convert them into events, reversing them.
-fn events_from_chunk_rev(
+fn app_events_from_chunk_rev(
     stream_id: StreamId,
     chunk: FilteredChunk<(u64, AxKey, Payload), ()>,
 ) -> Vec<Reverse<Event<Payload>>> {
@@ -255,7 +261,7 @@ fn events_from_chunk_rev(
         .data
         .into_iter()
         .rev()
-        .map(move |(offset, key, payload)| Reverse(to_ev(offset, key, stream_id, payload)))
+        .map(move |(offset, key, payload)| Reverse(to_app_ev(offset, key, stream_id, payload)))
         .collect()
 }
 
@@ -327,7 +333,7 @@ mod tests {
         completed: bool,
     ) {
         let mut stream = Drainer::new(stream);
-        let res: Vec<_> = if completed {
+        let res: Vec<Event<Payload>> = if completed {
             stream.flatten().collect::<Vec<_>>()
         } else {
             let x = stream.next().unwrap();
@@ -340,6 +346,7 @@ mod tests {
         fn matches(selection: EventSelection, node_id: NodeId) -> impl FnMut(&Event<Payload>) -> bool {
             move |e| selection.matches(e.key.stream.node_id() == node_id, &e)
         }
+        println!("{:?} {:?}", res, selection);
         assert!(res.iter().all(matches(selection, node_id)));
 
         fn is_sorted(elements: &[impl Ord]) -> bool {
@@ -624,8 +631,12 @@ mod tests {
             let store = store.clone();
             let offsets = offsets.clone();
             let handle_sub = tokio::spawn(async move {
+                // app tags, for comparison with the result
                 let tags = mk_tag(i);
-                let tags_query = TagsQuery::new(vec![tags.clone()]);
+                // internal tags with prefix, as they actually appear on the tree
+                let mut internal_tags = tags.clone();
+                internal_tags.prepend(APP_PREFIX);
+                let tags_query = TagsQuery::new(vec![internal_tags.clone()]);
                 let range = random_range();
                 let actual = store
                     .forward_stream(StreamEventSelection {

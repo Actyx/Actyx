@@ -115,6 +115,23 @@ impl Tag {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+
+    pub fn prepend(&self, prefix: &str) -> Tag {
+        let txt = self.as_ref();
+        let mut t = String::with_capacity(txt.len() + prefix.len());
+        t += prefix;
+        t += txt;
+        Tag::try_from(t.as_ref()).unwrap()
+    }
+
+    pub fn filter_prefix(&self, prefix: &str) -> Option<Tag> {
+        let txt = self.as_ref();
+        if txt.starts_with(prefix) {
+            Tag::try_from(&txt[prefix.len()..]).ok()
+        } else {
+            None
+        }
+    }
 }
 
 impl TryFrom<&str> for Tag {
@@ -354,6 +371,24 @@ impl TagSet {
 
     pub fn is_subset(&self, rhs: &TagSet) -> bool {
         self.iter().all(|tag| rhs.contains(&tag))
+    }
+
+    /// Prepend a prefix to all tags
+    pub fn prepend(&mut self, prefix: &str) {
+        // prepending a string does not change the sort order
+        for tag in self.0.iter_mut() {
+            *tag = tag.prepend(prefix);
+        }
+    }
+
+    /// Keep tags with a prefix, and remove the prefix
+    pub fn filter_prefix(&mut self, prefix: &str) {
+        // retaining only strings with a prefix does not change the sort order
+        self.0
+            .retain(|x| x.as_ref().starts_with(prefix) && x.as_ref().len() > prefix.len());
+        for tag in self.0.iter_mut() {
+            *tag = Tag::try_from(&tag.as_ref()[prefix.len()..]).unwrap();
+        }
     }
 }
 

@@ -138,13 +138,17 @@ impl TagsQuery {
         Self(DnfQuery::new(terms).expect("> u32::max_value() tags"))
     }
 
-    pub fn from_expr(tag_expr: &language::TagExpr) -> impl Fn(bool) -> Self {
+    pub fn from_expr(tag_expr: &language::TagExpr, prefix: &'static str) -> impl Fn(bool) -> Self {
         let dnf = Dnf::from(tag_expr).0;
         move |local| {
             let mut res = vec![];
             for tag_set in &dnf {
                 let is_local = tag_set.iter().any(|x| x.is_local());
-                let tags: TagSet = tag_set.iter().filter_map(|x| x.tag()).cloned().collect();
+                let tags: TagSet = tag_set
+                    .iter()
+                    .filter_map(|x| x.tag())
+                    .map(|tag| tag.prepend(prefix))
+                    .collect();
                 if !is_local || local {
                     if tags.is_empty() {
                         return Self::all();
@@ -215,7 +219,7 @@ mod tests {
     }
 
     fn assert_match(index: &TagIndex, expr: &TagExpr, expected: Vec<bool>) {
-        let query = TagsQuery::from_expr(expr)(true);
+        let query = TagsQuery::from_expr(expr, "")(true);
         let mut matching = vec![true; expected.len()];
         query.set_matching(index, &mut matching);
         assert_eq!(matching, expected);
@@ -247,7 +251,7 @@ mod tests {
     fn test_from_expr() {
         let test_expr = |local: bool, tag_expr: &'static str, expected: TagsQuery| {
             let tag_expr = tag_expr.parse::<TagExpr>().unwrap();
-            let actual = TagsQuery::from_expr(&tag_expr)(local);
+            let actual = TagsQuery::from_expr(&tag_expr, "")(local);
             assert_eq!(actual, expected, "tag_expr: {:?}", tag_expr);
         };
 
