@@ -262,7 +262,7 @@ export const forwardPortsAndBuildClients = async (
   nodeName: string,
   target: Target,
   actyxProc: execa.ExecaChildProcess<string>[],
-  theRest: Omit<ActyxNode, 'ax' | 'httpApiClient' | '_private' | 'name' | 'target'>,
+  theRest: Omit<ActyxNode, 'ax' | '_private' | 'name' | 'target'>,
 ): Promise<ActyxNode> => {
   const [[port4454, port4458], proc] = await ssh.forwardPorts(4454, 4458)
 
