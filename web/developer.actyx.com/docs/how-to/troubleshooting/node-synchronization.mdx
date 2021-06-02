@@ -14,11 +14,11 @@ This is mostly caused by communication errors between nodes. To debug and resolv
 
 **If your nodes were synchronizing previously, you can skip this step**. If your nodes were never synchronizing, please check the following:
 
-- Check that you have configured the same swarm key [as described in this guide](../swarms/setup-swarm)
+- Check that you have configured the same swarm key [as described in this guide](../swarms/setup-swarm.mdx)
 - Check that your nodes are publishing events to the same topic. The topic can be configured in the node settings. To query the topic with the CLI, use `ax settings get com.actyx/api/swarm/topic <node>`.
 - Check that your nodes are **not** configured as `readOnly`. This can be configured in the node settings
-- If mDNS is disabled on your device or network, or you are running Actyx on Docker, check that you have configured the right bootstrap node on all devices [as described in this guide](../swarms/setup-bootstrap-node)
-- If you are running Actyx on Docker without `network=host` and your bootstrap node is not running in the same local network as your other nodes, check that you have configured the `announceAddresses` settings on your Docker nodes [as described in this guide](../swarms/configure-announced-addresses)
+- If mDNS is disabled on your device or network, or you are running Actyx on Docker, check that you have configured the right node(s) to connect to on all devices [as described in this guide](../swarms/connect-nodes.mdx)
+- If you are running Actyx on Docker without `network=host` and your bootstrap node is not running in the same local network as your other nodes, check that you have configured the `announceAddresses` settings on your Docker nodes [as described in this guide](../swarms/configure-announced-addresses.mdx)
 
 If you fixed any configuration issues and your nodes are still not synchronizing, go through the steps below.
 
@@ -26,7 +26,7 @@ If you fixed any configuration issues and your nodes are still not synchronizing
 
 ### Test the network requirements
 
-Next, check if the nodes cannot connect due to firewall issues as described in [this guide](../monitoring-debugging/network-requirements). If, after following the described steps, you either found no issues or fixed issues with your firewall, check if the nodes are peered.
+Next, check if the nodes cannot connect due to firewall issues as described in [this guide](../monitoring-debugging/network-requirements.mdx). If, after following the described steps, you either found no issues or fixed issues with your firewall, check if the nodes are peered.
 
 ### Test if the nodes are peered
 

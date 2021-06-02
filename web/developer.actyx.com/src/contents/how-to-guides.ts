@@ -161,7 +161,7 @@ const createHowTos = () => {
         },
         {
           title: 'Setup a bootstrap node to connect nodes to each other',
-          link: 'swarms/setup-bootstrap-node',
+          link: 'swarms/connect-nodes',
         },
       ],
     },
