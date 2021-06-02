@@ -1,12 +1,10 @@
-use std::time::Duration;
-use swarm_harness::{m, select_single, selector};
-
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
+    use std::{net::Ipv4Addr, time::Duration};
+
     use netsim_embed::{Ipv4Range, Netsim};
-    use std::net::Ipv4Addr;
     use swarm_cli::{Command, Config, Event};
-    use swarm_harness::{select_multi, MachineExt, MultiaddrExt};
+    use swarm_harness::{m, select_multi, select_single, selector, MachineExt, MultiaddrExt};
 
     swarm_harness::setup_env()?;
     async_global_executor::block_on(async move {
