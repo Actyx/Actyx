@@ -29,7 +29,7 @@ pub struct Events {
 pub struct Swarm {
     pub swarm_key: String,
     // TODO: use multiaddr
-    pub bootstrap_nodes: BTreeSet<String>,
+    pub initial_peers: BTreeSet<String>,
     pub announce_addresses: BTreeSet<String>,
     pub topic: String,
 }
@@ -68,7 +68,7 @@ impl Settings {
         Self {
             swarm: Swarm {
                 swarm_key: "abcd".to_string(),
-                bootstrap_nodes: btreeset!["some bootstrap node".into()],
+                initial_peers: btreeset!["some bootstrap node".into()],
                 announce_addresses: btreeset![],
                 topic: "some topic".into(),
             },

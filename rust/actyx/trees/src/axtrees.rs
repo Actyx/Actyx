@@ -1,7 +1,7 @@
-use actyxos_sdk::{LamportTimestamp, Payload, Tag, TagSet, Timestamp};
+use actyxos_sdk::{LamportTimestamp, Tag, TagSet, Timestamp};
 use banyan::{
     index::{CompactSeq, Summarizable},
-    Tree, TreeTypes,
+    TreeTypes,
 };
 use libipld::{
     cbor::DagCborCodec,
@@ -21,8 +21,6 @@ use std::{
 };
 
 use crate::TagIndex;
-
-pub type AxTree = Tree<AxTrees, Payload>;
 
 const MAX_TAGSET_COUNT: usize = 512;
 
@@ -321,6 +319,10 @@ impl FromIterator<TagsSummary> for TagsSummary {
     }
 }
 
+/// Summaries for a sequence of tag summaries, corresponding to child nodes.
+///
+/// This is just a TagIndex with one additional case to handle when the complete
+/// index would become too large.
 #[derive(Debug, PartialEq, Eq, Clone, DagCbor)]
 pub enum TagsSummaries {
     /// The complete set of tags in the tree
@@ -561,6 +563,7 @@ impl Summarizable<AxSummary> for AxSummarySeq {
     }
 }
 
+/// Defines the types to be used in the actyx flavour of banyan trees
 #[derive(Debug, Clone, Copy)]
 pub struct AxTrees;
 
@@ -572,6 +575,9 @@ impl TreeTypes for AxTrees {
     type Link = Sha256Digest;
 }
 
+/// The link type used internally by the actyx flavour of banyan trees
+///
+/// This is much smaller and less complex than than an libipld::Cid
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Sha256Digest([u8; 32]);
 

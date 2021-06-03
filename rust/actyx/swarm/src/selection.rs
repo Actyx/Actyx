@@ -1,5 +1,6 @@
 use actyxos_sdk::{language::TagExpr, OffsetOrMin, StreamId};
-use trees::{query::TagsQuery, OffsetMapOrMax};
+use trees::query::TagsQuery;
+use util::offsetmap_or_max::OffsetMapOrMax;
 
 /// A precise selection of events, possibly unbounded in size.
 ///

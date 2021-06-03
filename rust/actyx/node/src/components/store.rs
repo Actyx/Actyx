@@ -149,7 +149,7 @@ impl Component<StoreRequest, SwarmConfig> for Store {
             listen_addresses: self.bind_to.swarm.clone().to_multiaddrs().collect(),
             bootstrap_addresses: s
                 .swarm
-                .bootstrap_nodes
+                .initial_peers
                 .iter()
                 .map(|s| s.parse())
                 .collect::<Result<_, libp2p::multiaddr::Error>>()?,
