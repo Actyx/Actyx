@@ -34,7 +34,7 @@ use crate::{
         AuthenticationResponse, EventService, OffsetsResponse, PublishRequest, PublishResponse, QueryRequest,
         QueryResponse, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    AppManifest,
+    AppManifest, NodeId,
 };
 
 /// Error type that is returned in the response body by the Event Service when requests fail
@@ -88,6 +88,19 @@ impl HttpClient {
             token: Arc::new(RwLock::new(token)),
             app_manifest,
         })
+    }
+
+    pub async fn node_id(&self) -> anyhow::Result<NodeId> {
+        let bytes = self
+            .client
+            .get(self.base_url.join("node/id").unwrap())
+            .send()
+            .await?
+            .bytes()
+            .await
+            .context(|| "getting body for GET node/id")?;
+        let res = NodeId::from_bytes(&bytes)?;
+        Ok(res)
     }
 
     fn events_url(&self, path: &str) -> Url {
