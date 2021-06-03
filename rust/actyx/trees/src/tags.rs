@@ -48,10 +48,10 @@ impl ScopedTag {
 
     fn parse(text: &str) -> anyhow::Result<Self> {
         anyhow::ensure!(text.len() > 1);
-        Ok(match text.split_at(1) {
-            ("_", tag) => ScopedTag(TagScope::App, tag.try_into().unwrap()),
-            ("!", tag) => ScopedTag(TagScope::Internal, tag.try_into().unwrap()),
-            (prefix, _) => anyhow::bail!("unknown prefix {} for tag {}", prefix, text),
+        Ok(match &text.as_bytes()[..1] {
+            b"_" => ScopedTag(TagScope::App, text[1..].try_into().unwrap()),
+            b"!" => ScopedTag(TagScope::Internal, text[1..].try_into().unwrap()),
+            prefix => anyhow::bail!("unknown prefix {:?} for tag {}", prefix, text),
         })
     }
 }

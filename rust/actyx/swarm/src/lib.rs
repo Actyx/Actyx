@@ -117,14 +117,6 @@ impl Default for EphemeralEventsConfig {
     }
 }
 
-#[macro_export]
-macro_rules! internal_tags {
-    ($($args:tt)*) => {{
-        let res = ::actyxos_sdk::tags!($($args)*);
-        res
-    }};
-}
-
 #[derive(Clone, Debug, Default)]
 pub struct SwarmConfig {
     pub topic: String,
