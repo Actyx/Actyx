@@ -69,10 +69,7 @@ impl Decode<DagCborCodec> for ScopedTag {
 }
 
 impl Serialize for ScopedTag {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         self.to_serialized().serialize(serializer)
     }
 }

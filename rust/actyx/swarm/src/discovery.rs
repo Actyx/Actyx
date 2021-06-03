@@ -150,8 +150,8 @@ where
 }
 
 pub async fn discovery_ingest(store: BanyanStore) {
-    let tags = tags!("discovery").into();
-    let query = TagsQuery::new(vec![tags]);
+    let tags = tags!("discovery");
+    let query = TagsQuery::new(vec![tags.into()]);
     let mut stream = store.stream_filtered_stream_ordered(query);
     let peer_id = store.ipfs().local_peer_id();
     let node_name = store.ipfs().local_node_name();

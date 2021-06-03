@@ -9,7 +9,6 @@
 //! ## BanyanStoreGuard
 //! temporary struct that is created when acquiring mutable access to the state.
 //! inside this you have mutable access to the state - but if you lock again you will deadlock.
-#[macro_use]
 pub mod convert;
 mod discovery;
 pub mod event_store;

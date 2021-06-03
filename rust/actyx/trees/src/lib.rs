@@ -1,5 +1,4 @@
 #![deny(clippy::future_not_send)]
-#[macro_use]
 #[cfg(any(test, feature = "arb"))]
 mod arb;
 pub mod axtrees;

@@ -47,7 +47,7 @@ impl EventStore {
             .data
             .forest
             .stream_trees_chunked(selection.tags_query, trees, range, &|_| ())
-            .map_ok(move |chunk| stream::iter(app_events_from_chunk(stream_id, chunk)))
+            .map_ok(move |chunk| stream::iter(events_from_chunk(stream_id, chunk)))
             .take_while(|x| future::ready(x.is_ok()))
             .filter_map(|x| future::ready(x.ok()))
             .flatten()
@@ -63,7 +63,7 @@ impl EventStore {
             .data
             .forest
             .stream_trees_chunked_reverse(selection.tags_query, trees, range, &|_| ())
-            .map_ok(move |chunk| stream::iter(app_events_from_chunk_rev(stream_id, chunk)))
+            .map_ok(move |chunk| stream::iter(events_from_chunk_rev(stream_id, chunk)))
             .take_while(|x| future::ready(x.is_ok()))
             .filter_map(|x| future::ready(x.ok()))
             .flatten()
@@ -222,32 +222,32 @@ fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> 
     min..=max
 }
 
-fn to_app_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<Payload> {
-    let timestamp = key.time();
-    let lamport = key.lamport();
-    let tags = key.into_app_tags();
+fn to_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<Payload> {
     Event {
         payload,
         key: EventKey {
-            lamport,
+            lamport: key.lamport(),
             offset: offset.try_into().expect("invalid offset value"),
             stream,
         },
-        meta: Metadata { timestamp, tags },
+        meta: Metadata {
+            timestamp: key.time(),
+            tags: key.into_app_tags(),
+        },
     }
 }
 
 /// Take a block of banyan events and convert them into events.
-fn app_events_from_chunk(stream_id: StreamId, chunk: FilteredChunk<(u64, AxKey, Payload), ()>) -> Vec<Event<Payload>> {
+fn events_from_chunk(stream_id: StreamId, chunk: FilteredChunk<(u64, AxKey, Payload), ()>) -> Vec<Event<Payload>> {
     chunk
         .data
         .into_iter()
-        .map(move |(offset, key, payload)| to_app_ev(offset, key, stream_id, payload))
+        .map(move |(offset, key, payload)| to_ev(offset, key, stream_id, payload))
         .collect()
 }
 
 /// Take a block of banyan events and convert them into events, reversing them.
-fn app_events_from_chunk_rev(
+fn events_from_chunk_rev(
     stream_id: StreamId,
     chunk: FilteredChunk<(u64, AxKey, Payload), ()>,
 ) -> Vec<Reverse<Event<Payload>>> {
@@ -255,7 +255,7 @@ fn app_events_from_chunk_rev(
         .data
         .into_iter()
         .rev()
-        .map(move |(offset, key, payload)| Reverse(to_app_ev(offset, key, stream_id, payload)))
+        .map(move |(offset, key, payload)| Reverse(to_ev(offset, key, stream_id, payload)))
         .collect()
 }
 
@@ -327,7 +327,7 @@ mod tests {
         completed: bool,
     ) {
         let mut stream = Drainer::new(stream);
-        let res: Vec<Event<Payload>> = if completed {
+        let res: Vec<_> = if completed {
             stream.flatten().collect::<Vec<_>>()
         } else {
             let x = stream.next().unwrap();
@@ -626,7 +626,7 @@ mod tests {
             let handle_sub = tokio::spawn(async move {
                 // app tags, for comparison with the result
                 let tags = mk_tag(i);
-                // internal tags with prefix, as they actually appear on the tree
+                // tags with prefix, as they actually appear on the tree
                 let scoped_tags = tags.clone().into();
                 let tags_query = TagsQuery::new(vec![scoped_tags]);
                 let range = random_range();
