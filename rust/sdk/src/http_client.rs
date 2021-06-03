@@ -91,15 +91,15 @@ impl HttpClient {
     }
 
     pub async fn node_id(&self) -> anyhow::Result<NodeId> {
-        let bytes = self
+        let txt = self
             .client
             .get(self.base_url.join("node/id").unwrap())
             .send()
             .await?
-            .bytes()
+            .text()
             .await
             .context(|| "getting body for GET node/id")?;
-        let res = NodeId::from_bytes(&bytes)?;
+        let res: NodeId = txt.parse()?;
         Ok(res)
     }
 
