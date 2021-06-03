@@ -93,6 +93,7 @@ fn events_to_v2(envelopes: Vec<IpfsEnvelope>) -> Vec<(AxKey, Payload)> {
             let mut tags = event.tags;
             tags.insert(tag!("semantics:") + event.semantics.as_str());
             tags.insert(tag!("fish_name:") + event.name.as_str());
+            let tags = tags.into();
             let key: AxKey = AxKey::new(tags, event.lamport, event.timestamp);
             (key, event.payload)
         })

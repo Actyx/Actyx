@@ -6,7 +6,7 @@ use structopt::StructOpt;
 use swarm::{BanyanStore, SwarmConfig};
 use swarm_cli::{Command, Config, Event};
 use tokio::io::{AsyncBufReadExt, BufReader};
-use trees::query::{TagScope, TagsQuery};
+use trees::query::TagsQuery;
 
 #[tokio::main]
 async fn main() {
@@ -83,7 +83,7 @@ async fn run() -> Result<()> {
             }
             Command::SubscribeQuery(q) => {
                 // we need TagScope::Raw so we can find the events added with append
-                let tags_query = TagsQuery::from_expr(&q.from, TagScope::Raw)(true);
+                let tags_query = TagsQuery::from_expr(&q.from)(true);
                 let mut stream = swarm.stream_filtered_stream_ordered(tags_query);
                 tokio::spawn(async move {
                     while let Some(res) = stream.next().await {

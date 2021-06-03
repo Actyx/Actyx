@@ -8,10 +8,7 @@ use ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered};
 use banyan::FilteredChunk;
 use derive_more::{Display, Error};
 use futures::{future, stream, Stream, StreamExt, TryStreamExt};
-use trees::{
-    axtrees::AxKey,
-    query::{TagScope, TagsQuery},
-};
+use trees::{axtrees::AxKey, query::TagsQuery};
 use util::offsetmap_or_max::OffsetMapOrMax;
 
 use crate::{selection::StreamEventSelection, AppendMeta, BanyanStore, SwarmOffsets};
@@ -84,7 +81,7 @@ impl EventStore {
             return Err(Error::InvalidUpperBounds);
         }
         let from_or_min = from_offsets_excluding.map(OffsetMapOrMax::from).unwrap_or_default();
-        let mk_tags_query = TagsQuery::from_expr(tag_expr, TagScope::App);
+        let mk_tags_query = TagsQuery::from_expr(tag_expr);
         let res: Vec<_> = to_offsets_including
             .streams()
             .filter_map(|stream_id| {
@@ -117,7 +114,7 @@ impl EventStore {
         self.offsets().next().await.expect("offset stream stopped").present
     }
 
-    pub async fn persist(&self, mut events: Vec<(TagSet, Payload)>) -> anyhow::Result<Vec<PersistenceMeta>> {
+    pub async fn persist(&self, events: Vec<(TagSet, Payload)>) -> anyhow::Result<Vec<PersistenceMeta>> {
         if events.is_empty() {
             return Ok(vec![]);
         }
@@ -125,9 +122,6 @@ impl EventStore {
         let n = events.len();
         if n == 0 {
             return Ok(vec![]);
-        }
-        for (tags, _) in events.iter_mut() {
-            tags.prepend(TagScope::App.prefix());
         }
         let AppendMeta {
             min_lamport,
@@ -197,7 +191,7 @@ impl EventStore {
         from_offsets_excluding: Option<OffsetMap>,
     ) -> impl Stream<Item = Event<Payload>> {
         let this = self.clone();
-        let mk_tags_query = TagsQuery::from_expr(&tag_expr, TagScope::App);
+        let mk_tags_query = TagsQuery::from_expr(&tag_expr);
         let banyan_store = self.banyan_store.clone();
         let from_or_min = from_offsets_excluding.map(OffsetMapOrMax::from).unwrap_or_default();
         self.banyan_store
@@ -231,8 +225,7 @@ fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> 
 fn to_app_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<Payload> {
     let timestamp = key.time();
     let lamport = key.lamport();
-    let mut tags = key.into_tags();
-    tags.filter_prefix(TagScope::App.prefix());
+    let tags = key.into_app_tags();
     Event {
         payload,
         key: EventKey {
@@ -347,7 +340,6 @@ mod tests {
         fn matches(selection: EventSelection, node_id: NodeId) -> impl FnMut(&Event<Payload>) -> bool {
             move |e| selection.matches(e.key.stream.node_id() == node_id, &e)
         }
-        println!("{:?} {:?}", res, selection);
         assert!(res.iter().all(matches(selection, node_id)));
 
         fn is_sorted(elements: &[impl Ord]) -> bool {
@@ -635,9 +627,8 @@ mod tests {
                 // app tags, for comparison with the result
                 let tags = mk_tag(i);
                 // internal tags with prefix, as they actually appear on the tree
-                let mut internal_tags = tags.clone();
-                internal_tags.prepend(TagScope::App.prefix());
-                let tags_query = TagsQuery::new(vec![internal_tags.clone()]);
+                let scoped_tags = tags.clone().into();
+                let tags_query = TagsQuery::new(vec![scoped_tags]);
                 let range = random_range();
                 let actual = store
                     .forward_stream(StreamEventSelection {

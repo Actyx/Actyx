@@ -19,7 +19,7 @@ async fn banyan_multi_node() -> Result<()> {
         .add_address(&s2.ipfs().local_peer_id(), s2.ipfs().listeners()[0].clone());
 
     let tags = tags!("event");
-    let query = TagsQuery::new(vec![tags.clone()]);
+    let query = TagsQuery::new(vec![tags.clone().into()]);
 
     let event = MyEvent {
         things_are_happening: vec!["hello world".to_string()],

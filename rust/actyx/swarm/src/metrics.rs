@@ -2,6 +2,8 @@ use std::future::Future;
 use std::io::Write;
 use std::time::Duration;
 
+use crate::BanyanStore;
+use actyxos_sdk::tags;
 use actyxos_sdk::{Payload, StreamNr};
 use anyhow::Result;
 use libipld::cbor::encode::{write_u64, write_u8};
@@ -9,16 +11,11 @@ use libipld::cbor::DagCborCodec;
 use libipld::codec::Encode;
 use libipld::DagCbor;
 use prometheus::{Encoder, Registry};
-use trees::query::TagScope;
-
-use crate::internal_tags;
-use crate::BanyanStore;
 
 pub fn metrics(store: BanyanStore, nr: StreamNr, interval: Duration) -> Result<impl Future<Output = ()>> {
     let registry = Registry::new();
     store.ipfs().register_metrics(&registry)?;
-    let mut tags = internal_tags!("metrics");
-    tags.prepend(TagScope::Internal.prefix());
+    let tags = tags!("metrics");
 
     Ok(async move {
         let encoder = CborEncoder::new();
