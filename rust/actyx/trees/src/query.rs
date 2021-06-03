@@ -4,7 +4,7 @@ use std::{
     ops::{Range, RangeFrom, RangeTo},
 };
 
-use actyxos_sdk::{language, LamportTimestamp, Tag, TagSet, Timestamp};
+use actyxos_sdk::{language, LamportTimestamp, Timestamp};
 use banyan::{
     index::{BranchIndex, CompactSeq, LeafIndex},
     query::Query,
@@ -15,6 +15,7 @@ use range_collections::RangeSet;
 use crate::{
     axtrees::{AxTrees, TagsSummaries},
     dnf::Dnf,
+    tags::{ScopedTag, ScopedTagSet},
     TagIndex,
 };
 
@@ -131,10 +132,10 @@ impl Query<AxTrees> for OffsetQuery {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TagsQuery(DnfQuery<Tag>);
+pub struct TagsQuery(DnfQuery<ScopedTag>);
 
 impl TagsQuery {
-    pub fn new(terms: impl IntoIterator<Item = TagSet>) -> Self {
+    pub fn new(terms: impl IntoIterator<Item = ScopedTagSet>) -> Self {
         Self(DnfQuery::new(terms).expect("> u32::max_value() tags"))
     }
 
@@ -144,7 +145,11 @@ impl TagsQuery {
             let mut res = vec![];
             for tag_set in &dnf {
                 let is_local = tag_set.iter().any(|x| x.is_local());
-                let tags: TagSet = tag_set.iter().filter_map(|x| x.tag()).cloned().collect();
+                let tags: ScopedTagSet = tag_set
+                    .iter()
+                    .filter_map(|x| x.tag())
+                    .map(|tag| ScopedTag::from(tag.clone()))
+                    .collect();
                 if !is_local || local {
                     if tags.is_empty() {
                         return Self::all();
@@ -165,7 +170,7 @@ impl TagsQuery {
         Self(DnfQuery::empty())
     }
 
-    pub fn terms(&self) -> impl Iterator<Item = impl IntoIterator<Item = &Tag>> {
+    pub fn terms(&self) -> impl Iterator<Item = impl IntoIterator<Item = &ScopedTag>> {
         self.0.terms()
     }
 
@@ -194,8 +199,8 @@ impl Query<AxTrees> for TagsQuery {
     }
 }
 
-impl FromIterator<TagSet> for TagsQuery {
-    fn from_iter<T: IntoIterator<Item = TagSet>>(iter: T) -> Self {
+impl FromIterator<ScopedTagSet> for TagsQuery {
+    fn from_iter<T: IntoIterator<Item = ScopedTagSet>>(iter: T) -> Self {
         Self::new(iter)
     }
 }
@@ -203,6 +208,8 @@ impl FromIterator<TagSet> for TagsQuery {
 #[cfg(test)]
 mod tests {
     use std::str::FromStr;
+
+    use crate::stags;
 
     use super::*;
     use actyxos_sdk::{
@@ -223,7 +230,7 @@ mod tests {
 
     #[test]
     fn test_matching_1() {
-        let index = TagIndex::new(vec![tags!("a"), tags!("a", "b"), tags!("a"), tags!("a", "b")]).unwrap();
+        let index = TagIndex::new(vec![stags!("a"), stags!("a", "b"), stags!("a"), stags!("a", "b")]).unwrap();
         let expr = l("a") | l("b");
         assert_match(&index, &expr, vec![true, true, true, true]);
         let expr = l("a") & l("b");
@@ -234,7 +241,13 @@ mod tests {
 
     #[test]
     fn test_matching_2() {
-        let index = TagIndex::new(vec![tags!("a", "b"), tags!("b", "c"), tags!("c", "a"), tags!("a", "b")]).unwrap();
+        let index = TagIndex::new(vec![
+            stags!("a", "b"),
+            stags!("b", "c"),
+            stags!("c", "a"),
+            stags!("a", "b"),
+        ])
+        .unwrap();
         let expr = l("a") | l("b") | l("c");
         assert_match(&index, &expr, vec![true, true, true, true]);
         let expr = l("a") & l("b");
@@ -256,14 +269,14 @@ mod tests {
         test_expr(true, "allEvents | isLocal", TagsQuery::all());
         test_expr(true, "allEvents & isLocal", TagsQuery::all());
         test_expr(true, "isLocal", TagsQuery::all());
-        test_expr(true, "isLocal & 'a'", TagsQuery::new(vec![tags!("a")]));
+        test_expr(true, "isLocal & 'a'", TagsQuery::new(vec![stags!("a")]));
         test_expr(true, "isLocal | 'a'", TagsQuery::all());
         test_expr(
             true,
             "isLocal & 'b' | 'a'",
-            TagsQuery::new(vec![tags!("a"), tags!("b")]),
+            TagsQuery::new(vec![stags!("a"), stags!("b")]),
         );
-        test_expr(true, "'a'", TagsQuery::new(vec![tags!("a")]));
+        test_expr(true, "'a'", TagsQuery::new(vec![stags!("a")]));
 
         test_expr(false, "allEvents", TagsQuery::all());
         test_expr(false, "allEvents | 'a'", TagsQuery::all());
@@ -271,8 +284,8 @@ mod tests {
         test_expr(false, "allEvents & isLocal", TagsQuery::empty());
         test_expr(false, "isLocal", TagsQuery::empty());
         test_expr(false, "isLocal & 'a'", TagsQuery::empty());
-        test_expr(false, "isLocal | 'a'", TagsQuery::new(vec![tags!("a")]));
-        test_expr(false, "isLocal & 'b' | 'a'", TagsQuery::new(vec![tags!("a")]));
-        test_expr(false, "'a'", TagsQuery::new(vec![tags!("a")]));
+        test_expr(false, "isLocal | 'a'", TagsQuery::new(vec![tags!("a").into()]));
+        test_expr(false, "isLocal & 'b' | 'a'", TagsQuery::new(vec![tags!("a").into()]));
+        test_expr(false, "'a'", TagsQuery::new(vec![tags!("a").into()]));
     }
 }

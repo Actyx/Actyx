@@ -232,7 +232,7 @@ fn to_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<P
         },
         meta: Metadata {
             timestamp: key.time(),
-            tags: key.into_tags(),
+            tags: key.into_app_tags(),
         },
     }
 }
@@ -624,8 +624,11 @@ mod tests {
             let store = store.clone();
             let offsets = offsets.clone();
             let handle_sub = tokio::spawn(async move {
+                // app tags, for comparison with the result
                 let tags = mk_tag(i);
-                let tags_query = TagsQuery::new(vec![tags.clone()]);
+                // tags with prefix, as they actually appear on the tree
+                let scoped_tags = tags.clone().into();
+                let tags_query = TagsQuery::new(vec![scoped_tags]);
                 let range = random_range();
                 let actual = store
                     .forward_stream(StreamEventSelection {
