@@ -20,6 +20,7 @@ use util::SocketAddrHelper;
 
 #[derive(Debug, Clone)]
 pub struct NodeConnection {
+    pub original: String,
     pub host: SocketAddrHelper,
     peer_id: Option<PeerId>,
 }
@@ -37,10 +38,10 @@ impl FromStr for NodeConnection {
         if let Ok(mut m) = Multiaddr::from_str(s) {
             let p = strip_peer_id(&mut m);
             let addr = SocketAddrHelper::try_from(m).expect("Valid multiaddr");
-            NodeConnection::new(addr, p)
+            NodeConnection::new(s.to_owned(), addr, p)
         } else {
             let addr = SocketAddrHelper::from_host(s, 4458).ax_invalid_input()?;
-            NodeConnection::new(addr, None)
+            NodeConnection::new(s.to_owned(), addr, None)
         }
     }
 }
@@ -58,8 +59,12 @@ impl fmt::Debug for Connected {
 }
 
 impl NodeConnection {
-    pub fn new(host: SocketAddrHelper, peer_id: Option<PeerId>) -> ActyxOSResult<Self> {
-        Ok(Self { host, peer_id })
+    pub fn new(original: String, host: SocketAddrHelper, peer_id: Option<PeerId>) -> ActyxOSResult<Self> {
+        Ok(Self {
+            original,
+            host,
+            peer_id,
+        })
     }
 
     /// Tries to establish a connection to the remote ActyxOS node, and returns
@@ -86,11 +91,7 @@ impl NodeConnection {
         })
     }
 
-    pub async fn request(
-        &mut self,
-        key: &AxPrivateKey,
-        request: AdminRequest,
-    ) -> ActyxOSResult<(NodeInfo, AdminResponse)> {
+    pub async fn request(&mut self, key: &AxPrivateKey, request: AdminRequest) -> ActyxOSResult<AdminResponse> {
         let kp = key.to_libp2p_pair();
         let Connected {
             remote_peer_id,
@@ -112,7 +113,7 @@ impl NodeConnection {
         )
         .await
         {
-            Ok(resp) => resp.map(|p| (node_info, p)),
+            Ok(resp) => resp,
             Err(_) => ax_err(
                 ActyxOSCode::ERR_NODE_UNREACHABLE,
                 format!("Timeout while waiting for answer from {}.", node_info.id),

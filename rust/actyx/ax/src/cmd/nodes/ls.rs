@@ -79,23 +79,22 @@ async fn request(identity: AxPrivateKey, mut connection: NodeConnection) -> Resu
     )
     .await;
     match response {
-        Ok(Ok((info, AdminResponse::NodesLsResponse(resp)))) => Ok(Output::Reachable(JsonFormat::from_resp(
-            info.connection.to_string(),
-            resp,
-        ))),
+        Ok(Ok(AdminResponse::NodesLsResponse(resp))) => {
+            Ok(Output::Reachable(JsonFormat::from_resp(connection.original, resp)))
+        }
         Ok(Err(err)) if err.code() == ActyxOSCode::ERR_UNAUTHORIZED => Ok(Output::Unauthorized {
-            host: connection.host.to_string(),
+            host: connection.original,
         }),
         Ok(Err(err)) if err.code() == ActyxOSCode::ERR_NODE_UNREACHABLE => Ok(Output::Unreachable {
-            host: connection.host.to_string(),
+            host: connection.original,
         }),
-        Ok(Ok((_, e))) => Err(ActyxOSError::internal(format!(
+        Ok(Ok(e)) => Err(ActyxOSError::internal(format!(
             "Unexpected response from node: {:?}",
             e
         ))),
         Ok(Err(e)) => Err(e),
         Err(_) => Ok(Output::Unreachable {
-            host: connection.host.to_string(),
+            host: connection.original,
         }),
     }
 }
