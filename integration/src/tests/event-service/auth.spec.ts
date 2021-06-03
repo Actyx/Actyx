@@ -1,5 +1,12 @@
 import fetch from 'node-fetch'
-import { getToken, mkEventsPath, trialManifest, NODE_ID_SEG } from '../../http-client'
+import {
+  getToken,
+  mkEventsPath,
+  trialManifest,
+  NODE_ID_SEG,
+  AUTH_SEG,
+  API_V2_PATH,
+} from '../../http-client'
 import WebSocket from 'ws'
 import { run } from '../../util'
 import { createTestNodeLocal } from '../../test-node-factory'
@@ -18,6 +25,48 @@ const getId = (httpApi: string, authHeaderValue?: string) =>
   })
 
 describe('auth http', () => {
+  it('should fail for malformed requests', () =>
+    run((httpApi) =>
+      fetch(httpApi + API_V2_PATH + AUTH_SEG, {
+        method: 'post',
+        body: JSON.stringify({ malformed: true }),
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      })
+        .then((resp) => resp.json())
+        .then((json) =>
+          expect(json).toEqual({
+            code: 'ERR_BAD_REQUEST',
+            message: 'Invalid request. missing field `appId` at line 1 column 18',
+          }),
+        ),
+    ))
+
+  it('should fail when the manifest is invalid', () =>
+    run((httpApi) =>
+      fetch(httpApi + API_V2_PATH + AUTH_SEG, {
+        method: 'post',
+        body: JSON.stringify({
+          appId: 'my.app',
+          displayName: 'Mine!',
+          version: '0.8.5',
+        }),
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      })
+        .then((resp) => resp.json())
+        .then((json) =>
+          expect(json).toEqual({
+            code: 'ERR_MANIFEST_INVALID',
+            message: 'Property <manifest property> is either missing or has an invalid value.',
+          }),
+        ),
+    ))
+
   it('should fail when token not authorized', () =>
     run((httpApi) =>
       getId(httpApi, 'Bearer ' + UNAUTHORIZED_TOKEN)

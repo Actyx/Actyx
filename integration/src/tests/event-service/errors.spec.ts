@@ -1,5 +1,6 @@
 import { RequestInit } from 'node-fetch'
 import {
+  ErrorCode,
   mkEventsPath,
   mkTrialHttpClient,
   NODE_ID_SEG,
@@ -32,59 +33,66 @@ const expectErr = (errorCode: string, req: RequestInit) => async (segment: strin
 // TODO: move tests to dedicated endpoint tests and assert messages
 describe('event service', () => {
   describe('errors for endpoints', () => {
-    describe('user gets ERR_BAD_REQUEST', () => {
-      it.each([...postEndPoints])(
-        'should return error if body request is malformed for %p',
-        expectErr('ERR_BAD_REQUEST', {
-          headers: {
-            Accept: 'application/json, application/x-ndjson',
-            'Content-Type': 'application/json',
+    describe('common errors', () => {
+      // TODO:
+      // - ERR_APP_UNAUTHORIZED
+      // - ERR_APP_UNAUTHENTICATED
+      const errors: [string, ErrorCode, RequestInit, ('get' | 'post')?][] = [
+        [
+          'the request body is malformed',
+          'ERR_BAD_REQUEST',
+          {
+            headers: {
+              Accept: 'application/json, application/x-ndjson',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 'malformed-body-key': 'malformed-body-value' }),
           },
-          method: 'post',
-          body: JSON.stringify({ 'malformed-body-key': 'malformed-body-value' }),
-        }),
-      )
-    })
-
-    describe('user gets ERR_METHOD_NOT_ALLOWED', () => {
-      const mk = (method: 'post' | 'get') =>
-        expectErr('ERR_METHOD_NOT_ALLOWED', {
-          method,
-          headers: {
-            Accept: 'application/json, application/x-ndjson',
-            'Content-Type': 'application/json',
+          'post',
+        ],
+        [
+          'the request method is not allowed',
+          'ERR_METHOD_NOT_ALLOWED',
+          {
+            method: 'get',
           },
+          'post',
+        ],
+        [
+          'the request method is not allowed',
+          'ERR_METHOD_NOT_ALLOWED',
+          {
+            method: 'post',
+          },
+          'get',
+        ],
+        [
+          'the server cannot produce a response matching the list of acceptable content types',
+          'ERR_NOT_ACCEPTABLE',
+          { headers: { Accept: 'invalid' } },
+        ],
+        [
+          'the server does not support the provided authorization type',
+          'ERR_UNSUPPORTED_AUTH_TYPE',
+          { headers: { Authorization: 'Bierer 123' } },
+        ],
+      ]
+      for (const [msg, code, reqInit, method] of errors) {
+        describe(`should return ${code} if ${msg}`, () => {
+          if (!method || method === 'get') {
+            for (const [getEndpoint] of getEndPoints) {
+              it(`GET ${getEndpoint}`, () =>
+                expectErr(code, { method: 'get', ...reqInit })(getEndpoint))
+            }
+          }
+          if (!method || method === 'post') {
+            for (const [postEndpoint] of postEndPoints) {
+              it(`POST ${postEndpoint}`, () =>
+                expectErr(code, { method: 'post', ...reqInit })(postEndpoint))
+            }
+          }
         })
-
-      it.each(getEndPoints)(
-        'should return error if endpoint method is GET and instead user uses POST for %p',
-        mk('post'),
-      )
-
-      it.each(postEndPoints)(
-        'should return error if endpoint method is POST and instead user uses GET for %p',
-        mk('get'),
-      )
-    })
-
-    describe('user gets ERR_NOT_ACCEPTABLE', () => {
-      const mk = (method: 'post' | 'get') =>
-        expectErr('ERR_NOT_ACCEPTABLE', {
-          method,
-          headers: {
-            Accept: 'invalid',
-            'Content-Type': 'application/json',
-          },
-        })
-
-      it.each([...getEndPoints])(
-        'should return error if server cannot produce a response matching the list of acceptable values defined in the request for %p',
-        mk('get'),
-      )
-      it.each([...postEndPoints])(
-        'should return error if server cannot produce a response matching the list of acceptable values defined in the request for %p',
-        mk('post'),
-      )
+      }
     })
   })
 })
