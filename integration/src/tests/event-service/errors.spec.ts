@@ -2,7 +2,6 @@ import { RequestInit } from 'node-fetch'
 import {
   mkEventsPath,
   mkTrialHttpClient,
-  NODE_ID_SEG,
   OFFSETS_SEG,
   PUBLISH_SEG,
   QUERY_SEG,
@@ -11,8 +10,8 @@ import {
 } from '../../http-client'
 import { run } from '../../util'
 
-const postEndPoints = [[PUBLISH_SEG], [QUERY_SEG], [SUBSCRIBE_MONOTONIC_SEG], [SUBSCRIBE_SEG]]
-const getEndPoints = [[NODE_ID_SEG], [OFFSETS_SEG]]
+const postEndpoints = [[PUBLISH_SEG], [QUERY_SEG], [SUBSCRIBE_MONOTONIC_SEG], [SUBSCRIBE_SEG]]
+const getEndpoints = [[OFFSETS_SEG]]
 
 const expectErr = (errorCode: string, req: RequestInit) => async (segment: string) => {
   const runTest = async (httpEndpoint: string) => {
@@ -33,7 +32,7 @@ const expectErr = (errorCode: string, req: RequestInit) => async (segment: strin
 describe('event service', () => {
   describe('errors for endpoints', () => {
     describe('user gets ERR_BAD_REQUEST', () => {
-      it.each([...postEndPoints])(
+      it.each([...postEndpoints])(
         'should return error if body request is malformed for %p',
         expectErr('ERR_BAD_REQUEST', {
           headers: {
@@ -56,12 +55,12 @@ describe('event service', () => {
           },
         })
 
-      it.each(getEndPoints)(
+      it.each(getEndpoints)(
         'should return error if endpoint method is GET and instead user uses POST for %p',
         mk('post'),
       )
 
-      it.each(postEndPoints)(
+      it.each(postEndpoints)(
         'should return error if endpoint method is POST and instead user uses GET for %p',
         mk('get'),
       )
@@ -77,11 +76,11 @@ describe('event service', () => {
           },
         })
 
-      it.each([...getEndPoints])(
+      it.each([...getEndpoints])(
         'should return error if server cannot produce a response matching the list of acceptable values defined in the request for %p',
         mk('get'),
       )
-      it.each([...postEndPoints])(
+      it.each([...postEndpoints])(
         'should return error if server cannot produce a response matching the list of acceptable values defined in the request for %p',
         mk('post'),
       )

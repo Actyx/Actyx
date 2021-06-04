@@ -24,6 +24,11 @@ pub fn accept(mime_types: &'static [&'static str]) -> impl Filter<Extract = (), 
         .untuple_one()
 }
 
+const ACCEPT_TEXT: &[&str] = &["*/*", "text/plain"];
+pub fn accept_text() -> impl Filter<Extract = (), Error = Rejection> + Clone {
+    accept(ACCEPT_TEXT)
+}
+
 const ACCEPT_JSON: &[&str] = &["*/*", "application/json"];
 pub fn accept_json() -> impl Filter<Extract = (), Error = Rejection> + Clone {
     accept(ACCEPT_JSON)

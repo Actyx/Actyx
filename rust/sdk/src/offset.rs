@@ -830,7 +830,7 @@ mod tests {
     const NODE: &str = ".E61/.I4/kU70UgA1EsD2/2G2lEJ3VQM4FcP5/oS5m.";
 
     fn stream_id(stream_nr: u64) -> StreamId {
-        NodeId::try_from(NODE).unwrap().stream(stream_nr.into())
+        NODE.parse::<NodeId>().unwrap().stream(stream_nr.into())
     }
 
     fn mk_event(stream_nr: u64, offset: u32) -> Event<Payload> {
@@ -1003,15 +1003,15 @@ mod tests {
     fn must_serde_offset_map() {
         let mut map = OffsetMap::empty();
         ser(map.clone(), "{}");
-        let stream = NodeId::try_from(NODE).unwrap().stream(0.into());
-        map.update(stream, Offset::mk_test(12));
-        ser(map.clone(), format!("{{\"{}\":12}}", stream).as_str());
+        let stream_id = stream_id(0);
+        map.update(stream_id, Offset::mk_test(12));
+        ser(map.clone(), format!("{{\"{}\":12}}", stream_id).as_str());
 
         de("{}", OffsetMap::empty());
-        de(format!("{{\"{}\":-1}}", stream).as_str(), OffsetMap::empty());
-        de(format!("{{\"{}\":12}}", stream).as_str(), map);
+        de(format!("{{\"{}\":-1}}", stream_id).as_str(), OffsetMap::empty());
+        de(format!("{{\"{}\":12}}", stream_id).as_str(), map);
 
-        err::<OffsetMap>(format!("{{\"{}\":-11}}", stream).as_str(), "below -1");
+        err::<OffsetMap>(format!("{{\"{}\":-11}}", stream_id).as_str(), "below -1");
     }
 
     #[test]

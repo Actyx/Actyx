@@ -123,8 +123,11 @@ export type SubscribeMonotonicRequest = {
   query: string
 } & SubscribeMonotonicRequestStartFrom
 
-export type AxEventService = Readonly<{
+export type AxNodeService = Readonly<{
   nodeId: () => Promise<NodeIdResponse>
+}>
+
+export type AxEventService = Readonly<{
   offsets: () => Promise<OffsetsResponse>
   publish: (request: PublishRequest) => Promise<PublishResponse>
   /**

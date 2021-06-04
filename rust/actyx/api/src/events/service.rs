@@ -3,9 +3,9 @@ use std::{convert::TryFrom, num::NonZeroU64};
 use actyxos_sdk::{
     language::{self, TagExpr},
     service::{
-        self, EventResponse, NodeIdResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse,
-        PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
-        SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
+        self, EventResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse, PublishResponseKey,
+        QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest, SubscribeMonotonicResponse,
+        SubscribeRequest, SubscribeResponse,
     },
     Event, EventKey, Metadata, OffsetMap, OffsetOrMin, Payload,
 };
@@ -41,12 +41,6 @@ impl EventService {
 
 #[async_trait]
 impl service::EventService for EventService {
-    async fn node_id(&self) -> anyhow::Result<NodeIdResponse> {
-        Ok(NodeIdResponse {
-            node_id: self.store.node_id(),
-        })
-    }
-
     async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
         let offsets = self.store.offsets().next().await.expect("offset stream stopped");
         let present = offsets.present();

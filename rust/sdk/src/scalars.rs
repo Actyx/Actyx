@@ -17,6 +17,7 @@ use std::{
     convert::TryFrom,
     fmt::{self, Debug, Display},
     io::{Read, Seek, Write},
+    str::FromStr,
 };
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -145,17 +146,18 @@ impl From<NodeId> for String {
     }
 }
 
-impl TryFrom<&str> for NodeId {
-    type Error = anyhow::Error;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Self::parse(value)
-    }
-}
-
 impl TryFrom<String> for NodeId {
     type Error = anyhow::Error;
     fn try_from(value: String) -> Result<Self, Self::Error> {
         Self::parse(&value)
+    }
+}
+
+impl FromStr for NodeId {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse(s)
     }
 }
 
@@ -212,7 +214,7 @@ impl StreamId {
         if split.next().is_some() {
             bail!("trailing garbage in StreamId");
         }
-        let node_id = NodeId::try_from(node_str)?;
+        let node_id: NodeId = NodeId::parse(node_str)?;
         let stream_nr = stream_str
             .parse::<u64>()
             .context("parsing StreamId stream number")?
@@ -375,7 +377,7 @@ mod tests {
     quickcheck::quickcheck! {
         fn node_id_roundtrip(id: NodeId) -> bool {
             let s = id.to_string();
-            NodeId::try_from(s).map_err(|_| "") == Ok(id)
+            s.parse().map_err(|_|"") == Ok(id)
         }
 
         fn stream_id_roundtrip(sid: StreamId) -> bool {

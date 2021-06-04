@@ -12,9 +12,7 @@ pub(crate) fn routes<S: EventService + Clone + Send + Sync + 'static>(
     event_service: S,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     let auth = crate::util::filters::authenticate(auth_args, header_token());
-
-    filters::node_id(event_service.clone(), auth.clone())
-        .or(filters::offsets(event_service.clone(), auth.clone()))
+    filters::offsets(event_service.clone(), auth.clone())
         .or(filters::publish(event_service.clone(), auth.clone()))
         .or(filters::query(event_service.clone(), auth.clone()))
         .or(filters::subscribe(event_service.clone(), auth.clone()))

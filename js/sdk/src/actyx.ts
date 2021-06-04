@@ -1,12 +1,12 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
 import { EventFns, TestEventFns } from './event-fns'
 import { SnapshotStore } from './snapshotStore'
-import { ActyxOpts, ActyxTestOpts, AppManifest } from './types'
+import { ActyxOpts, ActyxTestOpts, AppManifest, NodeId } from './types'
 import { EventFnsFromEventStoreV2, EventStoreV2, makeWsMultiplexerV2 } from './v2'
 
 /** Access all sorts of functionality related to the Actyx system! @public */
@@ -34,9 +34,9 @@ export const Actyx = {
   /** Create an `Actyx` instance that talks to a running `Actyx` system. @public */
   of: async (manifest: AppManifest, opts: ActyxOpts = {}): Promise<Actyx> => {
     const [ws, nodeId] = await makeWsMultiplexerV2(manifest, opts)
-    const eventStore = EventStoreV2.ws(ws, nodeId)
+    const eventStore = EventStoreV2.ws(ws)
     // No snapshotstore impl available for V2 prod
-    const fns = EventFnsFromEventStoreV2(eventStore, SnapshotStore.noop)
+    const fns = EventFnsFromEventStoreV2(nodeId, eventStore, SnapshotStore.noop)
 
     return {
       ...fns,
@@ -52,7 +52,7 @@ export const Actyx = {
   test: (opts: ActyxTestOpts = {}): TestActyx => {
     const store = EventStoreV2.test(opts.nodeId, opts.eventChunkSize)
     const snaps = SnapshotStore.inMem()
-    const fns = EventFnsFromEventStoreV2(store, snaps)
+    const fns = EventFnsFromEventStoreV2(opts.nodeId || NodeId.of('TESTNODEID'), store, snaps)
     return {
       ...fns,
       directlyPushEvents: store.directlyPushEvents,

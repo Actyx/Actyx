@@ -1,12 +1,12 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
 import { chunksOf } from 'fp-ts/lib/Array'
 import { Subject } from 'rxjs'
-import { ActyxEvent, allEvents, EarliestQuery, EventChunk, EventOrder, Where } from '..'
+import { ActyxEvent, allEvents, EarliestQuery, EventChunk, EventOrder, Where, NodeId } from '..'
 import { SnapshotStore } from '../snapshotStore'
 import { EventFnsFromEventStoreV2 } from './event-fns-impl'
 import { EventStore } from './eventStore'
@@ -136,7 +136,7 @@ const setup = () => {
   const tl = mkTimeline(srcC(5), srcB(6), srcA(7), srcA(8), srcB(9), srcC(10))
 
   const store = EventStore.test()
-  const fns = EventFnsFromEventStoreV2(store, SnapshotStore.noop)
+  const fns = EventFnsFromEventStoreV2(NodeId.of('noop'), store, SnapshotStore.noop)
 
   return { store, fns, tl }
 }

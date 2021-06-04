@@ -24,7 +24,7 @@ fn mk_success_log_msg(token: &BearerToken) -> String {
 }
 
 pub(crate) fn create_token(
-    args: NodeInfo,
+    node_info: NodeInfo,
     app_id: AppId,
     app_version: String,
     app_mode: AppMode,
@@ -32,13 +32,13 @@ pub(crate) fn create_token(
     let token = BearerToken {
         created: Timestamp::now(),
         app_id,
-        cycles: args.cycles,
+        cycles: node_info.cycles,
         app_version,
-        validity: args.token_validity,
+        validity: node_info.token_validity,
         app_mode,
     };
     let bytes = serde_cbor::to_vec(&token)?;
-    let signed = args.key_store.read().sign(bytes, vec![args.node_id.into()])?;
+    let signed = node_info.key_store.read().sign(bytes, vec![node_info.node_id.into()])?;
     info!(target: "AUTH", "{}", mk_success_log_msg(&token));
     Ok(base64::encode(signed).into())
 }
@@ -65,20 +65,20 @@ fn validate_manifest(manifest: AppManifest) -> Result<AppMode, ApiError> {
     }
 }
 
-async fn handle_auth(args: NodeInfo, manifest: AppManifest) -> Result<impl Reply, Rejection> {
+async fn handle(node_info: NodeInfo, manifest: AppManifest) -> Result<impl Reply, Rejection> {
     match validate_manifest(manifest.clone()) {
-        Ok(is_trial) => create_token(args, manifest.app_id, manifest.version, is_trial)
+        Ok(is_trial) => create_token(node_info, manifest.app_id, manifest.version, is_trial)
             .map(|token| reply::json(&TokenResponse::new(token)))
             .map_err(reject),
         Err(x) => Err(reject::custom(x)),
     }
 }
 
-pub(crate) fn route(args: NodeInfo) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+pub(crate) fn route(node_info: NodeInfo) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     post()
         .and(accept_json())
         .and(body::json())
-        .and_then(move |manifest: AppManifest| handle_auth(args.clone(), manifest))
+        .and_then(move |manifest: AppManifest| handle(node_info.clone(), manifest))
 }
 
 #[cfg(test)]

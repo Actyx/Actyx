@@ -20,7 +20,7 @@ impl Arbitrary for AxKey {
     fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
         let Self { lamport, tags, time } = self.clone();
         // Let's assume only tags matter..
-        Box::new(tags.shrink().map(move |tags| Self { tags, lamport, time }))
+        Box::new(tags.shrink().map(move |tags| Self { tags, time, lamport }))
     }
 }
 
