@@ -16,7 +16,6 @@ import { mkLinesSplitter } from './line-splitter'
 import {
   AxEventService,
   AxNodeService,
-  NodeIdResponse,
   OffsetsResponse,
   PublishRequest,
   PublishResponse,
@@ -57,11 +56,7 @@ const handleStreamResponse = async <T>(
 }
 
 export const mkNodeIdService = (httpClient: AxHttpClient): AxNodeService => ({
-  nodeId: () =>
-    httpClient
-      .get(API_V2_PATH + NODE_ID_SEG)
-      .then((x) => x.json())
-      .then((x) => decodeOrThrow(NodeIdResponse)(x)),
+  nodeId: () => httpClient.fetch(API_V2_PATH + NODE_ID_SEG).then((x) => x.text()),
 })
 
 export const mkEventService = (httpClient: AxHttpClient): AxEventService => ({

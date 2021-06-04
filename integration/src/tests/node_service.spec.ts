@@ -12,7 +12,7 @@ describe('node service', () => {
         const result = await mkTrialHttpClient(x._private.httpApiOrigin).then((x) =>
           mkNodeService(x).nodeId(),
         )
-        expect(result.nodeId).toBe(nodeId)
+        expect(result).toBe(nodeId)
       }))
   })
 })
