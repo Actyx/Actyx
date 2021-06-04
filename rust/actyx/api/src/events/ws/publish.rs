@@ -1,15 +1,17 @@
 use actyxos_sdk::{
-    service::{EventService, PublishRequest, PublishResponse},
+    service::{PublishRequest, PublishResponse},
     AppId,
 };
 use futures::{stream::BoxStream, FutureExt, StreamExt};
 use wsrpc::Service;
 
-pub struct Publish<S: EventService + Send> {
-    event_service: S,
+use crate::events::service::EventService;
+
+pub struct Publish {
+    event_service: EventService,
 }
 
-impl<S: EventService + Send + Sync + 'static> Service for Publish<S> {
+impl Service for Publish {
     type Req = PublishRequest;
     type Resp = PublishResponse;
     type Error = ();
@@ -23,6 +25,6 @@ impl<S: EventService + Send + Sync + 'static> Service for Publish<S> {
     }
 }
 
-pub fn service<S: EventService>(event_service: S) -> Publish<S> {
+pub fn service(event_service: EventService) -> Publish {
     Publish { event_service }
 }

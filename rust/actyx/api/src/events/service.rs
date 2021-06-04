@@ -3,13 +3,12 @@ use std::{convert::TryFrom, num::NonZeroU64};
 use actyxos_sdk::{
     language::{self, TagExpr},
     service::{
-        self, EventResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse, PublishResponseKey,
+        EventResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse, PublishResponseKey,
         QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest, SubscribeMonotonicResponse,
         SubscribeRequest, SubscribeResponse,
     },
     Event, EventKey, Metadata, OffsetMap, OffsetOrMin, Payload,
 };
-use async_trait::async_trait;
 use ax_futures_util::prelude::*;
 use futures::{
     future,
@@ -39,9 +38,8 @@ impl EventService {
     }
 }
 
-#[async_trait]
-impl service::EventService for EventService {
-    async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
+impl EventService {
+    pub async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
         let offsets = self.store.offsets().next().await.expect("offset stream stopped");
         let present = offsets.present();
         let to_replicate = offsets
@@ -56,7 +54,7 @@ impl service::EventService for EventService {
         Ok(OffsetsResponse { present, to_replicate })
     }
 
-    async fn publish(&self, request: PublishRequest) -> anyhow::Result<PublishResponse> {
+    pub async fn publish(&self, request: PublishRequest) -> anyhow::Result<PublishResponse> {
         let events = request
             .data
             .into_iter()
@@ -77,7 +75,7 @@ impl service::EventService for EventService {
         Ok(response)
     }
 
-    async fn query(&self, request: QueryRequest) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
+    pub async fn query(&self, request: QueryRequest) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
         let tag_expr = &request.query.from;
         let stream = match request.order {
             Order::Asc => self
@@ -104,7 +102,7 @@ impl service::EventService for EventService {
         Ok(response)
     }
 
-    async fn subscribe(&self, request: SubscribeRequest) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
+    pub async fn subscribe(&self, request: SubscribeRequest) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
         Ok(subscribe0(&self.store, &request.query.from, request.offsets)
             .await?
             .flat_map(mk_feed(request.query))
@@ -112,7 +110,7 @@ impl service::EventService for EventService {
             .boxed())
     }
 
-    async fn subscribe_monotonic(
+    pub async fn subscribe_monotonic(
         &self,
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {

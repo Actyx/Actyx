@@ -1,5 +1,5 @@
 use actyxos_sdk::{
-    service::{EventService, SubscribeMonotonicRequest, SubscribeMonotonicResponse},
+    service::{SubscribeMonotonicRequest, SubscribeMonotonicResponse},
     AppId,
 };
 use futures::{
@@ -8,11 +8,13 @@ use futures::{
 };
 use wsrpc::Service;
 
-pub struct SubscribeMonotonic<S: EventService + Send> {
-    event_service: S,
+use crate::events::service::EventService;
+
+pub struct SubscribeMonotonic {
+    event_service: EventService,
 }
 
-impl<S: EventService + Send + Sync + 'static> Service for SubscribeMonotonic<S> {
+impl Service for SubscribeMonotonic {
     type Req = SubscribeMonotonicRequest;
     type Resp = SubscribeMonotonicResponse;
     type Error = ();
@@ -30,6 +32,6 @@ impl<S: EventService + Send + Sync + 'static> Service for SubscribeMonotonic<S> 
     }
 }
 
-pub fn service<S: EventService>(event_service: S) -> SubscribeMonotonic<S> {
+pub fn service(event_service: EventService) -> SubscribeMonotonic {
     SubscribeMonotonic { event_service }
 }

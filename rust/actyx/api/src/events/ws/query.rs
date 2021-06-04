@@ -1,5 +1,5 @@
 use actyxos_sdk::{
-    service::{EventService, QueryRequest, QueryResponse},
+    service::{QueryRequest, QueryResponse},
     AppId,
 };
 use futures::{
@@ -8,11 +8,13 @@ use futures::{
 };
 use wsrpc::Service;
 
-pub struct Query<S: EventService + Send> {
-    event_service: S,
+use crate::events::service::EventService;
+
+pub struct Query {
+    event_service: EventService,
 }
 
-impl<S: EventService + Send + Sync + 'static> Service for Query<S> {
+impl Service for Query {
     type Req = QueryRequest;
     type Resp = QueryResponse;
     type Error = ();
@@ -30,6 +32,6 @@ impl<S: EventService + Send + Sync + 'static> Service for Query<S> {
     }
 }
 
-pub fn service<S: EventService>(event_service: S) -> Query<S> {
+pub fn service(event_service: EventService) -> Query {
     Query { event_service }
 }

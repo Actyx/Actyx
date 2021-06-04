@@ -1,18 +1,18 @@
 use super::ndjson;
 
 use actyxos_sdk::{
-    service::{EventService, PublishRequest, QueryRequest, SubscribeMonotonicRequest, SubscribeRequest},
+    service::{PublishRequest, QueryRequest, SubscribeMonotonicRequest, SubscribeRequest},
     AppId,
 };
 use warp::*;
 
 use crate::{
-    events::service,
+    events::service::{self, EventService},
     rejections::ApiError,
     util::{self, Result},
 };
 
-pub async fn offsets(_app_id: AppId, event_service: impl EventService) -> Result<impl Reply> {
+pub async fn offsets(_app_id: AppId, event_service: EventService) -> Result<impl Reply> {
     event_service
         .offsets()
         .await
@@ -21,7 +21,7 @@ pub async fn offsets(_app_id: AppId, event_service: impl EventService) -> Result
         .map_err(reject)
 }
 
-pub async fn publish(_app_id: AppId, request: PublishRequest, event_service: impl EventService) -> Result<impl Reply> {
+pub async fn publish(_app_id: AppId, request: PublishRequest, event_service: EventService) -> Result<impl Reply> {
     event_service
         .publish(request)
         .await
@@ -29,7 +29,7 @@ pub async fn publish(_app_id: AppId, request: PublishRequest, event_service: imp
         .map_err(reject)
 }
 
-pub async fn query(_app_id: AppId, request: QueryRequest, event_service: impl EventService) -> Result<impl Reply> {
+pub async fn query(_app_id: AppId, request: QueryRequest, event_service: EventService) -> Result<impl Reply> {
     event_service
         .query(request)
         .await
@@ -37,11 +37,7 @@ pub async fn query(_app_id: AppId, request: QueryRequest, event_service: impl Ev
         .map_err(reject)
 }
 
-pub async fn subscribe(
-    _app_id: AppId,
-    request: SubscribeRequest,
-    event_service: impl EventService,
-) -> Result<impl Reply> {
+pub async fn subscribe(_app_id: AppId, request: SubscribeRequest, event_service: EventService) -> Result<impl Reply> {
     event_service
         .subscribe(request)
         .await
@@ -52,7 +48,7 @@ pub async fn subscribe(
 pub async fn subscribe_monotonic(
     _app_id: AppId,
     request: SubscribeMonotonicRequest,
-    event_service: impl EventService,
+    event_service: EventService,
 ) -> Result<impl Reply> {
     event_service
         .subscribe_monotonic(request)
