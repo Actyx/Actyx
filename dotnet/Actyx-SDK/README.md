@@ -4,7 +4,7 @@ TODO: link to docs
 
 # <img src="https://developer.actyx.com/img/logo.svg" height="32px"> Actyx SDK
 
-[Actyx](https://developer.actyx.com/docs/os/introduction) makes it easy to run distributed
+[Actyx](https://www.actyx.com/platform) makes it easy to run distributed
 applications on multiple nodes. It is a piece of software that allows you to run your own apps
 on one or more edge devices and have these apps seamlessly communicate and share data with
 each other.

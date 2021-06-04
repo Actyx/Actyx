@@ -38,7 +38,7 @@
     "typedoc": "0.17.0-3",
     "typescript": "3.9.6"
   },
-  "homepage": "https://developer.actyx.com/docs/pond/introduction/",
+  "homepage": "https://developer.actyx.com/docs/reference/pond",
   "keywords": [
     "actyx",
     "pond",
