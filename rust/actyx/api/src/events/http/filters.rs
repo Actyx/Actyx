@@ -1,20 +1,21 @@
-use actyx_sdk::{service::EventService, AppId};
+use actyx_sdk::AppId;
 use warp::filters::*;
 use warp::*;
 
+use crate::events::service::EventService;
 use crate::{
     events::http::handlers,
     util::filters::{accept_json, accept_ndjson},
 };
 
 fn with_service(
-    event_service: impl EventService + Send,
-) -> impl Filter<Extract = (impl EventService,), Error = std::convert::Infallible> + Clone {
+    event_service: EventService,
+) -> impl Filter<Extract = (EventService,), Error = std::convert::Infallible> + Clone {
     any().map(move || event_service.clone())
 }
 
 pub fn offsets(
-    event_service: impl EventService + Send + Sync + 'static,
+    event_service: EventService,
     auth: impl Filter<Extract = (AppId,), Error = Rejection> + Clone,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     auth.and(path!("offsets"))
@@ -25,7 +26,7 @@ pub fn offsets(
 }
 
 pub fn publish(
-    event_service: impl EventService + Send + Sync + 'static,
+    event_service: EventService,
     auth: impl Filter<Extract = (AppId,), Error = Rejection> + Clone,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     auth.and(path!("publish"))
@@ -37,7 +38,7 @@ pub fn publish(
 }
 
 pub fn query(
-    event_service: impl EventService + Send + Sync + 'static,
+    event_service: EventService,
     auth: impl Filter<Extract = (AppId,), Error = Rejection> + Clone,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     auth.and(path!("query"))
@@ -49,7 +50,7 @@ pub fn query(
 }
 
 pub fn subscribe(
-    event_service: impl EventService + Send + Sync + 'static,
+    event_service: EventService,
     auth: impl Filter<Extract = (AppId,), Error = Rejection> + Clone,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     auth.and(path!("subscribe"))
@@ -61,7 +62,7 @@ pub fn subscribe(
 }
 
 pub fn subscribe_monotonic(
-    event_service: impl EventService + Send + Sync + 'static,
+    event_service: EventService,
     auth: impl Filter<Extract = (AppId,), Error = Rejection> + Clone,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     auth.and(path!("subscribe_monotonic"))

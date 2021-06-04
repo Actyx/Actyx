@@ -1,5 +1,5 @@
 use actyx_sdk::{
-    service::{EventService, SubscribeRequest, SubscribeResponse},
+    service::{SubscribeRequest, SubscribeResponse},
     AppId,
 };
 use futures::{
@@ -8,21 +8,23 @@ use futures::{
 };
 use wsrpc::Service;
 
-pub struct Subscribe<S: EventService + Send> {
-    event_service: S,
+use crate::events::service::EventService;
+
+pub struct Subscribe {
+    event_service: EventService,
 }
 
-impl<S: EventService + Send + Sync + 'static> Service for Subscribe<S> {
+impl Service for Subscribe {
     type Req = SubscribeRequest;
     type Resp = SubscribeResponse;
     type Error = ();
     type Ctx = AppId;
 
-    fn serve(&self, _app_id: AppId, req: Self::Req) -> BoxStream<'static, Result<Self::Resp, Self::Error>> {
+    fn serve(&self, app_id: AppId, req: Self::Req) -> BoxStream<'static, Result<Self::Resp, Self::Error>> {
         let service = self.event_service.clone();
         async move {
             service
-                .subscribe(req)
+                .subscribe(app_id, req)
                 .map(move |x| match x {
                     Ok(stream) => stream.map(Ok).left_stream(),
                     Err(_) => stream::once(futures::future::err(())).right_stream(),
@@ -34,6 +36,6 @@ impl<S: EventService + Send + Sync + 'static> Service for Subscribe<S> {
     }
 }
 
-pub fn service<S: EventService>(event_service: S) -> Subscribe<S> {
+pub fn service(event_service: EventService) -> Subscribe {
     Subscribe { event_service }
 }

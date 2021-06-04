@@ -2,23 +2,26 @@ package com.actyx.android
 
 import android.annotation.SuppressLint
 import android.app.ActivityManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.net.ConnectivityManager
+import android.net.LinkProperties
+import android.net.NetworkInfo
 import android.os.Build
 import android.os.Bundle
 import android.widget.Button
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.actyx.android.util.Logger
-
 import com.actyx.android.util.toBitmap
 
 class MainActivity : AppCompatActivity() {
   private val log = Logger()
   private var shutdownPending = false
-
   @SuppressLint("SourceLockedOrientationActivity")
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -68,6 +71,12 @@ class MainActivity : AppCompatActivity() {
     }
   }
 
+  override fun onResume() {
+    super.onResume()
+    val ipTextView: TextView = findViewById(R.id.ip_address_value)
+    ipTextView.text = getIPAddress()
+  }
+
   private fun signalOrForceShutdown() {
     if (shutdownPending) {
       // Shutdown is already pending, maybe the background service is not responsive.
@@ -100,4 +109,25 @@ class MainActivity : AppCompatActivity() {
       setTaskDescription(ActivityManager.TaskDescription(name, icon, color))
     }
   }
+
+  private fun isConnected(): Boolean {
+    val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    val activeNetwork: NetworkInfo? = cm.activeNetworkInfo
+    return activeNetwork?.isConnectedOrConnecting == true
+  }
+
+  private fun getLinkProps(): LinkProperties? {
+    val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    val activeNetwork = cm.activeNetwork
+    return cm.getLinkProperties(activeNetwork)
+  }
+
+  private fun getIPAddress(): String =
+    getSystemService(ConnectivityManager::class.java)?.let { connectivityManager ->
+      if (isConnected()) {
+        val linkProps = getLinkProps()
+        // first element is IPv6 address, second IPv4
+        linkProps?.let { it.linkAddresses[1].address.toString().split("/")[1] }
+      } else null
+    } ?: getString(R.string.ip_not_available)
 }

@@ -1,18 +1,17 @@
-use actyx_sdk::{
-    service::{EventService, OffsetsResponse},
-    AppId,
-};
+use actyx_sdk::{service::OffsetsResponse, AppId};
 use futures::{
     stream::{BoxStream, StreamExt},
     FutureExt,
 };
 use wsrpc::Service;
 
-pub struct Offsets<S: EventService + Send> {
-    event_service: S,
+use crate::events::service::EventService;
+
+pub struct Offsets {
+    event_service: EventService,
 }
 
-impl<S: EventService + Send + Sync + 'static> Service for Offsets<S> {
+impl Service for Offsets {
     type Req = ();
     type Resp = OffsetsResponse;
     type Error = ();
@@ -26,6 +25,6 @@ impl<S: EventService + Send + Sync + 'static> Service for Offsets<S> {
     }
 }
 
-pub fn service<S: EventService>(event_service: S) -> Offsets<S> {
+pub fn service(event_service: EventService) -> Offsets {
     Offsets { event_service }
 }

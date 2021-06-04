@@ -1,5 +1,5 @@
 use actyx_sdk::{
-    service::{EventService, SubscribeMonotonicRequest, SubscribeMonotonicResponse},
+    service::{SubscribeMonotonicRequest, SubscribeMonotonicResponse},
     AppId,
 };
 use futures::{
@@ -8,19 +8,21 @@ use futures::{
 };
 use wsrpc::Service;
 
-pub struct SubscribeMonotonic<S: EventService + Send> {
-    event_service: S,
+use crate::events::service::EventService;
+
+pub struct SubscribeMonotonic {
+    event_service: EventService,
 }
 
-impl<S: EventService + Send + Sync + 'static> Service for SubscribeMonotonic<S> {
+impl Service for SubscribeMonotonic {
     type Req = SubscribeMonotonicRequest;
     type Resp = SubscribeMonotonicResponse;
     type Error = ();
     type Ctx = AppId;
 
-    fn serve(&self, _app_id: AppId, req: Self::Req) -> BoxStream<'static, Result<Self::Resp, Self::Error>> {
+    fn serve(&self, app_id: AppId, req: Self::Req) -> BoxStream<'static, Result<Self::Resp, Self::Error>> {
         let service = self.event_service.clone();
-        (async move { service.subscribe_monotonic(req).await })
+        (async move { service.subscribe_monotonic(app_id, req).await })
             .map(|x| match x {
                 Ok(stream) => stream.map(Ok).left_stream(),
                 Err(_) => stream::once(futures::future::err(())).right_stream(),
@@ -30,6 +32,6 @@ impl<S: EventService + Send + Sync + 'static> Service for SubscribeMonotonic<S> 
     }
 }
 
-pub fn service<S: EventService>(event_service: S) -> SubscribeMonotonic<S> {
+pub fn service(event_service: EventService) -> SubscribeMonotonic {
     SubscribeMonotonic { event_service }
 }
