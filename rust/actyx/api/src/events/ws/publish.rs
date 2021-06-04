@@ -17,9 +17,9 @@ impl Service for Publish {
     type Error = ();
     type Ctx = AppId;
 
-    fn serve(&self, _app_id: AppId, req: Self::Req) -> BoxStream<'static, Result<Self::Resp, Self::Error>> {
+    fn serve(&self, app_id: AppId, req: Self::Req) -> BoxStream<'static, Result<Self::Resp, Self::Error>> {
         let service = self.event_service.clone();
-        (async move { service.publish(req).await.map_err(|_| ()) })
+        (async move { service.publish(app_id, req).await.map_err(|_| ()) })
             .into_stream()
             .boxed()
     }

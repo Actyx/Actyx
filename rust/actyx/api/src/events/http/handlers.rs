@@ -21,37 +21,37 @@ pub async fn offsets(_app_id: AppId, event_service: EventService) -> Result<impl
         .map_err(reject)
 }
 
-pub async fn publish(_app_id: AppId, request: PublishRequest, event_service: EventService) -> Result<impl Reply> {
+pub async fn publish(app_id: AppId, request: PublishRequest, event_service: EventService) -> Result<impl Reply> {
     event_service
-        .publish(request)
+        .publish(app_id, request)
         .await
         .map(|reply| reply::json(&reply))
         .map_err(reject)
 }
 
-pub async fn query(_app_id: AppId, request: QueryRequest, event_service: EventService) -> Result<impl Reply> {
+pub async fn query(app_id: AppId, request: QueryRequest, event_service: EventService) -> Result<impl Reply> {
     event_service
-        .query(request)
+        .query(app_id, request)
         .await
         .map(|events| ndjson::reply(ndjson::keep_alive().stream(events)))
         .map_err(reject)
 }
 
-pub async fn subscribe(_app_id: AppId, request: SubscribeRequest, event_service: EventService) -> Result<impl Reply> {
+pub async fn subscribe(app_id: AppId, request: SubscribeRequest, event_service: EventService) -> Result<impl Reply> {
     event_service
-        .subscribe(request)
+        .subscribe(app_id, request)
         .await
         .map(|events| ndjson::reply(ndjson::keep_alive().stream(events)))
         .map_err(reject)
 }
 
 pub async fn subscribe_monotonic(
-    _app_id: AppId,
+    app_id: AppId,
     request: SubscribeMonotonicRequest,
     event_service: EventService,
 ) -> Result<impl Reply> {
     event_service
-        .subscribe_monotonic(request)
+        .subscribe_monotonic(app_id, request)
         .await
         .map(|events| ndjson::reply(ndjson::keep_alive().stream(events)))
         .map_err(reject)

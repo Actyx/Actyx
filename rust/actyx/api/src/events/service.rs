@@ -7,7 +7,7 @@ use actyxos_sdk::{
         QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest, SubscribeMonotonicResponse,
         SubscribeRequest, SubscribeResponse,
     },
-    Event, EventKey, Metadata, OffsetMap, OffsetOrMin, Payload,
+    AppId, Event, EventKey, Metadata, OffsetMap, OffsetOrMin, Payload,
 };
 use ax_futures_util::prelude::*;
 use futures::{
@@ -54,7 +54,7 @@ impl EventService {
         Ok(OffsetsResponse { present, to_replicate })
     }
 
-    pub async fn publish(&self, request: PublishRequest) -> anyhow::Result<PublishResponse> {
+    pub async fn publish(&self, _app_id: AppId, request: PublishRequest) -> anyhow::Result<PublishResponse> {
         let events = request
             .data
             .into_iter()
@@ -75,7 +75,11 @@ impl EventService {
         Ok(response)
     }
 
-    pub async fn query(&self, request: QueryRequest) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
+    pub async fn query(
+        &self,
+        _app_id: AppId,
+        request: QueryRequest,
+    ) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
         let tag_expr = &request.query.from;
         let stream = match request.order {
             Order::Asc => self
@@ -102,7 +106,11 @@ impl EventService {
         Ok(response)
     }
 
-    pub async fn subscribe(&self, request: SubscribeRequest) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
+    pub async fn subscribe(
+        &self,
+        _app_id: AppId,
+        request: SubscribeRequest,
+    ) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
         Ok(subscribe0(&self.store, &request.query.from, request.offsets)
             .await?
             .flat_map(mk_feed(request.query))
@@ -112,6 +120,7 @@ impl EventService {
 
     pub async fn subscribe_monotonic(
         &self,
+        _app_id: AppId,
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
         let tag_expr = &request.query.from;

@@ -20,11 +20,11 @@ impl Service for Subscribe {
     type Error = ();
     type Ctx = AppId;
 
-    fn serve(&self, _app_id: AppId, req: Self::Req) -> BoxStream<'static, Result<Self::Resp, Self::Error>> {
+    fn serve(&self, app_id: AppId, req: Self::Req) -> BoxStream<'static, Result<Self::Resp, Self::Error>> {
         let service = self.event_service.clone();
         async move {
             service
-                .subscribe(req)
+                .subscribe(app_id, req)
                 .map(move |x| match x {
                     Ok(stream) => stream.map(Ok).left_stream(),
                     Err(_) => stream::once(futures::future::err(())).right_stream(),

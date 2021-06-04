@@ -20,9 +20,9 @@ impl Service for Query {
     type Error = ();
     type Ctx = AppId;
 
-    fn serve(&self, _app_id: AppId, req: Self::Req) -> BoxStream<'static, Result<Self::Resp, Self::Error>> {
+    fn serve(&self, app_id: AppId, req: Self::Req) -> BoxStream<'static, Result<Self::Resp, Self::Error>> {
         let service = self.event_service.clone();
-        (async move { service.query(req).await })
+        (async move { service.query(app_id, req).await })
             .map(|x| match x {
                 Ok(stream) => stream.map(Ok).left_stream(),
                 Err(_) => stream::once(futures::future::err(())).right_stream(),
