@@ -622,15 +622,15 @@ class Pond2Impl implements Pond {
 
     const tw = autoCancel
       ? (state: S) => {
-        if (cancelled) {
-          return false
-        } else if (autoCancel(state)) {
-          cancelled = true
-          return false
-        }
+          if (cancelled) {
+            return false
+          } else if (autoCancel(state)) {
+            cancelled = true
+            return false
+          }
 
-        return true
-      }
+          return true
+        }
       : () => !cancelled
 
     states
