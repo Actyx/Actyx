@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fs, str::FromStr, sync::Arc};
 
-use actyxos_sdk::{legacy::SourceId, tag, Payload, StreamId};
+use actyx_sdk::{legacy::SourceId, tag, Payload, StreamId};
 use anyhow::Result;
 use banyan::store::{BlockWriter, ReadOnlyStore};
 use banyan::{store::BranchCache, Config, Forest, Transaction};

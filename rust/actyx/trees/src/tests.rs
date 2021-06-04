@@ -5,7 +5,7 @@ use crate::{
     tags::ScopedTagSet,
     AxTree,
 };
-use actyxos_sdk::{tag, tags, LamportTimestamp, Payload, TagSet, Timestamp};
+use actyx_sdk::{tag, tags, LamportTimestamp, Payload, TagSet, Timestamp};
 use banyan::{
     query::{AllQuery, OffsetRangeQuery, Query},
     store::{BranchCache, MemStore},

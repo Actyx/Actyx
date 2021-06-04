@@ -18,12 +18,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "actyxos_sdk"
+name = "actyx_sdk"
 version = "0.6.0"
 dependencies = [
  "abomonation",
  "abomonation_derive",
- "actyxos_sdk_macros",
+ "actyx_sdk_macros",
  "anyhow",
  "async-trait",
  "base64",
@@ -60,7 +60,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "actyxos_sdk_macros"
+name = "actyx_sdk_macros"
 version = "0.2.1"
 dependencies = [
  "proc-macro2",

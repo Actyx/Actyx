@@ -183,16 +183,16 @@ using the CoW approach.
 
 Because the strings in the analytics pipelines usually are not mutated, the ideal approach would be to use [string interning](https://en.wikipedia.org/wiki/String_interning).
 That would leave out only a problem of creating a suitable `Abomonation` instance. This path was selected in `ActyxOS` SDK - and is called
-[ArcVal](https://docs.rs/actyxos_sdk/0.4.0/actyxos_sdk/types/struct.ArcVal.html).
+[ArcVal](https://docs.rs/actyx_sdk/0.4.0/actyx_sdk/types/struct.ArcVal.html).
 
 The `ArcVal` essentially is an `Abomonation`-enabled container for holding references to immutable strings, with cheap clone operation and deduplication
 of contained values (so if one creates two new `ArcVal<str>` instances with the same contents, memory will be allocated only once, unlike with `Refcell`
 where allocation will be avoided only during clone operations). The Rust compiler enforces the immutability guarantee for us.
 
-Using `ArcVal` requires importing it from the [`actyxos_sdk`](https://crates.io/crates/actyxos_sdk) crate:
+Using `ArcVal` requires importing it from the [`actyx_sdk`](https://crates.io/crates/actyx_sdk) crate:
 
 ```rust
-use actyxos_sdk::types::ArcVal;
+use actyx_sdk::types::ArcVal;
 ```
 
 The data model definitions will look then as follows:

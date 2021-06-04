@@ -3,8 +3,8 @@ pub mod hyper_serve;
 
 use std::time::Duration;
 
+use actyx_sdk::{AppId, NodeId, Timestamp};
 use actyx_util::formats::NodeCycleCount;
-use actyxos_sdk::{AppId, NodeId, Timestamp};
 use crypto::KeyStoreRef;
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
@@ -95,7 +95,7 @@ pub type Result<T> = std::result::Result<T, Rejection>;
 
 #[cfg(test)]
 mod tests {
-    use actyxos_sdk::{app_id, Timestamp};
+    use actyx_sdk::{app_id, Timestamp};
     use std::time::Duration;
 
     use super::{AppMode, BearerToken};

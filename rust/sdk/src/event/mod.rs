@@ -38,7 +38,7 @@ pub use payload::Payload;
 ///
 /// Ordering and equality do not depend on the type of payload: `lamport` and `stream.source`
 /// uniquely identify the event and give rise to a total order (first by Lamport timestamp,
-/// then by source ID; a source — an ActyxOS node — will never use the same Lamport timestamp
+/// then by source ID; a source — an Actyx node — will never use the same Lamport timestamp
 /// more than once).
 ///
 /// The contained Lamport timestamp tracks the causal order of events, which may not
@@ -66,7 +66,7 @@ pub use payload::Payload;
 ///
 /// ```rust
 /// use serde::{Deserialize, Serialize};
-/// use actyxos_sdk::{Event, Payload};
+/// use actyx_sdk::{Event, Payload};
 ///
 /// #[derive(Serialize, Deserialize, Debug, Clone)]
 /// struct MyPayload {

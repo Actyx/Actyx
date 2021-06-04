@@ -1,5 +1,5 @@
 use crate::{node_storage::NodeStorage, util::make_keystore};
-use actyxos_sdk::NodeId;
+use actyx_sdk::NodeId;
 #[allow(unused_imports)]
 use anyhow::{Context, Result};
 use crypto::KeyStoreRef;

@@ -1,6 +1,6 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
-    use actyxos_sdk::{
+    use actyx_sdk::{
         app_id,
         service::{EventService, Order, PublishEvent, PublishRequest, QueryRequest},
         tags, AppManifest, OffsetMap, Payload,

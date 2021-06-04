@@ -2,7 +2,7 @@ mod http;
 pub mod service;
 mod ws;
 
-use actyxos_sdk::service::EventService;
+use actyx_sdk::service::EventService;
 use warp::*;
 
 use crate::util::NodeInfo;

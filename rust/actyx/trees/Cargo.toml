@@ -5,7 +5,7 @@ authors = ["Actyx AG"]
 edition = "2018"
 
 [dependencies]
-actyxos_sdk = { version = "0.6", path = "../../sdk", features = ["arb"] }
+actyx_sdk = { version = "0.6", path = "../../sdk", features = ["arb"] }
 
 anyhow = "1.0.40"
 banyan = "0.14.0"

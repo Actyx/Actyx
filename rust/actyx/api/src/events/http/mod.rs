@@ -2,7 +2,7 @@ mod filters;
 mod handlers;
 mod ndjson;
 
-use actyxos_sdk::service::EventService;
+use actyx_sdk::service::EventService;
 use warp::Filter;
 
 use crate::util::{filters::header_token, NodeInfo};

@@ -1,4 +1,4 @@
-use actyxos_sdk::{types::Binary, AppId};
+use actyx_sdk::{types::Binary, AppId};
 use crypto::SignedMessage;
 use std::convert::TryInto;
 use tracing::{debug, info};
@@ -93,7 +93,7 @@ pub(crate) fn authenticate(
 mod tests {
     use super::*;
     use crate::AppMode;
-    use actyxos_sdk::{app_id, Timestamp};
+    use actyx_sdk::{app_id, Timestamp};
     use crypto::KeyStore;
     use parking_lot::RwLock;
     use std::sync::Arc;

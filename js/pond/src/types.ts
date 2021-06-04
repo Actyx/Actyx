@@ -1,7 +1,7 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import {
@@ -143,7 +143,7 @@ export type CachedState<S> = {
 
 export type StatePointer<S> = TaggedIndex & CachedState<S>
 
-/* 
+/*
  * POND V2 APIs
  */
 
@@ -254,7 +254,7 @@ export type ObserveAllOpts = Partial<{
 
 /**
  * A `Fish<S, E>` describes an ongoing aggregration (fold) of events of type `E` into state of type `S`.
- * A Fish always sees events in the correct order, even though event delivery on ActyxOS is only eventually consistent:
+ * A Fish always sees events in the correct order, even though event delivery on Actyx is only eventually consistent:
  * To this effect, arrival of an hitherto unknown event "from the past" will cause a replay of the aggregation
  * from an earlier state, instead of passing that event to the Fish out of order.
  * @public

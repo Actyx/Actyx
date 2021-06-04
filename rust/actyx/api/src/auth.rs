@@ -1,4 +1,4 @@
-use actyxos_sdk::{AppId, AppManifest, Timestamp};
+use actyx_sdk::{AppId, AppManifest, Timestamp};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use tracing::*;
@@ -83,7 +83,7 @@ pub(crate) fn route(node_info: NodeInfo) -> impl Filter<Extract = (impl Reply,),
 
 #[cfg(test)]
 mod tests {
-    use actyxos_sdk::{app_id, AppManifest};
+    use actyx_sdk::{app_id, AppManifest};
     use crypto::KeyStore;
     use hyper::http;
     use parking_lot::lock_api::RwLock;

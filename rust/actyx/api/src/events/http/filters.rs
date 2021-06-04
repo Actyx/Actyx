@@ -1,4 +1,4 @@
-use actyxos_sdk::{service::EventService, AppId};
+use actyx_sdk::{service::EventService, AppId};
 use warp::filters::*;
 use warp::*;
 

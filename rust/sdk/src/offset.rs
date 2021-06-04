@@ -481,7 +481,7 @@ mod postgresql {
 /// given by the event streams of each included source up to the associated [`Offset`](struct.Offset.html).
 ///
 /// All stream delivery modes supported by the Event Service respect the order of offsets
-/// of the events published by each single ActyxOS node. This order is consistent with the
+/// of the events published by each single Actyx node. This order is consistent with the
 /// Lamport timestamp order because both numbers are assigned to published events in strictly
 /// monotonically increasing fashion, i.e. greater Offset implies greater Lamport timestamp
 /// and vice versa.

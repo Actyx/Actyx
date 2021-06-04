@@ -28,7 +28,7 @@ use std::ops::Deref;
 /// Helper macro to create interned string types
 ///
 /// ```
-/// use actyxos_sdk::arcval_scalar;
+/// use actyx_sdk::arcval_scalar;
 ///
 /// arcval_scalar! {
 ///     /// some docs
@@ -114,7 +114,7 @@ macro_rules! arcval_scalar {
 /// [`Abomonation`](https://docs.rs/abomonation).
 ///
 /// ```
-/// use actyxos_sdk::types::ArcVal;
+/// use actyx_sdk::types::ArcVal;
 ///
 /// let s: ArcVal<str> = ArcVal::clone_from_unsized("hello");
 /// let b: ArcVal<[u8; 5]> = ArcVal::from_sized([49, 50, 51, 52, 53]);

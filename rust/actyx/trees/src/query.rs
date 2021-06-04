@@ -4,7 +4,7 @@ use std::{
     ops::{Range, RangeFrom, RangeTo},
 };
 
-use actyxos_sdk::{language, LamportTimestamp, Timestamp};
+use actyx_sdk::{language, LamportTimestamp, Timestamp};
 use banyan::{
     index::{BranchIndex, CompactSeq, LeafIndex},
     query::Query,
@@ -212,7 +212,7 @@ mod tests {
     use crate::stags;
 
     use super::*;
-    use actyxos_sdk::{
+    use actyx_sdk::{
         language::{TagAtom, TagExpr},
         tags, Tag,
     };

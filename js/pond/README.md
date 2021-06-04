@@ -1,6 +1,6 @@
 # Actyx Pond
 
-A TypeScript framework for writing distributed apps deployed on peer-to-peer networks, without any servers. This is made possible by being based on [ActyxOS](https://www.actyx.com/products/os/). Please visit also the [documentation](https://developer.actyx.com/docs/pond/getting-started) for how to get started.
+A TypeScript framework for writing distributed apps deployed on peer-to-peer networks, without any servers. This is made possible by being based on [Actyx](https://www.actyx.com/products/os/). Please visit also the [documentation](https://developer.actyx.com/docs/pond/getting-started) for how to get started.
 
 ## Key features
 

@@ -28,7 +28,7 @@ use serde::{Deserialize, Serialize};
 /// Microseconds since the UNIX epoch, without leap seconds and in UTC
 ///
 /// ```
-/// use actyxos_sdk::Timestamp;
+/// use actyx_sdk::Timestamp;
 /// use chrono::{DateTime, Utc, TimeZone};
 ///
 /// let timestamp = Timestamp::now();
@@ -119,7 +119,7 @@ impl Add<std::time::Duration> for Timestamp {
 
 /// A logical timestamp taken from a [`Lamport clock`](https://en.wikipedia.org/wiki/Lamport_timestamps)
 ///
-/// The lamport clock in an ActyxOS system is increased by the ActyxOS node whenever:
+/// The lamport clock in an Actyx system is increased by the Actyx node whenever:
 ///
 /// - an event is emitted
 /// - a heartbeat is received

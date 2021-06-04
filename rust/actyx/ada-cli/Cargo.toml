@@ -5,7 +5,7 @@ authors = ["Actyx AG"]
 edition = "2018"
 
 [dependencies]
-actyxos_sdk = { version = "0.6", features = ["postgresql"], path = "../../sdk" }
+actyx_sdk = { version = "0.6", features = ["postgresql"], path = "../../sdk" }
 swarm = { path = "../swarm" }
 trees = { path = "../trees" }
 util = { path = "../util" }

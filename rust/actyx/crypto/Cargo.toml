@@ -5,7 +5,7 @@ authors = ["Actyx AG"]
 edition = "2018"
 
 [dependencies]
-actyxos_sdk = { path = "../../sdk" }
+actyx_sdk = { path = "../../sdk" }
 
 anyhow = "1.0.40"
 base64 = "0.13.0"

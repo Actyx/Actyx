@@ -13,7 +13,7 @@ pub use formats::*;
 pub use storage::*;
 pub use sync::*;
 mod formats;
-use actyxos_sdk::NodeId;
+use actyx_sdk::NodeId;
 use std::path::Path;
 
 #[derive(Debug)]

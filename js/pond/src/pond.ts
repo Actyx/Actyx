@@ -1,7 +1,7 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -142,7 +142,7 @@ export type WaitForSwarmSyncParams = WaitForSwarmConfig &
   }>
 
 /**
- * Main interface for interaction with the ActyxOS event system.
+ * Main interface for interaction with the Actyx event system.
  * New instances are created via `Pond.default()` or `Pond.of(options)`.
  * Acquire a Pond for testing (which uses a simulated clean Event Store) via `Pond.test()`.
  * @public
@@ -622,15 +622,15 @@ class Pond2Impl implements Pond {
 
     const tw = autoCancel
       ? (state: S) => {
-          if (cancelled) {
-            return false
-          } else if (autoCancel(state)) {
-            cancelled = true
-            return false
-          }
-
-          return true
+        if (cancelled) {
+          return false
+        } else if (autoCancel(state)) {
+          cancelled = true
+          return false
         }
+
+        return true
+      }
       : () => !cancelled
 
     states

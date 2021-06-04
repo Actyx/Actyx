@@ -1,6 +1,6 @@
 use super::{Component, ComponentRequest};
 use crate::node_settings::Settings;
-use actyxos_sdk::NodeId;
+use actyx_sdk::NodeId;
 use anyhow::Result;
 use crossbeam::channel::{bounded, Receiver, Sender};
 use logsvcd::{DynamicConfig, GetLogRequest, LogConfig, LogServiceWrapper, LoggingSink};

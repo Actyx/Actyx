@@ -34,12 +34,12 @@ use crate::ParseError;
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{app_id, AppId};
+/// use actyx_sdk::{app_id, AppId};
 /// let app_id: AppId = app_id!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyxos_sdk::{app_id, AppId};
+/// use actyx_sdk::{app_id, AppId};
 /// let app_id: AppId = app_id!("");
 /// ```
 #[macro_export]
@@ -59,9 +59,9 @@ mk_scalar!(
     struct AppId, EmptyAppId, ParseError
 );
 
-/// The ActyxOS node identifier
+/// The Actyx node identifier
 ///
-/// Each ActyxOS node has a private key that defines its identity. The corresponding public
+/// Each Actyx node has a private key that defines its identity. The corresponding public
 /// key uniquely identifies the node but depends on the used crypto scheme. For now, we are
 /// using ed25519.
 ///
@@ -177,7 +177,7 @@ impl Decode<DagCborCodec> for NodeId {
     }
 }
 
-/// The unique identifier of a single event stream emitted by an ActyxOS node
+/// The unique identifier of a single event stream emitted by an Actyx node
 ///
 /// The emitting node — identified by its [`NodeId`](struct.NodeId.html) — may emit multiple
 /// streams with different IDs. The emitting node’s ID can be extracted from this stream ID

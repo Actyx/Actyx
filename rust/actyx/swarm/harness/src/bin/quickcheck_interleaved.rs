@@ -2,7 +2,7 @@
 fn main() {
     use std::{collections::BTreeMap, str::FromStr, time::Duration};
 
-    use actyxos_sdk::{
+    use actyx_sdk::{
         language::{Query, TagAtom, TagExpr},
         service::{EventService, SubscribeRequest},
         Tag, TagSet,

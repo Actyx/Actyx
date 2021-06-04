@@ -46,12 +46,12 @@ impl std::error::Error for ParseError {}
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{semantics, legacy::Semantics};
+/// use actyx_sdk::{semantics, legacy::Semantics};
 /// let semantics: Semantics = semantics!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyxos_sdk::{semantics, legacy::Semantics};
+/// use actyx_sdk::{semantics, legacy::Semantics};
 /// let semantics: Semantics = semantics!("");
 /// ```
 #[macro_export]
@@ -68,12 +68,12 @@ macro_rules! semantics {
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{fish_name, legacy::FishName};
+/// use actyx_sdk::{fish_name, legacy::FishName};
 /// let fish_name: FishName = fish_name!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyxos_sdk::{fish_name, legacy::FishName};
+/// use actyx_sdk::{fish_name, legacy::FishName};
 /// let fish_name: FishName = fish_name!("");
 /// ```
 #[macro_export]
@@ -90,12 +90,12 @@ macro_rules! fish_name {
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{source_id, legacy::SourceId};
+/// use actyx_sdk::{source_id, legacy::SourceId};
 /// let source_id: SourceId = source_id!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyxos_sdk::{source_id, legacy::SourceId};
+/// use actyx_sdk::{source_id, legacy::SourceId};
 /// let source_id: SourceId = source_id!("");
 /// ```
 #[macro_export]
@@ -187,9 +187,9 @@ impl TryFrom<&TagSet> for FishName {
 
 /// Hold provenance information for this event
 ///
-/// Each event is published by one ActyxOS node whose source ID is stored in the `source` field.
+/// Each event is published by one Actyx node whose source ID is stored in the `source` field.
 /// [`Semantics`](struct.Semantics.html) & [`FishName`](struct.FishName.html) are metadata tags
-/// that split the overall distributed event stream accessible by ActyxOS into smaller substreams
+/// that split the overall distributed event stream accessible by Actyx into smaller substreams
 /// containing information about kinds of things (like sensor readings) and specific instances of
 /// those things (like a thermometer’s name).
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -201,7 +201,7 @@ pub struct StreamInfo {
     pub source: SourceId,
 }
 
-/// A source ID uniquely identifies one ActyxOS node
+/// A source ID uniquely identifies one Actyx node
 ///
 /// You can obtain the node’s source ID using [`EventService::node_id`](../event_service/struct.EventService.html#method.node_id).
 /// It is mostly used in creating specific event stream queries involving

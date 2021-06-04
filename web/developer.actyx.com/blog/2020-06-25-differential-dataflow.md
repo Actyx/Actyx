@@ -30,17 +30,17 @@ obvious questions for shop-floor personnel are: What is currently going on, and 
 taken for the various people and machines to produce a given batch of chairs? These questions are
 merely examples of the ones we could answer if we had an audit trail like this:
 
-time | who | what
----|---|---
-8:52 | Fred | starts setting up Drill1 for order 4711
-8:56 | Fred | finishes setup
-8:56 | Drill1 | starts working on order 4711
-8:56 | Fred | starts drilling holes for order 4711
-9:12 | Fred | reports 27 chair legs produced for order 4711
-9:26 | Fred | reports 13 more chair legs produced for order 4711
-9:27 | Fred | stops drilling holes for order 4711
-9:27 | Drill1 | stops working on order 4711
-9:27 | Fred | reports hole drilling for order 4711 is finished
+| time | who    | what                                               |
+| ---- | ------ | -------------------------------------------------- |
+| 8:52 | Fred   | starts setting up Drill1 for order 4711            |
+| 8:56 | Fred   | finishes setup                                     |
+| 8:56 | Drill1 | starts working on order 4711                       |
+| 8:56 | Fred   | starts drilling holes for order 4711               |
+| 9:12 | Fred   | reports 27 chair legs produced for order 4711      |
+| 9:26 | Fred   | reports 13 more chair legs produced for order 4711 |
+| 9:27 | Fred   | stops drilling holes for order 4711                |
+| 9:27 | Drill1 | stops working on order 4711                        |
+| 9:27 | Fred   | reports hole drilling for order 4711 is finished   |
 
 Computers can help obtain such an audit trail, many of the entries can even be created automatically
 or with very little additional input from a worker like Fred. One thing we need to ensure, though,
@@ -68,20 +68,20 @@ The first part can be implemented using [Grafana](https://grafana.com/) if we ke
 [PostgreSQL](https://www.postgresql.org/) up to date with one row containing the information of what
 is going on per workstation (e.g. which order is being processed and since when and by whom).
 
-machine | doing what | since
----|---|---
-Drill1 | working on order 4711 | 8:56
-Drill2 | idle | 8:12
-Drill3 | working on order 4712 | 8:33
+| machine | doing what            | since |
+| ------- | --------------------- | ----- |
+| Drill1  | working on order 4711 | 8:56  |
+| Drill2  | idle                  | 8:12  |
+| Drill3  | working on order 4712 | 8:33  |
 
 The second part can be implemented similarly, by adding a row to a table of time spans whenever a
 machine stops working on an order.
 
-machine | order | started | duration
----|---|---|---
-Drill1 | 4710 | 7:53 | 0:36
-Drill2 | 4634 | 7:55 | 0:17
-Drill1 | 4711 | 8:56 | 0:33
+| machine | order | started | duration |
+| ------- | ----- | ------- | -------- |
+| Drill1  | 4710  | 7:53    | 0:36     |
+| Drill2  | 4634  | 7:55    | 0:17     |
+| Drill1  | 4711  | 8:56    | 0:33     |
 
 The third part works analog by creating an ERP transaction with the relevant bookings.
 
@@ -309,7 +309,7 @@ database driver stores not only the records in the data table, it also stores 
 transaction — the [offset map] of the events that have been ingested into an adjacent table. In the
 example above that table would be named `usage_offsets`.
 
-[offset map]: https://docs.rs/actyxos_sdk/0.3.1/actyxos_sdk/event/struct.OffsetMap.html
+[offset map]: https://docs.rs/actyx_sdk/0.3.1/actyx_sdk/event/struct.OffsetMap.html
 
 This allows the process to be stopped and restarted without any loss of data: the business logic
 will be (re)run on all events whose records are not yet in the database. Storing data and offsets in
@@ -374,7 +374,7 @@ machine, and the database driver, the main part here is the definition of the ev
 exporter needs to see all events emitted by the [machineFish]. The full code is available
 [here](https://github.com/Actyx/actyxos_data_flow/tree/master/examples/machine-dashboard/main.rs).
 
-[EventService client]: https://docs.rs/actyxos_sdk/latest/actyxos_sdk/event_service/struct.EventService.html
+[EventService client]: https://docs.rs/actyx_sdk/latest/actyx_sdk/event_service/struct.EventService.html
 [machineFish]: https://github.com/Actyx/actyxos_data_flow/tree/master/webapp/src/machineFish.ts
 
 ## Avoiding endless growth

@@ -22,10 +22,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "actyxos_sdk"
+name = "actyx_sdk"
 version = "0.6.0"
 dependencies = [
- "actyxos_sdk_macros",
+ "actyx_sdk_macros",
  "anyhow",
  "async-trait",
  "base64",
@@ -59,7 +59,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "actyxos_sdk_macros"
+name = "actyx_sdk_macros"
 version = "0.2.1"
 dependencies = [
  "proc-macro2",
@@ -71,7 +71,7 @@ dependencies = [
 name = "ada-cli"
 version = "0.1.0"
 dependencies = [
- "actyxos_sdk",
+ "actyx_sdk",
  "anyhow",
  "async-trait",
  "base64",
@@ -235,7 +235,7 @@ checksum = "28b2cd92db5cbd74e8e5028f7e27dd7aa3090e89e4f2a197cc7c8dfb69c7063b"
 name = "api"
 version = "0.1.0"
 dependencies = [
- "actyxos_sdk",
+ "actyx_sdk",
  "anyhow",
  "async-trait",
  "ax-futures-util",
@@ -535,7 +535,7 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 name = "ax"
 version = "2.0.0-dev"
 dependencies = [
- "actyxos_sdk",
+ "actyx_sdk",
  "anyhow",
  "assert_cmd",
  "banyan",
@@ -1414,7 +1414,7 @@ checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 name = "crypto"
 version = "0.1.0"
 dependencies = [
- "actyxos_sdk",
+ "actyx_sdk",
  "anyhow",
  "base64",
  "byteorder",
@@ -3564,7 +3564,7 @@ dependencies = [
 name = "logsvcd"
 version = "0.2.0"
 dependencies = [
- "actyxos_sdk",
+ "actyx_sdk",
  "android_log-sys",
  "android_logger",
  "anyhow",
@@ -4080,7 +4080,7 @@ dependencies = [
 name = "node"
 version = "2.0.0-dev"
 dependencies = [
- "actyxos_sdk",
+ "actyx_sdk",
  "anyhow",
  "api",
  "ax-futures-util",
@@ -5374,7 +5374,7 @@ dependencies = [
 name = "runtime"
 version = "0.1.0"
 dependencies = [
- "actyxos_sdk",
+ "actyx_sdk",
  "anyhow",
  "cbor-data",
  "tracing",
@@ -6008,7 +6008,7 @@ checksum = "1e81da0851ada1f3e9d4312c704aa4f8806f0f9d69faaf8df2f3464b4a9437c2"
 name = "swarm"
 version = "0.1.0"
 dependencies = [
- "actyxos_sdk",
+ "actyx_sdk",
  "anyhow",
  "ax-futures-util",
  "banyan",
@@ -6049,7 +6049,7 @@ dependencies = [
 name = "swarm-cli"
 version = "0.1.0"
 dependencies = [
- "actyxos_sdk",
+ "actyx_sdk",
  "anyhow",
  "api",
  "async-process",
@@ -6071,7 +6071,7 @@ dependencies = [
 name = "swarm-harness"
 version = "0.1.0"
 dependencies = [
- "actyxos_sdk",
+ "actyx_sdk",
  "anyhow",
  "async-global-executor",
  "async-process",
@@ -6770,7 +6770,7 @@ checksum = "a7f741b240f1a48843f9b8e0444fb55fb2a4ff67293b50a9179dfd5ea67f8d41"
 name = "trees"
 version = "0.1.0"
 dependencies = [
- "actyxos_sdk",
+ "actyx_sdk",
  "anyhow",
  "banyan",
  "cbor-tag-index",
@@ -7032,7 +7032,7 @@ checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
 name = "util"
 version = "2.0.0-dev"
 dependencies = [
- "actyxos_sdk",
+ "actyx_sdk",
  "anyhow",
  "base64",
  "chrono",

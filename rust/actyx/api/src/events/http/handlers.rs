@@ -1,6 +1,6 @@
 use super::ndjson;
 
-use actyxos_sdk::{
+use actyx_sdk::{
     service::{EventService, PublishRequest, QueryRequest, SubscribeMonotonicRequest, SubscribeRequest},
     AppId,
 };

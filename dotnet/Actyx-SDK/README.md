@@ -1,16 +1,16 @@
 TODO: link to docs
 
-[![NuGet](https://buildstats.info/nuget/ActyxOS.Sdk)](https://www.nuget.org/packages/ActyxOS.Sdk/)
+[![NuGet](https://buildstats.info/nuget/Actyx.Sdk)](https://www.nuget.org/packages/Actyx.Sdk/)
 
-# <img src="https://developer.actyx.com/img/logo.svg" height="32px"> ActyxOS SDK
+# <img src="https://developer.actyx.com/img/logo.svg" height="32px"> Actyx SDK
 
-[ActyxOS](https://developer.actyx.com/docs/os/introduction) makes it easy to run distributed
+[Actyx](https://developer.actyx.com/docs/os/introduction) makes it easy to run distributed
 applications on multiple nodes. It is a piece of software that allows you to run your own apps
 on one or more edge devices and have these apps seamlessly communicate and share data with
 each other.
 
-This project defines the data types needed for communicating with ActyxOS and provides C#
-bindings for the ActyxOS APIs.
+This project defines the data types needed for communicating with Actyx and provides C#
+bindings for the Actyx APIs.
 
 ## Examples
 

@@ -1,4 +1,4 @@
-use actyxos_sdk::{
+use actyx_sdk::{
     service::{EventService, SubscribeRequest, SubscribeResponse},
     AppId,
 };

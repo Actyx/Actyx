@@ -1,4 +1,4 @@
-use actyxos_sdk::{app_id, service::AuthenticationResponse, NodeId};
+use actyx_sdk::{app_id, service::AuthenticationResponse, NodeId};
 use bytes::Bytes;
 use crypto::{KeyStore, KeyStoreRef, PublicKey};
 use hyper::Response;

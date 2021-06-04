@@ -1,4 +1,4 @@
-use actyxos_sdk::{language::Query, Payload, StreamNr, TagSet, Timestamp};
+use actyx_sdk::{language::Query, Payload, StreamNr, TagSet, Timestamp};
 use anyhow::Result;
 use crypto::{KeyPair, PrivateKey};
 pub use libp2p::{multiaddr, Multiaddr, PeerId};
@@ -290,7 +290,7 @@ fn target_dir() -> std::path::PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyxos_sdk::tags;
+    use actyx_sdk::tags;
 
     #[test]
     fn test_command() -> Result<()> {

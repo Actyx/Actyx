@@ -1,5 +1,5 @@
 use crate::{eval::Context, value::Value};
-use actyxos_sdk::language::SimpleExpr;
+use actyx_sdk::language::SimpleExpr;
 use anyhow::Result;
 
 pub enum Operation {
@@ -52,7 +52,7 @@ impl Select {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyxos_sdk::EventKey;
+    use actyx_sdk::EventKey;
     use cbor_data::Encoder;
 
     fn simple_expr(s: &str) -> SimpleExpr {

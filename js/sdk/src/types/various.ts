@@ -1,7 +1,7 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
 import { contramap, Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
@@ -256,7 +256,7 @@ export type Metadata = Readonly<{
 
   // A unique identifier for the event.
   // Every event has exactly one eventId which is unique to it, guaranteed to not collide with any other event.
-  // Events are *sorted* based on the eventId by ActyxOS: For a given event, all later events also have a higher eventId according to simple string-comparison.
+  // Events are *sorted* based on the eventId by Actyx: For a given event, all later events also have a higher eventId according to simple string-comparison.
   eventId: string
 
   // Stream this event belongs to

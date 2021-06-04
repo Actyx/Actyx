@@ -1,4 +1,4 @@
-use actyxos_sdk::{tags, Payload, StreamNr};
+use actyx_sdk::{tags, Payload, StreamNr};
 use anyhow::Result;
 use futures::stream::StreamExt;
 use serde::{Deserialize, Serialize};

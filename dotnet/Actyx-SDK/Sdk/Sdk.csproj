@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>ActyxOS.Sdk</AssemblyName>
-    <Description>Data types for communicating with ActyxOS and C# bindings for the ActyxOS APIs.</Description>
+    <AssemblyName>Actyx.Sdk</AssemblyName>
+    <Description>Data types for communicating with Actyx and C# bindings for the Actyx APIs.</Description>
     <PackageProjectUrl>https://developer.actyx.com/docs/os/sdks/dotnet</PackageProjectUrl>
     <PackageLicenseUrl>https://licenses.nuget.org/Apache-2.0</PackageLicenseUrl>
     <Owners>Actyx</Owners>

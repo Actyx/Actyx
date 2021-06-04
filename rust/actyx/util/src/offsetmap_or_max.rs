@@ -1,4 +1,4 @@
-use actyxos_sdk::{Offset, OffsetMap, OffsetOrMin, StreamId};
+use actyx_sdk::{Offset, OffsetMap, OffsetOrMin, StreamId};
 use libipld::DagCbor;
 use num_traits::Bounded;
 use std::convert::TryInto;
