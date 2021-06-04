@@ -28,9 +28,9 @@ describe('auth http', () => {
   it('should fail when token not authorized', () =>
     run((httpApi) =>
       getOffsets(httpApi, 'Bearer ' + UNAUTHORIZED_TOKEN)
-        .then((nodeIdResponse) => nodeIdResponse.json())
-        .then((x) =>
-          expect(x).toEqual({
+        .then((resp) => resp.json())
+        .then((json) =>
+          expect(json).toEqual({
             code: 'ERR_TOKEN_UNAUTHORIZED',
             message: 'Unauthorized token.',
           }),
@@ -84,7 +84,7 @@ describe('auth http', () => {
 
     // assert we can access event service
     const response = await offsets(testNode._private.httpApiOrigin)
-    expect(response).toEqual({ nodeId: expect.any(String) })
+    expect(response).toEqual({ present: expect.any(Object), toReplicate: expect.any(Object) })
     await testNode._private.shutdown()
 
     // start the node again and assert that we can't reuse previous token

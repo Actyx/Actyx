@@ -6,7 +6,7 @@ describe('event service', () => {
     it('get', () =>
       run(async (x) => {
         const ns = mkNodeIdService(await mkTrialHttpClient(x))
-        const { nodeId } = await ns.nodeId()
+        const nodeId = await ns.nodeId()
         const es = mkEventService(await mkTrialHttpClient(x))
         const { present } = await es.offsets()
         // stream 1 is for discovery events, which is the only stream guaranteed to have events from the start
