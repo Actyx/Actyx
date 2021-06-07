@@ -82,9 +82,7 @@ export interface Tags<E> extends Where<E> {
   apply(...events: E[]): ReadonlyArray<TaggedEvent>
 
   /**
-   * The actual included tags.
-   * FIXME: Only public until enough things from Pond have been moved over.
-   * @public
+   * The actual included tags. @internal
    */
   readonly rawTags: ReadonlyArray<string>
 
@@ -107,7 +105,7 @@ export const Tags = <E>(...requiredTags: string[]): Tags<E> => req<E>(false, req
  * @public
  */
 export interface Tag<E> extends Tags<E> {
-  // The underlying actual tag as pure string.
+  /** The underlying actual tag as pure string. @internal */
   readonly rawTag: string
 
   /**

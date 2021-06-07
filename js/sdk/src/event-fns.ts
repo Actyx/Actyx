@@ -9,6 +9,7 @@ import {
   CancelSubscription,
   EventChunk,
   EventsOrTimetravel,
+  EventsSortOrder,
   FixedStart,
   Metadata,
   NodeId,
@@ -58,7 +59,7 @@ export type RangeQuery = {
   upperBound: OffsetMap
 
   /** Desired order of delivery. Defaults to 'Asc' */
-  order?: 'Asc' | 'Desc'
+  order?: EventsSortOrder
 }
 
 /** Query for a set of events which is automatically capped at the latest available upperBound. @public */
@@ -74,7 +75,7 @@ export type AutoCappedQuery = {
   query?: Where<unknown>
 
   /** Desired order of delivery. Defaults to 'Asc' */
-  order?: 'Asc' | 'Desc'
+  order?: EventsSortOrder
 }
 
 /** Subscription to a set of events that may still grow. @public */
@@ -130,6 +131,7 @@ export type LatestQuery<E> = EarliestQuery<E>
 
 /** Functions that operate directly on Events. @public  */
 export interface EventFns {
+  /** Id of the Actyx node this interface is connected to. */
   readonly nodeId: NodeId
 
   /** Get the current latest offsets known locally. */

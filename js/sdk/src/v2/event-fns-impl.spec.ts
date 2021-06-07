@@ -6,7 +6,16 @@
  */
 import { chunksOf } from 'fp-ts/lib/Array'
 import { Subject } from 'rxjs'
-import { ActyxEvent, allEvents, EarliestQuery, EventChunk, EventOrder, Where, NodeId } from '..'
+import {
+  ActyxEvent,
+  allEvents,
+  EarliestQuery,
+  EventChunk,
+  EventOrder,
+  EventsSortOrder,
+  NodeId,
+  Where,
+} from '..'
 import { SnapshotStore } from '../snapshotStore'
 import { EventFnsFromEventStoreV2 } from './event-fns-impl'
 import { EventStore } from './eventStore'
@@ -175,12 +184,12 @@ describe('EventFns', () => {
   })
 
   describe('chunking', () => {
-    const testChunking = async (chunkSize: number, order: 'Asc' | 'Desc') => {
+    const testChunking = async (chunkSize: number, order: EventsSortOrder) => {
       const { fns, tl, store } = setup()
       const events = tl.all
       store.directlyPushEvents(events)
 
-      const expChunks = expectedChunks(events, chunkSize, { reverse: order === 'Desc' })
+      const expChunks = expectedChunks(events, chunkSize, { reverse: order === 'desc' })
 
       const { cb, expectResultMatches } = buffer()
 
@@ -190,9 +199,9 @@ describe('EventFns', () => {
       )
     }
 
-    const testBoth = (description: string, testFn: (ord: 'Asc' | 'Desc') => Promise<void>) => {
-      it(description + ' (ASC)', async () => await testFn('Asc'))
-      it(description + ' (DESC)', async () => await testFn('Desc'))
+    const testBoth = (description: string, testFn: (ord: EventsSortOrder) => Promise<void>) => {
+      it(description + ' (ASC)', async () => await testFn(EventsSortOrder.Ascending))
+      it(description + ' (DESC)', async () => await testFn(EventsSortOrder.Descending))
     }
 
     testBoth('should work with chunk size eq to store chunk size', async ord => {

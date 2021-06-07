@@ -24,6 +24,7 @@ import {
   CancelSubscription,
   EventChunk,
   EventsOrTimetravel,
+  EventsSortOrder,
   Metadata,
   MsgType,
   OffsetMap,
@@ -37,7 +38,7 @@ import {
 } from '../types'
 import { EventStore } from './eventStore'
 import { eventsMonotonic, EventsOrTimetravel as EventsOrTtInternal } from './subscribe_monotonic'
-import { AllEventsSortOrders, Event, Events, PersistedEventsSortOrders } from './types'
+import { Event, Events } from './types'
 
 const ordByTimestamp = contramap(
   (e: ActyxEvent): [number, string] => [e.meta.timestampMicros, e.meta.eventId],
@@ -150,22 +151,11 @@ export const EventFnsFromEventStoreV2 = (
 
   const currentOffsets = () => eventStore.offsets().then(x => x.present)
 
-  const convertOrder = (ord?: 'Asc' | 'Desc') => {
-    return ord === 'Desc'
-      ? PersistedEventsSortOrders.Descending
-      : PersistedEventsSortOrders.Ascending
-  }
-
   const queryKnownRange = (rangeQuery: RangeQuery) => {
     const { lowerBound, upperBound, query, order } = rangeQuery
 
     return eventStore
-      .persistedEvents(
-        { default: 'min', psns: lowerBound || {} },
-        { default: 'min', psns: upperBound },
-        query || allEvents,
-        convertOrder(order),
-      )
+      .query(lowerBound || {}, upperBound, query || allEvents, order || EventsSortOrder.Ascending)
       .concatMap(x => x.map(wrap))
       .toArray()
       .toPromise()
@@ -178,23 +168,16 @@ export const EventFnsFromEventStoreV2 = (
   ) => {
     const { lowerBound, upperBound, query, order } = rangeQuery
 
-    const ord = convertOrder(order)
-
     const lb = lowerBound || {}
 
     const cb =
-      ord === PersistedEventsSortOrders.Ascending
+      order === EventsSortOrder.Ascending
         ? bookKeepingOnChunk(lb, chunkSize, onChunk)
         : reverseBookKeepingOnChunk(upperBound, chunkSize, onChunk)
 
     return (
       eventStore
-        .persistedEvents(
-          { default: 'min', psns: lb },
-          { default: 'min', psns: upperBound },
-          query || allEvents,
-          ord,
-        )
+        .query(lb, upperBound, query || allEvents, order || EventsSortOrder.Ascending)
         // The only way to avoid parallel invocations is to use mergeScan with final arg=1
         .mergeScan((_a: void, chunk: Events) => Observable.from(cb(chunk)), void 0, 1)
         .toPromise()
@@ -239,12 +222,7 @@ export const EventFnsFromEventStoreV2 = (
     const cb = bookKeepingOnChunk(lb, maxChunkSize || 5000, onChunk)
 
     const x = eventStore
-      .allEvents(
-        { psns: lb, default: 'min' },
-        { psns: {}, default: 'max' },
-        query || allEvents,
-        AllEventsSortOrders.Unsorted,
-      )
+      .subscribe(lb, query || allEvents)
       // The only way to avoid parallel invocations is to use mergeScan with final arg=1
       .mergeScan((_a: void, chunk: Events) => Observable.from(cb(chunk)), void 0, 1)
       .subscribe()
@@ -294,12 +272,12 @@ export const EventFnsFromEventStoreV2 = (
   // Find first currently known event according to given sorting
   const findFirstKnown = async <E>(
     query: Where<E>,
-    order: PersistedEventsSortOrders,
+    order: EventsSortOrder,
   ): Promise<[ActyxEvent<E> | undefined, OffsetMap]> => {
     const cur = await currentOffsets()
 
     const firstEvent = await eventStore
-      .persistedEvents({ psns: {}, default: 'min' }, { psns: cur, default: 'min' }, query, order)
+      .query({}, cur, query, order)
       .concatMap(x => x)
       .first()
       .toPromise()
@@ -316,12 +294,12 @@ export const EventFnsFromEventStoreV2 = (
     const cur = await currentOffsets()
 
     const reducedValue = await eventStore
-      .persistedEvents(
-        { psns: {}, default: 'min' },
-        { psns: cur, default: 'min' },
+      .query(
+        {},
+        cur,
         query,
         // Doesn't matter, we have to go through all known events anyways
-        PersistedEventsSortOrders.Ascending,
+        EventsSortOrder.Ascending,
       )
       .concatMap(x => x.map(e => wrap<E>(e)))
       .reduce(reduce, initial)
@@ -410,7 +388,7 @@ export const EventFnsFromEventStoreV2 = (
     let cancelSubscription: CancelSubscription | null = null
 
     /** If lamport order is desired, we can use store-support to speed up the query. */
-    findFirstKnown(query, PersistedEventsSortOrders.Ascending).then(([earliest, offsets]) => {
+    findFirstKnown(query, EventsSortOrder.Ascending).then(([earliest, offsets]) => {
       if (cancelled) {
         return
       }
@@ -438,7 +416,7 @@ export const EventFnsFromEventStoreV2 = (
     let cancelSubscription: CancelSubscription | null = null
 
     /** If lamport order is desired, we can use store-support to speed up the query. */
-    findFirstKnown(query, PersistedEventsSortOrders.Descending).then(([latest, offsets]) => {
+    findFirstKnown(query, EventsSortOrder.Descending).then(([latest, offsets]) => {
       if (cancelled) {
         return
       }

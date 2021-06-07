@@ -100,7 +100,7 @@ export const Lamport = {
 
 /** Offset within an Actyx event stream. @public */
 export type Offset = number
-const mkOffset = (psn: number): Offset => psn as Offset
+const mkOffset = (n: number): Offset => n as Offset
 
 /** Functions related to Offsets. @public */
 export const Offset = {
@@ -397,3 +397,18 @@ export type AppManifest = Readonly<{
   /** Manifest signature, if it’s not an example app. */
   signature?: string
 }>
+
+/**
+ * Sort order for persisted events.
+ * @public
+ */
+export enum EventsSortOrder {
+  /** Strictly ascending, meaning events are strictly ordered by eventId. */
+  Ascending = 'asc',
+
+  /** Strictly descending, meaning events are strictly ordered by eventId, reverse. */
+  Descending = 'desc',
+
+  /** Ascending per stream, meaning between different streams there is no specific order guaranteed. */
+  StreamAscending = 'stream-asc',
+}

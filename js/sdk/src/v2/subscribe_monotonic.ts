@@ -9,12 +9,20 @@ import { fromNullable, Option } from 'fp-ts/lib/Option'
 import { greaterThan } from 'fp-ts/lib/Ord'
 import { Observable } from 'rxjs'
 import { SnapshotStore } from '../snapshotStore'
-import { EventKey, FixedStart, MsgType, OffsetMap, SerializedStateSnap, Where } from '../types'
+import {
+  EventKey,
+  EventsSortOrder,
+  FixedStart,
+  MsgType,
+  OffsetMap,
+  SerializedStateSnap,
+  Where,
+} from '../types'
 import { runStats, takeWhileInclusive } from '../util'
 import { getInsertionIndex } from '../util/binarySearch'
 import { EventStore } from './eventStore'
 import log from './log'
-import { AllEventsSortOrders, Event, Events, PersistedEventsSortOrders } from './types'
+import { Event, Events } from './types'
 
 // New API:
 // Stream events as they become available, until time-travel would occour.
@@ -68,61 +76,65 @@ export const eventsMonotonic = (
     subscriptions: Where<unknown>,
     fixedStart: FixedStart,
   ): Observable<EventsOrTimetravel> => {
-    const realtimeEvents = eventStore.allEvents(
-      {
-        psns: fixedStart.from,
-        default: 'min',
-      },
-      { psns: {}, default: 'max' },
+    const realtimeEvents = eventStore.subscribe(
+      fixedStart.from,
       subscriptions,
-      AllEventsSortOrders.Unsorted,
-      fixedStart.horizon,
+      // FIXME: Horizon not supported in V2 yet. https://github.com/Actyx/Cosmos/issues/6730
+      // fixedStart.horizon,
     )
 
     let latest = fixedStart.latestEventKey
 
-    return realtimeEvents
-      .filter(next => next.length > 0)
-      .mergeMap<Events, EventsOrTimetravel>(nextUnsorted => {
+    return (
+      realtimeEvents
         // Delivered chunks are potentially not sorted
-        const next = [...nextUnsorted].sort(EventKey.ord.compare)
-
-        // Take while we are going strictly forwards
-        const nextKey = next[0]
-        const nextIsOlderThanLatest = eventKeyGreater(latest, nextKey)
-
-        if (nextIsOlderThanLatest) {
-          log.submono.debug(
-            'started from',
-            fixedStart.from,
-            'got triggered by stream',
-            nextKey.stream,
-            'offset',
-            nextKey.offset,
-          )
-
-          return Observable.from(
-            snapshotStore
-              .invalidateSnapshots(GenericSemantics, fishId, nextKey)
-              .then(() => timeTravelMsg(fishId, latest, next)),
-          )
-        }
-
-        log.submono.debug(
-          'order-check passed: ' + EventKey.format(nextKey) + ' > ' + EventKey.format(latest),
-          'for realtime chunk of size',
-          next.length,
+        // FIXME: Store should do the horizon-filtering.
+        .map(nextUnsorted =>
+          (fixedStart.horizon
+            ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              nextUnsorted.filter(x => eventKeyGreater(x, fixedStart.horizon!))
+            : [...nextUnsorted]
+          ).sort(EventKey.ord.compare),
         )
+        .filter(next => next.length > 0)
+        .mergeMap<Events, EventsOrTimetravel>(next => {
+          // Take while we are going strictly forwards
+          const nextKey = next[0]
+          const nextIsOlderThanLatest = eventKeyGreater(latest, nextKey)
 
-        // We have captured `latest` in the closure and are updating it here
-        latest = next[next.length - 1]
-        return Observable.of({
-          type: MsgType.events,
-          events: next,
-          caughtUp: true,
+          if (nextIsOlderThanLatest) {
+            log.submono.debug(
+              'started from',
+              fixedStart.from,
+              'got triggered by stream',
+              nextKey.stream,
+              'offset',
+              nextKey.offset,
+            )
+
+            return Observable.from(
+              snapshotStore
+                .invalidateSnapshots(GenericSemantics, fishId, nextKey)
+                .then(() => timeTravelMsg(fishId, latest, next)),
+            )
+          }
+
+          log.submono.debug(
+            'order-check passed: ' + EventKey.format(nextKey) + ' > ' + EventKey.format(latest),
+            'for realtime chunk of size',
+            next.length,
+          )
+
+          // We have captured `latest` in the closure and are updating it here
+          latest = next[next.length - 1]
+          return Observable.of({
+            type: MsgType.events,
+            events: next,
+            caughtUp: true,
+          })
         })
-      })
-      .pipe(takeWhileInclusive(m => m.type !== MsgType.timetravel))
+        .pipe(takeWhileInclusive(m => m.type !== MsgType.timetravel))
+    )
   }
 
   // The only reason we need the "catch up to present" step is that `allEvents` makes no effort whatsoever
@@ -144,20 +156,35 @@ export const eventsMonotonic = (
     let latest = fixedStart.latestEventKey
 
     const persisted: Observable<EventsMsg> = eventStore
-      .persistedEvents(
-        { default: 'min', psns: fixedStart.from },
-        { default: 'min', psns: present },
+      .query(
+        fixedStart.from,
+        present,
         subscriptions,
-        PersistedEventsSortOrders.Ascending,
-        fixedStart.horizon,
+        EventsSortOrder.Ascending,
+        // FIXME: Horizon not supported in V2 yet. https://github.com/Actyx/Cosmos/issues/6730
+        // fixedStart.horizon,
       )
-      .filter(chunk => chunk.length > 0)
-      .do(chunk => (latest = chunk[chunk.length - 1]))
-      .map(chunk => ({
-        type: MsgType.events,
-        events: chunk,
-        caughtUp: false,
-      }))
+      .map<Events, EventsMsg>(chunk => {
+        if (!fixedStart.horizon) {
+          return {
+            type: MsgType.events,
+            events: chunk,
+            caughtUp: false,
+          }
+        }
+
+        // FIXME: Store should filter
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const afterHorizonEvents = chunk.filter(x => eventKeyGreater(x, fixedStart.horizon!))
+
+        return {
+          type: MsgType.events,
+          events: afterHorizonEvents,
+          caughtUp: false,
+        }
+      })
+      .filter(msg => msg.events.length > 0)
+      .do(msg => (latest = msg.events[msg.events.length - 1]))
 
     const realtimeStream = Observable.defer(() =>
       realtimeFrom(fishId, subscriptions, {
@@ -191,12 +218,21 @@ export const eventsMonotonic = (
     whenValid: () => Observable<EventsOrTimetravel>,
   ): Observable<EventsOrTimetravel> => {
     const earliestNewEvents = eventStore
-      .persistedEvents(
-        { default: 'min', psns: attemptStartFrom.from },
-        { default: 'min', psns: present },
+      .query(
+        attemptStartFrom.from,
+        present,
         subscriptions,
-        PersistedEventsSortOrders.Ascending,
-        attemptStartFrom.horizon,
+        EventsSortOrder.Ascending,
+        // FIXME: Horizon not supported in V2 yet. https://github.com/Actyx/Cosmos/issues/6730
+        // attemptStartFrom.horizon,
+      )
+      // FIXME: Store should filter
+      .map(
+        evts =>
+          attemptStartFrom.horizon
+            ? // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+              evts.filter(x => eventKeyGreater(x, attemptStartFrom.horizon!))
+            : evts,
       )
       // testEventStore can send empty chunks, real store hopefully will not
       .filter(chunk => chunk.length > 0)

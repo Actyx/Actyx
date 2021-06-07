@@ -57,7 +57,7 @@ export type AppManifest = Readonly<{
 export type AutoCappedQuery = {
     lowerBound?: OffsetMap;
     query?: Where<unknown>;
-    order?: 'Asc' | 'Desc';
+    order?: EventsSortOrder;
 };
 
 // @public
@@ -81,7 +81,6 @@ export type EventChunk = {
 export interface EventFns {
     currentOffsets: () => Promise<OffsetMap>;
     emit: (events: ReadonlyArray<TaggedEvent>) => PendingEmission;
-    // (undocumented)
     readonly nodeId: NodeId;
     observeBestMatch: <E>(query: Where<E>, shouldReplace: (candidate: ActyxEvent<E>, cur: ActyxEvent<E>) => boolean, onReplaced: (event: E, metadata: Metadata) => void) => CancelSubscription;
     // @beta
@@ -138,6 +137,13 @@ export type EventsMsg<E> = Readonly<{
 
 // @alpha
 export type EventsOrTimetravel<E> = StateMsg | EventsMsg<E> | TimeTravelMsg<E>;
+
+// @public
+export enum EventsSortOrder {
+    Ascending = "asc",
+    Descending = "desc",
+    StreamAscending = "stream-asc"
+}
 
 // @public
 export type EventSubscription = {
@@ -258,7 +264,7 @@ export type Offset = number;
 
 // @public
 export const Offset: {
-    of: (psn: number) => Offset;
+    of: (n: number) => Offset;
     zero: number;
     min: number;
     max: number;
@@ -297,7 +303,7 @@ export type RangeQuery = {
     query?: Where<unknown>;
     lowerBound?: OffsetMap;
     upperBound: OffsetMap;
-    order?: 'Asc' | 'Desc';
+    order?: EventsSortOrder;
 };
 
 // @alpha
@@ -327,8 +333,6 @@ export const StreamId: {
 
 // @public
 export interface Tag<E> extends Tags<E> {
-    // (undocumented)
-    readonly rawTag: string;
     withId(name: string): Tags<E>;
 }
 
@@ -347,7 +351,6 @@ export interface Tags<E> extends Where<E> {
     and(tag: string): Tags<E>;
     apply(...events: E[]): ReadonlyArray<TaggedEvent>;
     local(): Tags<E>;
-    readonly rawTags: ReadonlyArray<string>;
 }
 
 // @public
