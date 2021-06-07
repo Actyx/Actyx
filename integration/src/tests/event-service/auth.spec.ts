@@ -11,6 +11,7 @@ import {
 import WebSocket from 'ws'
 import { run } from '../../util'
 import { createTestNodeLocal } from '../../test-node-factory'
+import { AppManifest } from '@actyx/pond'
 
 const UNAUTHORIZED_TOKEN =
   'AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ=='
@@ -26,6 +27,41 @@ const getOffsets = (httpApi: string, authHeaderValue?: string) =>
   })
 
 describe('auth http', () => {
+  const signedManifest: AppManifest = {
+    appId: 'com.actyx.auth-test',
+    displayName: 'auth test app',
+    version: 'v0.0.1',
+    signature:
+      'v2tzaWdfdmVyc2lvbgBtZGV2X3NpZ25hdHVyZXhYZ0JGTTgyZVpMWTdJQzhRbmFuVzFYZ0xrZFRQaDN5aCtGeDJlZlVqYm9qWGtUTWhUdFZNRU9BZFJaMVdTSGZyUjZUOHl1NEFKdFN5azhMbkRvTVhlQnc9PWlkZXZQdWJrZXl4LTBuejFZZEh1L0pEbVM2Q0ltY1pnT2o5WTk2MHNKT1ByYlpIQUpPMTA3cVcwPWphcHBEb21haW5zgmtjb20uYWN0eXguKm1jb20uZXhhbXBsZS4qa2F4U2lnbmF0dXJleFg4QmwzekNObm81R2JwS1VvYXRpN0NpRmdyMEtHd05IQjFrVHdCVkt6TzlwelcwN2hGa2tRK0dYdnljOVFhV2hIVDVhWHp6TyttVnJ4M2VpQzdUUkVBUT09/w==',
+  }
+
+  it('should get token for signed manifest', () =>
+    run((httpApi) =>
+      getToken(signedManifest, httpApi)
+        .then((x) => x.json())
+        .then((x) =>
+          expect(x).toEqual({
+            token: expect.any(String),
+          }),
+        ),
+    ))
+
+  it('should fail to get token for falsified manifest', () =>
+    run((httpApi) =>
+      getToken({ ...signedManifest, version: '1' }, httpApi)
+        .then((resp) => {
+          expect(resp.status).toEqual(400)
+          return resp.json()
+        })
+        .then((json) =>
+          expect(json).toEqual({
+            code: 'ERR_MANIFEST_INVALID',
+            message:
+              'Invalid manifest. Failed to validate app manifest. Invalid signature for provided input.',
+          }),
+        ),
+    ))
+
   it('should fail for malformed requests', () =>
     run((httpApi) =>
       fetch(httpApi + API_V2_PATH + AUTH_SEG, {

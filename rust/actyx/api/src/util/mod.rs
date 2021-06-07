@@ -1,11 +1,11 @@
 pub mod filters;
 pub mod hyper_serve;
 
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 
 use actyx_sdk::{AppId, NodeId, Timestamp};
 use actyx_util::formats::NodeCycleCount;
-use crypto::KeyStoreRef;
+use crypto::{KeyStoreRef, PublicKey};
 use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use warp::*;
@@ -16,6 +16,7 @@ pub struct NodeInfo {
     pub key_store: KeyStoreRef,
     pub token_validity: u32,
     pub cycles: NodeCycleCount,
+    pub ax_public_key: PublicKey,
 }
 
 impl NodeInfo {
@@ -25,9 +26,24 @@ impl NodeInfo {
             key_store,
             cycles,
             token_validity: get_token_validity(),
+            ax_public_key: get_ax_public_key(),
         }
     }
 }
+
+fn get_ax_public_key() -> PublicKey {
+    let key = std::env::var("AX_PUBLIC_KEY")
+        .ok()
+        .and_then(|key| PublicKey::from_str(&key).ok())
+        .unwrap_or_else(|| {
+            tracing::warn!(target: "AUTH", "AX_PUBLIC_KEY is not set or can not be parsed! Falling back to default key.");
+            // Corresponding private key is in certs/README.md
+            PublicKey::from_str("075i62XGQJuXjv6nnLQyJzECZhF29acYvYeEOJ3kc5M8=").unwrap()
+        });
+    tracing::info!(target: "AUTH", "{}", format!("Actyx public key: '{}'", key));
+    key
+}
+
 fn get_token_validity() -> u32 {
     if cfg!(debug_assertions) {
         std::env::var("AX_API_TOKEN_VALIDITY")

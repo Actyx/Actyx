@@ -2,35 +2,41 @@ use actyx_sdk::AppId;
 use warp::filters::*;
 use warp::*;
 
-use crate::events::service::EventService;
-use crate::{
-    events::http::handlers,
-    util::filters::{accept_json, accept_ndjson},
-};
+use crate::events::{http::handlers, service::EventService};
+use crate::util::filters::{accept_json, accept_ndjson, authenticate, header_token};
+use crate::NodeInfo;
 
-fn with_service(
+pub fn with_service(
     event_service: EventService,
 ) -> impl Filter<Extract = (EventService,), Error = std::convert::Infallible> + Clone {
     any().map(move || event_service.clone())
 }
 
+fn authorize(node_info: NodeInfo) -> impl Filter<Extract = (AppId,), Error = Rejection> + Clone {
+    authenticate(node_info, header_token())
+}
+
 pub fn offsets(
+    node_info: NodeInfo,
     event_service: EventService,
-    auth: impl Filter<Extract = (AppId,), Error = Rejection> + Clone,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    auth.and(path!("offsets"))
+    path("offsets")
+        .and(path::end())
         .and(get())
+        .and(authorize(node_info))
         .and(accept_json())
         .and(with_service(event_service))
         .and_then(handlers::offsets)
 }
 
 pub fn publish(
+    node_info: NodeInfo,
     event_service: EventService,
-    auth: impl Filter<Extract = (AppId,), Error = Rejection> + Clone,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    auth.and(path!("publish"))
+    path("publish")
+        .and(path::end())
         .and(post())
+        .and(authorize(node_info))
         .and(accept_json())
         .and(body::json())
         .and(with_service(event_service))
@@ -38,11 +44,13 @@ pub fn publish(
 }
 
 pub fn query(
+    node_info: NodeInfo,
     event_service: EventService,
-    auth: impl Filter<Extract = (AppId,), Error = Rejection> + Clone,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    auth.and(path!("query"))
+    path("query")
+        .and(path::end())
         .and(post())
+        .and(authorize(node_info))
         .and(accept_ndjson())
         .and(body::json())
         .and(with_service(event_service))
@@ -50,11 +58,13 @@ pub fn query(
 }
 
 pub fn subscribe(
+    node_info: NodeInfo,
     event_service: EventService,
-    auth: impl Filter<Extract = (AppId,), Error = Rejection> + Clone,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    auth.and(path!("subscribe"))
+    path("subscribe")
+        .and(path::end())
         .and(post())
+        .and(authorize(node_info))
         .and(accept_ndjson())
         .and(body::json())
         .and(with_service(event_service))
@@ -62,11 +72,13 @@ pub fn subscribe(
 }
 
 pub fn subscribe_monotonic(
+    node_info: NodeInfo,
     event_service: EventService,
-    auth: impl Filter<Extract = (AppId,), Error = Rejection> + Clone,
 ) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
-    auth.and(path!("subscribe_monotonic"))
+    path("subscribe_monotonic")
+        .and(path::end())
         .and(post())
+        .and(authorize(node_info))
         .and(accept_ndjson())
         .and(body::json())
         .and(with_service(event_service))

@@ -80,6 +80,10 @@ impl AxPrivateKey {
         self.0.into()
     }
 
+    pub(crate) fn private_key(&self) -> PrivateKey {
+        self.0
+    }
+
     /// Encodes both the private and the associated public key
     fn encode(&self) -> (String, String) {
         let private = format!("{}", self.0);

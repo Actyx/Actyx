@@ -8,8 +8,8 @@ use crate::events::service::EventService;
 use crate::util::NodeInfo;
 
 pub(crate) fn routes(
-    auth_args: NodeInfo,
+    node_info: NodeInfo,
     event_service: EventService,
 ) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    http::routes(auth_args.clone(), event_service.clone()).or(ws::routes(auth_args, event_service))
+    http::routes(node_info.clone(), event_service.clone()).or(ws::routes(node_info, event_service))
 }

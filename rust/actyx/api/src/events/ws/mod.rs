@@ -14,10 +14,10 @@ mod subscribe;
 mod subscribe_monotonic;
 
 pub(crate) fn routes(
-    auth_args: NodeInfo,
+    node_info: NodeInfo,
     event_service: EventService,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
-    let auth = crate::util::filters::authenticate(auth_args, query_token());
+    let auth = crate::util::filters::authenticate(node_info, query_token());
     let services = Arc::new(btreemap! {
       "offsets"             => offsets::service(event_service.clone()).boxed(),
       "query"               => query::service(event_service.clone()).boxed(),

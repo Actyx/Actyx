@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 actyx_sdk = { version = "0.1", path = "../../sdk" }
 ax-futures-util = { path = "../ax-futures-util" }
+certs = { path = "../certs" }
 crypto = { path = "../crypto" }
 swarm = { path = "../swarm" }
 runtime = { path = "../runtime" }

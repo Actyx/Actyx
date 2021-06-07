@@ -6,7 +6,8 @@ mod node_connection;
 mod private_key;
 
 use cmd::{
-    internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts, swarms::SwarmsOpts, users::UsersOpts, Verbosity,
+    apps::AppsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts, swarms::SwarmsOpts,
+    users::UsersOpts, Verbosity,
 };
 use structopt::StructOpt;
 use util::version::NodeVersion;
@@ -33,6 +34,7 @@ struct Opt {
 #[allow(clippy::clippy::large_enum_variant)]
 enum CommandsOpt {
     // structopt will use the enum variant name in lowercase as a subcommand
+    Apps(AppsOpts),
     Settings(SettingsOpts),
     Swarms(SwarmsOpts),
     Nodes(NodesOpts),
@@ -57,6 +59,7 @@ async fn main() {
             ..
         } => {
             match cmd {
+                CommandsOpt::Apps(opts) => cmd::apps::run(opts, json).await,
                 CommandsOpt::Nodes(opts) => cmd::nodes::run(opts, json).await,
                 CommandsOpt::Settings(opts) => cmd::settings::run(opts, json).await,
                 CommandsOpt::Swarms(opts) => cmd::swarms::run(opts, json).await,
@@ -67,6 +70,7 @@ async fn main() {
         _ => {
             let mut app = Opt::clap();
             app.write_long_help(&mut std::io::stderr()).unwrap();
+            println!();
         }
     }
 }

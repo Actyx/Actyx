@@ -241,6 +241,7 @@ dependencies = [
  "ax-futures-util",
  "base64",
  "bytes 1.0.1",
+ "certs",
  "chrono",
  "crypto",
  "derive_more",
@@ -542,6 +543,7 @@ dependencies = [
  "banyan-utils",
  "base64",
  "bytes 1.0.1",
+ "certs",
  "chrono",
  "clap",
  "crypto",
@@ -988,6 +990,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a72c244c1ff497a746a7e1fb3d14bd08420ecda70c8f25c7112f2781652d787"
 dependencies = [
  "jobserver",
+]
+
+[[package]]
+name = "certs"
+version = "0.1.0"
+dependencies = [
+ "actyx_sdk",
+ "anyhow",
+ "base64",
+ "crypto",
+ "derive_more",
+ "regex",
+ "serde 1.0.126",
+ "serde_cbor",
+ "serde_json",
+ "structopt",
+ "util",
 ]
 
 [[package]]

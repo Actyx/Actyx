@@ -19,8 +19,8 @@ pub enum ApiError {
     )]
     NotAcceptable { supported: String, requested: String },
 
-    #[display(fmt = "Property <manifest property> is either missing or has an invalid value.")]
-    InvalidManifest,
+    #[display(fmt = "Invalid manifest. {}", msg)]
+    InvalidManifest { msg: String },
 
     #[display(fmt = "'{}' is not authorized. Provide a valid app license to the node.", app_id)]
     #[allow(dead_code)]
@@ -78,7 +78,7 @@ impl From<ApiError> for ApiErrorResponse {
             ApiError::AppUnauthorized { .. } => (StatusCode::UNAUTHORIZED, "ERR_APP_UNAUTHORIZED"),
             ApiError::BadRequest { .. } => (StatusCode::BAD_REQUEST, "ERR_BAD_REQUEST"),
             ApiError::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "ERR_INTERNAL"),
-            ApiError::InvalidManifest => (StatusCode::BAD_REQUEST, "ERR_MANIFEST_INVALID"),
+            ApiError::InvalidManifest { .. } => (StatusCode::BAD_REQUEST, "ERR_MANIFEST_INVALID"),
             ApiError::MethodNotAllowed => (StatusCode::METHOD_NOT_ALLOWED, "ERR_METHOD_NOT_ALLOWED"),
             ApiError::MissingAuthorizationHeader => (StatusCode::UNAUTHORIZED, "ERR_MISSING_AUTH_HEADER"),
             ApiError::MissingTokenParameter => (StatusCode::UNAUTHORIZED, "ERR_MISSING_TOKEN_PARAM"),

@@ -1,6 +1,6 @@
 use actyx_sdk::{app_id, service::AuthenticationResponse, NodeId};
 use bytes::Bytes;
-use crypto::{KeyStore, KeyStoreRef, PublicKey};
+use crypto::{KeyStore, KeyStoreRef, PrivateKey, PublicKey};
 use hyper::Response;
 use parking_lot::lock_api::RwLock;
 use serde_json::*;
@@ -39,6 +39,7 @@ async fn test_routes() -> (
         key_store: key_store.clone(),
         node_id: node_key.into(),
         token_validity: 300,
+        ax_public_key: PrivateKey::generate().into(),
     };
     let route = super::routes(auth_args.clone(), store).with(warp::trace::named("api_test"));
 
@@ -257,10 +258,10 @@ async fn ws() {
 
     assert_err_response(
         ws_test(&format!("/x?{}", token)).await,
-        http::StatusCode::UNAUTHORIZED,
+        http::StatusCode::NOT_FOUND,
         json!({
-          "code": "ERR_MISSING_AUTH_HEADER",
-          "message": "\"Authorization\" header is missing."
+          "code": "ERR_NOT_FOUND",
+          "message": "The requested resource could not be found."
         }),
     );
 }
@@ -286,7 +287,7 @@ async fn internal_err() {
 async fn unauthorized() {
     let (route, ..) = test_routes().await;
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .header("Authorization", format!("Bearer {}", UNAUTHORIZED_TOKEN))
         .reply(&route)
         .await;
@@ -308,7 +309,7 @@ async fn should_fail_when_token_payload_shape_is_wrong() {
     let token_with_wrong_payload = base64::encode(signed);
 
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .header("Authorization", format!("Bearer {}", token_with_wrong_payload))
         .reply(&route)
         .await;
@@ -325,7 +326,7 @@ async fn should_fail_when_token_payload_shape_is_wrong() {
 #[tokio::test]
 async fn unauthorized_missing_header() {
     let (route, ..) = test_routes().await;
-    let resp = test::request().path("/api/v2/events/node_id").reply(&route).await;
+    let resp = test::request().path("/api/v2/events/offsets").reply(&route).await;
     assert_err_response(
         resp,
         http::StatusCode::UNAUTHORIZED,
@@ -340,7 +341,7 @@ async fn unauthorized_missing_header() {
 async fn unauthorized_unsupported() {
     let (route, ..) = test_routes().await;
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .header("Authorization", "Foo hello")
         .reply(&route)
         .await;
@@ -358,7 +359,7 @@ async fn unauthorized_unsupported() {
 async fn unauthorized_invalid() {
     let (route, ..) = test_routes().await;
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .header("Authorization", "Bearer invalid")
         .reply(&route)
         .await;

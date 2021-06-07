@@ -1,0 +1,19 @@
+[package]
+name = "certs"
+version = "0.1.0"
+authors = ["Actyx AG"]
+edition = "2018"
+
+[dependencies]
+crypto = { path = "../crypto" }
+actyx_sdk = { path = "../../sdk" }
+util = { path = "../util" }
+
+anyhow = "1.0.40"
+base64 = "0.13.0"
+derive_more = "0.99.13"
+regex = "1"
+serde = { version = "1.0.125", features = ["derive"] }
+serde_cbor = "0.11.1"
+serde_json = "1.0.64"
+structopt = "0.3.21"

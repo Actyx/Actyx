@@ -6,6 +6,7 @@ members = [
   "api",
   "ax",
   "ax-futures-util",
+  "certs",
   "settings",
   "crypto",
   "libp2p-streaming-response",
