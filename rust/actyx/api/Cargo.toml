@@ -5,7 +5,7 @@ authors = ["Actyx AG"]
 edition = "2018"
 
 [dependencies]
-actyx_sdk = { version = "0.6", path = "../../sdk" }
+actyx_sdk = { version = "0.1", path = "../../sdk" }
 ax-futures-util = { path = "../ax-futures-util" }
 crypto = { path = "../crypto" }
 swarm = { path = "../swarm" }

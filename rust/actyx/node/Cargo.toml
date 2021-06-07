@@ -12,7 +12,7 @@ path = "src/bin/linux.rs"
 prost-build = "0.7.0"
 
 [dependencies]
-actyx_sdk = { version = "0.6", path = "../../sdk" }
+actyx_sdk = { version = "0.1", path = "../../sdk" }
 api = { path = "../api" }
 ax-futures-util = { path = "../ax-futures-util" }
 settings = { path = "../settings" }
@@ -62,7 +62,7 @@ crate-type = ["lib"]
 name = "node"
 
 [dev-dependencies]
-actyx_sdk = { version = "0.6", path = "../../sdk", features = ["client"] }
+actyx_sdk = { version = "0.1", path = "../../sdk", features = ["client"] }
 criterion = { version = "0.3.4", features = ["html_reports", "async_tokio" ] }
 maplit = "1.0.2"
 tracing-subscriber = "0.2.17"

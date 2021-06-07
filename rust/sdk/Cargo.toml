@@ -1,6 +1,6 @@
 [package]
 name = "actyx_sdk"
-version = "0.6.0"
+version = "0.1.0"
 authors = ["Actyx AG <developer@actyx.io>"]
 edition = "2018"
 description = "Tools for interacting with the services of an Actyx node"
@@ -24,7 +24,7 @@ arb = ["quickcheck", "rand"]
 [dependencies]
 abomonation = { version = "0.7.3", optional = true }
 abomonation_derive = { version = "0.5.0", optional = true }
-actyx_sdk_macros = { version = "~0.2", path = "../sdk_macros" }
+actyx_sdk_macros = { version = "0.1", path = "../sdk_macros" }
 anyhow = "1.0.40"
 async-trait = "0.1.50"
 base64 = "0.13.0"
