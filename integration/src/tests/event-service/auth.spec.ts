@@ -3,9 +3,10 @@ import {
   getToken,
   mkEventsPath,
   trialManifest,
-  NODE_ID_SEG,
-  AUTH_SEG,
   API_V2_PATH,
+  EVENTS_PATH,
+  OFFSETS_SEG,
+  AUTH_SEG,
 } from '../../http-client'
 import WebSocket from 'ws'
 import { run } from '../../util'
@@ -14,8 +15,8 @@ import { createTestNodeLocal } from '../../test-node-factory'
 const UNAUTHORIZED_TOKEN =
   'AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ=='
 
-const getId = (httpApi: string, authHeaderValue?: string) =>
-  fetch(httpApi + mkEventsPath(NODE_ID_SEG), {
+const getOffsets = (httpApi: string, authHeaderValue?: string) =>
+  fetch(httpApi + API_V2_PATH + EVENTS_PATH + OFFSETS_SEG, {
     method: 'get',
     headers: {
       Accept: 'application/json',
@@ -69,10 +70,10 @@ describe('auth http', () => {
 
   it('should fail when token not authorized', () =>
     run((httpApi) =>
-      getId(httpApi, 'Bearer ' + UNAUTHORIZED_TOKEN)
-        .then((nodeIdResponse) => nodeIdResponse.json())
-        .then((x) =>
-          expect(x).toEqual({
+      getOffsets(httpApi, 'Bearer ' + UNAUTHORIZED_TOKEN)
+        .then((resp) => resp.json())
+        .then((json) =>
+          expect(json).toEqual({
             code: 'ERR_TOKEN_UNAUTHORIZED',
             message: 'Unauthorized token.',
           }),
@@ -81,7 +82,7 @@ describe('auth http', () => {
 
   it('should fail when auth header has wrong value', () =>
     run((httpApi) =>
-      getId(httpApi, 'Foo bar')
+      getOffsets(httpApi, 'Foo bar')
         .then((x) => x.json())
         .then((x) =>
           expect(x).toEqual({
@@ -93,7 +94,7 @@ describe('auth http', () => {
 
   it('should fail when token is invalid', () =>
     run((httpApi) =>
-      getId(httpApi, 'Bearer invalid')
+      getOffsets(httpApi, 'Bearer invalid')
         .then((x) => x.json())
         .then((x) =>
           expect(x).toEqual({
@@ -106,7 +107,7 @@ describe('auth http', () => {
 
   it('should fail when authorization header is missing', () =>
     run((httpApi) =>
-      getId(httpApi)
+      getOffsets(httpApi)
         .then((x) => x.json())
         .then((x) =>
           expect(x).toEqual({
@@ -122,16 +123,16 @@ describe('auth http', () => {
     const token = await getToken(trialManifest, testNode._private.httpApiOrigin)
       .then((x) => x.json())
       .then((x) => x.token)
-    const gId = (origin: string) => getId(origin, 'Bearer ' + token).then((x) => x.json())
+    const offsets = (origin: string) => getOffsets(origin, 'Bearer ' + token).then((x) => x.json())
 
     // assert we can access event service
-    const response = await gId(testNode._private.httpApiOrigin)
-    expect(response).toEqual({ nodeId: expect.any(String) })
+    const response = await offsets(testNode._private.httpApiOrigin)
+    expect(response).toEqual({ present: expect.any(Object), toReplicate: expect.any(Object) })
     await testNode._private.shutdown()
 
     // start the node again and assert that we can't reuse previous token
     testNode = await createTestNodeLocal(nodeName, true)
-    const result = await gId(testNode._private.httpApiOrigin)
+    const result = await offsets(testNode._private.httpApiOrigin)
     expect(result).toEqual({ code: 'ERR_TOKEN_EXPIRED', message: 'Expired token.' })
   })
 
@@ -170,7 +171,7 @@ describe('auth ws', () => {
           const ws = new WebSocket(httpApi + mkEventsPath(`?${x.token}`))
           const message = {
             type: 'request',
-            serviceId: 'node_id',
+            serviceId: 'offsets',
             requestId: 1,
             payload: null,
           }
@@ -180,7 +181,11 @@ describe('auth ws', () => {
               responses.push(JSON.parse(x.toString()))
               if (responses.length === 2) {
                 expect(responses).toEqual([
-                  { type: 'next', requestId: 1, payload: { nodeId: expect.any(String) } },
+                  {
+                    type: 'next',
+                    requestId: 1,
+                    payload: { present: expect.any(Object), toReplicate: expect.any(Object) },
+                  },
                   { type: 'complete', requestId: 1 },
                 ])
                 ws.terminate()

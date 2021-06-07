@@ -722,7 +722,7 @@ impl BanyanStore {
         let min_lamport = *lamports.peek().unwrap();
         let kvs = lamports
             .zip(events)
-            .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
+            .map(|(lamport, (tags, payload))| (AxKey::new(tags.into(), lamport, timestamp), payload));
         let min_offset = self.transform_stream(&mut guard, |txn, tree| {
             let snapshot = tree.snapshot();
             if snapshot.level() > MAX_TREE_LEVEL {

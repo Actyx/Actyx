@@ -1,14 +1,8 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
- * Copyright (C) 2021 Actyx AG
- */
-/*
- * Actyx Pond: A TypeScript framework for writing distributed apps
- * deployed on peer-to-peer networks, without any servers.
  *
- * Copyright (C) 2020 Actyx AG
+ * Copyright (C) 2021 Actyx AG
  */
 import * as t from 'io-ts'
 import { equals } from 'ramda'
@@ -35,7 +29,6 @@ import {
 } from './types'
 
 export const enum RequestTypes {
-  NodeId = 'node_id',
   Offsets = 'offsets',
   Query = 'query',
   Subscribe = 'subscribe',
@@ -75,16 +68,6 @@ export type AllEventsRequest = t.TypeOf<typeof AllEventsRequest>
 export const PersistEventsRequest = t.readonly(t.type({ data: UnstoredEvents }))
 export type PersistEventsRequest = t.TypeOf<typeof PersistEventsRequest>
 
-const GetSourceIdResponse = t.type({ nodeId: NodeId.FromString })
-
-export const getNodeId = (multiplexedWebsocket: MultiplexedWebsocket): Promise<NodeId> =>
-  multiplexedWebsocket
-    .request(RequestTypes.NodeId)
-    .map(validateOrThrow(GetSourceIdResponse))
-    .map(response => response.nodeId)
-    .first()
-    .toPromise()
-
 export const ConnectivityRequest = t.readonly(
   t.type({
     special: t.readonlyArray(NodeId.FromString),
@@ -106,7 +89,7 @@ const compat = (x: unknown) => {
 }
 
 export class WebsocketEventStore implements EventStore {
-  constructor(private readonly multiplexer: MultiplexedWebsocket, readonly nodeId: NodeId) {}
+  constructor(private readonly multiplexer: MultiplexedWebsocket) {}
 
   offsets: RequestOffsets = () =>
     this.multiplexer

@@ -1,14 +1,8 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
- */
-/*
- * Actyx Pond: A TypeScript framework for writing distributed apps
- * deployed on peer-to-peer networks, without any servers.
- * 
- * Copyright (C) 2020 Actyx AG
  */
 import { Observable } from 'rxjs'
 import { EventKey, Milliseconds, NodeId, Where } from '../types'
@@ -112,7 +106,6 @@ export type RequestPersistEvents = (events: UnstoredEvents) => Observable<Events
  */
 
 export type EventStore = {
-  readonly nodeId: NodeId
   readonly offsets: RequestOffsets
   readonly persistedEvents: RequestPersistedEvents
   readonly allEvents: RequestAllEvents
@@ -125,19 +118,17 @@ const noopEventStore: EventStore = {
   persistedEvents: () => Observable.empty(),
   offsets: () => Promise.resolve({ present: {}, toReplicate: {} }),
   persistEvents: () => Observable.empty(),
-  nodeId: NodeId.of('NoopSourceId'),
   connectivityStatus: () => Observable.empty(),
 }
 
 export const EventStore: {
   noop: EventStore
-  ws: (multiplexedWebsocket: MultiplexedWebsocket, nodeId: NodeId) => EventStore
+  ws: (multiplexedWebsocket: MultiplexedWebsocket) => EventStore
   mock: () => EventStore
   test: (nodeId?: NodeId, eventChunkSize?: number) => TestEventStore
 } = {
   noop: noopEventStore,
-  ws: (multiplexedWebsocket: MultiplexedWebsocket, nodeId: NodeId) =>
-    new WebsocketEventStore(multiplexedWebsocket, nodeId),
+  ws: (multiplexedWebsocket: MultiplexedWebsocket) => new WebsocketEventStore(multiplexedWebsocket),
   mock: mockEventStore,
   test: testEventStore,
 }

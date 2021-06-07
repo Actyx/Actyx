@@ -312,7 +312,7 @@ mod tests {
     fn test_event() -> Result<()> {
         let event = &[Event::Result((
             0,
-            AxKey::new(tags!(), 0, 0),
+            AxKey::new(tags!().into(), 0, 0),
             Payload::from_json_str("{}").unwrap(),
         ))];
         for ev in event.iter() {

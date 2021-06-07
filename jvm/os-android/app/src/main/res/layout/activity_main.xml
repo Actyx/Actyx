@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/gray_100"
@@ -29,40 +30,42 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent">
 
+            <ImageView
+                android:id="@+id/imageView3"
+                android:layout_width="128dp"
+                android:layout_height="32dp"
+                android:layout_marginBottom="4dp"
+                android:contentDescription="@string/actyx_logo"
+                android:scaleType="centerInside"
+                app:layout_constraintBottom_toTopOf="@+id/textView4"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.515"
+                app:layout_constraintStart_toStartOf="parent"
+                app:srcCompat="@drawable/actyx_logo" />
+
             <TextView
                 android:id="@+id/textView4"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="36dp"
+                android:layout_marginBottom="16dp"
                 android:fontFamily="@font/lato"
                 android:text="@string/copyright_actyx"
                 android:textColor="@color/gray_200"
                 android:textSize="16sp"
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.511"
                 app:layout_constraintStart_toStartOf="parent" />
-
-            <ImageView
-                android:id="@+id/imageView3"
-                android:layout_width="128dp"
-                android:layout_height="32dp"
-                android:layout_marginBottom="8dp"
-                android:contentDescription="@string/actyx_logo"
-                android:scaleType="centerInside"
-                app:layout_constraintBottom_toTopOf="@+id/textView4"
-                app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintHorizontal_bias="0.505"
-                app:layout_constraintStart_toStartOf="parent"
-                app:srcCompat="@drawable/actyx_logo" />
 
             <ImageView
                 android:id="@+id/imageView"
                 android:layout_width="112dp"
                 android:layout_height="86dp"
-                android:layout_marginTop="44dp"
+                android:layout_marginTop="28dp"
                 android:contentDescription="@string/actyx_icon"
                 android:scaleType="centerInside"
                 app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.497"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent"
                 app:srcCompat="@drawable/actyx_icon" />
@@ -80,6 +83,33 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/imageView" />
 
+            <TextView
+                android:id="@+id/ip_address"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:fontFamily="@font/lato_bold"
+                android:text="@string/ip_address"
+                android:textColor="@color/gray_800"
+                android:textSize="16sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.498"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/textView" />
+
+            <TextView
+                android:id="@+id/ip_address_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:fontFamily="@font/lato_bold"
+                android:textColor="@color/gray_800"
+                android:textSize="16sp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintHorizontal_bias="0.498"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/ip_address" />
+
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -94,11 +124,13 @@
                     android:id="@+id/textView2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="28dp"
                     android:fontFamily="@font/lato_bold"
                     android:text="@string/closing_this_window_will_not_quit_actyx"
                     android:textColor="@color/gray_200"
                     android:textSize="16sp"
                     app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintHorizontal_bias="0.492"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent" />
 
@@ -107,7 +139,7 @@
                     android:layout_width="300dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="96dp"
-                    android:layout_marginTop="14dp"
+                    android:layout_marginTop="8dp"
                     android:layout_marginEnd="96dp"
                     android:fontFamily="@font/lato"
                     android:lines="2"
@@ -116,6 +148,7 @@
                     android:textColor="@color/gray_200"
                     android:textSize="16sp"
                     app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintHorizontal_bias="0.503"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/textView2" />
 
@@ -133,7 +166,9 @@
                     android:textAllCaps="false"
                     android:textColor="@color/white"
                     android:textSize="16sp"
+                    app:layout_constraintBottom_toBottomOf="parent"
                     app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintHorizontal_bias="0.497"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toBottomOf="@+id/textView3" />
             </androidx.constraintlayout.widget.ConstraintLayout>

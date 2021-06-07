@@ -131,7 +131,7 @@ impl NodeStorage {
 
 #[cfg(test)]
 mod test {
-    use std::{convert::TryFrom, time::Duration};
+    use std::time::Duration;
 
     use rusqlite::backup::Backup;
 
@@ -158,7 +158,7 @@ mod test {
         let mem = load_test_db("tests/node_v1.sqlite")?;
         assert_eq!(NodeStorage::version(&mem).unwrap(), 1);
         let storage = NodeStorage::from_conn(mem).unwrap();
-        let expected_node_id: NodeId = NodeId::try_from("lBkGGmqD2X/mmtpxnC2KWobZw4g1IWCJSPCdjdB1gCI").unwrap();
+        let expected_node_id: NodeId = "lBkGGmqD2X/mmtpxnC2KWobZw4g1IWCJSPCdjdB1gCI".parse().unwrap();
         assert_eq!(NodeStorage::version(&storage.connection.lock()).unwrap(), 1);
         assert_eq!(NodeStorage::get_node_key(&storage).unwrap(), Some(expected_node_id));
         Ok(())

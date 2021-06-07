@@ -1,26 +1,24 @@
 use std::sync::Arc;
 
-use actyxos_sdk::service::EventService;
 use maplit::btreemap;
 use warp::*;
 use wsrpc::Service;
 
+use crate::events::service::EventService;
 use crate::util::{filters::query_token, NodeInfo};
 
-mod node_id;
 mod offsets;
 mod publish;
 mod query;
 mod subscribe;
 mod subscribe_monotonic;
 
-pub(crate) fn routes<S: EventService + Clone + Send + Sync + 'static>(
+pub(crate) fn routes(
     auth_args: NodeInfo,
-    event_service: S,
+    event_service: EventService,
 ) -> impl Filter<Extract = (impl warp::Reply,), Error = warp::Rejection> + Clone {
     let auth = crate::util::filters::authenticate(auth_args, query_token());
     let services = Arc::new(btreemap! {
-      "node_id"             => node_id::service(event_service.clone()).boxed(),
       "offsets"             => offsets::service(event_service.clone()).boxed(),
       "query"               => query::service(event_service.clone()).boxed(),
       "subscribe"           => subscribe::service(event_service.clone()).boxed(),

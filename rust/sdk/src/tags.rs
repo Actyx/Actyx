@@ -355,6 +355,10 @@ impl TagSet {
     pub fn is_subset(&self, rhs: &TagSet) -> bool {
         self.iter().all(|tag| rhs.contains(&tag))
     }
+
+    pub fn into_inner(self) -> Vec<Tag> {
+        self.0
+    }
 }
 
 impl Add for &TagSet {

@@ -3,7 +3,6 @@ import {
   ErrorCode,
   mkEventsPath,
   mkTrialHttpClient,
-  NODE_ID_SEG,
   OFFSETS_SEG,
   PUBLISH_SEG,
   QUERY_SEG,
@@ -12,8 +11,8 @@ import {
 } from '../../http-client'
 import { run } from '../../util'
 
-const postEndPoints = [[PUBLISH_SEG], [QUERY_SEG], [SUBSCRIBE_MONOTONIC_SEG], [SUBSCRIBE_SEG]]
-const getEndPoints = [[NODE_ID_SEG], [OFFSETS_SEG]]
+const postEndpoints = [[PUBLISH_SEG], [QUERY_SEG], [SUBSCRIBE_MONOTONIC_SEG], [SUBSCRIBE_SEG]]
+const getEndpoints = [[OFFSETS_SEG]]
 
 const expectErr = (errorCode: string, req: RequestInit) => async (segment: string) => {
   const runTest = async (httpEndpoint: string) => {
@@ -80,13 +79,13 @@ describe('event service', () => {
       for (const [msg, code, reqInit, method] of errors) {
         describe(`should return ${code} if ${msg}`, () => {
           if (!method || method === 'get') {
-            for (const [getEndpoint] of getEndPoints) {
+            for (const [getEndpoint] of getEndpoints) {
               it(`GET ${getEndpoint}`, () =>
                 expectErr(code, { method: 'get', ...reqInit })(getEndpoint))
             }
           }
           if (!method || method === 'post') {
-            for (const [postEndpoint] of postEndPoints) {
+            for (const [postEndpoint] of postEndpoints) {
               it(`POST ${postEndpoint}`, () =>
                 expectErr(code, { method: 'post', ...reqInit })(postEndpoint))
             }

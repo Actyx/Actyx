@@ -1,21 +1,15 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
-/*
- * Actyx Pond: A TypeScript framework for writing distributed apps
- * deployed on peer-to-peer networks, without any servers.
- * 
- * Copyright (C) 2020 Actyx AG
- */
+
 import fetch from 'node-fetch'
 import { ActyxOpts, AppManifest, NodeId } from '../types'
 import { isNode } from '../util'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import { Event, Events } from './types'
-import { getNodeId } from './websocketEventStore'
 
 const defaultApiLocation = (isNode && process.env.AX_STORE_URI) || 'localhost:4454/api/v2'
 
@@ -58,7 +52,7 @@ export const mkMultiplexer = async (
 
   const ws = new MultiplexedWebsocket(cAdjusted)
 
-  const nodeId = await getNodeId(ws)
+  const nodeId = await fetch(`http://${apiLocation}/node/id`).then(resp => resp.text())
 
   return [ws, nodeId]
 }

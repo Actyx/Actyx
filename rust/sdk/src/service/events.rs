@@ -22,7 +22,7 @@ use std::{collections::BTreeMap, fmt::Display, num::NonZeroU64};
 use crate::{
     event::{Event, EventKey, Metadata},
     language::Query,
-    scalars::{NodeId, StreamId},
+    scalars::StreamId,
     tags::TagSet,
     types::Binary,
     LamportTimestamp, Offset, OffsetMap, Payload, Timestamp,
@@ -302,13 +302,6 @@ pub enum SubscribeResponse {
     // Offset(OffsetMap),
 }
 
-/// Response to the `node_id` endpoint
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct NodeIdResponse {
-    pub node_id: NodeId,
-}
-
 /// Response to the `offsets` endpoint
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -321,8 +314,6 @@ pub struct OffsetsResponse {
 
 #[async_trait]
 pub trait EventService: Clone + Send {
-    async fn node_id(&self) -> Result<NodeIdResponse>;
-
     async fn offsets(&self) -> Result<OffsetsResponse>;
 
     async fn publish(&self, request: PublishRequest) -> Result<PublishResponse>;

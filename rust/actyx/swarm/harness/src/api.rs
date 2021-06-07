@@ -1,5 +1,5 @@
 use crate::m;
-use actyxos_sdk::{service::EventService, AppManifest, HttpClient, Url};
+use actyxos_sdk::{service::EventService, AppManifest, HttpClient, NodeId, Url};
 use anyhow::{anyhow, Result};
 use async_std::task::block_on;
 use netsim_embed::{Machine, Namespace};
@@ -53,6 +53,9 @@ impl ApiClient {
             block_on(HttpClient::new(origin, app_manifest)).expect("cannot create")
         }))
     }
+    pub async fn node_id(&self) -> Result<NodeId> {
+        self.0.spawn_mut(|c| block_on(c.node_id())).await.unwrap()
+    }
     pub fn from_machine<E: Borrow<Event> + FromStr<Err = anyhow::Error> + Send + 'static>(
         machine: &mut Machine<Command, E>,
         app_manifest: AppManifest,
@@ -70,10 +73,6 @@ impl ApiClient {
 
 #[async_trait::async_trait]
 impl EventService for ApiClient {
-    async fn node_id(&self) -> Result<actyxos_sdk::service::NodeIdResponse> {
-        self.0.spawn_mut(|c| block_on(c.node_id())).await.unwrap()
-    }
-
     async fn offsets(&self) -> Result<actyxos_sdk::service::OffsetsResponse> {
         self.0.spawn_mut(|c| block_on(c.offsets())).await.unwrap()
     }

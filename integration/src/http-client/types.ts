@@ -1,10 +1,5 @@
 import * as t from 'io-ts'
 
-export const NodeIdResponse = t.type({
-  nodeId: t.string,
-})
-export type NodeIdResponse = t.TypeOf<typeof NodeIdResponse>
-
 export const OffsetMap = t.record(t.string, t.number)
 export type OffsetMap = t.TypeOf<typeof OffsetMap>
 
@@ -123,8 +118,11 @@ export type SubscribeMonotonicRequest = {
   query: string
 } & SubscribeMonotonicRequestStartFrom
 
+export type AxNodeService = Readonly<{
+  nodeId: () => Promise<string>
+}>
+
 export type AxEventService = Readonly<{
-  nodeId: () => Promise<NodeIdResponse>
   offsets: () => Promise<OffsetsResponse>
   publish: (request: PublishRequest) => Promise<PublishResponse>
   /**

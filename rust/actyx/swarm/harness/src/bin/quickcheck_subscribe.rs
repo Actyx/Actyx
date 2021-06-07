@@ -52,7 +52,7 @@ fn main() {
                     api.run(machine.id(), move |client| async move {
                         let events = to_events(tags);
                         let meta = client.publish(to_publish(events.clone())).await?;
-                        let stream_0 = client.node_id().await?.node_id.stream(0.into());
+                        let stream_0 = client.node_id().await?.stream(0.into());
                         Result::<_, anyhow::Error>::Ok((stream_0, meta.data.last().map(|x| x.offset), events))
                     })
                 })

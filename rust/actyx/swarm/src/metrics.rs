@@ -2,6 +2,7 @@ use std::future::Future;
 use std::io::Write;
 use std::time::Duration;
 
+use crate::BanyanStore;
 use actyxos_sdk::{tags, Payload, StreamNr};
 use anyhow::Result;
 use libipld::cbor::encode::{write_u64, write_u8};
@@ -9,8 +10,6 @@ use libipld::cbor::DagCborCodec;
 use libipld::codec::Encode;
 use libipld::DagCbor;
 use prometheus::{Encoder, Registry};
-
-use crate::BanyanStore;
 
 pub fn metrics(store: BanyanStore, nr: StreamNr, interval: Duration) -> Result<impl Future<Output = ()>> {
     let registry = Registry::new();
