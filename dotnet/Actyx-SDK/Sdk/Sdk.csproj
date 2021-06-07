@@ -18,7 +18,7 @@
     <PackageReference Include="JsonSubTypes" Version="1.7.0" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="System.Interactive.Async" Version="4.1.1" />
-    <None Include="..\..\..\web\developer.actyx.com\static\img\logo.svg" Pack="true" PackagePath="\icon.png" />
+    <None Include="..\..\..\web\developer.actyx.com\static\img\logo.png" Pack="true" PackagePath="\icon.png" />
     <PackageReference Include="GitVersionTask" Version="5.3.7">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
