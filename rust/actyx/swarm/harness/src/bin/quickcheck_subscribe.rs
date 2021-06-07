@@ -9,6 +9,8 @@ fn main() {
         service::{EventResponse, EventService, QueryRequest, QueryResponse},
         OffsetMap, TagSet,
     };
+    use anyhow::Context;
+    use async_std::future::timeout;
     use futures::{stream::FuturesUnordered, StreamExt};
     use quickcheck::{Gen, QuickCheck, TestResult};
     use swarm_cli::Event;
@@ -40,7 +42,7 @@ fn main() {
 
         let t = run_netsim(opts, move |mut sim| async move {
             let api = Api::new(&mut sim, app_manifest())?;
-            fully_meshed::<Event>(&mut sim, Duration::from_secs(60)).await;
+            fully_meshed::<Event>(&mut sim, Duration::from_secs(60)).await?;
 
             let mut present = OffsetMap::empty();
             let mut expected = BTreeMap::default();
@@ -86,30 +88,35 @@ fn main() {
                 .iter()
                 .map(|m| m.id())
                 .map(|id| {
-                    api.run(id, |client| {
+                    let upper_bound = present.clone();
+                    api.run(id, move |client| {
                         let request = QueryRequest {
                             lower_bound: None,
-                            upper_bound: present.clone(),
+                            upper_bound,
                             query: "FROM allEvents".parse().unwrap(),
                             order: actyxos_sdk::service::Order::Asc,
                         };
                         async move {
-                            let round_tripped = client
-                                .query(request)
-                                .await?
-                                .map(|x| {
-                                    let QueryResponse::Event(EventResponse {
-                                        tags, payload, stream, ..
-                                    }) = x;
-                                    (stream, (tags, payload))
-                                })
-                                .collect::<Vec<_>>()
-                                .await
-                                .into_iter()
-                                .fold(BTreeMap::default(), |mut acc, (stream, payload)| {
-                                    acc.entry(stream).or_insert_with(Vec::new).push(payload);
-                                    acc
-                                });
+                            let round_tripped = timeout(
+                                Duration::from_secs(5),
+                                client
+                                    .query(request)
+                                    .await?
+                                    .map(|x| {
+                                        let QueryResponse::Event(EventResponse {
+                                            tags, payload, stream, ..
+                                        }) = x;
+                                        (stream, (tags, payload))
+                                    })
+                                    .collect::<Vec<_>>(),
+                            )
+                            .await
+                            .with_context(|| format!("query for {} timed out", id))?
+                            .into_iter()
+                            .fold(BTreeMap::default(), |mut acc, (stream, payload)| {
+                                acc.entry(stream).or_insert_with(Vec::new).push(payload);
+                                acc
+                            });
 
                             Result::<_, anyhow::Error>::Ok(round_tripped)
                         }

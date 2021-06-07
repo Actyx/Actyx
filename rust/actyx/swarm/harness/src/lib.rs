@@ -2,7 +2,7 @@
 
 pub mod api;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use async_std::{future, task};
 use futures::{
     future::{select, Either},
@@ -257,7 +257,7 @@ async fn select_multi_internal<T>(machine: &mut Machine<Command, Event>, things:
     res.into_iter().map(|x| x.unwrap()).collect()
 }
 
-pub async fn fully_meshed<E>(sim: &mut Netsim<Command, E>, timeout: Duration)
+pub async fn fully_meshed<E>(sim: &mut Netsim<Command, E>, timeout: Duration) -> Result<()>
 where
     E: Borrow<Event> + FromStr<Err = anyhow::Error> + Send + 'static,
 {
@@ -272,9 +272,10 @@ where
             // same as for deadline
             futures::pin_mut!(f);
             match select(deadline.as_mut(), f).await {
-                Either::Left(_) => panic!("timed out after {:.1}", timeout.as_secs_f64()),
+                Either::Left(_) => bail!("fully_meshed timed out after {:.1}sec", timeout.as_secs_f64()),
                 Either::Right(_) => {}
             }
         }
     }
+    Ok(())
 }

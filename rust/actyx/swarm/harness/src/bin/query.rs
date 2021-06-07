@@ -5,7 +5,8 @@ fn main() -> anyhow::Result<()> {
         service::{EventService, Order, PublishEvent, PublishRequest, QueryRequest},
         tags, AppManifest, OffsetMap, Payload,
     };
-    use async_std::task::sleep;
+    use anyhow::Context;
+    use async_std::{future::timeout, task::sleep};
     use futures::StreamExt;
     use std::{
         net::{IpAddr, Ipv4Addr, SocketAddr},
@@ -70,7 +71,7 @@ fn main() -> anyhow::Result<()> {
             .await?;
         }
 
-        fully_meshed::<Event>(&mut sim, Duration::from_secs(30)).await;
+        fully_meshed::<Event>(&mut sim, Duration::from_secs(60)).await?;
 
         let expected = N * sim.machines().len();
         let mut tries = 10i32;
@@ -92,16 +93,19 @@ fn main() -> anyhow::Result<()> {
                         let upper_bound = api.offsets().await?.present;
                         let count = (&upper_bound - &OffsetMap::default()) as usize;
 
-                        let result = api
-                            .query(QueryRequest {
+                        let result = timeout(
+                            Duration::from_secs(5),
+                            api.query(QueryRequest {
                                 lower_bound: None,
                                 upper_bound,
                                 query: "FROM allEvents".parse()?,
                                 order: Order::Asc,
                             })
                             .await?
-                            .collect::<Vec<_>>()
-                            .await;
+                            .collect::<Vec<_>>(),
+                        )
+                        .await
+                        .with_context(|| format!("query for {} timed out", machine.id()))?;
 
                         assert_eq!(result.len(), count);
                         tracing::info!("{} got {} events", machine.id(), count);
