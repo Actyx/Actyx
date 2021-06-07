@@ -146,8 +146,9 @@ For Actyx to start, please open your terminal, navigate to the directory where y
 chmod +x actyx-mac
 ```
 
-When asked for, type the required password and hit _enter_.
-Now the file can be executed by the current user with root privileges.
+If you do not get asked for your password at this point, you have to explicitly allow Actyx:
+1. Go to **Settings** and then to **Security &amp; Privacy**. In the **General** tab, you should see a prompt at the bottom that asks you to allow Actyx CLI.
+2. When running the first `ax` command, you will be prompted again to allow the Actyx CLI.
 
 Congratulations, you have successfully installed an run Actyx on your Mac! 🎉
 
@@ -158,6 +159,10 @@ To start Actyx, please execute the following command in your terminal from the d
 ```shell
 ./actyx-mac
 ```
+
+:::tip Allow Actyx in System Preferences
+If you are prompted with a warning and cannot run Actyx, please go to "System Preferences" -> "Security & Privacy". Under the "General" tab, you should see a message at the bottom that Actyx is not from an identified developer. After clicking on "Allow Anyway", you can run Actyx.  
+:::
 
 You should now see the message `Actyx started` followed by a bunch of log messages.
 As long as you don't see any error messages here, you can be sure that Actyx is running.
