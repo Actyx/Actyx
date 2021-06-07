@@ -1,9 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>ActyxOS.Sdk</AssemblyName>
-    <Description>Data types for communicating with ActyxOS and C# bindings for the ActyxOS APIs.</Description>
-    <PackageProjectUrl>https://developer.actyx.com/docs/os/sdks/dotnet</PackageProjectUrl>
+    <AssemblyName>Actyx.Sdk</AssemblyName>
+    <Description>Data types for communicating with Actyx and C# bindings for the Actyx APIs.</Description>
+    <PackageProjectUrl>https://developer.actyx.com/</PackageProjectUrl>
     <PackageLicenseUrl>https://licenses.nuget.org/Apache-2.0</PackageLicenseUrl>
     <Owners>Actyx</Owners>
     <Authors>Actyx AG</Authors>
@@ -18,7 +18,7 @@
     <PackageReference Include="JsonSubTypes" Version="1.7.0" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="System.Interactive.Async" Version="4.1.1" />
-    <None Include="..\..\..\web\developer.actyx.com\static\images\csharp-sdk.png" Pack="true" PackagePath="\icon.png" />
+    <None Include="..\..\..\web\developer.actyx.com\static\img\logo.svg" Pack="true" PackagePath="\icon.png" />
     <PackageReference Include="GitVersionTask" Version="5.3.7">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

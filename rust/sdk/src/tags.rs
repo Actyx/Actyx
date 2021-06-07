@@ -37,12 +37,12 @@ use unicode_normalization::UnicodeNormalization;
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{tag, Tag};
+/// use actyx_sdk::{tag, Tag};
 /// let tag: Tag = tag!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyxos_sdk::{tag, tags::Tag};
+/// use actyx_sdk::{tag, tags::Tag};
 /// let tag: Tag = tag!("");
 /// ```
 #[macro_export]
@@ -62,7 +62,7 @@ macro_rules! tag {
 ///  - normal expressions (enclosed in parens if multiple tokens)
 ///
 /// ```rust
-/// use actyxos_sdk::{semantics, tag, Tag, tags, TagSet};
+/// use actyx_sdk::{semantics, tag, Tag, tags, TagSet};
 /// use std::collections::BTreeSet;
 ///
 /// let tags: TagSet = tags!("a", "semantics:b");
@@ -171,7 +171,7 @@ impl Encode<DagCborCodec> for Tag {
 /// Concatenate another part to this tag
 ///
 /// ```
-/// # use actyxos_sdk::{tag, Tag};
+/// # use actyx_sdk::{tag, Tag};
 /// let user_tag = tag!("user:") + "Bob";
 /// let machine_tag = tag!("machine:") + format!("{}-{}", "thing", 42);
 ///

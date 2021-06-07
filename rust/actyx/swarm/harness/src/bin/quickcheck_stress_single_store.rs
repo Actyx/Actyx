@@ -2,7 +2,7 @@
 fn main() {
     use std::{convert::TryFrom, time::Duration};
 
-    use actyxos_sdk::{
+    use actyx_sdk::{
         service::{EventResponse, EventService, SubscribeRequest, SubscribeResponse},
         tags, Offset, Url,
     };

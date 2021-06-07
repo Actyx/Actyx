@@ -1,4 +1,4 @@
-use actyxos_sdk::{LamportTimestamp, TagSet, Timestamp};
+use actyx_sdk::{LamportTimestamp, TagSet, Timestamp};
 use banyan::{
     index::{CompactSeq, Summarizable},
     TreeTypes,

@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use actyxos_sdk::language;
+use actyx_sdk::language;
 
 // invariant: none of the sets are ever empty
 #[derive(Debug, PartialEq)]
@@ -72,7 +72,7 @@ impl From<&language::TagExpr> for Dnf {
 
 #[cfg(test)]
 mod tests {
-    use actyxos_sdk::{
+    use actyx_sdk::{
         language::{TagAtom, TagExpr},
         Tag,
     };

@@ -1,4 +1,4 @@
-use actyxos_sdk::AppId;
+use actyx_sdk::AppId;
 use crypto::PublicKey;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};

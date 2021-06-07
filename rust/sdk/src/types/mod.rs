@@ -34,7 +34,7 @@ pub mod fixnum_types {
     //! # Example
     //!
     //! ```rust
-    //! use actyxos_sdk::types::{FixNum, fixnum_types::U32};
+    //! use actyx_sdk::types::{FixNum, fixnum_types::U32};
     //!
     //! // convert to fixed-point number with 32 bits fractional part, saturating on overflow
     //! let a: FixNum<U32> = FixNum::<U32>::saturating(12345);

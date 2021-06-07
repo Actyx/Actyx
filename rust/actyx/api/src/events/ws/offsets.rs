@@ -1,4 +1,4 @@
-use actyxos_sdk::{service::OffsetsResponse, AppId};
+use actyx_sdk::{service::OffsetsResponse, AppId};
 use futures::{
     stream::{BoxStream, StreamExt},
     FutureExt,

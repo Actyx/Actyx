@@ -1,11 +1,11 @@
 [package]
-name = "actyxos_sdk_macros"
-version = "0.2.1"
+name = "actyx_sdk_macros"
+version = "0.1.0"
 authors = ["Actyx AG <developer@actyx.io>"]
 edition = "2018"
-description = "Tools for interacting with the services of an ActyxOS node"
+description = "Tools for interacting with the services of an Actyx node"
 readme = "README.md"
-documentation = "https://docs.rs/actyxos_sdk"
+documentation = "https://docs.rs/actyx_sdk"
 homepage = "https://developer.actyx.com"
 license = "Apache-2.0"
 keywords = ["distributed", "decentralized", "event-sourcing"]

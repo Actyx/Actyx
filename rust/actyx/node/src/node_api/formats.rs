@@ -1,4 +1,4 @@
-use actyxos_sdk::NodeId;
+use actyx_sdk::NodeId;
 use tokio::sync::oneshot::Sender;
 use util::formats::{ActyxOSResult, NodesLsResponse};
 #[derive(Debug)]

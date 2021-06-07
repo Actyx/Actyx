@@ -189,7 +189,7 @@ The `ArcVal` essentially is an `Abomonation`-enabled container for holding refer
 of contained values (so if one creates two new `ArcVal<str>` instances with the same contents, memory will be allocated only once, unlike with `Refcell`
 where allocation will be avoided only during clone operations). The Rust compiler enforces the immutability guarantee for us.
 
-Using `ArcVal` requires importing it from the [`actyxos_sdk`](https://crates.io/crates/actyxos_sdk) crate:
+Using `ArcVal` requires importing it from the [`actyxos_sdk`](https://crates.io/crates/actyxos_sdk/0.4.0) crate:
 
 ```rust
 use actyxos_sdk::types::ArcVal;

@@ -1,5 +1,5 @@
 use crate::private_key::AxPrivateKey;
-use actyxos_sdk::NodeId;
+use actyx_sdk::NodeId;
 use crypto::PublicKey;
 use derive_more::From;
 use libp2p::{

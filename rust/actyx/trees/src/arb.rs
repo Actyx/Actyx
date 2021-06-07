@@ -1,6 +1,6 @@
 use std::{convert::TryFrom, ops::Range};
 
-use actyxos_sdk::{LamportTimestamp, Tag, TagSet, Timestamp};
+use actyx_sdk::{LamportTimestamp, Tag, TagSet, Timestamp};
 use quickcheck::{Arbitrary, Gen};
 
 use crate::{

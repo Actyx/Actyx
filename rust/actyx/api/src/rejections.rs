@@ -1,5 +1,5 @@
+use actyx_sdk::AppId;
 use actyx_util::serde_support::StringSerialized;
-use actyxos_sdk::AppId;
 use derive_more::Display;
 use tracing::*;
 use warp::{http::StatusCode, *};

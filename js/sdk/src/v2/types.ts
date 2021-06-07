@@ -168,7 +168,7 @@ const NotConnected = t.readonly(
 export const ConnectivityStatus = t.union([FullyConnected, PartiallyConnected, NotConnected])
 
 /**
- * Current connectivity of the underlying ActyxOS node.
+ * Current connectivity of the underlying Actyx node.
  * @public
  */
 export type ConnectivityStatus = t.TypeOf<typeof ConnectivityStatus>

@@ -1,7 +1,7 @@
 /*
  * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2020 Actyx AG
  */
 import { Observable } from 'rxjs'
@@ -16,7 +16,7 @@ export const start = async () => {
     displayName: 'Pond dev',
     version: '1.0.0',
   }).catch(ex => {
-    console.log('cannot start Pond, is ActyxOS running in development mode on this computer?', ex)
+    console.log('cannot start Pond, is Actyx running in development mode on this computer?', ex)
     process.exit(1)
   })
 

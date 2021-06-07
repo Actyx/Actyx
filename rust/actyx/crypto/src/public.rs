@@ -1,4 +1,4 @@
-use actyxos_sdk::NodeId;
+use actyx_sdk::NodeId;
 use anyhow::{anyhow, bail, Context, Result};
 use serde::{de::Visitor, Deserialize, Deserializer, Serialize, Serializer};
 use std::{

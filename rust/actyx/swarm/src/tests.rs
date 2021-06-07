@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, convert::TryFrom, str::FromStr, time::Duration};
 
 use crate::BanyanStore;
-use actyxos_sdk::{Payload, StreamNr, Tag, TagSet};
+use actyx_sdk::{Payload, StreamNr, Tag, TagSet};
 use ax_futures_util::stream::interval;
 use banyan::query::AllQuery;
 use futures::prelude::*;

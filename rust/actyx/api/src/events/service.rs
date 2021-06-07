@@ -1,6 +1,6 @@
 use std::{convert::TryFrom, num::NonZeroU64};
 
-use actyxos_sdk::{
+use actyx_sdk::{
     language::{self, TagExpr},
     service::{
         EventResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse, PublishResponseKey,

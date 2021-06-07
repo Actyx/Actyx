@@ -1,6 +1,6 @@
 use std::{cmp::Reverse, convert::TryInto, ops::RangeInclusive};
 
-use actyxos_sdk::{
+use actyx_sdk::{
     language::TagExpr, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin, Payload,
     StreamId, StreamNr, TagSet, Timestamp,
 };
@@ -263,7 +263,7 @@ fn events_from_chunk_rev(
 mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
-    use actyxos_sdk::{
+    use actyx_sdk::{
         language::{TagAtom, TagExpr},
         service::Order,
         tag, tags, OffsetOrMin, StreamId, Tag,

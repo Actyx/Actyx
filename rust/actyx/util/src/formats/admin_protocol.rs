@@ -1,7 +1,7 @@
 use crate::version::NodeVersion;
 
 use super::ActyxOSResult;
-use actyxos_sdk::NodeId;
+use actyx_sdk::NodeId;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 

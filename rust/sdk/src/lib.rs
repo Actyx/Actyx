@@ -13,13 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-//! [ActyxOS](https://developer.actyx.com/docs/os/introduction) makes it easy to run distributed
+//! [Actyx](https://www.actyx.com/platform) makes it easy to run distributed
 //! applications on multiple nodes. It is a piece of software that allows you to run your own apps
 //! on one or more edge devices and have these apps seamlessly communicate and share data with
 //! each other.
 //!
-//! This crate defines the data types needed for communicating with ActyxOS and provides Rust
-//! bindings for the ActyxOS APIs. It also provides serialization instances for processing the
+//! This crate defines the data types needed for communicating with Actyx and provides Rust
+//! bindings for the Actyx APIs. It also provides serialization instances for processing the
 //! events with [`differential-dataflow`](https://docs.rs/differential-dataflow) under the `"dataflow"`
 //! [feature flag](#feature-flags).
 //!
@@ -32,7 +32,7 @@
 //! > _Note: this example needs the `client` feature to compile_
 //!
 //! ```no_run
-//! use actyxos_sdk::{
+//! use actyx_sdk::{
 //!   app_id, AppManifest, HttpClient,
 //!   service::{EventService, Order, QueryRequest, QueryResponse},
 //! };
@@ -98,9 +98,9 @@ extern crate abomonation_derive;
 extern crate serde_json;
 #[allow(unused_imports)]
 #[macro_use]
-extern crate actyxos_sdk_macros;
+extern crate actyx_sdk_macros;
 #[doc(hidden)]
-pub use actyxos_sdk_macros::*;
+pub use actyx_sdk_macros::*;
 
 #[macro_use]
 mod scalar;

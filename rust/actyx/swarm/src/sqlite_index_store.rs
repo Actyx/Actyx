@@ -1,4 +1,4 @@
-use actyxos_sdk::{LamportTimestamp, StreamId};
+use actyx_sdk::{LamportTimestamp, StreamId};
 use anyhow::{Context, Result};
 use ax_futures_util::stream::variable::{Observer, Variable};
 use parking_lot::Mutex;
@@ -150,7 +150,7 @@ impl SqliteIndexStore {
 
     /// current lamport timestamp, for testing
     #[cfg(test)]
-    pub fn lamport(&self) -> actyxos_sdk::LamportTimestamp {
+    pub fn lamport(&self) -> actyx_sdk::LamportTimestamp {
         self.lamport.get()
     }
 }

@@ -5,7 +5,7 @@ name = "logsvcd"
 version = "0.2.0"
 
 [dependencies]
-actyxos_sdk = { version = "0.6", path = "../../sdk" }
+actyx_sdk = { version = "0.1", path = "../../sdk" }
 util = { path = "../util" }
 
 chrono = { features = ["serde"], version = "0.4.19" }

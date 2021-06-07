@@ -5,7 +5,7 @@ fn main() {
         time::{Duration, Instant},
     };
 
-    use actyxos_sdk::{
+    use actyx_sdk::{
         service::{EventResponse, EventService, QueryRequest, QueryResponse},
         OffsetMap, TagSet,
     };
@@ -91,7 +91,7 @@ fn main() {
                             lower_bound: None,
                             upper_bound: present.clone(),
                             query: "FROM allEvents".parse().unwrap(),
-                            order: actyxos_sdk::service::Order::Asc,
+                            order: actyx_sdk::service::Order::Asc,
                         };
                         async move {
                             let round_tripped = client
@@ -138,7 +138,7 @@ fn main() {
     QuickCheck::new()
         .gen(Gen::new(30))
         .tests(2)
-        .quickcheck(publish_all_subscribe_all as fn(Vec<Vec<actyxos_sdk::TagSet>>) -> TestResult)
+        .quickcheck(publish_all_subscribe_all as fn(Vec<Vec<actyx_sdk::TagSet>>) -> TestResult)
 }
 
 #[cfg(not(target_os = "linux"))]

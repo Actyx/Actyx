@@ -5,7 +5,7 @@ fn main() -> anyhow::Result<()> {
         time::Duration,
     };
 
-    use actyxos_sdk::{
+    use actyx_sdk::{
         app_id,
         service::{EventService, PublishEvent, PublishRequest},
         tags, AppManifest, Payload, Timestamp,

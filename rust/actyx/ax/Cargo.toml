@@ -13,7 +13,7 @@ name = "axlib"
 path = "src/lib.rs"
 
 [dependencies]
-actyxos_sdk = { path = "../../sdk" }
+actyx_sdk = { path = "../../sdk" }
 anyhow = "1.0.40"
 settings = { path = "../settings" }
 banyan = "0.14.0"

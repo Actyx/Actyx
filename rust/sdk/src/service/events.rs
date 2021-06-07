@@ -86,8 +86,8 @@ impl<T> From<Event<T>> for EventResponse<T> {
         let Metadata { timestamp, tags, .. } = env.meta;
         let payload = env.payload;
         EventResponse {
-            stream,
             lamport,
+            stream,
             offset,
             timestamp,
             tags,

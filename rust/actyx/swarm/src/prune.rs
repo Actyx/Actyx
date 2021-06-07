@@ -1,5 +1,5 @@
 use crate::{streams::OwnStreamGuard, BanyanStore, EphemeralEventsConfig, Link};
-use actyxos_sdk::Timestamp;
+use actyx_sdk::Timestamp;
 use anyhow::Context;
 use futures::future::{join_all, FutureExt};
 use std::{
@@ -156,7 +156,7 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
 mod test {
     use std::collections::BTreeMap;
 
-    use actyxos_sdk::{tags, Payload, StreamNr};
+    use actyx_sdk::{tags, Payload, StreamNr};
     use ax_futures_util::prelude::AxStreamExt;
     use futures::{future, StreamExt};
     use maplit::btreemap;

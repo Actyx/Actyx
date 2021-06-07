@@ -38,7 +38,7 @@
 //! while when configuring an external address you are telling other peers how to reach you, given
 //! you have a bootstrap node in common.
 use crate::BanyanStore;
-use actyxos_sdk::{tags, Payload, StreamNr};
+use actyx_sdk::{tags, Payload, StreamNr};
 use anyhow::Result;
 use fnv::{FnvHashMap, FnvHashSet};
 use futures::stream::{Stream, StreamExt};

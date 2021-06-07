@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-//! Supporting macros for the ActyxOS SDK
+//! Supporting macros for the Actyx SDK
 //!
 //! The macros exported here are in this separate crate due to current restrictions on
-//! proc_macros in Rust. Please see the [ActyxOS SDK](https://docs.rs/actyxos_sdk) for
+//! proc_macros in Rust. Please see the [Actyx SDK](https://docs.rs/actyx_sdk) for
 //! more information.
 
 extern crate proc_macro;
@@ -114,7 +114,7 @@ macro_rules! range {
 /// This works:
 ///
 /// ```rust
-/// use actyxos_sdk_macros::assert_len;
+/// use actyx_sdk_macros::assert_len;
 ///
 /// // this is normally emitted by macro_rules
 /// #[allow(dead_code)]
@@ -125,7 +125,7 @@ macro_rules! range {
 /// This does not compile:
 ///
 /// ```compile_fail
-/// use actyxos_sdk_macros::assert_len;
+/// use actyx_sdk_macros::assert_len;
 ///
 /// type X = assert_len!(r##"123456"##, ..5);
 /// ```
@@ -139,7 +139,7 @@ macro_rules! range {
 /// macro_rules! transform {
 ///     ($expr:expr) => {{
 ///         mod y {
-///             actyxos_sdk_macros::assert_len! {
+///             actyx_sdk_macros::assert_len! {
 ///                 $expr,
 ///                 1..5,
 ///                 pub fn x() -> usize { ($expr).len() }, // it was a string literal

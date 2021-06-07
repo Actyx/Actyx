@@ -1,6 +1,6 @@
 use std::{convert::TryFrom, sync::Arc};
 
-use actyxos_sdk::NodeId;
+use actyx_sdk::NodeId;
 use anyhow::Context;
 use crypto::PublicKey;
 use parking_lot::Mutex;

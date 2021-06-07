@@ -1,6 +1,6 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
-    use actyxos_sdk::{tags, Payload};
+    use actyx_sdk::{tags, Payload};
     use structopt::StructOpt;
     use swarm_cli::{Command, Event};
     use swarm_harness::{HarnessOpts, MachineExt};

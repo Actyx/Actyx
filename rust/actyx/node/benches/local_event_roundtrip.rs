@@ -1,4 +1,4 @@
-use actyxos_sdk::{
+use actyx_sdk::{
     app_id,
     service::{EventService, Order, PublishEvent, PublishRequest, QueryRequest},
     tags, AppManifest, HttpClient, Payload,
