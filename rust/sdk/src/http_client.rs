@@ -57,6 +57,7 @@ pub struct HttpClient {
     base_url: Url,
     token: Arc<RwLock<String>>,
     app_manifest: AppManifest,
+    node_id: NodeId,
 }
 
 async fn get_token(client: &Client, base_url: &Url, app_manifest: &AppManifest) -> anyhow::Result<String> {
@@ -80,6 +81,15 @@ impl HttpClient {
         base_url.set_path("api/v2/");
         let client = Client::new();
 
+        let node_id = client
+            .get(base_url.join("node/id").unwrap())
+            .send()
+            .await?
+            .text()
+            .await
+            .context(|| "getting body for GET node/id")?
+            .parse()?;
+
         let token = get_token(&client, &base_url, &app_manifest).await?;
 
         Ok(Self {
@@ -87,20 +97,12 @@ impl HttpClient {
             base_url,
             token: Arc::new(RwLock::new(token)),
             app_manifest,
+            node_id,
         })
     }
 
-    pub async fn node_id(&self) -> anyhow::Result<NodeId> {
-        let txt = self
-            .client
-            .get(self.base_url.join("node/id").unwrap())
-            .send()
-            .await?
-            .text()
-            .await
-            .context(|| "getting body for GET node/id")?;
-        let res: NodeId = txt.parse()?;
-        Ok(res)
+    pub fn node_id(&self) -> NodeId {
+        self.node_id
     }
 
     fn events_url(&self, path: &str) -> Url {

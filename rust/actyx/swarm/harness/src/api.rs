@@ -53,8 +53,8 @@ impl ApiClient {
             block_on(HttpClient::new(origin, app_manifest)).expect("cannot create")
         }))
     }
-    pub async fn node_id(&self) -> Result<NodeId> {
-        self.0.spawn_mut(|c| block_on(c.node_id())).await.unwrap()
+    pub async fn node_id(&self) -> NodeId {
+        self.0.spawn_mut(|c| c.node_id()).await.unwrap()
     }
     pub fn from_machine<E: Borrow<Event> + FromStr<Err = anyhow::Error> + Send + 'static>(
         machine: &mut Machine<Command, E>,

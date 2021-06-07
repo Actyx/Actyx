@@ -96,7 +96,7 @@ fn main() {
                 .map(|_| ApiClient::new(origin.clone(), app_manifest(), namespace))
                 .collect::<Vec<_>>();
 
-            let stream_0 = publish_clients[0].node_id().await?.stream(0.into());
+            let stream_0 = publish_clients[0].node_id().await.stream(0.into());
 
             let mut futs = publish_clients
                 .iter()
