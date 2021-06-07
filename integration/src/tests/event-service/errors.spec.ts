@@ -38,6 +38,18 @@ describe('event service', () => {
       // - ERR_APP_UNAUTHENTICATED
       const errors: [string, ErrorCode, RequestInit, ('get' | 'post')?][] = [
         [
+          'the request body contains invalid JSON',
+          'ERR_BAD_REQUEST',
+          {
+            headers: {
+              Accept: 'application/json, application/x-ndjson',
+              'Content-Type': 'application/json',
+            },
+            body: "{ key: don't quote me on that }",
+          },
+          'post',
+        ],
+        [
           'the request body is malformed',
           'ERR_BAD_REQUEST',
           {
