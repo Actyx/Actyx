@@ -1,10 +1,4 @@
 const https = require('https')
-const postOpts = {
-    hostname: 'whatever.com',
-    port: 443,
-    path: '/todos',
-    method: 'P'
-}
 
 const postResultToSlack = (score) => new Promise((resolve, reject) => {
     const data = JSON.stringify({

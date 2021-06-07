@@ -18,6 +18,7 @@ module.exports = {
       },
     ],
     [require.resolve('./src/plugins/analytics'), {}],
+    [require.resolve('./src/plugins/cosmos-versions'), {}],
     /*     [
       require.resolve('./src/plugins/arm'),
       {
@@ -77,6 +78,12 @@ module.exports = {
           label: 'Tutorials',
           activeBasePath: 'docs/tutorials',
           to: 'docs/tutorials/overview',
+        },
+        {
+          label: 'Releases',
+          activeBasePath: '/releases',
+          position: 'right',
+          to: '/releases',
         },
         {
           label: 'Blog',

@@ -110,19 +110,19 @@ The way to implement this using Actyx is to write a so-called twin. A twin is a 
 
 Let's start by defining types for the chat twin's state and the events it can receive. In this case, we have one type of event which is simply a message (string). The state of the twin is an array of strings. In the `index.ts` file, add the following two lines of code:
 
-```ts file=../../samples/chat-app-tutorial/index.ts#L3-L4
+```ts file=../../../../third-party/chat/index.ts#[event-and-state]
 
 ```
 
 When a twin first starts up, it won't have any messages in memory. So let's give it an empty array as the initial state:
 
-```ts file=../../samples/chat-app-tutorial/index.ts#L6
+```ts file=../../../../third-party/chat/index.ts#[initial-state]
 
 ```
 
 Now to the chat twin's logic, i.e. how to calculate the chat state, which we will show to the user, from the events we have received. We implement it as a so-called `onEvent` function. This function simply adds any message it received as a `ChatEvent` to our `ChatState`:
 
-```ts file=../../samples/chat-app-tutorial/index.ts#L8-L11
+```ts file=../../../../third-party/chat/index.ts#[on-event]
 
 ```
 
@@ -138,13 +138,13 @@ A _fish_, aka twin, is defined as an object with a couple of properties. You mus
 
 First, add the following imports to the top of the `index.ts` file:
 
-```ts file=../../samples/chat-app-tutorial/index.ts#L1
+```ts file=../../../../third-party/chat/index.ts#L1
 
 ```
 
 Now that we have done that, we create the tag for our chat messages and then define the fish itself:
 
-```ts file=../../samples/chat-app-tutorial/index.ts#L13-L19
+```ts file=../../../../third-party/chat/index.ts#[fish]
 
 ```
 
@@ -156,7 +156,7 @@ Lastly, we need to build a user interface and hook up our fish. Let's implement 
 
 Open up the `index.html` file and adjust the contents of the `head` and `body` sections as follows:
 
-```html file=../../samples/chat-app-tutorial/index.html
+```html file=../../../../third-party/chat/index.html
 
 ```
 
@@ -167,7 +167,7 @@ The last thing we have to do is to hook up the user interface to the fish. We wa
 
 In the `index.ts` file, add the following code:
 
-```ts file=../../samples/chat-app-tutorial/index.ts#L21-L45
+```ts file=../../../../third-party/chat/index.ts#[pond]
 
 ```
 
@@ -219,4 +219,3 @@ Feel free to join our [Actyx Developer Chat](https://discord.gg/262yJhc) on Disc
 :::
 
 <!-- markdownlint-disable MD025 -->
-

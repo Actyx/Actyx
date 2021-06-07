@@ -1,0 +1,12 @@
+/*  */
+.main {
+  display: flex;
+  flex-direction: row;
+}
+
+@media only screen and (max-width: 780px) {
+  .main {
+    display: flex;
+    flex-direction: column;
+  }
+}

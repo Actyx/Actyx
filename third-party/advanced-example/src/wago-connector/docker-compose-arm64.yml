@@ -1,0 +1,7 @@
+version: '2.0'
+services:
+  app:
+    image: wago-connector-aarch64
+    ports:
+      - 1202:1202/udp
+    privileged: true

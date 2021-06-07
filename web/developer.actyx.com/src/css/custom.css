@@ -160,6 +160,7 @@
 
 :root {
   --ifm-container-width: 1200px;
+  --ifm-navbar-item-padding-horizontal: 0.8rem;
 }
 
 /* Headline classes*/

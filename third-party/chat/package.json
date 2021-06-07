@@ -1,0 +1,20 @@
+{
+  "name": "decentralized-chat",
+  "version": "1.0.0",
+  "description": "A decentralized chat",
+  "scripts": {
+    "build": "tsc && parcel build index.html --public-url .",
+    "start": "tsc && parcel index.html",
+    "test": "server-test start 1234 'cypress run'"
+  },
+  "dependencies": {
+    "@actyx/pond": "^2.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^14.0.27",
+    "cypress": "^6.8.0",
+    "parcel": "next",
+    "start-server-and-test": "^1.12.1",
+    "typescript": "^3.9.7"
+  }
+}

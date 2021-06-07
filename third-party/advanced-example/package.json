@@ -1,0 +1,46 @@
+{
+  "name": "actyx-andvanced-example-project",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "ui:order-management:start": "parcel src/order-management/index.html --port 1235 --out-dir build/order-management/debug",
+    "ui:order-management:build": "rm -rf src/order-management/release && parcel build src/order-management/index.html --out-dir src/order-management/release --public-url ./",
+    "ui:dashboard:start": "parcel src/dashboard/index.html --port 1234 --out-dir build/dashboard/debug",
+    "ui:dashboard:build": "rm -rf src/dashboard/release && parcel build src/dashboard/index.html --out-dir src/dashboard/release --public-url ./",
+    "node:wago-connector:start": "nodemon --watch src/wago-connector --exec ts-node src/wago-connector/index.ts",
+    "node:wago-connector:build": "tsc src/wago-connector/index.ts --outDir build/wago-connector",
+    "node:wago-connector:docker:build-amd64": "npm run node:wago-connector:build && docker build -t wago-connector-amd64 -f src/wago-connector/Dockerfile .",
+    "node:wago-connector:docker:build-aarch64": "npm run node:wago-connector:build && docker buildx build --platform linux/arm64 -t wago-connector-aarch64 -f src/wago-connector/Dockerfile --load ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "axp": {
+    "axpVersion": "1.1.5",
+    "pondVersion": 2
+  },
+  "dependencies": {
+    "@actyx-contrib/react-pond": "^2.0.0-rc4",
+    "@actyx-contrib/rx-pond": "^0.1.0",
+    "@actyx/industrial-ui": "^1.0.5",
+    "@actyx/os-sdk": "^0.3.1",
+    "@actyx/pond": "^2.2.0",
+    "@capacitor/android": "^2.4.7",
+    "@capacitor/cli": "^2.4.7",
+    "@capacitor/core": "^2.4.7",
+    "netvar": "^1.0.5",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
+    "rxjs": "^6.6.3"
+  },
+  "devDependencies": {
+    "@types/node": "^14.6.4",
+    "@types/react": "^16.9.49",
+    "@types/react-dom": "^16.9.8",
+    "nodemon": "^2.0.4",
+    "parcel-bundler": "^1.12.4",
+    "ts-node": "^9.0.0",
+    "typescript": "^4.0.2"
+  }
+}

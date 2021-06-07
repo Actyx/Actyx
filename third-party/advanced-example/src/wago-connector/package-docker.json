@@ -1,0 +1,20 @@
+{
+  "name": "wago-connector",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "axp": {
+    "axpVersion": "1.1.5",
+    "pondVersion": 2
+  },
+  "dependencies": {
+    "@actyx/pond": "^2.2.0",
+    "@actyx-contrib/rx-pond": "^0.1.0",
+    "rxjs": "^6.6.3",
+    "netvar": "1.0"
+  }
+}
