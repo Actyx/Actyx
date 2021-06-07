@@ -36,7 +36,10 @@ describe('auth http', () => {
           'Content-Type': 'application/json',
         },
       })
-        .then((resp) => resp.json())
+        .then((resp) => {
+          expect(resp.status).toEqual(400)
+          return resp.json()
+        })
         .then((json) =>
           expect(json).toEqual({
             code: 'ERR_BAD_REQUEST',
@@ -59,7 +62,10 @@ describe('auth http', () => {
           'Content-Type': 'application/json',
         },
       })
-        .then((resp) => resp.json())
+        .then((resp) => {
+          expect(resp.status).toEqual(400)
+          return resp.json()
+        })
         .then((json) =>
           expect(json).toEqual({
             code: 'ERR_MANIFEST_INVALID',
@@ -71,9 +77,12 @@ describe('auth http', () => {
   it('should fail when token not authorized', () =>
     run((httpApi) =>
       getOffsets(httpApi, 'Bearer ' + UNAUTHORIZED_TOKEN)
-        .then((resp) => resp.json())
-        .then((json) =>
-          expect(json).toEqual({
+        .then((resp) => {
+          expect(resp.status).toEqual(401)
+          return resp.json()
+        })
+        .then((x) =>
+          expect(x).toEqual({
             code: 'ERR_TOKEN_UNAUTHORIZED',
             message: 'Unauthorized token.',
           }),
@@ -83,7 +92,10 @@ describe('auth http', () => {
   it('should fail when auth header has wrong value', () =>
     run((httpApi) =>
       getOffsets(httpApi, 'Foo bar')
-        .then((x) => x.json())
+        .then((resp) => {
+          expect(resp.status).toEqual(401)
+          return resp.json()
+        })
         .then((x) =>
           expect(x).toEqual({
             code: 'ERR_UNSUPPORTED_AUTH_TYPE',
@@ -95,7 +107,10 @@ describe('auth http', () => {
   it('should fail when token is invalid', () =>
     run((httpApi) =>
       getOffsets(httpApi, 'Bearer invalid')
-        .then((x) => x.json())
+        .then((resp) => {
+          expect(resp.status).toEqual(400)
+          return resp.json()
+        })
         .then((x) =>
           expect(x).toEqual({
             code: 'ERR_TOKEN_INVALID',
@@ -108,7 +123,10 @@ describe('auth http', () => {
   it('should fail when authorization header is missing', () =>
     run((httpApi) =>
       getOffsets(httpApi)
-        .then((x) => x.json())
+        .then((resp) => {
+          expect(resp.status).toEqual(401)
+          return resp.json()
+        })
         .then((x) =>
           expect(x).toEqual({
             code: 'ERR_MISSING_AUTH_HEADER',
@@ -123,16 +141,19 @@ describe('auth http', () => {
     const token = await getToken(trialManifest, testNode._private.httpApiOrigin)
       .then((x) => x.json())
       .then((x) => x.token)
-    const offsets = (origin: string) => getOffsets(origin, 'Bearer ' + token).then((x) => x.json())
+    const offsets = (origin: string) => getOffsets(origin, 'Bearer ' + token)
 
     // assert we can access event service
-    const response = await offsets(testNode._private.httpApiOrigin)
+    const response = await offsets(testNode._private.httpApiOrigin).then((resp) => resp.json())
     expect(response).toEqual({ present: expect.any(Object), toReplicate: expect.any(Object) })
     await testNode._private.shutdown()
 
     // start the node again and assert that we can't reuse previous token
     testNode = await createTestNodeLocal(nodeName, true)
-    const result = await offsets(testNode._private.httpApiOrigin)
+    const result = await offsets(testNode._private.httpApiOrigin).then((resp) => {
+      expect(resp.status).toEqual(401)
+      return resp.json()
+    })
     expect(result).toEqual({ code: 'ERR_TOKEN_EXPIRED', message: 'Expired token.' })
   })
 
