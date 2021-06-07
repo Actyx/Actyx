@@ -2,6 +2,7 @@ use crate::{streams::OwnStreamGuard, BanyanStore, EphemeralEventsConfig, Link};
 use actyx_sdk::Timestamp;
 use anyhow::Context;
 use futures::future::{join_all, FutureExt};
+use serde::{Deserialize, Serialize};
 use std::{
     convert::TryInto,
     time::{Duration, SystemTime},
@@ -9,10 +10,10 @@ use std::{
 use trees::query::{OffsetQuery, TimeQuery};
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 /// Note: Events are kept on a best-effort basis, potentially violating the
 /// constraints expressed by this config.
-pub(crate) enum RetainConfig {
+pub enum RetainConfig {
     /// Retains the last n events
     Events(u64),
     /// Retain all events between `now - duration` and `now`
@@ -296,7 +297,7 @@ mod test {
 
     async fn test_retain_age(percentage_to_keep: usize) -> anyhow::Result<()> {
         let event_count = 1024;
-        let max_leaf_count = banyan::Config::debug().max_leaf_count as usize;
+        let max_leaf_count = SwarmConfig::test("..").banyan_config.tree.max_leaf_count as usize;
         util::setup_logger();
         let test_stream = 42.into();
 

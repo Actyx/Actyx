@@ -163,6 +163,7 @@ impl Component<StoreRequest, SwarmConfig> for Store {
                 .map(|s| s.parse())
                 .collect::<Result<_, libp2p::multiaddr::Error>>()?,
             ephemeral_event_config: Default::default(),
+            banyan_config: Default::default(),
         };
         Ok(config)
     }
