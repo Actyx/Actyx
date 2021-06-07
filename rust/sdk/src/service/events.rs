@@ -186,17 +186,16 @@ impl SnapshotData {
 #[serde(rename_all = "camelCase")]
 pub enum StartFrom {
     Offsets(OffsetMap),
-    Snapshot {
-        compression: std::collections::BTreeSet<Compression>,
-    },
+    // Snapshot {
+    //     compression: std::collections::BTreeSet<Compression>,
+    // },
 }
 
 impl StartFrom {
     pub fn min_offsets(&self) -> OffsetMap {
-        if let StartFrom::Offsets(o) = self {
-            o.clone()
-        } else {
-            OffsetMap::empty()
+        match self {
+            StartFrom::Offsets(o) => o.clone(),
+            // _ => OffsetMap::empty(),
         }
     }
 }
