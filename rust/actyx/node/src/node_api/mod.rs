@@ -27,15 +27,15 @@ use libp2p::{
         IntoProtocolsHandler, NetworkBehaviour, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters,
         ProtocolsHandler, Swarm, SwarmBuilder, SwarmEvent,
     },
-    NetworkBehaviour, PeerId,
+    Multiaddr, NetworkBehaviour, PeerId,
 };
 use libp2p_streaming_response::{ChannelId, StreamingResponse, StreamingResponseConfig};
 use parking_lot::Mutex;
-use std::{convert::TryFrom, pin::Pin, sync::Arc, time::Duration};
+use std::{collections::BTreeSet, convert::TryFrom, pin::Pin, sync::Arc, time::Duration};
 use tracing::*;
 use util::formats::{
     admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
-    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext,
+    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, NodeErrorContext, NodesInspectResponse,
 };
 use util::SocketAddrHelper;
 
@@ -49,6 +49,7 @@ struct State {
     store: StoreTx,
     /// Pending inflight requests to Node.
     pending_oneshot: FuturesUnordered<PendingRequest>,
+    admin_sockets: BTreeSet<Multiaddr>,
 }
 #[derive(NetworkBehaviour)]
 #[behaviour(poll_method = "poll", out_event = "()")]
@@ -89,6 +90,7 @@ impl ApiBehaviour {
             store,
             auth_info,
             pending_oneshot: FuturesUnordered::new(),
+            admin_sockets: BTreeSet::new(),
         };
         Self {
             ping: Ping::new(PingConfig::new().with_keep_alive(true)),
@@ -207,6 +209,7 @@ impl ApiBehaviour {
                     .send(ComponentRequest::Individual(StoreRequest::NodesInspect { tx }))
                     .unwrap();
                 let maybe_add_key = self.maybe_add_key(channel_id.peer());
+                let admin_addrs = self.state.admin_sockets.iter().map(|a| a.to_string()).collect();
                 let fut = async move {
                     if let Err(e) = maybe_add_key.await {
                         error!("Error adding initial key {}", e);
@@ -216,7 +219,16 @@ impl ApiBehaviour {
                         .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error waiting for response")
                         .and_then(|x| {
                             x.ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error getting swarm state")
-                                .map(AdminResponse::NodesInspectResponse)
+                                .map(|res| {
+                                    AdminResponse::NodesInspectResponse(NodesInspectResponse {
+                                        peer_id: res.peer_id,
+                                        listen_addrs: res.listen_addrs,
+                                        announce_addrs: res.announce_addrs,
+                                        admin_addrs,
+                                        connections: res.connections,
+                                        known_peers: res.known_peers,
+                                    })
+                                })
                         });
                     (channel_id, res)
                 }
@@ -364,6 +376,7 @@ impl Future for SwarmFuture {
             match event {
                 SwarmEvent::NewListenAddr(addr) => {
                     tracing::info!(target: "ADMIN_API_BOUND", "Admin API bound to {}.", addr);
+                    self.0.behaviour_mut().state.admin_sockets.insert(addr);
                 }
                 SwarmEvent::ListenerError { error } => {
                     error!("SwarmEvent::ListenerError {}", error)
@@ -372,7 +385,10 @@ impl Future for SwarmFuture {
                     reason: Err(error),
                     addresses,
                 } => {
-                    error!("SwarmEvent::ListenerClosed {} for {:?}", error, addresses)
+                    error!("SwarmEvent::ListenerClosed {} for {:?}", error, addresses);
+                    for addr in addresses {
+                        self.0.behaviour_mut().state.admin_sockets.remove(&addr);
+                    }
                 }
                 o => {
                     debug!("Other swarm event {:?}", o);
@@ -384,9 +400,7 @@ impl Future for SwarmFuture {
     }
 }
 pub(crate) async fn start(swarm: WrappedBehaviour) {
-    let swarm = SwarmFuture(swarm);
-    let driver = swarm;
-    driver.await;
+    SwarmFuture(swarm).await;
 }
 
 async fn mk_transport(id_keys: identity::Keypair) -> anyhow::Result<(PeerId, Boxed<(PeerId, StreamMuxerBox)>)> {

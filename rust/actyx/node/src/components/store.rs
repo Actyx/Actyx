@@ -10,13 +10,22 @@ use std::{convert::TryInto, path::PathBuf, sync::Arc};
 use swarm::{BanyanStore, SwarmConfig};
 use tokio::sync::oneshot;
 use tracing::*;
-use util::formats::{Connection, NodeCycleCount, NodesInspectResponse, Peer};
+use util::formats::{Connection, NodeCycleCount, Peer};
 
 pub(crate) enum StoreRequest {
     NodesInspect {
-        tx: oneshot::Sender<Result<NodesInspectResponse>>,
+        tx: oneshot::Sender<Result<InspectResponse>>,
     },
 }
+
+pub(crate) struct InspectResponse {
+    pub peer_id: String,
+    pub listen_addrs: Vec<String>,
+    pub announce_addrs: Vec<String>,
+    pub connections: Vec<Connection>,
+    pub known_peers: Vec<Peer>,
+}
+
 pub(crate) type StoreTx = Sender<ComponentRequest<StoreRequest>>;
 
 impl Component<StoreRequest, SwarmConfig> for Store {
@@ -64,7 +73,7 @@ impl Component<StoreRequest, SwarmConfig> for Store {
                             })
                         })
                         .collect();
-                    let _ = tx.send(Ok(NodesInspectResponse {
+                    let _ = tx.send(Ok(InspectResponse {
                         peer_id,
                         listen_addrs,
                         announce_addrs,

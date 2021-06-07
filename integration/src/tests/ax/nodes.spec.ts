@@ -41,7 +41,7 @@ describe('ax nodes', () => {
         const responseShape = [
           {
             connection: 'reachable',
-            host: expect.any(String),
+            host: node._private.axHost,
             nodeId: expect.any(String),
             displayName: node.name,
             startedIso: expect.any(String),
@@ -71,6 +71,42 @@ describe('ax nodes', () => {
           },
         ]
         expect(response.result).toMatchObject(responseShape)
+      })
+    })
+  })
+
+  describe('inspect', () => {
+    test('show consistent outputs', async () => {
+      await runOnEvery(async (node) => {
+        const addrs = assertOK(await node.ax.nodes.inspect()).result.adminAddrs
+
+        expect(addrs.length).toBeGreaterThan(1)
+        expect(addrs).toContainEqual(expect.stringContaining('/127.0.0.1/'))
+
+        const regex = new RegExp('/(ip[46])(?:/[^/]+){2}/(\\d+)')
+        const ports = addrs.map((a) => a.match(regex)?.slice(1, 3) || ['', ''])
+
+        const protos = { ip4: [] as number[], ip6: [] as number[] }
+        for (const [proto, port] of ports) {
+          console.log(addrs, proto, port)
+          const p = Number(port)
+          expect(p).toBeGreaterThan(0)
+          switch (proto) {
+            case 'ip4':
+            case 'ip6':
+              protos[proto].push(p)
+              break
+            default:
+              throw new Error(`unknown proto in admin addr: ${proto}\nresponse was ${addrs}`)
+          }
+        }
+
+        for (const p of protos.ip4) {
+          expect(p).toBe(protos.ip4[0])
+        }
+        for (const p of protos.ip6) {
+          expect(p).toBe(protos.ip6[0])
+        }
       })
     })
   })
