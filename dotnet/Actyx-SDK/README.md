@@ -16,15 +16,17 @@ bindings for the Actyx APIs.
 
 TODO
 
+## Building
+
+```bash
+dotnet build
+```
+
 ## Releasing
 
-[GitVersion](https://gitversion.net/) is used to automatically set the version based on git tags. The prefix used is `"dotnet/sdk-"`. E.g. version `1.0.0` is created by running
+Change the `<PackageVersion>` in the 'csproj' file.
 
-```
-git tag dotnet/sdk-1.0.0 <optional refspec, otherwise HEAD is used>
-```
-
-## Building
+## Packaging
 
 ```bash
 dotnet pack --configuration Release # default config is Debug
@@ -32,9 +34,9 @@ dotnet pack --configuration Release # default config is Debug
 
 ## Publishing to NuGet
 
-```
+```bash
 dotnet nuget push \
-  Sdk/bin/<path_to_artifact>.nupkg \
+  Sdk/bin/<artifact>.<version>nupkg \
   --api-key $(vault kv get -field=api_key secret/ops.actyx/nuget) \
   --source https://api.nuget.org/v3/index.json
 ```
