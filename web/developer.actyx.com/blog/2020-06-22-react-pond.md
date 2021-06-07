@@ -540,4 +540,4 @@ And of course, you can download the finished project [here (zip)](/images/blog/r
 
 You can install the **react-pond** with `npm install @actyx-contrib/react-pond` in your project.
 
-If you are hunting for more documentation, check out the README at the [repository](https://github.com/actyx-contrib/react-pond). You will also find some [more examples](https://github.com/actyx-contrib/react-pond/tree/master/example) in there, or you can read the full [API documentation](https://actyx-contrib.github.io/react-pond/).
+If you are hunting for more documentation, check out the README at the [repository](https://github.com/actyx-contrib/react-pond). You will also find some [more examples](https://github.com/actyx-contrib/react-pond/tree/963fac8f6c941ceda16a436aa07af3dea2813615/example) in there, or you can read the full [API documentation](https://actyx-contrib.github.io/react-pond/).
