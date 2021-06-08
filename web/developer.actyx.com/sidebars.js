@@ -156,8 +156,10 @@ module.exports = {
   conceptualSidebar: [
     'conceptual/overview',
     'conceptual/how-actyx-works',
-    'conceptual/event-sourcing',
     'conceptual/distributed-systems',
+    'conceptual/event-sourcing',
+    'conceptual/event-streams',
+    'conceptual/tags',
     'conceptual/local-first-cooperation',
     'conceptual/actyx-jargon',
     'conceptual/discovery',

@@ -16,14 +16,14 @@ For an explanation of how node discovery works, check out our [conceptual guide]
 A discovery helper node is just a normal Actyx node and, technically, any physical or virtual device can be used for it.
 The only difference is its purpose–instead of running apps, the discovery helper node is used to enable and facilitate discovery between nodes.
 
-From an operations point of view, your discovery helper node should be deployed so that it is 
+From an operations point of view, your discovery helper node should be deployed so that it is
 
 - always reachable,
 - there is no NAT between the discovery helper node and your other nodes.
 
 Therefore we advise to set it up as follows:
 
-1. [Install Actyx](../local-development/install-actyx.mdx) in your local data center, and 
+1. [Install Actyx](../local-development/install-actyx.mdx) in your local data center, and
 2. Configure your VM or server so that Actyx keeps running
 3. [Configure all nodes to connect](../swarms/connect-nodes.mdx) to the discovery helper node
 
@@ -32,4 +32,4 @@ There is one limitation with regard to discovery helper nodes that only manifest
 - there is NAT between the discovery helper node and your other nodes, **and**
 - one (or more) of your nodes is a Docker node, and the Actyx container is running without the `--network=host` option
 
-In this case, you have to [manually configure the `announceAddress` property](../swarms/configure-announced-addresses.mdx). 
+In this case, you have to [manually configure the `announceAddress` property](../swarms/configure-announced-addresses.mdx).

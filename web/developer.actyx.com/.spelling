@@ -212,6 +212,8 @@ macos
 err_port_collision
 misconfiguration
 initialpeers
+metadata
+gapless
  - blog/2020-06-09-building-docker-apps-for-arm64v8.md
 arm64
 ActyxOS
@@ -503,4 +505,3 @@ DownloadLink
 DownloadLink.tsx
 erp-ui
 dashboard-ui
-metadata

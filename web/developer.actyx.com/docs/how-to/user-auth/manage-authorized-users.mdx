@@ -13,7 +13,7 @@ If you want to manage which users are authorized to manage a node, you can do so
 
 ```yaml
 authorizedUsers:
-    - 0WBOOWqi2Ub5SPi5btKN5H5BzFPcjyULwUKUN2dWVsMI= ## Public key of an authorized user
+  - 0WBOOWqi2Ub5SPi5btKN5H5BzFPcjyULwUKUN2dWVsMI= ## Public key of an authorized user
 ```
 
 The following example assumes that you are already authorized and now want to add a user with the public key `09a36bJYYYSusZuQoum6x2zgqtHxYP31ov0RHRWIzwVo=`
@@ -30,7 +30,9 @@ import TabItem from '@theme/TabItem'
   ]}
 >
 
+
 <TabItem value="cli">
+
 
 The following command creates a file called `example` that lists the currently authorized users on your node running at `localhost`:
 
@@ -54,10 +56,14 @@ ax settings set --local com.actyx/admin/authorizedUsers @example localhost
 </TabItem>
 <TabItem value="node-manager">
 
-TODO
+
+In the Node Manager, simply add the public keys as strings, separated by a comma to the `authorizedUsers`array:
+
+![node-manager-authorized-users](../../../static/images/how-to/manage-authorized-users/authorized-users.png)
 
 </TabItem>
 </Tabs>
+
 
 ## Where next?
 
