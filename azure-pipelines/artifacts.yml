@@ -249,12 +249,12 @@ stages:
       name: Native
     jobs:
       - job:
-        displayName: Run release-new
+        displayName: Run cosmos-release
         steps:
           - checkout: self
             persistCredentials: true
           - bash: |
               set -e
               cargo run --release -- release
-            workingDirectory: release-new
+            workingDirectory: rust/release
             name: Release
