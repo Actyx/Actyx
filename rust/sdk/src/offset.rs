@@ -821,6 +821,7 @@ mod tests {
     use super::*;
     use crate::from_cbor_me;
     use crate::{
+        app_id,
         event::{Metadata, Payload},
         scalars::NodeId,
         tags,
@@ -841,6 +842,7 @@ mod tests {
                 offset: Offset::mk_test(offset),
             },
             meta: Metadata {
+                app_id: app_id!("test"),
                 timestamp: Timestamp::now(),
                 tags: tags!("dummy"),
             },
