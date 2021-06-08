@@ -71,6 +71,7 @@ Take a look at the [event streams guide](../conceptual/event-streams.mdx) to lea
 
 <TabItem value="ref">
 
+
 ### Request
 
 - Endpoint: `http://localhost:4454/api/v2/events/offsets`
@@ -314,8 +315,6 @@ The `lowerBound` object specifies the lower bound offset for each stream with th
 
 The `lowerBound` is optional.
 If none is set for one, multiple or all subscribed streams, the Events API will assume no lower bound.
-
-<!-- TODO: reword (we don't subscribe to streams.) -->
 
 #### Required: Upper bounds for offsets (`upperBound`)
 

@@ -41,12 +41,13 @@ module.exports = {
     ],
   ],
   themeConfig: {
-    // announcementBar: {
-    //   id: 'test007',
-    //   content: 'Announcement Bar Content',
-    //   backgroundColor: '#373c40',
-    //   textColor: '#fff',
-    // },
+    announcementBar: {
+      id: '2.0.0-release',
+      content:
+        '🤩 We are incredibly excited to announce the release of Actyx 2.0! Read more about it in our release <a href="https://developer.actyx.com/blog">blog post</a>. 🤩',
+      backgroundColor: '#373c40',
+      textColor: '#fff',
+    },
     colorMode: {
       defaultMode: 'light',
       disableSwitch: true,

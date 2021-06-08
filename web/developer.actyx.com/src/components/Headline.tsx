@@ -1,10 +1,11 @@
 import React from 'react'
 import styled from 'styled-components'
+import defaults from '../components/defaults'
 
 const Wrapper = styled.div`
   font-size: 26px;
   font-weight: 600;
-  color: #303c4b;
+  color: ${defaults.colors.darkgray};
   margin-bottom: 16px;
 `
 

@@ -3,7 +3,7 @@ const fs = require('fs/promises')
 const path = require('path')
 const { constants: fsConstants } = require('fs')
 const { getChanges } = require('./changes')
-const { PRODUCTS, COSMOS_RELEASE_PATH } = require('./consts')
+const { COSMOS_RELEASE_PATH } = require('./consts')
 const { getVersionsAndCommits } = require('./versions')
 
 const cosmosReleaseAvailable = async () =>
@@ -49,7 +49,7 @@ const addReleasePage = async (
   })
 }
 
-const plugin = ({ siteConfig }, options) => ({
+const plugin = () => ({
   name: 'cosmos-versions',
   loadContent: async () => {
     if (!(await cosmosReleaseAvailable())) {

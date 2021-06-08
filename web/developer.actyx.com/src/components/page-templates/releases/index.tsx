@@ -8,13 +8,22 @@ const Col = ({ width, children, className = '' }) => (
   <div className={`col col--${width} ${className}`}>{children}</div>
 )
 
-const ReleasesList: React.FC<{ product: Product, productDisplayName: string, releases: Release[] }> = ({ product, productDisplayName, releases }) => (
+const ReleasesList: React.FC<{
+  product: Product
+  productDisplayName: string
+  releases: Release[]
+}> = ({ product, productDisplayName, releases }) => (
   <Row>
     <Col width="12">
       <h2>{productDisplayName}</h2>
       <ul>
-        {releases.map(({ version, commit }, i) => (
-          <li key={product + version}><a href={`/releases/${product}/${version}`}>{productDisplayName} {version}</a>{i === 0 && " (latest)"}</li>
+        {releases.map(({ version }, i) => (
+          <li key={product + version}>
+            <a href={`/releases/${product}/${version}`}>
+              {productDisplayName} {version}
+            </a>
+            {i === 0 && ' (latest)'}
+          </li>
         ))}
       </ul>
     </Col>
@@ -30,14 +39,16 @@ const Page: React.FC<{ data: ReleaseHistory }> = ({ data: history }) => {
       <div className={'container ' + styles.root}>
         <Row>
           <Col width="12">
-            <h1 className={styles.heading}>
-              Releases
-            </h1>
+            <h1 className={styles.heading}>Releases</h1>
           </Col>
         </Row>
         <ReleasesList productDisplayName="Actyx" product="actyx" releases={history.actyx} />
         <ReleasesList productDisplayName="Actyx CLI" product="cli" releases={history.cli} />
-        <ReleasesList productDisplayName="Actyx Node Manager" product="node-manager" releases={history['node-manager']} />
+        <ReleasesList
+          productDisplayName="Actyx Node Manager"
+          product="node-manager"
+          releases={history['node-manager']}
+        />
         <ReleasesList productDisplayName="Actyx Pond" product="pond" releases={history.pond} />
       </div>
     </Layout>

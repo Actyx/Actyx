@@ -21,6 +21,15 @@ const createTheme = () => {
     },
     colors: {
       primary: '#1998ff',
+      green: '#15be53',
+      purple: '#635bff',
+      blue: '#369aff',
+      orange: '#ff9933',
+      darkgray: '#303c4b',
+      gray: '#f5f5f5',
+      lightgray: '#ebedf0',
+      white: '#ffffff',
+      black: '#000000',
     },
   }
   return theme

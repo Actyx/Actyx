@@ -2,6 +2,7 @@ import React from 'react'
 import styled from 'styled-components'
 import { Link } from '../components/Link'
 import DLink from '@docusaurus/Link'
+import defaults from '../components/defaults'
 
 const Wrapper = styled.div<{
   color?: string
@@ -10,18 +11,18 @@ const Wrapper = styled.div<{
   border: ${(p) => (p.color == 'white' ? '1px solid #BFC4CA' : 'none')};
   background: ${(p) =>
     p.color == 'green'
-      ? '#15BE53'
+      ? defaults.colors.green
       : p.color == 'blue'
-      ? '#369AFF'
+      ? defaults.colors.blue
       : p.color == 'purple'
-      ? '#635BFF'
+      ? defaults.colors.purple
       : p.color == 'orange'
-      ? '#FF9933'
+      ? defaults.colors.orange
       : p.color == 'dark'
-      ? '#303c4b'
+      ? defaults.colors.darkgray
       : p.color == 'white'
-      ? '#ffffff'
-      : '#f5f5f5'};
+      ? defaults.colors.white
+      : defaults.colors.lightgray};
   padding-left: 24px;
   padding-right: 24px;
   padding-bottom: 12px;
@@ -43,7 +44,7 @@ const Headline = styled.div<{
   margin-bottom: 8px;
   font-size: 18px;
   font-weight: 600;
-  color: ${(p) => (p.color != 'white' ? 'white' : '#303c4b')};
+  color: ${(p) => (p.color != 'white' ? defaults.colors.white : defaults.colors.darkgray)};
 `
 
 const Body = styled.div<{
@@ -51,7 +52,7 @@ const Body = styled.div<{
 }>`
   font-size: 15px;
   margin-bottom: 16px;
-  color: ${(p) => (p.color != 'white' ? 'white' : '#303c4b')};
+  color: ${(p) => (p.color != 'white' ? defaults.colors.white : defaults.colors.darkgray)};
 `
 
 type Props = Readonly<{
