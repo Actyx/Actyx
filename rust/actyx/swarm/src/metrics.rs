@@ -3,7 +3,7 @@ use std::io::Write;
 use std::time::Duration;
 
 use crate::BanyanStore;
-use actyx_sdk::{tags, Payload, StreamNr};
+use actyx_sdk::{app_id, tags, Payload, StreamNr};
 use anyhow::Result;
 use libipld::cbor::encode::{write_u64, write_u8};
 use libipld::cbor::DagCborCodec;
@@ -15,6 +15,7 @@ pub fn metrics(store: BanyanStore, nr: StreamNr, interval: Duration) -> Result<i
     let registry = Registry::new();
     store.ipfs().register_metrics(&registry)?;
     let tags = tags!("metrics");
+    let app_id = app_id!("com.actyx");
 
     Ok(async move {
         let encoder = CborEncoder::new();
@@ -28,7 +29,7 @@ pub fn metrics(store: BanyanStore, nr: StreamNr, interval: Duration) -> Result<i
                 continue;
             }
             if let Err(err) = store
-                .append(nr, vec![(tags.clone(), Payload::from_slice(&buffer))])
+                .append(nr, app_id.clone(), vec![(tags.clone(), Payload::from_slice(&buffer))])
                 .await
             {
                 tracing::warn!("error appending metrics: {}", err);

@@ -114,11 +114,7 @@ impl EventStore {
         self.offsets().next().await.expect("offset stream stopped").present
     }
 
-    pub async fn persist(
-        &self,
-        _app_id: AppId,
-        events: Vec<(TagSet, Payload)>,
-    ) -> anyhow::Result<Vec<PersistenceMeta>> {
+    pub async fn persist(&self, app_id: AppId, events: Vec<(TagSet, Payload)>) -> anyhow::Result<Vec<PersistenceMeta>> {
         if events.is_empty() {
             return Ok(vec![]);
         }
@@ -132,7 +128,7 @@ impl EventStore {
             min_offset,
             timestamp,
             ..
-        } = self.banyan_store.append(stream_nr, events).await?;
+        } = self.banyan_store.append(stream_nr, app_id, events).await?;
         let keys = (0..n)
             .map(|i| {
                 let i = i as u64;

@@ -32,7 +32,7 @@ pub use prune::RetainConfig;
 use crate::gossip::Gossip;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::streams::{OwnStream, ReplicatedStream};
-use actyx_sdk::{LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamId, StreamNr, TagSet, Timestamp};
+use actyx_sdk::{AppId, LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamId, StreamNr, TagSet, Timestamp};
 use anyhow::{Context, Result};
 use ax_futures_util::{
     prelude::*,
@@ -750,7 +750,12 @@ impl BanyanStore {
     }
 
     /// Append events to a stream, publishing the new data.
-    pub async fn append(&self, stream_nr: StreamNr, events: Vec<(TagSet, Event)>) -> Result<AppendMeta> {
+    pub async fn append(
+        &self,
+        stream_nr: StreamNr,
+        _app_id: AppId,
+        events: Vec<(TagSet, Event)>,
+    ) -> Result<AppendMeta> {
         debug_assert!(!events.is_empty());
         tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
         let timestamp = Timestamp::now();

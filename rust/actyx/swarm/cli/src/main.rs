@@ -1,3 +1,4 @@
+use actyx_sdk::{app_id, AppId};
 use anyhow::Result;
 use api::NodeInfo;
 use crypto::{KeyPair, KeyStore};
@@ -19,6 +20,9 @@ async fn main() {
 async fn run() -> Result<()> {
     let mut stdin = BufReader::new(tokio::io::stdin());
     let mut line = String::with_capacity(4096);
+    fn app_id() -> AppId {
+        app_id!("test")
+    }
 
     let mut config = Config::from_args();
     tracing::info!(
@@ -73,7 +77,7 @@ async fn run() -> Result<()> {
         match line.parse()? {
             Command::AddAddress(peer, addr) => swarm.ipfs().add_address(&peer, addr),
             Command::Append(nr, events) => {
-                swarm.append(nr, events).await?;
+                swarm.append(nr, app_id(), events).await?;
             }
             Command::SubscribeQuery(q) => {
                 let tags_query = TagsQuery::from_expr(&q.from)(true);

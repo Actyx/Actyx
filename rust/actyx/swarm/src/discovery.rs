@@ -38,7 +38,7 @@
 //! while when configuring an external address you are telling other peers how to reach you, given
 //! you have a bootstrap node in common.
 use crate::BanyanStore;
-use actyx_sdk::{tags, Payload, StreamNr};
+use actyx_sdk::{app_id, tags, Payload, StreamNr};
 use anyhow::Result;
 use fnv::{FnvHashMap, FnvHashSet};
 use futures::stream::{Stream, StreamExt};
@@ -197,6 +197,7 @@ pub fn discovery_publish(
     let tags = tags!("discovery");
     let peer_id: PeerId = store.ipfs().local_peer_id().into();
     let node_name = store.ipfs().local_node_name();
+    let internal_app_id = app_id!("com.actyx");
     Ok(async move {
         while let Some(event) = stream.next().await {
             tracing::debug!("discovery_publish {} {:?}", node_name, event);
@@ -248,7 +249,11 @@ pub fn discovery_publish(
                     continue;
                 }
                 if let Err(err) = store
-                    .append(nr, vec![(tags.clone(), Payload::from_slice(&buffer))])
+                    .append(
+                        nr,
+                        internal_app_id.clone(),
+                        vec![(tags.clone(), Payload::from_slice(&buffer))],
+                    )
                     .await
                 {
                     tracing::warn!("error appending discovery: {}", err);
