@@ -163,7 +163,7 @@ mod test {
     use maplit::btreemap;
 
     use super::*;
-    use crate::SwarmConfig;
+    use crate::{BanyanConfig, SwarmConfig};
 
     async fn create_store() -> anyhow::Result<BanyanStore> {
         util::setup_logger();
@@ -180,6 +180,10 @@ mod test {
             enable_fast_path: true,
             enable_slow_path: true,
             enable_root_map: true,
+            banyan_config: BanyanConfig {
+                tree: banyan::Config::debug(),
+                ..Default::default()
+            },
             ..Default::default()
         };
         BanyanStore::new(cfg).await
