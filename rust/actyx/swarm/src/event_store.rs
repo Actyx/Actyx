@@ -1,8 +1,8 @@
 use std::{cmp::Reverse, convert::TryInto, ops::RangeInclusive};
 
 use actyx_sdk::{
-    app_id, language::TagExpr, AppId, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap,
-    OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp,
+    language::TagExpr, AppId, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin,
+    Payload, StreamId, StreamNr, TagSet, Timestamp,
 };
 use ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered};
 use banyan::FilteredChunk;
@@ -222,9 +222,8 @@ fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> 
     min..=max
 }
 
-fn to_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<Payload> {
-    let app_id = app_id!("todo");
-    Event {
+fn to_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Option<Event<Payload>> {
+    Some(Event {
         payload,
         key: EventKey {
             lamport: key.lamport(),
@@ -233,10 +232,10 @@ fn to_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<P
         },
         meta: Metadata {
             timestamp: key.time(),
+            app_id: key.app_id()?,
             tags: key.into_app_tags(),
-            app_id,
         },
-    }
+    })
 }
 
 /// Take a block of banyan events and convert them into events.
@@ -244,7 +243,7 @@ fn events_from_chunk(stream_id: StreamId, chunk: FilteredChunk<(u64, AxKey, Payl
     chunk
         .data
         .into_iter()
-        .map(move |(offset, key, payload)| to_ev(offset, key, stream_id, payload))
+        .filter_map(move |(offset, key, payload)| to_ev(offset, key, stream_id, payload))
         .collect()
 }
 
@@ -257,7 +256,7 @@ fn events_from_chunk_rev(
         .data
         .into_iter()
         .rev()
-        .map(move |(offset, key, payload)| Reverse(to_ev(offset, key, stream_id, payload)))
+        .filter_map(move |(offset, key, payload)| to_ev(offset, key, stream_id, payload).map(Reverse))
         .collect()
 }
 

@@ -39,6 +39,13 @@ impl ScopedTag {
         }
     }
 
+    pub fn internal(&self) -> Option<&Tag> {
+        match self.0 {
+            TagScope::Internal => Some(&self.1),
+            _ => None,
+        }
+    }
+
     pub fn into_app(self) -> Option<Tag> {
         match self.0 {
             TagScope::App => Some(self.1),
@@ -108,6 +115,10 @@ impl ScopedTagSet {
 
     pub fn public_tags(&self) -> impl Iterator<Item = &Tag> {
         self.0.iter().filter_map(|t| t.app())
+    }
+
+    pub fn internal_tags(&self) -> impl Iterator<Item = &Tag> {
+        self.0.iter().filter_map(|t| t.internal())
     }
 
     pub fn insert(&mut self, tag: ScopedTag) -> bool {

@@ -764,7 +764,7 @@ impl BanyanStore {
         let min_lamport = *lamports.peek().unwrap();
         let app_id_tag = ScopedTag::new(
             trees::tags::TagScope::Internal,
-            Tag::try_from(app_id.as_str()).expect("empty app id string"),
+            Tag::try_from(format!("app_id:{}", app_id).as_str()).unwrap(),
         );
         let kvs = lamports.zip(events).map(|(lamport, (tags, payload))| {
             let mut tags = ScopedTagSet::from(tags);

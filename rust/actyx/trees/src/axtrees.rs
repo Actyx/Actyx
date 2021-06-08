@@ -1,4 +1,4 @@
-use actyx_sdk::{LamportTimestamp, TagSet, Timestamp};
+use actyx_sdk::{AppId, LamportTimestamp, TagSet, Timestamp};
 use banyan::{
     index::{CompactSeq, Summarizable},
     TreeTypes,
@@ -91,6 +91,21 @@ impl AxKey {
 
     pub fn into_tags(self) -> ScopedTagSet {
         self.tags
+    }
+
+    fn internal_tags<'a>(&'a self, prefix: &'a str) -> impl Iterator<Item = &'a str> {
+        self.tags.internal_tags().filter_map(move |x| {
+            if x.as_ref().starts_with(prefix) {
+                Some(&x.as_ref()[prefix.len()..])
+            } else {
+                None
+            }
+        })
+    }
+
+    pub fn app_id(&self) -> Option<AppId> {
+        let app_id = self.internal_tags("app_id:").next()?;
+        AppId::try_from(app_id).ok()
     }
 
     pub fn into_app_tags(self) -> TagSet {
