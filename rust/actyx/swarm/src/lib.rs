@@ -32,7 +32,7 @@ pub use prune::RetainConfig;
 use crate::gossip::Gossip;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::streams::{OwnStream, ReplicatedStream};
-use actyx_sdk::{AppId, LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamId, StreamNr, TagSet, Timestamp};
+use actyx_sdk::{AppId, LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamId, StreamNr, Tag, TagSet, Timestamp};
 use anyhow::{Context, Result};
 use ax_futures_util::{
     prelude::*,
@@ -73,10 +73,7 @@ use std::{
     time::Duration,
 };
 use streams::*;
-use trees::{
-    axtrees::{AxKey, AxTrees, Sha256Digest},
-    AxTree, AxTreeHeader,
-};
+use trees::{AxTree, AxTreeHeader, axtrees::{AxKey, AxTrees, Sha256Digest}, tags::{ScopedTag, ScopedTagSet}};
 use util::{
     formats::NodeErrorContext,
     reentrant_safe_mutex::{ReentrantSafeMutex, ReentrantSafeMutexGuard},
@@ -753,7 +750,7 @@ impl BanyanStore {
     pub async fn append(
         &self,
         stream_nr: StreamNr,
-        _app_id: AppId,
+        app_id: AppId,
         events: Vec<(TagSet, Event)>,
     ) -> Result<AppendMeta> {
         debug_assert!(!events.is_empty());
@@ -764,9 +761,14 @@ impl BanyanStore {
         let mut store = self.lock();
         let mut lamports = store.reserve_lamports(events.len())?.peekable();
         let min_lamport = *lamports.peek().unwrap();
+        let app_id_tag = ScopedTag::new(trees::tags::TagScope::Internal, Tag::try_from(app_id.as_str()).unwrap());
         let kvs = lamports
             .zip(events)
-            .map(|(lamport, (tags, payload))| (AxKey::new(tags.into(), lamport, timestamp), payload));
+            .map(|(lamport, (tags, payload))| {
+                let mut tags = ScopedTagSet::from(tags);
+                tags.insert(app_id_tag.clone());
+                (AxKey::new(tags, lamport, timestamp), payload)
+            });
         let min_offset = self.transform_stream(&mut guard, |txn, tree| {
             let snapshot = tree.snapshot();
             if snapshot.level() > MAX_TREE_LEVEL {
