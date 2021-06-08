@@ -62,7 +62,7 @@ pub struct QueryRequest {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscribeRequest {
-    pub offsets: Option<OffsetMap>,
+    pub lower_bound: Option<OffsetMap>,
     pub query: Query,
 }
 
@@ -185,7 +185,7 @@ impl SnapshotData {
 #[derive(Debug, Serialize, Deserialize, Clone, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum StartFrom {
-    Offsets(OffsetMap),
+    LowerBound(OffsetMap),
     // Snapshot {
     //     compression: std::collections::BTreeSet<Compression>,
     // },
@@ -194,7 +194,7 @@ pub enum StartFrom {
 impl StartFrom {
     pub fn min_offsets(&self) -> OffsetMap {
         match self {
-            StartFrom::Offsets(o) => o.clone(),
+            StartFrom::LowerBound(o) => o.clone(),
             // _ => OffsetMap::empty(),
         }
     }

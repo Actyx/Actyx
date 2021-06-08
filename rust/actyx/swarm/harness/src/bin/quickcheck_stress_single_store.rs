@@ -123,7 +123,7 @@ fn main() {
                 .collect::<FuturesUnordered<_>>();
 
             let request = SubscribeRequest {
-                offsets: None,
+                lower_bound: None,
                 query: "FROM 'my_test'".parse().unwrap(),
             };
             for client in subscription_clients {

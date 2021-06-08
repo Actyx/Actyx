@@ -47,7 +47,7 @@ const QueryRequest = t.readonly(
 
 const SubscribeRequest = t.readonly(
   t.type({
-    offsets: OffsetMapIO,
+    lowerBound: OffsetMapIO,
     query: t.string,
   }),
 )
@@ -121,7 +121,7 @@ export class WebsocketEventStore implements EventStore {
       .request(
         RequestTypes.Subscribe,
         SubscribeRequest.encode({
-          offsets: lowerBound,
+          lowerBound,
           query: toAql(whereObj),
         }),
       )

@@ -106,11 +106,11 @@ export type QueryRequest = {
   order: Order
 }
 export type SubscribeRequest = {
-  offsets?: OffsetMap
+  lowerBound?: OffsetMap
   query: string
 }
 export type SubscribeMonotonicRequestStartFrom =
-  | { offsets: OffsetMap }
+  | { lowerBound: OffsetMap }
   | { snapshot: ReadonlyArray<Compression> }
 
 export type SubscribeMonotonicRequest = {

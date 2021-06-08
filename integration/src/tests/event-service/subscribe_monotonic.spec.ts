@@ -16,7 +16,7 @@ describe('event service', () => {
         const request: SubscribeMonotonicRequest = {
           session: 'test-session',
           query: `FROM '${mySuite()}' & '${testName()}' & isLocal`,
-          offsets: {},
+          lowerBound: {},
         }
 
         const data: SubscribeMonotonicResponse[] = []
@@ -44,7 +44,7 @@ describe('event service', () => {
         const request: SubscribeMonotonicRequest = {
           session: 'test-session',
           query: `FROM '${mySuite()}' & '${testName()}' & isLocal`,
-          offsets: {},
+          lowerBound: {},
         }
 
         const data: SubscribeMonotonicResponse[] = []

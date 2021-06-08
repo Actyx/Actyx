@@ -482,7 +482,7 @@ The request body must contain a JSON object with the following structure:
 
 ```js
 {
-    "offsets": {
+    "lowerBound": {
         "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. 34>",
         "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. -1>"
     },
@@ -492,12 +492,13 @@ The request body must contain a JSON object with the following structure:
 
 You use the request body to specify the details of your request as documented in the following.
 
-#### Optional: Lower bound for offsets (`offsets`)
+#### Optional: Lower bound for offsets (`lowerBound`)
 
-The `offsets` object specifies the lower bound offset for each stream with the numbers being **exclusive**, i.e. a `offsets` specification of `34` means the Events API will return events with offsets `> 34`.
+The `lowerBound` object specifies the lower bound offset for each stream with the numbers being
+**exclusive**, i.e. a `lowerBound` specification of `34` means the Events API will return events with offsets `> 34`.
 
-The `offsets` is optional.
-If none is set for one, multiple or all subscribed streams, the Event Store will assume a lower bound offset of `-1`, i.e. the beginning.
+The `lowerBound` field is optional. If none is set for one, multiple or all subscribed streams,
+the Events API will assume a lower bound offset of `-1`, i.e. the beginning.
 
 #### Required: Query (`query`)
 
@@ -542,7 +543,7 @@ See the following example using cURL:
 ```bash title="Example subscribe request"
 echo '
 {
-    "offsets": {
+    "lowerBound": {
         "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34,
     },
     "query": "FROM \"tag-01\" & (\"tag-02\" | \"tag-03\")",
@@ -609,14 +610,15 @@ The request body must contain a JSON object with the following structure:
 {
   "session": "<string: user supplied session ID>",
   "query": "<string: tag query, e.g. «FROM 'tag1' & 'tag2'»>",
-  "offsets": {
+  "lowerBound": {
     "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. 34>",
     "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. -1>"
   }
 }
 ```
 
-The `offsets` object specifies the lower bound offset for each stream with the numbers being **exclusive**, i.e. a `offsets` specification of `34` means the Events API will return events with offsets `> 34`.
+The `lowerBound` object specifies the lower bound offset for each stream with the numbers being **exclusive**,
+i.e. a `lowerBound` specification of `34` means the Events API will return events with offsets `> 34`.
 
 You use the request body to specify additional details of your request as documented in the following:
 
@@ -686,12 +688,12 @@ If an error is encountered while processing the stream of events, the stream wil
 
 See the following example using cURL:
 
-```bash title="Example subscribe_monotonic request with offsets"
+```bash title="Example subscribe_monotonic request with lower bound offsets"
 echo '
 {
     "session": "my_session_id",
     "query": "FROM \"tag-01\" & (\"tag-02\" | \"tag-03\")",
-    "offsets": {
+    "lowerBound": {
         "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34
     }
 }

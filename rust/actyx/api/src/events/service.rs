@@ -7,7 +7,7 @@ use actyx_sdk::{
         QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest, SubscribeMonotonicResponse,
         SubscribeRequest, SubscribeResponse,
     },
-    AppId, Event, EventKey, Metadata, OffsetMap, OffsetOrMin, Payload,
+    AppId, Event, Metadata, OffsetMap, OffsetOrMin, Payload,
 };
 use ax_futures_util::prelude::*;
 use futures::{
@@ -111,7 +111,7 @@ impl EventService {
         _app_id: AppId,
         request: SubscribeRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
-        Ok(subscribe0(&self.store, &request.query.from, request.offsets)
+        Ok(subscribe0(&self.store, &request.query.from, request.lower_bound)
             .await?
             .flat_map(mk_feed(request.query))
             .map(SubscribeResponse::Event)
@@ -125,17 +125,16 @@ impl EventService {
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
         let tag_expr = &request.query.from;
 
-        let initial_latest = if let StartFrom::Offsets(offsets) = &request.from {
-            self.store
+        let initial_latest = match &request.from {
+            StartFrom::LowerBound(offsets) => self
+                .store
                 .bounded_backward(tag_expr, None, offsets.clone())
                 .await
                 .map_err(Error::StoreReadError)?
                 .next()
                 .await
                 .map(|event| event.key)
-                .unwrap_or_default()
-        } else {
-            EventKey::default()
+                .unwrap_or_default(), // _ => EventKey::default(),
         };
 
         let stream = subscribe0(&self.store, &tag_expr, Some(request.from.min_offsets())).await?;

@@ -61,7 +61,7 @@ dependencies = [
 
 [[package]]
 name = "actyx_sdk_macros"
-version = "0.2.1"
+version = "0.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
