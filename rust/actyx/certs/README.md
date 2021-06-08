@@ -5,16 +5,22 @@
 Exec:
 
 ```sh
-# 
-export ACTYX_PRIVATE_KEY=0WBFFicIHbivRZXAlO7tPs7rCX6s7u2OIMJ2mx9nwg0w= # Corresponding pub key `075i62XGQJuXjv6nnLQyJzECZhF29acYvYeEOJ3kc5M8=`
-# Corresponding dev private key `08lUw93C+xzdxBcsYOoPVjzn8IHPJtnJW9Y/WyEu4v64=` for the passed in public key below.
-cargo run --bin ax-dev-cert -- create --dev-public-key 0nz1YdHu/JDmS6CImcZgOj9Y960sJOPrbZHAJO107qW0= --app-domains com.actyx.* com.example.*
+# Generate dev certificate
+cargo run --bin ax-dev-cert -- create --actyx-private-key 0WBFFicIHbivRZXAlO7tPs7rCX6s7u2OIMJ2mx9nwg0w= --dev-private-key 08lUw93C+xzdxBcsYOoPVjzn8IHPJtnJW9Y/WyEu4v64= --app-domains com.actyx.* com.example.*
+
+# If dev key is omitted, one will be generated. Actyx and dev keys could be provided in the form of env vars
+export ACTYX_PRIVATE_KEY=0WBFFicIHbivRZXAlO7tPs7rCX6s7u2OIMJ2mx9nwg0w=
+cargo run --bin ax-dev-cert -- create --app-domains com.actyx.* com.example.*
 ```
+
+Corresponding Actyx pub key `075i62XGQJuXjv6nnLQyJzECZhF29acYvYeEOJ3kc5M8=`
+Corresponding Dev pub key `0nz1YdHu/JDmS6CImcZgOj9Y960sJOPrbZHAJO107qW0=`
 
 Result:
 
 ```json
 {
+  "devPrivkey":"08lUw93C+xzdxBcsYOoPVjzn8IHPJtnJW9Y/WyEu4v64=",
   "devPubkey":"0nz1YdHu/JDmS6CImcZgOj9Y960sJOPrbZHAJO107qW0=",
   "appDomains":["com.actyx.*","com.example.*"],
   "axSignature":"8Bl3zCNno5GbpKUoati7CiFgr0KGwNHB1kTwBVKzO9pzW07hFkkQ+GXvyc9QaWhHT5aXzzO+mVrx3eiC7TREAQ=="
@@ -23,30 +29,25 @@ Result:
 
 ## Sign app manifest
 
-Create dev_cert.json:
-
-```json
+```sh
+# Create input files
+cat > dev_cert.json << EOF
 {
+  "devPrivkey":"08lUw93C+xzdxBcsYOoPVjzn8IHPJtnJW9Y/WyEu4v64=",
   "devPubkey":"0nz1YdHu/JDmS6CImcZgOj9Y960sJOPrbZHAJO107qW0=",
   "appDomains":["com.actyx.*","com.example.*"],
   "axSignature":"8Bl3zCNno5GbpKUoati7CiFgr0KGwNHB1kTwBVKzO9pzW07hFkkQ+GXvyc9QaWhHT5aXzzO+mVrx3eiC7TREAQ=="
 }
-```
-
-Create app_manifest.json:
-
-```json
+EOF
+cat > app_manifest.json << EOF
 {
   "appId": "com.actyx.auth-test",
   "displayName": "auth test app",
   "version": "v0.0.1"
 }
-```
+EOF
 
-Sign manifest
-
-```sh
-# Make sure your `ax users keygen` key pair matches the one used for dev cert generation or pass in a custom identity path
+# Sign manifest 
 cargo run --bin ax -- apps sign dev_cert.json app_manifest.json
 ```
 

@@ -5,7 +5,7 @@ mod signed_app_manifest;
 mod trial_app_manifest;
 
 pub use app_domain::AppDomain;
-pub use developer_certificate::{DeveloperCertificate, DeveloperCertificateInput};
+pub use developer_certificate::{DeveloperCertificate, ManifestDeveloperCertificate};
 pub use signed_app_manifest::SignedAppManifest;
 pub use trial_app_manifest::TrialAppManifest;
 

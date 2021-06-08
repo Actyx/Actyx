@@ -2,7 +2,7 @@ use actyx_sdk::AppId;
 use crypto::{PrivateKey, PublicKey};
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::{developer_certificate::DeveloperCertificate, signature::Signature};
+use crate::{developer_certificate::ManifestDeveloperCertificate, signature::Signature};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AppManifestSignatureProps {
@@ -17,11 +17,11 @@ pub struct AppManifestSignature {
     sig_version: u8,
     dev_signature: Signature,
     #[serde(flatten)]
-    dev_cert: DeveloperCertificate,
+    dev_cert: ManifestDeveloperCertificate,
 }
 
 impl AppManifestSignature {
-    fn new(dev_signature: Signature, dev_cert: DeveloperCertificate) -> Self {
+    fn new(dev_signature: Signature, dev_cert: ManifestDeveloperCertificate) -> Self {
         Self {
             sig_version: 0,
             dev_signature,
@@ -59,7 +59,7 @@ impl SignedAppManifest {
         display_name: String,
         version: String,
         dev_privkey: PrivateKey,
-        dev_cert: DeveloperCertificate,
+        dev_cert: ManifestDeveloperCertificate,
     ) -> anyhow::Result<Self> {
         dev_cert.validate_app_id(&app_id)?;
         let hash_input = AppManifestSignatureProps {
@@ -112,7 +112,7 @@ mod tests {
 
     use crate::{
         app_domain::AppDomain,
-        developer_certificate::{DeveloperCertificate, DeveloperCertificateInput},
+        developer_certificate::{DeveloperCertificateInput, ManifestDeveloperCertificate},
         signature::Signature,
     };
 
@@ -121,7 +121,7 @@ mod tests {
     struct TestFixture {
         ax_public_key: PublicKey,
         dev_private_key: PrivateKey,
-        dev_cert: DeveloperCertificate,
+        dev_cert: ManifestDeveloperCertificate,
         sig_props: AppManifestSignatureProps,
         serialized_manifest: serde_json::Value,
     }
@@ -132,7 +132,7 @@ mod tests {
         let dev_public_key: PublicKey = dev_private_key.into();
         let app_domains: Vec<AppDomain> = vec!["com.actyx.*".parse().unwrap()];
         let dev_cert = DeveloperCertificateInput::new(dev_public_key, app_domains);
-        let dev_cert = DeveloperCertificate::new(dev_cert, ax_private_key).unwrap();
+        let dev_cert = ManifestDeveloperCertificate::new(dev_cert, ax_private_key).unwrap();
         let serialized_manifest = serde_json::json!({
             "appId":"com.actyx.test-app",
             "displayName":"display name",
@@ -227,7 +227,7 @@ mod tests {
         let dev_signature = Signature::new(&[1; 3], private).unwrap();
         // create whatever dev_cert
         let input = DeveloperCertificateInput::new(private.into(), Vec::new());
-        let dev_cert = DeveloperCertificate::new(input, private).unwrap();
+        let dev_cert = ManifestDeveloperCertificate::new(input, private).unwrap();
         let signature = AppManifestSignature::new(dev_signature, dev_cert);
         assert_eq!(signature.sig_version, 0);
     }

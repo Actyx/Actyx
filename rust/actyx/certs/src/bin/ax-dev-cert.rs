@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use anyhow::{bail, Context};
-use certs::{AppDomain, DeveloperCertificate, DeveloperCertificateInput};
-use crypto::{PrivateKey, PublicKey};
+use certs::{AppDomain, DeveloperCertificate};
+use crypto::PrivateKey;
 use structopt::StructOpt;
 use util::version::NodeVersion;
 
@@ -11,9 +11,11 @@ struct CreateOpts {
     #[structopt(long, env, hide_env_values = true)]
     /// Actyx private key
     actyx_private_key: String,
-    #[structopt(long)]
-    /// Developer's public key
-    dev_public_key: String,
+
+    #[structopt(long, env, hide_env_values = true)]
+    /// Developer's private key, if omitted one will be generated
+    dev_private_key: Option<String>,
+
     /// Certificate's allowed app domains
     #[structopt(long, required = true)]
     app_domains: Vec<String>,
@@ -40,7 +42,10 @@ struct Opts {
 
 fn create_dev_cert(opts: CreateOpts) -> anyhow::Result<()> {
     let ax_private_key = PrivateKey::from_str(&opts.actyx_private_key).context("Unable to parse actyx private key")?;
-    let dev_public_key = PublicKey::from_str(&opts.dev_public_key).context("Unable to parse developer's public key")?;
+    let dev_private_key = match opts.dev_private_key {
+        Some(x) => PrivateKey::from_str(&x).context("Unable to parse developer's private key")?,
+        None => PrivateKey::generate(),
+    };
     let mut app_domains: Vec<AppDomain> = Vec::new();
     for x in opts.app_domains {
         match x.parse() {
@@ -49,9 +54,8 @@ fn create_dev_cert(opts: CreateOpts) -> anyhow::Result<()> {
         }
     }
 
-    let input = DeveloperCertificateInput::new(dev_public_key, app_domains);
-    let dev_cert = DeveloperCertificate::new(input, ax_private_key)?;
-    let serialized = serde_json::to_string(&dev_cert).unwrap();
+    let dev_cert = DeveloperCertificate::new(dev_private_key, app_domains, ax_private_key)?;
+    let serialized = serde_json::to_string(&dev_cert)?;
     println!("{}", serialized);
 
     Ok(())
