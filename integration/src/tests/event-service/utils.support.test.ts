@@ -1,10 +1,5 @@
 import { AxEventService, PublishResponse, PublishResponseKey } from '../../http-client'
-
-export const randomString = (): string =>
-  Math.random()
-    .toString(36)
-    .replace(/[^a-z]+/g, '')
-    .substr(0, 5)
+import { randomString } from '../../util'
 
 export type TestPayload = {
   value: string

@@ -1,12 +1,37 @@
-use std::{convert::TryFrom, sync::Arc};
+use std::{convert::TryFrom, path::Path, sync::Arc};
 
 use actyx_sdk::NodeId;
-use anyhow::Context;
+use anyhow::{bail, Context};
 use crypto::PublicKey;
+use derive_more::{Display, Error};
 use parking_lot::Mutex;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use tracing::*;
 use util::formats::NodeCycleCount;
+
+#[derive(Debug, Clone, Copy, Display, Error)]
+#[display(
+    fmt = "Attempting to start Actyx v2 with a data directory from ActyxOS v1.1, which is currently not supported.\n\
+           See the documentation for when and how migration is supported. Meanwhile, you can start from a\n\
+           fresh data directory (see also the --working-dir command line option)."
+)]
+pub struct WrongVersionV1;
+
+#[derive(Debug, Clone, Copy, Display, Error)]
+#[display(
+    fmt = "Attempting to start Actyx v2 with a data directory from ActyxOS v1.0, which is currently not supported.\n\
+           See the documentation for when and how migration is supported. Meanwhile, you can start from a\n\
+           fresh data directory (see also the --working-dir command line option)."
+)]
+pub struct WrongVersionV0;
+
+#[derive(Debug, Clone, Copy, Display)]
+#[display(
+    fmt = "Attempting to start Actyx v2 with a data directory from a future version (schema ID is {})",
+    _0
+)]
+pub struct WrongVersionFuture(u32);
+impl std::error::Error for WrongVersionFuture {}
 
 #[derive(Clone)]
 pub struct NodeStorage {
@@ -17,12 +42,14 @@ impl NodeStorage {
     pub fn in_memory() -> Self {
         Self::open(":memory:").expect("Unable to create in memory storage")
     }
+
     #[cfg(not(test))]
-    pub fn new<P: AsRef<std::path::Path>>(path_or_name: P) -> anyhow::Result<Self> {
-        Self::open(&path_or_name.as_ref().to_string_lossy())
+    pub fn new(path_or_name: impl AsRef<Path>) -> anyhow::Result<Self> {
+        Self::open(path_or_name)
     }
-    pub fn open(path_or_name: &str) -> anyhow::Result<Self> {
-        info!("Creating database {}", path_or_name);
+
+    fn open(path_or_name: impl AsRef<Path>) -> anyhow::Result<Self> {
+        info!("Creating database {}", path_or_name.as_ref().display());
         let flags =
             OpenFlags::SQLITE_OPEN_READ_WRITE | OpenFlags::SQLITE_OPEN_CREATE | OpenFlags::SQLITE_OPEN_FULL_MUTEX;
         let conn = Connection::open_with_flags(path_or_name, flags).context("Opening sqlite for NodeStorage")?;
@@ -37,27 +64,48 @@ impl NodeStorage {
     }
 
     fn initialize_db(conn: &mut Connection) -> anyhow::Result<()> {
+        match conn.query_row(
+            "SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'node'",
+            [],
+            |row| row.get(0),
+        )? {
+            0 => {
+                conn.execute_batch(
+                    "BEGIN;\
+                         CREATE TABLE node (name TEXT PRIMARY KEY, value BLOB) WITHOUT ROWID;\
+                         INSERT INTO node (name, value) VALUES ('database_version', 2);\
+                         COMMIT",
+                )?;
+            }
+            1 => {
+                match conn
+                    .query_row("SELECT value FROM node WHERE name = 'database_version'", [], |row| {
+                        row.get(0)
+                    })
+                    .optional()?
+                {
+                    Some(2) => { /* all good */ }
+                    Some(1) => return Err(WrongVersionV1.into()),
+                    None => return Err(WrongVersionV0.into()),
+                    Some(x) => return Err(WrongVersionFuture(x).into()),
+                }
+            }
+            x => bail!("can’t be: {} tables named 'node'", x),
+        }
+
+        conn.pragma_update(None, "journal_mode", &"WAL")?;
+        conn.pragma_update(None, "synchronous", &"EXTRA")?;
+
         conn.execute_batch(
-            "BEGIN;\n\
-            CREATE TABLE IF NOT EXISTS node \
-            (name TEXT PRIMARY KEY, value BLOB) WITHOUT ROWID;\n\
-            INSERT INTO node VALUES ('database_version', 1) ON CONFLICT DO NOTHING;\n\
-            COMMIT;",
+            "INSERT INTO node (name, value) VALUES ('cycle_count', -1) ON CONFLICT DO NOTHING;\
+                 UPDATE node SET value = value + 1 WHERE name = 'cycle_count'",
         )?;
-        conn.execute_batch("PRAGMA journal_mode = WAL;")?;
-        // `PRAGMA synchronous = EXTRA;` https://www.sqlite.org/pragma.html#pragma_synchronous
-        conn.execute("PRAGMA synchronous = EXTRA;", [])?;
-
-        conn.execute_batch(
-           "INSERT INTO node(name,value) SELECT 'cycle_count', -1 WHERE NOT EXISTS (SELECT 1 FROM node WHERE name = 'cycle_count');\n\
-                UPDATE node SET value = value+1 WHERE name='cycle_count';")?;
-
-        assert_eq!(NodeStorage::version(conn)?, 1);
 
         Ok(())
     }
 
     /// version of the node storage. 0 for no version field.
+    #[cfg(test)]
     fn version(conn: &Connection) -> anyhow::Result<u32> {
         Ok(conn
             .query_row("SELECT value FROM node WHERE name = 'database_version'", [], |row| {

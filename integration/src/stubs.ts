@@ -27,6 +27,7 @@ export const mkNodeStub = (
       _private: {
         shutdown: () => Promise.resolve(),
         actyxBinaryPath: '',
+        workingDir: '',
         axBinaryPath: '',
         axHost: '',
         httpApiOrigin: '',

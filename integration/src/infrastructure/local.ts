@@ -87,6 +87,7 @@ export const mkNodeLocalProcess = (
     _private: {
       shutdown,
       actyxBinaryPath: binary,
+      workingDir,
       axBinaryPath,
       axHost: `localhost:${port4458}`,
       httpApiOrigin,
@@ -160,6 +161,7 @@ export const mkNodeLocalDocker = async (
         shutdown,
         axBinaryPath,
         actyxBinaryPath: 'actyx',
+        workingDir: '/data/actyx-data',
         axHost,
         httpApiOrigin,
         apiPond: `ws://localhost:${port(4454)}/api/v2/events`,

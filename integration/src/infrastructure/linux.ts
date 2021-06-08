@@ -47,7 +47,7 @@ export const mkNodeSshProcess = async (
 
   const proc = await startActyx(nodeName, logger, ssh)
 
-  return await forwardPortsAndBuildClients(ssh, nodeName, target, proc, {
+  return await forwardPortsAndBuildClients(ssh, nodeName, target, proc, 'actyx-data', {
     host: 'process',
   })
 }
@@ -93,7 +93,7 @@ export const mkNodeSshDocker = async (
 
   // TODO: Support multiple containers on the same host, and fill
   // `target.executeInContainer`
-  return await forwardPortsAndBuildClients(ssh, nodeName, target, proc, {
+  return await forwardPortsAndBuildClients(ssh, nodeName, target, proc, '/data/actyx-data', {
     host: 'docker',
   })
 }
@@ -262,6 +262,7 @@ export const forwardPortsAndBuildClients = async (
   nodeName: string,
   target: Target,
   actyxProc: execa.ExecaChildProcess<string>[],
+  workingDir: string,
   theRest: Omit<ActyxNode, 'ax' | '_private' | 'name' | 'target'>,
 ): Promise<ActyxNode> => {
   const [[port4454, port4458], proc] = await ssh.forwardPorts(4454, 4458)
@@ -294,6 +295,7 @@ export const forwardPortsAndBuildClients = async (
     _private: {
       shutdown,
       actyxBinaryPath: './actyx',
+      workingDir,
       axBinaryPath,
       axHost,
       httpApiOrigin,

@@ -3,6 +3,7 @@ import { startEphemeralNode, startEphemeralProcess } from '../../infrastructure'
 import { getFreeRemotePort, occupyRemotePort } from '../../infrastructure/checkPort'
 import { runOnEach, runOnEvery } from '../../infrastructure/hosts'
 import { ActyxNode } from '../../infrastructure/types'
+import { runActyx } from '../../util'
 
 const adminExtract = (s: string): [string, number] | undefined => {
   const match = s.match(
@@ -36,8 +37,10 @@ type BoundTo = {
 }
 
 const randomBinds = ['--bind-admin', '0', '--bind-api', '0', '--bind-swarm', '0']
+
 const startNode = (node: ActyxNode, params: string[] = randomBinds) =>
   startEphemeralNode(node.target, node._private.actyxBinaryPath, params)
+
 const startNodeAndCheckBinds = async (node: ActyxNode, params: string[]): Promise<BoundTo> => {
   const testNode = await startEphemeralNode(node.target, node._private.actyxBinaryPath, params)
   const result: BoundTo = { admin: [], api: [], swarm: [] }
@@ -62,6 +65,7 @@ const startNodeAndCheckBinds = async (node: ActyxNode, params: string[]): Promis
 
   return result
 }
+
 const skipTarget = (node: ActyxNode): boolean =>
   // can't run multiple instances of Actyx on Android on Docker (permissions)
   node.host === 'android' || node.host === 'docker'
@@ -224,5 +228,17 @@ describe('node lifecycle', () => {
       expect(admin).toStrictEqual([['127.0.0.1', adminPort]])
       expect(api).toStrictEqual([['127.0.0.1', apiPort]])
       expect(swarm).toStrictEqual([['127.0.0.1', swarmPort]])
+    }))
+
+  it('should refuse to run in an already used workdir', () =>
+    runOnEvery(async (node) => {
+      if (skipTarget(node)) {
+        return
+      }
+
+      const out = await runActyx(node, node._private.workingDir).catch((e) => e)
+      expect(out.stderr).toMatch(
+        `data directory \`${node._private.workingDir}\` is locked by another Actyx process`,
+      )
     }))
 })

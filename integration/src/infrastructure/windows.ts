@@ -30,13 +30,11 @@ export const mkWindowsSsh = async (
   console.log(`${nodeName}: Starting Actyx`)
   const defaultExeLocation = String.raw`C:\Users\Administrator\AppData\Local\Actyx\actyx.exe `
 
-  const cmd = mkCmd(defaultExeLocation, [
-    '--working-dir',
-    String.raw`C:\Users\Administrator\AppData\Local\Actyx\actyx-data`,
-  ])
+  const workingDir = String.raw`C:\Users\Administrator\AppData\Local\Actyx\actyx-data`
+  const cmd = mkCmd(defaultExeLocation, ['--working-dir', workingDir])
   console.log('cmd to execute', cmd)
   const actyxProc = await startActyx(nodeName, logger, ssh, cmd)
-  const node = await forwardPortsAndBuildClients(ssh, nodeName, target, actyxProc, {
+  const node = await forwardPortsAndBuildClients(ssh, nodeName, target, actyxProc, workingDir, {
     host: 'process',
   })
   return { ...node, _private: { ...node._private, actyxBinaryPath: defaultExeLocation } }
