@@ -97,18 +97,9 @@ mod test {
     fn apply_impact_test() {
         let base = Version::new(1, 2, 3);
         assert_eq!(apply_impact(&base, &VersionImpact::None), base);
-        assert_eq!(
-            apply_impact(&base, &VersionImpact::BumpPatch),
-            Version::new(1, 2, 4)
-        );
-        assert_eq!(
-            apply_impact(&base, &VersionImpact::BumpMinor),
-            Version::new(1, 3, 0)
-        );
-        assert_eq!(
-            apply_impact(&base, &VersionImpact::BumpMajor),
-            Version::new(2, 0, 0)
-        );
+        assert_eq!(apply_impact(&base, &VersionImpact::BumpPatch), Version::new(1, 2, 4));
+        assert_eq!(apply_impact(&base, &VersionImpact::BumpMinor), Version::new(1, 3, 0));
+        assert_eq!(apply_impact(&base, &VersionImpact::BumpMajor), Version::new(2, 0, 0));
     }
 
     #[test]

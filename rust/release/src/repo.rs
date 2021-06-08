@@ -15,9 +15,9 @@ use crate::{
 pub struct Hash(pub String);
 
 impl Deref for Hash {
-    type Target = String;
+    type Target = str;
     fn deref(&self) -> &Self::Target {
-        &self.0
+        &*self.0
     }
 }
 
@@ -33,7 +33,7 @@ impl RepoWrapper {
             .workdir()
             .ok_or_else(|| anyhow::anyhow!("did not get working dir for repository"))?;
 
-        Ok(wd.to_path_buf())
+        Ok(wd.to_path_buf().canonicalize()?)
     }
     pub fn head_hash(&self) -> anyhow::Result<Hash> {
         let oid = self.0.revparse_single("HEAD")?;
@@ -64,9 +64,7 @@ impl RepoWrapper {
         let tree = self.0.find_tree(treeish)?;
 
         let sig = Signature::now("Actyx Releases", "developer@actyx.com")?;
-        let oid = self
-            .0
-            .commit(Some("HEAD"), &sig, &sig, message, &tree, &[&parent])?;
+        let oid = self.0.commit(Some("HEAD"), &sig, &sig, message, &tree, &[&parent])?;
         Ok(oid)
     }
     pub fn push(&self, remote: &str, branch_name: &str) -> anyhow::Result<()> {

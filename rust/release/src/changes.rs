@@ -102,11 +102,7 @@ pub struct Change {
 
 impl Change {
     pub fn new(kind: ChangeKind, product: Product, message: String) -> Change {
-        Change {
-            kind,
-            product,
-            message,
-        }
+        Change { kind, product, message }
     }
 }
 
@@ -223,11 +219,7 @@ fn test_docs_from_str_scopes() -> Result<(), Error> {
     );
     assert_eq!(
         Change::from_str("docs(node-manager): message")?,
-        Change::new(
-            ChangeKind::DOCS,
-            Product::NodeManager,
-            "message".to_string()
-        )
+        Change::new(ChangeKind::DOCS, Product::NodeManager, "message".to_string())
     );
     assert_eq!(
         Change::from_str("docs(pond): message")?,

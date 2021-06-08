@@ -47,7 +47,7 @@ impl FromStr for Release {
         let (ver_str, item_parts) = parts.split_last().unwrap();
 
         let product = Product::from_str(item_parts.join("-").as_str())?;
-        let version = Version::from_str(ver_str).map_err(|e| anyhow!(e))?;
+        let version = Version::from_str(ver_str)?;
         Ok(Release { product, version })
     }
 }
@@ -75,17 +75,11 @@ mod test {
     }
     #[test]
     fn test_release_fmt() {
-        assert_eq!(
-            format!("{}", Release::new(Product::Actyx, 1, 2, 3)),
-            "actyx-1.2.3"
-        );
+        assert_eq!(format!("{}", Release::new(Product::Actyx, 1, 2, 3)), "actyx-1.2.3");
     }
     #[test]
     fn release_from_str() -> Result<(), Error> {
-        assert_eq!(
-            Release::from_str("actyx-1.2.3")?,
-            Release::new(Product::Actyx, 1, 2, 3)
-        );
+        assert_eq!(Release::from_str("actyx-1.2.3")?, Release::new(Product::Actyx, 1, 2, 3));
         assert_eq!(
             Release::from_str("node-manager-1.2.3")?,
             Release::new(Product::NodeManager, 1, 2, 3)

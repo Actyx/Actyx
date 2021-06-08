@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Error};
+use anyhow::{Context, Error};
 use chrono::{TimeZone, Utc};
 use clap::Clap;
 use repo::RepoWrapper;
@@ -88,20 +88,10 @@ fn main() -> Result<(), Error> {
         p.push("versions-ignore");
         p
     };
-    let mut version_file = VersionsFile::load(&input_file).map_err(|e| {
-        anyhow!(
-            "unable to open versions file at {}: {}",
-            input_file.to_string_lossy(),
-            e
-        )
-    })?;
-    let ignores_file = VersionsIgnoreFile::load(&ignores_file).map_err(|e| {
-        anyhow!(
-            "unable to open versions-ignore file at {}: {}",
-            ignores_file.to_string_lossy(),
-            e
-        )
-    })?;
+    let mut version_file = VersionsFile::load(&input_file)
+        .with_context(|| format!("Opening versions file at {}", input_file.display()))?;
+    let ignores_file = VersionsIgnoreFile::load(&ignores_file)
+        .with_context(|| format!("Opening versions-ignore file at {}", ignores_file.display()))?;
     match opts.cmd {
         Command::Version { product } => {
             let res = version_file.calculate_version(&product, &ignores_file)?;
@@ -231,10 +221,7 @@ Overview:"#
                 println!("-------------------------\n");
                 println!("Branch to create {}", branch_name);
             } else {
-                eprint!(
-                    "1) Writing new versions to \"{}\" ... ",
-                    input_file.display()
-                );
+                eprint!("1) Writing new versions to \"{}\" ... ", input_file.display());
                 version_file.persist(&input_file)?;
                 eprintln!("Done.");
 

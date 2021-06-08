@@ -17,7 +17,6 @@ impl VersionsIgnoreFile {
             let l = l?;
             if !l.starts_with('#') && !l.is_empty() {
                 ignore_commit_ids.push(l);
-                //versions.push(VersionLine::from_str(&*l)?);
             }
         }
         Ok(Self { ignore_commit_ids })
