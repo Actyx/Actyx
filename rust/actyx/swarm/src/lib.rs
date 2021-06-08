@@ -27,9 +27,9 @@ mod tests;
 
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
+pub use prune::RetainConfig;
 
 use crate::gossip::Gossip;
-use crate::prune::RetainConfig;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::streams::{OwnStream, ReplicatedStream};
 use actyx_sdk::{LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamId, StreamNr, TagSet, Timestamp};
@@ -41,7 +41,7 @@ use ax_futures_util::{
 use banyan::{
     query::Query,
     store::{BlockWriter, BranchCache, ReadOnlyStore},
-    Config, FilteredChunk, Secrets, StreamBuilder,
+    FilteredChunk, Secrets, StreamBuilder,
 };
 use crypto::KeyPair;
 use fnv::FnvHashMap;
@@ -60,6 +60,7 @@ use libp2p::{
 };
 use maplit::btreemap;
 use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
 use sqlite_index_store::SqliteIndexStore;
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -99,10 +100,21 @@ static DISCOVERY_STREAM_NR: u64 = 1;
 static METRICS_STREAM_NR: u64 = 2;
 const MAX_TREE_LEVEL: i32 = 1000;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EphemeralEventsConfig {
     interval: Duration,
     streams: BTreeMap<StreamNr, RetainConfig>,
+}
+impl EphemeralEventsConfig {
+    pub fn new(interval: Duration, streams: BTreeMap<StreamNr, RetainConfig>) -> Self {
+        Self { interval, streams }
+    }
+    pub fn disable() -> Self {
+        Self {
+            streams: BTreeMap::default(),
+            interval: Duration::from_secs(u64::MAX),
+        }
+    }
 }
 impl Default for EphemeralEventsConfig {
     fn default() -> Self {
@@ -134,6 +146,21 @@ pub struct SwarmConfig {
     pub enable_root_map: bool,
     pub enable_discovery: bool,
     pub enable_metrics: bool,
+    pub banyan_config: BanyanConfig,
+}
+#[derive(Clone, Debug)]
+pub struct BanyanConfig {
+    tree: banyan::Config,
+    secret: banyan::Secrets,
+}
+impl Default for BanyanConfig {
+    fn default() -> Self {
+        Self {
+            // TODO: replace this with better defaults for our application
+            tree: banyan::Config::debug_fast(),
+            secret: banyan::Secrets::default(),
+        }
+    }
 }
 
 impl SwarmConfig {
@@ -148,6 +175,10 @@ impl SwarmConfig {
             enable_root_map: true,
             enable_discovery: true,
             enable_metrics: true,
+            banyan_config: BanyanConfig {
+                tree: banyan::Config::debug(),
+                ..Default::default()
+            },
             ..Default::default()
         }
     }
@@ -235,6 +266,9 @@ struct BanyanStoreState {
 
     /// tasks of the stream manager.
     tasks: Vec<tokio::task::JoinHandle<()>>,
+
+    /// Banyan related config
+    banyan_config: BanyanConfig,
 }
 
 impl Drop for BanyanStoreState {
@@ -304,12 +338,16 @@ impl<'a> BanyanStoreGuard<'a> {
             let builder = self
                 .data
                 .forest
-                .load_stream_builder(Secrets::default(), Config::debug(), header.root)
+                .load_stream_builder(
+                    self.banyan_config.secret.clone(),
+                    self.banyan_config.tree.clone(),
+                    header.root,
+                )
                 .context("unable to load banyan tree")?;
             let published = PublishedTree::new(root, header, builder.snapshot());
             (builder, Some(published))
         } else {
-            let builder = StreamBuilder::new(Config::debug(), Secrets::default());
+            let builder = StreamBuilder::new(self.banyan_config.tree.clone(), self.banyan_config.secret.clone());
             (builder, None)
         };
         let stream = Arc::new(OwnStream::new(stream_nr, builder, latest));
@@ -633,6 +671,7 @@ impl BanyanStore {
                 remote_nodes: Default::default(),
                 known_streams: Default::default(),
                 tasks: Default::default(),
+                banyan_config: cfg.banyan_config,
             })),
         };
         banyan.lock().load_known_streams()?;
