@@ -66,7 +66,7 @@ hosts:
       # not accessible anymore.  If that happens, search for the current "Windows
       # Server 2019 Base" Image in the AWS Marketplace
       # https://aws.amazon.com/marketplace
-      ami: ami-05ced23e7b71d428c
+      ami: ami-086d0be14ab5129e1
       instance: t2.large
       user: Administrator
     install:
