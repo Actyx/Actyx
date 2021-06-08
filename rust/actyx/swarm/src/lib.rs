@@ -156,8 +156,8 @@ pub struct BanyanConfig {
 impl Default for BanyanConfig {
     fn default() -> Self {
         Self {
-            // TODO
-            tree: banyan::Config::debug(),
+            // TODO: replace this with better defaults for our application
+            tree: banyan::Config::debug_fast(),
             secret: banyan::Secrets::default(),
         }
     }
