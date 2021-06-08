@@ -94,13 +94,9 @@ impl AxKey {
     }
 
     fn internal_tags<'a>(&'a self, prefix: &'a str) -> impl Iterator<Item = &'a str> {
-        self.tags.internal_tags().filter_map(move |x| {
-            if x.as_ref().starts_with(prefix) {
-                Some(&x.as_ref()[prefix.len()..])
-            } else {
-                None
-            }
-        })
+        self.tags
+            .internal_tags()
+            .filter_map(move |tag| tag.as_ref().strip_prefix(prefix))
     }
 
     pub fn app_id(&self) -> Option<AppId> {
