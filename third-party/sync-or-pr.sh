@@ -51,7 +51,7 @@ do
 
     if [ -d "$ACTUAL_REPO" ]; then
        echo "[$repo] pulling remote master since actual repo already found at $ACTUAL_REPO"
-        (cd "$ACTUAL_REPO" && git pull origin master)
+        (cd "$ACTUAL_REPO" && git checkout master && git pull origin master)
     else
        echo "[$repo] pulling $REMOTE"
         (cd "$DIR" && gh repo clone "$REMOTE" "$ACTUAL_REPO")
@@ -90,9 +90,5 @@ do
 
         curl -X POST -H "Content-type: application/json" --data "{\"text\":\"Created PR to update $REMOTE to $LAST_COSMOS_COMMIT: $PR_URL\"}" "$SLACK_WEBHOOK"
 
-        #(cd "$ACTUAL_REPO" && git co master)
-        rm -rf "$ACTUAL_REPO"
-
     fi
 done
-
