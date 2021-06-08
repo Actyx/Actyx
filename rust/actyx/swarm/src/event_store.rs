@@ -1,8 +1,8 @@
 use std::{cmp::Reverse, convert::TryInto, ops::RangeInclusive};
 
 use actyx_sdk::{
-    language::TagExpr, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin, Payload,
-    StreamId, StreamNr, TagSet, Timestamp,
+    language::TagExpr, AppId, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin,
+    Payload, StreamId, StreamNr, TagSet, Timestamp,
 };
 use ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered};
 use banyan::FilteredChunk;
@@ -114,7 +114,11 @@ impl EventStore {
         self.offsets().next().await.expect("offset stream stopped").present
     }
 
-    pub async fn persist(&self, events: Vec<(TagSet, Payload)>) -> anyhow::Result<Vec<PersistenceMeta>> {
+    pub async fn persist(
+        &self,
+        _app_id: AppId,
+        events: Vec<(TagSet, Payload)>,
+    ) -> anyhow::Result<Vec<PersistenceMeta>> {
         if events.is_empty() {
             return Ok(vec![]);
         }
@@ -264,6 +268,7 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
     use actyx_sdk::{
+        app_id,
         language::{TagAtom, TagExpr},
         service::Order,
         tag, tags, OffsetOrMin, StreamId, Tag,
@@ -280,6 +285,10 @@ mod tests {
 
     async fn mk_store(name: &'static str) -> EventStore {
         EventStore::new(BanyanStore::test(name).await.unwrap())
+    }
+
+    fn app_id() -> AppId {
+        app_id!("test")
     }
 
     fn offset_map(map: &BTreeMap<StreamId, u32>) -> OffsetMap {
@@ -357,7 +366,10 @@ mod tests {
         let store = mk_store("swarm_test").await;
         let stream_id = store.node_id().stream(0.into());
 
-        store.persist(vec![(tags!(), Payload::empty())]).await.unwrap();
+        store
+            .persist(app_id(), vec![(tags!(), Payload::empty())])
+            .await
+            .unwrap();
 
         let mut stream = Drainer::new(store.forward_stream(StreamEventSelection {
             stream_id,
@@ -403,7 +415,10 @@ mod tests {
         let store = mk_store("swarm_test").await;
         let stream_id = store.node_id().stream(0.into());
 
-        store.persist(vec![(tags!(), Payload::empty())]).await.unwrap();
+        store
+            .persist(app_id(), vec![(tags!(), Payload::empty())])
+            .await
+            .unwrap();
 
         let mut stream = Drainer::new(store.backward_stream(StreamEventSelection {
             stream_id,
@@ -433,19 +448,25 @@ mod tests {
         let stream_id2 = store2.node_id().stream(0.into());
 
         store1
-            .persist(vec![
-                (tags!("test", "test:stream1"), Payload::empty()),
-                (tags!("test", "test:stream1"), Payload::empty()),
-                (tags!("test", "test:stream1"), Payload::empty()),
-            ])
+            .persist(
+                app_id(),
+                vec![
+                    (tags!("test", "test:stream1"), Payload::empty()),
+                    (tags!("test", "test:stream1"), Payload::empty()),
+                    (tags!("test", "test:stream1"), Payload::empty()),
+                ],
+            )
             .await
             .unwrap();
         store2
-            .persist(vec![
-                (tags!("test", "test:stream2"), Payload::empty()),
-                (tags!("test", "test:stream2"), Payload::empty()),
-                (tags!("test", "test:stream2"), Payload::empty()),
-            ])
+            .persist(
+                app_id(),
+                vec![
+                    (tags!("test", "test:stream2"), Payload::empty()),
+                    (tags!("test", "test:stream2"), Payload::empty()),
+                    (tags!("test", "test:stream2"), Payload::empty()),
+                ],
+            )
             .await
             .unwrap();
 
@@ -535,7 +556,7 @@ mod tests {
         let stream_id2 = store2.node_id().stream(0.into());
 
         store1
-            .persist(vec![(tags!("test:unbounded:forward"), Payload::empty())])
+            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::empty())])
             .await
             .unwrap();
 
@@ -579,11 +600,11 @@ mod tests {
         });
 
         store1
-            .persist(vec![(tags!("test:unbounded:forward"), Payload::empty())])
+            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::empty())])
             .await
             .unwrap();
         store2
-            .persist(vec![(tags!("test:unbounded:forward"), Payload::empty())])
+            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::empty())])
             .await
             .unwrap();
 
@@ -618,7 +639,10 @@ mod tests {
 
         let mut handles = Vec::new();
         for i in 0..n {
-            let (_, offset, _, _) = store.persist(vec![(mk_tag(i), Payload::empty())]).await.unwrap()[0];
+            let (_, offset, _, _) = store
+                .persist(app_id(), vec![(mk_tag(i), Payload::empty())])
+                .await
+                .unwrap()[0];
             assert_eq!(offset, Offset::from(i as u32));
 
             let store = store.clone();

@@ -54,13 +54,17 @@ impl EventService {
         Ok(OffsetsResponse { present, to_replicate })
     }
 
-    pub async fn publish(&self, _app_id: AppId, request: PublishRequest) -> anyhow::Result<PublishResponse> {
+    pub async fn publish(&self, app_id: AppId, request: PublishRequest) -> anyhow::Result<PublishResponse> {
         let events = request
             .data
             .into_iter()
             .map(|PublishEvent { tags, payload }| (tags, payload))
             .collect();
-        let meta = self.store.persist(events).await.map_err(Error::StoreWriteError)?;
+        let meta = self
+            .store
+            .persist(app_id, events)
+            .await
+            .map_err(Error::StoreWriteError)?;
         let response = PublishResponse {
             data: meta
                 .into_iter()
