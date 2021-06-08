@@ -21,6 +21,7 @@ mod ffi_codes {
     pub const NODE_STOPPED_BY_NODE_UI: i32 = 11;
     // Wired in via axnode_shutdown from android when app stopped/killed by android
     pub const NODE_STOPPED_BY_HOST: i32 = 12;
+    pub const ERR_PORT_COLLISION: i32 = 13;
 }
 
 impl TryFrom<i32> for ShutdownReason {
@@ -31,7 +32,7 @@ impl TryFrom<i32> for ShutdownReason {
         match value {
             NODE_STOPPED_BY_NODE_UI => Ok(ShutdownReason::TriggeredByUser),
             NODE_STOPPED_BY_HOST => Ok(ShutdownReason::TriggeredByHost),
-            x => anyhow::bail!(format!("Unsupported error code! {}", x)),
+            x => anyhow::bail!("Unsupported error code! {}", x),
         }
     }
 }
@@ -43,7 +44,18 @@ impl From<ShutdownReason> for FfiMessage {
 
             ShutdownReason::TriggeredByHost => (ffi_codes::NODE_STOPPED_BY_HOST, "".to_string()),
 
-            ShutdownReason::Internal(err) => (ffi_codes::NODE_STOPPED_BY_NODE, err.to_string()),
+            ShutdownReason::Internal(err) => match err {
+                crate::NodeError::ServicesStartup { err, .. } | crate::NodeError::InternalError(err) => {
+                    (ffi_codes::NODE_STOPPED_BY_NODE, format!("{:#}", err))
+                }
+                crate::NodeError::PortCollision { component, port } => (
+                    ffi_codes::ERR_PORT_COLLISION,
+                    format!(
+                        "Could not bind to port {}. Please specify a different {} port",
+                        port, component
+                    ),
+                ),
+            },
         };
         FfiMessage::new(code, message)
     }

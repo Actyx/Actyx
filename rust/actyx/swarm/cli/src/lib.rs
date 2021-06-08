@@ -1,4 +1,4 @@
-use actyxos_sdk::{language::Query, Payload, StreamNr, TagSet, Timestamp};
+use actyx_sdk::{language::Query, Payload, StreamNr, TagSet, Timestamp};
 use anyhow::Result;
 use crypto::{KeyPair, PrivateKey};
 pub use libp2p::{multiaddr, Multiaddr, PeerId};
@@ -290,7 +290,7 @@ fn target_dir() -> std::path::PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyxos_sdk::tags;
+    use actyx_sdk::tags;
 
     #[test]
     fn test_command() -> Result<()> {
@@ -312,7 +312,7 @@ mod tests {
     fn test_event() -> Result<()> {
         let event = &[Event::Result((
             0,
-            AxKey::new(tags!(), 0, 0),
+            AxKey::new(tags!().into(), 0, 0),
             Payload::from_json_str("{}").unwrap(),
         ))];
         for ev in event.iter() {

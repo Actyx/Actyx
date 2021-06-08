@@ -102,7 +102,7 @@
           "$ref": "#/definitions/Basic/NonEmptyString",
           "default": "default-topic"
         },
-        "bootstrapNodes": {
+        "initialPeers": {
           "type": "array",
           "items": {
             "$ref": "#/definitions/Basic/MultiAddrWithPeerId"

@@ -1,6 +1,6 @@
 use std::{cmp::Reverse, convert::TryInto, ops::RangeInclusive};
 
-use actyxos_sdk::{
+use actyx_sdk::{
     language::TagExpr, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin, Payload,
     StreamId, StreamNr, TagSet, Timestamp,
 };
@@ -8,9 +8,10 @@ use ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered};
 use banyan::FilteredChunk;
 use derive_more::{Display, Error};
 use futures::{future, stream, Stream, StreamExt, TryStreamExt};
-use trees::{axtrees::AxKey, query::TagsQuery, OffsetMapOrMax};
+use trees::{axtrees::AxKey, query::TagsQuery};
+use util::offsetmap_or_max::OffsetMapOrMax;
 
-use crate::{selection::StreamEventSelection, AxTreeExt, BanyanStore, SwarmOffsets, MAX_TREE_LEVEL};
+use crate::{selection::StreamEventSelection, AppendMeta, BanyanStore, SwarmOffsets};
 
 #[derive(Clone, Debug, Display, Error)]
 pub enum Error {
@@ -118,34 +119,21 @@ impl EventStore {
             return Ok(vec![]);
         }
         let stream_nr = StreamNr::from(0); // TODO
-        let timestamp = Timestamp::now();
-        let stream = self.banyan_store.get_or_create_own_stream(stream_nr)?;
         let n = events.len();
-        let mut guard = stream.lock().await;
-        let mut store = self.banyan_store.lock();
-        let mut lamports = store.reserve_lamports(events.len())?.peekable();
-        let min_lamport = *lamports.peek().unwrap();
-        let kvs = lamports
-            .zip(events)
-            .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
-        tracing::debug!("publishing {} events on stream {}", n, stream_nr);
-        let min_offset = self.banyan_store.transform_stream(&mut guard, |txn, tree| {
-            let snapshot = tree.snapshot();
-            if snapshot.level() > MAX_TREE_LEVEL {
-                txn.extend(tree, kvs)?;
-            } else {
-                txn.extend_unpacked(tree, kvs)?;
-            }
-            Ok(snapshot.offset())
-        })?;
-
-        // We start iteration with 0 below, so this is effectively the offset of the first event.
-        let starting_offset = min_offset.succ();
+        if n == 0 {
+            return Ok(vec![]);
+        }
+        let AppendMeta {
+            min_lamport,
+            min_offset,
+            timestamp,
+            ..
+        } = self.banyan_store.append(stream_nr, events).await?;
         let keys = (0..n)
             .map(|i| {
                 let i = i as u64;
                 let lamport = min_lamport + i;
-                let offset = starting_offset.increase(i).unwrap();
+                let offset = min_offset.increase(i).unwrap();
                 (lamport, offset, stream_nr, timestamp)
             })
             .collect();
@@ -244,7 +232,7 @@ fn to_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<P
         },
         meta: Metadata {
             timestamp: key.time(),
-            tags: key.into_tags(),
+            tags: key.into_app_tags(),
         },
     }
 }
@@ -275,7 +263,7 @@ fn events_from_chunk_rev(
 mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
-    use actyxos_sdk::{
+    use actyx_sdk::{
         language::{TagAtom, TagExpr},
         service::Order,
         tag, tags, OffsetOrMin, StreamId, Tag,
@@ -286,7 +274,6 @@ mod tests {
     use num_traits::Bounded;
     use quickcheck::Arbitrary;
     use rand::{thread_rng, Rng};
-    use trees::OffsetMapOrMax;
 
     use super::*;
     use crate::{selection::EventSelection, BanyanStore};
@@ -637,8 +624,11 @@ mod tests {
             let store = store.clone();
             let offsets = offsets.clone();
             let handle_sub = tokio::spawn(async move {
+                // app tags, for comparison with the result
                 let tags = mk_tag(i);
-                let tags_query = TagsQuery::new(vec![tags.clone()]);
+                // tags with prefix, as they actually appear on the tree
+                let scoped_tags = tags.clone().into();
+                let tags_query = TagsQuery::new(vec![scoped_tags]);
                 let range = random_range();
                 let actual = store
                     .forward_stream(StreamEventSelection {
@@ -668,7 +658,7 @@ mod tests {
             let mut offsets = Drainer::new(store.offsets());
 
             // Inject root update from `stream`
-            store.banyan_store.update_highest_seen(stream, offset.into());
+            store.banyan_store.update_highest_seen(stream, offset);
 
             let nxt = offsets.next().unwrap().last().cloned().unwrap();
             assert!(nxt.present.streams().all(|x| x != stream));
@@ -676,14 +666,14 @@ mod tests {
 
             // Inject validation of `stream` with `offset - 1`
             if let Some(pred) = offset.pred() {
-                store.banyan_store.update_present(stream, pred.into());
+                store.banyan_store.update_present(stream, pred);
                 let nxt = offsets.next().unwrap().last().cloned().unwrap();
                 assert_eq!(nxt.present.offset(stream), OffsetOrMin::from(pred));
                 assert_eq!(nxt.replication_target.offset(stream), OffsetOrMin::from(offset));
             }
 
             // Inject validation of `stream` with `offset`
-            store.banyan_store.update_present(stream, offset.into());
+            store.banyan_store.update_present(stream, offset);
             let nxt = offsets.next().unwrap().last().cloned().unwrap();
             assert_eq!(nxt.present.offset(stream), OffsetOrMin::from(offset));
             assert_eq!(nxt.replication_target.offset(stream), OffsetOrMin::from(offset));

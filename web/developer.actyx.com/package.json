@@ -12,7 +12,7 @@
     "postbuild": "node bin/copy-redirects.js",
     "postinstall": "patch-package",
     "swizzle": "docusaurus swizzle",
-    "deploy": "npm run lint && docusaurus deploy",
+    "deploy": "node bin/deploy.js",
     "serve": "docusaurus serve",
     "check:code": "eslint './src/**/*.{js,ts,tsx}' --max-warnings=0",
     "fix:code": "npm run check:code -- --fix",
@@ -27,31 +27,22 @@
     "check:links": "blc -ro http://localhost:3000"
   },
   "dependencies": {
-    "@docusaurus/core": "^2.0.0-alpha.70",
-    "@docusaurus/preset-classic": "^2.0.0-alpha.70",
-    "@docusaurus/theme-classic": "^2.0.0-alpha.70",
-    "@loadable/component": "^5.14.1",
-    "@typeform/embed": "^0.10.0",
+    "@docusaurus/core": "^2.0.0-beta.0",
+    "@docusaurus/preset-classic": "^2.0.0-beta.0",
     "@typescript-eslint/eslint-plugin": "^4.9.1",
     "@typescript-eslint/parser": "^4.9.1",
-    "chromium": "^2.1.2",
-    "classnames": "^2.2.6",
-    "cosmos-release": "file:../../release",
     "docusaurus-gtm-plugin": "0.0.2",
     "js-cookie": "^2.2.1",
     "react": "^16.8.4",
     "react-cookie": "^4.0.3",
     "react-dom": "^16.8.4",
     "react-markdown": "^5.0.3",
-    "react-syntax-highlighter": "^15.4.3",
-    "react-typeform-embed": "^0.2.1",
-    "react-youtube": "^7.9.0",
-    "remark-code-import": "^0.3.0",
+    "react-router-dom": "^5.2.0",
+    "remark-code-import": "github:o1iver/remark-code-import",
     "semver": "^7.3.5",
     "styled-components": "^5.1.1",
     "textlint-rule-no-empty-section": "^1.1.0",
-    "typescript-eslint": "0.0.1-alpha.0",
-    "xlsx": "^0.16.9"
+    "typescript-eslint": "0.0.1-alpha.0"
   },
   "browserslist": {
     "production": [
@@ -66,7 +57,7 @@
     ]
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "^2.0.0-alpha.72",
+    "@docusaurus/module-type-aliases": "2.0.0-beta.0",
     "@textlint-rule/textlint-rule-no-unmatched-pair": "^1.0.7",
     "@tsconfig/docusaurus": "^1.0.2",
     "@types/react": "^17.0.3",
@@ -83,6 +74,7 @@
     "markdownlint-cli": "^0.23.2",
     "mkdirp": "^1.0.4",
     "nan": "^2.14.1",
+    "netlify": "^6.1.20",
     "netlify-cli": "^3.24.0",
     "patch-package": "^6.4.7",
     "prettier": "2.1.2",

@@ -58,6 +58,19 @@ pub enum TagAtom {
     AppId(AppId),
 }
 
+impl TagAtom {
+    pub fn tag(&self) -> Option<&Tag> {
+        if let Self::Tag(tag) = self {
+            Some(tag)
+        } else {
+            None
+        }
+    }
+    pub fn is_local(&self) -> bool {
+        matches!(self, Self::IsLocal)
+    }
+}
+
 // this will obviously need to be implemented for real sometime, with arbitrary precision
 #[derive(Debug, Clone)]
 pub enum Number {

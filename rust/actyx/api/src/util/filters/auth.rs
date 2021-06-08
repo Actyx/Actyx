@@ -1,4 +1,4 @@
-use actyxos_sdk::{types::Binary, AppId};
+use actyx_sdk::{types::Binary, AppId};
 use crypto::SignedMessage;
 use std::convert::TryInto;
 use tracing::{debug, info};
@@ -7,7 +7,7 @@ use warp::{reject, Filter, Rejection};
 use crate::util::{NodeInfo, Token};
 use crate::{rejections::ApiError, BearerToken};
 
-pub(crate) fn verify(auth_args: NodeInfo, token: Token) -> Result<BearerToken, ApiError> {
+pub(crate) fn verify(node_info: NodeInfo, token: Token) -> Result<BearerToken, ApiError> {
     let token = token.to_string();
     let bin: Binary = token.parse().map_err(|_| ApiError::TokenInvalid {
         token: token.clone(),
@@ -17,17 +17,17 @@ pub(crate) fn verify(auth_args: NodeInfo, token: Token) -> Result<BearerToken, A
         token: token.clone(),
         msg: "Not a signed token.".to_owned(),
     })?;
-    auth_args
+    node_info
         .key_store
         .read()
-        .verify(&signed_msg, vec![auth_args.node_id.into()])
+        .verify(&signed_msg, vec![node_info.node_id.into()])
         .map_err(|_| ApiError::TokenUnauthorized)?;
     let bearer_token =
         serde_cbor::from_slice::<BearerToken>(signed_msg.message()).map_err(|_| ApiError::TokenInvalid {
             token: token.clone(),
             msg: "Cannot parse CBOR.".to_owned(),
         })?;
-    match bearer_token.cycles != auth_args.cycles || bearer_token.is_expired() {
+    match bearer_token.cycles != node_info.cycles || bearer_token.is_expired() {
         true => Err(ApiError::TokenExpired),
         false => Ok(bearer_token),
     }
@@ -69,11 +69,11 @@ pub fn header_token() -> impl Filter<Extract = (Token,), Error = Rejection> + Cl
 }
 
 pub(crate) fn authenticate(
-    auth_args: NodeInfo,
+    node_info: NodeInfo,
     token: impl Filter<Extract = (Token,), Error = Rejection> + Clone,
 ) -> impl Filter<Extract = (AppId,), Error = Rejection> + Clone {
     token.and_then(move |t: Token| {
-        let auth_args = auth_args.clone();
+        let auth_args = node_info.clone();
         async move {
             let res = verify(auth_args, t)
                 .map(|bearer_token| bearer_token.app_id)
@@ -93,8 +93,8 @@ pub(crate) fn authenticate(
 mod tests {
     use super::*;
     use crate::AppMode;
-    use actyxos_sdk::{app_id, Timestamp};
-    use crypto::KeyStore;
+    use actyx_sdk::{app_id, Timestamp};
+    use crypto::{KeyStore, PrivateKey};
     use parking_lot::RwLock;
     use std::sync::Arc;
 
@@ -117,6 +117,7 @@ mod tests {
             key_store: Arc::new(RwLock::new(store)),
             node_id: key_id.into(),
             token_validity: 300,
+            ax_public_key: PrivateKey::generate().into(),
         };
 
         (auth_args, bearer)

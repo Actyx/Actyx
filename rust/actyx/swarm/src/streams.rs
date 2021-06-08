@@ -1,5 +1,5 @@
 use crate::{AxStreamBuilder, Cid, Link, Tree};
-use actyxos_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr};
+use actyx_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr};
 use ax_futures_util::stream::variable::Variable;
 use banyan::StreamTransaction;
 use fnv::FnvHashMap;
@@ -12,10 +12,7 @@ use std::{
     ops::{Deref, DerefMut},
     sync::Arc,
 };
-use trees::{
-    axtrees::{AxTree, AxTrees},
-    AxTreeHeader,
-};
+use trees::{axtrees::AxTrees, AxTree, AxTreeHeader};
 
 const PREFIX: u8 = b'S';
 

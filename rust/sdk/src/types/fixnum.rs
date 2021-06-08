@@ -41,8 +41,8 @@ use std::ops::{
 ///
 /// ```no_run
 /// # #[macro_use] extern crate abomonation_derive;
-/// use actyxos_sdk::types::FixNum;
-/// use actyxos_sdk::types::fixnum_types::*;
+/// use actyx_sdk::types::FixNum;
+/// use actyx_sdk::types::fixnum_types::*;
 /// use serde::{Deserialize, Serialize};
 ///
 /// #[derive(Serialize, Deserialize, PartialEq, Eq, Debug, Abomonation, Hash)]
@@ -218,7 +218,7 @@ impl<T: LeEqU128> FixNum<T> {
     /// Will panic when the converted number does not fit into FixNum.
     ///
     /// ```rust
-    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// # use actyx_sdk::types::{FixNum, fixnum_types::*};
     /// let a: FixNum<U12> = FixNum::<U12>::panicking(5);
     /// let b: FixNum<U12> = a + 12;
     /// assert_eq!(b, FixNum::panicking(17));
@@ -233,7 +233,7 @@ impl<T: LeEqU128> FixNum<T> {
     /// shouldn’t be passing that around).
     ///
     /// ```rust
-    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// # use actyx_sdk::types::{FixNum, fixnum_types::*};
     /// let a = FixNum::<U32>::checked(5);
     /// assert_eq!(a, Some(FixNum::panicking(5)));
     /// ```
@@ -247,7 +247,7 @@ impl<T: LeEqU128> FixNum<T> {
     /// shouldn’t be passing that around).
     ///
     /// ```rust
-    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// # use actyx_sdk::types::{FixNum, fixnum_types::*};
     /// let a: FixNum<U127> = FixNum::<U127>::saturating(5);
     /// assert_eq!(a, FixNum::saturating(1));
     /// ```
@@ -261,7 +261,7 @@ impl<T: LeEqU128> FixNum<T> {
     /// shouldn’t be passing that around).
     ///
     /// ```rust
-    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// # use actyx_sdk::types::{FixNum, fixnum_types::*};
     /// let a: FixNum<U127> = FixNum::<U127>::wrapping(1.3);
     /// assert_eq!(a, FixNum::panicking(-0.7));
     /// ```
@@ -276,7 +276,7 @@ impl<T: LeEqU128> FixNum<T> {
     /// shouldn’t be passing that around).
     ///
     /// ```rust
-    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// # use actyx_sdk::types::{FixNum, fixnum_types::*};
     /// let (a, overflow) = FixNum::<U127>::overflowing(5);
     /// assert_eq!(a, FixNum::panicking(-1));
     /// assert!(overflow);
@@ -289,7 +289,7 @@ impl<T: LeEqU128> FixNum<T> {
     /// Convert to a primitive number type, panicking on overflow if debug assertions are on.
     ///
     /// ```rust
-    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// # use actyx_sdk::types::{FixNum, fixnum_types::*};
     /// let f: i8 = FixNum::<U100>::panicking(5).to_num_panicking();
     /// assert_eq!(f, 5);
     /// ```
@@ -300,7 +300,7 @@ impl<T: LeEqU128> FixNum<T> {
     /// Convert to a primitive number type, returning an option.
     ///
     /// ```rust
-    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// # use actyx_sdk::types::{FixNum, fixnum_types::*};
     /// let f: Option<i8> = FixNum::<U100>::panicking(5).to_num_checked();
     /// assert_eq!(f, Some(5));
     ///
@@ -314,7 +314,7 @@ impl<T: LeEqU128> FixNum<T> {
     /// Convert to a primitive number type, saturating on overflow.
     ///
     /// ```rust
-    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// # use actyx_sdk::types::{FixNum, fixnum_types::*};
     /// let f: i8 = FixNum::<U100>::panicking(130).to_num_saturating();
     /// assert_eq!(f, 127);
     /// ```
@@ -325,7 +325,7 @@ impl<T: LeEqU128> FixNum<T> {
     /// Convert to a primitive number type, wrapping on overflow.
     ///
     /// ```rust
-    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// # use actyx_sdk::types::{FixNum, fixnum_types::*};
     /// let f: i8 = FixNum::<U100>::panicking(130).to_num_wrapping();
     /// assert_eq!(f, -126);
     /// ```
@@ -336,7 +336,7 @@ impl<T: LeEqU128> FixNum<T> {
     /// Convert to a primitive number type, wrapping on overflow and returning a flag.
     ///
     /// ```rust
-    /// # use actyxos_sdk::types::{FixNum, fixnum_types::*};
+    /// # use actyx_sdk::types::{FixNum, fixnum_types::*};
     /// let (f, overflow) = FixNum::<U100>::panicking(130).to_num_overflowing::<i8>();
     /// assert_eq!(f, -126);
     /// assert!(overflow);

@@ -6,7 +6,7 @@ fn node_schema_in_sync() {
     use maplit::btreeset;
     let sample_settings = Settings {
         swarm: Swarm {
-            bootstrap_nodes: btreeset![
+            initial_peers: btreeset![
                 "/ip4/127.0.0.1/tcp/4001/p2p/QmaAxuktPMR3ESHe9Pru8kzzzSGvsUie7UFJPfCWqTzzzz".into()
             ],
             announce_addresses: btreeset![],

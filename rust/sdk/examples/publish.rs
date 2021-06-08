@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-use actyxos_sdk::{
+use actyx_sdk::{
     app_id,
     service::{EventService, PublishEvent, PublishRequest},
     tags, AppManifest, HttpClient, Payload,

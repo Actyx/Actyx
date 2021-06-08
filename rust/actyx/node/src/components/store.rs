@@ -1,6 +1,6 @@
 use super::{Component, ComponentRequest};
 use crate::{node_settings::Settings, BindTo};
-use actyxos_sdk::NodeId;
+use actyx_sdk::NodeId;
 use anyhow::Result;
 use api::NodeInfo;
 use crossbeam::channel::{Receiver, Sender};
@@ -10,13 +10,22 @@ use std::{convert::TryInto, path::PathBuf, sync::Arc};
 use swarm::{BanyanStore, SwarmConfig};
 use tokio::sync::oneshot;
 use tracing::*;
-use util::formats::{Connection, NodeCycleCount, NodesInspectResponse, Peer};
+use util::formats::{Connection, NodeCycleCount, Peer};
 
 pub(crate) enum StoreRequest {
     NodesInspect {
-        tx: oneshot::Sender<Result<NodesInspectResponse>>,
+        tx: oneshot::Sender<Result<InspectResponse>>,
     },
 }
+
+pub(crate) struct InspectResponse {
+    pub peer_id: String,
+    pub listen_addrs: Vec<String>,
+    pub announce_addrs: Vec<String>,
+    pub connections: Vec<Connection>,
+    pub known_peers: Vec<Peer>,
+}
+
 pub(crate) type StoreTx = Sender<ComponentRequest<StoreRequest>>;
 
 impl Component<StoreRequest, SwarmConfig> for Store {
@@ -64,7 +73,7 @@ impl Component<StoreRequest, SwarmConfig> for Store {
                             })
                         })
                         .collect();
-                    let _ = tx.send(Ok(NodesInspectResponse {
+                    let _ = tx.send(Ok(InspectResponse {
                         peer_id,
                         listen_addrs,
                         announce_addrs,
@@ -149,11 +158,12 @@ impl Component<StoreRequest, SwarmConfig> for Store {
             listen_addresses: self.bind_to.swarm.clone().to_multiaddrs().collect(),
             bootstrap_addresses: s
                 .swarm
-                .bootstrap_nodes
+                .initial_peers
                 .iter()
                 .map(|s| s.parse())
                 .collect::<Result<_, libp2p::multiaddr::Error>>()?,
             ephemeral_event_config: Default::default(),
+            banyan_config: Default::default(),
         };
         Ok(config)
     }

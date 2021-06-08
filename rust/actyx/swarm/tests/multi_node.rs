@@ -1,4 +1,4 @@
-use actyxos_sdk::{tags, Payload, StreamNr};
+use actyx_sdk::{tags, Payload, StreamNr};
 use anyhow::Result;
 use futures::stream::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -19,7 +19,7 @@ async fn banyan_multi_node() -> Result<()> {
         .add_address(&s2.ipfs().local_peer_id(), s2.ipfs().listeners()[0].clone());
 
     let tags = tags!("event");
-    let query = TagsQuery::new(vec![tags.clone()]);
+    let query = TagsQuery::new(vec![tags.clone().into()]);
 
     let event = MyEvent {
         things_are_happening: vec!["hello world".to_string()],
@@ -42,11 +42,9 @@ async fn banyan_multi_node() -> Result<()> {
     });
 
     s1.append(StreamNr::from(11), vec![(tags.clone(), Payload::compact(&event)?)])
-        .await?
-        .unwrap();
+        .await?;
     s1.append(StreamNr::from(11), vec![(tags, Payload::compact(&event)?)])
-        .await?
-        .unwrap();
+        .await?;
 
     handle.await?;
 

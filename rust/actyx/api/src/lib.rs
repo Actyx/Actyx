@@ -1,6 +1,7 @@
-mod authentication_service_api;
-mod event_service_api;
+mod auth;
+mod events;
 mod ipfs_file_gateway;
+mod node;
 mod rejections;
 #[cfg(test)]
 mod tests;
@@ -44,9 +45,10 @@ pub async fn run(node_info: NodeInfo, store: BanyanStore, bind_to: impl Iterator
 
 fn routes(node_info: NodeInfo, store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
     let event_store = EventStore::new(store.clone());
-    let event_service = event_service_api::service::EventService::new(event_store);
-    let events = event_service_api::routes(node_info.clone(), event_service);
-    let auth = authentication_service_api::route(node_info);
+    let event_service = events::service::EventService::new(event_store);
+    let events = events::routes(node_info.clone(), event_service);
+    let node_id = node::route(node_info.clone());
+    let auth = auth::route(node_info);
 
     let api_path = path!("api" / "v2" / ..);
     let cors = cors()
@@ -57,6 +59,7 @@ fn routes(node_info: NodeInfo, store: BanyanStore) -> impl Filter<Extract = (imp
     path("ipfs")
         .and(ipfs_file_gateway::route(store))
         .or(api_path.and(path("events")).and(events))
+        .or(api_path.and(path!("node" / "id")).and(node_id))
         .or(api_path.and(path("auth")).and(auth))
         .recover(|r| async { rejections::handle_rejection(r) })
         .with(cors)

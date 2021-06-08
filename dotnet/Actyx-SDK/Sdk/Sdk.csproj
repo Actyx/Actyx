@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>Actyx.Sdk</AssemblyName>
+    <PackageVersion>0.1.0</PackageVersion>
+    <Description>Data types for communicating with Actyx and C# bindings for the Actyx APIs.</Description>
+    <PackageProjectUrl>https://developer.actyx.com/</PackageProjectUrl>
+    <PackageLicenseUrl>https://licenses.nuget.org/Apache-2.0</PackageLicenseUrl>
+    <Owners>Actyx</Owners>
+    <Authors>Actyx AG</Authors>
+    <Copyright>© Actyx AG</Copyright>
+    <PackageTags>distributed event-sourcing decentralized</PackageTags>
+    <PackageIcon>icon.png</PackageIcon>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <PackOnBuild>true</PackOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JsonSubTypes" Version="1.7.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+    <PackageReference Include="System.Interactive.Async" Version="4.1.1" />
+    <None Include="..\..\..\web\developer.actyx.com\static\img\logo.png" Pack="true" PackagePath="\icon.png" />
+  </ItemGroup>
+
+  <Target Name="PostClean" AfterTargets="Clean">
+    <RemoveDir Directories="$(BaseIntermediateOutputPath)" /><!-- obj -->
+    <RemoveDir Directories="$(BaseOutputPath)" /><!-- bin -->
+  </Target>
+
+</Project>

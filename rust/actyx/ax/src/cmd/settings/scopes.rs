@@ -32,7 +32,7 @@ pub async fn run(mut opts: ScopesOpt) -> Result<Vec<String>> {
         .request(&opts.console_opt.identity.try_into()?, AdminRequest::SettingsScopes)
         .await
     {
-        Ok((_, AdminResponse::SettingsScopesResponse(resp))) => Ok(resp),
+        Ok(AdminResponse::SettingsScopesResponse(resp)) => Ok(resp),
         Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
         Err(err) => Err(err),
     }

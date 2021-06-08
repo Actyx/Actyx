@@ -1,7 +1,7 @@
-var copydir = require('copy-dir');
+var copydir = require('copy-dir')
 
 copydir('netlify/', 'build/', {}, (err) => {
   if (err) {
-    throw err;
+    throw err
   }
-});
+})

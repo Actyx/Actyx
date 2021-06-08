@@ -8,7 +8,7 @@ edition = "2018"
 regex = "1.4.6"
 
 [dependencies]
-actyxos_sdk = { path = "../../sdk" }
+actyx_sdk = { path = "../../sdk" }
 anyhow = "1.0.40"
 base64 = "0.13.0"
 chrono = { version = "0.4.19", features = ["serde"] }
@@ -16,6 +16,7 @@ crossbeam = "0.8.0"
 derive_more = "0.99.13"
 fnv = "1.0.7"
 futures = { version = "0.3.14", package = "futures" }
+libipld = { version = "0.12.0", default-features = false, features = ["dag-cbor", "derive"] }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
 log-panics = "2.0.0"
 num-traits = "0.2.14"

@@ -1,10 +1,5 @@
 import * as t from 'io-ts'
 
-export const NodeIdResponse = t.type({
-  nodeId: t.string,
-})
-export type NodeIdResponse = t.TypeOf<typeof NodeIdResponse>
-
 export const OffsetMap = t.record(t.string, t.number)
 export type OffsetMap = t.TypeOf<typeof OffsetMap>
 
@@ -123,8 +118,11 @@ export type SubscribeMonotonicRequest = {
   query: string
 } & SubscribeMonotonicRequestStartFrom
 
+export type AxNodeService = Readonly<{
+  nodeId: () => Promise<string>
+}>
+
 export type AxEventService = Readonly<{
-  nodeId: () => Promise<NodeIdResponse>
   offsets: () => Promise<OffsetsResponse>
   publish: (request: PublishRequest) => Promise<PublishResponse>
   /**
@@ -146,17 +144,20 @@ export type AxEventService = Readonly<{
     onData: (response: SubscribeMonotonicResponse) => void,
   ) => Promise<void>
 }>
+export const ErrorCode = t.union([
+  t.literal('ERR_BAD_REQUEST'),
+  t.literal('ERR_NOT_FOUND'),
+  t.literal('ERR_MISSING_AUTH_HEADER'),
+  t.literal('ERR_MALFORMED_REQUEST_SYNTAX'),
+  t.literal('ERR_METHOD_NOT_ALLOWED'),
+  t.literal('ERR_NOT_ACCEPTABLE'),
+  t.literal('ERR_TOKEN_INVALID'),
+  t.literal('ERR_UNSUPPORTED_AUTH_TYPE'),
+])
+export type ErrorCode = t.TypeOf<typeof ErrorCode>
 
 export const ErrorResponse = t.type({
-  code: t.union([
-    t.literal('ERR_BAD_REQUEST'),
-    t.literal('ERR_NOT_FOUND'),
-    t.literal('ERR_MISSING_AUTH_HEADER'),
-    t.literal('ERR_MALFORMED_REQUEST_SYNTAX'),
-    t.literal('ERR_METHOD_NOT_ALLOWED'),
-    t.literal('ERR_NOT_ACCEPTABLE'),
-    t.literal('ERR_TOKEN_INVALID'),
-  ]),
+  code: ErrorCode,
   message: t.string,
 })
 export type ErrorResponse = t.TypeOf<typeof ErrorResponse>

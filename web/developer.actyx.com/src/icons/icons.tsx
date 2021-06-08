@@ -1,5 +1,6 @@
 import React from 'react'
 import styled from 'styled-components'
+import defaults from '../components/defaults'
 
 const IconStyled = styled.span<{
   color: string
@@ -9,26 +10,24 @@ const IconStyled = styled.span<{
     path {
       fill: ${(p) =>
         p.color == 'lightgray' && p.positive
-          ? '#ebedf0'
-          : p.color == 'gray' && p.positive
-          ? '#586069'
+          ? defaults.colors.lightgray
           : p.color == 'black' && p.positive
-          ? '#000000'
+          ? defaults.colors.black
           : p.color == 'green' && p.positive
-          ? '#15BE53'
+          ? defaults.colors.green
           : p.color == 'blue' && p.positive
-          ? '#369AFF'
+          ? defaults.colors.blue
           : p.color == 'purple' && p.positive
-          ? '#635BFF'
+          ? defaults.colors.purple
           : p.color == 'orange' && p.positive
-          ? '#FF9933'
+          ? defaults.colors.orange
           : p.color == 'dark' && p.positive
-          ? '#303c4b'
+          ? defaults.colors.darkgray
           : p.color == 'white' && p.positive
-          ? '#303c4b'
+          ? defaults.colors.darkgray
           : p.color == 'white' && p.positive == false
-          ? '#303c4b'
-          : '#ffffff'};
+          ? defaults.colors.darkgray
+          : defaults.colors.white};
     }
     height: 21px;
     margin-right: 10px;
@@ -44,26 +43,24 @@ const IconStyledLarge = styled.span<{
     path {
       fill: ${(p) =>
         p.color == 'lightgray' && p.positive
-          ? '#ebedf0'
-          : p.color == 'gray' && p.positive
-          ? '#586069'
+          ? defaults.colors.lightgray
           : p.color == 'black' && p.positive
-          ? '#000000'
+          ? defaults.colors.black
           : p.color == 'green' && p.positive
-          ? '#15BE53'
+          ? defaults.colors.green
           : p.color == 'blue' && p.positive
-          ? '#369AFF'
+          ? defaults.colors.blue
           : p.color == 'purple' && p.positive
-          ? '#635BFF'
+          ? defaults.colors.purple
           : p.color == 'orange' && p.positive
-          ? '#FF9933'
+          ? defaults.colors.orange
           : p.color == 'dark' && p.positive
-          ? '#303c4b'
+          ? defaults.colors.darkgray
           : p.color == 'white' && p.positive
-          ? '#303c4b'
+          ? defaults.colors.darkgray
           : p.color == 'white' && p.positive == false
-          ? '#303c4b'
-          : '#ffffff'};
+          ? defaults.colors.darkgray
+          : defaults.colors.white};
     }
     height: 30px;
   }

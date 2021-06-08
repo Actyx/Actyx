@@ -1,7 +1,8 @@
 use crate::{streams::OwnStreamGuard, BanyanStore, EphemeralEventsConfig, Link};
-use actyxos_sdk::Timestamp;
+use actyx_sdk::Timestamp;
 use anyhow::Context;
 use futures::future::{join_all, FutureExt};
+use serde::{Deserialize, Serialize};
 use std::{
     convert::TryInto,
     time::{Duration, SystemTime},
@@ -9,10 +10,10 @@ use std::{
 use trees::query::{OffsetQuery, TimeQuery};
 
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 /// Note: Events are kept on a best-effort basis, potentially violating the
 /// constraints expressed by this config.
-pub(crate) enum RetainConfig {
+pub enum RetainConfig {
     /// Retains the last n events
     Events(u64),
     /// Retain all events between `now - duration` and `now`
@@ -156,13 +157,13 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
 mod test {
     use std::collections::BTreeMap;
 
-    use actyxos_sdk::{tags, Payload, StreamNr};
+    use actyx_sdk::{tags, Payload, StreamNr};
     use ax_futures_util::prelude::AxStreamExt;
     use futures::{future, StreamExt};
     use maplit::btreemap;
 
     use super::*;
-    use crate::SwarmConfig;
+    use crate::{BanyanConfig, SwarmConfig};
 
     async fn create_store() -> anyhow::Result<BanyanStore> {
         util::setup_logger();
@@ -179,6 +180,10 @@ mod test {
             enable_fast_path: true,
             enable_slow_path: true,
             enable_root_map: true,
+            banyan_config: BanyanConfig {
+                tree: banyan::Config::debug(),
+                ..Default::default()
+            },
             ..Default::default()
         };
         BanyanStore::new(cfg).await
@@ -296,7 +301,7 @@ mod test {
 
     async fn test_retain_age(percentage_to_keep: usize) -> anyhow::Result<()> {
         let event_count = 1024;
-        let max_leaf_count = banyan::Config::debug().max_leaf_count as usize;
+        let max_leaf_count = SwarmConfig::test("..").banyan_config.tree.max_leaf_count as usize;
         util::setup_logger();
         let test_stream = 42.into();
 

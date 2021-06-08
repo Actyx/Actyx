@@ -57,10 +57,20 @@ export const runConcurrentlyOnAll = <T>(
   return runOnNodes('runOnAll', nodes, () => Promise.all(f(nodes)))
 }
 
-export const withPond = async <T>(node: ActyxNode, f: (pond: Pond) => Promise<T>): Promise<T> => {
-  const pond = await Pond.of(trialManifest, { actyxPort: node._private.apiEventsPort }, {})
+export const withPond = async <T>(
+  node: ActyxNode,
+  f: (pond: Pond, nodeName: string) => Promise<T>,
+): Promise<T> => {
+  const pond = await Pond.of(
+    trialManifest,
+    {
+      actyxPort: node._private.apiEventsPort,
+      onConnectionLost: () => console.error(node.name, 'Pond lost connection to the store'),
+    },
+    {},
+  )
   try {
-    return await f(pond)
+    return await f(pond, node.name)
   } finally {
     pond.dispose()
   }

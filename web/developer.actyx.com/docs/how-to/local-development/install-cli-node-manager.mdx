@@ -34,8 +34,8 @@ import TabItem from '@theme/TabItem'
 
 To run Actyx CLI on Windows you need to have the following prerequisites:
 
-- x86_64 version of Windows
-- Admin rights to run the Windows installer
+- Windows 10 or Windows Server 2019
+- `x64` processor architecture
 
 To install Actyx CLI, please follow these steps:
 
@@ -71,7 +71,7 @@ If not, please follow these steps:
 
 To run Actyx CLI on Linux you need to have the following prerequisites:
 
-- x86_64, aarch64, armv7 or arm version of Linux
+- `amd64`, `arm64`, `armhf` or `arm` processor architectures
 
 To install Actyx CLI, please follow these steps:
 
@@ -123,7 +123,7 @@ Congratulations, you have successfully installed Actyx Node Manager! 🎉
 
 To run Actyx CLI on macOS you need to have the following prerequisites:
 
-- x86_64 version of macOS
+- macOS Big Sur (earlier versions may work as well, are not officially supported though)
 
 To install Actyx CLI, please follow these steps:
 
@@ -143,12 +143,11 @@ To install Actyx CLI, please follow these steps:
   chmod +x /usr/local/bin/ax
   ```
 
-Now, you only have to allow the Actyx CLI in two steps.
-First, go to **Settings** and then to **Security &amp; Privacy**.
-In the **General** tab, you should see a prompt at the bottom that asks you to allow Actyx CLI.
-Second, the first time you run an `ax` command, you will be prompted again to allow the Actyx CLI.
+If you do not get asked for your password at this point, you have to explicitly allow Actyx:
+4. Go to **Settings** and then to **Security &amp; Privacy**. In the **General** tab, you should see a prompt at the bottom that asks you to allow Actyx CLI.
+5. When running the first `ax` command, you will be prompted again to allow the Actyx CLI.
 
-4. To confirm the installation, use the `ax --version` command. You should see something like this:
+6. To confirm the installation, use the `ax --version` command. You should see something like this:
 
 <!-- prettier-ignore -->
   ```text

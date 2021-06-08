@@ -1,5 +1,5 @@
 use crate::{node::NodeError, node_api::formats::NodesRequest, settings::SettingsRequest};
-use actyxos_sdk::NodeId;
+use actyx_sdk::NodeId;
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use util::formats::NodeName;

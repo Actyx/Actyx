@@ -38,12 +38,7 @@ async fn run() -> Result<()> {
         key_store.add_key_pair_ed25519(cfg.keypair.unwrap_or_else(KeyPair::generate).into())?;
         let swarm = BanyanStore::new(cfg).await?;
         tracing::info!("Binding api to {:?}", addr);
-        let node_info = NodeInfo {
-            node_id: swarm.node_id(),
-            key_store: key_store.into_ref(),
-            token_validity: 300,
-            cycles: 0.into(),
-        };
+        let node_info = NodeInfo::new(swarm.node_id(), key_store.into_ref(), 0.into());
         swarm.spawn_task("api", api::run(node_info, swarm.clone(), std::iter::once(addr)));
         swarm
     } else {

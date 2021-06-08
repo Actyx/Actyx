@@ -1,14 +1,23 @@
 import fetch from 'node-fetch'
-import { getToken, mkEventsPath, trialManifest, NODE_ID_SEG } from '../../http-client'
+import {
+  getToken,
+  mkEventsPath,
+  trialManifest,
+  API_V2_PATH,
+  EVENTS_PATH,
+  OFFSETS_SEG,
+  AUTH_SEG,
+} from '../../http-client'
 import WebSocket from 'ws'
 import { run } from '../../util'
 import { createTestNodeLocal } from '../../test-node-factory'
+import { AppManifest } from '@actyx/pond'
 
 const UNAUTHORIZED_TOKEN =
   'AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ=='
 
-const getId = (httpApi: string, authHeaderValue?: string) =>
-  fetch(httpApi + mkEventsPath(NODE_ID_SEG), {
+const getOffsets = (httpApi: string, authHeaderValue?: string) =>
+  fetch(httpApi + API_V2_PATH + EVENTS_PATH + OFFSETS_SEG, {
     method: 'get',
     headers: {
       Accept: 'application/json',
@@ -18,10 +27,99 @@ const getId = (httpApi: string, authHeaderValue?: string) =>
   })
 
 describe('auth http', () => {
+  const signedManifest: AppManifest = {
+    appId: 'com.actyx.auth-test',
+    displayName: 'auth test app',
+    version: 'v0.0.1',
+    signature:
+      'v2tzaWdfdmVyc2lvbgBtZGV2X3NpZ25hdHVyZXhYZ0JGTTgyZVpMWTdJQzhRbmFuVzFYZ0xrZFRQaDN5aCtGeDJlZlVqYm9qWGtUTWhUdFZNRU9BZFJaMVdTSGZyUjZUOHl1NEFKdFN5azhMbkRvTVhlQnc9PWlkZXZQdWJrZXl4LTBuejFZZEh1L0pEbVM2Q0ltY1pnT2o5WTk2MHNKT1ByYlpIQUpPMTA3cVcwPWphcHBEb21haW5zgmtjb20uYWN0eXguKm1jb20uZXhhbXBsZS4qa2F4U2lnbmF0dXJleFg4QmwzekNObm81R2JwS1VvYXRpN0NpRmdyMEtHd05IQjFrVHdCVkt6TzlwelcwN2hGa2tRK0dYdnljOVFhV2hIVDVhWHp6TyttVnJ4M2VpQzdUUkVBUT09/w==',
+  }
+
+  it('should get token for signed manifest', () =>
+    run((httpApi) =>
+      getToken(signedManifest, httpApi)
+        .then((x) => x.json())
+        .then((x) =>
+          expect(x).toEqual({
+            token: expect.any(String),
+          }),
+        ),
+    ))
+
+  it('should fail to get token for falsified manifest', () =>
+    run((httpApi) =>
+      getToken({ ...signedManifest, version: '1' }, httpApi)
+        .then((resp) => {
+          expect(resp.status).toEqual(400)
+          return resp.json()
+        })
+        .then((json) =>
+          expect(json).toEqual({
+            code: 'ERR_MANIFEST_INVALID',
+            message:
+              'Invalid manifest. Failed to validate app manifest. Invalid signature for provided input.',
+          }),
+        ),
+    ))
+
+  it('should fail for malformed requests', () =>
+    run((httpApi) =>
+      fetch(httpApi + API_V2_PATH + AUTH_SEG, {
+        method: 'post',
+        body: JSON.stringify({ malformed: true }),
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      })
+        .then((resp) => {
+          expect(resp.status).toEqual(400)
+          return resp.json()
+        })
+        .then((json) =>
+          expect(json).toEqual({
+            code: 'ERR_BAD_REQUEST',
+            message: 'Invalid request. data did not match any variant of untagged enum AppManifest',
+          }),
+        ),
+    ))
+
+  it('should fail when the manifest is invalid', () =>
+    run((httpApi) =>
+      fetch(httpApi + API_V2_PATH + AUTH_SEG, {
+        method: 'post',
+        body: JSON.stringify({
+          appId: 'com.actyx.my-app',
+          displayName: 'Mine!',
+          version: '0.8.5',
+          signature:
+            'v2tzaWdfdmVyc2lvbgBtZGV2X3NpZ25hdHVyZXhYZ0JGTTgyZVpMWTdJQzhRbmFuVzFYZ0xrZFRQaDN5aCtGeDJlZlVqYm9qWGtUTWhUdFZNRU9BZFJaMVdTSGZyUjZUOHl1NEFKdFN5azhMbkRvTVhlQnc9PWlkZXZQdWJrZXl4LTBuejFZZEh1L0pEbVM2Q0ltY1pnT2o5WTk2MHNKT1ByYlpIQUpPMTA3cVcwPWphcHBEb21haW5zgmtjb20uYWN0eXguKm1jb20uZXhhbXBsZS4qa2F4U2lnbmF0dXJleFg4QmwzekNObm81R2JwS1VvYXRpN0NpRmdyMEtHd05IQjFrVHdCVkt6TzlwelcwN2hGa2tRK0dYdnljOVFhV2hIVDVhWHp6TyttVnJ4M2VpQzdUUkVBUT09/w==',
+        }),
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+      })
+        .then((resp) => {
+          expect(resp.status).toEqual(400)
+          return resp.json()
+        })
+        .then((json) =>
+          expect(json).toEqual({
+            code: 'ERR_MANIFEST_INVALID',
+            message:
+              'Invalid manifest. Failed to validate app manifest. Invalid signature for provided input.',
+          }),
+        ),
+    ))
+
   it('should fail when token not authorized', () =>
     run((httpApi) =>
-      getId(httpApi, 'Bearer ' + UNAUTHORIZED_TOKEN)
-        .then((nodeIdResponse) => nodeIdResponse.json())
+      getOffsets(httpApi, 'Bearer ' + UNAUTHORIZED_TOKEN)
+        .then((resp) => {
+          expect(resp.status).toEqual(401)
+          return resp.json()
+        })
         .then((x) =>
           expect(x).toEqual({
             code: 'ERR_TOKEN_UNAUTHORIZED',
@@ -32,8 +130,11 @@ describe('auth http', () => {
 
   it('should fail when auth header has wrong value', () =>
     run((httpApi) =>
-      getId(httpApi, 'Foo bar')
-        .then((x) => x.json())
+      getOffsets(httpApi, 'Foo bar')
+        .then((resp) => {
+          expect(resp.status).toEqual(401)
+          return resp.json()
+        })
         .then((x) =>
           expect(x).toEqual({
             code: 'ERR_UNSUPPORTED_AUTH_TYPE',
@@ -44,8 +145,11 @@ describe('auth http', () => {
 
   it('should fail when token is invalid', () =>
     run((httpApi) =>
-      getId(httpApi, 'Bearer invalid')
-        .then((x) => x.json())
+      getOffsets(httpApi, 'Bearer invalid')
+        .then((resp) => {
+          expect(resp.status).toEqual(400)
+          return resp.json()
+        })
         .then((x) =>
           expect(x).toEqual({
             code: 'ERR_TOKEN_INVALID',
@@ -57,8 +161,11 @@ describe('auth http', () => {
 
   it('should fail when authorization header is missing', () =>
     run((httpApi) =>
-      getId(httpApi)
-        .then((x) => x.json())
+      getOffsets(httpApi)
+        .then((resp) => {
+          expect(resp.status).toEqual(401)
+          return resp.json()
+        })
         .then((x) =>
           expect(x).toEqual({
             code: 'ERR_MISSING_AUTH_HEADER',
@@ -73,16 +180,19 @@ describe('auth http', () => {
     const token = await getToken(trialManifest, testNode._private.httpApiOrigin)
       .then((x) => x.json())
       .then((x) => x.token)
-    const gId = (origin: string) => getId(origin, 'Bearer ' + token).then((x) => x.json())
+    const offsets = (origin: string) => getOffsets(origin, 'Bearer ' + token)
 
     // assert we can access event service
-    const response = await gId(testNode._private.httpApiOrigin)
-    expect(response).toEqual({ nodeId: expect.any(String) })
+    const response = await offsets(testNode._private.httpApiOrigin).then((resp) => resp.json())
+    expect(response).toEqual({ present: expect.any(Object), toReplicate: expect.any(Object) })
     await testNode._private.shutdown()
 
     // start the node again and assert that we can't reuse previous token
     testNode = await createTestNodeLocal(nodeName, true)
-    const result = await gId(testNode._private.httpApiOrigin)
+    const result = await offsets(testNode._private.httpApiOrigin).then((resp) => {
+      expect(resp.status).toEqual(401)
+      return resp.json()
+    })
     expect(result).toEqual({ code: 'ERR_TOKEN_EXPIRED', message: 'Expired token.' })
   })
 
@@ -99,19 +209,20 @@ describe('auth ws', () => {
       })
     })
 
-  const expectFailure = (path: string): Promise<void[]> =>
+  const expectFailure = (path: string, status: number): Promise<void[]> =>
     mkWs(path, (ws, resolve) => {
       ws.on('error', (x) => {
-        expect(x.message).toEqual('Unexpected server response: 401')
+        expect(x.message).toEqual(`Unexpected server response: ${status}`)
         resolve()
       })
     })
 
-  it('should fail when token is missing', () => expectFailure(''))
+  it('should fail when token is missing', () => expectFailure('', 401))
 
-  it('should fail when token is not authorized', () => expectFailure(`?${UNAUTHORIZED_TOKEN}`))
+  it('should fail when token is not authorized', () => expectFailure(`?${UNAUTHORIZED_TOKEN}`, 401))
 
-  it('should fail when using wrong path', () => expectFailure(`/wrong_path?token-does-not-matter`))
+  it('should fail when using wrong path', () =>
+    expectFailure(`/wrong_path?token-does-not-matter`, 404))
 
   it('should get token for a trial manifest and successfully use it', () =>
     run((httpApi) =>
@@ -121,7 +232,7 @@ describe('auth ws', () => {
           const ws = new WebSocket(httpApi + mkEventsPath(`?${x.token}`))
           const message = {
             type: 'request',
-            serviceId: 'node_id',
+            serviceId: 'offsets',
             requestId: 1,
             payload: null,
           }
@@ -131,7 +242,11 @@ describe('auth ws', () => {
               responses.push(JSON.parse(x.toString()))
               if (responses.length === 2) {
                 expect(responses).toEqual([
-                  { type: 'next', requestId: 1, payload: { nodeId: expect.any(String) } },
+                  {
+                    type: 'next',
+                    requestId: 1,
+                    payload: { present: expect.any(Object), toReplicate: expect.any(Object) },
+                  },
                   { type: 'complete', requestId: 1 },
                 ])
                 ws.terminate()

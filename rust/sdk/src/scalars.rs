@@ -17,6 +17,7 @@ use std::{
     convert::TryFrom,
     fmt::{self, Debug, Display},
     io::{Read, Seek, Write},
+    str::FromStr,
 };
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -33,12 +34,12 @@ use crate::ParseError;
 ///
 /// This is how it works:
 /// ```no_run
-/// use actyxos_sdk::{app_id, AppId};
+/// use actyx_sdk::{app_id, AppId};
 /// let app_id: AppId = app_id!("abc");
 /// ```
 /// This does not compile:
 /// ```compile_fail
-/// use actyxos_sdk::{app_id, AppId};
+/// use actyx_sdk::{app_id, AppId};
 /// let app_id: AppId = app_id!("");
 /// ```
 #[macro_export]
@@ -58,9 +59,9 @@ mk_scalar!(
     struct AppId, EmptyAppId, ParseError
 );
 
-/// The ActyxOS node identifier
+/// The Actyx node identifier
 ///
-/// Each ActyxOS node has a private key that defines its identity. The corresponding public
+/// Each Actyx node has a private key that defines its identity. The corresponding public
 /// key uniquely identifies the node but depends on the used crypto scheme. For now, we are
 /// using ed25519.
 ///
@@ -145,17 +146,18 @@ impl From<NodeId> for String {
     }
 }
 
-impl TryFrom<&str> for NodeId {
-    type Error = anyhow::Error;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Self::parse(value)
-    }
-}
-
 impl TryFrom<String> for NodeId {
     type Error = anyhow::Error;
     fn try_from(value: String) -> Result<Self, Self::Error> {
         Self::parse(&value)
+    }
+}
+
+impl FromStr for NodeId {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::parse(s)
     }
 }
 
@@ -175,7 +177,7 @@ impl Decode<DagCborCodec> for NodeId {
     }
 }
 
-/// The unique identifier of a single event stream emitted by an ActyxOS node
+/// The unique identifier of a single event stream emitted by an Actyx node
 ///
 /// The emitting node — identified by its [`NodeId`](struct.NodeId.html) — may emit multiple
 /// streams with different IDs. The emitting node’s ID can be extracted from this stream ID
@@ -212,7 +214,7 @@ impl StreamId {
         if split.next().is_some() {
             bail!("trailing garbage in StreamId");
         }
-        let node_id = NodeId::try_from(node_str)?;
+        let node_id: NodeId = NodeId::parse(node_str)?;
         let stream_nr = stream_str
             .parse::<u64>()
             .context("parsing StreamId stream number")?
@@ -375,7 +377,7 @@ mod tests {
     quickcheck::quickcheck! {
         fn node_id_roundtrip(id: NodeId) -> bool {
             let s = id.to_string();
-            NodeId::try_from(s).map_err(|_| "") == Ok(id)
+            s.parse().map_err(|_|"") == Ok(id)
         }
 
         fn stream_id_roundtrip(sid: StreamId) -> bool {

@@ -1,5 +1,5 @@
 use crate::{private::PrivateKey, public::PublicKey};
-use actyxos_sdk::NodeId;
+use actyx_sdk::NodeId;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self, Debug};
 

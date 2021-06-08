@@ -1,5 +1,5 @@
 use crate::{BanyanStore, Block, Ipfs, Link};
-use actyxos_sdk::{LamportTimestamp, NodeId, StreamId, StreamNr, Timestamp};
+use actyx_sdk::{LamportTimestamp, NodeId, StreamId, StreamNr, Timestamp};
 use anyhow::Result;
 use ax_futures_util::stream::latest_channel;
 use futures::prelude::*;

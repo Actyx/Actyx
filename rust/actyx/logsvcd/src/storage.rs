@@ -1,5 +1,5 @@
 use crate::error::{LogsvcdError, Result};
-use actyxos_sdk::NodeId;
+use actyx_sdk::NodeId;
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection, OpenFlags};
 use std::convert::TryInto;
@@ -52,7 +52,7 @@ impl StorageConfig {
     pub fn random() -> Self {
         Self {
             node_name: "random really".into(),
-            node_id: ".E61/.I4/kU70UgA1EsD2/2G2lEJ3VQM4FcP5/oS5m.".try_into().unwrap(),
+            node_id: ".E61/.I4/kU70UgA1EsD2/2G2lEJ3VQM4FcP5/oS5m.".parse::<NodeId>().unwrap(),
             retention: RetentionStategy::default(),
         }
     }

@@ -1,13 +1,13 @@
-use actyxos_sdk::{app_id, service::AuthenticationResponse, NodeId};
+use actyx_sdk::{app_id, service::AuthenticationResponse, NodeId};
 use bytes::Bytes;
-use crypto::{KeyStore, KeyStoreRef, PublicKey};
+use crypto::{KeyStore, KeyStoreRef, PrivateKey, PublicKey};
 use hyper::Response;
 use parking_lot::lock_api::RwLock;
 use serde_json::*;
 use swarm::BanyanStore;
 use warp::*;
 
-use crate::{authentication_service_api::create_token, rejections, util::NodeInfo, AppMode};
+use crate::{auth::create_token, rejections, util::NodeInfo, AppMode};
 
 const UNAUTHORIZED_TOKEN: &str = "AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ==";
 
@@ -39,6 +39,7 @@ async fn test_routes() -> (
         key_store: key_store.clone(),
         node_id: node_key.into(),
         token_validity: 300,
+        ax_public_key: PrivateKey::generate().into(),
     };
     let route = super::routes(auth_args.clone(), store).with(warp::trace::named("api_test"));
 
@@ -77,7 +78,7 @@ async fn authenticate() {
     let AuthenticationResponse { token, .. } = serde_json::from_slice(bytes).unwrap();
 
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .header("Authorization", format!("Bearer {}", token))
         .reply(&route)
         .await;
@@ -85,10 +86,19 @@ async fn authenticate() {
 }
 
 #[tokio::test]
+async fn node_id() {
+    let (route, _, node_key, ..) = test_routes().await;
+    let resp = test::request().path("/api/v2/node/id").reply(&route).await;
+    assert_eq!(resp.status(), http::StatusCode::OK);
+    assert_eq!(resp.headers()["content-type"], "text/plain; charset=utf-8");
+    assert_eq!(resp.body(), &NodeId::from(node_key).to_string())
+}
+
+#[tokio::test]
 async fn ok() {
     let (route, token, ..) = test_routes().await;
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .header("Authorization", format!("Bearer {}", token))
         .reply(&route)
         .await;
@@ -100,7 +110,7 @@ async fn ok() {
 async fn ok_accept_json() {
     let (route, token, ..) = test_routes().await;
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .header("Authorization", format!("Bearer {}", token))
         .reply(&route)
         .await;
@@ -108,7 +118,7 @@ async fn ok_accept_json() {
     assert_eq!(resp.headers()["content-type"], "application/json");
 
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .header("Authorization", format!("Bearer {}", token))
         .header("Accept", "application/json")
         .reply(&route)
@@ -143,10 +153,10 @@ async fn ok_accept_ndjson() {
 }
 
 #[tokio::test]
-async fn ok_accept_star() {
+async fn ok_accept_wildcard() {
     let (route, token, ..) = test_routes().await;
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .header("Authorization", format!("Bearer {}", token))
         .header("Accept", "*/*")
         .reply(&route)
@@ -159,7 +169,7 @@ async fn ok_accept_star() {
 async fn ok_accept_multiple() {
     let (route, token, ..) = test_routes().await;
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .header("Authorization", format!("Bearer {}", token))
         .header("Accept", "application/json, text/plain, */*") // this is what NodeJS sends
         .reply(&route)
@@ -172,7 +182,7 @@ async fn ok_accept_multiple() {
 async fn ok_cors() {
     let (route, ..) = test_routes().await;
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .method("OPTIONS")
         .header("Origin", "http://localhost")
         .header("Access-Control-Request-Method", "GET")
@@ -186,7 +196,7 @@ async fn ok_cors() {
 async fn forbidden_cors() {
     let (route, ..) = test_routes().await;
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .method("OPTIONS")
         .header("Origin", "http://localhost")
         .header("Access-Control-Request-Method", "GET")
@@ -196,7 +206,7 @@ async fn forbidden_cors() {
     assert_eq!(resp.status(), http::StatusCode::FORBIDDEN); // header not allowed
 
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .method("OPTIONS")
         .header("Origin", "http://localhost")
         .header("Access-Control-Request-Method", "XXX")
@@ -248,10 +258,10 @@ async fn ws() {
 
     assert_err_response(
         ws_test(&format!("/x?{}", token)).await,
-        http::StatusCode::UNAUTHORIZED,
+        http::StatusCode::NOT_FOUND,
         json!({
-          "code": "ERR_MISSING_AUTH_HEADER",
-          "message": "\"Authorization\" header is missing."
+          "code": "ERR_NOT_FOUND",
+          "message": "The requested resource could not be found."
         }),
     );
 }
@@ -277,7 +287,7 @@ async fn internal_err() {
 async fn unauthorized() {
     let (route, ..) = test_routes().await;
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .header("Authorization", format!("Bearer {}", UNAUTHORIZED_TOKEN))
         .reply(&route)
         .await;
@@ -299,7 +309,7 @@ async fn should_fail_when_token_payload_shape_is_wrong() {
     let token_with_wrong_payload = base64::encode(signed);
 
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .header("Authorization", format!("Bearer {}", token_with_wrong_payload))
         .reply(&route)
         .await;
@@ -316,7 +326,7 @@ async fn should_fail_when_token_payload_shape_is_wrong() {
 #[tokio::test]
 async fn unauthorized_missing_header() {
     let (route, ..) = test_routes().await;
-    let resp = test::request().path("/api/v2/events/node_id").reply(&route).await;
+    let resp = test::request().path("/api/v2/events/offsets").reply(&route).await;
     assert_err_response(
         resp,
         http::StatusCode::UNAUTHORIZED,
@@ -331,7 +341,7 @@ async fn unauthorized_missing_header() {
 async fn unauthorized_unsupported() {
     let (route, ..) = test_routes().await;
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .header("Authorization", "Foo hello")
         .reply(&route)
         .await;
@@ -349,7 +359,7 @@ async fn unauthorized_unsupported() {
 async fn unauthorized_invalid() {
     let (route, ..) = test_routes().await;
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .header("Authorization", "Bearer invalid")
         .reply(&route)
         .await;
@@ -381,7 +391,7 @@ async fn not_found() {
 async fn method_not_allowed() {
     let (route, token, ..) = test_routes().await;
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .method("POST")
         .header("Authorization", format!("Bearer {}", token))
         .reply(&route)
@@ -421,7 +431,7 @@ async fn unsupported_media_type() {
 async fn not_acceptable() {
     let (route, token, ..) = test_routes().await;
     let resp = test::request()
-        .path("/api/v2/events/node_id")
+        .path("/api/v2/events/offsets")
         .header("Authorization", format!("Bearer {}", token))
         .header("Accept", "text/html")
         .reply(&route)

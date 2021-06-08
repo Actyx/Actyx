@@ -1,13 +1,16 @@
 use std::{convert::TryFrom, ops::Range};
 
-use actyxos_sdk::{LamportTimestamp, Tag, TagSet, Timestamp};
+use actyx_sdk::{LamportTimestamp, Tag, TagSet, Timestamp};
 use quickcheck::{Arbitrary, Gen};
 
-use crate::axtrees::{AxKey, AxKeySeq, AxRange, AxSummary, AxSummarySeq, TagsSummary};
+use crate::{
+    axtrees::{AxKey, AxKeySeq, AxRange, AxSummary, AxSummarySeq, TagsSummary},
+    tags::{ScopedTag, ScopedTagSet},
+};
 
 impl Arbitrary for AxKey {
     fn arbitrary(g: &mut Gen) -> Self {
-        let tags = TagSet::arbitrary(g);
+        let tags = ScopedTagSet::arbitrary(g);
         Self {
             tags,
             lamport: u64::arbitrary(g).into(),
@@ -17,7 +20,7 @@ impl Arbitrary for AxKey {
     fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
         let Self { lamport, tags, time } = self.clone();
         // Let's assume only tags matter..
-        Box::new(tags.shrink().map(move |tags| Self { tags, lamport, time }))
+        Box::new(tags.shrink().map(move |tags| Self { tags, time, lamport }))
     }
 }
 
@@ -30,7 +33,7 @@ impl Arbitrary for AxKeySeq {
             .map(|(time, lamport)| {
                 let time: Timestamp = time.into();
                 let lamport: LamportTimestamp = lamport.into();
-                let mut key_tags: Vec<Tag> = vec![];
+                let mut key_tags: Vec<ScopedTag> = vec![];
                 for x in 0..*g.choose(&[0, 1, 2, 3]).unwrap() {
                     if x >= tags.len() {
                         break;
@@ -38,7 +41,7 @@ impl Arbitrary for AxKeySeq {
                     if tags[x].is_empty() {
                         continue;
                     }
-                    key_tags.push(Tag::try_from(tags[x].as_str()).unwrap());
+                    key_tags.push(ScopedTag::from(Tag::try_from(tags[x].as_str()).unwrap()));
                 }
                 AxKey {
                     time,
@@ -67,7 +70,7 @@ impl Arbitrary for AxSummarySeq {
                     if tags[x].is_empty() {
                         continue;
                     }
-                    key_tags.push(Tag::try_from(tags[x].as_str()).unwrap());
+                    key_tags.push(ScopedTag::from(Tag::try_from(tags[x].as_str()).unwrap()));
                 }
                 AxSummary {
                     time,
@@ -87,5 +90,11 @@ struct IndexString(&'static str);
 impl Arbitrary for IndexString {
     fn arbitrary(g: &mut Gen) -> Self {
         IndexString(g.choose(STRINGS).unwrap())
+    }
+}
+
+impl Arbitrary for ScopedTagSet {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        TagSet::arbitrary(g).into()
     }
 }

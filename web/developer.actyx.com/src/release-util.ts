@@ -107,9 +107,11 @@ export const flattenToActual = (notes: any): { [thing: string]: string[] } => {
     const mostActual =
       Object.keys(amendments).length < 1
         ? original
-        : (Object.values(amendments).sort(
-            (a, b) => ((b as any).at as any).getTime() - ((a as any).at as any).getTime(),
-          )[0] as any).notes
+        : (
+            Object.values(amendments).sort(
+              (a, b) => ((b as any).at as any).getTime() - ((a as any).at as any).getTime(),
+            )[0] as any
+          ).notes
     if (mostActual) {
       Object.entries(mostActual).forEach(([thing, changes]) =>
         addToThing(thing, changes as string[]),

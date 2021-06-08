@@ -30,17 +30,17 @@ obvious questions for shop-floor personnel are: What is currently going on, and 
 taken for the various people and machines to produce a given batch of chairs? These questions are
 merely examples of the ones we could answer if we had an audit trail like this:
 
-time | who | what
----|---|---
-8:52 | Fred | starts setting up Drill1 for order 4711
-8:56 | Fred | finishes setup
-8:56 | Drill1 | starts working on order 4711
-8:56 | Fred | starts drilling holes for order 4711
-9:12 | Fred | reports 27 chair legs produced for order 4711
-9:26 | Fred | reports 13 more chair legs produced for order 4711
-9:27 | Fred | stops drilling holes for order 4711
-9:27 | Drill1 | stops working on order 4711
-9:27 | Fred | reports hole drilling for order 4711 is finished
+| time | who    | what                                               |
+| ---- | ------ | -------------------------------------------------- |
+| 8:52 | Fred   | starts setting up Drill1 for order 4711            |
+| 8:56 | Fred   | finishes setup                                     |
+| 8:56 | Drill1 | starts working on order 4711                       |
+| 8:56 | Fred   | starts drilling holes for order 4711               |
+| 9:12 | Fred   | reports 27 chair legs produced for order 4711      |
+| 9:26 | Fred   | reports 13 more chair legs produced for order 4711 |
+| 9:27 | Fred   | stops drilling holes for order 4711                |
+| 9:27 | Drill1 | stops working on order 4711                        |
+| 9:27 | Fred   | reports hole drilling for order 4711 is finished   |
 
 Computers can help obtain such an audit trail, many of the entries can even be created automatically
 or with very little additional input from a worker like Fred. One thing we need to ensure, though,
@@ -68,20 +68,20 @@ The first part can be implemented using [Grafana](https://grafana.com/) if we ke
 [PostgreSQL](https://www.postgresql.org/) up to date with one row containing the information of what
 is going on per workstation (e.g. which order is being processed and since when and by whom).
 
-machine | doing what | since
----|---|---
-Drill1 | working on order 4711 | 8:56
-Drill2 | idle | 8:12
-Drill3 | working on order 4712 | 8:33
+| machine | doing what            | since |
+| ------- | --------------------- | ----- |
+| Drill1  | working on order 4711 | 8:56  |
+| Drill2  | idle                  | 8:12  |
+| Drill3  | working on order 4712 | 8:33  |
 
 The second part can be implemented similarly, by adding a row to a table of time spans whenever a
 machine stops working on an order.
 
-machine | order | started | duration
----|---|---|---
-Drill1 | 4710 | 7:53 | 0:36
-Drill2 | 4634 | 7:55 | 0:17
-Drill1 | 4711 | 8:56 | 0:33
+| machine | order | started | duration |
+| ------- | ----- | ------- | -------- |
+| Drill1  | 4710  | 7:53    | 0:36     |
+| Drill2  | 4634  | 7:55    | 0:17     |
+| Drill1  | 4711  | 8:56    | 0:33     |
 
 The third part works analog by creating an ERP transaction with the relevant bookings.
 
@@ -116,7 +116,7 @@ let latest = events
 This code snippet operates on a [Flow] of events, which is a DSL built on the
 [differential-dataflow](https://docs.rs/differential-dataflow) Rust library.
 
-[Flow]: https://docs.rs/actyxos_data_flow/latest/actyxos_data_flow/flow/struct.Flow.html
+[Flow]: https://docs.rs/actyxos_data_flow/0.1.0/actyxos_data_flow/flow/struct.Flow.html
 
 - A flow is created within a scope of execution (see [the full example] for all details), returning
   an injector handle by which events can later be fed into this flow plus the `events` handle with
@@ -125,7 +125,7 @@ This code snippet operates on a [Flow] of events, which is a DSL built on the
   `WHERE` in SQL,
 - the `.map()` turns each event into a machine status dashboard entry, like `SELECT`
 
-[the full example]: https://github.com/Actyx/actyxos_data_flow/tree/master/examples/machine-dashboard/logic.rs
+[the full example]: https://github.com/Actyx/actyxos_data_flow/blob/01f15a7b418f0b8d8bc8d1ace9116b6afa94ba45/examples/machine-dashboard/logic.rs
 
 The resulting `Flow` at this point describes a collection of status records, one for each relevant
 event for each machine on the shop-floor.  Since we are only interested in the most recent status
@@ -241,7 +241,7 @@ pub struct UsageEntry {
 This record needs to be turned into one database row with four columns, to be inserted into a table
 of some name. This is explained to the database driver by implementing the [DbRecord] trait.
 
-[DbRecord]: https://docs.rs/actyxos_data_flow/latest/actyxos_data_flow/db/trait.DbRecord.html
+[DbRecord]: https://docs.rs/actyxos_data_flow/0.1.0/actyxos_data_flow/db/trait.DbRecord.html
 
 ```rust
 impl DbRecord<SqliteDbMechanics> for UsageEntry {
@@ -372,10 +372,10 @@ run_with_db_channel(
 Besides the helper functions that wire together the [EventService client], the differential dataflow
 machine, and the database driver, the main part here is the definition of the event subscriptions. This
 exporter needs to see all events emitted by the [machineFish]. The full code is available
-[here](https://github.com/Actyx/actyxos_data_flow/tree/master/examples/machine-dashboard/main.rs).
+[here](https://github.com/Actyx/actyxos_data_flow/tree/af220bdec670d6e0ee560bf1cd859770931b9b59/examples/machine-dashboard).
 
-[EventService client]: https://docs.rs/actyxos_sdk/latest/actyxos_sdk/event_service/struct.EventService.html
-[machineFish]: https://github.com/Actyx/actyxos_data_flow/tree/master/webapp/src/machineFish.ts
+[EventService client]: https://docs.rs/actyxos_sdk/0.3.1/actyxos_sdk/event_service/struct.EventService.html
+[machineFish]: https://github.com/Actyx/actyxos_data_flow/blob/3903619f84edefdb207203d6e5757a8e6da6a4f8/webapp/src/machineFish.ts
 
 ## Avoiding endless growth
 
@@ -392,7 +392,7 @@ context to the differential dataflow engine to emit the right deltas going forwa
 `actyxos_data_flow` library supports this with the [new_limited] function to construct input
 collections:
 
-[new_limited]: https://docs.rs/actyxos_data_flow/latest/actyxos_data_flow/flow/struct.Flow.html#method.new_limited
+[new_limited]: https://docs.rs/actyxos_data_flow/0.1.0/actyxos_data_flow/flow/struct.Flow.html#method.new_limited
 
 ```rust
 let one_year = Duration::from_secs(365 * 86400);

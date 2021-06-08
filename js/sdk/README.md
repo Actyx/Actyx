@@ -2,7 +2,7 @@
 
 A TypeScript SDK for writing distributed apps deployed on peer-to-peer networks, without any servers. 
 
-This is made possible by being based on [Actyx](https://www.actyx.com/platform). Please visit also the [documentation](https://developer.actyx.com/docs/pond/getting-started) for how to get started.
+This is made possible by being based on [Actyx](https://www.actyx.com/platform). Please visit also the [documentation](https://developer.actyx.com/docs/how-to/actyx-pond/getting-started) for how to get started.
 
 ## Key features
 

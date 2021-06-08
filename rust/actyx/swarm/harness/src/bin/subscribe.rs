@@ -5,11 +5,13 @@ fn main() -> anyhow::Result<()> {
         time::Duration,
     };
 
-    use actyxos_sdk::{
+    use actyx_sdk::{
         app_id,
         service::{EventService, PublishEvent, PublishRequest},
         tags, AppManifest, Payload, Timestamp,
     };
+    use anyhow::Context;
+    use async_std::future::timeout;
     use structopt::StructOpt;
     use swarm_cli::{Command, Event, TimedEvent};
     use swarm_harness::{api::Api, fully_meshed, m, HarnessOpts};
@@ -54,7 +56,7 @@ fn main() -> anyhow::Result<()> {
     swarm_harness::run_netsim(opts, move |mut sim| async move {
         let api = Api::new(&mut sim, app_manifest)?;
 
-        fully_meshed(&mut sim, Duration::from_secs(60)).await;
+        fully_meshed(&mut sim, Duration::from_secs(60)).await?;
 
         for machine in sim.machines_mut() {
             machine.send(Command::SubscribeQuery("FROM 'a'".parse()?));
@@ -77,15 +79,18 @@ fn main() -> anyhow::Result<()> {
                 })
                 .await?;
             for machine in sim.machines_mut() {
-                let (received, published) = machine
-                    .select(|ev| {
+                let (received, published) = timeout(
+                    Duration::from_secs(5),
+                    machine.select(|ev| {
                         m!(ev, TimedEvent { timestamp, event: Event::Result((_, key, payload)) } => {
                             assert_eq!(payload.json_string(), format!("{}", n));
                             (*timestamp, key.time())
                         })
-                    })
-                    .await
-                    .unwrap();
+                    }),
+                )
+                .await
+                .with_context(|| format!("timeout waiting for message {} from {} to {}", n, id, machine.id()))?
+                .unwrap();
                 measurements.push((start, published, received));
             }
         }

@@ -31,11 +31,10 @@ use url::Url;
 
 use crate::{
     service::{
-        AuthenticationResponse, EventService, NodeIdResponse, OffsetsResponse, PublishRequest, PublishResponse,
-        QueryRequest, QueryResponse, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest,
-        SubscribeResponse,
+        AuthenticationResponse, EventService, OffsetsResponse, PublishRequest, PublishResponse, QueryRequest,
+        QueryResponse, SubscribeMonotonicRequest, SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    AppManifest,
+    AppManifest, NodeId,
 };
 
 /// Error type that is returned in the response body by the Event Service when requests fail
@@ -58,6 +57,7 @@ pub struct HttpClient {
     base_url: Url,
     token: Arc<RwLock<String>>,
     app_manifest: AppManifest,
+    node_id: NodeId,
 }
 
 async fn get_token(client: &Client, base_url: &Url, app_manifest: &AppManifest) -> anyhow::Result<String> {
@@ -81,6 +81,15 @@ impl HttpClient {
         base_url.set_path("api/v2/");
         let client = Client::new();
 
+        let node_id = client
+            .get(base_url.join("node/id").unwrap())
+            .send()
+            .await?
+            .text()
+            .await
+            .context(|| "getting body for GET node/id")?
+            .parse()?;
+
         let token = get_token(&client, &base_url, &app_manifest).await?;
 
         Ok(Self {
@@ -88,7 +97,12 @@ impl HttpClient {
             base_url,
             token: Arc::new(RwLock::new(token)),
             app_manifest,
+            node_id,
         })
+    }
+
+    pub fn node_id(&self) -> NodeId {
+        self.node_id
     }
 
     fn events_url(&self, path: &str) -> Url {
@@ -158,21 +172,6 @@ impl Debug for HttpClient {
 
 #[async_trait]
 impl EventService for HttpClient {
-    async fn node_id(&self) -> anyhow::Result<NodeIdResponse> {
-        let response = self.do_request(|c| c.get(self.events_url("node_id"))).await?;
-        let bytes = response
-            .bytes()
-            .await
-            .context(|| format!("getting body for GET {}", self.events_url("node_id")))?;
-        Ok(serde_json::from_slice(bytes.as_ref()).context(|| {
-            format!(
-                "deserializing node_id response from {:?} received from GET {}",
-                bytes,
-                self.events_url("node_id")
-            )
-        })?)
-    }
-
     async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
         let response = self.do_request(|c| c.get(self.events_url("offsets"))).await?;
         let bytes = response

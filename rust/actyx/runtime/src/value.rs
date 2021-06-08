@@ -1,4 +1,4 @@
-use actyxos_sdk::{
+use actyx_sdk::{
     language::{Index, Number},
     EventKey, Payload,
 };

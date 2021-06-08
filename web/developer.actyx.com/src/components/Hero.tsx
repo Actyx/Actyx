@@ -2,6 +2,7 @@ import React from 'react'
 import styled from 'styled-components'
 import { keyframes } from 'styled-components'
 import SearchBarHomePage from '../theme/SearchBar-Homepage'
+import defaults from '../components/defaults'
 
 const Wrapper = styled.div<{
   img: string
@@ -97,27 +98,27 @@ const Button = styled.div<{
   border: 1px solid
     ${(p) =>
       p.color == 'green'
-        ? '#15BE53'
+        ? defaults.colors.green
         : p.color == 'blue'
-        ? '#369AFF'
+        ? defaults.colors.blue
         : p.color == 'purple'
-        ? '#635BFF'
+        ? defaults.colors.purple
         : p.color == 'orange'
-        ? '#FF9933'
-        : '#f5f5f5'};
+        ? defaults.colors.orange
+        : defaults.colors.gray};
   font-weight: 600;
   font-size: 15px;
   padding: 8px;
   color: ${(p) =>
     p.color == 'green'
-      ? '#15BE53'
+      ? defaults.colors.green
       : p.color == 'blue'
-      ? '#369AFF'
+      ? defaults.colors.blue
       : p.color == 'purple'
-      ? '#635BFF'
+      ? defaults.colors.purple
       : p.color == 'orange'
-      ? '#FF9933'
-      : '#f5f5f5'};
+      ? defaults.colors.orange
+      : defaults.colors.gray};
   margin-left: 16px;
   margin-right: 16px;
   cursor: pointer;

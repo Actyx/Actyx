@@ -1,0 +1,25 @@
+{
+  "name": "actyx-quickstart",
+  "version": "1.0.0",
+  "description": "Actyx Quickstart Starter",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Actyx/quickstart"
+  },
+  "main": "index.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node index",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@actyx/pond": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^13.9.0",
+    "ts-node": "^8.6.2",
+    "typescript": "^3.8.3"
+  }
+}

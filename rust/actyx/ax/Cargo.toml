@@ -13,13 +13,14 @@ name = "axlib"
 path = "src/lib.rs"
 
 [dependencies]
-actyxos_sdk = { path = "../../sdk" }
+actyx_sdk = { path = "../../sdk" }
 anyhow = "1.0.40"
+certs = { path = "../certs" }
 settings = { path = "../settings" }
 banyan = "0.14.0"
 banyan-utils = "0.7.0"
-base64= "0.13.0"
-bytes= "1.0.1"
+base64 = "0.13.0"
+bytes = "1.0.1"
 chrono = { version = "0.4.19", features = ["serde"] }
 clap = "2.33.3"
 crypto = { path = "../crypto/" }
@@ -34,7 +35,7 @@ libp2p = { version = "0.38.0", default-features = false }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
 maplit = "1.0.2"
 prettytable-rs = "0.8.0"
-rand= "0.8.3"
+rand = "0.8.3"
 serde = "1.0.125"
 serde_json = "1.0.64"
 serde_yaml = "0.8.17"
@@ -49,8 +50,8 @@ trees = { path = "../trees" }
 util = { path = "../util" }
 
 [dev-dependencies]
-assert_cmd= "1.0.3"
-predicates= "1.0.7"
+assert_cmd = "1.0.3"
+predicates = "1.0.7"
 regex = "1.4.5"
 serde_json = "1.0.64"
 

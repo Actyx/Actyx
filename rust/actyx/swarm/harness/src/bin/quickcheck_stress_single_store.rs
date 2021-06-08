@@ -2,11 +2,12 @@
 fn main() {
     use std::{convert::TryFrom, time::Duration};
 
-    use actyxos_sdk::{
+    use actyx_sdk::{
         service::{EventResponse, EventService, SubscribeRequest, SubscribeResponse},
         tags, Offset, Url,
     };
     use futures::{stream::FuturesUnordered, FutureExt, StreamExt};
+    use quickcheck::{empty_shrinker, Arbitrary, Gen};
     use quickcheck::{QuickCheck, TestResult};
     use swarm_cli::Event;
     use swarm_harness::{
@@ -16,16 +17,39 @@ fn main() {
         HarnessOpts,
     };
 
-    fn stress_single_store(
+    #[derive(Clone, Debug)]
+    struct TestInput {
         concurrent_publishes: u8,
         publish_chunk_size: u8,
         publish_chunks_per_client: u8,
         concurrent_subscribes: u8,
-    ) -> quickcheck::TestResult {
-        let concurrent_publishes = (concurrent_publishes >> 4).max(1);
-        let publish_chunks_per_client = (publish_chunks_per_client >> 2).max(1);
-        let concurrent_subscribes = (concurrent_subscribes >> 4).max(1);
-        let publish_chunk_size = publish_chunk_size.max(1);
+    }
+    impl Arbitrary for TestInput {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let concurrent_publishes = (u8::arbitrary(g) >> 4).max(1);
+            let publish_chunk_size = (u8::arbitrary(g) >> 2).max(1);
+            let publish_chunks_per_client = (u8::arbitrary(g) >> 4).max(1);
+            let concurrent_subscribes = u8::arbitrary(g).max(1);
+            Self {
+                concurrent_publishes,
+                publish_chunk_size,
+                publish_chunks_per_client,
+                concurrent_subscribes,
+            }
+        }
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            // Don't shrink
+            empty_shrinker()
+        }
+    }
+
+    fn stress_single_store(input: TestInput) -> quickcheck::TestResult {
+        let TestInput {
+            concurrent_publishes,
+            publish_chunk_size,
+            publish_chunks_per_client,
+            concurrent_subscribes,
+        } = input;
 
         let opts = HarnessOpts {
             n_nodes: 1,
@@ -72,7 +96,7 @@ fn main() {
                 .map(|_| ApiClient::new(origin.clone(), app_manifest(), namespace))
                 .collect::<Vec<_>>();
 
-            let stream_0 = publish_clients[0].node_id().await?.node_id.stream(0.into());
+            let stream_0 = publish_clients[0].node_id().await.stream(0.into());
 
             let mut futs = publish_clients
                 .iter()
@@ -150,7 +174,7 @@ fn main() {
     setup_env().unwrap();
     QuickCheck::new()
         .tests(2)
-        .quickcheck(stress_single_store as fn(u8, u8, u8, u8) -> TestResult)
+        .quickcheck(stress_single_store as fn(TestInput) -> TestResult)
 }
 
 #[cfg(not(target_os = "linux"))]

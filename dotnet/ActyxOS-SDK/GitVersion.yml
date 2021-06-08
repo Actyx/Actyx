@@ -1,4 +1,0 @@
-tag-prefix: 'dotnet/sdk-'
-mode: ContinuousDeployment
-branches: {}
-

@@ -1,41 +1,32 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
-/*
- * Actyx Pond: A TypeScript framework for writing distributed apps
- * deployed on peer-to-peer networks, without any servers.
- *
- * Copyright (C) 2020 Actyx AG
- */
 import * as t from 'io-ts'
-import { equals } from 'ramda'
-import { EventKey, EventKeyIO, NodeId, OffsetMapIO, Where } from '../types'
+import { EventKeyIO, NodeId, OffsetMapIO, Where } from '../types'
 import { validateOrThrow } from '../util'
 import {
+  DoPersistEvents,
+  DoQuery,
+  DoSubscribe,
   EventStore,
-  RequestAllEvents,
   RequestConnectivity,
   RequestOffsets,
-  RequestPersistedEvents,
-  RequestPersistEvents,
 } from './eventStore'
 import log from './log'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import {
-  AllEventsSortOrder,
   ConnectivityStatus,
   Event,
   Events,
+  EventsSortOrders,
   OffsetsResponse,
-  PersistedEventsSortOrder,
   UnstoredEvents,
 } from './types'
 
 export const enum RequestTypes {
-  NodeId = 'node_id',
   Offsets = 'offsets',
   Query = 'query',
   Subscribe = 'subscribe',
@@ -45,47 +36,25 @@ export const enum RequestTypes {
   Connectivity = '/ax/events/requestConnectivity',
 }
 
-const EventKeyOrNull = t.union([t.null, EventKeyIO])
-const ValueOrLimit = t.union([t.number, t.literal('min'), t.literal('max')])
-export type ValueOrLimit = t.TypeOf<typeof ValueOrLimit>
-export const PersistedEventsRequest = t.readonly(
+const QueryRequest = t.readonly(
   t.type({
-    minEventKey: EventKeyOrNull,
     lowerBound: OffsetMapIO,
     upperBound: OffsetMapIO,
     query: t.string,
-    order: PersistedEventsSortOrder,
-    count: ValueOrLimit,
+    order: EventsSortOrders,
   }),
 )
-export type PersistedEventsRequest = t.TypeOf<typeof PersistedEventsRequest>
 
-export const AllEventsRequest = t.readonly(
+const SubscribeRequest = t.readonly(
   t.type({
     offsets: OffsetMapIO,
-    minEventKey: EventKeyOrNull,
-    upperBound: OffsetMapIO,
     query: t.string,
-    order: AllEventsSortOrder,
-    count: ValueOrLimit,
   }),
 )
-export type AllEventsRequest = t.TypeOf<typeof AllEventsRequest>
 
-export const PersistEventsRequest = t.readonly(t.type({ data: UnstoredEvents }))
-export type PersistEventsRequest = t.TypeOf<typeof PersistEventsRequest>
+const PersistEventsRequest = t.readonly(t.type({ data: UnstoredEvents }))
 
-const GetSourceIdResponse = t.type({ nodeId: NodeId.FromString })
-
-export const getNodeId = (multiplexedWebsocket: MultiplexedWebsocket): Promise<NodeId> =>
-  multiplexedWebsocket
-    .request(RequestTypes.NodeId)
-    .map(validateOrThrow(GetSourceIdResponse))
-    .map(response => response.nodeId)
-    .first()
-    .toPromise()
-
-export const ConnectivityRequest = t.readonly(
+const ConnectivityRequest = t.readonly(
   t.type({
     special: t.readonlyArray(NodeId.FromString),
     hbHistDelay: t.number,
@@ -93,12 +62,12 @@ export const ConnectivityRequest = t.readonly(
     currentPsnHistoryDelay: t.number, // this is u8 size! -- how many report_every_ms spans back we go for the our_psn value? recommended 6 to give 60s
   }),
 )
-export type ConnectivityRequest = t.TypeOf<typeof ConnectivityRequest>
 
 const EventKeyWithTime = t.intersection([EventKeyIO, t.type({ timestamp: t.number })])
 const PublishEventsResponse = t.type({ data: t.readonlyArray(EventKeyWithTime) })
 
-const toAql = (w: Where<unknown>) => 'FROM ' + w.toString()
+const toAql = (w: Where<unknown> | string): string =>
+  w instanceof String ? (w as string) : 'FROM ' + w.toString()
 
 // FIXME: Downstream consumers expect arrays of Events, but endpoint is no longer sending chunks.
 const compat = (x: unknown) => {
@@ -106,7 +75,7 @@ const compat = (x: unknown) => {
 }
 
 export class WebsocketEventStore implements EventStore {
-  constructor(private readonly multiplexer: MultiplexedWebsocket, readonly nodeId: NodeId) {}
+  constructor(private readonly multiplexer: MultiplexedWebsocket) {}
 
   offsets: RequestOffsets = () =>
     this.multiplexer
@@ -132,57 +101,35 @@ export class WebsocketEventStore implements EventStore {
       .map(validateOrThrow(ConnectivityStatus))
   }
 
-  persistedEvents: RequestPersistedEvents = (
-    fromPsnsExcluding,
-    toPsnsIncluding,
-    whereObj,
-    sortOrder,
-    minEventKey,
-  ) => {
-    const minEvKey =
-      minEventKey === undefined || equals(minEventKey, EventKey.zero) ? null : minEventKey
+  query: DoQuery = (lowerBound, upperBound, whereObj, sortOrder) => {
     return this.multiplexer
       .request(
         RequestTypes.Query,
-        PersistedEventsRequest.encode({
-          lowerBound: fromPsnsExcluding.psns,
-          upperBound: toPsnsIncluding.psns,
+        QueryRequest.encode({
+          lowerBound,
+          upperBound,
           query: toAql(whereObj),
-          minEventKey: minEvKey,
           order: sortOrder,
-          count: 'max',
         }),
       )
       .map(compat)
       .map(validateOrThrow(Events))
   }
 
-  allEvents: RequestAllEvents = (
-    fromPsnsExcluding,
-    toPsnsIncluding,
-    whereObj,
-    sortOrder,
-    minEventKey,
-  ) => {
-    const minEvKey =
-      minEventKey === undefined || equals(minEventKey, EventKey.zero) ? null : minEventKey
+  subscribe: DoSubscribe = (lowerBound, whereObj) => {
     return this.multiplexer
       .request(
         RequestTypes.Subscribe,
-        AllEventsRequest.encode({
-          offsets: fromPsnsExcluding.psns,
-          upperBound: toPsnsIncluding.psns,
+        SubscribeRequest.encode({
+          offsets: lowerBound,
           query: toAql(whereObj),
-          minEventKey: minEvKey,
-          order: sortOrder,
-          count: 'max',
         }),
       )
       .map(compat)
       .map(validateOrThrow(Events))
   }
 
-  persistEvents: RequestPersistEvents = events => {
+  persistEvents: DoPersistEvents = events => {
     const publishEvents = events
 
     return this.multiplexer

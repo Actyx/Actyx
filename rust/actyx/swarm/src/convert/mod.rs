@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, fs, str::FromStr, sync::Arc};
 
-use actyxos_sdk::{legacy::SourceId, tag, Payload, StreamId};
+use actyx_sdk::{legacy::SourceId, tag, Payload, StreamId};
 use anyhow::Result;
 use banyan::store::{BlockWriter, ReadOnlyStore};
 use banyan::{store::BranchCache, Config, Forest, Transaction};
@@ -13,7 +13,10 @@ use libipld::{
 use parking_lot::Mutex;
 use rayon::prelude::*;
 use rusqlite::OpenFlags;
-use trees::axtrees::{AxKey, AxTree, AxTrees, Sha256Digest};
+use trees::{
+    axtrees::{AxKey, AxTrees, Sha256Digest},
+    AxTree,
+};
 
 use crate::{AxStreamBuilder, StreamAlias};
 
@@ -90,7 +93,7 @@ fn events_to_v2(envelopes: Vec<IpfsEnvelope>) -> Vec<(AxKey, Payload)> {
             let mut tags = event.tags;
             tags.insert(tag!("semantics:") + event.semantics.as_str());
             tags.insert(tag!("fish_name:") + event.name.as_str());
-            let key: AxKey = AxKey::new(tags, event.lamport, event.timestamp);
+            let key: AxKey = AxKey::new(tags.into(), event.lamport, event.timestamp);
             (key, event.payload)
         })
         .collect::<Vec<_>>()

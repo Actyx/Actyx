@@ -38,7 +38,7 @@
 //! while when configuring an external address you are telling other peers how to reach you, given
 //! you have a bootstrap node in common.
 use crate::BanyanStore;
-use actyxos_sdk::{tags, Payload, StreamNr};
+use actyx_sdk::{tags, Payload, StreamNr};
 use anyhow::Result;
 use fnv::{FnvHashMap, FnvHashSet};
 use futures::stream::{Stream, StreamExt};
@@ -151,7 +151,7 @@ where
 
 pub async fn discovery_ingest(store: BanyanStore) {
     let tags = tags!("discovery");
-    let query = TagsQuery::new(vec![tags]);
+    let query = TagsQuery::new(vec![tags.into()]);
     let mut stream = store.stream_filtered_stream_ordered(query);
     let peer_id = store.ipfs().local_peer_id();
     let node_name = store.ipfs().local_node_name();

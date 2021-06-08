@@ -3,7 +3,7 @@ use crate::{
     operation::{Filter, Operation, Select},
     value::Value,
 };
-use actyxos_sdk::language;
+use actyx_sdk::language;
 
 pub struct Query {
     #[allow(dead_code)]
@@ -41,7 +41,7 @@ impl From<language::Query> for Query {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actyxos_sdk::EventKey;
+    use actyx_sdk::EventKey;
     use cbor_data::Encoder;
 
     #[test]

@@ -1,4 +1,4 @@
-use actyxos_sdk::{
+use actyx_sdk::{
     app_id,
     service::{PublishEvent, PublishRequest},
     AppManifest, Payload, TagSet,

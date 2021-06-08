@@ -1,7 +1,7 @@
-use actyxos_sdk::{LamportTimestamp, Payload, Tag, TagSet, Timestamp};
+use actyx_sdk::{LamportTimestamp, TagSet, Timestamp};
 use banyan::{
     index::{CompactSeq, Summarizable},
-    Tree, TreeTypes,
+    TreeTypes,
 };
 use libipld::{
     cbor::DagCborCodec,
@@ -20,9 +20,10 @@ use std::{
     str::FromStr,
 };
 
-use crate::TagIndex;
-
-pub type AxTree = Tree<AxTrees, Payload>;
+use crate::{
+    tags::{ScopedTag, ScopedTagSet},
+    TagIndex,
+};
 
 const MAX_TAGSET_COUNT: usize = 512;
 
@@ -62,13 +63,13 @@ impl<A: smallvec::Array<Item = Timestamp>> From<AxRange<Timestamp>> for RangeSet
 /// Typically you deal not with individual keys but with sequences of keys. See [AxKeySeq]
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct AxKey {
-    pub(crate) tags: TagSet,
+    pub(crate) tags: ScopedTagSet,
     pub(crate) time: Timestamp,
     pub(crate) lamport: LamportTimestamp,
 }
 
 impl AxKey {
-    pub fn new(tags: TagSet, lamport: impl Into<LamportTimestamp>, time: impl Into<Timestamp>) -> Self {
+    pub fn new(tags: ScopedTagSet, lamport: impl Into<LamportTimestamp>, time: impl Into<Timestamp>) -> Self {
         Self {
             tags,
             lamport: lamport.into(),
@@ -76,7 +77,7 @@ impl AxKey {
         }
     }
 
-    pub fn tags(&self) -> &TagSet {
+    pub fn tags(&self) -> &ScopedTagSet {
         &self.tags
     }
 
@@ -88,8 +89,12 @@ impl AxKey {
         self.lamport
     }
 
-    pub fn into_tags(self) -> TagSet {
+    pub fn into_tags(self) -> ScopedTagSet {
         self.tags
+    }
+
+    pub fn into_app_tags(self) -> TagSet {
+        self.tags.into_iter().filter_map(|x| x.into_app()).collect()
     }
 }
 
@@ -245,7 +250,7 @@ impl Summarizable<AxSummary> for AxKeySeq {
     }
 }
 
-fn tags_too_large(tags: &[Tag]) -> bool {
+fn tags_too_large(tags: &[ScopedTag]) -> bool {
     tags.len() > MAX_TAGSET_COUNT
 }
 
@@ -255,14 +260,14 @@ fn tags_too_large(tags: &[Tag]) -> bool {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum TagsSummary {
     /// The complete set of tags in the tree
-    Complete(TagSet),
+    Complete(ScopedTagSet),
     // Bloom(BloomFilter),
     /// No restriction on the tags in the tree
     Unrestricted,
 }
 
 impl TagsSummary {
-    pub(crate) fn from_slice(tags: &[Tag]) -> Self {
+    pub(crate) fn from_slice(tags: &[ScopedTag]) -> Self {
         if !tags_too_large(tags) {
             Self::Complete(tags.iter().cloned().collect())
         } else {
@@ -282,7 +287,7 @@ impl TagsSummary {
     ///
     /// The only thing this does is to bail out in case
     /// the tag set is too large, otherwise store it.
-    pub fn from_tags(tags: TagSet) -> Self {
+    pub fn from_tags(tags: ScopedTagSet) -> Self {
         if !tags_too_large(tags.as_ref()) {
             Self::Complete(tags)
         } else {
@@ -290,7 +295,7 @@ impl TagsSummary {
         }
     }
 
-    fn into_tags(self) -> Option<TagSet> {
+    fn into_tags(self) -> Option<ScopedTagSet> {
         if let Self::Complete(tags) = self {
             Some(tags)
         } else {
@@ -301,7 +306,7 @@ impl TagsSummary {
 
 impl Default for TagsSummary {
     fn default() -> Self {
-        Self::Complete(TagSet::empty())
+        Self::Complete(ScopedTagSet::empty())
     }
 }
 
@@ -312,7 +317,7 @@ impl FromIterator<TagsSummary> for TagsSummary {
         // todo: optimize so we don't call tags_too_large on every operation.
         iter.into_iter().fold(TagsSummary::default(), |summary, item| {
             if let (TagsSummary::Complete(mut a), TagsSummary::Complete(b)) = (summary, item) {
-                a += b;
+                a |= b;
                 TagsSummary::from_tags(a)
             } else {
                 TagsSummary::Unrestricted
@@ -321,6 +326,10 @@ impl FromIterator<TagsSummary> for TagsSummary {
     }
 }
 
+/// Summaries for a sequence of tag summaries, corresponding to child nodes.
+///
+/// This is just a TagIndex with one additional case to handle when the complete
+/// index would become too large.
 #[derive(Debug, PartialEq, Eq, Clone, DagCbor)]
 pub enum TagsSummaries {
     /// The complete set of tags in the tree
@@ -357,7 +366,10 @@ impl Summarizable<TagsSummary> for TagsSummaries {
 impl FromIterator<TagsSummary> for TagsSummaries {
     fn from_iter<T: IntoIterator<Item = TagsSummary>>(iter: T) -> Self {
         // this will be None if a single TagSummary is unrestricted
-        let tags = iter.into_iter().map(|x| x.into_tags()).collect::<Option<Vec<TagSet>>>();
+        let tags = iter
+            .into_iter()
+            .map(|x| x.into_tags())
+            .collect::<Option<Vec<ScopedTagSet>>>();
         match tags {
             Some(tags) => TagsSummaries::Complete(TagIndex::new(tags).unwrap()),
             None => Self::Unrestricted,
@@ -561,6 +573,7 @@ impl Summarizable<AxSummary> for AxSummarySeq {
     }
 }
 
+/// Defines the types to be used in the actyx flavour of banyan trees
 #[derive(Debug, Clone, Copy)]
 pub struct AxTrees;
 
@@ -572,6 +585,9 @@ impl TreeTypes for AxTrees {
     type Link = Sha256Digest;
 }
 
+/// The link type used internally by the actyx flavour of banyan trees
+///
+/// This is much smaller and less complex than than an libipld::Cid
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Sha256Digest([u8; 32]);
 

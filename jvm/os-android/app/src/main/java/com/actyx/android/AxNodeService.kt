@@ -20,11 +20,22 @@ class AxNodeService : Service() {
     stopSelf()
     Intent(this, MainActivity::class.java).also {
       val message = when (code) {
-        AxNode.NODE_STOPPED_BY_NODE -> "Actyx stopped by node. $msg"
+        AxNode.NODE_STOPPED_BY_NODE -> "Code: NODE_STOPPED_BY_NODE\n" +
+          "Message: $msg\n" +
+          "Please contact your IT administrator."
         AxNode.NODE_STOPPED_BY_NODE_UI -> "" // stopped by the user
-        AxNode.NODE_STOPPED_BY_HOST -> "Actyx stopped by Android"
-        AxNode.FAILED_TO_START_NODE -> "Failed to start node. $msg"
-        else -> "Error code: $code. $msg"
+        AxNode.NODE_STOPPED_BY_HOST -> "Code: NODE_STOPPED_BY_HOST\n" +
+          "Message: $msg\n" +
+          "Please contact your IT administrator."
+        AxNode.FAILED_TO_START_NODE -> "Code: FAILED_TO_START_NODE\n" +
+          "Message: $msg\n" +
+          "Please contact your IT administrator."
+        AxNode.ERR_PORT_COLLISION -> "Code: ERR_PORT_COLLISION\n" +
+          "Message: $msg\n" +
+          "Please contact your IT administrator."
+        else -> "Code: $code\n" +
+          "Message: $msg\n" +
+          "Please contact your IT administrator."
       }
       it.putExtra(AXNODE_MESSAGE, message)
       it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -93,8 +104,10 @@ class AxNodeService : Service() {
       .setCategory(Notification.CATEGORY_SERVICE)
       .setContentIntent(pendingIntent)
       .setPriority(NotificationCompat.PRIORITY_LOW)
-      .addAction(0, getString(R.string.quit),
-        PendingIntent.getActivity(this, 0, requestQuitIntent, 0))
+      .addAction(
+        0, getString(R.string.quit),
+        PendingIntent.getActivity(this, 0, requestQuitIntent, 0)
+      )
       .build()
   }
 

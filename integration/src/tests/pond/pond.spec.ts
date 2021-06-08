@@ -30,8 +30,8 @@ describe('Pond', () => {
     const randomId = String(Math.random())
 
     const results = await runConcurrentlyOnAll<string[]>((nodes) => {
-      const t = (pond: Pond) =>
-        concurrentOrderingTest(nodes.length, roundsPerNodeLinear, Tag(randomId), pond)
+      const t = (pond: Pond, nodeName: string) =>
+        concurrentOrderingTest(nodes.length, roundsPerNodeLinear, Tag(randomId), pond, nodeName)
       return nodes.map((node) => withPond(node, t))
     })
 
@@ -54,29 +54,44 @@ describe('Pond', () => {
     const base = Tag(randomId)
 
     const allResults = await runConcurrentlyOnAll<string[][]>((nodes) => {
-      const t = (pond: Pond) =>
+      const t = (pond: Pond, nodeName: string) =>
         Promise.all([
           // Some different ways in which tags might be combined.
           // We run all of these in parallel, to assert their events are not accidentally mixed up.
-          concurrentOrderingTest(nodes.length, roundsPerNodeConcurrent, base.withId('/1'), pond),
-          concurrentOrderingTest(nodes.length, roundsPerNodeConcurrent, base.and('/2'), pond),
+          concurrentOrderingTest(
+            nodes.length,
+            roundsPerNodeConcurrent,
+            base.withId('/1'),
+            pond,
+            nodeName,
+          ),
+          concurrentOrderingTest(
+            nodes.length,
+            roundsPerNodeConcurrent,
+            base.and('/2'),
+            pond,
+            nodeName,
+          ),
           concurrentOrderingTest(
             nodes.length,
             roundsPerNodeConcurrent,
             Tag(':3:').and(base).and('::3'),
             pond,
+            nodeName,
           ),
           concurrentOrderingTest(
             nodes.length,
             roundsPerNodeConcurrent,
             Tag('xxx').and(base.withId('___4___')),
             pond,
+            nodeName,
           ),
           concurrentOrderingTest(
             nodes.length,
             roundsPerNodeConcurrent,
             Tag('5').withId(randomId),
             pond,
+            nodeName,
           ),
         ])
       return nodes.map((node) => withPond(node, t))
@@ -168,10 +183,13 @@ const concurrentOrderingTest = async (
   roundsPerNode: number,
   streamTags: Tags<unknown>,
   pond: Pond,
+  nodeName = 'not-given',
 ): Promise<string[]> => {
   const where = padSubWithDummies(streamTags)
 
   const { nodeId } = pond.info()
+
+  const start = Date.now()
 
   const f: Fish<string[], unknown> = {
     where,
@@ -190,6 +208,21 @@ const concurrentOrderingTest = async (
       f,
       (state) => {
         if (state.length === expectedSum) {
+          const end = Date.now()
+          const took = String((end - start) / 1_000.0)
+          process.stdout.write(
+            '  pond.spec.ts: ' +
+              [
+                nodeName,
+                '[',
+                where.toString(),
+                '] finished in',
+                took,
+                's, found:',
+                expectedSum,
+              ].join(' ') +
+              '\n',
+          )
           resolve(state)
         }
 
@@ -207,7 +240,7 @@ const concurrentOrderingTest = async (
   for (let i = 0; i < roundsPerNode; i++) {
     await pond.emit(emissionTags, { hello: 'world0' }).toPromise()
     await pond.emit(emissionTags, { hello: 'world1' }).toPromise()
-    await e.emit(emissionTags.apply({ hello: 'world2' }, { hello: 'world3' }))
+    await e.emit(emissionTags.apply({ hello: 'world2' }, { hello: 'world3' })).toPromise()
     await new Promise((res) => setTimeout(res, 10 * Math.random())) // Sleep 0-10ms
   }
 

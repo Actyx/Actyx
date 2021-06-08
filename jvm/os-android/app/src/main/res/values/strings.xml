@@ -8,7 +8,6 @@
     <string name="quit_actyx">Quit Actyx</string>
     <string name="to_properly_shut_down_actyx_please_press_the_button_below">To properly shut down, please press the button below.</string>
     <string name="closing_this_window_will_not_quit_actyx">Closing this window will not quit Actyx.</string>
-    <string name="actyx_version">Version 2.0.0</string>
     <string name="actyx_logo">actyx logo</string>
     <string name="actyx_icon">actyx icon</string>
     <string name="quit_ax_confirm_message">Quitting Actyx closes this app window.</string>
@@ -19,4 +18,6 @@
     <string name="actyx_is_stopping">Actyx is stopping…</string>
     <string name="actyx_is_force_stopping">Actyx is force stopping…</string>
     <string name="ok">OK</string>
+    <string name="ip_address">IP Address:</string>
+    <string name="ip_not_available">not available</string>
 </resources>

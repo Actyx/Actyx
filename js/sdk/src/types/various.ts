@@ -1,7 +1,7 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
 import { contramap, Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
@@ -100,7 +100,7 @@ export const Lamport = {
 
 /** Offset within an Actyx event stream. @public */
 export type Offset = number
-const mkOffset = (psn: number): Offset => psn as Offset
+const mkOffset = (n: number): Offset => n as Offset
 
 /** Functions related to Offsets. @public */
 export const Offset = {
@@ -256,7 +256,7 @@ export type Metadata = Readonly<{
 
   // A unique identifier for the event.
   // Every event has exactly one eventId which is unique to it, guaranteed to not collide with any other event.
-  // Events are *sorted* based on the eventId by ActyxOS: For a given event, all later events also have a higher eventId according to simple string-comparison.
+  // Events are *sorted* based on the eventId by Actyx: For a given event, all later events also have a higher eventId according to simple string-comparison.
   eventId: string
 
   // Stream this event belongs to
@@ -397,3 +397,18 @@ export type AppManifest = Readonly<{
   /** Manifest signature, if it’s not an example app. */
   signature?: string
 }>
+
+/**
+ * Sort order for persisted events.
+ * @public
+ */
+export enum EventsSortOrder {
+  /** Strictly ascending, meaning events are strictly ordered by eventId. */
+  Ascending = 'asc',
+
+  /** Strictly descending, meaning events are strictly ordered by eventId, reverse. */
+  Descending = 'desc',
+
+  /** Ascending per stream, meaning between different streams there is no specific order guaranteed. */
+  StreamAscending = 'stream-asc',
+}

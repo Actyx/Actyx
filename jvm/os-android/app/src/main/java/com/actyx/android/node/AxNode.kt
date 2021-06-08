@@ -41,6 +41,7 @@ class AxNode(ctx: Context, handler: AxNodeMessageHandler) {
     const val NODE_STOPPED_BY_NODE = 10
     const val NODE_STOPPED_BY_NODE_UI = 11
     const val NODE_STOPPED_BY_HOST = 12
+    const val ERR_PORT_COLLISION = 13
     const val FAILED_TO_START_NODE = 42
   }
 }

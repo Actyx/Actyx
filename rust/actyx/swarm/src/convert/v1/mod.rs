@@ -4,7 +4,7 @@ pub mod cons_node;
 pub use self::block::*;
 pub use self::cons_node::*;
 
-use actyxos_sdk::{
+use actyx_sdk::{
     legacy::{FishName, Semantics},
     LamportTimestamp, Offset, Payload, TagSet, Timestamp,
 };

@@ -1,6 +1,6 @@
 import React from 'react'
 import styled from 'styled-components'
-import defaults from '../old-components/defaults'
+import defaults from '../components/defaults'
 
 const Link = styled.div`
   font-family: 'system-ui', '-apple-system', 'Helvetica', sans-serif;

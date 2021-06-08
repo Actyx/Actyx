@@ -27,24 +27,21 @@ mod tests;
 
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
+pub use prune::RetainConfig;
 
 use crate::gossip::Gossip;
-use crate::prune::RetainConfig;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::streams::{OwnStream, ReplicatedStream};
-use actyxos_sdk::{
-    LamportTimestamp, NodeId, Offset, OffsetMap, OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp,
-};
+use actyx_sdk::{LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamId, StreamNr, TagSet, Timestamp};
 use anyhow::{Context, Result};
 use ax_futures_util::{
     prelude::*,
     stream::variable::{Observer, Variable},
 };
 use banyan::{
-    index::Index,
     query::Query,
     store::{BlockWriter, BranchCache, ReadOnlyStore},
-    Config, FilteredChunk, Secrets, StreamBuilder,
+    FilteredChunk, Secrets, StreamBuilder,
 };
 use crypto::KeyPair;
 use fnv::FnvHashMap;
@@ -63,6 +60,7 @@ use libp2p::{
 };
 use maplit::btreemap;
 use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
 use sqlite_index_store::SqliteIndexStore;
 use std::{
     collections::{BTreeMap, VecDeque},
@@ -76,8 +74,8 @@ use std::{
 };
 use streams::*;
 use trees::{
-    axtrees::{AxKey, AxTree, AxTrees, Sha256Digest},
-    AxTreeHeader,
+    axtrees::{AxKey, AxTrees, Sha256Digest},
+    AxTree, AxTreeHeader,
 };
 use util::{
     formats::NodeErrorContext,
@@ -102,10 +100,21 @@ static DISCOVERY_STREAM_NR: u64 = 1;
 static METRICS_STREAM_NR: u64 = 2;
 const MAX_TREE_LEVEL: i32 = 1000;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EphemeralEventsConfig {
     interval: Duration,
     streams: BTreeMap<StreamNr, RetainConfig>,
+}
+impl EphemeralEventsConfig {
+    pub fn new(interval: Duration, streams: BTreeMap<StreamNr, RetainConfig>) -> Self {
+        Self { interval, streams }
+    }
+    pub fn disable() -> Self {
+        Self {
+            streams: BTreeMap::default(),
+            interval: Duration::from_secs(u64::MAX),
+        }
+    }
 }
 impl Default for EphemeralEventsConfig {
     fn default() -> Self {
@@ -137,6 +146,21 @@ pub struct SwarmConfig {
     pub enable_root_map: bool,
     pub enable_discovery: bool,
     pub enable_metrics: bool,
+    pub banyan_config: BanyanConfig,
+}
+#[derive(Clone, Debug)]
+pub struct BanyanConfig {
+    tree: banyan::Config,
+    secret: banyan::Secrets,
+}
+impl Default for BanyanConfig {
+    fn default() -> Self {
+        Self {
+            // TODO: replace this with better defaults for our application
+            tree: banyan::Config::debug_fast(),
+            secret: banyan::Secrets::default(),
+        }
+    }
 }
 
 impl SwarmConfig {
@@ -151,6 +175,10 @@ impl SwarmConfig {
             enable_root_map: true,
             enable_discovery: true,
             enable_metrics: true,
+            banyan_config: BanyanConfig {
+                tree: banyan::Config::debug(),
+                ..Default::default()
+            },
             ..Default::default()
         }
     }
@@ -202,6 +230,12 @@ impl SwarmOffsets {
     }
 }
 
+pub struct AppendMeta {
+    min_lamport: LamportTimestamp,
+    min_offset: Offset,
+    timestamp: Timestamp,
+}
+
 /// All immutable or internally mutable parts of the banyan store
 struct BanyanStoreData {
     gossip: Gossip,
@@ -232,6 +266,9 @@ struct BanyanStoreState {
 
     /// tasks of the stream manager.
     tasks: Vec<tokio::task::JoinHandle<()>>,
+
+    /// Banyan related config
+    banyan_config: BanyanConfig,
 }
 
 impl Drop for BanyanStoreState {
@@ -301,12 +338,16 @@ impl<'a> BanyanStoreGuard<'a> {
             let builder = self
                 .data
                 .forest
-                .load_stream_builder(Secrets::default(), Config::debug(), header.root)
+                .load_stream_builder(
+                    self.banyan_config.secret.clone(),
+                    self.banyan_config.tree.clone(),
+                    header.root,
+                )
                 .context("unable to load banyan tree")?;
             let published = PublishedTree::new(root, header, builder.snapshot());
             (builder, Some(published))
         } else {
-            let builder = StreamBuilder::new(Config::debug(), Secrets::default());
+            let builder = StreamBuilder::new(self.banyan_config.tree.clone(), self.banyan_config.secret.clone());
             (builder, None)
         };
         let stream = Arc::new(OwnStream::new(stream_nr, builder, latest));
@@ -317,7 +358,7 @@ impl<'a> BanyanStoreGuard<'a> {
     }
 
     fn get_or_create_replicated_stream(&mut self, stream_id: StreamId) -> Result<Arc<ReplicatedStream>> {
-        debug_assert!(self.node_id() != stream_id.node_id());
+        debug_assert!(!self.is_local(stream_id));
         self.index_store
             .add_stream(stream_id)
             .context("unable to write stream id")?;
@@ -368,8 +409,7 @@ impl<'a> BanyanStoreGuard<'a> {
 
     /// Get the last PublishedTree for a stream_id, only if it already exists
     fn published_tree(&self, stream_id: StreamId) -> Option<PublishedTree> {
-        let me = stream_id.node_id() == self.node_id();
-        if me {
+        if self.is_local(stream_id) {
             let stream_nr = stream_id.stream_nr();
             let stream = self.own_streams.get(&stream_nr)?;
             stream.published_tree()
@@ -384,8 +424,7 @@ impl<'a> BanyanStoreGuard<'a> {
 
     /// Get a stream of trees for a given stream id
     fn tree_stream(&mut self, stream_id: StreamId) -> impl Stream<Item = Tree> {
-        let me = stream_id.node_id() == self.node_id();
-        if me {
+        if self.is_local(stream_id) {
             let stream_nr = stream_id.stream_nr();
             let stream = self.get_or_create_own_stream(stream_nr).unwrap();
             stream.tree_stream()
@@ -472,7 +511,7 @@ impl<'a> BanyanStoreGuard<'a> {
         let known_streams = self.index_store.get_observed_streams()?;
         for stream_id in known_streams {
             // just trigger loading of the stream from the alias
-            if stream_id.node_id() == self.node_id() {
+            if self.is_local(stream_id) {
                 let _ = self.get_or_create_own_stream(stream_id.stream_nr());
             } else {
                 let _ = self.get_or_create_replicated_stream(stream_id);
@@ -632,6 +671,7 @@ impl BanyanStore {
                 remote_nodes: Default::default(),
                 known_streams: Default::default(),
                 tasks: Default::default(),
+                banyan_config: cfg.banyan_config,
             })),
         };
         banyan.lock().load_known_streams()?;
@@ -710,25 +750,34 @@ impl BanyanStore {
     }
 
     /// Append events to a stream, publishing the new data.
-    pub async fn append(&self, stream_nr: StreamNr, events: Vec<(TagSet, Event)>) -> Result<Option<Link>> {
+    pub async fn append(&self, stream_nr: StreamNr, events: Vec<(TagSet, Event)>) -> Result<AppendMeta> {
+        debug_assert!(!events.is_empty());
         tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
         let timestamp = Timestamp::now();
         let stream = self.get_or_create_own_stream(stream_nr)?;
         let mut guard = stream.lock().await;
         let mut store = self.lock();
-        let lamports = store.reserve_lamports(events.len())?;
+        let mut lamports = store.reserve_lamports(events.len())?.peekable();
+        let min_lamport = *lamports.peek().unwrap();
         let kvs = lamports
             .zip(events)
-            .map(|(lamport, (tags, payload))| (AxKey::new(tags, lamport, timestamp), payload));
-        self.transform_stream(&mut guard, |txn, tree| {
-            if tree.level() > MAX_TREE_LEVEL {
+            .map(|(lamport, (tags, payload))| (AxKey::new(tags.into(), lamport, timestamp), payload));
+        let min_offset = self.transform_stream(&mut guard, |txn, tree| {
+            let snapshot = tree.snapshot();
+            if snapshot.level() > MAX_TREE_LEVEL {
                 txn.extend(tree, kvs)?;
             } else {
                 txn.extend_unpacked(tree, kvs)?;
             }
-            Ok(())
+            Ok(snapshot.offset())
         })?;
-        Ok(guard.snapshot().link())
+        let min_offset = min_offset.map(|o| o + 1).unwrap_or(Offset::ZERO);
+
+        Ok(AppendMeta {
+            min_lamport,
+            min_offset,
+            timestamp,
+        })
     }
 
     /// Returns a [`Stream`] of known [`StreamId`].
@@ -826,8 +875,9 @@ impl BanyanStore {
             .latest()
             .set(Some(PublishedTree::new(root, header, curr.clone())));
         // update resent and highest_seen for the stream
-        self.update_highest_seen(stream_id, curr.offset());
-        self.update_present(stream_id, curr.offset());
+        let offset = curr.offset().unwrap();
+        self.update_highest_seen(stream_id, offset);
+        self.update_present(stream_id, offset);
         // publish the update - including the header
         let blocks = txn.into_writer().into_written();
         // publish new blocks and root
@@ -836,7 +886,7 @@ impl BanyanStore {
     }
 
     fn update_root(&self, stream_id: StreamId, root: Link) {
-        if stream_id.node_id() != self.node_id() {
+        if !self.is_local(stream_id) {
             tracing::trace!("update_root {} {}", stream_id, root);
             self.get_or_create_replicated_stream(stream_id)
                 .unwrap()
@@ -933,7 +983,7 @@ impl BanyanStore {
                 {
                     // sanity check: we must never lose events.
                     anyhow::ensure!(temp.count() >= validated_header_count);
-                    self.update_highest_seen(stream_id, temp.offset());
+                    self.update_highest_seen(stream_id, temp.offset().unwrap());
                     tree = Some(temp);
                 }
             }
@@ -948,8 +998,8 @@ impl BanyanStore {
         tracing::trace!("updating alias {}", root);
         // assign the new root as validated
         ipfs.alias(&StreamAlias::from(stream_id), Some(&cid))?;
-        tracing::trace!("sync_one complete {} => {}", stream_id, tree.offset());
-        let offset = tree.offset();
+        let offset = tree.offset().unwrap();
+        tracing::trace!("sync_one complete {} => {}", stream_id, offset);
         stream.set_latest(state);
         // update present.
         self.update_present(stream_id, offset);
@@ -1001,26 +1051,22 @@ impl BanyanStore {
         Ok(())
     }
 
-    fn update_present(&self, stream_id: StreamId, offset: OffsetOrMin) {
-        if let Some(offset) = Offset::from_offset_or_min(offset) {
-            self.data.offsets.transform_mut(|offsets| {
-                offsets.present.update(stream_id, offset);
-                true
-            });
-        }
+    fn update_present(&self, stream_id: StreamId, offset: Offset) {
+        self.data.offsets.transform_mut(|offsets| {
+            offsets.present.update(stream_id, offset);
+            true
+        });
     }
 
-    fn update_highest_seen(&self, stream_id: StreamId, offset: OffsetOrMin) {
-        if let Some(offset) = Offset::from_offset_or_min(offset) {
-            self.data.offsets.transform_mut(|offsets| {
-                if offsets.replication_target.offset(stream_id) < offset {
-                    offsets.replication_target.update(stream_id, offset);
-                    true
-                } else {
-                    false
-                }
-            });
-        }
+    fn update_highest_seen(&self, stream_id: StreamId, offset: Offset) {
+        self.data.offsets.transform_mut(|offsets| {
+            if offsets.replication_target.offset(stream_id) < offset {
+                offsets.replication_target.update(stream_id, offset);
+                true
+            } else {
+                false
+            }
+        });
     }
 
     fn has_stream(&self, stream_id: StreamId) -> bool {
@@ -1061,30 +1107,17 @@ impl<T> AnyhowResultExt<T> for anyhow::Result<T> {
 }
 
 trait AxTreeExt {
-    fn last_lamport(&self) -> LamportTimestamp;
-    fn offset(&self) -> OffsetOrMin;
-    fn cid(&self) -> Option<Cid>;
+    fn offset(&self) -> Option<Offset>;
 }
 
 impl AxTreeExt for Tree {
-    fn cid(&self) -> Option<Cid> {
-        self.link().map(Into::into)
-    }
-    fn last_lamport(&self) -> LamportTimestamp {
-        match self.as_index_ref() {
-            Some(Index::Branch(branch)) => branch.summaries.lamport_range().max,
-            Some(Index::Leaf(leaf)) => leaf.keys.lamport_range().max,
-            None => Default::default(),
-        }
-    }
-    fn offset(&self) -> OffsetOrMin {
+    fn offset(&self) -> Option<Offset> {
         match self.count() {
-            0 => OffsetOrMin::MIN,
-            x => match u32::try_from(x) {
-                Ok(fits) => (fits - 1).into(),
+            0 => None,
+            n => match Offset::try_from(n - 1) {
+                Ok(offset) => Some(offset),
                 Err(e) => {
-                    tracing::error!("Tree's count ({}) is too big to fit into an offset ({})", x, e);
-                    OffsetOrMin::MAX
+                    panic!("Tree's count ({}) does not fit into an offset. ({})", n, e);
                 }
             },
         }

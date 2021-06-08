@@ -14,7 +14,6 @@ If you run into questions while going through the document, we recommend reading
 
 The Events API allows you to
 
-- [get the node ID](#get-the-node-id)
 - [get information about known offsets](#get-information-about-known-offsets),
 - [publish events](#publish-events)
 - [query event streams](#query-event-streams),
@@ -50,75 +49,6 @@ The examples are made in such a way that you can simply copy and paste the comma
 Please note that to follow along, you need to replace the node and stream IDs from the examples with yours.
 :::
 
-## Get the node ID
-
-You can request the ID of the node backing the Events API.
-
-<Tabs
-  groupId="content"
-  defaultValue={"ref"}
-  values={[
-    { label: 'Reference', value: 'ref' },
-    { label: 'Example', value: 'ex' },
-  ]}
->
-
-
-<TabItem value="ref">
-
-
-### Request
-
-- Endpoint: `http://localhost:4454/api/v2/events/node_id`
-- HTTP method: `GET`
-- HTTP headers:
-  - `Authorization`, see [Prerequisites](#prerequisites)
-  - (optional) `Accept`, must be `application/json`, default: `application/json`
-
-There is no request body.
-
-### Response
-
-- HTTP headers:
-  - `Content-Type` is `application/json`
-  - `Cache-Control` is `no-store` (to get fresh data and not use cache slots)
-
-The response body will contain a JSON object of the following structure:
-
-```json
-{
-  "nodeId": "<string: node ID>"
-}
-```
-
-</TabItem>
-
-
-<TabItem value="ex">
-
-
-See the following example using cURL:
-
-```bash title="Example node_id request"
-curl \
-    -s -X "GET" \
-    -H "Authorization: Bearer $AUTH_TOKEN" \
-    -H "Accept: application/json" \
-    http://localhost:4454/api/v2/events/node_id | jq .
-```
-
-```json title="Example node_id response"
-{
-  "nodeId": "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s"
-}
-```
-
-</TabItem>
-</Tabs>
-
-
----
-
 ## Get information about known offsets
 
 You can get information from the Events API about known offsets, i.e. what the API believes to be the latest offset for each stream.
@@ -140,6 +70,7 @@ Take a look at the [event streams guide](../conceptual/event-streams.mdx) to lea
 
 
 <TabItem value="ref">
+
 
 ### Request
 
@@ -384,8 +315,6 @@ The `lowerBound` object specifies the lower bound offset for each stream with th
 
 The `lowerBound` is optional.
 If none is set for one, multiple or all subscribed streams, the Events API will assume no lower bound.
-
-<!-- TODO: reword (we don't subscribe to streams.) -->
 
 #### Required: Upper bounds for offsets (`upperBound`)
 

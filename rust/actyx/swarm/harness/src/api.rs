@@ -1,5 +1,5 @@
 use crate::m;
-use actyxos_sdk::{service::EventService, AppManifest, HttpClient, Url};
+use actyx_sdk::{service::EventService, AppManifest, HttpClient, NodeId, Url};
 use anyhow::{anyhow, Result};
 use async_std::task::block_on;
 use netsim_embed::{Machine, Namespace};
@@ -53,6 +53,9 @@ impl ApiClient {
             block_on(HttpClient::new(origin, app_manifest)).expect("cannot create")
         }))
     }
+    pub async fn node_id(&self) -> NodeId {
+        self.0.spawn_mut(|c| c.node_id()).await.unwrap()
+    }
     pub fn from_machine<E: Borrow<Event> + FromStr<Err = anyhow::Error> + Send + 'static>(
         machine: &mut Machine<Command, E>,
         app_manifest: AppManifest,
@@ -70,39 +73,35 @@ impl ApiClient {
 
 #[async_trait::async_trait]
 impl EventService for ApiClient {
-    async fn node_id(&self) -> Result<actyxos_sdk::service::NodeIdResponse> {
-        self.0.spawn_mut(|c| block_on(c.node_id())).await.unwrap()
-    }
-
-    async fn offsets(&self) -> Result<actyxos_sdk::service::OffsetsResponse> {
+    async fn offsets(&self) -> Result<actyx_sdk::service::OffsetsResponse> {
         self.0.spawn_mut(|c| block_on(c.offsets())).await.unwrap()
     }
 
     async fn publish(
         &self,
-        request: actyxos_sdk::service::PublishRequest,
-    ) -> Result<actyxos_sdk::service::PublishResponse> {
+        request: actyx_sdk::service::PublishRequest,
+    ) -> Result<actyx_sdk::service::PublishResponse> {
         self.0.spawn_mut(|c| block_on(c.publish(request))).await.unwrap()
     }
 
     async fn query(
         &self,
-        request: actyxos_sdk::service::QueryRequest,
-    ) -> Result<futures::stream::BoxStream<'static, actyxos_sdk::service::QueryResponse>> {
+        request: actyx_sdk::service::QueryRequest,
+    ) -> Result<futures::stream::BoxStream<'static, actyx_sdk::service::QueryResponse>> {
         self.0.spawn_mut(|c| block_on(c.query(request))).await.unwrap()
     }
 
     async fn subscribe(
         &self,
-        request: actyxos_sdk::service::SubscribeRequest,
-    ) -> Result<futures::stream::BoxStream<'static, actyxos_sdk::service::SubscribeResponse>> {
+        request: actyx_sdk::service::SubscribeRequest,
+    ) -> Result<futures::stream::BoxStream<'static, actyx_sdk::service::SubscribeResponse>> {
         self.0.spawn_mut(|c| block_on(c.subscribe(request))).await.unwrap()
     }
 
     async fn subscribe_monotonic(
         &self,
-        request: actyxos_sdk::service::SubscribeMonotonicRequest,
-    ) -> Result<futures::stream::BoxStream<'static, actyxos_sdk::service::SubscribeMonotonicResponse>> {
+        request: actyx_sdk::service::SubscribeMonotonicRequest,
+    ) -> Result<futures::stream::BoxStream<'static, actyx_sdk::service::SubscribeMonotonicResponse>> {
         self.0
             .spawn_mut(|c| block_on(c.subscribe_monotonic(request)))
             .await

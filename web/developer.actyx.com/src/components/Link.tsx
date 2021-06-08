@@ -2,6 +2,7 @@ import React from 'react'
 import styled from 'styled-components'
 import { Arrow } from '../icons/icons'
 import DLink from '@docusaurus/Link'
+import defaults from '../components/defaults'
 
 const Wrapper = styled.div`
   display: flex;
@@ -15,18 +16,18 @@ const LinkContent = styled.div<{
 }>`
   color: ${(p) =>
     p.color == 'green' && p.positive
-      ? '#15BE53'
+      ? defaults.colors.green
       : p.color == 'blue' && p.positive
-      ? '#369AFF'
+      ? defaults.colors.blue
       : p.color == 'purple' && p.positive
-      ? '#635BFF'
+      ? defaults.colors.purple
       : p.color == 'orange' && p.positive
-      ? '#FF9933'
+      ? defaults.colors.orange
       : p.color == 'dark' && p.positive
-      ? '#303c4b'
+      ? defaults.colors.darkgray
       : p.color == 'white'
-      ? '#303c4b'
-      : '#ffffff'};
+      ? defaults.colors.darkgray
+      : defaults.colors.white};
   margin-right: 4px;
   font-size: 15px;
   font-weight: 600;

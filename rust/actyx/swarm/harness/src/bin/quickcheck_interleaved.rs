@@ -2,7 +2,7 @@
 fn main() {
     use std::{collections::BTreeMap, str::FromStr, time::Duration};
 
-    use actyxos_sdk::{
+    use actyx_sdk::{
         language::{Query, TagAtom, TagExpr},
         service::{EventService, SubscribeRequest},
         Tag, TagSet,
@@ -177,7 +177,7 @@ fn main() {
         };
 
         let t = run_netsim::<_, _, Event>(opts, move |mut sim| async move {
-            fully_meshed::<Event>(&mut sim, Duration::from_secs(60)).await;
+            fully_meshed::<Event>(&mut sim, Duration::from_secs(60)).await?;
             let machines = sim.machines().iter().map(|m| m.id()).collect::<Vec<_>>();
             assert_eq!(machines.len(), n_nodes);
             let mut futs = commands

@@ -1,7 +1,7 @@
 use crate::version::NodeVersion;
 
 use super::ActyxOSResult;
-use actyxos_sdk::NodeId;
+use actyx_sdk::NodeId;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -91,6 +91,7 @@ pub struct NodesInspectResponse {
     pub peer_id: String,
     pub listen_addrs: Vec<String>,
     pub announce_addrs: Vec<String>,
+    pub admin_addrs: Vec<String>,
     pub connections: Vec<Connection>,
     pub known_peers: Vec<Peer>,
 }

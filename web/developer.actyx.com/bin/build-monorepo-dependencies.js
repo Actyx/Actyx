@@ -40,7 +40,6 @@ const installAndBuild = async (cwd) => {
   const deps = [
     ['..', '..', 'js', 'sdk'],
     ['..', '..', 'js', 'pond'],
-    ['..', '..', 'js', 'os-sdk'],
   ]
   Promise.all(deps.map((d) => installAndBuild(path.join(...d))))
 })()

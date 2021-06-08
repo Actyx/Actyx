@@ -11,29 +11,8 @@ module.exports = {
         'how-to/local-development/set-up-a-new-project',
         'how-to/local-development/install-cli-node-manager',
         'how-to/local-development/reset-your-node',
-        // 'how-to/local-development/obtaining-a-development-certificate',
       ],
     },
-    /* {
-      type: 'category',
-      label: 'Process Logic',
-      collapsed: true,
-      items: [
-        'how-to/process-logic/publish-to-event-streams',
-        'how-to/process-logic/subscribe-to-event-streams',
-        'how-to/process-logic/compute-states-from-events',
-        'how-to/process-logic/automate-decision-making',
-        'how-to/process-logic/deal-with-network-partitions',
-        'how-to/process-logic/model-processes-in-twins',
-        'how-to/process-logic/transfer-twins-into-code',
-      ],
-    }, 
-    {
-      type: 'category',
-      label: 'Actyx SDK',
-      collapsed: true,
-      items: ['how-to/sdk/placeholder'],
-    },*/
     {
       type: 'category',
       label: 'Business logic',
@@ -119,31 +98,6 @@ module.exports = {
         'how-to/swarms/configure-announced-addresses',
       ],
     },
-    /*     {
-      type: 'category',
-      label: 'Data import and export',
-      collapsed: true,
-      items: [
-        'how-to/integrate-with-actyx/user-interface',
-        'how-to/integrate-with-actyx/other-software',
-        'how-to/integrate-with-actyx/front-end-frameworks',
-        'how-to/integrate-with-actyx/machines',
-        'how-to/integrate-with-actyx/erps',
-        'how-to/integrate-with-actyx/bi-analytics',
-      ],
-    }, */
-    /*     {
-      type: 'category',
-      label: 'Testing',
-      collapsed: true,
-      items: [
-        'how-to/testing/test-pipeline',
-        'how-to/testing/unit-test-with-jest',
-        'how-to/testing/unit-test-with-cypress',
-        'how-to/testing/integration-testing',
-        'how-to/testing/ci-cd-pipeline',
-      ],
-    }, */
     {
       type: 'category',
       label: 'Packaging',
@@ -158,10 +112,7 @@ module.exports = {
       type: 'category',
       label: 'Operations',
       collapsed: true,
-      items: [
-        'how-to/operations/device-management',
-        'how-to/operations/discovery-helper-node'
-      ],
+      items: ['how-to/operations/device-management', 'how-to/operations/discovery-helper-node'],
     },
     {
       type: 'category',
@@ -172,23 +123,8 @@ module.exports = {
         'how-to/monitoring-debugging/logging-levels',
         'how-to/monitoring-debugging/network-requirements',
         'how-to/monitoring-debugging/node-connections',
-        // 'how-to/monitoring-debugging/app-logs',
-        // 'how-to/monitoring-debugging/connectivity-status',
-        // 'how-to/monitoring-debugging/mobile-device-management',
-        // 'how-to/monitoring-debugging/bash',
       ],
     },
-    /*     {
-      type: 'category',
-      label: 'Common Use-Cases',
-      collapsed: true,
-      items: [
-        'how-to/common-use-cases/show-data-on-a-dashboard',
-        'how-to/common-use-cases/display-erp-orders-on-tablets',
-        'how-to/common-use-cases/control-agvs',
-        'how-to/common-use-cases/parameterise-assembly-tool',
-      ],
-    }, */
     {
       type: 'category',
       label: 'Troubleshooting',
@@ -224,13 +160,11 @@ module.exports = {
     'conceptual/distributed-systems',
     'conceptual/local-first-cooperation',
     'conceptual/actyx-jargon',
-    // 'conceptual/actyx-vs-the-cloud',
     'conceptual/discovery',
     'conceptual/performance-and-limits',
     'conceptual/authentication-and-authorization',
     'conceptual/operations',
     'conceptual/security',
-    // 'conceptual/apps-in-the-factory-context',
   ],
   referenceSidebar: [
     'reference/overview',

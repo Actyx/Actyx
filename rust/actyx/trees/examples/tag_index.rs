@@ -1,4 +1,4 @@
-use actyxos_sdk::{tags, Tag};
+use actyx_sdk::{tags, Tag};
 use cbor_tag_index::TagIndex;
 use libipld::{cbor::DagCbor, cbor::DagCborCodec, codec::Codec, Ipld};
 use std::str::FromStr;

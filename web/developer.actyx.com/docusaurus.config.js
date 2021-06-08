@@ -18,6 +18,7 @@ module.exports = {
       },
     ],
     [require.resolve('./src/plugins/analytics'), {}],
+    [require.resolve('./src/plugins/cosmos-versions'), {}],
     /*     [
       require.resolve('./src/plugins/arm'),
       {
@@ -40,12 +41,13 @@ module.exports = {
     ],
   ],
   themeConfig: {
-    // announcementBar: {
-    //   id: 'test007',
-    //   content: 'Announcement Bar Content',
-    //   backgroundColor: '#373c40',
-    //   textColor: '#fff',
-    // },
+    announcementBar: {
+      id: '2.0.0-release',
+      content:
+        '🤩 We are incredibly excited to announce the release of Actyx 2.0! Read more about it in our release <a href="https://developer.actyx.com/blog">blog post</a>. 🤩',
+      backgroundColor: '#373c40',
+      textColor: '#fff',
+    },
     colorMode: {
       defaultMode: 'light',
       disableSwitch: true,
@@ -77,6 +79,12 @@ module.exports = {
           label: 'Tutorials',
           activeBasePath: 'docs/tutorials',
           to: 'docs/tutorials/overview',
+        },
+        {
+          label: 'Releases',
+          activeBasePath: '/releases',
+          position: 'right',
+          to: '/releases',
         },
         {
           label: 'Blog',

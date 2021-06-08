@@ -26,7 +26,7 @@ impl AxCliCommand for NodesInspect {
                 .request(&opts.console_opt.identity.try_into()?, AdminRequest::NodesInspect)
                 .await;
             match response {
-                Ok((_, AdminResponse::NodesInspectResponse(resp))) => Ok(resp),
+                Ok(AdminResponse::NodesInspectResponse(resp)) => Ok(resp),
                 Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
                 Err(err) => Err(err),
             }
@@ -44,6 +44,10 @@ impl AxCliCommand for NodesInspect {
         }
         writeln!(&mut s, "AnnounceAddrs:").unwrap();
         for addr in &result.announce_addrs {
+            writeln!(&mut s, "    {}", addr).unwrap();
+        }
+        writeln!(&mut s, "AdminAddrs:").unwrap();
+        for addr in &result.admin_addrs {
             writeln!(&mut s, "    {}", addr).unwrap();
         }
         writeln!(&mut s, "Connections:").unwrap();

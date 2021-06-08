@@ -1,8 +1,11 @@
 use crate::{
-    axtrees::{AxKey, AxTree, AxTrees, Sha256Digest},
+    axtrees::{AxKey, AxTrees, Sha256Digest},
     query::{LamportQuery, TagsQuery, TimeQuery},
+    stags,
+    tags::ScopedTagSet,
+    AxTree,
 };
-use actyxos_sdk::{tag, tags, LamportTimestamp, Payload, TagSet, Timestamp};
+use actyx_sdk::{tag, tags, LamportTimestamp, Payload, TagSet, Timestamp};
 use banyan::{
     query::{AllQuery, OffsetRangeQuery, Query},
     store::{BranchCache, MemStore},
@@ -60,7 +63,7 @@ impl Generator {
     ) -> Box<dyn Iterator<Item = (AxKey, Payload)>> {
         let this = self.clone();
         Box::new((0..).map(move |index| {
-            let tags = tag_generator(index);
+            let tags = tag_generator(index).into();
             let payload = Payload::from_json_value(payload_generator(index)).unwrap();
             let key = AxKey::new(tags, this.next_lamport(), this.time());
             (key, payload)
@@ -200,8 +203,8 @@ async fn filter_tree_streamed(
 }
 
 /// brute force check if a key matches a dnf query consisting of n tag sets
-fn matches(key: &AxKey, dnf: &[TagSet]) -> bool {
-    dnf == vec![TagSet::empty()] || dnf.iter().any(|set| set.is_subset(key.tags()))
+fn matches(key: &AxKey, dnf: &[ScopedTagSet]) -> bool {
+    dnf == vec![ScopedTagSet::empty()] || dnf.iter().any(|set| set.is_subset(key.tags()))
 }
 
 /// Roundtrip test from events to banyan tree and back, for the given events
@@ -291,15 +294,15 @@ async fn events_banyan_tree_simple_queries_with(events: Vec<(AxKey, Payload)>) -
     }
     // try tag query, different dnfs
     for tags in vec![
-        vec![tags! {"machine:1"}],
-        vec![tags! {"unknown tag"}],
-        vec![tags! {"unknown tag"}, tags! {"machine:1"}],
-        vec![tags! {"unknown tag", "machine:1"}],
-        vec![tags! {}],
+        vec![stags! {"machine:1"}],
+        vec![stags! {"unknown tag"}],
+        vec![stags! {"unknown tag"}, stags! {"machine:1"}],
+        vec![stags! {"unknown tag", "machine:1"}],
+        vec![stags! {}],
         vec![],
-        vec![tags! {"location:hall1", "whatever", "circuit:lights"}],
-        vec![tags! {"location:hall1", "circuit:lights"}],
-        vec![tags! {"location:hall1"}, tags! {"machine:1"}],
+        vec![stags! {"location:hall1", "whatever", "circuit:lights"}],
+        vec![stags! {"location:hall1", "circuit:lights"}],
+        vec![stags! {"location:hall1"}, stags! {"machine:1"}],
     ] {
         // compute the reference
         let tags1 = tags.clone();

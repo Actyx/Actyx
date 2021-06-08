@@ -1,5 +1,6 @@
-use actyxos_sdk::{language::TagExpr, OffsetOrMin, StreamId};
-use trees::{query::TagsQuery, OffsetMapOrMax};
+use actyx_sdk::{language::TagExpr, OffsetOrMin, StreamId};
+use trees::query::TagsQuery;
+use util::offsetmap_or_max::OffsetMapOrMax;
 
 /// A precise selection of events, possibly unbounded in size.
 ///
@@ -25,14 +26,17 @@ pub struct EventSelection {
 
 impl EventSelection {
     #[cfg(test)]
-    pub fn matches<T>(&self, local: bool, event: &actyxos_sdk::Event<T>) -> bool {
-        use actyxos_sdk::TagSet;
+    pub fn matches<T>(&self, local: bool, event: &actyx_sdk::Event<T>) -> bool {
+        use actyx_sdk::TagSet;
         let query = TagsQuery::from_expr(&self.tag_expr)(local);
         query.is_all()
-            || query
-                .terms()
-                .any(|t| t.into_iter().cloned().collect::<TagSet>().is_subset(&event.meta.tags))
-                && self.from_offsets_excluding.offset(event.key.stream) < event.key.offset
+            || query.terms().any(|t| {
+                t.into_iter()
+                    .filter_map(|t| t.app())
+                    .cloned()
+                    .collect::<TagSet>()
+                    .is_subset(&event.meta.tags)
+            }) && self.from_offsets_excluding.offset(event.key.stream) < event.key.offset
                 && self.to_offsets_including.offset(event.key.stream) >= event.key.offset
     }
 }

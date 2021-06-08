@@ -1,18 +1,12 @@
 /*
  * Actyx SDK: Functions for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- * 
+ *
  * Copyright (C) 2021 Actyx AG
  */
-/*
- * Actyx Pond: A TypeScript framework for writing distributed apps
- * deployed on peer-to-peer networks, without any servers.
- *
- * Copyright (C) 2020 Actyx AG
- */
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { NodeId } from '../types'
 import { fromNullable } from 'fp-ts/lib/Option'
 import { range, takeWhile } from 'ramda'
 import { Observable } from 'rxjs'
@@ -23,7 +17,9 @@ import {
   ResponseMessage,
   ResponseMessageType,
 } from './multiplexedWebsocket'
-import { getNodeId, RequestTypes } from './websocketEventStore'
+import { RequestTypes } from './websocketEventStore'
+import { OffsetsResponse } from './types'
+import { validateOrThrow } from '../util'
 
 let __ws: any
 declare const global: any
@@ -73,7 +69,13 @@ describe('multiplexedWebsocket', () => {
     const socket = MockWebSocket.lastSocket!
     socket.trigger('error', { message: 'destination unreachable' })
 
-    await expect(getNodeId(s)).rejects.toMatch('destination unreachable')
+    await expect(
+      s
+        .request(RequestTypes.Offsets)
+        .map(validateOrThrow(OffsetsResponse))
+        .first()
+        .toPromise(),
+    ).rejects.toMatch('destination unreachable')
   })
 
   it('should just work', async () => {
@@ -216,7 +218,7 @@ export class MockWebSocket {
 
         if (
           request.type === RequestMessageType.Request &&
-          request.serviceId === RequestTypes.NodeId
+          request.serviceId === RequestTypes.Offsets
         ) {
           return {
             name: 'message',
@@ -224,7 +226,7 @@ export class MockWebSocket {
               MockWebSocket.mkResponse({
                 type: ResponseMessageType.Next,
                 requestId: request.requestId,
-                payload: { nodeId: NodeId.of('MOCK') },
+                payload: { offsets: {} },
               }),
               MockWebSocket.mkResponse({
                 type: ResponseMessageType.Complete,
