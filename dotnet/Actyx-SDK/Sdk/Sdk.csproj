@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <AssemblyName>Actyx.Sdk</AssemblyName>
+    <PackageVersion>0.1.0</PackageVersion>
     <Description>Data types for communicating with Actyx and C# bindings for the Actyx APIs.</Description>
     <PackageProjectUrl>https://developer.actyx.com/</PackageProjectUrl>
     <PackageLicenseUrl>https://licenses.nuget.org/Apache-2.0</PackageLicenseUrl>
@@ -19,10 +20,11 @@
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="System.Interactive.Async" Version="4.1.1" />
     <None Include="..\..\..\web\developer.actyx.com\static\img\logo.png" Pack="true" PackagePath="\icon.png" />
-    <PackageReference Include="GitVersionTask" Version="5.3.7">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
   </ItemGroup>
+
+  <Target Name="PostClean" AfterTargets="Clean">
+    <RemoveDir Directories="$(BaseIntermediateOutputPath)" /><!-- obj -->
+    <RemoveDir Directories="$(BaseOutputPath)" /><!-- bin -->
+  </Target>
 
 </Project>
