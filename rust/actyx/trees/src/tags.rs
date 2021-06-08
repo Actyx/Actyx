@@ -28,7 +28,6 @@ pub enum TagScope {
 pub struct ScopedTag(TagScope, Tag);
 
 impl ScopedTag {
-
     pub fn new(scope: TagScope, tag: Tag) -> Self {
         Self(scope, tag)
     }

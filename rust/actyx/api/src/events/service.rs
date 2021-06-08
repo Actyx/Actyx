@@ -182,7 +182,7 @@ fn mk_feed(query: language::Query) -> impl Fn(Event<Payload>) -> BoxStream<'stat
     move |event| {
         let Event {
             key,
-            meta: Metadata { timestamp, tags },
+            meta: Metadata { timestamp, tags, .. },
             payload,
         } = event;
         stream::iter(

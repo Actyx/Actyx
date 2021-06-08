@@ -24,6 +24,7 @@ use crate::{
     source_id,
     tags::TagSet,
     timestamp::{LamportTimestamp, Timestamp},
+    AppId,
 };
 
 mod opaque;
@@ -105,12 +106,13 @@ impl<T> PartialEq for Event<T> {
 
 impl<T> Eq for Event<T> {}
 
-#[derive(Debug, Default, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(rename_all = "camelCase")]
 pub struct Metadata {
     pub timestamp: Timestamp,
     pub tags: TagSet,
+    pub app_id: AppId,
 }
 
 impl Event<Payload> {

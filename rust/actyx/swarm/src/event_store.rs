@@ -1,8 +1,8 @@
 use std::{cmp::Reverse, convert::TryInto, ops::RangeInclusive};
 
 use actyx_sdk::{
-    language::TagExpr, AppId, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin,
-    Payload, StreamId, StreamNr, TagSet, Timestamp,
+    app_id, language::TagExpr, AppId, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap,
+    OffsetOrMin, Payload, StreamId, StreamNr, TagSet, Timestamp,
 };
 use ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered};
 use banyan::FilteredChunk;
@@ -223,6 +223,7 @@ fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> 
 }
 
 fn to_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<Payload> {
+    let app_id = app_id!("todo");
     Event {
         payload,
         key: EventKey {
@@ -233,6 +234,7 @@ fn to_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<P
         meta: Metadata {
             timestamp: key.time(),
             tags: key.into_app_tags(),
+            app_id,
         },
     }
 }
