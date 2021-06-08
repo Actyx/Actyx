@@ -79,7 +79,7 @@ describe('auth http', () => {
         .then((json) =>
           expect(json).toEqual({
             code: 'ERR_BAD_REQUEST',
-            message: 'Invalid request. missing field `appId` at line 1 column 18',
+            message: 'Invalid request. data did not match any variant of untagged enum AppManifest',
           }),
         ),
     ))
@@ -89,9 +89,11 @@ describe('auth http', () => {
       fetch(httpApi + API_V2_PATH + AUTH_SEG, {
         method: 'post',
         body: JSON.stringify({
-          appId: 'my.app',
+          appId: 'com.actyx.my-app',
           displayName: 'Mine!',
           version: '0.8.5',
+          signature:
+            'v2tzaWdfdmVyc2lvbgBtZGV2X3NpZ25hdHVyZXhYZ0JGTTgyZVpMWTdJQzhRbmFuVzFYZ0xrZFRQaDN5aCtGeDJlZlVqYm9qWGtUTWhUdFZNRU9BZFJaMVdTSGZyUjZUOHl1NEFKdFN5azhMbkRvTVhlQnc9PWlkZXZQdWJrZXl4LTBuejFZZEh1L0pEbVM2Q0ltY1pnT2o5WTk2MHNKT1ByYlpIQUpPMTA3cVcwPWphcHBEb21haW5zgmtjb20uYWN0eXguKm1jb20uZXhhbXBsZS4qa2F4U2lnbmF0dXJleFg4QmwzekNObm81R2JwS1VvYXRpN0NpRmdyMEtHd05IQjFrVHdCVkt6TzlwelcwN2hGa2tRK0dYdnljOVFhV2hIVDVhWHp6TyttVnJ4M2VpQzdUUkVBUT09/w==',
         }),
         headers: {
           Accept: 'application/json',
@@ -105,7 +107,8 @@ describe('auth http', () => {
         .then((json) =>
           expect(json).toEqual({
             code: 'ERR_MANIFEST_INVALID',
-            message: 'Property <manifest property> is either missing or has an invalid value.',
+            message:
+              'Invalid manifest. Failed to validate app manifest. Invalid signature for provided input.',
           }),
         ),
     ))
@@ -206,19 +209,20 @@ describe('auth ws', () => {
       })
     })
 
-  const expectFailure = (path: string): Promise<void[]> =>
+  const expectFailure = (path: string, status: number): Promise<void[]> =>
     mkWs(path, (ws, resolve) => {
       ws.on('error', (x) => {
-        expect(x.message).toEqual('Unexpected server response: 401')
+        expect(x.message).toEqual(`Unexpected server response: ${status}`)
         resolve()
       })
     })
 
-  it('should fail when token is missing', () => expectFailure(''))
+  it('should fail when token is missing', () => expectFailure('', 401))
 
-  it('should fail when token is not authorized', () => expectFailure(`?${UNAUTHORIZED_TOKEN}`))
+  it('should fail when token is not authorized', () => expectFailure(`?${UNAUTHORIZED_TOKEN}`, 401))
 
-  it('should fail when using wrong path', () => expectFailure(`/wrong_path?token-does-not-matter`))
+  it('should fail when using wrong path', () =>
+    expectFailure(`/wrong_path?token-does-not-matter`, 404))
 
   it('should get token for a trial manifest and successfully use it', () =>
     run((httpApi) =>
