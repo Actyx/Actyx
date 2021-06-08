@@ -182,7 +182,11 @@ fn mk_feed(query: language::Query) -> impl Fn(Event<Payload>) -> BoxStream<'stat
     move |event| {
         let Event {
             key,
-            meta: Metadata { timestamp, tags, .. },
+            meta: Metadata {
+                timestamp,
+                tags,
+                app_id,
+            },
             payload,
         } = event;
         stream::iter(
@@ -193,6 +197,7 @@ fn mk_feed(query: language::Query) -> impl Fn(Event<Payload>) -> BoxStream<'stat
                     lamport: v.sort_key.lamport,
                     stream: v.sort_key.stream,
                     offset: v.sort_key.offset,
+                    app_id: app_id.clone(),
                     timestamp,
                     tags: tags.clone(),
                     payload: v.payload(),

@@ -25,7 +25,7 @@ use crate::{
     scalars::StreamId,
     tags::TagSet,
     types::Binary,
-    LamportTimestamp, Offset, OffsetMap, Payload, Timestamp,
+    AppId, LamportTimestamp, Offset, OffsetMap, Payload, Timestamp,
 };
 
 /// The order in which you want to receive events for a query
@@ -74,6 +74,7 @@ pub struct EventResponse<T> {
     pub offset: Offset,
     pub timestamp: Timestamp,
     pub tags: TagSet,
+    pub app_id: AppId,
     pub payload: T,
 }
 impl<T> From<Event<T>> for EventResponse<T> {
@@ -83,9 +84,14 @@ impl<T> From<Event<T>> for EventResponse<T> {
             stream,
             offset,
         } = env.key;
-        let Metadata { timestamp, tags, .. } = env.meta;
+        let Metadata {
+            timestamp,
+            tags,
+            app_id,
+        } = env.meta;
         let payload = env.payload;
         EventResponse {
+            app_id,
             lamport,
             stream,
             offset,
@@ -112,6 +118,7 @@ impl EventResponse<Payload> {
             offset: self.offset,
             timestamp: self.timestamp,
             tags: self.tags.clone(),
+            app_id: self.app_id.clone(),
             payload: self.payload.extract::<T>().unwrap(),
         }
     }
