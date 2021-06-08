@@ -21,7 +21,7 @@ async fn run() -> Result<()> {
     let mut stdin = BufReader::new(tokio::io::stdin());
     let mut line = String::with_capacity(4096);
     fn app_id() -> AppId {
-        app_id!("test")
+        app_id!("com.actyx.swarm-cli")
     }
 
     let mut config = Config::from_args();
