@@ -26,6 +26,7 @@ The output will show you:
 - `PeerId`: Peer ID of your node
 - `ListenAddrs`: Addresses that the Swarm API bound to
 - `AnnounceAddrs`: Addresses that your node is announcing to other nodes for connecting to it
+- `adminAddrs`: Addresses that the Admin API bound to (for interaction with CLI or Node Manager)
 - `Connections`: List of active connections to peers, identified by peer ID and address
 - `knownPeers`: List of all peers, identified by peer ID and address, that your node knows
 
@@ -38,6 +39,8 @@ ListenAddrs:
     /ip6/::1/tcp/4001
 AnnounceAddrs:
     /ip4/192.168.1.219/tcp/4001/p2p/12D3KooWSgvc3hzrsuExYazNDB1BU3gevUPTzaumnwHWv5yFBNzH
+AdminAddrs:
+    /ip4/192.168.1.219/tcp/4458
 Connections:
 +------------------------------------------------------+--------------------------------------------------------------------------------------+
 | PEERID                                               | ADDRESS                                                                              |
@@ -68,6 +71,9 @@ ax -j nodes inspect --local 192.168.1.219 | jq .
     "announceAddrs": [
       "/ip4/192.168.1.219/tcp/4001/p2p/12D3KooWSgvc3hzrsuExYazNDB1BU3gevUPTzaumnwHWv5yFBNzH"
     ],
+    "adminAddrs": [
+      "/ip4/192.168.1.219/tcp/4458"
+    ]
     "connections": [
       {
         "peerId": "12D3KooWSVZEwAqdcJEG2T3wR8CZZoneWFyPqpRsxSzVB3WLwtVt",
