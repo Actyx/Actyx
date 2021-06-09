@@ -68,7 +68,6 @@ Take a look at the [event streams guide](../conceptual/event-streams.mdx) to lea
   ]}
 >
 
-
 <TabItem value="ref">
 
 
@@ -215,20 +214,20 @@ See the following example using cURL:
 ```bash title="Example publish request"
 echo '
 {
-    "data": [
-        {
-            "tags": ["tag-01", "tag-02"],
-            "payload": {
-                "foo": { "a": 1, "b": 2 }
-            }
-        },
-        {
-            "tags": ["tag-02", "tag-03"],
-            "payload": {
-                "value": 42
-            }
-        }
-    ]
+  "data": [
+    {
+      "tags": ["tag-01", "tag-02"],
+      "payload": {
+        "foo": { "a": 1, "b": 2 }
+      }
+    },
+    {
+      "tags": ["tag-02", "tag-03"],
+      "payload": {
+        "value": 42
+      }
+    }
+  ]
 }
 ' \
 | curl \
@@ -261,7 +260,6 @@ echo '
 </TabItem>
 </Tabs>
 
-
 ---
 
 ## Query event streams
@@ -277,9 +275,7 @@ You can query the Events API for bounded sets of events in one or more event str
   ]}
 >
 
-
 <TabItem value="ref">
-
 
 ### Request
 
@@ -294,16 +290,16 @@ The request body must contain a JSON object with the following structure:
 
 ```json
 {
-  "lowerBound": {
-    "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. 34>",
-    "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. -1>"
-  },
+  "query": "<string: tag query, e.g. «FROM 'tag-01' & 'tag-02'»>",
+  "order": "<string: 'asc' | 'desc' | 'stream-asc'>",
   "upperBound": {
     "<string: stream ID>": "<integer: inclusive-upper-bound, e.g. 49>",
     "<string: stream ID>": "<integer: inclusive-upper-bound, e.g. 101>"
   },
-  "query": "<string: tag query, e.g. «FROM 'tag-01' & 'tag-02'»>",
-  "order": "<string: 'asc' | 'desc' | 'stream-asc'>"
+  "lowerBound": {
+    "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. 34>",
+    "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. -1>"
+  }
 }
 ```
 
@@ -322,8 +318,6 @@ The `upperBound` object specifies the upper bound offset for each stream with th
 
 The `upperBound` is **required.** For every subscribed stream where no upper bound offset is set, the result will be empty.
 
-FIXME: reword (we don't subscribe to streams.) Can't we just stop at the current present and make this optional, too?
-
 #### Required: Query (`query`)
 
 The `query` field specifies a tag query that defines which events should be queried.
@@ -340,6 +334,19 @@ The `order` object specifies in which order the events should be returned to the
 :::info Event order criteria
 Please note that for identical Lamport timestamps the stream ID is taken into account as a secondary sort criterion for event ordering.
 :::
+
+#### Required: Upper bounds for offsets (`upperBound`)
+
+The `upperBound` object specifies the upper bound offset for each stream with the numbers being **inclusive**. i.e. an `upperBound` specification of `34` means the Events API will return events with offsets `<= 34`.
+
+The `upperBound` is **required.** For every queried stream where no upper bound offset is set, the result will be empty.
+
+#### Optional: Lower bound for offsets (`lowerBound`)
+
+The `lowerBound` object specifies the lower bound offset for each stream with the numbers being **exclusive**, i.e. a `lowerBound` specification of `34` means the Events API will return events with offsets `> 34`.
+
+The `lowerBound` is optional. If none is set for any of the queried streams,
+the Events API will assume no lower bound.
 
 ### Response
 
@@ -373,20 +380,19 @@ If an error is encountered while processing the stream of events, the stream wil
 </TabItem>
 <TabItem value="ex">
 
-
 See the following example using cURL:
 
 ```bash title="Example query request"
 echo '
 {
-    "lowerBound": {
-        "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34
-    },
-    "upperBound": {
-        "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 57
-    },
-    "query": "FROM \"tag-01\" & (\"tag-02\" | \"tag-03\")",
-    "order": "desc"
+  "query": "FROM \"tag-01\" & (\"tag-02\" | \"tag-03\")",
+  "order": "desc",
+  "lowerBound": {
+    "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34
+  },
+  "upperBound": {
+    "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 57
+  }
 }
 ' \
 | curl \
@@ -418,14 +424,14 @@ Alternatively, you could save the JSON payload to a file called `query.json`
 
 ```json title="query.json"
 {
+  "query": "FROM 'tag-01' & ('tag-02' | 'tag-03')",
+  "order": "desc",
   "lowerBound": {
     "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34
   },
   "upperBound": {
     "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 57
-  },
-  "query": "FROM 'tag-01' & ('tag-02' | 'tag-03')",
-  "order": "desc"
+  }
 }
 ```
 
@@ -446,7 +452,6 @@ curl \
 </TabItem>
 </Tabs>
 
-
 ---
 
 ## Subscribe to event streams
@@ -465,7 +470,6 @@ TODO: clarify ordering
   ]}
 >
 
-
 <TabItem value="ref">
 
 
@@ -482,27 +486,28 @@ The request body must contain a JSON object with the following structure:
 
 ```js
 {
-    "offsets": {
-        "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. 34>",
-        "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. -1>"
-    },
-    "query": "<string: tag query, e.g. «FROM 'tag1' & 'tag2'»>"
+  "query": "<string: tag query, e.g. «FROM 'tag1' & 'tag2'»>",
+  "lowerBound": {
+    "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. 34>",
+    "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. -1>"
+  }
 }
 ```
 
 You use the request body to specify the details of your request as documented in the following.
 
-#### Optional: Lower bound for offsets (`offsets`)
-
-The `offsets` object specifies the lower bound offset for each stream with the numbers being **exclusive**, i.e. a `offsets` specification of `34` means the Events API will return events with offsets `> 34`.
-
-The `offsets` is optional.
-If none is set for one, multiple or all subscribed streams, the Event Store will assume a lower bound offset of `-1`, i.e. the beginning.
-
 #### Required: Query (`query`)
 
 The `query` field specifies a tag query that defines how events should be filtered.
 Every `query` must begin with `FROM` followed by the tags in single quotes.
+
+#### Optional: Lower bound for offsets (`lowerBound`)
+
+The `lowerBound` object specifies the lower bound offset for each stream with the numbers being
+**exclusive**, i.e. a `lowerBound` specification of `34` means the Events API will return events with offsets `> 34`.
+
+The `lowerBound` field is optional. If none is set for any of the subscribed streams,
+the Events API will assume a lower bound offset of `-1`, i.e. the beginning.
 
 ### Response
 
@@ -542,10 +547,10 @@ See the following example using cURL:
 ```bash title="Example subscribe request"
 echo '
 {
-    "offsets": {
-        "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34,
-    },
-    "query": "FROM \"tag-01\" & (\"tag-02\" | \"tag-03\")",
+  "query": "FROM \"tag-01\" & (\"tag-02\" | \"tag-03\")",
+  "lowerBound": {
+    "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34
+  }
 }
 ' \
 | curl -N \
@@ -574,7 +579,6 @@ echo '
 </TabItem>
 </Tabs>
 
-
 ---
 
 ## Subscribe to event streams monotonically
@@ -590,9 +594,7 @@ You can use the Events API to subscribe to event streams with the guarantee that
   ]}
 >
 
-
 <TabItem value="ref">
-
 
 ### Request
 
@@ -609,14 +611,12 @@ The request body must contain a JSON object with the following structure:
 {
   "session": "<string: user supplied session ID>",
   "query": "<string: tag query, e.g. «FROM 'tag1' & 'tag2'»>",
-  "offsets": {
+  "lowerBound": {
     "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. 34>",
     "<string: stream ID>": "<integer: exclusive-lower-bound, e.g. -1>"
   }
 }
 ```
-
-The `offsets` object specifies the lower bound offset for each stream with the numbers being **exclusive**, i.e. a `offsets` specification of `34` means the Events API will return events with offsets `> 34`.
 
 You use the request body to specify additional details of your request as documented in the following:
 
@@ -632,6 +632,14 @@ If the `query` changes, a new session will be created regardless of the existenc
 #### Required: Query (`query`)
 
 The `query` field specifies a tag query that defines how events should be filtered.
+
+#### Optional: Lower bound for offsets (`lowerBound`)
+
+The `lowerBound` object specifies the lower bound offset for each stream with the numbers being
+**exclusive**, i.e. a `lowerBound` specification of `34` means the Events API will return events with offsets `> 34`.
+
+The `lowerBound` field is optional. If none is set for any of the subscribed streams,
+the Events API will assume a lower bound offset of `-1`, i.e. the beginning.
 
 ### Response
 
@@ -683,17 +691,16 @@ If an error is encountered while processing the stream of events, the stream wil
 </TabItem>
 <TabItem value="ex">
 
-
 See the following example using cURL:
 
-```bash title="Example subscribe_monotonic request with offsets"
+```bash title="Example subscribe_monotonic request with lower bound offsets"
 echo '
 {
-    "session": "my_session_id",
-    "query": "FROM \"tag-01\" & (\"tag-02\" | \"tag-03\")",
-    "offsets": {
-        "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34
-    }
+  "session": "my_session_id",
+  "query": "FROM \"tag-01\" & (\"tag-02\" | \"tag-03\")",
+  "lowerBound": {
+    "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34
+  }
 }
 ' \
 | curl -N \

@@ -4,7 +4,7 @@ import { genericCommunicationTimeout, mySuite, publishRandom, testName } from '.
 
 describe('event service', () => {
   describe('subscribe to event streams', () => {
-    it('should publish event and find it an event stream', () =>
+    it('should publish an event and find it in an event stream', () =>
       run(async (x) => {
         const es = await mkESFromTrial(x)
         const pub1 = await publishRandom(es)
