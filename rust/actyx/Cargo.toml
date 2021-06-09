@@ -2,7 +2,6 @@
 # since this is used in build scripts to populate the docker image cache!
 [workspace]
 members = [
-  "ada-cli",
   "api",
   "ax",
   "ax-futures-util",
