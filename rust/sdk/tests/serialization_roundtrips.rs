@@ -69,6 +69,7 @@ fn roundtrips() -> anyhow::Result<()> {
       "lamport": 28,
       "stream": "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2",
       "offset": 4,
+      "appId": "com.actyx.test",
       "timestamp": 1622108806233884u64,
       "tags": ["tag-01", "tag-02"],
       "payload": {
@@ -88,6 +89,7 @@ fn roundtrips() -> anyhow::Result<()> {
       "lamport": 28,
       "stream": "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2",
       "offset": 4,
+      "appId": "com.actyx.test",
       "timestamp": 1622108806233884u64,
       "tags": ["tag-01", "tag-02"],
       "payload": {
@@ -117,6 +119,7 @@ fn roundtrips() -> anyhow::Result<()> {
       "lamport": 323,
       "stream": "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2",
       "offset": 34,
+      "appId": "com.actyx.test",
       "timestamp": 1599224884528020u64,
       "tags": ["com.actyx.examples.temperature", "sensor:temp-sensor1"],
       "payload": {
