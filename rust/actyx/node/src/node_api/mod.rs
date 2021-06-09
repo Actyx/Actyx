@@ -222,7 +222,7 @@ impl ApiBehaviour {
                                 .map(|res| {
                                     AdminResponse::NodesInspectResponse(NodesInspectResponse {
                                         peer_id: res.peer_id,
-                                        listen_addrs: res.listen_addrs,
+                                        swarm_addrs: res.swarm_addrs,
                                         announce_addrs: res.announce_addrs,
                                         admin_addrs,
                                         connections: res.connections,

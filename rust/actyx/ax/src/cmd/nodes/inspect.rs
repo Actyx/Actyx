@@ -38,8 +38,8 @@ impl AxCliCommand for NodesInspect {
     fn pretty(result: Self::Output) -> String {
         let mut s = String::new();
         writeln!(&mut s, "PeerId: {}", result.peer_id).unwrap();
-        writeln!(&mut s, "ListenAddrs:").unwrap();
-        for addr in &result.listen_addrs {
+        writeln!(&mut s, "SwarmAddrs:").unwrap();
+        for addr in &result.swarm_addrs {
             writeln!(&mut s, "    {}", addr).unwrap();
         }
         writeln!(&mut s, "AnnounceAddrs:").unwrap();

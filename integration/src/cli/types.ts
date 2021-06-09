@@ -148,7 +148,7 @@ export const Response_Nodes_Inspect = io.union([
     io.type({
       result: io.type({
         peerId: io.string,
-        listenAddrs: io.array(io.string),
+        swarmAddrs: io.array(io.string),
         announceAddrs: io.array(io.string),
         adminAddrs: io.array(io.string),
         connections: io.array(
