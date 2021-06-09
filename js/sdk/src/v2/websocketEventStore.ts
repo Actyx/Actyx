@@ -5,7 +5,7 @@
  * Copyright (C) 2021 Actyx AG
  */
 import * as t from 'io-ts'
-import { EventKeyIO, NodeId, OffsetMapIO, Where } from '../types'
+import { AppId, EventKeyIO, NodeId, OffsetMapIO, Where } from '../types'
 import { validateOrThrow } from '../util'
 import {
   DoPersistEvents,
@@ -63,8 +63,11 @@ const ConnectivityRequest = t.readonly(
   }),
 )
 
-const EventKeyWithTime = t.intersection([EventKeyIO, t.type({ timestamp: t.number })])
-const PublishEventsResponse = t.type({ data: t.readonlyArray(EventKeyWithTime) })
+const EventKeyWithTimeAndAppId = t.intersection([
+  EventKeyIO,
+  t.type({ timestamp: t.number, appId: AppId.FromString }),
+])
+const PublishEventsResponse = t.type({ data: t.readonlyArray(EventKeyWithTimeAndAppId) })
 
 const toAql = (w: Where<unknown> | string): string =>
   w instanceof String ? (w as string) : 'FROM ' + w.toString()

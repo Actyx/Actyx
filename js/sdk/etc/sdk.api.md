@@ -46,6 +46,15 @@ export type ActyxTestOpts = Readonly<{
 export const allEvents: Tags<unknown>;
 
 // @public
+export type AppId = string;
+
+// @public
+export const AppId: {
+    of: (text: string) => AppId;
+    FromString: t.Type<string, string, unknown>;
+};
+
+// @public
 export type AppManifest = Readonly<{
     appId: string;
     displayName: string;

@@ -8,6 +8,7 @@ import { chunksOf } from 'fp-ts/lib/Array'
 import { fromNullable } from 'fp-ts/lib/Option'
 import { Observable, ReplaySubject, Scheduler, Subject } from 'rxjs'
 import {
+  AppId,
   EventKey,
   EventsSortOrder,
   Lamport,
@@ -267,6 +268,7 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
       lamport = Lamport.of(lamport + 1)
       return {
         ...unstoredEvent,
+        appId: AppId.of('test'),
         stream: streamId,
         lamport,
         offset: Offset.of(psn++),
@@ -292,6 +294,7 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
       ...ev,
       semantics: '_t_',
       name: '_t_',
+      appId: AppId.of('test'),
     }))
 
     persist(newEventsCompat)

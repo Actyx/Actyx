@@ -37,8 +37,8 @@
 //! NATs. When configuring a bootstrap node you are telling the node how to reach another peer,
 //! while when configuring an external address you are telling other peers how to reach you, given
 //! you have a bootstrap node in common.
-use crate::BanyanStore;
-use actyx_sdk::{app_id, tags, Payload, StreamNr};
+use crate::{internal_app_id, BanyanStore};
+use actyx_sdk::{tags, Payload, StreamNr};
 use anyhow::Result;
 use fnv::{FnvHashMap, FnvHashSet};
 use futures::stream::{Stream, StreamExt};
@@ -197,7 +197,6 @@ pub fn discovery_publish(
     let tags = tags!("discovery");
     let peer_id: PeerId = store.ipfs().local_peer_id().into();
     let node_name = store.ipfs().local_node_name();
-    let internal_app_id = app_id!("com.actyx");
     Ok(async move {
         while let Some(event) = stream.next().await {
             tracing::debug!("discovery_publish {} {:?}", node_name, event);
@@ -251,7 +250,7 @@ pub fn discovery_publish(
                 if let Err(err) = store
                     .append(
                         nr,
-                        internal_app_id.clone(),
+                        internal_app_id(),
                         vec![(tags.clone(), Payload::from_slice(&buffer))],
                     )
                     .await

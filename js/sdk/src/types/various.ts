@@ -81,6 +81,30 @@ export const StreamId = {
 }
 
 /**
+ * An Actyx app id.
+ * @public
+ */
+export type AppId = string
+const mkAppId = (text: string): AppId => text as AppId
+
+/**
+ * `AppId` associated functions.
+ * @public
+ */
+export const AppId = {
+  /**
+   * Creates a AppId from a string
+   */
+  of: mkAppId,
+  FromString: new t.Type<AppId, string>(
+    'AppIdFromString',
+    (x): x is AppId => isString(x),
+    (x, c) => t.string.validate(x, c).map(s => s as AppId),
+    x => x,
+  ),
+}
+
+/**
  * Lamport timestamp, cf. https://en.wikipedia.org/wiki/Lamport_timestamp
  * @public
  */

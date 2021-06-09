@@ -5,7 +5,7 @@
  * Copyright (C) 2021 Actyx AG
  */
 import { Observable, ReplaySubject } from 'rxjs'
-import { Lamport, NodeId, Offset, OffsetMap, toEventPredicate } from '../types'
+import { AppId, Lamport, NodeId, Offset, OffsetMap, toEventPredicate } from '../types'
 import { DoQuery, DoSubscribe, EventStore, DoPersistEvents } from './eventStore'
 import log from './log'
 import { ConnectivityStatus, Events } from './types'
@@ -52,6 +52,7 @@ export const mockEventStore: () => EventStore = () => {
     const newEvents: Events = x.map(payload => ({
       payload: payload.payload,
       tags: [],
+      appId: AppId.of('test'),
       stream: streamId,
       timestamp: payload.timestamp,
       lamport: Lamport.of(payload.timestamp),

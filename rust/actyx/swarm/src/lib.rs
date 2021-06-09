@@ -27,6 +27,7 @@ mod tests;
 
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
+use actyx_sdk::app_id;
 pub use prune::RetainConfig;
 
 use crate::gossip::Gossip;
@@ -102,6 +103,10 @@ pub type Ipfs = ipfs_embed::Ipfs<libipld::DefaultParams>;
 static DISCOVERY_STREAM_NR: u64 = 1;
 static METRICS_STREAM_NR: u64 = 2;
 const MAX_TREE_LEVEL: i32 = 1000;
+
+fn internal_app_id() -> AppId {
+    app_id!("com.actyx")
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EphemeralEventsConfig {
