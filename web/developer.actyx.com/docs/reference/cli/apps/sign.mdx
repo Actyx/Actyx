@@ -1,0 +1,22 @@
+---
+title: ax apps sign
+---
+
+```text title="Sign app manifest"
+USAGE:
+    ax apps sign [FLAGS] <PATH-TO-CERTIFICATE> <PATH-TO-MANIFEEST>
+
+FLAGS:
+    -h, --help       Prints help information
+    -j, --json       Format output as JSON
+    -V, --version    Prints version information
+    -v               Verbosity level. Add more v for higher verbosity (-v, -vv, -vvv, etc.)
+
+ARGS:
+    <PATH-TO-CERTIFICATE>    Path to certificate that shall be used for signing
+    <PATH-TO-MANIFEEST>       Path to app manifest that shall be signed
+```
+
+```text title="Example Usage"
+ax apps sign /Users/ax/Documents/certificate.json /Users/ax/Apps/Dashboard/manifest.json
+```

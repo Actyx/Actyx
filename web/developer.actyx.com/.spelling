@@ -20,6 +20,7 @@ div
 quickstart
 localhost
 Tada
+http
 plugin
 xml
 npm
@@ -207,6 +208,10 @@ armv7
 multicast
 IPs
 stdout
+nm
+groupId
+http
+metadata
 auth-api
 macos
 err_port_collision
@@ -505,3 +510,7 @@ DownloadLink
 DownloadLink.tsx
 erp-ui
 dashboard-ui
+- ./docs/conceptual/authentication-and-authorization.mdx
+com.example.
+com.example
+namespaces

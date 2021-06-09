@@ -149,7 +149,7 @@ const Home = () => (
         <Heading>Why should I use Actyx?</Heading>
         <Text>
           <p>
-            Actyx let's you easily build resilient real-time applications that run across a network
+            Actyx lets you easily build resilient real-time applications that run across a network
             of devices; use if you:
           </p>
           <ul>

@@ -6,4 +6,83 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
-TODO
+In order for your app to access the Events API, it needs to be authenticated with the node it is running on.
+This how-to guide explains the steps you need to take to authenticate your app with a node.
+You can authenticate your app using our Typescript SDK (recommended) or by manually using the [Auth API](../../reference/auth-api.mdx).
+For this guide, let's use the following `my-manifest.json` as an example:
+
+```json title="my-manifest.json"
+{
+  "appId": "com.actyx.example",
+  "displayName": "Example App",
+  "version": "2.0",
+  "signature": "v2tzaWdfdmVyc2lvbgBtZGV2X3NpZ25hdHVyZXhYMTdNQkpYTGVhM3VzTC94RFQ1dWM3bW53c2pyWnhNdGVZeUxSWUdCQzh6VitFTm1tQ0ZkQjRCOCtSeTNQSDNHN2haNEt0NE80eXpMSEdFT3J5blpVQ3c9PWlkZXZQdWJrZXl4LTA0T2dDSkFYSFU5bnRjbkpnaXl2NnFJbmtYUGg0MG5DcFJiS0tJcXVuckJNPWphcHBEb21haW5zgWtjb20uYWN0eXguKmtheFNpZ25hdHVyZXhYUWwyaU5MQjRmbHlCYWFhWHhMRUF0RzZhbzlUWlpJTVFVaDlSL2poNXNzVVRQNHR5d3RRcjIvZitXR2FWSHdlQ0xhVnVDY3JDOWdTVE0zSnRqZFA4QWc9Pf8="
+}
+```
+
+import Tabs from '@theme/Tabs'
+import TabItem from '@theme/TabItem'
+
+<Tabs
+  groupId="tool"
+  defaultValue={"sdk"}
+  values={[
+    { label: "JS/TS SDK", value: "sdk" },
+    { label: "HTTP API", value: "http" }
+  ]}
+>
+
+
+<TabItem value="sdk">
+
+
+The SDK automatically manages the authentication flow for the application.
+It only needs to be provided with the signed manifest upon initialization.
+It then does two things automatically:
+
+- Upon initialization, it gets a token from the Auth API or fails with an error.
+- It deals with expired token responses, and will automatically try to get a new token from the Auth API. If the token is not renewed, it fails with an error.
+
+See an example below of how to initialize the SDK with the signed manifest.
+
+```ts
+import { Actyx } from '@actyx/sdk'
+const manifest = require('my-manifest.json')
+
+try {
+  // pass in manifest as first argument
+  // second argument is optional
+  const actyx = await Actyx.of(manifest, connectionOpts)
+} catch (error) {
+  console.error(error)
+}
+```
+
+</TabItem>
+
+
+<TabItem value="http">
+
+
+See an example of how to request a new auth token with every HTTP request to the Events API:
+
+```text title="Example Usage"
+curl \
+    -s -X "GET" \
+    -H "Authorization: Bearer $(curl -s localhost:4454/api/v2/authenticate -d'{"appId": "com.actyx.example","displayName": "Actyx Example App","version": "2.0", "signature": "AX45KJT4FEGERH2B34RL324TJ4H2536452BRFVJHDFBVLSDVWJHB444="}' -H "Content-Type: application/json" | jq -r '.token')" \
+    -H "Accept: application/json" \
+    http://localhost:4454/api/v2/events/offsets | jq .
+```
+
+:::warning
+It is highly recommended to use the JS/TS SDK for app authentication.
+If you are manually using the Auth HTTP API, please note that you need to implement the necessary error handling and behavior that checks for an expired or invalid auth token.
+:::
+
+</TabItem>
+
+
+</Tabs>
+
+
+If you want to read a more holistic explanation of authentication and authorization with Actyx, please check out our [conceptual guide](../../conceptual/authentication-and-authorization.mdx) on the topic.

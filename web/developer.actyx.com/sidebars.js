@@ -196,6 +196,7 @@ module.exports = {
         'reference/cli/settings/get',
         'reference/cli/settings/set',
         'reference/cli/settings/unset',
+        'reference/cli/apps/sign',
         'reference/cli/swarms/keygen',
         'reference/cli/users/keygen',
       ],
