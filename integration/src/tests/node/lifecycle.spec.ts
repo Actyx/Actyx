@@ -3,7 +3,7 @@ import { startEphemeralNode, startEphemeralProcess } from '../../infrastructure'
 import { getFreeRemotePort, occupyRemotePort } from '../../infrastructure/checkPort'
 import { runOnEach, runOnEvery } from '../../infrastructure/hosts'
 import { ActyxNode } from '../../infrastructure/types'
-import { runActyx } from '../../util'
+import { runActyx, runUntil } from '../../util'
 
 const adminExtract = (s: string): [string, number] | undefined => {
   const match = s.match(
@@ -236,7 +236,10 @@ describe('node lifecycle', () => {
         return
       }
 
-      const out = await runActyx(node, node._private.workingDir).catch((e) => e)
+      const out = await runUntil(runActyx(node, node._private.workingDir), 'secondary', [], 10_000)
+      if (Array.isArray(out)) {
+        throw new Error(`timed out:\n${out.join('\n')}`)
+      }
       expect(out.stderr).toMatch(
         `data directory \`${node._private.workingDir}\` is locked by another Actyx process`,
       )

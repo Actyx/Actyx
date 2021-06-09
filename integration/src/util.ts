@@ -1,5 +1,6 @@
-import { ExecaChildProcess } from 'execa'
+import { ExecaChildProcess, ExecaError, ExecaReturnValue } from 'execa'
 import { runOnEvery } from './infrastructure/hosts'
+import { mkProcessLogger } from './infrastructure/mkProcessLogger'
 import { ActyxNode } from './infrastructure/types'
 
 const getHttpApi = (x: ActyxNode) => x._private.httpApiOrigin
@@ -55,6 +56,8 @@ export const runActyxVersion = async (
   const exe = `${workdir}/${baseExe}`
   const v1 = version.startsWith('1.')
   const wd = v1 ? '--working_dir' : '--working-dir'
+  const ts = new Date().toISOString()
+  process.stdout.write(`${ts} node ${node.name} starting Actyx ${version} in workdir ${workdir}\n`)
   switch (node.target.os) {
     case 'linux': {
       await node.target.execute('mkdir', ['-p', workdir])
@@ -80,7 +83,9 @@ export const runActyxVersion = async (
   }
 }
 
-export const runActyx = (node: ActyxNode, workdir: string): ExecaChildProcess<string> => {
+export const runActyx = (node: ActyxNode, workdir: string): ExecaChildProcess => {
+  const ts = new Date().toISOString()
+  process.stdout.write(`${ts} node ${node.name} starting current Actyx in workdir ${workdir}\n`)
   switch (node.target.os) {
     case 'linux': {
       return node.target.execute(
@@ -96,3 +101,26 @@ export const runActyx = (node: ActyxNode, workdir: string): ExecaChildProcess<st
       throw new Error(`cannot start Actyx on os=${node.target.os}`)
   }
 }
+
+export const runUntil = (
+  proc: ExecaChildProcess,
+  nodeName: string,
+  triggers: string[],
+  timeout: number,
+): Promise<ExecaReturnValue | ExecaError | string[]> =>
+  new Promise<ExecaReturnValue | ExecaError | string[]>((res) => {
+    const logs: string[] = []
+    setTimeout(() => res(logs), timeout)
+    const { log } = mkProcessLogger((s) => logs.push(s), nodeName, triggers)
+    proc.stdout?.on('data', (buf) => {
+      if (log('stdout', buf)) {
+        res(logs)
+      }
+    })
+    proc.stderr?.on('data', (buf) => {
+      if (log('stderr', buf)) {
+        res(logs)
+      }
+    })
+    proc.then(res, res)
+  }).finally(() => proc.kill())

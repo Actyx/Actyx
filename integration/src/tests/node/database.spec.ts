@@ -1,7 +1,6 @@
 import { runOnEvery } from '../../infrastructure/hosts'
-import { mkProcessLogger } from '../../infrastructure/mkProcessLogger'
 import { settings } from '../../infrastructure/settings'
-import { randomString, runActyx, runActyxVersion } from '../../util'
+import { randomString, runActyx, runActyxVersion, runUntil } from '../../util'
 
 describe('node.sqlite', () => {
   it('should yell when using a v1 workdir', () =>
@@ -16,33 +15,15 @@ describe('node.sqlite', () => {
 
       // run v1.1.5 to create an old workdir
       const [v1] = await runActyxVersion(node, '1.1.5', workdir)
-      const logs: string[] = []
-      try {
-        await new Promise((res, rej) => {
-          setTimeout(() => rej(new Error('timed out')), 10_000)
-          const { log, flush } = mkProcessLogger((s) => logs.push(s), 'database-1.1.5', [
-            'ActyxOS started.',
-          ])
-          v1.stdout?.on('data', (buf) => {
-            if (log('stdout', buf)) {
-              res()
-            }
-          })
-          v1.stderr?.on('data', (buf) => log('stderr', buf))
-          v1.on('close', (code, signal) => {
-            flush()
-            rej(new Error(`exited with code ${code} / signal ${signal}`))
-          })
-        })
-      } catch (e) {
-        console.log(logs.join('\n'))
-        throw e
-      } finally {
-        v1.cancel()
-      }
+      const outV1 = await runUntil(v1, 'db-1.1.5', ['ActyxOS started.'], 10_000)
+      expect(outV1).toContainEqual(expect.stringContaining('ActyxOS started.'))
 
       // now run current version to check error message
-      const current = await runActyx(node, workdir).catch((e) => e)
+      const current = await runUntil(runActyx(node, workdir), 'db-current', [], 5_000)
+      if (Array.isArray(current)) {
+        throw new Error(`timed out:\n${current.join('\n')}`)
+      }
+
       const template = String.raw`using data directory ${'`.*' + main + '`'}
         .*
         Attempting to start Actyx v2 with a data directory from ActyxOS v1\.1, which is currently not supported\.
