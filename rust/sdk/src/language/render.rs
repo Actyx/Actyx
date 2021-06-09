@@ -109,17 +109,25 @@ fn render_operation(w: &mut impl Write, e: &Operation) -> Result {
     }
 }
 
-fn render_tag_expr(w: &mut impl Write, e: &TagExpr) -> Result {
+fn render_tag_expr(w: &mut impl Write, e: &TagExpr, parent: Option<&TagExpr>) -> Result {
     match e {
         TagExpr::Or(or) => {
-            render_tag_expr(w, &or.0)?;
+            let wrap = matches!(parent, Some(&TagExpr::And(_)));
+            if wrap {
+                w.write_char('(')?;
+            }
+            render_tag_expr(w, &or.0, Some(e))?;
             w.write_str(" | ")?;
-            render_tag_expr(w, &or.1)
+            render_tag_expr(w, &or.1, Some(e))?;
+            if wrap {
+                w.write_char(')')?;
+            }
+            Ok(())
         }
         TagExpr::And(and) => {
-            render_tag_expr(w, &and.0)?;
+            render_tag_expr(w, &and.0, Some(e))?;
             w.write_str(" & ")?;
-            render_tag_expr(w, &and.1)
+            render_tag_expr(w, &and.1, Some(e))
         }
         TagExpr::Atom(atom) => render_tag_atom(w, atom),
     }
@@ -169,7 +177,7 @@ fn render_tag_atom(w: &mut impl Write, e: &TagAtom) -> Result {
 
 pub fn render_query(w: &mut impl Write, e: &Query) -> Result {
     w.write_str("FROM ")?;
-    render_tag_expr(w, &e.from)?;
+    render_tag_expr(w, &e.from, None)?;
     for op in &e.ops {
         w.write_char(' ')?;
         render_operation(w, op)?;

@@ -347,9 +347,9 @@ mod tests {
     #[test]
     fn roundtrips() {
         let rt = |str: &'static str| {
-            let e = str.parse::<Query>().unwrap();
+            let query = str.parse::<Query>().unwrap();
             let mut buf = String::new();
-            crate::language::render::render_query(&mut buf, &e).unwrap();
+            crate::language::render::render_query(&mut buf, &query).unwrap();
             assert_eq!(buf.as_str(), str);
         };
         rt("FROM 'machine' | 'user' & isLocal & from(2012-12-31) & to(12345678901234567) & appId(hello-5._x_) & allEvents FILTER _.x.42 > 5 SELECT { x: !'hello', y: 42, z: [1.3, _.x] } END");
@@ -358,6 +358,11 @@ mod tests {
         rt("FROM from(2012-12-31T09:30:32.007008Z) END");
         rt("FROM 'hello''s revenge' END");
         rt("FROM 'hell''o' FILTER _.x = 'worl''d' END");
+        rt("FROM 'a' & 'b' | 'c' END");
+        rt("FROM 'a' | 'b' & 'c' END");
+        rt("FROM 'a' & ('b' | 'c') END");
+        rt("FROM 'a' & 'b' | 'c' & 'd' END");
+        rt("FROM ('a' | 'b') & ('c' | 'd') END");
     }
 
     #[test]
