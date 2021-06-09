@@ -21,7 +21,7 @@
 #
 #   Validate code (unit tests):
 #     validate
-#     validate-{actyxos-node-manager,actyx-win-installer,js,js-pond,js-sdk,misc,os,os-android,website,website-developer,website-downloads}
+#     validate-{actyx-win-installer,js,js-pond,js-sdk,misc,os,os-android,website,website-developer,website-downloads}
 #
 #   Generate artifacts (stored in dist/):
 #     all (default target)
@@ -320,20 +320,6 @@ validate-website-downloads:
 	cd web/downloads.actyx.com && source ~/.nvm/nvm.sh && nvm install && \
 		npm install
 
-validate-misc: validate-actyxos-node-manager validate-actyx-win-installer
-
-# run npm install. There don't seem to be any tests.
-validate-actyxos-node-manager:
-	docker run \
-	  -v `pwd`:/src \
-	  -w /src/misc/actyxos-node-manager \
-	  --rm \
-	  $(DOCKER_FLAGS) \
-		actyx/util:windowsinstallercreator-x64-latest \
-	  bash -c "npm install"
-
-validate-actyx-win-installer: validate-actyxos-node-manager
-
 # combines all the .so files to build actyxos on android
 android-libaxosnodeffi: \
 	jvm/os-android/app/src/main/jniLibs/x86/libaxosnodeffi.so \
@@ -451,30 +437,9 @@ dist/bin/actyx.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
 	mkdir -p $(dir $@)
 	cp $< $@
 
-misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64: dist/bin/windows-x86_64/ax.exe make-always
-	mkdir -p misc/actyxos-node-manager/bin/win32
-	cp dist/bin/windows-x86_64/ax.exe misc/actyxos-node-manager/bin/win32/
-
-	jq '.actyx.version="$(ACTYX_VERSION)"' < misc/actyxos-node-manager/package.json > misc/actyxos-node-manager/package.json.new \
-	  && mv misc/actyxos-node-manager/package.json.new misc/actyxos-node-manager/package.json
-
-	docker run \
-	  -v `pwd`:/src \
-	  -w /src/misc/actyxos-node-manager \
-	  --rm \
-	  $(DOCKER_FLAGS) \
-	  actyx/util:windowsinstallercreator-x64-latest \
-	  bash -c "npm install && npm run package -- --platform win32 --arch x64"
-
-dist/bin/windows-x86_64/actyxos-node-manager.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64
-	mkdir -p $(dir $@)
-	cp -a $</actyxos-node-manager.exe $@
-
-dist/bin/windows-x86_64/Actyx-Installer.exe: misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyx.exe make-always
-	cp $</actyxos-node-manager.exe misc/actyx-win-installer
+dist/bin/windows-x86_64/Actyx-Installer.exe: dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyx.exe make-always
 	cp dist/bin/windows-x86_64/actyx.exe misc/actyx-win-installer
 	cp dist/bin/windows-x86_64/ax.exe misc/actyx-win-installer
-	cp -r misc/actyxos-node-manager/out/ActyxOS-Node-Manager-win32-x64 misc/actyx-win-installer/node-manager
 	# ls -alh .
 	docker run \
 	  -v `pwd`:/src \
