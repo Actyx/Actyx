@@ -67,23 +67,13 @@ export const runActyxVersion = async (
       return [node.target.execute(`./${exe}`, [wd, workdir].concat(v1 ? [] : randomBinds))]
     }
     case 'windows': {
-      const download = await node.target.execute(
-        String.raw`
-          New-Item -ItemType Directory -Path "${workdir}"
-          $url = "${url}"
-          $outpath = "${exe}"
-          $wc = New-Object System.Net.WebClient
-          $wc.DownloadFile($url, $outpath)`,
-        [],
-      )
-      if (download.exitCode !== 0) {
-        console.log(`error downloading ${url}:`, download.stderr)
-        throw new Error(`error downloading ${url}`)
-      }
-      const cmd = String.raw`Start-Process -Wait -NoNewWindow -FilePath "${exe}" -ArgumentList "${wd}","${workdir}",${
-        v1 ? '' : randomBindsWin
+      const x = (s: string) => node.target.execute(s, [])
+      await x(String.raw`New-Item -ItemType Directory -Path "${workdir}" -Force`)
+      await x(String.raw`(New-Object System.Net.WebClient).DownloadFile("${url}", "${exe}")`)
+      const cmd = String.raw`Start-Process -Wait -NoNewWindow -FilePath "${exe}" -ArgumentList "${wd}","${workdir}"${
+        v1 ? '' : ',' + randomBindsWin
       }`
-      return [node.target.execute(cmd, [])]
+      return [x(cmd)]
     }
     default:
       throw new Error(`cannot run specific Actyx version on os=${node.target.os}`)

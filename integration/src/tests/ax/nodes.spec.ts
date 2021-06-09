@@ -88,7 +88,6 @@ describe('ax nodes', () => {
 
         const protos = { ip4: [] as number[], ip6: [] as number[] }
         for (const [proto, port] of ports) {
-          console.log(addrs, proto, port)
           const p = Number(port)
           expect(p).toBeGreaterThan(0)
           switch (proto) {
