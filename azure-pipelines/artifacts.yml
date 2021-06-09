@@ -241,7 +241,7 @@ stages:
             name: cleanupInstances
             displayName: Clean up old integration test instances
 
-  - stage: Maybe create release
+  - stage: maybeCreateRelease
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
     dependsOn:
       - integration
