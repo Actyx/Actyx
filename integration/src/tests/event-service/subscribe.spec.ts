@@ -13,7 +13,6 @@ describe('event service', () => {
         await new Promise((resolve, reject) => {
           es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, (x) => {
             data.push(x)
-            resolve()
           })
             .then(resolve)
             .catch(reject)
@@ -23,7 +22,9 @@ describe('event service', () => {
         const ev = data.find((x) => x.lamport === pub1.lamport)
         if (ev === undefined) {
           console.log(data)
+          fail()
         }
+        expect(ev.appId).toEqual('com.example.my-app')
         expect(ev).toMatchObject(pub1)
       }))
 
@@ -35,7 +36,6 @@ describe('event service', () => {
         const done = new Promise((resolve, reject) => {
           es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, (x) => {
             data.push(x)
-            resolve()
           })
             .then(resolve)
             .catch(reject)
@@ -48,7 +48,9 @@ describe('event service', () => {
         const ev = data.find((x) => x.lamport === pub1.lamport)
         if (ev === undefined) {
           console.log(data)
+          fail()
         }
+        expect(ev.appId).toEqual('com.example.my-app')
         expect(ev).toMatchObject(pub1)
       }))
   })
