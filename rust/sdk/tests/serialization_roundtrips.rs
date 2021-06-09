@@ -4,7 +4,7 @@ use serde_json::*;
 fn roundtrip<T: serde::Serialize + serde::de::DeserializeOwned>(json: Value) -> anyhow::Result<()> {
     let value: T = from_value(json.clone())?;
     let serialized = to_value(value)?;
-    assert_eq!(json, serialized);
+    anyhow::ensure!(json == serialized);
     Ok(())
 }
 
