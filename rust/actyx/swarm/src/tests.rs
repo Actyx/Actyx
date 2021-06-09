@@ -66,10 +66,10 @@ async fn smoke() -> anyhow::Result<()> {
 async fn should_compact_regularly() -> anyhow::Result<()> {
     const EVENTS: usize = 10000;
     let store = BanyanStore::test("compaction_interval").await?;
-    let start = tokio::time::Instant::now();
 
     // Wait for the first compaction loop to pass.
     tokio::time::sleep(Duration::from_millis(500)).await;
+    tokio::time::pause();
 
     let stream = store.get_or_create_own_stream(0.into())?;
     assert!(stream.published_tree().is_none());
@@ -101,8 +101,10 @@ async fn should_compact_regularly() -> anyhow::Result<()> {
     assert_eq!(tree_after_append.root(), tree_after_query.root());
     assert!(!store.data.forest.is_packed(&tree_after_query.tree())?);
 
-    // Wait here for compaction (or make it configurable in [`SwarmConfig`] ..)
-    tokio::time::sleep_until(start + Duration::from_secs(61)).await;
+    tokio::time::advance(Duration::from_secs(60)).await;
+    tokio::time::resume();
+    // Wait here for compaction
+    tokio::time::sleep(Duration::from_secs(1)).await;
 
     let tree_after_compaction = stream.published_tree().unwrap();
     assert!(tree_after_append.root() != tree_after_compaction.root());
