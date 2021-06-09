@@ -1,5 +1,5 @@
-use crate::BanyanStore;
-use actyx_sdk::{tags, Payload, StreamNr, Tag, TagSet};
+use crate::{AxTreeExt, BanyanStore, MAX_TREE_LEVEL};
+use actyx_sdk::{tags, Offset, Payload, StreamNr, Tag, TagSet};
 use ax_futures_util::{prelude::AxStreamExt, stream::interval};
 use banyan::query::AllQuery;
 use futures::{prelude::*, StreamExt};
@@ -65,7 +65,7 @@ async fn smoke() -> anyhow::Result<()> {
 #[tokio::test]
 async fn should_compact_regularly() -> anyhow::Result<()> {
     const EVENTS: usize = 10000;
-    let store = BanyanStore::test("compaction").await?;
+    let store = BanyanStore::test("compaction_interval").await?;
     let start = tokio::time::Instant::now();
 
     // Wait for the first compaction loop to pass.
@@ -74,7 +74,7 @@ async fn should_compact_regularly() -> anyhow::Result<()> {
     let stream = store.get_or_create_own_stream(0.into())?;
     assert!(stream.published_tree().is_none());
 
-    // Chunk to force creation of new leaves
+    // Chunk to force creation of new branches
     for chunk in (0..EVENTS)
         .map(|_| (tags!("abc"), Payload::empty()))
         .collect::<Vec<_>>()
@@ -107,5 +107,41 @@ async fn should_compact_regularly() -> anyhow::Result<()> {
     let tree_after_compaction = stream.published_tree().unwrap();
     assert!(tree_after_append.root() != tree_after_compaction.root());
     assert!(store.data.forest.is_packed(&tree_after_compaction.tree())?);
+    Ok(())
+}
+
+#[tokio::test]
+async fn should_extend_packed_when_hitting_max_tree_depth() -> anyhow::Result<()> {
+    let store = BanyanStore::test("compaction_max_tree").await?;
+
+    // Wait for the first compaction loop to pass.
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    let stream = store.get_or_create_own_stream(0.into())?;
+    assert!(stream.published_tree().is_none());
+
+    // Append individually to force creation of new branches
+    for ev in (0..MAX_TREE_LEVEL + 1).map(|_| (tags!("abc"), Payload::empty())) {
+        store.append(0.into(), vec![ev]).await?;
+    }
+    let tree_after_append = stream.published_tree().unwrap().tree();
+    assert!(!store.data.forest.is_packed(&tree_after_append)?);
+    assert_eq!(tree_after_append.level(), MAX_TREE_LEVEL + 1);
+    assert_eq!(
+        tree_after_append.offset(),
+        Some(Offset::try_from(MAX_TREE_LEVEL as i64).unwrap())
+    );
+
+    // packing will be triggered when the existing tree's level is MAX_TREE_LEVEL + 1
+    store.append(0.into(), vec![(tags!("abc"), Payload::empty())]).await?;
+    let tree_after_pack = stream.published_tree().unwrap().tree();
+    // the tree is not packed
+    assert!(!store.data.forest.is_packed(&tree_after_pack)?);
+    // but the max level remains constant now
+    assert_eq!(tree_after_pack.level(), MAX_TREE_LEVEL + 1);
+    assert_eq!(
+        tree_after_pack.offset(),
+        Some(Offset::try_from(MAX_TREE_LEVEL as i64 + 1).unwrap())
+    );
     Ok(())
 }
