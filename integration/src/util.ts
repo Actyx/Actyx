@@ -44,7 +44,7 @@ export const binaryUrlAndNameForVersion = (
 }
 
 const randomBinds = ['--bind-admin', '0', '--bind-api', '0', '--bind-swarm', '0']
-const randomBindsWin = randomBinds.map((x) => `"${x}"`).join(',')
+const randomBindsWin = randomBinds.map((x) => `'${x}'`).join(',')
 
 export const runActyxVersion = async (
   node: ActyxNode,
@@ -68,9 +68,9 @@ export const runActyxVersion = async (
     }
     case 'windows': {
       const x = (s: string) => node.target.execute(s, [])
-      await x(String.raw`New-Item -ItemType Directory -Path "${workdir}" -Force`)
-      await x(String.raw`(New-Object System.Net.WebClient).DownloadFile("${url}", "${exe}")`)
-      const cmd = String.raw`Start-Process -Wait -NoNewWindow -FilePath "${exe}" -ArgumentList "${wd}","${workdir}"${
+      await x(String.raw`New-Item -ItemType Directory -Path ${workdir} -Force`)
+      await x(String.raw`(New-Object System.Net.WebClient).DownloadFile('${url}','${exe}')`)
+      const cmd = String.raw`Start-Process -Wait -NoNewWindow -FilePath ${exe} -ArgumentList '${wd}','${workdir}'${
         v1 ? '' : ',' + randomBindsWin
       }`
       return [x(cmd)]
