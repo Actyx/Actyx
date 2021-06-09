@@ -46,6 +46,8 @@ fn main() -> anyhow::Result<()> {
             }
         }
 
+        tracing::info!("nodes started");
+
         let mut machines = sim.machines_mut().chunks_mut(1);
         let a = &mut machines.next().unwrap()[0];
         let b = &mut machines.next().unwrap()[0];
@@ -59,12 +61,16 @@ fn main() -> anyhow::Result<()> {
         c.send(Command::AddAddress(a_id, a_addr));
 
         loop {
-            if let Some(Event::Connected(peer)) = b.recv().await {
+            let event = b.recv().await;
+            tracing::info!("{:?}", event);
+            if let Some(Event::Connected(peer)) = event {
                 if peer == c_id {
                     break;
                 }
             }
         }
+
+        tracing::info!("nodes connected to `c`");
 
         loop {
             if let Some(Event::Connected(peer)) = c.recv().await {

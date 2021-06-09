@@ -94,7 +94,7 @@ fn main() -> anyhow::Result<()> {
                         let count = (&upper_bound - &OffsetMap::default()) as usize;
 
                         let result = timeout(
-                            Duration::from_secs(5),
+                            Duration::from_secs(10),
                             api.query(QueryRequest {
                                 lower_bound: None,
                                 upper_bound,

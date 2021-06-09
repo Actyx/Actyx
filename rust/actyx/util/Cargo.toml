@@ -19,8 +19,8 @@ futures = { version = "0.3.14", package = "futures" }
 libipld = { version = "0.12.0", default-features = false, features = ["dag-cbor", "derive"] }
 libp2p-streaming-response = { path = "../libp2p-streaming-response" }
 log-panics = "2.0.0"
+multiaddr = "0.12.0"
 num-traits = "0.2.14"
-parity-multiaddr = "0.11.2"
 parking_lot = "0.11.1"
 pin-utils = "0.1.0"
 rand = { version = "0.8.3", features = ["small_rng"] }

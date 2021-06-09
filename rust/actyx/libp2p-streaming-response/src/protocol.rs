@@ -3,7 +3,7 @@ use futures::{
     future::BoxFuture,
     io::{AsyncRead, AsyncWrite},
 };
-use libp2p::core::{upgrade, InboundUpgrade, OutboundUpgrade, UpgradeInfo};
+use libp2p::core::{upgrade, InboundUpgrade, OutboundUpgrade, SimOpenRole, UpgradeInfo};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     io::{self, Error, ErrorKind, Result},
@@ -132,7 +132,7 @@ where
     type Error = Error;
     type Future = BoxFuture<'static, Result<Self::Output>>;
 
-    fn upgrade_outbound(self, mut socket: TSocket, _info: Self::Info) -> Self::Future {
+    fn upgrade_outbound(self, mut socket: TSocket, _info: Self::Info, _: SimOpenRole) -> Self::Future {
         Box::pin(async move {
             let bytes = serde_cbor::to_vec(&self).map_err(|e| io::Error::new(ErrorKind::InvalidInput, e))?;
             upgrade::write_one(&mut socket, bytes).await?;

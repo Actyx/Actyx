@@ -1,4 +1,4 @@
-use parity_multiaddr::{Multiaddr, Protocol};
+use multiaddr::{Multiaddr, Protocol};
 use serde_json::Value;
 use std::str::FromStr;
 use valico::json_schema::{
