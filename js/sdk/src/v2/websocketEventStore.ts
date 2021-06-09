@@ -75,7 +75,7 @@ const compat = (x: unknown) => {
 }
 
 export class WebsocketEventStore implements EventStore {
-  constructor(private readonly multiplexer: MultiplexedWebsocket) {}
+  constructor(private readonly multiplexer: MultiplexedWebsocket, private readonly appId: AppId) {}
 
   offsets: RequestOffsets = () =>
     this.multiplexer
@@ -146,7 +146,7 @@ export class WebsocketEventStore implements EventStore {
         }
         return publishEvents.map<Event>((ev, idx) => ({
           ...persistedEvents[idx],
-          appId: AppId.of('todo'),
+          appId: this.appId,
           tags: ev.tags,
           payload: ev.payload,
         }))

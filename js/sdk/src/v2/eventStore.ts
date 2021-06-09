@@ -5,7 +5,7 @@
  * Copyright (C) 2021 Actyx AG
  */
 import { Observable } from 'rxjs'
-import { EventsSortOrder, Milliseconds, NodeId, OffsetMap, Where } from '../types'
+import { AppId, EventsSortOrder, Milliseconds, NodeId, OffsetMap, Where } from '../types'
 import { mockEventStore } from './mockEventStore'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import { testEventStore, TestEventStore } from './testEventStore'
@@ -98,12 +98,13 @@ const noopEventStore: EventStore = {
 
 export const EventStore: {
   noop: EventStore
-  ws: (multiplexedWebsocket: MultiplexedWebsocket) => EventStore
+  ws: (multiplexedWebsocket: MultiplexedWebsocket, appId: AppId) => EventStore
   mock: () => EventStore
   test: (nodeId?: NodeId, eventChunkSize?: number) => TestEventStore
 } = {
   noop: noopEventStore,
-  ws: (multiplexedWebsocket: MultiplexedWebsocket) => new WebsocketEventStore(multiplexedWebsocket),
+  ws: (multiplexedWebsocket: MultiplexedWebsocket, appId: AppId) =>
+    new WebsocketEventStore(multiplexedWebsocket, appId),
   mock: mockEventStore,
   test: testEventStore,
 }
