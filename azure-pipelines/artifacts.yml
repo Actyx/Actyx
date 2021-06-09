@@ -240,3 +240,21 @@ stages:
               BASH_ENV: "~/.bashrc"
             name: cleanupInstances
             displayName: Clean up old integration test instances
+
+  - stage: Maybe create release
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+    dependsOn:
+      - integration
+    pool:
+      name: Native
+    jobs:
+      - job:
+        displayName: Run cosmos-release
+        steps:
+          - checkout: self
+            persistCredentials: true
+          - bash: |
+              set -e
+              cargo run --release -- release
+            workingDirectory: rust/release
+            name: Release
