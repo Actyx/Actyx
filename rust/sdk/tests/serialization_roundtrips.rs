@@ -1,7 +1,7 @@
 use actyx_sdk::service::*;
 use serde_json::*;
 
-fn roundtrip<T: serde::Serialize + serde::de::DeserializeOwned>(json: Value) -> anyhow::Result<()> {
+fn roundtrip<T: serde::Serialize + serde::de::DeserializeOwned + std::fmt::Debug>(json: Value) -> anyhow::Result<()> {
     let value: T = from_value(json.clone())?;
     let serialized = to_value(value)?;
     anyhow::ensure!(json == serialized);
@@ -77,7 +77,7 @@ fn roundtrips() -> anyhow::Result<()> {
     }))?;
 
     roundtrip::<SubscribeRequest>(json!({
-      "offsets": {
+      "lowerBound": {
         "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34,
       },
       "query": "FROM 'tag-01' & ('tag-02' | 'tag-03') END",
@@ -98,7 +98,7 @@ fn roundtrips() -> anyhow::Result<()> {
     roundtrip::<SubscribeMonotonicRequest>(json!({
       "session": "my_session_id",
       "query": "FROM 'tag-01' & ('tag-02' | 'tag-03') END",
-      "offsets": {
+      "lowerBound": {
         "1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s-2": 34
       }
     }))?;
