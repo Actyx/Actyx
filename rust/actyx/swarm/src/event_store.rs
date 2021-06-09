@@ -19,7 +19,7 @@ pub enum Error {
     InvalidUpperBounds,
 }
 
-pub type PersistenceMeta = (LamportTimestamp, Offset, StreamNr, Timestamp, AppId);
+pub type PersistenceMeta = (LamportTimestamp, Offset, StreamNr, Timestamp);
 
 /// Wraps a [BanyanStore] and provides functionality for persisting events as well as receiving bounded and
 /// unbounded sets of events for queries across multiple streams with varying order guarantees.
@@ -128,13 +128,13 @@ impl EventStore {
             min_offset,
             timestamp,
             ..
-        } = self.banyan_store.append(stream_nr, app_id.clone(), events).await?;
+        } = self.banyan_store.append(stream_nr, app_id, events).await?;
         let keys = (0..n)
             .map(|i| {
                 let i = i as u64;
                 let lamport = min_lamport + i;
                 let offset = min_offset.increase(i).unwrap();
-                (lamport, offset, stream_nr, timestamp, app_id.clone())
+                (lamport, offset, stream_nr, timestamp)
             })
             .collect();
         Ok(keys)
@@ -636,7 +636,7 @@ mod tests {
 
         let mut handles = Vec::new();
         for i in 0..n {
-            let (_, offset, _, _, _) = store
+            let (_, offset, _, _) = store
                 .persist(app_id(), vec![(mk_tag(i), Payload::empty())])
                 .await
                 .unwrap()[0];

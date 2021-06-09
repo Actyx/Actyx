@@ -158,7 +158,6 @@ pub struct PublishResponseKey {
     pub stream: StreamId,
     pub offset: Offset,
     pub timestamp: Timestamp,
-    pub app_id: AppId,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]

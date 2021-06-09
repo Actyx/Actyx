@@ -1,5 +1,5 @@
 use crate::{AxTreeExt, BanyanStore, MAX_TREE_LEVEL};
-use actyx_sdk::{AppId, Offset, Payload, StreamNr, Tag, TagSet, app_id, tags};
+use actyx_sdk::{app_id, tags, AppId, Offset, Payload, StreamNr, Tag, TagSet};
 use ax_futures_util::{prelude::AxStreamExt, stream::interval};
 use banyan::query::AllQuery;
 use futures::{prelude::*, StreamExt};
@@ -139,7 +139,9 @@ async fn should_extend_packed_when_hitting_max_tree_depth() -> anyhow::Result<()
     );
 
     // packing will be triggered when the existing tree's level is MAX_TREE_LEVEL + 1
-    store.append(0.into(), app_id(), vec![(tags!("abc"), Payload::empty())]).await?;
+    store
+        .append(0.into(), app_id(), vec![(tags!("abc"), Payload::empty())])
+        .await?;
     let tree_after_pack = stream.published_tree().unwrap().tree();
     // the tree is not packed
     assert!(!store.data.forest.is_packed(&tree_after_pack)?);

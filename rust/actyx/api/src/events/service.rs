@@ -68,12 +68,11 @@ impl EventService {
         let response = PublishResponse {
             data: meta
                 .into_iter()
-                .map(|(lamport, offset, stream_nr, timestamp, app_id)| PublishResponseKey {
+                .map(|(lamport, offset, stream_nr, timestamp)| PublishResponseKey {
                     lamport,
                     offset,
                     stream: self.store.node_id().stream(stream_nr),
                     timestamp,
-                    app_id,
                 })
                 .collect(),
         };
