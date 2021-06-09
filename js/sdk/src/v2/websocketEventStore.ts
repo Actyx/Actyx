@@ -63,11 +63,8 @@ const ConnectivityRequest = t.readonly(
   }),
 )
 
-const EventKeyWithTimeAndAppId = t.intersection([
-  EventKeyIO,
-  t.type({ timestamp: t.number, appId: AppId.FromString }),
-])
-const PublishEventsResponse = t.type({ data: t.readonlyArray(EventKeyWithTimeAndAppId) })
+const EventKeyWithTime = t.intersection([EventKeyIO, t.type({ timestamp: t.number })])
+const PublishEventsResponse = t.type({ data: t.readonlyArray(EventKeyWithTime) })
 
 const toAql = (w: Where<unknown> | string): string =>
   w instanceof String ? (w as string) : 'FROM ' + w.toString()
@@ -149,6 +146,7 @@ export class WebsocketEventStore implements EventStore {
         }
         return publishEvents.map<Event>((ev, idx) => ({
           ...persistedEvents[idx],
+          appId: AppId.of('todo'),
           tags: ev.tags,
           payload: ev.payload,
         }))
