@@ -362,9 +362,10 @@ mod tests {
     async fn test_forward_stream() {
         let store = mk_store("swarm_test").await;
         let stream_id = store.node_id().stream(0.into());
+        let app_id = app_id!("test_forward_stream");
 
         store
-            .persist(app_id(), vec![(tags!(), Payload::empty())])
+            .persist(app_id.clone(), vec![(tags!(), Payload::empty())])
             .await
             .unwrap();
 
@@ -394,6 +395,7 @@ mod tests {
         }));
         let res = stream.next().unwrap();
         assert_eq!(res.len(), 1);
+        assert_eq!(res[0].meta.app_id, app_id);
         assert_eq!(stream.next(), None); // bounded -> complete
 
         let mut stream = Drainer::new(store.forward_stream(StreamEventSelection {
@@ -411,9 +413,10 @@ mod tests {
     async fn test_backward_stream() {
         let store = mk_store("swarm_test").await;
         let stream_id = store.node_id().stream(0.into());
+        let app_id = app_id!("test_backward_stream");
 
         store
-            .persist(app_id(), vec![(tags!(), Payload::empty())])
+            .persist(app_id.clone(), vec![(tags!(), Payload::empty())])
             .await
             .unwrap();
 
@@ -425,6 +428,7 @@ mod tests {
         }));
         let res = stream.next().unwrap();
         assert_eq!(res.len(), 1);
+        assert_eq!(res[0].0.meta.app_id, app_id);
         assert_eq!(stream.next(), None);
 
         let mut stream = Drainer::new(store.backward_stream(StreamEventSelection {
