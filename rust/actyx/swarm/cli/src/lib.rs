@@ -2,9 +2,10 @@ use actyx_sdk::{language::Query, Payload, StreamNr, TagSet, Timestamp};
 use anyhow::Result;
 use crypto::{KeyPair, PrivateKey};
 pub use libp2p::{multiaddr, Multiaddr, PeerId};
-use std::{borrow::Borrow, net::SocketAddr, path::PathBuf};
+use std::{borrow::Borrow, net::SocketAddr, path::PathBuf, str::FromStr};
 use structopt::StructOpt;
-use swarm::SwarmConfig;
+use swarm::{BanyanConfig, SwarmConfig};
+pub use swarm::{EphemeralEventsConfig, RetainConfig};
 use trees::axtrees::AxKey;
 
 #[derive(Clone, Debug, StructOpt)]
@@ -35,6 +36,18 @@ pub struct Config {
     pub external: Vec<Multiaddr>,
     #[structopt(long)]
     pub enable_api: Option<SocketAddr>,
+    #[structopt(long)]
+    pub ephemeral_events: Option<EphemeralEventsConfigWrapper>,
+    #[structopt(long)]
+    pub max_leaf_count: Option<usize>,
+}
+#[derive(Clone, Debug)]
+pub struct EphemeralEventsConfigWrapper(pub EphemeralEventsConfig);
+impl FromStr for EphemeralEventsConfigWrapper {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self(serde_json::from_str(&s)?))
+    }
 }
 
 impl From<Config> for async_process::Command {
@@ -83,12 +96,23 @@ impl From<Config> for async_process::Command {
         if let Some(api) = config.enable_api {
             cmd.arg("--enable-api").arg(api.to_string());
         }
+        if let Some(e) = config.ephemeral_events {
+            cmd.arg("--ephemeral-events").arg(serde_json::to_string(&e.0).unwrap());
+        }
+        if let Some(x) = config.max_leaf_count {
+            cmd.arg("--max-leaf-count").arg(x.to_string());
+        }
+
         cmd
     }
 }
 
 impl From<Config> for SwarmConfig {
     fn from(config: Config) -> Self {
+        let mut banyan_config = BanyanConfig::default();
+        if let Some(x) = config.max_leaf_count {
+            banyan_config.tree.max_leaf_count = x;
+        }
         Self {
             db_path: config.path,
             node_name: config.node_name,
@@ -103,6 +127,11 @@ impl From<Config> for SwarmConfig {
             enable_root_map: config.enable_root_map,
             enable_discovery: config.enable_discovery,
             enable_metrics: config.enable_metrics,
+            ephemeral_event_config: config
+                .ephemeral_events
+                .map(|e| e.0)
+                .unwrap_or_else(EphemeralEventsConfig::disable),
+            banyan_config,
             ..Default::default()
         }
     }

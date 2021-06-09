@@ -12,7 +12,9 @@ async-process = "1.0.2"
 async-std = "1.9.0"
 async-trait = "0.1.50"
 futures = { version = "0.3.14", package = "futures" }
+libipld = "0.12.0"
 libp2p = { version = "0.38.0", default-features = false }
+maplit = "1.0.2"
 quickcheck = "1.0.3"
 structopt = "0.3.21"
 swarm-cli = { path = "../cli" }

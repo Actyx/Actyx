@@ -150,8 +150,8 @@ pub struct SwarmConfig {
 }
 #[derive(Clone, Debug)]
 pub struct BanyanConfig {
-    tree: banyan::Config,
-    secret: banyan::Secrets,
+    pub tree: banyan::Config,
+    pub secret: banyan::Secrets,
 }
 impl Default for BanyanConfig {
     fn default() -> Self {
@@ -213,7 +213,10 @@ pub struct BanyanStore {
 
 #[derive(Clone, Debug, Default)]
 pub struct SwarmOffsets {
+    /// Currently validated OffsetMap
     present: OffsetMap,
+    /// OffsetMap describing the replication target. Currently this is driven via `highest_seen`,
+    /// but should eventually be fed by the partial replication mechanism.
     replication_target: OffsetMap,
 }
 

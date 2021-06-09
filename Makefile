@@ -264,6 +264,7 @@ validate-netsim: diagnostics
 	rust/actyx/target/release/quickcheck_subscribe
 	rust/actyx/target/release/quickcheck_interleaved
 	rust/actyx/target/release/quickcheck_stress_single_store
+	rust/actyx/target/release/quickcheck_ephemeral
 
 .PHONY: validate-os-android
 # execute linter for os-android
