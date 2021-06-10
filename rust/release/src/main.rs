@@ -36,7 +36,7 @@ enum Command {
         /// Product (actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
         product: Product,
     },
-    /// Computes past version
+    /// Computes past versions
     Versions {
         /// Product (actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
         product: Product,
@@ -44,6 +44,12 @@ enum Command {
         #[clap(long, short)]
         commits: bool,
     },
+    /// Computes the ACTYX_VERSION string according for the given product.  If
+    /// there's a pending change for a product, this command will calculate and
+    /// emit the NEW version. Otherwise it falls back to the last released one;
+    /// if the release hash is not equal to HEAD, this will append `_dev` to the
+    /// semver version.
+    GetActyxVersion { product: Product },
     /// Computes changelog
     Changes {
         /// Product (actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
@@ -114,6 +120,31 @@ fn main() -> Result<(), Error> {
                     println!("{} {}", v.release.version, v.commit)
                 } else {
                     println!("{}", v.release.version)
+                }
+            }
+        }
+
+        Command::GetActyxVersion { product } => {
+            let head_commit_id = repo.head()?.id();
+            let new_version = version_file.calculate_version(&product, &ignores_file)?.new_version;
+            if let Some(version) = new_version {
+                println!("{}-{}", version, head_commit_id);
+            } else {
+                let v = version_file
+                    .versions()
+                    .into_iter()
+                    .find(|VersionLine { release, .. }| release.product == product)
+                    .ok_or_else(|| anyhow::anyhow!("No release found for {}", product))?;
+
+                // FIXME: use long commit ids in versions file
+                let commit_id = repo
+                    .find_commit(&v.commit)
+                    .with_context(|| format!("Resolving commit {} for {}", v.commit, product))?
+                    .id();
+                if repo.head()?.id() == commit_id {
+                    println!("{}-{}", v.release.version, v.commit)
+                } else {
+                    println!("{}_dev-{}", v.release.version, v.commit)
                 }
             }
         }

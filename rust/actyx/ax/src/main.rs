@@ -51,7 +51,7 @@ async fn main() {
     // rigmarole
     match opt {
         Opt { version: true, .. } => {
-            println!("Actyx CLI {}", NodeVersion::get());
+            println!("Actyx CLI {}", NodeVersion::get_cli());
         }
         Opt {
             commands: Some(cmd),

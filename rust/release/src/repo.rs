@@ -36,8 +36,8 @@ impl RepoWrapper {
         Ok(wd.to_path_buf().canonicalize()?)
     }
     pub fn head_hash(&self) -> anyhow::Result<Hash> {
-        let oid = self.0.revparse_single("HEAD")?;
-        let hash = oid.short_id()?.as_str().unwrap().to_string();
+        let obj = self.head()?;
+        let hash = obj.short_id()?.as_str().unwrap().to_string();
         Ok(Hash(hash))
     }
     pub fn head(&self) -> anyhow::Result<git2::Object> {
@@ -76,6 +76,10 @@ impl RepoWrapper {
         opts.remote_callbacks(cb);
         remote.push(&[format!("{}:{}", branch_ref, branch_ref)], Some(&mut opts))?;
         Ok(())
+    }
+    pub fn find_commit(&self, hash: &str) -> anyhow::Result<Commit> {
+        let obj = self.0.revparse_single(hash)?;
+        Ok(obj.peel_to_commit()?)
     }
 }
 

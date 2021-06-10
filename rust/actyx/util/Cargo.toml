@@ -4,9 +4,6 @@ version = "2.0.0-dev"
 authors = ["Actyx AG"]
 edition = "2018"
 
-[build-dependencies]
-regex = "1.4.6"
-
 [dependencies]
 actyx_sdk = { path = "../../sdk" }
 anyhow = "1.0.40"

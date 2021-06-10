@@ -1,9 +1,12 @@
-use regex::Regex;
 use std::env;
 use std::process::Command;
 
-fn main() {
-    let (version, git_hash) = match env::var("ACTYX_VERSION") {
+struct Version {
+    version: String,
+    git_hash: String,
+}
+fn get_version(env_var: &str) -> Version {
+    match env::var(env_var) {
         Ok(v) => {
             let components: Vec<&str> = v.split('-').collect();
 
@@ -14,25 +17,14 @@ fn main() {
                 );
             }
 
-            (components[0].to_string(), components[1].to_string())
+            Version {
+                version: components[0].to_string(),
+                git_hash: components[1].to_string(),
+            }
         }
 
         Err(_) => {
-            // Fall back to using git if the environment variable is not provided.
-            // We shell out to the git command instead of using git2 because for these purposes the git2 API is too annoying
-            let tag_regex = Regex::new("^actyx-([0-9+]\\.[0-9+]\\.[0-9+](-.*)?)$").unwrap();
-
-            let out = Command::new("git").arg("tag").output().expect("Error running git tag");
-
-            let ver = String::from_utf8_lossy(&out.stdout)
-                .lines()
-                .filter(|l| tag_regex.is_match(l))
-                .last()
-                .and_then(|tag| tag_regex.captures(tag))
-                .and_then(|c: regex::Captures| c.get(1))
-                .map(|m| m.as_str())
-                .unwrap_or("unknown")
-                .to_string();
+            let version = "unknown".to_string();
 
             // https://stackoverflow.com/a/5737794/576180
             let out = Command::new("git")
@@ -43,20 +35,29 @@ fn main() {
 
             let dirty = if out.stdout.is_empty() { "" } else { "_dirty" };
 
-            let out = Command::new("git")
+            let git_head_out = Command::new("git")
                 .arg("rev-parse")
                 .arg("--short")
                 .arg("HEAD")
                 .output()
                 .expect("Error running git rev-parse --short HEAD");
 
-            let hash = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            let hash = String::from_utf8_lossy(&git_head_out.stdout).trim().to_string();
 
             let git_hash = format!("{}{}", hash, dirty);
 
-            (ver, git_hash)
+            Version { version, git_hash }
         }
-    };
+    }
+}
+fn main() {
+    let Version {
+        version: actyx_version, ..
+    } = get_version("ACTYX_VERSION");
+    let Version {
+        version: actyx_cli_version,
+        git_hash,
+    } = get_version("ACTYX_VERSION_CLI");
 
     let profile = env::var("PROFILE").expect("PROFILE not set");
     let arch = env::var("TARGET")
@@ -66,7 +67,8 @@ fn main() {
         .expect("TARGET has the wrong format")
         .to_string();
 
-    println!("cargo:rustc-env=AX_VERSION={}", version);
+    println!("cargo:rustc-env=AX_VERSION={}", actyx_version);
+    println!("cargo:rustc-env=AX_CLI_VERSION={}", actyx_cli_version);
     println!("cargo:rustc-env=AX_GIT_HASH={}", git_hash);
     println!("cargo:rustc-env=AX_PROFILE={}", profile);
     println!("cargo:rerun-if-env-changed=ACTYX_VERSION");

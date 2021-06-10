@@ -12,11 +12,22 @@ pub struct NodeVersion {
 }
 
 impl NodeVersion {
+    /// Returns the version associated with ACTYX_VERSION (compile time env var)
     pub fn get() -> NodeVersion {
         NodeVersion {
             profile: env!("AX_PROFILE").to_string(),
             target: OsArch::current().into(),
             version: env!("AX_VERSION").to_string(),
+            git_hash: env!("AX_GIT_HASH").to_string(),
+        }
+    }
+
+    /// Returns the version associated with ACTYX_VERSION_CLI (compile time env var)
+    pub fn get_cli() -> NodeVersion {
+        NodeVersion {
+            profile: env!("AX_PROFILE").to_string(),
+            target: OsArch::current().into(),
+            version: env!("AX_CLI_VERSION").to_string(),
             git_hash: env!("AX_GIT_HASH").to_string(),
         }
     }
