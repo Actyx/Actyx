@@ -31,9 +31,9 @@ pub struct ConsoleOpt {
     #[structopt(short, long)]
     /// Process over local network
     local: bool,
-    #[structopt(short, long, default_value)]
+    #[structopt(short, long)]
     /// File from which the identity (private key) for authentication is read.
-    identity: KeyPathWrapper,
+    identity: Option<KeyPathWrapper>,
 }
 
 #[derive(Debug)]
@@ -54,20 +54,28 @@ impl fmt::Display for KeyPathWrapper {
     }
 }
 
-impl Default for KeyPathWrapper {
-    fn default() -> Self {
-        let private_key_path = AxPrivateKey::default_user_identity_path().unwrap_or_else(|e| {
-            eprintln!("Error getting config dir: {}", e);
-            ".".into()
-        });
-        Self(private_key_path)
-    }
-}
-
-impl TryInto<AxPrivateKey> for KeyPathWrapper {
+impl TryInto<AxPrivateKey> for Option<KeyPathWrapper> {
     type Error = ActyxOSError;
     fn try_into(self) -> Result<AxPrivateKey> {
-        AxPrivateKey::from_file(self.0)
+        if let Some(path) = self {
+            AxPrivateKey::from_file(path.0)
+        } else {
+            let private_key_path = AxPrivateKey::default_user_identity_path()?;
+            AxPrivateKey::from_file(&private_key_path).map_err(move |e| {
+                if e.code() == ActyxOSCode::ERR_PATH_INVALID {
+                    ActyxOSError::new(
+                        ActyxOSCode::ERR_USER_UNAUTHENTICATED,
+                        format!(
+                            "Unable to authenticate with node since no user keys found in \"{}\". \
+                             To create user keys, run ax users keygen.",
+                            private_key_path.display()
+                        ),
+                    )
+                } else {
+                    e
+                }
+            })
+        }
     }
 }
 
