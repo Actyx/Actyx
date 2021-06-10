@@ -20,7 +20,7 @@ pub(crate) enum StoreRequest {
 
 pub(crate) struct InspectResponse {
     pub peer_id: String,
-    pub listen_addrs: Vec<String>,
+    pub swarm_addrs: Vec<String>,
     pub announce_addrs: Vec<String>,
     pub connections: Vec<Connection>,
     pub known_peers: Vec<Peer>,
@@ -40,7 +40,7 @@ impl Component<StoreRequest, SwarmConfig> for Store {
             StoreRequest::NodesInspect { tx } => {
                 if let Some(InternalStoreState { rt: _, store }) = self.state.as_ref() {
                     let peer_id = store.ipfs().local_peer_id().to_string();
-                    let listen_addrs: Vec<_> = store
+                    let swarm_addrs: Vec<_> = store
                         .ipfs()
                         .listeners()
                         .into_iter()
@@ -75,7 +75,7 @@ impl Component<StoreRequest, SwarmConfig> for Store {
                         .collect();
                     let _ = tx.send(Ok(InspectResponse {
                         peer_id,
-                        listen_addrs,
+                        swarm_addrs,
                         announce_addrs,
                         connections,
                         known_peers,

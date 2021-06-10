@@ -104,14 +104,17 @@ fn main() {
             Box::new(TestShrinker::new(self.clone()))
         }
     }
+    #[derive(Debug, PartialEq)]
     enum ShrinkState {
         ShrinkNodes,
         ShrinkCommands,
+        Exhausted,
     }
     struct TestShrinker {
         seed: TestInput,
         last: TestInput,
         state: ShrinkState,
+        pending: Box<dyn Iterator<Item = TestInput>>,
     }
     impl TestShrinker {
         fn new(seed: TestInput) -> Self {
@@ -119,14 +122,23 @@ fn main() {
                 last: seed.clone(),
                 seed,
                 state: ShrinkState::ShrinkNodes,
+                pending: Box::new(std::iter::empty()),
             }
         }
     }
     impl Iterator for TestShrinker {
         type Item = TestInput;
         fn next(&mut self) -> Option<Self::Item> {
-            tracing::info!("Shrinking from {}/{}", self.seed.n_nodes, self.seed.commands.len());
+            if self.state == ShrinkState::Exhausted {
+                return self.pending.next();
+            }
             loop {
+                tracing::info!(
+                    "Shrinking from {}/{}: {:?}",
+                    self.seed.n_nodes,
+                    self.seed.commands.len(),
+                    self.state
+                );
                 match &mut self.state {
                     ShrinkState::ShrinkNodes => {
                         if self.last.n_nodes > 1 {
@@ -139,6 +151,7 @@ fn main() {
                             self.state = ShrinkState::ShrinkCommands;
                         }
                     }
+
                     ShrinkState::ShrinkCommands => {
                         if self.last.commands.len() > 2 {
                             let len = self.last.commands.len();
@@ -147,10 +160,43 @@ fn main() {
                             break Some(self.last.clone());
                         } else {
                             // less commands didn't work :-(
-                            // give up
-                            break None;
+                            // try reducing tags and then give up
+                            self.state = ShrinkState::Exhausted;
+
+                            self.last = self.seed.clone();
+                            let cloned = self.last.clone();
+                            let x = Box::new(self.last.clone().commands.into_iter().enumerate().flat_map(
+                                move |(idx, x)| {
+                                    let cloned = cloned.clone();
+                                    let y: Box<dyn Iterator<Item = TestInput>> = match x {
+                                        TestCommand::Publish { node, tags } => {
+                                            Box::new(tags.shrink().map(move |tags| {
+                                                let cmd = TestCommand::Publish { node, tags };
+                                                let mut c = cloned.clone();
+                                                c.commands[idx] = cmd;
+                                                c.cnt_per_tagset = cnt_per_tag(&c.commands);
+                                                c
+                                            }))
+                                        }
+                                        TestCommand::Subscribe { node, tags } => {
+                                            Box::new(tags.shrink().map(move |tags| {
+                                                let cmd = TestCommand::Subscribe { node, tags };
+                                                let mut c = cloned.clone();
+                                                c.commands[idx] = cmd;
+                                                c.cnt_per_tagset = cnt_per_tag(&c.commands);
+                                                c
+                                            }))
+                                        }
+                                    };
+                                    y
+                                },
+                            ));
+                            tracing::debug!("Shrunk tags");
+                            self.pending = x;
+                            return self.pending.next();
                         }
                     }
+                    ShrinkState::Exhausted => unreachable!(),
                 }
             }
         }
@@ -174,6 +220,8 @@ fn main() {
             enable_discovery: true,
             enable_metrics: true,
             enable_api: Some("0.0.0.0:30001".parse().unwrap()),
+            ephemeral_events: None,
+            max_leaf_count: None,
         };
 
         let t = run_netsim::<_, _, Event>(opts, move |mut sim| async move {

@@ -28,6 +28,8 @@ fn main() -> anyhow::Result<()> {
             enable_discovery: true,
             enable_metrics: false,
             enable_api: None,
+            ephemeral_events: None,
+            max_leaf_count: None,
         };
         let bootstrap = sim.spawn_machine(cfg.clone().into(), None).await;
         sim.plug(bootstrap, net_a, None).await;

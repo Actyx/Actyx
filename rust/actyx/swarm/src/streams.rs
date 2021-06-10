@@ -168,11 +168,6 @@ impl PublishedTree {
     pub fn root(&self) -> Link {
         self.root
     }
-
-    #[cfg(test)]
-    pub fn tree(&self) -> AxTree {
-        self.tree.clone()
-    }
 }
 
 impl ReplicatedStream {

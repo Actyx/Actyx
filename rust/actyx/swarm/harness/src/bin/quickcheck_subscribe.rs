@@ -38,6 +38,8 @@ fn main() {
             enable_discovery: true,
             enable_metrics: true,
             enable_api: Some("0.0.0.0:30001".parse().unwrap()),
+            ephemeral_events: None,
+            max_leaf_count: None,
         };
 
         let t = run_netsim(opts, move |mut sim| async move {

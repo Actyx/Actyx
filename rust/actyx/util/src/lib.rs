@@ -20,7 +20,7 @@ pub use self::value_or_limit::*;
 pub use tracing_set_log_level::*;
 
 use anyhow::bail;
-use parity_multiaddr::{Multiaddr, Protocol};
+use multiaddr::{Multiaddr, Protocol};
 use serde::{Deserialize, Deserializer};
 use std::collections::HashSet;
 use std::net::{SocketAddr, ToSocketAddrs};

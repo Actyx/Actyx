@@ -89,7 +89,7 @@ pub struct SetSettingsRequest {
 #[serde(rename_all = "camelCase")]
 pub struct NodesInspectResponse {
     pub peer_id: String,
-    pub listen_addrs: Vec<String>,
+    pub swarm_addrs: Vec<String>,
     pub announce_addrs: Vec<String>,
     pub admin_addrs: Vec<String>,
     pub connections: Vec<Connection>,
