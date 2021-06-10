@@ -41,7 +41,7 @@ const msgGen: () => ((requestId: number) => ResponseMessage[])[] = () => {
       const a: ResponseMessage = {
         type: ResponseMessageType.Next,
         requestId,
-        payload: Math.floor(Math.random() * 100),
+        payload: [[Math.floor(Math.random() * 100)]],
       }
       return a
     } else if (rnd < 0.9) {
@@ -80,7 +80,7 @@ describe('multiplexedWebsocket', () => {
 
   it('should just work', async () => {
     const testArr = msgGen()
-    const store = new MultiplexedWebsocket({ url: 'ws://socket' })
+    const multiplexer = new MultiplexedWebsocket({ url: 'ws://socket' })
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const socket = MockWebSocket.lastSocket!
     socket.open()
@@ -90,7 +90,7 @@ describe('multiplexedWebsocket', () => {
     for (const msgFn of testArr) {
       const requestType = 'someRequest'
       const receivedVals: string[] = []
-      const res = store
+      const res = multiplexer
         .request(requestType, { from: 1, to: 4 })
         .do(x => receivedVals.push(x as string))
         .toArray()
@@ -113,7 +113,7 @@ describe('multiplexedWebsocket', () => {
       msgs.forEach(response => socket.triggerMessage(JSON.stringify(response)))
       // Trigger complete in any case
       socket.triggerMessage(JSON.stringify({ type: ResponseMessageType.Complete, requestId }))
-      const nextMsgs = takeWhile(x => x.type === ResponseMessageType.Next, msgs).map(
+      const nextMsgs = takeWhile(x => x.type === ResponseMessageType.Next, msgs).flatMap(
         x => x.type === ResponseMessageType.Next && x.payload,
       )
       const errorIdx = msgs.findIndex(x => x.type === ResponseMessageType.Error)
@@ -226,7 +226,7 @@ export class MockWebSocket {
               MockWebSocket.mkResponse({
                 type: ResponseMessageType.Next,
                 requestId: request.requestId,
-                payload: { offsets: {} },
+                payload: [{ offsets: {} }],
               }),
               MockWebSocket.mkResponse({
                 type: ResponseMessageType.Complete,

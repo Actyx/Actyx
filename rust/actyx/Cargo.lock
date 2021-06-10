@@ -7370,9 +7370,9 @@ dependencies = [
 
 [[package]]
 name = "wsrpc"
-version = "0.1.3"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a683530691686b067ed5a63fb8e3a0f1aae2cfb8a1cfdd206498823590faf78"
+checksum = "65471f411a39928f2a385de73416207e74fdf249740d1e25fb84e7f1151e4f8e"
 dependencies = [
  "bytes 1.0.1",
  "futures 0.3.15",

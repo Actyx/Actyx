@@ -53,7 +53,7 @@ const NextMessage = t.readonly(
   t.type({
     type: t.literal(ResponseMessageType.Next),
     requestId: RequestId,
-    payload: t.unknown,
+    payload: t.array(t.unknown),
   }),
 )
 
@@ -224,7 +224,7 @@ export class MultiplexedWebsocket {
         }
         return !isComplete
       })
-      .map(res => {
+      .flatMap(res => {
         switch (res.type) {
           case ResponseMessageType.Next:
             return res.payload
