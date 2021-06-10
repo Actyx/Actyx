@@ -1,8 +1,10 @@
 mod sign;
+
 use crate::cmd::AxCliCommand;
 use futures::Future;
-use sign::SignOpts;
 use structopt::StructOpt;
+
+pub use sign::{create_signed_app_manifest, SignOpts};
 
 #[derive(StructOpt, Debug)]
 /// Manage apps

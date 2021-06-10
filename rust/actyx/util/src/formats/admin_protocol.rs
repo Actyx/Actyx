@@ -85,7 +85,7 @@ pub struct SetSettingsRequest {
     pub settings: serde_json::Value,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct NodesInspectResponse {
     pub peer_id: String,
@@ -96,14 +96,14 @@ pub struct NodesInspectResponse {
     pub known_peers: Vec<Peer>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Connection {
     pub peer_id: String,
     pub addr: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Peer {
     pub peer_id: String,

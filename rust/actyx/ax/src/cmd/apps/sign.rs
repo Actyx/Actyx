@@ -9,12 +9,12 @@ use util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 #[derive(StructOpt, Debug)]
 pub struct SignOpts {
     /// Path to certificate that shall be used for signing
-    path_to_certificate: PathBuf,
+    pub path_to_certificate: PathBuf,
     /// Path to app manifest that shall be signed
-    path_to_manifest: PathBuf,
+    pub path_to_manifest: PathBuf,
 }
 
-async fn run(opts: SignOpts) -> ActyxOSResult<SignedAppManifest> {
+pub fn create_signed_app_manifest(opts: SignOpts) -> ActyxOSResult<SignedAppManifest> {
     let dev_cert = fs::read_to_string(&opts.path_to_certificate)
         .ax_err_ctx(ActyxOSCode::ERR_IO, "Failed to read developer certificate")?;
     let dev_cert: DeveloperCertificate = serde_json::from_str(&dev_cert).ax_err_ctx(
@@ -39,6 +39,10 @@ async fn run(opts: SignOpts) -> ActyxOSResult<SignedAppManifest> {
     fs::write(opts.path_to_manifest, serialized).ax_err_ctx(ActyxOSCode::ERR_IO, "Failed to overwrite app manifest")?;
 
     Ok(signed_manifest)
+}
+
+async fn run(opts: SignOpts) -> ActyxOSResult<SignedAppManifest> {
+    create_signed_app_manifest(opts)
 }
 
 pub struct AppsSign();
