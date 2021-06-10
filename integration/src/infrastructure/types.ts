@@ -69,6 +69,7 @@ export type ActyxNode = Readonly<{
   _private: Readonly<{
     shutdown: () => Promise<void>
     actyxBinaryPath: string
+    workingDir: string
     axBinaryPath: string
     axHost: string
     httpApiOrigin: string

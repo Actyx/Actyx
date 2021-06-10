@@ -47,16 +47,14 @@ export const waitForNodeToBeConfigured = async (node: ActyxNode): Promise<void> 
   })
 
 export const retryTimes = async <T>(op: () => T | Promise<T>, times: number): Promise<T> => {
-  let tries = 1
-  for (;;) {
+  for (let tries = 1; ; tries += 1) {
     try {
       return await op()
     } catch (error) {
       if (tries >= times) {
         throw error
-      } else {
-        tries += 1
       }
+      await new Promise((res) => setTimeout(res, 1_000))
     }
   }
 }

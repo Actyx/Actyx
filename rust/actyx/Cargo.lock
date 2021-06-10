@@ -1860,6 +1860,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2022715d62ab30faffd124d40b76f4134a550a87792276512b18d63272333394"
 
 [[package]]
+name = "fslock"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b14c83e47c73f7d62d907ae24a1a98e9132df3c33eb6c54fcf4bce0dbc41d5af"
+dependencies = [
+ "libc",
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "fuchsia-cprng"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4049,6 +4059,7 @@ dependencies = [
  "crypto",
  "derive_more",
  "ffi-support",
+ "fslock",
  "futures 0.3.15",
  "jemallocator",
  "libp2p",

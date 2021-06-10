@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{anyhow, Context, Result};
 #[cfg(not(windows))]
 use node::shutdown_ceremony;
 use node::{ApplicationState, BindTo, BindToOpts, Runtime};
@@ -22,9 +22,9 @@ struct Opts {
 }
 
 #[cfg(not(windows))]
-fn main() -> anyhow::Result<()> {
+fn main() -> Result<()> {
     let Opts {
-        working_dir: maybe_working_dir,
+        working_dir,
         bind_options,
         version,
     } = Opts::from_args();
@@ -33,7 +33,11 @@ fn main() -> anyhow::Result<()> {
         println!("actyx {}", NodeVersion::get());
     } else {
         let bind_to: BindTo = bind_options.try_into()?;
-        let working_dir = maybe_working_dir.unwrap_or_else(|| std::env::current_dir().unwrap().join("actyx-data"));
+        let working_dir = working_dir.ok_or_else(|| anyhow!("empty")).or_else(|_| -> Result<_> {
+            Ok(std::env::current_dir()
+                .context("getting current working directory")?
+                .join("actyx-data"))
+        })?;
         std::fs::create_dir_all(working_dir.clone())
             .with_context(|| format!("creating working directory `{}`", working_dir.display()))?;
         // printed by hand since things can fail before logging is set up and we want the user to know this

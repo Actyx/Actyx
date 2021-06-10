@@ -53,6 +53,7 @@ tracing = { version = "0.1.25", features = ["release_max_level_trace"] }
 uuid = "0.8.2"
 void = "1.0.2"
 warp = "0.3.1"
+fslock = "0.1.6"
 
 [target.'cfg(all(target_env = "musl", target_pointer_width = "64"))'.dependencies]
 jemallocator = "0.3.2"

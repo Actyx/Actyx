@@ -140,6 +140,7 @@ export const mkNodeSshAndroid = async (
     _private: {
       shutdown,
       actyxBinaryPath: '',
+      workingDir: '',
       axBinaryPath,
       axHost,
       httpApiOrigin,

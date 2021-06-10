@@ -1,8 +1,9 @@
 use crate::{node_storage::NodeStorage, util::make_keystore};
 use actyx_sdk::NodeId;
-#[allow(unused_imports)]
 use anyhow::{Context, Result};
 use crypto::KeyStoreRef;
+use derive_more::Display;
+use fslock::LockFile;
 use parking_lot::Mutex;
 use std::{
     path::{Path, PathBuf},
@@ -10,22 +11,37 @@ use std::{
 };
 use util::formats::NodeCycleCount;
 
+#[derive(Debug, Clone, Display)]
+#[display(fmt = "data directory `{}` is locked by another Actyx process", _0)]
+pub struct WorkdirLocked(String);
+impl std::error::Error for WorkdirLocked {}
+
 pub(crate) struct Host {
     base_path: PathBuf,
     keystore: KeyStoreRef,
     storage: NodeStorage,
+    #[allow(dead_code)] // this needs to be kept around to hold the lock
+    lockfile: LockFile,
 }
 impl Host {
     pub fn new(base_path: PathBuf) -> Result<Self> {
+        let mut lockfile = LockFile::open(&base_path.join("lockfile")).context("Error opening file `lockfile`")?;
+        if !lockfile.try_lock().context("Error locking file `lockfile`")? {
+            return Err(WorkdirLocked(base_path.display().to_string()).into());
+        }
+
         #[cfg(test)]
         let storage = NodeStorage::in_memory();
         #[cfg(not(test))]
         let storage = NodeStorage::new(base_path.join("node.sqlite")).context("Error opening node.sqlite")?;
+
         let keystore = make_keystore(storage.clone())?;
+
         Ok(Self {
             base_path,
             keystore,
             storage,
+            lockfile,
         })
     }
 
