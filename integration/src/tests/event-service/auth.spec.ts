@@ -245,7 +245,7 @@ describe('auth ws', () => {
                   {
                     type: 'next',
                     requestId: 1,
-                    payload: { present: expect.any(Object), toReplicate: expect.any(Object) },
+                    payload: [{ present: expect.any(Object), toReplicate: expect.any(Object) }],
                   },
                   { type: 'complete', requestId: 1 },
                 ])
