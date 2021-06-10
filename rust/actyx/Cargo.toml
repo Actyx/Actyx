@@ -32,8 +32,6 @@ panic = "unwind"
 panic = "abort"
 
 [patch.crates-io]
-# wait for https://github.com/qdot/systray-rs/pull/51
-systray = { git = "https://github.com/wngr/systray-rs" }
 # wait for ipfs-embed 0.22
 ipfs-embed = { git = "https://github.com/dvc94ch/ipfs-embed", branch = "sim-open" }
 libp2p = { git = "https://github.com/dvc94ch/rust-libp2p", branch = "sim-open" }

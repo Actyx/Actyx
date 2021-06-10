@@ -69,11 +69,6 @@ maplit = "1.0.2"
 tracing-subscriber = "0.2.17"
 url = "2.2.1"
 
-[target."cfg(target_os = \"windows\")".dependencies]
-systray = "0.4.0"
-wintrap = "0.3.0"
-named-lock = "0.1.1"
-
 [[bench]]
 name = "local_event_roundtrip"
 harness = false

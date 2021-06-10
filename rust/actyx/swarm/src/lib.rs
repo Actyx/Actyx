@@ -935,7 +935,13 @@ impl BanyanStore {
             .switch_map(move |root| self.clone().sync_one(stream_id, root).into_stream())
             .for_each(|res| {
                 match res {
-                    Err(err) => tracing::error!("careful_ingestion: {}", err),
+                    Err(err) => {
+                        if let Some(err) = err.downcast_ref::<BlockNotFound>() {
+                            tracing::debug!("careful_ingestion: {}", err)
+                        } else {
+                            tracing::warn!("careful_ingestion: {}", err)
+                        }
+                    }
                     Ok(outcome) => tracing::trace!("sync completed {:?}", outcome),
                 }
                 future::ready(())

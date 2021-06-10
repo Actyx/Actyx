@@ -35,13 +35,13 @@ pub struct Opts {
 }
 
 struct TrayApp {
-    tray: systray::Application,
+    tray: systray2::Application,
     nodemanager_handle: Arc<Mutex<Option<Child>>>,
 }
 
 impl TrayApp {
     fn try_new() -> anyhow::Result<Self> {
-        let mut trayicon_app = systray::Application::new()?;
+        let mut trayicon_app = systray2::Application::new()?;
         // This assumes, that Actyx on Windows has been installed properly with
         // our provided installer.
         let executable_dir = std::env::current_exe()?;
@@ -75,13 +75,13 @@ impl TrayApp {
                         }
                     }
                 }
-                Ok::<_, systray::Error>(())
+                Ok::<_, systray2::Error>(())
             })?;
             trayicon_app.add_menu_separator()?;
         }
 
         trayicon_app.add_menu_item(format!("actyx {}", NodeVersion::get()).as_str(), |_| {
-            Ok::<_, systray::Error>(())
+            Ok::<_, systray2::Error>(())
         })?;
 
         trayicon_app.add_menu_item("Exit", |window| {
@@ -89,7 +89,7 @@ impl TrayApp {
             // end of this function, which may end the `tray.try_wait` in
             // `Self::drive` below
             window.quit();
-            Ok::<_, systray::Error>(())
+            Ok::<_, systray2::Error>(())
         })?;
 
         Ok(TrayApp {
@@ -97,7 +97,7 @@ impl TrayApp {
             nodemanager_handle,
         })
     }
-    fn drive(&mut self, timeout: Duration) -> Result<(), systray::Error> {
+    fn drive(&mut self, timeout: Duration) -> Result<(), systray2::Error> {
         // Blocks until timeout passed, or an error occured, or
         // `app.quit`/`window.quit` is called
         self.tray.try_wait(timeout)?;
@@ -179,7 +179,7 @@ pub(crate) fn run(opts: Opts) -> Result<(), anyhow::Error> {
                 let mut tray = TrayApp::try_new()?;
                 while running2.load(Ordering::SeqCst) {
                     match tray.drive(Duration::from_millis(500)) {
-                        Err(systray::Error::TimeoutError) => {}
+                        Err(systray2::Error::TimeoutError) => {}
                         Err(e) => {
                             error!("Error setting up Windows GUI: {}", e);
                             return Err(e.into());
