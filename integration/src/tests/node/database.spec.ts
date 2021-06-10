@@ -14,14 +14,18 @@ describe('node.sqlite', () => {
       const workdir = prefix + main
 
       // run v1.1.5 to create an old workdir
-      const [v1] = await runActyxVersion(node, '1.1.5', workdir)
-      const outV1 = await runUntil(v1, 'db-1.1.5', ['ActyxOS started.'], 10_000)
-      expect(outV1).toContainEqual(expect.stringContaining('ActyxOS started.'))
+      const v1Out = await runUntil(
+        runActyxVersion(node, '1.1.5', workdir),
+        'db-1.1.5',
+        ['ActyxOS started.'],
+        10_000,
+      )
+      expect(v1Out).toContainEqual(expect.stringContaining('ActyxOS started.'))
 
       // now run current version to check error message
-      const current = await runUntil(runActyx(node, workdir), 'db-current', [], 5_000)
-      if (Array.isArray(current)) {
-        throw new Error(`timed out:\n${current.join('\n')}`)
+      const currOut = await runUntil(runActyx(node, workdir, []), 'db-current', [], 5_000)
+      if (Array.isArray(currOut)) {
+        throw new Error(`timed out:\n${currOut.join('\n')}`)
       }
 
       const template = String.raw`using data directory ${'`.*' + main + '`'}
@@ -30,6 +34,6 @@ describe('node.sqlite', () => {
         See the documentation for when and how migration is supported\.
         Meanwhile, you can start from a fresh data directory \(see also the --working-dir command line option\)\.`
       const regex = new RegExp(template.replace(/\s+/g, ' '))
-      expect(current.stderr.replace(/\s+/g, ' ')).toMatch(regex)
+      expect(currOut.stderr.replace(/\s+/g, ' ')).toMatch(regex)
     }))
 })

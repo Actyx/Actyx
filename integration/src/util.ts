@@ -83,44 +83,66 @@ export const runActyxVersion = async (
   }
 }
 
-export const runActyx = (node: ActyxNode, workdir: string): ExecaChildProcess => {
+export const runActyx = async (
+  node: ActyxNode,
+  workdir: string | undefined,
+  params: string[],
+): Promise<[ExecaChildProcess]> => {
   const ts = new Date().toISOString()
   process.stdout.write(`${ts} node ${node.name} starting current Actyx in workdir ${workdir}\n`)
   switch (node.target.os) {
     case 'linux': {
-      return node.target.execute(
-        `./${node._private.actyxBinaryPath}`,
-        ['--working-dir', workdir].concat(randomBinds),
-      )
+      const exec = node.target.executeInContainer || node.target.execute
+      workdir = workdir === undefined ? (await exec('mktemp -d', [])).stdout.trim() : workdir
+      const args = ['--working-dir', workdir].concat(params)
+      return [exec(`./${node._private.actyxBinaryPath}`, args)]
     }
     case 'windows': {
-      const cmd = String.raw`Start-Process -Wait -NoNewWindow -FilePath "${node._private.actyxBinaryPath}" -ArgumentList "--working-dir","${workdir}",${randomBindsWin}`
-      return node.target.execute(cmd, [])
+      workdir =
+        workdir === undefined
+          ? (
+              await node.target.execute(
+                String.raw`$tempFolderPath = Join-Path $Env:Temp $(New-Guid)
+                  New-Item -Type Directory -Path $tempFolderPath | Out-Null
+                  $out = Join-Path $tempFolderPath id
+                  $out`,
+                [],
+              )
+            ).stdout
+          : workdir
+      const argList = ['--working-dir', workdir, '--background']
+        .concat(params)
+        .map((x) => `'${x}'`)
+        .join(',')
+      const cmd = String.raw`Start-Process -Wait -NoNewWindow -FilePath "${node._private.actyxBinaryPath}" -ArgumentList ${argList}`
+      return [node.target.execute(cmd, [])]
     }
     default:
       throw new Error(`cannot start Actyx on os=${node.target.os}`)
   }
 }
 
-export const runUntil = (
-  proc: ExecaChildProcess,
+export const runUntil = async (
+  proc: Promise<[ExecaChildProcess]>,
   nodeName: string,
   triggers: string[],
   timeout: number,
-): Promise<ExecaReturnValue | ExecaError | string[]> =>
-  new Promise<ExecaReturnValue | ExecaError | string[]>((res) => {
+): Promise<ExecaReturnValue | ExecaError | string[]> => {
+  const [p] = await proc
+  return new Promise<ExecaReturnValue | ExecaError | string[]>((res) => {
     const logs: string[] = []
     setTimeout(() => res(logs), timeout)
     const { log } = mkProcessLogger((s) => logs.push(s), nodeName, triggers)
-    proc.stdout?.on('data', (buf) => {
+    p.stdout?.on('data', (buf) => {
       if (log('stdout', buf)) {
         res(logs)
       }
     })
-    proc.stderr?.on('data', (buf) => {
+    p.stderr?.on('data', (buf) => {
       if (log('stderr', buf)) {
         res(logs)
       }
     })
-    proc.then(res, res)
-  }).finally(() => proc.kill())
+    p.then(res, res)
+  }).finally(() => p.kill())
+}

@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs'
-import { startEphemeralNode, startEphemeralProcess } from '../../infrastructure'
+import { toObservable } from '../../infrastructure'
 import { getFreeRemotePort, occupyRemotePort } from '../../infrastructure/checkPort'
 import { runOnEach, runOnEvery } from '../../infrastructure/hosts'
 import { ActyxNode } from '../../infrastructure/types'
@@ -38,11 +38,8 @@ type BoundTo = {
 
 const randomBinds = ['--bind-admin', '0', '--bind-api', '0', '--bind-swarm', '0']
 
-const startNode = (node: ActyxNode, params: string[] = randomBinds) =>
-  startEphemeralNode(node.target, node._private.actyxBinaryPath, params)
-
 const startNodeAndCheckBinds = async (node: ActyxNode, params: string[]): Promise<BoundTo> => {
-  const testNode = await startEphemeralNode(node.target, node._private.actyxBinaryPath, params)
+  const testNode = toObservable(runActyx(node, undefined, params))
   const result: BoundTo = { admin: [], api: [], swarm: [] }
   await testNode
     // .do(console.log)
@@ -121,7 +118,7 @@ describe('node lifecycle', () => {
       if (skipTarget(n)) {
         return
       }
-      const node = await startNode(n)
+      const node = toObservable(runActyx(n, undefined, randomBinds))
       await node
         .filter((x) => x.includes('NODE_STARTED_BY_HOST'))
         .first()
@@ -134,7 +131,7 @@ describe('node lifecycle', () => {
         // It's not straight-forward to forward the signal via SSH
         return
       }
-      const node = (await startEphemeralProcess(n.target, n._private.actyxBinaryPath, []))[0]
+      const [node] = await runActyx(n, undefined, [])
       const logs: string[] = await new Promise((res, rej) => {
         const buffer: string[] = []
         node.stdout?.on('data', (buf) => buffer.push(buf.toString('utf8')))
@@ -164,9 +161,8 @@ describe('node lifecycle', () => {
           const notX = services
             .filter((y) => y !== x)
             .flatMap((y) => [`--bind-${y.toLowerCase()}`, '0'])
-          const node = await startNode(
-            n,
-            [`--bind-${x.toLowerCase()}`, port.toString()].concat(notX),
+          const node = toObservable(
+            runActyx(n, undefined, [`--bind-${x.toLowerCase()}`, port.toString()].concat(notX)),
           )
           const logs = await node.toArray().toPromise()
           server.kill('SIGTERM')
@@ -236,7 +232,12 @@ describe('node lifecycle', () => {
         return
       }
 
-      const out = await runUntil(runActyx(node, node._private.workingDir), 'secondary', [], 10_000)
+      const out = await runUntil(
+        runActyx(node, node._private.workingDir, []),
+        'secondary',
+        [],
+        10_000,
+      )
       if (Array.isArray(out)) {
         throw new Error(`timed out:\n${out.join('\n')}`)
       }

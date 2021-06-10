@@ -1,10 +1,9 @@
-import execa from 'execa'
+import execa, { ExecaChildProcess } from 'execa'
 import { Observable } from 'rxjs'
 import { OS } from '../../jest/types'
 import { netString } from './mkProcessLogger'
 import { Ssh } from './ssh'
-import { Target, TargetKind } from './types'
-import { mkCmd } from './windows'
+import { TargetKind } from './types'
 
 export type ExecuteFn = (
   file: string,
@@ -28,7 +27,8 @@ export function mkExecute(os: OS, kind: TargetKind): ExecuteFn {
     }
   }
 }
-function toObservable(proc: execa.ExecaChildProcess<string>): Observable<string> {
+
+export function toObservable(proc: Promise<[ExecaChildProcess]>): Observable<string> {
   return new Observable((observer) => {
     const lines = { stdout: '', stderr: '' }
     const emitLog = (where: keyof typeof lines, s: Buffer | string) => {
@@ -46,60 +46,19 @@ function toObservable(proc: execa.ExecaChildProcess<string>): Observable<string>
         emitLog('stderr', '\n')
       }
     }
-    proc.stdout?.on('data', (l) => emitLog('stdout', l))
-    proc.stderr?.on('data', (l) => emitLog('stderr', l))
+    proc.then(([p]) => {
+      p.stdout?.on('data', (l) => emitLog('stdout', l))
+      p.stderr?.on('data', (l) => emitLog('stderr', l))
 
-    proc.on('error', (err) => {
-      flush()
-      observer.error(err)
-    })
-    proc.on('exit', () => {
-      flush()
-      observer.complete()
-    })
-    return () => proc.kill('SIGKILL')
-  })
-}
-
-export async function startEphemeralProcess(
-  target: Target,
-  defaultBinaryLocation: string,
-  params: string[],
-): Promise<[execa.ExecaChildProcess<string>]> {
-  switch (target.os) {
-    case 'android':
-    case 'macos': {
-      return Promise.reject(`Starting ephemeral nodes not supported on ${target.os}`)
-    }
-    case 'linux': {
-      const ACTYX_PATH = (await target.execute('mktemp -d', [])).stdout.trim()
-      const proc = (target.executeInContainer || target.execute)(defaultBinaryLocation, params, {
-        ACTYX_PATH,
+      p.on('error', (err) => {
+        flush()
+        observer.error(err)
       })
-      return [proc]
-    }
-    case 'windows': {
-      const workingDir = (
-        await target.execute(
-          String.raw`$tempFolderPath = Join-Path $Env:Temp $(New-Guid)
-        New-Item -Type Directory -Path $tempFolderPath | Out-Null
-        $out = Join-Path $tempFolderPath id
-        $out`,
-          [],
-        )
-      ).stdout
-      const cmd = mkCmd(defaultBinaryLocation, ['--working-dir', workingDir].concat(params))
-      const proc = target.execute(cmd, [])
-      return [proc]
-    }
-  }
-}
-
-export async function startEphemeralNode(
-  target: Target,
-  defaultBinaryLocation: string,
-  params: string[],
-): Promise<Observable<string>> {
-  const proc = await startEphemeralProcess(target, defaultBinaryLocation, params)
-  return toObservable(proc[0])
+      p.on('exit', () => {
+        flush()
+        observer.complete()
+      })
+    })
+    return () => proc.then(([p]) => p.kill('SIGKILL'))
+  })
 }
