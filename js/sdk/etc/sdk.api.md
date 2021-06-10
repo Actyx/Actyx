@@ -216,6 +216,7 @@ export type Metadata = Readonly<{
     timestampAsDate: () => Date;
     lamport: Lamport;
     eventId: string;
+    appId: AppId;
     stream: StreamId;
     offset: Offset;
 }>;
