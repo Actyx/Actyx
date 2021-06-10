@@ -4,7 +4,7 @@
  * 
  * Copyright (C) 2021 Actyx AG
  */
-import { Lamport, NodeId, Offset, Timestamp } from '..'
+import { AppId, Lamport, NodeId, Offset, Timestamp } from '..'
 import { Event, Events } from './types'
 
 export type RawEvent = Readonly<{
@@ -37,6 +37,7 @@ export const eventFactory = () => {
       stream: NodeId.of(raw.source),
       lamport: Lamport.of(raw.timestamp),
       offset: Offset.of(offset),
+      appId: AppId.of('test'),
       payload: raw.payload,
       tags: (raw.tags || []).concat(['default']),
     }

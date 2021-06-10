@@ -81,6 +81,30 @@ export const StreamId = {
 }
 
 /**
+ * An Actyx app id.
+ * @public
+ */
+export type AppId = string
+const mkAppId = (text: string): AppId => text as AppId
+
+/**
+ * `AppId` associated functions.
+ * @public
+ */
+export const AppId = {
+  /**
+   * Creates a AppId from a string
+   */
+  of: mkAppId,
+  FromString: new t.Type<AppId, string>(
+    'AppIdFromString',
+    (x): x is AppId => isString(x),
+    (x, c) => t.string.validate(x, c).map(s => s as AppId),
+    x => x,
+  ),
+}
+
+/**
  * Lamport timestamp, cf. https://en.wikipedia.org/wiki/Lamport_timestamp
  * @public
  */
@@ -259,6 +283,9 @@ export type Metadata = Readonly<{
   // Events are *sorted* based on the eventId by Actyx: For a given event, all later events also have a higher eventId according to simple string-comparison.
   eventId: string
 
+  // App id of the event
+  appId: AppId
+
   // Stream this event belongs to
   stream: StreamId
 
@@ -276,6 +303,7 @@ export type HasMetadata = Readonly<{
   stream: StreamId
   tags: ReadonlyArray<string>
   offset: Offset
+  appId: AppId
 }>
 
 /** Make a function that makes metadata from an Event as received over the wire. @internal */
@@ -285,6 +313,7 @@ export const toMetadata = (sourceId: string) => (ev: HasMetadata): Metadata => (
   timestampMicros: ev.timestamp,
   timestampAsDate: Timestamp.toDate.bind(null, ev.timestamp),
   lamport: ev.lamport,
+  appId: ev.appId,
   eventId: String(ev.lamport).padStart(maxLamportLength, '0') + '/' + ev.stream,
   stream: ev.stream,
   offset: ev.offset,

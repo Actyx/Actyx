@@ -5,7 +5,7 @@
  * Copyright (C) 2021 Actyx AG
  */
 import * as t from 'io-ts'
-import { EventKeyIO, NodeId, OffsetMapIO, Where } from '../types'
+import { AppId, EventKeyIO, NodeId, OffsetMapIO, Where } from '../types'
 import { validateOrThrow } from '../util'
 import {
   DoPersistEvents,
@@ -75,7 +75,7 @@ const compat = (x: unknown) => {
 }
 
 export class WebsocketEventStore implements EventStore {
-  constructor(private readonly multiplexer: MultiplexedWebsocket) {}
+  constructor(private readonly multiplexer: MultiplexedWebsocket, private readonly appId: AppId) {}
 
   offsets: RequestOffsets = () =>
     this.multiplexer
@@ -146,6 +146,7 @@ export class WebsocketEventStore implements EventStore {
         }
         return publishEvents.map<Event>((ev, idx) => ({
           ...persistedEvents[idx],
+          appId: this.appId,
           tags: ev.tags,
           payload: ev.payload,
         }))

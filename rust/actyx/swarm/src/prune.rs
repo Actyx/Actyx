@@ -157,13 +157,17 @@ pub(crate) async fn prune(store: BanyanStore, config: EphemeralEventsConfig) {
 mod test {
     use std::collections::BTreeMap;
 
-    use actyx_sdk::{tags, Payload, StreamNr};
+    use actyx_sdk::{app_id, tags, AppId, Payload, StreamNr};
     use ax_futures_util::prelude::AxStreamExt;
     use futures::{future, StreamExt};
     use maplit::btreemap;
 
     use super::*;
     use crate::{BanyanConfig, SwarmConfig};
+
+    fn app_id() -> AppId {
+        app_id!("test")
+    }
 
     async fn create_store() -> anyhow::Result<BanyanStore> {
         util::setup_logger();
@@ -195,7 +199,7 @@ mod test {
             .into_iter()
             .map(|i| (tags!("test"), Payload::from_json_str(&*i.to_string()).unwrap()))
             .collect::<Vec<_>>();
-        store.append(stream_nr, events).await?;
+        store.append(stream_nr, app_id(), events).await?;
 
         Ok(store)
     }
@@ -292,7 +296,7 @@ mod test {
             .map(|i| (tags!("test"), Payload::from_json_str(&*i.to_string()).unwrap()))
             .collect::<Vec<_>>();
         for chunk in events.chunks((event_count / 100) as usize) {
-            store.append(stream_nr, chunk.to_vec()).await?;
+            store.append(stream_nr, app_id(), chunk.to_vec()).await?;
             tokio::time::sleep(Duration::from_millis(1)).await;
         }
 

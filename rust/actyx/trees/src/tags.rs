@@ -28,9 +28,20 @@ pub enum TagScope {
 pub struct ScopedTag(TagScope, Tag);
 
 impl ScopedTag {
+    pub fn new(scope: TagScope, tag: Tag) -> Self {
+        Self(scope, tag)
+    }
+
     pub fn app(&self) -> Option<&Tag> {
         match self.0 {
             TagScope::App => Some(&self.1),
+            _ => None,
+        }
+    }
+
+    pub fn internal(&self) -> Option<&Tag> {
+        match self.0 {
+            TagScope::Internal => Some(&self.1),
             _ => None,
         }
     }
@@ -104,6 +115,14 @@ impl ScopedTagSet {
 
     pub fn public_tags(&self) -> impl Iterator<Item = &Tag> {
         self.0.iter().filter_map(|t| t.app())
+    }
+
+    pub fn internal_tags(&self) -> impl Iterator<Item = &Tag> {
+        self.0.iter().filter_map(|t| t.internal())
+    }
+
+    pub fn insert(&mut self, tag: ScopedTag) -> bool {
+        self.0.insert(tag)
     }
 }
 

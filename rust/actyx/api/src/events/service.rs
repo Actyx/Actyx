@@ -54,13 +54,17 @@ impl EventService {
         Ok(OffsetsResponse { present, to_replicate })
     }
 
-    pub async fn publish(&self, _app_id: AppId, request: PublishRequest) -> anyhow::Result<PublishResponse> {
+    pub async fn publish(&self, app_id: AppId, request: PublishRequest) -> anyhow::Result<PublishResponse> {
         let events = request
             .data
             .into_iter()
             .map(|PublishEvent { tags, payload }| (tags, payload))
             .collect();
-        let meta = self.store.persist(events).await.map_err(Error::StoreWriteError)?;
+        let meta = self
+            .store
+            .persist(app_id, events)
+            .await
+            .map_err(Error::StoreWriteError)?;
         let response = PublishResponse {
             data: meta
                 .into_iter()
@@ -178,7 +182,11 @@ fn mk_feed(query: language::Query) -> impl Fn(Event<Payload>) -> BoxStream<'stat
     move |event| {
         let Event {
             key,
-            meta: Metadata { timestamp, tags },
+            meta: Metadata {
+                timestamp,
+                tags,
+                app_id,
+            },
             payload,
         } = event;
         stream::iter(
@@ -189,6 +197,7 @@ fn mk_feed(query: language::Query) -> impl Fn(Event<Payload>) -> BoxStream<'stat
                     lamport: v.sort_key.lamport,
                     stream: v.sort_key.stream,
                     offset: v.sort_key.offset,
+                    app_id: app_id.clone(),
                     timestamp,
                     tags: tags.clone(),
                     payload: v.payload(),

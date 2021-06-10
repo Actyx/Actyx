@@ -6,7 +6,7 @@
  */
 import { EventFns, TestEventFns } from './event-fns'
 import { SnapshotStore } from './snapshotStore'
-import { ActyxOpts, ActyxTestOpts, AppManifest, NodeId } from './types'
+import { ActyxOpts, ActyxTestOpts, AppId, AppManifest, NodeId } from './types'
 import { EventFnsFromEventStoreV2, EventStoreV2, makeWsMultiplexerV2 } from './v2'
 
 /** Access all sorts of functionality related to the Actyx system! @public */
@@ -34,7 +34,7 @@ export const Actyx = {
   /** Create an `Actyx` instance that talks to a running `Actyx` system. @public */
   of: async (manifest: AppManifest, opts: ActyxOpts = {}): Promise<Actyx> => {
     const [ws, nodeId] = await makeWsMultiplexerV2(manifest, opts)
-    const eventStore = EventStoreV2.ws(ws)
+    const eventStore = EventStoreV2.ws(ws, AppId.of(manifest.appId))
     // No snapshotstore impl available for V2 prod
     const fns = EventFnsFromEventStoreV2(nodeId, eventStore, SnapshotStore.noop)
 

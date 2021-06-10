@@ -1,4 +1,4 @@
-use actyx_sdk::{tags, Payload, StreamNr};
+use actyx_sdk::{app_id, tags, AppId, Payload, StreamNr};
 use anyhow::Result;
 use futures::stream::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -17,6 +17,10 @@ async fn banyan_multi_node() -> Result<()> {
     let s2 = BanyanStore::test("b").await?;
     s1.ipfs()
         .add_address(&s2.ipfs().local_peer_id(), s2.ipfs().listeners()[0].clone());
+
+    fn app_id() -> AppId {
+        app_id!("test")
+    }
 
     let tags = tags!("event");
     let query = TagsQuery::new(vec![tags.clone().into()]);
@@ -41,9 +45,13 @@ async fn banyan_multi_node() -> Result<()> {
         assert_eq!(e2, payload);
     });
 
-    s1.append(StreamNr::from(11), vec![(tags.clone(), Payload::compact(&event)?)])
-        .await?;
-    s1.append(StreamNr::from(11), vec![(tags, Payload::compact(&event)?)])
+    s1.append(
+        StreamNr::from(11),
+        app_id(),
+        vec![(tags.clone(), Payload::compact(&event)?)],
+    )
+    .await?;
+    s1.append(StreamNr::from(11), app_id(), vec![(tags, Payload::compact(&event)?)])
         .await?;
 
     handle.await?;

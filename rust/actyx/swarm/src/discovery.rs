@@ -37,7 +37,7 @@
 //! NATs. When configuring a bootstrap node you are telling the node how to reach another peer,
 //! while when configuring an external address you are telling other peers how to reach you, given
 //! you have a bootstrap node in common.
-use crate::BanyanStore;
+use crate::{internal_app_id, BanyanStore};
 use actyx_sdk::{tags, Payload, StreamNr};
 use anyhow::Result;
 use fnv::{FnvHashMap, FnvHashSet};
@@ -248,7 +248,11 @@ pub fn discovery_publish(
                     continue;
                 }
                 if let Err(err) = store
-                    .append(nr, vec![(tags.clone(), Payload::from_slice(&buffer))])
+                    .append(
+                        nr,
+                        internal_app_id(),
+                        vec![(tags.clone(), Payload::from_slice(&buffer))],
+                    )
                     .await
                 {
                     tracing::warn!("error appending discovery: {}", err);

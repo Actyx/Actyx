@@ -29,6 +29,7 @@ export const EventResponse = t.type({
   offset: t.number,
   timestamp: t.number,
   tags: t.readonlyArray(t.string),
+  appId: t.string,
   payload: t.unknown,
 })
 export type EventResponse = t.TypeOf<typeof EventResponse>

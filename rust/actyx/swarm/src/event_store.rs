@@ -1,8 +1,8 @@
 use std::{cmp::Reverse, convert::TryInto, ops::RangeInclusive};
 
 use actyx_sdk::{
-    language::TagExpr, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin, Payload,
-    StreamId, StreamNr, TagSet, Timestamp,
+    language::TagExpr, AppId, Event, EventKey, LamportTimestamp, Metadata, NodeId, Offset, OffsetMap, OffsetOrMin,
+    Payload, StreamId, StreamNr, TagSet, Timestamp,
 };
 use ax_futures_util::{prelude::AxStreamExt, stream::MergeOrdered};
 use banyan::FilteredChunk;
@@ -114,7 +114,7 @@ impl EventStore {
         self.offsets().next().await.expect("offset stream stopped").present
     }
 
-    pub async fn persist(&self, events: Vec<(TagSet, Payload)>) -> anyhow::Result<Vec<PersistenceMeta>> {
+    pub async fn persist(&self, app_id: AppId, events: Vec<(TagSet, Payload)>) -> anyhow::Result<Vec<PersistenceMeta>> {
         if events.is_empty() {
             return Ok(vec![]);
         }
@@ -128,7 +128,7 @@ impl EventStore {
             min_offset,
             timestamp,
             ..
-        } = self.banyan_store.append(stream_nr, events).await?;
+        } = self.banyan_store.append(stream_nr, app_id, events).await?;
         let keys = (0..n)
             .map(|i| {
                 let i = i as u64;
@@ -222,8 +222,8 @@ fn get_range_inclusive(selection: &StreamEventSelection) -> RangeInclusive<u64> 
     min..=max
 }
 
-fn to_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<Payload> {
-    Event {
+fn to_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Option<Event<Payload>> {
+    Some(Event {
         payload,
         key: EventKey {
             lamport: key.lamport(),
@@ -232,9 +232,10 @@ fn to_ev(offset: u64, key: AxKey, stream: StreamId, payload: Payload) -> Event<P
         },
         meta: Metadata {
             timestamp: key.time(),
+            app_id: key.app_id()?,
             tags: key.into_app_tags(),
         },
-    }
+    })
 }
 
 /// Take a block of banyan events and convert them into events.
@@ -242,7 +243,7 @@ fn events_from_chunk(stream_id: StreamId, chunk: FilteredChunk<(u64, AxKey, Payl
     chunk
         .data
         .into_iter()
-        .map(move |(offset, key, payload)| to_ev(offset, key, stream_id, payload))
+        .filter_map(move |(offset, key, payload)| to_ev(offset, key, stream_id, payload))
         .collect()
 }
 
@@ -255,7 +256,7 @@ fn events_from_chunk_rev(
         .data
         .into_iter()
         .rev()
-        .map(move |(offset, key, payload)| Reverse(to_ev(offset, key, stream_id, payload)))
+        .filter_map(move |(offset, key, payload)| to_ev(offset, key, stream_id, payload).map(Reverse))
         .collect()
 }
 
@@ -264,6 +265,7 @@ mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
     use actyx_sdk::{
+        app_id,
         language::{TagAtom, TagExpr},
         service::Order,
         tag, tags, OffsetOrMin, StreamId, Tag,
@@ -280,6 +282,10 @@ mod tests {
 
     async fn mk_store(name: &'static str) -> EventStore {
         EventStore::new(BanyanStore::test(name).await.unwrap())
+    }
+
+    fn app_id() -> AppId {
+        app_id!("test")
     }
 
     fn offset_map(map: &BTreeMap<StreamId, u32>) -> OffsetMap {
@@ -356,8 +362,12 @@ mod tests {
     async fn test_forward_stream() {
         let store = mk_store("swarm_test").await;
         let stream_id = store.node_id().stream(0.into());
+        let app_id = app_id!("test_forward_stream");
 
-        store.persist(vec![(tags!(), Payload::empty())]).await.unwrap();
+        store
+            .persist(app_id.clone(), vec![(tags!(), Payload::empty())])
+            .await
+            .unwrap();
 
         let mut stream = Drainer::new(store.forward_stream(StreamEventSelection {
             stream_id,
@@ -385,6 +395,7 @@ mod tests {
         }));
         let res = stream.next().unwrap();
         assert_eq!(res.len(), 1);
+        assert_eq!(res[0].meta.app_id, app_id);
         assert_eq!(stream.next(), None); // bounded -> complete
 
         let mut stream = Drainer::new(store.forward_stream(StreamEventSelection {
@@ -402,8 +413,12 @@ mod tests {
     async fn test_backward_stream() {
         let store = mk_store("swarm_test").await;
         let stream_id = store.node_id().stream(0.into());
+        let app_id = app_id!("test_backward_stream");
 
-        store.persist(vec![(tags!(), Payload::empty())]).await.unwrap();
+        store
+            .persist(app_id.clone(), vec![(tags!(), Payload::empty())])
+            .await
+            .unwrap();
 
         let mut stream = Drainer::new(store.backward_stream(StreamEventSelection {
             stream_id,
@@ -413,6 +428,7 @@ mod tests {
         }));
         let res = stream.next().unwrap();
         assert_eq!(res.len(), 1);
+        assert_eq!(res[0].0.meta.app_id, app_id);
         assert_eq!(stream.next(), None);
 
         let mut stream = Drainer::new(store.backward_stream(StreamEventSelection {
@@ -433,19 +449,25 @@ mod tests {
         let stream_id2 = store2.node_id().stream(0.into());
 
         store1
-            .persist(vec![
-                (tags!("test", "test:stream1"), Payload::empty()),
-                (tags!("test", "test:stream1"), Payload::empty()),
-                (tags!("test", "test:stream1"), Payload::empty()),
-            ])
+            .persist(
+                app_id(),
+                vec![
+                    (tags!("test", "test:stream1"), Payload::empty()),
+                    (tags!("test", "test:stream1"), Payload::empty()),
+                    (tags!("test", "test:stream1"), Payload::empty()),
+                ],
+            )
             .await
             .unwrap();
         store2
-            .persist(vec![
-                (tags!("test", "test:stream2"), Payload::empty()),
-                (tags!("test", "test:stream2"), Payload::empty()),
-                (tags!("test", "test:stream2"), Payload::empty()),
-            ])
+            .persist(
+                app_id(),
+                vec![
+                    (tags!("test", "test:stream2"), Payload::empty()),
+                    (tags!("test", "test:stream2"), Payload::empty()),
+                    (tags!("test", "test:stream2"), Payload::empty()),
+                ],
+            )
             .await
             .unwrap();
 
@@ -535,7 +557,7 @@ mod tests {
         let stream_id2 = store2.node_id().stream(0.into());
 
         store1
-            .persist(vec![(tags!("test:unbounded:forward"), Payload::empty())])
+            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::empty())])
             .await
             .unwrap();
 
@@ -579,11 +601,11 @@ mod tests {
         });
 
         store1
-            .persist(vec![(tags!("test:unbounded:forward"), Payload::empty())])
+            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::empty())])
             .await
             .unwrap();
         store2
-            .persist(vec![(tags!("test:unbounded:forward"), Payload::empty())])
+            .persist(app_id(), vec![(tags!("test:unbounded:forward"), Payload::empty())])
             .await
             .unwrap();
 
@@ -618,7 +640,10 @@ mod tests {
 
         let mut handles = Vec::new();
         for i in 0..n {
-            let (_, offset, _, _) = store.persist(vec![(mk_tag(i), Payload::empty())]).await.unwrap()[0];
+            let (_, offset, _, _) = store
+                .persist(app_id(), vec![(mk_tag(i), Payload::empty())])
+                .await
+                .unwrap()[0];
             assert_eq!(offset, Offset::from(i as u32));
 
             let store = store.clone();

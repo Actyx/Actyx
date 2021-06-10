@@ -9,6 +9,7 @@ import { Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
 import {
+  AppId,
   EventsSortOrder,
   isString,
   Lamport,
@@ -63,6 +64,7 @@ export const EventIO = t.type({
   stream: StreamId.FromString,
   timestamp: Timestamp.FromNumber,
   lamport: Lamport.FromNumber,
+  appId: AppId.FromString,
   tags: Tags,
   payload: t.unknown,
 })

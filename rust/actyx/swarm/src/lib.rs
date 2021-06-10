@@ -27,12 +27,15 @@ mod tests;
 
 pub use crate::sqlite_index_store::DbPath;
 pub use crate::streams::StreamAlias;
+use actyx_sdk::app_id;
 pub use prune::RetainConfig;
 
 use crate::gossip::Gossip;
 use crate::sqlite::{SqliteStore, SqliteStoreWrite};
 use crate::streams::{OwnStream, ReplicatedStream};
-use actyx_sdk::{LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamId, StreamNr, TagSet, Timestamp};
+use actyx_sdk::{
+    AppId, LamportTimestamp, NodeId, Offset, OffsetMap, Payload, StreamId, StreamNr, Tag, TagSet, Timestamp,
+};
 use anyhow::{Context, Result};
 use ax_futures_util::{
     prelude::*,
@@ -75,6 +78,7 @@ use std::{
 use streams::*;
 use trees::{
     axtrees::{AxKey, AxTrees, Sha256Digest},
+    tags::{ScopedTag, ScopedTagSet},
     AxTree, AxTreeHeader,
 };
 use util::{
@@ -99,6 +103,10 @@ pub type Ipfs = ipfs_embed::Ipfs<libipld::DefaultParams>;
 static DISCOVERY_STREAM_NR: u64 = 1;
 static METRICS_STREAM_NR: u64 = 2;
 const MAX_TREE_LEVEL: i32 = 1000;
+
+fn internal_app_id() -> AppId {
+    app_id!("com.actyx")
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct EphemeralEventsConfig {
@@ -753,7 +761,7 @@ impl BanyanStore {
     }
 
     /// Append events to a stream, publishing the new data.
-    pub async fn append(&self, stream_nr: StreamNr, events: Vec<(TagSet, Event)>) -> Result<AppendMeta> {
+    pub async fn append(&self, stream_nr: StreamNr, app_id: AppId, events: Vec<(TagSet, Event)>) -> Result<AppendMeta> {
         debug_assert!(!events.is_empty());
         tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
         let timestamp = Timestamp::now();
@@ -762,9 +770,15 @@ impl BanyanStore {
         let mut store = self.lock();
         let mut lamports = store.reserve_lamports(events.len())?.peekable();
         let min_lamport = *lamports.peek().unwrap();
-        let kvs = lamports
-            .zip(events)
-            .map(|(lamport, (tags, payload))| (AxKey::new(tags.into(), lamport, timestamp), payload));
+        let app_id_tag = ScopedTag::new(
+            trees::tags::TagScope::Internal,
+            Tag::try_from(format!("app_id:{}", app_id).as_str()).unwrap(),
+        );
+        let kvs = lamports.zip(events).map(|(lamport, (tags, payload))| {
+            let mut tags = ScopedTagSet::from(tags);
+            tags.insert(app_id_tag.clone());
+            (AxKey::new(tags, lamport, timestamp), payload)
+        });
         let min_offset = self.transform_stream(&mut guard, |txn, tree| {
             let snapshot = tree.snapshot();
             if snapshot.level() > MAX_TREE_LEVEL {

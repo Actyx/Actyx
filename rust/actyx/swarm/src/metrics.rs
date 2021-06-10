@@ -2,7 +2,7 @@ use std::future::Future;
 use std::io::Write;
 use std::time::Duration;
 
-use crate::BanyanStore;
+use crate::{internal_app_id, BanyanStore};
 use actyx_sdk::{tags, Payload, StreamNr};
 use anyhow::Result;
 use libipld::cbor::encode::{write_u64, write_u8};
@@ -28,7 +28,11 @@ pub fn metrics(store: BanyanStore, nr: StreamNr, interval: Duration) -> Result<i
                 continue;
             }
             if let Err(err) = store
-                .append(nr, vec![(tags.clone(), Payload::from_slice(&buffer))])
+                .append(
+                    nr,
+                    internal_app_id(),
+                    vec![(tags.clone(), Payload::from_slice(&buffer))],
+                )
                 .await
             {
                 tracing::warn!("error appending metrics: {}", err);
