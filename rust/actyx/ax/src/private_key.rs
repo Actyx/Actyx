@@ -1,12 +1,13 @@
 use std::{
     fmt, fs,
+    io::ErrorKind,
     path::{Path, PathBuf},
     str::FromStr,
 };
 
 use crypto::{KeyPair, PrivateKey, PublicKey};
 use libp2p::identity;
-use util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
+use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt};
 
 use crate::cmd::get_data_dir;
 
@@ -57,13 +58,20 @@ impl AxPrivateKey {
 
     /// Try to read a private key from a given `path`.
     pub(crate) fn from_file(path: impl AsRef<Path>) -> ActyxOSResult<Self> {
-        let mut s = fs::read_to_string(path.as_ref()).ax_err_ctx(
-            ActyxOSCode::ERR_PATH_INVALID,
-            format!(
-                "Path \"{}\" does not exist. Specify an existing path.",
-                path.as_ref().display()
-            ),
-        )?;
+        let path = path.as_ref();
+        let mut s = fs::read_to_string(path).map_err(|e| {
+            if e.kind() == ErrorKind::NotFound {
+                ActyxOSError::new(
+                    ActyxOSCode::ERR_PATH_INVALID,
+                    format!("Path \"{}\" does not exist. Specify an existing path.", path.display()),
+                )
+            } else {
+                ActyxOSError::new(
+                    ActyxOSCode::ERR_IO,
+                    format!("cannot read file at \"{}\": {}", path.display(), e),
+                )
+            }
+        })?;
         if s.ends_with('\n') {
             s.pop();
             if s.ends_with('\r') {
@@ -72,7 +80,7 @@ impl AxPrivateKey {
         }
         Self::decode(s).ax_err_ctx(
             ActyxOSCode::ERR_INVALID_INPUT,
-            format!("Error reading from {}", path.as_ref().display()),
+            format!("Error reading from {}", path.display()),
         )
     }
 

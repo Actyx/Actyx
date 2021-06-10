@@ -77,7 +77,10 @@ fn cli_fail_on_missing_identity() {
     let temp_dir = tempfile::tempdir().unwrap();
     let file = temp_dir.path().join("id");
     let identity_path = file.display().to_string();
-    let expected = format!("[ERR_PATH_INVALID] Error: Path \"{}\" does not exist. Specify an existing path. (No such file or directory (os error 2))\n", identity_path);
+    let expected = format!(
+        "[ERR_PATH_INVALID] Error: Path \"{}\" does not exist. Specify an existing path.\n",
+        identity_path
+    );
     cli()
         .args(&["nodes", "ls", "--local", "localhost", "-i", &*identity_path])
         .assert()

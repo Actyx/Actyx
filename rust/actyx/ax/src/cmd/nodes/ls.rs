@@ -19,9 +19,9 @@ pub struct LsOpts {
     #[structopt(short, long)]
     /// Process over local network
     local: bool,
-    #[structopt(short, long, default_value)]
+    #[structopt(short, long)]
     /// File from which the identity (private key) for authentication is read.
-    identity: KeyPathWrapper,
+    identity: Option<KeyPathWrapper>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
