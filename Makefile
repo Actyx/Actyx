@@ -111,6 +111,7 @@ CARGO := RUST_BACKTRACE=1  cargo +$(BUILD_RUST_TOOLCHAIN)
 
 export GIT_COMMIT = $(shell git rev-parse --short HEAD)$(shell [ -n "$(shell git status --porcelain)" ] && echo _dirty)
 export ACTYX_VERSION ?= $(shell cat ACTYX_VERSION)-$(GIT_COMMIT)
+export NODE_MANAGER_VERSION = 2.0.0
 
 all-WINDOWS := $(foreach t,$(windows-bins),windows-x86_64/$t)
 all-ANDROID := $(android-bins)
@@ -197,6 +198,7 @@ prepare-docker:
 	docker pull actyx/cosmos:musl-x86_64-unknown-linux-musl-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-armv7-unknown-linux-musleabihf-$(IMAGE_VERSION)
 	docker pull actyx/cosmos:musl-arm-unknown-linux-musleabi-$(IMAGE_VERSION)
+	docker pull actyx/util:node-manager-win-builder
 
 prepare-docker-crosscompile:
 	./bin/check-docker-requirements.sh check_docker_version
@@ -320,6 +322,33 @@ validate-website-developer:
 validate-website-downloads:
 	cd web/downloads.actyx.com && source ~/.nvm/nvm.sh && nvm install && \
 		npm install
+
+# TODO: add tests
+validate-node-manager: diagnostics
+	cd misc/actyx-node-manager && \
+		source ~/.nvm/nvm.sh && \
+		nvm install && \
+		npm install && \
+		npm run build && \
+		npm run make
+
+node-manager-win: prepare-docker
+	docker run \
+	-v `pwd`:/src \
+	-w /src/misc/actyx-node-manager \
+	--rm \
+	actyx/util:node-manager-win-builder \
+	bash -c "npm install && npm run build && npm run dist -- --win --x64 && npm run artifacts"
+
+node-manager-mac-linux:
+	cd misc/actyx-node-manager && \
+		source ~/.nvm/nvm.sh && \
+		nvm install && \
+		npm install && \
+		npm run build && \
+		npm run dist && \
+		npm run artifacts
+
 
 # combines all the .so files to build actyxos on android
 android-libaxosnodeffi: \

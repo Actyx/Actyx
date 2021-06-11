@@ -12,6 +12,7 @@ members = [
   "logsvcd",
   "node",
   "node-ffi",
+  "node-manager-bindings",
   "node-win",
   "runtime",
   "swarm",

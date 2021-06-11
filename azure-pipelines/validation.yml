@@ -21,11 +21,11 @@ stages:
   - stage: validation
     dependsOn: []
     displayName: Validation
-    pool:
-      name: Native
     jobs:
       - job:
         displayName: make validate-js
+        pool:
+          name: Native
         steps:
           - bash: |
               set -e
@@ -38,6 +38,8 @@ stages:
               BASH_ENV: "~/.bashrc"
       - job:
         displayName: make validate-os validate-rust-sdk validate-netsim
+        pool:
+          name: Native
         steps:
           - bash: |
               set -e
@@ -49,6 +51,8 @@ stages:
               BASH_ENV: "~/.bashrc"
       - job:
         displayName: make validate-os-android
+        pool:
+          name: Native
         steps:
           - bash: |
               set -e
@@ -59,6 +63,33 @@ stages:
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
+      - job:
+        displayName: make node-manager mac
+        pool:
+          name: MacIntel
+          demands:
+            - Agent.OS -equals Darwin
+            - Agent.OSArchitecture -equals X64
+        steps:
+          - bash: |
+              set -e
+              make node-manager-mac-linux
+      - job:
+        displayName: make node-manager linux
+        pool:
+          name: Native
+        steps:
+          - bash: |
+              set -e
+              make node-manager-mac-linux
+      - job:
+        displayName: make node-manager win
+        pool:
+          name: Native
+        steps:
+          - bash: |
+              set -e
+              make node-manager-win
 
   - stage: notifySuccess
     dependsOn:

@@ -1066,7 +1066,7 @@ checksum = "81de550971c976f176130da4b2978d3b524eaa0fd9ac31f3ceb5ae1231fb4853"
 dependencies = [
  "glob",
  "libc",
- "libloading",
+ "libloading 0.5.2",
 ]
 
 [[package]]
@@ -1432,6 +1432,12 @@ dependencies = [
  "generic-array 0.14.4",
  "subtle",
 ]
+
+[[package]]
+name = "cslice"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "697c714f50560202b1f4e2e09cd50a421881c83e9025db75d15f276616f04f40"
 
 [[package]]
 name = "csv"
@@ -3006,6 +3012,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "libloading"
+version = "0.6.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "351a32417a12d5f7e82c368a66781e307834dae04c6ce0cd4456d52989229883"
+dependencies = [
+ "cfg-if 1.0.0",
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "libp2p"
 version = "0.38.0"
 source = "git+https://github.com/dvc94ch/rust-libp2p?branch=sim-open#5839197f2726cb74e22b8c9bb33a4e60b34c0637"
@@ -3946,6 +3962,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "neon"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05c562b89fa7f9707f02056abe25a37ec290ca4a4f1596edbd7aa1aa7b87af1d"
+dependencies = [
+ "cslice",
+ "neon-build",
+ "neon-macros",
+ "neon-runtime",
+ "semver 0.9.0",
+ "smallvec 1.6.1",
+]
+
+[[package]]
+name = "neon-build"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9c55f6d310757b9fe6cd96a376609548a252da31828f935a7f59106533a89e9"
+
+[[package]]
+name = "neon-macros"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47065bc93b16f41fcfe29cad7d4d2a3e299b4389a3c9b429ba7a55f69a057fff"
+dependencies = [
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "neon-runtime"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be313e6cf11f469653ee1b137b9203f5d604f2b496d423e96c5e251b51eead03"
+dependencies = [
+ "cfg-if 1.0.0",
+ "libloading 0.6.7",
+ "smallvec 1.6.1",
+]
+
+[[package]]
 name = "net2"
 version = "0.2.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4118,6 +4175,24 @@ dependencies = [
  "settings",
  "tokio 1.6.1",
  "tracing",
+]
+
+[[package]]
+name = "node-manager-bindings"
+version = "0.1.0"
+dependencies = [
+ "actyx_sdk",
+ "anyhow",
+ "ax",
+ "certs",
+ "futures 0.3.15",
+ "neon",
+ "once_cell",
+ "serde 1.0.126",
+ "serde_json",
+ "settings",
+ "tokio 1.6.1",
+ "util",
 ]
 
 [[package]]
