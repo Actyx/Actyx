@@ -28,11 +28,11 @@ pub type NodeProcessResult<T> = std::result::Result<T, NodeError>;
 
 #[derive(Error, Debug, Clone)]
 pub enum NodeError {
-    #[error("NODE_STOPPED_BY_NODE\nActyx shut down because Actyx services could not be started. Please refer to FIXME for more information. ({component}: {err:#})")]
+    #[error("NODE_STOPPED_BY_NODE\nActyx shut down because Actyx services could not be started. Please contact Actyx support or file a report at https://community.actyx.com/c/support. ({component}: {err:#})")]
     ServicesStartup { component: String, err: Arc<anyhow::Error> },
     #[error("NODE_STOPPED_BY_NODE\nError: internal error. Please contact Actyx support. ({0:#})")]
     InternalError(Arc<anyhow::Error>),
-    #[error("ERR_PORT_COLLISION\nActyx shut down because it could not bind to port {port}. Please specify a different {component} port. Please refer to FIXME for more information.")]
+    #[error("ERR_PORT_COLLISION\nActyx shut down because it could not bind to port {port}. Please specify a different {component} port. Please refer to https://developer.actyx.com/docs/how-to/troubleshooting/installation-and-startup/#err_port_collision for more information.")]
     PortCollision { component: String, port: u16 },
 }
 impl From<Arc<anyhow::Error>> for NodeError {
@@ -195,7 +195,7 @@ impl Node {
                     .handle_set_settings_request(&scope, json, ignore_errors)
                     .inspect_err(|e| debug!("Error handling set settings request: {}", e));
                 if res.is_ok() {
-                    info!(target: "NODE_SETTINGS_CHANGED", "Node settings at scope {} were changed. Please refer to FIXME for more information.", scope);
+                    info!(target: "NODE_SETTINGS_CHANGED", "Node settings at scope {} were changed.", scope);
                 }
                 let _ = response.send(res);
             }
@@ -336,10 +336,10 @@ impl Node {
         // Log reason for shutdown
         match shutdown_reason {
             ShutdownReason::TriggeredByHost => {
-                info!(target: "NODE_STOPPED_BY_HOST", "Actyx is stopped. The shutdown was either initiated automatically by the host or intentionally by the user. Please refer to FIXME for more information.");
+                info!(target: "NODE_STOPPED_BY_HOST", "Actyx is stopped. The shutdown was either initiated automatically by the host or intentionally by the user. If you have questions about that behavior, please contact Actyx support or file a report at https://community.actyx.com/c/support.");
             }
             ShutdownReason::TriggeredByUser => {
-                info!(target: "NODE_STOPPED_BY_NODEUI", "Actyx is stopped. The shutdown was initiated by the user. Please refer to FIXME for more information.");
+                info!(target: "NODE_STOPPED_BY_NODEUI", "Actyx is stopped. The shutdown was initiated by the user. If you did not initiate shutdown, please contact Actyx support or file a report at https://community.actyx.com/c/support.");
             }
             ShutdownReason::Internal(ref err) => {
                 error!(target: "NODE_STOPPED_BY_NODE", "{}", err);
