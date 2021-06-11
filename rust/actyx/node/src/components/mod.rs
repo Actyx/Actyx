@@ -209,13 +209,16 @@ mod test {
     use super::*;
     use anyhow::Result;
     use crossbeam::channel::Sender;
-    use std::sync::{Arc, Mutex};
+    use std::{
+        sync::{Arc, Mutex},
+        time::Duration,
+    };
 
     struct SimpleComponent {
         rx: channel::Receiver<ComponentRequest<SimpleRequest>>,
         random_config: bool,
         last_cnt: usize,
-        err_notifier: Arc<Mutex<Option<channel::Sender<Result<()>>>>>,
+        notifier: Arc<Mutex<Option<channel::Sender<Result<()>>>>>,
     }
 
     enum SimpleRequest {
@@ -231,13 +234,13 @@ mod test {
     impl SimpleComponent {
         fn new(
             rx: channel::Receiver<ComponentRequest<SimpleRequest>>,
-            err_notifier: Arc<Mutex<Option<channel::Sender<Result<()>>>>>,
+            notifier: Arc<Mutex<Option<channel::Sender<Result<()>>>>>,
         ) -> Self {
             Self {
                 rx,
                 random_config: false,
                 last_cnt: 0,
-                err_notifier,
+                notifier,
             }
         }
     }
@@ -261,12 +264,13 @@ mod test {
             }
             Ok(())
         }
-        fn start(&mut self, err_notifier: Sender<Result<()>>) -> Result<()> {
-            *self.err_notifier.lock().unwrap() = Some(err_notifier);
+        fn start(&mut self, notifier: Sender<Result<()>>) -> Result<()> {
+            notifier.send(Ok(()))?;
+            *self.notifier.lock().unwrap() = Some(notifier);
             Ok(())
         }
         fn stop(&mut self) -> Result<()> {
-            let _ = self.err_notifier.lock().unwrap().take();
+            let _ = self.notifier.lock().unwrap().take();
             Ok(())
         }
         fn extract_settings(&self, _: Settings) -> Result<SimpleSettings> {
@@ -288,6 +292,8 @@ mod test {
         Ok(())
     }
 
+    const _3SEC: Duration = Duration::from_secs(3);
+
     #[test]
     fn setup_start_shutdown() -> Result<()> {
         let (tx, rx) = channel::bounded(42);
@@ -299,15 +305,19 @@ mod test {
         // Start on initial config
         tx.send(ComponentRequest::SettingsChanged(Box::new(Settings::sample())))?;
         assert_eq!(
-            rx_supervisor.recv()?,
-            ("test".to_string().into(), ComponentState::Started)
+            rx_supervisor.recv_timeout(_3SEC)?,
+            ("test".into(), ComponentState::Starting)
+        );
+        assert_eq!(
+            rx_supervisor.recv_timeout(_3SEC)?,
+            ("test".into(), ComponentState::Started)
         );
 
         // Shutdown and yield
         tx.send(ComponentRequest::Shutdown(ShutdownReason::TriggeredByHost))?;
         assert_eq!(
-            rx_supervisor.recv()?,
-            ("test".to_string().into(), ComponentState::Stopped)
+            rx_supervisor.recv_timeout(_3SEC)?,
+            ("test".into(), ComponentState::Stopped)
         );
         h.join().unwrap();
         Ok(())
@@ -325,8 +335,12 @@ mod test {
         // Start on initial config
         tx.send(ComponentRequest::SettingsChanged(Box::new(Settings::sample())))?;
         assert_eq!(
-            rx_supervisor.recv()?,
-            ("test".to_string().into(), ComponentState::Started)
+            rx_supervisor.recv_timeout(_3SEC)?,
+            ("test".into(), ComponentState::Starting)
+        );
+        assert_eq!(
+            rx_supervisor.recv_timeout(_3SEC)?,
+            ("test".into(), ComponentState::Started)
         );
 
         // trigger runtime error
@@ -337,7 +351,7 @@ mod test {
             .unwrap()
             .send(Err(anyhow::anyhow!("Sad cat is sad :-(")))
             .unwrap();
-        if let (ComponentType(t), ComponentState::Errored { .. }) = rx_supervisor.recv()? {
+        if let (ComponentType(t), ComponentState::Errored { .. }) = rx_supervisor.recv_timeout(_3SEC)? {
             assert_eq!(t, "test");
         } else {
             panic!()
@@ -346,8 +360,8 @@ mod test {
         // Shutdown and yield
         tx.send(ComponentRequest::Shutdown(ShutdownReason::TriggeredByHost))?;
         assert_eq!(
-            rx_supervisor.recv()?,
-            ("test".to_string().into(), ComponentState::Stopped)
+            rx_supervisor.recv_timeout(_3SEC)?,
+            ("test".into(), ComponentState::Stopped)
         );
         h.join().unwrap();
         Ok(())
@@ -364,31 +378,39 @@ mod test {
         // Start on initial config
         tx.send(ComponentRequest::SettingsChanged(Box::new(Settings::sample())))?;
         assert_eq!(
-            rx_supervisor.recv()?,
-            ("test".to_string().into(), ComponentState::Started)
+            rx_supervisor.recv_timeout(_3SEC)?,
+            ("test".into(), ComponentState::Starting)
+        );
+        assert_eq!(
+            rx_supervisor.recv_timeout(_3SEC)?,
+            ("test".into(), ComponentState::Started)
         );
 
         // Don't restart on unchanged config
         tx.send(ComponentRequest::SettingsChanged(Box::new(Settings::sample())))?;
-        assert!(rx_supervisor.try_recv().is_err());
+        assert!(rx_supervisor.recv_timeout(Duration::from_secs(1)).is_err());
 
         // Restart on changed config
         tx.send(ComponentRequest::Individual(SimpleRequest::ToggleRandomConfigCreation))?;
         tx.send(ComponentRequest::SettingsChanged(Box::new(Settings::sample())))?;
         assert_eq!(
-            rx_supervisor.recv()?,
-            ("test".to_string().into(), ComponentState::Stopped)
+            rx_supervisor.recv_timeout(_3SEC)?,
+            ("test".into(), ComponentState::Stopped)
         );
         assert_eq!(
-            rx_supervisor.recv()?,
-            ("test".to_string().into(), ComponentState::Started)
+            rx_supervisor.recv_timeout(_3SEC)?,
+            ("test".into(), ComponentState::Starting)
+        );
+        assert_eq!(
+            rx_supervisor.recv_timeout(_3SEC)?,
+            ("test".into(), ComponentState::Started)
         );
 
         // Shutdown and yield
         tx.send(ComponentRequest::Shutdown(ShutdownReason::TriggeredByHost))?;
         assert_eq!(
-            rx_supervisor.recv()?,
-            ("test".to_string().into(), ComponentState::Stopped)
+            rx_supervisor.recv_timeout(_3SEC)?,
+            ("test".into(), ComponentState::Stopped)
         );
         h.join().unwrap();
         Ok(())
@@ -402,7 +424,7 @@ mod test {
         let (pong_tx, pong_rx) = channel::bounded(1);
 
         tx.send(ComponentRequest::Individual(SimpleRequest::Ping(pong_tx)))?;
-        assert!(pong_rx.recv().is_ok());
+        assert!(pong_rx.recv_timeout(_3SEC).is_ok());
         assert!(pong_rx.try_recv().is_err());
 
         // Shutdown and yield
