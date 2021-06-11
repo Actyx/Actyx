@@ -108,10 +108,10 @@ where
     }
 
     /// Start the component. This function should be idempotent and must be
-    /// lock-free. Errors that happen during the runtime of the components
-    /// (meaning after the start method returned), can be signalled using the
-    /// provided `err_notifier`.
-    fn start(&mut self, err_notifier: channel::Sender<anyhow::Result<()>>) -> Result<()>;
+    /// lock-free. Errors that happen during the startup or runtime of the
+    /// component can be signalled using the provided `notifier`. Successful
+    /// startup must be signalled by sending `Ok(())`.
+    fn start(&mut self, notifier: channel::Sender<anyhow::Result<()>>) -> Result<()>;
 
     /// Stop the component. This function should be idempotent. It must be
     /// ensured, that all resources are cleaned up when returning from this

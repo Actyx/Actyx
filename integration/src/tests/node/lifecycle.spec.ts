@@ -17,12 +17,7 @@ type BoundTo = {
 const randomBinds = ['--bind-admin', '0', '--bind-api', '0', '--bind-swarm', '0']
 
 const startNodeAndCheckBinds = async (node: ActyxNode, params: string[]): Promise<BoundTo> => {
-  const output = await runUntil(
-    runActyx(node, undefined, params),
-    'fake',
-    ['NODE_STARTED_BY_HOST'],
-    10_000,
-  )
+  const output = await runUntil(runActyx(node, undefined, params), ['NODE_STARTED_BY_HOST'], 10_000)
   const lines = Array.isArray(output) ? output : output.stderr.split('\n')
   const result: BoundTo = { admin: [], api: [], swarm: [], log: lines.join('\n') }
 
@@ -103,7 +98,6 @@ describe('node lifecycle', () => {
       }
       const node = await runUntil(
         runActyx(n, undefined, randomBinds),
-        'fake',
         ['NODE_STARTED_BY_HOST'],
         10_000,
       )
@@ -148,7 +142,6 @@ describe('node lifecycle', () => {
           .flatMap((y) => [`--bind-${y.toLowerCase()}`, '0'])
         const node = await runUntil(
           runActyx(n, undefined, [`--bind-${x.toLowerCase()}`, port.toString()].concat(notX)),
-          'fake',
           [],
           10_000,
         )
@@ -224,12 +217,7 @@ describe('node lifecycle', () => {
         return
       }
 
-      const out = await runUntil(
-        runActyx(node, node._private.workingDir, []),
-        'secondary',
-        [],
-        10_000,
-      )
+      const out = await runUntil(runActyx(node, node._private.workingDir, []), [], 10_000)
       if (Array.isArray(out)) {
         throw new Error(`timed out:\n${out.join('\n')}`)
       }
