@@ -43,7 +43,8 @@ async fn run() -> Result<()> {
         let swarm = BanyanStore::new(cfg).await?;
         tracing::info!("Binding api to {:?}", addr);
         let node_info = NodeInfo::new(swarm.node_id(), key_store.into_ref(), 0.into());
-        swarm.spawn_task("api", api::run(node_info, swarm.clone(), std::iter::once(addr)));
+        let (tx, _rx) = crossbeam::channel::unbounded();
+        swarm.spawn_task("api", api::run(node_info, swarm.clone(), std::iter::once(addr), tx));
         swarm
     } else {
         BanyanStore::new(config.clone().into()).await?

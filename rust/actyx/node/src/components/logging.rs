@@ -30,7 +30,7 @@ pub struct LoggingConfig {
 }
 
 impl Component<LoggingRequest, LoggingConfig> for Logging {
-    fn get_type(&self) -> &'static str {
+    fn get_type() -> &'static str {
         "logging"
     }
     fn get_rx(&self) -> &Receiver<ComponentRequest<LoggingRequest>> {
@@ -65,8 +65,9 @@ impl Component<LoggingRequest, LoggingConfig> for Logging {
         // channel above
         false
     }
-    fn start(&mut self, _: Sender<anyhow::Error>) -> Result<()> {
+    fn start(&mut self, snd: Sender<anyhow::Result<()>>) -> Result<()> {
         // Started immediately in `Logging::new`
+        snd.send(Ok(()))?;
         Ok(())
     }
     fn stop(&mut self) -> Result<()> {

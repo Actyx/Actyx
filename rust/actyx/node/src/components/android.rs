@@ -93,7 +93,7 @@ impl Component<(), ()> for Android {
     fn get_rx(&self) -> &channel::Receiver<ComponentRequest<()>> {
         &self.rx
     }
-    fn get_type(&self) -> &'static str {
+    fn get_type() -> &'static str {
         "android"
     }
     fn handle_request(&mut self, _: ()) -> Result<()> {
@@ -102,7 +102,8 @@ impl Component<(), ()> for Android {
     fn extract_settings(&self, _: Settings) -> Result<()> {
         Ok(())
     }
-    fn start(&mut self, _: Sender<anyhow::Error>) -> Result<()> {
+    fn start(&mut self, snd: Sender<anyhow::Result<()>>) -> Result<()> {
+        snd.send(Ok(()))?;
         Ok(())
     }
     fn stop(&mut self) -> Result<()> {

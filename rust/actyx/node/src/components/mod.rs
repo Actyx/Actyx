@@ -25,6 +25,7 @@ pub enum ComponentRequest<A> {
 #[derive(Debug)]
 pub enum ComponentState {
     Errored(anyhow::Error),
+    Starting,
     Started,
     Stopped,
 }
@@ -32,11 +33,7 @@ pub enum ComponentState {
 #[cfg(test)]
 impl PartialEq for ComponentState {
     fn eq(&self, other: &Self) -> bool {
-        match self {
-            ComponentState::Errored(_) => matches!(other, ComponentState::Errored(_)),
-            ComponentState::Started => matches!(other, ComponentState::Started),
-            ComponentState::Stopped => matches!(other, ComponentState::Stopped),
-        }
+        std::mem::discriminant(self) == std::mem::discriminant(other)
     }
 }
 
@@ -71,8 +68,14 @@ macro_rules! state_change {
     };
 }
 
-#[derive(Debug, Clone, PartialEq, Display, From)]
+#[derive(Debug, Clone, Eq, PartialOrd, Ord, PartialEq, Display, From)]
 pub struct ComponentType(String);
+
+impl From<&str> for ComponentType {
+    fn from(s: &str) -> Self {
+        Self(s.to_owned())
+    }
+}
 
 /// A `Component` is a self-contained package encapsulating a set of
 /// functionality. This trait exposes defined ways to interact with the component
@@ -85,29 +88,36 @@ where
     ComponentSettings: Clone + PartialEq,
 {
     /// Returns the type of the `Component`
-    fn get_type(&self) -> &'static str;
+    fn get_type() -> &'static str;
+
     /// Borrowed access to the held Receiver
     fn get_rx(&self) -> &channel::Receiver<ComponentRequest<RequestType>>;
+
     /// Handle a component specific request
     fn handle_request(&mut self, req: RequestType) -> Result<()>;
+
     /// Transform a complete `Settings` object into component specific
     /// `ComponentSettings`. In some cases a simple `Into` might not be
     /// sufficient, and access to self is necessary.
     fn extract_settings(&self, s: Settings) -> Result<ComponentSettings>;
+
     /// New component specific `ComponentSettings`. Returned bool indicates
     /// whether a restart of the component is required.
     fn set_up(&mut self, _: ComponentSettings) -> bool {
         false
     }
+
     /// Start the component. This function should be idempotent and must be
-    /// lock-free. Erors that happen during the runtime of the components
+    /// lock-free. Errors that happen during the runtime of the components
     /// (meaning after the start method returned), can be signalled using the
     /// provided `err_notifier`.
-    fn start(&mut self, err_notifier: channel::Sender<anyhow::Error>) -> Result<()>;
+    fn start(&mut self, err_notifier: channel::Sender<anyhow::Result<()>>) -> Result<()>;
+
     /// Stop the component. This function should be idempotent. It must be
     /// ensured, that all resources are cleaned up when returning from this
     /// method.
     fn stop(&mut self) -> Result<()>;
+
     /// Convenience implementation managing the lifecycle of a `Component` as
     /// driven by `ComponentRequest`s: New settings are converted to component
     /// specific ones; if they have been changed (as determined by Eq), the
@@ -116,48 +126,48 @@ where
     fn loop_on_rx(mut self) -> Result<()> {
         let mut last_settings: Option<ComponentSettings> = None;
         let mut supervisor: Option<channel::Sender<(ComponentType, ComponentState)>> = None;
-        let (err_tx, err_rx) = channel::bounded::<anyhow::Error>(8);
+        let (err_tx, err_rx) = channel::bounded::<anyhow::Result<()>>(8);
         let mut has_started = false;
         loop {
             select! {
-                recv(err_rx) -> err => {
-                    let err = err.expect("We keep another Sender around, thus channel can't be disconnected");
+                recv(err_rx) -> result => {
+                    let result = result.expect("We keep another Sender around, thus channel can't be disconnected");
                     state_change!(
                         supervisor,
-                        self.get_type(),
+                        Self::get_type(),
                         ComponentState::Started,
-                        Result::<(),_>::Err(err)
+                        result
                     );
                 },
                 recv(self.get_rx()) -> node_msg => {
                     if let Ok(m) = node_msg {
                         match m {
                             ComponentRequest::<RequestType>::Individual(m) => {
-                                continue_on_error!(self.get_type(), self.handle_request(m))
+                                continue_on_error!(Self::get_type(), self.handle_request(m))
                             }
                             ComponentRequest::<RequestType>::RegisterSupervisor(snd) => {
                                 if supervisor.replace(snd).is_some() {
-                                    tracing::warn!("Component \"{}\": Supervisor registered twice!", self.get_type());
+                                    tracing::warn!("Component \"{}\": Supervisor registered twice!", Self::get_type());
                                 } else {
-                                    tracing::debug!("Component \"{}\": Supervisor registered", self.get_type());
+                                    tracing::debug!("Component \"{}\": Supervisor registered", Self::get_type());
                                 }
                             }
                             ComponentRequest::SettingsChanged(settings) => {
-                                let s = continue_on_error!(self.get_type(), self.extract_settings(*settings));
-                                let config_changed = last_settings.as_ref().map(|c| *c != s).unwrap_or(true);
+                                let s = continue_on_error!(Self::get_type(), self.extract_settings(*settings));
+                                let config_changed = !last_settings.iter().any(|c| *c == s);
                                 if config_changed {
-                                    tracing::debug!("Component \"{}\": Settings changed.", self.get_type());
+                                    tracing::debug!("Component \"{}\": Settings changed.", Self::get_type());
                                     let needs_restart =  self.set_up(s.clone());
                                     last_settings.replace(s);
                                     if !has_started || needs_restart {
                                         if has_started {
-                                            state_change!(supervisor, self.get_type(), ComponentState::Stopped, self.stop());
+                                            state_change!(supervisor, Self::get_type(), ComponentState::Stopped, self.stop());
                                         }
                                         has_started = true;
                                         state_change!(
                                             supervisor,
-                                            self.get_type(),
-                                            ComponentState::Started,
+                                            Self::get_type(),
+                                            ComponentState::Starting,
                                             self.start(err_tx.clone())
                                         );
                                     }
@@ -175,14 +185,15 @@ where
             }
         }
 
-        tracing::debug!("Component \"{}\": Shutting down", self.get_type());
-        state_change!(supervisor, self.get_type(), ComponentState::Stopped, self.stop());
+        tracing::debug!("Component \"{}\": Shutting down", Self::get_type());
+        state_change!(supervisor, Self::get_type(), ComponentState::Stopped, self.stop());
         Ok(())
     }
+
     /// Spawn the component into its own thread, where `Component::loop_on_rx` is
     /// executed. Returns a `std::thread::JoinHandle` to the spawned thread.
     fn spawn(self) -> Result<JoinHandle<()>> {
-        let name = self.get_type().to_string();
+        let name = Self::get_type().to_string();
         let h = spawn_with_name(name.clone(), move || {
             if let Err(e) = self.loop_on_rx() {
                 tracing::error!("Component \"{}\": Thread exited ({})", name, e);
@@ -196,6 +207,7 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+    use anyhow::Result;
     use crossbeam::channel::Sender;
     use std::sync::{Arc, Mutex};
 
@@ -203,7 +215,7 @@ mod test {
         rx: channel::Receiver<ComponentRequest<SimpleRequest>>,
         random_config: bool,
         last_cnt: usize,
-        err_notifier: Arc<Mutex<Option<channel::Sender<anyhow::Error>>>>,
+        err_notifier: Arc<Mutex<Option<channel::Sender<Result<()>>>>>,
     }
 
     enum SimpleRequest {
@@ -219,7 +231,7 @@ mod test {
     impl SimpleComponent {
         fn new(
             rx: channel::Receiver<ComponentRequest<SimpleRequest>>,
-            err_notifier: Arc<Mutex<Option<channel::Sender<anyhow::Error>>>>,
+            err_notifier: Arc<Mutex<Option<channel::Sender<Result<()>>>>>,
         ) -> Self {
             Self {
                 rx,
@@ -230,7 +242,7 @@ mod test {
         }
     }
     impl Component<SimpleRequest, SimpleSettings> for SimpleComponent {
-        fn get_type(&self) -> &'static str {
+        fn get_type() -> &'static str {
             "test"
         }
         fn get_rx(&self) -> &channel::Receiver<ComponentRequest<SimpleRequest>> {
@@ -249,7 +261,7 @@ mod test {
             }
             Ok(())
         }
-        fn start(&mut self, err_notifier: Sender<anyhow::Error>) -> Result<()> {
+        fn start(&mut self, err_notifier: Sender<Result<()>>) -> Result<()> {
             *self.err_notifier.lock().unwrap() = Some(err_notifier);
             Ok(())
         }
@@ -267,7 +279,7 @@ mod test {
     }
 
     #[test]
-    fn lifecycle_shutdown() -> anyhow::Result<()> {
+    fn lifecycle_shutdown() -> Result<()> {
         let (tx, rx) = channel::bounded(42);
         let c = SimpleComponent::new(rx, Default::default());
         let h = c.spawn()?;
@@ -277,7 +289,7 @@ mod test {
     }
 
     #[test]
-    fn setup_start_shutdown() -> anyhow::Result<()> {
+    fn setup_start_shutdown() -> Result<()> {
         let (tx, rx) = channel::bounded(42);
         let c = SimpleComponent::new(rx, Default::default());
         let h = c.spawn()?;
@@ -302,7 +314,7 @@ mod test {
     }
 
     #[test]
-    fn setup_start_runtime_error() -> anyhow::Result<()> {
+    fn setup_start_runtime_error() -> Result<()> {
         let (tx, rx) = channel::bounded(42);
         let err_notifier: Arc<Mutex<_>> = Default::default();
         let c = SimpleComponent::new(rx, err_notifier.clone());
@@ -323,7 +335,7 @@ mod test {
             .unwrap()
             .as_ref()
             .unwrap()
-            .send(anyhow::anyhow!("Sad cat is sad :-("))
+            .send(Err(anyhow::anyhow!("Sad cat is sad :-(")))
             .unwrap();
         if let (ComponentType(t), ComponentState::Errored { .. }) = rx_supervisor.recv()? {
             assert_eq!(t, "test");
@@ -342,7 +354,7 @@ mod test {
     }
 
     #[test]
-    fn setup_start_configchange_shutdown() -> anyhow::Result<()> {
+    fn setup_start_configchange_shutdown() -> Result<()> {
         let (tx, rx) = channel::bounded(42);
         let c = SimpleComponent::new(rx, Default::default());
         let h = c.spawn()?;
@@ -383,7 +395,7 @@ mod test {
     }
 
     #[test]
-    fn respond_to_individual_request() -> anyhow::Result<()> {
+    fn respond_to_individual_request() -> Result<()> {
         let (tx, rx) = channel::bounded(42);
         let c = SimpleComponent::new(rx, Default::default());
         let h = c.spawn()?;

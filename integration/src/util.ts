@@ -19,6 +19,15 @@ export const releases = {
     'https://axartifacts.blob.core.windows.net/artifacts/f2e7e414f2a38ba56d64071000b7ac5d3e191d96',
 }
 
+export const withContext = <T>(context: string, f: () => T): T => {
+  try {
+    return f()
+  } catch (err) {
+    err.message += `\n\ncontext:\n${context}`
+    throw err
+  }
+}
+
 export const binaryUrlAndNameForVersion = (
   node: ActyxNode,
   version: keyof typeof releases,
