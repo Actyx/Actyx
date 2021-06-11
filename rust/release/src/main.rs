@@ -136,12 +136,7 @@ fn main() -> Result<(), Error> {
                     .find(|VersionLine { release, .. }| release.product == product)
                     .ok_or_else(|| anyhow::anyhow!("No release found for {}", product))?;
 
-                // FIXME: use long commit ids in versions file
-                let commit_id = repo
-                    .find_commit(&v.commit)
-                    .with_context(|| format!("Resolving commit {} for {}", v.commit, product))?
-                    .id();
-                if repo.head()?.id() == commit_id {
+                if repo.head()?.id() == v.commit {
                     println!("{}-{}", v.release.version, v.commit)
                 } else {
                     println!("{}_dev-{}", v.release.version, v.commit)
@@ -239,7 +234,7 @@ Overview:"#
             // meta
             writeln!(changelog, "Commit of release: {}", head.id())?;
             writeln!(changelog, "Time of release: {}", ts)?;
-            let branch_name = format!("release/{}", head.short_id()?.as_str().unwrap());
+            let branch_name = format!("release/{}", head.id());
 
             if dry_run {
                 println!("New versions file:");
