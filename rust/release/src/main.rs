@@ -44,11 +44,11 @@ enum Command {
         #[clap(long, short)]
         commits: bool,
     },
-    /// Computes the ACTYX_VERSION string according for the given product.  If
-    /// there's a pending change for a product, this command will calculate and
-    /// emit the NEW version. Otherwise it falls back to the last released one;
-    /// if the release hash is not equal to HEAD, this will append `_dev` to the
-    /// semver version.
+    /// Computes the ACTYX_VERSION string for the given product.  If there's a
+    /// pending change for a product, this command will calculate and emit the
+    /// NEW version. Otherwise it falls back to the last released one; if the
+    /// release hash is not equal to HEAD, this will append `_dev` to the semver
+    /// version.
     GetActyxVersion { product: Product },
     /// Computes changelog
     Changes {
