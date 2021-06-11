@@ -175,7 +175,7 @@ module.exports = {
       type: 'category',
       label: 'Actyx API',
       collapsed: true,
-      items: ['reference/events-api', 'reference/auth-api'],
+      items: ['reference/events-api', 'reference/auth-api', 'reference/node-api'],
     },
     {
       type: 'category',
