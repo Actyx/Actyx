@@ -18,5 +18,6 @@ For installation instructions, please refer to [this how-to guide](../../how-to/
 | ----------- | -------------------- |
 | ax nodes    | Manage nodes         |
 | ax settings | Manage node settings |
+| ax apps     | Manage app manifests |
 | ax swarms   | Manage swarms        |
 | ax users    | Manage users         |

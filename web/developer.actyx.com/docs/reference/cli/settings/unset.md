@@ -4,7 +4,7 @@ title: ax settings unset
 
 ```text title="Remove settings from a node"
 USAGE:
-    ax settings unset [FLAGS] <SCOPE> <NODE>
+    ax settings unset [FLAGS] [OPTIONS] <SCOPE> <NODE>
 
 FLAGS:
     -h, --help       Prints help information
@@ -12,6 +12,9 @@ FLAGS:
     -V, --version    Prints version information
     -v               Verbosity level. Add more v for higher verbosity
                      (-v, -vv, -vvv, etc.)
+
+OPTIONS:
+    -i, --identity <identity>    File from which the identity (private key) for authentication is read
 
 ARGS:
     <SCOPE>    Scope for which you want to unset the settings

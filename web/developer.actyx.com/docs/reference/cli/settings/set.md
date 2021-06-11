@@ -4,7 +4,7 @@ title: ax settings set
 
 ```text title="Configure settings of a node"
 USAGE:
-    ax settings set [FLAGS] <SCOPE> <VALUE> <NODE>
+    ax settings set [FLAGS] [OPTIONS] <SCOPE> <VALUE> <NODE>
 
 FLAGS:
     -h, --help       Prints help information
@@ -12,6 +12,9 @@ FLAGS:
     -V, --version    Prints version information
     -v               Verbosity level. Add more v for higher verbosity
                      (-v, -vv, -vvv, etc.)
+
+OPTIONS:
+    -i, --identity <identity>    File from which the identity (private key) for authentication is read
 
 ARGS:
     <SCOPE>    Scope for which you want to set the given settings
