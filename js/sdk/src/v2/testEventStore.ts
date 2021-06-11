@@ -4,7 +4,6 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { chunksOf } from 'fp-ts/lib/Array'
 import { fromNullable } from 'fp-ts/lib/Option'
 import { Observable, ReplaySubject, Scheduler, Subject } from 'rxjs'
 import {
@@ -44,6 +43,9 @@ export type TestEventStore = EventStore & {
   // might realistically appear in the live stream.
   directlyPushEvents: (events: ReadonlyArray<TestEvent>) => void
   storedEvents: () => Event[]
+
+  // End all streams. The real store is not expected to do this.
+  close: () => void
 }
 
 const lookup = (offsets: OffsetMap, source: string) => fromNullable(offsets[source])
@@ -207,7 +209,6 @@ const persistence = () => {
 
 export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestEventStore = (
   nodeId = NodeId.of('TEST'),
-  eventChunkSize = 4,
 ) => {
   const { persist, getPersistedPreFiltered, allPersisted } = persistence()
 
@@ -225,7 +226,7 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
 
     const ret = sortOrder === EventsSortOrder.Descending ? filtered.reverse() : filtered
 
-    return Observable.from(chunksOf(ret, eventChunkSize)).defaultIfEmpty([])
+    return Observable.from(ret)
   }
 
   const liveStream: DoSubscribe = (from, subs) => {
@@ -236,7 +237,7 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
     return (
       live
         .asObservable()
-        .map(filterUnsortedEvents(from, {}, subs))
+        .mergeMap(x => Observable.from(filterUnsortedEvents(from, {}, subs)(x)))
         // Delivering live events may trigger new events (via onStateChange) and again new events,
         // until we exhaust the call stack. The prod store shouldn’t have that problem due to obvious reasons.
         .observeOn(Scheduler.queue)
@@ -318,5 +319,6 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
     directlyPushEvents,
     storedEvents: allPersisted,
     connectivityStatus: () => Observable.empty<ConnectivityStatus>(),
+    close: () => live.complete(),
   }
 }

@@ -128,6 +128,38 @@ stages:
           - publish: $(System.DefaultWorkingDirectory)/dist/bin
             artifact: android-binaries
             condition: succeeded()
+      - job:
+        displayName: make node-manager mac
+        pool:
+          name: MacIntel
+          demands:
+            - Agent.OS -equals Darwin
+            - Agent.OSArchitecture -equals X64
+        steps:
+          - bash: |
+              set -e
+              make node-manager-mac-linux
+          - publish: "$(System.DefaultWorkingDirectory)/misc/actyx-node-manager/dist/artifacts"
+            artifact: node-manager-mac
+            condition: succeeded()
+      - job:
+        displayName: make node-manager linux
+        steps:
+          - bash: |
+              set -e
+              make node-manager-mac-linux
+          - publish: "$(System.DefaultWorkingDirectory)/misc/actyx-node-manager/dist/artifacts"
+            artifact: node-manager-linux
+            condition: succeeded()
+      - job:
+        displayName: make node-manager win
+        steps:
+          - bash: |
+              set -e
+              make node-manager-win
+          - publish: "$(System.DefaultWorkingDirectory)/misc/actyx-node-manager/dist/artifacts"
+            artifact: node-manager-win
+            condition: succeeded()
 
   - stage: upload
     displayName: Upload to az blob store

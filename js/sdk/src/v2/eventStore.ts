@@ -9,7 +9,7 @@ import { AppId, EventsSortOrder, Milliseconds, NodeId, OffsetMap, Where } from '
 import { mockEventStore } from './mockEventStore'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import { testEventStore, TestEventStore } from './testEventStore'
-import { ConnectivityStatus, Events, OffsetsResponse, UnstoredEvents } from './types'
+import { ConnectivityStatus, Event, Events, OffsetsResponse, UnstoredEvents } from './types'
 import { WebsocketEventStore } from './websocketEventStore'
 
 /**
@@ -58,7 +58,7 @@ export type DoQuery = (
   upperBound: OffsetMap,
   query: Where<unknown> | string,
   sortOrder: EventsSortOrder,
-) => Observable<Events>
+) => Observable<Event>
 
 /**
  * This method is concerned with both persisted and future events, so it will always return an infinite stream.
@@ -72,7 +72,7 @@ export type DoQuery = (
 export type DoSubscribe = (
   lowerBound: OffsetMap,
   query: Where<unknown> | string,
-) => Observable<Events>
+) => Observable<Event>
 
 /**
  * Store the events in the store and return them as generic events.

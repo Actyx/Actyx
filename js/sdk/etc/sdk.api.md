@@ -39,7 +39,6 @@ export type ActyxOpts = Readonly<{
 // @public
 export type ActyxTestOpts = Readonly<{
     nodeId?: NodeId;
-    eventChunkSize?: number;
 }>;
 
 // @public
@@ -98,9 +97,9 @@ export interface EventFns {
     observeLatest: <E>(query: EarliestQuery<E>, onNewLatest: (event: E, metadata: Metadata) => void) => CancelSubscription;
     observeUnorderedReduce: <R, E>(query: Where<E>, reduce: (acc: R, event: E, metadata: Metadata) => R, initial: R, onUpdate: (result: R) => void) => CancelSubscription;
     queryAllKnown: (query: AutoCappedQuery) => Promise<EventChunk>;
-    queryAllKnownChunked: (query: AutoCappedQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void) => Promise<OffsetMap>;
+    queryAllKnownChunked: (query: AutoCappedQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
     queryKnownRange: (query: RangeQuery) => Promise<ActyxEvent[]>;
-    queryKnownRangeChunked: (query: RangeQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void) => Promise<void>;
+    queryKnownRangeChunked: (query: RangeQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
     subscribe: (query: EventSubscription, onChunk: (chunk: EventChunk) => Promise<void> | void) => CancelSubscription;
     // @alpha
     subscribeMonotonic: <E>(query: MonotonicSubscription<E>, callback: (data: EventsOrTimetravel<E>) => Promise<void> | void) => CancelSubscription;
@@ -159,6 +158,7 @@ export type EventSubscription = {
     lowerBound?: OffsetMap;
     query?: Where<unknown>;
     maxChunkSize?: number;
+    maxChunkTimeMs?: number;
 };
 
 // @alpha

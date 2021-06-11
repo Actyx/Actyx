@@ -90,8 +90,15 @@ export type EventSubscription = {
   /** Statement to select specific events. Defaults to `allEvents`. */
   query?: Where<unknown>
 
-  /** Maximum chunk size. Note that new events will **always** be delivered ASAP, without waiting for chunks to fill up. */
+  /** Maximum chunk size. Defaults to 1000. */
   maxChunkSize?: number
+
+  /**
+   * Maximum duration (in ms) a chunk of events is allowed to grow, before being passed to the callback.
+   * Defaults to 5.
+   * Set this to zero to optimize latency at the cost of always receiving just single events.
+   */
+  maxChunkTimeMs?: number
 }
 
 /**
@@ -161,7 +168,8 @@ export interface EventFns {
     query: RangeQuery,
     chunkSize: number,
     onChunk: (chunk: EventChunk) => Promise<void> | void,
-  ) => Promise<void>
+    onComplete?: () => void,
+  ) => CancelSubscription
 
   /**
    * Query all known events that occured after the given `lowerBound`.
@@ -187,7 +195,8 @@ export interface EventFns {
     query: AutoCappedQuery,
     chunkSize: number,
     onChunk: (chunk: EventChunk) => Promise<void> | void,
-  ) => Promise<OffsetMap>
+    onComplete?: () => void,
+  ) => CancelSubscription
 
   /**
    * Subscribe to all events fitting the `query` after `lowerBound`.
