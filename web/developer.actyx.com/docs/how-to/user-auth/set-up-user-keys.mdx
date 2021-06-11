@@ -6,10 +6,7 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
-You need user keys (i.e. a key pair consisting of a public and private key) for two purposes:
-
-- interacting with a node (check out [this guide](./manage-authorized-users.mdx) on managing authorized users of a node)
-- getting a developer certificate and signing apps with it (check out [this guide](./get-developer-certificate.mdx) on getting a developer certificate)
+You need user keys (i.e. a key pair consisting of a public and private key) for interacting with a node.
 
 You can use the CLI or Node Manager to generate your keys:
 
@@ -25,6 +22,11 @@ import TabItem from '@theme/TabItem'
   ]}
 >
 
+<TabItem value="node-manager">
+
+![auth-01](../../../static/images/how-to/user-auth/set-up-keys.png)
+
+</TabItem>
 <TabItem value="cli">
 
 ```text
@@ -41,11 +43,6 @@ You can also specify a path for saving them, please refer to the [reference docu
 
 The CLI or Node Manager automatically try to authenticate with user keys in the default path.
 If you are not storing your keys in the default path, you need to use the `-i` or `--identity` option each time you execute a CLI command that targets a node.
-
-</TabItem>
-<TabItem value="node-manager">
-
-TODO
 
 </TabItem>
 </Tabs>

@@ -23,14 +23,21 @@ import TabItem from '@theme/TabItem'
 
 <Tabs
   groupId="tool"
-  defaultValue={"cli"}
+  defaultValue={"node-manager"}
   values={[
     { label: 'Actyx CLI', value: 'cli' },
     { label: 'Node Manager', value: 'node-manager' },
   ]}
 >
 
+<TabItem value="node-manager">
 
+
+In the Node Manager, simply add the public keys as strings, separated by a comma to the `authorizedUsers`array:
+
+![node-manager-authorized-users](../../../static/images/how-to/manage-authorized-users/authorized-users.png)
+
+</TabItem>
 <TabItem value="cli">
 
 
@@ -52,14 +59,6 @@ You can then use this file to configure the list of authorized users:
 ```text
 ax settings set --local com.actyx/admin/authorizedUsers @example localhost
 ```
-
-</TabItem>
-<TabItem value="node-manager">
-
-
-In the Node Manager, simply add the public keys as strings, separated by a comma to the `authorizedUsers`array:
-
-![node-manager-authorized-users](../../../static/images/how-to/manage-authorized-users/authorized-users.png)
 
 </TabItem>
 </Tabs>
