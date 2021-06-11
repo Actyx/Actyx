@@ -45,7 +45,7 @@ pub struct NodeApiSettings {
     pub authorized_keys: Vec<PeerId>,
 }
 impl Component<(), NodeApiSettings> for NodeApi {
-    fn get_type(&self) -> &'static str {
+    fn get_type() -> &'static str {
         "Admin"
     }
     fn get_rx(&self) -> &Receiver<ComponentRequest<()>> {
@@ -65,7 +65,7 @@ impl Component<(), NodeApiSettings> for NodeApi {
         *g = s;
         false
     }
-    fn start(&mut self, _: Sender<anyhow::Error>) -> Result<()> {
+    fn start(&mut self, snd: Sender<anyhow::Result<()>>) -> Result<()> {
         debug_assert!(self.rt.is_none());
         let rt = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
@@ -79,6 +79,10 @@ impl Component<(), NodeApiSettings> for NodeApi {
             self.store.clone(),
             self.settings.clone(),
         ))?;
+
+        // mk_swarm has bound the listen sockets, so declare victory
+        snd.send(Ok(()))?;
+
         let _ = rt.spawn(crate::node_api::start(swarm));
         self.rt = Some(rt);
         Ok(())

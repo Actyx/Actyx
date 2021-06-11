@@ -72,9 +72,9 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     let (nodeapi_tx, nodeapi_rx) = bounded_channel();
 
     let mut components = vec![
-        ComponentChannel::Store(store_tx.clone()),
-        ComponentChannel::NodeApi(nodeapi_tx),
-        ComponentChannel::Logging(logs_tx),
+        (Store::get_type().into(), ComponentChannel::Store(store_tx.clone())),
+        (NodeApi::get_type().into(), ComponentChannel::NodeApi(nodeapi_tx)),
+        (Logging::get_type().into(), ComponentChannel::Logging(logs_tx)),
     ];
 
     // Host interface
@@ -90,7 +90,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     match runtime {
         Runtime::Android { ffi_sink } => {
             let (runtime_tx, runtime_rx) = bounded_channel();
-            components.push(ComponentChannel::Android(runtime_tx));
+            components.push((Android::get_type().into(), ComponentChannel::Android(runtime_tx)));
             let android = Android::new(node_tx.clone(), runtime_rx, ffi_sink);
             join_handles.push(android.spawn()?);
         }

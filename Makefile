@@ -111,7 +111,6 @@ CARGO := RUST_BACKTRACE=1  cargo +$(BUILD_RUST_TOOLCHAIN)
 
 export GIT_COMMIT = $(shell git rev-parse --short HEAD)$(shell [ -n "$(shell git status --porcelain)" ] && echo _dirty)
 export ACTYX_VERSION ?= $(shell cat ACTYX_VERSION)-$(GIT_COMMIT)
-export NODE_MANAGER_VERSION = 2.0.0
 
 all-WINDOWS := $(foreach t,$(windows-bins),windows-x86_64/$t)
 all-ANDROID := $(android-bins)
@@ -343,14 +342,12 @@ validate-website-downloads:
 	cd web/downloads.actyx.com && source ~/.nvm/nvm.sh && nvm install && \
 		npm install
 
-# TODO: add tests
-validate-node-manager: diagnostics
-	cd misc/actyx-node-manager && \
+validate-node-manager-bindings: 
+	cd rust/actyx/node-manager-bindings && \
 		source ~/.nvm/nvm.sh && \
 		nvm install && \
 		npm install && \
-		npm run build && \
-		npm run make
+		npm run build
 
 node-manager-win: prepare-docker
 	docker run \
