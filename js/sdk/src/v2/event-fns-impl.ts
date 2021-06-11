@@ -4,7 +4,6 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-import { chunksOf } from 'fp-ts/lib/Array'
 import { contramap, getTupleOrd, gt, lt, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Observable } from 'rxjs'
 import {
@@ -27,6 +26,7 @@ import {
   EventsSortOrder,
   Metadata,
   MsgType,
+  NodeId,
   OffsetMap,
   pendingEmission,
   StreamId,
@@ -34,7 +34,6 @@ import {
   Timestamp,
   toMetadata,
   Where,
-  NodeId,
 } from '../types'
 import { EventStore } from './eventStore'
 import { eventsMonotonic, EventsOrTimetravel as EventsOrTtInternal } from './subscribe_monotonic'
@@ -60,11 +59,8 @@ export const EventFnsFromEventStoreV2 = (
 
   const bookKeepingOnChunk = (
     initialLowerBound: OffsetMap,
-    chunkSize: number,
     onChunk: (chunk: EventChunk) => Promise<void> | void,
-  ): ((events: Events) => Promise<void>) => {
-    const doChunk = chunksOf<Event>(chunkSize)
-
+  ): ((preChunkedEvents: Events) => Promise<void>) => {
     let curLowerBound = { ...initialLowerBound }
 
     const onChunk0 = async (events: Events) => {
@@ -85,25 +81,16 @@ export const EventFnsFromEventStoreV2 = (
       curLowerBound = upperBound
 
       // Promise.resolve converts to a Promise if it's not yet a Promise.
-      await onChunk(chunk)
+      await Promise.resolve(onChunk(chunk))
     }
 
-    const onChunk1 = async (events: Events): Promise<void> => {
-      for (const chunk of doChunk(events)) {
-        await onChunk0(chunk)
-      }
-    }
-
-    return onChunk1
+    return onChunk0
   }
 
   const reverseBookKeepingOnChunk = (
     initialUpperBound: OffsetMap,
-    chunkSize: number,
     onChunk: (chunk: EventChunk) => Promise<void> | void,
-  ): ((events: Events) => Promise<void>) => {
-    const doChunk = chunksOf<Event>(chunkSize)
-
+  ): ((preChunkedEvents: Events) => Promise<void>) => {
     let curUpperBound = { ...initialUpperBound }
 
     const onChunk0 = async (events: Events) => {
@@ -140,13 +127,7 @@ export const EventFnsFromEventStoreV2 = (
       await Promise.resolve(onChunk(chunk))
     }
 
-    const onChunk1 = async (events: Events) => {
-      for (const chunk of doChunk(events)) {
-        await onChunk0(chunk)
-      }
-    }
-
-    return onChunk1
+    return onChunk0
   }
 
   const currentOffsets = () => eventStore.offsets().then(x => x.present)
@@ -156,7 +137,7 @@ export const EventFnsFromEventStoreV2 = (
 
     return eventStore
       .query(lowerBound || {}, upperBound, query || allEvents, order || EventsSortOrder.Ascending)
-      .concatMap(x => x.map(wrap))
+      .map(wrap)
       .toArray()
       .toPromise()
   }
@@ -165,6 +146,7 @@ export const EventFnsFromEventStoreV2 = (
     rangeQuery: RangeQuery,
     chunkSize: number,
     onChunk: (chunk: EventChunk) => void,
+    onComplete?: () => void,
   ) => {
     const { lowerBound, upperBound, query, order } = rangeQuery
 
@@ -172,16 +154,32 @@ export const EventFnsFromEventStoreV2 = (
 
     const cb =
       order === EventsSortOrder.Ascending
-        ? bookKeepingOnChunk(lb, chunkSize, onChunk)
-        : reverseBookKeepingOnChunk(upperBound, chunkSize, onChunk)
+        ? bookKeepingOnChunk(lb, onChunk)
+        : reverseBookKeepingOnChunk(upperBound, onChunk)
 
-    return (
-      eventStore
-        .query(lb, upperBound, query || allEvents, order || EventsSortOrder.Ascending)
-        // The only way to avoid parallel invocations is to use mergeScan with final arg=1
-        .mergeScan((_a: void, chunk: Events) => Observable.from(cb(chunk)), void 0, 1)
-        .toPromise()
-    )
+    let cancelled = false
+
+    const s = eventStore
+      .query(lb, upperBound, query || allEvents, order || EventsSortOrder.Ascending)
+      .bufferCount(chunkSize)
+      // The only way to avoid parallel invocations is to use mergeScan with final arg=1
+      .mergeScan(
+        (_a: void, chunk: Events) => {
+          return cancelled ? Observable.empty<void>() : Observable.from(cb(chunk))
+        },
+        void 0,
+        1,
+      )
+      .subscribe()
+
+    if (onComplete instanceof Function) {
+      s.add(onComplete)
+    }
+
+    return () => {
+      cancelled = true
+      s.unsubscribe()
+    }
   }
 
   const queryAllKnown = async (query: AutoCappedQuery): Promise<EventChunk> => {
@@ -197,37 +195,63 @@ export const EventFnsFromEventStoreV2 = (
     return { events, lowerBound: query.lowerBound || {}, upperBound: present }
   }
 
-  const queryAllKnownChunked = async (
+  const queryAllKnownChunked = (
     query: AutoCappedQuery,
     chunkSize: number,
     onChunk: (chunk: EventChunk) => Promise<void> | void,
-  ): Promise<OffsetMap> => {
-    const present = await currentOffsets()
-
-    const rangeQuery = {
-      ...query,
-      upperBound: present,
+    onComplete?: () => void,
+  ) => {
+    let canceled = false
+    let cancelUpstream = () => {
+      onComplete && onComplete()
+      // Function is bound again when the real query starts
     }
 
-    return queryKnownRangeChunked(rangeQuery, chunkSize, onChunk).then(() => present)
+    currentOffsets().then(present => {
+      if (canceled) {
+        return
+      }
+
+      const rangeQuery = {
+        ...query,
+        upperBound: present,
+      }
+
+      cancelUpstream = queryKnownRangeChunked(rangeQuery, chunkSize, onChunk, onComplete)
+    })
+
+    return () => {
+      canceled = true
+      cancelUpstream()
+    }
   }
 
   const subscribe = (
     openQuery: EventSubscription,
     onChunk: (chunk: EventChunk) => Promise<void> | void,
   ): CancelSubscription => {
-    const { lowerBound, query, maxChunkSize } = openQuery
+    const { lowerBound, query, maxChunkSize, maxChunkTimeMs } = openQuery
     const lb = lowerBound || {}
 
-    const cb = bookKeepingOnChunk(lb, maxChunkSize || 5000, onChunk)
+    const cb = bookKeepingOnChunk(lb, onChunk)
 
-    const x = eventStore
-      .subscribe(lb, query || allEvents)
-      // The only way to avoid parallel invocations is to use mergeScan with final arg=1
+    const bufTime = maxChunkTimeMs || 5
+    const bufSize = maxChunkSize || 1000
+    const s = eventStore.subscribe(lb, query || allEvents)
+
+    const buffered =
+      bufTime > 0
+        ? // 2nd arg to bufferTime is not marked as optional, but it IS optional
+          /* eslint-disable-next-line @typescript-eslint/no-non-null-assertion */
+          s.bufferTime(bufTime, null!, bufSize).filter(x => x.length > 0)
+        : s.map(x => [x])
+
+    // The only way to avoid parallel invocations is to use mergeScan with final arg=1
+    const rxSub = buffered
       .mergeScan((_a: void, chunk: Events) => Observable.from(cb(chunk)), void 0, 1)
       .subscribe()
 
-    return () => x.unsubscribe()
+    return () => rxSub.unsubscribe()
   }
 
   const convertMsg = <E>(m: EventsOrTtInternal): EventsOrTimetravel<E> => {
@@ -278,11 +302,11 @@ export const EventFnsFromEventStoreV2 = (
 
     const firstEvent = await eventStore
       .query({}, cur, query, order)
-      .concatMap(x => x)
+      .defaultIfEmpty(null)
       .first()
       .toPromise()
 
-    return [wrap(firstEvent), cur]
+    return [firstEvent ? wrap(firstEvent) : undefined, cur]
   }
 
   // Find first currently known event according to an arbitrary decision logic
@@ -301,7 +325,7 @@ export const EventFnsFromEventStoreV2 = (
         // Doesn't matter, we have to go through all known events anyways
         EventsSortOrder.Ascending,
       )
-      .concatMap(x => x.map(e => wrap<E>(e)))
+      .map(e => wrap<E>(e))
       .reduce(reduce, initial)
       .toPromise()
 

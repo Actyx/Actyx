@@ -291,6 +291,26 @@ validate-js-pond:
 		npm run test && \
 		npm run build:prod
 
+# fix and test all js projects
+fix-js: diagnostics fix-js-sdk fix-js-pond
+
+fix-js-sdk:
+	cd js/sdk && source ~/.nvm/nvm.sh && nvm install && \
+		npm install && \
+		npm run lint:fix && \
+		npm run test && \
+		npm run build && \
+		npm run api:accept
+
+
+fix-js-pond:
+	cd js/pond && source ~/.nvm/nvm.sh && nvm install && \
+		npm install && \
+		npm run lint:fix && \
+		npm run test && \
+		npm run build && \
+		npm run api:accept
+
 # make js sdk
 # this is running directly on the host container, so it needs to have nvm installed
 dist/js/sdk: make-always

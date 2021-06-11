@@ -403,9 +403,6 @@ export type ActyxOpts = Readonly<{
 export type ActyxTestOpts = Readonly<{
   /** Local node id to use @public */
   nodeId?: NodeId
-
-  /** Maximum chunk size in which events will be delivered. @public */
-  eventChunkSize?: number
 }>
 
 /** Manifest describing an Actyx application. Used for authorizing API access. @public */

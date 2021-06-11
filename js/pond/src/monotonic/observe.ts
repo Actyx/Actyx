@@ -18,13 +18,13 @@ import {
 import { SnapshotStore } from '@actyx/sdk/lib/snapshotStore'
 import { none, Option, some } from 'fp-ts/lib/Option'
 import { clone } from 'ramda'
-import { Observable, Scheduler, Subject } from 'rxjs'
+import { Observable, Scheduler } from 'rxjs'
 import log from '../loggers'
 import { mkNoopPondStateTracker, PondStateTracker } from '../pond-state'
-import { SnapshotScheduler } from './snapshotScheduler'
 import { FishErrorReporter, FishId, IsReset } from '../types'
 import { cachingReducer } from './cachingReducer'
 import { simpleReducer } from './simpleReducer'
+import { SnapshotScheduler } from './snapshotScheduler'
 import { PendingSnapshot, SerializedStateSnap } from './types'
 
 const stateMsg = (latestValid: SerializedStateSnap): StateMsg => ({
@@ -256,33 +256,61 @@ const makeEndless = <E>(
   timeTravelToStateMsg: TimeTravelToStateMsg<E>,
   resetCompletely: StateMsg,
   trackingId: string,
-): Observable<StateMsg | EventsMsg<E>> => {
-  const endless = new Subject<StateMsg | EventsMsg<E>>()
-  const start = new Subject<Option<FixedStart>>()
+): Observable<StateMsg | EventsMsg<E>> =>
+  new Observable<StateMsg | EventsMsg<E>>(endlessUpdates => {
+    let latestTimeTravelMsg: TimeTravelMsg<E> | undefined = undefined
 
-  start
-    .switchMap(monotonicUpdates)
-    .catch(x => {
-      log.pond.error(x)
-      // On error, just try starting from scratch completely (should happen very rarely.)
-      start.next(undefined)
-      return Observable.of(resetCompletely)
-    })
-    .map(x => {
-      if (x.type !== MsgType.timetravel) {
-        return x
-      }
-      log.pond.info(trackingId, 'time traveling due to', EventKey.format(x.trigger.meta))
-      const resetMsg = timeTravelToStateMsg(x)
-      start.next(snapshotToFixedStart(resetMsg.snapshot))
-      return resetMsg
-    })
-    .subscribe(endless)
+    const onError = (err: any) => {
+      log.pond.error(err)
 
-  start.next(none)
+      // On error, just try starting from scratch completely
+      // (Should happen very rarely.)
+      endlessUpdates.next(resetCompletely)
 
-  return endless.asObservable().finally(() => {
-    start.complete()
-    endless.complete()
+      // This is the error handler, so we know that the old subscription has completed.
+      currentSubscription = monotonicUpdates(none).subscribe(autoRestartSubscriber)
+    }
+
+    const autoRestartSubscriber = {
+      next: (msg: EventsOrTimetravel<E>) => {
+        if (msg.type === MsgType.timetravel) {
+          latestTimeTravelMsg = msg
+          // Now we expect stream to complete...
+          return
+        }
+
+        endlessUpdates.next(msg)
+      },
+
+      error: onError,
+
+      complete: () => {
+        if (!latestTimeTravelMsg) {
+          return onError(
+            new Error(trackingId + ': subscribe_monotonic completed without a time travel message'),
+          )
+        }
+
+        const msg = latestTimeTravelMsg
+
+        log.pond.info(trackingId, 'time traveling due to', EventKey.format(msg.trigger.meta))
+
+        // Reset for next time
+        latestTimeTravelMsg = undefined
+
+        const resetMsg = timeTravelToStateMsg(msg)
+
+        endlessUpdates.next(resetMsg)
+
+        // This is the completion handler, so we know that the old subscription has completed.
+        currentSubscription = monotonicUpdates(snapshotToFixedStart(resetMsg.snapshot)).subscribe(
+          autoRestartSubscriber,
+        )
+      },
+    }
+    // Start the initial subscription
+    let currentSubscription = monotonicUpdates(none).subscribe(autoRestartSubscriber)
+
+    // Cancel upstream, if this Observable is torn down
+    return () => currentSubscription.unsubscribe()
   })
-}

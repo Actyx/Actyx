@@ -580,6 +580,7 @@ class Pond2Impl implements Pond {
       cancelInitialSubscription = this.actyx.subscribe(
         {
           query: seedEvent,
+          maxChunkTimeMs: 0,
         },
         x => {
           resolve(x.events[0])
