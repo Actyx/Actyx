@@ -29,7 +29,7 @@ pub(crate) struct InspectResponse {
 pub(crate) type StoreTx = Sender<ComponentRequest<StoreRequest>>;
 
 impl Component<StoreRequest, SwarmConfig> for Store {
-    fn get_type(&self) -> &'static str {
+    fn get_type() -> &'static str {
         "Swarm"
     }
     fn get_rx(&self) -> &Receiver<ComponentRequest<StoreRequest>> {
@@ -91,7 +91,7 @@ impl Component<StoreRequest, SwarmConfig> for Store {
         self.store_config = Some(settings);
         true
     }
-    fn start(&mut self, _err_notifier: Sender<anyhow::Error>) -> Result<()> {
+    fn start(&mut self, snd: Sender<anyhow::Result<()>>) -> Result<()> {
         debug_assert!(self.state.is_none());
         if let Some(cfg) = self.store_config.clone() {
             let rt = tokio::runtime::Builder::new_multi_thread()
@@ -107,7 +107,7 @@ impl Component<StoreRequest, SwarmConfig> for Store {
 
                 store.spawn_task(
                     "api",
-                    api::run(node_info, store.clone(), bind_to.clone().api.into_iter()),
+                    api::run(node_info, store.clone(), bind_to.clone().api.into_iter(), snd),
                 );
                 Ok::<BanyanStore, anyhow::Error>(store)
             })?;

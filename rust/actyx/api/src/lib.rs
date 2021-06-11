@@ -8,8 +8,10 @@ mod tests;
 mod util;
 
 use actyx_util::{ax_panic, formats::NodeErrorContext};
+use anyhow::Result;
+use crossbeam::channel::Sender;
 use futures::future::try_join_all;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, panic::panic_any, sync::Arc};
 use swarm::{event_store::EventStore, BanyanStore};
 use warp::*;
 
@@ -17,7 +19,12 @@ use crate::util::hyper_serve::serve_it;
 pub use crate::util::NodeInfo;
 pub use crate::util::{AppMode, BearerToken, Token};
 
-pub async fn run(node_info: NodeInfo, store: BanyanStore, bind_to: impl Iterator<Item = SocketAddr> + Send) {
+pub async fn run(
+    node_info: NodeInfo,
+    store: BanyanStore,
+    bind_to: impl Iterator<Item = SocketAddr> + Send,
+    snd: Sender<anyhow::Result<()>>,
+) {
     let api = routes(node_info, store);
     let tasks = bind_to
         .into_iter()
@@ -29,12 +36,20 @@ pub async fn run(node_info: NodeInfo, store: BanyanStore, bind_to: impl Iterator
                 })
             })
         })
-        .map(|i| async move {
+        .map(|i| {
             let (addr, task) = i?;
             tracing::info!(target: "API_BOUND", "API bound to {}.", addr);
-            task.await
+            Ok(task)
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>>>();
+    let tasks = match tasks {
+        Ok(t) => t,
+        Err(e) => panic_any(Arc::new(e)),
+    };
+
+    // now we know that binding was successful
+    let _ = snd.send(Ok(()));
+
     // This error will be propagated by a `panic!`, so we use the `ax_panic!`
     // macro, which will wrap the error into an `Arc` in order to properly
     // extract it later in the node's panic hook

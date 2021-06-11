@@ -1,64 +1,34 @@
-import { Observable } from 'rxjs'
-import { toObservable } from '../../infrastructure'
 import { getFreeRemotePort, occupyRemotePort } from '../../infrastructure/checkPort'
 import { runOnEach, runOnEvery } from '../../infrastructure/hosts'
 import { ActyxNode } from '../../infrastructure/types'
-import { runActyx, runUntil } from '../../util'
+import { runActyx, runUntil, withContext } from '../../util'
 
-const adminExtract = (s: string): [string, number] | undefined => {
-  const match = s.match(
-    new RegExp(
-      '(?:ADMIN_API_BOUND: Admin API bound to /ip4/)([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})(?:/tcp/)(\\d+)',
-    ),
-  )
-  return match ? [match[1], Number(match[2])] : undefined
-}
-const apiExtract = (s: string): [string, number] | undefined => {
-  const match = s.match(
-    new RegExp(
-      '(?:API_BOUND: API bound to )([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})\\:(\\d*)',
-    ),
-  )
-  return match ? [match[1], Number(match[2])] : undefined
-}
-const swarmExtract = (s: string): [string, number] | undefined => {
-  const match = s.match(
-    new RegExp(
-      '(?:SWARM_SERVICES_BOUND: Swarm Services bound to /ip4/)([0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3})(?:/tcp/)(\\d+)',
-    ),
-  )
-  return match ? [match[1], Number(match[2])] : undefined
-}
+const adminExtract = /ADMIN_API_BOUND: Admin API bound to \/ip[46]\/([^/]+)\/tcp\/([0-9]+)/
+const swarmExtract = /SWARM_SERVICES_BOUND: Swarm Services bound to \/ip4\/([^/]+)\/tcp\/(\d+)/
+const apiExtract = /API_BOUND: API bound to (.*):(\d+)\.$/
 
 type BoundTo = {
   admin: [string, number][]
   api: [string, number][]
   swarm: [string, number][]
+  log: string
 }
 
 const randomBinds = ['--bind-admin', '0', '--bind-api', '0', '--bind-swarm', '0']
 
 const startNodeAndCheckBinds = async (node: ActyxNode, params: string[]): Promise<BoundTo> => {
-  const testNode = toObservable(runActyx(node, undefined, params))
-  const result: BoundTo = { admin: [], api: [], swarm: [] }
-  await testNode
-    // .do(console.log)
-    .filter((x) => x.includes('bound to'))
-    .takeUntil(Observable.timer(5000).first())
-    .forEach((x) => {
-      const admin = adminExtract(x)
-      if (admin) {
-        result.admin.push(admin)
-      }
-      const api = apiExtract(x)
-      if (api) {
-        result.api.push(api)
-      }
-      const swarm = swarmExtract(x)
-      if (swarm) {
-        result.swarm.push(swarm)
-      }
-    })
+  const output = await runUntil(runActyx(node, undefined, params), ['NODE_STARTED_BY_HOST'], 10_000)
+  const lines = Array.isArray(output) ? output : output.stderr.split('\n')
+  const result: BoundTo = { admin: [], api: [], swarm: [], log: lines.join('\n') }
+
+  for (const line of lines) {
+    const admin = adminExtract.exec(line)
+    admin && result.admin.push([admin[1], Number(admin[2])])
+    const swarm = swarmExtract.exec(line)
+    swarm && result.swarm.push([swarm[1], Number(swarm[2])])
+    const api = apiExtract.exec(line)
+    api && result.api.push([api[1], Number(api[2])])
+  }
 
   return result
 }
@@ -85,8 +55,12 @@ describe('node lifecycle', () => {
       if (skipTarget(node)) {
         return
       }
-      const { admin, api, swarm } = await startNodeAndCheckBinds(node, randomBinds)
-      ;[admin, api, swarm].forEach((x) => expect(x.length > 0).toBeTruthy())
+      const { admin, api, swarm, log } = await startNodeAndCheckBinds(node, randomBinds)
+      withContext(log, () => {
+        expect(admin).toHaveLength(admin.length || 1)
+        expect(api).toHaveLength(api.length || 1)
+        expect(swarm).toHaveLength(swarm.length || 1)
+      })
     }))
 
   it('should bind to specified ports', () =>
@@ -99,7 +73,7 @@ describe('node lifecycle', () => {
         getFreeRemotePort(node.target),
         getFreeRemotePort(node.target),
       ])
-      const { admin, api, swarm } = await startNodeAndCheckBinds(node, [
+      const { admin, api, swarm, log } = await startNodeAndCheckBinds(node, [
         '--bind-admin',
         adminPort.toString(),
         '--bind-api',
@@ -107,10 +81,14 @@ describe('node lifecycle', () => {
         '--bind-swarm',
         swarmPort.toString(),
       ])
-      ;[admin, api, swarm].forEach((x) => expect(x.length > 0).toBeTruthy())
-      expect(admin.every(([_, port]) => port === adminPort)).toBeTruthy()
-      expect(api.every(([_, port]) => port === apiPort)).toBeTruthy()
-      expect(swarm.every(([_, port]) => port === swarmPort)).toBeTruthy()
+      withContext(log, () => {
+        expect(admin).toHaveLength(admin.length || 1)
+        expect(api).toHaveLength(api.length || 1)
+        expect(swarm).toHaveLength(swarm.length || 1)
+        expect(admin.every(([_, port]) => port === adminPort)).toBeTruthy()
+        expect(api.every(([_, port]) => port === apiPort)).toBeTruthy()
+        expect(swarm.every(([_, port]) => port === swarmPort)).toBeTruthy()
+      })
     }))
 
   it('indicate a successful start', () =>
@@ -118,11 +96,13 @@ describe('node lifecycle', () => {
       if (skipTarget(n)) {
         return
       }
-      const node = toObservable(runActyx(n, undefined, randomBinds))
-      await node
-        .filter((x) => x.includes('NODE_STARTED_BY_HOST'))
-        .first()
-        .toPromise()
+      const node = await runUntil(
+        runActyx(n, undefined, randomBinds),
+        ['NODE_STARTED_BY_HOST'],
+        10_000,
+      )
+      expect(Array.isArray(node)).toBeTruthy()
+      expect(node).toContainEqual(expect.stringContaining('NODE_STARTED_BY_HOST'))
     }))
 
   it('indicate shutdown', () =>
@@ -139,46 +119,47 @@ describe('node lifecycle', () => {
         node.stdout?.on('end', () => res(buffer))
         setTimeout(() => node.kill('SIGTERM'), 500)
       })
-      expect(
-        logs.find((x) =>
-          x.includes(
-            'NODE_STOPPED_BY_HOST: Actyx is stopped. The shutdown was either initiated automatically by the host or intentionally by the user.',
-          ),
+      expect(logs).toContainEqual(
+        expect.stringContaining(
+          'NODE_STOPPED_BY_HOST: Actyx is stopped. The shutdown was either initiated automatically by the host or intentionally by the user.',
         ),
-      ).not.toBeUndefined()
+      )
       expect(node.killed).toBeTruthy()
     }))
 
-  it('should error on occupied ports', () =>
-    runOnEach([{ host: 'process', os: 'linux' }], async (n) => {
-      // Tracking issue for Windows: https://github.com/Actyx/Cosmos/issues/5850
-      const services = ['Admin', 'API', 'Swarm']
-      await Promise.all(
-        services.map(async (x) => {
-          const port = await getFreeRemotePort(n.target)
-          const server = occupyRemotePort(n.target, port)
-          await new Promise((res) => setTimeout(res, 500))
-          const notX = services
-            .filter((y) => y !== x)
-            .flatMap((y) => [`--bind-${y.toLowerCase()}`, '0'])
-          const node = toObservable(
-            runActyx(n, undefined, [`--bind-${x.toLowerCase()}`, port.toString()].concat(notX)),
-          )
-          const logs = await node.toArray().toPromise()
-          server.kill('SIGTERM')
-          expect(
-            logs.find((y) => y.includes('NODE_STOPPED_BY_NODE: ERR_PORT_COLLISION')),
-          ).toBeTruthy()
-          expect(
-            logs.find((y) =>
-              y.includes(
-                `Actyx shut down because it could not bind to port ${port.toString()}. Please specify a different ${x} port.`,
-              ),
-            ),
-          ).toBeTruthy()
-        }),
-      )
-    }))
+  const services = ['Admin', 'API', 'Swarm']
+  services.map((x) =>
+    it(`should error on occupied ports (${x})`, (done) => {
+      runOnEach([{ host: 'process', os: 'linux' }], async (n) => {
+        // Tracking issue for Windows: https://github.com/Actyx/Cosmos/issues/5850
+        const port = await getFreeRemotePort(n.target)
+        const server = occupyRemotePort(n.target, port)
+        let hot = true
+        server.catch((e) => hot && done(e))
+
+        const notX = services
+          .filter((y) => y !== x)
+          .flatMap((y) => [`--bind-${y.toLowerCase()}`, '0'])
+        const node = await runUntil(
+          runActyx(n, undefined, [`--bind-${x.toLowerCase()}`, port.toString()].concat(notX)),
+          [],
+          10_000,
+        )
+        hot = false
+        server.kill('SIGTERM')
+
+        if (Array.isArray(node)) {
+          throw new Error(`timed out, port=${port}:\n${node.join('\n')}`)
+        }
+        const logs = node.stdout // FIXME should log to stderr #6889
+
+        expect(logs).toMatch('NODE_STOPPED_BY_NODE: ERR_PORT_COLLISION')
+        expect(logs).toMatch(
+          `Actyx shut down because it could not bind to port ${port.toString()}. Please specify a different ${x} port.`,
+        )
+      }).then(() => done(), done)
+    }),
+  )
 
   it('should work with host:port combinations', () =>
     runOnEvery(async (n) => {
@@ -190,7 +171,7 @@ describe('node lifecycle', () => {
         getFreeRemotePort(n.target),
         getFreeRemotePort(n.target),
       ])
-      const { admin, api, swarm } = await startNodeAndCheckBinds(n, [
+      const { admin, api, swarm, log } = await startNodeAndCheckBinds(n, [
         '--bind-admin',
         `127.0.0.1:${adminPort.toString()}`,
         '--bind-api',
@@ -198,9 +179,11 @@ describe('node lifecycle', () => {
         '--bind-swarm',
         `127.0.0.1:${swarmPort.toString()}`,
       ])
-      expect(admin).toStrictEqual([['127.0.0.1', adminPort]])
-      expect(api).toStrictEqual([['127.0.0.1', apiPort]])
-      expect(swarm).toStrictEqual([['127.0.0.1', swarmPort]])
+      withContext(log, () => {
+        expect(admin).toStrictEqual([['127.0.0.1', adminPort]])
+        expect(api).toStrictEqual([['127.0.0.1', apiPort]])
+        expect(swarm).toStrictEqual([['127.0.0.1', swarmPort]])
+      })
     }))
 
   it('should work with multiaddrs', () =>
@@ -213,7 +196,7 @@ describe('node lifecycle', () => {
         getFreeRemotePort(n.target),
         getFreeRemotePort(n.target),
       ])
-      const { admin, api, swarm } = await startNodeAndCheckBinds(n, [
+      const { admin, api, swarm, log } = await startNodeAndCheckBinds(n, [
         '--bind-admin',
         `/ip4/127.0.0.1/tcp/${adminPort.toString()}`,
         '--bind-api',
@@ -221,9 +204,11 @@ describe('node lifecycle', () => {
         '--bind-swarm',
         `/ip4/127.0.0.1/tcp/${swarmPort.toString()}`,
       ])
-      expect(admin).toStrictEqual([['127.0.0.1', adminPort]])
-      expect(api).toStrictEqual([['127.0.0.1', apiPort]])
-      expect(swarm).toStrictEqual([['127.0.0.1', swarmPort]])
+      withContext(log, () => {
+        expect(admin).toStrictEqual([['127.0.0.1', adminPort]])
+        expect(api).toStrictEqual([['127.0.0.1', apiPort]])
+        expect(swarm).toStrictEqual([['127.0.0.1', swarmPort]])
+      })
     }))
 
   it('should refuse to run in an already used workdir', () =>
@@ -232,12 +217,7 @@ describe('node lifecycle', () => {
         return
       }
 
-      const out = await runUntil(
-        runActyx(node, node._private.workingDir, []),
-        'secondary',
-        [],
-        10_000,
-      )
+      const out = await runUntil(runActyx(node, node._private.workingDir, []), [], 10_000)
       if (Array.isArray(out)) {
         throw new Error(`timed out:\n${out.join('\n')}`)
       }
