@@ -1,6 +1,3 @@
-#![macro_use]
-extern crate prettytable;
-
 mod cmd;
 mod node_connection;
 mod private_key;
@@ -9,7 +6,10 @@ use cmd::{
     apps::AppsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts, swarms::SwarmsOpts,
     users::UsersOpts, Verbosity,
 };
-use structopt::StructOpt;
+use structopt::{
+    clap::{App, AppSettings::SubcommandRequiredElseHelp, ArgMatches, SubCommand},
+    StructOpt, StructOptInternal,
+};
 use util::version::NodeVersion;
 
 #[derive(StructOpt, Debug)]
@@ -30,7 +30,7 @@ struct Opt {
     version: bool,
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Debug)]
 #[allow(clippy::clippy::large_enum_variant)]
 enum CommandsOpt {
     // structopt will use the enum variant name in lowercase as a subcommand
@@ -39,8 +39,62 @@ enum CommandsOpt {
     Swarms(SwarmsOpts),
     Nodes(NodesOpts),
     Users(UsersOpts),
-    #[structopt(setting(structopt::clap::AppSettings::Hidden), name = "_internal")]
     Internal(InternalOpts),
+}
+
+impl StructOpt for CommandsOpt {
+    fn clap<'a, 'b>() -> App<'a, 'b> {
+        let app = App::new("ax").setting(SubcommandRequiredElseHelp);
+        Self::augment_clap(app)
+    }
+
+    fn from_clap(matches: &ArgMatches<'_>) -> Self {
+        Self::from_subcommand(matches.subcommand()).expect("wat")
+    }
+}
+
+impl StructOptInternal for CommandsOpt {
+    fn augment_clap<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
+        let app = app.subcommands(vec![
+            AppsOpts::augment_clap(SubCommand::with_name("apps")).setting(SubcommandRequiredElseHelp),
+            SettingsOpts::augment_clap(SubCommand::with_name("settings")).setting(SubcommandRequiredElseHelp),
+            SwarmsOpts::augment_clap(SubCommand::with_name("swarms")).setting(SubcommandRequiredElseHelp),
+            NodesOpts::augment_clap(SubCommand::with_name("nodes")).setting(SubcommandRequiredElseHelp),
+            UsersOpts::augment_clap(SubCommand::with_name("users")).setting(SubcommandRequiredElseHelp),
+        ]);
+        if superpowers() {
+            app.subcommand(
+                InternalOpts::augment_clap(SubCommand::with_name("internal")).setting(SubcommandRequiredElseHelp),
+            )
+        } else {
+            app
+        }
+    }
+
+    fn is_subcommand() -> bool {
+        true
+    }
+
+    fn from_subcommand<'a, 'b>(sub: (&'b str, Option<&'b ArgMatches<'a>>)) -> Option<Self>
+    where
+        Self: std::marker::Sized,
+    {
+        match sub {
+            ("apps", Some(matches)) => Some(CommandsOpt::Apps(AppsOpts::from_clap(matches))),
+            ("settings", Some(matches)) => Some(CommandsOpt::Settings(SettingsOpts::from_clap(matches))),
+            ("swarms", Some(matches)) => Some(CommandsOpt::Swarms(SwarmsOpts::from_clap(matches))),
+            ("nodes", Some(matches)) => Some(CommandsOpt::Nodes(NodesOpts::from_clap(matches))),
+            ("users", Some(matches)) => Some(CommandsOpt::Users(UsersOpts::from_clap(matches))),
+            ("internal", Some(matches)) if superpowers() => {
+                Some(CommandsOpt::Internal(InternalOpts::from_clap(matches)))
+            }
+            _ => None,
+        }
+    }
+}
+
+fn superpowers() -> bool {
+    std::env::var("HERE_BE_DRAGONS").unwrap_or_default() == "zøg"
 }
 
 #[tokio::main(flavor = "multi_thread")]
