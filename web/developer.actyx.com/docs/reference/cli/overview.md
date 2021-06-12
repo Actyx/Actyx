@@ -14,7 +14,7 @@ For installation instructions, please refer to [this how-to guide](../../how-to/
 
 <h2>Subcommands</h2>
 
-| Command     | description          |
+| Command     | Description          |
 | ----------- | -------------------- |
 | ax nodes    | Manage nodes         |
 | ax settings | Manage node settings |
