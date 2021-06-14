@@ -15,7 +15,7 @@ impl<S, F> InspectPoll<S, F> {
     }
 }
 
-impl<S: Stream + Unpin, F: FnMut(&futures::task::Poll<Option<S::Item>>)> Stream for InspectPoll<S, F> {
+impl<S: Stream + Unpin, F: FnMut(&std::task::Poll<Option<S::Item>>)> Stream for InspectPoll<S, F> {
     type Item = S::Item;
 
     fn poll_next(

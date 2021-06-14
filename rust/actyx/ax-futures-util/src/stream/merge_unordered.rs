@@ -1,7 +1,7 @@
 use futures::stream::{SelectAll, Stream};
-use futures::task::Poll;
 use std::pin::Pin;
 use std::task::Context;
+use std::task::Poll;
 
 /// ## Merge a stream of streams into a single stream
 ///
