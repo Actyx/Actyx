@@ -78,6 +78,8 @@ impl AxCliCommand for UsersKeygen {
     }
 }
 #[derive(StructOpt, Debug)]
+#[structopt(no_version)]
+/// generate a user key
 pub struct KeygenOpts {
     #[structopt(short, long)]
     /// Path in which to save the private key. The public key will be generated in the same

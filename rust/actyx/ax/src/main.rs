@@ -15,7 +15,8 @@ use util::version::NodeVersion;
 #[derive(StructOpt, Debug)]
 #[structopt(
     name = "Actyx CLI",
-    about = "The Actyx Command Line Interface (CLI) is a unified tool to manage your Actyx nodes"
+    about = "The Actyx Command Line Interface (CLI) is a unified tool to manage your Actyx nodes",
+    no_version
 )]
 struct Opt {
     // unless("version") gives "methods in attributes are not allowed for subcommand"
@@ -71,10 +72,6 @@ impl StructOptInternal for CommandsOpt {
         }
     }
 
-    fn is_subcommand() -> bool {
-        true
-    }
-
     fn from_subcommand<'a, 'b>(sub: (&'b str, Option<&'b ArgMatches<'a>>)) -> Option<Self>
     where
         Self: std::marker::Sized,
@@ -94,7 +91,8 @@ impl StructOptInternal for CommandsOpt {
 }
 
 fn superpowers() -> bool {
-    std::env::var("HERE_BE_DRAGONS").unwrap_or_default() == "zøg"
+    let var = std::env::var("HERE_BE_DRAGONS").unwrap_or_default();
+    var == "zøg" || var == "zoeg"
 }
 
 #[tokio::main(flavor = "multi_thread")]
@@ -124,7 +122,7 @@ async fn main() {
         _ => {
             let mut app = Opt::clap();
             app.write_long_help(&mut std::io::stderr()).unwrap();
-            println!();
+            eprintln!();
         }
     }
 }

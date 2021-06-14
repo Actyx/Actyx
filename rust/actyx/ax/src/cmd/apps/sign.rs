@@ -7,6 +7,8 @@ use structopt::StructOpt;
 use util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 
 #[derive(StructOpt, Debug)]
+#[structopt(no_version)]
+/// sign an app manifest
 pub struct SignOpts {
     /// Path to certificate that shall be used for signing
     pub path_to_certificate: PathBuf,

@@ -7,7 +7,7 @@ use ls::LsOpts;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-/// Manage nodes
+#[structopt(no_version)]
 pub enum NodesOpts {
     #[structopt(name = "ls")]
     /// Show node info and status

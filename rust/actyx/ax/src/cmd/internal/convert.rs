@@ -5,6 +5,7 @@ use swarm::convert::{convert_from_v1, ConversionOptions};
 use util::formats::{ActyxOSResult, ActyxOSResultExt};
 
 #[derive(StructOpt, Debug)]
+#[structopt(no_version)]
 pub struct ConvertFromV1Opts {
     #[structopt(help("path to the source index store. The name of the source block store will be derived from this by appending '-blocks.sqlite'."))]
     source: String,

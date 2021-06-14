@@ -38,6 +38,7 @@ impl AxCliCommand for SettingsSet {
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(no_version)]
 pub struct SetOpt {
     #[structopt(flatten)]
     actual_opts: SetSettingsCommand,
