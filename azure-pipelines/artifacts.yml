@@ -148,6 +148,8 @@ stages:
           - bash: |
               set -e
               make node-manager-mac-linux
+            env:
+              BASH_ENV: "~/.bashrc"
           - publish: "$(System.DefaultWorkingDirectory)/misc/actyx-node-manager/dist/artifacts"
             artifact: node-manager-linux
             condition: succeeded()
@@ -157,6 +159,8 @@ stages:
           - bash: |
               set -e
               make node-manager-win
+            env:
+              BASH_ENV: "~/.bashrc"
           - publish: "$(System.DefaultWorkingDirectory)/misc/actyx-node-manager/dist/artifacts"
             artifact: node-manager-win
             condition: succeeded()
