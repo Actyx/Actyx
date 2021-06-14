@@ -71,6 +71,8 @@ stages:
           - bash: |
               set -e
               make validate-node-manager-bindings
+            env:
+              BASH_ENV: "~/.bashrc"
 
   - stage: notifySuccess
     dependsOn:
