@@ -50,15 +50,15 @@ stages:
         value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_actyx'] ]
       - name: ACTYX_VERSION_CLI
         value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_cli'] ]
-      - name: ACTYX_VERSION_NODE-MANAGER
+      - name: ACTYX_VERSION_NODEMANAGER
         value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_node-manager'] ]
       - name: ACTYX_VERSION_POND
         value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_pond'] ]
-      - name: ACTYX_VERSION_TS-SDK
+      - name: ACTYX_VERSION_TSSDK
         value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_ts-sdk'] ]
-      - name: ACTYX_VERSION_RUST-SDK
+      - name: ACTYX_VERSION_RUSTSDK
         value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_rust-sdk'] ]
-      - name: ACTYX_VERSION_CSHARP-SDK
+      - name: ACTYX_VERSION_CSHARPSDK
         value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_csharp-sdk'] ]
     pool:
       name: Native
