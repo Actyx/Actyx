@@ -61,6 +61,12 @@ impl RepoWrapper {
         remote.push(&[format!("{}:{}", branch_ref, branch_ref)], Some(&mut opts))?;
         Ok(())
     }
+    pub fn on_head_of_origin_master(&self) -> anyhow::Result<bool> {
+        // let's assume were up to date
+        let head = self.head()?.peel_to_commit()?.id();
+        let head_of_master = self.0.revparse_single("origin/master")?.peel_to_commit()?.id();
+        Ok(head == head_of_master)
+    }
 }
 
 fn get_commits<'a>(
