@@ -1,5 +1,5 @@
-use crate::{AxTreeExt, BanyanStore, MAX_TREE_LEVEL};
-use actyx_sdk::{app_id, tags, AppId, Offset, Payload, StreamNr, Tag, TagSet};
+use crate::{AxTreeExt, BanyanStore, SwarmConfig, MAX_TREE_LEVEL};
+use actyx_sdk::{app_id, tags, AppId, Offset, OffsetMap, Payload, StreamNr, Tag, TagSet};
 use ax_futures_util::{
     prelude::AxStreamExt,
     stream::{interval, Drainer},
@@ -7,7 +7,10 @@ use ax_futures_util::{
 use banyan::query::AllQuery;
 use futures::{prelude::*, StreamExt};
 use libipld::Cid;
-use std::{collections::BTreeMap, convert::TryFrom, str::FromStr, time::Duration};
+use maplit::btreemap;
+use parking_lot::Mutex;
+use std::{collections::BTreeMap, convert::TryFrom, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
+use tempdir::TempDir;
 use trees::query::TagsQuery;
 
 struct Tagger(BTreeMap<&'static str, Tag>);
@@ -193,6 +196,46 @@ async fn must_not_lose_events_through_compaction() -> anyhow::Result<()> {
         evs.len(),
         evs
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn must_report_proper_initial_offsets() -> anyhow::Result<()> {
+    const EVENTS: usize = 10;
+    let dir = TempDir::new("must_report_proper_initial_offsets")?;
+    let db = PathBuf::from(dir.path().join("db").to_str().expect("illegal filename"));
+    let index = PathBuf::from(dir.path().join("index").to_str().expect("illegal filename"));
+    let index_store = Arc::new(Mutex::new(rusqlite::Connection::open(index)?));
+    let config = SwarmConfig {
+        index_store: Some(index_store),
+        node_name: Some("must_report_proper_initial_offsets".to_owned()),
+        db_path: Some(db),
+        enable_fast_path: true,
+        enable_slow_path: true,
+        enable_root_map: true,
+        enable_discovery: true,
+        enable_metrics: true,
+        ..Default::default()
+    };
+    let store = BanyanStore::new(config.clone()).await?;
+    let stream = store.get_or_create_own_stream(0.into())?;
+    let stream_id = store.node_id().stream(0.into());
+    let expected_present = OffsetMap::from(btreemap! { stream_id => Offset::from(9) });
+    assert!(stream.published_tree().is_none());
+
+    for ev in (0..EVENTS).map(|_| (tags!("abc"), Payload::empty())) {
+        store.append(0.into(), app_id(), vec![ev]).await?;
+    }
+
+    let present = store.data.offsets.project(|x| x.present.clone());
+    assert_eq!(present, expected_present);
+    drop(store);
+
+    // load non-empty store from disk and check that the offsets are correctly computed
+    let store = BanyanStore::new(config).await?;
+    let present = store.data.offsets.project(|x| x.present.clone());
+    assert_eq!(present, expected_present);
 
     Ok(())
 }
