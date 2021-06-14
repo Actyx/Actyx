@@ -357,13 +357,14 @@ node-manager-win: prepare-docker
 	-w /src/misc/actyx-node-manager \
 	--rm \
 	actyx/util:node-manager-win-builder \
-	bash -c "npm install && npm run build && npm run dist -- --win --x64 && npm run artifacts"
+	bash -c "npm install && npm version $(ACTYX_VERSION_NODE-MANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
 
 node-manager-mac-linux:
 	cd misc/actyx-node-manager && \
 		source ~/.nvm/nvm.sh && \
 		nvm install && \
 		npm install && \
+		npm version $(ACTYX_VERSION_NODE-MANAGER) && \
 		npm run build && \
 		npm run dist && \
 		npm run artifacts
