@@ -20,7 +20,7 @@ import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import {
   ConnectivityStatus,
   Event,
-  Events,
+  EventIO,
   EventsSortOrders,
   OffsetsResponse,
   UnstoredEvents,
@@ -69,11 +69,6 @@ const PublishEventsResponse = t.type({ data: t.readonlyArray(EventKeyWithTime) }
 const toAql = (w: Where<unknown> | string): string =>
   w instanceof String ? (w as string) : 'FROM ' + w.toString()
 
-// FIXME: Downstream consumers expect arrays of Events, but endpoint is no longer sending chunks.
-const compat = (x: unknown) => {
-  return [x]
-}
-
 export class WebsocketEventStore implements EventStore {
   constructor(private readonly multiplexer: MultiplexedWebsocket, private readonly appId: AppId) {}
 
@@ -112,8 +107,7 @@ export class WebsocketEventStore implements EventStore {
           order: sortOrder,
         }),
       )
-      .map(compat)
-      .map(validateOrThrow(Events))
+      .map(validateOrThrow(EventIO))
   }
 
   subscribe: DoSubscribe = (lowerBound, whereObj) => {
@@ -125,8 +119,7 @@ export class WebsocketEventStore implements EventStore {
           query: toAql(whereObj),
         }),
       )
-      .map(compat)
-      .map(validateOrThrow(Events))
+      .map(validateOrThrow(EventIO))
   }
 
   persistEvents: DoPersistEvents = events => {

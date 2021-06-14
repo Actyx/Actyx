@@ -18,6 +18,7 @@ anyhow = "1.0.40"
 async-trait = "0.1.50"
 base64 = "0.13.0"
 chrono = { version = "0.4.19", features = ["serde"] }
+crossbeam = "0.8.1"
 derive_more = "0.99.13"
 futures = { version = "0.3.14", package = "futures" }
 hyper = { version = "0.14.6", features = ["http1", "server", "tcp"], package = "hyper" }

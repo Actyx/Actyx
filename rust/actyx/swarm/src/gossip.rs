@@ -219,10 +219,12 @@ impl Gossip {
                     match DagCborCodec.decode::<GossipMessage>(&message) {
                         Ok(GossipMessage::RootUpdate(root_update)) => {
                             tracing::debug!(
-                                "{} received root update {} with {} blocks",
+                                "{} received root update {} from {} with {} blocks, lamport: {}",
                                 store.ipfs().local_node_name(),
+                                root_update.root,
                                 root_update.stream,
-                                root_update.blocks.len()
+                                root_update.blocks.len(),
+                                root_update.lamport
                             );
                             store
                                 .lock()
@@ -249,7 +251,12 @@ impl Gossip {
                             }
                         }
                         Ok(GossipMessage::RootMap(root_map)) => {
-                            tracing::debug!("{} received root map", store.ipfs().local_node_name());
+                            tracing::debug!(
+                                "{} received root map with {} entries, lamport: {}",
+                                store.ipfs().local_node_name(),
+                                root_map.entries.len(),
+                                root_map.lamport
+                            );
                             store
                                 .lock()
                                 .received_lamport(root_map.lamport)

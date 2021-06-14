@@ -56,7 +56,8 @@ const expectFishWithEvents = async (
       x => o.next(x),
     ),
   )
-    .debounceTime(0)
+    // Double the chunk time
+    .debounceTime(40)
     .first()
     .toPromise()
 
@@ -262,8 +263,8 @@ describe('Pond.observeAll', () => {
 
     let cbInvoked = 0
     const assertInvocations = async (expected: number) => {
-      // yield
-      await Observable.timer(0).toPromise()
+      // yield double the chunk time
+      await Observable.timer(40).toPromise()
       expect(cbInvoked).toEqual(expected)
     }
 

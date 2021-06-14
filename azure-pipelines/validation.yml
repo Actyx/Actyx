@@ -64,32 +64,13 @@ stages:
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
       - job:
-        displayName: make node-manager mac
-        pool:
-          name: MacIntel
-          demands:
-            - Agent.OS -equals Darwin
-            - Agent.OSArchitecture -equals X64
-        steps:
-          - bash: |
-              set -e
-              make node-manager-mac-linux
-      - job:
-        displayName: make node-manager linux
+        displayName: validate node-manager-bindings
         pool:
           name: Native
         steps:
           - bash: |
               set -e
-              make node-manager-mac-linux
-      - job:
-        displayName: make node-manager win
-        pool:
-          name: Native
-        steps:
-          - bash: |
-              set -e
-              make node-manager-win
+              make validate-node-manager-bindings
 
   - stage: notifySuccess
     dependsOn:

@@ -10,15 +10,15 @@ import { catOptions, chunksOf } from 'fp-ts/lib/Array'
 import { none, some } from 'fp-ts/lib/Option'
 import { observeMonotonic } from '.'
 import { allEvents, Fish, Lamport, Timestamp, Where } from '..'
-import { SnapshotScheduler } from './snapshotScheduler'
 import { FishErrorReporter } from '../types'
 import { interleaveRandom } from '../util'
 import { shuffle } from '../util/array'
+import { SnapshotScheduler } from './snapshotScheduler'
 
 const numberOfSources = 5
 const batchSize = 10
 const eventsPerSource = 100
-const numberOfIterations = 5
+const numberOfIterations = 4
 const semanticSnapshotProbability = 0.1
 const localSnapshotProbability = 0.05
 
@@ -148,10 +148,6 @@ const hydrate: Run = fish => async (sourceId, events, snapshotScheduler) => {
     Promise.resolve({
       eventStore: Actyx.test({
         nodeId: sourceId,
-        // In production, our chunk size is 500.
-        // Using small chunks slows down streaming hydration a lot,
-        // hence we settle on a rather large number that will still lead to chunking in some cases.
-        eventChunkSize: (eventsPerSource * numberOfSources) / 3,
       }),
       snapshotStore: SnapshotStore.inMem(),
       offsetMap: OffsetMap.empty,

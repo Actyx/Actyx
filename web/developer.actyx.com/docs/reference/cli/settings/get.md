@@ -4,7 +4,7 @@ title: ax settings get
 
 ```text title="Get settings from a node"
 USAGE:
-    ax settings get [FLAGS] <SCOPE> <NODE>
+    ax settings get [FLAGS] [OPTIONS] <SCOPE> <NODE>
 
 FLAGS:
     -h, --help           Prints help information
@@ -14,6 +14,9 @@ FLAGS:
     -V, --version        Prints version information
     -v                   Verbosity level. Add more v for higher verbosity
                          (-v, -vv, -vvv, etc.)
+
+OPTIONS:
+    -i, --identity <identity>    File from which the identity (private key) for authentication is read
 
 ARGS:
     <SCOPE>    Scope from which you want to get the settings

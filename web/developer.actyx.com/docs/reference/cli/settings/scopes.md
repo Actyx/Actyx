@@ -4,7 +4,7 @@ title: ax settings scopes
 
 ```text title="Get setting scopes from a node"
 USAGE:
-    ax settings scopes [FLAGS] <NODE>
+    ax settings scopes [FLAGS] [OPTIONS] <NODE>
 
 FLAGS:
     -h, --help       Prints help information
@@ -12,6 +12,9 @@ FLAGS:
     -V, --version    Prints version information
     -v               Verbosity level. Add more v for higher verbosity
                      (-v, -vv, -vvv, etc.)
+
+OPTIONS:
+    -i, --identity <identity>    File from which the identity (private key) for authentication is read
 
 ARGS:
     <NODE>    Node ID or, if using `--local`, the IP address of the node to

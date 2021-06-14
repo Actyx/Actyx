@@ -91,3 +91,15 @@ pub fn run_task<I: serde::de::DeserializeOwned + Sync + Send + 'static, O: serde
         Ok::<(), ()>(())
     });
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::types::Nothing;
+
+    use super::*;
+    #[test]
+    fn test_to_stringified() -> Result<()> {
+        assert_eq!(to_stringified(Nothing {})?, "{}");
+        Ok(())
+    }
+}

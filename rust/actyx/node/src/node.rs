@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant};
+use std::{
+    collections::BTreeSet,
+    time::{Duration, Instant},
+};
 
 use crate::{
     components::{logging::LoggingRequest, store::StoreRequest, ComponentRequest, ComponentState, ComponentType},
@@ -82,13 +85,13 @@ struct Node {
     state: NodeState,
     runtime_storage: Host,
     settings_repo: settings::Repository,
-    components: Vec<ComponentChannel>,
+    components: Vec<(ComponentType, ComponentChannel)>,
 }
 
 impl Node {
     fn new(
         rx: Receiver<ExternalEvent>,
-        components: Vec<ComponentChannel>,
+        components: Vec<(ComponentType, ComponentChannel)>,
         runtime_storage: Host,
     ) -> anyhow::Result<Self> {
         #[cfg(test)]
@@ -276,7 +279,7 @@ impl Node {
 
     fn send(&mut self, message: NodeEvent) -> ActyxOSResult<()> {
         debug!("Node event {:?}", message);
-        for c in &self.components {
+        for (_, c) in &self.components {
             match c {
                 ComponentChannel::Store(s) => standard_lifecycle!(message, s),
                 ComponentChannel::NodeApi(s) => standard_lifecycle!(message, s),
@@ -290,7 +293,7 @@ impl Node {
     }
 
     fn register_with_components(&mut self, tx: Sender<(ComponentType, ComponentState)>) -> anyhow::Result<()> {
-        for c in &self.components {
+        for (_, c) in &self.components {
             match c {
                 ComponentChannel::Store(s) => s.send(ComponentRequest::RegisterSupervisor(tx.clone()))?,
                 ComponentChannel::NodeApi(s) => s.send(ComponentRequest::RegisterSupervisor(tx.clone()))?,
@@ -305,11 +308,13 @@ impl Node {
     }
 
     fn run(mut self) -> NodeProcessResult<()> {
+        tracing::info!("Actyx {} is starting", NodeVersion::get());
+
         let (tx, component_rx) = bounded(256);
         self.register_with_components(tx).internal()?;
 
         self.send(NodeEvent::StateUpdate(self.state.clone())).internal()?;
-        tracing::info!(target: "NODE_STARTED_BY_HOST", "Actyx {} is running.", NodeVersion::get());
+        let mut to_start = self.components.iter().map(|x| x.0.clone()).collect::<BTreeSet<_>>();
 
         // Main node event loop (pun intended)
         let shutdown_reason = loop {
@@ -325,6 +330,12 @@ impl Node {
                 recv(component_rx) -> msg => {
                     let (from_component, new_state) = msg.internal()?;
                     debug!("Received component state transition: {} {:?}", from_component, new_state);
+                    if let ComponentState::Started = new_state {
+                        to_start.remove(&from_component);
+                        if to_start.is_empty() {
+                            tracing::info!(target: "NODE_STARTED_BY_HOST", "Actyx {} is running.", NodeVersion::get());
+                        }
+                    }
                     if let ComponentState::Errored(e) = new_state {
                         warn!("Shutting down because component {} errored: \"{:#}\"", from_component, e);
                         break ShutdownReason::Internal(e.context(format!("Component {}", from_component)).into());
@@ -336,10 +347,13 @@ impl Node {
         // Log reason for shutdown
         match shutdown_reason {
             ShutdownReason::TriggeredByHost => {
-                info!(target: "NODE_STOPPED_BY_HOST", "Actyx is stopped. The shutdown was either initiated automatically by the host or intentionally by the user. If you have questions about that behavior, please contact Actyx support or file a report at https://community.actyx.com/c/support.");
+                info!(target: "NODE_STOPPED_BY_HOST", "Actyx is stopped. \
+                    The shutdown was either initiated automatically by the host or intentionally by the user. \
+                    If you have questions about that behavior, please contact Actyx support or file a report at https://community.actyx.com/c/support.");
             }
             ShutdownReason::TriggeredByUser => {
-                info!(target: "NODE_STOPPED_BY_NODEUI", "Actyx is stopped. The shutdown was initiated by the user. If you did not initiate shutdown, please contact Actyx support or file a report at https://community.actyx.com/c/support.");
+                info!(target: "NODE_STOPPED_BY_NODEUI", "Actyx is stopped. The shutdown was initiated by the user. \
+                    If you did not initiate shutdown, please contact Actyx support or file a report at https://community.actyx.com/c/support.");
             }
             ShutdownReason::Internal(ref err) => {
                 error!(target: "NODE_STOPPED_BY_NODE", "{}", err);
@@ -383,7 +397,7 @@ pub struct NodeWrapper {
 impl NodeWrapper {
     pub(crate) fn new(
         (tx, rx): (Sender<ExternalEvent>, Receiver<ExternalEvent>),
-        components: Vec<ComponentChannel>,
+        components: Vec<(ComponentType, ComponentChannel)>,
         runtime_storage: Host,
     ) -> anyhow::Result<Self> {
         let node = Node::new(rx, components, runtime_storage)?;
@@ -565,7 +579,7 @@ mod test {
         node_rx: Receiver<ComponentRequest<()>>,
     }
     impl Component<(), ()> for DummyComponent {
-        fn get_type(&self) -> &'static str {
+        fn get_type() -> &'static str {
             "test"
         }
         fn get_rx(&self) -> &Receiver<ComponentRequest<()>> {
@@ -580,7 +594,7 @@ mod test {
         fn set_up(&mut self, _: ()) -> bool {
             true
         }
-        fn start(&mut self, _: Sender<anyhow::Error>) -> Result<()> {
+        fn start(&mut self, _: Sender<anyhow::Result<()>>) -> Result<()> {
             Ok(())
         }
         fn stop(&mut self) -> Result<()> {
@@ -596,7 +610,7 @@ mod test {
         let host = Host::new(std::env::current_dir()?)?;
         let node = NodeWrapper::new(
             (node_tx.clone(), node_rx),
-            vec![ComponentChannel::Test(component_tx)],
+            vec![("test".into(), ComponentChannel::Test(component_tx))],
             host,
         )?;
 
@@ -627,7 +641,11 @@ mod test {
         let (node_tx, node_rx) = crossbeam::channel::bounded(512);
         let (component_tx, component_rx) = crossbeam::channel::bounded(512);
         let host = Host::new(std::env::current_dir()?)?;
-        let node = NodeWrapper::new((node_tx, node_rx), vec![ComponentChannel::Test(component_tx)], host)?;
+        let node = NodeWrapper::new(
+            (node_tx, node_rx),
+            vec![("test".into(), ComponentChannel::Test(component_tx))],
+            host,
+        )?;
 
         // should register with Component
         let component_state_tx = match component_rx.recv()? {
@@ -656,7 +674,11 @@ mod test {
         let (node_tx, node_rx) = crossbeam::channel::bounded(512);
         let (component_tx, component_rx) = crossbeam::channel::bounded(512);
         let host = Host::new(std::env::current_dir()?)?;
-        let node = NodeWrapper::new((node_tx, node_rx), vec![ComponentChannel::Test(component_tx)], host)?;
+        let node = NodeWrapper::new(
+            (node_tx, node_rx),
+            vec![("test".into(), ComponentChannel::Test(component_tx))],
+            host,
+        )?;
 
         // should register with Component
         let _component_state_tx = match component_rx.recv()? {

@@ -176,27 +176,18 @@ const getEventsForwardChunked = (
   fns: EventFns,
   subscriptionSet: Where<unknown>,
   present: OffsetMap,
-): Observable<ActyxEvent[]> => {
-  const chunks = new Observable<ActyxEvent[]>(o => {
-    let cancelled = false
-    fns
-      .queryKnownRangeChunked(
-        {
-          upperBound: present,
-          query: subscriptionSet,
-        },
-        1,
-        chunk => (cancelled ? undefined : o.next(chunk.events)),
-      )
-      .then(() => o.complete())
-    return () => {
-      /* cannot really tear this down */
-      cancelled = true
-    }
-  })
-
-  return chunks
-}
+): Observable<ActyxEvent[]> =>
+  new Observable<ActyxEvent[]>(o =>
+    fns.queryKnownRangeChunked(
+      {
+        upperBound: present,
+        query: subscriptionSet,
+      },
+      500,
+      chunk => o.next(chunk.events),
+      () => o.complete(),
+    ),
+  )
 
 type StartedFish<S> = {
   fish: Fish<S, any>
@@ -261,6 +252,8 @@ const observeAllStartWithInitial = <ESeed, S>(
       {
         lowerBound: present,
         query: subscriptionSet,
+        // Buffer slightly to improve performance
+        maxChunkTimeMs: 20,
       },
       chunk => o.next(chunk.events),
     ),

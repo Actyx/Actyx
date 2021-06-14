@@ -6,7 +6,7 @@
  */
 import { Observable, ReplaySubject } from 'rxjs'
 import { AppId, Lamport, NodeId, Offset, OffsetMap, toEventPredicate } from '../types'
-import { DoQuery, DoSubscribe, EventStore, DoPersistEvents } from './eventStore'
+import { DoPersistEvents, DoQuery, DoSubscribe, EventStore } from './eventStore'
 import log from './log'
 import { ConnectivityStatus, Events } from './types'
 
@@ -29,7 +29,7 @@ export const mockEventStore: () => EventStore = () => {
         // eslint-disable-next-line @typescript-eslint/ban-ts-ignore
         // @ts-ignore this needs to complete
         .take(events._events.length)
-        .map(x => x.filter(toEventPredicate(query)))
+        .concatMap(x => x.filter(toEventPredicate(query)))
         .do(x => log.ws.debug('persistedEvents', x))
     )
   }
@@ -41,7 +41,7 @@ export const mockEventStore: () => EventStore = () => {
 
     return events
       .asObservable()
-      .map(x => x.filter(toEventPredicate(query)))
+      .concatMap(x => x.filter(toEventPredicate(query)))
       .do(x => log.ws.debug('allEvents', x))
   }
 

@@ -19,6 +19,15 @@ export const releases = {
     'https://axartifacts.blob.core.windows.net/artifacts/f2e7e414f2a38ba56d64071000b7ac5d3e191d96',
 }
 
+export const withContext = <T>(context: string, f: () => T): T => {
+  try {
+    return f()
+  } catch (err) {
+    err.message += `\n\ncontext:\n${context}`
+    throw err
+  }
+}
+
 export const binaryUrlAndNameForVersion = (
   node: ActyxNode,
   version: keyof typeof releases,
@@ -122,9 +131,18 @@ export const runActyx = async (
   }
 }
 
+/**
+ * Run this process until
+ *  - it stops voluntarily, either successfully or not (both resolving the proving)
+ *  - it emits one of the trigger strings on stdout or stderr
+ *  - it times out
+ *
+ * @param proc the process to monitor (will be killed in the end)
+ * @param triggers strings upon which execution is considered to be done
+ * @param timeout maximum time the process is allowed to run
+ */
 export const runUntil = async (
   proc: Promise<[ExecaChildProcess]>,
-  nodeName: string,
   triggers: string[],
   timeout: number,
 ): Promise<ExecaReturnValue | ExecaError | string[]> => {
@@ -132,7 +150,7 @@ export const runUntil = async (
   return new Promise<ExecaReturnValue | ExecaError | string[]>((res) => {
     const logs: string[] = []
     setTimeout(() => res(logs), timeout)
-    const { log } = mkProcessLogger((s) => logs.push(s), nodeName, triggers)
+    const { log } = mkProcessLogger((s) => logs.push(s), '', triggers)
     p.stdout?.on('data', (buf) => {
       if (log('stdout', buf)) {
         res(logs)

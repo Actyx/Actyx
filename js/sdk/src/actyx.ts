@@ -50,7 +50,7 @@ export const Actyx = {
    * @public
    */
   test: (opts: ActyxTestOpts = {}): TestActyx => {
-    const store = EventStoreV2.test(opts.nodeId, opts.eventChunkSize)
+    const store = EventStoreV2.test(opts.nodeId)
     const snaps = SnapshotStore.inMem()
     const fns = EventFnsFromEventStoreV2(opts.nodeId || NodeId.of('TESTNODEID'), store, snaps)
     return {
