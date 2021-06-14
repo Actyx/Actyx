@@ -9,6 +9,7 @@ use versions_ignore_file::VersionsIgnoreFile;
 
 mod changes;
 mod products;
+mod publisher;
 mod releases;
 mod repo;
 mod versions;
@@ -49,7 +50,9 @@ enum Command {
     /// NEW version. Otherwise it falls back to the last released one; if the
     /// release hash is not equal to HEAD, this will append `_dev` to the semver
     /// version.
-    GetActyxVersion { product: Product },
+    GetActyxVersion {
+        product: Product,
+    },
     /// Computes changelog
     Changes {
         /// Product (actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
@@ -74,6 +77,9 @@ enum Command {
         /// Print action plan to stdout
         #[clap(long, short)]
         dry_run: bool,
+    },
+    Publish {
+        product: Product,
     },
 }
 
@@ -136,10 +142,10 @@ fn main() -> Result<(), Error> {
                     .find(|VersionLine { release, .. }| release.product == product)
                     .ok_or_else(|| anyhow::anyhow!("No release found for {}", product))?;
 
-                if repo.head()?.id() == v.commit {
+                if head_commit_id == v.commit {
                     println!("{}-{}", v.release.version, v.commit)
                 } else {
-                    println!("{}_dev-{}", v.release.version, v.commit)
+                    println!("{}_dev-{}", v.release.version, head_commit_id)
                 }
             }
         }
@@ -280,6 +286,13 @@ Overview:"#
                 }
                 eprintln!("Done.");
             }
+        }
+        Command::Publish { product } => {
+            let mut versions = version_file
+                .versions()
+                .into_iter()
+                .filter(|VersionLine { release, .. }| release.product == product);
+            for version in versions {}
         }
     }
     Ok(())

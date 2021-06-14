@@ -37,7 +37,6 @@ fn get_version(env_var: &str) -> Version {
 
             let git_head_out = Command::new("git")
                 .arg("rev-parse")
-                .arg("--short")
                 .arg("HEAD")
                 .output()
                 .expect("Error running git rev-parse --short HEAD");
