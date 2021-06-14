@@ -112,7 +112,7 @@ CARGO := RUST_BACKTRACE=1  cargo +$(BUILD_RUST_TOOLCHAIN)
 export GIT_COMMIT = $(shell git rev-parse --short HEAD)$(shell [ -n "$(shell git status --porcelain)" ] && echo _dirty)
 export ACTYX_VERSION ?= 0.0.0_dev-$(GIT_COMMIT)
 export ACTYX_VERSION_CLI ?= 0.0.0_dev-$(GIT_COMMIT)
-export ACTYX_VERSION_NODE-MANAGER ?= 0.0.0_dev-$(GIT_COMMIT)
+export ACTYX_VERSION_NODE-MANAGER ?= 0.0.0-dev-$(GIT_COMMIT)
 
 all-WINDOWS := $(foreach t,$(windows-bins),windows-x86_64/$t)
 all-ANDROID := $(android-bins)

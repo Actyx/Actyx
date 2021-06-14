@@ -145,7 +145,10 @@ fn main() -> Result<(), Error> {
                 if head_commit_id == v.commit {
                     println!("{}-{}", v.release.version, v.commit)
                 } else {
-                    println!("{}_dev-{}", v.release.version, head_commit_id)
+                    let is_js = matches!(product, Product::NodeManager | Product::Pond | Product::TsSdk);
+                    // npm is serious about semver
+                    let delimiter = if is_js { '-' } else { '_' };
+                    println!("{}{}dev-{}", v.release.version, delimiter, head_commit_id)
                 }
             }
         }
