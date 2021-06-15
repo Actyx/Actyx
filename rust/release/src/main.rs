@@ -282,20 +282,7 @@ Overview:"#
                 eprintln!("Done. ({})", oid);
 
                 eprint!("4) git push origin/{} ... ", branch_name);
-                if std::env::var("AZURE_HTTP_USER_AGENT").is_ok() {
-                    eprintln!("Running inside Azure Pipelines; shelling out to `git`. Output:");
-                    // `git` is properly set up on Azure Pipelines
-                    let mut child = std::process::Command::new("git")
-                        .args(&["push", "origin", &*branch_name])
-                        .spawn()?;
-                    anyhow::ensure!(child.wait()?.success());
-                    // println!(
-                    //     "###vso[task.setvariable variable=RELEASE_BRANCH;isOutput=true]{}",
-                    //     branch_name
-                    // );
-                } else {
-                    repo.push("origin", &*branch_name)?;
-                }
+                repo.push("origin", &*branch_name)?;
                 eprintln!("Done.");
             }
         }
@@ -304,9 +291,15 @@ Overview:"#
             dry_run,
             force,
         } => {
+            let head_of_origin_master = repo.head_of_origin_master()?;
+            let head = repo.head_hash()?;
             anyhow::ensure!(
-                dry_run || repo.on_head_of_origin_master()? || force,
-                "No up to date with origin/master. Use `--force` to override.",
+                dry_run || (head_of_origin_master == head) || force,
+                "Not up to date with origin/master \
+                (current head {}, head of origin/master {}). \
+                Use `--force` to override.",
+                head,
+                head_of_origin_master
             );
 
             let versions = version_file
