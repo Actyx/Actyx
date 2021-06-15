@@ -85,7 +85,6 @@ async fn should_compact_regularly() -> anyhow::Result<()> {
 
     // Wait for the first compaction loop to pass.
     tokio::time::sleep(Duration::from_millis(500)).await;
-    tokio::time::pause();
 
     let tree_stream = store.get_or_create_own_stream(0.into())?.tree_stream();
     let mut tree_stream = Drainer::new(tree_stream);
@@ -117,8 +116,7 @@ async fn should_compact_regularly() -> anyhow::Result<()> {
     // Make sure the root didn't change
     assert!(tree_stream.next().unwrap().is_empty());
 
-    tokio::time::advance(Duration::from_secs(60)).await;
-    tokio::time::resume();
+    tokio::time::sleep(Duration::from_secs(60)).await;
 
     let tree_after_compaction = last_item(&mut tree_stream)?;
     assert!(tree_after_append.root() != tree_after_compaction.root());
