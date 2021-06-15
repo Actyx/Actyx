@@ -1,5 +1,5 @@
 use actyx_sdk::Payload;
-use banyan::{chacha20, store::BranchCache, Forest, Secrets};
+use banyan::{chacha20, store::BranchCache, Forest, Secrets, TreeTypes};
 use banyan_utils::{create_chacha_key, dump};
 use futures::{prelude::*, stream, Stream};
 use ipfs_sqlite_block_store::BlockStore;
@@ -8,7 +8,7 @@ use libipld::{
     codec::{Codec, Decode},
     json::DagJsonCodec,
 };
-use std::{io::Cursor, path::PathBuf};
+use std::{convert::TryFrom, io::Cursor, path::PathBuf};
 use structopt::StructOpt;
 use trees::axtrees::{AxKeySeq, AxTrees, Sha256Digest};
 use util::formats::{ActyxOSResult, ActyxOSResultExt};
@@ -92,7 +92,8 @@ fn dump(opts: DumpTreeOpts) -> anyhow::Result<String> {
             let bs = BlockStore::open(opts.block_store, Default::default())?;
             let ss = SqliteStore::new(bs)?;
             let value_key: chacha20::Key = opts.value_pass.map(create_chacha_key).unwrap_or_default();
-            dump::dump_json(ss, block_hash, value_key, &mut std::io::stdout())?;
+            let nonce = <&chacha20::XNonce>::try_from(AxTrees::NONCE).unwrap();
+            dump::dump_json(ss, block_hash, &value_key, &nonce, &mut std::io::stdout())?;
         }
         _ => anyhow::bail!("Provide either root or block hash"),
     }
