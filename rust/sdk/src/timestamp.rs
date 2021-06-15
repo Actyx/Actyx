@@ -53,10 +53,6 @@ impl Timestamp {
         let now = SystemTime::now();
         now.try_into().expect("Time went waaaay backwards")
     }
-    #[deprecated(since = "0.2.1", note = "use .into()")]
-    pub fn as_u64(self) -> u64 {
-        self.0
-    }
     pub fn as_i64(self) -> i64 {
         self.0 as i64
     }
