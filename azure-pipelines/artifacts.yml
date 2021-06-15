@@ -331,6 +331,6 @@ stages:
             persistCredentials: true
           - bash: |
               set -e
-              cargo run --release -- release
+              cargo run --release -- release --dry-run
             workingDirectory: rust/release
             name: Release
