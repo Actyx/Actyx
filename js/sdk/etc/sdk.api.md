@@ -5,7 +5,6 @@
 ```ts
 
 import { Ord } from 'fp-ts/lib/Ord';
-import * as t from 'io-ts';
 
 // @public
 export type Actyx = EventFns & {
@@ -50,7 +49,6 @@ export type AppId = string;
 // @public
 export const AppId: {
     of: (text: string) => AppId;
-    FromString: t.Type<string, string, unknown>;
 };
 
 // @public
@@ -87,7 +85,6 @@ export type EventChunk = {
 
 // @public
 export interface EventFns {
-    currentOffsets: () => Promise<OffsetMap>;
     emit: (events: ReadonlyArray<TaggedEvent>) => PendingEmission;
     readonly nodeId: NodeId;
     observeBestMatch: <E>(query: Where<E>, shouldReplace: (candidate: ActyxEvent<E>, cur: ActyxEvent<E>) => boolean, onReplaced: (event: E, metadata: Metadata) => void) => CancelSubscription;
@@ -96,6 +93,8 @@ export interface EventFns {
     // @beta
     observeLatest: <E>(query: EarliestQuery<E>, onNewLatest: (event: E, metadata: Metadata) => void) => CancelSubscription;
     observeUnorderedReduce: <R, E>(query: Where<E>, reduce: (acc: R, event: E, metadata: Metadata) => R, initial: R, onUpdate: (result: R) => void) => CancelSubscription;
+    offsets: () => Promise<OffsetsResponse>;
+    present: () => Promise<OffsetMap>;
     queryAllKnown: (query: AutoCappedQuery) => Promise<EventChunk>;
     queryAllKnownChunked: (query: AutoCappedQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
     queryKnownRange: (query: RangeQuery) => Promise<ActyxEvent[]>;
@@ -106,29 +105,26 @@ export interface EventFns {
 }
 
 // @public
-export type EventKey = t.TypeOf<typeof EventKeyIO>;
+export type EventKey = Readonly<{
+    lamport: Lamport;
+    offset: Offset;
+    stream: StreamId;
+}>;
 
 // @public
 export const EventKey: {
-    zero: {
-        readonly lamport: number;
-        readonly offset: number;
-        readonly stream: string;
-    };
-    ord: Ord<{
-        readonly lamport: number;
-        readonly offset: number;
-        readonly stream: string;
+    zero: Readonly<{
+        lamport: Lamport;
+        offset: Offset;
+        stream: StreamId;
     }>;
+    ord: Ord<Readonly<{
+        lamport: Lamport;
+        offset: Offset;
+        stream: StreamId;
+    }>>;
     format: (key: EventKey) => string;
 };
-
-// @public
-export const EventKeyIO: t.ReadonlyC<t.TypeC<{
-    lamport: t.Type<number, number, unknown>;
-    offset: t.Type<number, number, unknown>;
-    stream: t.Type<string, string, unknown>;
-}>>;
 
 // @beta
 export enum EventOrder {
@@ -195,7 +191,6 @@ export type Lamport = number;
 export const Lamport: {
     of: (value: number) => Lamport;
     zero: number;
-    FromNumber: t.Type<number, number, unknown>;
 };
 
 // @beta
@@ -235,7 +230,6 @@ export const Milliseconds: {
     fromSeconds: (value: number) => number;
     fromMinutes: (value: number) => number;
     fromAny: (value: number) => Milliseconds;
-    FromNumber: t.Type<number, number, unknown>;
 };
 
 // @alpha
@@ -262,7 +256,6 @@ export type NodeId = string;
 export const NodeId: {
     of: (text: string) => NodeId;
     random: (digits?: number | undefined) => string;
-    FromString: t.Type<string, string, unknown>;
     streamNo: (nodeId: NodeId, num: number) => string;
 };
 
@@ -278,11 +271,10 @@ export const Offset: {
     zero: number;
     min: number;
     max: number;
-    FromNumber: t.Type<number, number, unknown>;
 };
 
 // @public
-export type OffsetMap = t.TypeOf<typeof OffsetMapIO>;
+export type OffsetMap = Record<StreamId, Offset>;
 
 // @public
 export const OffsetMap: OffsetMapCompanion;
@@ -300,7 +292,10 @@ export type OffsetMapCompanion = Readonly<{
 }>;
 
 // @public
-export const OffsetMapIO: t.ReadonlyC<t.RecordC<t.StringC, t.Type<number, number, unknown>>>;
+export type OffsetsResponse = {
+    present: OffsetMap;
+    toReplicate: Record<StreamId, number>;
+};
 
 // @public
 export type PendingEmission = {
@@ -338,7 +333,6 @@ export type StreamId = string;
 export const StreamId: {
     of: (text: string) => StreamId;
     random: () => string;
-    FromString: t.Type<string, string, unknown>;
 };
 
 // @public
@@ -405,7 +399,6 @@ export const Timestamp: {
     fromMilliseconds: (value: number) => number;
     min: (...values: Timestamp[]) => number;
     max: (values: Timestamp[]) => number;
-    FromNumber: t.Type<number, number, unknown>;
 };
 
 // @alpha

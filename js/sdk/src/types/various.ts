@@ -6,8 +6,6 @@
  */
 import { contramap, Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
-import * as t from 'io-ts'
-import { isNumber, isString } from './functions'
 import { OffsetMap } from './offsetMap'
 
 /**
@@ -42,12 +40,6 @@ export const NodeId = {
    * Creates a random SourceId with the given number of digits
    */
   random: (digits?: number) => mkNodeId(randomBase58(digits || 11)),
-  FromString: new t.Type<NodeId, string>(
-    'NodeIdFromString',
-    (x): x is NodeId => isString(x),
-    (x, c) => t.string.validate(x, c).map(s => s as NodeId),
-    x => x,
-  ),
 
   streamNo: (nodeId: NodeId, num: number) => nodeId + '-' + num,
 }
@@ -72,12 +64,6 @@ export const StreamId = {
    * Creates a random StreamId off a random NodeId.
    */
   random: () => NodeId.streamNo(mkNodeId(randomBase58(11)), Math.floor(Math.random() * 100)),
-  FromString: new t.Type<NodeId, string>(
-    'StreamIdFromString',
-    (x): x is StreamId => isString(x),
-    (x, c) => t.string.validate(x, c).map(s => s as StreamId),
-    x => x,
-  ),
 }
 
 /**
@@ -96,12 +82,6 @@ export const AppId = {
    * Creates a AppId from a string
    */
   of: mkAppId,
-  FromString: new t.Type<AppId, string>(
-    'AppIdFromString',
-    (x): x is AppId => isString(x),
-    (x, c) => t.string.validate(x, c).map(s => s as AppId),
-    x => x,
-  ),
 }
 
 /**
@@ -114,12 +94,6 @@ const mkLamport = (value: number): Lamport => value as Lamport
 export const Lamport = {
   of: mkLamport,
   zero: mkLamport(0),
-  FromNumber: new t.Type<Lamport, number>(
-    'LamportFromNumber',
-    (x): x is Lamport => isNumber(x),
-    (x, c) => t.number.validate(x, c).map(s => mkLamport(s)),
-    x => x,
-  ),
 }
 
 /** Offset within an Actyx event stream. @public */
@@ -131,19 +105,13 @@ export const Offset = {
   of: mkOffset,
   zero: mkOffset(0),
   /**
-   * A value that is below any valid Psn
+   * A value that is below any valid Offset
    */
   min: mkOffset(-1),
   /**
-   * A value that is above any valid Psn
+   * A value that is above any valid Offset
    */
   max: mkOffset(Number.MAX_SAFE_INTEGER),
-  FromNumber: new t.Type<Offset, number>(
-    'PsnFromNumber',
-    (x): x is Offset => isNumber(x),
-    (x, c) => t.number.validate(x, c).map(s => s as Offset),
-    x => x,
-  ),
 }
 
 /** Timestamp (UNIX epoch), MICROseconds resolution. @public */
@@ -167,12 +135,6 @@ export const Timestamp = {
   fromMilliseconds: (value: number) => mkTimestamp(value * 1e3),
   min: (...values: Timestamp[]) => mkTimestamp(Math.min(...values)),
   max: (values: Timestamp[]) => mkTimestamp(Math.max(...values)),
-  FromNumber: new t.Type<Timestamp, number>(
-    'TimestampFromNumber',
-    (x): x is Timestamp => isNumber(x),
-    (x, c) => t.number.validate(x, c).map(s => s as Timestamp),
-    x => x,
-  ),
 }
 
 /** Some number of milliseconds. @public */
@@ -194,34 +156,20 @@ export const Milliseconds = {
     const digits = Math.floor(Math.abs(value)).toString().length
     return Milliseconds.of(digits <= 13 ? value : value / 1e3)
   },
-  FromNumber: new t.Type<Milliseconds, number>(
-    'MilisecondsFromString',
-    (x): x is Milliseconds => isNumber(x),
-    (x, c) => t.number.validate(x, c).map(mkMilliseconds),
-    x => x,
-  ),
 }
 
 /**
  * Triple that Actyx events are sorted and identified by.
- * Wire format.
  *
  * @public
  */
-export const EventKeyIO = t.readonly(
-  t.type({
-    lamport: Lamport.FromNumber,
-    offset: Offset.FromNumber,
-    stream: NodeId.FromString,
-  }),
-)
+export type EventKey = Readonly<{
+  // This is not using t.typeof, so that public API has no io-ts dep
 
-/**
- * Triple that Actyx events are sorted and identified by.
- *
- * @public
- */
-export type EventKey = t.TypeOf<typeof EventKeyIO>
+  lamport: Lamport
+  offset: Offset
+  stream: StreamId
+}>
 
 const zeroKey: EventKey = {
   lamport: Lamport.zero,

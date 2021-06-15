@@ -5,12 +5,9 @@
  * Copyright (C) 2021 Actyx AG
  */
 import { fromNullable } from 'fp-ts/lib/Option'
-import * as t from 'io-ts'
 import { lookup } from '../util'
-import { Offset } from './various'
+import { Offset, StreamId } from './various'
 
-/** OffsetMap serialization format. @public */
-export const OffsetMapIO = t.readonly(t.record(t.string, Offset.FromNumber))
 /**
  * A offset map stores the high water mark for each source.
  *
@@ -19,7 +16,19 @@ export const OffsetMapIO = t.readonly(t.record(t.string, Offset.FromNumber))
  *
  * @public
  */
-export type OffsetMap = t.TypeOf<typeof OffsetMapIO>
+export type OffsetMap = Record<StreamId, Offset>
+
+/**
+ * Response to an offsets() call
+ * @public
+ */
+export type OffsetsResponse = {
+  /** The current local present, i.e. offsets up to which we can provide events without any gaps. */
+  present: OffsetMap
+
+  /** For each stream we still need to download events from, the number of pending events. */
+  toReplicate: Record<StreamId, number>
+}
 
 const emptyOffsetMap: OffsetMap = {}
 const offsetMapLookup = (m: OffsetMap, s: string): Offset =>

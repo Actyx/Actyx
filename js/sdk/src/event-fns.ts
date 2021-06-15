@@ -14,6 +14,7 @@ import {
   Metadata,
   NodeId,
   OffsetMap,
+  OffsetsResponse,
   PendingEmission,
   TaggedEvent,
   TestEvent,
@@ -141,8 +142,11 @@ export interface EventFns {
   /** Id of the Actyx node this interface is connected to. */
   readonly nodeId: NodeId
 
-  /** Get the current latest offsets known locally. */
-  currentOffsets: () => Promise<OffsetMap>
+  /** Get the current local 'present' i.e. offsets up to which we can provide events without any gaps. */
+  present: () => Promise<OffsetMap>
+
+  /** Get the present alongside information on how many events are known to be pending replication from peers to us. */
+  offsets: () => Promise<OffsetsResponse>
 
   /**
    * Get all known events between the given offsets, in one array.

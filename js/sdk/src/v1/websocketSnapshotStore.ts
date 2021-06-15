@@ -13,7 +13,7 @@ import {
   SnapshotStore,
   StoreSnapshot,
 } from '../snapshotStore'
-import { EventKeyIO, OffsetMapIO } from '../types'
+import { EventKeyIO, OffsetMapIO } from '../types/wire'
 import { validateOrThrow } from '../util'
 
 // TODO: generic io-ts mapping from undefined <-> null
