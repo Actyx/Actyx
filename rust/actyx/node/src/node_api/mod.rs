@@ -360,7 +360,7 @@ impl SwarmFuture {
     }
 
     /// Poll the swarm once
-    pub(crate) fn poll_swarm(&mut self, cx: &mut task::Context) -> futures::task::Poll<SwarmEvent<(), TConnErr>> {
+    pub(crate) fn poll_swarm(&mut self, cx: &mut task::Context) -> std::task::Poll<SwarmEvent<(), TConnErr>> {
         let fut = self.swarm().next_event();
         pin_mut!(fut);
         fut.poll(cx)

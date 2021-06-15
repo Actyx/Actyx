@@ -237,12 +237,26 @@ const concurrentOrderingTest = async (
 
   const emissionTags = padEmitWithDummies(streamTags)
   const e = pond.events()
+
+  const emissionStart = Date.now()
   for (let i = 0; i < roundsPerNode; i++) {
     await pond.emit(emissionTags, { hello: 'world0' }).toPromise()
     await pond.emit(emissionTags, { hello: 'world1' }).toPromise()
     await e.emit(emissionTags.apply({ hello: 'world2' }, { hello: 'world3' })).toPromise()
     await new Promise((res) => setTimeout(res, 10 * Math.random())) // Sleep 0-10ms
   }
+  const emissionDuration = Date.now() - emissionStart
+  process.stdout.write(
+    '  pond.spec.ts: ' +
+      [
+        nodeName,
+        'emission of',
+        roundsPerNode * 4,
+        'events took',
+        String(emissionDuration / 1_000.0),
+      ].join(' ') +
+      '\n',
+  )
 
   return state
 }

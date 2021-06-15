@@ -51,18 +51,27 @@ impl Select {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use actyx_sdk::EventKey;
+    use actyx_sdk::{EventKey, NodeId};
     use cbor_data::Encoder;
+
+    use super::*;
 
     fn simple_expr(s: &str) -> SimpleExpr {
         s.parse::<SimpleExpr>().unwrap()
     }
 
+    fn key() -> EventKey {
+        EventKey {
+            lamport: Default::default(),
+            stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
+            offset: Default::default(),
+        }
+    }
+
     #[test]
     fn filter() {
         let f = Filter::new(simple_expr("_ > 5 + a"));
-        let mut cx = Context::new(EventKey::default());
+        let mut cx = Context::new(key());
         cx.bind("a", cx.value(|b| b.encode_f64(3.0)));
 
         assert_eq!(f.apply(&cx, cx.value(|b| b.encode_i64(8))).unwrap(), None);
@@ -74,7 +83,7 @@ mod tests {
     #[test]
     fn select() {
         let s = Select::new(simple_expr("_.x + a"));
-        let mut cx = Context::new(EventKey::default());
+        let mut cx = Context::new(key());
         cx.bind("a", cx.value(|b| b.encode_f64(0.5)));
 
         assert_eq!(

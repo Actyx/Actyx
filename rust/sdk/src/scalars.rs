@@ -30,7 +30,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::ParseError;
 
-/// Macro for constructing an [`AppId`](tagging/struct.AppId.html) literal.
+/// Macro for constructing an [`AppId`](struct.AppId.html) literal.
 ///
 /// This is how it works:
 /// ```no_run
@@ -65,20 +65,16 @@ mk_scalar!(
 /// key uniquely identifies the node but depends on the used crypto scheme. For now, we are
 /// using ed25519.
 ///
-/// So the NodeId is just the 32 bytes of ed25519 public key. Nevertheless you should treat it
+/// So the node ID is just the 32 bytes of ed25519 public key. Nevertheless you should treat it
 /// as an opaque value.
 ///
-/// The bits of a NodeId should not be assumed to be entirely evenly distributed, so if need
+/// The bits of a node ID should not be assumed to be entirely evenly distributed, so if need
 /// an even distribution for some reason, you would have to hash it.
 ///
 /// Values of this type serialize as Base64url multibase strings by default.
 /// Deserialization is supported from binary data or multibase format.
 ///
 /// Each node may emit multiple sources, each identified by its own [`StreamId`](struct.StreamId.html).
-///
-/// For backwards compatibility, it is possible to convert a SourceId into a NodeId. NodeIds constructed
-/// like this will have the last 16 bytes set to 0. It is exceedingly unlikely that a normally generated
-/// NodeId will have this property.
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(into = "String", try_from = "String")]
@@ -97,9 +93,7 @@ impl NodeId {
         }
     }
 
-    /// Creates a stream ID belonging to this node ID with the given non-zero stream number
-    ///
-    /// Stream number zero is reserved for embedding [`SourceId`](../event/struct.SourceId.html).
+    /// Creates a [`StreamId`](struct.StreamId.html) belonging to this node ID with the given stream number
     pub fn stream(&self, stream_nr: StreamNr) -> StreamId {
         StreamId {
             node_id: *self,
@@ -107,7 +101,7 @@ impl NodeId {
         }
     }
 
-    /// parse a nodeid using the crypt alphabet, which is order preserving
+    /// parse a `NodeId` using the crypt alphabet, which is order preserving
     fn parse(text: &str) -> Result<NodeId> {
         let config = base64::Config::new(base64::CharacterSet::Crypt, false);
         let bytes = base64::decode_config(text, config)?;
@@ -135,7 +129,8 @@ impl Display for NodeId {
 
 impl Debug for NodeId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // We could in theory also print NodeId differently based on the upper 16 bytes being zero, but that should ideally never be relevant
+        // We could in theory also print node ID differently based on the upper 16 bytes
+        // being zero, but that should ideally never be relevant.
         write!(f, "NodeId({})", self)
     }
 }
@@ -183,9 +178,9 @@ impl Decode<DagCborCodec> for NodeId {
 /// streams with different IDs. The emitting node’s ID can be extracted from this stream ID
 /// without further information.
 ///
-/// The default serialization of this type is the string representation of the NodeId
+/// The default serialization of this type is the string representation of the `NodeId`
 /// followed by a dot and a base64url multibase-encoded multiformats-varint (see also
-/// [`varint`](../varint)).
+/// [`varint`](types/varint/index.html)).
 #[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[serde(into = "String", try_from = "String")]
@@ -291,7 +286,7 @@ mod sqlite {
     }
 }
 
-/// StreamNr. Newtype alias for u64
+/// Stream number. Newtype alias for `u64`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, DagCbor)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 #[ipld(repr = "value")]

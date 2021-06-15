@@ -25,6 +25,7 @@ impl AxCliCommand for SettingsSchema {
     }
 }
 #[derive(StructOpt, Debug)]
+#[structopt(no_version)]
 /// Gets a schema for a given scope.
 pub struct SchemaOpt {
     #[structopt(flatten)]

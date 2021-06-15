@@ -14,7 +14,7 @@ use structopt::StructOpt;
 use unset::UnsetOpt;
 
 #[derive(StructOpt, Debug)]
-/// Manage node or app settings
+#[structopt(no_version)]
 pub enum SettingsOpts {
     #[structopt(name = "set")]
     /// Configure settings of a node

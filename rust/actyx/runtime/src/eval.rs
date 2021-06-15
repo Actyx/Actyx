@@ -84,6 +84,8 @@ impl<'a> Context<'a> {
 
 #[cfg(test)]
 mod tests {
+    use actyx_sdk::NodeId;
+
     use super::*;
 
     fn simple_expr(s: &str) -> SimpleExpr {
@@ -96,7 +98,11 @@ mod tests {
 
     #[test]
     fn simple() {
-        let mut cx = Context::new(EventKey::default());
+        let mut cx = Context::new(EventKey {
+            lamport: Default::default(),
+            stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
+            offset: Default::default(),
+        });
         cx.bind(
             "x",
             Value::new(cx.sort_key, |b| {

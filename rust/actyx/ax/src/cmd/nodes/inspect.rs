@@ -8,6 +8,8 @@ use structopt::StructOpt;
 use util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesInspectResponse};
 
 #[derive(StructOpt, Debug)]
+#[structopt(no_version)]
+/// show node details
 pub struct InspectOpts {
     #[structopt(flatten)]
     console_opt: ConsoleOpt,

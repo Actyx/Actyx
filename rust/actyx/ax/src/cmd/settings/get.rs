@@ -18,6 +18,7 @@ impl AxCliCommand for SettingsGet {
     }
 }
 #[derive(StructOpt, Debug)]
+#[structopt(no_version)]
 /// Gets settings for a specific scope.
 pub struct GetOpt {
     #[structopt(flatten)]

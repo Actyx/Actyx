@@ -1,4 +1,4 @@
-use super::Component;
+use super::{Component, ComponentState};
 use crate::{
     components::ComponentRequest,
     formats::{ExternalEvent, ShutdownReason},
@@ -97,24 +97,43 @@ impl Component<(), ()> for Android {
         "android"
     }
     fn handle_request(&mut self, _: ()) -> Result<()> {
+        // Note: The default implementation of `loop_on_rx` is overridden within
+        // this component. So this function is never called.
         Ok(())
     }
     fn extract_settings(&self, _: Settings) -> Result<()> {
+        // Note: The default implementation of `loop_on_rx` is overridden within
+        // this component. So this function is never called.
         Ok(())
     }
-    fn start(&mut self, snd: Sender<anyhow::Result<()>>) -> Result<()> {
-        snd.send(Ok(()))?;
+    fn start(&mut self, _: Sender<anyhow::Result<()>>) -> Result<()> {
+        // Note: The default implementation of `loop_on_rx` is overridden within
+        // this component. So this function is never called.
         Ok(())
     }
     fn stop(&mut self) -> Result<()> {
+        // Note: The default implementation of `loop_on_rx` is overridden within
+        // this component. So this function is never called.
         Ok(())
     }
     fn loop_on_rx(self) -> Result<()> {
+        let mut supervisor = None;
         while let Ok(msg) = self.rx.recv() {
-            if let ComponentRequest::Shutdown(r) = msg {
-                self.android_tx.send(r.into())?;
-                break;
+            match msg {
+                ComponentRequest::Shutdown(r) => {
+                    self.android_tx.send(r.into())?;
+
+                    break;
+                }
+                ComponentRequest::RegisterSupervisor(snd) => {
+                    snd.send((Self::get_type().into(), ComponentState::Started))?;
+                    supervisor.replace(snd);
+                }
+                _ => {}
             }
+        }
+        if let Some(tx) = supervisor {
+            tx.send((Self::get_type().into(), ComponentState::Stopped))?;
         }
         Ok(())
     }

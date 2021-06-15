@@ -29,6 +29,7 @@ struct RequestBody {
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(no_version)]
 pub struct UnsetOpt {
     #[structopt(flatten)]
     actual_opts: UnsetSettingsCommand,
