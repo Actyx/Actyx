@@ -8,16 +8,8 @@ import { right } from 'fp-ts/lib/Either'
 import { Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
-import {
-  AppId,
-  EventsSortOrder,
-  isString,
-  Lamport,
-  Offset,
-  OffsetMapIO,
-  StreamId,
-  Timestamp,
-} from '../types'
+import { EventsSortOrder, isString } from '../types'
+import { Codecs, OffsetMapIO } from '../types/wire'
 
 // EnumType Class
 export class EnumType<A> extends t.Type<A> {
@@ -40,7 +32,7 @@ export const createEnumType = <T>(e: object, name?: string) => new EnumType<T>(e
 export const OffsetsResponse = t.readonly(
   t.type({
     present: t.readonly(OffsetMapIO),
-    toReplicate: t.record(StreamId.FromString, t.number),
+    toReplicate: t.record(Codecs.StreamId, t.number),
   }),
 )
 
@@ -60,11 +52,11 @@ const Tags = new t.Type<Tags, TagsOnWire>(
 )
 
 export const EventIO = t.type({
-  offset: Offset.FromNumber,
-  stream: StreamId.FromString,
-  timestamp: Timestamp.FromNumber,
-  lamport: Lamport.FromNumber,
-  appId: AppId.FromString,
+  offset: Codecs.Offset,
+  stream: Codecs.StreamId,
+  timestamp: Codecs.Timestamp,
+  lamport: Codecs.Lamport,
+  appId: Codecs.AppId,
   tags: Tags,
   payload: t.unknown,
 })
@@ -111,7 +103,7 @@ export type Events = t.TypeOf<typeof Events>
  */
 export const UnstoredEvent = t.readonly(
   t.type({
-    timestamp: Timestamp.FromNumber,
+    timestamp: Codecs.Timestamp,
     tags: Tags,
     payload: t.unknown,
   }),

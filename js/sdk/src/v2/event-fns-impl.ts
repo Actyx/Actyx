@@ -130,7 +130,9 @@ export const EventFnsFromEventStoreV2 = (
     return onChunk0
   }
 
-  const currentOffsets = () => eventStore.offsets().then(x => x.present)
+  const present = () => eventStore.offsets().then(x => x.present)
+
+  const offsets = () => eventStore.offsets()
 
   const queryKnownRange = (rangeQuery: RangeQuery) => {
     const { lowerBound, upperBound, query, order } = rangeQuery
@@ -183,16 +185,16 @@ export const EventFnsFromEventStoreV2 = (
   }
 
   const queryAllKnown = async (query: AutoCappedQuery): Promise<EventChunk> => {
-    const present = await currentOffsets()
+    const curPresent = await present()
 
     const rangeQuery = {
       ...query,
-      upperBound: present,
+      upperBound: curPresent,
     }
 
     const events = await queryKnownRange(rangeQuery)
 
-    return { events, lowerBound: query.lowerBound || {}, upperBound: present }
+    return { events, lowerBound: query.lowerBound || {}, upperBound: curPresent }
   }
 
   const queryAllKnownChunked = (
@@ -207,7 +209,7 @@ export const EventFnsFromEventStoreV2 = (
       // Function is bound again when the real query starts
     }
 
-    currentOffsets().then(present => {
+    present().then(present => {
       if (canceled) {
         return
       }
@@ -298,7 +300,7 @@ export const EventFnsFromEventStoreV2 = (
     query: Where<E>,
     order: EventsSortOrder,
   ): Promise<[ActyxEvent<E> | undefined, OffsetMap]> => {
-    const cur = await currentOffsets()
+    const cur = await present()
 
     const firstEvent = await eventStore
       .query({}, cur, query, order)
@@ -315,7 +317,7 @@ export const EventFnsFromEventStoreV2 = (
     reduce: (acc: R, e1: ActyxEvent<E>) => R,
     initial: R,
   ): Promise<[R, OffsetMap]> => {
-    const cur = await currentOffsets()
+    const cur = await present()
 
     const reducedValue = await eventStore
       .query(
@@ -513,7 +515,8 @@ export const EventFnsFromEventStoreV2 = (
 
   return {
     nodeId,
-    currentOffsets,
+    present,
+    offsets,
     queryKnownRange,
     queryKnownRangeChunked,
     queryAllKnown,

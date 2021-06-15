@@ -5,7 +5,8 @@
  * Copyright (C) 2021 Actyx AG
  */
 import * as t from 'io-ts'
-import { AppId, EventKeyIO, NodeId, OffsetMapIO, Where } from '../types'
+import { AppId, Where } from '../types'
+import { Codecs, EventKeyIO, OffsetMapIO } from '../types/wire'
 import { validateOrThrow } from '../util'
 import {
   DoPersistEvents,
@@ -56,7 +57,7 @@ const PersistEventsRequest = t.readonly(t.type({ data: UnstoredEvents }))
 
 const ConnectivityRequest = t.readonly(
   t.type({
-    special: t.readonlyArray(NodeId.FromString),
+    special: t.readonlyArray(Codecs.NodeId),
     hbHistDelay: t.number,
     reportEveryMs: t.number, // how frequently the connectivity service should report, recommended around 10_000
     currentPsnHistoryDelay: t.number, // this is u8 size! -- how many report_every_ms spans back we go for the our_psn value? recommended 6 to give 60s

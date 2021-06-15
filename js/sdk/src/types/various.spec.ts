@@ -43,6 +43,7 @@ describe('toMetadata', () => {
     lamport: 12345,
     tags: ['tags'],
     payload: 'whatever',
+    appId: 'xfoo',
   }
 
   const metadata = toMetadata('src')
