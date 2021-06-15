@@ -32,6 +32,27 @@ const ERR_FILE_EXISTS = io.type({
   code: io.literal('ERR_FILE_EXISTS'),
   message: io.string,
 })
+const ERR_IO = io.type({
+  code: io.literal('ERR_IO'),
+  message: io.string,
+})
+
+export const ResponseAppsSign = io.union([
+  ERR_IO,
+  ERR_INVALID_INPUT,
+  io.intersection([
+    _OK,
+    io.type({
+      result: io.type({
+        appId: io.string,
+        displayName: io.string,
+        version: io.string,
+        signature: io.string,
+      }),
+    }),
+  ]),
+])
+export type ResponseAppsSign = io.TypeOf<typeof ResponseAppsSign>
 
 export const Response_Nodes_Ls = io.union([
   ERR_INTERNAL_ERROR,
