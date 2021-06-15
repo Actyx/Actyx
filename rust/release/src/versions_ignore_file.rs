@@ -4,8 +4,10 @@ use std::{
     path::Path,
 };
 
+use git2::Oid;
+
 pub struct VersionsIgnoreFile {
-    ignore_commit_ids: Vec<String>,
+    pub ignore_commit_ids: Vec<Oid>,
 }
 
 impl VersionsIgnoreFile {
@@ -16,13 +18,10 @@ impl VersionsIgnoreFile {
         for l in buf.lines() {
             let l = l?;
             if !l.starts_with('#') && !l.is_empty() {
-                ignore_commit_ids.push(l);
+                let oid = l.parse()?;
+                ignore_commit_ids.push(oid);
             }
         }
         Ok(Self { ignore_commit_ids })
-    }
-
-    pub fn ignore_commit_ids(&self) -> Vec<String> {
-        self.ignore_commit_ids.clone()
     }
 }

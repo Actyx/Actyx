@@ -308,34 +308,38 @@ Overview:"#
                 .filter(|VersionLine { release, .. }| release.product == product);
             eprintln!("Checking releases for {}", product);
             for (idx, VersionLine { commit, release }) in versions.enumerate() {
-                let tmp = tempdir()?;
-                log::debug!("Temp dir for {}: {}", release, tmp.path().display());
-                let out = OsArch::all()
-                    .par_iter()
-                    .flat_map(|os_arch| Publisher::new(&release, &commit, *os_arch, idx == 0))
-                    .map(|mut p| {
-                        let mut out = String::new();
-                        let source_exists = p.source_exists()?;
-                        if source_exists {
-                            let target_exists = p.target_exists()?;
-                            if target_exists {
-                                writeln!(&mut out, "  [OK] {} already exists.", p.target)?;
-                            } else if dry_run {
-                                writeln!(&mut out, "  [DRY RUN] Create and publish {}", p.target)?;
+                if ignores_file.ignore_commit_ids.contains(&commit) {
+                    println!("  {} ({}) ignored", release, commit);
+                } else {
+                    let tmp = tempdir()?;
+                    log::debug!("Temp dir for {}: {}", release, tmp.path().display());
+                    let out = OsArch::all()
+                        .par_iter()
+                        .flat_map(|os_arch| Publisher::new(&release, &commit, *os_arch, idx == 0))
+                        .map(|mut p| {
+                            let mut out = String::new();
+                            let source_exists = p.source_exists()?;
+                            if source_exists {
+                                let target_exists = p.target_exists()?;
+                                if target_exists {
+                                    writeln!(&mut out, "    [OK] {} already exists.", p.target)?;
+                                } else if dry_run {
+                                    writeln!(&mut out, "    [DRY RUN] Create and publish {}", p.target)?;
+                                } else {
+                                    p.create_release_artifact(tmp.path())?;
+                                    p.publish()?;
+                                    writeln!(&mut out, "    [NEW] {}", p.target)?;
+                                }
                             } else {
-                                p.create_release_artifact(tmp.path())?;
-                                p.publish()?;
-                                writeln!(&mut out, "  [NEW] {}", p.target)?;
+                                writeln!(&mut out, "    [ERR] Source \"{}\" does NOT exist.", p.source)?;
                             }
-                        } else {
-                            writeln!(&mut out, "  [ERR] Source \"{}\" does NOT exist.", p.source)?;
-                        }
-                        Ok(out)
-                    })
-                    .collect::<anyhow::Result<Vec<_>>>()?
-                    .join("");
-                println!("{} ({}) .. ", release, commit);
-                println!("{}", out);
+                            Ok(out)
+                        })
+                        .collect::<anyhow::Result<Vec<_>>>()?
+                        .join("");
+                    println!("  {} ({}) .. ", release, commit);
+                    println!("{}", out);
+                }
             }
         }
     }
