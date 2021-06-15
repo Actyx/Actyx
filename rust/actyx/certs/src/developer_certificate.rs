@@ -43,13 +43,12 @@ pub struct ManifestDeveloperCertificate {
 }
 
 impl ManifestDeveloperCertificate {
-    // this is done by oliver@actyx.io using the signing utility
     pub fn new(input: DeveloperCertificateInput, ax_privkey: PrivateKey) -> anyhow::Result<Self> {
         let ax_signature = Signature::new(&input, ax_privkey)?;
         Ok(Self { input, ax_signature })
     }
 
-    pub fn validate(&self, ax_public_key: PublicKey) -> anyhow::Result<()> {
+    pub fn validate(&self, ax_public_key: &PublicKey) -> anyhow::Result<()> {
         self.ax_signature.verify(&self.input, ax_public_key)
     }
 
@@ -174,7 +173,7 @@ mod tests {
     fn deserialize_and_validate() {
         let x = setup();
         let dev_cert: ManifestDeveloperCertificate = serde_json::from_value(x.manifest_dev_cert).unwrap();
-        let ok_result = dev_cert.validate(x.ax_public_key);
+        let ok_result = dev_cert.validate(&x.ax_public_key);
         assert!(matches!(ok_result, Ok(())), "valid signature");
     }
 
@@ -182,7 +181,7 @@ mod tests {
     fn deserialize_and_fail_signature_validation_when_key_is_wrong() {
         let x = setup();
         let dev_cert: ManifestDeveloperCertificate = serde_json::from_value(x.manifest_dev_cert).unwrap();
-        let err_result = dev_cert.validate(x.dev_public_key);
+        let err_result = dev_cert.validate(&x.dev_public_key);
         assert!(
             matches!(err_result, Err(anyhow::Error { .. })),
             "invalid signature or key"
@@ -230,7 +229,7 @@ mod tests {
             .for_each(|(from, to)| {
                 let dev_cert: ManifestDeveloperCertificate =
                     serde_json::from_str(&x.manifest_dev_cert.to_string().replace(from, to)).unwrap();
-                let result = dev_cert.validate(x.dev_public_key).unwrap_err();
+                let result = dev_cert.validate(&x.dev_public_key).unwrap_err();
                 assert_eq!(result.to_string(), "Invalid signature for provided input.");
             });
     }

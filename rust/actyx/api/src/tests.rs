@@ -7,7 +7,7 @@ use serde_json::*;
 use swarm::BanyanStore;
 use warp::*;
 
-use crate::{auth::create_token, rejections, util::NodeInfo, AppMode};
+use crate::{auth::create_token, formats::Licensing, rejections, util::NodeInfo, AppMode};
 
 const UNAUTHORIZED_TOKEN: &str = "AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ==";
 
@@ -40,6 +40,7 @@ async fn test_routes() -> (
         node_id: node_key.into(),
         token_validity: 300,
         ax_public_key: PrivateKey::generate().into(),
+        licensing: Licensing::default(),
     };
     let route = super::routes(auth_args.clone(), store).with(warp::trace::named("api_test"));
 

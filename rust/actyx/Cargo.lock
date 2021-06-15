@@ -968,6 +968,7 @@ dependencies = [
  "actyx_sdk",
  "anyhow",
  "base64 0.13.0",
+ "chrono",
  "crypto",
  "derive_more",
  "regex",

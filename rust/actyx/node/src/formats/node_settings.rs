@@ -1,7 +1,7 @@
-use actyx_sdk::AppId;
+use api::formats::Licensing;
 use crypto::PublicKey;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use util::formats::LogSeverity;
 
 // These type definitions need to be kept in sync with the ActyxOS
@@ -10,12 +10,6 @@ use util::formats::LogSeverity;
 // it's mostly in sync, but subtle bugs may be introduced by
 // changing the schema w/o changing the types here.
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-#[serde(rename_all = "camelCase")]
-pub struct Licensing {
-    pub node: String,
-    pub apps: BTreeMap<AppId, String>,
-}
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Events {
@@ -77,10 +71,7 @@ impl Settings {
                 log_levels: LogLevels::default(),
                 authorized_users: vec![],
             },
-            licensing: Licensing {
-                node: "development".into(),
-                apps: BTreeMap::default(),
-            },
+            licensing: Licensing::default(),
             api: Api {
                 events: Events {
                     internal: None,

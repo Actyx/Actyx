@@ -1,3 +1,5 @@
+mod validate_signed_manifest;
+
 use actyx_sdk::{AppId, Timestamp};
 use certs::AppManifest;
 use chrono::{DateTime, Utc};
@@ -7,10 +9,13 @@ use tracing::*;
 use warp::*;
 
 use crate::{
+    formats::Licensing,
     rejections::ApiError,
     util::{filters::accept_json, reject, NodeInfo, Token},
     AppMode, BearerToken,
 };
+
+use validate_signed_manifest::validate_signed_manifest;
 
 fn mk_success_log_msg(token: &BearerToken) -> String {
     let expiration_time: DateTime<Utc> = token.expiration().into();
@@ -58,18 +63,20 @@ impl TokenResponse {
     }
 }
 
-fn validate_manifest(manifest: AppManifest, ax_public_key: PublicKey) -> Result<(AppMode, AppId, String), ApiError> {
+fn validate_manifest(
+    manifest: &AppManifest,
+    ax_public_key: &PublicKey,
+    licensing: &Licensing,
+) -> Result<(AppMode, AppId, String), ApiError> {
     match manifest {
-        AppManifest::Signed(x) => match x.validate(ax_public_key) {
-            Ok(()) => Ok((AppMode::Signed, x.get_app_id(), x.version)),
-            Err(x) => Err(ApiError::InvalidManifest { msg: x.to_string() }),
-        },
-        AppManifest::Trial(x) => Ok((AppMode::Trial, x.get_app_id(), x.version)),
+        AppManifest::Signed(x) => validate_signed_manifest(x, ax_public_key, licensing)
+            .map(|_| (AppMode::Signed, x.get_app_id(), x.version.clone())),
+        AppManifest::Trial(x) => Ok((AppMode::Trial, x.get_app_id(), x.version.clone())),
     }
 }
 
 async fn handle_auth(node_info: NodeInfo, manifest: AppManifest) -> Result<impl Reply, Rejection> {
-    match validate_manifest(manifest, node_info.ax_public_key) {
+    match validate_manifest(&manifest, &node_info.ax_public_key, &node_info.licensing) {
         Ok((is_trial, app_id, version)) => create_token(node_info, app_id, version, is_trial)
             .map(|token| reply::json(&TokenResponse::new(token)))
             .map_err(reject),
@@ -87,7 +94,7 @@ pub(crate) fn route(node_info: NodeInfo) -> impl Filter<Extract = (impl Reply,),
 #[cfg(test)]
 mod tests {
     use actyx_sdk::app_id;
-    use certs::{AppManifest, SignedAppManifest, TrialAppManifest};
+    use certs::{AppManifest, TrialAppManifest};
     use crypto::{KeyStore, PrivateKey, PublicKey};
     use hyper::http;
     use parking_lot::lock_api::RwLock;
@@ -95,7 +102,7 @@ mod tests {
     use warp::{reject::MethodNotAllowed, test, Filter, Rejection, Reply};
 
     use super::{route, validate_manifest, AppMode, NodeInfo, TokenResponse};
-    use crate::{rejections::ApiError, util::filters::verify};
+    use crate::{formats::Licensing, rejections::ApiError, util::filters::verify};
 
     fn test_route() -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
         let mut key_store = KeyStore::default();
@@ -107,6 +114,7 @@ mod tests {
             node_id: node_key.into(),
             token_validity: 300,
             ax_public_key: PrivateKey::generate().into(),
+            licensing: Licensing::default(),
         };
         route(auth_args)
     }
@@ -114,17 +122,10 @@ mod tests {
     struct TestFixture {
         ax_public_key: PublicKey,
         trial_manifest: TrialAppManifest,
-        signed_manifest: SignedAppManifest,
     }
 
     fn setup() -> TestFixture {
         let ax_private_key: PrivateKey = "0WBFFicIHbivRZXAlO7tPs7rCX6s7u2OIMJ2mx9nwg0w=".parse().unwrap();
-        let serialized_manifest = serde_json::json!({
-            "appId": "com.actyx.auth-test",
-            "displayName": "auth test app",
-            "version": "v0.0.1",
-            "signature": "v2tzaWdfdmVyc2lvbgBtZGV2X3NpZ25hdHVyZXhYZ0JGTTgyZVpMWTdJQzhRbmFuVzFYZ0xrZFRQaDN5aCtGeDJlZlVqYm9qWGtUTWhUdFZNRU9BZFJaMVdTSGZyUjZUOHl1NEFKdFN5azhMbkRvTVhlQnc9PWlkZXZQdWJrZXl4LTBuejFZZEh1L0pEbVM2Q0ltY1pnT2o5WTk2MHNKT1ByYlpIQUpPMTA3cVcwPWphcHBEb21haW5zgmtjb20uYWN0eXguKm1jb20uZXhhbXBsZS4qa2F4U2lnbmF0dXJleFg4QmwzekNObm81R2JwS1VvYXRpN0NpRmdyMEtHd05IQjFrVHdCVkt6TzlwelcwN2hGa2tRK0dYdnljOVFhV2hIVDVhWHp6TyttVnJ4M2VpQzdUUkVBUT09/w=="
-        });
         let trial_manifest = TrialAppManifest::new(
             app_id!("com.example.sample"),
             "display name".to_string(),
@@ -134,7 +135,6 @@ mod tests {
         TestFixture {
             ax_public_key: ax_private_key.into(),
             trial_manifest,
-            signed_manifest: serde_json::from_value(serialized_manifest).unwrap(),
         }
     }
 
@@ -155,6 +155,7 @@ mod tests {
             node_id: node_key.into(),
             token_validity: 300,
             ax_public_key: PrivateKey::generate().into(),
+            licensing: Licensing::default(),
         };
 
         let resp = test::request()
@@ -194,33 +195,15 @@ mod tests {
     #[test]
     fn validate_manifest_should_succeed_for_trial() {
         let x = setup();
-        let result = validate_manifest(AppManifest::Trial(x.trial_manifest.clone()), x.ax_public_key).unwrap();
+        let result = validate_manifest(
+            &AppManifest::Trial(x.trial_manifest.clone()),
+            &x.ax_public_key,
+            &Licensing::default(),
+        )
+        .unwrap();
         assert_eq!(
             result,
             (AppMode::Trial, x.trial_manifest.get_app_id(), x.trial_manifest.version)
-        );
-    }
-
-    #[test]
-    fn validate_manifest_should_succeed_for_signed() {
-        let x = setup();
-        let result = validate_manifest(AppManifest::Signed(x.signed_manifest.clone()), x.ax_public_key).unwrap();
-        let expected = (
-            AppMode::Signed,
-            x.signed_manifest.get_app_id(),
-            x.signed_manifest.version,
-        );
-        assert_eq!(result, expected);
-    }
-
-    #[test]
-    fn validate_manifest_should_fail_for_signed_when_ax_public_key_is_wrong() {
-        let x = setup();
-        let result =
-            validate_manifest(AppManifest::Signed(x.signed_manifest), PrivateKey::generate().into()).unwrap_err();
-        assert_eq!(
-            result.to_string(),
-            "Invalid manifest. Failed to validate developer certificate. Invalid signature for provided input."
         );
     }
 }

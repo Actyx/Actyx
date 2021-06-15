@@ -1,6 +1,7 @@
+use api::formats::Licensing;
 use node::node_settings::*;
 use settings::Repository;
-use std::collections::BTreeMap;
+
 #[test]
 fn node_schema_in_sync() {
     use maplit::btreeset;
@@ -18,10 +19,7 @@ fn node_schema_in_sync() {
             log_levels: LogLevels::default(),
             authorized_users: vec![],
         },
-        licensing: Licensing {
-            node: "development".into(),
-            apps: BTreeMap::default(),
-        },
+        licensing: Licensing::default(),
         api: Api {
             events: Events {
                 internal: None,

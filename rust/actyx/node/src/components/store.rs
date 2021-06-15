@@ -2,6 +2,7 @@ use super::{Component, ComponentRequest};
 use crate::{node_settings::Settings, BindTo};
 use actyx_sdk::NodeId;
 use anyhow::Result;
+use api::formats::Licensing;
 use api::NodeInfo;
 use crossbeam::channel::{Receiver, Sender};
 use crypto::KeyStoreRef;
@@ -27,8 +28,13 @@ pub(crate) struct InspectResponse {
 }
 
 pub(crate) type StoreTx = Sender<ComponentRequest<StoreRequest>>;
-
-impl Component<StoreRequest, SwarmConfig> for Store {
+// Dynamic config
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct StoreConfig {
+    swarm_config: SwarmConfig,
+    licensing: Licensing,
+}
+impl Component<StoreRequest, StoreConfig> for Store {
     fn get_type() -> &'static str {
         "Swarm"
     }
@@ -87,7 +93,7 @@ impl Component<StoreRequest, SwarmConfig> for Store {
         }
         Ok(())
     }
-    fn set_up(&mut self, settings: SwarmConfig) -> bool {
+    fn set_up(&mut self, settings: StoreConfig) -> bool {
         self.store_config = Some(settings);
         true
     }
@@ -99,11 +105,16 @@ impl Component<StoreRequest, SwarmConfig> for Store {
                 .enable_all()
                 .build()?;
             let bind_to = self.bind_to.clone();
-            let node_info = NodeInfo::new(self.node_id, self.keystore.clone(), self.node_cycle_count);
+            let node_info = NodeInfo::new(
+                self.node_id,
+                self.keystore.clone(),
+                self.node_cycle_count,
+                cfg.licensing.clone(),
+            );
             // client creation is setting up some tokio timers and therefore
             // needs to be called with a tokio runtime
             let store = rt.block_on(async move {
-                let store = BanyanStore::new(cfg).await?;
+                let store = BanyanStore::new(cfg.swarm_config).await?;
 
                 store.spawn_task(
                     "api",
@@ -125,7 +136,7 @@ impl Component<StoreRequest, SwarmConfig> for Store {
         }
         Ok(())
     }
-    fn extract_settings(&self, s: Settings) -> Result<SwarmConfig> {
+    fn extract_settings(&self, s: Settings) -> Result<StoreConfig> {
         let keypair = self
             .keystore
             .read()
@@ -136,7 +147,7 @@ impl Component<StoreRequest, SwarmConfig> for Store {
             .map_err(|_| anyhow::anyhow!("invalid psk"))?;
         let topic = s.swarm.topic.replace('/', "_");
         let db_path = self.working_dir.join(format!("{}.sqlite", topic));
-        let config = SwarmConfig {
+        let swarm_config = SwarmConfig {
             topic,
             index_store: Some(self.db.clone()),
             enable_fast_path: true,
@@ -165,7 +176,10 @@ impl Component<StoreRequest, SwarmConfig> for Store {
             ephemeral_event_config: Default::default(),
             banyan_config: Default::default(),
         };
-        Ok(config)
+        Ok(StoreConfig {
+            swarm_config,
+            licensing: s.licensing,
+        })
     }
 }
 struct InternalStoreState {
@@ -176,7 +190,7 @@ struct InternalStoreState {
 pub(crate) struct Store {
     rx: Receiver<ComponentRequest<StoreRequest>>,
     state: Option<InternalStoreState>,
-    store_config: Option<SwarmConfig>,
+    store_config: Option<StoreConfig>,
     working_dir: PathBuf,
     bind_to: BindTo,
     keystore: KeyStoreRef,

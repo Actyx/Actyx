@@ -22,13 +22,12 @@ pub enum ApiError {
     #[display(fmt = "Invalid manifest. {}", msg)]
     InvalidManifest { msg: String },
 
-    #[display(fmt = "'{}' is not authorized. Provide a valid app license to the node.", app_id)]
-    #[allow(dead_code)]
-    AppUnauthorized { app_id: AppId },
-
-    #[display(fmt = "'{}' is not authenticated. Provided signature is invalid.", app_id)]
-    #[allow(dead_code)]
-    AppUnauthenticated { app_id: AppId },
+    #[display(
+        fmt = "'{}' is not authorized. {}. Provide a valid app license to the node.",
+        app_id,
+        reason
+    )]
+    AppUnauthorized { app_id: AppId, reason: String },
 
     #[display(fmt = "\"Authorization\" header is missing.")]
     MissingAuthorizationHeader,
@@ -74,7 +73,6 @@ impl From<ApiError> for ApiErrorResponse {
     fn from(e: ApiError) -> Self {
         let message: StringSerialized<_> = e.clone().into();
         let (status, code) = match e {
-            ApiError::AppUnauthenticated { .. } => (StatusCode::UNAUTHORIZED, "ERR_APP_UNAUTHENTICATED"),
             ApiError::AppUnauthorized { .. } => (StatusCode::UNAUTHORIZED, "ERR_APP_UNAUTHORIZED"),
             ApiError::BadRequest { .. } => (StatusCode::BAD_REQUEST, "ERR_BAD_REQUEST"),
             ApiError::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "ERR_INTERNAL"),
@@ -111,12 +109,8 @@ pub fn handle_rejection(r: Rejection) -> Result<impl Reply, Rejection> {
     } else if let Some(umt) = r.find::<reject::UnsupportedMediaType>() {
         ApiError::UnsupportedMediaType { msg: umt.to_string() }
     } else if let Some(e) = r.find::<ApiError>() {
-        match e {
-            ApiError::AppUnauthenticated { app_id } => {
-                info!(target: "AUTH", "{}", format!("Rejected request from unauthenticated app {}", app_id))
-            }
-            ApiError::AppUnauthorized { app_id } => info!(target: "AUTH", "{}", format!("Unauthorized app {}", app_id)),
-            _ => (),
+        if let ApiError::AppUnauthorized { app_id, reason } = e {
+            info!(target: "AUTH", "Unauthorized app {}. {}.", app_id, reason)
         }
         e.to_owned()
     } else if let Some(e) = r.find::<filters::body::BodyDeserializeError>() {

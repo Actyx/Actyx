@@ -81,7 +81,7 @@ impl SignedAppManifest {
         self.app_id.clone()
     }
 
-    pub fn validate(&self, ax_public_key: PublicKey) -> anyhow::Result<()> {
+    pub fn validate(&self, ax_public_key: &PublicKey) -> anyhow::Result<()> {
         // Check signature on the dev cert
         self.signature
             .dev_cert
@@ -97,7 +97,7 @@ impl SignedAppManifest {
         };
         self.signature
             .dev_signature
-            .verify(&hash_input, self.signature.dev_cert.dev_public_key())
+            .verify(&hash_input, &self.signature.dev_cert.dev_public_key())
             .map_err(|x| anyhow::Error::msg(format!("Failed to validate app manifest. {}", x)))?;
         Ok(())
     }
@@ -186,7 +186,7 @@ mod tests {
     fn validate() {
         let x = setup();
         let manifest: SignedAppManifest = serde_json::from_value(x.serialized_manifest).unwrap();
-        let result = manifest.validate(x.ax_public_key);
+        let result = manifest.validate(&x.ax_public_key);
         assert!(matches!(result, Ok(())), "valid signature");
     }
 
@@ -194,7 +194,7 @@ mod tests {
     fn should_fail_validation_when_using_wrong_ax_public_key() {
         let x = setup();
         let manifest: SignedAppManifest = serde_json::from_value(x.serialized_manifest).unwrap();
-        let result = manifest.validate(PrivateKey::generate().into()).unwrap_err();
+        let result = manifest.validate(&PrivateKey::generate().into()).unwrap_err();
         assert_eq!(
             result.to_string(),
             "Failed to validate developer certificate. Invalid signature for provided input."
@@ -213,7 +213,7 @@ mod tests {
         .for_each(|(from, to)| {
             let manifest: SignedAppManifest =
                 serde_json::from_str(&x.serialized_manifest.to_string().replace(from, to)).unwrap();
-            let result = manifest.validate(PrivateKey::generate().into()).unwrap_err();
+            let result = manifest.validate(&PrivateKey::generate().into()).unwrap_err();
             assert_eq!(
                 result.to_string(),
                 "Failed to validate developer certificate. Invalid signature for provided input."
