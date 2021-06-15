@@ -1,0 +1,1 @@
+fn copy_azure() {}

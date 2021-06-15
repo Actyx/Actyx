@@ -17,9 +17,49 @@ variables:
   SLACK_HOOK: ***REMOVED***
 
 stages:
+  - stage: calculateActyxVersion
+    displayName: Calculate Actyx Version
+    pool:
+      name: Native
+    jobs:
+      - job: j
+        displayName: ACTYX_VERSION
+        steps:
+          - bash: |
+              set -e
+              cargo build --release
+            workingDirectory: rust/release
+            name: buildRelease
+          - bash: |
+              set -e
+              for p in actyx cli node-manager pond ts-sdk rust-sdk csharp-sdk; do
+                version=$(./cosmos-release get-actyx-version $p)
+                echo "ACTYX_VERSION_$p=$version"
+                echo "##vso[task.setvariable variable=ACTYX_VERSION_$p;isOutput=true]$version"
+              done
+            workingDirectory: rust/release/target/release
+            name: getVersions
+
+
   - stage: makeArtifacts
-    dependsOn: []
+    dependsOn: [calculateActyxVersion]
     displayName: Make all artifacts
+    # Those variables are mapped as env vars into all steps of this stage
+    variables:
+      - name: ACTYX_VERSION
+        value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_actyx'] ]
+      - name: ACTYX_VERSION_CLI
+        value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_cli'] ]
+      - name: ACTYX_VERSION_NODEMANAGER
+        value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_node-manager'] ]
+      - name: ACTYX_VERSION_POND
+        value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_pond'] ]
+      - name: ACTYX_VERSION_TSSDK
+        value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_ts-sdk'] ]
+      - name: ACTYX_VERSION_RUSTSDK
+        value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_rust-sdk'] ]
+      - name: ACTYX_VERSION_CSHARPSDK
+        value: $[ stageDependencies.calculateActyxVersion.j.outputs['getVersions.ACTYX_VERSION_csharp-sdk'] ]
     pool:
       name: Native
     jobs:
@@ -291,6 +331,6 @@ stages:
             persistCredentials: true
           - bash: |
               set -e
-              cargo run --release -- release
+              cargo run --release -- release --dry-run
             workingDirectory: rust/release
             name: Release

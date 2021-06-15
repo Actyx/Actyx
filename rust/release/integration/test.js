@@ -33,7 +33,7 @@ const appendLineToVersionsFile = (line) =>
 const appendLineToVersionsIgnoreFile = (line) =>
   fs.appendFileSync(versionsIgnoreFile, line + "\n");
 const getHeadHash = () =>
-  execSync(`git rev-parse --short HEAD`, { encoding: "utf-8", cwd }).trim();
+  execSync(`git rev-parse HEAD`, { encoding: "utf-8", cwd }).trim();
 const commit = (message) =>
   execSync(`git commit --allow-empty -m "${message}"`, {
     encoding: "utf-8",

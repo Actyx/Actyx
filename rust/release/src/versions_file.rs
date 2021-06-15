@@ -2,7 +2,6 @@ use crate::changes::Change;
 use crate::products::Product;
 use crate::releases::Release;
 use crate::repo::get_changes_for_product;
-use crate::repo::Hash;
 use crate::versions::apply_changes;
 use crate::versions_ignore_file::VersionsIgnoreFile;
 use anyhow::anyhow;
@@ -32,7 +31,7 @@ const HEADER: &str = r#"# Last releases of all Actyx products
 # cli, pond, ts-sdk, rust-sdk, docs, csharp-sdk"#;
 
 pub struct CalculationResult {
-    pub prev_commit: Hash,
+    pub prev_commit: Oid,
     pub prev_version: Version,
     pub new_version: Option<Version>,
     pub changes: Vec<Change>,
@@ -40,11 +39,11 @@ pub struct CalculationResult {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct VersionLine {
-    pub commit: Hash,
+    pub commit: Oid,
     pub release: Release,
 }
 impl VersionLine {
-    pub fn new(commit: Hash, release: Release) -> Self {
+    pub fn new(commit: Oid, release: Release) -> Self {
         Self { commit, release }
     }
 }
@@ -75,7 +74,7 @@ impl FromStr for VersionLine {
             s
         );
 
-        let commit: Hash = parts[1].to_string().into();
+        let commit: Oid = parts[1].to_string().parse()?;
         let release = Release::from_str(parts[0])?;
         Ok(Self { commit, release })
     }
@@ -155,8 +154,8 @@ impl VersionsFile {
             .collect::<anyhow::Result<Vec<_>>>()?;
 
         let last_version = last_release.version;
-        let mut changes =
-            get_changes_for_product(&repo, &last_hash, &Hash("HEAD".into()), product, &ignore_commit_ids)?;
+        let head = repo.head()?.peel_to_commit()?.id();
+        let mut changes = get_changes_for_product(&repo, &last_hash, &head, product, &ignore_commit_ids)?;
 
         // We sort the changes by severity (i.e. breaking change first, then feat, etc.). See
         // the PartialOrd implementation for ChangeKind for ordering details.
@@ -255,12 +254,18 @@ impl VersionsFile {
 fn parse_release_line_test() -> anyhow::Result<()> {
     use crate::products::Product;
     assert_eq!(
-        VersionLine::from_str("actyx-1.2.3 commit")?,
-        VersionLine::new("commit".to_string().into(), Release::new(Product::Actyx, 1, 2, 3))
+        VersionLine::from_str("actyx-1.2.3 decbf2be529ab6557d5429922251e5ee36519817")?,
+        VersionLine::new(
+            "decbf2be529ab6557d5429922251e5ee36519817".parse().unwrap(),
+            Release::new(Product::Actyx, 1, 2, 3)
+        )
     );
     assert_eq!(
-        VersionLine::from_str("node-manager-1.2.3 commit")?,
-        VersionLine::new("commit".to_string().into(), Release::new(Product::NodeManager, 1, 2, 3))
+        VersionLine::from_str("node-manager-1.2.3 decbf2be529ab6557d5429922251e5ee36519817")?,
+        VersionLine::new(
+            "decbf2be529ab6557d5429922251e5ee36519817".parse().unwrap(),
+            Release::new(Product::NodeManager, 1, 2, 3)
+        )
     );
     assert!(Release::from_str("item-1.2").is_err());
     assert!(Release::from_str("item-1.2.3.4").is_err());

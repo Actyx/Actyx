@@ -1,25 +1,10 @@
-use std::{
-    ops::Deref,
-    path::{Path, PathBuf},
-};
-
-use derive_more::{Display, From, Into};
 use git2::{Commit, Cred, Oid, PushOptions, RemoteCallbacks, Repository, Signature};
+use std::path::{Path, PathBuf};
 
 use crate::{
     changes::{try_change_from_line, Change},
     products::Product,
 };
-
-#[derive(Debug, Clone, From, Into, PartialEq, Eq, PartialOrd, Ord, Display)]
-pub struct Hash(pub String);
-
-impl Deref for Hash {
-    type Target = str;
-    fn deref(&self) -> &Self::Target {
-        &*self.0
-    }
-}
 
 pub struct RepoWrapper(Repository);
 
@@ -35,10 +20,9 @@ impl RepoWrapper {
 
         Ok(wd.to_path_buf().canonicalize()?)
     }
-    pub fn head_hash(&self) -> anyhow::Result<Hash> {
-        let oid = self.0.revparse_single("HEAD")?;
-        let hash = oid.short_id()?.as_str().unwrap().to_string();
-        Ok(Hash(hash))
+    pub fn head_hash(&self) -> anyhow::Result<Oid> {
+        let obj = self.head()?;
+        Ok(obj.id())
     }
     pub fn head(&self) -> anyhow::Result<git2::Object> {
         Ok(self.0.revparse_single("HEAD")?)
@@ -81,8 +65,8 @@ impl RepoWrapper {
 
 fn get_commits<'a>(
     repo: &'a Repository,
-    from_excl: &str,
-    to_incl: &str,
+    from_excl: &Oid,
+    to_incl: &Oid,
 ) -> anyhow::Result<impl Iterator<Item = anyhow::Result<Commit<'a>>>> {
     let mut walk = repo.revwalk().expect("error creating revwalk");
     walk.push_range(format!("{}..{}", from_excl, to_incl).as_str())?;
@@ -94,8 +78,8 @@ fn get_commits<'a>(
 
 pub fn get_changes_for_product(
     repo: &Repository,
-    from_excl: &Hash,
-    to_incl: &Hash,
+    from_excl: &Oid,
+    to_incl: &Oid,
     product: &Product,
     commit_ids_to_ignore: &[Oid],
 ) -> anyhow::Result<Vec<Change>> {

@@ -9,6 +9,7 @@ use versions_ignore_file::VersionsIgnoreFile;
 
 mod changes;
 mod products;
+mod publisher;
 mod releases;
 mod repo;
 mod versions;
@@ -36,13 +37,21 @@ enum Command {
         /// Product (actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
         product: Product,
     },
-    /// Computes past version
+    /// Computes past versions
     Versions {
         /// Product (actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
         product: Product,
         /// Show the git commit hash next to the version
         #[clap(long, short)]
         commits: bool,
+    },
+    /// Computes the ACTYX_VERSION string for the given product.  If there's a
+    /// pending change for a product, this command will calculate and emit the
+    /// NEW version. Otherwise it falls back to the last released one; if the
+    /// release hash is not equal to HEAD, this will append `_dev` to the semver
+    /// version.
+    GetActyxVersion {
+        product: Product,
     },
     /// Computes changelog
     Changes {
@@ -68,6 +77,9 @@ enum Command {
         /// Print action plan to stdout
         #[clap(long, short)]
         dry_run: bool,
+    },
+    Publish {
+        product: Product,
     },
 }
 
@@ -114,6 +126,29 @@ fn main() -> Result<(), Error> {
                     println!("{} {}", v.release.version, v.commit)
                 } else {
                     println!("{}", v.release.version)
+                }
+            }
+        }
+
+        Command::GetActyxVersion { product } => {
+            let head_commit_id = repo.head()?.id();
+            let new_version = version_file.calculate_version(&product, &ignores_file)?.new_version;
+            if let Some(version) = new_version {
+                println!("{}-{}", version, head_commit_id);
+            } else {
+                let v = version_file
+                    .versions()
+                    .into_iter()
+                    .find(|VersionLine { release, .. }| release.product == product)
+                    .ok_or_else(|| anyhow::anyhow!("No release found for {}", product))?;
+
+                if head_commit_id == v.commit {
+                    println!("{}-{}", v.release.version, v.commit)
+                } else {
+                    let is_js = matches!(product, Product::NodeManager | Product::Pond | Product::TsSdk);
+                    // npm is serious about semver
+                    let delimiter = if is_js { '-' } else { '_' };
+                    println!("{}{}dev-{}", v.release.version, delimiter, head_commit_id)
                 }
             }
         }
@@ -208,7 +243,7 @@ Overview:"#
             // meta
             writeln!(changelog, "Commit of release: {}", head.id())?;
             writeln!(changelog, "Time of release: {}", ts)?;
-            let branch_name = format!("release/{}", head.short_id()?.as_str().unwrap());
+            let branch_name = format!("release/{}", head.id());
 
             if dry_run {
                 println!("New versions file:");
@@ -254,6 +289,13 @@ Overview:"#
                 }
                 eprintln!("Done.");
             }
+        }
+        Command::Publish { product } => {
+            let mut versions = version_file
+                .versions()
+                .into_iter()
+                .filter(|VersionLine { release, .. }| release.product == product);
+            for version in versions {}
         }
     }
     Ok(())
