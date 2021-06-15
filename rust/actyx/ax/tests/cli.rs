@@ -2,6 +2,7 @@ use assert_cmd::prelude::*;
 use predicates::prelude::*;
 use std::collections::HashMap;
 use std::{path::PathBuf, process::Command};
+use util::version::NodeVersion;
 
 fn get_commands() -> HashMap<&'static str, Vec<&'static str>> {
     let nodes = vec!["ls"];
@@ -85,5 +86,51 @@ fn cli_fail_on_missing_identity() {
         .args(&["nodes", "ls", "--local", "localhost", "-i", &*identity_path])
         .assert()
         .stdout(predicate::str::contains(expected))
+        .failure();
+}
+
+#[test]
+fn internal_subcommand() {
+    cli().args(&["internal", "help"]).assert().failure();
+    cli()
+        .env("HERE_BE_DRAGONS", "wrong")
+        .args(&["internal", "help"])
+        .assert()
+        .failure();
+    cli()
+        .env("HERE_BE_DRAGONS", "zøg")
+        .args(&["internal", "help"])
+        .assert()
+        .success();
+    cli()
+        .env("HERE_BE_DRAGONS", "zoeg")
+        .args(&["internal", "help"])
+        .assert()
+        .success();
+}
+
+#[test]
+fn version() {
+    cli()
+        .arg("--version")
+        .assert()
+        .stdout(format!("Actyx CLI {}\n", NodeVersion::get()))
+        .success();
+    cli()
+        .arg("nodes")
+        .assert()
+        .stderr(predicate::str::starts_with("ax-nodes \n"))
+        .failure();
+    cli()
+        .env("HERE_BE_DRAGONS", "zøg")
+        .args(&["internal", "--help"])
+        .assert()
+        .stdout(predicate::str::starts_with("ax-internal \n"))
+        .success();
+    cli()
+        .env("HERE_BE_DRAGONS", "zøg")
+        .args(&["internal", "trees"])
+        .assert()
+        .stderr(predicate::str::starts_with("ax-internal-trees \n"))
         .failure();
 }

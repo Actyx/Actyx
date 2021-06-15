@@ -21,6 +21,7 @@ enum List {
 }
 
 #[derive(StructOpt, Debug)]
+#[structopt(no_version)]
 pub struct ExploreTreeOpts {
     #[structopt(long)]
     /// Path to a sqlite blockstore (read-only access!)

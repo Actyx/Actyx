@@ -18,6 +18,7 @@ impl AxCliCommand for SettingsScopes {
     }
 }
 #[derive(StructOpt, Debug)]
+#[structopt(no_version)]
 /// Gets available scopes from a node.
 pub struct ScopesOpt {
     #[structopt(flatten)]

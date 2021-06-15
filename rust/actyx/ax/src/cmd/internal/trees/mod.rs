@@ -11,7 +11,7 @@ use self::dump::DumpTreeOpts;
 use self::explore::ExploreTreeOpts;
 
 #[derive(StructOpt, Debug)]
-/// Manage ActyxOS nodes
+#[structopt(no_version)]
 pub enum TreesOpts {
     #[structopt(name = "dump")]
     /// Dump contents of banyan trees stored in sqlite. Works with either a

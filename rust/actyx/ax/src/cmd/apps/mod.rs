@@ -7,7 +7,7 @@ use structopt::StructOpt;
 pub use sign::{create_signed_app_manifest, SignOpts};
 
 #[derive(StructOpt, Debug)]
-/// Manage apps
+#[structopt(no_version)]
 pub enum AppsOpts {
     /// Sign application manifest
     Sign(SignOpts),
