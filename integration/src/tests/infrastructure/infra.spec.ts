@@ -11,7 +11,7 @@ describe('the Infrastructure', () => {
     const status = await runOnEach([{}], async (node) => {
       const response = assertOK(await node.ax.nodes.ls())
       const axNodeSetup = (<MyGlobal>global).axNodeSetup
-      let gitHash = axNodeSetup.gitHash.slice(0, 9)
+      let gitHash = axNodeSetup.gitHash
       const dirty = await execa.command('git status --porcelain').then((x) => x.stdout)
       if (dirty !== '') {
         gitHash = `${gitHash}_dirty`
@@ -25,7 +25,6 @@ describe('the Infrastructure', () => {
             version: {
               profile: 'release',
               target: `${node.target.os}-${node.target.arch}`,
-              version: await node.ax.shortVersion,
               gitHash,
             },
           },
