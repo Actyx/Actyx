@@ -289,15 +289,19 @@ mod test {
 
     /// Publishes `event_count` events, and waits some time between each chunk.
     /// This introduces different time stamps into the persisted events.
-    async fn publish_events_chunked(stream_nr: StreamNr, event_count: u64) -> anyhow::Result<BanyanStore> {
+    async fn publish_events_chunked(
+        stream_nr: StreamNr,
+        event_count: u64,
+        base: Timestamp,
+    ) -> anyhow::Result<BanyanStore> {
         let store = create_store().await?;
         let events = (0..event_count)
             .into_iter()
             .map(|i| (tags!("test"), Payload::from_json_str(&*i.to_string()).unwrap()))
             .collect::<Vec<_>>();
-        for chunk in events.chunks((event_count / 100) as usize) {
-            store.append(stream_nr, app_id(), chunk.to_vec()).await?;
-            tokio::time::sleep(Duration::from_millis(1)).await;
+        for (i, chunk) in events.chunks((event_count / 100) as usize).enumerate() {
+            let timestamp = base + Duration::from_millis(i as u64);
+            store.append0(stream_nr, app_id(), timestamp, chunk.to_vec()).await?;
         }
 
         Ok(store)
@@ -309,7 +313,8 @@ mod test {
         util::setup_logger();
         let test_stream = 42.into();
 
-        let store = publish_events_chunked(test_stream, event_count).await?;
+        let now = Timestamp::now();
+        let store = publish_events_chunked(test_stream, event_count, now).await?;
 
         // Get actual timestamps from chunks
         let all_events = store
@@ -325,11 +330,10 @@ mod test {
             .collect::<Result<Vec<_>, _>>()?;
 
         let cut_off = {
-            let now = SystemTime::now();
             let first = all_events.first().map(|c| c.data.first().unwrap().1.time()).unwrap();
             let last = all_events.last().map(|c| c.data.first().unwrap().1.time()).unwrap();
             let dur = Duration::from_micros((percentage_to_keep * (last - first) as usize / 100) as u64);
-            now.checked_sub(dur).unwrap().try_into()?
+            now - dur - Duration::from_micros(1)
         };
         let events_to_keep = all_events.iter().fold(0, |acc, chunk| {
             let is_sealed = chunk.data.len() == max_leaf_count;
@@ -368,6 +372,7 @@ mod test {
             .collect::<Vec<_>>();
         expected.reverse();
 
+        assert_eq!(expected.len(), round_tripped.len());
         assert_eq!(expected, round_tripped);
         Ok(())
     }
