@@ -159,9 +159,10 @@ pub fn initialize_db(conn: &Connection) -> Result<()> {
     // `PRAGMA journal_mode = WAL;` https://www.sqlite.org/wal.html
     // This PRAGMA statement returns the new journal mode, so we need to see if it succeeded
     conn.query_row("PRAGMA journal_mode = WAL;", [], |row| {
-        match row.get_ref_unwrap(0).as_str().unwrap() {
+        let res: String = row.get(0)?;
+        match res.as_str() {
             "wal" => Ok("wal"),
-            "memory" => Ok("memory"), // There is no WAL for memory databases TODO Rust error handling
+            "memory" => Ok("memory"), // There is no WAL for memory databases
             _other => Err(rusqlite::Error::InvalidQuery),
         }
     })?;
