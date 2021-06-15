@@ -88,6 +88,9 @@ enum Command {
         /// Force running even when running not on HEAD of master
         #[clap(long, short)]
         force: bool,
+        /// Ignore errors
+        #[clap(long, short)]
+        ignore_errors: bool,
     },
 }
 
@@ -290,6 +293,7 @@ Overview:"#
             product,
             dry_run,
             force,
+            ignore_errors,
         } => {
             let head_of_origin_master = repo.head_of_origin_master()?;
             let head = repo.head_hash()?;
@@ -331,6 +335,9 @@ Overview:"#
                                     writeln!(&mut out, "    [NEW] {}", p.target)?;
                                 }
                             } else {
+                                if !ignore_errors && !dry_run {
+                                    anyhow::bail!("    [ERR] Source \"{}\" does NOT exist.", p.source);
+                                }
                                 writeln!(&mut out, "    [ERR] Source \"{}\" does NOT exist.", p.source)?;
                             }
                             Ok(out)
