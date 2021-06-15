@@ -99,15 +99,19 @@ impl Publisher {
                 };
                 let source_file = blob_download(source, &in_dir)?;
                 let processed = match pre_processing {
-                    PreProcessing::TarGz => {
+                    PreProcessing::TarGz {
+                        binary_name: target_name,
+                    } => {
                         let out = in_dir.as_ref().join(file_name);
-                        package_tar_gz(&source_file, &out)?;
+                        package_tar_gz(&source_file, &out, target_name.as_deref())?;
                         out
                     }
-                    PreProcessing::Zip => {
+                    PreProcessing::Zip {
+                        binary_name: target_name,
+                    } => {
                         let out = in_dir.as_ref().join(file_name);
 
-                        package_zip(&source_file, &out)?;
+                        package_zip(&source_file, &out, target_name.as_deref())?;
                         out
                     }
                     PreProcessing::None => source_file,
@@ -205,7 +209,7 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
             out.push((
                 format!("{}-binaries/actyx.apk", os_arch.os,),
                 TargetArtifact::Blob {
-                    pre_processing: PreProcessing::Zip,
+                    pre_processing: PreProcessing::Zip { binary_name: None },
                     file_name: format!("actyx-{}-android.zip", version),
                     local_result: None,
                 },
@@ -217,7 +221,7 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
                     // TODO: There would also be `actyx.exe`...
                     format!("{}-binaries/{}/Actyx-Installer.exe", os_arch.os, os_arch),
                     TargetArtifact::Blob {
-                        pre_processing: PreProcessing::Zip,
+                        pre_processing: PreProcessing::Zip { binary_name: None },
                         file_name: format!("actyx-{}-installer-windows-x64.zip", version),
                         local_result: None,
                     },
@@ -236,7 +240,9 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
             out.push((
                 format!("{}-binaries/{}/actyx-linux", os_arch.os, os_arch),
                 TargetArtifact::Blob {
-                    pre_processing: PreProcessing::TarGz,
+                    pre_processing: PreProcessing::TarGz {
+                        binary_name: Some("actyx".into()),
+                    },
                     file_name: format!("actyx-{}-linux-{}.tar.gz", version, output_arch),
                     local_result: None,
                 },
@@ -251,7 +257,9 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
             out.push((
                 format!("{}-binaries/{}/actyx-linux", os_arch.os, os_arch),
                 TargetArtifact::Blob {
-                    pre_processing: PreProcessing::Zip,
+                    pre_processing: PreProcessing::Zip {
+                        binary_name: Some("actyx".into()),
+                    },
                     file_name: format!("actyx-{}-macos-{}.tar.gz", version, output_arch),
                     local_result: None,
                 },
@@ -263,8 +271,8 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
                 out.push((
                     format!("{}-binaries/{}/ax.exe", os_arch.os, os_arch),
                     TargetArtifact::Blob {
-                        pre_processing: PreProcessing::Zip,
-                        file_name: format!("actyx-cli-{}-installer-windows-x64.zip", version),
+                        pre_processing: PreProcessing::Zip { binary_name: None },
+                        file_name: format!("actyx-cli-{}-windows-x64.zip", version),
                         local_result: None,
                     },
                 ));
@@ -281,7 +289,7 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
             out.push((
                 format!("{}-binaries/{}/ax", os_arch.os, os_arch),
                 TargetArtifact::Blob {
-                    pre_processing: PreProcessing::TarGz,
+                    pre_processing: PreProcessing::TarGz { binary_name: None },
                     file_name: format!("actyx-cli-{}-linux-{}.tar.gz", version, output_arch),
                     local_result: None,
                 },
@@ -296,7 +304,7 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
             out.push((
                 format!("{}-binaries/{}/ax", os_arch.os, os_arch),
                 TargetArtifact::Blob {
-                    pre_processing: PreProcessing::Zip,
+                    pre_processing: PreProcessing::Zip { binary_name: None },
                     file_name: format!("actyx-cli-{}-macos-{}.tar.gz", version, output_arch),
                     local_result: None,
                 },
@@ -328,8 +336,8 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
                 out.push((
                     "node-manager-win/actyx-node-manager.msi".to_string(),
                     TargetArtifact::Blob {
-                        pre_processing: PreProcessing::Zip,
-                        file_name: format!("actyx-node-manager-{}-installer-windows-x64.zip", version),
+                        pre_processing: PreProcessing::None,
+                        file_name: format!("actyx-node-manager-{}-x64.msi", version),
                         local_result: None,
                     },
                 ));
@@ -375,8 +383,16 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
 
 #[derive(Debug, Clone)]
 pub enum PreProcessing {
-    TarGz,
-    Zip,
+    TarGz {
+        /// Indicates whether the file name of the binary to be packed should be
+        /// changed
+        binary_name: Option<String>,
+    },
+    Zip {
+        /// Indicates whether the file name of the binary to be packed should be
+        /// changed
+        binary_name: Option<String>,
+    },
     None,
 }
 
@@ -457,9 +473,11 @@ fn blob_upload(source_file: impl AsRef<Path>, name: &str) -> anyhow::Result<()> 
     Ok(())
 }
 
-fn package_tar_gz(source: impl AsRef<Path>, target: impl AsRef<Path>) -> anyhow::Result<()> {
+fn package_tar_gz(source: impl AsRef<Path>, target: impl AsRef<Path>, binary_name: Option<&str>) -> anyhow::Result<()> {
     let output = File::create(target)?;
-    let name = source.as_ref().file_name().unwrap();
+    let name = binary_name
+        .or_else(|| source.as_ref().file_name().map(|x| x.to_str().unwrap()))
+        .unwrap();
 
     let enc = GzEncoder::new(output, Compression::best());
     let mut tar = tar::Builder::new(enc);
@@ -467,9 +485,11 @@ fn package_tar_gz(source: impl AsRef<Path>, target: impl AsRef<Path>) -> anyhow:
     Ok(())
 }
 
-fn package_zip(source: impl AsRef<Path>, target: impl AsRef<Path>) -> anyhow::Result<()> {
-    let name = source.as_ref().file_name().unwrap().to_str().unwrap().to_string();
-    let mut source = File::open(source)?;
+fn package_zip(source: impl AsRef<Path>, target: impl AsRef<Path>, binary_name: Option<&str>) -> anyhow::Result<()> {
+    let name = binary_name
+        .or_else(|| source.as_ref().file_name().map(|x| x.to_str().unwrap()))
+        .unwrap();
+    let mut source = File::open(&source)?;
     let out = File::create(target)?;
     let mut zip = ZipWriter::new(out);
     let options = zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Stored);
