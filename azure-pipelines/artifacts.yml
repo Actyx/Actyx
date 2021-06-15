@@ -240,7 +240,7 @@ stages:
     dependsOn:
       - upload
       - integration
-      # - release
+      - release
     jobs:
       - template: jobs-notify-success.yml
 
@@ -251,7 +251,7 @@ stages:
       - makeArtifacts
       - upload
       - integration
-      # - release
+      - release
     jobs:
       - template: slack-notify-failure.yml
 
@@ -317,7 +317,7 @@ stages:
             name: cleanupInstances
             displayName: Clean up old integration test instances
 
-  - stage: maybeCreateRelease
+  - stage: release
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
     dependsOn:
       - integration
@@ -325,7 +325,7 @@ stages:
       name: Native
     jobs:
       - job:
-        displayName: Run cosmos-release
+        displayName: Release
         steps:
           - checkout: self
             persistCredentials: true
@@ -333,4 +333,17 @@ stages:
               set -e
               cargo run --release -- release
             workingDirectory: rust/release
-            name: Release
+            name: release
+            displayName: Maybe create a new release
+            env:
+              BASH_ENV: "~/.bashrc"
+          - bash: |
+              set -e
+              for p in actyx cli node-manager; do
+                cargo run --release -- publish $p
+              done
+            workingDirectory: rust/release
+            name: updatePublishedArtifacts
+            displayName: Update published artifacts
+            env:
+              BASH_ENV: "~/.bashrc"
