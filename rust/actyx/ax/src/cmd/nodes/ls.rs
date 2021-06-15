@@ -11,6 +11,8 @@ use structopt::StructOpt;
 use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesLsResponse};
 
 #[derive(StructOpt, Debug)]
+#[structopt(no_version)]
+/// show node overview
 pub struct LsOpts {
     #[structopt(name = "NODE", required = true)]
     /// Node ID or, if using `--local`, the IP address of the node to perform the

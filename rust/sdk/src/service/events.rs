@@ -24,18 +24,17 @@ use crate::{
     language::Query,
     scalars::StreamId,
     tags::TagSet,
-    types::Binary,
     AppId, LamportTimestamp, Offset, OffsetMap, Payload, Timestamp,
 };
 
 /// The order in which you want to receive events for a query
 ///
-/// Event streams can be request with different ordering requirements from the
+/// Event streams can be requested with different ordering requirements from the
 /// Event Service:
 ///
-///  - in strict Asc Lamport order
-///  - in strict Desc Lamport order
-///  - ordered in Asc order per stream, but not between streams
+///  - in strict ascending order
+///  - in strict descending order
+///  - ordered in ascending order per stream, but not across streams
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub enum Order {
@@ -50,31 +49,47 @@ pub enum Order {
     StreamAsc,
 }
 
+/// Query for a bounded set of events across multiple event streams.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryRequest {
+    /// Optional lower bound offset per stream.
     pub lower_bound: Option<OffsetMap>,
+    /// Upper bound offset per stream.
     pub upper_bound: OffsetMap,
+    /// Query for which events should be returned.
     pub query: Query,
+    /// Order in which events should be received.
     pub order: Order,
 }
 
+/// Subscription to an unbounded set of events across multiple streams.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscribeRequest {
+    /// Optional lower bound offset per stream.
     pub lower_bound: Option<OffsetMap>,
+    /// Query for which events should be returned.
     pub query: Query,
 }
 
+/// Event response
 #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct EventResponse<T> {
+    /// Lamport timestamp
     pub lamport: LamportTimestamp,
+    /// ID of the stream this event belongs to
     pub stream: StreamId,
+    /// The event offset within the stream
     pub offset: Offset,
+    /// Timestamp at which the event was emitted
     pub timestamp: Timestamp,
+    /// Tag attached to the event
     pub tags: TagSet,
+    /// Associated app ID
     pub app_id: AppId,
+    /// The actual, app-specific event payload
     pub payload: T,
 }
 impl<T> From<Event<T>> for EventResponse<T> {
@@ -91,12 +106,12 @@ impl<T> From<Event<T>> for EventResponse<T> {
         } = env.meta;
         let payload = env.payload;
         EventResponse {
-            app_id,
             lamport,
             stream,
             offset,
             timestamp,
             tags,
+            app_id,
             payload,
         }
     }
@@ -138,64 +153,52 @@ impl<T> std::fmt::Display for EventResponse<T> {
     }
 }
 
+/// Publication of an event
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PublishEvent {
+    /// Attached tags
     pub tags: TagSet,
+    /// App-specific event payload
     pub payload: Payload,
 }
 
+/// Publication of a set of events
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PublishRequest {
+    /// Events to be published
     pub data: Vec<PublishEvent>,
 }
 
+/// Result of an event publication
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PublishResponseKey {
+    /// Lamport timestamp
     pub lamport: LamportTimestamp,
+    /// Associated stream's ID
     pub stream: StreamId,
+    /// Offset within the associated stream
     pub offset: Offset,
+    /// Timestamp at which the event was stored by the service
     pub timestamp: Timestamp,
 }
 
+/// Result of the publication of a set of events
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PublishResponse {
+    /// Metadata for each published event
     pub data: Vec<PublishResponseKey>,
-}
-
-#[derive(Debug, Copy, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub enum Compression {
-    None,
-    Deflate,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct SnapshotData {
-    compression: Compression,
-    data: Binary,
-}
-
-impl SnapshotData {
-    pub fn new(compression: Compression, data: impl Into<Box<[u8]>>) -> Self {
-        Self {
-            compression,
-            data: data.into().into(),
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum StartFrom {
+    /// If the lower bound is given in, it filters out all events that are included
+    /// in the offset map.
     LowerBound(OffsetMap),
-    // Snapshot {
-    //     compression: std::collections::BTreeSet<Compression>,
-    // },
 }
 
 impl StartFrom {
@@ -242,9 +245,7 @@ impl SessionId {
 /// Time travel is defined as receiving an event that needs to be sorted earlier than
 /// an event that has already been received.
 ///
-/// Send this structure to the `$BASE_URI/subscribe` endpoint to retrieve an
-/// unbounded stream of events. If the lower bound is given, it filters out all
-/// events that are included in the `lower_bound` OffsetMap.
+/// Send this request to retrieve an unbounded stream of events.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SubscribeMonotonicRequest {
@@ -254,7 +255,7 @@ pub struct SubscribeMonotonicRequest {
     /// upon receiving a different subscription for this session.
     pub session: SessionId,
     /// Definition of the events to be received by this session, i.e. a selection of
-    /// tags coupled with other flags like “is local”.
+    /// tags coupled with other flags like “isLocal”.
     pub query: Query,
     /// The consumer may already have kept state and know at which point to resume a
     /// previously interrupted stream. In this case, StartFrom::Offsets is used,
@@ -264,16 +265,10 @@ pub struct SubscribeMonotonicRequest {
     pub from: StartFrom,
 }
 
-/// Response to subscribeMonotonic is a stream of events terminated by a time travel
+/// The response to a monotonic subscription is a stream of events terminated by a time travel.
 #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SubscribeMonotonicResponse {
-    /// This message may be sent in the beginning when a suitable snapshot has been
-    /// found for this session. It may also be sent at later times when suitable
-    /// snapshots become available by other means (if for example this session is
-    /// computed also on a different node).
-    #[serde(rename_all = "camelCase")]
-    State { snapshot: SnapshotData },
     /// This is the main message, a new event that is to be applied directly to the
     /// currently known state to produce the next state.
     #[serde(rename_all = "camelCase")]
@@ -290,25 +285,29 @@ pub enum SubscribeMonotonicResponse {
     TimeTravel { new_start: EventKey },
 }
 
+/// The response to a query request.
+///
+/// This will currently only be elements of type `Event` but will eventually contain
+/// `Offset`s to communicate progress of events not included in the query.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum QueryResponse {
     #[serde(rename_all = "camelCase")]
     Event(EventResponse<Payload>),
-    // #[serde(rename_all = "camelCase")]
-    // Offset(OffsetMap),
 }
 
+/// The response to a subscribe request.
+///
+/// This will currently only be elements of type `Event` but will eventually contain
+/// `Offset`s to communicate progress of events not included in the query.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SubscribeResponse {
     #[serde(rename_all = "camelCase")]
     Event(EventResponse<Payload>),
-    // #[serde(rename_all = "camelCase")]
-    // Offset(OffsetMap),
 }
 
-/// Response to the `offsets` endpoint
+/// Response to the offsets request
 #[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct OffsetsResponse {
@@ -319,15 +318,23 @@ pub struct OffsetsResponse {
 }
 
 #[async_trait]
+/// A service providing retrieval of historic and live events, publishing of new events
+/// and access to information about current stream offsets.
 pub trait EventService: Clone + Send {
+    /// Returns known offsets across local and replicated streams.
     async fn offsets(&self) -> Result<OffsetsResponse>;
 
+    /// Publishes a set of new events.
     async fn publish(&self, request: PublishRequest) -> Result<PublishResponse>;
 
+    /// Query events known at the time the request was reveived by the service.
     async fn query(&self, request: QueryRequest) -> Result<BoxStream<'static, QueryResponse>>;
 
+    /// Suscribe to events that are currently known by the service followed by new "live" events.
     async fn subscribe(&self, request: SubscribeRequest) -> Result<BoxStream<'static, SubscribeResponse>>;
 
+    /// Subscribe to events that are currently known by the service followed by new "live" events until
+    /// the service learns about events that need to be sorted earlier than an event already received.
     async fn subscribe_monotonic(
         &self,
         request: SubscribeMonotonicRequest,

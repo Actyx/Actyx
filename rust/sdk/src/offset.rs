@@ -40,13 +40,13 @@ use crate::scalars::StreamId;
 
 /// Maximum possible offset
 ///
-/// the max Offset needs to fit into an i64 and also needs to be losslessly converted into an f64
-/// due to interop with braindead languages that do not have proper integers.
+/// The maximum offset needs to fit into an `i64` and also needs to be losslessly converted into an `f64`
+/// due to interop with languages that do not have proper integers.
 ///
 /// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
 const MAX_SAFE_INT: i64 = 9_007_199_254_740_991;
 
-/// Event offset within a [`SourceId`](struct.SourceId.html)’s stream or MIN value
+/// Event offset within a [`SourceId`](struct.SourceId.html)’s stream or `MIN` value
 ///
 /// The event offset is not a number, it rather is an identifier that can be compared
 /// to other identifiers. There are 2^63 such values. The `incr` and `decr` functions
@@ -54,7 +54,7 @@ const MAX_SAFE_INT: i64 = 9_007_199_254_740_991;
 /// because for the use-case of naming events within a stream it is impossible to exhaust
 /// the available set of values.
 ///
-/// The MIN value is not a valid offset, it is sorted before [`Offset::ZERO`](struct.Offset.html#const.ZERO).
+/// The `MIN` value is not a valid offset, it is sorted before [`Offset::ZERO`](struct.Offset.html#associatedconstant.ZERO).
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord, From, Into, Display)]
 #[cfg_attr(feature = "dataflow", derive(Abomonation))]
 pub struct OffsetOrMin(#[serde(with = "i64_from_minus_one")] i64);
@@ -119,27 +119,19 @@ mod i64_from_minus_one {
 }
 
 impl OffsetOrMin {
-    /// Zero offset, equal to [`Offset::ZERO`](struct.Offset.html#const.ZERO)
+    /// Zero offset, equal to [`Offset::ZERO`](struct.Offset.html#associatedconstant.ZERO)
     pub const ZERO: OffsetOrMin = OffsetOrMin(0);
 
     /// Maximum possible offset
     ///
-    /// the max Offset needs to fit into an i64 and also needs to be losslessly converted into an f64
-    /// due to interop with braindead languages that do not have proper integers.
+    /// The maximum offset needs to fit into an `i64` and also needs to be losslessly converted into an `f64`
+    /// due to interop with languages that do not have proper integers.
     ///
     /// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
     pub const MAX: OffsetOrMin = OffsetOrMin(MAX_SAFE_INT);
 
-    /// Minimum value, predecessor of the ZERO offset
+    /// Minimum value, predecessor of [`Offset::ZERO`](struct.Offset.html#associatedconstant.ZERO)
     pub const MIN: OffsetOrMin = OffsetOrMin(-1);
-
-    /// This function shall only be used from tests to manufacture events where needed.
-    ///
-    /// It is intentionally hard to extract the wrapped number from this type because
-    /// offsets do not support useful arithmetic operations.
-    pub fn mk_test(o: u32) -> Self {
-        Self(o.into())
-    }
 
     /// Return the successor to this offset, where ZERO succeeds MIN
     pub fn succ(&self) -> Offset {
@@ -241,7 +233,7 @@ impl Decode<DagCborCodec> for OffsetOrMin {
     }
 }
 
-/// Event offset within a [`SourceId`](struct.SourceId.html)’s stream
+/// Event offset within a stream
 ///
 /// The event offset is not a number, it rather is an identifier that can be compared
 /// to other identifiers. There are 2^63 such values. The `incr` and `decr` functions
@@ -303,19 +295,11 @@ impl Offset {
 
     /// Maximum possible offset
     ///
-    /// the max Offset needs to fit into an i64 and also needs to be losslessly converted into an f64
-    /// due to interop with braindead languages that do not have proper integers.
+    /// The maximum offset needs to fit into an `i64` and also needs to be losslessly converted into an `f64`
+    /// due to interop with languages that do not have proper integers.
     ///
     /// See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
     pub const MAX: Offset = Offset(MAX_SAFE_INT);
-
-    /// This function shall only be used from tests to manufacture events where needed.
-    ///
-    /// It is intentionally hard to extract the wrapped number from this type because
-    /// offsets do not support useful arithmetic operations.
-    pub fn mk_test(o: u32) -> Self {
-        Self(o.into())
-    }
 
     /// Fallible conversion from [`OffsetOrMin`](struct.OffsetOrMin.html)
     ///
@@ -483,10 +467,10 @@ mod postgresql {
 /// All stream delivery modes supported by the Event Service respect the order of offsets
 /// of the events published by each single Actyx node. This order is consistent with the
 /// Lamport timestamp order because both numbers are assigned to published events in strictly
-/// monotonically increasing fashion, i.e. greater Offset implies greater Lamport timestamp
+/// monotonically increasing fashion, i.e. greater offset implies greater Lamport timestamp
 /// and vice versa.
 ///
-/// > Note that if the `OffsetMap` contains offset 42 for SourceID `"abc"` it denotes that
+/// > Note that if the `OffsetMap` contains offset 42 for [StreamId](struct.StreamId.html) `"abc.0"` it denotes that
 /// events with offsets 0 through 42 (inclusive) are included within the `OffsetMap`.
 ///
 /// A common usage pattern is to store the `OffsetMap` describing the events already consumed
@@ -502,7 +486,7 @@ mod postgresql {
 /// the other. It may be that one `OffsetMap` contains events that the other does not and vice
 /// versa, in which case they are incomparable (`partial_cmp` will return `None`).
 ///
-/// An event may be added into an `OffsetMap` to denote that from the event’s source all events
+/// An event may be added into an `OffsetMap` to denote that from the event’s stream all events
 /// up to this one shall be included in the `OffsetMap`.
 ///
 /// The difference of two offset maps yields the number of events contained within the first
@@ -510,7 +494,7 @@ mod postgresql {
 ///
 /// # Deserialization
 ///
-/// An OffsetMap only contains valid offsets (non-negative numbers), but during deserialization
+/// An `OffsetMap` only contains valid offsets (non-negative numbers), but during deserialization
 /// negative values are tolerated and ignored. This is to keep compatibility with previously
 /// documented API endpoints.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, DagCbor)]
@@ -834,12 +818,20 @@ mod tests {
         NODE.parse::<NodeId>().unwrap().stream(stream_nr.into())
     }
 
+    fn mk_offset(o: u32) -> Offset {
+        Offset(o.into())
+    }
+
+    pub fn mk_offset_or_min(o: u32) -> OffsetOrMin {
+        OffsetOrMin(o.into())
+    }
+
     fn mk_event(stream_nr: u64, offset: u32) -> Event<Payload> {
         Event {
             key: EventKey {
                 lamport: LamportTimestamp::new(1),
                 stream: stream_id(stream_nr),
-                offset: Offset::mk_test(offset),
+                offset: mk_offset(offset),
             },
             meta: Metadata {
                 app_id: app_id!("test"),
@@ -889,10 +881,10 @@ mod tests {
     pub fn must_set_op() {
         let left = OffsetMap::from(
             [
-                (stream_id(1), Offset::mk_test(1)),
-                (stream_id(2), Offset::mk_test(2)),
-                (stream_id(3), Offset::mk_test(3)),
-                (stream_id(4), Offset::mk_test(4)),
+                (stream_id(1), mk_offset(1)),
+                (stream_id(2), mk_offset(2)),
+                (stream_id(3), mk_offset(3)),
+                (stream_id(4), mk_offset(4)),
             ]
             .iter()
             .copied()
@@ -901,10 +893,10 @@ mod tests {
 
         let right = OffsetMap::from(
             [
-                (stream_id(2), Offset::mk_test(4)),
-                (stream_id(3), Offset::mk_test(3)),
-                (stream_id(4), Offset::mk_test(2)),
-                (stream_id(5), Offset::mk_test(1)),
+                (stream_id(2), mk_offset(4)),
+                (stream_id(3), mk_offset(3)),
+                (stream_id(4), mk_offset(2)),
+                (stream_id(5), mk_offset(1)),
             ]
             .iter()
             .copied()
@@ -913,11 +905,11 @@ mod tests {
 
         let union = OffsetMap::from(
             [
-                (stream_id(1), Offset::mk_test(1)),
-                (stream_id(2), Offset::mk_test(4)),
-                (stream_id(3), Offset::mk_test(3)),
-                (stream_id(4), Offset::mk_test(4)),
-                (stream_id(5), Offset::mk_test(1)),
+                (stream_id(1), mk_offset(1)),
+                (stream_id(2), mk_offset(4)),
+                (stream_id(3), mk_offset(3)),
+                (stream_id(4), mk_offset(4)),
+                (stream_id(5), mk_offset(1)),
             ]
             .iter()
             .copied()
@@ -926,9 +918,9 @@ mod tests {
 
         let intersection = OffsetMap::from(
             [
-                (stream_id(2), Offset::mk_test(2)),
-                (stream_id(3), Offset::mk_test(3)),
-                (stream_id(4), Offset::mk_test(2)),
+                (stream_id(2), mk_offset(2)),
+                (stream_id(3), mk_offset(3)),
+                (stream_id(4), mk_offset(2)),
             ]
             .iter()
             .copied()
@@ -944,7 +936,7 @@ mod tests {
     #[test]
     fn must_to_string() {
         assert_eq!(OffsetOrMin(12).to_string(), "12");
-        assert_eq!(Offset::mk_test(3).to_string(), "3");
+        assert_eq!(mk_offset(3).to_string(), "3");
     }
 
     fn ser<T: Serialize>(v: T, expected: &str) {
@@ -963,11 +955,11 @@ mod tests {
     #[test]
     fn must_serde_offset() {
         ser(Offset::ZERO, "0");
-        ser(Offset::mk_test(1), "1");
+        ser(mk_offset(1), "1");
         ser(Offset::MAX, "9007199254740991");
 
         de("0", Offset::ZERO);
-        de("1", Offset::mk_test(1));
+        de("1", mk_offset(1));
         de("9007199254740991", Offset::MAX);
 
         err::<Offset>("-1", "negative");
@@ -979,14 +971,14 @@ mod tests {
     fn must_serde_offset_or_min() {
         ser(OffsetOrMin::MIN, "\"min\"");
         ser(OffsetOrMin::ZERO, "0");
-        ser(OffsetOrMin::mk_test(42), "42");
+        ser(mk_offset_or_min(42), "42");
         ser(OffsetOrMin::MAX, "9007199254740991");
 
         de("\"min\"", OffsetOrMin::MIN);
         de("-1", OffsetOrMin::MIN);
         de("\"-1\"", OffsetOrMin::MIN);
         de("0", OffsetOrMin::ZERO);
-        de("1", OffsetOrMin::mk_test(1));
+        de("1", mk_offset_or_min(1));
         de("9007199254740991", OffsetOrMin::MAX);
         de("\"9007199254740991\"", OffsetOrMin::MAX);
         de("\"max\"", OffsetOrMin::MAX);
@@ -1006,7 +998,7 @@ mod tests {
         let mut map = OffsetMap::empty();
         ser(map.clone(), "{}");
         let stream_id = stream_id(0);
-        map.update(stream_id, Offset::mk_test(12));
+        map.update(stream_id, mk_offset(12));
         ser(map.clone(), format!("{{\"{}\":12}}", stream_id).as_str());
 
         de("{}", OffsetMap::empty());

@@ -211,9 +211,6 @@ const toSwarmInfo = ([seen, own]: [OffsetMap, OffsetMap]): SwarmInfo => {
   }
 }
 
-// FIXME: add the actual offsets() API to Actyx
-const emptyToReplicate: Record<string, number> = {}
-
 export const streamSplashState = (
   actyx: Actyx,
   config: WaitForSwarmConfig,
@@ -221,9 +218,7 @@ export const streamSplashState = (
   const waitForSwarmMs = config.waitForSwarmMs || defaults.waitForSwarmMs
 
   const swarmInfo$ = Observable.interval(500)
-    .concatMapTo(Observable.from(actyx.currentOffsets()))
-    // FIXME: add the actual offsets() API to Actyx
-    .map(x => ({ present: x, toReplicate: emptyToReplicate }))
+    .concatMapTo(Observable.from(actyx.offsets()))
     .takeUntil(Observable.timer(waitForSwarmMs))
     .map(({ present, toReplicate }) => {
       const seen = Object.entries(toReplicate).reduce(

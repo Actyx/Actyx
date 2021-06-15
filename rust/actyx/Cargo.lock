@@ -508,7 +508,6 @@ dependencies = [
  "bytes 1.0.1",
  "certs",
  "chrono",
- "clap",
  "crypto",
  "derive_more",
  "dirs 3.0.2",

@@ -137,8 +137,7 @@ impl EventService {
                 .map_err(Error::StoreReadError)?
                 .next()
                 .await
-                .map(|event| event.key)
-                .unwrap_or_default(), // _ => EventKey::default(),
+                .map(|event| event.key), // _ => None,
         };
 
         let stream = subscribe0(&self.store, &tag_expr, Some(request.from.min_offsets())).await?;
@@ -147,8 +146,9 @@ impl EventService {
             .flat_map({
                 let mut latest = initial_latest;
                 move |e| {
-                    if e.key > latest {
-                        latest = e.key;
+                    let key = Some(e.key);
+                    if key > latest {
+                        latest = key;
                         feed(e)
                             .map(|event| SubscribeMonotonicResponse::Event { event, caught_up: true })
                             .left_stream()

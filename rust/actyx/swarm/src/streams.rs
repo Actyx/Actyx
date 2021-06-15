@@ -162,7 +162,8 @@ impl PublishedTree {
     }
 
     pub fn offset(&self) -> Offset {
-        Offset::try_from(self.tree.count()).unwrap()
+        let offset = self.tree.count().checked_sub(1).expect("published tree empty");
+        Offset::try_from(offset).expect("invalid offset")
     }
 
     pub fn root(&self) -> Link {

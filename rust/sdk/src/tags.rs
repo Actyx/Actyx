@@ -33,7 +33,7 @@ use serde::{Deserialize, Serialize};
 use crate::{types::ArcVal, ParseError};
 use unicode_normalization::UnicodeNormalization;
 
-/// Macro for constructing a [`Tag`](event/struct.Tag.html) literal.
+/// Macro for constructing a [`Tag`](struct.Tag.html) literal.
 ///
 /// This is how it works:
 /// ```no_run
@@ -55,7 +55,7 @@ macro_rules! tag {
     }};
 }
 
-/// Macro for constructing a set of [`Tag`](event/struct.Tag.html) values.
+/// Macro for constructing a set of [`Tag`](struct.Tag.html) values.
 ///
 /// The values accepted are either
 ///  - non-empty string literals

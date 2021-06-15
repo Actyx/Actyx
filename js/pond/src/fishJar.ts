@@ -201,7 +201,7 @@ const observeAll = (eventStore: EventFns, _pondStateTracker: PondStateTracker) =
   makeFish: (seed: ESeed) => Fish<S, any> | undefined,
   expireAfterSeed?: Milliseconds,
 ): Observable<StartedFishMap<S>> => {
-  const fish$ = Observable.from(eventStore.currentOffsets()).concatMap(present => {
+  const fish$ = Observable.from(eventStore.present()).concatMap(present => {
     const persisted = getEventsForwardChunked(eventStore, firstEvents, present)
 
     // This step is only so that we don’t emit outdated collection while receiving chunks of old events

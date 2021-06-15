@@ -17,6 +17,7 @@ use super::SqliteStore;
 use crate::cmd::AxCliCommand;
 
 #[derive(StructOpt, Debug)]
+#[structopt(no_version)]
 pub struct DumpTreeOpts {
     #[structopt(long)]
     /// Path to a sqlite blockstore (read-only access!)

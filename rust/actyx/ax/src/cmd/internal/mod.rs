@@ -8,7 +8,7 @@ use self::convert::ConvertFromV1Opts;
 use self::trees::TreesOpts;
 
 #[derive(StructOpt, Debug)]
-/// Internal commands
+#[structopt(no_version)]
 pub enum InternalOpts {
     #[structopt(name = "convert")]
     /// Convert block

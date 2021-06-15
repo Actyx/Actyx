@@ -1,6 +1,7 @@
 mod dedup;
 mod drain;
 mod drainer;
+mod inspect_poll;
 mod interval;
 mod merge_ordered;
 mod merge_unordered;
@@ -14,9 +15,12 @@ mod yield_after;
 pub mod latest_channel;
 pub mod variable;
 
+use std::task::Poll;
+
 pub use dedup::Dedup;
 pub use drain::Drain;
 pub use drainer::Drainer;
+pub use inspect_poll::InspectPoll;
 pub use interval::Interval;
 pub use merge_ordered::{MergeOrdered, NewSourceMode};
 pub use merge_unordered::MergeUnordered;
@@ -170,6 +174,10 @@ pub trait AxStreamExt: Stream + Sized {
 
     fn tap<F: FnMut(&Self::Item) -> Option<U>, U>(self, f: F) -> (Tap<Self, U, F>, UnboundedReceiver<U>) {
         Tap::new(self, f)
+    }
+
+    fn inspect_poll<F: FnMut(&Poll<Option<Self::Item>>)>(self, f: F) -> InspectPoll<Self, F> {
+        InspectPoll::new(self, f)
     }
 }
 

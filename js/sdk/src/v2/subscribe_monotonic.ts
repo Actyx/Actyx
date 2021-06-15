@@ -175,7 +175,7 @@ export const eventsMonotonic = (
 
     const persistedChunked: Observable<EventsMsg> = persistedAfterHorizon
       // Speed up Fish hydration by applying chunks
-      .bufferCount(1000)
+      .bufferCount(32)
       .map<Events, EventsMsg>(chunk => ({
         type: MsgType.events,
         events: chunk,

@@ -1,9 +1,9 @@
 use core::pin::Pin;
 use futures::stream::{self, Stream};
 use futures::task::Context;
-use futures::task::Poll;
 use std::cmp::Ordering;
 use std::collections::BinaryHeap;
+use std::task::Poll;
 
 /// A struct for putting a stream and its head into the BinaryHeap. Since we need
 /// a min-heap, the ordering is **REVERSED**.
