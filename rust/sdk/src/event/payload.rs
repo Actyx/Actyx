@@ -19,7 +19,7 @@ use std::fmt::{Debug, Formatter};
 
 use super::Opaque;
 
-/// Compact binary storage of events created when they are received from the Event Service
+/// Compact binary storage of events created when they are received
 ///
 /// see [`Event::extract`](struct.Event.html#method.extract) for supported ways of using the
 /// data

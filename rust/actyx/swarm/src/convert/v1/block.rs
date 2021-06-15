@@ -84,7 +84,7 @@ mod test {
             name: fish_name!("name"),
             tags: tags! { "foo", "bar" },
             timestamp: Timestamp::now(),
-            offset: Offset::mk_test(1),
+            offset: Offset::ZERO.succ(),
             payload: Payload::from_json_value(json!([payload])).unwrap(),
             lamport: LamportTimestamp::new(0),
         };

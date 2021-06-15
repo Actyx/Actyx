@@ -40,19 +40,28 @@ impl From<language::Query> for Query {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use actyx_sdk::EventKey;
+    use actyx_sdk::{EventKey, NodeId};
     use cbor_data::Encoder;
+
+    use super::*;
+
+    fn key() -> EventKey {
+        EventKey {
+            lamport: Default::default(),
+            stream: NodeId::from_bytes(&[0xff; 32]).unwrap().stream(0.into()),
+            offset: Default::default(),
+        }
+    }
 
     #[test]
     fn query() {
         let query_str = "FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2";
         let q = Query::from(query_str.parse::<language::Query>().unwrap());
-        let v = Value::new(EventKey::default(), |b| b.encode_u64(3));
+        let v = Value::new(key(), |b| b.encode_u64(3));
         assert_eq!(q.feed(v), vec![]);
 
-        let v = Value::new(EventKey::default(), |b| b.encode_u64(2));
-        let r = Value::new(EventKey::default(), |b| b.encode_u64(4));
+        let v = Value::new(key(), |b| b.encode_u64(2));
+        let r = Value::new(key(), |b| b.encode_u64(4));
         assert_eq!(q.feed(v), vec![r]);
     }
 }
