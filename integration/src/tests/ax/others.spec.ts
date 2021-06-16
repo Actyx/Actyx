@@ -5,7 +5,7 @@ describe('ax', () => {
     it('should return the right version number', async () => {
       await runOnEach([{}], async (node) => {
         const response = await node.ax.version()
-        expect(response.startsWith('Actyx CLI 0.0.0')).toBeTruthy()
+        expect(response.startsWith('Actyx CLI ')).toBeTruthy()
       })
     })
   })
