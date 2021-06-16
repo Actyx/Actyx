@@ -51,11 +51,12 @@ fn get_version(env_var: &str) -> Version {
 }
 fn main() {
     let Version {
-        version: actyx_version, ..
+        version: actyx_version,
+        git_hash,
     } = get_version("ACTYX_VERSION");
     let Version {
         version: actyx_cli_version,
-        git_hash,
+        ..
     } = get_version("ACTYX_VERSION_CLI");
 
     let profile = env::var("PROFILE").expect("PROFILE not set");
