@@ -1,10 +1,6 @@
 using System;
 using System.Collections.Generic;
-using JsonSubTypes;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Reactive;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace Actyx
@@ -38,7 +34,7 @@ namespace Actyx
          * Nor will it expose us to those events that lie after the gap.
          * This also returns the events per source which are pending replication to this node.
          */
-        Task<OffsetsReponse> offsets();
+        Task<OffsetsResponse> Offsets();
 
         /**
          * This method is only concerned with already persisted events, so it will always return a finite (but possibly large)
@@ -55,7 +51,7 @@ namespace Actyx
          * given that store and pond are usually on the same machine this won't be that bad, and in any case this is perferable
          * to needing a way of sending a javascript predicate to the store.
          */
-        IObservable<EventOnWire> query(
+        IObservable<EventOnWire> Query(
             OffsetMap lowerBound,
             OffsetMap upperBound,
             IEventSelection query,
@@ -71,7 +67,7 @@ namespace Actyx
          * Getting events up to a maximum event key can be achieved for a finite set of sources by specifying sort by
          * event key and aborting as soon as the desired event key is reached.
          */
-        IObservable<EventOnWire> subscribe(
+        IObservable<EventOnWire> Subscribe(
             OffsetMap lowerBound,
             IEventSelection query
         );
@@ -79,7 +75,7 @@ namespace Actyx
         /**
          * Store the events in the store and return them as generic events.
          */
-        IObservable<EventOnWire> persistEvents(
+        IObservable<EventOnWire> PersistEvents(
             IEnumerable<IEventDraft> events
         );
     }

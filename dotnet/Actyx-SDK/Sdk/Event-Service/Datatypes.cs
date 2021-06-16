@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using JsonSubTypes;
 using Newtonsoft.Json;
@@ -156,7 +155,7 @@ namespace Actyx
         // Just type alias. TODO Is this ideal? (Maybe use an immutable dict)
     }
 
-    public class OffsetsReponse
+    public class OffsetsResponse
     {
         OffsetMap Present { get; }
 
