@@ -107,7 +107,7 @@ describe('node lifecycle', () => {
 
   it('indicate shutdown', () =>
     runOnEvery(async (n) => {
-      if (n.target.kind.type !== 'local') {
+      if (n.target.kind.type !== 'local' || skipTarget(n)) {
         // It's not straight-forward to forward the signal via SSH
         return
       }
