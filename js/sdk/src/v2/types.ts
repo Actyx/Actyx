@@ -103,7 +103,6 @@ export type Events = t.TypeOf<typeof Events>
  */
 export const UnstoredEvent = t.readonly(
   t.type({
-    timestamp: Codecs.Timestamp,
     tags: Tags,
     payload: t.unknown,
   }),
