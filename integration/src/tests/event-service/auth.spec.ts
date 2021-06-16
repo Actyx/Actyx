@@ -300,17 +300,7 @@ describe('auth ws', () => {
             ws.on('message', (x) => {
               responses.push(JSON.parse(x.toString()))
               if (responses.length === 2) {
-                expect(responses).toEqual([
-                  {
-                    type: 'next',
-                    requestId: 1,
-                    payload: {
-                      present: expect.any(Object),
-                      toReplicate: expect.any(Object),
-                    },
-                  },
-                  { type: 'complete', requestId: 1 },
-                ])
+                expect(responses).toMatchObject([{ type: 'next' }, { type: 'complete' }])
                 ws.terminate()
                 resolve()
               }
