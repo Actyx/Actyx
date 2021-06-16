@@ -200,10 +200,13 @@ fn mk_docker_tuples(
     }
 }
 
+/// Maps a source artifact (m) to a target artifact (n).
 fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(SourceArtifact, TargetArtifact)> {
     let mut out = vec![];
 
     let Release { product, version } = &release;
+    // The architecture descriptor are not uniform across all target platforms. We try to go with
+    // the "idiomatic" one for each one. This is why we change it in the following sometimes.
     match (product, os_arch.os) {
         (Product::Actyx, OS::android) => {
             out.push((
@@ -229,7 +232,6 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
             }
         }
         (Product::Actyx, OS::linux) => {
-            // CEO override
             let output_arch = match os_arch.arch {
                 Arch::x86_64 => "amd64",
                 Arch::aarch64 => "arm64",
