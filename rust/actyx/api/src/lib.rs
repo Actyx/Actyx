@@ -1,5 +1,6 @@
 mod auth;
 mod events;
+pub mod formats;
 mod ipfs_file_gateway;
 mod node;
 mod rejections;

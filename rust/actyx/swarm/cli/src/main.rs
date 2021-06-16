@@ -1,6 +1,6 @@
 use actyx_sdk::{app_id, AppId};
 use anyhow::Result;
-use api::NodeInfo;
+use api::{formats::Licensing, NodeInfo};
 use crypto::{KeyPair, KeyStore};
 use futures::stream::StreamExt;
 use structopt::StructOpt;
@@ -42,7 +42,7 @@ async fn run() -> Result<()> {
         key_store.add_key_pair_ed25519(cfg.keypair.unwrap_or_else(KeyPair::generate).into())?;
         let swarm = BanyanStore::new(cfg).await?;
         tracing::info!("Binding api to {:?}", addr);
-        let node_info = NodeInfo::new(swarm.node_id(), key_store.into_ref(), 0.into());
+        let node_info = NodeInfo::new(swarm.node_id(), key_store.into_ref(), 0.into(), Licensing::default());
         let (tx, _rx) = crossbeam::channel::unbounded();
         swarm.spawn_task("api", api::run(node_info, swarm.clone(), std::iter::once(addr), tx));
         swarm

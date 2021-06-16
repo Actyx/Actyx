@@ -1,10 +1,12 @@
 mod app_domain;
+mod app_license;
 mod developer_certificate;
 mod signature;
 mod signed_app_manifest;
 mod trial_app_manifest;
 
 pub use app_domain::AppDomain;
+pub use app_license::SignedAppLicense;
 pub use developer_certificate::{DeveloperCertificate, ManifestDeveloperCertificate};
 pub use signed_app_manifest::SignedAppManifest;
 pub use trial_app_manifest::TrialAppManifest;

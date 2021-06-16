@@ -3,7 +3,7 @@ import { runOnEvery } from './infrastructure/hosts'
 import { mkProcessLogger } from './infrastructure/mkProcessLogger'
 import { ActyxNode } from './infrastructure/types'
 
-const getHttpApi = (x: ActyxNode) => x._private.httpApiOrigin
+export const getHttpApi = (x: ActyxNode): string => x._private.httpApiOrigin
 
 export const run = <T>(f: (httpApi: string) => Promise<T>): Promise<T[]> =>
   runOnEvery((node) => f(getHttpApi(node)))

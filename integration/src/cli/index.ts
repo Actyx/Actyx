@@ -8,6 +8,7 @@ export * from './types'
 export class CLI {
   private readonly binaryPath: string
   public readonly identityPath: string
+  public readonly apps
   public readonly nodes
   public readonly settings
   public readonly swarms
@@ -43,6 +44,7 @@ export class CLI {
     const exec = mkExec(this.binaryPath, this.node, this.identityPath)
     const shortVersion = exec.version().then((v) => v.replace('Actyx CLI ', '').split('-')[0])
 
+    this.apps = exec.apps
     this.nodes = exec.nodes
     this.settings = exec.settings
     this.swarms = exec.swarms

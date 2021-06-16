@@ -762,9 +762,19 @@ impl BanyanStore {
 
     /// Append events to a stream, publishing the new data.
     pub async fn append(&self, stream_nr: StreamNr, app_id: AppId, events: Vec<(TagSet, Event)>) -> Result<AppendMeta> {
+        let timestamp = Timestamp::now();
+        self.append0(stream_nr, app_id, timestamp, events).await
+    }
+
+    pub(crate) async fn append0(
+        &self,
+        stream_nr: StreamNr,
+        app_id: AppId,
+        timestamp: Timestamp,
+        events: Vec<(TagSet, Event)>,
+    ) -> Result<AppendMeta> {
         debug_assert!(!events.is_empty());
         tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
-        let timestamp = Timestamp::now();
         let stream = self.get_or_create_own_stream(stream_nr)?;
         let mut guard = stream.lock().await;
         let mut store = self.lock();

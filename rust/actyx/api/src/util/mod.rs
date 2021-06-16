@@ -10,6 +10,8 @@ use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use warp::*;
 
+use crate::formats::Licensing;
+
 #[derive(Clone)]
 pub struct NodeInfo {
     pub node_id: NodeId,
@@ -17,16 +19,18 @@ pub struct NodeInfo {
     pub token_validity: u32,
     pub cycles: NodeCycleCount,
     pub ax_public_key: PublicKey,
+    pub licensing: Licensing,
 }
 
 impl NodeInfo {
-    pub fn new(node_id: NodeId, key_store: KeyStoreRef, cycles: NodeCycleCount) -> Self {
+    pub fn new(node_id: NodeId, key_store: KeyStoreRef, cycles: NodeCycleCount, licensing: Licensing) -> Self {
         Self {
             node_id,
             key_store,
             cycles,
             token_validity: get_token_validity(),
             ax_public_key: get_ax_public_key(),
+            licensing,
         }
     }
 }

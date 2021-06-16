@@ -56,7 +56,7 @@ impl Signature {
         Ok(Self(signature))
     }
 
-    pub fn verify<T: Serialize>(&self, input: &T, key: PublicKey) -> anyhow::Result<()> {
+    pub fn verify<T: Serialize>(&self, input: &T, key: &PublicKey) -> anyhow::Result<()> {
         let hash = Signature::serialize_canonically(input)?;
         match key.verify(&hash, self.0.as_ref()) {
             true => Ok(()),
@@ -122,7 +122,7 @@ mod tests {
     fn signature_validate() {
         let x = setup();
         let signature: Signature = x.sig_as_string.parse().unwrap();
-        let ok_result = signature.verify(&x.test_data, x.public_key);
+        let ok_result = signature.verify(&x.test_data, &x.public_key);
         assert!(matches!(ok_result, Ok(())), "valid signature");
     }
 
@@ -131,7 +131,7 @@ mod tests {
         let x = setup();
         let tempered_signature = x.sig_as_string.replace("mdpSN", "mdpZZ");
         let signature: Signature = tempered_signature.parse().unwrap();
-        let err = signature.verify(&x.test_data, x.public_key).unwrap_err();
+        let err = signature.verify(&x.test_data, &x.public_key).unwrap_err();
         err.downcast_ref::<InvalidSignature>()
             .unwrap_or_else(|| panic!("Found wrong error: {}", err));
         assert_eq!(err.to_string(), "Invalid signature for provided input.");
@@ -144,7 +144,7 @@ mod tests {
         let test_data2 = TestStruct {
             data: "some data 2".into(),
         };
-        let err_result = signature.verify(&test_data2, x.public_key);
+        let err_result = signature.verify(&test_data2, &x.public_key);
         assert!(matches!(err_result, Err(anyhow::Error { .. })));
     }
 

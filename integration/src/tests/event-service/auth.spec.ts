@@ -9,9 +9,12 @@ import {
   AUTH_SEG,
 } from '../../http-client'
 import WebSocket from 'ws'
-import { run } from '../../util'
+import { run, getHttpApi } from '../../util'
 import { createTestNodeLocal } from '../../test-node-factory'
 import { AppManifest } from '@actyx/pond'
+import { SettingsInput } from '../../cli/exec'
+import { waitForNodeToBeConfigured } from '../../retry'
+import { ActyxNode } from '../../infrastructure/types'
 
 const UNAUTHORIZED_TOKEN =
   'AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ=='
@@ -34,6 +37,62 @@ describe('auth http', () => {
     signature:
       'v2tzaWdfdmVyc2lvbgBtZGV2X3NpZ25hdHVyZXhYZ0JGTTgyZVpMWTdJQzhRbmFuVzFYZ0xrZFRQaDN5aCtGeDJlZlVqYm9qWGtUTWhUdFZNRU9BZFJaMVdTSGZyUjZUOHl1NEFKdFN5azhMbkRvTVhlQnc9PWlkZXZQdWJrZXl4LTBuejFZZEh1L0pEbVM2Q0ltY1pnT2o5WTk2MHNKT1ByYlpIQUpPMTA3cVcwPWphcHBEb21haW5zgmtjb20uYWN0eXguKm1jb20uZXhhbXBsZS4qa2F4U2lnbmF0dXJleFg4QmwzekNObm81R2JwS1VvYXRpN0NpRmdyMEtHd05IQjFrVHdCVkt6TzlwelcwN2hGa2tRK0dYdnljOVFhV2hIVDVhWHp6TyttVnJ4M2VpQzdUUkVBUT09/w==',
   }
+
+  it('auth flow signed manifest with node in prod mode', async () => {
+    const runAuthFlowSignedManifestWithNodeInProdMode = async (node: ActyxNode): Promise<void> => {
+      const httpApi = getHttpApi(node)
+
+      const set = async (scope: string, value: unknown): Promise<void> => {
+        await expect(
+          node.ax.settings.set(`com.actyx/licensing/${scope}`, SettingsInput.FromValue(value)),
+        ).resolves.toMatchCodeOk()
+        await waitForNodeToBeConfigured(node)
+      }
+
+      const setAppLicense = (license: string): Promise<void> =>
+        set('apps', { [signedManifest.appId]: license })
+
+      const get = (expected: unknown) =>
+        getToken(signedManifest, httpApi)
+          .then((x) => x.json())
+          .then((x) => expect(x).toEqual(expected))
+
+      const getErr = (msg: string) =>
+        get({
+          code: 'ERR_APP_UNAUTHORIZED',
+          message: `'com.actyx.auth-test' is not authorized. ${msg}. Provide a valid app license to the node.`,
+        })
+
+      // should get token when node in is in prod mode
+      await get({ token: expect.any(String) })
+
+      // should fail when node in prod mode without app license
+      await set('node', 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
+      await getErr('License not found for app')
+
+      // let's set malformed licence for our app id
+      await setAppLicense(
+        'MALFORMED_LICENSE_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      )
+      await getErr('Could not parse license')
+
+      // try out with falsified license
+      await setAppLicense(
+        'v25saWNlbnNlVmVyc2lvbgBrbGljZW5zZVR5cGWhaGV4cGlyaW5nomVhcHBJZHNjb20uYWN0eXguYXV0aC10ZXN0aWV4cGlyZXNBdHQxOTcxLTAxLTAxVDAwOjAxOjAxWmljcmVhdGVkQXR0MTk3MC0wMS0wMVQwMDowMTowMVppc2lnbmF0dXJleFg1dmEvQ3NYWlk3TUV6VVJ0SUEwVm9mL3R1T3FlejZCN3FYby9JNTl4T0NkUDNwUFVabGZEekZPbExIK09oZXJjWGkwRTJ1RXFnZ2x1cUdyaGFDVVhDZz09aXJlcXVlc3RlcqFlZW1haWx0Y3VzdG9tZXJAZXhhbXBsZS5jb23/',
+      )
+      await getErr('Could not validate license')
+
+      // use proper app manifest
+      await setAppLicense(
+        'v25saWNlbnNlVmVyc2lvbgBrbGljZW5zZVR5cGWhaGV4cGlyaW5nomVhcHBJZHNjb20uYWN0eXguYXV0aC10ZXN0aWV4cGlyZXNBdHQxOTcxLTAxLTAxVDAwOjAxOjAxWmljcmVhdGVkQXR0MTk3MC0wMS0wMVQwMDowMTowMVppc2lnbmF0dXJleFhBQWRSd1U4UTZlb3JLY0N3SjE1T0t4OWVPQ0kxNjN3MFhwTFpHWkNPUWlDWUZlYkR1cFlBbWlNOVhsb3dDYWw5dUtuSWhRelkzSUo2RkdUbEtJMStEUT09aXJlcXVlc3RlcqFlZW1haWx0Y3VzdG9tZXJAZXhhbXBsZS5jb23/',
+      )
+      await get({ token: expect.any(String) })
+    }
+
+    // TODO: run on all nodes found in hosts.yaml config
+    const node = await createTestNodeLocal('auth-node-in-prod-mode')
+    await runAuthFlowSignedManifestWithNodeInProdMode(node)
+  })
 
   it('should get token for signed manifest', () =>
     run((httpApi) =>
@@ -241,14 +300,7 @@ describe('auth ws', () => {
             ws.on('message', (x) => {
               responses.push(JSON.parse(x.toString()))
               if (responses.length === 2) {
-                expect(responses).toEqual([
-                  {
-                    type: 'next',
-                    requestId: 1,
-                    payload: [{ present: expect.any(Object), toReplicate: expect.any(Object) }],
-                  },
-                  { type: 'complete', requestId: 1 },
-                ])
+                expect(responses).toMatchObject([{ type: 'next' }, { type: 'complete' }])
                 ws.terminate()
                 resolve()
               }

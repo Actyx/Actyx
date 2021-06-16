@@ -92,7 +92,7 @@ pub(crate) fn authenticate(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::AppMode;
+    use crate::{formats::Licensing, AppMode};
     use actyx_sdk::{app_id, Timestamp};
     use crypto::{KeyStore, PrivateKey};
     use parking_lot::RwLock;
@@ -118,6 +118,7 @@ mod tests {
             node_id: key_id.into(),
             token_validity: 300,
             ax_public_key: PrivateKey::generate().into(),
+            licensing: Licensing::default(),
         };
 
         (auth_args, bearer)

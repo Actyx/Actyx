@@ -1,4 +1,5 @@
 import {
+  ResponseAppsSign,
   Response_Nodes_Ls,
   Response_Nodes_Inspect,
   Response_Settings_Get,
@@ -60,6 +61,9 @@ export const SettingsInput = {
 
 type Exec = {
   version: () => Promise<string>
+  apps: {
+    sign: (devCertFilePath: string, appManifestFilePath: string) => Promise<ResponseAppsSign>
+  }
   users: {
     keyGen: (file: string) => Promise<Response_Users_Keygen>
   }
@@ -84,6 +88,12 @@ export const mkExec = (binary: string, addr: string, identityPath: string): Exec
   version: async () => {
     const response = await execa(path.resolve(binary), ['--version'])
     return response.stdout
+  },
+  apps: {
+    sign: (devCertFilePath, appManifestFilePath) =>
+      exec(binary, ['apps', 'sign', devCertFilePath, appManifestFilePath]).then((x) =>
+        rightOrThrow(ResponseAppsSign.decode(x), x),
+      ),
   },
   users: {
     keyGen: async (file: string): Promise<Response_Users_Keygen> => {
