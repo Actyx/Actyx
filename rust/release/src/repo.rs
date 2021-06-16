@@ -1,4 +1,4 @@
-use git2::{Commit, Cred, Oid, PushOptions, RemoteCallbacks, Repository, Signature};
+use git2::{Commit, Cred, FetchOptions, Oid, PushOptions, RemoteCallbacks, Repository, Signature};
 use std::path::{Path, PathBuf};
 
 use crate::{
@@ -52,14 +52,46 @@ impl RepoWrapper {
         Ok(oid)
     }
     pub fn push(&self, remote: &str, branch_name: &str) -> anyhow::Result<()> {
-        let branch_ref = format!("refs/heads/{}", branch_name);
-        let mut remote = self.0.find_remote(remote)?;
-        let mut cb = RemoteCallbacks::new();
-        cb.credentials(|_, user, _| Cred::ssh_key_from_agent(user.unwrap()));
-        let mut opts = PushOptions::new();
-        opts.remote_callbacks(cb);
-        remote.push(&[format!("{}:{}", branch_ref, branch_ref)], Some(&mut opts))?;
-        Ok(())
+        if std::env::var("AZURE_HTTP_USER_AGENT").is_ok() {
+            eprintln!("Running inside Azure Pipelines; shelling out to `git`. Output:");
+            // `git` is properly set up on Azure Pipelines
+            let mut child = std::process::Command::new("git")
+                .args(&["push", remote, branch_name])
+                .spawn()?;
+            anyhow::ensure!(child.wait()?.success());
+            // println!(
+            //     "###vso[task.setvariable variable=RELEASE_BRANCH;isOutput=true]{}",
+            //     branch_name
+            // );
+            Ok(())
+        } else {
+            let branch_ref = format!("refs/heads/{}", branch_name);
+            let mut remote = self.0.find_remote(remote)?;
+            let mut cb = RemoteCallbacks::new();
+            cb.credentials(|_, user, _| Cred::ssh_key_from_agent(user.unwrap()));
+            let mut opts = PushOptions::new();
+            opts.remote_callbacks(cb);
+            remote.push(&[format!("{}:{}", branch_ref, branch_ref)], Some(&mut opts))?;
+            Ok(())
+        }
+    }
+    pub fn head_of_origin_master(&self) -> anyhow::Result<Oid> {
+        if std::env::var("AZURE_HTTP_USER_AGENT").is_ok() {
+            eprintln!("Running inside Azure Pipelines; shelling out to `git`. Output:");
+            // `git` is properly set up on Azure Pipelines
+            let mut child = std::process::Command::new("git").args(&["remote", "update"]).spawn()?;
+            anyhow::ensure!(child.wait()?.success());
+            self.0.find_remote("origin")?;
+        } else {
+            let mut remote = self.0.find_remote("origin")?;
+            let mut cb = RemoteCallbacks::new();
+            cb.credentials(|_, user, _| Cred::ssh_key_from_agent(user.unwrap()));
+            let mut opts = FetchOptions::new();
+            opts.remote_callbacks(cb);
+            remote.fetch(&["master"], Some(&mut opts), None)?;
+        };
+        let head_of_master = self.0.revparse_single("origin/master")?.peel_to_commit()?.id();
+        Ok(head_of_master)
     }
 }
 

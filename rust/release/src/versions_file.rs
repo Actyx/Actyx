@@ -5,7 +5,6 @@ use crate::repo::get_changes_for_product;
 use crate::versions::apply_changes;
 use crate::versions_ignore_file::VersionsIgnoreFile;
 use anyhow::anyhow;
-use anyhow::Context;
 use git2::{Oid, Repository};
 use itertools::Itertools;
 use rayon::iter::IntoParallelRefIterator;
@@ -143,19 +142,9 @@ impl VersionsFile {
 
         let repo = Repository::open_from_env()?;
 
-        let ignore_commit_ids: Vec<Oid> = ignore
-            .ignore_commit_ids()
-            .iter()
-            .map(|spec| {
-                repo.revparse_ext(spec)
-                    .map(|(obj, _)| obj.id())
-                    .with_context(|| format!("interpreting ignore spec {}", spec))
-            })
-            .collect::<anyhow::Result<Vec<_>>>()?;
-
         let last_version = last_release.version;
         let head = repo.head()?.peel_to_commit()?.id();
-        let mut changes = get_changes_for_product(&repo, &last_hash, &head, product, &ignore_commit_ids)?;
+        let mut changes = get_changes_for_product(&repo, &last_hash, &head, product, &ignore.ignore_commit_ids)?;
 
         // We sort the changes by severity (i.e. breaking change first, then feat, etc.). See
         // the PartialOrd implementation for ChangeKind for ordering details.
@@ -225,21 +214,12 @@ impl VersionsFile {
             &this_release.commit.to_string().as_str(),
             product,
         );
-        let ignore_commit_ids = ignore
-            .ignore_commit_ids()
-            .iter()
-            .map(|spec| {
-                repo.revparse_ext(spec)
-                    .map(|(obj, _)| obj.id())
-                    .with_context(|| format!("interpreting ignore spec {}", spec))
-            })
-            .collect::<anyhow::Result<Vec<_>>>()?;
         let mut changes = get_changes_for_product(
             &repo,
             &prev_release.commit,
             &this_release.commit,
             product,
-            &ignore_commit_ids,
+            &ignore.ignore_commit_ids,
         )?;
 
         // We sort the changes by severity (i.e. breaking change first, then feat, etc.). See

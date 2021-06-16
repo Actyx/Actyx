@@ -1,13 +1,16 @@
 use anyhow::{Context, Error};
 use chrono::{TimeZone, Utc};
 use clap::Clap;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use repo::RepoWrapper;
 use semver::Version;
 use std::{fmt::Write, path::PathBuf};
+use tempfile::tempdir;
 use versions_file::{VersionLine, VersionsFile};
 use versions_ignore_file::VersionsIgnoreFile;
 
 mod changes;
+mod os_arch;
 mod products;
 mod publisher;
 mod releases;
@@ -16,7 +19,7 @@ mod versions;
 mod versions_file;
 mod versions_ignore_file;
 
-use crate::{products::Product, releases::Release};
+use crate::{os_arch::OsArch, products::Product, publisher::Publisher, releases::Release};
 
 #[derive(Clap)]
 struct Opts {
@@ -50,9 +53,7 @@ enum Command {
     /// NEW version. Otherwise it falls back to the last released one; if the
     /// release hash is not equal to HEAD, this will append `_dev` to the semver
     /// version.
-    GetActyxVersion {
-        product: Product,
-    },
+    GetActyxVersion { product: Product },
     /// Computes changelog
     Changes {
         /// Product (actyx, pond, cli, node-manager, ts-sdk, rust-sdk)
@@ -78,12 +79,23 @@ enum Command {
         #[clap(long, short)]
         dry_run: bool,
     },
+    /// Makes sure all released versions of a given product are released
     Publish {
         product: Product,
+        /// Don't publish
+        #[clap(long, short)]
+        dry_run: bool,
+        /// Force running even when running not on HEAD of master
+        #[clap(long, short)]
+        force: bool,
+        /// Ignore errors
+        #[clap(long, short)]
+        ignore_errors: bool,
     },
 }
 
 fn main() -> Result<(), Error> {
+    env_logger::try_init()?;
     let opts = Opts::parse();
     let repo = RepoWrapper::new()?;
     let input_file = if let Some(file) = opts.input {
@@ -273,29 +285,69 @@ Overview:"#
                 eprintln!("Done. ({})", oid);
 
                 eprint!("4) git push origin/{} ... ", branch_name);
-                if std::env::var("AZURE_HTTP_USER_AGENT").is_ok() {
-                    eprintln!("Running inside Azure Pipelines; shelling out to `git`. Output:");
-                    // `git` is properly set up on Azure Pipelines
-                    let mut child = std::process::Command::new("git")
-                        .args(&["push", "origin", &*branch_name])
-                        .spawn()?;
-                    anyhow::ensure!(child.wait()?.success());
-                    // println!(
-                    //     "###vso[task.setvariable variable=RELEASE_BRANCH;isOutput=true]{}",
-                    //     branch_name
-                    // );
-                } else {
-                    repo.push("origin", &*branch_name)?;
-                }
+                repo.push("origin", &*branch_name)?;
                 eprintln!("Done.");
             }
         }
-        Command::Publish { product } => {
-            let mut versions = version_file
+        Command::Publish {
+            product,
+            dry_run,
+            force,
+            ignore_errors,
+        } => {
+            let head_of_origin_master = repo.head_of_origin_master()?;
+            let head = repo.head_hash()?;
+            anyhow::ensure!(
+                dry_run || (head_of_origin_master == head) || force,
+                "Not up to date with origin/master \
+                (current head {}, head of origin/master {}). \
+                Use `--force` to override.",
+                head,
+                head_of_origin_master
+            );
+
+            let versions = version_file
                 .versions()
                 .into_iter()
                 .filter(|VersionLine { release, .. }| release.product == product);
-            for version in versions {}
+            eprintln!("Checking releases for {}", product);
+            for (idx, VersionLine { commit, release }) in versions.enumerate() {
+                if ignores_file.ignore_commit_ids.contains(&commit) {
+                    println!("  {} ({}) ignored", release, commit);
+                } else {
+                    let tmp = tempdir()?;
+                    log::debug!("Temp dir for {}: {}", release, tmp.path().display());
+                    let out = OsArch::all()
+                        .par_iter()
+                        .flat_map(|os_arch| Publisher::new(&release, &commit, *os_arch, idx == 0))
+                        .map(|mut p| {
+                            let mut out = String::new();
+                            let source_exists = p.source_exists()?;
+                            if source_exists {
+                                let target_exists = p.target_exists()?;
+                                if target_exists {
+                                    writeln!(&mut out, "    [OK] {} already exists.", p.target)?;
+                                } else if dry_run {
+                                    writeln!(&mut out, "    [DRY RUN] Create and publish {}", p.target)?;
+                                } else {
+                                    p.create_release_artifact(tmp.path())?;
+                                    p.publish()?;
+                                    writeln!(&mut out, "    [NEW] {}", p.target)?;
+                                }
+                            } else {
+                                if !ignore_errors && !dry_run {
+                                    anyhow::bail!("    [ERR] Source \"{}\" does NOT exist.", p.source);
+                                }
+                                writeln!(&mut out, "    [ERR] Source \"{}\" does NOT exist.", p.source)?;
+                            }
+                            Ok(out)
+                        })
+                        .collect::<anyhow::Result<Vec<_>>>()?
+                        .join("");
+                    println!("  {} ({}) .. ", release, commit);
+                    println!("{}", out);
+                }
+            }
         }
     }
     Ok(())
