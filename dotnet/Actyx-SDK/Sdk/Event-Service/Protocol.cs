@@ -5,106 +5,94 @@ using Newtonsoft.Json.Serialization;
 
 namespace Actyx
 {
+    public static class Proto<T>
+    {
+        static readonly JsonSerializerSettings jsonSerializerSettings;
+        static Proto()
+        {
+            DefaultContractResolver contractResolver = new DefaultContractResolver
+            {
+                NamingStrategy = new CamelCaseNamingStrategy()
+            };
+            jsonSerializerSettings = new JsonSerializerSettings
+            {
+                ContractResolver = contractResolver,
+            };
+        }
+        public static T Deserialize(string json) => JsonConvert.DeserializeObject<T>(json, jsonSerializerSettings);
+        public static string Serialize(T value) => JsonConvert.SerializeObject(value, jsonSerializerSettings);
+
+    }
 
     [JsonConverter(typeof(JsonSubtypes), "Type")]
     public interface IErrorKind
     {
-        public string Type();
+        public string Type { get; }
     }
 
     public class UnknownEndpoint : IErrorKind
     {
-        public string Type() => "unknownEndpoint";
+        public string Type { get; } = "unknownEndpoint";
         public string Endpoint { get; set; }
         public string[] ValidEndpoints { get; set; }
     }
 
     public class InternalError : IErrorKind
     {
-        public string Type() => "internalError";
+        public string Type { get; } = "internalError";
     }
 
     public class BadRequest : IErrorKind
     {
-        public string Type() => "badRequest";
+        public string Type { get; } = "badRequest";
         public string Message { get; set; }
     }
 
     public class ServiceError : IErrorKind
     {
-        public string Type() => "serviceError";
+        public string Type { get; } = "serviceError";
         public JObject Value { get; set; }
     }
 
     [JsonConverter(typeof(JsonSubtypes), "Type")]
-    public abstract class Outgoing
+    public interface IOutgoing
     {
-        static readonly JsonSerializerSettings jsonSerializerSettings;
-        static Outgoing()
-        {
-            DefaultContractResolver contractResolver = new DefaultContractResolver
-            {
-                NamingStrategy = new CamelCaseNamingStrategy()
-            };
-            jsonSerializerSettings = new JsonSerializerSettings
-            {
-                ContractResolver = contractResolver,
-            };
-        }
-        public static Outgoing Deserialize(string json) => JsonConvert.DeserializeObject<Outgoing>(json, jsonSerializerSettings);
-        public static string Serialize(Outgoing outgoing) => JsonConvert.SerializeObject(outgoing, jsonSerializerSettings);
-        public abstract string Type();
+        public string Type { get; }
     }
 
-    public class Request : Outgoing
+    public class Request : IOutgoing
     {
-        override public string Type() => "request";
+        public string Type { get; } = "request";
         public string ServiceId { get; set; }
         public ulong RequestId { get; set; }
         public JObject Payload { get; set; }
     }
-    public class Cancel : Outgoing
+    public class Cancel : IOutgoing
     {
-        override public string Type() => "cancel";
+        public string Type { get; } = "cancel";
         public ulong RequestId { get; set; }
     }
 
     [JsonConverter(typeof(JsonSubtypes), "Type")]
-    public abstract class Incoming
+    public interface IIncoming
     {
-        static readonly JsonSerializerSettings jsonSerializerSettings;
-        static Incoming()
-        {
-            DefaultContractResolver contractResolver = new DefaultContractResolver
-            {
-                NamingStrategy = new CamelCaseNamingStrategy()
-            };
-            jsonSerializerSettings = new JsonSerializerSettings
-            {
-                ContractResolver = contractResolver,
-            };
-        }
-        public static Incoming Deserialize(string json) => JsonConvert.DeserializeObject<Incoming>(json, jsonSerializerSettings);
-        public static string Serialize(Incoming incoming) => JsonConvert.SerializeObject(incoming, jsonSerializerSettings);
-        public abstract string Type();
+        public string Type { get; }
     }
-    public class Next : Incoming
+    public class Next : IIncoming
     {
-        override public string Type() => "next";
+        public string Type { get; } = "next";
         public ulong RequestId { get; set; }
-        public JObject Payload { get; set; }
+        public JObject[] Payload { get; set; }
     }
-    public class Complete : Incoming
+    public class Complete : IIncoming
     {
-        override public string Type() => "complete";
+        public string Type { get; } = "complete";
         public ulong RequestId { get; set; }
     }
-    public class Error : Incoming
+    public class Error : IIncoming
     {
-        override public string Type() => "error";
+        public string Type { get; } = "error";
         public ulong RequestId { get; set; }
         public IErrorKind Kind { get; set; }
     }
-
-
 }
