@@ -151,16 +151,21 @@ namespace Actyx
         }
     }
 
-    public class EventV1
+    public class OffsetMap : Dictionary<string, ulong>
     {
-        public ulong Lamport { get; set; }
+        // Just type alias. TODO Is this ideal? (Maybe use an immutable dict)
+    }
 
-        // public string Stream { get; set; }
+    public class OffsetsReponse
+    {
+        OffsetMap Present { get; }
 
-        public ulong Offset { get; set; }
+        // NOT an offset-map. Rather it contains offsets between offsets :)
+        Dictionary<string, ulong> ToReplicate { get; }
+    }
 
-        public ulong Timestamp { get; set; }
-
-        public JObject Payload { get; set; }
+    public interface IEventSelection
+    {
+        string ToAql();
     }
 }

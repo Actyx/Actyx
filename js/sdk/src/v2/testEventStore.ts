@@ -272,6 +272,7 @@ export const testEventStore: (nodeId?: NodeId, eventChunkSize?: number) => TestE
         appId: AppId.of('test'),
         stream: streamId,
         lamport,
+        timestamp: Timestamp.now(),
         offset: Offset.of(psn++),
       }
     })
