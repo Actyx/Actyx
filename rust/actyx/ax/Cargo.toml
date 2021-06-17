@@ -1,6 +1,6 @@
 [package]
 name = "ax"
-version = "2.0.0-dev"
+version = "0.1.0"
 authors = ["Actyx AG"]
 edition = "2018"
 

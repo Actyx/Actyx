@@ -75,7 +75,6 @@ export const actyxAndroidApk = async (): Promise<string> =>
   getOrDownload('android', 'x86_64', Binary.actyxAndroid, settings().gitHash)
 
 const ensureBinaryExists = async (os: OS, p: string): Promise<string> => {
-  console.log(`ensureBinaryExists(p=${p})`)
   p =  os === 'windows' ? `${p}.exe` : p;
   if (!fs.existsSync(p)) {
     if (os === 'windows') {

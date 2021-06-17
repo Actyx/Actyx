@@ -497,7 +497,7 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
 name = "ax"
-version = "2.0.0-dev"
+version = "0.1.0"
 dependencies = [
  "actyx_sdk",
  "anyhow",
@@ -4123,7 +4123,7 @@ dependencies = [
 
 [[package]]
 name = "node"
-version = "2.0.0-dev"
+version = "0.1.0"
 dependencies = [
  "actyx_sdk",
  "anyhow",
@@ -4210,7 +4210,7 @@ dependencies = [
 
 [[package]]
 name = "node-win"
-version = "2.0.0-dev"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -7028,7 +7028,7 @@ checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
 
 [[package]]
 name = "util"
-version = "2.0.0-dev"
+version = "0.1.0"
 dependencies = [
  "actyx_sdk",
  "anyhow",

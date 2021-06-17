@@ -34,8 +34,8 @@ export const mkWindowsSsh = async (
     String.raw`Start-Sleep -Seconds 5`,
   )
 
-  const defaultExeLocation = String.raw`C:\PROGRA~1\Actyx\Core\actyx.exe`
-  const workingDir = String.raw`C:\PROGRA~1\Actyx\Core\actyx-data`
+  const defaultExeLocation = String.raw`C:\PROGRA~1\Actyx\Node\actyx.exe`
+  const workingDir = String.raw`C:\PROGRA~1\Actyx\Node\actyx-data`
   const node = await forwardPortsAndBuildClients(thereInstallerPath, ssh, nodeName, target, workingDir, {
     host: 'process',
   })
