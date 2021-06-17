@@ -13,11 +13,10 @@ FLAGS:
     -v               Verbosity level. Add more v for higher verbosity (-v, -vv, -vvv, etc.)
 
 OPTIONS:
-    -i, --identity <identity>    File from which the identity (private key) for authentication is read [default:
-                                 /Users/maximilianhaushofer/Library/Application Support/actyx/keys/users/id]
+    -i, --identity <identity>    File from which the identity (private key) for authentication is read
 
 ARGS:
-    <NODE>    IP address of the node to perform the operation on
+    <NODE>    the IP address or <host>:<admin port> of the node to perform the operation on
 ```
 
 The output will show you:
