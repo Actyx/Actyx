@@ -9,12 +9,11 @@ import {
   AUTH_SEG,
 } from '../../http-client'
 import WebSocket from 'ws'
-import { run, getHttpApi } from '../../util'
-import { createTestNodeLocal } from '../../test-node-factory'
+import { run, getHttpApi, power_cycle } from '../../util'
 import { AppManifest } from '@actyx/pond'
 import { SettingsInput } from '../../cli/exec'
 import { waitForNodeToBeConfigured } from '../../retry'
-import { ActyxNode } from '../../infrastructure/types'
+import { runWithNewProcess } from '../../infrastructure/hosts'
 
 const UNAUTHORIZED_TOKEN =
   'AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ=='
@@ -38,14 +37,14 @@ describe('auth http', () => {
       'v2tzaWdfdmVyc2lvbgBtZGV2X3NpZ25hdHVyZXhYZ0JGTTgyZVpMWTdJQzhRbmFuVzFYZ0xrZFRQaDN5aCtGeDJlZlVqYm9qWGtUTWhUdFZNRU9BZFJaMVdTSGZyUjZUOHl1NEFKdFN5azhMbkRvTVhlQnc9PWlkZXZQdWJrZXl4LTBuejFZZEh1L0pEbVM2Q0ltY1pnT2o5WTk2MHNKT1ByYlpIQUpPMTA3cVcwPWphcHBEb21haW5zgmtjb20uYWN0eXguKm1jb20uZXhhbXBsZS4qa2F4U2lnbmF0dXJleFg4QmwzekNObm81R2JwS1VvYXRpN0NpRmdyMEtHd05IQjFrVHdCVkt6TzlwelcwN2hGa2tRK0dYdnljOVFhV2hIVDVhWHp6TyttVnJ4M2VpQzdUUkVBUT09/w==',
   }
 
-  it('auth flow signed manifest with node in prod mode', async () => {
-    const runAuthFlowSignedManifestWithNodeInProdMode = async (node: ActyxNode): Promise<void> => {
+  it('auth flow signed manifest with node in prod mode', () =>
+    runWithNewProcess(async (node) => {
       const httpApi = getHttpApi(node)
 
       const set = async (scope: string, value: unknown): Promise<void> => {
-        await expect(
-          node.ax.settings.set(`com.actyx/licensing/${scope}`, SettingsInput.FromValue(value)),
-        ).resolves.toMatchCodeOk()
+        expect(
+          await node.ax.settings.set(`/licensing/${scope}`, SettingsInput.FromValue(value)),
+        ).toMatchCodeOk()
         await waitForNodeToBeConfigured(node)
       }
 
@@ -55,7 +54,10 @@ describe('auth http', () => {
       const get = (expected: unknown) =>
         getToken(signedManifest, httpApi)
           .then((x) => x.json())
-          .then((x) => expect(x).toEqual(expected))
+          .then((x) => {
+            expect(x).toEqual(expected)
+            return x
+          })
 
       const getErr = (msg: string) =>
         get({
@@ -63,12 +65,30 @@ describe('auth http', () => {
           message: `'com.actyx.auth-test' is not authorized. ${msg}. Provide a valid app license to the node.`,
         })
 
-      // should get token when node in is in prod mode
-      await get({ token: expect.any(String) })
+      const offsets = async (token: string) => {
+        const resp = await getOffsets(node._private.httpApiOrigin, 'Bearer ' + token)
+        return {
+          status: resp.status,
+          json: await resp.json(),
+        }
+      }
+
+      // should get token when node is not in prod mode
+      const { token: token1 } = await get({ token: expect.any(String) })
+      expect(await offsets(token1)).toEqual({
+        status: 200,
+        json: { present: expect.any(Object), toReplicate: expect.any(Object) },
+      })
 
       // should fail when node in prod mode without app license
       await set('node', 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')
       await getErr('License not found for app')
+
+      // FIXME: previous token should actually be invalidated
+      expect(await offsets(token1)).toEqual({
+        status: 200,
+        json: { present: expect.any(Object), toReplicate: expect.any(Object) },
+      })
 
       // let's set malformed licence for our app id
       await setAppLicense(
@@ -86,16 +106,21 @@ describe('auth http', () => {
       await setAppLicense(
         'v25saWNlbnNlVmVyc2lvbgBrbGljZW5zZVR5cGWhaGV4cGlyaW5nomVhcHBJZHNjb20uYWN0eXguYXV0aC10ZXN0aWV4cGlyZXNBdHQxOTcxLTAxLTAxVDAwOjAxOjAxWmljcmVhdGVkQXR0MTk3MC0wMS0wMVQwMDowMTowMVppc2lnbmF0dXJleFhBQWRSd1U4UTZlb3JLY0N3SjE1T0t4OWVPQ0kxNjN3MFhwTFpHWkNPUWlDWUZlYkR1cFlBbWlNOVhsb3dDYWw5dUtuSWhRelkzSUo2RkdUbEtJMStEUT09aXJlcXVlc3RlcqFlZW1haWx0Y3VzdG9tZXJAZXhhbXBsZS5jb23/',
       )
-      await get({ token: expect.any(String) })
-    }
 
-    // TODO: run on all nodes found in hosts.yaml config
-    if (process.platform === 'win32') { // to unblock running on Windows (will be fixed by TODO)
-      return
-    }
-    const node = await createTestNodeLocal('auth-node-in-prod-mode')
-    await runAuthFlowSignedManifestWithNodeInProdMode(node)
-  })
+      const { token: token2 } = await get({ token: expect.any(String) })
+      expect(await offsets(token2)).toEqual({
+        status: 200,
+        json: { present: expect.any(Object), toReplicate: expect.any(Object) },
+      })
+
+      await set('node', 'development')
+
+      // FIXME: previous token should actually be invalidated
+      expect(await offsets(token1)).toEqual({
+        status: 200,
+        json: { present: expect.any(Object), toReplicate: expect.any(Object) },
+      })
+    }))
 
   it('should get token for signed manifest', () =>
     run((httpApi) =>
@@ -236,31 +261,26 @@ describe('auth http', () => {
         ),
     ))
 
-  // FIXME: doesn't work on Windows
-  it('should fail for a valid token when node is cycled', async () => {
-    const nodeName = 'es-auth'
-    if (process.platform === 'win32') { // to unblock running on Windows (will be fixed by removing createTestNodeLocal)
-      return
-    }
-    let testNode = await createTestNodeLocal(nodeName)
-    const token = await getToken(trialManifest, testNode._private.httpApiOrigin)
-      .then((x) => x.json())
-      .then((x) => x.token)
-    const offsets = (origin: string) => getOffsets(origin, 'Bearer ' + token)
+  it('should fail for a valid token when node is cycled', () =>
+    runWithNewProcess(async (node) => {
+      const token = await getToken(trialManifest, node._private.httpApiOrigin)
+        .then((x) => x.json())
+        .then((x) => x.token)
+      const offsets = (origin: string) => getOffsets(origin, 'Bearer ' + token)
 
-    // assert we can access event service
-    const response = await offsets(testNode._private.httpApiOrigin).then((resp) => resp.json())
-    expect(response).toEqual({ present: expect.any(Object), toReplicate: expect.any(Object) })
-    await testNode._private.shutdown()
+      // assert we can access event service
+      const response = await offsets(node._private.httpApiOrigin).then((resp) => resp.json())
+      expect(response).toEqual({ present: expect.any(Object), toReplicate: expect.any(Object) })
 
-    // start the node again and assert that we can't reuse previous token
-    testNode = await createTestNodeLocal(nodeName, true)
-    const result = await offsets(testNode._private.httpApiOrigin).then((resp) => {
-      expect(resp.status).toEqual(401)
-      return resp.json()
-    })
-    expect(result).toEqual({ code: 'ERR_TOKEN_EXPIRED', message: 'Expired token.' })
-  })
+      // power cycle the node
+      await power_cycle(node)
+
+      const result = await offsets(node._private.httpApiOrigin).then((resp) => {
+        expect(resp.status).toEqual(401)
+        return resp.json()
+      })
+      expect(result).toEqual({ code: 'ERR_TOKEN_EXPIRED', message: 'Expired token.' })
+    }))
 
   // TODO: test expired token response, for that node's AX_API_TOKEN_VALIDITY
   // env value needs to be set to 1s. What is the best way to do so.

@@ -11,7 +11,7 @@ const startNodeAndCheckBinds = async (node: ActyxNode, params: string[]): Promis
 
 const skipTarget = (node: ActyxNode): boolean =>
   // can't run multiple instances of Actyx on Android on Docker (permissions)
-  node.host === 'android' || node.host === 'docker' || node.target.kind.type === 'local'
+  node.host === 'android' || node.host === 'docker'
 
 // FIXME almost none of these work now that Actyx runs as a service
 describe('node lifecycle', () => {

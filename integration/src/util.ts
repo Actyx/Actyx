@@ -240,8 +240,8 @@ export const startup = async (proc: Promise<ActyxProcess>): Promise<BoundTo> => 
   return info
 }
 
-export const newProcess = async (node: ActyxNode): Promise<ActyxNode> => {
-  const { process, workdir, ssh, ...bound } = await startup(runActyx(node, undefined, randomBinds))
+export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<ActyxNode> => {
+  const { process, workdir, ssh, ...bound } = await startup(runActyx(node, workingDir, randomBinds))
   const api = bound.api.find(([addr]) => addr === '127.0.0.1')?.[1]
   const admin = bound.admin.find(([addr]) => addr === '127.0.0.1')?.[1]
   if (api === undefined || admin === undefined) {
@@ -255,10 +255,14 @@ export const newProcess = async (node: ActyxNode): Promise<ActyxNode> => {
   const [[apiPort, adminPort], sshProcess] = ssh
     ? await ssh.forwardPorts(api, admin)
     : [[api, admin], undefined]
+  const nodeName = `${node.name}-additional`
+  global.process.stderr.write(
+    `${new Date().toISOString()} ${nodeName} started, api=${apiPort} admin=${adminPort}, workdir=${workdir}\n`,
+  )
   const axHost = `localhost:${adminPort}`
   const ax = await CLI.build(axHost, await currentAxBinary())
   return {
-    name: `${node.name}-additional`,
+    name: nodeName,
     target: node.target,
     host: node.host,
     ax,
@@ -277,4 +281,15 @@ export const newProcess = async (node: ActyxNode): Promise<ActyxNode> => {
       apiEventsPort: apiPort,
     },
   }
+}
+
+export const power_cycle = async (node: ActyxNode): Promise<void> => {
+  const workdir = node._private.workingDir
+  await node._private.shutdown()
+  const n2 = await newProcess(node, workdir)
+  node.ax = n2.ax
+  node._private.shutdown = n2._private.shutdown
+  node._private.axHost = n2._private.axHost
+  node._private.httpApiOrigin = n2._private.httpApiOrigin
+  node._private.apiEventsPort = n2._private.apiEventsPort
 }

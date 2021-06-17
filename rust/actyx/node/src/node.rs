@@ -331,8 +331,8 @@ impl Node {
                     let (from_component, new_state) = msg.internal()?;
                     debug!("Received component state transition: {} {:?}", from_component, new_state);
                     if let ComponentState::Started = new_state {
-                        to_start.remove(&from_component);
-                        if to_start.is_empty() {
+                        let was_present = to_start.remove(&from_component);
+                        if was_present && to_start.is_empty() {
                             tracing::info!(target: "NODE_STARTED_BY_HOST", "Actyx {} is running.", NodeVersion::get());
                         }
                     }

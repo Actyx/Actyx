@@ -61,12 +61,12 @@ export type NodeSelection = {
   host?: Host
 }
 
-export type ActyxNode = Readonly<{
+export type ActyxNode = {
   name: string
   target: Target
   host: Host
   ax: CLI
-  _private: Readonly<{
+  _private: {
     shutdown: () => Promise<void>
     actyxBinaryPath: string
     workingDir: string
@@ -76,8 +76,8 @@ export type ActyxNode = Readonly<{
     apiPond: string
     apiSwarmPort: number
     apiEventsPort: number
-  }>
-}>
+  }
+}
 
 export type AwsKey = {
   keyName: string

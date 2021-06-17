@@ -10,7 +10,7 @@ use libp2p::{
     NetworkBehaviour,
 };
 use libp2p_streaming_response::StreamingResponse;
-use std::{convert::TryFrom, fmt, str::FromStr, time::Duration};
+use std::{convert::TryFrom, fmt, num::NonZeroU16, str::FromStr, time::Duration};
 use tracing::*;
 use util::formats::{
     admin_protocol::{AdminRequest, AdminResponse},
@@ -40,7 +40,7 @@ impl FromStr for NodeConnection {
             let addr = SocketAddrHelper::try_from(m).expect("Valid multiaddr");
             NodeConnection::new(s.to_owned(), addr, p)
         } else {
-            let addr = SocketAddrHelper::from_host(s, 4458).ax_invalid_input()?;
+            let addr = SocketAddrHelper::from_host(s, NonZeroU16::new(4458).unwrap()).ax_invalid_input()?;
             NodeConnection::new(s.to_owned(), addr, None)
         }
     }

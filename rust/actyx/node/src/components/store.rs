@@ -116,10 +116,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
             let store = rt.block_on(async move {
                 let store = BanyanStore::new(cfg.swarm_config).await?;
 
-                store.spawn_task(
-                    "api",
-                    api::run(node_info, store.clone(), bind_to.clone().api.into_iter(), snd),
-                );
+                store.spawn_task("api", api::run(node_info, store.clone(), bind_to.api.into_iter(), snd));
                 Ok::<BanyanStore, anyhow::Error>(store)
             })?;
 
@@ -137,6 +134,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
         Ok(())
     }
     fn extract_settings(&self, s: Settings) -> Result<StoreConfig> {
+        tracing::info!("{:?}", self.bind_to);
         let keypair = self
             .keystore
             .read()
