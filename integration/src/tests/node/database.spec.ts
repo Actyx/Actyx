@@ -2,6 +2,8 @@ import { runOnEvery } from '../../infrastructure/hosts'
 import { settings } from '../../infrastructure/settings'
 import { randomString, runActyx, runActyxVersion, runUntil } from '../../util'
 
+jest.setTimeout(200000)
+
 describe('node.sqlite', () => {
   // FIXME doesn't work on Windows since now a service
   it('should yell when using a v1 workdir', () =>
