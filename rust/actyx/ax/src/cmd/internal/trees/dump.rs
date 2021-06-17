@@ -1,5 +1,9 @@
 use actyx_sdk::Payload;
-use banyan::{chacha20, store::BranchCache, Forest, Secrets, TreeTypes};
+use banyan::{
+    chacha20,
+    store::{BranchCache, ReadOnlyStore},
+    Forest, Secrets, TreeTypes,
+};
 use banyan_utils::{create_chacha_key, dump};
 use futures::{prelude::*, stream, Stream};
 use ipfs_sqlite_block_store::BlockStore;
@@ -10,7 +14,10 @@ use libipld::{
 };
 use std::{convert::TryFrom, io::Cursor, path::PathBuf};
 use structopt::StructOpt;
-use trees::axtrees::{AxKeySeq, AxTrees, Sha256Digest};
+use trees::{
+    axtrees::{AxKeySeq, AxTrees, Sha256Digest},
+    AxTreeHeader,
+};
 use util::formats::{ActyxOSResult, ActyxOSResultExt};
 
 use super::SqliteStore;
@@ -54,8 +61,9 @@ fn dump(opts: DumpTreeOpts) -> anyhow::Result<String> {
             };
             let bs = BlockStore::open(opts.block_store, Default::default())?;
             let ss = SqliteStore::new(bs)?;
-            let forest = Forest::<AxTrees, _>::new(ss, BranchCache::new(1000));
-            let tree = forest.load_tree::<Payload>(secrets, root)?;
+            let forest = Forest::<AxTrees, _>::new(ss.clone(), BranchCache::new(1 << 20));
+            let header: AxTreeHeader = DagCborCodec.decode(&ss.get(&root)?)?;
+            let tree = forest.load_tree::<Payload>(secrets, header.root)?;
             if opts.dot {
                 dump::graph(&forest, &tree, std::io::stdout())?;
             } else {
