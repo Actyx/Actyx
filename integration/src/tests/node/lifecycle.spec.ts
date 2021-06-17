@@ -1,35 +1,11 @@
 import { getFreeRemotePort, occupyRemotePort } from '../../infrastructure/checkPort'
 import { runOnEach, runOnEvery } from '../../infrastructure/hosts'
 import { ActyxNode } from '../../infrastructure/types'
-import { runActyx, runUntil, withContext } from '../../util'
-
-const adminExtract = /ADMIN_API_BOUND: Admin API bound to \/ip[46]\/([^/]+)\/tcp\/([0-9]+)/
-const swarmExtract = /SWARM_SERVICES_BOUND: Swarm Services bound to \/ip4\/([^/]+)\/tcp\/(\d+)/
-const apiExtract = /API_BOUND: API bound to (.*):(\d+)\.$/
-
-type BoundTo = {
-  admin: [string, number][]
-  api: [string, number][]
-  swarm: [string, number][]
-  log: string
-}
-
-const randomBinds = ['--bind-admin', '0', '--bind-api', '0', '--bind-swarm', '0']
+import { BoundTo, randomBinds, runActyx, runUntil, startup, withContext } from '../../util'
 
 const startNodeAndCheckBinds = async (node: ActyxNode, params: string[]): Promise<BoundTo> => {
-  const output = await runUntil(runActyx(node, undefined, params), ['NODE_STARTED_BY_HOST'], 10_000)
-  const lines = Array.isArray(output) ? output : output.stderr.split('\n')
-  const result: BoundTo = { admin: [], api: [], swarm: [], log: lines.join('\n') }
-
-  for (const line of lines) {
-    const admin = adminExtract.exec(line)
-    admin && result.admin.push([admin[1], Number(admin[2])])
-    const swarm = swarmExtract.exec(line)
-    swarm && result.swarm.push([swarm[1], Number(swarm[2])])
-    const api = apiExtract.exec(line)
-    api && result.api.push([api[1], Number(api[2])])
-  }
-
+  const result = await startup(runActyx(node, undefined, params))
+  result.process.kill()
   return result
 }
 
@@ -112,7 +88,7 @@ describe('node lifecycle', () => {
         // It's not straight-forward to forward the signal via SSH
         return
       }
-      const [node] = await runActyx(n, undefined, [])
+      const { process: node } = await runActyx(n, undefined, randomBinds)
       const logs: string[] = await new Promise((res, rej) => {
         const buffer: string[] = []
         node.stdout?.on('data', (buf) => buffer.push(buf.toString('utf8')))

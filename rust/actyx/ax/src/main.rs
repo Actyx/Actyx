@@ -6,29 +6,26 @@ use cmd::{
     apps::AppsOpts, internal::InternalOpts, nodes::NodesOpts, settings::SettingsOpts, swarms::SwarmsOpts,
     users::UsersOpts, Verbosity,
 };
+use std::process::exit;
 use structopt::{
-    clap::{App, AppSettings::SubcommandRequiredElseHelp, ArgMatches, SubCommand},
+    clap::{App, AppSettings, ArgMatches, ErrorKind, SubCommand},
     StructOpt, StructOptInternal,
 };
-use util::version::NodeVersion;
 
 #[derive(StructOpt, Debug)]
 #[structopt(
     name = "Actyx CLI",
     about = "The Actyx Command Line Interface (CLI) is a unified tool to manage your Actyx nodes",
-    no_version
+    version = env!("AX_CLI_VERSION"),
 )]
 struct Opt {
-    // unless("version") gives "methods in attributes are not allowed for subcommand"
     #[structopt(subcommand)]
-    commands: Option<CommandsOpt>,
+    command: CommandsOpt,
     /// Format output as JSON
     #[structopt(long, short, global = true)]
     json: bool,
     #[structopt(flatten)]
     verbosity: Verbosity,
-    #[structopt(long)]
-    version: bool,
 }
 
 #[derive(Debug)]
@@ -45,7 +42,7 @@ enum CommandsOpt {
 
 impl StructOpt for CommandsOpt {
     fn clap<'a, 'b>() -> App<'a, 'b> {
-        let app = App::new("ax").setting(SubcommandRequiredElseHelp);
+        let app = App::new("Actyx CLI").setting(AppSettings::SubcommandRequiredElseHelp);
         Self::augment_clap(app)
     }
 
@@ -57,15 +54,17 @@ impl StructOpt for CommandsOpt {
 impl StructOptInternal for CommandsOpt {
     fn augment_clap<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
         let app = app.subcommands(vec![
-            AppsOpts::augment_clap(SubCommand::with_name("apps")).setting(SubcommandRequiredElseHelp),
-            SettingsOpts::augment_clap(SubCommand::with_name("settings")).setting(SubcommandRequiredElseHelp),
-            SwarmsOpts::augment_clap(SubCommand::with_name("swarms")).setting(SubcommandRequiredElseHelp),
-            NodesOpts::augment_clap(SubCommand::with_name("nodes")).setting(SubcommandRequiredElseHelp),
-            UsersOpts::augment_clap(SubCommand::with_name("users")).setting(SubcommandRequiredElseHelp),
+            AppsOpts::augment_clap(SubCommand::with_name("apps")).setting(AppSettings::SubcommandRequiredElseHelp),
+            SettingsOpts::augment_clap(SubCommand::with_name("settings"))
+                .setting(AppSettings::SubcommandRequiredElseHelp),
+            SwarmsOpts::augment_clap(SubCommand::with_name("swarms")).setting(AppSettings::SubcommandRequiredElseHelp),
+            NodesOpts::augment_clap(SubCommand::with_name("nodes")).setting(AppSettings::SubcommandRequiredElseHelp),
+            UsersOpts::augment_clap(SubCommand::with_name("users")).setting(AppSettings::SubcommandRequiredElseHelp),
         ]);
         if superpowers() {
             app.subcommand(
-                InternalOpts::augment_clap(SubCommand::with_name("internal")).setting(SubcommandRequiredElseHelp),
+                InternalOpts::augment_clap(SubCommand::with_name("internal"))
+                    .setting(AppSettings::SubcommandRequiredElseHelp),
             )
         } else {
             app
@@ -97,32 +96,31 @@ fn superpowers() -> bool {
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
-    let opt = Opt::from_args();
+    let Opt {
+        command,
+        json,
+        verbosity: _verbosity,
+    } = match Opt::from_args_safe() {
+        Ok(o) => o,
+        Err(e) => match e.kind {
+            ErrorKind::HelpDisplayed => {
+                println!("{}\n", e.message);
+                exit(0)
+            }
+            ErrorKind::VersionDisplayed => {
+                println!();
+                exit(0)
+            }
+            _ => e.exit(),
+        },
+    };
 
-    // Since we can't tell StructOpt that the subcommand is optional when --version is specified, we have to do this
-    // rigmarole
-    match opt {
-        Opt { version: true, .. } => {
-            println!("Actyx CLI {}", NodeVersion::get_cli());
-        }
-        Opt {
-            commands: Some(cmd),
-            json,
-            ..
-        } => {
-            match cmd {
-                CommandsOpt::Apps(opts) => cmd::apps::run(opts, json).await,
-                CommandsOpt::Nodes(opts) => cmd::nodes::run(opts, json).await,
-                CommandsOpt::Settings(opts) => cmd::settings::run(opts, json).await,
-                CommandsOpt::Swarms(opts) => cmd::swarms::run(opts, json).await,
-                CommandsOpt::Users(opts) => cmd::users::run(opts, json).await,
-                CommandsOpt::Internal(opts) => cmd::internal::run(opts, json).await,
-            };
-        }
-        _ => {
-            let mut app = Opt::clap();
-            app.write_long_help(&mut std::io::stderr()).unwrap();
-            eprintln!();
-        }
+    match command {
+        CommandsOpt::Apps(opts) => cmd::apps::run(opts, json).await,
+        CommandsOpt::Nodes(opts) => cmd::nodes::run(opts, json).await,
+        CommandsOpt::Settings(opts) => cmd::settings::run(opts, json).await,
+        CommandsOpt::Swarms(opts) => cmd::swarms::run(opts, json).await,
+        CommandsOpt::Users(opts) => cmd::users::run(opts, json).await,
+        CommandsOpt::Internal(opts) => cmd::internal::run(opts, json).await,
     }
 }

@@ -1,14 +1,14 @@
 use crate::cmd::{formats::Result, AxCliCommand, ConsoleOpt};
 use futures::{stream, Stream, TryFutureExt};
 use serde::{Deserialize, Serialize};
-use std::{convert::TryInto, str::FromStr};
+use std::convert::TryInto;
 use structopt::StructOpt;
 use util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Output {
-    scope: settings::Scope,
+    scope: String,
 }
 
 pub struct SettingsUnset();
@@ -29,7 +29,7 @@ struct RequestBody {
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(no_version)]
+#[structopt(version = env!("AX_CLI_VERSION"))]
 pub struct UnsetOpt {
     #[structopt(flatten)]
     actual_opts: UnsetSettingsCommand,
@@ -40,13 +40,12 @@ pub struct UnsetOpt {
 #[derive(StructOpt, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct UnsetSettingsCommand {
-    #[structopt(name = "SCOPE", parse(try_from_str = settings::Scope::from_str))]
-    /// Scope for which you want to unset the settings.
+    #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
+    /// Scope for which you want to unset the settings; use `/` for the root scope.
     scope: settings::Scope,
 }
 
 pub async fn run(mut opts: UnsetOpt) -> Result<Output> {
-    opts.console_opt.assert_local()?;
     let scope = opts.actual_opts.scope.clone();
 
     match opts
@@ -60,7 +59,9 @@ pub async fn run(mut opts: UnsetOpt) -> Result<Output> {
         )
         .await
     {
-        Ok(AdminResponse::SettingsUnsetResponse) => Ok(Output { scope }),
+        Ok(AdminResponse::SettingsUnsetResponse) => Ok(Output {
+            scope: super::print_scope(scope),
+        }),
         Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
         Err(err) => Err(err),
     }

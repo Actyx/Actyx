@@ -78,7 +78,7 @@ impl AxCliCommand for UsersKeygen {
     }
 }
 #[derive(StructOpt, Debug)]
-#[structopt(no_version)]
+#[structopt(version = env!("AX_CLI_VERSION"))]
 /// generate a user key
 pub struct KeygenOpts {
     #[structopt(short, long)]

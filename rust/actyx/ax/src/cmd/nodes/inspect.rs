@@ -8,7 +8,7 @@ use structopt::StructOpt;
 use util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesInspectResponse};
 
 #[derive(StructOpt, Debug)]
-#[structopt(no_version)]
+#[structopt(version = env!("AX_CLI_VERSION"))]
 /// show node details
 pub struct InspectOpts {
     #[structopt(flatten)]
@@ -21,7 +21,6 @@ impl AxCliCommand for NodesInspect {
     type Output = NodesInspectResponse;
     fn run(mut opts: InspectOpts) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {
         let fut = async move {
-            opts.console_opt.assert_local()?;
             let response = opts
                 .console_opt
                 .authority

@@ -5,7 +5,7 @@ use swarm::convert::{convert_from_v1, ConversionOptions};
 use util::formats::{ActyxOSResult, ActyxOSResultExt};
 
 #[derive(StructOpt, Debug)]
-#[structopt(no_version)]
+#[structopt(version = env!("AX_CLI_VERSION"))]
 pub struct ConvertFromV1Opts {
     #[structopt(help("path to the source (v1) actyx data directory"))]
     source: String,

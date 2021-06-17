@@ -6,9 +6,10 @@ use futures::Future;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(no_version)]
+#[structopt(version = env!("AX_CLI_VERSION"))]
+/// manage swarms
 pub enum SwarmsOpts {
-    #[structopt(name = "keygen")]
+    #[structopt(no_version)]
     /// Generate a new swarm key.
     Keygen(KeygenOpts),
 }

@@ -516,7 +516,7 @@ mod test {
                 ignore_errors: false,
             });
 
-            assert_eq!(*rx.await??.pointer("/admin/displayName").to_owned().unwrap(), changed);
+            assert_eq!(rx.await??, changed);
         }
         {
             let invalid = serde_json::json!("not_valid");

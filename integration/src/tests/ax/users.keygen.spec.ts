@@ -20,7 +20,7 @@ describe('ax', () => {
         $pub = Join-Path $tempFolderPath id.pub
         Get-Content $pub`,
           [],
-        )
+        ).process
         expect(response.exitCode).toBe(0)
         expect(response.stdout.startsWith('Your private key has been saved at')).toBeTruthy()
         expect(response.stdout.split('\n').length).toBe(5)
@@ -42,7 +42,7 @@ describe('authorizing users', () => {
       const key = readFileSync(secondCli.identityPath + '.pub')
         .toString('utf8')
         .trim()
-      const scope = 'com.actyx/admin/authorizedUsers'
+      const scope = '/admin/authorizedUsers'
       const existing: string[] = assertOK(await node.ax.settings.get(scope)).result as string[]
 
       const authorizedUsers = existing.concat([key])

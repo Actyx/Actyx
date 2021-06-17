@@ -11,13 +11,13 @@ use self::dump::DumpTreeOpts;
 use self::explore::ExploreTreeOpts;
 
 #[derive(StructOpt, Debug)]
-#[structopt(no_version)]
+#[structopt(version = env!("AX_CLI_VERSION"))]
 pub enum TreesOpts {
-    #[structopt(name = "dump")]
+    #[structopt(name = "dump", no_version)]
     /// Dump contents of banyan trees stored in sqlite. Works with either a
     /// single tree or a data blob.
     DumpTree(DumpTreeOpts),
-    #[structopt(name = "explore")]
+    #[structopt(name = "explore", no_version)]
     ExploreTree(ExploreTreeOpts),
 }
 

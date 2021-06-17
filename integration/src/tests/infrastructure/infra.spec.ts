@@ -36,7 +36,7 @@ describe('the Infrastructure', () => {
   })
 
   test('must set up global nodes', async () => {
-    const settings = await runOnEach([{}], (node) => node.ax.settings.get('com.actyx'))
+    const settings = await runOnEach([{}], (node) => node.ax.settings.get('/'))
     expect(settings).toMatchObject([
       {
         code: 'OK',
@@ -101,7 +101,7 @@ then
 else
   exit 1
 fi`
-      const result = await node.target.execute(script, [])
+      const result = await node.target.execute(script, []).process
       expect(result.exitCode).toBe(0)
       expect(result.stdout).toBe('yay')
       expect(result.stderr).toBe('')
@@ -115,7 +115,7 @@ while ($val -lt 10) {
 }
 $val + 32
 exit 0`
-      const result = await node.target.execute(script, [])
+      const result = await node.target.execute(script, []).process
       expect(result.exitCode).toBe(0)
       expect(result.stdout).toBe('42')
       expect(result.stderr).toBe('')

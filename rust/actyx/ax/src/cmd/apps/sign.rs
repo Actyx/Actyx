@@ -7,7 +7,7 @@ use structopt::StructOpt;
 use util::formats::{ActyxOSCode, ActyxOSResult, ActyxOSResultExt};
 
 #[derive(StructOpt, Debug)]
-#[structopt(no_version)]
+#[structopt(version = env!("AX_CLI_VERSION"))]
 /// sign an app manifest
 pub struct SignOpts {
     /// Path to certificate that shall be used for signing

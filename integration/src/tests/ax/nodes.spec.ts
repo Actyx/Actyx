@@ -38,7 +38,7 @@ describe('ax nodes', () => {
         if (node.host === 'android' || node.host === 'docker') {
           version = expect.any(String)
         } else {
-          const out = await (await runActyx(node, undefined, ['--version']))[0]
+          const out = await (await runActyx(node, undefined, ['--version'])).process
           version = out.stdout.replace('actyx ', '').split('-')[0]
         }
 

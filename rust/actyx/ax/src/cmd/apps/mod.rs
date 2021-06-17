@@ -7,8 +7,10 @@ use structopt::StructOpt;
 pub use sign::{create_signed_app_manifest, SignOpts};
 
 #[derive(StructOpt, Debug)]
-#[structopt(no_version)]
+#[structopt(version = env!("AX_CLI_VERSION"))]
+/// manage app manifests
 pub enum AppsOpts {
+    #[structopt(no_version)]
     /// Sign application manifest
     Sign(SignOpts),
 }

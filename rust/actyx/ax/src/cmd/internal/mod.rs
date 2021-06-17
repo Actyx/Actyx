@@ -8,11 +8,13 @@ use self::convert::ConvertFromV1Opts;
 use self::trees::TreesOpts;
 
 #[derive(StructOpt, Debug)]
-#[structopt(no_version)]
+#[structopt(version = env!("AX_CLI_VERSION"))]
+/// do not use until instructed by Actyx
 pub enum InternalOpts {
-    #[structopt(name = "convert")]
+    #[structopt(name = "convert", no_version)]
     /// Convert block
     ConvertFromV1(ConvertFromV1Opts),
+    #[structopt(no_version)]
     /// Interact with ax trees
     Trees(TreesOpts),
 }
