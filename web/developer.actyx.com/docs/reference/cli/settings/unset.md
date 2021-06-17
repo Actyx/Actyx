@@ -17,8 +17,7 @@ OPTIONS:
 
 ARGS:
     <SCOPE>    Scope for which you want to unset the settings
-    <NODE>     Node ID or the IP address of the node to
-               perform the operation on
+    <NODE>     IP address of the node to perform the operation on
 ```
 
 Please see the following usage examples for the `ax settings unset` command:

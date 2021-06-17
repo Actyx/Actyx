@@ -17,8 +17,7 @@ OPTIONS:
 
 ARGS:
     <SCOPE>    Scope from which you want to get the schema
-    <NODE>     Node ID or the IP address of the node to
-               perform the operation on
+    <NODE>     IP address of the node to perform the operation on
 ```
 
 Here are some examples of using the `ax settings schema` command:

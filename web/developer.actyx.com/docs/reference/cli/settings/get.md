@@ -19,8 +19,7 @@ OPTIONS:
 
 ARGS:
     <SCOPE>    Scope from which you want to get the settings.
-    <NODE>     Node ID or the IP address of the node to
-               perform the operation on
+    <NODE>     IP address of the node to perform the operation on
 ```
 
 :::info Null or schema conformant

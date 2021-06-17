@@ -20,7 +20,7 @@ ARGS:
     <VALUE>    The value you want to set for the given scope as a YAML or JSON
                string. You may also pass in a file using the syntax `@file.yml`
                or have the command read from stdin using `@-`
-    <NODE>     Node ID or the IP address of the node to perform the operation on
+    <NODE>     IP address of the node to perform the operation on
 ```
 
 Please see the following usage examples for the `ax settings set` command:

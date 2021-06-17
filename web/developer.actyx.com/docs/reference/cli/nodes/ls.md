@@ -16,8 +16,7 @@ OPTIONS:
     -i, --identity <identity>    File from which the identity (private key) for authentication is read
 
 ARGS:
-    <NODE>...    Node ID or the IP address of the node
-                 to perform the operation on
+    <NODE>...    IP address of the node to perform the operation on
 ```
 
 If the node is reachable, the output of `ax nodes ls` will show you its status. If the node is unreachable, it is displayed as such in the output.

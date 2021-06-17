@@ -17,7 +17,7 @@ OPTIONS:
                                  /Users/maximilianhaushofer/Library/Application Support/actyx/keys/users/id]
 
 ARGS:
-    <NODE>    Node ID or the IP address of the node to perform the operation on
+    <NODE>    IP address of the node to perform the operation on
 ```
 
 The output will show you:
