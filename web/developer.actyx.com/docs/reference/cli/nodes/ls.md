@@ -8,15 +8,15 @@ USAGE:
 
 FLAGS:
     -h, --help       Prints help information
+    -j, --json       Format output as JSON
     -V, --version    Prints version information
-    -v               Verbosity level. Add more v for higher verbosity
-                     (-v, -vv, -vvv, etc.)
+    -v               Verbosity level. Add more v for higher verbosity (-v, -vv, -vvv, etc.)
 
 OPTIONS:
     -i, --identity <identity>    File from which the identity (private key) for authentication is read
 
 ARGS:
-    <NODE>...    IP address of the node to perform the operation on
+    <NODE>...    the IP address or <host>:<admin port> of the nodes to list
 ```
 
 If the node is reachable, the output of `ax nodes ls` will show you its status. If the node is unreachable, it is displayed as such in the output.
