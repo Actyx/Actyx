@@ -191,7 +191,6 @@ module.exports = {
       items: [
         'reference/cli/cli-overview',
         'reference/cli/nodes/ls',
-        'reference/cli/settings/scopes',
         'reference/cli/settings/schema',
         'reference/cli/settings/get',
         'reference/cli/settings/set',

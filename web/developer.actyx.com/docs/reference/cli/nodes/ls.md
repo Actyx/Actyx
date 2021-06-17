@@ -8,17 +8,15 @@ USAGE:
 
 FLAGS:
     -h, --help       Prints help information
-    -l, --local      Process over local network
+    -j, --json       Format output as JSON
     -V, --version    Prints version information
-    -v               Verbosity level. Add more v for higher verbosity
-                     (-v, -vv, -vvv, etc.)
+    -v               Verbosity level. Add more v for higher verbosity (-v, -vv, -vvv, etc.)
 
 OPTIONS:
     -i, --identity <identity>    File from which the identity (private key) for authentication is read
 
 ARGS:
-    <NODE>...    Node ID or, if using `--local`, the IP address of the node
-                 to perform the operation on
+    <NODE>...    the IP address or <host>:<admin port> of the nodes to list
 ```
 
 If the node is reachable, the output of `ax nodes ls` will show you its status. If the node is unreachable, it is displayed as such in the output.
@@ -26,7 +24,7 @@ See the following examples of using the `ax nodes ls` command:
 
 ```text title="Example Usage"
 # Get the status of a specified node in the local network
-[17:50][~:]$ ax nodes ls -l localhost
+[17:50][~:]$ ax nodes ls localhost
 +---------------------------------------------+--------------+-------------------------+---------------------------+---------+
 | NODE ID                                     | DISPLAY NAME | HOST                    | STARTED                   | VERSION |
 +---------------------------------------------+--------------+-------------------------+---------------------------+---------+
@@ -34,7 +32,7 @@ See the following examples of using the `ax nodes ls` command:
 +---------------------------------------------+--------------+-------------------------+---------------------------+---------+
 
 # Get the status of all specified nodes in the local network as a json object
-[17:51][~:]$ ax --json nodes ls -l localhost 192.168.2.185 192.168.1.212 | jq
+[17:51][~:]$ ax --json nodes ls localhost 192.168.2.185 192.168.1.212 | jq
 {
   "code": "OK",
   "result": [

@@ -33,12 +33,14 @@ You can configure it by using the Actyx CLI or the Node Manager. The following e
   ]}
 >
 
+
 <TabItem value="cli">
+
 
 You can use the output from above and `ax settings set` to configure it:
 
 ```text
-ax settings set --local com.actyx/swarm/announceAddresses [/ip4/192.168.2.10/tcp/4001] localhost
+ax settings set /swarm/announceAddresses [/ip4/192.168.2.10/tcp/4001] localhost
 ```
 
 </TabItem>
@@ -51,6 +53,7 @@ Go to the settings tab change the `announceAddresses` property and press save:
 
 </TabItem>
 </Tabs>
+
 
 :::tip conceptual guide on discovery
 For more information on discovery, please refer to our [conceptual guide](../../conceptual/discovery.mdx).

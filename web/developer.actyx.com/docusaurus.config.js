@@ -19,7 +19,7 @@ module.exports = {
     ],
     [require.resolve('./src/plugins/analytics'), {}],
     [require.resolve('./src/plugins/cosmos-versions'), {}],
-    /*     [
+    /*    [
       require.resolve('./src/plugins/arm'),
       {
         releasesYml: './__auto-releases.yml',

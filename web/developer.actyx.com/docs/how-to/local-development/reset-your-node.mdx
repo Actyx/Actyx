@@ -33,16 +33,19 @@ import TabItem from '@theme/TabItem'
   ]}
 >
 
+
 <TabItem value="cli">
+
 
 You can change the topic with the [`ax settings set`](../../reference/cli/settings/set) command:
 
 ```text
-ax settings set com.actyx/swarm/topic "new-topic" 192.168.2.1 --local
+ax settings set /swarm/topic "new-topic" 192.168.2.1
 ```
 
 </TabItem>
 <TabItem value="node-manager">
+
 
 In the Node Manager, navigate to the settings tab in the node details view, change the `topic` property and click save:
 
@@ -50,6 +53,7 @@ In the Node Manager, navigate to the settings tab in the node details view, chan
 
 </TabItem>
 </Tabs>
+
 
 ### Reset your node
 
@@ -69,12 +73,14 @@ If you want to completely reset node (=delete all events and configurations), yo
 
 <TabItem value="windows">
 
+
 1. Stop Actyx
 2. Delete the `actyx-data` directory. By default, it is located at `C:\Users\<your username>\AppData\Local\Actyx`
 3. Start Actyx
 
 </TabItem>
 <TabItem value="android">
+
 
 1. Go to Settings -> Apps -> Actyx -> Storage
 2. Select `Clear Storage`
@@ -83,12 +89,14 @@ If you want to completely reset node (=delete all events and configurations), yo
 </TabItem>
 <TabItem value="macos">
 
+
 1. Stop Actyx
 2. Delete the `actyx-data` directory. By default, it is located in the directory from which you ran the Actyx binary
 3. Start Actyx
 
 </TabItem>
 <TabItem value="docker">
+
 
 1. Stop the Actyx container
 2. [Remove the Docker volume](https://docs.docker.com/engine/reference/commandline/volume_rm/) that the Actyx container used
@@ -98,3 +106,4 @@ Instead of removing the old volume, you can also just start the Actyx image on a
 
 </TabItem>
 </Tabs>
+
