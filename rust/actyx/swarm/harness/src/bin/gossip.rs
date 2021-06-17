@@ -1,6 +1,8 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
     use actyx_sdk::{tags, Payload};
+    use async_std::future::timeout;
+    use std::time::Duration;
     use structopt::StructOpt;
     use swarm_cli::{Command, Event};
     use swarm_harness::{HarnessOpts, MachineExt, MultiaddrExt};
@@ -9,7 +11,7 @@ fn main() -> anyhow::Result<()> {
     swarm_harness::run_netsim(HarnessOpts::from_args(), |mut network| async move {
         for machine in network.machines_mut() {
             loop {
-                if let Some(Event::NewListenAddr(addr)) = machine.recv().await {
+                if let Some(Event::NewListenAddr(addr)) = timeout(Duration::from_secs(3), machine.recv()).await? {
                     if !addr.is_loopback() {
                         break;
                     }
@@ -23,7 +25,7 @@ fn main() -> anyhow::Result<()> {
         }
         for _ in r.iter_mut() {
             loop {
-                if let Some(Event::Subscribed(_, topic)) = s.recv().await {
+                if let Some(Event::Subscribed(_, topic)) = timeout(Duration::from_secs(3), s.recv()).await? {
                     tracing::info!("subscribed {}", topic);
                     break;
                 }
@@ -39,7 +41,7 @@ fn main() -> anyhow::Result<()> {
         tracing::info!("waiting for events");
         for machine in &mut network.machines_mut()[1..] {
             loop {
-                if let Some(Event::Result(ev)) = machine.recv().await {
+                if let Some(Event::Result(ev)) = timeout(Duration::from_secs(20), machine.recv()).await? {
                     println!("{:?}", ev);
                     break;
                 }
