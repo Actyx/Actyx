@@ -158,6 +158,8 @@ const hydrate: Run = fish => async (sourceId, events, snapshotScheduler) => {
   return finalState
 }
 
+const delayBy10ms = <T>(val: T) => new Promise(res => setTimeout(res, 10)).then(() => val)
+
 const live: (intermediateStates: boolean) => Run = intermediates => fish => async (
   sourceId,
   events,
@@ -173,8 +175,19 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
     testReportFishError,
   )
 
+  // If all events are below latest horizon, state update is allowed to time out (all events ignored)
+  const allowTimeout = !!fish.isReset
+
   if (intermediates) {
-    const states$ = observe(
+    let updateState = (_s: typeof fish.initialState) => {
+      /** Nothing for now. Gets swapped out below. */
+    }
+
+    const cb = (s: typeof fish.initialState) => {
+      updateState(s)
+    }
+
+    observe(
       fish.where,
       fish.initialState,
       fish.onEvent,
@@ -183,18 +196,18 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
       fish.deserializeState,
     )
       .map(x => x.state)
-      .shareReplay(1)
+      .subscribe(cb)
 
-    return events.reduce(async (acc, batch, _i) => {
-      await acc
+    return await events.reduce(async (lastState, batch, _i) => {
+      const nextState = new Promise<typeof fish.initialState>(resolve => {
+        updateState = resolve
+      })
 
-      const res = states$
-        .debounceTime(2)
-        .take(1)
-        .toPromise()
+      const res = allowTimeout ? Promise.race([nextState, delayBy10ms(lastState)]) : nextState
+
       eventStore.directlyPushEvents(batch)
 
-      return res
+      return await res
     }, Promise.resolve(fish.initialState))
   } else {
     const finalStatePromise = observe(
@@ -206,7 +219,7 @@ const live: (intermediateStates: boolean) => Run = intermediates => fish => asyn
       fish.deserializeState,
     )
       .map(x => x.state)
-      .debounceTime(5)
+      .debounceTime(15)
       .first()
       .toPromise()
 

@@ -18,7 +18,7 @@ import {
   SerializedStateSnap,
   Where,
 } from '../types'
-import { runStats, takeWhileInclusive } from '../util'
+import { getInsertionIndex, runStats, takeWhileInclusive } from '../util'
 import { EventStore } from './eventStore'
 import log from './log'
 import { Event, Events } from './types'
@@ -92,15 +92,21 @@ export const eventsMonotonic = (
 
     let tt = false
 
-    return rtAfterHorizon
-      .mergeMap<Event, EventsOrTimetravel>(next => {
+    const liveBuffered = rtAfterHorizon
+      // Buffer live events for a small amount of time, so we don’t update state too often.
+      // Should be handled by the `caughtUp` flag in the store-side impl.
+      .bufferTime(1)
+      .filter(x => x.length > 0)
+      .mergeMap<Events, EventsOrTimetravel>(nextUnsorted => {
         // Don't spam the logs. And avoid esoteric race conditions due to triggering multiple snapshot invalidations.
         if (tt) {
           return Observable.empty()
         }
 
+        const next = nextUnsorted.sort(EventKey.ord.compare)
+
         // Take while we are going strictly forwards
-        const nextKey = next
+        const nextKey = next[0]
         const nextIsOlderThanLatest = eventKeyGreater(latest, nextKey)
 
         if (nextIsOlderThanLatest) {
@@ -118,7 +124,7 @@ export const eventsMonotonic = (
           return Observable.from(
             snapshotStore
               .invalidateSnapshots(GenericSemantics, fishId, nextKey)
-              .then(() => timeTravelMsg(fishId, latest, [next])),
+              .then(() => timeTravelMsg(fishId, latest, next)),
           )
         }
 
@@ -128,18 +134,21 @@ export const eventsMonotonic = (
         )
 
         // We have captured `latest` in the closure and are updating it here
+        const newLatest = next[next.length - 1]
         latest = {
-          lamport: next.lamport,
-          offset: next.offset,
-          stream: next.stream,
+          lamport: newLatest.lamport,
+          stream: newLatest.stream,
+          offset: newLatest.offset,
         }
         return Observable.of({
           type: MsgType.events,
-          events: [next],
+          events: next,
           caughtUp: true,
         })
       })
       .pipe(takeWhileInclusive(m => m.type !== MsgType.timetravel))
+
+    return liveBuffered
   }
 
   // The only reason we need the "catch up to present" step is that `allEvents` makes no effort whatsoever
@@ -256,6 +265,8 @@ export const eventsMonotonic = (
         EventKey.format(earliest),
       )
 
+      // TODO this time travel msg should also have a good `high` element
+      // (consider this if/when ever implementing this Rust-side)
       return Observable.of(timeTravelMsg(fishId, attemptStartFrom.latestEventKey, [earliest]))
     }
 
@@ -355,14 +366,14 @@ const stateMsg = (fishId: SessionId, snapshot: SerializedStateSnap): StateMsg =>
   }
 }
 
-const timeTravelMsg = (fishId: SessionId, _previousHead: EventKey, next: Events): TimeTravelMsg => {
+const timeTravelMsg = (fishId: SessionId, previousHead: EventKey, next: Events): TimeTravelMsg => {
   log.submono.info(fishId, 'must time-travel back to:', EventKey.format(next[0]))
 
-  // const high = getInsertionIndex(next, previousHead, EventKey.ord.compare) - 1
+  const high = getInsertionIndex(next, previousHead, EventKey.ord.compare) - 1
 
   return {
     type: MsgType.timetravel,
     trigger: next[0],
-    high: next[0], // next[high]
+    high: next[high],
   }
 }
