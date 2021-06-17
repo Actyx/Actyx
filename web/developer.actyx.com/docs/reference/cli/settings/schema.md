@@ -23,5 +23,5 @@ Here are some examples of using the `ax settings schema` command:
 
 ```text title="Example Usage"
 # Get the settings schema for node at 10.2.3.23
-ax settings schema / 10.2.3.23
+ax settings schema 10.2.3.23
 ```
