@@ -30,6 +30,7 @@ import TabItem from '@theme/TabItem'
   ]}
 >
 
+
 <TabItem value="node-manager">
 
 
@@ -44,7 +45,7 @@ In the Node Manager, simply add the public keys as strings, separated by a comma
 The following command creates a file called `example` that lists the currently authorized users on your node running at `localhost`:
 
 ```text
-ax settings get --local com.actyx/admin/authorizedUsers localhost > example
+ax settings get com.actyx/admin/authorizedUsers localhost > example
 ```
 
 Now open the file, and add the public keys of the users you want to authorize:
@@ -57,7 +58,7 @@ Now open the file, and add the public keys of the users you want to authorize:
 You can then use this file to configure the list of authorized users:
 
 ```text
-ax settings set --local com.actyx/admin/authorizedUsers @example localhost
+ax settings set com.actyx/admin/authorizedUsers @example localhost
 ```
 
 </TabItem>

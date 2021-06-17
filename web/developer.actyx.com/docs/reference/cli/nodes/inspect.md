@@ -9,7 +9,6 @@ USAGE:
 FLAGS:
     -h, --help       Prints help information
     -j, --json       Format output as JSON
-    -l, --local      Process over local network
     -V, --version    Prints version information
     -v               Verbosity level. Add more v for higher verbosity (-v, -vv, -vvv, etc.)
 
@@ -18,7 +17,7 @@ OPTIONS:
                                  /Users/maximilianhaushofer/Library/Application Support/actyx/keys/users/id]
 
 ARGS:
-    <NODE>    Node ID or, if using `--local`, the IP address of the node to perform the operation on
+    <NODE>    Node ID or the IP address of the node to perform the operation on
 ```
 
 The output will show you:
@@ -31,7 +30,7 @@ The output will show you:
 - `knownPeers`: List of all peers, identified by peer ID and address, that your node knows
 
 ```text title="Example Usage"
-ax nodes inspect --local 192.168.1.219
+ax nodes inspect 192.168.1.219
 PeerId: 12D3KooWSgvc3hzrsuExYazNDB1BU3gevUPTzaumnwHWv5yFBNzH
 SwarmAddrs:
     /ip4/192.168.1.219/tcp/4001
@@ -58,7 +57,7 @@ Addresses:
 +------------------------------------------------------+--------------------------------------------------------------------------------------+
 
 # Get the output as a JSON object
-ax -j nodes inspect --local 192.168.1.219 | jq .
+ax -j nodes inspect 192.168.1.219 | jq .
 {
   "code": "OK",
   "result": {
@@ -93,4 +92,3 @@ ax -j nodes inspect --local 192.168.1.219 | jq .
   }
 }
 ```
-
