@@ -212,8 +212,8 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
             out.push((
                 format!("{}-binaries/actyx.apk", os_arch.os,),
                 TargetArtifact::Blob {
-                    pre_processing: PreProcessing::Zip { binary_name: None },
-                    file_name: format!("actyx-{}-android.zip", version),
+                    pre_processing: PreProcessing::None,
+                    file_name: format!("Actyx-{}.apk", version),
                     local_result: None,
                 },
             ));

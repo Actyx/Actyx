@@ -333,6 +333,8 @@ stages:
           - bash: |
               set -e
               cargo run --release -- release
+              # Checking out original commit since release may put us on a new release branch
+              git checkout $(Build.SourceVersion)
             workingDirectory: rust/release
             name: release
             displayName: Maybe create a new release
