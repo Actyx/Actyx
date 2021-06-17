@@ -3,6 +3,7 @@ import { settings } from '../../infrastructure/settings'
 import { randomString, runActyx, runActyxVersion, runUntil } from '../../util'
 
 describe('node.sqlite', () => {
+  // FIXME doesn't work on Windows since now a service
   it('should yell when using a v1 workdir', () =>
     runOnEvery(async (node) => {
       if (node.host !== 'process' || node.target.os === 'macos') {

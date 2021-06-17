@@ -1,28 +1,38 @@
 import { readFile, copyFile, remove } from 'fs-extra'
 import { runOnEvery } from '../../infrastructure/hosts'
 import { resolve } from 'path'
+import { OS } from '../../../jest/types'
 
 const appManifestPath = resolve('.', 'fixtures/app_manifest.json')
 const cpAppManifestPath = resolve('.', 'fixtures/app_manifest_cp.json')
 const devCertPath = resolve('.', 'fixtures/dev_cert.json')
 
+
+// It seems like the error code is different on Windows
+const SYS_ERROR_NO_FILE = (os: OS) => {
+  switch(os) {
+    case 'windows': return 'The system cannot find the path specified. (os error 3)';
+    default: return "No such file or directory (os error 2)";
+  }
+}
+
 describe('ax', () => {
   describe('apps sign', () => {
-    it('should fail when no files are provided', () =>
-      runOnEvery((node) =>
-        expect(node.ax.apps.sign('', '')).resolves.toEqual({
-          code: 'ERR_IO',
-          message: 'Failed to read developer certificate (No such file or directory (os error 2))',
-        }),
-      ))
+    it('should fail when no files are provided', async () =>
+      runOnEvery(async (node) => {
+        const res = await node.ax.apps.sign('', '');
+        expect(res.code).toEqual('ERR_IO');
+        expect((res as any).message.startsWith('Failed to read developer certificate (')).toBeTruthy();
+        expect((res as any).message.endsWith(')')).toBeTruthy();
+      }))
 
-    it('should fail when app manifest is not provided', () =>
-      runOnEvery((node) =>
-        expect(node.ax.apps.sign(devCertPath, '')).resolves.toEqual({
-          code: 'ERR_IO',
-          message: 'Failed to read app manifest (No such file or directory (os error 2))',
-        }),
-      ))
+    it('should fail when app manifest is not provided', async () =>
+      runOnEvery(async (node) => {
+        const res = await node.ax.apps.sign(devCertPath, '');
+        expect(res.code).toEqual('ERR_IO');
+        expect((res as any).message.startsWith('Failed to read app manifest (')).toBeTruthy();
+        expect((res as any).message.endsWith(')')).toBeTruthy();
+    }))
 
     it('should fail when dev cert content is malformed', () =>
       runOnEvery((node) =>

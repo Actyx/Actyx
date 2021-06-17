@@ -14,7 +14,7 @@ describe('ax', () => {
         $tempFolderPath = Join-Path $Env:Temp $(New-Guid)
         New-Item -Type Directory -Path $tempFolderPath | Out-Null
         $out = Join-Path $tempFolderPath id
-        Start-Process -Wait -FilePath C:\Users\Administrator\AppData\Local\Actyx\ax.exe -ArgumentList 'users keygen --output',$out -RedirectStandardOutput stdout.txt
+        Start-Process -Wait -FilePath C:\ax.exe -ArgumentList 'users keygen --output',$out -RedirectStandardOutput stdout.txt
         Get-Content stdout.txt
         Get-Content $out
         $pub = Join-Path $tempFolderPath id.pub
