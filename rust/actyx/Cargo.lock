@@ -1792,6 +1792,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "filetime"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d34cfa13a63ae058bfa601fe9e313bbdb3746427c1459185464ce0fcf62e1e8"
+dependencies = [
+ "cfg-if 1.0.0",
+ "libc",
+ "redox_syscall 0.2.8",
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "fixed"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4937,6 +4949,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1d01941d82fa2ab50be1e79e6714289dd7cde78eba4c074bc5a4374f650dfe0"
 
 [[package]]
+name = "quick-protobuf"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ca6639207ac869e31cca06b8adbc7676278f22b321e51115766009b4f192dbb"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "quickcheck"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5997,8 +6018,6 @@ dependencies = [
  "parking_lot 0.11.1",
  "pretty_assertions",
  "prometheus",
- "prost",
- "prost-build",
  "quickcheck",
  "rand 0.8.4",
  "rayon",
@@ -6010,6 +6029,7 @@ dependencies = [
  "tokio 1.6.2",
  "tracing",
  "trees",
+ "unixfs-v1",
  "util",
  "zstd",
 ]
@@ -6929,6 +6949,19 @@ checksum = "8326b2c654932e3e4f9196e69d08fdf7cfd718e1dc6f66b347e6024a0c961402"
 dependencies = [
  "generic-array 0.14.4",
  "subtle",
+]
+
+[[package]]
+name = "unixfs-v1"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e95dd03c50ece3c5b057214f8c4ca7d747edcf43f75e96db48549d404555f7f"
+dependencies = [
+ "either",
+ "filetime",
+ "libipld",
+ "multihash 0.14.0",
+ "quick-protobuf",
 ]
 
 [[package]]
