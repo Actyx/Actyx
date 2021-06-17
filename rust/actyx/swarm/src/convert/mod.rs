@@ -17,6 +17,7 @@ use libipld::{
 use parking_lot::Mutex;
 use rayon::prelude::*;
 use rusqlite::OpenFlags;
+use trees::AxTreeHeader;
 use trees::{
     axtrees::{AxKey, AxTrees, Sha256Digest},
     AxTree,
@@ -133,6 +134,16 @@ fn build_banyan_tree<'a>(
         .flatten();
     txn.extend(&mut builder, iter)?;
     Ok(builder.snapshot())
+}
+
+fn wrap_in_header(txn: &AxTxn, root: Sha256Digest, lamport: LamportTimestamp) -> anyhow::Result<Sha256Digest> {
+    // create the header
+    let header = AxTreeHeader { root, lamport };
+    // serialize it
+    let header = DagCborCodec.encode(&header)?;
+    // write it
+    let root = txn.writer().put(header)?;
+    Ok(root)
 }
 
 struct V1IndexStoreInfo {
@@ -262,6 +273,7 @@ pub fn convert_from_v1(
     };
     let ss = Importer(db2.clone());
     let forest = Forest::new(ss, BranchCache::new(1 << 20));
+    let lamport = info.lamport;
 
     let _result = info
         .roots
@@ -271,12 +283,17 @@ pub fn convert_from_v1(
             let txn = AxTxn::new(forest.clone(), forest.store().clone());
             let iter = iter_events_v1_chunked(&db1, Link::new(*cid));
             let tree = build_banyan_tree(&txn, &source, iter, config.clone());
+
             match tree {
                 Ok(tree) => {
+                    let root = tree
+                        .link()
+                        .map(|root| wrap_in_header(&txn, root, lamport))
+                        .transpose()?;
                     tracing::info!("Setting alias {} {:?}", source, tree);
                     let stream_id: StreamId = source.into();
                     db2.lock()
-                        .alias(StreamAlias::from(stream_id), tree.link().map(Cid::from).as_ref())?;
+                        .alias(StreamAlias::from(stream_id), root.map(Cid::from).as_ref())?;
                     Ok((source, tree))
                 }
                 Err(cause) => {
