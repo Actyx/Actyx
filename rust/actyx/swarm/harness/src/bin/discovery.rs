@@ -1,5 +1,7 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
+    use async_std::future::timeout;
+    use std::time::Duration;
     use structopt::StructOpt;
     use swarm_cli::{Command, Event, Multiaddr, PeerId};
     use swarm_harness::{HarnessOpts, MachineExt};
@@ -17,7 +19,7 @@ fn main() -> anyhow::Result<()> {
         }
         for machine in &mut network.machines_mut()[1..] {
             loop {
-                if let Some(Event::Connected(peer)) = machine.recv().await {
+                if let Some(Event::Connected(peer)) = timeout(Duration::from_secs(10), machine.recv()).await? {
                     if peer == peers[0].0 {
                         tracing::info!("connected");
                         break;
@@ -29,7 +31,7 @@ fn main() -> anyhow::Result<()> {
         network.machines_mut()[0].down();
         for machine in &mut network.machines_mut()[1..] {
             loop {
-                if let Some(Event::Disconnected(peer)) = machine.recv().await {
+                if let Some(Event::Disconnected(peer)) = timeout(Duration::from_secs(20), machine.recv()).await? {
                     if peer == peers[0].0 {
                         tracing::info!("disconnected");
                         break;
@@ -41,7 +43,7 @@ fn main() -> anyhow::Result<()> {
         network.machines_mut()[0].up();
         for machine in &mut network.machines_mut()[1..] {
             loop {
-                if let Some(Event::Connected(peer)) = machine.recv().await {
+                if let Some(Event::Connected(peer)) = timeout(Duration::from_secs(10), machine.recv()).await? {
                     if peer == peers[0].0 {
                         tracing::info!("connected");
                         break;

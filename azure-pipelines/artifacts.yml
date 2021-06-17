@@ -84,6 +84,7 @@ stages:
           - bash: |
               set -e
               build/bin/install-vault.sh
+              mkdir -p dist/bin/windows-x86_64/
               chmod -R 777 .
               chmod -R 777 /root/.cargo
               make all-windows
@@ -332,6 +333,8 @@ stages:
           - bash: |
               set -e
               cargo run --release -- release
+              # Checking out original commit since release may put us on a new release branch
+              git checkout $(Build.SourceVersion)
             workingDirectory: rust/release
             name: release
             displayName: Maybe create a new release

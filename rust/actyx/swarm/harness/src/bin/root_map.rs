@@ -1,6 +1,8 @@
 #[cfg(target_os = "linux")]
 fn main() -> anyhow::Result<()> {
     use actyx_sdk::{tags, Payload};
+    use async_std::future::timeout;
+    use std::time::Duration;
     use structopt::StructOpt;
     use swarm_cli::{Command, Event};
     use swarm_harness::{HarnessOpts, MachineExt};
@@ -17,7 +19,7 @@ fn main() -> anyhow::Result<()> {
 
         for machine in r.iter_mut() {
             loop {
-                if let Some(Event::NewListenAddr(_)) = machine.recv().await {
+                if let Some(Event::NewListenAddr(_)) = timeout(Duration::from_secs(3), machine.recv()).await? {
                     break;
                 }
             }
@@ -34,7 +36,7 @@ fn main() -> anyhow::Result<()> {
         tracing::info!("waiting for events");
         for machine in r.iter_mut() {
             loop {
-                if let Some(Event::Result(ev)) = machine.recv().await {
+                if let Some(Event::Result(ev)) = timeout(Duration::from_secs(20), machine.recv()).await? {
                     println!("{} {:?}", machine.id(), ev);
                     break;
                 }

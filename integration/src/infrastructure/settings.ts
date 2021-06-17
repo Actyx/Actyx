@@ -28,9 +28,11 @@ export const settings = (): Settings => (<MyGlobal>global).axNodeSetup.settings
 export const enum Binary {
   ax = 'ax',
   actyxLinux = 'actyx-linux',
-  actyxInstaller = 'Actyx-Installer',
+  actyxInstaller = 'actyx-x64',
   actyxAndroid = 'actyx.apk',
 }
+
+
 
 export const currentAxBinary = (): Promise<string> => getCurrent(Binary.ax)
 export const currentActyxBinary = (): Promise<string> => getCurrent(Binary.actyxLinux)
@@ -38,11 +40,14 @@ export const currentActyxBinary = (): Promise<string> => getCurrent(Binary.actyx
 const getCurrent = (bin: Binary) =>
   settings().gitHash == null
     ? // TODO: Derive Binary from currentOS()
-      ensureBinaryExists(`../dist/bin/current/${bin}`)
+      ensureBinaryExists(currentOS(), `../dist/bin/current/${bin}`)
     : getOrDownload(currentOS(), currentArch(), bin, settings().gitHash)
 
 export const actyxLinuxBinary = async (arch: Arch): Promise<string> =>
   getOrDownload('linux', arch, Binary.actyxLinux, settings().gitHash)
+ 
+export const actyxCliWindowsBinary = async (arch: Arch): Promise<string> => 
+    getOrDownload('windows', arch, Binary.ax, settings().gitHash)
 
 // Extract the image for the architecture we want to test from the multiarch manifest. This is due to
 // the fact that we have to use `aarch64` hosts to test `armv7` images.
@@ -69,8 +74,13 @@ export const windowsActyxInstaller = async (arch: Arch): Promise<string> =>
 export const actyxAndroidApk = async (): Promise<string> =>
   getOrDownload('android', 'x86_64', Binary.actyxAndroid, settings().gitHash)
 
-const ensureBinaryExists = async (p: string): Promise<string> => {
+const ensureBinaryExists = async (os: OS, p: string): Promise<string> => {
+  console.log(`ensureBinaryExists(p=${p})`)
+  p =  os === 'windows' ? `${p}.exe` : p;
   if (!fs.existsSync(p)) {
+    if (os === 'windows') {
+      throw new Error('unable to make on Windows')
+    }
     const cmd = `make ${path.relative('..', p)}`
     const cwd = path.resolve('..')
     console.log(`${p} doesn't exist. Running ${cmd} in ${cwd}. This might take a while.`)
@@ -89,7 +99,8 @@ const getOrDownload = async (
   gitHash: string | null,
 ): Promise<string> => {
   let localPath: string
-  const bin = os == 'windows' ? `${binary}.exe` : binary
+  // TODO: remove hack (not all windows binaries end in .exe!)
+  const bin = binary === 'actyx-x64' ? 'actyx-x64.msi' : os === 'windows' ? `${binary}.exe` : binary
   // actyx.apk sits in the root
   const id = os == 'android' ? '' : `/${os}-${arch}`
   if (gitHash !== null) {
@@ -106,7 +117,7 @@ const getOrDownload = async (
       const p = new Promise((res, rej) => {
         ;(gitHash != null
           ? download(gitHash, os, arch, binary, localPath)
-          : ensureBinaryExists(localPath)
+          : ensureBinaryExists(os, localPath)
         )
           .then(() => res())
           .catch((err) => rej(err))

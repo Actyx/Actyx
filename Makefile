@@ -54,7 +54,7 @@ endif
 #############################
 architectures = aarch64 x86_64 armv7 arm
 unix-bins = actyx-linux ax
-windows-bins = actyx.exe ax.exe Actyx-Installer.exe
+windows-bins = actyx.exe ax.exe actyx-x64.msi
 android-bins = actyx.apk
 
 CARGO_TEST_JOBS ?= 8
@@ -487,22 +487,12 @@ dist/bin/actyx.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
 	mkdir -p $(dir $@)
 	cp $< $@
 
-dist/bin/windows-x86_64/Actyx-Installer.exe: dist/bin/windows-x86_64/ax.exe dist/bin/windows-x86_64/actyx.exe make-always
-	cp dist/bin/windows-x86_64/actyx.exe misc/actyx-win-installer
-	cp dist/bin/windows-x86_64/ax.exe misc/actyx-win-installer
-	# ls -alh .
+dist/bin/windows-x86_64/actyx-x64.msi: dist/bin/windows-x86_64/actyx.exe make-always
 	docker run \
 	  -v `pwd`:/src \
-	  -w /src/misc/actyx-win-installer \
-	  -e DIST_DIR='/src/dist/bin/windows-x86_64' \
-	  -e SRC_DIR='/src/misc/actyx-win-installer' \
-	  -e PRODUCT_VERSION='$(ACTYX_VERSION)' \
-	  -e PRODUCT_NAME=Actyx \
-	  -e INSTALLER_NAME='Actyx-Installer' \
 	  --rm \
-	  $(DOCKER_FLAGS) \
-	  actyx/util:windowsinstallercreator-x64-latest \
-	  ./build.sh
+	  justmoon/wix \
+	  bash /src/misc/actyx-win-installer/build.sh ${ACTYX_VERSION} "/src/dist/bin/windows-x86_64"
 
 define mkDockerRule =
 docker-$(1):

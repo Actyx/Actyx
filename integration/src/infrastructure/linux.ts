@@ -196,6 +196,12 @@ export async function connectSsh(ssh: Ssh, nodeName: string, sshParams: SshAble,
         error.stderr.indexOf('Connection timed out') >= 0 ||
         error.stderr.indexOf('Operation timed out') >= 0
       ) {
+        console.log(
+          'node %s ssh connection (%s) not yet ready (remaining attempts %i)',
+          nodeName,
+          sshParams.host,
+          attempts
+        )
         // this is expected
       } else {
         console.log(

@@ -1,5 +1,6 @@
 use crate::{AxTreeExt, BanyanStore, SwarmConfig, MAX_TREE_LEVEL};
 use actyx_sdk::{app_id, tags, AppId, Offset, OffsetMap, Payload, StreamNr, Tag, TagSet};
+use anyhow::Result;
 use ax_futures_util::{
     prelude::AxStreamExt,
     stream::{interval, Drainer},
@@ -43,7 +44,7 @@ fn cids_to_string(cids: Vec<Cid>) -> String {
 
 #[tokio::test]
 #[ignore]
-async fn smoke() -> anyhow::Result<()> {
+async fn smoke() -> Result<()> {
     util::setup_logger();
     let mut tagger = Tagger::new();
     let mut ev = move |tag| (tagger.tags(&[tag]), Payload::empty());
@@ -79,7 +80,7 @@ fn last_item<T: Clone>(drainer: &mut Drainer<T>) -> anyhow::Result<T> {
 }
 
 #[tokio::test]
-async fn should_compact_regularly() -> anyhow::Result<()> {
+async fn should_compact_regularly() -> Result<()> {
     const EVENTS: usize = 10000;
     let store = BanyanStore::test("compaction_interval").await?;
 
@@ -125,7 +126,7 @@ async fn should_compact_regularly() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn should_extend_packed_when_hitting_max_tree_depth() -> anyhow::Result<()> {
+async fn should_extend_packed_when_hitting_max_tree_depth() -> Result<()> {
     let store = BanyanStore::test("compaction_max_tree").await?;
 
     // Wait for the first compaction loop to pass.
@@ -164,7 +165,7 @@ async fn should_extend_packed_when_hitting_max_tree_depth() -> anyhow::Result<()
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn must_not_lose_events_through_compaction() -> anyhow::Result<()> {
+async fn must_not_lose_events_through_compaction() -> Result<()> {
     let tags_query = TagsQuery::from_expr(&"'abc'".parse().unwrap())(true);
     const EVENTS: usize = 1000;
     let store = BanyanStore::test("compaction_max_tree").await?;
@@ -235,5 +236,32 @@ async fn must_report_proper_initial_offsets() -> anyhow::Result<()> {
     let present = store.data.offsets.project(|x| x.present.clone());
     assert_eq!(present, expected_present);
 
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_add_cat() -> Result<()> {
+    use rand::RngCore;
+    util::setup_logger();
+    let store = BanyanStore::test("local").await?;
+    let mut data = Vec::with_capacity(16_000_000);
+    data.resize(data.capacity(), 0);
+    let mut rng = rand::thread_rng();
+    rng.fill_bytes(&mut data);
+    let tmp = store.ipfs().create_temp_pin()?;
+    let root = store.add(&tmp, &data[..])?;
+    let mut buf = Vec::with_capacity(16_000_000);
+    store.cat(&root, &mut buf)?;
+    assert_eq!(buf, data);
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn test_add_zero_bytes() -> Result<()> {
+    util::setup_logger();
+    let store = BanyanStore::test("local").await?;
+    let tmp = store.ipfs().create_temp_pin()?;
+    let data: &[u8] = &[];
+    store.add(&tmp, data)?;
     Ok(())
 }

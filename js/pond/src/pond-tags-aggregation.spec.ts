@@ -120,7 +120,7 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
         await pond.emit(Tag('t1'), 'error').toPromise()
         await pond.emit(Tag('t1'), 't1 event 2').toPromise()
 
-        await new Promise(resolve => setTimeout(resolve, 1)) // yield a bit, since there are multiple rx pipelines in play now.
+        await new Promise(resolve => setTimeout(resolve, 5)) // yield a bit, since there are multiple rx pipelines in play now.
       }
 
       return {

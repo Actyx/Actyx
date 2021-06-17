@@ -37,6 +37,7 @@ const skipTarget = (node: ActyxNode): boolean =>
   // can't run multiple instances of Actyx on Android on Docker (permissions)
   node.host === 'android' || node.host === 'docker'
 
+// FIXME almost none of these work now that Actyx runs as a service
 describe('node lifecycle', () => {
   // These ports are potentially quite contended on CI servers.
   // This is implicitly tested anyway by running Actyx on Linux and Windows.

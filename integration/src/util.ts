@@ -121,9 +121,9 @@ export const runActyx = async (
           : workdir
       const argList = ['--working-dir', workdir, '--background']
         .concat(params)
-        .map((x) => `'${x}'`)
-        .join(',')
-      const cmd = String.raw`Start-Process -Wait -NoNewWindow -FilePath "${node._private.actyxBinaryPath}" -ArgumentList ${argList}`
+        .map((x) => `"${x}"`)
+        .join(' ')
+      const cmd = String.raw`Start-Process -Wait -NoNewWindow -FilePath '${node._private.actyxBinaryPath}' -ArgumentList "${argList}"`
       return [node.target.execute(cmd, [])]
     }
     default:

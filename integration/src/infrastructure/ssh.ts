@@ -67,6 +67,7 @@ export class Ssh {
         return `-L${ours}:127.0.0.1:${port}`
       }),
     )
+    console.log(`forwarding ports: ${JSON.stringify(fwd)}`)
     return [ret, execa('ssh', [...fwd, '-nNf', ...this.commonOpts])]
   }
 

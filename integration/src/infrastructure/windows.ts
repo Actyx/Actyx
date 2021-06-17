@@ -1,9 +1,8 @@
-import execa from 'execa'
-import { mkProcessLogger } from './mkProcessLogger'
-import { windowsActyxInstaller } from './settings'
+import { actyxCliWindowsBinary, Binary, currentAxBinary, windowsActyxInstaller } from './settings'
 import { Ssh } from './ssh'
-import { connectSsh, execSsh, forwardPortsAndBuildClients } from './linux'
+import { connectSsh, execSsh } from './linux'
 import { ActyxNode, printTarget, SshAble, Target } from './types'
+import { CLI } from '../cli'
 
 export const mkWindowsSsh = async (
   nodeName: string,
@@ -17,27 +16,81 @@ export const mkWindowsSsh = async (
   // Takes about 300 secs for ssh to be reachable
   await connectSsh(ssh, nodeName, sshParams, 150)
 
-  const binaryPath = await windowsActyxInstaller(target.arch)
-  const installerPath = String.raw`C:\Actyx-Installer.exe`
-  console.log(`${nodeName}: Copying ${binaryPath} ${installerPath}`)
-  await ssh.scp(binaryPath, installerPath)
+  const hereInstallerPath = await windowsActyxInstaller(target.arch)
+  const thereInstallerPath = String.raw`C:\installer.msi`
+  console.log(`${nodeName}: Copying ${hereInstallerPath} ${thereInstallerPath}`)
+  await ssh.scp(hereInstallerPath, thereInstallerPath)
+  const hereCliPath = await actyxCliWindowsBinary("x86_64")
+  const thereCliPath = String.raw`C:\ax.exe`
+  console.log(`${nodeName}: Copying ${hereCliPath} ${thereCliPath}`)
+  await ssh.scp(hereCliPath, thereCliPath)
 
-  console.log(`${nodeName}: Installing ${installerPath}`)
+  console.log(`${nodeName}: Installing ${thereInstallerPath}`)
+  console.log(`${nodeName}: Installing Actyx`)
   await execSsh(ssh)(
-    String.raw`Start-Process -Wait -FilePath ${installerPath} -ArgumentList '/S','/background' -Passthru`,
+    String.raw`(Start-Process "msiexec.exe" -ArgumentList '/i ${thereInstallerPath} /qn /Liwearucmov*x C:\actyx-install.log' -NoNewWindow -Wait -PassThru).ExitCode`
+  )
+  await execSsh(ssh)(
+    String.raw`Start-Sleep -Seconds 5`,
   )
 
-  console.log(`${nodeName}: Starting Actyx`)
-  const defaultExeLocation = String.raw`C:\Users\Administrator\AppData\Local\Actyx\actyx.exe `
-
-  const workingDir = String.raw`C:\Users\Administrator\AppData\Local\Actyx\actyx-data`
-  const cmd = mkCmd(defaultExeLocation, ['--working-dir', workingDir])
-  console.log('cmd to execute', cmd)
-  const actyxProc = await startActyx(nodeName, logger, ssh, cmd)
-  const node = await forwardPortsAndBuildClients(ssh, nodeName, target, actyxProc, workingDir, {
+  const defaultExeLocation = String.raw`C:\PROGRA~1\Actyx\Core\actyx.exe`
+  const workingDir = String.raw`C:\PROGRA~1\Actyx\Core\actyx-data`
+  const node = await forwardPortsAndBuildClients(thereInstallerPath, ssh, nodeName, target, workingDir, {
     host: 'process',
   })
   return { ...node, _private: { ...node._private, actyxBinaryPath: defaultExeLocation } }
+}
+
+export const forwardPortsAndBuildClients = async (
+  installerPath: string,
+  ssh: Ssh,
+  nodeName: string,
+  target: Target,
+  workingDir: string,
+  theRest: Omit<ActyxNode, 'ax' | '_private' | 'name' | 'target'>,
+): Promise<ActyxNode> => {
+  const [[port4454, port4458], proc] = await ssh.forwardPorts(4454, 4458)
+
+  console.log('node %s admin reachable on port %i', nodeName, port4458)
+  console.log('node %s http api reachable on port %i', nodeName, port4454)
+
+  const axBinaryPath = await currentAxBinary()
+  const axHost = `localhost:${port4458}`
+  console.log(`axHost: ${axHost}`)
+  console.error('created cli w/ ', axHost)
+  const ax = await CLI.build(axHost, axBinaryPath)
+
+  const httpApiOrigin = `http://localhost:${port4454}`
+  console.log(`httpApiOrigin: ${httpApiOrigin}`)
+
+  const apiPond = `ws://localhost:${port4454}/api/v2/events`
+  console.log(`apiPond: ${apiPond}`)
+
+  const shutdown = async () => {
+    await target._private.cleanup()
+    proc.kill('SIGTERM')
+  }
+
+  const result: ActyxNode = {
+    name: nodeName,
+    target,
+    ax,
+    _private: {
+      shutdown,
+      actyxBinaryPath: './actyx',
+      workingDir,
+      axBinaryPath,
+      axHost,
+      httpApiOrigin,
+      apiPond,
+      apiSwarmPort: 4001,
+      apiEventsPort: port4454,
+    },
+    ...theRest,
+  }
+
+  return result
 }
 
 export const mkCmd = (exe: string, params: string[]): string =>
@@ -45,38 +98,6 @@ export const mkCmd = (exe: string, params: string[]): string =>
     .concat(['--background'])
     .map((x) => `'${x}'`)
     .join(',')}`
-
-function startActyx(
-  nodeName: string,
-  logger: (s: string) => void,
-  ssh: Ssh,
-  command: string,
-): Promise<[execa.ExecaChildProcess<string>]> {
-  // awaiting a Promise<Promise<T>> yields T (WTF?!?) so we need to put it into an array
-  return new Promise((res, rej) => {
-    const { log, flush } = mkProcessLogger(logger, nodeName, ['NODE_STARTED_BY_HOST'])
-    const proc = ssh.exec(command)
-    proc.stdout?.on('data', (s: Buffer | string) => {
-      if (log('stdout', s)) {
-        res([proc])
-      }
-    })
-    proc.stderr?.on('data', (s: Buffer | string) => log('stderr', s))
-    proc.on('close', () => {
-      flush()
-      logger(`node ${nodeName} Actyx channel closed`)
-      rej('closed')
-    })
-    proc.on('error', (err: Error) => {
-      logger(`node ${nodeName} Actyx channel error: ${err}`)
-      rej(err)
-    })
-    proc.on('exit', (code: number, signal: string) => {
-      logger(`node ${nodeName} Actyx exited with code=${code} signal=${signal}`)
-      rej('exited')
-    })
-  })
-}
 
 // Create a PowerShell script which enables OpenSSH and adds `pubKey` to
 // `authorized_keys`

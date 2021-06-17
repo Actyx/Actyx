@@ -20,7 +20,6 @@ mod sqlite;
 mod sqlite_index_store;
 mod streams;
 pub mod transport;
-mod unixfsv1;
 
 #[cfg(test)]
 mod tests;
@@ -51,7 +50,7 @@ use fnv::FnvHashMap;
 use futures::{channel::mpsc, prelude::*};
 use ipfs_embed::{
     BitswapConfig, Cid, Config as IpfsConfig, DnsConfig, ListenerEvent, Multiaddr, NetworkConfig, PeerId,
-    StorageConfig, SyncEvent, ToLibp2p,
+    StorageConfig, SyncEvent, TempPin, ToLibp2p,
 };
 use libipld::{cbor::DagCborCodec, codec::Codec, error::BlockNotFound};
 use libp2p::{
@@ -69,6 +68,7 @@ use std::{
     collections::{BTreeMap, VecDeque},
     convert::TryFrom,
     fmt::{Debug, Display},
+    io::{BufRead, BufReader, BufWriter, Read, Write},
     num::NonZeroU32,
     ops::{Deref, DerefMut, RangeInclusive},
     path::PathBuf,
@@ -81,6 +81,8 @@ use trees::{
     tags::{ScopedTag, ScopedTagSet},
     AxTree, AxTreeHeader,
 };
+use unixfs_v1::dir::MaybeResolved;
+use unixfs_v1::file::{adder::FileAdder, visit::IdleFileVisit};
 use util::{
     formats::NodeErrorContext,
     reentrant_safe_mutex::{ReentrantSafeMutex, ReentrantSafeMutexGuard},
@@ -756,8 +758,84 @@ impl BanyanStore {
         &self.data.ipfs
     }
 
-    pub fn cat(&self, cid: Cid, path: VecDeque<String>) -> impl Stream<Item = Result<Vec<u8>>> + Send {
-        unixfsv1::UnixfsStream::new(unixfsv1::UnixfsDecoder::new(self.ipfs().clone(), cid, path))
+    /// Traverse a path to a `Cid`. Used for traversing unixfsv1 directories. Make sure you pin
+    /// the cid before traversing it.
+    pub async fn traverse(&self, cid: &Cid, mut path: VecDeque<String>) -> Result<Option<Cid>> {
+        let peers = self.ipfs().peers();
+        let mut block = self.ipfs().fetch(cid, peers.clone()).await?;
+        let mut cache = None;
+        while let Some(segment) = path.pop_front() {
+            let mut res = unixfs_v1::dir::resolve(block.data(), segment.as_str(), &mut cache)?;
+            loop {
+                match res {
+                    MaybeResolved::Found(cid) => {
+                        block = self.ipfs().fetch(&cid, peers.clone()).await?;
+                        break;
+                    }
+                    MaybeResolved::NotFound => return Ok(None),
+                    MaybeResolved::NeedToLoadMore(walker) => {
+                        let (cid, _) = walker.pending_links();
+                        let block = self.ipfs().fetch(cid, peers.clone()).await?;
+                        res = walker.continue_walk(block.data(), &mut cache)?;
+                    }
+                }
+            }
+        }
+        Ok(Some(block.into_inner().0))
+    }
+
+    /// Retrieves a binary blob from the store. Make sure to sync the `Cid` first as this
+    /// doesn't do any networking.
+    pub fn cat(&self, cid: &Cid, writer: impl Write) -> Result<()> {
+        let mut writer = BufWriter::new(writer);
+        let block = self.ipfs().get(cid)?;
+        let (content, _, _metadata, mut step) = IdleFileVisit::default().start(block.data())?;
+        writer.write_all(content)?;
+        while let Some(visit) = step {
+            let (cid, _) = visit.pending_links();
+            let block = self.ipfs().get(cid)?;
+            let (content, next_step) = visit.continue_walk(block.data(), &mut None)?;
+            writer.write_all(content)?;
+            step = next_step;
+        }
+        writer.flush()?;
+        Ok(())
+    }
+
+    /// Adds a binary blob to the store. Requires aliasing and flushing before dropping the
+    /// `TempPin`.
+    /// Blobs are encoded as [unixfs-v1](https://docs.ipfs.io/concepts/file-systems/#unix-file-system-unixfs)
+    /// files.
+    pub fn add(&self, tmp: &TempPin, reader: impl Read) -> Result<Cid> {
+        let mut adder = FileAdder::default();
+        let mut reader = BufReader::with_capacity(adder.size_hint(), reader);
+        loop {
+            match reader.fill_buf()? {
+                x if x.is_empty() => {
+                    let mut root = None;
+                    for (cid, data) in adder.finish() {
+                        let block = Block::new_unchecked(cid, data);
+                        self.ipfs().temp_pin(tmp, block.cid())?;
+                        self.ipfs().insert(&block)?;
+                        root = Some(cid)
+                    }
+                    return Ok(root.expect("must return a root"));
+                }
+                x => {
+                    let mut total = 0;
+                    while total < x.len() {
+                        let (blocks, consumed) = adder.push(&x[total..]);
+                        for (cid, data) in blocks {
+                            let block = Block::new_unchecked(cid, data);
+                            self.ipfs().temp_pin(tmp, block.cid())?;
+                            self.ipfs().insert(&block)?;
+                        }
+                        total += consumed;
+                    }
+                    reader.consume(total);
+                }
+            }
+        }
     }
 
     /// Append events to a stream, publishing the new data.

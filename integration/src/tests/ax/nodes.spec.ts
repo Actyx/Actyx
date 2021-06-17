@@ -9,6 +9,7 @@ import { runActyx } from '../../util'
 
 describe('ax nodes', () => {
   describe('ls', () => {
+    // FIXME: doesn't work on Windows
     test('return Ok and result with connection hostUnreachable', async () => {
       const ax = await mkAxWithUnreachableNode()
       const response = await ax.nodes.ls()
