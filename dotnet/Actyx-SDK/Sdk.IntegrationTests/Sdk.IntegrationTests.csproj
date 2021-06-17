@@ -5,11 +5,15 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <RootNamespace>Sdk.IntegrationTests</RootNamespace>
     <ReleaseVersion>0.1.0</ReleaseVersion>
-    <StartupObject>Sdk.IntegrationTests.Program</StartupObject>
+    <StartupObject>Sdk.IntegrationTests.Program2</StartupObject>
   </PropertyGroup>
   
   <ItemGroup>
     <ProjectReference Include="..\Sdk\Sdk.csproj" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="System.Reactive" Version="5.0.0" />
   </ItemGroup>
 
   <Target Name="PostClean" AfterTargets="Clean">

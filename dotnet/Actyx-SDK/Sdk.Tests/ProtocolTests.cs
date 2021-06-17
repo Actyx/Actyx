@@ -18,7 +18,7 @@ namespace Sdk.Tests
         [Fact]
         public void Incoming()
         {
-            new List<IIncoming> {
+            new List<IResponseMessage> {
                 new Next { RequestId = 1, Payload = new JObject[] { JObject.Parse(@"{ ""this is"": ""the payload"" }") } },
                 new Complete { RequestId = 1 },
                 new Error
@@ -46,7 +46,7 @@ namespace Sdk.Tests
         [Fact]
         public void Outgoing()
         {
-            new List<IOutgoing> {
+            new List<IRequestMessage> {
                 new Request { RequestId = 1, ServiceId = "some_service", Payload = JObject.Parse(@"{ ""this is"": ""the payload"" }") },
                 new Cancel { RequestId = 1 },
             }.ForEach(Roundtrip);
