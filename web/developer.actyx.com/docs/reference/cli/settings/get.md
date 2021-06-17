@@ -18,7 +18,7 @@ OPTIONS:
     -i, --identity <identity>    File from which the identity (private key) for authentication is read
 
 ARGS:
-    <SCOPE>    Scope from which you want to get the settings
+    <SCOPE>    Scope from which you want to get the settings.
     <NODE>     Node ID or the IP address of the node to
                perform the operation on
 ```
@@ -30,9 +30,10 @@ The return value of this command will always be either null or schema conformant
 Here are some examples of using the `ax settings get` command:
 
 ```text title="Example Usage"
-# Get the settings for the node with settings scope com.actyx at 10.2.3.23
-ax settings get com.actyx 10.2.3.23
+# Get the settings for the node at 10.2.3.23
+# Use `/` to get entire node settings.
+ax settings get / 10.2.3.23
 
 # Just get the displayName setting
-ax settings get com.actyx/admin/displayName 10.2.3.23
+ax settings get /admin/displayName 10.2.3.23
 ```

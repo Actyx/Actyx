@@ -24,6 +24,7 @@ ARGS:
 Please see the following usage examples for the `ax settings unset` command:
 
 ```text title="Example Usage"
-# Unset the settings for the node with settings scope com.actyx at 10.2.3.23
-ax settings unset com.actyx 10.2.3.23
+# Unset the settings for the node at 10.2.3.23
+# Use `/` to unset entire node settings.
+ax settings unset / 10.2.3.23
 ```

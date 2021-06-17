@@ -6,7 +6,7 @@ hide_table_of_contents: false
 image: /images/defaults/default.svg
 ---
 
-This guide explains authentication and authorization with Actyx. In general, the auth concepts are either related to: 
+This guide explains authentication and authorization with Actyx. In general, the auth concepts are either related to:
 
 - user auth for administrative access to a node or
 - app auth for access to the Events API of a node.
@@ -28,7 +28,7 @@ By default, the CLI or Node Manager uses the keys in the default storage path, b
 ### User authorization
 
 If your keys are not authorized to manage the node, it rejects the command and you receive an error with code `ERR_UNAUTHORIZED`.
-The authorized users of a node can be managed in the node setting `com.actyx/admin/authorizedUsers`.
+The authorized users of a node can be managed in the node setting `/admin/authorizedUsers`.
 `authorizedUsers` is an array that contains all public keys of users that are authorized to manage the node.
 If `authorizedUsers`is empty (e.g. after you start a node for the first time), the first user to interact with a node is automatically added as an authorized user.
 You can find a how-to guide for configuring `authorizedUsers` [here](../how-to/user-auth/manage-authorized-users.mdx).
@@ -70,7 +70,7 @@ As this certificate is linked to the domain of your e-mail address, you may also
 ### App Authentication
 
 Every request of your app to the Events API must be sent with a valid auth token.
-In order to get an auth token from the Auth API, your app must authenticate. 
+In order to get an auth token from the Auth API, your app must authenticate.
 This is done by providing the node with a signed manifest using the [Auth API](../reference/auth-api.mdx) or our SDK.
 That way, the events that are emitted by the signed app can be correctly associated with its app ID.
 This also guarantees that events with that app ID cannot be published by other apps with different app IDs.

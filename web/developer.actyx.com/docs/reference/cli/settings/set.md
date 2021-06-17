@@ -26,12 +26,13 @@ ARGS:
 Please see the following usage examples for the `ax settings set` command:
 
 ```text title="Example Usage"
-# Set settings for settings scope com.actyx at node 10.2.3.23 from file
+# Set settings for node 10.2.3.23 from file
 # node1.settings.yml
-ax settings set com.actyx @node1.settings.yml 10.2.3.23
+# Use `/` to replace entire node settings.
+ax settings set / @node1.settings.yml 10.2.3.23
 
 # Just set the specific setting displayName
-ax settings set com.actyx/admin/displayName "Node 1" 10.2.3.23
+ax settings set /admin/displayName "Node 1" 10.2.3.23
 
 # Read in settings from stdin
 echo "
@@ -41,5 +42,5 @@ swarm:
   swarmKey: 4245c0e542a4f89985a92de178d2169dc7f3596a382828aa8381bc13370e9880
   initialPeers:
     - /ipfs/10.24.24.2
-    - /ipfs/10.24.24.3" | ax settings set com.actyx @- 10.2.3.23
+    - /ipfs/10.24.24.3" | ax settings set / @- 10.2.3.23
 ```
