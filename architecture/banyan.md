@@ -52,7 +52,7 @@ In a well designed event sourcing application, events are often relatively small
 
 Therefore banyan makes sure that data that is going to be kept around for a long time is chunked in chunks that are sufficiently large.
 
-There is plenty of prior art for chunking data this way. Among many others, the open source root data format from CERN, and the proprietary satmon archive format used at DLR for satellite and space station data.
+There is plenty of prior art for chunking data this way. Among many others, the open source ROOT data format from CERN, and the proprietary satmon archive format used at DLR for satellite and space station data.
 
 As opposed to many other formats, banyan tries to achieve a constant size *compressed* block size, whereas formats such as root use a constant size uncompressed block size.
 
