@@ -313,6 +313,8 @@ pub enum QueryResponse {
 pub enum SubscribeResponse {
     #[serde(rename_all = "camelCase")]
     Event(EventResponse<Payload>),
+    #[serde(rename_all = "camelCase")]
+    Offsets(OffsetMapResponse),
 }
 
 /// Response to the offsets request

@@ -42,7 +42,7 @@ export type EventResponse = t.TypeOf<typeof EventResponse>
 export const QueryResponse = t.union([EventResponse, OffsetMapResponse])
 export type QueryResponse = t.TypeOf<typeof QueryResponse>
 
-export const SubscribeResponse = EventResponse
+export const SubscribeResponse = t.union([EventResponse, OffsetMapResponse])
 export type SubscribeResponse = t.TypeOf<typeof SubscribeResponse>
 
 // SubscribeMonotonic

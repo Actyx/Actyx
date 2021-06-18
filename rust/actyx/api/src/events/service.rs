@@ -90,7 +90,7 @@ impl EventService {
         let tag_expr = &request.query.from;
         let upper_bound = match request.upper_bound {
             Some(offsets) => offsets,
-            None => offsets0(&self.store).await.present(),
+            None => self.store.present().await,
         };
         let stream = match request.order {
             Order::Asc => self
@@ -125,11 +125,23 @@ impl EventService {
         _app_id: AppId,
         request: SubscribeRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeResponse>> {
-        Ok(subscribe0(&self.store, &request.query.from, request.lower_bound)
-            .await?
-            .flat_map(mk_feed(request.query))
-            .map(SubscribeResponse::Event)
-            .boxed())
+        let present = self.store.present().await;
+        let bounded = self
+            .store
+            .bounded_forward(&request.query.from, request.lower_bound, present.clone())
+            .await
+            .map_err(Error::StoreReadError)?
+            .flat_map(mk_feed(request.query.clone()))
+            .map(SubscribeResponse::Event);
+        let offsets = stream::once(future::ready(SubscribeResponse::Offsets(OffsetMapResponse {
+            offsets: present.clone(),
+        })));
+        let unbounded = self
+            .store
+            .unbounded_forward_per_stream(&request.query.from, Some(present))
+            .flat_map(mk_feed(request.query.clone()))
+            .map(SubscribeResponse::Event);
+        Ok(bounded.chain(offsets).chain(unbounded).boxed())
     }
 
     pub async fn subscribe_monotonic(
@@ -147,7 +159,7 @@ impl EventService {
                 .map_err(Error::StoreReadError)?
                 .next()
                 .await
-                .map(|event| event.key), // _ => None,
+                .map(|event| event.key),
         };
 
         let stream = subscribe0(&self.store, &tag_expr, Some(request.from.min_offsets())).await?;
