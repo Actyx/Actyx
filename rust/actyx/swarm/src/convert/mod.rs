@@ -4,6 +4,7 @@ use std::path::Path;
 use std::{collections::BTreeMap, fs, str::FromStr, sync::Arc};
 
 use actyx_sdk::LamportTimestamp;
+use actyx_sdk::Tag;
 use actyx_sdk::{legacy::SourceId, tag, Payload, StreamId};
 use anyhow::Result;
 use banyan::store::{BlockWriter, ReadOnlyStore};
@@ -17,6 +18,9 @@ use libipld::{
 use parking_lot::Mutex;
 use rayon::prelude::*;
 use rusqlite::OpenFlags;
+use trees::tags::ScopedTag;
+use trees::tags::ScopedTagSet;
+use trees::tags::TagScope;
 use trees::AxTreeHeader;
 use trees::{
     axtrees::{AxKey, AxTrees, Sha256Digest},
@@ -92,14 +96,20 @@ fn iter_events_v1_chunked(
 }
 
 /// Converts a block of events from v1 to v2
-fn events_to_v2(envelopes: Vec<IpfsEnvelope>) -> Vec<(AxKey, Payload)> {
+fn events_to_v2(envelopes: Vec<IpfsEnvelope>, app_id: &str) -> Vec<(AxKey, Payload)> {
     envelopes
         .into_iter()
         .map(|event| {
             let mut tags = event.tags;
             tags.insert(tag!("semantics:") + event.semantics.as_str());
             tags.insert(tag!("fish_name:") + event.name.as_str());
-            let key: AxKey = AxKey::new(tags.into(), event.lamport, event.timestamp);
+            let mut tags: ScopedTagSet = tags.into();
+            let app_id_tag = ScopedTag::new(
+                TagScope::Internal,
+                Tag::try_from(format!("app_id:{}", app_id).as_str()).unwrap(),
+            );
+            tags.insert(app_id_tag);
+            let key: AxKey = AxKey::new(tags, event.lamport, event.timestamp);
             (key, event.payload)
         })
         .collect::<Vec<_>>()
@@ -114,6 +124,7 @@ fn build_banyan_tree<'a>(
     source: &'a SourceId,
     iter: impl Iterator<Item = anyhow::Result<Vec<IpfsEnvelope>>> + Send + 'a,
     config: Config,
+    app_id: &str,
 ) -> anyhow::Result<AxTree> {
     let mut builder = AxStreamBuilder::new(config, Default::default());
     let mut count: usize = 0;
@@ -123,7 +134,7 @@ fn build_banyan_tree<'a>(
             r.map(|envelopes| {
                 count += envelopes.len();
                 tracing::debug!("Building tree {} c={} e={}", source, count, errors.len());
-                events_to_v2(envelopes)
+                events_to_v2(envelopes, app_id)
             })
             .map_err(|e| {
                 errors.push(e.to_string());
@@ -199,6 +210,7 @@ pub fn convert_from_v1(
     v1_actyx_data: impl AsRef<Path> + fmt::Debug,
     v2_actyx_data: impl AsRef<Path> + fmt::Debug,
     topic: &str,
+    app_id: &str,
     options: ConversionOptions,
 ) -> anyhow::Result<()> {
     let v1_blocks_path = v1_actyx_data.as_ref().join(format!("{}-blocks.sqlite", topic));
@@ -282,7 +294,7 @@ pub fn convert_from_v1(
             tracing::info!("converting tree {}", source);
             let txn = AxTxn::new(forest.clone(), forest.store().clone());
             let iter = iter_events_v1_chunked(&db1, Link::new(*cid));
-            let tree = build_banyan_tree(&txn, &source, iter, config.clone());
+            let tree = build_banyan_tree(&txn, &source, iter, config.clone(), app_id);
 
             match tree {
                 Ok(tree) => {
