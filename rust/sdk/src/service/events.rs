@@ -153,6 +153,12 @@ impl<T> std::fmt::Display for EventResponse<T> {
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct OffsetMapResponse {
+    pub offsets: OffsetMap,
+}
+
 /// Publication of an event
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -294,6 +300,8 @@ pub enum SubscribeMonotonicResponse {
 pub enum QueryResponse {
     #[serde(rename_all = "camelCase")]
     Event(EventResponse<Payload>),
+    #[serde(rename_all = "camelCase")]
+    Offsets(OffsetMapResponse),
 }
 
 /// The response to a subscribe request.

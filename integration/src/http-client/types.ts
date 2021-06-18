@@ -21,6 +21,11 @@ export const PublishResponse = t.type({
 })
 export type PublishResponse = t.TypeOf<typeof PublishResponse>
 
+export const OffsetMapResponse = t.type({
+  type: t.literal('offsets'),
+  offsets: OffsetMap,
+})
+
 // Streams
 export const EventResponse = t.type({
   type: t.literal('event'),
@@ -34,7 +39,7 @@ export const EventResponse = t.type({
 })
 export type EventResponse = t.TypeOf<typeof EventResponse>
 
-export const QueryResponse = EventResponse
+export const QueryResponse = t.union([EventResponse, OffsetMapResponse])
 export type QueryResponse = t.TypeOf<typeof QueryResponse>
 
 export const SubscribeResponse = EventResponse

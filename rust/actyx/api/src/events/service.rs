@@ -3,9 +3,9 @@ use std::{convert::TryFrom, num::NonZeroU64};
 use actyx_sdk::{
     language::{self, TagExpr},
     service::{
-        EventResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse, PublishResponseKey,
-        QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest, SubscribeMonotonicResponse,
-        SubscribeRequest, SubscribeResponse,
+        EventResponse, OffsetMapResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse,
+        PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
+        SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
     AppId, Event, Metadata, OffsetMap, OffsetOrMin, Payload,
 };
@@ -95,17 +95,17 @@ impl EventService {
         let stream = match request.order {
             Order::Asc => self
                 .store
-                .bounded_forward(tag_expr, request.lower_bound, upper_bound)
+                .bounded_forward(tag_expr, request.lower_bound, upper_bound.clone())
                 .await
                 .map(|s| s.boxed()),
             Order::Desc => self
                 .store
-                .bounded_backward(tag_expr, request.lower_bound, upper_bound)
+                .bounded_backward(tag_expr, request.lower_bound, upper_bound.clone())
                 .await
                 .map(|s| s.boxed()),
             Order::StreamAsc => self
                 .store
-                .bounded_forward_per_stream(tag_expr, request.lower_bound, upper_bound)
+                .bounded_forward_per_stream(tag_expr, request.lower_bound, upper_bound.clone())
                 .await
                 .map(|s| s.boxed()),
         };
@@ -113,6 +113,9 @@ impl EventService {
             .map_err(Error::StoreReadError)?
             .flat_map(mk_feed(request.query))
             .map(QueryResponse::Event)
+            .chain(stream::once(future::ready(QueryResponse::Offsets(OffsetMapResponse {
+                offsets: upper_bound,
+            }))))
             .boxed();
         Ok(response)
     }
