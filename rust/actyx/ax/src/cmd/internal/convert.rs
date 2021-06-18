@@ -16,6 +16,9 @@ pub struct ConvertFromV1Opts {
     #[structopt(long, help("topic to convert"))]
     topic: String,
 
+    #[structopt(long, help("app id to add to events"))]
+    app_id: String,
+
     #[structopt(long, help("do not run gc after conversion"))]
     no_gc: bool,
 
@@ -32,9 +35,15 @@ impl AxCliCommand for ConvertFromV1 {
             gc: !opts.no_gc,
             vacuum: !opts.no_vacuum,
         };
-        let result = convert_from_v1(&opts.source, &opts.target, &opts.topic, conversion_options)
-            .map(|_| format!("Conversion done. Target db at {}", opts.target))
-            .ax_err_ctx(util::formats::ActyxOSCode::ERR_NODE_UNREACHABLE, "Convert failed");
+        let result = convert_from_v1(
+            &opts.source,
+            &opts.target,
+            &opts.topic,
+            &opts.app_id,
+            conversion_options,
+        )
+        .map(|_| format!("Conversion done. Target db at {}", opts.target))
+        .ax_err_ctx(util::formats::ActyxOSCode::ERR_NODE_UNREACHABLE, "Convert failed");
         Box::new(stream::once(future::ready(result)))
     }
 
