@@ -16,7 +16,10 @@ use futures::{
     Stream,
 };
 use runtime::value::Value;
-use swarm::event_store::{self, EventStore};
+use swarm::{
+    event_store::{self, EventStore},
+    SwarmOffsets,
+};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -40,7 +43,7 @@ impl EventService {
 
 impl EventService {
     pub async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
-        let offsets = self.store.offsets().next().await.expect("offset stream stopped");
+        let offsets = offsets0(&self.store).await;
         let present = offsets.present();
         let to_replicate = offsets
             .replication_target()
@@ -85,20 +88,24 @@ impl EventService {
         request: QueryRequest,
     ) -> anyhow::Result<BoxStream<'static, QueryResponse>> {
         let tag_expr = &request.query.from;
+        let upper_bound = match request.upper_bound {
+            Some(offsets) => offsets,
+            None => offsets0(&self.store).await.present(),
+        };
         let stream = match request.order {
             Order::Asc => self
                 .store
-                .bounded_forward(tag_expr, request.lower_bound, request.upper_bound)
+                .bounded_forward(tag_expr, request.lower_bound, upper_bound)
                 .await
                 .map(|s| s.boxed()),
             Order::Desc => self
                 .store
-                .bounded_backward(tag_expr, request.lower_bound, request.upper_bound)
+                .bounded_backward(tag_expr, request.lower_bound, upper_bound)
                 .await
                 .map(|s| s.boxed()),
             Order::StreamAsc => self
                 .store
-                .bounded_forward_per_stream(tag_expr, request.lower_bound, request.upper_bound)
+                .bounded_forward_per_stream(tag_expr, request.lower_bound, upper_bound)
                 .await
                 .map(|s| s.boxed()),
         };
@@ -161,6 +168,10 @@ impl EventService {
             .take_until_condition(|e| future::ready(matches!(e, SubscribeMonotonicResponse::TimeTravel { .. })));
         Ok(response.boxed())
     }
+}
+
+async fn offsets0(store: &EventStore) -> SwarmOffsets {
+    store.offsets().next().await.expect("offset stream stopped")
 }
 
 async fn subscribe0(

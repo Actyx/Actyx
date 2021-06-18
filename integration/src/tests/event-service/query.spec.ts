@@ -86,6 +86,24 @@ describe('event service', () => {
         expect(pub1Idx).toBeLessThan(pub2Idx)
       }))
 
+    it('should return events without bounds set in ascending order and complete', () =>
+      run(async (x) => {
+        const es = await mkESFromTrial(x)
+        const pub1 = await publishRandom(es)
+        const pub2 = await publishRandom(es)
+        const request: QueryRequest = {
+          query: `FROM '${mySuite()}' & '${testName()}' & isLocal`,
+          order: Order.Asc,
+        }
+        const data: QueryResponse[] = []
+        await es.query(request, (x) => data.push(x))
+        const pub1Idx = data.findIndex((x) => x.lamport === pub1.lamport)
+        const pub2Idx = data.findIndex((x) => x.lamport === pub2.lamport)
+        expect(data[pub1Idx]).toMatchObject(pub1)
+        expect(data[pub2Idx]).toMatchObject(pub2)
+        expect(pub1Idx).toBeLessThan(pub2Idx)
+      }))
+
     it('should return events in descending order and complete', () =>
       run(async (x) => {
         const es = await mkESFromTrial(x)

@@ -102,7 +102,7 @@ export enum Order {
 }
 export type QueryRequest = {
   lowerBound?: OffsetMap
-  upperBound: OffsetMap
+  upperBound?: OffsetMap
   query: string
   order: Order
 }

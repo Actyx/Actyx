@@ -56,7 +56,7 @@ pub struct QueryRequest {
     /// Optional lower bound offset per stream.
     pub lower_bound: Option<OffsetMap>,
     /// Upper bound offset per stream.
-    pub upper_bound: OffsetMap,
+    pub upper_bound: Option<OffsetMap>,
     /// Query for which events should be returned.
     pub query: Query,
     /// Order in which events should be received.
