@@ -1,4 +1,4 @@
-import { actyxCliWindowsBinary, Binary, currentAxBinary, windowsActyxInstaller } from './settings'
+import { actyxCliWindowsBinary, currentAxBinary, windowsActyxInstaller } from './settings'
 import { Ssh } from './ssh'
 import { connectSsh, execSsh } from './linux'
 import { ActyxNode, printTarget, SshAble, Target } from './types'
@@ -8,6 +8,7 @@ export const mkWindowsSsh = async (
   nodeName: string,
   target: Target,
   sshParams: SshAble,
+  // FIXME we currently don’t get logs for windows in CI
   logger: (s: string) => void = console.log,
 ): Promise<ActyxNode> => {
   console.log('setting up Actyx process: %s on %o', nodeName, printTarget(target))
@@ -20,7 +21,7 @@ export const mkWindowsSsh = async (
   const thereInstallerPath = String.raw`C:\installer.msi`
   console.log(`${nodeName}: Copying ${hereInstallerPath} ${thereInstallerPath}`)
   await ssh.scp(hereInstallerPath, thereInstallerPath)
-  const hereCliPath = await actyxCliWindowsBinary("x86_64")
+  const hereCliPath = await actyxCliWindowsBinary('x86_64')
   const thereCliPath = String.raw`C:\ax.exe`
   console.log(`${nodeName}: Copying ${hereCliPath} ${thereCliPath}`)
   await ssh.scp(hereCliPath, thereCliPath)
@@ -28,17 +29,22 @@ export const mkWindowsSsh = async (
   console.log(`${nodeName}: Installing ${thereInstallerPath}`)
   console.log(`${nodeName}: Installing Actyx`)
   await execSsh(ssh)(
-    String.raw`(Start-Process "msiexec.exe" -ArgumentList '/i ${thereInstallerPath} /qn /Liwearucmov*x C:\actyx-install.log' -NoNewWindow -Wait -PassThru).ExitCode`
+    String.raw`(Start-Process "msiexec.exe" -ArgumentList '/i ${thereInstallerPath} /qn /Liwearucmov*x C:\actyx-install.log' -NoNewWindow -Wait -PassThru).ExitCode`,
   )
-  await execSsh(ssh)(
-    String.raw`Start-Sleep -Seconds 5`,
-  )
+  await execSsh(ssh)(String.raw`Start-Sleep -Seconds 5`)
 
   const defaultExeLocation = String.raw`C:\PROGRA~1\Actyx\Node\actyx.exe`
   const workingDir = String.raw`C:\PROGRA~1\Actyx\Node\actyx-data`
-  const node = await forwardPortsAndBuildClients(thereInstallerPath, ssh, nodeName, target, workingDir, {
-    host: 'process',
-  })
+  const node = await forwardPortsAndBuildClients(
+    thereInstallerPath,
+    ssh,
+    nodeName,
+    target,
+    workingDir,
+    {
+      host: 'process',
+    },
+  )
   return { ...node, _private: { ...node._private, actyxBinaryPath: defaultExeLocation } }
 }
 

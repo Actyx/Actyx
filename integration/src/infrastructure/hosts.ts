@@ -1,6 +1,7 @@
 import { Pond } from '@actyx/pond'
 import { MyGlobal } from '../../jest/setup'
 import { trialManifest } from '../http-client'
+import { newProcess } from '../util'
 import { selectNodes } from './nodeselection'
 import { getTestName } from './settings'
 import { ActyxNode, NodeSelection } from './types'
@@ -111,6 +112,21 @@ export const runOnEvery = <T>(f: (node: ActyxNode) => Promise<T>): Promise<T[]> 
       ),
     ),
   )
+
+export const runWithNewProcess = <T>(
+  f: (node: ActyxNode) => Promise<T>,
+): Promise<(T | undefined)[]> =>
+  runOnEvery(async (node) => {
+    if (node.host !== 'process' || node.target.os === 'macos') {
+      return
+    }
+    const n = await newProcess(node)
+    try {
+      return await f(n)
+    } finally {
+      n._private.shutdown()
+    }
+  })
 
 const runOnNodes = async <T>(label: string, n: ActyxNode[], f: () => Promise<T>): Promise<T> => {
   const ns = n.map((x) => x.name).join(', ')

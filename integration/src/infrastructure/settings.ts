@@ -32,8 +32,6 @@ export const enum Binary {
   actyxAndroid = 'actyx.apk',
 }
 
-
-
 export const currentAxBinary = (): Promise<string> => getCurrent(Binary.ax)
 export const currentActyxBinary = (): Promise<string> => getCurrent(Binary.actyxLinux)
 
@@ -45,9 +43,9 @@ const getCurrent = (bin: Binary) =>
 
 export const actyxLinuxBinary = async (arch: Arch): Promise<string> =>
   getOrDownload('linux', arch, Binary.actyxLinux, settings().gitHash)
- 
-export const actyxCliWindowsBinary = async (arch: Arch): Promise<string> => 
-    getOrDownload('windows', arch, Binary.ax, settings().gitHash)
+
+export const actyxCliWindowsBinary = async (arch: Arch): Promise<string> =>
+  getOrDownload('windows', arch, Binary.ax, settings().gitHash)
 
 // Extract the image for the architecture we want to test from the multiarch manifest. This is due to
 // the fact that we have to use `aarch64` hosts to test `armv7` images.
@@ -75,7 +73,7 @@ export const actyxAndroidApk = async (): Promise<string> =>
   getOrDownload('android', 'x86_64', Binary.actyxAndroid, settings().gitHash)
 
 const ensureBinaryExists = async (os: OS, p: string): Promise<string> => {
-  p =  os === 'windows' ? `${p}.exe` : p;
+  p = os === 'windows' ? `${p}.exe` : p
   if (!fs.existsSync(p)) {
     if (os === 'windows') {
       throw new Error('unable to make on Windows')

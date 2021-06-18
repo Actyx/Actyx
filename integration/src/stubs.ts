@@ -1,7 +1,6 @@
 import { Arch, Host, OS } from '../jest/types'
 import { CLI } from './cli'
 import { currentAxBinary } from './infrastructure/settings'
-import execa from 'execa'
 import { ActyxNode } from './infrastructure/types'
 
 export const mkNodeStub = (
@@ -20,7 +19,9 @@ export const mkNodeStub = (
         os,
         arch,
         kind: { type: 'test' },
-        execute: () => execa.command('whoami'),
+        execute: () => {
+          throw new Error('stubs cannot execute')
+        },
         _private: { cleanup: () => Promise.resolve() },
       },
       ax,
@@ -35,7 +36,6 @@ export const mkNodeStub = (
         apiSwarmPort: 0,
         apiEventsPort: 0,
       },
-      startEphemeralNode: () => Promise.reject('Not supported on stubs'),
     }))
 
 export const mkAx = (): Promise<CLI> =>

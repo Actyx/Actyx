@@ -106,19 +106,6 @@ export const Response_Settings_Get = io.union([
 
 export type Response_Settings_Get = io.TypeOf<typeof Response_Settings_Get>
 
-export const Response_Settings_Scopes = io.union([
-  ERR_INTERNAL_ERROR,
-  ERR_NODE_UNREACHABLE,
-  io.intersection([
-    _OK,
-    io.type({
-      result: io.array(io.string),
-    }),
-  ]),
-])
-
-export type Response_Settings_Scopes = io.TypeOf<typeof Response_Settings_Scopes>
-
 export const Response_Settings_Schema = io.union([
   ERR_INTERNAL_ERROR,
   ERR_NODE_UNREACHABLE,

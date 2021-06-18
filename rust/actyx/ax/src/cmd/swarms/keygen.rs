@@ -30,7 +30,7 @@ impl AxCliCommand for SwarmsKeygen {
     }
 }
 #[derive(StructOpt, Debug)]
-#[structopt(no_version)]
+#[structopt(version = env!("AX_CLI_VERSION"))]
 /// generate swarm key
 pub struct KeygenOpts {
     #[structopt(short, long, parse(from_os_str))]

@@ -6,9 +6,10 @@ use futures::Future;
 use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
-#[structopt(no_version)]
+#[structopt(version = env!("AX_CLI_VERSION"))]
+/// manage user keys
 pub enum UsersOpts {
-    #[structopt(name = "keygen")]
+    #[structopt(no_version)]
     /// Generate a new user key pair for interacting with an Actyx node.
     Keygen(KeygenOpts),
 }

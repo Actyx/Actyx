@@ -1,16 +1,25 @@
 use assert_cmd::prelude::*;
+use maplit::btreemap;
 use predicates::prelude::*;
 use std::collections::HashMap;
 use std::{path::PathBuf, process::Command};
 use util::version::NodeVersion;
 
 fn get_commands() -> HashMap<&'static str, Vec<&'static str>> {
-    let nodes = vec!["ls"];
-    let settings = vec!["set", "get", "scopes", "unset", "schema"];
+    let apps = vec!["sign"];
+    let nodes = vec!["ls", "inspect"];
+    let settings = vec!["set", "get", "unset", "schema"];
     let swarms = vec!["keygen"];
-    vec![("nodes", nodes), ("settings", settings), ("swarms", swarms)]
-        .into_iter()
-        .collect()
+    let users = vec!["keygen"];
+    vec![
+        ("nodes", nodes),
+        ("settings", settings),
+        ("swarms", swarms),
+        ("apps", apps),
+        ("users", users),
+    ]
+    .into_iter()
+    .collect()
 }
 
 fn cli() -> Command {
@@ -83,7 +92,7 @@ fn cli_fail_on_missing_identity() {
         identity_path
     );
     cli()
-        .args(&["nodes", "ls", "--local", "localhost", "-i", &*identity_path])
+        .args(&["nodes", "ls", "localhost", "-i", &*identity_path])
         .assert()
         .stdout(predicate::str::contains(expected))
         .failure();
@@ -111,26 +120,56 @@ fn internal_subcommand() {
 
 #[test]
 fn version() {
-    cli()
-        .arg("--version")
-        .assert()
-        .stdout(format!("Actyx CLI {}\n", NodeVersion::get()))
-        .success();
-    cli()
-        .arg("nodes")
-        .assert()
-        .stderr(predicate::str::starts_with("ax-nodes \n"))
-        .failure();
-    cli()
-        .env("HERE_BE_DRAGONS", "zøg")
-        .args(&["internal", "--help"])
-        .assert()
-        .stdout(predicate::str::starts_with("ax-internal \n"))
-        .success();
-    cli()
-        .env("HERE_BE_DRAGONS", "zøg")
-        .args(&["internal", "trees"])
-        .assert()
-        .stderr(predicate::str::starts_with("ax-internal-trees \n"))
-        .failure();
+    let first_line = format!("Actyx CLI {}\n", NodeVersion::get_cli());
+    cli().arg("--version").assert().stdout(first_line).success();
+
+    #[derive(PartialEq)]
+    enum Type {
+        Branch,
+        Leaf,
+    }
+    use predicate::str::starts_with;
+    use std::iter::once;
+    use Type::*;
+
+    let commands = btreemap! {
+        vec!["apps"] => Branch,
+        vec!["apps", "sign"] => Leaf,
+        vec!["internal"] => Branch,
+        vec!["internal", "convert"] => Leaf,
+        vec!["internal", "trees"] => Branch,
+        vec!["internal", "trees", "dump"] => Leaf,
+        vec!["internal", "trees", "explore"] => Leaf,
+        vec!["nodes"] => Branch,
+        vec!["nodes", "inspect"] => Leaf,
+        vec!["nodes", "ls"] => Leaf,
+        vec!["settings"] => Branch,
+        vec!["settings", "schema"] => Leaf,
+        vec!["settings", "get"] => Leaf,
+        vec!["settings", "set"] => Leaf,
+        vec!["settings", "unset"] => Leaf,
+        vec!["swarms"] => Branch,
+        vec!["swarms", "keygen"] => Leaf,
+        vec!["users"] => Branch,
+        vec!["users", "keygen"] => Leaf,
+    };
+
+    let first_line = |sub| format!("ax-{} {}\n", sub, NodeVersion::get_cli());
+    for (args, tpe) in commands {
+        if tpe == Branch {
+            cli()
+                .args(&*args)
+                .env("HERE_BE_DRAGONS", "zøg")
+                .assert()
+                .failure()
+                .stderr(starts_with(&*first_line(args.join("-"))));
+        }
+        let name = args.join("-");
+        cli()
+            .args(&*args.into_iter().chain(once("--help")).collect::<Vec<_>>())
+            .env("HERE_BE_DRAGONS", "zøg")
+            .assert()
+            .success()
+            .stdout(starts_with(&*first_line(name)));
+    }
 }

@@ -9,21 +9,13 @@ describe('event service', () => {
         const es = await mkESFromTrial(x)
         const pub1 = await publishRandom(es)
 
-        const data: SubscribeResponse[] = []
-        await new Promise((resolve, reject) => {
-          es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, (x) => {
-            data.push(x)
-          })
-            .then(resolve)
-            .catch(reject)
-          setTimeout(resolve, genericCommunicationTimeout)
+        const ev = await new Promise<SubscribeResponse>((resolve, reject) => {
+          es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, resolve).catch(
+            reject,
+          )
+          setTimeout(reject, genericCommunicationTimeout)
         })
 
-        const ev = data.find((x) => x.lamport === pub1.lamport)
-        if (ev === undefined) {
-          console.log(data)
-          fail()
-        }
         expect(ev.appId).toEqual('com.example.my-app')
         expect(ev).toMatchObject(pub1)
       }))
@@ -32,24 +24,16 @@ describe('event service', () => {
       run(async (x) => {
         const es = await mkESFromTrial(x)
 
-        const data: SubscribeResponse[] = []
-        const done = new Promise((resolve, reject) => {
-          es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, (x) => {
-            data.push(x)
-          })
-            .then(resolve)
-            .catch(reject)
-          setTimeout(resolve, genericCommunicationTimeout)
+        const done = new Promise<SubscribeResponse>((resolve, reject) => {
+          es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, resolve).catch(
+            reject,
+          )
+          setTimeout(reject, genericCommunicationTimeout)
         })
 
         const pub1 = await publishRandom(es)
-        await done
+        const ev = await done
 
-        const ev = data.find((x) => x.lamport === pub1.lamport)
-        if (ev === undefined) {
-          console.log(data)
-          fail()
-        }
         expect(ev.appId).toEqual('com.example.my-app')
         expect(ev).toMatchObject(pub1)
       }))

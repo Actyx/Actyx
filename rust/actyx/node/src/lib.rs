@@ -33,6 +33,7 @@ use crate::{
 use ::util::SocketAddrHelper;
 use anyhow::Context;
 use crossbeam::channel::{bounded, Receiver, Sender};
+use std::net::{IpAddr, Ipv4Addr};
 use std::{convert::TryInto, path::PathBuf, str::FromStr, thread};
 use structopt::StructOpt;
 
@@ -155,8 +156,8 @@ pub struct BindTo {
 impl Default for BindTo {
     fn default() -> Self {
         Self {
-            admin: SocketAddrHelper::unspecified(4458),
-            swarm: SocketAddrHelper::unspecified(4001),
+            admin: SocketAddrHelper::unspecified(4458).expect("unspecified can only fail for port 0"),
+            swarm: SocketAddrHelper::unspecified(4001).expect("unspecified can only fail for port 0"),
             api: "localhost:4454".parse().unwrap(),
         }
     }
@@ -164,12 +165,12 @@ impl Default for BindTo {
 
 impl BindTo {
     /// Uses port `0` for all services. Let the OS allocate a free port.
-    pub fn random() -> Self {
-        Self {
-            admin: SocketAddrHelper::unspecified(0),
-            swarm: SocketAddrHelper::unspecified(0),
-            api: "localhost:0".parse().unwrap(),
-        }
+    pub fn random() -> anyhow::Result<Self> {
+        Ok(Self {
+            admin: SocketAddrHelper::unspecified(0)?,
+            swarm: SocketAddrHelper::unspecified(0)?,
+            api: "localhost:0".parse()?,
+        })
     }
 }
 
@@ -187,14 +188,17 @@ pub struct BindToOpts {
     #[structopt(long, parse(try_from_str = parse_port_maybe_host), default_value = "4454")]
     bind_api: Vec<PortOrHostPort>,
 }
+
 impl TryInto<BindTo> for BindToOpts {
     type Error = anyhow::Error;
     fn try_into(self) -> anyhow::Result<BindTo> {
-        let mut bind_to = BindTo::default();
-        PortOrHostPort::maybe_set(&mut bind_to.api, self.bind_api)?;
-        PortOrHostPort::maybe_set(&mut bind_to.admin, self.bind_admin)?;
-        PortOrHostPort::maybe_set(&mut bind_to.swarm, self.bind_swarm)?;
-        Ok(bind_to)
+        let api = fold(
+            |port| SocketAddrHelper::from_ip_port(IpAddr::V4(Ipv4Addr::LOCALHOST), port),
+            self.bind_api,
+        )?;
+        let admin = fold(SocketAddrHelper::unspecified, self.bind_admin)?;
+        let swarm = fold(SocketAddrHelper::unspecified, self.bind_swarm)?;
+        Ok(BindTo { api, admin, swarm })
     }
 }
 
@@ -219,21 +223,24 @@ fn parse_port_maybe_host(src: &str) -> anyhow::Result<PortOrHostPort> {
     }
 }
 
-fn fold(input: Vec<PortOrHostPort>) -> anyhow::Result<Option<PortOrHostPort>> {
+fn fold(
+    port: impl FnOnce(u16) -> anyhow::Result<SocketAddrHelper>,
+    input: Vec<PortOrHostPort>,
+) -> anyhow::Result<SocketAddrHelper> {
     if input.is_empty() {
-        return Ok(None);
+        anyhow::bail!("no value provided");
     }
     let mut found_port = None;
     let mut host_port: Option<SocketAddrHelper> = None;
     for i in input.into_iter() {
         match i {
-            x @ PortOrHostPort::Port(_) => {
+            PortOrHostPort::Port(p) => {
                 if found_port.is_some() {
                     anyhow::bail!("Multiple single port directives not supported");
                 } else if host_port.is_some() {
                     anyhow::bail!("Both port directive and host:port combination not supported");
                 } else {
-                    found_port.replace(x);
+                    found_port.replace(p);
                 }
             }
             PortOrHostPort::HostPort(addr) => {
@@ -247,24 +254,10 @@ fn fold(input: Vec<PortOrHostPort>) -> anyhow::Result<Option<PortOrHostPort>> {
             }
         }
     }
-    let ret = found_port
-        .or_else(|| host_port.map(PortOrHostPort::HostPort))
-        .expect("Input must not be empty");
-    Ok(Some(ret))
-}
-
-impl PortOrHostPort {
-    pub fn maybe_set(target: &mut SocketAddrHelper, input: Vec<PortOrHostPort>) -> anyhow::Result<()> {
-        if let Some(port_or_host) = fold(input)? {
-            match port_or_host {
-                PortOrHostPort::Port(port) => target.set_port(port),
-                PortOrHostPort::HostPort(addr) => {
-                    let _ = std::mem::replace(target, addr);
-                }
-            }
-        }
-        Ok(())
-    }
+    found_port
+        .map(port)
+        .or_else(|| host_port.map(Ok))
+        .expect("Input must not be empty")
 }
 
 impl ApplicationState {

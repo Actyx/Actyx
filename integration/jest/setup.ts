@@ -68,7 +68,7 @@ const setInitialSettings = async (bootstrap: ActyxNode[], swarmKey: string): Pro
   for (const node of bootstrap) {
     const result = await node.ax.settings
       .set(
-        'com.actyx',
+        '/',
         SettingsInput.FromValue({
           admin: {
             displayName: 'initial',
@@ -137,10 +137,7 @@ const setAllSettings = async (
       let result = { code: 'ERR_NODE_UNREACHABLE' }
       while (result.code !== 'OK' && retry_cnt < 10) {
         await new Promise((res) => setTimeout(res, 1000))
-        result = await node.ax.settings.set(
-          'com.actyx',
-          SettingsInput.FromValue(settings(node.name)),
-        )
+        result = await node.ax.settings.set('/', SettingsInput.FromValue(settings(node.name)))
         if (result.code === 'OK') {
           // authorizedKeys were overwritten to be empty, so add this cli's
           // public key one more time

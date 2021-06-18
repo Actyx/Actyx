@@ -1,12 +1,8 @@
-use crate::cmd::formats::Result;
-use crate::cmd::AxCliCommand;
-use crate::cmd::ConsoleOpt;
+use crate::cmd::{formats::Result, AxCliCommand, ConsoleOpt};
 use anyhow::anyhow;
 use futures::{stream, Stream, TryFutureExt};
 use serde::{Deserialize, Serialize};
-use std::io::Read;
-use std::str::FromStr;
-use std::{convert::TryInto, fs::File};
+use std::{convert::TryInto, fs::File, io::Read};
 use structopt::StructOpt;
 use tracing::*;
 use util::formats::{ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest, AdminResponse};
@@ -14,7 +10,7 @@ use util::formats::{ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminRequest,
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Output {
-    scope: settings::Scope,
+    scope: String,
     settings: serde_json::Value,
 }
 pub struct SettingsSet();
@@ -38,7 +34,7 @@ impl AxCliCommand for SettingsSet {
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(no_version)]
+#[structopt(version = env!("AX_CLI_VERSION"))]
 pub struct SetOpt {
     #[structopt(flatten)]
     actual_opts: SetSettingsCommand,
@@ -49,8 +45,8 @@ pub struct SetOpt {
 #[derive(StructOpt, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SetSettingsCommand {
-    #[structopt(name = "SCOPE", parse(try_from_str = settings::Scope::from_str))]
-    /// Scope for which you want to set the given settings.
+    #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
+    /// Scope for which you want to set the given settings; use `/` for the the root scope.
     scope: settings::Scope,
     #[structopt(name = "VALUE")]
     /// The value you want to set for the given scope as a YAML or JSON string.
@@ -88,12 +84,13 @@ fn load_yml(input: String) -> Result<serde_yaml::Value> {
 }
 
 pub async fn run(mut opts: SetOpt) -> Result<Output> {
-    opts.console_opt.assert_local()?;
     let settings = load_yml(opts.actual_opts.input)?;
     info!("Parsed {:?}", settings);
     let scope = opts.actual_opts.scope.clone();
-    let json = serde_json::to_value(settings)
-        .ax_err_ctx(util::formats::ActyxOSCode::ERR_INTERNAL_ERROR, "Unexpected response")?;
+    let json = serde_json::to_value(settings).ax_err_ctx(
+        util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
+        "cannot parse provided value",
+    )?;
     match opts
         .console_opt
         .authority
@@ -107,7 +104,10 @@ pub async fn run(mut opts: SetOpt) -> Result<Output> {
         )
         .await
     {
-        Ok(AdminResponse::SettingsSetResponse(settings)) => Ok(Output { scope, settings }),
+        Ok(AdminResponse::SettingsSetResponse(settings)) => Ok(Output {
+            scope: super::print_scope(scope),
+            settings,
+        }),
         Ok(r) => Err(ActyxOSError::internal(format!("Unexpected reply: {:?}", r))),
         Err(err) => Err(err),
     }

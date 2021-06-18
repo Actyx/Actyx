@@ -1,7 +1,7 @@
 use crate::cmd::{formats::Result, AxCliCommand, ConsoleOpt};
 use futures::{stream, Stream, TryFutureExt};
 use serde::Serialize;
-use std::{convert::TryInto, str::FromStr};
+use std::convert::TryInto;
 use structopt::StructOpt;
 use util::formats::{ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse};
 
@@ -18,7 +18,7 @@ impl AxCliCommand for SettingsGet {
     }
 }
 #[derive(StructOpt, Debug)]
-#[structopt(no_version)]
+#[structopt(version = env!("AX_CLI_VERSION"))]
 /// Gets settings for a specific scope.
 pub struct GetOpt {
     #[structopt(flatten)]
@@ -33,13 +33,12 @@ struct GetSettingsCommand {
     #[structopt(long = "no-defaults")]
     /// Only return settings explicitly set by the user and skip default values.
     no_defaults: bool,
-    #[structopt(name = "SCOPE", parse(try_from_str = settings::Scope::from_str))]
+    #[structopt(name = "SCOPE", parse(try_from_str = super::parse_scope))]
     /// Scope from which you want to get the settings.
     scope: settings::Scope,
 }
 
 pub async fn run(mut opts: GetOpt) -> Result<serde_json::Value> {
-    opts.console_opt.assert_local()?;
     match opts
         .console_opt
         .authority

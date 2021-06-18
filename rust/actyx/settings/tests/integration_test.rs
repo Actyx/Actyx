@@ -235,13 +235,13 @@ fn testcase_8(dir: TempDir) -> TestResult {
 
     let update_scope = scope.append(&Scope::from_str("general/name").unwrap());
     let update_single_field = repo.update_settings(&update_scope, json!("Some other name"), false)?;
-    assert_eq!(
-        update_single_field,
-        json!({"general":{"someObjects":["/ip4/18.184.146.163/tcp/4001/ipfs/QmcTQtFCTtdv8y3PFzK5zWydBgARxwXfurUaoEkjqa7pS8"],"name":"Some other name","logLevels":{"apps":"INFO","os":"INFO"},"someVal":"f44f72cab04e062d86bfc7afb04bd6f7d73a48a11b8584a49e8c0e9e2b4822d9"},"services":{"dockerRuntime":{"appRestartPolicy":"unless-stopped"},"eventService":{"readOnly":false,"topic":"hot"}}})
-    );
+    assert_eq!(update_single_field, json!("Some other name"));
 
     let get_config = repo.get_settings(&scope, false)?;
-    assert_eq!(get_config, update_single_field);
+    assert_eq!(
+        get_config,
+        json!({"general":{"someObjects":["/ip4/18.184.146.163/tcp/4001/ipfs/QmcTQtFCTtdv8y3PFzK5zWydBgARxwXfurUaoEkjqa7pS8"],"name":"Some other name","logLevels":{"apps":"INFO","os":"INFO"},"someVal":"f44f72cab04e062d86bfc7afb04bd6f7d73a48a11b8584a49e8c0e9e2b4822d9"},"services":{"dockerRuntime":{"appRestartPolicy":"unless-stopped"},"eventService":{"readOnly":false,"topic":"hot"}}})
+    );
     Ok(dir)
 }
 
@@ -375,7 +375,7 @@ fn testcase_16(dir: TempDir) -> TestResult {
     let settings = repo
         .update_settings(&scope.append(&"0".parse().unwrap()), json!(42), false)
         .unwrap();
-    assert_eq!(settings, json!([42]));
+    assert_eq!(settings, json!(42));
 
     let settings = repo.update_settings(&scope, json!([42]), false).unwrap();
     assert_eq!(settings, json!([42]));
@@ -442,7 +442,7 @@ fn testcase_18(dir: TempDir) -> TestResult {
     assert_eq!(
         repo.update_settings(&parent_scope, serde_json::json!({ "child": "temp" }), false)
             .unwrap(),
-        serde_json::json!({ "parent": { "child": "temp" } }),
+        serde_json::json!({ "child": "temp" }),
     );
     assert_eq!(
         repo.update_settings(&parent_scope, serde_json::json!("nope"), true)

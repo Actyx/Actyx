@@ -200,7 +200,7 @@ export async function connectSsh(ssh: Ssh, nodeName: string, sshParams: SshAble,
           'node %s ssh connection (%s) not yet ready (remaining attempts %i)',
           nodeName,
           sshParams.host,
-          attempts
+          attempts,
         )
         // this is expected
       } else {

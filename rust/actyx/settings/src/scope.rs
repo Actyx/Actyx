@@ -5,6 +5,8 @@ const ROOT_SCOPE: char = '.';
 pub enum Error {
     #[error("Scope [{0}] contains empty parts.")]
     InvalidScope(Scope),
+    #[error("Scope [{0}] cannot be parsed.")]
+    MalformedScope(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
