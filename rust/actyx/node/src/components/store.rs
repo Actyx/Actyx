@@ -134,7 +134,6 @@ impl Component<StoreRequest, StoreConfig> for Store {
         Ok(())
     }
     fn extract_settings(&self, s: Settings) -> Result<StoreConfig> {
-        tracing::info!("{:?}", self.bind_to);
         let keypair = self
             .keystore
             .read()

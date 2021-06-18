@@ -263,6 +263,10 @@ describe('auth http', () => {
 
   it('should fail for a valid token when node is cycled', () =>
     runWithNewProcess(async (node) => {
+      if (node.target.os === 'windows') {
+        // FIXME #6990 releasing the LockFile is hard to ensure
+        return
+      }
       const token = await getToken(trialManifest, node._private.httpApiOrigin)
         .then((x) => x.json())
         .then((x) => x.token)
