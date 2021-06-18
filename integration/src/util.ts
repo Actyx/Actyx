@@ -170,7 +170,7 @@ const getLog = async (
         }
       })
       p.stdout?.on('end', () => {
-        process.stderr.write(`${ts()} ended`)
+        process.stderr.write(`${ts()} ended\n`)
       })
       p.then(res, res)
     },
@@ -276,6 +276,7 @@ export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<
     _private: {
       shutdown: async () => {
         process.kill()
+        await process.catch(() => ({}))
         sshProcess?.kill()
       },
       actyxBinaryPath: node._private.actyxBinaryPath,
