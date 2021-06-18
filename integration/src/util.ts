@@ -1,10 +1,11 @@
 import { ExecaChildProcess, ExecaError, ExecaReturnValue } from 'execa'
 import { CLI } from './cli'
 import { runOnEvery } from './infrastructure/hosts'
-import { mkProcessLogger } from './infrastructure/mkProcessLogger'
+import { mkProcessLogger, netString } from './infrastructure/mkProcessLogger'
 import { currentAxBinary } from './infrastructure/settings'
 import { Ssh } from './infrastructure/ssh'
 import { ActyxNode } from './infrastructure/types'
+import { mySuite, testName } from './tests/event-service/utils.support.test'
 
 export const getHttpApi = (x: ActyxNode): string => x._private.httpApiOrigin
 
@@ -155,15 +156,21 @@ const getLog = async (
       const logs: string[] = []
       setTimeout(() => res([logs, p, workdir, ssh]), timeout)
       const { log } = mkProcessLogger((s) => logs.push(s), '', triggers)
+      const ts = () => `${new Date().toISOString()} node ${mySuite()} ${testName()}`
       p.stdout?.on('data', (buf) => {
+        process.stderr.write(`${ts()} ${netString(buf)}`)
         if (log('stdout', buf)) {
           res([logs, p, workdir, ssh])
         }
       })
       p.stderr?.on('data', (buf) => {
+        process.stderr.write(`${ts()} ${netString(buf)}`)
         if (log('stderr', buf)) {
           res([logs, p, workdir, ssh])
         }
+      })
+      p.stdout?.on('end', () => {
+        process.stderr.write(`${ts()} ended`)
       })
       p.then(res, res)
     },

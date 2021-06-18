@@ -99,15 +99,6 @@ fn cli_fail_on_missing_identity() {
 }
 
 #[test]
-fn cli_schema() {
-    cli()
-        .args(&["settings", "schema", "0.0.0.0"])
-        .assert()
-        .failure()
-        .stdout("[ERR_NODE_UNREACHABLE] Error: unable to reach node, additional message: /ip4/0.0.0.0/tcp/4458 is unreachable\n");
-}
-
-#[test]
 fn internal_subcommand() {
     cli().args(&["internal", "help"]).assert().failure();
     cli()

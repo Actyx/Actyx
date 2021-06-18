@@ -86,7 +86,7 @@ describe('ax settings', () => {
 
     test('return OK after unset', () =>
       runOnEvery(async (node) => {
-        if (node.target.os === 'android') {
+        if (node.host === 'android') {
           return
         }
         const n = await newProcess(node)
@@ -115,7 +115,7 @@ describe('ax settings', () => {
 
     test('return OK for valid setting', () =>
       runOnEvery(async (node) => {
-        if (node.target.os === 'android') {
+        if (node.host === 'android') {
           return
         }
         const n = await newProcess(node)
@@ -132,7 +132,7 @@ describe('ax settings', () => {
 
     test('return error for invalid setting', () =>
       runOnEvery(async (node) => {
-        if (node.target.os === 'android') {
+        if (node.host === 'android') {
           return
         }
         const n = await newProcess(node)
