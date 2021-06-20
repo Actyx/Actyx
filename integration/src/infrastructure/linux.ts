@@ -183,7 +183,7 @@ export function execSsh(ssh: Ssh) {
   }
 }
 
-export async function connectSsh(ssh: Ssh, nodeName: string, sshParams: SshAble, maxAttempts = 15) {
+export async function connectSsh(ssh: Ssh, nodeName: string, sshParams: SshAble, maxAttempts = 25) {
   let connected = false
   let attempts = maxAttempts
   while (!connected && attempts-- > 0) {

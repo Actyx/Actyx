@@ -47,7 +47,9 @@ export const waitForNodeToBeConfigured = async (node: ActyxNode): Promise<void> 
     }
   })
   await waitFor(() => {
-    fetch(node._private.httpApiOrigin, { method: 'get' })
+    fetch(node._private.httpApiOrigin, { method: 'get' }).catch((e) => {
+      throw new Error(`waitForNodeToBeConfigured ${node._private.httpApiOrigin}: ${e}`)
+    })
   })
 }
 

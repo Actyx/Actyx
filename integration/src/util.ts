@@ -5,6 +5,7 @@ import { mkProcessLogger, netString } from './infrastructure/mkProcessLogger'
 import { currentAxBinary } from './infrastructure/settings'
 import { Ssh } from './infrastructure/ssh'
 import { ActyxNode } from './infrastructure/types'
+import { waitForNodeToBeConfigured } from './retry'
 import { mySuite, testName } from './tests/event-service/utils.support.test'
 
 export const getHttpApi = (x: ActyxNode): string => x._private.httpApiOrigin
@@ -215,6 +216,24 @@ export type BoundTo = {
   ssh?: Ssh
 }
 
+export const retryWhileLocked = async (
+  tries: number,
+  p: () => Promise<BoundTo>,
+): Promise<BoundTo> => {
+  for (;;) {
+    try {
+      return await p()
+    } catch (err) {
+      if (/data directory .* is locked by another Actyx process/.test(`${err}`) && tries > 1) {
+        tries -= 1
+        await new Promise((res) => setTimeout(res, 1000))
+      } else {
+        throw err
+      }
+    }
+  }
+}
+
 export const startup = async (proc: Promise<ActyxProcess>): Promise<BoundTo> => {
   const result = await getLog(proc, ['NODE_STARTED_BY_HOST'], 10_000)
   if (!Array.isArray(result)) {
@@ -248,7 +267,9 @@ export const startup = async (proc: Promise<ActyxProcess>): Promise<BoundTo> => 
 }
 
 export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<ActyxNode> => {
-  const { process, workdir, ssh, ...bound } = await startup(runActyx(node, workingDir, randomBinds))
+  const { process, workdir, ssh, ...bound } = await retryWhileLocked(workingDir ? 15 : 1, () =>
+    startup(runActyx(node, workingDir, randomBinds)),
+  )
   const api = bound.api.find(([addr]) => addr === '127.0.0.1')?.[1]
   const admin = bound.admin.find(([addr]) => addr === '127.0.0.1')?.[1]
   if (api === undefined || admin === undefined) {
@@ -268,7 +289,7 @@ export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<
   )
   const axHost = `localhost:${adminPort}`
   const ax = await CLI.build(axHost, await currentAxBinary())
-  return {
+  const newNode = {
     name: nodeName,
     target: node.target,
     host: node.host,
@@ -289,6 +310,8 @@ export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<
       apiEventsPort: apiPort,
     },
   }
+  await waitForNodeToBeConfigured(newNode)
+  return newNode
 }
 
 export const power_cycle = async (node: ActyxNode): Promise<void> => {
