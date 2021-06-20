@@ -332,6 +332,8 @@ Following `FROM`, three different query types can be specified.
 - `isLocal`: Returns all events within the specified bounds emitted by the local node backing the Events API
 - `allEvents`: Returns all events within the specified bounds known by the node backing the Events API
 
+All three query types can be combined using a combination of the boolean expressions `|` and `&` and parantheses, e.g. `FROM isLocal & ('tag-01' | 'tag-02')`.
+
 #### Required: Ordering (`order`)
 
 The `order` object specifies in which order the events should be returned to the caller. There are three options, one of which must be specified:
@@ -506,6 +508,8 @@ Following `FROM`, three different query types can be specified.
 - [Tag query](../conceptual/tags.mdx): Arbitrary unicode strings in single quotes, e.g. `FROM 'tag-01'`
 - `isLocal`: Returns all events within the specified bounds emitted by the local node backing the Events API
 - `allEvents`: Returns all events within the specified bounds known by the node backing the Events API
+
+All three query types can be combined using a combination of the boolean expressions `|` and `&` and parantheses, e.g. `FROM isLocal & ('tag-01' | 'tag-02')`.
 
 #### Optional: Lower bound for offsets (`lowerBound`)
 
