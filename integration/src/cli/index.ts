@@ -13,6 +13,7 @@ export class CLI {
   public readonly settings
   public readonly swarms
   public readonly users
+  public readonly internal
   public readonly version
   public readonly shortVersion
 
@@ -49,6 +50,7 @@ export class CLI {
     this.settings = exec.settings
     this.swarms = exec.swarms
     this.users = exec.users
+    this.internal = exec.internal
     this.version = exec.version
     this.shortVersion = shortVersion
   }

@@ -36,11 +36,8 @@ impl libp2p_streaming_response::Codec for AdminProtocol {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum AdminRequest {
     NodesLs,
-    // TODO
-    //    AppsToken {
-    //        app_id: AppId,
-    //    },
     NodesInspect,
+    NodesShutdown,
     SettingsGet {
         scope: settings::Scope,
         no_defaults: bool,
@@ -63,7 +60,6 @@ pub enum AdminRequest {
 pub enum AdminResponse {
     NodesLsResponse(NodesLsResponse),
     NodesInspectResponse(NodesInspectResponse),
-    // AppsTokenResponse(String),
     SettingsGetResponse(serde_json::Value),
     SettingsSetResponse(serde_json::Value),
     SettingsSchemaResponse(serde_json::Value),

@@ -52,6 +52,15 @@ struct Connected {
     connection: Multiaddr,
 }
 
+impl From<&Connected> for NodeInfo {
+    fn from(this: &Connected) -> NodeInfo {
+        NodeInfo {
+            id: to_node_id(this.remote_peer_id),
+            peer_id: this.remote_peer_id,
+        }
+    }
+}
+
 impl fmt::Debug for Connected {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Connected to {}", self.remote_peer_id)
@@ -91,18 +100,38 @@ impl NodeConnection {
         })
     }
 
-    pub async fn request(&mut self, key: &AxPrivateKey, request: AdminRequest) -> ActyxOSResult<AdminResponse> {
+    async fn send(&mut self, key: &AxPrivateKey, request: AdminRequest) -> ActyxOSResult<Connected> {
         let kp = key.to_libp2p_pair();
+        let mut conn = self.establish_connection(kp).await?;
+        conn.swarm
+            .behaviour_mut()
+            .admin_api
+            .request(conn.remote_peer_id, request);
+        Ok(conn)
+    }
+
+    pub async fn shutdown(&mut self, key: &AxPrivateKey) -> ActyxOSResult<()> {
+        let mut conn = self.send(key, AdminRequest::NodesShutdown).await?;
+        let info = NodeInfo::from(&conn);
+        match Self::wait_for_next_response(&mut conn.swarm, &info).await {
+            Err(e) if e.code() == ActyxOSCode::ERR_NODE_UNREACHABLE => Ok(()),
+            x => Err(ActyxOSError::new(
+                ActyxOSCode::ERR_INTERNAL_ERROR,
+                format!("unexpected response for shutdown: {:?}", x),
+            )),
+        }
+    }
+
+    pub async fn request(&mut self, key: &AxPrivateKey, request: AdminRequest) -> ActyxOSResult<AdminResponse> {
         let Connected {
             remote_peer_id,
             mut swarm,
-            connection,
-        } = self.establish_connection(kp).await?;
-        swarm.behaviour_mut().admin_api.request(remote_peer_id, request);
+            connection: _conn,
+        } = self.send(key, request).await?;
+
         let node_info = NodeInfo {
             id: to_node_id(remote_peer_id),
             peer_id: remote_peer_id,
-            connection,
         };
 
         // It can be assumed that there's an established connection to the
@@ -158,7 +187,6 @@ impl NodeConnection {
 pub struct NodeInfo {
     pub id: NodeId,
     pub peer_id: PeerId,
-    pub connection: Multiaddr,
 }
 
 /// Converts a libp2p PeerId to a NodeId.
