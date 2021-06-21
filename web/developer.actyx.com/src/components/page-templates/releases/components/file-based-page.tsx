@@ -40,10 +40,12 @@ export const Page: React.FC<{
   otherVersions: Version[]
   product: Product
   productDisplayName: string
-  downloads: Download[]
+  downloads: Download[] | ((version: Version) => Download[])
 }> = ({ version, commit, changes, otherVersions, product, productDisplayName, downloads }) => {
   const history = useHistory()
   const allVersions = [version].concat(otherVersions)
+
+  const downloads_: Download[] = typeof downloads === 'function' ? downloads(version) : downloads
 
   const selectedOtherVersion = (version: Version) => {
     history.push(`/releases/${product}/${version}`)
@@ -77,7 +79,7 @@ export const Page: React.FC<{
               {productDisplayName} {version}
             </h1>
             <p className={styles.commit}>
-              <code>{commit}</code>
+              <code>{commit.substr(0, 8)}</code>
             </p>
             {!versionIsNewest(version, otherVersions) && (
               <div className={styles.alert}>
@@ -114,7 +116,7 @@ export const Page: React.FC<{
           <Col width="6">
             <h2>Downloads</h2>
             <ul>
-              {downloads.map(({ platform, ext, files }) => (
+              {downloads_.map(({ platform, ext, files }) => (
                 <Download key={platform} platform={platform} ext={ext} files={files} />
               ))}
             </ul>

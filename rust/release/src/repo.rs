@@ -114,7 +114,7 @@ pub fn get_changes_for_product(
     to_incl: &Oid,
     product: &Product,
     commit_ids_to_ignore: &[Oid],
-) -> anyhow::Result<Vec<Change>> {
+) -> anyhow::Result<Vec<(String, Change)>> {
     let commits = get_commits(repo, from_excl, to_incl)?;
     let mut changes = vec![];
     for commit in commits {
@@ -126,7 +126,8 @@ pub fn get_changes_for_product(
                         .lines()
                         .filter_map(try_change_from_line)
                         .filter(|c| &c.product == product)
-                        .collect::<Vec<Change>>(),
+                        .map(|c| (commit.id().to_string(), c))
+                        .collect::<Vec<(String, Change)>>(),
                 )
             }
         }

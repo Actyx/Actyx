@@ -78,7 +78,7 @@ const plugin = () => ({
     const versionsAndCommits = await getVersionsAndCommits()
     console.log(`cosmos-versions found the following product versions:`)
     Object.entries(versionsAndCommits).forEach(([name, vacs]) => {
-      console.log(` - ${name}: ${vacs.map(([v, h]) => `${v}:${h}`).join(', ')}`)
+      console.log(` - ${name}: ${vacs.map(([version, hash]) => `${version}:${hash}`).join(', ')}`)
     })
 
     /**
@@ -99,10 +99,20 @@ const plugin = () => ({
       history[product] = []
       for (vac of versionsAndCommits[product]) {
         const [version, commit] = vac
+        const changes = await getChanges(product, version)
+        console.log(`Changelog for version ${version} of ${product}:`)
+        if (changes.length < 1) {
+          console.log('  none')
+        } else {
+          changes.forEach((change) => {
+            console.log(`  ${change}`)
+          })
+        }
+
         history[product].push({
           version,
           commit,
-          changes: await getChanges(product, version),
+          changes,
         })
       }
     }

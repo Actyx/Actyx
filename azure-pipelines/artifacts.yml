@@ -40,7 +40,6 @@ stages:
             workingDirectory: rust/release/target/release
             name: getVersions
 
-
   - stage: makeArtifacts
     dependsOn: [calculateActyxVersion]
     displayName: Make all artifacts
@@ -318,7 +317,7 @@ stages:
             name: cleanupInstances
             displayName: Clean up old integration test instances
 
-  - stage: release
+  - stage: createReleaseCandidateIA
     condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
     dependsOn:
       - integration
@@ -326,27 +325,15 @@ stages:
       name: Native
     jobs:
       - job:
-        displayName: Release
+        displayName: Create a release candidate IA
         steps:
           - checkout: self
             persistCredentials: true
           - bash: |
               set -e
               cargo run --release -- release
-              # Checking out original commit since release may put us on a new release branch
-              git checkout $(Build.SourceVersion)
             workingDirectory: rust/release
             name: release
-            displayName: Maybe create a new release
-            env:
-              BASH_ENV: "~/.bashrc"
-          - bash: |
-              set -e
-              for p in actyx cli node-manager; do
-                cargo run --release -- publish $p
-              done
-            workingDirectory: rust/release
-            name: updatePublishedArtifacts
-            displayName: Update published artifacts
+            displayName: Create a release candidate if changes
             env:
               BASH_ENV: "~/.bashrc"

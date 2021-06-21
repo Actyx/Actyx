@@ -1,10 +1,12 @@
 import React from 'react'
 import { Product, Version, Change, Hash, Download } from './types'
+import { CLI_DOWNLOADS_V1_1_5 } from './v1-legacy-downloads'
 import { Page as FileBasedPage } from './components/file-based-page'
+import semver from 'semver'
 
 // $C gets replaced with the commit hash
 // $V gets replaced with the version
-const DOWNLOADS: Download[] = [
+const DOWNLOADS_V2_0_0: Download[] = [
   {
     platform: 'Linux',
     ext: '.tar.gz',
@@ -52,6 +54,15 @@ const DOWNLOADS: Download[] = [
     ],
   },
 ]
+const downloads = (version: Version): Download[] => {
+  if (semver.satisfies(version, '>=2.0.0')) {
+    return DOWNLOADS_V2_0_0
+  } else if (semver.satisfies(version, '1.1.5')) {
+    return CLI_DOWNLOADS_V1_1_5
+  } else {
+    return []
+  }
+}
 
 const Page: React.FC<{
   data: {
@@ -64,7 +75,7 @@ const Page: React.FC<{
   }
 }> = ({ data }) => {
   return (
-    <FileBasedPage {...data} product="cli" productDisplayName="Actyx CLI" downloads={DOWNLOADS} />
+    <FileBasedPage {...data} product="cli" productDisplayName="Actyx CLI" downloads={downloads} />
   )
 }
 

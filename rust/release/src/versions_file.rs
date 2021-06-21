@@ -33,7 +33,7 @@ pub struct CalculationResult {
     pub prev_commit: Oid,
     pub prev_version: Version,
     pub new_version: Option<Version>,
-    pub changes: Vec<Change>,
+    pub changes: Vec<(String, Change)>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -151,7 +151,8 @@ impl VersionsFile {
         //changes.sort_by(|a, b| b.partial_cmp(a).unwrap());
         changes.sort();
 
-        let new_version = apply_changes(&product, &last_version, &changes);
+        let just_changes: Vec<Change> = changes.clone().into_iter().map(|c| c.1).collect();
+        let new_version = apply_changes(&product, &last_version, &just_changes);
 
         Ok(CalculationResult {
             prev_commit: last_hash,
@@ -182,7 +183,7 @@ impl VersionsFile {
         product: &Product,
         version: &Version,
         ignore: &VersionsIgnoreFile,
-    ) -> anyhow::Result<Vec<Change>> {
+    ) -> anyhow::Result<Vec<(String, Change)>> {
         let all_releases: Vec<_> = self
             .versions()
             .into_iter()
@@ -224,7 +225,7 @@ impl VersionsFile {
 
         // We sort the changes by severity (i.e. breaking change first, then feat, etc.). See
         // the PartialOrd implementation for ChangeKind for ordering details.
-        changes.sort_by(|a, b| b.partial_cmp(a).unwrap());
+        changes.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
 
         Ok(changes)
     }

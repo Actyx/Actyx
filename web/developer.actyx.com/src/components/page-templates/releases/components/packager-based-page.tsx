@@ -58,7 +58,7 @@ export const Page: React.FC<{
               {productDisplayName} {version}
             </h1>
             <p className={styles.commit}>
-              <code>{commit}</code>
+              <code>{commit.substr(0, 8)}</code>
             </p>
             {!versionIsNewest(version, otherVersions) && (
               <div className={styles.alert}>

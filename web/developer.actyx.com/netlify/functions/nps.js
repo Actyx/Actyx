@@ -39,7 +39,7 @@ const postResultToSlack = (score) =>
     req.end()
   })
 
-exports.handler = async function (event, context) {
+exports.handler = async function (event) {
   const { result } = JSON.parse(event.body)
   try {
     await postResultToSlack(result)
