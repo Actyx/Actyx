@@ -53,17 +53,22 @@ export const actyxDockerImage = async (arch: Arch, version: string): Promise<str
   const repo = 'actyx/cosmos'
   const inspect = await execa.command(`docker manifest inspect ${repo}:actyx-${version}`)
   const json = JSON.parse(inspect.stdout)
-  const manifest = rightOrThrow(DockerManifest.decode(json), json)
 
-  const targetPlatform = archToDockerPlatform(arch)
+  return (
+    DockerManifest.decode(json)
+      .map(({ manifests }) => {
+        const targetPlatform = archToDockerPlatform(arch)
+        const sha = manifests.filter(
+          ({ platform }: DockerSingleManifest) =>
+            platform.architecture === targetPlatform.architecture &&
+            platform.variant === targetPlatform.variant,
+        )[0].digest
 
-  const sha = manifest.manifests.filter(
-    ({ platform }: DockerSingleManifest) =>
-      platform.architecture === targetPlatform.architecture &&
-      platform.variant === targetPlatform.variant,
-  )[0].digest
-
-  return `${repo}@${sha}`
+        return `${repo}@${sha}`
+      })
+      // Assume that this is not a multi-arch manifest, but a single-arch image
+      .getOrElse(`${repo}:actyx-${version}`)
+  )
 }
 
 export const windowsActyxInstaller = async (arch: Arch): Promise<string> =>
