@@ -68,6 +68,7 @@ Take a look at the [event streams guide](../conceptual/event-streams.mdx) to lea
   ]}
 >
 
+
 <TabItem value="ref">
 
 
@@ -260,6 +261,7 @@ echo '
 </TabItem>
 </Tabs>
 
+
 ---
 
 ## Query event streams
@@ -275,7 +277,9 @@ You can query the Events API for bounded sets of events in one or more event str
   ]}
 >
 
+
 <TabItem value="ref">
+
 
 ### Request
 
@@ -321,7 +325,14 @@ The `upperBound` is **required.** For every subscribed stream where no upper bou
 #### Required: Query (`query`)
 
 The `query` field specifies a tag query that defines which events should be queried.
-Every `query` must begin with `FROM` followed by the tags in single quotes.
+Every `query` must begin with the keyword `FROM`.
+Following `FROM`, three different query types can be specified.
+
+- [Tag query](../conceptual/tags.mdx): Arbitrary unicode strings in single quotes, e.g. `FROM 'tag-01'`
+- `isLocal`: Returns all events within the specified bounds emitted by the local node backing the Events API
+- `allEvents`: Returns all events within the specified bounds known by the node backing the Events API
+
+All three query types can be combined using a combination of the boolean expressions `|` and `&` and parantheses, e.g. `FROM isLocal & ('tag-01' | 'tag-02')`.
 
 #### Required: Ordering (`order`)
 
@@ -367,6 +378,7 @@ If an error is encountered while processing the stream of events, the stream wil
 
 </TabItem>
 <TabItem value="ex">
+
 
 See the following example using cURL:
 
@@ -441,6 +453,7 @@ curl \
 </TabItem>
 </Tabs>
 
+
 ---
 
 ## Subscribe to event streams
@@ -458,6 +471,7 @@ TODO: clarify ordering
     { label: 'Example', value: 'ex' },
   ]}
 >
+
 
 <TabItem value="ref">
 
@@ -487,8 +501,15 @@ You use the request body to specify the details of your request as documented in
 
 #### Required: Query (`query`)
 
-The `query` field specifies a tag query that defines how events should be filtered.
-Every `query` must begin with `FROM` followed by the tags in single quotes.
+The `query` field specifies a query that defines how events should be filtered.
+Every `query` must begin with the keyword `FROM`.
+Following `FROM`, three different query types can be specified.
+
+- [Tag query](../conceptual/tags.mdx): Arbitrary unicode strings in single quotes, e.g. `FROM 'tag-01'`
+- `isLocal`: Returns all events within the specified bounds emitted by the local node backing the Events API
+- `allEvents`: Returns all events within the specified bounds known by the node backing the Events API
+
+All three query types can be combined using a combination of the boolean expressions `|` and `&` and parantheses, e.g. `FROM isLocal & ('tag-01' | 'tag-02')`.
 
 #### Optional: Lower bound for offsets (`lowerBound`)
 
@@ -570,6 +591,7 @@ echo '
 </TabItem>
 </Tabs>
 
+
 ---
 
 ## Subscribe to event streams monotonically
@@ -585,7 +607,9 @@ You can use the Events API to subscribe to event streams with the guarantee that
   ]}
 >
 
+
 <TabItem value="ref">
+
 
 ### Request
 
@@ -682,6 +706,7 @@ If an error is encountered while processing the stream of events, the stream wil
 
 </TabItem>
 <TabItem value="ex">
+
 
 See the following example using cURL:
 
