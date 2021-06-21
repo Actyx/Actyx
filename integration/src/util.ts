@@ -241,7 +241,7 @@ export const retryWhileLockedOrBound = async (
 }
 
 export const startup = async (proc: Promise<ActyxProcess>): Promise<BoundTo> => {
-  const result = await getLog(proc, ['NODE_STARTED_BY_HOST'], 10_000)
+  const result = await getLog(proc, ['NODE_STARTED_BY_HOST'], 20_000)
   if (!Array.isArray(result)) {
     throw new Error(`Actyx process didn’t start:\n${result.stderr}`)
   }
