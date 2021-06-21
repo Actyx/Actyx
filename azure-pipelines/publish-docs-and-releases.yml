@@ -74,14 +74,14 @@ stages:
               echo "++ Artifact publication ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
               echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
               echo ""
-              artifact_publish_opts=""
-              if [[ "$publication" = draft ]]; then
-                echo "We are going to do a dry-run of artifact publication since this is DRAFT release"
-                artifact_publish_opts="--dry-run"
-              fi
               for p in actyx cli node-manager; do
                 echo "Publishing $p artifacts:"
-                ./target/release/cosmos-release publish "$p" "$artifact_publish_opts"
+                if [[ "$publication" = draft ]]; then
+                  echo "We are going to do a dry-run of artifact publication since this is DRAFT release"
+                  ./target/release/cosmos-release publish "$p" --dry-run
+                else
+                  ./target/release/cosmos-release publish "$p"
+                fi
               done
               echo ""
               echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
