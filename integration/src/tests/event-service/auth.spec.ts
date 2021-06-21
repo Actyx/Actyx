@@ -286,8 +286,7 @@ describe('auth http', () => {
       expect(result).toEqual({ code: 'ERR_TOKEN_EXPIRED', message: 'Expired token.' })
     }))
 
-  // TODO: test expired token response, for that node's AX_API_TOKEN_VALIDITY
-  // env value needs to be set to 1s. What is the best way to do so.
+  // TODO: test expired token response, idea is to add a parameter to the auth call that can shorten the token lifetime
 })
 
 describe('auth ws', () => {
