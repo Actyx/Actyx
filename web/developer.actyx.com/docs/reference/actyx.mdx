@@ -11,18 +11,18 @@ image: /images/defaults/default.svg
 
 ## Supported OS and architectures
 
-| Platform | Supported OS                 | Supported architecture                                                                     |
-| -------- | ---------------------------- | ------------------------------------------------------------------------------------------ |
-| Windows  | Windows 10 or Windows Server 2019      | x86_64                                                                                     |
-| Android  | Android 6+                   | x86, arm64-v8a or armeabi-v7a [ABI](https://developer.android.com/ndk/guides/abis.html#sa) |
-| Linux    | Ubuntu 18.04+ or Alpine 3.9+ | x86_64, aarch64, armv7 or arm                                                              |
-| Docker   | Docker 20+                   | x86_64 or aarch64                                                                          |
-| macOS    | Big Sur                      | x86_64 or aarch64                                                |
+| Platform | Supported OS                      | Supported architecture                                                                     |
+| -------- | --------------------------------- | ------------------------------------------------------------------------------------------ |
+| Windows  | Windows 10 or Windows Server 2019 | x86_64                                                                                     |
+| Android  | Android 6+                        | x86, arm64-v8a or armeabi-v7a [ABI](https://developer.android.com/ndk/guides/abis.html#sa) |
+| Linux    | Ubuntu 18.04+ or Alpine 3.9+      | x86_64, aarch64, armv7 or arm                                                              |
+| Docker   | Docker 20+                        | x86_64 or aarch64                                                                          |
+| macOS    | Big Sur                           | x86_64 or aarch64                                                                          |
 
 ## Networking Requirements
 
-| Device                                                                                                                                                                                       | LAN/WLAN                                                                                                                                                                                             |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Device                                                                                                                                                               | LAN/WLAN                                                                                                                                                                                 |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | <ul><li>ports 4001, 4454, 4458 unused</li><li>Incoming/outgoing connections on ports 4001, 4454, 4458 allowed</li><li>All nodes connected to same LAN/WLAN</li></ul> | <ul><li>ports 4001, 4454, 4458 unblocked</li><li>UDP unicast connections allowed (mDNS protocol, port 5353, IPv4 224.0.0.251, IPv6 ff02::fb)</li><li>Client-isolation disabled</li></ul> |
 
 It is **not** supported to put firewalls between devices of the same swarm.

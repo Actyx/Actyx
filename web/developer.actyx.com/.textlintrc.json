@@ -3,7 +3,7 @@
     "comments": true
   },
   "rules": {
-    "no-todo": true,
+    "no-todo": false,
     "no-start-duplicated-conjunction": {
       "interval": 2
     },
@@ -15,7 +15,9 @@
   },
   "plugins": {
     "@textlint/markdown": {
-      "extensions": [".mdx"]
+      "extensions": [
+        ".mdx"
+      ]
     }
   }
 }
