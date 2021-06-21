@@ -13,11 +13,10 @@ import execa from 'execa'
 import * as path from 'path'
 import { rightOrThrow } from '../infrastructure/rightOrThrow'
 
-const exec = async (binaryPath: string, args: string[], cwd?: string) => {
+const exec = async (binaryPath: string, args: string[], options?: execa.Options) => {
   try {
-    const option: execa.Options | undefined = cwd ? { cwd } : undefined
     const binaryPathResolved = path.resolve(binaryPath)
-    const response = await execa(binaryPathResolved, [`-j`].concat(args), option)
+    const response = await execa(binaryPathResolved, [`-j`].concat(args), options)
     return JSON.parse(response.stdout)
   } catch (error) {
     try {
@@ -78,6 +77,9 @@ type Exec = {
     set: (scope: string, input: SettingsInput) => Promise<Response_Settings_Set>
     unset: (scope: string) => Promise<Response_Settings_Unset>
     schema: () => Promise<Response_Settings_Schema>
+  }
+  internal: {
+    shutdown: () => Promise<void>
   }
 }
 
@@ -149,6 +151,16 @@ export const mkExec = (binary: string, addr: string, identityPath: string): Exec
     schema: async () => {
       const response = await exec(binary, [`settings`, `schema`, addr, '-i', identityPath])
       return rightOrThrow(Response_Settings_Schema.decode(response), response)
+    },
+  },
+  internal: {
+    shutdown: async (): Promise<void> => {
+      const response = await exec(binary, [`internal`, `shutdown`, addr, `-i`, identityPath], {
+        env: { HERE_BE_DRAGONS: 'zøg' },
+      })
+      if (response.code !== 'OK' && response.code !== 'ERR_NODE_UNREACHABLE') {
+        throw new Error(`shutdown failed: ${JSON.stringify(response)}`)
+      }
     },
   },
 })

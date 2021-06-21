@@ -2,7 +2,6 @@ import { ExecaChildProcess, ExecaError, ExecaReturnValue } from 'execa'
 import { CLI } from './cli'
 import { runOnEvery } from './infrastructure/hosts'
 import { mkProcessLogger, netString } from './infrastructure/mkProcessLogger'
-import { currentAxBinary } from './infrastructure/settings'
 import { Ssh } from './infrastructure/ssh'
 import { ActyxNode } from './infrastructure/types'
 import { waitForNodeToBeConfigured } from './retry'
@@ -216,10 +215,12 @@ export type BoundTo = {
   ssh?: Ssh
 }
 
-export const retryWhileLocked = async (
+export const retryWhileLockedOrBound = async (
+  nodeName: string,
   tries: number,
   p: () => Promise<BoundTo>,
 ): Promise<BoundTo> => {
+  let collisions = 100
   for (;;) {
     try {
       return await p()
@@ -227,6 +228,11 @@ export const retryWhileLocked = async (
       if (/data directory .* is locked by another Actyx process/.test(`${err}`) && tries > 1) {
         tries -= 1
         await new Promise((res) => setTimeout(res, 1000))
+      } else if (/ERR_PORT_COLLISION/.test(`${err}`) && collisions > 1) {
+        // this is called only with randomBinds, so collisions are purely local Linux kernel race conditions
+        // between opening, closing, and reopening a port ⇒ just retry
+        collisions -= 1
+        process.stderr.write(`retrying process creation for ${nodeName}`)
       } else {
         throw err
       }
@@ -267,8 +273,10 @@ export const startup = async (proc: Promise<ActyxProcess>): Promise<BoundTo> => 
 }
 
 export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<ActyxNode> => {
-  const { process, workdir, ssh, ...bound } = await retryWhileLocked(workingDir ? 15 : 1, () =>
-    startup(runActyx(node, workingDir, randomBinds)),
+  const { process, workdir, ssh, ...bound } = await retryWhileLockedOrBound(
+    `${node.name} ${mySuite()} ${testName()}`,
+    workingDir ? 15 : 1,
+    () => startup(runActyx(node, workingDir, randomBinds)),
   )
   const api = bound.api.find(([addr]) => addr === '127.0.0.1')?.[1]
   const admin = bound.admin.find(([addr]) => addr === '127.0.0.1')?.[1]
@@ -288,7 +296,10 @@ export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<
     `${new Date().toISOString()} ${nodeName} started, api=${apiPort} admin=${adminPort}, workdir=${workdir}\n`,
   )
   const axHost = `localhost:${adminPort}`
-  const ax = await CLI.build(axHost, await currentAxBinary())
+  const ax =
+    node._private.workingDir === workingDir
+      ? await CLI.buildWithIdentityPath(axHost, node._private.axBinaryPath, node.ax.identityPath)
+      : await CLI.build(axHost, node._private.axBinaryPath)
   const newNode = {
     name: nodeName,
     target: node.target,
@@ -296,6 +307,7 @@ export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<
     ax,
     _private: {
       shutdown: async () => {
+        await ax.internal.shutdown()
         process.kill()
         await process.catch(() => ({}))
         sshProcess?.kill()
