@@ -7,7 +7,6 @@ import https from 'https'
 import { ensureDirSync } from 'fs-extra'
 import * as t from 'io-ts'
 import { DockerPlatform, archToDockerPlatform } from './linux'
-import { rightOrThrow } from './rightOrThrow'
 import { tmpdir } from 'os'
 import { randIdentifier } from './util'
 
@@ -51,19 +50,29 @@ export const actyxCliWindowsBinary = async (arch: Arch): Promise<string> =>
 // the fact that we have to use `aarch64` hosts to test `armv7` images.
 export const actyxDockerImage = async (arch: Arch, version: string): Promise<string> => {
   const repo = 'actyx/cosmos'
-  const inspect = await execa.command(`docker manifest inspect ${repo}:actyx-${version}`)
+  const dockerTag = `${repo}:actyx-${version}`
+  const inspect = await execa.command(`docker manifest inspect ${dockerTag}`)
   const json = JSON.parse(inspect.stdout)
-  const manifest = rightOrThrow(DockerManifest.decode(json), json)
 
-  const targetPlatform = archToDockerPlatform(arch)
+  return (
+    DockerManifest.decode(json)
+      .map(({ manifests }: DockerManifest) => {
+        const targetPlatform = archToDockerPlatform(arch)
+        const sha = manifests.find(
+          ({ platform }: DockerSingleManifest) =>
+            platform.architecture === targetPlatform.architecture &&
+            platform.variant === targetPlatform.variant,
+        )
 
-  const sha = manifest.manifests.filter(
-    ({ platform }: DockerSingleManifest) =>
-      platform.architecture === targetPlatform.architecture &&
-      platform.variant === targetPlatform.variant,
-  )[0].digest
+        if (!sha) {
+          throw `Image for taget platform ${targetPlatform} not found in docker tag ${dockerTag}`
+        }
 
-  return `${repo}@${sha}`
+        return `${repo}@${sha.digest}`
+      })
+      // Assume that this is not a multi-arch manifest, but a single-arch image
+      .getOrElse(`${repo}:actyx-${version}`)
+  )
 }
 
 export const windowsActyxInstaller = async (arch: Arch): Promise<string> =>
