@@ -56,11 +56,6 @@ const deployDir = async (
   const NOT_DRAFT =
     process.argv.length > 3 && process.argv[3] === "--not-draft";
 
-  if (NOT_DRAFT) {
-    console.error("IS NOT DRAFT RELEASE!");
-    process.exit(1);
-  }
-
   const NETLIFY_ACCESS_TOKEN = process.env.NETLIFY_ACCESS_TOKEN;
 
   if (!NETLIFY_ACCESS_TOKEN) {

@@ -240,7 +240,7 @@ stages:
     dependsOn:
       - upload
       - integration
-      - release
+      - createReleaseCandidateIA
     jobs:
       - template: jobs-notify-success.yml
 
@@ -251,7 +251,7 @@ stages:
       - makeArtifacts
       - upload
       - integration
-      - release
+      - createReleaseCandidateIA
     jobs:
       - template: slack-notify-failure.yml
 
