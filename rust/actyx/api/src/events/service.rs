@@ -1,25 +1,21 @@
 use std::{convert::TryFrom, num::NonZeroU64};
 
 use actyx_sdk::{
-    language::{self, TagExpr},
+    language,
     service::{
         EventResponse, OffsetMapResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse,
         PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
         SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
-    AppId, Event, Metadata, OffsetMap, OffsetOrMin, Payload,
+    AppId, Event, Metadata, OffsetOrMin, Payload,
 };
 use ax_futures_util::prelude::*;
 use futures::{
     future,
     stream::{self, BoxStream, StreamExt},
-    Stream,
 };
 use runtime::value::Value;
-use swarm::{
-    event_store::{self, EventStore},
-    SwarmOffsets,
-};
+use swarm::event_store::{self, EventStore};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -43,7 +39,7 @@ impl EventService {
 
 impl EventService {
     pub async fn offsets(&self) -> anyhow::Result<OffsetsResponse> {
-        let offsets = offsets0(&self.store).await;
+        let offsets = self.store.offsets().next().await.expect("offset stream stopped");
         let present = offsets.present();
         let to_replicate = offsets
             .replication_target()
@@ -149,24 +145,32 @@ impl EventService {
         _app_id: AppId,
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
-        let tag_expr = &request.query.from;
-
-        let initial_latest = match &request.from {
-            StartFrom::LowerBound(offsets) => self
-                .store
-                .bounded_backward(tag_expr, None, offsets.clone())
-                .await
-                .map_err(Error::StoreReadError)?
-                .next()
-                .await
-                .map(|event| event.key),
-        };
-
-        let stream = subscribe0(&self.store, &tag_expr, Some(request.from.min_offsets())).await?;
-        let feed = mk_feed(request.query);
-        let response = stream
+        let present = self.store.present().await;
+        let bounded = self
+            .store
+            .bounded_forward(&request.query.from, Some(request.from.min_offsets()), present.clone())
+            .await
+            .map_err(Error::StoreReadError)?
+            .flat_map(mk_feed(request.query.clone()))
+            .map(|event| SubscribeMonotonicResponse::Event { event, caught_up: true });
+        let offsets = stream::once(future::ready(SubscribeMonotonicResponse::Offsets(OffsetMapResponse {
+            offsets: present.clone(),
+        })));
+        let unbounded = self
+            .store
+            .unbounded_forward_per_stream(&request.query.from, Some(present))
             .flat_map({
-                let mut latest = initial_latest;
+                let feed = mk_feed(request.query.clone());
+                let mut latest = match &request.from {
+                    StartFrom::LowerBound(offsets) => self
+                        .store
+                        .bounded_backward(&request.query.from, None, offsets.clone())
+                        .await
+                        .map_err(Error::StoreReadError)?
+                        .next()
+                        .await
+                        .map(|event| event.key),
+                };
                 move |e| {
                     let key = Some(e.key);
                     if key > latest {
@@ -181,26 +185,8 @@ impl EventService {
                 }
             })
             .take_until_condition(|e| future::ready(matches!(e, SubscribeMonotonicResponse::TimeTravel { .. })));
-        Ok(response.boxed())
+        Ok(bounded.chain(offsets).chain(unbounded).boxed())
     }
-}
-
-async fn offsets0(store: &EventStore) -> SwarmOffsets {
-    store.offsets().next().await.expect("offset stream stopped")
-}
-
-async fn subscribe0(
-    store: &EventStore,
-    tag_expr: &TagExpr,
-    offsets: Option<OffsetMap>,
-) -> anyhow::Result<impl Stream<Item = Event<Payload>>> {
-    let present = store.present().await;
-    let bounded = store
-        .bounded_forward(tag_expr, offsets, present.clone())
-        .await
-        .map_err(Error::StoreReadError)?;
-    let unbounded = store.unbounded_forward_per_stream(tag_expr, Some(present));
-    Ok(bounded.chain(unbounded))
 }
 
 fn mk_feed(query: language::Query) -> impl Fn(Event<Payload>) -> BoxStream<'static, EventResponse<Payload>> {

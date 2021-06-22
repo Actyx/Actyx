@@ -84,6 +84,7 @@ export const SubscribeMonotonicResponse = t.union([
   SubscribeMonotonicState,
   SubscribeMonotonicEvent,
   SubscribeMonotonicTimeTravel,
+  OffsetMapResponse,
 ])
 export type SubscribeMonotonicResponse = t.TypeOf<typeof SubscribeMonotonicResponse>
 
@@ -115,9 +116,7 @@ export type SubscribeRequest = {
   lowerBound?: OffsetMap
   query: string
 }
-export type SubscribeMonotonicRequestStartFrom =
-  | { lowerBound: OffsetMap }
-  | { snapshot: ReadonlyArray<Compression> }
+export type SubscribeMonotonicRequestStartFrom = { lowerBound: OffsetMap }
 
 export type SubscribeMonotonicRequest = {
   session: string

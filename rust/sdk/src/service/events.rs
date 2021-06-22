@@ -272,7 +272,7 @@ pub struct SubscribeMonotonicRequest {
 }
 
 /// The response to a monotonic subscription is a stream of events terminated by a time travel.
-#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SubscribeMonotonicResponse {
     /// This is the main message, a new event that is to be applied directly to the
@@ -283,6 +283,8 @@ pub enum SubscribeMonotonicResponse {
         event: EventResponse<Payload>,
         caught_up: bool,
     },
+    #[serde(rename_all = "camelCase")]
+    Offsets(OffsetMapResponse),
     /// This message ends the stream in case a replay becomes necessary due to
     /// time travel. The contained event key signals how far back the replay will
     /// reach so that the consumer can invalidate locally stored snapshots (if
