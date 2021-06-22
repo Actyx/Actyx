@@ -226,6 +226,7 @@ aarch64
 arm64v8
 amd64
 js-libp2p
+img
  - blog/2020-06-09-building-docker-apps-for-arm64v8.md
 arm64
 ActyxOS
@@ -525,3 +526,10 @@ namespaces
  - ./docs/reference/events-api.mdx
 TabItem
 defaultValue
+- ./blog/2021-06-23-actyx-2-0-0-release.md
+header.svg
+events-api
+node-api
+roadmap
+node-manager-ui
+changelog

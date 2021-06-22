@@ -44,7 +44,7 @@ module.exports = {
     announcementBar: {
       id: '2.0.0-release',
       content:
-        '🤩 We are incredibly excited to announce the release of Actyx 2.0! Read more about it in our release <a href="https://developer.actyx.com/blog/2021/06/18/actyx-2-0-0-release">blog post</a>. 🤩',
+        '🤩 We are incredibly excited to announce the release of Actyx 2.0! Read more about it in our release <a href="https://developer.actyx.com/blog/2021/06/23/actyx-2-0-0-release">blog post</a>. 🤩',
       backgroundColor: '#373c40',
       textColor: '#fff',
     },

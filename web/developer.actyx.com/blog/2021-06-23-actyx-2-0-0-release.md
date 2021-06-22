@@ -2,7 +2,6 @@
 title: Introducing Actyx 2.0
 author: Dr. Roland Kuhn
 author_title: CTO and co-founder at Actyx
-draft: true
 hide_table_of_contents: true
 author_url: https://rolandkuhn.com
 author_image_url: /images/blog/roland-kuhn.jpg
@@ -100,7 +99,9 @@ In the future, more endpoints will be added that will give more insights into th
 Actyx Node Manager is an electron app that lets you securely manage and configure decentralized swarms of Actyx nodes in the local network.
 With Actyx 2.0 we ship a completely redesigned version of the Node Manager, with better performance and a lot of UX improvements that will significantly streamline working with it.
 For instance, Actyx Node Manager now lets you work on multiple nodes at the same time with favorite nodes being saved across sessions so that you can start right where you left off.
-For more information on the new Node Manager, please refer to the [reference documentation](https://developer.actyx.com/docs/reference/node-manager.mdx) or the release [changelog](../releases).
+For more information on the new Node Manager, please refer to the [reference documentation](https://developer.actyx.com/docs/reference/node-manager.mdx) or the release [changelog](https://developer.actyx.com/releases).
+
+<!-- markdownlint-disable MD025 -->
 
 # Actyx Insider Program
 
