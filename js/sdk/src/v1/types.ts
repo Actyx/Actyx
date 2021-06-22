@@ -1,15 +1,14 @@
 /*
- * Actyx SDK: Functions for writing distributed apps
+ * Actyx Pond: A TypeScript framework for writing distributed apps
  * deployed on peer-to-peer networks, without any servers.
- *
- * Copyright (C) 2021 Actyx AG
+ * 
+ * Copyright (C) 2020 Actyx AG
  */
 import { right } from 'fp-ts/lib/Either'
 import { Ord, ordNumber, ordString } from 'fp-ts/lib/Ord'
 import { Ordering } from 'fp-ts/lib/Ordering'
 import * as t from 'io-ts'
-import { EventsSortOrder, isString } from '../types'
-import { Codecs, OffsetMapIO } from '../types/wire'
+import { isString } from '../types'
 
 // EnumType Class
 export class EnumType<A> extends t.Type<A> {
@@ -29,14 +28,22 @@ export class EnumType<A> extends t.Type<A> {
 // simple helper function
 export const createEnumType = <T>(e: object, name?: string) => new EnumType<T>(e, name)
 
-export const OffsetsResponse = t.readonly(
+/**
+ * Basically adds -infinity and +infinity to a PSN
+ */
+const PsnOrLimit = t.union([t.number, t.literal('min'), t.literal('max')])
+export type PsnOrLimit = t.TypeOf<typeof PsnOrLimit>
+
+/**
+ * A psn map with a default value, so it is a tabulated total function from source to PsnOrLimit
+ */
+export const OffsetMapWithDefault = t.readonly(
   t.type({
-    present: t.readonly(OffsetMapIO),
-    toReplicate: t.record(Codecs.StreamId, t.number),
+    psns: t.readonly(t.record(t.string, t.number)),
+    default: PsnOrLimit,
   }),
 )
-
-export type OffsetsResponse = t.TypeOf<typeof OffsetsResponse>
+export type OffsetMapWithDefault = t.TypeOf<typeof OffsetMapWithDefault>
 
 const stringRA = t.readonlyArray(t.string)
 
@@ -52,30 +59,33 @@ const Tags = new t.Type<Tags, TagsOnWire>(
 )
 
 export const EventIO = t.type({
-  offset: Codecs.Offset,
-  stream: Codecs.StreamId,
-  timestamp: Codecs.Timestamp,
-  lamport: Codecs.Lamport,
-  appId: Codecs.AppId,
+  psn: t.number,
+  semantics: t.string,
+  sourceId: t.string,
+  name: t.string,
+  timestamp: t.number,
+  lamport: t.number,
   tags: Tags,
   payload: t.unknown,
 })
+
+/** A single Actyx Event */
 export type Event = t.TypeOf<typeof EventIO>
 const compareEvents = (a: Event, b: Event): Ordering => {
   const lamportOrder = ordNumber.compare(a.lamport, b.lamport)
   if (lamportOrder !== 0) {
     return lamportOrder
   }
-  const sourceOrder = ordString.compare(a.stream, b.stream)
+  const sourceOrder = ordString.compare(a.sourceId, b.sourceId)
   if (sourceOrder !== 0) {
     return sourceOrder
   }
-  return ordNumber.compare(a.offset, b.offset)
+  return ordNumber.compare(a.psn, b.psn)
 }
 
 const eventsEqual = (a: Event, b: Event): boolean =>
   // compare numerical fields first since it should be faster
-  a.lamport === b.lamport && a.offset === b.offset && a.stream === b.stream
+  a.lamport === b.lamport && a.psn === b.psn && a.sourceId === b.sourceId
 /**
  * Order for events
  *
@@ -88,14 +98,20 @@ const ordEvent: Ord<Event> = {
   equals: eventsEqual,
   compare: compareEvents,
 }
+
+/** Event-related constants */
 export const Event = {
   ord: ordEvent,
 }
 
 /**
- * A number of events, not necessarily from the same source
+ * A number of events, not necessarily from the same source.
  */
 export const Events = t.array(EventIO)
+
+/**
+ * A number of events, not necessarily from the same source.
+ */
 export type Events = t.TypeOf<typeof Events>
 
 /**
@@ -103,6 +119,12 @@ export type Events = t.TypeOf<typeof Events>
  */
 export const UnstoredEvent = t.readonly(
   t.type({
+    /**
+     * the sequence nr of the first element in this chunk
+     */
+    semantics: t.string,
+    name: t.string,
+    timestamp: t.number,
     tags: Tags,
     payload: t.unknown,
   }),
@@ -112,14 +134,34 @@ export type UnstoredEvent = t.TypeOf<typeof UnstoredEvent>
 export const UnstoredEvents = t.readonlyArray(UnstoredEvent)
 export type UnstoredEvents = t.TypeOf<typeof UnstoredEvents>
 
-export const EventsSortOrders: EnumType<EventsSortOrder> = createEnumType<EventsSortOrder>(
-  EventsSortOrder,
-  'PersistedEventsSortOrders',
-)
-export type EventsSortOrders = t.TypeOf<typeof EventsSortOrders>
+/**
+ * Sort order for perstisted events
+ */
+export enum PersistedEventsSortOrders {
+  EventKey = 'eventKey',
+  ReverseEventKey = 'reverseEventKey',
+  Unsorted = 'unsorted',
+}
+export const PersistedEventsSortOrder: EnumType<PersistedEventsSortOrders> = createEnumType<
+  PersistedEventsSortOrders
+>(PersistedEventsSortOrders, 'PersistedEventsSortOrders')
+export type PersistedEventsSortOrder = t.TypeOf<typeof PersistedEventsSortOrder>
+
+/**
+ * Sort order for events
+ */
+export enum AllEventsSortOrders {
+  EventKey = 'eventKey',
+  Unsorted = 'unsorted',
+}
+export const AllEventsSortOrder: EnumType<AllEventsSortOrders> = createEnumType<
+  AllEventsSortOrders
+>(AllEventsSortOrders, 'AllEventsSortOrders')
+export type AllEventsSortOrder = t.TypeOf<typeof AllEventsSortOrder>
 
 /**
  * Connectivity status type.
+ * @public
  */
 export enum ConnectivityStatusType {
   FullyConnected = 'FullyConnected',
@@ -161,7 +203,7 @@ const NotConnected = t.readonly(
 export const ConnectivityStatus = t.union([FullyConnected, PartiallyConnected, NotConnected])
 
 /**
- * Current connectivity of the underlying Actyx node.
+ * Current connectivity of the underlying ActyxOS node.
  * @public
  */
 export type ConnectivityStatus = t.TypeOf<typeof ConnectivityStatus>

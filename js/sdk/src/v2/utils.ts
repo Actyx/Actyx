@@ -6,10 +6,9 @@
  */
 
 import fetch from 'node-fetch'
-import { ActyxOpts, AppManifest, NodeId } from '../types'
+import { ActyxOpts, AppManifest } from '../types'
 import { isNode } from '../util'
 import { MultiplexedWebsocket } from './multiplexedWebsocket'
-import { Event, Events } from './types'
 
 const defaultApiLocation = (isNode && process.env.AX_STORE_URI) || 'localhost:4454/api/v2'
 
@@ -35,13 +34,18 @@ const getToken = async (authUrl: string, manifest: AppManifest): Promise<string>
   return (jsonContent as { token: string }).token
 }
 
+export const v2getNodeId = (config: ActyxOpts): Promise<string | null> =>
+  fetch(`http://${getApiLocation(config.actyxHost, config.actyxPort)}/node/id`).then(resp => {
+    // null indicates the endpoint was reachable but did not react with OK response -> probably V1.
+    return resp.ok ? resp.text() : null
+  })
+
 export const mkMultiplexer = async (
   manifest: AppManifest,
   config: ActyxOpts,
-): Promise<[MultiplexedWebsocket, NodeId]> => {
+): Promise<MultiplexedWebsocket> => {
   const apiLocation = getApiLocation(config.actyxHost, config.actyxPort)
 
-  // FIXME obviously...
   const authUrl = 'http://' + apiLocation + '/auth'
 
   const wsUrl = 'ws://' + apiLocation + '/events'
@@ -52,40 +56,5 @@ export const mkMultiplexer = async (
 
   const ws = new MultiplexedWebsocket(cAdjusted)
 
-  const nodeId = await fetch(`http://${apiLocation}/node/id`).then(resp => resp.text())
-
-  return [ws, nodeId]
-}
-
-// Partition an unordered batch of events into several, where each is internally ordered.
-// Will not copy any data if the whole input batch is already sorted.
-export const intoOrderedChunks = (batch: Events) => {
-  if (batch.length < 2) {
-    return [batch]
-  }
-
-  const orderedBatches: Events[] = []
-
-  let prev = batch[0]
-  let start = 0
-
-  for (let i = 1; i < batch.length; i++) {
-    const evt = batch[i]
-
-    if (Event.ord.compare(prev, evt) > 0) {
-      orderedBatches.push(batch.slice(start, i))
-      start = i
-    }
-
-    prev = evt
-  }
-
-  if (start === 0) {
-    // Everything was sorted already
-    orderedBatches.push(batch)
-  } else {
-    orderedBatches.push(batch.slice(start))
-  }
-
-  return orderedBatches
+  return ws
 }

@@ -9,5 +9,7 @@ import { Loggers } from '../util/logging'
 const http = Loggers.of('http')
 const ws = Loggers.of('ws')
 const submono = Loggers.of('subscribe_monotonic')
-export const log = { http, ws, submono }
+const actyx = Loggers.of('actyx')
+
+export const log = { actyx, http, ws, submono }
 export default log
