@@ -307,16 +307,18 @@ You use the request body to specify the details of your request as documented in
 
 #### Optional: Lower bound for offsets (`lowerBound`)
 
-The `lowerBound` object specifies the lower bound offset for each stream with the numbers being **exclusive**, i.e. a `lowerBound` specification of `34` means the Events API will return events with offsets `> 34`.
+The `lowerBound` object specifies the lower bound offset for each stream with the numbers being **exclusive**,
+i.e. a `lowerBound` specification of `34` means the Events API will return events with offsets `> 34`.
 
 The `lowerBound` is optional.
 If none is set for one, multiple or all subscribed streams, the Events API will assume no lower bound.
 
-#### Required: Upper bounds for offsets (`upperBound`)
+#### Optional: Upper bounds for offsets (`upperBound`)
 
-The `upperBound` object specifies the upper bound offset for each stream with the numbers being **inclusive**. i.e. an `upperBound` specification of `34` means the Events API will return events with offsets `<= 34`.
-
-The `upperBound` is **required.** For every subscribed stream where no upper bound offset is set, the result will be empty.
+The `upperBound` object specifies the upper bound offset for each stream with the numbers being **inclusive**.
+i.e. an `upperBound` specification of `34` means the Events API will return events with offsets `<= 34`.
+If none is set, the response stream will contain all events that were known to the system at the time of query.
+Otherwise the Events API will only return events from streams that are specified.
 
 #### Required: Query (`query`)
 
@@ -341,20 +343,38 @@ Please note that for identical Lamport timestamps the stream ID is taken into ac
   - `Content-Type` is `application/x-ndjson`
   - `Transfer-Encoding` is `chunked`
 
-The response will be a stream of `<CR><LF>`-delimited event payloads of the following JSON structure:
+The response will be in the [Newline Delimited JSON format](http://ndjson.org/) with the following formats:
+
+#### Response type `event`
 
 ```json
 {
-  "type": "<string: type>",
+  "type": "event",
   "lamport": "<integer>",
   "stream": "<string: stream ID>",
   "offset": "<integer>",
-  "timestamp": "<integer>",
+  "timestamp": "<integer: unix epoch in microseconds>",
   "tags": "<string[]: tags>",
   "appId": "<string>",
   "payload": "<object>"
 }
 ```
+
+#### Response type `offsets`
+
+```json
+{
+  "type": "offsets",
+  "offsets": {
+    "<string: stream ID>": "<integer: event offset, e.g. 49>",
+    "<string: stream ID>": "<integer: event offset, e.g. 101>"
+  }
+}
+
+:::info Response types
+This is just a subset of possible response types. Clients should be prepared to handle (or ignore)
+responses with a value of `type` not specified above.
+:::
 
 If an error is encountered while processing the stream of events, the stream will terminate with a final error JSON object with the following structure:
 
@@ -504,11 +524,13 @@ the Events API will assume a lower bound offset of `-1`, i.e. the beginning.
   - `Content-Type` is `application/x-ndjson`
   - `Transfer-Encoding` is `chunked`
 
-The response will be a stream of `<CR><LF>`-delimited event payloads of the following JSON structure:
+The response will be in the [Newline Delimited JSON format](http://ndjson.org/) with the following formats:
+
+#### Response type `event`
 
 ```json
 {
-  "type": "<string: type>",
+  "type": "event",
   "lamport": "<integer>",
   "stream": "<string: stream ID>",
   "offset": "<integer>",
@@ -518,6 +540,22 @@ The response will be a stream of `<CR><LF>`-delimited event payloads of the foll
   "payload": "<object>"
 }
 ```
+
+#### Response type `offsets`
+
+```json
+{
+  "type": "offsets",
+  "offsets": {
+    "<string: stream ID>": "<integer: event offset, e.g. 49>",
+    "<string: stream ID>": "<integer: event offset, e.g. 101>"
+  }
+}
+
+:::info Response types
+This is just a subset of possible response types. Clients should be prepared to handle (or ignore)
+responses with a value of `type` not specified above.
+:::
 
 If an error is encountered while processing the stream of events, the stream will terminate with a final error JSON object with the following structure:
 
@@ -640,7 +678,7 @@ the Events API will assume a lower bound offset of `-1`, i.e. the beginning.
 
 The response will be in the [Newline Delimited JSON format](http://ndjson.org/) with the following formats:
 
-#### Event type `event`
+#### Response type `event`
 
 ```json
 {
@@ -656,7 +694,18 @@ The response will be in the [Newline Delimited JSON format](http://ndjson.org/) 
 }
 ```
 
-#### Event type `timeTravel`
+#### Response type `offsets`
+
+```json
+{
+  "type": "offsets",
+  "offsets": {
+    "<string: stream ID>": "<integer: event offset, e.g. 49>",
+    "<string: stream ID>": "<integer: event offset, e.g. 101>"
+  }
+}
+
+#### Response type `timeTravel`
 
 In case the service learns about events that need to be sorted earlier than an event that has already been delivered, an event of this type is emitted and the stream is closed.
 
@@ -670,6 +719,11 @@ In case the service learns about events that need to be sorted earlier than an e
   }
 }
 ```
+
+:::info Response types
+This is just a subset of possible response types. Clients should be prepared to handle (or ignore)
+responses with a value of `type` not specified above.
+:::
 
 If an error is encountered while processing the stream of events, the stream will terminate with a final error JSON object with the following structure:
 
