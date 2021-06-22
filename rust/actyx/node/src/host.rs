@@ -3,6 +3,7 @@ use actyx_sdk::NodeId;
 use anyhow::{Context, Result};
 use crypto::KeyStoreRef;
 use derive_more::Display;
+#[cfg(not(target_os = "android"))]
 use fslock::LockFile;
 use parking_lot::Mutex;
 use std::{
@@ -21,14 +22,19 @@ pub(crate) struct Host {
     keystore: KeyStoreRef,
     storage: NodeStorage,
     #[allow(dead_code)] // this needs to be kept around to hold the lock
+    #[cfg(not(target_os = "android"))]
     lockfile: LockFile,
 }
 impl Host {
     pub fn new(base_path: PathBuf) -> Result<Self> {
-        let mut lockfile = LockFile::open(&base_path.join("lockfile")).context("Error opening file `lockfile`")?;
-        if !lockfile.try_lock().context("Error locking file `lockfile`")? {
-            return Err(WorkdirLocked(base_path.display().to_string()).into());
-        }
+        #[cfg(not(target_os = "android"))]
+        let lockfile = {
+            let mut lf = LockFile::open(&base_path.join("lockfile")).context("Error opening file `lockfile`")?;
+            if !lf.try_lock().context("Error locking file `lockfile`")? {
+                return Err(WorkdirLocked(base_path.display().to_string()).into());
+            }
+            lf
+        };
 
         #[cfg(test)]
         let storage = NodeStorage::in_memory();
@@ -41,6 +47,7 @@ impl Host {
             base_path,
             keystore,
             storage,
+            #[cfg(not(target_os = "android"))]
             lockfile,
         })
     }
