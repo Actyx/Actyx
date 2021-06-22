@@ -1,5 +1,7 @@
+// [[start:import]]
 import { FishId, Pond, Fish, Tag } from '@actyx/pond';
 import manifest from './manifest.json';
+// [[end:import]]
 
 // [[start:event-and-state]]
 type ChatEvent = string;
