@@ -7,9 +7,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventEmitter } from 'events'
 import { Observable, ReplaySubject, Subject } from 'rxjs'
-import log from './log'
 import { isNode } from '../util'
 import { root } from '../util/root'
+import log from './log'
 
 if (isNode) {
   root.WebSocket = require('ws')

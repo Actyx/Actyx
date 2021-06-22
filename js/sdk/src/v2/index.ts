@@ -4,7 +4,5 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
-export { EventFnsFromEventStoreV2 } from './event-fns-impl'
-export { EventStore as EventStoreV2 } from './eventStore'
-export * from './types'
-export { mkMultiplexer as makeWsMultiplexerV2 } from './utils'
+export { mkMultiplexer as makeWsMultiplexerV2, v2getNodeId } from './utils'
+export { WebsocketEventStore as WebsocketEventStoreV2 } from './websocketEventStore'
