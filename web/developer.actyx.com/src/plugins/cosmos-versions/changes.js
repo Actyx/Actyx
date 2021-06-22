@@ -5,7 +5,14 @@ const getChanges = async (product, version) => {
     try {
       exec(`"${COSMOS_RELEASE_PATH}" changes ${product} ${version}`, (err, stdout, stderr) => {
         if (err) {
-          reject(new Error(`${err}: ${stderr} ${stdout}`))
+          if (
+            stderr.includes('no changes since') &&
+            stderr.includes('is the very first release of')
+          ) {
+            resolve([])
+          } else {
+            reject(new Error(`XXX ${err}: ${stderr}`))
+          }
         }
         resolve(
           stdout

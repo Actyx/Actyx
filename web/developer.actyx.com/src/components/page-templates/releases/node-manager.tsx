@@ -1,10 +1,12 @@
 import React from 'react'
 import { Version, Change, Hash, Download } from './types'
 import { Page as FileBasedPage } from './components/file-based-page'
+import { NODE_MANAGER_DOWNLOADS_V1_1_5 } from './v1-legacy-downloads'
+import semver from 'semver'
 
 // $C gets replaced with the commit hash
 // $V gets replaced with the version
-const DOWNLOADS: Download[] = [
+const DOWNLOADS_V2_0_0: Download[] = [
   {
     platform: 'Linux',
     ext: '.tar.gz',
@@ -53,6 +55,16 @@ const DOWNLOADS: Download[] = [
   },
 ]
 
+const downloads = (version: Version): Download[] => {
+  if (semver.satisfies(version, '>=2.0.0')) {
+    return DOWNLOADS_V2_0_0
+  } else if (semver.satisfies(version, '1.1.5')) {
+    return NODE_MANAGER_DOWNLOADS_V1_1_5
+  } else {
+    return []
+  }
+}
+
 const Page: React.FC<{
   data: {
     version: Version
@@ -66,7 +78,7 @@ const Page: React.FC<{
       {...data}
       product="node-manager"
       productDisplayName="Actyx Node Manager"
-      downloads={DOWNLOADS}
+      downloads={downloads}
     />
   )
 }

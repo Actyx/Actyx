@@ -23,6 +23,8 @@ export function getToken(appManifest: AppManifest, origin: string): Promise<Resp
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(appManifest),
+  }).catch((err) => {
+    throw new Error(`getToken(${origin}): ${err}`)
   })
 }
 
@@ -56,20 +58,32 @@ const fixedTokenClient = (httpOrigin: string) => (token: string) => ({
         Authorization: `Bearer ${token}`,
         ...init.headers,
       },
-    }).then(validateSuccess),
+    })
+      .catch((err) => {
+        throw new Error(`fetch(${httpOrigin}, ${path}): ${err}`)
+      })
+      .then(validateSuccess),
 
   post: <T>(path: string, body: T, xndjson?: boolean) =>
     fetch(httpOrigin + path, {
       method: 'post',
       headers: mkHeaders(token, xndjson),
       body: JSON.stringify(body),
-    }).then(validateSuccess),
+    })
+      .catch((err) => {
+        throw new Error(`post(${httpOrigin}, ${path}): ${err}`)
+      })
+      .then(validateSuccess),
 
   get: (path: string) =>
     fetch(httpOrigin + path, {
       method: 'get',
       headers: mkHeaders(token),
-    }).then(validateSuccess),
+    })
+      .catch((err) => {
+        throw new Error(`get(${httpOrigin}, ${path}): ${err}`)
+      })
+      .then(validateSuccess),
 })
 
 // TODO: if reused in js sdk on expired token retry once

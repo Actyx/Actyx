@@ -10,5 +10,6 @@ fn main(mut cx: ModuleContext) -> NeonResult<()> {
     cx.export_function("setSettings", ops::set_settings::js)?;
     cx.export_function("generateSwarmKey", ops::generate_swarm_key::js)?;
     cx.export_function("signAppManifest", ops::sign_app_manifest::js)?;
+    cx.export_function("shutdown", ops::shutdown_node::js)?;
     Ok(())
 }

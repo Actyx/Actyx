@@ -23,13 +23,11 @@ use anyhow::bail;
 use multiaddr::{Multiaddr, Protocol};
 use serde::{Deserialize, Deserializer};
 use std::collections::HashSet;
-use std::net::{SocketAddr, ToSocketAddrs};
+use std::fmt::{Display, Formatter};
+use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr, TcpListener, ToSocketAddrs};
+use std::num::NonZeroU16;
 use std::str::FromStr;
 use std::{convert::TryFrom, net::IpAddr};
-use std::{
-    fmt::{Display, Formatter},
-    vec,
-};
 use tracing_subscriber::EnvFilter;
 
 /// Sets up a logging and a panic handler that logs panics.
@@ -43,10 +41,100 @@ pub fn setup_logger() {
     log_panics::init();
 }
 
+fn free_port(port: u16) -> anyhow::Result<NonZeroU16> {
+    NonZeroU16::new(port).map(Ok).unwrap_or_else(|| {
+        let mut tries = 100;
+        loop {
+            let candidate = TcpListener::bind((Ipv4Addr::UNSPECIFIED, 0))?.local_addr()?.port();
+            if TcpListener::bind((Ipv6Addr::UNSPECIFIED, candidate)).is_ok() {
+                return Ok(NonZeroU16::new(candidate).unwrap());
+            }
+            tries -= 1;
+            if tries == 0 {
+                bail!("cannot find free port");
+            }
+        }
+    })
+}
+
+fn convert_port_zero(addrs: impl Iterator<Item = SocketAddr>) -> anyhow::Result<impl Iterator<Item = SocketAddr>> {
+    let mut port = None;
+    Ok(addrs
+        .map(move |mut addr| {
+            if addr.port() == 0 {
+                let p = if let Some(p) = port {
+                    p
+                } else {
+                    let p = free_port(0)?;
+                    port = Some(p);
+                    p
+                };
+                addr.set_port(p.into());
+            }
+            Ok(addr)
+        })
+        .collect::<anyhow::Result<Vec<_>>>()?
+        .into_iter())
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct SocketAddrHelper {
     inner: HashSet<SocketAddr>,
 }
+
+impl SocketAddrHelper {
+    // Parses common multiaddrs and resolves dns4 to ip4 hosts.
+    // Limitations: No nested protocols, only tcp.
+    fn parse_multiaddr(multiaddr_str: &str) -> anyhow::Result<Self> {
+        let multiaddr: Multiaddr = multiaddr_str.parse()?;
+        SocketAddrHelper::try_from(multiaddr)
+    }
+
+    fn from_host_string(host_string: &str) -> anyhow::Result<Self> {
+        let inner = convert_port_zero(host_string.to_socket_addrs()?)?.collect();
+        Ok(Self { inner })
+    }
+
+    /// Takes an input string, which can either be a host, or a host:port
+    /// combination. If only a host is given, the provided `default_port` will be
+    /// appended.
+    pub fn from_host(host_string: &str, default_port: NonZeroU16) -> anyhow::Result<Self> {
+        if let Ok(addr) = host_string.parse() {
+            Ok(addr)
+        } else {
+            Ok(Self {
+                inner: (host_string, default_port.into()).to_socket_addrs()?.collect(),
+            })
+        }
+    }
+
+    pub fn from_ip_port(ip: IpAddr, port: u16) -> anyhow::Result<Self> {
+        Ok(Self {
+            inner: (ip, free_port(port)?.into()).to_socket_addrs()?.collect(),
+        })
+    }
+
+    pub fn append(&mut self, other: Self) {
+        self.inner.extend(other.inner.into_iter());
+    }
+
+    pub fn to_multiaddrs(&self) -> impl Iterator<Item = Multiaddr> {
+        self.inner.clone().into_iter().map(to_multiaddr)
+    }
+
+    pub fn unspecified(port: u16) -> anyhow::Result<Self> {
+        let port = free_port(port)?;
+        let ipv6 = (Ipv6Addr::UNSPECIFIED, port.into())
+            .to_socket_addrs()
+            .expect("IPv6 Any:port should work");
+        let ipv4 = (Ipv4Addr::UNSPECIFIED, port.into())
+            .to_socket_addrs()
+            .expect("IPv4 Any:port should work");
+        let inner = ipv6.chain(ipv4).collect();
+        Ok(Self { inner })
+    }
+}
+
 impl TryFrom<Multiaddr> for SocketAddrHelper {
     type Error = anyhow::Error;
     fn try_from(mut multi_addr: Multiaddr) -> Result<Self, Self::Error> {
@@ -67,6 +155,9 @@ impl TryFrom<Multiaddr> for SocketAddrHelper {
             if multi_addr.pop().is_some() {
                 bail!("Nested protocols are not supported");
             }
+
+            let inner = convert_port_zero(inner.into_iter())?.collect();
+
             Ok(Self { inner })
         } else {
             bail!("Multiaddress must end with tcp")
@@ -74,74 +165,13 @@ impl TryFrom<Multiaddr> for SocketAddrHelper {
     }
 }
 
-impl SocketAddrHelper {
-    // Parses common multiaddrs and resolves dns4 to ip4 hosts.
-    // Limitations: No nested protocols, only tcp.
-    pub fn parse_multiaddr(multiaddr_str: &str) -> anyhow::Result<Self> {
-        let multiaddr: Multiaddr = multiaddr_str.parse()?;
-        SocketAddrHelper::try_from(multiaddr)
-    }
-
-    fn from_host_string(host_string: &str) -> anyhow::Result<Self> {
-        let inner = host_string.to_socket_addrs()?.collect();
-        Ok(Self { inner })
-    }
-
-    pub fn with_port(mut self, port: u16) -> Self {
-        self.set_port(port);
-        self
-    }
-    pub fn set_port(&mut self, port: u16) {
-        self.inner = self
-            .inner
-            .drain()
-            .map(|mut x| {
-                x.set_port(port);
-                x
-            })
-            .collect();
-    }
-
-    /// Takes an input string, which can either be a port, or a host:port
-    /// combination. If only a port is given, the provided `default_host` will be
-    /// prepended.
-    pub fn from_port(port_string: &str, default_host: &str) -> anyhow::Result<Self> {
-        if let Ok(port) = port_string.parse::<u16>() {
-            let inner = (default_host, port).to_socket_addrs()?.collect();
-            Ok(Self { inner })
-        } else {
-            let inner = port_string.to_socket_addrs()?.collect();
-            Ok(Self { inner })
-        }
-    }
-
-    /// Takes an input string, which can either be a host, or a host:port
-    /// combination. If only a host is given, the provided `default_port` will be
-    /// appended.
-    pub fn from_host(host_string: &str, default_port: u16) -> anyhow::Result<Self> {
-        if let Ok(addr) = host_string.parse() {
-            Ok(addr)
-        } else {
-            format!("{}:{}", host_string, default_port).parse()
-        }
-    }
-
-    pub fn append(&mut self, other: Self) {
-        self.inner.extend(other.inner.into_iter());
-    }
-
-    pub fn to_multiaddrs(&self) -> vec::IntoIter<Multiaddr> {
-        let v: Vec<Multiaddr> = self.inner.iter().cloned().map(to_multiaddr).collect();
-        v.into_iter()
-    }
-
-    pub fn unspecified(port: u16) -> Self {
-        let ipv6: Self = format!("[::]:{}", port).parse().unwrap();
-        let ipv4: Self = format!("0.0.0.0:{}", port).parse().unwrap();
-        let inner = ipv6.into_iter().chain(ipv4.into_iter()).collect();
-        Self { inner }
+impl FromStr for SocketAddrHelper {
+    type Err = anyhow::Error;
+    fn from_str(str: &str) -> anyhow::Result<Self> {
+        Self::from_host_string(str).or_else(|_| Self::parse_multiaddr(str))
     }
 }
+
 impl IntoIterator for SocketAddrHelper {
     type Item = SocketAddr;
     type IntoIter = std::collections::hash_set::IntoIter<Self::Item>;
@@ -149,6 +179,7 @@ impl IntoIterator for SocketAddrHelper {
         self.inner.into_iter()
     }
 }
+
 impl<'a> IntoIterator for &'a SocketAddrHelper {
     type Item = &'a SocketAddr;
     type IntoIter = std::collections::hash_set::Iter<'a, SocketAddr>;
@@ -156,18 +187,13 @@ impl<'a> IntoIterator for &'a SocketAddrHelper {
         self.inner.iter()
     }
 }
-impl FromStr for SocketAddrHelper {
-    type Err = anyhow::Error;
-    fn from_str(str: &str) -> anyhow::Result<Self> {
-        Self::from_host_string(str).or_else(|_| Self::parse_multiaddr(str))
-    }
-}
+
 impl Display for SocketAddrHelper {
     fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
         let v = self
             .inner
             .iter()
-            .map(|x| format!("{}", x))
+            .map(SocketAddr::to_string)
             .collect::<Vec<_>>()
             .join(", ");
         write!(f, "[{}]", v)
@@ -216,7 +242,7 @@ mod tests {
 
     #[test]
     fn should_work_with_unspecified() {
-        let vec = SocketAddrHelper::unspecified(4242);
+        let vec = SocketAddrHelper::unspecified(4242).unwrap();
         for i in vec {
             assert!(i.ip().is_unspecified());
         }

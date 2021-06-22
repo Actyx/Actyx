@@ -221,6 +221,11 @@ metadata
 gapless
 swarmaddrs
 v1.x
+unicode
+aarch64
+arm64v8
+amd64
+js-libp2p
  - blog/2020-06-09-building-docker-apps-for-arm64v8.md
 arm64
 ActyxOS
@@ -417,6 +422,7 @@ actyxos_data_flow
  - ./blog/2020-07-24-pond-v2-release.md
 v1
 TaskDone
+Array.reduce
  - ./blog/2020-07-27-libp2p-gossipsub.md
 go-ipfs
 gossipsub
@@ -516,3 +522,6 @@ dashboard-ui
 com.example.
 com.example
 namespaces
+ - ./docs/reference/events-api.mdx
+TabItem
+defaultValue

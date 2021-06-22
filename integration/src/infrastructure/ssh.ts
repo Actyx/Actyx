@@ -1,10 +1,11 @@
-import execa from 'execa'
+import execa, { ExecaChildProcess } from 'execa'
 import fs from 'fs'
 import { removeSync } from 'fs-extra'
 import path from 'path'
 import { getFreePort } from './checkPort'
 import { netString } from './mkProcessLogger'
 import { settings } from './settings'
+import { portBound } from './util'
 
 export class Ssh {
   private commonOpts: string[]
@@ -57,7 +58,7 @@ export class Ssh {
     return execa('ssh', [...this.commonOpts, ...e, file, ...params])
   }
 
-  async forwardPorts(...ports: number[]): Promise<[number[], execa.ExecaChildProcess<string>]> {
+  async forwardPorts(...ports: number[]): Promise<[number[], ExecaChildProcess]> {
     const ret = ports.map(() => 0)
     const fwd = await Promise.all(
       ports.map(async (port, idx) => {
@@ -68,7 +69,13 @@ export class Ssh {
       }),
     )
     console.log(`forwarding ports: ${JSON.stringify(fwd)}`)
-    return [ret, execa('ssh', [...fwd, '-nNf', ...this.commonOpts])]
+    // unfortunately there seems to be no portable way to await successful port forwarding within ssh
+    const proc = execa('ssh', [...fwd, '-nNf', ...this.commonOpts])
+    // so try to connect
+    for (const port of ret) {
+      await portBound(port)
+    }
+    return [ret, proc]
   }
 
   async scp(mine: string, theirs: string): Promise<void> {

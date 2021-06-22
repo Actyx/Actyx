@@ -11,16 +11,12 @@ use structopt::StructOpt;
 use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesLsResponse};
 
 #[derive(StructOpt, Debug)]
-#[structopt(no_version)]
+#[structopt(version = env!("AX_CLI_VERSION"))]
 /// show node overview
 pub struct LsOpts {
     #[structopt(name = "NODE", required = true)]
-    /// Node ID or, if using `--local`, the IP address of the node to perform the
-    /// operation on.
+    /// the IP address or <host>:<admin port> of the nodes to list.
     authority: Vec<NodeConnection>,
-    #[structopt(short, long)]
-    /// Process over local network
-    local: bool,
     #[structopt(short, long)]
     /// File from which the identity (private key) for authentication is read.
     identity: Option<KeyPathWrapper>,
@@ -102,11 +98,6 @@ async fn request(identity: AxPrivateKey, mut connection: NodeConnection) -> Resu
 }
 
 async fn run(opts: LsOpts) -> ActyxOSResult<Vec<Output>> {
-    if !opts.local {
-        return Err(ActyxOSCode::ERR_INVALID_INPUT
-            .with_message("This version of ax currently only supports local interactions using the --local flag."));
-    }
-
     let identity: AxPrivateKey = opts.identity.try_into()?;
     try_join_all(
         opts.authority

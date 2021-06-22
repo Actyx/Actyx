@@ -5,7 +5,6 @@ import {
   Response_Settings_Get,
   Response_Settings_Set,
   Response_Settings_Unset,
-  Response_Settings_Scopes,
   Response_Settings_Schema,
   Response_Swarms_Keygen,
   Response_Users_Keygen,
@@ -14,11 +13,10 @@ import execa from 'execa'
 import * as path from 'path'
 import { rightOrThrow } from '../infrastructure/rightOrThrow'
 
-const exec = async (binaryPath: string, args: string[], cwd?: string) => {
+const exec = async (binaryPath: string, args: string[], options?: execa.Options) => {
   try {
-    const option: execa.Options | undefined = cwd ? { cwd } : undefined
     const binaryPathResolved = path.resolve(binaryPath)
-    const response = await execa(binaryPathResolved, [`-j`].concat(args), option)
+    const response = await execa(binaryPathResolved, [`-j`].concat(args), options)
     return JSON.parse(response.stdout)
   } catch (error) {
     try {
@@ -75,11 +73,13 @@ type Exec = {
     inspect: () => Promise<Response_Nodes_Inspect>
   }
   settings: {
-    scopes: () => Promise<Response_Settings_Scopes>
     get: (scope: string, noDefaults?: boolean) => Promise<Response_Settings_Get>
     set: (scope: string, input: SettingsInput) => Promise<Response_Settings_Set>
     unset: (scope: string) => Promise<Response_Settings_Unset>
-    schema: (scope: string) => Promise<Response_Settings_Schema>
+    schema: () => Promise<Response_Settings_Schema>
+  }
+  internal: {
+    shutdown: () => Promise<void>
   }
 }
 
@@ -110,37 +110,19 @@ export const mkExec = (binary: string, addr: string, identityPath: string): Exec
   },
   nodes: {
     ls: async (): Promise<Response_Nodes_Ls> => {
-      const response = await exec(binary, [
-        `nodes`,
-        `ls`,
-        `--local`,
-        ...addr.split(' '),
-        '-i',
-        identityPath,
-      ])
+      const response = await exec(binary, [`nodes`, `ls`, ...addr.split(' '), '-i', identityPath])
       return rightOrThrow(Response_Nodes_Ls.decode(response), response)
     },
     inspect: async (): Promise<Response_Nodes_Inspect> => {
-      const json = await exec(binary, ['nodes', 'inspect', '--local', addr, '-i', identityPath])
+      const json = await exec(binary, ['nodes', 'inspect', addr, '-i', identityPath])
       return rightOrThrow(Response_Nodes_Inspect.decode(json), json)
     },
   },
   settings: {
-    scopes: async () => {
-      const response = await exec(binary, [
-        'settings',
-        'scopes',
-        '--local',
-        addr,
-        '-i',
-        identityPath,
-      ])
-      return rightOrThrow(Response_Settings_Scopes.decode(response), response)
-    },
     get: async (scope: string, noDefaults?: boolean): Promise<Response_Settings_Get> => {
       const response = await exec(
         binary,
-        ['settings', 'get', scope, '--local', addr, '-i', identityPath].concat(
+        ['settings', 'get', scope, addr, '-i', identityPath].concat(
           noDefaults ? ['--no-defaults'] : [],
         ),
       )
@@ -155,7 +137,6 @@ export const mkExec = (binary: string, addr: string, identityPath: string): Exec
         `settings`,
         `set`,
         scope,
-        `--local`,
         input,
         addr,
         '-i',
@@ -164,28 +145,22 @@ export const mkExec = (binary: string, addr: string, identityPath: string): Exec
       return rightOrThrow(Response_Settings_Set.decode(response), response)
     },
     unset: async (scope: string): Promise<Response_Settings_Unset> => {
-      const response = await exec(binary, [
-        `settings`,
-        `unset`,
-        scope,
-        `--local`,
-        addr,
-        '-i',
-        identityPath,
-      ])
+      const response = await exec(binary, [`settings`, `unset`, scope, addr, '-i', identityPath])
       return rightOrThrow(Response_Settings_Unset.decode(response), response)
     },
-    schema: async (scope: string) => {
-      const response = await exec(binary, [
-        `settings`,
-        `schema`,
-        `--local`,
-        scope,
-        addr,
-        '-i',
-        identityPath,
-      ])
+    schema: async () => {
+      const response = await exec(binary, [`settings`, `schema`, addr, '-i', identityPath])
       return rightOrThrow(Response_Settings_Schema.decode(response), response)
+    },
+  },
+  internal: {
+    shutdown: async (): Promise<void> => {
+      const response = await exec(binary, [`internal`, `shutdown`, addr, `-i`, identityPath], {
+        env: { HERE_BE_DRAGONS: 'zøg' },
+      })
+      if (response.code !== 'OK' && response.code !== 'ERR_NODE_UNREACHABLE') {
+        throw new Error(`shutdown failed: ${JSON.stringify(response)}`)
+      }
     },
   },
 })

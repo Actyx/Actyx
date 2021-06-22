@@ -160,7 +160,15 @@ impl Repository {
                     );
                     let new_settings = current_settings.update_at(&schema_scope, new_settings_without_defaults)?;
                     tx.set_settings(stringify(&new_settings)?)?;
-                    Ok(new_settings_with_defaults)
+                    let new_settings_for_scope = if let Some(scope) = scope.diff(&schema_scope) {
+                        new_settings_with_defaults
+                            .pointer(scope.as_json_ptr().as_str())
+                            .cloned()
+                            .unwrap_or_default()
+                    } else {
+                        new_settings_with_defaults
+                    };
+                    Ok(new_settings_for_scope)
                 }
                 Err(Error::ValidationError(err)) if force => {
                     let new_settings = current_settings.update_at_force(&scope, settings.clone());

@@ -638,6 +638,7 @@ impl BanyanStore {
                 .next()
                 .await
             {
+                // we print only the first of the discovered addresses, but the others will also be found
                 tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr);
             } else {
                 return Err(anyhow::anyhow!("failed to bind address")).with_context(|| NodeErrorContext::BindFailed {

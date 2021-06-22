@@ -31,7 +31,7 @@ fn round_trip(c: &mut Criterion) {
         dir.path().into(),
         Runtime::Linux,
         BindTo {
-            api: SocketAddrHelper::unspecified(4454),
+            api: SocketAddrHelper::unspecified(4454).unwrap(),
             ..Default::default()
         },
     )

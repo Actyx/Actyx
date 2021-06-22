@@ -12,9 +12,10 @@ describe('event service', () => {
         await new Promise((resolve, reject) => {
           es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, (x) => {
             data.push(x)
-          })
-            .then(resolve)
-            .catch(reject)
+            if (data.length == 2) {
+              resolve()
+            }
+          }).catch(reject)
           setTimeout(resolve, genericCommunicationTimeout)
         })
         expect(data).toMatchObject([
@@ -31,9 +32,10 @@ describe('event service', () => {
         const done = new Promise((resolve, reject) => {
           es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, (x) => {
             data.push(x)
-          })
-            .then(resolve)
-            .catch(reject)
+            if (data.length == 3) {
+              resolve()
+            }
+          }).catch(reject)
           setTimeout(resolve, genericCommunicationTimeout)
         })
         const pub2 = await publishRandom(es)

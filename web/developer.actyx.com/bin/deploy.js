@@ -1,12 +1,12 @@
-const NetlifyClient = require('netlify')
-const fs = require('fs')
-const path = require('path')
+const NetlifyClient = require("netlify");
+const fs = require("fs");
+const path = require("path");
 
-const log = console.log
+const log = console.log;
 
 const logOnProgress = (ev) => {
-  log(ev.msg)
-}
+  log(ev.msg);
+};
 
 /**
  * This function deploys a directory to a Netlify site. If draft is true, it
@@ -14,10 +14,18 @@ const logOnProgress = (ev) => {
  * a production deploy. The function waits for the deploy to succeed before
  * returning.
  */
-const deployDir = async (siteId, path, netlifyAccessToken, draft, deployMsg) => {
-  const client = new NetlifyClient(netlifyAccessToken)
+const deployDir = async (
+  siteId,
+  path,
+  netlifyAccessToken,
+  draft,
+  deployMsg
+) => {
+  const client = new NetlifyClient(netlifyAccessToken);
 
-  log(`Starting site deploy (siteId: ${siteId}, path: ${path}, draft: ${draft}).`)
+  log(
+    `Starting site deploy (siteId: ${siteId}, path: ${path}, draft: ${draft}).`
+  );
   const res = await client.deploy(siteId, path, {
     draft, // draft deploy or production deploy
     message: deployMsg,
@@ -25,35 +33,59 @@ const deployDir = async (siteId, path, netlifyAccessToken, draft, deployMsg) => 
     parallelHash: 100,
     parallelUpload: 5,
     maxRetry: 5,
-  })
-  log(`Site deploy completed; permalink: ${res.deploy.links.permalink}`)
+  });
+  log(`Site deploy completed; permalink: ${res.deploy.links.permalink}`);
   if (!res.deploy.links.permalink) {
-    throw new Error(`Netlify unexpectedly did not return a permalink to the deployed site.`)
+    throw new Error(
+      `Netlify unexpectedly did not return a permalink to the deployed site.`
+    );
   }
-  log(`{{DEPLOY_PERMALINK=${res.deploy.links.permalink}}}`)
-  return
-}
+  log(`{{DEPLOY_PERMALINK=${res.deploy.links.permalink}}}`);
+  return;
+};
 
-;(async () => {
-  const SITE_ID = 'fffa1022-c8a0-4238-97c4-dd80979bf887'
-  const PATH = 'build'
-  const NETLIFY_ACCESS_TOKEN = process.env.NETLIFY_ACCESS_TOKEN
+(async () => {
+  const SITE_ID = "fffa1022-c8a0-4238-97c4-dd80979bf887";
+  const PATH = "build";
 
-  const DRAFT = process.argv.includes('--draft')
-
-  if (!DRAFT) {
-    throw new Error('IS NOT DRAFT RELEASE!')
+  if (process.argv.length < 3) {
+    throw new Error("Usage deploy.js <deploy-name> [--not-draft]");
   }
+  DEPLOY_NAME = process.argv[2];
+  console.log(`Deploy name: ${DEPLOY_NAME}`);
+  const NOT_DRAFT =
+    process.argv.length > 3 && process.argv[3] === "--not-draft";
+
+  const NETLIFY_ACCESS_TOKEN = process.env.NETLIFY_ACCESS_TOKEN;
 
   if (!NETLIFY_ACCESS_TOKEN) {
-    throw new Error('Required environment variable NETLIFY_ACCESS_TOKEN not found')
+    console.error(
+      "Required environment variable NETLIFY_ACCESS_TOKEN not found"
+    );
+    process.exit(1);
   }
 
-  if (!fs.existsSync(path.join(PATH, 'index.html'))) {
-    throw new Error(
-      `Unable to find file ${path.join(PATH, 'index.html')}; are you sure the site has been built?`,
-    )
+  if (!fs.existsSync(path.join(__dirname, "..", PATH, "index.html"))) {
+    console.error(
+      `Unable to find file ${path.join(
+        PATH,
+        "index.html"
+      )}; are you sure the site has been built?`
+    );
+    process.exit(1);
   }
 
-  await deployDir(SITE_ID, PATH, NETLIFY_ACCESS_TOKEN, DRAFT, 'testing release2')
-})()
+  try {
+    await deployDir(
+      SITE_ID,
+      PATH,
+      NETLIFY_ACCESS_TOKEN,
+      !NOT_DRAFT,
+      DEPLOY_NAME
+    );
+  } catch (error) {
+    console.error("Error deploying directory");
+    console.error(error);
+    process.exit(1);
+  }
+})();

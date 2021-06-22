@@ -5,3 +5,4 @@
 /temp
 /logs
 fixtures/test-custom-actyx-setting.yml
+/local-hosts.yml

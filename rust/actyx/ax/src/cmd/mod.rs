@@ -25,12 +25,8 @@ pub struct Verbosity {
 #[derive(StructOpt, Debug)]
 pub struct ConsoleOpt {
     #[structopt(name = "NODE", required = true)]
-    /// Node ID or, if using `--local`, the IP address of the node to perform
-    /// the operation on.
+    /// the IP address or <host>:<admin port> of the node to perform the operation on.
     authority: NodeConnection,
-    #[structopt(short, long)]
-    /// Process over local network
-    local: bool,
     #[structopt(short, long)]
     /// File from which the identity (private key) for authentication is read.
     identity: Option<KeyPathWrapper>,
@@ -75,17 +71,6 @@ impl TryInto<AxPrivateKey> for Option<KeyPathWrapper> {
                     e
                 }
             })
-        }
-    }
-}
-
-impl ConsoleOpt {
-    fn assert_local(&self) -> Result<()> {
-        if !self.local {
-            Err(ActyxOSCode::ERR_INVALID_INPUT
-                .with_message("This version of ax currently only supports local interactions using the --local flag."))
-        } else {
-            Ok(())
         }
     }
 }

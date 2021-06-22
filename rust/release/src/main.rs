@@ -60,6 +60,9 @@ enum Command {
         product: Product,
         /// Specific past version to get changes for (optional)
         version: Option<Version>,
+        /// Show the git commit hash next to the change
+        #[clap(long, short)]
+        commits: bool,
     },
     /// Updates a persisted version file
     Update {
@@ -165,7 +168,11 @@ fn main() -> Result<(), Error> {
             }
         }
 
-        Command::Changes { product, version } => {
+        Command::Changes {
+            product,
+            version,
+            commits,
+        } => {
             let changes = if let Some(version) = version {
                 version_file.calculate_changes_for_version(&product, &version, &ignores_file)
             } else {
@@ -175,8 +182,12 @@ fn main() -> Result<(), Error> {
             }?;
 
             anyhow::ensure!(!changes.is_empty(), "No changes found");
-            for c in changes {
-                println!("{}: {}", c.kind, c.message);
+            for (hash, c) in changes {
+                if commits {
+                    println!("{}: {} [{}]", c.kind, c.message, hash);
+                } else {
+                    println!("{}: {}", c.kind, c.message);
+                }
             }
         }
         Command::Update { output } => {
@@ -240,8 +251,8 @@ Overview:"#
                 let new_version = v.new_version.unwrap();
 
                 writeln!(changelog, "* {}\t\t{}", product, new_version)?;
-                for change in v.changes {
-                    writeln!(changelog, "    * {}: {}", change.kind, change.message)?;
+                for (commit, change) in v.changes {
+                    writeln!(changelog, "    * {}: {} [{}]", change.kind, change.message, commit)?;
                 }
                 let release = Release {
                     product,

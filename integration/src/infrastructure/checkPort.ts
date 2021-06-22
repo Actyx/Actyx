@@ -56,7 +56,7 @@ Function Get-RandomUsablePort
 }
 Get-RandomUsablePort`
       : String.raw`comm -23 <(seq 49152 65535 | sort) <(ss -Htan | awk '{print $4}' | cut -d':' -f2 | sort -u) | shuf | head -n 1`
-  return target.execute(script, []).then((x) => Number(x.stdout.trim()))
+  return target.execute(script, []).process.then((x) => Number(x.stdout.trim()))
 }
 
 export const occupyPort = (port: number): Promise<net.Server> =>
@@ -81,5 +81,5 @@ export const occupyRemotePort = (target: Target, port: number): execa.ExecaChild
       ? String.raw`$Listener = [System.Net.Sockets.TcpListener]${port};
 $Listener.Start();`
       : `ncat -l -p ${port}`
-  return target.execute(script, [])
+  return target.execute(script, []).process
 }

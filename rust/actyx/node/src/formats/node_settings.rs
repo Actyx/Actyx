@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use util::formats::LogSeverity;
 
-// These type definitions need to be kept in sync with the ActyxOS
+// These type definitions need to be kept in sync with the Actyx
 // node schema, as found in [0].
 // There is a somewhat simple test case in here to make sure, that
 // it's mostly in sync, but subtle bugs may be introduced by

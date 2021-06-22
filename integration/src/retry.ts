@@ -1,3 +1,4 @@
+import fetch from 'node-fetch'
 import { ActyxNode } from './infrastructure/types'
 
 const million = BigInt(1_000_000)
@@ -33,18 +34,20 @@ export const waitFor = <T>(
   })
 }
 
-export const waitForNodeToBeConfigured = async (node: ActyxNode): Promise<void> =>
+export const waitForNodeToBeConfigured = async (node: ActyxNode): Promise<void> => {
   await waitFor(async () => {
     const response = await node.ax.nodes.ls()
-    if (response.code == 'OK') {
-      expect(response).toMatchObject({
-        code: 'OK',
-        result: [{ ...response.result[0], connection: 'reachable' }],
-      })
-    } else {
-      expect(false)
-    }
+    expect(response).toMatchObject({
+      code: 'OK',
+      result: [{ connection: 'reachable' }],
+    })
   })
+  await waitFor(() =>
+    fetch(node._private.httpApiOrigin, { method: 'get' }).catch((e) => {
+      throw new Error(`waitForNodeToBeConfigured ${node._private.httpApiOrigin}: ${e}`)
+    }),
+  )
+}
 
 export const retryTimes = async <T>(op: () => T | Promise<T>, times: number): Promise<T> => {
   for (let tries = 1; ; tries += 1) {

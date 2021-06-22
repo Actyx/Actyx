@@ -6,6 +6,7 @@ use crate::{
     },
     formats::ExternalEvent,
     settings::{SettingsRequest, SYSTEM_SCOPE},
+    ShutdownReason,
 };
 use anyhow::Context;
 use crossbeam::channel::Sender;
@@ -234,6 +235,12 @@ impl ApiBehaviour {
                 }
                 .boxed();
                 self.state.pending_oneshot.push(fut);
+            }
+            AdminRequest::NodesShutdown => {
+                self.state
+                    .node_tx
+                    .send(ExternalEvent::ShutdownRequested(ShutdownReason::TriggeredByUser))
+                    .unwrap();
             }
         }
     }

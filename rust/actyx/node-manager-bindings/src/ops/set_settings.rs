@@ -29,7 +29,7 @@ pub fn js(mut cx: FunctionContext) -> JsResult<JsUndefined> {
                     ignore_errors: false,
                 },
             )
-            .map_err(|e| anyhow!("error settings settings: {}", e))
+            .map_err(|e| anyhow!("error setting settings: {}", e))
             .map(|_| Nothing {})
         }),
     );
