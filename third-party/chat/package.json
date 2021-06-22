@@ -8,8 +8,8 @@
     "test": "server-test start 1234 'cypress run'"
   },
   "dependencies": {
-    "@actyx/pond": "3.0.0-beta1",
-    "@actyx/sdk": "0.0.2",
+    "@actyx/pond": "^3.0.0-beta1",
+    "@actyx/sdk": "^0.0.2",
     "@types/node-fetch": "^2.5.10"
   },
   "devDependencies": {
