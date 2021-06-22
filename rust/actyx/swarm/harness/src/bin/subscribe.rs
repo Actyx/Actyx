@@ -42,15 +42,15 @@ fn main() -> anyhow::Result<()> {
         signature: None,
     };
 
-    const REPETITIONS: usize = 200;
+    const REPETITIONS: usize = 20000;
 
     let mut opts = HarnessOpts::from_args();
     opts.enable_api = Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 30001));
     opts.enable_fast_path = true;
     opts.enable_slow_path = true;
-    opts.enable_root_map = true;
+    opts.enable_root_map = false;
     opts.enable_discovery = true;
-    opts.n_bootstrap = 1;
+    opts.n_bootstrap = opts.n_nodes;
 
     swarm_harness::setup_env()?;
     swarm_harness::run_netsim(opts, move |mut sim| async move {
@@ -81,7 +81,7 @@ fn main() -> anyhow::Result<()> {
                 .await?;
             for machine in sim.machines_mut() {
                 let result = timeout(
-                    Duration::from_millis(5000),
+                    Duration::from_millis(1000),
                     machine.select(|ev| {
                         m!(ev, TimedEvent { timestamp, event: Event::Result((_, key, payload)) } => {
                             assert_eq!(payload.json_string(), format!("{}", n));
@@ -102,6 +102,7 @@ fn main() -> anyhow::Result<()> {
                     result.ok_or_else(|| anyhow::anyhow!("machine {} event stream ended", machine.id()))?;
                 measurements.push((start, published, received));
             }
+            tracing::info!("round {} completed", n);
         }
 
         if let Some((error, id)) = error {
@@ -109,7 +110,7 @@ fn main() -> anyhow::Result<()> {
             for m in ids {
                 let offsets = api.run(m, |api| async move { api.offsets().await }).await?;
                 let offsets = format_offsets(&mut sim, offsets);
-                tracing::info!("{} {}", id, offsets);
+                tracing::info!("{}\n{}", m, offsets);
                 for ev in sim.machine(m).drain() {
                     tracing::info!("{} got event {}", m, ev);
                 }

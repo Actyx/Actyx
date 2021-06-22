@@ -226,10 +226,12 @@ impl Gossip {
                                 root_update.blocks.len(),
                                 root_update.lamport
                             );
-                            store
-                                .lock()
-                                .received_lamport(root_update.lamport)
+                            let mut lock = store.lock();
+                            tracing::trace!("gotf store lock for {}", root_update.root);
+                            lock.received_lamport(root_update.lamport)
                                 .expect("unable to update lamport");
+                            drop(lock);
+                            tracing::trace!("updated lamport for {}", root_update.root);
                             match store.ipfs().create_temp_pin() {
                                 Ok(tmp) => {
                                     if let Err(err) = store.ipfs().temp_pin(&tmp, &root_update.root) {

@@ -858,6 +858,7 @@ impl BanyanStore {
         let mut guard = stream.lock().await;
         let mut store = self.lock();
         let mut lamports = store.reserve_lamports(events.len())?.peekable();
+        drop(store);
         let min_lamport = *lamports.peek().unwrap();
         let app_id_tag = ScopedTag::new(
             trees::tags::TagScope::Internal,
