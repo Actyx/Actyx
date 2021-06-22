@@ -8,7 +8,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { Observable } from 'rxjs'
-import { MockWebSocket } from './multiplexedWebsocket.spec'
+import { MockWebSocket } from '../v2/multiplexedWebsocket.spec'
 import { WebSocketWrapper } from './webSocketWrapper'
 
 let __ws: any

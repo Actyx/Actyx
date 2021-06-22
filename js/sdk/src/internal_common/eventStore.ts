@@ -5,29 +5,15 @@
  * Copyright (C) 2021 Actyx AG
  */
 import { Observable } from 'rxjs'
-import { AppId, EventsSortOrder, Milliseconds, NodeId, OffsetMap, Where } from '../types'
+import { EventsSortOrder, NodeId, OffsetMap, Where } from '../types'
 import { mockEventStore } from './mockEventStore'
-import { MultiplexedWebsocket } from './multiplexedWebsocket'
 import { testEventStore, TestEventStore } from './testEventStore'
-import { ConnectivityStatus, Event, Events, OffsetsResponse, UnstoredEvents } from './types'
-import { WebsocketEventStore } from './websocketEventStore'
+import { Event, Events, OffsetsResponse, UnstoredEvents } from './types'
 
 /**
  * Get the store's node id.
  */
 export type RequestNodeId = () => Observable<NodeId>
-
-/**
- * Get the store's swarm connectivity status.
- * That is: Do we know about other nodes receiving the events we create?
- */
-export type RequestConnectivity = (
-  // FIXME: Rename this argument (if we keep it in v2)
-  specialSources: ReadonlyArray<NodeId>,
-  hbHistDelayMicros: number,
-  reportEvery: Milliseconds,
-  currentPsnHistoryDelay: number,
-) => Observable<ConnectivityStatus>
 
 /**
  * Request the full present of the store, so the maximum CONTIGUOUS offset for each source that the store has seen and ingested.
@@ -84,8 +70,6 @@ export type EventStore = {
   readonly query: DoQuery
   readonly subscribe: DoSubscribe
   readonly persistEvents: DoPersistEvents
-  // TODO: Offer this API again.
-  // readonly connectivityStatus: RequestConnectivity
 }
 
 const noopEventStore: EventStore = {
@@ -93,18 +77,14 @@ const noopEventStore: EventStore = {
   query: () => Observable.empty(),
   offsets: () => Promise.resolve({ present: {}, toReplicate: {} }),
   persistEvents: () => Observable.empty(),
-  // connectivityStatus: () => Observable.empty(),
 }
 
 export const EventStore: {
   noop: EventStore
-  ws: (multiplexedWebsocket: MultiplexedWebsocket, appId: AppId) => EventStore
   mock: () => EventStore
   test: (nodeId?: NodeId, eventChunkSize?: number) => TestEventStore
 } = {
   noop: noopEventStore,
-  ws: (multiplexedWebsocket: MultiplexedWebsocket, appId: AppId) =>
-    new WebsocketEventStore(multiplexedWebsocket, appId),
   mock: mockEventStore,
   test: testEventStore,
 }
