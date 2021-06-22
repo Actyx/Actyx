@@ -54,15 +54,12 @@
 //!   // client for
 //!   let service = HttpClient::new(url, app_manifest).await?;
 //!
-//!   // retrieve largest currently known event stream cursor
-//!   let offsets = service.offsets().await?.present;
-//!
 //!   // all events matching the given subscription
 //!   // sorted backwards, i.e. youngest to oldest
 //!   let mut events = service
 //!       .query(QueryRequest {
 //!           lower_bound: None,
-//!           upper_bound: offsets,
+//!           upper_bound: None,
 //!           query: "FROM 'MyFish'".parse()?,
 //!           order: Order::Desc,
 //!       })

@@ -37,15 +37,11 @@ async fn mk_http_client() -> anyhow::Result<HttpClient> {
 pub async fn main() -> anyhow::Result<()> {
     let service = mk_http_client().await?;
 
-    // retrieve largest currently known event stream cursor
-    let offsets = service.offsets().await?.present;
-    println!("largest currently known event stream cursor {:#?}", offsets);
-
     // all events matching the given subscription
     // sorted backwards, i.e. youngest to oldest
     let request = QueryRequest {
         lower_bound: None,
-        upper_bound: offsets,
+        upper_bound: None,
         query: "FROM 'sensor:temp-sensor1'".parse::<Query>()?,
         order: Order::Desc,
     };
