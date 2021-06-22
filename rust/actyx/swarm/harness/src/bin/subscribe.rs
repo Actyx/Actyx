@@ -14,7 +14,7 @@ fn main() -> anyhow::Result<()> {
     use async_std::future::timeout;
     use structopt::StructOpt;
     use swarm_cli::{Command, Event, TimedEvent};
-    use swarm_harness::{api::Api, fully_meshed, m, HarnessOpts};
+    use swarm_harness::{api::Api, fully_meshed, m, util::format_offsets, HarnessOpts};
 
     fn event(n: usize) -> PublishRequest {
         PublishRequest {
@@ -70,7 +70,8 @@ fn main() -> anyhow::Result<()> {
 
         let mut measurements = Vec::new();
         let ids = sim.machines().iter().map(|x| x.id()).collect::<Vec<_>>();
-        for (n, id) in ids.iter().cycle().take(REPETITIONS).copied().enumerate() {
+        let mut error = None;
+        'outer: for (n, id) in ids.iter().cycle().take(REPETITIONS).copied().enumerate() {
             let start = api
                 .run(id, |api| async move {
                     let now = Timestamp::now();
@@ -79,8 +80,8 @@ fn main() -> anyhow::Result<()> {
                 })
                 .await?;
             for machine in sim.machines_mut() {
-                let (received, published) = timeout(
-                    Duration::from_secs(5),
+                let result = timeout(
+                    Duration::from_millis(5000),
                     machine.select(|ev| {
                         m!(ev, TimedEvent { timestamp, event: Event::Result((_, key, payload)) } => {
                             assert_eq!(payload.json_string(), format!("{}", n));
@@ -89,10 +90,41 @@ fn main() -> anyhow::Result<()> {
                     }),
                 )
                 .await
-                .with_context(|| format!("timeout waiting for message {} from {} to {}", n, id, machine.id()))?
-                .unwrap();
+                .with_context(|| format!("timeout waiting for message {} from {} to {}", n, id, machine.id()));
+                let result = match result {
+                    Ok(r) => r,
+                    Err(e) => {
+                        error = Some((e, machine.id()));
+                        break 'outer;
+                    }
+                };
+                let (received, published) =
+                    result.ok_or_else(|| anyhow::anyhow!("machine {} event stream ended", machine.id()))?;
                 measurements.push((start, published, received));
             }
+        }
+
+        if let Some((error, id)) = error {
+            tracing::error!("got error {}", error);
+            for m in ids {
+                let offsets = api.run(m, |api| async move { api.offsets().await }).await?;
+                let offsets = format_offsets(&mut sim, offsets);
+                tracing::info!("{} {}", id, offsets);
+                for ev in sim.machine(m).drain() {
+                    tracing::info!("{} got event {}", m, ev);
+                }
+            }
+            let machine = sim.machine(id);
+            let result = timeout(
+                Duration::from_secs(30),
+                machine.select(|ev| m!(ev, TimedEvent {..} => ev.clone())),
+            )
+            .await;
+            for ev in machine.drain() {
+                tracing::info!("{} got event {}", id, ev);
+            }
+            tracing::error!("{:?}", result);
+            return Err(error);
         }
 
         let (p50, p95, p99) = percentiles(measurements.iter().map(|x| x.2 - x.1).collect());

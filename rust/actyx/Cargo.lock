@@ -6042,6 +6042,7 @@ dependencies = [
  "anyhow",
  "api",
  "async-process",
+ "chrono",
  "crossbeam",
  "crypto",
  "futures 0.3.15",
