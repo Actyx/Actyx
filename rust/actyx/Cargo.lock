@@ -550,6 +550,7 @@ dependencies = [
  "pin-project-lite",
  "rand 0.8.4",
  "tokio 1.6.2",
+ "tracing",
 ]
 
 [[package]]

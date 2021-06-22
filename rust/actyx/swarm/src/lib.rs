@@ -249,6 +249,21 @@ pub struct AppendMeta {
     timestamp: Timestamp,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum RootSource {
+    // needs to be ordered in ascending priority
+    RootMap,
+    SlowPath,
+    FastPath,
+}
+
+#[test]
+fn root_source_is_ordered() {
+    use RootSource::*;
+    assert!(RootMap < SlowPath);
+    assert!(SlowPath < FastPath);
+}
+
 /// All immutable or internally mutable parts of the banyan store
 struct BanyanStoreData {
     gossip: Gossip,
@@ -856,9 +871,16 @@ impl BanyanStore {
         tracing::debug!("publishing {} events on stream {}", events.len(), stream_nr);
         let stream = self.get_or_create_own_stream(stream_nr)?;
         let mut guard = stream.lock().await;
+
+        let _s = tracing::trace_span!("append", stream_nr = display(stream_nr), timestamp = debug(timestamp));
+        let _s = _s.enter();
+
         let mut store = self.lock();
         let mut lamports = store.reserve_lamports(events.len())?.peekable();
-        drop(store);
+        // We need to keep the store lock to make sure that no other append operations can write
+        // to the streams before we are done, because that might break lamport ordering within
+        // the streams.
+
         let min_lamport = *lamports.peek().unwrap();
         let app_id_tag = ScopedTag::new(
             trees::tags::TagScope::Internal,
@@ -992,12 +1014,12 @@ impl BanyanStore {
         res
     }
 
-    fn update_root(&self, stream_id: StreamId, root: Link) {
+    fn update_root(&self, stream_id: StreamId, root: Link, source: RootSource) {
         if !self.is_local(stream_id) {
             tracing::trace!("update_root {} {}", stream_id, root);
             self.get_or_create_replicated_stream(stream_id)
                 .unwrap()
-                .set_incoming(root);
+                .set_incoming(root, source);
         }
     }
 
@@ -1022,7 +1044,7 @@ impl BanyanStore {
     async fn careful_ingestion(self, stream_id: StreamId, state: Arc<ReplicatedStream>) {
         state
             .incoming_root_stream()
-            .switch_map(move |root| self.clone().sync_one(stream_id, root).into_stream())
+            .switch_map(move |(root, source)| self.clone().sync_one(stream_id, root, source).into_stream())
             .for_each(|res| {
                 match res {
                     Err(err) => {
@@ -1042,10 +1064,16 @@ impl BanyanStore {
     /// attempt to sync one stream to a new root.
     ///
     /// this future may be interrupted at any time when an even newer root comes along.
-    async fn sync_one(self, stream_id: StreamId, root: Link) -> Result<SyncOutcome> {
-        let node_name = self.ipfs().local_node_name();
-        // tokio::time::delay_for(Duration::from_millis(10)).await;
-        tracing::trace!("starting to sync {} to {}", stream_id, root);
+    async fn sync_one(self, stream_id: StreamId, root: Link, source: RootSource) -> Result<SyncOutcome> {
+        if source == RootSource::SlowPath {
+            // it is not unlikely that this sync_one will be replaced by one from the FastPath,
+            // so don’t start bitswapping right away
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+
+        let s = tracing::trace_span!("sync_one", stream_id = display(stream_id), root = display(root));
+        let e = s.enter();
+
         let cid = Cid::from(root);
         let ipfs = &self.data.ipfs;
         let stream = self.get_or_create_replicated_stream(stream_id)?;
@@ -1056,21 +1084,25 @@ impl BanyanStore {
         ipfs.temp_pin(&temp_pin, &cid)?;
         let peers = ipfs.peers();
         // attempt to sync. This may take a while and is likely to be interrupted
-        tracing::trace!("starting to sync {} from {} peers", root, peers.len());
+        tracing::trace!("starting to sync from {} peers", peers.len());
         // create the sync stream, and log progress. Add an additional element.
         let mut sync = ipfs.sync(&cid, peers);
         // during the sync, try to load the tree asap and abort in case it is not good
         let mut header: Option<AxTreeHeader> = None;
         let mut tree: Option<AxTree> = None;
         let mut n: usize = 0;
+
+        drop(e);
+
         while let Some(event) = sync.next().await {
+            let _e = s.enter();
             match event {
                 SyncEvent::Progress { missing } => {
-                    tracing::trace!("{} sync_one: {}/{}", node_name, n, n + missing);
+                    tracing::trace!("sync_one: {}/{}", n, n + missing);
                     n += 1;
                 }
                 SyncEvent::Complete(Err(err)) => {
-                    tracing::trace!("{} {}", node_name, err);
+                    tracing::debug!("{}", err);
                     return Err(err);
                 }
                 SyncEvent::Complete(Ok(())) => {}

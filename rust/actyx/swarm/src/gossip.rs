@@ -1,4 +1,4 @@
-use crate::{BanyanStore, Block, Ipfs, Link};
+use crate::{BanyanStore, Block, Ipfs, Link, RootSource};
 use actyx_sdk::{LamportTimestamp, NodeId, StreamId, StreamNr, Timestamp};
 use anyhow::Result;
 use ax_futures_util::stream::latest_channel;
@@ -119,6 +119,8 @@ impl Gossip {
         let (tx, mut rx) = latest_channel::channel::<PublishUpdate>();
         let publish_task = async move {
             while let Some(update) = rx.next().await {
+                let _s = tracing::trace_span!("publishing", stream = display(update.stream));
+                let _s = _s.enter();
                 let time = Timestamp::now();
                 let lamport = update.lamport;
                 let root = Cid::from(update.root);
@@ -136,6 +138,7 @@ impl Gossip {
                         }
                     }
                 }
+                tracing::trace!(bytes = size, blocks = blocks.len());
 
                 if enable_fast_path {
                     let root_update = RootUpdate {
@@ -218,32 +221,41 @@ impl Gossip {
                 while let Some(message) = subscription.next().await {
                     match DagCborCodec.decode::<GossipMessage>(&message) {
                         Ok(GossipMessage::RootUpdate(root_update)) => {
+                            let _s = tracing::debug_span!("root update", root = display(root_update.root));
+                            let _s = _s.enter();
                             tracing::debug!(
-                                "{} received root update {} from {} with {} blocks, lamport: {}",
-                                store.ipfs().local_node_name(),
-                                root_update.root,
+                                "from {} with {} blocks, lamport: {}",
                                 root_update.stream,
                                 root_update.blocks.len(),
                                 root_update.lamport
                             );
                             let mut lock = store.lock();
-                            tracing::trace!("gotf store lock for {}", root_update.root);
+                            tracing::trace!("got store lock");
                             lock.received_lamport(root_update.lamport)
                                 .expect("unable to update lamport");
                             drop(lock);
-                            tracing::trace!("updated lamport for {}", root_update.root);
+                            tracing::trace!("updated lamport");
                             match store.ipfs().create_temp_pin() {
                                 Ok(tmp) => {
+                                    tracing::trace!("temp pin created");
                                     if let Err(err) = store.ipfs().temp_pin(&tmp, &root_update.root) {
                                         tracing::error!("{}", err);
                                     }
+                                    tracing::trace!("temp pinned");
                                     for block in &root_update.blocks {
                                         if let Err(err) = store.ipfs().insert(block) {
                                             tracing::error!("{}", err);
+                                        } else {
+                                            tracing::trace!("{} written", display(**block));
                                         }
                                     }
+                                    let source = if root_update.blocks.is_empty() {
+                                        RootSource::SlowPath
+                                    } else {
+                                        RootSource::FastPath
+                                    };
                                     match Link::try_from(root_update.root) {
-                                        Ok(root) => store.update_root(root_update.stream, root),
+                                        Ok(root) => store.update_root(root_update.stream, root, source),
                                         Err(err) => tracing::error!("failed to parse link {}", err),
                                     }
                                 }
@@ -253,19 +265,17 @@ impl Gossip {
                             }
                         }
                         Ok(GossipMessage::RootMap(root_map)) => {
-                            tracing::debug!(
-                                "{} received root map with {} entries, lamport: {}",
-                                store.ipfs().local_node_name(),
-                                root_map.entries.len(),
-                                root_map.lamport
-                            );
+                            // FIXME add sender to the RootMap message
+                            let _s = tracing::debug_span!("root map", lamport = display(root_map.lamport));
+                            let _s = _s.enter();
+                            tracing::debug!("with {} entries, lamport: {}", root_map.entries.len(), root_map.lamport);
                             store
                                 .lock()
                                 .received_lamport(root_map.lamport)
                                 .expect("unable to update lamport");
                             for (stream, root) in root_map.entries {
                                 match Link::try_from(root) {
-                                    Ok(root) => store.update_root(stream, root),
+                                    Ok(root) => store.update_root(stream, root, RootSource::RootMap),
                                     Err(err) => tracing::error!("failed to parse link {}", err),
                                 }
                             }

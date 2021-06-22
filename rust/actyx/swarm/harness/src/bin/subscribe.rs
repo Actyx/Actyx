@@ -42,13 +42,13 @@ fn main() -> anyhow::Result<()> {
         signature: None,
     };
 
-    const REPETITIONS: usize = 20000;
+    const REPETITIONS: usize = 1000;
 
     let mut opts = HarnessOpts::from_args();
     opts.enable_api = Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 30001));
     opts.enable_fast_path = true;
     opts.enable_slow_path = true;
-    opts.enable_root_map = false;
+    opts.enable_root_map = true;
     opts.enable_discovery = true;
     opts.n_bootstrap = opts.n_nodes;
 
@@ -81,7 +81,7 @@ fn main() -> anyhow::Result<()> {
                 .await?;
             for machine in sim.machines_mut() {
                 let result = timeout(
-                    Duration::from_millis(1000),
+                    Duration::from_secs(3),
                     machine.select(|ev| {
                         m!(ev, TimedEvent { timestamp, event: Event::Result((_, key, payload)) } => {
                             assert_eq!(payload.json_string(), format!("{}", n));

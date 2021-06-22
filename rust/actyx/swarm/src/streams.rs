@@ -1,4 +1,4 @@
-use crate::{AxStreamBuilder, Cid, Link, Tree};
+use crate::{AxStreamBuilder, Cid, Link, RootSource, Tree};
 use actyx_sdk::{LamportTimestamp, NodeId, Offset, Payload, StreamId, StreamNr};
 use ax_futures_util::stream::variable::Variable;
 use banyan::StreamTransaction;
@@ -141,7 +141,7 @@ pub struct ReplicatedStream {
     // but have not yet validated it
     validated: Variable<Option<PublishedTree>>,
     // stream of incoming roots
-    incoming: Variable<Option<Link>>,
+    incoming: Variable<Option<(Link, RootSource)>>,
     latest_seen: Variable<Option<(LamportTimestamp, Offset)>>,
 }
 
@@ -205,8 +205,14 @@ impl ReplicatedStream {
     }
 
     /// set the latest incoming root. This will trigger validation
-    pub fn set_incoming(&self, value: Link) {
-        self.incoming.set(Some(value));
+    pub fn set_incoming(&self, value: Link, source: RootSource) {
+        self.incoming.transform_mut(|x| match x {
+            Some((l, s)) if *s > source || *s == source && *l == value => false,
+            _ => {
+                x.replace((value, source));
+                true
+            }
+        });
     }
 
     pub fn tree_stream(&self) -> BoxStream<'static, Tree> {
@@ -215,7 +221,7 @@ impl ReplicatedStream {
             .boxed()
     }
 
-    pub fn incoming_root_stream(&self) -> impl Stream<Item = Link> {
+    pub fn incoming_root_stream(&self) -> impl Stream<Item = (Link, RootSource)> {
         self.incoming.new_observer().filter_map(future::ready)
     }
 }

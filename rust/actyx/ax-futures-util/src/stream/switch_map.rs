@@ -33,6 +33,7 @@ where
 impl<St, U, F> Stream for SwitchMap<St, U, F>
 where
     St: Stream,
+    St::Item: std::fmt::Debug,
     F: FnMut(St::Item) -> U,
     U: Stream,
 {
@@ -40,14 +41,19 @@ where
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> std::task::Poll<Option<Self::Item>> {
         let mut this = self.project();
+        tracing::trace!("poll_next");
         while let Poll::Ready(next) = this.inner.poll_next_unpin(cx) {
             if let Some(value) = next {
+                let _s = tracing::trace_span!("transform incoming", value = debug(&value));
+                let _s = _s.enter();
                 this.current.set(Some((this.f)(value)));
             } else {
                 return Poll::Ready(None);
             }
         }
         if let Some(mut current) = this.current.as_mut().as_pin_mut() {
+            let _s = tracing::trace_span!("poll inner");
+            let _s = _s.enter();
             match current.poll_next_unpin(cx) {
                 Poll::Ready(Some(value)) => Poll::Ready(Some(value)),
                 Poll::Ready(None) => {
