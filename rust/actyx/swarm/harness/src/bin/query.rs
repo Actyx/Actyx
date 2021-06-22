@@ -2,12 +2,12 @@
 fn main() -> anyhow::Result<()> {
     use actyx_sdk::{
         app_id,
-        service::{EventService, Order, PublishEvent, PublishRequest, QueryRequest},
+        service::{EventService, Order, PublishEvent, PublishRequest, QueryRequest, QueryResponse},
         tags, AppManifest, OffsetMap, Payload,
     };
     use anyhow::Context;
     use async_std::{future::timeout, task::sleep};
-    use futures::StreamExt;
+    use futures::{future, StreamExt};
     use std::{
         net::{IpAddr, Ipv4Addr, SocketAddr},
         time::Duration,
@@ -57,11 +57,12 @@ fn main() -> anyhow::Result<()> {
                 let result = api
                     .query(QueryRequest {
                         lower_bound: None,
-                        upper_bound,
+                        upper_bound: Some(upper_bound),
                         query: "FROM allEvents".parse()?,
                         order: Order::Asc,
                     })
                     .await?
+                    .filter(|resp| future::ready(matches!(resp, QueryResponse::Event(_))))
                     .collect::<Vec<_>>()
                     .await;
 
@@ -97,11 +98,12 @@ fn main() -> anyhow::Result<()> {
                             Duration::from_secs(10),
                             api.query(QueryRequest {
                                 lower_bound: None,
-                                upper_bound,
+                                upper_bound: Some(upper_bound),
                                 query: "FROM allEvents".parse()?,
                                 order: Order::Asc,
                             })
                             .await?
+                            .filter(|resp| future::ready(matches!(resp, QueryResponse::Event(_))))
                             .collect::<Vec<_>>(),
                         )
                         .await
