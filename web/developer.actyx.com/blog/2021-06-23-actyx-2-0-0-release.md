@@ -58,6 +58,8 @@ This allows us to retrieve frequently accessed data _much_ faster than with trad
 The benefits of this approach are twofold:
 first to reduce the size of data that has to be loaded into memory to sift through a tree, and second to allow for efficient in-memory caching of just the frequently accessed data.
 
+<img style={{borderRadius: "6px", border: "1px solid #c5cbd3"}} src={useBaseUrl('images/blog/2.0-release/benchmark.svg')} />
+
 While Banyan is not yet fully optimized and has plenty of room for improvement, we have already seen impressive benchmark results.
 Across a variety of real-world use-cases from existing customers, we achieved an improvement of _4–10x_ for reading events from Banyan compared to ActyxOS version 1.
 Yes, you read that right.
