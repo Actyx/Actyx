@@ -50,6 +50,7 @@ describe('event service', () => {
             .catch(reject)
           setTimeout(resolve, genericCommunicationTimeout)
         })
+        await new Promise((resolve) => setTimeout(resolve, 1000))
         const pub2 = await publishRandom(es)
         await done
         expect(data).toMatchObject([
