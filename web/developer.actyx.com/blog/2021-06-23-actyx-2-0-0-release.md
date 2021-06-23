@@ -55,7 +55,15 @@ This allows us to retrieve frequently accessed data _much_ faster than with trad
 This is useful for two reasons:
 first to reduce the size of data that has to be loaded into memory to sift through a tree, and second to allow for efficient in-memory caching of just the frequently accessed data.
 
-<!--TODO insert performance benchmarks -->
+While Banyan is not yet fully optimized and has plenty of room for improvement, we could measure impressive benchmarks already.
+Depending on the use case, we were able to get an improvement of 10X for writing events into Banyan compared to ActyxOS version 1.
+Yes, you read that right.
+
+**10. Times. Faster**.
+
+<img src={useBaseUrl('images/blog/2.0-release/lightspeed.gif')} />
+
+---
 
 :::info Want to know more about Banyan?
 Be sure to check our blog in the coming days as we will soon release a blog post about the Banyan implementation that dives into all its amazing, nitty-gritty, technical details.
