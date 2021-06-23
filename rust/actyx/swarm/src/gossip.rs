@@ -50,7 +50,7 @@ impl Decode<DagCborCodec> for RootUpdate {
 }
 
 #[derive(DagCbor)]
-#[ipld(repr = "tuple")]
+#[ipld(repr = "map")]
 struct RootUpdateIo {
     stream: StreamId,
     root: Cid,
@@ -95,7 +95,7 @@ impl TryFrom<RootUpdateIo> for RootUpdate {
 }
 
 #[derive(Debug, Eq, PartialEq, DagCbor)]
-#[ipld(repr = "int-tuple")]
+#[ipld(repr = "keyed")]
 enum GossipMessage {
     #[ipld(repr = "value")]
     RootUpdate(RootUpdate),
@@ -104,7 +104,7 @@ enum GossipMessage {
 }
 
 #[derive(Debug, Eq, PartialEq, DagCbor, Default)]
-#[ipld(repr = "tuple")]
+#[ipld(repr = "map")]
 pub struct RootMap {
     entries: BTreeMap<StreamId, Cid>,
     lamport: LamportTimestamp,
@@ -319,9 +319,31 @@ mod tests {
     fn test_decode_root_update() {
         #[rustfmt::skip]
         let cbor = [
-            0x82, // array(2)
-                0x00, // unsigned(0)
-                0x85, // array(5)
+            0xa1, // map(1)
+                0x6a, // string(10)
+                    b'R', b'o', b'o', b't', b'U', b'p', b'd', b'a', b't', b'e',
+                0xa5, // map(5)
+                    0x66, // string(6)
+                        b'b', b'l', b'o', b'c', b'k', b's',
+                    0x80, // array(0)
+                    0x67, // string(7)
+                        b'l', b'a', b'm', b'p', b'o', b'r', b't',
+                    0x00, // unsigned(0)
+                    0x64, // string(4)
+                        b'r', b'o', b'o', b't',
+                    0xd8, 0x2a, // tag(42)
+                    0x58, 0x25, // bytes(37)
+                        0x00, 0x01, 0x00, 0x12,
+                        0x20, 0xE3, 0xB0, 0xC4,
+                        0x42, 0x98, 0xFC, 0x1C,
+                        0x14, 0x9A, 0xFB, 0xF4,
+                        0xC8, 0x99, 0x6F, 0xB9,
+                        0x24, 0x27, 0xAE, 0x41,
+                        0xE4, 0x64, 0x9B, 0x93,
+                        0x4C, 0xA4, 0x95, 0x99,
+                        0x1B, 0x78, 0x52, 0xB8, 0x55,
+                    0x66, // string(6)
+                        b's', b't', b'r', b'e', b'a', b'm',
                     0x82, // array(2)
                         0x58, 0x20, // bytes(32)
                             0xff, 0xff, 0xff, 0xff,
@@ -333,19 +355,8 @@ mod tests {
                             0xff, 0xff, 0xff, 0xff,
                             0xff, 0xff, 0xff, 0xff,
                         0x18, 0x2a, // unsigned(42)
-                    0xd8, 0x2a, // tag(42)
-                        0x58, 0x25, // bytes(37)
-                            0x00, 0x01, 0x00, 0x12,
-                            0x20, 0xE3, 0xB0, 0xC4,
-                            0x42, 0x98, 0xFC, 0x1C,
-                            0x14, 0x9A, 0xFB, 0xF4,
-                            0xC8, 0x99, 0x6F, 0xB9,
-                            0x24, 0x27, 0xAE, 0x41,
-                            0xE4, 0x64, 0x9B, 0x93,
-                            0x4C, 0xA4, 0x95, 0x99,
-                            0x1B, 0x78, 0x52, 0xB8, 0x55,
-                    0x80, // array(0)
-                    0x00, // unsigned(0)
+                    0x64, // string(4)
+                        b't', b'i', b'm', b'e',
                     0x00, // unsigned(0)
         ];
         let root_update = GossipMessage::RootUpdate(RootUpdate {
@@ -365,11 +376,18 @@ mod tests {
     fn test_decode_root_map() {
         #[rustfmt::skip]
         let cbor = [
-            0x82, // array(2)
-                0x01, // unsigned(1)
-                0x83, // array(3)
+            0xa1, // map(1)
+                0x67, // string(7)
+                    b'R', b'o', b'o', b't', b'M', b'a', b'p',
+                0xa3, // map(3)
+                    0x67, // string(7)
+                        b'e', b'n', b't', b'r', b'i', b'e', b's',
                     0xa0, // map(0)
+                    0x67, // string(7)
+                        b'l', b'a', b'm', b'p', b'o', b'r', b't',
                     0x00, // unsigned(0)
+                    0x64, // string(4)
+                        b't', b'i', b'm', b'e',
                     0x00, // unsigned(0)
         ];
         let root_map = GossipMessage::RootMap(Default::default());
