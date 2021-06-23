@@ -138,12 +138,13 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
       await expect(nextErr).resolves.toMatchObject({ occuredIn: 'onEvent' })
       assertLatestState('t1 event 1')
 
-      let latestState2: string = 'unset'
-      pond.observe(brokenFish, s => {
-        latestState2 = s
+      let stateCb2: ((s: string) => void) | undefined
+      const latestState2 = new Promise<string>(resolve => {
+        stateCb2 = resolve
       })
-      await new Promise(resolve => setTimeout(resolve, 0)) // yield
-      expect(latestState2).toEqual('t1 event 1')
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      pond.observe(brokenFish, stateCb2!)
+      await expect(latestState2).resolves.toEqual('t1 event 1')
 
       pond.dispose()
     })
@@ -178,20 +179,20 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
 
       expect(reportedErr).toBeDefined()
 
-      let reportedErr2 = null
+      let reportErrCb2
+      const reportedErr2 = new Promise(resolve => {
+        reportErrCb2 = resolve
+      })
       let latestState2: string = 'unset'
       pond.observe(
         brokenFish,
         s => {
           latestState2 = s
         },
-        err => {
-          reportedErr2 = err
-        },
+        reportErrCb2,
       )
-      await Observable.timer(0).toPromise() // yield
+      await expect(reportedErr2).resolves.toBeDefined()
       expect(latestState2).toEqual('t1 event 1')
-      expect(reportedErr2).toBeDefined()
 
       pond.dispose()
     })
