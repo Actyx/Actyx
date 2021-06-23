@@ -119,10 +119,6 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
         await pond.emit(Tag('t1'), 't1 event 1').toPromise()
         await pond.emit(Tag('t1'), 'error').toPromise()
         await pond.emit(Tag('t1'), 't1 event 2').toPromise()
-
-        // yield a bit, since there are multiple rx pipelines in play now.
-        // TODO: Better await everything explicitly, CI tends to be flaky when it comes to delays
-        await new Promise(resolve => setTimeout(resolve, 10))
       }
 
       return {
@@ -153,18 +149,18 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
     })
 
     it('should propagate errors to the supplied error callback', async () => {
-      let reportedErr = null
-      const stoppedByError = (err: unknown) => {
-        reportedErr = err
-      }
+      let stoppedByError
+      const reportedErr = new Promise(resolve => {
+        stoppedByError = resolve
+      })
 
       const { pond, emitEventSequenceWithError, assertLatestState } = setup(stoppedByError)
 
       assertLatestState('unset')
       await emitEventSequenceWithError()
 
+      await expect(reportedErr).resolves.toBeDefined()
       assertLatestState('t1 event 1')
-      expect(reportedErr).toBeDefined()
 
       pond.dispose()
     })
