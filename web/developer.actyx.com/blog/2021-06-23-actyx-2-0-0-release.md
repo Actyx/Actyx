@@ -87,10 +87,7 @@ To do that, you need to provide a valid app manifest to the auth API and you wil
 
 The Events API is what was formerly known as the Event Service.
 It is the core of Actyx and offers users the ability to publish, query, and subscribe to events.
-New functionality includes:
-
-- support for tag-based queries instead of name and semantics
-- subscribe to events monotonically, i.e. with the guarantee that whenever the service learns about events that need to be sorted earlier than an event that has already been delivered the stream ends with a time travel message
+The major update for the Events API is the support for tag-based queries instead of name and semantics.
 
 ### Node API
 
@@ -123,7 +120,7 @@ Be the first to see what's next for Actyx and join the community and give us you
 
 For the last months, we worked incredibly hard on this release and we couldn't be more excited to share it with you.
 Most of the new features introduced with Actyx 2.0 build a foundation for further improvements and features.
-They unlock a roadmap of new features that we are already busy working on.
+They unlock a [roadmap](https://trello.com/b/thhTs62O/actyx-product-roadmap) of new features that we are already busy working on.
 We have several improvements in progress, such as the Actyx SDK for C# or configuration of ephemeral event streams so be sure to check our [community forum](https://community.actyx.com/), [socials](https://twitter.com/actyx), or [blog](https://developer.actyx.com/blog) so you don't miss any updates.
 
 Now it is your turn to take this new tool and use it to quickly implement all the use-cases you previously wanted to solve but couldn't due to incompatible infrastructure requirements.
