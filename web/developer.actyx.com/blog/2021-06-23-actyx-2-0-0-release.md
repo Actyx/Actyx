@@ -1,7 +1,7 @@
 ---
 title: Introducing Actyx 2.0
 author: Dr. Roland Kuhn
-author_title: CTO and co-founder at Actyx
+author_title: CTO and Co-Founder at Actyx
 hide_table_of_contents: true
 author_url: https://rolandkuhn.com
 author_image_url: /images/blog/roland-kuhn.jpg
@@ -21,7 +21,7 @@ import useBaseUrl from '@docusaurus/useBaseUrl'
 
 ActyxOS version 1.0 – released in September 2020 – was the first generation of the Actyx Platform that we offered to the general public.
 It was built on top of 4.5 years of experience with software installations in factories across the globe.
-Since its release, we – together with our [partners](https://www.actyx.com/partners) – have had great success digitizing manufacturing processes in factories from a wide range of industries.
+Since its release, we – together with our [partners](https://www.actyx.com/partners) – have had great success digitizing manufacturing processes in factories across almost all industries.
 
 With the help of our partners, we could gather valuable insights into the usage of our product and gained a deeper understanding of the requirements and needs of our users.
 These learnings ultimately made us rethink every aspect of our product and helped us to formulate a clear goal for the next major release.
@@ -33,22 +33,22 @@ from non-user-facing internal upgrades to the core of our technology to user-fac
 Let's go over four of the biggest changes we introduce with Actyx 2.0:
 
 - Production support for all major platforms
-- Performance improvements
-- New APIs
-- Actyx Node Manager
+- Significant performance and stability improvements
+- More ergonomic and powerful APIs
+- A more useful and usable Actyx Node Manager
 
-## Actyx in Production
+## Actyx in Production – on all major platforms
 
 <img style={{borderRadius: "6px", border: "1px solid #c5cbd3"}} src={useBaseUrl('images/blog/2.0-release/platform-support.svg')} />
 
-With version 2.0, we now officially support Actyx in production on all major platforms: Windows, Linux, macOS, and Android!
-This also means that you can replace your Docker setups with their native counterparts which run more stable and are much easier to debug.
+With version 2.0, we now officially support Actyx in production on all major platforms: Windows, Linux, macOS, Docker, and Android!
+This also means that you can, in many cases, replace your Docker setups with native counterparts which are simpler and easier to debug.
 Please refer to our [developer documentation](https://developer.actyx.com/docs/reference/actyx-reference) for a detailed summary of supported operating systems and processor architectures.
 
-## Performance Improvements
+## Performance improvements from top to bottom
 
-Actyx 2.0 brings impressive under-the-hood performance improvements.
-These gains were achieved by completely redesigning our back-end, changing the way we store and retrieve events on Actyx nodes.
+Actyx 2.0 brings serious _under-the-hood_ performance improvements.
+These gains were achieved by completely redesigning the core of Actyx, changing the way we store and retrieve events on Actyx nodes.
 Our team of engineers came up with and implemented a tree data structure called Banyan Tree.
 Banyan is a tree that is not very deep but can grow extremely wide.
 This allows us to retrieve frequently accessed data _much_ faster than with traditional data structures.
@@ -69,7 +69,7 @@ Yes, you read that right.
 Be sure to check our blog in the coming days as we will soon release a blog post about the Banyan implementation that dives into all its amazing, nitty-gritty, technical details.
 :::
 
-## New APIs
+## More ergonomic and powerful APIs
 
 Another big change we introduce to our users with this release are our new, and redesigned APIs.
 Actyx 2.0 brings new APIs as well as improvements in ergonomics in existing APIs.
@@ -78,8 +78,10 @@ Actyx 2.0 brings new APIs as well as improvements in ergonomics in existing APIs
 
 <img style={{borderRadius: "6px", border: "1px solid #c5cbd3"}} src={useBaseUrl('images/blog/2.0-release/auth-api.svg')} />
 
-The Auth API is a new API that is responsible for checking whether users are authenticated and authorized to access the Actyx APIs.
+The Auth API is a new API that is responsible for checking whether applications are authorized to access the Actyx APIs.
 To do that, you need to provide a valid app manifest to the auth API and you will receive a token to be used with HTTP requests to the Events API.
+
+The newly introduced constructs around app authentication and authorization are an important foundation. On this, we can (and plan to) build private streams to secure IP and many more exciting features.
 
 ### Events API
 
@@ -87,21 +89,22 @@ To do that, you need to provide a valid app manifest to the auth API and you wil
 
 The Events API is what was formerly known as the Event Service.
 It is the core of Actyx and offers users the ability to publish, query, and subscribe to events.
-The major update for the Events API is the support for tag-based queries instead of name and semantics.
+The major update for the Events API is support for tag-based queries instead of the old _name and semantics_ model.
+Tags are a highly composable and dynamic approach to distributed event streams.
 
 ### Node API
 
 <img style={{borderRadius: "6px", border: "1px solid #c5cbd3"}} src={useBaseUrl('images/blog/2.0-release/node-api.svg')} />
 
-The Node API is a new API that is responsible for providing access to node-specific information.
+The new Node API allows you to query nodes for information about themselves.
 Currently, the API returns the ID of the node.
 In the future, more endpoints will be added that will give more insights into the state and performance of a node, so stay tuned and remember to check our [public roadmap](https://trello.com/b/thhTs62O/actyx-product-roadmap)!
 
-## Actyx Node Manager
+## A more useful and usable Actyx Node Manager
 
 <img style={{boxShadow: "0 20px 38px -8px rgba(80, 80, 100, .5)", marginBottom: "42px", borderRadius: "6px", border: "1px solid #c5cbd3"}} src={useBaseUrl('images/blog/2.0-release/node-manager-ui.png')} />
 
-Actyx Node Manager is an electron app that lets you securely manage and configure decentralized swarms of Actyx nodes in the local network.
+The Actyx Node Manager is a graphical desktop application that lets you securely manage and configure decentralized swarms of Actyx nodes in the local network.
 With Actyx 2.0 we ship a completely redesigned version of the Node Manager, with better performance and a lot of UX improvements that will significantly streamline working with it.
 For instance, Actyx Node Manager now lets you work on multiple nodes at the same time with favorite nodes being saved across sessions so that you can start right where you left off.
 For more information on the new Node Manager, please refer to the [reference documentation](https://developer.actyx.com/docs/reference/node-manager.mdx) or the release [changelog](https://developer.actyx.com/releases).
@@ -119,16 +122,17 @@ Be the first to see what's next for Actyx and join the community and give us you
 # Getting Started
 
 For the last months, we worked incredibly hard on this release and we couldn't be more excited to share it with you.
-Most of the new features introduced with Actyx 2.0 build a foundation for further improvements and features.
+Most of the new features introduced with Actyx 2.0 are a foundation.
+A foundation which we will continue to improve and on which we will continue to build.
 They unlock a [roadmap](https://trello.com/b/thhTs62O/actyx-product-roadmap) of new features that we are already busy working on.
-We have several improvements in progress, such as the Actyx SDK for C# or configuration of ephemeral event streams so be sure to check our [community forum](https://community.actyx.com/), [socials](https://twitter.com/actyx), or [blog](https://developer.actyx.com/blog) so you don't miss any updates.
+We have several improvements in progress, such as the Actyx SDK for C# or configuration of ephemeral event streams so be sure to check our [Community Forum](https://community.actyx.com/), [Twitter](https://twitter.com/actyx), or [blog](https://developer.actyx.com/blog) so you don't miss any updates.
 
-Now it is your turn to take this new tool and use it to quickly implement all the use-cases you previously wanted to solve but couldn't due to incompatible infrastructure requirements.
+Now it is your turn to take Actyx 2.0 for a spin!
 
 To get started, simply [download Actyx](https://developer.actyx.com/releases) and start with one of our [tutorials](https://developer.actyx.com/docs/tutorials/overview).
 For a more detailed introduction to Actyx, please check out our [Actyx Academy](https://academy.actyx.com/)!
 
 As always, we are keen on hearing your opinions and feedback.
-If you have any questions or requests please visit our [developer community forum](https://community.actyx.com/)!
+If you have any questions or requests please visit our [Community Forum](https://community.actyx.com/)!
 
 Happy hacking!
