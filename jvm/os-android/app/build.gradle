@@ -5,7 +5,6 @@ plugins {
   id 'kotlin-android'
   id 'kotlinx-serialization'
   id 'org.jlleitschuh.gradle.ktlint'
-  id 'com.gladed.androidgitversion'
   id 'com.quittle.setup-android-sdk' version '2.1.0'
 }
 
@@ -13,15 +12,9 @@ apply from: '../actyx-local/actyx.properties'
 
 // 102000000 is the version code that would have been applied to ActyxOS 1.2
 def verCode = { -> ("git log --oneline".execute().text.readLines().size() + 102000000) as Integer }
-def verName = System.getenv('ACTYX_VERSION') ?: androidGitVersion.name()
-
-androidGitVersion {
-  prefix 'actyx-'
-  codeFormat 'MNNPPPBBB'
-  format '%tag%%-commit%%-dirty%-android-'
-  hideBranches = ['master']
-  baseCode 3000
-}
+def dirty = !"git status --porcelain".execute().text.isBlank()
+def verName = System.getenv('ACTYX_VERSION')
+  ?: "0.0.0_dev-" + "git rev-parse HEAD".execute().text.trim().concat(dirty? "_dirty" : "")
 
 android {
   compileSdkVersion 30

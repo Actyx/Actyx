@@ -481,7 +481,7 @@ jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnod
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
-      ./gradlew --stacktrace ktlintCheck build assembleRelease androidGitVersion
+      ./gradlew --stacktrace ktlintCheck build assembleRelease
 
 dist/bin/actyx.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
 	mkdir -p $(dir $@)
