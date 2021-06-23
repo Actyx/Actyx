@@ -21,6 +21,11 @@ export const PublishResponse = t.type({
 })
 export type PublishResponse = t.TypeOf<typeof PublishResponse>
 
+export const OffsetMapResponse = t.type({
+  type: t.literal('offsets'),
+  offsets: OffsetMap,
+})
+
 // Streams
 export const EventResponse = t.type({
   type: t.literal('event'),
@@ -34,10 +39,10 @@ export const EventResponse = t.type({
 })
 export type EventResponse = t.TypeOf<typeof EventResponse>
 
-export const QueryResponse = EventResponse
+export const QueryResponse = t.union([EventResponse, OffsetMapResponse])
 export type QueryResponse = t.TypeOf<typeof QueryResponse>
 
-export const SubscribeResponse = EventResponse
+export const SubscribeResponse = t.union([EventResponse, OffsetMapResponse])
 export type SubscribeResponse = t.TypeOf<typeof SubscribeResponse>
 
 // SubscribeMonotonic
@@ -79,6 +84,7 @@ export const SubscribeMonotonicResponse = t.union([
   SubscribeMonotonicState,
   SubscribeMonotonicEvent,
   SubscribeMonotonicTimeTravel,
+  OffsetMapResponse,
 ])
 export type SubscribeMonotonicResponse = t.TypeOf<typeof SubscribeMonotonicResponse>
 
@@ -102,7 +108,7 @@ export enum Order {
 }
 export type QueryRequest = {
   lowerBound?: OffsetMap
-  upperBound: OffsetMap
+  upperBound?: OffsetMap
   query: string
   order: Order
 }
@@ -110,9 +116,7 @@ export type SubscribeRequest = {
   lowerBound?: OffsetMap
   query: string
 }
-export type SubscribeMonotonicRequestStartFrom =
-  | { lowerBound: OffsetMap }
-  | { snapshot: ReadonlyArray<Compression> }
+export type SubscribeMonotonicRequestStartFrom = { lowerBound: OffsetMap }
 
 export type SubscribeMonotonicRequest = {
   session: string

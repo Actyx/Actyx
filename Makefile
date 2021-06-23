@@ -161,8 +161,8 @@ $(foreach arch,$(architectures),$(eval $(call mkLinuxRule,$(arch))))
 current: dist/bin/current/ax dist/bin/current/actyx-linux
 
 all-js: \
-	dist/js/sdk \
 	dist/js/pond
+	# dist/js/sdk \
 
 # Create a `make-always` target that always has the current timestamp.
 # Depending on this ensures that the rule is always executed.

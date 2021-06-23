@@ -94,7 +94,7 @@ fn main() {
                     api.run(id, move |client| {
                         let request = QueryRequest {
                             lower_bound: None,
-                            upper_bound,
+                            upper_bound: Some(upper_bound),
                             query: "FROM allEvents".parse().unwrap(),
                             order: actyx_sdk::service::Order::Asc,
                         };
@@ -104,11 +104,15 @@ fn main() {
                                 client
                                     .query(request)
                                     .await?
-                                    .map(|x| {
-                                        let QueryResponse::Event(EventResponse {
+                                    .filter_map(|resp| async move {
+                                        if let QueryResponse::Event(EventResponse {
                                             tags, payload, stream, ..
-                                        }) = x;
-                                        (stream, (tags, payload))
+                                        }) = resp
+                                        {
+                                            Some((stream, (tags, payload)))
+                                        } else {
+                                            None
+                                        }
                                     })
                                     .collect::<Vec<_>>(),
                             )

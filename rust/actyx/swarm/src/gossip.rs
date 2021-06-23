@@ -1,8 +1,10 @@
-use crate::{BanyanStore, Block, Ipfs, Link};
+use crate::{BanyanStore, Block, Ipfs, Link, RootSource};
 use actyx_sdk::{LamportTimestamp, NodeId, StreamId, StreamNr, Timestamp};
 use anyhow::Result;
-use ax_futures_util::stream::latest_channel;
-use futures::prelude::*;
+use futures::{
+    channel::mpsc::{unbounded, UnboundedSender},
+    prelude::*,
+};
 use libipld::{
     cbor::DagCborCodec,
     codec::{Codec, Decode, Encode},
@@ -110,66 +112,78 @@ pub struct RootMap {
 }
 
 pub struct Gossip {
-    tx: latest_channel::Sender<PublishUpdate>,
+    tx: UnboundedSender<PublishUpdate>,
     publish_handle: tokio::task::JoinHandle<()>,
 }
 
 impl Gossip {
     pub fn new(ipfs: Ipfs, node_id: NodeId, topic: String, enable_fast_path: bool, enable_slow_path: bool) -> Self {
-        let (tx, mut rx) = latest_channel::channel::<PublishUpdate>();
+        let (tx, mut rx) = unbounded::<PublishUpdate>();
         let publish_task = async move {
             while let Some(update) = rx.next().await {
-                let time = Timestamp::now();
-                let lamport = update.lamport;
-                let root = Cid::from(update.root);
-                let stream = node_id.stream(update.stream);
-                let mut size = 0;
-                let mut blocks = Vec::with_capacity(100);
-                for link in update.links {
-                    let cid = Cid::from(link);
-                    if let Ok(block) = ipfs.get(&cid) {
-                        if size + block.data().len() > MAX_BROADCAST_BYTES {
-                            break;
-                        } else {
-                            size += block.data().len();
-                            blocks.push(block);
+                // drain the channel and only publish the latest update per stream
+                let updates = std::iter::once(update)
+                    .chain(std::iter::from_fn(|| rx.try_next().ok().flatten()))
+                    .map(|up| (up.stream, up))
+                    .collect::<BTreeMap<_, _>>();
+
+                for (_, update) in updates {
+                    let _s = tracing::trace_span!("publishing", stream = display(update.stream));
+                    let _s = _s.enter();
+                    let time = Timestamp::now();
+                    let lamport = update.lamport;
+                    let root = Cid::from(update.root);
+                    let stream = node_id.stream(update.stream);
+                    let mut size = 0;
+                    let mut blocks = Vec::with_capacity(100);
+                    for link in update.links {
+                        let cid = Cid::from(link);
+                        if let Ok(block) = ipfs.get(&cid) {
+                            if size + block.data().len() > MAX_BROADCAST_BYTES {
+                                break;
+                            } else {
+                                size += block.data().len();
+                                blocks.push(block);
+                            }
+                        }
+                    }
+                    tracing::trace!(bytes = size, blocks = blocks.len());
+
+                    if enable_fast_path {
+                        let root_update = RootUpdate {
+                            stream,
+                            root,
+                            blocks,
+                            lamport,
+                            time,
+                        };
+                        let blob = DagCborCodec.encode(&GossipMessage::RootUpdate(root_update)).unwrap();
+                        tracing::trace!("broadcast_blob {} {}", stream, blob.len());
+                        if let Err(err) = ipfs.broadcast(&topic, blob) {
+                            tracing::error!("broadcast failed: {}", err);
+                        }
+                    }
+
+                    if enable_slow_path {
+                        // slow path doesn't include blocks to prevent loading the network with
+                        // duplicate data. peers that receive a root update will use bitswap to
+                        // find the blocks they are missing.
+                        let root_update = RootUpdate {
+                            root,
+                            stream,
+                            lamport,
+                            time,
+                            blocks: Default::default(),
+                        };
+                        let blob = DagCborCodec.encode(&GossipMessage::RootUpdate(root_update)).unwrap();
+                        tracing::trace!("publish_blob {} {}", stream, blob.len());
+                        if let Err(err) = ipfs.publish(&topic, blob) {
+                            tracing::error!("publish failed: {}", err);
                         }
                     }
                 }
-
-                if enable_fast_path {
-                    let root_update = RootUpdate {
-                        stream,
-                        root,
-                        blocks,
-                        lamport,
-                        time,
-                    };
-                    let blob = DagCborCodec.encode(&GossipMessage::RootUpdate(root_update)).unwrap();
-                    tracing::trace!("broadcast_blob {} {}", stream, blob.len());
-                    if let Err(err) = ipfs.broadcast(&topic, blob) {
-                        tracing::error!("broadcast failed: {}", err);
-                    }
-                }
-
-                if enable_slow_path {
-                    // slow path doesn't include blocks to prevent loading the network with
-                    // duplicate data. peers that receive a root update will use bitswap to
-                    // find the blocks they are missing.
-                    let root_update = RootUpdate {
-                        root,
-                        stream,
-                        lamport,
-                        time,
-                        blocks: Default::default(),
-                    };
-                    let blob = DagCborCodec.encode(&GossipMessage::RootUpdate(root_update)).unwrap();
-                    tracing::trace!("publish_blob {} {}", stream, blob.len());
-                    if let Err(err) = ipfs.publish(&topic, blob) {
-                        tracing::error!("publish failed: {}", err);
-                    }
-                }
             }
+            tracing::error!("gossip loop stopped, live updates won’t work anymore");
         };
         Self {
             tx,
@@ -184,7 +198,7 @@ impl Gossip {
         links: BTreeSet<Link>,
         lamport: LamportTimestamp,
     ) -> Result<()> {
-        self.tx.send(PublishUpdate {
+        self.tx.unbounded_send(PublishUpdate {
             stream,
             root,
             links,
@@ -197,15 +211,20 @@ impl Gossip {
         async move {
             loop {
                 tokio::time::sleep(interval).await;
+                let _s = tracing::debug_span!("publish_root_map");
+                let _s = _s.enter();
                 let guard = store.lock();
                 let entries = guard.root_map();
                 let lamport = guard.data.lamport.get();
                 drop(guard);
                 let time = Timestamp::now();
+                let n_entries = entries.len();
                 let msg = GossipMessage::RootMap(RootMap { entries, lamport, time });
                 let blob = DagCborCodec.encode(&msg).unwrap();
                 if let Err(err) = store.ipfs().publish(&topic, blob) {
                     tracing::error!("publish root map failed: {}", err);
+                } else {
+                    tracing::debug!("published {} entries at lamport {}", n_entries, lamport,);
                 }
             }
         }
@@ -218,30 +237,41 @@ impl Gossip {
                 while let Some(message) = subscription.next().await {
                     match DagCborCodec.decode::<GossipMessage>(&message) {
                         Ok(GossipMessage::RootUpdate(root_update)) => {
+                            let _s = tracing::debug_span!("root update", root = display(root_update.root));
+                            let _s = _s.enter();
                             tracing::debug!(
-                                "{} received root update {} from {} with {} blocks, lamport: {}",
-                                store.ipfs().local_node_name(),
-                                root_update.root,
+                                "from {} with {} blocks, lamport: {}",
                                 root_update.stream,
                                 root_update.blocks.len(),
                                 root_update.lamport
                             );
-                            store
-                                .lock()
-                                .received_lamport(root_update.lamport)
+                            let mut lock = store.lock();
+                            tracing::trace!("got store lock");
+                            lock.received_lamport(root_update.lamport)
                                 .expect("unable to update lamport");
+                            drop(lock);
+                            tracing::trace!("updated lamport");
                             match store.ipfs().create_temp_pin() {
                                 Ok(tmp) => {
+                                    tracing::trace!("temp pin created");
                                     if let Err(err) = store.ipfs().temp_pin(&tmp, &root_update.root) {
                                         tracing::error!("{}", err);
                                     }
+                                    tracing::trace!("temp pinned");
                                     for block in &root_update.blocks {
                                         if let Err(err) = store.ipfs().insert(block) {
                                             tracing::error!("{}", err);
+                                        } else {
+                                            tracing::trace!("{} written", display(**block));
                                         }
                                     }
+                                    let source = if root_update.blocks.is_empty() {
+                                        RootSource::SlowPath
+                                    } else {
+                                        RootSource::FastPath
+                                    };
                                     match Link::try_from(root_update.root) {
-                                        Ok(root) => store.update_root(root_update.stream, root),
+                                        Ok(root) => store.update_root(root_update.stream, root, source),
                                         Err(err) => tracing::error!("failed to parse link {}", err),
                                     }
                                 }
@@ -251,19 +281,17 @@ impl Gossip {
                             }
                         }
                         Ok(GossipMessage::RootMap(root_map)) => {
-                            tracing::debug!(
-                                "{} received root map with {} entries, lamport: {}",
-                                store.ipfs().local_node_name(),
-                                root_map.entries.len(),
-                                root_map.lamport
-                            );
+                            // FIXME add sender to the RootMap message
+                            let _s = tracing::debug_span!("root map", lamport = display(root_map.lamport));
+                            let _s = _s.enter();
+                            tracing::debug!("with {} entries, lamport: {}", root_map.entries.len(), root_map.lamport);
                             store
                                 .lock()
                                 .received_lamport(root_map.lamport)
                                 .expect("unable to update lamport");
                             for (stream, root) in root_map.entries {
                                 match Link::try_from(root) {
-                                    Ok(root) => store.update_root(stream, root),
+                                    Ok(root) => store.update_root(stream, root, RootSource::RootMap),
                                     Err(err) => tracing::error!("failed to parse link {}", err),
                                 }
                             }

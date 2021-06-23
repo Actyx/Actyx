@@ -64,8 +64,8 @@ rand = "0.8.3"
 tokio = { version = "1.6.1", features = ["rt-multi-thread", "macros"] }
 
 [[example]]
-name = "offsets"
-path = "examples/offsets.rs"
+name = "query"
+path = "examples/query.rs"
 required-features = ["client"]
 
 [[example]]

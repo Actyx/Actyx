@@ -1,10 +1,9 @@
 import React from 'react'
 import Layout from '@theme/Layout'
-import { Hero } from '../components/Hero'
-import useBaseUrl from '@docusaurus/useBaseUrl'
 import styles from './index.module.css'
 import Link from '@docusaurus/Link'
 import { Arrow } from '../icons/icons'
+import SearchBarHomePage from '../theme/SearchBar-Homepage'
 
 const CARDS = [
   {
@@ -94,6 +93,36 @@ const ESSENTIALS = [
   ],
 ]
 
+export const Hero = () => (
+  <div className={styles.wrapper}>
+    <div className={styles.lineWrapper}>
+      <div className={styles.heroHeadline}>Hey there!</div>
+      <div className={styles.waveAnimation}>👋</div>
+    </div>
+    <div className={styles.lineWrapper}>
+      <div className={styles.heroHeadline}>Welcome to the Actyx Developer Docs</div>
+    </div>
+    <div className={styles.lineWrapper}>
+      <div className={styles.heroCopy}>
+        The place where you find everything you need to build awesome{' '}
+        <a href="https://local-first-cooperation.github.io/website/"> local-first cooperative</a>{' '}
+        software on the Actyx Platform.
+      </div>
+    </div>
+    <div className={styles.lineWrapper}>
+      <SearchBarHomePage />
+    </div>
+    <div className={styles.buttonWrapper + ' blue '}>
+      <a style={{ textDecoration: 'none' }} href="docs/tutorials/quickstart">
+        <div className={styles.button + ' green '}>Ready to dive in? Check out the Quickstart</div>
+      </a>
+      <a style={{ textDecoration: 'none' }} href="docs/conceptual/how-actyx-works">
+        <div className={styles.button}>New to Actyx? See how everything works</div>
+      </a>
+    </div>
+  </div>
+)
+
 const Card = ({ headline, text, link, color }) => (
   <div className={'col col--3 ' + styles.card + ' ' + styles.shiftOnHover + ' invert ' + color}>
     <Link to={link}>
@@ -128,7 +157,7 @@ const Col = ({ width, children, className = '' }) => (
 
 const Home = () => (
   <div className={'container ' + styles.root}>
-    <Hero img={useBaseUrl('/images/homepage/hero-background.svg')} />
+    <Hero />
     <Row>
       <Col width="6">
         <Heading>What does Actyx do?</Heading>

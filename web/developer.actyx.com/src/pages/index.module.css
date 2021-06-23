@@ -182,3 +182,99 @@ a.essentialLink p {
 .essentialCommunity > a > div {
   border: 1px solid #BFC4CA;
 }
+
+.wrapper {
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  padding-top: 72px;
+  padding-bottom: 72px;
+  padding-left: 36px;
+  padding-right: 36px;
+  background-color: #555555;
+  opacity: 1;
+  background: url('/images/homepage/hero-background.svg') no-repeat center;
+  background-size: 1240px;
+}
+
+.lineWrapper {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+
+@keyframes wave {
+  0% {
+  transform: rotate(0deg);
+}
+10% {
+  transform: rotate(14deg);
+}
+20% {
+  transform: rotate(-8deg);
+}
+30% {
+  transform: rotate(14deg);
+}
+40% {
+  transform: rotate(-4deg);
+}
+50% {
+  transform: rotate(10deg);
+}
+60% {
+  transform: rotate(0deg);
+}
+100% {
+  transform: rotate(0deg);
+}}
+
+.waveAnimation {
+  width: 60px;
+  font-size: 26px;
+  position: relative;
+  margin-left: 4px;
+  animation-name: wave;
+  animation-duration: 4s;
+  animation-iteration-count: infinite;
+}
+
+.heroHeadline {
+  max-width: 650px;
+  font-size: 26px;
+  font-weight: 900;
+  text-align: center;
+  background: white;
+}
+
+.heroCopy {
+  font-size: 15px;
+  max-width: 450px;
+  text-align: center;
+  margin-top: 16px;
+  margin-bottom: 24px;
+  background: white;
+}
+
+.buttonWrapper {
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: 32px;
+  display: flex;
+  max-width: 800px;
+  flex-direction: row;
+  justify-content: center;
+}
+
+.button {
+  border-radius: 4px;
+  border: 1px solid  var(--color);
+  color: var(--color);
+  font-weight: 600;
+  font-size: 15px;
+  padding: 8px;
+  margin-left: 16px;
+  margin-right: 16px;
+  cursor: pointer;
+  text-align: center;
+}
