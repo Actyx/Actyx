@@ -122,7 +122,7 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
 
         // yield a bit, since there are multiple rx pipelines in play now.
         // TODO: Better await everything explicitly, CI tends to be flaky when it comes to delays
-        await new Promise(resolve => setTimeout(resolve, 5))
+        await new Promise(resolve => setTimeout(resolve, 10))
       }
 
       return {
@@ -139,8 +139,8 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
       const nextErr = errors.take(1).toPromise()
       await emitEventSequenceWithError()
 
-      assertLatestState('t1 event 1')
       await expect(nextErr).resolves.toMatchObject({ occuredIn: 'onEvent' })
+      assertLatestState('t1 event 1')
 
       let latestState2: string = 'unset'
       pond.observe(brokenFish, s => {
@@ -214,8 +214,8 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
       assertLatestState('unset')
       await emitEventSequenceWithError()
 
-      assertLatestState('t1 event 1')
       await expect(nextErr).resolves.toMatchObject({ occuredIn: 'isReset' })
+      assertLatestState('t1 event 1')
 
       pond.dispose()
     })
@@ -232,8 +232,8 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
       assertLatestState('unset')
       await emitEventSequenceWithError()
 
-      assertLatestState('unset')
       await expect(nextErr).resolves.toMatchObject({ occuredIn: 'deserializeState' })
+      assertLatestState('unset')
 
       pond.dispose()
     })
