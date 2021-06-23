@@ -10,6 +10,8 @@
 import { fromNullable } from 'fp-ts/lib/Option'
 import { range, takeWhile } from 'ramda'
 import { Observable } from 'rxjs'
+import { OffsetsResponse } from '../internal_common/types'
+import { validateOrThrow } from '../util'
 import {
   MultiplexedWebsocket,
   Request,
@@ -18,8 +20,6 @@ import {
   ResponseMessageType,
 } from './multiplexedWebsocket'
 import { RequestTypes } from './websocketEventStore'
-import { OffsetsResponse } from './types'
-import { validateOrThrow } from '../util'
 
 let __ws: any
 declare const global: any

@@ -157,10 +157,10 @@ namespace Actyx
 
     public class OffsetsResponse
     {
-        OffsetMap Present { get; }
+        public OffsetMap Present { get; }
 
         // NOT an offset-map. Rather it contains offsets between offsets :)
-        Dictionary<string, ulong> ToReplicate { get; }
+        public Dictionary<string, ulong> ToReplicate { get; }
     }
 
     public interface IEventSelection

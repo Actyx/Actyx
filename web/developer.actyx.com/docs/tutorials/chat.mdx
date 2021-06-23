@@ -34,8 +34,6 @@ If you haven't worked in TypeScript before, we can recommend [this guide](https:
 
 Now, let's get right to it. The only thing you need to do before starting the tutorial is installing Actyx. If you haven't done so yet, please follow [this guide](../how-to/local-development/install-actyx.mdx).
 
-<br />
-
 ### Set up the project
 
 In order to run, test and build the chat app you are going to need Node.js and npm, which you can install from [here](https://nodejs.org/en/).
@@ -88,7 +86,12 @@ Actyx is a platform for building highly resilient software systems distributed a
 
 Actyx enables a completely decentralized architecture that allows you to **build apps that always runs**. Your apps always run because they run locally on the device and only interact with the locally running Actyx software.
 
-![Twins and Apps](/images/tutorials/chat-tutorial/twins-and-apps.png)
+import useBaseUrl from '@docusaurus/useBaseUrl'
+
+<img
+  style={{ marginBottom: '12px', borderRadius: '6px', border: '1px solid #c5cbd3' }}
+  src={useBaseUrl('images/tutorials/chat-tutorial/twins-and-apps.svg')}
+/>
 
 Enough theory! Let's jump right in.
 
@@ -138,7 +141,7 @@ A _fish_, aka twin, is defined as an object with a couple of properties. You mus
 
 First, add the following imports to the top of the `index.ts` file:
 
-```ts file=../../../../third-party/chat/index.ts#L1
+```ts file=../../../../third-party/chat/index.ts#[import]
 
 ```
 

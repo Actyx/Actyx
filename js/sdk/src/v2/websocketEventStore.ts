@@ -5,36 +5,31 @@
  * Copyright (C) 2021 Actyx AG
  */
 import * as t from 'io-ts'
-import { AppId, Where } from '../types'
-import { Codecs, EventKeyIO, OffsetMapIO } from '../types/wire'
-import { validateOrThrow } from '../util'
 import {
   DoPersistEvents,
   DoQuery,
   DoSubscribe,
   EventStore,
-  RequestConnectivity,
   RequestOffsets,
-} from './eventStore'
-import log from './log'
-import { MultiplexedWebsocket } from './multiplexedWebsocket'
+} from '../internal_common/eventStore'
+import log from '../internal_common/log'
 import {
-  ConnectivityStatus,
   Event,
   EventIO,
   EventsSortOrders,
   OffsetsResponse,
   UnstoredEvents,
-} from './types'
+} from '../internal_common/types'
+import { AppId, Where } from '../types'
+import { EventKeyIO, OffsetMapIO } from '../types/wire'
+import { validateOrThrow } from '../util'
+import { MultiplexedWebsocket } from './multiplexedWebsocket'
 
 export const enum RequestTypes {
   Offsets = 'offsets',
   Query = 'query',
   Subscribe = 'subscribe',
   Publish = 'publish',
-  // FIXME: These endpoints are not yet available in V2.
-  HighestSeen = '/ax/events/highestSeenOffsets',
-  Connectivity = '/ax/events/requestConnectivity',
 }
 
 const QueryRequest = t.readonly(
@@ -55,15 +50,6 @@ const SubscribeRequest = t.readonly(
 
 const PersistEventsRequest = t.readonly(t.type({ data: UnstoredEvents }))
 
-const ConnectivityRequest = t.readonly(
-  t.type({
-    special: t.readonlyArray(Codecs.NodeId),
-    hbHistDelay: t.number,
-    reportEveryMs: t.number, // how frequently the connectivity service should report, recommended around 10_000
-    currentPsnHistoryDelay: t.number, // this is u8 size! -- how many report_every_ms spans back we go for the our_psn value? recommended 6 to give 60s
-  }),
-)
-
 const EventKeyWithTime = t.intersection([EventKeyIO, t.type({ timestamp: t.number })])
 const PublishEventsResponse = t.type({ data: t.readonlyArray(EventKeyWithTime) })
 
@@ -79,23 +65,6 @@ export class WebsocketEventStore implements EventStore {
       .map(validateOrThrow(OffsetsResponse))
       .first()
       .toPromise()
-
-  connectivityStatus: RequestConnectivity = (
-    specialSources,
-    hbHistDelayMicros,
-    reportEvery,
-    currentPsnHistoryDelay,
-  ) => {
-    const params = ConnectivityRequest.encode({
-      special: specialSources,
-      hbHistDelay: hbHistDelayMicros,
-      reportEveryMs: reportEvery,
-      currentPsnHistoryDelay,
-    })
-    return this.multiplexer
-      .request(RequestTypes.Connectivity, params)
-      .map(validateOrThrow(ConnectivityStatus))
-  }
 
   query: DoQuery = (lowerBound, upperBound, whereObj, sortOrder) => {
     return this.multiplexer

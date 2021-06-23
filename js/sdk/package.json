@@ -4,13 +4,13 @@
     "url": "https://community.actyx.com/"
   },
   "dependencies": {
-    "@types/node-fetch": "^2.5.10",
     "bufferutil": "4.0.1",
     "cron": "1.5.0",
     "debug": "3.2.6",
     "fp-ts": "1.19.4",
     "immutable": "4.0.0-rc.12",
     "io-ts": "1.10.1",
+    "node-fetch": "^2.3.0",
     "ramda": "0.25.0",
     "rxjs": "5.5.12",
     "utf-8-validate": "5.0.2",
@@ -24,6 +24,7 @@
     "@types/fetch-mock": "7.3.2",
     "@types/jest": "25.1.1",
     "@types/node": "14.14.6",
+    "@types/node-fetch": "^2.5.10",
     "@types/ramda": "github:types/npm-ramda#9529aa3c8ff70ff84afcbc0be83443c00f30ea90",
     "@types/ws": "4.0.2",
     "@typescript-eslint/eslint-plugin": "2.17.0",
@@ -36,7 +37,6 @@
     "jest": "26.6.3",
     "license-check-and-add": "^3.0.4",
     "madge": "3.4.4",
-    "node-fetch": "^2.3.0",
     "prettier": "1.13.7",
     "rimraf": "2.6.2",
     "rxjs-marbles": "2.4.1",
@@ -93,5 +93,5 @@
     "build:docs": "rm -rf ../../web/developer.actyx.com/static/@actyx/pond/ && typedoc --mode library --options typedoc.json src/index.ts"
   },
   "types": "./lib/index.d.ts",
-  "version": "0.0.1"
+  "version": "0.0.2"
 }
