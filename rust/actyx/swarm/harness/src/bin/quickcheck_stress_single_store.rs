@@ -137,9 +137,10 @@ fn main() {
                             .then(move |req| async move {
                                 let mut req = req?;
                                 while let Some(x) = tokio::time::timeout(Duration::from_secs(10), req.next()).await? {
-                                    let SubscribeResponse::Event(EventResponse { offset, .. }) = x;
-                                    if offset >= max_offset {
-                                        return Ok(());
+                                    if let SubscribeResponse::Event(EventResponse { offset, .. }) = x {
+                                        if offset >= max_offset {
+                                            return Ok(());
+                                        }
                                     }
                                 }
                                 anyhow::bail!("Stream ended")

@@ -68,7 +68,7 @@ fn round_trip(c: &mut Criterion) {
                 let x: Vec<_> = service
                     .query(QueryRequest {
                         lower_bound: Some(offsets_before.present),
-                        upper_bound: offsets_later.present,
+                        upper_bound: Some(offsets_later.present),
                         order: Order::Asc,
                         query: "FROM 'my_tag'".parse().unwrap(),
                     })

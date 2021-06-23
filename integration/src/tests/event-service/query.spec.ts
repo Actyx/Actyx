@@ -11,8 +11,9 @@ import { mySuite, publishRandom, testName, throwOnCb } from './utils.support.tes
 const query = async (es: AxEventService, query: string): Promise<unknown[]> => {
   const result: unknown[] = []
   const offsets = await es.offsets()
-  await es.query({ upperBound: offsets.present, query, order: Order.Asc }, (data) =>
-    result.push(data.payload),
+  await es.query(
+    { upperBound: offsets.present, query, order: Order.Asc },
+    (data) => data.type == 'event' && result.push(data.payload),
   )
   return result
 }
@@ -66,7 +67,7 @@ describe('event service', () => {
           })
       }))
 
-    it('should return events in ascending order and complete', () =>
+    it('should return events in ascending order with explicit bounds and complete', () =>
       run(async (x) => {
         const es = await mkESFromTrial(x)
         const pub1 = await publishRandom(es)
@@ -79,11 +80,29 @@ describe('event service', () => {
         }
         const data: QueryResponse[] = []
         await es.query(request, (x) => data.push(x))
-        const pub1Idx = data.findIndex((x) => x.lamport === pub1.lamport)
-        const pub2Idx = data.findIndex((x) => x.lamport === pub2.lamport)
-        expect(data[pub1Idx]).toMatchObject(pub1)
-        expect(data[pub2Idx]).toMatchObject(pub2)
-        expect(pub1Idx).toBeLessThan(pub2Idx)
+        expect(data).toMatchObject([
+          pub1,
+          pub2,
+          { type: 'offsets', offsets: { [pub1.stream]: expect.any(Number) } },
+        ])
+      }))
+
+    it('should return events in ascending order and complete', () =>
+      run(async (x) => {
+        const es = await mkESFromTrial(x)
+        const pub1 = await publishRandom(es)
+        const pub2 = await publishRandom(es)
+        const request: QueryRequest = {
+          query: `FROM '${mySuite()}' & '${testName()}' & isLocal`,
+          order: Order.Asc,
+        }
+        const data: QueryResponse[] = []
+        await es.query(request, (x) => data.push(x))
+        expect(data).toMatchObject([
+          pub1,
+          pub2,
+          { type: 'offsets', offsets: { [pub1.stream]: expect.any(Number) } },
+        ])
       }))
 
     it('should return events in descending order and complete', () =>
@@ -92,18 +111,16 @@ describe('event service', () => {
         const pub1 = await publishRandom(es)
         const pub2 = await publishRandom(es)
         const request: QueryRequest = {
-          lowerBound: { [pub2.stream]: pub1.offset - 1 },
-          upperBound: { [pub2.stream]: pub2.offset },
           query: `FROM '${mySuite()}' & '${testName()}' & isLocal`,
           order: Order.Desc,
         }
         const data: QueryResponse[] = []
         await es.query(request, (x) => data.push(x))
-        const pub1Idx = data.findIndex((x) => x.lamport === pub1.lamport)
-        const pub2Idx = data.findIndex((x) => x.lamport === pub2.lamport)
-        expect(data[pub1Idx]).toMatchObject(pub1)
-        expect(data[pub2Idx]).toMatchObject(pub2)
-        expect(pub1Idx).toBeGreaterThan(pub2Idx)
+        expect(data).toMatchObject([
+          pub2,
+          pub1,
+          { type: 'offsets', offsets: { [pub1.stream]: expect.any(Number) } },
+        ])
       }))
 
     it('should return no events if upperBound is not in range', () =>
@@ -118,7 +135,9 @@ describe('event service', () => {
         }
         const data: QueryResponse[] = []
         await es.query(request, (x) => data.push(x))
-        expect(data.length).toBe(0)
+        expect(data).toMatchObject([
+          { type: 'offsets', offsets: { [pub1.stream]: expect.any(Number) } },
+        ])
       }))
 
     it('should canonicalise tags correctly', () =>

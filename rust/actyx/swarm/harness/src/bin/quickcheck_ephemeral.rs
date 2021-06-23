@@ -178,7 +178,7 @@ fn main() {
                         api.run(id, |client| {
                             let request = QueryRequest {
                                 lower_bound: None,
-                                upper_bound: present.clone(),
+                                upper_bound: Some(present.clone()),
                                 query: "FROM allEvents".parse().unwrap(),
                                 order: actyx_sdk::service::Order::Asc,
                             };
@@ -186,11 +186,16 @@ fn main() {
                                 let round_tripped = client
                                     .query(request)
                                     .await?
-                                    .map(
-                                        |QueryResponse::Event(EventResponse {
-                                             tags, payload, stream, ..
-                                         })| { (stream, (tags, payload)) },
-                                    )
+                                    .filter_map(|resp| async move {
+                                        if let QueryResponse::Event(EventResponse {
+                                            tags, payload, stream, ..
+                                        }) = resp
+                                        {
+                                            Some((stream, (tags, payload)))
+                                        } else {
+                                            None
+                                        }
+                                    })
                                     .fold(0usize, |acc, _| future::ready(acc + 1))
                                     .await;
 

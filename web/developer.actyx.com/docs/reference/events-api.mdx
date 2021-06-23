@@ -10,7 +10,7 @@ image: /images/defaults/default.svg
 <!-- textlint-disable -->
 
 This is the reference documentation for the **Events API**.
-If you run into questions while going through the document, we recommend reading the [conceptual guide](../conceptual/event-streams.mdx) on event streams to get a more holistic understanding of how the Events API works.
+If you run into questions while going through the document, we recommend reading the [conceptual guide](../conceptual/event-streams) on event streams to get a more holistic understanding of how the Events API works.
 
 The Events API allows you to
 
@@ -30,7 +30,7 @@ In reality, the Events API does not return pretty-printed JSON but the usual com
 ## Prerequisites
 
 Communication with the Events API needs to be authenticated.
-Therefore an auth token which is associated with the requesting app needs to be retrieved from the Auth API[./auth-api.mdx].
+Therefore an auth token which is associated with the requesting app needs to be retrieved from the Auth API[./auth-api].
 This token then needs to be passed in the `Authorization` header with every request to the Events API.
 In the following examples we will use the `$AUTH_TOKEN` environment variable which can be initialized with
 
@@ -57,7 +57,7 @@ This request returns the currently validated `present` as observed by this node,
 It further returns a map in `toReplicate`, which describes the number of events that are available in the swarm and should eventually become available on this local node.
 Fully replicated streams are omitted from this map.
 
-Take a look at the [event streams guide](../conceptual/event-streams.mdx) to learn more about the role of offsets.
+Take a look at the [event streams guide](../conceptual/event-streams) to learn more about the role of offsets.
 
 <Tabs
   groupId="content"
@@ -103,7 +103,7 @@ The response body will contain a JSON object of the following structure:
 }
 ```
 
-To learn more about stream IDs and event streams in general see our [conceptual guide on event streams](../conceptual/event-streams.mdx).
+To learn more about stream IDs and event streams in general see our [conceptual guide on event streams](../conceptual/event-streams).
 
 </TabItem>
 
@@ -311,16 +311,18 @@ You use the request body to specify the details of your request as documented in
 
 #### Optional: Lower bound for offsets (`lowerBound`)
 
-The `lowerBound` object specifies the lower bound offset for each stream with the numbers being **exclusive**, i.e. a `lowerBound` specification of `34` means the Events API will return events with offsets `> 34`.
+The `lowerBound` object specifies the lower bound offset for each stream with the numbers being **exclusive**,
+i.e. a `lowerBound` specification of `34` means the Events API will return events with offsets `> 34`.
 
 The `lowerBound` is optional.
 If none is set for one, multiple or all subscribed streams, the Events API will assume no lower bound.
 
-#### Required: Upper bounds for offsets (`upperBound`)
+#### Optional: Upper bounds for offsets (`upperBound`)
 
-The `upperBound` object specifies the upper bound offset for each stream with the numbers being **inclusive**. i.e. an `upperBound` specification of `34` means the Events API will return events with offsets `<= 34`.
-
-The `upperBound` is **required.** For every subscribed stream where no upper bound offset is set, the result will be empty.
+The `upperBound` object specifies the upper bound offset for each stream with the numbers being **inclusive**.
+i.e. an `upperBound` specification of `34` means the Events API will return events with offsets `<= 34`.
+If none is set, the response stream will contain all events that were known to the system at the time of query.
+Otherwise the Events API will only return events from streams that are specified.
 
 #### Required: Query (`query`)
 
@@ -328,7 +330,7 @@ The `query` field specifies a tag query that defines which events should be quer
 Every `query` must begin with the keyword `FROM`.
 Following `FROM`, three different query types can be specified.
 
-- [Tag query](../conceptual/tags.mdx): Arbitrary unicode strings in single quotes, e.g. `FROM 'tag-01'`
+- [Tag query](../conceptual/tags): Arbitrary unicode strings in single quotes, e.g. `FROM 'tag-01'`
 - `isLocal`: Returns all events within the specified bounds emitted by the local node backing the Events API
 - `allEvents`: Returns all events within the specified bounds known by the node backing the Events API
 
@@ -352,20 +354,38 @@ Please note that for identical Lamport timestamps the stream ID is taken into ac
   - `Content-Type` is `application/x-ndjson`
   - `Transfer-Encoding` is `chunked`
 
-The response will be a stream of `<CR><LF>`-delimited event payloads of the following JSON structure:
+The response will be in the [Newline Delimited JSON format](http://ndjson.org/) with the following formats:
+
+#### Response type `event`
 
 ```json
 {
-  "type": "<string: type>",
+  "type": "event",
   "lamport": "<integer>",
   "stream": "<string: stream ID>",
   "offset": "<integer>",
-  "timestamp": "<integer>",
+  "timestamp": "<integer: unix epoch in microseconds>",
   "tags": "<string[]: tags>",
   "appId": "<string>",
   "payload": "<object>"
 }
 ```
+
+#### Response type `offsets`
+
+```json
+{
+  "type": "offsets",
+  "offsets": {
+    "<string: stream ID>": "<integer: event offset, e.g. 49>",
+    "<string: stream ID>": "<integer: event offset, e.g. 101>"
+  }
+}
+
+:::info Response types
+This is just a subset of possible response types. Clients should be prepared to handle (or ignore)
+responses with a value of `type` not specified above.
+:::
 
 If an error is encountered while processing the stream of events, the stream will terminate with a final error JSON object with the following structure:
 
@@ -505,7 +525,7 @@ The `query` field specifies a query that defines how events should be filtered.
 Every `query` must begin with the keyword `FROM`.
 Following `FROM`, three different query types can be specified.
 
-- [Tag query](../conceptual/tags.mdx): Arbitrary unicode strings in single quotes, e.g. `FROM 'tag-01'`
+- [Tag query](../conceptual/tags): Arbitrary unicode strings in single quotes, e.g. `FROM 'tag-01'`
 - `isLocal`: Returns all events within the specified bounds emitted by the local node backing the Events API
 - `allEvents`: Returns all events within the specified bounds known by the node backing the Events API
 
@@ -525,11 +545,13 @@ the Events API will assume a lower bound offset of `-1`, i.e. the beginning.
   - `Content-Type` is `application/x-ndjson`
   - `Transfer-Encoding` is `chunked`
 
-The response will be a stream of `<CR><LF>`-delimited event payloads of the following JSON structure:
+The response will be in the [Newline Delimited JSON format](http://ndjson.org/) with the following formats:
+
+#### Response type `event`
 
 ```json
 {
-  "type": "<string: type>",
+  "type": "event",
   "lamport": "<integer>",
   "stream": "<string: stream ID>",
   "offset": "<integer>",
@@ -539,6 +561,22 @@ The response will be a stream of `<CR><LF>`-delimited event payloads of the foll
   "payload": "<object>"
 }
 ```
+
+#### Response type `offsets`
+
+```json
+{
+  "type": "offsets",
+  "offsets": {
+    "<string: stream ID>": "<integer: event offset, e.g. 49>",
+    "<string: stream ID>": "<integer: event offset, e.g. 101>"
+  }
+}
+
+:::info Response types
+This is just a subset of possible response types. Clients should be prepared to handle (or ignore)
+responses with a value of `type` not specified above.
+:::
 
 If an error is encountered while processing the stream of events, the stream will terminate with a final error JSON object with the following structure:
 
@@ -664,7 +702,7 @@ the Events API will assume a lower bound offset of `-1`, i.e. the beginning.
 
 The response will be in the [Newline Delimited JSON format](http://ndjson.org/) with the following formats:
 
-#### Event type `event`
+#### Response type `event`
 
 ```json
 {
@@ -680,7 +718,18 @@ The response will be in the [Newline Delimited JSON format](http://ndjson.org/) 
 }
 ```
 
-#### Event type `timeTravel`
+#### Response type `offsets`
+
+```json
+{
+  "type": "offsets",
+  "offsets": {
+    "<string: stream ID>": "<integer: event offset, e.g. 49>",
+    "<string: stream ID>": "<integer: event offset, e.g. 101>"
+  }
+}
+
+#### Response type `timeTravel`
 
 In case the service learns about events that need to be sorted earlier than an event that has already been delivered, an event of this type is emitted and the stream is closed.
 
@@ -694,6 +743,11 @@ In case the service learns about events that need to be sorted earlier than an e
   }
 }
 ```
+
+:::info Response types
+This is just a subset of possible response types. Clients should be prepared to handle (or ignore)
+responses with a value of `type` not specified above.
+:::
 
 If an error is encountered while processing the stream of events, the stream will terminate with a final error JSON object with the following structure:
 

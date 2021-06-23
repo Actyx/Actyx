@@ -12,60 +12,51 @@ describe('event service', () => {
       run(async (x) => {
         const es = await mkESFromTrial(x)
         const pub1 = await publishRandom(es)
-
         const request: SubscribeMonotonicRequest = {
           session: 'test-session',
           query: `FROM '${mySuite()}' & '${testName()}' & isLocal`,
           lowerBound: {},
         }
-
         const data: SubscribeMonotonicResponse[] = []
         await new Promise((resolve, reject) => {
           es.subscribeMonotonic(request, (x) => {
             data.push(x)
-            resolve()
           })
             .then(resolve)
             .catch(reject)
           setTimeout(resolve, genericCommunicationTimeout)
         })
-
-        const ev = data.find((x) => x.type === 'event' && x.lamport === pub1.lamport)
-        if (ev === undefined) {
-          console.log(data)
-        }
-        expect(ev).toMatchObject(pub1)
+        expect(data).toMatchObject([
+          pub1,
+          { type: 'offsets', offsets: { [pub1.stream]: expect.any(Number) } },
+        ])
       }))
 
     it('should start a monotonic event stream and find published event', () =>
       run(async (x) => {
         const es = await mkESFromTrial(x)
-
+        const pub1 = await publishRandom(es)
         const request: SubscribeMonotonicRequest = {
           session: 'test-session',
           query: `FROM '${mySuite()}' & '${testName()}' & isLocal`,
           lowerBound: {},
         }
-
         const data: SubscribeMonotonicResponse[] = []
         const done = new Promise((resolve, reject) => {
           es.subscribeMonotonic(request, (x) => {
             data.push(x)
-            resolve()
           })
             .then(resolve)
             .catch(reject)
           setTimeout(resolve, genericCommunicationTimeout)
         })
-
-        const pub1 = await publishRandom(es)
+        const pub2 = await publishRandom(es)
         await done
-
-        const ev = data.find((x) => x.type === 'event' && x.lamport === pub1.lamport)
-        if (ev === undefined) {
-          console.log(data)
-        }
-        expect(ev).toMatchObject(pub1)
+        expect(data).toMatchObject([
+          pub1,
+          { type: 'offsets', offsets: { [pub1.stream]: expect.any(Number) } },
+          pub2,
+        ])
       }))
   })
 })
