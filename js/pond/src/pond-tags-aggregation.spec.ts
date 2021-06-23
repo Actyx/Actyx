@@ -4,7 +4,7 @@
  * 
  * Copyright (C) 2020 Actyx AG
  */
-import { Observable } from 'rxjs'
+import { Observable, Subject } from 'rxjs'
 import {
   Fish,
   FishErrorContext,
@@ -96,9 +96,9 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
       errorCb?: (err: unknown) => void,
       fishExt: Partial<Fish<string, string>> = {},
     ) => {
-      let reported: FishErrorContext | null = null
+      const reported: Subject<FishErrorContext> = new Subject()
       const fishErrorReporter: FishErrorReporter = (_err, _fishId, detail) => {
-        reported = detail
+        reported.next(detail)
       }
 
       const pond = Pond.test({ fishErrorReporter })
@@ -119,49 +119,49 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
         await pond.emit(Tag('t1'), 't1 event 1').toPromise()
         await pond.emit(Tag('t1'), 'error').toPromise()
         await pond.emit(Tag('t1'), 't1 event 2').toPromise()
-
-        await new Promise(resolve => setTimeout(resolve, 5)) // yield a bit, since there are multiple rx pipelines in play now.
       }
 
       return {
         pond,
         emitEventSequenceWithError,
-        lastReportedErr: () => reported,
+        errors: reported,
         assertLatestState: (expected: string) => expect(latestState).toEqual(expected),
       }
     }
 
     it('should pass at least the last good state to the callback, even if an error has been thrown', async () => {
-      const { pond, emitEventSequenceWithError, assertLatestState, lastReportedErr } = setup()
+      const { pond, emitEventSequenceWithError, assertLatestState, errors } = setup()
 
+      const nextErr = errors.take(1).toPromise()
       await emitEventSequenceWithError()
 
+      await expect(nextErr).resolves.toMatchObject({ occuredIn: 'onEvent' })
       assertLatestState('t1 event 1')
-      expect(lastReportedErr()).toMatchObject({ occuredIn: 'onEvent' })
 
-      let latestState2: string = 'unset'
-      pond.observe(brokenFish, s => {
-        latestState2 = s
+      let stateCb2: ((s: string) => void) | undefined
+      const latestState2 = new Promise<string>(resolve => {
+        stateCb2 = resolve
       })
-      await new Promise(resolve => setTimeout(resolve, 0)) // yield
-      expect(latestState2).toEqual('t1 event 1')
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      pond.observe(brokenFish, stateCb2!)
+      await expect(latestState2).resolves.toEqual('t1 event 1')
 
       pond.dispose()
     })
 
     it('should propagate errors to the supplied error callback', async () => {
-      let reportedErr = null
-      const stoppedByError = (err: unknown) => {
-        reportedErr = err
-      }
+      let stoppedByError
+      const reportedErr = new Promise(resolve => {
+        stoppedByError = resolve
+      })
 
       const { pond, emitEventSequenceWithError, assertLatestState } = setup(stoppedByError)
 
       assertLatestState('unset')
       await emitEventSequenceWithError()
 
+      await expect(reportedErr).resolves.toBeDefined()
       assertLatestState('t1 event 1')
-      expect(reportedErr).toBeDefined()
 
       pond.dispose()
     })
@@ -179,62 +179,58 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
 
       expect(reportedErr).toBeDefined()
 
-      let reportedErr2 = null
+      let reportErrCb2
+      const reportedErr2 = new Promise(resolve => {
+        reportErrCb2 = resolve
+      })
       let latestState2: string = 'unset'
       pond.observe(
         brokenFish,
         s => {
           latestState2 = s
         },
-        err => {
-          reportedErr2 = err
-        },
+        reportErrCb2,
       )
-      await Observable.timer(0).toPromise() // yield
+      await expect(reportedErr2).resolves.toBeDefined()
       expect(latestState2).toEqual('t1 event 1')
-      expect(reportedErr2).toBeDefined()
 
       pond.dispose()
     })
 
     it('should report if error was caused by isReset', async () => {
-      const { pond, emitEventSequenceWithError, assertLatestState, lastReportedErr } = setup(
-        undefined,
-        {
-          isReset: ev => {
-            if (ev === 'error') {
-              throw new Error('broken')
-            }
-            return true
-          },
+      const { pond, emitEventSequenceWithError, assertLatestState, errors } = setup(undefined, {
+        isReset: ev => {
+          if (ev === 'error') {
+            throw new Error('broken')
+          }
+          return true
         },
-      )
+      })
 
+      const nextErr = errors.take(1).toPromise()
       assertLatestState('unset')
       await emitEventSequenceWithError()
 
+      await expect(nextErr).resolves.toMatchObject({ occuredIn: 'isReset' })
       assertLatestState('t1 event 1')
-      expect(lastReportedErr()).toMatchObject({ occuredIn: 'isReset' })
 
       pond.dispose()
     })
 
     it('should report if error was caused by deserializeState', async () => {
-      const { pond, emitEventSequenceWithError, assertLatestState, lastReportedErr } = setup(
-        undefined,
-        {
-          onEvent: x => x,
-          deserializeState: () => {
-            throw new Error('broken')
-          },
+      const { pond, emitEventSequenceWithError, assertLatestState, errors } = setup(undefined, {
+        onEvent: x => x,
+        deserializeState: () => {
+          throw new Error('broken')
         },
-      )
+      })
 
+      const nextErr = errors.take(1).toPromise()
       assertLatestState('unset')
       await emitEventSequenceWithError()
 
+      await expect(nextErr).resolves.toMatchObject({ occuredIn: 'deserializeState' })
       assertLatestState('unset')
-      expect(lastReportedErr()).toMatchObject({ occuredIn: 'deserializeState' })
 
       pond.dispose()
     })
