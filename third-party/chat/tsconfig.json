@@ -2,5 +2,6 @@
   "compilerOptions": {
     "esModuleInterop": true,
     "sourceMap": true,
+    "resolveJsonModule": true
   },
 }

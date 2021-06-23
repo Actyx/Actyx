@@ -226,6 +226,7 @@ aarch64
 arm64v8
 amd64
 js-libp2p
+img
  - blog/2020-06-09-building-docker-apps-for-arm64v8.md
 arm64
 ActyxOS
