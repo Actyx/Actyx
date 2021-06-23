@@ -239,7 +239,7 @@ define mkRustTestRule=
 $(TARGET_NAME): cargo-init make-always
   $(eval TARGET_PATH:=rust/$(word 3, $(subst -, ,$(TARGET_NAME))))
 	cd $(TARGET_PATH) && $(CARGO) fmt --all -- --check
-	cd $(TARGET_PATH) && $(CARGO) --locked clippy --all-targets -- -D warnings
+	cd $(TARGET_PATH) && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --all-targets -- -D warnings
 	cd $(TARGET_PATH) && $(CARGO) test --locked --all-features -j $(CARGO_TEST_JOBS)
 endef
 
@@ -249,12 +249,12 @@ $(foreach TARGET_NAME,$(rust-validation),$(eval $(mkRustTestRule)))
 # execute fmt check, clippy and tests for rust/actyx
 validate-os: diagnostics
 	cd rust/actyx && $(CARGO) fmt --all -- --check
-	cd rust/actyx && $(CARGO) --locked clippy -- -D warnings
-	cd rust/actyx && $(CARGO) --locked clippy --tests -- -D warnings
+	cd rust/actyx && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) -- -D warnings
+	cd rust/actyx && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
 	cd rust/actyx && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
 
 validate-netsim: diagnostics
-	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness --release
+	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness --release -j $(CARGO_BUILD_JOBS)
 	rust/actyx/target/release/gossip --n-nodes 8 --enable-fast-path
 	rust/actyx/target/release/gossip --n-nodes 8 --enable-slow-path
 	rust/actyx/target/release/gossip --n-nodes 8 --enable-root-map
@@ -402,7 +402,7 @@ dist/bin/current/%: rust/actyx/target/release/%
 	mv $< $@
 # here % (and thus $*) matches something like ax.exe, so we need to strip the suffix with `basename`
 rust/actyx/target/release/%: make-always
-	cd rust/actyx && cargo --locked build --release --bin $(basename $*)
+	cd rust/actyx && $(CARGO) --locked build --release -j $(CARGO_BUILD_JOBS) --bin $(basename $*)
 
 # In the following the same two-step process is used as for the current os/arch above.
 # The difference is that %-patterns won’t works since there are two variables to fill:
@@ -441,7 +441,7 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
-	  cargo --locked build --release --bin $$(basename $$*)
+	  cargo --locked build --release -j $(CARGO_BUILD_JOBS) --bin $$(basename $$*)
 endef
 $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
 
@@ -464,7 +464,7 @@ $(soTargetPatterns): cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
-	  cargo --locked build -p node-ffi --lib --release --target $(TARGET)
+	  cargo --locked -j $(CARGO_BUILD_JOBS) build -p node-ffi --lib --release --target $(TARGET)
 
 # create these so that they belong to the current user (Docker would create as root)
 # (formulating as rule dependencies only runs mkdir when they are missing)
