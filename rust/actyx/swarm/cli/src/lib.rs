@@ -1,5 +1,6 @@
 use actyx_sdk::{language::Query, Payload, StreamNr, TagSet, Timestamp};
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use crypto::{KeyPair, PrivateKey};
 pub use libp2p::{multiaddr, Multiaddr, PeerId};
 use std::{borrow::Borrow, net::SocketAddr, path::PathBuf, str::FromStr};
@@ -190,7 +191,7 @@ impl std::str::FromStr for Command {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum Event {
     NewListenAddr(Multiaddr),
     ExpiredListenAddr(Multiaddr),
@@ -275,7 +276,7 @@ impl std::str::FromStr for Event {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct TimedEvent {
     pub event: Event,
     pub timestamp: Timestamp,
@@ -294,7 +295,7 @@ impl std::str::FromStr for TimedEvent {
 
 impl std::fmt::Display for TimedEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?} {}", self.timestamp, self.event)
+        write!(f, "{} {}", DateTime::<Utc>::from(self.timestamp), self.event)
     }
 }
 
