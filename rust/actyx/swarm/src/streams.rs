@@ -204,7 +204,11 @@ impl ReplicatedStream {
         })
     }
 
-    /// set the latest incoming root. This will trigger validation
+    /// set the latest incoming root
+    ///
+    /// This will trigger validation if the `source` has sufficient priority compared to the current link.
+    /// The recipient will have to call `downgrade()` after processing to ensure that later updates for
+    /// new roots will be accepted.
     pub fn set_incoming(&self, value: Link, source: RootSource) {
         self.incoming.transform_mut(|x| match x {
             Some((l, s)) if *s > source || *s == source && *l == value => false,
@@ -212,6 +216,17 @@ impl ReplicatedStream {
                 x.replace((value, source));
                 true
             }
+        });
+    }
+
+    /// Dial down the priority of the stored value to the minimum to allow later updates from any source
+    pub fn downgrade(&self, value: Link) {
+        self.incoming.transform_mut(|x| {
+            match x {
+                Some((l, s)) if *l == value => *s = RootSource::RootMap,
+                _ => {}
+            }
+            false
         });
     }
 

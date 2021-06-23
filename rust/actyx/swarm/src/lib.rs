@@ -1042,10 +1042,18 @@ impl BanyanStore {
 
     /// careful ingestion - basically just call sync_one on each new ingested root
     async fn careful_ingestion(self, stream_id: StreamId, state: Arc<ReplicatedStream>) {
+        let state2 = state.clone();
         state
             .incoming_root_stream()
-            .switch_map(move |(root, source)| self.clone().sync_one(stream_id, root, source).into_stream())
-            .for_each(|res| {
+            .switch_map(move |(root, source)| {
+                self.clone()
+                    .sync_one(stream_id, root, source)
+                    .map(move |res| (res, root))
+                    .into_stream()
+            })
+            .for_each(|(res, root)| {
+                // must dial down this root’s priority to allow later updates with lower prio
+                state2.downgrade(root);
                 match res {
                     Err(err) => {
                         if let Some(err) = err.downcast_ref::<BlockNotFound>() {
