@@ -8,7 +8,7 @@ author_image_url: /images/blog/roland-kuhn.jpg
 tags:
   - Actyx
   - 2.0 Release
-image: /images/blog/2.0-release/header.svg
+image: /images/blog/2.0-release/header.png
 ---
 
 We are incredibly excited to announce our second milestone release – **Actyx 2.0**!
@@ -43,7 +43,7 @@ Let's go over four of the biggest changes we introduce with Actyx 2.0:
 
 With version 2.0, we now officially support Actyx in production on all major platforms: Windows, Linux, macOS, and Android!
 This also means that you can replace your Docker setups with their native counterparts which run more stable and are much easier to debug.
-Please refer to our [developer documentation](https://developer.actyx.com/docs/how-to/local-development/install-actyx#hardware-requirements) for a detailed summary of supported operating systems and processor architectures.
+Please refer to our [developer documentation](https://developer.actyx.com/docs/reference/actyx-reference) for a detailed summary of supported operating systems and processor architectures.
 
 ## Performance Improvements
 
