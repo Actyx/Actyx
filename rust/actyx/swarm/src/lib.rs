@@ -1011,6 +1011,7 @@ impl BanyanStore {
         let blocks = txn.into_writer().into_written();
         // publish new blocks and root
         self.data.gossip.publish(stream_nr, root, blocks, lamport)?;
+        tracing::trace!("transform_stream successful");
         res
     }
 
@@ -1052,7 +1053,11 @@ impl BanyanStore {
                     .into_stream()
             })
             .for_each(|(res, root)| {
-                // must dial down this root’s priority to allow later updates with lower prio
+                // Must dial down this root’s priority to allow later updates with lower prio.
+                // This crucially depends on the fact that sync_one will eventually return, i.e.
+                // it must not hang indefinitely. It should ideally fail as quickly as possible
+                // when not making progress (but a fixed and short timeout would make it impossible
+                // to work on a slow network connection).
                 state2.downgrade(root);
                 match res {
                     Err(err) => {
@@ -1206,19 +1211,21 @@ impl BanyanStore {
 
     fn update_present(&self, stream_id: StreamId, offset: Offset) {
         self.data.offsets.transform_mut(|offsets| {
-            offsets.present.update(stream_id, offset);
-            true
+            offsets
+                .present
+                .update(stream_id, offset)
+                .map(|old| tracing::trace!("updating present {} offset {} -> {}", stream_id, old, offset))
+                .is_some()
         });
     }
 
     fn update_highest_seen(&self, stream_id: StreamId, offset: Offset) {
         self.data.offsets.transform_mut(|offsets| {
-            if offsets.replication_target.offset(stream_id) < offset {
-                offsets.replication_target.update(stream_id, offset);
-                true
-            } else {
-                false
-            }
+            offsets
+                .replication_target
+                .update(stream_id, offset)
+                .map(|old| tracing::trace!("updating highest {} offset {} -> {}", stream_id, old, offset))
+                .is_some()
         });
     }
 
