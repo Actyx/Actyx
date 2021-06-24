@@ -261,7 +261,7 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
                     pre_processing: PreProcessing::Zip {
                         binary_name: Some("actyx".into()),
                     },
-                    file_name: format!("actyx-{}-macos-{}.tar.gz", version, output_arch),
+                    file_name: format!("actyx-{}-macos-{}.zip", version, output_arch),
                     local_result: None,
                 },
             ));
@@ -306,7 +306,7 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
                 format!("{}-binaries/{}/ax", os_arch.os, os_arch),
                 TargetArtifact::Blob {
                     pre_processing: PreProcessing::Zip { binary_name: None },
-                    file_name: format!("actyx-cli-{}-macos-{}.tar.gz", version, output_arch),
+                    file_name: format!("actyx-cli-{}-macos-{}.zip", version, output_arch),
                     local_result: None,
                 },
             ));
