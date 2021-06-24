@@ -2,13 +2,10 @@
 title: Introducing Actyx 2.0
 author: Dr. Roland Kuhn
 author_title: CTO and Co-Founder at Actyx
-hide_table_of_contents: true
 author_url: https://rolandkuhn.com
 author_image_url: /images/blog/roland-kuhn.jpg
-tags:
-  - Actyx
-  - 2.0 Release
-image: /images/blog/2.0-release/header.png
+tags: [Actyx, Release]
+image: /images/blog/2.0-release/thumbnail.png
 ---
 
 We are incredibly excited to announce our second major release – **Actyx 2.0**!
