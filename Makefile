@@ -142,6 +142,7 @@ export DOCKER_FLAGS ?= -e "ACTYX_VERSION=${ACTYX_VERSION}" -e "ACTYX_VERSION_CLI
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))
 
 # this needs to remain the first so it is the default target
+# THIS TARGET IS NOT RUN FOR ARTIFACTS — see azure-piplines
 all: all-linux all-android all-windows all-macos all-js assert-clean
 
 all-android: $(patsubst %,dist/bin/%,$(all-ANDROID))
@@ -220,16 +221,12 @@ prepare-js:
 	# install nvm
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash
 
-# create validation targets for all folder inside `./rust`
-rust-validation = $(shell arr=(`ls -1 rust`); printf "validate-rust-%s " "$${arr[@]}")
-.PHONY: validate-rust $(rust-validation)
-validate-rust: $(rust-validation) validate-os
-
 # execute linter, style checker and tests for everything
-validate: validate-os validate-rust validate-os-android validate-js validate-website validate-misc assert-clean
+# THIS TARGET IS NOT RUN FOR PR VALIDATION — see azure-piplines
+validate: validate-os validate-netsim validate-os-android validate-js assert-clean
 
 # declare all the validate targets to be phony
-.PHONY: validate-os validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website validate-misc
+.PHONY: validate-os validate-os-android validate-js
 
 .PHONY: diagnostics
 
@@ -333,20 +330,6 @@ dist/js/pond: make-always
 		npm install && \
 		npm run build:prod && \
 		mv `npm pack` ../../$@/
-
-# validate all websites
-validate-website: diagnostics validate-website-developer validate-website-downloads
-
-# validate developer.actyx.com
-validate-website-developer:
-	cd web/developer.actyx.com && source ~/.nvm/nvm.sh && nvm install && \
-		npm install && \
-		npm run test
-
-# validate downloads.actyx.com
-validate-website-downloads:
-	cd web/downloads.actyx.com && source ~/.nvm/nvm.sh && nvm install && \
-		npm install
 
 validate-node-manager-bindings: 
 	cd rust/actyx/node-manager-bindings && \

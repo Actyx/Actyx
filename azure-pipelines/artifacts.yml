@@ -62,13 +62,13 @@ stages:
     pool:
       name: Native
     jobs:
-      - job:
-        displayName: make all-js
+      - job: makeAllJS
+        displayName: all-js
         steps:
           - bash: |
               set -e
               build/bin/install-vault.sh
-              make all-js
+              make all-js assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
@@ -77,8 +77,8 @@ stages:
           - publish: $(System.DefaultWorkingDirectory)/dist/js
             artifact: js-packages
             condition: succeeded()
-      - job:
-        displayName: make all-windows
+      - job: makeAllWindows
+        displayName: all-windows
         steps:
           - bash: |
               set -e
@@ -86,7 +86,7 @@ stages:
               mkdir -p dist/bin/windows-x86_64/
               chmod -R 777 .
               chmod -R 777 /root/.cargo
-              make all-windows
+              make all-windows assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
@@ -96,14 +96,14 @@ stages:
             artifact: windows-binaries
             condition: succeeded()
       - job: makeAllLinux
-        displayName: make all-linux
+        displayName: all-linux
         steps:
           - bash: |
               set -e
               build/bin/install-vault.sh
               chmod -R 777 .
               chmod -R 777 /root/.cargo
-              make all-linux
+              make all-linux assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
@@ -113,14 +113,14 @@ stages:
             artifact: linux-binaries
             condition: succeeded()
       - job: makeAllMacos
-        displayName: make all-macos
+        displayName: all-macos
         steps:
           - bash: |
               set -e
               build/bin/install-vault.sh
               chmod -R 777 .
               chmod -R 777 /root/.cargo
-              make all-macos
+              make all-macos assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
@@ -149,9 +149,11 @@ stages:
                 --tag actyx/cosmos:actyx-$GIT_COMMIT $MASTER_TAG \
                 -f ops/docker/images/actyx/Dockerfile \
                 .
+              
+              make assert-clean
             env:
               BASH_ENV: "~/.bashrc"
-      - job:
+      - job: makeAllAndroid
         displayName: make all-android
         steps:
           - bash: |
@@ -159,7 +161,7 @@ stages:
               build/bin/install-vault.sh
               chmod -R 777 .
               chmod -R 777 /root/.cargo
-              make all-android
+              make all-android assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
               AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
@@ -169,7 +171,7 @@ stages:
             artifact: android-binaries
             condition: succeeded()
       - job:
-        displayName: make node-manager mac
+        displayName: node-manager mac
         pool:
           name: MacIntel
           demands:
@@ -178,27 +180,27 @@ stages:
         steps:
           - bash: |
               set -e
-              make node-manager-mac-linux
+              make node-manager-mac-linux assert-clean
           - publish: "$(System.DefaultWorkingDirectory)/misc/actyx-node-manager/dist/artifacts"
             artifact: node-manager-mac
             condition: succeeded()
       - job:
-        displayName: make node-manager linux
+        displayName: node-manager linux
         steps:
           - bash: |
               set -e
-              make node-manager-mac-linux
+              make node-manager-mac-linux assert-clean
             env:
               BASH_ENV: "~/.bashrc"
           - publish: "$(System.DefaultWorkingDirectory)/misc/actyx-node-manager/dist/artifacts"
             artifact: node-manager-linux
             condition: succeeded()
       - job:
-        displayName: make node-manager win
+        displayName: node-manager win
         steps:
           - bash: |
               set -e
-              make node-manager-win
+              make node-manager-win assert-clean
             env:
               BASH_ENV: "~/.bashrc"
           - publish: "$(System.DefaultWorkingDirectory)/misc/actyx-node-manager/dist/artifacts"
