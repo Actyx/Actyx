@@ -1,4 +1,5 @@
 import { mkESFromTrial, SubscribeResponse } from '../../http-client'
+import { waitFor } from '../../retry'
 import { run } from '../../util'
 import { genericCommunicationTimeout, mySuite, publishRandom, testName } from './utils.support.test'
 
@@ -38,6 +39,7 @@ describe('event service', () => {
           }).catch(reject)
           setTimeout(resolve, genericCommunicationTimeout)
         })
+        await waitFor(() => data.length >= 2, 5_000, 50)
         const pub2 = await publishRandom(es)
         await done
         expect(data).toMatchObject([
@@ -45,6 +47,10 @@ describe('event service', () => {
           { type: 'offsets', offsets: { [pub1.stream]: expect.any(Number) } },
           pub2,
         ])
+        expect(data[1].type === 'offsets' && data[1].offsets[pub1.stream]).toBeGreaterThanOrEqual(
+          pub1.offset,
+        )
+        expect(data[1].type === 'offsets' && data[1].offsets[pub1.stream]).toBeLessThan(pub2.offset)
       }))
   })
 })
