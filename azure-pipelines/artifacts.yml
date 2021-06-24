@@ -154,7 +154,7 @@ stages:
             env:
               BASH_ENV: "~/.bashrc"
       - job: makeAllAndroid
-        displayName: make all-android
+        displayName: all-android
         steps:
           - bash: |
               set -e
@@ -180,7 +180,7 @@ stages:
         steps:
           - bash: |
               set -e
-              make node-manager-mac-linux assert-clean
+              make node-manager-mac-linux
           - publish: "$(System.DefaultWorkingDirectory)/misc/actyx-node-manager/dist/artifacts"
             artifact: node-manager-mac
             condition: succeeded()
@@ -189,7 +189,7 @@ stages:
         steps:
           - bash: |
               set -e
-              make node-manager-mac-linux assert-clean
+              make node-manager-mac-linux
             env:
               BASH_ENV: "~/.bashrc"
           - publish: "$(System.DefaultWorkingDirectory)/misc/actyx-node-manager/dist/artifacts"
@@ -200,7 +200,7 @@ stages:
         steps:
           - bash: |
               set -e
-              make node-manager-win assert-clean
+              make node-manager-win
             env:
               BASH_ENV: "~/.bashrc"
           - publish: "$(System.DefaultWorkingDirectory)/misc/actyx-node-manager/dist/artifacts"
