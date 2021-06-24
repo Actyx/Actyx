@@ -63,7 +63,7 @@ stages:
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
       - job:
-        displayName: make validate-os-android
+        displayName: validate-os-android
         pool:
           name: Native
         steps:
