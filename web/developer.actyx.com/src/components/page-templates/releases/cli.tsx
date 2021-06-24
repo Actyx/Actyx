@@ -44,12 +44,12 @@ const DOWNLOADS_V2_0_0: Download[] = [
     ],
   },
   {
-    platform: 'Windows (Installer)',
+    platform: 'Windows',
     ext: '.zip',
     files: [
       {
         arch: 'x64',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-cli-$V-installer-windows-x64.zip`,
+        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-cli-$V-windows-x64.zip`,
       },
     ],
   },

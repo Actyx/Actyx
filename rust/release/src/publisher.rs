@@ -221,11 +221,10 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
         (Product::Actyx, OS::windows) => {
             if os_arch.arch == Arch::x86_64 {
                 out.push((
-                    // TODO: There would also be `actyx.exe`...
-                    format!("{}-binaries/{}/Actyx-Installer.exe", os_arch.os, os_arch),
+                    format!("{}-binaries/{}/actyx-x64.msi", os_arch.os, os_arch),
                     TargetArtifact::Blob {
-                        pre_processing: PreProcessing::Zip { binary_name: None },
-                        file_name: format!("actyx-{}-installer-windows-x64.zip", version),
+                        pre_processing: PreProcessing::None,
+                        file_name: format!("actyx-{}-x64.msi", version),
                         local_result: None,
                     },
                 ));
@@ -316,27 +315,27 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
         (Product::NodeManager, OS::linux) => {
             if matches!(os_arch.arch, Arch::x86_64) {
                 out.push((
-                    "node-manager-linux/actyx-node-manager.deb".to_string(),
+                    "node-manager-linux/actyx-node-manager-amd64.deb".to_string(),
                     TargetArtifact::Blob {
                         pre_processing: PreProcessing::None,
-                        file_name: format!("actyx-node-manager-amd64-{}.deb", version),
+                        file_name: format!("actyx-node-manager-{}-amd64.deb", version),
                         local_result: None,
                     },
                 ));
-                out.push((
-                    "node-manager-linux/actyx-node-manager.rpm".to_string(),
-                    TargetArtifact::Blob {
-                        pre_processing: PreProcessing::None,
-                        file_name: format!("actyx-node-manager-amd64-{}.rpm", version),
-                        local_result: None,
-                    },
-                ));
+                //out.push((
+                //    "node-manager-linux/actyx-node-manager.rpm".to_string(),
+                //    TargetArtifact::Blob {
+                //        pre_processing: PreProcessing::None,
+                //        file_name: format!("actyx-node-manager-amd64-{}.rpm", version),
+                //        local_result: None,
+                //    },
+                //));
             }
         }
         (Product::NodeManager, OS::windows) => {
             if matches!(os_arch.arch, Arch::x86_64) {
                 out.push((
-                    "node-manager-win/actyx-node-manager.msi".to_string(),
+                    "node-manager-win/actyx-node-manager-windows-x64.msi".to_string(),
                     TargetArtifact::Blob {
                         pre_processing: PreProcessing::None,
                         file_name: format!("actyx-node-manager-{}-x64.msi", version),
@@ -347,16 +346,16 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
         }
         (Product::NodeManager, OS::macos) => {
             if matches!(os_arch.arch, Arch::x86_64) {
-                let output_arch = match os_arch.arch {
-                    Arch::x86_64 => "intel",
-                    Arch::aarch64 => "arm",
-                    _ => unreachable!(),
-                };
+                //let output_arch = match os_arch.arch {
+                //    Arch::x86_64 => "intel",
+                //    Arch::aarch64 => "arm",
+                //    _ => unreachable!(),
+                //};
                 out.push((
-                    "node-manager-mac/actyx-node-manager.dmg".to_string(),
+                    "node-manager-mac/ActyxNodeManager-x64.dmg".to_string(),
                     TargetArtifact::Blob {
                         pre_processing: PreProcessing::None,
-                        file_name: format!("ActyxNodeManager-{}-{}.deb", version, output_arch),
+                        file_name: format!("ActyxNodeManager-{}.dmg", version),
                         local_result: None,
                     },
                 ));

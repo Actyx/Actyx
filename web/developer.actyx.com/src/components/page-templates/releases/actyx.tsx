@@ -49,7 +49,7 @@ const DOWNLOADS_V2_0_0: Download[] = [
     files: [
       {
         arch: 'x64',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-$V-installer-windows-x64.zip`,
+        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-$V-x64.msi`,
       },
     ],
   },
@@ -59,7 +59,7 @@ const DOWNLOADS_V2_0_0: Download[] = [
     files: [
       {
         arch: 'all',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-$V-android.zip`,
+        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/Actyx-$V.apk`,
       },
     ],
   },
