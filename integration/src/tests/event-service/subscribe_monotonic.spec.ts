@@ -53,7 +53,13 @@ describe('event service', () => {
           }).catch(reject)
           setTimeout(resolve, genericCommunicationTimeout)
         })
-        await waitFor(() => data.length >= 2, 5_000, 50)
+        await waitFor(
+          () => {
+            expect(data.length).toBeGreaterThanOrEqual(2)
+          },
+          5_000,
+          50,
+        )
         const pub2 = await publishRandom(es)
         await done
         expect(data).toMatchObject([
