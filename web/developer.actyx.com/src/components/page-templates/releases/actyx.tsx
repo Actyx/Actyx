@@ -13,19 +13,19 @@ const DOWNLOADS_V2_0_0: Download[] = [
     files: [
       {
         arch: 'amd64',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-$V-linux-amd64.tar.gz`,
+        target: `https://axartifacts.blob.core.windows.net/releases/actyx-$V-linux-amd64.tar.gz`,
       },
       {
         arch: 'arm64',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-$V-linux-arm64.tar.gz`,
+        target: `https://axartifacts.blob.core.windows.net/releases/actyx-$V-linux-arm64.tar.gz`,
       },
       {
         arch: 'armhf',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-$V-linux-armhf.tar.gz`,
+        target: `https://axartifacts.blob.core.windows.net/releases/actyx-$V-linux-armhf.tar.gz`,
       },
       {
         arch: 'arm',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-$V-linux-arm.tar.gz`,
+        target: `https://axartifacts.blob.core.windows.net/releases/actyx-$V-linux-arm.tar.gz`,
       },
     ],
   },
@@ -35,31 +35,31 @@ const DOWNLOADS_V2_0_0: Download[] = [
     files: [
       {
         arch: 'intel',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-$V-macos-intel.zip`,
+        target: `https://axartifacts.blob.core.windows.net/releases/actyx-$V-macos-intel.zip`,
       },
       {
         arch: 'arm64',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-$V-macos-arm.zip`,
+        target: `https://axartifacts.blob.core.windows.net/releases/actyx-$V-macos-arm.zip`,
       },
     ],
   },
   {
-    platform: 'Windows (Installer)',
-    ext: '.zip',
+    platform: 'Windows',
+    ext: '.msi',
     files: [
       {
         arch: 'x64',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-$V-x64.msi`,
+        target: `https://axartifacts.blob.core.windows.net/releases/actyx-$V-x64.msi`,
       },
     ],
   },
   {
-    platform: 'Android (APK)',
-    ext: '.zip',
+    platform: 'Android',
+    ext: '.apk',
     files: [
       {
         arch: 'all',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/Actyx-$V.apk`,
+        target: `https://axartifacts.blob.core.windows.net/releases/Actyx-$V.apk`,
       },
     ],
   },

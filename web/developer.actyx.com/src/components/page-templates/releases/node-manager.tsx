@@ -13,7 +13,7 @@ const DOWNLOADS_V2_0_0: Download[] = [
     files: [
       {
         arch: 'amd64',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-node-manager-$V-amd64.deb`,
+        target: `https://axartifacts.blob.core.windows.net/releases/actyx-node-manager-$V-amd64.deb`,
       },
       //{
       //  arch: 'arm64',
@@ -35,7 +35,7 @@ const DOWNLOADS_V2_0_0: Download[] = [
     files: [
       {
         arch: 'universal',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/ActyxNodeManager-$V.dmg`,
+        target: `https://axartifacts.blob.core.windows.net/releases/ActyxNodeManager-$V.dmg`,
       },
       //{
       //  arch: 'arm64',
@@ -44,12 +44,12 @@ const DOWNLOADS_V2_0_0: Download[] = [
     ],
   },
   {
-    platform: 'Windows (Installer)',
+    platform: 'Windows',
     ext: '.msi',
     files: [
       {
         arch: 'x64',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-node-manager-$V-x64.msi`,
+        target: `https://axartifacts.blob.core.windows.net/releases/actyx-node-manager-$V-x64.msi`,
       },
     ],
   },
