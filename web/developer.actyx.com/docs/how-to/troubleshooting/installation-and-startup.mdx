@@ -50,12 +50,22 @@ import TabItem from '@theme/TabItem'
 
 <TabItem value="windows">
 
-1. Right-click on Actyx, and select `Properties`
-2. Go to the `Shortcut` tab, and add the command line option in the `Target` input field:
+1. Open the `Services` app, right click on Actyx and stop Actyx
+2. Go to the Actyx folder at `C:\Program Files\Actyx\Node`
+3. Open `actyx-service.xml`
 
-![windows-installation-error](../../../images/how-to/troubleshooting/windows-change-port.png)
+In this XML document, you will find an `arguments` element that is commented out and contains an example.
 
-The next time you start Actyx, it will bind to the specified port.
+4. Delete the example `arguments` element, and instead paste the following (remove the options for ports you do not want to reconfigure):
+
+```xml
+<arguments>--bind-swarm 4002 --bind-api 4455 --bind-admin 4459</arguments>
+```
+
+5. Save the updated `actyx-service.xml` file
+6. Go back to the `Services` app, and start Actyx
+
+Please note that Actyx is now permanently –i.e. also after you restart your computer- configured to bind different ports. If you want Actyx to bind to default or other ports, you have to remove the XML element in `actyx-service.xml` or change the options in the element.
 
 </TabItem>
 <TabItem value="android">
@@ -65,7 +75,7 @@ On Android, you cannot change the ports used by Actyx. Please make sure that the
 </TabItem>
 <TabItem value="macos">
 
-On macOS or Linux, you can specify the ports when starting Actyx:
+On macOS or Linux, you can specify the ports when starting Actyx (remove the options for ports you do not want to reconfigure):
 
 ```text
 ./actyx-linux --bind-swarm 4002 --bind-api 4457 --bind-admin 4460
@@ -74,7 +84,7 @@ On macOS or Linux, you can specify the ports when starting Actyx:
 </TabItem>
 <TabItem value="docker">
 
-On Docker, you can use the [-p option of the docker run command](https://docs.docker.com/engine/reference/run/#expose-incoming-ports). For example, this command would expose the standard ports and 4002 on your host instead of 4001:
+On Docker, you can use the [-p option of the docker run command](https://docs.docker.com/engine/reference/run/#expose-incoming-ports). For example, this command would expose the standard ports and 4002 on your host instead of 4001 (remove the options for ports you do not want to reconfigure):
 
 ```text
 docker run --name actyx -it --rm -v actyx-data:/data -p 4002:4001 -p 4458:4458 -p 127.0.0.1:4454:4454 actyx/actyx
