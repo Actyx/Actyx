@@ -142,7 +142,7 @@ export DOCKER_FLAGS ?= -e "ACTYX_VERSION=${ACTYX_VERSION}" -e "ACTYX_VERSION_CLI
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))
 
 # this needs to remain the first so it is the default target
-all: all-linux all-android all-windows all-macos all-js
+all: all-linux all-android all-windows all-macos all-js assert-clean
 
 all-android: $(patsubst %,dist/bin/%,$(all-ANDROID))
 
@@ -226,7 +226,7 @@ rust-validation = $(shell arr=(`ls -1 rust`); printf "validate-rust-%s " "$${arr
 validate-rust: $(rust-validation) validate-os
 
 # execute linter, style checker and tests for everything
-validate: validate-os validate-rust validate-os-android validate-js validate-website validate-misc
+validate: validate-os validate-rust validate-os-android validate-js validate-website validate-misc assert-clean
 
 # declare all the validate targets to be phony
 .PHONY: validate-os validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website validate-misc
