@@ -222,32 +222,15 @@ span {
 }
 
 /* Blog article classes */
-article {
-  padding-top: 0px;
-  padding-right: 24px;
-  padding-left: 0px;
-  padding-bottom: 24px;
-  margin: 0px;
-  border-bottom: #e1e5e8;
-}
 
 article > header > h2 > a {
-  font-size: 24px;
-  font-weight: 700;
+  font-weight: 500;
   color: #2a2f45;
 }
 
 article > header > h2 > a:hover {
-  font-size: 24px;
-  font-weight: 700;
+  font-weight: 500;
   text-decoration: none;
-}
-footer {
-  margin-bottom: 0px;
-}
-
-article > footer.row.margin-vert--lg {
-  margin-bottom: 0px;
 }
 
 .DocSearch-Button {
@@ -1020,7 +1003,7 @@ pre .line-numbers {
 }
 
 [class^='announcementBar'] {
-  height: 36px !important;
+  min-height: 36px !important;
   background: #635bff;
   color: white;
   font-weight: 700;
