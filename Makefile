@@ -277,7 +277,7 @@ validate-os-android: diagnostics
 	cd jvm/os-android/ && ./gradlew clean ktlintCheck
 
 # validate all js
-validate-js: diagnostics validate-js-sdk validate-js-pond
+validate-js: diagnostics validate-js-sdk validate-js-pond validate-js-integration
 
 # validate js sdk
 validate-js-sdk:
@@ -292,6 +292,10 @@ validate-js-pond:
 		npm install && \
 		npm run test && \
 		npm run build:prod
+
+# validate js integration suite (does it compile?)
+validate-js-integration:
+	cd integration && source ~/.nvm/nvm.sh && nvm install && npm install && npm run tsc
 
 # fix and test all js projects
 fix-js: diagnostics fix-js-sdk fix-js-pond
