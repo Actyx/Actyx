@@ -18,6 +18,7 @@ buildscript {
 allprojects {
     repositories {
         google()
+        mavenCentral()
         jcenter()
         // LEGACY USB need for com.felhr usb package
         maven { url "https://jitpack.io" }
