@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "private": true,
   "scripts": {
-    "prestart": "npm run copy-schemas && npm run build-monorepo-dependencies && svgo -r -f ./static/images -o ./static/images",
+    "prestart": "npm run copy-schemas && npm run build-monorepo-dependencies",
     "start": "docusaurus start --host 0.0.0.0",
     "copy-schemas": "node bin/copy-schemas.js",
     "build-monorepo-dependencies": "node bin/build-monorepo-dependencies.js",
