@@ -88,12 +88,12 @@ stages:
               echo "++ Documentation publication +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
               echo "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
               echo ""
-              doc_publish_opts=""
               if [[ "$publication" = public ]]; then
                 echo "We are doing a production deploy of the documentation since this is public release"
-                doc_publish_opts="--not-draft"
+                doc_deploy_type="prod"
               else
                 echo "We are going to do a draft publication of the documentation since this is DRAFT release"
+                doc_deploy_type="draft"
               fi
               source ~/.nvm/nvm.sh
               cd ../../web/developer.actyx.com
@@ -106,7 +106,7 @@ stages:
               echo "Building docs"
               npm run build
               echo "Deploying docs"
-              npm run deploy -- "Cosmos publish release for $(Build.SourceBranch)" "$doc_publish_opts"
+              npm run deploy:"$doc_deploy_type" -- "Cosmos publish release for $(Build.SourceBranch)"
               cd ../../rust/release
 
               echo ""
