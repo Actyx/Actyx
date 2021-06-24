@@ -172,6 +172,12 @@ make-always:
 print-%:
 	@echo $* = $($*)
 
+.PHONY: assert-clean
+assert-clean:
+	@if [ -n "$(shell git status --porcelain)" ]; then \
+		echo "Git directory not clean, exiting"; exit 3; \
+	else true; fi
+
 # delete almost all generated artifacts
 # this does not need to be run from CI, since it always starts with a fresh checkout anyway.
 # use this locally to ensure a truly fresh build.
