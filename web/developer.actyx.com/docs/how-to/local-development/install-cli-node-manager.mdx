@@ -39,15 +39,22 @@ To run Actyx CLI on Windows you need to have the following prerequisites:
 
 To install Actyx CLI, please follow these steps:
 
-1. Download the Actyx CLI binary for Windows from our [downloads page](https://developer.actyx.com/releases/cli/2.0.0/).
+1. Download the Actyx CLI binary for Windows from our [releases page](https://developer.actyx.com/releases/cli/2.0.0/).
+2. Save the `ax` binary in some location on your machine. We recommend `C:\Program Files\Actyx\`.
+3. In the Windows Search, look for and then select _System (Control Panel)_
+4. Click the _Advanced system settings_ link.
+5. Click _Environment Variables_ and in the section System Variables find the `PATH` environment variable and select it. Click Edit.
 
-2. Run the downloaded installer and follow the onscreen instructions. By default, the Actyx CLI installs to `C:\Program Files\Actyx\Actyx CLI X.X.X\`
+![env-var](/images/how-to/local-development/path-env-var.png)
 
-3. To confirm the installation, use the `ax --version` command in PowerShell or a command prompt (open the Start menu and search for PowerShell or cmd to start them). You should see something like this:
+6. In the Edit System Variable window, add the path to the `ax` binary (e.g. `C:\Program Files\Actyx\`) to the PATH environment variable. Click OK. Close all remaining windows by clicking OK.
+7. Restart your command line.
+8. To confirm the installation, use the `ax --version` command. You should see something similar to this:
 
-```cmd
-C:\> ax --version
-Actyx CLI 1.5.0
+<!-- prettier-ignore -->
+```text
+ax --version
+Actyx CLI 2.0.0
 ```
 
 Congratulations, you have successfully installed Actyx CLI! 🎉
@@ -74,7 +81,7 @@ To run Actyx CLI on Linux you need to have the following prerequisites:
 
 To install Actyx CLI, please follow these steps:
 
-1. Download the Actyx CLI binary file from our [downloads page](https://developer.actyx.com/releases)
+1. Download the Actyx CLI binary file from our [downloads page](https://developer.actyx.com/releases/cli/2.0.0/)
 
 2. Run the following command to move the Actyx CLI binary file:
 
@@ -90,12 +97,12 @@ To install Actyx CLI, please follow these steps:
   sudo chmod +x /usr/local/bin/ax
   ```
 
-4. To confirm the installation, use the `ax --version` command. You should see something like this:
+4. To confirm the installation, use the `ax --version` command. You should see something similar to this:
 
 <!-- prettier-ignore -->
 ```text
 ax --version
-Actyx CLI 1.5.0
+Actyx CLI 2.0.0
 ```
 
 Congratulations, you have successfully installed Actyx CLI! 🎉
@@ -104,7 +111,7 @@ Congratulations, you have successfully installed Actyx CLI! 🎉
 
 To install Actyx Node Manager, please follow these few steps:
 
-1. Download the right binary (e.g. `actyx-node-manager_amd64.deb`) from our [downloads page](https://developer.actyx.com/releases)
+1. Download the right binary (e.g. `actyx-node-manager_amd64.deb`) from our [downloads page](https://developer.actyx.com/releases/node-manager/2.0.0/)
 
 2. With your command line, navigate to the directory where you saved the binary.
 
@@ -126,7 +133,7 @@ To run Actyx CLI on macOS you need to have the following prerequisites:
 
 To install Actyx CLI, please follow these steps:
 
-1. Download the Actyx CLI binary file from our [downloads page](https://developer.actyx.com/releases)
+1. Download the Actyx CLI binary file from our [downloads page](https://developer.actyx.com/releases/cli/2.0.0/)
 
 2. Run the following command to move the Actyx CLI binary file:
 
@@ -146,12 +153,12 @@ If you do not get asked for your password at this point, you have to explicitly 
 
 4. Go to **Settings** and then to **Security &amp; Privacy**. In the **General** tab, you should see a prompt at the bottom that asks you to allow Actyx CLI.
 5. When running the first `ax` command, you will be prompted again to allow the Actyx CLI.
-6. To confirm the installation, use the `ax --version` command. You should see something like this:
+6. To confirm the installation, use the `ax --version` command. You should see something similar to this:
 
 <!-- prettier-ignore -->
   ```text
   ax --version
-  Actyx CLI 1.5.0
+  Actyx CLI 2.0.0
   ```
 
 Congratulations, you have successfully installed Actyx CLI! 🎉
@@ -160,9 +167,9 @@ Congratulations, you have successfully installed Actyx CLI! 🎉
 
 Since Actyx is not yet listed as an App developer, you need to make a few changes in your security settings when installing Node Manager.
 
-1. Download the zipped Node Manager from our [downloads page](https://developer.actyx.com/releases).
+1. Download the Node Manager `.dmg` file from our [releases page](https://developer.actyx.com/releases/node-manager/2.0.0/) and double click it.
 
-2. Double-click the Node Manager icon
+2. Move the Node Manager icon into your Applications folder
 
 3. Click **OK** on the initial prompt after opening Node Manager for the first time.
    ![installation-01](../../../images/how-to/local-development/installation-01.png)
