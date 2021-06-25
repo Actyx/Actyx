@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.actyx.android.node.AxNode
 import com.actyx.android.node.AxNodeMessageHandler
 import com.actyx.android.util.Logger
@@ -70,7 +71,7 @@ class AxNodeService : Service() {
 
   override fun onDestroy() {
     log.info("onDestroy")
-    if (shutdownInitiatedByUser == false) {
+    if (!shutdownInitiatedByUser) {
       // Try to shutdown gracefully ax node
       axNode.shutdownBySystem()
     }
@@ -99,7 +100,7 @@ class AxNodeService : Service() {
       .setOngoing(true)
       .setContentTitle(contextText)
       .setSmallIcon(R.drawable.actyx_icon)
-      .setColor(resources.getColor(R.color.colorPrimary))
+      .setColor(ContextCompat.getColor(this, R.color.colorPrimary))
       .setLargeIcon(BitmapFactory.decodeResource(resources, R.drawable.actyx_icon))
       .setCategory(Notification.CATEGORY_SERVICE)
       .setContentIntent(pendingIntent)

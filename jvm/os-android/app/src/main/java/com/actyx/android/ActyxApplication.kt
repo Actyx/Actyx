@@ -9,7 +9,7 @@ import java.io.File
 import kotlin.system.exitProcess
 
 class ActyxApplication : Application() {
-  lateinit var log: Logger
+  private lateinit var log: Logger
 
   override fun onCreate() {
     super.onCreate()

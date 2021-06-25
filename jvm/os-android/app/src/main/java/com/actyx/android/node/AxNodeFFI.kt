@@ -4,7 +4,7 @@ import com.sun.jna.Callback
 import com.sun.jna.Library
 import com.sun.jna.Pointer
 
-@Suppress("FunctionNaming")
+@Suppress("FunctionName")
 interface AxNodeFFI : Library {
 
   /**
