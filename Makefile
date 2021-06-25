@@ -335,7 +335,7 @@ dist/js/pond: make-always
 		npm run build:prod && \
 		mv `npm pack` ../../$@/
 
-validate-node-manager-bindings: 
+validate-node-manager-bindings:
 	cd rust/actyx/node-manager-bindings && \
 		source ~/.nvm/nvm.sh && \
 		nvm install && \
@@ -423,8 +423,6 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	docker run \
 	  -u builder \
 	  -w /src/rust/actyx \
-	  -e CARGO_BUILD_TARGET=$(TARGET) \
-	  -e CARGO_BUILD_JOBS=$(CARGO_BUILD_JOBS) \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
 	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
@@ -432,7 +430,7 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
-	  cargo --locked build --release -j $(CARGO_BUILD_JOBS) --bin $$(basename $$*)
+	  cargo --locked build --release -j $(CARGO_BUILD_JOBS) --bin $$(basename $$*) --target $(TARGET)
 endef
 $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
 
@@ -446,8 +444,6 @@ $(soTargetPatterns): cargo-init make-always
 	docker run \
 	  -u builder \
 	  -w /src/rust/actyx \
-	  -e CARGO_BUILD_TARGET=$(TARGET) \
-	  -e CARGO_BUILD_JOBS=$(CARGO_BUILD_JOBS) \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
 	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
