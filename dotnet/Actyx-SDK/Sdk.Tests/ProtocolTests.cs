@@ -1,8 +1,8 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Actyx;
-using Xunit;
-using Newtonsoft.Json.Linq;
 using DeepEqual.Syntax;
+using Newtonsoft.Json.Linq;
+using Xunit;
 
 namespace Sdk.Tests
 {

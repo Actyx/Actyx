@@ -1,7 +1,7 @@
-﻿using Actyx;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Actyx;
 
 namespace Sdk.IntegrationTests
 {
@@ -26,7 +26,7 @@ namespace Sdk.IntegrationTests
 
             string query = "'test0' & 'test1'";
 
-            var a = s.QueryStreaming(query, offsets, EventsOrder.LamportReverse);
+            var a = s.QueryStreaming(query, offsets, EventsOrder.Desc);
 
             // var t = s.subscribeMonotonic("foo", query, SnapshotCompression.None);
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -202,7 +202,7 @@ namespace Actyx
         public IAsyncEnumerable<ISubscribeMonotonicMessage> SubscribeMonotonic(string session, string subscription,
                                                                        params SnapshotCompression[] acceptedFormats)
         {
-            List<string> compression = new List<string>();
+            var compression = new List<string>();
 
             if (acceptedFormats.Length == 0)
             {

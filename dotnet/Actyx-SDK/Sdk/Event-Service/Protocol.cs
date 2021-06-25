@@ -1,26 +1,14 @@
+﻿using Actyx.Sdk.Utils.Extensions;
 using JsonSubTypes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Serialization;
 
 namespace Actyx
 {
     public static class Proto<T>
     {
-        static readonly JsonSerializerSettings jsonSerializerSettings;
-        static Proto()
-        {
-            DefaultContractResolver contractResolver = new DefaultContractResolver
-            {
-                NamingStrategy = new CamelCaseNamingStrategy()
-            };
-            jsonSerializerSettings = new JsonSerializerSettings
-            {
-                ContractResolver = contractResolver,
-            };
-        }
-        public static T Deserialize(string json) => JsonConvert.DeserializeObject<T>(json, jsonSerializerSettings);
-        public static string Serialize(T value) => JsonConvert.SerializeObject(value, jsonSerializerSettings);
+        public static T Deserialize(string json) => JsonConvert.DeserializeObject<T>(json, HttpContentExtensions.JsonSettings);
+        public static string Serialize(T value) => JsonConvert.SerializeObject(value, HttpContentExtensions.JsonSettings);
 
     }
 

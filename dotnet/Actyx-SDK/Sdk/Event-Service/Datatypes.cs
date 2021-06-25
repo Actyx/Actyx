@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using JsonSubTypes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -7,21 +7,26 @@ namespace Actyx
 {
     public enum EventsOrder
     {
-        Lamport,
-        LamportReverse,
-        SourceOrdered,
+        /// Events are sorted by ascending Lamport timestamp and stream ID, which defines a
+        /// total order.
+        Asc,
+        /// Events are sorted by descending Lamport timestamp and descending stream ID,
+        /// which is the exact reverse of the `Asc` ordering.
+        Desc,
+        /// Events are sorted within each stream by ascending Lamport timestamp, with events
+        /// from different streams interleaved in an undefined order.
+        StreamAsc,
     }
-
     public static class Extensions
     {
         public static string ToWireString(this EventsOrder order)
         {
             return order switch
             {
-                EventsOrder.Lamport => "lamport",
-                EventsOrder.LamportReverse => "lamport-reverse",
-                EventsOrder.SourceOrdered => "source-ordered",
-                _ => "lamport",
+                EventsOrder.Asc => "asc",
+                EventsOrder.Desc => "desc",
+                EventsOrder.StreamAsc => "stream-asc",
+                _ => "asc",
             };
         }
     }
@@ -157,10 +162,10 @@ namespace Actyx
 
     public class OffsetsResponse
     {
-        public OffsetMap Present { get; }
+        public OffsetMap Present { get; set; }
 
         // NOT an offset-map. Rather it contains offsets between offsets :)
-        public Dictionary<string, ulong> ToReplicate { get; }
+        public OffsetMap ToReplicate { get; set; }
     }
 
     public interface IEventSelection

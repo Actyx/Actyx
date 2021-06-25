@@ -1,12 +1,13 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
-using Newtonsoft.Json.Linq;
 using System.Threading.Tasks;
+using JsonSubTypes;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Actyx
 {
-    // Internal event class, 1:1 correspondence with wire format
-    class EventOnWire
+    public class EventPublishMetadata
     {
         public ulong Lamport { get; set; }
 
@@ -15,12 +16,26 @@ namespace Actyx
         public ulong Timestamp { get; set; }
 
         public string Stream { get; set; }
+    }
 
+    [JsonConverter(typeof(JsonSubtypes))]
+    [JsonSubtypes.KnownSubTypeWithProperty(typeof(OffsetsOnWire), "Offsets")]
+    [JsonSubtypes.KnownSubTypeWithProperty(typeof(EventOnWire), "Payload")]
+    public interface IEventOnWire { }
+
+    public class OffsetsOnWire : IEventOnWire
+    {
+        public OffsetMap Offsets { get; set; }
+    }
+
+    // Internal event class, 1:1 correspondence with wire format
+    public class EventOnWire : EventPublishMetadata, IEventOnWire
+    {
         public string AppId { get; set; }
 
-        public List<string> Tags { get; set; }
+        public IEnumerable<string> Tags { get; set; }
 
-        public JObject Payload { get; set; }
+        public JValue Payload { get; set; }
     }
 
     // This interface is not public, it is the internal adapter for switching between ws/http/test impl.
@@ -51,7 +66,7 @@ namespace Actyx
          * given that store and pond are usually on the same machine this won't be that bad, and in any case this is perferable
          * to needing a way of sending a javascript predicate to the store.
          */
-        IObservable<EventOnWire> Query(
+        IObservable<IEventOnWire> Query(
             OffsetMap lowerBound,
             OffsetMap upperBound,
             IEventSelection query,
@@ -67,7 +82,7 @@ namespace Actyx
          * Getting events up to a maximum event key can be achieved for a finite set of sources by specifying sort by
          * event key and aborting as soon as the desired event key is reached.
          */
-        IObservable<EventOnWire> Subscribe(
+        IObservable<IEventOnWire> Subscribe(
             OffsetMap lowerBound,
             IEventSelection query
         );

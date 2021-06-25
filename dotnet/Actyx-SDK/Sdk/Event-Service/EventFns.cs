@@ -154,7 +154,7 @@ namespace Actyx
     {
         public Task<OffsetMap> Present();
 
-        public Task<OffsetsReponse> Offsets();
+        public Task<OffsetsResponse> Offsets();
 
         /**
          * Get all known events between the given offsets, in one array.
@@ -182,7 +182,7 @@ namespace Actyx
         );
 
         /**
-         * Query all known events that occured after the given `lowerBound`.
+         * Query all known events that occurred after the given `lowerBound`.
          *
          * @param query  - `OpenEndedQuery` object specifying the desired set of events.
          *
@@ -192,7 +192,7 @@ namespace Actyx
         public Task<EventChunk> QueryAllKnown(AutoCappedQuery query);
 
         /**
-         * Query all known events that occured after the given `lowerBound`, in chunks.
+         * Query all known events that occurred after the given `lowerBound`, in chunks.
          * This is useful if the complete result set is potentially too large to fit into memory at once.
          *
          * @param query       - `OpenEndedQuery` object specifying the desired set of events.
