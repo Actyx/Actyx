@@ -90,16 +90,6 @@ export type EventSubscription = {
 
   /** Statement to select specific events. Defaults to `allEvents`. */
   query?: Where<unknown>
-
-  /** Maximum chunk size. Defaults to 1000. */
-  maxChunkSize?: number
-
-  /**
-   * Maximum duration (in ms) a chunk of events is allowed to grow, before being passed to the callback.
-   * Defaults to 5.
-   * Set this to zero to optimize latency at the cost of always receiving just single events.
-   */
-  maxChunkTimeMs?: number
 }
 
 /**
@@ -204,20 +194,45 @@ export interface EventFns {
 
   /**
    * Subscribe to all events fitting the `query` after `lowerBound`.
-   * They will be delivered in chunks of at most 5000.
-   * New events are delivered as they become known.
+   *
    * The subscription goes on forever, until manually cancelled.
    *
-   * @param query      - `EventSubscription` object specifying the desired set of events.
-   * @param onChunk    - Callback that will be invoked for each chunk, in sequence. Second argument is the updated offset map.
+   * @param query       - `EventSubscription` object specifying the desired set of events.
+   * @param onEvent     - Callback that will be invoked for each event, in sequence.
    *
    * @returns A function that can be called in order to cancel the subscription.
    */
   subscribe: (
     query: EventSubscription,
-    onChunk: (chunk: EventChunk) => Promise<void> | void,
+    onEvent: (e: ActyxEvent) => Promise<void> | void,
   ) => CancelSubscription
 
+  /**
+   * Subscribe to all events fitting the `query` after `lowerBound`.
+   * They will be delivered in chunks of configurable size.
+   * Each chunk is internally sorted in ascending `eventId` order.
+   * The subscription goes on forever, until manually cancelled.
+   *
+   * @param query       - `EventSubscription` object specifying the desired set of events.
+   * @param chunkConfig - How event chunks should be built.
+   * @param onChunk     - Callback that will be invoked for each chunk, in sequence. Second argument is the updated offset map.
+   *
+   * @returns A function that can be called in order to cancel the subscription.
+   */
+  subscribeChunked: (
+    query: EventSubscription,
+    chunkConfig: {
+      /** Maximum chunk size. Defaults to 1000. */
+      maxChunkSize?: number
+
+      /**
+       * Maximum duration (in ms) a chunk of events is allowed to grow, before being passed to the callback.
+       * Defaults to 5.
+       */
+      maxChunkTimeMs?: number
+    },
+    onChunk: (chunk: EventChunk) => Promise<void> | void,
+  ) => CancelSubscription
   /**
    * Subscribe to a stream of events until this would go back in time.
    * Instead of going back in time, receive a TimeTravelMsg and terminate the stream.

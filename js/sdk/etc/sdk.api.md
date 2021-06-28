@@ -99,7 +99,11 @@ export interface EventFns {
     queryAllKnownChunked: (query: AutoCappedQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
     queryKnownRange: (query: RangeQuery) => Promise<ActyxEvent[]>;
     queryKnownRangeChunked: (query: RangeQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
-    subscribe: (query: EventSubscription, onChunk: (chunk: EventChunk) => Promise<void> | void) => CancelSubscription;
+    subscribe: (query: EventSubscription, onEvent: (e: ActyxEvent) => Promise<void> | void) => CancelSubscription;
+    subscribeChunked: (query: EventSubscription, chunkConfig: {
+        maxChunkSize?: number;
+        maxChunkTimeMs?: number;
+    }, onChunk: (chunk: EventChunk) => Promise<void> | void) => CancelSubscription;
     // @alpha
     subscribeMonotonic: <E>(query: MonotonicSubscription<E>, callback: (data: EventsOrTimetravel<E>) => Promise<void> | void) => CancelSubscription;
 }
@@ -153,8 +157,6 @@ export enum EventsSortOrder {
 export type EventSubscription = {
     lowerBound?: OffsetMap;
     query?: Where<unknown>;
-    maxChunkSize?: number;
-    maxChunkTimeMs?: number;
 };
 
 // @alpha
