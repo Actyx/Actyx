@@ -2655,7 +2655,7 @@ dependencies = [
  "console",
  "lazy_static 1.4.0",
  "number_prefix",
- "parking_lot 0.11.1",
+ "parking_lot 0.9.0",
  "regex",
 ]
 
@@ -3070,7 +3070,7 @@ dependencies = [
 [[package]]
 name = "libp2p-bitswap"
 version = "0.18.0"
-source = "git+https://github.com/ipfs-rust/libp2p-bitswap?branch=sim-open#2d81161634b2d4086f63987e728fd933c3e16402"
+source = "git+https://github.com/ipfs-rust/libp2p-bitswap?branch=sim-open#4718d080c4f522fbbf675b3d46adfe90bdfb2e2d"
 dependencies = [
  "async-trait",
  "fnv",
@@ -3087,7 +3087,7 @@ dependencies = [
 [[package]]
 name = "libp2p-broadcast"
 version = "0.4.0"
-source = "git+https://github.com/ipfs-rust/libp2p-broadcast?branch=sim-open#2ab76909e906a7352d0cc3a3e2a8822e15f73a4e"
+source = "git+https://github.com/ipfs-rust/libp2p-broadcast?branch=sim-open#3bef32a7f0e680c2c273bb713ae1d63bdf692a9f"
 dependencies = [
  "fnv",
  "futures 0.3.15",
