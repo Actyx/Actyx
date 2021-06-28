@@ -341,7 +341,7 @@ export interface Tag<E> extends Tags<E> {
 }
 
 // @public
-export const Tag: <E>(rawTag: string) => Tag<E>;
+export const Tag: <E>(rawTagString: string, extractId?: ((e: E) => string) | undefined) => Tag<E>;
 
 // @public
 export type TaggedEvent = Readonly<{
