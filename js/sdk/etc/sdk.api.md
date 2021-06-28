@@ -8,6 +8,7 @@ import { Ord } from 'fp-ts/lib/Ord';
 
 // @public
 export type Actyx = EventFns & {
+    readonly nodeId: NodeId;
     dispose: () => void;
 };
 
@@ -86,7 +87,6 @@ export type EventChunk = {
 // @public
 export interface EventFns {
     emit: (events: ReadonlyArray<TaggedEvent>) => PendingEmission;
-    readonly nodeId: NodeId;
     observeBestMatch: <E>(query: Where<E>, shouldReplace: (candidate: ActyxEvent<E>, cur: ActyxEvent<E>) => boolean, onReplaced: (event: E, metadata: Metadata) => void) => CancelSubscription;
     // @beta
     observeEarliest: <E>(query: EarliestQuery<E>, onNewEarliest: (event: E, metadata: Metadata) => void) => CancelSubscription;
@@ -364,6 +364,7 @@ export const Tags: <E>(...requiredTags: string[]) => Tags<E>;
 
 // @public
 export type TestActyx = TestEventFns & {
+    readonly nodeId: NodeId;
     dispose: () => void;
 };
 

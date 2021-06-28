@@ -185,7 +185,6 @@ export type Pond = {
     dispose(): void;
     info(): PondInfo;
     getPondState(callback: (newState: PondState) => void): CancelSubscription;
-    getNodeConnectivity(params: GetNodeConnectivityParams): CancelSubscription;
     waitForSwarmSync(params: WaitForSwarmSyncParams): void;
     events(): EventFns;
 };

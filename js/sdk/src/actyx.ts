@@ -14,6 +14,9 @@ import { makeWsMultiplexerV2, v2getNodeId, WebsocketEventStoreV2 } from './v2'
 
 /** Access all sorts of functionality related to the Actyx system! @public */
 export type Actyx = EventFns & {
+  /** Id of the Actyx node this interface is connected to. */
+  readonly nodeId: NodeId
+
   /** Dispose of this Actyx connector, cancelling all ongoing subscriptions and freeing all underlying ressources. @public */
   dispose: () => void
 }
@@ -25,6 +28,9 @@ export type Actyx = EventFns & {
  * @public
  */
 export type TestActyx = TestEventFns & {
+  /** Prented id of the underlying Actyx instance that actually is just simulated. */
+  readonly nodeId: NodeId
+
   /** For `TestActyx` instances, this method does nothing; it’s just there so all normal `Actyx` functions are provided. @public */
   dispose: () => void
 
@@ -40,6 +46,7 @@ const createV2 = async (manifest: AppManifest, opts: ActyxOpts, nodeId: string):
 
   return {
     ...fns,
+    nodeId,
     dispose: () => ws.close(),
   }
 }
@@ -51,6 +58,7 @@ const createV1 = async (opts: ActyxOpts): Promise<Actyx> => {
 
   return {
     ...fns,
+    nodeId: sourceId,
     dispose: () => close(),
   }
 }
@@ -84,9 +92,12 @@ export const Actyx = {
   test: (opts: ActyxTestOpts = {}): TestActyx => {
     const store = EventStoreV2.test(opts.nodeId)
     const snaps = SnapshotStore.inMem()
-    const fns = EventFnsFromEventStoreV2(opts.nodeId || NodeId.of('TESTNODEID'), store, snaps)
+    const nodeId = opts.nodeId || NodeId.of('TESTNODEID')
+
+    const fns = EventFnsFromEventStoreV2(nodeId, store, snaps)
     return {
       ...fns,
+      nodeId,
       directlyPushEvents: store.directlyPushEvents,
       dispose: () => {
         // Nothing to do, probably.

@@ -12,7 +12,6 @@ import {
   EventsSortOrder,
   FixedStart,
   Metadata,
-  NodeId,
   OffsetMap,
   OffsetsResponse,
   PendingEmission,
@@ -129,9 +128,6 @@ export type LatestQuery<E> = EarliestQuery<E>
 
 /** Functions that operate directly on Events. @public  */
 export interface EventFns {
-  /** Id of the Actyx node this interface is connected to. */
-  readonly nodeId: NodeId
-
   /** Get the current local 'present' i.e. offsets up to which we can provide events without any gaps. */
   present: () => Promise<OffsetMap>
 

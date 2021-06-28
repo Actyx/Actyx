@@ -32,7 +32,6 @@ import {
   pendingEmission,
   StreamId,
   TaggedEvent,
-  Timestamp,
   toMetadata,
   Where,
 } from '../types'
@@ -517,11 +516,8 @@ export const EventFnsFromEventStoreV2 = (
 
   const emit = (taggedEvents: ReadonlyArray<TaggedEvent>) => {
     const events = taggedEvents.map(({ tags, event }) => {
-      const timestamp = Timestamp.now()
-
       return {
         tags,
-        timestamp, // FIXME
         payload: event,
       }
     })
@@ -536,7 +532,6 @@ export const EventFnsFromEventStoreV2 = (
   }
 
   return {
-    nodeId,
     present,
     offsets,
     queryKnownRange,
