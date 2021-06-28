@@ -1,6 +1,5 @@
 // [[start:import]]
 import { FishId, Pond, Fish, Tag } from '@actyx/pond';
-import manifest from './manifest.json';
 // [[end:import]]
 
 // [[start:event-and-state]]
@@ -30,7 +29,11 @@ const ChatFish: Fish<ChatState, ChatEvent> = {
 // [[end:fish]]
 
 // [[start:pond]]
-Pond.default(manifest)
+Pond.default({
+  appId: "com.example.chat",
+  displayName: "Chat App",
+  version: "2.0",
+})
   .then((pond) => {
     // Select UI elements in the DOM
     const messagesTextArea = document.getElementById('messages');
