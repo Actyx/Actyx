@@ -87,6 +87,37 @@ describe('event service', () => {
         ])
       }))
 
+    it('should immediately return for empty upper bound', () =>
+      run(async (x) => {
+        const es = await mkESFromTrial(x)
+        const request: QueryRequest = {
+          lowerBound: {},
+          upperBound: {},
+          query: 'FROM allEvents',
+          order: Order.Asc,
+        }
+        const data: QueryResponse[] = []
+        await es.query(request, (x) => data.push(x))
+        expect(data).toHaveLength(1)
+        expect(data).toEqual([{ offsets: {}, type: 'offsets' }])
+      }))
+
+    it('should immediately return for empty upper bound', () =>
+      run(async (x) => {
+        const es = await mkESFromTrial(x)
+        const pub = await publishRandom(es)
+        const request: QueryRequest = {
+          lowerBound: { [pub.stream]: pub.offset },
+          upperBound: {},
+          query: 'FROM allEvents',
+          order: Order.Asc,
+        }
+        const data: QueryResponse[] = []
+        await es.query(request, (x) => data.push(x))
+        expect(data).toHaveLength(1)
+        expect(data).toEqual([{ offsets: {}, type: 'offsets' }])
+      }))
+
     it('should return events in ascending order and complete', () =>
       run(async (x) => {
         const es = await mkESFromTrial(x)
