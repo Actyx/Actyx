@@ -274,7 +274,14 @@ validate-netsim: diagnostics
 # execute linter for os-android
 validate-os-android: diagnostics
 	jvm/os-android/bin/get-keystore.sh
-	cd jvm/os-android/ && ./gradlew clean ktlintCheck
+	docker run \
+	  -u builder \
+	  -v `pwd`:/src \
+	  -w /src/jvm/os-android \
+	  --rm \
+	  $(DOCKER_FLAGS) \
+	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
+	  ./gradlew clean ktlintCheck
 
 # validate all js
 validate-js: diagnostics validate-js-sdk validate-js-pond validate-js-integration
