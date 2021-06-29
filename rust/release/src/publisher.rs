@@ -13,6 +13,7 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
 };
+use tempfile::tempdir_in;
 use zip::ZipWriter;
 
 #[derive(Debug, Clone)]
@@ -101,6 +102,10 @@ impl Publisher {
                 } else {
                     anyhow::bail!("Tried creating {:?} from {:?}", self.target, self.source);
                 };
+                // create a unique directory within `in_dir` to download the
+                // artifact into. The source artifacts are not uniquely named.
+                let tmp = tempdir_in(&in_dir)?.into_path();
+                let source_file = blob_download(source, tmp)?;
                 {
                     // Set executable bit on source file. That mostly always
                     // what we want.

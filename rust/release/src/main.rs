@@ -92,7 +92,7 @@ enum Command {
         #[clap(long, short)]
         force: bool,
         /// Ignore errors
-        #[clap(long, short)]
+        #[clap(long)]
         ignore_errors: bool,
     },
 }
