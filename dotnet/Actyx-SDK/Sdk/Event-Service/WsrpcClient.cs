@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using Newtonsoft.Json.Linq;
 using Websocket.Client;
 
@@ -11,15 +10,26 @@ namespace Actyx
     public class WsrpcClient : IDisposable
     {
         private readonly WebsocketClient client;
-        private readonly Dictionary<ulong, IObserver<IResponseMessage>> listeners = new Dictionary<ulong, IObserver<IResponseMessage>> { };
+        private readonly Dictionary<ulong, IObserver<IResponseMessage>> listeners = new() { };
         private readonly IDisposable responseProcessor;
         private Exception error;
         private ulong requestCounter = 0;
 
+        public class Error : Exception
+        {
+            private readonly IErrorKind errorKind;
+            public Error(IErrorKind errorKind) : base(Proto<IErrorKind>.Serialize(errorKind))
+            {
+                this.errorKind = errorKind;
+            }
+        }
+
         public WsrpcClient(string token)
         {
-            client = new WebsocketClient(new Uri($"ws://localhost:4454/api/v2/events?{token}"));
-            client.ReconnectTimeout = TimeSpan.FromSeconds(30);
+            client = new WebsocketClient(new Uri($"ws://localhost:4454/api/v2/events?{token}"))
+            {
+                ReconnectTimeout = TimeSpan.FromMinutes(5)
+            };
             client.ReconnectionHappened.Subscribe(info =>
                 Console.WriteLine($"Reconnection happened, type: {info.Type}"));
 
@@ -43,9 +53,9 @@ namespace Actyx
             });
         }
 
-        public IObservable<JObject> Request(string serviceId, JObject payload)
+        public IObservable<JToken> Request(string serviceId, JToken payload)
         {
-            if (!(error is null)) return (IObservable<JObject>)Observable.Throw<Exception>(error);
+            if (!(error is null)) return (IObservable<JToken>)Observable.Throw<Exception>(error);
 
             var upstreamCompletedOnError = false;
             return Multiplex(serviceId, payload, () => !upstreamCompletedOnError)
@@ -59,19 +69,17 @@ namespace Actyx
                     switch (res)
                     {
                         case Next next: return next.Payload;
-                        case Error error:
+                        case Actyx.Error error:
                             {
                                 upstreamCompletedOnError = true;
-                                string errMsg = Proto<IErrorKind>.Serialize(error.Kind);
-                                Console.WriteLine(errMsg);
-                                throw new Exception(errMsg);
+                                throw new Error(error.Kind);
                             }
                         default: throw new InvalidOperationException();
                     }
                 });
         }
 
-        IObservable<IResponseMessage> Multiplex(string serviceId, JObject payload, Func<bool> shouldCancelUpstream)
+        IObservable<IResponseMessage> Multiplex(string serviceId, JToken payload, Func<bool> shouldCancelUpstream)
         {
             var requestId = requestCounter++;
             var (request, cancel) = Handlers(requestId, serviceId, payload);
@@ -116,7 +124,7 @@ namespace Actyx
             return res;
         }
 
-        (Request, Cancel) Handlers(ulong requestId, string serviceId, JObject payload)
+        (Request, Cancel) Handlers(ulong requestId, string serviceId, JToken payload)
         {
             return (
                 new Request { ServiceId = serviceId, RequestId = requestId, Payload = payload },

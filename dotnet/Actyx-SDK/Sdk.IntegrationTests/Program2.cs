@@ -8,17 +8,23 @@ namespace Sdk.IntegrationTests
 {
     class Program2
     {
-        static async Task Main(string[] args)
+        static void Main()
         {
             var exitEvent = new ManualResetEvent(false);
-            using (var client = new WsrpcClient("AAAAX6ZnY3JlYXRlZBsABcVGv8E43mVhcHBJZHFjb20uZXhhbXBsZS50ZXN0MmZjeWNsZXMBamFwcFZlcnNpb25lMS4wLjBodmFsaWRpdHkaAAFRgGdhcHBNb2RlZXRyaWFsAVHZ5k6MsCsdlinyp4kZ8ahd6lb65k+Hwq8dHTqMeX8DFg6zpqmlKciMoYDF6v0TmtmG10qZiCPs2qwIV5IxfXW4J60l74H/pzCShzVjKnKZHz80uoHOUdvE69/6tzzbBw=="))
+            using var client = new WsrpcClient("AAAAX6ZnY3JlYXRlZBsABcXiWPpaPGVhcHBJZHFjb20uZXhhbXBsZS50ZXN0MmZjeWNsZXMFamFwcFZlcnNpb25lMS4wLjBodmFsaWRpdHkaAAFRgGdhcHBNb2RlZXRyaWFsAVHZ5k6MsCsdlinyp4kZ8ahd6lb65k+Hwq8dHTqMeX8DHbKmngnFSq5zZMUOsGo9ggErvQOOZobmgGD3tw526hiyJGKIppEqsgtcJHvAmgnvpBEIFP5T+XmtTUwRA5ORDA==");
+            client.Start();
+            Task.Run(() =>
             {
-                client.Start();
-                _ = Task.Run(() => client.Request("subscribe", JObject.Parse(@"{ ""query"": ""FROM allEvents"", ""order"": ""asc""}"))
-                .Subscribe(x => Console.WriteLine($">>> {x}")));
+                var request = JToken.Parse(@"{ ""query"": ""FROM 'com.actyx.1'"", ""order"": ""asc""}");
+                client
+                    .Request("subscribe", request)
+                    .Subscribe(
+                        next => Console.WriteLine($">>> next: {next}"),
+                        error => Console.WriteLine($">>> error: {error}")
+                    );
+            });
 
-                exitEvent.WaitOne();
-            }
+            exitEvent.WaitOne();
         }
     }
 }

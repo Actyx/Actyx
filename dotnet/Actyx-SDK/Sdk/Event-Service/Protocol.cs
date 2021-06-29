@@ -39,7 +39,7 @@ namespace Actyx
     public class ServiceError : IErrorKind
     {
         public string Type { get; } = "serviceError";
-        public JObject Value { get; set; }
+        public JToken Value { get; set; }
     }
 
     [JsonConverter(typeof(JsonSubtypes), "Type")]
@@ -54,7 +54,7 @@ namespace Actyx
         public string Type { get; } = "request";
         public string ServiceId { get; set; }
         public ulong RequestId { get; set; }
-        public JObject Payload { get; set; }
+        public JToken Payload { get; set; }
     }
     public class Cancel : IRequestMessage
     {
@@ -72,7 +72,7 @@ namespace Actyx
     {
         public string Type { get; } = "next";
         public ulong RequestId { get; set; }
-        public JObject[] Payload { get; set; }
+        public JToken[] Payload { get; set; }
     }
     public class Complete : IResponseMessage
     {
