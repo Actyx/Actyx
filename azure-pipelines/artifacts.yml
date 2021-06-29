@@ -181,7 +181,7 @@ stages:
           - bash: |
               set -e
               make node-manager-mac-linux
-          - publish: "$(System.DefaultWorkingDirectory)/misc/actyx-node-manager/dist/artifacts"
+          - publish: "$(System.DefaultWorkingDirectory)/js/node-manager/dist/artifacts"
             artifact: node-manager-mac
             condition: succeeded()
       - job:
@@ -192,7 +192,7 @@ stages:
               make node-manager-mac-linux
             env:
               BASH_ENV: "~/.bashrc"
-          - publish: "$(System.DefaultWorkingDirectory)/misc/actyx-node-manager/dist/artifacts"
+          - publish: "$(System.DefaultWorkingDirectory)/js/node-manager/dist/artifacts"
             artifact: node-manager-linux
             condition: succeeded()
       - job:
@@ -203,7 +203,7 @@ stages:
               make node-manager-win
             env:
               BASH_ENV: "~/.bashrc"
-          - publish: "$(System.DefaultWorkingDirectory)/misc/actyx-node-manager/dist/artifacts"
+          - publish: "$(System.DefaultWorkingDirectory)/js/node-manager/dist/artifacts"
             artifact: node-manager-win
             condition: succeeded()
 

@@ -345,13 +345,13 @@ validate-node-manager-bindings:
 node-manager-win: prepare-docker
 	docker run \
 	-v `pwd`:/src \
-	-w /src/misc/actyx-node-manager \
+	-w /src/js/node-manager \
 	--rm \
 	actyx/util:node-manager-win-builder \
 	bash -c "npm install && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
 
 node-manager-mac-linux:
-	cd misc/actyx-node-manager && \
+	cd js/node-manager && \
 		source ~/.nvm/nvm.sh && \
 		nvm install && \
 		npm install && \
