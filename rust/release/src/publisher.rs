@@ -110,7 +110,7 @@ impl Publisher {
                     // Set executable bit on source file. That mostly always
                     // what we want.
                     let mut perms = std::fs::metadata(&source_file)?.permissions();
-                    let mode = perms.mode() | 0o110;
+                    let mode = perms.mode() | 0o111;
                     perms.set_mode(mode);
                     std::fs::set_permissions(&source_file, perms)
                         .with_context(|| format!("Setting permissions for {} to {}", source_file.display(), mode))?;
