@@ -330,7 +330,10 @@ Overview:"#
                     log::debug!("Temp dir for {}: {}", release, tmp.path().display());
                     let out = OsArch::all()
                         .par_iter()
-                        .flat_map(|os_arch| Publisher::new(&release, &commit, *os_arch, idx == 0))
+                        .flat_map(|os_arch| {
+                            log::debug!("creating publisher for arch {}", os_arch);
+                            Publisher::new(&release, &commit, *os_arch, idx == 0)
+                        })
                         .map(|mut p| {
                             let mut out = String::new();
                             let source_exists = p.source_exists()?;
@@ -341,8 +344,12 @@ Overview:"#
                                 } else if dry_run {
                                     writeln!(&mut out, "    [DRY RUN] Create and publish {}", p.target)?;
                                 } else {
-                                    p.create_release_artifact(tmp.path())?;
-                                    p.publish()?;
+                                    log::debug!("creating release artifact in dir {}", tmp.path().display());
+                                    p.create_release_artifact(tmp.path())
+                                        .context(format!("creating release artifact at {}", tmp.path().display()))?;
+                                    log::debug!("starting publishing");
+                                    p.publish().context("publishing")?;
+                                    log::debug!("finished publishing");
                                     writeln!(&mut out, "    [NEW] {}", p.target)?;
                                 }
                             } else {

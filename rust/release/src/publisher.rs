@@ -3,6 +3,7 @@ use crate::{
     products::Product,
     releases::Release,
 };
+use anyhow::Context;
 use flate2::{write::GzEncoder, Compression};
 use git2::Oid;
 use std::{
@@ -70,12 +71,14 @@ impl Publisher {
             .collect()
     }
     pub fn source_exists(&self) -> anyhow::Result<bool> {
+        log::debug!("checking if source {} exists for target {}", self.source, self.target);
         match &self.source.r#type {
             SourceType::Blob(s) => blob_exists(Container::Artifacts, &*s),
             SourceType::Docker(s) => docker_image_exists(&*s),
         }
     }
     pub fn target_exists(&self) -> anyhow::Result<bool> {
+        log::debug!("checking if target {} exists for source {}", self.target, self.source);
         match &self.target {
             TargetArtifact::Blob { file_name: s, .. } => blob_exists(Container::Releases, &*s),
             TargetArtifact::Docker(s) => docker_image_exists(&*s),
@@ -398,21 +401,24 @@ pub enum PreProcessing {
 }
 
 fn blob_exists(container: Container, name: &str) -> anyhow::Result<bool> {
+    log::debug!("checking if {} exists in container {}", name, container);
+    let args = [
+        "storage",
+        "blob",
+        "exists",
+        "--account-name",
+        "axartifacts",
+        "--container",
+        &*container.to_string(),
+        "--name",
+        name,
+    ];
     let out = Command::new("az")
-        .args(&[
-            "storage",
-            "blob",
-            "exists",
-            "--account-name",
-            "axartifacts",
-            "--container",
-            &*container.to_string(),
-            "--name",
-            name,
-        ])
-        .output()?;
-    let stdout = String::from_utf8(out.stdout)?;
-    let stderr = String::from_utf8(out.stderr)?;
+        .args(&args)
+        .output()
+        .context(format!("running az {:?}", args))?;
+    let stdout = String::from_utf8(out.stdout).context("decoding az stdout")?;
+    let stderr = String::from_utf8(out.stderr).context("decoding az stderr")?;
     log::trace!("stdout {}", stdout);
     log::trace!("stderr {}", stderr);
     // Always returns 0, even if the blob doesn't exist.
@@ -421,28 +427,36 @@ fn blob_exists(container: Container, name: &str) -> anyhow::Result<bool> {
     // {
     //   "exists": false | true
     // }
-    Ok(stdout.contains("true"))
+    if stdout.contains("true") {
+        log::debug!("blob {} exists", name);
+        Ok(true)
+    } else {
+        log::debug!("blob {} does not exist", name);
+        Ok(false)
+    }
 }
 fn blob_download(name: &str, in_dir: impl AsRef<Path>) -> anyhow::Result<PathBuf> {
     let file_name = name.split('/').last().unwrap();
     let out_file = in_dir.as_ref().join(file_name);
+    let args = [
+        "storage",
+        "blob",
+        "download",
+        "--account-name",
+        "axartifacts",
+        "--container-name",
+        &*Container::Artifacts.to_string(),
+        "--name",
+        name,
+        "--file",
+        &*format!("{}", out_file.display()),
+    ];
     let out = Command::new("az")
-        .args(&[
-            "storage",
-            "blob",
-            "download",
-            "--account-name",
-            "axartifacts",
-            "--container-name",
-            &*Container::Artifacts.to_string(),
-            "--name",
-            name,
-            "--file",
-            &*format!("{}", out_file.display()),
-        ])
-        .output()?;
-    let stdout = String::from_utf8(out.stdout)?;
-    let stderr = String::from_utf8(out.stderr)?;
+        .args(&args)
+        .output()
+        .context(format!("running az {:?}", args))?;
+    let stdout = String::from_utf8(out.stdout).context("decoding az stdout")?;
+    let stderr = String::from_utf8(out.stderr).context("decoding az stderr")?;
     log::trace!("stdout {}", stdout);
     log::trace!("stderr {}", stderr);
     anyhow::ensure!(out.status.success(), "stdout: {}, stderr: {}", stdout, stderr);
@@ -450,24 +464,26 @@ fn blob_download(name: &str, in_dir: impl AsRef<Path>) -> anyhow::Result<PathBuf
 }
 
 fn blob_upload(source_file: impl AsRef<Path>, name: &str) -> anyhow::Result<()> {
+    let args = [
+        "storage",
+        "blob",
+        "upload",
+        "--account-name",
+        "axartifacts",
+        "--container-name",
+        &*Container::Releases.to_string(),
+        "--name",
+        name,
+        "--file",
+        &*format!("{}", source_file.as_ref().display()),
+    ];
     let out = Command::new("az")
-        .args(&[
-            "storage",
-            "blob",
-            "upload",
-            "--account-name",
-            "axartifacts",
-            "--container-name",
-            &*Container::Releases.to_string(),
-            "--name",
-            name,
-            "--file",
-            &*format!("{}", source_file.as_ref().display()),
-        ])
-        .output()?;
+        .args(&args)
+        .output()
+        .context(format!("running az {:?}", args))?;
 
-    let stdout = String::from_utf8(out.stdout)?;
-    let stderr = String::from_utf8(out.stderr)?;
+    let stdout = String::from_utf8(out.stdout).context("decoding az stdout")?;
+    let stderr = String::from_utf8(out.stderr).context("decoding az stderr")?;
     log::trace!("stdout {}", stdout);
     log::trace!("stderr {}", stderr);
     anyhow::ensure!(out.status.success(), "stdout: {}, stderr: {}", stdout, stderr);
@@ -475,14 +491,19 @@ fn blob_upload(source_file: impl AsRef<Path>, name: &str) -> anyhow::Result<()> 
 }
 
 fn package_tar_gz(source: impl AsRef<Path>, target: impl AsRef<Path>, binary_name: Option<&str>) -> anyhow::Result<()> {
-    let output = File::create(target)?;
+    let output =
+        File::create(target.as_ref()).context(format!("creating .tar.gz output file for {:?}", target.as_ref()))?;
     let name = binary_name
         .or_else(|| source.as_ref().file_name().map(|x| x.to_str().unwrap()))
         .unwrap();
 
     let enc = GzEncoder::new(output, Compression::best());
     let mut tar = tar::Builder::new(enc);
-    tar.append_path_with_name(&source, &name)?;
+    tar.append_path_with_name(&source, &name).context(format!(
+        "appending path {:?} to .tar.gz target {}",
+        source.as_ref(),
+        name
+    ))?;
     Ok(())
 }
 
@@ -502,19 +523,35 @@ fn package_zip(source: impl AsRef<Path>, target: impl AsRef<Path>, binary_name: 
 }
 
 fn docker_image_exists(image: &str) -> anyhow::Result<bool> {
-    let cmd = Command::new("docker").args(&["manifest", "inspect", image]).output()?;
+    let args = ["manifest", "inspect", image];
+    let cmd = Command::new("docker")
+        .args(&args)
+        .output()
+        .context(format!("running docker {:?}", args))?;
     Ok(cmd.status.success())
 }
 
 fn docker_pull_and_tag(source: &str, target: &str) -> anyhow::Result<()> {
-    let cmd = Command::new("docker").args(&["pull", source]).output()?;
+    let args = ["pull", source];
+    let cmd = Command::new("docker")
+        .args(&args)
+        .output()
+        .context(format!("running docker {:?}", args))?;
     anyhow::ensure!(cmd.status.success(), "Error pulling {}", source);
-    let cmd = Command::new("docker").args(&["tag", source, target]).output()?;
+    let args = ["tag", source, target];
+    let cmd = Command::new("docker")
+        .args(&args)
+        .output()
+        .context(format!("running docker {:?}", args))?;
     anyhow::ensure!(cmd.status.success(), "Error tagging {}", source);
     Ok(())
 }
 fn docker_push(target: &str) -> anyhow::Result<()> {
-    let cmd = Command::new("docker").args(&["push", target]).output()?;
+    let args = ["push", target];
+    let cmd = Command::new("docker")
+        .args(&args)
+        .output()
+        .context(format!("running docker {:?}", args))?;
     anyhow::ensure!(cmd.status.success(), "Error pushing {}", target);
     Ok(())
 }
