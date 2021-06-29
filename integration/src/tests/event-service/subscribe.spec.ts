@@ -58,5 +58,7 @@ describe('event service', () => {
         )
         expect(data[1].type === 'offsets' && data[1].offsets[pub1.stream]).toBeLessThan(pub2.offset)
       }))
+
+    // TODO: test subscription across Actyx node restart
   })
 })
