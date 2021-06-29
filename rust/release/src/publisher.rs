@@ -9,6 +9,7 @@ use git2::Oid;
 use std::{
     fmt,
     fs::File,
+    os::unix::prelude::PermissionsExt,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -100,7 +101,15 @@ impl Publisher {
                 } else {
                     anyhow::bail!("Tried creating {:?} from {:?}", self.target, self.source);
                 };
-                let source_file = blob_download(source, &in_dir)?;
+                {
+                    // Set executable bit on source file. That mostly always
+                    // what we want.
+                    let mut perms = std::fs::metadata(&source_file)?.permissions();
+                    let mode = perms.mode() | 0o110;
+                    perms.set_mode(mode);
+                    std::fs::set_permissions(&source_file, perms)
+                        .with_context(|| format!("Setting permissions for {} to {}", source_file.display(), mode))?;
+                }
                 let processed = match pre_processing {
                     PreProcessing::TarGz {
                         binary_name: target_name,
