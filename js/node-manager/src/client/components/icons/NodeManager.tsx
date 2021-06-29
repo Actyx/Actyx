@@ -16,8 +16,8 @@ const Icon: IconType = ({ height = 5, width = 5 }) => (
         y2="16"
         gradientUnits="userSpaceOnUse"
       >
-        <stop offset="0" stop-color="#d1d5dc" />
-        <stop offset="1" stop-color="#e9eff4" />
+        <stop offset="0" stopColor="#d1d5dc" />
+        <stop offset="1" stopColor="#e9eff4" />
       </linearGradient>
       <filter id="a">
         <feGaussianBlur in="SourceAlpha" stdDeviation="5" />
