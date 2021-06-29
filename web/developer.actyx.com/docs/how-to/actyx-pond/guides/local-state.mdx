@@ -6,7 +6,7 @@ hide_table_of_contents: true
 _Making sense of events: building up local state._
 
 A fish’s purpose is to learn about its environment and make or record decisions based on its knowledge.
-In this section we implement the logic for how a fish can accumulate useful state by ingesting events.
+In this section, we implement the logic for how a fish can accumulate a useful state by ingesting events.
 
 A fish reacts to events as they become available, therefore we need to add an `onEvent` handler to our fish.
 Since the point of the event handler is to manage the fish’s state, the first piece of information we need to settle on is what state we want to keep.
@@ -61,5 +61,5 @@ node. Simply use the `.local()` transformation, as in `Tag('chatRoom').withId('l
 :::
 
 With this we have seen all important triggers for a fish: it reacts to events by computing a new
-state, plus its state is observable from the outside world. In the next section we start looking
+state, plus its state is observable from the outside world. In the next section, we start looking
 into the distributed aspects of writing fishes.

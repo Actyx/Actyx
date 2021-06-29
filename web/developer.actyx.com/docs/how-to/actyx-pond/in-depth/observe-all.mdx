@@ -16,8 +16,8 @@ This document aims to cover all the details and corner cases.
 
 ## Expiry
 
-In order to prevent the set of Fish from growing forever, you can set expiry options.  
-Currently the Pond supports `expireAfterSeed`, which will remove Fish from the set after the event that spawned them has reached a certain age.  
+In order to prevent the set of Fish from growing forever, you can set expiry options.
+Currently, the Pond supports `expireAfterSeed`, which will remove Fish from the set after the event that spawned them has reached a certain age.  
 For example, setting `expireAfterSeed: Milliseconds.fromDays(14)` would only show Fish where the seed event is two weeks old or younger.
 
 Expiry is computed lazily: Expiry of a Fish in and of itself will not lead to a new invocation of the callback.

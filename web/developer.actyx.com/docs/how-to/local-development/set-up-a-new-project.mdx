@@ -20,7 +20,7 @@ mkdir ExampleProject
 cd ExampleProject
 ```
 
-With projects on the Actyx low-code platform, it is important to think about the holistic solution rather than a single isolated app.
+With projects on the Actyx low-code platform, it is important to think about a holistic solution rather than a single isolated app.
 This has to do with the decentralized and event-based nature of Actyx.
 When digitizing factory processes directly on the shop floor, there are many players involved:
 Workers may have an application on tablets that show them configuration parameters for machines on a production line, while headless connector apps running on edge gateways collect data directly from machines and distribute it throughout the entire shop floor.
@@ -28,8 +28,8 @@ Additionally, some dashboards apps running on industry PCs display critical prod
 The important thing is that **all of these entities rely on the same information** and thus **the same events**.
 
 The way events are emitted, queried and subscribed to with Actyx works by using our programming framework Actyx Pond.
-This framework provides the tools for you to create so called `Fishes`.
-And since these fishes are responsible for creating the event streams flowing between each entity on the shop floor, we recommend to have all of them in one place.
+This framework provides the tools for you to create so-called `Fishes`.
+And since these fishes are responsible for creating the event streams flowing between each entity on the shop floor, we recommend having all of them in one place.
 So let's go ahead and create a dedicated folder for them called **fishes**.
 
 Now, as stated earlier, many different apps can be part of your project.

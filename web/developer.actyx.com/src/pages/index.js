@@ -10,7 +10,7 @@ const CARDS = [
     color: 'blue',
     headline: 'How-to Guides',
     text:
-      'These problem-oriented guides take the reader through steps required to solve a problem.',
+      'These problem-oriented guides take the reader through the steps required to solve a problem.',
     link: '/docs/how-to/overview',
   },
   {

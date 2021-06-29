@@ -73,7 +73,7 @@ This is shown on the right-hand side of the diagram above; in practice the state
 
 The remaining question is where the ordering of events comes from: how does the Pond know where a newly received events needs to be sorted into the event log?
 
-The answer is that each event carries meta data including physical and logical timestamps and the unique identifier of the source of the event, so that an ordering can be defined that can be evaluated by all Ponds of a distributed application in the same fashion.
+The answer is that each event carries metadata including physical and logical timestamps and the unique identifier of the source of the event, so that an ordering can be defined that can be evaluated by all Ponds of a distributed application in the same fashion.
 This allows all Ponds to sort the full event log in exactly the same order regardless of the order in which they received the events from their peers.
 With this technique, it is the log itself that is eventually consistent and any business logic that deterministically computes state from such a log will be eventually consistent as well.
 
