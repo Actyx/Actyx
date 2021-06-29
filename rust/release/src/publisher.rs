@@ -9,9 +9,11 @@ use git2::Oid;
 use std::{
     fmt,
     fs::File,
+    os::unix::prelude::PermissionsExt,
     path::{Path, PathBuf},
     process::Command,
 };
+use tempfile::tempdir_in;
 use zip::ZipWriter;
 
 #[derive(Debug, Clone)]
@@ -100,7 +102,19 @@ impl Publisher {
                 } else {
                     anyhow::bail!("Tried creating {:?} from {:?}", self.target, self.source);
                 };
-                let source_file = blob_download(source, &in_dir)?;
+                // create a unique directory within `in_dir` to download the
+                // artifact into. The source artifacts are not uniquely named.
+                let tmp = tempdir_in(&in_dir)?.into_path();
+                let source_file = blob_download(source, tmp)?;
+                {
+                    // Set executable bit on source file. That mostly always
+                    // what we want.
+                    let mut perms = std::fs::metadata(&source_file)?.permissions();
+                    let mode = perms.mode() | 0o111;
+                    perms.set_mode(mode);
+                    std::fs::set_permissions(&source_file, perms)
+                        .with_context(|| format!("Setting permissions for {} to {}", source_file.display(), mode))?;
+                }
                 let processed = match pre_processing {
                     PreProcessing::TarGz {
                         binary_name: target_name,
