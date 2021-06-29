@@ -39,7 +39,11 @@ For now, let's see how the friendly fish can give us a warm greeting:
 
 ```typescript
 const main = async () => {
-  const pond = await Pond.default()
+  const pond = await Pond.default({
+    appId: 'com.example.hello-world',
+    displayName: 'Hello World Tutorial',
+    version: '0.0.1',
+  })
 
   pond.observe(helloWorldFish, console.log)
 }
