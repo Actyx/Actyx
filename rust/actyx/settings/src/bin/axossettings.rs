@@ -54,7 +54,7 @@ enum Command {
 fn main() -> anyhow::Result<()> {
     let opt: Opt = Opt::from_args();
     let disk_store = Database::new(opt.path).context("Opening settings db")?;
-    let mut repo = Repository::new(disk_store).context("Creating settings repo")?;
+    let repo = Repository::new(disk_store);
     match opt.cmd {
         Command::SetSchema { scope, schema } => {
             let schema = serde_json::from_reader(File::open(schema)?)?;

@@ -5,13 +5,12 @@ use std::{
 
 use crate::{
     components::{logging::LoggingRequest, store::StoreRequest, ComponentRequest, ComponentState, ComponentType},
-    formats::{ExternalEvent, NodeDetails, NodeEvent, NodeState, ResultInspect, Settings, ShutdownReason},
+    formats::{ExternalEvent, NodeDetails, NodeEvent, NodeState, ResultInspect, ShutdownReason},
     host::Host,
     node_api::formats::NodesRequest,
-    settings::{SettingsRequest, SYSTEM_SCOPE},
+    settings::{is_system_scope, system_scope, SettingsRequest},
     spawn_with_name,
 };
-use anyhow::Context;
 use chrono::SecondsFormat;
 use crossbeam::{
     channel::{bounded, Receiver, Sender},
@@ -84,7 +83,6 @@ struct Node {
     rx: Receiver<ExternalEvent>,
     state: NodeState,
     runtime_storage: Host,
-    settings_repo: settings::Repository,
     components: Vec<(ComponentType, ComponentChannel)>,
 }
 
@@ -94,54 +92,15 @@ impl Node {
         components: Vec<(ComponentType, ComponentChannel)>,
         runtime_storage: Host,
     ) -> anyhow::Result<Self> {
-        #[cfg(test)]
-        let settings_db = settings::Database::in_memory()?;
-        #[cfg(not(test))]
-        let settings_db = settings::Database::new(runtime_storage.working_dir().to_owned())?;
-        let mut settings_repo = settings::Repository::new(settings_db)?;
-        // Apply the current schema for com.actyx (it might have changed). If this is
-        // unsuccessful, we panic.
-        apply_system_schema(&mut settings_repo).expect("Error applying system schema com.actyx.");
-
-        let sys_settings_json = settings_repo
-            .get_settings(&system_scope(), false)
-            .context("Unable to get initial system settings")?;
-        let sys_settings: Settings =
-            serde_json::from_value(sys_settings_json).context("Deserializing system settings json")?;
-
         let node_id = runtime_storage.get_or_create_node_id()?;
-        let state = NodeState::new(node_id, sys_settings);
+        let state = NodeState::new(node_id, runtime_storage.get_settings().clone());
         Ok(Self {
             rx,
             state,
             runtime_storage,
-            settings_repo,
             components,
         })
     }
-}
-
-fn system_scope() -> settings::Scope {
-    SYSTEM_SCOPE.parse().unwrap()
-}
-
-fn is_system_scope(scope: &settings::Scope) -> bool {
-    scope.first() == Some(SYSTEM_SCOPE.to_string())
-}
-
-/// Set the schema for the ActyxOS system settings.
-pub fn apply_system_schema(settings_repo: &mut settings::Repository) -> Result<(), settings::RepositoryError> {
-    debug!("setting current schema for com.actyx");
-    let schema: serde_json::Value = serde_json::from_slice(include_bytes!(concat!(
-        env!("CARGO_MANIFEST_DIR"),
-        "/../../../protocols/json-schema/node-settings.schema.json"
-    )))
-    .expect("embedded settings schema is not valid json");
-    // check that embedded schema for com.actyx is a valid schema. If not, there is no point in going on.
-    settings::Validator::new(schema.clone()).expect("Embedded schema for com.actyx is not a valid JSON schema.");
-
-    settings_repo.set_schema(&system_scope(), schema)?;
-    Ok(())
 }
 
 macro_rules! standard_lifecycle {
@@ -156,6 +115,10 @@ macro_rules! standard_lifecycle {
 }
 
 impl Node {
+    fn settings_repo(&self) -> &settings::Repository {
+        self.runtime_storage.get_settings_repo()
+    }
+
     fn handle_set_settings_request(
         &mut self,
         scope: &settings::Scope,
@@ -169,9 +132,9 @@ impl Node {
         debug!("Trying to set settings for {}", scope);
         let update = if is_system_scope(&scope) && ignore_errors {
             debug!("Ignoring force option for system scope.");
-            self.settings_repo.update_settings(&scope, json, false)?
+            self.settings_repo().update_settings(&scope, json, false)?
         } else {
-            self.settings_repo.update_settings(&scope, json, ignore_errors)?
+            self.settings_repo().update_settings(&scope, json, ignore_errors)?
         };
         if is_system_scope(&scope) {
             self.update_node_state()?;
@@ -181,7 +144,7 @@ impl Node {
 
     fn handle_unset_settings_request(&mut self, scope: &settings::Scope) -> ApiResult<()> {
         debug!("Trying to unset settings for {}", scope);
-        self.settings_repo.clear_settings(scope)?;
+        self.settings_repo().clear_settings(scope)?;
         self.update_node_state()?;
         Ok(())
     }
@@ -213,23 +176,26 @@ impl Node {
                 response,
                 no_defaults,
             } => {
-                let res = self.settings_repo.get_settings(&scope, no_defaults).map_err(Into::into);
+                let res = self
+                    .settings_repo()
+                    .get_settings(&scope, no_defaults)
+                    .map_err(Into::into);
                 let _ = response.send(res);
             }
             SettingsRequest::SetSchema { scope, json, response } => {
-                let res = self.settings_repo.set_schema(&scope, json).map_err(Into::into);
+                let res = self.settings_repo().set_schema(&scope, json).map_err(Into::into);
                 let _ = response.send(res);
             }
             SettingsRequest::DeleteSchema { scope, response } => {
-                let res = self.settings_repo.delete_schema(&scope).map_err(Into::into);
+                let res = self.settings_repo().delete_schema(&scope).map_err(Into::into);
                 let _ = response.send(res);
             }
             SettingsRequest::GetSchemaScopes { response } => {
-                let res = self.settings_repo.get_schema_scopes().map_err(Into::into);
+                let res = self.settings_repo().get_schema_scopes().map_err(Into::into);
                 let _ = response.send(res);
             }
             SettingsRequest::GetSchema { scope, response } => {
-                let res = self.settings_repo.get_schema(&scope).map_err(Into::into);
+                let res = self.settings_repo().get_schema(&scope).map_err(Into::into);
                 let _ = response.send(res);
             }
         };
@@ -258,7 +224,7 @@ impl Node {
         }
     }
     fn update_node_state(&mut self) -> ActyxOSResult<()> {
-        let node_settings = self.settings_repo.get_settings(&system_scope(), false)?;
+        let node_settings = self.settings_repo().get_settings(&system_scope(), false)?;
         eprintln!("node_settings {}", node_settings);
         let settings = serde_json::from_value(node_settings)
             .ax_err_ctx(ActyxOSCode::ERR_INTERNAL_ERROR, "Error deserializing system settings")?;
@@ -419,7 +385,7 @@ impl NodeWrapper {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::components::Component;
+    use crate::{components::Component, node_settings::Settings};
     use anyhow::Result;
     use futures::executor::block_on;
     use serde_json::json;
