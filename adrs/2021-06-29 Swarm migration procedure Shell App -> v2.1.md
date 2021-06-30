@@ -20,6 +20,9 @@ sources
 1. Migrate the ActyxOS v1 headless device(s) to Actyx v2 as per the normal
 process
 
+1. Update the externally-stored offset maps (PowerBI pipelines, I believe there
+are no others)
+
 1. Replace any `store-cli` containers with Actyx v2
 
 1. Deploy any apps that were previously deployed in the Actyx v1 containers
