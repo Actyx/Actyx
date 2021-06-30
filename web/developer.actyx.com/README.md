@@ -238,3 +238,12 @@ Some problematic text ([Lamport time](https://en.wikipedia.org/wiki/Lamport_time
 
 More information about markdownlint configuration can be found here:
 <https://github.com/DavidAnson/markdownlint#configuration>
+
+#### Scripting
+
+Useful npm scripts:
+
+| Script          | Description     |
+|-----------------|-----------------|
+| find-dead-links | Find dead links (run before `docusaurus build && npm run serve`) |
+

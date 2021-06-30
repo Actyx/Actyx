@@ -20,13 +20,12 @@ We are excited to announce that with this release, ActyxOS now runs natively on 
 
 ## Other improvements and bug fixes
 
-This release also brings a lot of usability, performance and stability improvements around our core ActyxOS infrastructure which makes ActyxOS easier to use and more robust. For example, now your ActyxOS nodes do not require settings upon initial startup anymore. Instead, the new settings schema now provides default settings for all required values. For a more detailed summary of all new features, improvements and bug fixes, please refer to our [release notes](https://developer.actyx.com/docs/os/release-notes).
+This release also brings a lot of usability, performance and stability improvements around our core ActyxOS infrastructure which makes ActyxOS easier to use and more robust. For example, now your ActyxOS nodes do not require settings upon initial startup anymore. Instead, the new settings schema now provides default settings for all required values. For a more detailed summary of all new features, improvements and bug fixes, please refer to our [release notes](https://developer.actyx.com/releases).
 
 ## Get started with Actyx
 
-- [Actyx Platform](https://developer.actyx.com/docs/home/actyx_platform)
-- [ActyxOS documentation](https://developer.actyx.com/docs/os/general/introduction)
-- [Actyx Pond documentation](https://developer.actyx.com/docs/pond/getting-started)
-- [Actyx Tutorials](https://developer.actyx.com/docs/learn-actyx)
+- [ActyxOS documentation](https://developer.actyx.com)
+- [Actyx Pond documentation](https://developer.actyx.com/docs/how-to/actyx-pond/introduction)
+- [Actyx Tutorials](https://developer.actyx.com/docs/tutorials/overview)
 
 If you have questions or suggestions, please reach out to us via [email](mailto:developer@actyx.io), [twitter](https://twitter.com/actyx), or [discord](https://discord.gg/262yJhc). We are always happy to help you!

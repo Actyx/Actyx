@@ -48,7 +48,7 @@ new FishBuilder(fishId, initialState)
 ```
 
 Imagine here `eventSelector1` to be some typed selector of events, where all contained events have type
-`E`. `handlerForE` then is a function `S onEvent(S oldState, E event);`, much like [`onEvent`](https://developer.actyx.com/docs/pond/guides/local-state) in the
+`E`. `handlerForE` then is a function `S onEvent(S oldState, E event);`, much like [`onEvent`](https://developer.actyx.com/docs/how-to/actyx-pond/guides/local-state/) in the
 TypeScript Pond. In the next line, events of type `F` are selected, and the `handlerForF` takes `F event`.
 
 ## Ways of implementing handlers

@@ -19,10 +19,10 @@ The Actyx Pond ships with reasonable defaults for creating and retaining snapsho
 
 The state of any given entity in an event-sourced system (a `Fish` in the `Pond`, in our case) at any point in time is defined by the stream of events relevant to this entity up to this time. The state is computed by applying these events one by one in chronological order. This means, the larger the number of events to apply, the more computational resources are required to reach the resulting state.
 
-To prevent having to apply _all_ relevant events each time we want to look at the state, we employ [snapshots](https://developer.actyx.com/docs/pond/guides/snapshots). A snapshot is the persisted result of computing the state for a given point in time. Now, when we look at the state, we don't have to apply all events but only those that happened after the time the snapshot was taken.
+To prevent having to apply _all_ relevant events each time we want to look at the state, we employ [snapshots](https://developer.actyx.com/docs/how-to/actyx-pond/guides/snapshots/). A snapshot is the persisted result of computing the state for a given point in time. Now, when we look at the state, we don't have to apply all events but only those that happened after the time the snapshot was taken.
 
-The Actyx Pond transparently manages snapshot creation, persistence and application for you. About every 1000 events, a snapshot is persisted, if the base event is older than one hour. Additionally, the Pond retains snapshots from the past to aid with [longer time travel distances](https://developer.actyx.com/docs/pond/guides/time-travel).
-If an event leads to the state being completely replaced, you can let the Pond know by returning `true` from the fish's `isReset` function. This prevents the Pond from unnecessarily going back further in time to compute the state. You can find an example in [Semantic Snapshots](https://developer.actyx.com/docs/pond/guides/snapshots).
+The Actyx Pond transparently manages snapshot creation, persistence and application for you. About every 1000 events, a snapshot is persisted, if the base event is older than one hour. Additionally, the Pond retains snapshots from the past to aid with [longer time travel distances](https://developer.actyx.com/docs/how-to/actyx-pond/guides/time-travel/).
+If an event leads to the state being completely replaced, you can let the Pond know by returning `true` from the fish's `isReset` function. This prevents the Pond from unnecessarily going back further in time to compute the state. You can find an example in [Semantic Snapshots](https://developer.actyx.com/docs/how-to/actyx-pond/guides/snapshots/).
 
 So, while the Pond already takes care of a lot of things for you, there still are cases in which you have or want to influence the default behavior.
 
@@ -64,7 +64,7 @@ In this case, compressing the fish state's snapshots helps to avoid running into
 
 ## Compressing snapshots
 
-The Pond [documentation](https://developer.actyx.com/docs/pond/guides/snapshots) mentions the possibility of compressing snapshots. Let's walk through implementing it together.
+The Pond [documentation](https://developer.actyx.com/docs/how-to/actyx-pond/guides/snapshots/) mentions the possibility of compressing snapshots. Let's walk through implementing it together.
 
 ### Evaluating compression
 

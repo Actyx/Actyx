@@ -24,7 +24,7 @@
     "check:spelling": "npm run fix:spelling -- --report",
     "fix:spelling": "mdspell ./docs/**/*.md ./docs/**/*.mdx ./blog/**/*.md ./blog/**/*.mdx !./docs/reference/js-ts-sdk/**/*.md !./docs/reference/pond/**/*.md --ignore-numbers --ignore-acronyms --en-us",
     "lint-sequential": "npm run check:code && npm run check:md && npm run check:text && npm run check:spelling",
-    "lint": "concurrently npm:check:*",
+    "lint": "concurrently \"npm:check:*\"",
     "lint:fix": "npm run fix:code && npm run fix:md && npm run fix:text && npm run fix:spelling",
     "find-dead-links": "blc -ro http://localhost:3000"
   },
