@@ -58,16 +58,6 @@ namespace Actyx.Sdk.AxHttpClient
 
         public IObservable<IEventOnWire> Query(OffsetMap lowerBound, OffsetMap upperBound, IEventSelection query, EventsOrder order)
         {
-            if (lowerBound is null)
-            {
-                throw new ArgumentNullException(nameof(lowerBound));
-            }
-
-            if (upperBound is null)
-            {
-                throw new ArgumentNullException(nameof(upperBound));
-            }
-
             if (query is null)
             {
                 throw new ArgumentNullException(nameof(query));
@@ -75,8 +65,8 @@ namespace Actyx.Sdk.AxHttpClient
 
             return Observable.FromAsync(() => client.Post(HttpApiPath.QUERY_SEG, new
             {
-                lowerBound = lowerBound.Count == 0 ? null : lowerBound,
-                upperBound = upperBound.Count == 0 ? null : upperBound,
+                lowerBound,
+                upperBound,
                 query = query.ToAql(),
                 order = order.ToWireString(),
             }, true)).SelectMany(response =>

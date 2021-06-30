@@ -51,11 +51,16 @@ namespace Sdk.Tests
 
             // Query events
             var query = new TestEventSelection($"FROM {string.Join(" & ", Constants.Tags.Select(x => $"'{x}'"))}");
-            var queryResults = await es.Query(new OffsetMap(), new OffsetMap(), query, EventsOrder.Asc).ToList();
+            var queryResults = await es.Query(null, null, query, EventsOrder.Asc).ToList();
             queryResults.Should().HaveCountGreaterThan(1);
             var offsets = queryResults.Last() as OffsetsOnWire;
             var eventsStreamKey = $"{client.NodeId}-0";
             offsets.Offsets[eventsStreamKey].Should().BePositive();
+
+            // Query with empty upper bound
+            var emptyQueryResult = await es.Query(null, new OffsetMap(), query, EventsOrder.Asc).ToList();
+            emptyQueryResult.Should().HaveCount(1);
+            (emptyQueryResult.First() as OffsetsOnWire).Offsets.Should().BeEmpty();
 
             // Subscribe to events
             var lowerBound = new OffsetMap { { $"{client.NodeId}-0", 1 }, };
