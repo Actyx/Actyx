@@ -1,4 +1,6 @@
-use git2::{Commit, Cred, FetchOptions, Oid, PushOptions, RemoteCallbacks, Repository, Signature};
+#[cfg(not(windows))]
+use git2::FetchOptions;
+use git2::{Commit, Cred, Oid, PushOptions, RemoteCallbacks, Repository, Signature};
 use std::path::{Path, PathBuf};
 
 use crate::{
@@ -75,6 +77,7 @@ impl RepoWrapper {
             Ok(())
         }
     }
+    #[cfg(not(windows))]
     pub fn head_of_origin_master(&self) -> anyhow::Result<Oid> {
         if std::env::var("AZURE_HTTP_USER_AGENT").is_ok() {
             eprintln!("Running inside Azure Pipelines; shelling out to `git`. Output:");

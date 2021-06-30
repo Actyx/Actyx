@@ -1,17 +1,16 @@
 use anyhow::{Context, Error};
 use chrono::{TimeZone, Utc};
 use clap::Clap;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use repo::RepoWrapper;
 use semver::Version;
 use std::{fmt::Write, path::PathBuf};
-use tempfile::tempdir;
 use versions_file::{VersionLine, VersionsFile};
 use versions_ignore_file::VersionsIgnoreFile;
 
 mod changes;
 mod os_arch;
 mod products;
+#[cfg(not(windows))]
 mod publisher;
 mod releases;
 mod repo;
@@ -19,7 +18,13 @@ mod versions;
 mod versions_file;
 mod versions_ignore_file;
 
-use crate::{os_arch::OsArch, products::Product, publisher::Publisher, releases::Release};
+#[cfg(not(windows))]
+use crate::{os_arch::OsArch, publisher::Publisher};
+use crate::{products::Product, releases::Release};
+#[cfg(not(windows))]
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+#[cfg(not(windows))]
+use tempfile::tempdir;
 
 #[derive(Clap)]
 struct Opts {
@@ -83,6 +88,7 @@ enum Command {
         dry_run: bool,
     },
     /// Makes sure all released versions of a given product are released
+    #[cfg(not(windows))]
     Publish {
         product: Product,
         /// Don't publish
@@ -300,6 +306,7 @@ Overview:"#
                 eprintln!("Done.");
             }
         }
+        #[cfg(not(windows))]
         Command::Publish {
             product,
             dry_run,
