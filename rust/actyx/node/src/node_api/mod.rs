@@ -8,7 +8,8 @@ use crate::{
     settings::{SettingsRequest, SYSTEM_SCOPE},
     ShutdownReason,
 };
-use anyhow::Context;
+use anyhow::{anyhow, bail, Context};
+use ax_futures_util::stream::variable::Variable;
 use crossbeam::channel::Sender;
 use crypto::PublicKey;
 use formats::NodesRequest;
@@ -33,6 +34,7 @@ use libp2p::{
 use libp2p_streaming_response::{ChannelId, StreamingResponse, StreamingResponseConfig};
 use parking_lot::Mutex;
 use std::{collections::BTreeSet, convert::TryFrom, pin::Pin, sync::Arc, time::Duration};
+use tokio::time::{timeout_at, Instant};
 use tracing::*;
 use util::formats::{
     admin_protocol::{AdminProtocol, AdminRequest, AdminResponse},
@@ -50,7 +52,7 @@ struct State {
     store: StoreTx,
     /// Pending inflight requests to Node.
     pending_oneshot: FuturesUnordered<PendingRequest>,
-    admin_sockets: BTreeSet<Multiaddr>,
+    admin_sockets: Variable<BTreeSet<Multiaddr>>,
 }
 #[derive(NetworkBehaviour)]
 #[behaviour(poll_method = "poll", out_event = "()")]
@@ -91,7 +93,7 @@ impl ApiBehaviour {
             store,
             auth_info,
             pending_oneshot: FuturesUnordered::new(),
-            admin_sockets: BTreeSet::new(),
+            admin_sockets: Variable::default(),
         };
         Self {
             ping: Ping::new(PingConfig::new().with_keep_alive(true)),
@@ -210,7 +212,13 @@ impl ApiBehaviour {
                     .send(ComponentRequest::Individual(StoreRequest::NodesInspect { tx }))
                     .unwrap();
                 let maybe_add_key = self.maybe_add_key(channel_id.peer());
-                let admin_addrs = self.state.admin_sockets.iter().map(|a| a.to_string()).collect();
+                let admin_addrs = self
+                    .state
+                    .admin_sockets
+                    .get_cloned()
+                    .iter()
+                    .map(|a| a.to_string())
+                    .collect();
                 let fut = async move {
                     if let Err(e) = maybe_add_key.await {
                         error!("Error adding initial key {}", e);
@@ -317,7 +325,11 @@ pub(crate) async fn mk_swarm(
     bind_to: SocketAddrHelper,
     store: StoreTx,
     auth_info: Arc<Mutex<NodeApiSettings>>,
-) -> anyhow::Result<(PeerId, WrappedBehaviour)> {
+) -> anyhow::Result<PeerId> {
+    if bind_to.to_multiaddrs().next().is_none() {
+        bail!("cannot start node API without any listen addresses");
+    }
+
     let (peer_id, transport) = mk_transport(keypair).await?;
     let protocol = ApiBehaviour::new(node_tx, store, auth_info);
 
@@ -327,13 +339,15 @@ pub(crate) async fn mk_swarm(
         }))
         .build();
 
+    let mut addrs = swarm.behaviour().state.admin_sockets.new_observer();
+
     // Trying to bind to `/ip6/::0/tcp/0` (dual-stack) won't work, as
     // rust-libp2p sets `IPV6_V6ONLY` (or the platform equivalent) [0]. This is
     // why we have to to bind to ip4 and ip6 manually.
     // [0] https://github.com/libp2p/rust-libp2p/blob/master/transports/tcp/src/lib.rs#L322
     for addr in bind_to.to_multiaddrs() {
         debug!("Admin API trying to bind to {}", addr);
-        Swarm::listen_on(&mut swarm, addr.clone()).with_context(|| {
+        swarm.listen_on(addr.clone()).with_context(|| {
             let port = addr
                 .iter()
                 .find_map(|x| match x {
@@ -349,7 +363,44 @@ pub(crate) async fn mk_swarm(
         })?;
     }
 
-    Ok((peer_id, swarm))
+    tokio::spawn(async { SwarmFuture(swarm).await });
+
+    // check that some addresses were bound
+    let mut set = addrs.next().await.ok_or_else(|| anyhow!("address stream died"))?;
+    let deadline = Instant::now() + Duration::from_secs(10);
+    for addr in bind_to.to_multiaddrs() {
+        match addr.into_iter().next() {
+            Some(Protocol::Ip4(ip4)) if ip4.is_loopback() || ip4.is_unspecified() => loop {
+                if set
+                    .iter()
+                    .any(|a| matches!(a.iter().next(), Some(Protocol::Ip4(ip)) if ip.is_loopback()))
+                {
+                    break;
+                }
+                match timeout_at(deadline, addrs.next()).await {
+                    Ok(Some(s)) => set = s,
+                    Ok(None) => bail!("address stream died"),
+                    Err(_) => bail!("timeout waiting for listeners"),
+                };
+            },
+            Some(Protocol::Ip6(ip6)) if ip6.is_loopback() || ip6.is_unspecified() => loop {
+                if set
+                    .iter()
+                    .any(|a| matches!(a.iter().next(), Some(Protocol::Ip6(ip)) if ip.is_loopback()))
+                {
+                    break;
+                }
+                match timeout_at(deadline, addrs.next()).await {
+                    Ok(Some(s)) => set = s,
+                    Ok(None) => bail!("address stream died"),
+                    Err(_) => bail!("timeout waiting for listeners"),
+                };
+            },
+            _ => {}
+        }
+    }
+
+    Ok(peer_id)
 }
 
 type TConnErr = libp2p::core::either::EitherError<
@@ -383,7 +434,11 @@ impl Future for SwarmFuture {
             match event {
                 SwarmEvent::NewListenAddr(addr) => {
                     tracing::info!(target: "ADMIN_API_BOUND", "Admin API bound to {}.", addr);
-                    self.0.behaviour_mut().state.admin_sockets.insert(addr);
+                    self.0
+                        .behaviour_mut()
+                        .state
+                        .admin_sockets
+                        .transform_mut(|set| set.insert(addr));
                 }
                 SwarmEvent::ListenerError { error } => {
                     error!("SwarmEvent::ListenerError {}", error)
@@ -394,7 +449,11 @@ impl Future for SwarmFuture {
                 } => {
                     error!("SwarmEvent::ListenerClosed {} for {:?}", error, addresses);
                     for addr in addresses {
-                        self.0.behaviour_mut().state.admin_sockets.remove(&addr);
+                        self.0
+                            .behaviour_mut()
+                            .state
+                            .admin_sockets
+                            .transform_mut(|set| set.remove(&addr));
                     }
                 }
                 o => {
@@ -405,9 +464,6 @@ impl Future for SwarmFuture {
 
         Poll::Pending
     }
-}
-pub(crate) async fn start(swarm: WrappedBehaviour) {
-    SwarmFuture(swarm).await;
 }
 
 async fn mk_transport(id_keys: identity::Keypair) -> anyhow::Result<(PeerId, Boxed<(PeerId, StreamMuxerBox)>)> {

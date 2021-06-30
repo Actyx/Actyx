@@ -52,10 +52,8 @@ impl Component<(), NodeApiSettings> for NodeApi {
         &self.rx
     }
     fn extract_settings(&self, s: Settings) -> Result<NodeApiSettings> {
-        let authorized_users = s.admin.authorized_users.iter().cloned().map(Into::into).collect();
-        Ok(NodeApiSettings {
-            authorized_keys: authorized_users,
-        })
+        let authorized_keys = s.admin.authorized_users.iter().cloned().map(Into::into).collect();
+        Ok(NodeApiSettings { authorized_keys })
     }
     fn handle_request(&mut self, _: ()) -> Result<()> {
         Ok(())
@@ -72,7 +70,7 @@ impl Component<(), NodeApiSettings> for NodeApi {
             .enable_all()
             .build()?;
 
-        let (_, swarm) = rt.block_on(crate::node_api::mk_swarm(
+        rt.block_on(crate::node_api::mk_swarm(
             self.keypair.clone(),
             self.sender.clone(),
             self.bind_to.clone(),
@@ -83,7 +81,6 @@ impl Component<(), NodeApiSettings> for NodeApi {
         // mk_swarm has bound the listen sockets, so declare victory
         snd.send(Ok(()))?;
 
-        let _ = rt.spawn(crate::node_api::start(swarm));
         self.rt = Some(rt);
         Ok(())
     }
