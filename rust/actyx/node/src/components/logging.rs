@@ -76,15 +76,17 @@ impl Component<LoggingRequest, LoggingConfig> for Logging {
     }
 }
 impl Logging {
-    pub fn new(node_id: NodeId, rx: Receiver<ComponentRequest<LoggingRequest>>, working_dir: impl AsRef<Path>) -> Self {
+    pub fn new(
+        node_id: NodeId,
+        rx: Receiver<ComponentRequest<LoggingRequest>>,
+        working_dir: impl AsRef<Path>,
+        level: LogSeverity,
+    ) -> Self {
         let (tx_logsvcd_cfg, log_cfg_rx) = bounded(8);
 
         let log_config = LogConfig::with_dir(working_dir, log_cfg_rx);
         let log = LogServiceWrapper::new(log_config, node_id);
-        let logging_sink = Arc::new(Mutex::new(LoggingSink::new(
-            LogSeverity::default(),
-            log.publish_tx.clone(),
-        )));
+        let logging_sink = Arc::new(Mutex::new(LoggingSink::new(level, log.publish_tx.clone())));
         Self {
             log,
             rx,

@@ -10,7 +10,7 @@ fn load_schema(path: PathBuf) -> serde_json::Value {
 }
 
 fn repo(path: &TempDir) -> Repository {
-    Repository::new(Database::new(path.path().to_path_buf()).unwrap()).unwrap()
+    Repository::new(Database::new(path.path().to_path_buf()).unwrap())
 }
 
 // Test cases
@@ -30,7 +30,7 @@ fn repo(path: &TempDir) -> Repository {
 // Make tests chainable
 type TestResult = std::result::Result<TempDir, Error>;
 fn testcase_1(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
     let root_settings = repo.get_settings(&Scope::root(), false)?;
     assert_eq!(root_settings, json!({}));
     let scope = Scope::from_str("com.actyx/weird").unwrap();
@@ -42,7 +42,7 @@ fn testcase_1(dir: TempDir) -> TestResult {
 }
 
 fn testcase_2(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
     let schema = load_schema("tests/schemas/test1.schema.json".into());
     let scope: Scope = Scope::from_str("com.example.testcase_2").unwrap();
     match repo.delete_schema(&scope) {
@@ -68,7 +68,7 @@ fn testcase_2(dir: TempDir) -> TestResult {
 }
 
 fn testcase_3(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
     let schema = load_schema("tests/schemas/test1.schema.json".into());
     let scope = Scope::from_str("com.example.sample").unwrap();
     repo.set_schema(&scope, schema)?;
@@ -91,7 +91,7 @@ fn testcase_3(dir: TempDir) -> TestResult {
 }
 
 fn testcase_4(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
     let schema = load_schema("tests/schemas/test1.schema.json".into());
     let scope = Scope::from_str("com.example.testcase_4").unwrap();
     repo.set_schema(&scope, schema)?;
@@ -135,7 +135,7 @@ fn testcase_4(dir: TempDir) -> TestResult {
 }
 
 fn testcase_5(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
     let dir = testcase_2(dir)?;
     let second_schema = load_schema("tests/schemas/test2.schema.json".into());
     let scope = Scope::from_str("com.actyx").unwrap();
@@ -175,7 +175,7 @@ fn testcase_5(dir: TempDir) -> TestResult {
 }
 
 fn testcase_6(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
     let schema = load_schema("tests/schemas/test1.schema.json".into());
     let scope = Scope::from_str("com.sample.test6").unwrap();
     repo.set_schema(&scope, schema)?;
@@ -196,7 +196,7 @@ fn testcase_6(dir: TempDir) -> TestResult {
 }
 
 fn testcase_7(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
     let schema = load_schema("tests/schemas/test2.schema.json".into());
     let scope = Scope::from_str("test7").unwrap();
     repo.set_schema(&scope, schema.clone())?;
@@ -206,7 +206,7 @@ fn testcase_7(dir: TempDir) -> TestResult {
 }
 
 fn testcase_8(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
     let schema = load_schema("tests/schemas/test6.schema.json".into());
     let scope = Scope::from_str("com.actyx8").unwrap();
     repo.set_schema(&scope, schema)?;
@@ -247,7 +247,7 @@ fn testcase_8(dir: TempDir) -> TestResult {
 
 #[allow(clippy::unnecessary_wraps)]
 fn testcase_9(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
     let schema = load_schema("tests/schemas/test1.schema.json".into());
     assert_eq!(repo.set_schema(&Scope::root(), schema), Err(Error::RootScopeNotAllowed));
     Ok(dir)
@@ -255,7 +255,7 @@ fn testcase_9(dir: TempDir) -> TestResult {
 
 #[allow(clippy::unnecessary_wraps)]
 fn testcase_10(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
     let schema = load_schema("tests/schemas/test7.schema.json".into());
     let scope = Scope::from_str("com.actyx.test7").unwrap();
     repo.set_schema(&scope, schema).unwrap();
@@ -268,7 +268,7 @@ fn testcase_10(dir: TempDir) -> TestResult {
 
 fn testcase_11(dir: TempDir) -> TestResult {
     let dir = testcase_8(dir)?;
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
     let scope = Scope::from_str("com.actyx8/general/logLevels/os").unwrap();
     repo.clear_settings(&scope).unwrap();
     let log_level = repo.get_settings(&scope, false).unwrap();
@@ -286,7 +286,7 @@ fn testcase_11(dir: TempDir) -> TestResult {
 }
 
 fn testcase_12(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
     let schema = load_schema("tests/schemas/test8.schema.json".into());
     let scope = Scope::from_str("com.actyx.test12").unwrap();
     repo.set_schema(&scope, schema)?;
@@ -310,7 +310,7 @@ fn testcase_12(dir: TempDir) -> TestResult {
 }
 
 fn testcase_13(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
     let schema = load_schema("tests/schemas/test9.schema.json".into());
     let scope = Scope::from_str("com.actyx.test13").unwrap();
     repo.set_schema(&scope, schema)?;
@@ -340,7 +340,7 @@ fn testcase_13(dir: TempDir) -> TestResult {
 }
 
 fn testcase_14(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
     let schema = load_schema("tests/schemas/test9.schema.json".into());
     let scope = Scope::from_str("com.actyx.test14").unwrap();
     repo.set_schema(&scope, schema)?;
@@ -355,7 +355,7 @@ fn testcase_14(dir: TempDir) -> TestResult {
 }
 
 fn testcase_15(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
     let schema = load_schema("tests/schemas/test8.schema.json".into());
     let scope = Scope::from_str("com.actyx.test12").unwrap();
     repo.set_schema(&scope, schema)?;
@@ -367,7 +367,7 @@ fn testcase_15(dir: TempDir) -> TestResult {
 }
 
 fn testcase_16(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
     let schema = load_schema("tests/schemas/test10.schema.json".into());
     let scope = Scope::from_str("com.actyx.test16").unwrap();
     repo.set_schema(&scope, schema)?;
@@ -384,7 +384,7 @@ fn testcase_16(dir: TempDir) -> TestResult {
 }
 
 fn testcase_17(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
 
     let with_defaults_scope = Scope::from_str("com.actyx.test101").unwrap();
     let with_defaults_schema = load_schema("tests/schemas/test9.schema.json".into());
@@ -423,7 +423,7 @@ fn testcase_17(dir: TempDir) -> TestResult {
 }
 
 fn testcase_18(dir: TempDir) -> TestResult {
-    let mut repo = repo(&dir);
+    let repo = repo(&dir);
 
     let scope = Scope::from_str("com.actyx.test101").unwrap();
     let schema = load_schema("tests/schemas/test9.schema.json".into());

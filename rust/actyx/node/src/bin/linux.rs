@@ -32,7 +32,7 @@ mod linux {
         } = Opts::from_args();
 
         if version {
-            println!("actyx {}", NodeVersion::get());
+            println!("Actyx {}", NodeVersion::get());
         } else {
             let bind_to: BindTo = bind_options.try_into()?;
             let working_dir = working_dir.ok_or_else(|| anyhow!("empty")).or_else(|_| -> Result<_> {
@@ -43,7 +43,7 @@ mod linux {
             std::fs::create_dir_all(working_dir.clone())
                 .with_context(|| format!("creating working directory `{}`", working_dir.display()))?;
             // printed by hand since things can fail before logging is set up and we want the user to know this
-            eprintln!("INFO using data directory `{}`", working_dir.display());
+            eprintln!("using data directory `{}`", working_dir.display());
 
             let app_handle = ApplicationState::spawn(working_dir, Runtime::Linux, bind_to)?;
 
