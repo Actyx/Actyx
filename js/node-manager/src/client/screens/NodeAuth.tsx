@@ -1,5 +1,5 @@
 import { SimpleCanvas } from '../components/SimpleCanvas'
-import React, { useReducer, useState } from 'react'
+import React, { useEffect, useReducer, useState } from 'react'
 import { Layout } from '../components/Layout'
 import { Button, SimpleInput } from '../components/basics'
 import { useAppState } from '../app-state'

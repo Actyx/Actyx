@@ -1,9 +1,18 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Button } from '../components/basics'
 import { shutdownApp } from '../util'
 import { FatalError } from '../../common/ipc'
 import { safeErrorToStr } from '../../common/util'
-const Screen: React.FC<{ error: FatalError }> = ({ error: { shortMessage, details } }) => {
+import { useAnalytics } from '../analytics'
+const Screen: React.FC<{ error: FatalError }> = ({ error }) => {
+  const analytics = useAnalytics()
+  useEffect(() => {
+    if (analytics) {
+      analytics.viewedScreen('Fatal Error')
+      analytics.gotFatalError(error)
+    }
+  }, [analytics, error])
+  const { details, shortMessage } = error
   const safeDetails = safeErrorToStr(details)
   return (
     <div className="h-full w-full flex justify-center items-center">

@@ -40,8 +40,12 @@ pre,
 input,
 button,
 textarea,
-:focus {
+:focus,
+input[type='checkbox']:focus {
   outline: none;
+}
+input[type='checkbox']:focus {
+  box-shadow: none;
 }
 
 /* disable image and anchor dragging */

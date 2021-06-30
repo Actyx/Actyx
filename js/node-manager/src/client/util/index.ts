@@ -14,6 +14,7 @@ import {
 } from '../../common/ipc'
 import { isLeft } from 'fp-ts/lib/Either'
 import { ioErrToStr } from '../../common/util'
+import packageJson from '../../../package.json'
 
 export const getFolderFromUser = (): Promise<Option<string>> =>
   new Promise((resolve) => {
@@ -53,12 +54,12 @@ export const getFileFromUser = (exts?: string[]): Promise<Option<string>> =>
     ipcRenderer.send(IpcFromClient.SelectFile, exts)
   })
 
-export const getAppVersion = (): Promise<string> =>
+export const getIsDev = (): Promise<boolean> =>
   new Promise((resolve) => {
-    ipcRenderer.once(IpcToClient.GotAppVersion, (_, version) => {
-      resolve(version)
+    ipcRenderer.once(IpcToClient.GotIsDev, (_, isDev) => {
+      resolve(isDev)
     })
-    ipcRenderer.send(IpcFromClient.GetAppVersion)
+    ipcRenderer.send(IpcFromClient.GetIsDev)
   })
 
 export const shutdownApp = () => {
@@ -117,3 +118,5 @@ export const signAppManifest = mkRpc(RPC_SignAppManifest)
 export { Wizard, WizardFailure, WizardInput, WizardSuccess } from './wizard'
 
 export const saveToClipboard = (str: string) => navigator.clipboard.writeText(str)
+
+export const getPackageVersion = (): string => packageJson.version

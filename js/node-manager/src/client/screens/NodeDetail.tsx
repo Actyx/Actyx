@@ -1,11 +1,11 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { NodeType, ReachableNode as ReachableNodeT } from '../../common/types'
 import { Layout } from '../components/Layout'
 import { useAppState, AppActionKey } from '../app-state'
 import { Error } from '../components/Error'
 import { SimpleCanvas } from '../components/SimpleCanvas'
 import { Button, Tabs } from '../components/basics'
-import { SettingsEditor } from '..//components/SettingsEditor'
+import { SettingsEditor } from '../components/SettingsEditor'
 import clsx from 'clsx'
 
 const Peers: React.FC<{ node: ReachableNodeT }> = ({

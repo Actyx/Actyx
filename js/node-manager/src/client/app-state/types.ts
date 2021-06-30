@@ -7,46 +7,43 @@ export const enum AppStateKey {
   NodeAuth = 'NodeAuth',
   SwarmKey = 'SwarmKey',
   NodeDetail = 'NodeDetail',
+  Preferences = 'Preferences',
 }
 
 interface Overview {
   key: AppStateKey.Overview
-  version: string
 }
 
 interface SetupUserKey {
   key: AppStateKey.SetupUserKey
-  version: string
 }
 
 interface About {
   key: AppStateKey.About
-  version: string
 }
 
 interface Diagnostics {
   key: AppStateKey.Diagnostics
-  version: string
 }
 
 interface AppSigning {
   key: AppStateKey.AppSigning
-  version: string
 }
 
 interface NodeAuth {
   key: AppStateKey.NodeAuth
-  version: string
 }
 
 interface SwarmKey {
   key: AppStateKey.SwarmKey
-  version: string
+}
+
+interface Preferences {
+  key: AppStateKey.Preferences
 }
 
 interface NodeDetail {
   key: AppStateKey.NodeDetail
-  version: string
   addr: string
 }
 
@@ -59,6 +56,7 @@ export type AppState =
   | SetupUserKey
   | Diagnostics
   | SwarmKey
+  | Preferences
 
 export enum AppActionKey {
   ShowOverview = 'ShowOverview',
@@ -69,12 +67,15 @@ export enum AppActionKey {
   ShowGenerateSwarmKey = 'ShowGenerateSwarmKey',
   ShowDiagnostics = 'ShowDiagnostics',
   ShowNodeAuth = 'ShowNodeAuth',
-  SetVersion = 'SetVersion',
+  ShowPreferences = 'ShowPreferences',
 }
 interface ShowOverview {
   key: AppActionKey.ShowOverview
 }
 
+interface ShowPreferences {
+  key: AppActionKey.ShowPreferences
+}
 interface ShowSetupUserKey {
   key: AppActionKey.ShowSetupUserKey
 }
@@ -104,11 +105,6 @@ interface ShowNodeAuth {
   key: AppActionKey.ShowNodeAuth
 }
 
-interface SetVersion {
-  key: AppActionKey.SetVersion
-  version: string
-}
-
 export type AppAction =
   | ShowOverview
   | ShowSetupUserKey
@@ -118,4 +114,4 @@ export type AppAction =
   | ShowAbout
   | ShowDiagnostics
   | ShowGenerateSwarmKey
-  | SetVersion
+  | ShowPreferences

@@ -1,11 +1,18 @@
 import * as io from 'io-ts'
 
 // Disk store
-export interface StoreData {
-  preferences: {
-    favoriteNodeAddrs: string[]
-  }
-}
+
+export const StoreData = io.type({
+  preferences: io.type({
+    favoriteNodeAddrs: io.array(io.string),
+  }),
+  analytics: io.type({
+    disabled: io.boolean,
+    userId: io.string,
+  }),
+})
+
+export type StoreData = io.TypeOf<typeof StoreData>
 
 // Basics
 

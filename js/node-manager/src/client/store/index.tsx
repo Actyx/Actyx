@@ -15,12 +15,6 @@ const reducer = (state: StoreState, action: StoreAction): StoreState => {
   }
 }
 
-const EMPTY_DATA: Data = {
-  preferences: {
-    favoriteNodeAddrs: [],
-  },
-}
-
 const saveAndReloadDataViaIpc = (new_data: Data | null, onData: (data: Data) => void) => {
   ipcRenderer.once(IpcToClient.StoreLoaded, (event, arg) => {
     onData(arg as Data)

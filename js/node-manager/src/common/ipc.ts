@@ -21,7 +21,7 @@ export const enum IpcFromClient {
   ToggleDevTools = 'toggle-dev-tools',
   LoadStore = 'load-store',
   GetNodesDetails = 'get-nodes-details',
-  GetAppVersion = 'get-app-version',
+  GetIsDev = 'get-is-dev',
 }
 
 export const enum IpcToClient {
@@ -32,7 +32,7 @@ export const enum IpcToClient {
   FatalError = 'fatal-error',
   NoUserKeysFound = 'no-user-keys-found',
   StoreLoaded = 'store-loaded',
-  GotAppVersion = 'got-app-version',
+  GotIsDev = 'got-is-dev',
 }
 
 export interface FatalError {

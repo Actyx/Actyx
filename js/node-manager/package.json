@@ -1,6 +1,6 @@
 {
   "name": "actyx-node-manager",
-  "version": "2.0.0",
+  "version": "0.0.0",
   "description": "Actyx Node Manager",
   "author": "Actyx AG <contact@actyx.io>",
   "homepage": "https://www.actyx.com",
@@ -73,11 +73,14 @@
     "forge": "./forge.config.js"
   },
   "dependencies": {
+    "@types/amplitude-js": "^8.0.0",
     "@types/debug": "^4.1.5",
     "@types/deep-equal": "^1.0.1",
     "@types/jest": "^26.0.23",
+    "@types/uuid": "^8.3.0",
     "ace-builds": "^1.4.12",
     "ajv": "^8.1.0",
+    "amplitude-js": "^8.3.1",
     "clsx": "^1.1.1",
     "debug": "^4.3.1",
     "deep-equal": "^2.0.5",
@@ -93,6 +96,7 @@
     "react-dom": "^17.0.2",
     "react-hot-loader": "^4.13.0",
     "url": "^0.11.0",
+    "uuid": "^8.3.2",
     "webpack": "^4.0.0"
   },
   "devDependencies": {

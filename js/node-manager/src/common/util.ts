@@ -10,16 +10,25 @@ export const zipWithPromises = <A, B>(as: A[], promises: Promise<B>[]): Promise<
 
 export const ioErrToStr = (errs: Errors): string => reporter.report(left(errs)).join(', ')
 
-export const safeErrorToStr = (err: unknown) =>
-  !err
-    ? undefined
-    : typeof (err as any) === 'string'
-    ? err
-    : !err
-    ? ''
-    : typeof (err as any).toString === 'function'
-    ? (err as any).toString()
-    : JSON.stringify(err, (_, v) => (typeof v === 'function' ? '<func>' : v))
+export const safeErrorToStr = (err: unknown): string => {
+  if (!err) {
+    return 'none'
+  }
+  if (typeof err === 'string') {
+    return err
+  }
+
+  if (typeof err === 'object') {
+    if (Object.prototype.hasOwnProperty.call(err, 'shortMessage')) {
+      if (Object.prototype.hasOwnProperty.call(err, 'details')) {
+        return (err as any).shortMessage + '(' + (err as any).details + ')'
+      } else {
+        return (err as any).shortMessage
+      }
+    }
+  }
+  return JSON.stringify(err, (_, v) => (typeof v === 'function' ? '<func>' : v))
+}
 
 export const isValidMultiAddr = (str: string): boolean => {
   try {

@@ -24,6 +24,7 @@ import {
 import { isLeft, left, right } from 'fp-ts/lib/Either'
 import { ioErrToStr, safeErrorToStr } from '../common/util'
 import { FileFilter } from 'electron/main'
+import { isDev } from './util'
 
 export const triggerFatalError = (browserWindow: BrowserWindow, error: FatalError) => {
   console.log(`triggering fatal error: ${JSON.stringify(error)}`)
@@ -67,11 +68,6 @@ const setupRpc = <Req, Resp>(
           shortMessage: safeError,
         }
         event.reply(rpc.ipcCode, left(err))
-
-        //triggerFatalError(window, {
-        //  shortMessage: `IPC RPC action execution error for request ${rpc.ipcCode}`,
-        //  details: error,
-        //})
       }
       return
     }
@@ -132,8 +128,8 @@ export const setupIpc = (app: App, browserWindow: BrowserWindow) => {
       browserWindow.webContents.openDevTools()
     }
   })
-  ipcMain.on(IpcFromClient.GetAppVersion, async (event) => {
-    event.reply(IpcToClient.GotAppVersion, app.getVersion())
+  ipcMain.on(IpcFromClient.GetIsDev, async (event) => {
+    event.reply(IpcToClient.GotIsDev, isDev())
   })
 
   ipcMain.on(IpcFromClient.LoadStore, async (event, new_data: null | StoreData) => {

@@ -3,7 +3,6 @@ import {
   signAppManifest,
   createUserKeyPair,
   generateSwarmKey,
-  getAppVersion,
   getNodesDetails,
   setSettings,
   waitForNoUserKeysFound,
@@ -17,40 +16,73 @@ import {
   SignAppManifestResponse,
 } from '../../common/types'
 import { AppState, AppAction, AppStateKey, AppActionKey } from './types'
+import { useAnalytics } from '../analytics'
+import { AnalyticsActions } from '../analytics/types'
+import { FatalError } from '../../common/ipc'
+import { safeErrorToStr } from '../../common/util'
 
 const POLLING_INTERVAL_MS = 1000
 
-export const reducer = (state: AppState, action: AppAction): AppState => {
-  switch (action.key) {
-    case AppActionKey.ShowOverview: {
-      return { ...state, key: AppStateKey.Overview }
-    }
-    case AppActionKey.ShowSetupUserKey: {
-      return { ...state, key: AppStateKey.SetupUserKey }
-    }
-    case AppActionKey.ShowAbout: {
-      return { ...state, key: AppStateKey.About }
-    }
-    case AppActionKey.ShowAppSigning: {
-      return { ...state, key: AppStateKey.AppSigning }
-    }
-    case AppActionKey.ShowNodeAuth: {
-      return { ...state, key: AppStateKey.NodeAuth }
-    }
-    case AppActionKey.ShowDiagnostics: {
-      return { ...state, key: AppStateKey.Diagnostics }
-    }
-    case AppActionKey.ShowNodeDetail: {
-      return { ...state, ...action, key: AppStateKey.NodeDetail }
-    }
-    case AppActionKey.ShowGenerateSwarmKey: {
-      return { ...state, ...action, key: AppStateKey.SwarmKey }
-    }
-    case AppActionKey.SetVersion: {
-      return { ...state, version: action.version }
+export const reducer =
+  (analytics: AnalyticsActions | undefined) =>
+  (state: AppState, action: AppAction): AppState => {
+    switch (action.key) {
+      case AppActionKey.ShowOverview: {
+        if (analytics) {
+          analytics.viewedScreen('Overview')
+        }
+        return { ...state, key: AppStateKey.Overview }
+      }
+      case AppActionKey.ShowSetupUserKey: {
+        if (analytics) {
+          analytics.viewedScreen('SetupUserKey')
+        }
+        return { ...state, key: AppStateKey.SetupUserKey }
+      }
+      case AppActionKey.ShowAbout: {
+        if (analytics) {
+          analytics.viewedScreen('About')
+        }
+        return { ...state, key: AppStateKey.About }
+      }
+      case AppActionKey.ShowAppSigning: {
+        if (analytics) {
+          analytics.viewedScreen('AppSigning')
+        }
+        return { ...state, key: AppStateKey.AppSigning }
+      }
+      case AppActionKey.ShowNodeAuth: {
+        if (analytics) {
+          analytics.viewedScreen('NodeAuth')
+        }
+        return { ...state, key: AppStateKey.NodeAuth }
+      }
+      case AppActionKey.ShowDiagnostics: {
+        if (analytics) {
+          analytics.viewedScreen('Diagnostics')
+        }
+        return { ...state, key: AppStateKey.Diagnostics }
+      }
+      case AppActionKey.ShowNodeDetail: {
+        if (analytics) {
+          analytics.viewedScreen('NodeDetail')
+        }
+        return { ...state, ...action, key: AppStateKey.NodeDetail }
+      }
+      case AppActionKey.ShowGenerateSwarmKey: {
+        if (analytics) {
+          analytics.viewedScreen('GenerateSwarmKey')
+        }
+        return { ...state, ...action, key: AppStateKey.SwarmKey }
+      }
+      case AppActionKey.ShowPreferences: {
+        if (analytics) {
+          analytics.viewedScreen('Preferences')
+        }
+        return { ...state, ...action, key: AppStateKey.Preferences }
+      }
     }
   }
-}
 
 interface Data {
   nodes: Node[]
@@ -84,39 +116,83 @@ const AppStateContext =
     | undefined
   >(undefined)
 
-export const AppStateProvider: React.FC = ({ children }) => {
-  const [state, dispatch] = useReducer(reducer, { key: AppStateKey.Overview, version: '' })
+export const AppStateProvider: React.FC<{ setFatalError: (error: FatalError) => void }> = ({
+  children,
+  setFatalError,
+}) => {
+  const analytics = useAnalytics()
+  const [state, dispatch] = useReducer(reducer(analytics), {
+    key: AppStateKey.Overview,
+  })
   const [data, setData] = useState<Data>({ nodes: [] })
 
   const actions: Actions = {
     // Wrap addNodes and add the node as loading as soon as the request
     // is sent
     addNodes: (addrs) => {
-      setData((current) => ({
-        ...current,
-        nodes: current.nodes.concat(
-          addrs.map((addr) => ({
-            type: NodeType.Loading,
-            addr,
-          })),
-        ),
-      }))
+      setData((current) => {
+        if (analytics) {
+          addrs.forEach((addr) => {
+            if (current.nodes.find((node) => node.addr !== addr)) {
+              analytics.addedNode()
+            }
+          })
+        }
+        return {
+          ...current,
+          nodes: current.nodes.concat(
+            addrs.map((addr) => ({
+              type: NodeType.Loading,
+              addr,
+            })),
+          ),
+        }
+      })
     },
     remNodes: (addrs) => {
+      if (analytics) {
+        addrs.forEach(() => {
+          analytics.removedNode()
+        })
+      }
       setData((current) => ({
         ...current,
         nodes: current.nodes.filter((n) => !addrs.includes(n.addr)),
       }))
     },
-    setSettings: (addr, settings) => setSettings({ addr, settings }),
-    shutdownNode: (addr) => shutdownNode({ addr }),
-    createUserKeyPair: (privateKeyPath) => createUserKeyPair({ privateKeyPath }),
-    generateSwarmKey: () => generateSwarmKey({}),
-    signAppManifest: ({ pathToManifest, pathToCertificate }) =>
-      signAppManifest({
+    setSettings: (addr, settings) => {
+      if (analytics) {
+        analytics.setSettings()
+      }
+      return setSettings({ addr, settings })
+    },
+    shutdownNode: (addr) => {
+      if (analytics) {
+        analytics.shutdownNode()
+      }
+      return shutdownNode({ addr })
+    },
+    createUserKeyPair: (privateKeyPath) => {
+      if (analytics) {
+        analytics.createdUserKeyPair(privateKeyPath === null)
+      }
+      return createUserKeyPair({ privateKeyPath })
+    },
+    generateSwarmKey: () => {
+      if (analytics) {
+        analytics.generatedSwarmKey()
+      }
+      return generateSwarmKey({})
+    },
+    signAppManifest: ({ pathToManifest, pathToCertificate }) => {
+      if (analytics) {
+        analytics.signedAppManifest()
+      }
+      return signAppManifest({
         pathToManifest,
         pathToCertificate,
-      }),
+      })
+    },
   }
 
   useEffect(() => {
@@ -127,28 +203,29 @@ export const AppStateProvider: React.FC = ({ children }) => {
   }, [])
 
   useEffect(() => {
-    ;(async () => {
-      const version = await getAppVersion()
-      dispatch({ key: AppActionKey.SetVersion, version })
-    })()
-  }, [])
-
-  useEffect(() => {
     let unmounted = false
 
     let timeout: ReturnType<typeof setTimeout> | null = null
     const getDetailsAndUpdate = async () => {
-      const nodes = await getNodesDetails({ addrs: data.nodes.map((n) => n.addr) })
-      if (!unmounted) {
-        setData((current) => ({
-          ...current,
-          nodes: current.nodes
-            .filter((n) => !nodes.map((n) => n.addr).includes(n.addr))
-            .concat(nodes),
-        }))
-        timeout = setTimeout(() => {
-          getDetailsAndUpdate()
-        }, POLLING_INTERVAL_MS)
+      try {
+        const nodes = await getNodesDetails({ addrs: data.nodes.map((n) => n.addr) })
+        if (!unmounted) {
+          setData((current) => ({
+            ...current,
+            nodes: current.nodes
+              .filter((n) => !nodes.map((n) => n.addr).includes(n.addr))
+              .concat(nodes),
+          }))
+          timeout = setTimeout(() => {
+            getDetailsAndUpdate()
+          }, POLLING_INTERVAL_MS)
+        }
+      } catch (error) {
+        const fatalError: FatalError =
+          typeof error === 'object' && Object.prototype.hasOwnProperty.call(error, 'shortMessage')
+            ? (error as FatalError)
+            : { shortMessage: safeErrorToStr(error) }
+        setFatalError(fatalError)
       }
     }
 
@@ -162,7 +239,7 @@ export const AppStateProvider: React.FC = ({ children }) => {
         clearTimeout(timeout)
       }
     }
-  }, [data.nodes, state.key])
+  }, [data.nodes, state.key, setFatalError])
 
   return (
     <AppStateContext.Provider value={{ state, data, actions, dispatch }}>

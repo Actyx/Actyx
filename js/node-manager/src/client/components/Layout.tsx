@@ -273,6 +273,13 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
           active={state.key === AppStateKey.Diagnostics}
           hidden={hideMenuItems}
         />
+        <NavButton
+          onClick={() => dispatch({ key: AppActionKey.ShowPreferences })}
+          icon={<PreferencesIcon />}
+          text="Preferences"
+          active={state.key === AppStateKey.Preferences}
+          hidden={hideMenuItems}
+        />
         {/* <NavButton
           onClick={() => {
             getNodesDetails(['localhost'])

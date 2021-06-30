@@ -365,6 +365,7 @@ nodejs
 csharp
  - ./docs/reference/node-manager.mdx
 tar.gz
+GeoIP
  - ./docs/reference/rust-sdk.mdx
 docs.rs
  - ./docs/tutorials/advanced-tutorial/explore-the-apps.mdx
