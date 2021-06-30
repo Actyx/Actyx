@@ -334,6 +334,7 @@ linux
 Autostart
 amd64
 arm64v8
+actyx
  - ./docs/how-to/local-development/install-cli-node-manager.mdx
 zsh
 tcsh

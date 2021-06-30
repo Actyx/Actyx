@@ -152,7 +152,7 @@ If you do not get asked for your password at this point, you have to explicitly 
 1. Go to **Settings** and then to **Security &amp; Privacy**. In the **General** tab, you should see a prompt at the bottom that asks you to allow Actyx CLI.
 2. When running the first `ax` command, you will be prompted again to allow the Actyx CLI.
 
-Congratulations, you have successfully installed and run Actyx on your Mac! 🎉
+Congratulations, you have successfully installed Actyx on your Mac! 🎉
 
 <h2>Starting and stopping Actyx</h2>
 
@@ -170,6 +170,10 @@ You should now see the message `Actyx started` followed by a bunch of log messag
 As long as you don't see any error messages here, you can be sure that Actyx is running.
 To stop Actyx, simply hit `^C` (`ctrl + C`) on your keyboard.
 After a few seconds, Actyx will be stopped.
+
+:::tip On Apple Silicon: "actyx" is damaged and can't be opened.
+If you see this error, run the following command in the folder where the `actyx` binary is located: `xattr -d com.apple.quarantine actyx`.
+:::
 
 </TabItem>
 <TabItem value="docker">
