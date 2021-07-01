@@ -644,23 +644,41 @@ impl BanyanStore {
                 })
                 .unwrap_or_default();
 
-            if let Some(ListenerEvent::NewListenAddr(bound_addr)) = ipfs
+            let mut listener = ipfs
                 .listen_on(addr.clone())
                 .with_context(|| NodeErrorContext::BindFailed {
                     port,
                     component: "Swarm".into(),
-                })?
-                .next()
-                .await
-            {
-                // we print only the first of the discovered addresses, but the others will also be found
-                tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr);
-            } else {
-                return Err(anyhow::anyhow!("failed to bind address")).with_context(|| NodeErrorContext::BindFailed {
-                    port,
-                    component: "Swarm".into(),
-                });
+                })?;
+
+            match listener.next().await {
+                Some(ListenerEvent::NewListenAddr(bound_addr)) => {
+                    // we print only the first of the discovered addresses, but the others will also be found
+                    tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr)
+                }
+                e => {
+                    return Err(anyhow::anyhow!("got unexpected event {:?}", e)).with_context(|| {
+                        NodeErrorContext::BindFailed {
+                            port,
+                            component: "Swarm".into(),
+                        }
+                    })
+                }
             }
+
+            // print the remaining listen addresses asynchronously
+            tokio::spawn(async move {
+                while let Some(ev) = listener.next().await {
+                    match ev {
+                        ListenerEvent::NewListenAddr(bound_addr) => {
+                            tracing::info!(target: "SWARM_SERVICES_BOUND", "Swarm Services bound to {}.", bound_addr)
+                        }
+                        ListenerEvent::ExpiredListenAddr(addr) => {
+                            tracing::info!("Swarm Services no longer listening on {}.", addr)
+                        }
+                    }
+                }
+            });
         }
         let external_addrs = cfg.external_addresses.iter().cloned().collect();
         for addr in cfg.external_addresses {
