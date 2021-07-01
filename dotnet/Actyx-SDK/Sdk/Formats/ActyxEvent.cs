@@ -8,7 +8,7 @@ namespace Actyx.Sdk.Formats
 
         public ActyxEventMetadata Meta { private set; get; }
 
-        public JValue Payload { private set; get; }
+        public JToken Payload { private set; get; }
 
         public static Func<EventOnWire, ActyxEvent> From(NodeId nodeId) => ev =>
             new ActyxEvent

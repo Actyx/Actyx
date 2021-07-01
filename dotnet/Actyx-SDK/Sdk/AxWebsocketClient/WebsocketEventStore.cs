@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using Actyx.Sdk.Utils.Extensions;
+using Actyx.Sdk.Formats;
 
 namespace Actyx
 {
@@ -14,14 +15,18 @@ namespace Actyx
     {
         private readonly WsrpcClient wsrpcClient;
         private readonly string appId;
+        private readonly NodeId nodeId;
         private readonly JsonSerializer serializer = JsonSerializer.Create(HttpContentExtensions.JsonSettings);
 
-        public WebsocketEventStore(WsrpcClient wsrpcClient, string appId)
+        public WebsocketEventStore(WsrpcClient wsrpcClient, string appId, NodeId nodeId)
         {
             this.wsrpcClient = wsrpcClient;
             this.appId = appId;
+            this.nodeId = nodeId;
             wsrpcClient.Start();
         }
+
+        public NodeId NodeId => nodeId;
 
         public void Dispose()
         {

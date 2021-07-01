@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Actyx;
 using Actyx.Sdk.AxHttpClient;
+using Actyx.Sdk.Formats;
 
 namespace Sdk.IntegrationTests
 {
@@ -13,15 +14,19 @@ namespace Sdk.IntegrationTests
     {
         static async Task Main()
         {
-            var token = (await AxHttpClient.GetToken(new Uri("http://localhost:4454/api/v2/"), new()
+            var exitEvent = new ManualResetEvent(false);
+
+            var manifest = new AppManifest()
             {
                 AppId = "com.example.ax-ws-client-tests",
                 DisplayName = "ax ws client tests",
                 Version = "1.0.0"
-            })).Token;
-            var exitEvent = new ManualResetEvent(false);
-            var uri = new Uri($"ws://localhost:4454/api/v2/events?{token}");
-            using var store = new WebsocketEventStore(new WsrpcClient(uri), "com.example.ax-ws-client-tests");
+            };
+            var baseUri = "http://localhost:4454/api/v2/";
+            var nodeId = (await AxHttpClient.Create(baseUri, manifest)).NodeId;
+            var token = (await AxHttpClient.GetToken(new Uri(baseUri), manifest)).Token;
+            var wsrpcClient = new WsrpcClient(new Uri($"ws://localhost:4454/api/v2/events?{token}"));
+            using var store = new WebsocketEventStore(wsrpcClient, "com.example.ax-ws-client-tests", nodeId);
 
             var _ = Task.Run(async () =>
             {
