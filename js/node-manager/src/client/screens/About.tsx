@@ -42,7 +42,7 @@ const AnalyticsLink: React.FC = ({ children }) => (
     className="underline text-blue-500"
     target="_blank"
     rel="noopener noreferrer"
-    href="https://developer.actyx.com/docs/reference/node-manager#anonymous-aggregate-user-behaviour-analytics"
+    href="https://developer.actyx.com/docs/reference/node-manager/#anonymous-aggregate-user-behavior-analytics"
   >
     {children}
   </a>
