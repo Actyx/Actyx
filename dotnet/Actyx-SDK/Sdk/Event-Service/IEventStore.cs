@@ -36,7 +36,7 @@ namespace Actyx
 
         public IEnumerable<string> Tags { get; set; }
 
-        public JValue Payload { get; set; }
+        public JToken Payload { get; set; }
     }
 
 

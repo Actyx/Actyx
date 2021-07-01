@@ -54,6 +54,7 @@ namespace Actyx
         public string Type { get; } = "request";
         public string ServiceId { get; set; }
         public ulong RequestId { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Include)]
         public JToken Payload { get; set; }
     }
     public class Cancel : IRequestMessage

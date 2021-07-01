@@ -2,27 +2,35 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Actyx;
+using Actyx.Sdk.AxHttpClient;
 using Newtonsoft.Json.Linq;
 
 namespace Sdk.IntegrationTests
 {
     class Program2
     {
-        static void Main()
+        static async void Main()
         {
             var exitEvent = new ManualResetEvent(false);
-            using var client = new WsrpcClient("AAAAX6ZnY3JlYXRlZBsABcXiWPpaPGVhcHBJZHFjb20uZXhhbXBsZS50ZXN0MmZjeWNsZXMFamFwcFZlcnNpb25lMS4wLjBodmFsaWRpdHkaAAFRgGdhcHBNb2RlZXRyaWFsAVHZ5k6MsCsdlinyp4kZ8ahd6lb65k+Hwq8dHTqMeX8DHbKmngnFSq5zZMUOsGo9ggErvQOOZobmgGD3tw526hiyJGKIppEqsgtcJHvAmgnvpBEIFP5T+XmtTUwRA5ORDA==");
-            client.Start();
-            Task.Run(() =>
+            var token = (await AxHttpClient.GetToken(new Uri("http://localhost:4454/api/v2/"), new()
             {
-                var request = JToken.Parse(@"{ ""query"": ""FROM 'com.actyx.1'"", ""order"": ""asc""}");
-                client
-                    .Request("subscribe", request)
-                    .Subscribe(
-                        next => Console.WriteLine($">>> next: {next}"),
-                        error => Console.WriteLine($">>> error: {error}")
-                    );
-            });
+                AppId = "com.example.ax-ws-client-tests",
+                DisplayName = "ax ws client tests",
+                Version = "1.0.0"
+            })).Token;
+            var uri = new Uri($"http://localhost:4454/api/v2/events?{token}");
+            using var client = new WsrpcClient(uri);
+            client.Start();
+            var _ = Task.Run(() =>
+           {
+               var request = JToken.Parse(@"{ ""query"": ""FROM 'com.actyx.1'"", ""order"": ""asc""}");
+               client
+                   .Request("subscribe", request)
+                   .Subscribe(
+                       next => Console.WriteLine($">>> next: {next}"),
+                       error => Console.WriteLine($">>> error: {error}")
+                   );
+           });
 
             exitEvent.WaitOne();
         }

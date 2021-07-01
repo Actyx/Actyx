@@ -24,9 +24,9 @@ namespace Actyx
             }
         }
 
-        public WsrpcClient(string token)
+        public WsrpcClient(Uri uri)
         {
-            client = new WebsocketClient(new Uri($"ws://localhost:4454/api/v2/events?{token}"))
+            client = new WebsocketClient(uri)
             {
                 ReconnectTimeout = TimeSpan.FromMinutes(5)
             };
@@ -36,14 +36,14 @@ namespace Actyx
             responseProcessor = client.MessageReceived.Subscribe(msg =>
             {
                 var response = Proto<IResponseMessage>.Deserialize(msg.Text);
-                var listener = listeners[response.RequestId];
-                if (!(listener is null))
+                Console.WriteLine($"<<< {response}");
+                if (listeners.TryGetValue(response.RequestId, out IObserver<IResponseMessage> listener))
                 {
                     listener.OnNext(response);
                 }
                 else
                 {
-                    Console.WriteLine($"No listener registered for message {response}");
+                    Console.WriteLine($"No listener registered for message {response.RequestId}");
                 }
             }, err =>
             {
@@ -94,8 +94,9 @@ namespace Actyx
 
                         if (shouldCancelUpstream())
                         {
-                            Console.WriteLine($"About to unsubscribe with: {cancel}");
+                            Console.WriteLine($"About to unsubscribe from {requestId} with cancel");
                             var cancelMsg = Proto<Cancel>.Serialize(cancel);
+                            Console.WriteLine($">>> {cancelMsg}");
                             client.Send(cancelMsg);
                         }
                         else
@@ -113,8 +114,9 @@ namespace Actyx
             });
             try
             {
-                Console.WriteLine($"About to subscribe {request}");
+                Console.WriteLine($"About to subscribe {Proto<Request>.Serialize(request)}");
                 var requestMsg = Proto<Request>.Serialize(request);
+                Console.WriteLine($">>> {requestMsg}");
                 client.Send(requestMsg);
             }
             catch (Exception err)
@@ -126,6 +128,7 @@ namespace Actyx
 
         (Request, Cancel) Handlers(ulong requestId, string serviceId, JToken payload)
         {
+            if (string.IsNullOrEmpty(serviceId)) throw new ArgumentException($"'{nameof(serviceId)}' cannot be null or empty.", nameof(serviceId));
             return (
                 new Request { ServiceId = serviceId, RequestId = requestId, Payload = payload },
                 new Cancel { RequestId = requestId }
