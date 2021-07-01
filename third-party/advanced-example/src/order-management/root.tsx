@@ -12,7 +12,11 @@ const onError = () => {
 ReactDOM.render(
   <React.StrictMode>
     {/* Pond initializes the connection to ActyxOS and draw the children when the connection is established */}
-    <Pond loadComponent={<div>Connecting to Actyx...</div>} onError={onError}>
+    <Pond
+      loadComponent={<div>Connecting to Actyx...</div>}
+      onError={onError}
+      manifest={{ appId: 'com.example.dashboard', displayName: 'Dashboard App', version: '2.0' }}
+    >
       {/* App that can use usePond, useFish, useRegistryFish, ... */}
       <App />
     </Pond>
