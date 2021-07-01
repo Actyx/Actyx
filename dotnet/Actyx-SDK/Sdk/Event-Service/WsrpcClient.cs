@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Threading;
 using Newtonsoft.Json.Linq;
 using Websocket.Client;
 
@@ -10,10 +11,10 @@ namespace Actyx
     public class WsrpcClient : IDisposable
     {
         private readonly WebsocketClient client;
-        private readonly Dictionary<ulong, IObserver<IResponseMessage>> listeners = new() { };
+        private readonly Dictionary<long, IObserver<IResponseMessage>> listeners = new() { };
         private readonly IDisposable responseProcessor;
         private Exception error;
-        private ulong requestCounter = 0;
+        private long requestCounter = 0;
 
         public class Error : Exception
         {
@@ -81,7 +82,7 @@ namespace Actyx
 
         IObservable<IResponseMessage> Multiplex(string serviceId, JToken payload, Func<bool> shouldCancelUpstream)
         {
-            var requestId = requestCounter++;
+            var requestId = Interlocked.Increment(ref requestCounter);
             var (request, cancel) = Handlers(requestId, serviceId, payload);
             var res = Observable.Create((IObserver<IResponseMessage> observer) =>
             {
@@ -126,7 +127,7 @@ namespace Actyx
             return res;
         }
 
-        (Request, Cancel) Handlers(ulong requestId, string serviceId, JToken payload)
+        (Request, Cancel) Handlers(long requestId, string serviceId, JToken payload)
         {
             if (string.IsNullOrEmpty(serviceId)) throw new ArgumentException($"'{nameof(serviceId)}' cannot be null or empty.", nameof(serviceId));
             return (

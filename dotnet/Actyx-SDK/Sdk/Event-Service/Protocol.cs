@@ -46,44 +46,44 @@ namespace Actyx
     public interface IRequestMessage
     {
         public string Type { get; }
-        public ulong RequestId { get; }
+        public long RequestId { get; }
     }
 
     public class Request : IRequestMessage
     {
         public string Type { get; } = "request";
         public string ServiceId { get; set; }
-        public ulong RequestId { get; set; }
+        public long RequestId { get; set; }
         [JsonProperty(NullValueHandling = NullValueHandling.Include)]
         public JToken Payload { get; set; }
     }
     public class Cancel : IRequestMessage
     {
         public string Type { get; } = "cancel";
-        public ulong RequestId { get; set; }
+        public long RequestId { get; set; }
     }
 
     [JsonConverter(typeof(JsonSubtypes), "Type")]
     public interface IResponseMessage
     {
         public string Type { get; }
-        public ulong RequestId { get; }
+        public long RequestId { get; }
     }
     public class Next : IResponseMessage
     {
         public string Type { get; } = "next";
-        public ulong RequestId { get; set; }
+        public long RequestId { get; set; }
         public JToken[] Payload { get; set; }
     }
     public class Complete : IResponseMessage
     {
         public string Type { get; } = "complete";
-        public ulong RequestId { get; set; }
+        public long RequestId { get; set; }
     }
     public class Error : IResponseMessage
     {
         public string Type { get; } = "error";
-        public ulong RequestId { get; set; }
+        public long RequestId { get; set; }
         public IErrorKind Kind { get; set; }
     }
 }
