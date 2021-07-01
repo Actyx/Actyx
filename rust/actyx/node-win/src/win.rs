@@ -80,7 +80,7 @@ impl TrayApp {
             trayicon_app.add_menu_separator()?;
         }
 
-        trayicon_app.add_menu_item(format!("actyx {}", NodeVersion::get()).as_str(), |_| {
+        trayicon_app.add_menu_item(format!("Actyx {}", NodeVersion::get()).as_str(), |_| {
             Ok::<_, systray2::Error>(())
         })?;
 
@@ -126,7 +126,7 @@ pub(crate) fn run(opts: Opts) -> Result<(), anyhow::Error> {
     } = opts;
 
     if version {
-        println!("actyx {}", NodeVersion::get());
+        println!("Actyx {}", NodeVersion::get());
         return Ok(());
     }
 
@@ -140,7 +140,7 @@ pub(crate) fn run(opts: Opts) -> Result<(), anyhow::Error> {
     std::fs::create_dir_all(working_dir.clone())
         .map_err(|e| anyhow::anyhow!("Unable to create working directory ({}): {}", working_dir.display(), e))?;
     // printed by hand since things can fail before logging is set up and we want the user to know this
-    eprintln!("INFO using data directory `{}`", working_dir.display());
+    eprintln!("using data directory `{}`", working_dir.display());
 
     // Spawn Actyx as fast as possible, so the logging infrastructure is
     // set up.
