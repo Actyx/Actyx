@@ -47,30 +47,7 @@ The corresponding events are defined as follows:
 Another important part of the order fish is the `onEvent` function:
 
 ```ts file=../../../../../third-party/advanced-example/src/fish/orderFish.ts#[onevent]
-onEvent: (state, event) => {
-    switch (event.eventType) {
-    case 'setState':
-        return {
-            stateType: event.state,
-            name,
-          }
-    case 'started':
-        return {
-            stateType: 'active',
-            order: event.order,
-            name,
-          }
-    case 'finished':
-        return {
-            stateType: 'finish',
-            order: event.order,
-            name,
-        }
-    default:
-        break
-    }
-    return state
-},
+
 ```
 
 The onEvent function reduces all incoming events to the state of the machine.
