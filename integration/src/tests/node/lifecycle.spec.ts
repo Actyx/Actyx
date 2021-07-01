@@ -107,6 +107,11 @@ describe('node lifecycle', () => {
   const services = ['Admin', 'API', 'Swarm']
   services.map((x) =>
     it(`should error on occupied ports (${x})`, (done) => {
+      if (x === 'Admin') {
+        done()
+        return
+      }
+
       runOnEach([{ host: 'process', os: 'linux' }], async (n) => {
         // Tracking issue for Windows: https://github.com/Actyx/Cosmos/issues/5850
         const port = await getFreeRemotePort(n.target)
@@ -137,6 +142,38 @@ describe('node lifecycle', () => {
       }).then(() => done(), done)
     }),
   )
+
+  // FIXME make shutdown reliable and merge back into the above test. https://github.com/Actyx/Cosmos/issues/7106
+  it(`should error on occupied ports (Admin FIXME)`, (done) => {
+    const x = 'Admin'
+    runOnEach([{ host: 'process', os: 'linux' }], async (n) => {
+      const port = await getFreeRemotePort(n.target)
+      const server = occupyRemotePort(n.target, port)
+      let hot = true
+      server.catch((e) => hot && done(e))
+
+      const notX = services
+        .filter((y) => y !== x)
+        .flatMap((y) => [`--bind-${y.toLowerCase()}`, '0'])
+      const node = await runUntil(
+        runActyx(n, undefined, [`--bind-${x.toLowerCase()}`, port.toString()].concat(notX)),
+        ['Please specify a different'],
+        10_000,
+      )
+      hot = false
+      server.kill('SIGTERM')
+
+      if (!Array.isArray(node)) {
+        throw new Error('Expected array of logs')
+      }
+      const logs = node.join('\n')
+
+      expect(logs).toMatch('NODE_STOPPED_BY_NODE: ERR_PORT_COLLISION')
+      expect(logs).toMatch(
+        `Actyx shut down because it could not bind to port ${port.toString()}. Please specify a different Admin port.`,
+      )
+    }).then(() => done(), done)
+  })
 
   it('should work with host:port combinations', () =>
     runOnEvery(async (n) => {
