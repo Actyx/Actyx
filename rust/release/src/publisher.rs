@@ -6,6 +6,7 @@ use crate::{
 use anyhow::Context;
 use flate2::{write::GzEncoder, Compression};
 use git2::Oid;
+use serde::Deserialize;
 use std::{
     fmt,
     fs::File,
@@ -20,8 +21,8 @@ use zip::ZipWriter;
 pub enum SourceType {
     // Path describing an artifact on the Artifacts blob store
     Blob(String),
-    // Docker image identifier, e.g. docker.io/actyx/actyx:latest
-    Docker(String),
+    // Docker manifest tag, e.g. docker.io/actyx/actyx:latest
+    Docker { repository: String, tag: String },
 }
 #[derive(Debug, Clone)]
 pub struct SourceArtifact {
@@ -34,7 +35,11 @@ impl fmt::Display for SourceArtifact {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.r#type {
             SourceType::Blob(s) => write!(f, "Source Blob \"{}\" for {} ({})", s, self.release, self.os_arch),
-            SourceType::Docker(s) => write!(f, "Source Docker \"{}\" for {} ({})", s, self.release, self.os_arch),
+            SourceType::Docker { repository, tag } => write!(
+                f,
+                "Source Docker \"{}:{}\" for {} ({})",
+                repository, tag, self.release, self.os_arch
+            ),
         }
     }
 }
@@ -48,13 +53,17 @@ pub enum TargetArtifact {
         /// If created, points to the target file. Initially empty
         local_result: Option<PathBuf>,
     },
-    Docker(String),
+    Docker {
+        repository: String,
+        tag: String,
+        manifest: DockerInspectResponse,
+    },
 }
 impl fmt::Display for TargetArtifact {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self {
             TargetArtifact::Blob { file_name, .. } => write!(f, "Target Blob \"{}\"", file_name),
-            TargetArtifact::Docker(s) => write!(f, "Target Docker \"{}\"", s),
+            TargetArtifact::Docker { repository, tag, .. } => write!(f, "Target Docker \"{}:{}\"", repository, tag),
         }
     }
 }
@@ -65,25 +74,34 @@ pub struct Publisher {
     pub target: TargetArtifact,
 }
 impl Publisher {
-    pub fn new(release: &Release, commit: &Oid, os_arch: OsArch, is_newest: bool) -> Vec<Self> {
-        mk_blob_tuples(release, commit, os_arch)
+    pub fn new(release: &Release, commit: &Oid, os_arch: OsArch, is_newest: bool) -> anyhow::Result<Vec<Self>> {
+        Ok(mk_blob_tuples(release, commit, os_arch)
             .into_iter()
-            .chain(mk_docker_tuples(release, commit, os_arch, is_newest).into_iter())
+            .chain(mk_docker_tuples(release, commit, os_arch, is_newest)?.into_iter())
             .map(|(source, target)| Self { source, target })
-            .collect()
+            .collect())
     }
     pub fn source_exists(&self) -> anyhow::Result<bool> {
         log::debug!("checking if source {} exists for target {}", self.source, self.target);
         match &self.source.r#type {
             SourceType::Blob(s) => blob_exists(Container::Artifacts, &*s),
-            SourceType::Docker(s) => docker_image_exists(&*s),
+            SourceType::Docker { tag, repository } => {
+                Ok(docker_manifest_exists(&*format!("{}:{}", repository, tag), None))
+            }
         }
     }
     pub fn target_exists(&self) -> anyhow::Result<bool> {
         log::debug!("checking if target {} exists for source {}", self.target, self.source);
         match &self.target {
             TargetArtifact::Blob { file_name: s, .. } => blob_exists(Container::Releases, &*s),
-            TargetArtifact::Docker(s) => docker_image_exists(&*s),
+            TargetArtifact::Docker {
+                manifest,
+                repository,
+                tag,
+            } => Ok(docker_manifest_exists(
+                &*format!("{}:{}", repository, tag),
+                Some(manifest),
+            )),
         }
     }
     pub fn create_release_artifact(&mut self, in_dir: impl AsRef<Path>) -> anyhow::Result<()> {
@@ -137,18 +155,26 @@ impl Publisher {
                 local_result.replace(processed);
                 Ok(())
             }
-            TargetArtifact::Docker(s) => {
-                let source = if let SourceArtifact {
-                    r#type: SourceType::Docker(source),
-                    ..
-                } = &self.source
-                {
-                    &*source
-                } else {
-                    anyhow::bail!("Tried creating {:?} from {:?}", self.target, self.source);
-                };
+            TargetArtifact::Docker {
+                repository,
+                tag,
+                manifest,
+            } => {
+                // Source Manifest already encoded in TargetArtifact struct
+                assert!(
+                    matches!(
+                        &self.source,
+                        SourceArtifact {
+                            r#type: SourceType::Docker { .. },
+                            ..
+                        }
+                    ),
+                    "Tried creating {:?} from {:?}",
+                    self.target,
+                    self.source
+                );
 
-                docker_pull_and_tag(source, s)
+                docker_manifest_create(manifest, repository, tag)
             }
         }
     }
@@ -164,7 +190,7 @@ impl Publisher {
                     .ok_or_else(|| anyhow::anyhow!("No local file created!"))?;
                 blob_upload(local, &*file_name)
             }
-            TargetArtifact::Docker(s) => docker_push(&*s),
+            TargetArtifact::Docker { tag, .. } => docker_manifest_push(&*tag),
         }
     }
 }
@@ -191,29 +217,39 @@ fn mk_docker_tuples(
     hash: &Oid,
     os_arch: OsArch,
     is_newest: bool,
-) -> Vec<(SourceArtifact, TargetArtifact)> {
+) -> anyhow::Result<Vec<(SourceArtifact, TargetArtifact)>> {
     if release.product == Product::Actyx && os_arch.arch == Arch::x86_64 && os_arch.os == OS::linux {
         // Multiarch image, so just do it once
         let mut out = vec![];
+        let repository = "docker.io/actyx/cosmos".to_string();
+        let tag = format!("actyx-{}", hash);
+        let manifest = docker_manifest_inspect(&*format!("{}:{}", repository, tag))?;
         let source = SourceArtifact {
             os_arch,
             release: release.clone(),
-            r#type: SourceType::Docker(format!("docker.io/actyx/cosmos:actyx-{}", hash)),
+            r#type: SourceType::Docker { repository, tag },
         };
-
-        out.push((
-            source.clone(),
-            TargetArtifact::Docker(format!("docker.io/actyx/actyx:{}", release.version)),
-        ));
         if is_newest {
             out.push((
-                source,
-                TargetArtifact::Docker("docker.io/actyx/actyx:latest".to_string()),
+                source.clone(),
+                TargetArtifact::Docker {
+                    repository: "docker.io/actyx/actyx".to_string(),
+                    tag: "latest".to_string(),
+                    manifest: manifest.clone(),
+                },
             ));
-        };
-        out
+        }
+        out.push((
+            source,
+            TargetArtifact::Docker {
+                repository: "docker.io/actyx/actyx".to_string(),
+                tag: release.version.to_string(),
+                manifest,
+            },
+        ));
+        Ok(out)
     } else {
-        vec![]
+        Ok(vec![])
     }
 }
 
@@ -536,36 +572,83 @@ fn package_zip(source: impl AsRef<Path>, target: impl AsRef<Path>, binary_name: 
     Ok(())
 }
 
-fn docker_image_exists(image: &str) -> anyhow::Result<bool> {
-    let args = ["manifest", "inspect", image];
-    let cmd = Command::new("docker")
-        .args(&args)
-        .output()
-        .context(format!("running docker {:?}", args))?;
-    Ok(cmd.status.success())
+/// Checks whether a manifest exists for the given `tag`. If the manifest
+/// exists, and an additional `manifest` is given, the existing manifest is
+/// checked for equality with that. That is useful for example when one wants to
+/// make sure that a re-usable tag points to the right manifest (like `latest`).
+fn docker_manifest_exists(tag: &str, manifest: Option<&DockerInspectResponse>) -> bool {
+    if let Ok(existing_manifest) = docker_manifest_inspect(tag) {
+        if let Some(m) = manifest {
+            m == &existing_manifest
+        } else {
+            true
+        }
+    } else {
+        false
+    }
 }
 
-fn docker_pull_and_tag(source: &str, target: &str) -> anyhow::Result<()> {
-    let args = ["pull", source];
+fn docker_manifest_inspect(tag: &str) -> anyhow::Result<DockerInspectResponse> {
+    let args = ["manifest", "inspect", tag];
     let cmd = Command::new("docker")
         .args(&args)
         .output()
         .context(format!("running docker {:?}", args))?;
-    anyhow::ensure!(cmd.status.success(), "Error pulling {}", source);
-    let args = ["tag", source, target];
+    anyhow::ensure!(cmd.status.success(), "Error inspecting manifest for {}", tag);
+    let mut out: DockerInspectResponse = serde_json::from_slice(&cmd.stdout[..])?;
+    out.manifests.sort();
+    Ok(out)
+}
+fn docker_manifest_create(source_manifest: &DockerInspectResponse, repository: &str, tag: &str) -> anyhow::Result<()> {
+    let digests = source_manifest
+        .manifests
+        .iter()
+        .map(|x| format!("{}:{}", repository, x.digest))
+        .collect::<Vec<_>>()
+        .join(" ");
+
+    let target = format!("{}:{}", repository, tag);
+    let args = ["manifest", "create", &*target, &*digests];
     let cmd = Command::new("docker")
         .args(&args)
         .output()
         .context(format!("running docker {:?}", args))?;
-    anyhow::ensure!(cmd.status.success(), "Error tagging {}", source);
+    anyhow::ensure!(cmd.status.success(), "Error creating manifest for {}", target);
+
     Ok(())
 }
-fn docker_push(target: &str) -> anyhow::Result<()> {
-    let args = ["push", target];
+
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+pub struct DockerInspectResponse {
+    schema_version: u32,
+    media_type: String,
+    manifests: Vec<DockerManifest>,
+}
+#[derive(Deserialize, Debug, Clone, PartialEq, PartialOrd, Ord, Eq)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+struct DockerManifest {
+    media_type: String,
+    size: u64,
+    digest: String,
+    platform: DockerManifestPlatform,
+}
+#[derive(Deserialize, Debug, Clone, PartialEq, PartialOrd, Ord, Eq)]
+#[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
+struct DockerManifestPlatform {
+    architecture: String,
+    os: String,
+    variant: Option<String>,
+}
+fn docker_manifest_push(target: &str) -> anyhow::Result<()> {
+    let args = ["manifest", "push", target];
     let cmd = Command::new("docker")
         .args(&args)
         .output()
         .context(format!("running docker {:?}", args))?;
-    anyhow::ensure!(cmd.status.success(), "Error pushing {}", target);
+    anyhow::ensure!(cmd.status.success(), "Error pushing manifest for {}", target);
     Ok(())
 }
