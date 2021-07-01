@@ -15,7 +15,11 @@ ReactDOM.render(
     <Pond
       loadComponent={<div>Connecting to Actyx...</div>}
       onError={onError}
-      manifest={{ appId: 'com.example.dashboard', displayName: 'Dashboard App', version: '2.0' }}
+      manifest={{
+        appId: 'com.example.order-management',
+        displayName: 'Order Management App',
+        version: '2.0',
+      }}
     >
       {/* App that can use usePond, useFish, useRegistryFish, ... */}
       <App />

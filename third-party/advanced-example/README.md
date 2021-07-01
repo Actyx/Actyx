@@ -1,5 +1,3 @@
-Test
-
 # Actyx Advanced Tutorial Example App
 
 This repository contains the example code for the Advanced Tutorial, which you can find on the [Actyx Developer Website](https://developer.actyx.com/docs/learn-actyx/advanced-tutorial/introduction).
