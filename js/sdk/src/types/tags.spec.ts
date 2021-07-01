@@ -54,7 +54,7 @@ describe('typed tag query system', () => {
     // @ts-expect-error
     const q1: Where<'hello??'> = q
 
-    expect(q1.toWireFormat()).toMatchObject([{ tags: ['0', '1'] }, { tags: ['A'] }])
+    expect(q1.toV1WireFormat()).toMatchObject([{ tags: ['0', '1'] }, { tags: ['A'] }])
     expect(q1.toString()).toEqual("'0' & '1' | 'A'")
   })
 
@@ -74,7 +74,7 @@ describe('typed tag query system', () => {
     // @ts-expect-error
     const w2: Where<never> = w
 
-    expect(w2.toWireFormat()).toMatchObject([
+    expect(w2.toV1WireFormat()).toMatchObject([
       {
         tags: ['A', 'ABC'],
         local: false,
@@ -87,7 +87,7 @@ describe('typed tag query system', () => {
     // Overlap is 'A'
     const w = tagA.local().and(abcTag)
 
-    expect(w.toWireFormat()).toMatchObject([
+    expect(w.toV1WireFormat()).toMatchObject([
       {
         tags: ['A', 'ABC'],
         local: true,
@@ -99,7 +99,7 @@ describe('typed tag query system', () => {
   it('should union event types ', () => {
     const u = tagA.or(tagB)
 
-    expect(u.toWireFormat()).toMatchObject([{ tags: ['A'] }, { tags: ['B'] }])
+    expect(u.toV1WireFormat()).toMatchObject([{ tags: ['A'] }, { tags: ['B'] }])
     expect(u.toString()).toEqual("'A' | 'B'")
   })
 
@@ -114,7 +114,7 @@ describe('typed tag query system', () => {
     // @ts-expect-error
     const u2: Where<'A' | 'B'> = u
 
-    expect(u.toWireFormat()).toMatchObject([
+    expect(u.toV1WireFormat()).toMatchObject([
       { tags: ['A'] },
       {
         tags: ['B', 'B:some-id'],
@@ -133,7 +133,7 @@ describe('typed tag query system', () => {
 
     const ww: Where<T0 | T1 | A | B> = w0.or(w1)
 
-    expect(ww.toWireFormat()).toMatchObject([
+    expect(ww.toV1WireFormat()).toMatchObject([
       { tags: ['0'] },
       { tags: ['1'] },
       { tags: ['A'] },
@@ -146,8 +146,40 @@ describe('typed tag query system', () => {
   it('should tolerate tags with spaces and quotes', () => {
     const w0: Where<unknown> = tag0.or(tagWithQuotes)
 
-    expect(w0.toWireFormat()).toMatchObject([{ tags: ['0'] }, { tags: ["a 'funny' tag"] }])
+    expect(w0.toV1WireFormat()).toMatchObject([{ tags: ['0'] }, { tags: ["a 'funny' tag"] }])
 
     expect(w0.toString()).toEqual("'0' | 'a ''funny'' tag'")
+  })
+})
+
+describe('tag automatic id extraction', () => {
+  type FooWithId = {
+    eventType: 'foo'
+    fooId: string
+  }
+
+  const foo1: FooWithId = {
+    eventType: 'foo',
+    fooId: 'my-foo',
+  }
+
+  const FooTag = Tag<FooWithId>('foo', foo => foo.fooId)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const BarTag = Tag<any>('bar')
+
+  it('should extract id from events when applying', () => {
+    expect(FooTag.apply(foo1)[0].tags).toEqual(['foo', 'foo:my-foo'])
+  })
+
+  it('should keep applying when ANDed with other tags', () => {
+    expect(FooTag.and(BarTag).apply(foo1)[0].tags).toEqual(['foo', 'foo:my-foo', 'bar'])
+    expect(BarTag.and(FooTag).apply(foo1)[0].tags).toEqual(['bar', 'foo', 'foo:my-foo'])
+  })
+
+  it('should not apply when already having a custom id specified', () => {
+    const fooCustom = FooTag.withId('custom override')
+
+    expect(fooCustom.apply(foo1)[0].tags).toEqual(['foo', 'foo:custom override'])
+    expect(fooCustom.and(BarTag).apply(foo1)[0].tags).toEqual(['foo', 'foo:custom override', 'bar'])
   })
 })

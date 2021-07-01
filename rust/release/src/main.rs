@@ -1,17 +1,16 @@
 use anyhow::{Context, Error};
 use chrono::{TimeZone, Utc};
 use clap::Clap;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use repo::RepoWrapper;
 use semver::Version;
 use std::{fmt::Write, path::PathBuf};
-use tempfile::tempdir;
 use versions_file::{VersionLine, VersionsFile};
 use versions_ignore_file::VersionsIgnoreFile;
 
 mod changes;
 mod os_arch;
 mod products;
+#[cfg(not(windows))]
 mod publisher;
 mod releases;
 mod repo;
@@ -19,7 +18,13 @@ mod versions;
 mod versions_file;
 mod versions_ignore_file;
 
-use crate::{os_arch::OsArch, products::Product, publisher::Publisher, releases::Release};
+#[cfg(not(windows))]
+use crate::{os_arch::OsArch, publisher::Publisher};
+use crate::{products::Product, releases::Release};
+#[cfg(not(windows))]
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+#[cfg(not(windows))]
+use tempfile::tempdir;
 
 #[derive(Clap)]
 struct Opts {
@@ -83,6 +88,7 @@ enum Command {
         dry_run: bool,
     },
     /// Makes sure all released versions of a given product are released
+    #[cfg(not(windows))]
     Publish {
         product: Product,
         /// Don't publish
@@ -92,7 +98,7 @@ enum Command {
         #[clap(long, short)]
         force: bool,
         /// Ignore errors
-        #[clap(long, short)]
+        #[clap(long)]
         ignore_errors: bool,
     },
 }
@@ -300,6 +306,7 @@ Overview:"#
                 eprintln!("Done.");
             }
         }
+        #[cfg(not(windows))]
         Command::Publish {
             product,
             dry_run,
@@ -330,30 +337,48 @@ Overview:"#
                     log::debug!("Temp dir for {}: {}", release, tmp.path().display());
                     let out = OsArch::all()
                         .par_iter()
-                        .flat_map(|os_arch| Publisher::new(&release, &commit, *os_arch, idx == 0))
-                        .map(|mut p| {
-                            let mut out = String::new();
-                            let source_exists = p.source_exists()?;
-                            if source_exists {
-                                let target_exists = p.target_exists()?;
-                                if target_exists {
-                                    writeln!(&mut out, "    [OK] {} already exists.", p.target)?;
-                                } else if dry_run {
-                                    writeln!(&mut out, "    [DRY RUN] Create and publish {}", p.target)?;
-                                } else {
-                                    p.create_release_artifact(tmp.path())?;
-                                    p.publish()?;
-                                    writeln!(&mut out, "    [NEW] {}", p.target)?;
-                                }
-                            } else {
-                                if !ignore_errors && !dry_run {
-                                    anyhow::bail!("    [ERR] Source \"{}\" does NOT exist.", p.source);
-                                }
-                                writeln!(&mut out, "    [ERR] Source \"{}\" does NOT exist.", p.source)?;
-                            }
-                            Ok(out)
+                        .map(|os_arch| {
+                            log::debug!("creating publisher for arch {}", os_arch);
+                            Publisher::new(&release, &commit, *os_arch, idx == 0).and_then(|p| {
+                                p.into_iter()
+                                    .map(|mut p| {
+                                        let mut out = String::new();
+                                        let source_exists = p.source_exists()?;
+                                        if source_exists {
+                                            let target_exists = p.target_exists()?;
+                                            if target_exists {
+                                                writeln!(&mut out, "    [OK] {} already exists.", p.target)?;
+                                            } else if dry_run {
+                                                writeln!(&mut out, "    [DRY RUN] Create and publish {}", p.target)?;
+                                            } else {
+                                                log::debug!(
+                                                    "creating release artifact in dir {}",
+                                                    tmp.path().display()
+                                                );
+                                                p.create_release_artifact(tmp.path()).context(format!(
+                                                    "creating release artifact at {}",
+                                                    tmp.path().display()
+                                                ))?;
+                                                log::debug!("starting publishing");
+                                                p.publish().context("publishing")?;
+                                                log::debug!("finished publishing");
+                                                writeln!(&mut out, "    [NEW] {}", p.target)?;
+                                            }
+                                        } else {
+                                            if !ignore_errors && !dry_run {
+                                                anyhow::bail!("    [ERR] Source \"{}\" does NOT exist.", p.source);
+                                            }
+                                            writeln!(&mut out, "    [ERR] Source \"{}\" does NOT exist.", p.source)?;
+                                        }
+                                        Ok(out)
+                                    })
+                                    .collect::<anyhow::Result<Vec<String>>>()
+                            })
                         })
                         .collect::<anyhow::Result<Vec<_>>>()?
+                        .into_iter()
+                        .flatten()
+                        .collect::<Vec<_>>()
                         .join("");
                     println!("  {} ({}) .. ", release, commit);
                     println!("{}", out);

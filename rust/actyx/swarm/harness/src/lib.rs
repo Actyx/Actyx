@@ -2,6 +2,7 @@
 
 pub mod api;
 
+use actyx_sdk::NodeId;
 use anyhow::{bail, Result};
 use async_std::{future, task};
 use futures::{
@@ -62,11 +63,16 @@ pub struct HarnessOpts {
 
 pub trait MachineExt {
     fn peer_id(&self) -> PeerId;
+    fn node_id(&self) -> NodeId;
     fn multiaddr(&self) -> Multiaddr;
 }
 
 impl<C, E> MachineExt for netsim_embed::Machine<C, E> {
     fn peer_id(&self) -> PeerId {
+        swarm_cli::keypair(self.id().0 as u64).into()
+    }
+
+    fn node_id(&self) -> NodeId {
         swarm_cli::keypair(self.id().0 as u64).into()
     }
 

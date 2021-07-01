@@ -1,4 +1,6 @@
 use crate::{database, json_value::JsonValue, Scope, Validator};
+use parking_lot::Mutex;
+use std::sync::Arc;
 
 #[derive(thiserror::Error, Debug, PartialEq)]
 pub enum Error {
@@ -24,8 +26,9 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Clone)]
 pub struct Repository {
-    pub database: database::Database,
+    database: Arc<Mutex<database::Database>>,
 }
 
 #[derive(Debug)]
@@ -105,14 +108,14 @@ fn mk_validator(tx: &mut database::Transaction, scope: &Scope) -> Result<(Scope,
 }
 
 impl Repository {
-    pub fn new(database: database::Database) -> Result<Self> {
-        Ok(Self { database })
+    pub fn new(database: database::Database) -> Self {
+        Self {
+            database: Arc::new(Mutex::new(database)),
+        }
     }
 
     pub fn new_in_memory() -> Self {
-        Repository {
-            database: database::Database::in_memory().unwrap(),
-        }
+        Self::new(database::Database::in_memory().unwrap())
     }
 
     /// Tries to replace the settings at given `scope` to `settings`. Unless `force` is set,
@@ -127,12 +130,12 @@ impl Repository {
     /// If `force` is set then `settings` is returned as is. Otherwise the new settings of the parent
     /// schema are returned.
     pub fn update_settings(
-        &mut self,
+        &self,
         scope: &Scope,
         settings: serde_json::Value,
         force: bool,
     ) -> Result<serde_json::Value> {
-        self.database.exec(|tx| {
+        self.database.lock().exec(|tx| {
             let current_settings = tx
                 .get_settings()?
                 .map(parse)
@@ -186,8 +189,8 @@ impl Repository {
 
     // Clears settings for a given scope,
     // if the defaults are valid on their own, the settings_with_defaults will still be set
-    pub fn clear_settings(&mut self, scope: &Scope) -> Result<()> {
-        self.database.exec(|tx| {
+    pub fn clear_settings(&self, scope: &Scope) -> Result<()> {
+        self.database.lock().exec(|tx| {
             if let Some(current_settings) = tx.get_settings()?.map(parse).transpose()? {
                 let new_settings = current_settings.remove_at(&scope);
                 tx.set_settings(stringify(&new_settings)?)?;
@@ -223,8 +226,8 @@ impl Repository {
     /// schema installed).
     /// If the provided scope is the root scope, the settings object will be returned without any
     /// validation, irrespective of the `no_defaults` flag.
-    pub fn get_settings(&mut self, scope: &Scope, no_defaults: bool) -> Result<serde_json::Value> {
-        self.database.exec(|tx| {
+    pub fn get_settings(&self, scope: &Scope, no_defaults: bool) -> Result<serde_json::Value> {
+        self.database.lock().exec(|tx| {
             let current_settings = tx.get_settings()?.map(parse).transpose()?;
             if scope.is_root() {
                 if no_defaults {
@@ -262,8 +265,8 @@ impl Repository {
 
     /// Deletes a schema for a given `scope`. This will also delete any settings stored for the
     /// same scope in one atomic operation.
-    pub fn delete_schema(&mut self, scope: &Scope) -> Result<()> {
-        self.database.exec(|tx| {
+    pub fn delete_schema(&self, scope: &Scope) -> Result<()> {
+        self.database.lock().exec(|tx| {
             if !tx.delete_schema(scope.into())? {
                 return Err(Error::SchemaNotFound(scope.clone()));
             }
@@ -282,20 +285,20 @@ impl Repository {
     /// invalid.
     ///
     /// Note: It's not supported to set a schema for the root scope.
-    pub fn set_schema(&mut self, scope: &Scope, schema: serde_json::Value) -> Result<()> {
+    pub fn set_schema(&self, scope: &Scope, schema: serde_json::Value) -> Result<()> {
         if scope.is_root() {
             return Err(Error::RootScopeNotAllowed);
         }
 
-        self.database.exec(|tx| {
+        self.database.lock().exec(|tx| {
             tx.set_schema(scope.into(), stringify(&schema)?)?;
             Ok(())
         })?
     }
 
     /// Returns an installed schema for a given `scope`, if any.
-    pub fn get_schema(&mut self, scope: &Scope) -> Result<serde_json::Value> {
-        self.database.exec(|tx| {
+    pub fn get_schema(&self, scope: &Scope) -> Result<serde_json::Value> {
+        self.database.lock().exec(|tx| {
             let schema = tx
                 .get_schema(scope.into())?
                 .map(parse)
@@ -306,8 +309,8 @@ impl Repository {
     }
 
     /// Returns all installed schemas with their respective scopes.
-    pub fn get_schema_scopes(&mut self) -> Result<Vec<String>> {
-        self.database.exec(|tx| {
+    pub fn get_schema_scopes(&self) -> Result<Vec<String>> {
+        self.database.lock().exec(|tx| {
             let schemas = tx.get_all_schema_scopes()?;
             Ok(schemas)
         })?

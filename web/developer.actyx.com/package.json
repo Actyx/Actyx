@@ -3,7 +3,7 @@
   "version": "2.0.0",
   "private": true,
   "scripts": {
-    "prestart": "npm run copy-schemas && npm run build-monorepo-dependencies && svgo -r -f ./static/images -o ./static/images",
+    "prestart": "npm run copy-schemas && npm run build-monorepo-dependencies",
     "start": "docusaurus start --host 0.0.0.0",
     "copy-schemas": "node bin/copy-schemas.js",
     "build-monorepo-dependencies": "node bin/build-monorepo-dependencies.js",
@@ -12,7 +12,8 @@
     "postbuild": "node bin/copy-redirects.js",
     "postinstall": "patch-package",
     "swizzle": "docusaurus swizzle",
-    "deploy": "node bin/deploy.js",
+    "deploy:prod": "node bin/deploy.js prod",
+    "deploy:draft": "node bin/deploy.js draft",
     "serve": "docusaurus serve",
     "check:code": "eslint ./src/**/*.{js,ts,tsx} --max-warnings=0",
     "fix:code": "npm run check:code -- --fix",
@@ -23,7 +24,7 @@
     "check:spelling": "npm run fix:spelling -- --report",
     "fix:spelling": "mdspell ./docs/**/*.md ./docs/**/*.mdx ./blog/**/*.md ./blog/**/*.mdx !./docs/reference/js-ts-sdk/**/*.md !./docs/reference/pond/**/*.md --ignore-numbers --ignore-acronyms --en-us",
     "lint-sequential": "npm run check:code && npm run check:md && npm run check:text && npm run check:spelling",
-    "lint": "concurrently npm:check:*",
+    "lint": "concurrently \"npm:check:*\"",
     "lint:fix": "npm run fix:code && npm run fix:md && npm run fix:text && npm run fix:spelling",
     "find-dead-links": "blc -ro http://localhost:3000"
   },

@@ -1,41 +1,64 @@
 import { mkESFromTrial, SubscribeResponse } from '../../http-client'
+import { waitFor } from '../../retry'
 import { run } from '../../util'
 import { genericCommunicationTimeout, mySuite, publishRandom, testName } from './utils.support.test'
 
 describe('event service', () => {
-  describe('subscribe to event streams', () => {
+  describe('subscribe', () => {
     it('should publish an event and find it in an event stream', () =>
       run(async (x) => {
         const es = await mkESFromTrial(x)
         const pub1 = await publishRandom(es)
-
-        const ev = await new Promise<SubscribeResponse>((resolve, reject) => {
-          es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, resolve).catch(
-            reject,
-          )
-          setTimeout(reject, genericCommunicationTimeout)
+        const data: SubscribeResponse[] = []
+        await new Promise((resolve, reject) => {
+          es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, (x) => {
+            data.push(x)
+            if (data.length == 2) {
+              resolve()
+            }
+          }).catch(reject)
+          setTimeout(resolve, genericCommunicationTimeout)
         })
-
-        expect(ev.appId).toEqual('com.example.my-app')
-        expect(ev).toMatchObject(pub1)
+        expect(data).toMatchObject([
+          pub1,
+          { type: 'offsets', offsets: { [pub1.stream]: expect.any(Number) } },
+        ])
       }))
 
     it('should start an event stream and find a published event', () =>
       run(async (x) => {
         const es = await mkESFromTrial(x)
-
-        const done = new Promise<SubscribeResponse>((resolve, reject) => {
-          es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, resolve).catch(
-            reject,
-          )
-          setTimeout(reject, genericCommunicationTimeout)
-        })
-
         const pub1 = await publishRandom(es)
-        const ev = await done
-
-        expect(ev.appId).toEqual('com.example.my-app')
-        expect(ev).toMatchObject(pub1)
+        const data: SubscribeResponse[] = []
+        const done = new Promise((resolve, reject) => {
+          es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, (x) => {
+            data.push(x)
+            if (data.length == 3) {
+              resolve()
+            }
+          }).catch(reject)
+          setTimeout(resolve, genericCommunicationTimeout)
+        })
+        await waitFor(
+          () => {
+            expect(data.length).toBeGreaterThanOrEqual(2)
+          },
+          5_000,
+          50,
+        )
+        const pub2 = await publishRandom(es)
+        await done
+        expect(data).toMatchObject([
+          pub1,
+          { type: 'offsets', offsets: { [pub1.stream]: expect.any(Number) } },
+          pub2,
+        ])
+        expect(data[1].type === 'offsets' && data[1].offsets[pub1.stream]).toBeGreaterThanOrEqual(
+          pub1.offset,
+        )
+        expect(data[1].type === 'offsets' && data[1].offsets[pub1.stream]).toBeLessThan(pub2.offset)
       }))
+
+    // TODO: test subscription across Actyx node restart
   })
 })

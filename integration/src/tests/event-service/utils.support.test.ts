@@ -1,27 +1,23 @@
-import { AxEventService, PublishResponse, PublishResponseKey } from '../../http-client'
+import { AxEventService, EventResponse, trialManifest } from '../../http-client'
 import { randomString } from '../../util'
 
-export type TestPayload = {
-  value: string
-}
-const mkPayload = (value: string): TestPayload => ({ value })
+type Response<T> = Omit<EventResponse, 'payload'> & { payload: T }
 
-export const publishWithTag = (es: AxEventService, tags: ReadonlyArray<string>) => (
-  value: string,
-): Promise<PublishResponse> => es.publish({ data: [{ tags, payload: mkPayload(value) }] })
-
-export const publish = (es: AxEventService): ((value: string) => Promise<PublishResponse>) =>
-  publishWithTag(es, [mySuite(), testName()])
-
-export const publishRandom = (
-  es: AxEventService,
-): Promise<PublishResponseKey & { payload: TestPayload }> => {
-  const str = randomString()
-  return publishWithTag(es, [mySuite(), testName()])(str).then((response) => ({
+export const publish = <T>(es: AxEventService): ((payload: T) => Promise<Response<T>>) => (
+  payload,
+) => {
+  const tags = [mySuite(), testName()]
+  return es.publish({ data: [{ tags, payload }] }).then((response) => ({
+    type: 'event',
     ...response.data[0],
-    payload: mkPayload(str),
+    tags,
+    appId: trialManifest.appId,
+    payload,
   }))
 }
+
+export const publishRandom = (es: AxEventService): Promise<Response<{ value: string }>> =>
+  publish<{ value: string }>(es)({ value: randomString() })
 
 export const throwOnCb = (msg: string) => (...rest: unknown[]): void => {
   throw new Error(`Unexpected callback invocation. ${msg}\n ${JSON.stringify(rest)}`)

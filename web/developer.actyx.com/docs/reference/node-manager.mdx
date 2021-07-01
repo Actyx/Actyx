@@ -12,6 +12,11 @@ image: /images/defaults/default.svg
 The Actyx Node Manager is an app that lets you manage and interact with local and remote Actyx nodes through an easy-to-use graphical user interface.
 This document describes the main navigation elements and the features of the Actyx Node Manager.
 
+Actyx gathers anonymous aggregate user behavior analytics when you use the Node Manager.
+Analytics allow us to prioritize fixes and features based on how, where, and when people use Actyx. 
+You can opt out of sending analytics data in the preferences section of the Node Manager. 
+Find out more in [this section](#anonymous-aggregate-user-behaviour-analytics) below.
+
 ## General UX
 
 ![no-nodes](../../static/images/node-manager/no-nodes.png)
@@ -166,3 +171,18 @@ The _Diagnostics_ view gives insights into the swarm connectivity and provides a
 ### 2 Node Manager
 
 ![diagnostics-02](../../static/images/node-manager/diagnostics-02.png)
+
+## Anonymous Aggregate User Behavior Analytics
+
+Actyx gathers anonymous aggregate user behavior analytics using [Amplitude](https://amplitude.com/).
+Analytics allow us to prioritize fixes and features based on how, where, and when people use the Node Manager.
+For example, if an error appears frequently for you, analytics will enable us to prioritize accordingly and improve your experience.
+
+For every event, the following information is shared:
+
+- User ID: A randomly-generated UUID when you start the Node Manager for the first time
+- Device ID: A randomly-generated UUID when you start the Node Manager for the first time 
+- Language: Language of your device
+- Device: Your operating system (Windows, macOS or Linux)
+- Version: The version of the Node Manager you are using
+- Location: Country, region and city pulled using GeoIP

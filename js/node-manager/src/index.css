@@ -1,0 +1,67 @@
+html {
+  height: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  /* border: 1px solid red; */
+}
+*,
+*:before,
+*:after {
+  box-sizing: inherit;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+div#root {
+  height: 100%;
+  /* Top nav bar offset */
+  /* padding-top: 60px; */
+}
+
+/* disable selection */
+:not(input):not(textarea):not(code):not(pre):not(.selectable),
+:not(input):not(textarea):not(code):not(pre):not(.selectable)::after,
+:not(input):not(textarea):not(code):not(pre):not(.selectable)::before {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+code,
+pre,
+.selectable {
+  user-select: text;
+}
+
+input,
+button,
+textarea,
+:focus,
+input[type='checkbox']:focus {
+  outline: none;
+}
+input[type='checkbox']:focus {
+  box-shadow: none;
+}
+
+/* disable image and anchor dragging */
+a:not([draggable='true']),
+img:not([draggable='true']) {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+a[href^="http://"],
+a[href^="https://"],
+a[href^="ftp://"]
+{
+  -webkit-user-drag: auto;
+  user-drag: auto;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

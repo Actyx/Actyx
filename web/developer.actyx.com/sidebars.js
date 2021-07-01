@@ -48,7 +48,6 @@ module.exports = {
             'how-to/actyx-pond/fish-parameters/fish-id',
             'how-to/actyx-pond/fish-parameters/deserialize-state',
             'how-to/actyx-pond/fish-parameters/is-reset',
-            'how-to/actyx-pond/fish-parameters/snapshot-threshold',
           ],
         },
         {
@@ -191,6 +190,7 @@ module.exports = {
       items: [
         'reference/cli/cli-overview',
         'reference/cli/nodes/ls',
+        'reference/cli/nodes/inspect',
         'reference/cli/settings/schema',
         'reference/cli/settings/get',
         'reference/cli/settings/set',

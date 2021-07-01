@@ -12,6 +12,7 @@ use maplit::btreemap;
 use parking_lot::Mutex;
 use std::{collections::BTreeMap, convert::TryFrom, path::PathBuf, str::FromStr, sync::Arc, time::Duration};
 use tempdir::TempDir;
+use tokio::runtime::Runtime;
 use trees::query::TagsQuery;
 
 struct Tagger(BTreeMap<&'static str, Tag>);
@@ -256,12 +257,22 @@ async fn test_add_cat() -> Result<()> {
     Ok(())
 }
 
-#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-async fn test_add_zero_bytes() -> Result<()> {
-    util::setup_logger();
-    let store = BanyanStore::test("local").await?;
-    let tmp = store.ipfs().create_temp_pin()?;
-    let data: &[u8] = &[];
-    store.add(&tmp, data)?;
-    Ok(())
+#[test]
+fn test_add_zero_bytes() -> Result<()> {
+    let rt = Runtime::new()?;
+    rt.block_on(async {
+        util::setup_logger();
+        let store = BanyanStore::test("local").await?;
+        tracing::info!("store created");
+        let tmp = store.ipfs().create_temp_pin()?;
+        tracing::info!("temp pin created");
+        let data: &[u8] = &[];
+        store.add(&tmp, data)?;
+        tracing::info!("data added");
+        drop(tmp);
+        tracing::info!("temp pin dropped");
+        drop(store); // without this the test sometimes doesn’t complete
+        tracing::info!("store dropped");
+        Ok(())
+    })
 }

@@ -302,11 +302,6 @@ export type Pond = {
   getPondState(callback: (newState: PondState) => void): CancelSubscription
 
   /**
-   * Register a callback invoked whenever the node’s connectivity status changes.
-   */
-  getNodeConnectivity(params: GetNodeConnectivityParams): CancelSubscription
-
-  /**
    * Wait for the node to get in sync with the swarm.
    * It is strongly recommended that any interaction with the Pond is delayed until the onSyncComplete callback has been notified.
    * To obtain progress information about the sync, the onProgress callback can be supplied.
@@ -392,10 +387,6 @@ class Pond2Impl implements Pond {
   getPondState = (callback: (newState: PondState) => void) => {
     const sub = this.pondStateTracker.observe().subscribe(callback)
     return () => sub.unsubscribe()
-  }
-
-  getNodeConnectivity = (_params: GetNodeConnectivityParams) => {
-    throw new Error('not yet implemented')
   }
 
   waitForSwarmSync = (params: WaitForSwarmSyncParams) => {
@@ -580,11 +571,8 @@ class Pond2Impl implements Pond {
       cancelInitialSubscription = this.actyx.subscribe(
         {
           query: seedEvent,
-          maxChunkTimeMs: 0,
         },
-        x => {
-          resolve(x.events[0])
-        },
+        resolve,
       )
     })
 

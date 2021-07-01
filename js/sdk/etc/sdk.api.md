@@ -8,6 +8,7 @@ import { Ord } from 'fp-ts/lib/Ord';
 
 // @public
 export type Actyx = EventFns & {
+    readonly nodeId: NodeId;
     dispose: () => void;
 };
 
@@ -86,7 +87,6 @@ export type EventChunk = {
 // @public
 export interface EventFns {
     emit: (events: ReadonlyArray<TaggedEvent>) => PendingEmission;
-    readonly nodeId: NodeId;
     observeBestMatch: <E>(query: Where<E>, shouldReplace: (candidate: ActyxEvent<E>, cur: ActyxEvent<E>) => boolean, onReplaced: (event: E, metadata: Metadata) => void) => CancelSubscription;
     // @beta
     observeEarliest: <E>(query: EarliestQuery<E>, onNewEarliest: (event: E, metadata: Metadata) => void) => CancelSubscription;
@@ -99,7 +99,11 @@ export interface EventFns {
     queryAllKnownChunked: (query: AutoCappedQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
     queryKnownRange: (query: RangeQuery) => Promise<ActyxEvent[]>;
     queryKnownRangeChunked: (query: RangeQuery, chunkSize: number, onChunk: (chunk: EventChunk) => Promise<void> | void, onComplete?: () => void) => CancelSubscription;
-    subscribe: (query: EventSubscription, onChunk: (chunk: EventChunk) => Promise<void> | void) => CancelSubscription;
+    subscribe: (query: EventSubscription, onEvent: (e: ActyxEvent) => Promise<void> | void) => CancelSubscription;
+    subscribeChunked: (query: EventSubscription, chunkConfig: {
+        maxChunkSize?: number;
+        maxChunkTimeMs?: number;
+    }, onChunk: (chunk: EventChunk) => Promise<void> | void) => CancelSubscription;
     // @alpha
     subscribeMonotonic: <E>(query: MonotonicSubscription<E>, callback: (data: EventsOrTimetravel<E>) => Promise<void> | void) => CancelSubscription;
 }
@@ -153,8 +157,6 @@ export enum EventsSortOrder {
 export type EventSubscription = {
     lowerBound?: OffsetMap;
     query?: Where<unknown>;
-    maxChunkSize?: number;
-    maxChunkTimeMs?: number;
 };
 
 // @alpha
@@ -341,7 +343,7 @@ export interface Tag<E> extends Tags<E> {
 }
 
 // @public
-export const Tag: <E>(rawTag: string) => Tag<E>;
+export const Tag: <E>(rawTagString: string, extractId?: ((e: E) => string) | undefined) => Tag<E>;
 
 // @public
 export type TaggedEvent = Readonly<{
@@ -362,6 +364,7 @@ export const Tags: <E>(...requiredTags: string[]) => Tags<E>;
 
 // @public
 export type TestActyx = TestEventFns & {
+    readonly nodeId: NodeId;
     dispose: () => void;
 };
 

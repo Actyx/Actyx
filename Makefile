@@ -142,7 +142,8 @@ export DOCKER_FLAGS ?= -e "ACTYX_VERSION=${ACTYX_VERSION}" -e "ACTYX_VERSION_CLI
 export IMAGE_VERSION := $(or $(LOCAL_IMAGE_VERSION),$(LATEST_STABLE_IMAGE_VERSION))
 
 # this needs to remain the first so it is the default target
-all: all-linux all-android all-windows all-macos all-js
+# THIS TARGET IS NOT RUN FOR ARTIFACTS — see azure-piplines
+all: all-linux all-android all-windows all-macos all-js assert-clean
 
 all-android: $(patsubst %,dist/bin/%,$(all-ANDROID))
 
@@ -160,9 +161,7 @@ $(foreach arch,$(architectures),$(eval $(call mkLinuxRule,$(arch))))
 
 current: dist/bin/current/ax dist/bin/current/actyx-linux
 
-all-js: \
-	dist/js/sdk \
-	dist/js/pond
+all-js: dist/js/pond dist/js/sdk
 
 # Create a `make-always` target that always has the current timestamp.
 # Depending on this ensures that the rule is always executed.
@@ -173,6 +172,12 @@ make-always:
 # Debug helpers
 print-%:
 	@echo $* = $($*)
+
+.PHONY: assert-clean
+assert-clean:
+	@if [ -n "$(shell git status --porcelain)" ]; then \
+		git status --porcelain; echo "Git directory not clean, exiting"; exit 3; \
+	else echo "Git directory is clean";  fi
 
 # delete almost all generated artifacts
 # this does not need to be run from CI, since it always starts with a fresh checkout anyway.
@@ -216,16 +221,12 @@ prepare-js:
 	# install nvm
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.36.0/install.sh | bash
 
-# create validation targets for all folder inside `./rust`
-rust-validation = $(shell arr=(`ls -1 rust`); printf "validate-rust-%s " "$${arr[@]}")
-.PHONY: validate-rust $(rust-validation)
-validate-rust: $(rust-validation) validate-os
-
 # execute linter, style checker and tests for everything
-validate: validate-os validate-rust validate-os-android validate-js validate-website validate-misc
+# THIS TARGET IS NOT RUN FOR PR VALIDATION — see azure-piplines
+validate: validate-os validate-netsim validate-os-android validate-js assert-clean
 
 # declare all the validate targets to be phony
-.PHONY: validate-os validate-rust-sdk validate-rust-sdk-macros validate-os-android validate-js validate-website validate-misc
+.PHONY: validate-os validate-os-android validate-js
 
 .PHONY: diagnostics
 
@@ -239,7 +240,7 @@ define mkRustTestRule=
 $(TARGET_NAME): cargo-init make-always
   $(eval TARGET_PATH:=rust/$(word 3, $(subst -, ,$(TARGET_NAME))))
 	cd $(TARGET_PATH) && $(CARGO) fmt --all -- --check
-	cd $(TARGET_PATH) && $(CARGO) --locked clippy --all-targets -- -D warnings
+	cd $(TARGET_PATH) && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --all-targets -- -D warnings
 	cd $(TARGET_PATH) && $(CARGO) test --locked --all-features -j $(CARGO_TEST_JOBS)
 endef
 
@@ -249,19 +250,19 @@ $(foreach TARGET_NAME,$(rust-validation),$(eval $(mkRustTestRule)))
 # execute fmt check, clippy and tests for rust/actyx
 validate-os: diagnostics
 	cd rust/actyx && $(CARGO) fmt --all -- --check
-	cd rust/actyx && $(CARGO) --locked clippy -- -D warnings
-	cd rust/actyx && $(CARGO) --locked clippy --tests -- -D warnings
+	cd rust/actyx && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) -- -D warnings
+	cd rust/actyx && $(CARGO) --locked clippy -j $(CARGO_BUILD_JOBS) --tests -- -D warnings
 	cd rust/actyx && $(CARGO) --locked test --all-features -j $(CARGO_TEST_JOBS)
 
 validate-netsim: diagnostics
-	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness --release
+	cd rust/actyx && $(CARGO) build -p swarm-cli -p swarm-harness --release -j $(CARGO_BUILD_JOBS)
 	rust/actyx/target/release/gossip --n-nodes 8 --enable-fast-path
 	rust/actyx/target/release/gossip --n-nodes 8 --enable-slow-path
 	rust/actyx/target/release/gossip --n-nodes 8 --enable-root-map
 	rust/actyx/target/release/root_map --n-nodes 8 --enable-root-map
-	rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
-	rust/actyx/target/release/discovery_multi_net
-	rust/actyx/target/release/discovery_external
+	# rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
+	# rust/actyx/target/release/discovery_multi_net
+	# rust/actyx/target/release/discovery_external
 	rust/actyx/target/release/subscribe --n-nodes 8
 	rust/actyx/target/release/query --n-nodes 8
 	rust/actyx/target/release/quickcheck_subscribe
@@ -276,7 +277,7 @@ validate-os-android: diagnostics
 	cd jvm/os-android/ && ./gradlew clean ktlintCheck
 
 # validate all js
-validate-js: diagnostics validate-js-sdk validate-js-pond
+validate-js: diagnostics validate-js-sdk validate-js-pond validate-js-integration
 
 # validate js sdk
 validate-js-sdk:
@@ -291,6 +292,10 @@ validate-js-pond:
 		npm install && \
 		npm run test && \
 		npm run build:prod
+
+# validate js integration suite (does it compile?)
+validate-js-integration:
+	cd integration && source ~/.nvm/nvm.sh && nvm install && npm install && npm run tsc
 
 # fix and test all js projects
 fix-js: diagnostics fix-js-sdk fix-js-pond
@@ -330,20 +335,6 @@ dist/js/pond: make-always
 		npm run build:prod && \
 		mv `npm pack` ../../$@/
 
-# validate all websites
-validate-website: diagnostics validate-website-developer validate-website-downloads
-
-# validate developer.actyx.com
-validate-website-developer:
-	cd web/developer.actyx.com && source ~/.nvm/nvm.sh && nvm install && \
-		npm install && \
-		npm run test
-
-# validate downloads.actyx.com
-validate-website-downloads:
-	cd web/downloads.actyx.com && source ~/.nvm/nvm.sh && nvm install && \
-		npm install
-
 validate-node-manager-bindings: 
 	cd rust/actyx/node-manager-bindings && \
 		source ~/.nvm/nvm.sh && \
@@ -354,13 +345,13 @@ validate-node-manager-bindings:
 node-manager-win: prepare-docker
 	docker run \
 	-v `pwd`:/src \
-	-w /src/misc/actyx-node-manager \
+	-w /src/js/node-manager \
 	--rm \
 	actyx/util:node-manager-win-builder \
 	bash -c "npm install && npm version $(ACTYX_VERSION_NODEMANAGER) && npm run build && npm run dist -- --win --x64 && npm run artifacts"
 
 node-manager-mac-linux:
-	cd misc/actyx-node-manager && \
+	cd js/node-manager && \
 		source ~/.nvm/nvm.sh && \
 		nvm install && \
 		npm install && \
@@ -402,7 +393,7 @@ dist/bin/current/%: rust/actyx/target/release/%
 	mv $< $@
 # here % (and thus $*) matches something like ax.exe, so we need to strip the suffix with `basename`
 rust/actyx/target/release/%: make-always
-	cd rust/actyx && cargo --locked build --release --bin $(basename $*)
+	cd rust/actyx && $(CARGO) --locked build --release -j $(CARGO_BUILD_JOBS) --bin $(basename $*)
 
 # In the following the same two-step process is used as for the current os/arch above.
 # The difference is that %-patterns won’t works since there are two variables to fill:
@@ -441,7 +432,7 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
-	  cargo --locked build --release --bin $$(basename $$*)
+	  cargo --locked build --release -j $(CARGO_BUILD_JOBS) --bin $$(basename $$*)
 endef
 $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
 
@@ -464,7 +455,7 @@ $(soTargetPatterns): cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
-	  cargo --locked build -p node-ffi --lib --release --target $(TARGET)
+	  cargo --locked build -p node-ffi --lib --release -j $(CARGO_BUILD_JOBS) --target $(TARGET)
 
 # create these so that they belong to the current user (Docker would create as root)
 # (formulating as rule dependencies only runs mkdir when they are missing)
@@ -481,7 +472,7 @@ jvm/os-android/app/build/outputs/apk/release/app-release.apk: android-libaxosnod
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
-      ./gradlew --stacktrace ktlintCheck build assembleRelease androidGitVersion
+      ./gradlew --stacktrace ktlintCheck build assembleRelease
 
 dist/bin/actyx.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
 	mkdir -p $(dir $@)

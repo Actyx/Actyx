@@ -22,6 +22,7 @@ import {
   allEvents,
   CancelSubscription,
   EventChunk,
+  EventKey,
   EventsOrTimetravel,
   EventsSortOrder,
   Metadata,
@@ -31,7 +32,6 @@ import {
   pendingEmission,
   StreamId,
   TaggedEvent,
-  Timestamp,
   toMetadata,
   Where,
 } from '../types'
@@ -227,26 +227,46 @@ export const EventFnsFromEventStoreV2 = (
       cancelUpstream()
     }
   }
-
   const subscribe = (
     openQuery: EventSubscription,
+    onEvent: (e: ActyxEvent) => Promise<void> | void,
+  ): CancelSubscription => {
+    const { lowerBound, query } = openQuery
+    const lb = lowerBound || {}
+
+    const rxSub = eventStore
+      .subscribe(lb, query || allEvents)
+      .map(wrap)
+      .mergeScan(
+        (_a: void, e: ActyxEvent) => Observable.from(Promise.resolve(onEvent(e))),
+        void 0,
+        1,
+      )
+      .subscribe()
+
+    return () => rxSub.unsubscribe()
+  }
+
+  const subscribeChunked = (
+    openQuery: EventSubscription,
+    cfg: { maxChunkSize?: number; maxChunkTimeMs?: number },
     onChunk: (chunk: EventChunk) => Promise<void> | void,
   ): CancelSubscription => {
-    const { lowerBound, query, maxChunkSize, maxChunkTimeMs } = openQuery
+    const { lowerBound, query } = openQuery
     const lb = lowerBound || {}
 
     const cb = bookKeepingOnChunk(lb, onChunk)
 
-    const bufTime = maxChunkTimeMs || 5
-    const bufSize = maxChunkSize || 1000
+    const bufTime = cfg.maxChunkTimeMs || 5
+    const bufSize = cfg.maxChunkSize || 1000
     const s = eventStore.subscribe(lb, query || allEvents)
 
-    const buffered =
-      bufTime > 0
-        ? // 2nd arg to bufferTime is not marked as optional, but it IS optional
-          /* eslint-disable-next-line @typescript-eslint/no-non-null-assertion */
-          s.bufferTime(bufTime, null!, bufSize).filter(x => x.length > 0)
-        : s.map(x => [x])
+    const buffered = s
+      // 2nd arg to bufferTime is not marked as optional, but it IS optional
+      /* eslint-disable-next-line @typescript-eslint/no-non-null-assertion */
+      .bufferTime(bufTime, null!, bufSize)
+      .filter(x => x.length > 0)
+      .map(buf => buf.sort(EventKey.ord.compare))
 
     // The only way to avoid parallel invocations is to use mergeScan with final arg=1
     const rxSub = buffered
@@ -358,6 +378,7 @@ export const EventFnsFromEventStoreV2 = (
       let replaced = false
 
       // Chunk is NOT sorted internally in live-mode. Any event may replace cur.
+      // (Actually, we are now internally sorting. Maybe this can be improved.)
       for (const event of chunk) {
         if (!cur || shouldReplace(event, cur)) {
           cur = event
@@ -371,7 +392,7 @@ export const EventFnsFromEventStoreV2 = (
       }
     }
 
-    return subscribe({ query, lowerBound: startingOffsets }, cb)
+    return subscribeChunked({ query, lowerBound: startingOffsets }, {}, cb)
   }
 
   const observeBestMatch = <E>(
@@ -484,7 +505,7 @@ export const EventFnsFromEventStoreV2 = (
         onUpdate(cur)
       }
 
-      cancelSubscription = subscribe({ query, lowerBound: offsets }, cb)
+      cancelSubscription = subscribeChunked({ query, lowerBound: offsets }, {}, cb)
     })
 
     return () => {
@@ -495,11 +516,8 @@ export const EventFnsFromEventStoreV2 = (
 
   const emit = (taggedEvents: ReadonlyArray<TaggedEvent>) => {
     const events = taggedEvents.map(({ tags, event }) => {
-      const timestamp = Timestamp.now()
-
       return {
         tags,
-        timestamp, // FIXME
         payload: event,
       }
     })
@@ -514,7 +532,6 @@ export const EventFnsFromEventStoreV2 = (
   }
 
   return {
-    nodeId,
     present,
     offsets,
     queryKnownRange,
@@ -522,6 +539,7 @@ export const EventFnsFromEventStoreV2 = (
     queryAllKnown,
     queryAllKnownChunked,
     subscribe,
+    subscribeChunked,
     subscribeMonotonic,
     observeEarliest,
     observeLatest,

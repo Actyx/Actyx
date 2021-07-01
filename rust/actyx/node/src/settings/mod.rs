@@ -2,6 +2,12 @@ use tokio::sync::oneshot::Sender;
 use util::formats::ActyxOSResult;
 
 pub const SYSTEM_SCOPE: &str = "com.actyx";
+pub fn system_scope() -> settings::Scope {
+    SYSTEM_SCOPE.parse().unwrap()
+}
+pub fn is_system_scope(scope: &settings::Scope) -> bool {
+    scope.first() == Some(SYSTEM_SCOPE.to_string())
+}
 
 pub type SettingsResponse<T> = ActyxOSResult<T>;
 

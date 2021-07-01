@@ -35,7 +35,7 @@ The following are examples of code that is NOT pure and hence must be avoided in
 
 ### `state: S`
 
-The current state of the Fish. That is, a state to which all _previous_ events have already been
+The current state of the Fish. That is a state to which all _previous_ events have already been
 applied.  
 Note that it will always just be the **locally known** previous events that have been applied. That
 is the exact point of time travel: Some previous events may always [be yet
@@ -96,6 +96,6 @@ are off: It would require a robust NTP setup to keep time in sync.
 Lamport timestamps work independently from device time. They also do a good job of preserving a
 useful, logical order even when network partitions happen.
 
-In the rare case that lamport timestamp of two events should be identical, other factors are used to
+In the rare case that the Lamport timestamps of two events should be identical, other factors are used to
 decide on a consistent ordering. Ultimately, the ordering of `eventId` (inside `metadata`) is
 what decides the ordering of events.

@@ -4,6 +4,7 @@
  *
  * Copyright (C) 2021 Actyx AG
  */
+import { noop } from '../util'
 import { isString } from './functions'
 import { TaggedEvent } from './various'
 
@@ -12,6 +13,35 @@ export type TagSubscription = Readonly<{ tags: ReadonlyArray<string>; local: boo
 
 const namedSubSpace = (rawTag: string, sub: string): string[] => {
   return [rawTag, rawTag + ':' + sub]
+}
+
+/**
+ * An internal raw tag can either be a plain string, or a function that produces tags from an event.
+ * @internal */
+type TagInternal = {
+  tag: string
+
+  /** Using `any` here since `unknown` leads to trouble in usage. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  extractId: (event: any) => string | undefined
+}
+
+const makeInternal = (tag: string): TagInternal => ({
+  tag,
+  extractId: noop,
+})
+
+const justTag = (i: TagInternal) => i.tag
+
+// Try automatically extracting the "id" for a given event from a tag
+/** @returns List of tags as strings to be applied to the event (1 or 2 elements). */
+const autoExtract = (event: unknown) => (t: TagInternal): string[] => {
+  const id = t.extractId(event)
+  if (id) {
+    return namedSubSpace(t.tag, id)
+  }
+
+  return [t.tag]
 }
 
 /**
@@ -43,7 +73,7 @@ export interface Where<E> {
    * FOR INTERNAL USE. Convert to Actyx wire format.
    * @internal
    */
-  toWireFormat(): ReadonlyArray<TagSubscription>
+  toV1WireFormat(): ReadonlyArray<TagSubscription>
 
   /**
    * For merging with another Where statement. (Worse API than the public one, but easier to implement.)
@@ -84,7 +114,7 @@ export interface Tags<E> extends Where<E> {
   /**
    * The actual included tags. @internal
    */
-  readonly rawTags: ReadonlyArray<string>
+  readonly rawTags: ReadonlyArray<TagInternal>
 
   /**
    * Whether this specific set is meant to be local-only.
@@ -98,7 +128,8 @@ export interface Tags<E> extends Where<E> {
  * This is a generator function to be called WITHOUT new, e.g. `const required = Tags('a', 'b', 'c')`
  * @public
  */
-export const Tags = <E>(...requiredTags: string[]): Tags<E> => req<E>(false, requiredTags)
+export const Tags = <E>(...requiredTags: string[]): Tags<E> =>
+  req<E>(false, requiredTags.map(makeInternal))
 
 /**
  * Representation of a single tag.
@@ -125,21 +156,35 @@ export interface Tag<E> extends Tags<E> {
 /**
  * Create a new tag from the given string.
  * (Tag factory function. Call WITHOUT new, e.g. `const myTag = Tag<MyType>('my-tag')`)
+ *
+ * @param rawTagString  - The raw tag string
+ * @param extractId     - If supplied, this function will be used to automatically call `withId` for events this tag is being attached to.
+ *                        The automatism is disabled if there is a manual `withId` call.
  * @public
  */
-export const Tag = <E>(rawTag: string): Tag<E> => ({
-  rawTag,
+export const Tag = <E>(rawTagString: string, extractId?: (e: E) => string): Tag<E> => {
+  const internalTag: TagInternal = {
+    tag: rawTagString,
+    extractId: extractId || noop,
+  }
 
-  withId: (name: string) => req(false, namedSubSpace(rawTag, name)),
+  const withId = (name: string): Tags<E> =>
+    req(false, namedSubSpace(rawTagString, name).map(makeInternal))
 
-  ...req(false, [rawTag]),
-})
+  return {
+    rawTag: rawTagString,
 
-const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): Tags<E> => {
+    withId,
+
+    ...req(false, [internalTag]),
+  }
+}
+
+const req = <E>(onlyLocalEvents: boolean, rawTags: ReadonlyArray<TagInternal>): Tags<E> => {
   const r: Tags<E> = {
     and: <E1>(otherTags: Tags<E1> | string) => {
       if (isString(otherTags)) {
-        return req<E>(onlyLocalEvents, [otherTags, ...rawTags])
+        return req<E>(onlyLocalEvents, [makeInternal(otherTags), ...rawTags])
       }
 
       const local = onlyLocalEvents || !!otherTags.onlyLocalEvents
@@ -154,13 +199,14 @@ const req = <E>(onlyLocalEvents: boolean, rawTags: string[]): Tags<E> => {
 
     local: () => req<E>(true, rawTags),
 
-    apply: (...events) => events.map(event => ({ event, tags: rawTags })),
+    apply: (...events) =>
+      events.map(event => ({ event, tags: rawTags.flatMap(autoExtract(event)) })),
 
     onlyLocalEvents,
 
     rawTags,
 
-    toWireFormat: () => [{ local: onlyLocalEvents, tags: rawTags }],
+    toV1WireFormat: () => [{ local: onlyLocalEvents, tags: rawTags.map(justTag) }],
 
     merge: <T>(moreSets: Tags<unknown>[]) => union<T>(moreSets.concat(r)),
 
@@ -184,7 +230,8 @@ const union = <E>(sets: Tags<unknown>[]): Where<E> => {
 
     merge: <T>(moreSets: Tags<unknown>[]) => union<T>(moreSets.concat(sets)),
 
-    toWireFormat: () => sets.map(x => ({ local: x.onlyLocalEvents, tags: x.rawTags })),
+    toV1WireFormat: () =>
+      sets.map(x => ({ local: x.onlyLocalEvents, tags: x.rawTags.map(justTag) })),
 
     toString: () => sets.map(s => s.toString()).join(' | '),
   }
@@ -203,4 +250,4 @@ export const allEvents: Tags<unknown> = req(false, [])
 export const noEvents: Where<never> = union([])
 
 /** @internal */
-export const escapeTag = (rawTag: string) => "'" + rawTag.replace(/'/g, "''") + "'"
+export const escapeTag = (tag: TagInternal) => "'" + tag.tag.replace(/'/g, "''") + "'"

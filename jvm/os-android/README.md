@@ -9,37 +9,6 @@ Here are the commands:
 
 ## Automatic Versioning
 
-Now that we bundle up the store together with the Android Shell App, versioning it becomes more important.
-The Android Shell app now uses the gradle plugin `gradle-android-git-version` with the following configuration:
+The `versionCode` is basically the number of commits in the git repository (plus 102000000 to not interfere with already released versions.)
 
-```
-✗ ./gradlew --quiet androidGitVersion
-androidGitVersion.name  2.0.1-2<9fd1296>-ow_android-versioning-dirty
-androidGitVersion.code  200002002
-```
-
-The version code is derived by the
-	* the major version (2),
-	* minor version (00),
-	* patch version (002),
-	* the number of commits since the last tag (002).
-
-The version of the app is derived from a git tag, prefixed with `actyx-android-`, e.g. `actyx-android-2.0.2`. **Please tag the last commit of your PR accordingly.**
-
-The name is derived by:
-	* The version, as taken from the tag (2.0.1)
-	* the number of commits since the last tag (2)
-	* the hash of the commit
-	* the branch name (omitted on master)
-	* a dirty flag, indicating whether there are uncomitted changes.
-
-### Tagging when squashing and merging a PR
-
-You can't really tag a squashed commit. Workaround:
-
-1. Merge to master
-2. Pull locally
-3. Tag locally - `git tag xzy actyx-android-2.xxx.x`
-4. Push tag to remote - `git push origin actyx-android-2.xxx.x`
-
-**Do that before the Android build on azure pipelines starts or restart it.**
+The `versionName` of the APK is either the value of `$ACTYX_VERSION` environment variable if it is set or "0.0.0_dev-" plus the git hash of the current `HEAD` with a dirty marker.

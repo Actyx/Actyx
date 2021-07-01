@@ -226,6 +226,11 @@ aarch64
 arm64v8
 amd64
 js-libp2p
+appId
+com.example.app
+js
+subscribe_monotonic
+img
  - blog/2020-06-09-building-docker-apps-for-arm64v8.md
 arm64
 ActyxOS
@@ -329,6 +334,7 @@ linux
 Autostart
 amd64
 arm64v8
+actyx
  - ./docs/how-to/local-development/install-cli-node-manager.mdx
 zsh
 tcsh
@@ -359,6 +365,7 @@ nodejs
 csharp
  - ./docs/reference/node-manager.mdx
 tar.gz
+GeoIP
  - ./docs/reference/rust-sdk.mdx
 docs.rs
  - ./docs/tutorials/advanced-tutorial/explore-the-apps.mdx
@@ -525,3 +532,32 @@ namespaces
  - ./docs/reference/events-api.mdx
 TabItem
 defaultValue
+json
+tag-01
+tag-02
+tag-03
+lowerBound
+upperBound
+AUTH_TOKEN
+x-ndjson
+tag1
+tag2
+timeTravel
+newStart
+my_session_id
+fooArr
+bar1
+bar2
+caughtUp
+query.json
+1g1UOqdpvBB1KHsGWGZiK3Vi8MYGDZZ1oylpOajUk.s
+- ./blog/2021-06-23-actyx-2-0-0-release.md
+header.svg
+events-api
+node-api
+roadmap
+node-manager-ui
+changelog
+lightspeed.gif
+10x
+benchmark.svg

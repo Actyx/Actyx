@@ -281,7 +281,7 @@ describe('EventFns', () => {
 
       const { cb, expectResultMatches } = buffer()
 
-      const cancel = fns.subscribe({}, cb)
+      const cancel = fns.subscribeChunked({}, {}, cb)
 
       for (const src of ['A', 'B', 'C']) {
         const tlS = tl.of(src)
@@ -302,7 +302,7 @@ describe('EventFns', () => {
       store.directlyPushEvents(tlAC)
 
       // Strictly speaking, the store may interleave A and C in any order it likes. So we just test the offsets.
-      await expectResultMatches(() => fns.subscribe({}, cb), {
+      await expectResultMatches(() => fns.subscribeChunked({}, {}, cb), {
         lowerBound: {},
         upperBound: toOffsets(tlAC),
       })

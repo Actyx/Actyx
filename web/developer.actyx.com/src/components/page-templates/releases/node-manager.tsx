@@ -9,47 +9,47 @@ import semver from 'semver'
 const DOWNLOADS_V2_0_0: Download[] = [
   {
     platform: 'Linux',
-    ext: '.tar.gz',
+    ext: '.deb',
     files: [
       {
         arch: 'amd64',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-node-manager-$V-linux-amd64.tar.gz`,
+        target: `https://axartifacts.blob.core.windows.net/releases/actyx-node-manager-$V-amd64.deb`,
       },
-      {
-        arch: 'arm64',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-node-manager-$V-linux-arm64.tar.gz`,
-      },
-      {
-        arch: 'armhf',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-node-manager-$V-linux-armhf.tar.gz`,
-      },
-      {
-        arch: 'arm',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-node-manager-$V-linux-arm.tar.gz`,
-      },
+      //{
+      //  arch: 'arm64',
+      //  target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-node-manager-$V-linux-arm64.tar.gz`,
+      //},
+      //{
+      //  arch: 'armhf',
+      //  target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-node-manager-$V-linux-armhf.tar.gz`,
+      //},
+      //{
+      //  arch: 'arm',
+      //  target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-node-manager-$V-linux-arm.tar.gz`,
+      //},
     ],
   },
   {
     platform: 'Mac',
-    ext: '.zip',
+    ext: '.dmg',
     files: [
       {
-        arch: 'intel',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-node-manager-$V-macos-intel.zip`,
+        arch: 'universal',
+        target: `https://axartifacts.blob.core.windows.net/releases/ActyxNodeManager-$V.dmg`,
       },
-      {
-        arch: 'arm64',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-node-manager-$V-macos-arm.zip`,
-      },
+      //{
+      //  arch: 'arm64',
+      //  target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-node-manager-$V-macos-arm.zip`,
+      //},
     ],
   },
   {
-    platform: 'Windows (Installer)',
-    ext: '.zip',
+    platform: 'Windows',
+    ext: '.msi',
     files: [
       {
         arch: 'x64',
-        target: `https://axartifacts.blob.core.windows.net/artifacts/$C/actyx-node-manager-$V-installer-windows-x64.zip`,
+        target: `https://axartifacts.blob.core.windows.net/releases/actyx-node-manager-$V-x64.msi`,
       },
     ],
   },

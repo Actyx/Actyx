@@ -84,7 +84,7 @@ export const getSourceId = (multiplexedWebsocket: MultiplexedWebsocket): Promise
     .toPromise()
 
 const toSubscriptionSet = (where: Where<unknown>): SubscriptionSet => {
-  const wire = where.toWireFormat()
+  const wire = where.toV1WireFormat()
 
   return {
     type: 'tags',

@@ -248,10 +248,12 @@ const observeAllStartWithInitial = <ESeed, S>(
   let immutableFishSet = Map(init)
 
   const liveEvents = new Observable<ActyxEvent[]>(o =>
-    eventStore.subscribe(
+    eventStore.subscribeChunked(
       {
         lowerBound: present,
         query: subscriptionSet,
+      },
+      {
         // Buffer slightly to improve performance
         maxChunkTimeMs: 20,
       },

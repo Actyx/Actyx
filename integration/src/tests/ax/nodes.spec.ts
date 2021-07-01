@@ -39,7 +39,7 @@ describe('ax nodes', () => {
           version = expect.any(String)
         } else {
           const out = await (await runActyx(node, undefined, ['--version'])).process
-          version = out.stdout.replace('actyx ', '').split('-')[0]
+          version = out.stdout.replace('Actyx ', '').split('-')[0]
         }
 
         // Android is running inside an emulator, currently hardcoded to x86

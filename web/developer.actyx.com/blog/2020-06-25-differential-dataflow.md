@@ -50,7 +50,7 @@ must be as reliable as paper — while being much easier to analyze later. T
 the events from the table above on the edge devices and synchronizing between devices whenever a
 network connection is available.
 
-[ActyxOS]: http://developer.actyx.com/docs/os/general/introduction
+[ActyxOS]: https://developer.actyx.com/docs/conceptual/how-actyx-works
 
 ## What we want to see
 
@@ -324,7 +324,7 @@ than reprocessing all events would take.
 The final part is how to get the events from the [ActyxOS Event Service]. Since we want to read the
 events in a Rust program, we first need to define their format and deserialization using [serde].
 
-[ActyxOS Event Service]: http://developer.actyx.com/docs/os/api/event-service
+[ActyxOS Event Service]: https://developer.actyx.com/docs/reference/events-api
 [serde]: https://serde.rs
 
 ```rust

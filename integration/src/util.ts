@@ -113,6 +113,7 @@ export const runActyx = async (
   const ts = new Date().toISOString()
   process.stdout.write(`${ts} node ${node.name} starting current Actyx in workdir ${workdir}\n`)
   switch (node.target.os) {
+    case 'macos':
     case 'linux': {
       const exec = node.target.executeInContainer || node.target.execute
       workdir =

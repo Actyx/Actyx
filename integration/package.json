@@ -40,7 +40,7 @@
   "main": "index.js",
   "name": "actyx-integration",
   "scripts": {
-    "tsc": "tsc",
+    "tsc": "tsc --noEmit",
     "build": "rimraf dist && npm run tsc",
     "test": "TZ=UTC jest --config=jest.config.js",
     "test:debug": "TZ=UTC node --inspect-brk node_modules/.bin/jest --runInBand --config=jest.config.js",

@@ -56,7 +56,7 @@ pub struct QueryRequest {
     /// Optional lower bound offset per stream.
     pub lower_bound: Option<OffsetMap>,
     /// Upper bound offset per stream.
-    pub upper_bound: OffsetMap,
+    pub upper_bound: Option<OffsetMap>,
     /// Query for which events should be returned.
     pub query: Query,
     /// Order in which events should be received.
@@ -151,6 +151,12 @@ impl<T> std::fmt::Display for EventResponse<T> {
             self.stream,
         )
     }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct OffsetMapResponse {
+    pub offsets: OffsetMap,
 }
 
 /// Publication of an event
@@ -266,7 +272,7 @@ pub struct SubscribeMonotonicRequest {
 }
 
 /// The response to a monotonic subscription is a stream of events terminated by a time travel.
-#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SubscribeMonotonicResponse {
     /// This is the main message, a new event that is to be applied directly to the
@@ -277,6 +283,8 @@ pub enum SubscribeMonotonicResponse {
         event: EventResponse<Payload>,
         caught_up: bool,
     },
+    #[serde(rename_all = "camelCase")]
+    Offsets(OffsetMapResponse),
     /// This message ends the stream in case a replay becomes necessary due to
     /// time travel. The contained event key signals how far back the replay will
     /// reach so that the consumer can invalidate locally stored snapshots (if
@@ -294,6 +302,8 @@ pub enum SubscribeMonotonicResponse {
 pub enum QueryResponse {
     #[serde(rename_all = "camelCase")]
     Event(EventResponse<Payload>),
+    #[serde(rename_all = "camelCase")]
+    Offsets(OffsetMapResponse),
 }
 
 /// The response to a subscribe request.
@@ -305,6 +315,8 @@ pub enum QueryResponse {
 pub enum SubscribeResponse {
     #[serde(rename_all = "camelCase")]
     Event(EventResponse<Payload>),
+    #[serde(rename_all = "camelCase")]
+    Offsets(OffsetMapResponse),
 }
 
 /// Response to the offsets request

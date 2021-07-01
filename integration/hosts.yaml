@@ -5,7 +5,7 @@ hosts:
       type: create-aws-ec2
       # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
       ami: ami-0e793d1a6c23e9488
-      instance: t2.small
+      instance: t2.medium
       user: ubuntu
     install:
       type: linux
@@ -14,7 +14,7 @@ hosts:
       type: create-aws-ec2
       # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
       ami: ami-0e793d1a6c23e9488
-      instance: t2.small
+      instance: t2.medium
       user: ubuntu
     install:
       type: docker
@@ -23,7 +23,7 @@ hosts:
       type: create-aws-ec2
       # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
       ami: ami-07d86cfde3bba417d
-      instance: a1.medium
+      instance: a1.large
       user: ubuntu
     install:
       type: linux
@@ -32,7 +32,7 @@ hosts:
       type: create-aws-ec2
       # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
       ami: ami-07d86cfde3bba417d
-      instance: a1.medium
+      instance: a1.large
       user: ubuntu
     install:
       type: docker
@@ -41,7 +41,7 @@ hosts:
       type: create-aws-ec2
       # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
       ami: ami-07d86cfde3bba417d
-      instance: a1.medium
+      instance: a1.large
       user: ubuntu
       # There are no ARMv7 instances, but we can run ARMv7 binaries to test them
       armv7: true
@@ -52,7 +52,7 @@ hosts:
       type: create-aws-ec2
       # ubuntu 21.04 from 2021-04-22. To get latest use http://cloud-images.ubuntu.com/locator/ec2/.
       ami: ami-07d86cfde3bba417d
-      instance: a1.medium
+      instance: a1.large
       user: ubuntu
       armv7: true
     install:

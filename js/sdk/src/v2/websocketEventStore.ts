@@ -56,6 +56,11 @@ const PublishEventsResponse = t.type({ data: t.readonlyArray(EventKeyWithTime) }
 const toAql = (w: Where<unknown> | string): string =>
   w instanceof String ? (w as string) : 'FROM ' + w.toString()
 
+// TODO: Can we just change the type of MultiplexedWebsocket "payload" from unknown to this?
+type TypedMsg = {
+  type: string
+}
+
 export class WebsocketEventStore implements EventStore {
   constructor(private readonly multiplexer: MultiplexedWebsocket, private readonly appId: AppId) {}
 
@@ -66,8 +71,8 @@ export class WebsocketEventStore implements EventStore {
       .first()
       .toPromise()
 
-  query: DoQuery = (lowerBound, upperBound, whereObj, sortOrder) => {
-    return this.multiplexer
+  query: DoQuery = (lowerBound, upperBound, whereObj, sortOrder) =>
+    this.multiplexer
       .request(
         RequestTypes.Query,
         QueryRequest.encode({
@@ -77,11 +82,11 @@ export class WebsocketEventStore implements EventStore {
           order: sortOrder,
         }),
       )
+      .filter(x => (x as TypedMsg).type === 'event')
       .map(validateOrThrow(EventIO))
-  }
 
-  subscribe: DoSubscribe = (lowerBound, whereObj) => {
-    return this.multiplexer
+  subscribe: DoSubscribe = (lowerBound, whereObj) =>
+    this.multiplexer
       .request(
         RequestTypes.Subscribe,
         SubscribeRequest.encode({
@@ -89,8 +94,8 @@ export class WebsocketEventStore implements EventStore {
           query: toAql(whereObj),
         }),
       )
+      .filter(x => (x as TypedMsg).type === 'event')
       .map(validateOrThrow(EventIO))
-  }
 
   persistEvents: DoPersistEvents = events => {
     const publishEvents = events

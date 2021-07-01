@@ -37,22 +37,20 @@ In order to be able to run Actyx on Windows, your device needs to meet the follo
 
 ## Installing Actyx
 
-You can download the Actyx installer for Windows on our [downloads page](https://developer.actyx.com/releases).
+You can download the Actyx installer for Windows on our [releases page](/releases/actyx/latest/).
+The MSI installer launches the setup wizard that installs Actyx as a service which automatically starts in the background.
 After opening the installer, you are guided through the setup process.
-During this process, you can choose to install all or a subset of the following tools:
 
-- Actyx
-- Actyx CLI
-- Actyx Node Manager
+![msi](/images/how-to/local-development/msi-installer.png)
 
 Congratulations, you have now successfully installed Actyx on your Windows device! 🎉
 
 ## Starting and stopping Actyx
 
-To start Actyx, simply press the Windows key on your keyboard, search for Actyx and hit enter.
-You will now see an Actyx tray icon appear in your taskbar, indicating that Actyx is running.
-If you want to stop Actyx, simply right-click on the tray icon and choose _Exit_.
-Actyx is now shutting down.
+Actyx is automatically started after installation and upon booting your device.
+To stop or restart Actyx manually, open the **Windows Services Manager**, click on Actyx and click the **Stop**, or the **Restart** button on the left.
+
+![actyx-service](/images/how-to/local-development/actyx-service.png)
 
 </TabItem>
 <TabItem value="android">
@@ -64,15 +62,18 @@ Actyx is now shutting down.
 
 In order to be able to run Actyx on Android, your device needs to meet the following requirements:
 
-- Android 6+
+- Android 6-10
 - At least 2GB of RAM
 - `x86`, `arm64-v8a` or `armeabi-v7a` [ABI](https://developer.android.com/ndk/guides/abis.html#sa)
 
 <h2>Installing Actyx</h2>
 
-Actyx is publicly available for Android in the [Google Play Store](https://play.google.com/store/apps/details?id=com.actyx.android).
-Just open the Google Play Store on your device, search for Actyx and install it.
-In case you don't have access to the Play Store, please visit [our downloads page](https://developer.actyx.com/releases) and download it from there.
+:::warning Android 11 not supported
+Note that Actyx is currently not supported on Android 11.
+We are on it and will release support for the latest version of Android in one of the coming releases!
+:::
+
+Please visit [our downloads page](https://developer.actyx.com/releases) and download it from there.
 Once downloaded, simply follow the instructions on your device to install Actyx.
 
 Congratulations, you have successfully installed Actyx on your Android device! 🎉
@@ -102,24 +103,24 @@ In order to be able to run Actyx on Linux, your device needs to meet the followi
 
 <h2>Installing Actyx</h2>
 
-You can download the binary for Actyx on Linux on our [downloads page](https://developer.actyx.com/releases).
+You can download the binary for Actyx on Linux on our [downloads page](/releases/actyx/latest).
 For Actyx to start, please open your terminal, navigate to the directory where you saved the binary and type in the following:
 
 ```shell
-sudo chmod +x actyx-linux
+sudo chmod +x actyx
 ```
 
 When asked for, type the required password and hit _enter_.
 Now the file can be executed by the current user with root privileges.
 
-Congratulations, you have successfully installed an run Actyx on your Linux device! 🎉
+Congratulations, you have successfully installed and run Actyx on your Linux device! 🎉
 
 <h2>Starting and stopping Actyx</h2>
 
 To start Actyx, please execute the following command in your terminal from the directory where you saved the binary:
 
 ```shell
-./actyx-linux
+./actyx
 ```
 
 You should now see the message `Actyx started` followed by a bunch of log messages.
@@ -139,11 +140,11 @@ In order to be able to run Actyx on macOS, your device needs to meet the followi
 
 <h2>Installing Actyx</h2>
 
-You can download the binary for Actyx on macOS on our [downloads page](https://developer.actyx.com/releases).
+You can download the binary for Actyx on macOS on our [downloads page](/releases/actyx/latest).
 For Actyx to start, please open your terminal, navigate to the directory where you saved the binary and type in the following:
 
 ```shell
-chmod +x actyx-mac
+chmod +x actyx
 ```
 
 If you do not get asked for your password at this point, you have to explicitly allow Actyx:
@@ -151,14 +152,14 @@ If you do not get asked for your password at this point, you have to explicitly 
 1. Go to **Settings** and then to **Security &amp; Privacy**. In the **General** tab, you should see a prompt at the bottom that asks you to allow Actyx CLI.
 2. When running the first `ax` command, you will be prompted again to allow the Actyx CLI.
 
-Congratulations, you have successfully installed an run Actyx on your Mac! 🎉
+Congratulations, you have successfully installed Actyx on your Mac! 🎉
 
 <h2>Starting and stopping Actyx</h2>
 
 To start Actyx, please execute the following command in your terminal from the directory where you saved the binary:
 
 ```shell
-./actyx-mac
+./actyx
 ```
 
 :::tip Allow Actyx in System Preferences
@@ -169,6 +170,10 @@ You should now see the message `Actyx started` followed by a bunch of log messag
 As long as you don't see any error messages here, you can be sure that Actyx is running.
 To stop Actyx, simply hit `^C` (`ctrl + C`) on your keyboard.
 After a few seconds, Actyx will be stopped.
+
+:::tip On Apple Silicon: "actyx" is damaged and can't be opened.
+If you see this error, run the following command in the folder where the `actyx` binary is located: `xattr -d com.apple.quarantine actyx`.
+:::
 
 </TabItem>
 <TabItem value="docker">

@@ -24,7 +24,7 @@ export type HasTags = {
  * @alpha
  */
 export const toEventPredicate = (where: Where<unknown>) => {
-  const tagSets = where.toWireFormat()
+  const tagSets = where.toV1WireFormat()
 
   return (event: HasTags) =>
     tagSets.some(tagIntersection => tagIntersection.tags.every(tag => event.tags.includes(tag)))

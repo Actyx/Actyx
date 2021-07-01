@@ -1,4 +1,5 @@
 import { allEvents, FishId, Metadata, Pond, Tag } from '@actyx/pond'
+import manifest from './manifest.json'
 
 const HelloWorldFish = {
   fishId: FishId.of('com.example.quickstart', 'quickstart', 0),
@@ -8,7 +9,7 @@ const HelloWorldFish = {
 }
 
 const main = async () => {
-  const pond = await Pond.default()
+  const pond = await Pond.default(manifest)
   pond.observe(HelloWorldFish, state => console.log(state))
 
   var counter = 1
