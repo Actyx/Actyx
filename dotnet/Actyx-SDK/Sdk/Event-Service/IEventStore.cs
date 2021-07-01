@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Actyx.Sdk.Formats;
 using JsonSubTypes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -38,9 +39,11 @@ namespace Actyx
         public JValue Payload { get; set; }
     }
 
+
     // This interface is not public, it is the internal adapter for switching between ws/http/test impl.
-    interface IEventStore
+    public interface IEventStore
     {
+        NodeId NodeId { get; }
 
         /**
          * Request the full present of the store, so the maximum CONTIGUOUS offset for each source that the store has seen and ingested.

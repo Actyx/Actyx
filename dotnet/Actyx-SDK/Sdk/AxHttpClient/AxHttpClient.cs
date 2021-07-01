@@ -22,7 +22,8 @@ namespace Actyx.Sdk.AxHttpClient
             var that = new AxHttpClient(baseUrl, manifest);
             var nodeIdResponse = await httpClient.GetAsync(that.MkApiUrl(HttpApiPath.NODE_ID_SEG));
             await nodeIdResponse.EnsureSuccessStatusCodeCustom();
-            that.NodeId = await nodeIdResponse.Content.ReadAsStringAsync();
+            var nodeId = await nodeIdResponse.Content.ReadAsStringAsync();
+            that.NodeId = new NodeId(nodeId);
             that.token = (await GetToken(that.uriBuilder.Uri, manifest)).Token;
 
             return that;
@@ -32,7 +33,7 @@ namespace Actyx.Sdk.AxHttpClient
         private readonly AppManifest manifest;
         private string token;
 
-        public string NodeId { get; private set; }
+        public NodeId NodeId { get; private set; }
 
         public string AppId => manifest.AppId;
 

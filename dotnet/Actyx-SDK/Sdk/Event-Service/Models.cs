@@ -1,15 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
-using JsonSubTypes;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System.Reactive;
-using System.Threading;
 using System.Threading.Tasks;
+using Actyx.Sdk.Formats;
 
 namespace Actyx
 {
-
     public class RangeQuery
     {
         /** Statement to select specific events. Defaults to `allEvents`. */
@@ -70,7 +65,7 @@ namespace Actyx
          * Defaults to 5.
          * Set this to zero to optimize latency at the cost of always receiving just single events.
          */
-        public Nullable<uint> MaxChunkTimeMs { get; set; }
+        public uint? MaxChunkTimeMs { get; set; }
     }
 
     public class Aql : IEventSelection
@@ -85,69 +80,20 @@ namespace Actyx
 
         public string ToAql()
         {
-            return this.aql;
+            return aql;
         }
-    }
-
-
-    public class Metadata
-    {
-        // Was this event written by the very node we are running on?
-        public bool IsLocalEvent { internal set; get; }
-
-        // Tags belonging to the event.
-        public IList<string> Tags { internal set; get; }
-
-        // Time since Unix Epoch **in Microseconds**!
-        // FIXME should use dotnet Duration type or something
-        public ulong TimestampMicros { internal set; get; }
-
-        // FIXME should offer Dotnet Date type
-        //  timestampAsDate: () => Date
-
-        // Lamport timestamp of the event. Cf. https://en.wikipedia.org/wiki/Lamport_timestamp
-        public ulong Lamport { internal set; get; }
-
-        // A unique identifier for the event.
-        // Every event has exactly one eventId which is unique to it, guaranteed to not collide with any other event.
-        // Events are *sorted* based on the eventId by Actyx: For a given event, all later events also have a higher eventId according to simple string-comparison.
-        public string EventId { internal set; get; }
-
-        // App id of the event
-        public string AppId { internal set; get; }
-
-        // Stream this event belongs to
-        public string Stream { internal set; get; }
-
-        // Offset of this event inside its stream
-        public ulong Offset { internal set; get; }
     }
 
     public struct ChunkingOptions
     {
         /** Maximum chunk size. Defaults to 1000, if null */
-        public Nullable<uint> MaxChunkSize { get; set; }
+        public uint? MaxChunkSize { get; set; }
 
         /**
          * Maximum duration (in ms) a chunk of events is allowed to grow, before being passed to the callback.
          * Defaults to 5, if null
          */
-        public Nullable<uint> MaxChunkTimeMs { get; set; }
-    }
-
-    public struct ActyxEvent
-    {
-        public Metadata Meta { internal set; get; }
-        public JObject Payload { internal set; get; }
-    }
-
-    public struct EventChunk
-    {
-        public OffsetMap LowerBound { internal set; get; }
-
-        public OffsetMap UpperBound { internal set; get; }
-
-        public IList<ActyxEvent> Events { internal set; get; }
+        public uint? MaxChunkTimeMs { get; set; }
     }
 
     public interface IEventFns
@@ -203,7 +149,7 @@ namespace Actyx
          */
         public IObservable<EventChunk> QueryAllKnownChunked(
             AutoCappedQuery query,
-            ulong chunkSize
+            uint chunkSize
         );
 
         /**

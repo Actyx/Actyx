@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using Actyx.Sdk.Formats;
 using Actyx.Sdk.Utils.Extensions;
 using Newtonsoft.Json.Linq;
 
@@ -16,6 +17,8 @@ namespace Actyx.Sdk.AxHttpClient
         {
             this.client = client;
         }
+
+        public NodeId NodeId => client.NodeId;
 
         public async Task<OffsetsResponse> Offsets()
         {

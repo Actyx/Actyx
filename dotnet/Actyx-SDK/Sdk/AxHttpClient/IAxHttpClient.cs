@@ -1,12 +1,13 @@
 ﻿
 using System.Net.Http;
 using System.Threading.Tasks;
+using Actyx.Sdk.Formats;
 
 namespace Actyx.Sdk.AxHttpClient
 {
     public interface IAxHttpClient
     {
-        string NodeId { get; }
+        NodeId NodeId { get; }
 
         string AppId { get; }
 

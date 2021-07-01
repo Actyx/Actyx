@@ -47,7 +47,7 @@ namespace Sdk.Tests
         public async void It_Should_Get_Node_Id()
         {
             var client = await AxHttpClient.Create(Constants.ApiOrigin, Constants.TrialManifest);
-            client.NodeId.Should().NotBeNullOrWhiteSpace();
+            client.NodeId.ToString().Should().NotBeNullOrWhiteSpace();
         }
     }
 }
