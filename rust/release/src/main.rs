@@ -348,8 +348,6 @@ Overview:"#
                                             let target_exists = p.target_exists()?;
                                             if target_exists {
                                                 writeln!(&mut out, "    [OK] {} already exists.", p.target)?;
-                                            } else if dry_run {
-                                                writeln!(&mut out, "    [DRY RUN] Create and publish {}", p.target)?;
                                             } else {
                                                 log::debug!(
                                                     "creating release artifact in dir {}",
@@ -359,10 +357,18 @@ Overview:"#
                                                     "creating release artifact at {}",
                                                     tmp.path().display()
                                                 ))?;
-                                                log::debug!("starting publishing");
-                                                p.publish().context("publishing")?;
-                                                log::debug!("finished publishing");
-                                                writeln!(&mut out, "    [NEW] {}", p.target)?;
+                                                if dry_run {
+                                                    writeln!(
+                                                        &mut out,
+                                                        "    [DRY RUN] Create and publish {}",
+                                                        p.target
+                                                    )?;
+                                                } else {
+                                                    log::debug!("starting publishing");
+                                                    p.publish().context("publishing")?;
+                                                    log::debug!("finished publishing");
+                                                    writeln!(&mut out, "    [NEW] {}", p.target)?;
+                                                }
                                             }
                                         } else {
                                             if !ignore_errors && !dry_run {
