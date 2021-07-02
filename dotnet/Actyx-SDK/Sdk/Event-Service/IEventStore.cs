@@ -93,7 +93,7 @@ namespace Actyx
         /**
          * Store the events in the store and return them as generic events.
          */
-        IObservable<EventOnWire> PersistEvents(
+        Task<IEnumerable<EventOnWire>> Publish(
             IEnumerable<IEventDraft> events
         );
     }

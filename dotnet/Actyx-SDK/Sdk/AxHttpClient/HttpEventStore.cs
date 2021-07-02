@@ -26,37 +26,32 @@ namespace Actyx.Sdk.AxHttpClient
             return await response.Content.ReadFromJsonAsync<OffsetsResponse>();
         }
 
-        public IObservable<EventOnWire> PersistEvents(IEnumerable<IEventDraft> events)
+        public async Task<IEnumerable<EventOnWire>> Publish(IEnumerable<IEventDraft> events)
         {
             if (events is null || events.Count() == 0)
             {
-                return Observable.Empty<EventOnWire>();
+                return Enumerable.Empty<EventOnWire>();
             }
 
-            return Observable.FromAsync(() => client.Post(HttpApiPath.PUBLISH_SEG, new { data = events }))
-            .SelectMany(x =>
+            var response = await client.Post(HttpApiPath.PUBLISH_SEG, new { data = events });
+
+            var publishResponse = await response.Content.ReadFromJsonAsync<PublishResponse>();
+            if (publishResponse.Data.Count() != events.Count())
             {
-                x.EnsureSuccessStatusCode();
-                return x.Content.ReadFromJsonAsync<PublishResponse>();
-            })
-            .SelectMany(x =>
-            {
-                if (x.Data.Count() != events.Count())
+                throw new Exception("Sent event count differs from returned metadata count");
+            }
+
+            return publishResponse.Data.Zip(events, (metadata, ev) =>
+                new EventOnWire
                 {
-                    throw new Exception("Sent event count differs from returned metadata count");
-                }
-                return x.Data.Zip(events, (metadata, ev) =>
-                    new EventOnWire
-                    {
-                        Lamport = metadata.Lamport,
-                        Offset = metadata.Offset,
-                        Payload = new JValue(ev.Payload),
-                        Stream = metadata.Stream,
-                        Tags = ev.Tags,
-                        Timestamp = metadata.Timestamp,
-                        AppId = client.AppId,
-                    });
-            });
+                    Lamport = metadata.Lamport,
+                    Offset = metadata.Offset,
+                    Payload = new JValue(ev.Payload),
+                    Stream = metadata.Stream,
+                    Tags = ev.Tags,
+                    Timestamp = metadata.Timestamp,
+                    AppId = client.AppId,
+                });
         }
 
         public IObservable<IEventOnWire> Query(OffsetMap lowerBound, OffsetMap upperBound, IEventSelection query, EventsOrder order)

@@ -28,28 +28,39 @@ namespace Sdk.IntegrationTests
             var wsrpcClient = new WsrpcClient(new Uri($"ws://localhost:4454/api/v2/events?{token}"));
             using var store = new WebsocketEventStore(wsrpcClient, "com.example.ax-ws-client-tests", nodeId);
 
+            var tag = RandomString(8);
+
             var _ = Task.Run(async () =>
             {
                 var persist = Observable
                     .Timer(TimeSpan.Zero, TimeSpan.FromSeconds(5))
-                    .Select(x => store.PersistEvents(new List<IEventDraft>() {
-                        new EventDraft { Tags = new List<string>() { "com.actyx.1" }, Payload = "live_event" },
-                }));
-                // await persist.ForEachAsync(e => Console.WriteLine($"persisted: ${e}"));
-                await foreach (var p in persist.ToAsyncEnumerable())
+                    .SelectMany(x => Observable.FromAsync(() => store.Publish(new List<IEventDraft>() {
+                        new EventDraft { Tags = new List<string>() { tag }, Payload = "live_event" },
+                    })));
+                await foreach (var batch in persist.ToAsyncEnumerable())
                 {
-                    Console.WriteLine($"persisted: ${p}");
+                    foreach (var p in batch)
+                    {
+                        Console.WriteLine($"persisted: {Proto<EventOnWire>.Serialize(p)}");
+                    }
                 }
             });
 
-            var subscribe = store.Subscribe(null, new Aql("FROM 'com.actyx.1'"));
-            // await subscribe.ForEachAsync(e => Console.WriteLine($"subscribed: {e}"));
+            var subscribe = store.Subscribe(null, new Aql($"FROM '{tag}'"));
             await foreach (var s in subscribe.ToAsyncEnumerable())
             {
-                Console.WriteLine($"subscribed: {s}");
+                Console.WriteLine($"subscribed: {Proto<IEventOnWire>.Serialize(s)}");
             }
 
             exitEvent.WaitOne();
+        }
+
+        private static readonly Random random = new();
+        public static string RandomString(int length)
+        {
+            const string chars = "abcdefghijklmnopqrstuvwxyz";
+            return new string(Enumerable.Repeat(chars, length)
+              .Select(s => s[random.Next(s.Length)]).ToArray());
         }
     }
 }

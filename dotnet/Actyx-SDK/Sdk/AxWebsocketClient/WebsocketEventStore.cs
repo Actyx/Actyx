@@ -39,27 +39,23 @@ namespace Actyx
                 .Select(offsets => offsets.ToObject<OffsetsResponse>(serializer))
                 .ToTask();
 
-        public IObservable<EventOnWire> PersistEvents(IEnumerable<IEventDraft> events) =>
+        public Task<IEnumerable<EventOnWire>> Publish(IEnumerable<IEventDraft> events) =>
             wsrpcClient
-            .Request("publish", JToken.FromObject(new { data = events }, serializer))
-            .Select(response =>
-            {
-                Console.WriteLine($">>>> ${response}");
-                return response.ToObject<Sdk.AxHttpClient.PublishResponse>(serializer);
-            }
-            )
-            .SelectMany(publishResponse => publishResponse.Data.Zip(events, (metadata, @event) =>
-                new EventOnWire
-                {
-                    Lamport = metadata.Lamport,
-                    Offset = metadata.Offset,
-                    Payload = new JValue(@event.Payload),
-                    Stream = metadata.Stream,
-                    Tags = @event.Tags,
-                    Timestamp = metadata.Timestamp,
-                    AppId = appId,
-                })
-            );
+                .Request("publish", JToken.FromObject(new { data = events }, serializer))
+                .Take(1)
+                .Select(response => response.ToObject<Sdk.AxHttpClient.PublishResponse>(serializer))
+                .Select(publishResponse => publishResponse.Data.Zip(events, (metadata, @event) =>
+                    new EventOnWire
+                    {
+                        Lamport = metadata.Lamport,
+                        Offset = metadata.Offset,
+                        Payload = new JValue(@event.Payload),
+                        Stream = metadata.Stream,
+                        Tags = @event.Tags,
+                        Timestamp = metadata.Timestamp,
+                        AppId = appId,
+                    })
+                ).ToTask();
 
         public IObservable<IEventOnWire> Query(OffsetMap lowerBound, OffsetMap upperBound, IEventSelection query, EventsOrder sortOrder) =>
             wsrpcClient
