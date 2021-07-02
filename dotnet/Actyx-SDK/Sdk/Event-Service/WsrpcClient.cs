@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading;
@@ -11,10 +11,10 @@ namespace Actyx
     public class WsrpcClient : IDisposable
     {
         private readonly WebsocketClient client;
-        private readonly Dictionary<long, IObserver<IResponseMessage>> listeners = new() { };
+        private readonly ConcurrentDictionary<long, IObserver<IResponseMessage>> listeners = new() { };
         private readonly IDisposable responseProcessor;
         private Exception error;
-        private long requestCounter = 0;
+        private long requestCounter = -1;
 
         public class Error : Exception
         {
@@ -31,25 +31,17 @@ namespace Actyx
             {
                 ReconnectTimeout = TimeSpan.FromMinutes(5)
             };
-            client.ReconnectionHappened.Subscribe(info =>
-                Console.WriteLine($"Reconnection happened, type: {info.Type}"));
 
             responseProcessor = client.MessageReceived.Subscribe(msg =>
             {
                 var response = Proto<IResponseMessage>.Deserialize(msg.Text);
-                Console.WriteLine($"<<< {response}");
                 if (listeners.TryGetValue(response.RequestId, out IObserver<IResponseMessage> listener))
                 {
                     listener.OnNext(response);
                 }
-                else
-                {
-                    Console.WriteLine($"No listener registered for message {response.RequestId}");
-                }
             }, err =>
             {
-                Console.WriteLine($"response processor error: {err}");
-                ClearListeners(l => l.OnCompleted());
+                ClearListeners(l => l.OnError(err));
                 error = err;
             });
         }
@@ -58,12 +50,12 @@ namespace Actyx
         {
             if (!(error is null)) return (IObservable<JToken>)Observable.Throw<Exception>(error);
 
-            var upstreamCompletedOnError = false;
-            return Multiplex(serviceId, payload, () => !upstreamCompletedOnError)
+            var upstreamCompletedOrError = false;
+            return Multiplex(serviceId, payload, () => !upstreamCompletedOrError)
                 .TakeWhile(res =>
                 {
                     var isComplete = res.Type == "complete";
-                    if (isComplete) upstreamCompletedOnError = true;
+                    if (isComplete) upstreamCompletedOrError = true;
                     return !isComplete;
                 }).SelectMany(res =>
                 {
@@ -72,7 +64,7 @@ namespace Actyx
                         case Next next: return next.Payload;
                         case Actyx.Error error:
                             {
-                                upstreamCompletedOnError = true;
+                                upstreamCompletedOrError = true;
                                 throw new Error(error.Kind);
                             }
                         default: throw new InvalidOperationException();
@@ -91,33 +83,23 @@ namespace Actyx
                 {
                     try
                     {
-                        Console.WriteLine($"About to unsubscribe from requestId: {requestId}");
-
                         if (shouldCancelUpstream())
                         {
-                            Console.WriteLine($"About to unsubscribe from {requestId} with cancel");
                             var cancelMsg = Proto<Cancel>.Serialize(cancel);
-                            Console.WriteLine($">>> {cancelMsg}");
                             client.Send(cancelMsg);
-                        }
-                        else
-                        {
-                            Console.WriteLine($"RequestId {requestId} was cancelled by upstream, not sending a cancelMsg");
                         }
                     }
                     catch (Exception err)
                     {
-                        Console.WriteLine($"Unsubscribe error {err}");
                         observer.OnError(err);
                     }
-                    listeners.Remove(requestId);
+                    listeners.TryRemove(requestId, out var _);
                 });
             });
+
             try
             {
-                Console.WriteLine($"About to subscribe {Proto<Request>.Serialize(request)}");
                 var requestMsg = Proto<Request>.Serialize(request);
-                Console.WriteLine($">>> {requestMsg}");
                 client.Send(requestMsg);
             }
             catch (Exception err)
