@@ -48,14 +48,14 @@ namespace Actyx
 
         public IObservable<JToken> Request(string serviceId, JToken payload)
         {
-            if (!(error is null)) return (IObservable<JToken>)Observable.Throw<Exception>(error);
+            if (!(error is null)) { return (IObservable<JToken>)Observable.Throw<Exception>(error); }
 
             var upstreamCompletedOrError = false;
             return Multiplex(serviceId, payload, () => !upstreamCompletedOrError)
                 .TakeWhile(res =>
                 {
                     var isComplete = res.Type == "complete";
-                    if (isComplete) upstreamCompletedOrError = true;
+                    if (isComplete) { upstreamCompletedOrError = true; }
                     return !isComplete;
                 }).SelectMany(res =>
                 {
@@ -111,7 +111,7 @@ namespace Actyx
 
         (Request, Cancel) Handlers(long requestId, string serviceId, JToken payload)
         {
-            if (string.IsNullOrEmpty(serviceId)) throw new ArgumentException($"'{nameof(serviceId)}' cannot be null or empty.", nameof(serviceId));
+            if (string.IsNullOrEmpty(serviceId)) { throw new ArgumentException($"'{nameof(serviceId)}' cannot be null or empty.", nameof(serviceId)); }
             return (
                 new Request { ServiceId = serviceId, RequestId = requestId, Payload = payload },
                 new Cancel { RequestId = requestId }
