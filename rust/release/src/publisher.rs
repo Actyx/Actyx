@@ -375,14 +375,14 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
                         local_result: None,
                     },
                 ));
-                //out.push((
-                //    "node-manager-linux/actyx-node-manager.rpm".to_string(),
-                //    TargetArtifact::Blob {
-                //        pre_processing: PreProcessing::None,
-                //        file_name: format!("actyx-node-manager-amd64-{}.rpm", version),
-                //        local_result: None,
-                //    },
-                //));
+                out.push((
+                    "node-manager-linux/actyx-node-manager-x86_64.rpm".to_string(),
+                    TargetArtifact::Blob {
+                        pre_processing: PreProcessing::None,
+                        file_name: format!("actyx-node-manager-{}-x86_64.rpm", version),
+                        local_result: None,
+                    },
+                ));
             }
         }
         (Product::NodeManager, OS::windows) => {

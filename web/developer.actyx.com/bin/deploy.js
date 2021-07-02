@@ -4,10 +4,6 @@ const path = require('path')
 
 const log = console.log
 
-const logOnProgress = (ev) => {
-  log(ev.msg)
-}
-
 /**
  * This function deploys a directory to a Netlify site. If draft is true, it
  * will create a deploy preview (Netlify parlance), otherwise it will create

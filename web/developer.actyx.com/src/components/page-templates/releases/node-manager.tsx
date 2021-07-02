@@ -30,6 +30,16 @@ const DOWNLOADS_V2_0_0: Download[] = [
     ],
   },
   {
+    platform: 'Linux',
+    ext: '.rpm',
+    files: [
+      {
+        arch: 'x86_64',
+        target: `https://axartifacts.blob.core.windows.net/releases/actyx-node-manager-$V-x86_64.rpm`,
+      },
+    ],
+  },
+  {
     platform: 'Mac',
     ext: '.dmg',
     files: [

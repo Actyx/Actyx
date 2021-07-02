@@ -15,7 +15,7 @@
     "deploy:prod": "node bin/deploy.js prod",
     "deploy:draft": "node bin/deploy.js draft",
     "serve": "docusaurus serve",
-    "check:code": "eslint ./src/**/*.{js,ts,tsx} --max-warnings=0",
+    "check:code": "eslint ./src/**/*.{js,ts,tsx} ./bin/**/*.{js,ts,tsx} --max-warnings=0",
     "fix:code": "npm run check:code -- --fix",
     "check:md": "markdownlint ./docs/**/* ./blog/**/*",
     "fix:md": "npm run check:md -- --fix",
