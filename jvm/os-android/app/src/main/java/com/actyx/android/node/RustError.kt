@@ -30,7 +30,7 @@ open class RustError : Structure() {
   /**
    * Get the error message or null if there is none.
    */
-  fun getMessage(): String? {
+  private fun getMessage(): String? {
     return this.message?.getString(0, "utf8")
   }
 }

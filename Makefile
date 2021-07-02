@@ -66,7 +66,7 @@ export BUILD_RUST_TOOLCHAIN ?= 1.51.0
 # which the respective images was built. Whenever the build images (inside
 # ops/docker/images/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 91d2744dfb87621c93940e32b1f183897eeec967
+export LATEST_STABLE_IMAGE_VERSION := 285829647132a4a05bc6174613384e5205fd4a3f
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -274,7 +274,14 @@ validate-netsim: diagnostics
 # execute linter for os-android
 validate-os-android: diagnostics
 	jvm/os-android/bin/get-keystore.sh
-	cd jvm/os-android/ && ./gradlew clean ktlintCheck
+	docker run \
+	  -u builder \
+	  -v `pwd`:/src \
+	  -w /src/jvm/os-android \
+	  --rm \
+	  $(DOCKER_FLAGS) \
+	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
+	  ./gradlew clean ktlintCheck
 
 # validate all js
 validate-js: diagnostics validate-js-sdk validate-js-pond validate-js-integration
@@ -335,7 +342,7 @@ dist/js/pond: make-always
 		npm run build:prod && \
 		mv `npm pack` ../../$@/
 
-validate-node-manager-bindings: 
+validate-node-manager-bindings:
 	cd rust/actyx/node-manager-bindings && \
 		source ~/.nvm/nvm.sh && \
 		nvm install && \
