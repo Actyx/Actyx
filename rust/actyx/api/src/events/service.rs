@@ -239,9 +239,9 @@ fn mk_feed(query: language::Query) -> impl Fn(Event<Payload>) -> BoxStream<'stat
                 .feed(Value::from((key, payload)))
                 .into_iter()
                 .map(move |v| EventResponse {
-                    lamport: v.sort_key.lamport,
-                    stream: v.sort_key.stream,
-                    offset: v.sort_key.offset,
+                    lamport: v.key().lamport,
+                    stream: v.key().stream,
+                    offset: v.key().offset,
                     app_id: app_id.clone(),
                     timestamp,
                     tags: tags.clone(),

@@ -74,6 +74,14 @@ pub fn render_simple_expr(w: &mut impl Write, e: &SimpleExpr) -> Result {
         SimpleExpr::String(s) => render_string(w, s),
         SimpleExpr::Object(o) => render_object(w, o),
         SimpleExpr::Array(a) => render_array(w, a),
+        SimpleExpr::Null => w.write_str("NULL"),
+        SimpleExpr::Bool(b) => {
+            if *b {
+                w.write_str("TRUE")
+            } else {
+                w.write_str("FALSE")
+            }
+        }
         SimpleExpr::Not(e) => {
             w.write_char('!')?;
             render_simple_expr(w, e)

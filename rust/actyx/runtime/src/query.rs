@@ -21,7 +21,7 @@ impl Query {
                 vec![input]
             }
         }
-        rec(&Context::new(input.sort_key), input, self.stages.iter())
+        rec(&Context::new(input.key()), input, self.stages.iter())
     }
 }
 

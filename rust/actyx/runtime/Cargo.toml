@@ -9,3 +9,7 @@ actyx_sdk = { version = "0.1", path = "../../sdk" }
 anyhow = "1.0.38"
 cbor-data = "0.5.0"
 tracing = "0.1.25"
+
+[dev-dependencies]
+quickcheck = "1.0.3"
+spectral = "0.6.0"

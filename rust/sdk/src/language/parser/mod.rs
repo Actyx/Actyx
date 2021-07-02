@@ -162,6 +162,10 @@ fn r_array(p: P) -> Array {
     }
 }
 
+fn r_bool(p: P) -> bool {
+    p.as_str() == "TRUE"
+}
+
 fn r_simple_expr(p: P) -> SimpleExpr {
     static CLIMBER: Lazy<PrecClimber<Rule>> = Lazy::new(|| {
         use pest::prec_climber::{Assoc::*, Operator};
@@ -188,6 +192,8 @@ fn r_simple_expr(p: P) -> SimpleExpr {
             Rule::string => SimpleExpr::String(r_string(p)),
             Rule::object => SimpleExpr::Object(r_object(p)),
             Rule::array => SimpleExpr::Array(r_array(p)),
+            Rule::null => SimpleExpr::Null,
+            Rule::bool => SimpleExpr::Bool(r_bool(p)),
             x => unexpected!(x),
         }
     }

@@ -114,6 +114,8 @@ pub enum SimpleExpr {
     String(String),
     Object(Object),
     Array(Array),
+    Null,
+    Bool(bool),
     Add(Box<(SimpleExpr, SimpleExpr)>),
     Sub(Box<(SimpleExpr, SimpleExpr)>),
     Mul(Box<(SimpleExpr, SimpleExpr)>),

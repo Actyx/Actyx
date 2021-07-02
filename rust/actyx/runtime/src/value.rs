@@ -6,6 +6,7 @@ use anyhow::{anyhow, Result};
 use cbor_data::{CborBuilder, CborOwned, CborValue, Encoder, WithOutput};
 use std::{
     cell::RefCell,
+    cmp::Ordering,
     fmt::{self, Display, Formatter},
 };
 
@@ -13,9 +14,20 @@ thread_local! {
     static SCRATCH: RefCell<Vec<u8>> = RefCell::new(vec![]);
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ValueKind {
+    Null,
+    Bool,
+    Number,
+    String,
+    Object,
+    Array,
+    Other,
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Value {
-    pub sort_key: EventKey,
+    sort_key: EventKey,
     value: CborOwned, // should later become InternedHash<[u8]>
 }
 
@@ -53,8 +65,24 @@ impl Value {
         self.sort_key
     }
 
-    pub fn value(&self) -> CborValue {
+    pub fn value(&self) -> CborValue<'_> {
         self.value.value().unwrap()
+    }
+
+    pub fn kind(&self) -> ValueKind {
+        match self.value().kind {
+            cbor_data::ValueKind::Pos(_) => ValueKind::Number,
+            cbor_data::ValueKind::Neg(_) => ValueKind::Number,
+            cbor_data::ValueKind::Float(_) => ValueKind::Number,
+            cbor_data::ValueKind::Str(_) => ValueKind::String,
+            cbor_data::ValueKind::Bytes(_) => ValueKind::Other,
+            cbor_data::ValueKind::Bool(_) => ValueKind::Bool,
+            cbor_data::ValueKind::Null => ValueKind::Null,
+            cbor_data::ValueKind::Undefined => ValueKind::Other,
+            cbor_data::ValueKind::Simple(_) => ValueKind::Other,
+            cbor_data::ValueKind::Array => ValueKind::Array,
+            cbor_data::ValueKind::Dict => ValueKind::Object,
+        }
     }
 
     pub fn payload(&self) -> Payload {
@@ -88,7 +116,11 @@ impl Value {
         self.value().as_bool().ok_or_else(|| anyhow!("{} is not a bool", self))
     }
 
-    pub fn number(&self, n: Number) -> Value {
+    pub fn as_str(&self) -> Result<&str> {
+        self.value().as_str().ok_or_else(|| anyhow!("{} is not a string", self))
+    }
+
+    fn number(&self, n: Number) -> Value {
         match n {
             Number::Decimal(d) => Value::new(self.sort_key, |b| b.encode_f64(d)),
             Number::Natural(n) => Value::new(self.sort_key, |b| b.encode_u64(n)),
@@ -100,16 +132,21 @@ impl Value {
         let rhs = other.as_number()?;
         Ok(self.number(lhs.add(&rhs)))
     }
+}
 
-    pub fn gt(&self, other: &Value) -> Result<Value> {
-        let lhs = self.as_number()?;
-        let rhs = other.as_number()?;
-        Ok(Value::new(self.sort_key, |b| b.encode_bool(lhs > rhs)))
-    }
-
-    pub fn lt(&self, other: &Value) -> Result<Value> {
-        let lhs = self.as_number()?;
-        let rhs = other.as_number()?;
-        Ok(Value::new(self.sort_key, |b| b.encode_bool(lhs < rhs)))
+impl PartialOrd for Value {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let left = self.kind();
+        let right = other.kind();
+        if left != right {
+            return None;
+        }
+        match left {
+            ValueKind::Null => Some(Ordering::Equal),
+            ValueKind::Bool => self.as_bool().ok()?.partial_cmp(&other.as_bool().ok()?),
+            ValueKind::Number => self.as_number().ok()?.partial_cmp(&other.as_number().ok()?),
+            ValueKind::String => self.as_str().ok()?.partial_cmp(other.as_str().ok()?),
+            _ => None,
+        }
     }
 }
