@@ -290,8 +290,13 @@ Overview:"#
                 eprintln!("Done.");
 
                 eprint!("2) git checkout -b {} ... ", branch_name);
-                repo.checkout(&*branch_name, &commit)?;
-                eprintln!("Done.");
+                if repo.branch_exists(&*branch_name)? {
+                    eprintln!("Already exists. Exiting");
+                    return Ok(());
+                } else {
+                    repo.checkout(&*branch_name, &commit)?;
+                    eprintln!("Done.");
+                }
 
                 eprint!("3) git add \"{}\" ... ", input_file.display());
                 let oid = repo.add_file(&input_file)?;
