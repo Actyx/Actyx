@@ -81,6 +81,15 @@ pub fn render_simple_expr(w: &mut impl Write, e: &SimpleExpr) -> Result {
             w.write_char('!')?;
             render_simple_expr(w, e)
         }
+        SimpleExpr::Cases(v) => {
+            for (pred, expr) in v.iter() {
+                w.write_str("CASE ")?;
+                render_simple_expr(w, pred)?;
+                w.write_str(" => ")?;
+                render_simple_expr(w, expr)?;
+            }
+            w.write_str(" ENDCASE")
+        }
         SimpleExpr::Add(e) => render_simple_pair(w, e, "+"),
         SimpleExpr::Sub(e) => render_simple_pair(w, e, "-"),
         SimpleExpr::Mul(e) => render_simple_pair(w, e, "*"),

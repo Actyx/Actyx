@@ -104,6 +104,15 @@ impl<'a> Context<'a> {
             }
             SimpleExpr::Null => Ok(self.value(|b| b.write_null(None))),
             SimpleExpr::Bool(f) => Ok(self.value(|b| b.write_bool(*f, None))),
+            SimpleExpr::Cases(v) => {
+                for (pred, expr) in v.iter() {
+                    let pred = self.eval(pred)?.as_bool()?;
+                    if pred {
+                        return self.eval(expr);
+                    }
+                }
+                Err(anyhow!("no case matched"))
+            }
             SimpleExpr::Add(a) => self.eval(&a.0)?.add(&self.eval(&a.1)?),
             SimpleExpr::Sub(a) => self.eval(&a.0)?.sub(&self.eval(&a.1)?),
             SimpleExpr::Mul(a) => self.eval(&a.0)?.mul(&self.eval(&a.1)?),
@@ -377,5 +386,15 @@ mod tests {
         assert_eq!(eval(&cx, "([42]).0").unwrap(), "42");
         assert_eq!(eval(&cx, "([42]).[0]").unwrap(), "42");
         assert_eq!(eval(&cx, "([42]).[1-1]").unwrap(), "42");
+    }
+
+    #[test]
+    fn cases() {
+        let cx = ctx();
+        assert_eq!(eval(&cx, "CASE 5 ≤ 5 => 42 CASE TRUE => NULL ENDCASE").unwrap(), "42");
+        assert_eq!(eval(&cx, "CASE 5 < 5 => 42 CASE TRUE => NULL ENDCASE").unwrap(), "null");
+
+        assert_that(&eval(&cx, "CASE 1 => 11 ENDCASE").unwrap_err().to_string()).contains("1 is not a bool");
+        assert_that(&eval(&cx, "CASE FALSE => 1 ENDCASE").unwrap_err().to_string()).contains("no case matched");
     }
 }

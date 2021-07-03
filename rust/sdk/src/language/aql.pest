@@ -61,8 +61,9 @@ simple_expr = { simple_atom ~ ( simple_op ~ simple_atom )* }
 simple_op = _{ add | sub | mul | div | modulo | pow | and | or | xor | lt | le | gt | ge | eq | ne }
 var_index = { var ~ index* }
 expr_index = { "(" ~ simple_expr ~ ")" ~ index* }
-simple_atom = _{ number | var_index | string | expr_index | simple_not | object | array | null | bool }
+simple_atom = _{ number | var_index | string | expr_index | simple_not | object | array | null | bool | simple_cases }
 simple_not = { not ~ simple_atom }
+simple_cases = { ( "CASE" ~ simple_expr ~ "=>" ~ simple_expr )+ ~ "ENDCASE" }
 
 // operators
 add = { "+" }

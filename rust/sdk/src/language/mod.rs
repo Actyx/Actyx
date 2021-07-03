@@ -128,6 +128,7 @@ pub enum SimpleExpr {
     Array(Array),
     Null,
     Bool(bool),
+    Cases(Vec<(SimpleExpr, SimpleExpr)>),
     Add(Box<(SimpleExpr, SimpleExpr)>),
     Sub(Box<(SimpleExpr, SimpleExpr)>),
     Mul(Box<(SimpleExpr, SimpleExpr)>),

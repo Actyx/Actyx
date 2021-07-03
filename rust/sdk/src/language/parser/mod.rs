@@ -184,6 +184,23 @@ fn r_bool(p: P) -> bool {
     p.as_str() == "TRUE"
 }
 
+fn r_cases(p: P) -> Vec<(SimpleExpr, SimpleExpr)> {
+    let mut p = p.inner();
+    let mut ret = Vec::new();
+    while let Some(pred) = p.next() {
+        let pred = r_simple_expr(pred);
+        let expr = r_simple_expr(p.next().unwrap());
+        ret.push((pred, expr));
+    }
+    ret
+}
+
+fn r_not(p: P) -> P {
+    let mut p = p.inner();
+    p.next();
+    p.next().unwrap()
+}
+
 fn r_simple_expr(p: P) -> SimpleExpr {
     static CLIMBER: Lazy<PrecClimber<Rule>> = Lazy::new(|| {
         use pest::prec_climber::{Assoc::*, Operator};
@@ -207,12 +224,13 @@ fn r_simple_expr(p: P) -> SimpleExpr {
             Rule::var_index => SimpleExpr::Indexing(r_var(p)),
             Rule::expr_index => SimpleExpr::Indexing(r_expr_index(p)),
             Rule::simple_expr => r_simple_expr(p),
-            Rule::simple_not => SimpleExpr::Not(primary(p.single()).into()),
+            Rule::simple_not => SimpleExpr::Not(primary(r_not(p)).into()),
             Rule::string => SimpleExpr::String(r_string(p)),
             Rule::object => SimpleExpr::Object(r_object(p)),
             Rule::array => SimpleExpr::Array(r_array(p)),
             Rule::null => SimpleExpr::Null,
             Rule::bool => SimpleExpr::Bool(r_bool(p)),
+            Rule::simple_cases => SimpleExpr::Cases(r_cases(p)),
             x => unexpected!(x),
         }
     }
