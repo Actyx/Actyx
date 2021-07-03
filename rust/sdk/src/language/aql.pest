@@ -6,7 +6,7 @@ main_simple_expr = { SOI ~ simple_expr ~ EOI }
 query = { "FROM" ~ tag_expr ~ query_op* ~ "END"? }
 query_op = _{ filter | select }
 filter = { "FILTER" ~ simple_expr }
-select = { "SELECT" ~ simple_expr }
+select = { "SELECT" ~ simple_expr ~ ( "," ~ simple_expr )* }
 
 // strings
 single_quoted = @{ "'" ~ ( !"'" ~ ANY | "''" )+ ~ "'" }
@@ -31,7 +31,7 @@ app_id_char = _{ '0'..'9' | 'a'..'z' | 'A'..'Z' | "-" | "_" }
 // identifiers
 ident = @{ "_" | LOWERCASE_LETTER ~ ( LOWERCASE_LETTER | NUMBER | "_" )* }
 var = { ident }
-index = _{ "." ~ ( ident | natural ) }
+index = _{ "." ~ ( ident | natural | ("[" ~ simple_expr ~ "]" ) ) }
 
 // ISO8601 timestamp
 year = { '0'..'9'{4} }
@@ -62,7 +62,7 @@ simple_op = _{ add | sub | mul | div | modulo | pow | and | or | xor | lt | le |
 var_index = { var ~ index* }
 expr_index = { "(" ~ simple_expr ~ ")" ~ index* }
 simple_atom = _{ number | var_index | string | expr_index | simple_not | object | array | null | bool }
-simple_not = { "!" ~ simple_atom }
+simple_not = { not ~ simple_atom }
 
 // operators
 add = { "+" }
@@ -73,7 +73,7 @@ modulo = { "%" }
 pow = { "^" }
 and = { "&" | "∧" }
 or = { "|" | "∨" }
-not = { "!" | "¬" }
+not = _{ "!" | "¬" }
 xor = { "~" | "⊻" }
 lt = { "<" }
 le = { "<=" | "≤" }

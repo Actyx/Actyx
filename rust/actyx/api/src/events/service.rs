@@ -1,8 +1,8 @@
 use actyx_sdk::{
     language,
     service::{
-        EventResponse, OffsetMapResponse, OffsetsResponse, Order, PublishEvent, PublishRequest, PublishResponse,
-        PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
+        Diagnostic, EventResponse, OffsetMapResponse, OffsetsResponse, Order, PublishEvent, PublishRequest,
+        PublishResponse, PublishResponseKey, QueryRequest, QueryResponse, StartFrom, SubscribeMonotonicRequest,
         SubscribeMonotonicResponse, SubscribeRequest, SubscribeResponse,
     },
     AppId, Event, Metadata, NodeId, OffsetMap, OffsetOrMin, Payload,
@@ -119,7 +119,10 @@ impl EventService {
         let response = stream
             .stop_on_error()
             .flat_map(mk_feed(request.query))
-            .map(QueryResponse::Event)
+            .map(|res| match res {
+                Ok(ev) => QueryResponse::Event(ev),
+                Err(e) => QueryResponse::Diagnostic(Diagnostic::warn(e)),
+            })
             .chain(stream::once(ready(QueryResponse::Offsets(OffsetMapResponse {
                 offsets: upper_bound,
             }))))
@@ -144,7 +147,10 @@ impl EventService {
             .await?
             .stop_on_error()
             .flat_map(mk_feed(request.query.clone()))
-            .map(SubscribeResponse::Event);
+            .map(|res| match res {
+                Ok(ev) => SubscribeResponse::Event(ev),
+                Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e)),
+            });
         let offsets = stream::once(future::ready(SubscribeResponse::Offsets(OffsetMapResponse {
             offsets: present.clone(),
         })));
@@ -154,7 +160,10 @@ impl EventService {
             .await?
             .stop_on_error()
             .flat_map(mk_feed(request.query.clone()))
-            .map(SubscribeResponse::Event);
+            .map(|res| match res {
+                Ok(ev) => SubscribeResponse::Event(ev),
+                Err(e) => SubscribeResponse::Diagnostic(Diagnostic::warn(e)),
+            });
         Ok(bounded.chain(offsets).chain(unbounded).boxed())
     }
 
@@ -179,8 +188,10 @@ impl EventService {
             .await?
             .stop_on_error()
             .flat_map(mk_feed(request.query.clone()))
-            .map(|event| SubscribeMonotonicResponse::Event { event, caught_up: true });
-
+            .map(|res| match res {
+                Ok(event) => SubscribeMonotonicResponse::Event { event, caught_up: true },
+                Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e)),
+            });
         let offsets = stream::once(ready(SubscribeMonotonicResponse::Offsets(OffsetMapResponse {
             offsets: present.clone(),
         })));
@@ -208,7 +219,10 @@ impl EventService {
                     if key > latest {
                         latest = key;
                         feed(e)
-                            .map(|event| SubscribeMonotonicResponse::Event { event, caught_up: true })
+                            .map(|res| match res {
+                                Ok(event) => SubscribeMonotonicResponse::Event { event, caught_up: true },
+                                Err(e) => SubscribeMonotonicResponse::Diagnostic(Diagnostic::warn(e)),
+                            })
                             .left_stream()
                     } else {
                         stream::once(async move { SubscribeMonotonicResponse::TimeTravel { new_start: e.key } })
@@ -222,7 +236,9 @@ impl EventService {
     }
 }
 
-fn mk_feed(query: language::Query) -> impl Fn(Event<Payload>) -> BoxStream<'static, EventResponse<Payload>> {
+fn mk_feed(
+    query: language::Query,
+) -> impl Fn(Event<Payload>) -> BoxStream<'static, Result<EventResponse<Payload>, String>> {
     let query = runtime::query::Query::from(query);
     move |event| {
         let Event {
@@ -234,20 +250,17 @@ fn mk_feed(query: language::Query) -> impl Fn(Event<Payload>) -> BoxStream<'stat
             },
             payload,
         } = event;
-        stream::iter(
-            query
-                .feed(Value::from((key, payload)))
-                .into_iter()
-                .map(move |v| EventResponse {
-                    lamport: v.key().lamport,
-                    stream: v.key().stream,
-                    offset: v.key().offset,
-                    app_id: app_id.clone(),
-                    timestamp,
-                    tags: tags.clone(),
-                    payload: v.payload(),
-                }),
-        )
+        stream::iter(query.feed(Value::from((key, payload))).into_iter().map(move |v| {
+            v.map(|v| EventResponse {
+                lamport: v.key().lamport,
+                stream: v.key().stream,
+                offset: v.key().offset,
+                app_id: app_id.clone(),
+                timestamp,
+                tags: tags.clone(),
+                payload: v.payload(),
+            })
+        }))
         .boxed()
     }
 }

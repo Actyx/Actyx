@@ -13,7 +13,7 @@ mod query_impl;
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Operation {
     Filter(SimpleExpr),
-    Select(SimpleExpr),
+    Select(Vec<SimpleExpr>),
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -89,6 +89,17 @@ mod number_impl;
 pub enum Index {
     Ident(String),
     Number(u64),
+    Expr(SimpleExpr),
+}
+
+impl std::fmt::Display for Index {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Index::Ident(s) => write!(f, ".{}", s),
+            Index::Number(n) => write!(f, ".{}", n),
+            Index::Expr(e) => write!(f, ".[{}]", e),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -133,6 +144,12 @@ pub enum SimpleExpr {
     Ge(Box<(SimpleExpr, SimpleExpr)>),
     Eq(Box<(SimpleExpr, SimpleExpr)>),
     Ne(Box<(SimpleExpr, SimpleExpr)>),
+}
+
+impl std::fmt::Display for SimpleExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        render::render_simple_expr(f, self)
+    }
 }
 
 #[allow(clippy::clippy::should_implement_trait)]

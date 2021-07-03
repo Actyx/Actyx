@@ -1,9 +1,9 @@
-use crate::value::Value;
+use crate::value::{Value, ValueKind};
 use actyx_sdk::{
     language::{Indexing, Number, SimpleExpr},
     EventKey,
 };
-use anyhow::anyhow;
+use anyhow::{anyhow, bail};
 use cbor_data::{CborBuilder, CborOwned, Encoder, WithOutput, Writer};
 use std::{cmp::Ordering, collections::BTreeMap};
 
@@ -51,11 +51,22 @@ impl<'a> Context<'a> {
                 Ok(self.value(|b| b.write_trusting(v.as_slice())))
             }
             SimpleExpr::Indexing(Indexing { head, tail }) => {
-                let v = self.eval(head)?;
-                let v = v
-                    .index(tail)
-                    .ok_or_else(|| anyhow!("path {:?} does not exist in value {}", tail, v.value()))?;
-                Ok(self.value(|b| b.write_trusting(v.bytes)))
+                let mut v = self.eval(head)?;
+                for i in tail {
+                    v = match i {
+                        actyx_sdk::language::Index::Ident(s) => v.index(s)?,
+                        actyx_sdk::language::Index::Number(n) => v.index(&format!("{}", n))?,
+                        actyx_sdk::language::Index::Expr(e) => {
+                            let idx = self.eval(e)?;
+                            match idx.kind() {
+                                ValueKind::Number => v.index(&format!("{}", idx.value()))?,
+                                ValueKind::String => v.index(idx.as_str()?)?,
+                                _ => bail!("cannot index by {}", idx.value()),
+                            }
+                        }
+                    };
+                }
+                Ok(self.value(|b| b.write_trusting(v.as_slice())))
             }
             SimpleExpr::Number(n) => match n {
                 Number::Decimal(d) => Ok(self.value(|b| b.encode_f64(*d))),
@@ -215,7 +226,7 @@ mod tests {
 
         let err = eval(&cx, "x.a").unwrap_err().to_string();
         assert!(
-            err.contains("path [Ident(\"a\")] does not exist in value {\"y\": 42}"),
+            err.contains("path .a does not exist in value {\"y\": 42}"),
             "didn’t match: {}",
             err
         );
@@ -358,5 +369,13 @@ mod tests {
         assert_eq!(eval(&cx, "1+2").unwrap(), "3");
         assert_eq!(eval(&cx, "1+2*3^2%5").unwrap(), "4");
         assert_eq!(eval(&cx, "1.0+2.0*3.0^2.0%5.0").unwrap(), "4.0");
+    }
+
+    #[test]
+    fn indexing() {
+        let cx = ctx();
+        assert_eq!(eval(&cx, "([42]).0").unwrap(), "42");
+        assert_eq!(eval(&cx, "([42]).[0]").unwrap(), "42");
+        assert_eq!(eval(&cx, "([42]).[1-1]").unwrap(), "42");
     }
 }

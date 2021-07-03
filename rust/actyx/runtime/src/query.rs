@@ -12,13 +12,22 @@ pub struct Query {
 }
 
 impl Query {
-    pub fn feed(&self, input: Value) -> Vec<Value> {
-        fn rec<'a>(cx: &'a Context, input: Value, mut ops: impl Iterator<Item = &'a Operation> + Clone) -> Vec<Value> {
+    pub fn feed(&self, input: Value) -> Vec<Result<Value, String>> {
+        fn rec<'a>(
+            cx: &'a Context,
+            input: Value,
+            mut ops: impl Iterator<Item = &'a Operation> + Clone,
+        ) -> Vec<Result<Value, String>> {
             if let Some(op) = ops.next() {
                 let (vs, cx) = op.apply(cx, input);
-                vs.into_iter().flat_map(|v| rec(cx, v, ops.clone())).collect()
+                vs.into_iter()
+                    .flat_map(|v| match v {
+                        Ok(v) => rec(cx, v, ops.clone()),
+                        Err(e) => vec![Err(e.to_string())],
+                    })
+                    .collect()
             } else {
-                vec![input]
+                vec![Ok(input)]
             }
         }
         rec(&Context::new(input.key()), input, self.stages.iter())
@@ -40,10 +49,8 @@ impl From<language::Query> for Query {
 
 #[cfg(test)]
 mod tests {
-    use actyx_sdk::{EventKey, NodeId};
-    use cbor_data::Encoder;
-
     use super::*;
+    use actyx_sdk::{EventKey, NodeId};
 
     fn key() -> EventKey {
         EventKey {
@@ -53,15 +60,33 @@ mod tests {
         }
     }
 
+    fn feed(q: &str, v: &str) -> Vec<String> {
+        let q = Query::from(q.parse::<language::Query>().unwrap());
+        let v = Context::new(key()).eval(&v.parse().unwrap()).unwrap();
+        q.feed(v)
+            .into_iter()
+            .map(|v| v.map(|v| v.value().to_string()).unwrap_or_else(|e| e))
+            .collect()
+    }
+
     #[test]
     fn query() {
-        let query_str = "FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2";
-        let q = Query::from(query_str.parse::<language::Query>().unwrap());
-        let v = Value::new(key(), |b| b.encode_u64(3));
-        assert_eq!(q.feed(v), vec![]);
+        assert_eq!(
+            feed("FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2", "3"),
+            Vec::<String>::new()
+        );
+        assert_eq!(feed("FROM 'a' & isLocal FILTER _ < 3 SELECT _ + 2", "2"), vec!["4"]);
+    }
 
-        let v = Value::new(key(), |b| b.encode_u64(2));
-        let r = Value::new(key(), |b| b.encode_u64(4));
-        assert_eq!(q.feed(v), vec![r]);
+    #[test]
+    fn select_multi() {
+        assert_eq!(feed("FROM allEvents SELECT _, _ * 1.5", "42"), vec!["42", "63.0"]);
+        assert_eq!(
+            feed(
+                "FROM allEvents SELECT _.x, _.y, _.z FILTER _ = 'a' SELECT _, 42",
+                "{x:'a' y:'b'}"
+            ),
+            vec!["\"a\"", "42", r#"path .z does not exist in value {"x": "a", "y": "b"}"#]
+        );
     }
 }

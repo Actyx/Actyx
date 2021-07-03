@@ -111,6 +111,7 @@ fn r_var(p: P) -> Indexing {
         match i.rule() {
             Rule::ident => ret.tail.push(Index::Ident(i.string())),
             Rule::natural => ret.tail.push(Index::Number(i.natural())),
+            Rule::simple_expr => ret.tail.push(Index::Expr(r_simple_expr(i))),
             x => unexpected!(x),
         }
     }
@@ -127,6 +128,7 @@ fn r_expr_index(p: P) -> Indexing {
         match i.rule() {
             Rule::ident => ret.tail.push(Index::Ident(i.string())),
             Rule::natural => ret.tail.push(Index::Number(i.natural())),
+            Rule::simple_expr => ret.tail.push(Index::Expr(r_simple_expr(i))),
             x => unexpected!(x),
         }
     }
@@ -244,7 +246,7 @@ fn r_query(p: P) -> Query {
     for o in p {
         match o.rule() {
             Rule::filter => q.ops.push(Operation::Filter(r_simple_expr(o.single()))),
-            Rule::select => q.ops.push(Operation::Select(r_simple_expr(o.single()))),
+            Rule::select => q.ops.push(Operation::Select(o.inner().map(r_simple_expr).collect())),
             x => unexpected!(x),
         }
     }
@@ -361,11 +363,11 @@ mod tests {
             .with_op(Operation::Filter(
                 Indexing::with("_", &[&"x", &42]).gt(Number(Natural(5)))
             ))
-            .with_op(Operation::Select(Object::with(&[
+            .with_op(Operation::Select(vec![Object::with(&[
                 ("x", Not(String("hello".to_owned()).into())),
                 ("y", Number(Natural(42))),
                 ("z", Array::with(&[Number(Decimal(1.3)), Indexing::with("_", &[&"x"])]))
-            ])))
+            ])]))
         );
     }
 

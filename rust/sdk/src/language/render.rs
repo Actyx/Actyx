@@ -15,17 +15,9 @@ fn render_simple_pair(w: &mut impl Write, e: &(SimpleExpr, SimpleExpr), op: &'st
 fn render_indexing(w: &mut impl Write, e: &Indexing) -> Result {
     render_simple_expr(w, &e.head)?;
     for t in &e.tail {
-        w.write_char('.')?;
-        render_index(w, t)?;
+        write!(w, "{}", t)?;
     }
     Ok(())
-}
-
-fn render_index(w: &mut impl Write, e: &Index) -> Result {
-    match e {
-        Index::Ident(i) => w.write_str(&i),
-        Index::Number(n) => render_to_string(w, n),
-    }
 }
 
 fn render_number(w: &mut impl Write, e: &Number) -> Result {
@@ -115,7 +107,16 @@ fn render_operation(w: &mut impl Write, e: &Operation) -> Result {
         }
         Operation::Select(s) => {
             w.write_str("SELECT ")?;
-            render_simple_expr(w, s)
+            let mut first = true;
+            for e in s {
+                if first {
+                    first = false;
+                } else {
+                    w.write_str(", ")?;
+                }
+                render_simple_expr(w, e)?;
+            }
+            Ok(())
         }
     }
 }

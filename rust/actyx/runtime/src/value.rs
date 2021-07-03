@@ -1,13 +1,11 @@
-use actyx_sdk::{
-    language::{Index, Number},
-    EventKey, Payload,
-};
+use actyx_sdk::{language::Number, EventKey, Payload};
 use anyhow::{anyhow, Result};
-use cbor_data::{CborBuilder, CborOwned, CborValue, Encoder, WithOutput};
+use cbor_data::{Cbor, CborBuilder, CborOwned, CborValue, Encoder, WithOutput};
 use std::{
     cell::RefCell,
     cmp::Ordering,
     fmt::{self, Display, Formatter},
+    iter::once,
 };
 
 thread_local! {
@@ -73,6 +71,20 @@ impl Value {
         self.value.value().unwrap()
     }
 
+    pub fn cbor(&self) -> Cbor<'_> {
+        self.value.borrow()
+    }
+
+    pub fn index(&self, s: &str) -> anyhow::Result<Self> {
+        self.value
+            .index_iter(once(s))
+            .map(|cbor| Self {
+                sort_key: self.sort_key,
+                value: CborOwned::trusting(cbor.bytes),
+            })
+            .ok_or_else(|| anyhow!("path .{} does not exist in value {}", s, self.value()))
+    }
+
     pub fn kind(&self) -> ValueKind {
         match self.value().kind {
             cbor_data::ValueKind::Pos(_) => ValueKind::Number,
@@ -91,19 +103,6 @@ impl Value {
 
     pub fn payload(&self) -> Payload {
         Payload::from_bytes(self.value.as_ref())
-    }
-
-    pub fn index<'a>(&'a self, path: &[Index]) -> Option<CborValue> {
-        // FIXME this needs to be made nice and easy by adding an Index trait to cbor-data
-        let path = path
-            .iter()
-            .map(|i| match i {
-                Index::Ident(s) => s.clone(),
-                Index::Number(n) => format!("{}", n),
-            })
-            .collect::<Vec<_>>()
-            .join(".");
-        self.value.index(&*path)
     }
 
     pub fn as_number(&self) -> Result<Number> {
