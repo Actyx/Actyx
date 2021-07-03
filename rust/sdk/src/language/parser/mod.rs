@@ -3,7 +3,7 @@
 
 use std::str::FromStr;
 
-use super::{Array, Index, Number, Object, Operation, Path, Query, SimpleExpr, TagAtom, TagExpr};
+use super::{Array, Index, Indexing, Number, Object, Operation, Query, SimpleExpr, TagAtom, TagExpr};
 use crate::{tags::Tag, Timestamp};
 use chrono::{TimeZone, Utc};
 use once_cell::sync::Lazy;
@@ -101,10 +101,26 @@ fn r_string(p: P) -> String {
     }
 }
 
-fn r_path(p: P) -> Path {
+fn r_var(p: P) -> Indexing {
     let mut p = p.inner();
-    let mut ret = Path {
-        head: p.string(),
+    let mut ret = Indexing {
+        head: Box::new(SimpleExpr::Var(p.string())),
+        tail: vec![],
+    };
+    for mut i in p {
+        match i.rule() {
+            Rule::ident => ret.tail.push(Index::Ident(i.string())),
+            Rule::natural => ret.tail.push(Index::Number(i.natural())),
+            x => unexpected!(x),
+        }
+    }
+    ret
+}
+
+fn r_expr_index(p: P) -> Indexing {
+    let mut p = p.inner();
+    let mut ret = Indexing {
+        head: Box::new(r_simple_expr(p.next().unwrap())),
         tail: vec![],
     };
     for mut i in p {
@@ -186,7 +202,8 @@ fn r_simple_expr(p: P) -> SimpleExpr {
     fn primary(p: P) -> SimpleExpr {
         match p.rule() {
             Rule::number => SimpleExpr::Number(r_number(p)),
-            Rule::path => SimpleExpr::Path(r_path(p)),
+            Rule::var_index => SimpleExpr::Indexing(r_var(p)),
+            Rule::expr_index => SimpleExpr::Indexing(r_expr_index(p)),
             Rule::simple_expr => r_simple_expr(p),
             Rule::simple_not => SimpleExpr::Not(primary(p.single()).into()),
             Rule::string => SimpleExpr::String(r_string(p)),
@@ -291,12 +308,12 @@ mod tests {
 
     #[test]
     fn simple_expr() {
+        use super::Indexing;
         use super::Number::*;
-        use super::Path;
         use SimpleExpr::*;
         assert_eq!(
             "(x - 5.2 * 1234)^2 / 7 % 5".parse::<SimpleExpr>().unwrap(),
-            Path::ident("x")
+            Indexing::ident("x")
                 .sub(Number(Decimal(5.2)).mul(Number(Natural(1234))))
                 .pow(Number(Natural(2)))
                 .div(Number(Natural(7)))
@@ -316,7 +333,7 @@ mod tests {
     #[test]
     fn query() {
         use super::Number::*;
-        use super::{Array, Object, Path};
+        use super::{Array, Indexing, Object};
         use crate::app_id;
         use SimpleExpr::*;
         use TagAtom::*;
@@ -341,11 +358,13 @@ mod tests {
                     .and(Atom(AppId(app_id!("hello-5._x_"))))
                     .and(Atom(AllEvents)))
             )
-            .with_op(Operation::Filter(Path::with("_", &[&"x", &42]).gt(Number(Natural(5)))))
+            .with_op(Operation::Filter(
+                Indexing::with("_", &[&"x", &42]).gt(Number(Natural(5)))
+            ))
             .with_op(Operation::Select(Object::with(&[
                 ("x", Not(String("hello".to_owned()).into())),
                 ("y", Number(Natural(42))),
-                ("z", Array::with(&[Number(Decimal(1.3)), Path::with("_", &[&"x"])]))
+                ("z", Array::with(&[Number(Decimal(1.3)), Indexing::with("_", &[&"x"])]))
             ])))
         );
     }

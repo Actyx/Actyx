@@ -2,6 +2,8 @@ use std::fmt::{Result, Write};
 
 use super::*;
 
+// FIXME this whole file doesn’t yet emit parens as needed
+
 fn render_simple_pair(w: &mut impl Write, e: &(SimpleExpr, SimpleExpr), op: &'static str) -> Result {
     render_simple_expr(w, &(*e).0)?;
     w.write_char(' ')?;
@@ -10,8 +12,8 @@ fn render_simple_pair(w: &mut impl Write, e: &(SimpleExpr, SimpleExpr), op: &'st
     render_simple_expr(w, &(*e).1)
 }
 
-fn render_path(w: &mut impl Write, e: &Path) -> Result {
-    w.write_str(&e.head)?;
+fn render_indexing(w: &mut impl Write, e: &Indexing) -> Result {
+    render_simple_expr(w, &e.head)?;
     for t in &e.tail {
         w.write_char('.')?;
         render_index(w, t)?;
@@ -69,8 +71,9 @@ fn render_string(w: &mut impl Write, e: &str) -> Result {
 
 pub fn render_simple_expr(w: &mut impl Write, e: &SimpleExpr) -> Result {
     match e {
-        SimpleExpr::Path(p) => render_path(w, p),
-        SimpleExpr::Number(n) => render_number(w, &n),
+        SimpleExpr::Var(v) => w.write_str(v),
+        SimpleExpr::Indexing(i) => render_indexing(w, i),
+        SimpleExpr::Number(n) => render_number(w, n),
         SimpleExpr::String(s) => render_string(w, s),
         SimpleExpr::Object(o) => render_object(w, o),
         SimpleExpr::Array(a) => render_array(w, a),

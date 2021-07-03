@@ -1,6 +1,6 @@
 use crate::value::Value;
 use actyx_sdk::{
-    language::{Number, SimpleExpr},
+    language::{Indexing, Number, SimpleExpr},
     EventKey,
 };
 use anyhow::{anyhow, bail, Result};
@@ -46,22 +46,51 @@ impl<'a> Context<'a> {
 
     pub fn eval(&self, expr: &SimpleExpr) -> Result<Value> {
         match expr {
-            SimpleExpr::Path(p) => {
-                let v = self
-                    .lookup(&*p.head)
-                    .ok_or_else(|| anyhow!("variable '{}' is not bound", p.head))?;
-                let idx = v
-                    .index(&p.tail)
-                    .ok_or_else(|| anyhow!("path {:?} does not exist in value {}", p.tail, v.value()))?;
-                Ok(self.value(|b| b.write_trusting(idx.bytes)))
+            SimpleExpr::Var(v) => {
+                let v = self.lookup(v).ok_or_else(|| anyhow!("variable '{}' is not bound", v))?;
+                Ok(self.value(|b| b.write_trusting(v.as_slice())))
+            }
+            SimpleExpr::Indexing(Indexing { head, tail }) => {
+                let v = self.eval(head)?;
+                let v = v
+                    .index(tail)
+                    .ok_or_else(|| anyhow!("path {:?} does not exist in value {}", tail, v.value()))?;
+                Ok(self.value(|b| b.write_trusting(v.bytes)))
             }
             SimpleExpr::Number(n) => match n {
                 Number::Decimal(d) => Ok(self.value(|b| b.encode_f64(*d))),
                 Number::Natural(n) => Ok(self.value(|b| b.encode_u64(*n))),
             },
             SimpleExpr::String(s) => Ok(self.value(|b| b.encode_str(s))),
-            SimpleExpr::Object(_) => bail!("object construction not yet implemented"),
-            SimpleExpr::Array(_) => bail!("array construction not yet implemented"),
+            SimpleExpr::Object(a) => {
+                let v = a
+                    .props
+                    .iter()
+                    // TODO don’t evaluate overwritten properties
+                    .map(|(n, e)| Ok((n.as_str(), self.eval(e)?)))
+                    .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
+                Ok(self.value(|b| {
+                    b.encode_dict(|b| {
+                        for (name, item) in v.iter() {
+                            b.with_key(name, |b| b.write_trusting(item.as_slice()));
+                        }
+                    })
+                }))
+            }
+            SimpleExpr::Array(a) => {
+                let v = a
+                    .items
+                    .iter()
+                    .map(|e| self.eval(e))
+                    .collect::<anyhow::Result<Vec<_>>>()?;
+                Ok(self.value(|b| {
+                    b.encode_array(|b| {
+                        for item in v.iter() {
+                            b.write_trusting(item.as_slice());
+                        }
+                    })
+                }))
+            }
             SimpleExpr::Null => Ok(self.value(|b| b.write_null(None))),
             SimpleExpr::Bool(f) => Ok(self.value(|b| b.write_bool(*f, None))),
             SimpleExpr::Add(a) => self.eval(&a.0)?.add(&self.eval(&a.1)?),
@@ -312,5 +341,16 @@ mod tests {
         quickcheck(prop_str as fn(String, String) -> bool);
 
         assert_that(&eval(&cx, "NULL > 12").unwrap_err().to_string()).contains("cannot compare");
+    }
+
+    #[test]
+    fn constructors() {
+        let cx = ctx();
+        assert_eq!(eval(&cx, "([1,'x',NULL]).0").unwrap(), "1");
+        assert_eq!(eval(&cx, "([1,'x',NULL]).1").unwrap(), "\"x\"");
+        assert_eq!(eval(&cx, "([1,'x',NULL]).2").unwrap(), "null");
+        assert_eq!(eval(&cx, "({ one: 1, two: 'x', three: NULL }).one").unwrap(), "1");
+        assert_eq!(eval(&cx, "({ one: 1 two: 'x' three: NULL }).two").unwrap(), "\"x\"");
+        assert_eq!(eval(&cx, "({ one: 1, two: 'x', three: NULL }).three").unwrap(), "null");
     }
 }

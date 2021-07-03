@@ -92,8 +92,8 @@ pub enum Index {
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
-pub struct Path {
-    pub head: String,
+pub struct Indexing {
+    pub head: Box<SimpleExpr>,
     pub tail: Vec<Index>,
 }
 
@@ -109,7 +109,8 @@ pub struct Array {
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum SimpleExpr {
-    Path(Path),
+    Var(String),
+    Indexing(Indexing),
     Number(Number),
     String(String),
     Object(Object),
@@ -224,16 +225,16 @@ mod for_tests {
         }
     }
 
-    impl Path {
+    impl Indexing {
         pub fn with(head: impl Into<String>, tail: &[&dyn ToIndex]) -> SimpleExpr {
-            SimpleExpr::Path(Self {
-                head: head.into(),
+            SimpleExpr::Indexing(Self {
+                head: Box::new(SimpleExpr::Var(head.into())),
                 tail: tail.iter().map(|x| (*x).into()).collect(),
             })
         }
         pub fn ident(ident: impl Into<String>) -> SimpleExpr {
-            SimpleExpr::Path(Self {
-                head: ident.into(),
+            SimpleExpr::Indexing(Self {
+                head: Box::new(SimpleExpr::Var(ident.into())),
                 tail: vec![],
             })
         }

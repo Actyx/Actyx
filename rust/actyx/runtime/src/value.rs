@@ -61,6 +61,10 @@ impl Value {
         }
     }
 
+    pub fn as_slice(&self) -> &[u8] {
+        self.value.as_slice()
+    }
+
     pub fn key(&self) -> EventKey {
         self.sort_key
     }

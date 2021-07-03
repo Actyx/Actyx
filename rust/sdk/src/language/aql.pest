@@ -30,7 +30,8 @@ app_id_char = _{ '0'..'9' | 'a'..'z' | 'A'..'Z' | "-" | "_" }
 
 // identifiers
 ident = @{ "_" | LOWERCASE_LETTER ~ ( LOWERCASE_LETTER | NUMBER | "_" )* }
-path = { ident ~ ( "." ~ ( ident | natural ) )* }
+var = { ident }
+index = _{ "." ~ ( ident | natural ) }
 
 // ISO8601 timestamp
 year = { '0'..'9'{4} }
@@ -58,7 +59,9 @@ tag_app = { "appId(" ~ app_id ~ ")" }
 // expressions
 simple_expr = { simple_atom ~ ( simple_op ~ simple_atom )* }
 simple_op = _{ add | sub | mul | div | modulo | pow | and | or | xor | lt | le | gt | ge | eq | ne }
-simple_atom = _{ number | path | string | "(" ~ simple_expr ~ ")" | simple_not | object | array | null | bool }
+var_index = { var ~ index* }
+expr_index = { "(" ~ simple_expr ~ ")" ~ index* }
+simple_atom = _{ number | var_index | string | expr_index | simple_not | object | array | null | bool }
 simple_not = { "!" ~ simple_atom }
 
 // operators
