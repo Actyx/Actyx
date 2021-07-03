@@ -3,7 +3,7 @@ use actyx_sdk::{
     language::{Indexing, Number, SimpleExpr},
     EventKey,
 };
-use anyhow::{anyhow, bail, Result};
+use anyhow::anyhow;
 use cbor_data::{CborBuilder, CborOwned, Encoder, WithOutput, Writer};
 use std::{cmp::Ordering, collections::BTreeMap};
 
@@ -44,7 +44,7 @@ impl<'a> Context<'a> {
             .or_else(|| self.parent.and_then(|c| c.lookup(name)))
     }
 
-    pub fn eval(&self, expr: &SimpleExpr) -> Result<Value> {
+    pub fn eval(&self, expr: &SimpleExpr) -> anyhow::Result<Value> {
         match expr {
             SimpleExpr::Var(v) => {
                 let v = self.lookup(v).ok_or_else(|| anyhow!("variable '{}' is not bound", v))?;
@@ -94,11 +94,11 @@ impl<'a> Context<'a> {
             SimpleExpr::Null => Ok(self.value(|b| b.write_null(None))),
             SimpleExpr::Bool(f) => Ok(self.value(|b| b.write_bool(*f, None))),
             SimpleExpr::Add(a) => self.eval(&a.0)?.add(&self.eval(&a.1)?),
-            SimpleExpr::Sub(_) => bail!("subtraction not yet implemented"),
-            SimpleExpr::Mul(_) => bail!("multiplication not yet implemented"),
-            SimpleExpr::Div(_) => bail!("division not yet implemented"),
-            SimpleExpr::Mod(_) => bail!("modulus not yet implemented"),
-            SimpleExpr::Pow(_) => bail!("exponentiation not yet implemented"),
+            SimpleExpr::Sub(a) => self.eval(&a.0)?.sub(&self.eval(&a.1)?),
+            SimpleExpr::Mul(a) => self.eval(&a.0)?.mul(&self.eval(&a.1)?),
+            SimpleExpr::Div(a) => self.eval(&a.0)?.div(&self.eval(&a.1)?),
+            SimpleExpr::Mod(a) => self.eval(&a.0)?.modulo(&self.eval(&a.1)?),
+            SimpleExpr::Pow(a) => self.eval(&a.0)?.pow(&self.eval(&a.1)?),
             SimpleExpr::And(a) => {
                 let v = self.eval(&a.0)?.as_bool()? && self.eval(&a.1)?.as_bool()?;
                 Ok(self.value(|b| b.encode_bool(v)))
@@ -175,12 +175,8 @@ mod tests {
     use quickcheck::{quickcheck, TestResult};
     use spectral::{assert_that, string::StrAssertions};
 
-    fn simple_expr(s: &str) -> SimpleExpr {
-        s.parse::<SimpleExpr>().unwrap()
-    }
-
-    fn eval(cx: &Context, s: &str) -> Result<String> {
-        cx.eval(&simple_expr(s)).map(|x| x.value().to_string())
+    fn eval(cx: &Context, s: &str) -> anyhow::Result<String> {
+        cx.eval(&s.parse()?).map(|x| x.value().to_string())
     }
 
     fn eval_bool(cx: &Context, s: &str) -> bool {
@@ -352,5 +348,15 @@ mod tests {
         assert_eq!(eval(&cx, "({ one: 1, two: 'x', three: NULL }).one").unwrap(), "1");
         assert_eq!(eval(&cx, "({ one: 1 two: 'x' three: NULL }).two").unwrap(), "\"x\"");
         assert_eq!(eval(&cx, "({ one: 1, two: 'x', three: NULL }).three").unwrap(), "null");
+
+        assert_that(&eval(&cx, "{'x':1}").unwrap_err().to_string()).contains("expected ident");
+    }
+
+    #[test]
+    fn arithmetic() {
+        let cx = ctx();
+        assert_eq!(eval(&cx, "1+2").unwrap(), "3");
+        assert_eq!(eval(&cx, "1+2*3^2%5").unwrap(), "4");
+        assert_eq!(eval(&cx, "1.0+2.0*3.0^2.0%5.0").unwrap(), "4.0");
     }
 }

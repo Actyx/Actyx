@@ -1,5 +1,6 @@
 use super::Number;
-use std::cmp::Ordering;
+use num_traits::Pow;
+use std::{cmp::Ordering, convert::TryInto};
 use Number::*;
 
 impl Number {
@@ -14,6 +15,41 @@ impl Number {
         match (self, other) {
             (Natural(l), Natural(r)) => Natural(l.saturating_add(*r)),
             (l, r) => Decimal(l.as_f64() + r.as_f64()),
+        }
+    }
+
+    pub fn sub(&self, other: &Number) -> Number {
+        match (self, other) {
+            (Natural(l), Natural(r)) => Natural(l.saturating_sub(*r)),
+            (l, r) => Decimal(l.as_f64() - r.as_f64()),
+        }
+    }
+
+    pub fn mul(&self, other: &Number) -> Number {
+        match (self, other) {
+            (Natural(l), Natural(r)) => Natural(l.saturating_mul(*r)),
+            (l, r) => Decimal(l.as_f64() * r.as_f64()),
+        }
+    }
+
+    pub fn div(&self, other: &Number) -> Number {
+        match (self, other) {
+            (Natural(l), Natural(r)) => Natural(*l / *r),
+            (l, r) => Decimal(l.as_f64() / r.as_f64()),
+        }
+    }
+
+    pub fn modulo(&self, other: &Number) -> Number {
+        match (self, other) {
+            (Natural(l), Natural(r)) => Natural(l % *r),
+            (l, r) => Decimal(l.as_f64() % r.as_f64()),
+        }
+    }
+
+    pub fn pow(&self, other: &Number) -> Number {
+        match (self, other) {
+            (Natural(l), Natural(r)) => Natural(l.pow((*r).try_into().unwrap_or(u32::MAX))),
+            (l, r) => Decimal(l.as_f64().pow(r.as_f64())),
         }
     }
 }
