@@ -1,6 +1,6 @@
 use crate::{
     axtrees::{AxKey, AxTrees, Sha256Digest},
-    query::{LamportQuery, TagsQuery, TimeQuery},
+    query::{LamportQuery, TagExprQuery, TimeQuery},
     stags,
     tags::ScopedTagSet,
     AxTree,
@@ -310,7 +310,7 @@ async fn events_banyan_tree_simple_queries_with(events: Vec<(AxKey, Payload)>) -
             .filter(move |(_, key, _)| matches(key, &tags1))
             .collect::<Vec<_>>();
         // get back the events, filtered by tags
-        let query = TagsQuery::new(tags.clone());
+        let query = TagExprQuery::new(tags.clone(), LamportQuery::all(), TimeQuery::all());
         let events1 = filter_tree(&txn, &tree, query.clone()).await?;
         assert_eq!(events0, events1);
 

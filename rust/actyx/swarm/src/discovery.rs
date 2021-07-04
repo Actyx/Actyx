@@ -38,7 +38,7 @@
 //! while when configuring an external address you are telling other peers how to reach you, given
 //! you have a bootstrap node in common.
 use crate::{internal_app_id, BanyanStore};
-use actyx_sdk::{tags, Payload, StreamNr};
+use actyx_sdk::{tag, tags, Payload, StreamNr};
 use anyhow::Result;
 use fnv::{FnvHashMap, FnvHashSet};
 use futures::stream::{Stream, StreamExt};
@@ -48,7 +48,8 @@ use libipld::DagCbor;
 use std::future::Future;
 use std::io::{Read, Seek, Write};
 use std::time::Duration;
-use trees::query::TagsQuery;
+use trees::query::{LamportQuery, TagExprQuery, TimeQuery};
+use trees::tags::{ScopedTag, ScopedTagSet, TagScope};
 
 #[derive(DagCbor, Debug)]
 #[allow(clippy::enum_variant_names)]
@@ -150,8 +151,9 @@ where
 }
 
 pub async fn discovery_ingest(store: BanyanStore) {
-    let tags = tags!("discovery");
-    let query = TagsQuery::new(vec![tags.into()]);
+    let mut tags: ScopedTagSet = tags!("discovery").into();
+    tags.insert(ScopedTag::new(TagScope::Internal, tag!("app_id:com.actyx")));
+    let query = TagExprQuery::new(vec![tags], LamportQuery::all(), TimeQuery::all());
     let mut stream = store.stream_filtered_stream_ordered(query);
     let peer_id = store.ipfs().local_peer_id();
     let node_name = store.ipfs().local_node_name();

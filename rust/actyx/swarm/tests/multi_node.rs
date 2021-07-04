@@ -3,7 +3,7 @@ use anyhow::Result;
 use futures::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use swarm::BanyanStore;
-use trees::query::TagsQuery;
+use trees::query::{LamportQuery, TagExprQuery, TimeQuery};
 
 #[derive(Serialize, Deserialize)]
 struct MyEvent {
@@ -23,7 +23,7 @@ async fn banyan_multi_node() -> Result<()> {
     }
 
     let tags = tags!("event");
-    let query = TagsQuery::new(vec![tags.clone().into()]);
+    let query = TagExprQuery::new(vec![tags.clone().into()], LamportQuery::all(), TimeQuery::all());
 
     let event = MyEvent {
         things_are_happening: vec!["hello world".to_string()],

@@ -27,12 +27,15 @@ pub enum Error {
     Overload,
     #[display(fmt = "Query bounds out of range: upper bound must be within the known present.")]
     InvalidUpperBounds,
+    #[display(fmt = "AQL Error: {}", _0)]
+    TagExprError(TagExprError),
 }
 
 impl From<super::event_store::Error> for Error {
     fn from(x: super::event_store::Error) -> Self {
         match x {
             crate::event_store::Error::InvalidUpperBounds => Error::InvalidUpperBounds,
+            crate::event_store::Error::TagExprError(e) => Error::TagExprError(e),
         }
     }
 }
@@ -97,6 +100,7 @@ pub enum EventStoreRequest {
     },
 }
 
+use trees::query::TagExprError;
 use EventStoreRequest::*;
 impl EventStoreRef {
     pub fn new(f: impl Fn(EventStoreRequest) -> Result<(), Error> + Send + Sync + 'static) -> Self {
@@ -269,7 +273,7 @@ impl EventStoreHandler {
             } => {
                 let store = self.store.clone();
                 self.stream(reply, runtime, move || {
-                    ready(Ok(store.unbounded_forward_per_stream(&tag_expr, from_offsets_excluding)))
+                    ready(store.unbounded_forward_per_stream(&tag_expr, from_offsets_excluding))
                 });
             }
         }
