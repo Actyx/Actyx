@@ -198,7 +198,12 @@ impl Publisher {
                     .ok_or_else(|| anyhow::anyhow!("No local file created!"))?;
                 blob_upload(local, &*file_name)
             }
-            TargetArtifact::Docker { tag, .. } => docker_manifest_push(&*tag),
+            TargetArtifact::Docker {
+                tag,
+                registry,
+                repository,
+                ..
+            } => docker_manifest_push(&*format!("{}/{}:{}", registry, repository, tag)),
         }
     }
 }
