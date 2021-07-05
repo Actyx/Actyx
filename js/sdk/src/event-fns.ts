@@ -152,7 +152,7 @@ export interface EventFns {
    * @param chunkSize   - Maximum size of chunks. Chunks may be smaller than this.
    * @param onChunk     - Callback that will be invoked with every chunk, in sequence.
    *
-   * @returns A Promise that resolves when all chunks have been delivered to the callback.
+   * @returns A function that can be called in order to cancel the subscription.
    */
   queryKnownRangeChunked: (
     query: RangeQuery,
