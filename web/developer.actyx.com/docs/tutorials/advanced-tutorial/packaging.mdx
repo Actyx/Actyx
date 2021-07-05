@@ -217,20 +217,22 @@ REPOSITORY             TAG                 IMAGE ID            CREATED          
 wago-connector-amd64   latest              fe966abbfedc        3 days ago          109MB
 ```
 
-3. If you see the image **wago-connector-amd64** in your terminal window, you can now run the docker image. One thing to note is that Docker has a separate network. However, in order for the image to talk to Actyx (and in particular with the Event Service on port **4243**), you need to pass this information as an environment variable so that Docker knows, where to look for the required port:
+3. If you see the image **wago-connector-amd64** in your terminal window, you can now run the docker image. One thing to note is that Docker has a separate network. However, in order for the image to talk to Actyx (and in particular with the API on port **4454**), you need to pass this information as an environment variable so that Docker knows where to look for the API:
 
 ```text
-docker run -e AX_STORE_URI="ws://host.docker.internal:4243/store_api" wago-connector-amd64
+docker run -e AX_STORE_URI="<IP address of your Actyx container>:4454/v2" wago-connector-amd64
 ```
 
-:::info
-Docker does not support `host.docker.internal` on Linux. Therefore, please run the image with `network=host` as an argument to the `docker run` command.
+:::info Running Actyx natively?
+If you are running Actyx natively, you need to do the following:
+- macOS or Windows: use `host.docker.internal` instead of the IP address of your Actyx container. 
+- Linux: Run the container with `--network=host`
 :::
 
 If everything worked, you should now see something similar to this:
 
 ```text
-[19:44][~:]$ docker run -e AX_STORE_URI="ws://host.docker.internal:4243/store_api" wago-connector-amd64
+[19:44][~:]$ docker run -e AX_STORE_URI="<IP address of your Actyx container>:4454/v2" wago-connector-amd64
 started Wago Connector plc ip: 192.168.0.99
 machine state { stateType: 'disabled', name: 'Wago Connector' }
 ```

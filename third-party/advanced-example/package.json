@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@actyx-contrib/react-pond": "^3.0.0",
-    "@actyx-contrib/rx-pond": "^0.1.0",
+    "@actyx-contrib/rx-pond": "^1.0.0",
     "@actyx/industrial-ui": "^1.0.5",
     "@actyx/sdk": "^0.1.2",
     "@actyx/pond": "^3.0.1",
