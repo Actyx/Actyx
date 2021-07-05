@@ -201,7 +201,6 @@ module.exports = {
         'reference/cli/users/keygen',
       ],
     },
-    'reference/release-notes',
   ],
   tutorialSidebar: [
     {
