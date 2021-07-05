@@ -11,6 +11,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Sdk\Sdk.csproj" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="System.Reactive" Version="5.0.0" />
+  </ItemGroup>
 
   <Target Name="PostClean" AfterTargets="Clean">
     <RemoveDir Directories="$(BaseIntermediateOutputPath)" /><!-- obj -->

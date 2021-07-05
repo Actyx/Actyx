@@ -36,7 +36,7 @@ namespace Actyx
 
         public IEnumerable<string> Tags { get; set; }
 
-        public JValue Payload { get; set; }
+        public JToken Payload { get; set; }
     }
 
 
@@ -93,7 +93,7 @@ namespace Actyx
         /**
          * Store the events in the store and return them as generic events.
          */
-        IObservable<EventOnWire> PersistEvents(
+        Task<IEnumerable<EventOnWire>> Publish(
             IEnumerable<IEventDraft> events
         );
     }

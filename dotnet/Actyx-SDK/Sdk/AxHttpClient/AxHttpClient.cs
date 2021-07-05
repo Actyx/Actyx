@@ -73,7 +73,7 @@ namespace Actyx.Sdk.AxHttpClient
                 return httpClient.SendAsync(request);
             });
 
-        private static async Task<AuthenticationResponse> GetToken(Uri baseUri, AppManifest manifest)
+        public static async Task<AuthenticationResponse> GetToken(Uri baseUri, AppManifest manifest)
         {
             var response = await httpClient.PostAsync(baseUri + HttpApiPath.AUTH_SEG, CreateJsonContent(manifest));
             await response.EnsureSuccessStatusCodeCustom();

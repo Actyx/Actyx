@@ -39,48 +39,51 @@ namespace Actyx
     public class ServiceError : IErrorKind
     {
         public string Type { get; } = "serviceError";
-        public JObject Value { get; set; }
+        public JToken Value { get; set; }
     }
 
     [JsonConverter(typeof(JsonSubtypes), "Type")]
-    public interface IOutgoing
+    public interface IRequestMessage
     {
         public string Type { get; }
+        public long RequestId { get; }
     }
 
-    public class Request : IOutgoing
+    public class Request : IRequestMessage
     {
         public string Type { get; } = "request";
         public string ServiceId { get; set; }
-        public ulong RequestId { get; set; }
-        public JObject Payload { get; set; }
+        public long RequestId { get; set; }
+        [JsonProperty(NullValueHandling = NullValueHandling.Include)]
+        public JToken Payload { get; set; }
     }
-    public class Cancel : IOutgoing
+    public class Cancel : IRequestMessage
     {
         public string Type { get; } = "cancel";
-        public ulong RequestId { get; set; }
+        public long RequestId { get; set; }
     }
 
     [JsonConverter(typeof(JsonSubtypes), "Type")]
-    public interface IIncoming
+    public interface IResponseMessage
     {
         public string Type { get; }
+        public long RequestId { get; }
     }
-    public class Next : IIncoming
+    public class Next : IResponseMessage
     {
         public string Type { get; } = "next";
-        public ulong RequestId { get; set; }
-        public JObject[] Payload { get; set; }
+        public long RequestId { get; set; }
+        public JToken[] Payload { get; set; }
     }
-    public class Complete : IIncoming
+    public class Complete : IResponseMessage
     {
         public string Type { get; } = "complete";
-        public ulong RequestId { get; set; }
+        public long RequestId { get; set; }
     }
-    public class Error : IIncoming
+    public class Error : IResponseMessage
     {
         public string Type { get; } = "error";
-        public ulong RequestId { get; set; }
+        public long RequestId { get; set; }
         public IErrorKind Kind { get; set; }
     }
 }
