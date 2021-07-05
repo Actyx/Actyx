@@ -707,10 +707,18 @@ struct DockerManifestPlatform {
 }
 fn docker_manifest_push(target: &str) -> anyhow::Result<()> {
     let args = ["manifest", "push", target];
+    log::debug!("running docker {:?}", args);
     let cmd = Command::new("docker")
         .args(&args)
         .output()
         .context(format!("running docker {:?}", args))?;
-    anyhow::ensure!(cmd.status.success(), "Error pushing manifest for {}", target);
+    anyhow::ensure!(
+        cmd.status.success(),
+        "Error running `docker {:?}` for {}\nstdout: {}\nstderr: {}",
+        args,
+        target,
+        String::from_utf8(cmd.stdout)?,
+        String::from_utf8(cmd.stderr)?
+    );
     Ok(())
 }
