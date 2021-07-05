@@ -56,16 +56,6 @@ namespace Actyx
 
         /** Statement to select specific events. Defaults to `allEvents`. */
         public IEventSelection Query { get; set; }
-
-        /** Maximum chunk size. Defaults to 1000. */
-        public uint MaxChunkSize { get; set; }
-
-        /**
-         * Maximum duration (in ms) a chunk of events is allowed to grow, before being passed to the callback.
-         * Defaults to 5.
-         * Set this to zero to optimize latency at the cost of always receiving just single events.
-         */
-        public uint? MaxChunkTimeMs { get; set; }
     }
 
     public class Aql : IEventSelection
@@ -82,18 +72,6 @@ namespace Actyx
         {
             return aql;
         }
-    }
-
-    public struct ChunkingOptions
-    {
-        /** Maximum chunk size. Defaults to 1000, if null */
-        public uint? MaxChunkSize { get; set; }
-
-        /**
-         * Maximum duration (in ms) a chunk of events is allowed to grow, before being passed to the callback.
-         * Defaults to 5, if null
-         */
-        public uint? MaxChunkTimeMs { get; set; }
     }
 
     public interface IEventFns
@@ -122,10 +100,7 @@ namespace Actyx
          *
          * @returns A Promise that resolves when all chunks have been delivered to the callback.
          */
-        public IObservable<EventChunk> QueryKnownRangeChunked(
-            RangeQuery query,
-            uint chunkSize
-        );
+        public IObservable<EventChunk> QueryKnownRangeChunked(RangeQuery query, int chunkSize);
 
         /**
          * Query all known events that occurred after the given `lowerBound`.
@@ -147,10 +122,7 @@ namespace Actyx
          *
          * @returns A `Promise` that resolves to updated offset-map after all chunks have been delivered.
          */
-        public IObservable<EventChunk> QueryAllKnownChunked(
-            AutoCappedQuery query,
-            uint chunkSize
-        );
+        public IObservable<EventChunk> QueryAllKnownChunked(AutoCappedQuery query, int chunkSize);
 
         /**
          * Subscribe to all events fitting the `query` after `lowerBound`.

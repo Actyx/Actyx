@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Actyx.Sdk.Formats;
+using Actyx.Sdk.Utils;
 using Actyx.Sdk.Utils.Extensions;
 using Newtonsoft.Json.Linq;
 
@@ -61,10 +62,7 @@ namespace Actyx.Sdk.AxHttpClient
 
         public IObservable<IEventOnWire> Query(OffsetMap lowerBound, OffsetMap upperBound, IEventSelection query, EventsOrder order)
         {
-            if (query is null)
-            {
-                throw new ArgumentNullException(nameof(query));
-            }
+            ThrowIf.Argument.IsNull(query, nameof(query));
 
             return Observable.FromAsync(() => client.Post(HttpApiPath.QUERY_SEG, new
             {
@@ -81,10 +79,7 @@ namespace Actyx.Sdk.AxHttpClient
 
         public IObservable<IEventOnWire> Subscribe(OffsetMap lowerBound, IEventSelection query)
         {
-            if (query is null)
-            {
-                throw new ArgumentNullException(nameof(query));
-            }
+            ThrowIf.Argument.IsNull(query, nameof(query));
 
             return Observable.FromAsync(() => client.Post(HttpApiPath.SUBSCRIBE_SEG, new
             {
