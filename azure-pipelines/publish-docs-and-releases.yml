@@ -21,7 +21,7 @@ stages:
             # `AzureCLI@2` task is a wrapper for a bash task, providing the
             # azure service connection, which is needed to interact with the
             # azure blob store
-            displayName: Task
+            displayName: Release Task
             env:
               BASH_ENV: "~/.bashrc"
             inputs:
