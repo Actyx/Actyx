@@ -647,32 +647,30 @@ fn docker_manifest_create(
     // Make sure the manifest is removed locally, otherwise we can't
     // (re)create it
     docker_manifest_rm(&*target)?;
-    {
-        // Now the actual manifest creation
-        let args = ["manifest".to_string(), "create".to_string(), target.clone()]
-            .iter()
-            .cloned()
-            .chain(
-                source_manifest
-                    .manifests
-                    .iter()
-                    .map(|x| format!("{}@{}", source_repository, x.digest)),
-            )
-            .collect::<Vec<String>>();
-        let cmd = Command::new("docker")
-            .args(&args)
-            .output()
-            .context(format!("running docker {:?}", args))?;
 
-        anyhow::ensure!(
-            cmd.status.success(),
-            "Error running `docker {:?}` for {}\nstdout: {}\nstderr: {}",
-            args,
-            target,
-            String::from_utf8(cmd.stdout)?,
-            String::from_utf8(cmd.stderr)?
-        );
-    }
+    // Now the actual manifest creation
+    let args = vec!["manifest".to_string(), "create".to_string(), target.clone()]
+        .into_iter()
+        .chain(
+            source_manifest
+                .manifests
+                .iter()
+                .map(|x| format!("{}@{}", source_repository, x.digest)),
+        )
+        .collect::<Vec<String>>();
+    let cmd = Command::new("docker")
+        .args(&args)
+        .output()
+        .context(format!("running docker {:?}", args))?;
+
+    anyhow::ensure!(
+        cmd.status.success(),
+        "Error running `docker {:?}` for {}\nstdout: {}\nstderr: {}",
+        args,
+        target,
+        String::from_utf8(cmd.stdout)?,
+        String::from_utf8(cmd.stderr)?
+    );
 
     Ok(())
 }
