@@ -1,0 +1,52 @@
+---
+title: App-to-Node communication errors
+id: app-to-node-communication
+hide_title: false
+hide_table_of_contents: false
+image: /images/defaults/default.svg
+---
+
+## Apps communicating with Actyx on Docker
+
+By default, the Actyx Pond and all SDKs are trying to connect to Actyx on localhost. If your Actyx and app container are not both using the host's networking directly via `--network=host` (only available on Linux), you therefore need to set an environment variable to let the Pond or SDK know where to reach Actyx.
+
+### In the `docker run` commmand
+
+When running your app container, you need to add the following flag:
+
+`-e AX_STORE_URI="<IP address of the Actyx container>:4454/api/v2`
+
+:::tip Running macOS or Windows?
+On macOS or windows, you can just use `host.docker.internal` instead of the IP address of your Actyx container.
+:::
+
+### In a Docker Compose file
+
+This is an exemplary docker-compose file:
+
+```yaml
+version: "3.9"
+services:
+  actyx:
+    image: actyx/actyx:2.0.1
+    privileged: true
+    ports:
+      - "4001:4001"
+      - "4454:4454"
+      - "4458:4458"
+    volumes:
+      - actyx_data:/data
+  app:
+    image: example-app
+    restart: always
+    environment: 
+        - AX_STORE_URI=actyx:4454/api/v2
+    depends_on: 
+        - actyx
+volumes:
+  actyx_data: {}
+```
+
+## Did not find what you were looking for?
+
+If you couldn't a solution to your problem, please don't hesitate to contact us in our [community forum](https://community.actyx.com) or on our [Discord server](https://discord.gg/262yJhc). We'll do our best to get back to you with answers as fast as possible.
