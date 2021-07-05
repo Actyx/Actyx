@@ -9,7 +9,7 @@ namespace Sdk.IntegrationTests
 {
     class Program2
     {
-        static async void Main()
+        static async Task Main()
         {
             var exitEvent = new ManualResetEvent(false);
             var token = (await AxHttpClient.GetToken(new Uri("http://localhost:4454/api/v2/"), new()
