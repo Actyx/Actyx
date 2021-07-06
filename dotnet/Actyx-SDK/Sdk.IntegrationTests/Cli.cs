@@ -14,25 +14,27 @@ namespace Sdk.IntegrationTests
 {
     class CLI
     {
+        private static const Uri Authority = "localhost:4454";
+
         private static async Task<IEventStore> MkStore(bool websocket)
         {
             AppManifest manifest = new()
             {
-                AppId = "com.example.cli",
-                DisplayName = ".NET CLI",
+                AppId = "com.example.actyx-cli",
+                DisplayName = "Actyx .NET CLI",
                 Version = "0.0.1"
             };
             if (websocket)
             {
-                var baseUri = "http://localhost:4454/api/v2/";
+                var baseUri = $"http://{Authority}/api/v2/";
                 var nodeId = (await AxHttpClient.Create(baseUri, manifest)).NodeId;
                 var token = (await AxHttpClient.GetToken(new Uri(baseUri), manifest)).Token;
-                var wsrpcClient = new WsrpcClient(new Uri($"ws://localhost:4454/api/v2/events?{token}"));
+                var wsrpcClient = new WsrpcClient(new Uri($"ws://{Authority}/api/v2/events?{token}"));
                 return new WebsocketEventStore(wsrpcClient, manifest.AppId, nodeId);
             }
             else
             {
-                var httpClient = await AxHttpClient.Create("http://localhost:4454", manifest);
+                var httpClient = await AxHttpClient.Create($"http://{Authority}", manifest);
                 return new HttpEventStore(httpClient);
             }
         }
@@ -78,9 +80,8 @@ namespace Sdk.IntegrationTests
             return cmd;
         }
 
-        private static Command Offsets()
-        {
-            var cmd = new Command("offsets")
+        private static Command Offsets() =>
+            new Command("offsets")
             {
                 Handler = CommandHandler.Create<bool>(async (websocket) =>
                 {
@@ -89,8 +90,6 @@ namespace Sdk.IntegrationTests
                     Console.WriteLine(Proto<OffsetsResponse>.Serialize(offsets));
                 })
             };
-            return cmd;
-        }
 
         private static Command Publish()
         {
