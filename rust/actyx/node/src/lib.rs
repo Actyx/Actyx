@@ -80,16 +80,12 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
 
     // Host interface
     let host = Host::new(working_dir.clone()).context("creating host interface")?;
-    let node_id = host.get_or_create_node_id().context("getting node ID")?;
 
     // Component: Logging
-    let logging = Logging::new(
-        node_id,
-        logs_rx,
-        host.working_dir(),
-        host.get_settings().admin.log_levels.node,
-    );
+    let logging = Logging::new(logs_rx, host.get_settings().admin.log_levels.node);
     join_handles.push(logging.spawn().context("spawning logger")?);
+
+    let node_id = host.get_or_create_node_id().context("getting node ID")?;
     tracing::debug!("NodeID: {}", node_id);
 
     // Runtime specifics

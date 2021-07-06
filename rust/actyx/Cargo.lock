@@ -2655,7 +2655,7 @@ dependencies = [
  "console",
  "lazy_static 1.4.0",
  "number_prefix",
- "parking_lot 0.9.0",
+ "parking_lot 0.11.1",
  "regex",
 ]
 
@@ -4145,7 +4145,6 @@ dependencies = [
  "jemallocator",
  "libp2p",
  "libp2p-streaming-response",
- "logsvcd",
  "maplit",
  "multihash 0.14.0",
  "parking_lot 0.11.1",
@@ -6699,9 +6698,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.2.18"
+version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa5553bf0883ba7c9cbe493b085c29926bd41b66afc31ff72cf17ff4fb60dcd5"
+checksum = "ab69019741fca4d98be3c62d2b75254528b5432233fd8a4d2739fec20278de48"
 dependencies = [
  "ansi_term 0.12.1",
  "chrono",
