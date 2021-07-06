@@ -911,7 +911,7 @@ impl BanyanStore {
         });
         let min_offset = self.transform_stream(&mut guard, |txn, tree| {
             let snapshot = tree.snapshot();
-            txn.extend(tree, kvs)?;
+            txn.extend_unpacked(tree, kvs)?;
             if snapshot.level() > MAX_TREE_LEVEL {
                 txn.pack(tree)?;
             }

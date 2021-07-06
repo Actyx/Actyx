@@ -82,7 +82,8 @@ fn last_item<T: Clone>(drainer: &mut Drainer<T>) -> anyhow::Result<T> {
 
 #[tokio::test]
 async fn should_compact_regularly() -> Result<()> {
-    const EVENTS: usize = 10000;
+    // this will 1010 chunks, so it will hit the MAX_TREE_LEVEL limit once
+    const EVENTS: usize = 10100;
     let store = BanyanStore::test("compaction_interval").await?;
 
     // Wait for the first compaction loop to pass.
@@ -142,8 +143,8 @@ async fn should_extend_packed_when_hitting_max_tree_depth() -> Result<()> {
         store.append(0.into(), app_id(), vec![ev]).await?;
     }
     let tree_after_append = last_item(&mut tree_stream)?;
-    assert!(!store.data.forest.is_packed(&tree_after_append)?);
-    assert_eq!(tree_after_append.level(), MAX_TREE_LEVEL + 1);
+    assert!(store.data.forest.is_packed(&tree_after_append)?);
+    assert_eq!(tree_after_append.level(), 4);
     assert_eq!(
         tree_after_append.offset(),
         Some(Offset::try_from(MAX_TREE_LEVEL as i64).unwrap())
@@ -155,9 +156,9 @@ async fn should_extend_packed_when_hitting_max_tree_depth() -> Result<()> {
         .await?;
     let tree_after_pack = last_item(&mut tree_stream)?;
     // the tree is not packed
-    assert!(!store.data.forest.is_packed(&tree_after_pack)?);
+    assert!(store.data.forest.is_packed(&tree_after_pack)?);
     // but the max level remains constant now
-    assert_eq!(tree_after_pack.level(), MAX_TREE_LEVEL + 1);
+    assert_eq!(tree_after_pack.level(), 4);
     assert_eq!(
         tree_after_pack.offset(),
         Some(Offset::try_from(MAX_TREE_LEVEL as i64 + 1).unwrap())
