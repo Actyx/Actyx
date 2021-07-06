@@ -1,10 +1,6 @@
-use crossbeam::channel::Sender;
 use tracing::Subscriber;
 use tracing_subscriber::{layer::Layer, reload, reload::Handle, EnvFilter};
-use util::{
-    formats::{ActyxOSResult, LogRequest, LogSeverity},
-    wrapping_subscriber::WrappingSubscriber2,
-};
+use util::formats::{ActyxOSResult, LogSeverity};
 
 // Wrapper trait to contain the types
 trait ReloadHandle {
@@ -29,7 +25,7 @@ pub struct LoggingSink {
 }
 
 impl LoggingSink {
-    pub fn new(level: LogSeverity, log_tx: Sender<LogRequest>) -> Self {
+    pub fn new(level: LogSeverity) -> Self {
         // If the `RUST_LOG` env var is set, the filter is statically set to
         // said value. This supports the common RUST_LOG syntax, see
         // https://docs.rs/tracing-subscriber/0.2.17/tracing_subscriber/fmt/index.html#filtering-events-with-environment-variables
@@ -52,8 +48,12 @@ impl LoggingSink {
             use tracing_subscriber::layer::SubscriberExt;
             subscriber.with(tracing_win_event_log::layer("Actyx").unwrap())
         };
-        // Ignore this crates' logs (deadly loops are lurking here ..)
-        let subscriber = WrappingSubscriber2::new(subscriber, log_tx, env!("CARGO_PKG_NAME").to_string());
+        #[cfg(target_os = "android")]
+        // Add additional layer on Android, so the logs also end up in logcat
+        let subscriber = {
+            use tracing_subscriber::layer::SubscriberExt;
+            subscriber.with(tracing_android::layer("com.actyx").unwrap())
+        };
         if tracing::subscriber::set_global_default(subscriber).is_err() {
             eprintln!("`tracing::subscriber::set_global_default` has been called more than once!");
             tracing::error!("`tracing::subscriber::set_global_default` has been called more than once!");

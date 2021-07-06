@@ -9,4 +9,3 @@ actyx_sdk = { version = "0.1", path = "../../sdk" }
 anyhow = "1.0.38"
 cbor-data = "0.4.2"
 tracing = "0.1.25"
-trees = { version = "0.1", path = "../trees" }

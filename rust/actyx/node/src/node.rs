@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::{
-    components::{logging::LoggingRequest, store::StoreRequest, ComponentRequest, ComponentState, ComponentType},
+    components::{store::StoreRequest, ComponentRequest, ComponentState, ComponentType},
     formats::{ExternalEvent, NodeDetails, NodeEvent, NodeState, ResultInspect, ShutdownReason},
     host::Host,
     node_api::formats::NodesRequest,
@@ -347,7 +347,7 @@ impl Node {
 pub(crate) enum ComponentChannel {
     Store(Sender<ComponentRequest<StoreRequest>>),
     NodeApi(Sender<ComponentRequest<()>>),
-    Logging(Sender<ComponentRequest<LoggingRequest>>),
+    Logging(Sender<ComponentRequest<()>>),
     Android(Sender<ComponentRequest<()>>),
     #[cfg(test)]
     Test(Sender<ComponentRequest<()>>),

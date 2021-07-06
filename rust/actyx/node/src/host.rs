@@ -6,10 +6,7 @@ use derive_more::Display;
 #[cfg(not(target_os = "android"))]
 use fslock::LockFile;
 use parking_lot::Mutex;
-use std::{
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::{path::PathBuf, sync::Arc};
 use util::formats::NodeCycleCount;
 
 #[derive(Debug, Clone, Display)]
@@ -18,7 +15,6 @@ pub struct WorkdirLocked(String);
 impl std::error::Error for WorkdirLocked {}
 
 pub(crate) struct Host {
-    base_path: PathBuf,
     keystore: KeyStoreRef,
     storage: NodeStorage,
     settings_repo: settings::Repository,
@@ -47,7 +43,7 @@ impl Host {
         #[cfg(test)]
         let settings_db = settings::Database::in_memory()?;
         #[cfg(not(test))]
-        let settings_db = settings::Database::new(base_path.clone())?;
+        let settings_db = settings::Database::new(base_path)?;
         let mut settings_repo = settings::Repository::new(settings_db);
         // Apply the current schema for com.actyx (it might have changed). If this is
         // unsuccessful, we panic.
@@ -62,7 +58,6 @@ impl Host {
         let keystore = make_keystore(storage.clone())?;
 
         Ok(Self {
-            base_path,
             keystore,
             storage,
             settings_repo,
@@ -70,10 +65,6 @@ impl Host {
             #[cfg(not(target_os = "android"))]
             lockfile,
         })
-    }
-
-    pub fn working_dir(&self) -> &Path {
-        &self.base_path
     }
 
     /// Returns this node's NodeId
