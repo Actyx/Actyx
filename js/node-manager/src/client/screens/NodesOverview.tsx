@@ -77,19 +77,20 @@ const NodeCard: React.FC<{ node: Node; remove: () => void; view: () => void }> =
           <UnsolidStarIcon height={4} width={4} className="text-gray-400" />
         )}
       </div>
-      <span
-        className={clsx('text-sm font-medium w-min rounded-lg ', {
-          'text-red-300': node.type === NodeType.Unauthorized || node.type === NodeType.Unreachable,
-          'text-green-300': node.type === NodeType.Reachable,
-          'text-gray-300': node.type === NodeType.Loading,
-        })}
-      >
-        {nodeTypeToText(node.type)}
-        {node.type === NodeType.Reachable && (
-          <span className="font-normal text-gray-300">&nbsp;{node.addr}</span>
-        )}
-      </span>
-      <p className="text-xl mt-0 font-medium">
+      <p className="text-sm truncate overflow-ellipsis text-gray-300 pr-4">
+        <span
+          className={clsx('font-medium', {
+            'text-red-300':
+              node.type === NodeType.Unauthorized || node.type === NodeType.Unreachable,
+            'text-green-300': node.type === NodeType.Reachable,
+            'text-gray-300': node.type === NodeType.Loading,
+          })}
+        >
+          {nodeTypeToText(node.type)}
+        </span>
+        {node.type === NodeType.Reachable && <span>&nbsp;{node.addr}</span>}
+      </p>
+      <p className="text-xl mt-0 font-medium truncate overflow-ellipsis">
         {node.type === NodeType.Reachable ? node.details.displayName : node.addr}
       </p>
       <div className="mt-6 flex">
