@@ -66,8 +66,6 @@ impl LoggingSink {
     }
     pub fn set_level(&mut self, level: LogSeverity) -> ActyxOSResult<()> {
         if self.configured_level != level {
-            // Still store the configured level, so that we don't spam the logs
-            self.configured_level = level;
             if self.level_from_env {
                 tracing::info!(
                     "Ignoring set log level \"{}\", as the log filter is set via the \"{}\" environment variable (\"{}\")",
@@ -75,6 +73,8 @@ impl LoggingSink {
                     DEFAULT_ENV,
                     std::env::var(DEFAULT_ENV).unwrap_or_else(|_| "".into())
                 );
+                // Still store the configured level, so that we don't spam the logs
+                self.configured_level = level;
             } else {
                 let new_filter = EnvFilter::new(level.to_string());
                 if let Err(e) = self.filter_handle.reload(new_filter) {

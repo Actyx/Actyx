@@ -43,7 +43,7 @@ impl Host {
         #[cfg(test)]
         let settings_db = settings::Database::in_memory()?;
         #[cfg(not(test))]
-        let settings_db = settings::Database::new(base_path.clone())?;
+        let settings_db = settings::Database::new(base_path)?;
         let mut settings_repo = settings::Repository::new(settings_db);
         // Apply the current schema for com.actyx (it might have changed). If this is
         // unsuccessful, we panic.

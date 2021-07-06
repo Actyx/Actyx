@@ -14,7 +14,6 @@ pub mod serde_util;
 pub mod tracing_set_log_level;
 pub mod value_or_limit;
 pub mod version;
-pub mod wrapping_subscriber;
 
 pub use self::value_or_limit::*;
 pub use tracing_set_log_level::*;
