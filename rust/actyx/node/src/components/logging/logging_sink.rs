@@ -48,6 +48,12 @@ impl LoggingSink {
             use tracing_subscriber::layer::SubscriberExt;
             subscriber.with(tracing_win_event_log::layer("Actyx").unwrap())
         };
+        #[cfg(target_os = "android")]
+        // Add additional layer on Android, so the logs also end up in logcat
+        let subscriber = {
+            use tracing_subscriber::layer::SubscriberExt;
+            subscriber.with(tracing_android::layer("com.actyx").unwrap())
+        };
         if tracing::subscriber::set_global_default(subscriber).is_err() {
             eprintln!("`tracing::subscriber::set_global_default` has been called more than once!");
             tracing::error!("`tracing::subscriber::set_global_default` has been called more than once!");
