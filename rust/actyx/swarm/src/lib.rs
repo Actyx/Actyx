@@ -104,7 +104,7 @@ pub type Ipfs = ipfs_embed::Ipfs<libipld::DefaultParams>;
 // TODO fix stream nr
 static DISCOVERY_STREAM_NR: u64 = 1;
 static METRICS_STREAM_NR: u64 = 2;
-const MAX_TREE_LEVEL: i32 = 1000;
+const MAX_TREE_LEVEL: i32 = 512;
 
 fn internal_app_id() -> AppId {
     app_id!("com.actyx")
@@ -912,7 +912,7 @@ impl BanyanStore {
         let min_offset = self.transform_stream(&mut guard, |txn, tree| {
             let snapshot = tree.snapshot();
             txn.extend_unpacked(tree, kvs)?;
-            if snapshot.level() > MAX_TREE_LEVEL {
+            if tree.level() > MAX_TREE_LEVEL {
                 txn.pack(tree)?;
             }
             Ok(snapshot.offset())
