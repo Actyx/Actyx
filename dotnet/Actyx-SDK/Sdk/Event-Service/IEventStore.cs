@@ -41,7 +41,7 @@ namespace Actyx
 
 
     // This interface is not public, it is the internal adapter for switching between ws/http/test impl.
-    public interface IEventStore
+    public interface IEventStore : IDisposable
     {
         NodeId NodeId { get; }
 

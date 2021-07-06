@@ -16,14 +16,21 @@ namespace Actyx.Sdk.AxHttpClient
             httpClient = new HttpClient();
         }
 
+
+        public static async Task<NodeId> GetNodeId(Uri baseUri)
+        {
+            var nodeIdResponse = await httpClient.GetAsync(baseUri + HttpApiPath.NODE_ID_SEG);
+            await nodeIdResponse.EnsureSuccessStatusCodeCustom();
+            var nodeId = await nodeIdResponse.Content.ReadAsStringAsync();
+            return new NodeId(nodeId);
+        }
+
         public static async Task<AxHttpClient> Create(string baseUrl, AppManifest manifest)
         {
 
             var that = new AxHttpClient(baseUrl, manifest);
-            var nodeIdResponse = await httpClient.GetAsync(that.MkApiUrl(HttpApiPath.NODE_ID_SEG));
-            await nodeIdResponse.EnsureSuccessStatusCodeCustom();
-            var nodeId = await nodeIdResponse.Content.ReadAsStringAsync();
-            that.NodeId = new NodeId(nodeId);
+            var nodeId = await GetNodeId(new Uri(baseUrl));// httpClient.GetAsync(that.MkApiUrl(HttpApiPath.NODE_ID_SEG));
+            that.NodeId = nodeId;
             that.token = (await GetToken(that.uriBuilder.Uri, manifest)).Token;
 
             return that;

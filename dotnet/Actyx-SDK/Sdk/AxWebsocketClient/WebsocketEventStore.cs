@@ -9,9 +9,9 @@ using Newtonsoft.Json;
 using Actyx.Sdk.Utils.Extensions;
 using Actyx.Sdk.Formats;
 
-namespace Actyx
+namespace Actyx.Sdk.AxWebsocketClient
 {
-    public class WebsocketEventStore : IEventStore, IDisposable
+    public class WebsocketEventStore : IEventStore
     {
         private readonly WsrpcClient wsrpcClient;
         private readonly string appId;

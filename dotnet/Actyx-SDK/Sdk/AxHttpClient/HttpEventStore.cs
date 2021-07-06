@@ -86,6 +86,11 @@ namespace Actyx.Sdk.AxHttpClient
                 return response.Content!.ReadFromNdjsonAsync<IEventOnWire>().ToObservable();
             });
         }
+
+        public void Dispose()
+        {
+            // Nothing to do?
+        }
     }
 
 }

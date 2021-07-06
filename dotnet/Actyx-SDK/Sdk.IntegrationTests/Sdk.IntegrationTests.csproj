@@ -5,7 +5,7 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <RootNamespace>Sdk.IntegrationTests</RootNamespace>
     <ReleaseVersion>0.1.0</ReleaseVersion>
-    <StartupObject>Sdk.IntegrationTests.Program</StartupObject>
+    <StartupObject>Sdk.IntegrationTests.Program3</StartupObject>
   </PropertyGroup>
   
   <ItemGroup>

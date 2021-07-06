@@ -1,8 +1,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Actyx;
 using Actyx.Sdk.AxHttpClient;
+using Actyx.Sdk.AxWebsocketClient;
 using Newtonsoft.Json.Linq;
 
 namespace Sdk.IntegrationTests

@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using Actyx;
+using Actyx.Sdk.AxWebsocketClient;
 using DeepEqual.Syntax;
 using Newtonsoft.Json.Linq;
 using Xunit;

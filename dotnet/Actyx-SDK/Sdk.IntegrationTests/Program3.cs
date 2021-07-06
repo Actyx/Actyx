@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Actyx;
 using Actyx.Sdk.AxHttpClient;
+using Actyx.Sdk.AxWebsocketClient;
 using Actyx.Sdk.Formats;
 
 namespace Sdk.IntegrationTests

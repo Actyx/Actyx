@@ -5,6 +5,8 @@ using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Actyx.Sdk.AxHttpClient;
+using Actyx.Sdk.AxWebsocketClient;
 using Actyx.Sdk.Formats;
 using Actyx.Sdk.Utils;
 using JsonSubTypes;
@@ -13,16 +15,78 @@ using Newtonsoft.Json.Linq;
 
 namespace Actyx
 {
-    public class EventFunctions : IEventFns
+    public enum Transport
     {
+        Http,
+        WebSocket,
+    }
+
+    public class ActyxOpts
+    {
+        /** Host of the Actxy service. This defaults to localhost and should stay localhost in almost all cases. */
+        public string ActyxHost { get; set; }
+
+        /** API port of the Actyx service. Defaults to 4454. */
+        public uint? ActyxPort { get; set; }
+
+        /** Whether to use plain http or websocket to communicate with the Actyx service. Defaults
+         * to WebSocket. */
+        public Transport Transport { get; set; }
+
+        // Implement me.
+        // public Action OnConnectionLost { get; set; }
+    }
+
+    public class Actyx : IEventFns, IDisposable
+    {
+        public static async Task<Actyx> Create(AppManifest manifest)
+        {
+            return await Actyx.Create(manifest, null);
+        }
+
+        public static async Task<Actyx> Create(AppManifest manifest, ActyxOpts options)
+        {
+
+            string host = options?.ActyxHost ?? "localhost";
+            uint port = options?.ActyxPort ?? 4454;
+
+            string httpUrl = "http://" + host + ':' + port;
+
+            if (options?.Transport == Transport.Http)
+            {
+                var httpEventStore = new HttpEventStore(await AxHttpClient.Create(httpUrl, manifest));
+                return new Actyx(httpEventStore);
+            }
+
+            Uri axHttp = new Uri(httpUrl);
+            var token = await AxHttpClient.GetToken(axHttp, manifest);
+            var nodeId = await AxHttpClient.GetNodeId(axHttp);
+
+            Uri axWs = new Uri("ws://" + host + ':' + port + '?' + token.Token);
+            var rpc = new WsrpcClient(axWs);
+
+            var wsEventStore = new WebsocketEventStore(rpc, manifest.AppId, nodeId);
+
+            return new Actyx(wsEventStore);
+        }
+
         private readonly IEventStore store;
-        public EventFunctions(IEventStore store)
+        private Actyx(IEventStore store)
         {
             this.store = store;
         }
 
-        public Task<OffsetsResponse> Offsets() => store.Offsets();
+        public void Dispose()
+        {
+            this.store.Dispose();
+        }
 
+        public NodeId NodeId
+        {
+            get => store.NodeId;
+        }
+
+        public Task<OffsetsResponse> Offsets() => store.Offsets();
 
         public async Task<OffsetMap> Present()
         {

@@ -3,7 +3,7 @@ using JsonSubTypes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Actyx
+namespace Actyx.Sdk.AxWebsocketClient
 {
     public static class Proto<T>
     {

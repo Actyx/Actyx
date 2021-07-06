@@ -6,12 +6,12 @@ using System.Threading;
 using Newtonsoft.Json.Linq;
 using Websocket.Client;
 
-namespace Actyx
+namespace Actyx.Sdk.AxWebsocketClient
 {
     public class WsrpcClient : IDisposable
     {
         private readonly WebsocketClient client;
-        private readonly ConcurrentDictionary<long, IObserver<IResponseMessage>> listeners = new() { };
+        private readonly ConcurrentDictionary<long, IObserver<IResponseMessage>> listeners = new () { };
         private readonly IDisposable responseProcessor;
         private Exception error;
         private long requestCounter = -1;
@@ -62,7 +62,7 @@ namespace Actyx
                     switch (res)
                     {
                         case Next next: return next.Payload;
-                        case Actyx.Error error:
+                        case AxWebsocketClient.Error error:
                             {
                                 upstreamCompletedOrError = true;
                                 throw new Error(error.Kind);
