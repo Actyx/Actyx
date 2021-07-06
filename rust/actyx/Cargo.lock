@@ -3650,6 +3650,7 @@ dependencies = [
  "tracing",
  "tracing-android",
  "tracing-subscriber",
+ "tracing_win_event_log",
  "trees",
  "url",
  "util",
