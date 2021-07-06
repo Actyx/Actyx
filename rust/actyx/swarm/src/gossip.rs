@@ -251,33 +251,21 @@ impl Gossip {
                                 .expect("unable to update lamport");
                             drop(lock);
                             tracing::trace!("updated lamport");
-                            match store.ipfs().create_temp_pin() {
-                                Ok(tmp) => {
-                                    tracing::trace!("temp pin created");
-                                    if let Err(err) = store.ipfs().temp_pin(&tmp, &root_update.root) {
-                                        tracing::error!("{}", err);
-                                    }
-                                    tracing::trace!("temp pinned");
-                                    for block in &root_update.blocks {
-                                        if let Err(err) = store.ipfs().insert(block) {
-                                            tracing::error!("{}", err);
-                                        } else {
-                                            tracing::trace!("{} written", display(**block));
-                                        }
-                                    }
-                                    let source = if root_update.blocks.is_empty() {
-                                        RootSource::SlowPath
-                                    } else {
-                                        RootSource::FastPath
-                                    };
-                                    match Link::try_from(root_update.root) {
-                                        Ok(root) => store.update_root(root_update.stream, root, source),
-                                        Err(err) => tracing::error!("failed to parse link {}", err),
-                                    }
+                            for block in &root_update.blocks {
+                                if let Err(err) = store.ipfs().insert(block) {
+                                    tracing::error!("{}", err);
+                                } else {
+                                    tracing::trace!("{} written", display(**block));
                                 }
-                                Err(err) => {
-                                    tracing::error!("failed to create temp pin {}", err);
-                                }
+                            }
+                            let source = if root_update.blocks.is_empty() {
+                                RootSource::SlowPath
+                            } else {
+                                RootSource::FastPath
+                            };
+                            match Link::try_from(root_update.root) {
+                                Ok(root) => store.update_root(root_update.stream, root, source),
+                                Err(err) => tracing::error!("failed to parse link {}", err),
                             }
                         }
                         Ok(GossipMessage::RootMap(root_map)) => {
