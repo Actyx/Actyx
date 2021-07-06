@@ -152,24 +152,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "android_log-sys"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85965b6739a430150bdd138e2374a98af0c3ee0d030b3bb7fc3bddff58d0102e"
-
-[[package]]
-name = "android_logger"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9ed09b18365ed295d722d0b5ed59c01b79a826ff2d2a8f73d5ecca8e6fb2f66"
-dependencies = [
- "android_log-sys",
- "env_logger 0.8.4",
- "lazy_static 1.4.0",
- "log",
-]
-
-[[package]]
 name = "ansi_term"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3570,34 +3552,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae0136257df209261daa18d6c16394757c63e032e27aafd8b07788b051082bef"
 dependencies = [
  "log",
-]
-
-[[package]]
-name = "logsvcd"
-version = "0.2.0"
-dependencies = [
- "actyx_sdk",
- "android_log-sys",
- "android_logger",
- "anyhow",
- "chrono",
- "criterion",
- "crossbeam",
- "derive_more",
- "futures 0.3.15",
- "log-panics",
- "maplit",
- "percent-encoding 2.1.0",
- "rogcat",
- "rusqlite",
- "serde 1.0.126",
- "serde_cbor",
- "serde_json",
- "tokio 1.6.2",
- "tracing",
- "tracing-subscriber",
- "tracing_win_event_log",
- "util",
 ]
 
 [[package]]
