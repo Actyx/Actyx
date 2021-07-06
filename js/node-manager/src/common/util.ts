@@ -47,3 +47,8 @@ export const isValidMultiAddrWithPeerId = (str: string): boolean => {
     return false
   }
 }
+
+export const nodeAddrValid = (addr: string) =>
+  !!/^((?:(?:(?:[a-zA-z\-]+)\:\/{1,3})?(?:[a-zA-Z0-9])(?:[a-zA-Z0-9\-\.]){1,61}(?:\.[a-zA-Z]{2,})+|\[(?:(?:(?:[a-fA-F0-9]){1,4})(?::(?:[a-fA-F0-9]){1,4}){7}|::1|::)\]|(?:(?:[0-9]{1,3})(?:\.[0-9]{1,3}){3}))(?:\:[0-9]{1,5})?)$|(localhost(?:\:[0-9]{1,5})?)$/.exec(
+    addr,
+  )

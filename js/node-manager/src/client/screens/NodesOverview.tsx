@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react'
 import { NodeType, Node } from '../../common/types'
+import { nodeAddrValid } from '../../common/util'
 import { Layout } from '../components/Layout'
 import { useAppState, AppActionKey } from '../app-state'
 import clsx from 'clsx'
@@ -20,11 +21,6 @@ const nodeTypeToText = (type: NodeType) => {
       return 'Loading'
   }
 }
-
-const nodeAddrValid = (addr: string) =>
-  !!/(^localhost$|\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?::\d{0,4})?\b)/.exec(
-    addr,
-  )
 
 const isFavorite = (store: StoreState, node: Node) =>
   store.key === 'Loaded' && store.data.preferences.favoriteNodeAddrs.includes(node.addr)
