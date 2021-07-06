@@ -223,10 +223,10 @@ prepare-js:
 
 # execute linter, style checker and tests for everything
 # THIS TARGET IS NOT RUN FOR PR VALIDATION — see azure-piplines
-validate: validate-os validate-netsim validate-os-android validate-js assert-clean
+validate: validate-os validate-netsim validate-os-android validate-js validate-dotnet assert-clean
 
 # declare all the validate targets to be phony
-.PHONY: validate-os validate-os-android validate-js
+.PHONY: validate-os validate-os-android validate-js validate-dotnet
 
 .PHONY: diagnostics
 
@@ -341,6 +341,11 @@ dist/js/pond: make-always
 		npm install && \
 		npm run build:prod && \
 		mv `npm pack` ../../$@/
+
+validate-dotnet: validate-dotnet-sdk
+
+validate-dotnet-sdk:
+	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK mcr.microsoft.com/dotnet/sdk:3.1 dotnet test
 
 validate-node-manager-bindings:
 	cd rust/actyx/node-manager-bindings && \
