@@ -26,7 +26,8 @@
         "deb",
         "rpm"
       ],
-      "artifactName": "actyx-node-manager-${arch}.${ext}"
+      "artifactName": "actyx-node-manager-${arch}.${ext}",
+      "icon": "resources/icon.icns"
     },
     "files": [
       "!native/",
