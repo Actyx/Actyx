@@ -177,7 +177,6 @@ dependencies = [
  "derive_more",
  "env_logger 0.8.4",
  "futures 0.3.15",
- "futures-test",
  "hyper",
  "itertools 0.10.1",
  "libipld",
@@ -196,7 +195,6 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
- "tracing-futures",
  "tracing-subscriber",
  "tree_magic",
  "trees",
@@ -499,7 +497,6 @@ dependencies = [
  "tempfile",
  "tokio",
  "tracing",
- "tracing-futures",
  "tracing-subscriber",
  "trees",
  "util",
@@ -1247,7 +1244,6 @@ dependencies = [
  "serde",
  "serde_cbor",
  "sha2",
- "util",
  "x25519-dalek",
  "zeroize",
 ]
@@ -1370,12 +1366,6 @@ dependencies = [
  "quote",
  "syn",
 ]
-
-[[package]]
-name = "diff"
-version = "0.1.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e25ea47919b1560c4e3b7fe0aaab9becf5b84a10325ddf7db0f0ba5e1026499"
 
 [[package]]
 name = "difference"
@@ -1785,23 +1775,6 @@ name = "futures-task"
 version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a16bef9fc1a4dddb5bee51c989e3fbba26569cbb0e31f5b303c184e3dd33dae"
-
-[[package]]
-name = "futures-test"
-version = "0.3.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e771858b95154d86bc76b412e4cea3bc104803a7838179e5a1315d9c8a4c2b6"
-dependencies = [
- "futures-core",
- "futures-executor",
- "futures-io",
- "futures-macro",
- "futures-sink",
- "futures-task",
- "futures-util",
- "pin-project 1.0.7",
- "pin-utils",
-]
 
 [[package]]
 name = "futures-timer"
@@ -3882,15 +3855,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "output_vt100"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53cdc5b785b7a58c5aad8216b3dfa114df64b0b06ae6e1501cef91df2fbdf8f9"
-dependencies = [
- "winapi",
-]
-
-[[package]]
 name = "pango"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4233,18 +4197,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pretty_assertions"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cab0e7c02cf376875e9335e0ba1da535775beb5450d21e1dffca068818ed98b"
-dependencies = [
- "ansi_term 0.12.1",
- "ctor",
- "diff",
- "output_vt100",
-]
-
-[[package]]
 name = "prettytable-rs"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4428,17 +4380,6 @@ dependencies = [
  "env_logger 0.8.4",
  "log",
  "rand 0.8.4",
-]
-
-[[package]]
-name = "quickcheck_macros"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b22a693222d716a9587786f37ac3f6b4faedb5b80c23914e7303ff5a1d8016e9"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -4814,7 +4755,6 @@ dependencies = [
  "anyhow",
  "cbor-data",
  "tracing",
- "trees",
 ]
 
 [[package]]
@@ -5361,7 +5301,6 @@ dependencies = [
  "names",
  "num-traits",
  "parking_lot 0.11.1",
- "pretty_assertions",
  "prometheus",
  "quickcheck",
  "rand 0.8.4",
@@ -6104,18 +6043,14 @@ dependencies = [
  "derive_more",
  "fnv",
  "futures 0.3.15",
- "futures-test",
- "itertools 0.10.1",
  "libipld",
  "libp2p-streaming-response",
  "log-panics",
- "maplit",
  "multiaddr",
  "num-traits",
  "parking_lot 0.11.1",
  "pin-utils",
  "quickcheck",
- "quickcheck_macros",
  "rand 0.8.4",
  "serde",
  "serde_cbor",

@@ -21,7 +21,6 @@ serde = { version = "1.0.125", features = ["derive"] }
 serde_cbor = "0.11.1"
 sha2 = "0.9.3"
 parking_lot = "0.11.1"
-util = { path = "../util" }
 x25519-dalek = "1.1.1"
 zeroize = "1.3.0"
 
