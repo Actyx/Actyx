@@ -37,6 +37,20 @@ stages:
               AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
               BASH_ENV: "~/.bashrc"
       - job:
+        displayName: validate-dotnet
+        pool:
+          name: Native
+        steps:
+          - bash: |
+              set -e
+              build/bin/install-vault.sh
+              make validate-dotnet assert-clean
+            env:
+              # Map secrets to env vars. This needs to be done manually
+              AWS_ACCESS_KEY_ID: $(SECRET_AWS_ACCESS_KEY_ID)
+              AWS_SECRET_ACCESS_KEY: $(SECRET_AWS_SECRET_ACCESS_KEY)
+              BASH_ENV: "~/.bashrc"
+      - job:
         displayName: validate-os
         pool:
           name: Native
