@@ -52,27 +52,35 @@ impl AxCliCommand for NodesInspect {
             writeln!(&mut s, "    {}", addr).unwrap();
         }
         writeln!(&mut s, "Connections:").unwrap();
-        let mut table = Table::new();
-        table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
-        table.set_titles(row!["PEERID", "ADDRESS"]);
-        for row in &result.connections {
-            table.add_row(row![row.peer_id, row.addr,]);
+        if result.connections.is_empty() {
+            writeln!(&mut s, "  none").unwrap();
+        } else {
+            let mut table = Table::new();
+            table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+            table.set_titles(row!["PEERID", "ADDRESS"]);
+            for row in &result.connections {
+                table.add_row(row![row.peer_id, row.addr,]);
+            }
+            writeln!(&mut s, "{}", table).unwrap();
         }
-        writeln!(&mut s, "{}", table).unwrap();
         writeln!(&mut s, "KnownPeers:").unwrap();
-        let mut table = Table::new();
-        table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
-        table.set_titles(row!["PEERID", "ADDRESS"]);
-        for peer in &result.known_peers {
-            for (i, addr) in peer.addrs.iter().enumerate() {
-                if i == 0 {
-                    table.add_row(row![peer.peer_id, addr,]);
-                } else {
-                    table.add_row(row!["", addr,]);
+        if result.known_peers.is_empty() {
+            writeln!(&mut s, "  none").unwrap();
+        } else {
+            let mut table = Table::new();
+            table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+            table.set_titles(row!["PEERID", "ADDRESS"]);
+            for peer in &result.known_peers {
+                for (i, addr) in peer.addrs.iter().enumerate() {
+                    if i == 0 {
+                        table.add_row(row![peer.peer_id, addr,]);
+                    } else {
+                        table.add_row(row!["", addr,]);
+                    }
                 }
             }
+            writeln!(&mut s, "{}", table).unwrap();
         }
-        writeln!(&mut s, "{}", table).unwrap();
         s
     }
 }
