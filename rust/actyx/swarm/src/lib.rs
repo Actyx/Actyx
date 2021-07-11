@@ -12,6 +12,7 @@
 pub mod convert;
 mod discovery;
 pub mod event_store;
+pub mod event_store_ref;
 mod gossip;
 pub mod metrics;
 mod prune;
