@@ -5,7 +5,6 @@ pub mod build;
 pub mod formats;
 pub mod immutable_sync;
 pub mod keepalivestream3;
-pub mod offsetmap_or_max;
 pub mod pinned_resource;
 pub mod pinned_resource_sync;
 pub mod reentrant_safe_mutex;
