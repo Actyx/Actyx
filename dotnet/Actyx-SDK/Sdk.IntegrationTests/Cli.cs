@@ -14,7 +14,7 @@ namespace Sdk.IntegrationTests
 {
     class CLI
     {
-        private static const Uri Authority = "localhost:4454";
+        private const string Authority = "localhost:4454/api/v2/";
 
         private static async Task<IEventStore> MkStore(bool websocket)
         {
@@ -26,10 +26,10 @@ namespace Sdk.IntegrationTests
             };
             if (websocket)
             {
-                var baseUri = $"http://{Authority}/api/v2/";
+                var baseUri = $"http://{Authority}";
                 var nodeId = (await AxHttpClient.Create(baseUri, manifest)).NodeId;
                 var token = (await AxHttpClient.GetToken(new Uri(baseUri), manifest)).Token;
-                var wsrpcClient = new WsrpcClient(new Uri($"ws://{Authority}/api/v2/events?{token}"));
+                var wsrpcClient = new WsrpcClient(new Uri($"ws://{Authority}events?{token}"));
                 return new WebsocketEventStore(wsrpcClient, manifest.AppId, nodeId);
             }
             else
