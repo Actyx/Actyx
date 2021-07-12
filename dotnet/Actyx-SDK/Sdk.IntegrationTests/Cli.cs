@@ -65,14 +65,12 @@ namespace Sdk.IntegrationTests
         {
             var cmd = new Command("subscribe"){
                 new Argument<Aql>("query", res => new Aql(res.Tokens[0].Value)){ Arity = ArgumentArity.ExactlyOne },
-                new Option<EventsOrder>("--order"){ Arity = ArgumentArity.ExactlyOne },
                 new Option<OffsetMap>("--lower-bound", ParseBounds){ Arity = ArgumentArity.ExactlyOne },
-                new Option<OffsetMap>("--upper-bound", ParseBounds){ Arity = ArgumentArity.ExactlyOne },
             };
-            cmd.Handler = CommandHandler.Create<bool, OffsetMap, OffsetMap, Aql, EventsOrder>(async (websocket, lowerBound, upperBound, query, order) =>
+            cmd.Handler = CommandHandler.Create<bool, OffsetMap, Aql>(async (websocket, lowerBound, query) =>
             {
                 var eventStore = await MkStore(websocket);
-                await foreach (var e in eventStore.Query(lowerBound, upperBound, query, order).ToAsyncEnumerable())
+                await foreach (var e in eventStore.Subscribe(lowerBound, query).ToAsyncEnumerable())
                 {
                     Console.WriteLine(Proto<IEventOnWire>.Serialize(e));
                 }
