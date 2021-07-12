@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -11,7 +11,7 @@ namespace Actyx.Sdk.AxWebsocketClient
     public class WsrpcClient : IDisposable
     {
         private readonly WebsocketClient client;
-        private readonly ConcurrentDictionary<long, IObserver<IResponseMessage>> listeners = new () { };
+        private readonly ConcurrentDictionary<long, IObserver<IResponseMessage>> listeners = new() { };
         private readonly IDisposable responseProcessor;
         private Exception error;
         private long requestCounter = -1;

@@ -1,13 +1,13 @@
-using System;
-using System.Linq;
+﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
-using Newtonsoft.Json;
-using Actyx.Sdk.Utils.Extensions;
 using Actyx.Sdk.Formats;
+using Actyx.Sdk.Utils.Extensions;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Actyx.Sdk.AxWebsocketClient
 {
