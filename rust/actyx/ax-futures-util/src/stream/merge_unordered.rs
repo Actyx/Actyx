@@ -24,6 +24,17 @@ impl<St: Stream + Unpin + Send, Si: Stream<Item = St> + Send> MergeUnordered<St,
             streams: Box::pin(SelectAll::new()),
         }
     }
+
+    pub fn without_input() -> Self {
+        Self {
+            input: None,
+            streams: Box::pin(SelectAll::new()),
+        }
+    }
+
+    pub fn push(&mut self, input: St) {
+        self.streams.push(input);
+    }
 }
 
 impl<St: Stream + Unpin, Si: Stream<Item = St>> Stream for MergeUnordered<St, Si> {

@@ -8,15 +8,17 @@ use crossbeam::channel::{Receiver, Sender};
 use crypto::KeyStoreRef;
 use parking_lot::Mutex;
 use std::{convert::TryInto, path::PathBuf, sync::Arc};
-use swarm::{BanyanStore, SwarmConfig};
+use swarm::{
+    event_store_ref::{EventStoreHandler, EventStoreRef, EventStoreRequest},
+    BanyanStore, SwarmConfig,
+};
 use tokio::sync::oneshot;
 use tracing::*;
 use util::formats::{Connection, NodeCycleCount, Peer};
 
 pub(crate) enum StoreRequest {
-    NodesInspect {
-        tx: oneshot::Sender<Result<InspectResponse>>,
-    },
+    NodesInspect(oneshot::Sender<Result<InspectResponse>>),
+    EventsV2(EventStoreRequest),
 }
 
 pub(crate) struct InspectResponse {
@@ -28,12 +30,14 @@ pub(crate) struct InspectResponse {
 }
 
 pub(crate) type StoreTx = Sender<ComponentRequest<StoreRequest>>;
+
 // Dynamic config
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct StoreConfig {
     swarm_config: SwarmConfig,
     licensing: Licensing,
 }
+
 impl Component<StoreRequest, StoreConfig> for Store {
     fn get_type() -> &'static str {
         "Swarm"
@@ -43,8 +47,8 @@ impl Component<StoreRequest, StoreConfig> for Store {
     }
     fn handle_request(&mut self, req: StoreRequest) -> Result<()> {
         match req {
-            StoreRequest::NodesInspect { tx } => {
-                if let Some(InternalStoreState { rt: _, store }) = self.state.as_ref() {
+            StoreRequest::NodesInspect(tx) => {
+                if let Some(InternalStoreState { store, .. }) = self.state.as_ref() {
                     let peer_id = store.ipfs().local_peer_id().to_string();
                     let swarm_addrs: Vec<_> = store
                         .ipfs()
@@ -90,6 +94,11 @@ impl Component<StoreRequest, StoreConfig> for Store {
                     let _ = tx.send(Err(anyhow::anyhow!("Store not running")));
                 }
             }
+            StoreRequest::EventsV2(request) => {
+                if let Some(InternalStoreState { rt, events, .. }) = self.state.as_mut() {
+                    events.handle(request, rt.handle())
+                }
+            }
         }
         Ok(())
     }
@@ -113,14 +122,19 @@ impl Component<StoreRequest, StoreConfig> for Store {
             );
             // client creation is setting up some tokio timers and therefore
             // needs to be called with a tokio runtime
+            let event_store = self.event_store.clone();
             let store = rt.block_on(async move {
                 let store = BanyanStore::new(cfg.swarm_config).await?;
 
-                store.spawn_task("api", api::run(node_info, store.clone(), bind_to.api.into_iter(), snd));
+                store.spawn_task(
+                    "api",
+                    api::run(node_info, store.clone(), event_store, bind_to.api.into_iter(), snd),
+                );
                 Ok::<BanyanStore, anyhow::Error>(store)
             })?;
 
-            self.state = Some(InternalStoreState { rt, store });
+            let events = EventStoreHandler::new(store.clone());
+            self.state = Some(InternalStoreState { rt, store, events });
             Ok(())
         } else {
             anyhow::bail!("no config")
@@ -182,10 +196,12 @@ impl Component<StoreRequest, StoreConfig> for Store {
 struct InternalStoreState {
     rt: tokio::runtime::Runtime,
     store: BanyanStore,
+    events: EventStoreHandler,
 }
 /// Struct wrapping the store service and handling its lifecycle.
 pub(crate) struct Store {
     rx: Receiver<ComponentRequest<StoreRequest>>,
+    event_store: EventStoreRef,
     state: Option<InternalStoreState>,
     store_config: Option<StoreConfig>,
     working_dir: PathBuf,
@@ -198,8 +214,10 @@ pub(crate) struct Store {
 }
 
 impl Store {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         rx: Receiver<ComponentRequest<StoreRequest>>,
+        event_store: EventStoreRef,
         working_dir: PathBuf,
         bind_to: BindTo,
         keystore: KeyStoreRef,
@@ -210,6 +228,7 @@ impl Store {
         std::fs::create_dir_all(working_dir.clone())?;
         Ok(Self {
             rx,
+            event_store,
             state: None,
             store_config: None,
             working_dir,

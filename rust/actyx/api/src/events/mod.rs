@@ -4,8 +4,8 @@ mod ws;
 
 use warp::*;
 
-use crate::events::service::EventService;
 use crate::util::NodeInfo;
+use service::EventService;
 
 pub(crate) fn routes(
     node_info: NodeInfo,

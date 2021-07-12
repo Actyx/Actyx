@@ -4,9 +4,16 @@ use api::{formats::Licensing, NodeInfo};
 use crypto::{KeyPair, KeyStore};
 use futures::stream::StreamExt;
 use structopt::StructOpt;
-use swarm::{BanyanStore, SwarmConfig};
+use swarm::{
+    event_store_ref::{self, EventStoreHandler, EventStoreRef},
+    BanyanStore, SwarmConfig,
+};
 use swarm_cli::{Command, Config, Event};
-use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::{
+    io::{AsyncBufReadExt, BufReader},
+    runtime::Handle,
+    sync::mpsc,
+};
 use trees::query::TagsQuery;
 
 #[tokio::main]
@@ -44,7 +51,22 @@ async fn run() -> Result<()> {
         tracing::info!("Binding api to {:?}", addr);
         let node_info = NodeInfo::new(swarm.node_id(), key_store.into_ref(), 0.into(), Licensing::default());
         let (tx, _rx) = crossbeam::channel::unbounded();
-        swarm.spawn_task("api", api::run(node_info, swarm.clone(), std::iter::once(addr), tx));
+        let event_store = {
+            let store = swarm.clone();
+            let (tx, mut rx) = mpsc::channel(100);
+            swarm.spawn_task("handler", async move {
+                let mut handler = EventStoreHandler::new(store);
+                let runtime = Handle::current();
+                while let Some(request) = rx.recv().await {
+                    handler.handle(request, &runtime);
+                }
+            });
+            EventStoreRef::new(move |e| tx.try_send(e).map_err(|_| event_store_ref::Error::Overload))
+        };
+        swarm.spawn_task(
+            "api",
+            api::run(node_info, swarm.clone(), event_store, std::iter::once(addr), tx),
+        );
         swarm
     } else {
         BanyanStore::new(config.clone().into()).await?

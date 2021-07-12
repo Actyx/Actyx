@@ -1,6 +1,6 @@
 use crate::{
     event_store::{EventStore, PersistenceMeta},
-    SwarmOffsets,
+    BanyanStore, SwarmOffsets,
 };
 use actyx_sdk::{language::TagExpr, AppId, Event, OffsetMap, Payload, TagSet};
 use futures::{Future, Stream, StreamExt};
@@ -14,17 +14,18 @@ use std::{
     },
 };
 use tokio::{
-    runtime::Runtime,
+    runtime::Handle,
     sync::{mpsc, oneshot},
     task::JoinHandle,
 };
 
+#[derive(Debug, Clone, derive_more::Display, derive_more::Error)]
 pub enum Error {
-    /// store was stopped while request was running
+    #[display(fmt = "event store was stopped while request was queued or running")]
     Aborted,
-    /// channel towards store is overloaded
+    #[display(fmt = "channel towards event store is overloaded")]
     Overload,
-    /// query bounds out of range
+    #[display(fmt = "query bounds out of range: upper bound must be within the known present")]
     InvalidUpperBounds,
 }
 
@@ -36,8 +37,9 @@ impl From<super::event_store::Error> for Error {
     }
 }
 
+#[derive(Clone)]
 pub struct EventStoreRef {
-    tx: mpsc::Sender<EventStoreRequest>,
+    tx: Arc<dyn Fn(EventStoreRequest) -> Result<(), Error> + Send + Sync + 'static>,
 }
 
 type OneShot<T> = oneshot::Sender<Result<T, Error>>;
@@ -75,28 +77,19 @@ pub enum EventStoreRequest {
 
 use EventStoreRequest::*;
 impl EventStoreRef {
-    pub async fn offsets(&self, wait: bool) -> Result<SwarmOffsets, Error> {
+    pub fn new(f: impl Fn(EventStoreRequest) -> Result<(), Error> + Send + Sync + 'static) -> Self {
+        Self { tx: Arc::new(f) }
+    }
+
+    pub async fn offsets(&self) -> Result<SwarmOffsets, Error> {
         let (reply, rx) = oneshot::channel();
-        if wait {
-            self.tx.send(Offsets { reply }).await.my_err()?;
-        } else {
-            self.tx.try_send(Offsets { reply }).my_err()?;
-        }
+        (self.tx)(Offsets { reply })?;
         rx.await.my_err()?
     }
 
-    pub async fn persist(
-        &self,
-        app_id: AppId,
-        events: Vec<(TagSet, Payload)>,
-        wait: bool,
-    ) -> Result<Vec<PersistenceMeta>, Error> {
+    pub async fn persist(&self, app_id: AppId, events: Vec<(TagSet, Payload)>) -> Result<Vec<PersistenceMeta>, Error> {
         let (reply, rx) = oneshot::channel();
-        if wait {
-            self.tx.send(Persist { app_id, events, reply }).await.my_err()?;
-        } else {
-            self.tx.try_send(Persist { app_id, events, reply }).my_err()?;
-        }
+        (self.tx)(Persist { app_id, events, reply })?;
         rx.await.my_err()?
     }
 
@@ -108,15 +101,13 @@ impl EventStoreRef {
         per_stream: bool,
     ) -> Result<mpsc::Receiver<Result<Event<Payload>, Error>>, Error> {
         let (reply, rx) = oneshot::channel();
-        self.tx
-            .try_send(BoundedForward {
-                tag_expr,
-                from_offsets_excluding,
-                to_offsets_including,
-                per_stream,
-                reply,
-            })
-            .my_err()?;
+        (self.tx)(BoundedForward {
+            tag_expr,
+            from_offsets_excluding,
+            to_offsets_including,
+            per_stream,
+            reply,
+        })?;
         rx.await.my_err()?
     }
 
@@ -127,14 +118,12 @@ impl EventStoreRef {
         to_offsets_including: OffsetMap,
     ) -> Result<mpsc::Receiver<Result<Event<Payload>, Error>>, Error> {
         let (reply, rx) = oneshot::channel();
-        self.tx
-            .try_send(BoundedBackward {
-                tag_expr,
-                from_offsets_excluding,
-                to_offsets_including,
-                reply,
-            })
-            .my_err()?;
+        (self.tx)(BoundedBackward {
+            tag_expr,
+            from_offsets_excluding,
+            to_offsets_including,
+            reply,
+        })?;
         rx.await.my_err()?
     }
 
@@ -144,13 +133,11 @@ impl EventStoreRef {
         from_offsets_excluding: OffsetMap,
     ) -> Result<mpsc::Receiver<Result<Event<Payload>, Error>>, Error> {
         let (reply, rx) = oneshot::channel();
-        self.tx
-            .try_send(UnboundedForward {
-                tag_expr,
-                from_offsets_excluding,
-                reply,
-            })
-            .my_err()?;
+        (self.tx)(UnboundedForward {
+            tag_expr,
+            from_offsets_excluding,
+            reply,
+        })?;
         rx.await.my_err()?
     }
 }
@@ -171,11 +158,6 @@ impl<T, U> MyErr<T> for Result<T, mpsc::error::TrySendError<U>> {
         })
     }
 }
-impl<T> MyErr<T> for Result<T, mpsc::error::RecvError> {
-    fn my_err(self) -> Result<T, Error> {
-        self.map_err(|_| Error::Aborted)
-    }
-}
 impl<T> MyErr<T> for Result<T, oneshot::error::RecvError> {
     fn my_err(self) -> Result<T, Error> {
         self.map_err(|_| Error::Aborted)
@@ -189,6 +171,7 @@ pub struct EventStoreHandler {
 
 type StreamInfo = (JoinHandle<()>, Option<StreamTo<Event<Payload>>>);
 
+#[derive(Default)]
 struct State {
     persist: AtomicUsize,
     stream_id: AtomicUsize,
@@ -196,8 +179,15 @@ struct State {
 }
 
 impl EventStoreHandler {
+    pub fn new(store: BanyanStore) -> Self {
+        Self {
+            store: EventStore::new(store),
+            state: Arc::new(State::default()),
+        }
+    }
+
     /// Handle the given request, spawning tasks on the given Runtime as needed.
-    pub fn handle(&mut self, request: EventStoreRequest, runtime: &Runtime) {
+    pub fn handle(&mut self, request: EventStoreRequest, runtime: &Handle) {
         match request {
             Offsets { reply } => {
                 let _ = reply.send(Ok(self.store.current_offsets()));
@@ -263,7 +253,7 @@ impl EventStoreHandler {
         }
     }
 
-    fn stream<F, Fut, S>(&mut self, reply: OneShot<StreamOf<Event<Payload>>>, runtime: &Runtime, f: F)
+    fn stream<F, Fut, S>(&mut self, reply: OneShot<StreamOf<Event<Payload>>>, runtime: &Handle, f: F)
     where
         F: FnOnce() -> Fut + Send + 'static,
         Fut: Future<Output = Result<S, super::event_store::Error>> + Send + 'static,
@@ -277,20 +267,18 @@ impl EventStoreHandler {
                 Ok(mut s) => {
                     let (tx, rx) = mpsc::channel(100);
                     let _ = started.await;
-                    if let Some(x) = state.stream.lock().get_mut(&id) {
+                    let doit = if let Some(x) = state.stream.lock().get_mut(&id) {
                         x.1 = Some(tx.clone());
+                        true
                     } else {
-                        // store has already been dropped
-                        return;
-                    }
-                    if reply.send(Ok(rx)).is_err() {
-                        // stream recipient has lost interest
-                        return;
-                    }
-                    while let Some(event) = s.next().await {
-                        if tx.send(Ok(event)).await.is_err() {
-                            // stream recipient has lost interest
-                            break;
+                        false
+                    }; // lock is dropped here
+                    if doit && reply.send(Ok(rx)).is_ok() {
+                        while let Some(event) = s.next().await {
+                            if tx.send(Ok(event)).await.is_err() {
+                                // stream recipient has lost interest
+                                break;
+                            }
                         }
                     }
                 }
@@ -298,6 +286,8 @@ impl EventStoreHandler {
                     let _ = reply.send(Err(e.into()));
                 }
             }
+            // need to drop the other stream sender to end the stream
+            state.stream.lock().remove(&id);
         });
         self.state.stream.lock().insert(id, (handle, None));
         let _ = start.send(());
@@ -316,8 +306,27 @@ impl Drop for EventStoreHandler {
             handle.abort();
             if let Some(stream) = stream {
                 let _ = stream.try_send(Err(Error::Aborted));
+                // the stream receiver will soon be dropped, leading to the task to end as well
             }
         }
         streams.clear();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn error_string() {
+        assert_eq!(
+            Error::Aborted.to_string(),
+            "event store was stopped while request was queued or running"
+        );
+        assert_eq!(Error::Overload.to_string(), "channel towards event store is overloaded");
+        assert_eq!(
+            Error::InvalidUpperBounds.to_string(),
+            "query bounds out of range: upper bound must be within the known present"
+        );
     }
 }

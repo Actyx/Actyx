@@ -8,6 +8,7 @@ use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult};
 use crate::{node_connection::NodeConnection, private_key::AxPrivateKey};
 
 pub mod apps;
+pub mod events;
 mod formats;
 pub(crate) mod internal;
 pub mod nodes;

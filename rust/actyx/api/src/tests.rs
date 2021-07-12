@@ -4,10 +4,14 @@ use crypto::{KeyStore, KeyStoreRef, PrivateKey, PublicKey};
 use hyper::Response;
 use parking_lot::lock_api::RwLock;
 use serde_json::*;
-use swarm::BanyanStore;
+use swarm::{
+    event_store_ref::{self, EventStoreHandler, EventStoreRef},
+    BanyanStore,
+};
 use warp::*;
 
 use crate::{auth::create_token, formats::Licensing, rejections, util::NodeInfo, AppMode};
+use tokio::{runtime::Handle, sync::mpsc};
 
 const UNAUTHORIZED_TOKEN: &str = "AAAAWaZnY3JlYXRlZBsABb3ls11m8mZhcHBfaWRyY29tLmV4YW1wbGUubXktYXBwZmN5Y2xlcwBndmVyc2lvbmUxLjAuMGh2YWxpZGl0eRkBLGlldmFsX21vZGX1AQv+4BIlF/5qZFHJ7xJflyew/CnF38qdV1BZr/ge8i0mPCFqXjnrZwqACX5unUO2mJPsXruWYKIgXyUQHwKwQpzXceNzo6jcLZxvAKYA05EFDnFvPIRfoso+gBJinSWpDQ==";
 
@@ -42,7 +46,19 @@ async fn test_routes() -> (
         ax_public_key: PrivateKey::generate().into(),
         licensing: Licensing::default(),
     };
-    let route = super::routes(auth_args.clone(), store).with(warp::trace::named("api_test"));
+    let event_store = {
+        let store2 = store.clone();
+        let (tx, mut rx) = mpsc::channel(100);
+        store.spawn_task("handler", async move {
+            let mut handler = EventStoreHandler::new(store2);
+            let runtime = Handle::current();
+            while let Some(request) = rx.recv().await {
+                handler.handle(request, &runtime);
+            }
+        });
+        EventStoreRef::new(move |e| tx.try_send(e).map_err(|_| event_store_ref::Error::Overload))
+    };
+    let route = super::routes(auth_args.clone(), store, event_store).with(warp::trace::named("api_test"));
 
     let token = create_token(
         auth_args,
