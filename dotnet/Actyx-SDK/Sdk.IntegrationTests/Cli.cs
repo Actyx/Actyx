@@ -55,7 +55,7 @@ namespace Sdk.IntegrationTests
                 var eventStore = await MkStore(websocket);
                 await foreach (var e in eventStore.Query(lowerBound, upperBound, query, order).ToAsyncEnumerable())
                 {
-                    Console.WriteLine(Proto<IEventOnWire>.Serialize(e));
+                    Console.WriteLine(Proto<IEventOnWire>.Serialize(e, false));
                 }
             });
             return cmd;
@@ -72,7 +72,7 @@ namespace Sdk.IntegrationTests
                 var eventStore = await MkStore(websocket);
                 await foreach (var e in eventStore.Subscribe(lowerBound, query).ToAsyncEnumerable())
                 {
-                    Console.WriteLine(Proto<IEventOnWire>.Serialize(e));
+                    Console.WriteLine(Proto<IEventOnWire>.Serialize(e, false));
                 }
             });
             return cmd;
