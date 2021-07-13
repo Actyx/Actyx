@@ -95,3 +95,13 @@ div.alert {
   box-sizing: border-box;
   color: var(--ifm-font-color-base);
 }
+
+li.showMore {
+  list-style: none;
+}
+
+.showMore span {
+  color: gray;
+  cursor: pointer;
+  font-size: 15px;
+}
