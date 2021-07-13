@@ -238,6 +238,7 @@ fn main() -> Result<(), Error> {
             writeln!(
                 changelog,
                 r#"Actyx Release
+
 -------------------------
 Overview:"#
             )?;
