@@ -61,7 +61,7 @@ async fn run() -> Result<()> {
                     handler.handle(request, &runtime);
                 }
             });
-            EventStoreRef::new(move |e| tx.try_send(e).map_err(|_| event_store_ref::Error::Overload))
+            EventStoreRef::new(move |e| tx.try_send(e).map_err(event_store_ref::Error::from))
         };
         swarm.spawn_task(
             "api",

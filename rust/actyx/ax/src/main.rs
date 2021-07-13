@@ -118,6 +118,8 @@ async fn main() {
         },
     };
 
+    util::setup_logger();
+
     match command {
         CommandsOpt::Apps(opts) => cmd::apps::run(opts, json).await,
         CommandsOpt::Nodes(opts) => cmd::nodes::run(opts, json).await,

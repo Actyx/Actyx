@@ -76,7 +76,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     let tx = store_tx.clone();
     let event_store = EventStoreRef::new(move |e| {
         tx.try_send(ComponentRequest::Individual(StoreRequest::EventsV2(e)))
-            .map_err(|_| event_store_ref::Error::Overload)
+            .map_err(event_store_ref::Error::from)
     });
 
     let mut components = vec![

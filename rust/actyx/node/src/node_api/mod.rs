@@ -20,14 +20,15 @@ use crossbeam::channel::Sender;
 use crypto::PublicKey;
 use formats::NodesRequest;
 use futures::{
-    future::{ready, BoxFuture},
+    future::{ready, AbortHandle, Abortable, BoxFuture},
     pin_mut,
     stream::{self, BoxStream, FuturesUnordered},
     task::{self, Poll},
-    Future, FutureExt, StreamExt,
+    Future, FutureExt, Stream, StreamExt,
 };
 use libp2p::{
     core::{muxing::StreamMuxerBox, transport::Boxed},
+    identify::{Identify, IdentifyConfig, IdentifyEvent},
     identity,
     multiaddr::Protocol,
     ping::{Ping, PingConfig, PingEvent},
@@ -39,7 +40,13 @@ use libp2p::{
 };
 use libp2p_streaming_response::{ChannelId, StreamingResponse, StreamingResponseConfig, StreamingResponseEvent};
 use parking_lot::Mutex;
-use std::{collections::BTreeSet, convert::TryFrom, pin::Pin, sync::Arc, time::Duration};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    convert::TryFrom,
+    pin::Pin,
+    sync::Arc,
+    time::Duration,
+};
 use swarm::event_store_ref::EventStoreRef;
 use tokio::time::{timeout_at, Instant};
 use tracing::*;
@@ -63,6 +70,7 @@ struct State {
     /// Pending inflight requests to Node.
     pending_oneshot: FuturesUnordered<PendingRequest>,
     pending_stream: MergeUnordered<PendingStream, stream::Empty<PendingStream>>,
+    stream_handles: BTreeMap<ChannelId, AbortHandle>,
     admin_sockets: Variable<BTreeSet<Multiaddr>>,
 }
 
@@ -72,6 +80,7 @@ pub struct ApiBehaviour {
     admin: StreamingResponse<AdminProtocol>,
     events: StreamingResponse<EventsProtocol>,
     ping: Ping,
+    identify: Identify,
     #[behaviour(ignore)]
     state: State,
 }
@@ -105,11 +114,12 @@ impl ApiBehaviour {
         node_tx: Sender<ExternalEvent>,
         store: StoreTx,
         auth_info: Arc<Mutex<NodeApiSettings>>,
+        local_public_key: libp2p::core::PublicKey,
     ) -> Self {
         let tx = store.clone();
         let events = EventStoreRef::new(move |req| {
             tx.try_send(ComponentRequest::Individual(StoreRequest::EventsV2(req)))
-                .map_err(|_| swarm::event_store_ref::Error::Overload)
+                .map_err(swarm::event_store_ref::Error::from)
         });
         let events = EventService::new(events, node_id);
         let state = State {
@@ -119,12 +129,14 @@ impl ApiBehaviour {
             auth_info,
             pending_oneshot: FuturesUnordered::new(),
             pending_stream: MergeUnordered::without_input(),
+            stream_handles: BTreeMap::default(),
             admin_sockets: Variable::default(),
         };
         Self {
             ping: Ping::new(PingConfig::new().with_keep_alive(true)),
             admin: StreamingResponse::new(StreamingResponseConfig::default()),
             events: StreamingResponse::new(StreamingResponseConfig::default()),
+            identify: Identify::new(IdentifyConfig::new("Actyx".to_owned(), local_public_key)),
             state,
         }
     }
@@ -281,10 +293,21 @@ impl ApiBehaviour {
     }
 
     fn enqueue_events_v2(&mut self, channel_id: ChannelId, request: EventsRequest) {
+        fn wrap<F>(c: ChannelId, f: F) -> (BoxStream<'static, (ChannelId, Option<EventsResponse>)>, AbortHandle)
+        where
+            F: Future + Send + 'static,
+            F::Output: Stream<Item = (ChannelId, Option<EventsResponse>)> + Send + 'static,
+        {
+            let (handle, reg) = AbortHandle::new_pair();
+            let s = f.flatten_stream().chain(stream::once(ready((c, None))));
+            let s = Abortable::new(s, reg);
+            (s.boxed(), handle)
+        }
+
         let channel_id2 = channel_id.clone();
         let events = self.state.events.clone();
-        let s: BoxStream<'static, _> = match request {
-            EventsRequest::Offsets => async move {
+        let (s, h) = match request {
+            EventsRequest::Offsets => wrap(channel_id.clone(), async move {
                 match events.offsets().await {
                     Ok(o) => stream::once(ready((channel_id, Some(EventsResponse::Offsets(o))))),
                     Err(e) => stream::once(ready((
@@ -292,11 +315,8 @@ impl ApiBehaviour {
                         Some(EventsResponse::Error { message: e.to_string() }),
                     ))),
                 }
-            }
-            .flatten_stream()
-            .chain(stream::once(ready((channel_id2, None))))
-            .boxed(),
-            EventsRequest::Query(request) => async move {
+            }),
+            EventsRequest::Query(request) => wrap(channel_id.clone(), async move {
                 match events.query(app_id!("com.actyx.cli"), request).await {
                     Ok(resp) => resp
                         .map(move |x| match x {
@@ -313,11 +333,8 @@ impl ApiBehaviour {
                     )))
                     .right_stream(),
                 }
-            }
-            .flatten_stream()
-            .chain(stream::once(ready((channel_id2, None))))
-            .boxed(),
-            EventsRequest::Subscribe(request) => async move {
+            }),
+            EventsRequest::Subscribe(request) => wrap(channel_id.clone(), async move {
                 match events.subscribe(app_id!("com.actyx.cli"), request).await {
                     Ok(resp) => resp
                         .map(move |x| match x {
@@ -334,11 +351,8 @@ impl ApiBehaviour {
                     )))
                     .right_stream(),
                 }
-            }
-            .flatten_stream()
-            .chain(stream::once(ready((channel_id2, None))))
-            .boxed(),
-            EventsRequest::SubscribeMonotonic(request) => async move {
+            }),
+            EventsRequest::SubscribeMonotonic(request) => wrap(channel_id.clone(), async move {
                 match events.subscribe_monotonic(app_id!("com.actyx.cli"), request).await {
                     Ok(resp) => resp
                         .map(move |x| match x {
@@ -358,11 +372,8 @@ impl ApiBehaviour {
                     )))
                     .right_stream(),
                 }
-            }
-            .flatten_stream()
-            .chain(stream::once(ready((channel_id2, None))))
-            .boxed(),
-            EventsRequest::Publish(request) => async move {
+            }),
+            EventsRequest::Publish(request) => wrap(channel_id.clone(), async move {
                 match events.publish(app_id!("com.actyx.cli"), request).await {
                     Ok(resp) => stream::once(ready((channel_id, Some(EventsResponse::Publish(resp))))),
                     Err(e) => stream::once(ready((
@@ -370,11 +381,9 @@ impl ApiBehaviour {
                         Some(EventsResponse::Error { message: e.to_string() }),
                     ))),
                 }
-            }
-            .flatten_stream()
-            .chain(stream::once(ready((channel_id2, None))))
-            .boxed(),
+            }),
         };
+        self.state.stream_handles.insert(channel_id2, h);
         self.state.pending_stream.push(s);
     }
 
@@ -396,13 +405,16 @@ impl ApiBehaviour {
 
         while let Poll::Ready(Some((chan, resp))) = self.state.pending_stream.poll_next_unpin(cx) {
             if let Some(msg) = resp {
-                if self.events.respond(chan, msg).is_err() {
-                    // TODO cancel subscription
+                if self.events.respond(chan.clone(), msg).is_err() {
+                    if let Some(h) = self.state.stream_handles.remove(&chan) {
+                        h.abort();
+                    }
                 }
-                wake_me_up = true;
             } else {
+                self.state.stream_handles.remove(&chan);
                 let _ = self.events.finish_response(chan);
             }
+            wake_me_up = true;
         }
 
         // This `poll` function is the last in the derived NetworkBehaviour.
@@ -480,6 +492,12 @@ impl NetworkBehaviourEventProcess<PingEvent> for ApiBehaviour {
     }
 }
 
+impl NetworkBehaviourEventProcess<IdentifyEvent> for ApiBehaviour {
+    fn inject_event(&mut self, _event: IdentifyEvent) {
+        // ignored
+    }
+}
+
 pub(crate) async fn mk_swarm(
     node_id: NodeId,
     keypair: libp2p::core::identity::Keypair,
@@ -492,8 +510,8 @@ pub(crate) async fn mk_swarm(
         bail!("cannot start node API without any listen addresses");
     }
 
+    let protocol = ApiBehaviour::new(node_id, node_tx, store, auth_info, keypair.public());
     let (peer_id, transport) = mk_transport(keypair).await?;
-    let protocol = ApiBehaviour::new(node_id, node_tx, store, auth_info);
 
     let mut swarm = SwarmBuilder::new(transport, protocol, peer_id)
         .executor(Box::new(|fut| {
@@ -567,11 +585,13 @@ pub(crate) async fn mk_swarm(
 
 type TConnErr = libp2p::core::either::EitherError<
     libp2p::core::either::EitherError<
-        libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
-        libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
+        libp2p::core::either::EitherError<
+            libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
+            libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
+        >,
+        libp2p::ping::handler::PingFailure,
     >,
-    // ping
-    libp2p::ping::handler::PingFailure,
+    std::io::Error,
 >;
 
 /// Wrapper object for driving the whole swarm

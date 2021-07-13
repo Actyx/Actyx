@@ -37,6 +37,24 @@ impl From<super::event_store::Error> for Error {
     }
 }
 
+impl<T> From<crossbeam::channel::TrySendError<T>> for Error {
+    fn from(e: crossbeam::channel::TrySendError<T>) -> Self {
+        match e {
+            crossbeam::channel::TrySendError::Full(_) => Error::Overload,
+            crossbeam::channel::TrySendError::Disconnected(_) => Error::Aborted,
+        }
+    }
+}
+
+impl<T> From<tokio::sync::mpsc::error::TrySendError<T>> for Error {
+    fn from(e: tokio::sync::mpsc::error::TrySendError<T>) -> Self {
+        match e {
+            tokio::sync::mpsc::error::TrySendError::Full(_) => Error::Overload,
+            tokio::sync::mpsc::error::TrySendError::Closed(_) => Error::Aborted,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct EventStoreRef {
     tx: Arc<dyn Fn(EventStoreRequest) -> Result<(), Error> + Send + Sync + 'static>,

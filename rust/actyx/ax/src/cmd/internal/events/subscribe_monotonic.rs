@@ -15,16 +15,16 @@ use util::formats::{
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]
 /// obtain currently known offsets and replication targets
-pub struct SubscribeOpts {
+pub struct SubscribeMonotonicOpts {
     #[structopt(flatten)]
     console_opt: ConsoleOpt,
     /// event API query
     query: Query,
 }
 
-pub struct EventsSubscribe;
-impl AxCliCommand for EventsSubscribe {
-    type Opt = SubscribeOpts;
+pub struct EventsSubscribeMonotonic;
+impl AxCliCommand for EventsSubscribeMonotonic {
+    type Opt = SubscribeMonotonicOpts;
     type Output = EventResponse<Payload>;
 
     fn run(mut opts: Self::Opt) -> Box<dyn Stream<Item = ActyxOSResult<Self::Output>> + Unpin> {

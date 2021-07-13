@@ -56,7 +56,7 @@ async fn test_routes() -> (
                 handler.handle(request, &runtime);
             }
         });
-        EventStoreRef::new(move |e| tx.try_send(e).map_err(|_| event_store_ref::Error::Overload))
+        EventStoreRef::new(move |e| tx.try_send(e).map_err(event_store_ref::Error::from))
     };
     let route = super::routes(auth_args.clone(), store, event_store).with(warp::trace::named("api_test"));
 
