@@ -96,6 +96,8 @@ image-windows = actyx/util:buildrs-x64-$(IMAGE_VERSION)
 # see https://github.com/Actyx/osxbuilder
 image-darwin = actyx/osxbuilder:90af262c037444c4da6d981f8a885ac510a79bb6
 
+image-dotnet = mcr.microsoft.com/dotnet/sdk:3.1
+
 # list all os-arch and binary names
 osArch = $(foreach a,$(architectures),linux-$(a)) windows-x86_64 macos-x86_64 macos-aarch64
 binaries = ax ax.exe actyx-linux actyx.exe
@@ -162,6 +164,8 @@ $(foreach arch,$(architectures),$(eval $(call mkLinuxRule,$(arch))))
 current: dist/bin/current/ax dist/bin/current/actyx-linux
 
 all-js: dist/js/pond dist/js/sdk
+
+all-dotnet: dist/dotnet/cli
 
 # Create a `make-always` target that always has the current timestamp.
 # Depending on this ensures that the rule is always executed.
@@ -342,10 +346,14 @@ dist/js/pond: make-always
 		npm run build:prod && \
 		mv `npm pack` ../../$@/
 
+dist/dotnet/cli: make-always
+	mkdir -p $@
+	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK $(image-dotnet) dotnet publish CLI --output /src/$@/
+
 validate-dotnet: validate-dotnet-sdk
 
 validate-dotnet-sdk:
-	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK mcr.microsoft.com/dotnet/sdk:3.1 dotnet test
+	docker run --rm -v `pwd`:/src -w /src/dotnet/Actyx-SDK $(image-dotnet) dotnet test
 
 validate-node-manager-bindings:
 	cd rust/actyx/node-manager-bindings && \

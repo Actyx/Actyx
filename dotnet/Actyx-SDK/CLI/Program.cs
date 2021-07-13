@@ -10,9 +10,9 @@ using Actyx.Sdk.AxHttpClient;
 using Actyx.Sdk.AxWebsocketClient;
 using Actyx.Sdk.Formats;
 
-namespace Sdk.IntegrationTests
+namespace Actyx.CLI
 {
-    class CLI
+    class Program
     {
         private const string Authority = "localhost:4454/api/v2/";
 

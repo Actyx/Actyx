@@ -36,18 +36,18 @@ namespace Sdk.Tests
             Assert.Equal($"Connection refused", ex.Message);
         }
 
-        [Fact]
-        public async void It_Should_Get_App_Id()
-        {
-            var client = await AxHttpClient.Create(Constants.ApiOrigin, Constants.TrialManifest);
-            client.AppId.Should().Equals(Constants.TrialManifest.AppId);
-        }
+        // [Fact]
+        // public async void It_Should_Get_App_Id()
+        // {
+        //     var client = await AxHttpClient.Create(Constants.ApiOrigin, Constants.TrialManifest);
+        //     client.AppId.Should().Equals(Constants.TrialManifest.AppId);
+        // }
 
-        [Fact]
-        public async void It_Should_Get_Node_Id()
-        {
-            var client = await AxHttpClient.Create(Constants.ApiOrigin, Constants.TrialManifest);
-            client.NodeId.ToString().Should().NotBeNullOrWhiteSpace();
-        }
+        // [Fact]
+        // public async void It_Should_Get_Node_Id()
+        // {
+        //     var client = await AxHttpClient.Create(Constants.ApiOrigin, Constants.TrialManifest);
+        //     client.NodeId.ToString().Should().NotBeNullOrWhiteSpace();
+        // }
     }
 }
