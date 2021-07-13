@@ -568,7 +568,6 @@ pub(crate) async fn mk_swarm(
 type TConnErr = libp2p::core::either::EitherError<
     libp2p::core::either::EitherError<
         libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
-        // streaming-response logging
         libp2p::swarm::protocols_handler::ProtocolsHandlerUpgrErr<std::io::Error>,
     >,
     // ping
