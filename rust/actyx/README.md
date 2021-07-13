@@ -19,7 +19,7 @@ test a specific subproject you can you the `-p` option:
 
 ### Integration tests using docker
 
-_Note: This features does not work with a virtual workspace (<https://github.com/rust-lang/cargo/issues/4942>). So you need to run the tests from the specific Cargo workspace the tests are defined.
+_Note: This feature does not work with a virtual workspace (<https://github.com/rust-lang/cargo/issues/4942>). So you need to run the tests from the specific Cargo workspace the tests are defined.
 For your convenience, there is a [script](./run-docker-integration-tests.sh) to automate that._
 
 To also enable integration tests, that spin up docker containers for testing purposes, run:
