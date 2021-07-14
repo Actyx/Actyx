@@ -161,12 +161,6 @@ impl Component<StoreRequest, StoreConfig> for Store {
         let swarm_config = SwarmConfig {
             topic,
             index_store: Some(self.db.clone()),
-            enable_fast_path: true,
-            enable_slow_path: true,
-            enable_root_map: true,
-            enable_mdns: true,
-            enable_discovery: true,
-            enable_metrics: true,
             keypair: Some(keypair),
             psk: Some(psk),
             node_name: Some(s.admin.display_name),
@@ -184,8 +178,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
                 .iter()
                 .map(|s| s.parse())
                 .collect::<Result<_, libp2p::multiaddr::Error>>()?,
-            ephemeral_event_config: Default::default(),
-            banyan_config: Default::default(),
+            ..SwarmConfig::basic()
         };
         Ok(StoreConfig {
             swarm_config,

@@ -7,10 +7,11 @@ use actyx_sdk::{
 use warp::*;
 
 use crate::{
-    events::service::{self, EventService},
+    events::service::EventService,
     rejections::ApiError,
     util::{self, Result},
 };
+use swarm::event_store_ref;
 
 pub async fn offsets(_app_id: AppId, event_service: EventService) -> Result<impl Reply> {
     event_service
@@ -58,8 +59,14 @@ pub async fn subscribe_monotonic(
 }
 
 fn reject(err: anyhow::Error) -> Rejection {
-    match err.downcast_ref::<service::Error>() {
-        Some(service::Error::StoreReadError(_)) => reject::custom(ApiError::BadRequest { cause: err.to_string() }),
-        _ => util::reject(err), // internal server errors
+    if let Some(e) = err.downcast_ref::<event_store_ref::Error>() {
+        let cause = e.to_string();
+        match e {
+            event_store_ref::Error::Aborted => reject::custom(ApiError::Shutdown { cause }),
+            event_store_ref::Error::Overload => reject::custom(ApiError::Overloaded { cause }),
+            event_store_ref::Error::InvalidUpperBounds => reject::custom(ApiError::BadRequest { cause }),
+        }
+    } else {
+        util::reject(err) // internal server errors
     }
 }

@@ -21,11 +21,11 @@ use tokio::{
 
 #[derive(Debug, Clone, derive_more::Display, derive_more::Error)]
 pub enum Error {
-    #[display(fmt = "event store was stopped while request was queued or running")]
+    #[display(fmt = "Event store was stopped while request was queued or running.")]
     Aborted,
-    #[display(fmt = "channel towards event store is overloaded")]
+    #[display(fmt = "Channel towards event store is overloaded.")]
     Overload,
-    #[display(fmt = "query bounds out of range: upper bound must be within the known present")]
+    #[display(fmt = "Query bounds out of range: upper bound must be within the known present.")]
     InvalidUpperBounds,
 }
 
@@ -339,12 +339,15 @@ mod tests {
     fn error_string() {
         assert_eq!(
             Error::Aborted.to_string(),
-            "event store was stopped while request was queued or running"
+            "Event store was stopped while request was queued or running."
         );
-        assert_eq!(Error::Overload.to_string(), "channel towards event store is overloaded");
+        assert_eq!(
+            Error::Overload.to_string(),
+            "Channel towards event store is overloaded."
+        );
         assert_eq!(
             Error::InvalidUpperBounds.to_string(),
-            "query bounds out of range: upper bound must be within the known present"
+            "Query bounds out of range: upper bound must be within the known present."
         );
     }
 }

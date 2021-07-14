@@ -16,7 +16,7 @@ use std::{net::SocketAddr, panic::panic_any, sync::Arc};
 use swarm::BanyanStore;
 use warp::*;
 
-pub use crate::events::service::{Error, EventService};
+pub use crate::events::service::EventService;
 use crate::util::hyper_serve::serve_it;
 pub use crate::util::NodeInfo;
 pub use crate::util::{AppMode, BearerToken, Token};

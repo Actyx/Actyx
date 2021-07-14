@@ -133,7 +133,7 @@ impl From<Config> for SwarmConfig {
                 .map(|e| e.0)
                 .unwrap_or_else(EphemeralEventsConfig::disable),
             banyan_config,
-            ..Default::default()
+            ..SwarmConfig::basic()
         }
     }
 }

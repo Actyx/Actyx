@@ -58,6 +58,12 @@ pub enum ApiError {
 
     #[display(fmt = "Internal server error.")]
     Internal,
+
+    #[display(fmt = "Service overloaded. {}", cause)]
+    Overloaded { cause: String },
+
+    #[display(fmt = "Shutting down. {}", cause)]
+    Shutdown { cause: String },
 }
 impl warp::reject::Reject for ApiError {}
 
@@ -71,8 +77,7 @@ pub struct ApiErrorResponse {
 }
 impl From<ApiError> for ApiErrorResponse {
     fn from(e: ApiError) -> Self {
-        let message: StringSerialized<_> = e.clone().into();
-        let (status, code) = match e {
+        let (status, code) = match &e {
             ApiError::AppUnauthorized { .. } => (StatusCode::UNAUTHORIZED, "ERR_APP_UNAUTHORIZED"),
             ApiError::BadRequest { .. } => (StatusCode::BAD_REQUEST, "ERR_BAD_REQUEST"),
             ApiError::Internal => (StatusCode::INTERNAL_SERVER_ERROR, "ERR_INTERNAL"),
@@ -87,11 +92,13 @@ impl From<ApiError> for ApiErrorResponse {
             ApiError::TokenUnauthorized => (StatusCode::UNAUTHORIZED, "ERR_TOKEN_UNAUTHORIZED"),
             ApiError::UnsupportedAuthType { .. } => (StatusCode::UNAUTHORIZED, "ERR_UNSUPPORTED_AUTH_TYPE"),
             ApiError::UnsupportedMediaType { .. } => (StatusCode::UNSUPPORTED_MEDIA_TYPE, "ERR_UNSUPPORTED_MEDIA_TYPE"),
+            ApiError::Overloaded { .. } => (StatusCode::SERVICE_UNAVAILABLE, "ERR_SERVICE_OVERLOADED"),
+            ApiError::Shutdown { .. } => (StatusCode::SERVICE_UNAVAILABLE, "ERR_SHUTTING_DOWN"),
         };
         ApiErrorResponse {
             code: code.to_string(),
             status,
-            message,
+            message: e.into(),
         }
     }
 }

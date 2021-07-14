@@ -14,18 +14,9 @@ use futures::{
 };
 use runtime::value::Value;
 use std::{convert::TryFrom, num::NonZeroU64};
-use swarm::event_store_ref::{self, EventStoreRef};
-use thiserror::Error;
+use swarm::event_store_ref::EventStoreRef;
 use tokio::sync::mpsc::Receiver;
 use tokio_stream::wrappers::ReceiverStream;
-
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("Store error while writing: {0}")]
-    StoreWriteError(#[from] anyhow::Error),
-    #[error("Store error while reading: {0}")]
-    StoreReadError(#[from] event_store_ref::Error),
-}
 
 trait ReceiverExt<T> {
     fn stop_on_error(self) -> BoxStream<'static, T>;
