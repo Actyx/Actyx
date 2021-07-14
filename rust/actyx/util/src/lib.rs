@@ -36,6 +36,7 @@ pub fn setup_logger() {
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_span_events(FmtSpan::ACTIVE | FmtSpan::CLOSE)
         .with_env_filter(EnvFilter::new(env))
+        .with_writer(std::io::stderr)
         .finish();
     tracing::subscriber::set_global_default(subscriber).ok();
     log_panics::init();
