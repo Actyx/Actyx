@@ -23,7 +23,7 @@ This command allows you to access a remote node’s admin port to find out how m
 The listed streams are named by the node ID of their origin with a stream number attached, for example like the following:
 
 ```text title="Example usage"
-[17:50][~:]$ ax events offsets localhost
+$ ax events offsets localhost
 ┌───────────────────────────────────────────────┬────────┬──────────────┐
 │ STREAM ID                                     │ OFFSET │ TO REPLICATE │
 ├───────────────────────────────────────────────┼────────┼──────────────┤

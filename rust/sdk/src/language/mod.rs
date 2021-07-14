@@ -1,7 +1,7 @@
 mod parser;
 mod render;
 
-use crate::{tags::Tag, AppId, LamportTimestamp, Timestamp};
+use crate::{language::render::render_tag_expr, tags::Tag, AppId, LamportTimestamp, Timestamp};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Query {
@@ -29,6 +29,12 @@ impl TagExpr {
     }
     pub fn or(self, other: TagExpr) -> Self {
         TagExpr::Or(Box::new((self, other)))
+    }
+}
+
+impl std::fmt::Display for TagExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        render_tag_expr(f, self, None)
     }
 }
 

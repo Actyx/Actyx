@@ -29,7 +29,7 @@ The output will show you:
 - `knownPeers`: List of all peers, identified by peer ID and address, that your node knows
 
 ```text title="Example Usage"
-ax nodes inspect 192.168.1.219
+$ ax nodes inspect 192.168.1.219
 PeerId: 12D3KooWSgvc3hzrsuExYazNDB1BU3gevUPTzaumnwHWv5yFBNzH
 SwarmAddrs:
     /ip4/192.168.1.219/tcp/4001
@@ -56,7 +56,7 @@ Addresses:
 +------------------------------------------------------+--------------------------------------------------------------------------------------+
 
 # Get the output as a JSON object
-ax -j nodes inspect 192.168.1.219 | jq .
+$ ax -j nodes inspect 192.168.1.219 | jq .
 {
   "code": "OK",
   "result": {

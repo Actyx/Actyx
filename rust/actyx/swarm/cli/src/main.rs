@@ -5,7 +5,7 @@ use crypto::{KeyPair, KeyStore};
 use futures::stream::StreamExt;
 use structopt::StructOpt;
 use swarm::{
-    event_store_ref::{self, EventStoreHandler, EventStoreRef},
+    event_store_ref::{self, EventStoreHandler, EventStoreRef, EventStoreRequest},
     BanyanStore, SwarmConfig,
 };
 use swarm_cli::{Command, Config, Event};
@@ -53,12 +53,15 @@ async fn run() -> Result<()> {
         let (tx, _rx) = crossbeam::channel::unbounded();
         let event_store = {
             let store = swarm.clone();
-            let (tx, mut rx) = mpsc::channel(100);
+            let (tx, mut rx) = mpsc::channel::<EventStoreRequest>(10);
             swarm.spawn_task("handler", async move {
                 let mut handler = EventStoreHandler::new(store);
                 let runtime = Handle::current();
                 while let Some(request) = rx.recv().await {
+                    let req = request.to_string();
+                    tracing::debug!("got request {}", req);
                     handler.handle(request, &runtime);
+                    tracing::debug!("handled request {}", req);
                 }
             });
             EventStoreRef::new(move |e| tx.try_send(e).map_err(event_store_ref::Error::from))

@@ -30,6 +30,7 @@ dependencies = [
  "serde-transcode",
  "serde_cbor",
  "serde_json",
+ "tokio",
  "tracing",
  "typenum",
  "unicode-normalization",

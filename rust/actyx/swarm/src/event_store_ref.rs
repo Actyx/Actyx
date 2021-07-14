@@ -64,15 +64,17 @@ type OneShot<T> = oneshot::Sender<Result<T, Error>>;
 type StreamOf<T> = mpsc::Receiver<Result<T, Error>>;
 type StreamTo<T> = mpsc::Sender<Result<T, Error>>;
 
+#[derive(derive_more::Display)]
 pub enum EventStoreRequest {
-    Offsets {
-        reply: OneShot<SwarmOffsets>,
-    },
+    #[display(fmt = "Offsets")]
+    Offsets { reply: OneShot<SwarmOffsets> },
+    #[display(fmt = "Persist({}, {})", app_id, "events.len()")]
     Persist {
         app_id: AppId,
         events: Vec<(TagSet, Payload)>,
         reply: OneShot<Vec<PersistenceMeta>>,
     },
+    #[display(fmt = "Bounded({}, per_stream={})", tag_expr, per_stream)]
     BoundedForward {
         tag_expr: TagExpr,
         from_offsets_excluding: OffsetMap,
@@ -80,12 +82,14 @@ pub enum EventStoreRequest {
         per_stream: bool,
         reply: OneShot<StreamOf<Event<Payload>>>,
     },
+    #[display(fmt = "Backward({})", tag_expr)]
     BoundedBackward {
         tag_expr: TagExpr,
         from_offsets_excluding: OffsetMap,
         to_offsets_including: OffsetMap,
         reply: OneShot<StreamOf<Event<Payload>>>,
     },
+    #[display(fmt = "Unbounded({})", tag_expr)]
     UnboundedForward {
         tag_expr: TagExpr,
         from_offsets_excluding: OffsetMap,
@@ -281,8 +285,10 @@ impl EventStoreHandler {
         let id = state.stream_id.fetch_add(1, Ordering::Relaxed);
         let (start, started) = oneshot::channel();
         let handle = runtime.spawn(async move {
+            tracing::debug!("stream {} initiated", id);
             match f().await {
                 Ok(mut s) => {
+                    tracing::debug!("stream {} starting", id);
                     let (tx, rx) = mpsc::channel(100);
                     let _ = started.await;
                     let doit = if let Some(x) = state.stream.lock().get_mut(&id) {
@@ -291,13 +297,18 @@ impl EventStoreHandler {
                     } else {
                         false
                     }; // lock is dropped here
+                    tracing::debug!("stream {} started {}", id, doit);
                     if doit && reply.send(Ok(rx)).is_ok() {
                         while let Some(event) = s.next().await {
+                            tracing::trace!("stream {} got {}/{}", id, event.key.lamport, event.key.stream);
                             if tx.send(Ok(event)).await.is_err() {
                                 // stream recipient has lost interest
+                                tracing::debug!("stream {} aborted", id);
                                 break;
                             }
+                            tracing::trace!("stream {} sent", id);
                         }
+                        tracing::debug!("stream {} ended", id);
                     }
                 }
                 Err(e) => {

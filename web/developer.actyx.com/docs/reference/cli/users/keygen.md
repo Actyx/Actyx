@@ -22,7 +22,7 @@ Please see the following usage examples for the `ax users keygen` command:
 
 ```text title="Example Usage"
 # Generate a new user keys in default location
-ax users keygen
+$ ax users keygen
 Generating public/private key pair ..
 Enter path in which to save the key (<OS-specific default path>/actyx/keys/users): 
 Your private key has been saved at <OS-specific default path>/actyx/keys/users/id
@@ -30,7 +30,7 @@ Your public key has been saved at <OS-specific default path>/actyx/keys/users/id
 The key's fingerprint is: 0WBOOWqi2Ub5SPi5btKN5H5BzFPcjyULwUKUN2dWVsMI=
 
 # Generate a new swarm key, create file swarm.key and write the generated key to it
-ax users keygen -o mykeys
+$ ax users keygen -o mykeys
 Generating public/private key pair ..
 Your private key has been saved at mykeys
 Your public key has been saved at mykeys.pub

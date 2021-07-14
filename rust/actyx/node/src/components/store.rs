@@ -96,7 +96,7 @@ impl Component<StoreRequest, StoreConfig> for Store {
             }
             StoreRequest::EventsV2(request) => {
                 if let Some(InternalStoreState { rt, events, .. }) = self.state.as_mut() {
-                    events.handle(request, rt.handle())
+                    events.handle(request, rt.handle());
                 }
             }
         }

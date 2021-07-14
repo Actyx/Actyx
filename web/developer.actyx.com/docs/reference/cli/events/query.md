@@ -24,7 +24,7 @@ This command allows you to submit a query to a remote node, tunneled through the
 For more details on the format of such queries please refer to [the API docs](../../events-api.mdx#query-event-streams).
 
 ```text title="Example usage"
-[17:50][~:]$ ax events query localhost 'FROM "a"' | jq .
+$ ax events query localhost 'FROM "a"' | jq .
 {
   "lamport": 8002,
   "stream": "eLaDx6r4VtctA3wVJnToJo.FIp.YinBoN5sL17CkvJU-0",
