@@ -25,7 +25,7 @@ The listed streams are named by the node ID of their origin with a stream number
 ```text title="Example usage"
 [17:50][~:]$ ax events offsets localhost
 ┌───────────────────────────────────────────────┬────────┬──────────────┐
-│ STREAM ID                                     │ OFFSET │ TO_REPLICATE │
+│ STREAM ID                                     │ OFFSET │ TO REPLICATE │
 ├───────────────────────────────────────────────┼────────┼──────────────┤
 │ 51tJcIrv6ijBeurYcn/H7/OWWYAdPXufYYB6KMqg3/Y-1 │ 5      │ +3           │
 │ eLaDx6r4VtctA3wVJnToJo.FIp.YinBoN5sL17CkvJU-0 │ 1      │              │

@@ -44,7 +44,7 @@ impl AxCliCommand for EventsOffsets {
         let OffsetsResponse { present, to_replicate } = result;
         let mut table = Table::new();
         table.set_format(*TABLE_FORMAT);
-        table.set_titles(row!["STREAM ID", "OFFSET", "TO_REPLICATE"]);
+        table.set_titles(row!["STREAM ID", "OFFSET", "TO REPLICATE"]);
         let streams = present
             .streams()
             .chain(to_replicate.keys().cloned())

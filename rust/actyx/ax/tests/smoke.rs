@@ -1,12 +1,14 @@
 use anyhow::{anyhow, bail, ensure};
-use escargot::CargoBuild;
+use escargot::{format::Message, CargoBuild};
 use parking_lot::Mutex;
 use serde_json::{json, Value};
 use std::{
+    ffi::OsStr,
     fmt::Write,
     io::{BufRead, BufReader},
+    path::Path,
     process::{Command, Stdio},
-    sync::{mpsc::channel, Arc},
+    sync::{mpsc::channel, Arc, Once},
     thread::spawn,
     time::Duration,
 };
@@ -21,6 +23,40 @@ impl<T> Opts for Option<T> {
     fn v(self, msg: &str) -> anyhow::Result<T> {
         self.ok_or_else(|| anyhow!("{}: no value", msg))
     }
+}
+
+fn setup() {
+    static INIT: Once = Once::new();
+    INIT.call_once(|| {
+        // build needed binaries for quicker execution
+        for bin in &["actyx-linux", "ax"] {
+            eprintln!("building {}", bin);
+            for msg in CargoBuild::new()
+                .manifest_path("../Cargo.toml")
+                .bin(*bin)
+                .exec()
+                .unwrap()
+            {
+                let msg = msg.unwrap();
+                let msg = msg.decode().unwrap();
+                match msg {
+                    Message::BuildFinished(x) => eprintln!("{:?}", x),
+                    Message::CompilerArtifact(a) => {
+                        if !a.fresh {
+                            eprintln!("{:?}", a.package_id)
+                        }
+                    }
+                    Message::CompilerMessage(s) => {
+                        if let Some(msg) = s.message.rendered {
+                            eprintln!("{}", msg)
+                        }
+                    }
+                    Message::BuildScriptExecuted(_) => {}
+                    Message::Unknown => {}
+                }
+            }
+        }
+    });
 }
 
 #[derive(Clone, Default)]
@@ -46,18 +82,32 @@ fn run(bin: &str) -> anyhow::Result<Command> {
 
 fn with_api(
     mut log: impl Write + Clone + Send + 'static,
-    f: impl FnOnce(u16) -> anyhow::Result<()>,
+    f: impl FnOnce(u16, &Path) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
     util::setup_logger();
+    setup();
 
     let workdir = tempdir()?;
-    let _ = writeln!(log, "running offsets() in {}", std::env::current_dir()?.display());
+
+    let _ = writeln!(log, "running Actyx in {}", std::env::current_dir()?.display());
     let mut process = run("actyx-linux")?
         .current_dir(workdir.path())
         .stderr(Stdio::piped())
         .args(&["--bind-api=0", "--bind-admin=0", "--bind-swarm=0"])
         .spawn()?;
     let stderr = process.stderr.take().unwrap();
+
+    let identity = workdir.path().join("identity");
+    let mut args = ["users", "keygen", "-jo"].iter().map(OsStr::new).collect::<Vec<_>>();
+    args.push(identity.as_os_str());
+    let keygen = run("ax")?.args(args).output()?;
+    ensure!(
+        keygen.status.success(),
+        "out: {}err: {}",
+        String::from_utf8_lossy(&keygen.stdout),
+        String::from_utf8_lossy(&keygen.stderr)
+    );
+    let _ = writeln!(log, "identity: {}", String::from_utf8(keygen.stdout)?);
 
     // ensure that the test ends at some point
     let (tx, rx) = channel::<()>();
@@ -70,8 +120,7 @@ fn with_api(
             // unfortunately escargot doesn’t inform us when building is finished,
             // so we start the Actyx timeout upon seeing the first line of output
             spawn(move || {
-                // timeout needs to allow for ax build time as well
-                let _ = rx.recv_timeout(Duration::from_secs(120));
+                let _ = rx.recv_timeout(Duration::from_secs(10));
                 eprintln!("killing Actyx");
                 let _ = process.kill();
             });
@@ -111,7 +160,7 @@ fn with_api(
     std::thread::sleep(Duration::from_millis(300));
 
     // run the test
-    let result = f(api);
+    let result = f(api, identity.as_ref());
 
     let _ = writeln!(log, "killing process");
     let _ = tx.send(());
@@ -122,13 +171,22 @@ fn with_api(
 fn get(json: &Value, ptr: &str) -> anyhow::Result<Value> {
     json.pointer(ptr).cloned().ok_or_else(|| anyhow!("not found"))
 }
+fn o(s: &str) -> &OsStr {
+    OsStr::new(s)
+}
 
 #[test]
 fn offsets() -> anyhow::Result<()> {
     let log = Log::default();
-    let result = with_api(log.clone(), |api| {
+    let result = with_api(log.clone(), |api, identity| {
         let out = run("ax")?
-            .args(&["-j", "events", "offsets", &format!("localhost:{}", api)])
+            .args(&[
+                o("events"),
+                o("offsets"),
+                o("-ji"),
+                identity.as_os_str(),
+                o(&format!("localhost:{}", api)),
+            ])
             .output()?;
         eprintln!(
             "out:\n{}\nerr:\n{}\n---",
@@ -138,7 +196,7 @@ fn offsets() -> anyhow::Result<()> {
         ensure!(out.status.success());
         let json = serde_json::from_slice::<Value>(&out.stdout)?;
         ensure!(get(&json, "/code")? == json!("OK"), "line {} was: {}", line!(), json);
-        let stream = get(&json, "/code")?
+        let stream = get(&json, "/result/present")?
             .as_object()
             .v("result map")?
             .keys()
@@ -147,7 +205,13 @@ fn offsets() -> anyhow::Result<()> {
             .v("first key")?;
 
         let out = run("ax")?
-            .args(&["events", "offsets", &format!("localhost:{}", api)])
+            .args(&[
+                o("events"),
+                o("offsets"),
+                o("-i"),
+                identity.as_os_str(),
+                o(&format!("localhost:{}", api)),
+            ])
             .output()?;
         eprintln!(
             "out:\n{}\nerr:\n{}\n---",
@@ -168,9 +232,16 @@ fn offsets() -> anyhow::Result<()> {
 #[test]
 fn query() -> anyhow::Result<()> {
     let log = Log::default();
-    let result = with_api(log.clone(), |api| {
+    let result = with_api(log.clone(), |api, identity| {
         let out = run("ax")?
-            .args(&["events", "query", &format!("localhost:{}", api), "FROM 'discovery' END"])
+            .args(&[
+                o("events"),
+                o("query"),
+                o("-i"),
+                identity.as_os_str(),
+                o(&format!("localhost:{}", api)),
+                o("FROM 'discovery' END"),
+            ])
             .output()?;
         eprintln!(
             "out:\n{}\nerr:\n{}\n---",
@@ -197,11 +268,12 @@ fn query() -> anyhow::Result<()> {
 
         let out = run("ax")?
             .args(&[
-                "-j",
-                "events",
-                "query",
-                &format!("localhost:{}", api),
-                "FROM 'discovery' END",
+                o("events"),
+                o("query"),
+                o("-ji"),
+                identity.as_os_str(),
+                o(&format!("localhost:{}", api)),
+                o("FROM 'discovery' END"),
             ])
             .output()?;
         eprintln!(
