@@ -4,7 +4,8 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <RootNamespace>Sdk.IntegrationTests</RootNamespace>
-    <ReleaseVersion>0.1.0</ReleaseVersion>
+    <Version>0.0.1</Version>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <StartupObject>Actyx.CLI.Program</StartupObject>
   </PropertyGroup>
   
