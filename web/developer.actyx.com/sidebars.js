@@ -199,6 +199,8 @@ module.exports = {
         'reference/cli/apps/sign',
         'reference/cli/swarms/keygen',
         'reference/cli/users/keygen',
+        'reference/cli/events/offsets',
+        'reference/cli/events/query',
       ],
     },
   ],
