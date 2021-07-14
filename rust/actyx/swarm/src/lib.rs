@@ -755,7 +755,7 @@ impl BanyanStore {
         if cfg.enable_metrics {
             banyan.spawn_task(
                 "metrics",
-                crate::metrics::metrics(banyan.clone(), METRICS_STREAM_NR.into(), Duration::from_secs(30))?,
+                crate::metrics::metrics(banyan.clone(), METRICS_STREAM_NR.into(), Duration::from_secs(60 * 30))?,
             );
         }
         banyan.spawn_task(
