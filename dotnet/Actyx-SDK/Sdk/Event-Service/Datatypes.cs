@@ -47,14 +47,14 @@ namespace Actyx
 
         // Must be JSON-Serializable.
         [JsonProperty("payload")]
-        object Payload { get; }
+        JToken Payload { get; }
     }
 
     public struct EventDraft : IEventDraft
     {
         public IEnumerable<string> Tags { get; set; }
 
-        public object Payload { get; set; }
+        public JToken Payload { get; set; }
     }
 
     public interface ISubscribeMonotonicMessageVisitor
@@ -155,14 +155,14 @@ namespace Actyx
         }
     }
 
-    public class OffsetMap : Dictionary<string, ulong>
+    public class OffsetMap : Dictionary<string, long>
     {
         public OffsetMap() : base()
         {
         }
 
         // Just type alias. TODO Is this ideal? (Maybe use an immutable dict)
-        public OffsetMap(IDictionary<string, ulong> dictionary) : base(dictionary)
+        public OffsetMap(IDictionary<string, long> dictionary) : base(dictionary)
         {
         }
     }

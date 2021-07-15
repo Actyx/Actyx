@@ -12,11 +12,24 @@ import {
 import execa from 'execa'
 import * as path from 'path'
 import { rightOrThrow } from '../infrastructure/rightOrThrow'
+import {
+  AxEventService,
+  handleStreamResponse,
+  mkAuthHttpClient,
+  mkEventService,
+  OffsetsResponse,
+  PublishResponse,
+  QueryResponse,
+  SubscribeMonotonicResponse,
+  trialManifest,
+} from '../http-client'
+import { dotnetEventsCliAssembly } from '../infrastructure/settings'
+import { EventClients } from '../infrastructure/types'
 
 const exec = async (binaryPath: string, args: string[], options?: execa.Options) => {
   try {
     const binaryPathResolved = path.resolve(binaryPath)
-    const response = await execa(binaryPathResolved, [`-j`].concat(args), options)
+    const response = await execa(binaryPathResolved, [`-j`, ...args], options)
     return JSON.parse(response.stdout)
   } catch (error) {
     try {
@@ -80,6 +93,81 @@ type Exec = {
   }
   internal: {
     shutdown: () => Promise<void>
+  }
+}
+
+export const mkEventClients = async (hostname: string, port: number): Promise<EventClients> => ({
+  AxHttpClient: mkEventService(await mkAuthHttpClient(trialManifest)(`http://${hostname}:${port}`)),
+  '.NET SDK (HTTP)': await mkDotnetEventsExec(hostname, port, false),
+  '.NET SDK (Websocket)': await mkDotnetEventsExec(hostname, port, true),
+})
+
+const mkDotnetEventsExec = async (
+  hostname: string,
+  port: number,
+  websocket?: boolean,
+): Promise<AxEventService> =>
+  mkEventsExec('dotnet', [
+    await dotnetEventsCliAssembly(),
+    'events',
+    '--manifest',
+    JSON.stringify(trialManifest),
+    '--authority',
+    `${hostname}:${port}`,
+    ...(websocket ? ['--websocket'] : []),
+  ])
+
+const mkEventsExec = (binaryPath: string, commonArgs: string[]): AxEventService => {
+  const run = async (cmd: string, params: string[]) => {
+    const response = await execa(binaryPath, [...commonArgs, cmd, ...params])
+    return JSON.parse(response.stdout)
+  }
+  const stream = (cmd: string, params: string[]) =>
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    execa(binaryPath, [...commonArgs, cmd, ...params], {
+      buffer: false,
+      stdout: 'pipe',
+      stderr: 'inherit',
+    }).stdout!
+
+  return {
+    offsets: async () => {
+      const response = await run('offsets', [])
+      return rightOrThrow(OffsetsResponse.decode(response), response)
+    },
+    publish: async (request) => {
+      const events = request.data.map((x) => `${JSON.stringify(x)}`)
+      const response = await run('publish', events)
+      return rightOrThrow(PublishResponse.decode(response), response)
+    },
+    query: async (request, onData) => {
+      const { lowerBound, upperBound, query, order } = request
+      const args = [
+        ...(lowerBound ? ['--lower-bound', JSON.stringify(lowerBound)] : []),
+        ...(upperBound ? ['--upper-bound', JSON.stringify(upperBound)] : []),
+        ...(order ? ['--order', order] : []),
+        query,
+      ]
+      await handleStreamResponse(QueryResponse, onData, stream('query', args))
+    },
+    subscribe: async (request, onData) => {
+      const { lowerBound, query } = request
+      const args = [...(lowerBound ? ['--lower-bound', JSON.stringify(lowerBound)] : []), query]
+      await handleStreamResponse(QueryResponse, onData, stream('subscribe', args))
+    },
+    subscribeMonotonic: async (request, onData) => {
+      const { lowerBound, query, session } = request
+      const args = [
+        ...['--session', session],
+        ...(lowerBound ? ['--lower-bound', JSON.stringify(lowerBound)] : []),
+        query,
+      ]
+      await handleStreamResponse(
+        SubscribeMonotonicResponse,
+        onData,
+        stream('subscribe_monotonic', args),
+      )
+    },
   }
 }
 

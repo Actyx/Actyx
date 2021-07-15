@@ -100,7 +100,7 @@ const getInitialPeers = async (bootstrap: ActyxNode[]): Promise<string[]> => {
       addr.push(kind.privateAddress)
     }
     if (pid !== undefined) {
-      ret.push(...addr.map((a) => `/ip4/${a}/tcp/${node._private.apiSwarmPort}/p2p/${pid}`))
+      ret.push(...addr.map((a) => `/ip4/${a}/tcp/${node._private.swarmPort}/p2p/${pid}`))
     }
   }
   return ret

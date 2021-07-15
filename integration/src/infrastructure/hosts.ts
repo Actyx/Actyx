@@ -65,7 +65,7 @@ export const withPond = async <T>(
   const pond = await Pond.of(
     trialManifest,
     {
-      actyxPort: node._private.apiEventsPort,
+      actyxPort: node._private.apiPort,
       onConnectionLost: () => console.error(node.name, 'Pond lost connection to the store'),
     },
     {},

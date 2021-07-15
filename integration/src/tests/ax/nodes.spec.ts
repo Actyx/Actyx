@@ -48,10 +48,12 @@ describe('ax nodes', () => {
             ? expect.stringContaining('android')
             : `${node.target.os}-${node.target.arch}`
 
+        const host = `${node._private.hostname}:${node._private.adminPort}`
+
         const responseShape = [
           {
             connection: 'reachable',
-            host: node._private.axHost,
+            host,
             nodeId: expect.any(String),
             displayName: node.name,
             startedIso: expect.any(String),
@@ -72,7 +74,10 @@ describe('ax nodes', () => {
       await runOnEvery(async (node) => {
         // This will generate a CLI with a different than private key the node
         // was setup with
-        const unauthorizedCli = await CLI.build(node._private.axHost, await currentAxBinary())
+        const unauthorizedCli = await CLI.build(
+          `${node._private.hostname}:${node._private.adminPort}`,
+          await currentAxBinary(),
+        )
         const response = assertOK(await unauthorizedCli.nodes.ls())
         const responseShape = [
           {

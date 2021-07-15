@@ -1,6 +1,7 @@
 import { Arch, Host, OS } from '../../jest/types'
 import { ExecuteFn } from '.'
 import { CLI } from '../cli'
+import { AxEventService } from '../http-client'
 
 export type Target = {
   os: OS
@@ -61,6 +62,8 @@ export type NodeSelection = {
   host?: Host
 }
 
+export type EventClients = { [name: string]: AxEventService }
+
 export type ActyxNode = {
   name: string
   target: Target
@@ -71,11 +74,10 @@ export type ActyxNode = {
     actyxBinaryPath: string
     workingDir: string
     axBinaryPath: string
-    axHost: string
-    httpApiOrigin: string
-    apiPond: string
-    apiSwarmPort: number
-    apiEventsPort: number
+    hostname: string
+    adminPort: number
+    swarmPort: number
+    apiPort: number
   }
 }
 

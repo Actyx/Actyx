@@ -27,7 +27,6 @@ namespace Actyx.Sdk.AxHttpClient
 
         public static async Task<AxHttpClient> Create(string baseUrl, AppManifest manifest)
         {
-
             var that = new AxHttpClient(baseUrl, manifest);
             var nodeId = await GetNodeId(new Uri(baseUrl));// httpClient.GetAsync(that.MkApiUrl(HttpApiPath.NODE_ID_SEG));
             that.NodeId = nodeId;
@@ -90,9 +89,7 @@ namespace Actyx.Sdk.AxHttpClient
         private static StringContent CreateJsonContent<T>(T value)
         {
             var json = JsonConvert.SerializeObject(value, HttpContentExtensions.JsonSettings);
-            var result = new StringContent(json, Encoding.UTF8, "application/json");
-
-            return result;
+            return new StringContent(json, Encoding.UTF8, "application/json");
         }
 
         private string MkApiUrl(string path) => uriBuilder.Uri + path;

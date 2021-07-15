@@ -5,7 +5,7 @@ import {
   QueryRequest,
   QueryResponse,
 } from '../../http-client'
-import { run } from '../../util'
+import { run, runWithClients } from '../../util'
 import { mySuite, publishRandom, testName, throwOnCb } from './utils.support.test'
 
 const query = async (es: AxEventService, query: string): Promise<unknown[]> => {
@@ -68,18 +68,17 @@ describe('event service', () => {
       }))
 
     it('should return events in ascending order with explicit bounds and complete', () =>
-      run(async (x) => {
-        const es = await mkESFromTrial(x)
-        const pub1 = await publishRandom(es)
-        const pub2 = await publishRandom(es)
+      runWithClients(async (events, clientId) => {
+        const pub1 = await publishRandom(events, clientId)
+        const pub2 = await publishRandom(events, clientId)
         const request: QueryRequest = {
           lowerBound: { [pub2.stream]: pub1.offset - 1 },
           upperBound: { [pub2.stream]: pub2.offset },
-          query: `FROM '${mySuite()}' & '${testName()}' & isLocal`,
+          query: `FROM '${mySuite()}' & '${testName()}' & 'client:${clientId}' & isLocal`,
           order: Order.Asc,
         }
         const data: QueryResponse[] = []
-        await es.query(request, (x) => data.push(x))
+        await events.query(request, (x) => data.push(x))
         expect(data).toMatchObject([
           pub1,
           pub2,
@@ -103,9 +102,8 @@ describe('event service', () => {
       }))
 
     it('should immediately return for empty upper bound', () =>
-      run(async (x) => {
-        const es = await mkESFromTrial(x)
-        const pub = await publishRandom(es)
+      runWithClients(async (events, clientId) => {
+        const pub = await publishRandom(events, clientId)
         const request: QueryRequest = {
           lowerBound: { [pub.stream]: pub.offset },
           upperBound: {},
@@ -113,22 +111,21 @@ describe('event service', () => {
           order: Order.Asc,
         }
         const data: QueryResponse[] = []
-        await es.query(request, (x) => data.push(x))
+        await events.query(request, (x) => data.push(x))
         expect(data).toHaveLength(1)
         expect(data).toEqual([{ offsets: {}, type: 'offsets' }])
       }))
 
     it('should return events in ascending order and complete', () =>
-      run(async (x) => {
-        const es = await mkESFromTrial(x)
-        const pub1 = await publishRandom(es)
-        const pub2 = await publishRandom(es)
+      runWithClients(async (events, clientId) => {
+        const pub1 = await publishRandom(events, clientId)
+        const pub2 = await publishRandom(events, clientId)
         const request: QueryRequest = {
-          query: `FROM '${mySuite()}' & '${testName()}' & isLocal`,
+          query: `FROM '${mySuite()}' & '${testName()}' & 'client:${clientId}' & isLocal`,
           order: Order.Asc,
         }
         const data: QueryResponse[] = []
-        await es.query(request, (x) => data.push(x))
+        await events.query(request, (x) => data.push(x))
         expect(data).toMatchObject([
           pub1,
           pub2,
@@ -137,16 +134,15 @@ describe('event service', () => {
       }))
 
     it('should return events in descending order and complete', () =>
-      run(async (x) => {
-        const es = await mkESFromTrial(x)
-        const pub1 = await publishRandom(es)
-        const pub2 = await publishRandom(es)
+      runWithClients(async (events, clientId) => {
+        const pub1 = await publishRandom(events, clientId)
+        const pub2 = await publishRandom(events, clientId)
         const request: QueryRequest = {
-          query: `FROM '${mySuite()}' & '${testName()}' & isLocal`,
+          query: `FROM '${mySuite()}' & '${testName()}' & 'client:${clientId}' & isLocal`,
           order: Order.Desc,
         }
         const data: QueryResponse[] = []
-        await es.query(request, (x) => data.push(x))
+        await events.query(request, (x) => data.push(x))
         expect(data).toMatchObject([
           pub2,
           pub1,
@@ -155,17 +151,16 @@ describe('event service', () => {
       }))
 
     it('should return no events if upperBound is not in range', () =>
-      run(async (x) => {
-        const es = await mkESFromTrial(x)
-        const pub1 = await publishRandom(es)
+      runWithClients(async (events, clientId) => {
+        const pub1 = await publishRandom(events, clientId)
         const request: QueryRequest = {
           lowerBound: { [pub1.stream]: Number.MAX_SAFE_INTEGER },
           upperBound: { [pub1.stream]: 0 },
-          query: `FROM '${mySuite()}' & '${testName()}' & isLocal`,
+          query: `FROM '${mySuite()}' & '${testName()}' & 'client:${clientId}' & isLocal`,
           order: Order.Desc,
         }
         const data: QueryResponse[] = []
-        await es.query(request, (x) => data.push(x))
+        await events.query(request, (x) => data.push(x))
         expect(data).toMatchObject([
           { type: 'offsets', offsets: { [pub1.stream]: expect.any(Number) } },
         ])

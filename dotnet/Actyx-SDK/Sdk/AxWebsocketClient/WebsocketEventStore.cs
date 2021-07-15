@@ -5,23 +5,23 @@ using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using Actyx.Sdk.Formats;
+using Actyx.Sdk.AxHttpClient;
 using Actyx.Sdk.Utils.Extensions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Actyx.Sdk.Utils;
 
 namespace Actyx.Sdk.AxWebsocketClient
 {
     public class WebsocketEventStore : IEventStore
     {
         private readonly WsrpcClient wsrpcClient;
-        private readonly string appId;
         private readonly NodeId nodeId;
         private readonly JsonSerializer serializer = JsonSerializer.Create(HttpContentExtensions.JsonSettings);
 
-        public WebsocketEventStore(WsrpcClient wsrpcClient, string appId, NodeId nodeId)
+        public WebsocketEventStore(WsrpcClient wsrpcClient, NodeId nodeId)
         {
             this.wsrpcClient = wsrpcClient;
-            this.appId = appId;
             this.nodeId = nodeId;
             wsrpcClient.Start();
         }
@@ -39,42 +39,55 @@ namespace Actyx.Sdk.AxWebsocketClient
                 .Select(offsets => offsets.ToObject<OffsetsResponse>(serializer))
                 .ToTask();
 
-        public Task<IEnumerable<EventOnWire>> Publish(IEnumerable<IEventDraft> events) =>
+        public Task<PublishResponse> Publish(IEnumerable<IEventDraft> events) =>
             wsrpcClient
                 .Request("publish", JToken.FromObject(new { data = events }, serializer))
                 .Take(1)
-                .Select(response => response.ToObject<Sdk.AxHttpClient.PublishResponse>(serializer))
-                .Select(publishResponse => publishResponse.Data.Zip(events, (metadata, @event) =>
-                    new EventOnWire
-                    {
-                        Lamport = metadata.Lamport,
-                        Offset = metadata.Offset,
-                        Payload = new JValue(@event.Payload),
-                        Stream = metadata.Stream,
-                        Tags = @event.Tags,
-                        Timestamp = metadata.Timestamp,
-                        AppId = appId,
-                    })
-                ).ToTask();
+                .Select(response => response.ToObject<PublishResponse>(serializer))
+                .ToTask();
 
-        public IObservable<IEventOnWire> Query(OffsetMap lowerBound, OffsetMap upperBound, IEventSelection query, EventsOrder sortOrder) =>
-            wsrpcClient
-                .Request("query", JToken.FromObject(new
-                {
-                    lowerBound,
-                    upperBound,
-                    query = query.ToAql(),
-                    order = sortOrder.ToWireString(),
-                }, serializer))
-                .Select(response => response.ToObject<IEventOnWire>(serializer));
+        public IObservable<IEventOnWire> Query(OffsetMap lowerBound, OffsetMap upperBound, IEventSelection query, EventsOrder sortOrder)
+        {
+            ThrowIf.Argument.IsNull(query, nameof(query));
 
-        public IObservable<IEventOnWire> Subscribe(OffsetMap lowerBound, IEventSelection query) =>
-            wsrpcClient
-                .Request("subscribe", JToken.FromObject(new
+            return wsrpcClient
+                 .Request("query", JToken.FromObject(new
+                 {
+                     lowerBound,
+                     upperBound,
+                     query = query.ToAql(),
+                     order = sortOrder.ToWireString(),
+                 }, serializer))
+                 .Select(response => response.ToObject<IEventOnWire>(serializer));
+        }
+
+        public IObservable<IEventOnWire> Subscribe(OffsetMap lowerBound, IEventSelection query)
+        {
+            ThrowIf.Argument.IsNull(query, nameof(query));
+
+            return wsrpcClient
+                   .Request("subscribe", JToken.FromObject(new
+                   {
+                       lowerBound,
+                       query = query.ToAql(),
+                   }, serializer))
+                   .Select(response => response.ToObject<IEventOnWire>(serializer));
+        }
+
+        public IObservable<ISubscribeMonotonicResponse> SubscribeMonotonic(string session, OffsetMap startFrom, IEventSelection query)
+        {
+            ThrowIf.Argument.IsNull(session, nameof(session));
+            ThrowIf.Argument.IsNull(startFrom, nameof(startFrom));
+            ThrowIf.Argument.IsNull(query, nameof(query));
+
+            return wsrpcClient
+                .Request("subscribe_monotonic", JToken.FromObject(new
                 {
-                    lowerBound,
+                    session,
+                    lowerBound = startFrom,
                     query = query.ToAql(),
                 }, serializer))
-                .Select(response => response.ToObject<IEventOnWire>(serializer));
+                .Select(response => response.ToObject<ISubscribeMonotonicResponse>(serializer));
+        }
     }
 }

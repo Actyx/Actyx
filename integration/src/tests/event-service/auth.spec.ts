@@ -9,7 +9,7 @@ import {
   AUTH_SEG,
 } from '../../http-client'
 import WebSocket from 'ws'
-import { run, getHttpApi, power_cycle } from '../../util'
+import { run, power_cycle, getHttpApi } from '../../util'
 import { AppManifest } from '@actyx/pond'
 import { SettingsInput } from '../../cli/exec'
 import { waitForNodeToBeConfigured } from '../../retry'
@@ -66,7 +66,7 @@ describe('auth http', () => {
         })
 
       const offsets = async (token: string) => {
-        const resp = await getOffsets(node._private.httpApiOrigin, 'Bearer ' + token)
+        const resp = await getOffsets(httpApi, 'Bearer ' + token)
         return {
           status: resp.status,
           json: await resp.json(),
@@ -263,19 +263,20 @@ describe('auth http', () => {
 
   it('should fail for a valid token when node is cycled', () =>
     runWithNewProcess(async (node) => {
-      const token = await getToken(trialManifest, node._private.httpApiOrigin)
+      const httpApi = getHttpApi(node)
+      const token = await getToken(trialManifest, httpApi)
         .then((x) => x.json())
         .then((x) => x.token)
       const offsets = (origin: string) => getOffsets(origin, 'Bearer ' + token)
 
       // assert we can access event service
-      const response = await offsets(node._private.httpApiOrigin).then((resp) => resp.json())
+      const response = await offsets(httpApi).then((resp) => resp.json())
       expect(response).toEqual({ present: expect.any(Object), toReplicate: expect.any(Object) })
 
       // power cycle the node
       await power_cycle(node)
 
-      const result = await offsets(node._private.httpApiOrigin).then((resp) => {
+      const result = await offsets(httpApi).then((resp) => {
         expect(resp.status).toEqual(401)
         return resp.json()
       })

@@ -11,7 +11,7 @@ using Actyx.Sdk.AxWebsocketClient;
 using Actyx.Sdk.Formats;
 using DeepEqual.Syntax;
 
-namespace Sdk.IntegrationTests
+namespace CLI
 {
     class Program3
     {
@@ -29,17 +29,33 @@ namespace Sdk.IntegrationTests
             var nodeId = (await AxHttpClient.Create(baseUri, manifest)).NodeId;
             var token = (await AxHttpClient.GetToken(new Uri(baseUri), manifest)).Token;
             var wsrpcClient = new WsrpcClient(new Uri($"ws://localhost:4454/api/v2/events?{token}"));
-            using var store = new WebsocketEventStore(wsrpcClient, "com.example.ax-ws-client-tests", nodeId);
+            using var store = new WebsocketEventStore(wsrpcClient, nodeId);
 
             List<string> tags = new() { RandomString(8) };
 
             var persisted =
                 Observable
                     .Timer(TimeSpan.Zero, TimeSpan.FromMilliseconds(50))
-                    .SelectMany(_ =>
-                        store.Publish(new List<IEventDraft>() {
-                            new EventDraft { Tags = tags, Payload = "event" },
-                        }).ToObservable().SelectMany(x => x)
+                    .SelectMany(async _ =>
+                        {
+                            List<IEventDraft> events = new()
+                            {
+                                new EventDraft { Tags = tags, Payload = "event" },
+                            };
+                            PublishResponse response = await store.Publish(events);
+                            return response.Data.Zip(events, (metadata, @event) =>
+                                new EventOnWire
+                                {
+                                    Lamport = metadata.Lamport,
+                                    Offset = metadata.Offset,
+                                    Payload = @event.Payload,
+                                    Stream = metadata.Stream,
+                                    Tags = @event.Tags,
+                                    Timestamp = metadata.Timestamp,
+                                    AppId = manifest.AppId,
+                                }
+                            ).ToObservable();
+                        }
                     );
             var subscribe =
                 store

@@ -77,23 +77,23 @@ export const mkNodeLocalProcess = (
   clog(`admin reachable on port ${port4458}`)
   clog(`http api reachable on port ${port4454}`)
 
-  const httpApiOrigin = `http://localhost:${port4454}`
   const axBinaryPath = await currentAxBinary()
+  const ax = await CLI.build(`localhost:${port4458}`, axBinaryPath)
+
   return {
     name: nodeName,
     target,
     host: 'process',
-    ax: await CLI.build(`localhost:${port4458}`, axBinaryPath),
+    ax,
     _private: {
       shutdown,
       actyxBinaryPath: binary,
       workingDir,
       axBinaryPath,
-      axHost: `localhost:${port4458}`,
-      httpApiOrigin,
-      apiPond: `ws://localhost:${port4454}/api/v2/events`,
-      apiSwarmPort: port4001,
-      apiEventsPort: port4454,
+      hostname: 'localhost',
+      adminPort: port4458,
+      swarmPort: port4001,
+      apiPort: port4454,
     },
   }
 }
@@ -146,27 +146,26 @@ export const mkNodeLocalDocker = async (
     )[0].NetworkSettings.Ports
 
     const port = (original: number): string => ports[`${original}/tcp`][0].HostPort
-    const axHost = `localhost:${port(4458)}`
-    const httpApiOrigin = `http://localhost:${port(4454)}`
 
     const axBinaryPath = await currentAxBinary()
+    const ax = await CLI.build(`localhost:${port(4458)}`, axBinaryPath)
+
     const executeInContainer = (script: string) =>
       target.execute(`docker exec ${container} ${script}`, [])
     return {
       name: nodeName,
       target: { ...target, executeInContainer },
       host: 'docker',
-      ax: await CLI.build(axHost, axBinaryPath),
+      ax,
       _private: {
         shutdown,
         axBinaryPath,
         actyxBinaryPath: 'actyx',
         workingDir: '/data/actyx-data',
-        axHost,
-        httpApiOrigin,
-        apiPond: `ws://localhost:${port(4454)}/api/v2/events`,
-        apiSwarmPort: 4001,
-        apiEventsPort: Number(port(4454)),
+        hostname: 'localhost',
+        adminPort: Number(port(4458)),
+        swarmPort: 4001,
+        apiPort: Number(port(4454)),
       },
     }
   } catch (err) {

@@ -1,22 +1,26 @@
-import { mkESFromTrial, SubscribeResponse } from '../../http-client'
+import { SubscribeResponse } from '../../http-client'
 import { waitFor } from '../../retry'
-import { run } from '../../util'
+import { runWithClients } from '../../util'
 import { genericCommunicationTimeout, mySuite, publishRandom, testName } from './utils.support.test'
 
 describe('event service', () => {
   describe('subscribe', () => {
     it('should publish an event and find it in an event stream', () =>
-      run(async (x) => {
-        const es = await mkESFromTrial(x)
-        const pub1 = await publishRandom(es)
+      runWithClients(async (events, clientId) => {
+        const pub1 = await publishRandom(events, clientId)
         const data: SubscribeResponse[] = []
         await new Promise((resolve, reject) => {
-          es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, (x) => {
-            data.push(x)
-            if (data.length == 2) {
-              resolve()
-            }
-          }).catch(reject)
+          events
+            .subscribe(
+              { query: `FROM '${mySuite()}' & '${testName()}' & 'client:${clientId}' & isLocal` },
+              (x) => {
+                data.push(x)
+                if (data.length == 2) {
+                  resolve()
+                }
+              },
+            )
+            .catch(reject)
           setTimeout(resolve, genericCommunicationTimeout)
         })
         expect(data).toMatchObject([
@@ -26,17 +30,21 @@ describe('event service', () => {
       }))
 
     it('should start an event stream and find a published event', () =>
-      run(async (x) => {
-        const es = await mkESFromTrial(x)
-        const pub1 = await publishRandom(es)
+      runWithClients(async (events, clientId) => {
+        const pub1 = await publishRandom(events, clientId)
         const data: SubscribeResponse[] = []
         const done = new Promise((resolve, reject) => {
-          es.subscribe({ query: `FROM '${mySuite()}' & '${testName()}' & isLocal` }, (x) => {
-            data.push(x)
-            if (data.length == 3) {
-              resolve()
-            }
-          }).catch(reject)
+          events
+            .subscribe(
+              { query: `FROM '${mySuite()}' & '${testName()}' & 'client:${clientId}' & isLocal` },
+              (x) => {
+                data.push(x)
+                if (data.length == 3) {
+                  resolve()
+                }
+              },
+            )
+            .catch(reject)
           setTimeout(resolve, genericCommunicationTimeout)
         })
         await waitFor(
@@ -46,7 +54,7 @@ describe('event service', () => {
           5_000,
           50,
         )
-        const pub2 = await publishRandom(es)
+        const pub2 = await publishRandom(events, clientId)
         await done
         expect(data).toMatchObject([
           pub1,

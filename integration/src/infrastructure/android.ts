@@ -114,9 +114,9 @@ export const mkNodeSshAndroid = async (
   log('Actyx on Android started')
 
   const axHost = `localhost:${port4458}`
-  const httpApiOrigin = `http://localhost:${port4454}`
-
   const axBinaryPath = await currentAxBinary()
+  const ax = await CLI.build(axHost, axBinaryPath)
+
   const shutdown = async () => {
     log(`shutting down container ${container}`)
     dockerLogsProc.kill('SIGTERM')
@@ -135,18 +135,17 @@ export const mkNodeSshAndroid = async (
       _private: { ...target._private, executeInContainerPrefix },
       executeInContainer,
     },
-    ax: await CLI.build(axHost, axBinaryPath),
+    ax,
     host: 'android',
     _private: {
       shutdown,
       actyxBinaryPath: '',
       workingDir: '',
       axBinaryPath,
-      axHost,
-      httpApiOrigin,
-      apiPond: `ws://localhost:${port4454}/api/v2/events`,
-      apiSwarmPort: remotePort4001,
-      apiEventsPort: port4454,
+      hostname: 'localhost',
+      adminPort: port4458,
+      swarmPort: remotePort4001,
+      apiPort: port4454,
     },
   }
 }

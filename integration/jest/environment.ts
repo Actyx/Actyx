@@ -29,7 +29,7 @@ class MyEnvironment extends NodeEnvironment {
     for (const node of axNodeSetup.nodes) {
       // Reuse the identity the node was set up with
       const ax = await CLI.buildWithIdentityPath(
-        node._private.axHost,
+        `${node._private.hostname}:${node._private.adminPort}`,
         node._private.axBinaryPath,
         node.ax.identityPath,
       )

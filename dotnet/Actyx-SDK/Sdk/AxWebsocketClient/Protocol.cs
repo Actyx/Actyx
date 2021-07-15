@@ -7,10 +7,9 @@ namespace Actyx.Sdk.AxWebsocketClient
 {
     public static class Proto<T>
     {
-        public static T Deserialize(string json, bool pretty = true)
+        public static T Deserialize(string json)
         {
             var settings = HttpContentExtensions.JsonSettings;
-            settings.Formatting = pretty ? Formatting.Indented : Formatting.None;
             return JsonConvert.DeserializeObject<T>(json, settings);
         }
         public static string Serialize(T value, bool pretty = true)

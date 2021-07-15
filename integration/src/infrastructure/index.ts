@@ -21,7 +21,8 @@ export function mkExecute(os: OS, kind: TargetKind): ExecuteFn {
     }
     case 'local':
     case 'test': {
-      const shell = os === 'linux' ? '/bin/bash' : os === 'windows' ? 'powershell' : undefined
+      const shell =
+        os === 'linux' || os === 'macos' ? '/bin/bash' : os === 'windows' ? 'powershell' : undefined
       return (script: string, params: string[], env) => ({
         process: execa.command([script].concat(params).join(' '), { shell, env }),
       })

@@ -63,15 +63,7 @@ export const forwardPortsAndBuildClients = async (
 
   const axBinaryPath = await currentAxBinary()
   const axHost = `localhost:${port4458}`
-  console.log(`axHost: ${axHost}`)
-  console.error('created cli w/ ', axHost)
   const ax = await CLI.build(axHost, axBinaryPath)
-
-  const httpApiOrigin = `http://localhost:${port4454}`
-  console.log(`httpApiOrigin: ${httpApiOrigin}`)
-
-  const apiPond = `ws://localhost:${port4454}/api/v2/events`
-  console.log(`apiPond: ${apiPond}`)
 
   const shutdown = async () => {
     await target._private.cleanup()
@@ -87,11 +79,10 @@ export const forwardPortsAndBuildClients = async (
       actyxBinaryPath: './actyx',
       workingDir,
       axBinaryPath,
-      axHost,
-      httpApiOrigin,
-      apiPond,
-      apiSwarmPort: 4001,
-      apiEventsPort: port4454,
+      hostname: 'localhost',
+      adminPort: port4458,
+      swarmPort: 4001,
+      apiPort: port4454,
     },
     ...theRest,
   }

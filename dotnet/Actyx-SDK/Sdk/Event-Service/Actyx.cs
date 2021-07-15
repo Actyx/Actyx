@@ -65,7 +65,7 @@ namespace Actyx
             Uri axWs = new Uri("ws://" + host + ':' + port + '?' + token.Token);
             var rpc = new WsrpcClient(axWs);
 
-            var wsEventStore = new WebsocketEventStore(rpc, manifest.AppId, nodeId);
+            var wsEventStore = new WebsocketEventStore(rpc, nodeId);
 
             return new Actyx(wsEventStore);
         }

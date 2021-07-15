@@ -7,12 +7,13 @@ import { tmpdir } from 'os'
 const appManifestPath = path.resolve('.', 'fixtures/app_manifest.json')
 const devCertPath = path.resolve('.', 'fixtures/dev_cert.json')
 
-
 // It seems like the error code is different on Windows
 const SYS_ERROR_NO_FILE = (os: OS) => {
   switch (os) {
-    case 'windows': return 'The system cannot find the path specified. (os error 3)';
-    default: return "No such file or directory (os error 2)";
+    case 'windows':
+      return 'The system cannot find the path specified. (os error 3)'
+    default:
+      return 'No such file or directory (os error 2)'
   }
 }
 
@@ -20,18 +21,20 @@ describe('ax', () => {
   describe('apps sign', () => {
     it('should fail when no files are provided', async () =>
       runOnEvery(async (node) => {
-        const res = await node.ax.apps.sign('', '');
-        expect(res.code).toEqual('ERR_IO');
-        expect((res as any).message.startsWith('Failed to read developer certificate (')).toBeTruthy();
-        expect((res as any).message.endsWith(')')).toBeTruthy();
+        const res = await node.ax.apps.sign('', '')
+        expect(res.code).toEqual('ERR_IO')
+        expect(
+          (res as any).message.startsWith('Failed to read developer certificate ('),
+        ).toBeTruthy()
+        expect((res as any).message.endsWith(')')).toBeTruthy()
       }))
 
     it('should fail when app manifest is not provided', async () =>
       runOnEvery(async (node) => {
-        const res = await node.ax.apps.sign(devCertPath, '');
-        expect(res.code).toEqual('ERR_IO');
-        expect((res as any).message.startsWith('Failed to read app manifest (')).toBeTruthy();
-        expect((res as any).message.endsWith(')')).toBeTruthy();
+        const res = await node.ax.apps.sign(devCertPath, '')
+        expect(res.code).toEqual('ERR_IO')
+        expect((res as any).message.startsWith('Failed to read app manifest (')).toBeTruthy()
+        expect((res as any).message.endsWith(')')).toBeTruthy()
       }))
 
     it('should fail when dev cert content is malformed', () =>

@@ -1,5 +1,7 @@
 import { ExecaChildProcess, ExecaError, ExecaReturnValue } from 'execa'
 import { CLI } from './cli'
+import { mkEventClients } from './cli/exec'
+import { AxEventService } from './http-client'
 import { runOnEvery } from './infrastructure/hosts'
 import { mkProcessLogger, netString } from './infrastructure/mkProcessLogger'
 import { Ssh } from './infrastructure/ssh'
@@ -7,10 +9,27 @@ import { ActyxNode } from './infrastructure/types'
 import { waitForNodeToBeConfigured } from './retry'
 import { mySuite, testName } from './tests/event-service/utils.support.test'
 
-export const getHttpApi = (x: ActyxNode): string => x._private.httpApiOrigin
+export const getHttpApi = (node: ActyxNode): string =>
+  `http://${node._private.hostname}:${node._private.apiPort}`
 
 export const run = <T>(f: (httpApi: string) => Promise<T>): Promise<T[]> =>
   runOnEvery((node) => f(getHttpApi(node)))
+
+export const runWithClients = <T>(
+  f: (events: AxEventService, clientId: string) => Promise<T>,
+): Promise<T[]> =>
+  runOnEvery(async (node) =>
+    Promise.all(
+      Object.entries(await mkEventClients(node._private.hostname, node._private.apiPort)).map(
+        ([clientId, events]) =>
+          f(events, clientId).catch((error) => {
+            const e = new Error(`Failure running ${clientId}: ${error}`)
+            e.stack = (e.stack || '').split('\n').slice(0, 2).join('\n') + '\n' + error.stack
+            throw e
+          }),
+      ),
+    ),
+  ).then((x) => x.flatMap((x) => x))
 
 export const randomString = (): string =>
   Math.random()
@@ -301,7 +320,7 @@ export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<
     node._private.workingDir === workingDir
       ? await CLI.buildWithIdentityPath(axHost, node._private.axBinaryPath, node.ax.identityPath)
       : await CLI.build(axHost, node._private.axBinaryPath)
-  const newNode = {
+  const newNode: ActyxNode = {
     name: nodeName,
     target: node.target,
     host: node.host,
@@ -316,11 +335,10 @@ export const newProcess = async (node: ActyxNode, workingDir?: string): Promise<
       actyxBinaryPath: node._private.actyxBinaryPath,
       workingDir: workdir,
       axBinaryPath: node._private.axBinaryPath,
-      axHost,
-      httpApiOrigin: `http://localhost:${apiPort}`,
-      apiPond: '',
-      apiSwarmPort: 0,
-      apiEventsPort: apiPort,
+      hostname: 'localhost',
+      adminPort,
+      swarmPort: 0,
+      apiPort,
     },
   }
   await waitForNodeToBeConfigured(newNode)
@@ -333,7 +351,7 @@ export const power_cycle = async (node: ActyxNode): Promise<void> => {
   const n2 = await newProcess(node, workdir)
   node.ax = n2.ax
   node._private.shutdown = n2._private.shutdown
-  node._private.axHost = n2._private.axHost
-  node._private.httpApiOrigin = n2._private.httpApiOrigin
-  node._private.apiEventsPort = n2._private.apiEventsPort
+  node._private.adminPort = n2._private.adminPort
+  node._private.swarmPort = n2._private.swarmPort
+  node._private.apiPort = n2._private.apiPort
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Actyx.Sdk.AxHttpClient;
 using Actyx.Sdk.Formats;
 using JsonSubTypes;
 using Newtonsoft.Json;
@@ -8,20 +9,20 @@ using Newtonsoft.Json.Linq;
 
 namespace Actyx
 {
+    public class EventKeyX
+    {
+        public ulong Lamport { get; set; }
+        public long Offset { get; set; }
+        public string Stream { get; set; }
+    }
     public class EventPublishMetadata
     {
         public ulong Lamport { get; set; }
-
-        public ulong Offset { get; set; }
-
+        public long Offset { get; set; }
         public ulong Timestamp { get; set; }
-
         public string Stream { get; set; }
     }
 
-    [JsonConverter(typeof(JsonSubtypes))]
-    [JsonSubtypes.KnownSubTypeWithProperty(typeof(OffsetsOnWire), "Offsets")]
-    [JsonSubtypes.KnownSubTypeWithProperty(typeof(EventOnWire), "Payload")]
     public interface IEventOnWire { }
 
     public class OffsetsOnWire : IEventOnWire
@@ -33,12 +34,38 @@ namespace Actyx
     public class EventOnWire : EventPublishMetadata, IEventOnWire
     {
         public string AppId { get; set; }
-
         public IEnumerable<string> Tags { get; set; }
-
         public JToken Payload { get; set; }
     }
 
+    public interface ISubscribeMonotonicResponse { }
+
+    public class SubscribeMonotonicOffsetsResponse : ISubscribeMonotonicResponse
+    {
+        public OffsetMap Offsets { get; set; }
+    }
+
+    public class SubscribeMonotonicEventResponse : ISubscribeMonotonicResponse
+    {
+        public string AppId { get; set; }
+        public IEnumerable<string> Tags { get; set; }
+        public JToken Payload { get; set; }
+        public ulong Lamport { get; set; }
+        public long Offset { get; set; }
+        public ulong Timestamp { get; set; }
+        public string Stream { get; set; }
+        public bool CaughtUp { get; set; }
+    }
+
+    public class SubscribeMonotonicTimeTravelResponse : ISubscribeMonotonicResponse
+    {
+        public EventKeyX NewStart { get; set; }
+    }
+
+    public class PublishResponse
+    {
+        public IEnumerable<EventPublishMetadata> Data { get; set; }
+    }
 
     // This interface is not public, it is the internal adapter for switching between ws/http/test impl.
     public interface IEventStore : IDisposable
@@ -90,10 +117,16 @@ namespace Actyx
             IEventSelection query
         );
 
+        IObservable<ISubscribeMonotonicResponse> SubscribeMonotonic(
+            string session,
+            OffsetMap startFrom,
+            IEventSelection query
+        );
+
         /**
          * Store the events in the store and return them as generic events.
          */
-        Task<IEnumerable<EventOnWire>> Publish(
+        Task<PublishResponse> Publish(
             IEnumerable<IEventDraft> events
         );
     }

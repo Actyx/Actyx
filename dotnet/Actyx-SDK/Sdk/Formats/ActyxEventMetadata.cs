@@ -51,6 +51,6 @@ namespace Actyx.Sdk.Formats
         public string Stream { private set; get; }
 
         // Offset of this event inside its stream
-        public ulong Offset { private set; get; }
+        public long Offset { private set; get; }
     }
 }

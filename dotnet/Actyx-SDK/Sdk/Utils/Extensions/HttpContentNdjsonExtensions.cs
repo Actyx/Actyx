@@ -23,11 +23,9 @@ namespace Actyx.Sdk.Utils.Extensions
                 throw new NotSupportedException($"Tried to read 'application/x-ndjson', but got '{mediaType}'");
             }
 
-            Stream contentStream = await content.ReadAsStreamAsync().ConfigureAwait(false);
-
-            using (contentStream)
+            using (var contentStream = await content.ReadAsStreamAsync().ConfigureAwait(false))
+            using (var contentStreamReader = new StreamReader(contentStream))
             {
-                using var contentStreamReader = new StreamReader(contentStream);
                 while (!contentStreamReader.EndOfStream)
                 {
                     var data = await contentStreamReader.ReadLineAsync().ConfigureAwait(false);
