@@ -14,7 +14,7 @@ use util::formats::{
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]
-/// obtain currently known offsets and replication targets
+/// query the events API through the admin port
 pub struct QueryOpts {
     #[structopt(flatten)]
     console_opt: ConsoleOpt,
