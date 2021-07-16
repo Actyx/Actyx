@@ -62,7 +62,7 @@ pub enum ApiError {
     #[display(fmt = "Service overloaded. {}", cause)]
     Overloaded { cause: String },
 
-    #[display(fmt = "Shutting down. {}", cause)]
+    #[display(fmt = "Service shutting down. {}", cause)]
     Shutdown { cause: String },
 }
 impl warp::reject::Reject for ApiError {}
