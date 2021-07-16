@@ -7,7 +7,7 @@ use structopt::StructOpt;
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]
-/// query the event API
+/// interact with the events API through the admin port
 pub enum EventsOpts {
     #[structopt(no_version)]
     Offsets(offsets::OffsetsOpts),
