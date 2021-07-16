@@ -14,7 +14,7 @@ use util::formats::{
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]
-/// obtain currently known offsets and replication targets
+/// issue a monotonic subscription
 pub struct SubscribeMonotonicOpts {
     #[structopt(flatten)]
     console_opt: ConsoleOpt,
