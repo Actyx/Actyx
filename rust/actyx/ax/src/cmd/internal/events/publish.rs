@@ -14,7 +14,7 @@ use util::formats::{
 
 #[derive(StructOpt, Debug)]
 #[structopt(version = env!("AX_CLI_VERSION"))]
-/// obtain currently known offsets and replication targets
+/// publish an event
 pub struct PublishOpts {
     #[structopt(flatten)]
     console_opt: ConsoleOpt,
