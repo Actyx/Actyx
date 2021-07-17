@@ -37,6 +37,7 @@ impl LoggingSink {
         };
         let builder = tracing_subscriber::FmtSubscriber::builder()
             .with_env_filter(filter)
+            .with_writer(std::io::stderr)
             .with_filter_reloading();
         // Store a handle to the generated filter (layer), so it can be swapped later
         let filter_handle = Box::new(builder.reload_handle()) as Box<dyn ReloadHandle + Send>;

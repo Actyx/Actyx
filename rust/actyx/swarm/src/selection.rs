@@ -1,6 +1,5 @@
-use actyx_sdk::{language::TagExpr, OffsetOrMin, StreamId};
+use actyx_sdk::{language::TagExpr, OffsetMap, OffsetOrMin, StreamId};
 use trees::query::TagsQuery;
-use util::offsetmap_or_max::OffsetMapOrMax;
 
 /// A precise selection of events, possibly unbounded in size.
 ///
@@ -19,9 +18,9 @@ pub struct EventSelection {
     /// Filtering events by tags
     pub tag_expr: TagExpr,
     /// Lower bound, exclusive, for all streams
-    pub from_offsets_excluding: OffsetMapOrMax,
+    pub from_offsets_excluding: OffsetMap,
     /// Upper bound, inclusive, for all streams
-    pub to_offsets_including: OffsetMapOrMax,
+    pub to_offsets_including: OffsetMap,
 }
 
 impl EventSelection {

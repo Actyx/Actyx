@@ -91,9 +91,9 @@ describe('node lifecycle', () => {
       const { process: node } = await runActyx(n, undefined, randomBinds)
       const logs: string[] = await new Promise((res, rej) => {
         const buffer: string[] = []
-        node.stdout?.on('data', (buf) => buffer.push(buf.toString('utf8')))
-        node.stdout?.on('error', (err) => rej(err))
-        node.stdout?.on('end', () => res(buffer))
+        node.stderr?.on('data', (buf) => buffer.push(buf.toString('utf8')))
+        node.stderr?.on('error', (err) => rej(err))
+        node.stderr?.on('end', () => res(buffer))
         setTimeout(() => node.kill('SIGTERM'), 500)
       })
       expect(logs).toContainEqual(
@@ -133,7 +133,7 @@ describe('node lifecycle', () => {
         if (Array.isArray(node)) {
           throw new Error(`timed out, port=${port}:\n${node.join('\n')}`)
         }
-        const logs = node.stdout // FIXME should log to stderr #6889
+        const logs = node.stderr
 
         expect(logs).toMatch('NODE_STOPPED_BY_NODE: ERR_PORT_COLLISION')
         expect(logs).toMatch(

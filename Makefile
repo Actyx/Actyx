@@ -397,6 +397,7 @@ targets-nonmusl = $(sort $(foreach oa,$(osArch),$(target-nonmusl-$(oa))))
 #   - declare how to build the file in rust/actyx/target/...
 dist/bin/current/%: rust/actyx/target/release/%
 	mkdir -p $(dir $@)
+	rm -f $@
 	mv $< $@
 # here % (and thus $*) matches something like ax.exe, so we need to strip the suffix with `basename`
 rust/actyx/target/release/%: make-always
@@ -412,6 +413,7 @@ rust/actyx/target/release/%: make-always
 define mkDistRule =
 dist/bin/$(1)/$(2): rust/actyx/target/$(target-$(1))/release/$(2)
 	mkdir -p $$(dir $$@)
+	rm -f $$@
 	mv $$< $$@
 endef
 $(foreach oa,$(osArch),$(foreach bin,$(binaries),$(eval $(call mkDistRule,$(oa),$(bin)))))

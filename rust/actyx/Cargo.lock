@@ -30,6 +30,7 @@ dependencies = [
  "serde-transcode",
  "serde_cbor",
  "serde_json",
+ "tokio",
  "tracing",
  "typenum",
  "unicode-normalization",
@@ -194,6 +195,7 @@ dependencies = [
  "swarm",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "tracing",
  "tracing-subscriber",
  "tree_magic",
@@ -476,6 +478,7 @@ dependencies = [
  "crypto",
  "derive_more",
  "dirs 3.0.2",
+ "escargot",
  "futures 0.3.15",
  "hex",
  "hyper",
@@ -485,6 +488,7 @@ dependencies = [
  "libp2p",
  "libp2p-streaming-response",
  "maplit",
+ "parking_lot 0.11.1",
  "predicates",
  "prettytable-rs",
  "rand 0.8.4",
@@ -856,9 +860,9 @@ dependencies = [
 
 [[package]]
 name = "cbor-data"
-version = "0.4.2"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4903d67ede1684cac68d346426d8ad90c973d0aa4f5a3106ecb2b770e4ea449f"
+checksum = "4ed404e8ba3565255037e6f60dc079bb99586c39e2e23e47a6fbdaf5f62b2eef"
 dependencies = [
  "base64 0.13.0",
  "half",
@@ -1360,13 +1364,14 @@ dependencies = [
 
 [[package]]
 name = "derive_more"
-version = "0.99.14"
+version = "0.99.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cc7b9cef1e351660e5443924e4f43ab25fbbed3e9a5f052df3677deb4d6b320"
+checksum = "40eebddd2156ce1bb37b20bbe5151340a31828b1f2d22ba4141f3531710e38df"
 dependencies = [
  "convert_case",
  "proc-macro2",
  "quote",
+ "rustc_version",
  "syn",
 ]
 
@@ -1535,6 +1540,18 @@ dependencies = [
  "log",
  "regex",
  "termcolor",
+]
+
+[[package]]
+name = "escargot"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44bb3f795fe1b9d34f089c7fab034c2b757998d65361d95ef008045b57665262"
+dependencies = [
+ "log",
+ "once_cell",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -5291,6 +5308,7 @@ dependencies = [
  "anyhow",
  "ax-futures-util",
  "banyan",
+ "crossbeam",
  "crypto",
  "derive_more",
  "fnv",
@@ -5551,9 +5569,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.6.2"
+version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aea337f72e96efe29acc234d803a5981cd9a2b6ed21655cd7fc21cfe021e8ec7"
+checksum = "98c8b05dc14c75ea83d63dd391100353789f5f24b8b3866542a5e85c8be8e985"
 dependencies = [
  "autocfg",
  "bytes",
@@ -5592,9 +5610,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-stream"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8864d706fdb3cc0843a49647ac892720dac98a6eeb818b77190592cf4994066"
+checksum = "7b2f3f698253f03119ac0102beaa64f67a67e08074d03a22d18784104543727f"
 dependencies = [
  "futures-core",
  "pin-project-lite",

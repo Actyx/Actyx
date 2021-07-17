@@ -94,10 +94,6 @@ fn main() {
                 .map(|_| ApiClient::new(origin.clone(), app_manifest(), namespace))
                 .collect::<Vec<_>>();
 
-            let subscription_clients = (0..concurrent_subscribes)
-                .map(|_| ApiClient::new(origin.clone(), app_manifest(), namespace))
-                .collect::<Vec<_>>();
-
             let stream_0 = publish_clients[0].node_id().await.stream(0.into());
 
             let mut futs = publish_clients
@@ -118,6 +114,7 @@ fn main() {
                             );
                             let _meta = client.publish(to_publish(events.clone())).await?;
                         }
+                        tracing::info!("Client {}/{} done", i + 1, concurrent_publishes);
                         Result::<_, anyhow::Error>::Ok(())
                     }
                     .boxed()
@@ -128,24 +125,32 @@ fn main() {
                 lower_bound: None,
                 query: "FROM 'my_test'".parse().unwrap(),
             };
-            for client in subscription_clients {
+            for (id, client) in (0..concurrent_subscribes)
+                .map(|_| ApiClient::new(origin.clone(), app_manifest(), namespace))
+                .enumerate()
+            {
                 let request = request.clone();
                 futs.push(
                     async move {
-                        client
-                            .subscribe(request)
-                            .then(move |req| async move {
-                                let mut req = req?;
-                                while let Some(x) = tokio::time::timeout(Duration::from_secs(10), req.next()).await? {
-                                    if let SubscribeResponse::Event(EventResponse { offset, .. }) = x {
-                                        if offset >= max_offset {
-                                            return Ok(());
-                                        }
-                                    }
+                        tracing::debug!("subscriber {} starting", id);
+                        let req = client.subscribe(request).await;
+                        tracing::debug!(
+                            "subscriber {} got {:?}",
+                            id,
+                            if let Err(e) = &req { Some(e) } else { None }
+                        );
+                        let mut req = req?;
+                        tracing::info!("subscriber {} started", id);
+                        while let Some(x) = tokio::time::timeout(Duration::from_secs(30), req.next()).await? {
+                            if let SubscribeResponse::Event(EventResponse { offset, .. }) = x {
+                                tracing::debug!("subscriber {} got offsets {}", id, offset);
+                                if offset >= max_offset {
+                                    tracing::info!("subscriber {} ended", id);
+                                    return Ok(());
                                 }
-                                anyhow::bail!("Stream ended")
-                            })
-                            .await
+                            }
+                        }
+                        anyhow::bail!("Stream ended")
                     }
                     .boxed(),
                 )

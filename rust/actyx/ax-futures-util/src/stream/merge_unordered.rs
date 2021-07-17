@@ -24,6 +24,21 @@ impl<St: Stream + Unpin + Send, Si: Stream<Item = St> + Send> MergeUnordered<St,
             streams: Box::pin(SelectAll::new()),
         }
     }
+
+    /// Create a MergeUnordered without a stream of streams to poll.
+    ///
+    /// Streams to be merged need to be injected using [`push()`](#method.push).
+    pub fn without_input() -> Self {
+        Self {
+            input: None,
+            streams: Box::pin(SelectAll::new()),
+        }
+    }
+
+    /// Add the given stream to the merge pool.
+    pub fn push(&mut self, input: St) {
+        self.streams.push(input);
+    }
 }
 
 impl<St: Stream + Unpin, Si: Stream<Item = St>> Stream for MergeUnordered<St, Si> {

@@ -181,14 +181,11 @@ mod test {
                 interval: Duration::from_secs(300_000_000),
                 streams: BTreeMap::default(),
             },
-            enable_fast_path: true,
-            enable_slow_path: true,
-            enable_root_map: true,
             banyan_config: BanyanConfig {
                 tree: banyan::Config::debug(),
                 ..Default::default()
             },
-            ..Default::default()
+            ..SwarmConfig::basic()
         };
         BanyanStore::new(cfg).await
     }

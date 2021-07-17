@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod admin_protocol;
 pub mod errors;
+pub mod events_protocol;
 pub mod logs;
 
 pub mod os_arch;

@@ -9,7 +9,6 @@ use banyan::FilteredChunk;
 use derive_more::{Display, Error};
 use futures::{future, stream, Stream, StreamExt, TryStreamExt};
 use trees::{axtrees::AxKey, query::TagsQuery};
-use util::offsetmap_or_max::OffsetMapOrMax;
 
 use crate::{selection::StreamEventSelection, AppendMeta, BanyanStore, SwarmOffsets};
 
@@ -72,21 +71,20 @@ impl EventStore {
     async fn bounded_streams(
         &self,
         tag_expr: &TagExpr,
-        from_offsets_excluding: Option<OffsetMap>,
+        from_offsets_excluding: OffsetMap,
         to_offsets_including: OffsetMap,
     ) -> Result<Vec<StreamEventSelection>, Error> {
         let this = self.clone();
-        let present = self.present().await;
+        let present = self.current_offsets().present;
         if present.union(&to_offsets_including) != present {
             return Err(Error::InvalidUpperBounds);
         }
-        let from_or_min = from_offsets_excluding.map(OffsetMapOrMax::from).unwrap_or_default();
         let mk_tags_query = TagsQuery::from_expr(tag_expr);
         let res: Vec<_> = to_offsets_including
             .streams()
             .filter_map(|stream_id| {
                 let local = this.banyan_store.is_local(stream_id);
-                let from_exclusive = from_or_min.offset(stream_id);
+                let from_exclusive = from_offsets_excluding.offset(stream_id);
                 let to_inclusive = to_offsets_including.offset(stream_id);
                 if from_exclusive >= to_inclusive {
                     return None;
@@ -106,12 +104,13 @@ impl EventStore {
         Ok(res)
     }
 
-    pub fn offsets(&self) -> impl Stream<Item = SwarmOffsets> {
+    #[cfg(test)]
+    fn offsets(&self) -> impl Stream<Item = SwarmOffsets> {
         self.banyan_store.data.offsets.new_observer()
     }
 
-    pub async fn present(&self) -> OffsetMap {
-        self.offsets().next().await.expect("offset stream stopped").present
+    pub fn current_offsets(&self) -> SwarmOffsets {
+        self.banyan_store.data.offsets.get_cloned()
     }
 
     pub async fn persist(&self, app_id: AppId, events: Vec<(TagSet, Payload)>) -> anyhow::Result<Vec<PersistenceMeta>> {
@@ -143,7 +142,7 @@ impl EventStore {
     pub async fn bounded_forward(
         &self,
         tag_expr: &TagExpr,
-        from_offsets_excluding: Option<OffsetMap>,
+        from_offsets_excluding: OffsetMap,
         to_offsets_including: OffsetMap,
     ) -> Result<impl Stream<Item = Event<Payload>>, Error> {
         let this = self.clone();
@@ -158,7 +157,7 @@ impl EventStore {
     pub async fn bounded_forward_per_stream(
         &self,
         tag_expr: &TagExpr,
-        from_offsets_excluding: Option<OffsetMap>,
+        from_offsets_excluding: OffsetMap,
         to_offsets_including: OffsetMap,
     ) -> Result<impl Stream<Item = Event<Payload>>, Error> {
         let this = self.clone();
@@ -173,7 +172,7 @@ impl EventStore {
     pub async fn bounded_backward(
         &self,
         tag_expr: &TagExpr,
-        from_offsets_excluding: Option<OffsetMap>,
+        from_offsets_excluding: OffsetMap,
         to_offsets_including: OffsetMap,
     ) -> Result<impl Stream<Item = Event<Payload>>, Error> {
         let this = self.clone();
@@ -188,12 +187,11 @@ impl EventStore {
     pub fn unbounded_forward_per_stream(
         &self,
         tag_expr: &TagExpr,
-        from_offsets_excluding: Option<OffsetMap>,
+        from_offsets_excluding: OffsetMap,
     ) -> impl Stream<Item = Event<Payload>> {
         let this = self.clone();
         let mk_tags_query = TagsQuery::from_expr(&tag_expr);
         let banyan_store = self.banyan_store.clone();
-        let from_or_min = from_offsets_excluding.map(OffsetMapOrMax::from).unwrap_or_default();
         self.banyan_store
             .stream_known_streams()
             .filter_map(move |stream_id| {
@@ -204,7 +202,7 @@ impl EventStore {
                 } else {
                     Some(StreamEventSelection {
                         stream_id,
-                        from_exclusive: from_or_min.offset(stream_id),
+                        from_exclusive: from_offsets_excluding.offset(stream_id),
                         to_inclusive: OffsetOrMin::MAX,
                         tags_query,
                     })
@@ -273,7 +271,6 @@ mod tests {
     use ax_futures_util::stream::Drainer;
     use futures::future::try_join_all;
     use maplit::btreemap;
-    use num_traits::Bounded;
     use quickcheck::Arbitrary;
     use rand::{thread_rng, Rng};
 
@@ -478,12 +475,12 @@ mod tests {
             to: &'a BTreeMap<StreamId, u32>,
             len: usize,
         ) {
-            let from: Option<OffsetMap> = from.map(offset_map).map(Into::into);
+            let from: OffsetMap = from.map(offset_map).unwrap_or_default();
             let to: OffsetMap = offset_map(to);
             let expr = &expr.parse::<TagExpr>().unwrap();
             let selection = EventSelection {
-                from_offsets_excluding: from.clone().unwrap_or_default().into(),
-                to_offsets_including: to.clone().into(),
+                from_offsets_excluding: from.clone(),
+                to_offsets_including: to.clone(),
                 tag_expr: expr.clone(),
             };
 
@@ -530,7 +527,7 @@ mod tests {
         let unknown = store1
             .bounded_forward(
                 &TagExpr::Atom(TagAtom::AllEvents),
-                None,
+                OffsetMap::default(),
                 offset_map(&btreemap! {
                   "Kh8od22U1f.2S7wHoVCnmJaKWX/6.e2dSlEk2K3Jia6-0".parse::<StreamId>().unwrap() => 0
                 }),
@@ -541,7 +538,7 @@ mod tests {
         let exceeding_present = store1
             .bounded_forward(
                 &TagExpr::Atom(TagAtom::AllEvents),
-                None,
+                OffsetMap::default(),
                 offset_map(&btreemap! { stream_id1 => 42 }),
             )
             .await;
@@ -565,7 +562,8 @@ mod tests {
             node_id: NodeId,
             stream: impl Stream<Item = Event<Payload>> + 'static,
             expr: &'static str,
-            from: Option<&'a BTreeMap<StreamId, u32>>,
+            from: OffsetMap,
+            to: OffsetMap,
             len: usize,
         ) {
             let expr = expr.parse::<TagExpr>().unwrap();
@@ -574,8 +572,8 @@ mod tests {
                 stream,
                 EventSelection {
                     tag_expr: expr,
-                    from_offsets_excluding: from.map(|entries| offset_map(entries)).unwrap_or_default().into(),
-                    to_offsets_including: OffsetMapOrMax::max_value(),
+                    from_offsets_excluding: from,
+                    to_offsets_including: to,
                 },
                 len,
                 Order::StreamAsc,
@@ -588,16 +586,17 @@ mod tests {
         let handle = tokio::spawn(async move {
             let store_rx = mk_store("swarm_test_rx").await;
             let tag_expr = &TagExpr::Atom(TagAtom::Tag(tag!("test:unbounded:forward")));
-            let from = btreemap! { stream_id1 => 0 };
+            let from = offset_map(&btreemap! { stream_id1 => 0 });
+            let to = offset_map(&btreemap! { stream_id1 => u32::MAX, stream_id2 => u32::MAX });
             // stream1 is below range and stream2 non-existant at this point
-            let stream = store_rx.unbounded_forward_per_stream(tag_expr, Some(offset_map(&from)));
+            let stream = store_rx.unbounded_forward_per_stream(tag_expr, from.clone());
             let _ = await_stream_offsets(
                 &store_rx,
                 &[&store1_clone, &store2_clone],
                 &btreemap! {stream_id1 => 1, stream_id2 => 0 },
             )
             .await;
-            assert_unbounded(store_rx.node_id(), stream, "'test:unbounded:forward'", Some(&from), 2).await;
+            assert_unbounded(store_rx.node_id(), stream, "'test:unbounded:forward'", from, to, 2).await;
         });
 
         store1

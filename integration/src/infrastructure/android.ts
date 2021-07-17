@@ -172,7 +172,11 @@ export function runProcess(
         res([proc])
       }
     })
-    proc.stderr?.on('data', (s: Buffer | string) => log('stderr', s))
+    proc.stderr?.on('data', (s: Buffer | string) => {
+      if (log('stderr', s)) {
+        res([proc])
+      }
+    })
     proc.on('close', () => {
       flush()
       logger(`node ${nodeName} cmd channel closed`)

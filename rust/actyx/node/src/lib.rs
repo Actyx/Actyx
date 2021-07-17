@@ -20,8 +20,8 @@ use crate::{
         android::{Android, FfiMessage},
         logging::Logging,
         node_api::NodeApi,
-        store::Store,
-        Component,
+        store::{Store, StoreRequest},
+        Component, ComponentRequest,
     },
     formats::ExternalEvent,
     host::Host,
@@ -36,6 +36,7 @@ use crossbeam::channel::{bounded, Receiver, Sender};
 use std::net::{IpAddr, Ipv4Addr};
 use std::{convert::TryInto, path::PathBuf, str::FromStr, thread};
 use structopt::StructOpt;
+use swarm::event_store_ref::{self, EventStoreRef};
 
 // Rust defaults to use the system allocator, which seemed to be the fastest
 // allocator generally available for our use case [0]. For production, the Actyx
@@ -71,6 +72,12 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     let (node_tx, node_rx) = bounded_channel();
     let (logs_tx, logs_rx) = bounded_channel();
     let (nodeapi_tx, nodeapi_rx) = bounded_channel();
+
+    let tx = store_tx.clone();
+    let event_store = EventStoreRef::new(move |e| {
+        tx.try_send(ComponentRequest::Individual(StoreRequest::EventsV2(e)))
+            .map_err(event_store_ref::Error::from)
+    });
 
     let mut components = vec![
         (Store::get_type().into(), ComponentChannel::Store(store_tx.clone())),
@@ -116,6 +123,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
             // earlier
             .context("No keypair registered for node")?;
         NodeApi::new(
+            node_id,
             keypair.into(),
             node.tx.clone(),
             bind_to.admin.clone(),
@@ -128,6 +136,7 @@ fn spawn(working_dir: PathBuf, runtime: Runtime, bind_to: BindTo) -> anyhow::Res
     // Component: Store
     let store = Store::new(
         store_rx,
+        event_store,
         working_dir.join("store"),
         bind_to,
         keystore,
