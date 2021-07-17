@@ -120,7 +120,7 @@ impl HttpClient {
     }
 
     /// Makes request to Actyx apis. On http authorization error tries to
-    /// re-authenticate and retries the request once.
+    /// re-authenticate and retries the request ten times with increasing delay.
     async fn do_request(&self, f: impl Fn(&Client) -> RequestBuilder) -> anyhow::Result<Response> {
         let token = self.token.read().unwrap().clone();
 
@@ -149,7 +149,7 @@ impl HttpClient {
             if response.status() == StatusCode::SERVICE_UNAVAILABLE && retries > 0 {
                 retries -= 1;
                 delay = delay * 2 + Duration::from_millis(rand::thread_rng().gen_range(10..200));
-                tracing::info!("delaying by {:?}", delay);
+                tracing::info!("Actyx Node is unavailable, retrying request with a delay of {:?}", delay);
                 #[cfg(feature = "with-tokio")]
                 tokio::time::sleep(delay).await;
                 #[cfg(not(feature = "with-tokio"))]

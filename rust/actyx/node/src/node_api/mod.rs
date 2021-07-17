@@ -477,8 +477,10 @@ impl NetworkBehaviourEventProcess<StreamingResponseEvent<EventsProtocol>> for Ap
 
                 self.enqueue_events_v2(channel_id, payload);
             }
-            StreamingResponseEvent::<EventsProtocol>::CancelledRequest { .. } => {
-                // TODO
+            StreamingResponseEvent::<EventsProtocol>::CancelledRequest { channel_id, .. } => {
+                   if let Some(h) = self.state.stream_handles.remove(&channel_id) {
+                        h.abort();
+                    }
             }
             StreamingResponseEvent::<EventsProtocol>::ResponseReceived { .. } => {}
             StreamingResponseEvent::<EventsProtocol>::ResponseFinished { .. } => {}
