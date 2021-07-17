@@ -149,7 +149,12 @@ impl HttpClient {
             if response.status() == StatusCode::SERVICE_UNAVAILABLE && retries > 0 {
                 retries -= 1;
                 delay = delay * 2 + Duration::from_millis(rand::thread_rng().gen_range(10..200));
-                tracing::info!("Actyx Node is unavailable, retrying request with a delay of {:?}", delay);
+                tracing::debug!(
+                    "Actyx Node is overloaded, retrying {} {} with a delay of {:?}",
+                    method,
+                    url,
+                    delay
+                );
                 #[cfg(feature = "with-tokio")]
                 tokio::time::sleep(delay).await;
                 #[cfg(not(feature = "with-tokio"))]
