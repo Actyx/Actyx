@@ -1,6 +1,7 @@
 use crate::{BanyanStore, Block, Ipfs, Link, RootSource};
 use actyx_sdk::{LamportTimestamp, NodeId, StreamId, StreamNr, Timestamp};
 use anyhow::Result;
+use ax_futures_util::stream::ready_iter;
 use futures::{
     channel::mpsc::{unbounded, UnboundedSender},
     prelude::*,
@@ -120,12 +121,9 @@ impl Gossip {
     pub fn new(ipfs: Ipfs, node_id: NodeId, topic: String, enable_fast_path: bool, enable_slow_path: bool) -> Self {
         let (tx, mut rx) = unbounded::<PublishUpdate>();
         let publish_task = async move {
-            while let Some(update) = rx.next().await {
+            while let Some(updates) = ready_iter(&mut rx).await {
                 // drain the channel and only publish the latest update per stream
-                let updates = std::iter::once(update)
-                    .chain(std::iter::from_fn(|| rx.try_next().ok().flatten()))
-                    .map(|up| (up.stream, up))
-                    .collect::<BTreeMap<_, _>>();
+                let updates = updates.map(|up| (up.stream, up)).collect::<BTreeMap<_, _>>();
 
                 for (_, update) in updates {
                     let _s = tracing::trace_span!("publishing", stream = display(update.stream));
