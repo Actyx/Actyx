@@ -17,8 +17,8 @@ actyx_sdk = { path = "../../sdk" }
 anyhow = "1.0.40"
 certs = { path = "../certs" }
 settings = { path = "../settings" }
-banyan = "0.15.0"
-banyan-utils = "0.8.0"
+banyan = "0.16.0"
+banyan-utils = "0.9.0"
 base64 = "0.13.0"
 bytes = "1.0.1"
 chrono = { version = "0.4.19", features = ["serde"] }
@@ -28,7 +28,7 @@ dirs = "3.0.1"
 futures = { version = "0.3.14", features = ["compat"], package = "futures" }
 hex = "0.4.3"
 hyper = { version = "0.14.6", features = ["stream"], package = "hyper" }
-ipfs-sqlite-block-store = "0.6.0"
+ipfs-sqlite-block-store = "0.6.1"
 lazy_static = "1"
 libipld = "0.12.0"
 libp2p = { version = "0.38.0", default-features = false }

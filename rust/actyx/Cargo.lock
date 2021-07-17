@@ -545,18 +545,20 @@ dependencies = [
 
 [[package]]
 name = "banyan"
-version = "0.15.0"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d86f97bdacd287cc781347ec34a2a22d84f04ee2b9edf8645d0b47ec3a86a9b"
+checksum = "288a740c1fe647d4dbe2ea25ae88a60c21a7d71ca31e960ef33b1abc1f69e0cd"
 dependencies = [
  "anyhow",
  "chacha20",
  "derive_more",
  "fnv",
  "futures 0.3.15",
+ "lazy_static",
  "libipld",
  "maplit",
  "parking_lot 0.11.1",
+ "prometheus",
  "smallvec",
  "tracing",
  "weight-cache",
@@ -565,9 +567,9 @@ dependencies = [
 
 [[package]]
 name = "banyan-utils"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "131a8114f6a4c5e2f45a5973c3da560a70029db40b33b55ba24a6393c48bbfaa"
+checksum = "0f82b1a5872856a893accbcd1b724bb3ea2a064aa45189a16950d99fad13a56d"
 dependencies = [
  "anyhow",
  "banyan",
@@ -2457,9 +2459,9 @@ dependencies = [
 
 [[package]]
 name = "ipfs-sqlite-block-store"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4359b2e5e7f48f54351d668c2f423de61a0e6a0e581c4732f3169579f3bd64d"
+checksum = "8e4bfde6259c565dc55fd3c26b75ad29481e29105c0f2035a674b5b80e568fdc"
 dependencies = [
  "anyhow",
  "derive_more",
@@ -6549,18 +6551,18 @@ dependencies = [
 
 [[package]]
 name = "zstd"
-version = "0.7.0+zstd.1.4.9"
+version = "0.9.0+zstd.1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9428752481d8372e15b1bf779ea518a179ad6c771cca2d2c60e4fbff3cc2cd52"
+checksum = "07749a5dc2cb6b36661290245e350f15ec3bbb304e493db54a1d354480522ccd"
 dependencies = [
  "zstd-safe",
 ]
 
 [[package]]
 name = "zstd-safe"
-version = "3.1.0+zstd.1.4.9"
+version = "4.1.1+zstd.1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5aa1926623ad7fe406e090555387daf73db555b948134b4d73eac5eb08fb666d"
+checksum = "c91c90f2c593b003603e5e0493c837088df4469da25aafff8bce42ba48caf079"
 dependencies = [
  "libc",
  "zstd-sys",
@@ -6568,9 +6570,9 @@ dependencies = [
 
 [[package]]
 name = "zstd-sys"
-version = "1.5.0+zstd.1.4.9"
+version = "1.6.1+zstd.1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e6c094340240369025fc6b731b054ee2a834328fa584310ac96aa4baebdc465"
+checksum = "615120c7a2431d16cf1cf979e7fc31ba7a5b5e5707b29c8a99e5dbf8a8392a33"
 dependencies = [
  "cc",
  "libc",
