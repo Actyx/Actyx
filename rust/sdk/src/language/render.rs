@@ -2,28 +2,53 @@ use std::fmt::{Result, Write};
 
 use super::*;
 
-// FIXME this whole file doesn’t yet emit parens as needed
-
 fn render_simple_pair(w: &mut impl Write, e: &(SimpleExpr, SimpleExpr), op: &'static str) -> Result {
+    w.write_char('(')?;
     render_simple_expr(w, &(*e).0)?;
     w.write_char(' ')?;
     w.write_str(op)?;
     w.write_char(' ')?;
-    render_simple_expr(w, &(*e).1)
+    render_simple_expr(w, &(*e).1)?;
+    w.write_char(')')
 }
 
-fn render_indexing(w: &mut impl Write, e: &Indexing) -> Result {
-    render_simple_expr(w, &e.head)?;
-    for t in &e.tail {
-        write!(w, "{}", t)?;
+fn render_index(w: &mut impl Write, e: &Index, with_dot: bool) -> Result {
+    match e {
+        Index::String(s) => {
+            if is_ident(s) {
+                if with_dot {
+                    w.write_char('.')?;
+                }
+                w.write_str(s)
+            } else {
+                w.write_char('[')?;
+                render_string(w, s)?;
+                w.write_char(']')
+            }
+        }
+        Index::Number(n) => write!(w, "[{}]", n),
+        Index::Expr(e) => write!(w, "[({})]", e),
+    }
+}
+
+fn render_indexing(w: &mut impl Write, e: &Ind) -> Result {
+    if let SimpleExpr::Variable(v) = &*e.head {
+        w.write_str(v)?;
+    } else {
+        w.write_char('(')?;
+        render_simple_expr(w, &e.head)?;
+        w.write_char(')')?;
+    }
+    for t in e.tail.iter() {
+        render_index(w, t, true)?;
     }
     Ok(())
 }
 
-fn render_number(w: &mut impl Write, e: &Number) -> Result {
+pub fn render_number(w: &mut impl Write, e: &Num) -> Result {
     match e {
-        Number::Decimal(d) => render_to_string(w, d),
-        Number::Natural(n) => render_to_string(w, n),
+        Num::Decimal(d) => render_to_string(w, d),
+        Num::Natural(n) => render_to_string(w, n),
     }
 }
 
@@ -31,20 +56,20 @@ fn render_to_string<W: Write, T: ToString>(w: &mut W, e: &T) -> Result {
     w.write_str(&e.to_string())
 }
 
-fn render_object(w: &mut impl Write, e: &Object) -> Result {
+fn render_object(w: &mut impl Write, e: &Obj) -> Result {
     w.write_str("{ ")?;
     for (i, (k, v)) in e.props.iter().enumerate() {
         if i > 0 {
             w.write_str(", ")?;
         }
-        w.write_str(k)?;
+        render_index(w, k, false)?;
         w.write_str(": ")?;
         render_simple_expr(w, v)?;
     }
     w.write_str(" }")
 }
 
-fn render_array(w: &mut impl Write, e: &Array) -> Result {
+fn render_array(w: &mut impl Write, e: &Arr) -> Result {
     w.write_char('[')?;
     for (i, x) in e.items.iter().enumerate() {
         if i > 0 {
@@ -55,7 +80,7 @@ fn render_array(w: &mut impl Write, e: &Array) -> Result {
     w.write_char(']')
 }
 
-fn render_string(w: &mut impl Write, e: &str) -> Result {
+pub(crate) fn render_string(w: &mut impl Write, e: &str) -> Result {
     w.write_char('\'')?;
     w.write_str(&e.replace('\'', "''"))?;
     w.write_char('\'')
@@ -63,7 +88,7 @@ fn render_string(w: &mut impl Write, e: &str) -> Result {
 
 pub fn render_simple_expr(w: &mut impl Write, e: &SimpleExpr) -> Result {
     match e {
-        SimpleExpr::Var(v) => w.write_str(v),
+        SimpleExpr::Variable(v) => w.write_str(v),
         SimpleExpr::Indexing(i) => render_indexing(w, i),
         SimpleExpr::Number(n) => render_number(w, n),
         SimpleExpr::String(s) => render_string(w, s),
@@ -117,7 +142,7 @@ fn render_operation(w: &mut impl Write, e: &Operation) -> Result {
         Operation::Select(s) => {
             w.write_str("SELECT ")?;
             let mut first = true;
-            for e in s {
+            for e in s.iter() {
                 if first {
                     first = false;
                 } else {
@@ -130,25 +155,21 @@ fn render_operation(w: &mut impl Write, e: &Operation) -> Result {
     }
 }
 
-pub fn render_tag_expr(w: &mut impl Write, e: &TagExpr, parent: Option<&TagExpr>) -> Result {
+pub fn render_tag_expr(w: &mut impl Write, e: &TagExpr, _parent: Option<&TagExpr>) -> Result {
     match e {
         TagExpr::Or(or) => {
-            let wrap = matches!(parent, Some(&TagExpr::And(_)));
-            if wrap {
-                w.write_char('(')?;
-            }
+            w.write_char('(')?;
             render_tag_expr(w, &or.0, Some(e))?;
             w.write_str(" | ")?;
             render_tag_expr(w, &or.1, Some(e))?;
-            if wrap {
-                w.write_char(')')?;
-            }
-            Ok(())
+            w.write_char(')')
         }
         TagExpr::And(and) => {
+            w.write_char('(')?;
             render_tag_expr(w, &and.0, Some(e))?;
             w.write_str(" & ")?;
-            render_tag_expr(w, &and.1, Some(e))
+            render_tag_expr(w, &and.1, Some(e))?;
+            w.write_char(')')
         }
         TagExpr::Atom(atom) => render_tag_atom(w, atom),
     }

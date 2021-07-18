@@ -74,7 +74,10 @@ impl From<Timestamp> for DateTime<Utc> {
 
 impl From<DateTime<Utc>> for Timestamp {
     fn from(dt: DateTime<Utc>) -> Self {
-        Self(dt.timestamp_nanos() as u64 / 1000)
+        // dt.timestamp_nanos() multiplies by 1e9 which leads to overflows
+        let seconds = dt.timestamp() as u64;
+        let micros = seconds * 1_000_000 + dt.timestamp_subsec_micros() as u64;
+        Self(micros)
     }
 }
 

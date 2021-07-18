@@ -1,4 +1,4 @@
-use actyx_sdk::{language::Number, EventKey, Payload};
+use actyx_sdk::{language::Num, EventKey, Payload};
 use anyhow::{anyhow, Result};
 use cbor_data::{Cbor, CborBuilder, CborOwned, CborValue, Encoder, WithOutput};
 use std::{
@@ -105,11 +105,11 @@ impl Value {
         Payload::from_bytes(self.value.as_ref())
     }
 
-    pub fn as_number(&self) -> Result<Number> {
+    pub fn as_number(&self) -> Result<Num> {
         if let Some(b) = self.value().as_u64() {
-            Ok(Number::Natural(b))
+            Ok(Num::Natural(b))
         } else if let Some(f) = self.value().as_f64() {
-            Ok(Number::Decimal(f))
+            Ok(Num::Decimal(f))
         } else {
             Err(anyhow!("{} is not a number", self))
         }
@@ -123,10 +123,10 @@ impl Value {
         self.value().as_str().ok_or_else(|| anyhow!("{} is not a string", self))
     }
 
-    fn number(&self, n: Number) -> Value {
+    fn number(&self, n: Num) -> Value {
         match n {
-            Number::Decimal(d) => Value::new(self.sort_key, |b| b.encode_f64(d)),
-            Number::Natural(n) => Value::new(self.sort_key, |b| b.encode_u64(n)),
+            Num::Decimal(d) => Value::new(self.sort_key, |b| b.encode_f64(d)),
+            Num::Natural(n) => Value::new(self.sort_key, |b| b.encode_u64(n)),
         }
     }
 

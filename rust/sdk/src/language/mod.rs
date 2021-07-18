@@ -1,7 +1,9 @@
+mod non_empty;
 mod parser;
 mod render;
 
-use crate::{language::render::render_tag_expr, tags::Tag, AppId, LamportTimestamp, Timestamp};
+use self::{non_empty::NonEmptyVec, render::render_tag_expr};
+use crate::{tags::Tag, AppId, LamportTimestamp, Timestamp};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Query {
@@ -13,7 +15,7 @@ mod query_impl;
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Operation {
     Filter(SimpleExpr),
-    Select(Vec<SimpleExpr>),
+    Select(NonEmptyVec<SimpleExpr>),
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -79,7 +81,7 @@ impl TagAtom {
 
 // this will obviously need to be implemented for real sometime, with arbitrary precision
 #[derive(Debug, Clone)]
-pub enum Number {
+pub enum Num {
     Decimal(f64),
     Natural(u64),
 }
@@ -87,48 +89,45 @@ mod number_impl;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum Index {
-    Ident(String),
+    String(String),
     Number(u64),
     Expr(SimpleExpr),
 }
 
-impl std::fmt::Display for Index {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Index::Ident(s) => write!(f, ".{}", s),
-            Index::Number(n) => write!(f, ".{}", n),
-            Index::Expr(e) => write!(f, ".[{}]", e),
-        }
-    }
+fn is_ident(s: &str) -> bool {
+    s == "_"
+        || !s.is_empty()
+            && s.chars().next().unwrap().is_lowercase()
+            && s.chars().all(|c: char| c.is_lowercase() || c.is_numeric() || c == '_')
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
-pub struct Indexing {
+pub struct Ind {
     pub head: Box<SimpleExpr>,
-    pub tail: Vec<Index>,
+    pub tail: NonEmptyVec<Index>,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
-pub struct Object {
-    pub props: Vec<(String, SimpleExpr)>,
+pub struct Obj {
+    pub props: Vec<(Index, SimpleExpr)>,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
-pub struct Array {
+pub struct Arr {
     pub items: Vec<SimpleExpr>,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub enum SimpleExpr {
-    Var(String),
-    Indexing(Indexing),
-    Number(Number),
+    Variable(var::Var),
+    Indexing(Ind),
+    Number(Num),
     String(String),
-    Object(Object),
-    Array(Array),
+    Object(Obj),
+    Array(Arr),
     Null,
     Bool(bool),
-    Cases(Vec<(SimpleExpr, SimpleExpr)>),
+    Cases(NonEmptyVec<(SimpleExpr, SimpleExpr)>),
     Add(Box<(SimpleExpr, SimpleExpr)>),
     Sub(Box<(SimpleExpr, SimpleExpr)>),
     Mul(Box<(SimpleExpr, SimpleExpr)>),
@@ -146,6 +145,7 @@ pub enum SimpleExpr {
     Eq(Box<(SimpleExpr, SimpleExpr)>),
     Ne(Box<(SimpleExpr, SimpleExpr)>),
 }
+mod var;
 
 impl std::fmt::Display for SimpleExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -205,6 +205,8 @@ impl SimpleExpr {
 #[cfg(test)]
 mod for_tests {
     use super::*;
+    use quickcheck::{Arbitrary, Gen, QuickCheck};
+    use std::{cell::RefCell, convert::TryInto, str::FromStr};
 
     impl Query {
         pub fn new(from: TagExpr) -> Self {
@@ -234,7 +236,7 @@ mod for_tests {
     }
     impl ToIndex for &str {
         fn into(&self) -> Index {
-            Index::Ident((*self).to_owned())
+            Index::String((*self).to_owned())
         }
     }
     impl ToIndex for u64 {
@@ -243,32 +245,273 @@ mod for_tests {
         }
     }
 
-    impl Indexing {
+    thread_local! {
+        static DEPTH: RefCell<usize> = RefCell::new(0);
+    }
+
+    macro_rules! arb {
+        ($T:ident: $g:ident => $($n:ident)*, $($rec:ident)*, $($e:ident)*) => {{
+            $(
+                #[allow(non_snake_case)]
+                fn $n(g: &mut Gen) -> $T {
+                    $T::$n(Arbitrary::arbitrary(g))
+                }
+            )*
+            $(
+                #[allow(non_snake_case)]
+                fn $rec(g: &mut Gen) -> $T {
+                    $T::$rec(Arbitrary::arbitrary(g))
+                }
+            )*
+            $(
+                #[allow(non_snake_case)]
+                fn $e(_g: &mut Gen) -> $T {
+                    $T::$e
+                }
+            )*
+            let choices = DEPTH.with(|depth| -> &[fn(&mut Gen) -> $T] {
+                if *depth.borrow() > 4 {
+                    &[$($n as fn(&mut Gen) -> $T,)* $($e,)*][..]
+                } else {
+                    &[$($n,)* $($rec,)* $($e,)*][..]
+                }
+            });
+            let ret = ($g.choose(choices).unwrap())($g);
+            match &ret {
+                $($T::$n(_) => {})*
+                $($T::$rec(_) => { DEPTH.with(|d| *d.borrow_mut() += 1) })*
+                $($T::$e => {})*
+            }
+            ret
+        }};
+    }
+
+    macro_rules! shrink {
+        ($T:ident: $s:ident => $($n:ident)*, $($rec:ident)*,) => {
+            match $s {
+                $($T::$n(x) => Box::new(x.shrink().map($T::$n)),)*
+                $($T::$rec(x) => Box::new(x.shrink().map($T::$rec)),)*
+            }
+        };
+        ($T:ident: $s:ident => $($n:ident)*, $($rec:ident($m:ident,$($ex:expr),*))*, $($e:ident)*) => {
+            match $s {
+                $($T::$n(x) => Box::new(x.shrink().map($T::$n)),)*
+                $($T::$rec($m) => Box::new(vec![$($ex,)*].into_iter().chain($m.shrink().map($T::$rec))),)*
+                $($T::$e => quickcheck::empty_shrinker(),)*
+            }
+        };
+    }
+
+    impl Ind {
         pub fn with(head: impl Into<String>, tail: &[&dyn ToIndex]) -> SimpleExpr {
             SimpleExpr::Indexing(Self {
-                head: Box::new(SimpleExpr::Var(head.into())),
-                tail: tail.iter().map(|x| (*x).into()).collect(),
-            })
-        }
-        pub fn ident(ident: impl Into<String>) -> SimpleExpr {
-            SimpleExpr::Indexing(Self {
-                head: Box::new(SimpleExpr::Var(ident.into())),
-                tail: vec![],
+                head: Box::new(SimpleExpr::Variable(head.into().try_into().unwrap())),
+                tail: tail.iter().map(|x| (*x).into()).collect::<Vec<_>>().try_into().unwrap(),
             })
         }
     }
 
-    impl Object {
+    impl Obj {
         pub fn with(props: &[(&str, SimpleExpr)]) -> SimpleExpr {
-            SimpleExpr::Object(Object {
-                props: props.iter().map(|(x, e)| ((*x).to_owned(), e.clone())).collect(),
+            SimpleExpr::Object(Obj {
+                props: props
+                    .iter()
+                    .map(|(x, e)| (Index::String((*x).to_owned()), e.clone()))
+                    .collect(),
             })
         }
     }
 
-    impl Array {
+    impl Arr {
         pub fn with(items: &[SimpleExpr]) -> SimpleExpr {
-            SimpleExpr::Array(Array { items: items.to_vec() })
+            SimpleExpr::Array(Arr { items: items.to_vec() })
         }
+    }
+
+    impl Arbitrary for Num {
+        fn arbitrary(g: &mut Gen) -> Self {
+            fn natural(g: &mut Gen) -> Num {
+                Num::Natural(u64::arbitrary(g))
+            }
+            fn decimal(g: &mut Gen) -> Num {
+                let mut n;
+                loop {
+                    n = f64::arbitrary(g);
+                    if n.is_finite() {
+                        break;
+                    }
+                }
+                Num::Decimal(n)
+            }
+            let choices = &[natural, decimal][..];
+            (g.choose(choices).unwrap())(g)
+        }
+
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            shrink!(Num: self => Natural Decimal,,)
+        }
+    }
+
+    impl Arbitrary for Index {
+        fn arbitrary(g: &mut Gen) -> Self {
+            arb!(Index: g => String Number, Expr,)
+        }
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            match self {
+                Index::String(s) => Box::new(s.shrink().map(Index::String)),
+                Index::Number(n) => Box::new(n.shrink().map(Index::Number)),
+                Index::Expr(e) => Box::new(std::iter::once(Index::Number(0)).chain(e.shrink().map(Index::Expr))),
+            }
+        }
+    }
+
+    impl Arbitrary for Ind {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                head: Box::new(SimpleExpr::arbitrary(g)),
+                tail: Arbitrary::arbitrary(g),
+            }
+        }
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            let head = self.head.clone();
+            let tail = self.tail.clone();
+            Box::new(
+                self.head
+                    .shrink()
+                    .map(move |head| Self {
+                        head,
+                        tail: tail.clone(),
+                    })
+                    .chain(self.tail.shrink().map(move |tail| Self {
+                        head: head.clone(),
+                        tail,
+                    })),
+            )
+        }
+    }
+
+    impl Arbitrary for Arr {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                items: Arbitrary::arbitrary(g),
+            }
+        }
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            Box::new(self.items.shrink().map(|items| Self { items }))
+        }
+    }
+
+    impl Arbitrary for Obj {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                props: Arbitrary::arbitrary(g),
+            }
+        }
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            Box::new(self.props.shrink().map(|props| Self { props }))
+        }
+    }
+
+    impl Arbitrary for SimpleExpr {
+        fn arbitrary(g: &mut Gen) -> Self {
+            arb!(SimpleExpr: g => Variable Number String Bool, Indexing Object Array Cases Add Sub Mul Div Mod Pow And Or Not Xor Lt Le Gt Ge Eq Ne, Null)
+        }
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            shrink!(SimpleExpr: self => Variable Number String Bool,
+                Indexing(x, (*x.head).clone())
+                Object(x, x.props.first().map(|p| p.1.clone()).unwrap_or(SimpleExpr::Null))
+                Array(x, x.items.first().cloned().unwrap_or(SimpleExpr::Null))
+                Cases(x, x.first().map(|p| p.1.clone()).unwrap_or(SimpleExpr::Null))
+                Add(x, x.0.clone(), x.1.clone())
+                Sub(x, x.0.clone(), x.1.clone())
+                Mul(x, x.0.clone(), x.1.clone())
+                Div(x, x.0.clone(), x.1.clone())
+                Mod(x, x.0.clone(), x.1.clone())
+                Pow(x, x.0.clone(), x.1.clone())
+                And(x, x.0.clone(), x.1.clone())
+                Or(x, x.0.clone(), x.1.clone())
+                Not(x, (**x).clone())
+                Xor(x, x.0.clone(), x.1.clone())
+                Lt(x, x.0.clone(), x.1.clone())
+                Le(x, x.0.clone(), x.1.clone())
+                Gt(x, x.0.clone(), x.1.clone())
+                Ge(x, x.0.clone(), x.1.clone())
+                Eq(x, x.0.clone(), x.1.clone())
+                Ne(x, x.0.clone(), x.1.clone())
+                , Null)
+        }
+    }
+
+    impl Arbitrary for TagAtom {
+        fn arbitrary(g: &mut Gen) -> Self {
+            arb!(TagAtom: g => Tag FromTime ToTime FromLamport ToLamport AppId, , AllEvents IsLocal)
+        }
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            shrink!(TagAtom: self => Tag FromTime ToTime FromLamport ToLamport AppId, , AllEvents IsLocal)
+        }
+    }
+
+    impl Arbitrary for TagExpr {
+        fn arbitrary(g: &mut Gen) -> Self {
+            arb!(TagExpr: g => Atom, And Or,)
+        }
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            shrink!(TagExpr: self => Atom, And(x, x.0.clone(), x.1.clone()) Or(x, x.0.clone(), x.1.clone()),)
+        }
+    }
+
+    impl Arbitrary for Operation {
+        fn arbitrary(g: &mut Gen) -> Self {
+            arb!(Operation: g => Filter Select,,)
+        }
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            shrink!(Operation: self => Filter Select,,)
+        }
+    }
+
+    impl Arbitrary for Query {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                from: TagExpr::arbitrary(g),
+                ops: Arbitrary::arbitrary(g),
+            }
+        }
+
+        fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+            let from = self.from.clone();
+            let ops = self.ops.clone();
+            Box::new(
+                self.ops
+                    .shrink()
+                    .map(move |ops| Self {
+                        from: from.clone(),
+                        ops,
+                    })
+                    .chain(self.from.shrink().map(move |from| Self { from, ops: ops.clone() })),
+            )
+        }
+    }
+
+    #[test]
+    fn qc_roundtrip() {
+        fn roundtrip_aql(q: Query) -> anyhow::Result<bool> {
+            // What this test currently ascertains is that our rendered string is isomorphic
+            // to the internal representation of the parse tree, hence there are many “unnecessary”
+            // parentheses in the output. If we want to remove those parentheses, we need to
+            // formulate a proper canonicalisation strategy and apply it to the source query as well
+            // as during parsing. Luckily, this test will then prove that our canonicalisation
+            // actually works.
+            let s = q.to_string();
+            let p = Query::from_str(&s)?;
+            anyhow::ensure!(q == p, "q={} p={} pp={:?}", q, p, p);
+            Ok(true)
+        }
+        let mut q = QuickCheck::new();
+        if std::env::var_os("QUICKCHECK_TESTS").is_none() {
+            q = q.tests(10_000);
+        }
+        q.max_tests(1_000_000)
+            .gen(Gen::new(10))
+            .quickcheck(roundtrip_aql as fn(Query) -> anyhow::Result<bool>)
     }
 }

@@ -117,8 +117,15 @@ mk_scalar!(
     ///
     /// For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started).
     /// You may most conveniently construct values of this type with the [`semantics!`](../macro.semantics.html) macro.
-    struct Semantics, EmptySemantics, ParseError
+    struct Semantics, ParseError, crate::legacy::validate_semantics, "crate::scalar::nonempty_string"
 );
+
+pub fn validate_semantics(s: &str) -> Result<(), ParseError> {
+    if s.is_empty() {
+        return Err(ParseError::EmptySemantics);
+    }
+    Ok(())
+}
 
 impl Semantics {
     /// Placeholder given to v1-style `Semantics`, when using the tagged API without providing
@@ -134,8 +141,15 @@ mk_scalar!(
     ///
     /// For more on Fishes see the documentation on [Actyx Pond](https://developer.actyx.com/docs/pond/getting-started).
     /// You may most conveniently construct values of this type with the [`fish_name!`](../macro.fish_name.html) macro.
-    struct FishName, EmptyFishName, ParseError
+    struct FishName, ParseError, crate::legacy::validate_fishname, "crate::scalar::nonempty_string"
 );
+
+pub fn validate_fishname(s: &str) -> Result<(), ParseError> {
+    if s.is_empty() {
+        return Err(ParseError::EmptySemantics);
+    }
+    Ok(())
+}
 
 impl FishName {
     /// Placeholder given to v1-style `FishName`, when using the tagged API without providing

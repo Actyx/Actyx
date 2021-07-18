@@ -37,13 +37,14 @@ impl Query {
 impl From<language::Query> for Query {
     fn from(q: language::Query) -> Self {
         let mut stages = vec![];
-        for op in &q.ops {
+        let from = q.from;
+        for op in q.ops {
             match op {
-                language::Operation::Filter(f) => stages.push(Operation::Filter(Filter::new(f.clone()))),
-                language::Operation::Select(s) => stages.push(Operation::Select(Select::new(s.clone()))),
+                language::Operation::Filter(f) => stages.push(Operation::Filter(Filter::new(f))),
+                language::Operation::Select(s) => stages.push(Operation::Select(Select::new(s.into_inner()))),
             }
         }
-        Self { from: q.from, stages }
+        Self { from, stages }
     }
 }
 

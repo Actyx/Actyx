@@ -359,7 +359,7 @@ mod tests {
     async fn test_forward_stream() {
         let store = mk_store("swarm_test").await;
         let stream_id = store.node_id().stream(0.into());
-        let app_id = app_id!("test_forward_stream");
+        let app_id = app_id!("test-forward-stream");
 
         store
             .persist(app_id.clone(), vec![(tags!(), Payload::empty())])
@@ -410,7 +410,7 @@ mod tests {
     async fn test_backward_stream() {
         let store = mk_store("swarm_test").await;
         let stream_id = store.node_id().stream(0.into());
-        let app_id = app_id!("test_backward_stream");
+        let app_id = app_id!("test-backward-stream");
 
         store
             .persist(app_id.clone(), vec![(tags!(), Payload::empty())])

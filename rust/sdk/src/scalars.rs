@@ -56,8 +56,31 @@ mk_scalar!(
     /// The app ID denotes a specific app (sans versioning)
     ///
     /// This is used for marking the provenance of events as well as configuring access rights.
-    struct AppId, EmptyAppId, ParseError
+    struct AppId, ParseError, crate::scalar::validate_app_id, "crate::scalar::app_id_string"
 );
+
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for AppId {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        use once_cell::sync::OnceCell;
+        static CHOICES: OnceCell<Vec<char>> = OnceCell::new();
+
+        let choices = CHOICES.get_or_init(|| {
+            ('a'..='z')
+                .chain('0'..='9')
+                .chain(std::iter::once('-'))
+                .collect::<Vec<_>>()
+        });
+        let s = Vec::<bool>::arbitrary(g)
+            .into_iter()
+            .map(|_| *g.choose(&choices).unwrap())
+            .collect::<String>();
+        AppId::try_from(s.as_str()).unwrap_or_else(|_| app_id!("empty"))
+    }
+    fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+        Box::new(self.0.shrink().filter(|x| crate::scalar::is_app_id(x)).map(Self))
+    }
+}
 
 /// The Actyx node identifier
 ///

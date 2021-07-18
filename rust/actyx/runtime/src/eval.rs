@@ -1,6 +1,6 @@
 use crate::value::{Value, ValueKind};
 use actyx_sdk::{
-    language::{Indexing, Number, SimpleExpr},
+    language::{Ind, Index, Num, SimpleExpr},
     EventKey,
 };
 use anyhow::{anyhow, bail};
@@ -46,17 +46,17 @@ impl<'a> Context<'a> {
 
     pub fn eval(&self, expr: &SimpleExpr) -> anyhow::Result<Value> {
         match expr {
-            SimpleExpr::Var(v) => {
+            SimpleExpr::Variable(v) => {
                 let v = self.lookup(v).ok_or_else(|| anyhow!("variable '{}' is not bound", v))?;
                 Ok(self.value(|b| b.write_trusting(v.as_slice())))
             }
-            SimpleExpr::Indexing(Indexing { head, tail }) => {
+            SimpleExpr::Indexing(Ind { head, tail }) => {
                 let mut v = self.eval(head)?;
-                for i in tail {
+                for i in tail.iter() {
                     v = match i {
-                        actyx_sdk::language::Index::Ident(s) => v.index(s)?,
-                        actyx_sdk::language::Index::Number(n) => v.index(&format!("{}", n))?,
-                        actyx_sdk::language::Index::Expr(e) => {
+                        Index::String(s) => v.index(s)?,
+                        Index::Number(n) => v.index(&format!("{}", n))?,
+                        Index::Expr(e) => {
                             let idx = self.eval(e)?;
                             match idx.kind() {
                                 ValueKind::Number => v.index(&format!("{}", idx.value()))?,
@@ -69,8 +69,8 @@ impl<'a> Context<'a> {
                 Ok(self.value(|b| b.write_trusting(v.as_slice())))
             }
             SimpleExpr::Number(n) => match n {
-                Number::Decimal(d) => Ok(self.value(|b| b.encode_f64(*d))),
-                Number::Natural(n) => Ok(self.value(|b| b.encode_u64(*n))),
+                Num::Decimal(d) => Ok(self.value(|b| b.encode_f64(*d))),
+                Num::Natural(n) => Ok(self.value(|b| b.encode_u64(*n))),
             },
             SimpleExpr::String(s) => Ok(self.value(|b| b.encode_str(s))),
             SimpleExpr::Object(a) => {
@@ -78,7 +78,19 @@ impl<'a> Context<'a> {
                     .props
                     .iter()
                     // TODO don’t evaluate overwritten properties
-                    .map(|(n, e)| Ok((n.as_str(), self.eval(e)?)))
+                    .map(|(n, e)| {
+                        let key = match n {
+                            Index::String(s) => s.clone(),
+                            Index::Number(n) => n.to_string(),
+                            Index::Expr(e) => {
+                                let k = self.eval(e)?;
+                                k.as_str()
+                                    .map(|s| s.to_owned())
+                                    .or_else(|_| k.as_number().map(|n| n.to_string()))?
+                            }
+                        };
+                        Ok((key, self.eval(e)?))
+                    })
                     .collect::<anyhow::Result<BTreeMap<_, _>>>()?;
                 Ok(self.value(|b| {
                     b.encode_dict(|b| {
@@ -362,12 +374,25 @@ mod tests {
     #[test]
     fn constructors() {
         let cx = ctx();
-        assert_eq!(eval(&cx, "([1,'x',NULL]).0").unwrap(), "1");
-        assert_eq!(eval(&cx, "([1,'x',NULL]).1").unwrap(), "\"x\"");
-        assert_eq!(eval(&cx, "([1,'x',NULL]).2").unwrap(), "null");
-        assert_eq!(eval(&cx, "({ one: 1, two: 'x', three: NULL }).one").unwrap(), "1");
-        assert_eq!(eval(&cx, "({ one: 1 two: 'x' three: NULL }).two").unwrap(), "\"x\"");
-        assert_eq!(eval(&cx, "({ one: 1, two: 'x', three: NULL }).three").unwrap(), "null");
+        assert_eq!(eval(&cx, "([1,'x',NULL])[0]").unwrap(), "1");
+        assert_eq!(eval(&cx, "([1,'x',NULL])[1]").unwrap(), "\"x\"");
+        assert_eq!(eval(&cx, "([1,'x',NULL])[2]").unwrap(), "null");
+        assert_eq!(
+            eval(&cx, "({ one: 1, ['two']: 'x', [('three')]: NULL, [4]: TRUE }).one").unwrap(),
+            "1"
+        );
+        assert_eq!(
+            eval(&cx, "({ one: 1 ['two']: 'x' [('three')]: NULL, [4]: TRUE }).two").unwrap(),
+            "\"x\""
+        );
+        assert_eq!(
+            eval(&cx, "({ one: 1, ['two']: 'x', [('three')]: NULL, [4]: TRUE }).three").unwrap(),
+            "null"
+        );
+        assert_eq!(
+            eval(&cx, "({ one: 1, ['two']: 'x', [('three')]: NULL, [4]: TRUE })[4]").unwrap(),
+            "true"
+        );
 
         assert_that(&eval(&cx, "{'x':1}").unwrap_err().to_string()).contains("expected ident");
     }
@@ -383,9 +408,11 @@ mod tests {
     #[test]
     fn indexing() {
         let cx = ctx();
-        assert_eq!(eval(&cx, "([42]).0").unwrap(), "42");
-        assert_eq!(eval(&cx, "([42]).[0]").unwrap(), "42");
-        assert_eq!(eval(&cx, "([42]).[1-1]").unwrap(), "42");
+        assert_eq!(eval(&cx, "([42])[0]").unwrap(), "42");
+        assert_eq!(eval(&cx, "([42])[1-1]").unwrap(), "42");
+        assert_eq!(eval(&cx, "({x:12}).x").unwrap(), "12");
+        assert_eq!(eval(&cx, "({x:12})['x']").unwrap(), "12");
+        assert_eq!(eval(&cx, "({x:12})[('x')]").unwrap(), "12");
     }
 
     #[test]

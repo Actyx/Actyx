@@ -195,6 +195,18 @@ impl Default for ArcVal<str> {
     }
 }
 
+#[cfg(any(test, feature = "arb"))]
+impl quickcheck::Arbitrary for ArcVal<str> {
+    fn arbitrary(g: &mut quickcheck::Gen) -> Self {
+        let s = String::arbitrary(g);
+        ArcVal::from_boxed(s.into())
+    }
+    fn shrink(&self) -> Box<dyn Iterator<Item = Self>> {
+        let s = (*self.0).to_owned();
+        Box::new(s.shrink().map(|s| ArcVal::from_boxed(s.into())))
+    }
+}
+
 /// This abomination only works if the underlying bytes are known in number (Sized),
 /// can be moved around in memory (Unpin) and do no hold on to other things than the
 /// underlying bytes ('static).

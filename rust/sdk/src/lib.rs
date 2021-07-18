@@ -141,5 +141,7 @@ pub enum ParseError {
     EmptyTag,
     #[display(fmt = "Empty string is not permissible for AppId")]
     EmptyAppId,
+    #[display(fmt = "Invalid AppId: '{}'", _0)]
+    InvalidAppId(String),
 }
 impl std::error::Error for ParseError {}
