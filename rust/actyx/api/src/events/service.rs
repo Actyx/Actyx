@@ -164,12 +164,15 @@ impl EventService {
         request: SubscribeMonotonicRequest,
     ) -> anyhow::Result<BoxStream<'static, SubscribeMonotonicResponse>> {
         let present = self.store.offsets().await?.present();
+        let from_offsets_excluding = match &request.from {
+            StartFrom::LowerBound(x) => x.clone(),
+        };
 
         let bounded = self
             .store
             .bounded_forward(
                 request.query.from.clone(),
-                request.from.min_offsets(),
+                from_offsets_excluding,
                 present.clone(),
                 false,
             )

@@ -319,12 +319,15 @@ impl ApiBehaviour {
             EventsRequest::Query(request) => wrap(channel_id.clone(), async move {
                 match events.query(app_id!("com.actyx.cli"), request).await {
                     Ok(resp) => resp
-                        .map(move |x| match x {
-                            QueryResponse::Event(ev) => (channel_id.clone(), Some(EventsResponse::Event(ev))),
-                            QueryResponse::Offsets(o) => (
+                        .filter_map(move |x| match x {
+                            QueryResponse::Event(ev) => {
+                                ready(Some((channel_id.clone(), Some(EventsResponse::Event(ev)))))
+                            }
+                            QueryResponse::Offsets(o) => ready(Some((
                                 channel_id.clone(),
                                 Some(EventsResponse::OffsetMap { offsets: o.offsets }),
-                            ),
+                            ))),
+                            QueryResponse::FutureCompat => ready(None),
                         })
                         .left_stream(),
                     Err(e) => stream::once(ready((
@@ -337,12 +340,15 @@ impl ApiBehaviour {
             EventsRequest::Subscribe(request) => wrap(channel_id.clone(), async move {
                 match events.subscribe(app_id!("com.actyx.cli"), request).await {
                     Ok(resp) => resp
-                        .map(move |x| match x {
-                            SubscribeResponse::Event(ev) => (channel_id.clone(), Some(EventsResponse::Event(ev))),
-                            SubscribeResponse::Offsets(o) => (
+                        .filter_map(move |x| match x {
+                            SubscribeResponse::Event(ev) => {
+                                ready(Some((channel_id.clone(), Some(EventsResponse::Event(ev)))))
+                            }
+                            SubscribeResponse::Offsets(o) => ready(Some((
                                 channel_id.clone(),
                                 Some(EventsResponse::OffsetMap { offsets: o.offsets }),
-                            ),
+                            ))),
+                            SubscribeResponse::FutureCompat => ready(None),
                         })
                         .left_stream(),
                     Err(e) => stream::once(ready((
@@ -355,15 +361,16 @@ impl ApiBehaviour {
             EventsRequest::SubscribeMonotonic(request) => wrap(channel_id.clone(), async move {
                 match events.subscribe_monotonic(app_id!("com.actyx.cli"), request).await {
                     Ok(resp) => resp
-                        .map(move |x| match x {
-                            SubscribeMonotonicResponse::Offsets(o) => (
+                        .filter_map(move |x| match x {
+                            SubscribeMonotonicResponse::Offsets(o) => ready(Some((
                                 channel_id.clone(),
                                 Some(EventsResponse::OffsetMap { offsets: o.offsets }),
-                            ),
+                            ))),
                             SubscribeMonotonicResponse::Event { event, .. } => {
-                                (channel_id.clone(), Some(EventsResponse::Event(event)))
+                                ready(Some((channel_id.clone(), Some(EventsResponse::Event(event)))))
                             }
-                            SubscribeMonotonicResponse::TimeTravel { .. } => (channel_id.clone(), None),
+                            SubscribeMonotonicResponse::TimeTravel { .. } => ready(Some((channel_id.clone(), None))),
+                            SubscribeMonotonicResponse::FutureCompat => ready(None),
                         })
                         .left_stream(),
                     Err(e) => stream::once(ready((
