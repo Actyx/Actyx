@@ -21,7 +21,7 @@
 #
 #   Validate code (unit tests):
 #     validate
-#     validate-{actyx-win-installer,js,js-pond,js-sdk,misc,os,os-android,website,website-developer,website-downloads}
+#     validate-{actyx-win-installer,js,js-pond,js-sdk,wix,os,os-android,website,website-developer,website-downloads}
 #
 #   Generate artifacts (stored in dist/):
 #     all (default target)
@@ -486,9 +486,11 @@ dist/bin/actyx.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
 dist/bin/windows-x86_64/actyx-x64.msi: dist/bin/windows-x86_64/actyx.exe make-always
 	docker run \
 	  -v `pwd`:/src \
+	  -e WIN_CODESIGN_CERTIFICATE \
+	  -e WIN_CODESIGN_PASSWORD \
 	  --rm \
-	  justmoon/wix \
-	  bash /src/misc/actyx-win-installer/build.sh ${ACTYX_VERSION} "/src/dist/bin/windows-x86_64"
+	  actyx/util:actyx-win-installer-builder \
+	  bash /src/wix/actyx-installer/build.sh ${ACTYX_VERSION} "/src/dist/bin/windows-x86_64"
 
 define mkDockerRule =
 docker-$(1):

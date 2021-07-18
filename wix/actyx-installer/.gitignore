@@ -1,0 +1,10 @@
+dist/
+
+*.wixobj
+*.wixpdb
+*.msi
+*.pfx
+*.key
+*.spc
+*.pem
+*.gsf-save*

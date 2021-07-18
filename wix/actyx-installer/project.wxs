@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:fire="http://schemas.microsoft.com/wix/FirewallExtension">
+    <Product Id="$(var.versionid)" Name="Actyx" Language="1033" Version="$(var.version)" Manufacturer="Actyx AG" UpgradeCode="$(var.upgradecode)">
+        <Package InstallerVersion="200" Compressed="yes" Platform="x64" InstallPrivileges="elevated" InstallScope="perMachine" />
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="ProgramFiles64Folder">
+                <Directory Id="ActyxRoot" Name="Actyx">
+                    <Directory Id="INSTALLFOLDER" Name="Node" />
+                </Directory>
+            </Directory>
+        </Directory>
+        <MajorUpgrade DowngradeErrorMessage="A newer version of Actyx is already installed." />
+        <MediaTemplate EmbedCab="yes" />
+        <Feature Id="Actyx" Title="Actyx ($(var.version))" Level="1" AllowAdvertise='no' Absent='disallow' InstallDefault='local' ConfigurableDirectory='INSTALLFOLDER'>
+            <Component Id="DummyComponentToDisallowNetworkInstall" Location="local" Directory="INSTALLFOLDER" Guid="86849215-45EC-43C8-9313-D9CE37210811" />
+            <Feature Id="Core" Title="Core" Description="Core functionality of Actyx" Level="1" AllowAdvertise='no' Absent='disallow' InstallDefault='local'>
+                <Component Id="Core" Guid="*" Directory="INSTALLFOLDER">
+                    <File Id="Actyx" Name="actyx.exe" Source="$(var.actyxexepath)" />
+                    <File Id="DeleteRuntimeFilesBatch" Name="delete_runtime_files.bat" Source="/src/wix/actyx-installer/delete_runtime_files.bat" />
+                    <RemoveFolder Id="INSTALLFOLDER" On="uninstall" />
+                </Component>
+            </Feature>
+            <Feature Id="Service" Title="Run as Service" Description="Set Actyx up to run as a service using the LocalSystem account." Level="1" AllowAdvertise='no' Absent='disallow' InstallDefault='local'>
+                <Component Id="Service" Guid="*" Directory="INSTALLFOLDER">
+                    <File Id="ServiceWrapper" Name="actyx-service.exe" Source="/src/wix/actyx-installer/actyx-service.exe" />
+                    <File Id="ServiceConfig" Name="actyx-service.xml" Source="/src/wix/actyx-installer/actyx-service.xml" />
+                    <ServiceInstall Id="ServiceInstaller" Type="ownProcess" Name="Actyx" DisplayName="Actyx" Description="Actyx Service" Start="auto" ErrorControl="normal" />
+                    <ServiceControl Id="StartService" Start="install" Stop="both" Remove="uninstall" Name="Actyx" Wait="yes" />
+                </Component>
+            </Feature>
+            <Feature Id="Firewall" Title="Firewall Rules" Description="Setup firewall rules to allow Actyx to work correctly." Level="1" AllowAdvertise='no' Absent='allow' InstallDefault='local'>
+                <Component Id="FirewallException" Guid="77BD2DEC-BC70-11EB-8529-0242AC130003" Directory="INSTALLFOLDER">
+                    <Condition>Privileged</Condition>
+                    <fire:FirewallException Id="Actyx_Swarm_Port" Description="Allow Actyx Swarm connections" Name="Actyx (Swarm)" Program="[#Actyx]" Port="4001" Protocol="tcp" Scope="any" Profile="private" />
+                    <fire:FirewallException Id="Actyx_API_Port" Description="Allow Actyx API connections" Name="Actyx (API)" Program="[#Actyx]" Port="4458" Protocol="tcp" Scope="any" Profile="private" />
+                    <fire:FirewallException Id="Actyx_Admin_Port" Description="Allow Actyx Admin connections" Name="Actyx (Admin)" Program="[#Actyx]" Port="4454" Protocol="tcp" Scope="any" Profile="private" />
+                </Component>
+            </Feature>
+        </Feature>
+        <UIRef Id="WixUI_FeatureTree" />
+        <WixVariable Id="WixUILicenseRtf" Value="/src/wix/actyx-installer/license.rtf" />
+        <WixVariable Id="WixUIBannerBmp" Value="/src/wix/actyx-installer/design/banner_493x58.bmp" />
+        <WixVariable Id="WixUIDialogBmp" Value="/src/wix/actyx-installer/design/dialog_493x312.bmp" />
+        <CustomAction Id="RemoveRuntimeFiles" Directory="INSTALLFOLDER" Execute="deferred" Impersonate="no" ExeCommand="[INSTALLFOLDER]delete_runtime_files.bat" Return="check" />
+        <InstallExecuteSequence>
+            <Custom Action="RemoveRuntimeFiles" Before="RemoveDuplicateFiles">
+                (REMOVE = "ALL") AND NOT UPGRADINGPRODUCTCODE</Custom>
+        </InstallExecuteSequence>
+    </Product>
+</Wix>
