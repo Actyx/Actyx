@@ -30,14 +30,20 @@ pub enum EventsRequest {
     Publish(PublishRequest),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum EventsResponse {
-    Error { message: String },
+    Error {
+        message: String,
+    },
     Offsets(OffsetsResponse),
     Event(EventResponse<Payload>),
-    OffsetMap { offsets: OffsetMap },
+    OffsetMap {
+        offsets: OffsetMap,
+    },
     Publish(PublishResponse),
+    #[serde(other)]
+    FutureCompat,
 }
 
 #[cfg(test)]
@@ -126,6 +132,14 @@ mod tests {
         assert_eq!(
             res(EventsResponse::Publish(PublishResponse { data: vec![] })),
             r#"{"type":"publish","data":[]}"#
+        );
+    }
+
+    #[test]
+    fn future_compat() {
+        assert_eq!(
+            serde_json::from_str::<EventsResponse>(r#"{"type":"fromTheFuture","a":null}"#).unwrap(),
+            EventsResponse::FutureCompat,
         );
     }
 }

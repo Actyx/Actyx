@@ -207,15 +207,6 @@ pub enum StartFrom {
     LowerBound(OffsetMap),
 }
 
-impl StartFrom {
-    pub fn min_offsets(&self) -> OffsetMap {
-        match self {
-            StartFrom::LowerBound(o) => o.clone(),
-            // _ => OffsetMap::empty(),
-        }
-    }
-}
-
 /// The session identifier used in /subscribe_monotonic
 #[derive(Debug, Clone, Serialize, Deserialize, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct SessionId(Box<str>);
@@ -272,7 +263,7 @@ pub struct SubscribeMonotonicRequest {
 }
 
 /// The response to a monotonic subscription is a stream of events terminated by a time travel.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SubscribeMonotonicResponse {
     /// This is the main message, a new event that is to be applied directly to the
@@ -291,6 +282,8 @@ pub enum SubscribeMonotonicResponse {
     /// relevant).
     #[serde(rename_all = "camelCase")]
     TimeTravel { new_start: EventKey },
+    #[serde(other)]
+    FutureCompat,
 }
 
 /// The response to a query request.
@@ -304,19 +297,23 @@ pub enum QueryResponse {
     Event(EventResponse<Payload>),
     #[serde(rename_all = "camelCase")]
     Offsets(OffsetMapResponse),
+    #[serde(other)]
+    FutureCompat,
 }
 
 /// The response to a subscribe request.
 ///
 /// This will currently only be elements of type `Event` but will eventually contain
 /// `Offset`s to communicate progress of events not included in the query.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase", tag = "type")]
 pub enum SubscribeResponse {
     #[serde(rename_all = "camelCase")]
     Event(EventResponse<Payload>),
     #[serde(rename_all = "camelCase")]
     Offsets(OffsetMapResponse),
+    #[serde(other)]
+    FutureCompat,
 }
 
 /// Response to the offsets request
@@ -351,4 +348,25 @@ pub trait EventService: Clone + Send {
         &self,
         request: SubscribeMonotonicRequest,
     ) -> Result<BoxStream<'static, SubscribeMonotonicResponse>>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn future_compat() {
+        assert_eq!(
+            serde_json::from_str::<QueryResponse>(r#"{"type":"fromTheFuture","x":42}"#).unwrap(),
+            QueryResponse::FutureCompat
+        );
+        assert_eq!(
+            serde_json::from_str::<SubscribeResponse>(r#"{"type":"fromTheFuture","x":42}"#).unwrap(),
+            SubscribeResponse::FutureCompat
+        );
+        assert_eq!(
+            serde_json::from_str::<SubscribeMonotonicResponse>(r#"{"type":"fromTheFuture","x":42}"#).unwrap(),
+            SubscribeMonotonicResponse::FutureCompat
+        );
+    }
 }
