@@ -92,7 +92,7 @@ stages:
                     echo "We are going to do a dry-run of artifact publication since this is DRAFT release"
                     ./target/release/cosmos-release publish "$p" --dry-run
                   else
-                    ./target/release/cosmos-release publish "$p"
+                    RUST_LOG=debug ./target/release/cosmos-release publish "$p"
                   fi
                 done
                 echo ""
