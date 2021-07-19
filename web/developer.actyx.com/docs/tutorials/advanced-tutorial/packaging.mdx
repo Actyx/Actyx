@@ -220,7 +220,7 @@ wago-connector-amd64   latest              fe966abbfedc        3 days ago       
 3. If you see the image **wago-connector-amd64** in your terminal window, you can now run the docker image. One thing to note is that Docker has a separate network. However, in order for the image to talk to Actyx (and in particular with the API on port **4454**), you need to pass this information as an environment variable so that Docker knows where to look for the API:
 
 ```text
-docker run -e AX_STORE_URI="<IP address of your Actyx container>:4454/v2" wago-connector-amd64
+$ docker run -e AX_STORE_URI="<IP address of your Actyx container>:4454/v2" wago-connector-amd64
 ```
 
 :::info Running Actyx natively?
