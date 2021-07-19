@@ -2,19 +2,26 @@ use crate::private_key::AxPrivateKey;
 use actyx_sdk::NodeId;
 use crypto::PublicKey;
 use derive_more::From;
+use futures::{
+    future::{ready, Either},
+    stream, FutureExt, Stream, StreamExt,
+};
 use libp2p::{
     core::{multiaddr::Protocol, muxing::StreamMuxerBox, transport::Boxed, ConnectedPoint, Multiaddr, PeerId},
+    identify::{Identify, IdentifyConfig, IdentifyEvent},
     identity,
     ping::{Ping, PingConfig, PingEvent, PingSuccess},
     swarm::{Swarm, SwarmBuilder, SwarmEvent},
     NetworkBehaviour,
 };
-use libp2p_streaming_response::StreamingResponse;
-use std::{convert::TryFrom, fmt, num::NonZeroU16, str::FromStr, time::Duration};
+use libp2p_streaming_response::{StreamingResponse, StreamingResponseEvent};
+use std::{collections::BTreeSet, convert::TryFrom, fmt, num::NonZeroU16, str::FromStr, time::Duration};
 use tracing::*;
 use util::formats::{
     admin_protocol::{AdminRequest, AdminResponse},
-    ax_err, ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminProtocol,
+    ax_err,
+    events_protocol::{EventsProtocol, EventsRequest, EventsResponse},
+    ActyxOSCode, ActyxOSError, ActyxOSResult, ActyxOSResultExt, AdminProtocol,
 };
 use util::SocketAddrHelper;
 
@@ -49,7 +56,7 @@ impl FromStr for NodeConnection {
 struct Connected {
     remote_peer_id: PeerId,
     swarm: Swarm<RequestBehaviour>,
-    connection: Multiaddr,
+    protocols: BTreeSet<String>,
 }
 
 impl From<&Connected> for NodeInfo {
@@ -78,12 +85,18 @@ impl NodeConnection {
 
     /// Tries to establish a connection to the remote ActyxOS node, and returns
     /// a connection handle upon success.
-    async fn establish_connection(&self, keypair: identity::Keypair) -> ActyxOSResult<Connected> {
-        let (peer_id, transport) = mk_transport(keypair).await?;
+    async fn establish_connection(&self, key: &AxPrivateKey) -> ActyxOSResult<Connected> {
+        let kp = key.to_libp2p_pair();
+        let public_key = kp.public();
+        let (peer_id, transport) = mk_transport(kp).await?;
 
         let protocol = RequestBehaviour {
             admin_api: StreamingResponse::new(Default::default()),
+            events_api: StreamingResponse::new(Default::default()),
             ping: Ping::new(PingConfig::new().with_keep_alive(true)),
+            identify: Identify::new(
+                IdentifyConfig::new("Actyx".to_owned(), public_key).with_initial_delay(Duration::from_secs(0)),
+            ),
         };
         let mut swarm = SwarmBuilder::new(transport, protocol, peer_id)
             .executor(Box::new(|fut| {
@@ -91,27 +104,45 @@ impl NodeConnection {
             }))
             .build();
 
-        let (remote_peer_id, connection) = poll_until_connected(&mut swarm, self.host.clone().to_multiaddrs()).await?;
+        let (remote_peer_id, _connection) = poll_until_connected(&mut swarm, self.host.clone().to_multiaddrs()).await?;
+        let protocols = Self::await_identify(&mut swarm).await.into_iter().collect();
 
         Ok(Connected {
             remote_peer_id,
             swarm,
-            connection,
+            protocols,
         })
     }
 
-    async fn send(&mut self, key: &AxPrivateKey, request: AdminRequest) -> ActyxOSResult<Connected> {
-        let kp = key.to_libp2p_pair();
-        let mut conn = self.establish_connection(kp).await?;
-        conn.swarm
-            .behaviour_mut()
-            .admin_api
-            .request(conn.remote_peer_id, request);
-        Ok(conn)
+    async fn await_identify(swarm: &mut Swarm<RequestBehaviour>) -> Vec<String> {
+        loop {
+            let message = swarm.next_event().await;
+            tracing::debug!("waiting for identify: {:?}", message);
+            match message {
+                SwarmEvent::Behaviour(OutEvent::Identify(IdentifyEvent::Error { .. })) => {
+                    // Actyx v2.0.x didn’t have the identify protocol
+                    return vec!["/actyx/admin/1.0.0".to_owned()];
+                }
+                SwarmEvent::Behaviour(OutEvent::Identify(IdentifyEvent::Received { info, .. })) => {
+                    return info.protocols
+                }
+                _ => {}
+            }
+        }
+    }
+
+    async fn send(conn: &mut Connected, request: Either<AdminRequest, EventsRequest>) {
+        let swarm = &mut conn.swarm;
+        let remote = conn.remote_peer_id;
+        match request {
+            Either::Left(request) => swarm.behaviour_mut().admin_api.request(remote, request),
+            Either::Right(request) => swarm.behaviour_mut().events_api.request(remote, request),
+        };
     }
 
     pub async fn shutdown(&mut self, key: &AxPrivateKey) -> ActyxOSResult<()> {
-        let mut conn = self.send(key, AdminRequest::NodesShutdown).await?;
+        let mut conn = self.establish_connection(key).await?;
+        Self::send(&mut conn, Either::Left(AdminRequest::NodesShutdown)).await;
         let info = NodeInfo::from(&conn);
         match Self::wait_for_next_response(&mut conn.swarm, &info).await {
             Err(e) if e.code() == ActyxOSCode::ERR_NODE_UNREACHABLE => Ok(()),
@@ -123,12 +154,10 @@ impl NodeConnection {
     }
 
     pub async fn request(&mut self, key: &AxPrivateKey, request: AdminRequest) -> ActyxOSResult<AdminResponse> {
-        let Connected {
-            remote_peer_id,
-            mut swarm,
-            connection: _conn,
-        } = self.send(key, request).await?;
+        let mut conn = self.establish_connection(key).await?;
+        Self::send(&mut conn, Either::Left(request)).await;
 
+        let remote_peer_id = conn.remote_peer_id;
         let node_info = NodeInfo {
             id: to_node_id(remote_peer_id),
             peer_id: remote_peer_id,
@@ -138,7 +167,7 @@ impl NodeConnection {
         // remote peer, so a conservative timeout is fine to use.
         match tokio::time::timeout(
             Duration::from_secs(5),
-            Self::wait_for_next_response(&mut swarm, &node_info),
+            Self::wait_for_next_response(&mut conn.swarm, &node_info),
         )
         .await
         {
@@ -157,9 +186,9 @@ impl NodeConnection {
         loop {
             let message = swarm.next_event().await;
             match message {
-                SwarmEvent::Behaviour(OutEvent::Admin(
-                    libp2p_streaming_response::StreamingResponseEvent::ResponseReceived { payload, .. },
-                )) => return payload,
+                SwarmEvent::Behaviour(OutEvent::Admin(StreamingResponseEvent::ResponseReceived {
+                    payload, ..
+                })) => return payload,
 
                 SwarmEvent::ConnectionClosed { peer_id, .. } if peer_id == node_info.peer_id => {
                     return ax_err(
@@ -180,6 +209,37 @@ impl NodeConnection {
                 }
             }
         }
+    }
+
+    pub async fn request_events(
+        &mut self,
+        key: &AxPrivateKey,
+        request: EventsRequest,
+    ) -> ActyxOSResult<impl Stream<Item = EventsResponse> + Unpin + Send + 'static> {
+        let mut conn = self.establish_connection(key).await?;
+        if !conn.protocols.contains("/actyx/events/v2") {
+            return Err(ActyxOSError::new(
+                ActyxOSCode::ERR_UNSUPPORTED,
+                "Events API tunneling not supported by Actyx node, please update to a newer version of Actyx",
+            ));
+        }
+        Self::send(&mut conn, Either::Right(request)).await;
+        Ok(stream::unfold(conn.swarm, |mut s| {
+            async move {
+                let ev = s.next_event().await;
+                tracing::debug!("got swarm event {:?}", ev);
+                match ev {
+                    SwarmEvent::Behaviour(OutEvent::Events(e)) => match e {
+                        StreamingResponseEvent::ResponseReceived { payload, .. } => Some((vec![payload], s)),
+                        _ => None,
+                    },
+                    SwarmEvent::ConnectionClosed { .. } => None,
+                    _ => Some((vec![], s)),
+                }
+            }
+            .boxed()
+        })
+        .filter_map(|mut v| ready(v.pop())))
     }
 }
 
@@ -211,15 +271,19 @@ pub fn strip_peer_id(addr: &mut Multiaddr) -> Option<PeerId> {
 
 #[derive(Debug, From)]
 pub enum OutEvent {
-    Admin(libp2p_streaming_response::StreamingResponseEvent<AdminProtocol>),
+    Admin(StreamingResponseEvent<AdminProtocol>),
+    Events(StreamingResponseEvent<EventsProtocol>),
     Ping(PingEvent),
+    Identify(IdentifyEvent),
 }
 
 #[derive(NetworkBehaviour)]
 #[behaviour(event_process = false, out_event = "OutEvent")]
 pub struct RequestBehaviour {
     admin_api: StreamingResponse<AdminProtocol>,
+    events_api: StreamingResponse<EventsProtocol>,
     ping: Ping,
+    identify: Identify,
 }
 
 async fn mk_transport(keypair: identity::Keypair) -> ActyxOSResult<(PeerId, Boxed<(PeerId, StreamMuxerBox)>)> {

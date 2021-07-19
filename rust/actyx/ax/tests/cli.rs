@@ -7,15 +7,17 @@ use util::version::NodeVersion;
 
 fn get_commands() -> HashMap<&'static str, Vec<&'static str>> {
     let apps = vec!["sign"];
+    let events = vec!["offsets", "query"];
     let nodes = vec!["ls", "inspect"];
     let settings = vec!["set", "get", "unset", "schema"];
     let swarms = vec!["keygen"];
     let users = vec!["keygen"];
     vec![
+        ("apps", apps),
+        ("events", events),
         ("nodes", nodes),
         ("settings", settings),
         ("swarms", swarms),
-        ("apps", apps),
         ("users", users),
     ]
     .into_iter()
@@ -135,6 +137,9 @@ fn version() {
     let commands = btreemap! {
         vec!["apps"] => Branch,
         vec!["apps", "sign"] => Leaf,
+        vec!["events"] => Branch,
+        vec!["events", "offsets"] => Leaf,
+        vec!["events", "query"] => Leaf,
         vec!["internal"] => Branch,
         vec!["internal", "convert"] => Leaf,
         vec!["internal", "trees"] => Branch,

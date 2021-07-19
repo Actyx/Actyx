@@ -9,7 +9,6 @@ members = [
   "settings",
   "crypto",
   "libp2p-streaming-response",
-  "logsvcd",
   "node",
   "node-ffi",
   "node-manager-bindings",

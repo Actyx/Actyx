@@ -1,3 +1,9 @@
+/*
+ * Actyx SDK: Functions for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2021 Actyx AG
+ */
 import * as t from 'io-ts'
 import { isNumber, isString } from './functions'
 import { AppId, Lamport, Milliseconds, NodeId, Offset, StreamId, Timestamp } from './various'

@@ -7,6 +7,7 @@ import { SimpleCanvas } from '../components/SimpleCanvas'
 import { Button, Tabs } from '../components/basics'
 import { SettingsEditor } from '../components/SettingsEditor'
 import clsx from 'clsx'
+import { NodesOverview } from '.'
 
 const Peers: React.FC<{ node: ReachableNodeT }> = ({
   node: {
@@ -74,6 +75,74 @@ const Info: React.FC<{ node: ReachableNodeT }> = ({ node: { details } }) => {
         <Row field="Peer ID" value={details.swarmState.peerId} gray />
         <Row field="Running since" value={details.startedIso} />
         <Row field="Version" value={details.version} gray />
+      </dl>
+    </div>
+  )
+}
+
+const Offsets: React.FC<{ node: ReachableNodeT }> = ({
+  node: {
+    details: { offsets },
+  },
+}) => {
+  const {
+    data: { nodes },
+  } = useAppState()
+  const allReachableNodes = nodes.filter((n) => n.type === NodeType.Reachable) as ReachableNodeT[]
+
+  const Row: React.FC<{ field: string; value: string; gray?: boolean }> = ({
+    field,
+    value,
+    gray,
+  }) => (
+    <div className={clsx('py-2 sm:grid sm:grid-cols-6 sm:gap-4 sm:px-6', { 'bg-gray-50': gray })}>
+      <dt className="text-sm font-medium text-gray-500 sm:col-span-5">{field}</dt>
+      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-1 selectable">{value}</dd>
+    </div>
+  )
+
+  const streamDisp = (streamName: string) => {
+    const nodeId = streamName.slice(0, -2)
+    const match = allReachableNodes.find((node) => node.details.nodeId === nodeId)
+    if (!match) {
+      return nodeId
+    }
+    return `${match.details.displayName} (${match.addr})`
+  }
+
+  if (offsets === null) {
+    return (
+      <p className="text-red-300 italic">
+        The node&apos;s version of Actyx doesn&apos;t support this feature yet. Please upgrade to a
+        later version.
+      </p>
+    )
+  }
+
+  return (
+    <div className="">
+      <dl>
+        {Object.entries(offsets.present).filter(([streamId]) => streamId.endsWith('-0')).length <
+        1 ? (
+          <p className="text-sm pl-2">None</p>
+        ) : (
+          Object.entries(offsets.present)
+            .filter(([streamId]) => streamId.endsWith('-0'))
+            .map(([streamId, offset], ix) => {
+              const toReplicate =
+                streamId in offsets.toReplicate ? offsets.toReplicate[streamId] : 0
+              return (
+                <Row
+                  key={'offsets' + streamId}
+                  field={streamDisp(streamId)}
+                  value={
+                    offset.toString() + (toReplicate > 0 ? `(+${toReplicate.toString()})` : '')
+                  }
+                  gray={!(ix % 2)}
+                />
+              )
+            })
+        )}
       </dl>
     </div>
   )
@@ -156,6 +225,10 @@ const ReachableNode: React.FC<{ node: ReachableNodeT }> = ({ node }) => (
       {
         text: 'Peers',
         elem: <Peers node={node} />,
+      },
+      {
+        text: 'Offsets',
+        elem: <Offsets node={node} />,
       },
       {
         text: 'Settings',

@@ -1,3 +1,9 @@
+/*
+ * Actyx SDK: Functions for writing distributed apps
+ * deployed on peer-to-peer networks, without any servers.
+ * 
+ * Copyright (C) 2021 Actyx AG
+ */
 import { EventStore } from '../internal_common/eventStore'
 import { log } from '../internal_common/log'
 import { ActyxOpts } from '../types'

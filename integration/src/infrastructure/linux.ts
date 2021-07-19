@@ -39,8 +39,10 @@ export const mkNodeSshProcess = async (
   // Install test dependencies
   if (target.kind.type === 'aws') {
     await awaitCloudInitSetup(ssh)
+    console.log(`node ${nodeName} cloudInitSetup done`)
   }
   await execSsh(ssh)('sudo apt update && sudo apt install ncat -y ')
+  console.log(`node ${nodeName} ncat installed`)
 
   const binaryPath = await actyxLinuxBinary(target.arch)
   await uploadActyx(nodeName, ssh, binaryPath)
@@ -224,6 +226,7 @@ export async function connectSsh(ssh: Ssh, nodeName: string, sshParams: SshAble,
 async function uploadActyx(nodeName: string, ssh: Ssh, binaryPath: string) {
   console.log('node %s installing Actyx %s', nodeName, binaryPath)
   await ssh.scp(binaryPath, 'actyx')
+  console.log(`node ${nodeName} Actyx installed`)
 }
 
 export function startActyx(
@@ -246,7 +249,11 @@ export function startActyx(
         res([proc])
       }
     })
-    proc.stderr?.on('data', (s: Buffer | string) => log('stderr', s))
+    proc.stderr?.on('data', (s: Buffer | string) => {
+      if (log('stderr', s)) {
+        res([proc])
+      }
+    })
     proc.on('close', () => {
       flush()
       logger(`node ${nodeName} Actyx channel closed`)

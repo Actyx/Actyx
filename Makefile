@@ -21,7 +21,7 @@
 #
 #   Validate code (unit tests):
 #     validate
-#     validate-{actyx-win-installer,js,js-pond,js-sdk,misc,os,os-android,website,website-developer,website-downloads}
+#     validate-{actyx-win-installer,js,js-pond,js-sdk,wix,os,os-android,website,website-developer,website-downloads}
 #
 #   Generate artifacts (stored in dist/):
 #     all (default target)
@@ -66,7 +66,7 @@ export BUILD_RUST_TOOLCHAIN ?= 1.51.0
 # which the respective images was built. Whenever the build images (inside
 # ops/docker/images/{buildrs,musl}/Dockerfile) are modified (meaning built and
 # pushed), this needs to be changed.
-export LATEST_STABLE_IMAGE_VERSION := 91d2744dfb87621c93940e32b1f183897eeec967
+export LATEST_STABLE_IMAGE_VERSION := 285829647132a4a05bc6174613384e5205fd4a3f
 
 # Mapping from os-arch to target
 target-linux-aarch64 = aarch64-unknown-linux-musl
@@ -260,9 +260,9 @@ validate-netsim: diagnostics
 	rust/actyx/target/release/gossip --n-nodes 8 --enable-slow-path
 	rust/actyx/target/release/gossip --n-nodes 8 --enable-root-map
 	rust/actyx/target/release/root_map --n-nodes 8 --enable-root-map
-	# rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
-	# rust/actyx/target/release/discovery_multi_net
-	# rust/actyx/target/release/discovery_external
+	rust/actyx/target/release/discovery --n-bootstrap 1 --enable-root-map
+	rust/actyx/target/release/discovery_multi_net
+	rust/actyx/target/release/discovery_external
 	rust/actyx/target/release/subscribe --n-nodes 8
 	rust/actyx/target/release/query --n-nodes 8
 	rust/actyx/target/release/quickcheck_subscribe
@@ -274,7 +274,14 @@ validate-netsim: diagnostics
 # execute linter for os-android
 validate-os-android: diagnostics
 	jvm/os-android/bin/get-keystore.sh
-	cd jvm/os-android/ && ./gradlew clean ktlintCheck
+	docker run \
+	  -u builder \
+	  -v `pwd`:/src \
+	  -w /src/jvm/os-android \
+	  --rm \
+	  $(DOCKER_FLAGS) \
+	  actyx/util:buildrs-x64-$(IMAGE_VERSION) \
+	  ./gradlew clean ktlintCheck
 
 # validate all js
 validate-js: diagnostics validate-js-sdk validate-js-pond validate-js-integration
@@ -335,7 +342,7 @@ dist/js/pond: make-always
 		npm run build:prod && \
 		mv `npm pack` ../../$@/
 
-validate-node-manager-bindings: 
+validate-node-manager-bindings:
 	cd rust/actyx/node-manager-bindings && \
 		source ~/.nvm/nvm.sh && \
 		nvm install && \
@@ -390,6 +397,7 @@ targets-nonmusl = $(sort $(foreach oa,$(osArch),$(target-nonmusl-$(oa))))
 #   - declare how to build the file in rust/actyx/target/...
 dist/bin/current/%: rust/actyx/target/release/%
 	mkdir -p $(dir $@)
+	rm -f $@
 	mv $< $@
 # here % (and thus $*) matches something like ax.exe, so we need to strip the suffix with `basename`
 rust/actyx/target/release/%: make-always
@@ -405,6 +413,7 @@ rust/actyx/target/release/%: make-always
 define mkDistRule =
 dist/bin/$(1)/$(2): rust/actyx/target/$(target-$(1))/release/$(2)
 	mkdir -p $$(dir $$@)
+	rm -f $$@
 	mv $$< $$@
 endef
 $(foreach oa,$(osArch),$(foreach bin,$(binaries),$(eval $(call mkDistRule,$(oa),$(bin)))))
@@ -423,8 +432,6 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	docker run \
 	  -u builder \
 	  -w /src/rust/actyx \
-	  -e CARGO_BUILD_TARGET=$(TARGET) \
-	  -e CARGO_BUILD_JOBS=$(CARGO_BUILD_JOBS) \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
 	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
@@ -432,7 +439,7 @@ rust/actyx/target/$(TARGET)/release/%: cargo-init make-always
 	  --rm \
 	  $(DOCKER_FLAGS) \
 	  $(image-$(word 3,$(subst -, ,$(TARGET)))) \
-	  cargo --locked build --release -j $(CARGO_BUILD_JOBS) --bin $$(basename $$*)
+	  cargo --locked build --release -j $(CARGO_BUILD_JOBS) --bin $$(basename $$*) --target $(TARGET)
 endef
 $(foreach TARGET,$(targets),$(eval $(mkBinaryRule)))
 
@@ -446,8 +453,6 @@ $(soTargetPatterns): cargo-init make-always
 	docker run \
 	  -u builder \
 	  -w /src/rust/actyx \
-	  -e CARGO_BUILD_TARGET=$(TARGET) \
-	  -e CARGO_BUILD_JOBS=$(CARGO_BUILD_JOBS) \
 	  -e HOME=/home/builder \
 	  -v `pwd`:/src \
 	  -v $(CARGO_HOME)/git:/home/builder/.cargo/git \
@@ -481,9 +486,11 @@ dist/bin/actyx.apk: jvm/os-android/app/build/outputs/apk/release/app-release.apk
 dist/bin/windows-x86_64/actyx-x64.msi: dist/bin/windows-x86_64/actyx.exe make-always
 	docker run \
 	  -v `pwd`:/src \
+	  -e WIN_CODESIGN_CERTIFICATE \
+	  -e WIN_CODESIGN_PASSWORD \
 	  --rm \
-	  justmoon/wix \
-	  bash /src/misc/actyx-win-installer/build.sh ${ACTYX_VERSION} "/src/dist/bin/windows-x86_64"
+	  actyx/util:actyx-win-installer-builder \
+	  bash /src/wix/actyx-installer/build.sh ${ACTYX_VERSION} "/src/dist/bin/windows-x86_64"
 
 define mkDockerRule =
 docker-$(1):

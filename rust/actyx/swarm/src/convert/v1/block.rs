@@ -116,7 +116,7 @@ mod test {
         let evs1 = block.decompress().unwrap();
         let block = Block::compress(Compression::CborZstd, &evs1)?;
         let data_cbor_zstd = DagCborCodec.encode(&block)?;
-        assert_eq!(data_cbor_zstd.len(), 49123);
+        assert_eq!(data_cbor_zstd.len(), 49143);
         Ok(())
     }
 }

@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">Actyx</string>
-    <string name="background_services_name">Actyx</string>
     <string name="actyx_is_running">Actyx is running.</string>
     <string name="background_services_channel_name">Actyx</string>
     <string name="background_services_channel_description">Actyx Notification</string>

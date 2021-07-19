@@ -270,6 +270,34 @@ describe('tag-based aggregation (Fish observe) in the Pond', () => {
       await assertStateAndDispose(res, ['t1 only', 'world', 'hello'], pond)
     })
 
+    it('should cache based on key, but always invoke callback with delay, so that cancelation works', async () => {
+      const pond = Pond.test()
+
+      const aggregate0 = mkAggregate(Tag('t1'))
+
+      await emitTestEvents(pond)
+      const res = await aggregateAsObservable(pond, aggregate0)
+        .take(1)
+        .toPromise()
+      expect(res).toEqual(['t1 only', 'world', 'hello'])
+
+      const invocation = new Promise<boolean>((resolve, reject) => {
+        const unsubscribe1: () => void = pond.observe<State, Event>(aggregate0, _s => {
+          try {
+            // Assert unsubscribe1 is defined already and invoking it does not throw an exception
+            unsubscribe1()
+            resolve(true)
+          } catch (e) {
+            reject(e)
+          }
+        })
+      })
+
+      await expect(invocation).resolves.toBeTruthy()
+
+      pond.dispose()
+    })
+
     it('should cache based on key, across unsubscribe calls', async () => {
       const pond = Pond.test()
 

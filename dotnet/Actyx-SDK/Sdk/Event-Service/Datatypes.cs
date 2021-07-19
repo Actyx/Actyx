@@ -157,7 +157,14 @@ namespace Actyx
 
     public class OffsetMap : Dictionary<string, ulong>
     {
+        public OffsetMap() : base()
+        {
+        }
+
         // Just type alias. TODO Is this ideal? (Maybe use an immutable dict)
+        public OffsetMap(IDictionary<string, ulong> dictionary) : base(dictionary)
+        {
+        }
     }
 
     public class OffsetsResponse

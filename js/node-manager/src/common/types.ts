@@ -30,6 +30,12 @@ export const Connection = io.type({
 
 export type Connection = io.TypeOf<typeof Connection>
 
+export const SwarmOffsets = io.type({
+  present: io.record(io.string, io.Int),
+  toReplicate: io.record(io.string, io.Int),
+})
+export type SwarmOffsets = io.TypeOf<typeof SwarmOffsets>
+
 export const NodeSwarmState = io.type({
   peerId: io.string,
   swarmAddrs: io.array(io.string),
@@ -61,6 +67,7 @@ export const ReachableNode = io.type({
     settings: io.UnknownRecord,
     settingsSchema: io.UnknownRecord,
     swarmState: NodeSwarmState,
+    offsets: io.union([io.null, SwarmOffsets]),
   }),
 })
 export type ReachableNode = io.TypeOf<typeof ReachableNode>

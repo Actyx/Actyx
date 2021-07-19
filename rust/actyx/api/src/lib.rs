@@ -13,20 +13,23 @@ use anyhow::Result;
 use crossbeam::channel::Sender;
 use futures::future::try_join_all;
 use std::{net::SocketAddr, panic::panic_any, sync::Arc};
-use swarm::{event_store::EventStore, BanyanStore};
+use swarm::BanyanStore;
 use warp::*;
 
+pub use crate::events::service::EventService;
 use crate::util::hyper_serve::serve_it;
 pub use crate::util::NodeInfo;
 pub use crate::util::{AppMode, BearerToken, Token};
+use swarm::event_store_ref::EventStoreRef;
 
 pub async fn run(
     node_info: NodeInfo,
     store: BanyanStore,
+    event_store: EventStoreRef,
     bind_to: impl Iterator<Item = SocketAddr> + Send,
     snd: Sender<anyhow::Result<()>>,
 ) {
-    let api = routes(node_info, store);
+    let api = routes(node_info, store, event_store);
     let tasks = bind_to
         .into_iter()
         .map(|i| {
@@ -59,9 +62,12 @@ pub async fn run(
     }
 }
 
-fn routes(node_info: NodeInfo, store: BanyanStore) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
-    let event_store = EventStore::new(store.clone());
-    let event_service = events::service::EventService::new(event_store);
+fn routes(
+    node_info: NodeInfo,
+    store: BanyanStore,
+    event_store: EventStoreRef,
+) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+    let event_service = events::service::EventService::new(event_store, node_info.node_id);
     let events = events::routes(node_info.clone(), event_service);
     let node_id = node::route(node_info.clone());
     let auth = auth::route(node_info);

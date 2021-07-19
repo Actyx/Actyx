@@ -1,9 +1,11 @@
 use axlib::{cmd::KeyPathWrapper, node_connection::NodeConnection, private_key::AxPrivateKey};
+use futures::StreamExt;
 use neon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::{convert::TryInto, str::FromStr};
 use tokio::time::Duration;
+use util::formats::events_protocol::EventsResponse;
 use util::formats::{ax_err, ActyxOSCode, ActyxOSResult, AdminRequest, AdminResponse};
 
 use crate::types::*;
@@ -38,6 +40,9 @@ async fn get_node_details(
     );
     let mut swarm_conn = node.clone();
     let swarm_f = swarm_conn.request(key, AdminRequest::NodesInspect);
+
+    let mut offsets_conn = node.clone();
+    let offsets_f = offsets_conn.request_events(key, util::formats::events_protocol::EventsRequest::Offsets);
 
     // Parallel connections to the same node don't work!
     //let (status_res, settings_res, settings_schema_res, swarm_res): (
@@ -100,6 +105,28 @@ async fn get_node_details(
         ),
     }?;
 
+    let offsets = match offsets_f.await {
+        // This signifies that the Offset request just isn't support so we just don't
+        // return any offsets. This happens with older versions of Actyx.
+        Err(err) if err.code() == ActyxOSCode::ERR_UNSUPPORTED => Ok(None),
+        // This is an unexpected error
+        Err(err) => ax_err(
+            util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
+            format!("EventsRequests::Offsets returned unexpected error: {:?}", err),
+        ),
+        Ok(mut stream) => match stream.next().await {
+            Some(EventsResponse::Offsets(o)) => Ok(Some(o)),
+            Some(r) => ax_err(
+                util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
+                format!("EventsRequest::Offsets returned mismatched response: {:?}", r),
+            ),
+            None => ax_err(
+                util::formats::ActyxOSCode::ERR_INTERNAL_ERROR,
+                "EventsRequest::Offsets returned no response".to_string(),
+            ),
+        },
+    }?;
+
     let addrs = swarm.admin_addrs.join(", ");
     Ok(ConnectedNodeDetails {
         node_id: status.node_id,
@@ -111,6 +138,7 @@ async fn get_node_details(
         swarm_state: swarm,
         settings_schema,
         settings,
+        offsets,
     })
 }
 

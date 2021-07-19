@@ -238,6 +238,7 @@ fn main() -> Result<(), Error> {
             writeln!(
                 changelog,
                 r#"Actyx Release
+
 -------------------------
 Overview:"#
             )?;
@@ -290,8 +291,13 @@ Overview:"#
                 eprintln!("Done.");
 
                 eprint!("2) git checkout -b {} ... ", branch_name);
-                repo.checkout(&*branch_name, &commit)?;
-                eprintln!("Done.");
+                if repo.branch_exists(&*branch_name)? {
+                    eprintln!("Already exists. Exiting");
+                    return Ok(());
+                } else {
+                    repo.checkout(&*branch_name, &commit)?;
+                    eprintln!("Done.");
+                }
 
                 eprint!("3) git add \"{}\" ... ", input_file.display());
                 let oid = repo.add_file(&input_file)?;
@@ -348,8 +354,6 @@ Overview:"#
                                             let target_exists = p.target_exists()?;
                                             if target_exists {
                                                 writeln!(&mut out, "    [OK] {} already exists.", p.target)?;
-                                            } else if dry_run {
-                                                writeln!(&mut out, "    [DRY RUN] Create and publish {}", p.target)?;
                                             } else {
                                                 log::debug!(
                                                     "creating release artifact in dir {}",
@@ -359,10 +363,18 @@ Overview:"#
                                                     "creating release artifact at {}",
                                                     tmp.path().display()
                                                 ))?;
-                                                log::debug!("starting publishing");
-                                                p.publish().context("publishing")?;
-                                                log::debug!("finished publishing");
-                                                writeln!(&mut out, "    [NEW] {}", p.target)?;
+                                                if dry_run {
+                                                    writeln!(
+                                                        &mut out,
+                                                        "    [DRY RUN] Create and publish {}",
+                                                        p.target
+                                                    )?;
+                                                } else {
+                                                    log::debug!("starting publishing");
+                                                    p.publish().context("publishing")?;
+                                                    log::debug!("finished publishing");
+                                                    writeln!(&mut out, "    [NEW] {}", p.target)?;
+                                                }
                                             }
                                         } else {
                                             if !ignore_errors && !dry_run {

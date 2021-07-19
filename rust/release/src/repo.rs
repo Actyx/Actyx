@@ -29,6 +29,13 @@ impl RepoWrapper {
     pub fn head(&self) -> anyhow::Result<git2::Object> {
         Ok(self.0.revparse_single("HEAD")?)
     }
+    pub fn branch_exists(&self, branch_name: &str) -> anyhow::Result<bool> {
+        match self.0.find_branch(branch_name, git2::BranchType::Local) {
+            Ok(_) => Ok(true),
+            Err(e) if e.code() == git2::ErrorCode::NotFound => Ok(false),
+            Err(e) => Err(e.into()),
+        }
+    }
     pub fn checkout(&self, branch_name: &str, target: &Commit) -> anyhow::Result<()> {
         let _branch = self.0.branch(&*branch_name, target, false)?;
         let branch_ref = format!("refs/heads/{}", branch_name);

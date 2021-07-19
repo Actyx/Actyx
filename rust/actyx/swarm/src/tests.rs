@@ -82,8 +82,11 @@ fn last_item<T: Clone>(drainer: &mut Drainer<T>) -> anyhow::Result<T> {
 
 #[tokio::test]
 async fn should_compact_regularly() -> Result<()> {
-    const EVENTS: usize = 10000;
-    let store = BanyanStore::test("compaction_interval").await?;
+    // this will take 1010 chunks, so it will hit the MAX_TREE_LEVEL limit once
+    const EVENTS: usize = 10100;
+    let mut config = SwarmConfig::test("compaction_interval");
+    config.cadence_compact = Duration::from_secs(10);
+    let store = BanyanStore::new(config).await?;
 
     // Wait for the first compaction loop to pass.
     tokio::time::sleep(Duration::from_millis(500)).await;
@@ -118,7 +121,7 @@ async fn should_compact_regularly() -> Result<()> {
     // Make sure the root didn't change
     assert!(tree_stream.next().unwrap().is_empty());
 
-    tokio::time::sleep(Duration::from_secs(60)).await;
+    tokio::time::sleep(Duration::from_secs(11)).await;
 
     let tree_after_compaction = last_item(&mut tree_stream)?;
     assert!(tree_after_append.root() != tree_after_compaction.root());
@@ -138,15 +141,15 @@ async fn should_extend_packed_when_hitting_max_tree_depth() -> Result<()> {
     assert_eq!(last_item(&mut tree_stream)?.count(), 0);
 
     // Append individually to force creation of new branches
-    for ev in (0..MAX_TREE_LEVEL + 1).map(|_| (tags!("abc"), Payload::empty())) {
+    for ev in (0..MAX_TREE_LEVEL).map(|_| (tags!("abc"), Payload::empty())) {
         store.append(0.into(), app_id(), vec![ev]).await?;
     }
     let tree_after_append = last_item(&mut tree_stream)?;
     assert!(!store.data.forest.is_packed(&tree_after_append)?);
-    assert_eq!(tree_after_append.level(), MAX_TREE_LEVEL + 1);
+    assert_eq!(tree_after_append.level(), MAX_TREE_LEVEL);
     assert_eq!(
         tree_after_append.offset(),
-        Some(Offset::try_from(MAX_TREE_LEVEL as i64).unwrap())
+        Some(Offset::try_from((MAX_TREE_LEVEL - 1) as i64).unwrap())
     );
 
     // packing will be triggered when the existing tree's level is MAX_TREE_LEVEL + 1
@@ -155,12 +158,12 @@ async fn should_extend_packed_when_hitting_max_tree_depth() -> Result<()> {
         .await?;
     let tree_after_pack = last_item(&mut tree_stream)?;
     // the tree is not packed
-    assert!(!store.data.forest.is_packed(&tree_after_pack)?);
+    assert!(store.data.forest.is_packed(&tree_after_pack)?);
     // but the max level remains constant now
-    assert_eq!(tree_after_pack.level(), MAX_TREE_LEVEL + 1);
+    assert_eq!(tree_after_pack.level(), 3);
     assert_eq!(
         tree_after_pack.offset(),
-        Some(Offset::try_from(MAX_TREE_LEVEL as i64 + 1).unwrap())
+        Some(Offset::try_from(MAX_TREE_LEVEL as i64).unwrap())
     );
     Ok(())
 }
@@ -211,12 +214,7 @@ async fn must_report_proper_initial_offsets() -> anyhow::Result<()> {
         index_store: Some(index_store),
         node_name: Some("must_report_proper_initial_offsets".to_owned()),
         db_path: Some(db),
-        enable_fast_path: true,
-        enable_slow_path: true,
-        enable_root_map: true,
-        enable_discovery: true,
-        enable_metrics: true,
-        ..Default::default()
+        ..SwarmConfig::basic()
     };
     let store = BanyanStore::new(config.clone()).await?;
     let stream = store.get_or_create_own_stream(0.into())?;

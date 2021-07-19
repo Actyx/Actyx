@@ -1,6 +1,7 @@
 use crate::{BanyanStore, Block, Ipfs, Link, RootSource};
 use actyx_sdk::{LamportTimestamp, NodeId, StreamId, StreamNr, Timestamp};
 use anyhow::Result;
+use ax_futures_util::stream::ready_iter;
 use futures::{
     channel::mpsc::{unbounded, UnboundedSender},
     prelude::*,
@@ -120,12 +121,9 @@ impl Gossip {
     pub fn new(ipfs: Ipfs, node_id: NodeId, topic: String, enable_fast_path: bool, enable_slow_path: bool) -> Self {
         let (tx, mut rx) = unbounded::<PublishUpdate>();
         let publish_task = async move {
-            while let Some(update) = rx.next().await {
+            while let Some(updates) = ready_iter(&mut rx).await {
                 // drain the channel and only publish the latest update per stream
-                let updates = std::iter::once(update)
-                    .chain(std::iter::from_fn(|| rx.try_next().ok().flatten()))
-                    .map(|up| (up.stream, up))
-                    .collect::<BTreeMap<_, _>>();
+                let updates = updates.map(|up| (up.stream, up)).collect::<BTreeMap<_, _>>();
 
                 for (_, update) in updates {
                     let _s = tracing::trace_span!("publishing", stream = display(update.stream));
@@ -251,33 +249,21 @@ impl Gossip {
                                 .expect("unable to update lamport");
                             drop(lock);
                             tracing::trace!("updated lamport");
-                            match store.ipfs().create_temp_pin() {
-                                Ok(tmp) => {
-                                    tracing::trace!("temp pin created");
-                                    if let Err(err) = store.ipfs().temp_pin(&tmp, &root_update.root) {
-                                        tracing::error!("{}", err);
-                                    }
-                                    tracing::trace!("temp pinned");
-                                    for block in &root_update.blocks {
-                                        if let Err(err) = store.ipfs().insert(block) {
-                                            tracing::error!("{}", err);
-                                        } else {
-                                            tracing::trace!("{} written", display(**block));
-                                        }
-                                    }
-                                    let source = if root_update.blocks.is_empty() {
-                                        RootSource::SlowPath
-                                    } else {
-                                        RootSource::FastPath
-                                    };
-                                    match Link::try_from(root_update.root) {
-                                        Ok(root) => store.update_root(root_update.stream, root, source),
-                                        Err(err) => tracing::error!("failed to parse link {}", err),
-                                    }
+                            for block in &root_update.blocks {
+                                if let Err(err) = store.ipfs().insert(block) {
+                                    tracing::error!("{}", err);
+                                } else {
+                                    tracing::trace!("{} written", display(**block));
                                 }
-                                Err(err) => {
-                                    tracing::error!("failed to create temp pin {}", err);
-                                }
+                            }
+                            let source = if root_update.blocks.is_empty() {
+                                RootSource::SlowPath
+                            } else {
+                                RootSource::FastPath
+                            };
+                            match Link::try_from(root_update.root) {
+                                Ok(root) => store.update_root(root_update.stream, root, source),
+                                Err(err) => tracing::error!("failed to parse link {}", err),
                             }
                         }
                         Ok(GossipMessage::RootMap(root_map)) => {

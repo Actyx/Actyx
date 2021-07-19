@@ -35,6 +35,8 @@ const runAndDecode = <T>(
 
       const decoded = decoder.decode(obj)
       if (isLeft(decoded)) {
+        console.log(`this is the object that couldn't be decoded:`)
+        console.log(obj)
         reject(`error decoding object: ${reporter.report(decoded)}`)
         return
       }

@@ -212,7 +212,7 @@ docker build -t wago-connector-amd64 -f src/wago-connector/Dockerfile .
 2. To check whether the image was successfully built, type in `docker image ls` into the terminal — you should now see the image appear in the terminal window.
 
 ```text
-[19:39][~:]$ docker image ls
+$ docker image ls
 REPOSITORY             TAG                 IMAGE ID            CREATED             SIZE
 wago-connector-amd64   latest              fe966abbfedc        3 days ago          109MB
 ```
@@ -225,14 +225,15 @@ docker run -e AX_STORE_URI="<IP address of your Actyx container>:4454/v2" wago-c
 
 :::info Running Actyx natively?
 If you are running Actyx natively, you need to do the following:
-- macOS or Windows: use `host.docker.internal` instead of the IP address of your Actyx container. 
+
+- macOS or Windows: use `host.docker.internal` instead of the IP address of your Actyx container.
 - Linux: Run the container with `--network=host`
-:::
+  :::
 
 If everything worked, you should now see something similar to this:
 
 ```text
-[19:44][~:]$ docker run -e AX_STORE_URI="<IP address of your Actyx container>:4454/v2" wago-connector-amd64
+$ docker run -e AX_STORE_URI="<IP address of your Actyx container>:4454/v2" wago-connector-amd64
 started Wago Connector plc ip: 192.168.0.99
 machine state { stateType: 'disabled', name: 'Wago Connector' }
 ```

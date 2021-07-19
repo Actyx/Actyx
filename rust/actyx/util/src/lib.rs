@@ -5,7 +5,6 @@ pub mod build;
 pub mod formats;
 pub mod immutable_sync;
 pub mod keepalivestream3;
-pub mod offsetmap_or_max;
 pub mod pinned_resource;
 pub mod pinned_resource_sync;
 pub mod reentrant_safe_mutex;
@@ -14,7 +13,6 @@ pub mod serde_util;
 pub mod tracing_set_log_level;
 pub mod value_or_limit;
 pub mod version;
-pub mod wrapping_subscriber;
 
 pub use self::value_or_limit::*;
 pub use tracing_set_log_level::*;
@@ -36,8 +34,9 @@ pub fn setup_logger() {
     tracing_log::LogTracer::init().ok();
     let env = std::env::var(EnvFilter::DEFAULT_ENV).unwrap_or_else(|_| "info".to_owned());
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        .with_span_events(FmtSpan::ACTIVE)
+        .with_span_events(FmtSpan::ACTIVE | FmtSpan::CLOSE)
         .with_env_filter(EnvFilter::new(env))
+        .with_writer(std::io::stderr)
         .finish();
     tracing::subscriber::set_global_default(subscriber).ok();
     log_panics::init();

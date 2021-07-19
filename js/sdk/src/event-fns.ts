@@ -152,7 +152,7 @@ export interface EventFns {
    * @param chunkSize   - Maximum size of chunks. Chunks may be smaller than this.
    * @param onChunk     - Callback that will be invoked with every chunk, in sequence.
    *
-   * @returns A Promise that resolves when all chunks have been delivered to the callback.
+   * @returns A function that can be called in order to cancel the subscription.
    */
   queryKnownRangeChunked: (
     query: RangeQuery,
@@ -278,7 +278,9 @@ export interface EventFns {
   /**
    * Among all events matching the query, find one that best matches some property.
    * This is useful for finding the event that has `min` or `max` of something.
-   * E.g. `shouldReplace = (candidate, cur) => candidate.meta.timestampMicros > cur.meta.timestampMicros` keeps finding the event with the highest timestamp.
+   * E.g. `shouldReplace = (candidate: ActyxEventy<number>, cur: ActyxEventy<number>) => candidate.payload > cur.payload` keeps finding the event with the highest payload value.
+   * Note that there is no guarantee regarding the order in which candidates are passed to the callback!
+   * If `shouldReplace(a, b)` returns true, the reversed call `shouldReplace(b, a)` should return false. Otherwise results may be wild.
    *
    * @param query         - Query to select the set of `candidate` events.
    * @param shouldReplace - Should `candidate` replace `cur`?

@@ -20,6 +20,7 @@ dataflow = ["abomonation", "abomonation_derive"]
 sqlite = ["rusqlite"]
 postgresql = ["postgres-types", "bytes"]
 arb = ["quickcheck", "rand"]
+with-tokio = ["tokio"]
 
 [dependencies]
 abomonation = { version = "0.7.3", optional = true }
@@ -51,6 +52,7 @@ serde = { version = "1.0.126", features = ["derive", "rc"] }
 serde_cbor = "0.11.1"
 serde_json = "1.0.64"
 serde-transcode = "1.1.0"
+tokio = { version = "1.8.1", features = ["time"], optional = true }
 tracing = "0.1.26"
 typenum = "1.13.0"
 unicode-normalization = "0.1.18"

@@ -1,14 +1,17 @@
 import React from 'react'
-import { Node, NodeType, ReachableNode } from '../../common/types'
+import { Node, NodeType, ReachableNode as ReachableNodeT } from '../../common/types'
 import { Layout } from '../components/Layout'
 import { useAppState } from '../app-state'
 import { SimpleCanvas } from '../components/SimpleCanvas'
 import { Button, Tabs } from '../components/basics'
-import { JsonEditor } from '../components/JsonEditor'
 import { shutdownApp, toggleDevTools } from '../util'
 import { useStore } from '../store'
+import clsx from 'clsx'
+import { HslPercentageSpectrum, RedToGreenPercentageSpectrum } from '../util/color'
+import { OffsetInfo, Offset } from 'client/offsets'
+import { isNone } from 'fp-ts/lib/Option'
 
-const isConnectedTo = (from: ReachableNode, to: Node) => {
+const isConnectedTo = (from: ReachableNodeT, to: Node) => {
   if (to.type === NodeType.Reachable) {
     return from.details.swarmState.knownPeers
       .map(({ peerId }) => peerId)
@@ -28,27 +31,126 @@ const nodeDisplayName = (node: Node) =>
 const Connected = () => <span className="text-green-300 font-xs font-medium">Connected</span>
 const Disconnected = () => <span className="text-red-300 font-xs font-medium">Not connected</span>
 
+const OffsetMatrix: React.FC<{ nodes: Node[]; offsets: OffsetInfo }> = ({ nodes, offsets }) => {
+  const headerSize = 44
+  const cellWidth = 16
+  const cellHeight = 8
+
+  const mkRedGreenColor = HslPercentageSpectrum(0, 120, undefined, 75)
+
+  const offsetToString = (offset: Offset) => {
+    if (typeof offset === 'number') {
+      return offset.toString()
+    } else if (offset === 'NoOffsetFound') {
+      return '!None'
+    } else if (offset === 'SourceNotReachable') {
+      return '!Source'
+    } else if (offset === 'TargetNotReachable') {
+      return '!Target'
+    } else if (offset === 'SourceDoesntSupportOffsets') {
+      return '!Version'
+    }
+  }
+
+  // We ignore all loading nodes
+  nodes = nodes.filter((n) => n.type !== NodeType.Loading)
+
+  return (
+    <div className="w-max text-xs">
+      {nodes.length < 2 ? (
+        <p className="text-gray-400">
+          Must be connected to at least two nodes to show offset matrix (current: {nodes.length}
+          ).
+        </p>
+      ) : (
+        <>
+          <div className="flex flew-row">
+            <div className={clsx(`w-${headerSize} h-${headerSize}`)}></div>
+            {nodes.map((n, ix) => (
+              <div
+                key={'om-header-' + n.addr}
+                className={clsx(
+                  `truncate overflow-ellipsis h-${headerSize} w-${cellWidth} py-2 font-medium`,
+                  {
+                    'border-l': ix === 0,
+                  },
+                  'border-r',
+                  'pl-5',
+                )}
+                style={{
+                  writingMode: 'vertical-lr',
+                }}
+              >
+                {nodeDisplayName(n)}
+              </div>
+            ))}
+          </div>
+          {nodes.map((from, ix) => {
+            return (
+              <div key={'om-row-' + from.addr} className="flex flew-row">
+                <div
+                  className={clsx(
+                    `w-${headerSize} h-${cellHeight} font-medium truncate overflow-ellipsis px-2 pt-1.5 border-b`,
+                    {
+                      'border-t': ix === 0,
+                    },
+                  )}
+                >
+                  {nodeDisplayName(from)}
+                </div>
+                {nodes.map((to, ix) => {
+                  const offset = offsets.matrix[from.addr][to.addr]
+                  const highestKnown = offsets.highestKnown[to.addr]
+                  const percentage = typeof offset !== 'number' ? 0 : (100 * offset) / highestKnown
+                  return (
+                    <div
+                      key={`om-from-${from.addr}-to-${to.addr}`}
+                      className={clsx(
+                        `w-${cellWidth} h-${cellHeight} truncate overflow-ellipsis font-medium px-2 pt-1.5 border-b border-r`,
+                      )}
+                      style={{
+                        backgroundColor: mkRedGreenColor(percentage),
+                      }}
+                    >
+                      {offsetToString(offset)}
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
+          <div className="pt-3 text-sm text-gray-400">
+            <p>{offsetToString('NoOffsetFound')}: no offsets found.</p>
+            <p>{offsetToString('SourceNotReachable')}: source node not reachable.</p>
+            <p>{offsetToString('TargetNotReachable')}: target node not reachable.</p>
+            <p>{offsetToString('SourceDoesntSupportOffsets')}: source version too old.</p>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+const ReachableNode: React.FC<{ node: ReachableNodeT; others: Node[] }> = ({ node, others }) => (
+  <li className="pb-3">
+    <span className="font-medium">{nodeDisplayName(node)}</span>
+    <ul className="">
+      {others.map((other) => (
+        <li className="text-sm" key={node.addr + '->' + other.addr}>
+          {isConnectedTo(node, other) ? <Connected /> : <Disconnected />} to{' '}
+          {nodeDisplayName(other)}
+        </li>
+      ))}
+    </ul>
+  </li>
+)
+
+const UnreachableNode: React.FC<{ node: Node }> = ({ node }) => (
+  <li className="text-gray-500 pb-3">
+    <span className="font-medium">{nodeDisplayName(node)}</span> is not reachable
+  </li>
+)
+
 const SwarmConnectivity: React.FC<{ nodes: Node[] }> = ({ nodes }) => {
-  const ReachableNode: React.FC<{ node: ReachableNode; others: Node[] }> = ({ node, others }) => (
-    <li className="pb-3">
-      <span className="font-medium">{nodeDisplayName(node)}</span>
-      <ul className="">
-        {others.map((other) => (
-          <li className="text-sm" key={node.addr + '->' + other.addr}>
-            {isConnectedTo(node, other) ? <Connected /> : <Disconnected />} to{' '}
-            {nodeDisplayName(other)}
-          </li>
-        ))}
-      </ul>
-    </li>
-  )
-
-  const UnreachableNode: React.FC<{ node: Node }> = ({ node }) => (
-    <li className="text-gray-500 pb-3">
-      <span className="font-medium">{nodeDisplayName(node)}</span> is not reachable
-    </li>
-  )
-
   return (
     <div>
       {nodes.length < 2 ? (
@@ -107,7 +209,7 @@ const NodeManager: React.FC = () => {
 
 const Screen: React.FC = () => {
   const {
-    data: { nodes },
+    data: { nodes, offsets },
   } = useAppState()
 
   return (
@@ -116,11 +218,19 @@ const Screen: React.FC = () => {
         <div className="flex flex-col h-full">
           <Tabs
             className="flex-grow flex-shrink"
-            contentClassName="p-2"
+            contentClassName="p-2 overflow-x-auto"
             tabs={[
               {
                 text: 'Swarm Connectivity',
                 elem: <SwarmConnectivity nodes={nodes} />,
+              },
+              {
+                text: 'Offset Matrix',
+                elem: isNone(offsets) ? (
+                  <p>Loading...</p>
+                ) : (
+                  <OffsetMatrix nodes={nodes} offsets={offsets.value} />
+                ),
               },
               {
                 text: 'Node Manager',

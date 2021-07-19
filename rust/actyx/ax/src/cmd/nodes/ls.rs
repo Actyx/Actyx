@@ -1,11 +1,11 @@
 use std::{convert::TryInto, time::Duration};
 
 use crate::{
-    cmd::{formats::Result, AxCliCommand, KeyPathWrapper, NodeConnection},
+    cmd::{consts::TABLE_FORMAT, formats::Result, AxCliCommand, KeyPathWrapper, NodeConnection},
     private_key::AxPrivateKey,
 };
 use futures::{future::try_join_all, stream, Stream};
-use prettytable::{cell, format, row, Table};
+use prettytable::{cell, row, Table};
 use serde::{Deserialize, Serialize};
 use structopt::StructOpt;
 use util::formats::{ActyxOSCode, ActyxOSError, ActyxOSResult, AdminRequest, AdminResponse, NodesLsResponse};
@@ -45,7 +45,7 @@ pub enum Output {
 }
 fn format_output(output: Vec<Output>) -> String {
     let mut table = Table::new();
-    table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
+    table.set_format(*TABLE_FORMAT);
     table.set_titles(row!["NODE ID", "DISPLAY NAME", "HOST", "STARTED", "VERSION"]);
 
     for row in output {

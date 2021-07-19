@@ -55,6 +55,7 @@ pub enum ActyxOSCode {
     ERR_INVALID_INPUT,
     // Fatal Error, the state on disk is inconsistent
     ERR_INVALID_NODE_STATE,
+    ERR_UNSUPPORTED,
 }
 impl ActyxOSCode {
     pub fn with_message(self, message: impl Into<String>) -> ActyxOSError {
@@ -134,6 +135,7 @@ impl Display for ActyxOSError {
            ERR_FILE_EXISTS => write!(f, "[ERR_FILE_EXISTS] Error: {}", self.message),
            ERR_PATH_INVALID => write!(f, "[ERR_PATH_INVALID] Error: {}", self.message),
            ERR_IO => write!(f, "[ERR_IO]: Error: {}", self.message),
+           ERR_UNSUPPORTED => write!(f, "[ERR_UNSUPPORTED]: Error: {}", self.message),
        }
     }
 }
