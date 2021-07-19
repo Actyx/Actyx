@@ -220,10 +220,16 @@ impl ReplicatedStream {
     }
 
     /// Dial down the priority of the stored value to the minimum to allow later updates from any source
-    pub fn downgrade(&self, value: Link) {
+    pub fn downgrade(&self, link: Link, error: bool) {
         self.incoming.transform_mut(|x| {
             match x {
-                Some((l, s)) if *l == value => *s = RootSource::RootMap,
+                Some((l, s)) if *l == link => {
+                    if error {
+                        x.take();
+                    } else {
+                        *s = RootSource::RootMap;
+                    }
+                }
                 _ => {}
             }
             false

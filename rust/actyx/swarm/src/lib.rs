@@ -1101,16 +1101,19 @@ impl BanyanStore {
                 // it must not hang indefinitely. It should ideally fail as quickly as possible
                 // when not making progress (but a fixed and short timeout would make it impossible
                 // to work on a slow network connection).
-                state2.downgrade(root);
                 match res {
                     Err(err) => {
+                        state2.downgrade(root, true);
                         if let Some(err) = err.downcast_ref::<BlockNotFound>() {
                             tracing::debug!("careful_ingestion: {}", err)
                         } else {
                             tracing::warn!("careful_ingestion: {}", err)
                         }
                     }
-                    Ok(outcome) => tracing::trace!("sync completed {:?}", outcome),
+                    Ok(outcome) => {
+                        tracing::trace!("sync completed {:?}", outcome);
+                        state2.downgrade(root, false);
+                    }
                 }
                 future::ready(())
             })
