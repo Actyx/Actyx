@@ -101,8 +101,12 @@ stages:
               cd ../../web/developer.actyx.com/
               source ~/.nvm/nvm.sh
               nvm install
-              npm install
+              npm ci
               npm run build
+              export NETLIFY_ACCESS_TOKEN=***REMOVED***
+              export NETLIFY_AUTH_TOKEN=***REMOVED***
+              export NETLIFY_SITE_ID=fffa1022-c8a0-4238-97c4-dd80979bf887
+              npm run deploy:draft "Validation pipeline"
               make -C ../.. assert-clean
             env:
               # Map secrets to env vars. This needs to be done manually
