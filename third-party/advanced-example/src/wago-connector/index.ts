@@ -1,5 +1,5 @@
 import { client, t } from 'netvar'
-import { Pond } from '@actyx/pond'
+import { Pond, AppManifest } from '@actyx/pond'
 import { RxPond } from '@actyx-contrib/rx-pond'
 import { OrderFish, State as OrderState } from '../fish/orderFish'
 import { MachineFish, State as MachineState } from '../fish/machineFish'
@@ -81,8 +81,14 @@ const observeAll = <RS, S, P, E>(
   )
 }
 
+const manifest: AppManifest = {
+  appId: 'com.example.wago-connector',
+  displayName: 'Wago Connector',
+  version: '2.0',
+}
+
 // main entry point of the application. The RxPond (Pond with RxJs support) connects to ActyxOS
-Pond.default().then(async (pond) => {
+Pond.default(manifest).then(async (pond) => {
   console.log(`started ${machineName} plc ip: ${plcIp}`)
 
   // subscribe to the OrderRegistry and get all current active order assigned to this machine
