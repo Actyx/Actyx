@@ -9,6 +9,7 @@ import { EventEmitter } from 'events'
 import { Observable, ReplaySubject, Subject } from 'rxjs'
 import { isNode } from '../util'
 import { root } from '../util/root'
+import { decorateEConnRefused } from './errors'
 import log from './log'
 
 if (isNode) {
@@ -126,9 +127,7 @@ class WebSocketWrapperImpl<TRequest, TResponse> implements WebSocketWrapper<TReq
     socket.onerror = err => {
       const originalMsg = (err as any).message
 
-      const msg = originalMsg.includes('ECONNREFUSED')
-        ? 'Error: unable to connect to Actyx. Is it running? -- Error: ' + originalMsg
-        : 'Error in connection to Actyx service: ' + originalMsg
+      const msg = decorateEConnRefused(originalMsg, url)
 
       try {
         log.ws.error(msg)

@@ -12,6 +12,7 @@
 pub mod convert;
 mod discovery;
 pub mod event_store;
+pub mod event_store_ref;
 mod gossip;
 pub mod metrics;
 mod prune;
@@ -104,7 +105,7 @@ pub type Ipfs = ipfs_embed::Ipfs<libipld::DefaultParams>;
 // TODO fix stream nr
 static DISCOVERY_STREAM_NR: u64 = 1;
 static METRICS_STREAM_NR: u64 = 2;
-const MAX_TREE_LEVEL: i32 = 1000;
+const MAX_TREE_LEVEL: i32 = 512;
 
 fn internal_app_id() -> AppId {
     app_id!("com.actyx")
@@ -138,11 +139,10 @@ impl Default for EphemeralEventsConfig {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct SwarmConfig {
     pub topic: String,
     pub index_store: Option<Arc<Mutex<rusqlite::Connection>>>,
-    pub enable_mdns: bool,
     pub keypair: Option<KeyPair>,
     pub psk: Option<[u8; 32]>,
     pub node_name: Option<String>,
@@ -153,11 +153,40 @@ pub struct SwarmConfig {
     pub ephemeral_event_config: EphemeralEventsConfig,
     pub enable_fast_path: bool,
     pub enable_slow_path: bool,
+    pub enable_mdns: bool,
     pub enable_root_map: bool,
     pub enable_discovery: bool,
     pub enable_metrics: bool,
     pub banyan_config: BanyanConfig,
+    pub cadence_root_map: Duration,
+    pub cadence_compact: Duration,
 }
+impl SwarmConfig {
+    pub fn basic() -> Self {
+        Self {
+            topic: String::from("default"),
+            index_store: None,
+            keypair: None,
+            psk: None,
+            node_name: None,
+            db_path: None,
+            external_addresses: vec![],
+            listen_addresses: vec![],
+            bootstrap_addresses: vec![],
+            ephemeral_event_config: EphemeralEventsConfig::default(),
+            enable_fast_path: true,
+            enable_slow_path: true,
+            enable_mdns: true,
+            enable_root_map: true,
+            enable_discovery: true,
+            enable_metrics: true,
+            banyan_config: BanyanConfig::default(),
+            cadence_compact: Duration::from_secs(60),
+            cadence_root_map: Duration::from_secs(10),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct BanyanConfig {
     pub tree: banyan::Config,
@@ -180,16 +209,11 @@ impl SwarmConfig {
             enable_mdns: false,
             node_name: Some(node_name.into()),
             listen_addresses: vec!["/ip4/127.0.0.1/tcp/0".parse().unwrap()],
-            enable_fast_path: true,
-            enable_slow_path: true,
-            enable_root_map: true,
-            enable_discovery: true,
-            enable_metrics: true,
             banyan_config: BanyanConfig {
                 tree: banyan::Config::debug(),
                 ..Default::default()
             },
-            ..Default::default()
+            ..SwarmConfig::basic()
         }
     }
 }
@@ -211,6 +235,8 @@ impl PartialEq for SwarmConfig {
             && self.enable_root_map == other.enable_root_map
             && self.enable_discovery == other.enable_discovery
             && self.enable_metrics == other.enable_metrics
+            && self.cadence_compact == other.cadence_compact
+            && self.cadence_root_map == other.cadence_root_map
     }
 }
 
@@ -734,10 +760,10 @@ impl BanyanStore {
                 banyan
                     .data
                     .gossip
-                    .publish_root_map(banyan.clone(), cfg.topic.clone(), Duration::from_secs(10)),
+                    .publish_root_map(banyan.clone(), cfg.topic.clone(), cfg.cadence_root_map),
             );
         }
-        banyan.spawn_task("compaction", banyan.clone().compaction_loop(Duration::from_secs(60)));
+        banyan.spawn_task("compaction", banyan.clone().compaction_loop(cfg.cadence_compact));
         if cfg.enable_discovery {
             banyan.spawn_task("discovery_ingest", crate::discovery::discovery_ingest(banyan.clone()));
         }
@@ -755,7 +781,7 @@ impl BanyanStore {
         if cfg.enable_metrics {
             banyan.spawn_task(
                 "metrics",
-                crate::metrics::metrics(banyan.clone(), METRICS_STREAM_NR.into(), Duration::from_secs(30))?,
+                crate::metrics::metrics(banyan.clone(), METRICS_STREAM_NR.into(), Duration::from_secs(60 * 30))?,
             );
         }
         banyan.spawn_task(
@@ -911,10 +937,9 @@ impl BanyanStore {
         });
         let min_offset = self.transform_stream(&mut guard, |txn, tree| {
             let snapshot = tree.snapshot();
-            if snapshot.level() > MAX_TREE_LEVEL {
-                txn.extend(tree, kvs)?;
-            } else {
-                txn.extend_unpacked(tree, kvs)?;
+            txn.extend_unpacked(tree, kvs)?;
+            if tree.level() > MAX_TREE_LEVEL {
+                txn.pack(tree)?;
             }
             Ok(snapshot.offset())
         })?;
@@ -1076,16 +1101,19 @@ impl BanyanStore {
                 // it must not hang indefinitely. It should ideally fail as quickly as possible
                 // when not making progress (but a fixed and short timeout would make it impossible
                 // to work on a slow network connection).
-                state2.downgrade(root);
                 match res {
                     Err(err) => {
+                        state2.downgrade(root, true);
                         if let Some(err) = err.downcast_ref::<BlockNotFound>() {
                             tracing::debug!("careful_ingestion: {}", err)
                         } else {
                             tracing::warn!("careful_ingestion: {}", err)
                         }
                     }
-                    Ok(outcome) => tracing::trace!("sync completed {:?}", outcome),
+                    Ok(outcome) => {
+                        tracing::trace!("sync completed {:?}", outcome);
+                        state2.downgrade(root, false);
+                    }
                 }
                 future::ready(())
             })

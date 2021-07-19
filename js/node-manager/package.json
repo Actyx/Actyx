@@ -26,7 +26,8 @@
         "deb",
         "rpm"
       ],
-      "artifactName": "actyx-node-manager-${arch}.${ext}"
+      "artifactName": "actyx-node-manager-${arch}.${ext}",
+      "icon": "resources/icon.icns"
     },
     "files": [
       "!native/",
@@ -50,9 +51,9 @@
     "tsc": "tsc",
     "tsc:watch": "tsc --watch --pretty",
     "test": "npm run test-source && npm run test-e2e",
-    "test-source": "cross-env NODE_ENV=test jest -c jest.config.js --runInBand",
-    "test-source:watch": "cross-env NODE_ENV=test jest --watch -c jest.config.js --runInBand",
-    "test-e2e": "cross-env NODE_ENV=test jest -c jest.config.e2e.js --runInBand",
+    "test:unit": "cross-env NODE_ENV=test jest -c jest.config.js",
+    "test:unit:watch": "cross-env NODE_ENV=test jest --watch -c jest.config.js --runInBand",
+    "test:integration": "cross-env NODE_ENV=test jest -c jest.config.e2e.js --runInBand",
     "_native-build": "cd ../../rust/actyx/node-manager-bindings && npm run build -- --release",
     "_native-install": "cd ../../rust/actyx/node-manager-bindings && npm install",
     "build-native-bindings": "npm run _native-install && npm run _native-build",
@@ -84,6 +85,7 @@
     "clsx": "^1.1.1",
     "debug": "^4.3.1",
     "deep-equal": "^2.0.5",
+    "fast-deep-equal": "^3.1.3",
     "fp-ts": "^2.10.4",
     "io-ts": "^2.2.16",
     "io-ts-reporters": "^1.2.2",

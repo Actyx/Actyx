@@ -296,7 +296,7 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
           bottom
         />
       </div>
-      <div className="flex flex-col flex-grow">
+      <div className="flex flex-col flex-grow overflow-hidden">
         <div className="flex items-center flex-shrink-0 h-16 px-7 border-b border-gray-300 z-10">
           <h1 className="text-lg font-medium" id="Layout_Title">
             {title}
@@ -309,7 +309,9 @@ export const Layout: React.FC<LayoutProps & ClassName> = ({
             ))}
           <Menu className={clsx({ 'ml-auto': !input && !actions })} {...menuProps} />
         </div>
-        <div className="flex-grow p-4 overflow-auto flex-shrink bg-gray-200">{children}</div>
+        <div className="flex-grow p-4 max-w-full overflow-auto overflow-x-auto flex-shrink bg-gray-200">
+          {children}
+        </div>
       </div>
     </div>
   )

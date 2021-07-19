@@ -42,7 +42,7 @@ pub extern "C" fn axnode_init(working_dir: FfiStr, callback: Callback, error: &m
                     });
                     Ok(())
                 }
-                Err(e) => Err(ExternError::new_error(ErrorCode::new(42), format!("{}", e))),
+                Err(e) => Err(ExternError::new_error(ErrorCode::new(42), format!("{:?}", e))),
             }
         } else {
             Err(ExternError::new_error(ErrorCode::new(42), "Thou shalt not init twice"))

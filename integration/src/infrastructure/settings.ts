@@ -1,13 +1,13 @@
-import { MyGlobal } from '../../jest/setup'
-import { Arch, Settings, OS, currentOS, currentArch } from '../../jest/types'
 import execa from 'execa'
 import fs from 'fs'
-import path from 'path'
-import https from 'https'
 import { ensureDirSync } from 'fs-extra'
+import https from 'https'
 import * as t from 'io-ts'
-import { DockerPlatform, archToDockerPlatform } from './linux'
 import { tmpdir } from 'os'
+import path from 'path'
+import { MyGlobal } from '../../jest/setup'
+import { Arch, currentArch, currentOS, OS, Settings } from '../../jest/types'
+import { archToDockerPlatform, DockerPlatform } from './linux'
 import { randIdentifier } from './util'
 
 const DockerSingleManifest = t.type({
@@ -141,7 +141,7 @@ const download = (
   binary: Binary,
   targetFile: string,
 ): Promise<string> => {
-  const bin = os == 'windows' ? `${binary}.exe` : binary
+  const bin = binary === 'actyx-x64' ? 'actyx-x64.msi' : os === 'windows' ? `${binary}.exe` : binary
   // actyx.apk sits in the root
   const p = os == 'android' ? '' : `/${os}-${arch}`
   const url = `https://axartifacts.blob.core.windows.net/artifacts/${hash}/${os}-binaries${p}/${bin}`

@@ -130,6 +130,7 @@ module.exports = {
       collapsed: true,
       items: [
         'how-to/troubleshooting/installation-and-startup',
+        'how-to/troubleshooting/app-to-node-communication',
         'how-to/troubleshooting/node-to-cli-communication',
         'how-to/troubleshooting/node-synchronization',
       ],
@@ -198,9 +199,10 @@ module.exports = {
         'reference/cli/apps/sign',
         'reference/cli/swarms/keygen',
         'reference/cli/users/keygen',
+        'reference/cli/events/offsets',
+        'reference/cli/events/query',
       ],
     },
-    'reference/release-notes',
   ],
   tutorialSidebar: [
     {

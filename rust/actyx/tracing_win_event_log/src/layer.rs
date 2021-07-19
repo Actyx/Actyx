@@ -70,7 +70,7 @@ where
         let span = ctx.span(id).expect("unknown span");
         let mut buf = Vec::with_capacity(256);
 
-        let depth = span.parents().count();
+        let depth = span.parent().into_iter().flat_map(|x| x.scope()).count();
 
         write!(buf, "s{}_name: ", depth).unwrap();
         write_value(&mut buf, span.name());
@@ -83,7 +83,8 @@ where
 
     fn on_record(&self, id: &Id, values: &Record, ctx: Context<S>) {
         let span = ctx.span(id).expect("unknown span");
-        let depth = span.parents().count();
+        let depth = span.parent().into_iter().flat_map(|x| x.scope()).count();
+
         let mut exts = span.extensions_mut();
         let buf = &mut exts.get_mut::<SpanFields>().expect("missing fields").0;
         values.record(&mut SpanVisitor::new(buf, depth));
@@ -93,10 +94,16 @@ where
         let mut buf = Vec::with_capacity(256);
 
         // Record span fields
-        for span in ctx.scope() {
-            let exts = span.extensions();
-            if let Some(fields) = exts.get::<SpanFields>() {
-                buf.extend_from_slice(&fields.0);
+        let maybe_scope = ctx
+            .current_span()
+            .id()
+            .and_then(|id| ctx.span_scope(id).map(|x| x.from_root()));
+        if let Some(scope) = maybe_scope {
+            for span in scope {
+                let exts = span.extensions();
+                if let Some(fields) = exts.get::<SpanFields>() {
+                    buf.extend_from_slice(&fields.0)
+                }
             }
         }
 

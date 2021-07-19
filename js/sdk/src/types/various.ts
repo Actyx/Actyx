@@ -336,7 +336,7 @@ export type EventChunk = {
 }
 
 /** Options used when creating a new `Actyx` instance. @public */
-export type ActyxOpts = Readonly<{
+export type ActyxOpts = {
   /** Host of the Actxy service. This defaults to localhost and should stay localhost in almost all cases. */
   actyxHost?: string
 
@@ -345,7 +345,7 @@ export type ActyxOpts = Readonly<{
 
   /** Hook, when the connection to the store is closed */
   onConnectionLost?: () => void
-}>
+}
 
 /** Options used when creating a new TEST `Actyx` instance. @public */
 export type ActyxTestOpts = Readonly<{
@@ -354,7 +354,7 @@ export type ActyxTestOpts = Readonly<{
 }>
 
 /** Manifest describing an Actyx application. Used for authorizing API access. @public */
-export type AppManifest = Readonly<{
+export type AppManifest = {
   /**
    * Structured application id.
    * For testing and development purposes, you can always pass 'com.example.<somestring>'
@@ -370,7 +370,7 @@ export type AppManifest = Readonly<{
 
   /** Manifest signature, if it’s not an example app. */
   signature?: string
-}>
+}
 
 /**
  * Sort order for persisted events.

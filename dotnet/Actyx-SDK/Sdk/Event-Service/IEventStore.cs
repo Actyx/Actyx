@@ -36,12 +36,12 @@ namespace Actyx
 
         public IEnumerable<string> Tags { get; set; }
 
-        public JValue Payload { get; set; }
+        public JToken Payload { get; set; }
     }
 
 
     // This interface is not public, it is the internal adapter for switching between ws/http/test impl.
-    public interface IEventStore
+    public interface IEventStore : IDisposable
     {
         NodeId NodeId { get; }
 
@@ -93,7 +93,7 @@ namespace Actyx
         /**
          * Store the events in the store and return them as generic events.
          */
-        IObservable<EventOnWire> PersistEvents(
+        Task<IEnumerable<EventOnWire>> Publish(
             IEnumerable<IEventDraft> events
         );
     }

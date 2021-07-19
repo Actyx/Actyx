@@ -38,8 +38,7 @@ namespace Sdk.Tests
         {
             // Publish some events
             var events = Enumerable.Range(1, 10).Select(x => new TestEvent($"event {x}")).ToList();
-            var results = new List<EventOnWire>();
-            await es.PersistEvents(events).ForEachAsync(x => results.Add(x));
+            var results = (await es.Publish(events)).ToList();
             results.Should().HaveCount(events.Count);
             var first = results.First();
             first.Lamport.Should().BePositive();
@@ -78,7 +77,7 @@ namespace Sdk.Tests
         [MemberData(nameof(It_Should_Complete_When_Nothing_To_Publish_TestData))]
         public async void It_Should_Complete_When_Nothing_To_Publish(IEnumerable<IEventDraft> events)
         {
-            var results = await es.PersistEvents(events).ToList();
+            var results = (await es.Publish(events)).ToList();
             results.Should().HaveCount(0);
         }
     }

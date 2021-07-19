@@ -109,7 +109,7 @@ fn render_operation(w: &mut impl Write, e: &Operation) -> Result {
     }
 }
 
-fn render_tag_expr(w: &mut impl Write, e: &TagExpr, parent: Option<&TagExpr>) -> Result {
+pub fn render_tag_expr(w: &mut impl Write, e: &TagExpr, parent: Option<&TagExpr>) -> Result {
     match e {
         TagExpr::Or(or) => {
             let wrap = matches!(parent, Some(&TagExpr::And(_)));

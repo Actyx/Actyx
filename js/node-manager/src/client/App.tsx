@@ -35,7 +35,7 @@ const Root = () => {
           {fatalError !== null ? (
             <FatalError error={fatalError} />
           ) : (
-            <div className="h-full">
+            <div className="h-full w-full max-h-screen max-w-screen overflow-hidden">
               <div className="bg-gray-100 p-0 h-full">
                 <Content />
               </div>

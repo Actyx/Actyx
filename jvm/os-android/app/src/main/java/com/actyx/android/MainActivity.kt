@@ -17,6 +17,7 @@ import androidx.core.content.ContextCompat
 import com.actyx.android.util.Logger
 import com.actyx.android.util.toBitmap
 import java.net.Inet4Address
+import kotlin.system.exitProcess
 
 class MainActivity : AppCompatActivity() {
   private val log = Logger()
@@ -52,14 +53,14 @@ class MainActivity : AppCompatActivity() {
       // User initiated shutdown, so skip alert dialog
       if (shutdownPending) {
         finish()
-        System.exit(0)
+        exitProcess(0)
       } else {
         AlertDialog.Builder(this)
           .setCancelable(false)
           .setMessage(message)
           .setPositiveButton(getString(R.string.ok)) { _, _ ->
             finish()
-            System.exit(0)
+            exitProcess(0)
           }
           .create().apply {
             setTitle(getString(R.string.actyx_is_stopped))
@@ -85,7 +86,7 @@ class MainActivity : AppCompatActivity() {
         stopService(it)
       }
       finish()
-      System.exit(1)
+      exitProcess(1)
     }
     shutdownPending = true
     Toast.makeText(this, getString(R.string.actyx_is_stopping), Toast.LENGTH_SHORT).show()

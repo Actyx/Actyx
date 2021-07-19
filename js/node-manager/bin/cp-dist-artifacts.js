@@ -14,7 +14,7 @@ const possibleDistArtifacts = [
   'ActyxNodeManager-x64.dmg',
   // Linux .deb/.rpm (`make node-manager-mac-linux` when run on default linux build agent)
   'actyx-node-manager-amd64.deb',
-  'actyx-node-manager-amd64.rpm',
+  'actyx-node-manager-x86_64.rpm',
 ]
 
 ;(async () => {

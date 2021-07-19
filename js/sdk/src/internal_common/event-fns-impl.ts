@@ -405,7 +405,7 @@ export const EventFnsFromEventStoreV2 = (
 
     reduceUpToPresent<ActyxEvent<E> | undefined, E>(
       query,
-      (e0, e1) => (e0 && shouldReplace(e0, e1) ? e0 : e1),
+      (e0, e1) => (!e0 || shouldReplace(e1, e0) ? e1 : e0),
       undefined,
     ).then(([initial, offsets]) => {
       if (cancelled) {

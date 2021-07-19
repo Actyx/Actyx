@@ -22,7 +22,11 @@ pub enum SourceType {
     // Path describing an artifact on the Artifacts blob store
     Blob(String),
     // Docker manifest tag, e.g. docker.io/actyx/actyx:latest
-    Docker { repository: String, tag: String },
+    Docker {
+        registry: String,
+        repository: String,
+        tag: String,
+    },
 }
 #[derive(Debug, Clone)]
 pub struct SourceArtifact {
@@ -35,10 +39,14 @@ impl fmt::Display for SourceArtifact {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.r#type {
             SourceType::Blob(s) => write!(f, "Source Blob \"{}\" for {} ({})", s, self.release, self.os_arch),
-            SourceType::Docker { repository, tag } => write!(
+            SourceType::Docker {
+                registry,
+                repository,
+                tag,
+            } => write!(
                 f,
-                "Source Docker \"{}:{}\" for {} ({})",
-                repository, tag, self.release, self.os_arch
+                "Source Docker \"{}/{}:{}\" for {} ({})",
+                registry, repository, tag, self.release, self.os_arch
             ),
         }
     }
@@ -54,6 +62,7 @@ pub enum TargetArtifact {
         local_result: Option<PathBuf>,
     },
     Docker {
+        registry: String,
         repository: String,
         tag: String,
         manifest: DockerInspectResponse,
@@ -85,9 +94,11 @@ impl Publisher {
         log::debug!("checking if source {} exists for target {}", self.source, self.target);
         match &self.source.r#type {
             SourceType::Blob(s) => blob_exists(Container::Artifacts, &*s),
-            SourceType::Docker { tag, repository } => {
-                Ok(docker_manifest_exists(&*format!("{}:{}", repository, tag), None))
-            }
+            SourceType::Docker {
+                registry,
+                tag,
+                repository,
+            } => docker_manifest_exists(&*format!("{}/{}:{}", registry, repository, tag), None),
         }
     }
     pub fn target_exists(&self) -> anyhow::Result<bool> {
@@ -95,13 +106,11 @@ impl Publisher {
         match &self.target {
             TargetArtifact::Blob { file_name: s, .. } => blob_exists(Container::Releases, &*s),
             TargetArtifact::Docker {
+                registry,
                 manifest,
                 repository,
                 tag,
-            } => Ok(docker_manifest_exists(
-                &*format!("{}:{}", repository, tag),
-                Some(manifest),
-            )),
+            } => docker_manifest_exists(&*format!("{}/{}:{}", registry, repository, tag), Some(manifest)),
         }
     }
     pub fn create_release_artifact(&mut self, in_dir: impl AsRef<Path>) -> anyhow::Result<()> {
@@ -156,25 +165,24 @@ impl Publisher {
                 Ok(())
             }
             TargetArtifact::Docker {
+                registry,
                 repository,
                 tag,
                 manifest,
             } => {
-                // Source Manifest already encoded in TargetArtifact struct
-                assert!(
-                    matches!(
-                        &self.source,
-                        SourceArtifact {
-                            r#type: SourceType::Docker { .. },
+                if let SourceArtifact {
+                    r#type:
+                        SourceType::Docker {
+                            repository: source_repository,
                             ..
-                        }
-                    ),
-                    "Tried creating {:?} from {:?}",
-                    self.target,
-                    self.source
-                );
-
-                docker_manifest_create(manifest, repository, tag)
+                        },
+                    ..
+                } = &self.source
+                {
+                    docker_manifest_create(manifest, registry, source_repository, repository, tag)
+                } else {
+                    unreachable!()
+                }
             }
         }
     }
@@ -190,7 +198,12 @@ impl Publisher {
                     .ok_or_else(|| anyhow::anyhow!("No local file created!"))?;
                 blob_upload(local, &*file_name)
             }
-            TargetArtifact::Docker { tag, .. } => docker_manifest_push(&*tag),
+            TargetArtifact::Docker {
+                tag,
+                registry,
+                repository,
+                ..
+            } => docker_manifest_push(&*format!("{}/{}:{}", registry, repository, tag)),
         }
     }
 }
@@ -221,19 +234,25 @@ fn mk_docker_tuples(
     if release.product == Product::Actyx && os_arch.arch == Arch::x86_64 && os_arch.os == OS::linux {
         // Multiarch image, so just do it once
         let mut out = vec![];
-        let repository = "docker.io/actyx/cosmos".to_string();
+        let registry = "docker.io".to_string();
+        let repository = "actyx/cosmos".to_string();
         let tag = format!("actyx-{}", hash);
         let manifest = docker_manifest_inspect(&*format!("{}:{}", repository, tag))?;
         let source = SourceArtifact {
             os_arch,
             release: release.clone(),
-            r#type: SourceType::Docker { repository, tag },
+            r#type: SourceType::Docker {
+                registry: registry.clone(),
+                repository,
+                tag,
+            },
         };
         if is_newest {
             out.push((
                 source.clone(),
                 TargetArtifact::Docker {
-                    repository: "docker.io/actyx/actyx".to_string(),
+                    registry: registry.clone(),
+                    repository: "actyx/actyx".to_string(),
                     tag: "latest".to_string(),
                     manifest: manifest.clone(),
                 },
@@ -242,7 +261,8 @@ fn mk_docker_tuples(
         out.push((
             source,
             TargetArtifact::Docker {
-                repository: "docker.io/actyx/actyx".to_string(),
+                registry,
+                repository: "actyx/actyx".to_string(),
                 tag: release.version.to_string(),
                 manifest,
             },
@@ -375,14 +395,14 @@ fn mk_blob_tuples(release: &Release, hash: &Oid, os_arch: OsArch) -> Vec<(Source
                         local_result: None,
                     },
                 ));
-                //out.push((
-                //    "node-manager-linux/actyx-node-manager.rpm".to_string(),
-                //    TargetArtifact::Blob {
-                //        pre_processing: PreProcessing::None,
-                //        file_name: format!("actyx-node-manager-amd64-{}.rpm", version),
-                //        local_result: None,
-                //    },
-                //));
+                out.push((
+                    "node-manager-linux/actyx-node-manager-x86_64.rpm".to_string(),
+                    TargetArtifact::Blob {
+                        pre_processing: PreProcessing::None,
+                        file_name: format!("actyx-node-manager-{}-x86_64.rpm", version),
+                        local_result: None,
+                    },
+                ));
             }
         }
         (Product::NodeManager, OS::windows) => {
@@ -576,8 +596,11 @@ fn package_zip(source: impl AsRef<Path>, target: impl AsRef<Path>, binary_name: 
 /// exists, and an additional `manifest` is given, the existing manifest is
 /// checked for equality with that. That is useful for example when one wants to
 /// make sure that a re-usable tag points to the right manifest (like `latest`).
-fn docker_manifest_exists(tag: &str, manifest: Option<&DockerInspectResponse>) -> bool {
-    if let Ok(existing_manifest) = docker_manifest_inspect(tag) {
+fn docker_manifest_exists(tag: &str, manifest: Option<&DockerInspectResponse>) -> anyhow::Result<bool> {
+    // Remove locally, so we make sure that we pull the latest manifest for that
+    // tag from the repository
+    docker_manifest_rm(tag)?;
+    Ok(if let Ok(existing_manifest) = docker_manifest_inspect(tag) {
         if let Some(m) = manifest {
             m == &existing_manifest
         } else {
@@ -585,7 +608,7 @@ fn docker_manifest_exists(tag: &str, manifest: Option<&DockerInspectResponse>) -
         }
     } else {
         false
-    }
+    })
 }
 
 fn docker_manifest_inspect(tag: &str) -> anyhow::Result<DockerInspectResponse> {
@@ -599,21 +622,60 @@ fn docker_manifest_inspect(tag: &str) -> anyhow::Result<DockerInspectResponse> {
     out.manifests.sort();
     Ok(out)
 }
-fn docker_manifest_create(source_manifest: &DockerInspectResponse, repository: &str, tag: &str) -> anyhow::Result<()> {
-    let digests = source_manifest
-        .manifests
-        .iter()
-        .map(|x| format!("{}:{}", repository, x.digest))
-        .collect::<Vec<_>>()
-        .join(" ");
+fn docker_manifest_rm(target: &str) -> anyhow::Result<()> {
+    let args = ["manifest", "rm", &*target];
 
-    let target = format!("{}:{}", repository, tag);
-    let args = ["manifest", "create", &*target, &*digests];
     let cmd = Command::new("docker")
         .args(&args)
         .output()
         .context(format!("running docker {:?}", args))?;
-    anyhow::ensure!(cmd.status.success(), "Error creating manifest for {}", target);
+
+    let stderr = String::from_utf8(cmd.stderr)?;
+    anyhow::ensure!(
+        cmd.status.success() || stderr.contains("No such manifest"),
+        "Error running `docker {:?}` for {}\nstdout: {}\nstderr: {}",
+        args,
+        target,
+        String::from_utf8(cmd.stdout)?,
+        stderr
+    );
+    Ok(())
+}
+fn docker_manifest_create(
+    source_manifest: &DockerInspectResponse,
+    registry: &str,
+    source_repository: &str,
+    target_repository: &str,
+    tag: &str,
+) -> anyhow::Result<()> {
+    let target = format!("{}/{}:{}", registry, target_repository, tag);
+    // Make sure the manifest is removed locally, otherwise we can't
+    // (re)create it
+    docker_manifest_rm(&*target)?;
+
+    // Now the actual manifest creation
+    let args = vec!["manifest".to_string(), "create".to_string(), target.clone()]
+        .into_iter()
+        .chain(
+            source_manifest
+                .manifests
+                .iter()
+                .map(|x| format!("{}@{}", source_repository, x.digest)),
+        )
+        .collect::<Vec<String>>();
+    let cmd = Command::new("docker")
+        .args(&args)
+        .output()
+        .context(format!("running docker {:?}", args))?;
+
+    anyhow::ensure!(
+        cmd.status.success(),
+        "Error running `docker {:?}` for {}\nstdout: {}\nstderr: {}",
+        args,
+        target,
+        String::from_utf8(cmd.stdout)?,
+        String::from_utf8(cmd.stderr)?
+    );
 
     Ok(())
 }
@@ -645,10 +707,18 @@ struct DockerManifestPlatform {
 }
 fn docker_manifest_push(target: &str) -> anyhow::Result<()> {
     let args = ["manifest", "push", target];
+    log::debug!("running docker {:?}", args);
     let cmd = Command::new("docker")
         .args(&args)
         .output()
         .context(format!("running docker {:?}", args))?;
-    anyhow::ensure!(cmd.status.success(), "Error pushing manifest for {}", target);
+    anyhow::ensure!(
+        cmd.status.success(),
+        "Error running `docker {:?}` for {}\nstdout: {}\nstderr: {}",
+        args,
+        target,
+        String::from_utf8(cmd.stdout)?,
+        String::from_utf8(cmd.stderr)?
+    );
     Ok(())
 }

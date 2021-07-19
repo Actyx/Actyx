@@ -24,7 +24,7 @@ See the following examples of using the `ax nodes ls` command:
 
 ```text title="Example Usage"
 # Get the status of a specified node in the local network
-[17:50][~:]$ ax nodes ls localhost
+$ ax nodes ls localhost
 +---------------------------------------------+--------------+-------------------------+---------------------------+---------+
 | NODE ID                                     | DISPLAY NAME | HOST                    | STARTED                   | VERSION |
 +---------------------------------------------+--------------+-------------------------+---------------------------+---------+
@@ -32,7 +32,7 @@ See the following examples of using the `ax nodes ls` command:
 +---------------------------------------------+--------------+-------------------------+---------------------------+---------+
 
 # Get the status of all specified nodes in the local network as a json object
-[17:51][~:]$ ax --json nodes ls localhost 192.168.2.185 192.168.1.212 | jq
+$ ax --json nodes ls localhost 192.168.2.185 192.168.1.212 | jq
 {
   "code": "OK",
   "result": [

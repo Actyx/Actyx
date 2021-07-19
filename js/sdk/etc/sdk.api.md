@@ -30,11 +30,11 @@ export const ActyxEvent: {
 };
 
 // @public
-export type ActyxOpts = Readonly<{
+export type ActyxOpts = {
     actyxHost?: string;
     actyxPort?: number;
     onConnectionLost?: () => void;
-}>;
+};
 
 // @public
 export type ActyxTestOpts = Readonly<{
@@ -53,12 +53,12 @@ export const AppId: {
 };
 
 // @public
-export type AppManifest = Readonly<{
+export type AppManifest = {
     appId: string;
     displayName: string;
     version: string;
     signature?: string;
-}>;
+};
 
 // @public
 export type AutoCappedQuery = {

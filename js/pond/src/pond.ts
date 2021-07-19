@@ -66,6 +66,8 @@ const omitObservable = <S>(
     // Not passing an error callback seems to cause bad behavior with RXjs internally
     const sub = states
       .map(x => x.state)
+      // Use async scheduler to make direct cancelation work
+      .subscribeOn(Scheduler.async)
       .subscribe(callback, typeof stoppedByError === 'function' ? stoppedByError : noop)
     return sub.unsubscribe.bind(sub)
   } catch (err) {
