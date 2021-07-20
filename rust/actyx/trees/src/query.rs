@@ -1,7 +1,7 @@
 use std::{
     cmp::Ord,
     collections::BTreeSet,
-    iter::FromIterator,
+    iter::{once, FromIterator},
     ops::{BitAndAssign, Range, RangeFrom, RangeTo},
 };
 
@@ -243,12 +243,14 @@ pub struct TagExprQuery {
 
 impl TagExprQuery {
     pub fn new(terms: impl IntoIterator<Item = ScopedTagSet>, lamport: LamportQuery, time: TimeQuery) -> Self {
-        Self {
-            // TODO Rüdiger: emit "all" when a term is empty!
-            tags: DnfQuery::new(terms).expect("> u32::max_value() tags"),
-            lamport,
-            time,
-        }
+        let tags = DnfQuery::new(terms).expect("> u32::max_value() tags");
+        let lamport = if tags.is_empty() {
+            LamportQuery::empty()
+        } else {
+            lamport
+        };
+        let time = if tags.is_empty() { TimeQuery::empty() } else { time };
+        Self { tags, lamport, time }
     }
 
     pub fn from_expr(tag_expr: &language::TagExpr) -> Result<impl Fn(bool) -> Self, TagExprError> {
@@ -269,10 +271,14 @@ impl TagExprQuery {
                 }
             };
             let is_local = tag_set.iter().any(|x| x.is_local());
-            if is_local {
-                local_terms.push(tags);
+            let target = if is_local { &mut local_terms } else { &mut terms };
+            if tags.is_empty() {
+                // clear other OR branches because this branch tag-matches all events
+                *target = vec![tags];
+            } else if target.get(0) == Some(&ScopedTagSet::empty()) {
+                // no point adding an OR branch, we’ll match all events anyway
             } else {
-                terms.push(tags);
+                target.push(tags);
             }
             get_lamport_query(tag_set, &mut lamport)?;
             get_time_query(tag_set, &mut time)?;
@@ -282,8 +288,14 @@ impl TagExprQuery {
         let time = time.unwrap_or_else(TimeQuery::all);
 
         Ok(move |local| {
-            let local = (if local { local_terms.iter() } else { no_terms.iter() }).cloned();
-            Self::new(terms.iter().cloned().chain(local), lamport.clone(), time.clone())
+            let mut local = (if local { local_terms.iter() } else { no_terms.iter() })
+                .cloned()
+                .peekable();
+            if terms.get(0) == Some(&ScopedTagSet::empty()) || local.peek() == Some(&ScopedTagSet::empty()) {
+                Self::new(once(ScopedTagSet::empty()), lamport.clone(), time.clone())
+            } else {
+                Self::new(terms.iter().cloned().chain(local), lamport.clone(), time.clone())
+            }
         })
     }
 
