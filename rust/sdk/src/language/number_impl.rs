@@ -1,7 +1,24 @@
 use super::{render::render_number, Num};
 use num_traits::Pow;
-use std::{cmp::Ordering, convert::TryInto};
+use std::{cmp::Ordering, convert::TryFrom};
 use Num::*;
+
+#[derive(Debug, Clone, derive_more::Display, derive_more::Error)]
+pub enum NumError {
+    #[display(fmt = "integer overflow")]
+    IntOverflow,
+    #[display(fmt = "integer underflow")]
+    IntUnderflow,
+    #[display(fmt = "floating-point overflow")]
+    FloatOverflow,
+    #[display(fmt = "floating-point underflow")]
+    FloatUnderflow,
+    #[display(fmt = "division by zero")]
+    DivByZero,
+    #[display(fmt = "not a number")]
+    NaN,
+}
+use NumError::*;
 
 impl Num {
     fn as_f64(&self) -> f64 {
@@ -11,46 +28,61 @@ impl Num {
         }
     }
 
-    pub fn add(&self, other: &Num) -> Num {
+    pub fn add(&self, other: &Num) -> Result<Num, NumError> {
         match (self, other) {
-            (Natural(l), Natural(r)) => Natural(l.saturating_add(*r)),
-            (l, r) => Decimal(l.as_f64() + r.as_f64()),
+            (Natural(l), Natural(r)) => Ok(Natural(l.checked_add(*r).ok_or(IntOverflow)?)),
+            (l, r) => decimal(l.as_f64() + r.as_f64()),
         }
     }
 
-    pub fn sub(&self, other: &Num) -> Num {
+    pub fn sub(&self, other: &Num) -> Result<Num, NumError> {
         match (self, other) {
-            (Natural(l), Natural(r)) => Natural(l.saturating_sub(*r)),
-            (l, r) => Decimal(l.as_f64() - r.as_f64()),
+            (Natural(l), Natural(r)) => Ok(Natural(l.checked_sub(*r).ok_or(IntOverflow)?)),
+            (l, r) => decimal(l.as_f64() - r.as_f64()),
         }
     }
 
-    pub fn mul(&self, other: &Num) -> Num {
+    pub fn mul(&self, other: &Num) -> Result<Num, NumError> {
         match (self, other) {
-            (Natural(l), Natural(r)) => Natural(l.saturating_mul(*r)),
-            (l, r) => Decimal(l.as_f64() * r.as_f64()),
+            (Natural(l), Natural(r)) => Ok(Natural(l.checked_mul(*r).ok_or(IntOverflow)?)),
+            (l, r) => decimal(l.as_f64() * r.as_f64()),
         }
     }
 
-    pub fn div(&self, other: &Num) -> Num {
+    pub fn div(&self, other: &Num) -> Result<Num, NumError> {
         match (self, other) {
-            (Natural(l), Natural(r)) => Natural(*l / *r),
-            (l, r) => Decimal(l.as_f64() / r.as_f64()),
+            (Natural(l), Natural(r)) => Ok(Natural(l.checked_div(*r).ok_or(DivByZero)?)),
+            (l, r) => decimal(l.as_f64() / r.as_f64()),
         }
     }
 
-    pub fn modulo(&self, other: &Num) -> Num {
+    pub fn modulo(&self, other: &Num) -> Result<Num, NumError> {
         match (self, other) {
-            (Natural(l), Natural(r)) => Natural(l % *r),
-            (l, r) => Decimal(l.as_f64() % r.as_f64()),
+            (Natural(l), Natural(r)) => Ok(Natural(*l % *r)),
+            (l, r) => decimal(l.as_f64() % r.as_f64()),
         }
     }
 
-    pub fn pow(&self, other: &Num) -> Num {
+    pub fn pow(&self, other: &Num) -> Result<Num, NumError> {
         match (self, other) {
-            (Natural(l), Natural(r)) => Natural(l.pow((*r).try_into().unwrap_or(u32::MAX))),
-            (l, r) => Decimal(l.as_f64().pow(r.as_f64())),
+            (Natural(l), Natural(r)) => {
+                let exponent = u32::try_from(*r).map_err(|_| IntOverflow)?;
+                Ok(Natural(l.checked_pow(exponent).ok_or(IntOverflow)?))
+            }
+            (l, r) => decimal(l.as_f64().pow(r.as_f64())),
         }
+    }
+}
+
+fn decimal(f: f64) -> Result<Num, NumError> {
+    if f.is_finite() {
+        Ok(Decimal(f))
+    } else if f < 0.0 {
+        Err(FloatUnderflow)
+    } else if f > 0.0 {
+        Err(FloatOverflow)
+    } else {
+        Err(NaN)
     }
 }
 

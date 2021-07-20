@@ -118,8 +118,8 @@ impl<'a> Context<'a> {
             SimpleExpr::Bool(f) => Ok(self.value(|b| b.write_bool(*f, None))),
             SimpleExpr::Cases(v) => {
                 for (pred, expr) in v.iter() {
-                    let pred = self.eval(pred)?.as_bool()?;
-                    if pred {
+                    let pred = self.eval(pred).and_then(|v| v.as_bool());
+                    if pred.unwrap_or(false) {
                         return self.eval(expr);
                     }
                 }
@@ -403,6 +403,16 @@ mod tests {
         assert_eq!(eval(&cx, "1+2").unwrap(), "3");
         assert_eq!(eval(&cx, "1+2*3^2%5").unwrap(), "4");
         assert_eq!(eval(&cx, "1.0+2.0*3.0^2.0%5.0").unwrap(), "4.0");
+
+        assert_that(
+            &eval(&cx, "12345678901234567890 + 12345678901234567890")
+                .unwrap_err()
+                .to_string(),
+        )
+        .contains("integer overflow");
+        assert_that(&eval(&cx, "10.0 ^ 400").unwrap_err().to_string()).contains("floating-point overflow");
+        assert_that(&eval(&cx, "10.0 / 0").unwrap_err().to_string()).contains("floating-point overflow");
+        assert_that(&eval(&cx, "0.0 / 0").unwrap_err().to_string()).contains("not a number");
     }
 
     #[test]
@@ -420,8 +430,9 @@ mod tests {
         let cx = ctx();
         assert_eq!(eval(&cx, "CASE 5 ≤ 5 => 42 CASE TRUE => NULL ENDCASE").unwrap(), "42");
         assert_eq!(eval(&cx, "CASE 5 < 5 => 42 CASE TRUE => NULL ENDCASE").unwrap(), "null");
+        assert_eq!(eval(&cx, "CASE 'a' => 'b' CASE TRUE => 'c' ENDCASE").unwrap(), "\"c\"");
+        assert_eq!(eval(&cx, "CASE a => 'b' CASE TRUE => 'c' ENDCASE").unwrap(), "\"c\"");
 
-        assert_that(&eval(&cx, "CASE 1 => 11 ENDCASE").unwrap_err().to_string()).contains("1 is not a bool");
         assert_that(&eval(&cx, "CASE FALSE => 1 ENDCASE").unwrap_err().to_string()).contains("no case matched");
     }
 }

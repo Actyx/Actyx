@@ -133,37 +133,37 @@ impl Value {
     pub fn add(&self, other: &Value) -> Result<Value> {
         let lhs = self.as_number()?;
         let rhs = other.as_number()?;
-        Ok(self.number(lhs.add(&rhs)))
+        Ok(self.number(lhs.add(&rhs)?))
     }
 
     pub fn sub(&self, other: &Value) -> Result<Value> {
         let lhs = self.as_number()?;
         let rhs = other.as_number()?;
-        Ok(self.number(lhs.sub(&rhs)))
+        Ok(self.number(lhs.sub(&rhs)?))
     }
 
     pub fn mul(&self, other: &Value) -> Result<Value> {
         let lhs = self.as_number()?;
         let rhs = other.as_number()?;
-        Ok(self.number(lhs.mul(&rhs)))
+        Ok(self.number(lhs.mul(&rhs)?))
     }
 
     pub fn div(&self, other: &Value) -> Result<Value> {
         let lhs = self.as_number()?;
         let rhs = other.as_number()?;
-        Ok(self.number(lhs.div(&rhs)))
+        Ok(self.number(lhs.div(&rhs)?))
     }
 
     pub fn modulo(&self, other: &Value) -> Result<Value> {
         let lhs = self.as_number()?;
         let rhs = other.as_number()?;
-        Ok(self.number(lhs.modulo(&rhs)))
+        Ok(self.number(lhs.modulo(&rhs)?))
     }
 
     pub fn pow(&self, other: &Value) -> Result<Value> {
         let lhs = self.as_number()?;
         let rhs = other.as_number()?;
-        Ok(self.number(lhs.pow(&rhs)))
+        Ok(self.number(lhs.pow(&rhs)?))
     }
 }
 

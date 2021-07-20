@@ -116,6 +116,9 @@ Whenever the description says that an error is generated, the evaluation of the 
 - `<expr> & <expr>`, `<expr> | <expr>`, and `<expr> ~ <expr>` compute the logical _and_, _or_,  and _xor_ of boolean values, respectively (you can also use `∧`, `∨`, and `⊻`).
 - Comparison operators `>`, `>=`, `<`, `<=`, `=`, `!=` (or `≥`, `≤`, `≠`) work between operands of the same type, i.e. comparing a number to a string yields an error.
 - Arithmetic operators `+`, `-`, `*`, `/` (with alternatives `×`, `÷`), `%` (mod), `^` (exponentiation) work between numbers, otherwise yield an error.
+  Natural numbers (64bit integers) are converted to floating point when combined with floating point numbers.
+  All operations yield an error upon overflow or underflow.
+
 - Arrays are constructed with `[<expr>, ...]`.
 - Objects are constructed with `{<key>: <expr>, ...}`, where the comma separators are optional;
   each `<key>` can be either a bare word (in which case it must start with a lowercase letter, followed by lowercase letters, numbers, or underscores)
@@ -134,7 +137,7 @@ Whenever the description says that an error is generated, the evaluation of the 
   If you want to index into computed sub-expressions, you need to enclose the expression in parentheses, e.g. `(['a','b'])[0]` (yields `'a'`).
 
 - `CASE <expr> => <expr> CASE ... ENDCASE` allows conditional evaluation;
-  all case clauses are tried one by one until the first `<expr` yields `TRUE`, in which case the corresponding second `<expr>` is used to compute the result.
+  all case clauses are tried one by one until the first `<expr>` yields `TRUE`, in which case the corresponding second `<expr>` is used to compute the result.
   An error is yielded if no case matches.
 
   This means that `FILTER <expr>` has the same behavior as `SELECT CASE <expr> => _ ENDCASE`.
